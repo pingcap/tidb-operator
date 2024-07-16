@@ -351,6 +351,7 @@ try {
                             sh """#!/bin/bash
                             set -eu
                             echo "info: building"
+                            unset GOSUMDB
                             echo "====== go env ======"
                             go env
                             echo "info: patch charts and golang code to enable coverage profile"
