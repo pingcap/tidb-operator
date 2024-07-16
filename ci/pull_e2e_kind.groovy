@@ -351,6 +351,8 @@ try {
                             sh """#!/bin/bash
                             set -eu
                             echo "info: building"
+                            echo "====== go env ======"
+                            go env
                             echo "info: patch charts and golang code to enable coverage profile"
                             ./hack/e2e-patch-codecov.sh
                             export CUSTOM_PORT_TIDB_SERVER=${CUSTOM_PORT_TIDB_SERVER}
