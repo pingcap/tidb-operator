@@ -1,6 +1,8 @@
 module github.com/pingcap/tidb-operator/pkg/client
 
-go 1.22
+go 1.22.0
+
+toolchain go1.22.5
 
 require (
 	github.com/pingcap/tidb-operator/pkg/apis v1.6.0
