@@ -200,6 +200,7 @@ func (m *pumpMemberManager) syncTiDBClusterStatus(tc *v1alpha1.TidbCluster, set 
 		return err
 	}
 
+	tc.Status.Pump.ObservedGeneration = tc.Generation
 	if upgrading {
 		tc.Status.Pump.Phase = v1alpha1.UpgradePhase
 	} else {

@@ -194,6 +194,7 @@ func (s *suspender) begin(ctx *suspendComponentCtx) error {
 	phase := v1alpha1.SuspendPhase
 	klog.Infof("begin to suspend component %s and transfer phase from %s to %s",
 		ctx.ComponentID(), status.GetPhase(), phase)
+	ctx.status.SetObservedGeneration(ctx.cluster.GetGeneration())
 	ctx.status.SetPhase(phase)
 	return nil
 }
@@ -203,6 +204,7 @@ func (s *suspender) end(ctx *suspendComponentCtx) error {
 	phase := v1alpha1.NormalPhase
 	klog.Infof("end to suspend component %s and transfer phase from %s to %s",
 		ctx.ComponentID(), status.GetPhase(), phase)
+	ctx.status.SetObservedGeneration(ctx.cluster.GetGeneration())
 	ctx.status.SetPhase(phase)
 	return nil
 }

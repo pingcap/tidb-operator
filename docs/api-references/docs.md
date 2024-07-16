@@ -9592,6 +9592,16 @@ MemberPhase
 </tr>
 <tr>
 <td>
+<code>observedGeneration</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>statefulSet</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#statefulsetstatus-v1-apps">
@@ -11174,6 +11184,16 @@ MemberPhase
 </tr>
 <tr>
 <td>
+<code>observedGeneration</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>statefulSet</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#statefulsetstatus-v1-apps">
@@ -12382,6 +12402,16 @@ bool
 <a href="#memberphase">
 MemberPhase
 </a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>observedGeneration</code></br>
+<em>
+int64
 </em>
 </td>
 <td>
@@ -13805,6 +13835,16 @@ bool
 <a href="#memberphase">
 MemberPhase
 </a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>observedGeneration</code></br>
+<em>
+int64
 </em>
 </td>
 <td>
@@ -16630,6 +16670,16 @@ MemberPhase
 </tr>
 <tr>
 <td>
+<code>observedGeneration</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>statefulSet</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#statefulsetstatus-v1-apps">
@@ -18005,6 +18055,16 @@ The probe binary in the image should be placed under the root directory, i.e., <
 <a href="#memberphase">
 MemberPhase
 </a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>observedGeneration</code></br>
+<em>
+int64
 </em>
 </td>
 <td>
@@ -22725,6 +22785,16 @@ MemberPhase
 </tr>
 <tr>
 <td>
+<code>observedGeneration</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
 <code>bootStrapped</code></br>
 <em>
 bool
@@ -23731,6 +23801,16 @@ bool
 <a href="#memberphase">
 MemberPhase
 </a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>observedGeneration</code></br>
+<em>
+int64
 </em>
 </td>
 <td>
@@ -27276,6 +27356,16 @@ bool
 <a href="#memberphase">
 MemberPhase
 </a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>observedGeneration</code></br>
+<em>
+int64
 </em>
 </td>
 <td>

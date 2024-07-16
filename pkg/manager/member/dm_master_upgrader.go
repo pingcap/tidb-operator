@@ -57,6 +57,7 @@ func (u *masterUpgrader) gracefulUpgrade(dc *v1alpha1.DMCluster, oldSet *apps.St
 		return nil
 	}
 
+	dc.Status.Master.ObservedGeneration = dc.Generation
 	dc.Status.Master.Phase = v1alpha1.UpgradePhase
 	if !templateEqual(newSet, oldSet) {
 		return nil
@@ -136,6 +137,7 @@ func (u *fakeMasterUpgrader) Upgrade(dc *v1alpha1.DMCluster, _ *apps.StatefulSet
 	if !dc.Status.Master.Synced {
 		return fmt.Errorf("dmcluster: dm-master status sync failed,can not to be upgraded")
 	}
+	dc.Status.Master.ObservedGeneration = dc.Generation
 	dc.Status.Master.Phase = v1alpha1.UpgradePhase
 	return nil
 }

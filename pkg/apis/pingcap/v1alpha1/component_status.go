@@ -58,6 +58,8 @@ type ComponentStatus interface {
 	//
 	// Not supported for tidb and pump
 	SetSynced(bool)
+	// SetObservedGeneration sets the generation of the component.
+	SetObservedGeneration(generation int64)
 	// SetPhase sets the phase of the component.
 	SetPhase(phase MemberPhase)
 	// SetVolumes sets the `status.volumes`
@@ -173,6 +175,9 @@ func (s *PDStatus) RemoveCondition(conditionType string) {
 	meta.RemoveStatusCondition(&conditions, conditionType)
 	s.Conditions = conditions
 }
+func (s *PDStatus) SetObservedGeneration(generation int64) {
+	s.ObservedGeneration = generation
+}
 func (s *PDStatus) SetPhase(phase MemberPhase) {
 	s.Phase = phase
 }
@@ -223,6 +228,9 @@ func (s *PDMSStatus) RemoveCondition(conditionType string) {
 	meta.RemoveStatusCondition(&conditions, conditionType)
 	s.Conditions = conditions
 }
+func (s *PDMSStatus) SetObservedGeneration(generation int64) {
+	s.ObservedGeneration = generation
+}
 func (s *PDMSStatus) SetPhase(phase MemberPhase) {
 	s.Phase = phase
 }
@@ -270,6 +278,9 @@ func (s *TiKVStatus) RemoveCondition(conditionType string) {
 	conditions := s.Conditions
 	meta.RemoveStatusCondition(&conditions, conditionType)
 	s.Conditions = conditions
+}
+func (s *TiKVStatus) SetObservedGeneration(generation int64) {
+	s.ObservedGeneration = generation
 }
 func (s *TiKVStatus) SetPhase(phase MemberPhase) {
 	s.Phase = phase
@@ -322,6 +333,9 @@ func (s *TiDBStatus) RemoveCondition(conditionType string) {
 	meta.RemoveStatusCondition(&conditions, conditionType)
 	s.Conditions = conditions
 }
+func (s *TiDBStatus) SetObservedGeneration(generation int64) {
+	s.ObservedGeneration = generation
+}
 func (s *TiDBStatus) SetPhase(phase MemberPhase) {
 	s.Phase = phase
 }
@@ -372,6 +386,9 @@ func (s *PumpStatus) RemoveCondition(conditionType string) {
 	conditions := s.Conditions
 	meta.RemoveStatusCondition(&conditions, conditionType)
 	s.Conditions = conditions
+}
+func (s *PumpStatus) SetObservedGeneration(generation int64) {
+	s.ObservedGeneration = generation
 }
 func (s *PumpStatus) SetPhase(phase MemberPhase) {
 	s.Phase = phase
@@ -424,6 +441,9 @@ func (s *TiFlashStatus) RemoveCondition(conditionType string) {
 	meta.RemoveStatusCondition(&conditions, conditionType)
 	s.Conditions = conditions
 }
+func (s *TiFlashStatus) SetObservedGeneration(generation int64) {
+	s.ObservedGeneration = generation
+}
 func (s *TiFlashStatus) SetPhase(phase MemberPhase) {
 	s.Phase = phase
 }
@@ -474,6 +494,9 @@ func (s *TiCDCStatus) RemoveCondition(conditionType string) {
 	conditions := s.Conditions
 	meta.RemoveStatusCondition(&conditions, conditionType)
 	s.Conditions = conditions
+}
+func (s *TiCDCStatus) SetObservedGeneration(generation int64) {
+	s.ObservedGeneration = generation
 }
 func (s *TiCDCStatus) SetPhase(phase MemberPhase) {
 	s.Phase = phase
@@ -526,6 +549,9 @@ func (s *MasterStatus) RemoveCondition(conditionType string) {
 	meta.RemoveStatusCondition(&conditions, conditionType)
 	s.Conditions = conditions
 }
+func (s *MasterStatus) SetObservedGeneration(generation int64) {
+	s.ObservedGeneration = generation
+}
 func (s *MasterStatus) SetPhase(phase MemberPhase) {
 	s.Phase = phase
 }
@@ -577,6 +603,9 @@ func (s *WorkerStatus) RemoveCondition(conditionType string) {
 	meta.RemoveStatusCondition(&conditions, conditionType)
 	s.Conditions = conditions
 }
+func (s *WorkerStatus) SetObservedGeneration(generation int64) {
+	s.ObservedGeneration = generation
+}
 func (s *WorkerStatus) SetPhase(phase MemberPhase) {
 	s.Phase = phase
 }
@@ -627,6 +656,9 @@ func (s *TiProxyStatus) RemoveCondition(conditionType string) {
 	conditions := s.Conditions
 	meta.RemoveStatusCondition(&conditions, conditionType)
 	s.Conditions = conditions
+}
+func (s *TiProxyStatus) SetObservedGeneration(generation int64) {
+	s.ObservedGeneration = generation
 }
 func (s *TiProxyStatus) SetPhase(phase MemberPhase) {
 	s.Phase = phase

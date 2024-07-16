@@ -75,6 +75,7 @@ func (u *tidbUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulSe
 		return nil
 	}
 
+	tc.Status.TiDB.ObservedGeneration = tc.Generation
 	tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
 	if !templateEqual(newSet, oldSet) {
 		return nil
@@ -148,6 +149,7 @@ func NewFakeTiDBUpgrader() Upgrader {
 }
 
 func (u *fakeTiDBUpgrader) Upgrade(tc *v1alpha1.TidbCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
+	tc.Status.TiDB.ObservedGeneration = tc.Generation
 	tc.Status.TiDB.Phase = v1alpha1.UpgradePhase
 	return nil
 }

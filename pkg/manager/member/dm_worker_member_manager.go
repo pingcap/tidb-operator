@@ -250,6 +250,7 @@ func (m *workerMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set *a
 	if err != nil {
 		return err
 	}
+	dc.Status.Worker.ObservedGeneration = dc.Generation
 	if upgrading {
 		dc.Status.Worker.Phase = v1alpha1.UpgradePhase
 	} else if dc.WorkerStsDesiredReplicas() != *set.Spec.Replicas {

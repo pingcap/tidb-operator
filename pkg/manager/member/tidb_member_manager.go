@@ -1147,6 +1147,8 @@ func (m *tidbMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set 
 		return err
 	}
 
+	tc.Status.TiDB.ObservedGeneration = tc.Generation
+
 	if tc.TiDBStsDesiredReplicas() != *set.Spec.Replicas {
 		tc.Status.TiDB.Phase = v1alpha1.ScalePhase
 	} else if upgrading && tc.Status.TiKV.Phase != v1alpha1.UpgradePhase &&

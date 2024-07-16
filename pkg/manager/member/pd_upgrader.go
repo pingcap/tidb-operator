@@ -64,6 +64,7 @@ func (u *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stat
 		return nil
 	}
 
+	tc.Status.PD.ObservedGeneration = tc.Generation
 	tc.Status.PD.Phase = v1alpha1.UpgradePhase
 	if !templateEqual(newSet, oldSet) {
 		return nil
@@ -234,6 +235,7 @@ func (u *fakePDUpgrader) Upgrade(tc *v1alpha1.TidbCluster, _ *apps.StatefulSet, 
 	if !tc.Status.PD.Synced {
 		return fmt.Errorf("tidbcluster: pd status sync failed, can not to be upgraded")
 	}
+	tc.Status.PD.ObservedGeneration = tc.Generation
 	tc.Status.PD.Phase = v1alpha1.UpgradePhase
 	return nil
 }

@@ -212,6 +212,7 @@ func (m *masterMemberManager) syncMasterStatefulSetForDMCluster(dc *v1alpha1.DMC
 
 	// Force update takes precedence over scaling because force upgrade won't take effect when cluster gets stuck at scaling
 	if !dc.Status.Master.Synced && NeedForceUpgrade(dc.Annotations) {
+		dc.Status.Master.ObservedGeneration = dc.Generation
 		dc.Status.Master.Phase = v1alpha1.UpgradePhase
 		mngerutils.SetUpgradePartition(newMasterSet, 0)
 		errSTS := mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, dc, newMasterSet, oldMasterSet)
@@ -292,6 +293,7 @@ func (m *masterMemberManager) syncDMClusterStatus(dc *v1alpha1.DMCluster, set *a
 		return err
 	}
 
+	dc.Status.Master.ObservedGeneration = dc.Generation
 	// Scaling takes precedence over upgrading.
 	if dc.MasterStsDesiredReplicas() != *set.Spec.Replicas {
 		dc.Status.Master.Phase = v1alpha1.ScalePhase

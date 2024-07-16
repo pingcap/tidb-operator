@@ -949,9 +949,10 @@ func newTidbClusterForPD() *v1alpha1.TidbCluster {
 			APIVersion: "pingcap.com/v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: corev1.NamespaceDefault,
-			UID:       types.UID("test"),
+			Name:       "test",
+			Namespace:  corev1.NamespaceDefault,
+			UID:        types.UID("test"),
+			Generation: 10,
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			PD: &v1alpha1.PDSpec{

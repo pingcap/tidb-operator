@@ -233,6 +233,7 @@ func (m *pdMemberManager) syncPDStatefulSetForTidbCluster(tc *v1alpha1.TidbClust
 		onlyOnePD := *oldPDSet.Spec.Replicas < 2 && len(tc.Status.PD.PeerMembers) == 0 // it's acceptable to use old record about peer members
 
 		if forceUpgradeAnnoSet || onlyOnePD {
+			tc.Status.PD.ObservedGeneration = tc.Generation
 			tc.Status.PD.Phase = v1alpha1.UpgradePhase
 			mngerutils.SetUpgradePartition(newPDSet, 0)
 			errSTS := mngerutils.UpdateStatefulSet(m.deps.StatefulSetControl, tc, newPDSet, oldPDSet)
@@ -329,6 +330,8 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 	if err != nil {
 		return err
 	}
+
+	tc.Status.PD.ObservedGeneration = tc.Generation
 
 	// Scaling takes precedence over upgrading.
 	if tc.PDStsDesiredReplicas() != *set.Spec.Replicas {

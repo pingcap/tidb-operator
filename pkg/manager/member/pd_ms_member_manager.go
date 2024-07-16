@@ -345,6 +345,8 @@ func (m *pdMSMemberManager) syncStatus(tc *v1alpha1.TidbCluster, sts *apps.State
 		return err
 	}
 
+	tc.Status.PDMS[curService].ObservedGeneration = tc.Generation
+
 	// Scaling takes precedence over upgrading.
 	if tc.PDMSStsDesiredReplicas(curService) != *sts.Spec.Replicas {
 		tc.Status.PDMS[curService].Phase = v1alpha1.ScalePhase

@@ -8635,6 +8635,9 @@ spec:
                       - name
                       type: object
                     type: object
+                  observedGeneration:
+                    format: int64
+                    type: integer
                   phase:
                     type: string
                   statefulSet:
@@ -8816,6 +8819,9 @@ spec:
                       - stage
                       type: object
                     type: object
+                  observedGeneration:
+                    format: int64
+                    type: integer
                   phase:
                     type: string
                   statefulSet:

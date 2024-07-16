@@ -75,6 +75,7 @@ func (u *tiflashUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 		return fmt.Errorf("cluster: [%s/%s]'s TiFlash status is not synced, can not upgrade", ns, tcName)
 	}
 
+	tc.Status.TiFlash.ObservedGeneration = tc.Generation
 	tc.Status.TiFlash.Phase = v1alpha1.UpgradePhase
 	if !templateEqual(newSet, oldSet) {
 		return nil
