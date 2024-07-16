@@ -34,7 +34,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version-file: ./go.mod
+        go-version-file: go/src/github.com/${{ github.repository }}/go.mod
         cache-dependency-path: "**/*.sum"
     - name: Set vars
       run: |
