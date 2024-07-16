@@ -27,21 +27,21 @@ jobs:
     # see https://github.community/t/github-sha-isnt-the-value-expected/17903/2
     # so we checkout the repo with `fetch-depth: 2` and let `codecov/codecov-action` to retrieve the real commit hash.
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         path: go/src/github.com/${{ github.repository }}
         fetch-depth: 2
     - name: Set up Go
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v5
       with:
-        go-version-file: go/src/github.com/${{ github.repository }}/go.mod
-        go-version: 1.21.3
+        go-version-file: ./go.mod
+        cache-dependency-path: "**/*.sum"
     - name: Set vars
       run: |
         echo "GOCACHE=$(go env GOCACHE)" >> $GITHUB_ENV
         echo "GOMODCACHE=$(go env GOMODCACHE)" >> $GITHUB_ENV
     - name: Try to use build cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ${{ env.GOCACHE }}
