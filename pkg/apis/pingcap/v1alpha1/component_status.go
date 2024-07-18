@@ -403,7 +403,7 @@ func (s *TiFlashStatus) GetStatefulSet() *appsv1.StatefulSetStatus {
 	return s.StatefulSet
 }
 func (s *TiFlashStatus) GetVolReplaceInProgress() bool {
-	return false
+	return s.VolReplaceInProgress
 }
 func (s *TiFlashStatus) SetSynced(synced bool) {
 	s.Synced = synced
@@ -433,7 +433,9 @@ func (s *TiFlashStatus) SetStatefulSet(sts *appsv1.StatefulSetStatus) {
 func (s *TiFlashStatus) SetVolumes(vols map[StorageVolumeName]*StorageVolumeStatus) {
 	s.Volumes = vols
 }
-func (s *TiFlashStatus) SetVolReplaceInProgress(status bool) {}
+func (s *TiFlashStatus) SetVolReplaceInProgress(status bool) {
+	s.VolReplaceInProgress = status
+}
 
 func (s *TiCDCStatus) MemberType() MemberType {
 	return TiCDCMemberType
