@@ -302,6 +302,17 @@ func newTidbCluster() *v1alpha1.TidbCluster {
 					Image: "tidb-test-image",
 				},
 			},
+			TiFlash: &v1alpha1.TiFlashSpec{
+				Replicas: 1,
+				ComponentSpec: v1alpha1.ComponentSpec{
+					Image: "tiflash-test-image",
+				},
+				ResourceRequirements: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: resource.MustParse("10G"),
+					},
+				},
+			},
 		},
 	}
 }
