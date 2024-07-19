@@ -45041,6 +45041,8 @@ spec:
                       - state
                       type: object
                     type: object
+                  volReplaceInProgress:
+                    type: boolean
                   volumes:
                     additionalProperties:
                       properties:
