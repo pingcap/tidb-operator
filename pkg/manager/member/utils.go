@@ -503,8 +503,31 @@ func TiKVStoreFromStatus(tc *v1alpha1.TidbCluster, podName string) (v1alpha1.TiK
 	return v1alpha1.TiKVStore{}, fmt.Errorf("store is not found in tikv status")
 }
 
+func TiFlashStoreFromStatus(tc *v1alpha1.TidbCluster, podName string) (v1alpha1.TiKVStore, error) {
+	for _, store := range tc.Status.TiFlash.Stores {
+		if store.PodName == podName {
+			return store, nil
+		}
+	}
+	return v1alpha1.TiKVStore{}, fmt.Errorf("store is not found in tiflash status")
+}
+
 func TiKVStoreIDFromStatus(tc *v1alpha1.TidbCluster, podName string) (uint64, error) {
 	store, err := TiKVStoreFromStatus(tc, podName)
+	if err != nil {
+		return 0, err
+	}
+
+	storeID, err := strconv.ParseUint(store.ID, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return storeID, nil
+}
+
+func TiFlashStoreIDFromStatus(tc *v1alpha1.TidbCluster, podName string) (uint64, error) {
+	store, err := TiFlashStoreFromStatus(tc, podName)
 	if err != nil {
 		return 0, err
 	}

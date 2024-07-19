@@ -743,7 +743,7 @@ func (tc *TidbCluster) TiFlashAllPodsStarted() bool {
 	return tc.TiFlashStsDesiredReplicas() == tc.TiFlashStsActualReplicas()
 }
 
-// TiFlashAllPodsStarted return whether all stores of TiFlash are ready.
+// TiFlashAllStoresReady return whether all stores of TiFlash are ready.
 //
 // If TiFlash isn't specified, return false.
 func (tc *TidbCluster) TiFlashAllStoresReady() bool {
