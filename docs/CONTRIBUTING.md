@@ -95,7 +95,7 @@ This will show errors if your code change does not pass checks (e.g. fmt, lint).
 If you change code related to CRD, such as type definitions in `pkg/apis/pingcap/v1alpha1/types.go`, please also run following commands to generate necessary code and artifacts.
 
 ```sh
-$ hack/update-all.sh
+$ make generate
 ```
 
 #### Start TiDB Operator locally and do manual tests
