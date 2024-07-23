@@ -61,6 +61,8 @@ spec:
   issuerRef:
     name: {{ .ClusterRef }}-selfsigned-ca-issuer
     kind: Issuer
+  privateKey:
+    algorithm: ECDSA
 ---
 apiVersion: cert-manager.io/v1
 kind: Issuer
@@ -102,6 +104,8 @@ spec:
     name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -122,6 +126,8 @@ spec:
     name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
 `
 
 var tidbComponentsOnlyPDCertificatesTmpl = `
@@ -158,6 +164,8 @@ spec:
     name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
 `
 
 var tidbComponentsExceptPDCertificatesTmpl = `
@@ -194,6 +202,8 @@ spec:
     name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -228,6 +238,8 @@ spec:
     name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -248,6 +260,8 @@ spec:
     name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -276,6 +290,8 @@ spec:
     name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -304,6 +320,8 @@ spec:
     name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -338,6 +356,8 @@ spec:
     name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -372,6 +392,8 @@ spec:
     name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
 `
 
 var tidbClientCertificateTmpl = `
@@ -394,6 +416,8 @@ spec:
     name: {{ .ClusterRef }}-tidb-issuer
     kind: Issuer
     group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
 `
 
 var mysqlCertificatesTmpl = `
@@ -422,6 +446,8 @@ spec:
     name: {{ .ClusterRef }}-tidb-issuer  # use tidb-issuer in E2E tests
     kind: Issuer
     group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
 `
 
 var dmCertificatesTmp = `
@@ -458,6 +484,8 @@ spec:
     name: {{ .ClusterRef }}-tidb-issuer # use tidb-issuer in E2E tests
     kind: Issuer
     group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -492,6 +520,8 @@ spec:
     name: {{ .ClusterRef }}-tidb-issuer # use tidb-issuer in E2E tests
     kind: Issuer
     group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -512,6 +542,8 @@ spec:
     name: {{ .ClusterRef }}-tidb-issuer # use tidb-issuer in E2E tests
     kind: Issuer
     group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
 `
 
 var xK8sTidbIssuerTmpl = `
