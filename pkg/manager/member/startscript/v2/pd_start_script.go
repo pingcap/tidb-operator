@@ -20,6 +20,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/member/constants"
@@ -45,6 +46,7 @@ type PDMSStartScriptModel struct {
 	PDStartTimeout int
 	PDAddresses    string
 
+	PDMSName            string
 	PDMSDomain          string
 	ListenAddr          string
 	AdvertiseListenAddr string
@@ -130,6 +132,18 @@ func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error
 	m.PDMSDomain = fmt.Sprintf("${PDMS_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
 	if tc.Spec.ClusterDomain != "" {
 		m.PDMSDomain = m.PDMSDomain + "." + tc.Spec.ClusterDomain
+	}
+
+	preferPDMSWithName := slices.Contains(
+		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagPDMSWithName)
+	if preferPDMSWithName {
+		if ok, err := PDMSSupportMicroServicesWithName(tc.PDMSVersion(name)); ok && err == nil {
+			m.PDMSName = "${PDMS_POD_NAME}"
+			if tc.Spec.ClusterDomain != "" {
+				m.PDMSName = m.PDMSDomain
+			}
+			name = fmt.Sprintf("%s --name=%s", name, m.PDMSName)
+		}
 	}
 
 	m.PDStartTimeout = tc.PDStartTimeout()
@@ -313,4 +327,13 @@ func enableMicroServiceModeDynamic(ms string, startScript string) string {
 	} else {
 		return strings.ReplaceAll(startScript, pdEnableMicroService, "")
 	}
+}
+
+// PDMSSupportMicroServicesWithName returns true if the given version of PDMS supports microservices with name.
+func PDMSSupportMicroServicesWithName(version string) (bool, error) {
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return true, err
+	}
+	return v.Major() >= 8 && v.Minor() >= 3 && v.Patch() >= 0, nil
 }
