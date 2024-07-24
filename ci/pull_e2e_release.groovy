@@ -37,7 +37,7 @@ metadata:
 spec:
   containers:
   - name: main
-    image: hub.pingcap.net/tidb-operator/kubekins-e2e:v6-go1.21.3
+    image: hub.pingcap.net/tidb-operator/kubekins-e2e:v7-go1.22.5
     command:
     - runner.sh
     - exec
