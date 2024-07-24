@@ -37,8 +37,8 @@ const (
 	TiDBLatest         = "v8.1.0"
 	TiDBNightlyVersion = "nightly"
 	// specific version
-	TiDBV7x5x0 = "v7.0.0"
-	TiDBV7x5x2 = "v7.0.2"
+	TiDBV7x5x0 = "v7.5.0"
+	TiDBV7x5x2 = "v7.5.2"
 
 	PrometheusImage               = "prom/prometheus"
 	PrometheusVersion             = "v2.27.1"
