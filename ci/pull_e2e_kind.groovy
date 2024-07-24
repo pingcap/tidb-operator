@@ -351,6 +351,9 @@ try {
                             sh """#!/bin/bash
                             set -eu
                             echo "info: building"
+                            unset GOSUMDB
+                            echo "====== go env ======"
+                            go env
                             echo "info: patch charts and golang code to enable coverage profile"
                             ./hack/e2e-patch-codecov.sh
                             export CUSTOM_PORT_TIDB_SERVER=${CUSTOM_PORT_TIDB_SERVER}
@@ -379,6 +382,7 @@ try {
                         withCredentials([usernamePassword(credentialsId: 'TIDB_OPERATOR_HUB_AUTH', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
                             sh """#!/bin/bash
                             set -eu
+                            unset GOSUMDB
                             echo "save GTI_COMMIT export script into file"
                             echo "export GIT_COMMIT=\$(git rev-parse HEAD)" > EXPORT_GIT_COMMIT
                             echo "info: logging into hub.pingcap.net"
