@@ -66,6 +66,7 @@ func (u *ticdcUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.StatefulS
 		return nil
 	}
 
+	tc.Status.TiCDC.ObservedGeneration = tc.Generation
 	tc.Status.TiCDC.Phase = v1alpha1.UpgradePhase
 	if !templateEqual(newSet, oldSet) {
 		return nil

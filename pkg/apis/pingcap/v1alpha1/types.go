@@ -168,6 +168,7 @@ const (
 //
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:shortName="tc"
+// +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="PD",type=string,JSONPath=`.status.pd.image`,description="The image for PD cluster"
 // +kubebuilder:printcolumn:name="Storage",type=string,JSONPath=`.spec.pd.requests.storage`,description="The storage size specified for PD node"
@@ -1470,9 +1471,10 @@ type SuspendAction struct {
 // PDStatus is PD status
 type PDStatus struct {
 	// +optional
-	Synced      bool                    `json:"synced"`
-	Phase       MemberPhase             `json:"phase,omitempty"`
-	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
+	Synced             bool                    `json:"synced"`
+	Phase              MemberPhase             `json:"phase,omitempty"`
+	ObservedGeneration int64                   `json:"observedGeneration,omitempty"`
+	StatefulSet        *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
 	// Members contains PDs in current TidbCluster
 	Members map[string]PDMember `json:"members,omitempty"`
 	// PeerMembers contains PDs NOT in current TidbCluster
@@ -1495,9 +1497,10 @@ type PDStatus struct {
 type PDMSStatus struct {
 	Name string `json:"name,omitempty"`
 	// +optional
-	Synced      bool                    `json:"synced"`
-	Phase       MemberPhase             `json:"phase,omitempty"`
-	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
+	Synced             bool                    `json:"synced"`
+	Phase              MemberPhase             `json:"phase,omitempty"`
+	ObservedGeneration int64                   `json:"observedGeneration,omitempty"`
+	StatefulSet        *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
 	// Volumes contains the status of all volumes.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 	// Members contains other service in current TidbCluster
@@ -1551,6 +1554,7 @@ type UnjoinedMember struct {
 // TiDBStatus is TiDB status
 type TiDBStatus struct {
 	Phase                    MemberPhase                  `json:"phase,omitempty"`
+	ObservedGeneration       int64                        `json:"observedGeneration,omitempty"`
 	StatefulSet              *apps.StatefulSetStatus      `json:"statefulSet,omitempty"`
 	Members                  map[string]TiDBMember        `json:"members,omitempty"`
 	FailureMembers           map[string]TiDBFailureMember `json:"failureMembers,omitempty"`
@@ -1654,17 +1658,18 @@ const (
 
 // TiKVStatus is TiKV status
 type TiKVStatus struct {
-	Synced          bool                          `json:"synced,omitempty"`
-	Phase           MemberPhase                   `json:"phase,omitempty"`
-	BootStrapped    bool                          `json:"bootStrapped,omitempty"`
-	StatefulSet     *apps.StatefulSetStatus       `json:"statefulSet,omitempty"`
-	Stores          map[string]TiKVStore          `json:"stores,omitempty"` // key: store id
-	PeerStores      map[string]TiKVStore          `json:"peerStores,omitempty"`
-	TombstoneStores map[string]TiKVStore          `json:"tombstoneStores,omitempty"`
-	FailureStores   map[string]TiKVFailureStore   `json:"failureStores,omitempty"`
-	FailoverUID     types.UID                     `json:"failoverUID,omitempty"`
-	Image           string                        `json:"image,omitempty"`
-	EvictLeader     map[string]*EvictLeaderStatus `json:"evictLeader,omitempty"`
+	Synced             bool                          `json:"synced,omitempty"`
+	Phase              MemberPhase                   `json:"phase,omitempty"`
+	ObservedGeneration int64                         `json:"observedGeneration,omitempty"`
+	BootStrapped       bool                          `json:"bootStrapped,omitempty"`
+	StatefulSet        *apps.StatefulSetStatus       `json:"statefulSet,omitempty"`
+	Stores             map[string]TiKVStore          `json:"stores,omitempty"` // key: store id
+	PeerStores         map[string]TiKVStore          `json:"peerStores,omitempty"`
+	TombstoneStores    map[string]TiKVStore          `json:"tombstoneStores,omitempty"`
+	FailureStores      map[string]TiKVFailureStore   `json:"failureStores,omitempty"`
+	FailoverUID        types.UID                     `json:"failoverUID,omitempty"`
+	Image              string                        `json:"image,omitempty"`
+	EvictLeader        map[string]*EvictLeaderStatus `json:"evictLeader,omitempty"`
 	// Volumes contains the status of all volumes.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 	// Represents the latest available observations of a component's state.
@@ -1677,15 +1682,16 @@ type TiKVStatus struct {
 
 // TiFlashStatus is TiFlash status
 type TiFlashStatus struct {
-	Synced          bool                        `json:"synced,omitempty"`
-	Phase           MemberPhase                 `json:"phase,omitempty"`
-	StatefulSet     *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
-	Stores          map[string]TiKVStore        `json:"stores,omitempty"`
-	PeerStores      map[string]TiKVStore        `json:"peerStores,omitempty"`
-	TombstoneStores map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
-	FailureStores   map[string]TiKVFailureStore `json:"failureStores,omitempty"`
-	FailoverUID     types.UID                   `json:"failoverUID,omitempty"`
-	Image           string                      `json:"image,omitempty"`
+	Synced             bool                        `json:"synced,omitempty"`
+	Phase              MemberPhase                 `json:"phase,omitempty"`
+	ObservedGeneration int64                       `json:"observedGeneration,omitempty"`
+	StatefulSet        *apps.StatefulSetStatus     `json:"statefulSet,omitempty"`
+	Stores             map[string]TiKVStore        `json:"stores,omitempty"`
+	PeerStores         map[string]TiKVStore        `json:"peerStores,omitempty"`
+	TombstoneStores    map[string]TiKVStore        `json:"tombstoneStores,omitempty"`
+	FailureStores      map[string]TiKVFailureStore `json:"failureStores,omitempty"`
+	FailoverUID        types.UID                   `json:"failoverUID,omitempty"`
+	Image              string                      `json:"image,omitempty"`
 	// Volumes contains the status of all volumes.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 	// Represents the latest available observations of a component's state.
@@ -1711,11 +1717,12 @@ type TiProxyMember struct {
 
 // TiProxyStatus is TiProxy status
 type TiProxyStatus struct {
-	Synced      bool                                       `json:"synced,omitempty"`
-	Phase       MemberPhase                                `json:"phase,omitempty"`
-	Members     map[string]TiProxyMember                   `json:"members,omitempty"`
-	StatefulSet *apps.StatefulSetStatus                    `json:"statefulSet,omitempty"`
-	Volumes     map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	Synced             bool                                       `json:"synced,omitempty"`
+	Phase              MemberPhase                                `json:"phase,omitempty"`
+	ObservedGeneration int64                                      `json:"observedGeneration,omitempty"`
+	Members            map[string]TiProxyMember                   `json:"members,omitempty"`
+	StatefulSet        *apps.StatefulSetStatus                    `json:"statefulSet,omitempty"`
+	Volumes            map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 	// Represents the latest available observations of a component's state.
 	// +optional
 	// +nullable
@@ -1724,10 +1731,11 @@ type TiProxyStatus struct {
 
 // TiCDCStatus is TiCDC status
 type TiCDCStatus struct {
-	Synced      bool                    `json:"synced,omitempty"`
-	Phase       MemberPhase             `json:"phase,omitempty"`
-	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
-	Captures    map[string]TiCDCCapture `json:"captures,omitempty"`
+	Synced             bool                    `json:"synced,omitempty"`
+	Phase              MemberPhase             `json:"phase,omitempty"`
+	ObservedGeneration int64                   `json:"observedGeneration,omitempty"`
+	StatefulSet        *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
+	Captures           map[string]TiCDCCapture `json:"captures,omitempty"`
 	// Volumes contains the status of all volumes.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 	// Represents the latest available observations of a component's state.
@@ -1790,9 +1798,10 @@ type PumpNodeStatus struct {
 
 // PumpStatus is Pump status
 type PumpStatus struct {
-	Phase       MemberPhase             `json:"phase,omitempty"`
-	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
-	Members     []*PumpNodeStatus       `json:"members,omitempty"`
+	Phase              MemberPhase             `json:"phase,omitempty"`
+	ObservedGeneration int64                   `json:"observedGeneration,omitempty"`
+	StatefulSet        *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
+	Members            []*PumpNodeStatus       `json:"members,omitempty"`
 	// Volumes contains the status of all volumes.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 	// Represents the latest available observations of a component's state.
@@ -3173,14 +3182,15 @@ const (
 
 // MasterStatus is dm-master status
 type MasterStatus struct {
-	Synced          bool                           `json:"synced,omitempty"`
-	Phase           MemberPhase                    `json:"phase,omitempty"`
-	StatefulSet     *apps.StatefulSetStatus        `json:"statefulSet,omitempty"`
-	Members         map[string]MasterMember        `json:"members,omitempty"`
-	Leader          MasterMember                   `json:"leader,omitempty"`
-	FailureMembers  map[string]MasterFailureMember `json:"failureMembers,omitempty"`
-	UnjoinedMembers map[string]UnjoinedMember      `json:"unjoinedMembers,omitempty"`
-	Image           string                         `json:"image,omitempty"`
+	Synced             bool                           `json:"synced,omitempty"`
+	Phase              MemberPhase                    `json:"phase,omitempty"`
+	ObservedGeneration int64                          `json:"observedGeneration,omitempty"`
+	StatefulSet        *apps.StatefulSetStatus        `json:"statefulSet,omitempty"`
+	Members            map[string]MasterMember        `json:"members,omitempty"`
+	Leader             MasterMember                   `json:"leader,omitempty"`
+	FailureMembers     map[string]MasterFailureMember `json:"failureMembers,omitempty"`
+	UnjoinedMembers    map[string]UnjoinedMember      `json:"unjoinedMembers,omitempty"`
+	Image              string                         `json:"image,omitempty"`
 	// Volumes contains the status of all volumes.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 	// Represents the latest available observations of a component's state.
@@ -3214,13 +3224,14 @@ type MasterFailureMember struct {
 
 // WorkerStatus is dm-worker status
 type WorkerStatus struct {
-	Synced         bool                           `json:"synced,omitempty"`
-	Phase          MemberPhase                    `json:"phase,omitempty"`
-	StatefulSet    *apps.StatefulSetStatus        `json:"statefulSet,omitempty"`
-	Members        map[string]WorkerMember        `json:"members,omitempty"`
-	FailureMembers map[string]WorkerFailureMember `json:"failureMembers,omitempty"`
-	FailoverUID    types.UID                      `json:"failoverUID,omitempty"`
-	Image          string                         `json:"image,omitempty"`
+	Synced             bool                           `json:"synced,omitempty"`
+	Phase              MemberPhase                    `json:"phase,omitempty"`
+	ObservedGeneration int64                          `json:"observedGeneration,omitempty"`
+	StatefulSet        *apps.StatefulSetStatus        `json:"statefulSet,omitempty"`
+	Members            map[string]WorkerMember        `json:"members,omitempty"`
+	FailureMembers     map[string]WorkerFailureMember `json:"failureMembers,omitempty"`
+	FailoverUID        types.UID                      `json:"failoverUID,omitempty"`
+	Image              string                         `json:"image,omitempty"`
 	// Volumes contains the status of all volumes.
 	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
 	// Represents the latest available observations of a component's state.

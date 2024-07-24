@@ -91,6 +91,7 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 	// NOTE: If `TiKVStatus.Synced`` is false, it's acceptable to use old record about peer stores
 	if *oldSet.Spec.Replicas < 2 && len(tc.Status.TiKV.PeerStores) == 0 {
 		klog.Infof("TiKV statefulset replicas are less than 2, skip evicting region leader for tc %s/%s", ns, tcName)
+		status.ObservedGeneration = tc.Generation
 		status.Phase = v1alpha1.UpgradePhase
 		mngerutils.SetUpgradePartition(newSet, 0)
 		return nil
@@ -100,6 +101,7 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		return fmt.Errorf("cluster: [%s/%s]'s tikv status sync failed, can not to be upgraded", ns, tcName)
 	}
 
+	status.ObservedGeneration = tc.Generation
 	status.Phase = v1alpha1.UpgradePhase
 	if !templateEqual(newSet, oldSet) {
 		return nil
@@ -575,6 +577,7 @@ func NewFakeTiKVUpgrader() TiKVUpgrader {
 
 func (u *fakeTiKVUpgrader) Upgrade(meta metav1.Object, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
 	tc := meta.(*v1alpha1.TidbCluster)
+	tc.Status.TiKV.ObservedGeneration = tc.Generation
 	tc.Status.TiKV.Phase = v1alpha1.UpgradePhase
 	return nil
 }

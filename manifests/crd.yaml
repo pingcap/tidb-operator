@@ -15484,6 +15484,9 @@ spec:
                       - name
                       type: object
                     type: object
+                  observedGeneration:
+                    format: int64
+                    type: integer
                   phase:
                     type: string
                   statefulSet:
@@ -15665,6 +15668,9 @@ spec:
                       - stage
                       type: object
                     type: object
+                  observedGeneration:
+                    format: int64
+                    type: integer
                   phase:
                     type: string
                   statefulSet:
@@ -44077,6 +44083,9 @@ spec:
                       - name
                       type: object
                     type: object
+                  observedGeneration:
+                    format: int64
+                    type: integer
                   peerMembers:
                     additionalProperties:
                       properties:
@@ -44259,6 +44268,9 @@ spec:
                       type: array
                     name:
                       type: string
+                    observedGeneration:
+                      format: int64
+                      type: integer
                     phase:
                       type: string
                     statefulSet:
@@ -44407,6 +44419,9 @@ spec:
                       - state
                       type: object
                     type: array
+                  observedGeneration:
+                    format: int64
+                    type: integer
                   phase:
                     type: string
                   statefulSet:
@@ -44552,6 +44567,9 @@ spec:
                       type: object
                     nullable: true
                     type: array
+                  observedGeneration:
+                    format: int64
+                    type: integer
                   phase:
                     type: string
                   statefulSet:
@@ -44715,6 +44733,9 @@ spec:
                       - name
                       type: object
                     type: object
+                  observedGeneration:
+                    format: int64
+                    type: integer
                   passwordInitialized:
                     type: boolean
                   phase:
@@ -44877,6 +44898,9 @@ spec:
                     type: object
                   image:
                     type: string
+                  observedGeneration:
+                    format: int64
+                    type: integer
                   peerStores:
                     additionalProperties:
                       properties:
@@ -45138,6 +45162,9 @@ spec:
                     type: object
                   image:
                     type: string
+                  observedGeneration:
+                    format: int64
+                    type: integer
                   peerStores:
                     additionalProperties:
                       properties:
@@ -45377,6 +45404,9 @@ spec:
                       - name
                       type: object
                     type: object
+                  observedGeneration:
+                    format: int64
+                    type: integer
                   phase:
                     type: string
                   statefulSet:
@@ -45477,7 +45507,8 @@ spec:
         type: object
     served: true
     storage: true
-    subresources: {}
+    subresources:
+      status: {}
 status:
   acceptedNames:
     kind: ""

@@ -60,6 +60,7 @@ func (u *tiproxyUpgrader) Upgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Statefu
 		return nil
 	}
 
+	tc.Status.TiProxy.ObservedGeneration = tc.Generation
 	tc.Status.TiProxy.Phase = v1alpha1.UpgradePhase
 	if !templateEqual(newSet, oldSet) {
 		return nil

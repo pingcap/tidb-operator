@@ -404,6 +404,7 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 		}
 		if test.updateSts != nil {
 			test.updateSts(set)
+			tc.Generation = tc.Generation + 1
 		}
 		pmm, _, tidbControl, _ := newFakeTiDBMemberManager()
 
@@ -449,6 +450,7 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.TiDB.StatefulSet.Replicas).To(Equal(int32(3)))
 				g.Expect(tc.Status.TiDB.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(tc.Status.TiDB.ObservedGeneration).To(Equal(tc.Generation))
 			},
 		},
 		{
@@ -464,6 +466,7 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.TiDB.StatefulSet.Replicas).To(Equal(int32(3)))
 				g.Expect(tc.Status.TiDB.Phase).To(Equal(v1alpha1.NormalPhase))
+				g.Expect(tc.Status.TiDB.ObservedGeneration).To(Equal(tc.Generation))
 			},
 		},
 		{
@@ -479,6 +482,7 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.TiDB.StatefulSet.Replicas).To(Equal(int32(3)))
 				g.Expect(tc.Status.TiDB.Phase).To(Equal(v1alpha1.NormalPhase))
+				g.Expect(tc.Status.TiDB.ObservedGeneration).To(Equal(tc.Generation))
 			},
 		},
 		{
@@ -492,6 +496,7 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 			tcExpectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.TiDB.StatefulSet.Replicas).To(Equal(int32(3)))
 				g.Expect(tc.Status.TiDB.Phase).To(Equal(v1alpha1.NormalPhase))
+				g.Expect(tc.Status.TiDB.ObservedGeneration).To(Equal(tc.Generation))
 			},
 		},
 		{

@@ -743,6 +743,7 @@ func (m *tiflashMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, s
 	if err != nil {
 		return err
 	}
+	tc.Status.TiFlash.ObservedGeneration = tc.Generation
 	if tc.TiFlashStsDesiredReplicas() != *set.Spec.Replicas {
 		tc.Status.TiFlash.Phase = v1alpha1.ScalePhase
 	} else if upgrading {

@@ -242,6 +242,7 @@ func (m *ticdcMemberManager) syncTiCDCStatus(tc *v1alpha1.TidbCluster, sts *apps
 		tc.Status.TiCDC.Synced = false
 		return err
 	}
+	tc.Status.TiCDC.ObservedGeneration = tc.Generation
 	if upgrading {
 		tc.Status.TiCDC.Phase = v1alpha1.UpgradePhase
 	} else {

@@ -834,6 +834,8 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 		}
 	}
 
+	tc.Status.TiKV.ObservedGeneration = tc.Generation
+
 	// Scaling takes precedence over upgrading.
 	if tc.TiKVStsDesiredReplicas() != *set.Spec.Replicas {
 		tc.Status.TiKV.Phase = v1alpha1.ScalePhase
