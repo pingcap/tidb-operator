@@ -50,7 +50,7 @@ func (u *pdMSUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.St
 	}
 
 	curService := controller.PDMSTrimName(newSet.Name)
-	klog.Infof("gracefulUpgrade pdMS trim name, componentName: %s", curService)
+	klog.Infof("TidbCluster: [%s/%s]' gracefulUpgrade pdMS trim name, componentName: %s", ns, tcName, curService)
 	if tc.Status.PDMS[curService] == nil {
 		tc.Status.PDMS[curService] = &v1alpha1.PDMSStatus{Name: curService}
 		return fmt.Errorf("tidbcluster: [%s/%s]'s pdMS component is nil, can not to be upgraded, component: %s", ns, tcName, curService)
@@ -62,7 +62,7 @@ func (u *pdMSUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.St
 	if oldTrimName != curService {
 		return fmt.Errorf("tidbcluster: [%s/%s]'s pdMS oldTrimName is %s, not equal to componentName: %s", ns, tcName, oldTrimName, curService)
 	}
-	klog.Infof("gracefulUpgrade pdMS trim name, oldTrimName: %s", oldTrimName)
+	klog.Infof("TidbCluster: [%s/%s]' gracefulUpgrade pdMS trim name, oldTrimName: %s", ns, tcName, oldTrimName)
 	if tc.PDMSScaling(oldTrimName) {
 		klog.Infof("TidbCluster: [%s/%s]'s pdMS status is %v, can not upgrade pdMS",
 			ns, tcName, tc.Status.PDMS[curService].Phase)
@@ -85,7 +85,7 @@ func (u *pdMSUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.St
 		// If we encounter this situation, we will let the native statefulset controller do the upgrade completely, which may be unsafe for upgrading pdMS.
 		// Therefore, in the production environment, we should try to avoid modifying the pd statefulset update strategy directly.
 		newSet.Spec.UpdateStrategy = oldSet.Spec.UpdateStrategy
-		klog.Warningf("tidbcluster: [%s/%s] pdMS statefulset %s UpdateStrategy has been modified manually, componentName: %s", ns, tcName, oldSet.GetName(), curService)
+		klog.Warningf("Tidbcluster: [%s/%s] pdMS statefulset %s UpdateStrategy has been modified manually, componentName: %s", ns, tcName, oldSet.GetName(), curService)
 		return nil
 	}
 
@@ -142,26 +142,26 @@ func (u *pdMSUpgrader) upgradePDMSPod(tc *v1alpha1.TidbCluster, ordinal int32, n
 			return err
 		}
 
-		klog.Infof("[TODO] pdms upgrader: check primary: %s, upgradePDMSName: %s, upgradePodName: %s", primary, upgradePDMSName, upgradePodName)
+		klog.Infof("TidbCluster: [%s/%s]' pdms upgrader: check primary: %s, upgradePDMSName: %s, upgradePodName: %s", ns, tcName,
+			primary, upgradePDMSName, upgradePodName)
 		// If current pdms is primary, transfer primary to other pdms pod
 		if strings.Contains(primary, upgradePodName) || strings.Contains(primary, upgradePDMSName) {
 			targetName := ""
 
-			if tc.PDStsActualReplicas() > 1 {
+			if tc.PDMSStsActualReplicas(curService) > 1 {
 				targetName = choosePDMSToTransferFromMembers(tc, newSet, ordinal)
 			}
 
 			if targetName != "" {
-				klog.Infof("[TODO] pdms upgrader: transfer pdms primary to: %s", targetName)
+				klog.Infof("TidbCluster: [%s/%s]' pdms upgrader: transfer pdms primary to: %s", ns, tcName, targetName)
 				err := controller.GetPDClient(u.deps.PDControl, tc).TransferPrimary(curService, targetName)
 				if err != nil {
-					klog.Errorf("pdms upgrader: failed to transfer pdms primary to: %s, %v", targetName, err)
+					klog.Errorf("TidbCluster: [%s/%s]' pdms upgrader: failed to transfer pdms primary to: %s, %v", ns, tcName, targetName, err)
 					return err
 				}
-				klog.Infof("pdms upgrader: transfer pdms primary to: %s successfully", targetName)
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd member: [%s] is transferring leader to pd member: [%s]", ns, tcName, upgradePDMSName, targetName)
+				klog.Infof("TidbCluster: [%s/%s]' pdms upgrader: transfer pdms primary to: %s successfully", ns, tcName, targetName)
 			} else {
-				klog.Warningf("pdms upgrader: skip to transfer pdms primary, because can not find a suitable pd")
+				klog.Warningf("TidbCluster: [%s/%s]' pdms upgrader: skip to transfer pdms primary, because can not find a suitable pd", ns, tcName)
 			}
 		}
 	}
@@ -176,7 +176,9 @@ func (u *pdMSUpgrader) upgradePDMSPod(tc *v1alpha1.TidbCluster, ordinal int32, n
 //  1. Find the max suitable ordinal in (x, n], because they have been upgraded
 //  2. If no suitable ordinal, find the min suitable ordinal in [0, x) to reduce the count of transfer
 func choosePDMSToTransferFromMembers(tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet, ordinal int32) string {
+	ns := tc.GetNamespace()
 	tcName := tc.GetName()
+	klog.Infof("Tidbcluster: [%s/%s]' pdms upgrader: start to choose pdms to transfer primary from members", ns, tcName)
 	ordinals := helper.GetPodOrdinals(*newSet.Spec.Replicas, newSet)
 
 	// set ordinal to max ordinal if ordinal isn't exist
@@ -201,7 +203,7 @@ func choosePDMSToTransferFromMembers(tc *v1alpha1.TidbCluster, newSet *apps.Stat
 		targetName = PDMSPodName(tcName, list[0], controller.PDMSTrimName(newSet.Name))
 	}
 
-	klog.Infof("pd ms upgrader: choose pd ms to transfer leader from members, targetName: %s", targetName)
+	klog.Infof("Tidbcluster: [%s/%s]' pdms upgrader: choose pdms to transfer primary from members, targetName: %s", ns, tcName, targetName)
 	return targetName
 }
 
