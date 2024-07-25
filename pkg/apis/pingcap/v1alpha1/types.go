@@ -572,6 +572,10 @@ type PDSpec struct {
 	// +kubebuilder:default=30
 	StartTimeout int `json:"startTimeout,omitempty"`
 
+	// Wait time before pd get started
+	// +kubebuilder:default=0
+	InitWaitTime int `json:"initWaitTime,omitempty"`
+
 	// Mode is the mode of PD cluster
 	// +optional
 	// +kubebuilder:validation:Enum:="";"ms"

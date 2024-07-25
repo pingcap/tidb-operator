@@ -6907,6 +6907,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Format:      "int32",
 						},
 					},
+					"initWaitTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Wait time before pd get started",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 					"mode": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Mode is the mode of PD cluster",
