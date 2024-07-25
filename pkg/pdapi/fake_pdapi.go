@@ -28,6 +28,8 @@ const (
 	GetClusterActionType                        ActionType = "GetCluster"
 	GetMembersActionType                        ActionType = "GetMembers"
 	GetPDMSMembersActionType                    ActionType = "GetPDMSMembers"
+	GetPDMSPrimaryActionType                    ActionType = "GetPDMSPrimary"
+	TransferPrimaryActionType                   ActionType = "TransferPrimary"
 	GetStoresActionType                         ActionType = "GetStores"
 	GetTombStoneStoresActionType                ActionType = "GetTombStoneStores"
 	GetStoreActionType                          ActionType = "GetStore"
@@ -76,6 +78,24 @@ func (c *FakePDClient) GetMSMembers(_ string) ([]string, error) {
 		return nil, err
 	}
 	return result.([]string), nil
+}
+
+func (c *FakePDClient) GetMSPrimary(_ string) (string, error) {
+	action := &Action{}
+	result, err := c.fakeAPI(GetPDMSPrimaryActionType, action)
+	if err != nil {
+		return "", err
+	}
+	return result.(string), nil
+}
+
+func (c *FakePDClient) TransferPrimary(_, _ string) error {
+	action := &Action{}
+	_, err := c.fakeAPI(TransferPrimaryActionType, action)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func NewFakePDClient() *FakePDClient {
