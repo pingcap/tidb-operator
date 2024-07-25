@@ -32,7 +32,7 @@ echo "Generating CRDs ..."
 
 API_PACKAGES="github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1/..."
 CRD_OUTPUT_DIR=${ROOT}/manifests/crd
-CRD_OPTIONS="preserveUnknownFields=false,allowDangerousTypes=true,maxDescLen=0"
+CRD_OPTIONS="allowDangerousTypes=true,maxDescLen=0"
 
 # generate CRDs
 ${CONTROLLER_GEN} \
@@ -53,7 +53,7 @@ echo "Generating CRDs for federation ..."
 
 API_PACKAGES="github.com/pingcap/tidb-operator/pkg/apis/federation/pingcap/v1alpha1/..."
 CRD_OUTPUT_DIR=${ROOT}/manifests/crd/federation
-CRD_OPTIONS="preserveUnknownFields=false,allowDangerousTypes=true,maxDescLen=0"
+CRD_OPTIONS="allowDangerousTypes=true,maxDescLen=0"
 
 # generate CRDs
 ${CONTROLLER_GEN} \
