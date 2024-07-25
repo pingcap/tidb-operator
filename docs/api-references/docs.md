@@ -12321,6 +12321,17 @@ int
 </tr>
 <tr>
 <td>
+<code>initWaitTime</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>Wait time before pd get started</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>mode</code></br>
 <em>
 string
