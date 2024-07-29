@@ -3136,7 +3136,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			ginkgo.It("migrate start script from v1 to v2 "+testcase.nameSuffix, func() {
 				tcName := "migrate-start-script-v2"
-				tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatest)
+				tc := fixture.GetTidbClusterWithoutPDMS(ns, tcName, utilimage.TiDBLatest)
 				tc = fixture.AddTiFlashForTidbCluster(tc)
 				tc = fixture.AddTiCDCForTidbCluster(tc)
 				tc = fixture.AddPumpForTidbCluster(tc)
