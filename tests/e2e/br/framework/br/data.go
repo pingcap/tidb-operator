@@ -128,6 +128,10 @@ func GetBackup(ns, name, tcName, typ string, s3Config *v1alpha1.S3StorageProvide
 				Cluster:          tcName,
 				ClusterNamespace: ns,
 				SendCredToTikv:   &sendCredToTikv,
+				Options: []string{
+					// ref: https://docs.pingcap.com/tidb/stable/backup-and-restore-overview#version-compatibility
+					"--with-sys-table=false",
+				},
 			},
 			CleanPolicy: v1alpha1.CleanPolicyTypeDelete,
 		},
