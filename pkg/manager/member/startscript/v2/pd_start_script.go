@@ -98,7 +98,7 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	mode := ""
 	if tc.Spec.PD.Mode == "ms" && tc.Spec.PDMS != nil {
 		mode = "api"
-		// default enbled the dns detection
+		// default enabled the dns detection
 		waitForDnsNameIpMatchOnStartup = true
 	}
 	pdStartScriptTpl := template.Must(
@@ -134,16 +134,12 @@ func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error
 		m.PDMSDomain = m.PDMSDomain + "." + tc.Spec.ClusterDomain
 	}
 
-	preferPDMSWithName := slices.Contains(
-		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagPDMSWithName)
-	if preferPDMSWithName {
-		if ok, err := PDMSSupportMicroServicesWithName(tc.PDMSVersion(name)); ok && err == nil {
-			m.PDMSName = "${PDMS_POD_NAME}"
-			if tc.Spec.ClusterDomain != "" {
-				m.PDMSName = m.PDMSDomain
-			}
-			name = fmt.Sprintf("%s --name=%s", name, m.PDMSName)
+	if ok, err := PDMSSupportMicroServicesWithName(tc.PDMSVersion(name)); ok && err == nil {
+		m.PDMSName = "${PDMS_POD_NAME}"
+		if tc.Spec.ClusterDomain != "" {
+			m.PDMSName = m.PDMSDomain
 		}
+		name = fmt.Sprintf("%s --name=%s", name, m.PDMSName)
 	}
 
 	m.PDStartTimeout = tc.PDStartTimeout()
@@ -321,15 +317,22 @@ func replacePdStartScriptDnsAwaitPart(withLocalIpMatch bool, startScript string)
 	}
 }
 
-func enableMicroServiceModeDynamic(ms string, startScript string) string {
-	if ms != "" {
-		return strings.ReplaceAll(startScript, pdEnableMicroService, fmt.Sprintf(" %s %s ", pdEnableMicroServiceSubScript, ms))
+// startParams has different values for different PD related service:
+//   - for original `PD`, startParams should be empty.
+//   - for `PD API` service, startParams should be `api`
+//   - for `TSO` and `Scheduling`, startParams should be `tso` and `scheduling` respectively.
+//     NOTICE: in `8.3.0` we have supported `name` start parameter, so we will pass `tso name=${PDMS_POD_NAME}` to startParams.
+func enableMicroServiceModeDynamic(startParams string, startScript string) string {
+	if startParams != "" {
+		return strings.ReplaceAll(startScript, pdEnableMicroService, fmt.Sprintf(" %s %s ", pdEnableMicroServiceSubScript, startParams))
 	} else {
+		// for original `PD`,  should be empty.
 		return strings.ReplaceAll(startScript, pdEnableMicroService, "")
 	}
 }
 
 // PDMSSupportMicroServicesWithName returns true if the given version of PDMS supports microservices with name.
+// related https://github.com/tikv/pd/pull/8461.
 func PDMSSupportMicroServicesWithName(version string) (bool, error) {
 	v, err := semver.NewVersion(version)
 	if err != nil {

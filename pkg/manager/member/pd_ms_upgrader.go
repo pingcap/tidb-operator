@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Masterminds/semver"
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -125,15 +124,6 @@ func (u *pdMSUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.St
 		return nil
 	}
 	return nil
-}
-
-// PDMSSupportMicroServicesWithName returns true if the given version of PDMS supports microservices with name.
-func PDMSSupportMicroServicesWithName(version string) (bool, error) {
-	v, err := semver.NewVersion(version)
-	if err != nil {
-		return true, err
-	}
-	return v.Major() >= 8 && v.Minor() >= 3 && v.Patch() >= 0, nil
 }
 
 type fakePDMSUpgrader struct{}

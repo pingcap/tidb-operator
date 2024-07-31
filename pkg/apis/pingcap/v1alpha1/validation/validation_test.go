@@ -723,7 +723,6 @@ func TestValidateStartScriptFeatureFlags(t *testing.T) {
 		{
 			v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch,
 			v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery,
-			v1alpha1.StartScriptV2FeatureFlagPDMSWithName,
 		},
 		{}, //empty
 	}
