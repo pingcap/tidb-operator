@@ -20,6 +20,7 @@ import (
 	"time"
 
 	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
+	"k8s.io/klog/v2"
 )
 
 // PDMSClient provides pd MS server's api
@@ -58,6 +59,7 @@ func NewPDMSClient(serviceName, url string, timeout time.Duration, tlsConfig *tl
 func (c *pdMSClient) GetHealth() error {
 	// only support TSO service
 	if c.serviceName != TSOServiceName {
+		klog.Errorf("only support TSO service, but got %s", c.serviceName)
 		return nil
 	}
 	apiURL := fmt.Sprintf("%s/%s/%s", c.url, c.serviceName, pdMSHealthPrefix)
