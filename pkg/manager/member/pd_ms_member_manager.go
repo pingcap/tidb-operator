@@ -18,7 +18,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -773,15 +772,6 @@ func (m *pdMSMemberManager) getPDMSConfigMap(tc *v1alpha1.TidbCluster, curSpec *
 		},
 	}
 	return cm, nil
-}
-
-// PDMSSupportMicroServices returns true if the given version of PDMS supports microservices.
-func PDMSSupportMicroServices(version string) (bool, error) {
-	v, err := semver.NewVersion(version)
-	if err != nil {
-		return true, err
-	}
-	return v.Major() >= 7 && v.Minor() >= 2 && v.Patch() >= 0, nil
 }
 
 type FakePDMSMemberManager struct {
