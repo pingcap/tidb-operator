@@ -51,6 +51,7 @@ require (
 	github.com/tikv/pd v2.1.17+incompatible
 	go.etcd.io/etcd/client/v3 v3.5.9
 	gocloud.dev v0.18.0
+	golang.org/x/mod v0.17.0
 	golang.org/x/sync v0.7.0
 	golang.org/x/time v0.5.0
 	gomodules.xyz/jsonpatch/v2 v2.1.0
