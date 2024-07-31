@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/stretchr/testify/require"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -216,7 +217,23 @@ func TestPDMSUpgraderUpgrade(t *testing.T) {
 	for i := range tests {
 		testFn(&tests[i])
 	}
+}
 
+func TestPDMSWithName(t *testing.T) {
+	re := require.New(t)
+	tc := newTidbClusterForPDMSUpgrader()
+	for _, spec := range tc.Spec.PDMS {
+		spec.Image = "pingcap/pd:8.2.0"
+	}
+	check, err := PDMSSupportMicroServicesWithName(tc.PDMSVersion(tsoService))
+	re.Nil(err)
+	re.False(check)
+	for _, spec := range tc.Spec.PDMS {
+		spec.Image = "pingcap/pd:8.3.0"
+	}
+	check, err = PDMSSupportMicroServicesWithName(tc.PDMSVersion(tsoService))
+	re.Nil(err)
+	re.True(check)
 }
 
 func newPDMSUpgrader() (Upgrader, podinformers.PodInformer) {
