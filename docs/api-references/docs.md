@@ -12327,7 +12327,8 @@ int
 </em>
 </td>
 <td>
-<p>Wait time before pd get started</p>
+<p>Wait time before pd get started. This wait time is to allow the new DNS record to propagate,
+ensuring that the PD DNS resolves to the same IP address as the pod.</p>
 </td>
 </tr>
 <tr>
