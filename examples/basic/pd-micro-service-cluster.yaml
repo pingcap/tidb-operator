@@ -15,8 +15,6 @@ spec:
   discovery: {}
   helper:
     image: alpine:3.16.0
-  startScriptV2FeatureFlags:
-  - PDMSWithName
   pd:
     # TODO: replaced v8.3.0 after v8.3.0 released
     baseImage: hub.pingcap.net/devbuild/pd

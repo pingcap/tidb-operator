@@ -159,7 +159,6 @@ type StartScriptV2FeatureFlag string
 const (
 	StartScriptV2FeatureFlagWaitForDnsNameIpMatch          = "WaitForDnsNameIpMatch"
 	StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery = "PreferPDAddressesOverDiscovery"
-	StartScriptV2FeatureFlagPDMSWithName                   = "PDMSWithName"
 )
 
 // +genclient
