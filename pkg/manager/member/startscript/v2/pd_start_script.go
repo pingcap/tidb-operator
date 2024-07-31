@@ -23,7 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/member/constants"
-	"golang.org/x/mod/semver"
+	"github.com/pingcap/tidb-operator/pkg/util/cmpver"
 )
 
 // PDStartScriptModel contain fields for rendering PD start script
@@ -134,7 +134,7 @@ func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error
 		m.PDMSDomain = m.PDMSDomain + "." + tc.Spec.ClusterDomain
 	}
 
-	if ok := PDMSSupportMicroServicesWithName(tc.PDMSVersion(name)); ok {
+	if check, err := pdMSSupportMicroServicesWithName.Check(tc.PDMSVersion(name)); check && err == nil {
 		m.PDMSName = "${PDMS_POD_NAME}"
 		if tc.Spec.ClusterDomain != "" {
 			m.PDMSName = m.PDMSDomain
@@ -333,6 +333,4 @@ func enableMicroServiceModeDynamic(startParams string, startScript string) strin
 
 // PDMSSupportMicroServicesWithName returns true if the given version of PDMS supports microservices with name.
 // related https://github.com/tikv/pd/pull/8461.
-func PDMSSupportMicroServicesWithName(version string) bool {
-	return semver.Compare(version, "v8.3.0") >= 0
-}
+var pdMSSupportMicroServicesWithName, _ = cmpver.NewConstraint(cmpver.GreaterOrEqual, "v8.3.0")
