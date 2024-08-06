@@ -58,6 +58,8 @@ PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN=${PD_POD_NAME}.start-script-test-pd-peer.start-script-test-ns.svc
 componentDomain=${PD_DOMAIN}
 waitThreshold=30
+initWaitTime=0
+sleep initWaitTime
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 
 elapseTime=0
@@ -172,6 +174,8 @@ PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN=${PD_POD_NAME}.start-script-test-pd-peer.start-script-test-ns.svc
 componentDomain=${PD_DOMAIN}
 waitThreshold=30
+initWaitTime=0
+sleep initWaitTime
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 
 elapseTime=0
@@ -286,6 +290,8 @@ PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN=${PD_POD_NAME}.start-script-test-pd-peer.start-script-test-ns.svc
 componentDomain=${PD_DOMAIN}
 waitThreshold=30
+initWaitTime=0
+sleep initWaitTime
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 
 elapseTime=0
@@ -400,6 +406,8 @@ PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN=${PD_POD_NAME}.start-script-test-pd-peer.start-script-test-ns.svc.cluster-1.com
 componentDomain=${PD_DOMAIN}
 waitThreshold=30
+initWaitTime=0
+sleep initWaitTime
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 
 elapseTime=0
@@ -515,6 +523,8 @@ PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN=${PD_POD_NAME}.start-script-test-pd-peer.start-script-test-ns.svc
 componentDomain=${PD_DOMAIN}
 waitThreshold=30
+initWaitTime=0
+sleep initWaitTime
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 
 elapseTime=0
@@ -630,6 +640,8 @@ PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN=${PD_POD_NAME}.start-script-test-pd-peer.start-script-test-ns.svc.cluster-1.com
 componentDomain=${PD_DOMAIN}
 waitThreshold=30
+initWaitTime=0
+sleep initWaitTime
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 
 elapseTime=0
@@ -781,6 +793,8 @@ PDMS_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN=${PDMS_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc
 componentDomain=${PD_DOMAIN}
 waitThreshold=30
+initWaitTime=0
+sleep initWaitTime
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 
 elapseTime=0
@@ -880,6 +894,8 @@ PDMS_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN=${PDMS_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc
 componentDomain=${PD_DOMAIN}
 waitThreshold=30
+initWaitTime=0
+sleep initWaitTime
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 
 elapseTime=0
@@ -979,6 +995,8 @@ PDMS_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN=${PDMS_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc
 componentDomain=${PD_DOMAIN}
 waitThreshold=30
+initWaitTime=0
+sleep initWaitTime
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 
 elapseTime=0
@@ -1078,6 +1096,8 @@ PDMS_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN=${PDMS_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc.cluster-1.com
 componentDomain=${PD_DOMAIN}
 waitThreshold=30
+initWaitTime=0
+sleep initWaitTime
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 
 elapseTime=0
@@ -1178,6 +1198,8 @@ PDMS_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN=${PDMS_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc
 componentDomain=${PD_DOMAIN}
 waitThreshold=30
+initWaitTime=0
+sleep initWaitTime
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 
 elapseTime=0
@@ -1285,6 +1307,8 @@ PDMS_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN=${PDMS_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc.cluster-1.com
 componentDomain=${PD_DOMAIN}
 waitThreshold=30
+initWaitTime=0
+sleep initWaitTime
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 
 elapseTime=0

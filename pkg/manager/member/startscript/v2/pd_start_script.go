@@ -38,11 +38,13 @@ type PDStartScriptModel struct {
 	ExtraArgs          string
 	PDAddresses        string
 	PDStartTimeout     int
+	PDInitWaitTime     int
 }
 
 // PDMSStartScriptModel contain fields for rendering PD Micro Service start script
 type PDMSStartScriptModel struct {
 	PDStartTimeout int
+	PDInitWaitTime int
 	PDAddresses    string
 
 	PDMSDomain          string
@@ -90,6 +92,8 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	m.PDStartTimeout = tc.PDStartTimeout()
 
+	m.PDInitWaitTime = tc.PDInitWaitTime()
+
 	waitForDnsNameIpMatchOnStartup := slices.Contains(
 		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch)
 
@@ -133,6 +137,8 @@ func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error
 	}
 
 	m.PDStartTimeout = tc.PDStartTimeout()
+
+	m.PDInitWaitTime = tc.PDInitWaitTime()
 
 	preferPDAddressesOverDiscovery := slices.Contains(
 		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery)
@@ -181,6 +187,8 @@ const (
 	pdWaitForDnsIpMatchSubScript = `
 componentDomain=${PD_DOMAIN}
 waitThreshold={{ .PDStartTimeout }}
+initWaitTime={{ .PDInitWaitTime }}
+sleep initWaitTime
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 ` + componentCommonWaitForDnsIpMatchScript
 
