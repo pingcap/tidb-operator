@@ -11867,6 +11867,33 @@ int
 </tr>
 <tr>
 <td>
+<<<<<<< HEAD
+=======
+<code>initWaitTime</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>Wait time before pd get started. This wait time is to allow the new DNS record to propagate,
+ensuring that the PD DNS resolves to the same IP address as the pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>mode</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Mode is the mode of PD cluster</p>
+</td>
+</tr>
+<tr>
+<td>
+>>>>>>> 5d83d8960 ([PD] add option to wait a certain time before start pd (#5696))
 <code>spareVolReplaceReplicas</code></br>
 <em>
 int32

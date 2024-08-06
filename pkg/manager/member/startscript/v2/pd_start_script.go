@@ -38,8 +38,25 @@ type PDStartScriptModel struct {
 	ExtraArgs          string
 	PDAddresses        string
 	PDStartTimeout     int
+	PDInitWaitTime     int
 }
 
+<<<<<<< HEAD
+=======
+// PDMSStartScriptModel contain fields for rendering PD Micro Service start script
+type PDMSStartScriptModel struct {
+	PDStartTimeout int
+	PDInitWaitTime int
+	PDAddresses    string
+
+	PDMSDomain          string
+	ListenAddr          string
+	AdvertiseListenAddr string
+
+	AcrossK8s *AcrossK8sScriptModel
+}
+
+>>>>>>> 5d83d8960 ([PD] add option to wait a certain time before start pd (#5696))
 // RenderPDStartScript renders PD start script from TidbCluster
 func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	m := &PDStartScriptModel{}
@@ -78,6 +95,8 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	m.PDStartTimeout = tc.PDStartTimeout()
 
+	m.PDInitWaitTime = tc.PDInitWaitTime()
+
 	waitForDnsNameIpMatchOnStartup := slices.Contains(
 		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch)
 
@@ -93,6 +112,73 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	return renderTemplateFunc(pdStartScriptTpl, m)
 }
 
+<<<<<<< HEAD
+=======
+func RenderPDTSOStartScript(tc *v1alpha1.TidbCluster) (string, error) {
+	return renderPDMSStartScript(tc, "tso")
+}
+
+func RenderPDSchedulingStartScript(tc *v1alpha1.TidbCluster) (string, error) {
+	return renderPDMSStartScript(tc, "scheduling")
+}
+
+// RenderPDMCSStartScript renders TSO start script from TidbCluster
+func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error) {
+	m := &PDMSStartScriptModel{}
+	tcName := tc.Name
+	tcNS := tc.Namespace
+
+	peerServiceName := controller.PDMSPeerMemberName(tcName, name)
+	m.PDMSDomain = fmt.Sprintf("${PDMS_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
+	if tc.Spec.ClusterDomain != "" {
+		m.PDMSDomain = m.PDMSDomain + "." + tc.Spec.ClusterDomain
+	}
+
+	m.PDStartTimeout = tc.PDStartTimeout()
+
+	m.PDInitWaitTime = tc.PDInitWaitTime()
+
+	preferPDAddressesOverDiscovery := slices.Contains(
+		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery)
+	if preferPDAddressesOverDiscovery {
+		pdAddressesWithSchemeAndPort := addressesWithSchemeAndPort(tc.Spec.PDAddresses, "", v1alpha1.DefaultPDClientPort)
+		m.PDAddresses = strings.Join(pdAddressesWithSchemeAndPort, ",")
+	}
+	if len(m.PDAddresses) == 0 {
+		if tc.AcrossK8s() {
+			m.AcrossK8s = &AcrossK8sScriptModel{
+				PDAddr:        fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort),
+				DiscoveryAddr: fmt.Sprintf("%s-discovery.%s:10261", tcName, tcNS),
+			}
+			m.PDAddresses = "${result}" // get pd addr in subscript
+		} else if tc.Heterogeneous() && tc.WithoutLocalPD() {
+			m.PDAddresses = fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
+		} else {
+			m.PDAddresses = fmt.Sprintf("%s://%s:%d", tc.Scheme(), controller.PDMemberName(tcName), v1alpha1.DefaultPDClientPort)
+		}
+	}
+
+	m.ListenAddr = fmt.Sprintf("%s://0.0.0.0:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort)
+
+	// Need to use `PD_DOMAIN` to reuse the same logic with PD in function `pdWaitForDnsIpMatchSubScript`.
+	m.AdvertiseListenAddr = fmt.Sprintf("%s://${PD_DOMAIN}:%d", tc.Scheme(), v1alpha1.DefaultPDClientPort)
+
+	waitForDnsNameIpMatchOnStartup := slices.Contains(
+		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch)
+
+	msStartScriptTpl := template.Must(
+		template.Must(
+			template.New("pdms-start-script").Parse(pdmsStartSubScript),
+		).Parse(
+			componentCommonScript +
+				replacePdStartScriptCustomPorts(
+					replacePdStartScriptDnsAwaitPart(waitForDnsNameIpMatchOnStartup,
+						enableMicroServiceModeDynamic(name, pdmsStartScriptTplText)))))
+
+	return renderTemplateFunc(msStartScriptTpl, m)
+}
+
+>>>>>>> 5d83d8960 ([PD] add option to wait a certain time before start pd (#5696))
 const (
 	// pdStartSubScript contains optional subscripts used in start script.
 	pdStartSubScript = ``
@@ -100,6 +186,8 @@ const (
 	pdWaitForDnsIpMatchSubScript = `
 componentDomain=${PD_DOMAIN}
 waitThreshold={{ .PDStartTimeout }}
+initWaitTime={{ .PDInitWaitTime }}
+sleep initWaitTime
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 ` + componentCommonWaitForDnsIpMatchScript
 
