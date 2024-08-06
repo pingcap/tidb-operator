@@ -94,7 +94,7 @@ type PDClient interface {
 	GetAutoscalingPlans(strategy Strategy) ([]Plan, error)
 	// GetRecoveringMark return the pd recovering mark
 	GetRecoveringMark() (bool, error)
-	// GetMSMembers returns all PD members service-addr from cluster by specific Micro Service
+	// GetMSMembers returns all PDMS members service-addr from cluster by specific Micro Service
 	GetMSMembers(service string) ([]string, error)
 }
 
