@@ -572,6 +572,11 @@ type PDSpec struct {
 	// +kubebuilder:default=30
 	StartTimeout int `json:"startTimeout,omitempty"`
 
+	// Wait time before pd get started. This wait time is to allow the new DNS record to propagate,
+	// ensuring that the PD DNS resolves to the same IP address as the pod.
+	// +kubebuilder:default=0
+	InitWaitTime int `json:"initWaitTime,omitempty"`
+
 	// Mode is the mode of PD cluster
 	// +optional
 	// +kubebuilder:validation:Enum:="";"ms"
