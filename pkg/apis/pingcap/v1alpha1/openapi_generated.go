@@ -6907,6 +6907,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Format:      "int32",
 						},
 					},
+					"initWaitTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Wait time before pd get started. This wait time is to allow the new DNS record to propagate, ensuring that the PD DNS resolves to the same IP address as the pod.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 					"mode": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Mode is the mode of PD cluster",
