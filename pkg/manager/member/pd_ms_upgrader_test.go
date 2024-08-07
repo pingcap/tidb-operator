@@ -216,7 +216,6 @@ func TestPDMSUpgraderUpgrade(t *testing.T) {
 	for i := range tests {
 		testFn(&tests[i])
 	}
-
 }
 
 func newPDMSUpgrader() (Upgrader, podinformers.PodInformer) {
