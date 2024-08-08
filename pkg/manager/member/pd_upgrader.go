@@ -15,14 +15,15 @@ package member
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
+	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
-
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/klog/v2"
 )
@@ -154,6 +155,69 @@ func (u *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newSe
 	}
 
 	mngerutils.SetUpgradePartition(newSet, ordinal)
+	return u.syncPDPeerUrls(tc, upgradePdName)
+}
+
+func (u *pdUpgrader) syncPDPeerUrls(tc *v1alpha1.TidbCluster, pdName string) error {
+	klog.Infof("pd upgrader: sync pd member: %s peer urls", pdName)
+	var (
+		tlsEnabled = tc.IsTLSClusterEnabled()
+		pdCli      = controller.GetPDClient(u.deps.PDControl, tc)
+		member     *pdpb.Member
+	)
+	members, err := pdCli.GetMembers()
+	if err != nil {
+		return err
+	}
+	for _, m := range members.Members {
+		if m.Name == pdName {
+			member = m
+			break
+		}
+	}
+	if member == nil {
+		return fmt.Errorf("failed to find member %s in pd cluster", pdName)
+	}
+
+	var (
+		newPeers []string
+		needSync bool
+	)
+	for _, peerUrl := range member.PeerUrls {
+		u, err := url.Parse(peerUrl)
+		if err != nil {
+			return fmt.Errorf("failed to parse peer url %s, %v", peerUrl, err)
+		}
+		// check if peer url need to be updated
+		if tlsEnabled != (u.Scheme == "https") {
+			needSync = true
+			if !tlsEnabled {
+				u.Scheme = "http"
+			} else {
+				u.Scheme = "https"
+			}
+			newPeers = append(newPeers, u.String())
+		} else {
+			newPeers = append(newPeers, peerUrl)
+		}
+	}
+
+	if needSync {
+		pdEtcdClient, err := u.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Name,
+			tc.IsTLSClusterEnabled(), pdapi.ClusterRef(tc.Spec.ClusterDomain))
+
+		if err != nil {
+			return err
+		}
+		defer pdEtcdClient.Close()
+		err = pdEtcdClient.UpdateMember(member.GetMemberId(), newPeers)
+		if err != nil {
+			return err
+		}
+		klog.Infof("pd upgrader: sync pd member: %s peer urls successfully, from %v to %v",
+			pdName, member.PeerUrls, newPeers)
+	}
+
 	return nil
 }
 
