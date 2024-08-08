@@ -2160,7 +2160,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 		// upgrdae testing for specific versions
 		utilginkgo.ContextWhenFocus("Specific Version", func() {
-			configureV5x0x0 := func(tc *v1alpha1.TidbCluster) {
+			configureV7x5x0 := func(tc *v1alpha1.TidbCluster) {
 				pdCfg := v1alpha1.NewPDConfig()
 				tikvCfg := v1alpha1.NewTiKVConfig()
 				tidbCfg := v1alpha1.NewTiDBConfig()
@@ -2190,7 +2190,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				tc.Spec.TiDB.Config = tidbCfg
 				tc.Spec.TiFlash.Config = tiflashCfg
 			}
-			configureV5x0x2 := func(tc *v1alpha1.TidbCluster) {
+			configureV7x5x2 := func(tc *v1alpha1.TidbCluster) {
 				pdCfg := v1alpha1.NewPDConfig()
 				tikvCfg := v1alpha1.NewTiKVConfig()
 				tidbCfg := v1alpha1.NewTiDBConfig()
@@ -2220,7 +2220,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				tc.Spec.TiDB.Config = tidbCfg
 				tc.Spec.TiFlash.Config = tiflashCfg
 			}
-			configureV5x1x0 := func(tc *v1alpha1.TidbCluster) {
+			configureV8x1x0 := func(tc *v1alpha1.TidbCluster) {
 				pdCfg := v1alpha1.NewPDConfig()
 				tikvCfg := v1alpha1.NewTiKVConfig()
 				tidbCfg := v1alpha1.NewTiDBConfig()
@@ -2264,16 +2264,16 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 
 			cases := []upgradeCase{
 				{
-					oldVersion:              utilimage.TiDBV5x0x0,
+					oldVersion:              utilimage.TiDBV7x5x0,
 					newVersion:              utilimage.TiDBLatest,
-					configureOldTiDBCluster: configureV5x0x0,
-					configureNewTiDBCluster: configureV5x1x0,
+					configureOldTiDBCluster: configureV7x5x0,
+					configureNewTiDBCluster: configureV8x1x0,
 				},
 				{
-					oldVersion:              utilimage.TiDBV5x0x2,
+					oldVersion:              utilimage.TiDBV7x5x2,
 					newVersion:              utilimage.TiDBLatest,
-					configureOldTiDBCluster: configureV5x0x2,
-					configureNewTiDBCluster: configureV5x1x0,
+					configureOldTiDBCluster: configureV7x5x2,
+					configureNewTiDBCluster: configureV8x1x0,
 				},
 			}
 			for i := range cases {

@@ -1,0 +1,8 @@
+go 1.22.5
+
+use (
+	.
+	./pkg/apis
+	./pkg/client
+	./cmd/http-service
+)
