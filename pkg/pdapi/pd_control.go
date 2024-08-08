@@ -337,8 +337,22 @@ type FakePDControl struct {
 
 func NewFakePDControl(secretLister corelisterv1.SecretLister) *FakePDControl {
 	return &FakePDControl{
-		defaultPDControl{secretLister: secretLister, pdClients: map[string]PDClient{}},
+		defaultPDControl{secretLister: secretLister, pdClients: map[string]PDClient{}, pdEtcdClients: map[string]PDEtcdClient{}},
 	}
+}
+
+func (fpc *FakePDControl) GetPDClient(namespace Namespace, tcName string, tlsEnabled bool, opts ...Option) PDClient {
+	if tlsEnabled {
+		return fpc.defaultPDControl.pdClients[genClientKey("http", namespace, tcName, "")]
+	}
+	return fpc.defaultPDControl.GetPDClient(namespace, tcName, tlsEnabled, opts...)
+}
+
+func (fpc *FakePDControl) GetPDEtcdClient(namespace Namespace, tcName string, tlsEnabled bool, opts ...Option) (PDEtcdClient, error) {
+	if tlsEnabled {
+		return fpc.defaultPDControl.pdEtcdClients[genClientKey("http", namespace, tcName, "")], nil
+	}
+	return fpc.defaultPDControl.GetPDEtcdClient(namespace, tcName, tlsEnabled, opts...)
 }
 
 func (fpc *FakePDControl) SetPDClient(namespace Namespace, tcName string, pdclient PDClient) {
@@ -351,4 +365,8 @@ func (fpc *FakePDControl) SetPDClientWithClusterDomain(namespace Namespace, tcNa
 
 func (fpc *FakePDControl) SetPDClientWithAddress(peerURL string, pdclient PDClient) {
 	fpc.defaultPDControl.pdClients[peerURL] = pdclient
+}
+
+func (fpc *FakePDControl) SetEtcdClient(namespace Namespace, tcName string, etcdClient PDEtcdClient) {
+	fpc.defaultPDControl.pdEtcdClients[genClientKey("http", namespace, tcName, "")] = etcdClient
 }

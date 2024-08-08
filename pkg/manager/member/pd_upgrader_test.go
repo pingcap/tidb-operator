@@ -17,13 +17,13 @@ import (
 	"fmt"
 	"testing"
 
+	. "github.com/onsi/gomega"
+	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-
-	. "github.com/onsi/gomega"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,6 +51,7 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 		upgrader, pdControl, _, podInformer := newPDUpgrader()
 		tc := newTidbClusterForPDUpgrader()
 		pdClient := controller.NewFakePDClient(pdControl, tc)
+		etcdClient := controller.NewFakeEtcdClient(pdControl, tc)
 
 		if test.changeFn != nil {
 			test.changeFn(tc)
@@ -93,6 +94,30 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 				},
 			}
 			return healthInfo, nil
+		})
+
+		pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (interface{}, error) {
+			membersInfo := &pdapi.MembersInfo{
+				Members: []*pdpb.Member{
+					{
+						Name:     PdPodName(upgradeTcName, 0),
+						MemberId: 111,
+						PeerUrls: []string{"http://upgrader-pd-0:2380"},
+					},
+					{
+						Name:     PdPodName(upgradeTcName, 1),
+						MemberId: 222,
+						PeerUrls: []string{"http://upgrader-pd-1:2380"},
+					},
+				},
+			}
+			return membersInfo, nil
+		})
+
+		pdClient.GetMembers()
+
+		etcdClient.AddReaction(pdapi.EtcdUpdateMemberActionType, func(action *pdapi.Action) (interface{}, error) {
+			return nil, nil
 		})
 
 		err := upgrader.Upgrade(tc, oldSet, newSet)
@@ -314,12 +339,41 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
 			},
 		},
+		{
+			name: "upgrade from non-tls to tls",
+			changeFn: func(tc *v1alpha1.TidbCluster) {
+				tc.Status.PD.Synced = true
+				tc.Spec = v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:v3.1.0",
+						},
+					},
+					TiDB: &v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: true,
+						},
+					},
+					TiKV:       &v1alpha1.TiKVSpec{},
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
+				}
+			},
+			changePods:        nil,
+			changeOldSet:      nil,
+			transferLeaderErr: false,
+			errExpectFn: func(g *GomegaWithT, err error) {
+				g.Expect(err).NotTo(HaveOccurred())
+			},
+			expectFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster, newSet *apps.StatefulSet) {
+				g.Expect(tc.Status.PD.Phase).To(Equal(v1alpha1.UpgradePhase))
+				g.Expect(newSet.Spec.UpdateStrategy.RollingUpdate.Partition).To(Equal(pointer.Int32Ptr(1)))
+			},
+		},
 	}
 
 	for i := range tests {
 		testFn(&tests[i])
 	}
-
 }
 
 func TestChoosePDToTransferFromMembers(t *testing.T) {
@@ -447,6 +501,16 @@ func TestChoosePDToTransferFromMembers(t *testing.T) {
 
 func newPDUpgrader() (Upgrader, *pdapi.FakePDControl, *controller.FakePodControl, podinformers.PodInformer) {
 	fakeDeps := controller.NewFakeDependencies()
+
+	informer := fakeDeps.KubeInformerFactory
+	informer.Core().V1().Secrets().Informer().GetIndexer().Add(&corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "upgrader-cluster-client-secret",
+			Namespace: corev1.NamespaceDefault,
+		},
+	})
+	fakeDeps.PDControl = pdapi.NewFakePDControl(informer.Core().V1().Secrets().Lister())
+
 	pdUpgrader := &pdUpgrader{deps: fakeDeps}
 	pdControl := fakeDeps.PDControl.(*pdapi.FakePDControl)
 	podControl := fakeDeps.PodControl.(*controller.FakePodControl)
