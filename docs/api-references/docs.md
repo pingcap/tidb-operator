@@ -245,6 +245,18 @@ Default is current timestamp.</p>
 </tr>
 <tr>
 <td>
+<code>logSubcommand</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Subcommand is the subcommand for BR, such as start, stop, pause etc.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>logTruncateUntil</code></br>
 <em>
 string
@@ -4230,6 +4242,18 @@ string
 <p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
 Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
 Default is current timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logSubcommand</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Subcommand is the subcommand for BR, such as start, stop, pause etc.</p>
 </td>
 </tr>
 <tr>
