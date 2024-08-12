@@ -1079,6 +1079,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"logSubcommand": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Subcommand is the subcommand for BR, such as start, stop, pause etc.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"logTruncateUntil": {
 						SchemaProps: spec.SchemaProps{
 							Description: "LogTruncateUntil is log backup truncate until timestamp. Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.",

@@ -2138,6 +2138,9 @@ spec:
                 type: object
               logStop:
                 type: boolean
+              logSubcommand:
+                default: start
+                type: string
               logTruncateUntil:
                 type: string
               podSecurityContext:
