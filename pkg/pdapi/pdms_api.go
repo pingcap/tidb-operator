@@ -14,7 +14,9 @@
 package pdapi
 
 import (
+	"bytes"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -27,10 +29,13 @@ import (
 type PDMSClient interface {
 	// GetHealth returns ping result
 	GetHealth() error
+	// TransferPrimary transfers the primary to the newPrimary
+	TransferPrimary(newPrimary string) error
 }
 
 var (
-	pdMSHealthPrefix = "api/v1/health"
+	pdMSHealthPrefix          = "api/v1/health"
+	pdMSPrimaryTransferPrefix = "api/v1/primary/transfer"
 )
 
 // pdMSClient is default implementation of PDClient
@@ -67,5 +72,23 @@ func (c *pdMSClient) GetHealth() error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (c *pdMSClient) TransferPrimary(newPrimary string) error {
+	apiURL := fmt.Sprintf("%s/%s/%s", c.url, c.serviceName, pdMSPrimaryTransferPrefix)
+	data, err := json.Marshal(struct {
+		NewPrimary string `json:"new_primary"`
+	}{
+		NewPrimary: newPrimary,
+	})
+	if err != nil {
+		return err
+	}
+	_, err = httputil.PostBodyOK(c.httpClient, apiURL, bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
