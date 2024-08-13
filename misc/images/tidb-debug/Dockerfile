@@ -1,12 +1,10 @@
-FROM centos:7
+FROM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.1
 
-RUN yum update -y && yum install -y \
-    curl \
+RUN dnf install -y \
     file \
     gdb \
     git \
     iotop \
-    linux-perf \
     mysql \
     net-tools \
     perf \
@@ -21,9 +19,7 @@ RUN yum update -y && yum install -y \
     vim \
     wget \
     which \
-    netstat \
-    && yum clean all \
-    && rm -rf /var/cache/yum/*
+    && dnf clean all
 
 RUN wget -q http://download.pingcap.org/tidb-latest-linux-amd64.tar.gz \
     && tar xzf tidb-latest-linux-amd64.tar.gz \
@@ -38,9 +34,9 @@ COPY run_flamegraph.sh /run_flamegraph.sh
 COPY gdbinit /root/.gdbinit
 
 # used for go pprof
-ENV GOLANG_VERSION 1.16.15
+ENV GOLANG_VERSION 1.21.13
 ENV GOLANG_DOWNLOAD_URL https://go.dev/dl/go$GOLANG_VERSION.linux-amd64.tar.gz
-ENV GOLANG_DOWNLOAD_SHA256 77c782a633186d78c384f972fb113a43c24be0234c42fef22c2d8c4c4c8e7475
+ENV GOLANG_DOWNLOAD_SHA256 502fc16d5910562461e6a6631fb6377de2322aad7304bf2bcd23500ba9dab4a7
 RUN curl -fsSL "$GOLANG_DOWNLOAD_URL" -o golang.tar.gz \
     && echo "$GOLANG_DOWNLOAD_SHA256  golang.tar.gz" | sha256sum -c - \
     && tar -C /usr/local -xzf golang.tar.gz \
@@ -50,7 +46,7 @@ ENV GOROOT /usr/local/go
 ENV PATH $GOPATH/bin:$GOROOT/bin:$PATH
 
 # build delve
-RUN go get github.com/go-delve/delve/cmd/dlv@v1.9.1
+RUN go get github.com/go-delve/delve/cmd/dlv@v1.23.0
 
 ADD banner /etc/banner
 ADD profile  /etc/profile
