@@ -161,6 +161,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	var job *batchv1.Job
 	var reason string
 	var updateStatus *controller.BackupUpdateStatus
+	//TODO: (Ris)modify the backupJobs
 	if job, updateStatus, reason, err = bm.makeBackupJob(backup); err != nil {
 		klog.Errorf("backup %s/%s create job %s failed, reason is %s, error %v.", ns, name, backupJobName, reason, err)
 		return err

@@ -321,15 +321,21 @@ func ParseLogBackupSubcommand(backup *Backup) LogSubCommandType {
 	if backup.Spec.Mode != BackupModeLog {
 		return ""
 	}
-	if backup.Spec.LogStop {
+	switch backup.Spec.LogSubcommand {
+	case "log-start":
+		return LogStartCommand
+	case "log-stop":
 		return LogStopCommand
-	}
-	if backup.Spec.LogTruncateUntil != "" {
+	case "log-pause":
+		return LogPauseCommand
+	case "log-truncate":
 		return LogTruncateCommand
-	}
-	return LogStartCommand
+	default:
+		return ""
+	}	
 }
 
+//TODO: (Ris) move logic about truncate to elsewhere
 // IsLogBackupSubCommandOntheCondition return whether the log subcommand on the condition.
 func IsLogBackupSubCommandOntheCondition(backup *Backup, conditionType BackupConditionType) bool {
 	command := ParseLogBackupSubcommand(backup)

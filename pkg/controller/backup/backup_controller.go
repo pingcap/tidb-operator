@@ -208,7 +208,7 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
-	// TODO: log backup check all subcommand job's pod status
+	// TODO: (Ris)log backup check all subcommand job's pod status
 	if newBackup.Spec.Mode != v1alpha1.BackupModeLog {
 		// we will create backup job when we mark backup as scheduled status,
 		// but the backup job or its pod may failed due to insufficient resources or other reasons in k8s,
