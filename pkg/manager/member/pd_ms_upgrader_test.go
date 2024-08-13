@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,8 +45,20 @@ func TestPDMSUpgraderUpgrade(t *testing.T) {
 
 	testFn := func(test *testcase) {
 		t.Log(test.name)
-		upgrader, podInformer := newPDMSUpgrader()
+		upgrader, pdControl, podInformer := newPDMSUpgrader()
 		tc := newTidbClusterForPDMSUpgrader()
+		pdClient := controller.NewFakePDClient(pdControl, tc)
+		pdMSClient := controller.NewFakePDMSClient(pdControl, tc, "tso")
+
+		pdClient.AddReaction(pdapi.GetPDMSPrimaryActionType, func(action *pdapi.Action) (interface{}, error) {
+			return "upgrader-tso-1", nil
+		})
+		pdMSClient.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
+			return nil, nil
+		})
+		pdMSClient.AddReaction(pdapi.PDMSTransferPrimaryActionType, func(action *pdapi.Action) (interface{}, error) {
+			return nil, nil
+		})
 
 		if test.changeFn != nil {
 			test.changeFn(tc)
@@ -218,11 +231,12 @@ func TestPDMSUpgraderUpgrade(t *testing.T) {
 	}
 }
 
-func newPDMSUpgrader() (Upgrader, podinformers.PodInformer) {
+func newPDMSUpgrader() (Upgrader, *pdapi.FakePDControl, podinformers.PodInformer) {
 	fakeDeps := controller.NewFakeDependencies()
 	pdMSUpgrader := &pdMSUpgrader{deps: fakeDeps}
 	podInformer := fakeDeps.KubeInformerFactory.Core().V1().Pods()
-	return pdMSUpgrader, podInformer
+	pdControl := fakeDeps.PDControl.(*pdapi.FakePDControl)
+	return pdMSUpgrader, pdControl, podInformer
 }
 
 func newStatefulSetForPDMSUpgrader() *apps.StatefulSet {

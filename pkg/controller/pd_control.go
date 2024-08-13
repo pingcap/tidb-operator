@@ -113,6 +113,20 @@ func NewFakePDClient(pdControl *pdapi.FakePDControl, tc *v1alpha1.TidbCluster) *
 	return pdClient
 }
 
+// NewFakePDMSClient creates a fake pdmsclient that is set as the pdms client
+func NewFakePDMSClient(pdControl *pdapi.FakePDControl, tc *v1alpha1.TidbCluster, curService string) *pdapi.FakePDMSClient {
+	pdmsClient := pdapi.NewFakePDMSClient()
+	if tc.Spec.Cluster != nil {
+		pdControl.SetPDMSClientWithClusterDomain(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, curService, pdmsClient)
+	}
+	if tc.Spec.ClusterDomain != "" {
+		pdControl.SetPDMSClientWithClusterDomain(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.Spec.ClusterDomain, curService, pdmsClient)
+	}
+	pdControl.SetPDMSClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), curService, pdmsClient)
+
+	return pdmsClient
+}
+
 // NewFakePDClientWithAddress creates a fake pdclient that is set as the pd client
 func NewFakePDClientWithAddress(pdControl *pdapi.FakePDControl, peerURL string) *pdapi.FakePDClient {
 	pdClient := pdapi.NewFakePDClient()

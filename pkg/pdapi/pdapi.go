@@ -96,6 +96,8 @@ type PDClient interface {
 	GetRecoveringMark() (bool, error)
 	// GetMSMembers returns all PDMS members service-addr from cluster by specific Micro Service
 	GetMSMembers(service string) ([]string, error)
+	// GetMSPrimary returns the primary PDMS member service-addr from cluster by specific Micro Service
+	GetMSPrimary(service string) (string, error)
 }
 
 var (
@@ -339,6 +341,21 @@ func (c *pdClient) GetMSMembers(service string) ([]string, error) {
 		addrs = append(addrs, member.ServiceAddr)
 	}
 	return addrs, nil
+}
+
+func (c *pdClient) GetMSPrimary(service string) (string, error) {
+	apiURL := fmt.Sprintf("%s/%s/primary/%s", c.url, MicroServicePrefix, service)
+	body, err := httputil.GetBodyOK(c.httpClient, apiURL)
+	if err != nil {
+		return "", err
+	}
+	var primary string
+	err = json.Unmarshal(body, &primary)
+	if err != nil {
+		return "", err
+	}
+
+	return primary, nil
 }
 
 func (c *pdClient) getStores(apiURL string) (*StoresInfo, error) {

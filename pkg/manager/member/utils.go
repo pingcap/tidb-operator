@@ -160,6 +160,21 @@ func PdName(tcName string, ordinal int32, namespace string, clusterDomain string
 	return PdPodName(tcName, ordinal)
 }
 
+// PDMSName should match the start arg `--name` of pd-server
+// See the start script of PDMS in pkg/manager/member/startscript/v2.renderPDMSStartScript
+func PDMSName(tcName string, ordinal int32, namespace, clusterDomain string, acrossK8s bool, component string) string {
+	if len(clusterDomain) > 0 {
+		return fmt.Sprintf("%s.%s-%s-peer.%s.svc.%s", PDMSPodName(tcName, ordinal, component), component, tcName, namespace, clusterDomain)
+	}
+
+	// clusterDomain is not set
+	if acrossK8s {
+		return fmt.Sprintf("%s.%s-%s-peer.%s.svc", PDMSPodName(tcName, ordinal, component), component, tcName, namespace)
+	}
+
+	return PDMSPodName(tcName, ordinal, component)
+}
+
 // NeedForceUpgrade check if force upgrade is necessary
 func NeedForceUpgrade(ann map[string]string) bool {
 	// Check if annotation 'pingcap.com/force-upgrade: "true"' is set
