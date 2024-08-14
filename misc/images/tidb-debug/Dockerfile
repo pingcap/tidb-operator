@@ -46,7 +46,7 @@ ENV GOROOT /usr/local/go
 ENV PATH $GOPATH/bin:$GOROOT/bin:$PATH
 
 # build delve
-RUN go get github.com/go-delve/delve/cmd/dlv@v1.23.0
+RUN go install github.com/go-delve/delve/cmd/dlv@v1.23.0
 
 ADD banner /etc/banner
 ADD profile  /etc/profile
