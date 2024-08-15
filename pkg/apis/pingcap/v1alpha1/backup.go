@@ -201,11 +201,20 @@ func IsBackupScheduled(backup *Backup) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
+// HaveTruncateUntil returns true if a Backup has truncate until set
 func HaveTruncateUntil(backup *Backup) bool {
 	if backup.Spec.Mode != BackupModeLog {
 		return false
 	}
 	return backup.Spec.LogTruncateUntil != ""
+}
+
+func IsBackupPaused(backup *Backup) bool {
+	if backup.Spec.Mode == BackupModeLog {
+		return IsLogBackupSubCommandOntheCondition(backup, BackupPaused)
+	}
+	_, condition := GetBackupCondition(&backup.Status, BackupPaused)
+	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
 // IsBackupRunning returns true if a Backup is Running.

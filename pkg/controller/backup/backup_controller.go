@@ -240,12 +240,16 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
+	if newBackup.Spec.Mode == v1alpha1.BackupModeLog && newBackup.Spec.LogSubcommand == string(v1alpha1.LogStartCommand) && v1alpha1.IsBackupPaused(newBackup) {
+		newBackup.Spec.LogSubcommand = string(v1alpha1.LogResumeCommand)
+	}
+
 
 	klog.V(4).Infof("backup object %s/%s enqueue", ns, name)
 	c.enqueueBackup(newBackup)
 
 	//For log backup with truncate, we need to create a truncate job
-	if v1alpha1.HaveTruncateUntil(newBackup) {
+	if v1alpha1.HaveTruncateUntil(newBackup) && newBackup.Spec.LogSubcommand != string(v1alpha1.LogTruncateCommand) {
 		truncateTask := newBackup.DeepCopy()
 		truncateTask.Spec.LogSubcommand = string(v1alpha1.LogTruncateCommand)
 		c.enqueueBackup(truncateTask)

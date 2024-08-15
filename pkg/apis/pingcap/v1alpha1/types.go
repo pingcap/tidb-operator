@@ -2179,7 +2179,7 @@ type BackupSpec struct {
 	CommitTs string `json:"commitTs,omitempty"`
 	// Subcommand is the subcommand for BR, such as start, stop, pause etc.
 	// +optional
-	// +kubebuilder:default="start"
+	// +kubebuilder:default="log-start"
 	LogSubcommand string `json:"logSubcommand,omitempty"`
 	// LogTruncateUntil is log backup truncate until timestamp.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
@@ -2362,6 +2362,8 @@ const (
 	BackupInvalid BackupConditionType = "Invalid"
 	// BackupPrepare means the backup prepare backup process
 	BackupPrepare BackupConditionType = "Prepare"
+	// BackupPaused means the backup was paused
+	BackupPaused  BackupConditionType = "Paused"
 	// BackupStopped means the backup was stopped, just log backup has this condition
 	BackupStopped BackupConditionType = "Stopped"
 	// BackupRestart means the backup was restarted, now just support snapshot backup
@@ -2403,6 +2405,8 @@ const (
 	LogStopCommand LogSubCommandType = "log-stop"
 	// LogPauseCommand is the pause command of log backup.
 	LogPauseCommand LogSubCommandType = "log-pause"
+	// LogResumeCommand is the resume command of log backup.
+	LogResumeCommand LogSubCommandType = "log-resume"
 )
 
 // LogSubCommandStatus is the log backup subcommand's status.
