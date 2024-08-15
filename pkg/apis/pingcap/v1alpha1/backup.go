@@ -201,6 +201,13 @@ func IsBackupScheduled(backup *Backup) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
+func HaveTruncateUntil(backup *Backup) bool {
+	if backup.Spec.Mode != BackupModeLog {
+		return false
+	}
+	return backup.Spec.LogTruncateUntil != ""
+}
+
 // IsBackupRunning returns true if a Backup is Running.
 func IsBackupRunning(backup *Backup) bool {
 	if backup.Spec.Mode == BackupModeLog {
@@ -332,10 +339,10 @@ func ParseLogBackupSubcommand(backup *Backup) LogSubCommandType {
 		return LogTruncateCommand
 	default:
 		return ""
-	}	
+	}
 }
 
-//TODO: (Ris) move logic about truncate to elsewhere
+// TODO: (Ris) move logic about truncate to elsewhere
 // IsLogBackupSubCommandOntheCondition return whether the log subcommand on the condition.
 func IsLogBackupSubCommandOntheCondition(backup *Backup, conditionType BackupConditionType) bool {
 	command := ParseLogBackupSubcommand(backup)

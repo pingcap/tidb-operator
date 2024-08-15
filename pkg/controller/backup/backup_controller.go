@@ -240,8 +240,16 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
+
 	klog.V(4).Infof("backup object %s/%s enqueue", ns, name)
 	c.enqueueBackup(newBackup)
+
+	//For log backup with truncate, we need to create a truncate job
+	if v1alpha1.HaveTruncateUntil(newBackup) {
+		truncateTask := newBackup.DeepCopy()
+		truncateTask.Spec.LogSubcommand = string(v1alpha1.LogTruncateCommand)
+		c.enqueueBackup(truncateTask)
+	}
 }
 
 func (c *Controller) deleteJob(obj interface{}) {
