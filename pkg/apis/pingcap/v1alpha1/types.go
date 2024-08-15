@@ -2363,7 +2363,7 @@ const (
 	// BackupPrepare means the backup prepare backup process
 	BackupPrepare BackupConditionType = "Prepare"
 	// BackupPaused means the backup was paused
-	BackupPaused  BackupConditionType = "Paused"
+	BackupPaused BackupConditionType = "Paused"
 	// BackupStopped means the backup was stopped, just log backup has this condition
 	BackupStopped BackupConditionType = "Stopped"
 	// BackupRestart means the backup was restarted, now just support snapshot backup

@@ -2114,7 +2114,7 @@ spec:
                   logStop:
                     type: boolean
                   logSubcommand:
-                    default: start
+                    default: log-start
                     type: string
                   logTruncateUntil:
                     type: string
@@ -4350,7 +4350,7 @@ spec:
                   logStop:
                     type: boolean
                   logSubcommand:
-                    default: start
+                    default: log-start
                     type: string
                   logTruncateUntil:
                     type: string

@@ -167,9 +167,16 @@ func (c *Controller) updateBackup(cur interface{}) {
 	ns := newBackup.GetNamespace()
 	name := newBackup.GetName()
 
+	//For log backup with truncate, we need to create a truncate job
+	if newBackup.Spec.LogSubcommand != string(v1alpha1.LogTruncateCommand) && v1alpha1.HaveTruncateUntil(newBackup) {
+		truncateTask := newBackup.DeepCopy()
+		truncateTask.Spec.LogSubcommand = string(v1alpha1.LogTruncateCommand)
+		defer c.updateBackup(truncateTask)
+	}
+
 	if newBackup.DeletionTimestamp != nil {
 		// the backup is being deleted, we need to do some cleanup work, enqueue backup.
-		klog.Infof("backup %s/%s is being deleted", ns, name)
+		klog.Infof("backup %s/%s - %s is being deleted", ns, name, string(newBackup.Spec.LogSubcommand))
 		c.enqueueBackup(newBackup)
 		return
 	}
@@ -208,7 +215,6 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
-	// TODO: (Ris)log backup check all subcommand job's pod status
 	if newBackup.Spec.Mode != v1alpha1.BackupModeLog {
 		// we will create backup job when we mark backup as scheduled status,
 		// but the backup job or its pod may failed due to insufficient resources or other reasons in k8s,
@@ -244,16 +250,8 @@ func (c *Controller) updateBackup(cur interface{}) {
 		newBackup.Spec.LogSubcommand = string(v1alpha1.LogResumeCommand)
 	}
 
-
 	klog.V(4).Infof("backup object %s/%s enqueue", ns, name)
 	c.enqueueBackup(newBackup)
-
-	//For log backup with truncate, we need to create a truncate job
-	if v1alpha1.HaveTruncateUntil(newBackup) && newBackup.Spec.LogSubcommand != string(v1alpha1.LogTruncateCommand) {
-		truncateTask := newBackup.DeepCopy()
-		truncateTask.Spec.LogSubcommand = string(v1alpha1.LogTruncateCommand)
-		c.enqueueBackup(truncateTask)
-	}
 }
 
 func (c *Controller) deleteJob(obj interface{}) {
