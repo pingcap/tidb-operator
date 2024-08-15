@@ -155,6 +155,7 @@ func (c *Controller) sync(key string) (err error) {
 		return err
 	}
 
+	klog.Infof("Syncing Backup %s/%s", ns, name)
 	return c.syncBackup(backup.DeepCopy())
 }
 
@@ -167,16 +168,9 @@ func (c *Controller) updateBackup(cur interface{}) {
 	ns := newBackup.GetNamespace()
 	name := newBackup.GetName()
 
-	//For log backup with truncate, we need to create a truncate job
-	if newBackup.Spec.LogSubcommand != string(v1alpha1.LogTruncateCommand) && v1alpha1.HaveTruncateUntil(newBackup) {
-		truncateTask := newBackup.DeepCopy()
-		truncateTask.Spec.LogSubcommand = string(v1alpha1.LogTruncateCommand)
-		defer c.updateBackup(truncateTask)
-	}
-
 	if newBackup.DeletionTimestamp != nil {
 		// the backup is being deleted, we need to do some cleanup work, enqueue backup.
-		klog.Infof("backup %s/%s - %s is being deleted", ns, name, string(newBackup.Spec.LogSubcommand))
+		klog.Infof("backup %s/%s is being deleted", ns, name)
 		c.enqueueBackup(newBackup)
 		return
 	}
