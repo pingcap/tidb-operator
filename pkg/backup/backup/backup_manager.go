@@ -168,6 +168,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	}
 
 	// create k8s job
+	klog.Infof("backup %s/%s creating job %s.", ns, name, backupJobName)
 	if err := bm.deps.JobControl.CreateJob(backup, job); err != nil {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %v", ns, name, backupJobName, err)
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
