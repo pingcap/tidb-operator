@@ -160,6 +160,21 @@ func PdName(tcName string, ordinal int32, namespace string, clusterDomain string
 	return PdPodName(tcName, ordinal)
 }
 
+// PDMSName should match the start arg `--name` of pd-server
+// See the start script of PDMS in pkg/manager/member/startscript/v2.renderPDMSStartScript
+func PDMSName(tcName string, ordinal int32, namespace, clusterDomain string, acrossK8s bool, component string) string {
+	if len(clusterDomain) > 0 {
+		return fmt.Sprintf("%s.%s-%s-peer.%s.svc.%s", PDMSPodName(tcName, ordinal, component), component, tcName, namespace, clusterDomain)
+	}
+
+	// clusterDomain is not set
+	if acrossK8s {
+		return fmt.Sprintf("%s.%s-%s-peer.%s.svc", PDMSPodName(tcName, ordinal, component), component, tcName, namespace)
+	}
+
+	return PDMSPodName(tcName, ordinal, component)
+}
+
 // NeedForceUpgrade check if force upgrade is necessary
 func NeedForceUpgrade(ann map[string]string) bool {
 	// Check if annotation 'pingcap.com/force-upgrade: "true"' is set
@@ -503,8 +518,31 @@ func TiKVStoreFromStatus(tc *v1alpha1.TidbCluster, podName string) (v1alpha1.TiK
 	return v1alpha1.TiKVStore{}, fmt.Errorf("store is not found in tikv status")
 }
 
+func TiFlashStoreFromStatus(tc *v1alpha1.TidbCluster, podName string) (v1alpha1.TiKVStore, error) {
+	for _, store := range tc.Status.TiFlash.Stores {
+		if store.PodName == podName {
+			return store, nil
+		}
+	}
+	return v1alpha1.TiKVStore{}, fmt.Errorf("store is not found in tiflash status")
+}
+
 func TiKVStoreIDFromStatus(tc *v1alpha1.TidbCluster, podName string) (uint64, error) {
 	store, err := TiKVStoreFromStatus(tc, podName)
+	if err != nil {
+		return 0, err
+	}
+
+	storeID, err := strconv.ParseUint(store.ID, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return storeID, nil
+}
+
+func TiFlashStoreIDFromStatus(tc *v1alpha1.TidbCluster, podName string) (uint64, error) {
+	store, err := TiFlashStoreFromStatus(tc, podName)
 	if err != nil {
 		return 0, err
 	}

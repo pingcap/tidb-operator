@@ -572,6 +572,11 @@ type PDSpec struct {
 	// +kubebuilder:default=30
 	StartTimeout int `json:"startTimeout,omitempty"`
 
+	// Wait time before pd get started. This wait time is to allow the new DNS record to propagate,
+	// ensuring that the PD DNS resolves to the same IP address as the pod.
+	// +kubebuilder:default=0
+	InitWaitTime int `json:"initWaitTime,omitempty"`
+
 	// Mode is the mode of PD cluster
 	// +optional
 	// +kubebuilder:validation:Enum:="";"ms"
@@ -1692,6 +1697,8 @@ type TiFlashStatus struct {
 	// +optional
 	// +nullable
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	// Indicates that a Volume replace using VolumeReplacing feature is in progress.
+	VolReplaceInProgress bool `json:"volReplaceInProgress,omitempty"`
 }
 
 // TiProxyMember is TiProxy member

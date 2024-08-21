@@ -308,6 +308,146 @@ func TestTiKVPodSyncForReplaceVolume(t *testing.T) {
 	}
 }
 
+func TestTiFlashPodSyncForReplaceVolume(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	type testcase struct {
+		name               string
+		storeState         string
+		storeLabel         string
+		storeStatus        string
+		expectRequeue      bool
+		pvcPodDeleted      bool
+		deletedStore       uint64
+		extraNotReadyStore bool
+	}
+
+	testFn := func(tt testcase, t *testing.T) {
+		tc := newTidbCluster()
+		pod := newTiFlashPod(tc)
+		if tt.storeLabel != "" {
+			pod.Labels[label.StoreIDLabelKey] = tt.storeLabel
+		}
+		tc.Status.TiFlash = v1alpha1.TiFlashStatus{
+			Stores: map[string]v1alpha1.TiKVStore{},
+		}
+		if tt.storeStatus != "" {
+			tc.Status.TiFlash.Stores[tt.storeStatus] = v1alpha1.TiKVStore{
+				PodName: pod.Name,
+				ID:      tt.storeStatus,
+				State:   tt.storeState,
+			}
+		}
+		if tt.extraNotReadyStore {
+			tc.Status.TiFlash.Stores["999"] = v1alpha1.TiKVStore{
+				PodName: pod.Name,
+				ID:      "999",
+				State:   v1alpha1.TiKVStateDown,
+			}
+		}
+		deps := controller.NewFakeDependencies()
+		c := NewPodController(deps)
+		pdClient := pdapi.NewFakePDClient()
+		c.testPDClient = pdClient
+		pdClient.AddReaction(pdapi.GetStoreActionType, func(action *pdapi.Action) (interface{}, error) {
+			storeInfo := &pdapi.StoreInfo{
+				Store: &pdapi.MetaStore{
+					StateName: tt.storeState,
+				},
+			}
+			return storeInfo, nil
+		})
+		var storeDeleted uint64 = 0
+		pdClient.AddReaction(pdapi.DeleteStoreActionType, func(action *pdapi.Action) (interface{}, error) {
+			storeDeleted = action.ID
+			return nil, nil
+		})
+		deletePVCsAndPodCalled := false
+		c.deletePVCsAndPodFn = func(deps *controller.Dependencies, ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+			deletePVCsAndPodCalled = true
+			return reconcile.Result{}, nil
+		}
+
+		ctx := context.Background()
+		if pod.Annotations == nil {
+			pod.Annotations = make(map[string]string)
+		}
+		pod.Annotations[v1alpha1.ReplaceVolumeAnnKey] = v1alpha1.ReplaceVolumeValueTrue
+		result, err := c.syncTiFlashPodForReplaceVolume(ctx, pod, tc)
+		g.Expect(result.Requeue || result.RequeueAfter > 0 || err != nil).To(Equal(tt.expectRequeue))
+		g.Expect(deletePVCsAndPodCalled).To(Equal(tt.pvcPodDeleted))
+		g.Expect(storeDeleted).To(Equal(tt.deletedStore))
+	}
+	tests := []testcase{
+		{
+			name:          "Normal store up is deleted",
+			storeState:    v1alpha1.TiKVStateUp,
+			storeLabel:    "123",
+			storeStatus:   "123",
+			expectRequeue: true,
+			pvcPodDeleted: false,
+			deletedStore:  123,
+		},
+		{
+			name:          "Normal store offline waiting",
+			storeState:    v1alpha1.TiKVStateOffline,
+			storeLabel:    "123",
+			storeStatus:   "123",
+			expectRequeue: true,
+			pvcPodDeleted: false,
+		},
+		{
+			name:          "Normal store tombstone pod deleted",
+			storeState:    v1alpha1.TiKVStateTombstone,
+			storeLabel:    "123",
+			storeStatus:   "123",
+			expectRequeue: false,
+			pvcPodDeleted: true,
+		},
+		{
+			name:          "Missing store status fall back label and tombstone pod deleted",
+			storeState:    v1alpha1.TiKVStateTombstone,
+			storeLabel:    "123",
+			storeStatus:   "",
+			expectRequeue: false,
+			pvcPodDeleted: true,
+		},
+		{
+			name:          "Missing label do not delete store",
+			storeState:    v1alpha1.TiKVStateUp,
+			storeLabel:    "",
+			storeStatus:   "123",
+			expectRequeue: true,
+			pvcPodDeleted: false,
+			deletedStore:  0, // No delete.
+		},
+		{
+			name:               "Stores not ready do not delete",
+			storeState:         v1alpha1.TiKVStateUp,
+			storeLabel:         "123",
+			storeStatus:        "123",
+			expectRequeue:      true,
+			pvcPodDeleted:      false,
+			deletedStore:       0, // No delete.
+			extraNotReadyStore: true,
+		},
+		{
+			name:          "Conflicting store status delete with status",
+			storeState:    v1alpha1.TiKVStateUp,
+			storeLabel:    "124",
+			storeStatus:   "123",
+			expectRequeue: true,
+			pvcPodDeleted: false,
+			deletedStore:  123,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testFn(tt, t)
+		})
+	}
+}
+
 func TestPDPodSyncForLeaderTransfer(t *testing.T) {
 	const (
 		interval = 100 * time.Millisecond
@@ -722,6 +862,27 @@ func newTiKVPod(tc *v1alpha1.TidbCluster) *corev1.Pod {
 			Labels: map[string]string{
 				label.ManagedByLabelKey: "tidb-operator",
 				label.ComponentLabelKey: "tikv",
+				label.InstanceLabelKey:  tc.Name,
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name: "dummy-name",
+				},
+			},
+		},
+	}
+}
+
+func newTiFlashPod(tc *v1alpha1.TidbCluster) *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      controller.TiFlashMemberName(tc.Name) + "-0",
+			Namespace: tc.Namespace,
+			Labels: map[string]string{
+				label.ManagedByLabelKey: "tidb-operator",
+				label.ComponentLabelKey: "tiflash",
 				label.InstanceLabelKey:  tc.Name,
 			},
 		},

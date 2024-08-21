@@ -19,6 +19,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/stretchr/testify/require"
+	"k8s.io/utils/pointer"
 )
 
 func TestRenderPDStartScript(t *testing.T) {
@@ -800,6 +802,83 @@ exec /pd-server ${ARGS}
 exit 0
 `,
 		},
+		{
+			name: "pdms with name(>= 8.3.0)",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = "cluster-1.com"
+				tc.Spec.PDMS = []*v1alpha1.PDMSSpec{
+					{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:v8.3.0",
+						},
+						Name: "tso",
+					},
+				}
+			},
+			expectScript: `#!/bin/sh
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+PDMS_POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_DOMAIN=${PDMS_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc.cluster-1.com
+
+elapseTime=0
+period=1
+threshold=30
+while true; do
+    sleep ${period}
+    elapseTime=$(( elapseTime+period ))
+
+    if [[ ${elapseTime} -ge ${threshold} ]]; then
+        echo "waiting for pd cluster ready timeout" >&2
+        exit 1
+    fi
+
+    digRes=$(dig ${PD_DOMAIN} A ${PD_DOMAIN} AAAA +search +short)
+    if [ $? -ne 0  ]; then
+        echo "domain resolve ${PD_DOMAIN} failed"
+        echo "$digRes"
+        continue
+    fi
+
+    if [ -z "${digRes}" ]
+    then
+        echo "domain resolve ${PD_DOMAIN} no record return"
+    else
+        echo "domain resolve ${PD_DOMAIN} success"
+        echo "$digRes"
+        break
+    fi
+done
+
+ARGS=" services tso --name=${PDMS_POD_NAME}.start-script-test-tso-peer.start-script-test-ns.svc.cluster-1.com --listen-addr=http://0.0.0.0:2379 \
+--advertise-listen-addr=http://${PD_DOMAIN}:2379 \
+--backend-endpoints=http://start-script-test-pd:2379 \
+--config=/etc/pd/pd.toml \
+"
+
+echo "starting pd-server ..."
+sleep $((RANDOM % 10))
+echo "/pd-server ${ARGS}"
+exec /pd-server ${ARGS}
+exit 0
+`,
+		},
 	}
 
 	for _, c := range cases {
@@ -821,4 +900,41 @@ exit 0
 		}
 		g.Expect(validateScript(script)).Should(gomega.Succeed())
 	}
+}
+
+func TestPDMSWithName(t *testing.T) {
+	re := require.New(t)
+	tc := &v1alpha1.TidbCluster{
+		Spec: v1alpha1.TidbClusterSpec{
+			PDMS: []*v1alpha1.PDMSSpec{
+				{
+					Name: "tso",
+					ComponentSpec: v1alpha1.ComponentSpec{
+						Image: "pd-test-image",
+					},
+					Replicas:         3,
+					StorageClassName: pointer.StringPtr("my-storage-class"),
+				},
+			},
+		},
+	}
+
+	for _, spec := range tc.Spec.PDMS {
+		spec.Image = "pingcap/pd:v8.2.0"
+	}
+	check, err := pdMSSupportMicroServicesWithName.Check(tc.PDMSVersion("tso"))
+	re.Nil(err)
+	re.False(check)
+	for _, spec := range tc.Spec.PDMS {
+		spec.Image = "pingcap/pd:v8.3.0"
+	}
+	check, err = pdMSSupportMicroServicesWithName.Check(tc.PDMSVersion("tso"))
+	re.Nil(err)
+	re.True(check)
+	for _, spec := range tc.Spec.PDMS {
+		spec.Image = "pingcap/pd:v9.1.0"
+	}
+	check, err = pdMSSupportMicroServicesWithName.Check(tc.PDMSVersion("tso"))
+	re.Nil(err)
+	re.True(check)
 }

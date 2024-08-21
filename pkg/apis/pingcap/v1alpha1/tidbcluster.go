@@ -46,6 +46,7 @@ const (
 	// shutdown a TiCDC pod.
 	defaultTiCDCGracefulShutdownTimeout = 10 * time.Minute
 	defaultPDStartTimeout               = 30
+	defaultPDInitWaitTime               = 0
 
 	// the latest version
 	versionLatest = "latest"
@@ -743,7 +744,7 @@ func (tc *TidbCluster) TiFlashAllPodsStarted() bool {
 	return tc.TiFlashStsDesiredReplicas() == tc.TiFlashStsActualReplicas()
 }
 
-// TiFlashAllPodsStarted return whether all stores of TiFlash are ready.
+// TiFlashAllStoresReady return whether all stores of TiFlash are ready.
 //
 // If TiFlash isn't specified, return false.
 func (tc *TidbCluster) TiFlashAllStoresReady() bool {
@@ -1385,4 +1386,11 @@ func (tc *TidbCluster) PDStartTimeout() int {
 		return tc.Spec.PD.StartTimeout
 	}
 	return defaultPDStartTimeout
+}
+
+func (tc *TidbCluster) PDInitWaitTime() int {
+	if tc.Spec.PD != nil && tc.Spec.PD.InitWaitTime != 0 {
+		return tc.Spec.PD.InitWaitTime
+	}
+	return defaultPDInitWaitTime
 }
