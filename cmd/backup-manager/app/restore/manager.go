@@ -101,7 +101,7 @@ func (rm *Manager) ProcessRestore() error {
 	if err != nil {
 		klog.Errorf("failed to marshal restore %v to json, err: %s", restore, err)
 	} else {
-		klog.Infof("start to process restore %s, %s", rm, string(crData))
+		klog.Infof("start to process restore: %s", string(crData))
 	}
 
 	if restore.Spec.To == nil {
