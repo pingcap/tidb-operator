@@ -32,6 +32,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 )
@@ -97,6 +98,13 @@ func (bm *BackupManager) ProcessBackup() error {
 		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
+	}
+
+	crData, err := json.Marshal(backup)
+	if err != nil {
+		klog.Errorf("failed to marshal backup %v to json, err: %v", backup, err)
+	} else {
+		klog.Infof("start to process backup: %s", string(crData))
 	}
 
 	reason, err := bm.setOptions(backup)
