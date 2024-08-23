@@ -35,6 +35,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 )
@@ -101,6 +102,13 @@ func (bm *Manager) ProcessBackup() error {
 		return errorutils.NewAggregate(errs)
 	}
 
+	crData, err := json.Marshal(backup)
+	if err != nil {
+		klog.Errorf("failed to marshal backup %v to json, err: %v", backup, err)
+	} else {
+		klog.Infof("start to process backup: %s", string(crData))
+	}
+
 	// we treat snapshot backup as restarted if its status is not scheduled when backup pod just start to run
 	// we will clean backup data before run br command
 	if backup.Spec.Mode == v1alpha1.BackupModeSnapshot && (backup.Status.Phase != v1alpha1.BackupScheduled || v1alpha1.IsBackupRestart(backup)) {
@@ -131,6 +139,9 @@ func (bm *Manager) ProcessBackup() error {
 		// skip the DB initialization if spec.from is not specified
 		return bm.performBackup(ctx, backup.DeepCopy(), nil)
 	}
+
+	klog.Infof("start to connect to tidb server (%s:%d) as the .spec.from field is specified",
+		backup.Spec.From.Host, backup.Spec.From.Port)
 
 	// validate and create from db
 	var db *sql.DB
