@@ -414,3 +414,14 @@ func IsLogBackupAlreadyTruncate(backup *Backup) bool {
 func IsLogBackupAlreadyStop(backup *Backup) bool {
 	return backup.Spec.Mode == BackupModeLog && backup.Status.Phase == BackupStopped
 }
+
+// IsLogBackupAlreadyStop return whether log backup has already paused.
+//TODO: (Ris) deal with task stopped
+func IsLogBackupAlreadyPaused(backup *Backup) bool {
+	return backup.Spec.Mode == BackupModeLog && backup.Status.Phase == BackupPaused
+}
+
+// IsLogBackupAlreadyRestart return whether log backup has already resumed.
+func IsLogBackupAlreadyResumed(backup *Backup) bool {
+	return backup.Spec.Mode == BackupModeLog && backup.Status.Phase == BackupRestart
+}
