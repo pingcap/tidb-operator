@@ -3394,6 +3394,28 @@ azblob service account credentials.</p>
 </tr>
 <tr>
 <td>
+<code>storageAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>StorageAccount is the storage account of the azure blob storage</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sasToken</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SasToken is the sas token of the storage account</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>prefix</code></br>
 <em>
 string

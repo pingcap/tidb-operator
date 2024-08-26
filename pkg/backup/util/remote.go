@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path"
 	"strconv"
@@ -83,10 +84,12 @@ type gcsConfig struct {
 }
 
 type azblobConfig struct {
-	container  string
-	accessTier string
-	secretName string
-	prefix     string
+	storageAccount string
+	sasToken       string
+	container      string
+	accessTier     string
+	secretName     string
+	prefix         string
 }
 
 type localConfig struct {
@@ -634,6 +637,16 @@ func newGcsStorageOptionForFlag(conf *gcsConfig, flag string) []string {
 func newAzblobStorageOptionForFlag(conf *azblobConfig, flag string) []string {
 	var azblobOptions []string
 	path := fmt.Sprintf("azure://%s/", path.Join(conf.container, conf.prefix))
+	values := url.Values{}
+	if conf.storageAccount != "" {
+		values.Add("account-name", conf.storageAccount)
+	}
+	if conf.sasToken != "" {
+		values.Add("sas-token", conf.sasToken)
+	}
+	if v := values.Encode(); v != "" {
+		path = path + "?" + v
+	}
 	if flag != "" && flag != defaultStorageFlag {
 		// now just set path to special flag
 		azblobOptions = append(azblobOptions, fmt.Sprintf("--%s=%s", flag, path))
@@ -697,7 +710,10 @@ func makeGcsConfig(gcs *v1alpha1.GcsStorageProvider, fakeRegion bool) *gcsConfig
 
 // makeAzblobConfig constructs azblobConfig parameters
 func makeAzblobConfig(azblob *v1alpha1.AzblobStorageProvider) *azblobConfig {
-	conf := azblobConfig{}
+	conf := azblobConfig{
+		storageAccount: azblob.StorageAccount,
+		sasToken:       azblob.SasToken,
+	}
 
 	path := strings.Trim(azblob.Container, "/") + "/" + strings.Trim(azblob.Prefix, "/")
 	fields := strings.SplitN(path, "/", 2)
