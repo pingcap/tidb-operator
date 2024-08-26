@@ -472,6 +472,10 @@ func (bm *Manager) performLogBackup(ctx context.Context, backup *v1alpha1.Backup
 		resultStatus, reason, err = bm.stopLogBackup(ctx, backup)
 	case string(v1alpha1.LogTruncateCommand):
 		resultStatus, reason, err = bm.truncateLogBackup(ctx, backup)
+	case string(v1alpha1.LogResumeCommand):
+		klog.Errorf("Log resume command is not supported yet")
+	case string(v1alpha1.LogPauseCommand):
+		klog.Errorf("Log pause command is not supported yet")
 	default:
 		return fmt.Errorf("log backup %s unknown log subcommand %s", bm, bm.SubCommand)
 	}

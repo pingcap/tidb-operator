@@ -339,6 +339,9 @@ func ParseLogBackupSubcommand(backup *Backup) LogSubCommandType {
 	}
 	switch backup.Spec.LogSubcommand {
 	case "log-start":
+		if IsLogBackupAlreadyStart(backup) {
+			return LogResumeCommand
+		}
 		return LogStartCommand
 	case "log-stop":
 		return LogStopCommand
