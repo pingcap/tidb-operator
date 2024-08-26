@@ -6,12 +6,6 @@ metadata:
 spec:
   cleanPolicy: Delete
   # backupType: full
-  # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
-  # from:
-  #   host: ${tidb-host}
-  #   port: ${tidb-port}
-  #   user: ${tidb-user}
-  #   secretName: backup-basic-tidb-secret
   br:
     cluster: basic
     clusterNamespace: default
