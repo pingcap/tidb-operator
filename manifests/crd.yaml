@@ -1187,7 +1187,11 @@ spec:
                     type: string
                   prefix:
                     type: string
+                  sasToken:
+                    type: string
                   secretName:
+                    type: string
+                  storageAccount:
                     type: string
                 type: object
               backoffRetryPolicy:
@@ -3603,7 +3607,11 @@ spec:
                         type: string
                       prefix:
                         type: string
+                      sasToken:
+                        type: string
                       secretName:
+                        type: string
+                      storageAccount:
                         type: string
                     type: object
                   backoffRetryPolicy:
@@ -5832,7 +5840,11 @@ spec:
                         type: string
                       prefix:
                         type: string
+                      sasToken:
+                        type: string
                       secretName:
+                        type: string
+                      storageAccount:
                         type: string
                     type: object
                   backoffRetryPolicy:
@@ -17214,7 +17226,11 @@ spec:
                     type: string
                   prefix:
                     type: string
+                  sasToken:
+                    type: string
                   secretName:
+                    type: string
+                  storageAccount:
                     type: string
                 type: object
               backupType:
@@ -18101,7 +18117,11 @@ spec:
                         type: string
                       prefix:
                         type: string
+                      sasToken:
+                        type: string
                       secretName:
+                        type: string
+                      storageAccount:
                         type: string
                     type: object
                   gcs:

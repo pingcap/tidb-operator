@@ -1187,7 +1187,11 @@ spec:
                     type: string
                   prefix:
                     type: string
+                  sasToken:
+                    type: string
                   secretName:
+                    type: string
+                  storageAccount:
                     type: string
                 type: object
               backoffRetryPolicy:

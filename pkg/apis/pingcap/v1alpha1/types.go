@@ -2012,6 +2012,10 @@ type AzblobStorageProvider struct {
 	// SecretName is the name of secret which stores the
 	// azblob service account credentials.
 	SecretName string `json:"secretName,omitempty"`
+	// StorageAccount is the storage account of the azure blob storage
+	StorageAccount string `json:"storageAccount,omitempty"`
+	// SasToken is the sas token of the storage account
+	SasToken string `json:"sasToken,omitempty"`
 	// Prefix of the data path.
 	Prefix string `json:"prefix,omitempty"`
 }
