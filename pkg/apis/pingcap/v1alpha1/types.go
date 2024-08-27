@@ -2013,6 +2013,8 @@ type AzblobStorageProvider struct {
 	// azblob service account credentials.
 	SecretName string `json:"secretName,omitempty"`
 	// StorageAccount is the storage account of the azure blob storage
+	// If this field is set, then use this to set backup-manager env
+	// Otherwise retrieve the storage account from secret
 	StorageAccount string `json:"storageAccount,omitempty"`
 	// SasToken is the sas token of the storage account
 	SasToken string `json:"sasToken,omitempty"`

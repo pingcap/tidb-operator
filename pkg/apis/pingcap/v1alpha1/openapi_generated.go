@@ -582,7 +582,7 @@ func schema_pkg_apis_pingcap_v1alpha1_AzblobStorageProvider(ref common.Reference
 					},
 					"storageAccount": {
 						SchemaProps: spec.SchemaProps{
-							Description: "StorageAccount is the storage account of the azure blob storage",
+							Description: "StorageAccount is the storage account of the azure blob storage If this field is set, then use this to set backup-manager env Otherwise retrieve the storage account from secret",
 							Type:        []string{"string"},
 							Format:      "",
 						},
