@@ -329,10 +329,6 @@ func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbClu
 				Value: "http://127.0.0.1:9090",
 			},
 			{
-				Name:  "TZ",
-				Value: monitor.Timezone(),
-			},
-			{
 				Name:  "TIDB_VERSION",
 				Value: getAlertManagerRulesVersion(monitor),
 			},
@@ -368,6 +364,13 @@ func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbClu
 			{
 				Name:  "TIDB_CLUSTER_NAMESPACE",
 				Value: tc.Namespace,
+			},
+		}...)
+	} else {
+		container.Env = append(container.Env, []core.EnvVar{
+			{
+				Name:  "TZ",
+				Value: monitor.Timezone(),
 			},
 		}...)
 	}
