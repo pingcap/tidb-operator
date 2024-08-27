@@ -167,6 +167,23 @@ func (bo *Options) doStartLogBackup(ctx context.Context, backup *v1alpha1.Backup
 	return bo.brCommandRun(ctx, fullArgs)
 }
 
+// doResumeLogBackup generates br args about log backup resume and runs br binary to do the real backup work.
+func (bo *Options) doResumeLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
+	specificArgs := []string{
+		"log",
+		"resume",
+		fmt.Sprintf("--task-name=%s", backup.Name),
+	}
+	// if bo.CommitTS != "" && bo.CommitTS != "0" {
+	// 	specificArgs = append(specificArgs, fmt.Sprintf("--start-ts=%s", bo.CommitTS))
+	// }
+	fullArgs, err := bo.backupCommandTemplate(backup, specificArgs, false)
+	if err != nil {
+		return err
+	}
+	return bo.brCommandRun(ctx, fullArgs)
+}
+
 // doStoplogBackup generates br args about log backup stop and runs br binary to do the real backup work.
 func (bo *Options) doStopLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
 	specificArgs := []string{
