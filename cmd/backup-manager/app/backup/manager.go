@@ -472,8 +472,9 @@ func (bm *Manager) performLogBackup(ctx context.Context, backup *v1alpha1.Backup
 		resultStatus, reason, err = bm.stopLogBackup(ctx, backup)
 	case string(v1alpha1.LogTruncateCommand):
 		resultStatus, reason, err = bm.truncateLogBackup(ctx, backup)
+	//TODO: (Ris) support more funcs
 	case string(v1alpha1.LogResumeCommand):
-		klog.Errorf("Log resume command is not supported yet")
+		resultStatus, reason, err = bm.resumeLogBackup(ctx, backup)
 	case string(v1alpha1.LogPauseCommand):
 		klog.Errorf("Log pause command is not supported yet")
 	default:
@@ -551,6 +552,46 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 		TimeStarted:   &metav1.Time{Time: started},
 		TimeCompleted: &metav1.Time{Time: finish},
 		CommitTs:      &ts,
+	}
+	return updateStatus, "", nil
+}
+
+// resumeLogBackup resume log backup.
+func (bm *Manager) resumeLogBackup(ctx context.Context, backup *v1alpha1.Backup) (*controller.BackupUpdateStatus, string, error) {
+	started := time.Now()
+	backupFullPath, err := util.GetStoragePath(backup)
+	if err != nil {
+		klog.Errorf("Get backup full path of cluster %s failed, err: %s", bm, err)
+		return nil, "GetBackupRemotePathFailed", err
+	}
+	klog.Infof("Get backup full path %s of cluster %s success", backupFullPath, bm)
+
+	updatePathStatus := &controller.BackupUpdateStatus{
+		BackupPath: &backupFullPath,
+	}
+
+	// change Prepare to Running before real backup process start
+	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Command: v1alpha1.LogResumeCommand,
+		Type:    v1alpha1.BackupRunning,
+		Status:  corev1.ConditionTrue,
+	}, updatePathStatus); err != nil {
+		return nil, "UpdateStatusFailed", err
+	}
+
+	// run br binary to do the real job
+	backupErr := bm.doResumeLogBackup(ctx, backup)
+
+	if backupErr != nil {
+		klog.Errorf("Resume log backup of cluster %s failed, err: %s", bm, backupErr)
+		return nil, "ResumeLogBackuFailed", backupErr
+	}
+	klog.Infof("Resume log backup of cluster %s to %s success", bm, backupFullPath)
+
+	finish := time.Now()
+	updateStatus := &controller.BackupUpdateStatus{
+		TimeStarted:   &metav1.Time{Time: started},
+		TimeCompleted: &metav1.Time{Time: finish},
 	}
 	return updateStatus, "", nil
 }
