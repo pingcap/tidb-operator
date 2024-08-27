@@ -3400,7 +3400,9 @@ string
 </em>
 </td>
 <td>
-<p>StorageAccount is the storage account of the azure blob storage</p>
+<p>StorageAccount is the storage account of the azure blob storage
+If this field is set, then use this to set backup-manager env
+Otherwise retrieve the storage account from secret</p>
 </td>
 </tr>
 <tr>
