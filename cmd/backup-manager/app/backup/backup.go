@@ -198,6 +198,20 @@ func (bo *Options) doStopLogBackup(ctx context.Context, backup *v1alpha1.Backup)
 	return bo.brCommandRun(ctx, fullArgs)
 }
 
+// doPauselogBackup generates br args about log backup pause and runs br binary to do the real backup work.
+func (bo *Options) doPauseLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
+	specificArgs := []string{
+		"log",
+		"pause",
+		fmt.Sprintf("--task-name=%s", backup.Name),
+	}
+	fullArgs, err := bo.backupCommandTemplate(backup, specificArgs, false)
+	if err != nil {
+		return err
+	}
+	return bo.brCommandRun(ctx, fullArgs)
+}
+
 // doTruncateLogBackup generates br args about log backup truncate and runs br binary to do the real backup work.
 func (bo *Options) doTruncateLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
 	specificArgs := []string{

@@ -254,6 +254,7 @@ func updateLogSubcommandStatus(backup *v1alpha1.Backup, condition *v1alpha1.Back
 }
 
 // updateWholeLogBackupStatus updates the whole log backup status.
+//TODO: (Ris) add more states
 func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, status *BackupUpdateStatus) bool {
 	// call real update interface to update whole status
 	doUpdateStatusAndCondition := func(newCondition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
