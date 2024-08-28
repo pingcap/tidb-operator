@@ -3394,6 +3394,30 @@ azblob service account credentials.</p>
 </tr>
 <tr>
 <td>
+<code>storageAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>StorageAccount is the storage account of the azure blob storage
+If this field is set, then use this to set backup-manager env
+Otherwise retrieve the storage account from secret</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sasToken</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SasToken is the sas token of the storage account</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>prefix</code></br>
 <em>
 string
