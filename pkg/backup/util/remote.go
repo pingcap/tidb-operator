@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path"
 	"strconv"
@@ -83,10 +84,12 @@ type gcsConfig struct {
 }
 
 type azblobConfig struct {
-	container  string
-	accessTier string
-	secretName string
-	prefix     string
+	storageAccount string
+	sasToken       string
+	container      string
+	accessTier     string
+	secretName     string
+	prefix         string
 }
 
 type localConfig struct {
@@ -525,36 +528,44 @@ func newAzblobStorage(conf *azblobConfig) (*blob.Bucket, error) {
 	// Azure shared key with access to the storage account
 	accountKey := os.Getenv("AZURE_STORAGE_KEY")
 
-	// check condition for using AAD credentials first
-	var usingAAD bool
-	if len(clientID) != 0 && len(clientSecret) != 0 && len(tenantID) != 0 {
-		usingAAD = true
-	} else if len(accountKey) != 0 {
-		usingAAD = false
-	} else {
-		return nil, errors.New("Missing necessary key(s) for credentials")
-	}
+	// Azure Storage Account Shared Access Signature Token
+	sasToken := conf.sasToken
 
-	// initialize a new azblob storage using AAD or shared key credentials
 	var bucket *blob.Bucket
 	var err error
-	if usingAAD {
+	if len(sasToken) != 0 {
+		bucket, err = newAzblobStorageUsingSasToken(conf, account, sasToken)
+	} else if len(clientID) != 0 && len(clientSecret) != 0 && len(tenantID) != 0 {
 		bucket, err = newAzblobStorageUsingAAD(conf, &azblobAADCred{
 			account:      account,
 			clientID:     clientID,
 			clientSecret: clientSecret,
 			tenantID:     tenantID,
 		})
-	} else {
+	} else if len(accountKey) != 0 {
 		bucket, err = newAzblobStorageUsingSharedKey(conf, &azblobSharedKeyCred{
 			account:   account,
 			sharedKey: accountKey,
 		})
+	} else {
+		return nil, errors.New("Missing necessary key(s) for credentials")
 	}
+
 	if err != nil {
 		return nil, err
 	}
 	return blob.PrefixedBucket(bucket, strings.Trim(conf.prefix, "/")+"/"), nil
+}
+
+func newAzblobStorageUsingSasToken(conf *azblobConfig, account, token string) (*blob.Bucket, error) {
+	// Azure Storage Account.
+	accountName := azureblob.AccountName(account)
+	sasToken := azureblob.SASToken(token)
+	cred := azblob.NewAnonymousCredential()
+	pipeline := azureblob.NewPipeline(cred, azblob.PipelineOptions{})
+	// Create a *blob.Bucket.
+	ctx := context.Background()
+	return azureblob.OpenBucket(ctx, pipeline, accountName, conf.container, &azureblob.Options{SASToken: sasToken})
 }
 
 // newAzblobStorageUsingAAD initialize a new azblob storage using AAD credentials
@@ -634,6 +645,16 @@ func newGcsStorageOptionForFlag(conf *gcsConfig, flag string) []string {
 func newAzblobStorageOptionForFlag(conf *azblobConfig, flag string) []string {
 	var azblobOptions []string
 	path := fmt.Sprintf("azure://%s/", path.Join(conf.container, conf.prefix))
+	values := url.Values{}
+	if conf.storageAccount != "" {
+		values.Add("account-name", conf.storageAccount)
+	}
+	if conf.sasToken != "" {
+		values.Add("sas-token", conf.sasToken)
+	}
+	if v := values.Encode(); v != "" {
+		path = path + "?" + v
+	}
 	if flag != "" && flag != defaultStorageFlag {
 		// now just set path to special flag
 		azblobOptions = append(azblobOptions, fmt.Sprintf("--%s=%s", flag, path))
@@ -697,7 +718,10 @@ func makeGcsConfig(gcs *v1alpha1.GcsStorageProvider, fakeRegion bool) *gcsConfig
 
 // makeAzblobConfig constructs azblobConfig parameters
 func makeAzblobConfig(azblob *v1alpha1.AzblobStorageProvider) *azblobConfig {
-	conf := azblobConfig{}
+	conf := azblobConfig{
+		storageAccount: azblob.StorageAccount,
+		sasToken:       azblob.SasToken,
+	}
 
 	path := strings.Trim(azblob.Container, "/") + "/" + strings.Trim(azblob.Prefix, "/")
 	fields := strings.SplitN(path, "/", 2)

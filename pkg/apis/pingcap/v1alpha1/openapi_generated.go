@@ -580,6 +580,20 @@ func schema_pkg_apis_pingcap_v1alpha1_AzblobStorageProvider(ref common.Reference
 							Format:      "",
 						},
 					},
+					"storageAccount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StorageAccount is the storage account of the azure blob storage If this field is set, then use this to set backup-manager env Otherwise retrieve the storage account from secret",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"sasToken": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SasToken is the sas token of the storage account",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"prefix": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Prefix of the data path.",
