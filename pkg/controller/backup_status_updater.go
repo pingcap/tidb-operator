@@ -209,6 +209,7 @@ func updateSnapshotBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 
 // updateLogBackupStatus update log backup status.
 // it will update both the log backup sub command status and the whole log backup status.
+//TODO: (Ris) add more states here
 func updateLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
 	// update whole backup status
 	isWholeStatusUpdate := updateWholeLogBackupStatus(backup, condition, newStatus)
@@ -254,7 +255,6 @@ func updateLogSubcommandStatus(backup *v1alpha1.Backup, condition *v1alpha1.Back
 }
 
 // updateWholeLogBackupStatus updates the whole log backup status.
-//TODO: (Ris) add more states
 func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, status *BackupUpdateStatus) bool {
 	// call real update interface to update whole status
 	doUpdateStatusAndCondition := func(newCondition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
@@ -295,6 +295,24 @@ func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 			newStatus.TimeCompleted = nil
 			newStatus.TimeStarted = nil
 			return &newStatus
+		case v1alpha1.LogPauseCommand:
+			// pause command, complete condition, should not update TimeStarted, TimeCompleted
+			// other conditions, no need to be used to update whole status
+			if condition.Type != v1alpha1.BackupComplete {
+				return nil
+			}
+			newStatus.TimeCompleted = nil
+			newStatus.TimeStarted = nil
+			return &newStatus
+		case v1alpha1.LogResumeCommand:
+			// resume command, complete condition, should not update TimeCompleted, TimeStarted
+			// other conditions, no need to be used to update whole status
+			if condition.Type != v1alpha1.BackupComplete {
+				return nil
+			}
+			newStatus.TimeCompleted = nil
+			newStatus.TimeStarted = nil
+			return &newStatus
 		default:
 			// should not hanpen
 			return nil
@@ -321,6 +339,22 @@ func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 			// other conditions, no need to be used to update whole condition
 			if condition.Type == v1alpha1.BackupComplete {
 				newCondition.Type = v1alpha1.BackupStopped
+				return &newCondition
+			}
+			return nil
+		case v1alpha1.LogPauseCommand:
+			// pause command, complete condition, should be updated as paused
+			// other conditions, no need to be used to update whole condition
+			if condition.Type == v1alpha1.BackupComplete {
+				newCondition.Type = v1alpha1.BackupPaused
+				return &newCondition
+			}
+			return nil
+		case v1alpha1.LogResumeCommand:
+			// resume command, complete condition, should be updated as resumed
+			// other conditions, no need to be used to update whole condition
+			if condition.Type == v1alpha1.BackupComplete {
+				newCondition.Type = v1alpha1.BackupRunning
 				return &newCondition
 			}
 			return nil
