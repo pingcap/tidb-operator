@@ -1095,7 +1095,7 @@ func (bm *backupManager) skipLogBackupSync(backup *v1alpha1.Backup) (bool, error
 	case v1alpha1.LogPauseCommand:
 		skip = v1alpha1.IsLogBackupAlreadyPaused(backup)
 	case v1alpha1.LogResumeCommand:
-		skip = !v1alpha1.IsLogBackupAlreadyResumed(backup)
+		skip = !v1alpha1.IsLogBackupAlreadyRunning(backup)
 	case v1alpha1.LogTruncateCommand:
 		if v1alpha1.IsLogBackupAlreadyTruncate(backup) {
 			skip = true

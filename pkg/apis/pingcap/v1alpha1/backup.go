@@ -391,10 +391,7 @@ func GetLogSubcommandConditionInfo(backup *Backup) (reason, message string) {
 
 // IsLogBackupAlreadyStart return whether log backup has already started.
 func IsLogBackupAlreadyStart(backup *Backup) bool {
-	if backup.Spec.Mode != BackupModeLog || backup.Status.CommitTs == "" {
-		return false
-	}
-	return backup.Status.Phase == BackupRunning
+	return backup.Spec.Mode == BackupModeLog && backup.Status.CommitTs != ""
 }
 
 // IsLogBackupAlreadyTruncate return whether log backup has already truncated.
@@ -428,6 +425,6 @@ func IsLogBackupAlreadyPaused(backup *Backup) bool {
 }
 
 // IsLogBackupAlreadyRestart return whether log backup has already resumed.
-func IsLogBackupAlreadyResumed(backup *Backup) bool {
+func IsLogBackupAlreadyRunning(backup *Backup) bool {
 	return backup.Spec.Mode == BackupModeLog && backup.Status.Phase == BackupRunning
 }
