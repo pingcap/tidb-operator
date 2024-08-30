@@ -31,6 +31,7 @@ Supported flags:
     --block <files_to_be_warmed_up_by_fio>
     --fs <files_to_be_warmed_up_by_filesystem>
     --debug enable \`set -x\`
+    --exit-on-corruption
 EOF
 }
 
@@ -45,12 +46,24 @@ cleanup() {
     if [ ! -d "/tmp/pod" ]; then
         mkdir -p /tmp/pod
     fi
+    echo "Sleeping for 10 seconds before exit..."
+    sleep 10
     touch /tmp/pod/main-terminated
 }
 
 trap cleanup EXIT
 
 operation=none
+exit_on_corruption=false
+bg_works=""
+
+for arg in "$@"; do
+    case $arg in
+        --exit-on-corruption) exit_on_corruption=true
+            ;;
+    esac
+done
+
 while [ $# -gt 0 ]; do
     case $1 in
         --help | -h) 
@@ -62,6 +75,9 @@ while [ $# -gt 0 ]; do
         --fs) operation=fs
             ;;
         --debug) set -x
+            ;;
+        --exit-on-corruption)
+            # already parsed above, skip handling here
             ;;
         -*)
             die "unsupported flag $1"
@@ -78,13 +94,28 @@ while [ $# -gt 0 ]; do
                             --numjobs=10 --offset=0% --offset_increment=10% --size=10% \
                             "--name=initialize-$device" \
                             --thread=1 --filename=/dev/"$device" &
+                        bg_works="$! $bg_works"
                     fi
                     ;;
                 fs) warmup_by_file "$1" &
+                    bg_works="$! $bg_works"
                     ;;
                 *) die "internal error: unsupported operation $1; forgot to call --block or --fs?"
                     ;;
             esac
+
+            echo "also trying to verify the sst files in $1"
+            if find "$1" -iname '[0-9]*.LOG' -size +0c -print0 | sort -z | head -z -n -1 | xargs -0 -I% sh -c 'echo -n "%: " >&2; /tikv-ctl ldb dump_wal --walfile=%; echo >&2' 2>&1 >/dev/null | grep "Corruption"; then
+                echo "There are some files corrupted!"
+                echo "Current WALs:"
+                find . -iname '[0-9]*.LOG' -print | sort
+
+                if [ "$exit_on_corruption" = true ]; then
+                    echo $bg_works | xargs kill || true
+                    wait || true
+                    exit 1
+                fi
+            fi
             ;;
     esac
     shift

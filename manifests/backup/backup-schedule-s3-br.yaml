@@ -26,12 +26,6 @@ spec:
       # timeAgo: <time>
       # checksum: true
       # sendCredToTikv: true
-    from:
-      host:         172.30.6.56
-      secretName:   mysecret
-      # port:         4000
-      # user:         root
-      # tlsClientSecretName: <backup-tls-secretname>
     s3:
       provider: ceph
       endpoint: http://10.233.57.220

@@ -1336,7 +1336,8 @@ string
 </em>
 </td>
 <td>
-<p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
+<em>(Optional)</em>
+<p>LogRestoreStartTs is the start timestamp which log restore from.</p>
 </td>
 </tr>
 <tr>
@@ -1405,6 +1406,7 @@ StorageProvider
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.</p>
 </td>
 </tr>
@@ -1624,6 +1626,17 @@ string
 <td>
 <em>(Optional)</em>
 <p>Additional volume mounts of component pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tolerateSingleTiKVOutage</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>TolerateSingleTiKVOutage indicates whether to tolerate a single failure of a store without data loss</p>
 </td>
 </tr>
 </table>
@@ -1952,6 +1965,19 @@ bool
 <td>
 <em>(Optional)</em>
 <p>Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enablePVCReplace</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable PVC replace to recreate the PVC with different specs
 Optional: Defaults to false</p>
 </td>
 </tr>
@@ -2646,6 +2672,18 @@ Optional: Defaults to nil</p>
 <td>
 <em>(Optional)</em>
 <p>Tolerations of the TiDB initializer Pod</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>nodeSelector</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Node selectors of TiDB initializer Pod</p>
 </td>
 </tr>
 </table>
@@ -5674,7 +5712,7 @@ Probe
 </td>
 <td>
 <em>(Optional)</em>
-<p>ReadinessProbe describes actions that probe the pd&rsquo;s readiness.
+<p>ReadinessProbe describes actions that probe the components&rsquo; readiness.
 the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
 </td>
 </tr>
@@ -6618,6 +6656,23 @@ Kubernetes core/v1.ResourceRequirements
 </tr>
 <tr>
 <td>
+<code>livenessProbe</code></br>
+<em>
+<a href="#probe">
+Probe
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LivenessProbe describes actions that probe the discovery&rsquo;s liveness.
+the default behavior is like setting type as &ldquo;tcp&rdquo;
+NOTE: only used for TiDB Operator discovery now,
+for other components, the auto failover feature may be used instead.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>address</code></br>
 <em>
 string
@@ -6954,6 +7009,23 @@ Kubernetes core/v1.ResourceRequirements
 <p>
 (Members of <code>ResourceRequirements</code> are embedded into this type.)
 </p>
+</td>
+</tr>
+<tr>
+<td>
+<code>livenessProbe</code></br>
+<em>
+<a href="#probe">
+Probe
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LivenessProbe describes actions that probe the discovery&rsquo;s liveness.
+the default behavior is like setting type as &ldquo;tcp&rdquo;
+NOTE: only used for TiDB Operator discovery now,
+for other components, the auto failover feature may be used instead.</p>
 </td>
 </tr>
 </tbody>
@@ -11793,6 +11865,21 @@ int
 <p>Timeout threshold when pd get started</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>spareVolReplaceReplicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The default number of spare replicas to scale up when using VolumeReplace feature.
+In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid
+zone skew after volume replace (total replicas always whole multiples of zones).
+Optional: Defaults to 1</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="pdstatus">PDStatus</h3>
@@ -12404,7 +12491,9 @@ float64
 <h3 id="probe">Probe</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#componentspec">ComponentSpec</a>)
+<a href="#componentspec">ComponentSpec</a>, 
+<a href="#dmdiscoveryspec">DMDiscoverySpec</a>, 
+<a href="#discoveryspec">DiscoverySpec</a>)
 </p>
 <p>
 <p>Probe contains details of probing tidb.
@@ -13966,7 +14055,8 @@ string
 </em>
 </td>
 <td>
-<p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
+<em>(Optional)</em>
+<p>LogRestoreStartTs is the start timestamp which log restore from.</p>
 </td>
 </tr>
 <tr>
@@ -14035,6 +14125,7 @@ StorageProvider
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.</p>
 </td>
 </tr>
@@ -14254,6 +14345,17 @@ string
 <td>
 <em>(Optional)</em>
 <p>Additional volume mounts of component pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tolerateSingleTiKVOutage</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>TolerateSingleTiKVOutage indicates whether to tolerate a single failure of a store without data loss</p>
 </td>
 </tr>
 </tbody>
@@ -22053,6 +22155,21 @@ ScalePolicy
 <p>ScalePolicy is the scale configuration for TiKV</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>spareVolReplaceReplicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The default number of spare replicas to scale up when using VolumeReplace feature.
+In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid
+zone skew after volume replace (total replicas always whole multiples of zones).
+Optional: Defaults to 1</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvstatus">TiKVStatus</h3>
@@ -23791,6 +23908,19 @@ Optional: Defaults to false</p>
 </tr>
 <tr>
 <td>
+<code>enablePVCReplace</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable PVC replace to recreate the PVC with different specs
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>tlsCluster</code></br>
 <em>
 <a href="#tlscluster">
@@ -24467,6 +24597,33 @@ bool
 <p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>listenOnLocalhostOnly</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ListenOnLocalhostOnly whether to expose dashboard to 0.0.0.0 or limit it to localhost only
+which means it will be accessible only via port-forwarding
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>disableKeyVisualizer</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisableKeyVisualizer is whether to disable Key Visualizer.
+Optional: Defaults to false</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -24657,6 +24814,33 @@ bool
 </td>
 <td>
 <p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>listenOnLocalhostOnly</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ListenOnLocalhostOnly whether to expose dashboard to 0.0.0.0 or limit it to localhost only
+which means it will be accessible only via port-forwarding
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>disableKeyVisualizer</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisableKeyVisualizer is whether to disable Key Visualizer.
+Optional: Defaults to false</p>
 </td>
 </tr>
 </tbody>
@@ -24889,6 +25073,18 @@ Optional: Defaults to nil</p>
 <td>
 <em>(Optional)</em>
 <p>Tolerations of the TiDB initializer Pod</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>nodeSelector</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Node selectors of TiDB initializer Pod</p>
 </td>
 </tr>
 </tbody>

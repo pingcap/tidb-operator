@@ -193,7 +193,7 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 	logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 	var err error
 	if backup.Spec.BR == nil {
-		err = backuputil.ValidateBackup(backup, "", false)
+		err = backuputil.ValidateBackup(backup, "", nil)
 	} else {
 		backupNamespace := backup.GetNamespace()
 		if backup.Spec.BR.ClusterNamespace != "" {
@@ -216,7 +216,7 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 		}
 
 		tikvImage := tc.TiKVImage()
-		err = backuputil.ValidateBackup(backup, tikvImage, tc.AcrossK8s())
+		err = backuputil.ValidateBackup(backup, tikvImage, tc)
 	}
 
 	if err != nil {

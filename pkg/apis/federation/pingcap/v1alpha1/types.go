@@ -41,6 +41,11 @@ type VolumeBackup struct {
 
 	// +k8s:openapi-gen=false
 	Status VolumeBackupStatus `json:"status,omitempty"`
+
+	// SkipGC indicates whether this EBS volume snapshot backup is immune to GC
+	// +optional
+	// +kubebuilder:default=false
+	SkipGC bool `json:"skipGC,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -219,6 +224,8 @@ const (
 	VolumeBackupFailed VolumeBackupConditionType = "Failed"
 	// VolumeBackupCleaned means all the resources about VolumeBackup have cleaned
 	VolumeBackupCleaned VolumeBackupConditionType = "Cleaned"
+	// VolumeBackupCleanFailed means one of backup cleanup in data plane is failed
+	VolumeBackupCleanFailed VolumeBackupConditionType = "CleanFailed"
 )
 
 // +genclient

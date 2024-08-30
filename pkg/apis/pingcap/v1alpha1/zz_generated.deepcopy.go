@@ -1352,6 +1352,11 @@ func (in *DMDiscoverySpec) DeepCopyInto(out *DMDiscoverySpec) {
 		(*in).DeepCopyInto(*out)
 	}
 	in.ResourceRequirements.DeepCopyInto(&out.ResourceRequirements)
+	if in.LivenessProbe != nil {
+		in, out := &in.LivenessProbe, &out.LivenessProbe
+		*out = new(Probe)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
@@ -1584,6 +1589,11 @@ func (in *DiscoverySpec) DeepCopyInto(out *DiscoverySpec) {
 		(*in).DeepCopyInto(*out)
 	}
 	in.ResourceRequirements.DeepCopyInto(&out.ResourceRequirements)
+	if in.LivenessProbe != nil {
+		in, out := &in.LivenessProbe, &out.LivenessProbe
+		*out = new(Probe)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
@@ -3805,6 +3815,11 @@ func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 	if in.MountClusterClientSecret != nil {
 		in, out := &in.MountClusterClientSecret, &out.MountClusterClientSecret
 		*out = new(bool)
+		**out = **in
+	}
+	if in.SpareVolReplaceReplicas != nil {
+		in, out := &in.SpareVolReplaceReplicas, &out.SpareVolReplaceReplicas
+		*out = new(int32)
 		**out = **in
 	}
 	return
@@ -8166,6 +8181,11 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 		copy(*out, *in)
 	}
 	in.ScalePolicy.DeepCopyInto(&out.ScalePolicy)
+	if in.SpareVolReplaceReplicas != nil {
+		in, out := &in.SpareVolReplaceReplicas, &out.SpareVolReplaceReplicas
+		*out = new(int32)
+		**out = **in
+	}
 	return
 }
 
@@ -8991,6 +9011,11 @@ func (in *TidbClusterSpec) DeepCopyInto(out *TidbClusterSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.EnablePVCReplace != nil {
+		in, out := &in.EnablePVCReplace, &out.EnablePVCReplace
+		*out = new(bool)
+		**out = **in
+	}
 	if in.TLSCluster != nil {
 		in, out := &in.TLSCluster, &out.TLSCluster
 		*out = new(TLSCluster)
@@ -9236,6 +9261,16 @@ func (in *TidbDashboardSpec) DeepCopyInto(out *TidbDashboardSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.ListenOnLocalhostOnly != nil {
+		in, out := &in.ListenOnLocalhostOnly, &out.ListenOnLocalhostOnly
+		*out = new(bool)
+		**out = **in
+	}
+	if in.DisableKeyVisualizer != nil {
+		in, out := &in.DisableKeyVisualizer, &out.DisableKeyVisualizer
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
@@ -9385,6 +9420,13 @@ func (in *TidbInitializerSpec) DeepCopyInto(out *TidbInitializerSpec) {
 		*out = make([]v1.Toleration, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.NodeSelector != nil {
+		in, out := &in.NodeSelector, &out.NodeSelector
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
 		}
 	}
 	return

@@ -37,9 +37,11 @@ const (
 	defaultSeparateRocksDBLog = false
 	defaultSeparateRaftLog    = false
 	defaultEnablePVReclaim    = false
+	defaultEnablePVCReplace   = false
 	// defaultEvictLeaderTimeout is the timeout limit of evict leader
 	defaultEvictLeaderTimeout            = 1500 * time.Minute
 	defaultWaitLeaderTransferBackTimeout = 400 * time.Second
+	RetryEvictLeaderInterval             = 10 * time.Minute
 	// defaultTiCDCGracefulShutdownTimeout is the timeout limit of graceful
 	// shutdown a TiCDC pod.
 	defaultTiCDCGracefulShutdownTimeout = 10 * time.Minute
@@ -560,7 +562,7 @@ func (tc *TidbCluster) PDStsDesiredReplicas() int32 {
 	}
 	var spareReplaceReplicas int32 = 0
 	if tc.Status.PD.VolReplaceInProgress {
-		spareReplaceReplicas = 1
+		spareReplaceReplicas = *tc.Spec.PD.SpareVolReplaceReplicas
 	}
 	return tc.Spec.PD.Replicas + tc.GetPDDeletedFailureReplicas() + spareReplaceReplicas
 }
@@ -621,7 +623,7 @@ func (tc *TidbCluster) TiKVStsDesiredReplicas() int32 {
 	}
 	var spareReplaceReplicas int32 = 0
 	if tc.Status.TiKV.VolReplaceInProgress {
-		spareReplaceReplicas = 1
+		spareReplaceReplicas = *tc.Spec.TiKV.SpareVolReplaceReplicas
 	}
 	return tc.Spec.TiKV.Replicas + int32(len(tc.Status.TiKV.FailureStores)) + spareReplaceReplicas
 }
@@ -902,8 +904,9 @@ func (tc *TidbCluster) TiKVIsAvailable() bool {
 	return true
 }
 
-func (tc *TidbCluster) AllTiKVsAreAvailable() bool {
-	if len(tc.Status.TiKV.Stores) != int(tc.Spec.TiKV.Replicas) {
+func (tc *TidbCluster) AllTiKVsAreAvailable(tolerateSingleTiKVOutage bool) bool {
+	if (!tolerateSingleTiKVOutage && len(tc.Status.TiKV.Stores) != int(tc.Spec.TiKV.Replicas)) ||
+		(tolerateSingleTiKVOutage && int(tc.Spec.TiKV.Replicas-1) != len(tc.Status.TiKV.Stores)) {
 		return false
 	}
 
@@ -971,6 +974,14 @@ func (tc *TidbCluster) IsPVReclaimEnabled() bool {
 	enabled := tc.Spec.EnablePVReclaim
 	if enabled == nil {
 		return defaultEnablePVReclaim
+	}
+	return *enabled
+}
+
+func (tc *TidbCluster) IsPVCReplaceEnabled() bool {
+	enabled := tc.Spec.EnablePVCReplace
+	if enabled == nil {
+		return defaultEnablePVCReplace
 	}
 	return *enabled
 }

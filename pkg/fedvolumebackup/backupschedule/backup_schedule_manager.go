@@ -194,19 +194,55 @@ func (bm *backupScheduleManager) canPerformNextBackup(vbs *v1alpha1.VolumeBackup
 	ns := vbs.GetNamespace()
 	bsName := vbs.GetName()
 
-	backup, err := bm.deps.VolumeBackupLister.VolumeBackups(ns).Get(vbs.Status.LastBackup)
-	if err != nil {
-		if errors.IsNotFound(err) {
+	// If this backup schedule has specified label of backup schedule group, then we need to check the last backup of the group.
+	// Otherwise, check its own last backup.
+	bsGroupName := vbs.GetLabels()[label.BackupScheduleGroupLabelKey]
+
+	if bsGroupName == "" {
+		backup, err := bm.deps.VolumeBackupLister.VolumeBackups(ns).Get(vbs.Status.LastBackup)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return nil
+			}
+			return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, vbs.Status.LastBackup, err)
+		}
+
+		if v1alpha1.IsVolumeBackupComplete(backup) || v1alpha1.IsVolumeBackupFailed(backup) {
 			return nil
 		}
-		return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, vbs.Status.LastBackup, err)
+		// skip this sync round of the backup schedule and waiting the last backup.
+		return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, vbs.Status.LastBackup)
 	}
 
-	if v1alpha1.IsVolumeBackupComplete(backup) || v1alpha1.IsVolumeBackupFailed(backup) {
-		return nil
+	// Check the last backup of the group
+	backupScheduleGroupLabels := label.NewBackupScheduleGroup(bsGroupName)
+	selector, err := backupScheduleGroupLabels.Selector()
+	if err != nil {
+		return fmt.Errorf("generate backup schedule group %s label selector failed, err: %v", bsGroupName, err)
 	}
-	// skip this sync round of the backup schedule and waiting the last backup.
-	return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, vbs.Status.LastBackup)
+	vbss, err := bm.deps.VolumeBackupScheduleLister.VolumeBackupSchedules(ns).List(selector)
+	if err != nil {
+		return fmt.Errorf("backup schedule %s/%s, list backup schedules failed, err: %v", ns, bsName, err)
+	}
+
+	for _, vbsMember := range vbss {
+		// The check is not safe in fact since we don't have strict serialization
+		backup, err := bm.deps.VolumeBackupLister.VolumeBackups(ns).Get(vbsMember.Status.LastBackup)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				continue
+			}
+			return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, vbs.Status.LastBackup, err)
+		}
+
+		if v1alpha1.IsVolumeBackupComplete(backup) || v1alpha1.IsVolumeBackupFailed(backup) {
+			continue
+		}
+		// skip this sync round of the backup schedule and waiting the last backup.
+		return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, vbsMember.Status.LastBackup)
+	}
+
+	return nil
 }
 
 func (bm *backupScheduleManager) backupGC(vbs *v1alpha1.VolumeBackupSchedule) {
@@ -333,7 +369,17 @@ func (bm *backupScheduleManager) getBackupList(bs *v1alpha1.VolumeBackupSchedule
 		return nil, fmt.Errorf("get backup schedule %s/%s backup list failed, selector: %s, err: %v", ns, bsName, selector, err)
 	}
 
-	return backupsList, nil
+	// We can filter out backup immune to GC
+	var backupListCandidates []*v1alpha1.VolumeBackup
+
+	for _, backup := range backupsList {
+		if backup.SkipGC {
+			continue
+		}
+		backupListCandidates = append(backupListCandidates, backup)
+	}
+
+	return backupListCandidates, nil
 }
 
 func (bm *backupScheduleManager) backupGCByMaxBackups(vbs *v1alpha1.VolumeBackupSchedule) {
@@ -352,21 +398,23 @@ func (bm *backupScheduleManager) backupGCByMaxBackups(vbs *v1alpha1.VolumeBackup
 	// Delete the oldest expired backup
 	if len(backupsList) > int(*vbs.Spec.MaxBackups) {
 		backup := backupsList[len(backupsList)-1]
+
 		if backup.DeletionTimestamp != nil {
 			klog.Infof("Deletion is ongoing for backup schedule %s/%s, backup %s", ns, bsName, backup.GetName())
 			return
-		} else {
-			if err = bm.deps.FedVolumeBackupControl.DeleteVolumeBackup(backup); err != nil {
-				klog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
-				return
-			}
-			klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
-
-			if len(backupsList) == 1 {
-				// All backups have been deleted, so the last backup information in the backupSchedule should be reset
-				bm.resetLastBackup(vbs)
-			}
 		}
+
+		if err = bm.deps.FedVolumeBackupControl.DeleteVolumeBackup(backup); err != nil {
+			klog.Errorf("backup schedule %s/%s gc backup %s failed, err %v", ns, bsName, backup.GetName(), err)
+			return
+		}
+		klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
+
+		if len(backupsList) == 1 {
+			// All backups have been deleted, so the last backup information in the backupSchedule should be reset
+			bm.resetLastBackup(vbs)
+		}
+
 	}
 }
 

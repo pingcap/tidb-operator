@@ -5,12 +5,6 @@ metadata:
   namespace: default
 spec:
   # backupType: full
-  # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
-  # to:
-  #   host: ${tidb_host}
-  #   port: ${tidb_port}
-  #   user: ${tidb_user}
-  #   secretName: restore-demo2-tidb-secret
   br:
     cluster: basic
     clusterNamespace: default

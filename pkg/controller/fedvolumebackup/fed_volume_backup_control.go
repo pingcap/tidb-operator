@@ -16,6 +16,8 @@ package fedvolumebackup
 import (
 	"context"
 	"fmt"
+	"math"
+	"time"
 
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,6 +31,7 @@ import (
 	informers "github.com/pingcap/tidb-operator/pkg/client/federation/informers/externalversions/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/fedvolumebackup"
+	"github.com/pingcap/tidb-operator/pkg/metrics"
 )
 
 // ControlInterface implements the control logic for updating VolumeBackup
@@ -77,7 +80,7 @@ func (c *defaultBackupControl) UpdateStatus(volumeBackup *v1alpha1.VolumeBackup,
 }
 
 func (c *defaultBackupControl) updateBackup(volumeBackup *v1alpha1.VolumeBackup) error {
-	oldStatus := volumeBackup.Status.DeepCopy()
+	oldBackup := volumeBackup.DeepCopy()
 	ns := volumeBackup.GetNamespace()
 	name := volumeBackup.GetName()
 
@@ -86,17 +89,66 @@ func (c *defaultBackupControl) updateBackup(volumeBackup *v1alpha1.VolumeBackup)
 		klog.Warningf("VolumeBackup %s/%s sync error: %s", ns, name, err.Error())
 	}
 
-	if !apiequality.Semantic.DeepEqual(oldStatus, &volumeBackup.Status) {
-		klog.Infof("VolumeBackup %/%s update status, old: %+v, new: %+v", ns, name, oldStatus, volumeBackup.Status)
+	c.initBackupStatusMetrics(volumeBackup)
+	if !apiequality.Semantic.DeepEqual(oldBackup.Status, volumeBackup.Status) {
+		klog.Infof("VolumeBackup %/%s update status from %s to %s",
+			ns, name, oldBackup.Status.Phase, volumeBackup.Status.Phase)
 		if sErr := c.backupManager.UpdateStatus(volumeBackup, &volumeBackup.Status); sErr != nil {
 			klog.Warningf("VolumeBackup %s/%s update status error: %s", ns, name, sErr.Error())
 			if err == nil {
 				err = sErr
 			}
+		} else {
+			c.updateMetrics(oldBackup, volumeBackup)
 		}
 	}
 
 	return err
+}
+
+func (c *defaultBackupControl) updateMetrics(oldBackup, newBackup *v1alpha1.VolumeBackup) {
+	if !v1alpha1.IsVolumeBackupComplete(oldBackup) && v1alpha1.IsVolumeBackupComplete(newBackup) {
+		c.updateVolumeBackupMetrics(newBackup)
+	} else if !v1alpha1.IsVolumeBackupFailed(oldBackup) && v1alpha1.IsVolumeBackupFailed(newBackup) {
+		c.updateVolumeBackupMetrics(newBackup)
+	} else if !v1alpha1.IsVolumeBackupCleaned(oldBackup) && v1alpha1.IsVolumeBackupCleaned(newBackup) {
+		c.updateVolumeBackupCleanupMetrics(newBackup)
+	} else if !v1alpha1.IsVolumeBackupCleanFailed(oldBackup) && v1alpha1.IsVolumeBackupCleanFailed(newBackup) {
+		c.updateVolumeBackupCleanupMetrics(newBackup)
+	}
+}
+
+func (c *defaultBackupControl) updateVolumeBackupMetrics(volumeBackup *v1alpha1.VolumeBackup) {
+	ns := volumeBackup.Namespace
+	tcName := volumeBackup.GetCombinedTCName()
+	status := string(volumeBackup.Status.Phase)
+	metrics.FedVolumeBackupStatusCounterVec.WithLabelValues(ns, tcName, status).Inc()
+	metrics.FedVolumeBackupTotalTimeCounterVec.WithLabelValues(ns, tcName).
+		Add(volumeBackup.Status.TimeCompleted.Sub(volumeBackup.Status.TimeStarted.Time).Seconds())
+	if volumeBackup.Status.BackupSize > 0 {
+		metrics.FedVolumeBackupTotalSizeCounterVec.WithLabelValues(ns, tcName).Add(
+			float64(volumeBackup.Status.BackupSize) / math.Pow(1024, 3))
+	}
+}
+
+// add zero to the backup status counters; this sets the backup counter metric to zero when the federated manager restarts.
+func (c *defaultBackupControl) initBackupStatusMetrics(volumeBackup *v1alpha1.VolumeBackup) {
+	ns := volumeBackup.Namespace
+	tcName := volumeBackup.GetCombinedTCName()
+	metrics.FedVolumeBackupStatusCounterVec.GetMetricWithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupRunning))
+	metrics.FedVolumeBackupStatusCounterVec.GetMetricWithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupSnapshotsCreated))
+	metrics.FedVolumeBackupStatusCounterVec.GetMetricWithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupComplete))
+	metrics.FedVolumeBackupStatusCounterVec.GetMetricWithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupFailed))
+	metrics.FedVolumeBackupStatusCounterVec.GetMetricWithLabelValues(ns, tcName, string(v1alpha1.VolumeBackupCleaned))
+}
+
+func (c *defaultBackupControl) updateVolumeBackupCleanupMetrics(volumeBackup *v1alpha1.VolumeBackup) {
+	ns := volumeBackup.Namespace
+	tcName := volumeBackup.GetCombinedTCName()
+	status := string(volumeBackup.Status.Phase)
+	metrics.FedVolumeBackupCleanupStatusCounterVec.WithLabelValues(ns, tcName, status).Inc()
+	metrics.FedVolumeBackupCleanupTotalTimeCounterVec.WithLabelValues(ns, tcName).
+		Add(time.Since(volumeBackup.DeletionTimestamp.Time).Seconds())
 }
 
 // addProtectionFinalizer will be called when the VolumeBackup CR is created

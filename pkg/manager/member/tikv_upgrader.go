@@ -87,7 +87,7 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 
 	tc, _ := meta.(*v1alpha1.TidbCluster)
 
-	// upgrade tikv without evicting leader when only one tikv is exist
+	// upgrade tikv without evicting leader when only one tikv exists
 	// NOTE: If `TiKVStatus.Synced`` is false, it's acceptable to use old record about peer stores
 	if *oldSet.Spec.Replicas < 2 && len(tc.Status.TiKV.PeerStores) == 0 {
 		klog.Infof("TiKV statefulset replicas are less than 2, skip evicting region leader for tc %s/%s", ns, tcName)
@@ -115,16 +115,7 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		return nil
 	}
 
-	minReadySeconds := 0
-	s, ok := tc.Annotations[annoKeyTiKVMinReadySeconds]
-	if ok {
-		i, err := strconv.Atoi(s)
-		if err != nil {
-			klog.Warningf("tidbcluster: [%s/%s] annotation %s should be an integer: %v", ns, tcName, annoKeyTiKVMinReadySeconds, err)
-		} else {
-			minReadySeconds = i
-		}
-	}
+	minReadySeconds := getMinReadySeconds(tc)
 
 	mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
@@ -146,14 +137,8 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		}
 
 		if revision == status.StatefulSet.UpdateRevision {
-
-			if !podutil.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
-				readyCond := podutil.GetPodReadyCondition(pod.Status)
-				if readyCond == nil || readyCond.Status != corev1.ConditionTrue {
-					return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not ready", ns, tcName, podName)
-
-				}
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not available, last transition time is %v", ns, tcName, podName, readyCond.LastTransitionTime)
+			if err := isPodAvailable(pod, minReadySeconds, tc); err != nil {
+				return err
 			}
 			if store.State != v1alpha1.TiKVStateUp {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
@@ -244,9 +229,19 @@ func (u *tikvUpgrader) evictLeaderBeforeUpgrade(tc *v1alpha1.TidbCluster, upgrad
 			klog.Infof("%s: evict leader timeout with threshold %v, so ready to upgrade", logPrefix, evictLeaderTimeout)
 			return true, nil
 		}
+
+		// in some cases, even `evicting`` is true, the evict-leader-scheduler may still not be created or existing in PD.
+		// so we try to check and retry if the scheduler is not created yet.
+		if time.Now().After(evictLeaderBeginTime.Add(v1alpha1.RetryEvictLeaderInterval)) {
+			err := u.retryEvictLeaderIfNeeded(tc, storeID, upgradePod)
+			if err != nil {
+				return false, err
+			}
+		}
 	}
 
-	leaderCount, err := u.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name, upgradePod.Name, tc.IsTLSClusterEnabled()).GetLeaderCount()
+	leaderCount, err := u.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name,
+		upgradePod.Name, tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled()).GetLeaderCount()
 	if err != nil {
 		klog.Warningf("%s: failed to get leader count, error: %v", logPrefix, err)
 		return false, nil
@@ -416,6 +411,22 @@ func (u *tikvUpgrader) endEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64, 
 	return nil
 }
 
+func (u *tikvUpgrader) retryEvictLeaderIfNeeded(tc *v1alpha1.TidbCluster, storeID uint64, pod *corev1.Pod) error {
+	schedulers, err := controller.GetPDClient(u.deps.PDControl, tc).GetEvictLeaderSchedulersForStores(storeID)
+	if err != nil {
+		return fmt.Errorf("get scheduler for store %d failed: %v", storeID, err)
+	}
+	if len(schedulers) > 0 && len(schedulers[storeID]) > 0 {
+		// scheduler already created, no need to retry
+		return nil
+	}
+
+	// retry evict leader
+	klog.Infof("retryEvictLeaderIfNeeded: retry evict leader for store %d of %s/%s", storeID, tc.Namespace, pod.GetName())
+	// call `beginEvictLeader` to reset the `annoKeyEvictLeaderBeginTime` annotation
+	return u.beginEvictLeader(tc, storeID, pod)
+}
+
 // endEvictLeaderForAllStore end evict leader for all stores of a tc
 func endEvictLeaderForAllStore(deps *controller.Dependencies, tc *v1alpha1.TidbCluster) error {
 	storeIDs := make([]uint64, 0, len(tc.Status.TiKV.Stores)+len(tc.Status.TiKV.TombstoneStores))
@@ -458,7 +469,50 @@ func endEvictLeaderForAllStore(deps *controller.Dependencies, tc *v1alpha1.TidbC
 	return nil
 }
 
+func getMinReadySeconds(tc *v1alpha1.TidbCluster) int {
+	minReadySeconds := 0
+	s, ok := tc.Annotations[annoKeyTiKVMinReadySeconds]
+	if ok {
+		i, err := strconv.Atoi(s)
+		if err != nil {
+			klog.Warningf("tidbcluster: [%s/%s] annotation %s should be an integer: %v", tc.Namespace, tc.Name, annoKeyTiKVMinReadySeconds, err)
+		} else {
+			minReadySeconds = i
+		}
+	}
+	return minReadySeconds
+}
+
+func isPodAvailable(pod *corev1.Pod, minReadySeconds int, tc *v1alpha1.TidbCluster) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	podName := pod.GetName()
+	if !podutil.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
+		readyCond := podutil.GetPodReadyCondition(pod.Status)
+		if readyCond == nil || readyCond.Status != corev1.ConditionTrue {
+			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not ready", ns, tcName, podName)
+
+		}
+		return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not available, last transition time is %v", ns, tcName, podName, readyCond.LastTransitionTime)
+	}
+	return nil
+}
+
 func endEvictLeader(deps *controller.Dependencies, tc *v1alpha1.TidbCluster, ordinal int32) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+	podName := TikvPodName(tcName, ordinal)
+
+	minReadySeconds := getMinReadySeconds(tc)
+
+	pod, err := deps.PodLister.Pods(ns).Get(podName)
+	if err != nil {
+		return fmt.Errorf("endEvictLeader: failed to get pods %s for cluster %s/%s, error: %s", podName, ns, tcName, err)
+	}
+	if err := isPodAvailable(pod, minReadySeconds, tc); err != nil {
+		return err
+	}
+
 	store := getStoreByOrdinal(tc.GetName(), tc.Status.TiKV, ordinal)
 	if store == nil {
 		klog.Errorf("endEvictLeader: no store found for TiKV ordinal %v of %s/%s", ordinal, tc.Namespace, tc.Name)

@@ -28,6 +28,7 @@ import (
 const (
 	CloudAPIConcurrency = 8
 	PVCTagKey           = "CSIVolumeName"
+	PvNameTagKey        = "kubernetes.io/created-for/pv/name"
 	PvcNameTagKey       = "kubernetes.io/created-for/pvc/name"
 	PvcNSTagKey         = "kubernetes.io/created-for/pvc/namespace"
 )
@@ -104,6 +105,7 @@ func (s *AWSSnapshotter) AddVolumeTags(pvs []*corev1.PersistentVolume) error {
 	for _, pv := range pvs {
 		tags := make(map[string]string)
 		tags[PVCTagKey] = pv.GetName()
+		tags[PvNameTagKey] = pv.GetName()
 		if pv.Spec.ClaimRef != nil {
 			tags[PvcNameTagKey] = pv.Spec.ClaimRef.Name
 			tags[PvcNSTagKey] = pv.Spec.ClaimRef.Namespace
@@ -147,4 +149,20 @@ func (s *AWSSnapshotter) ResetPvAvailableZone(r *v1alpha1.Restore, pv *corev1.Pe
 			}
 		}
 	}
+}
+
+func (s *AWSSnapshotter) CleanVolumes(r *v1alpha1.Restore, csb *CloudSnapBackup) error {
+	if !v1alpha1.IsRestoreVolumeFailed(r) {
+		return errors.New("can't clean volumes if not restore volume failed")
+	}
+
+	volumeIDs := s.getRestoreVolumeIDs(csb)
+	ec2Session, err := util.NewEC2Session(util.CloudAPIConcurrency)
+	if err != nil {
+		return fmt.Errorf("new ec2 session error: %w", err)
+	}
+	if err := ec2Session.DeleteVolumes(volumeIDs); err != nil {
+		return fmt.Errorf("delete volumes error: %w", err)
+	}
+	return nil
 }

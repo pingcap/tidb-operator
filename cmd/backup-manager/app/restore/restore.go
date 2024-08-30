@@ -93,10 +93,13 @@ func (ro *Options) restoreData(
 		// init pitr restore args
 		args = append(args, fmt.Sprintf("--restored-ts=%s", ro.PitrRestoredTs))
 
-		if fullBackupArgs, err := pkgutil.GenStorageArgsForFlag(restore.Spec.PitrFullBackupStorageProvider, "full-backup-storage"); err != nil {
-			return err
+		fullBackupArgs, err := pkgutil.GenStorageArgsForFlag(restore.Spec.PitrFullBackupStorageProvider, "full-backup-storage")
+		if err != nil {
+			if restore.Spec.LogRestoreStartTs == "" {
+				return fmt.Errorf("error: Either pitrFullBackupStorageProvider or logRestoreStartTs option needs to be passed in pitr mode")
+			}
+			args = append(args, fmt.Sprintf("--start-ts=%s", restore.Spec.LogRestoreStartTs))
 		} else {
-			// parse full backup path
 			args = append(args, fullBackupArgs...)
 		}
 		restoreType = "point"

@@ -53,6 +53,9 @@ const (
 	// BackupScheduleLabelKey is backup schedule key
 	BackupScheduleLabelKey string = "tidb.pingcap.com/backup-schedule"
 
+	// BackupScheduleGroupLabelKey is backup schedule group key
+	BackupScheduleGroupLabelKey string = "tidb.pingcap.com/backup-schedule-group"
+
 	// BackupLabelKey is backup key
 	BackupLabelKey string = "tidb.pingcap.com/backup"
 
@@ -104,6 +107,9 @@ const (
 	AnnTiCDCGracefulShutdownBeginTime = "tidb.pingcap.com/ticdc-graceful-shutdown-begin-time"
 	// AnnStsLastSyncTimestamp is sts annotation key to indicate the last timestamp the operator sync the sts
 	AnnStsLastSyncTimestamp = "tidb.pingcap.com/sync-timestamp"
+	// AnnoPrefixConfigMapNameBeforeDelete is the last used ConfigMap name before STS deleted. xxx_member_manager should use its
+	// annotation value as ConfigMap name if the value is not empty when it tries to CREATE or RESTORE sts.
+	AnnoPrefixConfigMapNameBeforeDelete = "tidb.pingcap.com/configmap-name-before-delete-"
 
 	// AnnPVCScaleInTime is pvc scaled in time key used in PVC for e2e test only
 	AnnPVCScaleInTime = "tidb.pingcap.com/scale-in-time"
@@ -255,7 +261,7 @@ func NewRestore() Label {
 	}
 }
 
-// NewBackupSchedule initialize a new Label for backups of bakcup schedule
+// NewBackupSchedule initialize a new Label for backups of backup schedule
 func NewBackupSchedule() Label {
 	return Label{
 		NameLabelKey:      BackupScheduleJobLabelVal,
@@ -289,6 +295,12 @@ func NewGroup() Label {
 	return Label{
 		NameLabelKey:      "tidb-cluster-group",
 		ManagedByLabelKey: TiDBOperator,
+	}
+}
+
+func NewBackupScheduleGroup(val string) Label {
+	return Label{
+		BackupScheduleGroupLabelKey: val,
 	}
 }
 
@@ -555,4 +567,8 @@ func (l Label) IsManagedByTiDBOperator() bool {
 // IsTidbClusterPod returns whether it is a TidbCluster-controlled pod
 func (l Label) IsTidbClusterPod() bool {
 	return l[NameLabelKey] == "tidb-cluster"
+}
+
+func AnnoKeyOfConfigMapNameForNewSTS(compType string) string {
+	return AnnoPrefixConfigMapNameBeforeDelete + compType
 }

@@ -2546,6 +2546,22 @@ spec:
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                   type: object
+                livenessProbe:
+                  properties:
+                    initialDelaySeconds:
+                      format: int32
+                      minimum: 0
+                      type: integer
+                    periodSeconds:
+                      format: int32
+                      minimum: 1
+                      type: integer
+                    type:
+                      enum:
+                      - tcp
+                      - command
+                      type: string
+                  type: object
                 nodeSelector:
                   additionalProperties:
                     type: string
@@ -2706,6 +2722,8 @@ spec:
             dnsPolicy:
               type: string
             enableDynamicConfiguration:
+              type: boolean
+            enablePVCReplace:
               type: boolean
             enablePVReclaim:
               type: boolean
@@ -5059,6 +5077,10 @@ spec:
                   type: object
                 serviceAccount:
                   type: string
+                spareVolReplaceReplicas:
+                  format: int32
+                  minimum: 0
+                  type: integer
                 startTimeout:
                   type: integer
                 startUpScriptVersion:
@@ -17240,6 +17262,10 @@ spec:
                   type: boolean
                 serviceAccount:
                   type: string
+                spareVolReplaceReplicas:
+                  format: int32
+                  minimum: 0
+                  type: integer
                 statefulSetUpdateStrategy:
                   type: string
                 storageClassName:

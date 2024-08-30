@@ -14,7 +14,9 @@
 package utils
 
 import (
+	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -162,4 +164,31 @@ func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 func SetUpgradePartition(set *apps.StatefulSet, upgradeOrdinal int32) {
 	set.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{Partition: &upgradeOrdinal}
 	klog.Infof("set %s/%s partition to %d", set.GetNamespace(), set.GetName(), upgradeOrdinal)
+}
+
+func DeleteStatefulSetWithOrphan(
+	ctx context.Context,
+	setCtl controller.StatefulSetControlInterface,
+	tcCtl controller.TidbClusterControlInterface,
+	tc *v1alpha1.TidbCluster, sts *apps.StatefulSet) error {
+
+	// Store the name of currently using configmap into TC to make sure xxx_member_manager can use the same ConfigMap name
+	// when creating(restore) new StatefulSet. See pkg/manager/utils/configmap.go:FindConfigMapNameFromTCAnno.
+	memberType := v1alpha1.MemberType(label.Label(sts.Labels).ComponentType())
+	inUseCMName := FindConfigMapVolume(&sts.Spec.Template.Spec, func(name string) bool {
+		return strings.HasPrefix(name, controller.MemberName(tc.Name, memberType))
+	})
+	if tc.Annotations == nil {
+		tc.Annotations = map[string]string{}
+	}
+	tc.Annotations[label.AnnoKeyOfConfigMapNameForNewSTS(string(memberType))] = inUseCMName
+	klog.Infof("store inuse configmap name %s for component %s in tc %s/%s annotation", inUseCMName, memberType, tc.Namespace, tc.Name)
+	if _, err := tcCtl.Update(tc); err != nil {
+		return fmt.Errorf("update tc to save name of currently using configmap: %w", err)
+	}
+
+	// Delete sts and remain dependent as orphan
+	orphan := metav1.DeletePropagationOrphan
+	err := setCtl.DeleteStatefulSet(tc, sts, metav1.DeleteOptions{PropagationPolicy: &orphan})
+	return err
 }
