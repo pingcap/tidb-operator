@@ -339,7 +339,7 @@ func ParseLogBackupSubcommand(backup *Backup) LogSubCommandType {
 	}
 	switch backup.Spec.LogSubcommand {
 	case "log-start":
-		if IsLogBackupAlreadyStart(backup) {
+		if IsLogBackupAlreadyPaused(backup) {
 			return LogResumeCommand
 		}
 		return LogStartCommand
@@ -350,11 +350,10 @@ func ParseLogBackupSubcommand(backup *Backup) LogSubCommandType {
 	case "log-truncate":
 		return LogTruncateCommand
 	default:
-		return ""
+		return LogStartCommand
 	}
 }
 
-// TODO: (Ris) move logic about truncate to elsewhere
 // IsLogBackupSubCommandOntheCondition return whether the log subcommand on the condition.
 func IsLogBackupSubCommandOntheCondition(backup *Backup, conditionType BackupConditionType) bool {
 	command := ParseLogBackupSubcommand(backup)
@@ -419,7 +418,6 @@ func IsLogBackupAlreadyStop(backup *Backup) bool {
 }
 
 // IsLogBackupAlreadyStop return whether log backup has already paused.
-//TODO: (Ris) deal with task stopped
 func IsLogBackupAlreadyPaused(backup *Backup) bool {
 	return backup.Spec.Mode == BackupModeLog && backup.Status.Phase == BackupPaused
 }
