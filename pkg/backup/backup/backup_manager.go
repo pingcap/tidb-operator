@@ -161,7 +161,6 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	var job *batchv1.Job
 	var reason string
 	var updateStatus *controller.BackupUpdateStatus
-	//TODO: (Ris)modify the backupJobs
 	if job, updateStatus, reason, err = bm.makeBackupJob(backup); err != nil {
 		klog.Errorf("backup %s/%s create job %s failed, reason is %s, error %v.", ns, name, backupJobName, reason, err)
 		return err
@@ -1095,7 +1094,7 @@ func (bm *backupManager) skipLogBackupSync(backup *v1alpha1.Backup) (bool, error
 	case v1alpha1.LogPauseCommand:
 		skip = v1alpha1.IsLogBackupAlreadyPaused(backup)
 	case v1alpha1.LogResumeCommand:
-		skip = !v1alpha1.IsLogBackupAlreadyRunning(backup)
+		skip = v1alpha1.IsLogBackupAlreadyRunning(backup)
 	case v1alpha1.LogTruncateCommand:
 		if v1alpha1.IsLogBackupAlreadyTruncate(backup) {
 			skip = true
@@ -1240,7 +1239,7 @@ func shouldLogBackupCommandRequeue(backup *v1alpha1.Backup) bool {
 	}
 	command := v1alpha1.ParseLogBackupSubcommand(backup)
 
-	if command == v1alpha1.LogTruncateCommand || command == v1alpha1.LogStopCommand {
+	if command == v1alpha1.LogTruncateCommand || command == v1alpha1.LogStopCommand || command == v1alpha1.LogPauseCommand {
 		return backup.Status.CommitTs == ""
 	}
 	return false

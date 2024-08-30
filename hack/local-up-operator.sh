@@ -13,10 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#
-# This command runs tidb-operator in Kubernetes.
-#
-
 # Default provider is kind
 PROVIDER=${PROVIDER:-kind}
 

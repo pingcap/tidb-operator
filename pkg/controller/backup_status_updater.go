@@ -209,7 +209,6 @@ func updateSnapshotBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 
 // updateLogBackupStatus update log backup status.
 // it will update both the log backup sub command status and the whole log backup status.
-//TODO: (Ris) add more states here
 func updateLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
 	// update whole backup status
 	isWholeStatusUpdate := updateWholeLogBackupStatus(backup, condition, newStatus)
