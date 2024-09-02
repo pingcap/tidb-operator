@@ -25,7 +25,7 @@ function usage() {
     cat <<'EOF'
 This script runs tidb-operator in Kubernetes using the appropriate provider.
 
-Usage: router.sh [-hd] [-p PROVIDER]
+Usage: local-up-operator.sh [-hd] [-p PROVIDER]
 
     -h      Show this message and exit
     -i      Install dependencies only
