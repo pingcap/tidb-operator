@@ -404,6 +404,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Start log backup")
 			backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.LogSubcommand = "log-start"
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
 			})
@@ -412,6 +413,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Truncate log backup")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.LogSubcommand = "log-truncate"
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
 				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
@@ -421,6 +423,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Truncate log backup again")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.LogSubcommand = "log-truncate"
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
 				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
@@ -430,19 +433,19 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Stop log backup")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.LogSubcommand = "log-stop"
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
-				backup.Spec.LogStop = true
 			})
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupStopped)
 
 			ginkgo.By("Truncate log backup after stop")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.LogSubcommand = "log-truncate"
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
 				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
-				backup.Spec.LogStop = false
 			})
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
