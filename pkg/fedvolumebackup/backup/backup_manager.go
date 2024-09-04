@@ -381,20 +381,32 @@ func (bm *backupManager) waitBackupMemberInitializeComplete(volumeBackup *v1alph
 }
 
 func (bm *backupManager) waitVolumeSnapshotsComplete(backupMembers []*volumeBackupMember) error {
+	someMemberFailed := false
+	var failMemberName, failClusterName string
+
 	for _, backupMember := range backupMembers {
 		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) ||
 			pingcapv1alpha1.IsVolumeBackupFailed(backupMember.backup) ||
 			pingcapv1alpha1.IsBackupFailed(backupMember.backup) {
-			errMsg := fmt.Sprintf("backup member %s of cluster %s failed", backupMember.backup.Name, backupMember.k8sClusterName)
-			return &fedvolumebackup.BRDataPlaneFailedError{
-				Reason:  reasonVolumeBackupMemberFailed,
-				Message: errMsg,
+			failMemberName = backupMember.backup.Name
+			failClusterName = backupMember.k8sClusterName
+			klog.Errorf("backup member %s of cluster %s failed", failMemberName, failClusterName)
+			someMemberFailed = true
+		} else {
+			if !pingcapv1alpha1.IsVolumeBackupComplete(backupMember.backup) {
+				return controller.IgnoreErrorf("backup member %s of cluster %s is not volume snapshots complete", backupMember.backup.Name, backupMember.k8sClusterName)
 			}
 		}
-		if !pingcapv1alpha1.IsVolumeBackupComplete(backupMember.backup) {
-			return controller.IgnoreErrorf("backup member %s of cluster %s is not volume snapshots complete", backupMember.backup.Name, backupMember.k8sClusterName)
+	}
+
+	if someMemberFailed {
+		errMsg := fmt.Sprintf("backup member %s of cluster %s failed", failMemberName, failClusterName)
+		return &fedvolumebackup.BRDataPlaneFailedError{
+			Reason:  reasonVolumeBackupMemberFailed,
+			Message: errMsg,
 		}
 	}
+
 	return nil
 }
 
