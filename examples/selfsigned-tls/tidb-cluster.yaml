@@ -3,7 +3,7 @@ kind: TidbCluster
 metadata:
   name: tls
 spec:
-  version: v7.5.1
+  version: v7.5.3
   timezone: UTC
   pvReclaimPolicy: Retain
   enableDynamicConfiguration: true
