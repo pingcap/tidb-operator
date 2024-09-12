@@ -22,7 +22,6 @@ import (
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
-
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/klog/v2"
 )
@@ -54,7 +53,7 @@ func (u *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stat
 		return fmt.Errorf("tidbcluster: [%s/%s]'s pd status sync failed, can not to be upgraded", ns, tcName)
 	}
 	if tc.PDScaling() {
-		klog.Infof("TidbCluster: [%s/%s]'s pd status is %v, can not upgrade pd",
+		klog.Infof("tidbCluster: [%s/%s]'s pd status is %v, can not upgrade pd",
 			ns, tcName, tc.Status.PD.Phase)
 		_, podSpec, err := GetLastAppliedConfig(oldSet)
 		if err != nil {
@@ -143,13 +142,13 @@ func (u *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newSe
 		if targetName != "" {
 			err := u.transferPDLeaderTo(tc, targetName)
 			if err != nil {
-				klog.Errorf("pd upgrader: failed to transfer pd leader to: %s, %v", targetName, err)
+				klog.Errorf("tidbcluster: [%s/%s] pd upgrader: failed to transfer pd leader to: %s, %v", ns, tcName, targetName, err)
 				return err
 			}
-			klog.Infof("pd upgrader: transfer pd leader to: %s successfully", targetName)
+			klog.Infof("tidbcluster: [%s/%s] pd upgrader: transfer pd leader to: %s successfully", ns, tcName, targetName)
 			return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd member: [%s] is transferring leader to pd member: [%s]", ns, tcName, upgradePdName, targetName)
 		} else {
-			klog.Warningf("pd upgrader: skip to transfer pd leader, because can not find a suitable pd")
+			klog.Warningf("tidbcluster: [%s/%s] pd upgrader: skip to transfer pd leader, because can not find a suitable pd", ns, tcName)
 		}
 	}
 
