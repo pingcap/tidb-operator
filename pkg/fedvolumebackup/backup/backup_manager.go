@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -425,14 +426,18 @@ func (bm *backupManager) teardownVolumeBackup(ctx context.Context, volumeBackup 
 
 func (bm *backupManager) waitVolumeBackupComplete(ctx context.Context, volumeBackup *v1alpha1.VolumeBackup, backupMembers []*volumeBackupMember) error {
 	isBackupRunning := false
+	var failedBackups []*volumeBackupMember
 	for _, backupMember := range backupMembers {
-		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) || pingcapv1alpha1.IsBackupFailed(backupMember.backup) {
+		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) {
 			errMsg := fmt.Sprintf("backup member %s of cluster %s failed", backupMember.backup.Name, backupMember.k8sClusterName)
 			bm.setVolumeBackupFailed(&volumeBackup.Status, backupMembers, reasonVolumeBackupMemberFailed, errMsg)
 			klog.Errorf("VolumeBackup %s/%s failed, err: %s", volumeBackup.Namespace, volumeBackup.Name, errMsg)
 			return nil
-		}
-		if !pingcapv1alpha1.IsBackupComplete(backupMember.backup) {
+		} else if pingcapv1alpha1.IsBackupFailed(backupMember.backup) {
+			failedBackups = append(failedBackups, backupMember)
+			klog.Errorf("VolumeBackup %s/%s backup member %s of cluster %s is failed",
+				volumeBackup.Namespace, volumeBackup.Name, backupMember.backup.Name, backupMember.k8sClusterName)
+		} else if !pingcapv1alpha1.IsBackupComplete(backupMember.backup) {
 			isBackupRunning = true
 			klog.Infof(
 				"VolumeBackup %s/%s backup member %s of cluster %s is not complete",
@@ -442,6 +447,10 @@ func (bm *backupManager) waitVolumeBackupComplete(ctx context.Context, volumeBac
 
 	if isBackupRunning {
 		return controller.IgnoreErrorf("wait VolumeBackup complete")
+	} else if len(failedBackups) > 0 {
+		errMsg := genErrorMessageByFailedBackupMembers(failedBackups)
+		bm.setVolumeBackupFailed(&volumeBackup.Status, backupMembers, reasonVolumeBackupMemberFailed, errMsg)
+		return nil
 	} else {
 		klog.Infof("VolumeBackup %s/%s backup complete", volumeBackup.Namespace, volumeBackup.Name)
 		return bm.setVolumeBackupComplete(&volumeBackup.Status, backupMembers)
@@ -622,3 +631,13 @@ func (m *FakeBackupManager) IsStatusUpdated() bool {
 }
 
 var _ fedvolumebackup.BackupManager = &FakeBackupManager{}
+
+func genErrorMessageByFailedBackupMembers(failedBackupMembers []*volumeBackupMember) string {
+	var backupNames, clusterNames []string
+	for _, member := range failedBackupMembers {
+		backupNames = append(backupNames, member.backup.Name)
+		clusterNames = append(clusterNames, member.k8sClusterName)
+	}
+	return fmt.Sprintf("backup members %s of clusters %s failed",
+		strings.Join(backupNames, ","), strings.Join(clusterNames, ","))
+}
