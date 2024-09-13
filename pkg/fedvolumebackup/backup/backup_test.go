@@ -132,6 +132,10 @@ func (h *helper) assertRunTeardown(ctx context.Context, volumeBackup *v1alpha1.V
 	h.g.Expect(backupMember3.Spec.FederalVolumeBackupPhase).To(gomega.Equal(pingcapv1alpha1.FederalVolumeBackupTeardown))
 }
 
+func (h *helper) assertRunning(volumeBackup *v1alpha1.VolumeBackup) {
+	h.g.Expect(v1alpha1.IsVolumeBackupRunning(volumeBackup)).To(gomega.BeTrue())
+}
+
 func (h *helper) assertComplete(volumeBackup *v1alpha1.VolumeBackup) {
 	h.g.Expect(v1alpha1.IsVolumeBackupComplete(volumeBackup)).To(gomega.BeTrue())
 	h.g.Expect(volumeBackup.Status.CommitTs).To(gomega.Equal("123"))
@@ -290,6 +294,35 @@ func (h *helper) setDataPlaneFailed(ctx context.Context) {
 	h.g.Expect(err).To(gomega.BeNil())
 }
 
+func (h *helper) setAllDataPlanesFailed(ctx context.Context) {
+	backupMember1, err := h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).Get(ctx, h.backupMemberName1, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+	pingcapv1alpha1.UpdateBackupCondition(&backupMember1.Status, &pingcapv1alpha1.BackupCondition{
+		Status: corev1.ConditionTrue,
+		Type:   pingcapv1alpha1.BackupFailed,
+	})
+	_, err = h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).UpdateStatus(ctx, backupMember1, metav1.UpdateOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+
+	backupMember2, err := h.dataPlaneClient2.PingcapV1alpha1().Backups(fakeTcNamespace2).Get(ctx, h.backupMemberName2, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+	pingcapv1alpha1.UpdateBackupCondition(&backupMember2.Status, &pingcapv1alpha1.BackupCondition{
+		Status: corev1.ConditionTrue,
+		Type:   pingcapv1alpha1.BackupFailed,
+	})
+	_, err = h.dataPlaneClient2.PingcapV1alpha1().Backups(fakeTcNamespace2).UpdateStatus(ctx, backupMember2, metav1.UpdateOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+
+	backupMember3, err := h.dataPlaneClient3.PingcapV1alpha1().Backups(fakeTcNamespace3).Get(ctx, h.backupMemberName3, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+	pingcapv1alpha1.UpdateBackupCondition(&backupMember3.Status, &pingcapv1alpha1.BackupCondition{
+		Status: corev1.ConditionTrue,
+		Type:   pingcapv1alpha1.BackupFailed,
+	})
+	_, err = h.dataPlaneClient3.PingcapV1alpha1().Backups(fakeTcNamespace3).UpdateStatus(ctx, backupMember3, metav1.UpdateOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+}
+
 func TestVolumeBackup(t *testing.T) {
 	ctx := context.Background()
 	backupName := "backup-1"
@@ -403,8 +436,15 @@ func TestVolumeBackupVolumeFailed(t *testing.T) {
 	h.g.Expect(err).To(gomega.BeNil())
 	h.assertRunTeardown(ctx, volumeBackup, false)
 
-	// volume backup failed
+	// one data plane failed
 	h.setDataPlaneFailed(ctx)
+	err = h.bm.Sync(volumeBackup)
+	h.g.Expect(err).NotTo(gomega.BeNil())
+	h.g.Expect(err.Error()).To(gomega.ContainSubstring("wait VolumeBackup complete"))
+	h.assertRunning(volumeBackup)
+
+	// all data planes failed
+	h.setAllDataPlanesFailed(ctx)
 	err = h.bm.Sync(volumeBackup)
 	h.g.Expect(err).To(gomega.BeNil())
 	h.assertFailed(volumeBackup)
