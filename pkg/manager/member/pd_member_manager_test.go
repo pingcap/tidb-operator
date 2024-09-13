@@ -2873,6 +2873,7 @@ func TestPDMemberManagerSyncPDPeerUrlsSts(t *testing.T) {
 		tcName := tc.Name
 
 		pmm, _, _ := newFakePDMemberManager()
+		pmm.deps.PDControl = pdapi.NewFakePDControl(pmm.deps.KubeInformerFactory.Core().V1().Secrets().Lister(), true)
 		fakePDControl := pmm.deps.PDControl.(*pdapi.FakePDControl)
 		pdClient := controller.NewFakePDClient(fakePDControl, tc)
 		etcdClient := controller.NewFakeEtcdClient(fakePDControl, tc)
@@ -2929,20 +2930,14 @@ func TestPDMemberManagerSyncPDPeerUrlsSts(t *testing.T) {
 				}
 			},
 			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
-				{Name: "pd0", MemberID: uint64(1), ClientUrls: []string{"http://pd0:2379"}, Health: true},
-				{Name: "pd1", MemberID: uint64(2), ClientUrls: []string{"http://pd1:2379"}, Health: true},
+				{Name: "pd0", MemberID: 1, ClientUrls: []string{"http://pd0:2379"}, Health: true},
 			}},
 			membersInfo: &pdapi.MembersInfo{
 				Members: []*pdpb.Member{
 					{
 						Name:     "pd0",
-						MemberId: 111,
+						MemberId: 1,
 						PeerUrls: []string{"http://pd0:2380"},
-					},
-					{
-						Name:     "pd1",
-						MemberId: 222,
-						PeerUrls: []string{"http://pd1:2380"},
 					},
 				},
 			},
@@ -2967,20 +2962,14 @@ func TestPDMemberManagerSyncPDPeerUrlsSts(t *testing.T) {
 				}
 			},
 			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
-				{Name: "pd0", MemberID: uint64(1), ClientUrls: []string{"https://pd0:2379"}, Health: true},
-				{Name: "pd1", MemberID: uint64(2), ClientUrls: []string{"https://pd1:2379"}, Health: true},
+				{Name: "pd0", MemberID: 1, ClientUrls: []string{"https://pd0:2379"}, Health: true},
 			}},
 			membersInfo: &pdapi.MembersInfo{
 				Members: []*pdpb.Member{
 					{
 						Name:     "pd0",
-						MemberId: 111,
+						MemberId: 1,
 						PeerUrls: []string{"https://pd0:2380"},
-					},
-					{
-						Name:     "pd1",
-						MemberId: 222,
-						PeerUrls: []string{"https://pd1:2380"},
 					},
 				},
 			},

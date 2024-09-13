@@ -333,16 +333,27 @@ func genEtcdClientUrl(namespace Namespace, clusterName, clusterDomain string, he
 // FakePDControl implements a fake version of PDControlInterface.
 type FakePDControl struct {
 	defaultPDControl
+	skipTLS bool
 }
 
-func NewFakePDControl(secretLister corelisterv1.SecretLister) *FakePDControl {
-	return &FakePDControl{
-		defaultPDControl{secretLister: secretLister, pdClients: map[string]PDClient{}, pdMSClients: map[string]PDMSClient{}, pdEtcdClients: map[string]PDEtcdClient{}},
+func NewFakePDControl(secretLister corelisterv1.SecretLister, skipTLS ...bool) *FakePDControl {
+	fake := &FakePDControl{
+		defaultPDControl{secretLister: secretLister, pdClients: map[string]PDClient{},
+			pdMSClients: map[string]PDMSClient{}, pdEtcdClients: map[string]PDEtcdClient{}},
+		false,
 	}
+	if len(skipTLS) > 0 {
+		fake.skipTLS = true
+	}
+	return fake
 }
 
-func (fpc *FakePDControl) GetPDClient(namespace Namespace, tcName string, _ bool, _ ...Option) PDClient {
-	return fpc.defaultPDControl.pdClients[genClientKey("http", namespace, tcName, "")]
+func (fpc *FakePDControl) GetPDClient(namespace Namespace, tcName string, tlsEnabled bool, opts ...Option) PDClient {
+	if fpc.skipTLS {
+		return fpc.defaultPDControl.pdClients[genClientKey("http", namespace, tcName, "")]
+	}
+	// return default GetPDClient
+	return fpc.defaultPDControl.GetPDClient(namespace, tcName, tlsEnabled, opts...)
 }
 
 func (fpc *FakePDControl) GetPDEtcdClient(namespace Namespace, tcName string, _ bool, _ ...Option) (PDEtcdClient, error) {
