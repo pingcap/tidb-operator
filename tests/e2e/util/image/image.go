@@ -34,7 +34,7 @@ var (
 const (
 	// TiDB Version
 	TiDBLatestPrev     = "v7.5.3"
-	TiDBLatest         = "v8.1.1"
+	TiDBLatest         = "v8.1.0" // different version with PDMSImage
 	TiDBNightlyVersion = "nightly"
 	// specific version
 	TiDBV7x5x0 = "v7.5.0"
