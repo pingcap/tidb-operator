@@ -98,6 +98,12 @@ func (c *defaultBackupControl) removeProtectionFinalizer(backup *v1alpha1.Backup
 	name := backup.GetName()
 
 	if needToRemoveFinalizer(backup) {
+		// for log backup, we need stop the log backup before clean up
+		if backup.Spec.Mode == v1alpha1.BackupModeLog {
+			if err := c.backupManager.StopLogBackup(backup); err != nil {
+				return err
+			}
+		}
 		backup.Finalizers = k8s.RemoveString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
 		_, err := c.cli.PingcapV1alpha1().Backups(ns).Update(context.TODO(), backup, metav1.UpdateOptions{})
 		if err != nil {

@@ -37,6 +37,7 @@ var _ BackupCleaner = &backupCleaner{}
 // BackupCleaner implements the logic for cleaning backup
 type BackupCleaner interface {
 	Clean(backup *v1alpha1.Backup) error
+	StopLogBackup(backup *v1alpha1.Backup) error
 }
 
 type backupCleaner struct {
@@ -53,29 +54,26 @@ func NewBackupCleaner(deps *controller.Dependencies, statusUpdater controller.Ba
 }
 
 func (bc *backupCleaner) StopLogBackup(backup *v1alpha1.Backup) error {
-	if backup.Spec.Mode != v1alpha1.BackupModeLog {
-		return nil
-	}
-	if backup.Spec.BR == nil {
-		return fmt.Errorf("backup %s/%s spec.BR shouldn't be nil", backup.GetNamespace(), backup.GetName())
-	}
 	if !v1alpha1.IsLogBackupAlreadyStart(backup) {
 		return nil
 	}
 	if v1alpha1.IsLogBackupAlreadyStop(backup) {
 		return nil
 	}
+	if backup.Spec.BR == nil {
+		return fmt.Errorf("backup %s/%s spec.BR shouldn't be nil", backup.GetNamespace(), backup.GetName())
+	}
 
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	backupJobName := backup.GetBackupJobName()
 
-	// make backup job
+	// make stop job
 	var err error
 	var job *batchv1.Job
 	var reason string
 	if job, reason, err = bc.makeStopLogBackupJob(backup); err != nil {
-		klog.Errorf("backup %s/%s create job %s failed, reason is %s, error %v.", ns, name, backupJobName, reason, err)
+		klog.Errorf("backup %s/%s stop job %s failed, reason is %s, error %v.", ns, name, backupJobName, reason, err)
 		return err
 	}
 

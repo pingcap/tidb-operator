@@ -24,6 +24,8 @@ type BackupManager interface {
 	Sync(backup *v1alpha1.Backup) error
 	// UpdateStatus updates the status for a Backup, include condition and status info.
 	UpdateStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error
+	// StopLogBackup stops the log backup, it will be called when the log backup is deleted.
+	StopLogBackup(backup *v1alpha1.Backup) error
 }
 
 // RestoreManager implements the logic for manage restore.

@@ -85,6 +85,10 @@ func (bm *backupManager) Sync(backup *v1alpha1.Backup) error {
 	return bm.syncBackupJob(backup)
 }
 
+func (bm *backupManager) StopLogBackup(backup *v1alpha1.Backup) error {
+	return bm.backupCleaner.StopLogBackup(backup)
+}
+
 // UpdateStatus updates the status for a Backup, include condition and status info.
 func (bm *backupManager) UpdateStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error {
 	return bm.statusUpdater.Update(backup, condition, newStatus)
@@ -1289,6 +1293,11 @@ func (m *FakeBackupManager) Sync(_ *v1alpha1.Backup) error {
 
 // UpdateStatus updates the status for a Backup, include condition and status info.
 func (m *FakeBackupManager) UpdateStatus(_ *v1alpha1.Backup, _ *v1alpha1.BackupCondition, newStatus *controller.BackupUpdateStatus) error {
+	return nil
+}
+
+// StopLogBackup stops the log backup, it should only be used in cleanning up.
+func (m *FakeBackupManager) StopLogBackup(_ *v1alpha1.Backup) error {
 	return nil
 }
 
