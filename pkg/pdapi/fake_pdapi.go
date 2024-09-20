@@ -28,6 +28,7 @@ const (
 	GetClusterActionType                        ActionType = "GetCluster"
 	GetMembersActionType                        ActionType = "GetMembers"
 	GetPDMSMembersActionType                    ActionType = "GetPDMSMembers"
+	GetPDMSPrimaryActionType                    ActionType = "GetPDMSPrimary"
 	GetStoresActionType                         ActionType = "GetStores"
 	GetTombStoneStoresActionType                ActionType = "GetTombStoneStores"
 	GetStoreActionType                          ActionType = "GetStore"
@@ -45,6 +46,7 @@ const (
 	TransferPDLeaderActionType                  ActionType = "TransferPDLeader"
 	GetAutoscalingPlansActionType               ActionType = "GetAutoscalingPlans"
 	GetRecoveringMarkActionType                 ActionType = "GetRecoveringMark"
+	PDMSTransferPrimaryActionType               ActionType = "PDMSTransferPrimary"
 )
 
 type NotFoundReaction struct {
@@ -76,6 +78,15 @@ func (c *FakePDClient) GetMSMembers(_ string) ([]string, error) {
 		return nil, err
 	}
 	return result.([]string), nil
+}
+
+func (c *FakePDClient) GetMSPrimary(_ string) (string, error) {
+	action := &Action{}
+	result, err := c.fakeAPI(GetPDMSPrimaryActionType, action)
+	if err != nil {
+		return "", err
+	}
+	return result.(string), nil
 }
 
 func NewFakePDClient() *FakePDClient {
@@ -290,4 +301,41 @@ func (c *FakePDClient) GetRecoveringMark() (bool, error) {
 	}
 
 	return true, nil
+}
+
+// FakePDMSClient implements a fake version of PDMSClient.
+type FakePDMSClient struct {
+	reactions map[ActionType]Reaction
+}
+
+func NewFakePDMSClient() *FakePDMSClient {
+	return &FakePDMSClient{reactions: map[ActionType]Reaction{}}
+}
+
+func (c *FakePDMSClient) AddReaction(actionType ActionType, reaction Reaction) {
+	c.reactions[actionType] = reaction
+}
+
+// fakeAPI is a small helper for fake API calls
+func (c *FakePDMSClient) fakeAPI(actionType ActionType, action *Action) (interface{}, error) {
+	if reaction, ok := c.reactions[actionType]; ok {
+		result, err := reaction(action)
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	}
+	return nil, &NotFoundReaction{actionType}
+}
+
+func (c *FakePDMSClient) GetHealth() error {
+	action := &Action{}
+	_, err := c.fakeAPI(GetHealthActionType, action)
+	return err
+}
+
+func (c *FakePDMSClient) TransferPrimary(newPrimary string) error {
+	action := &Action{Name: newPrimary}
+	_, err := c.fakeAPI(PDMSTransferPrimaryActionType, action)
+	return err
 }
