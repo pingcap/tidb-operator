@@ -33,7 +33,7 @@ TEST_COVER_PACKAGES := go list ./cmd/... ./pkg/... $(foreach mod, $(GO_SUBMODULE
 
 # NOTE: coverage report generated for E2E tests (with `-c`) may not stable, see
 # https://github.com/golang/go/issues/23883#issuecomment-381766556
-GO_TEST := $(GO) test -cover -covermode=atomic -coverpkg=$$($(TEST_COVER_PACKAGES))
+GO_TEST := CGO_ENABLED=0 $(GO) test -cover -covermode=atomic -coverpkg=$$($(TEST_COVER_PACKAGES))
 
 default: build
 
@@ -160,7 +160,7 @@ endif
 	cp -r charts/tidb-operator tests/images/e2e
 	cp -r charts/tidb-drainer tests/images/e2e
 	cp -r manifests tests/images/e2e
-	docker build -t "${DOCKER_REPO}/tidb-operator-e2e:${IMAGE_TAG}" tests/images/e2e
+	docker build -t "${DOCKER_REPO}/tidb-operator-e2e:${IMAGE_TAG}" --build-arg=TARGETARCH=$(GOARCH) tests/images/e2e
 
 e2e-build: ## Build binaries for test
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/ginkgo github.com/onsi/ginkgo/ginkgo
