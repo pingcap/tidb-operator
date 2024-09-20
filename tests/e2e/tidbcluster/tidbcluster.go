@@ -2021,6 +2021,16 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.PDMemberType, v1alpha1.UpgradePhase, 3*time.Minute, time.Second*10)
 			log.Logf("PD is in UpgradePhase")
 
+			ginkgo.By("Wait for TiKV to be in UpgradePhase")
+			utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.TiKVMemberType, v1alpha1.UpgradePhase, 3*time.Minute, time.Second*10)
+			log.Logf("TiKV is in UpgradePhase")
+
+			ginkgo.By("Wait for TiDB to be in UpgradePhase")
+			utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.TiDBMemberType, v1alpha1.UpgradePhase, 3*time.Minute, time.Second*10)
+			log.Logf("TiDB is in UpgradePhase")
+
+			// the tc ready condition between components upgrade phase may not be observed
+			// and it may only observed the last ready after all components upgraded
 			ginkgo.By("Wait for tc ready")
 			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
 			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
@@ -2037,14 +2047,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			log.Logf("PD config:\n%s", pdCm.Data["config-file"])
 			gomega.Expect(pdCm.Data["config-file"]).To(gomega.ContainSubstring("lease = 3"))
 
-			ginkgo.By("Wait for TiKV to be in UpgradePhase")
-			utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.TiKVMemberType, v1alpha1.UpgradePhase, 3*time.Minute, time.Second*10)
-			log.Logf("TiKV is in UpgradePhase")
-
-			ginkgo.By("Wait for tc ready")
-			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
-			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
-
 			ginkgo.By("Check TiKV configuration")
 			tikvMemberName := controller.TiKVMemberName(tc.Name)
 			tikvSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), tikvMemberName, metav1.GetOptions{})
@@ -2056,14 +2058,6 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to get ConfigMap %s/%s", ns, tikvCmName)
 			log.Logf("TiKV config:\n%s", tikvCm.Data["config-file"])
 			gomega.Expect(tikvCm.Data["config-file"]).To(gomega.ContainSubstring("status-thread-pool-size = 1"))
-
-			ginkgo.By("Wait for TiDB to be in UpgradePhase")
-			utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.TiDBMemberType, v1alpha1.UpgradePhase, 3*time.Minute, time.Second*10)
-			log.Logf("TiDB is in UpgradePhase")
-
-			ginkgo.By("Wait for tc ready")
-			err = oa.WaitForTidbClusterReady(tc, 10*time.Minute, 10*time.Second)
-			framework.ExpectNoError(err, "failed to wait for TidbCluster %s/%s components ready", ns, tc.Name)
 
 			ginkgo.By("Check TiDB configuration")
 			tidbMemberName := controller.TiDBMemberName(tc.Name)
