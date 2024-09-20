@@ -2270,7 +2270,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					configureNewTiDBCluster: configureV8x1x0,
 				},
 				{
-					oldVersion:              utilimage.TiDBV7x5x2,
+					oldVersion:              utilimage.TiDBV7x5x3,
 					newVersion:              utilimage.TiDBLatest,
 					configureOldTiDBCluster: configureV7x5x2,
 					configureNewTiDBCluster: configureV8x1x0,

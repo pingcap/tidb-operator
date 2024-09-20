@@ -292,7 +292,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 	utilginkgo.ContextWhenFocus("Specific Version", func() {
 		cases := []*testcase{
 			newTestCase(utilimage.TiDBV7x5x0, utilimage.TiDBLatest, typeBR),
-			newTestCase(utilimage.TiDBV7x5x2, utilimage.TiDBLatest, typeBR),
+			newTestCase(utilimage.TiDBV7x5x3, utilimage.TiDBLatest, typeBR),
 		}
 		for i := range cases {
 			tcase := cases[i]
