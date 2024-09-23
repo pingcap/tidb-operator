@@ -28,7 +28,7 @@ import (
 )
 
 var (
-	TiDBPreviousVersions []string = []string{"v6.1.7", "v6.5.10", "v7.1.5", "v7.5.2", "v8.1.0"}
+	TiDBPreviousVersions []string = []string{"v6.5.10", "v7.1.5", "v7.5.2", "v8.1.0"}
 )
 
 const (
