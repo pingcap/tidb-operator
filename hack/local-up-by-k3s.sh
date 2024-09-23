@@ -164,6 +164,7 @@ helm_template_args=(
     --set-string tidbBackupManagerImage=$DOCKER_REGISTRY/pingcap/tidb-backup-manager:${IMAGE_TAG}
     --set-string controllerManager.logLevel=4
     --set-string scheduler.logLevel=4
+    --set imagePullPolicy=Always
 )
 
 $HELM_BIN template tidb-operator-dev ./charts/tidb-operator/ ${helm_template_args[@]} | kubectl -n "$NAMESPACE" apply -f  -
