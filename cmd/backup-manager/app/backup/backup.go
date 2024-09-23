@@ -174,9 +174,6 @@ func (bo *Options) doResumeLogBackup(ctx context.Context, backup *v1alpha1.Backu
 		"resume",
 		fmt.Sprintf("--task-name=%s", backup.Name),
 	}
-	// if bo.CommitTS != "" && bo.CommitTS != "0" {
-	// 	specificArgs = append(specificArgs, fmt.Sprintf("--start-ts=%s", bo.CommitTS))
-	// }
 	fullArgs, err := bo.backupCommandTemplate(backup, specificArgs, false)
 	if err != nil {
 		return err
