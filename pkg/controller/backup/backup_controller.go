@@ -155,7 +155,6 @@ func (c *Controller) sync(key string) (err error) {
 		return err
 	}
 
-	klog.Infof("Syncing Backup %s/%s", ns, name)
 	return c.syncBackup(backup.DeepCopy())
 }
 
@@ -238,10 +237,6 @@ func (c *Controller) updateBackup(cur interface{}) {
 	if v1alpha1.IsBackupScheduled(newBackup) || v1alpha1.IsBackupRunning(newBackup) || v1alpha1.IsBackupPrepared(newBackup) || v1alpha1.IsLogBackupStopped(newBackup) {
 		klog.V(4).Infof("backup %s/%s is already Scheduled, Running, Preparing or Failed, skipping.", ns, name)
 		return
-	}
-
-	if newBackup.Spec.Mode == v1alpha1.BackupModeLog && newBackup.Spec.LogSubcommand == string(v1alpha1.LogStartCommand) && v1alpha1.IsBackupPaused(newBackup) {
-		newBackup.Spec.LogSubcommand = string(v1alpha1.LogResumeCommand)
 	}
 
 	klog.V(4).Infof("backup object %s/%s enqueue", ns, name)

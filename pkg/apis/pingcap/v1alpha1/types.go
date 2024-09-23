@@ -1879,6 +1879,7 @@ type TLSCluster struct {
 // +kubebuilder:printcolumn:name="Completed",type=date,JSONPath=`.status.timeCompleted`,description="The time at which the backup was completed",priority=1
 // +kubebuilder:printcolumn:name="TimeTaken",type=string,JSONPath=`.status.timeTaken`,description="The time that the backup takes"
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
+// +kubebuilder:validation:OneOf={"logSubCommand", "logStop"}
 type Backup struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
@@ -2179,7 +2180,6 @@ type BackupSpec struct {
 	CommitTs string `json:"commitTs,omitempty"`
 	// Subcommand is the subcommand for BR, such as start, stop, pause etc.
 	// +optional
-	// +kubebuilder:default="log-start"
 	LogSubcommand string `json:"logSubcommand,omitempty"`
 	// LogTruncateUntil is log backup truncate until timestamp.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
