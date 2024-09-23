@@ -2114,7 +2114,6 @@ spec:
                   logStop:
                     type: boolean
                   logSubcommand:
-                    default: log-start
                     type: string
                   logTruncateUntil:
                     type: string
@@ -2282,6 +2281,13 @@ spec:
                     default: 600
                     type: integer
                 type: object
+                x-kubernetes-validations:
+                - message: Field `logStop` is the old version field, please use `logSubcommand`
+                    instead
+                  rule: 'has(self.logSubcommand) ? !has(self.logStop) : true'
+                - message: Field `logStop` is the old version field, please use `logSubcommand`
+                    instead
+                  rule: 'has(self.logStop) ? !has(self.logSubcommand) : true'
               imagePullSecrets:
                 items:
                   properties:
@@ -4350,7 +4356,6 @@ spec:
                   logStop:
                     type: boolean
                   logSubcommand:
-                    default: log-start
                     type: string
                   logTruncateUntil:
                     type: string
@@ -4518,6 +4523,13 @@ spec:
                     default: 600
                     type: integer
                 type: object
+                x-kubernetes-validations:
+                - message: Field `logStop` is the old version field, please use `logSubcommand`
+                    instead
+                  rule: 'has(self.logSubcommand) ? !has(self.logStop) : true'
+                - message: Field `logStop` is the old version field, please use `logSubcommand`
+                    instead
+                  rule: 'has(self.logStop) ? !has(self.logSubcommand) : true'
               maxBackups:
                 format: int32
                 type: integer
@@ -6696,7 +6708,6 @@ spec:
               logStop:
                 type: boolean
               logSubcommand:
-                default: log-start
                 type: string
               logTruncateUntil:
                 type: string
@@ -6864,6 +6875,13 @@ spec:
                 default: 600
                 type: integer
             type: object
+            x-kubernetes-validations:
+            - message: Field `logStop` is the old version field, please use `logSubcommand`
+                instead
+              rule: 'has(self.logSubcommand) ? !has(self.logStop) : true'
+            - message: Field `logStop` is the old version field, please use `logSubcommand`
+                instead
+              rule: 'has(self.logStop) ? !has(self.logSubcommand) : true'
           status:
             properties:
               backoffRetryStatus:
