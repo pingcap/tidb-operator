@@ -2131,6 +2131,8 @@ type Progress struct {
 
 // BackupSpec contains the backup specification for a tidb cluster.
 // +k8s:openapi-gen=true
+// +kubebuilder:validation:XValidation:rule="has(self.logSubcommand) ? !has(self.logStop) : true",message="Field `logStop` is the old version field, please use `logSubcommand` instead"
+// +kubebuilder:validation:XValidation:rule="has(self.logStop) ? !has(self.logSubcommand) : true",message="Field `logStop` is the old version field, please use `logSubcommand` instead"
 type BackupSpec struct {
 	corev1.ResourceRequirements `json:"resources,omitempty"`
 	// List of environment variables to set in the container, like v1.Container.Env.
