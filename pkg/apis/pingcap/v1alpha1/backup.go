@@ -310,6 +310,9 @@ func IsBackupCleanFailed(backup *Backup) bool {
 
 // IsCleanCandidate returns true if a Backup should be added to clean candidate according to cleanPolicy
 func IsCleanCandidate(backup *Backup) bool {
+	if backup.Spec.Mode == BackupModeLog {
+		return true
+	}
 	switch backup.Spec.CleanPolicy {
 	case CleanPolicyTypeDelete, CleanPolicyTypeOnFailure:
 		return true
@@ -324,34 +327,57 @@ func NeedNotClean(backup *Backup) bool {
 }
 
 // ParseLogBackupSubcommand parse the log backup subcommand from cr.
-// The parse priority of the command is stop > truncate > start.
 func ParseLogBackupSubcommand(backup *Backup) LogSubCommandType {
 	if backup.Spec.Mode != BackupModeLog {
 		return ""
 	}
 
-	//Compatible with the old version
+	// Compatible with the old version
 	if backup.Spec.LogStop {
+		if isSubcommandAlreadySync(backup, LogStopCommand) {
+			return LogTruncateCommand
+		}
 		return LogStopCommand
 	}
 
+	var subCommand LogSubCommandType
 	switch backup.Spec.LogSubcommand {
 	case "log-start":
 		if IsLogBackupAlreadyPaused(backup) {
-			return LogResumeCommand
+			subCommand = LogResumeCommand
+		} else {
+			subCommand = LogStartCommand
 		}
-		return LogStartCommand
 	case "log-stop":
-		return LogStopCommand
+		subCommand = LogStopCommand
 	case "log-pause":
-		return LogPauseCommand
+		subCommand = LogPauseCommand
 	case "log-truncate":
-		return LogTruncateCommand
+		subCommand = LogTruncateCommand
 	default:
-		if backup.Spec.LogTruncateUntil != "" {
-			return LogTruncateCommand
-		}
-		return LogStartCommand
+		subCommand = LogStartCommand
+	}
+
+	// If the selected subcommand is already done, switch to LogTruncateCommand
+	if isSubcommandAlreadySync(backup, subCommand) {
+		return LogTruncateCommand
+	}
+
+	return subCommand
+}
+
+func isSubcommandAlreadySync(backup *Backup, subCommand LogSubCommandType) bool {
+	switch subCommand {
+	case LogStartCommand:
+		return IsLogBackupAlreadyStart(backup)
+	case LogStopCommand:
+		return IsLogBackupAlreadyStop(backup)
+	case LogPauseCommand:
+		return IsLogBackupAlreadyPaused(backup)
+	case LogResumeCommand:
+		return IsLogBackupAlreadyRunning(backup)
+	default:
+		return false
 	}
 }
 
