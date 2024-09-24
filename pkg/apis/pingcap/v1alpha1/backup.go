@@ -302,6 +302,9 @@ func IsBackupCleanFailed(backup *Backup) bool {
 
 // IsCleanCandidate returns true if a Backup should be added to clean candidate according to cleanPolicy
 func IsCleanCandidate(backup *Backup) bool {
+	if backup.Spec.Mode == BackupModeLog {
+		return true
+	}
 	switch backup.Spec.CleanPolicy {
 	case CleanPolicyTypeDelete, CleanPolicyTypeOnFailure:
 		return true

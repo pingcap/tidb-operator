@@ -54,6 +54,9 @@ func NewBackupCleaner(deps *controller.Dependencies, statusUpdater controller.Ba
 }
 
 func (bc *backupCleaner) StopLogBackup(backup *v1alpha1.Backup) error {
+	if backup.Spec.Mode != v1alpha1.BackupModeLog {
+		return nil
+	}
 	if !v1alpha1.IsLogBackupAlreadyStart(backup) {
 		return nil
 	}
