@@ -285,7 +285,7 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 				resp, err = pdutil.GetMembersV2(pdAddr)
 				if err != nil {
 					log.Logf("failed to get pd members of cluster-1 %s/%s, %v", tc1.Namespace, tc1.Name, err)
-					return false, err
+					return false, nil
 				}
 				if len(resp.Members) == 0 {
 					return false, nil
