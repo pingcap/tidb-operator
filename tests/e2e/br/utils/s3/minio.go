@@ -33,7 +33,7 @@ import (
 
 const (
 	minioName  = "minio"
-	minioImage = "minio/minio:RELEASE.2020-05-08T02-40-49Z"
+	minioImage = "minio/minio:RELEASE.2024-09-13T20-26-02Z"
 
 	minioBucket = "local" // the bucket for e2e test
 	minioSecret = "minio-secret"

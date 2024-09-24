@@ -572,6 +572,11 @@ type PDSpec struct {
 	// +kubebuilder:default=30
 	StartTimeout int `json:"startTimeout,omitempty"`
 
+	// Wait time before pd get started. This wait time is to allow the new DNS record to propagate,
+	// ensuring that the PD DNS resolves to the same IP address as the pod.
+	// +kubebuilder:default=0
+	InitWaitTime int `json:"initWaitTime,omitempty"`
+
 	// Mode is the mode of PD cluster
 	// +optional
 	// +kubebuilder:validation:Enum:="";"ms"
@@ -2007,6 +2012,12 @@ type AzblobStorageProvider struct {
 	// SecretName is the name of secret which stores the
 	// azblob service account credentials.
 	SecretName string `json:"secretName,omitempty"`
+	// StorageAccount is the storage account of the azure blob storage
+	// If this field is set, then use this to set backup-manager env
+	// Otherwise retrieve the storage account from secret
+	StorageAccount string `json:"storageAccount,omitempty"`
+	// SasToken is the sas token of the storage account
+	SasToken string `json:"sasToken,omitempty"`
 	// Prefix of the data path.
 	Prefix string `json:"prefix,omitempty"`
 }

@@ -28,17 +28,17 @@ import (
 )
 
 var (
-	TiDBPreviousVersions []string = []string{"v6.1.7", "v6.5.10", "v7.1.5", "v7.5.2", "v8.1.0"}
+	TiDBPreviousVersions []string = []string{"v6.5.10", "v7.1.5", "v7.5.2", "v8.1.0"}
 )
 
 const (
 	// TiDB Version
-	TiDBLatestPrev     = "v7.5.2"
-	TiDBLatest         = "v8.1.0"
+	TiDBLatestPrev     = "v7.5.3"
+	TiDBLatest         = "v8.1.0" // different version with PDMSImage
 	TiDBNightlyVersion = "nightly"
 	// specific version
 	TiDBV7x5x0 = "v7.5.0"
-	TiDBV7x5x2 = "v7.5.2"
+	TiDBV7x5x3 = "v7.5.3"
 
 	PrometheusImage               = "prom/prometheus"
 	PrometheusVersion             = "v2.27.1"
@@ -47,14 +47,14 @@ const (
 	TiDBMonitorInitializerImage   = "pingcap/tidb-monitor-initializer"
 	TiDBMonitorInitializerVersion = TiDBLatest
 	GrafanaImage                  = "grafana/grafana"
-	GrafanaVersion                = "6.1.6"
+	GrafanaVersion                = "7.5.11"
 	ThanosImage                   = "thanosio/thanos"
 	ThanosVersion                 = "v0.17.2"
 	DMV2Prev                      = TiDBLatestPrev
 	DMV2                          = TiDBLatest
 	TiDBNGMonitoringLatest        = TiDBLatest
 	HelperImage                   = "alpine:3.16.0"
-	PDMSImage                     = "v8.1.0"
+	PDMSImage                     = "v8.1.1"
 )
 
 func ListImages() []string {

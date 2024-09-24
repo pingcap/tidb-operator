@@ -168,13 +168,13 @@ func TestGenerateAzblobCertEnvVar(t *testing.T) {
 	azblob = &v1alpha1.AzblobStorageProvider{
 		AccessTier: "",
 	}
-	envs, _, err := generateAzblobCertEnvVar(azblob, true)
+	envs, _, err := generateAzblobCertEnvVar(azblob, nil, true)
 	g.Expect(err).Should(BeNil())
 	contains(envs, "AZURE_ACCESS_TIER", "Cool")
 
 	// test &v1alpha1.AzblobStorageProvider AccessTier set value
 	azblob.AccessTier = "Hot"
-	envs, _, err = generateAzblobCertEnvVar(azblob, true)
+	envs, _, err = generateAzblobCertEnvVar(azblob, nil, true)
 	g.Expect(err).Should(BeNil())
 	contains(envs, "AZURE_ACCESS_TIER", "Hot")
 }
@@ -275,8 +275,36 @@ func TestGenerateStorageCertEnv(t *testing.T) {
 
 		// test azblob secret with key
 		if test.provider.Azblob != nil && test.provider.Azblob.SecretName != "" {
+			// test using sas token
+			test.provider.Azblob.StorageAccount = "dummy"
+			test.provider.Azblob.SasToken = "dummy"
+			_, _, err := GenerateStorageCertEnv(ns, false, test.provider, informer.Core().V1().Secrets().Lister())
+			g.Expect(err).Should(BeNil())
+
+			// test using sas token, account from env
+			test.provider.Azblob.SasToken = "dummy"
+			s.Data = map[string][]byte{
+				constants.TidbPasswordKey:   []byte("dummy"),
+				constants.AzblobAccountName: []byte("dummy"),
+			}
+			err = informer.Core().V1().Secrets().Informer().GetIndexer().Update(s)
+			g.Expect(err).Should(BeNil())
+			_, _, err = GenerateStorageCertEnv(ns, false, test.provider, informer.Core().V1().Secrets().Lister())
+			g.Expect(err).Should(BeNil())
+
+			// test using sas token, missing account
+			test.provider.Azblob.SasToken = "dummy"
+			test.provider.Azblob.StorageAccount = ""
+			s.Data = map[string][]byte{
+				constants.TidbPasswordKey: []byte("dummy"),
+			}
+			err = informer.Core().V1().Secrets().Informer().GetIndexer().Update(s)
+			g.Expect(err).Should(BeNil())
+			_, _, err = GenerateStorageCertEnv(ns, false, test.provider, informer.Core().V1().Secrets().Lister())
+			g.Expect(err.Error()).Should(MatchRegexp(".*storage account unspecified"))
 
 			// test missing some critical key
+			test.provider.Azblob.SasToken = ""
 			s.Data = map[string][]byte{
 				constants.TidbPasswordKey:   []byte("dummy"),
 				constants.AzblobAccountName: []byte("dummy"),
@@ -289,6 +317,7 @@ func TestGenerateStorageCertEnv(t *testing.T) {
 			g.Expect(err.Error()).Should(MatchRegexp(".*missing some keys.*"))
 
 			// test integrated shared key
+			test.provider.Azblob.SasToken = ""
 			s.Data = map[string][]byte{
 				constants.TidbPasswordKey:   []byte("dummy"),
 				constants.AzblobAccountName: []byte("dummy"),

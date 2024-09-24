@@ -580,6 +580,20 @@ func schema_pkg_apis_pingcap_v1alpha1_AzblobStorageProvider(ref common.Reference
 							Format:      "",
 						},
 					},
+					"storageAccount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StorageAccount is the storage account of the azure blob storage If this field is set, then use this to set backup-manager env Otherwise retrieve the storage account from secret",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"sasToken": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SasToken is the sas token of the storage account",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"prefix": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Prefix of the data path.",
@@ -6903,6 +6917,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 					"startTimeout": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Timeout threshold when pd get started",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"initWaitTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Wait time before pd get started. This wait time is to allow the new DNS record to propagate, ensuring that the PD DNS resolves to the same IP address as the pod.",
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},

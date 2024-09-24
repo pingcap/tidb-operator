@@ -9,12 +9,6 @@ spec:
   # maxReservedTime: "2m"
   schedule: "*/1 * * * *"
   backupTemplate:
-    # Only needed for TiDB Operator < v1.1.7 or TiDB < v4.0.8
-    # from:
-    #   host: ${tidb_host}
-    #   port: ${tidb_port}
-    #   user: ${tidb_user}
-    #   secretName: backup-demo1-tidb-secret
     cleanPolicy: Delete
     br:
       cluster: basic
