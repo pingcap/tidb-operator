@@ -1078,46 +1078,36 @@ func (bm *backupManager) skipSnapshotBackupSync(backup *v1alpha1.Backup) (bool, 
 	return false, nil
 }
 
-// skipLogBackupSync skip log backup, returns true if can be skipped.
+// skipLogBackupSync skips log backup, returns true if it can be skipped.
 func (bm *backupManager) skipLogBackupSync(backup *v1alpha1.Backup) (bool, error) {
 	if backup.Spec.Mode != v1alpha1.BackupModeLog {
 		return false, nil
 	}
-	var skip bool
-	var err error
+
 	command := v1alpha1.ParseLogBackupSubcommand(backup)
-	switch command {
-	case v1alpha1.LogStartCommand:
-		skip = v1alpha1.IsLogBackupAlreadyStart(backup)
-	case v1alpha1.LogStopCommand:
-		skip = v1alpha1.IsLogBackupAlreadyStop(backup)
-	case v1alpha1.LogPauseCommand:
-		skip = v1alpha1.IsLogBackupAlreadyPaused(backup)
-	case v1alpha1.LogResumeCommand:
-		skip = v1alpha1.IsLogBackupAlreadyRunning(backup)
-	case v1alpha1.LogTruncateCommand:
-		if v1alpha1.IsLogBackupAlreadyTruncate(backup) {
-			skip = true
-			// if skip truncate, we need update truncate to be complete, and truncating util is the spec's truncate until.
-			updateStatus := &controller.BackupUpdateStatus{
-				TimeStarted:        &metav1.Time{Time: time.Now()},
-				TimeCompleted:      &metav1.Time{Time: time.Now()},
-				LogTruncatingUntil: &backup.Spec.LogTruncateUntil,
-			}
-			err = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Command: v1alpha1.LogTruncateCommand,
-				Type:    v1alpha1.BackupComplete,
-				Status:  corev1.ConditionTrue,
-			}, updateStatus)
+
+	// Handle the special case for LogTruncateCommand where additional actions are needed
+	var err error
+	if command == v1alpha1.LogTruncateCommand && v1alpha1.IsLogBackupAlreadyTruncate(backup) {
+		// If skipping truncate, update status
+		updateStatus := &controller.BackupUpdateStatus{
+			TimeStarted:        &metav1.Time{Time: time.Now()},
+			TimeCompleted:      &metav1.Time{Time: time.Now()},
+			LogTruncatingUntil: &backup.Spec.LogTruncateUntil,
 		}
-	default:
-		return false, nil
+		err = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Command: v1alpha1.LogTruncateCommand,
+			Type:    v1alpha1.BackupComplete,
+			Status:  corev1.ConditionTrue,
+		}, updateStatus)
 	}
 
-	if skip {
+	if command == v1alpha1.LogTruncateCommand {
 		klog.Infof("log backup %s/%s subcommand %s is already done, will skip sync.", backup.Namespace, backup.Name, command)
+		return true, err
 	}
-	return skip, err
+
+	return false, nil
 }
 
 // skipVolumeSnapshotBackupSync skip volume snapshot backup, returns true if can be skipped.
