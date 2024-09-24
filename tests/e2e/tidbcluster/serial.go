@@ -62,8 +62,13 @@ import (
 )
 
 const (
+<<<<<<< HEAD
 	OperatorLatestVersion    string = "v1.4.4"
 	OperatorPrevMajorVersion string = "v1.3.10"
+=======
+	OperatorLatestVersion    string = "v1.6.0"
+	OperatorPrevMajorVersion string = "v1.5.4"
+>>>>>>> 317718971 (e2e: bump TiDB and MySQL version (#5697))
 )
 
 // Serial specs describe tests which cannot run in parallel.
