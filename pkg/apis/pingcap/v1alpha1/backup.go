@@ -349,8 +349,6 @@ func ParseLogBackupSubcommand(backup *Backup) LogSubCommandType {
 		subCommand = LogStopCommand
 	case "log-pause":
 		subCommand = LogPauseCommand
-	case "log-truncate":
-		subCommand = LogTruncateCommand
 	default:
 		subCommand = LogStartCommand
 	}

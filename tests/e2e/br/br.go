@@ -413,7 +413,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Truncate log backup")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
-				backup.Spec.LogSubcommand = "log-truncate"
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
 				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
@@ -423,7 +422,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Truncate log backup again")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
-				backup.Spec.LogSubcommand = "log-truncate"
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
 				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
@@ -442,7 +440,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Truncate log backup after stop")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
-				backup.Spec.LogSubcommand = "log-truncate"
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
 				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
