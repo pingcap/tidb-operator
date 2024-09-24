@@ -279,9 +279,18 @@ var _ = ginkgo.Describe("[Across Kubernetes]", func() {
 			ginkgo.By("Update pd's peerURL of cluster-1")
 			pdAddr := fmt.Sprintf("%s:%d", localHost, localPort)
 			var resp *pdutil.GetMembersResponse
-			err = retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
+			err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+				// it seems the above `WaitForTidbClusterReady` may return before the pd server is ready
+				// so we need to retry here
 				resp, err = pdutil.GetMembersV2(pdAddr)
-				return err
+				if err != nil {
+					log.Logf("failed to get pd members of cluster-1 %s/%s, %v", tc1.Namespace, tc1.Name, err)
+					return false, nil
+				}
+				if len(resp.Members) == 0 {
+					return false, nil
+				}
+				return true, nil
 			})
 			framework.ExpectNoError(err, " failed to get pd members of cluster-1 %s/%s", tc1.Namespace, tc1.Name)
 			for _, member := range resp.Members {
