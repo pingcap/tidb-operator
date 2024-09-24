@@ -310,9 +310,6 @@ func IsBackupCleanFailed(backup *Backup) bool {
 
 // IsCleanCandidate returns true if a Backup should be added to clean candidate according to cleanPolicy
 func IsCleanCandidate(backup *Backup) bool {
-	if backup.Spec.Mode == BackupModeLog {
-		return true
-	}
 	switch backup.Spec.CleanPolicy {
 	case CleanPolicyTypeDelete, CleanPolicyTypeOnFailure:
 		return true
@@ -334,7 +331,7 @@ func ParseLogBackupSubcommand(backup *Backup) LogSubCommandType {
 
 	// Compatible with the old version
 	if backup.Spec.LogStop {
-		if isSubcommandAlreadySync(backup, LogStopCommand) {
+		if IsLogSubcommandAlreadySync(backup, LogStopCommand) && backup.Spec.LogTruncateUntil != "" {
 			return LogTruncateCommand
 		}
 		return LogStopCommand
@@ -358,15 +355,17 @@ func ParseLogBackupSubcommand(backup *Backup) LogSubCommandType {
 		subCommand = LogStartCommand
 	}
 
-	// If the selected subcommand is already done, switch to LogTruncateCommand
-	if isSubcommandAlreadySync(backup, subCommand) {
+	// If the selected subcommand is already sync and logTruncateUntil is set, switch to LogTruncateCommand
+	if IsLogSubcommandAlreadySync(backup, subCommand) && backup.Spec.LogTruncateUntil != "" {
 		return LogTruncateCommand
 	}
 
 	return subCommand
 }
 
-func isSubcommandAlreadySync(backup *Backup, subCommand LogSubCommandType) bool {
+// IsLogSubcommandAlreadySync return whether the log subcommand already sync.
+// It only check start/stop/pause subcommand. Truncate subcommand need to check the truncate until seperately.
+func IsLogSubcommandAlreadySync(backup *Backup, subCommand LogSubCommandType) bool {
 	switch subCommand {
 	case LogStartCommand:
 		return IsLogBackupAlreadyStart(backup)

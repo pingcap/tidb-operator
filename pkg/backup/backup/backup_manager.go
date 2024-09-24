@@ -1085,8 +1085,11 @@ func (bm *backupManager) skipLogBackupSync(backup *v1alpha1.Backup) (bool, error
 	}
 
 	command := v1alpha1.ParseLogBackupSubcommand(backup)
+	if command != v1alpha1.LogTruncateCommand && v1alpha1.IsLogSubcommandAlreadySync(backup, command) {
+		return true, nil
+	}
 
-	// Handle the special case for LogTruncateCommand where additional actions are needed
+	// Handle the special case for LogTruncateCommand
 	var err error
 	if command == v1alpha1.LogTruncateCommand && v1alpha1.IsLogBackupAlreadyTruncate(backup) {
 		// If skipping truncate, update status
@@ -1100,9 +1103,6 @@ func (bm *backupManager) skipLogBackupSync(backup *v1alpha1.Backup) (bool, error
 			Type:    v1alpha1.BackupComplete,
 			Status:  corev1.ConditionTrue,
 		}, updateStatus)
-	}
-
-	if command == v1alpha1.LogTruncateCommand {
 		klog.Infof("log backup %s/%s subcommand %s is already done, will skip sync.", backup.Namespace, backup.Name, command)
 		return true, err
 	}
