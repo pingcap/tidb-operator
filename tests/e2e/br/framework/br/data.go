@@ -165,6 +165,10 @@ func GetRestore(ns, name, tcName, typ string, s3Config *v1alpha1.S3StorageProvid
 				ClusterNamespace:  ns,
 				SendCredToTikv:    &sendCredToTikv,
 				CheckRequirements: pointer.BoolPtr(false), // workaround for https://docs.pingcap.com/tidb/stable/backup-and-restore-faq#why-does-br-report-new_collations_enabled_on_first_bootstrap-mismatch
+				Options: []string{
+					// ref: https://docs.pingcap.com/tidb/stable/backup-and-restore-overview#version-compatibility
+					"--with-sys-table=false",
+				},
 			},
 		},
 	}
