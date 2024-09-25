@@ -616,7 +616,7 @@ func (bm *Manager) stopLogBackup(ctx context.Context, backup *v1alpha1.Backup) (
 	return updateStatus, "", nil
 }
 
-// pauseLogBackup stops log backup.
+// pauseLogBackup pauses log backup.
 func (bm *Manager) pauseLogBackup(ctx context.Context, backup *v1alpha1.Backup) (*controller.BackupUpdateStatus, string, error) {
 	started := time.Now()
 

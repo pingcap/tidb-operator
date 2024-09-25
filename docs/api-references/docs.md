@@ -247,7 +247,9 @@ Default is current timestamp.</p>
 <td>
 <code>logSubcommand</code></br>
 <em>
-string
+<a href="#logsubcommandtype">
+LogSubCommandType
+</a>
 </em>
 </td>
 <td>
@@ -4248,7 +4250,9 @@ Default is current timestamp.</p>
 <td>
 <code>logSubcommand</code></br>
 <em>
-string
+<a href="#logsubcommandtype">
+LogSubCommandType
+</a>
 </em>
 </td>
 <td>
@@ -8914,6 +8918,7 @@ BackupConditionType
 <p>
 (<em>Appears on:</em>
 <a href="#backupcondition">BackupCondition</a>, 
+<a href="#backupspec">BackupSpec</a>, 
 <a href="#logsubcommandstatus">LogSubCommandStatus</a>)
 </p>
 <p>
