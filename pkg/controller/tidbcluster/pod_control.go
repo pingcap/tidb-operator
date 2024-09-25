@@ -170,7 +170,7 @@ func (c *PodController) processNextWorkItem() bool {
 	return true
 }
 
-func (c *PodController) sync(key string) (reconcile.Result, error) {
+func (c *PodController) sync(key string) (result reconcile.Result, err error) {
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -213,6 +213,16 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 	defer func() {
 		duration := time.Since(startTime)
 		metrics.ReconcileTime.WithLabelValues(c.Name()).Observe(duration.Seconds())
+
+		if err == nil {
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelSuccess).Inc()
+		} else if perrors.Find(err, controller.IsRequeueError) != nil {
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelRequeue).Inc()
+		} else {
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelError).Inc()
+			metrics.ReconcileErrors.WithLabelValues(c.Name()).Inc()
+		}
+
 		klog.V(4).Infof("Finished syncing TidbCluster pod %q (%v)", key, duration)
 	}()
 
