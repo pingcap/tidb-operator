@@ -320,7 +320,7 @@ func ParseLogBackupSubcommand(backup *Backup) LogSubCommandType {
 
 	// Compatible with the old version
 	if backup.Spec.LogStop {
-		if IsLogSubcommandAlreadySync(backup, LogStopCommand) && backup.Spec.LogTruncateUntil != "" {
+		if IsLogBackupAlreadyStop(backup) && backup.Spec.LogTruncateUntil != "" && backup.Spec.LogTruncateUntil != backup.Status.LogSuccessTruncateUntil {
 			return LogTruncateCommand
 		}
 		return LogStopCommand
@@ -345,7 +345,7 @@ func ParseLogBackupSubcommand(backup *Backup) LogSubCommandType {
 	}
 
 	// If the selected subcommand is already sync and logTruncateUntil is set, switch to LogTruncateCommand
-	if IsLogSubcommandAlreadySync(backup, subCommand) && backup.Spec.LogTruncateUntil != "" {
+	if IsLogSubcommandAlreadySync(backup, subCommand) && backup.Spec.LogTruncateUntil != "" && backup.Spec.LogTruncateUntil != backup.Status.LogSuccessTruncateUntil {
 		return LogTruncateCommand
 	}
 
