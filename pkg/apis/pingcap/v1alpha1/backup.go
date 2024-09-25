@@ -320,7 +320,6 @@ func ParseLogBackupSubcommand(backup *Backup) LogSubCommandType {
 
 	var subCommand LogSubCommandType
 
-	// Maintain backward compatibility: 
 	// Users can omit the LogSubcommand field and use the `LogStop` field to stop log backups as in older version.
     if backup.Spec.LogSubcommand == "" {
         if backup.Spec.LogStop || IsLogBackupAlreadyStop(backup) {
