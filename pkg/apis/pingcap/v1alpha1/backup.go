@@ -285,17 +285,6 @@ func IsVolumeBackupFailed(backup *Backup) bool {
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
 
-// IsLogBackupStopped returns true if a log backup is stopped.
-// It means log backup is at stopped status.
-// It used to filter CR update event which is stop command and stopped status, and let it run truncate after log backup stopped which is truncate command and stopped status.
-func IsLogBackupStopped(backup *Backup) bool {
-	if backup.Spec.Mode == BackupModeLog {
-		command := ParseLogBackupSubcommand(backup)
-		return command == LogStopCommand && backup.Status.Phase == BackupStopped
-	}
-	return false
-}
-
 // IsBackupClean returns true if a Backup has been successfully cleaned up
 func IsBackupClean(backup *Backup) bool {
 	_, condition := GetBackupCondition(&backup.Status, BackupClean)
@@ -349,8 +338,10 @@ func ParseLogBackupSubcommand(backup *Backup) LogSubCommandType {
 		subCommand = LogStopCommand
 	case "log-pause":
 		subCommand = LogPauseCommand
-	default:
+	case "":
 		subCommand = LogStartCommand
+	default:
+		return LogUnknownCommand
 	}
 
 	// If the selected subcommand is already sync and logTruncateUntil is set, switch to LogTruncateCommand
@@ -362,7 +353,7 @@ func ParseLogBackupSubcommand(backup *Backup) LogSubCommandType {
 }
 
 // IsLogSubcommandAlreadySync return whether the log subcommand already sync.
-// It only check start/stop/pause subcommand. Truncate subcommand need to check the truncate until seperately.
+// It only check start/stop/pause subcommand. Truncate subcommand need to check the `logTruncateUntil` seperately.
 func IsLogSubcommandAlreadySync(backup *Backup, subCommand LogSubCommandType) bool {
 	switch subCommand {
 	case LogStartCommand:
