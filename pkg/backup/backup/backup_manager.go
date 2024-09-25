@@ -197,14 +197,14 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 		err = backuputil.ValidateBackup(backup, "", nil)
 	} else {
 		if backup.Spec.Mode == v1alpha1.BackupModeLog && logBackupSubcommand == v1alpha1.LogUnknownCommand {
-			err = fmt.Errorf("log backup %s/%s subcommand `%s` is not supported", ns, name, backup.Spec.LogSubcommand)	
+			err = fmt.Errorf("log backup %s/%s subcommand `%s` is not supported", ns, name, backup.Spec.LogSubcommand)
 			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 				Command: logBackupSubcommand,
 				Type:    v1alpha1.BackupRetryTheFailed,
 				Status:  corev1.ConditionTrue,
 				Reason:  err.Error(),
 				Message: err.Error(),
-			}, nil)		
+			}, nil)
 			return err
 		}
 
