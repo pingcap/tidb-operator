@@ -2139,6 +2139,11 @@ spec:
               logStop:
                 type: boolean
               logSubcommand:
+                enum:
+                - ""
+                - log-start
+                - log-stop
+                - log-pause
                 type: string
               logTruncateUntil:
                 type: string
