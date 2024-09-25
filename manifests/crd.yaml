@@ -2115,7 +2115,6 @@ spec:
                     type: boolean
                   logSubcommand:
                     enum:
-                    - ""
                     - log-start
                     - log-stop
                     - log-pause
@@ -4362,7 +4361,6 @@ spec:
                     type: boolean
                   logSubcommand:
                     enum:
-                    - ""
                     - log-start
                     - log-stop
                     - log-pause
@@ -6719,7 +6717,6 @@ spec:
                 type: boolean
               logSubcommand:
                 enum:
-                - ""
                 - log-start
                 - log-stop
                 - log-pause

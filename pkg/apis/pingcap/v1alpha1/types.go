@@ -2181,7 +2181,7 @@ type BackupSpec struct {
 	CommitTs string `json:"commitTs,omitempty"`
 	// Subcommand is the subcommand for BR, such as start, stop, pause etc.
 	// +optional
-	// +kubebuilder:validation:Enum:="";"log-start";"log-stop";"log-pause"
+	// +kubebuilder:validation:Enum:="log-start";"log-stop";"log-pause"
 	LogSubcommand LogSubCommandType `json:"logSubcommand,omitempty"`
 	// LogTruncateUntil is log backup truncate until timestamp.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
