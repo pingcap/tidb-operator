@@ -321,30 +321,30 @@ func ParseLogBackupSubcommand(backup *Backup) LogSubCommandType {
 	var subCommand LogSubCommandType
 
 	// Users can omit the LogSubcommand field and use the `LogStop` field to stop log backups as in older version.
-    if backup.Spec.LogSubcommand == "" {
-        if backup.Spec.LogStop || IsLogBackupAlreadyStop(backup) {
-            subCommand = LogStopCommand
-        } else if IsLogBackupAlreadyPaused(backup){
-            subCommand = LogResumeCommand
-        } else {
+	if backup.Spec.LogSubcommand == "" {
+		if backup.Spec.LogStop || IsLogBackupAlreadyStop(backup) {
+			subCommand = LogStopCommand
+		} else if IsLogBackupAlreadyPaused(backup) {
+			subCommand = LogResumeCommand
+		} else {
 			subCommand = LogStartCommand
 		}
-    } else {
-        switch backup.Spec.LogSubcommand {
-        case LogStartCommand:
-            if IsLogBackupAlreadyPaused(backup) {
-                subCommand = LogResumeCommand
-            } else {
-                subCommand = LogStartCommand
-            }
-        case LogStopCommand:
-            subCommand = LogStopCommand
-        case LogPauseCommand:
-            subCommand = LogPauseCommand
-        default:
-            return LogUnknownCommand
-        }
-    }
+	} else {
+		switch backup.Spec.LogSubcommand {
+		case LogStartCommand:
+			if IsLogBackupAlreadyPaused(backup) {
+				subCommand = LogResumeCommand
+			} else {
+				subCommand = LogStartCommand
+			}
+		case LogStopCommand:
+			subCommand = LogStopCommand
+		case LogPauseCommand:
+			subCommand = LogPauseCommand
+		default:
+			return LogUnknownCommand
+		}
+	}
 
 	// If the selected subcommand is already sync and logTruncateUntil is set, switch to LogTruncateCommand
 	if IsLogSubcommandAlreadySync(backup, subCommand) && backup.Spec.LogTruncateUntil != "" && backup.Spec.LogTruncateUntil != backup.Status.LogSuccessTruncateUntil {
