@@ -353,7 +353,7 @@ func ParseLogBackupSubcommand(backup *Backup) LogSubCommandType {
 }
 
 // IsLogSubcommandAlreadySync return whether the log subcommand already sync.
-// It only check start/stop/pause subcommand. Truncate subcommand need to check the `logTruncateUntil` seperately.
+// It only check start/stop/pause subcommand. Truncate subcommand need to check the `logTruncateUntil` separately.
 func IsLogSubcommandAlreadySync(backup *Backup, subCommand LogSubCommandType) bool {
 	switch subCommand {
 	case LogStartCommand:
