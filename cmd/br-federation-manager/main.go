@@ -133,6 +133,11 @@ func main() {
 
 		initMetrics := func(c Controller) {
 			metrics.ActiveWorkers.WithLabelValues(c.Name()).Set(0)
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelSuccess).Add(0)
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelError).Add(0)
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelRequeue).Add(0)
+			metrics.ReconcileErrors.WithLabelValues(c.Name()).Add(0)
+			metrics.WorkerCount.WithLabelValues(c.Name()).Set(float64(cliCfg.Workers))
 		}
 
 		// Initialize all controllers

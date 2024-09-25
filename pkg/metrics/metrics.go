@@ -22,6 +22,10 @@ const (
 	LabelNamespace = "namespace"
 	LabelName      = "name"
 	LabelComponent = "component"
+
+	LabelError   = "error"
+	LabelRequeue = "requeue"
+	LabelSuccess = "success"
 )
 
 var (

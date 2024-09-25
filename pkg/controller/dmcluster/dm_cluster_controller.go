@@ -138,11 +138,21 @@ func (c *Controller) processNextWorkItem() bool {
 }
 
 // sync syncs the given dmcluster.
-func (c *Controller) sync(key string) error {
+func (c *Controller) sync(key string) (err error) {
 	startTime := time.Now()
 	defer func() {
 		duration := time.Since(startTime)
 		metrics.ReconcileTime.WithLabelValues(c.Name()).Observe(duration.Seconds())
+
+		if err == nil {
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelSuccess).Inc()
+		} else if perrors.Find(err, controller.IsRequeueError) != nil {
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelRequeue).Inc()
+		} else {
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelError).Inc()
+			metrics.ReconcileErrors.WithLabelValues(c.Name()).Inc()
+		}
+
 		klog.V(4).Infof("Finished syncing DMCluster %q (%v)", key, duration)
 	}()
 
