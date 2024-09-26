@@ -2217,6 +2217,8 @@ type BackupSpec struct {
 	// Specify service account of backup
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 	// CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained
+	// +kubebuilder:validation:Enum:=Retain;OnFailure;Delete
+	// +kubebuilder:default=Retain
 	CleanPolicy CleanPolicyType `json:"cleanPolicy,omitempty"`
 	// CleanOption controls the behavior of clean.
 	CleanOption *CleanOption `json:"cleanOption,omitempty"`

@@ -296,6 +296,12 @@ func IsLogBackupStopped(backup *Backup) bool {
 
 // IsBackupClean returns true if a Backup has been successfully cleaned up
 func IsBackupClean(backup *Backup) bool {
+	if backup.Spec.Mode == BackupModeLog && !IsLogBackupAlreadyStop(backup){
+		return false
+	}
+	if NeedRetainData(backup) {
+		return true
+	}
 	_, condition := GetBackupCondition(&backup.Status, BackupClean)
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
@@ -308,13 +314,15 @@ func IsBackupCleanFailed(backup *Backup) bool {
 
 // IsCleanCandidate returns true if a Backup should be added to clean candidate according to cleanPolicy
 func IsCleanCandidate(backup *Backup) bool {
-	return backup.Spec.CleanPolicy == CleanPolicyTypeDelete ||
-	       backup.Spec.CleanPolicy == CleanPolicyTypeOnFailure
+	return backup.Spec.Mode == BackupModeLog ||
+		backup.Spec.CleanPolicy == CleanPolicyTypeDelete ||
+		backup.Spec.CleanPolicy == CleanPolicyTypeOnFailure
 }
 
-// NeedNotClean returns true if a Backup need not to be cleaned up according to cleanPolicy
-func NeedNotClean(backup *Backup) bool {
-	return backup.Spec.CleanPolicy == CleanPolicyTypeOnFailure && !IsBackupFailed(backup)
+// NeedRetainData returns true if a Backup need not to be cleaned up according to cleanPolicy
+func NeedRetainData(backup *Backup) bool {
+	return backup.Spec.CleanPolicy == CleanPolicyTypeRetain ||
+		(backup.Spec.CleanPolicy == CleanPolicyTypeOnFailure && !IsBackupFailed(backup))
 }
 
 // ParseLogBackupSubcommand parse the log backup subcommand from cr.

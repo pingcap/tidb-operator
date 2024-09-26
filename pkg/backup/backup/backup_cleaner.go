@@ -53,7 +53,20 @@ func NewBackupCleaner(deps *controller.Dependencies, statusUpdater controller.Ba
 }
 
 func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
-	if backup.DeletionTimestamp == nil || !v1alpha1.IsCleanCandidate(backup) || v1alpha1.NeedNotClean(backup) {
+	if backup.DeletionTimestamp == nil {
+		// The backup object has not been deleted，do nothing
+		return nil
+	}
+
+	if err := bc.CleanLogBackup(backup); err != nil {
+		return err
+	}
+	klog.Infof("start to clean backup %s/%s", backup.GetNamespace(), backup.GetName())
+	return bc.CleanData(backup)
+}
+
+func (bc *backupCleaner) CleanData(backup *v1alpha1.Backup) error {
+	if backup.DeletionTimestamp == nil || !v1alpha1.IsCleanCandidate(backup) || v1alpha1.NeedRetainData(backup) {
 		// The backup object has not been deleted or we need to retain backup data，do nothing
 		return nil
 	}
@@ -142,25 +155,31 @@ func (bc *backupCleaner) CleanLogBackup(backup *v1alpha1.Backup) error {
 
 	ns := backup.GetNamespace()
 	name := backup.GetName()
-	backupJobName := backup.GetCleanLogBackupJobName()
+	stopLogJobName := backup.GetCleanLogBackupJobName()
+
+	var err error
+	_, err = bc.deps.JobLister.Jobs(ns).Get(stopLogJobName)
+	if err == nil {
+		// already have a clean job running，return directly
+		return nil
+	}
 
 	// make backup job
-	var err error
 	var job *batchv1.Job
 	var reason string
 	if job, reason, err = bc.makeStopLogBackupJob(backup); err != nil {
-		klog.Errorf("backup %s/%s create job %s failed, reason is %s, error %v.", ns, name, backupJobName, reason, err)
+		klog.Errorf("backup %s/%s create job %s failed, reason is %s, error %v.", ns, name, stopLogJobName, reason, err)
 		return err
 	}
 
 	// create k8s job
 	if err := bc.deps.JobControl.CreateJob(backup, job); err != nil {
-		errMsg := fmt.Errorf("stop log backup %s/%s job %s failed, err: %v", ns, name, backupJobName, err)
+		errMsg := fmt.Errorf("stop log backup %s/%s job %s failed, err: %v", ns, name, stopLogJobName, err)
 		bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: v1alpha1.LogStopCommand,
 			Type:    v1alpha1.BackupRetryTheFailed,
 			Status:  corev1.ConditionTrue,
-			Reason:  "CreateBackupJobFailed",
+			Reason:  "StopLogBackupJobFailed",
 			Message: errMsg.Error(),
 		}, nil)
 		return errMsg
@@ -168,7 +187,7 @@ func (bc *backupCleaner) CleanLogBackup(backup *v1alpha1.Backup) error {
 
 	return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Command: v1alpha1.LogStopCommand,
-		Type:    v1alpha1.BackupStopped,
+		Type:    v1alpha1.BackupComplete,
 		Status:  corev1.ConditionTrue,
 	}, nil)
 }
@@ -269,7 +288,7 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
-	jobName := backup.GetBackupJobName()
+	jobName := backup.GetCleanLogBackupJobName()
 	backupNamespace := ns
 	if backup.Spec.BR.ClusterNamespace != "" {
 		backupNamespace = backup.Spec.BR.ClusterNamespace
@@ -318,7 +337,6 @@ func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1
 
 	args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeLog))
 	args = append(args, fmt.Sprintf("--subcommand=%s", v1alpha1.LogStopCommand))
-
 
 	jobLabels := util.CombineStringMap(label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name), backup.Labels)
 	podLabels := jobLabels
