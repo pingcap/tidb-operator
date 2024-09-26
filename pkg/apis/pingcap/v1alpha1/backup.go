@@ -42,6 +42,11 @@ func (bk *Backup) GetCleanJobName() string {
 	return fmt.Sprintf("clean-%s", bk.GetName())
 }
 
+// GetCleanJobName return the clean job name for log backup
+func (bk *Backup) GetLogBackupCleanJobName() string {
+	return fmt.Sprintf("clean-log-%s", bk.GetName())
+}
+
 // GetBackupJobName return the backup job name
 func (bk *Backup) GetBackupJobName() string {
 	if command := ParseLogBackupSubcommand(bk); command != "" {
@@ -302,7 +307,7 @@ func IsBackupCleanFailed(backup *Backup) bool {
 
 // IsCleanCandidate returns true if a Backup should be added to clean candidate according to cleanPolicy
 func IsCleanCandidate(backup *Backup) bool {
-	if backup.Spec.Mode == BackupModeLog {
+	if backup.Spec.Mode == BackupModeLog && !IsLogBackupAlreadyStop(backup) {
 		return true
 	}
 	switch backup.Spec.CleanPolicy {

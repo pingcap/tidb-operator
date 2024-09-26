@@ -177,7 +177,7 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
-	jobName := backup.GetBackupJobName()
+	jobName := backup.GetLogBackupCleanJobName()
 	backupNamespace := ns
 	if backup.Spec.BR.ClusterNamespace != "" {
 		backupNamespace = backup.Spec.BR.ClusterNamespace

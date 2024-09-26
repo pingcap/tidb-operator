@@ -62,17 +62,7 @@ func (c *defaultBackupControl) UpdateBackup(backup *v1alpha1.Backup) error {
 		return err
 	}
 
-	stopLogBackup := func ()	error {
-		// for log backup, we need stop the log backup before clean up
-		if backup.Spec.Mode == v1alpha1.BackupModeLog {
-			if err := c.backupManager.StopLogBackup(backup); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	if err := c.removeProtectionFinalizer(backup,stopLogBackup); err != nil {
+	if err := c.removeProtectionFinalizer(backup); err != nil {
 		return err
 	}
 
@@ -103,16 +93,11 @@ func (c *defaultBackupControl) addProtectionFinalizer(backup *v1alpha1.Backup) e
 	return nil
 }
 
-func (c *defaultBackupControl) removeProtectionFinalizer(backup *v1alpha1.Backup, preDelete func() error) error {
+func (c *defaultBackupControl) removeProtectionFinalizer(backup *v1alpha1.Backup) error {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
 	if needToRemoveFinalizer(backup) {
-		if preDelete != nil {
-			if err := preDelete(); err != nil {
-				return fmt.Errorf("stop log backup for backup %s/%s failed in deleting, err: %v", ns, name, err)
-			}
-		}	
 		backup.Finalizers = k8s.RemoveString(backup.Finalizers, label.BackupProtectionFinalizer, nil)
 		_, err := c.cli.PingcapV1alpha1().Backups(ns).Update(context.TODO(), backup, metav1.UpdateOptions{})
 		if err != nil {

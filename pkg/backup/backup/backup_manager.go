@@ -70,6 +70,10 @@ func NewBackupManager(deps *controller.Dependencies) backup.BackupManager {
 }
 
 func (bm *backupManager) Sync(backup *v1alpha1.Backup) error {
+	if err := bm.StopLogBackup(backup); err != nil {
+		return err
+	}
+
 	// because a finalizer is installed on the backup on creation, when backup is deleted,
 	// backup.DeletionTimestamp will be set, controller will be informed with an onUpdate event,
 	// this is the moment that we can do clean up work.
@@ -79,6 +83,7 @@ func (bm *backupManager) Sync(backup *v1alpha1.Backup) error {
 
 	if backup.DeletionTimestamp != nil {
 		// backup is being deleted, don't do anything, return directly.
+		klog.Infof("backup %s/%s is being deleted, skip syncing", backup.GetNamespace(), backup.GetName())
 		return nil
 	}
 
