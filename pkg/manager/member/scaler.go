@@ -14,6 +14,7 @@
 package member
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -68,7 +69,7 @@ func (s *generalScaler) deleteDeferDeletingPVC(controller runtime.Object, member
 	if err != nil {
 		msg := fmt.Sprintf("%s %s/%s list pvc failed, selector: %s, err: %v", kind, ns, meta.GetName(), selector, err)
 		klog.Error(msg)
-		return skipReason, fmt.Errorf(msg)
+		return skipReason, errors.New(msg)
 	}
 	if len(pvcs) == 0 {
 		klog.Infof("%s %s/%s list pvc not found, selector: %s", kind, ns, meta.GetName(), selector)
@@ -116,12 +117,12 @@ func (s *generalScaler) updateDeferDeletingPVC(tc *v1alpha1.TidbCluster,
 	if err != nil {
 		msg := fmt.Sprintf("Cluster %s/%s list pvc failed, selector: %s, err: %v", ns, tc.Name, selector, err)
 		klog.Error(msg)
-		return fmt.Errorf(msg)
+		return errors.New(msg)
 	}
 	if len(pvcs) == 0 {
 		msg := fmt.Sprintf("Cluster %s/%s list pvc not found, selector: %s", ns, tc.Name, selector)
 		klog.Error(msg)
-		return fmt.Errorf(msg)
+		return errors.New(msg)
 	}
 
 	for _, pvc := range pvcs {
