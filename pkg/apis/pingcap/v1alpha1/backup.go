@@ -296,7 +296,8 @@ func IsLogBackupStopped(backup *Backup) bool {
 
 // IsBackupClean returns true if a Backup has been successfully cleaned up
 func IsBackupClean(backup *Backup) bool {
-	if backup.Spec.Mode == BackupModeLog && !IsLogBackupAlreadyStop(backup){
+	// TODO: now we don't handle fault state, maybe we should consider it in the future
+	if backup.Spec.Mode == BackupModeLog && IsLogBackupOnTrack(backup) {
 		return false
 	}
 	if NeedRetainData(backup) {
@@ -401,4 +402,12 @@ func IsLogBackupAlreadyTruncate(backup *Backup) bool {
 // IsLogBackupAlreadyStop return whether log backup has already stopped.
 func IsLogBackupAlreadyStop(backup *Backup) bool {
 	return backup.Spec.Mode == BackupModeLog && backup.Status.Phase == BackupStopped
+}
+
+// IsLogBackupOnTrack return whether log backup is on track.
+func IsLogBackupOnTrack(backup *Backup) bool {
+	return backup.Spec.Mode == BackupModeLog && 
+		backup.Status.Phase == BackupScheduled || 
+		backup.Status.Phase == BackupPrepare || 
+		backup.Status.Phase == BackupRunning
 }

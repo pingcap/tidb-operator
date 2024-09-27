@@ -187,7 +187,7 @@ func (bc *backupCleaner) CleanLogBackup(backup *v1alpha1.Backup) error {
 
 	return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Command: v1alpha1.LogStopCommand,
-		Type:    v1alpha1.BackupComplete,
+		Type:    v1alpha1.BackupScheduled,
 		Status:  corev1.ConditionTrue,
 	}, nil)
 }
