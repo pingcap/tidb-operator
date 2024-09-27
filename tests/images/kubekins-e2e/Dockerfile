@@ -1,6 +1,6 @@
 FROM debian:buster-slim
 
-ARG GO_VERSION=1.21.3
+ARG GO_VERSION=1.23.1
 
 # common util tools
 RUN apt-get update && \
