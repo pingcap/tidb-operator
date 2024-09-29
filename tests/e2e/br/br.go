@@ -1050,7 +1050,8 @@ func createTidbCluster(f *e2eframework.Framework, name string, version string, e
 func createLogBackupEnableTidbCluster(f *e2eframework.Framework, name string, version string, enableTLS bool, skipCA bool) error {
 	ns := f.Namespace.Name
 	// TODO: change to use tidbclusterutil like brutil
-	tc := fixture.GetTidbCluster(ns, name, version)
+	// NOTE(pdms): some cases will port forward pd service to get current ts, so we disable TSO microservice here
+	tc := fixture.GetTidbClusterWithoutPDMS(ns, name, version)
 	tc.Spec.PD.Replicas = 1
 	tc.Spec.TiKV.Replicas = 1
 	tc.Spec.TiDB.Replicas = 1

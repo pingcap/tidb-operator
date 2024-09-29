@@ -192,8 +192,12 @@ func WaitForLogBackupReachTS(name, pdhost, expect string, timeout time.Duration)
 		if err != nil {
 			return false, err
 		}
-		if len(kvs) != 1 {
-			return false, fmt.Errorf("get log backup checkpoint ts from pd %s failed", pdhost)
+		if len(kvs) == 0 {
+			// wait for log backup start
+			return false, nil
+		}
+		if len(kvs) > 1 {
+			return false, fmt.Errorf("get log backup checkpoint ts from pd %s failed, expect 1, got %d", pdhost, len(kvs))
 		}
 		checkpointTS := binary.BigEndian.Uint64(kvs[0].Value)
 		expectTS, err := config.ParseTSString(expect)

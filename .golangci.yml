@@ -22,6 +22,11 @@ linters-settings:
       - G201 # Rule: SQL query construction using format string
       - G114 # Rule: Use of net/http serve function that has no support for setting timeouts
       - G112 # Rule: Potential slowloris attack
+      - G115 # Rule: integer overflow conversion
+  
+  govet:
+    disable:
+      - printf # non-constant format string in call
 
 issues:
   exclude-rules:

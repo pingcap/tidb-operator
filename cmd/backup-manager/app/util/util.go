@@ -175,7 +175,7 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, error
 	}
 	args = append(args, storageArgs...)
 
-	if spec.TableFilter != nil && len(spec.TableFilter) > 0 {
+	if len(spec.TableFilter) > 0 {
 		for _, tableFilter := range spec.TableFilter {
 			args = append(args, "--filter", tableFilter)
 		}
@@ -204,7 +204,7 @@ func ConstructDumplingOptionsForBackup(backup *v1alpha1.Backup) []string {
 	var args []string
 	config := backup.Spec
 
-	if config.TableFilter != nil && len(config.TableFilter) > 0 {
+	if len(config.TableFilter) > 0 {
 		for _, tableFilter := range config.TableFilter {
 			args = append(args, "--filter", tableFilter)
 		}
@@ -244,7 +244,7 @@ func ConstructBRGlobalOptionsForRestore(restore *v1alpha1.Restore) ([]string, er
 	}
 	args = append(args, storageArgs...)
 
-	if config.TableFilter != nil && len(config.TableFilter) > 0 {
+	if len(config.TableFilter) > 0 {
 		for _, tableFilter := range config.TableFilter {
 			args = append(args, "--filter", tableFilter)
 		}
