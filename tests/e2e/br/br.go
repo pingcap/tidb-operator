@@ -457,7 +457,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
 		})
 
-		ginkgo.It("stop log backup CR could delete running task", func() {
+		ginkgo.It("delete log backup CR could stop running task", func() {
 			backupClusterName := "log-backup"
 			backupVersion := utilimage.TiDBLatest
 			enableTLS := false
