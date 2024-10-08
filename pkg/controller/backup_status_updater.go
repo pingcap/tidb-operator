@@ -248,6 +248,12 @@ func updateLogSubcommandStatus(backup *v1alpha1.Backup, condition *v1alpha1.Back
 	subcomandConditionUpdate := updateLogSubCommandConditionOnly(&subStatus, condition)
 	if subcommandStatusUpdate || subcomandConditionUpdate {
 		backup.Status.LogSubCommandStatuses[condition.Command] = subStatus
+		if condition.Command == v1alpha1.LogPauseCommand {
+			delete(backup.Status.LogSubCommandStatuses, v1alpha1.LogResumeCommand)
+		}
+		if condition.Command == v1alpha1.LogResumeCommand {
+			delete(backup.Status.LogSubCommandStatuses, v1alpha1.LogPauseCommand)
+		}
 		return true
 	}
 	return false
