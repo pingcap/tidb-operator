@@ -247,13 +247,21 @@ func updateLogSubcommandStatus(backup *v1alpha1.Backup, condition *v1alpha1.Back
 	subcommandStatusUpdate := updateLogSubCommandStatusOnly(&subStatus, newStatus)
 	subcomandConditionUpdate := updateLogSubCommandConditionOnly(&subStatus, condition)
 	if subcommandStatusUpdate || subcomandConditionUpdate {
-		backup.Status.LogSubCommandStatuses[condition.Command] = subStatus
+		// handle special case for pause and resume, if one is on condition, the other should be updated as repeatable
 		if condition.Command == v1alpha1.LogPauseCommand {
-			delete(backup.Status.LogSubCommandStatuses, v1alpha1.LogResumeCommand)
+			if subStatus, exist := backup.Status.LogSubCommandStatuses[v1alpha1.LogResumeCommand]; exist {
+				subStatus.Phase = v1alpha1.BackupRepeatable
+				backup.Status.LogSubCommandStatuses[v1alpha1.LogResumeCommand] = subStatus
+			}
 		}
 		if condition.Command == v1alpha1.LogResumeCommand {
-			delete(backup.Status.LogSubCommandStatuses, v1alpha1.LogPauseCommand)
+			if subStatus, exist := backup.Status.LogSubCommandStatuses[v1alpha1.LogPauseCommand]; exist {
+				subStatus.Phase = v1alpha1.BackupRepeatable
+				backup.Status.LogSubCommandStatuses[v1alpha1.LogPauseCommand] = subStatus
+			}
 		}
+
+		backup.Status.LogSubCommandStatuses[condition.Command] = subStatus
 		return true
 	}
 	return false
