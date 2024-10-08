@@ -191,28 +191,6 @@ def build(String name, String code, Map resources = e2ePodResources) {
                             ${code}
                             """
                         }
-                        stage('Coverage') {
-                            withCredentials([
-                                string(credentialsId: "tp-codecov-token", variable: 'CODECOV_TOKEN')
-                            ]) {
-                                sh """#!/bin/bash
-                                echo "info: list all coverage files"
-                                ls -dla /kind-data/control-plane/coverage/*
-                                ls -dla /kind-data/worker1/coverage/*
-                                ls -dla /kind-data/worker2/coverage/*
-                                ls -dla /kind-data/worker3/coverage/*
-                                echo "info: merging coverage files"
-                                cp /kind-data/control-plane/coverage/*.cov /tmp
-                                cp /kind-data/worker1/coverage/*.cov /tmp
-                                cp /kind-data/worker2/coverage/*.cov /tmp
-                                cp /kind-data/worker3/coverage/*.cov /tmp
-                                ./bin/gocovmerge /tmp/*.cov > /tmp/coverage.txt
-                                source EXPORT_GIT_COMMIT
-                                echo "info: uploading coverage to codecov"
-                                bash <(curl -s https://codecov.io/bash) -t ${CODECOV_TOKEN} -F e2e -n tidb-operator -f /tmp/coverage.txt
-                                """
-                            }
-                        }
                     }
                 } finally {
                     stage('Artifacts') {
@@ -370,7 +348,6 @@ try {
                             export CUSTOM_PORT_DRAINER=${CUSTOM_PORT_DRAINER}
                             export CUSTOM_PORT_TICDC=${CUSTOM_PORT_TICDC}
                             E2E=y make build e2e-build
-                            make gocovmerge
                             """
                         }
                     }
