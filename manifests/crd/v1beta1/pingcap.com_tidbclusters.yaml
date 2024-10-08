@@ -4929,6 +4929,8 @@ spec:
                     - name
                     type: object
                   type: array
+                initWaitTime:
+                  type: integer
                 labels:
                   additionalProperties:
                     type: string

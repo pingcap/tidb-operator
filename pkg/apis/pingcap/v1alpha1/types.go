@@ -544,19 +544,11 @@ type PDSpec struct {
 	// +kubebuilder:default=30
 	StartTimeout int `json:"startTimeout,omitempty"`
 
-<<<<<<< HEAD
-=======
 	// Wait time before pd get started. This wait time is to allow the new DNS record to propagate,
 	// ensuring that the PD DNS resolves to the same IP address as the pod.
 	// +kubebuilder:default=0
 	InitWaitTime int `json:"initWaitTime,omitempty"`
 
-	// Mode is the mode of PD cluster
-	// +optional
-	// +kubebuilder:validation:Enum:="";"ms"
-	Mode string `json:"mode,omitempty"`
-
->>>>>>> 5d83d8960 ([PD] add option to wait a certain time before start pd (#5696))
 	// The default number of spare replicas to scale up when using VolumeReplace feature.
 	// In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid
 	// zone skew after volume replace (total replicas always whole multiples of zones).
