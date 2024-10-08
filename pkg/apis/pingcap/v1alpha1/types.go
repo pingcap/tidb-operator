@@ -2354,6 +2354,9 @@ const (
 	BackupComplete BackupConditionType = "Complete"
 	// BackupClean means the clean job has been created to clean backup data
 	BackupClean BackupConditionType = "Clean"
+	// BackupRepeatable should ONLY be used in log backup
+	// It means some log backup sub-command completed and the log backup can be re-run
+	BackupRepeatable BackupConditionType = "Repeatable"
 	// BackupFailed means the backup has failed.
 	BackupFailed BackupConditionType = "Failed"
 	// BackupRetryTheFailed means this failure can be retried
