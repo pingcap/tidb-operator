@@ -371,7 +371,7 @@ func IsLogSubcommandAlreadySync(backup *Backup, subCommand LogSubCommandType) bo
 func IsLogBackupSubCommandOntheCondition(backup *Backup, conditionType BackupConditionType) bool {
 	command := ParseLogBackupSubcommand(backup)
 	switch command {
-	case LogStartCommand, LogStopCommand:
+	case LogStartCommand, LogStopCommand, LogPauseCommand, LogResumeCommand:
 		if subStatus, ok := backup.Status.LogSubCommandStatuses[command]; ok {
 			return subStatus.Phase == conditionType
 		}

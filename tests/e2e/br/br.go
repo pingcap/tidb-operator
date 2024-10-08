@@ -482,7 +482,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Start log backup")
 			backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
-				backup.Spec.LogSubcommand = "log-start"
+				backup.Spec.LogSubcommand = v1alpha1.LogStartCommand
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
 			})
@@ -500,9 +500,9 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Pause log backup")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.LogSubcommand = v1alpha1.LogPauseCommand
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
-				backup.Spec.LogSubcommand = "log-pause"
 			})
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupPaused)
@@ -518,34 +518,34 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("resume log backup")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.LogSubcommand = v1alpha1.LogStartCommand
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
-				backup.Spec.LogSubcommand = "log-start"
 			})
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupRunning)
 
 			ginkgo.By("Pause log backup again")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.LogSubcommand = v1alpha1.LogPauseCommand
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
-				backup.Spec.LogSubcommand = "log-pause"
 			})
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupPaused)
 
 			ginkgo.By("resume log backup again")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.LogSubcommand = v1alpha1.LogStartCommand
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
-				backup.Spec.LogSubcommand = "log-start"
 			})
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupRunning)
 
 			ginkgo.By("Stop log backup")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
-				backup.Spec.LogSubcommand = "log-stop"
+				backup.Spec.LogSubcommand = v1alpha1.LogStopCommand
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
 			})
