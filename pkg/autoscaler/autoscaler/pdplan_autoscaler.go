@@ -32,7 +32,7 @@ import (
 const groupLabelKey = "group"
 
 func (am *autoScalerManager) getAutoScaledClusters(tac *v1alpha1.TidbClusterAutoScaler, components []v1alpha1.MemberType) (tcList []*v1alpha1.TidbCluster, err error) {
-	componentStrings := make([]string, len(components))
+	componentStrings := make([]string, 0, len(components))
 	for _, component := range components {
 		componentStrings = append(componentStrings, component.String())
 	}
