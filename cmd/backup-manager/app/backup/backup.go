@@ -167,11 +167,39 @@ func (bo *Options) doStartLogBackup(ctx context.Context, backup *v1alpha1.Backup
 	return bo.brCommandRun(ctx, fullArgs)
 }
 
+// doResumeLogBackup generates br args about log backup resume and runs br binary to do the real backup work.
+func (bo *Options) doResumeLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
+	specificArgs := []string{
+		"log",
+		"resume",
+		fmt.Sprintf("--task-name=%s", backup.Name),
+	}
+	fullArgs, err := bo.backupCommandTemplate(backup, specificArgs, false)
+	if err != nil {
+		return err
+	}
+	return bo.brCommandRun(ctx, fullArgs)
+}
+
 // doStoplogBackup generates br args about log backup stop and runs br binary to do the real backup work.
 func (bo *Options) doStopLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
 	specificArgs := []string{
 		"log",
 		"stop",
+		fmt.Sprintf("--task-name=%s", backup.Name),
+	}
+	fullArgs, err := bo.backupCommandTemplate(backup, specificArgs, false)
+	if err != nil {
+		return err
+	}
+	return bo.brCommandRun(ctx, fullArgs)
+}
+
+// doPauselogBackup generates br args about log backup pause and runs br binary to do the real backup work.
+func (bo *Options) doPauseLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
+	specificArgs := []string{
+		"log",
+		"pause",
 		fmt.Sprintf("--task-name=%s", backup.Name),
 	}
 	fullArgs, err := bo.backupCommandTemplate(backup, specificArgs, false)
