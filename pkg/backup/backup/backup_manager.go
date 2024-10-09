@@ -167,6 +167,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	}
 
 	// create k8s job
+	klog.Infof("backup %s/%s creating job %s.", ns, name, backupJobName)
 	if err := bm.deps.JobControl.CreateJob(backup, job); err != nil {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %v", ns, name, backupJobName, err)
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
@@ -190,11 +191,23 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
-	logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 	var err error
+	logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 	if backup.Spec.BR == nil {
 		err = backuputil.ValidateBackup(backup, "", nil)
 	} else {
+		if backup.Spec.Mode == v1alpha1.BackupModeLog && logBackupSubcommand == v1alpha1.LogUnknownCommand {
+			err = fmt.Errorf("log backup %s/%s subcommand `%s` is not supported", ns, name, backup.Spec.LogSubcommand)
+			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+				Command: logBackupSubcommand,
+				Type:    v1alpha1.BackupRetryTheFailed,
+				Status:  corev1.ConditionTrue,
+				Reason:  err.Error(),
+				Message: err.Error(),
+			}, nil)
+			return err
+		}
+
 		backupNamespace := backup.GetNamespace()
 		if backup.Spec.BR.ClusterNamespace != "" {
 			backupNamespace = backup.Spec.BR.ClusterNamespace
@@ -1077,42 +1090,36 @@ func (bm *backupManager) skipSnapshotBackupSync(backup *v1alpha1.Backup) (bool, 
 	return false, nil
 }
 
-// skipLogBackupSync skip log backup, returns true if can be skipped.
+// skipLogBackupSync skips log backup, returns true if it can be skipped.
 func (bm *backupManager) skipLogBackupSync(backup *v1alpha1.Backup) (bool, error) {
 	if backup.Spec.Mode != v1alpha1.BackupModeLog {
 		return false, nil
 	}
-	var skip bool
-	var err error
+
 	command := v1alpha1.ParseLogBackupSubcommand(backup)
-	switch command {
-	case v1alpha1.LogStartCommand:
-		skip = v1alpha1.IsLogBackupAlreadyStart(backup)
-	case v1alpha1.LogTruncateCommand:
-		if v1alpha1.IsLogBackupAlreadyTruncate(backup) {
-			skip = true
-			// if skip truncate, we need update truncate to be complete, and truncating util is the spec's truncate until.
-			updateStatus := &controller.BackupUpdateStatus{
-				TimeStarted:        &metav1.Time{Time: time.Now()},
-				TimeCompleted:      &metav1.Time{Time: time.Now()},
-				LogTruncatingUntil: &backup.Spec.LogTruncateUntil,
-			}
-			err = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Command: v1alpha1.LogTruncateCommand,
-				Type:    v1alpha1.BackupComplete,
-				Status:  corev1.ConditionTrue,
-			}, updateStatus)
-		}
-	case v1alpha1.LogStopCommand:
-		skip = v1alpha1.IsLogBackupAlreadyStop(backup)
-	default:
-		return false, nil
+	if command != v1alpha1.LogTruncateCommand && v1alpha1.IsLogSubcommandAlreadySync(backup, command) {
+		return true, nil
 	}
 
-	if skip {
+	// Handle the special case for LogTruncateCommand
+	var err error
+	if command == v1alpha1.LogTruncateCommand && v1alpha1.IsLogBackupAlreadyTruncate(backup) {
+		// If skipping truncate, update status
+		updateStatus := &controller.BackupUpdateStatus{
+			TimeStarted:        &metav1.Time{Time: time.Now()},
+			TimeCompleted:      &metav1.Time{Time: time.Now()},
+			LogTruncatingUntil: &backup.Spec.LogTruncateUntil,
+		}
+		err = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Command: v1alpha1.LogTruncateCommand,
+			Type:    v1alpha1.BackupComplete,
+			Status:  corev1.ConditionTrue,
+		}, updateStatus)
 		klog.Infof("log backup %s/%s subcommand %s is already done, will skip sync.", backup.Namespace, backup.Name, command)
+		return true, err
 	}
-	return skip, err
+
+	return false, nil
 }
 
 // skipVolumeSnapshotBackupSync skip volume snapshot backup, returns true if can be skipped.
@@ -1234,7 +1241,7 @@ func shouldLogBackupCommandRequeue(backup *v1alpha1.Backup) bool {
 	}
 	command := v1alpha1.ParseLogBackupSubcommand(backup)
 
-	if command == v1alpha1.LogTruncateCommand || command == v1alpha1.LogStopCommand {
+	if command == v1alpha1.LogTruncateCommand || command == v1alpha1.LogStopCommand || command == v1alpha1.LogPauseCommand {
 		return backup.Status.CommitTs == ""
 	}
 	return false

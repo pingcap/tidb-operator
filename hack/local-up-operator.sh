@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 #
 # This command runs tidb-operator in Kubernetes.
 #
@@ -25,6 +26,10 @@ ROOT=$(unset CDPATH && cd $(dirname "${BASH_SOURCE[0]}")/.. && pwd)
 cd $ROOT
 
 source "${ROOT}/hack/lib.sh"
+=======
+# Default provider is kind
+PROVIDER=${PROVIDER:-kind}
+>>>>>>> 91d106536 (br: a more straight forward operator interface (#5710))
 
 function usage() {
     cat <<'EOF'
