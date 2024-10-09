@@ -441,12 +441,18 @@ func IsLogBackupAlreadyStop(backup *Backup) bool {
 	return backup.Spec.Mode == BackupModeLog && backup.Status.Phase == BackupStopped
 }
 
-// IsLogBackupOnTrack return whether log backup is on track.
+// IsLogBackupOnTrack returns whether log backup is on track.
 func IsLogBackupOnTrack(backup *Backup) bool {
-	return backup.Spec.Mode == BackupModeLog &&
-		backup.Status.Phase == BackupScheduled ||
-		backup.Status.Phase == BackupPrepare ||
-		backup.Status.Phase == BackupRunning
+	if backup.Spec.Mode != BackupModeLog {
+		return false
+	}
+	
+	switch backup.Status.Phase {
+	case BackupScheduled, BackupPrepare, BackupRunning, BackupPaused:
+		return true
+	default:
+		return false
+	}
 }
 
 // IsLogBackupAlreadyPaused return whether log backup has already paused.
