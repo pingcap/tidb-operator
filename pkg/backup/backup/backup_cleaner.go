@@ -65,6 +65,59 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 	return bc.CleanData(backup)
 }
 
+func (bc *backupCleaner) CleanLogBackup(backup *v1alpha1.Backup) error {
+	if backup.Spec.Mode != v1alpha1.BackupModeLog {
+		return nil
+	}
+	if backup.Spec.BR == nil {
+		return fmt.Errorf("backup %s/%s spec.BR shouldn't be nil", backup.GetNamespace(), backup.GetName())
+	}
+	if !v1alpha1.IsLogBackupAlreadyStart(backup) {
+		return nil
+	}
+	if v1alpha1.IsLogBackupAlreadyStop(backup) {
+		return nil
+	}
+
+	ns := backup.GetNamespace()
+	name := backup.GetName()
+	stopLogJobName := backup.GetCleanLogBackupJobName()
+
+	var err error
+	_, err = bc.deps.JobLister.Jobs(ns).Get(stopLogJobName)
+	if err == nil {
+		// already have a clean job running，return directly
+		return nil
+	}
+
+	// make backup job
+	var job *batchv1.Job
+	var reason string
+	if job, reason, err = bc.makeStopLogBackupJob(backup); err != nil {
+		klog.Errorf("backup %s/%s create job %s failed, reason is %s, error %v.", ns, name, stopLogJobName, reason, err)
+		return err
+	}
+
+	// create k8s job
+	if err := bc.deps.JobControl.CreateJob(backup, job); err != nil {
+		errMsg := fmt.Errorf("stop log backup %s/%s job %s failed, err: %v", ns, name, stopLogJobName, err)
+		bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Command: v1alpha1.LogStopCommand,
+			Type:    v1alpha1.BackupRetryTheFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "StopLogBackupJobFailed",
+			Message: errMsg.Error(),
+		}, nil)
+		return errMsg
+	}
+
+	return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Command: v1alpha1.LogStopCommand,
+		Type:    v1alpha1.BackupScheduled,
+		Status:  corev1.ConditionTrue,
+	}, nil)
+}
+
 func (bc *backupCleaner) CleanData(backup *v1alpha1.Backup) error {
 	if backup.DeletionTimestamp == nil || !v1alpha1.IsCleanCandidate(backup) || v1alpha1.NeedRetainData(backup) {
 		// The backup object has not been deleted or we need to retain backup data，do nothing
@@ -136,59 +189,6 @@ func (bc *backupCleaner) CleanData(backup *v1alpha1.Backup) error {
 	return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Type:   v1alpha1.BackupClean,
 		Status: corev1.ConditionFalse,
-	}, nil)
-}
-
-func (bc *backupCleaner) CleanLogBackup(backup *v1alpha1.Backup) error {
-	if backup.Spec.Mode != v1alpha1.BackupModeLog {
-		return nil
-	}
-	if backup.Spec.BR == nil {
-		return fmt.Errorf("backup %s/%s spec.BR shouldn't be nil", backup.GetNamespace(), backup.GetName())
-	}
-	if !v1alpha1.IsLogBackupAlreadyStart(backup) {
-		return nil
-	}
-	if v1alpha1.IsLogBackupAlreadyStop(backup) {
-		return nil
-	}
-
-	ns := backup.GetNamespace()
-	name := backup.GetName()
-	stopLogJobName := backup.GetCleanLogBackupJobName()
-
-	var err error
-	_, err = bc.deps.JobLister.Jobs(ns).Get(stopLogJobName)
-	if err == nil {
-		// already have a clean job running，return directly
-		return nil
-	}
-
-	// make backup job
-	var job *batchv1.Job
-	var reason string
-	if job, reason, err = bc.makeStopLogBackupJob(backup); err != nil {
-		klog.Errorf("backup %s/%s create job %s failed, reason is %s, error %v.", ns, name, stopLogJobName, reason, err)
-		return err
-	}
-
-	// create k8s job
-	if err := bc.deps.JobControl.CreateJob(backup, job); err != nil {
-		errMsg := fmt.Errorf("stop log backup %s/%s job %s failed, err: %v", ns, name, stopLogJobName, err)
-		bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Command: v1alpha1.LogStopCommand,
-			Type:    v1alpha1.BackupRetryTheFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "StopLogBackupJobFailed",
-			Message: errMsg.Error(),
-		}, nil)
-		return errMsg
-	}
-
-	return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Command: v1alpha1.LogStopCommand,
-		Type:    v1alpha1.BackupScheduled,
-		Status:  corev1.ConditionTrue,
 	}, nil)
 }
 
