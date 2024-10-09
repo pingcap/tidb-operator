@@ -147,7 +147,7 @@ tail -n +$line $BACKUP_MANAGER >> $TMP_BACKUP_MANAGER
 mv -f $TMP_BACKUP_MANAGER $BACKUP_MANAGER
 
 line=$(grep -n 'bc.deps.JobControl.CreateJob(backup, job)' $BACKUP_CLEANER | cut -d ":" -f 1)
-head -n $(($line-1)) $BACKUP_CLEANER > $TMP_BACKUP_CLEANER
+head -n $(($line - 1)) $BACKUP_CLEANER > $TMP_BACKUP_CLEANER
 echo "$PATCH_BR_JOB"`` >> $TMP_BACKUP_CLEANER
 tail -n +$line $BACKUP_CLEANER >> $TMP_BACKUP_CLEANER
 mv -f $TMP_BACKUP_CLEANER $BACKUP_CLEANER
