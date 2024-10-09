@@ -146,16 +146,8 @@ echo "$PATCH_BR_JOB"`` >> $TMP_BACKUP_MANAGER
 tail -n +$line $BACKUP_MANAGER >> $TMP_BACKUP_MANAGER
 mv -f $TMP_BACKUP_MANAGER $BACKUP_MANAGER
 
-grep -n 'bc.deps.JobControl.CreateJob(backup, job)' $BACKUP_CLEANER | cut -d ":" -f 1 | while read -r line; do
-    if [[ "$line" =~ ^[0-9]+$ ]]; then
-        TMP_BACKUP_CLEANER="/tmp/backup_cleaner_$line.tmp"
-        
-        head -n $(($line - 1)) $BACKUP_CLEANER > $TMP_BACKUP_CLEANER
-        echo "$PATCH_BR_JOB" >> $TMP_BACKUP_CLEANER
-        tail -n +$line $BACKUP_CLEANER >> $TMP_BACKUP_CLEANER
-        mv -f $TMP_BACKUP_CLEANER $BACKUP_CLEANER
-    else
-        echo "Error: Invalid line number '$line'"
-        exit 1
-    fi
-done
+line=$(grep -n 'bc.deps.JobControl.CreateJob(backup, job)' $BACKUP_CLEANER | cut -d ":" -f 1)
+head -n $(($line - 1)) $BACKUP_CLEANER > $TMP_BACKUP_CLEANER
+echo "$PATCH_BR_JOB"`` >> $TMP_BACKUP_CLEANER
+tail -n +$line $BACKUP_CLEANER >> $TMP_BACKUP_CLEANER
+mv -f $TMP_BACKUP_CLEANER $BACKUP_CLEANER
