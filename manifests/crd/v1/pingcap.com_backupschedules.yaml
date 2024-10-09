@@ -2118,6 +2118,12 @@ spec:
                     type: object
                   logStop:
                     type: boolean
+                  logSubcommand:
+                    enum:
+                    - log-start
+                    - log-stop
+                    - log-pause
+                    type: string
                   logTruncateUntil:
                     type: string
                   podSecurityContext:
@@ -2284,6 +2290,13 @@ spec:
                     default: 600
                     type: integer
                 type: object
+                x-kubernetes-validations:
+                - message: Field `logStop` is the old version field, please use `logSubcommand`
+                    instead
+                  rule: 'has(self.logSubcommand) ? !has(self.logStop) : true'
+                - message: Field `logStop` is the old version field, please use `logSubcommand`
+                    instead
+                  rule: 'has(self.logStop) ? !has(self.logSubcommand) : true'
               imagePullSecrets:
                 items:
                   properties:
@@ -4356,6 +4369,12 @@ spec:
                     type: object
                   logStop:
                     type: boolean
+                  logSubcommand:
+                    enum:
+                    - log-start
+                    - log-stop
+                    - log-pause
+                    type: string
                   logTruncateUntil:
                     type: string
                   podSecurityContext:
@@ -4522,6 +4541,13 @@ spec:
                     default: 600
                     type: integer
                 type: object
+                x-kubernetes-validations:
+                - message: Field `logStop` is the old version field, please use `logSubcommand`
+                    instead
+                  rule: 'has(self.logSubcommand) ? !has(self.logStop) : true'
+                - message: Field `logStop` is the old version field, please use `logSubcommand`
+                    instead
+                  rule: 'has(self.logStop) ? !has(self.logSubcommand) : true'
               maxBackups:
                 format: int32
                 type: integer
