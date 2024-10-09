@@ -184,7 +184,7 @@ spec:
                 mount -U "$uuid" -t ext4 --target "$mnt_dir" --options "$mnt_opts"
                 chmod a+w "$mnt_dir"
       containers:
-        - image: "quay.io/external_storage/local-volume-provisioner:v2.3.2"
+        - image: "registry.k8s.io/sig-storage/local-volume-provisioner:v2.6.0"
           name: provisioner
           securityContext:
             privileged: true
@@ -205,7 +205,7 @@ spec:
               fieldRef:
                 fieldPath: metadata.namespace
           - name: JOB_CONTAINER_IMAGE
-            value: "quay.io/external_storage/local-volume-provisioner:v2.3.2"
+            value: "registry.k8s.io/sig-storage/local-volume-provisioner:v2.6.0"
           volumeMounts:
             - mountPath: /etc/provisioner/config
               name: provisioner-config

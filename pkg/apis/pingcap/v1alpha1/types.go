@@ -2130,6 +2130,8 @@ type Progress struct {
 
 // BackupSpec contains the backup specification for a tidb cluster.
 // +k8s:openapi-gen=true
+// +kubebuilder:validation:XValidation:rule="has(self.logSubcommand) ? !has(self.logStop) : true",message="Field `logStop` is the old version field, please use `logSubcommand` instead"
+// +kubebuilder:validation:XValidation:rule="has(self.logStop) ? !has(self.logSubcommand) : true",message="Field `logStop` is the old version field, please use `logSubcommand` instead"
 type BackupSpec struct {
 	corev1.ResourceRequirements `json:"resources,omitempty"`
 	// List of environment variables to set in the container, like v1.Container.Env.
@@ -2177,6 +2179,10 @@ type BackupSpec struct {
 	// Default is current timestamp.
 	// +optional
 	CommitTs string `json:"commitTs,omitempty"`
+	// Subcommand is the subcommand for BR, such as start, stop, pause etc.
+	// +optional
+	// +kubebuilder:validation:Enum:="log-start";"log-stop";"log-pause"
+	LogSubcommand LogSubCommandType `json:"logSubcommand,omitempty"`
 	// LogTruncateUntil is log backup truncate until timestamp.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
 	// +optional
@@ -2348,6 +2354,9 @@ const (
 	BackupComplete BackupConditionType = "Complete"
 	// BackupClean means the clean job has been created to clean backup data
 	BackupClean BackupConditionType = "Clean"
+	// BackupRepeatable should ONLY be used in log backup
+	// It means some log backup sub-command completed and the log backup can be re-run
+	BackupRepeatable BackupConditionType = "Repeatable"
 	// BackupFailed means the backup has failed.
 	BackupFailed BackupConditionType = "Failed"
 	// BackupRetryTheFailed means this failure can be retried
@@ -2358,6 +2367,8 @@ const (
 	BackupInvalid BackupConditionType = "Invalid"
 	// BackupPrepare means the backup prepare backup process
 	BackupPrepare BackupConditionType = "Prepare"
+	// BackupPaused means the backup was paused
+	BackupPaused BackupConditionType = "Paused"
 	// BackupStopped means the backup was stopped, just log backup has this condition
 	BackupStopped BackupConditionType = "Stopped"
 	// BackupRestart means the backup was restarted, now just support snapshot backup
@@ -2397,6 +2408,12 @@ const (
 	LogTruncateCommand LogSubCommandType = "log-truncate"
 	// LogStopCommand is the stop command of log backup.
 	LogStopCommand LogSubCommandType = "log-stop"
+	// LogPauseCommand is the pause command of log backup.
+	LogPauseCommand LogSubCommandType = "log-pause"
+	// LogResumeCommand is the resume command of log backup.
+	LogResumeCommand LogSubCommandType = "log-resume"
+	// LogUnknownCommand is the unknown command of log backup.
+	LogUnknownCommand LogSubCommandType = "log-unknown"
 )
 
 // LogSubCommandStatus is the log backup subcommand's status.

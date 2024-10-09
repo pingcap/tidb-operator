@@ -824,7 +824,7 @@ spec:
   #     app.kubernetes.io/component: pump
   #   annotations:
   #     node.kubernetes.io/instance-type: some-vm-type
-  #   tolerations: {}
+  #   tolerations: []
   #   configUpdateStrategy: RollingUpdate
   #   statefulSetUpdateStrategy: RollingUpdate
   #   podSecurityContext: {}
@@ -868,7 +868,7 @@ spec:
   #     app.kubernetes.io/component: ticdc
   #   annotations:
   #     node.kubernetes.io/instance-type: some-vm-type
-  #   tolerations: {}
+  #   tolerations: []
   #   configUpdateStrategy: RollingUpdate
   #   statefulSetUpdateStrategy: RollingUpdate
   #   podSecurityContext: {}
@@ -918,7 +918,7 @@ spec:
   #     app.kubernetes.io/component: tiflash
   #   annotations:
   #     node.kubernetes.io/instance-type: some-vm-type
-  #   tolerations: {}
+  #   tolerations: []
   #   configUpdateStrategy: RollingUpdate
   #   statefulSetUpdateStrategy: RollingUpdate
   #   podSecurityContext: {}
@@ -970,7 +970,7 @@ spec:
   #     # configure the configuration file for TiFlash Proxy process
   #     proxy: |
   #       [security]
-  #         cert-allowed-cn = "CNNAME"
+  #         cert-allowed-cn = ["CNNAME"]
   #   # TopologySpreadConstraints for pod scheduling, will overwrite the cluster level spread constraints setting
   #   # Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
   #   topologySpreadConstraints:

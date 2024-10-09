@@ -93,7 +93,7 @@ func (c *defaultTiDBControl) GetInfo(tc *v1alpha1.TidbCluster, ordinal int32) (*
 		return nil, err
 	}
 	if res.StatusCode != http.StatusOK {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %s:%v URL: %s", string(body), res.StatusCode, url))
+		errMsg := fmt.Errorf("Error response %s:%v URL: %s", string(body), res.StatusCode, url)
 		return nil, errMsg
 	}
 	info := DBInfo{}
@@ -132,7 +132,7 @@ func getBodyOK(httpClient *http.Client, apiURL string) ([]byte, error) {
 		return nil, err
 	}
 	if res.StatusCode >= 400 {
-		errMsg := fmt.Errorf(fmt.Sprintf("Error response %s:%v URL %s", string(body), res.StatusCode, apiURL))
+		errMsg := fmt.Errorf("Error response %s:%v URL %s", string(body), res.StatusCode, apiURL)
 		return nil, errMsg
 	}
 
