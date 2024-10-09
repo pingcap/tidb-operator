@@ -446,7 +446,7 @@ func IsLogBackupOnTrack(backup *Backup) bool {
 	if backup.Spec.Mode != BackupModeLog {
 		return false
 	}
-	
+
 	switch backup.Status.Phase {
 	case BackupScheduled, BackupPrepare, BackupRunning, BackupPaused:
 		return true
