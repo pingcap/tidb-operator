@@ -38,6 +38,7 @@ type PDStartScriptModel struct {
 	ExtraArgs          string
 	PDAddresses        string
 	PDStartTimeout     int
+	PDInitWaitTime     int
 }
 
 // RenderPDStartScript renders PD start script from TidbCluster
@@ -78,6 +79,8 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	m.PDStartTimeout = tc.PDStartTimeout()
 
+	m.PDInitWaitTime = tc.PDInitWaitTime()
+
 	waitForDnsNameIpMatchOnStartup := slices.Contains(
 		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch)
 
@@ -100,6 +103,8 @@ const (
 	pdWaitForDnsIpMatchSubScript = `
 componentDomain=${PD_DOMAIN}
 waitThreshold={{ .PDStartTimeout }}
+initWaitTime={{ .PDInitWaitTime }}
+sleep initWaitTime
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 ` + componentCommonWaitForDnsIpMatchScript
 

@@ -6252,6 +6252,13 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Format:      "int32",
 						},
 					},
+					"initWaitTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Wait time before pd get started. This wait time is to allow the new DNS record to propagate, ensuring that the PD DNS resolves to the same IP address as the pod.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 					"spareVolReplaceReplicas": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The default number of spare replicas to scale up when using VolumeReplace feature. In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid zone skew after volume replace (total replicas always whole multiples of zones). Optional: Defaults to 1",
