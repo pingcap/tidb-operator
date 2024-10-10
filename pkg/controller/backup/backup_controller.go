@@ -208,7 +208,6 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
-	// TODO: log backup check all subcommand job's pod status
 	if newBackup.Spec.Mode != v1alpha1.BackupModeLog {
 		// we will create backup job when we mark backup as scheduled status,
 		// but the backup job or its pod may failed due to insufficient resources or other reasons in k8s,
@@ -235,7 +234,7 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
-	if v1alpha1.IsBackupScheduled(newBackup) || v1alpha1.IsBackupRunning(newBackup) || v1alpha1.IsBackupPrepared(newBackup) || v1alpha1.IsLogBackupStopped(newBackup) {
+	if v1alpha1.IsBackupScheduled(newBackup) || v1alpha1.IsBackupRunning(newBackup) || v1alpha1.IsBackupPrepared(newBackup) || v1alpha1.IsBackupFailed(newBackup) {
 		klog.V(4).Infof("backup %s/%s is already Scheduled, Running, Preparing or Failed, skipping.", ns, name)
 		return
 	}
