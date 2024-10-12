@@ -494,22 +494,20 @@ func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1
 
 // ensureBackupJobFinished ensures that all backup jobs have finished, deleting any running jobs.
 func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool, error) {
-	ns := backup.GetNamespace()
-	name := backup.GetName()
 
-	backupJobNames := bc.getBackupJobNames(backup)
-
-	// Check and handle pre-cleaning log backup job if applicable
 	if backup.Spec.Mode == v1alpha1.BackupModeLog {
-		preCleaningJob := backup.GetStopLogBackupJobName()
-		job, err := bc.deps.JobLister.Jobs(ns).Get(preCleaningJob)
-		if err == nil && !bc.isJobFinished(job) {
-			klog.Infof("backup %s/%s job %s is stopping, cleaner will wait it done", ns, name, preCleaningJob)
-			return false, nil
-		} else if err != nil && !errors.IsNotFound(err) {
+		isLogStopJobFinished, err := bc.isLogStopJobFinished(backup)
+		if err != nil {
 			return false, err
 		}
+		if !isLogStopJobFinished {
+			return false, nil
+		}
 	}
+
+	ns := backup.GetNamespace()
+	name := backup.GetName()
+	backupJobNames := bc.getBackupJobNames(backup)
 
 	isAllFinished := true
 	var errs []error
@@ -530,7 +528,7 @@ func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool,
 			continue
 		}
 
-		if bc.isJobFinished(job) {
+		if bc.isJobDoneOrFailed(job) {
 			continue
 		}
 
@@ -548,6 +546,29 @@ func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool,
 	return isAllFinished, nil
 }
 
+func (bc *backupCleaner) isLogStopJobFinished(backup *v1alpha1.Backup) (bool,error) {
+	if backup.Spec.Mode != v1alpha1.BackupModeLog {
+		return true, nil
+	}
+	if v1alpha1.IsLogBackupAlreadyStop(backup) {
+		return true, nil
+	}
+	
+	ns := backup.GetNamespace()
+	name := backup.GetName()
+	stopLogJob := backup.GetStopLogBackupJobName()
+	job, err := bc.deps.JobLister.Jobs(ns).Get(stopLogJob)
+	if err == nil {
+		if !bc.isJobDoneOrFailed(job) {
+			klog.Infof("log backup %s/%s is running stop task, cleaner will wait until done", ns, name)
+			return false, nil
+		} else if bc.isJobFailed(job) {
+			return false, fmt.Errorf("log backup %s/%s stopping task %s failed", ns, name, stopLogJob)
+		}
+	}
+	return false, err
+}
+
 func (bc *backupCleaner) getBackupJobNames(backup *v1alpha1.Backup) []string {
 	// log backup may have multiple jobs
 	backupJobNames := make([]string, 0)
@@ -559,9 +580,18 @@ func (bc *backupCleaner) getBackupJobNames(backup *v1alpha1.Backup) []string {
 	return backupJobNames
 }
 
-func (bc *backupCleaner) isJobFinished(job *batchv1.Job) bool {
+func (bc *backupCleaner) isJobDoneOrFailed(job *batchv1.Job) bool {
 	for _, condition := range job.Status.Conditions {
 		if (condition.Type == batchv1.JobComplete || condition.Type == batchv1.JobFailed) && condition.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+	return false
+}
+
+func (bc *backupCleaner) isJobFailed(job *batchv1.Job) bool {
+	for _, condition := range job.Status.Conditions {
+		if condition.Type == batchv1.JobFailed && condition.Status == corev1.ConditionTrue {
 			return true
 		}
 	}
