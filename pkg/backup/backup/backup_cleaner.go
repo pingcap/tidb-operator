@@ -58,10 +58,10 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 		return nil
 	}
 
-	klog.Infof("start to clean backup %s/%s", backup.GetNamespace(), backup.GetName())
 	if err := bc.CleanLogBackup(backup); err != nil {
 		return err
 	}
+	klog.Infof("start to clean backup %s/%s", backup.GetNamespace(), backup.GetName())
 	return bc.CleanData(backup)
 }
 
@@ -88,14 +88,6 @@ func (bc *backupCleaner) CleanLogBackup(backup *v1alpha1.Backup) error {
 	if err == nil {
 		// already have a clean job running，return directly
 		return nil
-	} else if !errors.IsNotFound(err) {
-		bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupRetryTheFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "GetBackupFailed",
-			Message: err.Error(),
-		}, nil)
-		return err
 	}
 
 	// make backup job
