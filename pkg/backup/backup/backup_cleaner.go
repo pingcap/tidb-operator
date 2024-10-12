@@ -59,13 +59,13 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 	}
 
 	klog.Infof("start to clean backup %s/%s", backup.GetNamespace(), backup.GetName())
-	if err := bc.CleanLogBackup(backup); err != nil {
+	if err := bc.StopLogBackup(backup); err != nil {
 		return err
 	}
 	return bc.CleanData(backup)
 }
 
-func (bc *backupCleaner) CleanLogBackup(backup *v1alpha1.Backup) error {
+func (bc *backupCleaner) StopLogBackup(backup *v1alpha1.Backup) error {
 	if backup.Spec.Mode != v1alpha1.BackupModeLog {
 		return nil
 	}
@@ -81,7 +81,7 @@ func (bc *backupCleaner) CleanLogBackup(backup *v1alpha1.Backup) error {
 
 	ns := backup.GetNamespace()
 	name := backup.GetName()
-	stopLogJobName := backup.GetCleanLogBackupJobName()
+	stopLogJobName := backup.GetStopLogBackupJobName()
 
 	var err error
 	_, err = bc.deps.JobLister.Jobs(ns).Get(stopLogJobName)
@@ -296,7 +296,7 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
-	jobName := backup.GetCleanLogBackupJobName()
+	jobName := backup.GetStopLogBackupJobName()
 	backupNamespace := ns
 	if backup.Spec.BR.ClusterNamespace != "" {
 		backupNamespace = backup.Spec.BR.ClusterNamespace
@@ -492,31 +492,30 @@ func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1
 	return job, "", nil
 }
 
-// ensureBackupJobDeleted ensure that backup Job have finished, it will delete the job if it is running
+// ensureBackupJobFinished ensures that all backup jobs have finished, deleting any running jobs.
 func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	// log backup may have multiple jobs
-	backupJobNames := make([]string, 0)
+	backupJobNames := bc.getBackupJobNames(backup)
+
+	// Check and handle pre-cleaning log backup job if applicable
 	if backup.Spec.Mode == v1alpha1.BackupModeLog {
-		backupJobNames = append(backupJobNames, backup.GetAllLogBackupJobName()...)
-		preCleaningJob := backup.GetCleanLogBackupJobName()
-		_, err := bc.deps.JobLister.Jobs(ns).Get(preCleaningJob)
-		if err == nil {
+		preCleaningJob := backup.GetStopLogBackupJobName()
+		job, err := bc.deps.JobLister.Jobs(ns).Get(preCleaningJob)
+		if err == nil && !bc.isJobFinished(job) {
 			klog.Infof("backup %s/%s job %s is stopping, cleaner will wait it done", ns, name, preCleaningJob)
 			return false, nil
-		} else if !errors.IsNotFound(err) {
+		} else if err != nil && !errors.IsNotFound(err) {
 			return false, err
 		}
-	} else {
-		backupJobNames = append(backupJobNames, backup.GetBackupJobName())
 	}
 
 	isAllFinished := true
-	errs := make([]error, 0)
-	for _, backupJobName := range backupJobNames {
-		backupJob, err := bc.deps.JobLister.Jobs(ns).Get(backupJobName)
+	var errs []error
+
+	for _, jobName := range backupJobNames {
+		job, err := bc.deps.JobLister.Jobs(ns).Get(jobName)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				continue
@@ -524,36 +523,47 @@ func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool,
 			errs = append(errs, err)
 			continue
 		}
-		// job is being deleted
-		if backupJob.DeletionTimestamp != nil {
-			klog.Infof("backup %s/%s job %s is being deleted, cleaner will wait", ns, name, backupJobName)
+
+		if job.DeletionTimestamp != nil {
+			klog.Infof("backup %s/%s job %s is being deleted, cleaner will wait", ns, name, jobName)
 			isAllFinished = false
 			continue
 		}
 
-		finished := false
-		for _, c := range backupJob.Status.Conditions {
-			if (c.Type == batchv1.JobComplete || c.Type == batchv1.JobFailed) && c.Status == corev1.ConditionTrue {
-				finished = true
-				break
-			}
-		}
-		if finished {
+		if bc.isJobFinished(job) {
 			continue
 		}
 
-		isAllFinished = false
-		klog.Infof("backup %s/%s job %s is running, cleaner will delete it and wait it done", ns, name, backupJobName)
-		// delete job if job is running
-		err = bc.deps.JobControl.DeleteJob(backup, backupJob)
-		if err != nil {
+		klog.Infof("backup %s/%s job %s is running, cleaner will delete it and wait it done", ns, name, jobName)
+		if err := bc.deps.JobControl.DeleteJob(backup, job); err != nil {
 			errs = append(errs, err)
 		}
+
+		isAllFinished = false
 	}
 
-	if len(errs) != 0 {
+	if len(errs) > 0 {
 		return false, errorutils.NewAggregate(errs)
 	}
-	// no job or all job finished
 	return isAllFinished, nil
+}
+
+func (bc *backupCleaner) getBackupJobNames(backup *v1alpha1.Backup) []string {
+	// log backup may have multiple jobs
+	backupJobNames := make([]string, 0)
+	if backup.Spec.Mode == v1alpha1.BackupModeLog {
+		backupJobNames = append(backupJobNames, backup.GetAllLogBackupJobName()...)
+	} else {
+		backupJobNames = append(backupJobNames, backup.GetBackupJobName())
+	}
+	return backupJobNames
+}
+
+func (bc *backupCleaner) isJobFinished(job *batchv1.Job) bool {
+	for _, condition := range job.Status.Conditions {
+		if (condition.Type == batchv1.JobComplete || condition.Type == batchv1.JobFailed) && condition.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+	return false
 }

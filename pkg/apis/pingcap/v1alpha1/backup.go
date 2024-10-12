@@ -43,7 +43,7 @@ func (bk *Backup) GetCleanJobName() string {
 }
 
 // GetCleanJobName return the clean job name for log backup
-func (bk *Backup) GetCleanLogBackupJobName() string {
+func (bk *Backup) GetStopLogBackupJobName() string {
 	return fmt.Sprintf("stop-%s", bk.GetName())
 }
 
