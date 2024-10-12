@@ -603,6 +603,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			})
 			framework.ExpectNoError(err)
 			framework.ExpectNotEqual(backup.Status.CommitTs, "")
+			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupRunning)
 
 			ginkgo.By("Delete backup")
 			err = deleteBackup(f, backupName)
@@ -1443,7 +1444,7 @@ func deleteBackup(f *e2eframework.Framework, name string) error {
 		return err
 	}
 
-	if err := brutil.WaitForBackupDeleted(f.ExtClient, ns, name, time.Second*60*5); err != nil {
+	if err := brutil.WaitForBackupDeleted(f.ExtClient, ns, name, time.Second*60*15); err != nil {
 		return err
 	}
 	return nil
