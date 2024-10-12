@@ -501,6 +501,14 @@ func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool,
 	backupJobNames := make([]string, 0)
 	if backup.Spec.Mode == v1alpha1.BackupModeLog {
 		backupJobNames = append(backupJobNames, backup.GetAllLogBackupJobName()...)
+		preCleaningJob := backup.GetCleanLogBackupJobName()
+		_, err := bc.deps.JobLister.Jobs(ns).Get(preCleaningJob)
+		if err == nil {
+			klog.Infof("backup %s/%s job %s is stopping, cleaner will wait it done", ns, name, preCleaningJob)
+			return false, nil
+		} else if !errors.IsNotFound(err) {
+			return false, err
+		}
 	} else {
 		backupJobNames = append(backupJobNames, backup.GetBackupJobName())
 	}
