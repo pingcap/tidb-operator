@@ -58,7 +58,7 @@ func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
 		return nil
 	}
 
-	klog.Infof("start to clean backup %s/%s", backup.GetNamespace(), backup.GetName())
+	klog.Infof("prepare to clean backup %s/%s", backup.GetNamespace(), backup.GetName())
 	if err := bc.StopLogBackup(backup); err != nil {
 		return err
 	}
@@ -563,8 +563,12 @@ func (bc *backupCleaner) isLogStopJobFinished(backup *v1alpha1.Backup) (bool, er
 			klog.Infof("log backup %s/%s is running stop task, cleaner will wait until done", ns, name)
 			return false, nil
 		} else if bc.isJobFailed(job) {
-			return false, fmt.Errorf("log backup %s/%s stopping task %s failed", ns, name, stopLogJob)
+			klog.Errorf("log backup %s/%s stopping task %s failed", ns, name, stopLogJob)
 		}
+		return true, nil
+	} else if errors.IsNotFound(err) {
+		klog.Warningf("log backup %s/%s stopping-task %s not found, log backup may has failed before cleaning", ns, name, stopLogJob)
+		return true, nil
 	}
 	return false, err
 }
