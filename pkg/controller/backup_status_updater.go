@@ -377,7 +377,7 @@ func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 		}
 	}
 
-	// restruct status and condition according to subcommand's detail info, and they wiil be used to update whole log backup status.
+	// restruct status and condition according to subcommand's detail info, and they will be used to update whole log backup status.
 	newStatus := restructStatus()
 	newCondition := restructCondition()
 
