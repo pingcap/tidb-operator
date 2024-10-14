@@ -546,14 +546,14 @@ func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool,
 	return isAllFinished, nil
 }
 
-func (bc *backupCleaner) isLogStopJobFinished(backup *v1alpha1.Backup) (bool,error) {
+func (bc *backupCleaner) isLogStopJobFinished(backup *v1alpha1.Backup) (bool, error) {
 	if backup.Spec.Mode != v1alpha1.BackupModeLog {
 		return true, nil
 	}
 	if v1alpha1.IsLogBackupAlreadyStop(backup) {
 		return true, nil
 	}
-	
+
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	stopLogJob := backup.GetStopLogBackupJobName()
