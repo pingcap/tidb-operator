@@ -495,16 +495,6 @@ func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1
 // ensureBackupJobFinished ensures that all backup jobs have finished, deleting any running jobs.
 func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool, error) {
 
-	if backup.Spec.Mode == v1alpha1.BackupModeLog {
-		isLogStopJobFinished, err := bc.isLogStopJobFinished(backup)
-		if err != nil {
-			return false, err
-		}
-		if !isLogStopJobFinished {
-			return false, nil
-		}
-	}
-
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	backupJobNames := bc.getBackupJobNames(backup)
@@ -542,6 +532,16 @@ func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool,
 
 	if len(errs) > 0 {
 		return false, errorutils.NewAggregate(errs)
+	}
+
+	if backup.Spec.Mode == v1alpha1.BackupModeLog {
+		isLogStopJobFinished, err := bc.isLogStopJobFinished(backup)
+		if err != nil {
+			return false, err
+		}
+		if !isLogStopJobFinished {
+			return false, nil
+		}
 	}
 	return isAllFinished, nil
 }

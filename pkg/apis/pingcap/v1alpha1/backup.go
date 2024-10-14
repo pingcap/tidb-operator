@@ -66,7 +66,6 @@ func (bk *Backup) GetAllLogBackupJobName() []string {
 		fmt.Sprintf("backup-%s-%s", bk.GetName(), LogStartCommand),
 		fmt.Sprintf("backup-%s-%s", bk.GetName(), LogStopCommand),
 		fmt.Sprintf("backup-%s-%s", bk.GetName(), LogTruncateCommand),
-		fmt.Sprintf("stop-%s", bk.GetName()),
 	}
 }
 
