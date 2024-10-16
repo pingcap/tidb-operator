@@ -37,7 +37,7 @@ JQ_VERSION=${JQ_VERSION:-1.6}
 HELM_VERSION=${HELM_VERSION:-3.11.0}
 KIND_VERSION=${KIND_VERSION:-0.11.1}
 KIND_BIN=$OUTPUT_BIN/kind
-KUBETEST2_VERSION=v0.1.0
+KUBETEST2_VERSION=kubetest2-v0.1.0
 KUBETEST2_BIN=$OUTPUT_BIN/kubetest2
 AWS_K8S_TESTER_VERSION=v1.1.5
 AWS_K8S_TESTER_BIN=$OUTPUT_BIN/aws-k8s-tester
@@ -232,7 +232,7 @@ function hack::__ensure_kubetest2() {
     local tmpfile=$(mktemp)
     trap "test -f $tmpfile && rm $tmpfile" RETURN
     echo "info: downloading $n $KUBETEST2_VERSION"
-    curl --retry 10 -L -o - https://github.com/cofyc/kubetest2-release/releases/download/$KUBETEST2_VERSION/$n-$OS-$ARCH.gz | gunzip > $tmpfile
+    curl --retry 10 -L -o - https://github.com/pingcap/tidb-operator/releases/download/$KUBETEST2_VERSION/$n-$OS-$ARCH.gz | gunzip > $tmpfile
     mv $tmpfile $OUTPUT_BIN/$n
     chmod +x $OUTPUT_BIN/$n
 }
