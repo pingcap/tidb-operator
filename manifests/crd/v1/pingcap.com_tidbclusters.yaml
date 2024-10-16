@@ -4935,6 +4935,9 @@ spec:
                       - name
                       type: object
                     type: array
+                  initWaitTime:
+                    default: 0
+                    type: integer
                   labels:
                     additionalProperties:
                       type: string
