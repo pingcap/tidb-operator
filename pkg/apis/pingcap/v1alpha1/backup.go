@@ -42,6 +42,11 @@ func (bk *Backup) GetCleanJobName() string {
 	return fmt.Sprintf("clean-%s", bk.GetName())
 }
 
+// GetCleanJobName return the clean job name for log backup
+func (bk *Backup) GetStopLogBackupJobName() string {
+	return fmt.Sprintf("stop-%s", bk.GetName())
+}
+
 // GetBackupJobName return the backup job name
 func (bk *Backup) GetBackupJobName() string {
 	if command := ParseLogBackupSubcommand(bk); command != "" {
@@ -287,6 +292,13 @@ func IsVolumeBackupFailed(backup *Backup) bool {
 
 // IsBackupClean returns true if a Backup has been successfully cleaned up
 func IsBackupClean(backup *Backup) bool {
+	// TODO: now we don't handle fault state, maybe we should consider it in the future
+	if backup.Spec.Mode == BackupModeLog && IsLogBackupOnTrack(backup) {
+		return false
+	}
+	if NeedRetainData(backup) {
+		return true
+	}
 	_, condition := GetBackupCondition(&backup.Status, BackupClean)
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
@@ -299,17 +311,15 @@ func IsBackupCleanFailed(backup *Backup) bool {
 
 // IsCleanCandidate returns true if a Backup should be added to clean candidate according to cleanPolicy
 func IsCleanCandidate(backup *Backup) bool {
-	switch backup.Spec.CleanPolicy {
-	case CleanPolicyTypeDelete, CleanPolicyTypeOnFailure:
-		return true
-	default:
-		return false
-	}
+	return backup.Spec.Mode == BackupModeLog ||
+		backup.Spec.CleanPolicy == CleanPolicyTypeDelete ||
+		backup.Spec.CleanPolicy == CleanPolicyTypeOnFailure
 }
 
-// NeedNotClean returns true if a Backup need not to be cleaned up according to cleanPolicy
-func NeedNotClean(backup *Backup) bool {
-	return backup.Spec.CleanPolicy == CleanPolicyTypeOnFailure && !IsBackupFailed(backup)
+// NeedRetainData returns true if a Backup need not to be cleaned up according to cleanPolicy
+func NeedRetainData(backup *Backup) bool {
+	return backup.Spec.CleanPolicy == CleanPolicyTypeRetain ||
+		(backup.Spec.CleanPolicy == CleanPolicyTypeOnFailure && !IsBackupFailed(backup))
 }
 
 // ParseLogBackupSubcommand parse the log backup subcommand from cr.
@@ -428,6 +438,20 @@ func IsLogBackupAlreadyTruncate(backup *Backup) bool {
 // IsLogBackupAlreadyStop return whether log backup has already stopped.
 func IsLogBackupAlreadyStop(backup *Backup) bool {
 	return backup.Spec.Mode == BackupModeLog && backup.Status.Phase == BackupStopped
+}
+
+// IsLogBackupOnTrack returns whether log backup is on track.
+func IsLogBackupOnTrack(backup *Backup) bool {
+	if backup.Spec.Mode != BackupModeLog {
+		return false
+	}
+
+	switch backup.Status.Phase {
+	case BackupScheduled, BackupPrepare, BackupRunning, BackupPaused:
+		return true
+	default:
+		return false
+	}
 }
 
 // IsLogBackupAlreadyPaused return whether log backup has already paused.

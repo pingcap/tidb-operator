@@ -1273,6 +1273,11 @@ spec:
                     type: number
                 type: object
               cleanPolicy:
+                default: Retain
+                enum:
+                - Retain
+                - OnFailure
+                - Delete
                 type: string
               commitTs:
                 type: string
