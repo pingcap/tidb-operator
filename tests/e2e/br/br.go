@@ -36,6 +36,7 @@ import (
 	utiltidbcluster "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/onsi/ginkgo"
 	v1 "k8s.io/api/core/v1"
@@ -567,6 +568,101 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Check if all backup files in storage is deleted")
 			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+		})
+
+		ginkgo.It("delete log backup CR could stop on-going task", func() {
+			backupClusterName := "log-backup"
+			backupVersion := utilimage.TiDBLatest
+			enableTLS := false
+			skipCA := false
+			backupName := backupClusterName
+			typ := strings.ToLower(typeBR)
+
+			ns := f.Namespace.Name
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			ginkgo.By("Create log-backup.enable TiDB cluster for log backup")
+			err := createLogBackupEnableTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Wait for backup TiDB cluster ready")
+			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Create RBAC for log backup")
+			err = createRBAC(f)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Start log backup")
+			backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(backup.Status.CommitTs, "")
+			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupRunning)
+
+			ginkgo.By("Delete backup")
+			err = deleteBackup(f, backupName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Check if all backup files in storage is deleted")
+			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+
+			ginkgo.By("Start log backup the second time")
+			backup, err = createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(backup.Status.CommitTs, "")
+
+			ginkgo.By("Pause log backup")
+			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.LogSubcommand = v1alpha1.LogPauseCommand
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupPaused)
+
+			ginkgo.By("Delete backup")
+			err = deleteBackup(f, backupName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Check if all backup files in storage is deleted")
+			cleaned, err = f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+
+			ginkgo.By("Start log backup the third time")
+			backup, err = createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(backup.Status.CommitTs, "")
+
+			ginkgo.By("Stop log backup")
+			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.LogSubcommand = v1alpha1.LogStopCommand
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupStopped)
+
+			ginkgo.By("Delete backup")
+			err = deleteBackup(f, backupName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Check if all backup files in storage is deleted")
+			cleaned, err = f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
 		})
@@ -1231,8 +1327,15 @@ func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ
 	ns := f.Namespace.Name
 	// secret to visit tidb cluster
 	s := brutil.GetSecret(ns, name, "")
-	if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{}); err != nil {
-		return nil, err
+	// Check if the secret already exists
+	if _, err := f.ClientSet.CoreV1().Secrets(ns).Get(context.TODO(), name, metav1.GetOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{}); err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
 	}
 
 	backupFolder := time.Now().Format(time.RFC3339)
@@ -1341,7 +1444,7 @@ func deleteBackup(f *e2eframework.Framework, name string) error {
 		return err
 	}
 
-	if err := brutil.WaitForBackupDeleted(f.ExtClient, ns, name, time.Second*60); err != nil {
+	if err := brutil.WaitForBackupDeleted(f.ExtClient, ns, name, 15*time.Minute); err != nil {
 		return err
 	}
 	return nil
