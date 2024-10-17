@@ -312,12 +312,7 @@ func NeedNotClean(backup *Backup) bool {
 	return backup.Spec.CleanPolicy == CleanPolicyTypeOnFailure && !IsBackupFailed(backup)
 }
 
-<<<<<<< HEAD
-// ParseLogBackupSubCommand parse the log backup subcommand from cr.
-// The parse priority of the command is stop > truncate > start.
-=======
 // ParseLogBackupSubcommand parse the log backup subcommand from cr.
->>>>>>> 91d106536 (br: a more straight forward operator interface (#5710))
 func ParseLogBackupSubcommand(backup *Backup) LogSubCommandType {
 	if backup.Spec.Mode != BackupModeLog {
 		return ""
