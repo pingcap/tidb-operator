@@ -179,6 +179,7 @@ def build(String name, String code, Map resources = e2ePodResources) {
                         }
                         stage('Run') {
                             sh """#!/bin/bash
+                            unset GOSUMDB
                             export GOPATH=${WORKSPACE}/go
                             export ARTIFACTS=${ARTIFACTS}
                             export RUNNER_SUITE_NAME=${name}
