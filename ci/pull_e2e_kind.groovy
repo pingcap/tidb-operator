@@ -170,6 +170,7 @@ def build(String name, String code, Map resources = e2ePodResources) {
                             echo "====== shell env ======"
                             echo "pwd: \$(pwd)"
                             env
+                            unset GOSUMDB
                             echo "====== go env ======"
                             go env
                             echo "====== docker version ======"
