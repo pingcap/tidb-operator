@@ -1,6 +1,6 @@
 module github.com/pingcap/tidb-operator/http-service
 
-go 1.23.1
+go 1.23.2
 
 require (
 	github.com/gin-gonic/gin v1.10.0
@@ -12,9 +12,9 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20231127180814-3a041ad873d4
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.34.1
-	k8s.io/api v0.28.5
-	k8s.io/apimachinery v0.28.5
-	k8s.io/client-go v0.28.5
+	k8s.io/api v0.28.14
+	k8s.io/apimachinery v0.28.14
+	k8s.io/client-go v0.28.14
 	k8s.io/utils v0.0.0-20230711102312-30195339c3c7
 )
 
@@ -39,7 +39,7 @@ require (
 	github.com/go-playground/validator/v10 v10.20.0 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
@@ -82,7 +82,7 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.28.5 // indirect
+	k8s.io/apiextensions-apiserver v0.28.14 // indirect
 	k8s.io/klog/v2 v2.110.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230717233707-2695361300d9 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
