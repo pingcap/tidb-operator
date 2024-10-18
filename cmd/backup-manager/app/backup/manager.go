@@ -531,7 +531,7 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 
 	if backupErr != nil {
 		klog.Errorf("Start log backup of cluster %s failed, err: %s", bm, backupErr)
-		return nil, "StartLogBackuFailed", backupErr
+		return nil, "StartLogBackupFailed", backupErr
 	}
 	klog.Infof("Start log backup of cluster %s to %s success", bm, backupFullPath)
 
