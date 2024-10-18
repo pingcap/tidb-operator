@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/br/framework"
@@ -35,8 +36,6 @@ import (
 	nsutil "github.com/pingcap/tidb-operator/tests/e2e/util/ns"
 	utiltidbcluster "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
-	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/onsi/ginkgo"
 	v1 "k8s.io/api/core/v1"
@@ -1200,7 +1199,7 @@ func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ
 	s := brutil.GetSecret(ns, name, "")
 	// Check if the secret already exists
 	if _, err := f.ClientSet.CoreV1().Secrets(ns).Get(context.TODO(), name, metav1.GetOptions{}); err != nil {
-		if apierrors.IsNotFound(err) {
+		if errors.IsNotFound(err) {
 			if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{}); err != nil {
 				return nil, err
 			}
