@@ -1889,8 +1889,7 @@ spec:
                               type: integer
                           type: object
                         remoteTimeout:
-                          format: int64
-                          type: integer
+                          type: string
                         tlsConfig:
                           properties:
                             ca:
