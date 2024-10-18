@@ -1095,6 +1095,10 @@ spec:
                       type: number
                   type: object
                 cleanPolicy:
+                  enum:
+                  - Retain
+                  - OnFailure
+                  - Delete
                   type: string
                 commitTs:
                   type: string
@@ -3111,6 +3115,10 @@ spec:
                       type: number
                   type: object
                 cleanPolicy:
+                  enum:
+                  - Retain
+                  - OnFailure
+                  - Delete
                   type: string
                 commitTs:
                   type: string
