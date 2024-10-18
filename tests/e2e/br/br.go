@@ -35,11 +35,8 @@ import (
 	nsutil "github.com/pingcap/tidb-operator/tests/e2e/util/ns"
 	utiltidbcluster "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
-<<<<<<< HEAD
-=======
 	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
->>>>>>> e42cb3be8 (Stop the running log backup when deleting CR (#5754))
 
 	"github.com/onsi/ginkgo"
 	v1 "k8s.io/api/core/v1"

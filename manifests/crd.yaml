@@ -4,10 +4,6 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-<<<<<<< HEAD
-    controller-gen.kubebuilder.io/version: v0.6.2
-  creationTimestamp: null
-=======
     controller-gen.kubebuilder.io/version: v0.15.0
   name: backupschedules.pingcap.com
 spec:
@@ -4596,7 +4592,6 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.15.0
->>>>>>> e42cb3be8 (Stop the running log backup when deleting CR (#5754))
   name: backups.pingcap.com
 spec:
   group: pingcap.com

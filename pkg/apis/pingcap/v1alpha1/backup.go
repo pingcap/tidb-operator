@@ -402,8 +402,6 @@ func IsLogBackupAlreadyTruncate(backup *Backup) bool {
 func IsLogBackupAlreadyStop(backup *Backup) bool {
 	return backup.Spec.Mode == BackupModeLog && backup.Status.Phase == BackupStopped
 }
-<<<<<<< HEAD
-=======
 
 // IsLogBackupOnTrack returns whether log backup is on track.
 func IsLogBackupOnTrack(backup *Backup) bool {
@@ -428,4 +426,3 @@ func IsLogBackupAlreadyPaused(backup *Backup) bool {
 func IsLogBackupAlreadyRunning(backup *Backup) bool {
 	return backup.Spec.Mode == BackupModeLog && backup.Status.Phase == BackupRunning
 }
->>>>>>> e42cb3be8 (Stop the running log backup when deleting CR (#5754))
