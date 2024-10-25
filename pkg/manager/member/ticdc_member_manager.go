@@ -391,6 +391,10 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 		vols = append(vols, annVolume)
 	}
 
+	clusterTLSSecretName := util.ClusterTLSSecretName(tc.Name, label.TiCDCLabelVal)
+	if tc.Spec.TiCDC.ClusterTLSSecretName != "" {
+		clusterTLSSecretName = tc.Spec.TiCDC.ClusterTLSSecretName
+	}
 	if tc.IsTLSClusterEnabled() {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name:      ticdcCertVolumeMount,
@@ -405,7 +409,7 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 		vols = append(vols, corev1.Volume{
 			Name: ticdcCertVolumeMount, VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.ClusterTLSSecretName(tc.Name, label.TiCDCLabelVal),
+					SecretName: clusterTLSSecretName,
 				},
 			},
 		}, corev1.Volume{
