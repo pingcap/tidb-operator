@@ -16586,6 +16586,19 @@ client certificates for the downstream.</p>
 </tr>
 <tr>
 <td>
+<code>clusterTLSSecretName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ClusterTLSSecretName is used for overwriting the default mTLS cert secret name (see also: pkg/util/util.go:ClusterTLSSecretName)
+This field is useful for sharing the same mTLS cert secret for multiple ticdc clusters connecting to the same upstream tidb cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>baseImage</code></br>
 <em>
 string
