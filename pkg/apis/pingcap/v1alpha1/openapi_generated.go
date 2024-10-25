@@ -9409,6 +9409,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCDCSpec(ref common.ReferenceCallback) co
 							},
 						},
 					},
+					"clusterTLSSecretName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ClusterTLSSecretName is used for overwriting the default mTLS cert secret name (see also: pkg/util/util.go:ClusterTLSSecretName) This field is useful for sharing the same mTLS cert secret for multiple ticdc clusters connecting to the same upstream tidb cluster.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"baseImage": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Base image of the component, image tag is now allowed during validation",
