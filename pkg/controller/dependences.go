@@ -233,6 +233,7 @@ type Dependencies struct {
 	TiDBClusterAutoScalerLister listers.TidbClusterAutoScalerLister
 	DMClusterLister             listers.DMClusterLister
 	BackupLister                listers.BackupLister
+	CompactBackupLister         listers.CompactBackupLister
 	RestoreLister               listers.RestoreLister
 	BackupScheduleLister        listers.BackupScheduleLister
 	TiDBInitializerLister       listers.TidbInitializerLister

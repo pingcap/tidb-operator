@@ -4,15 +4,24 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pingcap/errors"
 	perrors "github.com/pingcap/errors"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
+	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/metrics"
+	"github.com/pingcap/tidb-operator/pkg/util"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
+	"k8s.io/utils/pointer"
 )
 
 // Controller controls backup.
@@ -80,6 +89,7 @@ func (c *Controller) updateBackup(cur interface{}) {
 	name := newBackup.GetName()
 
 	klog.Infof("backup object %s/%s enqueue", ns, name)
+	newBackup.Status.State = "Prepare"
 	c.enqueueBackup(newBackup)
 }
 
@@ -121,6 +131,200 @@ func (c *Controller) processNextWorkItem() bool {
 }
 
 func (c *Controller) sync(key string) (err error) {
-	klog.Infof("do nothing, skip")
+	startTime := time.Now()
+	defer func() {
+		duration := time.Since(startTime)
+		metrics.ReconcileTime.WithLabelValues(c.Name()).Observe(duration.Seconds())
+
+		if err == nil {
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelSuccess).Inc()
+		} else if perrors.Find(err, controller.IsRequeueError) != nil {
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelRequeue).Inc()
+		} else {
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelError).Inc()
+			metrics.ReconcileErrors.WithLabelValues(c.Name()).Inc()
+		}
+
+		klog.V(4).Infof("Finished syncing Backup %q (%v)", key, duration)
+	}()
+
+	ns, name, err := cache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		return err
+	}
+	backup, err := c.deps.CompactBackupLister.CompactBackups(ns).Get(name)
+	if errors.IsNotFound(err) {
+		klog.Infof("Backup has been deleted %v", key)
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	return c.syncCompact(backup.DeepCopy())
+}
+
+func (c *Controller) syncCompact(backup *v1alpha1.CompactBackup) error {
+	ns := backup.GetNamespace()
+	name := backup.GetName()
+	backupJobName := backup.GetName()
+
+	// make backup job
+	var err error
+	var job *batchv1.Job
+	var reason string
+	if job, reason, err = c.makeBackupJob(backup); err != nil {
+		klog.Errorf("backup %s/%s create job %s failed, reason is %s, error %v.", ns, name, backupJobName, reason, err)
+		return err
+	}
+
+	// create k8s job
+	klog.Infof("backup %s/%s creating job %s.", ns, name, backupJobName)
+	if err := c.deps.JobControl.CreateJob(backup, job); err != nil {
+		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %v", ns, name, backupJobName, err)
+		return errMsg
+	}
 	return nil
+}
+
+func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job, string, error) {
+	ns := backup.GetNamespace()
+	name := backup.GetName()
+	jobName := backup.GetName()
+	backupNamespace := ns
+	if backup.Spec.BR.ClusterNamespace != "" {
+		backupNamespace = backup.Spec.BR.ClusterNamespace
+	}
+
+	tc, err := c.deps.TiDBClusterLister.TidbClusters(backupNamespace).Get(backup.Spec.BR.Cluster)
+	if err != nil {
+		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster), err
+	}
+
+	var (
+		envVars []corev1.EnvVar
+		reason  string
+	)
+	if backup.Spec.From != nil {
+		envVars, reason, err = backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, c.deps.SecretLister)
+		if err != nil {
+			return nil, reason, err
+		}
+	}
+
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, c.deps.SecretLister)
+	if err != nil {
+		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
+	}
+
+	envVars = append(envVars, storageEnv...)
+	envVars = append(envVars, corev1.EnvVar{
+		Name:  "BR_LOG_TO_TERM",
+		Value: string(rune(1)),
+	})
+
+	// set env vars specified in backup.Spec.Env
+	envVars = util.AppendOverwriteEnv(envVars, backup.Spec.Env)
+
+	args := []string{
+		"backup",
+		fmt.Sprintf("--namespace=%s", ns),
+		fmt.Sprintf("--backupName=%s", name),
+	}
+	tikvImage := tc.TiKVImage()
+	_, tikvVersion := backuputil.ParseImage(tikvImage)
+	if tikvVersion != "" {
+		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
+	}
+
+	volumeMounts := []corev1.VolumeMount{}
+	volumes := []corev1.Volume{}
+
+	brVolumeMount := corev1.VolumeMount{
+		Name:      "br-bin",
+		ReadOnly:  false,
+		MountPath: util.BRBinPath,
+	}
+	volumeMounts = append(volumeMounts, brVolumeMount)
+
+	volumes = append(volumes, corev1.Volume{
+		Name: "br-bin",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
+
+	// mount volumes if specified
+	if backup.Spec.Local != nil {
+		volumes = append(volumes, backup.Spec.Local.Volume)
+		volumeMounts = append(volumeMounts, backup.Spec.Local.VolumeMount)
+	}
+
+	serviceAccount := constants.DefaultServiceAccountName
+	if backup.Spec.ServiceAccount != "" {
+		serviceAccount = backup.Spec.ServiceAccount
+	}
+
+	brImage := "pingcap/br:" + tikvVersion
+	jobLabels := util.CombineStringMap(label.NewBackup().Instance("Compact-test").BackupJob().Backup(name), backup.Labels)
+	podLabels := jobLabels
+	jobAnnotations := backup.Annotations
+	podAnnotations := backup.Annotations
+
+	podSpec := &corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels:      podLabels,
+			Annotations: podAnnotations,
+		},
+		Spec: corev1.PodSpec{
+			SecurityContext:    backup.Spec.PodSecurityContext,
+			ServiceAccountName: serviceAccount,
+			InitContainers: []corev1.Container{
+				{
+					Name:            "br",
+					Image:           brImage,
+					Command:         []string{"/bin/sh", "-c"},
+					Args:            []string{fmt.Sprintf("cp /br %s/br; echo 'BR copy finished'", util.BRBinPath)},
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					VolumeMounts:    []corev1.VolumeMount{brVolumeMount},
+					Resources:       backup.Spec.ResourceRequirements,
+				},
+			},
+			Containers: []corev1.Container{
+				{
+					Name:            label.BackupJobLabelVal,
+					Image:           c.deps.CLIConfig.TiDBBackupManagerImage,
+					Args:            args,
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					VolumeMounts:    volumeMounts,
+					Env:             util.AppendEnvIfPresent(envVars, "TZ"),
+					Resources:       backup.Spec.ResourceRequirements,
+				},
+			},
+			RestartPolicy:     corev1.RestartPolicyNever,
+			Tolerations:       backup.Spec.Tolerations,
+			ImagePullSecrets:  backup.Spec.ImagePullSecrets,
+			Affinity:          backup.Spec.Affinity,
+			Volumes:           volumes,
+			PriorityClassName: backup.Spec.PriorityClassName,
+		},
+	}
+
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        jobName,
+			Namespace:   ns,
+			Labels:      jobLabels,
+			Annotations: jobAnnotations,
+			OwnerReferences: []metav1.OwnerReference{
+				controller.GetCompactBackupOwnerRef(backup),
+			},
+		},
+		Spec: batchv1.JobSpec{
+			BackoffLimit: pointer.Int32Ptr(0),
+			Template:     *podSpec,
+		},
+	}
+
+	return job, "", nil
 }
