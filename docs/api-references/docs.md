@@ -5467,6 +5467,18 @@ BRConfig
 </table>
 </td>
 </tr>
+<tr>
+<td>
+<code>status</code></br>
+<em>
+<a href="#compactstatus">
+CompactStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="compactspec">CompactSpec</h3>
@@ -5562,6 +5574,33 @@ BRConfig
 </td>
 <td>
 <p>BRConfig is the configs for BR</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="compactstatus">CompactStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#compactbackup">CompactBackup</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>state</code></br>
+<em>
+string
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
