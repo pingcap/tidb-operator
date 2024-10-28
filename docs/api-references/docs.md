@@ -3630,7 +3630,8 @@ bool
 <h3 id="backoffretrypolicy">BackoffRetryPolicy</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#backupspec">BackupSpec</a>)
+<a href="#backupspec">BackupSpec</a>, 
+<a href="#compactspec">CompactSpec</a>)
 </p>
 <p>
 <p>BackoffRetryPolicy is the backoff retry policy, currently only valid for snapshot backup.
@@ -4761,6 +4762,7 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogSubCommandType
 <p>
 (<em>Appears on:</em>
 <a href="#backupspec">BackupSpec</a>, 
+<a href="#compactspec">CompactSpec</a>, 
 <a href="#restorespec">RestoreSpec</a>)
 </p>
 <p>
@@ -5101,7 +5103,8 @@ github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 <h3 id="cleanoption">CleanOption</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#backupspec">BackupSpec</a>)
+<a href="#backupspec">BackupSpec</a>, 
+<a href="#compactspec">CompactSpec</a>)
 </p>
 <p>
 <p>CleanOption defines the configuration for cleanup backup</p>
@@ -5180,7 +5183,8 @@ float64
 <h3 id="cleanpolicytype">CleanPolicyType</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#backupspec">BackupSpec</a>)
+<a href="#backupspec">BackupSpec</a>, 
+<a href="#compactspec">CompactSpec</a>)
 </p>
 <p>
 <p>CleanPolicyType represents the clean policy of backup data in remote storage</p>
@@ -5408,6 +5412,23 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <em>(Optional)</em>
+<p>List of environment variables to set in the container, like v1.Container.Env.
+Note that the following builtin env vars will be overwritten by values set here
+- S3_PROVIDER
+- S3_ENDPOINT
+- AWS_REGION
+- AWS_ACL
+- AWS_STORAGE_CLASS
+- AWS_DEFAULT_REGION
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
+- GCS_PROJECT_ID
+- GCS_OBJECT_ACL
+- GCS_BUCKET_ACL
+- GCS_LOCATION
+- GCS_STORAGE_CLASS
+- GCS_SERVICE_ACCOUNT_JSON_KEY
+- BR_LOG_TO_TERM</p>
 </td>
 </tr>
 <tr>
@@ -5425,6 +5446,19 @@ TiDBAccessConfig
 </tr>
 <tr>
 <td>
+<code>backupType</code></br>
+<em>
+<a href="#backuptype">
+BackupType
+</a>
+</em>
+</td>
+<td>
+<p>Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>backupMode</code></br>
 <em>
 <a href="#backupmode">
@@ -5433,6 +5467,20 @@ BackupMode
 </em>
 </td>
 <td>
+<p>Mode is the backup mode, such as snapshot backup or log backup.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tikvGCLifeTime</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TikvGCLifeTime is to specify the safe gc life time for backup.
+The time limit during which data is retained for each GC, in the format of Go Duration.
+When a GC happens, the current time minus this value is the safe point.</p>
 </td>
 </tr>
 <tr>
@@ -5453,6 +5501,30 @@ StorageProvider
 </tr>
 <tr>
 <td>
+<code>storageClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The storageClassName of the persistent volume for Backup data storage.
+Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageSize</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>StorageSize is the request storage size for backup job</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>br</code></br>
 <em>
 <a href="#brconfig">
@@ -5462,6 +5534,302 @@ BRConfig
 </td>
 <td>
 <p>BRConfig is the configs for BR</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>commitTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
+Default is current timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logSubcommand</code></br>
+<em>
+<a href="#logsubcommandtype">
+LogSubCommandType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Subcommand is the subcommand for BR, such as start, stop, pause etc.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logTruncateUntil</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogTruncateUntil is log backup truncate until timestamp.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logStop</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogStop indicates that will stop the log backup.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>calcSizeLevel</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CalcSizeLevel determines how to size calculation of snapshots for EBS volume snapshot backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>federalVolumeBackupPhase</code></br>
+<em>
+<a href="#federalvolumebackupphase">
+FederalVolumeBackupPhase
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FederalVolumeBackupPhase indicates which phase to execute in federal volume backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resumeGcSchedule</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ResumeGcSchedule indicates whether resume gc and pd scheduler for EBS volume snapshot backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dumpling</code></br>
+<em>
+<a href="#dumplingconfig">
+DumplingConfig
+</a>
+</em>
+</td>
+<td>
+<p>DumplingConfig is the configs for dumpling</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tolerations</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#toleration-v1-core">
+[]Kubernetes core/v1.Toleration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base tolerations of backup Pods, components may add more tolerations upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>toolImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ToolImage specifies the tool image used in <code>Backup</code>, which supports BR and Dumpling images.
+For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolImage: pingcap/dumpling:v4.0.8</code>
+For BR image, if it does not contain tag, Pod will use image &lsquo;ToolImage:${TiKV_Version}&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tableFilter</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>affinity</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#affinity-v1-core">
+Kubernetes core/v1.Affinity
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Affinity of backup Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>useKMS</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Use KMS to decrypt the secrets</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify service account of backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cleanPolicy</code></br>
+<em>
+<a href="#cleanpolicytype">
+CleanPolicyType
+</a>
+</em>
+</td>
+<td>
+<p>CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cleanOption</code></br>
+<em>
+<a href="#cleanoption">
+CleanOption
+</a>
+</em>
+</td>
+<td>
+<p>CleanOption controls the behavior of clean.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>priorityClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PriorityClassName of Backup Job Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backoffRetryPolicy</code></br>
+<em>
+<a href="#backoffretrypolicy">
+BackoffRetryPolicy
+</a>
+</em>
+</td>
+<td>
+<p>BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalVolumes</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#volume-v1-core">
+[]Kubernetes core/v1.Volume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional volumes of component pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalVolumeMounts</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#volumemount-v1-core">
+[]Kubernetes core/v1.VolumeMount
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional volume mounts of component pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeBackupInitJobMaxActiveSeconds</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>VolumeBackupInitJobMaxActiveSeconds represents the deadline (in seconds) of the vbk init job</p>
 </td>
 </tr>
 </table>
@@ -5520,6 +5888,23 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <em>(Optional)</em>
+<p>List of environment variables to set in the container, like v1.Container.Env.
+Note that the following builtin env vars will be overwritten by values set here
+- S3_PROVIDER
+- S3_ENDPOINT
+- AWS_REGION
+- AWS_ACL
+- AWS_STORAGE_CLASS
+- AWS_DEFAULT_REGION
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
+- GCS_PROJECT_ID
+- GCS_OBJECT_ACL
+- GCS_BUCKET_ACL
+- GCS_LOCATION
+- GCS_STORAGE_CLASS
+- GCS_SERVICE_ACCOUNT_JSON_KEY
+- BR_LOG_TO_TERM</p>
 </td>
 </tr>
 <tr>
@@ -5537,6 +5922,19 @@ TiDBAccessConfig
 </tr>
 <tr>
 <td>
+<code>backupType</code></br>
+<em>
+<a href="#backuptype">
+BackupType
+</a>
+</em>
+</td>
+<td>
+<p>Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>backupMode</code></br>
 <em>
 <a href="#backupmode">
@@ -5545,6 +5943,20 @@ BackupMode
 </em>
 </td>
 <td>
+<p>Mode is the backup mode, such as snapshot backup or log backup.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tikvGCLifeTime</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TikvGCLifeTime is to specify the safe gc life time for backup.
+The time limit during which data is retained for each GC, in the format of Go Duration.
+When a GC happens, the current time minus this value is the safe point.</p>
 </td>
 </tr>
 <tr>
@@ -5565,6 +5977,30 @@ StorageProvider
 </tr>
 <tr>
 <td>
+<code>storageClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The storageClassName of the persistent volume for Backup data storage.
+Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageSize</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>StorageSize is the request storage size for backup job</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>br</code></br>
 <em>
 <a href="#brconfig">
@@ -5574,6 +6010,302 @@ BRConfig
 </td>
 <td>
 <p>BRConfig is the configs for BR</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>commitTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
+Default is current timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logSubcommand</code></br>
+<em>
+<a href="#logsubcommandtype">
+LogSubCommandType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Subcommand is the subcommand for BR, such as start, stop, pause etc.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logTruncateUntil</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogTruncateUntil is log backup truncate until timestamp.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logStop</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>LogStop indicates that will stop the log backup.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>calcSizeLevel</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CalcSizeLevel determines how to size calculation of snapshots for EBS volume snapshot backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>federalVolumeBackupPhase</code></br>
+<em>
+<a href="#federalvolumebackupphase">
+FederalVolumeBackupPhase
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FederalVolumeBackupPhase indicates which phase to execute in federal volume backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resumeGcSchedule</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ResumeGcSchedule indicates whether resume gc and pd scheduler for EBS volume snapshot backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dumpling</code></br>
+<em>
+<a href="#dumplingconfig">
+DumplingConfig
+</a>
+</em>
+</td>
+<td>
+<p>DumplingConfig is the configs for dumpling</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tolerations</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#toleration-v1-core">
+[]Kubernetes core/v1.Toleration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base tolerations of backup Pods, components may add more tolerations upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>toolImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ToolImage specifies the tool image used in <code>Backup</code>, which supports BR and Dumpling images.
+For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolImage: pingcap/dumpling:v4.0.8</code>
+For BR image, if it does not contain tag, Pod will use image &lsquo;ToolImage:${TiKV_Version}&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tableFilter</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>affinity</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#affinity-v1-core">
+Kubernetes core/v1.Affinity
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Affinity of backup Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>useKMS</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Use KMS to decrypt the secrets</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify service account of backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cleanPolicy</code></br>
+<em>
+<a href="#cleanpolicytype">
+CleanPolicyType
+</a>
+</em>
+</td>
+<td>
+<p>CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>cleanOption</code></br>
+<em>
+<a href="#cleanoption">
+CleanOption
+</a>
+</em>
+</td>
+<td>
+<p>CleanOption controls the behavior of clean.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>priorityClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PriorityClassName of Backup Job Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backoffRetryPolicy</code></br>
+<em>
+<a href="#backoffretrypolicy">
+BackoffRetryPolicy
+</a>
+</em>
+</td>
+<td>
+<p>BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalVolumes</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#volume-v1-core">
+[]Kubernetes core/v1.Volume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional volumes of component pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalVolumeMounts</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#volumemount-v1-core">
+[]Kubernetes core/v1.VolumeMount
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional volume mounts of component pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeBackupInitJobMaxActiveSeconds</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>VolumeBackupInitJobMaxActiveSeconds represents the deadline (in seconds) of the vbk init job</p>
 </td>
 </tr>
 </tbody>
@@ -7486,7 +8218,8 @@ for other components, the auto failover feature may be used instead.</p>
 <h3 id="dumplingconfig">DumplingConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#backupspec">BackupSpec</a>)
+<a href="#backupspec">BackupSpec</a>, 
+<a href="#compactspec">CompactSpec</a>)
 </p>
 <p>
 <p>DumplingConfig contains config for dumpling</p>
@@ -7777,7 +8510,8 @@ it takes effect only when set <code>spec.recoverFailover=false</code></p>
 <h3 id="federalvolumebackupphase">FederalVolumeBackupPhase</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#backupspec">BackupSpec</a>)
+<a href="#backupspec">BackupSpec</a>, 
+<a href="#compactspec">CompactSpec</a>)
 </p>
 <p>
 <p>FederalVolumeBackupPhase represents a phase to execute in federal volume backup</p>
@@ -9189,6 +9923,7 @@ BackupConditionType
 (<em>Appears on:</em>
 <a href="#backupcondition">BackupCondition</a>, 
 <a href="#backupspec">BackupSpec</a>, 
+<a href="#compactspec">CompactSpec</a>, 
 <a href="#logsubcommandstatus">LogSubCommandStatus</a>)
 </p>
 <p>
