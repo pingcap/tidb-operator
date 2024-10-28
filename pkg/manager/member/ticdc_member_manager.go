@@ -411,7 +411,7 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 		}, corev1.Volume{
 			Name: util.ClusterClientVolName, VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.ClusterClientTLSSecretName(tc.Name),
+					SecretName: getTiCDCClusterClientTLSCertSecretName(tc),
 				},
 			},
 		})
@@ -573,6 +573,15 @@ func getTiCDCClusterTLSCertSecretName(tc *v1alpha1.TidbCluster) string {
 	}
 
 	return clusterTLSSecretName
+}
+
+func getTiCDCClusterClientTLSCertSecretName(tc *v1alpha1.TidbCluster) string {
+	clusterClientTLSSecretName := util.ClusterClientTLSSecretName(tc.Name)
+	if tc.Spec.TiCDC.ClusterClientTLSSecretName != "" {
+		clusterClientTLSSecretName = tc.Spec.TiCDC.ClusterClientTLSSecretName
+	}
+
+	return clusterClientTLSSecretName
 }
 
 func labelTiCDC(tc *v1alpha1.TidbCluster) label.Label {

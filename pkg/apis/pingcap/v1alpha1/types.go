@@ -864,6 +864,13 @@ type TiCDCSpec struct {
 	// +optional
 	ClusterTLSSecretName string `json:"clusterTLSSecretName,omitempty"`
 
+	// ClusterTLSSecretName is used for overwriting the default **cluster client** cert secret name (see also: pkg/util/util.go:ClusterClientTLSSecretName)
+	// This field is useful for sharing the same cluster client cert secret for multiple ticdc clusters connecting to the same upstream tidb cluster.
+	// The ClusterClientTLSSecret is actually not directly used by ticdc, but it is useful for executing some commands via `ticdc-ctl`
+	//  by `kubectl exec -it ticdc-0 -- /cdc cli --ca /var/lib/cluster-client-tls/ca.crt --cert /var/lib/cluster-client-tls/tls.crt --key /var/lib/cluster-client-tls/tls.key ...`.
+	// +optional
+	ClusterClientTLSSecretName string `json:"clusterClientTLSSecretName,omitempty"`
+
 	// Base image of the component, image tag is now allowed during validation
 	// +kubebuilder:default=pingcap/ticdc
 	// +optional
