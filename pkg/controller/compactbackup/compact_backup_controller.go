@@ -163,12 +163,18 @@ func (c *Controller) sync(key string) (err error) {
 	}
 	klog.Infof("Backup: [%s/%s] start to sync", ns, name)
 	backup, err := c.deps.CompactBackupLister.CompactBackups(ns).Get(name)
-	if errors.IsNotFound(err) {
-		klog.Infof("Backup has been deleted %v", key)
-		return nil
-	}
 	if err != nil {
+		if errors.IsNotFound(err) {
+			klog.Infof("Backup has been deleted %v", key)
+			return nil
+		}
+		klog.Infof("Backup get failed %v", err)
 		return err
+	}
+
+	//Skip
+	if backup.Status.State == "Complete" {
+		return nil
 	}
 
 	err = c.syncCompact(backup.DeepCopy())
