@@ -379,6 +379,7 @@ func newDependencies(
 		TiDBClusterAutoScalerLister: informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers().Lister(),
 		DMClusterLister:             informerFactory.Pingcap().V1alpha1().DMClusters().Lister(),
 		BackupLister:                informerFactory.Pingcap().V1alpha1().Backups().Lister(),
+		CompactBackupLister:         informerFactory.Pingcap().V1alpha1().CompactBackups().Lister(),
 		RestoreLister:               informerFactory.Pingcap().V1alpha1().Restores().Lister(),
 		BackupScheduleLister:        informerFactory.Pingcap().V1alpha1().BackupSchedules().Lister(),
 		TiDBInitializerLister:       informerFactory.Pingcap().V1alpha1().TidbInitializers().Lister(),

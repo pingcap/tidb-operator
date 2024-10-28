@@ -1,6 +1,7 @@
 package compact
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -8,8 +9,8 @@ import (
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
+	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"github.com/pingcap/tidb-operator/pkg/util"
@@ -29,6 +30,7 @@ type Controller struct {
 	deps *controller.Dependencies
 	// backups that need to be synced.
 	queue workqueue.RateLimitingInterface
+	cli   versioned.Interface
 }
 
 // NewController creates a backup controller.
@@ -37,11 +39,12 @@ func NewController(deps *controller.Dependencies) *Controller {
 		deps: deps,
 		queue: workqueue.NewNamedRateLimitingQueue(
 			controller.NewControllerRateLimiter(1*time.Second, 100*time.Second),
-			"backup",
+			"compactBackup",
 		),
+		cli: deps.Clientset,
 	}
 
-	backupInformer := deps.InformerFactory.Pingcap().V1alpha1().Backups()
+	backupInformer := deps.InformerFactory.Pingcap().V1alpha1().CompactBackups()
 	jobInformer := deps.KubeInformerFactory.Batch().V1().Jobs()
 	backupInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.updateBackup,
@@ -67,8 +70,8 @@ func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
 
-	klog.Info("Starting backup controller")
-	defer klog.Info("Shutting down backup controller")
+	klog.Info("Starting compact backup controller")
+	defer klog.Info("Shutting down compact backup controller")
 
 	for i := 0; i < workers; i++ {
 		go wait.Until(c.worker, time.Second, stopCh)
@@ -90,6 +93,12 @@ func (c *Controller) updateBackup(cur interface{}) {
 
 	klog.Infof("backup object %s/%s enqueue", ns, name)
 	newBackup.Status.State = "Prepare"
+	_, updateErr := c.cli.PingcapV1alpha1().CompactBackups(ns).Update(context.TODO(), newBackup, metav1.UpdateOptions{})
+	if updateErr == nil {
+		klog.Infof("Backup: [%s/%s] updated successfully", ns, newBackup.GetName())
+	} else {
+		klog.Errorf("Backup: [%s/%s] updated failed", ns, newBackup.GetName())
+	}
 	c.enqueueBackup(newBackup)
 }
 
@@ -152,6 +161,7 @@ func (c *Controller) sync(key string) (err error) {
 	if err != nil {
 		return err
 	}
+	klog.Infof("Backup: [%s/%s] start to sync", ns, name)
 	backup, err := c.deps.CompactBackupLister.CompactBackups(ns).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("Backup has been deleted %v", key)
@@ -161,7 +171,15 @@ func (c *Controller) sync(key string) (err error) {
 		return err
 	}
 
-	return c.syncCompact(backup.DeepCopy())
+	err = c.syncCompact(backup.DeepCopy())
+	backup.Status.State = "Complete"
+	_, updateErr := c.cli.PingcapV1alpha1().CompactBackups(ns).Update(context.TODO(), backup, metav1.UpdateOptions{})
+	if updateErr == nil {
+		klog.Infof("Backup: [%s/%s] updated successfully", ns, backup.GetName())
+	} else {
+		klog.Errorf("Backup: [%s/%s] updated failed", ns, backup.GetName())
+	}
+	return err
 }
 
 func (c *Controller) syncCompact(backup *v1alpha1.CompactBackup) error {
@@ -260,53 +278,35 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 		volumeMounts = append(volumeMounts, backup.Spec.Local.VolumeMount)
 	}
 
-	serviceAccount := constants.DefaultServiceAccountName
-	if backup.Spec.ServiceAccount != "" {
-		serviceAccount = backup.Spec.ServiceAccount
-	}
+	// serviceAccount := constants.DefaultServiceAccountName
+	// if backup.Spec.ServiceAccount != "" {
+	// 	serviceAccount = backup.Spec.ServiceAccount
+	// }
 
-	brImage := "pingcap/br:" + tikvVersion
 	jobLabels := util.CombineStringMap(label.NewBackup().Instance("Compact-test").BackupJob().Backup(name), backup.Labels)
-	podLabels := jobLabels
+	// podLabels := jobLabels
 	jobAnnotations := backup.Annotations
-	podAnnotations := backup.Annotations
 
+	// Create a basic PodSpec with a single container that just prints "Hello World"
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      podLabels,
-			Annotations: podAnnotations,
+			Labels:      map[string]string{"app": "backup"},
+			Annotations: map[string]string{"description": "A simple backup job"},
 		},
 		Spec: corev1.PodSpec{
-			SecurityContext:    backup.Spec.PodSecurityContext,
-			ServiceAccountName: serviceAccount,
-			InitContainers: []corev1.Container{
-				{
-					Name:            "br",
-					Image:           brImage,
-					Command:         []string{"/bin/sh", "-c"},
-					Args:            []string{fmt.Sprintf("cp /br %s/br; echo 'BR copy finished'", util.BRBinPath)},
-					ImagePullPolicy: corev1.PullIfNotPresent,
-					VolumeMounts:    []corev1.VolumeMount{brVolumeMount},
-					Resources:       backup.Spec.ResourceRequirements,
-				},
-			},
 			Containers: []corev1.Container{
 				{
-					Name:            label.BackupJobLabelVal,
-					Image:           c.deps.CLIConfig.TiDBBackupManagerImage,
-					Args:            args,
-					ImagePullPolicy: corev1.PullIfNotPresent,
-					VolumeMounts:    volumeMounts,
-					Env:             util.AppendEnvIfPresent(envVars, "TZ"),
-					Resources:       backup.Spec.ResourceRequirements,
+					Name:  "simple-backup",
+					Image: "busybox", // Using a simple image for demonstration
+					Command: []string{
+						"/bin/sh", "-c",
+					},
+					Args: []string{
+						"echo 'Backup job running successfully'; sleep 30",
+					},
 				},
 			},
-			RestartPolicy:     corev1.RestartPolicyNever,
-			Tolerations:       backup.Spec.Tolerations,
-			ImagePullSecrets:  backup.Spec.ImagePullSecrets,
-			Affinity:          backup.Spec.Affinity,
-			Volumes:           volumes,
-			PriorityClassName: backup.Spec.PriorityClassName,
+			RestartPolicy: corev1.RestartPolicyNever,
 		},
 	}
 
