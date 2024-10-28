@@ -7062,11 +7062,16 @@ spec:
     listKind: CompactBackupList
     plural: compactbackups
     shortNames:
-    - bk
+    - cpbk
     singular: compactbackup
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - description: The current status of the compact backup
+      jsonPath: .status.state
+      name: Status
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         properties:
@@ -8034,12 +8039,18 @@ spec:
                 - provider
                 type: object
             type: object
+          status:
+            properties:
+              state:
+                type: string
+            type: object
         required:
         - metadata
         - spec
         type: object
     served: true
     storage: true
+    subresources: {}
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition

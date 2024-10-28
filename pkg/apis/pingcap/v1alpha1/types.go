@@ -3435,13 +3435,16 @@ type ScalePolicy struct {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +k8s:openapi-gen=true
-// +kubebuilder:resource:shortName="bk"
+// +kubebuilder:resource:shortName="cpbk"
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.state`,description="The current status of the compact backup"
 type CompactBackup struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
 	metav1.ObjectMeta `json:"metadata"`
 
 	Spec CompactSpec `json:"spec"`
+	// +k8s:openapi-gen=false
+	Status CompactStatus `json:"status,omitempty"`
 }
 
 // BackupSpec contains the backup specification for a tidb cluster.
@@ -3458,4 +3461,20 @@ type CompactSpec struct {
 	StorageProvider `json:",inline"`
 	// BRConfig is the configs for BR
 	BR *BRConfig `json:"br,omitempty"`
+}
+
+type CompactStatus struct {
+	State string `json:"state,omitempty"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// +k8s:openapi-gen=true
+// CompactList contains a list of Compact Backup.
+type CompactBackupList struct {
+	metav1.TypeMeta `json:",inline"`
+	// +k8s:openapi-gen=false
+	metav1.ListMeta `json:"metadata"`
+
+	Items []CompactBackup `json:"items"`
 }

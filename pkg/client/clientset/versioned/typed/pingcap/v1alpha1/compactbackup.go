@@ -37,6 +37,7 @@ type CompactBackupsGetter interface {
 type CompactBackupInterface interface {
 	Create(ctx context.Context, compactBackup *v1alpha1.CompactBackup, opts v1.CreateOptions) (*v1alpha1.CompactBackup, error)
 	Update(ctx context.Context, compactBackup *v1alpha1.CompactBackup, opts v1.UpdateOptions) (*v1alpha1.CompactBackup, error)
+	UpdateStatus(ctx context.Context, compactBackup *v1alpha1.CompactBackup, opts v1.UpdateOptions) (*v1alpha1.CompactBackup, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
 	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.CompactBackup, error)
@@ -125,6 +126,22 @@ func (c *compactBackups) Update(ctx context.Context, compactBackup *v1alpha1.Com
 		Namespace(c.ns).
 		Resource("compactbackups").
 		Name(compactBackup.Name).
+		VersionedParams(&opts, scheme.ParameterCodec).
+		Body(compactBackup).
+		Do(ctx).
+		Into(result)
+	return
+}
+
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *compactBackups) UpdateStatus(ctx context.Context, compactBackup *v1alpha1.CompactBackup, opts v1.UpdateOptions) (result *v1alpha1.CompactBackup, err error) {
+	result = &v1alpha1.CompactBackup{}
+	err = c.client.Put().
+		Namespace(c.ns).
+		Resource("compactbackups").
+		Name(compactBackup.Name).
+		SubResource("status").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(compactBackup).
 		Do(ctx).
