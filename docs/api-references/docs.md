@@ -3447,6 +3447,7 @@ string
 <p>
 (<em>Appears on:</em>
 <a href="#backupspec">BackupSpec</a>, 
+<a href="#compactspec">CompactSpec</a>, 
 <a href="#restorespec">RestoreSpec</a>)
 </p>
 <p>
@@ -3867,7 +3868,8 @@ string
 <h3 id="backupmode">BackupMode</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#backupspec">BackupSpec</a>)
+<a href="#backupspec">BackupSpec</a>, 
+<a href="#compactspec">CompactSpec</a>)
 </p>
 <p>
 <p>BackupType represents the backup mode, such as snapshot backup or log backup.</p>
@@ -5331,6 +5333,225 @@ FlashSecurity
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="compactbackup">CompactBackup</h3>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>metadata</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code></br>
+<em>
+<a href="#compactspec">
+CompactSpec
+</a>
+</em>
+</td>
+<td>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>env</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#envvar-v1-core">
+[]Kubernetes core/v1.EnvVar
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>from</code></br>
+<em>
+<a href="#tidbaccessconfig">
+TiDBAccessConfig
+</a>
+</em>
+</td>
+<td>
+<p>From is the tidb cluster that needs to backup.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backupMode</code></br>
+<em>
+<a href="#backupmode">
+BackupMode
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>StorageProvider</code></br>
+<em>
+<a href="#storageprovider">
+StorageProvider
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>StorageProvider</code> are embedded into this type.)
+</p>
+<p>StorageProvider configures where and how backups should be stored.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>br</code></br>
+<em>
+<a href="#brconfig">
+BRConfig
+</a>
+</em>
+</td>
+<td>
+<p>BRConfig is the configs for BR</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="compactspec">CompactSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#compactbackup">CompactBackup</a>)
+</p>
+<p>
+<p>BackupSpec contains the backup specification for a tidb cluster.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>env</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#envvar-v1-core">
+[]Kubernetes core/v1.EnvVar
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>from</code></br>
+<em>
+<a href="#tidbaccessconfig">
+TiDBAccessConfig
+</a>
+</em>
+</td>
+<td>
+<p>From is the tidb cluster that needs to backup.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backupMode</code></br>
+<em>
+<a href="#backupmode">
+BackupMode
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>StorageProvider</code></br>
+<em>
+<a href="#storageprovider">
+StorageProvider
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>StorageProvider</code> are embedded into this type.)
+</p>
+<p>StorageProvider configures where and how backups should be stored.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>br</code></br>
+<em>
+<a href="#brconfig">
+BRConfig
+</a>
+</em>
+</td>
+<td>
+<p>BRConfig is the configs for BR</p>
 </td>
 </tr>
 </tbody>
@@ -15861,6 +16082,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/storage/persistent-volum
 <p>
 (<em>Appears on:</em>
 <a href="#backupspec">BackupSpec</a>, 
+<a href="#compactspec">CompactSpec</a>, 
 <a href="#restorespec">RestoreSpec</a>)
 </p>
 <p>
@@ -16750,6 +16972,7 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName
 <p>
 (<em>Appears on:</em>
 <a href="#backupspec">BackupSpec</a>, 
+<a href="#compactspec">CompactSpec</a>, 
 <a href="#restorespec">RestoreSpec</a>)
 </p>
 <p>
