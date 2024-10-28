@@ -3464,3 +3464,31 @@ type ScalePolicy struct {
 	// +optional
 	ScaleOutParallelism *int32 `json:"scaleOutParallelism,omitempty"`
 }
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
+// +kubebuilder:resource:shortName="bk"
+type CompactBackup struct {
+	metav1.TypeMeta `json:",inline"`
+	// +k8s:openapi-gen=false
+	metav1.ObjectMeta `json:"metadata"`
+
+	Spec CompactSpec `json:"spec"`
+}
+
+// BackupSpec contains the backup specification for a tidb cluster.
+// +k8s:openapi-gen=true
+type CompactSpec struct {
+	corev1.ResourceRequirements `json:"resources,omitempty"`
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
+	// From is the tidb cluster that needs to backup.
+	From *TiDBAccessConfig `json:"from,omitempty"`
+	// +kubebuilder:default=snapshot
+	Mode BackupMode `json:"backupMode,omitempty"`
+	// StorageProvider configures where and how backups should be stored.
+	StorageProvider `json:",inline"`
+	// BRConfig is the configs for BR
+	BR *BRConfig `json:"br,omitempty"`
+}
