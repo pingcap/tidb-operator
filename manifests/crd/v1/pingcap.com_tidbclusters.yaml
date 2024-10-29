@@ -13152,6 +13152,10 @@ spec:
                     x-kubernetes-list-map-keys:
                     - name
                     x-kubernetes-list-type: map
+                  clusterClientTLSSecretName:
+                    type: string
+                  clusterTLSSecretName:
+                    type: string
                   config:
                     x-kubernetes-preserve-unknown-fields: true
                   configUpdateStrategy:
