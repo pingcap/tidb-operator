@@ -8208,11 +8208,6 @@ spec:
                     default: 30m
                     type: string
                 type: object
-              backupMode:
-                default: snapshot
-                type: string
-              backupType:
-                type: string
               br:
                 properties:
                   checkRequirements:
@@ -8249,51 +8244,14 @@ spec:
                 required:
                 - cluster
                 type: object
-              calcSizeLevel:
-                default: all
-                type: string
-              cleanOption:
-                properties:
-                  backoffEnabled:
-                    type: boolean
-                  batchConcurrency:
-                    format: int32
-                    type: integer
-                  disableBatchConcurrency:
-                    type: boolean
-                  pageSize:
-                    format: int64
-                    type: integer
-                  retryCount:
-                    default: 5
-                    type: integer
-                  routineConcurrency:
-                    format: int32
-                    type: integer
-                  snapshotsDeleteRatio:
-                    default: 1
-                    type: number
-                type: object
-              cleanPolicy:
-                default: Retain
-                enum:
-                - Retain
-                - OnFailure
-                - Delete
+              brImage:
                 type: string
               commitTs:
                 type: string
-              dumpling:
-                properties:
-                  options:
-                    items:
-                      type: string
-                    type: array
-                  tableFilter:
-                    items:
-                      type: string
-                    type: array
-                type: object
+              concurrency:
+                type: integer
+              endTs:
+                type: string
               env:
                 items:
                   properties:
@@ -8358,8 +8316,6 @@ spec:
                   - name
                   type: object
                 type: array
-              federalVolumeBackupPhase:
-                type: string
               from:
                 properties:
                   host:
@@ -9143,16 +9099,6 @@ spec:
                 - volume
                 - volumeMount
                 type: object
-              logStop:
-                type: boolean
-              logSubcommand:
-                enum:
-                - log-start
-                - log-stop
-                - log-pause
-                type: string
-              logTruncateUntil:
-                type: string
               podSecurityContext:
                 properties:
                   fsGroup:
@@ -9287,10 +9233,6 @@ spec:
                 type: string
               storageSize:
                 type: string
-              tableFilter:
-                items:
-                  type: string
-                type: array
               tikvGCLifeTime:
                 type: string
               tolerations:
@@ -9309,8 +9251,6 @@ spec:
                       type: string
                   type: object
                 type: array
-              toolImage:
-                type: string
               useKMS:
                 type: boolean
               volumeBackupInitJobMaxActiveSeconds:

@@ -3,6 +3,7 @@ package compact
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pingcap/errors"
@@ -261,6 +262,16 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
 
+	brImage := "pingcap/br:" + tikvVersion
+	if backup.Spec.BrImage != "" {
+		image := backup.Spec.BrImage
+		if !strings.ContainsRune(backup.Spec.BrImage, ':') {
+			image = fmt.Sprintf("%s:%s", image, tikvVersion)
+		}
+
+		brImage = image
+	}
+
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
 
@@ -284,22 +295,37 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 		volumeMounts = append(volumeMounts, backup.Spec.Local.VolumeMount)
 	}
 
-	// serviceAccount := constants.DefaultServiceAccountName
-	// if backup.Spec.ServiceAccount != "" {
-	// 	serviceAccount = backup.Spec.ServiceAccount
-	// }
-
 	jobLabels := util.CombineStringMap(label.NewBackup().Instance("Compact-test").BackupJob().Backup(name), backup.Labels)
-	// podLabels := jobLabels
+	podLabels := jobLabels
 	jobAnnotations := backup.Annotations
 
 	// Create a basic PodSpec with a single container that just prints "Hello World"
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      map[string]string{"app": "backup"},
-			Annotations: map[string]string{"description": "A simple backup job"},
+			Labels:      podLabels,
+			Annotations: jobAnnotations,
 		},
 		Spec: corev1.PodSpec{
+			InitContainers: []corev1.Container{
+				{
+					Name:            "br",
+					Image:           brImage,
+					Command:         []string{"/bin/sh", "-c"},
+					Args:            []string{fmt.Sprintf("cp /br %s/br; echo 'BR copy finished'", util.BRBinPath)},
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					VolumeMounts:    []corev1.VolumeMount{brVolumeMount},
+					Resources:       backup.Spec.ResourceRequirements,
+				},
+				{
+					Name:            "tikv-ctl",
+					Image:           tikvImage,
+					Command:         []string{"/bin/sh", "-c"},
+					Args:            []string{fmt.Sprintf("cp /tikv-ctl %s/tikv-ctl; echo 'KVCTL copy finished'", util.KVCTLBinPath)},
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					VolumeMounts:    []corev1.VolumeMount{brVolumeMount},
+					Resources:       backup.Spec.ResourceRequirements,
+				},
+			},
 			Containers: []corev1.Container{
 				{
 					Name:  "simple-backup",

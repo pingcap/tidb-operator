@@ -3869,8 +3869,7 @@ string
 <h3 id="backupmode">BackupMode</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#backupspec">BackupSpec</a>, 
-<a href="#compactspec">CompactSpec</a>)
+<a href="#backupspec">BackupSpec</a>)
 </p>
 <p>
 <p>BackupType represents the backup mode, such as snapshot backup or log backup.</p>
@@ -4752,7 +4751,6 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LogSubCommandType
 <p>
 (<em>Appears on:</em>
 <a href="#backupspec">BackupSpec</a>, 
-<a href="#compactspec">CompactSpec</a>, 
 <a href="#restorespec">RestoreSpec</a>)
 </p>
 <p>
@@ -5093,8 +5091,7 @@ github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
 <h3 id="cleanoption">CleanOption</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#backupspec">BackupSpec</a>, 
-<a href="#compactspec">CompactSpec</a>)
+<a href="#backupspec">BackupSpec</a>)
 </p>
 <p>
 <p>CleanOption defines the configuration for cleanup backup</p>
@@ -5173,8 +5170,7 @@ float64
 <h3 id="cleanpolicytype">CleanPolicyType</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#backupspec">BackupSpec</a>, 
-<a href="#compactspec">CompactSpec</a>)
+<a href="#backupspec">BackupSpec</a>)
 </p>
 <p>
 <p>CleanPolicyType represents the clean policy of backup data in remote storage</p>
@@ -5436,41 +5432,12 @@ TiDBAccessConfig
 </tr>
 <tr>
 <td>
-<code>backupType</code></br>
-<em>
-<a href="#backuptype">
-BackupType
-</a>
-</em>
-</td>
-<td>
-<p>Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>backupMode</code></br>
-<em>
-<a href="#backupmode">
-BackupMode
-</a>
-</em>
-</td>
-<td>
-<p>Mode is the backup mode, such as snapshot backup or log backup.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>tikvGCLifeTime</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>TikvGCLifeTime is to specify the safe gc life time for backup.
-The time limit during which data is retained for each GC, in the format of Go Duration.
-When a GC happens, the current time minus this value is the safe point.</p>
 </td>
 </tr>
 <tr>
@@ -5534,75 +5501,35 @@ string
 </em>
 </td>
 <td>
+<p>StartTs is the start ts of the compact backup.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>endTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
 <em>(Optional)</em>
-<p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
+<p>EndTs is the end ts of the compact backup.
 Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
 Default is current timestamp.</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>logSubcommand</code></br>
+<code>concurrency</code></br>
 <em>
-<a href="#logsubcommandtype">
-LogSubCommandType
-</a>
+int
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Subcommand is the subcommand for BR, such as start, stop, pause etc.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>logTruncateUntil</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>LogTruncateUntil is log backup truncate until timestamp.
-Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>logStop</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>LogStop indicates that will stop the log backup.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>calcSizeLevel</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>CalcSizeLevel determines how to size calculation of snapshots for EBS volume snapshot backup</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>federalVolumeBackupPhase</code></br>
-<em>
-<a href="#federalvolumebackupphase">
-FederalVolumeBackupPhase
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>FederalVolumeBackupPhase indicates which phase to execute in federal volume backup</p>
+<p>ResumeGcSchedule indicates whether resume gc and pd scheduler for EBS volume snapshot backup
+Concurrency is the concurrency of compact backup job</p>
 </td>
 </tr>
 <tr>
@@ -5613,21 +5540,6 @@ bool
 </em>
 </td>
 <td>
-<em>(Optional)</em>
-<p>ResumeGcSchedule indicates whether resume gc and pd scheduler for EBS volume snapshot backup</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>dumpling</code></br>
-<em>
-<a href="#dumplingconfig">
-DumplingConfig
-</a>
-</em>
-</td>
-<td>
-<p>DumplingConfig is the configs for dumpling</p>
 </td>
 </tr>
 <tr>
@@ -5646,16 +5558,16 @@ DumplingConfig
 </tr>
 <tr>
 <td>
-<code>toolImage</code></br>
+<code>brImage</code></br>
 <em>
 string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>ToolImage specifies the tool image used in <code>Backup</code>, which supports BR and Dumpling images.
-For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolImage: pingcap/dumpling:v4.0.8</code>
-For BR image, if it does not contain tag, Pod will use image &lsquo;ToolImage:${TiKV_Version}&rsquo;.</p>
+<p>BrImage specifies the br image used in compact <code>Backup</code>.
+For examples <code>spec.brImage: pingcap/br:v4.0.8</code>
+For BR image, if it does not contain tag, Pod will use image &lsquo;BrImage:${TiKV_Version}&rsquo;.</p>
 </td>
 </tr>
 <tr>
@@ -5670,17 +5582,6 @@ For BR image, if it does not contain tag, Pod will use image &lsquo;ToolImage:${
 <td>
 <em>(Optional)</em>
 <p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>tableFilter</code></br>
-<em>
-[]string
-</em>
-</td>
-<td>
-<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
 </td>
 </tr>
 <tr>
@@ -5717,32 +5618,6 @@ string
 </td>
 <td>
 <p>Specify service account of backup</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>cleanPolicy</code></br>
-<em>
-<a href="#cleanpolicytype">
-CleanPolicyType
-</a>
-</em>
-</td>
-<td>
-<p>CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>cleanOption</code></br>
-<em>
-<a href="#cleanoption">
-CleanOption
-</a>
-</em>
-</td>
-<td>
-<p>CleanOption controls the behavior of clean.</p>
 </td>
 </tr>
 <tr>
@@ -5912,41 +5787,12 @@ TiDBAccessConfig
 </tr>
 <tr>
 <td>
-<code>backupType</code></br>
-<em>
-<a href="#backuptype">
-BackupType
-</a>
-</em>
-</td>
-<td>
-<p>Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>backupMode</code></br>
-<em>
-<a href="#backupmode">
-BackupMode
-</a>
-</em>
-</td>
-<td>
-<p>Mode is the backup mode, such as snapshot backup or log backup.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>tikvGCLifeTime</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>TikvGCLifeTime is to specify the safe gc life time for backup.
-The time limit during which data is retained for each GC, in the format of Go Duration.
-When a GC happens, the current time minus this value is the safe point.</p>
 </td>
 </tr>
 <tr>
@@ -6010,75 +5856,35 @@ string
 </em>
 </td>
 <td>
+<p>StartTs is the start ts of the compact backup.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>endTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
 <em>(Optional)</em>
-<p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
+<p>EndTs is the end ts of the compact backup.
 Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
 Default is current timestamp.</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>logSubcommand</code></br>
+<code>concurrency</code></br>
 <em>
-<a href="#logsubcommandtype">
-LogSubCommandType
-</a>
+int
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Subcommand is the subcommand for BR, such as start, stop, pause etc.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>logTruncateUntil</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>LogTruncateUntil is log backup truncate until timestamp.
-Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>logStop</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>LogStop indicates that will stop the log backup.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>calcSizeLevel</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>CalcSizeLevel determines how to size calculation of snapshots for EBS volume snapshot backup</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>federalVolumeBackupPhase</code></br>
-<em>
-<a href="#federalvolumebackupphase">
-FederalVolumeBackupPhase
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>FederalVolumeBackupPhase indicates which phase to execute in federal volume backup</p>
+<p>ResumeGcSchedule indicates whether resume gc and pd scheduler for EBS volume snapshot backup
+Concurrency is the concurrency of compact backup job</p>
 </td>
 </tr>
 <tr>
@@ -6089,21 +5895,6 @@ bool
 </em>
 </td>
 <td>
-<em>(Optional)</em>
-<p>ResumeGcSchedule indicates whether resume gc and pd scheduler for EBS volume snapshot backup</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>dumpling</code></br>
-<em>
-<a href="#dumplingconfig">
-DumplingConfig
-</a>
-</em>
-</td>
-<td>
-<p>DumplingConfig is the configs for dumpling</p>
 </td>
 </tr>
 <tr>
@@ -6122,16 +5913,16 @@ DumplingConfig
 </tr>
 <tr>
 <td>
-<code>toolImage</code></br>
+<code>brImage</code></br>
 <em>
 string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>ToolImage specifies the tool image used in <code>Backup</code>, which supports BR and Dumpling images.
-For examples <code>spec.toolImage: pingcap/br:v4.0.8</code> or <code>spec.toolImage: pingcap/dumpling:v4.0.8</code>
-For BR image, if it does not contain tag, Pod will use image &lsquo;ToolImage:${TiKV_Version}&rsquo;.</p>
+<p>BrImage specifies the br image used in compact <code>Backup</code>.
+For examples <code>spec.brImage: pingcap/br:v4.0.8</code>
+For BR image, if it does not contain tag, Pod will use image &lsquo;BrImage:${TiKV_Version}&rsquo;.</p>
 </td>
 </tr>
 <tr>
@@ -6146,17 +5937,6 @@ For BR image, if it does not contain tag, Pod will use image &lsquo;ToolImage:${
 <td>
 <em>(Optional)</em>
 <p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>tableFilter</code></br>
-<em>
-[]string
-</em>
-</td>
-<td>
-<p>TableFilter means Table filter expression for &lsquo;db.table&rsquo; matching. BR supports this from v4.0.3.</p>
 </td>
 </tr>
 <tr>
@@ -6193,32 +5973,6 @@ string
 </td>
 <td>
 <p>Specify service account of backup</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>cleanPolicy</code></br>
-<em>
-<a href="#cleanpolicytype">
-CleanPolicyType
-</a>
-</em>
-</td>
-<td>
-<p>CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>cleanOption</code></br>
-<em>
-<a href="#cleanoption">
-CleanOption
-</a>
-</em>
-</td>
-<td>
-<p>CleanOption controls the behavior of clean.</p>
 </td>
 </tr>
 <tr>
@@ -8208,8 +7962,7 @@ for other components, the auto failover feature may be used instead.</p>
 <h3 id="dumplingconfig">DumplingConfig</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#backupspec">BackupSpec</a>, 
-<a href="#compactspec">CompactSpec</a>)
+<a href="#backupspec">BackupSpec</a>)
 </p>
 <p>
 <p>DumplingConfig contains config for dumpling</p>
@@ -8500,8 +8253,7 @@ it takes effect only when set <code>spec.recoverFailover=false</code></p>
 <h3 id="federalvolumebackupphase">FederalVolumeBackupPhase</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#backupspec">BackupSpec</a>, 
-<a href="#compactspec">CompactSpec</a>)
+<a href="#backupspec">BackupSpec</a>)
 </p>
 <p>
 <p>FederalVolumeBackupPhase represents a phase to execute in federal volume backup</p>
@@ -9913,7 +9665,6 @@ BackupConditionType
 (<em>Appears on:</em>
 <a href="#backupcondition">BackupCondition</a>, 
 <a href="#backupspec">BackupSpec</a>, 
-<a href="#compactspec">CompactSpec</a>, 
 <a href="#logsubcommandstatus">LogSubCommandStatus</a>)
 </p>
 <p>

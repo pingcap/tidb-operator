@@ -958,11 +958,6 @@ func (in *CompactSpec) DeepCopyInto(out *CompactSpec) {
 		*out = new(BRConfig)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.Dumpling != nil {
-		in, out := &in.Dumpling, &out.Dumpling
-		*out = new(DumplingConfig)
-		(*in).DeepCopyInto(*out)
-	}
 	if in.Tolerations != nil {
 		in, out := &in.Tolerations, &out.Tolerations
 		*out = make([]v1.Toleration, len(*in))
@@ -975,20 +970,10 @@ func (in *CompactSpec) DeepCopyInto(out *CompactSpec) {
 		*out = make([]v1.LocalObjectReference, len(*in))
 		copy(*out, *in)
 	}
-	if in.TableFilter != nil {
-		in, out := &in.TableFilter, &out.TableFilter
-		*out = make([]string, len(*in))
-		copy(*out, *in)
-	}
 	if in.Affinity != nil {
 		in, out := &in.Affinity, &out.Affinity
 		*out = new(v1.Affinity)
 		(*in).DeepCopyInto(*out)
-	}
-	if in.CleanOption != nil {
-		in, out := &in.CleanOption, &out.CleanOption
-		*out = new(CleanOption)
-		**out = **in
 	}
 	if in.PodSecurityContext != nil {
 		in, out := &in.PodSecurityContext, &out.PodSecurityContext

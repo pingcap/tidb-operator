@@ -3471,16 +3471,8 @@ type CompactSpec struct {
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
 	// From is the tidb cluster that needs to backup.
-	From *TiDBAccessConfig `json:"from,omitempty"`
-	// Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.
-	Type BackupType `json:"backupType,omitempty"`
-	// Mode is the backup mode, such as snapshot backup or log backup.
-	// +kubebuilder:default=snapshot
-	Mode BackupMode `json:"backupMode,omitempty"`
-	// TikvGCLifeTime is to specify the safe gc life time for backup.
-	// The time limit during which data is retained for each GC, in the format of Go Duration.
-	// When a GC happens, the current time minus this value is the safe point.
-	TikvGCLifeTime *string `json:"tikvGCLifeTime,omitempty"`
+	From           *TiDBAccessConfig `json:"from,omitempty"`
+	TikvGCLifeTime *string           `json:"tikvGCLifeTime,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
 	// The storageClassName of the persistent volume for Backup data storage.
@@ -3491,47 +3483,31 @@ type CompactSpec struct {
 	StorageSize string `json:"storageSize,omitempty"`
 	// BRConfig is the configs for BR
 	BR *BRConfig `json:"br,omitempty"`
-	// CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
+	// StartTs is the start ts of the compact backup.
+	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
+	StartTs string `json:"commitTs,omitempty"`
+	// EndTs is the end ts of the compact backup.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
 	// Default is current timestamp.
 	// +optional
-	CommitTs string `json:"commitTs,omitempty"`
-	// Subcommand is the subcommand for BR, such as start, stop, pause etc.
-	// +optional
-	// +kubebuilder:validation:Enum:="log-start";"log-stop";"log-pause"
-	LogSubcommand LogSubCommandType `json:"logSubcommand,omitempty"`
-	// LogTruncateUntil is log backup truncate until timestamp.
-	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
-	// +optional
-	LogTruncateUntil string `json:"logTruncateUntil,omitempty"`
-	// LogStop indicates that will stop the log backup.
-	// +optional
-	LogStop bool `json:"logStop,omitempty"`
-	// CalcSizeLevel determines how to size calculation of snapshots for EBS volume snapshot backup
-	// +optional
-	// +kubebuilder:default="all"
-	CalcSizeLevel string `json:"calcSizeLevel,omitempty"`
-	// FederalVolumeBackupPhase indicates which phase to execute in federal volume backup
-	// +optional
-	FederalVolumeBackupPhase FederalVolumeBackupPhase `json:"federalVolumeBackupPhase,omitempty"`
+	EndTs string `json:"endTs,omitempty"`
 	// ResumeGcSchedule indicates whether resume gc and pd scheduler for EBS volume snapshot backup
 	// +optional
+	// Concurrency is the concurrency of compact backup job
+	// +default=4
+	Concurrency      int  `json:"concurrency,omitempty"`
 	ResumeGcSchedule bool `json:"resumeGcSchedule,omitempty"`
-	// DumplingConfig is the configs for dumpling
-	Dumpling *DumplingConfig `json:"dumpling,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
-	// ToolImage specifies the tool image used in `Backup`, which supports BR and Dumpling images.
-	// For examples `spec.toolImage: pingcap/br:v4.0.8` or `spec.toolImage: pingcap/dumpling:v4.0.8`
-	// For BR image, if it does not contain tag, Pod will use image 'ToolImage:${TiKV_Version}'.
+	// BrImage specifies the br image used in compact `Backup`.
+	// For examples `spec.brImage: pingcap/br:v4.0.8`
+	// For BR image, if it does not contain tag, Pod will use image 'BrImage:${TiKV_Version}'.
 	// +optional
-	ToolImage string `json:"toolImage,omitempty"`
+	BrImage string `json:"brImage,omitempty"`
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
-	// TableFilter means Table filter expression for 'db.table' matching. BR supports this from v4.0.3.
-	TableFilter []string `json:"tableFilter,omitempty"`
 	// Affinity of backup Pods
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
@@ -3539,12 +3515,6 @@ type CompactSpec struct {
 	UseKMS bool `json:"useKMS,omitempty"`
 	// Specify service account of backup
 	ServiceAccount string `json:"serviceAccount,omitempty"`
-	// CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained
-	// +kubebuilder:validation:Enum:=Retain;OnFailure;Delete
-	// +kubebuilder:default=Retain
-	CleanPolicy CleanPolicyType `json:"cleanPolicy,omitempty"`
-	// CleanOption controls the behavior of clean.
-	CleanOption *CleanOption `json:"cleanOption,omitempty"`
 
 	// PodSecurityContext of the component
 	// +optional
