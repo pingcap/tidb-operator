@@ -335,13 +335,6 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 		})
 	}
 
-	brVolumeMount := corev1.VolumeMount{
-		Name:      "tool-bin",
-		ReadOnly:  false,
-		MountPath: util.BRBinPath,
-	}
-	volumeMounts = append(volumeMounts, brVolumeMount)
-
 	volumes = append(volumes, corev1.Volume{
 		Name: "tool-bin",
 		VolumeSource: corev1.VolumeSource{
