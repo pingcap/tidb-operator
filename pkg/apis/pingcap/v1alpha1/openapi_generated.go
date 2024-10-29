@@ -1735,25 +1735,10 @@ func schema_pkg_apis_pingcap_v1alpha1_CompactSpec(ref common.ReferenceCallback) 
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig"),
 						},
 					},
-					"backupType": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"backupMode": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Mode is the backup mode, such as snapshot backup or log backup.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 					"tikvGCLifeTime": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TikvGCLifeTime is to specify the safe gc life time for backup. The time limit during which data is retained for each GC, in the format of Go Duration. When a GC happens, the current time minus this value is the safe point.",
-							Type:        []string{"string"},
-							Format:      "",
+							Type:   []string{"string"},
+							Format: "",
 						},
 					},
 					"s3": {
@@ -1798,57 +1783,30 @@ func schema_pkg_apis_pingcap_v1alpha1_CompactSpec(ref common.ReferenceCallback) 
 					},
 					"commitTs": {
 						SchemaProps: spec.SchemaProps{
-							Description: "CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup. Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'. Default is current timestamp.",
+							Description: "StartTs is the start ts of the compact backup. Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
-					"logSubcommand": {
+					"endTs": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Subcommand is the subcommand for BR, such as start, stop, pause etc.",
+							Description: "EndTs is the end ts of the compact backup. Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'. Default is current timestamp.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
-					"logTruncateUntil": {
+					"concurrency": {
 						SchemaProps: spec.SchemaProps{
-							Description: "LogTruncateUntil is log backup truncate until timestamp. Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"logStop": {
-						SchemaProps: spec.SchemaProps{
-							Description: "LogStop indicates that will stop the log backup.",
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
-					"calcSizeLevel": {
-						SchemaProps: spec.SchemaProps{
-							Description: "CalcSizeLevel determines how to size calculation of snapshots for EBS volume snapshot backup",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"federalVolumeBackupPhase": {
-						SchemaProps: spec.SchemaProps{
-							Description: "FederalVolumeBackupPhase indicates which phase to execute in federal volume backup",
-							Type:        []string{"string"},
-							Format:      "",
+							Description: "ResumeGcSchedule indicates whether resume gc and pd scheduler for EBS volume snapshot backup Concurrency is the concurrency of compact backup job",
+							Default:     4,
+							Type:        []string{"integer"},
+							Format:      "int32",
 						},
 					},
 					"resumeGcSchedule": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ResumeGcSchedule indicates whether resume gc and pd scheduler for EBS volume snapshot backup",
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
-					"dumpling": {
-						SchemaProps: spec.SchemaProps{
-							Description: "DumplingConfig is the configs for dumpling",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DumplingConfig"),
+							Type:   []string{"boolean"},
+							Format: "",
 						},
 					},
 					"tolerations": {
@@ -1865,9 +1823,9 @@ func schema_pkg_apis_pingcap_v1alpha1_CompactSpec(ref common.ReferenceCallback) 
 							},
 						},
 					},
-					"toolImage": {
+					"brImage": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ToolImage specifies the tool image used in `Backup`, which supports BR and Dumpling images. For examples `spec.toolImage: pingcap/br:v4.0.8` or `spec.toolImage: pingcap/dumpling:v4.0.8` For BR image, if it does not contain tag, Pod will use image 'ToolImage:${TiKV_Version}'.",
+							Description: "BrImage specifies the br image used in compact `Backup`. For examples `spec.brImage: pingcap/br:v4.0.8` For BR image, if it does not contain tag, Pod will use image 'BrImage:${TiKV_Version}'.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -1881,21 +1839,6 @@ func schema_pkg_apis_pingcap_v1alpha1_CompactSpec(ref common.ReferenceCallback) 
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
 										Ref:     ref("k8s.io/api/core/v1.LocalObjectReference"),
-									},
-								},
-							},
-						},
-					},
-					"tableFilter": {
-						SchemaProps: spec.SchemaProps{
-							Description: "TableFilter means Table filter expression for 'db.table' matching. BR supports this from v4.0.3.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
 									},
 								},
 							},
@@ -1919,19 +1862,6 @@ func schema_pkg_apis_pingcap_v1alpha1_CompactSpec(ref common.ReferenceCallback) 
 							Description: "Specify service account of backup",
 							Type:        []string{"string"},
 							Format:      "",
-						},
-					},
-					"cleanPolicy": {
-						SchemaProps: spec.SchemaProps{
-							Description: "CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"cleanOption": {
-						SchemaProps: spec.SchemaProps{
-							Description: "CleanOption controls the behavior of clean.",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CleanOption"),
 						},
 					},
 					"podSecurityContext": {
@@ -1993,7 +1923,7 @@ func schema_pkg_apis_pingcap_v1alpha1_CompactSpec(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AzblobStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackoffRetryPolicy", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CleanOption", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DumplingConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LocalStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AzblobStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackoffRetryPolicy", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LocalStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiDBAccessConfig", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount"},
 	}
 }
 
