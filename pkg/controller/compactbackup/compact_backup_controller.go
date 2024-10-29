@@ -10,6 +10,7 @@ import (
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -21,6 +22,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
@@ -87,19 +89,40 @@ func (c *Controller) worker() {
 	}
 }
 
+func (c *Controller) UpdateStatus(backup *v1alpha1.CompactBackup, newState string) error {
+	ns := backup.GetNamespace()
+	backupName := backup.GetName()
+	// try best effort to guarantee backup is updated.
+	err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
+		// Always get the latest backup before update.
+		if updated, err := c.deps.CompactBackupLister.CompactBackups(ns).Get(backupName); err == nil {
+			// make a copy so we don't mutate the shared cache
+			*backup = *(updated.DeepCopy())
+		} else {
+			utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %v", ns, backupName, err))
+			return err
+		}
+		if backup.Status.State != newState {
+			backup.Status.State = newState
+			_, updateErr := c.cli.PingcapV1alpha1().CompactBackups(ns).Update(context.TODO(), backup, metav1.UpdateOptions{})
+			if updateErr == nil {
+				klog.Infof("Backup: [%s/%s] updated successfully", ns, backupName)
+				return nil
+			}
+			klog.Errorf("Failed to update backup [%s/%s], error: %v", ns, backupName, updateErr)
+			return updateErr
+		}
+		return nil
+	})
+	return err
+}
+
 func (c *Controller) updateBackup(cur interface{}) {
 	newBackup := cur.(*v1alpha1.CompactBackup)
 	ns := newBackup.GetNamespace()
 	name := newBackup.GetName()
 
 	klog.Infof("backup object %s/%s enqueue", ns, name)
-	newBackup.Status.State = "Prepare"
-	_, updateErr := c.cli.PingcapV1alpha1().CompactBackups(ns).Update(context.TODO(), newBackup, metav1.UpdateOptions{})
-	if updateErr == nil {
-		klog.Infof("Backup: [%s/%s] updated successfully", ns, newBackup.GetName())
-	} else {
-		klog.Errorf("Backup: [%s/%s] updated failed", ns, newBackup.GetName())
-	}
 	c.enqueueBackup(newBackup)
 }
 
@@ -174,22 +197,25 @@ func (c *Controller) sync(key string) (err error) {
 	}
 
 	//Skip
-	if backup.Status.State == "Complete" {
+	if backup.Status.State != "" {
 		return nil
 	}
 
-	err = c.syncCompact(backup.DeepCopy())
-	backup.Status.State = "Complete"
-	_, updateErr := c.cli.PingcapV1alpha1().CompactBackups(ns).Update(context.TODO(), backup, metav1.UpdateOptions{})
-	if updateErr == nil {
-		klog.Infof("Backup: [%s/%s] updated successfully", ns, backup.GetName())
+	c.UpdateStatus(backup, "Preparing")
+
+	err = c.doCompact(backup.DeepCopy())
+
+	var newState string
+	if err != nil {
+		newState = "Failed"
 	} else {
-		klog.Errorf("Backup: [%s/%s] updated failed", ns, backup.GetName())
+		newState = "Running"
 	}
+	c.UpdateStatus(backup, newState)
 	return err
 }
 
-func (c *Controller) syncCompact(backup *v1alpha1.CompactBackup) error {
+func (c *Controller) doCompact(backup *v1alpha1.CompactBackup) error {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	backupJobName := backup.GetName()
@@ -215,7 +241,7 @@ func (c *Controller) syncCompact(backup *v1alpha1.CompactBackup) error {
 func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
-	jobName := backup.GetName()
+	jobName := backup.GetName() + "-compact-backup"
 	backupNamespace := ns
 	if backup.Spec.BR.ClusterNamespace != "" {
 		backupNamespace = backup.Spec.BR.ClusterNamespace
@@ -262,6 +288,85 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
 
+	//TODO: (Ris)What is the instance here?
+	jobLabels := util.CombineStringMap(label.NewBackup().Instance("Compact-test").BackupJob().Backup(name), backup.Labels)
+	podLabels := jobLabels
+	jobAnnotations := backup.Annotations
+	podAnnotations := jobAnnotations
+
+	volumeMounts := []corev1.VolumeMount{}
+	volumes := []corev1.Volume{}
+
+	if tc.IsTLSClusterEnabled() {
+		args = append(args, "--cluster-tls=true")
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      util.ClusterClientVolName,
+			ReadOnly:  true,
+			MountPath: util.ClusterClientTLSPath,
+		})
+		volumes = append(volumes, corev1.Volume{
+			Name: util.ClusterClientVolName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.ClusterClientTLSSecretName(backup.Spec.BR.Cluster),
+				},
+			},
+		})
+	}
+
+	if backup.Spec.From != nil && tc.Spec.TiDB != nil && tc.Spec.TiDB.TLSClient != nil && tc.Spec.TiDB.TLSClient.Enabled && !tc.SkipTLSWhenConnectTiDB() {
+		args = append(args, "--client-tls=true")
+		if tc.Spec.TiDB.TLSClient.SkipInternalClientCA {
+			args = append(args, "--skipClientCA=true")
+		}
+
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "tidb-client-tls",
+			ReadOnly:  true,
+			MountPath: util.TiDBClientTLSPath,
+		})
+		volumes = append(volumes, corev1.Volume{
+			Name: "tidb-client-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.TiDBClientTLSSecretName(backup.Spec.BR.Cluster, backup.Spec.From.TLSClientSecretName),
+				},
+			},
+		})
+	}
+
+	brVolumeMount := corev1.VolumeMount{
+		Name:      "tool-bin",
+		ReadOnly:  false,
+		MountPath: util.BRBinPath,
+	}
+	volumeMounts = append(volumeMounts, brVolumeMount)
+
+	volumes = append(volumes, corev1.Volume{
+		Name: "tool-bin",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
+
+	if len(backup.Spec.AdditionalVolumes) > 0 {
+		volumes = append(volumes, backup.Spec.AdditionalVolumes...)
+	}
+	if len(backup.Spec.AdditionalVolumeMounts) > 0 {
+		volumeMounts = append(volumeMounts, backup.Spec.AdditionalVolumeMounts...)
+	}
+
+	// mount volumes if specified
+	if backup.Spec.Local != nil {
+		volumes = append(volumes, backup.Spec.Local.Volume)
+		volumeMounts = append(volumeMounts, backup.Spec.Local.VolumeMount)
+	}
+
+	serviceAccount := constants.DefaultServiceAccountName
+	if backup.Spec.ServiceAccount != "" {
+		serviceAccount = backup.Spec.ServiceAccount
+	}
+
 	brImage := "pingcap/br:" + tikvVersion
 	if backup.Spec.BrImage != "" {
 		image := backup.Spec.BrImage
@@ -272,40 +377,14 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 		brImage = image
 	}
 
-	volumeMounts := []corev1.VolumeMount{}
-	volumes := []corev1.Volume{}
-
-	brVolumeMount := corev1.VolumeMount{
-		Name:      "br-bin",
-		ReadOnly:  false,
-		MountPath: util.BRBinPath,
-	}
-	volumeMounts = append(volumeMounts, brVolumeMount)
-
-	volumes = append(volumes, corev1.Volume{
-		Name: "br-bin",
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	})
-
-	// mount volumes if specified
-	if backup.Spec.Local != nil {
-		volumes = append(volumes, backup.Spec.Local.Volume)
-		volumeMounts = append(volumeMounts, backup.Spec.Local.VolumeMount)
-	}
-
-	jobLabels := util.CombineStringMap(label.NewBackup().Instance("Compact-test").BackupJob().Backup(name), backup.Labels)
-	podLabels := jobLabels
-	jobAnnotations := backup.Annotations
-
-	// Create a basic PodSpec with a single container that just prints "Hello World"
 	podSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      podLabels,
-			Annotations: jobAnnotations,
+			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{
+			SecurityContext:    backup.Spec.PodSecurityContext,
+			ServiceAccountName: serviceAccount,
 			InitContainers: []corev1.Container{
 				{
 					Name:            "br",
@@ -313,17 +392,27 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 					Command:         []string{"/bin/sh", "-c"},
 					Args:            []string{fmt.Sprintf("cp /br %s/br; echo 'BR copy finished'", util.BRBinPath)},
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					VolumeMounts:    []corev1.VolumeMount{brVolumeMount},
-					Resources:       backup.Spec.ResourceRequirements,
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "tool-bin",
+							MountPath: util.BRBinPath,
+						},
+					},
+					Resources: backup.Spec.ResourceRequirements,
 				},
 				{
 					Name:            "tikv-ctl",
 					Image:           tikvImage,
 					Command:         []string{"/bin/sh", "-c"},
-					Args:            []string{fmt.Sprintf("cp /tikv-ctl %s/tikv-ctl; echo 'KVCTL copy finished'", util.KVCTLBinPath)},
+					Args:            []string{fmt.Sprintf("cp /tikv-ctl %s/tikv-ctl; echo 'tikv-ctl copy finished'", util.KVCTLBinPath)},
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					VolumeMounts:    []corev1.VolumeMount{brVolumeMount},
-					Resources:       backup.Spec.ResourceRequirements,
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "tool-bin",
+							MountPath: util.KVCTLBinPath,
+						},
+					},
+					Resources: backup.Spec.ResourceRequirements,
 				},
 			},
 			Containers: []corev1.Container{
@@ -336,9 +425,24 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 					Args: []string{
 						"echo 'Backup job running successfully'; sleep 30",
 					},
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "tool-bin",
+							MountPath: util.BRBinPath,
+						},
+						{
+							Name:      "tool-bin",
+							MountPath: util.KVCTLBinPath,
+						},
+					},
 				},
 			},
-			RestartPolicy: corev1.RestartPolicyNever,
+			RestartPolicy:     corev1.RestartPolicyNever,
+			Tolerations:       backup.Spec.Tolerations,
+			ImagePullSecrets:  backup.Spec.ImagePullSecrets,
+			Affinity:          backup.Spec.Affinity,
+			Volumes:           volumes,
+			PriorityClassName: backup.Spec.PriorityClassName,
 		},
 	}
 
