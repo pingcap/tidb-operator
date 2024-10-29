@@ -34,6 +34,7 @@ func NewBackupMgrCommand() *cobra.Command {
 	cmds.AddCommand(NewRestoreCommand())
 	cmds.AddCommand(NewImportCommand())
 	cmds.AddCommand(NewCleanCommand())
+	cmds.AddCommand(NewCompactCommand())
 	return cmds
 }
 
