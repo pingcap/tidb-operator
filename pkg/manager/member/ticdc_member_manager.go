@@ -405,13 +405,13 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 		vols = append(vols, corev1.Volume{
 			Name: ticdcCertVolumeMount, VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.ClusterTLSSecretName(tc.Name, label.TiCDCLabelVal),
+					SecretName: getTiCDCClusterTLSCertSecretName(tc),
 				},
 			},
 		}, corev1.Volume{
 			Name: util.ClusterClientVolName, VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.ClusterClientTLSSecretName(tc.Name),
+					SecretName: getTiCDCClusterClientTLSCertSecretName(tc),
 				},
 			},
 		})
@@ -564,6 +564,24 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 	}
 	ticdcSts.Spec.VolumeClaimTemplates = append(ticdcSts.Spec.VolumeClaimTemplates, additionalPVCs...)
 	return ticdcSts, nil
+}
+
+func getTiCDCClusterTLSCertSecretName(tc *v1alpha1.TidbCluster) string {
+	clusterTLSSecretName := util.ClusterTLSSecretName(tc.Name, label.TiCDCLabelVal)
+	if tc.Spec.TiCDC.ClusterTLSSecretName != "" {
+		clusterTLSSecretName = tc.Spec.TiCDC.ClusterTLSSecretName
+	}
+
+	return clusterTLSSecretName
+}
+
+func getTiCDCClusterClientTLSCertSecretName(tc *v1alpha1.TidbCluster) string {
+	clusterClientTLSSecretName := util.ClusterClientTLSSecretName(tc.Name)
+	if tc.Spec.TiCDC.ClusterClientTLSSecretName != "" {
+		clusterClientTLSSecretName = tc.Spec.TiCDC.ClusterClientTLSSecretName
+	}
+
+	return clusterClientTLSSecretName
 }
 
 func labelTiCDC(tc *v1alpha1.TidbCluster) label.Label {

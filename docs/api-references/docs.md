@@ -17354,6 +17354,34 @@ client certificates for the downstream.</p>
 </tr>
 <tr>
 <td>
+<code>clusterTLSSecretName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ClusterTLSSecretName is used for overwriting the default mTLS cert secret name (see also: pkg/util/util.go:ClusterTLSSecretName)
+This field is useful for sharing the same mTLS cert secret for multiple ticdc clusters connecting to the same upstream tidb cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>clusterClientTLSSecretName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ClusterTLSSecretName is used for overwriting the default <strong>cluster client</strong> cert secret name (see also: pkg/util/util.go:ClusterClientTLSSecretName)
+This field is useful for sharing the same cluster client cert secret for multiple ticdc clusters connecting to the same upstream tidb cluster.
+The ClusterClientTLSSecret is actually not directly used by ticdc, but it is useful for executing some commands via <code>ticdc-ctl</code>
+by <code>kubectl exec -it ticdc-0 -- /cdc cli --ca /var/lib/cluster-client-tls/ca.crt --cert /var/lib/cluster-client-tls/tls.crt --key /var/lib/cluster-client-tls/tls.key ...</code>.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>baseImage</code></br>
 <em>
 string
