@@ -953,11 +953,6 @@ func (in *CompactSpec) DeepCopyInto(out *CompactSpec) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.BR != nil {
-		in, out := &in.BR, &out.BR
-		*out = new(BRConfig)
-		(*in).DeepCopyInto(*out)
-	}
 	if in.Tolerations != nil {
 		in, out := &in.Tolerations, &out.Tolerations
 		*out = make([]v1.Toleration, len(*in))
