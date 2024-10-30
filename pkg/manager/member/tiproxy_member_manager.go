@@ -713,7 +713,6 @@ func (m *tiproxyMemberManager) modifyConfigMapForTLSV1(tc *v1alpha1.TidbCluster,
 	if tlsTiDB {
 		cfgWrapper.Set("security.server-tls.key", path.Join(tiproxyServerPath, "tls.key"))
 		cfgWrapper.Set("security.server-tls.cert", path.Join(tiproxyServerPath, "tls.crt"))
-		// fixme(chenfei): why?
 		if cfgWrapper.Get("security.server-tls.skip-ca") == nil {
 			cfgWrapper.Set("security.server-tls.skip-ca", true)
 		}
@@ -736,7 +735,7 @@ func (m *tiproxyMemberManager) modifyConfigMapForTLSV1(tc *v1alpha1.TidbCluster,
 	cfgWrapper.Set("security.server-http-tls.ca", path.Join(tiproxyClusterCertPath, "ca.crt"))
 	cfgWrapper.Set("security.server-http-tls.key", path.Join(tiproxyClusterCertPath, "tls.key"))
 	cfgWrapper.Set("security.server-http-tls.cert", path.Join(tiproxyClusterCertPath, "tls.crt"))
-	// fixme(chenfei): why?
+	// todo: Mount `db-cluster-client-secret` to TiproxyControl (pkg/controller/tiproxy_control.go) so that we can remove this.
 	cfgWrapper.Set("security.server-http-tls.skip-ca", true)
 }
 
