@@ -1158,42 +1158,6 @@ spec:
                     default: 30m
                     type: string
                 type: object
-              br:
-                properties:
-                  checkRequirements:
-                    type: boolean
-                  checksum:
-                    type: boolean
-                  cluster:
-                    type: string
-                  clusterNamespace:
-                    type: string
-                  concurrency:
-                    format: int32
-                    type: integer
-                  db:
-                    type: string
-                  logLevel:
-                    type: string
-                  onLine:
-                    type: boolean
-                  options:
-                    items:
-                      type: string
-                    type: array
-                  rateLimit:
-                    type: integer
-                  sendCredToTikv:
-                    type: boolean
-                  statusAddr:
-                    type: string
-                  table:
-                    type: string
-                  timeAgo:
-                    type: string
-                required:
-                - cluster
-                type: object
               brImage:
                 type: string
               commitTs:
@@ -2185,6 +2149,8 @@ spec:
                 type: string
               tikvGCLifeTime:
                 type: string
+              tikvImage:
+                type: string
               tolerations:
                 items:
                   properties:
@@ -2203,6 +2169,8 @@ spec:
                 type: array
               useKMS:
                 type: boolean
+              version:
+                type: string
               volumeBackupInitJobMaxActiveSeconds:
                 default: 600
                 type: integer

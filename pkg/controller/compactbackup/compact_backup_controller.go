@@ -242,26 +242,12 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	jobName := backup.GetName() + "-compact-backup"
-	backupNamespace := ns
-	if backup.Spec.BR.ClusterNamespace != "" {
-		backupNamespace = backup.Spec.BR.ClusterNamespace
-	}
-
-	tc, err := c.deps.TiDBClusterLister.TidbClusters(backupNamespace).Get(backup.Spec.BR.Cluster)
-	if err != nil {
-		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster), err
-	}
 
 	var (
 		envVars []corev1.EnvVar
 		reason  string
+		err     error
 	)
-	if backup.Spec.From != nil {
-		envVars, reason, err = backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, c.deps.SecretLister)
-		if err != nil {
-			return nil, reason, err
-		}
-	}
 
 	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, c.deps.SecretLister)
 	if err != nil {
@@ -282,10 +268,30 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--backupName=%s", name),
 	}
-	tikvImage := tc.TiKVImage()
-	_, tikvVersion := backuputil.ParseImage(tikvImage)
+
+	tikvImage := "pingcap/tikv"
+	if backup.Spec.TiKVImage != "" {
+		tikvImage = backup.Spec.TiKVImage
+	}
+
+	tikvVersion := backup.Spec.Version
+	_, imageVersion := backuputil.ParseImage(tikvImage)
+	if imageVersion != "" {
+		tikvVersion = imageVersion
+	}
+
 	if tikvVersion != "" {
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
+	} else {
+		return nil, "tikv version is empty", fmt.Errorf("tikv version is empty")
+	}
+
+	brImage := fmt.Sprintf("pingcap/br:%s", tikvVersion)
+	if backup.Spec.BrImage != "" {
+		brImage = backup.Spec.BrImage
+		if !strings.ContainsRune(brImage, ':') {
+			brImage = fmt.Sprintf("%s:%s", brImage, tikvVersion)
+		}
 	}
 
 	//TODO: (Ris)What is the instance here?
@@ -296,44 +302,6 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
-
-	if tc.IsTLSClusterEnabled() {
-		args = append(args, "--cluster-tls=true")
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      util.ClusterClientVolName,
-			ReadOnly:  true,
-			MountPath: util.ClusterClientTLSPath,
-		})
-		volumes = append(volumes, corev1.Volume{
-			Name: util.ClusterClientVolName,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.ClusterClientTLSSecretName(backup.Spec.BR.Cluster),
-				},
-			},
-		})
-	}
-
-	if backup.Spec.From != nil && tc.Spec.TiDB != nil && tc.Spec.TiDB.TLSClient != nil && tc.Spec.TiDB.TLSClient.Enabled && !tc.SkipTLSWhenConnectTiDB() {
-		args = append(args, "--client-tls=true")
-		if tc.Spec.TiDB.TLSClient.SkipInternalClientCA {
-			args = append(args, "--skipClientCA=true")
-		}
-
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      "tidb-client-tls",
-			ReadOnly:  true,
-			MountPath: util.TiDBClientTLSPath,
-		})
-		volumes = append(volumes, corev1.Volume{
-			Name: "tidb-client-tls",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.TiDBClientTLSSecretName(backup.Spec.BR.Cluster, backup.Spec.From.TLSClientSecretName),
-				},
-			},
-		})
-	}
 
 	volumes = append(volumes, corev1.Volume{
 		Name: "tool-bin",
@@ -358,16 +326,6 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 	serviceAccount := constants.DefaultServiceAccountName
 	if backup.Spec.ServiceAccount != "" {
 		serviceAccount = backup.Spec.ServiceAccount
-	}
-
-	brImage := "pingcap/br:" + tikvVersion
-	if backup.Spec.BrImage != "" {
-		image := backup.Spec.BrImage
-		if !strings.ContainsRune(backup.Spec.BrImage, ':') {
-			image = fmt.Sprintf("%s:%s", image, tikvVersion)
-		}
-
-		brImage = image
 	}
 
 	podSpec := &corev1.PodTemplateSpec{
@@ -416,7 +374,10 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 						"/bin/sh", "-c",
 					},
 					Args: []string{
-						"echo 'Backup job running successfully'; sleep 30",
+						// Check if the binaries exist; if both checks pass, proceed with the backup job
+						"if [ -x " + util.BRBinPath + " ] && [ -x " + util.KVCTLBinPath + " ]; then " +
+							"echo 'Both binaries exist. Backup job running successfully'; " +
+							"else echo 'Required binaries missing! Exiting...'; exit 1; fi; sleep 30",
 					},
 					VolumeMounts: []corev1.VolumeMount{
 						{

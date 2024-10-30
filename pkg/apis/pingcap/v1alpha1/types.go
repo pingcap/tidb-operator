@@ -3481,8 +3481,6 @@ type CompactSpec struct {
 	StorageClassName *string `json:"storageClassName,omitempty"`
 	// StorageSize is the request storage size for backup job
 	StorageSize string `json:"storageSize,omitempty"`
-	// BRConfig is the configs for BR
-	BR *BRConfig `json:"br,omitempty"`
 	// StartTs is the start ts of the compact backup.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
 	StartTs string `json:"commitTs,omitempty"`
@@ -3500,11 +3498,17 @@ type CompactSpec struct {
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+	// Version specifies the tool image version used in compact `Backup`.
+	Version string `json:"version,omitempty"`
 	// BrImage specifies the br image used in compact `Backup`.
 	// For examples `spec.brImage: pingcap/br:v4.0.8`
 	// For BR image, if it does not contain tag, Pod will use image 'BrImage:${TiKV_Version}'.
 	// +optional
 	BrImage string `json:"brImage,omitempty"`
+	// TiKVImage specifies the tikv image used in compact `Backup`.
+	// For examples `spec.tikvImage: pingcap/tikv:v4.0.8`
+	// +optional
+	TiKVImage string `json:"tikvImage,omitempty"`
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`

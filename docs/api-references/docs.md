@@ -3447,7 +3447,6 @@ string
 <p>
 (<em>Appears on:</em>
 <a href="#backupspec">BackupSpec</a>, 
-<a href="#compactspec">CompactSpec</a>, 
 <a href="#restorespec">RestoreSpec</a>)
 </p>
 <p>
@@ -5482,19 +5481,6 @@ string
 </tr>
 <tr>
 <td>
-<code>br</code></br>
-<em>
-<a href="#brconfig">
-BRConfig
-</a>
-</em>
-</td>
-<td>
-<p>BRConfig is the configs for BR</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>commitTs</code></br>
 <em>
 string
@@ -5558,6 +5544,17 @@ bool
 </tr>
 <tr>
 <td>
+<code>version</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Version specifies the tool image version used in compact <code>Backup</code>.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>brImage</code></br>
 <em>
 string
@@ -5568,6 +5565,19 @@ string
 <p>BrImage specifies the br image used in compact <code>Backup</code>.
 For examples <code>spec.brImage: pingcap/br:v4.0.8</code>
 For BR image, if it does not contain tag, Pod will use image &lsquo;BrImage:${TiKV_Version}&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tikvImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TiKVImage specifies the tikv image used in compact <code>Backup</code>.
+For examples <code>spec.tikvImage: pingcap/tikv:v4.0.8</code></p>
 </td>
 </tr>
 <tr>
@@ -5837,19 +5847,6 @@ string
 </tr>
 <tr>
 <td>
-<code>br</code></br>
-<em>
-<a href="#brconfig">
-BRConfig
-</a>
-</em>
-</td>
-<td>
-<p>BRConfig is the configs for BR</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>commitTs</code></br>
 <em>
 string
@@ -5913,6 +5910,17 @@ bool
 </tr>
 <tr>
 <td>
+<code>version</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Version specifies the tool image version used in compact <code>Backup</code>.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>brImage</code></br>
 <em>
 string
@@ -5923,6 +5931,19 @@ string
 <p>BrImage specifies the br image used in compact <code>Backup</code>.
 For examples <code>spec.brImage: pingcap/br:v4.0.8</code>
 For BR image, if it does not contain tag, Pod will use image &lsquo;BrImage:${TiKV_Version}&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tikvImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TiKVImage specifies the tikv image used in compact <code>Backup</code>.
+For examples <code>spec.tikvImage: pingcap/tikv:v4.0.8</code></p>
 </td>
 </tr>
 <tr>
