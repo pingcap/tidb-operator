@@ -23522,6 +23522,13 @@ int32
 </tr>
 </tbody>
 </table>
+<h3 id="tiproxycertlayout">TiProxyCertLayout</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiproxyspec">TiProxySpec</a>)
+</p>
+<p>
+</p>
 <h3 id="tiproxyconfigwraper">TiProxyConfigWraper</h3>
 <p>
 (<em>Appears on:</em>
@@ -23706,6 +23713,21 @@ string
 <em>(Optional)</em>
 <p>TLSClientSecretName is the name of secret which stores tidb server client certificate
 used by TiProxy to check health status.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>certLayout</code></br>
+<em>
+<a href="#tiproxycertlayout">
+TiProxyCertLayout
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TiProxyCertLayout is the certificate layout of TiProxy that determines how tidb-operator mount cert secrets
+and how configure TLS configurations for tiproxy.</p>
 </td>
 </tr>
 <tr>
