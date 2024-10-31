@@ -3,6 +3,7 @@ package compact
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -291,31 +293,43 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 	}
 
 	envVars = append(envVars, storageEnv...)
-	envVars = append(envVars, corev1.EnvVar{
-		Name:  "BR_LOG_TO_TERM",
-		Value: string(rune(1)),
-	})
 
 	// set env vars specified in backup.Spec.Env
 	envVars = util.AppendOverwriteEnv(envVars, backup.Spec.Env)
 
 	args := []string{
-		"backup",
+		"compact",
 		fmt.Sprintf("--namespace=%s", ns),
-		fmt.Sprintf("--backupName=%s", name),
+		fmt.Sprintf("--resourceName=%s", name),
 	}
+	startTS, err := config.ParseTSString(backup.Spec.StartTs)
+	if err != nil {
+		return nil, fmt.Sprintf("failed to parse startTs(%v)", backup.Spec.StartTs), err
+	}
+	args = append(args, "--from-ts", strconv.FormatUint(startTS, 10))
+	endTS, err := config.ParseTSString(backup.Spec.EndTs)
+	if err != nil {
+		return nil, fmt.Sprintf("failed to parse endTs(%v)", backup.Spec.EndTs), err
+	}
+	args = append(args, "--until-ts", strconv.FormatUint(endTS, 10))
+	args = append(args, "--concurrency", backup.Spec.EndTs)
+	args = append(args, "--name", backup.GetObjectMeta().GetName())
+	strg, err := backuputil.GetStoragePath(backup.Spec.StorageProvider)
+	if err != nil {
+		return nil, fmt.Sprintf("failed to get storage path: %v", err), err
+	}
+	args = append(args, "--storage-string", strg)
 
 	tikvImage := "pingcap/tikv"
 	if backup.Spec.TiKVImage != "" {
 		tikvImage = backup.Spec.TiKVImage
 	}
-
+	
 	tikvVersion := backup.Spec.Version
 	_, imageVersion := backuputil.ParseImage(tikvImage)
 	if imageVersion != "" {
 		tikvVersion = imageVersion
 	}
-
 	if tikvVersion != "" {
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	} else {
@@ -331,7 +345,7 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 	}
 
 	//TODO: (Ris)What is the instance here?
-	jobLabels := util.CombineStringMap(label.NewBackup().Instance("Compact-test").BackupJob().Backup(name), backup.Labels)
+	jobLabels := util.CombineStringMap(label.NewBackup().Instance("Compact-Backup").BackupJob().Backup(name), backup.Labels)
 	podLabels := jobLabels
 	jobAnnotations := backup.Annotations
 	podAnnotations := jobAnnotations
@@ -405,17 +419,13 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 			},
 			Containers: []corev1.Container{
 				{
-					Name:  "simple-backup",
-					Image: "busybox", // Using a simple image for demonstration
+					Name:  "backup-manager",
+					Image: c.deps.CLIConfig.TiDBBackupManagerImage, 
 					Command: []string{
 						"/bin/sh", "-c",
 					},
-					Args: []string{
-						// Check if the binaries exist; if both checks pass, proceed with the backup job
-						"if [ -x " + util.BRBinPath + " ] && [ -x " + util.KVCTLBinPath + " ]; then " +
-							"echo 'Both binaries exist. Backup job running successfully'; " +
-							"else echo 'Required binaries missing! Exiting...'; exit 1; fi; sleep 30",
-					},
+					Args:  args,
+					Env: envVars,
 					VolumeMounts: volumeMounts,
 				},
 			},
