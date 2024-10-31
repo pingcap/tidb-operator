@@ -57,7 +57,7 @@ func NewController(deps *controller.Dependencies) *Controller {
 		DeleteFunc: c.updateBackup,
 	})
 	jobInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		DeleteFunc: c.updateBackup,
+		DeleteFunc: c.deleteJob,
 	})
 
 	return c
@@ -115,6 +115,42 @@ func (c *Controller) UpdateStatus(backup *v1alpha1.CompactBackup, newState strin
 		return nil
 	})
 	return err
+}
+
+func (c *Controller) resolveCompactBackupFromJob(namespace string, job *batchv1.Job) *v1alpha1.CompactBackup {
+	owner := metav1.GetControllerOf(job)
+	if owner == nil {
+		return nil
+	}
+
+	if owner.Kind != controller.CompactBackupControllerKind.Kind {
+		return nil
+	}
+
+	backup, err := c.deps.CompactBackupLister.CompactBackups(namespace).Get(owner.Name)
+	if err != nil {
+		return nil
+	}
+	if owner.UID != backup.UID {
+		return nil
+	}
+	return backup
+}
+
+func (c *Controller) deleteJob(obj interface{}) {
+	job, ok := obj.(*batchv1.Job)
+	if !ok {
+		return
+	}
+
+	ns := job.GetNamespace()
+	jobName := job.GetName()
+	backup := c.resolveCompactBackupFromJob(ns, job)
+	if backup == nil {
+		return
+	}
+	klog.V(4).Infof("Job %s/%s deleted through %v.", ns, jobName, utilruntime.GetCaller())
+	c.updateBackup(backup)
 }
 
 func (c *Controller) updateBackup(cur interface{}) {
@@ -241,7 +277,7 @@ func (c *Controller) doCompact(backup *v1alpha1.CompactBackup) error {
 func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
-	jobName := backup.GetName() + "-compact-backup"
+	jobName := backup.GetName()
 
 	var (
 		envVars []corev1.EnvVar
@@ -310,6 +346,17 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 		},
 	})
 
+	volumeMounts = append(volumeMounts,
+		corev1.VolumeMount{
+			Name:      "tool-bin",
+			MountPath: util.BRBinPath,
+		},
+		corev1.VolumeMount{
+			Name:      "tool-bin",
+			MountPath: util.KVCTLBinPath,
+		},
+	)
+
 	if len(backup.Spec.AdditionalVolumes) > 0 {
 		volumes = append(volumes, backup.Spec.AdditionalVolumes...)
 	}
@@ -343,12 +390,7 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 					Command:         []string{"/bin/sh", "-c"},
 					Args:            []string{fmt.Sprintf("cp /br %s/br; echo 'BR copy finished'", util.BRBinPath)},
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      "tool-bin",
-							MountPath: util.BRBinPath,
-						},
-					},
+					VolumeMounts: volumeMounts,
 					Resources: backup.Spec.ResourceRequirements,
 				},
 				{
@@ -357,12 +399,7 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 					Command:         []string{"/bin/sh", "-c"},
 					Args:            []string{fmt.Sprintf("cp /tikv-ctl %s/tikv-ctl; echo 'tikv-ctl copy finished'", util.KVCTLBinPath)},
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      "tool-bin",
-							MountPath: util.KVCTLBinPath,
-						},
-					},
+					VolumeMounts: volumeMounts,
 					Resources: backup.Spec.ResourceRequirements,
 				},
 			},
@@ -379,16 +416,7 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 							"echo 'Both binaries exist. Backup job running successfully'; " +
 							"else echo 'Required binaries missing! Exiting...'; exit 1; fi; sleep 30",
 					},
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      "tool-bin",
-							MountPath: util.BRBinPath,
-						},
-						{
-							Name:      "tool-bin",
-							MountPath: util.KVCTLBinPath,
-						},
-					},
+					VolumeMounts: volumeMounts,
 				},
 			},
 			RestartPolicy:     corev1.RestartPolicyNever,
