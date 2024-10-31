@@ -69,6 +69,8 @@ type componentVolumeContext struct {
 	tc     *v1alpha1.TidbCluster
 	status v1alpha1.ComponentStatus
 
+	// always be true now
+	// as we think there is no need to evict leader for AWS EBS modification
 	shouldEvict bool
 
 	pods []*corev1.Pod
@@ -108,7 +110,6 @@ func (u *volCompareUtils) BuildContextForTC(tc *v1alpha1.TidbCluster, status v1a
 
 	ctx.pods = pods
 	ctx.sts = sts
-	ctx.shouldEvict = comp == v1alpha1.TiKVMemberType
 
 	return ctx, nil
 }
