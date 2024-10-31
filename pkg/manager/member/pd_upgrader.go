@@ -91,7 +91,7 @@ func (u *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stat
 	if ok {
 		i, err := strconv.Atoi(s)
 		if err != nil {
-			klog.Warningf("tidbcluster: [%s/%s] annotation %s should be an integer: %v", ns, tcName, annoKeyTiFlashMinReadySeconds, err)
+			klog.Warningf("tidbcluster: [%s/%s] annotation %s should be an integer: %v", ns, tcName, annoKeyPDMinReadySeconds, err)
 		} else {
 			minReadySeconds = i
 		}
