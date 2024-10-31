@@ -5481,7 +5481,7 @@ string
 </tr>
 <tr>
 <td>
-<code>commitTs</code></br>
+<code>startTs</code></br>
 <em>
 string
 </em>
@@ -5847,7 +5847,7 @@ string
 </tr>
 <tr>
 <td>
-<code>commitTs</code></br>
+<code>startTs</code></br>
 <em>
 string
 </em>

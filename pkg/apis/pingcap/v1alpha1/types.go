@@ -3483,7 +3483,7 @@ type CompactSpec struct {
 	StorageSize string `json:"storageSize,omitempty"`
 	// StartTs is the start ts of the compact backup.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
-	StartTs string `json:"commitTs,omitempty"`
+	StartTs string `json:"startTs,omitempty"`
 	// EndTs is the end ts of the compact backup.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
 	// Default is current timestamp.
