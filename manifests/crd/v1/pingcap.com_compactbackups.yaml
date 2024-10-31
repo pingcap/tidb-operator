@@ -1160,8 +1160,6 @@ spec:
                 type: object
               brImage:
                 type: string
-              commitTs:
-                type: string
               concurrency:
                 type: integer
               endTs:
@@ -2142,6 +2140,8 @@ spec:
                 - provider
                 type: object
               serviceAccount:
+                type: string
+              startTs:
                 type: string
               storageClassName:
                 type: string

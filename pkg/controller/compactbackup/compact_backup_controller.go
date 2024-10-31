@@ -3,7 +3,6 @@ package compact
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -11,7 +10,6 @@ import (
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
@@ -302,29 +300,12 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--resourceName=%s", name),
 	}
-	startTS, err := config.ParseTSString(backup.Spec.StartTs)
-	if err != nil {
-		return nil, fmt.Sprintf("failed to parse startTs(%v)", backup.Spec.StartTs), err
-	}
-	args = append(args, "--from-ts", strconv.FormatUint(startTS, 10))
-	endTS, err := config.ParseTSString(backup.Spec.EndTs)
-	if err != nil {
-		return nil, fmt.Sprintf("failed to parse endTs(%v)", backup.Spec.EndTs), err
-	}
-	args = append(args, "--until-ts", strconv.FormatUint(endTS, 10))
-	args = append(args, "--concurrency", backup.Spec.EndTs)
-	args = append(args, "--name", backup.GetObjectMeta().GetName())
-	strg, err := backuputil.GetStoragePath(backup.Spec.StorageProvider)
-	if err != nil {
-		return nil, fmt.Sprintf("failed to get storage path: %v", err), err
-	}
-	args = append(args, "--storage-string", strg)
 
 	tikvImage := "pingcap/tikv"
 	if backup.Spec.TiKVImage != "" {
 		tikvImage = backup.Spec.TiKVImage
 	}
-	
+
 	tikvVersion := backup.Spec.Version
 	_, imageVersion := backuputil.ParseImage(tikvImage)
 	if imageVersion != "" {
@@ -404,8 +385,8 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 					Command:         []string{"/bin/sh", "-c"},
 					Args:            []string{fmt.Sprintf("cp /br %s/br; echo 'BR copy finished'", util.BRBinPath)},
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					VolumeMounts: volumeMounts,
-					Resources: backup.Spec.ResourceRequirements,
+					VolumeMounts:    volumeMounts,
+					Resources:       backup.Spec.ResourceRequirements,
 				},
 				{
 					Name:            "tikv-ctl",
@@ -413,20 +394,18 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 					Command:         []string{"/bin/sh", "-c"},
 					Args:            []string{fmt.Sprintf("cp /tikv-ctl %s/tikv-ctl; echo 'tikv-ctl copy finished'", util.KVCTLBinPath)},
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					VolumeMounts: volumeMounts,
-					Resources: backup.Spec.ResourceRequirements,
+					VolumeMounts:    volumeMounts,
+					Resources:       backup.Spec.ResourceRequirements,
 				},
 			},
 			Containers: []corev1.Container{
 				{
 					Name:  "backup-manager",
-					Image: c.deps.CLIConfig.TiDBBackupManagerImage, 
-					Command: []string{
-						"/bin/sh", "-c",
-					},
-					Args:  args,
-					Env: envVars,
-					VolumeMounts: volumeMounts,
+					Image: c.deps.CLIConfig.TiDBBackupManagerImage,
+					Args:            args,
+					Env:             envVars,
+					VolumeMounts:    volumeMounts,
+					ImagePullPolicy: corev1.PullAlways,
 				},
 			},
 			RestartPolicy:     corev1.RestartPolicyNever,

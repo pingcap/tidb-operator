@@ -1775,7 +1775,7 @@ func schema_pkg_apis_pingcap_v1alpha1_CompactSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
-					"commitTs": {
+					"startTs": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StartTs is the start ts of the compact backup. Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.",
 							Type:        []string{"string"},
