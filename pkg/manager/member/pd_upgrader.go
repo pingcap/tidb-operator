@@ -15,6 +15,7 @@ package member
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/pingcap/advanced-statefulset/client/apis/apps/v1/helper"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -24,12 +25,18 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 
 	apps "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
 
 const (
 	// set this PD clustre annotation to true to fail cluster upgrade if PD loose the quorum during one pod restart
 	annoKeyPDPeersCheck = "tidb.pingcap.com/pd-check-quorum-before-upgrade"
+
+	// TODO: change to use minReadySeconds in sts spec
+	// See https://kubernetes.io/blog/2021/08/27/minreadyseconds-statefulsets/
+	annoKeyPDMinReadySeconds = "tidb.pingcap.com/pd-min-ready-seconds"
 )
 
 type pdUpgrader struct {
@@ -79,6 +86,17 @@ func (u *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stat
 		return nil
 	}
 
+	minReadySeconds := 0
+	s, ok := tc.Annotations[annoKeyPDMinReadySeconds]
+	if ok {
+		i, err := strconv.Atoi(s)
+		if err != nil {
+			klog.Warningf("tidbcluster: [%s/%s] annotation %s should be an integer: %v", ns, tcName, annoKeyPDMinReadySeconds, err)
+		} else {
+			minReadySeconds = i
+		}
+	}
+
 	mngerutils.SetUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
 	podOrdinals := helper.GetPodOrdinals(*oldSet.Spec.Replicas, oldSet).List()
 	for _i := len(podOrdinals) - 1; _i >= 0; _i-- {
@@ -95,8 +113,13 @@ func (u *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stat
 		}
 
 		if revision == tc.Status.PD.StatefulSet.UpdateRevision {
-			if !k8s.IsPodReady(pod) {
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded pd pod: [%s] is not ready", ns, tcName, podName)
+			if !k8s.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
+				readyCond := k8s.GetPodReadyCondition(pod.Status)
+				if readyCond == nil || readyCond.Status != corev1.ConditionTrue {
+					return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded pd pod: [%s] is not ready", ns, tcName, podName)
+
+				}
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded pd pod: [%s] is not available, last transition time is %v", ns, tcName, podName, readyCond.LastTransitionTime)
 			}
 			if member, exist := tc.Status.PD.Members[PdName(tc.Name, i, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)]; !exist || !member.Health {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd upgraded pod: [%s] is not health", ns, tcName, podName)
