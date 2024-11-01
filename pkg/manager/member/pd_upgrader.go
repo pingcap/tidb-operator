@@ -113,18 +113,13 @@ func (u *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stat
 		}
 
 		if revision == tc.Status.PD.StatefulSet.UpdateRevision {
-<<<<<<< HEAD
-			if !podutil.IsPodReady(pod) {
-				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded pd pod: [%s] is not ready", ns, tcName, podName)
-=======
-			if !k8s.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
-				readyCond := k8s.GetPodReadyCondition(pod.Status)
+			if !podutil.IsPodAvailable(pod, int32(minReadySeconds), metav1.Now()) {
+				readyCond := podutil.GetPodReadyCondition(pod.Status)
 				if readyCond == nil || readyCond.Status != corev1.ConditionTrue {
 					return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded pd pod: [%s] is not ready", ns, tcName, podName)
 
 				}
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded pd pod: [%s] is not available, last transition time is %v", ns, tcName, podName, readyCond.LastTransitionTime)
->>>>>>> cb809c895 (feat(minReadySeconds): support minReadySeconds for PD (#5827))
 			}
 			if member, exist := tc.Status.PD.Members[PdName(tc.Name, i, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)]; !exist || !member.Health {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd upgraded pod: [%s] is not health", ns, tcName, podName)
