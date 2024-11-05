@@ -34,7 +34,7 @@ require (
 	github.com/openshift/generic-admission-server v1.14.1-0.20230920151207-22a210ddee02
 	github.com/pingcap/advanced-statefulset/client v1.17.1-0.20241017064830-af926cc6da0d
 	github.com/pingcap/errors v0.11.4
-	github.com/pingcap/kvproto v0.0.0-20231122054644-fb0f5c2a0a10
+	github.com/pingcap/kvproto v0.0.0-20240924080114-4a3e17f5e62d
 	github.com/pingcap/tidb-operator/pkg/apis v1.6.0
 	github.com/pingcap/tidb-operator/pkg/client v1.6.0
 	github.com/pingcap/tiproxy/lib v0.0.0-20230907130944-eb5b4b9c9e79
