@@ -17,7 +17,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.16.11
 	github.com/aws/aws-sdk-go-v2/config v1.17.1
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.53.0
-	github.com/aws/smithy-go v1.12.1
+	github.com/aws/smithy-go v1.22.0
 	github.com/docker/go-units v0.5.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/emicklei/go-restful v2.16.0+incompatible
