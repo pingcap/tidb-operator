@@ -1,4 +1,4 @@
-FROM pingcap/tikv:v6.5.7
+FROM pingcap/tikv:v6.6.0
 ARG TARGETARCH
 RUN apk add lsblk fio bash
 ADD bin/${TARGETARCH}/warmup /warmup
