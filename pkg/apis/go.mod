@@ -10,7 +10,7 @@ require (
 	github.com/mohae/deepcopy v0.0.0-20170603005431-491d3605edfb
 	github.com/onsi/gomega v1.27.6
 	github.com/pingcap/errors v0.11.4
-	github.com/pingcap/tiproxy/lib v0.0.0-20230907130944-eb5b4b9c9e79
+	github.com/pingcap/tiproxy/lib v0.0.0-20241104094512-60e2c20b0691
 	github.com/prometheus/common v0.45.0
 	github.com/prometheus/prometheus v0.49.1
 	k8s.io/api v0.28.14
