@@ -68,7 +68,7 @@ require (
 	k8s.io/kube-scheduler v0.28.14
 	k8s.io/kubectl v0.28.14
 	k8s.io/kubelet v0.28.14
-	k8s.io/utils v0.0.0-20230711102312-30195339c3c7
+	k8s.io/utils v0.0.0-20241104163129-6fe5fd82f078
 	mvdan.cc/sh/v3 v3.4.3
 	sigs.k8s.io/controller-runtime v0.7.2
 )

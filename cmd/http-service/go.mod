@@ -15,7 +15,7 @@ require (
 	k8s.io/api v0.28.14
 	k8s.io/apimachinery v0.28.14
 	k8s.io/client-go v0.28.14
-	k8s.io/utils v0.0.0-20230711102312-30195339c3c7
+	k8s.io/utils v0.0.0-20241104163129-6fe5fd82f078
 )
 
 require (
