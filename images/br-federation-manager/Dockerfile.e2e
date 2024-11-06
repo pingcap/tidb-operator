@@ -1,4 +1,4 @@
-FROM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.1
+FROM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2
 
 ARG TARGETARCH
 RUN dnf install -y tzdata bind-utils && dnf clean all
