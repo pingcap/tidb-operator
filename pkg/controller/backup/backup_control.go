@@ -114,8 +114,7 @@ func needToAddFinalizer(backup *v1alpha1.Backup) bool {
 }
 
 func needToRemoveFinalizer(backup *v1alpha1.Backup) bool {
-	return v1alpha1.IsCleanCandidate(backup) && isDeletionCandidate(backup) &&
-		(v1alpha1.IsBackupClean(backup) || v1alpha1.NeedNotClean(backup))
+	return v1alpha1.IsCleanCandidate(backup) && isDeletionCandidate(backup) && v1alpha1.IsBackupClean(backup)
 }
 
 func isDeletionCandidate(backup *v1alpha1.Backup) bool {
