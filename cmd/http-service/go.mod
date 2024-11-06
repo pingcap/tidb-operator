@@ -5,7 +5,7 @@ go 1.23.2
 require (
 	github.com/gin-gonic/gin v1.10.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0
-	github.com/pingcap/log v1.1.1-0.20230317032135-a0d097d16e22
+	github.com/pingcap/log v1.1.1-0.20240314023424-862ccc32f18d
 	github.com/pingcap/tidb-operator/pkg/apis v1.6.0
 	github.com/pingcap/tidb-operator/pkg/client v1.6.0
 	go.uber.org/zap v1.23.0
