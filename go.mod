@@ -69,7 +69,7 @@ require (
 	k8s.io/kubectl v0.28.14
 	k8s.io/kubelet v0.28.14
 	k8s.io/utils v0.0.0-20230711102312-30195339c3c7
-	mvdan.cc/sh/v3 v3.4.3
+	mvdan.cc/sh/v3 v3.10.0
 	sigs.k8s.io/controller-runtime v0.7.2
 )
 
@@ -202,8 +202,8 @@ require (
 	golang.org/x/exp v0.0.0-20231206192017-f3f8817b8deb // indirect
 	golang.org/x/net v0.27.0 // indirect
 	golang.org/x/oauth2 v0.15.0 // indirect
-	golang.org/x/sys v0.22.0 // indirect
-	golang.org/x/term v0.22.0 // indirect
+	golang.org/x/sys v0.26.0 // indirect
+	golang.org/x/term v0.25.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/api v0.153.0 // indirect
