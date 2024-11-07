@@ -10,7 +10,7 @@ require (
 	cloud.google.com/go/storage v1.30.1
 	github.com/Azure/azure-storage-blob-go v0.8.0
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.13
-	github.com/BurntSushi/toml v0.3.1
+	github.com/BurntSushi/toml v0.4.1
 	github.com/Masterminds/semver v1.5.0
 	github.com/agiledragon/gomonkey/v2 v2.7.0
 	github.com/aws/aws-sdk-go v1.48.14
