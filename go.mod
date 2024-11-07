@@ -12,7 +12,7 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.13
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Masterminds/semver v1.5.0
-	github.com/agiledragon/gomonkey/v2 v2.7.0
+	github.com/agiledragon/gomonkey/v2 v2.12.0
 	github.com/aws/aws-sdk-go v1.48.14
 	github.com/aws/aws-sdk-go-v2 v1.16.11
 	github.com/aws/aws-sdk-go-v2/config v1.17.1
