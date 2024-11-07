@@ -29,7 +29,7 @@ require (
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/minio/minio-go/v6 v6.0.57
 	github.com/ncw/directio v1.0.5
-	github.com/onsi/ginkgo v1.14.1
+	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.27.6
 	github.com/openshift/generic-admission-server v1.14.1-0.20230920151207-22a210ddee02
 	github.com/pingcap/advanced-statefulset/client v1.17.1-0.20241017064830-af926cc6da0d
@@ -166,7 +166,7 @@ require (
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nwaples/rardecode v1.1.3 // indirect
-	github.com/nxadm/tail v1.4.4 // indirect
+	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pierrec/lz4/v4 v4.1.2 // indirect
