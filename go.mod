@@ -39,7 +39,7 @@ require (
 	github.com/pingcap/tidb-operator/pkg/client v1.6.0
 	github.com/pingcap/tiproxy/lib v0.0.0-20230907130944-eb5b4b9c9e79
 	github.com/prometheus/client_golang v1.17.0
-	github.com/prometheus/client_model v0.5.0
+	github.com/prometheus/client_model v0.6.1
 	github.com/prometheus/common v0.45.0
 	github.com/prometheus/prom2json v1.3.0
 	github.com/r3labs/diff/v2 v2.15.1
