@@ -26,7 +26,7 @@ jobs:
         echo "GOCACHE=$(go env GOCACHE)" >> $GITHUB_ENV
         echo "GOMODCACHE=$(go env GOMODCACHE)" >> $GITHUB_ENV
     - name: Try to use build cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ${{ env.GOCACHE }}
