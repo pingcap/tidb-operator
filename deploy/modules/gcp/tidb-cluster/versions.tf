@@ -4,7 +4,7 @@ terraform {
   required_providers {
     google      = "~> 2.16"
     google-beta = "~> 2.16"
-    external    = "~> 1.2"
+    external    = "~> 2.0"
     helm        = "~> 0.10"
     null        = "~> 2.1"
   }
