@@ -14115,6 +14115,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiProxySpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"certLayout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TiProxyCertLayout is the certificate layout of TiProxy that determines how tidb-operator mount cert secrets and how configure TLS configurations for tiproxy.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"baseImage": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Base image of the component, image tag is now allowed during validation",
