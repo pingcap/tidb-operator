@@ -161,6 +161,14 @@ const (
 	StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery = "PreferPDAddressesOverDiscovery"
 )
 
+type TiProxyCertLayout string
+
+const (
+	TiProxyCertLayoutLegacy TiProxyCertLayout = ""
+	// TiProxyCertLayoutV1 is a refined version of legacy layout. It's more intuitive and more flexible.
+	TiProxyCertLayoutV1 TiProxyCertLayout = "v1"
+)
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -931,6 +939,11 @@ type TiProxySpec struct {
 	// used by TiProxy to check health status.
 	// +optional
 	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
+
+	// TiProxyCertLayout is the certificate layout of TiProxy that determines how tidb-operator mount cert secrets
+	// and how configure TLS configurations for tiproxy.
+	// +optional
+	CertLayout TiProxyCertLayout `json:"certLayout,omitempty"`
 
 	// Base image of the component, image tag is now allowed during validation
 	// +kubebuilder:default=pingcap/tiproxy
@@ -2012,6 +2025,12 @@ type AzblobStorageProvider struct {
 	// SecretName is the name of secret which stores the
 	// azblob service account credentials.
 	SecretName string `json:"secretName,omitempty"`
+	// StorageAccount is the storage account of the azure blob storage
+	// If this field is set, then use this to set backup-manager env
+	// Otherwise retrieve the storage account from secret
+	StorageAccount string `json:"storageAccount,omitempty"`
+	// SasToken is the sas token of the storage account
+	SasToken string `json:"sasToken,omitempty"`
 	// Prefix of the data path.
 	Prefix string `json:"prefix,omitempty"`
 }
@@ -2124,6 +2143,8 @@ type Progress struct {
 
 // BackupSpec contains the backup specification for a tidb cluster.
 // +k8s:openapi-gen=true
+// +kubebuilder:validation:XValidation:rule="has(self.logSubcommand) ? !has(self.logStop) : true",message="Field `logStop` is the old version field, please use `logSubcommand` instead"
+// +kubebuilder:validation:XValidation:rule="has(self.logStop) ? !has(self.logSubcommand) : true",message="Field `logStop` is the old version field, please use `logSubcommand` instead"
 type BackupSpec struct {
 	corev1.ResourceRequirements `json:"resources,omitempty"`
 	// List of environment variables to set in the container, like v1.Container.Env.
@@ -2171,6 +2192,10 @@ type BackupSpec struct {
 	// Default is current timestamp.
 	// +optional
 	CommitTs string `json:"commitTs,omitempty"`
+	// Subcommand is the subcommand for BR, such as start, stop, pause etc.
+	// +optional
+	// +kubebuilder:validation:Enum:="log-start";"log-stop";"log-pause"
+	LogSubcommand LogSubCommandType `json:"logSubcommand,omitempty"`
 	// LogTruncateUntil is log backup truncate until timestamp.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
 	// +optional
@@ -2211,6 +2236,8 @@ type BackupSpec struct {
 	// Specify service account of backup
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 	// CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained
+	// +kubebuilder:validation:Enum:=Retain;OnFailure;Delete
+	// +kubebuilder:default=Retain
 	CleanPolicy CleanPolicyType `json:"cleanPolicy,omitempty"`
 	// CleanOption controls the behavior of clean.
 	CleanOption *CleanOption `json:"cleanOption,omitempty"`
@@ -2342,6 +2369,9 @@ const (
 	BackupComplete BackupConditionType = "Complete"
 	// BackupClean means the clean job has been created to clean backup data
 	BackupClean BackupConditionType = "Clean"
+	// BackupRepeatable should ONLY be used in log backup
+	// It means some log backup sub-command completed and the log backup can be re-run
+	BackupRepeatable BackupConditionType = "Repeatable"
 	// BackupFailed means the backup has failed.
 	BackupFailed BackupConditionType = "Failed"
 	// BackupRetryTheFailed means this failure can be retried
@@ -2352,6 +2382,8 @@ const (
 	BackupInvalid BackupConditionType = "Invalid"
 	// BackupPrepare means the backup prepare backup process
 	BackupPrepare BackupConditionType = "Prepare"
+	// BackupPaused means the backup was paused
+	BackupPaused BackupConditionType = "Paused"
 	// BackupStopped means the backup was stopped, just log backup has this condition
 	BackupStopped BackupConditionType = "Stopped"
 	// BackupRestart means the backup was restarted, now just support snapshot backup
@@ -2391,6 +2423,12 @@ const (
 	LogTruncateCommand LogSubCommandType = "log-truncate"
 	// LogStopCommand is the stop command of log backup.
 	LogStopCommand LogSubCommandType = "log-stop"
+	// LogPauseCommand is the pause command of log backup.
+	LogPauseCommand LogSubCommandType = "log-pause"
+	// LogResumeCommand is the resume command of log backup.
+	LogResumeCommand LogSubCommandType = "log-resume"
+	// LogUnknownCommand is the unknown command of log backup.
+	LogUnknownCommand LogSubCommandType = "log-unknown"
 )
 
 // LogSubCommandStatus is the log backup subcommand's status.

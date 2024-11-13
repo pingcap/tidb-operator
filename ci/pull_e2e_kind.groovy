@@ -54,7 +54,7 @@ metadata:
 spec:
   containers:
   - name: main
-    image: hub.pingcap.net/tidb-operator/kubekins-e2e:v7-go1.22.5
+    image: hub.pingcap.net/tidb-operator/kubekins-e2e:v8-go1.23.1
     command:
     - runner.sh
     - exec
@@ -170,6 +170,7 @@ def build(String name, String code, Map resources = e2ePodResources) {
                             echo "====== shell env ======"
                             echo "pwd: \$(pwd)"
                             env
+                            unset GOSUMDB
                             echo "====== go env ======"
                             go env
                             echo "====== docker version ======"
@@ -178,6 +179,7 @@ def build(String name, String code, Map resources = e2ePodResources) {
                         }
                         stage('Run') {
                             sh """#!/bin/bash
+                            unset GOSUMDB
                             export GOPATH=${WORKSPACE}/go
                             export ARTIFACTS=${ARTIFACTS}
                             export RUNNER_SUITE_NAME=${name}

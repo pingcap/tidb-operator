@@ -79,6 +79,7 @@ o8O7UTMyQ7MUrPusaqsG/QuvppbdahOLzkVc0E5jUOL/dgSxsdOqc7EIxd94Cg65
 cQQSTMrQTbQLo5c=
 -----END CERTIFICATE-----
 `
+	// nolint:gosec
 	keyData string = `
 -----BEGIN EC PRIVATE KEY-----
 MHcCAQEEIFbUNEYv0ujI3dTLbnb5lTBfRxwst3lMROmRV2tN7NTroAoGCCqGSM49

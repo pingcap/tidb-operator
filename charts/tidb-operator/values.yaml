@@ -205,7 +205,7 @@ advancedStatefulset:
   ## resourceLock indicates the type of resource object that will be used for locking during leader election.
   ## If using "endpoints" before and want to migrate to "leases", you should migrate to "endpointsleases" first.
   # resourceLock: "leases"
-  image: pingcap/advanced-statefulset:v0.4.0
+  image: pingcap/advanced-statefulset:v0.7.0
   imagePullPolicy: IfNotPresent
   serviceAccount: advanced-statefulset-controller
   logLevel: 4

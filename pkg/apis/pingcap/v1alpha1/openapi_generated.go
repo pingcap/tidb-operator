@@ -580,6 +580,20 @@ func schema_pkg_apis_pingcap_v1alpha1_AzblobStorageProvider(ref common.Reference
 							Format:      "",
 						},
 					},
+					"storageAccount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StorageAccount is the storage account of the azure blob storage If this field is set, then use this to set backup-manager env Otherwise retrieve the storage account from secret",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"sasToken": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SasToken is the sas token of the storage account",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"prefix": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Prefix of the data path.",
@@ -1061,6 +1075,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 					"commitTs": {
 						SchemaProps: spec.SchemaProps{
 							Description: "CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup. Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'. Default is current timestamp.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"logSubcommand": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Subcommand is the subcommand for BR, such as start, stop, pause etc.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -14090,6 +14111,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiProxySpec(ref common.ReferenceCallback) 
 					"tlsClientSecretName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TLSClientSecretName is the name of secret which stores tidb server client certificate used by TiProxy to check health status.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"certLayout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TiProxyCertLayout is the certificate layout of TiProxy that determines how tidb-operator mount cert secrets and how configure TLS configurations for tiproxy.",
 							Type:        []string{"string"},
 							Format:      "",
 						},

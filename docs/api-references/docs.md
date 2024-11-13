@@ -245,6 +245,20 @@ Default is current timestamp.</p>
 </tr>
 <tr>
 <td>
+<code>logSubcommand</code></br>
+<em>
+<a href="#logsubcommandtype">
+LogSubCommandType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Subcommand is the subcommand for BR, such as start, stop, pause etc.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>logTruncateUntil</code></br>
 <em>
 string
@@ -3394,6 +3408,30 @@ azblob service account credentials.</p>
 </tr>
 <tr>
 <td>
+<code>storageAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>StorageAccount is the storage account of the azure blob storage
+If this field is set, then use this to set backup-manager env
+Otherwise retrieve the storage account from secret</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sasToken</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SasToken is the sas token of the storage account</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>prefix</code></br>
 <em>
 string
@@ -4206,6 +4244,20 @@ string
 <p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
 Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
 Default is current timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logSubcommand</code></br>
+<em>
+<a href="#logsubcommandtype">
+LogSubCommandType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Subcommand is the subcommand for BR, such as start, stop, pause etc.</p>
 </td>
 </tr>
 <tr>
@@ -8866,6 +8918,7 @@ BackupConditionType
 <p>
 (<em>Appears on:</em>
 <a href="#backupcondition">BackupCondition</a>, 
+<a href="#backupspec">BackupSpec</a>, 
 <a href="#logsubcommandstatus">LogSubCommandStatus</a>)
 </p>
 <p>
@@ -23469,6 +23522,13 @@ int32
 </tr>
 </tbody>
 </table>
+<h3 id="tiproxycertlayout">TiProxyCertLayout</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiproxyspec">TiProxySpec</a>)
+</p>
+<p>
+</p>
 <h3 id="tiproxyconfigwraper">TiProxyConfigWraper</h3>
 <p>
 (<em>Appears on:</em>
@@ -23653,6 +23713,21 @@ string
 <em>(Optional)</em>
 <p>TLSClientSecretName is the name of secret which stores tidb server client certificate
 used by TiProxy to check health status.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>certLayout</code></br>
+<em>
+<a href="#tiproxycertlayout">
+TiProxyCertLayout
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TiProxyCertLayout is the certificate layout of TiProxy that determines how tidb-operator mount cert secrets
+and how configure TLS configurations for tiproxy.</p>
 </td>
 </tr>
 <tr>

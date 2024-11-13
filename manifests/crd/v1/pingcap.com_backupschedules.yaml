@@ -1162,7 +1162,11 @@ spec:
                         type: string
                       prefix:
                         type: string
+                      sasToken:
+                        type: string
                       secretName:
+                        type: string
+                      storageAccount:
                         type: string
                     type: object
                   backoffRetryPolicy:
@@ -1244,6 +1248,11 @@ spec:
                         type: number
                     type: object
                   cleanPolicy:
+                    default: Retain
+                    enum:
+                    - Retain
+                    - OnFailure
+                    - Delete
                     type: string
                   commitTs:
                     type: string
@@ -2109,6 +2118,12 @@ spec:
                     type: object
                   logStop:
                     type: boolean
+                  logSubcommand:
+                    enum:
+                    - log-start
+                    - log-stop
+                    - log-pause
+                    type: string
                   logTruncateUntil:
                     type: string
                   podSecurityContext:
@@ -2275,6 +2290,13 @@ spec:
                     default: 600
                     type: integer
                 type: object
+                x-kubernetes-validations:
+                - message: Field `logStop` is the old version field, please use `logSubcommand`
+                    instead
+                  rule: 'has(self.logSubcommand) ? !has(self.logStop) : true'
+                - message: Field `logStop` is the old version field, please use `logSubcommand`
+                    instead
+                  rule: 'has(self.logStop) ? !has(self.logSubcommand) : true'
               imagePullSecrets:
                 items:
                   properties:
@@ -3391,7 +3413,11 @@ spec:
                         type: string
                       prefix:
                         type: string
+                      sasToken:
+                        type: string
                       secretName:
+                        type: string
+                      storageAccount:
                         type: string
                     type: object
                   backoffRetryPolicy:
@@ -3473,6 +3499,11 @@ spec:
                         type: number
                     type: object
                   cleanPolicy:
+                    default: Retain
+                    enum:
+                    - Retain
+                    - OnFailure
+                    - Delete
                     type: string
                   commitTs:
                     type: string
@@ -4338,6 +4369,12 @@ spec:
                     type: object
                   logStop:
                     type: boolean
+                  logSubcommand:
+                    enum:
+                    - log-start
+                    - log-stop
+                    - log-pause
+                    type: string
                   logTruncateUntil:
                     type: string
                   podSecurityContext:
@@ -4504,6 +4541,13 @@ spec:
                     default: 600
                     type: integer
                 type: object
+                x-kubernetes-validations:
+                - message: Field `logStop` is the old version field, please use `logSubcommand`
+                    instead
+                  rule: 'has(self.logSubcommand) ? !has(self.logStop) : true'
+                - message: Field `logStop` is the old version field, please use `logSubcommand`
+                    instead
+                  rule: 'has(self.logStop) ? !has(self.logSubcommand) : true'
               maxBackups:
                 format: int32
                 type: integer

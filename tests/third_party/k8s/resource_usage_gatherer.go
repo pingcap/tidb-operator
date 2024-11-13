@@ -23,6 +23,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"regexp"
@@ -592,7 +593,7 @@ func (g *ContainerResourceGatherer) StopAndSummarize(percentiles []int, constrai
 		}
 	}
 	if len(violatedConstraints) > 0 {
-		return &summary, fmt.Errorf(strings.Join(violatedConstraints, "\n"))
+		return &summary, errors.New(strings.Join(violatedConstraints, "\n"))
 	}
 	return &summary, nil
 }

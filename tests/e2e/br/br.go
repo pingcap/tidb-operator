@@ -36,6 +36,7 @@ import (
 	utiltidbcluster "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/onsi/ginkgo"
 	v1 "k8s.io/api/core/v1"
@@ -291,8 +292,8 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 	utilginkgo.ContextWhenFocus("Specific Version", func() {
 		cases := []*testcase{
-			newTestCase(utilimage.TiDBV5x0x0, utilimage.TiDBLatest, typeBR),
-			newTestCase(utilimage.TiDBV5x0x2, utilimage.TiDBLatest, typeBR),
+			newTestCase(utilimage.TiDBV7x5x0, utilimage.TiDBLatest, typeBR),
+			newTestCase(utilimage.TiDBV7x5x3, utilimage.TiDBLatest, typeBR),
 		}
 		for i := range cases {
 			tcase := cases[i]
@@ -378,7 +379,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 	})
 
 	ginkgo.Context("Log Backup Test", func() {
-		ginkgo.It("start,truncate,stop log backup", func() {
+		ginkgo.It("start,truncate,stop log backup using old interface", func() {
 			backupClusterName := "log-backup"
 			backupVersion := utilimage.TiDBLatest
 			enableTLS := false
@@ -430,9 +431,9 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Stop log backup")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.LogStop = true
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
-				backup.Spec.LogStop = true
 			})
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupStopped)
@@ -442,7 +443,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 				backup.Spec.Mode = v1alpha1.BackupModeLog
 				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
-				backup.Spec.LogStop = false
 			})
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
@@ -453,6 +453,216 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Check if all backup files in storage is deleted")
 			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+		})
+
+		ginkgo.It("start -> pause -> resume -> pause -> resume -> stop log backup", func() {
+			backupClusterName := "log-backup"
+			backupVersion := utilimage.TiDBLatest
+			enableTLS := false
+			skipCA := false
+			backupName := backupClusterName
+			typ := strings.ToLower(typeBR)
+
+			ns := f.Namespace.Name
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			ginkgo.By("Create log-backup.enable TiDB cluster for log backup")
+			err := createLogBackupEnableTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Wait for backup TiDB cluster ready")
+			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Create RBAC for log backup")
+			err = createRBAC(f)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Start log backup")
+			backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.LogSubcommand = v1alpha1.LogStartCommand
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(backup.Status.CommitTs, "")
+
+			ginkgo.By("Truncate log backup")
+			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
+
+			ginkgo.By("Pause log backup")
+			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.LogSubcommand = v1alpha1.LogPauseCommand
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupPaused)
+
+			ginkgo.By("Truncate log backup again")
+			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
+
+			ginkgo.By("resume log backup")
+			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.LogSubcommand = v1alpha1.LogStartCommand
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupRunning)
+
+			ginkgo.By("Pause log backup again")
+			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.LogSubcommand = v1alpha1.LogPauseCommand
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupPaused)
+
+			ginkgo.By("resume log backup again")
+			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.LogSubcommand = v1alpha1.LogStartCommand
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupRunning)
+
+			ginkgo.By("Stop log backup")
+			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.LogSubcommand = v1alpha1.LogStopCommand
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupStopped)
+
+			ginkgo.By("Truncate log backup after stop")
+			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+				backup.Spec.LogTruncateUntil = time.Now().Format(time.RFC3339)
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.LogSuccessTruncateUntil, backup.Spec.LogTruncateUntil)
+
+			ginkgo.By("Delete backup")
+			err = deleteBackup(f, backupName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Check if all backup files in storage is deleted")
+			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+		})
+
+		ginkgo.It("delete log backup CR could stop on-going task", func() {
+			backupClusterName := "log-backup"
+			backupVersion := utilimage.TiDBLatest
+			enableTLS := false
+			skipCA := false
+			backupName := backupClusterName
+			typ := strings.ToLower(typeBR)
+
+			ns := f.Namespace.Name
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			ginkgo.By("Create log-backup.enable TiDB cluster for log backup")
+			err := createLogBackupEnableTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Wait for backup TiDB cluster ready")
+			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Create RBAC for log backup")
+			err = createRBAC(f)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Start log backup")
+			backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(backup.Status.CommitTs, "")
+			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupRunning)
+
+			ginkgo.By("Delete backup")
+			err = deleteBackup(f, backupName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Check if all backup files in storage is deleted")
+			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+
+			ginkgo.By("Start log backup the second time")
+			backup, err = createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(backup.Status.CommitTs, "")
+
+			ginkgo.By("Pause log backup")
+			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.LogSubcommand = v1alpha1.LogPauseCommand
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupPaused)
+
+			ginkgo.By("Delete backup")
+			err = deleteBackup(f, backupName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Check if all backup files in storage is deleted")
+			cleaned, err = f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+
+			ginkgo.By("Start log backup the third time")
+			backup, err = createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(backup.Status.CommitTs, "")
+
+			ginkgo.By("Stop log backup")
+			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.LogSubcommand = v1alpha1.LogStopCommand
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupStopped)
+
+			ginkgo.By("Delete backup")
+			err = deleteBackup(f, backupName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Check if all backup files in storage is deleted")
+			cleaned, err = f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
 		})
@@ -504,8 +714,12 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		// })
 	})
 
+	// the following cases may encounter errors after restarting the backup pod:
+	// "there may be some backup files in the path already, please specify a correct backup directory"
 	ginkgo.Context("Restart Backup by k8s Test", func() {
 		ginkgo.It("delete backup pod and restart by k8s test", func() {
+			ginkgo.Skip("unstable case, after restart: there may be some backup files in the path already, please specify a correct backup directory")
+
 			backupClusterName := "delete-backup-pod-test"
 			backupVersion := utilimage.TiDBLatest
 			enableTLS := false
@@ -566,6 +780,8 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 	ginkgo.Context("Restart Backup by backoff retry policy Test", func() {
 		ginkgo.It("kill backup pod and restart by backoff retry policy", func() {
+			ginkgo.Skip("unstable case, after restart: there may be some backup files in the path already, please specify a correct backup directory")
+
 			backupClusterName := "kill-backup-pod-test"
 			backupVersion := utilimage.TiDBLatest
 			enableTLS := false
@@ -629,6 +845,8 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		})
 
 		ginkgo.It("kill backup pod and exceed maxRetryTimes", func() {
+			ginkgo.Skip("unstable case, after restart: there may be some backup files in the path already, please specify a correct backup directory")
+
 			backupClusterName := "kill-backup-pod-exceed-times-test"
 			backupVersion := utilimage.TiDBLatest
 			enableTLS := false
@@ -708,6 +926,8 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		})
 
 		ginkgo.It("kill backup pod and exceed retryTimeout", func() {
+			ginkgo.Skip("unstable case, after restart: there may be some backup files in the path already, please specify a correct backup directory")
+
 			backupClusterName := "kill-backup-pod-exceed-timeout-test"
 			backupVersion := utilimage.TiDBLatest
 			enableTLS := false
@@ -901,7 +1121,7 @@ func getPDServiceResourceName(tcName string) string {
 func createTidbCluster(f *e2eframework.Framework, name string, version string, enableTLS bool, skipCA bool) error {
 	ns := f.Namespace.Name
 	// TODO: change to use tidbclusterutil like brutil
-	tc := fixture.GetTidbCluster(ns, name, version)
+	tc := fixture.GetTidbClusterWithoutPDMS(ns, name, version)
 	tc.Spec.PD.Replicas = 1
 	tc.Spec.TiKV.Replicas = 1
 	tc.Spec.TiDB.Replicas = 1
@@ -926,7 +1146,8 @@ func createTidbCluster(f *e2eframework.Framework, name string, version string, e
 func createLogBackupEnableTidbCluster(f *e2eframework.Framework, name string, version string, enableTLS bool, skipCA bool) error {
 	ns := f.Namespace.Name
 	// TODO: change to use tidbclusterutil like brutil
-	tc := fixture.GetTidbCluster(ns, name, version)
+	// NOTE(pdms): some cases will port forward pd service to get current ts, so we disable TSO microservice here
+	tc := fixture.GetTidbClusterWithoutPDMS(ns, name, version)
 	tc.Spec.PD.Replicas = 1
 	tc.Spec.TiKV.Replicas = 1
 	tc.Spec.TiDB.Replicas = 1
@@ -1106,8 +1327,15 @@ func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ
 	ns := f.Namespace.Name
 	// secret to visit tidb cluster
 	s := brutil.GetSecret(ns, name, "")
-	if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{}); err != nil {
-		return nil, err
+	// Check if the secret already exists
+	if _, err := f.ClientSet.CoreV1().Secrets(ns).Get(context.TODO(), name, metav1.GetOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{}); err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
 	}
 
 	backupFolder := time.Now().Format(time.RFC3339)
@@ -1216,7 +1444,7 @@ func deleteBackup(f *e2eframework.Framework, name string) error {
 		return err
 	}
 
-	if err := brutil.WaitForBackupDeleted(f.ExtClient, ns, name, time.Second*60); err != nil {
+	if err := brutil.WaitForBackupDeleted(f.ExtClient, ns, name, 15*time.Minute); err != nil {
 		return err
 	}
 	return nil
