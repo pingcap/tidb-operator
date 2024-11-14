@@ -1,7 +1,7 @@
 FROM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2
 ARG TARGETARCH
-ARG RCLONE_VERSION=v1.57.0
-ARG SHUSH_VERSION=v1.4.0
+ARG RCLONE_VERSION=v1.68.1
+ARG SHUSH_VERSION=v1.5.5
 ARG TOOLKIT_VERSION=v8.1.0
 RUN dnf install -y ca-certificates bind-utils wget nc unzip && dnf clean all
 
