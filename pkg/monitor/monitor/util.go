@@ -253,10 +253,9 @@ func getMonitorRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.PolicyRule
 func getMonitorClusterRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.PolicyRule) *rbac.ClusterRole {
 	return &rbac.ClusterRole{
 		ObjectMeta: meta.ObjectMeta{
-			Name:            GetMonitorObjectNameCrossNamespace(monitor),
-			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
-			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+			Name:      GetMonitorObjectNameCrossNamespace(monitor),
+			Namespace: monitor.Namespace,
+			Labels:    buildTidbMonitorLabel(monitor.Name),
 		},
 		Rules: policyRules,
 	}
@@ -265,10 +264,9 @@ func getMonitorClusterRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.Pol
 func getMonitorClusterRoleBinding(sa *core.ServiceAccount, role *rbac.ClusterRole, monitor *v1alpha1.TidbMonitor) *rbac.ClusterRoleBinding {
 	return &rbac.ClusterRoleBinding{
 		ObjectMeta: meta.ObjectMeta{
-			Name:            GetMonitorObjectNameCrossNamespace(monitor),
-			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
-			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+			Name:      GetMonitorObjectNameCrossNamespace(monitor),
+			Namespace: monitor.Namespace,
+			Labels:    buildTidbMonitorLabel(monitor.Name),
 		},
 		Subjects: []rbac.Subject{
 			{
