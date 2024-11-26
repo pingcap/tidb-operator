@@ -31,6 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/manager/volumes/delegation"
 	"github.com/pingcap/tidb-operator/pkg/manager/volumes/delegation/aws"
+	"github.com/pingcap/tidb-operator/pkg/manager/volumes/delegation/azure"
 )
 
 type PodVolumeModifier interface {
@@ -73,7 +74,9 @@ func NewPodVolumeModifier(deps *controller.Dependencies) PodVolumeModifier {
 		modifiers: map[string]delegation.VolumeModifier{},
 	}
 	if features.DefaultFeatureGate.Enabled(features.VolumeModifying) {
-		m.modifiers["ebs.csi.aws.com"] = aws.NewEBSModifier(deps.AWSConfig)
+		// select modifier by provisioner
+		m.modifiers["ebs.csi.aws.com"] = aws.NewEBSModifier(deps.AWSConfig) // register AWS modifier
+		m.modifiers["disk.csi.azure.com"] = azure.NewAzureDiskModifier()    // register Azure modifier
 	}
 
 	return m
