@@ -14,10 +14,24 @@
 package monitor
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
+
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	rbac "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/client-go/discovery"
+	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
+	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -31,17 +45,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	utildiscovery "github.com/pingcap/tidb-operator/pkg/util/discovery"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	rbac "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
-	"k8s.io/client-go/discovery"
-	discoverycachedmemory "k8s.io/client-go/discovery/cached/memory"
-	"k8s.io/klog/v2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type MonitorManager struct {
@@ -67,9 +70,13 @@ func NewMonitorManager(deps *controller.Dependencies) *MonitorManager {
 }
 
 func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
-	if monitor.DeletionTimestamp != nil {
-		return nil
+	if err := m.addProtectionFinalizerIfNeed(monitor); err != nil {
+		return err
 	}
+	if monitor.DeletionTimestamp != nil {
+		return m.cleanAndRemoveProtectionFinalizerIfNeed(monitor)
+	}
+
 	if len(monitor.Spec.Clusters) < 1 && (monitor.Spec.DM == nil || len(monitor.Spec.DM.Clusters) < 1) {
 		klog.Errorf("tm[%s/%s] does not configure the target tidbcluster", monitor.Namespace, monitor.Name)
 		return nil
@@ -184,6 +191,63 @@ func (m *MonitorManager) SyncMonitor(monitor *v1alpha1.TidbMonitor) error {
 		return err
 	}
 
+	return nil
+}
+
+func (m *MonitorManager) addProtectionFinalizerIfNeed(tm *v1alpha1.TidbMonitor) error {
+	if tm.DeletionTimestamp != nil {
+		return nil
+	}
+	if !controllerutil.ContainsFinalizer(tm, label.TiDBMonitorProtectionFinalizer) {
+		controllerutil.AddFinalizer(tm, label.TiDBMonitorProtectionFinalizer)
+		_, err := m.deps.Clientset.PingcapV1alpha1().TidbMonitors(tm.Namespace).Update(context.TODO(), tm, metav1.UpdateOptions{})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m *MonitorManager) cleanAndRemoveProtectionFinalizerIfNeed(tm *v1alpha1.TidbMonitor) error {
+	if tm.DeletionTimestamp.IsZero() {
+		return nil
+	}
+
+	if tm.Spec.ClusterScoped {
+		// we need to clean ClusterRole and ClusterRoleBinding as we can't set ownerReference for them
+		// so we call DELETE directly for them (but without waiting for the deletion to complete)
+		clusterRole, err := m.deps.KubeClientset.RbacV1().ClusterRoles().Get(context.TODO(), GetMonitorObjectNameCrossNamespace(tm), metav1.GetOptions{})
+		if err != nil && !errors.IsNotFound(err) {
+			return err
+		} else if err == nil {
+			if clusterRole.Labels[label.ManagedByLabelKey] == label.TiDBOperator {
+				err = m.deps.KubeClientset.RbacV1().ClusterRoles().Delete(context.TODO(), clusterRole.Name, metav1.DeleteOptions{})
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		clusterRoleBinding, err := m.deps.KubeClientset.RbacV1().ClusterRoleBindings().Get(context.TODO(), GetMonitorObjectNameCrossNamespace(tm), metav1.GetOptions{})
+		if err != nil && !errors.IsNotFound(err) {
+			return err
+		} else if err == nil {
+			if clusterRoleBinding.Labels[label.ManagedByLabelKey] == label.TiDBOperator {
+				err = m.deps.KubeClientset.RbacV1().ClusterRoleBindings().Delete(context.TODO(), clusterRoleBinding.Name, metav1.DeleteOptions{})
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	if controllerutil.ContainsFinalizer(tm, label.TiDBMonitorProtectionFinalizer) {
+		controllerutil.RemoveFinalizer(tm, label.TiDBMonitorProtectionFinalizer)
+		_, err := m.deps.Clientset.PingcapV1alpha1().TidbMonitors(tm.Namespace).Update(context.TODO(), tm, metav1.UpdateOptions{})
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
