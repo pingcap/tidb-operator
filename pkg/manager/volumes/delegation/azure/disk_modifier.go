@@ -60,9 +60,6 @@ type Volume struct {
 	IOPS       *int64
 	Throughput *int64
 	Type       string
-
-	IsCompleted bool
-	IsFailed    bool
 }
 
 func NewAzureDiskModifier() delegation.VolumeModifier {
