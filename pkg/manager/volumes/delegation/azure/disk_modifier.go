@@ -274,7 +274,7 @@ func getDiskInfoFromVolumeID(volumeID string) (diskName string, subscriptionID s
 	// get diskName, subscriptionID, resourceGroupName from volumeHandle
 	// example: /subscriptions/xxxx/resourceGroups/xxxx/providers/Microsoft.Compute/disks/xxxx
 	parts := strings.Split(volumeID, "/")
-	if len(parts) < 9 {
+	if len(parts) != 9 {
 		return "", "", "", fmt.Errorf("invalid volumeHandle format")
 	}
 	subscriptionID = parts[2]
