@@ -3457,6 +3457,7 @@ string
 <p>
 (<em>Appears on:</em>
 <a href="#backupspec">BackupSpec</a>, 
+<a href="#compactspec">CompactSpec</a>, 
 <a href="#restorespec">RestoreSpec</a>)
 </p>
 <p>
@@ -5554,17 +5555,6 @@ bool
 </tr>
 <tr>
 <td>
-<code>version</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Version specifies the tool image version used in compact <code>Backup</code>.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>brImage</code></br>
 <em>
 string
@@ -5579,15 +5569,15 @@ For BR image, if it does not contain tag, Pod will use image &lsquo;BrImage:${Ti
 </tr>
 <tr>
 <td>
-<code>tikvImage</code></br>
+<code>br</code></br>
 <em>
-string
+<a href="#brconfig">
+BRConfig
+</a>
 </em>
 </td>
 <td>
-<em>(Optional)</em>
-<p>TiKVImage specifies the tikv image used in compact <code>Backup</code>.
-For examples <code>spec.tikvImage: pingcap/tikv:v4.0.8</code></p>
+<p>BRConfig is the configs for BR</p>
 </td>
 </tr>
 <tr>
@@ -5740,7 +5730,7 @@ CompactStatus
 <a href="#compactbackup">CompactBackup</a>)
 </p>
 <p>
-<p>BackupSpec contains the backup specification for a tidb cluster.</p>
+<p>CompactSpec contains the backup specification for a tidb cluster.</p>
 </p>
 <table>
 <thead>
@@ -5920,17 +5910,6 @@ bool
 </tr>
 <tr>
 <td>
-<code>version</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Version specifies the tool image version used in compact <code>Backup</code>.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>brImage</code></br>
 <em>
 string
@@ -5945,15 +5924,15 @@ For BR image, if it does not contain tag, Pod will use image &lsquo;BrImage:${Ti
 </tr>
 <tr>
 <td>
-<code>tikvImage</code></br>
+<code>br</code></br>
 <em>
-string
+<a href="#brconfig">
+BRConfig
+</a>
 </em>
 </td>
 <td>
-<em>(Optional)</em>
-<p>TiKVImage specifies the tikv image used in compact <code>Backup</code>.
-For examples <code>spec.tikvImage: pingcap/tikv:v4.0.8</code></p>
+<p>BRConfig is the configs for BR</p>
 </td>
 </tr>
 <tr>

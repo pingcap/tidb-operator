@@ -395,8 +395,8 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 			},
 			Containers: []corev1.Container{
 				{
-					Name:  "backup-manager",
-					Image: c.deps.CLIConfig.TiDBBackupManagerImage,
+					Name:            "backup-manager",
+					Image:           c.deps.CLIConfig.TiDBBackupManagerImage,
 					Args:            args,
 					Env:             envVars,
 					VolumeMounts:    volumeMounts,
