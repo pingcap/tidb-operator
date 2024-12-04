@@ -13,7 +13,7 @@ on:
 jobs:
 
   pull:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -68,7 +68,7 @@ jobs:
         job: ${{ matrix.job }}
 
     - name: Upload test coverage
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v4
       with:
         flags: unittest
         working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}

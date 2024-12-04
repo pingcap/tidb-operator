@@ -1,4 +1,4 @@
-FROM bash:4.3.48
+FROM bash:5.2.37
 RUN wget -q http://download.pingcap.org/tidb-latest-linux-amd64.tar.gz \
         && tar xzf tidb-latest-linux-amd64.tar.gz \
         && mv tidb-*-linux-amd64/bin/pd-ctl \

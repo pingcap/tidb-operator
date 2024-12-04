@@ -45992,6 +45992,8 @@ spec:
                   baseImage:
                     default: pingcap/tiproxy
                     type: string
+                  certLayout:
+                    type: string
                   claims:
                     items:
                       properties:

@@ -161,6 +161,14 @@ const (
 	StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery = "PreferPDAddressesOverDiscovery"
 )
 
+type TiProxyCertLayout string
+
+const (
+	TiProxyCertLayoutLegacy TiProxyCertLayout = ""
+	// TiProxyCertLayoutV1 is a refined version of legacy layout. It's more intuitive and more flexible.
+	TiProxyCertLayoutV1 TiProxyCertLayout = "v1"
+)
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -931,6 +939,11 @@ type TiProxySpec struct {
 	// used by TiProxy to check health status.
 	// +optional
 	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
+
+	// TiProxyCertLayout is the certificate layout of TiProxy that determines how tidb-operator mount cert secrets
+	// and how configure TLS configurations for tiproxy.
+	// +optional
+	CertLayout TiProxyCertLayout `json:"certLayout,omitempty"`
 
 	// Base image of the component, image tag is now allowed during validation
 	// +kubebuilder:default=pingcap/tiproxy

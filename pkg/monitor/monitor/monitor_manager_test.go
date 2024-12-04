@@ -14,6 +14,7 @@
 package monitor
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -72,6 +73,8 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		if tm.Spec.Shards == nil {
 			tm.Spec.Shards = pointer.Int32Ptr(0)
 		}
+		_, err = tmm.deps.Clientset.PingcapV1alpha1().TidbMonitors(tm.Namespace).Create(context.Background(), tm, metav1.CreateOptions{})
+		g.Expect(err).NotTo(HaveOccurred())
 
 		err = tmm.SyncMonitor(tm)
 		if test.errExpectFn != nil {
@@ -548,6 +551,8 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 		if test.prepare != nil {
 			test.prepare(tmm, tm)
 		}
+		_, err = tmm.deps.Clientset.PingcapV1alpha1().TidbMonitors(tm.Namespace).Create(context.Background(), tm, metav1.CreateOptions{})
+		g.Expect(err).NotTo(HaveOccurred())
 
 		err = tmm.SyncMonitor(tm)
 

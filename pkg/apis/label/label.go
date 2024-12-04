@@ -192,6 +192,9 @@ const (
 	// TiDBMonitorVal is Monitor label value
 	TiDBMonitorVal string = "monitor"
 
+	// TiDBMonitorProtectionFinalizer is the name of finalizer on TidbMonitors
+	TiDBMonitorProtectionFinalizer string = "tidb.pingcap.com/monitor-protection"
+
 	// CleanJobLabelVal is clean job label value
 	CleanJobLabelVal string = "clean"
 	// RestoreJobLabelVal is restore job label value
