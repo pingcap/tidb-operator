@@ -301,28 +301,23 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 		fmt.Sprintf("--resourceName=%s", name),
 	}
 
-	tikvImage := "pingcap/tikv"
-	if backup.Spec.TiKVImage != "" {
-		tikvImage = backup.Spec.TiKVImage
+	tc, err := c.deps.TiDBClusterLister.TidbClusters(ns).Get(backup.Spec.BR.Cluster)
+	if err != nil {
+		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", ns, backup.Spec.BR.Cluster), err
 	}
-
-	tikvVersion := backup.Spec.Version
-	_, imageVersion := backuputil.ParseImage(tikvImage)
-	if imageVersion != "" {
-		tikvVersion = imageVersion
-	}
+	tikvImage := tc.TiKVImage()
+	_, tikvVersion := backuputil.ParseImage(tikvImage)
 	if tikvVersion != "" {
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
-	} else {
-		return nil, "tikv version is empty", fmt.Errorf("tikv version is empty")
 	}
-
-	brImage := fmt.Sprintf("pingcap/br:%s", tikvVersion)
-	if backup.Spec.BrImage != "" {
-		brImage = backup.Spec.BrImage
-		if !strings.ContainsRune(brImage, ':') {
-			brImage = fmt.Sprintf("%s:%s", brImage, tikvVersion)
+	brImage := "pingcap/br:" + tikvVersion
+	if backup.Spec.ToolImage != "" {
+		toolImage := backup.Spec.ToolImage
+		if !strings.ContainsRune(backup.Spec.ToolImage, ':') {
+			toolImage = fmt.Sprintf("%s:%s", toolImage, tikvVersion)
 		}
+
+		brImage = toolImage
 	}
 
 	//TODO: (Ris)What is the instance here?

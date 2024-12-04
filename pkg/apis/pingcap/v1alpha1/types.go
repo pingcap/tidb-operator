@@ -3447,7 +3447,7 @@ type CompactBackup struct {
 	Status CompactStatus `json:"status,omitempty"`
 }
 
-// BackupSpec contains the backup specification for a tidb cluster.
+// CompactSpec contains the backup specification for a tidb cluster.
 // +k8s:openapi-gen=true
 type CompactSpec struct {
 	corev1.ResourceRequirements `json:"resources,omitempty"`
@@ -3498,17 +3498,13 @@ type CompactSpec struct {
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
-	// Version specifies the tool image version used in compact `Backup`.
-	Version string `json:"version,omitempty"`
 	// BrImage specifies the br image used in compact `Backup`.
 	// For examples `spec.brImage: pingcap/br:v4.0.8`
 	// For BR image, if it does not contain tag, Pod will use image 'BrImage:${TiKV_Version}'.
 	// +optional
-	BrImage string `json:"brImage,omitempty"`
-	// TiKVImage specifies the tikv image used in compact `Backup`.
-	// For examples `spec.tikvImage: pingcap/tikv:v4.0.8`
-	// +optional
-	TiKVImage string `json:"tikvImage,omitempty"`
+	ToolImage string `json:"brImage,omitempty"`
+	// BRConfig is the configs for BR
+	BR *BRConfig `json:"br,omitempty"`
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
