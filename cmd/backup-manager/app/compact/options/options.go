@@ -16,9 +16,9 @@ package options
 import (
 	"math"
 
-	"github.com/pingcap/errors"
-
-	"github.com/spf13/pflag"
+	"github.com/juju/errors"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 )
 
 const (
@@ -35,41 +35,34 @@ const (
 	concurrencyFlag   = "concurrency"
 )
 
-type KubeOpts struct {
-	// This should be fill by the caller.
-	Kubeconfig   string `json:"-"`
+type CompactOpts struct {
+	FromTS       uint64
+	UntilTS      uint64
+	Name         string
+	Concurrency  uint64
 	Namespace    string `json:"namespace"`
 	ResourceName string `json:"resourceName"`
-	TiKVVersion  string `json:"tikvVersion"`
+	TikvVersion  string `json:"tikvVersion"`
 }
 
-type CompactOpts struct {
-	FromTS      uint64
-	UntilTS     uint64
-	Name        string
-	Concurrency uint64
-	StorageOpts []string
-}
+func ParseCompactOptions(compact *v1alpha1.CompactBackup, opts *CompactOpts) error {
 
-func DefineFlags(fs *pflag.FlagSet) {
-	fs.String(tiKVVersionFlag, "", "TiKV version of the resource")
-	fs.String(namespaceFlag, "", "Namespace of the resource")
-	fs.String(resourceNameFlag, "", "Name of the resource")
-}
-
-func (k *KubeOpts) ParseFromFlags(fs *pflag.FlagSet) error {
-	var err error
-	k.Namespace, err = fs.GetString(namespaceFlag)
+	startTs, err := config.ParseTSString(compact.Spec.StartTs)
 	if err != nil {
-		return errors.Trace(err)
+		return errors.Annotatef(err, "failed to parse startTs %s", compact.Spec.StartTs)
 	}
-	k.ResourceName, err = fs.GetString(resourceNameFlag)
+	endTs, err := config.ParseTSString(compact.Spec.EndTs)
 	if err != nil {
-		return errors.Trace(err)
+		return errors.Annotatef(err, "failed to parse endTs %s", compact.Spec.EndTs)
 	}
-	k.TiKVVersion, err = fs.GetString(tiKVVersionFlag)
-	if err != nil {
-		return errors.Trace(err)
+	opts.FromTS = startTs
+	opts.UntilTS = endTs
+
+	opts.Name = compact.ObjectMeta.Name
+	opts.Concurrency = uint64(compact.Spec.Concurrency)
+
+	if err := opts.Verify(); err != nil {
+		return err
 	}
 
 	return nil
