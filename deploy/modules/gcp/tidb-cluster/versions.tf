@@ -6,6 +6,6 @@ terraform {
     google-beta = "~> 2.16"
     external    = "~> 1.2"
     helm        = "~> 0.10"
-    null        = "~> 2.1"
+    null        = "~> 3.0"
   }
 }
