@@ -438,6 +438,9 @@ func (m *masterMemberManager) getNewMasterServiceForDMCluster(dc *v1alpha1.DMClu
 			if svcSpec.LoadBalancerSourceRanges != nil {
 				masterSvc.Spec.LoadBalancerSourceRanges = svcSpec.LoadBalancerSourceRanges
 			}
+			if svcSpec.LoadBalancerClass != nil {
+				masterSvc.Spec.LoadBalancerClass = svcSpec.LoadBalancerClass
+			}
 		}
 		if svcSpec.ExternalTrafficPolicy != nil {
 			masterSvc.Spec.ExternalTrafficPolicy = *svcSpec.ExternalTrafficPolicy

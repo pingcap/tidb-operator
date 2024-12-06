@@ -1630,6 +1630,7 @@ func TestGetNewTiDBService(t *testing.T) {
 		"10.0.0.0/8",
 		"130.211.204.1/32",
 	}
+	loadBalancerClass := "service.k8s.aws/nlb"
 	testCases := []struct {
 		name     string
 		tc       v1alpha1.TidbCluster
@@ -1794,6 +1795,7 @@ func TestGetNewTiDBService(t *testing.T) {
 									"lb-type": "testlb",
 								},
 								LoadBalancerSourceRanges: loadBalancerSourceRanges,
+								LoadBalancerClass:        &loadBalancerClass,
 							},
 							ExternalTrafficPolicy: &trafficPolicy,
 							ExposeStatus:          pointer.BoolPtr(true),
@@ -1839,6 +1841,7 @@ func TestGetNewTiDBService(t *testing.T) {
 						"10.0.0.0/8",
 						"130.211.204.1/32",
 					},
+					LoadBalancerClass: &loadBalancerClass,
 					Ports: []corev1.ServicePort{
 						{
 							Name:       "mysql-client",
