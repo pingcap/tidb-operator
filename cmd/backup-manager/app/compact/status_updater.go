@@ -87,10 +87,10 @@ func (r *CompactStatusUpdater) OnProgress(ctx context.Context, p Progress, compa
 
 func (r *CompactStatusUpdater) OnFinish(ctx context.Context, err error, compact *v1alpha1.CompactBackup) {
 	if err != nil {
-		r.UpdateStatus(compact, "FAILED")
 		r.Event(compact, corev1.EventTypeWarning, "Failed", err.Error())
+		r.UpdateStatus(compact, "FAILED")
 	} else {
-		r.UpdateStatus(compact, "FINISHED")
 		r.Event(compact, corev1.EventTypeNormal, "Finished", "The compaction process has finished successfully.")
+		r.UpdateStatus(compact, "FINISHED")
 	}
 }
