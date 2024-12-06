@@ -256,7 +256,8 @@ func (c *Controller) sync(key string) (err error) {
 
 	var newState string
 	if err != nil {
-		newState = "Failed"
+		newState = "Failed:" + err.Error()
+		klog.Errorf("Backup: [%s/%s] sync failed, error: %v", ns, name, err)
 	} else {
 		newState = "Running"
 	}
@@ -314,7 +315,7 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 		fmt.Sprintf("--resourceName=%s", name),
 	}
 
-	tc, err := c.deps.TiDBClusterLister.TidbClusters(ns).Get(backup.Spec.BR.Cluster)
+	tc, err := c.deps.TiDBClusterLister.TidbClusters(backup.Spec.BR.ClusterNamespace).Get(backup.Spec.BR.Cluster)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", ns, backup.Spec.BR.Cluster), err
 	}

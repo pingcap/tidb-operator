@@ -125,7 +125,7 @@ func (cm *Manager) base64ifyCmd(ctx context.Context) (*exec.Cmd, error) {
 		"operator",
 		"base64ify",
 	}
-	StorageOpts, err := pkgutil.GenStorageArgsForFlag(cm.compact.Spec.StorageProvider, "")
+	StorageOpts, err := pkgutil.GenStorageArgsForFlag(cm.compact.Spec.StorageProvider, "storage")
 	if err != nil {
 		return nil, err
 	}

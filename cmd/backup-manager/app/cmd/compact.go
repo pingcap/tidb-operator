@@ -53,7 +53,7 @@ func runCompact(compactOpts options.CompactOpts, kubecfg string) error {
 		informers.WithNamespace(compactOpts.Namespace),
 	}
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, constants.ResyncDuration, options...)
-	recorder := util.NewEventRecorder(kubeCli, "compact")
+	recorder := util.NewEventRecorder(kubeCli, "compact-manager")
 	compactInformer := informerFactory.Pingcap().V1alpha1().CompactBackups()
 	statusUpdater := compact.NewCompactStatusUpdater(recorder, compactInformer.Lister(), cli)
 
