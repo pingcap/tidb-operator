@@ -17,31 +17,54 @@ import (
 	"context"
 
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/compact"
-	coptions "github.com/pingcap/tidb-operator/cmd/backup-manager/app/compact/options"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/compact/options"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/tools/cache"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
 func NewCompactCommand() *cobra.Command {
+	opts := options.CompactOpts{}
+
 	cmd := &cobra.Command{
 		Use:   "compact",
 		Short: "Compact log backup.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			opts := coptions.KubeOpts{}
-			if err := opts.ParseFromFlags(cmd.Flags()); err != nil {
-				return err
-			}
-			opts.Kubeconfig = kubecfg
-
-			ctx := context.Background()
-			link, err := compact.NewKubelink(opts.Kubeconfig)
-			if err != nil {
-				return err
-			}
-			cx := compact.New(opts, link)
-			return cx.Run(ctx)
+		Run: func(cmd *cobra.Command, args []string) {
+			util.ValidCmdFlags(cmd.CommandPath(), cmd.LocalFlags())
+			cmdutil.CheckErr(runCompact(opts, kubecfg))
 		},
 	}
 
-	coptions.DefineFlags(cmd.Flags())
+	cmd.Flags().StringVar(&opts.Namespace, "namespace", "", "Backup CR's namespace")
+	cmd.Flags().StringVar(&opts.ResourceName, "resourceName", "", "Backup CRD object name")
+	cmd.Flags().StringVar(&opts.TikvVersion, "tikvVersion", util.DefaultVersion, "TiKV version")
 	return cmd
+}
+
+func runCompact(compactOpts options.CompactOpts, kubecfg string) error {
+	kubeCli, cli, err := util.NewKubeAndCRCli(kubecfg)
+	if err != nil {
+		return err
+	}
+	options := []informers.SharedInformerOption{
+		informers.WithNamespace(compactOpts.Namespace),
+	}
+	informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, constants.ResyncDuration, options...)
+	recorder := util.NewEventRecorder(kubeCli, "compact")
+	compactInformer := informerFactory.Pingcap().V1alpha1().CompactBackups()
+	statusUpdater := compact.NewCompactStatusUpdater(recorder, compactInformer.Lister(), cli)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go informerFactory.Start(ctx.Done())
+
+	// waiting for the shared informer's store has synced.
+	cache.WaitForCacheSync(ctx.Done(), compactInformer.Informer().HasSynced)
+
+	// klog.Infof("start to process backup %s", compactOpts.String())
+	cm := compact.NewManager(compactInformer.Lister(), statusUpdater, compactOpts)
+	return cm.ProcessCompact()
 }
