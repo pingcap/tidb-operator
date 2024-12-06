@@ -14251,7 +14251,7 @@ Only valid in Prometheus versions 2.15.0 and newer.</p>
 <td>
 <code>remoteTimeout</code></br>
 <em>
-github.com/prometheus/common/model.Duration
+string
 </em>
 </td>
 <td>

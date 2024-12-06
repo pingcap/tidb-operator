@@ -56,7 +56,7 @@ func TestGenerateRemoteWrite(t *testing.T) {
     max_backoff: 10s
 `
 	url := "http://127.0.0.1/a/b/c"
-	remoteTimeout := model.Duration(30 * time.Second)
+	remoteTimeout := "30s"
 	testTime := 10 * time.Second
 	monitor := v1alpha1.TidbMonitor{
 		Spec: v1alpha1.TidbMonitorSpec{
@@ -65,7 +65,7 @@ func TestGenerateRemoteWrite(t *testing.T) {
 					{
 						URL:           url,
 						Name:          "test",
-						RemoteTimeout: &remoteTimeout,
+						RemoteTimeout: remoteTimeout,
 						WriteRelabelConfigs: []v1alpha1.RelabelConfig{
 							{
 								SourceLabels: []model.LabelName{"test1", "test2"},
@@ -161,7 +161,7 @@ func TestGenerateRemoteWriteWithHighVersion(t *testing.T) {
     send_interval: 10s
 `
 	url := "http://127.0.0.1/a/b/c"
-	remoteTimeout := model.Duration(30 * time.Second)
+	remoteTimeout := "30s"
 	testTime := 10 * time.Second
 	monitor := v1alpha1.TidbMonitor{
 		Spec: v1alpha1.TidbMonitorSpec{
@@ -170,7 +170,7 @@ func TestGenerateRemoteWriteWithHighVersion(t *testing.T) {
 					{
 						URL:           url,
 						Name:          "test",
-						RemoteTimeout: &remoteTimeout,
+						RemoteTimeout: remoteTimeout,
 						WriteRelabelConfigs: []v1alpha1.RelabelConfig{
 							{
 								SourceLabels: []model.LabelName{"test1", "test2"},
