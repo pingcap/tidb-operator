@@ -667,6 +667,72 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
 		})
 
+		ginkgo.It("start,truncate,stop log backup using old interface", func() {
+			backupClusterName := "log-backup"
+			backupVersion := utilimage.TiDBLatest
+			enableTLS := false
+			skipCA := false
+			backupName := backupClusterName
+			typ := strings.ToLower(typeBR)
+
+			ns := f.Namespace.Name
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			ginkgo.By("Create log-backup.enable TiDB cluster for log backup")
+			err := createLogBackupEnableTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Wait for backup TiDB cluster ready")
+			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Create RBAC for log backup")
+			err = createRBAC(f)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Start log backup")
+			backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+				// A tricky way to keep the log backup from starting.
+				backup.Spec.ToolImage = "null:invalid"
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeRetain
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(backup.Status.CommitTs, "")
+
+			ginkgo.By("Stop log backup")
+			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
+				backup.Spec.LogStop = true
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupStopped)
+
+			ginkgo.By("Delete backup")
+			err = deleteBackup(f, backupName)
+			framework.ExpectNoError(err)
+
+			// To make sure the task is deleted.
+			ginkgo.By("Start log backup the second time")
+			backup, err = createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(backup.Status.CommitTs, "")
+
+			ginkgo.By("Delete backup")
+			err = deleteBackup(f, backupName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Check if all backup files in storage is deleted")
+			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix) // now we only use s3
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+		})
+		
 		// TODO: tikv error:[ERROR] [mod.rs:747] ["Status server error: TLS handshake error"], will open this test when this is fixed.
 		// ginkgo.It("Log backup progress track with tls cluster", func() {
 		// 	backupVersion := utilimage.TiDBLatest
