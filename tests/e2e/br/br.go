@@ -732,7 +732,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
 		})
-		
+
 		// TODO: tikv error:[ERROR] [mod.rs:747] ["Status server error: TLS handshake error"], will open this test when this is fixed.
 		// ginkgo.It("Log backup progress track with tls cluster", func() {
 		// 	backupVersion := utilimage.TiDBLatest
