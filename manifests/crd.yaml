@@ -8244,8 +8244,6 @@ spec:
                 required:
                 - cluster
                 type: object
-              brImage:
-                type: string
               concurrency:
                 type: integer
               endTs:
@@ -9251,6 +9249,8 @@ spec:
                       type: string
                   type: object
                 type: array
+              toolImage:
+                type: string
               useKMS:
                 type: boolean
               volumeBackupInitJobMaxActiveSeconds:

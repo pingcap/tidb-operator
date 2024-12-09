@@ -5545,7 +5545,7 @@ bool
 </tr>
 <tr>
 <td>
-<code>brImage</code></br>
+<code>toolImage</code></br>
 <em>
 string
 </em>
@@ -5900,7 +5900,7 @@ bool
 </tr>
 <tr>
 <td>
-<code>brImage</code></br>
+<code>toolImage</code></br>
 <em>
 string
 </em>
