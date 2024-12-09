@@ -321,9 +321,6 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 	}
 	tikvImage := tc.TiKVImage()
 	_, tikvVersion := backuputil.ParseImage(tikvImage)
-	if tikvVersion != "" {
-		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
-	}
 	brImage := "pingcap/br:" + tikvVersion
 	if backup.Spec.ToolImage != "" {
 		toolImage := backup.Spec.ToolImage
@@ -333,6 +330,7 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 
 		brImage = toolImage
 	}
+	klog.Infof("backup %s/%s use br image %s and tikv image %s", ns, name, brImage, tikvImage)
 
 	//TODO: (Ris)What is the instance here?
 	jobLabels := util.CombineStringMap(label.NewBackup().Instance("Compact-Backup").BackupJob().Backup(name), backup.Labels)

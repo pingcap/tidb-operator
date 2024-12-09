@@ -1817,7 +1817,7 @@ func schema_pkg_apis_pingcap_v1alpha1_CompactSpec(ref common.ReferenceCallback) 
 							},
 						},
 					},
-					"brImage": {
+					"toolImage": {
 						SchemaProps: spec.SchemaProps{
 							Description: "BrImage specifies the br image used in compact `Backup`. For examples `spec.brImage: pingcap/br:v4.0.8` For BR image, if it does not contain tag, Pod will use image 'BrImage:${TiKV_Version}'.",
 							Type:        []string{"string"},

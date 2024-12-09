@@ -40,7 +40,6 @@ func NewCompactCommand() *cobra.Command {
 
 	cmd.Flags().StringVar(&opts.Namespace, "namespace", "", "Backup CR's namespace")
 	cmd.Flags().StringVar(&opts.ResourceName, "resourceName", "", "Backup CRD object name")
-	cmd.Flags().StringVar(&opts.TikvVersion, "tikvVersion", util.DefaultVersion, "TiKV version")
 	return cmd
 }
 
