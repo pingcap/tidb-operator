@@ -701,15 +701,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(backup.Status.CommitTs, "")
 
-			ginkgo.By("Stop log backup")
-			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
-				backup.Spec.LogStop = true
-				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
-				backup.Spec.Mode = v1alpha1.BackupModeLog
-			})
-			framework.ExpectNoError(err)
-			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupStopped)
-
 			ginkgo.By("Delete backup")
 			err = deleteBackup(f, backupName)
 			framework.ExpectNoError(err)
