@@ -6,7 +6,7 @@ terraform {
     external = "~> 1.2"
     helm     = "~> 0.10"
     local    = "~> 1.3"
-    null     = "~> 2.1"
+    null     = "~> 3.0"
     template = "~> 2.1"
     tls      = "~> 2.1"
   }
