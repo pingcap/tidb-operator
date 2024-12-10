@@ -73,7 +73,11 @@ func (bc *backupCleaner) StopLogBackup(backup *v1alpha1.Backup) error {
 		return fmt.Errorf("backup %s/%s spec.BR shouldn't be nil", backup.GetNamespace(), backup.GetName())
 	}
 	if !v1alpha1.IsLogBackupAlreadyStart(backup) {
-		return nil
+		return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Command: v1alpha1.LogStopCommand,
+			Type:    v1alpha1.BackupComplete,
+			Status:  corev1.ConditionTrue,
+		}, nil)
 	}
 	if v1alpha1.IsLogBackupAlreadyStop(backup) {
 		return nil
