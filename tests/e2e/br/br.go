@@ -692,7 +692,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Start log backup")
-			backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+			backup, err := createBackupAndWaitForSchedule(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
 				// A tricky way to keep the log backup from starting.
 				backup.Spec.ToolImage = "null:invalid"
 				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeRetain
@@ -1427,6 +1427,32 @@ func createBackupAndWaitForRunning(f *e2eframework.Framework, name, tcName, typ 
 	}
 
 	if err := brutil.WaitForBackupOnRunning(f.ExtClient, ns, name, backupCompleteTimeout); err != nil {
+		return backup, err
+	}
+	return f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{})
+}
+
+func createBackupAndWaitForSchedule(f *e2eframework.Framework, name, tcName, typ string, configure func(*v1alpha1.Backup)) (*v1alpha1.Backup, error) {
+	ns := f.Namespace.Name
+	// secret to visit tidb cluster
+	s := brutil.GetSecret(ns, name, "")
+	if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{}); err != nil {
+		return nil, err
+	}
+
+	backupFolder := time.Now().Format(time.RFC3339)
+	cfg := f.Storage.Config(ns, backupFolder)
+	backup := brutil.GetBackup(ns, name, tcName, typ, cfg)
+
+	if configure != nil {
+		configure(backup)
+	}
+
+	if _, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Create(context.TODO(), backup, metav1.CreateOptions{}); err != nil {
+		return nil, err
+	}
+
+	if err := brutil.WaitForBackupOnScheduled(f.ExtClient, ns, name, backupCompleteTimeout); err != nil {
 		return backup, err
 	}
 	return f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{})
