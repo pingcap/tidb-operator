@@ -8,6 +8,6 @@ terraform {
     local    = "~> 1.3"
     null     = "~> 2.1"
     template = "~> 2.1"
-    tls      = "~> 2.1"
+    tls      = "~> 4.0"
   }
 }
