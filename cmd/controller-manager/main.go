@@ -31,6 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/autoscaler"
 	"github.com/pingcap/tidb-operator/pkg/controller/backup"
 	"github.com/pingcap/tidb-operator/pkg/controller/backupschedule"
+	compact "github.com/pingcap/tidb-operator/pkg/controller/compactbackup"
 	"github.com/pingcap/tidb-operator/pkg/controller/dmcluster"
 	"github.com/pingcap/tidb-operator/pkg/controller/restore"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbcluster"
@@ -182,6 +183,7 @@ func main() {
 			tidbcluster.NewPodController(deps),
 			dmcluster.NewController(deps),
 			backup.NewController(deps),
+			compact.NewController(deps),
 			restore.NewController(deps),
 			backupschedule.NewController(deps),
 			tidbinitializer.NewController(deps),
