@@ -75,7 +75,7 @@ func (bc *backupCleaner) StopLogBackup(backup *v1alpha1.Backup) error {
 	if !v1alpha1.IsLogBackupAlreadyStart(backup) {
 		return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: v1alpha1.LogStopCommand,
-			Type:    v1alpha1.BackupScheduled,
+			Type:    v1alpha1.BackupComplete,
 			Status:  corev1.ConditionTrue,
 		}, nil)
 	}
