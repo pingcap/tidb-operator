@@ -667,7 +667,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
 		})
 
-		ginkgo.It("start,truncate,stop log backup using old interface", func() {
+		ginkgo.It("test stop the log backup on schedule phase", func() {
 			backupClusterName := "log-backup"
 			backupVersion := utilimage.TiDBLatest
 			enableTLS := false
@@ -699,7 +699,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				backup.Spec.Mode = v1alpha1.BackupModeLog
 			})
 			framework.ExpectNoError(err)
-			framework.ExpectNotEqual(backup.Status.CommitTs, "")
+			framework.ExpectEqual(backup.Status.CommitTs, "")
 
 			ginkgo.By("Stop log backup")
 			backup, err = continueLogBackupAndWaitForComplete(f, backup, func(backup *v1alpha1.Backup) {
