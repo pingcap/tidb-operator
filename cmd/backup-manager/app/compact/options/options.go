@@ -24,15 +24,6 @@ import (
 const (
 	fromTSUnset  = math.MaxUint64
 	untilTSUnset = 0
-
-	namespaceFlag     = "namespace"
-	resourceNameFlag  = "resourceName"
-	tiKVVersionFlag   = "tikvVersion"
-	storageStringFlag = "storage-string"
-	fromTSFlag        = "from-ts"
-	untilTSFlag       = "until-ts"
-	nameFlag          = "name"
-	concurrencyFlag   = "concurrency"
 )
 
 type CompactOpts struct {
