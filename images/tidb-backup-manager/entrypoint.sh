@@ -105,6 +105,11 @@ case "$1" in
         echo "$BACKUP_BIN import $@"
         $EXEC_COMMAND $BACKUP_BIN import "$@"
         ;;
+    compact)
+        shift 1
+        echo "$BACKUP_BIN compact $@"
+        $EXEC_COMMAND $BACKUP_BIN compact "$@"
+        ;;
     clean)
         shift 1
         echo "$BACKUP_BIN clean $@"
@@ -113,7 +118,7 @@ case "$1" in
         $EXEC_COMMAND $BACKUP_BIN clean "$@"
         ;;
     *)
-        echo "Usage: $0 {backup|restore|clean}"
+        echo "Usage: $0 {backup|restore|import|compact|clean}"
         echo "Now runs your command."
         echo "$@"
 
