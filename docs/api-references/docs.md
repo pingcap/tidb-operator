@@ -6079,6 +6079,26 @@ string
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>progress</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>message</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="componentaccessor">ComponentAccessor</h3>

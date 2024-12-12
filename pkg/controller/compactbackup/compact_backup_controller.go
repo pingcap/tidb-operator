@@ -102,7 +102,7 @@ func (c *Controller) worker() {
 	}
 }
 
-func (c *Controller) UpdateStatus(backup *v1alpha1.CompactBackup, newState string) error {
+func (c *Controller) UpdateStatus(backup *v1alpha1.CompactBackup, newState string, message ...string) error {
 	ns := backup.GetNamespace()
 	backupName := backup.GetName()
 	// try best effort to guarantee backup is updated.
@@ -117,6 +117,9 @@ func (c *Controller) UpdateStatus(backup *v1alpha1.CompactBackup, newState strin
 		}
 		if backup.Status.State != newState {
 			backup.Status.State = newState
+			if len(message) > 0 {
+				backup.Status.Message = message[0]
+			}
 			_, updateErr := c.cli.PingcapV1alpha1().CompactBackups(ns).Update(context.TODO(), backup, metav1.UpdateOptions{})
 			if updateErr == nil {
 				klog.Infof("Backup: [%s/%s] updated successfully", ns, backupName)
@@ -250,18 +253,19 @@ func (c *Controller) sync(key string) (err error) {
 		return nil
 	}
 
-	c.UpdateStatus(backup, "Preparing")
+	c.UpdateStatus(backup, string(v1alpha1.BackupPrepare))
 
 	err = c.doCompact(backup.DeepCopy())
 
-	var newState string
+	var newState, message string
 	if err != nil {
-		newState = "Failed:" + err.Error()
+		newState = string(v1alpha1.BackupFailed)
+		message = err.Error()
 		klog.Errorf("Backup: [%s/%s] sync failed, error: %v", ns, name, err)
 	} else {
-		newState = "Running"
+		newState = string(v1alpha1.BackupRunning)
 	}
-	c.UpdateStatus(backup, newState)
+	c.UpdateStatus(backup, newState, message)
 	return err
 }
 
