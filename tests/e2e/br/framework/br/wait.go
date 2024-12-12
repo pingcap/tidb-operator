@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/framework"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -354,12 +355,13 @@ func WaitForCompactComplete(c versioned.Interface, ns, name string, timeout time
 			return false, err
 		}
 
-		switch cpbk.Status.State{
+		switch cpbk.Status.State {
 		case string(v1alpha1.BackupComplete):
-			return true,nil
+			return true, nil
 		case string(v1alpha1.BackupCleanFailed):
-			return false,fmt.Errorf("Compact failed: %s", cpbk.Status.Message)
+			return false, fmt.Errorf("Compact failed: %s", cpbk.Status.Message)
 		default:
+			log.Logf("the current status is: %s", cpbk.Status.State)
 			//do nothing
 		}
 

@@ -1164,7 +1164,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		})
 	})
 
-
 	ginkgo.Context("Compact backup Test", func() {
 		ginkgo.It("test normal function", func() {
 			backupVersion := utilimage.TiDBLatest
@@ -1230,9 +1229,10 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			compactName := "compact-backup"
 			ginkgo.By("Start a compact backup")
-			_,err = createCompactBackupAndWaitForComplete(f, compactName, masterClusterName, func(compact *v1alpha1.CompactBackup) {
+			_, err = createCompactBackupAndWaitForComplete(f, compactName, masterClusterName, func(compact *v1alpha1.CompactBackup) {
 				compact.Spec.StartTs = fullBackup.Status.CommitTs
 				compact.Spec.EndTs = currentTS
+				compact.Spec.S3 = logBackup.Spec.S3
 			})
 			framework.ExpectNoError(err)
 		})
