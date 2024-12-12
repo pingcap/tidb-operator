@@ -44,10 +44,8 @@ type Progress struct {
 // It just extracted the message from the JSON and keeps the origin json bytes.
 // So you may extract fields from it by `json.Unmarshal(l.Raw, ...)`.
 type logLine struct {
-	Message string
-
-	// Raw is the original log JSON.
-	Raw []byte
+	Message string          `json:"Message"`
+	Raw     json.RawMessage `json:"-"`
 }
 
 // Manager mainly used to manage backup related work
@@ -178,16 +176,24 @@ func (cm *Manager) compactCmd(ctx context.Context, base64Storage string) *exec.C
 func (cm *Manager) processCompactionLogs(ctx context.Context, logStream io.Reader) error {
 	dec := json.NewDecoder(logStream)
 
-	var line logLine
 	for dec.More() {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		if err := dec.Decode(&line); err != nil {
+
+		var raw json.RawMessage
+		if err := dec.Decode(&raw); err != nil {
+			return errors.Annotate(err, "failed to decode raw log line")
+		}
+
+		var line logLine
+		if err := json.Unmarshal(raw, &line); err != nil {
 			return errors.Annotate(err, "failed to decode the line of log")
 		}
+		line.Raw = raw
+
 		if err := cm.processLogLine(ctx, line); err != nil {
-			return errors.Annotate(err, "error during processing log line")
+			return err
 		}
 	}
 
@@ -204,7 +210,7 @@ func (cm *Manager) processLogLine(ctx context.Context, l logLine) error {
 	case messageCompactionDone:
 		var prog Progress
 		if err := json.Unmarshal(l.Raw, &prog); err != nil {
-			return errors.Annotate(err, "failed to decode progress")
+			return errors.Annotatef(err, "failed to decode progress message: %s", string(l.Raw))
 		}
 		cm.statusUpdater.OnProgress(ctx, prog, cm.compact)
 		return nil
@@ -213,10 +219,11 @@ func (cm *Manager) processLogLine(ctx context.Context, l logLine) error {
 			Err string `json:"err"`
 		}{}
 		if err := json.Unmarshal(l.Raw, &errContainer); err != nil {
-			return errors.Annotate(err, "failed to decode error message")
+			return errors.Annotatef(err, "failed to decode error message: %s", string(l.Raw))
 		}
-		return errors.Errorf("compaction aborted: %s", errContainer.Err)
+		return errors.New(errContainer.Err)
 	default:
+		klog.Infof("progress log: %s", l.Message)
 		return nil
 	}
 }

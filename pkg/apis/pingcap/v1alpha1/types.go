@@ -3470,6 +3470,8 @@ type ScalePolicy struct {
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:shortName="cpbk"
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.state`,description="The current status of the compact backup"
+// +kubebuilder:printcolumn:name="Progress",type=string,JSONPath=`.status.progress`,description="The progress of the compact backup"
+// +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.message`,description="The message of the compact backup"
 type CompactBackup struct {
 	metav1.TypeMeta `json:",inline"`
 	// +k8s:openapi-gen=false
@@ -3571,7 +3573,9 @@ type CompactSpec struct {
 }
 
 type CompactStatus struct {
-	State string `json:"state,omitempty"`
+	State    string `json:"state,omitempty"`
+	Progress string `json:"progress,omitempty"`
+	Message  string `json:"message,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

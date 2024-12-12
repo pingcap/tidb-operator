@@ -7071,6 +7071,14 @@ spec:
       jsonPath: .status.state
       name: Status
       type: string
+    - description: The progress of the compact backup
+      jsonPath: .status.progress
+      name: Progress
+      type: string
+    - description: The message of the compact backup
+      jsonPath: .status.message
+      name: Message
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -9259,6 +9267,10 @@ spec:
             type: object
           status:
             properties:
+              message:
+                type: string
+              progress:
+                type: string
               state:
                 type: string
             type: object
