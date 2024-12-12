@@ -319,3 +319,26 @@ func WaitBackupPodOnPhase(f *framework.Framework, backup *v1alpha1.Backup, phase
 	}
 	return nil
 }
+
+func WaitForCompactComplete(c versioned.Interface, ns, name string, timeout time.Duration) error {
+	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
+		cpbk, err := c.PingcapV1alpha1().CompactBackups(ns).Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+
+		switch cpbk.Status.State{
+		case string(v1alpha1.BackupComplete):
+			return true,nil
+		case string(v1alpha1.BackupCleanFailed):
+			return false,fmt.Errorf("Compact failed: %s", cpbk.Status.Message)
+		default:
+			//do nothing
+		}
+
+		return false, nil
+	}); err != nil {
+		return fmt.Errorf("can't wait for backup complete: %v", err)
+	}
+	return nil
+}
