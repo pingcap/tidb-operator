@@ -56,13 +56,11 @@ func (r *CompactStatusUpdater) Event(compact *v1alpha1.CompactBackup, ty, reason
 func (r *CompactStatusUpdater) UpdateStatus(compact *v1alpha1.CompactBackup, newState string, progress string, message string) error {
 	ns := compact.GetNamespace()
 	backupName := compact.GetName()
-	key := fmt.Sprintf("%s/%s", ns, backupName) // Unique key for the backup
 
 	now := time.Now()
 	updateProgress := true
 	if progress != "" {
 		if now.Sub(r.progressLastUpdate) < progressDebounceDuration {
-			klog.Infof("Skipping progress update for [%s] due to debounce interval", key)
 			updateProgress = false
 		}
 	}
