@@ -10,7 +10,7 @@ rules:
   resources: ["events"]
   verbs: ["*"]
 - apiGroups: ["pingcap.com"]
-  resources: ["backups", "restores"]
+  resources: ["backups", "restores","compactbackups"]
   verbs: ["get", "watch", "list", "update"]
 
 ---

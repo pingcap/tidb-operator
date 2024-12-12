@@ -88,6 +88,7 @@ func (cm *Manager) ProcessCompact() error {
 	defer cancel()
 
 	compact, err := cm.resourceLister.CompactBackups(cm.options.Namespace).Get(cm.options.ResourceName)
+	defer func() { cm.statusUpdater.OnFinish(ctx, err, cm.compact) }()
 	if err != nil {
 		return errors.New("backup not found")
 	}
@@ -133,7 +134,6 @@ func (cm *Manager) base64ifyCmd(ctx context.Context) (*exec.Cmd, error) {
 
 func (cm *Manager) runCompaction(ctx context.Context, base64Storage string) (err error) {
 	cmd := cm.compactCmd(ctx, base64Storage)
-	defer func() { cm.statusUpdater.OnFinish(ctx, err, cm.compact) }()
 
 	logs, err := cmd.StderrPipe()
 	if err != nil {
