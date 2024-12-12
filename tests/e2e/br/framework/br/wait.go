@@ -361,7 +361,7 @@ func WaitForCompactComplete(c versioned.Interface, ns, name string, timeout time
 		case string(v1alpha1.BackupCleanFailed):
 			return false, fmt.Errorf("Compact failed: %s", cpbk.Status.Message)
 		default:
-			log.Logf("the current status is: %s", cpbk.Status.State)
+			log.Logf("the current status is: %s %s", cpbk.Status.State, cpbk.Status.Progress)
 			//do nothing
 		}
 
