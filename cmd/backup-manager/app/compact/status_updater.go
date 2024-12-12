@@ -76,7 +76,7 @@ func (r *CompactStatusUpdater) UpdateStatus(compact *v1alpha1.CompactBackup, new
 		}
 
 		updated := false
-		if newState !="" && compact.Status.State != newState {
+		if newState != "" && compact.Status.State != newState {
 			compact.Status.State = newState
 			updated = true
 			updateProgress = true
