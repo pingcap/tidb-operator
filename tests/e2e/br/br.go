@@ -1163,6 +1163,80 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
 		})
 	})
+
+
+	ginkgo.Context("Compact backup Test", func() {
+		ginkgo.It("test normal function", func() {
+			backupVersion := utilimage.TiDBLatest
+			enableTLS := false
+			skipCA := false
+			ns := f.Namespace.Name
+			dbName := "e2etest"
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			ginkgo.By("Create log-backup.enable TiDB cluster for pitr-master")
+			masterClusterName := "pitr-master"
+			err := createLogBackupEnableTidbCluster(f, masterClusterName, backupVersion, enableTLS, skipCA)
+			framework.ExpectNoError(err)
+			ginkgo.By("Wait for pitr-master TiDB cluster ready")
+			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, masterClusterName, tidbReadyTimeout, 0)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Create RBAC for backup")
+			err = createRBAC(f)
+			framework.ExpectNoError(err)
+
+			logBackupName := "log-backup"
+			typ := strings.ToLower(typeBR)
+			ginkgo.By("Start log backup")
+			logBackup, err := createBackupAndWaitForComplete(f, logBackupName, masterClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(logBackup.Status.CommitTs, "")
+
+			fullBackupName := "full-backup"
+			ginkgo.By("Start full backup")
+			fullBackup, err := createBackupAndWaitForComplete(f, fullBackupName, masterClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(fullBackup.Status.CommitTs, "")
+
+			ginkgo.By("Forward master TiDB cluster service")
+			masterHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(masterClusterName), int(v1alpha1.DefaultTiDBServerPort))
+			framework.ExpectNoError(err)
+			err = initDatabase(masterHost, dbName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Write data into master TiDB cluster")
+			masterDSN := getDefaultDSN(masterHost, dbName)
+			err = blockwriter.New().Write(context.Background(), masterDSN)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Forward master PD service")
+			masterPDHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getPDServiceResourceName(masterClusterName), int(v1alpha1.DefaultPDClientPort))
+			framework.ExpectNoError(err)
+			ginkgo.By("Wait log backup reach current ts")
+			currentTS := strconv.FormatUint(config.GoTimeToTS(time.Now()), 10)
+			err = brutil.WaitForLogBackupReachTS(logBackupName, masterPDHost, currentTS, logbackupCatchUpTimeout)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("wait log backup progress reach current ts")
+			err = brutil.WaitForLogBackupProgressReachTS(f.ExtClient, ns, logBackupName, currentTS, logbackupCatchUpTimeout)
+			framework.ExpectNoError(err)
+
+			compactName := "compact-backup"
+			ginkgo.By("Start a compact backup")
+			_,err = createCompactBackupAndWaitForComplete(f, compactName, masterClusterName, func(compact *v1alpha1.CompactBackup) {
+				compact.Spec.StartTs = fullBackup.Status.CommitTs
+				compact.Spec.EndTs = currentTS
+			})
+			framework.ExpectNoError(err)
+		})
+	})
 })
 
 func getTiDBServiceResourceName(tcName string) string {
@@ -1702,4 +1776,37 @@ func getTableList(db *sql.DB) ([]string, error) {
 		tables = append(tables, table)
 	}
 	return tables, nil
+}
+
+func createCompactBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName string, configure func(*v1alpha1.CompactBackup)) (*v1alpha1.CompactBackup, error) {
+	ns := f.Namespace.Name
+	// secret to visit tidb cluster
+	s := brutil.GetSecret(ns, name, "")
+	// Check if the secret already exists
+	if _, err := f.ClientSet.CoreV1().Secrets(ns).Get(context.TODO(), name, metav1.GetOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{}); err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
+	}
+
+	backupFolder := time.Now().Format(time.RFC3339)
+	cfg := f.Storage.Config(ns, backupFolder)
+	compact := brutil.GetCompactBackup(ns, name, tcName, cfg)
+
+	if configure != nil {
+		configure(compact)
+	}
+
+	if _, err := f.ExtClient.PingcapV1alpha1().CompactBackups(ns).Create(context.TODO(), compact, metav1.CreateOptions{}); err != nil {
+		return nil, err
+	}
+
+	if err := brutil.WaitForCompactComplete(f.ExtClient, ns, name, backupCompleteTimeout); err != nil {
+		return compact, err
+	}
+	return f.ExtClient.PingcapV1alpha1().CompactBackups(ns).Get(context.TODO(), name, metav1.GetOptions{})
 }
