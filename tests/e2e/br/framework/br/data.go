@@ -47,7 +47,7 @@ func GetRole(ns string) *rbacv1.Role {
 			},
 			{
 				APIGroups: []string{"pingcap.com"},
-				Resources: []string{"backups", "restores"},
+				Resources: []string{"backups", "restores", "compactbackups"},
 				Verbs:     []string{"get", "watch", "list", "update"},
 			},
 		},
