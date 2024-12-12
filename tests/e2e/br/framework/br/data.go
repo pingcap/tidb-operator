@@ -202,7 +202,6 @@ func GetCompactBackup(ns, name, tcName string, s3Config *v1alpha1.S3StorageProvi
 				SendCredToTikv:   &sendCredToTikv,
 			},
 		},
-		
 	}
 	return compact
 }

@@ -416,7 +416,7 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 					Args:            args,
 					Env:             envVars,
 					VolumeMounts:    volumeMounts,
-					ImagePullPolicy: corev1.PullAlways,
+					ImagePullPolicy: corev1.PullIfNotPresent,
 				},
 			},
 			RestartPolicy:     corev1.RestartPolicyNever,
