@@ -2564,6 +2564,8 @@ type BackupScheduleSpec struct {
 	MaxBackups *int32 `json:"maxBackups,omitempty"`
 	// MaxReservedTime is to specify how long backups we want to keep.
 	MaxReservedTime *string `json:"maxReservedTime,omitempty"`
+	// LogBackupInterval is the interval of log backup.
+	CompactInterval *string `json:"compactInterval,omitempty"`
 	// BackupTemplate is the specification of the backup structure to get scheduled.
 	BackupTemplate BackupSpec `json:"backupTemplate"`
 	// LogBackupTemplate is the specification of the log backup structure to get scheduled.
