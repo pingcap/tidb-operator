@@ -19,7 +19,7 @@ require (
 	github.com/aws/aws-sdk-go v1.48.14
 	github.com/aws/aws-sdk-go-v2 v1.23.5
 	github.com/aws/aws-sdk-go-v2/config v1.25.12
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.53.0
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.140.0
 	github.com/aws/smithy-go v1.18.1
 	github.com/docker/go-units v0.5.0
 	github.com/dustin/go-humanize v1.0.1
