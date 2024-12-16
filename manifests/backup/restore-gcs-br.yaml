@@ -9,7 +9,7 @@ spec:
   br:
     cluster: myCluster
     sendCredToTikv: true
-    # clusterNamespce: <restore-namespace>
+    # clusterNamespace: <restore-namespace>
     # db: <db-name>
     # table: <table-name>
     # logLevel: info
