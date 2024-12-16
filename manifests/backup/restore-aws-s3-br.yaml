@@ -12,7 +12,7 @@ spec:
   # serviceAccount: myServiceAccount
   br:
     cluster: myCluster
-    # clusterNamespce: <restore-namespace>
+    # clusterNamespace: <restore-namespace>
     # db: <db-name>
     # table: <table-name>
     # logLevel: info
