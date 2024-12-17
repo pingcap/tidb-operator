@@ -50,6 +50,8 @@ func NewBackupScheduleManager(deps *controller.Dependencies) backup.BackupSchedu
 }
 
 func (bm *backupScheduleManager) doCompact(bs *v1alpha1.BackupSchedule, startTime time.Time, endTime time.Time) error {
+	
+	bs.Status.LastCompactTime = &metav1.Time{Time: bm.now()}
 	return nil
 }
 
@@ -63,6 +65,7 @@ func (bm *backupScheduleManager) performCompact(bs *v1alpha1.BackupSchedule, sch
 		return fmt.Errorf("failed to parse compact interval: %w", err)
 	}
 
+	//TODO: handle no full backup scenario
 	var startTime time.Time
 	switch {
 	case bs.Status.LastBackupTime == nil:
@@ -113,9 +116,8 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
     }
 
 	if scheduledTime == nil {
-		return err
+		return nil
 	}
-
 
     // Only create a new full backup if the conditions for it are met
     if err := bm.canPerformNextBackup(bs); err != nil {
