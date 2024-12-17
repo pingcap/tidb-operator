@@ -33,6 +33,11 @@ import (
 	"k8s.io/klog/v2"
 )
 
+const (
+	messageCompactionDone = "Finishing compaction."
+	messageCompactAborted = "Compaction aborted."
+)
+
 type Progress struct {
 	MetaCompleted  uint64 `json:"meta_completed"`
 	MetaTotal      uint64 `json:"meta_total"`
@@ -135,7 +140,7 @@ func (cm *Manager) base64ifyCmd(ctx context.Context) (*exec.Cmd, error) {
 func (cm *Manager) runCompaction(ctx context.Context, base64Storage string) (err error) {
 	cmd := cm.compactCmd(ctx, base64Storage)
 
-	logs, err := cmd.StderrPipe()
+	tikvLog, err := cmd.StderrPipe()
 	if err != nil {
 		return errors.Annotate(err, "failed to create stderr pipe for compact")
 	}
@@ -144,7 +149,7 @@ func (cm *Manager) runCompaction(ctx context.Context, base64Storage string) (err
 	}
 
 	cm.statusUpdater.OnStart(ctx, cm.compact)
-	err = cm.processCompactionLogs(ctx, io.TeeReader(logs, os.Stdout))
+	err = cm.processCompactionLogs(ctx, io.TeeReader(tikvLog, os.Stdout))
 	if err != nil {
 		return err
 	}
@@ -201,11 +206,6 @@ func (cm *Manager) processCompactionLogs(ctx context.Context, logStream io.Reade
 }
 
 func (cm *Manager) processLogLine(ctx context.Context, l logLine) error {
-	const (
-		messageCompactionDone = "Finishing compaction."
-		messageCompactAborted = "Compaction aborted."
-	)
-
 	switch l.Message {
 	case messageCompactionDone:
 		var prog Progress
@@ -223,7 +223,6 @@ func (cm *Manager) processLogLine(ctx context.Context, l logLine) error {
 		}
 		return errors.New(errContainer.Err)
 	default:
-		klog.Infof("progress log: %s", l.Message)
 		return nil
 	}
 }
