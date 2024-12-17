@@ -1,0 +1,33 @@
+apiVersion: core.pingcap.com/v1alpha1
+kind: TiKVGroup
+metadata:
+  name: tikv
+  labels:
+    pingcap.com/group: tikv
+    pingcap.com/component: tikv
+    pingcap.com/cluster: schedule
+spec:
+  cluster:
+    name: schedule
+  version: v8.1.0
+  replicas: 3
+  # All TiKV instances in the group will evenly spread in differnet zones
+  schedulePolicies:
+    - type: EvenlySpread
+      evenlySpread:
+        topologies:
+          - topology:
+              topology.kubernetes.io/zone: us-west-2a
+          - topology:
+              topology.kubernetes.io/zone: us-west-2b
+          - topology:
+              topology.kubernetes.io/zone: us-west-2c
+  template:
+    spec:
+      config: ""
+      volumes:
+      - name: data
+        path: /var/lib/tikv
+        for:
+        - type: data
+        storage: 100Gi

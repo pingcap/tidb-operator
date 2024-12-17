@@ -1,0 +1,7 @@
+apiVersion: v1
+data:
+  bootstrap-sql: |
+    SET PASSWORD FOR 'root'@'%' = 'pingcap';
+kind: ConfigMap
+metadata:
+  name: bsql

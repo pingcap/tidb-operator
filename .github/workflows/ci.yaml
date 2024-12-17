@@ -1,0 +1,107 @@
+name: ci
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+    types: [review_requested, ready_for_review, synchronize]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  image:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v4
+    - name: cache image builder
+      uses: actions/cache@v4
+      with:
+        path: ./_output/cache
+        key: ${{ runner.os }}-image-cache
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - uses: docker/setup-qemu-action@v3
+      with:
+        image: gcr.io/pingcap-public/third-party/tonistiigi/binfmt:latest
+    
+    - name: setup buildx context
+      run: |
+        docker context create builder
+    
+    - uses: docker/setup-buildx-action@v3
+      with:
+        platforms: linux/arm64,linux/amd64
+        endpoint: builder
+        driver-opts: |
+          image=gcr.io/pingcap-public/third-party/moby/buildkit:buildx-stable-1
+    
+    - name: image
+      run: |
+        V_PLATFORMS=linux/arm64,linux/amd64 make image
+
+  build:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v4
+    - name: setup go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: ./go.work
+        cache-dependency-path: "**/*.sum"
+    - name: build
+      run: |
+        make build
+  
+  lint:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v4
+    - name: setup go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: ./go.work
+        cache-dependency-path: "**/*.sum"
+    - name: cache golangci-lint
+      uses: actions/cache@v4
+      with:
+        path: ./_output/bin/golangci-lint
+        key: ${{ runner.os }}-golangci-lint
+    - name: lint
+      run: |
+        make lint
+
+  unit:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v4
+    - name: setup go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: ./go.work
+        cache-dependency-path: "**/*.sum"
+    - name: unit test
+      run: |
+        make unit
+
+  verify:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v4
+    - name: setup go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: ./go.work
+        cache-dependency-path: "**/*.sum"
+    - name: verify
+      run: |
+        make verify

@@ -1,0 +1,33 @@
+apiVersion: core.pingcap.com/v1alpha1
+kind: PDGroup
+metadata:
+  name: pd
+  labels:
+    pingcap.com/group: pd
+    pingcap.com/component: pd
+    pingcap.com/cluster: overlay
+spec:
+  cluster:
+    name: overlay
+  version: v8.1.0
+  replicas: 3
+  template:
+    spec:
+      config: ""
+      volumes:
+      - name: data
+        path: /var/lib/pd
+        for:
+        - type: data
+        storage: 20Gi
+      overlay:
+        pod:
+          spec:
+            containers:
+              - name: pd
+                env:
+                  - name: "DASHBOARD_SESSION_SECRET"
+                    valueFrom:
+                      secretKeyRef:
+                        name: "dashboard-session-secret"
+                        key: "encryption_key"

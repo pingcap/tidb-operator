@@ -1,0 +1,24 @@
+apiVersion: core.pingcap.com/v1alpha1
+kind: TiKVGroup
+metadata:
+  name: tikv
+  labels:
+    pingcap.com/group: tikv
+    pingcap.com/component: tikv
+    pingcap.com/cluster: tls
+spec:
+  cluster:
+    name: tls
+  version: v8.1.0
+  replicas: 3
+  template:
+    spec:
+      config: |
+        [security]
+        cert-allowed-cn = ["TiDB"]
+      volumes:
+      - name: data
+        path: /var/lib/tikv
+        for:
+        - type: data
+        storage: 100Gi

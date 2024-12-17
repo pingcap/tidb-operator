@@ -1,0 +1,17 @@
+apiVersion: core.pingcap.com/v1alpha1
+kind: TiDBGroup
+metadata:
+  name: tidb
+  labels:
+    pingcap.com/group: tidb
+    pingcap.com/component: tidb
+    pingcap.com/cluster: bsql
+spec:
+  cluster:
+    name: bsql
+  version: v8.1.0
+  replicas: 1
+  bootstrapSQLConfigMapName: bsql
+  template:
+    spec:
+      config: ""

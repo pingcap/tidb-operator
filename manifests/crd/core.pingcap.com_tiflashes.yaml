@@ -1,0 +1,349 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.1
+  name: tiflashes.core.pingcap.com
+spec:
+  group: core.pingcap.com
+  names:
+    categories:
+    - tiflash
+    kind: TiFlash
+    listKind: TiFlashList
+    plural: tiflashes
+    singular: tiflash
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.cluster.name
+      name: Cluster
+      type: string
+    - jsonPath: .status.id
+      name: StoreID
+      type: string
+    - jsonPath: .status.state
+      name: StoreState
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Health")].status
+      name: Healthy
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: TiFlash defines a TiFlash instance
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              cluster:
+                description: Cluster is a reference of tidb cluster
+                properties:
+                  name:
+                    type: string
+                required:
+                - name
+                type: object
+              config:
+                description: Config defines config file of TiFlash
+                type: string
+              image:
+                description: |-
+                  Image is tiflash's image
+                  If tag is omitted, version will be used as the image tag.
+                  Default is pingcap/tiflash
+                type: string
+              logTailer:
+                description: |-
+                  LogTailer defines the sidercar log tailer config of TiFlash.
+                  We always use sidecar to tail the log of TiFlash now.
+                properties:
+                  image:
+                    description: |-
+                      Image to tail log to stdout
+                      Default is busybox:1.37.0
+                    type: string
+                  resources:
+                    description: ResourceRequirements defines the resource requirements
+                      for the log sidecar.
+                    properties:
+                      cpu:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      memory:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                    type: object
+                type: object
+              overlay:
+                description: |-
+                  Overlay defines a k8s native resource template patch
+                  All resources(pod, pvcs, ...) managed by TiFlash can be overlayed by this field
+                x-kubernetes-preserve-unknown-fields: true
+              proxyConfig:
+                description: ProxyConfig defines config file of TiFlash proxy
+                type: string
+              resources:
+                description: Resources defines resource required by TiFlash
+                properties:
+                  cpu:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                  memory:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
+                type: object
+              server:
+                description: Server defines the server config of TiFlash
+                properties:
+                  ports:
+                    description: Ports defines all ports listened by tiflash
+                    properties:
+                      flash:
+                        description: Port defines a listen port
+                        properties:
+                          port:
+                            format: int32
+                            type: integer
+                        required:
+                        - port
+                        type: object
+                      metrics:
+                        description: Port defines a listen port
+                        properties:
+                          port:
+                            format: int32
+                            type: integer
+                        required:
+                        - port
+                        type: object
+                      proxy:
+                        description: Port defines a listen port
+                        properties:
+                          port:
+                            format: int32
+                            type: integer
+                        required:
+                        - port
+                        type: object
+                      proxyStatus:
+                        description: Port defines a listen port
+                        properties:
+                          port:
+                            format: int32
+                            type: integer
+                        required:
+                        - port
+                        type: object
+                    type: object
+                type: object
+              subdomain:
+                description: |-
+                  Subdomain means the subdomain of the exported TiFlash dns.
+                  A same TiFlash group will use a same subdomain
+                type: string
+              topology:
+                additionalProperties:
+                  type: string
+                description: |-
+                  Topology defines the topology domain of this pd instance
+                  It will be translated into a node affinity config
+                  Topology cannot be changed
+                type: object
+              version:
+                description: Version specifies the TiFlash version
+                type: string
+              volumes:
+                description: Volumes defines data volume of TiFlash
+                items:
+                  description: |-
+                    Volume defines a persistent volume, it will be mounted at a specified root path
+                    A volume can be mounted for multiple different usages.
+                    For example, a volume can be mounted for both data and raft log.
+                  properties:
+                    for:
+                      description: |-
+                        For defines the usage of this volume
+                        At least one usage is needed for a new volume
+                      items:
+                        properties:
+                          subPath:
+                            description: |-
+                              SubPath is the relative path of the volume's mount path.
+                              The default value of sub path is determined by the usage type.
+                            type: string
+                          type:
+                            description: |-
+                              Type is a usage type of the volume.
+                              A volume can be defined for multiple usages.
+                            type: string
+                        required:
+                        - type
+                        type: object
+                      type: array
+                    name:
+                      description: |-
+                        Name is volume name.
+                        If not specified, the PVC name will be "{component}-{podName}"
+                      type: string
+                    path:
+                      description: Path is mount path of this volume
+                      type: string
+                    storage:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      description: Storage defines the request size of this volume
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    storageClassName:
+                      description: |-
+                        StorageClassName means the storage class the volume used.
+                        You can modify volumes' attributes by changing the StorageClass
+                        when VolumeAttributesClass is not available.
+                        Note that only newly created PV will use the new StorageClass.
+                      type: string
+                    volumeAttributesClassName:
+                      description: |-
+                        VolumeAttributesClassName means the VolumeAttributesClass the volume used.
+                        You can modify volumes' attributes by changing it.
+                        This feature is introduced since K8s 1.29 as alpha feature and disabled by default.
+                        It's only available when the feature is enabled.
+                      type: string
+                  required:
+                  - for
+                  - path
+                  - storage
+                  type: object
+                type: array
+            required:
+            - cluster
+            - config
+            - subdomain
+            - version
+            - volumes
+            type: object
+          status:
+            properties:
+              collisionCount:
+                description: |-
+                  CollisionCount is the count of hash collisions. The controller
+                  uses this field as a collision avoidance mechanism when it needs to create the name for the
+                  newest ControllerRevision.
+                format: int32
+                type: integer
+              conditions:
+                description: Conditions contain details of the current state.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              currentRevision:
+                description: CurrentRevision is the revision of the Controller that
+                  created the resource.
+                type: string
+              id:
+                description: Store ID
+                type: string
+              observedGeneration:
+                description: |-
+                  ObservedGeneration is the most recent generation observed by the controller.
+                  It's used to determine whether the controller has reconciled the latest spec.
+                format: int64
+                type: integer
+              state:
+                description: Store State
+                type: string
+              updateRevision:
+                description: UpdateRevision is the revision of the Controller that
+                  should modify the resource.
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

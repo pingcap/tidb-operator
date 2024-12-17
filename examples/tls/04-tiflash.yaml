@@ -1,0 +1,27 @@
+apiVersion: core.pingcap.com/v1alpha1
+kind: TiFlashGroup
+metadata:
+  name: tiflash
+  labels:
+    pingcap.com/group: tiflash
+    pingcap.com/component: tiflash
+    pingcap.com/cluster: tls
+spec:
+  cluster:
+    name: tls
+  version: v8.1.0
+  replicas: 1
+  template:
+    spec:
+      config: |
+        [security]
+        cert_allowed_cn = ["TiDB"]
+      proxyConfig: |
+        [security]
+        cert-allowed-cn = ["TiDB"]
+      volumes:
+      - name: data
+        path: /data0
+        for:
+        - type: data
+        storage: 100Gi
