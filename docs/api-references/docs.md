@@ -5419,29 +5419,6 @@ Note that the following builtin env vars will be overwritten by values set here
 </tr>
 <tr>
 <td>
-<code>from</code></br>
-<em>
-<a href="#tidbaccessconfig">
-TiDBAccessConfig
-</a>
-</em>
-</td>
-<td>
-<p>From is the tidb cluster that needs to backup.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>tikvGCLifeTime</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
 <code>StorageProvider</code></br>
 <em>
 <a href="#storageprovider">
@@ -5454,30 +5431,6 @@ StorageProvider
 (Members of <code>StorageProvider</code> are embedded into this type.)
 </p>
 <p>StorageProvider configures where and how backups should be stored.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>storageClassName</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>The storageClassName of the persistent volume for Backup data storage.
-Defaults to Kubernetes default storage class.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>storageSize</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>StorageSize is the request storage size for backup job</p>
 </td>
 </tr>
 <tr>
@@ -5514,19 +5467,7 @@ int
 </em>
 </td>
 <td>
-<em>(Optional)</em>
-<p>ResumeGcSchedule indicates whether resume gc and pd scheduler for EBS volume snapshot backup
-Concurrency is the concurrency of compact backup job</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>resumeGcSchedule</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
+<p>Concurrency is the concurrency of compact backup job</p>
 </td>
 </tr>
 <tr>
@@ -5684,17 +5625,6 @@ BackoffRetryPolicy
 <td>
 <em>(Optional)</em>
 <p>Additional volume mounts of component pod.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>volumeBackupInitJobMaxActiveSeconds</code></br>
-<em>
-int
-</em>
-</td>
-<td>
-<p>VolumeBackupInitJobMaxActiveSeconds represents the deadline (in seconds) of the vbk init job</p>
 </td>
 </tr>
 </table>
@@ -5774,29 +5704,6 @@ Note that the following builtin env vars will be overwritten by values set here
 </tr>
 <tr>
 <td>
-<code>from</code></br>
-<em>
-<a href="#tidbaccessconfig">
-TiDBAccessConfig
-</a>
-</em>
-</td>
-<td>
-<p>From is the tidb cluster that needs to backup.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>tikvGCLifeTime</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
 <code>StorageProvider</code></br>
 <em>
 <a href="#storageprovider">
@@ -5809,30 +5716,6 @@ StorageProvider
 (Members of <code>StorageProvider</code> are embedded into this type.)
 </p>
 <p>StorageProvider configures where and how backups should be stored.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>storageClassName</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>The storageClassName of the persistent volume for Backup data storage.
-Defaults to Kubernetes default storage class.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>storageSize</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>StorageSize is the request storage size for backup job</p>
 </td>
 </tr>
 <tr>
@@ -5869,19 +5752,7 @@ int
 </em>
 </td>
 <td>
-<em>(Optional)</em>
-<p>ResumeGcSchedule indicates whether resume gc and pd scheduler for EBS volume snapshot backup
-Concurrency is the concurrency of compact backup job</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>resumeGcSchedule</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
+<p>Concurrency is the concurrency of compact backup job</p>
 </td>
 </tr>
 <tr>
@@ -6039,17 +5910,6 @@ BackoffRetryPolicy
 <td>
 <em>(Optional)</em>
 <p>Additional volume mounts of component pod.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>volumeBackupInitJobMaxActiveSeconds</code></br>
-<em>
-int
-</em>
-</td>
-<td>
-<p>VolumeBackupInitJobMaxActiveSeconds represents the deadline (in seconds) of the vbk init job</p>
 </td>
 </tr>
 </tbody>
@@ -17517,7 +17377,6 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName
 <p>
 (<em>Appears on:</em>
 <a href="#backupspec">BackupSpec</a>, 
-<a href="#compactspec">CompactSpec</a>, 
 <a href="#restorespec">RestoreSpec</a>)
 </p>
 <p>

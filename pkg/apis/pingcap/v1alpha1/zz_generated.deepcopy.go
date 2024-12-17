@@ -937,22 +937,7 @@ func (in *CompactSpec) DeepCopyInto(out *CompactSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.From != nil {
-		in, out := &in.From, &out.From
-		*out = new(TiDBAccessConfig)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.TikvGCLifeTime != nil {
-		in, out := &in.TikvGCLifeTime, &out.TikvGCLifeTime
-		*out = new(string)
-		**out = **in
-	}
 	in.StorageProvider.DeepCopyInto(&out.StorageProvider)
-	if in.StorageClassName != nil {
-		in, out := &in.StorageClassName, &out.StorageClassName
-		*out = new(string)
-		**out = **in
-	}
 	if in.Tolerations != nil {
 		in, out := &in.Tolerations, &out.Tolerations
 		*out = make([]v1.Toleration, len(*in))
