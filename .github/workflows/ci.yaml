@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   image:
-    runs-on: self-hosted
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - name: cache image builder
@@ -50,7 +50,7 @@ jobs:
         V_PLATFORMS=linux/arm64,linux/amd64 make image
 
   build:
-    runs-on: self-hosted
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - name: setup go
@@ -63,7 +63,7 @@ jobs:
         make build
   
   lint:
-    runs-on: self-hosted
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - name: setup go
@@ -81,7 +81,7 @@ jobs:
         make lint
 
   unit:
-    runs-on: self-hosted
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - name: setup go
@@ -94,7 +94,7 @@ jobs:
         make unit
 
   verify:
-    runs-on: self-hosted
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
     - name: setup go
