@@ -1,0 +1,30 @@
+apiVersion: core.pingcap.com/v1alpha1
+kind: TiKVGroup
+metadata:
+  name: tikv
+  labels:
+    pingcap.com/group: tikv
+    pingcap.com/component: tikv
+    pingcap.com/cluster: basic
+spec:
+  cluster:
+    name: basic
+  version: v8.1.0
+  replicas: 3
+  template:
+    metadata:
+      annotations:
+        author: pingcap
+    spec:
+      resources:
+        cpu: "4"
+        memory: 8Gi
+      config: |
+        [log]
+        level = "info"
+      volumes:
+      - name: data
+        path: /var/lib/tikv
+        for:
+        - type: data
+        storage: 100Gi

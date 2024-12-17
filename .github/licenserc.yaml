@@ -1,0 +1,28 @@
+header:
+  license:
+    spdx-id: Apache-2.0
+    copyright-owner: PingCAP, Inc.
+    copyright-year: '2024'
+  paths-ignore:
+    - "**/.git/**"
+    - ".github/"
+    - "_output/**"
+    - "examples/**"
+    - "image/**"
+    - "manifests/**"
+    - ".gitignore"
+    - ".dockerignore"
+    - ".golangci.yml"
+    - "LICENSES/"
+    - "**/*.md"
+    - ".codecov.yml"
+    - "**/go.mod"
+    - "**/go.sum"
+    - "**/go.work"
+    - "**/go.work.sum"
+    - "**/LICENSE"
+    - "third_party/**"
+    - "pkg/**/*mock.go"
+
+
+  comment: on-failure

@@ -1,0 +1,29 @@
+apiVersion: core.pingcap.com/v1alpha1
+kind: TiDBGroup
+metadata:
+  name: tidb
+  labels:
+    pingcap.com/group: tidb
+    pingcap.com/component: tidb
+    pingcap.com/cluster: schedule
+spec:
+  cluster:
+    name: schedule
+  version: v8.1.0
+  replicas: 2
+  # All TiDB instances in the group will evenly spread in differnet zones
+  schedulePolicies:
+    - type: EvenlySpread
+      evenlySpread:
+        topologies:
+          - topology:
+              topology.kubernetes.io/zone: us-west-2a
+          - topology:
+              topology.kubernetes.io/zone: us-west-2b
+          - topology:
+              topology.kubernetes.io/zone: us-west-2c
+  template:
+    spec:
+      config: ""
+
+

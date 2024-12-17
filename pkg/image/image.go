@@ -1,0 +1,105 @@
+// Copyright 2024 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// This package is defined to return image of components
+package image
+
+import (
+	"fmt"
+
+	"github.com/distribution/reference"
+)
+
+const (
+	PD      Untagged = "pingcap/pd"
+	TiDB    Untagged = "pingcap/tidb"
+	TiKV    Untagged = "pingcap/tikv"
+	TiFlash Untagged = "pingcap/tiflash"
+
+	// TODO: use versioned image
+	PrestopChecker Tagged = "pingcap/prestop-checker:latest"
+)
+
+// Tagged is image with image tag
+type Tagged string
+
+// Untagged is image without image tag
+type Untagged string
+
+// Note: img must be validated before calling Version
+func (t Tagged) Image(img *string) string {
+	image := string(t)
+	if img != nil {
+		image = *img
+	}
+
+	return image
+}
+
+// Note: img must be validated before calling Version
+func (t Untagged) Image(img *string, version string) string {
+	image := string(t)
+	if img != nil {
+		image = *img
+	}
+	s, err := withVersion(image, version)
+	if err != nil {
+		panic(err)
+	}
+
+	return s
+}
+
+func withVersion(img, version string) (string, error) {
+	named, exist, err := validate(img)
+	if err != nil {
+		return "", err
+	}
+	if !exist {
+		return img, nil
+	}
+
+	tagged, err := reference.WithTag(named, version)
+	if err != nil {
+		return "", fmt.Errorf("cannot override version: %w", err)
+	}
+	return tagged.String(), nil
+}
+
+func Validate(img string) error {
+	_, _, err := validate(img)
+	return err
+}
+
+func validate(img string) (_ reference.Named, isNamed bool, _ error) {
+	repo, err := reference.Parse(img)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if _, ok := repo.(reference.Tagged); ok {
+		return nil, false, nil
+	}
+
+	if _, ok := repo.(reference.Digested); ok {
+		return nil, false, nil
+	}
+
+	named, ok := repo.(reference.Named)
+	if !ok {
+		return nil, false, fmt.Errorf("reference is not named")
+	}
+
+	return named, true, nil
+}

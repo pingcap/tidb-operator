@@ -1,0 +1,26 @@
+apiVersion: core.pingcap.com/v1alpha1
+kind: TiDBGroup
+metadata:
+  name: tidb
+  labels:
+    pingcap.com/group: tidb
+    pingcap.com/component: tidb
+    pingcap.com/cluster: overlay
+spec:
+  cluster:
+    name: overlay
+  version: v8.1.0
+  replicas: 2
+  template:
+    spec:
+      config: ""
+      overlay:
+        pod:
+          spec:
+            terminationGracePeriodSeconds: 120
+            securityContext:
+              sysctls:
+                - name: "net.ipv4.tcp_keepalive_intvl"
+                  value: "75"
+                - name: "net.ipv4.tcp_keepalive_time"
+                  value: "300"

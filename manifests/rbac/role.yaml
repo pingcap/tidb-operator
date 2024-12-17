@@ -1,0 +1,131 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tidb-operator
+rules:
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+- apiGroups:
+  - apps
+  resources:
+  - controllerrevisions
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - events
+  - persistentvolumeclaims
+  - pods
+  - services
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  - persistentvolumes
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - core.pingcap.com
+  resources:
+  - clusters
+  - pdgroups/status
+  - tidbgroups/status
+  - tiflashgroups/status
+  - tikvgroups/status
+  verbs:
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - core.pingcap.com
+  resources:
+  - clusters/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - core.pingcap.com
+  resources:
+  - pdgroups
+  - tidbgroups
+  - tiflashgroups
+  - tikvgroups
+  verbs:
+  - delete
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - core.pingcap.com
+  resources:
+  - pds
+  - tidbs
+  - tiflashes
+  - tikvs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - core.pingcap.com
+  resources:
+  - pds/status
+  - tidbs/status
+  - tiflashes/status
+  - tikvs/status
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - storage.k8s.io
+  resources:
+  - storageclasses
+  - volumeattributesclasses
+  verbs:
+  - get
+  - list
+  - watch

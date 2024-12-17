@@ -1,0 +1,225 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: tls-selfsigned-ca-issuer
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tls-ca
+spec:
+  secretName: tls-ca-secret
+  commonName: "TiDB CA"
+  isCA: true
+  issuerRef:
+    name: tls-selfsigned-ca-issuer
+    kind: Issuer
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: tls-tidb-issuer
+spec:
+  ca:
+    secretName: tls-ca-secret
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tls-tidb-server-secret
+spec:
+  secretName: tls-tidb-server-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+      - PingCAP
+  commonName: "TiDB Server"
+  usages:
+    - server auth
+  dnsNames:
+    - "tls-tidb"
+    - "tls-tidb.default"
+    - "tls-tidb.default.svc"
+    - "*.tls-tidb"
+    - "*.tls-tidb.default"
+    - "*.tls-tidb.default.svc"
+  ipAddresses:
+    - 127.0.0.1
+    - ::1
+  issuerRef:
+    name: tls-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tls-tidb-client-secret
+spec:
+  secretName: tls-tidb-client-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+      - PingCAP
+  commonName: "TiDB Client"
+  usages:
+    - client auth
+  issuerRef:
+    name: tls-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tls-pd-cluster-secret
+spec:
+  secretName: tls-pd-cluster-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+      - PingCAP
+  commonName: "TiDB"
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+  - "tls-pd"
+  - "tls-pd.default"
+  - "tls-pd.default.svc"
+  - "tls-pd-peer"
+  - "tls-pd-peer.default"
+  - "tls-pd-peer.default.svc"
+  - "*.tls-pd-peer"
+  - "*.tls-pd-peer.default"
+  - "*.tls-pd-peer.default.svc"
+  ipAddresses:
+  - 127.0.0.1
+  - ::1
+  issuerRef:
+    name: tls-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tls-tikv-cluster-secret
+spec:
+  secretName: tls-tikv-cluster-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+      - PingCAP
+  commonName: "TiDB"
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+  - "tls-tikv"
+  - "tls-tikv.default"
+  - "tls-tikv.default.svc"
+  - "tls-tikv-peer"
+  - "tls-tikv-peer.default"
+  - "tls-tikv-peer.default.svc"
+  - "*.tls-tikv-peer"
+  - "*.tls-tikv-peer.default"
+  - "*.tls-tikv-peer.default.svc"
+  ipAddresses:
+  - 127.0.0.1
+  - ::1
+  issuerRef:
+    name: tls-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tls-tidb-cluster-secret
+spec:
+  secretName: tls-tidb-cluster-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+      - PingCAP
+  commonName: "TiDB"
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+  - "tls-tidb"
+  - "tls-tidb.default"
+  - "tls-tidb.default.svc"
+  - "tls-tidb-peer"
+  - "tls-tidb-peer.default"
+  - "tls-tidb-peer.default.svc"
+  - "*.tls-tidb-peer"
+  - "*.tls-tidb-peer.default"
+  - "*.tls-tidb-peer.default.svc"
+  ipAddresses:
+  - 127.0.0.1
+  - ::1
+  issuerRef:
+    name: tls-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tls-tiflash-cluster-secret
+spec:
+  secretName: tls-tiflash-cluster-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+      - PingCAP
+  commonName: "TiDB"
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+  - "tls-tiflash"
+  - "tls-tiflash.default"
+  - "tls-tiflash.default.svc"
+  - "tls-tiflash-peer"
+  - "tls-tiflash-peer.default"
+  - "tls-tiflash-peer.default.svc"
+  - "*.tls-tiflash-peer"
+  - "*.tls-tiflash-peer.default"
+  - "*.tls-tiflash-peer.default.svc"
+  ipAddresses:
+  - 127.0.0.1
+  - ::1
+  issuerRef:
+    name: tls-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tls-cluster-client-secret
+spec:
+  secretName: tls-cluster-client-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+      - PingCAP
+  commonName: "TiDB"
+  usages:
+    - client auth
+  issuerRef:
+    name: tls-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io

@@ -1,0 +1,33 @@
+apiVersion: core.pingcap.com/v1alpha1
+kind: PDGroup
+metadata:
+  name: pd
+  labels:
+    pingcap.com/group: pd
+    pingcap.com/component: pd
+    pingcap.com/cluster: schedule
+spec:
+  cluster:
+    name: schedule
+  version: v8.1.0
+  replicas: 3
+  # All PD instances in the group will evenly spread in differnet zones
+  schedulePolicies:
+    - type: EvenlySpread
+      evenlySpread:
+        topologies:
+          - topology:
+              topology.kubernetes.io/zone: us-west-2a
+          - topology:
+              topology.kubernetes.io/zone: us-west-2b
+          - topology:
+              topology.kubernetes.io/zone: us-west-2c
+  template:
+    spec:
+      config: ""
+      volumes:
+      - name: data
+        path: /var/lib/pd
+        for:
+        - type: data
+        storage: 20Gi

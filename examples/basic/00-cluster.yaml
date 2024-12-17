@@ -1,0 +1,5 @@
+apiVersion: core.pingcap.com/v1alpha1
+kind: Cluster
+metadata:
+  name: basic
+spec: {}

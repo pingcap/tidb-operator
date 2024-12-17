@@ -1,0 +1,7 @@
+apiVersion: core.pingcap.com/v1alpha1
+kind: Cluster
+metadata:
+  name: tls
+spec:
+  tlsCluster:
+    enabled: true
