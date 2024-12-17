@@ -3505,17 +3505,8 @@ type CompactSpec struct {
 	// - BR_LOG_TO_TERM
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
-	// From is the tidb cluster that needs to backup.
-	From           *TiDBAccessConfig `json:"from,omitempty"`
-	TikvGCLifeTime *string           `json:"tikvGCLifeTime,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
-	// The storageClassName of the persistent volume for Backup data storage.
-	// Defaults to Kubernetes default storage class.
-	// +optional
-	StorageClassName *string `json:"storageClassName,omitempty"`
-	// StorageSize is the request storage size for backup job
-	StorageSize string `json:"storageSize,omitempty"`
 	// StartTs is the start ts of the compact backup.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
 	StartTs string `json:"startTs,omitempty"`
@@ -3524,12 +3515,9 @@ type CompactSpec struct {
 	// Default is current timestamp.
 	// +optional
 	EndTs string `json:"endTs,omitempty"`
-	// ResumeGcSchedule indicates whether resume gc and pd scheduler for EBS volume snapshot backup
-	// +optional
 	// Concurrency is the concurrency of compact backup job
 	// +default=4
 	Concurrency      int  `json:"concurrency,omitempty"`
-	ResumeGcSchedule bool `json:"resumeGcSchedule,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
@@ -3567,9 +3555,6 @@ type CompactSpec struct {
 	// Additional volume mounts of component pod.
 	// +optional
 	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
-	// VolumeBackupInitJobMaxActiveSeconds represents the deadline (in seconds) of the vbk init job
-	// +kubebuilder:default=600
-	VolumeBackupInitJobMaxActiveSeconds int `json:"volumeBackupInitJobMaxActiveSeconds,omitempty"`
 }
 
 type CompactStatus struct {
