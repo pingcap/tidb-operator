@@ -8320,23 +8320,6 @@ spec:
                   - name
                   type: object
                 type: array
-              from:
-                properties:
-                  host:
-                    type: string
-                  port:
-                    format: int32
-                    type: integer
-                  secretName:
-                    type: string
-                  tlsClientSecretName:
-                    type: string
-                  user:
-                    type: string
-                required:
-                - host
-                - secretName
-                type: object
               gcs:
                 properties:
                   bucket:
@@ -9200,8 +9183,6 @@ spec:
                       x-kubernetes-int-or-string: true
                     type: object
                 type: object
-              resumeGcSchedule:
-                type: boolean
               s3:
                 properties:
                   acl:
@@ -9235,12 +9216,6 @@ spec:
                 type: string
               startTs:
                 type: string
-              storageClassName:
-                type: string
-              storageSize:
-                type: string
-              tikvGCLifeTime:
-                type: string
               tolerations:
                 items:
                   properties:
@@ -9261,9 +9236,6 @@ spec:
                 type: string
               useKMS:
                 type: boolean
-              volumeBackupInitJobMaxActiveSeconds:
-                default: 600
-                type: integer
             type: object
           status:
             properties:
