@@ -1,4 +1,4 @@
-name: ci
+name: ci-v2
 
 on:
   push:
@@ -86,6 +86,14 @@ jobs:
     - name: unit test
       run: |
         make unit
+
+    - name: Upload test coverage
+      uses: codecov/codecov-action@v5
+      with:
+        flags: unittest
+        token: ${{ secrets.CODECOV_TOKEN }}
+        verbose: true
+        files: ./coverage.txt
 
   verify:
     runs-on: ubuntu-24.04
