@@ -2196,7 +2196,7 @@ type BackupSpec struct {
 	// When a GC happens, the current time minus this value is the safe point.
 	TikvGCLifeTime *string `json:"tikvGCLifeTime,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
-	// *** Note: This field should generally not be left empty, unless you are certain the storage provider 
+	// *** Note: This field should generally not be left empty, unless you are certain the storage provider
 	// *** can be obtained from another source, such as a schedule CR.
 	StorageProvider `json:",inline"`
 	// The storageClassName of the persistent volume for Backup data storage.
@@ -3523,7 +3523,7 @@ type CompactSpec struct {
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
-	// *** Note: This field should generally not be left empty, unless you are certain the storage provider 
+	// *** Note: This field should generally not be left empty, unless you are certain the storage provider
 	// *** can be obtained from another source, such as a schedule CR.
 	StorageProvider `json:",inline"`
 	// StartTs is the start ts of the compact backup.
@@ -3546,7 +3546,7 @@ type CompactSpec struct {
 	// +optional
 	ToolImage string `json:"toolImage,omitempty"`
 	// BRConfig is the configs for BR
-	// *** Note: This field should generally not be left empty, unless you are certain the BR config 
+	// *** Note: This field should generally not be left empty, unless you are certain the BR config
 	// *** can be obtained from another source, such as a schedule CR.
 	BR *BRConfig `json:"br,omitempty"`
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.

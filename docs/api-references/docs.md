@@ -189,7 +189,9 @@ StorageProvider
 <p>
 (Members of <code>StorageProvider</code> are embedded into this type.)
 </p>
-<p>StorageProvider configures where and how backups should be stored.</p>
+<p>StorageProvider configures where and how backups should be stored.
+*** Note: This field should generally not be left empty, unless you are certain the storage provider
+*** can be obtained from another source, such as a schedule CR.</p>
 </td>
 </tr>
 <tr>
@@ -226,7 +228,9 @@ BRConfig
 </em>
 </td>
 <td>
-<p>BRConfig is the configs for BR</p>
+<p>BRConfig is the configs for BR
+*** Note: This field should generally not be left empty, unless you are certain the BR config
+*** can be obtained from another source, such as a schedule CR.</p>
 </td>
 </tr>
 <tr>
@@ -647,6 +651,17 @@ string
 </tr>
 <tr>
 <td>
+<code>compactInterval</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogBackupInterval is the interval of log backup.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>backupTemplate</code></br>
 <em>
 <a href="#backupspec">
@@ -670,6 +685,20 @@ BackupSpec
 <td>
 <em>(Optional)</em>
 <p>LogBackupTemplate is the specification of the log backup structure to get scheduled.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>compactBackupTemplate</code></br>
+<em>
+<a href="#compactspec">
+CompactSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CompactBackupTemplate is the specification of the compact backup structure to get scheduled.</p>
 </td>
 </tr>
 <tr>
@@ -708,6 +737,37 @@ string
 <td>
 <em>(Optional)</em>
 <p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>br</code></br>
+<em>
+<a href="#brconfig">
+BRConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>BRConfig is the configs for BR</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>StorageProvider</code></br>
+<em>
+<a href="#storageprovider">
+StorageProvider
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>StorageProvider</code> are embedded into this type.)
+</p>
+<em>(Optional)</em>
+<p>StorageProvider configures where and how backups should be stored.</p>
 </td>
 </tr>
 </table>
@@ -3456,6 +3516,7 @@ string
 <h3 id="brconfig">BRConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#backupschedulespec">BackupScheduleSpec</a>, 
 <a href="#backupspec">BackupSpec</a>, 
 <a href="#compactspec">CompactSpec</a>, 
 <a href="#restorespec">RestoreSpec</a>)
@@ -3948,6 +4009,17 @@ string
 </tr>
 <tr>
 <td>
+<code>compactInterval</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogBackupInterval is the interval of log backup.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>backupTemplate</code></br>
 <em>
 <a href="#backupspec">
@@ -3971,6 +4043,20 @@ BackupSpec
 <td>
 <em>(Optional)</em>
 <p>LogBackupTemplate is the specification of the log backup structure to get scheduled.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>compactBackupTemplate</code></br>
+<em>
+<a href="#compactspec">
+CompactSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CompactBackupTemplate is the specification of the compact backup structure to get scheduled.</p>
 </td>
 </tr>
 <tr>
@@ -4009,6 +4095,37 @@ string
 <td>
 <em>(Optional)</em>
 <p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>br</code></br>
+<em>
+<a href="#brconfig">
+BRConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>BRConfig is the configs for BR</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>StorageProvider</code></br>
+<em>
+<a href="#storageprovider">
+StorageProvider
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>StorageProvider</code> are embedded into this type.)
+</p>
+<em>(Optional)</em>
+<p>StorageProvider configures where and how backups should be stored.</p>
 </td>
 </tr>
 </tbody>
@@ -4062,6 +4179,19 @@ Kubernetes meta/v1.Time
 </td>
 <td>
 <p>LastBackupTime represents the last time the backup was successfully created.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastCompactTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>LastCompactTime represents the time when the last backup was compacted</p>
 </td>
 </tr>
 <tr>
@@ -4203,7 +4333,9 @@ StorageProvider
 <p>
 (Members of <code>StorageProvider</code> are embedded into this type.)
 </p>
-<p>StorageProvider configures where and how backups should be stored.</p>
+<p>StorageProvider configures where and how backups should be stored.
+*** Note: This field should generally not be left empty, unless you are certain the storage provider
+*** can be obtained from another source, such as a schedule CR.</p>
 </td>
 </tr>
 <tr>
@@ -4240,7 +4372,9 @@ BRConfig
 </em>
 </td>
 <td>
-<p>BRConfig is the configs for BR</p>
+<p>BRConfig is the configs for BR
+*** Note: This field should generally not be left empty, unless you are certain the BR config
+*** can be obtained from another source, such as a schedule CR.</p>
 </td>
 </tr>
 <tr>
@@ -5439,7 +5573,9 @@ StorageProvider
 <p>
 (Members of <code>StorageProvider</code> are embedded into this type.)
 </p>
-<p>StorageProvider configures where and how backups should be stored.</p>
+<p>StorageProvider configures where and how backups should be stored.
+*** Note: This field should generally not be left empty, unless you are certain the storage provider
+*** can be obtained from another source, such as a schedule CR.</p>
 </td>
 </tr>
 <tr>
@@ -5517,7 +5653,9 @@ BRConfig
 </em>
 </td>
 <td>
-<p>BRConfig is the configs for BR</p>
+<p>BRConfig is the configs for BR
+*** Note: This field should generally not be left empty, unless you are certain the BR config
+*** can be obtained from another source, such as a schedule CR.</p>
 </td>
 </tr>
 <tr>
@@ -5707,6 +5845,7 @@ string
 <h3 id="compactspec">CompactSpec</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#backupschedulespec">BackupScheduleSpec</a>, 
 <a href="#compactbackup">CompactBackup</a>)
 </p>
 <p>
@@ -5775,7 +5914,9 @@ StorageProvider
 <p>
 (Members of <code>StorageProvider</code> are embedded into this type.)
 </p>
-<p>StorageProvider configures where and how backups should be stored.</p>
+<p>StorageProvider configures where and how backups should be stored.
+*** Note: This field should generally not be left empty, unless you are certain the storage provider
+*** can be obtained from another source, such as a schedule CR.</p>
 </td>
 </tr>
 <tr>
@@ -5853,7 +5994,9 @@ BRConfig
 </em>
 </td>
 <td>
-<p>BRConfig is the configs for BR</p>
+<p>BRConfig is the configs for BR
+*** Note: This field should generally not be left empty, unless you are certain the BR config
+*** can be obtained from another source, such as a schedule CR.</p>
 </td>
 </tr>
 <tr>
@@ -16591,6 +16734,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/storage/persistent-volum
 <h3 id="storageprovider">StorageProvider</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#backupschedulespec">BackupScheduleSpec</a>, 
 <a href="#backupspec">BackupSpec</a>, 
 <a href="#compactspec">CompactSpec</a>, 
 <a href="#restorespec">RestoreSpec</a>)
