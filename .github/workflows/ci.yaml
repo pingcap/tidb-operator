@@ -87,6 +87,14 @@ jobs:
       run: |
         make unit
 
+    - name: Upload test coverage
+      uses: codecov/codecov-action@v5
+      with:
+        flags: unittest
+        token: ${{ secrets.CODECOV_TOKEN }}
+        verbose: true
+        files: ./coverage.txt
+
   verify:
     runs-on: ubuntu-24.04
     steps:
