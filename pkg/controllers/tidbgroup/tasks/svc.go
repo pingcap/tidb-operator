@@ -69,7 +69,7 @@ func newHeadlessService(tidbg *v1alpha1.TiDBGroup) *corev1.Service {
 	ipFamilyPolicy := corev1.IPFamilyPolicyPreferDualStack
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      HeadlessServiceName(tidbg.Spec.Cluster.Name, tidbg.Name),
+			Name:      HeadlessServiceName(tidbg.Name),
 			Namespace: tidbg.Namespace,
 			Labels: map[string]string{
 				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
@@ -112,7 +112,7 @@ func newService(tidbg *v1alpha1.TiDBGroup) *corev1.Service {
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-%s", tidbg.Spec.Cluster.Name, tidbg.Name),
+			Name:      tidbg.Name + "-tidb",
 			Namespace: tidbg.Namespace,
 			Labels: map[string]string{
 				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,

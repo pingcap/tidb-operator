@@ -15,10 +15,14 @@
 package tasks
 
 import (
+	"context"
 	"time"
+
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v2"
 )
@@ -32,10 +36,15 @@ func TaskFinalizerDel(c client.Client) task.Task[ReconcileContext] {
 		rtx := ctx.Self()
 		switch {
 		case !rtx.Cluster.GetDeletionTimestamp().IsZero():
-			if err := k8s.EnsureInstanceSubResourceDeleted(ctx, c,
-				rtx.TiFlash.Namespace, rtx.TiFlash.Name, client.GracePeriodSeconds(1)); err != nil {
+			wait, err := EnsureSubResourcesDeleted(ctx, c, rtx.TiFlash)
+			if err != nil {
 				return task.Fail().With("cannot delete sub resources: %w", err)
 			}
+
+			if wait {
+				return task.Wait().With("wait all subresources deleted")
+			}
+
 			// whole cluster is deleting
 			if err := k8s.RemoveFinalizer(ctx, c, rtx.TiFlash); err != nil {
 				return task.Fail().With("cannot remove finalizer: %w", err)
@@ -46,9 +55,13 @@ func TaskFinalizerDel(c client.Client) task.Task[ReconcileContext] {
 			return task.Retry(removingWaitInterval).With("wait until the store is removed")
 
 		case rtx.StoreState == v1alpha1.StoreStateRemoved || rtx.StoreID == "":
-			if err := k8s.EnsureInstanceSubResourceDeleted(ctx, c,
-				rtx.TiFlash.Namespace, rtx.TiFlash.Name, client.GracePeriodSeconds(1)); err != nil {
-				return task.Fail().With("cannot delete subresources: %w", err)
+			wait, err := EnsureSubResourcesDeleted(ctx, c, rtx.TiFlash)
+			if err != nil {
+				return task.Fail().With("cannot delete sub resources: %w", err)
+			}
+
+			if wait {
+				return task.Wait().With("wait all subresources deleted")
 			}
 			// Store ID is empty may because of tiflash is not initialized
 			// TODO: check whether tiflash is initialized
@@ -75,4 +88,21 @@ func TaskFinalizerAdd(c client.Client) task.Task[ReconcileContext] {
 		}
 		return task.Complete().With("finalizer is added")
 	})
+}
+
+func EnsureSubResourcesDeleted(ctx context.Context, c client.Client, f *v1alpha1.TiFlash) (wait bool, _ error) {
+	wait1, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromTiFlash(f), &corev1.PodList{})
+	if err != nil {
+		return false, err
+	}
+	wait2, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromTiFlash(f), &corev1.ConfigMapList{})
+	if err != nil {
+		return false, err
+	}
+	wait3, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromTiFlash(f), &corev1.PersistentVolumeClaimList{})
+	if err != nil {
+		return false, err
+	}
+
+	return wait1 || wait2 || wait3, nil
 }

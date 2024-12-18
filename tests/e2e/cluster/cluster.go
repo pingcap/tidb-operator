@@ -580,7 +580,8 @@ var _ = Describe("TiDB Cluster", func() {
 			By("Recording the pod's UID")
 			listOpts := metav1.ListOptions{
 				LabelSelector: fmt.Sprintf("%s=%s,%s=%s",
-					v1alpha1.LabelKeyCluster, tc.Name, v1alpha1.LabelKeyGroup, dbg.Name)}
+					v1alpha1.LabelKeyCluster, tc.Name, v1alpha1.LabelKeyGroup, dbg.Name),
+			}
 			podList, err := clientSet.CoreV1().Pods(tc.Namespace).List(ctx, listOpts)
 			Expect(err).To(BeNil())
 			Expect(len(podList.Items)).To(Equal(1))
@@ -657,7 +658,8 @@ var _ = Describe("TiDB Cluster", func() {
 			By("Checking the pvc size")
 			listOpts := metav1.ListOptions{
 				LabelSelector: fmt.Sprintf("%s=%s,%s=%s",
-					v1alpha1.LabelKeyCluster, tc.Name, v1alpha1.LabelKeyGroup, kvg.Name)}
+					v1alpha1.LabelKeyCluster, tc.Name, v1alpha1.LabelKeyGroup, kvg.Name),
+			}
 			pvcList, err := clientSet.CoreV1().PersistentVolumeClaims(tc.Namespace).List(ctx, listOpts)
 			Expect(err).To(BeNil())
 			Expect(len(pvcList.Items)).To(Equal(1))
@@ -713,7 +715,8 @@ var _ = Describe("TiDB Cluster", func() {
 			By("Recording the pod's UID")
 			listOpts := metav1.ListOptions{
 				LabelSelector: fmt.Sprintf("%s=%s,%s=%s",
-					v1alpha1.LabelKeyCluster, tc.Name, v1alpha1.LabelKeyGroup, dbg.Name)}
+					v1alpha1.LabelKeyCluster, tc.Name, v1alpha1.LabelKeyGroup, dbg.Name),
+			}
 			podList, err := clientSet.CoreV1().Pods(tc.Namespace).List(ctx, listOpts)
 			Expect(err).To(BeNil())
 			Expect(len(podList.Items)).To(Equal(1))
@@ -765,7 +768,8 @@ var _ = Describe("TiDB Cluster", func() {
 			By("Checking the number of ControllerRevisions, and revision names in tidb group's status")
 			listOpts := metav1.ListOptions{
 				LabelSelector: fmt.Sprintf("%s=%s,%s=%s",
-					v1alpha1.LabelKeyCluster, tc.Name, v1alpha1.LabelKeyGroup, dbg.Name)}
+					v1alpha1.LabelKeyCluster, tc.Name, v1alpha1.LabelKeyGroup, dbg.Name),
+			}
 			crList, err := clientSet.AppsV1().ControllerRevisions(tc.Namespace).List(ctx, listOpts)
 			Expect(err).To(BeNil())
 			Expect(len(crList.Items)).To(Equal(1))
@@ -931,7 +935,8 @@ var _ = Describe("TiDB Cluster", func() {
 			By("Checking the config")
 			listOpts := metav1.ListOptions{
 				LabelSelector: fmt.Sprintf("%s=%s,%s=%s",
-					v1alpha1.LabelKeyCluster, tc.Name, v1alpha1.LabelKeyGroup, kvg.Name)}
+					v1alpha1.LabelKeyCluster, tc.Name, v1alpha1.LabelKeyGroup, kvg.Name),
+			}
 			cms, err := clientSet.CoreV1().ConfigMaps(tc.Namespace).List(ctx, listOpts)
 			Expect(err).To(BeNil())
 			Expect(len(cms.Items)).To(Equal(3))
@@ -1004,7 +1009,8 @@ var _ = Describe("TiDB Cluster", func() {
 				By("Checking the logic of rolling update for " + groupName)
 				listOpts := metav1.ListOptions{
 					LabelSelector: fmt.Sprintf("%s=%s,%s=%s",
-						v1alpha1.LabelKeyCluster, tc.Name, v1alpha1.LabelKeyGroup, groupName)}
+						v1alpha1.LabelKeyCluster, tc.Name, v1alpha1.LabelKeyGroup, groupName),
+				}
 
 				By("collecting the events of pods for verifying rolling update")
 				watchCtx, cancel := context.WithCancel(outerCtx)
@@ -1284,7 +1290,8 @@ var _ = Describe("TiDB Cluster", func() {
 				checkComponent := func(groupName, componentName string, expectedReplicas *int32) {
 					listOptions := metav1.ListOptions{
 						LabelSelector: fmt.Sprintf("%s=%s,%s=%s",
-							v1alpha1.LabelKeyCluster, tc.Name, v1alpha1.LabelKeyGroup, groupName)}
+							v1alpha1.LabelKeyCluster, tc.Name, v1alpha1.LabelKeyGroup, groupName),
+					}
 					podList, err := clientSet.CoreV1().Pods(tc.Namespace).List(ctx, listOptions)
 					g.Expect(err).To(BeNil())
 					g.Expect(len(podList.Items)).To(Equal(int(*expectedReplicas)))
@@ -1296,7 +1303,8 @@ var _ = Describe("TiDB Cluster", func() {
 							Name: fmt.Sprintf("%s%s-tls", v1alpha1.NamePrefix, componentName),
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
-									SecretName: tc.TLSClusterSecretName(groupName),
+									// TODO: extract to a common utils
+									SecretName: groupName + "-" + componentName + "-cluster-secret",
 									//nolint:mnd // easy to understand
 									DefaultMode: ptr.To(int32(420)),
 								},
@@ -1332,7 +1340,7 @@ var _ = Describe("TiDB Cluster", func() {
 								Name: v1alpha1.TiDBServerTLSVolumeName,
 								VolumeSource: corev1.VolumeSource{
 									Secret: &corev1.SecretVolumeSource{
-										SecretName: fmt.Sprintf("%s-%s-server-secret", tc.Name, groupName),
+										SecretName: dbg.TiDBServerTLSSecretName(),
 										//nolint:mnd // easy to understand
 										DefaultMode: ptr.To(int32(420)),
 									},
@@ -1518,7 +1526,8 @@ location-labels = ["region", "zone", "host"]`
 			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
 
 			By("Checking the store labels and server labels")
-			svcName := fmt.Sprintf("%s-%s", tc.Name, dbg.Name)
+			// TODO: extract it to a common utils
+			svcName := dbg.Name + "-tidb"
 			dsn, cancel, err := utiltidb.PortForwardAndGetTiDBDSN(fw, tc.Namespace, svcName, "root", "", "test", "charset=utf8mb4")
 			Expect(err).To(BeNil())
 			defer cancel()
@@ -1642,7 +1651,8 @@ location-labels = ["region", "zone", "host"]`
 			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
 
 			By("Connect to the TiDB cluster to run transactions")
-			svcName := fmt.Sprintf("%s-%s", tc.Name, dbg.Name)
+			// TODO: extract it to a common utils
+			svcName := dbg.Name + "-tidb"
 			dsn, cancel, err := utiltidb.PortForwardAndGetTiDBDSN(fw, tc.Namespace, svcName, "root", "", "test", "charset=utf8mb4")
 			Expect(err).To(BeNil())
 			defer cancel()
@@ -1724,7 +1734,8 @@ location-labels = ["region", "zone", "host"]`
 			By("Recording the terminationGracePeriodSeconds before overlay")
 			listOpts := metav1.ListOptions{
 				LabelSelector: fmt.Sprintf("%s=%s,%s=%s",
-					v1alpha1.LabelKeyCluster, tc.Name, v1alpha1.LabelKeyGroup, dbg.Name)}
+					v1alpha1.LabelKeyCluster, tc.Name, v1alpha1.LabelKeyGroup, dbg.Name),
+			}
 			pods, err := clientSet.CoreV1().Pods(tc.Namespace).List(ctx, listOpts)
 			Expect(err).To(BeNil())
 			Expect(len(pods.Items)).To(Equal(1))

@@ -74,3 +74,11 @@ func (f *TiFlash) IsUpToDate() bool {
 func (f *TiFlash) Conditions() []metav1.Condition {
 	return f.Status.Conditions
 }
+
+func (f *TiFlash) Cluster() string {
+	return f.Spec.Cluster.Name
+}
+
+func (*TiFlash) Component() string {
+	return v1alpha1.LabelValComponentTiFlash
+}

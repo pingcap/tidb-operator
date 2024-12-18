@@ -107,7 +107,7 @@ func (*TaskPod) newPod(cluster *v1alpha1.Cluster, _ *v1alpha1.TiFlashGroup, tifl
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: ConfigMapName(tiflash.Name),
+						Name: tiflash.PodName(),
 					},
 				},
 			},
@@ -133,7 +133,7 @@ func (*TaskPod) newPod(cluster *v1alpha1.Cluster, _ *v1alpha1.TiFlashGroup, tifl
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 					// the format is "data{i}-tiflash-xxx" to compatible with TiDB Operator v1
-					ClaimName: PersistentVolumeClaimName(tiflash.Name, i),
+					ClaimName: PersistentVolumeClaimName(tiflash.PodName(), i),
 				},
 			},
 		})
@@ -148,12 +148,11 @@ func (*TaskPod) newPod(cluster *v1alpha1.Cluster, _ *v1alpha1.TiFlashGroup, tifl
 	}
 
 	if cluster.IsTLSClusterEnabled() {
-		groupName := tiflash.Labels[v1alpha1.LabelKeyGroup]
 		vols = append(vols, corev1.Volume{
 			Name: v1alpha1.TiFlashClusterTLSVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: cluster.TLSClusterSecretName(groupName),
+					SecretName: tiflash.TLSClusterSecretName(),
 				},
 			},
 		})
@@ -167,7 +166,7 @@ func (*TaskPod) newPod(cluster *v1alpha1.Cluster, _ *v1alpha1.TiFlashGroup, tifl
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: tiflash.Namespace,
-			Name:      tiflash.Name,
+			Name:      tiflash.PodName(),
 			Labels: maputil.Merge(tiflash.Labels, map[string]string{
 				v1alpha1.LabelKeyInstance:   tiflash.Name,
 				v1alpha1.LabelKeyConfigHash: configHash,
@@ -178,7 +177,7 @@ func (*TaskPod) newPod(cluster *v1alpha1.Cluster, _ *v1alpha1.TiFlashGroup, tifl
 			},
 		},
 		Spec: corev1.PodSpec{
-			Hostname:     tiflash.Name,
+			Hostname:     tiflash.PodName(),
 			Subdomain:    tiflash.Spec.Subdomain,
 			NodeSelector: tiflash.Spec.Topology,
 			InitContainers: []corev1.Container{

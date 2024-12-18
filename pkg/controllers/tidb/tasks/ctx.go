@@ -104,7 +104,7 @@ func TaskContextPod(c client.Client) task.Task[ReconcileContext] {
 		rtx := ctx.Self()
 		var pod corev1.Pod
 		if err := c.Get(ctx, client.ObjectKey{
-			Name:      rtx.TiDB.Name,
+			Name:      rtx.TiDB.PodName(),
 			Namespace: rtx.TiDB.Namespace,
 		}, &pod); err != nil {
 			if errors.IsNotFound(err) {

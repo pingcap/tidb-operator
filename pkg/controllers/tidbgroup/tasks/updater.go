@@ -153,10 +153,13 @@ func needVersionUpgrade(dbg *v1alpha1.TiDBGroup) bool {
 	return dbg.Spec.Version != dbg.Status.Version && dbg.Status.Version != ""
 }
 
+const (
+	suffixLen = 6
+)
+
 func TiDBNewer(dbg *v1alpha1.TiDBGroup, rev string) updater.NewFactory[*runtime.TiDB] {
 	return updater.NewFunc[*runtime.TiDB](func() *runtime.TiDB {
-		//nolint:mnd // refactor to use a constant
-		name := fmt.Sprintf("%s-%s-%s", dbg.Spec.Cluster.Name, dbg.Name, random.Random(6))
+		name := fmt.Sprintf("%s-%s", dbg.Name, random.Random(suffixLen))
 		spec := dbg.Spec.Template.Spec.DeepCopy()
 
 		tidb := &v1alpha1.TiDB{
@@ -178,7 +181,7 @@ func TiDBNewer(dbg *v1alpha1.TiDBGroup, rev string) updater.NewFactory[*runtime.
 			Spec: v1alpha1.TiDBSpec{
 				Cluster:          dbg.Spec.Cluster,
 				Version:          dbg.Spec.Version,
-				Subdomain:        HeadlessServiceName(dbg.Spec.Cluster.Name, dbg.Name), // same as headless service
+				Subdomain:        HeadlessServiceName(dbg.Name), // same as headless service
 				TiDBTemplateSpec: *spec,
 			},
 		}

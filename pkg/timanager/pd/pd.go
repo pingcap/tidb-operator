@@ -129,7 +129,7 @@ func NewUnderlayClientFunc(c client.Client) timanager.NewUnderlayClientFunc[*v1a
 			return nil, fmt.Errorf("cannot find cluster %s: %w", pdg.Spec.Cluster.Name, err)
 		}
 
-		host := fmt.Sprintf("%s-%s.%s:%d", pdg.Spec.Cluster.Name, pdg.Name, pdg.Namespace, pdg.GetClientPort())
+		host := fmt.Sprintf("%s-pd.%s:%d", pdg.Name, pdg.Namespace, pdg.GetClientPort())
 
 		if cluster.IsTLSClusterEnabled() {
 			tlsConfig, err := tlsutil.GetTLSConfigFromSecret(ctx, c,

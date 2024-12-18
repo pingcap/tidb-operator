@@ -15,7 +15,13 @@
 package tasks
 
 import (
+	"context"
+
+	corev1 "k8s.io/api/core/v1"
+
+	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -30,18 +36,25 @@ func TaskFinalizerDel(ctx *ReconcileContext, c client.Client) task.Task {
 				return task.Fail().With("cannot delete member: %v", err)
 			}
 
-			if err := k8s.EnsureInstanceSubResourceDeleted(ctx, c,
-				ctx.PD.Namespace, ctx.PD.Name); err != nil {
+			wait, err := EnsureSubResourcesDeleted(ctx, c, ctx.PD)
+			if err != nil {
 				return task.Fail().With("cannot delete subresources: %v", err)
+			}
+
+			if wait {
+				return task.Wait().With("wait all subresources deleted")
 			}
 
 			if err := k8s.RemoveFinalizer(ctx, c, ctx.PD); err != nil {
 				return task.Fail().With("cannot remove finalizer: %v", err)
 			}
 		case ctx.IsAvailable:
-			if err := k8s.EnsureInstanceSubResourceDeleted(ctx, c,
-				ctx.PD.Namespace, ctx.PD.Name); err != nil {
+			wait, err := EnsureSubResourcesDeleted(ctx, c, ctx.PD)
+			if err != nil {
 				return task.Fail().With("cannot delete subresources: %v", err)
+			}
+			if wait {
+				return task.Wait().With("wait all subresources deleted")
 			}
 
 			if err := k8s.RemoveFinalizer(ctx, c, ctx.PD); err != nil {
@@ -63,4 +76,21 @@ func TaskFinalizerAdd(ctx *ReconcileContext, c client.Client) task.Task {
 		}
 		return task.Complete().With("finalizer is added")
 	})
+}
+
+func EnsureSubResourcesDeleted(ctx context.Context, c client.Client, pd *v1alpha1.PD) (wait bool, _ error) {
+	wait1, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromPD(pd), &corev1.PodList{})
+	if err != nil {
+		return false, err
+	}
+	wait2, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromPD(pd), &corev1.ConfigMapList{})
+	if err != nil {
+		return false, err
+	}
+	wait3, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromPD(pd), &corev1.PersistentVolumeClaimList{})
+	if err != nil {
+		return false, err
+	}
+
+	return wait1 || wait2 || wait3, nil
 }

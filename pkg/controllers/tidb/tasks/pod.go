@@ -115,14 +115,15 @@ func (t *TaskPod) Sync(ctx task.Context[ReconcileContext]) task.Result {
 }
 
 func (*TaskPod) newPod(cluster *v1alpha1.Cluster, dbg *v1alpha1.TiDBGroup,
-	tidb *v1alpha1.TiDB, gracePeriod int64, configHash string) *corev1.Pod {
+	tidb *v1alpha1.TiDB, gracePeriod int64, configHash string,
+) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: ConfigMapName(tidb.Name),
+						Name: tidb.PodName(),
 					},
 				},
 			},
@@ -143,7 +144,7 @@ func (*TaskPod) newPod(cluster *v1alpha1.Cluster, dbg *v1alpha1.TiDBGroup,
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: PersistentVolumeClaimName(tidb.Name, vol.Name),
+					ClaimName: PersistentVolumeClaimName(tidb.PodName(), vol.Name),
 				},
 			},
 		})
@@ -174,7 +175,7 @@ func (*TaskPod) newPod(cluster *v1alpha1.Cluster, dbg *v1alpha1.TiDBGroup,
 			Name: v1alpha1.TiDBClusterTLSVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: cluster.TLSClusterSecretName(dbg.Name),
+					SecretName: tidb.TLSClusterSecretName(),
 				},
 			},
 		})
@@ -240,7 +241,7 @@ func (*TaskPod) newPod(cluster *v1alpha1.Cluster, dbg *v1alpha1.TiDBGroup,
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: tidb.Namespace,
-			Name:      tidb.Name,
+			Name:      tidb.PodName(),
 			Labels: maputil.Merge(tidb.Labels, map[string]string{
 				v1alpha1.LabelKeyInstance:   tidb.Name,
 				v1alpha1.LabelKeyConfigHash: configHash,
@@ -251,7 +252,7 @@ func (*TaskPod) newPod(cluster *v1alpha1.Cluster, dbg *v1alpha1.TiDBGroup,
 			},
 		},
 		Spec: corev1.PodSpec{
-			Hostname:     tidb.Name,
+			Hostname:     tidb.PodName(),
 			Subdomain:    tidb.Spec.Subdomain,
 			NodeSelector: tidb.Spec.Topology,
 			Containers: []corev1.Container{

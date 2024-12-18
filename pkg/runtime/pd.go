@@ -99,6 +99,14 @@ func (pd *PD) Conditions() []metav1.Condition {
 	return pd.Status.Conditions
 }
 
+func (pd *PD) Cluster() string {
+	return pd.Spec.Cluster.Name
+}
+
+func (*PD) Component() string {
+	return v1alpha1.LabelValComponentPD
+}
+
 var _ group = &PDGroup{}
 
 func (pdg *PDGroup) DeepCopyObject() runtime.Object {

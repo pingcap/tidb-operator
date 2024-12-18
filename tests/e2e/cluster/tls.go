@@ -59,10 +59,10 @@ var tidbCertificatesTmpl = `
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: {{ .ClusterName }}-{{ .TiDBGroupName}}-server-secret
+  name: {{ .TiDBGroupName}}-tidb-server-secret
   namespace: {{ .Namespace }}
 spec:
-  secretName: {{ .ClusterName }}-{{ .TiDBGroupName}}-server-secret
+  secretName: {{ .TiDBGroupName}}-tidb-server-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
   subject:
@@ -72,12 +72,12 @@ spec:
   usages:
     - server auth
   dnsNames:
-    - "{{ .ClusterName }}-{{ .TiDBGroupName}}"
-    - "{{ .ClusterName }}-{{ .TiDBGroupName}}.{{ .Namespace }}"
-    - "{{ .ClusterName }}-{{ .TiDBGroupName}}.{{ .Namespace }}.svc"
-    - "*.{{ .ClusterName }}-{{ .TiDBGroupName}}"
-    - "*.{{ .ClusterName }}-{{ .TiDBGroupName}}.{{ .Namespace }}"
-    - "*.{{ .ClusterName }}-{{ .TiDBGroupName}}.{{ .Namespace }}.svc"
+    - "{{ .TiDBGroupName}}-tidb"
+    - "{{ .TiDBGroupName}}-tidb.{{ .Namespace }}"
+    - "{{ .TiDBGroupName}}-tidb.{{ .Namespace }}.svc"
+    - "*.{{ .TiDBGroupName}}-tidb"
+    - "*.{{ .TiDBGroupName}}-tidb.{{ .Namespace }}"
+    - "*.{{ .TiDBGroupName}}-tidb.{{ .Namespace }}.svc"
   ipAddresses:
     - 127.0.0.1
     - ::1
@@ -89,10 +89,10 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: {{ .ClusterName }}-{{ .TiDBGroupName}}-client-secret
+  name: {{ .TiDBGroupName}}-tidb-client-secret
   namespace: {{ .Namespace }}
 spec:
-  secretName: {{ .ClusterName }}-{{ .TiDBGroupName}}-client-secret
+  secretName: {{ .TiDBGroupName}}-tidb-client-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
   subject:
@@ -111,10 +111,10 @@ var tidbComponentsCertificatesTmpl = `
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: {{ .ClusterName }}-{{ .PDGroupName }}-cluster-secret
+  name: {{ .PDGroupName }}-pd-cluster-secret
   namespace: {{ .Namespace }}
 spec:
-  secretName: {{ .ClusterName }}-{{ .PDGroupName }}-cluster-secret
+  secretName: {{ .PDGroupName }}-pd-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
   subject:
@@ -125,15 +125,15 @@ spec:
     - server auth
     - client auth
   dnsNames:
-  - "{{ .ClusterName }}-{{ .PDGroupName }}"
-  - "{{ .ClusterName }}-{{ .PDGroupName }}.{{ .Namespace }}"
-  - "{{ .ClusterName }}-{{ .PDGroupName }}.{{ .Namespace }}.svc"
-  - "{{ .ClusterName }}-{{ .PDGroupName }}-peer"
-  - "{{ .ClusterName }}-{{ .PDGroupName }}-peer.{{ .Namespace }}"
-  - "{{ .ClusterName }}-{{ .PDGroupName }}-peer.{{ .Namespace }}.svc"
-  - "*.{{ .ClusterName }}-{{ .PDGroupName }}-peer"
-  - "*.{{ .ClusterName }}-{{ .PDGroupName }}-peer.{{ .Namespace }}"
-  - "*.{{ .ClusterName }}-{{ .PDGroupName }}-peer.{{ .Namespace }}.svc"
+  - "{{ .PDGroupName }}-pd"
+  - "{{ .PDGroupName }}-pd.{{ .Namespace }}"
+  - "{{ .PDGroupName }}-pd.{{ .Namespace }}.svc"
+  - "{{ .PDGroupName }}-pd-peer"
+  - "{{ .PDGroupName }}-pd-peer.{{ .Namespace }}"
+  - "{{ .PDGroupName }}-pd-peer.{{ .Namespace }}.svc"
+  - "*.{{ .PDGroupName }}-pd-peer"
+  - "*.{{ .PDGroupName }}-pd-peer.{{ .Namespace }}"
+  - "*.{{ .PDGroupName }}-pd-peer.{{ .Namespace }}.svc"
   ipAddresses:
   - 127.0.0.1
   - ::1
@@ -145,10 +145,10 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: {{ .ClusterName }}-{{ .TiKVGroupName }}-cluster-secret
+  name: {{ .TiKVGroupName }}-tikv-cluster-secret
   namespace: {{ .Namespace }}
 spec:
-  secretName: {{ .ClusterName }}-{{ .TiKVGroupName }}-cluster-secret
+  secretName: {{ .TiKVGroupName }}-tikv-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
   subject:
@@ -159,15 +159,15 @@ spec:
     - server auth
     - client auth
   dnsNames:
-  - "{{ .ClusterName }}-{{ .TiKVGroupName }}"
-  - "{{ .ClusterName }}-{{ .TiKVGroupName }}.{{ .Namespace }}"
-  - "{{ .ClusterName }}-{{ .TiKVGroupName }}.{{ .Namespace }}.svc"
-  - "{{ .ClusterName }}-{{ .TiKVGroupName }}-peer"
-  - "{{ .ClusterName }}-{{ .TiKVGroupName }}-peer.{{ .Namespace }}"
-  - "{{ .ClusterName }}-{{ .TiKVGroupName }}-peer.{{ .Namespace }}.svc"
-  - "*.{{ .ClusterName }}-{{ .TiKVGroupName }}-peer"
-  - "*.{{ .ClusterName }}-{{ .TiKVGroupName }}-peer.{{ .Namespace }}"
-  - "*.{{ .ClusterName }}-{{ .TiKVGroupName }}-peer.{{ .Namespace }}.svc"
+  - "{{ .TiKVGroupName }}-tikv"
+  - "{{ .TiKVGroupName }}-tikv.{{ .Namespace }}"
+  - "{{ .TiKVGroupName }}-tikv.{{ .Namespace }}.svc"
+  - "{{ .TiKVGroupName }}-tikv-peer"
+  - "{{ .TiKVGroupName }}-tikv-peer.{{ .Namespace }}"
+  - "{{ .TiKVGroupName }}-tikv-peer.{{ .Namespace }}.svc"
+  - "*.{{ .TiKVGroupName }}-tikv-peer"
+  - "*.{{ .TiKVGroupName }}-tikv-peer.{{ .Namespace }}"
+  - "*.{{ .TiKVGroupName }}-tikv-peer.{{ .Namespace }}.svc"
   ipAddresses:
   - 127.0.0.1
   - ::1
@@ -179,10 +179,10 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: {{ .ClusterName }}-{{ .TiDBGroupName }}-cluster-secret
+  name: {{ .TiDBGroupName }}-tidb-cluster-secret
   namespace: {{ .Namespace }}
 spec:
-  secretName: {{ .ClusterName }}-{{ .TiDBGroupName }}-cluster-secret
+  secretName: {{ .TiDBGroupName }}-tidb-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
   subject:
@@ -193,15 +193,15 @@ spec:
     - server auth
     - client auth
   dnsNames:
-  - "{{ .ClusterName }}-{{ .TiDBGroupName }}"
-  - "{{ .ClusterName }}-{{ .TiDBGroupName }}.{{ .Namespace }}"
-  - "{{ .ClusterName }}-{{ .TiDBGroupName }}.{{ .Namespace }}.svc"
-  - "{{ .ClusterName }}-{{ .TiDBGroupName }}-peer"
-  - "{{ .ClusterName }}-{{ .TiDBGroupName }}-peer.{{ .Namespace }}"
-  - "{{ .ClusterName }}-{{ .TiDBGroupName }}-peer.{{ .Namespace }}.svc"
-  - "*.{{ .ClusterName }}-{{ .TiDBGroupName }}-peer"
-  - "*.{{ .ClusterName }}-{{ .TiDBGroupName }}-peer.{{ .Namespace }}"
-  - "*.{{ .ClusterName }}-{{ .TiDBGroupName }}-peer.{{ .Namespace }}.svc"
+  - "{{ .TiDBGroupName }}-tidb"
+  - "{{ .TiDBGroupName }}-tidb.{{ .Namespace }}"
+  - "{{ .TiDBGroupName }}-tidb.{{ .Namespace }}.svc"
+  - "{{ .TiDBGroupName }}-tidb-peer"
+  - "{{ .TiDBGroupName }}-tidb-peer.{{ .Namespace }}"
+  - "{{ .TiDBGroupName }}-tidb-peer.{{ .Namespace }}.svc"
+  - "*.{{ .TiDBGroupName }}-tidb-peer"
+  - "*.{{ .TiDBGroupName }}-tidb-peer.{{ .Namespace }}"
+  - "*.{{ .TiDBGroupName }}-tidb-peer.{{ .Namespace }}.svc"
   ipAddresses:
   - 127.0.0.1
   - ::1
@@ -213,10 +213,10 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: {{ .ClusterName }}-{{ .TiFlashGroupName }}-cluster-secret
+  name: {{ .TiFlashGroupName }}-tiflash-cluster-secret
   namespace: {{ .Namespace }}
 spec:
-  secretName: {{ .ClusterName }}-{{ .TiFlashGroupName }}-cluster-secret
+  secretName: {{ .TiFlashGroupName }}-tiflash-cluster-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
   subject:
@@ -227,15 +227,15 @@ spec:
     - server auth
     - client auth
   dnsNames:
-  - "{{ .ClusterName }}-{{ .TiFlashGroupName }}"
-  - "{{ .ClusterName }}-{{ .TiFlashGroupName }}.{{ .Namespace }}"
-  - "{{ .ClusterName }}-{{ .TiFlashGroupName }}.{{ .Namespace }}.svc"
-  - "{{ .ClusterName }}-{{ .TiFlashGroupName }}-peer"
-  - "{{ .ClusterName }}-{{ .TiFlashGroupName }}-peer.{{ .Namespace }}"
-  - "{{ .ClusterName }}-{{ .TiFlashGroupName }}-peer.{{ .Namespace }}.svc"
-  - "*.{{ .ClusterName }}-{{ .TiFlashGroupName }}-peer"
-  - "*.{{ .ClusterName }}-{{ .TiFlashGroupName }}-peer.{{ .Namespace }}"
-  - "*.{{ .ClusterName }}-{{ .TiFlashGroupName }}-peer.{{ .Namespace }}.svc"
+  - "{{ .TiFlashGroupName }}-tiflash"
+  - "{{ .TiFlashGroupName }}-tiflash.{{ .Namespace }}"
+  - "{{ .TiFlashGroupName }}-tiflash.{{ .Namespace }}.svc"
+  - "{{ .TiFlashGroupName }}-tiflash-peer"
+  - "{{ .TiFlashGroupName }}-tiflash-peer.{{ .Namespace }}"
+  - "{{ .TiFlashGroupName }}-tiflash-peer.{{ .Namespace }}.svc"
+  - "*.{{ .TiFlashGroupName }}-tiflash-peer"
+  - "*.{{ .TiFlashGroupName }}-tiflash-peer.{{ .Namespace }}"
+  - "*.{{ .TiFlashGroupName }}-tiflash-peer.{{ .Namespace }}.svc"
   ipAddresses:
   - 127.0.0.1
   - ::1
@@ -280,14 +280,17 @@ func installTiDBIssuer(ctx context.Context, yamlApplier *k8s.YAMLApplier, ns, cl
 
 func installTiDBCertificates(ctx context.Context, yamlApplier *k8s.YAMLApplier, ns, clusterName, tidbGroupName string) error {
 	return installCert(ctx, yamlApplier, tidbCertificatesTmpl, tcTmplMeta{
-		Namespace: ns, ClusterName: clusterName, TiDBGroupName: tidbGroupName})
+		Namespace: ns, ClusterName: clusterName, TiDBGroupName: tidbGroupName,
+	})
 }
 
 func installTiDBComponentsCertificates(ctx context.Context, yamlApplier *k8s.YAMLApplier, ns, clusterName string,
-	pdGroupName, tikvGroupName, tidbGroupName, tiFlashGroupName string) error {
+	pdGroupName, tikvGroupName, tidbGroupName, tiFlashGroupName string,
+) error {
 	return installCert(ctx, yamlApplier, tidbComponentsCertificatesTmpl, tcTmplMeta{
 		Namespace: ns, ClusterName: clusterName,
-		PDGroupName: pdGroupName, TiKVGroupName: tikvGroupName, TiDBGroupName: tidbGroupName, TiFlashGroupName: tiFlashGroupName})
+		PDGroupName: pdGroupName, TiKVGroupName: tikvGroupName, TiDBGroupName: tidbGroupName, TiFlashGroupName: tiFlashGroupName,
+	})
 }
 
 func installCert(ctx context.Context, yamlApplier *k8s.YAMLApplier, tmplStr string, tp any) error {

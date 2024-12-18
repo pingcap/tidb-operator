@@ -188,7 +188,7 @@ func GetServiceAddr(tiflash *v1alpha1.TiFlash) string {
 	if ns == "" {
 		ns = corev1.NamespaceDefault
 	}
-	return fmt.Sprintf("%s.%s.%s:%d", tiflash.Name, tiflash.Spec.Subdomain, ns, tiflash.GetFlashPort())
+	return fmt.Sprintf("%s.%s.%s:%d", tiflash.PodName(), tiflash.Spec.Subdomain, ns, tiflash.GetFlashPort())
 }
 
 func getProxyAddr(tiflash *v1alpha1.TiFlash) string {
@@ -200,7 +200,7 @@ func getProxyAdvertiseAddr(tiflash *v1alpha1.TiFlash) string {
 	if ns == "" {
 		ns = corev1.NamespaceDefault
 	}
-	return fmt.Sprintf("%s.%s.%s:%d", tiflash.Name, tiflash.Spec.Subdomain, ns, tiflash.GetProxyPort())
+	return fmt.Sprintf("%s.%s.%s:%d", tiflash.PodName(), tiflash.Spec.Subdomain, ns, tiflash.GetProxyPort())
 }
 
 func getProxyAdvertiseStatusAddr(tiflash *v1alpha1.TiFlash) string {
@@ -208,7 +208,7 @@ func getProxyAdvertiseStatusAddr(tiflash *v1alpha1.TiFlash) string {
 	if ns == "" {
 		ns = corev1.NamespaceDefault
 	}
-	return fmt.Sprintf("%s.%s.%s:%d", tiflash.Name, tiflash.Spec.Subdomain, ns, tiflash.GetProxyStatusPort())
+	return fmt.Sprintf("%s.%s.%s:%d", tiflash.PodName(), tiflash.Spec.Subdomain, ns, tiflash.GetProxyStatusPort())
 }
 
 func GetServerLogPath(tiflash *v1alpha1.TiFlash) string {

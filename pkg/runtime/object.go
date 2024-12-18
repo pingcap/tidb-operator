@@ -22,6 +22,8 @@ import (
 type object interface {
 	metav1.Object
 
+	Cluster() string
+	Component() string
 	To() client.Object
 	Conditions() []metav1.Condition
 }

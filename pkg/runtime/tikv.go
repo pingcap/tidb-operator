@@ -74,3 +74,11 @@ func (kv *TiKV) IsUpToDate() bool {
 func (kv *TiKV) Conditions() []metav1.Condition {
 	return kv.Status.Conditions
 }
+
+func (kv *TiKV) Cluster() string {
+	return kv.Spec.Cluster.Name
+}
+
+func (*TiKV) Component() string {
+	return v1alpha1.LabelValComponentTiKV
+}

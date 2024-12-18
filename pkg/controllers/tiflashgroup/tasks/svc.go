@@ -60,20 +60,20 @@ func (t *TaskService) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	return task.Complete().With("headless service of tiflash has been applied")
 }
 
-func newHeadlessService(flashg *v1alpha1.TiFlashGroup) *corev1.Service {
+func newHeadlessService(fg *v1alpha1.TiFlashGroup) *corev1.Service {
 	ipFamilyPolicy := corev1.IPFamilyPolicyPreferDualStack
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      HeadlessServiceName(flashg.Spec.Cluster.Name, flashg.Name),
-			Namespace: flashg.Namespace,
+			Name:      HeadlessServiceName(fg.Name),
+			Namespace: fg.Namespace,
 			Labels: map[string]string{
 				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
 				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiFlash,
-				v1alpha1.LabelKeyCluster:   flashg.Spec.Cluster.Name,
-				v1alpha1.LabelKeyGroup:     flashg.Name,
+				v1alpha1.LabelKeyCluster:   fg.Spec.Cluster.Name,
+				v1alpha1.LabelKeyGroup:     fg.Name,
 			},
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(flashg, v1alpha1.SchemeGroupVersion.WithKind("TiFlashGroup")),
+				*metav1.NewControllerRef(fg, v1alpha1.SchemeGroupVersion.WithKind("TiFlashGroup")),
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -83,31 +83,31 @@ func newHeadlessService(flashg *v1alpha1.TiFlashGroup) *corev1.Service {
 			Selector: map[string]string{
 				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
 				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiFlash,
-				v1alpha1.LabelKeyCluster:   flashg.Spec.Cluster.Name,
-				v1alpha1.LabelKeyGroup:     flashg.Name,
+				v1alpha1.LabelKeyCluster:   fg.Spec.Cluster.Name,
+				v1alpha1.LabelKeyGroup:     fg.Name,
 			},
 			Ports: []corev1.ServicePort{
 				{
 					Name:       v1alpha1.TiFlashPortNameFlash,
-					Port:       flashg.GetFlashPort(),
+					Port:       fg.GetFlashPort(),
 					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromString(v1alpha1.TiFlashPortNameFlash),
 				},
 				{
 					Name:       v1alpha1.TiFlashPortNameProxy,
-					Port:       flashg.GetProxyPort(),
+					Port:       fg.GetProxyPort(),
 					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromString(v1alpha1.TiFlashPortNameProxy),
 				},
 				{
 					Name:       v1alpha1.TiFlashPortNameMetrics,
-					Port:       flashg.GetMetricsPort(),
+					Port:       fg.GetMetricsPort(),
 					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromString(v1alpha1.TiFlashPortNameMetrics),
 				},
 				{
 					Name:       v1alpha1.TiFlashPortNameProxyStatus,
-					Port:       flashg.GetProxyStatusPort(),
+					Port:       fg.GetProxyStatusPort(),
 					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromString(v1alpha1.TiFlashPortNameProxyStatus),
 				},
