@@ -140,7 +140,7 @@ func TaskContextPod(c client.Client) task.Task[ReconcileContext] {
 		rtx := ctx.Self()
 		var pod corev1.Pod
 		if err := c.Get(ctx, client.ObjectKey{
-			Name:      rtx.TiFlash.Name,
+			Name:      rtx.TiFlash.PodName(),
 			Namespace: rtx.TiFlash.Namespace,
 		}, &pod); err != nil {
 			if errors.IsNotFound(err) {

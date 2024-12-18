@@ -86,7 +86,7 @@ func (t *TaskConfigMap) Sync(ctx task.Context[ReconcileContext]) task.Result {
 func newConfigMap(tiflash *v1alpha1.TiFlash, flashData, proxyData []byte, hash string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ConfigMapName(tiflash.Name),
+			Name:      tiflash.PodName(),
 			Namespace: tiflash.Namespace,
 			Labels: maputil.Merge(tiflash.Labels, map[string]string{
 				v1alpha1.LabelKeyInstance:   tiflash.Name,

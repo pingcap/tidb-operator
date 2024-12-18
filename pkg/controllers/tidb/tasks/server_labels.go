@@ -56,7 +56,7 @@ func (t *TaskServerLabels) Sync(ctx task.Context[ReconcileContext]) task.Result 
 
 	nodeName := rtx.Pod.Spec.NodeName
 	if nodeName == "" {
-		return task.Fail().With("pod %s/%s has not been scheduled", rtx.TiDB.Namespace, rtx.TiDB.Name)
+		return task.Fail().With("pod %s/%s has not been scheduled", rtx.Pod.Namespace, rtx.Pod.Name)
 	}
 	var node corev1.Node
 	if err := t.Client.Get(ctx, client.ObjectKey{Name: nodeName}, &node); err != nil {

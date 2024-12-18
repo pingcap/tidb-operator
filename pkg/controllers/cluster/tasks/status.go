@@ -58,8 +58,8 @@ func (t *TaskStatus) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		if rtx.Cluster.IsTLSClusterEnabled() {
 			scheme = "https"
 		}
-		pdAddr := fmt.Sprintf("%s://%s-%s.%s:%d", scheme, rtx.Cluster.Name,
-			rtx.PDGroup.Name, rtx.PDGroup.Namespace, rtx.PDGroup.GetClientPort())
+		// TODO(liubo02): extract a common util to get pd addr
+		pdAddr := fmt.Sprintf("%s://%s-pd.%s:%d", scheme, rtx.PDGroup.Name, rtx.PDGroup.Namespace, rtx.PDGroup.GetClientPort())
 		if rtx.Cluster.Status.PD != pdAddr { // TODO(csuzhangxc): verify switch between TLS and non-TLS
 			rtx.Cluster.Status.PD = pdAddr
 			needUpdate = true

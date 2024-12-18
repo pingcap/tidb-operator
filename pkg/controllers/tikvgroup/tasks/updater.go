@@ -148,10 +148,13 @@ func needVersionUpgrade(kvg *v1alpha1.TiKVGroup) bool {
 	return kvg.Spec.Version != kvg.Status.Version && kvg.Status.Version != ""
 }
 
+const (
+	suffixLen = 6
+)
+
 func TiKVNewer(kvg *v1alpha1.TiKVGroup, rev string) updater.NewFactory[*runtime.TiKV] {
 	return updater.NewFunc[*runtime.TiKV](func() *runtime.TiKV {
-		//nolint:mnd // refactor to use a constant
-		name := fmt.Sprintf("%s-%s-%s", kvg.Spec.Cluster.Name, kvg.Name, random.Random(6))
+		name := fmt.Sprintf("%s-%s", kvg.Name, random.Random(suffixLen))
 
 		spec := kvg.Spec.Template.Spec.DeepCopy()
 
@@ -174,7 +177,7 @@ func TiKVNewer(kvg *v1alpha1.TiKVGroup, rev string) updater.NewFactory[*runtime.
 			Spec: v1alpha1.TiKVSpec{
 				Cluster:          kvg.Spec.Cluster,
 				Version:          kvg.Spec.Version,
-				Subdomain:        HeadlessServiceName(kvg.Spec.Cluster.Name, kvg.Name),
+				Subdomain:        HeadlessServiceName(kvg.Name),
 				TiKVTemplateSpec: *spec,
 			},
 		}

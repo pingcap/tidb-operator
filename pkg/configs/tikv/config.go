@@ -157,7 +157,7 @@ func GetAdvertiseClientURLs(tikv *v1alpha1.TiKV) string {
 	if ns == "" {
 		ns = corev1.NamespaceDefault
 	}
-	return fmt.Sprintf("%s.%s.%s:%d", tikv.Name, tikv.Spec.Subdomain, ns, tikv.GetClientPort())
+	return fmt.Sprintf("%s.%s.%s:%d", tikv.PodName(), tikv.Spec.Subdomain, ns, tikv.GetClientPort())
 }
 
 func getStatusURLs(tikv *v1alpha1.TiKV) string {
@@ -169,5 +169,5 @@ func getAdvertiseStatusURLs(tikv *v1alpha1.TiKV) string {
 	if ns == "" {
 		ns = corev1.NamespaceDefault
 	}
-	return fmt.Sprintf("%s.%s.%s:%d", tikv.Name, tikv.Spec.Subdomain, ns, tikv.GetStatusPort())
+	return fmt.Sprintf("%s.%s.%s:%d", tikv.PodName(), tikv.Spec.Subdomain, ns, tikv.GetStatusPort())
 }

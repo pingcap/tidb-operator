@@ -74,3 +74,11 @@ func (db *TiDB) IsUpToDate() bool {
 func (db *TiDB) Conditions() []metav1.Condition {
 	return db.Status.Conditions
 }
+
+func (db *TiDB) Cluster() string {
+	return db.Spec.Cluster.Name
+}
+
+func (*TiDB) Component() string {
+	return v1alpha1.LabelValComponentTiDB
+}

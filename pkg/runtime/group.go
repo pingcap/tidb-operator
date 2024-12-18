@@ -19,8 +19,6 @@ type group interface {
 
 	SetReplicas(replicas *int32)
 	Replicas() *int32
-	Cluster() string
-	Component() string
 }
 
 type Group interface {

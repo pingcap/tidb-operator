@@ -16,6 +16,7 @@ package v1alpha1
 
 import (
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -279,6 +280,30 @@ func (in *TiDB) GetStatusPort() int32 {
 	return DefaultTiDBPortStatus
 }
 
+// NOTE: name prefix is used to generate all names of underlying resources of this instance
+func (in *TiDB) NamePrefixAndSuffix() (prefix, suffix string) {
+	index := strings.LastIndexByte(in.Name, '-')
+	// TODO(liubo02): validate name to avoid '-' is not found
+	if index == -1 {
+		panic("cannot get name prefix")
+	}
+	return in.Name[:index], in.Name[index+1:]
+}
+
+// This name is not only for pod, but also configMap, hostname and almost all underlying resources
+// TODO(liubo02): rename to more reasonable one
+func (in *TiDB) PodName() string {
+	prefix, suffix := in.NamePrefixAndSuffix()
+	return prefix + "-tidb-" + suffix
+}
+
+// TLSClusterSecretName returns the mTLS secret name for a component.
+// TODO(liubo02): move to namer
+func (in *TiDB) TLSClusterSecretName() string {
+	prefix, _ := in.NamePrefixAndSuffix()
+	return prefix + "-tidb-cluster-secret"
+}
+
 // TiDBGroupSpec describes the common attributes of a TiDBGroup.
 type TiDBGroupSpec struct {
 	Cluster  ClusterReference `json:"cluster"`
@@ -481,12 +506,12 @@ func (in *TiDBGroup) IsTLSClientEnabled() bool {
 
 // TiDBServerTLSSecretName returns the secret name used in TiDB server for the TLS between TiDB server and MySQL client.
 func (in *TiDBGroup) TiDBServerTLSSecretName() string {
-	return fmt.Sprintf("%s-%s-server-secret", in.Spec.Cluster.Name, in.Name)
+	return fmt.Sprintf("%s-tidb-server-secret", in.Name)
 }
 
 // TiDBClientTLSSecretName returns the secret name used in MySQL client for the TLS between TiDB server and MySQL client.
 func (in *TiDBGroup) TiDBClientTLSSecretName() string {
-	return fmt.Sprintf("%s-%s-client-secret", in.Spec.Cluster.Name, in.Name)
+	return fmt.Sprintf("%s-tidb-client-secret", in.Name)
 }
 
 func (in *TiDBGroup) IsBootstrapSQLEnabled() bool {

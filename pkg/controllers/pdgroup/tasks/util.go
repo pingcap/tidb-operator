@@ -21,9 +21,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/updater"
 )
 
-// TODO: fix length issue
-func HeadlessServiceName(clusterName, groupName string) string {
-	return fmt.Sprintf("%s-%s-peer", clusterName, groupName)
+// TODO(liubo02): fix length issue
+// TODO(liubo02): extract into common utils
+func HeadlessServiceName(groupName string) string {
+	return fmt.Sprintf("%s-pd-peer", groupName)
 }
 
 func NotLeaderPolicy() updater.PreferPolicy[*runtime.PD] {

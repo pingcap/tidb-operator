@@ -64,7 +64,7 @@ func newHeadlessService(kvg *v1alpha1.TiKVGroup) *corev1.Service {
 	ipFamilyPolicy := corev1.IPFamilyPolicyPreferDualStack
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      HeadlessServiceName(kvg.Spec.Cluster.Name, kvg.Name),
+			Name:      HeadlessServiceName(kvg.Name),
 			Namespace: kvg.Namespace,
 			Labels: map[string]string{
 				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,

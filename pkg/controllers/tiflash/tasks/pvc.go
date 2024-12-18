@@ -64,7 +64,7 @@ func newPVCs(tiflash *v1alpha1.TiFlash) []*corev1.PersistentVolumeClaim {
 		pvcs = append(pvcs, &corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
 				// the format is "data{i}-tiflash-xxx" to compatible with TiDB Operator v1
-				Name:      PersistentVolumeClaimName(tiflash.Name, i),
+				Name:      PersistentVolumeClaimName(tiflash.PodName(), i),
 				Namespace: tiflash.Namespace,
 				Labels: maputil.Merge(tiflash.Labels, map[string]string{
 					v1alpha1.LabelKeyInstance: tiflash.Name,

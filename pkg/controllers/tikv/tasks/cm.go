@@ -74,7 +74,7 @@ func (t *TaskConfigMap) Sync(ctx task.Context[ReconcileContext]) task.Result {
 func newConfigMap(tikv *v1alpha1.TiKV, data []byte, hash string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ConfigMapName(tikv.Name),
+			Name:      tikv.PodName(),
 			Namespace: tikv.Namespace,
 			Labels: maputil.Merge(tikv.Labels, map[string]string{
 				v1alpha1.LabelKeyInstance:   tikv.Name,

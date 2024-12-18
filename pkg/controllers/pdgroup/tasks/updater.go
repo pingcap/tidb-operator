@@ -165,10 +165,13 @@ func needVersionUpgrade(pdg *v1alpha1.PDGroup) bool {
 	return pdg.Spec.Version != pdg.Status.Version && pdg.Status.Version != ""
 }
 
+const (
+	suffixLen = 6
+)
+
 func PDNewer(pdg *v1alpha1.PDGroup, rev string) updater.NewFactory[*runtime.PD] {
 	return updater.NewFunc[*runtime.PD](func() *runtime.PD {
-		//nolint:mnd // refactor to use a constant
-		name := fmt.Sprintf("%s-%s-%s", pdg.Spec.Cluster.Name, pdg.Name, random.Random(6))
+		name := fmt.Sprintf("%s-%s", pdg.Name, random.Random(suffixLen))
 		spec := pdg.Spec.Template.Spec.DeepCopy()
 
 		var bootAnno map[string]string
@@ -202,7 +205,7 @@ func PDNewer(pdg *v1alpha1.PDGroup, rev string) updater.NewFactory[*runtime.PD] 
 			Spec: v1alpha1.PDSpec{
 				Cluster:        pdg.Spec.Cluster,
 				Version:        pdg.Spec.Version,
-				Subdomain:      HeadlessServiceName(pdg.Spec.Cluster.Name, pdg.Name),
+				Subdomain:      HeadlessServiceName(pdg.Name),
 				PDTemplateSpec: *spec,
 			},
 		}

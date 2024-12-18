@@ -45,7 +45,11 @@ func TaskPodSuspend(c client.Client) task.Task[ReconcileContext] {
 		if rtx.Pod == nil {
 			return task.Complete().With("pod has been deleted")
 		}
-		if err := c.Delete(rtx, rtx.Pod); err != nil {
+		regionCount := 0
+		if rtx.Store != nil {
+			regionCount = rtx.Store.RegionCount
+		}
+		if err := DeletePodWithGracePeriod(rtx, c, rtx.Pod, regionCount); err != nil {
 			return task.Fail().With("can't delete pod of tikv: %w", err)
 		}
 		rtx.PodIsTerminating = true
@@ -69,7 +73,6 @@ func (*TaskPod) Name() string {
 	return "Pod"
 }
 
-//nolint:gocyclo // refactor if possible
 func (t *TaskPod) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	rtx := ctx.Self()
 
@@ -85,21 +88,12 @@ func (t *TaskPod) Sync(ctx task.Context[ReconcileContext]) task.Result {
 
 	// minimize the deletion grace period seconds
 	if !rtx.Pod.GetDeletionTimestamp().IsZero() {
-		sec := rtx.Pod.GetDeletionGracePeriodSeconds()
-
 		regionCount := 0
 		if rtx.Store != nil {
 			regionCount = rtx.Store.RegionCount
 		}
-		gracePeriod := int64(regionCount/RegionsPerSecond + 1)
-		if gracePeriod < MinGracePeriodSeconds {
-			gracePeriod = MinGracePeriodSeconds
-		}
-
-		if sec != nil && rtx.Store != nil && *sec > gracePeriod {
-			if err := t.Client.Delete(ctx, rtx.Pod, client.GracePeriodSeconds(gracePeriod)); err != nil {
-				return task.Fail().With("cannot minimize the shutdown timeout: %w", err)
-			}
+		if err := DeletePodWithGracePeriod(ctx, t.Client, rtx.Pod, regionCount); err != nil {
+			return task.Fail().With("can't minimize the deletion grace period of pod of tikv: %w", err)
 		}
 
 		// key will be requeued after the pod is changed
@@ -114,8 +108,12 @@ func (t *TaskPod) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	if res == k8s.CompareResultRecreate || (configChanged &&
 		rtx.TiKVGroup.Spec.ConfigUpdateStrategy == v1alpha1.ConfigUpdateStrategyRollingUpdate) {
 		t.Logger.Info("will recreate the pod")
-		if err := t.Client.Delete(rtx, rtx.Pod); err != nil {
-			return task.Fail().With("can't delete pod of tikv: %w", err)
+		regionCount := 0
+		if rtx.Store != nil {
+			regionCount = rtx.Store.RegionCount
+		}
+		if err := DeletePodWithGracePeriod(ctx, t.Client, rtx.Pod, regionCount); err != nil {
+			return task.Fail().With("can't minimize the deletion grace period of pod of tikv: %w", err)
 		}
 
 		rtx.PodIsTerminating = true
@@ -140,7 +138,7 @@ func (t *TaskPod) newPod(cluster *v1alpha1.Cluster, kvg *v1alpha1.TiKVGroup, tik
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: ConfigMapName(tikv.Name),
+						Name: tikv.PodName(),
 					},
 				},
 			},
@@ -174,7 +172,7 @@ func (t *TaskPod) newPod(cluster *v1alpha1.Cluster, kvg *v1alpha1.TiKVGroup, tik
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: PersistentVolumeClaimName(tikv.Name, vol.Name),
+					ClaimName: PersistentVolumeClaimName(tikv.PodName(), vol.Name),
 				},
 			},
 		})
@@ -185,12 +183,11 @@ func (t *TaskPod) newPod(cluster *v1alpha1.Cluster, kvg *v1alpha1.TiKVGroup, tik
 	}
 
 	if cluster.IsTLSClusterEnabled() {
-		groupName := tikv.Labels[v1alpha1.LabelKeyGroup]
 		vols = append(vols, corev1.Volume{
 			Name: v1alpha1.TiKVClusterTLSVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: cluster.TLSClusterSecretName(groupName),
+					SecretName: tikv.TLSClusterSecretName(),
 				},
 			},
 		})
@@ -225,7 +222,7 @@ func (t *TaskPod) newPod(cluster *v1alpha1.Cluster, kvg *v1alpha1.TiKVGroup, tik
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: tikv.Namespace,
-			Name:      tikv.Name,
+			Name:      tikv.PodName(),
 			Labels: maputil.Merge(tikv.Labels, map[string]string{
 				v1alpha1.LabelKeyInstance:   tikv.Name,
 				v1alpha1.LabelKeyConfigHash: configHash,
@@ -239,7 +236,7 @@ func (t *TaskPod) newPod(cluster *v1alpha1.Cluster, kvg *v1alpha1.TiKVGroup, tik
 			// TODO: make the max grace period seconds configurable
 			//nolint:mnd // refactor to use a constant
 			TerminationGracePeriodSeconds: ptr.To[int64](65535),
-			Hostname:                      tikv.Name,
+			Hostname:                      tikv.PodName(),
 			Subdomain:                     tikv.Spec.Subdomain,
 			NodeSelector:                  tikv.Spec.Topology,
 			InitContainers: []corev1.Container{

@@ -63,7 +63,7 @@ func newPVCs(tikv *v1alpha1.TiKV) []*corev1.PersistentVolumeClaim {
 		vol := tikv.Spec.Volumes[i]
 		pvcs = append(pvcs, &corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      PersistentVolumeClaimName(tikv.Name, vol.Name),
+				Name:      PersistentVolumeClaimName(tikv.PodName(), vol.Name),
 				Namespace: tikv.Namespace,
 				Labels: maputil.Merge(tikv.Labels, map[string]string{
 					v1alpha1.LabelKeyInstance: tikv.Name,
