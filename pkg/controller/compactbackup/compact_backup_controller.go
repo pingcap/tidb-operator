@@ -248,12 +248,16 @@ func (c *Controller) sync(key string) (err error) {
 		return err
 	}
 
+	if backup.Status.State == string(v1alpha1.BackupFailed) {
+		return nil
+	}
+
 	//Skip
 	if backup.Status.State != "" {
 		return nil
 	}
 
-	c.UpdateStatus(backup, string(v1alpha1.BackupPrepare))
+	c.UpdateStatus(backup, string(v1alpha1.BackupScheduled))
 
 	err = c.doCompact(backup.DeepCopy())
 
