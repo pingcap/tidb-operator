@@ -61,7 +61,7 @@ func (bm *backupScheduleManager) performCompact(bs *v1alpha1.BackupSchedule, sch
 	if bs.Spec.CompactInterval == nil {
 		return nil
 	}
-	
+
 	interval, err := time.ParseDuration(*bs.Spec.CompactInterval)
 	if err != nil {
 		return fmt.Errorf("failed to parse compact interval: %w", err)
@@ -93,54 +93,54 @@ func (bm *backupScheduleManager) performCompact(bs *v1alpha1.BackupSchedule, sch
 }
 
 func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
-    defer bm.backupGC(bs)
+	defer bm.backupGC(bs)
 
-    if bs.Spec.Pause {
-        return controller.IgnoreErrorf("backupSchedule %s/%s has been paused", bs.GetNamespace(), bs.GetName())
-    }
+	if bs.Spec.Pause {
+		return controller.IgnoreErrorf("backupSchedule %s/%s has been paused", bs.GetNamespace(), bs.GetName())
+	}
 
-    if err := bm.performLogBackupIfNeeded(bs); err != nil {
-        return err
-    }
+	if err := bm.performLogBackupIfNeeded(bs); err != nil {
+		return err
+	}
 
-    if err := bm.canPerformNextBackup(bs); err != nil {
-        return err
-    }
+	if err := bm.canPerformNextBackup(bs); err != nil {
+		return err
+	}
 
-    scheduledTime, err := getLastScheduledTime(bs, bm.now)
-    if err != nil {
-        return err
-    }
+	scheduledTime, err := getLastScheduledTime(bs, bm.now)
+	if err != nil {
+		return err
+	}
 
-    err = bm.performCompact(bs, scheduledTime, bm.now)
-    if err != nil {
-        return err
-    }
+	err = bm.performCompact(bs, scheduledTime, bm.now)
+	if err != nil {
+		return err
+	}
 
 	if scheduledTime == nil {
 		return nil
 	}
 
-    // Only create a new full backup if the conditions for it are met
-    if err := bm.canPerformNextBackup(bs); err != nil {
-        return err
-    }
+	// Only create a new full backup if the conditions for it are met
+	if err := bm.canPerformNextBackup(bs); err != nil {
+		return err
+	}
 
-    // Delete the last backup job for releasing the backup PVC
-    if err := bm.deleteLastBackupJob(bs); err != nil {
-        return nil
-    }
+	// Delete the last backup job for releasing the backup PVC
+	if err := bm.deleteLastBackupJob(bs); err != nil {
+		return nil
+	}
 
-    // If compaction was successful and it's time for a backup, create a new backup
-    backup, err := createBackup(bm.deps.BackupControl, bs, *scheduledTime)
-    if err != nil {
-        return err
-    }
+	// If compaction was successful and it's time for a backup, create a new backup
+	backup, err := createBackup(bm.deps.BackupControl, bs, *scheduledTime)
+	if err != nil {
+		return err
+	}
 
-    bs.Status.LastBackup = backup.GetName()
-    bs.Status.LastBackupTime = &metav1.Time{Time: *scheduledTime}
-    bs.Status.AllBackupCleanTime = nil
-    return nil
+	bs.Status.LastBackup = backup.GetName()
+	bs.Status.LastBackupTime = &metav1.Time{Time: *scheduledTime}
+	bs.Status.AllBackupCleanTime = nil
+	return nil
 }
 
 func (bm *backupScheduleManager) deleteLastBackupJob(bs *v1alpha1.BackupSchedule) error {

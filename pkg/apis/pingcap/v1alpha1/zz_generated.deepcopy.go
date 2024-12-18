@@ -345,10 +345,20 @@ func (in *BackupScheduleSpec) DeepCopyInto(out *BackupScheduleSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.CompactInterval != nil {
+		in, out := &in.CompactInterval, &out.CompactInterval
+		*out = new(string)
+		**out = **in
+	}
 	in.BackupTemplate.DeepCopyInto(&out.BackupTemplate)
 	if in.LogBackupTemplate != nil {
 		in, out := &in.LogBackupTemplate, &out.LogBackupTemplate
 		*out = new(BackupSpec)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.CompactBackupTemplate != nil {
+		in, out := &in.CompactBackupTemplate, &out.CompactBackupTemplate
+		*out = new(CompactSpec)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.StorageClassName != nil {
@@ -361,6 +371,12 @@ func (in *BackupScheduleSpec) DeepCopyInto(out *BackupScheduleSpec) {
 		*out = make([]v1.LocalObjectReference, len(*in))
 		copy(*out, *in)
 	}
+	if in.BR != nil {
+		in, out := &in.BR, &out.BR
+		*out = new(BRConfig)
+		(*in).DeepCopyInto(*out)
+	}
+	in.StorageProvider.DeepCopyInto(&out.StorageProvider)
 	return
 }
 
@@ -384,6 +400,10 @@ func (in *BackupScheduleStatus) DeepCopyInto(out *BackupScheduleStatus) {
 	}
 	if in.LastBackupTime != nil {
 		in, out := &in.LastBackupTime, &out.LastBackupTime
+		*out = (*in).DeepCopy()
+	}
+	if in.LastCompactTime != nil {
+		in, out := &in.LastCompactTime, &out.LastCompactTime
 		*out = (*in).DeepCopy()
 	}
 	if in.AllBackupCleanTime != nil {
