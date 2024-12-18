@@ -50,7 +50,8 @@ func NewBackupScheduleManager(deps *controller.Dependencies) backup.BackupSchedu
 }
 
 func (bm *backupScheduleManager) doCompact(bs *v1alpha1.BackupSchedule, startTime time.Time, endTime time.Time) error {
-	
+	compact := buildCompactBackup(bs, startTime, endTime)
+
 	bs.Status.LastCompactTime = &metav1.Time{Time: bm.now()}
 	return nil
 }
@@ -405,6 +406,47 @@ func buildLogBackup(bs *v1alpha1.BackupSchedule, timestamp time.Time) *v1alpha1.
 	}
 
 	return logBackup
+}
+
+func buildCompactBackup(bs *v1alpha1.BackupSchedule, startTs time.Time, endTs time.Time) *v1alpha1.CompactBackup {
+	ns := bs.GetNamespace()
+	bsName := bs.GetName()
+
+	if bs.Spec.CompactBackupTemplate == nil {
+		return nil
+	}
+
+	compactSpec := *bs.Spec.CompactBackupTemplate.DeepCopy()
+	compactPrefix := "compact" + "-" + startTs.UTC().Format(v1alpha1.BackupNameTimeFormat) + "-" + endTs.UTC().Format(v1alpha1.BackupNameTimeFormat)
+	if compactSpec.S3 != nil {
+		compactSpec.S3.Prefix = path.Join(compactSpec.S3.Prefix, compactPrefix)
+	} else if compactSpec.Gcs != nil {
+		compactSpec.Gcs.Prefix = path.Join(compactSpec.Gcs.Prefix, compactPrefix)
+	} else if compactSpec.Azblob != nil {
+		compactSpec.Azblob.Prefix = path.Join(compactSpec.Azblob.Prefix, compactPrefix)
+	} else if compactSpec.Local != nil {
+		compactSpec.Local.Prefix = path.Join(compactSpec.Local.Prefix, compactPrefix)
+	}
+
+	if bs.Spec.ImagePullSecrets != nil {
+		compactSpec.ImagePullSecrets = bs.Spec.ImagePullSecrets
+	}
+
+	bsLabel := util.CombineStringMap(label.NewBackupSchedule().Instance(bsName).BackupSchedule(bsName), bs.Labels)
+	compactBackup := &v1alpha1.CompactBackup{
+		Spec: compactSpec,
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:   ns,
+			Name:        bs.GetLogBackupCRDName(),
+			Labels:      bsLabel,
+			Annotations: bs.Annotations,
+			OwnerReferences: []metav1.OwnerReference{
+				controller.GetBackupScheduleOwnerRef(bs),
+			},
+		},
+	}
+
+	return compactBackup
 }
 
 func createBackup(bkController controller.BackupControlInterface, bs *v1alpha1.BackupSchedule, timestamp time.Time) (*v1alpha1.Backup, error) {
