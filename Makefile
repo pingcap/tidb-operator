@@ -118,6 +118,7 @@ lint: bin/golangci-lint
 unit:
 	go test $$(go list -e ./... | grep -v tools | grep -v tests | grep -v third_party) \
 		-cover -coverprofile=coverage.txt -covermode=atomic
+	sed -i '' '/generated/d' coverage.txt
 
 .PHONY: check
 check: lint unit verify
