@@ -47,7 +47,7 @@ func GetRole(ns string) *rbacv1.Role {
 			},
 			{
 				APIGroups: []string{"pingcap.com"},
-				Resources: []string{"backups", "restores"},
+				Resources: []string{"backups", "restores", "compactbackups"},
 				Verbs:     []string{"get", "watch", "list", "update"},
 			},
 		},
@@ -177,4 +177,31 @@ func GetRestore(ns, name, tcName, typ string, s3Config *v1alpha1.S3StorageProvid
 		restore.Spec.StorageSize = "1Gi"
 	}
 	return restore
+}
+
+func GetCompactBackup(ns, name, tcName string, s3Config *v1alpha1.S3StorageProvider) *v1alpha1.CompactBackup {
+	sendCredToTikv := true
+	compact := &v1alpha1.CompactBackup{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+		},
+		Spec: v1alpha1.CompactSpec{
+			StorageProvider: v1alpha1.StorageProvider{
+				S3: s3Config,
+			},
+			From: &v1alpha1.TiDBAccessConfig{
+				Host:       controller.TiDBMemberName(tcName),
+				SecretName: name,
+				Port:       v1alpha1.DefaultTiDBServerPort,
+				User:       "root",
+			},
+			BR: &v1alpha1.BRConfig{
+				Cluster:          tcName,
+				ClusterNamespace: ns,
+				SendCredToTikv:   &sendCredToTikv,
+			},
+		},
+	}
+	return compact
 }
