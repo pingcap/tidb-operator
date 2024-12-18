@@ -62,7 +62,7 @@ func TaskConfigMap(ctx *ReconcileContext, _ logr.Logger, c client.Client) task.T
 func newConfigMap(pd *v1alpha1.PD, data []byte, hash string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ConfigMapName(pd.Name),
+			Name:      pd.PodName(),
 			Namespace: pd.Namespace,
 			Labels: maputil.Merge(pd.Labels, map[string]string{
 				v1alpha1.LabelKeyInstance:   pd.Name,

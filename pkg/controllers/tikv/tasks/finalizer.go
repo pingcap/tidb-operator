@@ -15,10 +15,14 @@
 package tasks
 
 import (
+	"context"
 	"time"
+
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v2"
 )
@@ -30,11 +34,18 @@ const (
 func TaskFinalizerDel(c client.Client) task.Task[ReconcileContext] {
 	return task.NameTaskFunc("FinalizerDel", func(ctx task.Context[ReconcileContext]) task.Result {
 		rtx := ctx.Self()
+		regionCount := 0
+		if rtx.Store != nil {
+			regionCount = rtx.Store.RegionCount
+		}
 		switch {
 		case !rtx.Cluster.GetDeletionTimestamp().IsZero():
-			if err := k8s.EnsureInstanceSubResourceDeleted(ctx, c,
-				rtx.TiKV.Namespace, rtx.TiKV.Name, client.GracePeriodSeconds(1)); err != nil {
+			wait, err := EnsureSubResourcesDeleted(ctx, c, rtx.TiKV, regionCount)
+			if err != nil {
 				return task.Fail().With("cannot delete subresources: %w", err)
+			}
+			if wait {
+				return task.Wait().With("wait all subresources deleted")
 			}
 
 			// whole cluster is deleting
@@ -46,9 +57,12 @@ func TaskFinalizerDel(c client.Client) task.Task[ReconcileContext] {
 			return task.Retry(removingWaitInterval).With("wait until the store is removed")
 
 		case rtx.StoreState == v1alpha1.StoreStateRemoved || rtx.StoreID == "":
-			if err := k8s.EnsureInstanceSubResourceDeleted(ctx, c,
-				rtx.TiKV.Namespace, rtx.TiKV.Name, client.GracePeriodSeconds(1)); err != nil {
+			wait, err := EnsureSubResourcesDeleted(ctx, c, rtx.TiKV, regionCount)
+			if err != nil {
 				return task.Fail().With("cannot delete subresources: %w", err)
+			}
+			if wait {
+				return task.Wait().With("wait all subresources deleted")
 			}
 			// Store ID is empty may because of tikv is not initialized
 			// TODO: check whether tikv is initialized
@@ -77,4 +91,22 @@ func TaskFinalizerAdd(c client.Client) task.Task[ReconcileContext] {
 
 		return task.Complete().With("finalizer is added")
 	})
+}
+
+func EnsureSubResourcesDeleted(ctx context.Context, c client.Client, tikv *v1alpha1.TiKV, regionCount int) (wait bool, _ error) {
+	gracePeriod := CalcGracePeriod(regionCount)
+	wait1, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromTiKV(tikv), &corev1.PodList{}, client.GracePeriodSeconds(gracePeriod))
+	if err != nil {
+		return false, err
+	}
+	wait2, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromTiKV(tikv), &corev1.ConfigMapList{})
+	if err != nil {
+		return false, err
+	}
+	wait3, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromTiKV(tikv), &corev1.PersistentVolumeClaimList{})
+	if err != nil {
+		return false, err
+	}
+
+	return wait1 || wait2 || wait3, nil
 }

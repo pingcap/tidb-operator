@@ -150,10 +150,13 @@ func needVersionUpgrade(flashg *v1alpha1.TiFlashGroup) bool {
 	return flashg.Spec.Version != flashg.Status.Version && flashg.Status.Version != ""
 }
 
+const (
+	suffixLen = 6
+)
+
 func TiFlashNewer(fg *v1alpha1.TiFlashGroup, rev string) updater.NewFactory[*runtime.TiFlash] {
 	return updater.NewFunc[*runtime.TiFlash](func() *runtime.TiFlash {
-		//nolint:mnd // refactor to use a constant
-		name := fmt.Sprintf("%s-%s-%s", fg.Spec.Cluster.Name, fg.Name, random.Random(6))
+		name := fmt.Sprintf("%s-%s", fg.Name, random.Random(suffixLen))
 		spec := fg.Spec.Template.Spec.DeepCopy()
 
 		tiflash := &v1alpha1.TiFlash{
@@ -175,7 +178,7 @@ func TiFlashNewer(fg *v1alpha1.TiFlashGroup, rev string) updater.NewFactory[*run
 			Spec: v1alpha1.TiFlashSpec{
 				Cluster:             fg.Spec.Cluster,
 				Version:             fg.Spec.Version,
-				Subdomain:           HeadlessServiceName(fg.Spec.Cluster.Name, fg.Name),
+				Subdomain:           HeadlessServiceName(fg.Name),
 				TiFlashTemplateSpec: *spec,
 			},
 		}

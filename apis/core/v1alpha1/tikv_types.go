@@ -15,6 +15,8 @@
 package v1alpha1
 
 import (
+	"strings"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -257,6 +259,30 @@ func (in *TiKV) GetStatusPort() int32 {
 		return in.Spec.Server.Ports.Status.Port
 	}
 	return DefaultTiKVPortStatus
+}
+
+// NOTE: name prefix is used to generate all names of underlying resources of this instance
+func (in *TiKV) NamePrefixAndSuffix() (prefix, suffix string) {
+	index := strings.LastIndexByte(in.Name, '-')
+	// TODO(liubo02): validate name to avoid '-' is not found
+	if index == -1 {
+		panic("cannot get name prefix")
+	}
+	return in.Name[:index], in.Name[index+1:]
+}
+
+// This name is not only for pod, but also configMap, hostname and almost all underlying resources
+// TODO(liubo02): rename to more reasonable one
+func (in *TiKV) PodName() string {
+	prefix, suffix := in.NamePrefixAndSuffix()
+	return prefix + "-tikv-" + suffix
+}
+
+// TLSClusterSecretName returns the mTLS secret name for a component.
+// TODO(liubo02): move to namer
+func (in *TiKV) TLSClusterSecretName() string {
+	prefix, _ := in.NamePrefixAndSuffix()
+	return prefix + "-tikv-cluster-secret"
 }
 
 // TiKVGroupSpec describes the common attributes of a TiKVGroup

@@ -40,7 +40,7 @@ const (
 )
 
 func TaskPod(ctx *ReconcileContext, logger logr.Logger, c client.Client) task.Task {
-	return task.NameTaskFunc("ConfigMap", func() task.Result {
+	return task.NameTaskFunc("Pod", func() task.Result {
 		expected := newPod(ctx.Cluster, ctx.PDGroup, ctx.PD, ctx.ConfigHash)
 		if ctx.Pod == nil {
 			// We have to refresh cache of members to make sure a pd without pod is unhealthy.
@@ -134,7 +134,7 @@ func newPod(cluster *v1alpha1.Cluster, pdg *v1alpha1.PDGroup, pd *v1alpha1.PD, c
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: ConfigMapName(pd.Name),
+						Name: pd.PodName(),
 					},
 				},
 			},
@@ -158,7 +158,7 @@ func newPod(cluster *v1alpha1.Cluster, pdg *v1alpha1.PDGroup, pd *v1alpha1.PD, c
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: PersistentVolumeClaimName(pd.Name, vol.Name),
+					ClaimName: PersistentVolumeClaimName(pd.PodName(), vol.Name),
 				},
 			},
 		})
@@ -169,12 +169,11 @@ func newPod(cluster *v1alpha1.Cluster, pdg *v1alpha1.PDGroup, pd *v1alpha1.PD, c
 	}
 
 	if cluster.IsTLSClusterEnabled() {
-		groupName := pd.Labels[v1alpha1.LabelKeyGroup]
 		vols = append(vols, corev1.Volume{
 			Name: v1alpha1.PDClusterTLSVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: cluster.TLSClusterSecretName(groupName),
+					SecretName: pd.TLSClusterSecretName(),
 				},
 			},
 		})
@@ -207,7 +206,7 @@ func newPod(cluster *v1alpha1.Cluster, pdg *v1alpha1.PDGroup, pd *v1alpha1.PD, c
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: pd.Namespace,
-			Name:      pd.Name,
+			Name:      pd.PodName(),
 			Labels: maputil.Merge(pd.Labels, map[string]string{
 				v1alpha1.LabelKeyInstance:   pd.Name,
 				v1alpha1.LabelKeyConfigHash: configHash,
@@ -218,7 +217,7 @@ func newPod(cluster *v1alpha1.Cluster, pdg *v1alpha1.PDGroup, pd *v1alpha1.PD, c
 			},
 		},
 		Spec: corev1.PodSpec{
-			Hostname:     pd.Name,
+			Hostname:     pd.PodName(),
 			Subdomain:    pd.Spec.Subdomain,
 			NodeSelector: pd.Spec.Topology,
 			Containers: []corev1.Container{

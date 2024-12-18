@@ -63,7 +63,7 @@ func newPVCs(tidb *v1alpha1.TiDB) []*corev1.PersistentVolumeClaim {
 		vol := &tidb.Spec.Volumes[i]
 		pvcs = append(pvcs, &corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      PersistentVolumeClaimName(tidb.Name, vol.Name),
+				Name:      PersistentVolumeClaimName(tidb.PodName(), vol.Name),
 				Namespace: tidb.Namespace,
 				Labels: maputil.Merge(tidb.Labels, map[string]string{
 					v1alpha1.LabelKeyInstance: tidb.Name,

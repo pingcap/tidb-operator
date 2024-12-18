@@ -142,7 +142,12 @@ func (b *builder[PT]) WithUpdatePreferPolicy(ps ...PreferPolicy[PT]) Builder[PT]
 
 func split[PT runtime.Instance](all []PT, rev string) (update, outdated []PT) {
 	for _, instance := range all {
-		if instance.GetUpdateRevision() == rev && instance.GetDeletionTimestamp().IsZero() {
+		// if instance is deleting, just ignore it
+		// TODO(liubo02): make sure it's ok for PD
+		if !instance.GetDeletionTimestamp().IsZero() {
+			continue
+		}
+		if instance.GetUpdateRevision() == rev {
 			update = append(update, instance)
 		} else {
 			outdated = append(outdated, instance)

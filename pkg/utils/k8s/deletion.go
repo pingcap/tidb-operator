@@ -20,9 +20,11 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
 // EnsureGroupSubResourceDeleted ensures the sub resources of a group are deleted.
@@ -62,6 +64,7 @@ func EnsureGroupSubResourceDeleted(ctx context.Context, cli client.Client,
 // For pod and configmap, the name of the resource is the same as the instance name.
 // For pvc, it should contain the instance name as the value of the label "app.kubernetes.io/instance".
 // TODO: retain policy support
+// Deprecated: remove this function, prefer DeleteInstanceSubresource
 func EnsureInstanceSubResourceDeleted(ctx context.Context, cli client.Client,
 	namespace, name string, podOpts ...client.DeleteOption,
 ) error {
@@ -114,4 +117,56 @@ func EnsureInstanceSubResourceDeleted(ctx context.Context, cli client.Client,
 	}
 
 	return nil
+}
+
+// DeleteInstanceSubresource try to delete a subresource of an instance, e.g. pods, cms, pvcs
+func DeleteInstanceSubresource[T runtime.Instance](
+	ctx context.Context,
+	c client.Client,
+	instance T,
+	objs client.ObjectList,
+	opts ...client.DeleteOption,
+) (wait bool, _ error) {
+	if err := c.List(ctx, objs, client.InNamespace(instance.GetNamespace()), client.MatchingLabels{
+		v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+		v1alpha1.LabelKeyInstance:  instance.GetName(),
+		v1alpha1.LabelKeyCluster:   instance.Cluster(),
+		v1alpha1.LabelKeyComponent: instance.Component(),
+	}); err != nil {
+		return false, fmt.Errorf("failed to list %T for instance %s/%s: %w", objs, instance.GetNamespace(), instance.GetName(), err)
+	}
+
+	if meta.LenList(objs) == 0 {
+		return false, nil
+	}
+
+	items, err := meta.ExtractList(objs)
+	if err != nil {
+		return false, fmt.Errorf("failed to extract %T for instance %s/%s: %w", objs, instance.GetNamespace(), instance.GetName(), err)
+	}
+	for _, item := range items {
+		obj, ok := item.(client.Object)
+		if !ok {
+			return false, fmt.Errorf("unexpected %T for instance %s/%s", item, instance.GetNamespace(), instance.GetName())
+		}
+		if !obj.GetDeletionTimestamp().IsZero() {
+			wait = true
+			continue
+		}
+		if err := c.Delete(ctx, obj, opts...); err != nil {
+			if !errors.IsNotFound(err) {
+				return false, fmt.Errorf("failed to delete sub resource %s/%s of instance %s/%s: %w",
+					obj.GetNamespace(),
+					obj.GetName(),
+					instance.GetNamespace(),
+					instance.GetName(),
+					err,
+				)
+			}
+			continue
+		}
+		wait = true
+	}
+
+	return wait, nil
 }

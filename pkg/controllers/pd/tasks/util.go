@@ -23,16 +23,12 @@ import (
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 )
 
-func ConfigMapName(pdName string) string {
-	return pdName
-}
-
-func PersistentVolumeClaimName(pdName, volName string) string {
+func PersistentVolumeClaimName(podName, volName string) string {
 	// ref: https://github.com/pingcap/tidb-operator/blob/v1.6.0/pkg/apis/pingcap/v1alpha1/helpers.go#L92
 	if volName == "" {
-		return "pd-" + pdName
+		return "pd-" + podName
 	}
-	return "pd-" + pdName + "-" + volName
+	return "pd-" + podName + "-" + volName
 }
 
 func LongestHealthPeer(pd *v1alpha1.PD, peers []*v1alpha1.PD) string {

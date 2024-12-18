@@ -15,7 +15,13 @@
 package tasks
 
 import (
+	"context"
+
+	corev1 "k8s.io/api/core/v1"
+
+	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v2"
 )
@@ -23,9 +29,12 @@ import (
 func TaskFinalizerDel(c client.Client) task.Task[ReconcileContext] {
 	return task.NameTaskFunc("FinalizerDel", func(ctx task.Context[ReconcileContext]) task.Result {
 		rtx := ctx.Self()
-		if err := k8s.EnsureInstanceSubResourceDeleted(ctx, c,
-			rtx.TiDB.Namespace, rtx.TiDB.Name); err != nil {
+		wait, err := EnsureSubResourcesDeleted(ctx, c, rtx.TiDB)
+		if err != nil {
 			return task.Fail().With("cannot delete subresources: %w", err)
+		}
+		if wait {
+			return task.Wait().With("wait all subresources deleted")
 		}
 		if err := k8s.RemoveFinalizer(ctx, c, rtx.TiDB); err != nil {
 			return task.Fail().With("cannot remove finalizer: %w", err)
@@ -44,4 +53,21 @@ func TaskFinalizerAdd(c client.Client) task.Task[ReconcileContext] {
 
 		return task.Complete().With("finalizer is added")
 	})
+}
+
+func EnsureSubResourcesDeleted(ctx context.Context, c client.Client, db *v1alpha1.TiDB) (wait bool, _ error) {
+	wait1, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromTiDB(db), &corev1.PodList{})
+	if err != nil {
+		return false, err
+	}
+	wait2, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromTiDB(db), &corev1.ConfigMapList{})
+	if err != nil {
+		return false, err
+	}
+	wait3, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromTiDB(db), &corev1.PersistentVolumeClaimList{})
+	if err != nil {
+		return false, err
+	}
+
+	return wait1 || wait2 || wait3, nil
 }

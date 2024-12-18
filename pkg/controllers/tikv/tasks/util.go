@@ -14,14 +14,52 @@
 
 package tasks
 
+import (
+	"context"
+	"fmt"
+
+	corev1 "k8s.io/api/core/v1"
+
+	"github.com/pingcap/tidb-operator/pkg/client"
+)
+
 func ConfigMapName(tikvName string) string {
 	return tikvName
 }
 
-func PersistentVolumeClaimName(tikvName, volName string) string {
+func PersistentVolumeClaimName(podName, volName string) string {
 	// ref: https://github.com/pingcap/tidb-operator/blob/v1.6.0/pkg/apis/pingcap/v1alpha1/helpers.go#L92
 	if volName == "" {
-		return "tikv-" + tikvName
+		return "tikv-" + podName
 	}
-	return "tikv-" + tikvName + "-" + volName
+	return "tikv-" + podName + "-" + volName
+}
+
+func DeletePodWithGracePeriod(ctx context.Context, c client.Client, pod *corev1.Pod, regionCount int) error {
+	fmt.Println("xxx: delete pod", pod, regionCount)
+	if pod == nil {
+		return nil
+	}
+	sec := pod.GetDeletionGracePeriodSeconds()
+	gracePeriod := CalcGracePeriod(regionCount)
+
+	if sec == nil || *sec > gracePeriod {
+		fmt.Println("xxx: try to delete with gracePeriod", gracePeriod)
+		if err := c.Delete(ctx, pod, client.GracePeriodSeconds(gracePeriod)); err != nil {
+			return err
+		}
+	} else {
+		fmt.Println("xxx: skip deletion with gracePeriod", gracePeriod)
+	}
+
+	return nil
+}
+
+func CalcGracePeriod(regionCount int) int64 {
+	gracePeriod := int64(regionCount/RegionsPerSecond + 1)
+	if gracePeriod < MinGracePeriodSeconds {
+		gracePeriod = MinGracePeriodSeconds
+	}
+
+	return gracePeriod
 }

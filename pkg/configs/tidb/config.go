@@ -136,7 +136,7 @@ func getAdvertiseAddress(tidb *v1alpha1.TiDB) string {
 	if ns == "" {
 		ns = corev1.NamespaceDefault
 	}
-	return tidb.Name + "." + tidb.Spec.Subdomain + "." + ns + ".svc"
+	return tidb.PodName() + "." + tidb.Spec.Subdomain + "." + ns + ".svc"
 }
 
 func removeHTTPPrefix(url string) string {

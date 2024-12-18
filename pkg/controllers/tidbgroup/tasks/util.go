@@ -18,6 +18,6 @@ import (
 	"fmt"
 )
 
-func HeadlessServiceName(clusterName, groupName string) string {
-	return fmt.Sprintf("%s-%s-peer", clusterName, groupName)
+func HeadlessServiceName(groupName string) string {
+	return fmt.Sprintf("%s-tidb-peer", groupName)
 }

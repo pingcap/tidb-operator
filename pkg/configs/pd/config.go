@@ -162,7 +162,7 @@ func getAdvertiseClientURLs(pd *v1alpha1.PD, scheme string) string {
 	if ns == "" {
 		ns = corev1.NamespaceDefault
 	}
-	host := pd.Name + "." + pd.Spec.Subdomain + "." + ns
+	host := pd.PodName() + "." + pd.Spec.Subdomain + "." + ns
 	return fmt.Sprintf("%s://%s:%d", scheme, host, pd.GetClientPort())
 }
 
@@ -175,7 +175,7 @@ func getAdvertisePeerURLs(pd *v1alpha1.PD, scheme string) string {
 	if ns == "" {
 		ns = corev1.NamespaceDefault
 	}
-	host := pd.Name + "." + pd.Spec.Subdomain + "." + ns
+	host := pd.PodName() + "." + pd.Spec.Subdomain + "." + ns
 	return fmt.Sprintf("%s://%s:%d", scheme, host, pd.GetPeerPort())
 }
 

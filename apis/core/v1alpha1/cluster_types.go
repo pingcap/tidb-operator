@@ -185,17 +185,14 @@ func (c *Cluster) IsTLSClusterEnabled() bool {
 	return c.Spec.TLSCluster != nil && c.Spec.TLSCluster.Enabled
 }
 
-// TLSClusterSecretName returns the mTLS secret name for a component group.
-func (c *Cluster) TLSClusterSecretName(groupName string) string {
-	return fmt.Sprintf("%s-%s-cluster-secret", c.Name, groupName)
-}
-
 // ClusterClientTLSSecretName returns the mTLS secret name for the cluster client.
+// TODO: move it to namer pkg
 func (c *Cluster) ClusterClientTLSSecretName() string {
 	return TLSClusterClientSecretName(c.Name)
 }
 
 // TLSClusterClientSecretName returns the mTLS secret name for the cluster client.
+// TODO: move it to namer pkg
 func TLSClusterClientSecretName(clusterName string) string {
 	return fmt.Sprintf("%s-cluster-client-secret", clusterName)
 }

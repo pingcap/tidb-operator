@@ -107,7 +107,7 @@ func TestConfigMap(t *testing.T) {
 			expected: task.Complete().With(""),
 			expectedCM: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-tidb",
+					Name: "test-tidb-tidb",
 					Labels: map[string]string{
 						"aaa":                                 "bbb",
 						v1alpha1.LabelKeyInstance:             "test-tidb",
@@ -126,7 +126,7 @@ func TestConfigMap(t *testing.T) {
 					},
 				},
 				Data: map[string]string{
-					v1alpha1.ConfigFileName: `advertise-address = 'test-tidb.subdomain.default.svc'
+					v1alpha1.ConfigFileName: `advertise-address = 'test-tidb-tidb.subdomain.default.svc'
 graceful-wait-before-shutdown = 30
 host = '::'
 path = 'test-pd.default:2379'
@@ -165,7 +165,7 @@ graceful-wait-before-shutdown = 60`),
 			expected: task.Complete().With(""),
 			expectedCM: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-tidb",
+					Name: "test-tidb-tidb",
 					Labels: map[string]string{
 						"aaa":                                 "bbb",
 						v1alpha1.LabelKeyInstance:             "test-tidb",
@@ -184,7 +184,7 @@ graceful-wait-before-shutdown = 60`),
 					},
 				},
 				Data: map[string]string{
-					v1alpha1.ConfigFileName: `advertise-address = 'test-tidb.subdomain.default.svc'
+					v1alpha1.ConfigFileName: `advertise-address = 'test-tidb-tidb.subdomain.default.svc'
 graceful-wait-before-shutdown = 60
 host = '::'
 path = 'test-pd.default:2379'
@@ -230,7 +230,7 @@ slow-query-file = '/var/log/tidb/slowlog'
 
 			cm := corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: ConfigMapName(ctx.TiDB.Name),
+					Name: ConfigMapName(ctx.TiDB.PodName()),
 				},
 			}
 			err := fc.Get(ctx, client.ObjectKeyFromObject(&cm), &cm)

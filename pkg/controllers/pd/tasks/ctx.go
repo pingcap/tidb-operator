@@ -85,9 +85,11 @@ func (ctx *ReconcileContext) SetCluster(c *v1alpha1.Cluster) {
 	ctx.Cluster = c
 }
 
-// Pod always uses same namespace and name of PD
 func (ctx *ReconcileContext) PodKey() types.NamespacedName {
-	return ctx.Key
+	return types.NamespacedName{
+		Namespace: ctx.PD.Namespace,
+		Name:      ctx.PD.PodName(),
+	}
 }
 
 func (ctx *ReconcileContext) GetPod() *corev1.Pod {
