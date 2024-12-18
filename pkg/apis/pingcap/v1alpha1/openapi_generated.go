@@ -931,6 +931,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 							Format:      "",
 						},
 					},
+					"compactInterval": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LogBackupInterval is the interval of log backup.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"backupTemplate": {
 						SchemaProps: spec.SchemaProps{
 							Description: "BackupTemplate is the specification of the backup structure to get scheduled.",
@@ -942,6 +949,12 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 						SchemaProps: spec.SchemaProps{
 							Description: "LogBackupTemplate is the specification of the log backup structure to get scheduled.",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupSpec"),
+						},
+					},
+					"compactBackupTemplate": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CompactBackupTemplate is the specification of the compact backup structure to get scheduled.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CompactSpec"),
 						},
 					},
 					"storageClassName": {
@@ -972,12 +985,38 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 							},
 						},
 					},
+					"br": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BRConfig is the configs for BR",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig"),
+						},
+					},
+					"s3": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider"),
+						},
+					},
+					"gcs": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider"),
+						},
+					},
+					"azblob": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AzblobStorageProvider"),
+						},
+					},
+					"local": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LocalStorageProvider"),
+						},
+					},
 				},
 				Required: []string{"schedule", "backupTemplate"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupSpec", "k8s.io/api/core/v1.LocalObjectReference"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AzblobStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CompactSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LocalStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "k8s.io/api/core/v1.LocalObjectReference"},
 	}
 }
 
@@ -1071,7 +1110,7 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 					},
 					"br": {
 						SchemaProps: spec.SchemaProps{
-							Description: "BRConfig is the configs for BR",
+							Description: "BRConfig is the configs for BR *** Note: This field should generally not be left empty, unless you are certain the BR config *** can be obtained from another source, such as a schedule CR.",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig"),
 						},
 					},
@@ -1793,7 +1832,7 @@ func schema_pkg_apis_pingcap_v1alpha1_CompactSpec(ref common.ReferenceCallback) 
 					},
 					"br": {
 						SchemaProps: spec.SchemaProps{
-							Description: "BRConfig is the configs for BR",
+							Description: "BRConfig is the configs for BR *** Note: This field should generally not be left empty, unless you are certain the BR config *** can be obtained from another source, such as a schedule CR.",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig"),
 						},
 					},
