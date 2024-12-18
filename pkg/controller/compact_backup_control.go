@@ -28,11 +28,16 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/klog/v2"
 )
 
 // BackupControlInterface manages Backups used in BackupSchedule
@@ -53,15 +58,50 @@ func NewRealCompactControl(cli versioned.Interface, recorder record.EventRecorde
 	}
 }
 
-func (c *realCompactControl) CreateCompactBackup(compact *v1alpha1.CompactBackup) (*v1alpha1.CompactBackup, error) {
+func (c *realCompactControl) recordCompactEvent(verb string, compact *v1alpha1.CompactBackup, err error) {
+	backupName := compact.GetName()
 	ns := compact.GetNamespace()
 
-	return c.cli.PingcapV1alpha1().CompactBackups(ns).Create(context.TODO(), compact, metav1.CreateOptions{})
+	bsName := compact.GetLabels()[label.BackupScheduleLabelKey]
+	if err == nil {
+		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
+		msg := fmt.Sprintf("%s CompactBackup %s/%s for backupSchedule/%s successful",
+			strings.ToLower(verb), ns, backupName, bsName)
+		c.recorder.Event(compact, corev1.EventTypeNormal, reason, msg)
+	} else {
+		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
+		msg := fmt.Sprintf("%s CompactBackup %s/%s for backupSchedule/%s failed error: %s",
+			strings.ToLower(verb), ns, backupName, bsName, err)
+		c.recorder.Event(compact, corev1.EventTypeWarning, reason, msg)
+	}
+}
+
+func (c *realCompactControl) CreateCompactBackup(compact *v1alpha1.CompactBackup) (*v1alpha1.CompactBackup, error) {
+	ns := compact.GetNamespace()
+	compactName := compact.GetName()
+
+	compact, err := c.cli.PingcapV1alpha1().CompactBackups(ns).Create(context.TODO(), compact, metav1.CreateOptions{})
+	bsName := compact.GetLabels()[label.BackupScheduleLabelKey]
+	if err != nil {
+		klog.Errorf("failed to create CompactBackup: [%s/%s] for backupSchedule/%s, err: %v", ns, compactName, bsName, err)
+	} else {
+		klog.V(4).Infof("create CompactBackup: [%s/%s] for backupSchedule/%s successfully", ns, compactName, bsName)
+	}
+	c.recordCompactEvent("create", compact, err)
+	return compact, err
 }
 
 func (c *realCompactControl) DeleteCompactBackup(compact *v1alpha1.CompactBackup) error {
 	ns := compact.GetNamespace()
 	compactName := compact.GetName()
 
-	return c.cli.PingcapV1alpha1().CompactBackups(ns).Delete(context.TODO(), compactName, metav1.DeleteOptions{})
+	err := c.cli.PingcapV1alpha1().CompactBackups(ns).Delete(context.TODO(), compactName, metav1.DeleteOptions{})
+	bsName := compact.GetLabels()[label.BackupScheduleLabelKey]
+	if err != nil {
+		klog.Errorf("failed to delete CompactBackup: [%s/%s] for backupSchedule/%s, err: %v", ns, compactName, bsName, err)
+	} else {
+		klog.V(4).Infof("delete CompactBackup: [%s/%s] for backupSchedule/%s successfully", ns, compactName, bsName)
+	}
+	c.recordCompactEvent("delete", compact, err)
+	return err
 }
