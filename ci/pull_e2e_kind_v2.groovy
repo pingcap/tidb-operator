@@ -283,7 +283,7 @@ try {
                         GITHASH = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
                         IMAGE_TAG = env.JOB_NAME + "-" + GITHASH.substring(0, 6)
 
-                        stash 'tidb-operator
+                        stash 'tidb-operator'
                     }
                 }
             }
