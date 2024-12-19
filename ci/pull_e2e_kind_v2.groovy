@@ -18,7 +18,7 @@ properties([
         string(name: 'GIT_URL', defaultValue: 'https://github.com/pingcap/tidb-operator', description: 'git repo url'),
         string(name: 'GIT_REF', defaultValue: env.DEFAULT_GIT_REF, description: 'git ref spec to checkout, e.g. feature/v2'),
         string(name: 'PR_ID', defaultValue: '', description: 'pull request ID, this will override GIT_REF if set, e.g. 1889'),
-        string(name: 'GINKGO_OPTS', defaultValue: '', description: 'options for ginkgo, e.g. --ginkgo.focus=Basic'),
+        string(name: 'GINKGO_OPTS', defaultValue: '', description: 'options for ginkgo, e.g. --focus=Basic'),
     ])
 ])
 
