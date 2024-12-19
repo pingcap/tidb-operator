@@ -150,6 +150,7 @@ def build(String name, String code, Map resources = e2ePodResources) {
                         unstash 'tidb-operator'
                         stage("Debug Info") {
                             sh """
+                            sleep 1d & wait
                             echo "====== shell env ======"
                             echo "pwd: \$(pwd)"
                             env
