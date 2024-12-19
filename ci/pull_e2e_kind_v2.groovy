@@ -65,13 +65,11 @@ spec:
         memory: <%= resources.limits.memory %>
     <% } %>
 <% } %>
-    # kind needs /lib/modules and cgroups from the host
+    # kind needs /lib/modules from the host
     volumeMounts:
     - mountPath: /lib/modules
       name: modules
       readOnly: true
-    - mountPath: /sys/fs/cgroup
-      name: cgroup
     # dind expects /var/lib/docker to be volume
     - name: docker-root
       mountPath: /var/lib/docker
@@ -87,10 +85,6 @@ spec:
   - name: modules
     hostPath:
       path: /lib/modules
-      type: Directory
-  - name: cgroup
-    hostPath:
-      path: /sys/fs/cgroup
       type: Directory
   - name: docker-root
     emptyDir: {}
