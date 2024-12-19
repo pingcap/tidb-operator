@@ -914,10 +914,10 @@ var _ = Describe("TiDB Cluster", func() {
 			Expect(infos[4].name).To(Equal(infos[5].name))
 		})
 
-		It("tikv: should not perform a rolling update when ConfigUpdateStrategy is InPlace", func() {
+		It("tikv: should not perform a rolling update when ConfigUpdateStrategy is HotReload", func() {
 			pdg := data.NewPDGroup(ns.Name, "pdg", tc.Name, ptr.To(int32(1)), nil)
 			kvg := data.NewTiKVGroup(ns.Name, "kvg", tc.Name, ptr.To(int32(3)), func(tk *v1alpha1.TiKVGroup) {
-				tk.Spec.ConfigUpdateStrategy = v1alpha1.ConfigUpdateStrategyInPlace
+				tk.Spec.Template.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyHotReload
 			})
 			dbg := data.NewTiDBGroup(ns.Name, "dbg", tc.Name, ptr.To(int32(1)), nil)
 			Expect(k8sClient.Create(ctx, pdg)).To(Succeed())
@@ -1258,14 +1258,16 @@ var _ = Describe("TiDB Cluster", func() {
 			Expect(k8sClient.Update(ctx, &tcGet)).To(Succeed())
 
 			By("Creating the components with TLS client enabled")
-			pdg := data.NewPDGroup(ns.Name, "pdg", tc.Name, ptr.To(int32(1)), func(group *v1alpha1.PDGroup) {
-				group.Spec.MountClusterClientSecret = ptr.To(true)
-			})
-			kvg := data.NewTiKVGroup(ns.Name, "kvg", tc.Name, ptr.To(int32(1)), func(group *v1alpha1.TiKVGroup) {
-				group.Spec.MountClusterClientSecret = ptr.To(true)
-			})
+			pdg := data.NewPDGroup(ns.Name, "pdg", tc.Name, ptr.To(int32(1)), func(_ *v1alpha1.PDGroup) {})
+			kvg := data.NewTiKVGroup(ns.Name, "kvg", tc.Name, ptr.To(int32(1)), func(_ *v1alpha1.TiKVGroup) {})
 			dbg := data.NewTiDBGroup(ns.Name, "dbg", tc.Name, ptr.To(int32(1)), func(group *v1alpha1.TiDBGroup) {
-				group.Spec.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
+				group.Spec.Template.Spec.Security = &v1alpha1.TiDBSecurity{
+					TLS: &v1alpha1.TiDBTLS{
+						MySQL: &v1alpha1.TLS{
+							Enabled: true,
+						},
+					},
+				}
 			})
 			flashg := data.NewTiFlashGroup(ns.Name, "flashg", tc.Name, ptr.To(int32(1)), nil)
 			Expect(k8sClient.Create(ctx, pdg)).To(Succeed())
@@ -1303,7 +1305,7 @@ var _ = Describe("TiDB Cluster", func() {
 							Name: fmt.Sprintf("%s%s-tls", v1alpha1.NamePrefix, componentName),
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
-									// TODO: extract to a common utils
+									// TODO(liubo02): extract to a namer pkg
 									SecretName: groupName + "-" + componentName + "-cluster-secret",
 									//nolint:mnd // easy to understand
 									DefaultMode: ptr.To(int32(420)),
@@ -1317,38 +1319,22 @@ var _ = Describe("TiDB Cluster", func() {
 						}))
 
 						switch componentName {
-						case v1alpha1.LabelValComponentPD, v1alpha1.LabelValComponentTiKV:
-							// check for `mountClusterClientSecret`
-							g.Expect(pod.Spec.Volumes).To(ContainElement(corev1.Volume{
-								Name: v1alpha1.ClusterTLSClientVolumeName,
-								VolumeSource: corev1.VolumeSource{
-									Secret: &corev1.SecretVolumeSource{
-										SecretName: tc.ClusterClientTLSSecretName(),
-										//nolint:mnd // easy to understand
-										DefaultMode: ptr.To(int32(420)),
-									},
-								},
-							}))
-							g.Expect(pod.Spec.Containers[0].VolumeMounts).To(ContainElement(corev1.VolumeMount{
-								Name:      v1alpha1.ClusterTLSClientVolumeName,
-								MountPath: v1alpha1.ClusterTLSClientMountPath,
-								ReadOnly:  true,
-							}))
 						case v1alpha1.LabelValComponentTiDB:
 							// check for TiDB server & mysql client TLS
 							g.Expect(pod.Spec.Volumes).To(ContainElement(corev1.Volume{
-								Name: v1alpha1.TiDBServerTLSVolumeName,
+								Name: v1alpha1.TiDBSQLTLSVolumeName,
 								VolumeSource: corev1.VolumeSource{
 									Secret: &corev1.SecretVolumeSource{
-										SecretName: dbg.TiDBServerTLSSecretName(),
+										// TODO(liubo02): extract to a namer pkg
+										SecretName: dbg.Name + "-tidb-server-secret",
 										//nolint:mnd // easy to understand
 										DefaultMode: ptr.To(int32(420)),
 									},
 								},
 							}))
 							g.Expect(pod.Spec.Containers[0].VolumeMounts).To(ContainElement(corev1.VolumeMount{
-								Name:      v1alpha1.TiDBServerTLSVolumeName,
-								MountPath: v1alpha1.TiDBServerTLSMountPath,
+								Name:      v1alpha1.TiDBSQLTLSVolumeName,
+								MountPath: v1alpha1.TiDBSQLTLSMountPath,
 								ReadOnly:  true,
 							}))
 						}
@@ -1359,8 +1345,9 @@ var _ = Describe("TiDB Cluster", func() {
 				checkComponent(dbg.Name, v1alpha1.LabelValComponentTiDB, dbg.Spec.Replicas)
 				checkComponent(flashg.Name, v1alpha1.LabelValComponentTiFlash, flashg.Spec.Replicas)
 
+				// TODO(liubo02): extract to a common namer pkg
 				g.Expect(utiltidb.IsTiDBConnectable(ctx, k8sClient, fw,
-					tc.Namespace, tc.Name, dbg.Name, "root", "", dbg.TiDBClientTLSSecretName())).To(Succeed())
+					tc.Namespace, tc.Name, dbg.Name, "root", "", dbg.Name+"-tidb-client-secret")).To(Succeed())
 			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
 
 			// TODO: version upgrade test
@@ -1385,7 +1372,11 @@ var _ = Describe("TiDB Cluster", func() {
 			pdg := data.NewPDGroup(ns.Name, "pdg", tc.Name, ptr.To(int32(1)), nil)
 			kvg := data.NewTiKVGroup(ns.Name, "kvg", tc.Name, ptr.To(int32(1)), nil)
 			dbg := data.NewTiDBGroup(ns.Name, "dbg", tc.Name, ptr.To(int32(1)), func(group *v1alpha1.TiDBGroup) {
-				group.Spec.BootstrapSQLConfigMapName = &bsqlCm.Name
+				group.Spec.Template.Spec.Security = &v1alpha1.TiDBSecurity{
+					BootstrapSQL: &corev1.LocalObjectReference{
+						Name: bsqlCm.Name,
+					},
+				}
 			})
 			Expect(k8sClient.Create(ctx, pdg)).To(Succeed())
 			Expect(k8sClient.Create(ctx, kvg)).To(Succeed())
@@ -1449,15 +1440,25 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%"),
 			pdg := data.NewPDGroup(ns.Name, "pdg", tc.Name, ptr.To(int32(1)), nil)
 			kvg := data.NewTiKVGroup(ns.Name, "kvg", tc.Name, ptr.To(int32(1)), nil)
 			dbg := data.NewTiDBGroup(ns.Name, "dbg", tc.Name, ptr.To(int32(1)), func(group *v1alpha1.TiDBGroup) {
-				group.Spec.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
-				group.Spec.BootstrapSQLConfigMapName = &bsqlCm.Name
-				group.Spec.TiDBAuthToken = &v1alpha1.TiDBAuthToken{
-					Enabled: true,
+				group.Spec.Template.Spec.Security = &v1alpha1.TiDBSecurity{
+					TLS: &v1alpha1.TiDBTLS{
+						MySQL: &v1alpha1.TLS{
+							Enabled: true,
+						},
+					},
+					BootstrapSQL: &corev1.LocalObjectReference{
+						Name: bsqlCm.Name,
+					},
+					AuthToken: &v1alpha1.TiDBAuthToken{
+						JWKs: corev1.LocalObjectReference{
+							Name: "jwks-secret",
+						},
+					},
 				}
 			})
 
 			By("Creating the JWKS secret")
-			jwksSecret := jwt.GenerateJWKSSecret(dbg.Namespace, dbg.TiDBAuthTokenJWKSSecretName())
+			jwksSecret := jwt.GenerateJWKSSecret(dbg.Namespace, "jwks-secret")
 			Expect(k8sClient.Create(ctx, &jwksSecret)).To(Succeed())
 
 			By("Creating the ConfigMap with a user created by Bootstrap SQL")
@@ -1486,8 +1487,9 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%"),
 					[]*v1alpha1.TiKVGroup{kvg}, []*v1alpha1.TiDBGroup{dbg}, nil)).To(Succeed())
 
 				// connect with the JWT token
+				// TODO(liubo02): extract to common namer pkg
 				g.Expect(utiltidb.IsTiDBConnectable(ctx, k8sClient, fw,
-					tc.Namespace, tc.Name, dbg.Name, sub, token, dbg.TiDBClientTLSSecretName())).To(Succeed())
+					tc.Namespace, tc.Name, dbg.Name, sub, token, dbg.Name+"-tidb-client-secret")).To(Succeed())
 			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
 		})
 

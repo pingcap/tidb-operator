@@ -46,10 +46,9 @@ type ReconcileContext struct {
 	StoreState  string
 	StoreLabels []*metapb.StoreLabel
 
-	Cluster      *v1alpha1.Cluster
-	TiFlash      *v1alpha1.TiFlash
-	TiFlashGroup *v1alpha1.TiFlashGroup
-	Pod          *corev1.Pod
+	Cluster *v1alpha1.Cluster
+	TiFlash *v1alpha1.TiFlash
+	Pod     *corev1.Pod
 
 	// ConfigHash stores the hash of **user-specified** config (i.e.`.Spec.Config`),
 	// which will be used to determine whether the config has changed.
@@ -79,26 +78,6 @@ func TaskContextTiFlash(c client.Client) task.Task[ReconcileContext] {
 		}
 		rtx.TiFlash = &tiflash
 		return task.Complete().With("tiflash is set")
-	})
-}
-
-func TaskContextTiFlashGroup(c client.Client) task.Task[ReconcileContext] {
-	return task.NameTaskFunc("ContextTiFlashGroup", func(ctx task.Context[ReconcileContext]) task.Result {
-		rtx := ctx.Self()
-
-		if len(rtx.TiFlash.OwnerReferences) == 0 {
-			return task.Fail().With("tiflash instance has no owner, this should not happen")
-		}
-
-		var tiflashGroup v1alpha1.TiFlashGroup
-		if err := c.Get(ctx, client.ObjectKey{
-			Name:      rtx.TiFlash.OwnerReferences[0].Name, // only one owner now
-			Namespace: rtx.TiFlash.Namespace,
-		}, &tiflashGroup); err != nil {
-			return task.Fail().With("cannot find tiflash group %s: %w", rtx.TiFlash.OwnerReferences[0].Name, err)
-		}
-		rtx.TiFlashGroup = &tiflashGroup
-		return task.Complete().With("tiflash group is set")
 	})
 }
 

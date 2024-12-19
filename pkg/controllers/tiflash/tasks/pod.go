@@ -65,7 +65,7 @@ func (*TaskPod) Name() string {
 func (t *TaskPod) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	rtx := ctx.Self()
 
-	expected := t.newPod(rtx.Cluster, rtx.TiFlashGroup, rtx.TiFlash, rtx.ConfigHash)
+	expected := t.newPod(rtx.Cluster, rtx.TiFlash, rtx.ConfigHash)
 	if rtx.Pod == nil {
 		if err := t.Client.Apply(rtx, expected); err != nil {
 			return task.Fail().With("can't apply pod of tiflash: %w", err)
@@ -81,7 +81,7 @@ func (t *TaskPod) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	t.Logger.Info("compare pod", "result", res, "configChanged", configChanged, "currentConfigHash", curHash, "expectConfigHash", expectHash)
 
 	if res == k8s.CompareResultRecreate || (configChanged &&
-		rtx.TiFlashGroup.Spec.ConfigUpdateStrategy == v1alpha1.ConfigUpdateStrategyRollingUpdate) {
+		rtx.TiFlash.Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart) {
 		t.Logger.Info("will recreate the pod")
 		if err := t.Client.Delete(rtx, rtx.Pod); err != nil {
 			return task.Fail().With("can't delete pod of tiflash: %w", err)
@@ -100,7 +100,7 @@ func (t *TaskPod) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	return task.Complete().With("pod is synced")
 }
 
-func (*TaskPod) newPod(cluster *v1alpha1.Cluster, _ *v1alpha1.TiFlashGroup, tiflash *v1alpha1.TiFlash, configHash string) *corev1.Pod {
+func (*TaskPod) newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, configHash string) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,

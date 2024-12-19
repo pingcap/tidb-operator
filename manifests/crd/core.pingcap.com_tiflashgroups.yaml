@@ -57,15 +57,6 @@ spec:
                 required:
                 - name
                 type: object
-              configUpdateStrategy:
-                default: RollingUpdate
-                description: |-
-                  ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
-                  Valid values are "RollingUpdate" (by default) and "InPlace".
-                enum:
-                - RollingUpdate
-                - InPlace
-                type: string
               replicas:
                 format: int32
                 type: integer
@@ -246,6 +237,18 @@ spec:
                                 - port
                                 type: object
                             type: object
+                        type: object
+                      updateStrategy:
+                        properties:
+                          config:
+                            default: Restart
+                            description: |-
+                              Config determines how the configuration change is applied to the cluster.
+                              Valid values are "Restart" (by default) and "HotReload".
+                            enum:
+                            - Restart
+                            - HotReload
+                            type: string
                         type: object
                       volumes:
                         description: Volumes defines data volume of TiFlash

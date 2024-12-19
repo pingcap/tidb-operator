@@ -57,7 +57,7 @@ const (
 	// Since the tidb operator will overlay the user-specified config with some operator-managed fields,
 	// if we hash the overlayed config, with the evolving TiDB Operator, the hash may change,
 	// potentially triggering an unexpected rolling update.
-	// Instead, we choose to hash the user-specified config, 
+	// Instead, we choose to hash the user-specified config,
 	// and the worst case is that users expect a reboot but it doesn't happen.
 	LabelKeyConfigHash = LabelKeyPrefix + "config-hash"
 )
@@ -112,11 +112,11 @@ const (
 type ConfigUpdateStrategy string
 
 const (
-	// ConfigUpdateStrategyInPlace updates config without restarting.
-	ConfigUpdateStrategyInPlace ConfigUpdateStrategy = "InPlace"
+	// ConfigUpdateStrategyHotReload updates config without restarting.
+	ConfigUpdateStrategyHotReload ConfigUpdateStrategy = "HotReload"
 
-	// ConfigUpdateStrategyRollingUpdate performs a rolling-update to apply changed configs.
-	ConfigUpdateStrategyRollingUpdate ConfigUpdateStrategy = "RollingUpdate"
+	// ConfigUpdateStrategyRestart performs a restart to apply changed configs.
+	ConfigUpdateStrategyRestart ConfigUpdateStrategy = "Restart"
 )
 
 // ObjectMeta is defined for replacing the embedded metav1.ObjectMeta
@@ -298,6 +298,21 @@ type GroupStatus struct {
 	// UpdatedReplicas is the number of Instances created by the Group controller from the Group version
 	// indicated by updateRevision.
 	UpdatedReplicas int32 `json:"updatedReplicas,omitempty"`
+}
+
+type UpdateStrategy struct {
+	// Config determines how the configuration change is applied to the cluster.
+	// Valid values are "Restart" (by default) and "HotReload".
+	// +kubebuilder:validation:Enum=Restart;HotReload
+	// +kubebuilder:default="Restart"
+	Config ConfigUpdateStrategy `json:"config,omitempty"`
+}
+
+// TLS defines a common tls config for all components
+// Now it only support enable or disable.
+// TODO(liubo02): add more tls configs
+type TLS struct {
+	Enabled bool `json:"enabled,omitempty"`
 }
 
 // ComponentAccessor is the interface to access details of instances/groups managed by TiDB Operator.

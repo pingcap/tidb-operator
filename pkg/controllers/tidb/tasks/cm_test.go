@@ -80,7 +80,6 @@ func TestConfigMap(t *testing.T) {
 		key        types.NamespacedName
 		objs       []client.Object
 		tidb       *v1alpha1.TiDB
-		tidbGroup  *v1alpha1.TiDBGroup
 		cluster    *v1alpha1.Cluster
 		expected   task.Result
 		expectedCM *corev1.ConfigMap
@@ -100,7 +99,6 @@ func TestConfigMap(t *testing.T) {
 				fake.UID[v1alpha1.TiDB]("test-uid"),
 				fake.Label[v1alpha1.TiDB](v1alpha1.LabelKeyInstanceRevisionHash, "foo"),
 			),
-			tidbGroup: fake.FakeObj[v1alpha1.TiDBGroup]("test-tidb-group"),
 			cluster: fake.FakeObj("test-cluster",
 				withStatusPDURL("http://test-pd.default:2379"),
 			),
@@ -158,7 +156,6 @@ graceful-wait-before-shutdown = 60`),
 				fake.UID[v1alpha1.TiDB]("test-uid"),
 				fake.Label[v1alpha1.TiDB](v1alpha1.LabelKeyInstanceRevisionHash, "foo"),
 			),
-			tidbGroup: fake.FakeObj[v1alpha1.TiDBGroup]("test-tidb-group"),
 			cluster: fake.FakeObj("test-cluster",
 				withStatusPDURL("http://test-pd.default:2379"),
 			),
@@ -204,16 +201,11 @@ slow-query-file = '/var/log/tidb/slowlog'
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
-			c.tidb.OwnerReferences = []metav1.OwnerReference{
-				*metav1.NewControllerRef(c.tidbGroup, v1alpha1.SchemeGroupVersion.WithKind("TiDBGroup")),
-			}
-
 			// append TiDB into store
 			objs := c.objs
 			objs = append(objs, c.tidb)
 
 			ctx := FakeContext(c.key, WithTiDB(c.tidb))
-			ctx.TiDBGroup = c.tidbGroup
 			ctx.Cluster = c.cluster
 			fc := client.NewFakeClient(objs...)
 			tk := NewTaskConfigMap(logr.Discard(), fc)

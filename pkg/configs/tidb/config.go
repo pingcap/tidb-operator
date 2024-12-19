@@ -67,7 +67,7 @@ type Log struct {
 	SlowQueryFile string `toml:"slow-query-file"`
 }
 
-func (c *Config) Overlay(cluster *v1alpha1.Cluster, dbg *v1alpha1.TiDBGroup, tidb *v1alpha1.TiDB) error {
+func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) error {
 	if err := c.Validate(); err != nil {
 		return err
 	}
@@ -77,11 +77,11 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, dbg *v1alpha1.TiDBGroup, tid
 	c.Host = "::"
 	c.Path = removeHTTPPrefix(cluster.Status.PD)
 
-	if dbg.IsTLSClientEnabled() {
+	if tidb.IsMySQLTLSEnabled() {
 		// TODO(csuzhangxc): disable Client Authn
-		c.Security.SSLCA = path.Join(v1alpha1.TiDBServerTLSMountPath, corev1.ServiceAccountRootCAKey)
-		c.Security.SSLCert = path.Join(v1alpha1.TiDBServerTLSMountPath, corev1.TLSCertKey)
-		c.Security.SSLKey = path.Join(v1alpha1.TiDBServerTLSMountPath, corev1.TLSPrivateKeyKey)
+		c.Security.SSLCA = path.Join(v1alpha1.TiDBSQLTLSMountPath, corev1.ServiceAccountRootCAKey)
+		c.Security.SSLCert = path.Join(v1alpha1.TiDBSQLTLSMountPath, corev1.TLSCertKey)
+		c.Security.SSLKey = path.Join(v1alpha1.TiDBSQLTLSMountPath, corev1.TLSPrivateKeyKey)
 	}
 
 	if cluster.IsTLSClusterEnabled() {
@@ -92,11 +92,11 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, dbg *v1alpha1.TiDBGroup, tid
 
 	c.Log.SlowQueryFile = getSlowQueryFile(tidb)
 
-	if dbg.IsBootstrapSQLEnabled() {
+	if tidb.IsBootstrapSQLEnabled() {
 		c.InitializeSQLFile = path.Join(v1alpha1.BootstrapSQLFilePath, v1alpha1.BootstrapSQLFileName)
 	}
 
-	if dbg.IsTokenBasedAuthEnabled() {
+	if tidb.IsTokenBasedAuthEnabled() {
 		c.Security.AuthTokenJwks = path.Join(v1alpha1.TiDBAuthTokenPath, v1alpha1.TiDBAuthTokenJWKS)
 	}
 

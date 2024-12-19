@@ -11,10 +11,12 @@ spec:
     name: tls
   version: v8.1.0
   replicas: 1
-  tlsClient:
-    enabled: true
   template:
     spec:
+      security:
+        tls:
+          mysql:
+            enabled: true
       config: |
         [security]
         cluster-verify-cn = ["TiDB"]

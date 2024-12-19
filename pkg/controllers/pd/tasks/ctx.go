@@ -43,7 +43,6 @@ type ReconcileContext struct {
 	IsLeader    bool
 
 	PD      *v1alpha1.PD
-	PDGroup *v1alpha1.PDGroup
 	Peers   []*v1alpha1.PD
 	Cluster *v1alpha1.Cluster
 	Pod     *corev1.Pod
@@ -142,19 +141,6 @@ func TaskContextInfoFromPD(ctx *ReconcileContext, cm pdm.PDClientManager) task.T
 
 func TaskContextPeers(ctx *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("ContextPeers", func() task.Result {
-		// TODO: don't get pdg in pd task, move MountClusterClientSecret opt to pd spec
-		if len(ctx.PD.OwnerReferences) == 0 {
-			return task.Fail().With("pd instance has no owner, this should not happen")
-		}
-		var pdg v1alpha1.PDGroup
-		if err := c.Get(ctx, client.ObjectKey{
-			Name:      ctx.PD.OwnerReferences[0].Name, // only one owner now
-			Namespace: ctx.PD.Namespace,
-		}, &pdg); err != nil {
-			return task.Fail().With("cannot find pd group %s: %v", ctx.PD.OwnerReferences[0].Name, err)
-		}
-		ctx.PDGroup = &pdg
-
 		var pdl v1alpha1.PDList
 		if err := c.List(ctx, &pdl, client.InNamespace(ctx.PD.Namespace), client.MatchingLabels{
 			v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
