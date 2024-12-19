@@ -11,7 +11,9 @@ spec:
     name: bsql
   version: v8.1.0
   replicas: 1
-  bootstrapSQLConfigMapName: bsql
   template:
     spec:
       config: ""
+      security:
+        bootstrapSQL:
+          name: bsql
