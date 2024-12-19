@@ -3,11 +3,10 @@ name: ci-v2
 on:
   push:
     branches:
-    - v2
+    - feature/v2
   pull_request:
     branches:
-    - v2
-    types: [review_requested, ready_for_review, synchronize]
+    - feature/v2
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
