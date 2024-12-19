@@ -6,8 +6,8 @@ require (
 	github.com/gin-gonic/gin v1.10.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.23.0
 	github.com/pingcap/log v1.1.1-0.20240314023424-862ccc32f18d
-	github.com/pingcap/tidb-operator/pkg/apis v1.6.0
-	github.com/pingcap/tidb-operator/pkg/client v1.6.0
+	github.com/pingcap/tidb-operator/pkg/apis v1.6.1
+	github.com/pingcap/tidb-operator/pkg/client v1.6.1
 	go.uber.org/zap v1.27.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20241104194629-dd2ea8efbc28
 	google.golang.org/grpc v1.67.1
