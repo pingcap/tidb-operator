@@ -41,7 +41,7 @@ const (
 
 func TaskPod(ctx *ReconcileContext, logger logr.Logger, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func() task.Result {
-		expected := newPod(ctx.Cluster, ctx.PDGroup, ctx.PD, ctx.ConfigHash)
+		expected := newPod(ctx.Cluster, ctx.PD, ctx.ConfigHash)
 		if ctx.Pod == nil {
 			// We have to refresh cache of members to make sure a pd without pod is unhealthy.
 			// If the healthy info is out of date, the operator may mark this pd up-to-date unexpectedly
@@ -63,7 +63,7 @@ func TaskPod(ctx *ReconcileContext, logger logr.Logger, c client.Client) task.Ta
 		logger.Info("compare pod", "result", res, "configChanged", configChanged, "currentConfigHash", curHash, "expectConfigHash", expectHash)
 
 		if res == k8s.CompareResultRecreate ||
-			(configChanged && ctx.PDGroup.Spec.ConfigUpdateStrategy == v1alpha1.ConfigUpdateStrategyRollingUpdate) {
+			(configChanged && ctx.PD.Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart) {
 			// NOTE: both rtx.Healthy and rtx.Pod are not always newest
 			// So pre delete check may also be skipped in some cases, for example,
 			// the PD is just started.
@@ -127,7 +127,7 @@ func preDeleteCheck(
 	return false, nil
 }
 
-func newPod(cluster *v1alpha1.Cluster, pdg *v1alpha1.PDGroup, pd *v1alpha1.PD, configHash string) *corev1.Pod {
+func newPod(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, configHash string) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -182,22 +182,6 @@ func newPod(cluster *v1alpha1.Cluster, pdg *v1alpha1.PDGroup, pd *v1alpha1.PD, c
 			MountPath: v1alpha1.PDClusterTLSMountPath,
 			ReadOnly:  true,
 		})
-
-		if pdg.MountClusterClientSecret() {
-			vols = append(vols, corev1.Volume{
-				Name: v1alpha1.ClusterTLSClientVolumeName,
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: cluster.ClusterClientTLSSecretName(),
-					},
-				},
-			})
-			mounts = append(mounts, corev1.VolumeMount{
-				Name:      v1alpha1.ClusterTLSClientVolumeName,
-				MountPath: v1alpha1.ClusterTLSClientMountPath,
-				ReadOnly:  true,
-			})
-		}
 	}
 
 	anno := maputil.Copy(pd.GetAnnotations())

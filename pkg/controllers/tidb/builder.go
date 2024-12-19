@@ -46,7 +46,6 @@ func (r *Reconciler) NewRunner(reporter task.TaskReporter) task.TaskRunner[tasks
 		),
 
 		// normal process
-		tasks.TaskContextTiDBGroup(r.Client),
 		tasks.TaskContextInfoFromPDAndTiDB(r.Client),
 		tasks.TaskFinalizerAdd(r.Client),
 		tasks.NewTaskConfigMap(r.Logger, r.Client),

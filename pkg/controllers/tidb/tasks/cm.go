@@ -51,7 +51,7 @@ func (t *TaskConfigMap) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	if err := decoder.Decode([]byte(rtx.TiDB.Spec.Config), &c); err != nil {
 		return task.Fail().With("tidb config cannot be decoded: %w", err)
 	}
-	if err := c.Overlay(rtx.Cluster, rtx.TiDBGroup, rtx.TiDB); err != nil {
+	if err := c.Overlay(rtx.Cluster, rtx.TiDB); err != nil {
 		return task.Fail().With("cannot generate tidb config: %w", err)
 	}
 	rtx.GracefulWaitTimeInSeconds = int64(c.GracefulWaitBeforeShutdown)

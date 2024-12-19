@@ -300,13 +300,8 @@ type TiFlashGroupSpec struct {
 	Replicas *int32           `json:"replicas"`
 	Version  string           `json:"version"`
 
-	// ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
-	// Valid values are "RollingUpdate" (by default) and "InPlace".
-	// +kubebuilder:validation:Enum=RollingUpdate;InPlace
-	// +kubebuilder:default="RollingUpdate"
-	ConfigUpdateStrategy ConfigUpdateStrategy `json:"configUpdateStrategy,omitempty"`
-	SchedulePolicies     []SchedulePolicy     `json:"schedulePolicies,omitempty"`
-	Template             TiFlashTemplate      `json:"template"`
+	SchedulePolicies []SchedulePolicy `json:"schedulePolicies,omitempty"`
+	Template         TiFlashTemplate  `json:"template"`
 }
 
 type TiFlashTemplate struct {
@@ -326,6 +321,9 @@ type TiFlashTemplateSpec struct {
 
 	// Config defines config file of TiFlash
 	Config ConfigFile `json:"config"`
+
+	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
+
 	// ProxyConfig defines config file of TiFlash proxy
 	ProxyConfig ConfigFile `json:"proxyConfig,omitempty"`
 

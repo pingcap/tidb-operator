@@ -78,7 +78,7 @@ func (*TaskPod) Name() string {
 func (t *TaskPod) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	rtx := ctx.Self()
 
-	expected := t.newPod(rtx.Cluster, rtx.TiDBGroup, rtx.TiDB, rtx.GracefulWaitTimeInSeconds, rtx.ConfigHash)
+	expected := t.newPod(rtx.Cluster, rtx.TiDB, rtx.GracefulWaitTimeInSeconds, rtx.ConfigHash)
 	if rtx.Pod == nil {
 		if err := t.Client.Apply(rtx, expected); err != nil {
 			return task.Fail().With("can't create pod of tidb: %w", err)
@@ -94,7 +94,7 @@ func (t *TaskPod) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	t.Logger.Info("compare pod", "result", res, "configChanged", configChanged, "currentConfigHash", curHash, "expectConfigHash", expectHash)
 
 	if res == k8s.CompareResultRecreate || (configChanged &&
-		rtx.TiDBGroup.Spec.ConfigUpdateStrategy == v1alpha1.ConfigUpdateStrategyRollingUpdate) {
+		rtx.TiDB.Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart) {
 		t.Logger.Info("will recreate the pod")
 		if err := t.Client.Delete(rtx, rtx.Pod); err != nil {
 			return task.Fail().With("can't delete pod of tidb: %w", err)
@@ -114,7 +114,7 @@ func (t *TaskPod) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	return task.Complete().With("pod is synced")
 }
 
-func (*TaskPod) newPod(cluster *v1alpha1.Cluster, dbg *v1alpha1.TiDBGroup,
+func (*TaskPod) newPod(cluster *v1alpha1.Cluster,
 	tidb *v1alpha1.TiDB, gracePeriod int64, configHash string,
 ) *corev1.Pod {
 	vols := []corev1.Volume{
@@ -154,18 +154,18 @@ func (*TaskPod) newPod(cluster *v1alpha1.Cluster, dbg *v1alpha1.TiDBGroup,
 		})
 	}
 
-	if dbg.IsTLSClientEnabled() {
+	if tidb.IsMySQLTLSEnabled() {
 		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.TiDBServerTLSVolumeName,
+			Name: v1alpha1.TiDBSQLTLSVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: dbg.TiDBServerTLSSecretName(),
+					SecretName: tidb.MySQLTLSSecretName(),
 				},
 			},
 		})
 		mounts = append(mounts, corev1.VolumeMount{
-			Name:      v1alpha1.TiDBServerTLSVolumeName,
-			MountPath: v1alpha1.TiDBServerTLSMountPath,
+			Name:      v1alpha1.TiDBSQLTLSVolumeName,
+			MountPath: v1alpha1.TiDBSQLTLSMountPath,
 			ReadOnly:  true,
 		})
 	}
@@ -186,13 +186,13 @@ func (*TaskPod) newPod(cluster *v1alpha1.Cluster, dbg *v1alpha1.TiDBGroup,
 		})
 	}
 
-	if dbg.IsBootstrapSQLEnabled() {
+	if tidb.IsBootstrapSQLEnabled() {
 		vols = append(vols, corev1.Volume{
 			Name: v1alpha1.BootstrapSQLVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: *dbg.Spec.BootstrapSQLConfigMapName,
+						Name: tidb.Spec.Security.BootstrapSQL.Name,
 					},
 					Items: []corev1.KeyToPath{
 						{
@@ -210,12 +210,12 @@ func (*TaskPod) newPod(cluster *v1alpha1.Cluster, dbg *v1alpha1.TiDBGroup,
 		})
 	}
 
-	if dbg.IsTokenBasedAuthEnabled() {
+	if tidb.IsTokenBasedAuthEnabled() {
 		vols = append(vols, corev1.Volume{
 			Name: v1alpha1.TiDBAuthTokenVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: dbg.TiDBAuthTokenJWKSSecretName(),
+					SecretName: tidb.AuthTokenJWKSSecretName(),
 				},
 			},
 		})
