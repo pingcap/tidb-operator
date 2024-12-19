@@ -21,6 +21,8 @@ GO_MODULE := github.com/pingcap/tidb-operator
 OVERLAY_PKG_DIR = $(ROOT)/pkg/overlay
 BOILERPLATE_FILE = $(ROOT)/hack/boilerplate/boilerplate.go.txt
 
+KIND_VERSION ?= v0.24.0
+
 # TODO: use kubectl in _output
 KUBECTL = kubectl -n tidb-admin --context kind-tidb-operator
 
@@ -179,7 +181,7 @@ bin/golangci-lint:
 .PHONY: bin/kind
 KIND = $(BIN_DIR)/kind
 bin/kind:
-	$(ROOT)/hack/download.sh go_install $(KIND) sigs.k8s.io/kind v0.24.0 "version | awk '{print \$$2}'"
+	$(ROOT)/hack/download.sh go_install $(KIND) sigs.k8s.io/kind $(KIND_VERSION) "version | awk '{print \$$2}'"
 
 .PHONY: bin/license-eye
 LICENSE_EYE = $(BIN_DIR)/license-eye

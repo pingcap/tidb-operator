@@ -65,11 +65,13 @@ spec:
         memory: <%= resources.limits.memory %>
     <% } %>
 <% } %>
-    # kind needs /lib/modules from the host
+    # kind needs /lib/modules and cgroups from the host
     volumeMounts:
     - mountPath: /lib/modules
       name: modules
       readOnly: true
+    - mountPath: /sys/fs/cgroup
+      name: cgroup
     # dind expects /var/lib/docker to be volume
     - name: docker-root
       mountPath: /var/lib/docker
@@ -85,6 +87,10 @@ spec:
   - name: modules
     hostPath:
       path: /lib/modules
+      type: Directory
+  - name: cgroup
+    hostPath:
+      path: /sys/fs/cgroup
       type: Directory
   - name: docker-root
     emptyDir: {}
@@ -144,7 +150,6 @@ def build(String name, String code, Map resources = e2ePodResources) {
                         unstash 'tidb-operator'
                         stage("Debug Info") {
                             sh """
-                            sleep 1d & wait
                             echo "====== shell env ======"
                             echo "pwd: \$(pwd)"
                             env
@@ -286,7 +291,7 @@ try {
         }
 
         def GLOBALS = "KIND_DATA_HOSTPATH=/kind-data KIND_ETCD_DATADIR=/mnt/tmpfs/etcd E2E=y SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} DELETE_NAMESPACE_ON_FAILURE=${params.DELETE_NAMESPACE_ON_FAILURE} GINKGO_NO_COLOR=y"
-        build("tidb-operator", "make e2e")
+        build("tidb-operator", "KIND_VERSION=v0.19.0 make e2e")
     }
     currentBuild.result = "SUCCESS"
 } catch (err) {
