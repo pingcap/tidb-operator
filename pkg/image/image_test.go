@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/utils/ptr"
 )
 
 func TestWithVersion(t *testing.T) {
@@ -54,10 +55,21 @@ func TestWithVersion(t *testing.T) {
 			expected: "test:test@sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
 		},
 		{
+			desc:     "image only digest",
+			image:    "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+			expected: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+		},
+		{
 			desc:     "image without tag and digest",
 			image:    "test",
 			version:  "test",
 			expected: "test:test",
+		},
+		{
+			desc:     "cannot override image with tag",
+			image:    "test:xxx",
+			version:  "test",
+			expected: "test:xxx",
 		},
 	}
 
@@ -78,8 +90,10 @@ func TestUntagged(t *testing.T) {
 	cases := []struct {
 		desc     string
 		m        Untagged
+		img      *string
 		version  string
 		expected string
+		panic    bool
 	}{
 		{
 			desc:     "pd default",
@@ -105,12 +119,95 @@ func TestUntagged(t *testing.T) {
 			version:  "test",
 			expected: "pingcap/tiflash:test",
 		},
+		{
+			desc:     "pd override image",
+			m:        PD,
+			img:      ptr.To("pd"),
+			version:  "test",
+			expected: "pd:test",
+		},
+		{
+			desc:     "pd specifies a specific tag",
+			m:        PD,
+			img:      ptr.To("pd:mmm"),
+			version:  "test",
+			expected: "pd:mmm",
+		},
+		{
+			desc:    "invalid version",
+			m:       PD,
+			img:     ptr.To("pd"),
+			version: "-test_xxx",
+			panic:   true,
+		},
 	}
 	for i := range cases {
 		c := &cases[i]
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
-			assert.Equal(tt, c.expected, c.m.Image(nil, c.version), c.desc)
+			if c.panic {
+				assert.Panics(tt, func() {
+					c.m.Image(c.img, c.version)
+				}, c.desc)
+			} else {
+				assert.Equal(tt, c.expected, c.m.Image(c.img, c.version), c.desc)
+			}
+		})
+	}
+}
+
+func TestTagged(t *testing.T) {
+	cases := []struct {
+		desc     string
+		m        Tagged
+		img      *string
+		expected string
+	}{
+		{
+			desc:     "prestop checker default",
+			m:        PrestopChecker,
+			expected: "pingcap/prestop-checker:latest",
+		},
+		{
+			desc:     "override prestop checker",
+			m:        PrestopChecker,
+			img:      ptr.To("test"),
+			expected: "test",
+		},
+	}
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+			assert.Equal(tt, c.expected, c.m.Image(c.img), c.desc)
+		})
+	}
+}
+
+func TestValidate(t *testing.T) {
+	cases := []struct {
+		desc   string
+		img    string
+		hasErr bool
+	}{
+		{
+			desc: "pd default",
+			img:  "pingcap/pd",
+		},
+		{
+			desc:   "invalid img",
+			img:    "pingcap/pd:-xx_xxx",
+			hasErr: true,
+		},
+	}
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+			err := Validate(c.img)
+			if c.hasErr {
+				assert.Error(tt, err, c.desc)
+			}
 		})
 	}
 }
