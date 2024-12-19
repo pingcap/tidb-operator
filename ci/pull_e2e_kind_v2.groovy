@@ -12,19 +12,13 @@
 
 // Able to override default values in Jenkins job via environment variables.
 env.DEFAULT_GIT_REF = env.DEFAULT_GIT_REF ?: 'feature/v2'
-env.DEFAULT_GINKGO_NODES = env.DEFAULT_GINKGO_NODES ?: '8'
-env.DEFAULT_E2E_ARGS = env.DEFAULT_E2E_ARGS ?: ''
-env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE = env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE ?: 'true'
 
 properties([
     parameters([
         string(name: 'GIT_URL', defaultValue: 'https://github.com/pingcap/tidb-operator', description: 'git repo url'),
-        string(name: 'GIT_REF', defaultValue: env.DEFAULT_GIT_REF, description: 'git ref spec to checkout, e.g. master, release-1.1'),
-        string(name: 'RELEASE_VER', defaultValue: '', description: "the version string in released tarball"),
+        string(name: 'GIT_REF', defaultValue: env.DEFAULT_GIT_REF, description: 'git ref spec to checkout, e.g. feature/v2'),
         string(name: 'PR_ID', defaultValue: '', description: 'pull request ID, this will override GIT_REF if set, e.g. 1889'),
-        string(name: 'GINKGO_NODES', defaultValue: env.DEFAULT_GINKGO_NODES, description: 'the number of ginkgo nodes'),
-        string(name: 'E2E_ARGS', defaultValue: env.DEFAULT_E2E_ARGS, description: "e2e args, e.g. --ginkgo.focus='\\[Stability\\]'"),
-        string(name: 'DELETE_NAMESPACE_ON_FAILURE', defaultValue: env.DEFAULT_DELETE_NAMESPACE_ON_FAILURE, description: 'delete ns after test case fails'),
+        string(name: 'GINKGO_OPTS', defaultValue: '', description: 'options for ginkgo, e.g. --ginkgo.focus=Basic'),
     ])
 ])
 
@@ -33,11 +27,11 @@ apiVersion: v1
 kind: Pod
 metadata:
   labels:
-    app: tidb-operator-e2e
+    app: tidb-operator-e2e-v2
 spec:
   containers:
   - name: main
-    image: hub.pingcap.net/tidb-operator/kubekins-e2e:v8-go1.23.1
+    image: hub.pingcap.net/tidb-operator/kubekins-e2e:v9-go1.23.4
     command:
     - runner.sh
     - exec
@@ -145,56 +139,33 @@ def build(String name, String code, Map resources = e2ePodResources) {
             container('main') {
                 def WORKSPACE = pwd()
                 def ARTIFACTS = "${WORKSPACE}/go/src/github.com/pingcap/tidb-operator/_artifacts"
-                try {
-                    dir("${WORKSPACE}/go/src/github.com/pingcap/tidb-operator") {
-                        unstash 'tidb-operator'
-                        stage("Debug Info") {
-                            sh """
-                            echo "====== shell env ======"
-                            echo "pwd: \$(pwd)"
-                            env
-                            unset GOSUMDB
-                            echo "====== go env ======"
-                            go env
-                            echo "====== docker version ======"
-                            docker version
-                            """
-                        }
-                        stage('Run') {
-                            sh """#!/bin/bash
-                            unset GOSUMDB
-                            export GOPATH=${WORKSPACE}/go
-                            export ARTIFACTS=${ARTIFACTS}
-                            export RUNNER_SUITE_NAME=${name}
+                  dir("${WORKSPACE}/go/src/github.com/pingcap/tidb-operator") {
+                      unstash 'tidb-operator'
+                      stage("Debug Info") {
+                          sh """
+                          echo "====== shell env ======"
+                          echo "pwd: \$(pwd)"
+                          env
+                          unset GOSUMDB
+                          echo "====== go env ======"
+                          go env
+                          echo "====== docker version ======"
+                          docker version
+                          """
+                      }
+                      stage('Run') {
+                          sh """#!/bin/bash
+                          unset GOSUMDB
+                          export GOPATH=${WORKSPACE}/go
+                          export ARTIFACTS=${ARTIFACTS}
+                          export RUNNER_SUITE_NAME=${name}
 
-                            echo "info: create local path for data"
-                            mount --make-rshared /
-                            apt update
-                            apt install docker-buildx-plugin -y
-                            ${code}
-                            """
-                        }
-                    }
-                } finally {
-                    stage('Artifacts') {
-                        dir(ARTIFACTS) {
-                            sh """#!/bin/bash
-                            echo "info: change ownerships for jenkins"
-                            chown -R 1000:1000 .
-                            echo "info: print total size of artifacts"
-                            du -sh .
-                            echo "info: list all files"
-                            find .
-                            echo "info: moving all artifacts into a sub-directory"
-                            shopt -s extglob
-                            mkdir ${name}
-                            mv !(${name}) ${name}/
-                            """
-                            archiveArtifacts artifacts: "${name}/**", allowEmptyArchive: true
-                            junit testResults: "${name}/*.xml", allowEmptyResults: true, keepLongStdio: true
-                        }
-                    }
-                }
+                          echo "info: create local path for data"
+                          mount --make-rshared /
+                          ${code}
+                          """
+                      }
+                  }
             }
         }
     }
@@ -292,7 +263,7 @@ try {
         }
         }
 
-        def GLOBALS = "KIND_DATA_HOSTPATH=/kind-data KIND_ETCD_DATADIR=/mnt/tmpfs/etcd E2E=y SKIP_BUILD=y SKIP_IMAGE_BUILD=y DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} DELETE_NAMESPACE_ON_FAILURE=${params.DELETE_NAMESPACE_ON_FAILURE} GINKGO_NO_COLOR=y"
+        def GLOBALS = "KIND_DATA_HOSTPATH=/kind-data KIND_ETCD_DATADIR=/mnt/tmpfs/etcd DOCKER_REPO=hub.pingcap.net/tidb-operator-e2e IMAGE_TAG=${IMAGE_TAG} GINKGO_OPTS=${params.GINKGO_OPTS}"
         build("tidb-operator", "KIND_VERSION=v0.19.0 make e2e")
     }
     currentBuild.result = "SUCCESS"
