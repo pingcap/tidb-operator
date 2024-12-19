@@ -153,10 +153,6 @@ func (in *PDGroup) IsHealthy() bool {
 	return true
 }
 
-func (in *PDGroup) MountClusterClientSecret() bool {
-	return in.Spec.MountClusterClientSecret != nil && *in.Spec.MountClusterClientSecret
-}
-
 func (in *PDGroup) GetClientPort() int32 {
 	if in.Spec.Template.Spec.Server.Ports.Client != nil {
 		return in.Spec.Template.Spec.Server.Ports.Client.Port
@@ -287,16 +283,7 @@ type PDGroupSpec struct {
 	// If it's true, it cannot be set to false for security
 	Bootstrapped bool `json:"bootstrapped,omitempty"`
 
-	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod.
-	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
-
 	SchedulePolicies []SchedulePolicy `json:"schedulePolicies,omitempty"`
-
-	// ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
-	// Valid values are "RollingUpdate" (by default) and "InPlace".
-	// +kubebuilder:validation:Enum=RollingUpdate;InPlace
-	// +kubebuilder:default="RollingUpdate"
-	ConfigUpdateStrategy ConfigUpdateStrategy `json:"configUpdateStrategy,omitempty"`
 
 	Template PDTemplate `json:"template"`
 }
@@ -314,8 +301,9 @@ type PDTemplateSpec struct {
 	// Default is pingcap/pd
 	Image *string `json:"image,omitempty"`
 	// Server defines server config for PD
-	Server    PDServer             `json:"server,omitempty"`
-	Resources ResourceRequirements `json:"resources,omitempty"`
+	Server         PDServer             `json:"server,omitempty"`
+	Resources      ResourceRequirements `json:"resources,omitempty"`
+	UpdateStrategy UpdateStrategy       `json:"updateStrategy,omitempty"`
 	// Config defines config file of PD
 	Config ConfigFile `json:"config"`
 	// Volumes defines persistent volumes of PD

@@ -47,7 +47,6 @@ func (r *Reconciler) NewRunner(reporter task.TaskReporter) task.TaskRunner[tasks
 		),
 
 		// normal process
-		tasks.TaskContextTiFlashGroup(r.Client),
 		tasks.TaskFinalizerAdd(r.Client),
 		tasks.NewTaskConfigMap(r.Logger, r.Client),
 		tasks.NewTaskPVC(r.Logger, r.Client, r.VolumeModifier),

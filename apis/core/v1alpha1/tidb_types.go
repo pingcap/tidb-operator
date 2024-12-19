@@ -15,7 +15,6 @@
 package v1alpha1
 
 import (
-	"fmt"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -46,10 +45,10 @@ const (
 )
 
 const (
-	// TiDBServerTLSVolumeName is the volume name for the TLS secret used by TLS communication between TiDB server and MySQL client.
-	TiDBServerTLSVolumeName = NamePrefix + "tidb-server-tls"
-	// TiDBServerTLSMountPath is the volume mount path for the TLS secret used by TLS communication between TiDB server and MySQL client.
-	TiDBServerTLSMountPath = "/var/lib/tidb-server-tls"
+	// TiDBSQLTLSVolumeName is the volume name for the TLS secret used by TLS communication between TiDB server and MySQL client.
+	TiDBSQLTLSVolumeName = NamePrefix + "tidb-sql-tls"
+	// TiDBSQLTLSMountPath is the volume mount path for the TLS secret used by TLS communication between TiDB server and MySQL client.
+	TiDBSQLTLSMountPath = "/var/lib/tidb-sql-tls"
 )
 
 const (
@@ -313,28 +312,7 @@ type TiDBGroupSpec struct {
 	// Service defines some fields used to override the default service.
 	Service *TiDBService `json:"service,omitempty"`
 
-	// Whether enable the TLS connection between the TiDB server and MySQL client.
-	TLSClient *TiDBTLSClient `json:"tlsClient,omitempty"`
-
-	// BootstrapSQLConfigMapName is the name of the ConfigMap which contains the bootstrap SQL file with the key `bootstrap-sql`,
-	// which will only be executed when a TiDB cluster bootstrap on the first time.
-	// The field should be set ONLY when create the first TiDB group for a cluster, since it only take effect on the first time bootstrap.
-	// Only v6.5.1+ supports this feature.
-	BootstrapSQLConfigMapName *string `json:"bootstrapSQLConfigMapName,omitempty"`
-
-	// Whether enable `tidb_auth_token` authentication method.
-	// To enable this feature, a K8s secret named `<clusterName>-tidb-auth-token-jwks-secret` must be created to store the JWKs.
-	// ref: https://docs.pingcap.com/tidb/stable/security-compatibility-with-mysql#tidb_auth_token
-	// Defaults to false.
-	TiDBAuthToken *TiDBAuthToken `json:"tidbAuthToken,omitempty"`
-
 	SchedulePolicies []SchedulePolicy `json:"schedulePolicies,omitempty"`
-
-	// ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
-	// Valid values are "RollingUpdate" (by default) and "InPlace".
-	// +kubebuilder:validation:Enum=RollingUpdate;InPlace
-	// +kubebuilder:default="RollingUpdate"
-	ConfigUpdateStrategy ConfigUpdateStrategy `json:"configUpdateStrategy,omitempty"`
 
 	Template TiDBTemplate `json:"template"`
 }
@@ -357,7 +335,10 @@ type TiDBTemplateSpec struct {
 	// Resources defines resource required by TiDB.
 	Resources ResourceRequirements `json:"resources,omitempty"`
 	// Config defines config file of TiDB.
-	Config ConfigFile `json:"config"`
+	Config         ConfigFile     `json:"config"`
+	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
+
+	Security *TiDBSecurity `json:"security,omitempty"`
 	// Volumes defines data volume of TiDB, it is optional.
 	Volumes []Volume `json:"volumes,omitempty"`
 
@@ -370,6 +351,25 @@ type TiDBTemplateSpec struct {
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Overlay *Overlay `json:"overlay,omitempty"`
+}
+
+type TiDBSecurity struct {
+	// Whether enable the TLS connection between the TiDB server and MySQL client.
+	// TODO(liubo02): rename the TiDBTLSClient struct,
+	TLS *TiDBTLS `json:"tls,omitempty"`
+
+	// BootstrapSQL refer to a configmap which contains the bootstrap SQL file with the key `bootstrap-sql`,
+	// which will only be executed when a TiDB cluster bootstrap on the first time.
+	// The field should be set ONLY when create the first TiDB group for a cluster, since it only take effect on the first time bootstrap.
+	// Only v6.5.1+ supports this feature.
+	// TODO(liubo02): move to cluster spec
+	BootstrapSQL *corev1.LocalObjectReference `json:"bootstrapSQL,omitempty"`
+
+	// Whether enable `tidb_auth_token` authentication method.
+	// To enable this feature, a K8s secret named `<groupName>-tidb-auth-token-jwks-secret` must be created to store the JWKs.
+	// ref: https://docs.pingcap.com/tidb/stable/security-compatibility-with-mysql#tidb_auth_token
+	// Defaults to false.
+	AuthToken *TiDBAuthToken `json:"authToken,omitempty"`
 }
 
 type TiDBServer struct {
@@ -437,7 +437,7 @@ type TiDBService struct {
 	Type corev1.ServiceType `json:"type,omitempty"`
 }
 
-type TiDBTLSClient struct {
+type TiDBTLS struct {
 	// When enabled, TiDB will accept TLS encrypted connections from MySQL clients.
 	// The steps to enable this feature:
 	//   1. Generate a TiDB server-side certificate and a client-side certifiacete for the TiDB cluster.
@@ -446,29 +446,29 @@ type TiDBTLSClient struct {
 	//        - use the K8s built-in certificate signing system signed certificates: https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/
 	//        - or use cert-manager signed certificates: https://cert-manager.io/
 	//   2. Create a K8s Secret object which contains the TiDB server-side certificate created above.
-	//      The name of this Secret must be: <clusterName>-<groupName>-server-secret.
-	//        kubectl create secret generic <clusterName>-<groupName>-server-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+	//      The name of this Secret must be: <groupName>-tidb-server-secret.
+	//        kubectl create secret generic <groupName>-tidb-server-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
 	//   3. Create a K8s Secret object which contains the TiDB client-side certificate created above which will be used by TiDB Operator.
-	//      The name of this Secret must be: <clusterName>-<groupName>-client-secret.
-	//        kubectl create secret generic <clusterName>-<groupName>-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+	//      The name of this Secret must be: <groupName>-tidb-client-secret.
+	//        kubectl create secret generic <groupName>-tidb-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
 	//   4. Set Enabled to `true`.
-	Enabled bool `json:"enabled,omitempty"`
+	MySQL *TLS `json:"mysql,omitempty"`
 
 	// TODO(csuzhangxc): usage of the following fields
+	// TODO(liubo02): uncomment them after it's worked
 
 	// DisableClientAuthn will skip client's certificate validation from the TiDB server.
 	// Optional: defaults to false
-	DisableClientAuthn bool `json:"disableClientAuthn,omitempty"`
+	// DisableClientAuthn bool `json:"disableClientAuthn,omitempty"`
 
 	// SkipInternalClientCA will skip TiDB server's certificate validation for internal components like Initializer, Dashboard, etc.
 	// Optional: defaults to false
-	SkipInternalClientCA bool `json:"skipInternalClientCA,omitempty"`
+	// SkipInternalClientCA bool `json:"skipInternalClientCA,omitempty"`
 }
 
 type TiDBAuthToken struct {
-	// Enabled indicates whether the `tidb_auth_token` authentication method is enabled.
-	// Defaults to false.
-	Enabled bool `json:"enabled,omitempty"`
+	// Secret name of jwks
+	JWKs corev1.LocalObjectReference `json:"jwks"`
 }
 
 type TiDBGroupStatus struct {
@@ -499,29 +499,28 @@ type TiDBStatus struct {
 	CommonStatus `json:",inline"`
 }
 
-// IsTLSClientEnabled returns whether the TLS between TiDB server and MySQL client is enabled.
-func (in *TiDBGroup) IsTLSClientEnabled() bool {
-	return in.Spec.TLSClient != nil && in.Spec.TLSClient.Enabled
+// IsMySQLTLSEnabled returns whether the TLS between TiDB server and MySQL client is enabled.
+func (in *TiDB) IsMySQLTLSEnabled() bool {
+	return in.Spec.Security != nil && in.Spec.Security.TLS != nil && in.Spec.Security.TLS.MySQL != nil && in.Spec.Security.TLS.MySQL.Enabled
 }
 
-// TiDBServerTLSSecretName returns the secret name used in TiDB server for the TLS between TiDB server and MySQL client.
-func (in *TiDBGroup) TiDBServerTLSSecretName() string {
-	return fmt.Sprintf("%s-tidb-server-secret", in.Name)
+// MySQLTLSSecretName returns the secret name used in TiDB server for the TLS between TiDB server and MySQL client.
+func (in *TiDB) MySQLTLSSecretName() string {
+	prefix, _ := in.NamePrefixAndSuffix()
+	return prefix + "-tidb-server-secret"
 }
 
-// TiDBClientTLSSecretName returns the secret name used in MySQL client for the TLS between TiDB server and MySQL client.
-func (in *TiDBGroup) TiDBClientTLSSecretName() string {
-	return fmt.Sprintf("%s-tidb-client-secret", in.Name)
+func (in *TiDB) IsBootstrapSQLEnabled() bool {
+	return in.Spec.Security != nil && in.Spec.Security.BootstrapSQL != nil
 }
 
-func (in *TiDBGroup) IsBootstrapSQLEnabled() bool {
-	return in.Spec.BootstrapSQLConfigMapName != nil && *in.Spec.BootstrapSQLConfigMapName != ""
+func (in *TiDB) IsTokenBasedAuthEnabled() bool {
+	return in.Spec.Security != nil && in.Spec.Security.AuthToken != nil
 }
 
-func (dbg *TiDBGroup) IsTokenBasedAuthEnabled() bool {
-	return dbg.Spec.TiDBAuthToken != nil && dbg.Spec.TiDBAuthToken.Enabled
-}
-
-func (dbg *TiDBGroup) TiDBAuthTokenJWKSSecretName() string {
-	return fmt.Sprintf("%s-tidb-auth-token-jwks-secret", dbg.Spec.Cluster.Name)
+func (in *TiDB) AuthTokenJWKSSecretName() string {
+	if in.IsTokenBasedAuthEnabled() {
+		return in.Spec.Security.AuthToken.JWKs.Name
+	}
+	return ""
 }

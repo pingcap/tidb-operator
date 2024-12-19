@@ -142,6 +142,18 @@ spec:
                   It will be translated into a node affinity config
                   Topology cannot be changed
                 type: object
+              updateStrategy:
+                properties:
+                  config:
+                    default: Restart
+                    description: |-
+                      Config determines how the configuration change is applied to the cluster.
+                      Valid values are "Restart" (by default) and "HotReload".
+                    enum:
+                    - Restart
+                    - HotReload
+                    type: string
+                type: object
               version:
                 description: Version specifies the TiKV version
                 type: string

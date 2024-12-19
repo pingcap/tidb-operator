@@ -46,10 +46,9 @@ type ReconcileContext struct {
 
 	Suspended bool
 
-	Cluster   *v1alpha1.Cluster
-	TiKV      *v1alpha1.TiKV
-	TiKVGroup *v1alpha1.TiKVGroup
-	Pod       *corev1.Pod
+	Cluster *v1alpha1.Cluster
+	TiKV    *v1alpha1.TiKV
+	Pod     *corev1.Pod
 
 	Store *pdv1.Store
 
@@ -155,26 +154,6 @@ func TaskContextPod(c client.Client) task.Task[ReconcileContext] {
 			rtx.PodIsTerminating = true
 		}
 		return task.Complete().With("pod is set")
-	})
-}
-
-func TaskContextTiKVGroup(c client.Client) task.Task[ReconcileContext] {
-	return task.NameTaskFunc("ContextTiKVGroup", func(ctx task.Context[ReconcileContext]) task.Result {
-		rtx := ctx.Self()
-
-		if len(rtx.TiKV.OwnerReferences) == 0 {
-			return task.Fail().With("tikv instance has no owner, this should not happen")
-		}
-
-		var tikvGroup v1alpha1.TiKVGroup
-		if err := c.Get(ctx, client.ObjectKey{
-			Name:      rtx.TiKV.OwnerReferences[0].Name, // only one owner now
-			Namespace: rtx.TiKV.Namespace,
-		}, &tikvGroup); err != nil {
-			return task.Fail().With("cannot find tikv group %s: %w", rtx.TiKV.OwnerReferences[0].Name, err)
-		}
-		rtx.TiKVGroup = &tikvGroup
-		return task.Complete().With("tikv group is set")
 	})
 }
 

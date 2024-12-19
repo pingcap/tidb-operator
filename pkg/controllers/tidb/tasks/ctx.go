@@ -48,10 +48,9 @@ type ReconcileContext struct {
 	Healthy   bool
 	Suspended bool
 
-	Cluster   *v1alpha1.Cluster
-	TiDB      *v1alpha1.TiDB
-	TiDBGroup *v1alpha1.TiDBGroup // the owner of the tidb instance
-	Pod       *corev1.Pod
+	Cluster *v1alpha1.Cluster
+	TiDB    *v1alpha1.TiDB
+	Pod     *corev1.Pod
 
 	GracefulWaitTimeInSeconds int64
 
@@ -150,26 +149,6 @@ func TaskContextInfoFromPDAndTiDB(c client.Client) task.Task[ReconcileContext] {
 		rtx.PDClient = pdapi.NewPDClient(rtx.Cluster.Status.PD, pdRequestTimeout, tlsConfig)
 
 		return task.Complete().With("get info from tidb")
-	})
-}
-
-func TaskContextTiDBGroup(c client.Client) task.Task[ReconcileContext] {
-	return task.NameTaskFunc("ContextTiDBGroup", func(ctx task.Context[ReconcileContext]) task.Result {
-		rtx := ctx.Self()
-
-		if len(rtx.TiDB.OwnerReferences) == 0 {
-			return task.Fail().With("tidb instance has no owner, this should not happen")
-		}
-
-		var tidbGroup v1alpha1.TiDBGroup
-		if err := c.Get(ctx, client.ObjectKey{
-			Name:      rtx.TiDB.OwnerReferences[0].Name, // only one owner now
-			Namespace: rtx.TiDB.Namespace,
-		}, &tidbGroup); err != nil {
-			return task.Fail().With("cannot find tidb group %s: %w", rtx.TiDB.OwnerReferences[0].Name, err)
-		}
-		rtx.TiDBGroup = &tidbGroup
-		return task.Complete().With("tidb group is set")
 	})
 }
 

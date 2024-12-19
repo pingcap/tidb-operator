@@ -151,10 +151,6 @@ func (in *TiKVGroup) GetDesiredReplicas() int32 {
 	return *in.Spec.Replicas
 }
 
-func (in *TiKVGroup) MountClusterClientSecret() bool {
-	return in.Spec.MountClusterClientSecret != nil && *in.Spec.MountClusterClientSecret
-}
-
 func (in *TiKVGroup) GetDesiredVersion() string {
 	return in.Spec.Version
 }
@@ -291,18 +287,9 @@ type TiKVGroupSpec struct {
 	Replicas *int32           `json:"replicas"`
 	Version  string           `json:"version"`
 
-	// MountClusterClientSecret indicates whether to mount `cluster-client-secret` to the Pod.
-	MountClusterClientSecret *bool `json:"mountClusterClientSecret,omitempty"`
-
 	// +listType=map
 	// +listMapKey=type
 	SchedulePolicies []SchedulePolicy `json:"schedulePolicies,omitempty"`
-
-	// ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
-	// Valid values are "RollingUpdate" (by default) and "InPlace".
-	// +kubebuilder:validation:Enum=RollingUpdate;InPlace
-	// +kubebuilder:default="RollingUpdate"
-	ConfigUpdateStrategy ConfigUpdateStrategy `json:"configUpdateStrategy,omitempty"`
 
 	Template TiKVTemplate `json:"template"`
 }
@@ -324,7 +311,8 @@ type TiKVTemplateSpec struct {
 	// Resources defines resource required by TiKV
 	Resources ResourceRequirements `json:"resources,omitempty"`
 	// Config defines config file of TiKV
-	Config ConfigFile `json:"config"`
+	Config         ConfigFile     `json:"config"`
+	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 	// Volumes defines data volume of TiKV
 	Volumes []Volume `json:"volumes"`
 

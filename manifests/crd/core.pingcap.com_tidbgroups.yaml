@@ -51,13 +51,6 @@ spec:
           spec:
             description: TiDBGroupSpec describes the common attributes of a TiDBGroup.
             properties:
-              bootstrapSQLConfigMapName:
-                description: |-
-                  BootstrapSQLConfigMapName is the name of the ConfigMap which contains the bootstrap SQL file with the key `bootstrap-sql`,
-                  which will only be executed when a TiDB cluster bootstrap on the first time.
-                  The field should be set ONLY when create the first TiDB group for a cluster, since it only take effect on the first time bootstrap.
-                  Only v6.5.1+ supports this feature.
-                type: string
               cluster:
                 properties:
                   name:
@@ -65,15 +58,6 @@ spec:
                 required:
                 - name
                 type: object
-              configUpdateStrategy:
-                default: RollingUpdate
-                description: |-
-                  ConfigUpdateStrategy determines how the configuration change is applied to the cluster.
-                  Valid values are "RollingUpdate" (by default) and "InPlace".
-                enum:
-                - RollingUpdate
-                - InPlace
-                type: string
               replicas:
                 format: int32
                 type: integer
@@ -223,6 +207,76 @@ spec:
                             pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                             x-kubernetes-int-or-string: true
                         type: object
+                      security:
+                        properties:
+                          authToken:
+                            description: |-
+                              Whether enable `tidb_auth_token` authentication method.
+                              To enable this feature, a K8s secret named `<groupName>-tidb-auth-token-jwks-secret` must be created to store the JWKs.
+                              ref: https://docs.pingcap.com/tidb/stable/security-compatibility-with-mysql#tidb_auth_token
+                              Defaults to false.
+                            properties:
+                              jwks:
+                                description: Secret name of jwks
+                                properties:
+                                  name:
+                                    default: ""
+                                    description: |-
+                                      Name of the referent.
+                                      This field is effectively required, but due to backwards compatibility is
+                                      allowed to be empty. Instances of this type with an empty value here are
+                                      almost certainly wrong.
+                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                    type: string
+                                type: object
+                                x-kubernetes-map-type: atomic
+                            required:
+                            - jwks
+                            type: object
+                          bootstrapSQL:
+                            description: |-
+                              BootstrapSQL refer to a configmap which contains the bootstrap SQL file with the key `bootstrap-sql`,
+                              which will only be executed when a TiDB cluster bootstrap on the first time.
+                              The field should be set ONLY when create the first TiDB group for a cluster, since it only take effect on the first time bootstrap.
+                              Only v6.5.1+ supports this feature.
+                            properties:
+                              name:
+                                default: ""
+                                description: |-
+                                  Name of the referent.
+                                  This field is effectively required, but due to backwards compatibility is
+                                  allowed to be empty. Instances of this type with an empty value here are
+                                  almost certainly wrong.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                            type: object
+                            x-kubernetes-map-type: atomic
+                          tls:
+                            description: Whether enable the TLS connection between
+                              the TiDB server and MySQL client.
+                            properties:
+                              mysql:
+                                description: |-
+                                  When enabled, TiDB will accept TLS encrypted connections from MySQL clients.
+                                  The steps to enable this feature:
+                                    1. Generate a TiDB server-side certificate and a client-side certifiacete for the TiDB cluster.
+                                       There are multiple ways to generate certificates:
+                                         - user-provided certificates: https://docs.pingcap.com/tidb/stable/generate-self-signed-certificates
+                                         - use the K8s built-in certificate signing system signed certificates: https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/
+                                         - or use cert-manager signed certificates: https://cert-manager.io/
+                                    2. Create a K8s Secret object which contains the TiDB server-side certificate created above.
+                                       The name of this Secret must be: <groupName>-tidb-server-secret.
+                                         kubectl create secret generic <groupName>-tidb-server-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+                                    3. Create a K8s Secret object which contains the TiDB client-side certificate created above which will be used by TiDB Operator.
+                                       The name of this Secret must be: <groupName>-tidb-client-secret.
+                                         kubectl create secret generic <groupName>-tidb-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+                                    4. Set Enabled to `true`.
+                                properties:
+                                  enabled:
+                                    type: boolean
+                                type: object
+                            type: object
+                        type: object
                       server:
                         description: Server defines the server configuration of TiDB.
                         properties:
@@ -286,6 +340,18 @@ spec:
                               VolumeName is the name of the volume used to share the slow log file between the main container and the sidecar.
                               If not set, a temparary volume will be used.
                               Otherwise, it should be a name of a volume defined in the `volumes` field of the TiDBTemplateSpec.
+                            type: string
+                        type: object
+                      updateStrategy:
+                        properties:
+                          config:
+                            default: Restart
+                            description: |-
+                              Config determines how the configuration change is applied to the cluster.
+                              Valid values are "Restart" (by default) and "HotReload".
+                            enum:
+                            - Restart
+                            - HotReload
                             type: string
                         type: object
                       volumes:
@@ -357,51 +423,6 @@ spec:
                     type: object
                 required:
                 - spec
-                type: object
-              tidbAuthToken:
-                description: |-
-                  Whether enable `tidb_auth_token` authentication method.
-                  To enable this feature, a K8s secret named `<clusterName>-tidb-auth-token-jwks-secret` must be created to store the JWKs.
-                  ref: https://docs.pingcap.com/tidb/stable/security-compatibility-with-mysql#tidb_auth_token
-                  Defaults to false.
-                properties:
-                  enabled:
-                    description: |-
-                      Enabled indicates whether the `tidb_auth_token` authentication method is enabled.
-                      Defaults to false.
-                    type: boolean
-                type: object
-              tlsClient:
-                description: Whether enable the TLS connection between the TiDB server
-                  and MySQL client.
-                properties:
-                  disableClientAuthn:
-                    description: |-
-                      DisableClientAuthn will skip client's certificate validation from the TiDB server.
-                      Optional: defaults to false
-                    type: boolean
-                  enabled:
-                    description: |-
-                      When enabled, TiDB will accept TLS encrypted connections from MySQL clients.
-                      The steps to enable this feature:
-                        1. Generate a TiDB server-side certificate and a client-side certifiacete for the TiDB cluster.
-                           There are multiple ways to generate certificates:
-                             - user-provided certificates: https://docs.pingcap.com/tidb/stable/generate-self-signed-certificates
-                             - use the K8s built-in certificate signing system signed certificates: https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/
-                             - or use cert-manager signed certificates: https://cert-manager.io/
-                        2. Create a K8s Secret object which contains the TiDB server-side certificate created above.
-                           The name of this Secret must be: <clusterName>-<groupName>-server-secret.
-                             kubectl create secret generic <clusterName>-<groupName>-server-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
-                        3. Create a K8s Secret object which contains the TiDB client-side certificate created above which will be used by TiDB Operator.
-                           The name of this Secret must be: <clusterName>-<groupName>-client-secret.
-                             kubectl create secret generic <clusterName>-<groupName>-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
-                        4. Set Enabled to `true`.
-                    type: boolean
-                  skipInternalClientCA:
-                    description: |-
-                      SkipInternalClientCA will skip TiDB server's certificate validation for internal components like Initializer, Dashboard, etc.
-                      Optional: defaults to false
-                    type: boolean
                 type: object
               version:
                 type: string

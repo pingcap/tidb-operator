@@ -76,7 +76,7 @@ func (*TaskPod) Name() string {
 func (t *TaskPod) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	rtx := ctx.Self()
 
-	expected := t.newPod(rtx.Cluster, rtx.TiKVGroup, rtx.TiKV, rtx.ConfigHash)
+	expected := t.newPod(rtx.Cluster, rtx.TiKV, rtx.ConfigHash)
 	if rtx.Pod == nil {
 		if err := t.Client.Apply(rtx, expected); err != nil {
 			return task.Fail().With("can't apply pod of tikv: %w", err)
@@ -106,7 +106,7 @@ func (t *TaskPod) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	t.Logger.Info("compare pod", "result", res, "configChanged", configChanged, "currentConfigHash", curHash, "expectConfigHash", expectHash)
 
 	if res == k8s.CompareResultRecreate || (configChanged &&
-		rtx.TiKVGroup.Spec.ConfigUpdateStrategy == v1alpha1.ConfigUpdateStrategyRollingUpdate) {
+		rtx.TiKV.Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart) {
 		t.Logger.Info("will recreate the pod")
 		regionCount := 0
 		if rtx.Store != nil {
@@ -131,7 +131,7 @@ func (t *TaskPod) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	return task.Complete().With("pod is synced")
 }
 
-func (t *TaskPod) newPod(cluster *v1alpha1.Cluster, kvg *v1alpha1.TiKVGroup, tikv *v1alpha1.TiKV, configHash string) *corev1.Pod {
+func (t *TaskPod) newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, configHash string) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -196,22 +196,6 @@ func (t *TaskPod) newPod(cluster *v1alpha1.Cluster, kvg *v1alpha1.TiKVGroup, tik
 			MountPath: v1alpha1.TiKVClusterTLSMountPath,
 			ReadOnly:  true,
 		})
-
-		if kvg.MountClusterClientSecret() {
-			vols = append(vols, corev1.Volume{
-				Name: v1alpha1.ClusterTLSClientVolumeName,
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: cluster.ClusterClientTLSSecretName(),
-					},
-				},
-			})
-			mounts = append(mounts, corev1.VolumeMount{
-				Name:      v1alpha1.ClusterTLSClientVolumeName,
-				MountPath: v1alpha1.ClusterTLSClientMountPath,
-				ReadOnly:  true,
-			})
-		}
 	}
 
 	var preStopImage *string
