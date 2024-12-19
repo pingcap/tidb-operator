@@ -188,6 +188,8 @@ try {
         GIT_REF = env.ghprbActualCommit
     }
 
+    def GINKGO_OPTS = params.GINKGO_OPTS
+
     timeout (time: 2, unit: 'HOURS') {
         // use fixed label, so we can reuse previous workers
         // increase version in pod label when we update pod template
