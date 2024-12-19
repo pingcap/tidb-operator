@@ -1,6 +1,6 @@
 FROM debian:buster-slim
 
-ARG GO_VERSION=1.23.1
+ARG GO_VERSION=1.23.4
 
 # common util tools
 RUN apt-get update && \
@@ -40,6 +40,7 @@ RUN curl -fsSL https://download.docker.com/linux/$(. /etc/os-release; echo "$ID"
 # the pod logs, so we just comment out the call to it... :shrug:
 RUN apt-get update && \
     apt-get install -y --no-install-recommends docker-ce=5:20.10.* && \
+    apt-get install docker-buildx-plugin -y && \
     rm -rf /var/lib/apt/lists/* && \
     sed -i 's/cgroupfs_mount$/#cgroupfs_mount\n/' /etc/init.d/docker \
     && update-alternatives --set iptables /usr/sbin/iptables-legacy \
