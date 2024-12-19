@@ -37,7 +37,7 @@ type Tagged string
 // Untagged is image without image tag
 type Untagged string
 
-// Note: img must be validated before calling Version
+// Note: img must be validated before calling withVersion
 func (t Tagged) Image(img *string) string {
 	image := string(t)
 	if img != nil {
@@ -47,7 +47,8 @@ func (t Tagged) Image(img *string) string {
 	return image
 }
 
-// Note: img must be validated before calling Version
+// Note: img must be validated before calling withVersion
+// TODO(liubo02): validate img and version
 func (t Untagged) Image(img *string, version string) string {
 	image := string(t)
 	if img != nil {
@@ -96,10 +97,11 @@ func validate(img string) (_ reference.Named, isNamed bool, _ error) {
 		return nil, false, nil
 	}
 
-	named, ok := repo.(reference.Named)
-	if !ok {
-		return nil, false, fmt.Errorf("reference is not named")
-	}
+	// It should always ok, only digest only ref is not named
+	// digest only ref will return before this line
+	// NOTE(liubo02): all reference.Parse is named and I cannot construct a digest only ref.
+	// See https://github.com/distribution/reference/blob/v0.6.0/reference_test.go#L14
+	named := repo.(reference.Named)
 
 	return named, true, nil
 }
