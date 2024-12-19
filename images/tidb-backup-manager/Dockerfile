@@ -2,7 +2,7 @@ FROM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2
 ARG TARGETARCH
 ARG RCLONE_VERSION=v1.68.1
 ARG SHUSH_VERSION=v1.5.5
-ARG TOOLKIT_VERSION=v8.1.0
+ARG TOOLKIT_VERSION=v8.5.0
 RUN dnf install -y ca-certificates bind-utils wget nc unzip && dnf clean all
 
 RUN wget -nv https://github.com/ncw/rclone/releases/download/${RCLONE_VERSION}/rclone-${RCLONE_VERSION}-linux-${TARGETARCH}.zip \
