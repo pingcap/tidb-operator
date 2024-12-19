@@ -169,6 +169,8 @@ def build(String name, String code, Map resources = e2ePodResources) {
 
                             echo "info: create local path for data"
                             mount --make-rshared /
+                            apt update
+                            apt install docker-buildx-plugin -y
                             ${code}
                             """
                         }
