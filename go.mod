@@ -18,7 +18,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.19.0
 	github.com/onsi/gomega v1.34.1
 	github.com/pelletier/go-toml/v2 v2.2.2
-	github.com/pingcap/kvproto v0.0.0-20240403065636-c699538f7aa1
+	github.com/pingcap/kvproto v0.0.0-20241218072206-e8eeb9432798
 	github.com/pingcap/tidb-operator/apis/core v0.0.0-00000000000000-000000000000
 	github.com/prometheus/client_golang v1.19.1
 	github.com/prometheus/client_model v0.6.1
