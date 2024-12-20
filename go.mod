@@ -37,7 +37,7 @@ require (
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340
 	k8s.io/kubectl v0.31.0
-	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8
+	k8s.io/utils v0.0.0-20241210054802-24370beab758
 	sigs.k8s.io/controller-runtime v0.19.0-beta.0
 	sigs.k8s.io/controller-tools v0.16.1
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1
