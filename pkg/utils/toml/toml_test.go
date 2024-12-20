@@ -20,35 +20,62 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 )
 
 type TestType struct {
-	String string `toml:"string"`
+	String string `toml:"string,omitempty"`
+
+	Struct *TestType  `toml:"struct"`
+	Array  []TestType `toml:"array,omitempty"`
+
+	unexported string
 }
+
+const changedVal = "changed"
 
 func TestCodec(t *testing.T) {
 	cases := []struct {
-		desc   string
-		input  []byte
-		output []byte
-		obj    TestType
-		change func(obj *TestType) *TestType
+		desc         string
+		input        []byte
+		output       []byte
+		obj          TestType
+		change       func(obj *TestType) *TestType
+		hasDecodeErr bool
 	}{
 		{
 			desc:  "empty input",
 			input: []byte(``),
 			output: []byte(`
 string = 'changed'
+
+[[array]]
+string = 'arr1'
+
+[[array]]
+string = 'arr2'
+
+[struct]
+string = 'struct'
             `),
 			change: func(obj *TestType) *TestType {
-				obj.String = "changed"
+				obj.unexported = "will be skipped"
+				obj.String = changedVal
+				obj.Struct = &TestType{
+					String: "struct",
+				}
+				obj.Array = []TestType{
+					{
+						String: "arr1",
+					},
+					{
+						String: "arr2",
+					},
+				}
 				return obj
 			},
 		},
 		{
-			desc: "reserve unknown field",
+			desc: "reserve unknown fields",
 			input: []byte(`
 unknown = 'xxx'
 unknown_int = 10
@@ -67,7 +94,7 @@ unknown = 'yyy'
 unknown = 'yyy'
             `),
 			output: []byte(`
-string = 'mmm'
+string = 'changed'
 unknown = 'xxx'
 unknown_int = 10
 
@@ -85,24 +112,388 @@ unknown = 'yyy'
 unknown = 'yyy'
             `),
 			change: func(obj *TestType) *TestType {
-				obj.String = "mmm"
+				obj.String = changedVal
 				return obj
 			},
 		},
 		{
-			desc: "change existing field",
+			desc: "change string and reserve unknown fields",
 			input: []byte(`
 string = 'aaa'
 unknown = 'xxx'
             `),
 			output: []byte(`
-string = 'yyy'
+string = 'changed'
 unknown = 'xxx'
             `),
 			change: func(obj *TestType) *TestType {
-				obj.String = "yyy"
+				obj.String = changedVal
 				return obj
 			},
+		},
+		{
+			desc: "add struct",
+			input: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+            `),
+			output: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[struct]
+string = 'changed'
+            `),
+			change: func(obj *TestType) *TestType {
+				obj.Struct = &TestType{
+					String: changedVal,
+				}
+				return obj
+			},
+		},
+		{
+			desc: "change struct and reserve unknown fields",
+			input: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[struct]
+string = 'aaa'
+unknown = 'xxx'
+            `),
+			output: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[struct]
+string = 'changed'
+unknown = 'xxx'
+            `),
+			change: func(obj *TestType) *TestType {
+				obj.Struct = &TestType{
+					String: changedVal,
+				}
+				return obj
+			},
+		},
+		{
+			desc: "add struct in struct",
+			input: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+            `),
+			output: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[struct]
+[struct.struct]
+string = 'changed'
+            `),
+			change: func(obj *TestType) *TestType {
+				obj.Struct = &TestType{
+					Struct: &TestType{
+						String: changedVal,
+					},
+				}
+				return obj
+			},
+		},
+		{
+			desc: "change struct and add struct in struct",
+			input: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[struct]
+string = 'aaa'
+unknown = 'xxx'
+            `),
+			output: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[struct]
+string = 'aaa'
+unknown = 'xxx'
+
+[struct.struct]
+string = 'changed'
+            `),
+			change: func(obj *TestType) *TestType {
+				obj.Struct = &TestType{
+					Struct: &TestType{
+						String: changedVal,
+					},
+				}
+				return obj
+			},
+		},
+		{
+			desc: "change struct in struct and reserve unknown fields",
+			input: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[struct]
+[struct.struct]
+string = 'aaa'
+unknown = 'xxx'
+            `),
+			output: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[struct]
+[struct.struct]
+string = 'changed'
+unknown = 'xxx'
+            `),
+			change: func(obj *TestType) *TestType {
+				obj.Struct = &TestType{
+					Struct: &TestType{
+						String: changedVal,
+					},
+				}
+				return obj
+			},
+		},
+		{
+			desc: "add array in struct",
+			input: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+            `),
+			output: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[struct]
+[[struct.array]]
+string = 'changed'
+            `),
+			change: func(obj *TestType) *TestType {
+				obj.Struct = &TestType{
+					Array: []TestType{
+						{
+							String: changedVal,
+						},
+					},
+				}
+				return obj
+			},
+		},
+		{
+			desc: "change array in struct and reserve unknown fields",
+			input: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[struct]
+[[struct.array]]
+string = 'aaa'
+unknown = 'xxx'
+            `),
+			output: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[struct]
+[[struct.array]]
+string = 'changed'
+unknown = 'xxx'
+            `),
+			change: func(obj *TestType) *TestType {
+				obj.Struct = &TestType{
+					Array: []TestType{
+						{
+							String: changedVal,
+						},
+					},
+				}
+				return obj
+			},
+		},
+		{
+			desc: "add array",
+			input: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+            `),
+			output: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[[array]]
+string = 'changed'
+            `),
+			change: func(obj *TestType) *TestType {
+				obj.Array = []TestType{
+					{
+						String: changedVal,
+					},
+				}
+				return obj
+			},
+		},
+		{
+			desc: "change array and reserve unknown fields",
+			input: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[[array]]
+string = 'aaa'
+unknown = 'xxx'
+            `),
+			output: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[[array]]
+string = 'changed'
+unknown = 'xxx'
+            `),
+			change: func(obj *TestType) *TestType {
+				obj.Array = []TestType{
+					{
+						String: changedVal,
+					},
+				}
+				return obj
+			},
+		},
+		{
+			desc: "append new item to array",
+			input: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[[array]]
+string = 'aaa'
+unknown = 'xxx'
+            `),
+			output: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[[array]]
+string = 'aaa'
+unknown = 'xxx'
+
+[[array]]
+string = 'changed'
+            `),
+			change: func(obj *TestType) *TestType {
+				obj.Array = append(obj.Array, TestType{
+					String: changedVal,
+				})
+				return obj
+			},
+		},
+		{
+			desc: "del existing item in array(useless)",
+			input: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[[array]]
+string = 'aaa'
+unknown = 'xxx'
+
+[[array]]
+string = 'bbb'
+unknown = 'xxx'
+            `),
+			output: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[[array]]
+string = 'aaa'
+unknown = 'xxx'
+
+[[array]]
+string = 'bbb'
+unknown = 'xxx'
+            `),
+			change: func(obj *TestType) *TestType {
+				obj.Array = obj.Array[:1]
+				return obj
+			},
+		},
+		{
+			desc: "add struct in array",
+			input: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[[array]]
+string = 'aaa'
+unknown = 'xxx'
+            `),
+			output: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[[array]]
+string = 'aaa'
+unknown = 'xxx'
+
+[array.struct]
+string = 'changed'
+            `),
+			change: func(obj *TestType) *TestType {
+				obj.Array[0].Struct = &TestType{
+					String: changedVal,
+				}
+				return obj
+			},
+		},
+		{
+			desc: "change struct in array",
+			input: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[[array]]
+string = 'aaa'
+unknown = 'xxx'
+
+[array.struct]
+string = 'aaa'
+unknown = 'xxx'
+            `),
+			output: []byte(`
+string = 'aaa'
+unknown = 'xxx'
+
+[[array]]
+string = 'aaa'
+unknown = 'xxx'
+
+[array.struct]
+string = 'changed'
+unknown = 'xxx'
+            `),
+			change: func(obj *TestType) *TestType {
+				obj.Array[0].Struct = &TestType{
+					String: changedVal,
+				}
+				return obj
+			},
+		},
+		{
+			desc:         "invalid toml",
+			input:        []byte(`xxx`),
+			hasDecodeErr: true,
+		},
+		{
+			desc: "mismatched type",
+			input: []byte(`
+struct = 'xxx'
+            `),
+			hasDecodeErr: true,
 		},
 	}
 
@@ -112,129 +503,17 @@ unknown = 'xxx'
 			tt.Parallel()
 
 			decoder, encoder := Codec[TestType]()
-			require.NoError(t, decoder.Decode(c.input, &c.obj))
+			err := decoder.Decode(c.input, &c.obj)
+			if !c.hasDecodeErr {
+				require.NoError(tt, err, c.desc)
+			} else {
+				assert.Error(tt, err, c.desc)
+				return
+			}
 			c.change(&c.obj)
 			res, err := encoder.Encode(&c.obj)
-			require.NoError(tt, err)
+			require.NoError(tt, err, c.desc)
 			assert.Equal(tt, string(bytes.TrimSpace(c.output)), string(bytes.TrimSpace(res)))
-		})
-	}
-}
-
-func TestGenerateHash(t *testing.T) {
-	tests := []struct {
-		name                      string
-		tomlStr                   v1alpha1.ConfigFile
-		semanticallyEquivalentStr v1alpha1.ConfigFile
-		wantHash                  string
-		wantError                 bool
-	}{
-		{
-			name: "Valid TOML string",
-			tomlStr: v1alpha1.ConfigFile(`foo = 'bar'
-[log]
-k1 = 'v1'
-k2 = 'v2'`),
-			semanticallyEquivalentStr: v1alpha1.ConfigFile(`foo = 'bar'
-[log]
-k2 = 'v2'
-k1 = 'v1'`),
-			wantHash:  "5dbbcf4574",
-			wantError: false,
-		},
-		{
-			name: "Different config value",
-			tomlStr: v1alpha1.ConfigFile(`foo = 'foo'
-[log]
-k2 = 'v2'
-k1 = 'v1'`),
-			wantHash:  "f5bc46cb9",
-			wantError: false,
-		},
-		{
-			name: "multiple sections with blank line",
-			tomlStr: v1alpha1.ConfigFile(`[a]
-k1 = 'v1'
-[b]
-k2 = 'v2'`),
-			semanticallyEquivalentStr: v1alpha1.ConfigFile(`[a]
-k1 = 'v1'
-[b]
-
-k2 = 'v2'`),
-			wantHash:  "79598d5977",
-			wantError: false,
-		},
-		{
-			name:      "Empty TOML string",
-			tomlStr:   v1alpha1.ConfigFile(``),
-			wantHash:  "7d6fc488b7",
-			wantError: false,
-		},
-		{
-			name: "Invalid TOML string",
-			tomlStr: v1alpha1.ConfigFile(`key1 = "value1"
-			key2 = value2`), // Missing quotes around value2
-			wantHash:  "",
-			wantError: true,
-		},
-		{
-			name: "Nested tables",
-			tomlStr: v1alpha1.ConfigFile(`[parent]
-child1 = "value1"
-child2 = "value2"
-[parent.child]
-grandchild1 = "value3"
-grandchild2 = "value4"`),
-			semanticallyEquivalentStr: v1alpha1.ConfigFile(`[parent]
-child2 = "value2"
-child1 = "value1"
-[parent.child]
-grandchild2 = "value4"
-grandchild1 = "value3"`),
-			wantHash:  "7bf645ccb4",
-			wantError: false,
-		},
-		{
-			name: "Array of tables",
-			tomlStr: v1alpha1.ConfigFile(`[[products]]
-name = "Hammer"
-sku = 738594937
-
-[[products]]
-name = "Nail"
-sku = 284758393
-
-color = "gray"`),
-			semanticallyEquivalentStr: v1alpha1.ConfigFile(`[[products]]
-sku = 738594937
-name = "Hammer"
-
-[[products]]
-sku = 284758393
-name = "Nail"
-
-color = "gray"`),
-			wantHash:  "7549cf87f4",
-			wantError: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotHash, err := GenerateHash(tt.tomlStr)
-			if tt.wantError {
-				assert.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tt.wantHash, gotHash)
-
-				if string(tt.semanticallyEquivalentStr) != "" {
-					reorderedHash, err := GenerateHash(tt.semanticallyEquivalentStr)
-					require.NoError(t, err)
-					assert.Equal(t, tt.wantHash, reorderedHash)
-				}
-			}
 		})
 	}
 }
