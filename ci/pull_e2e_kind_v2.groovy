@@ -12,13 +12,14 @@
 
 // Able to override default values in Jenkins job via environment variables.
 env.DEFAULT_GIT_REF = env.DEFAULT_GIT_REF ?: 'feature/v2'
+env.DEFAULT_GINKGO_OPTS = env.DEFAULT_GINKGO_OPTS ?: ''
 
 properties([
     parameters([
         string(name: 'GIT_URL', defaultValue: 'https://github.com/pingcap/tidb-operator', description: 'git repo url'),
         string(name: 'GIT_REF', defaultValue: env.DEFAULT_GIT_REF, description: 'git ref spec to checkout, e.g. feature/v2'),
         string(name: 'PR_ID', defaultValue: '', description: 'pull request ID, this will override GIT_REF if set, e.g. 1889'),
-        string(name: 'GINKGO_OPTS', defaultValue: '', description: 'options for ginkgo, e.g. --focus=Basic'),
+        string(name: 'GINKGO_OPTS', defaultValue: env.DEFAULT_GINKGO_OPTS, description: 'options for ginkgo, e.g. --focus=Basic'),
     ])
 ])
 
