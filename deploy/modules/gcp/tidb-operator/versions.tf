@@ -4,6 +4,6 @@ terraform {
   required_providers {
     google = "~> 2.16"
     helm   = "~> 0.10"
-    null   = "~> 2.1"
+    null   = "~> 3.0"
   }
 }
