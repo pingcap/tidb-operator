@@ -4,7 +4,7 @@ terraform {
   required_providers {
     alicloud = ">= 1.56, < 1.75"
     external = "~> 1.2"
-    helm     = "~> 0.10"
+    helm     = "~> 2.0"
     null     = "~> 2.1"
     template = "~> 2.1"
   }
