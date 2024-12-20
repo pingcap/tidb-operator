@@ -33,7 +33,7 @@ resource "aws_security_group_rule" "enable_ssh_to_workers" {
 module "ec2" {
   source = "terraform-aws-modules/ec2-instance/aws"
 
-  version                     = "2.3.0"
+  version                     = "5.7.1"
   name                        = var.bastion_name
   instance_count              = 1
   ami                         = data.aws_ami.centos.id
