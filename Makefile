@@ -136,7 +136,7 @@ e2e/run:
 
 .PHONY: e2e
 e2e: bin/kind crd
-	$(ROOT)/hack/e2e.sh --prepare run
+	$(ROOT)/hack/e2e.sh --prepare run $(GINKGO_OPTS)
 
 .PHONY: kube
 kube: bin/kind

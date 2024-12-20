@@ -4,9 +4,9 @@ on:
   push:
     branches:
     - feature/v2
-  # pull_request:
-  #   branches:
-  #   - feature/v2
+  pull_request:
+    branches:
+    - feature/v2
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
