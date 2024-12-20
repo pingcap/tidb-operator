@@ -5,7 +5,7 @@ terraform {
     aws      = "~> 2.27, != 2.65.0"
     external = "~> 1.2"
     helm     = "~> 0.10"
-    local    = "~> 1.3"
+    local    = "~> 2.0"
     null     = "~> 2.1"
     template = "~> 2.1"
     tls      = "~> 2.1"
