@@ -31,6 +31,8 @@ type TestType struct {
 	unexported string
 }
 
+const changedVal = "changed"
+
 func TestCodec(t *testing.T) {
 	cases := []struct {
 		desc         string
@@ -56,7 +58,8 @@ string = 'arr2'
 string = 'struct'
             `),
 			change: func(obj *TestType) *TestType {
-				obj.String = "changed"
+				obj.unexported = "will be skipped"
+				obj.String = changedVal
 				obj.Struct = &TestType{
 					String: "struct",
 				}
@@ -109,7 +112,7 @@ unknown = 'yyy'
 unknown = 'yyy'
             `),
 			change: func(obj *TestType) *TestType {
-				obj.String = "changed"
+				obj.String = changedVal
 				return obj
 			},
 		},
@@ -124,7 +127,7 @@ string = 'changed'
 unknown = 'xxx'
             `),
 			change: func(obj *TestType) *TestType {
-				obj.String = "changed"
+				obj.String = changedVal
 				return obj
 			},
 		},
@@ -143,7 +146,7 @@ string = 'changed'
             `),
 			change: func(obj *TestType) *TestType {
 				obj.Struct = &TestType{
-					String: "changed",
+					String: changedVal,
 				}
 				return obj
 			},
@@ -168,7 +171,7 @@ unknown = 'xxx'
             `),
 			change: func(obj *TestType) *TestType {
 				obj.Struct = &TestType{
-					String: "changed",
+					String: changedVal,
 				}
 				return obj
 			},
@@ -190,7 +193,7 @@ string = 'changed'
 			change: func(obj *TestType) *TestType {
 				obj.Struct = &TestType{
 					Struct: &TestType{
-						String: "changed",
+						String: changedVal,
 					},
 				}
 				return obj
@@ -220,7 +223,7 @@ string = 'changed'
 			change: func(obj *TestType) *TestType {
 				obj.Struct = &TestType{
 					Struct: &TestType{
-						String: "changed",
+						String: changedVal,
 					},
 				}
 				return obj
@@ -249,7 +252,7 @@ unknown = 'xxx'
 			change: func(obj *TestType) *TestType {
 				obj.Struct = &TestType{
 					Struct: &TestType{
-						String: "changed",
+						String: changedVal,
 					},
 				}
 				return obj
@@ -273,7 +276,7 @@ string = 'changed'
 				obj.Struct = &TestType{
 					Array: []TestType{
 						{
-							String: "changed",
+							String: changedVal,
 						},
 					},
 				}
@@ -304,7 +307,7 @@ unknown = 'xxx'
 				obj.Struct = &TestType{
 					Array: []TestType{
 						{
-							String: "changed",
+							String: changedVal,
 						},
 					},
 				}
@@ -327,7 +330,7 @@ string = 'changed'
 			change: func(obj *TestType) *TestType {
 				obj.Array = []TestType{
 					{
-						String: "changed",
+						String: changedVal,
 					},
 				}
 				return obj
@@ -354,7 +357,7 @@ unknown = 'xxx'
 			change: func(obj *TestType) *TestType {
 				obj.Array = []TestType{
 					{
-						String: "changed",
+						String: changedVal,
 					},
 				}
 				return obj
@@ -383,7 +386,7 @@ string = 'changed'
             `),
 			change: func(obj *TestType) *TestType {
 				obj.Array = append(obj.Array, TestType{
-					String: "changed",
+					String: changedVal,
 				})
 				return obj
 			},
@@ -442,7 +445,7 @@ string = 'changed'
             `),
 			change: func(obj *TestType) *TestType {
 				obj.Array[0].Struct = &TestType{
-					String: "changed",
+					String: changedVal,
 				}
 				return obj
 			},
@@ -475,7 +478,7 @@ unknown = 'xxx'
             `),
 			change: func(obj *TestType) *TestType {
 				obj.Array[0].Struct = &TestType{
-					String: "changed",
+					String: changedVal,
 				}
 				return obj
 			},
