@@ -17,15 +17,11 @@ package toml
 import (
 	"bytes"
 	"fmt"
-	"hash/fnv"
 	"reflect"
+	"strings"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/pelletier/go-toml/v2"
-	"k8s.io/apimachinery/pkg/util/rand"
-
-	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
-	hashutil "github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/util/hash"
 )
 
 type Decoder[T any, PT *T] interface {
@@ -57,6 +53,7 @@ func (c *codec[T, PT]) Decode(data []byte, obj PT) error {
 		Result:  obj,
 	})
 	if err != nil {
+		// unreachable
 		return err
 	}
 	if err := decoder.Decode(raw); err != nil {
@@ -69,7 +66,7 @@ func (c *codec[T, PT]) Decode(data []byte, obj PT) error {
 }
 
 func (c *codec[T, PT]) Encode(obj PT) ([]byte, error) {
-	if err := Overwrite(obj, c.raw); err != nil {
+	if err := overwrite(obj, c.raw); err != nil {
 		return nil, err
 	}
 
@@ -81,7 +78,7 @@ func (c *codec[T, PT]) Encode(obj PT) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func Overwrite(obj any, m map[string]any) error {
+func overwrite(obj any, m map[string]any) error {
 	structVal := reflect.ValueOf(obj).Elem()
 	fieldTypes := reflect.VisibleFields(structVal.Type())
 	for _, fieldType := range fieldTypes {
@@ -89,15 +86,20 @@ func Overwrite(obj any, m map[string]any) error {
 			continue
 		}
 
-		name := fieldType.Tag.Get("toml")
-		src := structVal.FieldByIndex(fieldType.Index)
-
-		for src.Kind() == reflect.Pointer {
-			src = src.Elem()
+		tag := fieldType.Tag.Get("toml")
+		parts := strings.Split(tag, ",")
+		name := fieldType.Name
+		if len(parts) != 0 {
+			name = parts[0]
 		}
+		src := structVal.FieldByIndex(fieldType.Index)
 
 		if src.IsZero() {
 			continue
+		}
+
+		for src.Kind() == reflect.Pointer {
+			src = src.Elem()
 		}
 
 		v, ok := m[name]
@@ -123,7 +125,7 @@ func getField(src reflect.Value, dst any) (any, error) {
 		if !ok {
 			return nil, fmt.Errorf("type mismatched, expected map, actual %T", dst)
 		}
-		if err := Overwrite(src.Addr().Interface(), vm); err != nil {
+		if err := overwrite(src.Addr().Interface(), vm); err != nil {
 			return nil, err
 		}
 
@@ -153,18 +155,4 @@ func getField(src reflect.Value, dst any) (any, error) {
 	default:
 		return src.Interface(), nil
 	}
-}
-
-// GenerateHash takes a TOML string as input, unmarshals it into a map,
-// and generates a hash of the resulting configuration. The hash is then
-// encoded into a safe string format and returned.
-// If the order of keys in the TOML string is different, the hash will be the same.
-func GenerateHash(tomlStr v1alpha1.ConfigFile) (string, error) {
-	var config map[string]any
-	if err := toml.NewDecoder(bytes.NewReader([]byte(tomlStr))).Decode(&config); err != nil {
-		return "", fmt.Errorf("failed to unmarshal toml string %s: %w", tomlStr, err)
-	}
-	hasher := fnv.New32a()
-	hashutil.DeepHashObject(hasher, config)
-	return rand.SafeEncodeString(fmt.Sprint(hasher.Sum32())), nil
 }
