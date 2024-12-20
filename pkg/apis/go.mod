@@ -3,7 +3,7 @@ module github.com/pingcap/tidb-operator/pkg/apis
 go 1.23.2
 
 require (
-	github.com/BurntSushi/toml v0.3.1
+	github.com/BurntSushi/toml v1.4.0
 	github.com/Masterminds/semver v1.5.0
 	github.com/google/go-cmp v0.6.0
 	github.com/google/gofuzz v1.2.0
