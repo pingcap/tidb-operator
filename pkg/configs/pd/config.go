@@ -81,11 +81,10 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, peers []*v1
 		vol := &pd.Spec.Volumes[i]
 		for _, usage := range vol.For {
 			if usage.Type == v1alpha1.VolumeUsageTypePDData {
-				p := string(usage.Type)
+				c.DataDir = vol.Path
 				if usage.SubPath != "" {
-					p = usage.SubPath
+					c.DataDir = path.Join(vol.Path, usage.SubPath)
 				}
-				c.DataDir = path.Join(vol.Path, p)
 			}
 		}
 	}
@@ -144,6 +143,17 @@ func (c *Config) Validate() error {
 	}
 	if c.Join != "" {
 		fields = append(fields, "join")
+	}
+
+	// valid security fields
+	if c.Security.CAPath != "" {
+		fields = append(fields, "security.cacert-path")
+	}
+	if c.Security.CertPath != "" {
+		fields = append(fields, "security.cert-path")
+	}
+	if c.Security.KeyPath != "" {
+		fields = append(fields, "security.key-path")
 	}
 
 	if len(fields) == 0 {

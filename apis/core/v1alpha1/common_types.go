@@ -210,7 +210,6 @@ type VolumeUsage struct {
 	// A volume can be defined for multiple usages.
 	Type VolumeUsageType `json:"type"`
 	// SubPath is the relative path of the volume's mount path.
-	// The default value of sub path is determined by the usage type.
 	SubPath string `json:"subPath,omitempty"`
 }
 
