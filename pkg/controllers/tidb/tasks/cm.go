@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	tidbcfg "github.com/pingcap/tidb-operator/pkg/configs/tidb"
+	"github.com/pingcap/tidb-operator/pkg/utils/hasher"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v2"
 	"github.com/pingcap/tidb-operator/pkg/utils/toml"
@@ -61,7 +62,7 @@ func (t *TaskConfigMap) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		return task.Fail().With("tidb config cannot be encoded: %w", err)
 	}
 
-	rtx.ConfigHash, err = toml.GenerateHash(rtx.TiDB.Spec.Config)
+	rtx.ConfigHash, err = hasher.GenerateHash(rtx.TiDB.Spec.Config)
 	if err != nil {
 		return task.Fail().With("failed to generate hash for `tidb.spec.config`: %w", err)
 	}

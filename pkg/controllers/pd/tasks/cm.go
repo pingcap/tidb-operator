@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	pdcfg "github.com/pingcap/tidb-operator/pkg/configs/pd"
+	"github.com/pingcap/tidb-operator/pkg/utils/hasher"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/utils/toml"
@@ -46,7 +47,7 @@ func TaskConfigMap(ctx *ReconcileContext, _ logr.Logger, c client.Client) task.T
 			return task.Fail().With("pd config cannot be encoded: %v", err)
 		}
 
-		hash, err := toml.GenerateHash(ctx.PD.Spec.Config)
+		hash, err := hasher.GenerateHash(ctx.PD.Spec.Config)
 		if err != nil {
 			return task.Fail().With("failed to generate hash for `pd.spec.config`: %v", err)
 		}
