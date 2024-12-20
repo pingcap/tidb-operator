@@ -172,9 +172,8 @@ spec:
                       items:
                         properties:
                           subPath:
-                            description: |-
-                              SubPath is the relative path of the volume's mount path.
-                              The default value of sub path is determined by the usage type.
+                            description: SubPath is the relative path of the volume's
+                              mount path.
                             type: string
                           type:
                             description: |-
