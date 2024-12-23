@@ -227,7 +227,7 @@ func (*TaskPod) newPod(cluster *v1alpha1.Cluster,
 	}
 
 	var slowLogContainer *corev1.Container
-	if tidb.IsSeperateSlowLogEnabled() {
+	if tidb.IsSeparateSlowLogEnabled() {
 		vol, mount := buildSlowLogVolumeAndMount(tidb)
 		if vol != nil {
 			vols = append(vols, *vol)

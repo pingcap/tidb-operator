@@ -68,7 +68,7 @@ type Log struct {
 }
 
 func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) error {
-	if err := c.Validate(); err != nil {
+	if err := c.Validate(tidb.IsSeparateSlowLogEnabled()); err != nil {
 		return err
 	}
 
@@ -108,7 +108,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) error {
 	return nil
 }
 
-func (c *Config) Validate() error {
+func (c *Config) Validate(separateSlowLog bool) error {
 	var fields []string
 
 	if c.Store != "" {
@@ -122,6 +122,37 @@ func (c *Config) Validate() error {
 	}
 	if c.Path != "" {
 		fields = append(fields, "path")
+	}
+
+	// valid security fields
+	if c.Security.SSLCA != "" {
+		fields = append(fields, "security.ssl-ca")
+	}
+	if c.Security.SSLCert != "" {
+		fields = append(fields, "security.ssl-cert")
+	}
+	if c.Security.SSLKey != "" {
+		fields = append(fields, "security.ssl-key")
+	}
+	if c.Security.ClusterSSLCA != "" {
+		fields = append(fields, "security.cluster-ssl-ca")
+	}
+	if c.Security.ClusterSSLCert != "" {
+		fields = append(fields, "security.cluster-ssl-cert")
+	}
+	if c.Security.ClusterSSLKey != "" {
+		fields = append(fields, "security.cluster-ssl-key")
+	}
+	if c.Security.AuthTokenJwks != "" {
+		fields = append(fields, "security.auth-token-jwks")
+	}
+
+	if separateSlowLog && c.Log.SlowQueryFile != "" {
+		fields = append(fields, "log.slow-query-file")
+	}
+
+	if c.InitializeSQLFile != "" {
+		fields = append(fields, "initialize-sql-file")
 	}
 
 	if len(fields) == 0 {
@@ -146,7 +177,7 @@ func removeHTTPPrefix(url string) string {
 }
 
 func getSlowQueryFile(tidb *v1alpha1.TiDB) string {
-	if !tidb.IsSeperateSlowLogEnabled() {
+	if !tidb.IsSeparateSlowLogEnabled() {
 		return ""
 	} else if tidb.Spec.SlowLog == nil || tidb.Spec.SlowLog.VolumeName == "" {
 		return path.Join(v1alpha1.TiDBDefaultSlowLogDir, v1alpha1.TiDBSlowLogFileName)

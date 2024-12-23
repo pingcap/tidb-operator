@@ -68,7 +68,7 @@ func TestOverlay(t *testing.T) {
 			TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
 		},
 		Status: v1alpha1.ClusterStatus{
-			PD: "https://db-pd.ns1.svc:2379",
+			PD: "https://basic-pd.ns1.svc:2379",
 		},
 	}
 	tikv := &v1alpha1.TiKV{
@@ -110,7 +110,7 @@ level = "info"`),
 	assert.Equal(t, "[::]:20180", cfg.Server.StatusAddr)
 	assert.Equal(t, "basic-tikv-0.basic-tikv-peer.ns1:20180", cfg.Server.AdvertiseStatusAddr)
 	assert.Equal(t, "/var/lib/tikv", cfg.Storage.DataDir)
-	assert.Equal(t, []string{"https://db-pd.ns1.svc:2379"}, cfg.PD.Endpoints)
+	assert.Equal(t, []string{"https://basic-pd.ns1.svc:2379"}, cfg.PD.Endpoints)
 	assert.Equal(t, "/var/lib/tikv-tls/ca.crt", cfg.Security.CAPath)
 	assert.Equal(t, "/var/lib/tikv-tls/tls.crt", cfg.Security.CertPath)
 	assert.Equal(t, "/var/lib/tikv-tls/tls.key", cfg.Security.KeyPath)
