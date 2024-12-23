@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package compact
+package controller
 
 import (
 	"context"
@@ -33,6 +33,12 @@ const (
 	// progressDebounceDuration is the minimum time interval between two progress updates for a backup
 	progressDebounceDuration = 3 * time.Second
 )
+
+type CompactStatusUpdaterInterface interface {
+	OnStart(ctx context.Context, compact *v1alpha1.CompactBackup)
+	OnProgress(ctx context.Context, p Progress, compact *v1alpha1.CompactBackup)
+	OnFinish(ctx context.Context, compact *v1alpha1.CompactBackup)
+}
 
 type CompactStatusUpdater struct {
 	recorder           record.EventRecorder

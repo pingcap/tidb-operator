@@ -238,7 +238,7 @@ func (c *Controller) sync(key string) (err error) {
 		return err
 	}
 	klog.Infof("Backup: [%s/%s] start to sync", ns, name)
-	backup, err := c.deps.CompactBackupLister.CompactBackups(ns).Get(name)
+	compact, err := c.deps.CompactBackupLister.CompactBackups(ns).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			klog.Infof("Backup has been deleted %v", key)
@@ -248,18 +248,29 @@ func (c *Controller) sync(key string) (err error) {
 		return err
 	}
 
-	if backup.Status.State == string(v1alpha1.BackupFailed) {
+	if compact.Status.State == string(v1alpha1.BackupFailed) || compact.Status.State == string(v1alpha1.BackupScheduled) {
 		return nil
 	}
 
-	//Skip
-	if backup.Status.State != "" {
-		return nil
+	if compact.Status.State == string(v1alpha1.BackupRunning) {
+		jobFailed, reason, originalReason, err := c.detectBackupJobFailure(compact)
+		if err != nil {
+			klog.Errorf("Fail to detect backup %s/%s running status, error %v", ns, name, err)
+			return nil
+		}
+
+		if jobFailed {
+			// retry backup after detect failure
+			if err := c.retryAfterFailureDetected(compact, reason, originalReason); err != nil {
+				klog.Errorf("Fail to restart snapshot backup %s/%s, error %v", ns, name, err)
+			}
+			return nil
+		}
 	}
 
-	c.UpdateStatus(backup, string(v1alpha1.BackupScheduled))
+	c.UpdateStatus(compact, string(v1alpha1.BackupScheduled))
 
-	err = c.doCompact(backup.DeepCopy())
+	err = c.doCompact(compact.DeepCopy())
 
 	var newState, message string
 	if err != nil {
@@ -269,7 +280,7 @@ func (c *Controller) sync(key string) (err error) {
 	} else {
 		newState = string(v1alpha1.BackupRunning)
 	}
-	c.UpdateStatus(backup, newState, message)
+	c.UpdateStatus(compact, newState, message)
 	return err
 }
 
@@ -449,4 +460,34 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 	}
 
 	return job, "", nil
+}
+
+func (c *Controller) detectBackupJobFailure(compact *v1alpha1.CompactBackup) (
+	jobFailed bool, reason string, originalReason string, err error) {
+	var (
+		ns   = compact.GetNamespace()
+		name = compact.GetName()
+	)
+	job, err := c.deps.JobLister.Jobs(ns).Get(name)
+	if err != nil && !errors.IsNotFound(err) {
+		klog.Errorf("Fail to get job %s for backup %s/%s, error %v ", name, ns, name, err)
+		return false, "", "", err
+	}
+	if job != nil {
+		for _, condition := range job.Status.Conditions {
+			if condition.Type == batchv1.JobFailed && condition.Status == corev1.ConditionTrue {
+				reason = fmt.Sprintf("Job %s has failed", name)
+				originalReason = condition.Reason
+				return true, reason, originalReason, nil
+			}
+		}
+	}
+
+	klog.Infof("Detect backup %s/%s job failed, will retry, reason %s, original reason %s ", ns, name, reason, originalReason)
+	// record failure when detect failure
+	err = c.recordDetectedFailure(backup, reason, originalReason)
+	if err != nil {
+		klog.Errorf("failed to record detected failed %s for backup %s/%s", reason, ns, name)
+	}
+	return jobFailed, reason, originalReason, nil
 }
