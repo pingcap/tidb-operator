@@ -28,7 +28,7 @@ const (
 	// defaultGracefulWaitBeforeShutdownInSeconds is the default value of the tidb config `graceful-wait-before-shutdown`,
 	// which is set by the operator if not set by the user, for graceful shutdown.
 	// Note that the default value is zero in tidb-server.
-	defaultGracefulWaitBeforeShutdownInSeconds = 30
+	defaultGracefulWaitBeforeShutdownInSeconds = 60
 )
 
 // Config is a subset config of tidb

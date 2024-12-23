@@ -37,7 +37,6 @@ USER 65532:65532
 
 ENTRYPOINT ["/operator"]
 
-
 FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS prestop-checker
 
 ARG TARGETPLATFORM
@@ -50,3 +49,16 @@ COPY --from=builder ./_output/$TARGETPLATFORM/bin/prestop-checker prestop-checke
 USER 65532:65532
 
 ENTRYPOINT ["/prestop-checker"]
+
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS testing-workload
+
+ARG TARGETPLATFORM
+
+WORKDIR /
+
+COPY --from=builder ./_output/$TARGETPLATFORM/bin/testing-workload testing-workload
+
+# nonroot user of distroless
+USER 65532:65532
+
+ENTRYPOINT ["/testing-workload"]
