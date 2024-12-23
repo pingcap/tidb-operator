@@ -47,6 +47,7 @@ type Controller struct {
 	// backups that need to be synced.
 	queue workqueue.RateLimitingInterface
 	cli   versioned.Interface
+	statusUpdater controller.CompactStatusUpdaterInterface
 }
 
 // NewController creates a backup controller.
@@ -268,19 +269,12 @@ func (c *Controller) sync(key string) (err error) {
 		}
 	}
 
-	c.UpdateStatus(compact, string(v1alpha1.BackupScheduled))
+	c.statusUpdater.OnSchedule(context.TODO(), compact)
 
 	err = c.doCompact(compact.DeepCopy())
+	klog.Errorf("Backup: [%s/%s] sync failed, error: %v", ns, name, err)
 
-	var newState, message string
-	if err != nil {
-		newState = string(v1alpha1.BackupFailed)
-		message = err.Error()
-		klog.Errorf("Backup: [%s/%s] sync failed, error: %v", ns, name, err)
-	} else {
-		newState = string(v1alpha1.BackupRunning)
-	}
-	c.UpdateStatus(compact, newState, message)
+	c.statusUpdater.OnCreateJob(context.TODO(), compact, err)
 	return err
 }
 
@@ -310,6 +304,7 @@ func (c *Controller) doCompact(backup *v1alpha1.CompactBackup) error {
 func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
+	// Do we need a unique name for the job?
 	jobName := backup.GetName()
 
 	var (
