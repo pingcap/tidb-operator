@@ -33,12 +33,6 @@ const (
 	// VolumeUsageTypeTiKVData is the main data dir for the tikv
 	// The default sub path of this type is "data"
 	VolumeUsageTypeTiKVData VolumeUsageType = "data"
-	// VolumeUsageTypeTiKVRaftEngine is the dir for the raft log of tikv
-	// The default sub path of this type is "raft-engine"
-	VolumeUsageTypeTiKVRaftEngine VolumeUsageType = "raft-engine"
-	// VolumeUsageTypeTiKVWAL is the dir for the WAL of tikv
-	// The default sub path of this type is "wal"
-	VolumeUsageTypeTiKVWAL VolumeUsageType = "wal"
 )
 
 const (
