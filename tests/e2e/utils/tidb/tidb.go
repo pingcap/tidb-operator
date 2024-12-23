@@ -21,7 +21,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/go-sql-driver/mysql"
 	corev1 "k8s.io/api/core/v1"
@@ -35,6 +34,10 @@ import (
 )
 
 var dummyCancel = func() {}
+
+func GetTiDBDSN(host, user, password, database, params string, port int) string {
+	return fmt.Sprintf("%s:%s@(%s:%d)/%s?%s", user, password, host, port, database, params)
+}
 
 // PortForwardAndGetTiDBDSN create a port forward for TiDB and return its DSN.
 func PortForwardAndGetTiDBDSN(fw k8s.PortForwarder, ns, svcName,
@@ -356,37 +359,5 @@ func AreAllTiFlashHealthy(cli client.Client, flashg *v1alpha1.TiFlashGroup) erro
 		}
 	}
 
-	return nil
-}
-
-// ExecuteSimpleTransaction performs a transaction to insert or update the given id in the specified table.
-func ExecuteSimpleTransaction(db *sql.DB, id int, table string) error {
-	tx, err := db.Begin()
-	if err != nil {
-		return fmt.Errorf("failed to begin txn: %w", err)
-	}
-
-	// Prepare SQL statement to replace or insert a record
-	//nolint:gosec // only replace table name in test
-	str := fmt.Sprintf("replace into %s(id, v) values(?, ?);", table)
-	if _, err = tx.Exec(str, id, id); err != nil {
-		return fmt.Errorf("failed to exec statement: %w", err)
-	}
-
-	// Simulate a different operation by updating the value
-	if _, err = tx.Exec(fmt.Sprintf("update %s set v = ? where id = ?;", table), id*2, id); err != nil {
-		return fmt.Errorf("failed to exec update statement: %w", err)
-	}
-
-	// Simulate a long transaction by sleeping for 5 seconds for even ids
-	if id%3 == 0 {
-		//nolint:mnd // just for testing
-		time.Sleep(10 * time.Second)
-	}
-
-	// Commit the transaction
-	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit txn: %w", err)
-	}
 	return nil
 }
