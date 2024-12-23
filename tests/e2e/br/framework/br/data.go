@@ -190,12 +190,6 @@ func GetCompactBackup(ns, name, tcName string, s3Config *v1alpha1.S3StorageProvi
 			StorageProvider: v1alpha1.StorageProvider{
 				S3: s3Config,
 			},
-			From: &v1alpha1.TiDBAccessConfig{
-				Host:       controller.TiDBMemberName(tcName),
-				SecretName: name,
-				Port:       v1alpha1.DefaultTiDBServerPort,
-				User:       "root",
-			},
 			BR: &v1alpha1.BRConfig{
 				Cluster:          tcName,
 				ClusterNamespace: ns,

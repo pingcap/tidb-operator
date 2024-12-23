@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	pkgutil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"k8s.io/klog/v2"
 )
@@ -37,13 +38,6 @@ const (
 	messageCompactionDone = "Finishing compaction."
 	messageCompactAborted = "Compaction aborted."
 )
-
-type Progress struct {
-	MetaCompleted  uint64 `json:"meta_completed"`
-	MetaTotal      uint64 `json:"meta_total"`
-	BytesToCompact uint64 `json:"bytes_to_compact"`
-	BytesCompacted uint64 `json:"bytes_compacted"`
-}
 
 // logLine is line of JSON log.
 // It just extracted the message from the JSON and keeps the origin json bytes.
@@ -57,14 +51,14 @@ type logLine struct {
 type Manager struct {
 	compact        *v1alpha1.CompactBackup
 	resourceLister listers.CompactBackupLister
-	statusUpdater  *CompactStatusUpdater
+	statusUpdater  controller.CompactStatusUpdaterInterface
 	options        options.CompactOpts
 }
 
 // NewManager return a Manager
 func NewManager(
 	lister listers.CompactBackupLister,
-	statusUpdater *CompactStatusUpdater,
+	statusUpdater controller.CompactStatusUpdaterInterface,
 	compactOpts options.CompactOpts) *Manager {
 	compact, err := lister.CompactBackups(compactOpts.Namespace).Get(compactOpts.ResourceName)
 	if err != nil {
@@ -93,7 +87,7 @@ func (cm *Manager) ProcessCompact() error {
 	defer cancel()
 
 	compact, err := cm.resourceLister.CompactBackups(cm.options.Namespace).Get(cm.options.ResourceName)
-	defer func() { cm.statusUpdater.OnFinish(ctx, err, cm.compact) }()
+	defer func() { cm.statusUpdater.OnFinish(ctx, cm.compact, err) }()
 	if err != nil {
 		return errors.New("backup not found")
 	}
@@ -208,11 +202,11 @@ func (cm *Manager) processCompactionLogs(ctx context.Context, logStream io.Reade
 func (cm *Manager) processLogLine(ctx context.Context, l logLine) error {
 	switch l.Message {
 	case messageCompactionDone:
-		var prog Progress
+		var prog controller.Progress
 		if err := json.Unmarshal(l.Raw, &prog); err != nil {
 			return errors.Annotatef(err, "failed to decode progress message: %s", string(l.Raw))
 		}
-		cm.statusUpdater.OnProgress(ctx, prog, cm.compact)
+		cm.statusUpdater.OnProgress(ctx, cm.compact, prog)
 		return nil
 	case messageCompactAborted:
 		errContainer := struct {
