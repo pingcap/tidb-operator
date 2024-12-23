@@ -108,6 +108,15 @@ func TestOverlay(t *testing.T) {
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "default",
+				Name:      "basic-0",
+			},
+			Spec: v1alpha1.PDSpec{
+				Subdomain: "default",
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
 				Name:      "basic-1",
 			},
 			Spec: v1alpha1.PDSpec{
@@ -141,4 +150,27 @@ func TestOverlay(t *testing.T) {
 	assert.Equal(t, "/var/lib/pd-tls/ca.crt", cfg.Security.CAPath)
 	assert.Equal(t, "/var/lib/pd-tls/tls.crt", cfg.Security.CertPath)
 	assert.Equal(t, "/var/lib/pd-tls/tls.key", cfg.Security.KeyPath)
+
+	// init a new cluster
+	cluster2 := cluster.DeepCopy()
+	cluster2.Status.PD = ""
+	pd2 := pd.DeepCopy()
+	pd2.Annotations = map[string]string{
+		v1alpha1.AnnoKeyInitialClusterNum: "3",
+	}
+	cfg2 := &Config{}
+	err = cfg2.Overlay(cluster2, pd2, peers)
+	require.NoError(t, err)
+	assert.Equal(t, "basic-0", cfg2.Name)
+	assert.Equal(t, "/var/lib/pd", cfg2.DataDir)
+	assert.Equal(t, "https://[::]:2379", cfg2.ClientUrls)
+	assert.Equal(t, "https://[::]:2380", cfg2.PeerUrls)
+	assert.Equal(t, "https://basic-pd-0.basic.default:2379", cfg2.AdvertiseClientUrls)
+	assert.Equal(t, "https://basic-pd-0.basic.default:2380", cfg2.AdvertisePeerUrls)
+	assert.Equal(t, "basic-0=https://basic-pd-0.default.default:2380,basic-1=https://basic-pd-1.default.default:2380,basic-2=https://basic-pd-2.default.default:2380", cfg2.InitialCluster)
+	assert.Equal(t, InitialClusterStateNew, cfg2.InitialClusterState)
+	assert.Equal(t, "cluster-1", cfg2.InitialClusterToken)
+	assert.Equal(t, "/var/lib/pd-tls/ca.crt", cfg2.Security.CAPath)
+	assert.Equal(t, "/var/lib/pd-tls/tls.crt", cfg2.Security.CertPath)
+	assert.Equal(t, "/var/lib/pd-tls/tls.key", cfg2.Security.KeyPath)
 }
