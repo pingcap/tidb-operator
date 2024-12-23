@@ -195,6 +195,7 @@ type Controls struct {
 	ProxyControl       TiProxyControlInterface
 	TiDBControl        TiDBControlInterface
 	BackupControl      BackupControlInterface
+	CompactControl     CompactBackupControlInterface
 	RestoreControl     RestoreControlInterface
 	SecretControl      SecretControlInterface
 }
