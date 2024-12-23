@@ -142,11 +142,21 @@ func (c *Config) Validate() error {
 		fields = append(fields, "tmp_path")
 	}
 
+	if c.Storage.Main.Dir != nil {
+		fields = append(fields, "storage.main.dir")
+	}
+	if c.Storage.Raft.Dir != nil {
+		fields = append(fields, "storage.raft.dir")
+	}
+
 	if c.Flash.ServiceAddr != "" {
 		fields = append(fields, "flash.service_addr")
 	}
 	if c.Flash.Proxy.Config != "" {
 		fields = append(fields, "flash.proxy.config")
+	}
+	if c.Flash.Proxy.DataDir != "" {
+		fields = append(fields, "flash.proxy.data-dir")
 	}
 	if c.Flash.Proxy.Addr != "" {
 		fields = append(fields, "flash.proxy.addr")
@@ -169,12 +179,8 @@ func (c *Config) Validate() error {
 		fields = append(fields, "logger.errorlog")
 	}
 
-	if c.Raft.PdAddr != "" {
-		fields = append(fields, "raft.pd-addr")
-	}
-
 	if c.Status.MetricsPort != 0 {
-		fields = append(fields, "status.metrics-port")
+		fields = append(fields, "status.metrics_port")
 	}
 
 	if len(fields) == 0 {

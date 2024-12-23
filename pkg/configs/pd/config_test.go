@@ -71,7 +71,7 @@ func TestOverlay(t *testing.T) {
 			TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
 		},
 		Status: v1alpha1.ClusterStatus{
-			PD: "https://basic-pd.ns1.svc:2379",
+			PD: "https://basic-pd.ns1:2379",
 		},
 	}
 	pd := &v1alpha1.PD{

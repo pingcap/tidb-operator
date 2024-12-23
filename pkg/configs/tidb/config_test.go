@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -27,7 +28,7 @@ import (
 func TestValidate(t *testing.T) {
 	cfgValid := &Config{}
 	err := cfgValid.Validate(true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	cfgInvalid := &Config{
 		Store:            "tikv",
@@ -51,7 +52,7 @@ func TestValidate(t *testing.T) {
 	}
 
 	err = cfgInvalid.Validate(true)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "store")
 	assert.Contains(t, err.Error(), "advertise-address")
 	assert.Contains(t, err.Error(), "host")
@@ -74,7 +75,7 @@ func TestOverlay(t *testing.T) {
 			TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
 		},
 		Status: v1alpha1.ClusterStatus{
-			PD: "https://basic-pd.ns1.svc:2379",
+			PD: "https://basic-pd.ns1:2379",
 		},
 	}
 	tidb := &v1alpha1.TiDB{
@@ -111,11 +112,11 @@ func TestOverlay(t *testing.T) {
 		GracefulWaitBeforeShutdown: 100,
 	}
 	err := cfg.Overlay(cluster, tidb)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "tikv", cfg.Store)
 	assert.Equal(t, "basic-tidb-0.basic-tidb-peer.ns1.svc", cfg.AdvertiseAddress)
 	assert.Equal(t, "::", cfg.Host)
-	assert.Equal(t, "basic-pd.ns1.svc:2379", cfg.Path)
+	assert.Equal(t, "basic-pd.ns1:2379", cfg.Path)
 	assert.Equal(t, "/var/lib/tidb-sql-tls/ca.crt", cfg.Security.SSLCA)
 	assert.Equal(t, "/var/lib/tidb-sql-tls/tls.crt", cfg.Security.SSLCert)
 	assert.Equal(t, "/var/lib/tidb-sql-tls/tls.key", cfg.Security.SSLKey)
@@ -140,6 +141,6 @@ func TestOverlay(t *testing.T) {
 	}
 	cfg2 := &Config{}
 	err = cfg2.Overlay(cluster, tidb2)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "/var/log/slowlog/slowlog", cfg2.Log.SlowQueryFile)
 }

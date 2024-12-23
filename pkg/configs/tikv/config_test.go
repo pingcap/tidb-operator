@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -27,7 +28,7 @@ import (
 func TestValidate(t *testing.T) {
 	cfgValid := &Config{}
 	err := cfgValid.Validate()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	cfgInvalid := &Config{
 		Server: Server{
@@ -50,7 +51,7 @@ func TestValidate(t *testing.T) {
 	}
 
 	err = cfgInvalid.Validate()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "server.addr")
 	assert.Contains(t, err.Error(), "server.advertise-addr")
 	assert.Contains(t, err.Error(), "server.status-addr")
@@ -68,7 +69,7 @@ func TestOverlay(t *testing.T) {
 			TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
 		},
 		Status: v1alpha1.ClusterStatus{
-			PD: "https://basic-pd.ns1.svc:2379",
+			PD: "https://basic-pd.ns1:2379",
 		},
 	}
 	tikv := &v1alpha1.TiKV{
@@ -104,13 +105,13 @@ level = "info"`),
 
 	cfg := &Config{}
 	err := cfg.Overlay(cluster, tikv)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "[::]:20160", cfg.Server.Addr)
 	assert.Equal(t, "basic-tikv-0.basic-tikv-peer.ns1:20160", cfg.Server.AdvertiseAddr)
 	assert.Equal(t, "[::]:20180", cfg.Server.StatusAddr)
 	assert.Equal(t, "basic-tikv-0.basic-tikv-peer.ns1:20180", cfg.Server.AdvertiseStatusAddr)
 	assert.Equal(t, "/var/lib/tikv", cfg.Storage.DataDir)
-	assert.Equal(t, []string{"https://basic-pd.ns1.svc:2379"}, cfg.PD.Endpoints)
+	assert.Equal(t, []string{"https://basic-pd.ns1:2379"}, cfg.PD.Endpoints)
 	assert.Equal(t, "/var/lib/tikv-tls/ca.crt", cfg.Security.CAPath)
 	assert.Equal(t, "/var/lib/tikv-tls/tls.crt", cfg.Security.CertPath)
 	assert.Equal(t, "/var/lib/tikv-tls/tls.key", cfg.Security.KeyPath)
