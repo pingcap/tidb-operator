@@ -249,7 +249,13 @@ func (c *Controller) sync(key string) (err error) {
 		return err
 	}
 
-	if compact.Status.State == string(v1alpha1.BackupFailed) || compact.Status.State == string(v1alpha1.BackupScheduled) {
+	if compact.Status.State == string(v1alpha1.BackupFailed){
+		klog.Errorf("Backup %s/%s is failed, skip", ns, name)
+		return nil
+	}
+
+	if compact.Status.State == string(v1alpha1.BackupScheduled) {
+		klog.Infof("Backup %s/%s is scheduled, skip", ns, name)
 		return nil
 	}
 
@@ -262,6 +268,7 @@ func (c *Controller) sync(key string) (err error) {
 
 		if jobFailed {
 			// retry backup after detect failure
+			//TODO: (Ris)impl this
 			if err := c.retryAfterFailureDetected(compact, reason, originalReason); err != nil {
 				klog.Errorf("Fail to restart snapshot backup %s/%s, error %v", ns, name, err)
 			}
@@ -457,6 +464,38 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 	return job, "", nil
 }
 
+func (c *Controller) recordDetectedFailure(compact *v1alpha1.CompactBackup, reason, originalReason string) error {
+	ns := compact.GetNamespace()
+	name := compact.GetName()
+
+	retryNum := len(compact.Status.BackoffRetryStatus) + 1
+	detectFailedAt := metav1.Now()
+	minDuration, err := time.ParseDuration(compact.Spec.BackoffRetryPolicy.MinRetryDuration)
+	if err != nil {
+		klog.Errorf("fail to parse minRetryDuration %s of compact backup %s/%s, %v", compact.Spec.BackoffRetryPolicy.MinRetryDuration, ns, name, err)
+		return err
+	}
+	duration := time.Duration(minDuration.Nanoseconds() << (retryNum - 1))
+	expectedRetryAt := metav1.NewTime(detectFailedAt.Add(duration))
+
+	// update
+	newStatus := &controller.RetryStatus{
+		RetryNum:        &retryNum,
+		DetectFailedAt:  &detectFailedAt,
+		ExpectedRetryAt: &expectedRetryAt,
+		RetryReason:     &reason,
+		OriginalReason:  &originalReason,
+	}
+
+	klog.Infof("Record backup %s/%s retry status, %v", ns, name, newStatus)
+	if err := c.statusUpdater.OnRetriableFailed(context.TODO(), compact, newStatus); err != nil {
+		klog.Errorf("Fail to update the retry status of backup %s/%s, %v", ns, name, err)
+		return err
+	}
+
+	return nil
+}
+
 func (c *Controller) detectBackupJobFailure(compact *v1alpha1.CompactBackup) (
 	jobFailed bool, reason string, originalReason string, err error) {
 	var (
@@ -480,7 +519,7 @@ func (c *Controller) detectBackupJobFailure(compact *v1alpha1.CompactBackup) (
 
 	klog.Infof("Detect backup %s/%s job failed, will retry, reason %s, original reason %s ", ns, name, reason, originalReason)
 	// record failure when detect failure
-	err = c.recordDetectedFailure(backup, reason, originalReason)
+	err = c.recordDetectedFailure(compact, reason, originalReason)
 	if err != nil {
 		klog.Errorf("failed to record detected failed %s for backup %s/%s", reason, ns, name)
 	}
