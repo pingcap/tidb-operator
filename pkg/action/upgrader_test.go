@@ -19,6 +19,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/go-logr/logr"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
@@ -179,6 +182,89 @@ func Test_getDependentGroups(t *testing.T) {
 			}
 			if !reflect.DeepEqual(gotGroups, tt.wantGroups) {
 				t.Errorf("getDependentGroups() gotGroups = %v, want %v", gotGroups, tt.wantGroups)
+			}
+		})
+	}
+}
+
+func TestUpgradePolicy(t *testing.T) {
+	pdg := &v1alpha1.PDGroup{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "test",
+			Name:      "pd",
+			Labels: map[string]string{
+				v1alpha1.LabelKeyCluster:   "tc",
+				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
+			},
+		},
+		Spec: v1alpha1.PDGroupSpec{
+			Cluster: v1alpha1.ClusterReference{
+				Name: "tc",
+			},
+			Version: "v8.5.0",
+		},
+		Status: v1alpha1.PDGroupStatus{
+			GroupStatus: v1alpha1.GroupStatus{
+				Version: "v8.1.0", // not upgraded
+			},
+		},
+	}
+	kvg := &v1alpha1.TiKVGroup{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "test",
+			Name:      "tikv",
+			Labels: map[string]string{
+				v1alpha1.LabelKeyCluster:   "tc",
+				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
+			},
+		},
+		Spec: v1alpha1.TiKVGroupSpec{
+			Cluster: v1alpha1.ClusterReference{
+				Name: "tc",
+			},
+			Version: "v8.5.0",
+		},
+		Status: v1alpha1.TiKVGroupStatus{
+			GroupStatus: v1alpha1.GroupStatus{
+				Version: "v8.1.0", // not upgraded
+			},
+		},
+	}
+
+	tests := []struct {
+		name       string
+		policy     v1alpha1.UpgradePolicy
+		canUpgrade bool
+	}{
+		{
+			name:       "no constraints",
+			policy:     v1alpha1.UpgradePolicyNoConstraints,
+			canUpgrade: true,
+		},
+		{
+			name:       "default policy",
+			policy:     v1alpha1.UpgradePolicyDefault,
+			canUpgrade: false,
+		},
+		{
+			name:       "unknown policy",
+			policy:     "unknown",
+			canUpgrade: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cluster := v1alpha1.Cluster{
+				Spec: v1alpha1.ClusterSpec{
+					UpgradePolicy: tt.policy,
+				},
+			}
+			cli := client.NewFakeClient(pdg, kvg)
+			checker := NewUpgradeChecker(cli, &cluster, logr.Discard())
+			got := checker.CanUpgrade(context.TODO(), kvg)
+			if got != tt.canUpgrade {
+				t.Errorf("CanUpgrade() got = %v, want %v", got, tt.canUpgrade)
 			}
 		})
 	}
