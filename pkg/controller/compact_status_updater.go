@@ -124,7 +124,7 @@ func (r *CompactStatusUpdater) OnStart(ctx context.Context, compact *v1alpha1.Co
 	r.Event(compact, corev1.EventTypeNormal, "Started", "The compaction process has started successfully.")
 }
 
-func (r *CompactStatusUpdater) OnProgress(ctx context.Context, p Progress, compact *v1alpha1.CompactBackup) {
+func (r *CompactStatusUpdater) OnProgress(ctx context.Context, compact *v1alpha1.CompactBackup, p Progress) {
 	progress := fmt.Sprintf("[READ_META(%d/%d),COMPACT_WORK(%d/%d)]",
 		p.MetaCompleted, p.MetaTotal, p.BytesCompacted, p.BytesToCompact)
 	r.UpdateStatus(compact, "", progress, "")

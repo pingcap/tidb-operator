@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/cache"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
@@ -54,7 +55,7 @@ func runCompact(compactOpts options.CompactOpts, kubecfg string) error {
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, constants.ResyncDuration, options...)
 	recorder := util.NewEventRecorder(kubeCli, "compact-manager")
 	compactInformer := informerFactory.Pingcap().V1alpha1().CompactBackups()
-	statusUpdater := compact.NewCompactStatusUpdater(recorder, compactInformer.Lister(), cli)
+	statusUpdater := controller.NewCompactStatusUpdater(recorder, compactInformer.Lister(), cli)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
