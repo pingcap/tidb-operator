@@ -3542,7 +3542,7 @@ type CompactStatus struct {
 	State    string `json:"state,omitempty"`
 	// Progress is the progress of the backup
 	Progress string `json:"progress,omitempty"`
-	// Message is the message of the backup
+	// Message is the error message of the backup
 	Message  string `json:"message,omitempty"`
 	// BackoffRetryStatus is status of the backoff retry, it will be used when backup pod or job exited unexpectedly
 	BackoffRetryStatus []BackoffRetryRecord `json:"backoffRetryStatus,omitempty"`
