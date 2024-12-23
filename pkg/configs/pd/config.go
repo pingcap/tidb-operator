@@ -145,7 +145,6 @@ func (c *Config) Validate() error {
 		fields = append(fields, "join")
 	}
 
-	// valid security fields
 	if c.Security.CAPath != "" {
 		fields = append(fields, "security.cacert-path")
 	}

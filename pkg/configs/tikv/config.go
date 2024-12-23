@@ -24,12 +24,10 @@ import (
 )
 
 type Config struct {
-	Server     Server     `toml:"server"`
-	Storage    Storage    `toml:"storage"`
-	PD         PD         `toml:"pd"`
-	RaftEngine RaftEngine `toml:"raft-engine"`
-	RocksDB    RocksDB    `toml:"rocksdb"`
-	Security   Security   `toml:"security"`
+	Server   Server   `toml:"server"`
+	Storage  Storage  `toml:"storage"`
+	PD       PD       `toml:"pd"`
+	Security Security `toml:"security"`
 }
 
 type Server struct {
@@ -45,16 +43,6 @@ type Storage struct {
 
 type PD struct {
 	Endpoints []string `toml:"endpoints"`
-}
-
-type RaftEngine struct {
-	// Only for validation, it cannot be disabled
-	Enable *bool  `toml:"enable"`
-	Dir    string `toml:"dir"`
-}
-
-type RocksDB struct {
-	WALDir string `toml:"wal-dir"`
 }
 
 type Security struct {
@@ -86,25 +74,11 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV) error {
 	for i := range tikv.Spec.Volumes {
 		vol := &tikv.Spec.Volumes[i]
 		for _, usage := range vol.For {
-			switch usage.Type {
-			case v1alpha1.VolumeUsageTypeTiKVData:
-				p := string(usage.Type)
+			if usage.Type == v1alpha1.VolumeUsageTypeTiKVData {
+				c.Storage.DataDir = vol.Path
 				if usage.SubPath != "" {
-					p = usage.SubPath
+					c.Storage.DataDir = path.Join(vol.Path, usage.SubPath)
 				}
-				c.Storage.DataDir = path.Join(vol.Path, p)
-			case v1alpha1.VolumeUsageTypeTiKVRaftEngine:
-				p := string(usage.Type)
-				if usage.SubPath != "" {
-					p = usage.SubPath
-				}
-				c.RaftEngine.Dir = path.Join(vol.Path, p)
-			case v1alpha1.VolumeUsageTypeTiKVWAL:
-				p := string(usage.Type)
-				if usage.SubPath != "" {
-					p = usage.SubPath
-				}
-				c.RocksDB.WALDir = path.Join(vol.Path, p)
 			}
 		}
 	}
@@ -124,6 +98,10 @@ func (c *Config) Validate() error {
 	if c.Server.StatusAddr != "" {
 		fields = append(fields, "server.status-addr")
 	}
+	if c.Server.AdvertiseStatusAddr != "" {
+		fields = append(fields, "server.advertise-status-addr")
+	}
+
 	if c.Storage.DataDir != "" {
 		fields = append(fields, "storage.data-dir")
 	}
@@ -131,14 +109,14 @@ func (c *Config) Validate() error {
 		fields = append(fields, "pd.endpoints")
 	}
 
-	if c.RaftEngine.Enable != nil {
-		fields = append(fields, "raft-engine.enable")
+	if c.Security.CAPath != "" {
+		fields = append(fields, "security.ca-path")
 	}
-	if c.RaftEngine.Dir != "" {
-		fields = append(fields, "raft-engine.dir")
+	if c.Security.CertPath != "" {
+		fields = append(fields, "security.cert-path")
 	}
-	if c.RocksDB.WALDir != "" {
-		fields = append(fields, "rocksdb.wal-dir")
+	if c.Security.KeyPath != "" {
+		fields = append(fields, "security.key-path")
 	}
 
 	if len(fields) == 0 {

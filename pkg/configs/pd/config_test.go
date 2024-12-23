@@ -35,12 +35,12 @@ func TestValidate(t *testing.T) {
 		DataDir:             "/var/lib/pd",
 		ClientUrls:          "https://[::]:2379",
 		PeerUrls:            "https://[::]:2380",
-		AdvertiseClientUrls: "https://pd-0.default.svc:2379",
-		AdvertisePeerUrls:   "https://pd-0.default.svc:2380",
-		InitialCluster:      "pd-0=https://pd-0.default.svc:2380,pd-1=https://pd-1.default.svc:2380",
+		AdvertiseClientUrls: "https://pd-0.ns1.svc:2379",
+		AdvertisePeerUrls:   "https://pd-0.ns1.svc:2380",
+		InitialCluster:      "pd-0=https://pd-0.ns1.svc:2380,pd-1=https://pd-1.ns1.svc:2380",
 		InitialClusterState: InitialClusterStateNew,
 		InitialClusterToken: "pd-cluster",
-		Join:                "pd-2=https://pd-2.default.svc:2380",
+		Join:                "pd-2=https://pd-2.ns1.svc:2380",
 		Security: Security{
 			CAPath:   "/path/to/ca",
 			CertPath: "/path/to/cert",
@@ -71,19 +71,19 @@ func TestOverlay(t *testing.T) {
 			TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
 		},
 		Status: v1alpha1.ClusterStatus{
-			PD: "https://db-pd.default.svc:2379",
+			PD: "https://basic-pd.ns1:2379",
 		},
 	}
 	pd := &v1alpha1.PD{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "default",
+			Namespace: "ns1",
 			Name:      "basic-0",
 		},
 		Spec: v1alpha1.PDSpec{
 			Cluster: v1alpha1.ClusterReference{
 				Name: "cluster-1",
 			},
-			Subdomain: "basic",
+			Subdomain: "basic-tikv-peer",
 			PDTemplateSpec: v1alpha1.PDTemplateSpec{
 				Volumes: []v1alpha1.Volume{
 					{
@@ -100,27 +100,36 @@ func TestOverlay(t *testing.T) {
 					},
 				},
 				Config: v1alpha1.ConfigFile(`[log]
-				level = "info"`),
+level = "info"`),
 			},
 		},
 	}
 	peers := []*v1alpha1.PD{
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "default",
-				Name:      "basic-1",
+				Namespace: "ns1",
+				Name:      "basic-0",
 			},
 			Spec: v1alpha1.PDSpec{
-				Subdomain: "default",
+				Subdomain: "basic-tikv-peer",
 			},
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "default",
+				Namespace: "ns1",
+				Name:      "basic-1",
+			},
+			Spec: v1alpha1.PDSpec{
+				Subdomain: "basic-tikv-peer",
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "ns1",
 				Name:      "basic-2",
 			},
 			Spec: v1alpha1.PDSpec{
-				Subdomain: "default",
+				Subdomain: "basic-tikv-peer",
 			},
 		},
 	}
@@ -133,12 +142,35 @@ func TestOverlay(t *testing.T) {
 	assert.Equal(t, "/var/lib/pd", cfg.DataDir)
 	assert.Equal(t, "https://[::]:2379", cfg.ClientUrls)
 	assert.Equal(t, "https://[::]:2380", cfg.PeerUrls)
-	assert.Equal(t, "https://basic-pd-0.basic.default:2379", cfg.AdvertiseClientUrls)
-	assert.Equal(t, "https://basic-pd-0.basic.default:2380", cfg.AdvertisePeerUrls)
+	assert.Equal(t, "https://basic-pd-0.basic-tikv-peer.ns1:2379", cfg.AdvertiseClientUrls)
+	assert.Equal(t, "https://basic-pd-0.basic-tikv-peer.ns1:2380", cfg.AdvertisePeerUrls)
 	assert.Equal(t, "", cfg.InitialCluster)
 	assert.Equal(t, "", cfg.InitialClusterState)
 	assert.Equal(t, "cluster-1", cfg.InitialClusterToken)
 	assert.Equal(t, "/var/lib/pd-tls/ca.crt", cfg.Security.CAPath)
 	assert.Equal(t, "/var/lib/pd-tls/tls.crt", cfg.Security.CertPath)
 	assert.Equal(t, "/var/lib/pd-tls/tls.key", cfg.Security.KeyPath)
+
+	// init a new cluster
+	cluster2 := cluster.DeepCopy()
+	cluster2.Status.PD = ""
+	pd2 := pd.DeepCopy()
+	pd2.Annotations = map[string]string{
+		v1alpha1.AnnoKeyInitialClusterNum: "3",
+	}
+	cfg2 := &Config{}
+	err = cfg2.Overlay(cluster2, pd2, peers)
+	require.NoError(t, err)
+	assert.Equal(t, "basic-0", cfg2.Name)
+	assert.Equal(t, "/var/lib/pd", cfg2.DataDir)
+	assert.Equal(t, "https://[::]:2379", cfg2.ClientUrls)
+	assert.Equal(t, "https://[::]:2380", cfg2.PeerUrls)
+	assert.Equal(t, "https://basic-pd-0.basic-tikv-peer.ns1:2379", cfg2.AdvertiseClientUrls)
+	assert.Equal(t, "https://basic-pd-0.basic-tikv-peer.ns1:2380", cfg2.AdvertisePeerUrls)
+	assert.Equal(t, "basic-0=https://basic-pd-0.basic-tikv-peer.ns1:2380,basic-1=https://basic-pd-1.basic-tikv-peer.ns1:2380,basic-2=https://basic-pd-2.basic-tikv-peer.ns1:2380", cfg2.InitialCluster)
+	assert.Equal(t, InitialClusterStateNew, cfg2.InitialClusterState)
+	assert.Equal(t, "cluster-1", cfg2.InitialClusterToken)
+	assert.Equal(t, "/var/lib/pd-tls/ca.crt", cfg2.Security.CAPath)
+	assert.Equal(t, "/var/lib/pd-tls/tls.crt", cfg2.Security.CertPath)
+	assert.Equal(t, "/var/lib/pd-tls/tls.key", cfg2.Security.KeyPath)
 }

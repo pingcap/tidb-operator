@@ -235,7 +235,7 @@ func (in *TiDB) GVK() schema.GroupVersionKind {
 	return SchemeGroupVersion.WithKind("TiDB")
 }
 
-func (in *TiDB) IsSeperateSlowLogEnabled() bool {
+func (in *TiDB) IsSeparateSlowLogEnabled() bool {
 	if in.Spec.SlowLog == nil {
 		return true // enabled by default
 	}
