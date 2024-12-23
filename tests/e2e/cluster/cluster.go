@@ -15,23 +15,25 @@
 package cluster
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"slices"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
+
+	"github.com/Masterminds/semver/v3"
+	_ "github.com/go-sql-driver/mysql"
 
 	//nolint: stylecheck // too many changes, refactor later
 	. "github.com/onsi/ginkgo/v2"
 	//nolint: stylecheck // too many changes, refactor later
 	. "github.com/onsi/gomega"
-
-	"github.com/Masterminds/semver/v3"
-	_ "github.com/go-sql-driver/mysql"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -1642,63 +1644,71 @@ location-labels = ["region", "zone", "host"]`
 			Expect(k8sClient.Create(ctx, dbg)).To(Succeed())
 
 			By("Waiting for the cluster to be ready")
+			// TODO: extract it to a common utils
+			svcName := dbg.Name + "-tidb"
+			var clusterIP string
 			Eventually(func(g Gomega) {
 				_, ready := utiltidb.IsClusterReady(k8sClient, tc.Name, tc.Namespace)
 				g.Expect(ready).To(BeTrue())
-
 				g.Expect(utiltidb.AreAllInstancesReady(k8sClient, pdg,
 					[]*v1alpha1.TiKVGroup{kvg}, []*v1alpha1.TiDBGroup{dbg}, nil)).To(Succeed())
-				g.Expect(utiltidb.IsTiDBConnectable(ctx, k8sClient, fw,
-					tc.Namespace, tc.Name, dbg.Name, "root", "", "")).To(Succeed())
+				svc, err := clientSet.CoreV1().Services(tc.Namespace).Get(ctx, svcName, metav1.GetOptions{})
+				g.Expect(err).To(BeNil())
+				clusterIP = svc.Spec.ClusterIP
 			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
 
-			By("Connect to the TiDB cluster to run transactions")
-			// TODO: extract it to a common utils
-			svcName := dbg.Name + "-tidb"
-			dsn, cancel, err := utiltidb.PortForwardAndGetTiDBDSN(fw, tc.Namespace, svcName, "root", "", "test", "charset=utf8mb4")
-			Expect(err).To(BeNil())
-			defer cancel()
-			db, err := sql.Open("mysql", dsn)
-			Expect(err).To(BeNil())
-			defer db.Close()
-			maxConn := 30
-			db.SetMaxIdleConns(maxConn)
-			db.SetMaxOpenConns(maxConn)
-
-			table := "test.e2e_test"
-			str := fmt.Sprintf("create table if not exists %s(id int primary key auto_increment, v int);", table)
-			_, err = db.Exec(str)
-			Expect(err).To(BeNil())
-
-			var totalCount, failCount atomic.Uint64
-			var wg sync.WaitGroup
-			clientCtx, cancel2 := context.WithCancel(ctx)
-			defer cancel2()
-			for i := 0; i < maxConn; i++ {
-				id := i
-				wg.Add(1)
-				go func(db *sql.DB) {
-					defer wg.Done()
-					for {
-						select {
-						case <-clientCtx.Done():
-							return
-						default:
-							err := utiltidb.ExecuteSimpleTransaction(db, id, table)
-							totalCount.Add(1)
-							if err != nil {
-								failCount.Add(1)
-							}
-							time.Sleep(50 * time.Millisecond) //nolint:mnd // easy to understand
-						}
-					}
-				}(db)
+			By("Create a Job to connect to the TiDB cluster to run transactions")
+			jobName := "testing-workload-job"
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      jobName,
+					Namespace: tc.Namespace,
+				},
+				Spec: batchv1.JobSpec{
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								"app": jobName,
+							},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "testing-workload",
+									Image: "pingcap/testing-workload:latest",
+									Args: []string{
+										"--host", clusterIP,
+										"--duration", "8",
+										"--max-connections", "30",
+									},
+									ImagePullPolicy: corev1.PullIfNotPresent,
+								},
+							},
+							RestartPolicy: corev1.RestartPolicyNever,
+						},
+					},
+					BackoffLimit: ptr.To[int32](0),
+				},
 			}
+			_, err := clientSet.BatchV1().Jobs(tc.Namespace).Create(ctx, job, metav1.CreateOptions{})
+			Expect(err).To(BeNil())
+
+			By("Ensure the job pod is running")
+			var jobPodName string
+			Eventually(func(g Gomega) {
+				pods, err := clientSet.CoreV1().Pods(tc.Namespace).List(ctx, metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("app=%s", jobName),
+				})
+				g.Expect(err).To(BeNil())
+				g.Expect(len(pods.Items)).To(Equal(1))
+				g.Expect(pods.Items[0].Status.Phase).To(Equal(corev1.PodRunning))
+				jobPodName = pods.Items[0].Name
+			}).WithTimeout(time.Minute).WithPolling(createClusterPolling).Should(Succeed())
 
 			By("Rolling restart TiDB")
 			var dbgGet v1alpha1.TiDBGroup
 			Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: tc.Namespace, Name: dbg.Name}, &dbgGet)).To(Succeed())
-			dbgGet.Spec.Template.Spec.Config = logLevelConfig
+			dbgGet.Spec.Template.Spec.Config = "log.level = 'warn'"
 			Expect(k8sClient.Update(ctx, &dbgGet)).To(Succeed())
 
 			Eventually(func(g Gomega) {
@@ -1706,13 +1716,22 @@ location-labels = ["region", "zone", "host"]`
 				g.Expect(ready).To(BeTrue())
 				g.Expect(utiltidb.AreAllInstancesReady(k8sClient, pdg,
 					[]*v1alpha1.TiKVGroup{kvg}, []*v1alpha1.TiDBGroup{dbg}, nil)).To(Succeed())
+				jobGet, err := clientSet.BatchV1().Jobs(tc.Namespace).Get(ctx, jobName, metav1.GetOptions{})
+				g.Expect(err).To(BeNil())
+				if jobGet.Status.Failed > 0 {
+					// print the logs if the job failed
+					req := clientSet.CoreV1().Pods(tc.Namespace).GetLogs(jobPodName, &corev1.PodLogOptions{})
+					podLogs, err := req.Stream(ctx)
+					g.Expect(err).To(BeNil())
+					defer podLogs.Close()
 
-				g.Expect(totalCount.Load()).To(BeNumerically(">", 0))
+					buf := new(bytes.Buffer)
+					_, _ = io.Copy(buf, podLogs)
+					GinkgoWriter.Println(buf.String())
+					Fail("job failed")
+				}
+				g.Expect(jobGet.Status.Succeeded).To(BeNumerically("==", 1))
 			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
-			GinkgoWriter.Printf("total count: %d, fail count: %d\n", totalCount.Load(), failCount.Load())
-			Expect(failCount.Load()).To(BeZero())
-			cancel2()
-			wg.Wait()
 		})
 	})
 

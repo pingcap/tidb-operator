@@ -125,7 +125,7 @@ func TestConfigMap(t *testing.T) {
 				},
 				Data: map[string]string{
 					v1alpha1.ConfigFileName: `advertise-address = 'test-tidb-tidb.subdomain.default.svc'
-graceful-wait-before-shutdown = 30
+graceful-wait-before-shutdown = 60
 host = '::'
 path = 'test-pd.default:2379'
 store = 'tikv'
