@@ -42,6 +42,8 @@ type Progress struct {
 }
 
 type CompactStatusUpdaterInterface interface {
+	OnSchedule(ctx context.Context, compact *v1alpha1.CompactBackup)
+	OnCreateJob(ctx context.Context, compact *v1alpha1.CompactBackup, err error)
 	OnStart(ctx context.Context, compact *v1alpha1.CompactBackup)
 	OnProgress(ctx context.Context, compact *v1alpha1.CompactBackup, p Progress)
 	OnFinish(ctx context.Context, compact *v1alpha1.CompactBackup, err error)
@@ -117,6 +119,18 @@ func (r *CompactStatusUpdater) UpdateStatus(compact *v1alpha1.CompactBackup, new
 		return nil
 	})
 	return err
+}
+
+func (r *CompactStatusUpdater) OnSchedule(ctx context.Context, compact *v1alpha1.CompactBackup) {
+	r.UpdateStatus(compact, string(v1alpha1.BackupScheduled), "", "")
+}
+
+func (r *CompactStatusUpdater) OnCreateJob(ctx context.Context, compact *v1alpha1.CompactBackup, err error) {
+	if err != nil {
+		r.UpdateStatus(compact, string(v1alpha1.BackupFailed), "", err.Error())
+	} else {
+		r.UpdateStatus(compact, string(v1alpha1.BackupPrepare), "", "")
+	}
 }
 
 func (r *CompactStatusUpdater) OnStart(ctx context.Context, compact *v1alpha1.CompactBackup) {
