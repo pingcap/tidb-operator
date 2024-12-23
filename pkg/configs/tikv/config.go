@@ -109,7 +109,6 @@ func (c *Config) Validate() error {
 		fields = append(fields, "pd.endpoints")
 	}
 
-	// valid security fields
 	if c.Security.CAPath != "" {
 		fields = append(fields, "security.ca-path")
 	}

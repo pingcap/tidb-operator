@@ -125,7 +125,6 @@ func (c *Config) Validate(separateSlowLog bool) error {
 		fields = append(fields, "path")
 	}
 
-	// valid security fields
 	if c.Security.SSLCA != "" {
 		fields = append(fields, "security.ssl-ca")
 	}
