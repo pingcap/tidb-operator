@@ -23,11 +23,10 @@ import (
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	. "github.com/onsi/gomega"
-	"gocloud.dev/blob"
-	"gocloud.dev/blob/driver"
-
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/util"
+	"gocloud.dev/blob"
+	"gocloud.dev/blob/driver"
 )
 
 func TestCleanBRRemoteBackupDataOnce(t *testing.T) {

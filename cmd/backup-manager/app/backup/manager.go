@@ -198,7 +198,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 
 	var errs []error
 
-	backupFullPath, err := util.GetStoragePath(backup)
+	backupFullPath, err := util.GetStoragePath(&backup.Spec.StorageProvider)
 	if err != nil {
 		errs = append(errs, err)
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
@@ -506,7 +506,7 @@ func (bm *Manager) performLogBackup(ctx context.Context, backup *v1alpha1.Backup
 // startLogBackup starts log backup.
 func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) (*controller.BackupUpdateStatus, string, error) {
 	started := time.Now()
-	backupFullPath, err := util.GetStoragePath(backup)
+	backupFullPath, err := util.GetStoragePath(&backup.Spec.StorageProvider)
 	if err != nil {
 		klog.Errorf("Get backup full path of cluster %s failed, err: %s", bm, err)
 		return nil, "GetBackupRemotePathFailed", err

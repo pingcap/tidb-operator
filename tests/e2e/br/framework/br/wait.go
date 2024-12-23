@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/framework"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -343,6 +344,30 @@ func WaitBackupPodOnPhase(f *framework.Framework, backup *v1alpha1.Backup, phase
 		return false, nil
 	}); err != nil {
 		return fmt.Errorf("can't wait for backup %s/%s pod on %s: %v", ns, name, phase, err)
+	}
+	return nil
+}
+
+func WaitForCompactComplete(c versioned.Interface, ns, name string, timeout time.Duration) error {
+	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
+		cpbk, err := c.PingcapV1alpha1().CompactBackups(ns).Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+
+		switch cpbk.Status.State {
+		case string(v1alpha1.BackupComplete):
+			return true, nil
+		case string(v1alpha1.BackupCleanFailed):
+			return false, fmt.Errorf("Compact failed: %s", cpbk.Status.Message)
+		default:
+			log.Logf("the current status is: %s %s", cpbk.Status.State, cpbk.Status.Progress)
+			//do nothing
+		}
+
+		return false, nil
+	}); err != nil {
+		return fmt.Errorf("can't wait for backup complete: %v", err)
 	}
 	return nil
 }
