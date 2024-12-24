@@ -18,9 +18,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
+	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/utils/random"
 )
 
@@ -42,6 +45,64 @@ const (
 	// NoNotEqual means cases only have same src and dst
 	NoNotEqual
 )
+
+func TestOverlayPod(t *testing.T) {
+	base := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				"aa": "aa",
+				"zz": "123",
+			},
+			Labels: map[string]string{
+				"aa": "aa",
+				"zz": "123",
+			},
+		},
+		Spec: corev1.PodSpec{
+			NodeSelector: map[string]string{
+				"aa": "aa",
+				"zz": "123",
+			},
+		},
+	}
+	overlay := v1alpha1.PodOverlay{
+		ObjectMeta: v1alpha1.ObjectMeta{
+			Annotations: map[string]string{
+				"bb": "bb",
+				"zz": "456",
+			},
+			Labels: map[string]string{
+				"bb": "bb",
+				"zz": "456",
+			},
+		},
+		Spec: &corev1.PodSpec{
+			NodeSelector: map[string]string{
+				"bb": "bb",
+				"zz": "456",
+			},
+			TerminationGracePeriodSeconds: ptr.To[int64](100),
+		},
+	}
+	OverlayPod(&base, &overlay)
+
+	assert.Equal(t, map[string]string{
+		"aa": "aa",
+		"bb": "bb",
+		"zz": "456",
+	}, base.ObjectMeta.Annotations)
+	assert.Equal(t, map[string]string{
+		"aa": "aa",
+		"bb": "bb",
+		"zz": "456",
+	}, base.ObjectMeta.Labels)
+	assert.Equal(t, map[string]string{
+		"aa": "aa",
+		"bb": "bb",
+		"zz": "123", // special case
+	}, base.Spec.NodeSelector)
+	assert.Equal(t, int64(100), *base.Spec.TerminationGracePeriodSeconds)
+}
 
 func randString() string {
 	return random.Random(10)
