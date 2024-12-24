@@ -66,15 +66,15 @@ func NewFakeClient(objs ...client.Object) FakeClient {
 	}
 }
 
-func (fc *fakeClient) WithError(verb, resource string, err error) {
-	fc.fc.PrependReactor(verb, resource, func(action testing.Action) (bool, runtime.Object, error) {
-		return true, nil, err
-	})
-}
-
 type fakeClient struct {
 	Client
 	fc *fakeUnderlayClient
+}
+
+func (fc *fakeClient) WithError(verb, resource string, err error) {
+	fc.fc.PrependReactor(verb, resource, func(_ testing.Action) (bool, runtime.Object, error) {
+		return true, nil, err
+	})
 }
 
 type fakeUnderlayClient struct {
@@ -586,11 +586,10 @@ func (c *fakeUnderlayClient) PatchReactionFunc(action *testing.PatchActionImpl) 
 		}
 	case types.ApplyPatchType:
 		patchObj := &unstructured.Unstructured{Object: map[string]any{}}
-		if err = yaml.Unmarshal(action.GetPatch(), &patchObj.Object); err != nil {
+		if err := yaml.Unmarshal(action.GetPatch(), &patchObj.Object); err != nil {
 			return true, nil, fmt.Errorf("error decoding YAML: %w", err)
 		}
-		obj, err = manager.Apply(obj, patchObj, "tidb-operator", true)
-		if err != nil {
+		if _, err := manager.Apply(obj, patchObj, "tidb-operator", true); err != nil {
 			return true, nil, err
 		}
 

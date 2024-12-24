@@ -71,7 +71,7 @@ func TaskStatusSuspend(state *ReconcileContext, c client.Client) task.Task {
 }
 
 func TaskStatusUnknown() task.Task {
-	return task.NameTaskFunc("StatusUnknown", func(ctx context.Context) task.Result {
+	return task.NameTaskFunc("StatusUnknown", func(_ context.Context) task.Result {
 		return task.Wait().With("status of the pd is unknown")
 	})
 }

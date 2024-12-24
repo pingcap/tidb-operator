@@ -49,7 +49,7 @@ type ReconcileContext struct {
 }
 
 func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task.Task {
-	return task.NameTaskFunc("ContextInfoFromPD", func(ctx context.Context) task.Result {
+	return task.NameTaskFunc("ContextInfoFromPD", func(_ context.Context) task.Result {
 		ck := state.Cluster()
 		pc, ok := cm.Get(pdm.PrimaryKey(ck.Namespace, ck.Name))
 		if !ok {
