@@ -15,6 +15,7 @@
 package task
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -36,7 +37,7 @@ func TestNameTask(t *testing.T) {
 		{
 			desc: "normal",
 			name: "aaa",
-			syncer: SyncFunc(func() Result {
+			syncer: SyncFunc(func(context.Context) Result {
 				return Complete().With("success")
 			}),
 			expectedResult: nameResult(
@@ -50,9 +51,9 @@ func TestNameTask(t *testing.T) {
 		c := &cases[i]
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
-
+			ctx := context.Background()
 			task := NameTaskFunc(c.name, c.syncer)
-			res, done := task.sync()
+			res, done := task.sync(ctx)
 			assert.Equal(tt, c.expectedResult, res, c.desc)
 			assert.False(tt, done, c.desc)
 		})
@@ -68,7 +69,7 @@ func TestIf(t *testing.T) {
 	}{
 		{
 			desc: "cond is true",
-			task: NameTaskFunc("aaa", func() Result {
+			task: NameTaskFunc("aaa", func(context.Context) Result {
 				return Complete().With("success")
 			}),
 			cond: condition(true),
@@ -78,7 +79,7 @@ func TestIf(t *testing.T) {
 		},
 		{
 			desc: "cond is false",
-			task: NameTaskFunc("aaa", func() Result {
+			task: NameTaskFunc("aaa", func(context.Context) Result {
 				return Complete().With("success")
 			}),
 			cond:           condition(false),
@@ -91,8 +92,9 @@ func TestIf(t *testing.T) {
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
+			ctx := context.Background()
 			task := If(c.cond, c.task)
-			res, done := task.sync()
+			res, done := task.sync(ctx)
 			assert.Equal(tt, c.expectedResult, res, c.desc)
 			assert.False(tt, done, c.desc)
 		})
@@ -107,7 +109,7 @@ func TestBreak(t *testing.T) {
 	}{
 		{
 			desc: "cond is true",
-			task: NameTaskFunc("aaa", func() Result {
+			task: NameTaskFunc("aaa", func(context.Context) Result {
 				return Complete().With("success")
 			}),
 			expectedResult: newAggregate(
@@ -121,8 +123,9 @@ func TestBreak(t *testing.T) {
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
+			ctx := context.Background()
 			task := Break(c.task)
-			res, done := task.sync()
+			res, done := task.sync(ctx)
 			assert.Equal(tt, c.expectedResult, res, c.desc)
 			assert.True(tt, done, c.desc)
 		})
@@ -139,7 +142,7 @@ func TestIfBreak(t *testing.T) {
 	}{
 		{
 			desc: "cond is true",
-			task: NameTaskFunc("aaa", func() Result {
+			task: NameTaskFunc("aaa", func(context.Context) Result {
 				return Complete().With("success")
 			}),
 			cond: CondFunc(func() bool { return true }),
@@ -150,7 +153,7 @@ func TestIfBreak(t *testing.T) {
 		},
 		{
 			desc: "cond is false",
-			task: NameTaskFunc("aaa", func() Result {
+			task: NameTaskFunc("aaa", func(context.Context) Result {
 				return Complete().With("success")
 			}),
 			cond:           CondFunc(func() bool { return false }),
@@ -164,8 +167,9 @@ func TestIfBreak(t *testing.T) {
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
+			ctx := context.Background()
 			task := IfBreak(c.cond, c.task)
-			res, done := task.sync()
+			res, done := task.sync(ctx)
 			assert.Equal(tt, c.expectedResult, res, c.desc)
 			assert.Equal(tt, c.expectedDone, done, c.desc)
 		})
@@ -188,7 +192,7 @@ func TestBlock(t *testing.T) {
 		{
 			desc: "1 complete task",
 			tasks: []Task{
-				NameTaskFunc("aaa", func() Result {
+				NameTaskFunc("aaa", func(context.Context) Result {
 					return Complete().With("success")
 				}),
 			},
@@ -200,10 +204,10 @@ func TestBlock(t *testing.T) {
 		{
 			desc: "2 complete tasks",
 			tasks: []Task{
-				NameTaskFunc("aaa", func() Result {
+				NameTaskFunc("aaa", func(context.Context) Result {
 					return Complete().With("success")
 				}),
-				NameTaskFunc("bbb", func() Result {
+				NameTaskFunc("bbb", func(context.Context) Result {
 					return Complete().With("success")
 				}),
 			},
@@ -216,10 +220,10 @@ func TestBlock(t *testing.T) {
 		{
 			desc: "2 tasks with 1 fail task",
 			tasks: []Task{
-				NameTaskFunc("aaa", func() Result {
+				NameTaskFunc("aaa", func(context.Context) Result {
 					return Fail().With("fail")
 				}),
-				NameTaskFunc("bbb", func() Result {
+				NameTaskFunc("bbb", func(context.Context) Result {
 					return Complete().With("success")
 				}),
 			},
@@ -231,10 +235,10 @@ func TestBlock(t *testing.T) {
 		{
 			desc: "if task",
 			tasks: []Task{
-				If(condition(false), NameTaskFunc("aaa", func() Result {
+				If(condition(false), NameTaskFunc("aaa", func(context.Context) Result {
 					return Fail().With("fail")
 				})),
-				NameTaskFunc("bbb", func() Result {
+				NameTaskFunc("bbb", func(context.Context) Result {
 					return Complete().With("success")
 				}),
 			},
@@ -246,10 +250,10 @@ func TestBlock(t *testing.T) {
 		{
 			desc: "break task",
 			tasks: []Task{
-				NameTaskFunc("aaa", func() Result {
+				NameTaskFunc("aaa", func(context.Context) Result {
 					return Complete().With("success")
 				}),
-				Break(NameTaskFunc("bbb", func() Result {
+				Break(NameTaskFunc("bbb", func(context.Context) Result {
 					return Complete().With("success")
 				})),
 			},
@@ -262,10 +266,10 @@ func TestBlock(t *testing.T) {
 		{
 			desc: "if break task",
 			tasks: []Task{
-				IfBreak(condition(true), NameTaskFunc("aaa", func() Result {
+				IfBreak(condition(true), NameTaskFunc("aaa", func(context.Context) Result {
 					return Complete().With("success")
 				})),
-				NameTaskFunc("bbb", func() Result {
+				NameTaskFunc("bbb", func(context.Context) Result {
 					return Complete().With("success")
 				}),
 			},
@@ -281,8 +285,9 @@ func TestBlock(t *testing.T) {
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
+			ctx := context.Background()
 			task := Block(c.tasks...)
-			r, done := task.sync()
+			r, done := task.sync(ctx)
 			assert.Equal(tt, c.expectedResult, r, c.desc)
 			assert.Equal(tt, c.expectedDone, done, c.desc)
 		})

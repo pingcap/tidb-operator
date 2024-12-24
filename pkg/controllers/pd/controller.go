@@ -75,12 +75,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}()
 
 	rtx := &tasks.ReconcileContext{
-		// some fields will be set in the context task
-		Context: ctx,
-		Key:     req.NamespacedName,
+		Key: req.NamespacedName,
 	}
 
 	runner := r.NewRunner(rtx, reporter)
 
-	return runner.Run()
+	return runner.Run(ctx)
 }

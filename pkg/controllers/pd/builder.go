@@ -20,45 +20,45 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-func (r *Reconciler) NewRunner(ctx *tasks.ReconcileContext, reporter task.TaskReporter) task.TaskRunner {
+func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.TaskReporter) task.TaskRunner {
 	runner := task.NewTaskRunner(reporter,
 		// get pd
-		common.TaskContextPD(ctx, r.Client),
+		common.TaskContextPD(state, r.Client),
 		// if it's deleted just return
-		task.IfBreak(common.CondPDHasBeenDeleted(ctx)),
+		task.IfBreak(common.CondPDHasBeenDeleted(state)),
 
 		// get info from pd
-		tasks.TaskContextInfoFromPD(ctx, r.PDClientManager),
-		task.IfBreak(common.CondPDIsDeleting(ctx),
-			tasks.TaskFinalizerDel(ctx, r.Client),
+		tasks.TaskContextInfoFromPD(state, r.PDClientManager),
+		task.IfBreak(common.CondPDIsDeleting(state),
+			tasks.TaskFinalizerDel(state, r.Client),
 		),
 
 		// get cluster and check whether it's paused
-		common.TaskContextCluster(ctx, r.Client),
+		common.TaskContextCluster(state, r.Client),
 		task.IfBreak(
-			common.CondClusterIsPaused(ctx),
+			common.CondClusterIsPaused(state),
 		),
 
 		// get pod and check whether the cluster is suspending
-		common.TaskContextPod(ctx, r.Client),
+		common.TaskContextPod(state, r.Client),
 		task.IfBreak(
-			common.CondClusterIsSuspending(ctx),
-			tasks.TaskFinalizerAdd(ctx, r.Client),
-			common.TaskSuspendPod(ctx, r.Client),
+			common.CondClusterIsSuspending(state),
+			tasks.TaskFinalizerAdd(state, r.Client),
+			common.TaskSuspendPod(state, r.Client),
 			// TODO: extract as a common task
-			tasks.TaskStatusSuspend(ctx, r.Client),
+			tasks.TaskStatusSuspend(state, r.Client),
 		),
 
-		tasks.TaskContextPeers(ctx, r.Client),
-		tasks.TaskFinalizerAdd(ctx, r.Client),
-		tasks.TaskConfigMap(ctx, r.Logger, r.Client),
-		tasks.TaskPVC(ctx, r.Logger, r.Client, r.VolumeModifier),
-		tasks.TaskPod(ctx, r.Logger, r.Client),
+		common.TaskContextPDSlice(state, r.Client),
+		tasks.TaskFinalizerAdd(state, r.Client),
+		tasks.TaskConfigMap(state, r.Logger, r.Client),
+		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifier),
+		tasks.TaskPod(state, r.Logger, r.Client),
 		// If pd client has not been registered yet, do not update status of the pd
-		task.IfBreak(tasks.CondPDClientIsNotRegisterred(ctx),
+		task.IfBreak(tasks.CondPDClientIsNotRegisterred(state),
 			tasks.TaskStatusUnknown(),
 		),
-		tasks.TaskStatus(ctx, r.Logger, r.Client),
+		tasks.TaskStatus(state, r.Logger, r.Client),
 	)
 
 	return runner

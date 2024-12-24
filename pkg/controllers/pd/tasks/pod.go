@@ -39,36 +39,36 @@ const (
 	defaultReadinessProbeInitialDelaySeconds = 5
 )
 
-func TaskPod(ctx *ReconcileContext, logger logr.Logger, c client.Client) task.Task {
-	return task.NameTaskFunc("Pod", func() task.Result {
-		expected := newPod(ctx.Cluster, ctx.PD, ctx.ConfigHash)
-		if ctx.Pod == nil {
+func TaskPod(state *ReconcileContext, logger logr.Logger, c client.Client) task.Task {
+	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
+		expected := newPod(state.Cluster(), state.PD(), state.ConfigHash)
+		if state.Pod() == nil {
 			// We have to refresh cache of members to make sure a pd without pod is unhealthy.
 			// If the healthy info is out of date, the operator may mark this pd up-to-date unexpectedly
 			// and begin to update the next PD.
-			if ctx.Healthy {
-				ctx.PDClient.Members().Refresh()
+			if state.Healthy {
+				state.PDClient.Members().Refresh()
 				return task.Wait().With("wait until pd's status becomes unhealthy")
 			}
 			if err := c.Apply(ctx, expected); err != nil {
 				return task.Fail().With("can't create pod of pd: %v", err)
 			}
-			ctx.SetPod(expected)
+			state.SetPod(expected)
 			return task.Complete().With("pod is synced")
 		}
 
-		res := k8s.ComparePods(ctx.Pod, expected)
-		curHash, expectHash := ctx.Pod.Labels[v1alpha1.LabelKeyConfigHash], expected.Labels[v1alpha1.LabelKeyConfigHash]
+		res := k8s.ComparePods(state.Pod(), expected)
+		curHash, expectHash := state.Pod().Labels[v1alpha1.LabelKeyConfigHash], expected.Labels[v1alpha1.LabelKeyConfigHash]
 		configChanged := curHash != expectHash
 		logger.Info("compare pod", "result", res, "configChanged", configChanged, "currentConfigHash", curHash, "expectConfigHash", expectHash)
 
 		if res == k8s.CompareResultRecreate ||
-			(configChanged && ctx.PD.Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart) {
+			(configChanged && state.PD().Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart) {
 			// NOTE: both rtx.Healthy and rtx.Pod are not always newest
 			// So pre delete check may also be skipped in some cases, for example,
 			// the PD is just started.
-			if ctx.Healthy || statefulset.IsPodReady(ctx.Pod) {
-				wait, err := preDeleteCheck(ctx, logger, ctx.PDClient, ctx.PD, ctx.Peers, ctx.IsLeader)
+			if state.Healthy || statefulset.IsPodReady(state.Pod()) {
+				wait, err := preDeleteCheck(ctx, logger, state.PDClient, state.PD(), state.PDSlice(), state.IsLeader)
 				if err != nil {
 					return task.Fail().With("can't delete pod of pd: %v", err)
 				}
@@ -78,13 +78,13 @@ func TaskPod(ctx *ReconcileContext, logger logr.Logger, c client.Client) task.Ta
 				}
 			}
 
-			logger.Info("will delete the pod to recreate", "name", ctx.Pod.Name, "namespace", ctx.Pod.Namespace, "UID", ctx.Pod.UID)
+			logger.Info("will delete the pod to recreate", "name", state.Pod().Name, "namespace", state.Pod().Namespace, "UID", state.Pod().UID)
 
-			if err := c.Delete(ctx, ctx.Pod); err != nil {
+			if err := c.Delete(ctx, state.Pod()); err != nil {
 				return task.Fail().With("can't delete pod of pd: %v", err)
 			}
 
-			ctx.PodIsTerminating = true
+			state.PodIsTerminating = true
 
 			return task.Complete().With("pod is deleting")
 		} else if res == k8s.CompareResultUpdate {
@@ -92,7 +92,7 @@ func TaskPod(ctx *ReconcileContext, logger logr.Logger, c client.Client) task.Ta
 			if err := c.Apply(ctx, expected); err != nil {
 				return task.Fail().With("can't apply pod of pd: %v", err)
 			}
-			ctx.SetPod(expected)
+			state.SetPod(expected)
 		}
 
 		return task.Complete().With("pod is synced")

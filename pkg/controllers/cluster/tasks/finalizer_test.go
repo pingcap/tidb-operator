@@ -44,14 +44,14 @@ func TestFinalizer(t *testing.T) {
 		},
 		{
 			desc: "removed finalizer",
-			cluster: fake.FakeObj[v1alpha1.Cluster]("test",
-				fake.SetDeleteTimestamp[v1alpha1.Cluster](), fake.AddFinalizer[v1alpha1.Cluster]()),
+			cluster: fake.FakeObj("test",
+				fake.DeleteNow[v1alpha1.Cluster](), fake.AddFinalizer[v1alpha1.Cluster]()),
 			expected: task.Complete().Break().With("removed finalizer"),
 		},
 		{
 			desc: "deleting components",
-			cluster: fake.FakeObj[v1alpha1.Cluster]("test",
-				fake.SetDeleteTimestamp[v1alpha1.Cluster](), fake.AddFinalizer[v1alpha1.Cluster]()),
+			cluster: fake.FakeObj("test",
+				fake.DeleteNow[v1alpha1.Cluster](), fake.AddFinalizer[v1alpha1.Cluster]()),
 			pdGroup:      fake.FakeObj[v1alpha1.PDGroup]("pd-group"),
 			expected:     task.Fail().With("deleting components"),
 			hasFinalizer: true,

@@ -17,10 +17,13 @@ package common
 import (
 	"cmp"
 	"context"
+	"fmt"
 	"slices"
+	"strings"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	kuberuntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
@@ -28,119 +31,90 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-type PDContextSetter interface {
-	context.Context
-	PDKey() types.NamespacedName
-	SetPD(pd *v1alpha1.PD)
-}
-
-type PDGetter interface {
-	GetPD() *v1alpha1.PD
-}
-
-func TaskContextPD(ctx PDContextSetter, c client.Client) task.Task {
-	return task.NameTaskFunc("ContextPD", func() task.Result {
-		var pd v1alpha1.PD
-		if err := c.Get(ctx, ctx.PDKey(), &pd); err != nil {
+func taskContextResource[T any, PT Object[T]](name string, w ResourceInitializer[PT], c client.Client, shouldExist bool) task.Task {
+	return task.NameTaskFunc("Context"+name, func(ctx context.Context) task.Result {
+		var obj PT = new(T)
+		key := types.NamespacedName{
+			Namespace: w.Namespace(),
+			Name:      w.Name(),
+		}
+		if err := c.Get(ctx, key, obj); err != nil {
 			if !errors.IsNotFound(err) {
-				return task.Fail().With("can't get pd instance %s: %v", ctx.PDKey(), err)
+				return task.Fail().With("can't get %s: %v", key, err)
 			}
 
-			return task.Complete().With("pd instance has been deleted")
-		}
-		ctx.SetPD(&pd)
-		return task.Complete().With("pd is set")
-	})
-}
-
-type ClusterContextSetter interface {
-	context.Context
-	ClusterKey() types.NamespacedName
-	SetCluster(cluster *v1alpha1.Cluster)
-}
-
-type ClusterGetter interface {
-	GetCluster() *v1alpha1.Cluster
-}
-
-func TaskContextCluster(ctx ClusterContextSetter, c client.Client) task.Task {
-	return task.NameTaskFunc("ContextCluster", func() task.Result {
-		var cluster v1alpha1.Cluster
-		if err := c.Get(ctx, ctx.ClusterKey(), &cluster); err != nil {
-			return task.Fail().With("cannot find cluster %s: %v", ctx.ClusterKey(), err)
-		}
-		ctx.SetCluster(&cluster)
-		return task.Complete().With("cluster is set")
-	})
-}
-
-type PodContextSetter interface {
-	context.Context
-	PodKey() types.NamespacedName
-	SetPod(pod *corev1.Pod)
-}
-
-type PodGetter interface {
-	GetPod() *corev1.Pod
-}
-
-func TaskContextPod(ctx PodContextSetter, c client.Client) task.Task {
-	return task.NameTaskFunc("ContextPod", func() task.Result {
-		var pod corev1.Pod
-		if err := c.Get(ctx, ctx.PodKey(), &pod); err != nil {
-			if errors.IsNotFound(err) {
-				return task.Complete().With("pod is not created")
+			if shouldExist {
+				return task.Fail().With("cannot find %s: %v", key, err)
 			}
-			return task.Fail().With("failed to get pod %s: %v", ctx.PodKey(), err)
+
+			return task.Complete().With("obj %s does not exist", key)
 		}
-
-		ctx.SetPod(&pod)
-
-		return task.Complete().With("pod is set")
+		w.Set(obj)
+		return task.Complete().With("%s is set", strings.ToLower(name))
 	})
 }
 
-type PDSliceContextSetter interface {
-	context.Context
-	ClusterKey() types.NamespacedName
-	SetPDSlice(pds []*v1alpha1.PD)
-}
+func taskContextResourceSlice[T any, L any, PT Object[T], PL ObjectList[L]](
+	name string,
+	w ResourceSliceInitializer[PT],
+	c client.Client,
+) task.Task {
+	return task.NameTaskFunc("Context"+name, func(ctx context.Context) task.Result {
+		var l PL = new(L)
+		ns := w.Namespace()
+		labels := w.Labels()
 
-// TODO: combine with pd slice context in PDGroup controller
-func TaskContextPDSlice(ctx PDSliceContextSetter, c client.Client) task.Task {
-	return task.NameTaskFunc("ContextPDSlice", func() task.Result {
-		var pdl v1alpha1.PDList
-		ck := ctx.ClusterKey()
-		if err := c.List(ctx, &pdl, client.InNamespace(ck.Namespace), client.MatchingLabels{
-			v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-			v1alpha1.LabelKeyCluster:   ck.Name,
-			v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
+		if err := c.List(ctx, l, client.InNamespace(ns), client.MatchingLabels(labels)); err != nil {
+			return task.Fail().With("cannot list objs: %v", err)
+		}
+
+		objs := make([]PT, 0, meta.LenList(l))
+		if err := meta.EachListItem(l, func(item kuberuntime.Object) error {
+			obj, ok := item.(PT)
+			if !ok {
+				// unreachable
+				return fmt.Errorf("cannot convert item")
+			}
+			objs = append(objs, obj)
+			return nil
 		}); err != nil {
-			return task.Fail().With("cannot list pd peers: %v", err)
+			// unreachable
+			return task.Fail().With("cannot extract list objs: %v", err)
 		}
 
-		peers := []*v1alpha1.PD{}
-		for i := range pdl.Items {
-			peers = append(peers, &pdl.Items[i])
-		}
-		slices.SortFunc(peers, func(a, b *v1alpha1.PD) int {
-			return cmp.Compare(a.Name, b.Name)
+		slices.SortFunc(objs, func(a, b PT) int {
+			return cmp.Compare(a.GetName(), b.GetName())
 		})
 
-		ctx.SetPDSlice(peers)
+		w.Set(objs)
 
 		return task.Complete().With("peers is set")
 	})
 }
 
-type PodContext interface {
-	context.Context
-	PodGetter
+func TaskContextPD(state PDStateInitializer, c client.Client) task.Task {
+	w := state.PDInitializer()
+	return taskContextResource("PD", w, c, false)
 }
 
-func TaskSuspendPod(ctx PodContext, c client.Client) task.Task {
-	return task.NameTaskFunc("SuspendPod", func() task.Result {
-		pod := ctx.GetPod()
+func TaskContextCluster(state ClusterStateInitializer, c client.Client) task.Task {
+	w := state.ClusterInitializer()
+	return taskContextResource("Cluster", w, c, true)
+}
+
+func TaskContextPod(state PodStateInitializer, c client.Client) task.Task {
+	w := state.PodInitializer()
+	return taskContextResource("Pod", w, c, false)
+}
+
+func TaskContextPDSlice(state PDSliceStateInitializer, c client.Client) task.Task {
+	w := state.PDSliceInitializer()
+	return taskContextResourceSlice[v1alpha1.PD, v1alpha1.PDList]("PDSlice", w, c)
+}
+
+func TaskSuspendPod(state PodState, c client.Client) task.Task {
+	return task.NameTaskFunc("SuspendPod", func(ctx context.Context) task.Result {
+		pod := state.Pod()
 		if pod == nil {
 			return task.Complete().With("pod has been deleted")
 		}
@@ -148,6 +122,9 @@ func TaskSuspendPod(ctx PodContext, c client.Client) task.Task {
 			return task.Complete().With("pod has been terminating")
 		}
 		if err := c.Delete(ctx, pod); err != nil {
+			if errors.IsNotFound(err) {
+				return task.Complete().With("pod is deleted")
+			}
 			return task.Fail().With("can't delete pod %s/%s: %v", pod.Namespace, pod.Name, err)
 		}
 

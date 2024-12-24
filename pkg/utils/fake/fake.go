@@ -78,12 +78,16 @@ func Annotation[T any, PT Object[T]](k, v string) ChangeFunc[T, PT] {
 	}
 }
 
-func SetDeleteTimestamp[T any, PT Object[T]]() ChangeFunc[T, PT] {
+func DeleteTimestamp[T any, PT Object[T]](t *metav1.Time) ChangeFunc[T, PT] {
 	return func(obj PT) PT {
-		now := metav1.Now()
-		obj.SetDeletionTimestamp(&now)
+		obj.SetDeletionTimestamp(t)
 		return obj
 	}
+}
+
+func DeleteNow[T any, PT Object[T]]() ChangeFunc[T, PT] {
+	now := metav1.Now()
+	return DeleteTimestamp[T, PT](&now)
 }
 
 func AddFinalizer[T any, PT Object[T]]() ChangeFunc[T, PT] {
