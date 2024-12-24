@@ -589,9 +589,11 @@ func (c *fakeUnderlayClient) PatchReactionFunc(action *testing.PatchActionImpl) 
 		if err := yaml.Unmarshal(action.GetPatch(), &patchObj.Object); err != nil {
 			return true, nil, fmt.Errorf("error decoding YAML: %w", err)
 		}
-		if _, err := manager.Apply(obj, patchObj, "tidb-operator", true); err != nil {
+		ret, err := manager.Apply(obj, patchObj, "tidb-operator", true)
+		if err != nil {
 			return true, nil, err
 		}
+		obj = ret
 
 	default:
 		return true, nil, fmt.Errorf("PatchType is not supported")
