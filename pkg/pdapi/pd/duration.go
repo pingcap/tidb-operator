@@ -34,7 +34,7 @@ func NewDuration(duration time.Duration) Duration {
 
 // MarshalJSON returns the duration as a JSON string.
 func (d *Duration) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf(`"%q"`, d.String())), nil
+	return []byte(fmt.Sprintf(`%q`, d.String())), nil
 }
 
 // UnmarshalJSON parses a JSON string into the duration.
