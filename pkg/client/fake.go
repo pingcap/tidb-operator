@@ -49,13 +49,32 @@ func (*fakeParser) Type(schema.GroupVersionKind) *typed.ParseableType {
 	return &typed.DeducedParseableType
 }
 
-func NewFakeClient(objs ...client.Object) Client {
-	c := newFakeUnderlayClient(objs...)
+type FakeClient interface {
+	Client
+	WithError(verb, resource string, err error)
+}
 
-	return &applier{
-		WithWatch: c,
-		parser:    &fakeParser{},
+func NewFakeClient(objs ...client.Object) FakeClient {
+	fc := newFakeUnderlayClient(objs...)
+
+	return &fakeClient{
+		Client: &applier{
+			WithWatch: fc,
+			parser:    &fakeParser{},
+		},
+		fc: fc,
 	}
+}
+
+func (fc *fakeClient) WithError(verb, resource string, err error) {
+	fc.fc.PrependReactor(verb, resource, func(action testing.Action) (bool, runtime.Object, error) {
+		return true, nil, err
+	})
+}
+
+type fakeClient struct {
+	Client
+	fc *fakeUnderlayClient
 }
 
 type fakeUnderlayClient struct {
@@ -67,7 +86,7 @@ type fakeUnderlayClient struct {
 
 var _ client.WithWatch = &fakeUnderlayClient{}
 
-func newFakeUnderlayClient(objs ...client.Object) client.WithWatch {
+func newFakeUnderlayClient(objs ...client.Object) *fakeUnderlayClient {
 	t := testing.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())
 	for _, obj := range objs {
 		if err := t.Add(obj); err != nil {
@@ -536,37 +555,34 @@ func (c *fakeUnderlayClient) PatchReactionFunc(action *testing.PatchActionImpl) 
 
 	switch action.GetPatchType() {
 	case types.JSONPatchType:
-		patch, err2 := jsonpatch.DecodePatch(action.GetPatch())
-		if err2 != nil {
-			return true, nil, err2
+		patch, err := jsonpatch.DecodePatch(action.GetPatch())
+		if err != nil {
+			return true, nil, err
 		}
-		modified, err2 := patch.Apply(old)
-		if err2 != nil {
-			return true, nil, err2
+		modified, err := patch.Apply(old)
+		if err != nil {
+			return true, nil, err
 		}
 
-		//nolint:gocritic // use := shadow err
-		if err2 = json.Unmarshal(modified, obj); err2 != nil {
-			return true, nil, err2
+		if err := json.Unmarshal(modified, obj); err != nil {
+			return true, nil, err
 		}
 	case types.MergePatchType:
-		modified, err2 := jsonpatch.MergePatch(old, action.GetPatch())
-		if err2 != nil {
-			return true, nil, err2
+		modified, err := jsonpatch.MergePatch(old, action.GetPatch())
+		if err != nil {
+			return true, nil, err
 		}
 
-		//nolint:gocritic // use := shadow err
-		if err2 = json.Unmarshal(modified, obj); err2 != nil {
-			return true, nil, err2
+		if err := json.Unmarshal(modified, obj); err != nil {
+			return true, nil, err
 		}
 	case types.StrategicMergePatchType:
-		mergedByte, err2 := strategicpatch.StrategicMergePatch(old, action.GetPatch(), obj)
-		if err2 != nil {
-			return true, nil, err2
+		mergedByte, err := strategicpatch.StrategicMergePatch(old, action.GetPatch(), obj)
+		if err != nil {
+			return true, nil, err
 		}
-		//nolint:gocritic // use := shadow err
-		if err2 = json.Unmarshal(mergedByte, obj); err2 != nil {
-			return true, nil, err2
+		if err := json.Unmarshal(mergedByte, obj); err != nil {
+			return true, nil, err
 		}
 	case types.ApplyPatchType:
 		patchObj := &unstructured.Unstructured{Object: map[string]any{}}

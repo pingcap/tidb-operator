@@ -18,17 +18,24 @@ import "sigs.k8s.io/controller-runtime/pkg/client"
 
 // Add alias of client.XXX to avoid import
 // two client pkgs
-type Object = client.Object
-type ObjectList = client.ObjectList
-type ObjectKey = client.ObjectKey
+type (
+	Object     = client.Object
+	ObjectList = client.ObjectList
+	ObjectKey  = client.ObjectKey
+)
 
-type Options = client.Options
-type DeleteOption = client.DeleteOption
+type (
+	Options      = client.Options
+	DeleteOption = client.DeleteOption
+	ListOption   = client.ListOption
+)
 
-type MatchingLabels = client.MatchingLabels
-type MatchingFields = client.MatchingFields
-type InNamespace = client.InNamespace
-type ListOptions = client.ListOptions
+type (
+	MatchingLabels = client.MatchingLabels
+	MatchingFields = client.MatchingFields
+	InNamespace    = client.InNamespace
+	ListOptions    = client.ListOptions
+)
 
 type PropagationPolicy = client.PropagationPolicy
 

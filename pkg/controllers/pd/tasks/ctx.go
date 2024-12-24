@@ -15,22 +15,18 @@
 package tasks
 
 import (
-	"cmp"
 	"context"
-	"slices"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
 type ReconcileContext struct {
-	context.Context
+	// TODO: replace all fields in ReconcileContext by State
+	State
 	Key types.NamespacedName
 
 	PDClient pdm.PDClient
@@ -42,11 +38,6 @@ type ReconcileContext struct {
 	MemberID    string
 	IsLeader    bool
 
-	PD      *v1alpha1.PD
-	Peers   []*v1alpha1.PD
-	Cluster *v1alpha1.Cluster
-	Pod     *corev1.Pod
-
 	// ConfigHash stores the hash of **user-specified** config (i.e.`.Spec.Config`),
 	// which will be used to determine whether the config has changed.
 	// This ensures that our config overlay logic will not restart the tidb cluster unexpectedly.
@@ -57,68 +48,23 @@ type ReconcileContext struct {
 	PodIsTerminating bool
 }
 
-func (ctx *ReconcileContext) PDKey() types.NamespacedName {
-	return ctx.Key
-}
-
-func (ctx *ReconcileContext) SetPD(pd *v1alpha1.PD) {
-	ctx.PD = pd
-}
-
-func (ctx *ReconcileContext) GetPD() *v1alpha1.PD {
-	return ctx.PD
-}
-
-func (ctx *ReconcileContext) ClusterKey() types.NamespacedName {
-	return types.NamespacedName{
-		Namespace: ctx.PD.Namespace,
-		Name:      ctx.PD.Spec.Cluster.Name,
-	}
-}
-
-func (ctx *ReconcileContext) GetCluster() *v1alpha1.Cluster {
-	return ctx.Cluster
-}
-
-func (ctx *ReconcileContext) SetCluster(c *v1alpha1.Cluster) {
-	ctx.Cluster = c
-}
-
-func (ctx *ReconcileContext) PodKey() types.NamespacedName {
-	return types.NamespacedName{
-		Namespace: ctx.PD.Namespace,
-		Name:      ctx.PD.PodName(),
-	}
-}
-
-func (ctx *ReconcileContext) GetPod() *corev1.Pod {
-	return ctx.Pod
-}
-
-func (ctx *ReconcileContext) SetPod(pod *corev1.Pod) {
-	ctx.Pod = pod
-	if !pod.DeletionTimestamp.IsZero() {
-		ctx.PodIsTerminating = true
-	}
-}
-
-func TaskContextInfoFromPD(ctx *ReconcileContext, cm pdm.PDClientManager) task.Task {
-	return task.NameTaskFunc("ContextInfoFromPD", func() task.Result {
-		ck := ctx.ClusterKey()
+func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task.Task {
+	return task.NameTaskFunc("ContextInfoFromPD", func(ctx context.Context) task.Result {
+		ck := state.Cluster()
 		pc, ok := cm.Get(pdm.PrimaryKey(ck.Namespace, ck.Name))
 		if !ok {
 			return task.Wait().With("pd client has not been registered yet")
 		}
 
-		ctx.PDClient = pc
+		state.PDClient = pc
 
 		if !pc.HasSynced() {
 			return task.Complete().With("context without member info is completed, cache of pd info is not synced")
 		}
 
-		ctx.Initialized = true
+		state.Initialized = true
 
-		m, err := pc.Members().Get(ctx.PD.Name)
+		m, err := pc.Members().Get(state.PD().Name)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return task.Complete().With("context without member info is completed, pd is not initialized")
@@ -126,45 +72,22 @@ func TaskContextInfoFromPD(ctx *ReconcileContext, cm pdm.PDClientManager) task.T
 			return task.Fail().With("cannot get member: %w", err)
 		}
 
-		ctx.MemberID = m.ID
-		ctx.IsLeader = m.IsLeader
+		state.MemberID = m.ID
+		state.IsLeader = m.IsLeader
 
 		// set available and trust health info only when member info is valid
 		if !m.Invalid {
-			ctx.IsAvailable = true
-			ctx.Healthy = m.Health
+			state.IsAvailable = true
+			state.Healthy = m.Health
 		}
 
 		return task.Complete().With("pd is ready")
 	})
 }
 
-func TaskContextPeers(ctx *ReconcileContext, c client.Client) task.Task {
-	return task.NameTaskFunc("ContextPeers", func() task.Result {
-		var pdl v1alpha1.PDList
-		if err := c.List(ctx, &pdl, client.InNamespace(ctx.PD.Namespace), client.MatchingLabels{
-			v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-			v1alpha1.LabelKeyCluster:   ctx.Cluster.Name,
-			v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
-		}); err != nil {
-			return task.Fail().With("cannot list pd peers: %w", err)
-		}
-
-		peers := []*v1alpha1.PD{}
-		for i := range pdl.Items {
-			peers = append(peers, &pdl.Items[i])
-		}
-		slices.SortFunc(peers, func(a, b *v1alpha1.PD) int {
-			return cmp.Compare(a.Name, b.Name)
-		})
-		ctx.Peers = peers
-		return task.Complete().With("peers is set")
-	})
-}
-
-func CondPDClientIsNotRegisterred(ctx *ReconcileContext) task.Condition {
+func CondPDClientIsNotRegisterred(state *ReconcileContext) task.Condition {
 	return task.CondFunc(func() bool {
 		// TODO: do not use HasSynced twice, it may return different results
-		return ctx.PDClient == nil || !ctx.PDClient.HasSynced()
+		return state.PDClient == nil || !state.PDClient.HasSynced()
 	})
 }

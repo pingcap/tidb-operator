@@ -15,6 +15,7 @@
 package tasks
 
 import (
+	"context"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -27,9 +28,9 @@ import (
 	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
 
-func TaskStatusSuspend(ctx *ReconcileContext, c client.Client) task.Task {
-	return task.NameTaskFunc("StatusSuspend", func() task.Result {
-		ctx.PD.Status.ObservedGeneration = ctx.PD.Generation
+func TaskStatusSuspend(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("StatusSuspend", func(ctx context.Context) task.Result {
+		state.PD().Status.ObservedGeneration = state.PD().Generation
 		var (
 			suspendStatus  = metav1.ConditionFalse
 			suspendMessage = "pd is suspending"
@@ -39,28 +40,28 @@ func TaskStatusSuspend(ctx *ReconcileContext, c client.Client) task.Task {
 			healthMessage = "pd is not healthy"
 		)
 
-		if ctx.Pod == nil {
+		if state.Pod() == nil {
 			suspendStatus = metav1.ConditionTrue
 			suspendMessage = "pd is suspended"
 		}
-		needUpdate := meta.SetStatusCondition(&ctx.PD.Status.Conditions, metav1.Condition{
+		needUpdate := meta.SetStatusCondition(&state.PD().Status.Conditions, metav1.Condition{
 			Type:               v1alpha1.PDCondSuspended,
 			Status:             suspendStatus,
-			ObservedGeneration: ctx.PD.Generation,
+			ObservedGeneration: state.PD().Generation,
 			// TODO: use different reason for suspending and suspended
 			Reason:  v1alpha1.PDSuspendReason,
 			Message: suspendMessage,
 		})
 
-		needUpdate = meta.SetStatusCondition(&ctx.PD.Status.Conditions, metav1.Condition{
+		needUpdate = meta.SetStatusCondition(&state.PD().Status.Conditions, metav1.Condition{
 			Type:               v1alpha1.PDCondHealth,
 			Status:             healthStatus,
-			ObservedGeneration: ctx.PD.Generation,
+			ObservedGeneration: state.PD().Generation,
 			Reason:             v1alpha1.PDHealthReason,
 			Message:            healthMessage,
 		}) || needUpdate
 		if needUpdate {
-			if err := c.Status().Update(ctx, ctx.PD); err != nil {
+			if err := c.Status().Update(ctx, state.PD()); err != nil {
 				return task.Fail().With("cannot update status: %v", err)
 			}
 		}
@@ -70,14 +71,14 @@ func TaskStatusSuspend(ctx *ReconcileContext, c client.Client) task.Task {
 }
 
 func TaskStatusUnknown() task.Task {
-	return task.NameTaskFunc("StatusUnknown", func() task.Result {
+	return task.NameTaskFunc("StatusUnknown", func(ctx context.Context) task.Result {
 		return task.Wait().With("status of the pd is unknown")
 	})
 }
 
 //nolint:gocyclo // refactor if possible
-func TaskStatus(ctx *ReconcileContext, _ logr.Logger, c client.Client) task.Task {
-	return task.NameTaskFunc("Status", func() task.Result {
+func TaskStatus(state *ReconcileContext, _ logr.Logger, c client.Client) task.Task {
+	return task.NameTaskFunc("Status", func(ctx context.Context) task.Result {
 		var (
 			healthStatus  = metav1.ConditionFalse
 			healthMessage = "pd is not healthy"
@@ -88,58 +89,58 @@ func TaskStatus(ctx *ReconcileContext, _ logr.Logger, c client.Client) task.Task
 			needUpdate = false
 		)
 
-		if ctx.MemberID != "" {
-			needUpdate = SetIfChanged(&ctx.PD.Status.ID, ctx.MemberID) || needUpdate
+		if state.MemberID != "" {
+			needUpdate = SetIfChanged(&state.PD().Status.ID, state.MemberID) || needUpdate
 		}
 
-		needUpdate = SetIfChanged(&ctx.PD.Status.IsLeader, ctx.IsLeader) || needUpdate
-		needUpdate = syncInitializedCond(ctx.PD, ctx.Initialized) || needUpdate
+		needUpdate = SetIfChanged(&state.PD().Status.IsLeader, state.IsLeader) || needUpdate
+		needUpdate = syncInitializedCond(state.PD(), state.Initialized) || needUpdate
 
-		needUpdate = meta.SetStatusCondition(&ctx.PD.Status.Conditions, metav1.Condition{
+		needUpdate = meta.SetStatusCondition(&state.PD().Status.Conditions, metav1.Condition{
 			Type:               v1alpha1.PDCondSuspended,
 			Status:             suspendStatus,
-			ObservedGeneration: ctx.PD.Generation,
+			ObservedGeneration: state.PD().Generation,
 			Reason:             v1alpha1.PDSuspendReason,
 			Message:            suspendMessage,
 		}) || needUpdate
 
-		needUpdate = SetIfChanged(&ctx.PD.Status.ObservedGeneration, ctx.PD.Generation) || needUpdate
-		needUpdate = SetIfChanged(&ctx.PD.Status.UpdateRevision, ctx.PD.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+		needUpdate = SetIfChanged(&state.PD().Status.ObservedGeneration, state.PD().Generation) || needUpdate
+		needUpdate = SetIfChanged(&state.PD().Status.UpdateRevision, state.PD().Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 
-		if ctx.Pod == nil || ctx.PodIsTerminating {
-			ctx.Healthy = false
-		} else if statefulset.IsPodRunningAndReady(ctx.Pod) && ctx.Healthy {
-			if ctx.PD.Status.CurrentRevision != ctx.Pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash] {
-				ctx.PD.Status.CurrentRevision = ctx.Pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]
+		if state.Pod() == nil || state.PodIsTerminating {
+			state.Healthy = false
+		} else if statefulset.IsPodRunningAndReady(state.Pod()) && state.Healthy {
+			if state.PD().Status.CurrentRevision != state.Pod().Labels[v1alpha1.LabelKeyInstanceRevisionHash] {
+				state.PD().Status.CurrentRevision = state.Pod().Labels[v1alpha1.LabelKeyInstanceRevisionHash]
 				needUpdate = true
 			}
 		} else {
-			ctx.Healthy = false
+			state.Healthy = false
 		}
 
-		if ctx.Healthy {
+		if state.Healthy {
 			healthStatus = metav1.ConditionTrue
 			healthMessage = "pd is healthy"
 		}
-		needUpdate = meta.SetStatusCondition(&ctx.PD.Status.Conditions, metav1.Condition{
+		needUpdate = meta.SetStatusCondition(&state.PD().Status.Conditions, metav1.Condition{
 			Type:               v1alpha1.PDCondHealth,
 			Status:             healthStatus,
-			ObservedGeneration: ctx.PD.Generation,
+			ObservedGeneration: state.PD().Generation,
 			Reason:             v1alpha1.PDHealthReason,
 			Message:            healthMessage,
 		}) || needUpdate
 
 		if needUpdate {
-			if err := c.Status().Update(ctx, ctx.PD); err != nil {
+			if err := c.Status().Update(ctx, state.PD()); err != nil {
 				return task.Fail().With("cannot update status: %v", err)
 			}
 		}
-		if ctx.PodIsTerminating {
+		if state.PodIsTerminating {
 			//nolint:mnd // refactor to use a constant
 			return task.Retry(5 * time.Second).With("pod is terminating, retry after it's terminated")
 		}
 
-		if !ctx.Initialized || !ctx.Healthy {
+		if !state.Initialized || !state.Healthy {
 			return task.Wait().With("pd may not be initialized or healthy, wait for next event")
 		}
 
