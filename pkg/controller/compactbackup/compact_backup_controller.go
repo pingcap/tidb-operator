@@ -577,7 +577,7 @@ func (c *Controller) retrySnapshotBackupAccordingToBackoffPolicy(compact *v1alph
 	// check is exceed retry limit
 	isExceedRetryTimes := isExceedRetryTimes(compact)
 	if isExceedRetryTimes {
-		failedReason = fmt.Sprintf("exceed retry times, max is %d, failed reason %s, original reason %s", backup.Spec.BackoffRetryPolicy.MaxRetryTimes, retryRecord.RetryReason, retryRecord.OriginalReason)
+		failedReason = fmt.Sprintf("exceed retry times, max is %d, failed reason %s, original reason %s", compact.Spec.BackoffRetryPolicy.MaxRetryTimes, retryRecord.RetryReason, retryRecord.OriginalReason)
 	}
 	isRetryTimeout, err := isRetryTimeout(compact, &now)
 	if err != nil {
@@ -626,22 +626,88 @@ func (c *Controller) retrySnapshotBackupAccordingToBackoffPolicy(compact *v1alph
 	return nil
 }
 
-func isBackoffRetrying(backup *v1alpha1.Backup) bool {
-	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
-		return false
+func (c *Controller) doRetryFailedBackup(compact *v1alpha1.CompactBackup) error {
+	ns := compact.GetNamespace()
+	name := compact.GetName()
+	klog.V(4).Infof("backup %s/%s is retrying after it has been scheduled", ns, name)
+
+	// retry done
+	if isCurrentBackoffRetryDone(compact) {
+		// clean job is asynchronous, we need enqueue again,
+		// the backup status will be scheduled after create new job, and then this reconcile is really done.
+		c.enqueueBackup(compact)
+		return nil
 	}
-	if len(backup.Status.BackoffRetryStatus) == 0 {
-		return false
+
+	// clean job
+	err := c.cleanBackupOldJobIfExist(backup)
+	if err != nil {
+		klog.Errorf("Fail to clean job of backup %s/%s, error is %v", ns, name, err)
+		return err
 	}
-	return backup.Status.Phase == v1alpha1.BackupRetryTheFailed
+
+	// retry done, mark RealRetryAt
+	RealRetryStatus := &controller.BackupUpdateStatus{
+		RealRetryAt: &metav1.Time{Time: time.Now()},
+	}
+
+	// add restart condition to clean data before run br command
+	err = c.control.UpdateStatus(backup, &v1alpha1.BackupCondition{
+		Type:   v1alpha1.BackupRestart,
+		Status: corev1.ConditionTrue,
+	}, RealRetryStatus)
+	if err != nil {
+		klog.Errorf("Fail to update the condition of backup %s/%s, %v", ns, name, err)
+		return err
+	}
+
+	c.enqueueBackup(compact)
+	return nil
 }
 
-func isCurrentBackoffRetryDone(backup *v1alpha1.Backup) bool {
-	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
+func isBackoffRetrying(compact *v1alpha1.CompactBackup) bool {
+	if len(compact.Status.BackoffRetryStatus) == 0 {
 		return false
 	}
-	if len(backup.Status.BackoffRetryStatus) == 0 {
+	return compact.Status.State == string(v1alpha1.BackupRetryTheFailed)
+}
+
+func isCurrentBackoffRetryDone(compact *v1alpha1.CompactBackup) bool {
+	if len(compact.Status.BackoffRetryStatus) == 0 {
 		return false
 	}
-	return backup.Status.BackoffRetryStatus[len(backup.Status.BackoffRetryStatus)-1].RealRetryAt != nil
+	return compact.Status.BackoffRetryStatus[len(compact.Status.BackoffRetryStatus)-1].RealRetryAt != nil
+}
+
+func isExceedRetryTimes(compact *v1alpha1.CompactBackup) bool {
+	records := compact.Status.BackoffRetryStatus
+	if len(records) == 0 {
+		return false
+	}
+
+	currentRetryNum := records[len(records)-1].RetryNum
+	return currentRetryNum > compact.Spec.BackoffRetryPolicy.MaxRetryTimes
+}
+
+func isRetryTimeout(compact *v1alpha1.CompactBackup, now *time.Time) (bool, error) {
+	records := compact.Status.BackoffRetryStatus
+	if len(records) == 0 {
+		return false, nil
+	}
+	firstDetectAt := records[0].DetectFailedAt
+	retryTimeout, err := time.ParseDuration(compact.Spec.BackoffRetryPolicy.RetryTimeout)
+	if err != nil {
+		klog.Errorf("fail to parse retryTimeout %s of backup %s/%s, %v", compact.Spec.BackoffRetryPolicy.RetryTimeout, compact.Namespace, compact.Name, err)
+		return false, err
+	}
+	return now.Unix()-firstDetectAt.Unix() > int64(retryTimeout)/int64(time.Second), nil
+}
+
+func isTimeToRetry(compact *v1alpha1.CompactBackup, now *time.Time) bool {
+	if len(compact.Status.BackoffRetryStatus) == 0 {
+		return false
+	}
+	retryRecord := compact.Status.BackoffRetryStatus[len(compact.Status.BackoffRetryStatus)-1]
+	return time.Now().Unix() > retryRecord.ExpectedRetryAt.Unix()
+
 }
