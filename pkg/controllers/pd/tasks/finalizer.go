@@ -26,17 +26,17 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-func TaskFinalizerDel(ctx *ReconcileContext, c client.Client) task.Task {
-	return task.NameTaskFunc("FinalizerDel", func() task.Result {
+func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
 		switch {
 		// get member info successfully and the member still exists
-		case ctx.IsAvailable && ctx.MemberID != "":
+		case state.IsAvailable && state.MemberID != "":
 			// TODO: check whether quorum will be lost?
-			if err := ctx.PDClient.Underlay().DeleteMember(ctx, ctx.PD.Name); err != nil {
+			if err := state.PDClient.Underlay().DeleteMember(ctx, state.PD().Name); err != nil {
 				return task.Fail().With("cannot delete member: %v", err)
 			}
 
-			wait, err := EnsureSubResourcesDeleted(ctx, c, ctx.PD)
+			wait, err := EnsureSubResourcesDeleted(ctx, c, state.PD())
 			if err != nil {
 				return task.Fail().With("cannot delete subresources: %v", err)
 			}
@@ -45,11 +45,11 @@ func TaskFinalizerDel(ctx *ReconcileContext, c client.Client) task.Task {
 				return task.Wait().With("wait all subresources deleted")
 			}
 
-			if err := k8s.RemoveFinalizer(ctx, c, ctx.PD); err != nil {
+			if err := k8s.RemoveFinalizer(ctx, c, state.PD()); err != nil {
 				return task.Fail().With("cannot remove finalizer: %v", err)
 			}
-		case ctx.IsAvailable:
-			wait, err := EnsureSubResourcesDeleted(ctx, c, ctx.PD)
+		case state.IsAvailable:
+			wait, err := EnsureSubResourcesDeleted(ctx, c, state.PD())
 			if err != nil {
 				return task.Fail().With("cannot delete subresources: %v", err)
 			}
@@ -57,10 +57,10 @@ func TaskFinalizerDel(ctx *ReconcileContext, c client.Client) task.Task {
 				return task.Wait().With("wait all subresources deleted")
 			}
 
-			if err := k8s.RemoveFinalizer(ctx, c, ctx.PD); err != nil {
+			if err := k8s.RemoveFinalizer(ctx, c, state.PD()); err != nil {
 				return task.Fail().With("cannot remove finalizer: %v", err)
 			}
-		case !ctx.IsAvailable:
+		case !state.IsAvailable:
 			// it may block some unsafe operations
 			return task.Fail().With("pd cluster is not available")
 		}
@@ -69,9 +69,9 @@ func TaskFinalizerDel(ctx *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func TaskFinalizerAdd(ctx *ReconcileContext, c client.Client) task.Task {
-	return task.NameTaskFunc("FinalizerAdd", func() task.Result {
-		if err := k8s.EnsureFinalizer(ctx, c, ctx.PD); err != nil {
+func TaskFinalizerAdd(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("FinalizerAdd", func(ctx context.Context) task.Result {
+		if err := k8s.EnsureFinalizer(ctx, c, state.PD()); err != nil {
 			return task.Fail().With("failed to ensure finalizer has been added: %v", err)
 		}
 		return task.Complete().With("finalizer is added")

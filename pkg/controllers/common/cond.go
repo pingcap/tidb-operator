@@ -16,26 +16,26 @@ package common
 
 import "github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 
-func CondPDHasBeenDeleted(ctx PDGetter) task.Condition {
+func CondPDHasBeenDeleted(ctx PDState) task.Condition {
 	return task.CondFunc(func() bool {
-		return ctx.GetPD() == nil
+		return ctx.PD() == nil
 	})
 }
 
-func CondPDIsDeleting(ctx PDGetter) task.Condition {
+func CondPDIsDeleting(ctx PDState) task.Condition {
 	return task.CondFunc(func() bool {
-		return !ctx.GetPD().GetDeletionTimestamp().IsZero()
+		return !ctx.PD().GetDeletionTimestamp().IsZero()
 	})
 }
 
-func CondClusterIsSuspending(ctx ClusterGetter) task.Condition {
+func CondClusterIsSuspending(ctx ClusterState) task.Condition {
 	return task.CondFunc(func() bool {
-		return ctx.GetCluster().ShouldSuspendCompute()
+		return ctx.Cluster().ShouldSuspendCompute()
 	})
 }
 
-func CondClusterIsPaused(ctx ClusterGetter) task.Condition {
+func CondClusterIsPaused(ctx ClusterState) task.Condition {
 	return task.CondFunc(func() bool {
-		return ctx.GetCluster().ShouldPauseReconcile()
+		return ctx.Cluster().ShouldPauseReconcile()
 	})
 }

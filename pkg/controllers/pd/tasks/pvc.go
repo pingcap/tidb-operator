@@ -15,6 +15,8 @@
 package tasks
 
 import (
+	"context"
+
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,9 +28,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/volumes"
 )
 
-func TaskPVC(ctx *ReconcileContext, logger logr.Logger, c client.Client, vm volumes.Modifier) task.Task {
-	return task.NameTaskFunc("PVC", func() task.Result {
-		pvcs := newPVCs(ctx.PD)
+func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm volumes.Modifier) task.Task {
+	return task.NameTaskFunc("PVC", func(ctx context.Context) task.Result {
+		pvcs := newPVCs(state.PD())
 		if wait, err := volumes.SyncPVCs(ctx, c, pvcs, vm, logger); err != nil {
 			return task.Fail().With("failed to sync pvcs: %v", err)
 		} else if wait {

@@ -15,6 +15,7 @@
 package task
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -24,7 +25,7 @@ import (
 
 // TaskRunner is an executor to run a series of tasks sequentially
 type TaskRunner interface {
-	Run() (ctrl.Result, error)
+	Run(ctx context.Context) (ctrl.Result, error)
 }
 
 type taskRunner struct {
@@ -52,8 +53,8 @@ func NewTaskRunner(reporter TaskReporter, ts ...Task) TaskRunner {
 	}
 }
 
-func (r *taskRunner) Run() (ctrl.Result, error) {
-	res, _ := r.task.sync()
+func (r *taskRunner) Run(ctx context.Context) (ctrl.Result, error) {
+	res, _ := RunTask(ctx, r.task)
 	r.reporter.AddResult(res)
 
 	switch res.Status() {
