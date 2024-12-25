@@ -259,21 +259,18 @@ func (c *Controller) sync(key string) (err error) {
 		return nil
 	}
 
-	if compact.Status.State == string(v1alpha1.BackupRunning) {
-		jobFailed, reason, originalReason, err := c.detectBackupJobFailure(compact)
-		if err != nil {
-			klog.Errorf("Fail to detect backup %s/%s running status, error %v", ns, name, err)
-			return nil
-		}
+	jobFailed, reason, originalReason, err := c.detectBackupJobFailure(compact)
+	if err != nil {
+		klog.Errorf("Fail to detect backup %s/%s running status, error %v", ns, name, err)
+		return nil
+	}
 
-		if jobFailed {
-			// retry backup after detect failure
-			//TODO: (Ris)impl this
-			if err := c.retryAfterFailureDetected(compact, reason, originalReason); err != nil {
-				klog.Errorf("Fail to restart snapshot backup %s/%s, error %v", ns, name, err)
-			}
-			return nil
+	if jobFailed {
+		// retry backup after detect failure
+		if err := c.retryAfterFailureDetected(compact, reason, originalReason); err != nil {
+			klog.Errorf("Fail to restart snapshot backup %s/%s, error %v", ns, name, err)
 		}
+		return nil
 	}
 
 	c.statusUpdater.OnSchedule(context.TODO(), compact)
@@ -479,12 +476,12 @@ func (c *Controller) recordDetectedFailure(compact *v1alpha1.CompactBackup, reas
 	expectedRetryAt := metav1.NewTime(detectFailedAt.Add(duration))
 
 	// update
-	newStatus := &controller.RetryStatus{
-		RetryNum:        &retryNum,
+	newStatus := &v1alpha1.BackoffRetryRecord{
+		RetryNum:        retryNum,
 		DetectFailedAt:  &detectFailedAt,
 		ExpectedRetryAt: &expectedRetryAt,
-		RetryReason:     &reason,
-		OriginalReason:  &originalReason,
+		RetryReason:     reason,
+		OriginalReason:  originalReason,
 	}
 
 	klog.Infof("Record backup %s/%s retry status, %v", ns, name, newStatus)
@@ -524,4 +521,127 @@ func (c *Controller) detectBackupJobFailure(compact *v1alpha1.CompactBackup) (
 		klog.Errorf("failed to record detected failed %s for backup %s/%s", reason, ns, name)
 	}
 	return jobFailed, reason, originalReason, nil
+}
+
+func (c *Controller) retryAfterFailureDetected(compact *v1alpha1.CompactBackup, reason, originalReason string) error {
+	var (
+		ns   = compact.GetNamespace()
+		name = compact.GetName()
+		err  error
+	)
+
+	// retry snapshot backup according to backoff policy
+	err = c.retrySnapshotBackupAccordingToBackoffPolicy(compact)
+	if err != nil {
+		klog.Errorf("Fail to retry compact job %s/%s according to backoff policy , %v", ns, name, err)
+		return err
+	}
+	klog.Infof("Retry compact job %s/%s according to backoff policy", ns, name)
+	return nil
+}
+
+// retrySnapshotBackupAccordingToBackoffPolicy retry snapshot backup according to spec.backoffRetryPolicy.
+// the main logic is reentrant:
+//  1. check whether is retrying which is marked as BackupRetryFailed,
+//     if true, clean job and mark RealRetryAt which means current retry is done.
+//  2. check whether is retry done, skip.
+//  3. check whether exceed retry limit, if true, mark as failed.
+//  4. check whether exceed the retry interval which is recorded as ExpectedRetryAt,
+//     the value is the time detect failure + MinRetryDuration << (retry num -1),
+//     if true, mark as BackupRetryFailed, if not, wait to next loop.
+//  5. after mark as BackupRetryFailed, the logic will back to 1 in next loop.
+func (c *Controller) retrySnapshotBackupAccordingToBackoffPolicy(compact *v1alpha1.CompactBackup) error {
+	if len(compact.Status.BackoffRetryStatus) == 0 {
+		return nil
+	}
+	var (
+		ns           = compact.GetNamespace()
+		name         = compact.GetName()
+		now          = time.Now()
+		err          error
+		failedReason string
+		retryRecord  = compact.Status.BackoffRetryStatus[len(compact.Status.BackoffRetryStatus)-1]
+	)
+	klog.V(4).Infof("retry backup %s/%s, retry reason %s, original reason %s", ns, name, retryRecord.RetryReason, retryRecord.OriginalReason)
+
+	// check retrying
+	if isBackoffRetrying(compact) {
+		return c.doRetryFailedBackup(compact)
+	}
+
+	// check retry done
+	if isCurrentBackoffRetryDone(compact) {
+		return nil
+	}
+
+	// check is exceed retry limit
+	isExceedRetryTimes := isExceedRetryTimes(compact)
+	if isExceedRetryTimes {
+		failedReason = fmt.Sprintf("exceed retry times, max is %d, failed reason %s, original reason %s", backup.Spec.BackoffRetryPolicy.MaxRetryTimes, retryRecord.RetryReason, retryRecord.OriginalReason)
+	}
+	isRetryTimeout, err := isRetryTimeout(compact, &now)
+	if err != nil {
+		klog.Errorf("fail to check whether the retry is timeout, backup is %s/%s, %v", ns, name, err)
+		return err
+	}
+	if isRetryTimeout {
+		failedReason = fmt.Sprintf("retry timeout, max is %s, failed reason %s, original reason %s", backup.Spec.BackoffRetryPolicy.RetryTimeout, retryRecord.RetryReason, retryRecord.OriginalReason)
+	}
+
+	if isExceedRetryTimes || isRetryTimeout {
+		klog.Infof("backup %s/%s exceed retry limit, failed reason %s", ns, name, failedReason)
+		err = c.control.UpdateStatus(backup, &v1alpha1.BackupCondition{
+			Type:    v1alpha1.BackupFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "AlreadyFailed",
+			Message: failedReason,
+		}, nil)
+		if err != nil {
+			klog.Errorf("Fail to update the condition of backup %s/%s, %v", ns, name, err)
+			return err
+		}
+		return nil
+	}
+
+	// check is time to retry
+	if !isTimeToRetry(backup, &now) {
+		klog.V(4).Infof("backup %s/%s is not the time to retry, expected retry time is %s, now is %s", ns, name, retryRecord.ExpectedRetryAt, now)
+		return nil
+	}
+
+	klog.V(4).Infof("backup %s/%s is the time to retry, expected retry time is %s, now is %s", ns, name, retryRecord.ExpectedRetryAt, now)
+
+	// update retry status
+	err = c.control.UpdateStatus(backup, &v1alpha1.BackupCondition{
+		Type:    v1alpha1.BackupRetryTheFailed,
+		Status:  corev1.ConditionTrue,
+		Reason:  "RetryFailedBackup",
+		Message: fmt.Sprintf("reason %s, original reason %s", retryRecord.RetryReason, retryRecord.OriginalReason),
+	}, nil)
+	if err != nil {
+		klog.Errorf("Fail to update the retry status of backup %s/%s, %v", ns, name, err)
+		return err
+	}
+
+	return nil
+}
+
+func isBackoffRetrying(backup *v1alpha1.Backup) bool {
+	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
+		return false
+	}
+	if len(backup.Status.BackoffRetryStatus) == 0 {
+		return false
+	}
+	return backup.Status.Phase == v1alpha1.BackupRetryTheFailed
+}
+
+func isCurrentBackoffRetryDone(backup *v1alpha1.Backup) bool {
+	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
+		return false
+	}
+	if len(backup.Status.BackoffRetryStatus) == 0 {
+		return false
+	}
+	return backup.Status.BackoffRetryStatus[len(backup.Status.BackoffRetryStatus)-1].RealRetryAt != nil
 }
