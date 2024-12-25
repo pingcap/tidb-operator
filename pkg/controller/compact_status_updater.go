@@ -16,6 +16,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -34,21 +35,6 @@ const (
 	progressDebounceDuration = 3 * time.Second
 )
 
-type RetryStatus struct {
-	// RetryNum is the number of retry
-	RetryNum *int
-	// DetectFailedAt is the time when detect failure
-	DetectFailedAt *metav1.Time
-	// ExpectedRetryAt is the time we calculate and expect retry after it
-	ExpectedRetryAt *metav1.Time
-	// RealRetryAt is the time when the retry was actually initiated
-	RealRetryAt *metav1.Time
-	// Reason is the reason of retry
-	RetryReason *string
-	// OriginalReason is the original reason of backup job or pod failed
-	OriginalReason *string
-}
-
 type Progress struct {
 	// MetaCompleted is the number of meta files compacted
 	MetaCompleted  uint64 `json:"meta_completed"`
@@ -66,7 +52,7 @@ type CompactStatusUpdaterInterface interface {
 	OnStart(ctx context.Context, compact *v1alpha1.CompactBackup) error
 	OnProgress(ctx context.Context, compact *v1alpha1.CompactBackup, p Progress) error 
 	OnFinish(ctx context.Context, compact *v1alpha1.CompactBackup, err error) error
-	OnRetriableFailed(ctx context.Context, compact *v1alpha1.CompactBackup, retry *RetryStatus) error
+	OnRetriableFailed(ctx context.Context, compact *v1alpha1.CompactBackup, retry *v1alpha1.BackoffRetryRecord) error
 }
 
 type CompactStatusUpdater struct {
@@ -88,15 +74,15 @@ func (r *CompactStatusUpdater) Event(compact *v1alpha1.CompactBackup, ty, reason
 	r.recorder.Event(compact, ty, reason, msg)
 }
 
-func (r *CompactStatusUpdater) UpdateStatus(compact *v1alpha1.CompactBackup, newState string, progress string, message string) error {
+func (r *CompactStatusUpdater) UpdateStatus(compact *v1alpha1.CompactBackup, newStatus v1alpha1.CompactStatus) error {
 	ns := compact.GetNamespace()
 	backupName := compact.GetName()
 
 	now := time.Now()
-	updateProgress := true
-	if progress != "" {
+	canUpdateProgress := true
+	if newStatus.Progress != "" {
 		if now.Sub(r.progressLastUpdate) < progressDebounceDuration {
-			updateProgress = false
+			canUpdateProgress = false
 		}
 	}
 
@@ -111,56 +97,24 @@ func (r *CompactStatusUpdater) UpdateStatus(compact *v1alpha1.CompactBackup, new
 		}
 
 		updated := false
-		if newState != "" && compact.Status.State != newState {
-			compact.Status.State = newState
+		if newStatus.State != "" && compact.Status.State != newStatus.State {
+			compact.Status.State = newStatus.State
 			updated = true
-			updateProgress = true
+			canUpdateProgress = true
 		}
-		if message != "" && compact.Status.Message != message {
-			compact.Status.Message = message
+		if newStatus.Message != "" && compact.Status.Message != newStatus.Message {
+			compact.Status.Message = newStatus.Message
 			updated = true
 		}
-		if updateProgress && progress != "" && compact.Status.Progress != progress {
-			compact.Status.Progress = progress
+		if canUpdateProgress && newStatus.Progress != "" && compact.Status.Progress != newStatus.Progress {
+			compact.Status.Progress = newStatus.Progress
 			updated = true
 			r.progressLastUpdate = now
 		}
-
-		// Apply the update if any field changed
-		if updated {
-			_, updateErr := r.cli.PingcapV1alpha1().CompactBackups(ns).Update(context.TODO(), compact, metav1.UpdateOptions{})
-			if updateErr == nil {
-				klog.Infof("Backup: [%s/%s] updated successfully", ns, backupName)
-				return nil
-			}
-			klog.Errorf("Failed to update backup [%s/%s], error: %v", ns, backupName, updateErr)
-			return updateErr
-		}
-		return nil
-	})
-	return err
-}
-
-func (r *CompactStatusUpdater) UpdateRetryStatus(compact *v1alpha1.CompactBackup, newState string, status *RetryStatus) error {
-	ns := compact.GetNamespace()
-	backupName := compact.GetName()
-
-	// Update the status
-	err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
-		// Always get the latest CompactBackup before updating
-		if updated, err := r.lister.CompactBackups(ns).Get(backupName); err == nil {
-			*compact = *(updated.DeepCopy())
-		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %v", ns, backupName, err))
-			return err
-		}
-
-		updated := false
-		if newState != "" && compact.Status.State != newState {
-			compact.Status.State = newState
+		if newStatus.BackoffRetryStatus != nil && !reflect.DeepEqual(newStatus.BackoffRetryStatus, compact.Status.BackoffRetryStatus) {
+			compact.Status.BackoffRetryStatus = newStatus.BackoffRetryStatus
 			updated = true
 		}
-		//TODO: (Ris) update the retry status here
 
 		// Apply the update if any field changed
 		if updated {
@@ -178,38 +132,61 @@ func (r *CompactStatusUpdater) UpdateRetryStatus(compact *v1alpha1.CompactBackup
 }
 
 func (r *CompactStatusUpdater) OnSchedule(ctx context.Context, compact *v1alpha1.CompactBackup) error {
-	return r.UpdateStatus(compact, string(v1alpha1.BackupScheduled), "", "")
+	newStatus := v1alpha1.CompactStatus{
+		State: string(v1alpha1.BackupScheduled),
+	}
+	return r.UpdateStatus(compact, newStatus)
 }
 
 func (r *CompactStatusUpdater) OnCreateJob(ctx context.Context, compact *v1alpha1.CompactBackup, err error) error {
-	if err != nil {
-		return r.UpdateStatus(compact, string(v1alpha1.BackupFailed), "", err.Error())
-	} else {
-		return r.UpdateStatus(compact, string(v1alpha1.BackupPrepare), "", "")
+	newStatus := v1alpha1.CompactStatus{
 	}
+	if err != nil {
+		newStatus.State = string(v1alpha1.BackupFailed)
+		newStatus.Message = err.Error()
+	} else {
+		newStatus.State = string(v1alpha1.BackupRunning)
+	}
+	return r.UpdateStatus(compact, newStatus)
 }
 
 func (r *CompactStatusUpdater) OnStart(ctx context.Context, compact *v1alpha1.CompactBackup) error {
 	r.Event(compact, corev1.EventTypeNormal, "Started", "The compaction process has started successfully.")
-	return r.UpdateStatus(compact, string(v1alpha1.BackupRunning), "", "")
+
+	newStauts := v1alpha1.CompactStatus{
+		State: string(v1alpha1.BackupRunning),
+	}
+	return r.UpdateStatus(compact, newStauts)
 }
 
 func (r *CompactStatusUpdater) OnProgress(ctx context.Context, compact *v1alpha1.CompactBackup, p Progress) error {
 	progress := fmt.Sprintf("[READ_META(%d/%d),COMPACT_WORK(%d/%d)]",
 		p.MetaCompleted, p.MetaTotal, p.BytesCompacted, p.BytesToCompact)
-	return r.UpdateStatus(compact, "", progress, "")
+
+	newStatus := v1alpha1.CompactStatus{
+		Progress: progress,
+	}
+	return r.UpdateStatus(compact, newStatus)
 }
 
 func (r *CompactStatusUpdater) OnFinish(ctx context.Context, compact *v1alpha1.CompactBackup, err error) error {
-	if err != nil {
-		r.Event(compact, corev1.EventTypeWarning, "Failed", err.Error())
-		return r.UpdateStatus(compact, string(v1alpha1.BackupFailed), "", err.Error())
-	} else {
-		r.Event(compact, corev1.EventTypeNormal, "Finished", "The compaction process has finished successfully.")
-		return r.UpdateStatus(compact, string(v1alpha1.BackupComplete), "", "")
+	newStatus := v1alpha1.CompactStatus{
 	}
+	if err != nil {
+		newStatus.State = string(v1alpha1.BackupFailed)
+		newStatus.Message = err.Error()
+		r.Event(compact, corev1.EventTypeWarning, "Failed", err.Error())
+	} else {
+		newStatus.State = string(v1alpha1.BackupComplete)
+		r.Event(compact, corev1.EventTypeNormal, "Finished", "The compaction process has finished successfully.")
+	}
+	return r.UpdateStatus(compact, newStatus)
 }
 
-func (r *CompactStatusUpdater) OnRetriableFailed(ctx context.Context, compact *v1alpha1.CompactBackup, retry *RetryStatus) error {
-	return r.UpdateRetryStatus(compact, string(v1alpha1.BackupRetryTheFailed), retry)
+func (r *CompactStatusUpdater) OnRetriableFailed(ctx context.Context, compact *v1alpha1.CompactBackup, retry *v1alpha1.BackoffRetryRecord) error {
+	newStatus := v1alpha1.CompactStatus{
+		BackoffRetryStatus: append(compact.Status.BackoffRetryStatus, *retry),
+	}
+	r.Event(compact, corev1.EventTypeWarning, "RetryableFailed", retry.OriginalReason)
+	return r.UpdateStatus(compact, newStatus)
 }
