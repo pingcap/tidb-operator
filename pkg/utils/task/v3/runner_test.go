@@ -15,6 +15,7 @@
 package task
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -31,10 +32,10 @@ func TestTaskRunner(t *testing.T) {
 		{
 			desc: "a task fail",
 			ts: []Task{
-				NameTaskFunc("aaa", func() Result {
+				NameTaskFunc("aaa", func(context.Context) Result {
 					return Complete().With("success")
 				}),
-				NameTaskFunc("bbb", func() Result {
+				NameTaskFunc("bbb", func(context.Context) Result {
 					return Fail().With("fail")
 				}),
 			},
@@ -43,10 +44,10 @@ func TestTaskRunner(t *testing.T) {
 		{
 			desc: "a retry task with 0 interval",
 			ts: []Task{
-				NameTaskFunc("aaa", func() Result {
+				NameTaskFunc("aaa", func(context.Context) Result {
 					return Complete().With("success")
 				}),
-				NameTaskFunc("bbb", func() Result {
+				NameTaskFunc("bbb", func(context.Context) Result {
 					return Retry(0).With("retry")
 				}),
 			},
@@ -57,10 +58,10 @@ func TestTaskRunner(t *testing.T) {
 		{
 			desc: "a retry task with not 0 interval",
 			ts: []Task{
-				NameTaskFunc("aaa", func() Result {
+				NameTaskFunc("aaa", func(context.Context) Result {
 					return Complete().With("success")
 				}),
-				NameTaskFunc("bbb", func() Result {
+				NameTaskFunc("bbb", func(context.Context) Result {
 					return Retry(5).With("retry")
 				}),
 			},
@@ -71,13 +72,13 @@ func TestTaskRunner(t *testing.T) {
 		{
 			desc: "all tasks are Complete or Wait",
 			ts: []Task{
-				NameTaskFunc("aaa", func() Result {
+				NameTaskFunc("aaa", func(context.Context) Result {
 					return Complete().With("success")
 				}),
-				NameTaskFunc("bbb", func() Result {
+				NameTaskFunc("bbb", func(context.Context) Result {
 					return Wait().With("wait")
 				}),
-				NameTaskFunc("ccc", func() Result {
+				NameTaskFunc("ccc", func(context.Context) Result {
 					return Complete().With("success")
 				}),
 			},
@@ -90,8 +91,9 @@ func TestTaskRunner(t *testing.T) {
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
+			ctx := context.Background()
 			runner := NewTaskRunner(&dummyReporter{}, c.ts...)
-			res, err := runner.Run()
+			res, err := runner.Run(ctx)
 			if c.hasErr {
 				assert.Error(tt, err, c.desc)
 			} else {

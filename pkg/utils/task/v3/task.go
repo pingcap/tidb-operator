@@ -14,15 +14,17 @@
 
 package task
 
+import "context"
+
 // Syncer defines an action to sync actual states to desired.
 type Syncer interface {
-	Sync() Result
+	Sync(ctx context.Context) Result
 }
 
-type SyncFunc func() Result
+type SyncFunc func(ctx context.Context) Result
 
-func (f SyncFunc) Sync() Result {
-	return f()
+func (f SyncFunc) Sync(ctx context.Context) Result {
+	return f(ctx)
 }
 
 type Condition interface {
@@ -37,8 +39,14 @@ func (f CondFunc) Satisfy() bool {
 
 // Task is a Syncer wrapper, which can be orchestrated using control structures
 // such as if and break for conditional logic and flow control.
+// Task can only be implemented by this package and users should implement the Syncer interface
+// and wrap Syncers as Tasks
 type Task interface {
-	sync() (_ Result, done bool)
+	sync(ctx context.Context) (_ Result, done bool)
+}
+
+func RunTask(ctx context.Context, t Task) (Result, bool) {
+	return t.sync(ctx)
 }
 
 type task struct {
@@ -46,8 +54,8 @@ type task struct {
 	f    Syncer
 }
 
-func (e *task) sync() (Result, bool) {
-	return nameResult(e.name, e.f.Sync()), false
+func (e *task) sync(ctx context.Context) (Result, bool) {
+	return nameResult(e.name, e.f.Sync(ctx)), false
 }
 
 func NameTaskFunc(name string, f SyncFunc) Task {
@@ -62,9 +70,9 @@ type optionalTask struct {
 	cond Condition
 }
 
-func (e *optionalTask) sync() (Result, bool) {
+func (e *optionalTask) sync(ctx context.Context) (Result, bool) {
 	if e.cond.Satisfy() {
-		return e.Task.sync()
+		return e.Task.sync(ctx)
 	}
 
 	return nil, false
@@ -81,8 +89,8 @@ type breakTask struct {
 	Task
 }
 
-func (e *breakTask) sync() (Result, bool) {
-	r, _ := e.Task.sync()
+func (e *breakTask) sync(ctx context.Context) (Result, bool) {
+	r, _ := e.Task.sync(ctx)
 	return r, true
 }
 
@@ -100,10 +108,10 @@ type blockTask struct {
 	tasks []Task
 }
 
-func (e *blockTask) sync() (Result, bool) {
+func (e *blockTask) sync(ctx context.Context) (Result, bool) {
 	var rs []Result
 	for _, expr := range e.tasks {
-		r, done := expr.sync()
+		r, done := expr.sync(ctx)
 		if r == nil {
 			continue
 		}
