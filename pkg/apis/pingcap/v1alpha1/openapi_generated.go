@@ -1848,7 +1848,6 @@ func schema_pkg_apis_pingcap_v1alpha1_CompactSpec(ref common.ReferenceCallback) 
 					"maxRetryTimes": {
 						SchemaProps: spec.SchemaProps{
 							Description: "BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup",
-							Default:     2,
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
