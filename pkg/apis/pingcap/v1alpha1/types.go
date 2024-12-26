@@ -3496,7 +3496,7 @@ type CompactSpec struct {
 	// +optional
 	EndTs string `json:"endTs,omitempty"`
 	// Concurrency is the concurrency of compact backup job
-	// +default=4
+	// +kubebuilder:default=4
 	Concurrency int `json:"concurrency,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
 	// +optional

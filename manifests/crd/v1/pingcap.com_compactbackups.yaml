@@ -1191,6 +1191,7 @@ spec:
                 - cluster
                 type: object
               concurrency:
+                default: 4
                 type: integer
               endTs:
                 type: string
