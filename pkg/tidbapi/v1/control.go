@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"time"
 
-	corelisterv1 "k8s.io/client-go/listers/core/v1"
-
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	tlsutil "github.com/pingcap/tidb-operator/pkg/utils/tls"
@@ -41,12 +39,11 @@ type TiDBControlInterface interface {
 
 // defaultTiDBControl is the default implementation of TiDBControlInterface.
 type defaultTiDBControl struct {
-	secretLister corelisterv1.SecretLister
 }
 
 // NewDefaultTiDBControl returns a defaultTiDBControl instance.
-func NewDefaultTiDBControl(secretLister corelisterv1.SecretLister) TiDBControlInterface {
-	return &defaultTiDBControl{secretLister: secretLister}
+func NewDefaultTiDBControl() TiDBControlInterface {
+	return &defaultTiDBControl{}
 }
 
 // GetTiDBPodClient provides TiDBClient of a TiDB pod.

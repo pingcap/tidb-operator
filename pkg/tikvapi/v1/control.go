@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"time"
 
-	corelisterv1 "k8s.io/client-go/listers/core/v1"
-
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	tlsutil "github.com/pingcap/tidb-operator/pkg/utils/tls"
@@ -41,12 +39,11 @@ type TiKVControlInterface interface {
 
 // defaultTiKVControl is the default implementation of TiKVControlInterface.
 type defaultTiKVControl struct {
-	secretLister corelisterv1.SecretLister
 }
 
 // NewDefaultTiKVControl returns a defaultTiKVControl instance.
-func NewDefaultTiKVControl(secretLister corelisterv1.SecretLister) TiKVControlInterface {
-	return &defaultTiKVControl{secretLister: secretLister}
+func NewDefaultTiKVControl() TiKVControlInterface {
+	return &defaultTiKVControl{}
 }
 
 // GetTiKVPodClient provides TiKVClient of a TiKV pod.
