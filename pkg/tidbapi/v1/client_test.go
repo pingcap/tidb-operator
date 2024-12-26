@@ -30,7 +30,8 @@ func TestTiDBClient_GetHealth(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/status", r.URL.Path)
 		assert.Equal(t, http.MethodGet, r.Method)
-		w.Write([]byte(jsonStr))
+		_, err := w.Write([]byte(jsonStr))
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -61,7 +62,8 @@ func TestTiDBClient_GetInfo(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/info", r.URL.Path)
 		assert.Equal(t, http.MethodGet, r.Method)
-		w.Write([]byte(jsonStr))
+		_, err := w.Write([]byte(jsonStr))
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 

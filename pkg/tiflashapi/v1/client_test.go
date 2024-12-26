@@ -29,7 +29,8 @@ func TestTiFlash_GetStoreStatus(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/tiflash/store-status", r.URL.Path)
 		assert.Equal(t, http.MethodGet, r.Method)
-		w.Write([]byte("Running"))
+		_, err := w.Write([]byte("Running"))
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 

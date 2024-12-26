@@ -57,7 +57,8 @@ func TestPDClient_GetHealth(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/pd/api/v1/health", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(jsonStr))
+		_, err := w.Write([]byte(jsonStr))
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -110,7 +111,8 @@ func TestPDClient_GetConfig(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/pd/api/v1/config", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(jsonStr))
+		_, err := w.Write([]byte(jsonStr))
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -122,7 +124,7 @@ func TestPDClient_GetConfig(t *testing.T) {
 	assert.Equal(t, "debug", config.Log.Level)
 	assert.NotNil(t, config.Schedule)
 	assert.Equal(t, uint64(4), *config.Schedule.LeaderScheduleLimit)
-	assert.Equal(t, 0.8, *config.Schedule.LowSpaceRatio)
+	assert.InEpsilon(t, 0.8, *config.Schedule.LowSpaceRatio, 0.0001)
 	assert.Len(t, *config.Schedule.Schedulers, 1)
 	assert.Equal(t, "evict-slow-store", []PDSchedulerConfig(*config.Schedule.Schedulers)[0].Type)
 	assert.NotNil(t, config.Replication)
@@ -141,7 +143,8 @@ func TestPDClient_GetCluster(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/pd/api/v1/cluster", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(jsonStr))
+		_, err := w.Write([]byte(jsonStr))
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -230,7 +233,8 @@ func TestPDClient_GetMembers(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/pd/api/v1/members", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(jsonStr))
+		_, err := w.Write([]byte(jsonStr))
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -438,7 +442,8 @@ func TestPDClient_GetStores(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/pd/api/v1/stores", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(jsonStr))
+		_, err := w.Write([]byte(jsonStr))
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -503,7 +508,8 @@ func TestPDClient_GetStore(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/pd/api/v1/store/4", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(jsonStr))
+		_, err := w.Write([]byte(jsonStr))
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -524,7 +530,8 @@ func TestPDClinet_SetStoreLabels(t *testing.T) {
 		assert.Equal(t, "/pd/api/v1/store/1/label", r.URL.Path)
 		assert.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{}`))
+		_, err := w.Write([]byte(`{}`))
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -539,7 +546,8 @@ func TestPDClient_DeleteStore(t *testing.T) {
 		assert.Equal(t, "/pd/api/v1/store/1", r.URL.Path)
 		assert.Equal(t, http.MethodDelete, r.Method)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{}`))
+		_, err := w.Write([]byte(`{}`))
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -552,7 +560,7 @@ func TestPDClient_DeleteMember(t *testing.T) {
 	// in DeleteMember, we call GetMembers first to get the member id
 	// so we need to mock GetMembers response
 	// one server for two requests
-	getMembersJsonStr := `
+	getMembersJSONStr := `
 {
   "header": {
     "cluster_id": 7452180154224557728
@@ -567,11 +575,13 @@ func TestPDClient_DeleteMember(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/pd/api/v1/members" {
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(getMembersJsonStr))
+			_, err := w.Write([]byte(getMembersJSONStr))
+			assert.NoError(t, err)
 		} else if r.URL.Path == "/pd/api/v1/member/basic-7axwci" {
 			assert.Equal(t, http.MethodDelete, r.Method)
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{}`))
+			_, err := w.Write([]byte(`{}`))
+			assert.NoError(t, err)
 		}
 	}))
 	defer server.Close()
@@ -585,7 +595,7 @@ func TestPDClient_DeleteMemberByID(t *testing.T) {
 	// in DeleteMember, we call GetMembers first to get the member id
 	// so we need to mock GetMembers response
 	// one server for two requests
-	getMembersJsonStr := `
+	getMembersJSONStr := `
 {
   "header": {
     "cluster_id": 7452180154224557728
@@ -600,11 +610,13 @@ func TestPDClient_DeleteMemberByID(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/pd/api/v1/members" {
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(getMembersJsonStr))
+			_, err := w.Write([]byte(getMembersJSONStr))
+			assert.NoError(t, err)
 		} else if r.URL.Path == "/pd/api/v1/member/1428427862495950874" {
 			assert.Equal(t, http.MethodDelete, r.Method)
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{}`))
+			_, err := w.Write([]byte(`{}`))
+			assert.NoError(t, err)
 		}
 	}))
 	defer server.Close()
@@ -624,7 +636,8 @@ func TestPDConfig_UpdateReplicationConfig(t *testing.T) {
 		assert.Equal(t, "/pd/api/v1/config/replicate", r.URL.Path)
 		assert.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(jsonStr))
+		_, err := w.Write([]byte(jsonStr))
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -642,7 +655,8 @@ func TestPDClient_BeginEvictLeader(t *testing.T) {
 		assert.Equal(t, "/pd/api/v1/schedulers", r.URL.Path)
 		assert.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{}`))
+		_, err := w.Write([]byte(`{}`))
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -673,17 +687,21 @@ func TestPDClient_BeginEvictLeader(t *testing.T) {
   }
 }`
 	server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		//nolint:goconst // it's ok
 		if r.URL.Path == "/pd/api/v1/schedulers" && r.Method == http.MethodPost {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusConflict)
-			w.Write([]byte(`{"error":"scheduler already exists"}`))
+			_, err = w.Write([]byte(`{"error":"scheduler already exists"}`))
+			assert.NoError(t, err)
 		} else if r.URL.Path == "/pd/api/v1/schedulers" && r.Method == http.MethodGet {
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(schedulersStr))
+			_, err = w.Write([]byte(schedulersStr))
+			assert.NoError(t, err)
 		} else if r.URL.Path == "/pd/api/v1/scheduler-config/evict-leader-scheduler/list" {
 			assert.Equal(t, http.MethodGet, r.Method)
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(evictLeaderSchedulerListStr))
+			_, err = w.Write([]byte(evictLeaderSchedulerListStr))
+			assert.NoError(t, err)
 		}
 	}))
 	defer server2.Close()
@@ -703,12 +721,15 @@ func TestPDClient_EndEvictLeader(t *testing.T) {
     "balance-region-scheduler"
   ]`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		//nolint:goconst // it's ok
 		if r.URL.Path == "/pd/api/v1/schedulers/evict-leader-scheduler-4" && r.Method == http.MethodDelete {
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{}`))
+			_, err := w.Write([]byte(`{}`))
+			assert.NoError(t, err)
 		} else if r.URL.Path == "/pd/api/v1/schedulers" && r.Method == http.MethodGet {
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(schedulersStr))
+			_, err := w.Write([]byte(schedulersStr))
+			assert.NoError(t, err)
 		}
 	}))
 	defer server.Close()
@@ -740,14 +761,17 @@ func TestPDClient_EndEvictLeader(t *testing.T) {
 	server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/pd/api/v1/schedulers/evict-leader-scheduler-4" && r.Method == http.MethodDelete {
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{}`))
+			_, err = w.Write([]byte(`{}`))
+			assert.NoError(t, err)
 		} else if r.URL.Path == "/pd/api/v1/schedulers" && r.Method == http.MethodGet {
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(schedulersStr))
+			_, err = w.Write([]byte(schedulersStr))
+			assert.NoError(t, err)
 		} else if r.URL.Path == "/pd/api/v1/scheduler-config/evict-leader-scheduler/list" {
 			assert.Equal(t, http.MethodGet, r.Method)
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(evictLeaderSchedulerListStr))
+			_, err = w.Write([]byte(evictLeaderSchedulerListStr))
+			assert.NoError(t, err)
 		}
 	}))
 	defer server2.Close()
@@ -778,14 +802,17 @@ func TestPDClient_EndEvictLeader(t *testing.T) {
 	server3 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/pd/api/v1/schedulers/evict-leader-scheduler-4" && r.Method == http.MethodDelete {
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{}`))
+			_, err = w.Write([]byte(`{}`))
+			assert.NoError(t, err)
 		} else if r.URL.Path == "/pd/api/v1/schedulers" && r.Method == http.MethodGet {
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(schedulersStr))
+			_, err = w.Write([]byte(schedulersStr))
+			assert.NoError(t, err)
 		} else if r.URL.Path == "/pd/api/v1/scheduler-config/evict-leader-scheduler/list" {
 			assert.Equal(t, http.MethodGet, r.Method)
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(evictLeaderSchedulerListStr))
+			_, err = w.Write([]byte(evictLeaderSchedulerListStr))
+			assert.NoError(t, err)
 		}
 	}))
 	defer server3.Close()
@@ -817,14 +844,17 @@ func TestPDClient_GetEvictLeaderScheduler(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/pd/api/v1/schedulers/evict-leader-scheduler-4" && r.Method == http.MethodDelete {
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{}`))
+			_, err := w.Write([]byte(`{}`))
+			assert.NoError(t, err)
 		} else if r.URL.Path == "/pd/api/v1/schedulers" && r.Method == http.MethodGet {
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(schedulersStr))
+			_, err := w.Write([]byte(schedulersStr))
+			assert.NoError(t, err)
 		} else if r.URL.Path == "/pd/api/v1/scheduler-config/evict-leader-scheduler/list" {
 			assert.Equal(t, http.MethodGet, r.Method)
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(evictLeaderSchedulerListStr))
+			_, err := w.Write([]byte(evictLeaderSchedulerListStr))
+			assert.NoError(t, err)
 		}
 	}))
 	defer server.Close()
@@ -850,7 +880,8 @@ func TestPDClient_GetPDLeader(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/pd/api/v1/leader", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(jsonStr))
+		_, err := w.Write([]byte(jsonStr))
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -871,7 +902,8 @@ func TestPDClient_TransferPDLeader(t *testing.T) {
 		assert.Equal(t, "/pd/api/v1/leader/transfer/basic-7axwci", r.URL.Path)
 		assert.Equal(t, http.MethodPost, r.Method)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{}`))
+		_, err := w.Write([]byte(`{}`))
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 

@@ -35,13 +35,14 @@ tikv_raftstore_region_count{type="region"} 50
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/metrics", r.URL.Path)
 		assert.Equal(t, http.MethodGet, r.Method)
-		w.Write([]byte(jsonStr))
+		_, err := w.Write([]byte(jsonStr))
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
 	// only test non-tls
 	client, err := NewDefaultTiKVControl().GetTiKVPodClient(context.Background(), nil, "", "", "", "", false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	client.(*tikvClient).url = server.URL
 	count, err := client.GetLeaderCount()
 	require.NoError(t, err)
