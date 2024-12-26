@@ -2025,6 +2025,7 @@ spec:
                 - volumeMount
                 type: object
               maxRetryTimes:
+                default: 6
                 format: int32
                 type: integer
               podSecurityContext:

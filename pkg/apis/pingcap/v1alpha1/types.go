@@ -3547,7 +3547,7 @@ type CompactSpec struct {
 	PriorityClassName string `json:"priorityClassName,omitempty"`
 
 	// BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup
-	// +default=2
+	// +kubebuilder:default=6
 	MaxRetryTimes int32 `json:"maxRetryTimes,omitempty"`
 
 	// Additional volumes of component pod.
