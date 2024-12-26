@@ -3527,7 +3527,8 @@ type CompactSpec struct {
 	PriorityClassName string `json:"priorityClassName,omitempty"`
 
 	// BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup
-	BackoffRetryPolicy BackoffRetryPolicy `json:"backoffRetryPolicy,omitempty"`
+	// +default=2
+	MaxRetryTimes int32 `json:"maxRetryTimes,omitempty"`
 
 	// Additional volumes of component pod.
 	// +optional
@@ -3544,8 +3545,6 @@ type CompactStatus struct {
 	Progress string `json:"progress,omitempty"`
 	// Message is the error message of the backup
 	Message  string `json:"message,omitempty"`
-	// BackoffRetryStatus is status of the backoff retry, it will be used when backup pod or job exited unexpectedly
-	BackoffRetryStatus []BackoffRetryRecord `json:"backoffRetryStatus,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
