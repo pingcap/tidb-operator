@@ -38,7 +38,7 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 // Controller controls backup.
@@ -64,11 +64,11 @@ func NewController(deps *controller.Dependencies) *Controller {
 	backupInformer := deps.InformerFactory.Pingcap().V1alpha1().CompactBackups()
 	jobInformer := deps.KubeInformerFactory.Batch().V1().Jobs()
 	backupInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: c.updateBackup,
+		AddFunc: c.updateCompact,
 		UpdateFunc: func(old, cur interface{}) {
-			c.updateBackup(cur)
+			c.updateCompact(cur)
 		},
-		DeleteFunc: c.updateBackup,
+		DeleteFunc: c.updateCompact,
 	})
 	jobInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		DeleteFunc: c.deleteJob,
@@ -167,13 +167,23 @@ func (c *Controller) deleteJob(obj interface{}) {
 		return
 	}
 	klog.V(4).Infof("Job %s/%s deleted through %v.", ns, jobName, utilruntime.GetCaller())
-	c.updateBackup(backup)
+	c.updateCompact(backup)
 }
 
-func (c *Controller) updateBackup(cur interface{}) {
+func (c *Controller) updateCompact(cur interface{}) {
 	newBackup := cur.(*v1alpha1.CompactBackup)
 	ns := newBackup.GetNamespace()
 	name := newBackup.GetName()
+
+	if newBackup.Status.State == string(v1alpha1.BackupFailed){
+		klog.Errorf("Backup %s/%s is failed, skip", ns, name)
+		return
+	}
+
+	if newBackup.Status.State == string(v1alpha1.BackupComplete){
+		klog.Errorf("Backup %s/%s is complete, skip", ns, name)
+		return
+	}
 
 	klog.Infof("backup object %s/%s enqueue", ns, name)
 	c.enqueueBackup(newBackup)
@@ -249,17 +259,14 @@ func (c *Controller) sync(key string) (err error) {
 		return err
 	}
 
-	if compact.Status.State == string(v1alpha1.BackupFailed){
-		klog.Errorf("Backup %s/%s is failed, skip", ns, name)
+	running,err := c.isCompactJobAlreadyRunning(compact) 
+	if err != nil {
+		return err
+	}
+	if running {
+		klog.Infof("Backup %s/%s is running, skip", ns, name)
 		return nil
 	}
-
-	if compact.Status.State == string(v1alpha1.BackupScheduled) {
-		klog.Infof("Backup %s/%s is scheduled, skip", ns, name)
-		return nil
-	}
-
-	//TODO:（ris）add retry logic
 
 	c.statusUpdater.OnSchedule(context.TODO(), compact)
 
@@ -270,34 +277,34 @@ func (c *Controller) sync(key string) (err error) {
 	return err
 }
 
-func (c *Controller) doCompact(backup *v1alpha1.CompactBackup) error {
-	ns := backup.GetNamespace()
-	name := backup.GetName()
-	backupJobName := backup.GetName()
+func (c *Controller) doCompact(compact *v1alpha1.CompactBackup) error {
+	ns := compact.GetNamespace()
+	name := compact.GetName()
+	backupJobName := compact.GetName()
 
 	// make backup job
 	var err error
 	var job *batchv1.Job
 	var reason string
-	if job, reason, err = c.makeBackupJob(backup); err != nil {
+	if job, reason, err = c.makeCompactJob(compact); err != nil {
 		klog.Errorf("backup %s/%s create job %s failed, reason is %s, error %v.", ns, name, backupJobName, reason, err)
 		return err
 	}
 
 	// create k8s job
 	klog.Infof("backup %s/%s creating job %s.", ns, name, backupJobName)
-	if err := c.deps.JobControl.CreateJob(backup, job); err != nil {
+	if err := c.deps.JobControl.CreateJob(compact, job); err != nil {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %v", ns, name, backupJobName, err)
 		return errMsg
 	}
 	return nil
 }
 
-func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job, string, error) {
-	ns := backup.GetNamespace()
-	name := backup.GetName()
+func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.Job, string, error) {
+	ns := compact.GetNamespace()
+	name := compact.GetName()
 	// Do we need a unique name for the job?
-	jobName := backup.GetName()
+	jobName := compact.GetName()
 
 	var (
 		envVars []corev1.EnvVar
@@ -305,7 +312,7 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 		err     error
 	)
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, c.deps.SecretLister)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, compact.Spec.UseKMS, compact.Spec.StorageProvider, c.deps.SecretLister)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 	}
@@ -313,7 +320,7 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 	envVars = append(envVars, storageEnv...)
 
 	// set env vars specified in backup.Spec.Env
-	envVars = util.AppendOverwriteEnv(envVars, backup.Spec.Env)
+	envVars = util.AppendOverwriteEnv(envVars, compact.Spec.Env)
 
 	args := []string{
 		"compact",
@@ -321,16 +328,16 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 		fmt.Sprintf("--resourceName=%s", name),
 	}
 
-	tc, err := c.deps.TiDBClusterLister.TidbClusters(backup.Spec.BR.ClusterNamespace).Get(backup.Spec.BR.Cluster)
+	tc, err := c.deps.TiDBClusterLister.TidbClusters(compact.Spec.BR.ClusterNamespace).Get(compact.Spec.BR.Cluster)
 	if err != nil {
-		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", ns, backup.Spec.BR.Cluster), err
+		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", ns, compact.Spec.BR.Cluster), err
 	}
 	tikvImage := tc.TiKVImage()
 	_, tikvVersion := backuputil.ParseImage(tikvImage)
 	brImage := "pingcap/br:" + tikvVersion
-	if backup.Spec.ToolImage != "" {
-		toolImage := backup.Spec.ToolImage
-		if !strings.ContainsRune(backup.Spec.ToolImage, ':') {
+	if compact.Spec.ToolImage != "" {
+		toolImage := compact.Spec.ToolImage
+		if !strings.ContainsRune(compact.Spec.ToolImage, ':') {
 			toolImage = fmt.Sprintf("%s:%s", toolImage, tikvVersion)
 		}
 
@@ -339,9 +346,9 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 	klog.Infof("backup %s/%s use br image %s and tikv image %s", ns, name, brImage, tikvImage)
 
 	//TODO: (Ris)What is the instance here?
-	jobLabels := util.CombineStringMap(label.NewBackup().Instance("Compact-Backup").BackupJob().Backup(name), backup.Labels)
+	jobLabels := util.CombineStringMap(label.NewBackup().Instance("Compact-Backup").BackupJob().Backup(name), compact.Labels)
 	podLabels := jobLabels
-	jobAnnotations := backup.Annotations
+	jobAnnotations := compact.Annotations
 	podAnnotations := jobAnnotations
 
 	volumeMounts := []corev1.VolumeMount{}
@@ -365,22 +372,22 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 		},
 	)
 
-	if len(backup.Spec.AdditionalVolumes) > 0 {
-		volumes = append(volumes, backup.Spec.AdditionalVolumes...)
+	if len(compact.Spec.AdditionalVolumes) > 0 {
+		volumes = append(volumes, compact.Spec.AdditionalVolumes...)
 	}
-	if len(backup.Spec.AdditionalVolumeMounts) > 0 {
-		volumeMounts = append(volumeMounts, backup.Spec.AdditionalVolumeMounts...)
+	if len(compact.Spec.AdditionalVolumeMounts) > 0 {
+		volumeMounts = append(volumeMounts, compact.Spec.AdditionalVolumeMounts...)
 	}
 
 	// mount volumes if specified
-	if backup.Spec.Local != nil {
-		volumes = append(volumes, backup.Spec.Local.Volume)
-		volumeMounts = append(volumeMounts, backup.Spec.Local.VolumeMount)
+	if compact.Spec.Local != nil {
+		volumes = append(volumes, compact.Spec.Local.Volume)
+		volumeMounts = append(volumeMounts, compact.Spec.Local.VolumeMount)
 	}
 
 	serviceAccount := constants.DefaultServiceAccountName
-	if backup.Spec.ServiceAccount != "" {
-		serviceAccount = backup.Spec.ServiceAccount
+	if compact.Spec.ServiceAccount != "" {
+		serviceAccount = compact.Spec.ServiceAccount
 	}
 
 	podSpec := &corev1.PodTemplateSpec{
@@ -389,7 +396,7 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{
-			SecurityContext:    backup.Spec.PodSecurityContext,
+			SecurityContext:    compact.Spec.PodSecurityContext,
 			ServiceAccountName: serviceAccount,
 			InitContainers: []corev1.Container{
 				{
@@ -399,7 +406,7 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 					Args:            []string{fmt.Sprintf("cp /br %s/br; echo 'BR copy finished'", util.BRBinPath)},
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    volumeMounts,
-					Resources:       backup.Spec.ResourceRequirements,
+					Resources:       compact.Spec.ResourceRequirements,
 				},
 				{
 					Name:            "tikv-ctl",
@@ -408,7 +415,7 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 					Args:            []string{fmt.Sprintf("cp /tikv-ctl %s/tikv-ctl; echo 'tikv-ctl copy finished'", util.KVCTLBinPath)},
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    volumeMounts,
-					Resources:       backup.Spec.ResourceRequirements,
+					Resources:       compact.Spec.ResourceRequirements,
 				},
 			},
 			Containers: []corev1.Container{
@@ -421,12 +428,12 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 					ImagePullPolicy: corev1.PullIfNotPresent,
 				},
 			},
-			RestartPolicy:     corev1.RestartPolicyNever,
-			Tolerations:       backup.Spec.Tolerations,
-			ImagePullSecrets:  backup.Spec.ImagePullSecrets,
-			Affinity:          backup.Spec.Affinity,
+			RestartPolicy:     corev1.RestartPolicyOnFailure,
+			Tolerations:       compact.Spec.Tolerations,
+			ImagePullSecrets:  compact.Spec.ImagePullSecrets,
+			Affinity:          compact.Spec.Affinity,
 			Volumes:           volumes,
-			PriorityClassName: backup.Spec.PriorityClassName,
+			PriorityClassName: compact.Spec.PriorityClassName,
 		},
 	}
 
@@ -437,14 +444,54 @@ func (c *Controller) makeBackupJob(backup *v1alpha1.CompactBackup) (*batchv1.Job
 			Labels:      jobLabels,
 			Annotations: jobAnnotations,
 			OwnerReferences: []metav1.OwnerReference{
-				controller.GetCompactBackupOwnerRef(backup),
+				controller.GetCompactBackupOwnerRef(compact),
 			},
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: pointer.Int32Ptr(0),
 			Template:     *podSpec,
+			BackoffLimit: ptr.To(compact.Spec.MaxRetryTimes),
 		},
 	}
 
 	return job, "", nil
+}
+
+func (c *Controller) isCompactJobAlreadyRunning(compact *v1alpha1.CompactBackup) (bool, error) {
+	ns := compact.GetNamespace()
+	name := compact.GetName()
+
+	job, err := c.deps.KubeClientset.BatchV1().Jobs(ns).Get(context.TODO(), name, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return false, nil
+		}
+		klog.Errorf("Failed to get job %s for compact %s/%s, error %v", name, ns, name, err)
+		return false, err
+	}
+
+	for _, condition := range job.Status.Conditions {
+		if condition.Type == batchv1.JobFailed && condition.Status == corev1.ConditionTrue {
+			// Check events if job failed
+			events, err := c.deps.KubeClientset.CoreV1().Events(ns).List(context.TODO(), metav1.ListOptions{
+				FieldSelector: fmt.Sprintf("involvedObject.kind=Job,involvedObject.name=%s", name),
+			})
+			if err != nil {
+				if errors.IsNotFound(err) {
+					return true, nil // No events found, treat as "running"
+				}
+				klog.Errorf("Failed to get events for job %s/%s, error %v", ns, name, err)
+				return true, err
+			}
+
+			for _, event := range events.Items {
+				if event.Reason == "BackoffLimitExceeded" {
+					klog.Warningf("Job %s has exceeded the backoff limit, no further retries will be attempted.", name)
+					c.statusUpdater.OnJobFailed(context.TODO(), compact, event.Message)
+				}
+			}
+			return true, nil
+		}
+	}
+
+	return true, nil
 }

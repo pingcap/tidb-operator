@@ -16,7 +16,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -52,7 +51,7 @@ type CompactStatusUpdaterInterface interface {
 	OnStart(ctx context.Context, compact *v1alpha1.CompactBackup) error
 	OnProgress(ctx context.Context, compact *v1alpha1.CompactBackup, p Progress) error 
 	OnFinish(ctx context.Context, compact *v1alpha1.CompactBackup, err error) error
-	OnRetriableFailed(ctx context.Context, compact *v1alpha1.CompactBackup, retry *v1alpha1.BackoffRetryRecord) error
+	OnJobFailed(ctx context.Context, compact *v1alpha1.CompactBackup, reason string) error
 }
 
 type CompactStatusUpdater struct {
@@ -110,10 +109,6 @@ func (r *CompactStatusUpdater) UpdateStatus(compact *v1alpha1.CompactBackup, new
 			compact.Status.Progress = newStatus.Progress
 			updated = true
 			r.progressLastUpdate = now
-		}
-		if newStatus.BackoffRetryStatus != nil && !reflect.DeepEqual(newStatus.BackoffRetryStatus, compact.Status.BackoffRetryStatus) {
-			compact.Status.BackoffRetryStatus = newStatus.BackoffRetryStatus
-			updated = true
 		}
 
 		// Apply the update if any field changed
@@ -183,10 +178,10 @@ func (r *CompactStatusUpdater) OnFinish(ctx context.Context, compact *v1alpha1.C
 	return r.UpdateStatus(compact, newStatus)
 }
 
-func (r *CompactStatusUpdater) OnRetriableFailed(ctx context.Context, compact *v1alpha1.CompactBackup, retry *v1alpha1.BackoffRetryRecord) error {
+func (r *CompactStatusUpdater) OnJobFailed(ctx context.Context, compact *v1alpha1.CompactBackup, reason string) error {
 	newStatus := v1alpha1.CompactStatus{
-		BackoffRetryStatus: append(compact.Status.BackoffRetryStatus, *retry),
+		State: string(v1alpha1.BackupFailed),
 	}
-	r.Event(compact, corev1.EventTypeWarning, "RetryableFailed", retry.OriginalReason)
+	r.Event(compact, corev1.EventTypeWarning, "The compact job is failed.", reason)
 	return r.UpdateStatus(compact, newStatus)
 }
