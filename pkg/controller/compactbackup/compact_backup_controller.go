@@ -59,6 +59,9 @@ func NewController(deps *controller.Dependencies) *Controller {
 			"compactBackup",
 		),
 		cli: deps.Clientset,
+		statusUpdater: controller.NewCompactStatusUpdater(
+			deps.Recorder, deps.CompactBackupLister, deps.Clientset,
+		),
 	}
 
 	backupInformer := deps.InformerFactory.Pingcap().V1alpha1().CompactBackups()
