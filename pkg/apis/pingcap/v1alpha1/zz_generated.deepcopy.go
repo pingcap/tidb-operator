@@ -965,7 +965,6 @@ func (in *CompactSpec) DeepCopyInto(out *CompactSpec) {
 		*out = new(v1.PodSecurityContext)
 		(*in).DeepCopyInto(*out)
 	}
-	out.BackoffRetryPolicy = in.BackoffRetryPolicy
 	if in.AdditionalVolumes != nil {
 		in, out := &in.AdditionalVolumes, &out.AdditionalVolumes
 		*out = make([]v1.Volume, len(*in))

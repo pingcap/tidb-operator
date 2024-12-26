@@ -36,9 +36,9 @@ const (
 
 type Progress struct {
 	// MetaCompleted is the number of meta files compacted
-	MetaCompleted  uint64 `json:"meta_completed"`
+	MetaCompleted uint64 `json:"meta_completed"`
 	// MetaTotal is the total number of meta files
-	MetaTotal      uint64 `json:"meta_total"`
+	MetaTotal uint64 `json:"meta_total"`
 	// BytesToCompact is the number of bytes to compact
 	BytesToCompact uint64 `json:"bytes_to_compact"`
 	// BytesCompacted is the number of bytes compacted
@@ -49,7 +49,7 @@ type CompactStatusUpdaterInterface interface {
 	OnSchedule(ctx context.Context, compact *v1alpha1.CompactBackup) error
 	OnCreateJob(ctx context.Context, compact *v1alpha1.CompactBackup, err error) error
 	OnStart(ctx context.Context, compact *v1alpha1.CompactBackup) error
-	OnProgress(ctx context.Context, compact *v1alpha1.CompactBackup, p Progress) error 
+	OnProgress(ctx context.Context, compact *v1alpha1.CompactBackup, p Progress) error
 	OnFinish(ctx context.Context, compact *v1alpha1.CompactBackup, err error) error
 	OnJobFailed(ctx context.Context, compact *v1alpha1.CompactBackup, reason string) error
 }
@@ -134,8 +134,7 @@ func (r *CompactStatusUpdater) OnSchedule(ctx context.Context, compact *v1alpha1
 }
 
 func (r *CompactStatusUpdater) OnCreateJob(ctx context.Context, compact *v1alpha1.CompactBackup, err error) error {
-	newStatus := v1alpha1.CompactStatus{
-	}
+	newStatus := v1alpha1.CompactStatus{}
 	if err != nil {
 		newStatus.State = string(v1alpha1.BackupFailed)
 		newStatus.Message = err.Error()
@@ -165,8 +164,7 @@ func (r *CompactStatusUpdater) OnProgress(ctx context.Context, compact *v1alpha1
 }
 
 func (r *CompactStatusUpdater) OnFinish(ctx context.Context, compact *v1alpha1.CompactBackup, err error) error {
-	newStatus := v1alpha1.CompactStatus{
-	}
+	newStatus := v1alpha1.CompactStatus{}
 	if err != nil {
 		newStatus.State = string(v1alpha1.BackupFailed)
 		newStatus.Message = err.Error()
