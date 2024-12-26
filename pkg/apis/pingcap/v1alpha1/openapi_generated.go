@@ -1766,7 +1766,6 @@ func schema_pkg_apis_pingcap_v1alpha1_CompactSpec(ref common.ReferenceCallback) 
 					"concurrency": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Concurrency is the concurrency of compact backup job",
-							Default:     4,
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
