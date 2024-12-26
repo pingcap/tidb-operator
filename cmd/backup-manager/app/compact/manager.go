@@ -109,7 +109,10 @@ func (cm *Manager) base64ifyStorage(ctx context.Context) (string, error) {
 	}
 	out, err := brCmd.Output()
 	if err != nil {
-		eerr := err.(*exec.ExitError)
+		eerr,ok := err.(*exec.ExitError)
+		if !ok {
+			return "", errors.Annotatef(err, "failed to execute BR with args %v", brCmd.Args)
+		}
 		klog.Warningf("Failed to execute base64ify; stderr = %s", string(eerr.Stderr))
 		return "", errors.Annotatef(err, "failed to execute BR with args %v", brCmd.Args)
 	}
