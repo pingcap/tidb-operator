@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"time"
 
-	corelisterv1 "k8s.io/client-go/listers/core/v1"
-
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	tlsutil "github.com/pingcap/tidb-operator/pkg/utils/tls"
@@ -41,12 +39,11 @@ type TiFlashControlInterface interface {
 
 // defaultTiFlashControl is the default implementation of TiFlashControlInterface.
 type defaultTiFlashControl struct {
-	secretLister corelisterv1.SecretLister
 }
 
 // NewDefaultTiFlashControl returns a defaultTiFlashControl instance
-func NewDefaultTiFlashControl(secretLister corelisterv1.SecretLister) TiFlashControlInterface {
-	return &defaultTiFlashControl{secretLister: secretLister}
+func NewDefaultTiFlashControl() TiFlashControlInterface {
+	return &defaultTiFlashControl{}
 }
 
 // GetTiFlashPodClient provides TiFlashClient of a TiFlash pod.
