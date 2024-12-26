@@ -31,7 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-func taskContextResource[T any, PT Object[T]](name string, w ResourceInitializer[PT], c client.Client, shouldExist bool) task.Task {
+func taskContextResource[T any, PT Object[T]](name string, w ResourceInitializer[T], c client.Client, shouldExist bool) task.Task {
 	return task.NameTaskFunc("Context"+name, func(ctx context.Context) task.Result {
 		var obj PT = new(T)
 		key := types.NamespacedName{
@@ -56,7 +56,7 @@ func taskContextResource[T any, PT Object[T]](name string, w ResourceInitializer
 
 func taskContextResourceSlice[T any, L any, PT Object[T], PL ObjectList[L]](
 	name string,
-	w ResourceSliceInitializer[PT],
+	w ResourceSliceInitializer[T],
 	c client.Client,
 ) task.Task {
 	return task.NameTaskFunc("Context"+name, func(ctx context.Context) task.Result {
@@ -68,7 +68,7 @@ func taskContextResourceSlice[T any, L any, PT Object[T], PL ObjectList[L]](
 			return task.Fail().With("cannot list objs: %v", err)
 		}
 
-		objs := make([]PT, 0, meta.LenList(l))
+		objs := make([]*T, 0, meta.LenList(l))
 		if err := meta.EachListItem(l, func(item kuberuntime.Object) error {
 			obj, ok := item.(PT)
 			if !ok {
@@ -82,8 +82,9 @@ func taskContextResourceSlice[T any, L any, PT Object[T], PL ObjectList[L]](
 			return task.Fail().With("cannot extract list objs: %v", err)
 		}
 
-		slices.SortFunc(objs, func(a, b PT) int {
-			return cmp.Compare(a.GetName(), b.GetName())
+		slices.SortFunc(objs, func(a, b *T) int {
+			var pa, pb PT = a, b
+			return cmp.Compare(pa.GetName(), pb.GetName())
 		})
 
 		w.Set(objs)
@@ -105,6 +106,11 @@ func TaskContextCluster(state ClusterStateInitializer, c client.Client) task.Tas
 func TaskContextPod(state PodStateInitializer, c client.Client) task.Task {
 	w := state.PodInitializer()
 	return taskContextResource("Pod", w, c, false)
+}
+
+func TaskContextPDGroup(state PDGroupStateInitializer, c client.Client) task.Task {
+	w := state.PDGroupInitializer()
+	return taskContextResource("PDGroup", w, c, false)
 }
 
 func TaskContextPDSlice(state PDSliceStateInitializer, c client.Client) task.Task {

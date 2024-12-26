@@ -288,15 +288,15 @@ type GroupStatus struct {
 	Replicas int32 `json:"replicas"`
 
 	// ReadyReplicas is the number of Instances created for this ComponentGroup with a Ready Condition.
-	ReadyReplicas int32 `json:"readyReplicas,omitempty"`
+	ReadyReplicas int32 `json:"readyReplicas"`
 
 	// CurrentReplicas is the number of Instances created by the Group controller from the Group version
 	// indicated by currentRevision.
-	CurrentReplicas int32 `json:"currentReplicas,omitempty"`
+	CurrentReplicas int32 `json:"currentReplicas"`
 
-	// UpdatedReplicas is the number of Instances created by the Group controller from the Group version
+	// UpdateReplicas is the number of Instances created by the Group controller from the Group version
 	// indicated by updateRevision.
-	UpdatedReplicas int32 `json:"updatedReplicas,omitempty"`
+	UpdateReplicas int32 `json:"updateReplicas"`
 }
 
 type UpdateStrategy struct {

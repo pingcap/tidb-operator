@@ -419,23 +419,26 @@ spec:
                 description: Replicas is the number of Instance created by the controller.
                 format: int32
                 type: integer
+              updateReplicas:
+                description: |-
+                  UpdateReplicas is the number of Instances created by the Group controller from the Group version
+                  indicated by updateRevision.
+                format: int32
+                type: integer
               updateRevision:
                 description: UpdateRevision is the revision of the Controller that
                   should modify the resource.
                 type: string
-              updatedReplicas:
-                description: |-
-                  UpdatedReplicas is the number of Instances created by the Group controller from the Group version
-                  indicated by updateRevision.
-                format: int32
-                type: integer
               version:
                 description: |-
                   Version is the version of all instances in the group.
                   It will be same as the `spec.version` only when all instances are upgraded to the desired version.
                 type: string
             required:
+            - currentReplicas
+            - readyReplicas
             - replicas
+            - updateReplicas
             type: object
         type: object
     served: true

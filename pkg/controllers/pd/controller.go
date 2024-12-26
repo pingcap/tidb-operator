@@ -75,7 +75,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}()
 
 	rtx := &tasks.ReconcileContext{
-		Key: req.NamespacedName,
+		State: tasks.NewState(req.NamespacedName),
 	}
 
 	runner := r.NewRunner(rtx, reporter)

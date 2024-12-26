@@ -12,52 +12,43 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pd
+package pdgroup
 
 import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
-	"github.com/pingcap/tidb-operator/pkg/controllers/pd/tasks"
+	"github.com/pingcap/tidb-operator/pkg/controllers/pdgroup/tasks"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
 func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.TaskReporter) task.TaskRunner {
 	runner := task.NewTaskRunner(reporter,
-		// get pd
-		common.TaskContextPD(state, r.Client),
+		// get pdgroup
+		common.TaskContextPDGroup(state, r.Client),
 		// if it's gone just return
-		task.IfBreak(common.CondPDHasBeenDeleted(state)),
+		task.IfBreak(common.CondPDGroupHasBeenDeleted(state)),
 
 		// get cluster
 		common.TaskContextCluster(state, r.Client),
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),
 
-		// get info from pd
-		tasks.TaskContextInfoFromPD(state, r.PDClientManager),
-		task.IfBreak(common.CondPDIsDeleting(state),
-			tasks.TaskFinalizerDel(state, r.Client),
+		// get all pds
+		common.TaskContextPDSlice(state, r.Client),
+
+		task.IfBreak(common.CondPDGroupIsDeleting(state),
+			tasks.TaskFinalizerDel(state, r.Client, r.PDClientManager),
 		),
 		tasks.TaskFinalizerAdd(state, r.Client),
 
-		// get pod
-		common.TaskContextPod(state, r.Client),
-
 		task.IfBreak(
 			common.CondClusterIsSuspending(state),
-			common.TaskSuspendPod(state, r.Client),
-			// TODO: extract as a common task
 			tasks.TaskStatusSuspend(state, r.Client),
 		),
-
-		common.TaskContextPDSlice(state, r.Client),
-		tasks.TaskConfigMap(state, r.Logger, r.Client),
-		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifier),
-		tasks.TaskPod(state, r.Logger, r.Client),
-		// If pd client has not been registered yet, do not update status of the pd
-		task.IfBreak(tasks.CondPDClientIsNotRegisterred(state),
-			tasks.TaskStatusUnknown(),
-		),
-		tasks.TaskStatus(state, r.Logger, r.Client),
+		tasks.TaskContextPDClient(state, r.PDClientManager),
+		tasks.TaskBoot(state, r.Client),
+		tasks.TaskService(state, r.Client),
+		tasks.TaskUpdater(state, r.Client),
+		tasks.TaskStatus(state, r.Client),
 	)
 
 	return runner

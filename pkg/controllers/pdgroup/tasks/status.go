@@ -15,82 +15,129 @@
 package tasks
 
 import (
-	"github.com/go-logr/logr"
+	"context"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/utils/task"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-type TaskStatus struct {
-	Client client.Client
-	Logger logr.Logger
-}
+func TaskStatusSuspend(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("StatusSuspend", func(ctx context.Context) task.Result {
+		suspendStatus := metav1.ConditionFalse
+		suspendMessage := "pd group is suspending"
 
-func NewTaskStatus(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
-	return &TaskStatus{
-		Client: c,
-		Logger: logger,
-	}
-}
+		suspended := true
+		pdg := state.PDGroup()
+		pds := state.PDSlice()
+		for _, pd := range pds {
+			if !meta.IsStatusConditionTrue(pd.Status.Conditions, v1alpha1.PDCondSuspended) {
+				suspended = false
+			}
+		}
+		if suspended {
+			suspendStatus = metav1.ConditionTrue
+			suspendMessage = "pd group is suspended"
+		}
 
-func (*TaskStatus) Name() string {
-	return "Status"
-}
+		needUpdate := meta.SetStatusCondition(&pdg.Status.Conditions, metav1.Condition{
+			Type:               v1alpha1.PDGroupCondSuspended,
+			Status:             suspendStatus,
+			ObservedGeneration: pdg.Generation,
+			Reason:             v1alpha1.PDGroupSuspendReason,
+			Message:            suspendMessage,
+		})
+		needUpdate = SetIfChanged(&pdg.Status.ObservedGeneration, pdg.Generation) || needUpdate
 
-func (t *TaskStatus) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
+		if needUpdate {
+			if err := c.Status().Update(ctx, state.PDGroup()); err != nil {
+				return task.Fail().With("cannot update status: %v", err)
+			}
+		}
 
-	suspendStatus := metav1.ConditionFalse
-	suspendMessage := "pd group is not suspended"
-	if rtx.Suspended {
-		suspendStatus = metav1.ConditionTrue
-		suspendMessage = "pd group is suspended"
-	} else if rtx.Cluster.ShouldSuspendCompute() {
-		suspendMessage = "pd group is suspending"
-	}
-	conditionChanged := meta.SetStatusCondition(&rtx.PDGroup.Status.Conditions, metav1.Condition{
-		Type:               v1alpha1.PDGroupCondSuspended,
-		Status:             suspendStatus,
-		ObservedGeneration: rtx.PDGroup.Generation,
-		Reason:             v1alpha1.PDGroupSuspendReason,
-		Message:            suspendMessage,
+		return task.Complete().With("status of suspend pd is updated")
 	})
+}
 
-	// Update the current revision if all instances are synced.
-	if int(rtx.PDGroup.GetDesiredReplicas()) == len(rtx.Peers) && v1alpha1.AllInstancesSynced(rtx.Peers, rtx.UpdateRevision) {
-		conditionChanged = true
-		rtx.CurrentRevision = rtx.UpdateRevision
-		rtx.PDGroup.Status.Version = rtx.PDGroup.Spec.Version
-	}
-	var readyReplicas int32
-	for _, peer := range rtx.Peers {
+func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("Status", func(ctx context.Context) task.Result {
+		pdg := state.PDGroup()
+
+		suspendStatus := metav1.ConditionFalse
+		suspendMessage := "pd group is not suspended"
+		needUpdate := meta.SetStatusCondition(&pdg.Status.Conditions, metav1.Condition{
+			Type:               v1alpha1.PDGroupCondSuspended,
+			Status:             suspendStatus,
+			ObservedGeneration: pdg.Generation,
+			Reason:             v1alpha1.PDGroupSuspendReason,
+			Message:            suspendMessage,
+		})
+
+		replicas, readyReplicas, updateReplicas, currentReplicas := calcReplicas(state.PDSlice(), state.CurrentRevision, state.UpdateRevision)
+
+		// all instances are updated
+		if updateReplicas == replicas {
+			// update current revision
+			state.CurrentRevision = state.UpdateRevision
+			// update status of pdg version
+			// TODO(liubo02): version of a group is hard to understand
+			// We need to change it to a more meaningful field
+			needUpdate = SetIfChanged(&pdg.Status.Version, pdg.Spec.Version) || needUpdate
+		}
+
+		needUpdate = SetIfChanged(&pdg.Status.ObservedGeneration, pdg.Generation) || needUpdate
+		needUpdate = SetIfChanged(&pdg.Status.Replicas, replicas) || needUpdate
+		needUpdate = SetIfChanged(&pdg.Status.ReadyReplicas, readyReplicas) || needUpdate
+		needUpdate = SetIfChanged(&pdg.Status.UpdateReplicas, updateReplicas) || needUpdate
+		needUpdate = SetIfChanged(&pdg.Status.CurrentReplicas, currentReplicas) || needUpdate
+		needUpdate = SetIfChanged(&pdg.Status.CurrentRevision, state.CurrentRevision) || needUpdate
+		needUpdate = SetIfChanged(&pdg.Status.UpdateRevision, state.UpdateRevision) || needUpdate
+		needUpdate = SetIfChanged(&pdg.Status.CollisionCount, state.CollisionCount) || needUpdate
+
+		if needUpdate {
+			if err := c.Status().Update(ctx, pdg); err != nil {
+				return task.Fail().With("cannot update status: %w", err)
+			}
+		}
+
+		if !state.IsBootstrapped {
+			return task.Wait().With("pd group may not be available, wait")
+		}
+
+		return task.Complete().With("status is synced")
+	})
+}
+
+func calcReplicas(pds []*v1alpha1.PD, currentRevision, updateRevision string) (
+	replicas,
+	readyReplicas,
+	updateReplicas,
+	currentReplicas int32,
+) {
+	for _, peer := range pds {
+		replicas++
 		if peer.IsHealthy() {
 			readyReplicas++
 		}
-	}
-
-	if conditionChanged || rtx.PDGroup.Status.ReadyReplicas != readyReplicas ||
-		rtx.PDGroup.Status.Replicas != int32(len(rtx.Peers)) || //nolint:gosec // expected type conversion
-		!v1alpha1.IsReconciled(rtx.PDGroup) ||
-		v1alpha1.StatusChanged(rtx.PDGroup, rtx.CommonStatus) {
-		rtx.PDGroup.Status.ReadyReplicas = readyReplicas
-		rtx.PDGroup.Status.Replicas = int32(len(rtx.Peers)) //nolint:gosec // expected type conversion
-		rtx.PDGroup.Status.ObservedGeneration = rtx.PDGroup.Generation
-		rtx.PDGroup.Status.CurrentRevision = rtx.CurrentRevision
-		rtx.PDGroup.Status.UpdateRevision = rtx.UpdateRevision
-		rtx.PDGroup.Status.CollisionCount = rtx.CollisionCount
-
-		if err := t.Client.Status().Update(ctx, rtx.PDGroup); err != nil {
-			return task.Fail().With("cannot update status: %w", err)
+		if peer.CurrentRevision() == currentRevision {
+			currentReplicas++
+		}
+		if peer.CurrentRevision() == updateRevision {
+			updateReplicas++
 		}
 	}
 
-	if !rtx.IsAvailable && !rtx.Suspended {
-		return task.Fail().With("pd group may not be available, requeue to retry")
+	return
+}
+
+func SetIfChanged[T comparable](dst *T, src T) bool {
+	if *dst != src {
+		*dst = src
+		return true
 	}
 
-	return task.Complete().With("status is synced")
+	return false
 }

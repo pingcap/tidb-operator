@@ -32,12 +32,13 @@ type ObjectList[T any] interface {
 }
 
 type (
-	PDInitializer = ResourceInitializer[*v1alpha1.PD]
+	PDInitializer = ResourceInitializer[v1alpha1.PD]
 
-	ClusterInitializer = ResourceInitializer[*v1alpha1.Cluster]
+	ClusterInitializer = ResourceInitializer[v1alpha1.Cluster]
 
-	PodInitializer     = ResourceInitializer[*corev1.Pod]
-	PDSliceInitializer = ResourceSliceInitializer[*v1alpha1.PD]
+	PodInitializer     = ResourceInitializer[corev1.Pod]
+	PDSliceInitializer = ResourceSliceInitializer[v1alpha1.PD]
+	PDGroupInitializer = ResourceInitializer[v1alpha1.PDGroup]
 )
 
 type PDStateInitializer interface {
@@ -62,6 +63,14 @@ type PodStateInitializer interface {
 
 type PodState interface {
 	Pod() *corev1.Pod
+}
+
+type PDGroupStateInitializer interface {
+	PDGroupInitializer() PDGroupInitializer
+}
+
+type PDGroupState interface {
+	PDGroup() *v1alpha1.PDGroup
 }
 
 type PDSliceStateInitializer interface {

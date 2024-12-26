@@ -30,7 +30,7 @@ func (f *fakeState[T]) Object() *T {
 	return f.obj
 }
 
-func (f *fakeState[T]) Initializer() ResourceInitializer[*T] {
+func (f *fakeState[T]) Initializer() ResourceInitializer[T] {
 	return NewResource(func(obj *T) { f.obj = obj }).
 		WithNamespace(Namespace(f.ns)).
 		WithName(Name(f.name)).
@@ -47,7 +47,7 @@ func (f *fakeSliceState[T]) Slice() []*T {
 	return f.objs
 }
 
-func (f *fakeSliceState[T]) Initializer() ResourceSliceInitializer[*T] {
+func (f *fakeSliceState[T]) Initializer() ResourceSliceInitializer[T] {
 	return NewResourceSlice(func(objs []*T) { f.objs = objs }).
 		WithNamespace(Namespace(f.ns)).
 		WithLabels(Labels(f.labels)).

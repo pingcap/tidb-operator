@@ -120,7 +120,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 			}()
 
 			changeTime := time.Now()
-			ginkgo.By("Change replica of the PDGroup")
+			ginkgo.By("Change config of the PDGroup")
 			f.Must(f.Client.Patch(ctx, pdg, patch))
 			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromPDGroup(pdg), changeTime, waiter.LongTaskTimeout))
 			f.WaitForPDGroupReady(ctx, pdg)
