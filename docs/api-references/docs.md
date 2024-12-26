@@ -3630,8 +3630,7 @@ bool
 <h3 id="backoffretrypolicy">BackoffRetryPolicy</h3>
 <p>
 (<em>Appears on:</em>
-<a href="#backupspec">BackupSpec</a>, 
-<a href="#compactspec">CompactSpec</a>)
+<a href="#backupspec">BackupSpec</a>)
 </p>
 <p>
 <p>BackoffRetryPolicy is the backoff retry policy, currently only valid for snapshot backup.
@@ -5598,11 +5597,9 @@ string
 </tr>
 <tr>
 <td>
-<code>backoffRetryPolicy</code></br>
+<code>maxRetryTimes</code></br>
 <em>
-<a href="#backoffretrypolicy">
-BackoffRetryPolicy
-</a>
+int32
 </em>
 </td>
 <td>
@@ -5883,11 +5880,9 @@ string
 </tr>
 <tr>
 <td>
-<code>backoffRetryPolicy</code></br>
+<code>maxRetryTimes</code></br>
 <em>
-<a href="#backoffretrypolicy">
-BackoffRetryPolicy
-</a>
+int32
 </em>
 </td>
 <td>
@@ -5947,6 +5942,7 @@ string
 </em>
 </td>
 <td>
+<p>State is the current state of the backup</p>
 </td>
 </tr>
 <tr>
@@ -5957,6 +5953,7 @@ string
 </em>
 </td>
 <td>
+<p>Progress is the progress of the backup</p>
 </td>
 </tr>
 <tr>
@@ -5967,6 +5964,7 @@ string
 </em>
 </td>
 <td>
+<p>Message is the error message of the backup</p>
 </td>
 </tr>
 </tbody>

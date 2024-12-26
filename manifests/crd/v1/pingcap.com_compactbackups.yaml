@@ -1154,18 +1154,6 @@ spec:
                   storageAccount:
                     type: string
                 type: object
-              backoffRetryPolicy:
-                properties:
-                  maxRetryTimes:
-                    default: 2
-                    type: integer
-                  minRetryDuration:
-                    default: 300s
-                    type: string
-                  retryTimeout:
-                    default: 30m
-                    type: string
-                type: object
               br:
                 properties:
                   checkRequirements:
@@ -2036,6 +2024,9 @@ spec:
                 - volume
                 - volumeMount
                 type: object
+              maxRetryTimes:
+                format: int32
+                type: integer
               podSecurityContext:
                 properties:
                   fsGroup:

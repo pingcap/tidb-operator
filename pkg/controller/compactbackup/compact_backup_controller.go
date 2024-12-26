@@ -45,8 +45,8 @@ import (
 type Controller struct {
 	deps *controller.Dependencies
 	// backups that need to be synced.
-	queue workqueue.RateLimitingInterface
-	cli   versioned.Interface
+	queue         workqueue.RateLimitingInterface
+	cli           versioned.Interface
 	statusUpdater controller.CompactStatusUpdaterInterface
 }
 
@@ -175,12 +175,12 @@ func (c *Controller) updateCompact(cur interface{}) {
 	ns := newBackup.GetNamespace()
 	name := newBackup.GetName()
 
-	if newBackup.Status.State == string(v1alpha1.BackupFailed){
+	if newBackup.Status.State == string(v1alpha1.BackupFailed) {
 		klog.Errorf("Backup %s/%s is failed, skip", ns, name)
 		return
 	}
 
-	if newBackup.Status.State == string(v1alpha1.BackupComplete){
+	if newBackup.Status.State == string(v1alpha1.BackupComplete) {
 		klog.Errorf("Backup %s/%s is complete, skip", ns, name)
 		return
 	}
@@ -259,7 +259,7 @@ func (c *Controller) sync(key string) (err error) {
 		return err
 	}
 
-	running,err := c.isCompactJobAlreadyRunning(compact) 
+	running, err := c.isCompactJobAlreadyRunning(compact)
 	if err != nil {
 		return err
 	}

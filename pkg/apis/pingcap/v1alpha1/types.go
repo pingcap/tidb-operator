@@ -3560,11 +3560,11 @@ type CompactSpec struct {
 
 type CompactStatus struct {
 	// State is the current state of the backup
-	State    string `json:"state,omitempty"`
+	State string `json:"state,omitempty"`
 	// Progress is the progress of the backup
 	Progress string `json:"progress,omitempty"`
 	// Message is the error message of the backup
-	Message  string `json:"message,omitempty"`
+	Message string `json:"message,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
