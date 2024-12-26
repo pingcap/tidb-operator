@@ -24,10 +24,11 @@ import (
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-func TaskService(state *ReconcileContext, c client.Client) task.Task {
+func TaskService(state common.PDGroupState, c client.Client) task.Task {
 	return task.NameTaskFunc("Service", func(ctx context.Context) task.Result {
 		pdg := state.PDGroup()
 

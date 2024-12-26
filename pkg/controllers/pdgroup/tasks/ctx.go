@@ -21,8 +21,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -30,14 +28,14 @@ import (
 type ReconcileContext struct {
 	State
 
-	PDClient pdapi.PDClient
-	Members  []Member
+	Members []Member
 
 	// mark pdgroup is bootstrapped if cache of pd is synced
 	IsBootstrapped bool
 
-	// Status fields
-	v1alpha1.CommonStatus
+	UpdateRevision  string
+	CurrentRevision string
+	CollisionCount  int32
 }
 
 // TODO: move to pdapi
@@ -59,7 +57,6 @@ func TaskContextPDClient(state *ReconcileContext, m pdm.PDClientManager) task.Ta
 		if !ok {
 			return task.Complete().With("context without pd client is completed, pd cannot be visited")
 		}
-		state.PDClient = pc.Underlay()
 
 		if !pc.HasSynced() {
 			return task.Complete().With("context without pd client is completed, cache of pd info is not synced")

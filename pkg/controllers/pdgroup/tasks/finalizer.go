@@ -17,26 +17,31 @@ package tasks
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilerr "k8s.io/apimachinery/pkg/util/errors"
 
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/controllers/common"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-func TaskFinalizerDel(state *ReconcileContext, c client.Client, m pdm.PDClientManager) task.Task {
+func TaskFinalizerDel(state State, c client.Client, m pdm.PDClientManager) task.Task {
 	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
-		errList := []error{}
+		var errList []error
 		for _, peer := range state.PDSlice() {
-			if err := c.Delete(ctx, peer); err != nil {
-				if errors.IsNotFound(err) {
+			if peer.GetDeletionTimestamp().IsZero() {
+				if err := c.Delete(ctx, peer); err != nil {
+					if errors.IsNotFound(err) {
+						continue
+					}
+
+					errList = append(errList, err)
 					continue
 				}
-
-				errList = append(errList, err)
-				continue
 			}
 
 			// PD controller cannot clean up finalizer after quorum is lost
@@ -51,12 +56,15 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client, m pdm.PDClientMa
 		}
 
 		if len(state.PDSlice()) != 0 {
-			return task.Fail().With("wait for all pd instances being removed, %v still exists", len(state.PDSlice()))
+			return task.Wait().With("wait for all pd instances being removed, %v still exists", len(state.PDSlice()))
 		}
 
-		if err := k8s.EnsureGroupSubResourceDeleted(ctx, c,
-			state.PDGroup().Namespace, state.PDGroup().Name); err != nil {
+		wait, err := k8s.DeleteGroupSubresource(ctx, c, runtime.FromPDGroup(state.PDGroup()), &corev1.ServiceList{})
+		if err != nil {
 			return task.Fail().With("cannot delete subresources: %w", err)
+		}
+		if wait {
+			return task.Wait().With("wait all subresources deleted")
 		}
 
 		if err := k8s.RemoveFinalizer(ctx, c, state.PDGroup()); err != nil {
@@ -69,7 +77,7 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client, m pdm.PDClientMa
 	})
 }
 
-func TaskFinalizerAdd(state *ReconcileContext, c client.Client) task.Task {
+func TaskFinalizerAdd(state common.PDGroupState, c client.Client) task.Task {
 	return task.NameTaskFunc("FinalizerAdd", func(ctx context.Context) task.Result {
 		if err := k8s.EnsureFinalizer(ctx, c, state.PDGroup()); err != nil {
 			return task.Fail().With("failed to ensure finalizer has been added: %v", err)

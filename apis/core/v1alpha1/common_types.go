@@ -294,9 +294,9 @@ type GroupStatus struct {
 	// indicated by currentRevision.
 	CurrentReplicas int32 `json:"currentReplicas"`
 
-	// UpdateReplicas is the number of Instances created by the Group controller from the Group version
+	// UpdatedReplicas is the number of Instances created by the Group controller from the Group version
 	// indicated by updateRevision.
-	UpdateReplicas int32 `json:"updateReplicas"`
+	UpdatedReplicas int32 `json:"updatedReplicas"`
 }
 
 type UpdateStrategy struct {

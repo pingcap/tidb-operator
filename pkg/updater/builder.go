@@ -15,6 +15,8 @@
 package updater
 
 import (
+	"fmt"
+
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
@@ -56,6 +58,7 @@ type builder[PT runtime.Instance] struct {
 
 func (b *builder[PT]) Build() Executor {
 	update, outdated := split(b.instances, b.rev)
+
 	updatePolicies := b.updatePreferPolicies
 	updatePolicies = append(updatePolicies, PreferUnavailable[PT]())
 	actor := &actor[PT]{
@@ -147,6 +150,7 @@ func split[PT runtime.Instance](all []PT, rev string) (update, outdated []PT) {
 		if !instance.GetDeletionTimestamp().IsZero() {
 			continue
 		}
+		fmt.Println("split:", instance.GetName(), instance.GetUpdateRevision(), rev)
 		if instance.GetUpdateRevision() == rev {
 			update = append(update, instance)
 		} else {

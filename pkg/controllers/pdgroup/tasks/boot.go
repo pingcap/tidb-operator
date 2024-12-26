@@ -23,15 +23,14 @@ import (
 func TaskBoot(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Boot", func(ctx context.Context) task.Result {
 		pdg := state.PDGroup()
-		if state.IsBootstrapped && !pdg.Spec.Bootstrapped {
+		if !state.IsBootstrapped && !pdg.Spec.Bootstrapped {
+			return task.Wait().With("skip the task and wait until the pd svc is available")
+		}
+		if !pdg.Spec.Bootstrapped {
 			pdg.Spec.Bootstrapped = true
 			if err := c.Update(ctx, pdg); err != nil {
 				return task.Fail().With("pd cluster is available but not marked as bootstrapped: %w", err)
 			}
-		}
-
-		if !pdg.Spec.Bootstrapped {
-			return task.Wait().With("pd cluster is not bootstrapped")
 		}
 
 		return task.Complete().With("pd cluster is bootstrapped")

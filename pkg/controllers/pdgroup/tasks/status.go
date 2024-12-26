@@ -25,7 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-func TaskStatusSuspend(state *ReconcileContext, c client.Client) task.Task {
+func TaskStatusSuspend(state State, c client.Client) task.Task {
 	return task.NameTaskFunc("StatusSuspend", func(ctx context.Context) task.Result {
 		suspendStatus := metav1.ConditionFalse
 		suspendMessage := "pd group is suspending"
@@ -66,14 +66,12 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Status", func(ctx context.Context) task.Result {
 		pdg := state.PDGroup()
 
-		suspendStatus := metav1.ConditionFalse
-		suspendMessage := "pd group is not suspended"
 		needUpdate := meta.SetStatusCondition(&pdg.Status.Conditions, metav1.Condition{
 			Type:               v1alpha1.PDGroupCondSuspended,
-			Status:             suspendStatus,
+			Status:             metav1.ConditionFalse,
 			ObservedGeneration: pdg.Generation,
 			Reason:             v1alpha1.PDGroupSuspendReason,
-			Message:            suspendMessage,
+			Message:            "pd group is not suspended",
 		})
 
 		replicas, readyReplicas, updateReplicas, currentReplicas := calcReplicas(state.PDSlice(), state.CurrentRevision, state.UpdateRevision)
@@ -91,11 +89,11 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		needUpdate = SetIfChanged(&pdg.Status.ObservedGeneration, pdg.Generation) || needUpdate
 		needUpdate = SetIfChanged(&pdg.Status.Replicas, replicas) || needUpdate
 		needUpdate = SetIfChanged(&pdg.Status.ReadyReplicas, readyReplicas) || needUpdate
-		needUpdate = SetIfChanged(&pdg.Status.UpdateReplicas, updateReplicas) || needUpdate
+		needUpdate = SetIfChanged(&pdg.Status.UpdatedReplicas, updateReplicas) || needUpdate
 		needUpdate = SetIfChanged(&pdg.Status.CurrentReplicas, currentReplicas) || needUpdate
-		needUpdate = SetIfChanged(&pdg.Status.CurrentRevision, state.CurrentRevision) || needUpdate
 		needUpdate = SetIfChanged(&pdg.Status.UpdateRevision, state.UpdateRevision) || needUpdate
-		needUpdate = SetIfChanged(&pdg.Status.CollisionCount, state.CollisionCount) || needUpdate
+		needUpdate = SetIfChanged(&pdg.Status.CurrentRevision, state.CurrentRevision) || needUpdate
+		needUpdate = NewAndSetIfChanged(&pdg.Status.CollisionCount, state.CollisionCount) || needUpdate
 
 		if needUpdate {
 			if err := c.Status().Update(ctx, pdg); err != nil {
@@ -131,6 +129,17 @@ func calcReplicas(pds []*v1alpha1.PD, currentRevision, updateRevision string) (
 	}
 
 	return
+}
+
+func NewAndSetIfChanged[T comparable](dst **T, src T) bool {
+	if *dst == nil {
+		zero := new(T)
+		if *zero == src {
+			return false
+		}
+		*dst = zero
+	}
+	return SetIfChanged(*dst, src)
 }
 
 func SetIfChanged[T comparable](dst *T, src T) bool {

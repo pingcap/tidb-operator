@@ -16,6 +16,7 @@ package updater
 
 import (
 	"context"
+	"fmt"
 )
 
 type Actor interface {
@@ -52,6 +53,15 @@ func NewExecutor(
 	maxSurge,
 	maxUnavailable int,
 ) Executor {
+	fmt.Println(
+		"update:", update,
+		"outdated:", outdated,
+		"desired:", desired,
+		"unavailableUpdate:", unavailableUpdate,
+		"unavailableOutdated:", unavailableOutdated,
+		"maxSurge", maxSurge,
+		"maxUnavailable", maxUnavailable,
+	)
 	return &executor{
 		update:              update,
 		outdated:            outdated,

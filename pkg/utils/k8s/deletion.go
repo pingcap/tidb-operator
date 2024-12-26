@@ -127,13 +127,47 @@ func DeleteInstanceSubresource[T runtime.Instance](
 	objs client.ObjectList,
 	opts ...client.DeleteOption,
 ) (wait bool, _ error) {
-	if err := c.List(ctx, objs, client.InNamespace(instance.GetNamespace()), client.MatchingLabels{
+	wait, err := deleteSubresource(ctx, c, instance.GetNamespace(), objs, map[string]string{
 		v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
 		v1alpha1.LabelKeyInstance:  instance.GetName(),
 		v1alpha1.LabelKeyCluster:   instance.Cluster(),
 		v1alpha1.LabelKeyComponent: instance.Component(),
-	}); err != nil {
-		return false, fmt.Errorf("failed to list %T for instance %s/%s: %w", objs, instance.GetNamespace(), instance.GetName(), err)
+	}, opts...)
+	if err != nil {
+		return false, fmt.Errorf("cannot delete sub resource for instance %s/%s: %w", instance.GetNamespace(), instance.GetName(), err)
+	}
+	return wait, nil
+}
+
+func DeleteGroupSubresource[T runtime.Group](
+	ctx context.Context,
+	c client.Client,
+	group T,
+	objs client.ObjectList,
+	opts ...client.DeleteOption,
+) (wait bool, _ error) {
+	wait, err := deleteSubresource(ctx, c, group.GetNamespace(), objs, map[string]string{
+		v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+		v1alpha1.LabelKeyCluster:   group.Cluster(),
+		v1alpha1.LabelKeyComponent: group.Component(),
+		v1alpha1.LabelKeyGroup:     group.GetName(),
+	}, opts...)
+	if err != nil {
+		return false, fmt.Errorf("cannot delete sub resource for group %s/%s: %w", group.GetNamespace(), group.GetName(), err)
+	}
+	return wait, nil
+}
+
+func deleteSubresource(
+	ctx context.Context,
+	c client.Client,
+	ns string,
+	objs client.ObjectList,
+	labels map[string]string,
+	opts ...client.DeleteOption,
+) (wait bool, _ error) {
+	if err := c.List(ctx, objs, client.InNamespace(ns), client.MatchingLabels(labels)); err != nil {
+		return false, fmt.Errorf("failed to list %T in %s: %w", objs, ns, err)
 	}
 
 	if meta.LenList(objs) == 0 {
@@ -142,12 +176,12 @@ func DeleteInstanceSubresource[T runtime.Instance](
 
 	items, err := meta.ExtractList(objs)
 	if err != nil {
-		return false, fmt.Errorf("failed to extract %T for instance %s/%s: %w", objs, instance.GetNamespace(), instance.GetName(), err)
+		return false, fmt.Errorf("failed to extract %T: %w", objs, err)
 	}
 	for _, item := range items {
 		obj, ok := item.(client.Object)
 		if !ok {
-			return false, fmt.Errorf("unexpected %T for instance %s/%s", item, instance.GetNamespace(), instance.GetName())
+			return false, fmt.Errorf("unexpected %T", item)
 		}
 		if !obj.GetDeletionTimestamp().IsZero() {
 			wait = true
@@ -155,11 +189,9 @@ func DeleteInstanceSubresource[T runtime.Instance](
 		}
 		if err := c.Delete(ctx, obj, opts...); err != nil {
 			if !errors.IsNotFound(err) {
-				return false, fmt.Errorf("failed to delete sub resource %s/%s of instance %s/%s: %w",
+				return false, fmt.Errorf("failed to delete sub resource %s/%s: %w",
 					obj.GetNamespace(),
 					obj.GetName(),
-					instance.GetNamespace(),
-					instance.GetName(),
 					err,
 				)
 			}

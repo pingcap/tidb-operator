@@ -52,7 +52,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 
 		selector := labels.SelectorFromSet(labels.Set{
 			// TODO(liubo02): add label of managed by operator ?
-			v1alpha1.LabelKeyCluster:   state.Cluster().Name,
+			v1alpha1.LabelKeyCluster:   pdg.Spec.Cluster.Name,
 			v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
 			v1alpha1.LabelKeyGroup:     pdg.Name,
 		})
@@ -78,8 +78,9 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 		}
 		state.CurrentRevision = currentRevision.Name
 		state.UpdateRevision = updateRevision.Name
-		state.CollisionCount = &collisionCount
+		state.CollisionCount = collisionCount
 
+		// TODO(liubo02): add a controller to do it
 		if err = revision.TruncateHistory(historyCli, state.PDSlice(), revisions,
 			currentRevision, updateRevision, state.Cluster().Spec.RevisionHistoryLimit); err != nil {
 			logger.Error(err, "failed to truncate history")
@@ -143,7 +144,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			return task.Fail().With("cannot update instances: %w", err)
 		}
 		if wait {
-			return task.Complete().With("wait for all instances ready")
+			return task.Wait().With("wait for all instances ready")
 		}
 		return task.Complete().With("all instances are synced")
 	})
