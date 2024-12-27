@@ -118,7 +118,7 @@ func CacheKeys(pdg *v1alpha1.PDGroup) ([]string, error) {
 	return keys, nil
 }
 
-func NewUnderlayClientFunc(c client.Client) timanager.NewUnderlayClientFunc[*v1alpha1.PDGroup, pdapi.PDClient] {
+var NewUnderlayClientFunc = func(c client.Client) timanager.NewUnderlayClientFunc[*v1alpha1.PDGroup, pdapi.PDClient] {
 	return func(pdg *v1alpha1.PDGroup) (pdapi.PDClient, error) {
 		ctx := context.Background()
 		var cluster v1alpha1.Cluster
