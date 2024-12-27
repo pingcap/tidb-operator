@@ -29,7 +29,7 @@ func HeadlessServiceName(groupName string) string {
 
 func NotLeaderPolicy() updater.PreferPolicy[*runtime.PD] {
 	return updater.PreferPolicyFunc[*runtime.PD](func(pds []*runtime.PD) []*runtime.PD {
-		notLeader := []*runtime.PD{}
+		var notLeader []*runtime.PD
 		for _, pd := range pds {
 			if !pd.Status.IsLeader {
 				notLeader = append(notLeader, pd)

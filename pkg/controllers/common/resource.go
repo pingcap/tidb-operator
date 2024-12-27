@@ -82,7 +82,7 @@ func (f SetFunc[T]) Set(obj T) {
 
 type ResourceInitializer[T any] interface {
 	GetOptions
-	Setter[T]
+	Setter[*T]
 }
 
 type Resource[T any] interface {
@@ -91,19 +91,19 @@ type Resource[T any] interface {
 	Initializer() ResourceInitializer[T]
 }
 
-func NewResource[T any](setter SetFunc[T]) Resource[T] {
+func NewResource[T any](setter SetFunc[*T]) Resource[T] {
 	return &resource[T]{
 		setter: setter,
 	}
 }
 
 type resource[T any] struct {
-	setter Setter[T]
+	setter Setter[*T]
 	ns     NamespaceOption
 	name   NameOption
 }
 
-func (r *resource[T]) Set(obj T) {
+func (r *resource[T]) Set(obj *T) {
 	r.setter.Set(obj)
 }
 
@@ -131,7 +131,7 @@ func (r *resource[T]) Initializer() ResourceInitializer[T] {
 
 type ResourceSliceInitializer[T any] interface {
 	ListOptions
-	Setter[[]T]
+	Setter[[]*T]
 }
 
 type ResourceSlice[T any] interface {
@@ -140,7 +140,7 @@ type ResourceSlice[T any] interface {
 	Initializer() ResourceSliceInitializer[T]
 }
 
-func NewResourceSlice[T any](setter SetFunc[[]T]) ResourceSlice[T] {
+func NewResourceSlice[T any](setter SetFunc[[]*T]) ResourceSlice[T] {
 	return &resourceSlice[T]{
 		setter: setter,
 	}
@@ -149,7 +149,7 @@ func NewResourceSlice[T any](setter SetFunc[[]T]) ResourceSlice[T] {
 type resourceSlice[T any] struct {
 	ns     NamespaceOption
 	labels LabelsOption
-	setter Setter[[]T]
+	setter Setter[[]*T]
 }
 
 func (r *resourceSlice[T]) Namespace() string {
@@ -160,7 +160,7 @@ func (r *resourceSlice[T]) Labels() map[string]string {
 	return r.labels.Labels()
 }
 
-func (r *resourceSlice[T]) Set(objs []T) {
+func (r *resourceSlice[T]) Set(objs []*T) {
 	r.setter.Set(objs)
 }
 

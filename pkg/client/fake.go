@@ -89,6 +89,9 @@ var _ client.WithWatch = &fakeUnderlayClient{}
 func newFakeUnderlayClient(objs ...client.Object) *fakeUnderlayClient {
 	t := testing.NewObjectTracker(scheme.Scheme, scheme.Codecs.UniversalDecoder())
 	for _, obj := range objs {
+		if obj == nil {
+			continue
+		}
 		if err := t.Add(obj); err != nil {
 			panic(err)
 		}
@@ -432,7 +435,40 @@ func (*SubResourceClient) Create(_ context.Context, _, _ client.Object, _ ...cli
 	return nil
 }
 
-func (*SubResourceClient) Update(_ context.Context, _ client.Object, _ ...client.SubResourceUpdateOption) error {
+func (c *SubResourceClient) Update(_ context.Context, obj client.Object, _ ...client.SubResourceUpdateOption) error {
+	gvk, err := apiutil.GVKForObject(obj, c.scheme)
+	if err != nil {
+		return err
+	}
+
+	namespaced, err := apiutil.IsGVKNamespaced(gvk, c.restMapper)
+	if err != nil {
+		return err
+	}
+
+	mapping, err := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+	if err != nil {
+		return err
+	}
+
+	var action testing.UpdateAction
+	if namespaced {
+		action = testing.NewUpdateSubresourceAction(mapping.Resource, c.subResource, obj.GetNamespace(), obj)
+	} else {
+		action = testing.NewRootUpdateSubresourceAction(mapping.Resource, c.subResource, obj)
+	}
+	newObj, err := c.Invokes(action, nil)
+	if err != nil {
+		return err
+	}
+	if newObj == nil {
+		return fmt.Errorf("obj is not handled")
+	}
+
+	nv := reflect.ValueOf(newObj).Elem()
+	v := reflect.ValueOf(obj).Elem()
+	v.Set(nv)
+
 	return nil
 }
 

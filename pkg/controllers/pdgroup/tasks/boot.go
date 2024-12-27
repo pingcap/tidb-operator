@@ -5,7 +5,6 @@
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,42 +14,25 @@
 package tasks
 
 import (
-	"github.com/go-logr/logr"
+	"context"
 
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/utils/task"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-type TaskBoot struct {
-	Logger logr.Logger
-	Client client.Client
-}
-
-func NewTaskBoot(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
-	return &TaskBoot{
-		Logger: logger,
-		Client: c,
-	}
-}
-
-func (*TaskBoot) Name() string {
-	return "Boot"
-}
-
-func (t *TaskBoot) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
-
-	if rtx.IsAvailable && !rtx.PDGroup.Spec.Bootstrapped {
-		rtx.PDGroup.Spec.Bootstrapped = true
-		if err := t.Client.Update(ctx, rtx.PDGroup); err != nil {
-			return task.Fail().With("pd cluster is available but not marked as bootstrapped: %w", err)
+func TaskBoot(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("Boot", func(ctx context.Context) task.Result {
+		pdg := state.PDGroup()
+		if !state.IsBootstrapped && !pdg.Spec.Bootstrapped {
+			return task.Wait().With("skip the task and wait until the pd svc is available")
 		}
-	}
+		if !pdg.Spec.Bootstrapped {
+			pdg.Spec.Bootstrapped = true
+			if err := c.Update(ctx, pdg); err != nil {
+				return task.Fail().With("pd cluster is available but not marked as bootstrapped: %w", err)
+			}
+		}
 
-	if !rtx.PDGroup.Spec.Bootstrapped {
-		// TODO: use task.Retry?
-		return task.Fail().Continue().With("pd cluster is not bootstrapped")
-	}
-
-	return task.Complete().With("pd cluster is bootstrapped")
+		return task.Complete().With("pd cluster is bootstrapped")
+	})
 }

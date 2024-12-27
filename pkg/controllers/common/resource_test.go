@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/utils/ptr"
 )
 
 func TestResource(t *testing.T) {
@@ -56,14 +57,14 @@ func TestResource(t *testing.T) {
 			tt.Parallel()
 
 			var obj int
-			r := NewResource(func(t int) {
-				obj = t
+			r := NewResource(func(t *int) {
+				obj = *t
 			}).
 				WithNamespace(c.ns).
 				WithName(c.name).
 				Initializer()
 
-			r.Set(c.obj)
+			r.Set(&c.obj)
 
 			assert.Equal(tt, c.expectedNs, r.Namespace(), c.desc)
 			assert.Equal(tt, c.expectedName, r.Name(), c.desc)
@@ -77,32 +78,32 @@ func TestResourceSlice(t *testing.T) {
 		desc           string
 		ns             NamespaceOption
 		labels         LabelsOption
-		objs           []int
+		objs           []*int
 		expectedNs     string
 		expectedLabels map[string]string
-		expectedObjs   []int
+		expectedObjs   []*int
 	}{
 		{
 			desc:       "normal",
 			ns:         Namespace("aaa"),
 			labels:     Labels(map[string]string{"xxx": "yyy"}),
-			objs:       []int{42},
+			objs:       []*int{ptr.To(42)},
 			expectedNs: "aaa",
 			expectedLabels: map[string]string{
 				"xxx": "yyy",
 			},
-			expectedObjs: []int{42},
+			expectedObjs: []*int{ptr.To(42)},
 		},
 		{
 			desc:       "use func",
 			ns:         NameFunc(func() string { return "aaa" }),
 			labels:     LabelsFunc(func() map[string]string { return map[string]string{"xxx": "yyy"} }),
-			objs:       []int{42},
+			objs:       []*int{ptr.To(42)},
 			expectedNs: "aaa",
 			expectedLabels: map[string]string{
 				"xxx": "yyy",
 			},
-			expectedObjs: []int{42},
+			expectedObjs: []*int{ptr.To(42)},
 		},
 	}
 
@@ -111,8 +112,8 @@ func TestResourceSlice(t *testing.T) {
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
-			var objs []int
-			r := NewResourceSlice(func(t []int) {
+			var objs []*int
+			r := NewResourceSlice(func(t []*int) {
 				objs = t
 			}).
 				WithNamespace(c.ns).
