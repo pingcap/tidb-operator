@@ -39,3 +39,15 @@ func CondClusterIsPaused(ctx ClusterState) task.Condition {
 		return ctx.Cluster().ShouldPauseReconcile()
 	})
 }
+
+func CondPDGroupHasBeenDeleted(ctx PDGroupState) task.Condition {
+	return task.CondFunc(func() bool {
+		return ctx.PDGroup() == nil
+	})
+}
+
+func CondPDGroupIsDeleting(ctx PDGroupState) task.Condition {
+	return task.CondFunc(func() bool {
+		return !ctx.PDGroup().GetDeletionTimestamp().IsZero()
+	})
+}

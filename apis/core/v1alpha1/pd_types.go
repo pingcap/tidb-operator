@@ -230,7 +230,7 @@ func (in *PD) CollisionCount() *int32 {
 }
 
 func (in *PD) IsHealthy() bool {
-	return meta.IsStatusConditionTrue(in.Status.Conditions, PDCondInitialized) && meta.IsStatusConditionTrue(in.Status.Conditions, PDCondHealth) && in.DeletionTimestamp.IsZero()
+	return meta.IsStatusConditionTrue(in.Status.Conditions, PDCondHealth) && in.DeletionTimestamp.IsZero()
 }
 
 func (in *PD) GetClientPort() int32 {

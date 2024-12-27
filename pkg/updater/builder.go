@@ -56,6 +56,7 @@ type builder[PT runtime.Instance] struct {
 
 func (b *builder[PT]) Build() Executor {
 	update, outdated := split(b.instances, b.rev)
+
 	updatePolicies := b.updatePreferPolicies
 	updatePolicies = append(updatePolicies, PreferUnavailable[PT]())
 	actor := &actor[PT]{

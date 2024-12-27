@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -27,7 +26,6 @@ import (
 type ReconcileContext struct {
 	// TODO: replace all fields in ReconcileContext by State
 	State
-	Key types.NamespacedName
 
 	PDClient pdm.PDClient
 	// this means whether pd is available

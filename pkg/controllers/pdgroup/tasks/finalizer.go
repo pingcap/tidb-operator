@@ -15,80 +15,73 @@
 package tasks
 
 import (
-	"github.com/go-logr/logr"
+	"context"
+
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilerr "k8s.io/apimachinery/pkg/util/errors"
 
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/controllers/common"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
-	"github.com/pingcap/tidb-operator/pkg/utils/task"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-type TaskFinalizer struct {
-	Client          client.Client
-	Logger          logr.Logger
-	PDClientManager pdm.PDClientManager
-}
+func TaskFinalizerDel(state State, c client.Client, m pdm.PDClientManager) task.Task {
+	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
+		var errList []error
+		for _, peer := range state.PDSlice() {
+			if peer.GetDeletionTimestamp().IsZero() {
+				if err := c.Delete(ctx, peer); err != nil {
+					if errors.IsNotFound(err) {
+						continue
+					}
 
-func NewTaskFinalizer(logger logr.Logger, c client.Client, pdcm pdm.PDClientManager) task.Task[ReconcileContext] {
-	return &TaskFinalizer{
-		Client:          c,
-		Logger:          logger,
-		PDClientManager: pdcm,
-	}
-}
-
-func (*TaskFinalizer) Name() string {
-	return "Finalizer"
-}
-
-func (t *TaskFinalizer) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
-
-	if rtx.PDGroup.GetDeletionTimestamp().IsZero() {
-		if err := k8s.EnsureFinalizer(ctx, t.Client, rtx.PDGroup); err != nil {
-			return task.Fail().With("failed to ensure finalizer has been added: %w", err)
-		}
-		return task.Complete().With("finalizer is synced")
-	}
-
-	errList := []error{}
-	for _, peer := range rtx.Peers {
-		if err := t.Client.Delete(ctx, peer); err != nil {
-			if errors.IsNotFound(err) {
-				continue
+					errList = append(errList, err)
+					continue
+				}
 			}
 
-			errList = append(errList, err)
-			continue
+			// PD controller cannot clean up finalizer after quorum is lost
+			// Forcely clean up all finalizers of pd instances
+			if err := k8s.RemoveFinalizer(ctx, c, peer); err != nil {
+				errList = append(errList, err)
+			}
 		}
 
-		// PD controller cannot clean up finalizer after quorum is lost
-		// Forcely clean up all finalizers of pd instances
-		if err := k8s.RemoveFinalizer(ctx, t.Client, peer); err != nil {
-			errList = append(errList, err)
+		if len(errList) != 0 {
+			return task.Fail().With("failed to delete all pd instances: %v", utilerr.NewAggregate(errList))
 		}
-	}
 
-	if len(errList) != 0 {
-		return task.Fail().With("failed to delete all pd instances: %v", utilerr.NewAggregate(errList))
-	}
+		if len(state.PDSlice()) != 0 {
+			return task.Wait().With("wait for all pd instances being removed, %v still exists", len(state.PDSlice()))
+		}
 
-	if len(rtx.Peers) != 0 {
-		return task.Fail().With("wait for all pd instances being removed, %v still exists", rtx.Peers)
-	}
+		wait, err := k8s.DeleteGroupSubresource(ctx, c, runtime.FromPDGroup(state.PDGroup()), &corev1.ServiceList{})
+		if err != nil {
+			return task.Fail().With("cannot delete subresources: %w", err)
+		}
+		if wait {
+			return task.Wait().With("wait all subresources deleted")
+		}
 
-	if err := k8s.EnsureGroupSubResourceDeleted(ctx, t.Client,
-		rtx.PDGroup.Namespace, rtx.PDGroup.Name); err != nil {
-		return task.Fail().With("cannot delete subresources: %w", err)
-	}
+		if err := k8s.RemoveFinalizer(ctx, c, state.PDGroup()); err != nil {
+			return task.Fail().With("failed to ensure finalizer has been removed: %w", err)
+		}
 
-	if err := k8s.RemoveFinalizer(ctx, t.Client, rtx.PDGroup); err != nil {
-		return task.Fail().With("failed to ensure finalizer has been removed: %w", err)
-	}
+		m.Deregister(pdm.PrimaryKey(state.Cluster().Namespace, state.Cluster().Name))
 
-	t.PDClientManager.Deregister(pdm.PrimaryKey(rtx.PDGroup.Namespace, rtx.PDGroup.Spec.Cluster.Name))
+		return task.Complete().With("finalizer has been removed")
+	})
+}
 
-	return task.Complete().With("finalizer has been removed")
+func TaskFinalizerAdd(state common.PDGroupState, c client.Client) task.Task {
+	return task.NameTaskFunc("FinalizerAdd", func(ctx context.Context) task.Result {
+		if err := k8s.EnsureFinalizer(ctx, c, state.PDGroup()); err != nil {
+			return task.Fail().With("failed to ensure finalizer has been added: %v", err)
+		}
+		return task.Complete().With("finalizer is added")
+	})
 }
