@@ -52,6 +52,18 @@ func (f UpdateHookFunc[PT]) Update(update, outdated PT) PT {
 	return f(update, outdated)
 }
 
+type AddHookFunc[PT runtime.Instance] func(update PT) PT
+
+func (f AddHookFunc[PT]) Add(update PT) PT {
+	return f(update)
+}
+
+type DelHookFunc[PT runtime.Instance] func(name string)
+
+func (f DelHookFunc[PT]) Delete(name string) {
+	f(name)
+}
+
 type actor[PT runtime.Instance] struct {
 	c client.Client
 
