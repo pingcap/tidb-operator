@@ -15,8 +15,6 @@
 package updater
 
 import (
-	"fmt"
-
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
@@ -150,7 +148,6 @@ func split[PT runtime.Instance](all []PT, rev string) (update, outdated []PT) {
 		if !instance.GetDeletionTimestamp().IsZero() {
 			continue
 		}
-		fmt.Println("split:", instance.GetName(), instance.GetUpdateRevision(), rev)
 		if instance.GetUpdateRevision() == rev {
 			update = append(update, instance)
 		} else {
