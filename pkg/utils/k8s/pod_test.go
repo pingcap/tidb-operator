@@ -17,7 +17,10 @@ package k8s
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
@@ -30,6 +33,7 @@ func TestComparePods(t *testing.T) {
 		current  *corev1.Pod
 		expected *corev1.Pod
 		want     CompareResult
+		wantStr  string
 	}{
 		{
 			name: "test equal",
@@ -39,7 +43,8 @@ func TestComparePods(t *testing.T) {
 			expected: fake.FakeObj("pod",
 				fake.Label[corev1.Pod](v1alpha1.LabelKeyPodSpecHash, "foo"),
 			),
-			want: CompareResultEqual,
+			want:    CompareResultEqual,
+			wantStr: "Equal",
 		},
 		{
 			name: "revision should not be ignored",
@@ -51,7 +56,8 @@ func TestComparePods(t *testing.T) {
 				fake.Label[corev1.Pod](v1alpha1.LabelKeyPodSpecHash, "foo"),
 				fake.Label[corev1.Pod](v1alpha1.LabelKeyInstanceRevisionHash, "v1"),
 			),
-			want: CompareResultUpdate,
+			want:    CompareResultUpdate,
+			wantStr: "Update",
 		},
 		{
 			name: "only labels different",
@@ -65,7 +71,8 @@ func TestComparePods(t *testing.T) {
 				fake.Label[corev1.Pod]("test", "test"),
 				fake.Label[corev1.Pod](v1alpha1.LabelKeyInstanceRevisionHash, "v1"),
 			),
-			want: CompareResultUpdate,
+			want:    CompareResultUpdate,
+			wantStr: "Update",
 		},
 		{
 			name: "only annotations different",
@@ -79,7 +86,8 @@ func TestComparePods(t *testing.T) {
 				fake.Label[corev1.Pod]("test", "bar"),
 				fake.Annotation[corev1.Pod]("k1", "v2"),
 			),
-			want: CompareResultUpdate,
+			want:    CompareResultUpdate,
+			wantStr: "Update",
 		},
 		{
 			name: "test recreate",
@@ -89,13 +97,17 @@ func TestComparePods(t *testing.T) {
 			expected: fake.FakeObj("pod",
 				fake.Label[corev1.Pod](v1alpha1.LabelKeyPodSpecHash, "bar"),
 			),
-			want: CompareResultRecreate,
+			want:    CompareResultRecreate,
+			wantStr: "Recreate",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := ComparePods(tt.current, tt.expected); got != tt.want {
 				t.Errorf("ComparePods() = %v, want %v", got, tt.want)
+			}
+			if got := ComparePods(tt.current, tt.expected).String(); got != tt.wantStr {
+				t.Errorf("ComparePods() = %v, want %v", got, tt.wantStr)
 			}
 		})
 	}
@@ -121,4 +133,32 @@ func TestCalculateHashAndSetLabels(t *testing.T) {
 	if p1.Labels[v1alpha1.LabelKeyPodSpecHash] != p2.Labels[v1alpha1.LabelKeyPodSpecHash] {
 		t.Errorf("CalculateHashAndSetLabels() = %v, want %v", p1.Labels[v1alpha1.LabelKeyPodSpecHash], p2.Labels[v1alpha1.LabelKeyPodSpecHash])
 	}
+
+	// test for init container image change
+	p3 := p1.DeepCopy()
+	p3.Spec.InitContainers = []corev1.Container{{Name: "test", Image: "image:v1"}}
+	CalculateHashAndSetLabels(p3)
+	p4 := p3.DeepCopy()
+	p4.Spec.InitContainers = []corev1.Container{{Name: "test", Image: "image:v2"}}
+	CalculateHashAndSetLabels(p4)
+	if p3.Labels[v1alpha1.LabelKeyPodSpecHash] != p4.Labels[v1alpha1.LabelKeyPodSpecHash] {
+		t.Errorf("CalculateHashAndSetLabels() = %v, want %v", p3.Labels[v1alpha1.LabelKeyPodSpecHash], p4.Labels[v1alpha1.LabelKeyPodSpecHash])
+	}
+}
+
+func TestGetResourceRequirements(t *testing.T) {
+	cpu, err := resource.ParseQuantity("100m")
+	require.NoError(t, err)
+	memory, err := resource.ParseQuantity("100Mi")
+	require.NoError(t, err)
+	req := v1alpha1.ResourceRequirements{
+		CPU:    &cpu,
+		Memory: &memory,
+	}
+
+	res := GetResourceRequirements(req)
+	assert.Equal(t, res.Requests[corev1.ResourceCPU], cpu)
+	assert.Equal(t, res.Limits[corev1.ResourceCPU], cpu)
+	assert.Equal(t, res.Requests[corev1.ResourceMemory], memory)
+	assert.Equal(t, res.Limits[corev1.ResourceMemory], memory)
 }
