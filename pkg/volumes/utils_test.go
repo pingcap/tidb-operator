@@ -91,6 +91,20 @@ func TestSyncPVCs(t *testing.T) {
 			},
 		},
 		{
+			name: "pvc not bound",
+			existingObjs: []client.Object{
+				fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-0"),
+			},
+			expectPVCs: []*corev1.PersistentVolumeClaim{
+				fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-0", fake.Label[corev1.PersistentVolumeClaim]("foo", "bar")),
+			},
+			expectFunc: func(g *WithT, cli client.Client) {
+				var pvc corev1.PersistentVolumeClaim
+				g.Expect(cli.Get(context.TODO(), client.ObjectKey{Name: "pvc-0"}, &pvc)).To(Succeed())
+				g.Expect(pvc.Labels).To(BeEmpty())
+			},
+		},
+		{
 			name: "did not change PVC",
 			existingObjs: []client.Object{
 				fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-0", func(obj *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
@@ -132,5 +146,20 @@ func TestSyncPVCs(t *testing.T) {
 				tt.expectFunc(NewGomegaWithT(t), cli)
 			}
 		})
+	}
+}
+
+func TestUpgradeRevision(t *testing.T) {
+	// no revision before
+	pvc := fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-0")
+	upgradeRevision(pvc)
+	if pvc.Annotations[annoKeyPVCSpecRevision] != "1" {
+		t.Errorf("expect revision 1, got %s", pvc.Annotations[annoKeyPVCSpecRevision])
+	}
+
+	// has revision before
+	upgradeRevision(pvc)
+	if pvc.Annotations[annoKeyPVCSpecRevision] != "2" {
+		t.Errorf("expect revision 2, got %s", pvc.Annotations[annoKeyPVCSpecRevision])
 	}
 }

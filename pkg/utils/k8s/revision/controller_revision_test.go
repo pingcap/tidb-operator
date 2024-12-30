@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
 
@@ -187,6 +188,84 @@ func TestTruncateHistory(t *testing.T) {
 				if _, ok := m[r.Name]; !ok {
 					t.Errorf("expected revision %s not found", r.Name)
 				}
+			}
+		})
+	}
+}
+
+func TestGetCurrentAndUpdate(t *testing.T) {
+	pdg := &v1alpha1.PDGroup{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "basic",
+		},
+		Spec: v1alpha1.PDGroupSpec{
+			Cluster: v1alpha1.ClusterReference{
+				Name: "basic",
+			},
+			Replicas: ptr.To[int32](1),
+		},
+	}
+	rev1, err := newRevision(pdg, pdg.GVK(), 1, ptr.To[int32](0))
+	require.NoError(t, err)
+
+	pdg2 := pdg.DeepCopy()
+	pdg2.Spec.Replicas = ptr.To[int32](2)
+	rev2, err := newRevision(pdg2, pdg2.GVK(), 2, ptr.To[int32](0))
+	require.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		group          client.Object
+		revisions      []*appsv1.ControllerRevision
+		accessor       v1alpha1.ComponentAccessor
+		expectedCurRev string
+		expectedUpdRev string
+		expectedErr    bool
+	}{
+		{
+			name:           "no existing revisions",
+			group:          pdg,
+			revisions:      []*appsv1.ControllerRevision{},
+			accessor:       pdg,
+			expectedCurRev: "basic-687bcf9d45",
+			expectedUpdRev: "basic-687bcf9d45",
+			expectedErr:    false,
+		},
+		{
+			name:           "match the prior revision",
+			group:          pdg2,
+			revisions:      []*appsv1.ControllerRevision{rev1, rev2},
+			accessor:       pdg2,
+			expectedCurRev: "basic-5f5f578c9d",
+			expectedUpdRev: "basic-5f5f578c9d",
+			expectedErr:    false,
+		},
+		{
+			name:           "match an earlier revision",
+			group:          pdg,
+			revisions:      []*appsv1.ControllerRevision{rev1, rev2},
+			accessor:       pdg,
+			expectedCurRev: "basic-687bcf9d45",
+			expectedUpdRev: "basic-687bcf9d45",
+			expectedErr:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cli := &FakeHistoryClient{
+				Revisions: tt.revisions,
+				CreateFunc: func(_ client.Object, revision *appsv1.ControllerRevision, _ *int32) (*appsv1.ControllerRevision, error) {
+					return revision, nil
+				},
+			}
+			curRev, updRev, _, err := GetCurrentAndUpdate(tt.group, tt.revisions, cli, tt.accessor)
+			if tt.expectedErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expectedCurRev, curRev.Name)
+				assert.Equal(t, tt.expectedUpdRev, updRev.Name)
 			}
 		})
 	}

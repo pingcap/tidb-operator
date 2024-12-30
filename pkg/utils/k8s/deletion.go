@@ -59,66 +59,6 @@ func EnsureGroupSubResourceDeleted(ctx context.Context, cli client.Client,
 	return nil
 }
 
-// EnsureInstanceSubResourceDeleted ensures the sub resources of an instance are deleted.
-// It deletes the pod, pvc and configmap of the instance currently.
-// For pod and configmap, the name of the resource is the same as the instance name.
-// For pvc, it should contain the instance name as the value of the label "app.kubernetes.io/instance".
-// TODO: retain policy support
-// Deprecated: remove this function, prefer DeleteInstanceSubresource
-func EnsureInstanceSubResourceDeleted(ctx context.Context, cli client.Client,
-	namespace, name string, podOpts ...client.DeleteOption,
-) error {
-	var needWait bool // wait after we call delete on some resources
-	var pod corev1.Pod
-	if err := cli.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, &pod); err != nil {
-		if !errors.IsNotFound(err) {
-			return fmt.Errorf("failed to get pod %s/%s: %w", namespace, name, err)
-		}
-	} else {
-		if err := cli.Delete(ctx, &pod, podOpts...); err != nil {
-			return fmt.Errorf("failed to delete pod %s/%s: %w", namespace, name, err)
-		}
-		needWait = true
-	}
-
-	var cm corev1.ConfigMap
-	if err := cli.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, &cm); err != nil {
-		if !errors.IsNotFound(err) {
-			return fmt.Errorf("failed to get cm %s/%s: %w", namespace, name, err)
-		}
-	} else {
-		if err := cli.Delete(ctx, &cm); err != nil {
-			return fmt.Errorf("failed to delete cm %s/%s: %w", namespace, name, err)
-		}
-		needWait = true
-	}
-
-	var pvcList corev1.PersistentVolumeClaimList
-	if err := cli.List(ctx, &pvcList, client.InNamespace(namespace),
-		client.MatchingLabels{
-			v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-			v1alpha1.LabelKeyInstance:  name,
-		}); err != nil {
-		return fmt.Errorf("failed to list pvc %s/%s: %w", namespace, name, err)
-	}
-	for i := range pvcList.Items {
-		pvc := pvcList.Items[i]
-		if err := cli.Delete(ctx, &pvc); err != nil {
-			if !errors.IsNotFound(err) {
-				return fmt.Errorf("failed to delete pvc %s/%s: %w", namespace, pvc.Name, err)
-			}
-			continue
-		}
-		needWait = true
-	}
-
-	if needWait {
-		return fmt.Errorf("wait for all sub resources of %s/%s being removed", namespace, name)
-	}
-
-	return nil
-}
-
 // DeleteInstanceSubresource try to delete a subresource of an instance, e.g. pods, cms, pvcs
 func DeleteInstanceSubresource[I runtime.Instance](
 	ctx context.Context,

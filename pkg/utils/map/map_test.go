@@ -101,3 +101,70 @@ func TestCopy(t *testing.T) {
 		})
 	}
 }
+
+func TestAreEqual(t *testing.T) {
+	cases := []struct {
+		desc     string
+		map1     map[string]string
+		map2     map[string]string
+		expected bool
+	}{
+		{
+			desc:     "nil",
+			map1:     nil,
+			map2:     nil,
+			expected: true,
+		},
+		{
+			desc:     "empty",
+			map1:     map[string]string{},
+			map2:     map[string]string{},
+			expected: true,
+		},
+		{
+			desc: "equal",
+			map1: map[string]string{
+				"aa": "aa",
+				"bb": "bb",
+			},
+			map2: map[string]string{
+				"aa": "aa",
+				"bb": "bb",
+			},
+			expected: true,
+		},
+		{
+			desc: "not equal",
+			map1: map[string]string{
+				"aa": "aa",
+				"bb": "bb",
+			},
+			map2: map[string]string{
+				"aa": "aa",
+				"bb": "cc",
+			},
+			expected: false,
+		},
+		{
+			desc: "not equal",
+			map1: map[string]string{
+				"aa": "aa",
+				"bb": "bb",
+			},
+			map2: map[string]string{
+				"aa": "aa",
+			},
+			expected: false,
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			res := AreEqual(c.map1, c.map2)
+			assert.Equal(tt, c.expected, res)
+		})
+	}
+}
