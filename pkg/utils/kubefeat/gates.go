@@ -107,9 +107,13 @@ func NewFeatureGates(cfg *rest.Config) (Gates, error) {
 		return nil, fmt.Errorf("failed to get metrics: %w", err)
 	}
 
+	return parseFeatureGates(resp)
+}
+
+func parseFeatureGates(metrics []byte) (Gates, error) {
 	// Parse the metrics using Prometheus expfmt
 	parser := expfmt.TextParser{}
-	metricFamilies, err := parser.TextToMetricFamilies(bytes.NewReader(resp))
+	metricFamilies, err := parser.TextToMetricFamilies(bytes.NewReader(metrics))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse metrics: %w", err)
 	}
