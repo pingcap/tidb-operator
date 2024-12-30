@@ -33,7 +33,7 @@ func TestGetVersion(t *testing.T) {
 	assert.Equal(t, "2024-01-01T00:00:00Z", info.BuildDate)
 
 	kvs := info.KeysAndValues()
-	assert.Equal(t, 14, len(kvs))
+	assert.Len(t, kvs, 14)
 	assert.Equal(t, "gitVersion", kvs[0])
 	assert.Equal(t, "v2.0.0", kvs[1])
 	assert.Equal(t, "gitCommit", kvs[2])
