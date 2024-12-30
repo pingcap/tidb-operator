@@ -20,12 +20,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -392,6 +394,343 @@ func TestTaskSuspendPod(t *testing.T) {
 			if !c.unexpectedErr {
 				assert.Equal(tt, c.expectedObj, c.state.obj, c.desc)
 			}
+		})
+	}
+}
+
+func TestTaskGroupFinalizerAdd(t *testing.T) {
+	t.Run("PDGroup", testTaskGroupFinalizerAdd[runtime.PDGroupTuple])
+	t.Run("TiKVGroup", testTaskGroupFinalizerAdd[runtime.TiKVGroupTuple])
+	t.Run("TiDBGroup", testTaskGroupFinalizerAdd[runtime.TiDBGroupTuple])
+	t.Run("TiFlashGroup", testTaskGroupFinalizerAdd[runtime.TiFlashGroupTuple])
+}
+
+func testTaskGroupFinalizerAdd[
+	GT runtime.GroupTuple[OG, RG],
+	OG client.Object,
+	RG runtime.GroupT[G],
+	G runtime.GroupSet,
+](t *testing.T) {
+	cases := []struct {
+		desc          string
+		state         GroupState[RG]
+		unexpectedErr bool
+
+		expectedStatus task.Status
+		expectedObj    RG
+	}{
+		{
+			desc: "no finalizer",
+			state: FakeGroupState(
+				fake.Fake(func(obj RG) RG {
+					obj.SetName("aaa")
+					return obj
+				}),
+			),
+			expectedStatus: task.SComplete,
+			expectedObj: fake.Fake(func(obj RG) RG {
+				obj.SetName("aaa")
+				obj.SetFinalizers([]string{v1alpha1.Finalizer})
+				return obj
+			}),
+		},
+		{
+			desc: "no finalizer and cannot call api",
+			state: FakeGroupState(
+				fake.Fake(func(obj RG) RG {
+					obj.SetName("aaa")
+					return obj
+				}),
+			),
+			unexpectedErr:  true,
+			expectedStatus: task.SFail,
+		},
+		{
+			desc: "has another finalizer",
+			state: FakeGroupState(
+				fake.Fake(func(obj RG) RG {
+					obj.SetName("aaa")
+					obj.SetFinalizers(append(obj.GetFinalizers(), "xxxx"))
+					return obj
+				}),
+			),
+			expectedStatus: task.SComplete,
+			expectedObj: fake.Fake(func(obj RG) RG {
+				obj.SetName("aaa")
+				obj.SetFinalizers(append(obj.GetFinalizers(), "xxxx", v1alpha1.Finalizer))
+				return obj
+			}),
+		},
+		{
+			desc: "already has the finalizer",
+			state: FakeGroupState(
+				fake.Fake(func(obj RG) RG {
+					obj.SetName("aaa")
+					obj.SetFinalizers(append(obj.GetFinalizers(), v1alpha1.Finalizer))
+					return obj
+				}),
+			),
+			expectedStatus: task.SComplete,
+			expectedObj: fake.Fake(func(obj RG) RG {
+				obj.SetName("aaa")
+				obj.SetFinalizers(append(obj.GetFinalizers(), v1alpha1.Finalizer))
+				return obj
+			}),
+		},
+		{
+			desc: "already has the finalizer and cannot call api",
+			state: FakeGroupState(
+				fake.Fake(func(obj RG) RG {
+					obj.SetName("aaa")
+					obj.SetFinalizers(append(obj.GetFinalizers(), v1alpha1.Finalizer))
+					return obj
+				}),
+			),
+			unexpectedErr:  true,
+			expectedStatus: task.SComplete,
+		},
+	}
+
+	var gt GT
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			fc := client.NewFakeClient(gt.To(c.state.Group()))
+			if c.unexpectedErr {
+				fc.WithError("*", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
+			}
+
+			ctx := context.Background()
+			res, done := task.RunTask(ctx, TaskGroupFinalizerAdd[GT](c.state, fc))
+			assert.Equal(tt, c.expectedStatus, res.Status(), c.desc)
+			assert.False(tt, done, c.desc)
+
+			// no need to check update result
+			if c.unexpectedErr {
+				return
+			}
+
+			obj := gt.To(new(G))
+			require.NoError(tt, fc.Get(ctx, client.ObjectKey{Name: "aaa"}, obj), c.desc)
+			assert.Equal(tt, c.expectedObj, gt.From(obj), c.desc)
+		})
+	}
+}
+
+func TestTaskGroupStatusSuspend(t *testing.T) {
+	t.Run("PDGroup", testTaskGroupStatusSuspend[runtime.PDGroupTuple, runtime.PD])
+	t.Run("TiKVGroup", testTaskGroupStatusSuspend[runtime.TiKVGroupTuple, runtime.TiKV])
+	t.Run("TiDBGroup", testTaskGroupStatusSuspend[runtime.TiDBGroupTuple, runtime.TiDB])
+	t.Run("TiFlashGroup", testTaskGroupStatusSuspend[runtime.TiFlashGroupTuple, runtime.TiFlash])
+}
+
+func testTaskGroupStatusSuspend[
+	GT runtime.GroupTuple[OG, RG],
+	I runtime.InstanceSet,
+	OG client.Object,
+	RG runtime.GroupT[G],
+	G runtime.GroupSet,
+	RI runtime.InstanceT[I],
+](t *testing.T) {
+	cases := []struct {
+		desc          string
+		state         GroupAndInstanceSliceState[RG, RI]
+		unexpectedErr bool
+
+		expectedStatus task.Status
+		expectedObj    RG
+	}{
+		{
+			desc: "no instance",
+			state: FakeGroupAndInstanceSliceState[RG, RI](
+				fake.Fake(func(obj RG) RG {
+					obj.SetName("aaa")
+					obj.SetGeneration(3)
+					return obj
+				}),
+			),
+
+			expectedStatus: task.SComplete,
+			expectedObj: fake.Fake(func(obj RG) RG {
+				obj.SetName("aaa")
+				obj.SetGeneration(3)
+				obj.SetObservedGeneration(3)
+				obj.SetConditions([]metav1.Condition{
+					{
+						Type:               v1alpha1.CondSuspended,
+						Status:             metav1.ConditionTrue,
+						ObservedGeneration: 3,
+						Reason:             v1alpha1.ReasonSuspended,
+						Message:            "group is suspended",
+					},
+				})
+				return obj
+			}),
+		},
+		{
+			desc: "all instances are suspended",
+			state: FakeGroupAndInstanceSliceState(
+				fake.Fake(func(obj RG) RG {
+					obj.SetName("aaa")
+					obj.SetGeneration(3)
+					return obj
+				}),
+				fake.Fake(func(obj RI) RI {
+					obj.SetName("aaa")
+					obj.SetConditions([]metav1.Condition{
+						{
+							Type:   v1alpha1.CondSuspended,
+							Status: metav1.ConditionTrue,
+						},
+					})
+					return obj
+				}),
+			),
+
+			expectedStatus: task.SComplete,
+			expectedObj: fake.Fake(func(obj RG) RG {
+				obj.SetName("aaa")
+				obj.SetGeneration(3)
+				obj.SetObservedGeneration(3)
+				obj.SetConditions([]metav1.Condition{
+					{
+						Type:               v1alpha1.CondSuspended,
+						Status:             metav1.ConditionTrue,
+						ObservedGeneration: 3,
+						Reason:             v1alpha1.ReasonSuspended,
+						Message:            "group is suspended",
+					},
+				})
+				return obj
+			}),
+		},
+		{
+			desc: "one instance is not suspended",
+			state: FakeGroupAndInstanceSliceState(
+				fake.Fake(func(obj RG) RG {
+					obj.SetName("aaa")
+					obj.SetGeneration(3)
+					return obj
+				}),
+				fake.Fake(func(obj RI) RI {
+					obj.SetName("aaa")
+					obj.SetConditions([]metav1.Condition{
+						{
+							Type:   v1alpha1.CondSuspended,
+							Status: metav1.ConditionFalse,
+						},
+					})
+					return obj
+				}),
+			),
+
+			expectedStatus: task.SComplete,
+			expectedObj: fake.Fake(func(obj RG) RG {
+				obj.SetName("aaa")
+				obj.SetGeneration(3)
+				obj.SetObservedGeneration(3)
+				obj.SetConditions([]metav1.Condition{
+					{
+						Type:               v1alpha1.CondSuspended,
+						Status:             metav1.ConditionFalse,
+						ObservedGeneration: 3,
+						Reason:             v1alpha1.ReasonSuspending,
+						Message:            "group is suspending",
+					},
+				})
+				return obj
+			}),
+		},
+		{
+			desc: "all instances are suspended but cannot call api",
+			state: FakeGroupAndInstanceSliceState(
+				fake.Fake(func(obj RG) RG {
+					obj.SetName("aaa")
+					obj.SetGeneration(3)
+					return obj
+				}),
+				fake.Fake(func(obj RI) RI {
+					obj.SetName("aaa")
+					obj.SetConditions([]metav1.Condition{
+						{
+							Type:   v1alpha1.CondSuspended,
+							Status: metav1.ConditionTrue,
+						},
+					})
+					return obj
+				}),
+			),
+			unexpectedErr: true,
+
+			expectedStatus: task.SFail,
+		},
+		{
+			desc: "all instances are suspended and group is up to date and cannot call api",
+			state: FakeGroupAndInstanceSliceState(
+				fake.Fake(func(obj RG) RG {
+					obj.SetName("aaa")
+					obj.SetGeneration(3)
+					obj.SetObservedGeneration(3)
+					obj.SetConditions([]metav1.Condition{
+						{
+							Type:               v1alpha1.CondSuspended,
+							Status:             metav1.ConditionTrue,
+							ObservedGeneration: 3,
+							Reason:             v1alpha1.ReasonSuspended,
+							Message:            "group is suspended",
+						},
+					})
+					return obj
+				}),
+				fake.Fake(func(obj RI) RI {
+					obj.SetName("aaa")
+					obj.SetConditions([]metav1.Condition{
+						{
+							Type:   v1alpha1.CondSuspended,
+							Status: metav1.ConditionTrue,
+						},
+					})
+					return obj
+				}),
+			),
+			unexpectedErr: true,
+
+			expectedStatus: task.SComplete,
+		},
+	}
+
+	var gt GT
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			fc := client.NewFakeClient(gt.To(c.state.Group()))
+			if c.unexpectedErr {
+				fc.WithError("*", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
+			}
+
+			ctx := context.Background()
+			res, done := task.RunTask(ctx, TaskGroupStatusSuspend[GT](c.state, fc))
+			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
+			assert.False(tt, done, c.desc)
+
+			// no need to check update result
+			if c.unexpectedErr {
+				return
+			}
+
+			obj := gt.To(new(G))
+			require.NoError(tt, fc.Get(ctx, client.ObjectKey{Name: "aaa"}, obj), c.desc)
+			rg := gt.From(obj)
+			conds := rg.Conditions()
+			for i := range conds {
+				cond := &conds[i]
+				cond.LastTransitionTime = metav1.Time{}
+			}
+			assert.Equal(tt, c.expectedObj, rg, c.desc)
 		})
 	}
 }

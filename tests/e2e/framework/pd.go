@@ -34,10 +34,10 @@ func (f *Framework) WaitForPDGroupReady(ctx context.Context, pdg *v1alpha1.PDGro
 
 func (f *Framework) WaitForPDGroupSuspended(ctx context.Context, pdg *v1alpha1.PDGroup) {
 	f.Must(waiter.WaitForListDeleted(ctx, f.Client, &corev1.PodList{}, waiter.LongTaskTimeout, client.InNamespace(f.Cluster.Namespace)))
-	f.Must(waiter.WaitForObjectCondition(
+	f.Must(waiter.WaitForObjectCondition[runtime.PDGroupTuple](
 		ctx,
 		f.Client,
-		runtime.FromPDGroup(pdg),
+		pdg,
 		v1alpha1.PDGroupCondSuspended,
 		metav1.ConditionTrue,
 		waiter.ShortTaskTimeout,
@@ -45,10 +45,10 @@ func (f *Framework) WaitForPDGroupSuspended(ctx context.Context, pdg *v1alpha1.P
 }
 
 func (f *Framework) WaitForPDGroupReadyAndNotSuspended(ctx context.Context, pdg *v1alpha1.PDGroup) {
-	f.Must(waiter.WaitForObjectCondition(
+	f.Must(waiter.WaitForObjectCondition[runtime.PDGroupTuple](
 		ctx,
 		f.Client,
-		runtime.FromPDGroup(pdg),
+		pdg,
 		v1alpha1.PDGroupCondSuspended,
 		metav1.ConditionFalse,
 		waiter.ShortTaskTimeout,

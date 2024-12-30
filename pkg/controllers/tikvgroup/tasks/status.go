@@ -15,80 +15,96 @@
 package tasks
 
 import (
-	"github.com/go-logr/logr"
+	"context"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/utils/task"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-type TaskStatus struct {
-	Client client.Client
-	Logger logr.Logger
-}
+func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("Status", func(ctx context.Context) task.Result {
+		kvg := state.TiKVGroup()
+		needUpdate := meta.SetStatusCondition(&kvg.Status.Conditions, metav1.Condition{
+			Type:               v1alpha1.TiKVGroupCondSuspended,
+			Status:             metav1.ConditionFalse,
+			ObservedGeneration: kvg.Generation,
+			Reason:             v1alpha1.TiKVGroupSuspendReason,
+			Message:            "tikv group is not suspended",
+		})
 
-func NewTaskStatus(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
-	return &TaskStatus{
-		Client: c,
-		Logger: logger,
-	}
-}
+		replicas, readyReplicas, updateReplicas, currentReplicas := calcReplicas(state.TiKVSlice(), state.CurrentRevision, state.UpdateRevision)
 
-func (*TaskStatus) Name() string {
-	return "Status"
-}
-
-func (t *TaskStatus) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
-
-	suspendStatus := metav1.ConditionFalse
-	suspendMessage := "tikv group is not suspended"
-	if rtx.Suspended {
-		suspendStatus = metav1.ConditionTrue
-		suspendMessage = "tikv group is suspended"
-	} else if rtx.Cluster.ShouldSuspendCompute() {
-		suspendMessage = "tikv group is suspending"
-	}
-	conditionChanged := meta.SetStatusCondition(&rtx.TiKVGroup.Status.Conditions, metav1.Condition{
-		Type:               v1alpha1.TiKVGroupCondSuspended,
-		Status:             suspendStatus,
-		ObservedGeneration: rtx.TiKVGroup.Generation,
-		Reason:             v1alpha1.TiKVGroupSuspendReason,
-		Message:            suspendMessage,
-	})
-
-	// Update the current revision if all instances are synced.
-	if int(rtx.TiKVGroup.GetDesiredReplicas()) == len(rtx.Peers) && v1alpha1.AllInstancesSynced(rtx.Peers, rtx.UpdateRevision) {
-		if rtx.CurrentRevision != rtx.UpdateRevision || rtx.TiKVGroup.Status.Version != rtx.TiKVGroup.Spec.Version {
-			rtx.CurrentRevision = rtx.UpdateRevision
-			rtx.TiKVGroup.Status.Version = rtx.TiKVGroup.Spec.Version
-			conditionChanged = true
+		// all instances are updated
+		if updateReplicas == replicas {
+			// update current revision
+			state.CurrentRevision = state.UpdateRevision
+			// update status of kvg version
+			// TODO(liubo02): version of a group is hard to understand
+			// We need to change it to a more meaningful field
+			needUpdate = SetIfChanged(&kvg.Status.Version, kvg.Spec.Version) || needUpdate
 		}
-	}
-	var readyReplicas int32
-	for _, peer := range rtx.Peers {
+
+		needUpdate = SetIfChanged(&kvg.Status.ObservedGeneration, kvg.Generation) || needUpdate
+		needUpdate = SetIfChanged(&kvg.Status.Replicas, replicas) || needUpdate
+		needUpdate = SetIfChanged(&kvg.Status.ReadyReplicas, readyReplicas) || needUpdate
+		needUpdate = SetIfChanged(&kvg.Status.UpdatedReplicas, updateReplicas) || needUpdate
+		needUpdate = SetIfChanged(&kvg.Status.CurrentReplicas, currentReplicas) || needUpdate
+		needUpdate = SetIfChanged(&kvg.Status.UpdateRevision, state.UpdateRevision) || needUpdate
+		needUpdate = SetIfChanged(&kvg.Status.CurrentRevision, state.CurrentRevision) || needUpdate
+		needUpdate = NewAndSetIfChanged(&kvg.Status.CollisionCount, state.CollisionCount) || needUpdate
+
+		if needUpdate {
+			if err := c.Status().Update(ctx, kvg); err != nil {
+				return task.Fail().With("cannot update status: %w", err)
+			}
+		}
+
+		return task.Complete().With("status is synced")
+	})
+}
+
+func calcReplicas(kvs []*v1alpha1.TiKV, currentRevision, updateRevision string) (
+	replicas,
+	readyReplicas,
+	updateReplicas,
+	currentReplicas int32,
+) {
+	for _, peer := range kvs {
+		replicas++
 		if peer.IsHealthy() {
 			readyReplicas++
 		}
-	}
-
-	if conditionChanged || rtx.TiKVGroup.Status.ReadyReplicas != readyReplicas ||
-		rtx.TiKVGroup.Status.Replicas != int32(len(rtx.Peers)) || //nolint:gosec // expected type conversion
-		!v1alpha1.IsReconciled(rtx.TiKVGroup) ||
-		v1alpha1.StatusChanged(rtx.TiKVGroup, rtx.CommonStatus) {
-		rtx.TiKVGroup.Status.ReadyReplicas = readyReplicas
-		rtx.TiKVGroup.Status.Replicas = int32(len(rtx.Peers)) //nolint:gosec // expected type conversion
-		rtx.TiKVGroup.Status.ObservedGeneration = rtx.TiKVGroup.Generation
-		rtx.TiKVGroup.Status.CurrentRevision = rtx.CurrentRevision
-		rtx.TiKVGroup.Status.UpdateRevision = rtx.UpdateRevision
-		rtx.TiKVGroup.Status.CollisionCount = rtx.CollisionCount
-
-		if err := t.Client.Status().Update(ctx, rtx.TiKVGroup); err != nil {
-			return task.Fail().With("cannot update status: %w", err)
+		if peer.CurrentRevision() == currentRevision {
+			currentReplicas++
+		}
+		if peer.CurrentRevision() == updateRevision {
+			updateReplicas++
 		}
 	}
 
-	return task.Complete().With("status is synced")
+	return
+}
+
+func NewAndSetIfChanged[T comparable](dst **T, src T) bool {
+	if *dst == nil {
+		zero := new(T)
+		if *zero == src {
+			return false
+		}
+		*dst = zero
+	}
+	return SetIfChanged(*dst, src)
+}
+
+func SetIfChanged[T comparable](dst *T, src T) bool {
+	if *dst != src {
+		*dst = src
+		return true
+	}
+
+	return false
 }

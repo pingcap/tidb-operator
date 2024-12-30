@@ -25,43 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-func TaskStatusSuspend(state State, c client.Client) task.Task {
-	return task.NameTaskFunc("StatusSuspend", func(ctx context.Context) task.Result {
-		suspendStatus := metav1.ConditionFalse
-		suspendMessage := "pd group is suspending"
-
-		suspended := true
-		pdg := state.PDGroup()
-		pds := state.PDSlice()
-		for _, pd := range pds {
-			if !meta.IsStatusConditionTrue(pd.Status.Conditions, v1alpha1.PDCondSuspended) {
-				suspended = false
-			}
-		}
-		if suspended {
-			suspendStatus = metav1.ConditionTrue
-			suspendMessage = "pd group is suspended"
-		}
-
-		needUpdate := meta.SetStatusCondition(&pdg.Status.Conditions, metav1.Condition{
-			Type:               v1alpha1.PDGroupCondSuspended,
-			Status:             suspendStatus,
-			ObservedGeneration: pdg.Generation,
-			Reason:             v1alpha1.PDGroupSuspendReason,
-			Message:            suspendMessage,
-		})
-		needUpdate = SetIfChanged(&pdg.Status.ObservedGeneration, pdg.Generation) || needUpdate
-
-		if needUpdate {
-			if err := c.Status().Update(ctx, state.PDGroup()); err != nil {
-				return task.Fail().With("cannot update status: %v", err)
-			}
-		}
-
-		return task.Complete().With("status of suspend pd is updated")
-	})
-}
-
 func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Status", func(ctx context.Context) task.Result {
 		pdg := state.PDGroup()

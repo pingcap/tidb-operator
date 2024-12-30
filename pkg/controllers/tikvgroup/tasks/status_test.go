@@ -38,28 +38,27 @@ func TestTaskStatus(t *testing.T) {
 		unexpectedErr bool
 
 		expectedStatus task.Status
-		expectedObj    *v1alpha1.PDGroup
+		expectedObj    *v1alpha1.TiKVGroup
 	}{
 		{
-			desc: "no pds",
+			desc: "no tikvs",
 			state: &ReconcileContext{
 				State: &state{
-					pdg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.PDGroup](3)),
+					kvg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiKVGroup](3)),
 				},
 				UpdateRevision:  newRevision,
 				CurrentRevision: oldRevision,
 				CollisionCount:  3,
-				IsBootstrapped:  true,
 			},
 
 			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.PDGroup](3), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiKVGroup](3), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
 				obj.Status.Conditions = append(obj.Status.Conditions, metav1.Condition{
-					Type:               v1alpha1.PDGroupCondSuspended,
+					Type:               v1alpha1.TiKVGroupCondSuspended,
 					Status:             metav1.ConditionFalse,
 					ObservedGeneration: 3,
-					Reason:             v1alpha1.PDGroupSuspendReason,
-					Message:            "pd group is not suspended",
+					Reason:             v1alpha1.TiKVGroupSuspendReason,
+					Message:            "tikv group is not suspended",
 				})
 				obj.Status.ObservedGeneration = 3
 				obj.Status.Replicas = 0
@@ -73,45 +72,15 @@ func TestTaskStatus(t *testing.T) {
 			}),
 		},
 		{
-			desc: "no pds and not bootstrapped",
+			desc: "all tikvs are outdated and healthy",
 			state: &ReconcileContext{
 				State: &state{
-					pdg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.PDGroup](3)),
-				},
-				UpdateRevision:  newRevision,
-				CurrentRevision: oldRevision,
-			},
-
-			expectedStatus: task.SWait,
-			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.PDGroup](3), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
-				obj.Status.Conditions = append(obj.Status.Conditions, metav1.Condition{
-					Type:               v1alpha1.PDGroupCondSuspended,
-					Status:             metav1.ConditionFalse,
-					ObservedGeneration: 3,
-					Reason:             v1alpha1.PDGroupSuspendReason,
-					Message:            "pd group is not suspended",
-				})
-				obj.Status.ObservedGeneration = 3
-				obj.Status.Replicas = 0
-				obj.Status.ReadyReplicas = 0
-				obj.Status.UpdatedReplicas = 0
-				obj.Status.CurrentReplicas = 0
-				obj.Status.UpdateRevision = newRevision
-				obj.Status.CurrentRevision = newRevision
-				obj.Status.CollisionCount = nil
-				return obj
-			}),
-		},
-		{
-			desc: "all pds are outdated and healthy",
-			state: &ReconcileContext{
-				State: &state{
-					pdg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.PDGroup](3)),
-					pds: []*v1alpha1.PD{
-						fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					kvg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiKVGroup](3)),
+					kvs: []*v1alpha1.TiKV{
+						fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 							obj.Status.CurrentRevision = oldRevision
 							obj.Status.Conditions = append(obj.Status.Conditions, metav1.Condition{
-								Type:   v1alpha1.PDCondHealth,
+								Type:   v1alpha1.TiKVCondHealth,
 								Status: metav1.ConditionTrue,
 							})
 							return obj
@@ -120,17 +89,16 @@ func TestTaskStatus(t *testing.T) {
 				},
 				UpdateRevision:  newRevision,
 				CurrentRevision: oldRevision,
-				IsBootstrapped:  true,
 			},
 
 			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.PDGroup](3), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiKVGroup](3), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
 				obj.Status.Conditions = append(obj.Status.Conditions, metav1.Condition{
-					Type:               v1alpha1.PDGroupCondSuspended,
+					Type:               v1alpha1.TiKVGroupCondSuspended,
 					Status:             metav1.ConditionFalse,
 					ObservedGeneration: 3,
-					Reason:             v1alpha1.PDGroupSuspendReason,
-					Message:            "pd group is not suspended",
+					Reason:             v1alpha1.TiKVGroupSuspendReason,
+					Message:            "tikv group is not suspended",
 				})
 				obj.Status.ObservedGeneration = 3
 				obj.Status.Replicas = 1
@@ -144,15 +112,15 @@ func TestTaskStatus(t *testing.T) {
 			}),
 		},
 		{
-			desc: "all pds are updated and healthy",
+			desc: "all tikvs are updated and healthy",
 			state: &ReconcileContext{
 				State: &state{
-					pdg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.PDGroup](3)),
-					pds: []*v1alpha1.PD{
-						fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					kvg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiKVGroup](3)),
+					kvs: []*v1alpha1.TiKV{
+						fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 							obj.Status.CurrentRevision = newRevision
 							obj.Status.Conditions = append(obj.Status.Conditions, metav1.Condition{
-								Type:   v1alpha1.PDCondHealth,
+								Type:   v1alpha1.TiKVCondHealth,
 								Status: metav1.ConditionTrue,
 							})
 							return obj
@@ -161,17 +129,16 @@ func TestTaskStatus(t *testing.T) {
 				},
 				UpdateRevision:  newRevision,
 				CurrentRevision: oldRevision,
-				IsBootstrapped:  true,
 			},
 
 			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.PDGroup](3), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiKVGroup](3), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
 				obj.Status.Conditions = append(obj.Status.Conditions, metav1.Condition{
-					Type:               v1alpha1.PDGroupCondSuspended,
+					Type:               v1alpha1.TiKVGroupCondSuspended,
 					Status:             metav1.ConditionFalse,
 					ObservedGeneration: 3,
-					Reason:             v1alpha1.PDGroupSuspendReason,
-					Message:            "pd group is not suspended",
+					Reason:             v1alpha1.TiKVGroupSuspendReason,
+					Message:            "tikv group is not suspended",
 				})
 				obj.Status.ObservedGeneration = 3
 				obj.Status.Replicas = 1
@@ -185,12 +152,12 @@ func TestTaskStatus(t *testing.T) {
 			}),
 		},
 		{
-			desc: "all pds are updated but not healthy",
+			desc: "all tikvs are updated but not healthy",
 			state: &ReconcileContext{
 				State: &state{
-					pdg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.PDGroup](3)),
-					pds: []*v1alpha1.PD{
-						fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					kvg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiKVGroup](3)),
+					kvs: []*v1alpha1.TiKV{
+						fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 							obj.Status.CurrentRevision = newRevision
 							return obj
 						}),
@@ -198,17 +165,16 @@ func TestTaskStatus(t *testing.T) {
 				},
 				UpdateRevision:  newRevision,
 				CurrentRevision: oldRevision,
-				IsBootstrapped:  true,
 			},
 
 			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.PDGroup](3), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiKVGroup](3), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
 				obj.Status.Conditions = append(obj.Status.Conditions, metav1.Condition{
-					Type:               v1alpha1.PDGroupCondSuspended,
+					Type:               v1alpha1.TiKVGroupCondSuspended,
 					Status:             metav1.ConditionFalse,
 					ObservedGeneration: 3,
-					Reason:             v1alpha1.PDGroupSuspendReason,
-					Message:            "pd group is not suspended",
+					Reason:             v1alpha1.TiKVGroupSuspendReason,
+					Message:            "tikv group is not suspended",
 				})
 				obj.Status.ObservedGeneration = 3
 				obj.Status.Replicas = 1
@@ -225,9 +191,9 @@ func TestTaskStatus(t *testing.T) {
 			desc: "status changed but cannot call api",
 			state: &ReconcileContext{
 				State: &state{
-					pdg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.PDGroup](3)),
-					pds: []*v1alpha1.PD{
-						fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					kvg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiKVGroup](3)),
+					kvs: []*v1alpha1.TiKV{
+						fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 							obj.Status.CurrentRevision = newRevision
 							return obj
 						}),
@@ -235,7 +201,6 @@ func TestTaskStatus(t *testing.T) {
 				},
 				UpdateRevision:  newRevision,
 				CurrentRevision: oldRevision,
-				IsBootstrapped:  true,
 			},
 			unexpectedErr: true,
 
@@ -245,13 +210,13 @@ func TestTaskStatus(t *testing.T) {
 			desc: "status is not changed and cannot call api",
 			state: &ReconcileContext{
 				State: &state{
-					pdg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.PDGroup](3), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+					kvg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiKVGroup](3), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
 						obj.Status.Conditions = append(obj.Status.Conditions, metav1.Condition{
-							Type:               v1alpha1.PDGroupCondSuspended,
+							Type:               v1alpha1.TiKVGroupCondSuspended,
 							Status:             metav1.ConditionFalse,
 							ObservedGeneration: 3,
-							Reason:             v1alpha1.PDGroupSuspendReason,
-							Message:            "pd group is not suspended",
+							Reason:             v1alpha1.TiKVGroupSuspendReason,
+							Message:            "tikv group is not suspended",
 						})
 						obj.Status.ObservedGeneration = 3
 						obj.Status.Replicas = 1
@@ -263,8 +228,8 @@ func TestTaskStatus(t *testing.T) {
 						obj.Status.CollisionCount = nil
 						return obj
 					}),
-					pds: []*v1alpha1.PD{
-						fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					kvs: []*v1alpha1.TiKV{
+						fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 							obj.Status.CurrentRevision = newRevision
 							return obj
 						}),
@@ -272,7 +237,6 @@ func TestTaskStatus(t *testing.T) {
 				},
 				UpdateRevision:  newRevision,
 				CurrentRevision: oldRevision,
-				IsBootstrapped:  true,
 			},
 			unexpectedErr: true,
 
@@ -285,7 +249,7 @@ func TestTaskStatus(t *testing.T) {
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
-			fc := client.NewFakeClient(c.state.PDGroup())
+			fc := client.NewFakeClient(c.state.TiKVGroup())
 			if c.unexpectedErr {
 				fc.WithError("*", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
 			}
@@ -300,13 +264,13 @@ func TestTaskStatus(t *testing.T) {
 				return
 			}
 
-			pdg := &v1alpha1.PDGroup{}
-			require.NoError(tt, fc.Get(ctx, client.ObjectKey{Name: "aaa"}, pdg), c.desc)
-			for i := range pdg.Status.Conditions {
-				cond := &pdg.Status.Conditions[i]
+			kvg := &v1alpha1.TiKVGroup{}
+			require.NoError(tt, fc.Get(ctx, client.ObjectKey{Name: "aaa"}, kvg), c.desc)
+			for i := range kvg.Status.Conditions {
+				cond := &kvg.Status.Conditions[i]
 				cond.LastTransitionTime = metav1.Time{}
 			}
-			assert.Equal(tt, c.expectedObj, pdg, c.desc)
+			assert.Equal(tt, c.expectedObj, kvg, c.desc)
 		})
 	}
 }

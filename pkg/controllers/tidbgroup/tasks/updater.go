@@ -121,7 +121,7 @@ func (t *TaskUpdater) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		topoPolicy.Add(runtime.FromTiDB(tidb))
 	}
 
-	wait, err := updater.New[*runtime.TiDB]().
+	wait, err := updater.New[runtime.TiDBTuple]().
 		WithInstances(runtime.FromTiDBSlice(rtx.TiDBs)...).
 		WithDesired(desired).
 		WithClient(t.Client).

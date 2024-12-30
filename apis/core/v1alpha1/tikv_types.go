@@ -43,15 +43,15 @@ const (
 )
 
 const (
-	TiKVCondHealth   = "Health"
+	TiKVCondHealth   = CondHealth
 	TiKVHealthReason = "TiKVHealth"
 
 	TiKVCondLeadersEvicted = "LeadersEvicted"
 
-	TiKVCondSuspended = "Suspended"
+	TiKVCondSuspended = CondSuspended
 	TiKVSuspendReason = "TiKVSuspend"
 
-	TiKVGroupCondSuspended = "Suspended"
+	TiKVGroupCondSuspended = CondSuspended
 	TiKVGroupSuspendReason = "TiKVGroupSuspend"
 )
 

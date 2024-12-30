@@ -146,16 +146,18 @@ func WaitForListDeleted(
 	}, timeout, opts...)
 }
 
-func WaitForObjectCondition[T runtime.Object](
+func WaitForObjectCondition[T runtime.ObjectTuple[O, U], O client.Object, U runtime.Object](
 	ctx context.Context,
 	c client.Client,
-	obj T,
+	obj O,
 	condType string,
 	status metav1.ConditionStatus,
 	timeout time.Duration,
 ) error {
-	return WaitForObject(ctx, c, obj.To(), func() error {
-		cond := meta.FindStatusCondition(obj.Conditions(), condType)
+	var t T
+	return WaitForObject(ctx, c, obj, func() error {
+		ro := t.From(obj)
+		cond := meta.FindStatusCondition(ro.Conditions(), condType)
 		if cond == nil {
 			return fmt.Errorf("obj %s/%s's condition %s is not set", obj.GetNamespace(), obj.GetName(), condType)
 		}

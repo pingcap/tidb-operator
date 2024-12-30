@@ -20,7 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 )
@@ -30,21 +29,85 @@ type (
 	TiKVGroup v1alpha1.TiKVGroup
 )
 
+type TiKVTuple struct{}
+
+var _ InstanceTuple[*v1alpha1.TiKV, *TiKV] = TiKVTuple{}
+
+func (TiKVTuple) From(t *v1alpha1.TiKV) *TiKV {
+	return FromTiKV(t)
+}
+
+func (TiKVTuple) FromSlice(t []*v1alpha1.TiKV) []*TiKV {
+	return FromTiKVSlice(t)
+}
+
+func (TiKVTuple) To(t *TiKV) *v1alpha1.TiKV {
+	return ToTiKV(t)
+}
+
+func (TiKVTuple) ToSlice(t []*TiKV) []*v1alpha1.TiKV {
+	return ToTiKVSlice(t)
+}
+
+type TiKVGroupTuple struct{}
+
+var _ GroupTuple[*v1alpha1.TiKVGroup, *TiKVGroup] = TiKVGroupTuple{}
+
+func (TiKVGroupTuple) From(t *v1alpha1.TiKVGroup) *TiKVGroup {
+	return FromTiKVGroup(t)
+}
+
+func (TiKVGroupTuple) FromSlice(t []*v1alpha1.TiKVGroup) []*TiKVGroup {
+	return FromTiKVGroupSlice(t)
+}
+
+func (TiKVGroupTuple) To(t *TiKVGroup) *v1alpha1.TiKVGroup {
+	return ToTiKVGroup(t)
+}
+
+func (TiKVGroupTuple) ToSlice(t []*TiKVGroup) []*v1alpha1.TiKVGroup {
+	return ToTiKVGroupSlice(t)
+}
+
 func FromTiKV(kv *v1alpha1.TiKV) *TiKV {
 	return (*TiKV)(kv)
+}
+
+func ToTiKV(kv *TiKV) *v1alpha1.TiKV {
+	return (*v1alpha1.TiKV)(kv)
 }
 
 func FromTiKVSlice(kvs []*v1alpha1.TiKV) []*TiKV {
 	return *(*[]*TiKV)(unsafe.Pointer(&kvs))
 }
 
-var _ instance = &TiKV{}
+func ToTiKVSlice(kvs []*TiKV) []*v1alpha1.TiKV {
+	return *(*[]*v1alpha1.TiKV)(unsafe.Pointer(&kvs))
+}
+
+func FromTiKVGroup(kvg *v1alpha1.TiKVGroup) *TiKVGroup {
+	return (*TiKVGroup)(kvg)
+}
+
+func ToTiKVGroup(kvg *TiKVGroup) *v1alpha1.TiKVGroup {
+	return (*v1alpha1.TiKVGroup)(kvg)
+}
+
+func FromTiKVGroupSlice(kvgs []*v1alpha1.TiKVGroup) []*TiKVGroup {
+	return *(*[]*TiKVGroup)(unsafe.Pointer(&kvgs))
+}
+
+func ToTiKVGroupSlice(kvgs []*TiKVGroup) []*v1alpha1.TiKVGroup {
+	return *(*[]*v1alpha1.TiKVGroup)(unsafe.Pointer(&kvgs))
+}
+
+var _ Instance = &TiKV{}
 
 func (kv *TiKV) DeepCopyObject() runtime.Object {
 	return (*v1alpha1.TiKV)(kv).DeepCopyObject()
 }
 
-func (kv *TiKV) To() client.Object {
+func (kv *TiKV) To() *v1alpha1.TiKV {
 	return (*v1alpha1.TiKV)(kv)
 }
 
@@ -75,10 +138,64 @@ func (kv *TiKV) Conditions() []metav1.Condition {
 	return kv.Status.Conditions
 }
 
+func (kv *TiKV) SetConditions(conds []metav1.Condition) {
+	kv.Status.Conditions = conds
+}
+
+func (kv *TiKV) ObservedGeneration() int64 {
+	return kv.Status.ObservedGeneration
+}
+
+func (kv *TiKV) SetObservedGeneration(g int64) {
+	kv.Status.ObservedGeneration = g
+}
+
 func (kv *TiKV) Cluster() string {
 	return kv.Spec.Cluster.Name
 }
 
 func (*TiKV) Component() string {
 	return v1alpha1.LabelValComponentTiKV
+}
+
+var _ Group = &TiKVGroup{}
+
+func (kvg *TiKVGroup) DeepCopyObject() runtime.Object {
+	return (*v1alpha1.TiKVGroup)(kvg)
+}
+
+func (kvg *TiKVGroup) To() *v1alpha1.TiKVGroup {
+	return ToTiKVGroup(kvg)
+}
+
+func (kvg *TiKVGroup) SetReplicas(replicas *int32) {
+	kvg.Spec.Replicas = replicas
+}
+
+func (kvg *TiKVGroup) Replicas() *int32 {
+	return kvg.Spec.Replicas
+}
+
+func (kvg *TiKVGroup) Cluster() string {
+	return kvg.Spec.Cluster.Name
+}
+
+func (*TiKVGroup) Component() string {
+	return v1alpha1.LabelValComponentTiKV
+}
+
+func (kvg *TiKVGroup) Conditions() []metav1.Condition {
+	return kvg.Status.Conditions
+}
+
+func (kvg *TiKVGroup) SetConditions(conds []metav1.Condition) {
+	kvg.Status.Conditions = conds
+}
+
+func (kvg *TiKVGroup) ObservedGeneration() int64 {
+	return kvg.Status.ObservedGeneration
+}
+
+func (kvg *TiKVGroup) SetObservedGeneration(g int64) {
+	kvg.Status.ObservedGeneration = g
 }

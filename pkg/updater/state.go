@@ -18,50 +18,50 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
-type State[PT runtime.Instance] interface {
-	Add(obj PT)
-	Del(name string) PT
-	Get(name string) PT
-	List() []PT
+type State[R runtime.Instance] interface {
+	Add(obj R)
+	Del(name string) R
+	Get(name string) R
+	List() []R
 	Len() int
 }
 
-type state[PT runtime.Instance] struct {
-	nameToObj map[string]PT
+type state[R runtime.Instance] struct {
+	nameToObj map[string]R
 }
 
-func NewState[PT runtime.Instance](instances []PT) State[PT] {
-	nameToObj := make(map[string]PT)
+func NewState[R runtime.Instance](instances []R) State[R] {
+	nameToObj := make(map[string]R)
 	for _, instance := range instances {
 		nameToObj[instance.GetName()] = instance
 	}
-	return &state[PT]{
+	return &state[R]{
 		nameToObj: nameToObj,
 	}
 }
 
-func (s *state[PT]) Add(obj PT) {
+func (s *state[R]) Add(obj R) {
 	s.nameToObj[obj.GetName()] = obj
 }
 
-func (s *state[PT]) Del(name string) PT {
+func (s *state[R]) Del(name string) R {
 	obj := s.nameToObj[name]
 	delete(s.nameToObj, name)
 	return obj
 }
 
-func (s *state[PT]) Get(name string) PT {
+func (s *state[R]) Get(name string) R {
 	return s.nameToObj[name]
 }
 
-func (s *state[PT]) List() []PT {
-	l := make([]PT, 0, len(s.nameToObj))
+func (s *state[R]) List() []R {
+	l := make([]R, 0, len(s.nameToObj))
 	for _, obj := range s.nameToObj {
 		l = append(l, obj)
 	}
 	return l
 }
 
-func (s *state[PT]) Len() int {
+func (s *state[R]) Len() int {
 	return len(s.nameToObj)
 }

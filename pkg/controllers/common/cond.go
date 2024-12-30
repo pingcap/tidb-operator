@@ -51,3 +51,15 @@ func CondPDGroupIsDeleting(ctx PDGroupState) task.Condition {
 		return !ctx.PDGroup().GetDeletionTimestamp().IsZero()
 	})
 }
+
+func CondTiKVGroupHasBeenDeleted(ctx TiKVGroupState) task.Condition {
+	return task.CondFunc(func() bool {
+		return ctx.TiKVGroup() == nil
+	})
+}
+
+func CondTiKVGroupIsDeleting(ctx TiKVGroupState) task.Condition {
+	return task.CondFunc(func() bool {
+		return !ctx.TiKVGroup().GetDeletionTimestamp().IsZero()
+	})
+}
