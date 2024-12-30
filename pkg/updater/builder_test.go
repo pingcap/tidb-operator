@@ -29,8 +29,8 @@ import (
 
 func TestBuilder(t *testing.T) {
 	addHook := AddHookFunc[*runtime.PD](func(pd *runtime.PD) *runtime.PD { return pd })
-	updateHook := UpdateHookFunc[*runtime.PD](func(update, outdated *runtime.PD) *runtime.PD { return update })
-	delHook := DelHookFunc[*runtime.PD](func(name string) {})
+	updateHook := UpdateHookFunc[*runtime.PD](func(update, _ *runtime.PD) *runtime.PD { return update })
+	delHook := DelHookFunc[*runtime.PD](func(_ string) {})
 	pd0 := fake.FakeObj[v1alpha1.PD]("pd-0")
 	pd1 := fake.FakeObj[v1alpha1.PD]("pd-1")
 	cli := client.NewFakeClient(pd0, pd1)
