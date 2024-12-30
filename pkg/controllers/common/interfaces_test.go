@@ -18,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
 type fakeState[T any] struct {
@@ -100,4 +101,50 @@ func (f *fakePDSliceState) PDSlice() []*v1alpha1.PD {
 
 func (f *fakePDSliceState) PDSliceInitializer() PDSliceInitializer {
 	return f.s.Initializer()
+}
+
+type fakeGroupState[RG runtime.Group] struct {
+	g RG
+}
+
+func (f *fakeGroupState[RG]) Group() RG {
+	return f.g
+}
+
+func FakeGroupState[RG runtime.Group](g RG) GroupState[RG] {
+	return &fakeGroupState[RG]{
+		g: g,
+	}
+}
+
+type fakeInstanceSliceState[RI runtime.Instance] struct {
+	slice []RI
+}
+
+func (f *fakeInstanceSliceState[RI]) Slice() []RI {
+	return f.slice
+}
+
+func FakeInstanceSliceState[RI runtime.Instance](in []RI) InstanceSliceState[RI] {
+	return &fakeInstanceSliceState[RI]{
+		slice: in,
+	}
+}
+
+type fakeGroupAndInstanceSliceState[
+	RG runtime.Group,
+	RI runtime.Instance,
+] struct {
+	GroupState[RG]
+	InstanceSliceState[RI]
+}
+
+func FakeGroupAndInstanceSliceState[
+	RG runtime.Group,
+	RI runtime.Instance,
+](g RG, s ...RI) GroupAndInstanceSliceState[RG, RI] {
+	return &fakeGroupAndInstanceSliceState[RG, RI]{
+		GroupState:         FakeGroupState[RG](g),
+		InstanceSliceState: FakeInstanceSliceState[RI](s),
+	}
 }

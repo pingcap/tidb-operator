@@ -22,53 +22,55 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
-type NewFactory[PT runtime.Instance] interface {
-	New() PT
+type NewFactory[R runtime.Instance] interface {
+	New() R
 }
 
-type NewFunc[PT runtime.Instance] func() PT
+type NewFunc[R runtime.Instance] func() R
 
-func (f NewFunc[PT]) New() PT {
+func (f NewFunc[R]) New() R {
 	return f()
 }
 
 // e.g. for some write once fields(name, topology, etc.)
-type UpdateHook[PT runtime.Instance] interface {
-	Update(update, outdated PT) PT
+type UpdateHook[R runtime.Instance] interface {
+	Update(update, outdated R) R
 }
 
 // e.g. for topology scheduling
-type AddHook[PT runtime.Instance] interface {
-	Add(update PT) PT
+type AddHook[R runtime.Instance] interface {
+	Add(update R) R
 }
 
-type DelHook[PT runtime.Instance] interface {
+type DelHook[R runtime.Instance] interface {
 	Delete(name string)
 }
 
-type UpdateHookFunc[PT runtime.Instance] func(update, outdated PT) PT
+type UpdateHookFunc[R runtime.Instance] func(update, outdated R) R
 
-func (f UpdateHookFunc[PT]) Update(update, outdated PT) PT {
+func (f UpdateHookFunc[R]) Update(update, outdated R) R {
 	return f(update, outdated)
 }
 
-type actor[PT runtime.Instance] struct {
+type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 	c client.Client
 
-	f NewFactory[PT]
+	f NewFactory[R]
 
-	update   State[PT]
-	outdated State[PT]
+	converter T
 
-	addHooks    []AddHook[PT]
-	updateHooks []UpdateHook[PT]
-	delHooks    []DelHook[PT]
+	update   State[R]
+	outdated State[R]
 
-	scaleInSelector Selector[PT]
-	updateSelector  Selector[PT]
+	addHooks    []AddHook[R]
+	updateHooks []UpdateHook[R]
+	delHooks    []DelHook[R]
+
+	scaleInSelector Selector[R]
+	updateSelector  Selector[R]
 }
 
-func (act *actor[PT]) chooseToUpdate(s []PT) (string, error) {
+func (act *actor[T, O, R]) chooseToUpdate(s []R) (string, error) {
 	name := act.updateSelector.Choose(s)
 	if name == "" {
 		return "", fmt.Errorf("no instance can be updated")
@@ -77,7 +79,7 @@ func (act *actor[PT]) chooseToUpdate(s []PT) (string, error) {
 	return name, nil
 }
 
-func (act *actor[PT]) chooseToScaleIn(s []PT) (string, error) {
+func (act *actor[T, O, R]) chooseToScaleIn(s []R) (string, error) {
 	name := act.scaleInSelector.Choose(s)
 	if name == "" {
 		return "", fmt.Errorf("no instance can be scale in")
@@ -86,14 +88,14 @@ func (act *actor[PT]) chooseToScaleIn(s []PT) (string, error) {
 	return name, nil
 }
 
-func (act *actor[PT]) ScaleOut(ctx context.Context) error {
+func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
 	obj := act.f.New()
 
 	for _, hook := range act.addHooks {
 		obj = hook.Add(obj)
 	}
 
-	if err := act.c.Apply(ctx, obj.To()); err != nil {
+	if err := act.c.Apply(ctx, act.converter.To(obj)); err != nil {
 		return err
 	}
 
@@ -102,7 +104,7 @@ func (act *actor[PT]) ScaleOut(ctx context.Context) error {
 	return nil
 }
 
-func (act *actor[PT]) ScaleInUpdate(ctx context.Context) (bool, error) {
+func (act *actor[T, O, R]) ScaleInUpdate(ctx context.Context) (bool, error) {
 	name, err := act.chooseToScaleIn(act.update.List())
 	if err != nil {
 		return false, err
@@ -111,7 +113,7 @@ func (act *actor[PT]) ScaleInUpdate(ctx context.Context) (bool, error) {
 
 	isUnavailable := !obj.IsHealthy() || !obj.IsUpToDate()
 
-	if err := act.c.Delete(ctx, obj.To()); err != nil {
+	if err := act.c.Delete(ctx, act.converter.To(obj)); err != nil {
 		return false, err
 	}
 
@@ -122,7 +124,7 @@ func (act *actor[PT]) ScaleInUpdate(ctx context.Context) (bool, error) {
 	return isUnavailable, nil
 }
 
-func (act *actor[PT]) ScaleInOutdated(ctx context.Context) (bool, error) {
+func (act *actor[T, O, R]) ScaleInOutdated(ctx context.Context) (bool, error) {
 	name, err := act.chooseToScaleIn(act.outdated.List())
 	if err != nil {
 		return false, err
@@ -130,7 +132,7 @@ func (act *actor[PT]) ScaleInOutdated(ctx context.Context) (bool, error) {
 	obj := act.outdated.Del(name)
 	isUnavailable := !obj.IsHealthy() || !obj.IsUpToDate()
 
-	if err := act.c.Delete(ctx, obj.To()); err != nil {
+	if err := act.c.Delete(ctx, act.converter.To(obj)); err != nil {
 		return false, err
 	}
 
@@ -141,7 +143,7 @@ func (act *actor[PT]) ScaleInOutdated(ctx context.Context) (bool, error) {
 	return isUnavailable, nil
 }
 
-func (act *actor[PT]) Update(ctx context.Context) error {
+func (act *actor[T, O, R]) Update(ctx context.Context) error {
 	name, err := act.chooseToUpdate(act.outdated.List())
 	if err != nil {
 		return err
@@ -153,7 +155,7 @@ func (act *actor[PT]) Update(ctx context.Context) error {
 		update = hook.Update(update, outdated)
 	}
 
-	if err := act.c.Apply(ctx, update.To()); err != nil {
+	if err := act.c.Apply(ctx, act.converter.To(update)); err != nil {
 		return err
 	}
 

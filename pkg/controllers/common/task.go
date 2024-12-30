@@ -23,11 +23,14 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kuberuntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -113,9 +116,19 @@ func TaskContextPDGroup(state PDGroupStateInitializer, c client.Client) task.Tas
 	return taskContextResource("PDGroup", w, c, false)
 }
 
+func TaskContextTiKVGroup(state TiKVGroupStateInitializer, c client.Client) task.Task {
+	w := state.TiKVGroupInitializer()
+	return taskContextResource("TiKVGroup", w, c, false)
+}
+
 func TaskContextPDSlice(state PDSliceStateInitializer, c client.Client) task.Task {
 	w := state.PDSliceInitializer()
 	return taskContextResourceSlice[v1alpha1.PD, v1alpha1.PDList]("PDSlice", w, c)
+}
+
+func TaskContextTiKVSlice(state TiKVSliceStateInitializer, c client.Client) task.Task {
+	w := state.TiKVSliceInitializer()
+	return taskContextResourceSlice[v1alpha1.TiKV, v1alpha1.TiKVList]("TiKVSlice", w, c)
 }
 
 func TaskSuspendPod(state PodState, c client.Client) task.Task {
@@ -136,4 +149,83 @@ func TaskSuspendPod(state PodState, c client.Client) task.Task {
 
 		return task.Wait().With("pod is deleting")
 	})
+}
+
+func TaskGroupFinalizerAdd[
+	GT runtime.GroupTuple[OG, RG],
+	OG client.Object,
+	RG runtime.Group,
+](state GroupState[RG], c client.Client) task.Task {
+	return task.NameTaskFunc("FinalizerAdd", func(ctx context.Context) task.Result {
+		var t GT
+		if err := k8s.EnsureFinalizer(ctx, c, t.To(state.Group())); err != nil {
+			return task.Fail().With("failed to ensure finalizer has been added: %v", err)
+		}
+		return task.Complete().With("finalizer is added")
+	})
+}
+
+func TaskGroupStatusSuspend[
+	GT runtime.GroupTuple[OG, RG],
+	OG client.Object,
+	RG runtime.Group,
+	I runtime.Instance,
+](state GroupAndInstanceSliceState[RG, I], c client.Client) task.Task {
+	return task.NameTaskFunc("StatusSuspend", func(ctx context.Context) task.Result {
+		status := metav1.ConditionFalse
+		reason := v1alpha1.ReasonSuspending
+		message := "group is suspending"
+
+		suspended := true
+		g := state.Group()
+		objs := state.Slice()
+		for _, obj := range objs {
+			if !meta.IsStatusConditionTrue(obj.Conditions(), v1alpha1.CondSuspended) {
+				suspended = false
+			}
+		}
+		if suspended {
+			status = metav1.ConditionTrue
+			reason = v1alpha1.ReasonSuspended
+			message = "group is suspended"
+		}
+		needUpdate := SetStatusConditionIfChanged(g, &metav1.Condition{
+			Type:               v1alpha1.CondSuspended,
+			Status:             status,
+			ObservedGeneration: g.GetGeneration(),
+			Reason:             reason,
+			Message:            message,
+		})
+		needUpdate = SetStatusObservedGeneration(g) || needUpdate
+
+		var t GT
+		if needUpdate {
+			if err := c.Status().Update(ctx, t.To(g)); err != nil {
+				return task.Fail().With("cannot update status: %v", err)
+			}
+		}
+
+		return task.Complete().With("status is updated")
+	})
+}
+
+func SetStatusConditionIfChanged[O runtime.Object](obj O, cond *metav1.Condition) bool {
+	conds := obj.Conditions()
+	if meta.SetStatusCondition(&conds, *cond) {
+		obj.SetConditions(conds)
+		return true
+	}
+	return false
+}
+
+func SetStatusObservedGeneration[O runtime.Object](obj O) bool {
+	actual := obj.GetGeneration()
+	current := obj.ObservedGeneration()
+
+	if current != actual {
+		obj.SetObservedGeneration(actual)
+		return true
+	}
+
+	return false
 }

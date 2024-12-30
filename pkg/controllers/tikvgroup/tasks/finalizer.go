@@ -15,43 +15,35 @@
 package tasks
 
 import (
+	"context"
 	"fmt"
+	"time"
 
-	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	utilerr "k8s.io/apimachinery/pkg/util/errors"
 
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
-	"github.com/pingcap/tidb-operator/pkg/utils/task"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-type TaskFinalizer struct {
-	Client client.Client
-	Logger logr.Logger
-}
+const defaultDelWaitTime = 10 * time.Second
 
-func NewTaskFinalizer(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
-	return &TaskFinalizer{
-		Client: c,
-		Logger: logger,
-	}
-}
-
-func (*TaskFinalizer) Name() string {
-	return "Finalizer"
-}
-
-func (t *TaskFinalizer) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
-
-	if !rtx.TiKVGroup.GetDeletionTimestamp().IsZero() {
-		errList := []error{}
-		names := []string{}
-		for _, peer := range rtx.Peers {
+func TaskFinalizerDel(state State, c client.Client) task.Task {
+	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
+		var errList []error
+		var names []string
+		for _, peer := range state.TiKVSlice() {
 			names = append(names, peer.Name)
 			if peer.GetDeletionTimestamp().IsZero() {
-				if err := t.Client.Delete(ctx, peer); err != nil {
+				if err := c.Delete(ctx, peer); err != nil {
+					if errors.IsNotFound(err) {
+						continue
+					}
 					errList = append(errList, fmt.Errorf("try to delete the tikv instance %v failed: %w", peer.Name, err))
+					continue
 				}
 			}
 		}
@@ -60,23 +52,22 @@ func (t *TaskFinalizer) Sync(ctx task.Context[ReconcileContext]) task.Result {
 			return task.Fail().With("failed to delete all tikv instances: %v", utilerr.NewAggregate(errList))
 		}
 
-		if len(rtx.Peers) != 0 {
-			return task.Fail().With("wait for all tikv instances being removed, %v still exists", names)
+		if len(names) != 0 {
+			return task.Retry(defaultDelWaitTime).With("wait for all tikv instances being removed, %v still exists", names)
 		}
 
-		if err := k8s.EnsureGroupSubResourceDeleted(ctx, t.Client,
-			rtx.TiKVGroup.Namespace, rtx.TiKVGroup.Name); err != nil {
+		wait, err := k8s.DeleteGroupSubresource(ctx, c, runtime.FromTiKVGroup(state.TiKVGroup()), &corev1.ServiceList{})
+		if err != nil {
 			return task.Fail().With("cannot delete subresources: %w", err)
 		}
+		if wait {
+			return task.Wait().With("wait all subresources deleted")
+		}
 
-		if err := k8s.RemoveFinalizer(ctx, t.Client, rtx.TiKVGroup); err != nil {
+		if err := k8s.RemoveFinalizer(ctx, c, state.TiKVGroup()); err != nil {
 			return task.Fail().With("failed to ensure finalizer has been removed: %w", err)
 		}
-	} else {
-		if err := k8s.EnsureFinalizer(ctx, t.Client, rtx.TiKVGroup); err != nil {
-			return task.Fail().With("failed to ensure finalizer has been added: %w", err)
-		}
-	}
 
-	return task.Complete().With("finalizer is synced")
+		return task.Complete().With("finalizer has been removed")
+	})
 }

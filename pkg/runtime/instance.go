@@ -16,10 +16,11 @@ package runtime
 
 import (
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client"
 )
 
-type instance interface {
-	object
+type Instance interface {
+	Object
 
 	GetTopology() v1alpha1.Topology
 	SetTopology(topo v1alpha1.Topology)
@@ -32,8 +33,16 @@ type instance interface {
 	IsUpToDate() bool
 }
 
-type Instance interface {
-	instance
+type InstanceT[T InstanceSet] interface {
+	Instance
 
-	*PD | *TiDB | *TiKV | *TiFlash
+	*T
+}
+
+type InstanceSet interface {
+	PD | TiDB | TiKV | TiFlash
+}
+
+type InstanceTuple[PT client.Object, PU Instance] interface {
+	Tuple[PT, PU]
 }

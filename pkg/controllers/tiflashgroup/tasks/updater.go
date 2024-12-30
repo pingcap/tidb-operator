@@ -118,7 +118,7 @@ func (t *TaskUpdater) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		topoPolicy.Add(runtime.FromTiFlash(tiflash))
 	}
 
-	wait, err := updater.New[*runtime.TiFlash]().
+	wait, err := updater.New[runtime.TiFlashTuple]().
 		WithInstances(runtime.FromTiFlashSlice(rtx.Peers)...).
 		WithDesired(desired).
 		WithClient(t.Client).

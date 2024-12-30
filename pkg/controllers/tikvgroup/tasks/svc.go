@@ -15,49 +15,31 @@
 package tasks
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/utils/task"
+	"github.com/pingcap/tidb-operator/pkg/controllers/common"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-type TaskService struct {
-	Logger logr.Logger
-	Client client.Client
-}
+// TODO: extract svc to a common task
+func TaskService(state common.TiKVGroupState, c client.Client) task.Task {
+	return task.NameTaskFunc("Service", func(ctx context.Context) task.Result {
+		kvg := state.TiKVGroup()
 
-func NewTaskService(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
-	return &TaskService{
-		Logger: logger,
-		Client: c,
-	}
-}
+		svc := newHeadlessService(kvg)
+		if err := c.Apply(ctx, svc); err != nil {
+			return task.Fail().With(fmt.Sprintf("can't create headless service of tikv: %v", err))
+		}
 
-func (*TaskService) Name() string {
-	return "Service"
-}
-
-func (t *TaskService) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
-
-	if rtx.Cluster.ShouldSuspendCompute() {
-		return task.Complete().With("skip service for suspension")
-	}
-
-	kvg := rtx.TiKVGroup
-
-	svc := newHeadlessService(kvg)
-	if err := t.Client.Apply(ctx, svc); err != nil {
-		return task.Fail().With(fmt.Sprintf("can't create headless service of tikv: %v", err))
-	}
-
-	return task.Complete().With("headless service of tikv has been applied")
+		return task.Complete().With("headless service of tikv has been applied")
+	})
 }
 
 func newHeadlessService(kvg *v1alpha1.TiKVGroup) *corev1.Service {

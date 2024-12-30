@@ -24,54 +24,54 @@ const (
 	maxPreferPolicy = 30
 )
 
-type PreferPolicy[PT runtime.Instance] interface {
-	Prefer([]PT) []PT
+type PreferPolicy[R runtime.Instance] interface {
+	Prefer([]R) []R
 }
 
-type ScoredPreferPolicy[PT runtime.Instance] interface {
+type ScoredPreferPolicy[R runtime.Instance] interface {
 	Score() Score
-	Prefer([]PT) []PT
+	Prefer([]R) []R
 }
 
-type PreferPolicyFunc[PT runtime.Instance] func([]PT) []PT
+type PreferPolicyFunc[R runtime.Instance] func([]R) []R
 
-func (f PreferPolicyFunc[PT]) Prefer(in []PT) []PT {
+func (f PreferPolicyFunc[R]) Prefer(in []R) []R {
 	return f(in)
 }
 
-type Selector[PT runtime.Instance] interface {
-	Choose([]PT) string
+type Selector[R runtime.Instance] interface {
+	Choose([]R) string
 }
 
 type Score uint32
 
-type scoredPreferPolicy[PT runtime.Instance] struct {
-	PreferPolicy[PT]
+type scoredPreferPolicy[R runtime.Instance] struct {
+	PreferPolicy[R]
 
 	score Score
 }
 
-func scored[PT runtime.Instance](s Score, p PreferPolicy[PT]) ScoredPreferPolicy[PT] {
-	return &scoredPreferPolicy[PT]{
+func scored[R runtime.Instance](s Score, p PreferPolicy[R]) ScoredPreferPolicy[R] {
+	return &scoredPreferPolicy[R]{
 		PreferPolicy: p,
 		score:        s,
 	}
 }
 
-func (p *scoredPreferPolicy[PT]) Score() Score {
+func (p *scoredPreferPolicy[R]) Score() Score {
 	return p.score
 }
 
-type selector[PT runtime.Instance] struct {
-	ps []ScoredPreferPolicy[PT]
+type selector[R runtime.Instance] struct {
+	ps []ScoredPreferPolicy[R]
 }
 
-func NewSelector[PT runtime.Instance](ps ...PreferPolicy[PT]) Selector[PT] {
+func NewSelector[R runtime.Instance](ps ...PreferPolicy[R]) Selector[R] {
 	if len(ps) > maxPreferPolicy {
 		// TODO: use a util to panic for unreachable code
 		panic(fmt.Sprintf("cannot new selector with too much prefer policy: %d", len(ps)))
 	}
-	s := selector[PT]{}
+	s := selector[R]{}
 	for i, p := range ps {
 		s.ps = append(s.ps, scored(Score(1<<(i+1)), p))
 	}
@@ -79,7 +79,7 @@ func NewSelector[PT runtime.Instance](ps ...PreferPolicy[PT]) Selector[PT] {
 	return &s
 }
 
-func (s *selector[PT]) Choose(allowed []PT) string {
+func (s *selector[R]) Choose(allowed []R) string {
 	scores := make(map[string]uint32, len(allowed))
 	for _, in := range allowed {
 		scores[in.GetName()] = 1
@@ -108,9 +108,9 @@ func (s *selector[PT]) Choose(allowed []PT) string {
 	return choosed
 }
 
-func PreferUnavailable[PT runtime.Instance]() PreferPolicy[PT] {
-	return PreferPolicyFunc[PT](func(s []PT) []PT {
-		unavail := []PT{}
+func PreferUnavailable[R runtime.Instance]() PreferPolicy[R] {
+	return PreferPolicyFunc[R](func(s []R) []R {
+		unavail := []R{}
 		for _, in := range s {
 			if !in.IsUpToDate() || !in.IsHealthy() {
 				unavail = append(unavail, in)

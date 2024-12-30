@@ -20,7 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 )
@@ -29,6 +28,46 @@ type (
 	PD      v1alpha1.PD
 	PDGroup v1alpha1.PDGroup
 )
+
+type PDTuple struct{}
+
+var _ InstanceTuple[*v1alpha1.PD, *PD] = PDTuple{}
+
+func (PDTuple) From(t *v1alpha1.PD) *PD {
+	return FromPD(t)
+}
+
+func (PDTuple) FromSlice(t []*v1alpha1.PD) []*PD {
+	return FromPDSlice(t)
+}
+
+func (PDTuple) To(t *PD) *v1alpha1.PD {
+	return ToPD(t)
+}
+
+func (PDTuple) ToSlice(t []*PD) []*v1alpha1.PD {
+	return ToPDSlice(t)
+}
+
+type PDGroupTuple struct{}
+
+var _ GroupTuple[*v1alpha1.PDGroup, *PDGroup] = PDGroupTuple{}
+
+func (PDGroupTuple) From(t *v1alpha1.PDGroup) *PDGroup {
+	return FromPDGroup(t)
+}
+
+func (PDGroupTuple) FromSlice(t []*v1alpha1.PDGroup) []*PDGroup {
+	return FromPDGroupSlice(t)
+}
+
+func (PDGroupTuple) To(t *PDGroup) *v1alpha1.PDGroup {
+	return ToPDGroup(t)
+}
+
+func (PDGroupTuple) ToSlice(t []*PDGroup) []*v1alpha1.PDGroup {
+	return ToPDGroupSlice(t)
+}
 
 func FromPD(pd *v1alpha1.PD) *PD {
 	return (*PD)(pd)
@@ -62,13 +101,13 @@ func ToPDGroupSlice(pdgs []*PDGroup) []*v1alpha1.PDGroup {
 	return *(*[]*v1alpha1.PDGroup)(unsafe.Pointer(&pdgs))
 }
 
-var _ instance = &PD{}
+var _ Instance = &PD{}
 
 func (pd *PD) DeepCopyObject() runtime.Object {
 	return (*v1alpha1.PD)(pd).DeepCopyObject()
 }
 
-func (pd *PD) To() client.Object {
+func (pd *PD) To() *v1alpha1.PD {
 	return ToPD(pd)
 }
 
@@ -99,6 +138,18 @@ func (pd *PD) Conditions() []metav1.Condition {
 	return pd.Status.Conditions
 }
 
+func (pd *PD) SetConditions(conds []metav1.Condition) {
+	pd.Status.Conditions = conds
+}
+
+func (pd *PD) ObservedGeneration() int64 {
+	return pd.Status.ObservedGeneration
+}
+
+func (pd *PD) SetObservedGeneration(g int64) {
+	pd.Status.ObservedGeneration = g
+}
+
 func (pd *PD) Cluster() string {
 	return pd.Spec.Cluster.Name
 }
@@ -107,13 +158,13 @@ func (*PD) Component() string {
 	return v1alpha1.LabelValComponentPD
 }
 
-var _ group = &PDGroup{}
+var _ Group = &PDGroup{}
 
 func (pdg *PDGroup) DeepCopyObject() runtime.Object {
 	return (*v1alpha1.PDGroup)(pdg)
 }
 
-func (pdg *PDGroup) To() client.Object {
+func (pdg *PDGroup) To() *v1alpha1.PDGroup {
 	return ToPDGroup(pdg)
 }
 
@@ -135,4 +186,16 @@ func (*PDGroup) Component() string {
 
 func (pdg *PDGroup) Conditions() []metav1.Condition {
 	return pdg.Status.Conditions
+}
+
+func (pdg *PDGroup) SetConditions(conds []metav1.Condition) {
+	pdg.Status.Conditions = conds
+}
+
+func (pdg *PDGroup) ObservedGeneration() int64 {
+	return pdg.Status.ObservedGeneration
+}
+
+func (pdg *PDGroup) SetObservedGeneration(g int64) {
+	pdg.Status.ObservedGeneration = g
 }

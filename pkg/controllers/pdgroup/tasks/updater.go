@@ -117,7 +117,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			topoPolicy.Add(runtime.FromPD(pd))
 		}
 
-		wait, err := updater.New[*runtime.PD]().
+		wait, err := updater.New[runtime.PDTuple]().
 			WithInstances(runtime.FromPDSlice(state.PDSlice())...).
 			WithDesired(desired).
 			WithClient(c).
