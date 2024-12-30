@@ -21,27 +21,27 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/topology"
 )
 
-type topologyPolicy[PT runtime.Instance] struct {
+type topologyPolicy[R runtime.Instance] struct {
 	scheduler topology.Scheduler
 }
 
-type TopologyPolicy[PT runtime.Instance] interface {
-	updater.AddHook[PT]
-	updater.DelHook[PT]
-	updater.PreferPolicy[PT]
+type TopologyPolicy[R runtime.Instance] interface {
+	updater.AddHook[R]
+	updater.DelHook[R]
+	updater.PreferPolicy[R]
 }
 
-func NewTopologyPolicy[PT runtime.Instance](ts []v1alpha1.ScheduleTopology) (TopologyPolicy[PT], error) {
+func NewTopologyPolicy[R runtime.Instance](ts []v1alpha1.ScheduleTopology) (TopologyPolicy[R], error) {
 	s, err := topology.New(ts)
 	if err != nil {
 		return nil, err
 	}
-	return &topologyPolicy[PT]{
+	return &topologyPolicy[R]{
 		scheduler: s,
 	}, nil
 }
 
-func (p *topologyPolicy[PT]) Add(update PT) PT {
+func (p *topologyPolicy[R]) Add(update R) R {
 	topo := p.scheduler.NextAdd()
 	update.SetTopology(topo)
 	p.scheduler.Add(update.GetName(), update.GetTopology())
@@ -49,13 +49,13 @@ func (p *topologyPolicy[PT]) Add(update PT) PT {
 	return update
 }
 
-func (p *topologyPolicy[PT]) Delete(name string) {
+func (p *topologyPolicy[R]) Delete(name string) {
 	p.scheduler.Del(name)
 }
 
-func (p *topologyPolicy[PT]) Prefer(allowed []PT) []PT {
+func (p *topologyPolicy[R]) Prefer(allowed []R) []R {
 	names := p.scheduler.NextDel()
-	preferred := make([]PT, 0, len(allowed))
+	preferred := make([]R, 0, len(allowed))
 	for _, item := range allowed {
 		for _, name := range names {
 			if item.GetName() == name {

@@ -19,24 +19,24 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
-type Builder[PT runtime.Instance] interface {
-	WithInstances(...PT) Builder[PT]
-	WithDesired(desired int) Builder[PT]
-	WithMaxSurge(maxSurge int) Builder[PT]
-	WithMaxUnavailable(maxUnavailable int) Builder[PT]
-	WithRevision(rev string) Builder[PT]
-	WithClient(c client.Client) Builder[PT]
-	WithNewFactory(NewFactory[PT]) Builder[PT]
-	WithAddHooks(hooks ...AddHook[PT]) Builder[PT]
-	WithUpdateHooks(hooks ...UpdateHook[PT]) Builder[PT]
-	WithDelHooks(hooks ...DelHook[PT]) Builder[PT]
-	WithScaleInPreferPolicy(ps ...PreferPolicy[PT]) Builder[PT]
-	WithUpdatePreferPolicy(ps ...PreferPolicy[PT]) Builder[PT]
+type Builder[R runtime.Instance] interface {
+	WithInstances(...R) Builder[R]
+	WithDesired(desired int) Builder[R]
+	WithMaxSurge(maxSurge int) Builder[R]
+	WithMaxUnavailable(maxUnavailable int) Builder[R]
+	WithRevision(rev string) Builder[R]
+	WithClient(c client.Client) Builder[R]
+	WithNewFactory(NewFactory[R]) Builder[R]
+	WithAddHooks(hooks ...AddHook[R]) Builder[R]
+	WithUpdateHooks(hooks ...UpdateHook[R]) Builder[R]
+	WithDelHooks(hooks ...DelHook[R]) Builder[R]
+	WithScaleInPreferPolicy(ps ...PreferPolicy[R]) Builder[R]
+	WithUpdatePreferPolicy(ps ...PreferPolicy[R]) Builder[R]
 	Build() Executor
 }
 
-type builder[PT runtime.Instance] struct {
-	instances      []PT
+type builder[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
+	instances      []R
 	desired        int
 	maxSurge       int
 	maxUnavailable int
@@ -44,22 +44,22 @@ type builder[PT runtime.Instance] struct {
 
 	c client.Client
 
-	f NewFactory[PT]
+	f NewFactory[R]
 
-	addHooks    []AddHook[PT]
-	updateHooks []UpdateHook[PT]
-	delHooks    []DelHook[PT]
+	addHooks    []AddHook[R]
+	updateHooks []UpdateHook[R]
+	delHooks    []DelHook[R]
 
-	scaleInPreferPolicies []PreferPolicy[PT]
-	updatePreferPolicies  []PreferPolicy[PT]
+	scaleInPreferPolicies []PreferPolicy[R]
+	updatePreferPolicies  []PreferPolicy[R]
 }
 
-func (b *builder[PT]) Build() Executor {
+func (b *builder[T, O, R]) Build() Executor {
 	update, outdated := split(b.instances, b.rev)
 
 	updatePolicies := b.updatePreferPolicies
-	updatePolicies = append(updatePolicies, PreferUnavailable[PT]())
-	actor := &actor[PT]{
+	updatePolicies = append(updatePolicies, PreferUnavailable[R]())
+	actor := &actor[T, O, R]{
 		c: b.c,
 		f: b.f,
 
@@ -77,71 +77,71 @@ func (b *builder[PT]) Build() Executor {
 		countUnavailable(update), countUnavailable(outdated), b.maxSurge, b.maxUnavailable)
 }
 
-func New[PT runtime.Instance]() Builder[PT] {
-	return &builder[PT]{}
+func New[T runtime.Tuple[O, R], O client.Object, R runtime.Instance]() Builder[R] {
+	return &builder[T, O, R]{}
 }
 
-func (b *builder[PT]) WithInstances(instances ...PT) Builder[PT] {
+func (b *builder[T, O, R]) WithInstances(instances ...R) Builder[R] {
 	b.instances = append(b.instances, instances...)
 	return b
 }
 
-func (b *builder[PT]) WithDesired(desired int) Builder[PT] {
+func (b *builder[T, O, R]) WithDesired(desired int) Builder[R] {
 	b.desired = desired
 	return b
 }
 
-func (b *builder[PT]) WithMaxSurge(maxSurge int) Builder[PT] {
+func (b *builder[T, O, R]) WithMaxSurge(maxSurge int) Builder[R] {
 	b.maxSurge = maxSurge
 	return b
 }
 
-func (b *builder[PT]) WithMaxUnavailable(maxUnavailable int) Builder[PT] {
+func (b *builder[T, O, R]) WithMaxUnavailable(maxUnavailable int) Builder[R] {
 	b.maxUnavailable = maxUnavailable
 	return b
 }
 
-func (b *builder[PT]) WithRevision(revision string) Builder[PT] {
+func (b *builder[T, O, R]) WithRevision(revision string) Builder[R] {
 	b.rev = revision
 	return b
 }
 
-func (b *builder[PT]) WithClient(c client.Client) Builder[PT] {
+func (b *builder[T, O, R]) WithClient(c client.Client) Builder[R] {
 	b.c = c
 	return b
 }
 
-func (b *builder[PT]) WithNewFactory(f NewFactory[PT]) Builder[PT] {
+func (b *builder[T, O, R]) WithNewFactory(f NewFactory[R]) Builder[R] {
 	b.f = f
 	return b
 }
 
-func (b *builder[PT]) WithAddHooks(hooks ...AddHook[PT]) Builder[PT] {
+func (b *builder[T, O, R]) WithAddHooks(hooks ...AddHook[R]) Builder[R] {
 	b.addHooks = append(b.addHooks, hooks...)
 	return b
 }
 
-func (b *builder[PT]) WithUpdateHooks(hooks ...UpdateHook[PT]) Builder[PT] {
+func (b *builder[T, O, R]) WithUpdateHooks(hooks ...UpdateHook[R]) Builder[R] {
 	b.updateHooks = append(b.updateHooks, hooks...)
 	return b
 }
 
-func (b *builder[PT]) WithDelHooks(hooks ...DelHook[PT]) Builder[PT] {
+func (b *builder[T, O, R]) WithDelHooks(hooks ...DelHook[R]) Builder[R] {
 	b.delHooks = append(b.delHooks, hooks...)
 	return b
 }
 
-func (b *builder[PT]) WithScaleInPreferPolicy(ps ...PreferPolicy[PT]) Builder[PT] {
+func (b *builder[T, O, R]) WithScaleInPreferPolicy(ps ...PreferPolicy[R]) Builder[R] {
 	b.scaleInPreferPolicies = append(b.scaleInPreferPolicies, ps...)
 	return b
 }
 
-func (b *builder[PT]) WithUpdatePreferPolicy(ps ...PreferPolicy[PT]) Builder[PT] {
+func (b *builder[T, O, R]) WithUpdatePreferPolicy(ps ...PreferPolicy[R]) Builder[R] {
 	b.updatePreferPolicies = append(b.updatePreferPolicies, ps...)
 	return b
 }
 
-func split[PT runtime.Instance](all []PT, rev string) (update, outdated []PT) {
+func split[R runtime.Instance](all []R, rev string) (update, outdated []R) {
 	for _, instance := range all {
 		// if instance is deleting, just ignore it
 		// TODO(liubo02): make sure it's ok for PD
@@ -158,7 +158,7 @@ func split[PT runtime.Instance](all []PT, rev string) (update, outdated []PT) {
 	return update, outdated
 }
 
-func countUnavailable[PT runtime.Instance](all []PT) int {
+func countUnavailable[R runtime.Instance](all []R) int {
 	unavailable := 0
 	for _, instance := range all {
 		if !instance.IsHealthy() || !instance.IsUpToDate() {

@@ -16,20 +16,39 @@ package runtime
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/pingcap/tidb-operator/pkg/client"
 )
 
-type object interface {
+type Object interface {
 	metav1.Object
 
 	Cluster() string
 	Component() string
-	To() client.Object
 	Conditions() []metav1.Condition
+	SetConditions([]metav1.Condition)
+
+	ObservedGeneration() int64
+	SetObservedGeneration(int64)
 }
 
-type Object interface {
-	object
+type ObjectT[T ObjectSet] interface {
+	Object
 
-	*PDGroup | *TiDBGroup | *TiKVGroup | *TiFlashGroup | *PD | *TiDB | *TiKV | *TiFlash
+	*T
+}
+
+type ObjectSet interface {
+	GroupSet | InstanceSet
+}
+
+type Tuple[T any, U any] interface {
+	From(T) U
+	FromSlice([]T) []U
+	To(U) T
+	ToSlice([]U) []T
+}
+
+type ObjectTuple[PT client.Object, PU Object] interface {
+	Tuple[PT, PU]
 }

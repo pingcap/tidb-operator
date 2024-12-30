@@ -26,21 +26,21 @@ type state struct {
 	key types.NamespacedName
 
 	cluster *v1alpha1.Cluster
-	pdg     *v1alpha1.PDGroup
-	pds     []*v1alpha1.PD
+	kvg     *v1alpha1.TiKVGroup
+	kvs     []*v1alpha1.TiKV
 }
 
 type State interface {
-	common.PDGroupStateInitializer
+	common.TiKVGroupStateInitializer
 	common.ClusterStateInitializer
-	common.PDSliceStateInitializer
+	common.TiKVSliceStateInitializer
 
-	common.PDGroupState
+	common.TiKVGroupState
 	common.ClusterState
-	common.PDSliceState
+	common.TiKVSliceState
 
-	common.GroupState[*runtime.PDGroup]
-	common.InstanceSliceState[*runtime.PD]
+	common.GroupState[*runtime.TiKVGroup]
+	common.InstanceSliceState[*runtime.TiKV]
 }
 
 func NewState(key types.NamespacedName) State {
@@ -50,28 +50,28 @@ func NewState(key types.NamespacedName) State {
 	return s
 }
 
-func (s *state) PDGroup() *v1alpha1.PDGroup {
-	return s.pdg
+func (s *state) TiKVGroup() *v1alpha1.TiKVGroup {
+	return s.kvg
 }
 
-func (s *state) Group() *runtime.PDGroup {
-	return runtime.FromPDGroup(s.pdg)
+func (s *state) Group() *runtime.TiKVGroup {
+	return runtime.FromTiKVGroup(s.kvg)
 }
 
 func (s *state) Cluster() *v1alpha1.Cluster {
 	return s.cluster
 }
 
-func (s *state) PDSlice() []*v1alpha1.PD {
-	return s.pds
+func (s *state) TiKVSlice() []*v1alpha1.TiKV {
+	return s.kvs
 }
 
-func (s *state) Slice() []*runtime.PD {
-	return runtime.FromPDSlice(s.pds)
+func (s *state) Slice() []*runtime.TiKV {
+	return runtime.FromTiKVSlice(s.kvs)
 }
 
-func (s *state) PDGroupInitializer() common.PDGroupInitializer {
-	return common.NewResource(func(pdg *v1alpha1.PDGroup) { s.pdg = pdg }).
+func (s *state) TiKVGroupInitializer() common.TiKVGroupInitializer {
+	return common.NewResource(func(kvg *v1alpha1.TiKVGroup) { s.kvg = kvg }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithName(common.Name(s.key.Name)).
 		Initializer()
@@ -81,20 +81,20 @@ func (s *state) ClusterInitializer() common.ClusterInitializer {
 	return common.NewResource(func(cluster *v1alpha1.Cluster) { s.cluster = cluster }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithName(common.NameFunc(func() string {
-			return s.pdg.Spec.Cluster.Name
+			return s.kvg.Spec.Cluster.Name
 		})).
 		Initializer()
 }
 
-func (s *state) PDSliceInitializer() common.PDSliceInitializer {
-	return common.NewResourceSlice(func(pds []*v1alpha1.PD) { s.pds = pds }).
+func (s *state) TiKVSliceInitializer() common.TiKVSliceInitializer {
+	return common.NewResourceSlice(func(kvs []*v1alpha1.TiKV) { s.kvs = kvs }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithLabels(common.LabelsFunc(func() map[string]string {
 			return map[string]string{
 				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
+				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
 				v1alpha1.LabelKeyCluster:   s.cluster.Name,
-				v1alpha1.LabelKeyGroup:     s.pdg.Name,
+				v1alpha1.LabelKeyGroup:     s.kvg.Name,
 			}
 		})).
 		Initializer()

@@ -22,6 +22,17 @@ import (
 )
 
 const (
+	// CondHealth is a condition to display whether the instance is health
+	CondHealth = "Health"
+
+	// CondSuspended is a condition to display whether the group or instance is suspended
+	CondSuspended     = "Suspended"
+	ReasonSuspended   = "Suspended"
+	ReasonSuspending  = "Suspending"
+	ReasonUnsuspended = "Unsuspended"
+)
+
+const (
 	// Finalizer is the finalizer used by all resources managed by TiDB Operator.
 	Finalizer = "core.pingcap.com/finalizer"
 

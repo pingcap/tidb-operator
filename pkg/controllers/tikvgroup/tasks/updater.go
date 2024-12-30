@@ -15,13 +15,16 @@
 package tasks
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/action"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/updater"
@@ -29,119 +32,107 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s/revision"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/random"
-	"github.com/pingcap/tidb-operator/pkg/utils/task"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/history"
 )
 
-// TaskUpdater is a task for updating TikVGroup when its spec is changed.
-type TaskUpdater struct {
-	Logger logr.Logger
-	Client client.Client
-	CRCli  history.Interface
-}
+const (
+	defaultUpdateWaitTime = time.Second * 30
+)
 
-func NewTaskUpdater(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
-	return &TaskUpdater{
-		Logger: logger,
-		Client: c,
-		CRCli:  history.NewClient(c),
-	}
-}
+// TaskUpdater is a task to scale or update PD when spec of TiKVGroup is changed.
+func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
+		logger := logr.FromContextOrDiscard(ctx)
+		historyCli := history.NewClient(c)
+		kvg := state.TiKVGroup()
 
-func (*TaskUpdater) Name() string {
-	return "Updater"
-}
+		selector := labels.SelectorFromSet(labels.Set{
+			// TODO(liubo02): add label of managed by operator ?
+			v1alpha1.LabelKeyCluster:   kvg.Spec.Cluster.Name,
+			v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
+			v1alpha1.LabelKeyGroup:     kvg.Name,
+		})
 
-func (t *TaskUpdater) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
-
-	// TODO: move to task v2
-	if !rtx.TiKVGroup.GetDeletionTimestamp().IsZero() {
-		return task.Complete().With("tikv group has been deleted")
-	}
-
-	// List all controller revisions for the TiKVGroup.
-	selector := labels.SelectorFromSet(labels.Set{
-		v1alpha1.LabelKeyCluster:   rtx.Cluster.Name,
-		v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
-		v1alpha1.LabelKeyGroup:     rtx.TiKVGroup.Name,
-	})
-	revisions, err := t.CRCli.ListControllerRevisions(rtx.TiKVGroup, selector)
-	if err != nil {
-		return task.Fail().With("cannot list controller revisions: %w", err)
-	}
-	history.SortControllerRevisions(revisions)
-
-	// Get the current(old) and update(new) ControllerRevisions.
-	currentRevision, updateRevision, collisionCount, err := revision.GetCurrentAndUpdate(rtx.TiKVGroup, revisions, t.CRCli, rtx.TiKVGroup)
-	if err != nil {
-		return task.Fail().With("cannot get revisions: %w", err)
-	}
-	rtx.CurrentRevision = currentRevision.Name
-	rtx.UpdateRevision = updateRevision.Name
-	rtx.CollisionCount = &collisionCount
-
-	if err = revision.TruncateHistory(t.CRCli, rtx.Peers, revisions,
-		currentRevision, updateRevision, rtx.Cluster.Spec.RevisionHistoryLimit); err != nil {
-		t.Logger.Error(err, "failed to truncate history")
-	}
-
-	if needVersionUpgrade(rtx.TiKVGroup) && !rtx.UpgradeChecker.CanUpgrade(ctx, rtx.TiKVGroup) {
-		return task.Fail().Continue().With(
-			"preconditions of upgrading the tikv group %s/%s are not met",
-			rtx.TiKVGroup.Namespace, rtx.TiKVGroup.Name)
-	}
-
-	desired := 1
-	if rtx.TiKVGroup.Spec.Replicas != nil {
-		desired = int(*rtx.TiKVGroup.Spec.Replicas)
-	}
-
-	var topos []v1alpha1.ScheduleTopology
-	for _, p := range rtx.TiKVGroup.Spec.SchedulePolicies {
-		switch p.Type {
-		case v1alpha1.SchedulePolicyTypeEvenlySpread:
-			topos = p.EvenlySpread.Topologies
-		default:
-			// do nothing
+		revisions, err := historyCli.ListControllerRevisions(kvg, selector)
+		if err != nil {
+			return task.Fail().With("cannot list controller revisions: %w", err)
 		}
-	}
+		history.SortControllerRevisions(revisions)
 
-	topoPolicy, err := policy.NewTopologyPolicy[*runtime.TiKV](topos)
-	if err != nil {
-		return task.Fail().With("invalid topo policy, it should be validated: %w", err)
-	}
+		// Get the current(old) and update(new) ControllerRevisions.
+		currentRevision, updateRevision, collisionCount, err := revision.GetCurrentAndUpdate(kvg, revisions, historyCli, kvg)
+		if err != nil {
+			return task.Fail().With("cannot get revisions: %w", err)
+		}
+		state.CurrentRevision = currentRevision.Name
+		state.UpdateRevision = updateRevision.Name
+		state.CollisionCount = collisionCount
 
-	for _, tikv := range rtx.Peers {
-		topoPolicy.Add(runtime.FromTiKV(tikv))
-	}
+		// TODO(liubo02): add a controller to do it
+		if err = revision.TruncateHistory(historyCli, state.TiKVSlice(), revisions,
+			currentRevision, updateRevision, state.Cluster().Spec.RevisionHistoryLimit); err != nil {
+			logger.Error(err, "failed to truncate history")
+		}
 
-	wait, err := updater.New[*runtime.TiKV]().
-		WithInstances(runtime.FromTiKVSlice(rtx.Peers)...).
-		WithDesired(desired).
-		WithClient(t.Client).
-		WithMaxSurge(0).
-		WithMaxUnavailable(1).
-		WithRevision(rtx.UpdateRevision).
-		WithNewFactory(TiKVNewer(rtx.TiKVGroup, rtx.UpdateRevision)).
-		WithAddHooks(topoPolicy).
-		WithUpdateHooks(
-			policy.KeepName[*runtime.TiKV](),
-			policy.KeepTopology[*runtime.TiKV](),
-		).
-		WithDelHooks(topoPolicy).
-		WithScaleInPreferPolicy(
-			topoPolicy,
-		).
-		Build().
-		Do(ctx)
-	if err != nil {
-		return task.Fail().With("cannot update instances: %w", err)
-	}
-	if wait {
-		return task.Complete().With("wait for all instances ready")
-	}
-	return task.Complete().With("all instances are synced")
+		checker := action.NewUpgradeChecker(c, state.Cluster(), logger)
+
+		if needVersionUpgrade(kvg) && !checker.CanUpgrade(ctx, kvg) {
+			// TODO(liubo02): change to Wait
+			return task.Retry(defaultUpdateWaitTime).With("wait until preconditions of upgrading is met")
+		}
+
+		desired := 1
+		if kvg.Spec.Replicas != nil {
+			desired = int(*kvg.Spec.Replicas)
+		}
+
+		var topos []v1alpha1.ScheduleTopology
+		for _, p := range kvg.Spec.SchedulePolicies {
+			switch p.Type {
+			case v1alpha1.SchedulePolicyTypeEvenlySpread:
+				topos = p.EvenlySpread.Topologies
+			default:
+				// do nothing
+			}
+		}
+
+		topoPolicy, err := policy.NewTopologyPolicy[*runtime.TiKV](topos)
+		if err != nil {
+			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
+		}
+
+		for _, tikv := range state.TiKVSlice() {
+			topoPolicy.Add(runtime.FromTiKV(tikv))
+		}
+
+		wait, err := updater.New[runtime.TiKVTuple]().
+			WithInstances(runtime.FromTiKVSlice(state.TiKVSlice())...).
+			WithDesired(desired).
+			WithClient(c).
+			WithMaxSurge(0).
+			WithMaxUnavailable(1).
+			WithRevision(state.UpdateRevision).
+			WithNewFactory(TiKVNewer(kvg, state.UpdateRevision)).
+			WithAddHooks(topoPolicy).
+			WithUpdateHooks(
+				policy.KeepName[*runtime.TiKV](),
+				policy.KeepTopology[*runtime.TiKV](),
+			).
+			WithDelHooks(topoPolicy).
+			WithScaleInPreferPolicy(
+				topoPolicy,
+			).
+			Build().
+			Do(ctx)
+		if err != nil {
+			return task.Fail().With("cannot update instances: %w", err)
+		}
+		if wait {
+			return task.Wait().With("wait for all instances ready")
+		}
+		return task.Complete().With("all instances are synced")
+	})
 }
 
 func needVersionUpgrade(kvg *v1alpha1.TiKVGroup) bool {
