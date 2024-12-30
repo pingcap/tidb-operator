@@ -61,7 +61,7 @@ func TestBuilder(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.desc, func(t *testing.T) {
-			bld := New[*runtime.PD]().
+			bld := New[runtime.PDTuple]().
 				WithInstances(fake.FakeObj[runtime.PD]("pd-0"), fake.FakeObj[runtime.PD]("pd-1")).WithDesired(c.desired).
 				WithMaxSurge(1).
 				WithMaxUnavailable(1).

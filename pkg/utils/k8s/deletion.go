@@ -60,10 +60,10 @@ func EnsureGroupSubResourceDeleted(ctx context.Context, cli client.Client,
 }
 
 // DeleteInstanceSubresource try to delete a subresource of an instance, e.g. pods, cms, pvcs
-func DeleteInstanceSubresource[T runtime.Instance](
+func DeleteInstanceSubresource[I runtime.Instance](
 	ctx context.Context,
 	c client.Client,
-	instance T,
+	instance I,
 	objs client.ObjectList,
 	opts ...client.DeleteOption,
 ) (wait bool, _ error) {
@@ -79,10 +79,10 @@ func DeleteInstanceSubresource[T runtime.Instance](
 	return wait, nil
 }
 
-func DeleteGroupSubresource[T runtime.Group](
+func DeleteGroupSubresource[G runtime.Group](
 	ctx context.Context,
 	c client.Client,
-	group T,
+	group G,
 	objs client.ObjectList,
 	opts ...client.DeleteOption,
 ) (wait bool, _ error) {

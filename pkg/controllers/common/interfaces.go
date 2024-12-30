@@ -19,6 +19,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
 type Object[T any] interface {
@@ -32,51 +33,141 @@ type ObjectList[T any] interface {
 }
 
 type (
-	PDInitializer = ResourceInitializer[v1alpha1.PD]
-
 	ClusterInitializer = ResourceInitializer[v1alpha1.Cluster]
 
-	PodInitializer     = ResourceInitializer[corev1.Pod]
-	PDSliceInitializer = ResourceSliceInitializer[v1alpha1.PD]
 	PDGroupInitializer = ResourceInitializer[v1alpha1.PDGroup]
+	PDInitializer      = ResourceInitializer[v1alpha1.PD]
+	PDSliceInitializer = ResourceSliceInitializer[v1alpha1.PD]
+
+	TiKVGroupInitializer = ResourceInitializer[v1alpha1.TiKVGroup]
+	TiKVInitializer      = ResourceInitializer[v1alpha1.TiKV]
+	TiKVSliceInitializer = ResourceSliceInitializer[v1alpha1.TiKV]
+
+	TiDBGroupInitializer = ResourceInitializer[v1alpha1.TiDBGroup]
+	TiDBInitializer      = ResourceInitializer[v1alpha1.TiDB]
+	TiDBSliceInitializer = ResourceSliceInitializer[v1alpha1.TiDB]
+
+	TiFlashGroupInitializer = ResourceInitializer[v1alpha1.TiFlashGroup]
+	TiFlashInitializer      = ResourceInitializer[v1alpha1.TiFlash]
+	TiFlashSliceInitializer = ResourceSliceInitializer[v1alpha1.TiFlash]
+
+	PodInitializer = ResourceInitializer[corev1.Pod]
 )
 
-type PDStateInitializer interface {
-	PDInitializer() PDInitializer
+type (
+	ClusterStateInitializer interface {
+		ClusterInitializer() ClusterInitializer
+	}
+	ClusterState interface {
+		Cluster() *v1alpha1.Cluster
+	}
+)
+
+type GroupState[G runtime.Group] interface {
+	Group() G
 }
 
-type PDState interface {
-	PD() *v1alpha1.PD
+type InstanceSliceState[I runtime.Instance] interface {
+	Slice() []I
 }
 
-type ClusterStateInitializer interface {
-	ClusterInitializer() ClusterInitializer
+type GroupAndInstanceSliceState[
+	G runtime.Group,
+	I runtime.Instance,
+] interface {
+	GroupState[G]
+	InstanceSliceState[I]
 }
 
-type ClusterState interface {
-	Cluster() *v1alpha1.Cluster
-}
+type (
+	PDGroupStateInitializer interface {
+		PDGroupInitializer() PDGroupInitializer
+	}
+	PDGroupState interface {
+		PDGroup() *v1alpha1.PDGroup
+	}
+	PDStateInitializer interface {
+		PDInitializer() PDInitializer
+	}
+	PDState interface {
+		PD() *v1alpha1.PD
+	}
+	PDSliceStateInitializer interface {
+		PDSliceInitializer() PDSliceInitializer
+	}
+	PDSliceState interface {
+		PDSlice() []*v1alpha1.PD
+	}
+)
 
-type PodStateInitializer interface {
-	PodInitializer() PodInitializer
-}
+type (
+	TiKVGroupStateInitializer interface {
+		TiKVGroupInitializer() TiKVGroupInitializer
+	}
+	TiKVGroupState interface {
+		TiKVGroup() *v1alpha1.TiKVGroup
+	}
+	TiKVStateInitializer interface {
+		TiKVInitializer() TiKVInitializer
+	}
+	TiKVState interface {
+		TiKV() *v1alpha1.TiKV
+	}
+	TiKVSliceStateInitializer interface {
+		TiKVSliceInitializer() TiKVSliceInitializer
+	}
+	TiKVSliceState interface {
+		TiKVSlice() []*v1alpha1.TiKV
+	}
+)
 
-type PodState interface {
-	Pod() *corev1.Pod
-}
+type (
+	TiDBGroupStateInitializer interface {
+		TiDBGroupInitializer() TiDBGroupInitializer
+	}
+	TiDBGroupState interface {
+		TiDBGroup() *v1alpha1.TiDBGroup
+	}
+	TiDBStateInitializer interface {
+		TiDBInitializer() TiDBInitializer
+	}
+	TiDBState interface {
+		TiDB() *v1alpha1.TiDB
+	}
+	TiDBSliceStateInitializer interface {
+		TiDBSliceInitializer() TiDBSliceInitializer
+	}
+	TiDBSliceState interface {
+		TiDBSlice() []*v1alpha1.TiDB
+	}
+)
 
-type PDGroupStateInitializer interface {
-	PDGroupInitializer() PDGroupInitializer
-}
+type (
+	TiFlashGroupStateInitializer interface {
+		TiFlashGroupInitializer() TiFlashGroupInitializer
+	}
+	TiFlashGroupState interface {
+		TiFlashGroup() *v1alpha1.TiFlashGroup
+	}
+	TiFlashStateInitializer interface {
+		TiFlashInitializer() TiFlashGroupInitializer
+	}
+	TiFlashState interface {
+		TiFlash() *v1alpha1.TiFlash
+	}
+	TiFlashSliceStateInitializer interface {
+		TiFlashSliceInitializer() TiFlashSliceInitializer
+	}
+	TiFlashSliceState interface {
+		TiFlashSlice() []*v1alpha1.TiFlash
+	}
+)
 
-type PDGroupState interface {
-	PDGroup() *v1alpha1.PDGroup
-}
-
-type PDSliceStateInitializer interface {
-	PDSliceInitializer() PDSliceInitializer
-}
-
-type PDSliceState interface {
-	PDSlice() []*v1alpha1.PD
-}
+type (
+	PodStateInitializer interface {
+		PodInitializer() PodInitializer
+	}
+	PodState interface {
+		Pod() *corev1.Pod
+	}
+)

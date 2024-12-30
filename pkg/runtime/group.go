@@ -14,15 +14,25 @@
 
 package runtime
 
-type group interface {
-	object
+import "github.com/pingcap/tidb-operator/pkg/client"
+
+type Group interface {
+	Object
 
 	SetReplicas(replicas *int32)
 	Replicas() *int32
 }
 
-type Group interface {
-	group
+type GroupT[T GroupSet] interface {
+	Group
 
-	*PDGroup | *TiDBGroup | *TiKVGroup | *TiFlashGroup
+	*T
+}
+
+type GroupSet interface {
+	PDGroup | TiDBGroup | TiKVGroup | TiFlashGroup
+}
+
+type GroupTuple[PT client.Object, PU Group] interface {
+	Tuple[PT, PU]
 }

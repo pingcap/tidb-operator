@@ -20,7 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 )
@@ -30,21 +29,85 @@ type (
 	TiFlashGroup v1alpha1.TiFlashGroup
 )
 
+type TiFlashTuple struct{}
+
+var _ InstanceTuple[*v1alpha1.TiFlash, *TiFlash] = TiFlashTuple{}
+
+func (TiFlashTuple) From(t *v1alpha1.TiFlash) *TiFlash {
+	return FromTiFlash(t)
+}
+
+func (TiFlashTuple) FromSlice(t []*v1alpha1.TiFlash) []*TiFlash {
+	return FromTiFlashSlice(t)
+}
+
+func (TiFlashTuple) To(t *TiFlash) *v1alpha1.TiFlash {
+	return ToTiFlash(t)
+}
+
+func (TiFlashTuple) ToSlice(t []*TiFlash) []*v1alpha1.TiFlash {
+	return ToTiFlashSlice(t)
+}
+
+type TiFlashGroupTuple struct{}
+
+var _ GroupTuple[*v1alpha1.TiFlashGroup, *TiFlashGroup] = TiFlashGroupTuple{}
+
+func (TiFlashGroupTuple) From(t *v1alpha1.TiFlashGroup) *TiFlashGroup {
+	return FromTiFlashGroup(t)
+}
+
+func (TiFlashGroupTuple) FromSlice(t []*v1alpha1.TiFlashGroup) []*TiFlashGroup {
+	return FromTiFlashGroupSlice(t)
+}
+
+func (TiFlashGroupTuple) To(t *TiFlashGroup) *v1alpha1.TiFlashGroup {
+	return ToTiFlashGroup(t)
+}
+
+func (TiFlashGroupTuple) ToSlice(t []*TiFlashGroup) []*v1alpha1.TiFlashGroup {
+	return ToTiFlashGroupSlice(t)
+}
+
 func FromTiFlash(f *v1alpha1.TiFlash) *TiFlash {
 	return (*TiFlash)(f)
+}
+
+func ToTiFlash(f *TiFlash) *v1alpha1.TiFlash {
+	return (*v1alpha1.TiFlash)(f)
 }
 
 func FromTiFlashSlice(fs []*v1alpha1.TiFlash) []*TiFlash {
 	return *(*[]*TiFlash)(unsafe.Pointer(&fs))
 }
 
-var _ instance = &TiFlash{}
+func ToTiFlashSlice(fs []*TiFlash) []*v1alpha1.TiFlash {
+	return *(*[]*v1alpha1.TiFlash)(unsafe.Pointer(&fs))
+}
+
+func FromTiFlashGroup(fg *v1alpha1.TiFlashGroup) *TiFlashGroup {
+	return (*TiFlashGroup)(fg)
+}
+
+func ToTiFlashGroup(fg *TiFlashGroup) *v1alpha1.TiFlashGroup {
+	return (*v1alpha1.TiFlashGroup)(fg)
+}
+
+func FromTiFlashGroupSlice(fgs []*v1alpha1.TiFlashGroup) []*TiFlashGroup {
+	return *(*[]*TiFlashGroup)(unsafe.Pointer(&fgs))
+}
+
+func ToTiFlashGroupSlice(fgs []*TiFlashGroup) []*v1alpha1.TiFlashGroup {
+	return *(*[]*v1alpha1.TiFlashGroup)(unsafe.Pointer(&fgs))
+}
+
+var _ Instance = &TiFlash{}
 
 func (f *TiFlash) DeepCopyObject() runtime.Object {
 	return (*v1alpha1.TiFlash)(f).DeepCopyObject()
 }
 
-func (f *TiFlash) To() client.Object {
+func (f *TiFlash) To() *v1alpha1.TiFlash {
 	return (*v1alpha1.TiFlash)(f)
 }
 
@@ -75,10 +138,64 @@ func (f *TiFlash) Conditions() []metav1.Condition {
 	return f.Status.Conditions
 }
 
+func (f *TiFlash) SetConditions(conds []metav1.Condition) {
+	f.Status.Conditions = conds
+}
+
+func (f *TiFlash) ObservedGeneration() int64 {
+	return f.Status.ObservedGeneration
+}
+
+func (f *TiFlash) SetObservedGeneration(g int64) {
+	f.Status.ObservedGeneration = g
+}
+
 func (f *TiFlash) Cluster() string {
 	return f.Spec.Cluster.Name
 }
 
 func (*TiFlash) Component() string {
 	return v1alpha1.LabelValComponentTiFlash
+}
+
+var _ Group = &TiFlashGroup{}
+
+func (fg *TiFlashGroup) DeepCopyObject() runtime.Object {
+	return (*v1alpha1.TiFlashGroup)(fg)
+}
+
+func (fg *TiFlashGroup) To() *v1alpha1.TiFlashGroup {
+	return ToTiFlashGroup(fg)
+}
+
+func (fg *TiFlashGroup) SetReplicas(replicas *int32) {
+	fg.Spec.Replicas = replicas
+}
+
+func (fg *TiFlashGroup) Replicas() *int32 {
+	return fg.Spec.Replicas
+}
+
+func (fg *TiFlashGroup) Cluster() string {
+	return fg.Spec.Cluster.Name
+}
+
+func (*TiFlashGroup) Component() string {
+	return v1alpha1.LabelValComponentTiFlash
+}
+
+func (fg *TiFlashGroup) Conditions() []metav1.Condition {
+	return fg.Status.Conditions
+}
+
+func (fg *TiFlashGroup) SetConditions(conds []metav1.Condition) {
+	fg.Status.Conditions = conds
+}
+
+func (fg *TiFlashGroup) ObservedGeneration() int64 {
+	return fg.Status.ObservedGeneration
+}
+
+func (fg *TiFlashGroup) SetObservedGeneration(g int64) {
+	fg.Status.ObservedGeneration = g
 }

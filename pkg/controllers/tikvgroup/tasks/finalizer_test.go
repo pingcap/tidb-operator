@@ -27,9 +27,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
-	"github.com/pingcap/tidb-operator/pkg/timanager"
-	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -47,99 +44,91 @@ func TestTaskFinalizerDel(t *testing.T) {
 		unexpectedErr bool
 
 		expectedStatus task.Status
-		isDeregistered bool
-		expectedObj    *v1alpha1.PDGroup
+		expectedObj    *v1alpha1.TiKVGroup
 	}{
 		{
-			desc: "no pd and no sub resources and no finalizer",
+			desc: "no tikv and no sub resources and no finalizer",
 			state: &state{
-				pdg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				kvg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.TiKVGroup](&now), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
 					obj.Spec.Cluster.Name = defaultTestClusterName
 					return obj
 				}),
-				cluster: fake.FakeObj[v1alpha1.Cluster](defaultTestClusterName),
 			},
-			isDeregistered: true,
 			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+			expectedObj: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.TiKVGroup](&now), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
 				obj.Spec.Cluster.Name = defaultTestClusterName
 				return obj
 			}),
 		},
 		{
-			desc: "no pd and no sub resources",
+			desc: "no tikv and no sub resources",
 			state: &state{
-				pdg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				kvg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.TiKVGroup](&now), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
 					obj.Spec.Cluster.Name = defaultTestClusterName
 					obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
 					return obj
 				}),
-				cluster: fake.FakeObj[v1alpha1.Cluster](defaultTestClusterName),
 			},
 
-			isDeregistered: true,
 			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+			expectedObj: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.TiKVGroup](&now), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
 				obj.Spec.Cluster.Name = defaultTestClusterName
 				obj.Finalizers = []string{}
 				return obj
 			}),
 		},
 		{
-			desc: "no pd and no sub resources but call api failed",
+			desc: "no tikv and no sub resources but call api failed",
 			state: &state{
-				pdg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				kvg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.TiKVGroup](&now), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
 					obj.Spec.Cluster.Name = defaultTestClusterName
 					obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
 					return obj
 				}),
-				cluster: fake.FakeObj[v1alpha1.Cluster](defaultTestClusterName),
 			},
 			unexpectedErr: true,
 
 			expectedStatus: task.SFail,
 		},
 		{
-			desc: "no pd but has sub resources",
+			desc: "no tikv but has sub resources",
 			state: &state{
-				pdg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				kvg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.TiKVGroup](&now), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
 					obj.Spec.Cluster.Name = defaultTestClusterName
 					obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
 					return obj
 				}),
-				cluster: fake.FakeObj[v1alpha1.Cluster](defaultTestClusterName),
 			},
 			subresources: []client.Object{
 				fake.FakeObj("aaa",
 					fake.Label[corev1.Service](v1alpha1.LabelKeyManagedBy, v1alpha1.LabelValManagedByOperator),
 					fake.Label[corev1.Service](v1alpha1.LabelKeyCluster, defaultTestClusterName),
-					fake.Label[corev1.Service](v1alpha1.LabelKeyComponent, v1alpha1.LabelValComponentPD),
+					fake.Label[corev1.Service](v1alpha1.LabelKeyComponent, v1alpha1.LabelValComponentTiKV),
 					fake.Label[corev1.Service](v1alpha1.LabelKeyGroup, "aaa"),
 				),
 			},
 
 			expectedStatus: task.SWait,
-			expectedObj: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+			expectedObj: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.TiKVGroup](&now), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
 				obj.Spec.Cluster.Name = defaultTestClusterName
 				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
 				return obj
 			}),
 		},
 		{
-			desc: "no pd but has sub resources and call api failed",
+			desc: "no tikv but has sub resources and call api failed",
 			state: &state{
-				pdg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				kvg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.TiKVGroup](&now), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
 					obj.Spec.Cluster.Name = defaultTestClusterName
 					obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
 					return obj
 				}),
-				cluster: fake.FakeObj[v1alpha1.Cluster](defaultTestClusterName),
 			},
 			subresources: []client.Object{
 				fake.FakeObj("aaa",
 					fake.Label[corev1.Service](v1alpha1.LabelKeyManagedBy, v1alpha1.LabelValManagedByOperator),
 					fake.Label[corev1.Service](v1alpha1.LabelKeyCluster, defaultTestClusterName),
-					fake.Label[corev1.Service](v1alpha1.LabelKeyComponent, v1alpha1.LabelValComponentPD),
+					fake.Label[corev1.Service](v1alpha1.LabelKeyComponent, v1alpha1.LabelValComponentTiKV),
 					fake.Label[corev1.Service](v1alpha1.LabelKeyGroup, "aaa"),
 				),
 			},
@@ -148,40 +137,38 @@ func TestTaskFinalizerDel(t *testing.T) {
 			expectedStatus: task.SFail,
 		},
 		{
-			desc: "has pd with finalizer",
+			desc: "has tikv with finalizer",
 			state: &state{
-				pdg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				kvg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.TiKVGroup](&now), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
 					obj.Spec.Cluster.Name = defaultTestClusterName
 					obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
 					return obj
 				}),
-				cluster: fake.FakeObj[v1alpha1.Cluster](defaultTestClusterName),
-				pds: []*v1alpha1.PD{
-					fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				kvs: []*v1alpha1.TiKV{
+					fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
 						return obj
 					}),
 				},
 			},
 
-			expectedStatus: task.SWait,
-			expectedObj: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+			expectedStatus: task.SRetry,
+			expectedObj: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.TiKVGroup](&now), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
 				obj.Spec.Cluster.Name = defaultTestClusterName
 				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
 				return obj
 			}),
 		},
 		{
-			desc: "has pd with finalizer but call api failed",
+			desc: "has tikv with finalizer but call api failed",
 			state: &state{
-				pdg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				kvg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.TiKVGroup](&now), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
 					obj.Spec.Cluster.Name = defaultTestClusterName
 					obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
 					return obj
 				}),
-				cluster: fake.FakeObj[v1alpha1.Cluster](defaultTestClusterName),
-				pds: []*v1alpha1.PD{
-					fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				kvs: []*v1alpha1.TiKV{
+					fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
 						return obj
 					}),
@@ -192,16 +179,15 @@ func TestTaskFinalizerDel(t *testing.T) {
 			expectedStatus: task.SFail,
 		},
 		{
-			desc: "has deleting pd with finalizer but call api failed",
+			desc: "has deleting tikv with finalizer but call api failed",
 			state: &state{
-				pdg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				kvg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.TiKVGroup](&now), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
 					obj.Spec.Cluster.Name = defaultTestClusterName
 					obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
 					return obj
 				}),
-				cluster: fake.FakeObj[v1alpha1.Cluster](defaultTestClusterName),
-				pds: []*v1alpha1.PD{
-					fake.FakeObj("aaa", fake.DeleteNow[v1alpha1.PD](), func(obj *v1alpha1.PD) *v1alpha1.PD {
+				kvs: []*v1alpha1.TiKV{
+					fake.FakeObj("aaa", fake.DeleteNow[v1alpha1.TiKV](), func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
 						return obj
 					}),
@@ -209,7 +195,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			},
 			unexpectedErr: true,
 
-			expectedStatus: task.SFail,
+			expectedStatus: task.SRetry,
 		},
 	}
 
@@ -219,7 +205,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			tt.Parallel()
 
 			objs := []client.Object{
-				c.state.PDGroup(), c.state.Cluster(),
+				c.state.TiKVGroup(),
 			}
 
 			objs = append(objs, c.subresources...)
@@ -234,38 +220,18 @@ func TestTaskFinalizerDel(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			m := NewFakePDClientManager()
-			m.Start(ctx)
-			require.NoError(tt, m.Register(c.state.PDGroup()), c.desc)
-
-			res, done := task.RunTask(ctx, TaskFinalizerDel(c.state, fc, m))
-			assert.Equal(tt, c.expectedStatus, res.Status(), c.desc)
+			res, done := task.RunTask(ctx, TaskFinalizerDel(c.state, fc))
+			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
-
-			ck := c.state.Cluster()
-			_, ok := m.Get(pdm.PrimaryKey(ck.Namespace, ck.Name))
-			assert.Equal(tt, c.isDeregistered, !ok, c.desc)
 
 			// no need to check update result
 			if c.unexpectedErr {
 				return
 			}
 
-			pdg := &v1alpha1.PDGroup{}
-			require.NoError(tt, fc.Get(ctx, client.ObjectKey{Name: "aaa"}, pdg), c.desc)
-			assert.Equal(tt, c.expectedObj, pdg, c.desc)
+			kvg := &v1alpha1.TiKVGroup{}
+			require.NoError(tt, fc.Get(ctx, client.ObjectKey{Name: "aaa"}, kvg), c.desc)
+			assert.Equal(tt, c.expectedObj, kvg, c.desc)
 		})
 	}
-}
-
-func NewFakePDClientManager() pdm.PDClientManager {
-	return timanager.NewManagerBuilder[*v1alpha1.PDGroup, pdapi.PDClient, pdm.PDClient]().
-		WithNewUnderlayClientFunc(func(*v1alpha1.PDGroup) (pdapi.PDClient, error) {
-			return nil, nil
-		}).
-		WithNewClientFunc(func(string, pdapi.PDClient, timanager.SharedInformerFactory[pdapi.PDClient]) pdm.PDClient {
-			return nil
-		}).
-		WithCacheKeysFunc(pdm.CacheKeys).
-		Build()
 }

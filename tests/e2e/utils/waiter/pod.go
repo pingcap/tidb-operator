@@ -42,40 +42,16 @@ type podInfo struct {
 	deletionTime metav1.Time
 }
 
-//nolint:gocyclo // refactor if possible
-func WaitPodsRollingUpdateOnce[T runtime.Group](ctx context.Context, c client.Client, g T, timeout time.Duration) error {
+func WaitPodsRollingUpdateOnce[G runtime.Group](
+	ctx context.Context,
+	c client.Client,
+	g G,
+	timeout time.Duration,
+) error {
 	podMap := map[string]podInfo{}
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(ctx, timeout)
 	defer cancel()
-	lw := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (kuberuntime.Object, error) {
-			list := &corev1.PodList{}
-			if err := c.List(ctx, list, &client.ListOptions{
-				Namespace: g.GetNamespace(),
-				LabelSelector: labels.SelectorFromSet(labels.Set{
-					v1alpha1.LabelKeyCluster:   g.Cluster(),
-					v1alpha1.LabelKeyGroup:     g.GetName(),
-					v1alpha1.LabelKeyComponent: g.Component(),
-				}),
-				Raw: &options,
-			}); err != nil {
-				return nil, err
-			}
-			return list, nil
-		},
-		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-			list := &corev1.PodList{}
-			return c.Watch(ctx, list, &client.ListOptions{
-				Namespace: g.GetNamespace(),
-				LabelSelector: labels.SelectorFromSet(labels.Set{
-					v1alpha1.LabelKeyCluster:   g.Cluster(),
-					v1alpha1.LabelKeyGroup:     g.GetName(),
-					v1alpha1.LabelKeyComponent: g.Component(),
-				}),
-				Raw: &options,
-			})
-		},
-	}
+	lw := newListWatch(ctx, c, g)
 	_, err := watchtools.UntilWithSync(ctx, lw, &corev1.Pod{}, nil, func(event watch.Event) (bool, error) {
 		pod, ok := event.Object.(*corev1.Pod)
 		if !ok {
@@ -108,18 +84,7 @@ func WaitPodsRollingUpdateOnce[T runtime.Group](ctx context.Context, c client.Cl
 	for _, v := range podMap {
 		infos = append(infos, v)
 	}
-	slices.SortFunc(infos, func(a podInfo, b podInfo) int {
-		if a.deletionTime.IsZero() && b.deletionTime.IsZero() {
-			return a.creationTime.Compare(b.creationTime.Time)
-		}
-		if a.deletionTime.IsZero() {
-			return a.creationTime.Compare(b.deletionTime.Time)
-		}
-		if b.deletionTime.IsZero() {
-			return a.deletionTime.Compare(b.creationTime.Time)
-		}
-		return a.deletionTime.Compare(b.deletionTime.Time)
-	})
+	sortPodInfos(infos)
 	detail := strings.Builder{}
 	for _, info := range infos {
 		if info.deletionTime.IsZero() {
@@ -141,7 +106,56 @@ func WaitPodsRollingUpdateOnce[T runtime.Group](ctx context.Context, c client.Cl
 	return nil
 }
 
-func WaitForPodsReady[T runtime.Group](ctx context.Context, c client.Client, g T, timeout time.Duration) error {
+func newListWatch[G runtime.Group](ctx context.Context, c client.Client, g G) cache.ListerWatcher {
+	lw := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (kuberuntime.Object, error) {
+			list := &corev1.PodList{}
+			if err := c.List(ctx, list, &client.ListOptions{
+				Namespace: g.GetNamespace(),
+				LabelSelector: labels.SelectorFromSet(labels.Set{
+					v1alpha1.LabelKeyCluster:   g.Cluster(),
+					v1alpha1.LabelKeyGroup:     g.GetName(),
+					v1alpha1.LabelKeyComponent: g.Component(),
+				}),
+				Raw: &options,
+			}); err != nil {
+				return nil, err
+			}
+			return list, nil
+		},
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			list := &corev1.PodList{}
+			return c.Watch(ctx, list, &client.ListOptions{
+				Namespace: g.GetNamespace(),
+				LabelSelector: labels.SelectorFromSet(labels.Set{
+					v1alpha1.LabelKeyCluster:   g.Cluster(),
+					v1alpha1.LabelKeyGroup:     g.GetName(),
+					v1alpha1.LabelKeyComponent: g.Component(),
+				}),
+				Raw: &options,
+			})
+		},
+	}
+
+	return lw
+}
+
+func sortPodInfos(infos []podInfo) {
+	slices.SortFunc(infos, func(a podInfo, b podInfo) int {
+		if a.deletionTime.IsZero() && b.deletionTime.IsZero() {
+			return a.creationTime.Compare(b.creationTime.Time)
+		}
+		if a.deletionTime.IsZero() {
+			return a.creationTime.Compare(b.deletionTime.Time)
+		}
+		if b.deletionTime.IsZero() {
+			return a.deletionTime.Compare(b.creationTime.Time)
+		}
+		return a.deletionTime.Compare(b.deletionTime.Time)
+	})
+}
+
+func WaitForPodsReady[G runtime.Group](ctx context.Context, c client.Client, g G, timeout time.Duration) error {
 	list := corev1.PodList{}
 	return WaitForList(ctx, c, &list, func() error {
 		if len(list.Items) != int(*g.Replicas()) {
@@ -178,7 +192,13 @@ func WaitForPodsReady[T runtime.Group](ctx context.Context, c client.Client, g T
 	})
 }
 
-func WaitForPodsRecreated[T runtime.Group](ctx context.Context, c client.Client, g T, changeTime time.Time, timeout time.Duration) error {
+func WaitForPodsRecreated[G runtime.Group](
+	ctx context.Context,
+	c client.Client,
+	g G,
+	changeTime time.Time,
+	timeout time.Duration,
+) error {
 	list := corev1.PodList{}
 	return WaitForList(ctx, c, &list, func() error {
 		if len(list.Items) != int(*g.Replicas()) {

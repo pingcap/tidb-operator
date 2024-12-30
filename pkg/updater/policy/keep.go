@@ -19,15 +19,15 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/updater"
 )
 
-func KeepName[PT runtime.Instance]() updater.UpdateHook[PT] {
-	return updater.UpdateHookFunc[PT](func(update, outdated PT) PT {
+func KeepName[R runtime.Instance]() updater.UpdateHook[R] {
+	return updater.UpdateHookFunc[R](func(update, outdated R) R {
 		update.SetName(outdated.GetName())
 		return update
 	})
 }
 
-func KeepTopology[PT runtime.Instance]() updater.UpdateHook[PT] {
-	return updater.UpdateHookFunc[PT](func(update, outdated PT) PT {
+func KeepTopology[R runtime.Instance]() updater.UpdateHook[R] {
+	return updater.UpdateHookFunc[R](func(update, outdated R) R {
 		update.SetTopology(outdated.GetTopology())
 		return update
 	})
