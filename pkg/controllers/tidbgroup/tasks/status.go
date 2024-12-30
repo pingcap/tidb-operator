@@ -15,97 +15,98 @@
 package tasks
 
 import (
-	"github.com/go-logr/logr"
+	"context"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/utils/task"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-type TaskStatus struct {
-	Client client.Client
-	Logger logr.Logger
-}
+// TODO(liubo02): extract to common task
+func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("Status", func(ctx context.Context) task.Result {
+		dbg := state.TiDBGroup()
 
-func NewTaskStatus(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
-	return &TaskStatus{
-		Client: c,
-		Logger: logger,
-	}
-}
+		needUpdate := meta.SetStatusCondition(&dbg.Status.Conditions, metav1.Condition{
+			Type:               v1alpha1.CondSuspended,
+			Status:             metav1.ConditionFalse,
+			ObservedGeneration: dbg.Generation,
+			Reason:             v1alpha1.ReasonUnsuspended,
+			Message:            "group is not suspended",
+		})
 
-func (*TaskStatus) Name() string {
-	return "Status"
-}
+		replicas, readyReplicas, updateReplicas, currentReplicas := calcReplicas(state.TiDBSlice(), state.CurrentRevision, state.UpdateRevision)
 
-//nolint:gocyclo // refactor if possible
-func (t *TaskStatus) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
+		// all instances are updated
+		if updateReplicas == replicas {
+			// update current revision
+			state.CurrentRevision = state.UpdateRevision
+			// update status of pdg version
+			// TODO(liubo02): version of a group is hard to understand
+			// We need to change it to a more meaningful field
+			needUpdate = SetIfChanged(&dbg.Status.Version, dbg.Spec.Version) || needUpdate
+		}
 
-	availStatus := metav1.ConditionFalse
-	availMessage := "tidb group is not available"
-	if rtx.IsAvailable {
-		availStatus = metav1.ConditionTrue
-		availMessage = "tidb group is available"
-	}
-	conditionChanged := meta.SetStatusCondition(&rtx.TiDBGroup.Status.Conditions, metav1.Condition{
-		Type:               v1alpha1.TiDBGroupCondAvailable,
-		Status:             availStatus,
-		ObservedGeneration: rtx.TiDBGroup.Generation,
-		Reason:             v1alpha1.TiDBGroupAvailableReason,
-		Message:            availMessage,
+		needUpdate = SetIfChanged(&dbg.Status.ObservedGeneration, dbg.Generation) || needUpdate
+		needUpdate = SetIfChanged(&dbg.Status.Replicas, replicas) || needUpdate
+		needUpdate = SetIfChanged(&dbg.Status.ReadyReplicas, readyReplicas) || needUpdate
+		needUpdate = SetIfChanged(&dbg.Status.UpdatedReplicas, updateReplicas) || needUpdate
+		needUpdate = SetIfChanged(&dbg.Status.CurrentReplicas, currentReplicas) || needUpdate
+		needUpdate = SetIfChanged(&dbg.Status.UpdateRevision, state.UpdateRevision) || needUpdate
+		needUpdate = SetIfChanged(&dbg.Status.CurrentRevision, state.CurrentRevision) || needUpdate
+		needUpdate = NewAndSetIfChanged(&dbg.Status.CollisionCount, state.CollisionCount) || needUpdate
+
+		if needUpdate {
+			if err := c.Status().Update(ctx, dbg); err != nil {
+				return task.Fail().With("cannot update status: %w", err)
+			}
+		}
+
+		return task.Complete().With("status is synced")
 	})
+}
 
-	suspendStatus := metav1.ConditionFalse
-	suspendMessage := "tidb group is not suspended"
-	if rtx.Suspended {
-		suspendStatus = metav1.ConditionTrue
-		suspendMessage = "tidb group is suspended"
-	} else if rtx.Cluster.ShouldSuspendCompute() {
-		suspendMessage = "tidb group is suspending"
-	}
-	conditionChanged = meta.SetStatusCondition(&rtx.TiDBGroup.Status.Conditions, metav1.Condition{
-		Type:               v1alpha1.TiDBGroupCondSuspended,
-		Status:             suspendStatus,
-		ObservedGeneration: rtx.TiDBGroup.Generation,
-		Reason:             v1alpha1.TiDBGroupSuspendReason,
-		Message:            suspendMessage,
-	}) || conditionChanged
-
-	// Update the current revision if all instances are synced.
-	if int(rtx.TiDBGroup.GetDesiredReplicas()) == len(rtx.TiDBs) && v1alpha1.AllInstancesSynced(rtx.TiDBs, rtx.UpdateRevision) {
-		conditionChanged = true
-		rtx.CurrentRevision = rtx.UpdateRevision
-		rtx.TiDBGroup.Status.Version = rtx.TiDBGroup.Spec.Version
-	}
-	var readyReplicas int32
-	for _, tidb := range rtx.TiDBs {
-		if tidb.IsHealthy() {
+func calcReplicas(dbs []*v1alpha1.TiDB, currentRevision, updateRevision string) (
+	replicas,
+	readyReplicas,
+	updateReplicas,
+	currentReplicas int32,
+) {
+	for _, peer := range dbs {
+		replicas++
+		if peer.IsHealthy() {
 			readyReplicas++
 		}
-	}
-
-	if conditionChanged || rtx.TiDBGroup.Status.ReadyReplicas != readyReplicas ||
-		rtx.TiDBGroup.Status.Replicas != int32(len(rtx.TiDBs)) || //nolint:gosec // expected type conversion
-		!v1alpha1.IsReconciled(rtx.TiDBGroup) ||
-		v1alpha1.StatusChanged(rtx.TiDBGroup, rtx.CommonStatus) {
-		rtx.TiDBGroup.Status.ReadyReplicas = readyReplicas
-		rtx.TiDBGroup.Status.Replicas = int32(len(rtx.TiDBs)) //nolint:gosec// expected type conversion
-		rtx.TiDBGroup.Status.ObservedGeneration = rtx.TiDBGroup.Generation
-		rtx.TiDBGroup.Status.CurrentRevision = rtx.CurrentRevision
-		rtx.TiDBGroup.Status.UpdateRevision = rtx.UpdateRevision
-		rtx.TiDBGroup.Status.CollisionCount = rtx.CollisionCount
-
-		if err := t.Client.Status().Update(ctx, rtx.TiDBGroup); err != nil {
-			return task.Fail().With("cannot update status: %w", err)
+		if peer.CurrentRevision() == currentRevision {
+			currentReplicas++
+		}
+		if peer.CurrentRevision() == updateRevision {
+			updateReplicas++
 		}
 	}
 
-	if !rtx.IsAvailable && !rtx.Suspended {
-		return task.Fail().With("tidb group may not be available, requeue to retry")
+	return
+}
+
+func NewAndSetIfChanged[T comparable](dst **T, src T) bool {
+	if *dst == nil {
+		zero := new(T)
+		if *zero == src {
+			return false
+		}
+		*dst = zero
+	}
+	return SetIfChanged(*dst, src)
+}
+
+func SetIfChanged[T comparable](dst *T, src T) bool {
+	if *dst != src {
+		*dst = src
+		return true
 	}
 
-	return task.Complete().With("status is synced")
+	return false
 }

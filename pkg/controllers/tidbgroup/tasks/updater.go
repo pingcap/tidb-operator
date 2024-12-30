@@ -15,12 +15,16 @@
 package tasks
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/action"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/updater"
@@ -28,125 +32,107 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s/revision"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/random"
-	"github.com/pingcap/tidb-operator/pkg/utils/task"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/history"
 )
 
-// TaskUpdater is a task for updating TiDBGroup when its spec is changed.
-type TaskUpdater struct {
-	Logger logr.Logger
-	Client client.Client
-	CRCli  history.Interface
-}
+const (
+	defaultUpdateWaitTime = time.Second * 30
+)
 
-func NewTaskUpdater(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
-	return &TaskUpdater{
-		Logger: logger,
-		Client: c,
-		CRCli:  history.NewClient(c),
-	}
-}
+// TaskUpdater is a task to scale or update PD when spec of TiDBGroup is changed.
+func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
+		logger := logr.FromContextOrDiscard(ctx)
+		historyCli := history.NewClient(c)
+		dbg := state.TiDBGroup()
 
-func (*TaskUpdater) Name() string {
-	return "Updater"
-}
+		selector := labels.SelectorFromSet(labels.Set{
+			// TODO(liubo02): add label of managed by operator ?
+			v1alpha1.LabelKeyCluster:   dbg.Spec.Cluster.Name,
+			v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
+			v1alpha1.LabelKeyGroup:     dbg.Name,
+		})
 
-func (t *TaskUpdater) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
-
-	// TODO: move to task v2
-	if !rtx.TiDBGroup.GetDeletionTimestamp().IsZero() {
-		return task.Complete().With("tidb group has been deleted")
-	}
-
-	if rtx.Cluster.ShouldSuspendCompute() {
-		return task.Complete().With("skip updating TiDBGroup for suspension")
-	}
-
-	// List all controller revisions for the TiDBGroup
-	selector, _ := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
-		MatchLabels: map[string]string{
-			v1alpha1.LabelKeyCluster:   rtx.Cluster.Name,
-			v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiDB,
-			v1alpha1.LabelKeyGroup:     rtx.TiDBGroup.Name,
-		},
-	})
-	revisions, err := t.CRCli.ListControllerRevisions(rtx.TiDBGroup, selector)
-	if err != nil {
-		return task.Fail().With("cannot list controller revisions: %w", err)
-	}
-	history.SortControllerRevisions(revisions)
-
-	// Get the current(old) and update(new) ControllerRevisions for TiDBGroup
-	currentRevision, updateRevision, collisionCount, err := revision.GetCurrentAndUpdate(rtx.TiDBGroup, revisions, t.CRCli, rtx.TiDBGroup)
-	if err != nil {
-		return task.Fail().With("cannot get revisions: %w", err)
-	}
-	rtx.CurrentRevision = currentRevision.Name
-	rtx.UpdateRevision = updateRevision.Name
-	rtx.CollisionCount = &collisionCount
-
-	if err = revision.TruncateHistory(t.CRCli, rtx.TiDBs, revisions,
-		currentRevision, updateRevision, rtx.Cluster.Spec.RevisionHistoryLimit); err != nil {
-		t.Logger.Error(err, "failed to truncate history")
-	}
-
-	if needVersionUpgrade(rtx.TiDBGroup) && !rtx.UpgradeChecker.CanUpgrade(ctx, rtx.TiDBGroup) {
-		return task.Fail().Continue().With(
-			"preconditions of upgrading the tidb group %s/%s are not met",
-			rtx.TiDBGroup.Namespace, rtx.TiDBGroup.Name)
-	}
-
-	desired := 1
-	if rtx.TiDBGroup.Spec.Replicas != nil {
-		desired = int(*rtx.TiDBGroup.Spec.Replicas)
-	}
-
-	var topos []v1alpha1.ScheduleTopology
-	for _, p := range rtx.TiDBGroup.Spec.SchedulePolicies {
-		switch p.Type {
-		case v1alpha1.SchedulePolicyTypeEvenlySpread:
-			topos = p.EvenlySpread.Topologies
-		default:
-			// do nothing
+		revisions, err := historyCli.ListControllerRevisions(dbg, selector)
+		if err != nil {
+			return task.Fail().With("cannot list controller revisions: %w", err)
 		}
-	}
+		history.SortControllerRevisions(revisions)
 
-	topoPolicy, err := policy.NewTopologyPolicy[*runtime.TiDB](topos)
-	if err != nil {
-		return task.Fail().With("invalid topo policy, it should be validated: %w", err)
-	}
+		// Get the current(old) and update(new) ControllerRevisions.
+		currentRevision, updateRevision, collisionCount, err := revision.GetCurrentAndUpdate(dbg, revisions, historyCli, dbg)
+		if err != nil {
+			return task.Fail().With("cannot get revisions: %w", err)
+		}
+		state.CurrentRevision = currentRevision.Name
+		state.UpdateRevision = updateRevision.Name
+		state.CollisionCount = collisionCount
 
-	for _, tidb := range rtx.TiDBs {
-		topoPolicy.Add(runtime.FromTiDB(tidb))
-	}
+		// TODO(liubo02): add a controller to do it
+		if err = revision.TruncateHistory(historyCli, state.TiDBSlice(), revisions,
+			currentRevision, updateRevision, state.Cluster().Spec.RevisionHistoryLimit); err != nil {
+			logger.Error(err, "failed to truncate history")
+		}
 
-	wait, err := updater.New[runtime.TiDBTuple]().
-		WithInstances(runtime.FromTiDBSlice(rtx.TiDBs)...).
-		WithDesired(desired).
-		WithClient(t.Client).
-		WithMaxSurge(0).
-		WithMaxUnavailable(1).
-		WithRevision(rtx.UpdateRevision).
-		WithNewFactory(TiDBNewer(rtx.TiDBGroup, rtx.UpdateRevision)).
-		WithAddHooks(topoPolicy).
-		WithUpdateHooks(
-			policy.KeepName[*runtime.TiDB](),
-			policy.KeepTopology[*runtime.TiDB](),
-		).
-		WithDelHooks(topoPolicy).
-		WithScaleInPreferPolicy(
-			topoPolicy,
-		).
-		Build().
-		Do(ctx)
-	if err != nil {
-		return task.Fail().With("cannot update instances: %w", err)
-	}
-	if wait {
-		return task.Complete().With("wait for all instances ready")
-	}
-	return task.Complete().With("all instances are synced")
+		checker := action.NewUpgradeChecker(c, state.Cluster(), logger)
+
+		if needVersionUpgrade(dbg) && !checker.CanUpgrade(ctx, dbg) {
+			// TODO(liubo02): change to Wait
+			return task.Retry(defaultUpdateWaitTime).With("wait until preconditions of upgrading is met")
+		}
+
+		desired := 1
+		if dbg.Spec.Replicas != nil {
+			desired = int(*dbg.Spec.Replicas)
+		}
+
+		var topos []v1alpha1.ScheduleTopology
+		for _, p := range dbg.Spec.SchedulePolicies {
+			switch p.Type {
+			case v1alpha1.SchedulePolicyTypeEvenlySpread:
+				topos = p.EvenlySpread.Topologies
+			default:
+				// do nothing
+			}
+		}
+
+		topoPolicy, err := policy.NewTopologyPolicy[*runtime.TiDB](topos)
+		if err != nil {
+			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
+		}
+
+		for _, tidb := range state.TiDBSlice() {
+			topoPolicy.Add(runtime.FromTiDB(tidb))
+		}
+
+		wait, err := updater.New[runtime.TiDBTuple]().
+			WithInstances(runtime.FromTiDBSlice(state.TiDBSlice())...).
+			WithDesired(desired).
+			WithClient(c).
+			WithMaxSurge(0).
+			WithMaxUnavailable(1).
+			WithRevision(state.UpdateRevision).
+			WithNewFactory(TiDBNewer(dbg, state.UpdateRevision)).
+			WithAddHooks(topoPolicy).
+			WithUpdateHooks(
+				policy.KeepName[*runtime.TiDB](),
+				policy.KeepTopology[*runtime.TiDB](),
+			).
+			WithDelHooks(topoPolicy).
+			WithScaleInPreferPolicy(
+				topoPolicy,
+			).
+			Build().
+			Do(ctx)
+		if err != nil {
+			return task.Fail().With("cannot update instances: %w", err)
+		}
+		if wait {
+			return task.Wait().With("wait for all instances ready")
+		}
+		return task.Complete().With("all instances are synced")
+	})
 }
 
 func needVersionUpgrade(dbg *v1alpha1.TiDBGroup) bool {
