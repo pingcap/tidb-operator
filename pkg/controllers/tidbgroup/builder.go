@@ -33,7 +33,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),
 
-		// get all tikvs
+		// get all tidbs
 		common.TaskContextTiDBSlice(state, r.Client),
 
 		task.IfBreak(common.CondGroupIsDeleting(state),
