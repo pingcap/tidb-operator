@@ -25,6 +25,40 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
+func TaskStatusAvailable(state State, c client.Client) task.Task {
+	return task.NameTaskFunc("Status", func(ctx context.Context) task.Result {
+		dbg := state.TiDBGroup()
+		dbs := state.TiDBSlice()
+
+		status := metav1.ConditionFalse
+		reason := "Unavailable"
+		msg := "no tidb instance is available"
+
+		for _, db := range dbs {
+			if db.IsHealthy() {
+				status = metav1.ConditionTrue
+				reason = "Available"
+				msg = "tidb group is available"
+			}
+		}
+
+		needUpdate := meta.SetStatusCondition(&dbg.Status.Conditions, metav1.Condition{
+			Type:               v1alpha1.TiDBGroupCondAvailable,
+			Status:             status,
+			ObservedGeneration: dbg.Generation,
+			Reason:             reason,
+			Message:            msg,
+		})
+		// TODO(liubo02): only update status once
+		if needUpdate {
+			if err := c.Status().Update(ctx, dbg); err != nil {
+				return task.Fail().With("cannot update status: %w", err)
+			}
+		}
+		return task.Complete().With("status is synced")
+	})
+}
+
 // TODO(liubo02): extract to common task
 func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Status", func(ctx context.Context) task.Result {

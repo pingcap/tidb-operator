@@ -47,6 +47,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		),
 		tasks.TaskService(state, r.Client),
 		tasks.TaskUpdater(state, r.Client),
+		tasks.TaskStatusAvailable(state, r.Client),
 		tasks.TaskStatus(state, r.Client),
 	)
 
