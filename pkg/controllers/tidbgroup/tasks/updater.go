@@ -40,7 +40,7 @@ const (
 	defaultUpdateWaitTime = time.Second * 30
 )
 
-// TaskUpdater is a task to scale or update PD when spec of TiDBGroup is changed.
+// TaskUpdater is a task to scale or update TiDB when spec of TiDBGroup is changed.
 func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
@@ -50,7 +50,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 		selector := labels.SelectorFromSet(labels.Set{
 			// TODO(liubo02): add label of managed by operator ?
 			v1alpha1.LabelKeyCluster:   dbg.Spec.Cluster.Name,
-			v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
+			v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiDB,
 			v1alpha1.LabelKeyGroup:     dbg.Name,
 		})
 
