@@ -126,6 +126,14 @@ func (db *TiDB) GetUpdateRevision() string {
 	return db.Labels[v1alpha1.LabelKeyInstanceRevisionHash]
 }
 
+func (db *TiDB) CurrentRevision() string {
+	return db.Status.CurrentRevision
+}
+
+func (db *TiDB) SetCurrentRevision(rev string) {
+	db.Status.CurrentRevision = rev
+}
+
 func (db *TiDB) IsHealthy() bool {
 	return meta.IsStatusConditionTrue(db.Status.Conditions, v1alpha1.TiKVCondHealth)
 }
@@ -168,12 +176,19 @@ func (dbg *TiDBGroup) To() *v1alpha1.TiDBGroup {
 	return ToTiDBGroup(dbg)
 }
 
-func (dbg *TiDBGroup) SetReplicas(replicas *int32) {
-	dbg.Spec.Replicas = replicas
+func (dbg *TiDBGroup) SetReplicas(replicas int32) {
+	dbg.Spec.Replicas = &replicas
 }
 
-func (dbg *TiDBGroup) Replicas() *int32 {
-	return dbg.Spec.Replicas
+func (dbg *TiDBGroup) Replicas() int32 {
+	if dbg.Spec.Replicas == nil {
+		return 1
+	}
+	return *dbg.Spec.Replicas
+}
+
+func (dbg *TiDBGroup) Version() string {
+	return dbg.Spec.Version
 }
 
 func (dbg *TiDBGroup) Cluster() string {
@@ -198,4 +213,38 @@ func (dbg *TiDBGroup) ObservedGeneration() int64 {
 
 func (dbg *TiDBGroup) SetObservedGeneration(g int64) {
 	dbg.Status.ObservedGeneration = g
+}
+
+func (dbg *TiDBGroup) SetStatusVersion(version string) {
+	dbg.Status.Version = version
+}
+
+func (dbg *TiDBGroup) StatusVersion() string {
+	return dbg.Status.Version
+}
+
+func (dbg *TiDBGroup) SetStatusReplicas(replicas, ready, update, current int32) {
+	dbg.Status.Replicas = replicas
+	dbg.Status.ReadyReplicas = ready
+	dbg.Status.UpdatedReplicas = update
+	dbg.Status.CurrentReplicas = current
+}
+
+func (dbg *TiDBGroup) StatusReplicas() (replicas, ready, update, current int32) {
+	return dbg.Status.Replicas,
+		dbg.Status.ReadyReplicas,
+		dbg.Status.UpdatedReplicas,
+		dbg.Status.CurrentReplicas
+}
+
+func (dbg *TiDBGroup) SetStatusRevision(update, current string, collisionCount *int32) {
+	dbg.Status.UpdateRevision = update
+	dbg.Status.CurrentRevision = current
+	dbg.Status.CollisionCount = collisionCount
+}
+
+func (dbg *TiDBGroup) StatusRevision() (update, current string, collisionCount *int32) {
+	return dbg.Status.UpdateRevision,
+		dbg.Status.CurrentRevision,
+		dbg.Status.CollisionCount
 }

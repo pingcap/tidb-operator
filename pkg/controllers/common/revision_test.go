@@ -1,0 +1,172 @@
+package common
+
+import (
+	"context"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	appsv1 "k8s.io/api/apps/v1"
+
+	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/utils/fake"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+)
+
+type fakeRevisionStateInitializer struct {
+	fakeRevisionState
+
+	currentRevision CurrentRevisionOption
+	collisionCount  CollisionCountOption
+	parent          ParentOption
+	labels          LabelsOption
+}
+
+func (f *fakeRevisionStateInitializer) RevisionInitializer() RevisionInitializer {
+	return NewRevision(&f.fakeRevisionState).
+		WithCurrentRevision(f.currentRevision).
+		WithCollisionCount(f.collisionCount).
+		WithParent(f.parent).
+		WithLabels(f.labels).
+		Initializer()
+}
+
+const (
+	fakeOldRevision = "aaa-c9f48df69"
+	fakeNewRevision = "aaa-c9f48df68"
+)
+
+func TestTaskRevision(t *testing.T) {
+	cases := []struct {
+		desc  string
+		state *fakeRevisionStateInitializer
+		objs  []client.Object
+
+		expectedResult          task.Status
+		expectedUpdateRevision  string
+		expectedCurrentRevision string
+		expectedCollisionCount  int32
+	}{
+		{
+			desc: "no revisions",
+			state: &fakeRevisionStateInitializer{
+				currentRevision: Lazy[string](func() string {
+					return ""
+				}),
+				collisionCount: Lazy[*int32](func() *int32 {
+					return nil
+				}),
+				parent: Lazy[client.Object](func() client.Object {
+					return fake.FakeObj("aaa", fake.Label[v1alpha1.PDGroup]("aaa", "bbb"))
+				}),
+				labels: Labels{
+					"ccc": "ddd",
+				},
+			},
+			expectedUpdateRevision:  fakeOldRevision,
+			expectedCurrentRevision: fakeOldRevision,
+		},
+		{
+			desc: "has a revision",
+			state: &fakeRevisionStateInitializer{
+				currentRevision: Lazy[string](func() string {
+					return "xxx"
+				}),
+				collisionCount: Lazy[*int32](func() *int32 {
+					return nil
+				}),
+				parent: Lazy[client.Object](func() client.Object {
+					return fake.FakeObj("aaa", fake.Label[v1alpha1.PDGroup]("aaa", "bbb"))
+				}),
+				labels: Labels{
+					"ccc": "ddd",
+				},
+			},
+			objs: []client.Object{
+				fake.FakeObj("xxx", fake.Label[appsv1.ControllerRevision]("ccc", "ddd")),
+			},
+			expectedUpdateRevision:  fakeOldRevision,
+			expectedCurrentRevision: "xxx",
+		},
+		{
+			desc: "has a coflict revision",
+			state: &fakeRevisionStateInitializer{
+				currentRevision: Lazy[string](func() string {
+					return fakeOldRevision
+				}),
+				collisionCount: Lazy[*int32](func() *int32 {
+					return nil
+				}),
+				parent: Lazy[client.Object](func() client.Object {
+					return fake.FakeObj("aaa", fake.Label[v1alpha1.PDGroup]("aaa", "bbb"))
+				}),
+				labels: Labels{
+					"ccc": "ddd",
+				},
+			},
+			objs: []client.Object{
+				fake.FakeObj(fakeOldRevision, fake.Label[appsv1.ControllerRevision]("ccc", "ddd")),
+			},
+			expectedUpdateRevision:  fakeNewRevision,
+			expectedCurrentRevision: fakeOldRevision,
+			expectedCollisionCount:  1,
+		},
+		{
+			desc: "has two coflict revision",
+			state: &fakeRevisionStateInitializer{
+				currentRevision: Lazy[string](func() string {
+					return fakeOldRevision
+				}),
+				collisionCount: Lazy[*int32](func() *int32 {
+					return nil
+				}),
+				parent: Lazy[client.Object](func() client.Object {
+					return fake.FakeObj("aaa", fake.Label[v1alpha1.PDGroup]("aaa", "bbb"))
+				}),
+				labels: Labels{
+					"ccc": "ddd",
+				},
+			},
+			objs: []client.Object{
+				fake.FakeObj(fakeOldRevision, fake.Label[appsv1.ControllerRevision]("ccc", "ddd")),
+				fake.FakeObj(fakeNewRevision, fake.Label[appsv1.ControllerRevision]("ccc", "ddd")),
+			},
+			expectedUpdateRevision:  "aaa-c9f48df6c",
+			expectedCurrentRevision: fakeOldRevision,
+			expectedCollisionCount:  2,
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			fc := client.NewFakeClient(c.objs...)
+
+			res, done := task.RunTask(context.Background(), TaskRevision(c.state, fc))
+			assert.Equal(tt, c.expectedResult.String(), res.Status().String(), c.desc)
+			assert.False(tt, done, c.desc)
+			update, current, collisionCount := c.state.Revision()
+			assert.Equal(tt, c.expectedUpdateRevision, update, c.desc)
+			assert.Equal(tt, c.expectedCurrentRevision, current, c.desc)
+			assert.Equal(tt, c.expectedCollisionCount, collisionCount, c.desc)
+
+			// record currentRevision and collisionCount
+			c.state.currentRevision = Lazy[string](func() string {
+				return current
+			})
+			c.state.collisionCount = Lazy[*int32](func() *int32 {
+				return &collisionCount
+			})
+
+			// rerun Revision task and make sure that status is unchanged
+			res2, _ := task.RunTask(context.Background(), TaskRevision(c.state, fc))
+			assert.Equal(tt, c.expectedResult.String(), res2.Status().String(), c.desc)
+			update, current, collisionCount = c.state.Revision()
+			assert.Equal(tt, c.expectedUpdateRevision, update, c.desc)
+			assert.Equal(tt, c.expectedCurrentRevision, current, c.desc)
+			assert.Equal(tt, c.expectedCollisionCount, collisionCount, c.desc)
+		})
+	}
+}

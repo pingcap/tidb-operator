@@ -148,3 +148,53 @@ func FakeGroupAndInstanceSliceState[
 		InstanceSliceState: FakeInstanceSliceState[RI](s),
 	}
 }
+
+type fakeRevisionState struct {
+	updateRevision  string
+	currentRevision string
+	collisionCount  int32
+}
+
+func (f *fakeRevisionState) Set(update, current string, collisionCount int32) {
+	f.updateRevision = update
+	f.currentRevision = current
+	f.collisionCount = collisionCount
+}
+
+func (f *fakeRevisionState) Revision() (update, current string, collisionCount int32) {
+	return f.updateRevision, f.currentRevision, f.collisionCount
+}
+
+func FakeRevisionState(update, current string, collisionCount int32) RevisionState {
+	return &fakeRevisionState{
+		updateRevision:  update,
+		currentRevision: current,
+		collisionCount:  collisionCount,
+	}
+}
+
+type fakeGroupAndInstanceSliceAndRevisionState[
+	RG runtime.Group,
+	RI runtime.Instance,
+] struct {
+	GroupState[RG]
+	InstanceSliceState[RI]
+	RevisionState
+}
+
+func FakeGroupAndInstanceSliceAndRevisionState[
+	RG runtime.Group,
+	RI runtime.Instance,
+](
+	update string,
+	current string,
+	collisionCount int32,
+	g RG,
+	s ...RI,
+) GroupAndInstanceSliceAndRevisionState[RG, RI] {
+	return &fakeGroupAndInstanceSliceAndRevisionState[RG, RI]{
+		GroupState:         FakeGroupState[RG](g),
+		InstanceSliceState: FakeInstanceSliceState[RI](s),
+		RevisionState:      FakeRevisionState(update, current, collisionCount),
+	}
+}

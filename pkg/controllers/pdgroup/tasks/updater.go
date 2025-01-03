@@ -20,11 +20,8 @@ import (
 	"strconv"
 	"time"
 
-	appsv1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-
 	"github.com/go-logr/logr"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
@@ -32,11 +29,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/updater"
 	"github.com/pingcap/tidb-operator/pkg/updater/policy"
-	"github.com/pingcap/tidb-operator/pkg/utils/k8s/revision"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/random"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
-	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/history"
 )
 
 const (
@@ -47,55 +42,13 @@ const (
 func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
-		historyCli := history.NewClient(c)
 		pdg := state.PDGroup()
-
-		selector := labels.SelectorFromSet(labels.Set{
-			// TODO(liubo02): add label of managed by operator ?
-			v1alpha1.LabelKeyCluster:   pdg.Spec.Cluster.Name,
-			v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
-			v1alpha1.LabelKeyGroup:     pdg.Name,
-		})
-
-		revisions, err := historyCli.ListControllerRevisions(pdg, selector)
-		if err != nil {
-			return task.Fail().With("cannot list controller revisions: %w", err)
-		}
-		history.SortControllerRevisions(revisions)
-
-		// Get the current(old) and update(new) ControllerRevisions
-		currentRevision, updateRevision, collisionCount, err := func() (*appsv1.ControllerRevision, *appsv1.ControllerRevision, int32, error) {
-			// always ignore bootstrapped field in spec
-			bootstrapped := pdg.Spec.Bootstrapped
-			pdg.Spec.Bootstrapped = false
-			defer func() {
-				pdg.Spec.Bootstrapped = bootstrapped
-			}()
-			return revision.GetCurrentAndUpdate(pdg, revisions, historyCli, pdg)
-		}()
-		if err != nil {
-			return task.Fail().With("cannot get revisions: %w", err)
-		}
-		state.CurrentRevision = currentRevision.Name
-		state.UpdateRevision = updateRevision.Name
-		state.CollisionCount = collisionCount
-
-		// TODO(liubo02): add a controller to do it
-		if err = revision.TruncateHistory(historyCli, state.PDSlice(), revisions,
-			currentRevision, updateRevision, state.Cluster().Spec.RevisionHistoryLimit); err != nil {
-			logger.Error(err, "failed to truncate history")
-		}
 
 		checker := action.NewUpgradeChecker(c, state.Cluster(), logger)
 
 		if needVersionUpgrade(pdg) && !checker.CanUpgrade(ctx, pdg) {
 			// TODO(liubo02): change to Wait
 			return task.Retry(defaultUpdateWaitTime).With("wait until preconditions of upgrading is met")
-		}
-
-		desired := 1
-		if pdg.Spec.Replicas != nil {
-			desired = int(*pdg.Spec.Replicas)
 		}
 
 		var topos []v1alpha1.ScheduleTopology
@@ -108,28 +61,23 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			}
 		}
 
-		topoPolicy, err := policy.NewTopologyPolicy[*runtime.PD](topos)
+		pds := state.Slice()
+		topoPolicy, err := policy.NewTopologyPolicy(topos, pds...)
 		if err != nil {
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
-		for _, pd := range state.PDSlice() {
-			topoPolicy.Add(runtime.FromPD(pd))
-		}
+		updateRevision, _, _ := state.Revision()
 
 		wait, err := updater.New[runtime.PDTuple]().
-			WithInstances(runtime.FromPDSlice(state.PDSlice())...).
-			WithDesired(desired).
+			WithInstances(pds...).
+			WithDesired(int(state.Group().Replicas())).
 			WithClient(c).
 			WithMaxSurge(0).
 			WithMaxUnavailable(1).
-			WithRevision(state.UpdateRevision).
-			WithNewFactory(PDNewer(pdg, state.UpdateRevision)).
+			WithRevision(updateRevision).
+			WithNewFactory(PDNewer(pdg, updateRevision)).
 			WithAddHooks(topoPolicy).
-			WithUpdateHooks(
-				policy.KeepName[*runtime.PD](),
-				policy.KeepTopology[*runtime.PD](),
-			).
 			WithDelHooks(topoPolicy).
 			WithScaleInPreferPolicy(
 				NotLeaderPolicy(),

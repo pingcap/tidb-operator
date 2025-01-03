@@ -14,6 +14,8 @@
 
 package common
 
+import "github.com/pingcap/tidb-operator/pkg/client"
+
 type Setter[T any] interface {
 	Set(T)
 }
@@ -40,13 +42,43 @@ type ListOptions interface {
 	LabelsOption
 }
 
-type NameFunc func() string
+type CurrentRevisionOption interface {
+	CurrentRevision() string
+}
 
-func (f NameFunc) Namespace() string {
+type CollisionCountOption interface {
+	CollisionCount() *int32
+}
+
+type ParentOption interface {
+	Parent() client.Object
+}
+
+type (
+	Lazy[T any] func() T
+)
+
+func (f Lazy[T]) Namespace() T {
 	return f()
 }
 
-func (f NameFunc) Name() string {
+func (f Lazy[T]) Name() T {
+	return f()
+}
+
+func (f Lazy[T]) CurrentRevision() T {
+	return f()
+}
+
+func (f Lazy[T]) CollisionCount() T {
+	return f()
+}
+
+func (f Lazy[T]) Labels() T {
+	return f()
+}
+
+func (f Lazy[T]) Parent() T {
 	return f()
 }
 

@@ -22,7 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
-func NewPDGroup(ns string, patches ...GroupPatch[*v1alpha1.PDGroup, *runtime.PDGroup]) *v1alpha1.PDGroup {
+func NewPDGroup(ns string, patches ...GroupPatch[*runtime.PDGroup]) *v1alpha1.PDGroup {
 	pdg := &runtime.PDGroup{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,

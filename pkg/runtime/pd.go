@@ -126,6 +126,14 @@ func (pd *PD) GetUpdateRevision() string {
 	return pd.Labels[v1alpha1.LabelKeyInstanceRevisionHash]
 }
 
+func (pd *PD) CurrentRevision() string {
+	return pd.Status.CurrentRevision
+}
+
+func (pd *PD) SetCurrentRevision(rev string) {
+	pd.Status.CurrentRevision = rev
+}
+
 func (pd *PD) IsHealthy() bool {
 	return meta.IsStatusConditionTrue(pd.Status.Conditions, v1alpha1.PDCondHealth)
 }
@@ -168,12 +176,19 @@ func (pdg *PDGroup) To() *v1alpha1.PDGroup {
 	return ToPDGroup(pdg)
 }
 
-func (pdg *PDGroup) SetReplicas(replicas *int32) {
-	pdg.Spec.Replicas = replicas
+func (pdg *PDGroup) SetReplicas(replicas int32) {
+	pdg.Spec.Replicas = &replicas
 }
 
-func (pdg *PDGroup) Replicas() *int32 {
-	return pdg.Spec.Replicas
+func (pdg *PDGroup) Replicas() int32 {
+	if pdg.Spec.Replicas == nil {
+		return 1
+	}
+	return *pdg.Spec.Replicas
+}
+
+func (pdg *PDGroup) Version() string {
+	return pdg.Spec.Version
 }
 
 func (pdg *PDGroup) Cluster() string {
@@ -198,4 +213,38 @@ func (pdg *PDGroup) ObservedGeneration() int64 {
 
 func (pdg *PDGroup) SetObservedGeneration(g int64) {
 	pdg.Status.ObservedGeneration = g
+}
+
+func (pdg *PDGroup) SetStatusVersion(version string) {
+	pdg.Status.Version = version
+}
+
+func (pdg *PDGroup) StatusVersion() string {
+	return pdg.Status.Version
+}
+
+func (pdg *PDGroup) SetStatusReplicas(replicas, ready, update, current int32) {
+	pdg.Status.Replicas = replicas
+	pdg.Status.ReadyReplicas = ready
+	pdg.Status.UpdatedReplicas = update
+	pdg.Status.CurrentReplicas = current
+}
+
+func (pdg *PDGroup) StatusReplicas() (replicas, ready, update, current int32) {
+	return pdg.Status.Replicas,
+		pdg.Status.ReadyReplicas,
+		pdg.Status.UpdatedReplicas,
+		pdg.Status.CurrentReplicas
+}
+
+func (pdg *PDGroup) SetStatusRevision(update, current string, collisionCount *int32) {
+	pdg.Status.UpdateRevision = update
+	pdg.Status.CurrentRevision = current
+	pdg.Status.CollisionCount = collisionCount
+}
+
+func (pdg *PDGroup) StatusRevision() (update, current string, collisionCount *int32) {
+	return pdg.Status.UpdateRevision,
+		pdg.Status.CurrentRevision,
+		pdg.Status.CollisionCount
 }

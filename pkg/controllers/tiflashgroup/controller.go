@@ -35,7 +35,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tiflashgroup/tasks"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
-	"github.com/pingcap/tidb-operator/pkg/utils/task"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
 type Reconciler struct {
@@ -60,7 +60,8 @@ func Setup(mgr manager.Manager, c client.Client) error {
 func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Object, reconcile.Request] {
 	return handler.TypedFuncs[client.Object, reconcile.Request]{
 		UpdateFunc: func(ctx context.Context, event event.TypedUpdateEvent[client.Object],
-			queue workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
+		) {
 			cluster := event.ObjectNew.(*v1alpha1.Cluster)
 
 			var list v1alpha1.TiFlashGroupList
@@ -98,19 +99,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}()
 
 	rtx := &tasks.ReconcileContext{
-		// some fields will be set in the context task
-		Context: ctx,
-		Key:     req.NamespacedName,
+		State: tasks.NewState(req.NamespacedName),
 	}
 
-	runner := task.NewTaskRunner[tasks.ReconcileContext](reporter)
-	runner.AddTasks(
-		tasks.NewTaskContext(logger, r.Client),
-		tasks.NewTaskFinalizer(logger, r.Client),
-		tasks.NewTaskService(logger, r.Client),
-		tasks.NewTaskUpdater(logger, r.Client),
-		tasks.NewTaskStatus(logger, r.Client),
-	)
+	runner := r.NewRunner(rtx, reporter)
 
-	return runner.Run(rtx)
+	return runner.Run(ctx)
 }

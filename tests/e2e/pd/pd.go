@@ -38,7 +38,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 		ginkgo.It("support create PD with 1 replica", func(ctx context.Context) {
 			pdg := data.NewPDGroup(
 				f.Namespace.Name,
-				data.WithReplicas[*v1alpha1.PDGroup, *runtime.PDGroup](ptr.To[int32](1)),
+				data.WithReplicas[*runtime.PDGroup](1),
 			)
 
 			ginkgo.By("Create PDGroup")
@@ -49,7 +49,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 		ginkgo.It("support create PD with 3 replica", func(ctx context.Context) {
 			pdg := data.NewPDGroup(
 				f.Namespace.Name,
-				data.WithReplicas[*v1alpha1.PDGroup, *runtime.PDGroup](ptr.To[int32](3)),
+				data.WithReplicas[*runtime.PDGroup](3),
 			)
 
 			ginkgo.By("Create PDGroup")
@@ -62,7 +62,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 		ginkgo.It("support scale PD form 3 to 5", func(ctx context.Context) {
 			pdg := data.NewPDGroup(
 				f.Namespace.Name,
-				data.WithReplicas[*v1alpha1.PDGroup, *runtime.PDGroup](ptr.To[int32](3)),
+				data.WithReplicas[*runtime.PDGroup](3),
 			)
 
 			ginkgo.By("Create PDGroup")
@@ -81,7 +81,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 			pdg := data.NewPDGroup(
 				f.Namespace.Name,
 				//nolint:mnd // easy for test
-				data.WithReplicas[*v1alpha1.PDGroup, *runtime.PDGroup](ptr.To[int32](5)),
+				data.WithReplicas[*runtime.PDGroup](5),
 			)
 
 			ginkgo.By("Create PDGroup")
@@ -101,7 +101,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 		ginkgo.It("support rolling update PD by change config file", func(ctx context.Context) {
 			pdg := data.NewPDGroup(
 				f.Namespace.Name,
-				data.WithReplicas[*v1alpha1.PDGroup, *runtime.PDGroup](ptr.To[int32](3)),
+				data.WithReplicas[*runtime.PDGroup](3),
 			)
 
 			ginkgo.By("Create PDGroup")
@@ -133,7 +133,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 		ginkgo.It("support suspend and resume PD", func(ctx context.Context) {
 			pdg := data.NewPDGroup(
 				f.Namespace.Name,
-				data.WithReplicas[*v1alpha1.PDGroup, *runtime.PDGroup](ptr.To[int32](3)),
+				data.WithReplicas[*runtime.PDGroup](3),
 			)
 
 			ginkgo.By("Create PDGroup")

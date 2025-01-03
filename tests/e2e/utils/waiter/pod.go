@@ -94,10 +94,10 @@ func WaitPodsRollingUpdateOnce[G runtime.Group](
 		}
 	}
 
-	if len(infos) != 2*int(*g.Replicas()) {
-		return fmt.Errorf("expect %v pods info, now only %v, detail:\n%v", 2**g.Replicas(), len(infos), detail.String())
+	if len(infos) != 2*int(g.Replicas()) {
+		return fmt.Errorf("expect %v pods info, now only %v, detail:\n%v", 2*g.Replicas(), len(infos), detail.String())
 	}
-	for i := range *g.Replicas() {
+	for i := range g.Replicas() {
 		if infos[2*i].name != infos[2*i+1].name {
 			return fmt.Errorf("pod may be restarted at same time, detail:\n%v", detail.String())
 		}
@@ -158,8 +158,8 @@ func sortPodInfos(infos []podInfo) {
 func WaitForPodsReady[G runtime.Group](ctx context.Context, c client.Client, g G, timeout time.Duration) error {
 	list := corev1.PodList{}
 	return WaitForList(ctx, c, &list, func() error {
-		if len(list.Items) != int(*g.Replicas()) {
-			return fmt.Errorf("%s/%s pod replicas %d not equal to %d", g.GetNamespace(), g.GetName(), len(list.Items), *g.Replicas())
+		if len(list.Items) != int(g.Replicas()) {
+			return fmt.Errorf("%s/%s pod replicas %d not equal to %d", g.GetNamespace(), g.GetName(), len(list.Items), g.Replicas())
 		}
 		for i := range list.Items {
 			pod := &list.Items[i]
@@ -201,8 +201,8 @@ func WaitForPodsRecreated[G runtime.Group](
 ) error {
 	list := corev1.PodList{}
 	return WaitForList(ctx, c, &list, func() error {
-		if len(list.Items) != int(*g.Replicas()) {
-			return fmt.Errorf("%s/%s replicas %d not equal to %d", g.GetNamespace(), g.GetName(), len(list.Items), *g.Replicas())
+		if len(list.Items) != int(g.Replicas()) {
+			return fmt.Errorf("%s/%s replicas %d not equal to %d", g.GetNamespace(), g.GetName(), len(list.Items), g.Replicas())
 		}
 		for i := range list.Items {
 			pod := &list.Items[i]

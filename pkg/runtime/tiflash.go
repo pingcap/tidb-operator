@@ -126,6 +126,14 @@ func (f *TiFlash) GetUpdateRevision() string {
 	return f.Labels[v1alpha1.LabelKeyInstanceRevisionHash]
 }
 
+func (f *TiFlash) CurrentRevision() string {
+	return f.Status.CurrentRevision
+}
+
+func (f *TiFlash) SetCurrentRevision(rev string) {
+	f.Status.CurrentRevision = rev
+}
+
 func (f *TiFlash) IsHealthy() bool {
 	return meta.IsStatusConditionTrue(f.Status.Conditions, v1alpha1.TiFlashCondHealth)
 }
@@ -168,12 +176,19 @@ func (fg *TiFlashGroup) To() *v1alpha1.TiFlashGroup {
 	return ToTiFlashGroup(fg)
 }
 
-func (fg *TiFlashGroup) SetReplicas(replicas *int32) {
-	fg.Spec.Replicas = replicas
+func (fg *TiFlashGroup) SetReplicas(replicas int32) {
+	fg.Spec.Replicas = &replicas
 }
 
-func (fg *TiFlashGroup) Replicas() *int32 {
-	return fg.Spec.Replicas
+func (fg *TiFlashGroup) Replicas() int32 {
+	if fg.Spec.Replicas == nil {
+		return 1
+	}
+	return *fg.Spec.Replicas
+}
+
+func (fg *TiFlashGroup) Version() string {
+	return fg.Spec.Version
 }
 
 func (fg *TiFlashGroup) Cluster() string {
@@ -198,4 +213,38 @@ func (fg *TiFlashGroup) ObservedGeneration() int64 {
 
 func (fg *TiFlashGroup) SetObservedGeneration(g int64) {
 	fg.Status.ObservedGeneration = g
+}
+
+func (fg *TiFlashGroup) SetStatusVersion(version string) {
+	fg.Status.Version = version
+}
+
+func (fg *TiFlashGroup) StatusVersion() string {
+	return fg.Status.Version
+}
+
+func (fg *TiFlashGroup) SetStatusReplicas(replicas, ready, update, current int32) {
+	fg.Status.Replicas = replicas
+	fg.Status.ReadyReplicas = ready
+	fg.Status.UpdatedReplicas = update
+	fg.Status.CurrentReplicas = current
+}
+
+func (fg *TiFlashGroup) StatusReplicas() (replicas, ready, update, current int32) {
+	return fg.Status.Replicas,
+		fg.Status.ReadyReplicas,
+		fg.Status.UpdatedReplicas,
+		fg.Status.CurrentReplicas
+}
+
+func (fg *TiFlashGroup) SetStatusRevision(update, current string, collisionCount *int32) {
+	fg.Status.UpdateRevision = update
+	fg.Status.CurrentRevision = current
+	fg.Status.CollisionCount = collisionCount
+}
+
+func (fg *TiFlashGroup) StatusRevision() (update, current string, collisionCount *int32) {
+	return fg.Status.UpdateRevision,
+		fg.Status.CurrentRevision,
+		fg.Status.CollisionCount
 }
