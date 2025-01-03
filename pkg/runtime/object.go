@@ -52,3 +52,9 @@ type Tuple[T any, U any] interface {
 type ObjectTuple[PT client.Object, PU Object] interface {
 	Tuple[PT, PU]
 }
+
+func Component[T ObjectSet, O ObjectT[T]]() string {
+	// TODO(liubo02): new only once, now it's ok because only used in test
+	var o O = new(T)
+	return o.Component()
+}

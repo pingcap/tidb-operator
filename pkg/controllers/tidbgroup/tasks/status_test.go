@@ -38,13 +38,13 @@ func TestTaskStatus(t *testing.T) {
 		unexpectedErr bool
 
 		expectedStatus task.Status
-		expectedObj    *v1alpha1.TiKVGroup
+		expectedObj    *v1alpha1.TiDBGroup
 	}{
 		{
-			desc: "no tikvs",
+			desc: "no tidbs",
 			state: &ReconcileContext{
 				State: &state{
-					kvg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiKVGroup](3)),
+					dbg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiDBGroup](3)),
 				},
 				UpdateRevision:  newRevision,
 				CurrentRevision: oldRevision,
@@ -52,7 +52,7 @@ func TestTaskStatus(t *testing.T) {
 			},
 
 			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiKVGroup](3), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
+			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiDBGroup](3), func(obj *v1alpha1.TiDBGroup) *v1alpha1.TiDBGroup {
 				obj.Status.Conditions = append(obj.Status.Conditions, metav1.Condition{
 					Type:               v1alpha1.CondSuspended,
 					Status:             metav1.ConditionFalse,
@@ -72,15 +72,15 @@ func TestTaskStatus(t *testing.T) {
 			}),
 		},
 		{
-			desc: "all tikvs are outdated and healthy",
+			desc: "all tidbs are outdated and healthy",
 			state: &ReconcileContext{
 				State: &state{
-					kvg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiKVGroup](3)),
-					kvs: []*v1alpha1.TiKV{
-						fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+					dbg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiDBGroup](3)),
+					dbs: []*v1alpha1.TiDB{
+						fake.FakeObj("aaa", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
 							obj.Status.CurrentRevision = oldRevision
 							obj.Status.Conditions = append(obj.Status.Conditions, metav1.Condition{
-								Type:   v1alpha1.TiKVCondHealth,
+								Type:   v1alpha1.TiDBCondHealth,
 								Status: metav1.ConditionTrue,
 							})
 							return obj
@@ -92,7 +92,7 @@ func TestTaskStatus(t *testing.T) {
 			},
 
 			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiKVGroup](3), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
+			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiDBGroup](3), func(obj *v1alpha1.TiDBGroup) *v1alpha1.TiDBGroup {
 				obj.Status.Conditions = append(obj.Status.Conditions, metav1.Condition{
 					Type:               v1alpha1.CondSuspended,
 					Status:             metav1.ConditionFalse,
@@ -112,15 +112,15 @@ func TestTaskStatus(t *testing.T) {
 			}),
 		},
 		{
-			desc: "all tikvs are updated and healthy",
+			desc: "all tidbs are updated and healthy",
 			state: &ReconcileContext{
 				State: &state{
-					kvg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiKVGroup](3)),
-					kvs: []*v1alpha1.TiKV{
-						fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+					dbg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiDBGroup](3)),
+					dbs: []*v1alpha1.TiDB{
+						fake.FakeObj("aaa", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
 							obj.Status.CurrentRevision = newRevision
 							obj.Status.Conditions = append(obj.Status.Conditions, metav1.Condition{
-								Type:   v1alpha1.TiKVCondHealth,
+								Type:   v1alpha1.TiDBCondHealth,
 								Status: metav1.ConditionTrue,
 							})
 							return obj
@@ -132,7 +132,7 @@ func TestTaskStatus(t *testing.T) {
 			},
 
 			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiKVGroup](3), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
+			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiDBGroup](3), func(obj *v1alpha1.TiDBGroup) *v1alpha1.TiDBGroup {
 				obj.Status.Conditions = append(obj.Status.Conditions, metav1.Condition{
 					Type:               v1alpha1.CondSuspended,
 					Status:             metav1.ConditionFalse,
@@ -152,12 +152,12 @@ func TestTaskStatus(t *testing.T) {
 			}),
 		},
 		{
-			desc: "all tikvs are updated but not healthy",
+			desc: "all tidbs are updated but not healthy",
 			state: &ReconcileContext{
 				State: &state{
-					kvg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiKVGroup](3)),
-					kvs: []*v1alpha1.TiKV{
-						fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+					dbg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiDBGroup](3)),
+					dbs: []*v1alpha1.TiDB{
+						fake.FakeObj("aaa", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
 							obj.Status.CurrentRevision = newRevision
 							return obj
 						}),
@@ -168,7 +168,7 @@ func TestTaskStatus(t *testing.T) {
 			},
 
 			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiKVGroup](3), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
+			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiDBGroup](3), func(obj *v1alpha1.TiDBGroup) *v1alpha1.TiDBGroup {
 				obj.Status.Conditions = append(obj.Status.Conditions, metav1.Condition{
 					Type:               v1alpha1.CondSuspended,
 					Status:             metav1.ConditionFalse,
@@ -191,9 +191,9 @@ func TestTaskStatus(t *testing.T) {
 			desc: "status changed but cannot call api",
 			state: &ReconcileContext{
 				State: &state{
-					kvg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiKVGroup](3)),
-					kvs: []*v1alpha1.TiKV{
-						fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+					dbg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiDBGroup](3)),
+					dbs: []*v1alpha1.TiDB{
+						fake.FakeObj("aaa", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
 							obj.Status.CurrentRevision = newRevision
 							return obj
 						}),
@@ -210,7 +210,7 @@ func TestTaskStatus(t *testing.T) {
 			desc: "status is not changed and cannot call api",
 			state: &ReconcileContext{
 				State: &state{
-					kvg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiKVGroup](3), func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
+					dbg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.TiDBGroup](3), func(obj *v1alpha1.TiDBGroup) *v1alpha1.TiDBGroup {
 						obj.Status.Conditions = append(obj.Status.Conditions, metav1.Condition{
 							Type:               v1alpha1.CondSuspended,
 							Status:             metav1.ConditionFalse,
@@ -228,8 +228,8 @@ func TestTaskStatus(t *testing.T) {
 						obj.Status.CollisionCount = nil
 						return obj
 					}),
-					kvs: []*v1alpha1.TiKV{
-						fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+					dbs: []*v1alpha1.TiDB{
+						fake.FakeObj("aaa", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
 							obj.Status.CurrentRevision = newRevision
 							return obj
 						}),
@@ -249,7 +249,7 @@ func TestTaskStatus(t *testing.T) {
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
-			fc := client.NewFakeClient(c.state.TiKVGroup())
+			fc := client.NewFakeClient(c.state.TiDBGroup())
 			if c.unexpectedErr {
 				fc.WithError("*", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
 			}
@@ -264,13 +264,13 @@ func TestTaskStatus(t *testing.T) {
 				return
 			}
 
-			kvg := &v1alpha1.TiKVGroup{}
-			require.NoError(tt, fc.Get(ctx, client.ObjectKey{Name: "aaa"}, kvg), c.desc)
-			for i := range kvg.Status.Conditions {
-				cond := &kvg.Status.Conditions[i]
+			dbg := &v1alpha1.TiDBGroup{}
+			require.NoError(tt, fc.Get(ctx, client.ObjectKey{Name: "aaa"}, dbg), c.desc)
+			for i := range dbg.Status.Conditions {
+				cond := &dbg.Status.Conditions[i]
 				cond.LastTransitionTime = metav1.Time{}
 			}
-			assert.Equal(tt, c.expectedObj, kvg, c.desc)
+			assert.Equal(tt, c.expectedObj, dbg, c.desc)
 		})
 	}
 }

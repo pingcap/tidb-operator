@@ -22,7 +22,6 @@ import (
 	utilerr "k8s.io/apimachinery/pkg/util/errors"
 
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
@@ -46,6 +45,12 @@ func TaskFinalizerDel(state State, c client.Client, m pdm.PDClientManager) task.
 
 			// PD controller cannot clean up finalizer after quorum is lost
 			// Forcely clean up all finalizers of pd instances
+			// NOTE:
+			//   Now we forcely clean up pd finalizers in pd group controller when the pd group is deleted,
+			//   but forcely clean up tikv finalizers in tikv controller when the cluster is deleted.
+			//   We can all forcely clean up finalizers when the cluster is deleted and change this task to
+			//   the common one.
+			// TODO(liubo02): refactor to use common task
 			if err := k8s.RemoveFinalizer(ctx, c, peer); err != nil {
 				errList = append(errList, err)
 			}
@@ -74,14 +79,5 @@ func TaskFinalizerDel(state State, c client.Client, m pdm.PDClientManager) task.
 		m.Deregister(pdm.PrimaryKey(state.Cluster().Namespace, state.Cluster().Name))
 
 		return task.Complete().With("finalizer has been removed")
-	})
-}
-
-func TaskFinalizerAdd(state common.PDGroupState, c client.Client) task.Task {
-	return task.NameTaskFunc("FinalizerAdd", func(ctx context.Context) task.Result {
-		if err := k8s.EnsureFinalizer(ctx, c, state.PDGroup()); err != nil {
-			return task.Fail().With("failed to ensure finalizer has been added: %v", err)
-		}
-		return task.Complete().With("finalizer is added")
 	})
 }

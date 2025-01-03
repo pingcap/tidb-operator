@@ -29,11 +29,11 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Status", func(ctx context.Context) task.Result {
 		kvg := state.TiKVGroup()
 		needUpdate := meta.SetStatusCondition(&kvg.Status.Conditions, metav1.Condition{
-			Type:               v1alpha1.TiKVGroupCondSuspended,
+			Type:               v1alpha1.CondSuspended,
 			Status:             metav1.ConditionFalse,
 			ObservedGeneration: kvg.Generation,
-			Reason:             v1alpha1.TiKVGroupSuspendReason,
-			Message:            "tikv group is not suspended",
+			Reason:             v1alpha1.ReasonUnsuspended,
+			Message:            "group is not suspended",
 		})
 
 		replicas, readyReplicas, updateReplicas, currentReplicas := calcReplicas(state.TiKVSlice(), state.CurrentRevision, state.UpdateRevision)

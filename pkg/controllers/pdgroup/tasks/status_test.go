@@ -55,11 +55,11 @@ func TestTaskStatus(t *testing.T) {
 			expectedStatus: task.SComplete,
 			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.PDGroup](3), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				obj.Status.Conditions = append(obj.Status.Conditions, metav1.Condition{
-					Type:               v1alpha1.PDGroupCondSuspended,
+					Type:               v1alpha1.CondSuspended,
 					Status:             metav1.ConditionFalse,
 					ObservedGeneration: 3,
-					Reason:             v1alpha1.PDGroupSuspendReason,
-					Message:            "pd group is not suspended",
+					Reason:             v1alpha1.ReasonUnsuspended,
+					Message:            "group is not suspended",
 				})
 				obj.Status.ObservedGeneration = 3
 				obj.Status.Replicas = 0
@@ -85,11 +85,11 @@ func TestTaskStatus(t *testing.T) {
 			expectedStatus: task.SWait,
 			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.PDGroup](3), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				obj.Status.Conditions = append(obj.Status.Conditions, metav1.Condition{
-					Type:               v1alpha1.PDGroupCondSuspended,
+					Type:               v1alpha1.CondSuspended,
 					Status:             metav1.ConditionFalse,
 					ObservedGeneration: 3,
-					Reason:             v1alpha1.PDGroupSuspendReason,
-					Message:            "pd group is not suspended",
+					Reason:             v1alpha1.ReasonUnsuspended,
+					Message:            "group is not suspended",
 				})
 				obj.Status.ObservedGeneration = 3
 				obj.Status.Replicas = 0
@@ -126,11 +126,11 @@ func TestTaskStatus(t *testing.T) {
 			expectedStatus: task.SComplete,
 			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.PDGroup](3), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				obj.Status.Conditions = append(obj.Status.Conditions, metav1.Condition{
-					Type:               v1alpha1.PDGroupCondSuspended,
+					Type:               v1alpha1.CondSuspended,
 					Status:             metav1.ConditionFalse,
 					ObservedGeneration: 3,
-					Reason:             v1alpha1.PDGroupSuspendReason,
-					Message:            "pd group is not suspended",
+					Reason:             v1alpha1.ReasonUnsuspended,
+					Message:            "group is not suspended",
 				})
 				obj.Status.ObservedGeneration = 3
 				obj.Status.Replicas = 1
@@ -167,11 +167,11 @@ func TestTaskStatus(t *testing.T) {
 			expectedStatus: task.SComplete,
 			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.PDGroup](3), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				obj.Status.Conditions = append(obj.Status.Conditions, metav1.Condition{
-					Type:               v1alpha1.PDGroupCondSuspended,
+					Type:               v1alpha1.CondSuspended,
 					Status:             metav1.ConditionFalse,
 					ObservedGeneration: 3,
-					Reason:             v1alpha1.PDGroupSuspendReason,
-					Message:            "pd group is not suspended",
+					Reason:             v1alpha1.ReasonUnsuspended,
+					Message:            "group is not suspended",
 				})
 				obj.Status.ObservedGeneration = 3
 				obj.Status.Replicas = 1
@@ -204,11 +204,11 @@ func TestTaskStatus(t *testing.T) {
 			expectedStatus: task.SComplete,
 			expectedObj: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.PDGroup](3), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				obj.Status.Conditions = append(obj.Status.Conditions, metav1.Condition{
-					Type:               v1alpha1.PDGroupCondSuspended,
+					Type:               v1alpha1.CondSuspended,
 					Status:             metav1.ConditionFalse,
 					ObservedGeneration: 3,
-					Reason:             v1alpha1.PDGroupSuspendReason,
-					Message:            "pd group is not suspended",
+					Reason:             v1alpha1.ReasonUnsuspended,
+					Message:            "group is not suspended",
 				})
 				obj.Status.ObservedGeneration = 3
 				obj.Status.Replicas = 1
@@ -247,11 +247,11 @@ func TestTaskStatus(t *testing.T) {
 				State: &state{
 					pdg: fake.FakeObj("aaa", fake.SetGeneration[v1alpha1.PDGroup](3), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 						obj.Status.Conditions = append(obj.Status.Conditions, metav1.Condition{
-							Type:               v1alpha1.PDGroupCondSuspended,
+							Type:               v1alpha1.CondSuspended,
 							Status:             metav1.ConditionFalse,
 							ObservedGeneration: 3,
-							Reason:             v1alpha1.PDGroupSuspendReason,
-							Message:            "pd group is not suspended",
+							Reason:             v1alpha1.ReasonUnsuspended,
+							Message:            "group is not suspended",
 						})
 						obj.Status.ObservedGeneration = 3
 						obj.Status.Replicas = 1
