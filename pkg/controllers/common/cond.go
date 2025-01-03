@@ -14,7 +14,10 @@
 
 package common
 
-import "github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+import (
+	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+)
 
 func CondPDHasBeenDeleted(ctx PDState) task.Condition {
 	return task.CondFunc(func() bool {
@@ -40,26 +43,14 @@ func CondClusterIsPaused(ctx ClusterState) task.Condition {
 	})
 }
 
-func CondPDGroupHasBeenDeleted(ctx PDGroupState) task.Condition {
+func CondGroupIsDeleting[G runtime.Group](state GroupState[G]) task.Condition {
 	return task.CondFunc(func() bool {
-		return ctx.PDGroup() == nil
+		return !state.Group().GetDeletionTimestamp().IsZero()
 	})
 }
 
-func CondPDGroupIsDeleting(ctx PDGroupState) task.Condition {
+func CondGroupHasBeenDeleted[RG runtime.GroupT[G], G runtime.GroupSet](state GroupState[RG]) task.Condition {
 	return task.CondFunc(func() bool {
-		return !ctx.PDGroup().GetDeletionTimestamp().IsZero()
-	})
-}
-
-func CondTiKVGroupHasBeenDeleted(ctx TiKVGroupState) task.Condition {
-	return task.CondFunc(func() bool {
-		return ctx.TiKVGroup() == nil
-	})
-}
-
-func CondTiKVGroupIsDeleting(ctx TiKVGroupState) task.Condition {
-	return task.CondFunc(func() bool {
-		return !ctx.TiKVGroup().GetDeletionTimestamp().IsZero()
+		return state.Group() == nil
 	})
 }

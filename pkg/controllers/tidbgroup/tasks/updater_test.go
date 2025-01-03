@@ -16,80 +16,290 @@ package tasks
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
-	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
-	"github.com/pingcap/tidb-operator/pkg/utils/task"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-func FakeContext(changes ...fake.ChangeFunc[ReconcileContext, *ReconcileContext]) *ReconcileContext {
-	ctx := fake.Fake(changes...)
-	ctx.Context = context.TODO()
-	return ctx
-}
+const (
+	// TODO(liubo02): fake history client to avoid real revision calc
+	oldRevision = "aaa-7fff59c8"
+	newRevision = "aaa-69cf8bf4d9"
+)
 
-func WithCluster(cluster *v1alpha1.Cluster) fake.ChangeFunc[ReconcileContext, *ReconcileContext] {
-	return func(obj *ReconcileContext) *ReconcileContext {
-		obj.Cluster = cluster
-		return obj
-	}
-}
+func TestTaskUpdater(t *testing.T) {
+	cases := []struct {
+		desc          string
+		state         *ReconcileContext
+		unexpectedErr bool
 
-func WithTiDBGroup(dbg *v1alpha1.TiDBGroup) fake.ChangeFunc[ReconcileContext, *ReconcileContext] {
-	return func(obj *ReconcileContext) *ReconcileContext {
-		obj.TiDBGroup = dbg
-		return obj
-	}
-}
-
-func TestUpdater(t *testing.T) {
-	tests := []struct {
-		name       string
-		ctx        *ReconcileContext
-		objs       []client.Object
-		expected   task.Result
-		expectFunc func(t *testing.T, ctx *ReconcileContext, cli client.Client)
+		expectedStatus          task.Status
+		expectedUpdateRevision  string
+		expectedCurrentRevision string
+		expectedTiDBNum         int
 	}{
 		{
-			name: "first time to sync",
-			ctx: FakeContext(
-				WithCluster(fake.FakeObj[v1alpha1.Cluster]("test")),
-				WithTiDBGroup(fake.FakeObj("test-tidbgroup",
-					func(dbg *v1alpha1.TiDBGroup) *v1alpha1.TiDBGroup {
-						dbg.Spec.Cluster = v1alpha1.ClusterReference{Name: "test"}
-						dbg.Spec.Replicas = ptr.To(int32(1))
-						return dbg
-					},
-				)),
-			),
-			expected: task.Complete().With(""),
-			expectFunc: func(t *testing.T, _ *ReconcileContext, cli client.Client) {
-				var crList appsv1.ControllerRevisionList
-				require.NoError(t, cli.List(context.TODO(), &crList))
-				assert.Len(t, crList.Items, 1)
+			desc: "no dbs with 1 replicas",
+			state: &ReconcileContext{
+				State: &state{
+					dbg:     fake.FakeObj[v1alpha1.TiDBGroup]("aaa"),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
+				},
 			},
+
+			expectedStatus:          task.SComplete,
+			expectedUpdateRevision:  oldRevision,
+			expectedCurrentRevision: oldRevision,
+			expectedTiDBNum:         1,
+		},
+		{
+			desc: "version upgrade check",
+			state: &ReconcileContext{
+				State: &state{
+					dbg: fake.FakeObj("aaa", func(obj *v1alpha1.TiDBGroup) *v1alpha1.TiDBGroup {
+						// use an wrong version to trigger version check
+						// TODO(liubo02): it's not happened actually. Maybe remove whole checking
+						obj.Spec.Version = "xxx"
+						obj.Status.Version = "yyy"
+						return obj
+					}),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
+				},
+			},
+
+			expectedStatus:          task.SRetry,
+			expectedUpdateRevision:  "aaa-7847fff478",
+			expectedCurrentRevision: "aaa-7847fff478",
+		},
+		{
+			desc: "1 updated tidb with 1 replicas",
+			state: &ReconcileContext{
+				State: &state{
+					dbg:     fake.FakeObj[v1alpha1.TiDBGroup]("aaa"),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
+					dbs: []*v1alpha1.TiDB{
+						fakeAvailableTiDB("aaa-xxx", fake.FakeObj[v1alpha1.TiDBGroup]("aaa"), oldRevision),
+					},
+				},
+			},
+
+			expectedStatus:          task.SComplete,
+			expectedUpdateRevision:  oldRevision,
+			expectedCurrentRevision: oldRevision,
+			expectedTiDBNum:         1,
+		},
+		{
+			desc: "no dbs with 2 replicas",
+			state: &ReconcileContext{
+				State: &state{
+					dbg: fake.FakeObj("aaa", func(obj *v1alpha1.TiDBGroup) *v1alpha1.TiDBGroup {
+						obj.Spec.Replicas = ptr.To[int32](2)
+						return obj
+					}),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
+				},
+			},
+
+			expectedStatus:          task.SComplete,
+			expectedUpdateRevision:  newRevision,
+			expectedCurrentRevision: newRevision,
+			expectedTiDBNum:         2,
+		},
+		{
+			desc: "no dbs with 2 replicas and call api failed",
+			state: &ReconcileContext{
+				State: &state{
+					dbg: fake.FakeObj("aaa", func(obj *v1alpha1.TiDBGroup) *v1alpha1.TiDBGroup {
+						obj.Spec.Replicas = ptr.To[int32](2)
+						return obj
+					}),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
+				},
+			},
+			unexpectedErr: true,
+
+			expectedStatus:          task.SFail,
+			expectedUpdateRevision:  newRevision,
+			expectedCurrentRevision: newRevision,
+		},
+		{
+			desc: "1 outdated tidb with 2 replicas",
+			state: &ReconcileContext{
+				State: &state{
+					dbg: fake.FakeObj("aaa", func(obj *v1alpha1.TiDBGroup) *v1alpha1.TiDBGroup {
+						obj.Spec.Replicas = ptr.To[int32](2)
+						return obj
+					}),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
+					dbs: []*v1alpha1.TiDB{
+						fakeAvailableTiDB("aaa-xxx", fake.FakeObj[v1alpha1.TiDBGroup]("aaa"), oldRevision),
+					},
+				},
+			},
+
+			expectedStatus:          task.SWait,
+			expectedUpdateRevision:  newRevision,
+			expectedCurrentRevision: newRevision,
+			expectedTiDBNum:         2,
+		},
+		{
+			desc: "1 outdated tidb with 2 replicas but cannot call api, will fail",
+			state: &ReconcileContext{
+				State: &state{
+					dbg: fake.FakeObj("aaa", func(obj *v1alpha1.TiDBGroup) *v1alpha1.TiDBGroup {
+						obj.Spec.Replicas = ptr.To[int32](2)
+						return obj
+					}),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
+					dbs: []*v1alpha1.TiDB{
+						fakeAvailableTiDB("aaa-xxx", fake.FakeObj[v1alpha1.TiDBGroup]("aaa"), oldRevision),
+					},
+				},
+			},
+			unexpectedErr: true,
+
+			expectedStatus:          task.SFail,
+			expectedUpdateRevision:  newRevision,
+			expectedCurrentRevision: newRevision,
+		},
+		{
+			desc: "2 updated tidb with 2 replicas",
+			state: &ReconcileContext{
+				State: &state{
+					dbg: fake.FakeObj("aaa", func(obj *v1alpha1.TiDBGroup) *v1alpha1.TiDBGroup {
+						obj.Spec.Replicas = ptr.To[int32](2)
+						return obj
+					}),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
+					dbs: []*v1alpha1.TiDB{
+						fakeAvailableTiDB("aaa-xxx", fake.FakeObj[v1alpha1.TiDBGroup]("aaa"), newRevision),
+						fakeAvailableTiDB("aaa-yyy", fake.FakeObj[v1alpha1.TiDBGroup]("aaa"), newRevision),
+					},
+				},
+			},
+
+			expectedStatus:          task.SComplete,
+			expectedUpdateRevision:  newRevision,
+			expectedCurrentRevision: newRevision,
+			expectedTiDBNum:         2,
+		},
+		{
+			desc: "2 updated tidb with 2 replicas and cannot call api, can complete",
+			state: &ReconcileContext{
+				State: &state{
+					dbg: fake.FakeObj("aaa", func(obj *v1alpha1.TiDBGroup) *v1alpha1.TiDBGroup {
+						obj.Spec.Replicas = ptr.To[int32](2)
+						return obj
+					}),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
+					dbs: []*v1alpha1.TiDB{
+						fakeAvailableTiDB("aaa-xxx", fake.FakeObj[v1alpha1.TiDBGroup]("aaa"), newRevision),
+						fakeAvailableTiDB("aaa-yyy", fake.FakeObj[v1alpha1.TiDBGroup]("aaa"), newRevision),
+					},
+				},
+			},
+			unexpectedErr: true,
+
+			expectedStatus:          task.SComplete,
+			expectedUpdateRevision:  newRevision,
+			expectedCurrentRevision: newRevision,
+			expectedTiDBNum:         2,
+		},
+		{
+			// NOTE: it not really check whether the policy is worked
+			// It should be tested in /pkg/updater and /pkg/updater/policy package
+			desc: "topology evenly spread",
+			state: &ReconcileContext{
+				State: &state{
+					dbg: fake.FakeObj("aaa", func(obj *v1alpha1.TiDBGroup) *v1alpha1.TiDBGroup {
+						obj.Spec.Replicas = ptr.To[int32](3)
+						obj.Spec.SchedulePolicies = append(obj.Spec.SchedulePolicies, v1alpha1.SchedulePolicy{
+							Type: v1alpha1.SchedulePolicyTypeEvenlySpread,
+							EvenlySpread: &v1alpha1.SchedulePolicyEvenlySpread{
+								Topologies: []v1alpha1.ScheduleTopology{
+									{
+										Topology: v1alpha1.Topology{
+											"zone": "us-west-1a",
+										},
+									},
+									{
+										Topology: v1alpha1.Topology{
+											"zone": "us-west-1b",
+										},
+									},
+									{
+										Topology: v1alpha1.Topology{
+											"zone": "us-west-1c",
+										},
+									},
+								},
+							},
+						})
+						return obj
+					}),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
+				},
+			},
+
+			expectedStatus:          task.SComplete,
+			expectedUpdateRevision:  "aaa-655cc6bb8f",
+			expectedCurrentRevision: "aaa-655cc6bb8f",
+			expectedTiDBNum:         3,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fc := client.NewFakeClient(tt.objs...)
-			updaterTask := NewTaskUpdater(logr.Discard(), fc)
-			got := updaterTask.Sync(tt.ctx)
-			assert.Equal(t, tt.expected.IsFailed(), got.IsFailed())
-			assert.Equal(t, tt.expected.ShouldContinue(), got.ShouldContinue())
-			assert.Equal(t, tt.expected.RequeueAfter(), got.RequeueAfter())
 
-			if tt.expectFunc != nil {
-				tt.expectFunc(t, tt.ctx, fc)
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			ctx := context.Background()
+			fc := client.NewFakeClient(c.state.TiDBGroup(), c.state.Cluster())
+			for _, obj := range c.state.TiDBSlice() {
+				require.NoError(tt, fc.Apply(ctx, obj), c.desc)
+			}
+
+			if c.unexpectedErr {
+				// cannot create or update tidb instance
+				fc.WithError("patch", "tidbs", errors.NewInternalError(fmt.Errorf("fake internal err")))
+			}
+
+			res, done := task.RunTask(ctx, TaskUpdater(c.state, fc))
+			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
+			assert.False(tt, done, c.desc)
+
+			assert.Equal(tt, c.expectedUpdateRevision, c.state.UpdateRevision, c.desc)
+			assert.Equal(tt, c.expectedCurrentRevision, c.state.CurrentRevision, c.desc)
+			if !c.unexpectedErr {
+				dbs := v1alpha1.TiDBList{}
+				require.NoError(tt, fc.List(ctx, &dbs), c.desc)
+				assert.Len(tt, dbs.Items, c.expectedTiDBNum, c.desc)
 			}
 		})
 	}
+}
+
+func fakeAvailableTiDB(name string, dbg *v1alpha1.TiDBGroup, rev string) *v1alpha1.TiDB {
+	return fake.FakeObj(name, func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
+		tidb := runtime.ToTiDB(TiDBNewer(dbg, rev).New())
+		tidb.Name = ""
+		tidb.Status.Conditions = append(tidb.Status.Conditions, metav1.Condition{
+			Type:   v1alpha1.TiDBCondHealth,
+			Status: metav1.ConditionTrue,
+		})
+		tidb.Status.CurrentRevision = rev
+		tidb.DeepCopyInto(obj)
+		return obj
+	})
 }

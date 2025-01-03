@@ -15,54 +15,35 @@
 package tasks
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/utils/task"
+	"github.com/pingcap/tidb-operator/pkg/controllers/common"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-type TaskService struct {
-	Logger logr.Logger
-	Client client.Client
-}
+func TaskService(state common.TiDBGroupState, c client.Client) task.Task {
+	return task.NameTaskFunc("Service", func(ctx context.Context) task.Result {
+		dbg := state.TiDBGroup()
 
-func NewTaskService(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
-	return &TaskService{
-		Logger: logger,
-		Client: c,
-	}
-}
+		headless := newHeadlessService(dbg)
+		if err := c.Apply(ctx, headless); err != nil {
+			return task.Fail().With(fmt.Sprintf("can't create headless service: %v", err))
+		}
 
-func (*TaskService) Name() string {
-	return "Service"
-}
+		svc := newInternalService(dbg)
+		if err := c.Apply(ctx, svc); err != nil {
+			return task.Fail().With(fmt.Sprintf("can't create internal service: %v", err))
+		}
 
-func (t *TaskService) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
-
-	if rtx.Cluster.ShouldSuspendCompute() {
-		return task.Complete().With("skip service for suspension")
-	}
-
-	tidbg := rtx.TiDBGroup
-
-	svcHeadless := newHeadlessService(tidbg)
-	if err := t.Client.Apply(ctx, svcHeadless); err != nil {
-		return task.Fail().With(fmt.Sprintf("can't create headless service of tidb: %v", err))
-	}
-
-	svc := newService(tidbg)
-	if err := t.Client.Apply(ctx, svc); err != nil {
-		return task.Fail().With(fmt.Sprintf("can't create service of tidb: %v", err))
-	}
-
-	return task.Complete().With("service of tidb has been applied")
+		return task.Complete().With("services have been applied")
+	})
 }
 
 func newHeadlessService(tidbg *v1alpha1.TiDBGroup) *corev1.Service {
@@ -103,16 +84,12 @@ func newHeadlessService(tidbg *v1alpha1.TiDBGroup) *corev1.Service {
 	}
 }
 
-func newService(tidbg *v1alpha1.TiDBGroup) *corev1.Service {
-	svcType := corev1.ServiceTypeClusterIP
-	if tidbg.Spec.Service != nil && tidbg.Spec.Service.Type != "" {
-		svcType = tidbg.Spec.Service.Type
-	}
+func newInternalService(tidbg *v1alpha1.TiDBGroup) *corev1.Service {
 	ipFamilyPolicy := corev1.IPFamilyPolicyPreferDualStack
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      tidbg.Name + "-tidb",
+			Name:      InternalServiceName(tidbg.Name),
 			Namespace: tidbg.Namespace,
 			Labels: map[string]string{
 				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
@@ -145,7 +122,7 @@ func newService(tidbg *v1alpha1.TiDBGroup) *corev1.Service {
 					TargetPort: intstr.FromString(v1alpha1.TiDBPortNameStatus),
 				},
 			},
-			Type:           svcType,
+			Type:           corev1.ServiceTypeClusterIP,
 			IPFamilyPolicy: &ipFamilyPolicy,
 		},
 	}
