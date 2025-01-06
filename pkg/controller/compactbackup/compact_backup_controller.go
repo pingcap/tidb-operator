@@ -274,8 +274,9 @@ func (c *Controller) sync(key string) (err error) {
 	c.statusUpdater.OnSchedule(context.TODO(), compact)
 
 	err = c.doCompact(compact.DeepCopy())
-	klog.Errorf("Backup: [%s/%s] sync failed, error: %v", ns, name, err)
-
+	if err != nil {
+		klog.Errorf("Backup: [%s/%s] sync failed, error: %v", ns, name, err)
+	}
 	c.statusUpdater.OnCreateJob(context.TODO(), compact, err)
 	return err
 }
@@ -428,7 +429,7 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 					Args:            args,
 					Env:             envVars,
 					VolumeMounts:    volumeMounts,
-					ImagePullPolicy: corev1.PullIfNotPresent,
+					ImagePullPolicy: corev1.PullAlways,
 				},
 			},
 			RestartPolicy:     corev1.RestartPolicyOnFailure,
@@ -474,24 +475,10 @@ func (c *Controller) isCompactJobAlreadyRunning(compact *v1alpha1.CompactBackup)
 
 	for _, condition := range job.Status.Conditions {
 		if condition.Type == batchv1.JobFailed && condition.Status == corev1.ConditionTrue {
-			// Check events if job failed
-			events, err := c.deps.KubeClientset.CoreV1().Events(ns).List(context.TODO(), metav1.ListOptions{
-				FieldSelector: fmt.Sprintf("involvedObject.kind=Job,involvedObject.name=%s", name),
-			})
-			if err != nil {
-				if errors.IsNotFound(err) {
-					return true, nil // No events found, treat as "running"
-				}
-				klog.Errorf("Failed to get events for job %s/%s, error %v", ns, name, err)
-				return true, err
-			}
-
-			for _, event := range events.Items {
-				if event.Reason == "BackoffLimitExceeded" {
-					klog.Warningf("Job %s has exceeded the backoff limit, no further retries will be attempted.", name)
-					c.statusUpdater.OnJobFailed(context.TODO(), compact, event.Message)
-				}
-			}
+			failReason := condition.Reason      
+			failMessage := condition.Message 
+			klog.Errorf("Backup: [%s/%s] compact job failed, reason: %s, message: %s", ns, name, failReason, failMessage)
+			c.statusUpdater.OnJobFailed(context.TODO(), compact, failMessage)
 			return true, nil
 		}
 	}

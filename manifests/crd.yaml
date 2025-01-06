@@ -9232,6 +9232,18 @@ spec:
             type: object
           status:
             properties:
+              backoffRetryStatus:
+                items:
+                  properties:
+                    detectFailedAt:
+                      format: date-time
+                      type: string
+                    retryNum:
+                      type: integer
+                    retryReason:
+                      type: string
+                  type: object
+                type: array
               message:
                 type: string
               progress:
