@@ -140,6 +140,7 @@ func (cm *Manager) base64ifyCmd(ctx context.Context) (*exec.Cmd, error) {
 func (cm *Manager) runCompaction(ctx context.Context, base64Storage string) (err error) {
 	cmd := cm.compactCmd(ctx, base64Storage)
 
+	// tikvLog is used to capture the log from tikv-ctl, which is sent to stderr by default
 	tikvLog, err := cmd.StderrPipe()
 	if err != nil {
 		return errors.Annotate(err, "failed to create stderr pipe for compact")
