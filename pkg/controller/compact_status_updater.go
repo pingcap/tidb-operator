@@ -110,6 +110,10 @@ func (r *CompactStatusUpdater) UpdateStatus(compact *v1alpha1.CompactBackup, new
 			updated = true
 			r.progressLastUpdate = now
 		}
+		if newStatus.RetryStatus != nil && newStatus.RetryStatus[0].RetryNum == len(compact.Status.RetryStatus) {
+			compact.Status.RetryStatus = append(compact.Status.RetryStatus, newStatus.RetryStatus[0])
+			updated = true
+		}
 
 		// Apply the update if any field changed
 		if updated {
@@ -166,9 +170,16 @@ func (r *CompactStatusUpdater) OnProgress(ctx context.Context, compact *v1alpha1
 func (r *CompactStatusUpdater) OnFinish(ctx context.Context, compact *v1alpha1.CompactBackup, err error) error {
 	newStatus := v1alpha1.CompactStatus{}
 	if err != nil {
-		newStatus.State = string(v1alpha1.BackupFailed)
+		newStatus.State = string(v1alpha1.BackupRetryTheFailed)
 		newStatus.Message = err.Error()
-		r.Event(compact, corev1.EventTypeWarning, "Failed", err.Error())
+		newStatus.RetryStatus = []v1alpha1.CompactRetryRecord{
+			{
+				RetryNum:       len(compact.Status.RetryStatus),
+				DetectFailedAt: metav1.NewTime(time.Now()),
+				RetryReason:    err.Error(),
+			},
+		}
+		r.Event(compact, corev1.EventTypeWarning, "Failed(Retryable)", err.Error())
 	} else {
 		newStatus.State = string(v1alpha1.BackupComplete)
 		r.Event(compact, corev1.EventTypeNormal, "Finished", "The compaction process has finished successfully.")

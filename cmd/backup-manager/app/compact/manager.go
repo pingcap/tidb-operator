@@ -83,15 +83,18 @@ func (cm *Manager) kvCtlBin() string {
 
 // ProcessBackup used to process the backup logic
 func (cm *Manager) ProcessCompact() error {
+	var err error
 	ctx, cancel := backuputil.GetContextForTerminationSignals(cm.options.ResourceName)
 	defer cancel()
 
 	compact, err := cm.resourceLister.CompactBackups(cm.options.Namespace).Get(cm.options.ResourceName)
-	defer func() { cm.statusUpdater.OnFinish(ctx, cm.compact, err) }()
+	defer func() {
+		err = cm.statusUpdater.OnFinish(ctx, cm.compact, err)
+	}()
 	if err != nil {
 		return errors.New("backup not found")
 	}
-	if err := options.ParseCompactOptions(compact, &cm.options); err != nil {
+	if err = options.ParseCompactOptions(compact, &cm.options); err != nil {
 		return errors.Annotate(err, "failed to parse compact options")
 	}
 

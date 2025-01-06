@@ -3558,6 +3558,16 @@ type CompactSpec struct {
 	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
 }
 
+// CompactRetryRecord is the record of compact backoff retry
+type CompactRetryRecord struct {
+	// RetryNum is the number of retry
+	RetryNum int `json:"retryNum,omitempty"`
+	// DetectFailedAt is the time when detect failure
+	DetectFailedAt metav1.Time `json:"detectFailedAt,omitempty"`
+	// Reason is the reason of retry
+	RetryReason string `json:"retryReason,omitempty"`
+}
+
 type CompactStatus struct {
 	// State is the current state of the backup
 	State string `json:"state,omitempty"`
@@ -3565,6 +3575,8 @@ type CompactStatus struct {
 	Progress string `json:"progress,omitempty"`
 	// Message is the error message of the backup
 	Message string `json:"message,omitempty"`
+	// RetryStatus is status of the backoff retry, it will be used when backup pod or job exited unexpectedly
+	RetryStatus []CompactRetryRecord `json:"backoffRetryStatus,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -5651,6 +5651,59 @@ CompactStatus
 </tr>
 </tbody>
 </table>
+<h3 id="compactretryrecord">CompactRetryRecord</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#compactstatus">CompactStatus</a>)
+</p>
+<p>
+<p>CompactRetryRecord is the record of compact backoff retry</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>retryNum</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>RetryNum is the number of retry</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>detectFailedAt</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>DetectFailedAt is the time when detect failure</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>retryReason</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Reason is the reason of retry</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="compactspec">CompactSpec</h3>
 <p>
 (<em>Appears on:</em>
@@ -5965,6 +6018,19 @@ string
 </td>
 <td>
 <p>Message is the error message of the backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backoffRetryStatus</code></br>
+<em>
+<a href="#compactretryrecord">
+[]CompactRetryRecord
+</a>
+</em>
+</td>
+<td>
+<p>RetryStatus is status of the backoff retry, it will be used when backup pod or job exited unexpectedly</p>
 </td>
 </tr>
 </tbody>
