@@ -75,7 +75,7 @@ func (r *CompactStatusUpdater) Event(compact *v1alpha1.CompactBackup, ty, reason
 
 func (r *CompactStatusUpdater) UpdateStatus(compact *v1alpha1.CompactBackup, newStatus v1alpha1.CompactStatus) error {
 	ns := compact.GetNamespace()
-	backupName := compact.GetName()
+	compactName := compact.GetName()
 
 	now := time.Now()
 	canUpdateProgress := true
@@ -88,10 +88,10 @@ func (r *CompactStatusUpdater) UpdateStatus(compact *v1alpha1.CompactBackup, new
 	// Update the status
 	err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
 		// Always get the latest CompactBackup before updating
-		if updated, err := r.lister.CompactBackups(ns).Get(backupName); err == nil {
+		if updated, err := r.lister.CompactBackups(ns).Get(compactName); err == nil {
 			*compact = *(updated.DeepCopy())
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %v", ns, backupName, err))
+			utilruntime.HandleError(fmt.Errorf("error getting updated compact %s/%s from lister: %v", ns, compactName, err))
 			return err
 		}
 
@@ -119,10 +119,10 @@ func (r *CompactStatusUpdater) UpdateStatus(compact *v1alpha1.CompactBackup, new
 		if updated {
 			_, updateErr := r.cli.PingcapV1alpha1().CompactBackups(ns).Update(context.TODO(), compact, metav1.UpdateOptions{})
 			if updateErr == nil {
-				klog.Infof("Backup: [%s/%s] updated successfully", ns, backupName)
+				klog.Infof("Compact: [%s/%s] updated successfully", ns, compactName)
 				return nil
 			}
-			klog.Errorf("Failed to update backup [%s/%s], error: %v", ns, backupName, updateErr)
+			klog.Errorf("Failed to update Compact [%s/%s], error: %v", ns, compactName, updateErr)
 			return updateErr
 		}
 		return nil
@@ -140,8 +140,15 @@ func (r *CompactStatusUpdater) OnSchedule(ctx context.Context, compact *v1alpha1
 func (r *CompactStatusUpdater) OnCreateJob(ctx context.Context, compact *v1alpha1.CompactBackup, err error) error {
 	newStatus := v1alpha1.CompactStatus{}
 	if err != nil {
-		newStatus.State = string(v1alpha1.BackupFailed)
+		newStatus.State = string(v1alpha1.BackupRetryTheFailed)
 		newStatus.Message = err.Error()
+		newStatus.RetryStatus = []v1alpha1.CompactRetryRecord{
+			{
+				RetryNum:       len(compact.Status.RetryStatus),
+				DetectFailedAt: metav1.NewTime(time.Now()),
+				RetryReason:    err.Error(),
+			},
+		}
 	} else {
 		newStatus.State = string(v1alpha1.BackupRunning)
 	}
