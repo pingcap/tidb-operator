@@ -475,8 +475,8 @@ func (c *Controller) isCompactJobAlreadyRunning(compact *v1alpha1.CompactBackup)
 
 	for _, condition := range job.Status.Conditions {
 		if condition.Type == batchv1.JobFailed && condition.Status == corev1.ConditionTrue {
-			failReason := condition.Reason      
-			failMessage := condition.Message 
+			failReason := condition.Reason
+			failMessage := condition.Message
 			klog.Errorf("Backup: [%s/%s] compact job failed, reason: %s, message: %s", ns, name, failReason, failMessage)
 			c.statusUpdater.OnJobFailed(context.TODO(), compact, failMessage)
 			return true, nil
