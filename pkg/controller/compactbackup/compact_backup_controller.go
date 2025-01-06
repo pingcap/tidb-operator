@@ -64,9 +64,9 @@ func NewController(deps *controller.Dependencies) *Controller {
 		),
 	}
 
-	backupInformer := deps.InformerFactory.Pingcap().V1alpha1().CompactBackups()
+	compactInformer := deps.InformerFactory.Pingcap().V1alpha1().CompactBackups()
 	jobInformer := deps.KubeInformerFactory.Batch().V1().Jobs()
-	backupInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	compactInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.updateCompact,
 		UpdateFunc: func(old, cur interface{}) {
 			c.updateCompact(cur)
@@ -80,12 +80,12 @@ func NewController(deps *controller.Dependencies) *Controller {
 	return c
 }
 
-// Name returns backup controller name.
+// Name returns compact backup controller name.
 func (c *Controller) Name() string {
 	return "compactBackup"
 }
 
-// Run runs the backup controller.
+// Run runs the compact backup controller.
 func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
@@ -106,30 +106,30 @@ func (c *Controller) worker() {
 	}
 }
 
-func (c *Controller) UpdateStatus(backup *v1alpha1.CompactBackup, newState string, message ...string) error {
-	ns := backup.GetNamespace()
-	backupName := backup.GetName()
+func (c *Controller) UpdateStatus(compact *v1alpha1.CompactBackup, newState string, message ...string) error {
+	ns := compact.GetNamespace()
+	compactName := compact.GetName()
 	// try best effort to guarantee backup is updated.
 	err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
 		// Always get the latest backup before update.
-		if updated, err := c.deps.CompactBackupLister.CompactBackups(ns).Get(backupName); err == nil {
+		if updated, err := c.deps.CompactBackupLister.CompactBackups(ns).Get(compactName); err == nil {
 			// make a copy so we don't mutate the shared cache
-			*backup = *(updated.DeepCopy())
+			*compact = *(updated.DeepCopy())
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %v", ns, backupName, err))
+			utilruntime.HandleError(fmt.Errorf("error getting updated compact %s/%s from lister: %v", ns, compactName, err))
 			return err
 		}
-		if backup.Status.State != newState {
-			backup.Status.State = newState
+		if compact.Status.State != newState {
+			compact.Status.State = newState
 			if len(message) > 0 {
-				backup.Status.Message = message[0]
+				compact.Status.Message = message[0]
 			}
-			_, updateErr := c.cli.PingcapV1alpha1().CompactBackups(ns).Update(context.TODO(), backup, metav1.UpdateOptions{})
+			_, updateErr := c.cli.PingcapV1alpha1().CompactBackups(ns).Update(context.TODO(), compact, metav1.UpdateOptions{})
 			if updateErr == nil {
-				klog.Infof("Backup: [%s/%s] updated successfully", ns, backupName)
+				klog.Infof("Compact: [%s/%s] updated successfully", ns, compactName)
 				return nil
 			}
-			klog.Errorf("Failed to update backup [%s/%s], error: %v", ns, backupName, updateErr)
+			klog.Errorf("Failed to update Compact [%s/%s], error: %v", ns, compactName, updateErr)
 			return updateErr
 		}
 		return nil
@@ -147,14 +147,14 @@ func (c *Controller) resolveCompactBackupFromJob(namespace string, job *batchv1.
 		return nil
 	}
 
-	backup, err := c.deps.CompactBackupLister.CompactBackups(namespace).Get(owner.Name)
+	compact, err := c.deps.CompactBackupLister.CompactBackups(namespace).Get(owner.Name)
 	if err != nil {
 		return nil
 	}
-	if owner.UID != backup.UID {
+	if owner.UID != compact.UID {
 		return nil
 	}
-	return backup
+	return compact
 }
 
 func (c *Controller) deleteJob(obj interface{}) {
@@ -165,35 +165,35 @@ func (c *Controller) deleteJob(obj interface{}) {
 
 	ns := job.GetNamespace()
 	jobName := job.GetName()
-	backup := c.resolveCompactBackupFromJob(ns, job)
-	if backup == nil {
+	compact := c.resolveCompactBackupFromJob(ns, job)
+	if compact == nil {
 		return
 	}
 	klog.V(4).Infof("Job %s/%s deleted through %v.", ns, jobName, utilruntime.GetCaller())
-	c.updateCompact(backup)
+	c.updateCompact(compact)
 }
 
 func (c *Controller) updateCompact(cur interface{}) {
-	newBackup := cur.(*v1alpha1.CompactBackup)
-	ns := newBackup.GetNamespace()
-	name := newBackup.GetName()
+	newcompact := cur.(*v1alpha1.CompactBackup)
+	ns := newcompact.GetNamespace()
+	name := newcompact.GetName()
 
-	if newBackup.Status.State == string(v1alpha1.BackupFailed) {
-		klog.Errorf("Backup %s/%s is failed, skip", ns, name)
+	if newcompact.Status.State == string(v1alpha1.BackupFailed) {
+		klog.Errorf("Compact %s/%s is failed, skip", ns, name)
 		return
 	}
 
-	if newBackup.Status.State == string(v1alpha1.BackupComplete) {
-		klog.Errorf("Backup %s/%s is complete, skip", ns, name)
+	if newcompact.Status.State == string(v1alpha1.BackupComplete) {
+		klog.Errorf("Compact %s/%s is complete, skip", ns, name)
 		return
 	}
 
-	klog.Infof("backup object %s/%s enqueue", ns, name)
-	c.enqueueBackup(newBackup)
+	klog.Infof("Compact object %s/%s enqueue", ns, name)
+	c.enqueueCompact(newcompact)
 }
 
-// enqueueBackup enqueues the given backup in the work queue.
-func (c *Controller) enqueueBackup(obj interface{}) {
+// enqueueCompact enqueues the given compact in the work queue.
+func (c *Controller) enqueueCompact(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("cound't get key for object %+v: %v", obj, err))
@@ -215,12 +215,12 @@ func (c *Controller) processNextWorkItem() bool {
 	defer c.queue.Done(key)
 	if err := c.sync(key.(string)); err != nil {
 		if perrors.Find(err, controller.IsRequeueError) != nil {
-			klog.Infof("Backup: %v, still need sync: %v, requeuing", key.(string), err)
+			klog.Infof("Compact: %v, still need sync: %v, requeuing", key.(string), err)
 			c.queue.AddRateLimited(key)
 		} else if perrors.Find(err, controller.IsIgnoreError) != nil {
-			klog.Infof("Backup: %v, ignore err: %v", key.(string), err)
+			klog.Infof("Compact: %v, ignore err: %v", key.(string), err)
 		} else {
-			utilruntime.HandleError(fmt.Errorf("Backup: %v, sync failed, err: %v, requeuing", key.(string), err))
+			utilruntime.HandleError(fmt.Errorf("Compact: %v, sync failed, err: %v, requeuing", key.(string), err))
 			c.queue.AddRateLimited(key)
 		}
 	} else {
@@ -244,30 +244,30 @@ func (c *Controller) sync(key string) (err error) {
 			metrics.ReconcileErrors.WithLabelValues(c.Name()).Inc()
 		}
 
-		klog.V(4).Infof("Finished syncing Backup %q (%v)", key, duration)
+		klog.V(4).Infof("Finished syncing Compact %q (%v)", key, duration)
 	}()
 
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		return err
 	}
-	klog.Infof("Backup: [%s/%s] start to sync", ns, name)
+	klog.Infof("Compact: [%s/%s] start to sync", ns, name)
 	compact, err := c.deps.CompactBackupLister.CompactBackups(ns).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			klog.Infof("Backup has been deleted %v", key)
+			klog.Infof("Compact has been deleted %v", key)
 			return nil
 		}
-		klog.Infof("Backup get failed %v", err)
+		klog.Infof("Compact get failed %v", err)
 		return err
 	}
 
-	running, err := c.isCompactJobAlreadyRunning(compact)
+	onTrack, err := c.isCompactJobOnTrack(compact)
 	if err != nil {
 		return err
 	}
-	if running {
-		klog.Infof("Backup %s/%s is running, skip", ns, name)
+	if onTrack {
+		klog.Infof("Compact %s/%s is running, skip", ns, name)
 		return nil
 	}
 
@@ -275,7 +275,7 @@ func (c *Controller) sync(key string) (err error) {
 
 	err = c.doCompact(compact.DeepCopy())
 	if err != nil {
-		klog.Errorf("Backup: [%s/%s] sync failed, error: %v", ns, name, err)
+		klog.Errorf("Compact: [%s/%s] sync failed, error: %v", ns, name, err)
 	}
 	c.statusUpdater.OnCreateJob(context.TODO(), compact, err)
 	return err
@@ -284,21 +284,21 @@ func (c *Controller) sync(key string) (err error) {
 func (c *Controller) doCompact(compact *v1alpha1.CompactBackup) error {
 	ns := compact.GetNamespace()
 	name := compact.GetName()
-	backupJobName := compact.GetName()
+	compactJobName := compact.GetName()
 
-	// make backup job
+	// make compact job
 	var err error
 	var job *batchv1.Job
 	var reason string
 	if job, reason, err = c.makeCompactJob(compact); err != nil {
-		klog.Errorf("backup %s/%s create job %s failed, reason is %s, error %v.", ns, name, backupJobName, reason, err)
+		klog.Errorf("Compact %s/%s create job %s failed, reason is %s, error %v.", ns, name, compactJobName, reason, err)
 		return err
 	}
 
 	// create k8s job
-	klog.Infof("backup %s/%s creating job %s.", ns, name, backupJobName)
+	klog.Infof("Compact %s/%s creating job %s.", ns, name, compactJobName)
 	if err := c.deps.JobControl.CreateJob(compact, job); err != nil {
-		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %v", ns, name, backupJobName, err)
+		errMsg := fmt.Errorf("create Compact %s/%s job %s failed, err: %v", ns, name, compactJobName, err)
 		return errMsg
 	}
 	return nil
@@ -318,12 +318,12 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 
 	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, compact.Spec.UseKMS, compact.Spec.StorageProvider, c.deps.SecretLister)
 	if err != nil {
-		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
+		return nil, reason, fmt.Errorf("Compact %s/%s, %v", ns, name, err)
 	}
 
 	envVars = append(envVars, storageEnv...)
 
-	// set env vars specified in backup.Spec.Env
+	// set env vars specified in Compact.Spec.Env
 	envVars = util.AppendOverwriteEnv(envVars, compact.Spec.Env)
 
 	args := []string{
@@ -347,7 +347,7 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 
 		brImage = toolImage
 	}
-	klog.Infof("backup %s/%s use br image %s and tikv image %s", ns, name, brImage, tikvImage)
+	klog.Infof("Compact %s/%s use br image %s and tikv image %s", ns, name, brImage, tikvImage)
 
 	//TODO: (Ris)What is the instance here?
 	jobLabels := util.CombineStringMap(label.NewBackup().Instance("Compact-Backup").BackupJob().Backup(name), compact.Labels)
@@ -460,7 +460,7 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 	return job, "", nil
 }
 
-func (c *Controller) isCompactJobAlreadyRunning(compact *v1alpha1.CompactBackup) (bool, error) {
+func (c *Controller) isCompactJobOnTrack(compact *v1alpha1.CompactBackup) (bool, error) {
 	ns := compact.GetNamespace()
 	name := compact.GetName()
 
@@ -477,7 +477,7 @@ func (c *Controller) isCompactJobAlreadyRunning(compact *v1alpha1.CompactBackup)
 		if condition.Type == batchv1.JobFailed && condition.Status == corev1.ConditionTrue {
 			failReason := condition.Reason
 			failMessage := condition.Message
-			klog.Errorf("Backup: [%s/%s] compact job failed, reason: %s, message: %s", ns, name, failReason, failMessage)
+			klog.Errorf("Compact: [%s/%s] compact job failed, reason: %s, message: %s", ns, name, failReason, failMessage)
 			c.statusUpdater.OnJobFailed(context.TODO(), compact, failMessage)
 			return true, nil
 		}
