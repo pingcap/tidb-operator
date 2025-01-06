@@ -16,6 +16,7 @@ package compact
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -262,21 +263,34 @@ func (c *Controller) sync(key string) (err error) {
 		return err
 	}
 
-	onTrack, err := c.isCompactJobOnTrack(compact)
+	err = c.validate(compact)
+	if compact.Status.State == "" {
+		c.statusUpdater.OnSchedule(context.TODO(), compact, err)
+	}
 	if err != nil {
 		return err
 	}
-	if onTrack {
-		klog.Infof("Compact %s/%s is running, skip", ns, name)
+
+	if compact.Status.State == string(v1alpha1.BackupComplete) {
+		klog.Infof("Compact %s/%s is complete, skip", ns, name)
 		return nil
 	}
 
-	c.statusUpdater.OnSchedule(context.TODO(), compact)
+	if compact.Status.State == string(v1alpha1.BackupFailed) {
+		klog.Infof("Compact %s/%s is failed, skip", ns, name)
+		return nil
+	}
+
+	ok, err := c.precheckCompact(compact)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		klog.Infof("Compact %s/%s is not allowed, skip", ns, name)
+		return nil
+	}
 
 	err = c.doCompact(compact.DeepCopy())
-	if err != nil {
-		klog.Errorf("Compact: [%s/%s] sync failed, error: %v", ns, name, err)
-	}
 	c.statusUpdater.OnCreateJob(context.TODO(), compact, err)
 	return err
 }
@@ -460,14 +474,17 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 	return job, "", nil
 }
 
-func (c *Controller) isCompactJobOnTrack(compact *v1alpha1.CompactBackup) (bool, error) {
+// precheckCompact checks if doCompact is allowed to run
+// Only if there is no other compact job existing, doCompact is allowed
+// If the existing job failed, update compact status
+func (c *Controller) precheckCompact(compact *v1alpha1.CompactBackup) (bool, error) {
 	ns := compact.GetNamespace()
 	name := compact.GetName()
 
 	job, err := c.deps.KubeClientset.BatchV1().Jobs(ns).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return false, nil
+			return c.allowCompact(compact), nil
 		}
 		klog.Errorf("Failed to get job %s for compact %s/%s, error %v", name, ns, name, err)
 		return false, err
@@ -479,9 +496,56 @@ func (c *Controller) isCompactJobOnTrack(compact *v1alpha1.CompactBackup) (bool,
 			failMessage := condition.Message
 			klog.Errorf("Compact: [%s/%s] compact job failed, reason: %s, message: %s", ns, name, failReason, failMessage)
 			c.statusUpdater.OnJobFailed(context.TODO(), compact, failMessage)
-			return true, nil
+			return false, nil
+		}
+
+		if condition.Type == batchv1.JobComplete && condition.Status == corev1.ConditionTrue {
+			klog.Infof("Compact: [%s/%s] Job already completed successfully.", ns, name)
+			return false, nil
 		}
 	}
 
-	return true, nil
+	klog.Infof("Compact: [%s/%s] compact job is running, skip.", ns, name)
+	return false, nil
+}
+
+func (c *Controller) validate(compact *v1alpha1.CompactBackup) error {
+	spec := compact.Spec
+	if spec.StartTs == "" {
+		return errors.NewNoStackError("start-ts must be set")
+	}
+	if spec.EndTs == "" {
+		return errors.NewNoStackError("end-ts must be set")
+	}
+	if spec.Concurrency <= 0 {
+		return errors.NewNoStackError("concurrency must be greater than 0")
+	}
+	if spec.MaxRetryTimes < 0 {
+		return errors.NewNoStackError("maxRetryTimes must be greater than or equal to 0")
+	}
+	return nil
+}
+
+func (c *Controller) allowCompact(compact *v1alpha1.CompactBackup) bool {
+	ns := compact.GetNamespace()
+	name := compact.GetName()
+
+	// 10**(attempts-1)
+	expBackoff := func(attempts int) time.Duration {
+		if attempts <= 1 {
+			return 0
+		}
+		return 10 * time.Duration(math.Pow(10, float64(attempts-1))) * time.Second
+	}
+
+	attempts := len(compact.Status.RetryStatus)
+	if attempts > 0 {
+		lastRetry := compact.Status.RetryStatus[attempts-1]
+		backoff := expBackoff(attempts)
+		if time.Since(lastRetry.DetectFailedAt.Time) < backoff {
+			klog.Infof("Compact: [%s/%s] backoff in effect, skipping retry.", ns, name)
+			return false
+		}
+	}
+	return true
 }
