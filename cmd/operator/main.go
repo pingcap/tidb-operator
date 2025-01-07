@@ -221,7 +221,7 @@ func setupControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientManage
 	if err := tidbgroup.Setup(mgr, c); err != nil {
 		return fmt.Errorf("unable to create controller TiDBGroup: %w", err)
 	}
-	if err := tidb.Setup(mgr, c, vm); err != nil {
+	if err := tidb.Setup(mgr, c, pdcm, vm); err != nil {
 		return fmt.Errorf("unable to create controller TiDB: %w", err)
 	}
 	if err := tikvgroup.Setup(mgr, c); err != nil {

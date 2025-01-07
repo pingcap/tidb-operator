@@ -30,7 +30,7 @@ import (
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v2"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/volumes"
 )
 
@@ -72,11 +72,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}()
 
 	rtx := &tasks.ReconcileContext{
-		// some fields will be set in the context task
-		Context: ctx,
-		Key:     req.NamespacedName,
+		State: tasks.NewState(req.NamespacedName),
 	}
 
-	runner := r.NewRunner(reporter)
-	return runner.Run(rtx)
+	runner := r.NewRunner(rtx, reporter)
+
+	return runner.Run(ctx)
 }

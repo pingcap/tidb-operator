@@ -23,35 +23,23 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v2"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-func TaskFinalizerDel(c client.Client) task.Task[ReconcileContext] {
-	return task.NameTaskFunc("FinalizerDel", func(ctx task.Context[ReconcileContext]) task.Result {
-		rtx := ctx.Self()
-		wait, err := EnsureSubResourcesDeleted(ctx, c, rtx.TiDB)
+func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
+		wait, err := EnsureSubResourcesDeleted(ctx, c, state.TiDB())
 		if err != nil {
 			return task.Fail().With("cannot delete subresources: %w", err)
 		}
 		if wait {
 			return task.Wait().With("wait all subresources deleted")
 		}
-		if err := k8s.RemoveFinalizer(ctx, c, rtx.TiDB); err != nil {
+		if err := k8s.RemoveFinalizer(ctx, c, state.TiDB()); err != nil {
 			return task.Fail().With("cannot remove finalizer: %w", err)
 		}
 
 		return task.Complete().With("finalizer is removed")
-	})
-}
-
-func TaskFinalizerAdd(c client.Client) task.Task[ReconcileContext] {
-	return task.NameTaskFunc("FinalizerAdd", func(ctx task.Context[ReconcileContext]) task.Result {
-		rtx := ctx.Self()
-		if err := k8s.EnsureFinalizer(ctx, c, rtx.TiDB); err != nil {
-			return task.Fail().With("failed to ensure finalizer has been added: %w", err)
-		}
-
-		return task.Complete().With("finalizer is added")
 	})
 }
 

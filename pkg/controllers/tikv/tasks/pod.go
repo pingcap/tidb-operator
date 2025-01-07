@@ -15,13 +15,15 @@
 package tasks
 
 import (
+	"context"
 	"path/filepath"
 	"strings"
 
-	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
+
+	"github.com/go-logr/logr"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
@@ -30,7 +32,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/overlay"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v2"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
 const (
@@ -39,99 +41,83 @@ const (
 	RegionsPerSecond = 200
 )
 
-func TaskPodSuspend(c client.Client) task.Task[ReconcileContext] {
-	return task.NameTaskFunc("PodSuspend", func(ctx task.Context[ReconcileContext]) task.Result {
-		rtx := ctx.Self()
-		if rtx.Pod == nil {
+func TaskSuspendPod(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("PodSuspend", func(ctx context.Context) task.Result {
+		if state.Pod() == nil {
 			return task.Complete().With("pod has been deleted")
 		}
 		regionCount := 0
-		if rtx.Store != nil {
-			regionCount = rtx.Store.RegionCount
+		if state.Store != nil {
+			regionCount = state.Store.RegionCount
 		}
-		if err := DeletePodWithGracePeriod(rtx, c, rtx.Pod, regionCount); err != nil {
+		if err := DeletePodWithGracePeriod(ctx, c, state.Pod(), regionCount); err != nil {
 			return task.Fail().With("can't delete pod of tikv: %w", err)
 		}
-		rtx.PodIsTerminating = true
+		state.PodIsTerminating = true
 		return task.Wait().With("pod is deleting")
 	})
 }
 
-type TaskPod struct {
-	Client client.Client
-	Logger logr.Logger
+func TaskPod(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
+		logger := logr.FromContextOrDiscard(ctx)
+		expected := newPod(state.Cluster(), state.TiKV(), state.ConfigHash)
+		if state.Pod() == nil {
+			if err := c.Apply(ctx, expected); err != nil {
+				return task.Fail().With("can't apply pod of tikv: %w", err)
+			}
+
+			state.SetPod(expected)
+			return task.Complete().With("pod is created")
+		}
+
+		// minimize the deletion grace period seconds
+		if !state.Pod().GetDeletionTimestamp().IsZero() {
+			regionCount := 0
+			if state.Store != nil {
+				regionCount = state.Store.RegionCount
+			}
+			if err := DeletePodWithGracePeriod(ctx, c, state.Pod(), regionCount); err != nil {
+				return task.Fail().With("can't minimize the deletion grace period of pod of tikv: %w", err)
+			}
+
+			// key will be requeued after the pod is changed
+			return task.Complete().With("pod is deleting")
+		}
+
+		res := k8s.ComparePods(state.Pod(), expected)
+		curHash, expectHash := state.Pod().Labels[v1alpha1.LabelKeyConfigHash], expected.Labels[v1alpha1.LabelKeyConfigHash]
+		configChanged := curHash != expectHash
+		logger.Info("compare pod", "result", res, "configChanged", configChanged, "currentConfigHash", curHash, "expectConfigHash", expectHash)
+
+		if res == k8s.CompareResultRecreate || (configChanged &&
+			state.TiKV().Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart) {
+			logger.Info("will recreate the pod")
+			regionCount := 0
+			if state.Store != nil {
+				regionCount = state.Store.RegionCount
+			}
+			if err := DeletePodWithGracePeriod(ctx, c, state.Pod(), regionCount); err != nil {
+				return task.Fail().With("can't minimize the deletion grace period of pod of tikv: %w", err)
+			}
+
+			state.PodIsTerminating = true
+			return task.Complete().With("pod is deleting")
+		} else if res == k8s.CompareResultUpdate {
+			logger.Info("will update the pod in place")
+			if err := c.Apply(ctx, expected); err != nil {
+				return task.Fail().With("can't apply pod of tikv: %w", err)
+			}
+
+			// write apply result back to ctx
+			state.SetPod(expected)
+		}
+
+		return task.Complete().With("pod is synced")
+	})
 }
 
-func NewTaskPod(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
-	return &TaskPod{
-		Client: c,
-		Logger: logger,
-	}
-}
-
-func (*TaskPod) Name() string {
-	return "Pod"
-}
-
-func (t *TaskPod) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
-
-	expected := t.newPod(rtx.Cluster, rtx.TiKV, rtx.ConfigHash)
-	if rtx.Pod == nil {
-		if err := t.Client.Apply(rtx, expected); err != nil {
-			return task.Fail().With("can't apply pod of tikv: %w", err)
-		}
-
-		rtx.Pod = expected
-		return task.Complete().With("pod is created")
-	}
-
-	// minimize the deletion grace period seconds
-	if !rtx.Pod.GetDeletionTimestamp().IsZero() {
-		regionCount := 0
-		if rtx.Store != nil {
-			regionCount = rtx.Store.RegionCount
-		}
-		if err := DeletePodWithGracePeriod(ctx, t.Client, rtx.Pod, regionCount); err != nil {
-			return task.Fail().With("can't minimize the deletion grace period of pod of tikv: %w", err)
-		}
-
-		// key will be requeued after the pod is changed
-		return task.Complete().With("pod is deleting")
-	}
-
-	res := k8s.ComparePods(rtx.Pod, expected)
-	curHash, expectHash := rtx.Pod.Labels[v1alpha1.LabelKeyConfigHash], expected.Labels[v1alpha1.LabelKeyConfigHash]
-	configChanged := curHash != expectHash
-	t.Logger.Info("compare pod", "result", res, "configChanged", configChanged, "currentConfigHash", curHash, "expectConfigHash", expectHash)
-
-	if res == k8s.CompareResultRecreate || (configChanged &&
-		rtx.TiKV.Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart) {
-		t.Logger.Info("will recreate the pod")
-		regionCount := 0
-		if rtx.Store != nil {
-			regionCount = rtx.Store.RegionCount
-		}
-		if err := DeletePodWithGracePeriod(ctx, t.Client, rtx.Pod, regionCount); err != nil {
-			return task.Fail().With("can't minimize the deletion grace period of pod of tikv: %w", err)
-		}
-
-		rtx.PodIsTerminating = true
-		return task.Complete().With("pod is deleting")
-	} else if res == k8s.CompareResultUpdate {
-		t.Logger.Info("will update the pod in place")
-		if err := t.Client.Apply(rtx, expected); err != nil {
-			return task.Fail().With("can't apply pod of tikv: %w", err)
-		}
-
-		// write apply result back to ctx
-		rtx.Pod = expected
-	}
-
-	return task.Complete().With("pod is synced")
-}
-
-func (t *TaskPod) newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, configHash string) *corev1.Pod {
+func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, configHash string) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -274,7 +260,7 @@ func (t *TaskPod) newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, configH
 								Command: []string{
 									"/bin/sh",
 									"-c",
-									t.buildPrestopCheckScript(cluster, tikv),
+									buildPrestopCheckScript(cluster, tikv),
 								},
 							},
 						},
@@ -293,7 +279,7 @@ func (t *TaskPod) newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, configH
 	return pod
 }
 
-func (*TaskPod) buildPrestopCheckScript(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV) string {
+func buildPrestopCheckScript(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV) string {
 	sb := strings.Builder{}
 	sb.WriteString(v1alpha1.DirNamePrestop)
 	sb.WriteString("/prestop-checker")

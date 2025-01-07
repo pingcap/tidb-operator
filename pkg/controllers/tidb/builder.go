@@ -15,44 +15,43 @@
 package tidb
 
 import (
+	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tidb/tasks"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v2"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-func (r *Reconciler) NewRunner(reporter task.TaskReporter) task.TaskRunner[tasks.ReconcileContext] {
+func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.TaskReporter) task.TaskRunner {
 	runner := task.NewTaskRunner(reporter,
 		// get tidb
-		tasks.TaskContextTiDB(r.Client),
+		common.TaskContextTiDB(state, r.Client),
 		// if it's deleted just return
-		task.NewSwitchTask(tasks.CondTiDBHasBeenDeleted()),
+		task.IfBreak(common.CondInstanceHasBeenDeleted(state)),
 
 		// get cluster info, FinalizerDel will use it
-		tasks.TaskContextCluster(r.Client),
-		task.NewSwitchTask(tasks.CondPDIsNotInitialized()),
-
-		task.NewSwitchTask(tasks.CondTiDBIsDeleting(),
-			tasks.TaskFinalizerDel(r.Client),
-		),
-
+		common.TaskContextCluster(state, r.Client),
 		// check whether it's paused
-		task.NewSwitchTask(tasks.CondClusterIsPaused()),
+		task.IfBreak(common.CondClusterIsPaused(state)),
+
+		task.IfBreak(common.CondInstanceIsDeleting(state),
+			tasks.TaskFinalizerDel(state, r.Client),
+		),
+		common.TaskInstanceFinalizerAdd[runtime.TiDBTuple](state, r.Client),
 
 		// get pod and check whether the cluster is suspending
-		tasks.TaskContextPod(r.Client),
-		task.NewSwitchTask(tasks.CondClusterIsSuspending(),
-			tasks.TaskFinalizerAdd(r.Client),
-			tasks.TaskPodSuspend(r.Client),
-			tasks.TaskStatusSuspend(r.Client),
+		common.TaskContextPod(state, r.Client),
+		task.IfBreak(common.CondClusterIsSuspending(state),
+			common.TaskSuspendPod(state, r.Client),
+			common.TaskInstanceStatusSuspend[runtime.TiDBTuple](state, r.Client),
 		),
 
 		// normal process
-		tasks.TaskContextInfoFromPDAndTiDB(r.Client),
-		tasks.TaskFinalizerAdd(r.Client),
-		tasks.NewTaskConfigMap(r.Logger, r.Client),
-		tasks.NewTaskPVC(r.Logger, r.Client, r.VolumeModifier),
-		tasks.NewTaskPod(r.Logger, r.Client),
-		tasks.NewTaskServerLabels(r.Logger, r.Client),
-		tasks.NewTaskStatus(r.Logger, r.Client),
+		tasks.TaskContextInfoFromPDAndTiDB(state, r.Client, r.PDClientManager),
+		tasks.TaskConfigMap(state, r.Client),
+		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifier),
+		tasks.TaskPod(state, r.Client),
+		tasks.TaskServerLabels(state, r.Client),
+		tasks.TaskStatus(state, r.Client),
 	)
 
 	return runner

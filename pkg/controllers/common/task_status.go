@@ -26,6 +26,58 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
+func TaskInstanceStatusSuspend[
+	IT runtime.InstanceTuple[OI, RI],
+	OI client.Object,
+	RI runtime.Instance,
+](state InstanceAndPodState[RI], c client.Client) task.Task {
+	var it IT
+	return task.NameTaskFunc("StatusSuspend", func(ctx context.Context) task.Result {
+		instance := state.Instance()
+		var (
+			suspendStatus  = metav1.ConditionFalse
+			suspendReason  = v1alpha1.ReasonSuspending
+			suspendMessage = "instance is suspending"
+
+			// when suspending, the health status should be false
+			healthStatus  = metav1.ConditionFalse
+			healthReason  = "Suspend"
+			healthMessage = "instance is suspending or suspended, mark it as unhealthy"
+		)
+
+		if state.Pod() == nil {
+			suspendReason = v1alpha1.ReasonSuspended
+			suspendStatus = metav1.ConditionTrue
+			suspendMessage = "instance is suspended"
+		}
+
+		needUpdate := SetStatusObservedGeneration(instance)
+		needUpdate = SetStatusCondition(instance, &metav1.Condition{
+			Type:               v1alpha1.CondSuspended,
+			Status:             suspendStatus,
+			ObservedGeneration: instance.GetGeneration(),
+			Reason:             suspendReason,
+			Message:            suspendMessage,
+		}) || needUpdate
+
+		needUpdate = SetStatusCondition(instance, &metav1.Condition{
+			Type:               v1alpha1.CondHealth,
+			Status:             healthStatus,
+			ObservedGeneration: instance.GetGeneration(),
+			Reason:             healthReason,
+			Message:            healthMessage,
+		}) || needUpdate
+
+		if needUpdate {
+			if err := c.Status().Update(ctx, it.To(instance)); err != nil {
+				return task.Fail().With("cannot update status: %v", err)
+			}
+		}
+
+		return task.Complete().With("status is updated")
+	})
+}
+
 func TaskGroupStatusSuspend[
 	GT runtime.GroupTuple[OG, RG],
 	OG client.Object,

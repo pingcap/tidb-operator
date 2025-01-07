@@ -43,6 +43,20 @@ func TaskGroupFinalizerAdd[
 	})
 }
 
+func TaskInstanceFinalizerAdd[
+	IT runtime.InstanceTuple[OI, RI],
+	OI client.Object,
+	RI runtime.Instance,
+](state InstanceState[RI], c client.Client) task.Task {
+	return task.NameTaskFunc("FinalizerAdd", func(ctx context.Context) task.Result {
+		var t IT
+		if err := k8s.EnsureFinalizer(ctx, c, t.To(state.Instance())); err != nil {
+			return task.Fail().With("failed to ensure finalizer has been added: %v", err)
+		}
+		return task.Complete().With("finalizer is added")
+	})
+}
+
 const defaultDelWaitTime = 10 * time.Second
 
 func TaskGroupFinalizerDel[

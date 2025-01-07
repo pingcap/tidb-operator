@@ -15,12 +15,13 @@
 package tasks
 
 import (
-	"github.com/go-logr/logr"
+	"context"
+
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v2"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
 var (
@@ -31,68 +32,52 @@ var (
 	tidbDCLabel = "zone"
 )
 
-type TaskServerLabels struct {
-	Client client.Client
-	Logger logr.Logger
-}
+func TaskServerLabels(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("ServerLabels", func(ctx context.Context) task.Result {
+		if !state.Healthy || state.Pod() == nil || state.PodIsTerminating {
+			return task.Complete().With("skip sync server labels as the instance is not healthy")
+		}
 
-func NewTaskServerLabels(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
-	return &TaskServerLabels{
-		Client: c,
-		Logger: logger,
-	}
-}
+		nodeName := state.Pod().Spec.NodeName
+		if nodeName == "" {
+			return task.Fail().With("pod %s/%s has not been scheduled", state.Pod().Namespace, state.Pod().Name)
+		}
+		var node corev1.Node
+		if err := c.Get(ctx, client.ObjectKey{Name: nodeName}, &node); err != nil {
+			return task.Fail().With("failed to get node %s: %s", nodeName, err)
+		}
 
-func (*TaskServerLabels) Name() string {
-	return "ServerLabels"
-}
+		// TODO: too many API calls to PD?
+		pdCfg, err := state.PDClient.GetConfig(ctx)
+		if err != nil {
+			return task.Fail().With("failed to get pd config: %s", err)
+		}
 
-func (t *TaskServerLabels) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
-
-	if !rtx.Healthy || rtx.Pod == nil || rtx.PodIsTerminating {
-		return task.Complete().With("skip sync server labels as the instance is not healthy")
-	}
-
-	nodeName := rtx.Pod.Spec.NodeName
-	if nodeName == "" {
-		return task.Fail().With("pod %s/%s has not been scheduled", rtx.Pod.Namespace, rtx.Pod.Name)
-	}
-	var node corev1.Node
-	if err := t.Client.Get(ctx, client.ObjectKey{Name: nodeName}, &node); err != nil {
-		return task.Fail().With("failed to get node %s: %s", nodeName, err)
-	}
-
-	// TODO: too many API calls to PD?
-	pdCfg, err := rtx.PDClient.GetConfig(ctx)
-	if err != nil {
-		return task.Fail().With("failed to get pd config: %s", err)
-	}
-
-	var zoneLabel string
-outer:
-	for _, zl := range topologyZoneLabels {
-		for _, ll := range pdCfg.Replication.LocationLabels {
-			if ll == zl {
-				zoneLabel = zl
-				break outer
+		var zoneLabel string
+	outer:
+		for _, zl := range topologyZoneLabels {
+			for _, ll := range pdCfg.Replication.LocationLabels {
+				if ll == zl {
+					zoneLabel = zl
+					break outer
+				}
 			}
 		}
-	}
-	if zoneLabel == "" {
-		return task.Complete().With("zone labels not found in pd location-label, skip sync server labels")
-	}
+		if zoneLabel == "" {
+			return task.Complete().With("zone labels not found in pd location-label, skip sync server labels")
+		}
 
-	serverLabels := k8s.GetNodeLabelsForKeys(&node, pdCfg.Replication.LocationLabels)
-	if len(serverLabels) == 0 {
-		return task.Complete().With("no server labels from node %s to sync", nodeName)
-	}
-	serverLabels[tidbDCLabel] = serverLabels[zoneLabel]
+		serverLabels := k8s.GetNodeLabelsForKeys(&node, pdCfg.Replication.LocationLabels)
+		if len(serverLabels) == 0 {
+			return task.Complete().With("no server labels from node %s to sync", nodeName)
+		}
+		serverLabels[tidbDCLabel] = serverLabels[zoneLabel]
 
-	// TODO: is there any way to avoid unnecessary update?
-	if err := rtx.TiDBClient.SetServerLabels(ctx, serverLabels); err != nil {
-		return task.Fail().With("failed to set server labels: %s", err)
-	}
+		// TODO: is there any way to avoid unnecessary update?
+		if err := state.TiDBClient.SetServerLabels(ctx, serverLabels); err != nil {
+			return task.Fail().With("failed to set server labels: %s", err)
+		}
 
-	return task.Complete().With("server labels synced")
+		return task.Complete().With("server labels synced")
+	})
 }

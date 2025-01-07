@@ -27,22 +27,25 @@ import (
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tidb/tasks"
+	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v2"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/volumes"
 )
 
 type Reconciler struct {
-	Logger         logr.Logger
-	Client         client.Client
-	VolumeModifier volumes.Modifier
+	Logger          logr.Logger
+	Client          client.Client
+	PDClientManager pdm.PDClientManager
+	VolumeModifier  volumes.Modifier
 }
 
-func Setup(mgr manager.Manager, c client.Client, vm volumes.Modifier) error {
+func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, vm volumes.Modifier) error {
 	r := &Reconciler{
-		Logger:         mgr.GetLogger().WithName("TiDB"),
-		Client:         c,
-		VolumeModifier: vm,
+		Logger:          mgr.GetLogger().WithName("TiDB"),
+		Client:          c,
+		PDClientManager: pdcm,
+		VolumeModifier:  vm,
 	}
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.TiDB{}).
 		Owns(&corev1.Pod{}).
@@ -66,11 +69,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}()
 
 	rtx := &tasks.ReconcileContext{
-		// some fields will be set in the context task
-		Context: ctx,
-		Key:     req.NamespacedName,
+		State: tasks.NewState(req.NamespacedName),
 	}
 
-	runner := r.NewRunner(reporter)
-	return runner.Run(rtx)
+	runner := r.NewRunner(rtx, reporter)
+	return runner.Run(ctx)
 }

@@ -71,6 +71,15 @@ type GroupState[G runtime.Group] interface {
 	Group() G
 }
 
+type InstanceState[I runtime.Instance] interface {
+	Instance() I
+}
+
+type InstanceAndPodState[I runtime.Instance] interface {
+	InstanceState[I]
+	PodState
+}
+
 type InstanceSliceState[I runtime.Instance] interface {
 	Slice() []I
 }
@@ -180,7 +189,7 @@ type (
 		TiFlashGroup() *v1alpha1.TiFlashGroup
 	}
 	TiFlashStateInitializer interface {
-		TiFlashInitializer() TiFlashGroupInitializer
+		TiFlashInitializer() TiFlashInitializer
 	}
 	TiFlashState interface {
 		TiFlash() *v1alpha1.TiFlash

@@ -15,15 +15,15 @@
 package tasks
 
 import (
+	"context"
 	"time"
 
-	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v2"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
 
@@ -31,128 +31,89 @@ const (
 	defaultTaskWaitDuration = 5 * time.Second
 )
 
-func TaskStatusSuspend(c client.Client) task.Task[ReconcileContext] {
-	return task.NameTaskFunc("StatusSuspend", func(ctx task.Context[ReconcileContext]) task.Result {
-		rtx := ctx.Self()
-		rtx.TiDB.Status.ObservedGeneration = rtx.TiDB.Generation
+// TODO(liubo02): extract to common task
+func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("Status", func(ctx context.Context) task.Result {
+		needUpdate := false
+		tidb := state.TiDB()
+		pod := state.Pod()
+		// TODO(liubo02): simplify it
+		var healthy bool
 
-		var (
-			suspendStatus  = metav1.ConditionFalse
-			suspendMessage = "tidb is suspending"
-
-			// when suspending, the health status should be false
-			healthStatus  = metav1.ConditionFalse
-			healthMessage = "tidb is not healthy"
-		)
-
-		if rtx.Pod == nil {
-			suspendStatus = metav1.ConditionTrue
-			suspendMessage = "tidb is suspended"
+		if pod != nil &&
+			statefulset.IsPodRunningAndReady(pod) &&
+			!state.PodIsTerminating &&
+			state.Healthy {
+			healthy = true
 		}
-		needUpdate := meta.SetStatusCondition(&rtx.TiDB.Status.Conditions, metav1.Condition{
-			Type:               v1alpha1.TiDBCondSuspended,
-			Status:             suspendStatus,
-			ObservedGeneration: rtx.TiDB.Generation,
-			// TODO: use different reason for suspending and suspended
-			Reason:  v1alpha1.TiDBSuspendReason,
-			Message: suspendMessage,
-		})
 
-		needUpdate = meta.SetStatusCondition(&rtx.TiDB.Status.Conditions, metav1.Condition{
-			Type:               v1alpha1.TiDBCondHealth,
-			Status:             healthStatus,
-			ObservedGeneration: rtx.TiDB.Generation,
-			Reason:             v1alpha1.TiDBHealthReason,
-			Message:            healthMessage,
-		}) || needUpdate
+		needUpdate = syncHealthCond(tidb, healthy) || needUpdate
+		needUpdate = syncSuspendCond(tidb) || needUpdate
+
+		needUpdate = SetIfChanged(&tidb.Status.ObservedGeneration, tidb.Generation) || needUpdate
+		needUpdate = SetIfChanged(&tidb.Status.UpdateRevision, tidb.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+
+		if healthy {
+			needUpdate = SetIfChanged(&tidb.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+		}
 
 		if needUpdate {
-			if err := c.Status().Update(ctx, rtx.TiDB); err != nil {
+			if err := c.Status().Update(ctx, state.TiDB()); err != nil {
 				return task.Fail().With("cannot update status: %w", err)
 			}
 		}
 
-		return task.Complete().With("status is suspend tidb is updated")
+		if !state.Healthy || !v1alpha1.IsUpToDate(state.TiDB()) {
+			// can we only rely on Pod status events to trigger the retry?
+			// TODO(liubo02): change to task.Wait
+			return task.Retry(defaultTaskWaitDuration).With("tidb may not be healthy, requeue to retry")
+		}
+
+		return task.Complete().With("status is synced")
 	})
 }
 
-type TaskStatus struct {
-	Client client.Client
-	Logger logr.Logger
-}
-
-func NewTaskStatus(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
-	return &TaskStatus{
-		Client: c,
-		Logger: logger,
-	}
-}
-
-func (*TaskStatus) Name() string {
-	return "Status"
-}
-
-func (t *TaskStatus) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
-
+func syncHealthCond(tidb *v1alpha1.TiDB, healthy bool) bool {
 	var (
-		healthStatus  = metav1.ConditionFalse
-		healthMessage = "tidb is not healthy"
-
-		suspendStatus  = metav1.ConditionFalse
-		suspendMessage = "tidb is not suspended"
-
-		needUpdate = false
+		status = metav1.ConditionFalse
+		reason = "Unhealthy"
+		msg    = "instance is not healthy"
 	)
+	if healthy {
+		status = metav1.ConditionTrue
+		reason = "Healthy"
+		msg = "instance is healthy"
+	}
 
-	conditionChanged := meta.SetStatusCondition(&rtx.TiDB.Status.Conditions, metav1.Condition{
-		Type:               v1alpha1.TiDBCondSuspended,
-		Status:             suspendStatus,
-		ObservedGeneration: rtx.TiDB.Generation,
-		Reason:             v1alpha1.TiDBSuspendReason,
-		Message:            suspendMessage,
+	return meta.SetStatusCondition(&tidb.Status.Conditions, metav1.Condition{
+		Type:               v1alpha1.CondHealth,
+		Status:             status,
+		ObservedGeneration: tidb.Generation,
+		Reason:             reason,
+		Message:            msg,
 	})
+}
 
-	if !v1alpha1.IsReconciled(rtx.TiDB) || rtx.TiDB.Status.UpdateRevision != rtx.TiDB.Labels[v1alpha1.LabelKeyInstanceRevisionHash] {
-		rtx.TiDB.Status.ObservedGeneration = rtx.TiDB.Generation
-		rtx.TiDB.Status.UpdateRevision = rtx.TiDB.Labels[v1alpha1.LabelKeyInstanceRevisionHash]
-		needUpdate = true
+func syncSuspendCond(tidb *v1alpha1.TiDB) bool {
+	// always set it as unsuspended
+	return meta.SetStatusCondition(&tidb.Status.Conditions, metav1.Condition{
+		Type:               v1alpha1.CondSuspended,
+		Status:             metav1.ConditionFalse,
+		ObservedGeneration: tidb.Generation,
+		Reason:             v1alpha1.ReasonUnsuspended,
+		Message:            "instace is not suspended",
+	})
+}
+
+// TODO: move to utils
+func SetIfChanged[T comparable](dst *T, src T) bool {
+	if src == *new(T) {
+		return false
+	}
+	if *dst != src {
+		*dst = src
+		return true
 	}
 
-	if rtx.Pod == nil || rtx.PodIsTerminating {
-		rtx.Healthy = false
-	} else if statefulset.IsPodRunningAndReady(rtx.Pod) && rtx.Healthy {
-		if rtx.TiDB.Status.CurrentRevision != rtx.Pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash] {
-			rtx.TiDB.Status.CurrentRevision = rtx.Pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]
-			needUpdate = true
-		}
-	} else {
-		rtx.Healthy = false
-	}
-
-	if rtx.Healthy {
-		healthStatus = metav1.ConditionTrue
-		healthMessage = "tidb is healthy"
-	}
-	updateCond := metav1.Condition{
-		Type:               v1alpha1.TiDBCondHealth,
-		Status:             healthStatus,
-		ObservedGeneration: rtx.TiDB.Generation,
-		Reason:             v1alpha1.TiDBHealthReason,
-		Message:            healthMessage,
-	}
-	conditionChanged = meta.SetStatusCondition(&rtx.TiDB.Status.Conditions, updateCond) || conditionChanged
-
-	if needUpdate || conditionChanged {
-		if err := t.Client.Status().Update(ctx, rtx.TiDB); err != nil {
-			return task.Fail().With("cannot update status: %w", err)
-		}
-	}
-
-	if !rtx.Healthy || !v1alpha1.IsUpToDate(rtx.TiDB) {
-		// can we only rely on Pod status events to trigger the retry?
-		return task.Retry(defaultTaskWaitDuration).With("tidb may not be healthy, requeue to retry")
-	}
-
-	return task.Complete().With("status is synced")
+	return false
 }
