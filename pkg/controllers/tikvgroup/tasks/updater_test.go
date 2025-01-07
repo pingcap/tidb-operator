@@ -33,8 +33,8 @@ import (
 )
 
 const (
-	oldRevision = "aaa-c9f48df69"
-	newRevision = "aaa-6cd5c46fb8"
+	oldRevision = "old"
+	newRevision = "new"
 )
 
 func TestTaskUpdater(t *testing.T) {
@@ -43,10 +43,8 @@ func TestTaskUpdater(t *testing.T) {
 		state         *ReconcileContext
 		unexpectedErr bool
 
-		expectedStatus          task.Status
-		expectedUpdateRevision  string
-		expectedCurrentRevision string
-		expectedTiKVNum         int
+		expectedStatus  task.Status
+		expectedTiKVNum int
 	}{
 		{
 			desc: "no kvs with 1 replicas",
@@ -57,10 +55,8 @@ func TestTaskUpdater(t *testing.T) {
 				},
 			},
 
-			expectedStatus:          task.SComplete,
-			expectedUpdateRevision:  oldRevision,
-			expectedCurrentRevision: oldRevision,
-			expectedTiKVNum:         1,
+			expectedStatus:  task.SComplete,
+			expectedTiKVNum: 1,
 		},
 		{
 			desc: "version upgrade check",
@@ -77,9 +73,7 @@ func TestTaskUpdater(t *testing.T) {
 				},
 			},
 
-			expectedStatus:          task.SRetry,
-			expectedUpdateRevision:  "aaa-6d4b685647",
-			expectedCurrentRevision: "aaa-6d4b685647",
+			expectedStatus: task.SRetry,
 		},
 		{
 			desc: "1 updated tikv with 1 replicas",
@@ -88,15 +82,14 @@ func TestTaskUpdater(t *testing.T) {
 					kvg:     fake.FakeObj[v1alpha1.TiKVGroup]("aaa"),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
 					kvs: []*v1alpha1.TiKV{
-						fakeAvailableTiKV("aaa-xxx", fake.FakeObj[v1alpha1.TiKVGroup]("aaa"), oldRevision),
+						fakeAvailableTiKV("aaa-xxx", fake.FakeObj[v1alpha1.TiKVGroup]("aaa"), newRevision),
 					},
+					updateRevision: newRevision,
 				},
 			},
 
-			expectedStatus:          task.SComplete,
-			expectedUpdateRevision:  oldRevision,
-			expectedCurrentRevision: oldRevision,
-			expectedTiKVNum:         1,
+			expectedStatus:  task.SComplete,
+			expectedTiKVNum: 1,
 		},
 		{
 			desc: "no kvs with 2 replicas",
@@ -110,10 +103,8 @@ func TestTaskUpdater(t *testing.T) {
 				},
 			},
 
-			expectedStatus:          task.SComplete,
-			expectedUpdateRevision:  newRevision,
-			expectedCurrentRevision: newRevision,
-			expectedTiKVNum:         2,
+			expectedStatus:  task.SComplete,
+			expectedTiKVNum: 2,
 		},
 		{
 			desc: "no kvs with 2 replicas and call api failed",
@@ -128,9 +119,7 @@ func TestTaskUpdater(t *testing.T) {
 			},
 			unexpectedErr: true,
 
-			expectedStatus:          task.SFail,
-			expectedUpdateRevision:  newRevision,
-			expectedCurrentRevision: newRevision,
+			expectedStatus: task.SFail,
 		},
 		{
 			desc: "1 outdated tikv with 2 replicas",
@@ -144,13 +133,12 @@ func TestTaskUpdater(t *testing.T) {
 					kvs: []*v1alpha1.TiKV{
 						fakeAvailableTiKV("aaa-xxx", fake.FakeObj[v1alpha1.TiKVGroup]("aaa"), oldRevision),
 					},
+					updateRevision: newRevision,
 				},
 			},
 
-			expectedStatus:          task.SWait,
-			expectedUpdateRevision:  newRevision,
-			expectedCurrentRevision: newRevision,
-			expectedTiKVNum:         2,
+			expectedStatus:  task.SWait,
+			expectedTiKVNum: 2,
 		},
 		{
 			desc: "1 outdated tikv with 2 replicas but cannot call api, will fail",
@@ -164,13 +152,12 @@ func TestTaskUpdater(t *testing.T) {
 					kvs: []*v1alpha1.TiKV{
 						fakeAvailableTiKV("aaa-xxx", fake.FakeObj[v1alpha1.TiKVGroup]("aaa"), oldRevision),
 					},
+					updateRevision: newRevision,
 				},
 			},
 			unexpectedErr: true,
 
-			expectedStatus:          task.SFail,
-			expectedUpdateRevision:  newRevision,
-			expectedCurrentRevision: newRevision,
+			expectedStatus: task.SFail,
 		},
 		{
 			desc: "2 updated tikv with 2 replicas",
@@ -185,13 +172,12 @@ func TestTaskUpdater(t *testing.T) {
 						fakeAvailableTiKV("aaa-xxx", fake.FakeObj[v1alpha1.TiKVGroup]("aaa"), newRevision),
 						fakeAvailableTiKV("aaa-yyy", fake.FakeObj[v1alpha1.TiKVGroup]("aaa"), newRevision),
 					},
+					updateRevision: newRevision,
 				},
 			},
 
-			expectedStatus:          task.SComplete,
-			expectedUpdateRevision:  newRevision,
-			expectedCurrentRevision: newRevision,
-			expectedTiKVNum:         2,
+			expectedStatus:  task.SComplete,
+			expectedTiKVNum: 2,
 		},
 		{
 			desc: "2 updated tikv with 2 replicas and cannot call api, can complete",
@@ -206,14 +192,13 @@ func TestTaskUpdater(t *testing.T) {
 						fakeAvailableTiKV("aaa-xxx", fake.FakeObj[v1alpha1.TiKVGroup]("aaa"), newRevision),
 						fakeAvailableTiKV("aaa-yyy", fake.FakeObj[v1alpha1.TiKVGroup]("aaa"), newRevision),
 					},
+					updateRevision: newRevision,
 				},
 			},
 			unexpectedErr: true,
 
-			expectedStatus:          task.SComplete,
-			expectedUpdateRevision:  newRevision,
-			expectedCurrentRevision: newRevision,
-			expectedTiKVNum:         2,
+			expectedStatus:  task.SComplete,
+			expectedTiKVNum: 2,
 		},
 		{
 			// NOTE: it not really check whether the policy is worked
@@ -251,10 +236,8 @@ func TestTaskUpdater(t *testing.T) {
 				},
 			},
 
-			expectedStatus:          task.SComplete,
-			expectedUpdateRevision:  "aaa-5cd4fb5cb4",
-			expectedCurrentRevision: "aaa-5cd4fb5cb4",
-			expectedTiKVNum:         3,
+			expectedStatus:  task.SComplete,
+			expectedTiKVNum: 3,
 		},
 	}
 
@@ -278,8 +261,6 @@ func TestTaskUpdater(t *testing.T) {
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
 
-			assert.Equal(tt, c.expectedUpdateRevision, c.state.UpdateRevision, c.desc)
-			assert.Equal(tt, c.expectedCurrentRevision, c.state.CurrentRevision, c.desc)
 			if !c.unexpectedErr {
 				kvs := v1alpha1.TiKVList{}
 				require.NoError(tt, fc.List(ctx, &kvs), c.desc)

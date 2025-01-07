@@ -20,20 +20,14 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"time"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kuberuntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	utilerr "k8s.io/apimachinery/pkg/util/errors"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
-	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -60,13 +54,13 @@ func taskContextResource[T any, PT Object[T]](name string, w ResourceInitializer
 	})
 }
 
-func taskContextResourceSlice[T any, L any, PT Object[T], PL ObjectList[L]](
+func taskContextResourceSlice[T any, PT Object[T]](
 	name string,
 	w ResourceSliceInitializer[T],
+	l client.ObjectList,
 	c client.Client,
 ) task.Task {
 	return task.NameTaskFunc("Context"+name, func(ctx context.Context) task.Result {
-		var l PL = new(L)
 		ns := w.Namespace()
 		labels := w.Labels()
 
@@ -129,19 +123,29 @@ func TaskContextTiDBGroup(state TiDBGroupStateInitializer, c client.Client) task
 	return taskContextResource("TiDBGroup", w, c, false)
 }
 
+func TaskContextTiFlashGroup(state TiFlashGroupStateInitializer, c client.Client) task.Task {
+	w := state.TiFlashGroupInitializer()
+	return taskContextResource("TiFlashGroup", w, c, false)
+}
+
 func TaskContextPDSlice(state PDSliceStateInitializer, c client.Client) task.Task {
 	w := state.PDSliceInitializer()
-	return taskContextResourceSlice[v1alpha1.PD, v1alpha1.PDList]("PDSlice", w, c)
+	return taskContextResourceSlice("PDSlice", w, &v1alpha1.PDList{}, c)
 }
 
 func TaskContextTiKVSlice(state TiKVSliceStateInitializer, c client.Client) task.Task {
 	w := state.TiKVSliceInitializer()
-	return taskContextResourceSlice[v1alpha1.TiKV, v1alpha1.TiKVList]("TiKVSlice", w, c)
+	return taskContextResourceSlice("TiKVSlice", w, &v1alpha1.TiKVList{}, c)
 }
 
 func TaskContextTiDBSlice(state TiDBSliceStateInitializer, c client.Client) task.Task {
 	w := state.TiDBSliceInitializer()
-	return taskContextResourceSlice[v1alpha1.TiDB, v1alpha1.TiDBList]("TiDBSlice", w, c)
+	return taskContextResourceSlice("TiDBSlice", w, &v1alpha1.TiDBList{}, c)
+}
+
+func TaskContextTiFlashSlice(state TiFlashSliceStateInitializer, c client.Client) task.Task {
+	w := state.TiFlashSliceInitializer()
+	return taskContextResourceSlice("TiFlashSlice", w, &v1alpha1.TiFlashList{}, c)
 }
 
 func TaskSuspendPod(state PodState, c client.Client) task.Task {
@@ -162,135 +166,4 @@ func TaskSuspendPod(state PodState, c client.Client) task.Task {
 
 		return task.Wait().With("pod is deleting")
 	})
-}
-
-func TaskGroupFinalizerAdd[
-	GT runtime.GroupTuple[OG, RG],
-	OG client.Object,
-	RG runtime.Group,
-](state GroupState[RG], c client.Client) task.Task {
-	return task.NameTaskFunc("FinalizerAdd", func(ctx context.Context) task.Result {
-		var t GT
-		if err := k8s.EnsureFinalizer(ctx, c, t.To(state.Group())); err != nil {
-			return task.Fail().With("failed to ensure finalizer has been added: %v", err)
-		}
-		return task.Complete().With("finalizer is added")
-	})
-}
-
-const defaultDelWaitTime = 10 * time.Second
-
-func TaskGroupFinalizerDel[
-	GT runtime.GroupTuple[OG, RG],
-	IT runtime.InstanceTuple[OI, RI],
-	OG client.Object,
-	RG runtime.Group,
-	OI client.Object,
-	RI runtime.Instance,
-](state GroupAndInstanceSliceState[RG, RI], c client.Client) task.Task {
-	var it IT
-	var gt GT
-	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
-		var errList []error
-		var names []string
-		for _, peer := range state.Slice() {
-			names = append(names, peer.GetName())
-			if peer.GetDeletionTimestamp().IsZero() {
-				if err := c.Delete(ctx, it.To(peer)); err != nil {
-					if errors.IsNotFound(err) {
-						continue
-					}
-					errList = append(errList, fmt.Errorf("try to delete the instance %v failed: %w", peer.GetName(), err))
-					continue
-				}
-			}
-		}
-
-		if len(errList) != 0 {
-			return task.Fail().With("failed to delete all instances: %v", utilerr.NewAggregate(errList))
-		}
-
-		if len(names) != 0 {
-			return task.Retry(defaultDelWaitTime).With("wait for all instances being removed, %v still exists", names)
-		}
-
-		wait, err := k8s.DeleteGroupSubresource(ctx, c, state.Group(), &corev1.ServiceList{})
-		if err != nil {
-			return task.Fail().With("cannot delete subresources: %w", err)
-		}
-		if wait {
-			return task.Wait().With("wait all subresources deleted")
-		}
-
-		if err := k8s.RemoveFinalizer(ctx, c, gt.To(state.Group())); err != nil {
-			return task.Fail().With("failed to ensure finalizer has been removed: %w", err)
-		}
-
-		return task.Complete().With("finalizer has been removed")
-	})
-}
-
-func TaskGroupStatusSuspend[
-	GT runtime.GroupTuple[OG, RG],
-	OG client.Object,
-	RG runtime.Group,
-	I runtime.Instance,
-](state GroupAndInstanceSliceState[RG, I], c client.Client) task.Task {
-	return task.NameTaskFunc("StatusSuspend", func(ctx context.Context) task.Result {
-		status := metav1.ConditionFalse
-		reason := v1alpha1.ReasonSuspending
-		message := "group is suspending"
-
-		suspended := true
-		g := state.Group()
-		objs := state.Slice()
-		for _, obj := range objs {
-			if !meta.IsStatusConditionTrue(obj.Conditions(), v1alpha1.CondSuspended) {
-				suspended = false
-			}
-		}
-		if suspended {
-			status = metav1.ConditionTrue
-			reason = v1alpha1.ReasonSuspended
-			message = "group is suspended"
-		}
-		needUpdate := SetStatusConditionIfChanged(g, &metav1.Condition{
-			Type:               v1alpha1.CondSuspended,
-			Status:             status,
-			ObservedGeneration: g.GetGeneration(),
-			Reason:             reason,
-			Message:            message,
-		})
-		needUpdate = SetStatusObservedGeneration(g) || needUpdate
-
-		var t GT
-		if needUpdate {
-			if err := c.Status().Update(ctx, t.To(g)); err != nil {
-				return task.Fail().With("cannot update status: %v", err)
-			}
-		}
-
-		return task.Complete().With("status is updated")
-	})
-}
-
-func SetStatusConditionIfChanged[O runtime.Object](obj O, cond *metav1.Condition) bool {
-	conds := obj.Conditions()
-	if meta.SetStatusCondition(&conds, *cond) {
-		obj.SetConditions(conds)
-		return true
-	}
-	return false
-}
-
-func SetStatusObservedGeneration[O runtime.Object](obj O) bool {
-	actual := obj.GetGeneration()
-	current := obj.ObservedGeneration()
-
-	if current != actual {
-		obj.SetObservedGeneration(actual)
-		return true
-	}
-
-	return false
 }

@@ -31,14 +31,18 @@ type TopologyPolicy[R runtime.Instance] interface {
 	updater.PreferPolicy[R]
 }
 
-func NewTopologyPolicy[R runtime.Instance](ts []v1alpha1.ScheduleTopology) (TopologyPolicy[R], error) {
+func NewTopologyPolicy[R runtime.Instance](ts []v1alpha1.ScheduleTopology, rs ...R) (TopologyPolicy[R], error) {
 	s, err := topology.New(ts)
 	if err != nil {
 		return nil, err
 	}
-	return &topologyPolicy[R]{
+	p := &topologyPolicy[R]{
 		scheduler: s,
-	}, nil
+	}
+	for _, r := range rs {
+		p.Add(r)
+	}
+	return p, nil
 }
 
 func (p *topologyPolicy[R]) Add(update R) R {

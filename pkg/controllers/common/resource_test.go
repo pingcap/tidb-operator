@@ -42,8 +42,8 @@ func TestResource(t *testing.T) {
 		},
 		{
 			desc:         "use name func",
-			ns:           NameFunc(func() string { return "aaa" }),
-			name:         NameFunc(func() string { return "bbb" }),
+			ns:           Lazy[string](func() string { return "aaa" }),
+			name:         Lazy[string](func() string { return "bbb" }),
 			obj:          42,
 			expectedNs:   "aaa",
 			expectedName: "bbb",
@@ -96,7 +96,7 @@ func TestResourceSlice(t *testing.T) {
 		},
 		{
 			desc:       "use func",
-			ns:         NameFunc(func() string { return "aaa" }),
+			ns:         Lazy[string](func() string { return "aaa" }),
 			labels:     LabelsFunc(func() map[string]string { return map[string]string{"xxx": "yyy"} }),
 			objs:       []*int{ptr.To(42)},
 			expectedNs: "aaa",

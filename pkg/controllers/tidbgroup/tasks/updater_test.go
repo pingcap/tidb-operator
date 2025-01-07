@@ -33,9 +33,8 @@ import (
 )
 
 const (
-	// TODO(liubo02): fake history client to avoid real revision calc
-	oldRevision = "aaa-7fff59c8"
-	newRevision = "aaa-69cf8bf4d9"
+	oldRevision = "old"
+	newRevision = "new"
 )
 
 func TestTaskUpdater(t *testing.T) {
@@ -44,10 +43,8 @@ func TestTaskUpdater(t *testing.T) {
 		state         *ReconcileContext
 		unexpectedErr bool
 
-		expectedStatus          task.Status
-		expectedUpdateRevision  string
-		expectedCurrentRevision string
-		expectedTiDBNum         int
+		expectedStatus  task.Status
+		expectedTiDBNum int
 	}{
 		{
 			desc: "no dbs with 1 replicas",
@@ -58,10 +55,8 @@ func TestTaskUpdater(t *testing.T) {
 				},
 			},
 
-			expectedStatus:          task.SComplete,
-			expectedUpdateRevision:  oldRevision,
-			expectedCurrentRevision: oldRevision,
-			expectedTiDBNum:         1,
+			expectedStatus:  task.SComplete,
+			expectedTiDBNum: 1,
 		},
 		{
 			desc: "version upgrade check",
@@ -78,9 +73,7 @@ func TestTaskUpdater(t *testing.T) {
 				},
 			},
 
-			expectedStatus:          task.SRetry,
-			expectedUpdateRevision:  "aaa-7847fff478",
-			expectedCurrentRevision: "aaa-7847fff478",
+			expectedStatus: task.SRetry,
 		},
 		{
 			desc: "1 updated tidb with 1 replicas",
@@ -89,15 +82,14 @@ func TestTaskUpdater(t *testing.T) {
 					dbg:     fake.FakeObj[v1alpha1.TiDBGroup]("aaa"),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
 					dbs: []*v1alpha1.TiDB{
-						fakeAvailableTiDB("aaa-xxx", fake.FakeObj[v1alpha1.TiDBGroup]("aaa"), oldRevision),
+						fakeAvailableTiDB("aaa-xxx", fake.FakeObj[v1alpha1.TiDBGroup]("aaa"), newRevision),
 					},
+					updateRevision: newRevision,
 				},
 			},
 
-			expectedStatus:          task.SComplete,
-			expectedUpdateRevision:  oldRevision,
-			expectedCurrentRevision: oldRevision,
-			expectedTiDBNum:         1,
+			expectedStatus:  task.SComplete,
+			expectedTiDBNum: 1,
 		},
 		{
 			desc: "no dbs with 2 replicas",
@@ -111,10 +103,8 @@ func TestTaskUpdater(t *testing.T) {
 				},
 			},
 
-			expectedStatus:          task.SComplete,
-			expectedUpdateRevision:  newRevision,
-			expectedCurrentRevision: newRevision,
-			expectedTiDBNum:         2,
+			expectedStatus:  task.SComplete,
+			expectedTiDBNum: 2,
 		},
 		{
 			desc: "no dbs with 2 replicas and call api failed",
@@ -129,9 +119,7 @@ func TestTaskUpdater(t *testing.T) {
 			},
 			unexpectedErr: true,
 
-			expectedStatus:          task.SFail,
-			expectedUpdateRevision:  newRevision,
-			expectedCurrentRevision: newRevision,
+			expectedStatus: task.SFail,
 		},
 		{
 			desc: "1 outdated tidb with 2 replicas",
@@ -145,13 +133,12 @@ func TestTaskUpdater(t *testing.T) {
 					dbs: []*v1alpha1.TiDB{
 						fakeAvailableTiDB("aaa-xxx", fake.FakeObj[v1alpha1.TiDBGroup]("aaa"), oldRevision),
 					},
+					updateRevision: newRevision,
 				},
 			},
 
-			expectedStatus:          task.SWait,
-			expectedUpdateRevision:  newRevision,
-			expectedCurrentRevision: newRevision,
-			expectedTiDBNum:         2,
+			expectedStatus:  task.SWait,
+			expectedTiDBNum: 2,
 		},
 		{
 			desc: "1 outdated tidb with 2 replicas but cannot call api, will fail",
@@ -165,13 +152,12 @@ func TestTaskUpdater(t *testing.T) {
 					dbs: []*v1alpha1.TiDB{
 						fakeAvailableTiDB("aaa-xxx", fake.FakeObj[v1alpha1.TiDBGroup]("aaa"), oldRevision),
 					},
+					updateRevision: newRevision,
 				},
 			},
 			unexpectedErr: true,
 
-			expectedStatus:          task.SFail,
-			expectedUpdateRevision:  newRevision,
-			expectedCurrentRevision: newRevision,
+			expectedStatus: task.SFail,
 		},
 		{
 			desc: "2 updated tidb with 2 replicas",
@@ -186,13 +172,12 @@ func TestTaskUpdater(t *testing.T) {
 						fakeAvailableTiDB("aaa-xxx", fake.FakeObj[v1alpha1.TiDBGroup]("aaa"), newRevision),
 						fakeAvailableTiDB("aaa-yyy", fake.FakeObj[v1alpha1.TiDBGroup]("aaa"), newRevision),
 					},
+					updateRevision: newRevision,
 				},
 			},
 
-			expectedStatus:          task.SComplete,
-			expectedUpdateRevision:  newRevision,
-			expectedCurrentRevision: newRevision,
-			expectedTiDBNum:         2,
+			expectedStatus:  task.SComplete,
+			expectedTiDBNum: 2,
 		},
 		{
 			desc: "2 updated tidb with 2 replicas and cannot call api, can complete",
@@ -207,14 +192,13 @@ func TestTaskUpdater(t *testing.T) {
 						fakeAvailableTiDB("aaa-xxx", fake.FakeObj[v1alpha1.TiDBGroup]("aaa"), newRevision),
 						fakeAvailableTiDB("aaa-yyy", fake.FakeObj[v1alpha1.TiDBGroup]("aaa"), newRevision),
 					},
+					updateRevision: newRevision,
 				},
 			},
 			unexpectedErr: true,
 
-			expectedStatus:          task.SComplete,
-			expectedUpdateRevision:  newRevision,
-			expectedCurrentRevision: newRevision,
-			expectedTiDBNum:         2,
+			expectedStatus:  task.SComplete,
+			expectedTiDBNum: 2,
 		},
 		{
 			// NOTE: it not really check whether the policy is worked
@@ -252,10 +236,8 @@ func TestTaskUpdater(t *testing.T) {
 				},
 			},
 
-			expectedStatus:          task.SComplete,
-			expectedUpdateRevision:  "aaa-655cc6bb8f",
-			expectedCurrentRevision: "aaa-655cc6bb8f",
-			expectedTiDBNum:         3,
+			expectedStatus:  task.SComplete,
+			expectedTiDBNum: 3,
 		},
 	}
 
@@ -279,8 +261,6 @@ func TestTaskUpdater(t *testing.T) {
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
 
-			assert.Equal(tt, c.expectedUpdateRevision, c.state.UpdateRevision, c.desc)
-			assert.Equal(tt, c.expectedCurrentRevision, c.state.CurrentRevision, c.desc)
 			if !c.unexpectedErr {
 				dbs := v1alpha1.TiDBList{}
 				require.NoError(tt, fc.List(ctx, &dbs), c.desc)

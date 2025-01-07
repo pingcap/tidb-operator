@@ -45,10 +45,12 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.CondClusterIsSuspending(state),
 			common.TaskGroupStatusSuspend[runtime.TiDBGroupTuple](state, r.Client),
 		),
+
+		common.TaskRevision(state, r.Client),
 		tasks.TaskService(state, r.Client),
 		tasks.TaskUpdater(state, r.Client),
 		tasks.TaskStatusAvailable(state, r.Client),
-		tasks.TaskStatus(state, r.Client),
+		common.TaskGroupStatus[runtime.TiDBGroupTuple](state, r.Client),
 	)
 
 	return runner

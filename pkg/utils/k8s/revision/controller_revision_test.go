@@ -15,6 +15,7 @@
 package revision
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,6 +27,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/history"
 )
@@ -174,7 +176,7 @@ func TestTruncateHistory(t *testing.T) {
 			cli := &FakeHistoryClient{
 				Revisions: tt.revisions,
 			}
-			err := TruncateHistory(cli, tt.instances, tt.revisions, tt.current, tt.update, tt.limit)
+			err := TruncateHistory(cli, runtime.FromTiDBSlice(tt.instances), tt.revisions, tt.current.Name, tt.update.Name, tt.limit)
 			require.NoError(t, err)
 
 			remainingRevisions, err := cli.ListControllerRevisions(nil, labels.Everything())
@@ -205,12 +207,12 @@ func TestGetCurrentAndUpdate(t *testing.T) {
 			Replicas: ptr.To[int32](1),
 		},
 	}
-	rev1, err := newRevision(pdg, pdg.GVK(), 1, ptr.To[int32](0))
+	rev1, err := newRevision(pdg, nil, pdg.GVK(), 1, ptr.To[int32](0))
 	require.NoError(t, err)
 
 	pdg2 := pdg.DeepCopy()
 	pdg2.Spec.Replicas = ptr.To[int32](2)
-	rev2, err := newRevision(pdg2, pdg2.GVK(), 2, ptr.To[int32](0))
+	rev2, err := newRevision(pdg2, nil, pdg2.GVK(), 2, ptr.To[int32](0))
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -259,7 +261,7 @@ func TestGetCurrentAndUpdate(t *testing.T) {
 					return revision, nil
 				},
 			}
-			curRev, updRev, _, err := GetCurrentAndUpdate(tt.group, tt.revisions, cli, tt.accessor)
+			curRev, updRev, _, err := GetCurrentAndUpdate(context.TODO(), tt.group, nil, tt.revisions, cli, tt.accessor.CurrentRevision(), tt.accessor.CollisionCount())
 			if tt.expectedErr {
 				require.Error(t, err)
 			} else {

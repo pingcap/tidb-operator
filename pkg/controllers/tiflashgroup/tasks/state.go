@@ -27,8 +27,8 @@ type state struct {
 	key types.NamespacedName
 
 	cluster *v1alpha1.Cluster
-	kvg     *v1alpha1.TiKVGroup
-	kvs     []*v1alpha1.TiKV
+	fg      *v1alpha1.TiFlashGroup
+	fs      []*v1alpha1.TiFlash
 
 	updateRevision  string
 	currentRevision string
@@ -36,18 +36,18 @@ type state struct {
 }
 
 type State interface {
-	common.TiKVGroupStateInitializer
+	common.TiFlashGroupStateInitializer
 	common.ClusterStateInitializer
-	common.TiKVSliceStateInitializer
+	common.TiFlashSliceStateInitializer
 	common.RevisionStateInitializer
 
-	common.TiKVGroupState
+	common.TiFlashGroupState
 	common.ClusterState
-	common.TiKVSliceState
+	common.TiFlashSliceState
 	common.RevisionState
 
-	common.GroupState[*runtime.TiKVGroup]
-	common.InstanceSliceState[*runtime.TiKV]
+	common.GroupState[*runtime.TiFlashGroup]
+	common.InstanceSliceState[*runtime.TiFlash]
 }
 
 func NewState(key types.NamespacedName) State {
@@ -57,28 +57,28 @@ func NewState(key types.NamespacedName) State {
 	return s
 }
 
-func (s *state) TiKVGroup() *v1alpha1.TiKVGroup {
-	return s.kvg
+func (s *state) TiFlashGroup() *v1alpha1.TiFlashGroup {
+	return s.fg
 }
 
-func (s *state) Group() *runtime.TiKVGroup {
-	return runtime.FromTiKVGroup(s.kvg)
+func (s *state) Group() *runtime.TiFlashGroup {
+	return runtime.FromTiFlashGroup(s.fg)
 }
 
 func (s *state) Cluster() *v1alpha1.Cluster {
 	return s.cluster
 }
 
-func (s *state) TiKVSlice() []*v1alpha1.TiKV {
-	return s.kvs
+func (s *state) TiFlashSlice() []*v1alpha1.TiFlash {
+	return s.fs
 }
 
-func (s *state) Slice() []*runtime.TiKV {
-	return runtime.FromTiKVSlice(s.kvs)
+func (s *state) Slice() []*runtime.TiFlash {
+	return runtime.FromTiFlashSlice(s.fs)
 }
 
-func (s *state) TiKVGroupInitializer() common.TiKVGroupInitializer {
-	return common.NewResource(func(kvg *v1alpha1.TiKVGroup) { s.kvg = kvg }).
+func (s *state) TiFlashGroupInitializer() common.TiFlashGroupInitializer {
+	return common.NewResource(func(fg *v1alpha1.TiFlashGroup) { s.fg = fg }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithName(common.Name(s.key.Name)).
 		Initializer()
@@ -88,13 +88,13 @@ func (s *state) ClusterInitializer() common.ClusterInitializer {
 	return common.NewResource(func(cluster *v1alpha1.Cluster) { s.cluster = cluster }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithName(common.Lazy[string](func() string {
-			return s.kvg.Spec.Cluster.Name
+			return s.fg.Spec.Cluster.Name
 		})).
 		Initializer()
 }
 
-func (s *state) TiKVSliceInitializer() common.TiKVSliceInitializer {
-	return common.NewResourceSlice(func(kvs []*v1alpha1.TiKV) { s.kvs = kvs }).
+func (s *state) TiFlashSliceInitializer() common.TiFlashSliceInitializer {
+	return common.NewResourceSlice(func(fs []*v1alpha1.TiFlash) { s.fs = fs }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithLabels(s.Labels()).
 		Initializer()
@@ -107,13 +107,13 @@ func (s *state) RevisionInitializer() common.RevisionInitializer {
 		s.collisionCount = collisionCount
 	})).
 		WithCurrentRevision(common.Lazy[string](func() string {
-			return s.kvg.Status.CurrentRevision
+			return s.fg.Status.CurrentRevision
 		})).
 		WithCollisionCount(common.Lazy[*int32](func() *int32 {
-			return s.kvg.Status.CollisionCount
+			return s.fg.Status.CollisionCount
 		})).
 		WithParent(common.Lazy[client.Object](func() client.Object {
-			return s.kvg
+			return s.fg
 		})).
 		WithLabels(s.Labels()).
 		Initializer()
@@ -127,9 +127,9 @@ func (s *state) Labels() common.LabelsOption {
 	return common.Lazy[map[string]string](func() map[string]string {
 		return map[string]string{
 			v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-			v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
+			v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiFlash,
 			v1alpha1.LabelKeyCluster:   s.cluster.Name,
-			v1alpha1.LabelKeyGroup:     s.kvg.Name,
+			v1alpha1.LabelKeyGroup:     s.fg.Name,
 		}
 	})
 }

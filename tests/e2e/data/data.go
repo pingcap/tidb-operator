@@ -16,13 +16,12 @@ package data
 
 import (
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
 type (
-	ClusterPatch                                 func(obj *v1alpha1.Cluster)
-	GroupPatch[T client.Object, G runtime.Group] func(obj G)
+	ClusterPatch                func(obj *v1alpha1.Cluster)
+	GroupPatch[G runtime.Group] func(obj G)
 )
 
 const (
@@ -35,7 +34,7 @@ const (
 	defaultVersion = "v8.1.0"
 )
 
-func WithReplicas[T client.Object, G runtime.Group](replicas *int32) GroupPatch[T, G] {
+func WithReplicas[G runtime.Group](replicas int32) GroupPatch[G] {
 	return func(obj G) {
 		obj.SetReplicas(replicas)
 	}

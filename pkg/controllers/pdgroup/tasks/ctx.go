@@ -32,10 +32,6 @@ type ReconcileContext struct {
 
 	// mark pdgroup is bootstrapped if cache of pd is synced
 	IsBootstrapped bool
-
-	UpdateRevision  string
-	CurrentRevision string
-	CollisionCount  int32
 }
 
 // TODO: move to pdapi

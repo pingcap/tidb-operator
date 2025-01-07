@@ -134,6 +134,7 @@ func (t *TaskStatus) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	}
 
 	if rtx.Pod == nil || rtx.PodIsTerminating {
+		rtx.Healthy = false
 	} else if statefulset.IsPodRunningAndReady(rtx.Pod) && rtx.StoreState == v1alpha1.StoreStateServing {
 		rtx.Healthy = true
 		if rtx.TiFlash.Status.CurrentRevision != rtx.Pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash] {

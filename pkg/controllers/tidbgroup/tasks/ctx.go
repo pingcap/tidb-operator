@@ -16,8 +16,4 @@ package tasks
 
 type ReconcileContext struct {
 	State
-
-	UpdateRevision  string
-	CurrentRevision string
-	CollisionCount  int32
 }

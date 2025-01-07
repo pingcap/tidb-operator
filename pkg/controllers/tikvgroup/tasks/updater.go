@@ -21,7 +21,6 @@ import (
 
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
@@ -29,11 +28,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/updater"
 	"github.com/pingcap/tidb-operator/pkg/updater/policy"
-	"github.com/pingcap/tidb-operator/pkg/utils/k8s/revision"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/random"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
-	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/history"
 )
 
 const (
@@ -44,47 +41,13 @@ const (
 func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
-		historyCli := history.NewClient(c)
 		kvg := state.TiKVGroup()
-
-		selector := labels.SelectorFromSet(labels.Set{
-			// TODO(liubo02): add label of managed by operator ?
-			v1alpha1.LabelKeyCluster:   kvg.Spec.Cluster.Name,
-			v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
-			v1alpha1.LabelKeyGroup:     kvg.Name,
-		})
-
-		revisions, err := historyCli.ListControllerRevisions(kvg, selector)
-		if err != nil {
-			return task.Fail().With("cannot list controller revisions: %w", err)
-		}
-		history.SortControllerRevisions(revisions)
-
-		// Get the current(old) and update(new) ControllerRevisions.
-		currentRevision, updateRevision, collisionCount, err := revision.GetCurrentAndUpdate(kvg, revisions, historyCli, kvg)
-		if err != nil {
-			return task.Fail().With("cannot get revisions: %w", err)
-		}
-		state.CurrentRevision = currentRevision.Name
-		state.UpdateRevision = updateRevision.Name
-		state.CollisionCount = collisionCount
-
-		// TODO(liubo02): add a controller to do it
-		if err = revision.TruncateHistory(historyCli, state.TiKVSlice(), revisions,
-			currentRevision, updateRevision, state.Cluster().Spec.RevisionHistoryLimit); err != nil {
-			logger.Error(err, "failed to truncate history")
-		}
 
 		checker := action.NewUpgradeChecker(c, state.Cluster(), logger)
 
 		if needVersionUpgrade(kvg) && !checker.CanUpgrade(ctx, kvg) {
 			// TODO(liubo02): change to Wait
 			return task.Retry(defaultUpdateWaitTime).With("wait until preconditions of upgrading is met")
-		}
-
-		desired := 1
-		if kvg.Spec.Replicas != nil {
-			desired = int(*kvg.Spec.Replicas)
 		}
 
 		var topos []v1alpha1.ScheduleTopology
@@ -97,28 +60,24 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			}
 		}
 
-		topoPolicy, err := policy.NewTopologyPolicy[*runtime.TiKV](topos)
+		kvs := state.Slice()
+
+		topoPolicy, err := policy.NewTopologyPolicy(topos, kvs...)
 		if err != nil {
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
-		for _, tikv := range state.TiKVSlice() {
-			topoPolicy.Add(runtime.FromTiKV(tikv))
-		}
+		updateRevision, _, _ := state.Revision()
 
 		wait, err := updater.New[runtime.TiKVTuple]().
-			WithInstances(runtime.FromTiKVSlice(state.TiKVSlice())...).
-			WithDesired(desired).
+			WithInstances(kvs...).
+			WithDesired(int(state.Group().Replicas())).
 			WithClient(c).
 			WithMaxSurge(0).
 			WithMaxUnavailable(1).
-			WithRevision(state.UpdateRevision).
-			WithNewFactory(TiKVNewer(kvg, state.UpdateRevision)).
+			WithRevision(updateRevision).
+			WithNewFactory(TiKVNewer(kvg, updateRevision)).
 			WithAddHooks(topoPolicy).
-			WithUpdateHooks(
-				policy.KeepName[*runtime.TiKV](),
-				policy.KeepTopology[*runtime.TiKV](),
-			).
 			WithDelHooks(topoPolicy).
 			WithScaleInPreferPolicy(
 				topoPolicy,
