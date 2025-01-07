@@ -539,8 +539,11 @@ func (c *Controller) allowCompact(compact *v1alpha1.CompactBackup) bool {
 	}
 
 	attempts := len(compact.Status.RetryStatus)
-	if attempts > 0 && attempts <= int(compact.Spec.MaxRetryTimes) {
+	if attempts > 0 {
 		lastRetry := compact.Status.RetryStatus[attempts-1]
+		if lastRetry.RetryNum >= int(compact.Spec.MaxRetryTimes) {
+			return false
+		}
 		backoff := expBackoff(attempts)
 		if time.Since(lastRetry.DetectFailedAt.Time) < backoff {
 			klog.Infof("Compact: [%s/%s] backoff in effect, skipping retry.", ns, name)
