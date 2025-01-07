@@ -99,35 +99,34 @@ func calEndTs(bs *v1alpha1.BackupSchedule, startTs time.Time, interval time.Dura
 	return endTime
 }
 
-func (bm *backupScheduleManager) performCompact(bs *v1alpha1.BackupSchedule, scheduleTime *time.Time, nowFn nowFn) error {
+func (bm *backupScheduleManager) calCompactInterval(bs *v1alpha1.BackupSchedule, scheduleTime *time.Time, nowFn nowFn) (startTs time.Time, endTs time.Time, err error) {
 	if bs.Spec.CompactInterval == nil || bs.Status.LogBackup == nil {
-		return nil
+		return startTs, endTs, nil
 	}
 
-	var startTime time.Time
 	switch {
 	case bs.Status.LogBackupStartTs == nil:
-		return fmt.Errorf("Compact failed: %s/%s, please start a log backup before compact it", bs.GetNamespace(), bs.GetName())
+		return startTs, endTs, fmt.Errorf("Compact failed: %s/%s, please start a log backup before compact it", bs.GetNamespace(), bs.GetName())
 	case bs.Status.LastCompactTime == nil:
-		startTime = bs.Status.LogBackupStartTs.Time
+		startTs = bs.Status.LogBackupStartTs.Time
 	default:
-		startTime = bs.Status.LastCompactTime.Time
+		startTs = bs.Status.LastCompactTime.Time
 	}
 
 	interval, err := time.ParseDuration(*bs.Spec.CompactInterval)
 	if err != nil {
-		return fmt.Errorf("failed to parse compact interval: %w", err)
+		return startTs, endTs, fmt.Errorf("failed to parse compact interval: %w", err)
 	}
 	now := nowFn()
 
-	endTime := calEndTs(bs, startTime, interval, scheduleTime)
+	endTime := calEndTs(bs, startTs, interval, scheduleTime)
 
 	if endTime.After(now) {
 		klog.Infof("backupSchedule %s/%s next compact time is not reached", bs.GetNamespace(), bs.GetName())
-		return nil
+		return startTs, endTs, nil
 	}
 
-	return bm.doCompact(bs, startTime, endTime)
+	return startTs, endTime, nil
 }
 
 func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
@@ -150,15 +149,22 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 		return err
 	}
 
-	go bm.performCompact(bs, scheduledTime, bm.now)
+	if err := bm.canPerformNextCompact(bs); err != nil {
+		return err
+	}
+
+	//update bs.Status.NextCompactTime & bs.Status.LastCompactTime
+	startTs, endTs, err := bm.calCompactInterval(bs, scheduledTime, bm.now)
+	if err != nil {
+		return err
+	}
+
+	if err := bm.doCompact(bs, startTs, endTs); err != nil {
+		return err
+	}
 
 	if scheduledTime == nil {
 		return nil
-	}
-
-	// Only create a new full backup if the conditions for it are met
-	if err := bm.canPerformNextBackup(bs); err != nil {
-		return err
 	}
 
 	// Delete the last backup job for releasing the backup PVC
@@ -166,7 +172,6 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 		return nil
 	}
 
-	// If compaction was successful and it's time for a backup, create a new backup
 	backup, err := createBackup(bm.deps.BackupControl, bs, *scheduledTime)
 	if err != nil {
 		return err
@@ -250,6 +255,62 @@ func (bm *backupScheduleManager) canPerformNextBackup(bs *v1alpha1.BackupSchedul
 		}
 
 		if v1alpha1.IsBackupComplete(backup) || (v1alpha1.IsBackupScheduled(backup) && v1alpha1.IsBackupFailed(backup)) {
+			continue
+		}
+		// skip this sync round of the backup schedule and waiting the last backup.
+		return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, bsMember.Status.LastBackup)
+	}
+
+	return nil
+}
+
+func (bm *backupScheduleManager) canPerformNextCompact(bs *v1alpha1.BackupSchedule) error {
+	ns := bs.GetNamespace()
+	bsName := bs.GetName()
+
+	// If this backup schedule has specified label of backup schedule group, then we need to check the last backup of the group.
+	// Otherwise, check its own last backup.
+	bsGroupName := bs.GetLabels()[label.BackupScheduleGroupLabelKey]
+
+	if bsGroupName == "" {
+		backup, err := bm.deps.CompactBackupLister.CompactBackups(ns).Get(bs.Status.LastCompact)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return nil
+			}
+			return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, bs.Status.LastBackup, err)
+		}
+
+		if backup.Status.State == string(v1alpha1.BackupComplete) || backup.Status.State == string(v1alpha1.BackupFailed) {
+			return nil
+		}
+		// skip this sync round of the backup schedule and waiting the last backup.
+		return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, bs.Status.LastBackup)
+	}
+
+	// Check the last backup of the group
+	backupScheduleGroupLabels := label.NewBackupScheduleGroup(bsGroupName)
+	selector, err := backupScheduleGroupLabels.Selector()
+	if err != nil {
+		return fmt.Errorf("generate backup schedule group %s label selector failed, err: %v", bsGroupName, err)
+	}
+
+	bss, err := bm.deps.BackupScheduleLister.BackupSchedules(ns).List(selector)
+	if err != nil {
+		return fmt.Errorf("backup schedule %s/%s, list backup schedules failed, err: %v", ns, bsName, err)
+	}
+
+	for _, bsMember := range bss {
+		// The check is not safe in fact since we don't have strict serialization
+		backup, err := bm.deps.CompactBackupLister.CompactBackups(ns).Get(bs.Status.LastCompact)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				continue
+			}
+			return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, bsMember.Status.LastBackup, err)
+		}
+
+		if backup.Status.State == string(v1alpha1.BackupComplete) || backup.Status.State == string(v1alpha1.BackupFailed) {
 			continue
 		}
 		// skip this sync round of the backup schedule and waiting the last backup.
