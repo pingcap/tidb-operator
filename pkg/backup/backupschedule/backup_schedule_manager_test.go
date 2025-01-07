@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -472,6 +473,75 @@ func TestCalculateExpiredBackupsWithLogBackup(t *testing.T) {
 		g.Expect(len(deletedBackups)).Should(Equal(tc.expectedDeleteBackupCount))
 		g.Expect(truncateTS).Should(Equal(tc.expectedTruncateTS))
 	}
+}
+
+func TestCalEndTs(t *testing.T) {
+	s := v1alpha1.BackupSchedule{}
+	cpInterval := time.Minute
+
+	// test 1: no compact delay
+	// It should be the same as cpInterval and nextCompact should be nil
+	startTs := time.Time{}
+	endTs := calEndTs(&s, startTs, cpInterval, nil)
+	require.Equal(t, endTs, startTs.Add(cpInterval))
+	require.Nil(t, s.Status.NextCompactTime)
+
+	// test 2: compact delay but could reach schedule (within 3 * cpInterval)
+	// It should be the same as schedule and nextCompact should be nil
+	startTs = time.Time{}
+	schedule := startTs.Add(2 * cpInterval)
+	endTs = calEndTs(&s, startTs, cpInterval, &schedule)
+	require.Equal(t, endTs, schedule)
+	require.Nil(t, s.Status.NextCompactTime)
+
+	//test 3: compact delay and could not reach schedule (over 3 * cpInterval)
+	// It should be the same as 3 * cpInterval and the nextCompact should be schedule
+	startTs = time.Time{}
+	schedule = startTs.Add(5 * cpInterval)
+	endTs = calEndTs(&s, startTs, cpInterval, &schedule)
+	require.Equal(t, endTs, startTs.Add(3*cpInterval))
+	require.Equal(t, s.Status.NextCompactTime.Time, schedule)
+
+	//test 4: compact delay and could reach schedule but the nextCompact is set
+	// It should reach the nextCompact, and the nextcompact should be nil
+	startTs = time.Time{}
+	schedule = startTs.Add(2 * cpInterval)
+	s.Status.NextCompactTime = &metav1.Time{Time: startTs.Add(1 * cpInterval)}
+	endTs = calEndTs(&s, startTs, cpInterval, &schedule)
+	require.Equal(t, endTs, startTs.Add(1 * cpInterval))
+	require.Nil(t, s.Status.NextCompactTime)
+
+	//test 5: compact can't reach the nextCompact
+	// It should be the same as 3 * cpInterval, and the nextcompact should not change
+	startTs = time.Time{}
+	schedule = startTs.Add(5 * cpInterval)
+	s.Status.NextCompactTime = &metav1.Time{Time: startTs.Add(4 * cpInterval)}
+	nextCopy := s.Status.NextCompactTime.DeepCopy()
+	endTs = calEndTs(&s, startTs, cpInterval, &schedule)
+	require.Equal(t, endTs, startTs.Add(3 * cpInterval))
+	require.Equal(t, s.Status.NextCompactTime, nextCopy)
+
+	//test 6: compact delay, lastBackupTime and Schedule is all set
+	// It should be the same as 3 * cpInterval, and the nextcompact should be lastBackupTime
+	startTs = time.Time{}
+	schedule = startTs.Add(5 * cpInterval)
+	s.Status.LastBackupTime = &metav1.Time{Time: startTs.Add(4 * cpInterval)}
+	nextCopy = s.Status.LastBackupTime.DeepCopy()
+	s.Status.NextCompactTime = nil
+	endTs = calEndTs(&s, startTs, cpInterval, &schedule)
+	require.Equal(t, endTs, startTs.Add(3 * cpInterval))
+	require.Equal(t, s.Status.NextCompactTime, nextCopy)
+
+	//test 7: compact delay, nextcompactTime, lastBackupTime and Schedule is all set
+	// It should reach the nextCompact, and the nextcompact should be nil
+	startTs = time.Time{}
+	schedule = startTs.Add(5 * cpInterval)
+	s.Status.LastBackupTime = &metav1.Time{Time: startTs.Add(2 * cpInterval)}
+	s.Status.NextCompactTime = &metav1.Time{Time: startTs.Add(1 * cpInterval)}
+	nextCopy = s.Status.NextCompactTime.DeepCopy()
+	endTs = calEndTs(&s, startTs, cpInterval, &schedule)
+	require.Equal(t, endTs, startTs.Add(1 * cpInterval))
+	require.Nil(t, s.Status.NextCompactTime)
 }
 
 type helper struct {
