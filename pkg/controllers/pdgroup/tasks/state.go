@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
@@ -28,16 +29,22 @@ type state struct {
 	cluster *v1alpha1.Cluster
 	pdg     *v1alpha1.PDGroup
 	pds     []*v1alpha1.PD
+
+	updateRevision  string
+	currentRevision string
+	collisionCount  int32
 }
 
 type State interface {
 	common.PDGroupStateInitializer
 	common.ClusterStateInitializer
 	common.PDSliceStateInitializer
+	common.RevisionStateInitializer
 
 	common.PDGroupState
 	common.ClusterState
 	common.PDSliceState
+	common.RevisionState
 
 	common.GroupState[*runtime.PDGroup]
 	common.InstanceSliceState[*runtime.PD]
@@ -80,7 +87,7 @@ func (s *state) PDGroupInitializer() common.PDGroupInitializer {
 func (s *state) ClusterInitializer() common.ClusterInitializer {
 	return common.NewResource(func(cluster *v1alpha1.Cluster) { s.cluster = cluster }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.NameFunc(func() string {
+		WithName(common.Lazy[string](func() string {
 			return s.pdg.Spec.Cluster.Name
 		})).
 		Initializer()
@@ -89,13 +96,43 @@ func (s *state) ClusterInitializer() common.ClusterInitializer {
 func (s *state) PDSliceInitializer() common.PDSliceInitializer {
 	return common.NewResourceSlice(func(pds []*v1alpha1.PD) { s.pds = pds }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithLabels(common.LabelsFunc(func() map[string]string {
-			return map[string]string{
-				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
-				v1alpha1.LabelKeyCluster:   s.cluster.Name,
-				v1alpha1.LabelKeyGroup:     s.pdg.Name,
-			}
-		})).
+		WithLabels(s.Labels()).
 		Initializer()
+}
+
+func (s *state) RevisionInitializer() common.RevisionInitializer {
+	return common.NewRevision(common.RevisionSetterFunc(func(update, current string, collisionCount int32) {
+		s.updateRevision = update
+		s.currentRevision = current
+		s.collisionCount = collisionCount
+	})).
+		WithCurrentRevision(common.Lazy[string](func() string {
+			return s.pdg.Status.CurrentRevision
+		})).
+		WithCollisionCount(common.Lazy[*int32](func() *int32 {
+			return s.pdg.Status.CollisionCount
+		})).
+		WithParent(common.Lazy[client.Object](func() client.Object {
+			pdg := s.pdg.DeepCopy()
+			// always ignore bootstrapped field in spec
+			pdg.Spec.Bootstrapped = false
+			return pdg
+		})).
+		WithLabels(s.Labels()).
+		Initializer()
+}
+
+func (s *state) Revision() (update, current string, collisionCount int32) {
+	return s.updateRevision, s.currentRevision, s.collisionCount
+}
+
+func (s *state) Labels() common.LabelsOption {
+	return common.Lazy[map[string]string](func() map[string]string {
+		return map[string]string{
+			v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+			v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
+			v1alpha1.LabelKeyCluster:   s.cluster.Name,
+			v1alpha1.LabelKeyGroup:     s.pdg.Name,
+		}
+	})
 }

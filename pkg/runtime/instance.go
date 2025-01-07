@@ -31,6 +31,9 @@ type Instance interface {
 	// NOTE: It does not mean the instance is updated to the newest revision
 	// TODO: may be change a more meaningful name?
 	IsUpToDate() bool
+
+	CurrentRevision() string
+	SetCurrentRevision(rev string)
 }
 
 type InstanceT[T InstanceSet] interface {

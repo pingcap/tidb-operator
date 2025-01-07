@@ -63,6 +63,10 @@ type (
 	}
 )
 
+type GroupStateInitializer[G runtime.GroupSet] interface {
+	GroupInitializer() ResourceInitializer[G]
+}
+
 type GroupState[G runtime.Group] interface {
 	Group() G
 }
@@ -75,6 +79,32 @@ type GroupAndInstanceSliceState[
 	G runtime.Group,
 	I runtime.Instance,
 ] interface {
+	GroupState[G]
+	InstanceSliceState[I]
+}
+
+type RevisionStateInitializer interface {
+	RevisionInitializer() RevisionInitializer
+}
+
+type RevisionState interface {
+	Revision() (update, current string, collisionCount int32)
+}
+
+type GroupAndInstanceSliceAndRevisionState[
+	G runtime.Group,
+	I runtime.Instance,
+] interface {
+	GroupState[G]
+	InstanceSliceState[I]
+	RevisionState
+}
+
+type ClusterAndGroupAndInstanceSliceState[
+	G runtime.Group,
+	I runtime.Instance,
+] interface {
+	ClusterState
 	GroupState[G]
 	InstanceSliceState[I]
 }

@@ -126,6 +126,14 @@ func (kv *TiKV) GetUpdateRevision() string {
 	return kv.Labels[v1alpha1.LabelKeyInstanceRevisionHash]
 }
 
+func (kv *TiKV) CurrentRevision() string {
+	return kv.Status.CurrentRevision
+}
+
+func (kv *TiKV) SetCurrentRevision(rev string) {
+	kv.Status.CurrentRevision = rev
+}
+
 func (kv *TiKV) IsHealthy() bool {
 	return meta.IsStatusConditionTrue(kv.Status.Conditions, v1alpha1.TiKVCondHealth)
 }
@@ -168,12 +176,19 @@ func (kvg *TiKVGroup) To() *v1alpha1.TiKVGroup {
 	return ToTiKVGroup(kvg)
 }
 
-func (kvg *TiKVGroup) SetReplicas(replicas *int32) {
-	kvg.Spec.Replicas = replicas
+func (kvg *TiKVGroup) SetReplicas(replicas int32) {
+	kvg.Spec.Replicas = &replicas
 }
 
-func (kvg *TiKVGroup) Replicas() *int32 {
-	return kvg.Spec.Replicas
+func (kvg *TiKVGroup) Replicas() int32 {
+	if kvg.Spec.Replicas == nil {
+		return 1
+	}
+	return *kvg.Spec.Replicas
+}
+
+func (kvg *TiKVGroup) Version() string {
+	return kvg.Spec.Version
 }
 
 func (kvg *TiKVGroup) Cluster() string {
@@ -198,4 +213,38 @@ func (kvg *TiKVGroup) ObservedGeneration() int64 {
 
 func (kvg *TiKVGroup) SetObservedGeneration(g int64) {
 	kvg.Status.ObservedGeneration = g
+}
+
+func (kvg *TiKVGroup) SetStatusVersion(version string) {
+	kvg.Status.Version = version
+}
+
+func (kvg *TiKVGroup) StatusVersion() string {
+	return kvg.Status.Version
+}
+
+func (kvg *TiKVGroup) SetStatusReplicas(replicas, ready, update, current int32) {
+	kvg.Status.Replicas = replicas
+	kvg.Status.ReadyReplicas = ready
+	kvg.Status.UpdatedReplicas = update
+	kvg.Status.CurrentReplicas = current
+}
+
+func (kvg *TiKVGroup) StatusReplicas() (replicas, ready, update, current int32) {
+	return kvg.Status.Replicas,
+		kvg.Status.ReadyReplicas,
+		kvg.Status.UpdatedReplicas,
+		kvg.Status.CurrentReplicas
+}
+
+func (kvg *TiKVGroup) SetStatusRevision(update, current string, collisionCount *int32) {
+	kvg.Status.UpdateRevision = update
+	kvg.Status.CurrentRevision = current
+	kvg.Status.CollisionCount = collisionCount
+}
+
+func (kvg *TiKVGroup) StatusRevision() (update, current string, collisionCount *int32) {
+	return kvg.Status.UpdateRevision,
+		kvg.Status.CurrentRevision,
+		kvg.Status.CollisionCount
 }

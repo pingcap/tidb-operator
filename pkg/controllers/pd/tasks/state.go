@@ -82,7 +82,7 @@ func (s *state) PDInitializer() common.PDInitializer {
 func (s *state) ClusterInitializer() common.ClusterInitializer {
 	return common.NewResource(func(cluster *v1alpha1.Cluster) { s.cluster = cluster }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.NameFunc(func() string {
+		WithName(common.Lazy[string](func() string {
 			return s.pd.Spec.Cluster.Name
 		})).
 		Initializer()
@@ -91,7 +91,7 @@ func (s *state) ClusterInitializer() common.ClusterInitializer {
 func (s *state) PodInitializer() common.PodInitializer {
 	return common.NewResource(s.SetPod).
 		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.NameFunc(func() string {
+		WithName(common.Lazy[string](func() string {
 			return s.pd.PodName()
 		})).
 		Initializer()

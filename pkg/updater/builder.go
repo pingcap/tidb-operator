@@ -67,7 +67,7 @@ func (b *builder[T, O, R]) Build() Executor {
 		outdated: NewState(outdated),
 
 		addHooks:    b.addHooks,
-		updateHooks: b.updateHooks,
+		updateHooks: append(b.updateHooks, KeepName[R](), KeepTopology[R]()),
 		delHooks:    b.delHooks,
 
 		scaleInSelector: NewSelector(b.scaleInPreferPolicies...),

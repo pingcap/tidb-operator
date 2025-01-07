@@ -46,10 +46,11 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskGroupStatusSuspend[runtime.PDGroupTuple](state, r.Client),
 		),
 		tasks.TaskContextPDClient(state, r.PDClientManager),
+		common.TaskRevision(state, r.Client),
 		tasks.TaskBoot(state, r.Client),
 		tasks.TaskService(state, r.Client),
 		tasks.TaskUpdater(state, r.Client),
-		tasks.TaskStatus(state, r.Client),
+		common.TaskGroupStatus[runtime.PDGroupTuple](state, r.Client),
 	)
 
 	return runner

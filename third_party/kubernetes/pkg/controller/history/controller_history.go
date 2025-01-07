@@ -62,7 +62,8 @@ func NewControllerRevision(parent metav1.Object,
 	templateLabels map[string]string,
 	data runtime.RawExtension,
 	revision int64,
-	collisionCount *int32) (*appsv1.ControllerRevision, error) {
+	collisionCount *int32,
+) (*appsv1.ControllerRevision, error) {
 	labelMap := make(map[string]string)
 	for k, v := range templateLabels {
 		labelMap[k] = v
@@ -163,6 +164,7 @@ func (br byRevision) Swap(i, j int) {
 	br[i], br[j] = br[j], br[i]
 }
 
+// TODO(liubo02): add ctx into interface
 // Interface provides an interface allowing for management of a Controller's history as realized by recorded
 // ControllerRevisions. An instance of Interface can be retrieved from NewHistory. Implementations must treat all
 // pointer parameters as "in" parameter, and they must not be mutated.

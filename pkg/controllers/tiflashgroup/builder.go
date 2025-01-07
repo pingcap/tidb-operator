@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tikvgroup
+package tiflashgroup
 
 import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
-	"github.com/pingcap/tidb-operator/pkg/controllers/tikvgroup/tasks"
+	"github.com/pingcap/tidb-operator/pkg/controllers/tiflashgroup/tasks"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
 func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.TaskReporter) task.TaskRunner {
 	runner := task.NewTaskRunner(reporter,
-		// get tikvgroup
-		common.TaskContextTiKVGroup(state, r.Client),
+		// get tiflashgroup
+		common.TaskContextTiFlashGroup(state, r.Client),
 		// if it's gone just return
 		task.IfBreak(common.CondGroupHasBeenDeleted(state)),
 
@@ -33,23 +33,23 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),
 
-		// get all tikvs
-		common.TaskContextTiKVSlice(state, r.Client),
+		// get all tiflashes
+		common.TaskContextTiFlashSlice(state, r.Client),
 
 		task.IfBreak(common.CondGroupIsDeleting(state),
-			common.TaskGroupFinalizerDel[runtime.TiKVGroupTuple, runtime.TiKVTuple](state, r.Client),
+			common.TaskGroupFinalizerDel[runtime.TiFlashGroupTuple, runtime.TiFlashTuple](state, r.Client),
 		),
-		common.TaskGroupFinalizerAdd[runtime.TiKVGroupTuple](state, r.Client),
+		common.TaskGroupFinalizerAdd[runtime.TiFlashGroupTuple](state, r.Client),
 
 		task.IfBreak(
 			common.CondClusterIsSuspending(state),
-			common.TaskGroupStatusSuspend[runtime.TiKVGroupTuple](state, r.Client),
+			common.TaskGroupStatusSuspend[runtime.TiFlashGroupTuple](state, r.Client),
 		),
 
 		common.TaskRevision(state, r.Client),
 		tasks.TaskService(state, r.Client),
 		tasks.TaskUpdater(state, r.Client),
-		common.TaskGroupStatus[runtime.TiKVGroupTuple](state, r.Client),
+		common.TaskGroupStatus[runtime.TiFlashGroupTuple](state, r.Client),
 	)
 
 	return runner

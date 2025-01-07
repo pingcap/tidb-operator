@@ -16,17 +16,19 @@ package revision
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	kuberuntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	serializerjson "k8s.io/apimachinery/pkg/runtime/serializer/json"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/history"
 	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
@@ -36,7 +38,7 @@ const (
 	defaultRevisionHistoryLimit = 10
 )
 
-var encoderMap = map[schema.GroupVersion]runtime.Encoder{}
+var encoderMap = map[schema.GroupVersion]kuberuntime.Encoder{}
 
 // GetCurrentAndUpdate returns the current and update ControllerRevisions. It also
 // returns a collision count that records the number of name collisions set saw when creating
@@ -44,19 +46,30 @@ var encoderMap = map[schema.GroupVersion]runtime.Encoder{}
 // building the ControllerRevision names for name collision avoidance. This method may create
 // a new revision, or modify the Revision of an existing revision if an update to ComponentGroup is detected.
 // This method expects that revisions is sorted when supplied.
-func GetCurrentAndUpdate(group client.Object, revisions []*appsv1.ControllerRevision,
-	cli history.Interface, accessor v1alpha1.ComponentAccessor) (
+func GetCurrentAndUpdate(
+	_ context.Context,
+	group client.Object,
+	labels map[string]string,
+	revisions []*appsv1.ControllerRevision,
+	cli history.Interface,
+	currentRevisionName string,
+	currentCollisionCount *int32,
+) (
 	currentRevision *appsv1.ControllerRevision,
 	updateRevision *appsv1.ControllerRevision,
 	collisionCount int32,
 	err error,
 ) {
-	if accessor.CollisionCount() != nil {
-		collisionCount = *accessor.CollisionCount()
+	if currentCollisionCount != nil {
+		collisionCount = *currentCollisionCount
 	}
 
+	gvk, err := apiutil.GVKForObject(group, scheme.Scheme)
+	if err != nil {
+		return nil, nil, collisionCount, fmt.Errorf("cannot get gvk of group: %w", err)
+	}
 	// create a new revision from the current object
-	updateRevision, err = newRevision(group, accessor.GVK(), statefulset.NextRevision(revisions), &collisionCount)
+	updateRevision, err = newRevision(group, labels, gvk, statefulset.NextRevision(revisions), &collisionCount)
 	if err != nil {
 		return nil, nil, collisionCount, fmt.Errorf("failed to new a revision: %w", err)
 	}
@@ -86,7 +99,7 @@ func GetCurrentAndUpdate(group client.Object, revisions []*appsv1.ControllerRevi
 
 	// attempt to find the revision that corresponds to the current revision
 	for i := range revisions {
-		if revisions[i].Name == accessor.CurrentRevision() {
+		if revisions[i].Name == currentRevisionName {
 			currentRevision = revisions[i]
 			break
 		}
@@ -101,18 +114,17 @@ func GetCurrentAndUpdate(group client.Object, revisions []*appsv1.ControllerRevi
 }
 
 // newRevision creates a new ControllerRevision containing a patch that reapplies the target state of CR.
-func newRevision(obj client.Object, gvk schema.GroupVersionKind,
-	revision int64, collisionCount *int32) (*appsv1.ControllerRevision, error) {
+func newRevision(obj client.Object, labels map[string]string, gvk schema.GroupVersionKind,
+	revision int64, collisionCount *int32,
+) (*appsv1.ControllerRevision, error) {
 	patch, err := getPatch(obj, gvk)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get patch: %w", err)
 	}
-	cr, err := history.NewControllerRevision(obj, obj.GetLabels(), runtime.RawExtension{Raw: patch}, revision, collisionCount)
+	cr, err := history.NewControllerRevision(obj, labels, kuberuntime.RawExtension{Raw: patch}, revision, collisionCount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a revision: %w", err)
 	}
-	// Add this label so that tidb operator will watch this controller revision.
-	cr.Labels[v1alpha1.LabelKeyManagedBy] = v1alpha1.LabelValManagedByOperator
 	if err = controllerutil.SetControllerReference(obj, cr, scheme.Scheme); err != nil {
 		return nil, fmt.Errorf("failed to set controller reference: %w", err)
 	}
@@ -160,27 +172,28 @@ func getPatch(obj client.Object, gvk schema.GroupVersionKind) ([]byte, error) {
 // Non-live revisions are deleted, starting with the revision with the lowest Revision,
 // until only RevisionHistoryLimit revisions remain.
 // This method expects that revisions is sorted when supplied.
-func TruncateHistory[T v1alpha1.Instance](
+func TruncateHistory[T runtime.Instance](
 	cli history.Interface,
 	instances []T,
 	revisions []*appsv1.ControllerRevision,
-	current *appsv1.ControllerRevision,
-	update *appsv1.ControllerRevision,
-	limit *int32) error {
+	updateRevision string,
+	currentRevision string,
+	limit *int32,
+) error {
 	// mark all live revisions
 	live := make(map[string]bool, len(revisions))
-	if current != nil {
-		live[current.Name] = true
+	if updateRevision != "" {
+		live[updateRevision] = true
 	}
-	if update != nil {
-		live[update.Name] = true
+	if currentRevision != "" {
+		live[currentRevision] = true
 	}
 	for _, ins := range instances {
 		if ins.CurrentRevision() != "" {
 			live[ins.CurrentRevision()] = true
 		}
-		if ins.UpdateRevision() != "" {
-			live[ins.UpdateRevision()] = true
+		if ins.GetUpdateRevision() != "" {
+			live[ins.GetUpdateRevision()] = true
 		}
 	}
 

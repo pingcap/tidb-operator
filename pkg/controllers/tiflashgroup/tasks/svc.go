@@ -15,49 +15,30 @@
 package tasks
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/utils/task"
+	"github.com/pingcap/tidb-operator/pkg/controllers/common"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-type TaskService struct {
-	Logger logr.Logger
-	Client client.Client
-}
+func TaskService(state common.TiFlashGroupState, c client.Client) task.Task {
+	return task.NameTaskFunc("Service", func(ctx context.Context) task.Result {
+		fg := state.TiFlashGroup()
 
-func NewTaskService(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
-	return &TaskService{
-		Logger: logger,
-		Client: c,
-	}
-}
+		headless := newHeadlessService(fg)
+		if err := c.Apply(ctx, headless); err != nil {
+			return task.Fail().With(fmt.Sprintf("can't create headless service: %v", err))
+		}
 
-func (*TaskService) Name() string {
-	return "Service"
-}
-
-func (t *TaskService) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
-
-	if rtx.Cluster.ShouldSuspendCompute() {
-		return task.Complete().With("skip service for suspension")
-	}
-
-	flashg := rtx.TiFlashGroup
-
-	svc := newHeadlessService(flashg)
-	if err := t.Client.Apply(ctx, svc); err != nil {
-		return task.Fail().With(fmt.Sprintf("can't create headless service of tiflash: %v", err))
-	}
-
-	return task.Complete().With("headless service of tiflash has been applied")
+		return task.Complete().With("services have been applied")
+	})
 }
 
 func newHeadlessService(fg *v1alpha1.TiFlashGroup) *corev1.Service {

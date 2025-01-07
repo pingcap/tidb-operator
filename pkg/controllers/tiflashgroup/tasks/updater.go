@@ -15,135 +15,82 @@
 package tasks
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/action"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/updater"
 	"github.com/pingcap/tidb-operator/pkg/updater/policy"
-	"github.com/pingcap/tidb-operator/pkg/utils/k8s/revision"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/random"
-	"github.com/pingcap/tidb-operator/pkg/utils/task"
-	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/history"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-// TaskUpdater is a task for updating TiFlashGroup when its spec is changed.
-type TaskUpdater struct {
-	Logger logr.Logger
-	Client client.Client
-	CRCli  history.Interface
-}
+const (
+	defaultUpdateWaitTime = time.Second * 30
+)
 
-func NewTaskUpdater(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
-	return &TaskUpdater{
-		Logger: logger,
-		Client: c,
-		CRCli:  history.NewClient(c),
-	}
-}
+// TaskUpdater is a task to scale or update PD when spec of TiFlashGroup is changed.
+func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
+		logger := logr.FromContextOrDiscard(ctx)
+		fg := state.TiFlashGroup()
 
-func (*TaskUpdater) Name() string {
-	return "Updater"
-}
+		checker := action.NewUpgradeChecker(c, state.Cluster(), logger)
 
-func (t *TaskUpdater) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
-
-	// TODO: move to task v2
-	if !rtx.TiFlashGroup.GetDeletionTimestamp().IsZero() {
-		return task.Complete().With("tiflash group has been deleted")
-	}
-
-	// List all controller revisions for the TiFlashGroup.
-	selector, _ := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
-		MatchLabels: map[string]string{
-			v1alpha1.LabelKeyCluster:   rtx.Cluster.Name,
-			v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiFlash,
-			v1alpha1.LabelKeyGroup:     rtx.TiFlashGroup.Name,
-		},
-	})
-	revisions, err := t.CRCli.ListControllerRevisions(rtx.TiFlashGroup, selector)
-	if err != nil {
-		return task.Fail().With("cannot list controller revisions: %w", err)
-	}
-	history.SortControllerRevisions(revisions)
-
-	// Get the current(old) and update(new) ControllerRevisions.
-	currentRevision, updateRevision, collisionCount, err := revision.GetCurrentAndUpdate(
-		rtx.TiFlashGroup, revisions, t.CRCli, rtx.TiFlashGroup)
-	if err != nil {
-		return task.Fail().With("cannot get revisions: %w", err)
-	}
-	rtx.CurrentRevision = currentRevision.Name
-	rtx.UpdateRevision = updateRevision.Name
-	rtx.CollisionCount = &collisionCount
-
-	if err = revision.TruncateHistory(t.CRCli, rtx.Peers, revisions,
-		currentRevision, updateRevision, rtx.Cluster.Spec.RevisionHistoryLimit); err != nil {
-		t.Logger.Error(err, "failed to truncate history")
-	}
-
-	if needVersionUpgrade(rtx.TiFlashGroup) && !rtx.UpgradeChecker.CanUpgrade(ctx, rtx.TiFlashGroup) {
-		return task.Fail().Continue().With(
-			"preconditions of upgrading the tiflash group %s/%s are not met",
-			rtx.TiFlashGroup.Namespace, rtx.TiFlashGroup.Name)
-	}
-
-	desired := 1
-	if rtx.TiFlashGroup.Spec.Replicas != nil {
-		desired = int(*rtx.TiFlashGroup.Spec.Replicas)
-	}
-
-	var topos []v1alpha1.ScheduleTopology
-	for _, p := range rtx.TiFlashGroup.Spec.SchedulePolicies {
-		switch p.Type {
-		case v1alpha1.SchedulePolicyTypeEvenlySpread:
-			topos = p.EvenlySpread.Topologies
-		default:
-			// do nothing
+		if needVersionUpgrade(fg) && !checker.CanUpgrade(ctx, fg) {
+			// TODO(liubo02): change to Wait
+			return task.Retry(defaultUpdateWaitTime).With("wait until preconditions of upgrading is met")
 		}
-	}
 
-	topoPolicy, err := policy.NewTopologyPolicy[*runtime.TiFlash](topos)
-	if err != nil {
-		return task.Fail().With("invalid topo policy, it should be validated: %w", err)
-	}
+		var topos []v1alpha1.ScheduleTopology
+		for _, p := range fg.Spec.SchedulePolicies {
+			switch p.Type {
+			case v1alpha1.SchedulePolicyTypeEvenlySpread:
+				topos = p.EvenlySpread.Topologies
+			default:
+				// do nothing
+			}
+		}
 
-	for _, tiflash := range rtx.Peers {
-		topoPolicy.Add(runtime.FromTiFlash(tiflash))
-	}
+		fs := state.Slice()
+		topoPolicy, err := policy.NewTopologyPolicy(topos, fs...)
+		if err != nil {
+			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
+		}
 
-	wait, err := updater.New[runtime.TiFlashTuple]().
-		WithInstances(runtime.FromTiFlashSlice(rtx.Peers)...).
-		WithDesired(desired).
-		WithClient(t.Client).
-		WithMaxSurge(0).
-		WithMaxUnavailable(1).
-		WithRevision(rtx.UpdateRevision).
-		WithNewFactory(TiFlashNewer(rtx.TiFlashGroup, rtx.UpdateRevision)).
-		WithAddHooks(topoPolicy).
-		WithUpdateHooks(
-			policy.KeepName[*runtime.TiFlash](),
-			policy.KeepTopology[*runtime.TiFlash](),
-		).
-		WithDelHooks(topoPolicy).
-		WithScaleInPreferPolicy(
-			topoPolicy,
-		).
-		Build().
-		Do(ctx)
-	if err != nil {
-		return task.Fail().With("cannot update instances: %w", err)
-	}
-	if wait {
-		return task.Complete().With("wait for all instances ready")
-	}
-	return task.Complete().With("all instances are synced")
+		updateRevision, _, _ := state.Revision()
+
+		wait, err := updater.New[runtime.TiFlashTuple]().
+			WithInstances(fs...).
+			WithDesired(int(state.Group().Replicas())).
+			WithClient(c).
+			WithMaxSurge(0).
+			WithMaxUnavailable(1).
+			WithRevision(updateRevision).
+			WithNewFactory(TiFlashNewer(fg, updateRevision)).
+			WithAddHooks(topoPolicy).
+			WithDelHooks(topoPolicy).
+			WithScaleInPreferPolicy(
+				topoPolicy,
+			).
+			Build().
+			Do(ctx)
+		if err != nil {
+			return task.Fail().With("cannot update instances: %w", err)
+		}
+		if wait {
+			return task.Wait().With("wait for all instances ready")
+		}
+		return task.Complete().With("all instances are synced")
+	})
 }
 
 func needVersionUpgrade(flashg *v1alpha1.TiFlashGroup) bool {

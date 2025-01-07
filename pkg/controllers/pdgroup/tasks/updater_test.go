@@ -33,8 +33,8 @@ import (
 )
 
 const (
-	oldRevision = "aaa-c9f48df69"
-	newRevision = "aaa-6cd5c46fb8"
+	oldRevision = "old"
+	newRevision = "new"
 )
 
 func TestTaskUpdater(t *testing.T) {
@@ -43,10 +43,8 @@ func TestTaskUpdater(t *testing.T) {
 		state         *ReconcileContext
 		unexpectedErr bool
 
-		expectedStatus          task.Status
-		expectedUpdateRevision  string
-		expectedCurrentRevision string
-		expectedPDNum           int
+		expectedStatus task.Status
+		expectedPDNum  int
 	}{
 		{
 			desc: "no pds with 1 replicas",
@@ -57,27 +55,8 @@ func TestTaskUpdater(t *testing.T) {
 				},
 			},
 
-			expectedStatus:          task.SComplete,
-			expectedUpdateRevision:  oldRevision,
-			expectedCurrentRevision: oldRevision,
-			expectedPDNum:           1,
-		},
-		{
-			desc: "ignore bootstrapped field",
-			state: &ReconcileContext{
-				State: &state{
-					pdg: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
-						obj.Spec.Bootstrapped = true
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-				},
-			},
-
-			expectedStatus:          task.SComplete,
-			expectedUpdateRevision:  oldRevision,
-			expectedCurrentRevision: oldRevision,
-			expectedPDNum:           1,
+			expectedStatus: task.SComplete,
+			expectedPDNum:  1,
 		},
 		{
 			desc: "version upgrade check",
@@ -94,9 +73,7 @@ func TestTaskUpdater(t *testing.T) {
 				},
 			},
 
-			expectedStatus:          task.SRetry,
-			expectedUpdateRevision:  "aaa-6d4b685647",
-			expectedCurrentRevision: "aaa-6d4b685647",
+			expectedStatus: task.SRetry,
 		},
 		{
 			desc: "1 updated pd with 1 replicas",
@@ -105,15 +82,14 @@ func TestTaskUpdater(t *testing.T) {
 					pdg:     fake.FakeObj[v1alpha1.PDGroup]("aaa"),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
 					pds: []*v1alpha1.PD{
-						fakeAvailablePD("aaa-xxx", fake.FakeObj[v1alpha1.PDGroup]("aaa"), oldRevision),
+						fakeAvailablePD("aaa-xxx", fake.FakeObj[v1alpha1.PDGroup]("aaa"), newRevision),
 					},
+					updateRevision: newRevision,
 				},
 			},
 
-			expectedStatus:          task.SComplete,
-			expectedUpdateRevision:  oldRevision,
-			expectedCurrentRevision: oldRevision,
-			expectedPDNum:           1,
+			expectedStatus: task.SComplete,
+			expectedPDNum:  1,
 		},
 		{
 			desc: "no pds with 2 replicas",
@@ -127,10 +103,8 @@ func TestTaskUpdater(t *testing.T) {
 				},
 			},
 
-			expectedStatus:          task.SComplete,
-			expectedUpdateRevision:  newRevision,
-			expectedCurrentRevision: newRevision,
-			expectedPDNum:           2,
+			expectedStatus: task.SComplete,
+			expectedPDNum:  2,
 		},
 		{
 			desc: "no pds with 2 replicas and call api failed",
@@ -145,9 +119,7 @@ func TestTaskUpdater(t *testing.T) {
 			},
 			unexpectedErr: true,
 
-			expectedStatus:          task.SFail,
-			expectedUpdateRevision:  newRevision,
-			expectedCurrentRevision: newRevision,
+			expectedStatus: task.SFail,
 		},
 		{
 			desc: "1 outdated pd with 2 replicas",
@@ -161,13 +133,12 @@ func TestTaskUpdater(t *testing.T) {
 					pds: []*v1alpha1.PD{
 						fakeAvailablePD("aaa-xxx", fake.FakeObj[v1alpha1.PDGroup]("aaa"), oldRevision),
 					},
+					updateRevision: newRevision,
 				},
 			},
 
-			expectedStatus:          task.SWait,
-			expectedUpdateRevision:  newRevision,
-			expectedCurrentRevision: newRevision,
-			expectedPDNum:           2,
+			expectedStatus: task.SWait,
+			expectedPDNum:  2,
 		},
 		{
 			desc: "1 outdated pd with 2 replicas but cannot call api, will fail",
@@ -181,13 +152,12 @@ func TestTaskUpdater(t *testing.T) {
 					pds: []*v1alpha1.PD{
 						fakeAvailablePD("aaa-xxx", fake.FakeObj[v1alpha1.PDGroup]("aaa"), oldRevision),
 					},
+					updateRevision: newRevision,
 				},
 			},
 			unexpectedErr: true,
 
-			expectedStatus:          task.SFail,
-			expectedUpdateRevision:  newRevision,
-			expectedCurrentRevision: newRevision,
+			expectedStatus: task.SFail,
 		},
 		{
 			desc: "2 updated pd with 2 replicas",
@@ -202,13 +172,12 @@ func TestTaskUpdater(t *testing.T) {
 						fakeAvailablePD("aaa-xxx", fake.FakeObj[v1alpha1.PDGroup]("aaa"), newRevision),
 						fakeAvailablePD("aaa-yyy", fake.FakeObj[v1alpha1.PDGroup]("aaa"), newRevision),
 					},
+					updateRevision: newRevision,
 				},
 			},
 
-			expectedStatus:          task.SComplete,
-			expectedUpdateRevision:  newRevision,
-			expectedCurrentRevision: newRevision,
-			expectedPDNum:           2,
+			expectedStatus: task.SComplete,
+			expectedPDNum:  2,
 		},
 		{
 			desc: "2 updated pd with 2 replicas and cannot call api, can complete",
@@ -223,14 +192,13 @@ func TestTaskUpdater(t *testing.T) {
 						fakeAvailablePD("aaa-xxx", fake.FakeObj[v1alpha1.PDGroup]("aaa"), newRevision),
 						fakeAvailablePD("aaa-yyy", fake.FakeObj[v1alpha1.PDGroup]("aaa"), newRevision),
 					},
+					updateRevision: newRevision,
 				},
 			},
 			unexpectedErr: true,
 
-			expectedStatus:          task.SComplete,
-			expectedUpdateRevision:  newRevision,
-			expectedCurrentRevision: newRevision,
-			expectedPDNum:           2,
+			expectedStatus: task.SComplete,
+			expectedPDNum:  2,
 		},
 		{
 			// NOTE: it not really check whether the policy is worked
@@ -268,10 +236,8 @@ func TestTaskUpdater(t *testing.T) {
 				},
 			},
 
-			expectedStatus:          task.SComplete,
-			expectedUpdateRevision:  "aaa-5cd4fb5cb4",
-			expectedCurrentRevision: "aaa-5cd4fb5cb4",
-			expectedPDNum:           3,
+			expectedStatus: task.SComplete,
+			expectedPDNum:  3,
 		},
 	}
 
@@ -292,11 +258,9 @@ func TestTaskUpdater(t *testing.T) {
 			}
 
 			res, done := task.RunTask(ctx, TaskUpdater(c.state, fc))
-			assert.Equal(tt, c.expectedStatus, res.Status(), c.desc)
+			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
 
-			assert.Equal(tt, c.expectedUpdateRevision, c.state.UpdateRevision, c.desc)
-			assert.Equal(tt, c.expectedCurrentRevision, c.state.CurrentRevision, c.desc)
 			if !c.unexpectedErr {
 				pds := v1alpha1.PDList{}
 				require.NoError(tt, fc.List(ctx, &pds), c.desc)

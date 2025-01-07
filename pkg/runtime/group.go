@@ -19,8 +19,16 @@ import "github.com/pingcap/tidb-operator/pkg/client"
 type Group interface {
 	Object
 
-	SetReplicas(replicas *int32)
-	Replicas() *int32
+	SetReplicas(replicas int32)
+	Replicas() int32
+	Version() string
+
+	SetStatusVersion(version string)
+	StatusVersion() string
+	SetStatusReplicas(replicas, ready, update, current int32)
+	StatusReplicas() (replicas, ready, update, current int32)
+	SetStatusRevision(update, current string, collisionCount *int32)
+	StatusRevision() (update, current string, collisionCount *int32)
 }
 
 type GroupT[T GroupSet] interface {
