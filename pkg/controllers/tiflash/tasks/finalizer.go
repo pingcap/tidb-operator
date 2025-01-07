@@ -24,19 +24,18 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v2"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
 const (
 	removingWaitInterval = 10 * time.Second
 )
 
-func TaskFinalizerDel(c client.Client) task.Task[ReconcileContext] {
-	return task.NameTaskFunc("FinalizerDel", func(ctx task.Context[ReconcileContext]) task.Result {
-		rtx := ctx.Self()
+func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
 		switch {
-		case !rtx.Cluster.GetDeletionTimestamp().IsZero():
-			wait, err := EnsureSubResourcesDeleted(ctx, c, rtx.TiFlash)
+		case !state.Cluster().GetDeletionTimestamp().IsZero():
+			wait, err := EnsureSubResourcesDeleted(ctx, c, state.TiFlash())
 			if err != nil {
 				return task.Fail().With("cannot delete sub resources: %w", err)
 			}
@@ -46,16 +45,16 @@ func TaskFinalizerDel(c client.Client) task.Task[ReconcileContext] {
 			}
 
 			// whole cluster is deleting
-			if err := k8s.RemoveFinalizer(ctx, c, rtx.TiFlash); err != nil {
+			if err := k8s.RemoveFinalizer(ctx, c, state.TiFlash()); err != nil {
 				return task.Fail().With("cannot remove finalizer: %w", err)
 			}
 
-		case rtx.StoreState == v1alpha1.StoreStateRemoving:
+		case state.StoreState == v1alpha1.StoreStateRemoving:
 			// TODO: Complete task and retrigger reconciliation by polling PD
 			return task.Retry(removingWaitInterval).With("wait until the store is removed")
 
-		case rtx.StoreState == v1alpha1.StoreStateRemoved || rtx.StoreID == "":
-			wait, err := EnsureSubResourcesDeleted(ctx, c, rtx.TiFlash)
+		case state.StoreState == v1alpha1.StoreStateRemoved || state.StoreID == "":
+			wait, err := EnsureSubResourcesDeleted(ctx, c, state.TiFlash())
 			if err != nil {
 				return task.Fail().With("cannot delete sub resources: %w", err)
 			}
@@ -65,28 +64,18 @@ func TaskFinalizerDel(c client.Client) task.Task[ReconcileContext] {
 			}
 			// Store ID is empty may because of tiflash is not initialized
 			// TODO: check whether tiflash is initialized
-			if err := k8s.RemoveFinalizer(ctx, c, rtx.TiFlash); err != nil {
+			if err := k8s.RemoveFinalizer(ctx, c, state.TiFlash()); err != nil {
 				return task.Fail().With("cannot remove finalizer: %w", err)
 			}
 		default:
 			// get store info successfully and the store still exists
-			if err := rtx.PDClient.DeleteStore(ctx, rtx.StoreID); err != nil {
-				return task.Fail().With("cannot delete store %s: %v", rtx.StoreID, err)
+			if err := state.PDClient.DeleteStore(ctx, state.StoreID); err != nil {
+				return task.Fail().With("cannot delete store %s: %v", state.StoreID, err)
 			}
 
 			return task.Retry(removingWaitInterval).With("the store is removing")
 		}
 		return task.Complete().With("finalizer is removed")
-	})
-}
-
-func TaskFinalizerAdd(c client.Client) task.Task[ReconcileContext] {
-	return task.NameTaskFunc("FinalizerAdd", func(ctx task.Context[ReconcileContext]) task.Result {
-		rtx := ctx.Self()
-		if err := k8s.EnsureFinalizer(ctx, c, rtx.TiFlash); err != nil {
-			return task.Fail().With("failed to ensure finalizer has been added: %w", err)
-		}
-		return task.Complete().With("finalizer is added")
 	})
 }
 

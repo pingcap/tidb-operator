@@ -27,23 +27,21 @@ type state struct {
 	key types.NamespacedName
 
 	cluster *v1alpha1.Cluster
-	pd      *v1alpha1.PD
+	tiflash *v1alpha1.TiFlash
 	pod     *corev1.Pod
-	pds     []*v1alpha1.PD
 }
 
 type State interface {
-	common.PDStateInitializer
+	common.TiFlashStateInitializer
 	common.ClusterStateInitializer
 	common.PodStateInitializer
-	common.PDSliceStateInitializer
 
-	common.PDState
+	common.TiFlashState
 	common.ClusterState
 	common.PodState
-	common.PDSliceState
 
-	common.InstanceState[*runtime.PD]
+	common.InstanceState[*runtime.TiFlash]
+
 	SetPod(*corev1.Pod)
 }
 
@@ -54,8 +52,8 @@ func NewState(key types.NamespacedName) State {
 	return s
 }
 
-func (s *state) PD() *v1alpha1.PD {
-	return s.pd
+func (s *state) TiFlash() *v1alpha1.TiFlash {
+	return s.tiflash
 }
 
 func (s *state) Cluster() *v1alpha1.Cluster {
@@ -66,20 +64,16 @@ func (s *state) Pod() *corev1.Pod {
 	return s.pod
 }
 
-func (s *state) Instance() *runtime.PD {
-	return runtime.FromPD(s.pd)
+func (s *state) Instance() *runtime.TiFlash {
+	return runtime.FromTiFlash(s.tiflash)
 }
 
 func (s *state) SetPod(pod *corev1.Pod) {
 	s.pod = pod
 }
 
-func (s *state) PDSlice() []*v1alpha1.PD {
-	return s.pds
-}
-
-func (s *state) PDInitializer() common.PDInitializer {
-	return common.NewResource(func(pd *v1alpha1.PD) { s.pd = pd }).
+func (s *state) TiFlashInitializer() common.TiFlashInitializer {
+	return common.NewResource(func(tiflash *v1alpha1.TiFlash) { s.tiflash = tiflash }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithName(common.Name(s.key.Name)).
 		Initializer()
@@ -89,7 +83,7 @@ func (s *state) ClusterInitializer() common.ClusterInitializer {
 	return common.NewResource(func(cluster *v1alpha1.Cluster) { s.cluster = cluster }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithName(common.Lazy[string](func() string {
-			return s.pd.Spec.Cluster.Name
+			return s.tiflash.Spec.Cluster.Name
 		})).
 		Initializer()
 }
@@ -98,20 +92,7 @@ func (s *state) PodInitializer() common.PodInitializer {
 	return common.NewResource(s.SetPod).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithName(common.Lazy[string](func() string {
-			return s.pd.PodName()
-		})).
-		Initializer()
-}
-
-func (s *state) PDSliceInitializer() common.PDSliceInitializer {
-	return common.NewResourceSlice(func(pds []*v1alpha1.PD) { s.pds = pds }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithLabels(common.LabelsFunc(func() map[string]string {
-			return map[string]string{
-				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
-				v1alpha1.LabelKeyCluster:   s.cluster.Name,
-			}
+			return s.tiflash.PodName()
 		})).
 		Initializer()
 }

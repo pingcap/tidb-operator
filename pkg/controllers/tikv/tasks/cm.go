@@ -15,7 +15,8 @@
 package tasks
 
 import (
-	"github.com/go-logr/logr"
+	"context"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -24,52 +25,36 @@ import (
 	tikvcfg "github.com/pingcap/tidb-operator/pkg/configs/tikv"
 	"github.com/pingcap/tidb-operator/pkg/utils/hasher"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v2"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/utils/toml"
 )
 
-type TaskConfigMap struct {
-	Client client.Client
-	Logger logr.Logger
-}
+func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("ConfigMap", func(ctx context.Context) task.Result {
+		cfg := tikvcfg.Config{}
+		decoder, encoder := toml.Codec[tikvcfg.Config]()
+		if err := decoder.Decode([]byte(state.TiKV().Spec.Config), &cfg); err != nil {
+			return task.Fail().With("tikv config cannot be decoded: %w", err)
+		}
+		if err := cfg.Overlay(state.Cluster(), state.TiKV()); err != nil {
+			return task.Fail().With("cannot generate tikv config: %w", err)
+		}
 
-func NewTaskConfigMap(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
-	return &TaskConfigMap{
-		Client: c,
-		Logger: logger,
-	}
-}
+		data, err := encoder.Encode(&cfg)
+		if err != nil {
+			return task.Fail().With("tikv config cannot be encoded: %w", err)
+		}
 
-func (*TaskConfigMap) Name() string {
-	return "ConfigMap"
-}
-
-func (t *TaskConfigMap) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
-
-	c := tikvcfg.Config{}
-	decoder, encoder := toml.Codec[tikvcfg.Config]()
-	if err := decoder.Decode([]byte(rtx.TiKV.Spec.Config), &c); err != nil {
-		return task.Fail().With("tikv config cannot be decoded: %w", err)
-	}
-	if err := c.Overlay(rtx.Cluster, rtx.TiKV); err != nil {
-		return task.Fail().With("cannot generate tikv config: %w", err)
-	}
-
-	data, err := encoder.Encode(&c)
-	if err != nil {
-		return task.Fail().With("tikv config cannot be encoded: %w", err)
-	}
-
-	rtx.ConfigHash, err = hasher.GenerateHash(rtx.TiKV.Spec.Config)
-	if err != nil {
-		return task.Fail().With("failed to generate hash for `tikv.spec.config`: %w", err)
-	}
-	expected := newConfigMap(rtx.TiKV, data, rtx.ConfigHash)
-	if e := t.Client.Apply(rtx, expected); e != nil {
-		return task.Fail().With("can't create/update cm of tikv: %w", e)
-	}
-	return task.Complete().With("cm is synced")
+		state.ConfigHash, err = hasher.GenerateHash(state.TiKV().Spec.Config)
+		if err != nil {
+			return task.Fail().With("failed to generate hash for `tikv.spec.config`: %w", err)
+		}
+		expected := newConfigMap(state.TiKV(), data, state.ConfigHash)
+		if e := c.Apply(ctx, expected); e != nil {
+			return task.Fail().With("can't create/update cm of tikv: %w", e)
+		}
+		return task.Complete().With("cm is synced")
+	})
 }
 
 func newConfigMap(tikv *v1alpha1.TiKV, data []byte, hash string) *corev1.ConfigMap {

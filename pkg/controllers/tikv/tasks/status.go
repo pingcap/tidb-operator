@@ -15,173 +15,103 @@
 package tasks
 
 import (
+	"context"
 	"time"
 
-	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v2"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
 
-func TaskStatusSuspend(c client.Client) task.Task[ReconcileContext] {
-	return task.NameTaskFunc("StatusSuspend", func(ctx task.Context[ReconcileContext]) task.Result {
-		rtx := ctx.Self()
-		rtx.TiKV.Status.ObservedGeneration = rtx.TiKV.Generation
+const (
+	defaultTaskWaitDuration = 5 * time.Second
+)
 
-		var (
-			suspendStatus  = metav1.ConditionFalse
-			suspendMessage = "tikv is suspending"
-
-			// when suspending, the health status should be false
-			healthStatus  = metav1.ConditionFalse
-			healthMessage = "tikv is not healthy"
-		)
-
-		if rtx.Pod == nil {
-			suspendStatus = metav1.ConditionTrue
-			suspendMessage = "tikv is suspended"
+// TODO(liubo02): extract to common task
+//
+//nolint:gocyclo // refactor is possible
+func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("Status", func(ctx context.Context) task.Result {
+		needUpdate := false
+		tikv := state.TiKV()
+		pod := state.Pod()
+		// TODO(liubo02): simplify it
+		var healthy bool
+		if pod != nil &&
+			statefulset.IsPodRunningAndReady(pod) &&
+			!state.PodIsTerminating &&
+			state.Store.NodeState == v1alpha1.StoreStateServing {
+			healthy = true
 		}
-		needUpdate := meta.SetStatusCondition(&rtx.TiKV.Status.Conditions, metav1.Condition{
-			Type:               v1alpha1.TiKVCondSuspended,
-			Status:             suspendStatus,
-			ObservedGeneration: rtx.TiKV.Generation,
-			// TODO: use different reason for suspending and suspended
-			Reason:  v1alpha1.TiKVSuspendReason,
-			Message: suspendMessage,
-		})
+		needUpdate = syncHealthCond(tikv, healthy) || needUpdate
+		needUpdate = syncSuspendCond(tikv) || needUpdate
+		needUpdate = syncLeadersEvictedCond(tikv, state.Store, state.LeaderEvicting) || needUpdate
+		needUpdate = SetIfChanged(&tikv.Status.ID, state.StoreID) || needUpdate
+		needUpdate = SetIfChanged(&tikv.Status.State, state.StoreState) || needUpdate
 
-		needUpdate = meta.SetStatusCondition(&rtx.TiKV.Status.Conditions, metav1.Condition{
-			Type:               v1alpha1.TiKVCondHealth,
-			Status:             healthStatus,
-			ObservedGeneration: rtx.TiKV.Generation,
-			Reason:             v1alpha1.TiKVHealthReason,
-			Message:            healthMessage,
-		}) || needUpdate
+		needUpdate = SetIfChanged(&tikv.Status.ObservedGeneration, tikv.Generation) || needUpdate
+		needUpdate = SetIfChanged(&tikv.Status.UpdateRevision, tikv.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+
+		if healthy {
+			needUpdate = SetIfChanged(&tikv.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+		}
 
 		if needUpdate {
-			if err := c.Status().Update(ctx, rtx.TiKV); err != nil {
+			if err := c.Status().Update(ctx, tikv); err != nil {
 				return task.Fail().With("cannot update status: %w", err)
 			}
 		}
 
-		return task.Complete().With("status of suspend tikv is updated")
+		// TODO: use a condition to refactor it
+		if tikv.Status.ID == "" || tikv.Status.State != v1alpha1.StoreStateServing || !v1alpha1.IsUpToDate(tikv) {
+			// can we only rely on the PD member events for this condition?
+			// TODO(liubo02): change to task.Wait
+			return task.Retry(defaultTaskWaitDuration).With("tikv may not be initialized, retry")
+		}
+
+		return task.Complete().With("status is synced")
 	})
 }
 
-type TaskStatus struct {
-	Client client.Client
-	Logger logr.Logger
-}
-
-func NewTaskStatus(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
-	return &TaskStatus{
-		Client: c,
-		Logger: logger,
-	}
-}
-
-func (*TaskStatus) Name() string {
-	return "Status"
-}
-
-//nolint:gocyclo // refactor is possible
-func (t *TaskStatus) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
-
+func syncHealthCond(tikv *v1alpha1.TiKV, healthy bool) bool {
 	var (
-		healthStatus  = metav1.ConditionFalse
-		healthMessage = "tikv is not healthy"
-
-		suspendStatus  = metav1.ConditionFalse
-		suspendMessage = "tikv is not suspended"
-
-		needUpdate = false
+		status = metav1.ConditionFalse
+		reason = "Unhealthy"
+		msg    = "instance is not healthy"
 	)
-
-	if rtx.StoreID != "" {
-		if rtx.TiKV.Status.ID != rtx.StoreID {
-			rtx.TiKV.Status.ID = rtx.StoreID
-			needUpdate = true
-		}
-
-		info, err := rtx.PDClient.GetStore(ctx, rtx.StoreID)
-		if err == nil && info != nil && info.Store != nil {
-			rtx.StoreState = info.Store.NodeState.String()
-		} else {
-			t.Logger.Error(err, "failed to get tikv store info", "store", rtx.StoreID)
-		}
-	}
-	if rtx.StoreState != "" && rtx.TiKV.Status.State != rtx.StoreState {
-		rtx.TiKV.Status.State = rtx.StoreState
-		needUpdate = true
+	if healthy {
+		status = metav1.ConditionTrue
+		reason = "Healthy"
+		msg = "instance is healthy"
 	}
 
-	needUpdate = meta.SetStatusCondition(&rtx.TiKV.Status.Conditions, metav1.Condition{
-		Type:               v1alpha1.TiKVCondSuspended,
-		Status:             suspendStatus,
-		ObservedGeneration: rtx.TiKV.Generation,
-		Reason:             v1alpha1.TiKVSuspendReason,
-		Message:            suspendMessage,
-	}) || needUpdate
+	return meta.SetStatusCondition(&tikv.Status.Conditions, metav1.Condition{
+		Type:               v1alpha1.CondHealth,
+		Status:             status,
+		ObservedGeneration: tikv.Generation,
+		Reason:             reason,
+		Message:            msg,
+	})
+}
 
-	if needUpdate || !v1alpha1.IsReconciled(rtx.TiKV) ||
-		rtx.TiKV.Status.UpdateRevision != rtx.TiKV.Labels[v1alpha1.LabelKeyInstanceRevisionHash] {
-		rtx.TiKV.Status.ObservedGeneration = rtx.TiKV.Generation
-		rtx.TiKV.Status.UpdateRevision = rtx.TiKV.Labels[v1alpha1.LabelKeyInstanceRevisionHash]
-		needUpdate = true
-	}
-
-	if rtx.Pod == nil || rtx.PodIsTerminating {
-		rtx.Healthy = false
-	} else if statefulset.IsPodRunningAndReady(rtx.Pod) && rtx.StoreState == v1alpha1.StoreStateServing {
-		rtx.Healthy = true
-		if rtx.TiKV.Status.CurrentRevision != rtx.Pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash] {
-			rtx.TiKV.Status.CurrentRevision = rtx.Pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]
-			needUpdate = true
-		}
-	} else {
-		rtx.Healthy = false
-	}
-
-	if rtx.Healthy {
-		healthStatus = metav1.ConditionTrue
-		healthMessage = "tikv is healthy"
-	}
-	needUpdate = meta.SetStatusCondition(&rtx.TiKV.Status.Conditions, metav1.Condition{
-		Type:               v1alpha1.TiKVCondHealth,
-		Status:             healthStatus,
-		ObservedGeneration: rtx.TiKV.Generation,
-		Reason:             v1alpha1.TiKVHealthReason,
-		Message:            healthMessage,
-	}) || needUpdate
-
-	if t.syncLeadersEvictedCond(rtx.TiKV, rtx.Store, rtx.LeaderEvicting) {
-		needUpdate = true
-	}
-
-	if needUpdate {
-		if err := t.Client.Status().Update(ctx, rtx.TiKV); err != nil {
-			return task.Fail().With("cannot update status: %w", err)
-		}
-	}
-
-	// TODO: use a condition to refactor it
-	if rtx.TiKV.Status.ID == "" || rtx.TiKV.Status.State != v1alpha1.StoreStateServing || !v1alpha1.IsUpToDate(rtx.TiKV) {
-		// can we only rely on the PD member events for this condition?
-		//nolint:mnd // refactor to use a constant
-		return task.Retry(5 * time.Second).With("tikv may not be initialized, retry")
-	}
-
-	return task.Complete().With("status is synced")
+func syncSuspendCond(tikv *v1alpha1.TiKV) bool {
+	// always set it as unsuspended
+	return meta.SetStatusCondition(&tikv.Status.Conditions, metav1.Condition{
+		Type:               v1alpha1.CondSuspended,
+		Status:             metav1.ConditionFalse,
+		ObservedGeneration: tikv.Generation,
+		Reason:             v1alpha1.ReasonUnsuspended,
+		Message:            "instace is not suspended",
+	})
 }
 
 // Status of this condition can only transfer as the below
-func (*TaskStatus) syncLeadersEvictedCond(tikv *v1alpha1.TiKV, store *pdv1.Store, isEvicting bool) bool {
+func syncLeadersEvictedCond(tikv *v1alpha1.TiKV, store *pdv1.Store, isEvicting bool) bool {
 	status := metav1.ConditionFalse
 	reason := "NotEvicted"
 	msg := "leaders are not all evicted"
@@ -203,4 +133,17 @@ func (*TaskStatus) syncLeadersEvictedCond(tikv *v1alpha1.TiKV, store *pdv1.Store
 		Reason:             reason,
 		Message:            msg,
 	})
+}
+
+// TODO: move to utils
+func SetIfChanged[T comparable](dst *T, src T) bool {
+	if src == *new(T) {
+		return false
+	}
+	if *dst != src {
+		*dst = src
+		return true
+	}
+
+	return false
 }

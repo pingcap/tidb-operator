@@ -17,6 +17,7 @@ package pd
 import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/controllers/pd/tasks"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -45,8 +46,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(
 			common.CondClusterIsSuspending(state),
 			common.TaskSuspendPod(state, r.Client),
-			// TODO: extract as a common task
-			tasks.TaskStatusSuspend(state, r.Client),
+			common.TaskInstanceStatusSuspend[runtime.PDTuple](state, r.Client),
 		),
 
 		common.TaskContextPDSlice(state, r.Client),

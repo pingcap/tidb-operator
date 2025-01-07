@@ -15,12 +15,14 @@
 package tasks
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 
-	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/go-logr/logr"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
@@ -29,78 +31,49 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/overlay"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v2"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-func TaskPodSuspend(c client.Client) task.Task[ReconcileContext] {
-	return task.NameTaskFunc("PodSuspend", func(ctx task.Context[ReconcileContext]) task.Result {
-		rtx := ctx.Self()
-		if rtx.Pod == nil {
-			return task.Complete().With("pod has been deleted")
+func TaskPod(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
+		logger := logr.FromContextOrDiscard(ctx)
+		expected := newPod(state.Cluster(), state.TiFlash(), state.ConfigHash)
+		if state.Pod() == nil {
+			if err := c.Apply(ctx, expected); err != nil {
+				return task.Fail().With("can't apply pod of tiflash: %w", err)
+			}
+
+			state.SetPod(expected)
+			return task.Complete().With("pod is created")
 		}
-		if err := c.Delete(rtx, rtx.Pod); err != nil {
-			return task.Fail().With("can't delete pod of pd: %w", err)
+
+		res := k8s.ComparePods(state.Pod(), expected)
+		curHash, expectHash := state.Pod().Labels[v1alpha1.LabelKeyConfigHash], expected.Labels[v1alpha1.LabelKeyConfigHash]
+		configChanged := curHash != expectHash
+		logger.Info("compare pod", "result", res, "configChanged", configChanged, "currentConfigHash", curHash, "expectConfigHash", expectHash)
+
+		if res == k8s.CompareResultRecreate || (configChanged &&
+			state.TiFlash().Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart) {
+			logger.Info("will recreate the pod")
+			if err := c.Delete(ctx, state.Pod()); err != nil {
+				return task.Fail().With("can't delete pod of tiflash: %w", err)
+			}
+
+			state.PodIsTerminating = true
+			return task.Complete().With("pod is deleting")
+		} else if res == k8s.CompareResultUpdate {
+			logger.Info("will update the pod in place")
+			if err := c.Apply(ctx, expected); err != nil {
+				return task.Fail().With("can't apply pod of tiflash: %w", err)
+			}
+			state.SetPod(expected)
 		}
-		rtx.PodIsTerminating = true
-		return task.Wait().With("pod is deleting")
+
+		return task.Complete().With("pod is synced")
 	})
 }
 
-type TaskPod struct {
-	Client client.Client
-	Logger logr.Logger
-}
-
-func NewTaskPod(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
-	return &TaskPod{
-		Client: c,
-		Logger: logger,
-	}
-}
-
-func (*TaskPod) Name() string {
-	return "Pod"
-}
-
-func (t *TaskPod) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
-
-	expected := t.newPod(rtx.Cluster, rtx.TiFlash, rtx.ConfigHash)
-	if rtx.Pod == nil {
-		if err := t.Client.Apply(rtx, expected); err != nil {
-			return task.Fail().With("can't apply pod of tiflash: %w", err)
-		}
-
-		rtx.Pod = expected
-		return task.Complete().With("pod is created")
-	}
-
-	res := k8s.ComparePods(rtx.Pod, expected)
-	curHash, expectHash := rtx.Pod.Labels[v1alpha1.LabelKeyConfigHash], expected.Labels[v1alpha1.LabelKeyConfigHash]
-	configChanged := curHash != expectHash
-	t.Logger.Info("compare pod", "result", res, "configChanged", configChanged, "currentConfigHash", curHash, "expectConfigHash", expectHash)
-
-	if res == k8s.CompareResultRecreate || (configChanged &&
-		rtx.TiFlash.Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart) {
-		t.Logger.Info("will recreate the pod")
-		if err := t.Client.Delete(rtx, rtx.Pod); err != nil {
-			return task.Fail().With("can't delete pod of tiflash: %w", err)
-		}
-
-		rtx.PodIsTerminating = true
-		return task.Complete().With("pod is deleting")
-	} else if res == k8s.CompareResultUpdate {
-		t.Logger.Info("will update the pod in place")
-		if err := t.Client.Apply(rtx, expected); err != nil {
-			return task.Fail().With("can't apply pod of tiflash: %w", err)
-		}
-		rtx.Pod = expected
-	}
-
-	return task.Complete().With("pod is synced")
-}
-
-func (*TaskPod) newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, configHash string) *corev1.Pod {
+func newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, configHash string) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,

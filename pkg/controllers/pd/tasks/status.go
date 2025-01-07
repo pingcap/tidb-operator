@@ -28,48 +28,6 @@ import (
 	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
 
-func TaskStatusSuspend(state *ReconcileContext, c client.Client) task.Task {
-	return task.NameTaskFunc("StatusSuspend", func(ctx context.Context) task.Result {
-		state.PD().Status.ObservedGeneration = state.PD().Generation
-		var (
-			suspendStatus  = metav1.ConditionFalse
-			suspendMessage = "pd is suspending"
-
-			// when suspending, the health status should be false
-			healthStatus  = metav1.ConditionFalse
-			healthMessage = "pd is not healthy"
-		)
-
-		if state.Pod() == nil {
-			suspendStatus = metav1.ConditionTrue
-			suspendMessage = "pd is suspended"
-		}
-		needUpdate := meta.SetStatusCondition(&state.PD().Status.Conditions, metav1.Condition{
-			Type:               v1alpha1.PDCondSuspended,
-			Status:             suspendStatus,
-			ObservedGeneration: state.PD().Generation,
-			// TODO: use different reason for suspending and suspended
-			Reason:  v1alpha1.PDSuspendReason,
-			Message: suspendMessage,
-		})
-
-		needUpdate = meta.SetStatusCondition(&state.PD().Status.Conditions, metav1.Condition{
-			Type:               v1alpha1.PDCondHealth,
-			Status:             healthStatus,
-			ObservedGeneration: state.PD().Generation,
-			Reason:             v1alpha1.PDHealthReason,
-			Message:            healthMessage,
-		}) || needUpdate
-		if needUpdate {
-			if err := c.Status().Update(ctx, state.PD()); err != nil {
-				return task.Fail().With("cannot update status: %v", err)
-			}
-		}
-
-		return task.Complete().With("status of suspend pd is updated")
-	})
-}
-
 func TaskStatusUnknown() task.Task {
 	return task.NameTaskFunc("StatusUnknown", func(_ context.Context) task.Result {
 		return task.Wait().With("status of the pd is unknown")

@@ -54,3 +54,15 @@ func CondGroupHasBeenDeleted[RG runtime.GroupT[G], G runtime.GroupSet](state Gro
 		return state.Group() == nil
 	})
 }
+
+func CondInstanceIsDeleting[I runtime.Instance](state InstanceState[I]) task.Condition {
+	return task.CondFunc(func() bool {
+		return !state.Instance().GetDeletionTimestamp().IsZero()
+	})
+}
+
+func CondInstanceHasBeenDeleted[RI runtime.InstanceT[I], I runtime.InstanceSet](state InstanceState[RI]) task.Condition {
+	return task.CondFunc(func() bool {
+		return state.Instance() == nil
+	})
+}
