@@ -2592,10 +2592,15 @@ type BackupScheduleStatus struct {
 	LastBackup string `json:"lastBackup,omitempty"`
 	// logBackup represents the name of log backup.
 	LogBackup *string `json:"logBackup,omitempty"`
+	// LogBackupStartTs represents the start time of log backup
+	LogBackupStartTs *metav1.Time `json:"logBackupStartTs,omitempty"`
 	// LastBackupTime represents the last time the backup was successfully created.
 	LastBackupTime *metav1.Time `json:"lastBackupTime,omitempty"`
-	// LastCompactTime represents the time when the last backup was compacted
+	// LastCompactTime represents the time when the last compact was compacted
 	LastCompactTime *metav1.Time `json:"lastCompactTime,omitempty"`
+	// NextBackupTime represents the time when the next compact will be scheduled, it should
+	// equal to a passed lastBackupTime
+	NextCompactTime *metav1.Time `json:"nextCompactTime,omitempty"`
 	// AllBackupCleanTime represents the time when all backup entries are cleaned up
 	AllBackupCleanTime *metav1.Time `json:"allBackupCleanTime,omitempty"`
 }
