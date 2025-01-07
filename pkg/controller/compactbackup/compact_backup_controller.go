@@ -539,7 +539,7 @@ func (c *Controller) allowCompact(compact *v1alpha1.CompactBackup) bool {
 	}
 
 	attempts := len(compact.Status.RetryStatus)
-	if attempts > 0 {
+	if attempts > 0 && attempts <= int(compact.Spec.MaxRetryTimes) {
 		lastRetry := compact.Status.RetryStatus[attempts-1]
 		backoff := expBackoff(attempts)
 		if time.Since(lastRetry.DetectFailedAt.Time) < backoff {
