@@ -98,6 +98,21 @@ func TaskContextPD(state PDStateInitializer, c client.Client) task.Task {
 	return taskContextResource("PD", w, c, false)
 }
 
+func TaskContextTiKV(state TiKVStateInitializer, c client.Client) task.Task {
+	w := state.TiKVInitializer()
+	return taskContextResource("TiKV", w, c, false)
+}
+
+func TaskContextTiDB(state TiDBStateInitializer, c client.Client) task.Task {
+	w := state.TiDBInitializer()
+	return taskContextResource("TiDB", w, c, false)
+}
+
+func TaskContextTiFlash(state TiFlashStateInitializer, c client.Client) task.Task {
+	w := state.TiFlashInitializer()
+	return taskContextResource("TiFlash", w, c, false)
+}
+
 func TaskContextCluster(state ClusterStateInitializer, c client.Client) task.Task {
 	w := state.ClusterInitializer()
 	return taskContextResource("Cluster", w, c, true)

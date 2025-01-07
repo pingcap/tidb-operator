@@ -15,45 +15,49 @@
 package tikv
 
 import (
+	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tikv/tasks"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v2"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-func (r *Reconciler) NewRunner(reporter task.TaskReporter) task.TaskRunner[tasks.ReconcileContext] {
+func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.TaskReporter) task.TaskRunner {
 	runner := task.NewTaskRunner(reporter,
 		// get tikv
-		tasks.TaskContextTiKV(r.Client),
+		common.TaskContextTiKV(state, r.Client),
 		// if it's deleted just return
-		task.NewSwitchTask(tasks.CondTiKVHasBeenDeleted()),
+		task.IfBreak(common.CondInstanceHasBeenDeleted(state)),
 
 		// get cluster info, FinalizerDel will use it
-		tasks.TaskContextCluster(r.Client),
-		// get info from pd
-		tasks.TaskContextInfoFromPD(r.PDClientManager),
-
-		task.NewSwitchTask(tasks.CondTiKVIsDeleting(),
-			tasks.TaskFinalizerDel(r.Client),
-		),
+		common.TaskContextCluster(state, r.Client),
 
 		// check whether it's paused
-		task.NewSwitchTask(tasks.CondClusterIsPaused()),
+		task.IfBreak(common.CondClusterIsPaused(state)),
+
+		// get info from pd
+		tasks.TaskContextInfoFromPD(state, r.PDClientManager),
+
+		task.IfBreak(common.CondInstanceIsDeleting(state),
+			tasks.TaskFinalizerDel(state, r.Client),
+		),
+		common.TaskInstanceFinalizerAdd[runtime.TiKVTuple](state, r.Client),
 
 		// get pod and check whether the cluster is suspending
-		tasks.TaskContextPod(r.Client),
-		task.NewSwitchTask(tasks.CondClusterIsSuspending(),
-			tasks.TaskFinalizerAdd(r.Client),
-			tasks.TaskPodSuspend(r.Client),
-			tasks.TaskStatusSuspend(r.Client),
+		common.TaskContextPod(state, r.Client),
+		task.IfBreak(common.CondClusterIsSuspending(state),
+			// NOTE: suspend tikv pod should delete with grace peroid
+			// TODO(liubo02): combine with the common one
+			tasks.TaskSuspendPod(state, r.Client),
+			common.TaskInstanceStatusSuspend[runtime.TiKVTuple](state, r.Client),
 		),
 
 		// normal process
-		tasks.TaskFinalizerAdd(r.Client),
-		tasks.NewTaskConfigMap(r.Logger, r.Client),
-		tasks.NewTaskPVC(r.Logger, r.Client, r.VolumeModifier),
-		tasks.NewTaskPod(r.Logger, r.Client),
-		tasks.NewTaskStoreLabels(r.Logger, r.Client),
-		tasks.NewTaskEvictLeader(r.Logger, r.Client),
-		tasks.NewTaskStatus(r.Logger, r.Client),
+		tasks.TaskConfigMap(state, r.Client),
+		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifier),
+		tasks.TaskPod(state, r.Client),
+		tasks.TaskStoreLabels(state, r.Client),
+		tasks.TaskEvictLeader(state),
+		tasks.TaskStatus(state, r.Client),
 	)
 
 	return runner

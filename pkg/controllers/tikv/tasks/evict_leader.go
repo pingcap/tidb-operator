@@ -15,47 +15,30 @@
 package tasks
 
 import (
-	"github.com/go-logr/logr"
+	"context"
 
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v2"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-type TaskEvictLeader struct {
-	Client client.Client
-	Logger logr.Logger
-}
-
-func NewTaskEvictLeader(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
-	return &TaskEvictLeader{
-		Client: c,
-		Logger: logger,
-	}
-}
-
-func (*TaskEvictLeader) Name() string {
-	return "EvictLeader"
-}
-
-func (*TaskEvictLeader) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
-
-	switch {
-	case rtx.Store == nil:
-		return task.Complete().With("store has been deleted or not created")
-	case rtx.PodIsTerminating:
-		if !rtx.LeaderEvicting {
-			if err := rtx.PDClient.BeginEvictLeader(ctx, rtx.StoreID); err != nil {
-				return task.Fail().With("cannot add evict leader scheduler: %v", err)
+func TaskEvictLeader(state *ReconcileContext) task.Task {
+	return task.NameTaskFunc("EvictLeader", func(ctx context.Context) task.Result {
+		switch {
+		case state.Store == nil:
+			return task.Complete().With("store has been deleted or not created")
+		case state.PodIsTerminating:
+			if !state.LeaderEvicting {
+				if err := state.PDClient.BeginEvictLeader(ctx, state.StoreID); err != nil {
+					return task.Fail().With("cannot add evict leader scheduler: %v", err)
+				}
 			}
-		}
-		return task.Complete().With("ensure evict leader scheduler exists")
-	default:
-		if rtx.LeaderEvicting {
-			if err := rtx.PDClient.EndEvictLeader(ctx, rtx.StoreID); err != nil {
-				return task.Fail().With("cannot remove evict leader scheduler: %v", err)
+			return task.Complete().With("ensure evict leader scheduler exists")
+		default:
+			if state.LeaderEvicting {
+				if err := state.PDClient.EndEvictLeader(ctx, state.StoreID); err != nil {
+					return task.Fail().With("cannot remove evict leader scheduler: %v", err)
+				}
 			}
+			return task.Complete().With("ensure evict leader scheduler doesn't exist")
 		}
-		return task.Complete().With("ensure evict leader scheduler doesn't exist")
-	}
+	})
 }

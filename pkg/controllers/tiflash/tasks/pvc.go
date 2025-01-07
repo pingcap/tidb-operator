@@ -15,46 +15,31 @@
 package tasks
 
 import (
-	"github.com/go-logr/logr"
+	"context"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/go-logr/logr"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v2"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/volumes"
 )
 
-type TaskPVC struct {
-	Client         client.Client
-	Logger         logr.Logger
-	VolumeModifier volumes.Modifier
-}
+func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm volumes.Modifier) task.Task {
+	return task.NameTaskFunc("PVC", func(ctx context.Context) task.Result {
+		pvcs := newPVCs(state.TiFlash())
+		if wait, err := volumes.SyncPVCs(ctx, c, pvcs, vm, logger); err != nil {
+			return task.Fail().With("failed to sync pvcs: %w", err)
+		} else if wait {
+			return task.Wait().With("waiting for pvcs to be synced")
+		}
 
-func NewTaskPVC(logger logr.Logger, c client.Client, vm volumes.Modifier) task.Task[ReconcileContext] {
-	return &TaskPVC{
-		Client:         c,
-		Logger:         logger,
-		VolumeModifier: vm,
-	}
-}
-
-func (*TaskPVC) Name() string {
-	return "PVC"
-}
-
-func (t *TaskPVC) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
-
-	pvcs := newPVCs(rtx.TiFlash)
-	if wait, err := volumes.SyncPVCs(rtx, t.Client, pvcs, t.VolumeModifier, t.Logger); err != nil {
-		return task.Fail().With("failed to sync pvcs: %w", err)
-	} else if wait {
-		return task.Wait().With("waiting for pvcs to be synced")
-	}
-
-	return task.Complete().With("pvcs are synced")
+		return task.Complete().With("pvcs are synced")
+	})
 }
 
 func newPVCs(tiflash *v1alpha1.TiFlash) []*corev1.PersistentVolumeClaim {

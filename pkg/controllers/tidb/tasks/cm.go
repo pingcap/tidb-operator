@@ -15,7 +15,8 @@
 package tasks
 
 import (
-	"github.com/go-logr/logr"
+	"context"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -24,53 +25,39 @@ import (
 	tidbcfg "github.com/pingcap/tidb-operator/pkg/configs/tidb"
 	"github.com/pingcap/tidb-operator/pkg/utils/hasher"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v2"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/utils/toml"
 )
 
-type TaskConfigMap struct {
-	Client client.Client
-	Logger logr.Logger
-}
+func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("ConfigMap", func(ctx context.Context) task.Result {
+		cfg := tidbcfg.Config{}
+		decoder, encoder := toml.Codec[tidbcfg.Config]()
+		if err := decoder.Decode([]byte(state.TiDB().Spec.Config), &cfg); err != nil {
+			return task.Fail().With("tidb config cannot be decoded: %w", err)
+		}
+		if err := cfg.Overlay(state.Cluster(), state.TiDB()); err != nil {
+			return task.Fail().With("cannot generate tidb config: %w", err)
+		}
+		// NOTE(liubo02): don't use val in config file to generate pod
+		// TODO(liubo02): add a new field in api to control both config file and pod spec
+		state.GracefulWaitTimeInSeconds = int64(cfg.GracefulWaitBeforeShutdown)
 
-func NewTaskConfigMap(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
-	return &TaskConfigMap{
-		Client: c,
-		Logger: logger,
-	}
-}
+		data, err := encoder.Encode(&cfg)
+		if err != nil {
+			return task.Fail().With("tidb config cannot be encoded: %w", err)
+		}
 
-func (*TaskConfigMap) Name() string {
-	return "ConfigMap"
-}
-
-func (t *TaskConfigMap) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
-
-	c := tidbcfg.Config{}
-	decoder, encoder := toml.Codec[tidbcfg.Config]()
-	if err := decoder.Decode([]byte(rtx.TiDB.Spec.Config), &c); err != nil {
-		return task.Fail().With("tidb config cannot be decoded: %w", err)
-	}
-	if err := c.Overlay(rtx.Cluster, rtx.TiDB); err != nil {
-		return task.Fail().With("cannot generate tidb config: %w", err)
-	}
-	rtx.GracefulWaitTimeInSeconds = int64(c.GracefulWaitBeforeShutdown)
-
-	data, err := encoder.Encode(&c)
-	if err != nil {
-		return task.Fail().With("tidb config cannot be encoded: %w", err)
-	}
-
-	rtx.ConfigHash, err = hasher.GenerateHash(rtx.TiDB.Spec.Config)
-	if err != nil {
-		return task.Fail().With("failed to generate hash for `tidb.spec.config`: %w", err)
-	}
-	expected := newConfigMap(rtx.TiDB, data, rtx.ConfigHash)
-	if e := t.Client.Apply(rtx, expected); e != nil {
-		return task.Fail().With("can't create/update cm of tidb: %w", e)
-	}
-	return task.Complete().With("cm is synced")
+		state.ConfigHash, err = hasher.GenerateHash(state.TiDB().Spec.Config)
+		if err != nil {
+			return task.Fail().With("failed to generate hash for `tidb.spec.config`: %w", err)
+		}
+		expected := newConfigMap(state.TiDB(), data, state.ConfigHash)
+		if e := c.Apply(ctx, expected); e != nil {
+			return task.Fail().With("can't create/update cm of tidb: %w", e)
+		}
+		return task.Complete().With("cm is synced")
+	})
 }
 
 func newConfigMap(tidb *v1alpha1.TiDB, data []byte, hash string) *corev1.ConfigMap {

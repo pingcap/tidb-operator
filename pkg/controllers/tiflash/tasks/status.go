@@ -15,158 +15,108 @@
 package tasks
 
 import (
-	"github.com/go-logr/logr"
+	"context"
+	"time"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v2"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
 
-func TaskStatusSuspend(c client.Client) task.Task[ReconcileContext] {
-	return task.NameTaskFunc("StatusSuspend", func(ctx task.Context[ReconcileContext]) task.Result {
-		rtx := ctx.Self()
-		rtx.TiFlash.Status.ObservedGeneration = rtx.TiFlash.Generation
+const (
+	defaultTaskWaitDuration = 5 * time.Second
+)
 
-		var (
-			suspendStatus  = metav1.ConditionFalse
-			suspendMessage = "tiflash is suspending"
-
-			// when suspending, the health status should be false
-			healthStatus  = metav1.ConditionFalse
-			healthMessage = "tiflash is not healthy"
-		)
-
-		if rtx.Pod == nil {
-			suspendStatus = metav1.ConditionTrue
-			suspendMessage = "tiflash is suspended"
+// TODO(liubo02): extract to common task
+//
+//nolint:gocyclo // refactor is possible
+func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("Status", func(ctx context.Context) task.Result {
+		needUpdate := false
+		tiflash := state.TiFlash()
+		pod := state.Pod()
+		// TODO(liubo02): simplify it
+		var healthy bool
+		if pod != nil &&
+			statefulset.IsPodRunningAndReady(pod) &&
+			!state.PodIsTerminating &&
+			state.Store.NodeState == v1alpha1.StoreStateServing {
+			healthy = true
 		}
-		needUpdate := meta.SetStatusCondition(&rtx.TiFlash.Status.Conditions, metav1.Condition{
-			Type:               v1alpha1.TiFlashCondSuspended,
-			Status:             suspendStatus,
-			ObservedGeneration: rtx.TiFlash.Generation,
-			// TODO: use different reason for suspending and suspended
-			Reason:  v1alpha1.TiFlashSuspendReason,
-			Message: suspendMessage,
-		})
+		needUpdate = syncHealthCond(tiflash, healthy) || needUpdate
+		needUpdate = syncSuspendCond(tiflash) || needUpdate
+		needUpdate = SetIfChanged(&tiflash.Status.ID, state.StoreID) || needUpdate
+		needUpdate = SetIfChanged(&tiflash.Status.State, state.StoreState) || needUpdate
 
-		needUpdate = meta.SetStatusCondition(&rtx.TiFlash.Status.Conditions, metav1.Condition{
-			Type:               v1alpha1.TiFlashCondHealth,
-			Status:             healthStatus,
-			ObservedGeneration: rtx.TiFlash.Generation,
-			Reason:             v1alpha1.TiFlashHealthReason,
-			Message:            healthMessage,
-		}) || needUpdate
+		needUpdate = SetIfChanged(&tiflash.Status.ObservedGeneration, tiflash.Generation) || needUpdate
+		needUpdate = SetIfChanged(&tiflash.Status.UpdateRevision, tiflash.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+
+		if healthy {
+			needUpdate = SetIfChanged(&tiflash.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+		}
 
 		if needUpdate {
-			if err := c.Status().Update(ctx, rtx.TiFlash); err != nil {
+			if err := c.Status().Update(ctx, tiflash); err != nil {
 				return task.Fail().With("cannot update status: %w", err)
 			}
 		}
 
-		return task.Complete().With("status of suspend tiflash is updated")
+		// TODO: use a condition to refactor it
+		if tiflash.Status.ID == "" || tiflash.Status.State != v1alpha1.StoreStateServing || !v1alpha1.IsUpToDate(tiflash) {
+			// can we only rely on the PD member events for this condition?
+			// TODO(liubo02): change to task.Wait
+			return task.Retry(defaultTaskWaitDuration).With("tiflash may not be initialized, retry")
+		}
+
+		return task.Complete().With("status is synced")
 	})
 }
 
-type TaskStatus struct {
-	Client client.Client
-	Logger logr.Logger
-}
-
-func NewTaskStatus(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
-	return &TaskStatus{
-		Client: c,
-		Logger: logger,
-	}
-}
-
-func (*TaskStatus) Name() string {
-	return "Status"
-}
-
-//nolint:gocyclo // refactor is possible
-func (t *TaskStatus) Sync(ctx task.Context[ReconcileContext]) task.Result {
-	rtx := ctx.Self()
-
+func syncHealthCond(tiflash *v1alpha1.TiFlash, healthy bool) bool {
 	var (
-		healthStatus  = metav1.ConditionFalse
-		healthMessage = "tiflash is not healthy"
-
-		suspendStatus  = metav1.ConditionFalse
-		suspendMessage = "tiflash is not suspended"
-
-		needUpdate = false
+		status = metav1.ConditionFalse
+		reason = "Unhealthy"
+		msg    = "instance is not healthy"
 	)
-
-	if rtx.StoreID != "" {
-		if rtx.TiFlash.Status.ID != rtx.StoreID {
-			rtx.TiFlash.Status.ID = rtx.StoreID
-			needUpdate = true
-		}
-
-		info, err := rtx.PDClient.GetStore(ctx, rtx.StoreID)
-		if err == nil && info != nil && info.Store != nil {
-			rtx.StoreState = info.Store.NodeState.String()
-		} else {
-			t.Logger.Error(err, "failed to get tiflash store info", "store", rtx.StoreID)
-		}
-	}
-	if rtx.StoreState != "" && rtx.TiFlash.Status.State != rtx.StoreState {
-		rtx.TiFlash.Status.State = rtx.StoreState
-		needUpdate = true
+	if healthy {
+		status = metav1.ConditionTrue
+		reason = "Healthy"
+		msg = "instance is healthy"
 	}
 
-	needUpdate = meta.SetStatusCondition(&rtx.TiFlash.Status.Conditions, metav1.Condition{
-		Type:               v1alpha1.TiFlashCondSuspended,
-		Status:             suspendStatus,
-		ObservedGeneration: rtx.TiFlash.Generation,
-		Reason:             v1alpha1.TiFlashSuspendReason,
-		Message:            suspendMessage,
-	}) || needUpdate
+	return meta.SetStatusCondition(&tiflash.Status.Conditions, metav1.Condition{
+		Type:               v1alpha1.CondHealth,
+		Status:             status,
+		ObservedGeneration: tiflash.Generation,
+		Reason:             reason,
+		Message:            msg,
+	})
+}
 
-	if needUpdate || !v1alpha1.IsReconciled(rtx.TiFlash) ||
-		rtx.TiFlash.Status.UpdateRevision != rtx.TiFlash.Labels[v1alpha1.LabelKeyInstanceRevisionHash] {
-		rtx.TiFlash.Status.ObservedGeneration = rtx.TiFlash.Generation
-		rtx.TiFlash.Status.UpdateRevision = rtx.TiFlash.Labels[v1alpha1.LabelKeyInstanceRevisionHash]
-		needUpdate = true
+func syncSuspendCond(tiflash *v1alpha1.TiFlash) bool {
+	// always set it as unsuspended
+	return meta.SetStatusCondition(&tiflash.Status.Conditions, metav1.Condition{
+		Type:               v1alpha1.CondSuspended,
+		Status:             metav1.ConditionFalse,
+		ObservedGeneration: tiflash.Generation,
+		Reason:             v1alpha1.ReasonUnsuspended,
+		Message:            "instace is not suspended",
+	})
+}
+
+// TODO: move to utils
+func SetIfChanged[T comparable](dst *T, src T) bool {
+	if src == *new(T) {
+		return false
+	}
+	if *dst != src {
+		*dst = src
+		return true
 	}
 
-	if rtx.Pod == nil || rtx.PodIsTerminating {
-		rtx.Healthy = false
-	} else if statefulset.IsPodRunningAndReady(rtx.Pod) && rtx.StoreState == v1alpha1.StoreStateServing {
-		rtx.Healthy = true
-		if rtx.TiFlash.Status.CurrentRevision != rtx.Pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash] {
-			rtx.TiFlash.Status.CurrentRevision = rtx.Pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]
-			needUpdate = true
-		}
-	} else {
-		rtx.Healthy = false
-	}
-
-	if rtx.Healthy {
-		healthStatus = metav1.ConditionTrue
-		healthMessage = "tiflash is healthy"
-	}
-	needUpdate = meta.SetStatusCondition(&rtx.TiFlash.Status.Conditions, metav1.Condition{
-		Type:               v1alpha1.TiFlashCondHealth,
-		Status:             healthStatus,
-		ObservedGeneration: rtx.TiFlash.Generation,
-		Reason:             v1alpha1.TiFlashHealthReason,
-		Message:            healthMessage,
-	}) || needUpdate
-
-	if needUpdate {
-		if err := t.Client.Status().Update(ctx, rtx.TiFlash); err != nil {
-			return task.Fail().With("cannot update status: %w", err)
-		}
-	}
-
-	// TODO: use a condition to refactor it
-	if rtx.TiFlash.Status.ID == "" || rtx.TiFlash.Status.State != v1alpha1.StoreStateServing || !v1alpha1.IsUpToDate(rtx.TiFlash) {
-		return task.Fail().With("tiflash may not be initialized, retry")
-	}
-
-	return task.Complete().With("status is synced")
+	return false
 }
