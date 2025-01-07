@@ -57,12 +57,12 @@ func (bm *backupScheduleManager) doCompact(bs *v1alpha1.BackupSchedule, startTim
 	return nil
 }
 
-func (bm *backupScheduleManager) calEndTs(bs *v1alpha1.BackupSchedule, startTs *time.Time, interval *time.Duration, scheduleTime *time.Time) time.Time {
+func calEndTs(bs *v1alpha1.BackupSchedule, startTs time.Time, interval time.Duration, scheduleTime *time.Time) time.Time {
 	lastBackup := bs.Status.LastBackupTime
 	nextCompact := bs.Status.NextCompactTime
 	var endTime time.Time
 
-   fastCompactLimit := startTs.Add(3 * *interval)
+   fastCompactLimit := startTs.Add(3 * interval)
 
 	var scheduleMetaTime *metav1.Time
 	if scheduleTime != nil {
@@ -76,7 +76,7 @@ func (bm *backupScheduleManager) calEndTs(bs *v1alpha1.BackupSchedule, startTs *
    }
 
    for _, target := range targets {
-	   if target == nil || target.Time.Before(*startTs) {
+	   if target == nil || target.Time.Before(startTs) {
 		   continue
 	   }
 
@@ -85,7 +85,7 @@ func (bm *backupScheduleManager) calEndTs(bs *v1alpha1.BackupSchedule, startTs *
 		   nextCompact = target
 		   break
 	   } else {
-		   endTime = nextCompact.Time
+		   endTime = target.Time
 		   nextCompact = nil
 		   break
 	   }
@@ -94,7 +94,7 @@ func (bm *backupScheduleManager) calEndTs(bs *v1alpha1.BackupSchedule, startTs *
 
 
 	if endTime.IsZero() {
-		endTime = startTs.Add(*interval)
+		endTime = startTs.Add(interval)
 	}
 	return endTime
 }
@@ -120,7 +120,7 @@ func (bm *backupScheduleManager) performCompact(bs *v1alpha1.BackupSchedule, sch
 	}
 	now := nowFn()
 
-	endTime := bm.calEndTs(bs, &startTime, &interval, scheduleTime)
+	endTime := calEndTs(bs, startTime, interval, scheduleTime)
 
 	if endTime.After(now) {
 		klog.Infof("backupSchedule %s/%s next compact time is not reached", bs.GetNamespace(), bs.GetName())
