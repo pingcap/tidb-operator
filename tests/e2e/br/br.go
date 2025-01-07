@@ -1233,8 +1233,28 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				compact.Spec.StartTs = fullBackup.Status.CommitTs
 				compact.Spec.EndTs = currentTS
 				compact.Spec.S3 = logBackup.Spec.S3
+				compact.Spec.MaxRetryTimes = 2
 			})
 			framework.ExpectNoError(err)
+		})
+
+		ginkgo.It("test backoff when create job failed", func() {
+			_, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			ginkgo.By("Create RBAC for backup")
+			err := createRBAC(f)
+			framework.ExpectNoError(err)
+
+			compactName := "compact-backup"
+			ginkgo.By("Start a compact backup")
+			_, err = createCompactBackupAndWaitForComplete(f, compactName, "No_Such_Cluster", func(compact *v1alpha1.CompactBackup) {
+				compact.Spec.StartTs = "1"
+				compact.Spec.EndTs = "1"
+				compact.Spec.S3 = nil
+				compact.Spec.MaxRetryTimes = 2
+			})
+			framework.ExpectError(err, "create job failed, reached max retry times")
 		})
 	})
 })
