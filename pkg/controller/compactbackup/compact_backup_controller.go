@@ -42,6 +42,10 @@ import (
 	"k8s.io/utils/ptr"
 )
 
+const (
+	maxInterval = 6 * time.Minute
+)
+
 // Controller controls backup.
 type Controller struct {
 	deps *controller.Dependencies
@@ -281,21 +285,21 @@ func (c *Controller) sync(key string) (err error) {
 		return nil
 	}
 
-	ok, err := c.precheckCompact(compact)
+	ok, err := c.checkJobStatus(compact)
 	if err != nil {
 		return err
 	}
 	if !ok {
-		klog.Infof("Compact %s/%s is not allowed, skip", ns, name)
+		klog.Infof("Compact %s/%s is not allowed to create new job, skip", ns, name)
 		return nil
 	}
 
-	err = c.doCompact(compact.DeepCopy())
+	err = c.createCompactJob(compact.DeepCopy())
 	c.statusUpdater.OnCreateJob(context.TODO(), compact, err)
 	return err
 }
 
-func (c *Controller) doCompact(compact *v1alpha1.CompactBackup) error {
+func (c *Controller) createCompactJob(compact *v1alpha1.CompactBackup) error {
 	ns := compact.GetNamespace()
 	name := compact.GetName()
 	compactJobName := compact.GetName()
@@ -474,10 +478,10 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 	return job, "", nil
 }
 
-// precheckCompact checks if doCompact is allowed to run
+// checkJobStatus checks if doCompact is allowed to run
 // Only if there is no other compact job existing, doCompact is allowed
 // If the existing job failed, update compact status
-func (c *Controller) precheckCompact(compact *v1alpha1.CompactBackup) (bool, error) {
+func (c *Controller) checkJobStatus(compact *v1alpha1.CompactBackup) (bool, error) {
 	ns := compact.GetNamespace()
 	name := compact.GetName()
 
@@ -530,18 +534,23 @@ func (c *Controller) allowCompact(compact *v1alpha1.CompactBackup) bool {
 	ns := compact.GetNamespace()
 	name := compact.GetName()
 
-	// 10**(attempts-1)
+	// 10*2^(attempts-1)
 	expBackoff := func(attempts int) time.Duration {
 		if attempts <= 1 {
 			return 0
 		}
-		return 10 * time.Duration(math.Pow(10, float64(attempts-1))) * time.Second
+		interval := time.Duration(10 * int(math.Pow(2, float64(attempts-1)))) * time.Second
+		if interval > maxInterval {
+			return maxInterval
+		}
+		return interval
 	}
 
 	attempts := len(compact.Status.RetryStatus)
 	if attempts > 0 {
 		lastRetry := compact.Status.RetryStatus[attempts-1]
-		if lastRetry.RetryNum >= int(compact.Spec.MaxRetryTimes) {
+		if lastRetry.RetryNum > int(compact.Spec.MaxRetryTimes) {
+			c.statusUpdater.OnJobFailed(context.TODO(), compact, "create job failed, reached max retry times")
 			return false
 		}
 		backoff := expBackoff(attempts)
