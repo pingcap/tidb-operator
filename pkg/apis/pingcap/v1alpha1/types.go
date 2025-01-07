@@ -2590,6 +2590,8 @@ type BackupScheduleSpec struct {
 type BackupScheduleStatus struct {
 	// LastBackup represents the last backup.
 	LastBackup string `json:"lastBackup,omitempty"`
+	// LastCompact represents the last compact
+	LastCompact string `json:"lastCompact,omitempty"`
 	// logBackup represents the name of log backup.
 	LogBackup *string `json:"logBackup,omitempty"`
 	// LogBackupStartTs represents the start time of log backup
