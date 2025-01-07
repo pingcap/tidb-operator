@@ -539,7 +539,7 @@ func (c *Controller) allowCompact(compact *v1alpha1.CompactBackup) bool {
 		if attempts <= 1 {
 			return 0
 		}
-		interval := time.Duration(10 * int(math.Pow(2, float64(attempts-1)))) * time.Second
+		interval := time.Duration(10*int(math.Pow(2, float64(attempts-1)))) * time.Second
 		if interval > maxInterval {
 			return maxInterval
 		}
