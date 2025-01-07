@@ -51,10 +51,9 @@ func NewBackupScheduleManager(deps *controller.Dependencies) backup.BackupSchedu
 
 func (bm *backupScheduleManager) doCompact(bs *v1alpha1.BackupSchedule, startTime time.Time, endTime time.Time) error {
 	compact := buildCompactBackup(bs, startTime, endTime)
-	bm.deps.CompactControl.CreateCompactBackup(compact)
-
+	_, err := bm.deps.CompactControl.CreateCompactBackup(compact)
 	bs.Status.LastCompactTime = &metav1.Time{Time: bm.now()}
-	return nil
+	return err
 }
 
 func calEndTs(bs *v1alpha1.BackupSchedule, startTs time.Time, interval time.Duration, scheduleTime *time.Time) time.Time {
@@ -153,7 +152,6 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 		return err
 	}
 
-	//update bs.Status.NextCompactTime & bs.Status.LastCompactTime
 	startTs, endTs, err := bm.calCompactInterval(bs, scheduledTime, bm.now)
 	if err != nil {
 		return err
