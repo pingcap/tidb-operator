@@ -11,7 +11,7 @@ spec:
   br:
     cluster: mycluster
     sendCredToTikv: true
-    # clusterNamespce: <backup-namespace>
+    # clusterNamespace: <backup-namespace>
     # logLevel: info
     # statusAddr: <status-addr>
     # concurrency: 4

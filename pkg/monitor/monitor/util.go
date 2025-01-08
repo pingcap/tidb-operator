@@ -19,7 +19,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	semver "github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -1487,9 +1486,8 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapI
 	}
 	for i, spec := range monitor.Spec.Prometheus.RemoteWrite {
 		//defaults
-		if spec.RemoteTimeout == nil {
-			duration := model.Duration(30 * time.Second)
-			spec.RemoteTimeout = &duration
+		if spec.RemoteTimeout == "" {
+			spec.RemoteTimeout = "30s"
 		}
 
 		cfg := yaml.MapSlice{

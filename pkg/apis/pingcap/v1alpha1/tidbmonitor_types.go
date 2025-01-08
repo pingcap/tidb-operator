@@ -445,8 +445,9 @@ type RemoteWriteSpec struct {
 	// Only valid in Prometheus versions 2.15.0 and newer.
 	// +optional
 	Name string `json:"name,omitempty"`
+	// +kubebuilder:validation:Pattern=`^\d+[smhd]$`
 	// +optional
-	RemoteTimeout *model.Duration `json:"remoteTimeout,omitempty"`
+	RemoteTimeout string `json:"remoteTimeout,omitempty"`
 	// The list of remote write relabel configurations.
 	// +optional
 	WriteRelabelConfigs []RelabelConfig `json:"writeRelabelConfigs,omitempty"`

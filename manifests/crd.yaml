@@ -15022,6 +15022,8 @@ spec:
                         additionalProperties:
                           type: string
                         type: object
+                      loadBalancerClass:
+                        type: string
                       loadBalancerIP:
                         type: string
                       loadBalancerSourceRanges:
@@ -27483,6 +27485,8 @@ spec:
                         additionalProperties:
                           type: string
                         type: object
+                      loadBalancerClass:
+                        type: string
                       loadBalancerIP:
                         type: string
                       loadBalancerSourceRanges:
@@ -30215,6 +30219,8 @@ spec:
                           additionalProperties:
                             type: string
                           type: object
+                        loadBalancerClass:
+                          type: string
                         loadBalancerIP:
                           type: string
                         loadBalancerSourceRanges:
@@ -38569,6 +38575,8 @@ spec:
                         additionalProperties:
                           type: string
                         type: object
+                      loadBalancerClass:
+                        type: string
                       loadBalancerIP:
                         type: string
                       loadBalancerSourceRanges:
@@ -51191,6 +51199,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  loadBalancerClass:
+                    type: string
                   loadBalancerIP:
                     type: string
                   loadBalancerSourceRanges:
@@ -53164,6 +53174,8 @@ spec:
                         additionalProperties:
                           type: string
                         type: object
+                      loadBalancerClass:
+                        type: string
                       loadBalancerIP:
                         type: string
                       loadBalancerSourceRanges:
@@ -53494,8 +53506,8 @@ spec:
                               type: integer
                           type: object
                         remoteTimeout:
-                          format: int64
-                          type: integer
+                          pattern: ^\d+[smhd]$
+                          type: string
                         tlsConfig:
                           properties:
                             ca:
@@ -53627,6 +53639,8 @@ spec:
                         additionalProperties:
                           type: string
                         type: object
+                      loadBalancerClass:
+                        type: string
                       loadBalancerIP:
                         type: string
                       loadBalancerSourceRanges:
@@ -53732,6 +53746,8 @@ spec:
                         additionalProperties:
                           type: string
                         type: object
+                      loadBalancerClass:
+                        type: string
                       loadBalancerIP:
                         type: string
                       loadBalancerSourceRanges:

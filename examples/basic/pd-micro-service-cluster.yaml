@@ -7,7 +7,7 @@ metadata:
   name: basic
   namespace: pingcap
 spec:
-  version: v8.1.0
+  version: v8.5.0
   timezone: UTC
   pvReclaimPolicy: Retain
   enableDynamicConfiguration: true
@@ -38,7 +38,7 @@ spec:
       replicas: 2
   tikv:
     baseImage: pingcap/tikv
-    version: v8.1.0
+    version: v8.5.0
     maxFailoverCount: 0
     # If only 1 TiKV is deployed, the TiKV region leader
     # cannot be transferred during upgrade, so we have
@@ -61,7 +61,7 @@ spec:
         max-open-files: 256
   tidb:
     baseImage: pingcap/tidb
-    version: v8.1.0
+    version: v8.5.0
     maxFailoverCount: 0
     replicas: 1
     service:

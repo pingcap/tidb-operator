@@ -19,7 +19,7 @@ spec:
   #     memory: 300Mi
   br:
     cluster: myCluster
-    # clusterNamespce: <backup-namespace>
+    # clusterNamespace: <backup-namespace>
     # logLevel: info
     # statusAddr: <status-addr>
     # concurrency: 4
