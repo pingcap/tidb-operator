@@ -600,12 +600,12 @@ type PDSpec struct {
 }
 
 // +k8s:openapi-gen=true
-// PDMSSpec contains details of PD Micro Service
+// PDMSSpec contains details of PD microservice
 type PDMSSpec struct {
 	ComponentSpec               `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
-	// Name of the PD Micro Service
+	// Name of the PD microservice
 	// +kubebuilder:validation:Enum:="tso";"scheduling"
 	Name string `json:"name"`
 
@@ -621,7 +621,7 @@ type PDMSSpec struct {
 	// +optional
 	BaseImage *string `json:"baseImage"`
 
-	// Service defines a Kubernetes service of PD Micro Service cluster.
+	// Service defines a Kubernetes service of PD microservice cluster.
 	// Optional: Defaults to `.spec.services` in favor of backward compatibility
 	// +optional
 	Service *ServiceSpec `json:"service,omitempty"`
@@ -632,7 +632,7 @@ type PDMSSpec struct {
 	// +optional
 	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
 
-	// Config is the Configuration of pd Micro Service servers
+	// Config is the configuration of PD microservice servers
 	// +optional
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:validation:XPreserveUnknownFields
@@ -652,12 +652,12 @@ type PDMSSpec struct {
 	// +kubebuilder:validation:Enum:="";"v1"
 	StartUpScriptVersion string `json:"startUpScriptVersion,omitempty"`
 
-	// The storageClassName of the persistent volume for PD Micro Service log storage.
+	// The storageClassName of the persistent volume for PD microservice log storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
-	// StorageVolumes configure additional storage for PD Micro Service pods.
+	// StorageVolumes configure additional storage for PD microservice pods.
 	// +optional
 	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
 
@@ -1522,7 +1522,7 @@ type PDStatus struct {
 	VolReplaceInProgress bool `json:"volReplaceInProgress,omitempty"`
 }
 
-// PDMSStatus is PD Micro Service Status
+// PDMSStatus is PD microservice status
 type PDMSStatus struct {
 	Name string `json:"name,omitempty"`
 	// +optional

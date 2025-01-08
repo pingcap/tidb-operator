@@ -28,7 +28,7 @@ type pdMSScaler struct {
 	generalScaler
 }
 
-// NewPDMSScaler returns a PD Micro Service Scaler.
+// NewPDMSScaler returns a PD microservice scaler.
 func NewPDMSScaler(deps *controller.Dependencies) *pdMSScaler {
 	return &pdMSScaler{generalScaler: generalScaler{deps: deps}}
 }

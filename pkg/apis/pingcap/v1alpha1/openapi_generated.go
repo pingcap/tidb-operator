@@ -5858,7 +5858,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDMSSpec(ref common.ReferenceCallback) com
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "PDMSSpec contains details of PD Micro Service",
+				Description: "PDMSSpec contains details of PD microservice",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"version": {
@@ -6199,7 +6199,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDMSSpec(ref common.ReferenceCallback) com
 					},
 					"name": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Name of the PD Micro Service",
+							Description: "Name of the PD microservice",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
@@ -6229,7 +6229,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDMSSpec(ref common.ReferenceCallback) com
 					},
 					"service": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Service defines a Kubernetes service of PD Micro Service cluster. Optional: Defaults to `.spec.services` in favor of backward compatibility",
+							Description: "Service defines a Kubernetes service of PD microservice cluster. Optional: Defaults to `.spec.services` in favor of backward compatibility",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec"),
 						},
 					},
@@ -6242,7 +6242,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDMSSpec(ref common.ReferenceCallback) com
 					},
 					"config": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Config is the Configuration of pd Micro Service servers",
+							Description: "Config is the configuration of PD microservice servers",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDConfigWraper"),
 						},
 					},
@@ -6269,14 +6269,14 @@ func schema_pkg_apis_pingcap_v1alpha1_PDMSSpec(ref common.ReferenceCallback) com
 					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The storageClassName of the persistent volume for PD Micro Service log storage. Defaults to Kubernetes default storage class.",
+							Description: "The storageClassName of the persistent volume for PD microservice log storage. Defaults to Kubernetes default storage class.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"storageVolumes": {
 						SchemaProps: spec.SchemaProps{
-							Description: "StorageVolumes configure additional storage for PD Micro Service pods.",
+							Description: "StorageVolumes configure additional storage for PD microservice pods.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
