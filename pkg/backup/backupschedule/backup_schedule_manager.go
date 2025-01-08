@@ -53,6 +53,7 @@ func (bm *backupScheduleManager) doCompact(bs *v1alpha1.BackupSchedule, startTim
 	compact := buildCompactBackup(bs, startTime, endTime)
 	_, err := bm.deps.CompactControl.CreateCompactBackup(compact)
 	bs.Status.LastCompactTime = &metav1.Time{Time: bm.now()}
+	bs.Status.LastCompact = compact.Name
 	return err
 }
 
@@ -149,6 +150,11 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 	}
 
 	if err := bm.canPerformNextCompact(bs); err != nil {
+		return err
+	}
+
+
+	if err := bm.deleteLastcompactJob(bs); err != nil {
 		return err
 	}
 
@@ -260,6 +266,31 @@ func (bm *backupScheduleManager) canPerformNextBackup(bs *v1alpha1.BackupSchedul
 	}
 
 	return nil
+}
+
+func (bm *backupScheduleManager) deleteLastcompactJob(bs *v1alpha1.BackupSchedule) error {
+	ns := bs.GetNamespace()
+	bsName := bs.GetName()
+
+	compact, err := bm.deps.CompactBackupLister.CompactBackups(ns).Get(bs.Status.LastCompact)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, bs.Status.LastBackup, err)
+	}
+
+	jobName := compact.GetName()
+	job, err := bm.deps.JobLister.Jobs(ns).Get(jobName)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("backup schedule %s/%s, get backup %s job %s failed, err: %v", ns, bsName, compact.GetName(), jobName, err)
+	}
+
+	compact.SetGroupVersionKind(controller.CompactBackupControllerKind)
+	return bm.deps.JobControl.DeleteJob(compact, job)
 }
 
 func (bm *backupScheduleManager) canPerformNextCompact(bs *v1alpha1.BackupSchedule) error {
