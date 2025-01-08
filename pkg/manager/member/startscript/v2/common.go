@@ -42,7 +42,7 @@ fi
 `
 	dnsAwaitPart = "<<dns-await-part>>"
 
-	pdEnableMicroService = "<<pd-enable-micro-service>>"
+	pdEnableMicroservice = "<<pd-enable-micro-service>>"
 
 	componentCommonWaitForDnsIpMatchScript = `
 elapseTime=0
