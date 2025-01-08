@@ -62,36 +62,35 @@ func calEndTs(bs *v1alpha1.BackupSchedule, startTs time.Time, interval time.Dura
 	nextCompact := bs.Status.NextCompactTime
 	var endTime time.Time
 
-   fastCompactLimit := startTs.Add(3 * interval)
+	fastCompactLimit := startTs.Add(3 * interval)
 
 	var scheduleMetaTime *metav1.Time
 	if scheduleTime != nil {
 		scheduleMetaTime = &metav1.Time{Time: *scheduleTime}
 	}
 
-   targets := []*metav1.Time{
-	   nextCompact,
-	   lastBackup,
-	   scheduleMetaTime,
-   }
+	targets := []*metav1.Time{
+		nextCompact,
+		lastBackup,
+		scheduleMetaTime,
+	}
 
-   for _, target := range targets {
-	   if target == nil || target.Time.Before(startTs) {
-		   continue
-	   }
+	for _, target := range targets {
+		if target == nil || target.Time.Before(startTs) {
+			continue
+		}
 
-	   if target.After(fastCompactLimit) {
-		   endTime = fastCompactLimit
-		   nextCompact = target
-		   break
-	   } else {
-		   endTime = target.Time
-		   nextCompact = nil
-		   break
-	   }
-   }
-   bs.Status.NextCompactTime = nextCompact
-
+		if target.After(fastCompactLimit) {
+			endTime = fastCompactLimit
+			nextCompact = target
+			break
+		} else {
+			endTime = target.Time
+			nextCompact = nil
+			break
+		}
+	}
+	bs.Status.NextCompactTime = nextCompact
 
 	if endTime.IsZero() {
 		endTime = startTs.Add(interval)
@@ -144,24 +143,31 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 		return err
 	}
 
+	klog.Infof("backupSchedule %s/%s can perform next backup", bs.GetNamespace(), bs.GetName())
+
 	scheduledTime, err := getLastScheduledTime(bs, bm.now)
 	if err != nil {
 		return err
 	}
 
+	klog.Infof("backupSchedule %s/%s last scheduled time is %v", bs.GetNamespace(), bs.GetName(), scheduledTime)
+
 	if err := bm.canPerformNextCompact(bs); err != nil {
 		return err
 	}
-
 
 	if err := bm.deleteLastcompactJob(bs); err != nil {
 		return err
 	}
 
+	klog.Infof("backupSchedule %s/%s can perform next compact", bs.GetNamespace(), bs.GetName())
+
 	startTs, endTs, err := bm.calCompactInterval(bs, scheduledTime, bm.now)
 	if err != nil {
 		return err
 	}
+
+	klog.Infof("backupSchedule %s/%s startTs is %v, endTs is %v", bs.GetNamespace(), bs.GetName(), startTs, endTs)
 
 	if err := bm.doCompact(bs, startTs, endTs); err != nil {
 		return err
@@ -366,6 +372,8 @@ func (bm *backupScheduleManager) performLogBackupIfNeeded(bs *v1alpha1.BackupSch
 		return fmt.Errorf("backup schedule %s/%s, create log backup %s failed, err: %v", ns, bsName, logBackup.Name, err)
 	}
 
+	klog.Infof("backup schedule %s/%s, create log backup %s successfully", ns, bsName, logBackup.Name)
+
 	bs.Status.LogBackup = &logBackup.Name
 	bs.Status.LogBackupStartTs = &metav1.Time{Time: startTs}
 	return nil
@@ -565,7 +573,7 @@ func buildCompactBackup(bs *v1alpha1.BackupSchedule, startTs time.Time, endTs ti
 		Spec: compactSpec,
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   ns,
-			Name:        bs.GetLogBackupCRDName(),
+			Name:        bs.GetCompactBackupCRDName(),
 			Labels:      bsLabel,
 			Annotations: bs.Annotations,
 			OwnerReferences: []metav1.OwnerReference{

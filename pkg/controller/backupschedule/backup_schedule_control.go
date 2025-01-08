@@ -21,6 +21,7 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/klog/v2"
 )
 
 // ControlInterface implements the control logic for updating BackupSchedule
@@ -56,6 +57,7 @@ func (c *defaultBackupScheduleControl) UpdateBackupSchedule(bs *v1alpha1.BackupS
 	if apiequality.Semantic.DeepEqual(&bs.Status, oldStatus) {
 		return errorutils.NewAggregate(errs)
 	}
+	klog.Infof("backupSchedule %s/%s status updated", bs.GetNamespace(), bs.GetName())
 	if err := c.statusUpdater.UpdateBackupScheduleStatus(bs.DeepCopy(), &bs.Status, oldStatus); err != nil {
 		errs = append(errs, err)
 	}

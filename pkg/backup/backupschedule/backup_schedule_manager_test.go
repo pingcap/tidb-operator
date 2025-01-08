@@ -508,7 +508,7 @@ func TestCalEndTs(t *testing.T) {
 	schedule = startTs.Add(2 * cpInterval)
 	s.Status.NextCompactTime = &metav1.Time{Time: startTs.Add(1 * cpInterval)}
 	endTs = calEndTs(&s, startTs, cpInterval, &schedule)
-	require.Equal(t, endTs, startTs.Add(1 * cpInterval))
+	require.Equal(t, endTs, startTs.Add(1*cpInterval))
 	require.Nil(t, s.Status.NextCompactTime)
 
 	//test 5: compact can't reach the nextCompact
@@ -518,7 +518,7 @@ func TestCalEndTs(t *testing.T) {
 	s.Status.NextCompactTime = &metav1.Time{Time: startTs.Add(4 * cpInterval)}
 	nextCopy := s.Status.NextCompactTime.DeepCopy()
 	endTs = calEndTs(&s, startTs, cpInterval, &schedule)
-	require.Equal(t, endTs, startTs.Add(3 * cpInterval))
+	require.Equal(t, endTs, startTs.Add(3*cpInterval))
 	require.Equal(t, s.Status.NextCompactTime, nextCopy)
 
 	//test 6: compact delay, lastBackupTime and Schedule is all set
@@ -529,7 +529,7 @@ func TestCalEndTs(t *testing.T) {
 	nextCopy = s.Status.LastBackupTime.DeepCopy()
 	s.Status.NextCompactTime = nil
 	endTs = calEndTs(&s, startTs, cpInterval, &schedule)
-	require.Equal(t, endTs, startTs.Add(3 * cpInterval))
+	require.Equal(t, endTs, startTs.Add(3*cpInterval))
 	require.Equal(t, s.Status.NextCompactTime, nextCopy)
 
 	//test 7: compact delay, nextcompactTime, lastBackupTime and Schedule is all set
@@ -540,7 +540,7 @@ func TestCalEndTs(t *testing.T) {
 	s.Status.NextCompactTime = &metav1.Time{Time: startTs.Add(1 * cpInterval)}
 	nextCopy = s.Status.NextCompactTime.DeepCopy()
 	endTs = calEndTs(&s, startTs, cpInterval, &schedule)
-	require.Equal(t, endTs, startTs.Add(1 * cpInterval))
+	require.Equal(t, endTs, startTs.Add(1*cpInterval))
 	require.Nil(t, s.Status.NextCompactTime)
 }
 
