@@ -42,15 +42,15 @@ func TestState(t *testing.T) {
 				Name: "aaa",
 			},
 			objs: []client.Object{
-				fake.FakeObj("aaa", func(obj *v1alpha1.TiDBGroup) *v1alpha1.TiDBGroup {
+				fake.FakeObj("aaa", func(obj *v1alpha1.TiFlashGroup) *v1alpha1.TiFlashGroup {
 					obj.Spec.Cluster.Name = "aaa"
 					return obj
 				}),
 				fake.FakeObj[v1alpha1.Cluster]("aaa"),
-				fake.FakeObj("aaa", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
+				fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
 					obj.Labels = map[string]string{
 						v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-						v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiDB,
+						v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiFlash,
 						v1alpha1.LabelKeyCluster:   "aaa",
 						v1alpha1.LabelKeyGroup:     "aaa",
 					}
@@ -62,24 +62,24 @@ func TestState(t *testing.T) {
 				key: types.NamespacedName{
 					Name: "aaa",
 				},
-				dbg: fake.FakeObj("aaa", func(obj *v1alpha1.TiDBGroup) *v1alpha1.TiDBGroup {
+				fg: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlashGroup) *v1alpha1.TiFlashGroup {
 					obj.Spec.Cluster.Name = "aaa"
 					return obj
 				}),
 				cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-				dbs: []*v1alpha1.TiDB{
-					fake.FakeObj("aaa", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
+				fs: []*v1alpha1.TiFlash{
+					fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
 						obj.Labels = map[string]string{
 							v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-							v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiDB,
+							v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiFlash,
 							v1alpha1.LabelKeyCluster:   "aaa",
 							v1alpha1.LabelKeyGroup:     "aaa",
 						}
 						return obj
 					}),
 				},
-				updateRevision:  "aaa-659f78b499",
-				currentRevision: "aaa-659f78b499",
+				updateRevision:  "aaa-566bb4bcfd",
+				currentRevision: "aaa-566bb4bcfd",
 			},
 		},
 	}
@@ -95,12 +95,12 @@ func TestState(t *testing.T) {
 
 			ctx := context.Background()
 			res, done := task.RunTask(ctx, task.Block(
-				common.TaskContextTiDBGroup(s, fc),
+				common.TaskContextTiFlashGroup(s, fc),
 				common.TaskContextCluster(s, fc),
-				common.TaskContextTiDBSlice(s, fc),
+				common.TaskContextTiFlashSlice(s, fc),
 				common.TaskRevision(s, fc),
 			))
-			assert.Equal(tt, task.SComplete, res.Status(), c.desc)
+			assert.Equal(tt, task.SComplete.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
 			assert.Equal(tt, c.expected, s, c.desc)
 		})

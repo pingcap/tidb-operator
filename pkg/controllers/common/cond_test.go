@@ -25,6 +25,99 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 )
 
+func TestCondInstanceIsDeleting(t *testing.T) {
+	t.Run("PD", testCondInstanceIsDeleting[runtime.PD])
+	t.Run("TiDB", testCondInstanceIsDeleting[runtime.TiDB])
+	t.Run("TiKV", testCondInstanceIsDeleting[runtime.TiKV])
+	t.Run("TiFlash", testCondInstanceIsDeleting[runtime.TiFlash])
+}
+
+func testCondInstanceIsDeleting[
+	I runtime.InstanceSet,
+	RI runtime.InstanceT[I],
+](t *testing.T) {
+	cases := []struct {
+		desc         string
+		state        InstanceState[RI]
+		expectedCond bool
+	}{
+		{
+			desc: "cond is false",
+			state: FakeInstanceState(
+				fake.Fake(func(obj RI) RI {
+					obj.SetName("test")
+					return obj
+				}),
+			),
+		},
+		{
+			desc: "cond is true",
+			state: FakeInstanceState(
+				fake.Fake(func(obj RI) RI {
+					obj.SetName("test")
+					now := metav1.Now()
+					obj.SetDeletionTimestamp(&now)
+					return obj
+				}),
+			),
+			expectedCond: true,
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			cond := CondInstanceIsDeleting(c.state)
+			assert.Equal(tt, c.expectedCond, cond.Satisfy(), c.desc)
+		})
+	}
+}
+
+func TestCondInstanceHasBeenDeleted(t *testing.T) {
+	t.Run("PD", testCondInstanceHasBeenDeleted[runtime.PD])
+	t.Run("TiDB", testCondInstanceHasBeenDeleted[runtime.TiDB])
+	t.Run("TiKV", testCondInstanceHasBeenDeleted[runtime.TiKV])
+	t.Run("TiFlash", testCondInstanceHasBeenDeleted[runtime.TiFlash])
+}
+
+func testCondInstanceHasBeenDeleted[
+	I runtime.InstanceSet,
+	RI runtime.InstanceT[I],
+](t *testing.T) {
+	cases := []struct {
+		desc         string
+		state        InstanceState[RI]
+		expectedCond bool
+	}{
+		{
+			desc: "cond is false",
+			state: FakeInstanceState(
+				fake.Fake(func(obj RI) RI {
+					obj.SetName("test")
+					return obj
+				}),
+			),
+		},
+		{
+			desc:         "cond is true",
+			state:        FakeInstanceState[RI](nil),
+			expectedCond: true,
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			cond := CondInstanceHasBeenDeleted(c.state)
+			assert.Equal(tt, c.expectedCond, cond.Satisfy(), c.desc)
+		})
+	}
+}
+
 func TestCondGroupHasBeenDeleted(t *testing.T) {
 	t.Run("PDGroup", testCondGroupHasBeenDeleted[runtime.PDGroup])
 	t.Run("TiDBGroup", testCondGroupHasBeenDeleted[runtime.TiDBGroup])
@@ -113,70 +206,6 @@ func testCondGroupIsDeleting[
 			tt.Parallel()
 
 			cond := CondGroupIsDeleting(c.state)
-			assert.Equal(tt, c.expectedCond, cond.Satisfy(), c.desc)
-		})
-	}
-}
-
-func TestCondPDHasBeenDeleted(t *testing.T) {
-	cases := []struct {
-		desc         string
-		state        *fakeState[v1alpha1.PD]
-		expectedCond bool
-	}{
-		{
-			desc: "cond is false",
-			state: &fakeState[v1alpha1.PD]{
-				obj: fake.FakeObj[v1alpha1.PD]("test"),
-			},
-		},
-		{
-			desc:         "cond is true",
-			state:        &fakeState[v1alpha1.PD]{},
-			expectedCond: true,
-		},
-	}
-
-	for i := range cases {
-		c := &cases[i]
-		t.Run(c.desc, func(tt *testing.T) {
-			tt.Parallel()
-
-			s := &fakePDState{s: c.state}
-			cond := CondPDHasBeenDeleted(s)
-			assert.Equal(tt, c.expectedCond, cond.Satisfy(), c.desc)
-		})
-	}
-}
-
-func TestCondPDIsDeleting(t *testing.T) {
-	cases := []struct {
-		desc         string
-		state        *fakeState[v1alpha1.PD]
-		expectedCond bool
-	}{
-		{
-			desc: "cond is false",
-			state: &fakeState[v1alpha1.PD]{
-				obj: fake.FakeObj[v1alpha1.PD]("test"),
-			},
-		},
-		{
-			desc: "cond is true",
-			state: &fakeState[v1alpha1.PD]{
-				obj: fake.FakeObj("test", fake.DeleteNow[v1alpha1.PD]()),
-			},
-			expectedCond: true,
-		},
-	}
-
-	for i := range cases {
-		c := &cases[i]
-		t.Run(c.desc, func(tt *testing.T) {
-			tt.Parallel()
-
-			s := &fakePDState{s: c.state}
-			cond := CondPDIsDeleting(s)
 			assert.Equal(tt, c.expectedCond, cond.Satisfy(), c.desc)
 		})
 	}
