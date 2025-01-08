@@ -398,12 +398,20 @@ func (in *BackupScheduleStatus) DeepCopyInto(out *BackupScheduleStatus) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.LogBackupStartTs != nil {
+		in, out := &in.LogBackupStartTs, &out.LogBackupStartTs
+		*out = (*in).DeepCopy()
+	}
 	if in.LastBackupTime != nil {
 		in, out := &in.LastBackupTime, &out.LastBackupTime
 		*out = (*in).DeepCopy()
 	}
 	if in.LastCompactTime != nil {
 		in, out := &in.LastCompactTime, &out.LastCompactTime
+		*out = (*in).DeepCopy()
+	}
+	if in.NextCompactTime != nil {
+		in, out := &in.NextCompactTime, &out.NextCompactTime
 		*out = (*in).DeepCopy()
 	}
 	if in.AllBackupCleanTime != nil {
