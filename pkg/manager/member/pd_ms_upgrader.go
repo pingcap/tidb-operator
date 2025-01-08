@@ -31,7 +31,7 @@ type pdMSUpgrader struct {
 	deps *controller.Dependencies
 }
 
-// NewPDMSUpgrader returns a PD Micro Service Upgrader
+// NewPDMSUpgrader returns a PD microservice upgrader
 func NewPDMSUpgrader(deps *controller.Dependencies) Upgrader {
 	return &pdMSUpgrader{
 		deps: deps,
@@ -129,7 +129,7 @@ func (u *pdMSUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.St
 
 func (u *pdMSUpgrader) upgradePDMSPod(tc *v1alpha1.TidbCluster, ordinal int32, newSet *apps.StatefulSet, curService string) error {
 	// Only support after `8.3.0` to keep compatibility.
-	if check, err := pdMSSupportMicroServicesWithName.Check(tc.PDMSVersion(curService)); check && err == nil {
+	if check, err := pdMSSupportMicroservicesWithName.Check(tc.PDMSVersion(curService)); check && err == nil {
 		ns := tc.GetNamespace()
 		tcName := tc.GetName()
 		upgradePDMSName := PDMSName(tcName, ordinal, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s, curService)
@@ -206,9 +206,9 @@ func choosePDMSToTransferFromMembers(tc *v1alpha1.TidbCluster, newSet *apps.Stat
 	return targetName
 }
 
-// PDMSSupportMicroServicesWithName returns true if the given version of PDMS supports microservices with name.
+// PDMSSupportMicroservicesWithName returns true if the given version of PDMS supports microservices with name.
 // related https://github.com/tikv/pd/pull/8157.
-var pdMSSupportMicroServicesWithName, _ = cmpver.NewConstraint(cmpver.GreaterOrEqual, "v8.3.0")
+var pdMSSupportMicroservicesWithName, _ = cmpver.NewConstraint(cmpver.GreaterOrEqual, "v8.3.0")
 
 type fakePDMSUpgrader struct{}
 

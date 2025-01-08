@@ -94,9 +94,9 @@ type PDClient interface {
 	GetAutoscalingPlans(strategy Strategy) ([]Plan, error)
 	// GetRecoveringMark return the pd recovering mark
 	GetRecoveringMark() (bool, error)
-	// GetMSMembers returns all PDMS members service-addr from cluster by specific Micro Service
+	// GetMSMembers returns all PDMS members service-addr from cluster by specific microservice
 	GetMSMembers(service string) ([]string, error)
-	// GetMSPrimary returns the primary PDMS member service-addr from cluster by specific Micro Service
+	// GetMSPrimary returns the primary PDMS member service-addr from cluster by specific microservice
 	GetMSPrimary(service string) (string, error)
 }
 
@@ -116,8 +116,8 @@ var (
 	evictLeaderSchedulerConfigPrefix = "pd/api/v1/scheduler-config/evict-leader-scheduler/list"
 	autoscalingPrefix                = "autoscaling"
 	recoveringMarkPrefix             = "pd/api/v1/admin/cluster/markers/snapshot-recovering"
-	// Micro Service
-	MicroServicePrefix = "pd/api/v2/ms"
+	// microservice
+	MicroservicePrefix = "pd/api/v2/ms"
 )
 
 // pdClient is default implementation of PDClient
@@ -200,7 +200,7 @@ type MembersInfo struct {
 	EtcdLeader *pdpb.Member         `json:"etcd_leader,omitempty"`
 }
 
-// ServiceRegistryEntry is the registry entry of PD Micro Service
+// ServiceRegistryEntry is the registry entry of PD microservice
 type ServiceRegistryEntry struct {
 	ServiceAddr    string `json:"service-addr"`
 	Version        string `json:"version"`
@@ -326,7 +326,7 @@ func (c *pdClient) GetMembers() (*MembersInfo, error) {
 }
 
 func (c *pdClient) GetMSMembers(service string) ([]string, error) {
-	apiURL := fmt.Sprintf("%s/%s/members/%s", c.url, MicroServicePrefix, service)
+	apiURL := fmt.Sprintf("%s/%s/members/%s", c.url, MicroservicePrefix, service)
 	body, err := httputil.GetBodyOK(c.httpClient, apiURL)
 	if err != nil {
 		return nil, err
@@ -344,7 +344,7 @@ func (c *pdClient) GetMSMembers(service string) ([]string, error) {
 }
 
 func (c *pdClient) GetMSPrimary(service string) (string, error) {
-	apiURL := fmt.Sprintf("%s/%s/primary/%s", c.url, MicroServicePrefix, service)
+	apiURL := fmt.Sprintf("%s/%s/primary/%s", c.url, MicroservicePrefix, service)
 	body, err := httputil.GetBodyOK(c.httpClient, apiURL)
 	if err != nil {
 		return "", err
