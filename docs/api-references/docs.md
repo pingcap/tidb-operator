@@ -10972,7 +10972,7 @@ message.</p>
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
-<p>PDMSSpec contains details of PD Micro Service</p>
+<p>PDMSSpec contains details of PD microservice</p>
 </p>
 <table>
 <thead>
@@ -11020,7 +11020,7 @@ string
 </em>
 </td>
 <td>
-<p>Name of the PD Micro Service</p>
+<p>Name of the PD microservice</p>
 </td>
 </tr>
 <tr>
@@ -11068,7 +11068,7 @@ ServiceSpec
 </td>
 <td>
 <em>(Optional)</em>
-<p>Service defines a Kubernetes service of PD Micro Service cluster.
+<p>Service defines a Kubernetes service of PD microservice cluster.
 Optional: Defaults to <code>.spec.services</code> in favor of backward compatibility</p>
 </td>
 </tr>
@@ -11096,7 +11096,7 @@ PDConfigWraper
 </td>
 <td>
 <em>(Optional)</em>
-<p>Config is the Configuration of pd Micro Service servers</p>
+<p>Config is the configuration of PD microservice servers</p>
 </td>
 </tr>
 <tr>
@@ -11145,7 +11145,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>The storageClassName of the persistent volume for PD Micro Service log storage.
+<p>The storageClassName of the persistent volume for PD microservice log storage.
 Defaults to Kubernetes default storage class.</p>
 </td>
 </tr>
@@ -11160,7 +11160,7 @@ Defaults to Kubernetes default storage class.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>StorageVolumes configure additional storage for PD Micro Service pods.</p>
+<p>StorageVolumes configure additional storage for PD microservice pods.</p>
 </td>
 </tr>
 <tr>
@@ -11182,7 +11182,7 @@ int
 <a href="#tidbclusterstatus">TidbClusterStatus</a>)
 </p>
 <p>
-<p>PDMSStatus is PD Micro Service Status</p>
+<p>PDMSStatus is PD microservice status</p>
 </p>
 <table>
 <thead>

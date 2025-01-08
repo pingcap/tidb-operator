@@ -42,7 +42,7 @@ type PDStartScriptModel struct {
 	PDInitWaitTime     int
 }
 
-// PDMSStartScriptModel contain fields for rendering PD Micro Service start script
+// PDMSStartScriptModel contain fields for rendering PD microservice start script
 type PDMSStartScriptModel struct {
 	PDStartTimeout int
 	PDInitWaitTime int
@@ -112,7 +112,7 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 			componentCommonScript +
 				replacePdStartScriptCustomPorts(
 					replacePdStartScriptDnsAwaitPart(waitForDnsNameIpMatchOnStartup,
-						enableMicroServiceModeDynamic(mode, pdStartScript)))),
+						enableMicroserviceModeDynamic(mode, pdStartScript)))),
 	)
 
 	return renderTemplateFunc(pdStartScriptTpl, m)
@@ -138,7 +138,7 @@ func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error
 		m.PDMSDomain = m.PDMSDomain + "." + tc.Spec.ClusterDomain
 	}
 
-	if check, err := pdMSSupportMicroServicesWithName.Check(tc.PDMSVersion(name)); check && err == nil {
+	if check, err := pdMSSupportMicroservicesWithName.Check(tc.PDMSVersion(name)); check && err == nil {
 		m.PDMSName = "${PDMS_POD_NAME}"
 		if tc.Spec.ClusterDomain != "" {
 			m.PDMSName = m.PDMSDomain
@@ -185,7 +185,7 @@ func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error
 			componentCommonScript +
 				replacePdStartScriptCustomPorts(
 					replacePdStartScriptDnsAwaitPart(waitForDnsNameIpMatchOnStartup,
-						enableMicroServiceModeDynamic(name, pdmsStartScriptTplText)))))
+						enableMicroserviceModeDynamic(name, pdmsStartScriptTplText)))))
 
 	return renderTemplateFunc(msStartScriptTpl, m)
 }
@@ -202,7 +202,7 @@ sleep initWaitTime
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 ` + componentCommonWaitForDnsIpMatchScript
 
-	pdEnableMicroServiceSubScript = "services"
+	pdEnableMicroserviceSubScript = "services"
 
 	pdWaitForDnsOnlySubScript = `
 
@@ -241,7 +241,7 @@ done
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN={{ .PDDomain }}` +
 		dnsAwaitPart + `
-ARGS="` + pdEnableMicroService + `--data-dir={{ .DataDir }} \
+ARGS="` + pdEnableMicroservice + `--data-dir={{ .DataDir }} \
 --name={{ .PDName }} \
 --peer-urls={{ .PeerURL }} \
 --advertise-peer-urls={{ .AdvertisePeerURL }} \
@@ -295,7 +295,7 @@ PD_DOMAIN={{ .PDMSDomain }}` +
 		dnsAwaitPart + `
 {{- if .AcrossK8s -}} {{ template "AcrossK8sSubscript" . }} {{- end }}
 
-ARGS="` + pdEnableMicroService + `--listen-addr={{ .ListenAddr }} \
+ARGS="` + pdEnableMicroservice + `--listen-addr={{ .ListenAddr }} \
 --advertise-listen-addr={{ .AdvertiseListenAddr }} \
 --backend-endpoints={{ .PDAddresses }} \
 --config=/etc/pd/pd.toml \
@@ -330,15 +330,15 @@ func replacePdStartScriptDnsAwaitPart(withLocalIpMatch bool, startScript string)
 //   - for `PD API` service, startParams should be `api`
 //   - for `TSO` and `Scheduling`, startParams should be `tso` and `scheduling` respectively.
 //     NOTICE: in `8.3.0` we have supported `name` start parameter, so we will pass `tso name=${PDMS_POD_NAME}` to startParams.
-func enableMicroServiceModeDynamic(startParams string, startScript string) string {
+func enableMicroserviceModeDynamic(startParams string, startScript string) string {
 	if startParams != "" {
-		return strings.ReplaceAll(startScript, pdEnableMicroService, fmt.Sprintf(" %s %s ", pdEnableMicroServiceSubScript, startParams))
+		return strings.ReplaceAll(startScript, pdEnableMicroservice, fmt.Sprintf(" %s %s ", pdEnableMicroserviceSubScript, startParams))
 	} else {
 		// for original `PD`,  should be empty.
-		return strings.ReplaceAll(startScript, pdEnableMicroService, "")
+		return strings.ReplaceAll(startScript, pdEnableMicroservice, "")
 	}
 }
 
-// PDMSSupportMicroServicesWithName returns true if the given version of PDMS supports microservices with name.
+// PDMSSupportMicroservicesWithName returns true if the given version of PDMS supports microservices with name.
 // related https://github.com/tikv/pd/pull/8461.
-var pdMSSupportMicroServicesWithName, _ = cmpver.NewConstraint(cmpver.GreaterOrEqual, "v8.3.0")
+var pdMSSupportMicroservicesWithName, _ = cmpver.NewConstraint(cmpver.GreaterOrEqual, "v8.3.0")
