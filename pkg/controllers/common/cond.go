@@ -19,18 +19,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-func CondPDHasBeenDeleted(ctx PDState) task.Condition {
-	return task.CondFunc(func() bool {
-		return ctx.PD() == nil
-	})
-}
-
-func CondPDIsDeleting(ctx PDState) task.Condition {
-	return task.CondFunc(func() bool {
-		return !ctx.PD().GetDeletionTimestamp().IsZero()
-	})
-}
-
 func CondClusterIsSuspending(ctx ClusterState) task.Condition {
 	return task.CondFunc(func() bool {
 		return ctx.Cluster().ShouldSuspendCompute()

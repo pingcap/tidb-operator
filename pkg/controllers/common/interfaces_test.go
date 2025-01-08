@@ -117,6 +117,20 @@ func FakeGroupState[RG runtime.Group](g RG) GroupState[RG] {
 	}
 }
 
+type fakeInstanceState[RI runtime.Instance] struct {
+	instance RI
+}
+
+func (f *fakeInstanceState[RI]) Instance() RI {
+	return f.instance
+}
+
+func FakeInstanceState[RI runtime.Instance](instance RI) InstanceState[RI] {
+	return &fakeInstanceState[RI]{
+		instance: instance,
+	}
+}
+
 type fakeInstanceSliceState[RI runtime.Instance] struct {
 	slice []RI
 }

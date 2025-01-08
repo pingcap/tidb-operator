@@ -69,15 +69,6 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func TaskFinalizerAdd(state *ReconcileContext, c client.Client) task.Task {
-	return task.NameTaskFunc("FinalizerAdd", func(ctx context.Context) task.Result {
-		if err := k8s.EnsureFinalizer(ctx, c, state.PD()); err != nil {
-			return task.Fail().With("failed to ensure finalizer has been added: %v", err)
-		}
-		return task.Complete().With("finalizer is added")
-	})
-}
-
 func EnsureSubResourcesDeleted(ctx context.Context, c client.Client, pd *v1alpha1.PD) (wait bool, _ error) {
 	wait1, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromPD(pd), &corev1.PodList{})
 	if err != nil {
