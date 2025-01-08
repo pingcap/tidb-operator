@@ -33,8 +33,9 @@ type ReconcileContext struct {
 	// This is single truth whether pd is initialized
 	Initialized bool
 	Healthy     bool
-	MemberID    string
-	IsLeader    bool
+
+	MemberID string
+	IsLeader bool
 
 	// ConfigHash stores the hash of **user-specified** config (i.e.`.Spec.Config`),
 	// which will be used to determine whether the config has changed.
