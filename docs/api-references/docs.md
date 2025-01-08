@@ -4149,6 +4149,17 @@ string
 </tr>
 <tr>
 <td>
+<code>lastCompact</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LastCompact represents the last compact</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>logBackup</code></br>
 <em>
 string
@@ -4156,6 +4167,19 @@ string
 </td>
 <td>
 <p>logBackup represents the name of log backup.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logBackupStartTs</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>LogBackupStartTs represents the start time of log backup</p>
 </td>
 </tr>
 <tr>
@@ -4181,7 +4205,21 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>LastCompactTime represents the time when the last backup was compacted</p>
+<p>LastCompactTime represents the time when the last compact was compacted</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>nextCompactTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>NextBackupTime represents the time when the next compact will be scheduled, it should
+equal to a passed lastBackupTime</p>
 </td>
 </tr>
 <tr>

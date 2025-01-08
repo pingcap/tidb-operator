@@ -25,3 +25,7 @@ func (bs *BackupSchedule) GetBackupCRDName(timestamp time.Time) string {
 func (bs *BackupSchedule) GetLogBackupCRDName() string {
 	return fmt.Sprintf("%s-%s", "log", bs.GetName())
 }
+
+func (bs *BackupSchedule) GetCompactBackupCRDName() string {
+	return fmt.Sprintf("%s-%s", "compact", bs.GetName())
+}
