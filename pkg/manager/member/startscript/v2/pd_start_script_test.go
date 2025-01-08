@@ -922,19 +922,19 @@ func TestPDMSWithName(t *testing.T) {
 	for _, spec := range tc.Spec.PDMS {
 		spec.Image = "pingcap/pd:v8.2.0"
 	}
-	check, err := pdMSSupportMicroServicesWithName.Check(tc.PDMSVersion("tso"))
+	check, err := pdMSSupportMicroservicesWithName.Check(tc.PDMSVersion("tso"))
 	re.Nil(err)
 	re.False(check)
 	for _, spec := range tc.Spec.PDMS {
 		spec.Image = "pingcap/pd:v8.3.0"
 	}
-	check, err = pdMSSupportMicroServicesWithName.Check(tc.PDMSVersion("tso"))
+	check, err = pdMSSupportMicroservicesWithName.Check(tc.PDMSVersion("tso"))
 	re.Nil(err)
 	re.True(check)
 	for _, spec := range tc.Spec.PDMS {
 		spec.Image = "pingcap/pd:v9.1.0"
 	}
-	check, err = pdMSSupportMicroServicesWithName.Check(tc.PDMSVersion("tso"))
+	check, err = pdMSSupportMicroservicesWithName.Check(tc.PDMSVersion("tso"))
 	re.Nil(err)
 	re.True(check)
 }
