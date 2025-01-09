@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:generate ${GOBIN}/mockgen -destination mock_generated.go -package=pdapi ${GO_MODULE}/pkg/pdapi/v1 PDClient
 package pdapi
 
 import (

@@ -24,6 +24,7 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
@@ -230,7 +231,7 @@ func SyncPVCs(ctx context.Context, cli client.Client,
 	for _, expectPVC := range expectPVCs {
 		var actualPVC corev1.PersistentVolumeClaim
 		if err := cli.Get(ctx, client.ObjectKey{Namespace: expectPVC.Namespace, Name: expectPVC.Name}, &actualPVC); err != nil {
-			if client.IgnoreNotFound(err) != nil {
+			if !errors.IsNotFound(err) {
 				return false, fmt.Errorf("can't get expectPVC %s/%s: %w", expectPVC.Namespace, expectPVC.Name, err)
 			}
 

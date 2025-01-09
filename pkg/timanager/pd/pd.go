@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:generate ${GOBIN}/mockgen -destination mock_generated.go -package=pd ${GO_MODULE}/pkg/timanager/pd PDClient,StoreCache,MemberCache
 package pd
 
 import (
