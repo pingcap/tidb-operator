@@ -298,6 +298,7 @@ func newRealControls(
 		ProxyControl:       NewDefaultTiProxyControl(),
 		TiDBControl:        NewDefaultTiDBControl(secretLister),
 		BackupControl:      NewRealBackupControl(clientset, recorder),
+		CompactControl:     NewRealCompactControl(clientset, recorder),
 		RestoreControl:     NewRealRestoreControl(clientset, restoreLister, recorder),
 		SecretControl:      NewRealSecretControl(kubeClientset, secretLister, recorder),
 	}
