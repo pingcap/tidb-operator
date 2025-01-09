@@ -154,7 +154,7 @@ func (r *CompactStatusUpdater) OnCreateJob(ctx context.Context, compact *v1alpha
 			},
 		}
 	} else {
-		newStatus.State = string(v1alpha1.BackupRunning)
+		newStatus.State = string(v1alpha1.BackupPrepare)
 	}
 	return r.UpdateStatus(compact, newStatus)
 }
@@ -173,7 +173,7 @@ func (r *CompactStatusUpdater) OnProgress(ctx context.Context, compact *v1alpha1
 		p.MetaCompleted, p.MetaTotal, p.BytesCompacted, p.BytesToCompact)
 
 	newStatus := v1alpha1.CompactStatus{
-		Progress: progress,
+		State: progress,
 	}
 	return r.UpdateStatus(compact, newStatus)
 }
