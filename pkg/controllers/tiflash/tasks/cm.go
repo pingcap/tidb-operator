@@ -57,10 +57,15 @@ func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 			return task.Fail().With("tiflash proxy config cannot be encoded: %w", err)
 		}
 
-		state.ConfigHash, err = hasher.GenerateHash(state.TiFlash().Spec.Config)
+		cfgHash1, err := hasher.GenerateHash(state.TiFlash().Spec.Config)
 		if err != nil {
 			return task.Fail().With("failed to generate hash for `tiflash.spec.config`: %w", err)
 		}
+		cfgHash2, err := hasher.GenerateHash(state.TiFlash().Spec.ProxyConfig)
+		if err != nil {
+			return task.Fail().With("failed to generate hash for `tiflash.spec.proxyConfig`: %w", err)
+		}
+		state.ConfigHash = cfgHash1 + cfgHash2
 		expected := newConfigMap(state.TiFlash(), flashData, proxyData, state.ConfigHash)
 		if e := c.Apply(ctx, expected); e != nil {
 			return task.Fail().With("can't create/update cm of tiflash: %w", e)

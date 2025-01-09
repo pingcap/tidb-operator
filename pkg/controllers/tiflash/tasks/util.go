@@ -14,7 +14,9 @@
 
 package tasks
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func ConfigMapName(tiflashName string) string {
 	return tiflashName
