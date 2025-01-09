@@ -80,6 +80,8 @@ func calEndTs(bs *v1alpha1.BackupSchedule, startTs time.Time, interval time.Dura
 			continue
 		}
 
+		klog.Infof("backupSchedule %s/%s target time is %v", bs.GetNamespace(), bs.GetName(), target.Time)
+
 		if target.After(fastCompactLimit) {
 			endTime = fastCompactLimit
 			nextCompact = target
@@ -98,34 +100,41 @@ func calEndTs(bs *v1alpha1.BackupSchedule, startTs time.Time, interval time.Dura
 	return endTime
 }
 
-func (bm *backupScheduleManager) calCompactInterval(bs *v1alpha1.BackupSchedule, scheduleTime *time.Time, nowFn nowFn) (startTs time.Time, endTs time.Time, err error) {
+func (bm *backupScheduleManager) performCompact(bs *v1alpha1.BackupSchedule, scheduleTime *time.Time, nowFn nowFn) error {
 	if bs.Spec.CompactInterval == nil || bs.Status.LogBackup == nil {
-		return startTs, endTs, nil
+		return nil
 	}
 
+	var startTs, endTs time.Time
 	switch {
 	case bs.Status.LogBackupStartTs == nil:
-		return startTs, endTs, fmt.Errorf("Compact failed: %s/%s, please start a log backup before compact it", bs.GetNamespace(), bs.GetName())
+		return fmt.Errorf("Compact failed: %s/%s, please start a log backup before compact it", bs.GetNamespace(), bs.GetName())
 	case bs.Status.LastCompactTime == nil:
 		startTs = bs.Status.LogBackupStartTs.Time
 	default:
 		startTs = bs.Status.LastCompactTime.Time
 	}
+	klog.Infof("backupSchedule %s/%s startTs is %v", bs.GetNamespace(), bs.GetName(), startTs)
 
 	interval, err := time.ParseDuration(*bs.Spec.CompactInterval)
 	if err != nil {
-		return startTs, endTs, fmt.Errorf("failed to parse compact interval: %w", err)
+		return fmt.Errorf("failed to parse compact interval: %w", err)
 	}
 	now := nowFn()
 
 	endTime := calEndTs(bs, startTs, interval, scheduleTime)
+	klog.Infof("backupSchedule %s/%s endTime is %v", bs.GetNamespace(), bs.GetName(), endTime)
 
 	if endTime.After(now) {
-		klog.Infof("backupSchedule %s/%s next compact time is not reached", bs.GetNamespace(), bs.GetName())
-		return startTs, endTs, nil
+		klog.Infof("backupSchedule %s/%s next compact time is not reached: %v", bs.GetNamespace(), bs.GetName(), endTime)
+		return nil
 	}
 
-	return startTs, endTime, nil
+	if err := bm.doCompact(bs, startTs, endTs); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
@@ -150,7 +159,7 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 		return err
 	}
 
-	klog.Infof("backupSchedule %s/%s last scheduled time is %v", bs.GetNamespace(), bs.GetName(), scheduledTime)
+	klog.Infof("backupSchedule %s/%s next scheduled time is %v", bs.GetNamespace(), bs.GetName(), scheduledTime)
 
 	if err := bm.canPerformNextCompact(bs); err != nil {
 		return err
@@ -162,14 +171,8 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 
 	klog.Infof("backupSchedule %s/%s can perform next compact", bs.GetNamespace(), bs.GetName())
 
-	startTs, endTs, err := bm.calCompactInterval(bs, scheduledTime, bm.now)
+	err = bm.performCompact(bs, scheduledTime, bm.now)
 	if err != nil {
-		return err
-	}
-
-	klog.Infof("backupSchedule %s/%s startTs is %v, endTs is %v", bs.GetNamespace(), bs.GetName(), startTs, endTs)
-
-	if err := bm.doCompact(bs, startTs, endTs); err != nil {
 		return err
 	}
 
@@ -360,14 +363,21 @@ func (bm *backupScheduleManager) performLogBackupIfNeeded(bs *v1alpha1.BackupSch
 	bsName := bs.GetName()
 
 	// no log backup or already run no need to perform log backup again
-	if bs.Spec.LogBackupTemplate == nil || bs.Status.LogBackup != nil {
+	if bs.Spec.LogBackupTemplate == nil {
 		return nil
 	}
 
-	// create log backup
-	startTs := time.Now()
+	startTs := bm.now()
 	logBackup := buildLogBackup(bs, startTs)
-	_, err := bm.deps.BackupControl.CreateBackup(logBackup)
+	logBackup, err := bm.deps.BackupControl.GetBackup(logBackup)
+	if err == nil {
+		if err := bm.deps.BackupControl.DeleteBackup(logBackup); err != nil {
+			return fmt.Errorf("backup schedule %s/%s, delete log backup %s failed, err: %v", ns, bsName, logBackup.Name, err)
+		}
+	}
+
+	// create log backup
+	logBackup, err = bm.deps.BackupControl.CreateBackup(logBackup)
 	if err != nil {
 		return fmt.Errorf("backup schedule %s/%s, create log backup %s failed, err: %v", ns, bsName, logBackup.Name, err)
 	}
@@ -553,16 +563,12 @@ func buildCompactBackup(bs *v1alpha1.BackupSchedule, startTs time.Time, endTs ti
 	}
 
 	compactSpec := *bs.Spec.CompactBackupTemplate.DeepCopy()
-	compactPrefix := "compact" + "-" + startTs.UTC().Format(v1alpha1.BackupNameTimeFormat) + "-" + endTs.UTC().Format(v1alpha1.BackupNameTimeFormat)
-	if compactSpec.S3 != nil {
-		compactSpec.S3.Prefix = path.Join(compactSpec.S3.Prefix, compactPrefix)
-	} else if compactSpec.Gcs != nil {
-		compactSpec.Gcs.Prefix = path.Join(compactSpec.Gcs.Prefix, compactPrefix)
-	} else if compactSpec.Azblob != nil {
-		compactSpec.Azblob.Prefix = path.Join(compactSpec.Azblob.Prefix, compactPrefix)
-	} else if compactSpec.Local != nil {
-		compactSpec.Local.Prefix = path.Join(compactSpec.Local.Prefix, compactPrefix)
-	}
+	compactSpec.StartTs = startTs.UTC().Format(v1alpha1.BackupNameTimeFormat)
+	compactSpec.EndTs = endTs.UTC().Format(v1alpha1.BackupNameTimeFormat)
+	compactSpec.S3 = bs.Spec.LogBackupTemplate.S3
+	compactSpec.Gcs = bs.Spec.LogBackupTemplate.Gcs
+	compactSpec.Azblob = bs.Spec.LogBackupTemplate.Azblob
+	compactSpec.Local = bs.Spec.LogBackupTemplate.Local
 
 	if bs.Spec.ImagePullSecrets != nil {
 		compactSpec.ImagePullSecrets = bs.Spec.ImagePullSecrets
