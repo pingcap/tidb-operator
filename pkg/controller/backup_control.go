@@ -47,6 +47,7 @@ import (
 // BackupControlInterface manages Backups used in BackupSchedule
 type BackupControlInterface interface {
 	CreateBackup(backup *v1alpha1.Backup) (*v1alpha1.Backup, error)
+	GetBackup(backup *v1alpha1.Backup) (*v1alpha1.Backup, error)
 	DeleteBackup(backup *v1alpha1.Backup) error
 	TruncateLogBackup(logBackup *v1alpha1.Backup, truncateTSO uint64) error
 }
@@ -79,6 +80,19 @@ func (c *realBackupControl) CreateBackup(backup *v1alpha1.Backup) (*v1alpha1.Bac
 		klog.V(4).Infof("create Backup: [%s/%s] for backupSchedule/%s successfully", ns, backupName, bsName)
 	}
 	c.recordBackupEvent("create", backup, err)
+	return backup, err
+}
+
+func (c *realBackupControl) GetBackup(backup *v1alpha1.Backup) (*v1alpha1.Backup, error) {
+	ns := backup.GetNamespace()
+	backupName := backup.GetName()
+
+	bsName := backup.GetLabels()[label.BackupScheduleLabelKey]
+	backup, err := c.cli.PingcapV1alpha1().Backups(ns).Get(context.TODO(), backupName, metav1.GetOptions{})
+	if err != nil {
+		klog.Errorf("failed to get Backup: [%s/%s] for backupSchedule/%s, err: %v", ns, backupName, bsName, err)
+		return nil, err
+	} 
 	return backup, err
 }
 
@@ -170,6 +184,10 @@ func (fbc *FakeBackupControl) CreateBackup(backup *v1alpha1.Backup) (*v1alpha1.B
 	}
 
 	return backup, fbc.backupIndexer.Add(backup)
+}
+
+func (fbc *FakeBackupControl) GetBackup(backup *v1alpha1.Backup) (*v1alpha1.Backup, error) {
+	return fbc.backupLister.Backups(backup.GetNamespace()).Get(backup.GetName())
 }
 
 // DeleteBackup deletes the backup from BackupIndexer
