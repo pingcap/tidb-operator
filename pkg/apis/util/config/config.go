@@ -382,11 +382,36 @@ func ParseTSString(ts string) (uint64, error) {
 	return GoTimeToTS(t), nil
 }
 
+// ParseTSStringToGoTime supports TSO or datetime, e.g. '400036290571534337', '2006-01-02 15:04:05'
+func ParseTSStringToGoTime(ts string) (time.Time, error) {
+	if len(ts) == 0 {
+		return time.Time{}, nil
+	}
+	if tso, err := strconv.ParseUint(ts, 10, 64); err == nil {
+		return TSToGoTime(tso), nil
+	}
+	t, err := time.ParseInLocation("2006-01-02 15:04:05", ts, time.Local)
+	if err != nil {
+		t, err = time.Parse(time.RFC3339, ts)
+		if err != nil {
+			return time.Time{}, fmt.Errorf("cannot parse ts string %s, err: %v", ts, err)
+		}
+	}
+	return t, nil
+}
+
 // GoTimeToTS converts a Go time to uint64 timestamp.
 // port from tidb.
 func GoTimeToTS(t time.Time) uint64 {
 	ts := (t.UnixNano() / int64(time.Millisecond)) << 18
 	return uint64(ts)
+}
+
+func TSToGoTime(ts uint64) time.Time {
+	ms := int64(ts >> 18)
+	sec := ms / 1000
+	nsec := (ms % 1000) * 1000000
+	return time.Unix(sec, nsec)
 }
 
 func TSOToTS(tso uint64) int64 {
