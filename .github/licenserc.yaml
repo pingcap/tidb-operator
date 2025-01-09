@@ -23,7 +23,6 @@ header:
     - '**/go.work.sum'
     - '**/LICENSE'
     - third_party/**
-    - pkg/**/*mock.go
     - '**/OWNERS'
     - OWNERS_ALIASES
   comment: on-failure
