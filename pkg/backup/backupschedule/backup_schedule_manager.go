@@ -363,21 +363,25 @@ func (bm *backupScheduleManager) performLogBackupIfNeeded(bs *v1alpha1.BackupSch
 	bsName := bs.GetName()
 
 	// no log backup or already run no need to perform log backup again
-	if bs.Spec.LogBackupTemplate == nil {
+	if bs.Spec.LogBackupTemplate == nil || bs.Status.LogBackup != nil {
 		return nil
 	}
 
 	startTs := bm.now()
 	logBackup := buildLogBackup(bs, startTs)
-	logBackup, err := bm.deps.BackupControl.GetBackup(logBackup)
+	oldLogBackup, err := bm.deps.BackupControl.GetBackup(logBackup)
 	if err == nil {
-		if err := bm.deps.BackupControl.DeleteBackup(logBackup); err != nil {
-			return fmt.Errorf("backup schedule %s/%s, delete log backup %s failed, err: %v", ns, bsName, logBackup.Name, err)
+		if err := bm.deps.BackupControl.DeleteBackup(oldLogBackup); err != nil {
+			return fmt.Errorf("backup schedule %s/%s, delete log backup %s failed, err: %v", ns, bsName, oldLogBackup.Name, err)
 		}
+	} 
+	if err != nil && !errors.IsNotFound(err) {
+		klog.Errorf("backup schedule %s/%s, get log backup %s failed, err: %v", ns, bsName, oldLogBackup.Name, err)
+		return err
 	}
 
 	// create log backup
-	logBackup, err = bm.deps.BackupControl.CreateBackup(logBackup)
+	_, err = bm.deps.BackupControl.CreateBackup(logBackup)
 	if err != nil {
 		return fmt.Errorf("backup schedule %s/%s, create log backup %s failed, err: %v", ns, bsName, logBackup.Name, err)
 	}
@@ -563,12 +567,19 @@ func buildCompactBackup(bs *v1alpha1.BackupSchedule, startTs time.Time, endTs ti
 	}
 
 	compactSpec := *bs.Spec.CompactBackupTemplate.DeepCopy()
-	compactSpec.StartTs = startTs.UTC().Format(v1alpha1.BackupNameTimeFormat)
-	compactSpec.EndTs = endTs.UTC().Format(v1alpha1.BackupNameTimeFormat)
-	compactSpec.S3 = bs.Spec.LogBackupTemplate.S3
-	compactSpec.Gcs = bs.Spec.LogBackupTemplate.Gcs
-	compactSpec.Azblob = bs.Spec.LogBackupTemplate.Azblob
-	compactSpec.Local = bs.Spec.LogBackupTemplate.Local
+	compactSpec.StartTs = fmt.Sprint(startTs.Unix())
+	compactSpec.EndTs = fmt.Sprint(endTs.Unix())
+
+	logBackupPrefix := "log" + "-" + bs.Status.LogBackupStartTs.UTC().Format(v1alpha1.BackupNameTimeFormat)
+	if compactSpec.S3 != nil {
+		compactSpec.S3.Prefix = path.Join(compactSpec.S3.Prefix, logBackupPrefix)
+	} else if compactSpec.Gcs != nil {
+		compactSpec.Gcs.Prefix = path.Join(compactSpec.Gcs.Prefix, logBackupPrefix)
+	} else if compactSpec.Azblob != nil {
+		compactSpec.Azblob.Prefix = path.Join(compactSpec.Azblob.Prefix, logBackupPrefix)
+	} else if compactSpec.Local != nil {
+		compactSpec.Local.Prefix = path.Join(compactSpec.Local.Prefix, logBackupPrefix)
+	}
 
 	if bs.Spec.ImagePullSecrets != nil {
 		compactSpec.ImagePullSecrets = bs.Spec.ImagePullSecrets
@@ -587,7 +598,7 @@ func buildCompactBackup(bs *v1alpha1.BackupSchedule, startTs time.Time, endTs ti
 			},
 		},
 	}
-
+	klog.Infof("build compact backup %s/%s", ns, bsName)
 	return compactBackup
 }
 
