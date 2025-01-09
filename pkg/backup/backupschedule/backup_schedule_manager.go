@@ -52,7 +52,6 @@ func NewBackupScheduleManager(deps *controller.Dependencies) backup.BackupSchedu
 func (bm *backupScheduleManager) doCompact(bs *v1alpha1.BackupSchedule, startTime time.Time, endTime time.Time) error {
 	compact := buildCompactBackup(bs, startTime, endTime)
 	_, err := bm.deps.CompactControl.CreateCompactBackup(compact)
-	bs.Status.LastCompactTime = &metav1.Time{Time: bm.now()}
 	bs.Status.LastCompact = compact.Name
 	return err
 }
@@ -152,8 +151,6 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 		return err
 	}
 
-	klog.Infof("backupSchedule %s/%s can perform next backup", bs.GetNamespace(), bs.GetName())
-
 	scheduledTime, err := getLastScheduledTime(bs, bm.now)
 	if err != nil {
 		return err
@@ -162,18 +159,9 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 	klog.Infof("backupSchedule %s/%s next scheduled time is %v", bs.GetNamespace(), bs.GetName(), scheduledTime)
 
 	if err := bm.canPerformNextCompact(bs); err != nil {
-		return err
-	}
-
-	if err := bm.deleteLastcompactJob(bs); err != nil {
-		return err
-	}
-
-	klog.Infof("backupSchedule %s/%s can perform next compact", bs.GetNamespace(), bs.GetName())
-
-	err = bm.performCompact(bs, scheduledTime, bm.now)
-	if err != nil {
-		return err
+		klog.Errorf("backupSchedule %s/%s can not perform next compact, err: %v", bs.GetNamespace(), bs.GetName(), err)
+	} else if err := bm.performCompact(bs, scheduledTime, bm.now); err != nil {
+		klog.Errorf("backupSchedule %s/%s perform compact failed, err: %v", bs.GetNamespace(), bs.GetName(), err)
 	}
 
 	if scheduledTime == nil {
@@ -311,7 +299,7 @@ func (bm *backupScheduleManager) canPerformNextCompact(bs *v1alpha1.BackupSchedu
 	bsGroupName := bs.GetLabels()[label.BackupScheduleGroupLabelKey]
 
 	if bsGroupName == "" {
-		backup, err := bm.deps.CompactBackupLister.CompactBackups(ns).Get(bs.Status.LastCompact)
+		compact, err := bm.deps.CompactBackupLister.CompactBackups(ns).Get(bs.Status.LastCompact)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return nil
@@ -319,11 +307,23 @@ func (bm *backupScheduleManager) canPerformNextCompact(bs *v1alpha1.BackupSchedu
 			return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, bs.Status.LastBackup, err)
 		}
 
-		if backup.Status.State == string(v1alpha1.BackupComplete) || backup.Status.State == string(v1alpha1.BackupFailed) {
-			return nil
+		var timestamp string
+		switch compact.Status.State {
+		case string(v1alpha1.BackupComplete):
+			timestamp = compact.Spec.EndTs
+		case string(v1alpha1.BackupFailed):
+			timestamp = compact.Spec.StartTs
+		default:
+			// skip this sync round of the backup schedule and waiting the last backup.
+			return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, bs.Status.LastBackup)
 		}
-		// skip this sync round of the backup schedule and waiting the last backup.
-		return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, bs.Status.LastBackup)
+
+		t, err := config.ParseTSStringToGoTime(timestamp)
+		if err != nil {
+			return perrors.AddStack(err)
+		}
+		bs.Status.LastCompactTime = &metav1.Time{Time: t}
+		return nil
 	}
 
 	// Check the last backup of the group
@@ -340,7 +340,7 @@ func (bm *backupScheduleManager) canPerformNextCompact(bs *v1alpha1.BackupSchedu
 
 	for _, bsMember := range bss {
 		// The check is not safe in fact since we don't have strict serialization
-		backup, err := bm.deps.CompactBackupLister.CompactBackups(ns).Get(bs.Status.LastCompact)
+		compact, err := bm.deps.CompactBackupLister.CompactBackups(ns).Get(bs.Status.LastCompact)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				continue
@@ -348,11 +348,23 @@ func (bm *backupScheduleManager) canPerformNextCompact(bs *v1alpha1.BackupSchedu
 			return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, bsMember.Status.LastBackup, err)
 		}
 
-		if backup.Status.State == string(v1alpha1.BackupComplete) || backup.Status.State == string(v1alpha1.BackupFailed) {
-			continue
+		var timestamp string
+		switch compact.Status.State {
+		case string(v1alpha1.BackupComplete):
+			timestamp = compact.Spec.EndTs
+		case string(v1alpha1.BackupFailed):
+			timestamp = compact.Spec.StartTs
+		default:
+			// skip this sync round of the backup schedule and waiting the last backup.
+			return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, bs.Status.LastBackup)
 		}
-		// skip this sync round of the backup schedule and waiting the last backup.
-		return controller.RequeueErrorf("backup schedule %s/%s, the last backup %s is still running", ns, bsName, bsMember.Status.LastBackup)
+
+		t, err := config.ParseTSStringToGoTime(timestamp)
+		if err != nil {
+			return perrors.AddStack(err)
+		}
+		bs.Status.LastCompactTime = &metav1.Time{Time: t}
+		return nil
 	}
 
 	return nil
@@ -374,7 +386,7 @@ func (bm *backupScheduleManager) performLogBackupIfNeeded(bs *v1alpha1.BackupSch
 		if err := bm.deps.BackupControl.DeleteBackup(oldLogBackup); err != nil {
 			return fmt.Errorf("backup schedule %s/%s, delete log backup %s failed, err: %v", ns, bsName, oldLogBackup.Name, err)
 		}
-	} 
+	}
 	if err != nil && !errors.IsNotFound(err) {
 		klog.Errorf("backup schedule %s/%s, get log backup %s failed, err: %v", ns, bsName, oldLogBackup.Name, err)
 		return err
@@ -567,8 +579,8 @@ func buildCompactBackup(bs *v1alpha1.BackupSchedule, startTs time.Time, endTs ti
 	}
 
 	compactSpec := *bs.Spec.CompactBackupTemplate.DeepCopy()
-	compactSpec.StartTs = fmt.Sprint(startTs.Unix())
-	compactSpec.EndTs = fmt.Sprint(endTs.Unix())
+	compactSpec.StartTs = startTs.UTC().Format(v1alpha1.BackupTimestampFormat)
+	compactSpec.EndTs = endTs.UTC().Format(v1alpha1.BackupTimestampFormat)
 
 	logBackupPrefix := "log" + "-" + bs.Status.LogBackupStartTs.UTC().Format(v1alpha1.BackupNameTimeFormat)
 	if compactSpec.S3 != nil {

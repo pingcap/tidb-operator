@@ -92,7 +92,7 @@ func (c *realBackupControl) GetBackup(backup *v1alpha1.Backup) (*v1alpha1.Backup
 	if err != nil {
 		klog.Errorf("failed to get Backup: [%s/%s] for backupSchedule/%s, err: %v", ns, backupName, bsName, err)
 		return nil, err
-	} 
+	}
 	return backup, err
 }
 
