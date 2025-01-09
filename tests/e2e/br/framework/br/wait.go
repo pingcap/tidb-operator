@@ -362,6 +362,7 @@ func WaitForCompactComplete(c versioned.Interface, ns, name string, timeout time
 			return false, fmt.Errorf("Compact failed: %s", cpbk.Status.Message)
 		default:
 			log.Logf("the current status is: %s %s", cpbk.Status.State, cpbk.Status.Progress)
+			log.Logf("the current message is: %s", cpbk.Status.Message)
 			//do nothing
 		}
 
