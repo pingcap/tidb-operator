@@ -17,7 +17,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"os"
 	"path"
 	"sort"
 	"time"
@@ -364,10 +363,9 @@ func WaitForCompactComplete(f *framework.Framework, ns, name string, timeout tim
 			if err != nil {
 				log.Logf("Error listing events: %v", err)
 			}
-		
+
 			if len(events.Items) == 0 {
 				fmt.Printf("No events found for pod %s in namespace %s\n", name, ns)
-				os.Exit(0)
 			}
 
 			sort.Slice(events.Items, func(i, j int) bool {
@@ -375,9 +373,9 @@ func WaitForCompactComplete(f *framework.Framework, ns, name string, timeout tim
 				timeJ := events.Items[j].LastTimestamp.Time
 				return timeI.After(timeJ)
 			})
-			
+
 			latestEvent := events.Items[0]
-		
+
 			log.Logf("Type: %s\n", latestEvent.Type)
 			log.Logf("Reason: %s\n", latestEvent.Reason)
 			log.Logf("Message: %s\n", latestEvent.Message)
