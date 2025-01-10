@@ -68,8 +68,7 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		}
 
 		if state.PodIsTerminating {
-			//nolint:mnd // refactor to use a constant
-			return task.Retry(5 * time.Second).With("pod is terminating, retry after it's terminated")
+			return task.Retry(defaultTaskWaitDuration).With("pod is terminating, retry after it's terminated")
 		}
 
 		if state.LeaderEvicting {
@@ -118,7 +117,7 @@ func syncSuspendCond(tikv *v1alpha1.TiKV) bool {
 }
 
 // Status of this condition can only transfer as the below
-func syncLeadersEvictedCond(tikv *v1alpha1.TiKV, store *pdv1.Store, isEvicting bool, isPDAvail bool) bool {
+func syncLeadersEvictedCond(tikv *v1alpha1.TiKV, store *pdv1.Store, isEvicting, isPDAvail bool) bool {
 	status := metav1.ConditionFalse
 	reason := "NotEvicted"
 	msg := "leaders are not all evicted"
