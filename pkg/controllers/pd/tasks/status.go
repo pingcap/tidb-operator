@@ -18,7 +18,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -35,61 +34,37 @@ func TaskStatusUnknown() task.Task {
 }
 
 //nolint:gocyclo // refactor if possible
-func TaskStatus(state *ReconcileContext, _ logr.Logger, c client.Client) task.Task {
+func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Status", func(ctx context.Context) task.Result {
-		var (
-			healthStatus  = metav1.ConditionFalse
-			healthMessage = "pd is not healthy"
+		needUpdate := false
+		pd := state.PD()
+		pod := state.Pod()
+		// TODO(liubo02): simplify it
+		var healthy bool
 
-			suspendStatus  = metav1.ConditionFalse
-			suspendMessage = "pd is not suspended"
+		if pod != nil &&
+			statefulset.IsPodRunningAndReady(pod) &&
+			!state.PodIsTerminating &&
+			state.Healthy {
+			healthy = true
+		}
 
-			needUpdate = false
-		)
+		needUpdate = syncInitializedCond(pd, state.Initialized) || needUpdate
+		needUpdate = syncHealthCond(pd, healthy) || needUpdate
+		needUpdate = syncSuspendCond(pd) || needUpdate
 
 		if state.MemberID != "" {
-			needUpdate = SetIfChanged(&state.PD().Status.ID, state.MemberID) || needUpdate
+			needUpdate = SetIfChanged(&pd.Status.ID, state.MemberID) || needUpdate
 		}
-
-		needUpdate = SetIfChanged(&state.PD().Status.IsLeader, state.IsLeader) || needUpdate
-		needUpdate = syncInitializedCond(state.PD(), state.Initialized) || needUpdate
-
-		needUpdate = meta.SetStatusCondition(&state.PD().Status.Conditions, metav1.Condition{
-			Type:               v1alpha1.PDCondSuspended,
-			Status:             suspendStatus,
-			ObservedGeneration: state.PD().Generation,
-			Reason:             v1alpha1.PDSuspendReason,
-			Message:            suspendMessage,
-		}) || needUpdate
-
-		needUpdate = SetIfChanged(&state.PD().Status.ObservedGeneration, state.PD().Generation) || needUpdate
-		needUpdate = SetIfChanged(&state.PD().Status.UpdateRevision, state.PD().Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
-
-		if state.Pod() == nil || state.PodIsTerminating {
-			state.Healthy = false
-		} else if statefulset.IsPodRunningAndReady(state.Pod()) && state.Healthy {
-			if state.PD().Status.CurrentRevision != state.Pod().Labels[v1alpha1.LabelKeyInstanceRevisionHash] {
-				state.PD().Status.CurrentRevision = state.Pod().Labels[v1alpha1.LabelKeyInstanceRevisionHash]
-				needUpdate = true
-			}
-		} else {
-			state.Healthy = false
+		needUpdate = SetIfChanged(&pd.Status.IsLeader, state.IsLeader) || needUpdate
+		needUpdate = SetIfChanged(&pd.Status.ObservedGeneration, pd.Generation) || needUpdate
+		needUpdate = SetIfChanged(&pd.Status.UpdateRevision, pd.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+		if healthy {
+			needUpdate = SetIfChanged(&pd.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 		}
-
-		if state.Healthy {
-			healthStatus = metav1.ConditionTrue
-			healthMessage = "pd is healthy"
-		}
-		needUpdate = meta.SetStatusCondition(&state.PD().Status.Conditions, metav1.Condition{
-			Type:               v1alpha1.PDCondHealth,
-			Status:             healthStatus,
-			ObservedGeneration: state.PD().Generation,
-			Reason:             v1alpha1.PDHealthReason,
-			Message:            healthMessage,
-		}) || needUpdate
 
 		if needUpdate {
-			if err := c.Status().Update(ctx, state.PD()); err != nil {
+			if err := c.Status().Update(ctx, pd); err != nil {
 				return task.Fail().With("cannot update status: %v", err)
 			}
 		}
@@ -98,7 +73,7 @@ func TaskStatus(state *ReconcileContext, _ logr.Logger, c client.Client) task.Ta
 			return task.Retry(5 * time.Second).With("pod is terminating, retry after it's terminated")
 		}
 
-		if !state.Initialized || !state.Healthy {
+		if !healthy || !state.Initialized {
 			return task.Wait().With("pd may not be initialized or healthy, wait for next event")
 		}
 
@@ -106,25 +81,64 @@ func TaskStatus(state *ReconcileContext, _ logr.Logger, c client.Client) task.Ta
 	})
 }
 
+func syncHealthCond(pd *v1alpha1.PD, healthy bool) bool {
+	var (
+		status = metav1.ConditionFalse
+		reason = "Unhealthy"
+		msg    = "instance is not healthy"
+	)
+	if healthy {
+		status = metav1.ConditionTrue
+		reason = "Healthy"
+		msg = "instance is healthy"
+	}
+
+	return meta.SetStatusCondition(&pd.Status.Conditions, metav1.Condition{
+		Type:               v1alpha1.CondHealth,
+		Status:             status,
+		ObservedGeneration: pd.Generation,
+		Reason:             reason,
+		Message:            msg,
+	})
+}
+
+func syncSuspendCond(pd *v1alpha1.PD) bool {
+	// always set it as unsuspended
+	return meta.SetStatusCondition(&pd.Status.Conditions, metav1.Condition{
+		Type:               v1alpha1.CondSuspended,
+		Status:             metav1.ConditionFalse,
+		ObservedGeneration: pd.Generation,
+		Reason:             v1alpha1.ReasonUnsuspended,
+		Message:            "instace is not suspended",
+	})
+}
+
+// TODO(liubo02): remove it, it seems useless
 // Status of this condition can only transfer as the below
 // 1. false => true
 // 2. true <=> unknown
 func syncInitializedCond(pd *v1alpha1.PD, initialized bool) bool {
 	cond := meta.FindStatusCondition(pd.Status.Conditions, v1alpha1.PDCondInitialized)
 	status := metav1.ConditionUnknown
+	reason := "Unavailable"
+	msg := "pd is unavailable"
 	switch {
 	case initialized:
 		status = metav1.ConditionTrue
+		reason = "Initialized"
+		msg = "instance is initialized"
 	case !initialized && (cond == nil || cond.Status == metav1.ConditionFalse):
 		status = metav1.ConditionFalse
+		reason = "Uninitialized"
+		msg = "instance has not been initialized yet"
 	}
 
 	return meta.SetStatusCondition(&pd.Status.Conditions, metav1.Condition{
 		Type:               v1alpha1.PDCondInitialized,
 		Status:             status,
 		ObservedGeneration: pd.Generation,
-		Reason:             "initialized",
-		Message:            "instance has joined the cluster",
+		Reason:             reason,
+		Message:            msg,
 	})
 }
 

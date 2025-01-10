@@ -17,7 +17,6 @@ package tasks
 import (
 	"context"
 
-	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -30,7 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/toml"
 )
 
-func TaskConfigMap(state *ReconcileContext, _ logr.Logger, c client.Client) task.Task {
+func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("ConfigMap", func(ctx context.Context) task.Result {
 		// TODO: DON'T add bootstrap config back
 		// We need to check current config and forbid adding bootstrap cfg back
@@ -40,6 +39,7 @@ func TaskConfigMap(state *ReconcileContext, _ logr.Logger, c client.Client) task
 		if err := decoder.Decode([]byte(state.PD().Spec.Config), &cfg); err != nil {
 			return task.Fail().With("pd config cannot be decoded: %v", err)
 		}
+
 		if err := cfg.Overlay(state.Cluster(), state.PD(), state.PDSlice()); err != nil {
 			return task.Fail().With("cannot generate pd config: %v", err)
 		}
@@ -49,6 +49,7 @@ func TaskConfigMap(state *ReconcileContext, _ logr.Logger, c client.Client) task
 			return task.Fail().With("pd config cannot be encoded: %v", err)
 		}
 
+		// TODO(liubo02): avoid decode toml twice
 		hash, err := hasher.GenerateHash(state.PD().Spec.Config)
 		if err != nil {
 			return task.Fail().With("failed to generate hash for `pd.spec.config`: %v", err)
