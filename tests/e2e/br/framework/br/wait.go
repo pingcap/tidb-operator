@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"path"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -29,6 +30,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/br/framework"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -357,30 +359,51 @@ func WaitForCompactComplete(f *framework.Framework, ns, name string, timeout tim
 		}
 
 		getEvents := func() {
-			events, err := f.ClientSet.CoreV1().Events(ns).List(context.TODO(), metav1.ListOptions{
-				FieldSelector: fmt.Sprintf("involvedObject.kind=Pod,involvedObject.name=%s", name),
-			})
+			pods, err := f.ClientSet.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
-				log.Logf("Error listing events: %v", err)
-			}
-
-			if len(events.Items) == 0 {
-				fmt.Printf("No events found for pod %s in namespace %s\n", name, ns)
+				log.Logf("Error listing pods: %v", err)
 				return
 			}
 
-			sort.Slice(events.Items, func(i, j int) bool {
-				timeI := events.Items[i].LastTimestamp.Time
-				timeJ := events.Items[j].LastTimestamp.Time
-				return timeI.After(timeJ)
-			})
+			var matchingPods []v1.Pod
+			for _, pod := range pods.Items {
+				if strings.Contains(pod.Name, name) {
+					matchingPods = append(matchingPods, pod)
+				}
+			}
+		
+			if len(matchingPods) == 0 {
+				fmt.Printf("No pods found containing '%s' in namespace '%s'\n", name, ns)
+				return
+			}
 
-			latestEvent := events.Items[0]
-
-			log.Logf("Type: %s\n", latestEvent.Type)
-			log.Logf("Reason: %s\n", latestEvent.Reason)
-			log.Logf("Message: %s\n", latestEvent.Message)
-			log.Logf("Count: %d\n", latestEvent.Count)
+			for _, pod := range matchingPods {
+				events, err := f.ClientSet.CoreV1().Events(ns).List(context.TODO(), metav1.ListOptions{
+					FieldSelector: fmt.Sprintf("involvedObject.kind=Pod,involvedObject.name=%s", pod.Name),
+				})
+				if err != nil {
+					log.Logf("Error listing events for pod %s: %v", pod.Name, err)
+					continue
+				}
+		
+				if len(events.Items) == 0 {
+					fmt.Printf("No events found for pod %s in namespace %s\n", pod.Name, ns)
+					continue
+				}
+		
+				// Sort events by LastTimestamp descending
+				sort.Slice(events.Items, func(i, j int) bool {
+					return events.Items[i].LastTimestamp.Time.After(events.Items[j].LastTimestamp.Time)
+				})
+		
+				latestEvent := events.Items[0]
+		
+				log.Logf("Pod: %s", pod.Name)
+				log.Logf("  Type: %s", latestEvent.Type)
+				log.Logf("  Reason: %s", latestEvent.Reason)
+				log.Logf("  Message: %s", latestEvent.Message)
+				log.Logf("  Count: %d", latestEvent.Count)
+			}
 		}
 
 		switch cpbk.Status.State {
