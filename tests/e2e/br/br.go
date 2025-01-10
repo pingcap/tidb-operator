@@ -1233,6 +1233,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				compact.Spec.StartTs = fullBackup.Status.CommitTs
 				compact.Spec.EndTs = currentTS
 				compact.Spec.S3 = logBackup.Spec.S3
+				compact.Spec.BR = logBackup.Spec.BR
 				compact.Spec.MaxRetryTimes = 2
 			})
 			framework.ExpectNoError(err)
