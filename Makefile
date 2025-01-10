@@ -20,6 +20,7 @@ PD_API_PATH = $(ROOT)/pkg/timanager/apis/pd
 GO_MODULE := github.com/pingcap/tidb-operator
 OVERLAY_PKG_DIR = $(ROOT)/pkg/overlay
 BOILERPLATE_FILE = $(ROOT)/hack/boilerplate/boilerplate.go.txt
+MOCK_BOILERPLATE_FILE = $(ROOT)/hack/boilerplate/boilerplate.txt
 
 KIND_VERSION ?= v0.24.0
 
@@ -93,7 +94,7 @@ tidy:
 
 gengo: GEN_DIR ?= ./...
 gengo: bin/mockgen
-	GOBIN=$(BIN_DIR) GO_MODULE=$(GO_MODULE) go generate $(GEN_DIR)
+	BOILERPLATE_FILE=${MOCK_BOILERPLATE_FILE} GOBIN=$(BIN_DIR) GO_MODULE=$(GO_MODULE) go generate $(GEN_DIR)
 
 .PHONY: license
 license: bin/license-eye

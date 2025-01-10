@@ -32,7 +32,7 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 		// get member info successfully and the member still exists
 		case state.IsAvailable && state.MemberID != "":
 			// TODO: check whether quorum will be lost?
-			if err := state.PDClient.Underlay().DeleteMember(ctx, state.PD().Name); err != nil {
+			if err := state.PDClient.Underlay().DeleteMember(ctx, state.MemberID); err != nil {
 				return task.Fail().With("cannot delete member: %v", err)
 			}
 

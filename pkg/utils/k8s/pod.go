@@ -85,6 +85,9 @@ func ComparePods(current, expected *corev1.Pod) CompareResult {
 }
 
 func GetResourceRequirements(req v1alpha1.ResourceRequirements) corev1.ResourceRequirements {
+	if req.CPU == nil && req.Memory == nil {
+		return corev1.ResourceRequirements{}
+	}
 	ret := corev1.ResourceRequirements{
 		Limits:   map[corev1.ResourceName]resource.Quantity{},
 		Requests: map[corev1.ResourceName]resource.Quantity{},

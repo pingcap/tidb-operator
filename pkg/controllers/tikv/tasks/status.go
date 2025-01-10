@@ -45,6 +45,7 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		if pod != nil &&
 			statefulset.IsPodRunningAndReady(pod) &&
 			!state.PodIsTerminating &&
+			state.Store != nil &&
 			state.Store.NodeState == v1alpha1.StoreStateServing {
 			healthy = true
 		}
