@@ -17,8 +17,8 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"path"
-	"sort"
 	"strings"
 	"time"
 
@@ -378,31 +378,27 @@ func WaitForCompactComplete(f *framework.Framework, ns, name string, timeout tim
 			}
 
 			for _, pod := range matchingPods {
-				events, err := f.ClientSet.CoreV1().Events(ns).List(context.TODO(), metav1.ListOptions{
-					FieldSelector: fmt.Sprintf("involvedObject.kind=Pod,involvedObject.name=%s", pod.Name),
+				req := f.ClientSet.CoreV1().Pods(ns).GetLogs(pod.Name, &v1.PodLogOptions{
+					Follow:    false,          // Set to true if you want to stream the logs
 				})
+			
+				// Execute the log request and get the stream
+				logStream, err := req.Stream(context.TODO())
 				if err != nil {
-					log.Logf("Error listing events for pod %s: %v", pod.Name, err)
-					continue
+					log.Logf("Error retrieving logs for pod %s: %v", pod.Name, err)
+					return
 				}
-		
-				if len(events.Items) == 0 {
-					fmt.Printf("No events found for pod %s in namespace %s\n", pod.Name, ns)
-					continue
+				defer logStream.Close()
+			
+				// Read the log stream
+				logBytes, err := io.ReadAll(logStream)
+				if err != nil {
+					log.Logf("Error reading logs for pod %s: %v", pod.Name, err)
+					return
 				}
-		
-				// Sort events by LastTimestamp descending
-				sort.Slice(events.Items, func(i, j int) bool {
-					return events.Items[i].LastTimestamp.Time.After(events.Items[j].LastTimestamp.Time)
-				})
-		
-				latestEvent := events.Items[0]
-		
-				log.Logf("Pod: %s", pod.Name)
-				log.Logf("  Type: %s", latestEvent.Type)
-				log.Logf("  Reason: %s", latestEvent.Reason)
-				log.Logf("  Message: %s", latestEvent.Message)
-				log.Logf("  Count: %d", latestEvent.Count)
+			
+				// Print the logs as a string
+				log.Logf("Logs for pod %s in namespace %s: %s", pod.Name, ns, string(logBytes))
 			}
 		}
 
