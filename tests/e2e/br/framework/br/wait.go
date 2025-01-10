@@ -17,7 +17,9 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"os"
 	"path"
+	"sort"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -348,11 +350,38 @@ func WaitBackupPodOnPhase(f *framework.Framework, backup *v1alpha1.Backup, phase
 	return nil
 }
 
-func WaitForCompactComplete(c versioned.Interface, ns, name string, timeout time.Duration) error {
+func WaitForCompactComplete(f *framework.Framework, ns, name string, timeout time.Duration) error {
 	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
-		cpbk, err := c.PingcapV1alpha1().CompactBackups(ns).Get(context.TODO(), name, metav1.GetOptions{})
+		cpbk, err := f.ExtClient.PingcapV1alpha1().CompactBackups(ns).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
+		}
+
+		getEvents := func() {
+			events, err := f.ClientSet.CoreV1().Events(ns).List(context.TODO(), metav1.ListOptions{
+				FieldSelector: fmt.Sprintf("involvedObject.kind=Pod,involvedObject.name=%s", name),
+			})
+			if err != nil {
+				log.Logf("Error listing events: %v", err)
+			}
+		
+			if len(events.Items) == 0 {
+				fmt.Printf("No events found for pod %s in namespace %s\n", name, ns)
+				os.Exit(0)
+			}
+
+			sort.Slice(events.Items, func(i, j int) bool {
+				timeI := events.Items[i].LastTimestamp.Time
+				timeJ := events.Items[j].LastTimestamp.Time
+				return timeI.After(timeJ)
+			})
+			
+			latestEvent := events.Items[0]
+		
+			log.Logf("Type: %s\n", latestEvent.Type)
+			log.Logf("Reason: %s\n", latestEvent.Reason)
+			log.Logf("Message: %s\n", latestEvent.Message)
+			log.Logf("Count: %d\n", latestEvent.Count)
 		}
 
 		switch cpbk.Status.State {
@@ -362,7 +391,7 @@ func WaitForCompactComplete(c versioned.Interface, ns, name string, timeout time
 			return false, fmt.Errorf("Compact failed: %s", cpbk.Status.Message)
 		default:
 			log.Logf("the current status is: %s %s", cpbk.Status.State, cpbk.Status.Progress)
-			log.Logf("the current message is: %s", cpbk.Status.Message)
+			getEvents()
 			//do nothing
 		}
 

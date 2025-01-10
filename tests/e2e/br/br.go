@@ -1826,7 +1826,7 @@ func createCompactBackupAndWaitForComplete(f *e2eframework.Framework, name, tcNa
 		return nil, err
 	}
 
-	if err := brutil.WaitForCompactComplete(f.ExtClient, ns, name, backupCompleteTimeout); err != nil {
+	if err := brutil.WaitForCompactComplete(f, ns, name, backupCompleteTimeout); err != nil {
 		return compact, err
 	}
 	return f.ExtClient.PingcapV1alpha1().CompactBackups(ns).Get(context.TODO(), name, metav1.GetOptions{})
