@@ -35,7 +35,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-const fakeVersion = "v1.2.3"
+const (
+	fakeVersion         = "v1.2.3"
+	expectedPodSpecHash = "765648cb46"
+)
 
 func TestTaskPod(t *testing.T) {
 	cases := []struct {
@@ -283,7 +286,7 @@ func TestTaskPod(t *testing.T) {
 					pod: fake.FakeObj("aaa-pd-xxx", func(obj *corev1.Pod) *corev1.Pod {
 						obj.Labels = map[string]string{
 							v1alpha1.LabelKeyConfigHash:  "newest",
-							v1alpha1.LabelKeyPodSpecHash: "6d6499ffc7",
+							v1alpha1.LabelKeyPodSpecHash: expectedPodSpecHash,
 						}
 						return obj
 					}),
@@ -332,7 +335,7 @@ func TestTaskPod(t *testing.T) {
 					pod: fake.FakeObj("aaa-pd-xxx", func(obj *corev1.Pod) *corev1.Pod {
 						obj.Labels = map[string]string{
 							v1alpha1.LabelKeyConfigHash:  "newest",
-							v1alpha1.LabelKeyPodSpecHash: "6d6499ffc7",
+							v1alpha1.LabelKeyPodSpecHash: expectedPodSpecHash,
 							"xxx":                        "yyy",
 						}
 						return obj
@@ -383,7 +386,7 @@ func TestTaskPod(t *testing.T) {
 						obj.Labels = map[string]string{
 							v1alpha1.LabelKeyInstance:    "aaa-xxx",
 							v1alpha1.LabelKeyConfigHash:  "newest",
-							v1alpha1.LabelKeyPodSpecHash: "6d6499ffc7",
+							v1alpha1.LabelKeyPodSpecHash: expectedPodSpecHash,
 						}
 						return obj
 					}),

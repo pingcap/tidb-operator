@@ -15,6 +15,7 @@
 package k8s
 
 import (
+	"encoding/json"
 	"fmt"
 	"hash/fnv"
 
@@ -29,17 +30,21 @@ import (
 
 // CalculateHashAndSetLabels calculate the hash of pod spec and set it to the pod labels.
 func CalculateHashAndSetLabels(pod *corev1.Pod) {
-	hasher := fnv.New32a()
-	if pod.Labels == nil {
-		pod.Labels = map[string]string{}
-	}
 	spec := pod.Spec.DeepCopy()
 	for i := range spec.InitContainers {
 		c := &spec.InitContainers[i]
 		// ignores init containers image change to support hot reload image for sidecar
 		c.Image = ""
 	}
-	hashutil.DeepHashObject(hasher, spec)
+
+	// This prevents the hash from being changed when new fields are added to the `PodSpec` due to K8s version upgrades.
+	data, _ := json.Marshal(spec)
+	hasher := fnv.New32a()
+	hashutil.DeepHashObject(hasher, data)
+
+	if pod.Labels == nil {
+		pod.Labels = map[string]string{}
+	}
 	pod.Labels[v1alpha1.LabelKeyPodSpecHash] = rand.SafeEncodeString(fmt.Sprint(hasher.Sum32()))
 }
 
