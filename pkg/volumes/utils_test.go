@@ -96,7 +96,7 @@ func TestSyncPVCs(t *testing.T) {
 				fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-0"),
 			},
 			expectPVCs: []*corev1.PersistentVolumeClaim{
-				fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-0", fake.Label[corev1.PersistentVolumeClaim]("foo", "bar")),
+				fake.FakeObj("pvc-0", fake.Label[corev1.PersistentVolumeClaim]("foo", "bar")),
 			},
 			expectFunc: func(g *WithT, cli client.Client) {
 				var pvc corev1.PersistentVolumeClaim
@@ -107,13 +107,13 @@ func TestSyncPVCs(t *testing.T) {
 		{
 			name: "did not change PVC",
 			existingObjs: []client.Object{
-				fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-0", func(obj *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
+				fake.FakeObj("pvc-0", func(obj *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
 					obj.Status.Phase = corev1.ClaimBound
 					return obj
 				}),
 			},
 			expectPVCs: []*corev1.PersistentVolumeClaim{
-				fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-0", fake.Label[corev1.PersistentVolumeClaim]("foo", "bar")),
+				fake.FakeObj("pvc-0", fake.Label[corev1.PersistentVolumeClaim]("foo", "bar")),
 			},
 			setup: func(vm *MockModifier) {
 				vm.EXPECT().GetActualVolume(gomock.Any(), gomock.Any(), gomock.Any()).Return(&ActualVolume{

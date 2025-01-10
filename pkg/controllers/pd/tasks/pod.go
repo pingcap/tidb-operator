@@ -39,8 +39,9 @@ const (
 	defaultReadinessProbeInitialDelaySeconds = 5
 )
 
-func TaskPod(state *ReconcileContext, logger logr.Logger, c client.Client) task.Task {
+func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
+		logger := logr.FromContextOrDiscard(ctx)
 		expected := newPod(state.Cluster(), state.PD(), state.ConfigHash)
 		if state.Pod() == nil {
 			// We have to refresh cache of members to make sure a pd without pod is unhealthy.
@@ -86,7 +87,7 @@ func TaskPod(state *ReconcileContext, logger logr.Logger, c client.Client) task.
 
 			state.PodIsTerminating = true
 
-			return task.Complete().With("pod is deleting")
+			return task.Wait().With("pod is deleting")
 		} else if res == k8s.CompareResultUpdate {
 			logger.Info("will update the pod in place")
 			if err := c.Apply(ctx, expected); err != nil {
