@@ -102,14 +102,29 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash) e
 		c.Security.KeyPath = path.Join(v1alpha1.TiFlashClusterTLSMountPath, corev1.TLSPrivateKeyKey)
 	}
 
-	c.TmpPath = getTmpPath(tiflash)
-	c.Storage.Main.Dir = []string{getMainStorageDir(tiflash)}
-	c.Storage.Raft.Dir = []string{getRaftStorageDir(tiflash)}
+	for i := range tiflash.Spec.Volumes {
+		vol := &tiflash.Spec.Volumes[i]
+		for _, usage := range vol.For {
+			if usage.Type != v1alpha1.VolumeUsageTypeTiFlashData {
+				continue
+			}
+			dataDir := vol.Path
+			if usage.SubPath != "" {
+				dataDir = path.Join(vol.Path, usage.SubPath)
+			}
+
+			c.TmpPath = getTmpPath(dataDir)
+			c.Storage.Main.Dir = []string{getMainStorageDir(dataDir)}
+			c.Storage.Raft.Dir = []string{getRaftStorageDir(dataDir)}
+			c.Flash.Proxy.DataDir = getProxyDataDir(dataDir)
+			c.Logger.Log = GetServerLogPath(dataDir)
+			c.Logger.Errorlog = GetErrorLogPath(dataDir)
+		}
+	}
 
 	c.Flash.ServiceAddr = GetServiceAddr(tiflash)
 	// /etc/tiflash/proxy.toml
 	c.Flash.Proxy.Config = path.Join(v1alpha1.DirNameConfigTiFlash, v1alpha1.ConfigFileTiFlashProxyName)
-	c.Flash.Proxy.DataDir = getProxyDataDir(tiflash)
 	c.Flash.Proxy.Addr = getProxyAddr(tiflash)
 	c.Flash.Proxy.AdvertiseAddr = getProxyAdvertiseAddr(tiflash)
 	c.Flash.Proxy.AdvertiseStatusAddr = getProxyAdvertiseStatusAddr(tiflash)
@@ -117,9 +132,6 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash) e
 	c.Raft.PdAddr = cluster.Status.PD
 
 	c.Status.MetricsPort = int(tiflash.GetMetricsPort())
-
-	c.Logger.Log = GetServerLogPath(tiflash)
-	c.Logger.Errorlog = GetErrorLogPath(tiflash)
 
 	return nil
 }
@@ -217,33 +229,26 @@ func getProxyAdvertiseStatusAddr(tiflash *v1alpha1.TiFlash) string {
 	return fmt.Sprintf("%s.%s.%s:%d", tiflash.PodName(), tiflash.Spec.Subdomain, ns, tiflash.GetProxyStatusPort())
 }
 
-func GetServerLogPath(tiflash *v1alpha1.TiFlash) string {
-	return fmt.Sprintf("%s/logs/server.log", getDefaultMountPath(tiflash))
+func GetServerLogPath(dataDir string) string {
+	return fmt.Sprintf("%s/logs/server.log", dataDir)
 }
 
-func GetErrorLogPath(tiflash *v1alpha1.TiFlash) string {
-	return fmt.Sprintf("%s/logs/error.log", getDefaultMountPath(tiflash))
+func GetErrorLogPath(dataDir string) string {
+	return fmt.Sprintf("%s/logs/error.log", dataDir)
 }
 
-func getTmpPath(tiflash *v1alpha1.TiFlash) string {
-	return fmt.Sprintf("%s/tmp", getDefaultMountPath(tiflash))
+func getTmpPath(dataDir string) string {
+	return fmt.Sprintf("%s/tmp", dataDir)
 }
 
-func getMainStorageDir(tiflash *v1alpha1.TiFlash) string {
-	return fmt.Sprintf("%s/db", getDefaultMountPath(tiflash))
+func getMainStorageDir(dataDir string) string {
+	return fmt.Sprintf("%s/db", dataDir)
 }
 
-func getRaftStorageDir(tiflash *v1alpha1.TiFlash) string {
-	return fmt.Sprintf("%s/kvstore", getDefaultMountPath(tiflash))
+func getRaftStorageDir(dataDir string) string {
+	return fmt.Sprintf("%s/kvstore", dataDir)
 }
 
-func getProxyDataDir(tiflash *v1alpha1.TiFlash) string {
-	return fmt.Sprintf("%s/proxy", getDefaultMountPath(tiflash))
-}
-
-// in TiDB Operator v1, we mount the first data volume to /data0,
-// so for an existing TiFlash cluster, we should set the first data volume mount path to /data0.
-func getDefaultMountPath(tiflash *v1alpha1.TiFlash) string {
-	vol := tiflash.Spec.Volumes[0]
-	return vol.Path
+func getProxyDataDir(dataDir string) string {
+	return fmt.Sprintf("%s/proxy", dataDir)
 }

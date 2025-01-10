@@ -110,6 +110,11 @@ func TestOverlay(t *testing.T) {
 					{
 						Name: "data",
 						Path: "/data0",
+						For: []v1alpha1.VolumeUsage{
+							{
+								Type: v1alpha1.VolumeUsageTypeTiFlashData,
+							},
+						},
 					},
 				},
 			},

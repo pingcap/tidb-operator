@@ -23,12 +23,13 @@ import (
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/volumes"
 )
 
-func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm volumes.Modifier) task.Task {
+func TaskPVC(state common.TiKVState, logger logr.Logger, c client.Client, vm volumes.Modifier) task.Task {
 	return task.NameTaskFunc("PVC", func(ctx context.Context) task.Result {
 		pvcs := newPVCs(state.TiKV())
 		if wait, err := volumes.SyncPVCs(ctx, c, pvcs, vm, logger); err != nil {

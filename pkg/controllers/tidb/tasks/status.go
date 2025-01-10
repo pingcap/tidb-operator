@@ -63,10 +63,12 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 			}
 		}
 
-		if !state.Healthy || !v1alpha1.IsUpToDate(state.TiDB()) {
-			// can we only rely on Pod status events to trigger the retry?
-			// TODO(liubo02): change to task.Wait
-			return task.Retry(defaultTaskWaitDuration).With("tidb may not be healthy, requeue to retry")
+		if state.PodIsTerminating {
+			return task.Retry(defaultTaskWaitDuration).With("pod may be terminating, requeue to retry")
+		}
+
+		if !healthy {
+			return task.Wait().With("tidb may not be healthy, wait")
 		}
 
 		return task.Complete().With("status is synced")
@@ -107,9 +109,6 @@ func syncSuspendCond(tidb *v1alpha1.TiDB) bool {
 
 // TODO: move to utils
 func SetIfChanged[T comparable](dst *T, src T) bool {
-	if src == *new(T) {
-		return false
-	}
 	if *dst != src {
 		*dst = src
 		return true

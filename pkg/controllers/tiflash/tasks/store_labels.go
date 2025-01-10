@@ -47,7 +47,7 @@ func TaskStoreLabels(state *ReconcileContext, c client.Client) task.Task {
 		}
 
 		// TODO: too many API calls to PD?
-		pdCfg, err := state.PDClient.GetConfig(ctx)
+		pdCfg, err := state.PDClient.Underlay().GetConfig(ctx)
 		if err != nil {
 			return task.Fail().With("failed to get pd config: %s", err)
 		}
@@ -66,7 +66,7 @@ func TaskStoreLabels(state *ReconcileContext, c client.Client) task.Task {
 			if err != nil {
 				return task.Fail().With("failed to parse store id %s: %s", state.StoreID, err)
 			}
-			set, err := state.PDClient.SetStoreLabels(ctx, storeID, storeLabels)
+			set, err := state.PDClient.Underlay().SetStoreLabels(ctx, storeID, storeLabels)
 			if err != nil {
 				return task.Fail().With("failed to set store labels: %s", err)
 			} else if set {
