@@ -89,7 +89,7 @@ func (cm *Manager) ProcessCompact() error {
 
 	compact, err := cm.resourceLister.CompactBackups(cm.options.Namespace).Get(cm.options.ResourceName)
 	defer func() {
-		err = cm.statusUpdater.OnFinish(ctx, cm.compact, err)
+		cm.statusUpdater.OnFinish(ctx, cm.compact, err)
 	}()
 	if err != nil {
 		return errors.New("backup not found")

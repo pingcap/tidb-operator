@@ -173,7 +173,7 @@ func (r *CompactStatusUpdater) OnProgress(ctx context.Context, compact *v1alpha1
 		p.MetaCompleted, p.MetaTotal, p.BytesCompacted, p.BytesToCompact)
 
 	newStatus := v1alpha1.CompactStatus{
-		State: progress,
+		Progress: progress,
 	}
 	return r.UpdateStatus(compact, newStatus)
 }
