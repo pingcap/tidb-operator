@@ -366,6 +366,7 @@ func WaitForCompactComplete(f *framework.Framework, ns, name string, timeout tim
 
 			if len(events.Items) == 0 {
 				fmt.Printf("No events found for pod %s in namespace %s\n", name, ns)
+				return
 			}
 
 			sort.Slice(events.Items, func(i, j int) bool {
