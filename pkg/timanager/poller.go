@@ -172,6 +172,7 @@ func (p *poller[T, PT, L]) poll(ctx context.Context) {
 	if err != nil {
 		p.logger.Error(err, "poll err", "cluster", p.name, "type", new(T))
 		p.markStateInvalid(ctx)
+		return
 	}
 	objs := p.lister.GetItems(list)
 
