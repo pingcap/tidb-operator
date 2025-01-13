@@ -23,20 +23,17 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 )
 
-func ConfigMapName(tikvName string) string {
-	return tikvName
+func ConfigMapName(podName string) string {
+	return podName
 }
 
 func PersistentVolumeClaimName(podName, volName string) string {
 	// ref: https://github.com/pingcap/tidb-operator/blob/v1.6.0/pkg/apis/pingcap/v1alpha1/helpers.go#L92
-	if volName == "" {
-		return "tikv-" + podName
-	}
-	return "tikv-" + podName + "-" + volName
+	// NOTE: for v1, should use component as volName of data, e.g. tikv
+	return fmt.Sprintf("%s-%s", volName, podName)
 }
 
 func DeletePodWithGracePeriod(ctx context.Context, c client.Client, pod *corev1.Pod, regionCount int) error {
-	fmt.Println("xxx: delete pod", pod, regionCount)
 	if pod == nil {
 		return nil
 	}
@@ -44,12 +41,9 @@ func DeletePodWithGracePeriod(ctx context.Context, c client.Client, pod *corev1.
 	gracePeriod := CalcGracePeriod(regionCount)
 
 	if sec == nil || *sec > gracePeriod {
-		fmt.Println("xxx: try to delete with gracePeriod", gracePeriod)
 		if err := c.Delete(ctx, pod, client.GracePeriodSeconds(gracePeriod)); err != nil {
 			return err
 		}
-	} else {
-		fmt.Println("xxx: skip deletion with gracePeriod", gracePeriod)
 	}
 
 	return nil

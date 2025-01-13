@@ -18,11 +18,12 @@ import (
 	"fmt"
 )
 
-func ConfigMapName(tiflashName string) string {
-	return tiflashName
+func ConfigMapName(podName string) string {
+	return podName
 }
 
-func PersistentVolumeClaimName(tiflashName string, volIndex int) string {
+func PersistentVolumeClaimName(podName, volName string) string {
 	// ref: https://github.com/pingcap/tidb-operator/blob/486cc85c8380efc4f36b3125a1abba9e3146a2c8/pkg/apis/pingcap/v1alpha1/helpers.go#L105
-	return fmt.Sprintf("data%d-%s", volIndex, tiflashName)
+	// NOTE: for v1, volName should be data0, data1, ...
+	return fmt.Sprintf("%s-%s", volName, podName)
 }
