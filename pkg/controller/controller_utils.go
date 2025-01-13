@@ -49,6 +49,9 @@ var (
 	// BackupControllerKind contains the schema.GroupVersionKind for backup controller type.
 	BackupControllerKind = v1alpha1.SchemeGroupVersion.WithKind("Backup")
 
+	// CompactBackupControllerKind contains the schema.GroupVersionKind for backup controller type.
+	CompactBackupControllerKind = v1alpha1.SchemeGroupVersion.WithKind("CompactBackup")
+
 	// RestoreControllerKind contains the schema.GroupVersionKind for restore controller type.
 	RestoreControllerKind = v1alpha1.SchemeGroupVersion.WithKind("Restore")
 
@@ -152,6 +155,20 @@ func GetBackupOwnerRef(backup *v1alpha1.Backup) metav1.OwnerReference {
 	return metav1.OwnerReference{
 		APIVersion:         BackupControllerKind.GroupVersion().String(),
 		Kind:               BackupControllerKind.Kind,
+		Name:               backup.GetName(),
+		UID:                backup.GetUID(),
+		Controller:         &controller,
+		BlockOwnerDeletion: &blockOwnerDeletion,
+	}
+}
+
+// GetCompactBackupOwnerRef returns Backup's OwnerReference
+func GetCompactBackupOwnerRef(backup *v1alpha1.CompactBackup) metav1.OwnerReference {
+	controller := true
+	blockOwnerDeletion := true
+	return metav1.OwnerReference{
+		APIVersion:         CompactBackupControllerKind.GroupVersion().String(),
+		Kind:               CompactBackupControllerKind.Kind,
 		Name:               backup.GetName(),
 		UID:                backup.GetUID(),
 		Controller:         &controller,

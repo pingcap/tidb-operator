@@ -155,6 +155,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/juju/errors v1.0.0
 	github.com/klauspost/compress v1.17.4 // indirect
 	github.com/klauspost/cpuid v1.2.3 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
@@ -227,6 +228,7 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	k8s.io/klog v1.0.0
 	k8s.io/kms v0.28.14 // indirect
 	k8s.io/kube-openapi v0.0.0-20230717233707-2695361300d9 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.1.2 // indirect

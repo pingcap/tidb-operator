@@ -17,7 +17,9 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -26,7 +28,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/framework"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -345,4 +349,71 @@ func WaitBackupPodOnPhase(f *framework.Framework, backup *v1alpha1.Backup, phase
 		return fmt.Errorf("can't wait for backup %s/%s pod on %s: %v", ns, name, phase, err)
 	}
 	return nil
+}
+
+func WaitForCompactComplete(f *framework.Framework, ns, name string, timeout time.Duration) error {
+	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
+		cpbk, err := f.ExtClient.PingcapV1alpha1().CompactBackups(ns).Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+
+		switch cpbk.Status.State {
+		case string(v1alpha1.BackupComplete):
+			return true, nil
+		case string(v1alpha1.BackupFailed):
+			return false, fmt.Errorf("Compact failed: %s", cpbk.Status.Message)
+		default:
+			log.Logf("the current status is: %s %s", cpbk.Status.State, cpbk.Status.Progress)
+			//do nothing
+		}
+
+		return false, nil
+	}); err != nil {
+		printPodLogs(f, ns, name)
+		return fmt.Errorf("can't wait for backup complete: %v", err)
+	}
+	return nil
+}
+
+func printPodLogs(f *framework.Framework, ns, name string) {
+	pods, err := f.ClientSet.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		log.Logf("Error listing pods: %v", err)
+		return
+	}
+
+	var matchingPods []v1.Pod
+	for _, pod := range pods.Items {
+		if strings.Contains(pod.Name, name) {
+			matchingPods = append(matchingPods, pod)
+		}
+	}
+
+	if len(matchingPods) == 0 {
+		fmt.Printf("No pods found containing '%s' in namespace '%s'\n", name, ns)
+		return
+	}
+
+	for _, pod := range matchingPods {
+		req := f.ClientSet.CoreV1().Pods(ns).GetLogs(pod.Name, &v1.PodLogOptions{})
+
+		// Execute the log request and get the stream
+		logStream, err := req.Stream(context.TODO())
+		if err != nil {
+			log.Logf("Error retrieving logs for pod %s: %v", pod.Name, err)
+			return
+		}
+		defer logStream.Close()
+
+		// Read the log stream
+		logBytes, err := io.ReadAll(logStream)
+		if err != nil {
+			log.Logf("Error reading logs for pod %s: %v", pod.Name, err)
+			return
+		}
+
+		// Print the logs as a string
+		log.Logf("Logs for pod %s in namespace %s: %s", pod.Name, ns, string(logBytes))
+	}
 }

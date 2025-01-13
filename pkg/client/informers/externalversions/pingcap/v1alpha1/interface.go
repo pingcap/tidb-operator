@@ -25,6 +25,8 @@ type Interface interface {
 	Backups() BackupInformer
 	// BackupSchedules returns a BackupScheduleInformer.
 	BackupSchedules() BackupScheduleInformer
+	// CompactBackups returns a CompactBackupInformer.
+	CompactBackups() CompactBackupInformer
 	// DMClusters returns a DMClusterInformer.
 	DMClusters() DMClusterInformer
 	// DataResources returns a DataResourceInformer.
@@ -64,6 +66,11 @@ func (v *version) Backups() BackupInformer {
 // BackupSchedules returns a BackupScheduleInformer.
 func (v *version) BackupSchedules() BackupScheduleInformer {
 	return &backupScheduleInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// CompactBackups returns a CompactBackupInformer.
+func (v *version) CompactBackups() CompactBackupInformer {
+	return &compactBackupInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // DMClusters returns a DMClusterInformer.
