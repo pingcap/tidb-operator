@@ -25,10 +25,8 @@ import (
 
 func PersistentVolumeClaimName(podName, volName string) string {
 	// ref: https://github.com/pingcap/tidb-operator/blob/v1.6.0/pkg/apis/pingcap/v1alpha1/helpers.go#L92
-	if volName == "" {
-		return "pd-" + podName
-	}
-	return "pd-" + podName + "-" + volName
+	// NOTE: for v1, should use component as volName of data, e.g. pd
+	return volName + "-" + podName
 }
 
 func LongestHealthPeer(pd *v1alpha1.PD, peers []*v1alpha1.PD) string {

@@ -20,7 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	kvcfg "github.com/pingcap/tidb-operator/pkg/configs/tikv"
-	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -29,7 +28,7 @@ import (
 type ReconcileContext struct {
 	State
 
-	PDClient pdapi.PDClient
+	PDClient pdm.PDClient
 
 	StoreExists    bool
 	StoreID        string
@@ -37,6 +36,8 @@ type ReconcileContext struct {
 	LeaderEvicting bool
 
 	Store *pdv1.Store
+
+	IsPDAvailable bool
 
 	// ConfigHash stores the hash of **user-specified** config (i.e.`.Spec.Config`),
 	// which will be used to determine whether the config has changed.
@@ -55,11 +56,12 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		if !ok {
 			return task.Complete().With("pd client is not registered")
 		}
-		state.PDClient = c.Underlay()
+		state.PDClient = c
 
 		if !c.HasSynced() {
 			return task.Complete().With("store info is not synced, just wait for next sync")
 		}
+		state.IsPDAvailable = true
 
 		s, err := c.Stores().Get(kvcfg.GetAdvertiseClientURLs(state.TiKV()))
 		if err != nil {
@@ -74,7 +76,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		if state.Cluster().ShouldSuspendCompute() {
 			return task.Complete().With("cluster is suspending")
 		}
-		scheduler, err := state.PDClient.GetEvictLeaderScheduler(ctx, state.StoreID)
+		scheduler, err := state.PDClient.Underlay().GetEvictLeaderScheduler(ctx, state.StoreID)
 		if err != nil {
 			return task.Fail().With("pd is unexpectedly crashed: %w", err)
 		}

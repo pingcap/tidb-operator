@@ -32,6 +32,8 @@ const (
 )
 
 // TODO(liubo02): extract to common task
+//
+//nolint:gocyclo // refactor if possible
 func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Status", func(ctx context.Context) task.Result {
 		needUpdate := false
@@ -63,10 +65,17 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 			}
 		}
 
-		if !state.Healthy || !v1alpha1.IsUpToDate(state.TiDB()) {
-			// can we only rely on Pod status events to trigger the retry?
-			// TODO(liubo02): change to task.Wait
-			return task.Retry(defaultTaskWaitDuration).With("tidb may not be healthy, requeue to retry")
+		if !healthy {
+			// TODO(liubo02): delete pod should retrigger the events, try to change to wait
+			if state.PodIsTerminating {
+				return task.Retry(defaultTaskWaitDuration).With("pod may be terminating, requeue to retry")
+			}
+
+			if pod != nil && statefulset.IsPodRunningAndReady(pod) {
+				return task.Retry(defaultTaskWaitDuration).With("tidb is not healthy, requeue to retry")
+			}
+
+			return task.Wait().With("pod of tidb is not ready, wait")
 		}
 
 		return task.Complete().With("status is synced")
@@ -107,9 +116,6 @@ func syncSuspendCond(tidb *v1alpha1.TiDB) bool {
 
 // TODO: move to utils
 func SetIfChanged[T comparable](dst *T, src T) bool {
-	if src == *new(T) {
-		return false
-	}
 	if *dst != src {
 		*dst = src
 		return true

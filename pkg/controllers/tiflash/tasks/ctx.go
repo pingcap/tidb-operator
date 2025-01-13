@@ -22,7 +22,6 @@ import (
 	"github.com/pingcap/kvproto/pkg/metapb"
 
 	tiflashconfig "github.com/pingcap/tidb-operator/pkg/configs/tiflash"
-	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -31,7 +30,7 @@ import (
 type ReconcileContext struct {
 	State
 
-	PDClient pdapi.PDClient
+	PDClient pdm.PDClient
 
 	Store       *pdv1.Store
 	StoreID     string
@@ -55,7 +54,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		if !ok {
 			return task.Complete().With("pd client is not registered")
 		}
-		state.PDClient = c.Underlay()
+		state.PDClient = c
 
 		if !c.HasSynced() {
 			return task.Complete().With("store info is not synced, just wait for next sync")

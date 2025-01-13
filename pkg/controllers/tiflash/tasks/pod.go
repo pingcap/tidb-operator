@@ -17,6 +17,7 @@ package tasks
 import (
 	"context"
 	"fmt"
+	"path"
 	"path/filepath"
 
 	corev1 "k8s.io/api/core/v1"
@@ -60,7 +61,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 			}
 
 			state.PodIsTerminating = true
-			return task.Complete().With("pod is deleting")
+			return task.Wait().With("pod is deleting")
 		} else if res == k8s.CompareResultUpdate {
 			logger.Info("will update the pod in place")
 			if err := c.Apply(ctx, expected); err != nil {
@@ -94,19 +95,16 @@ func newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, configHash str
 		},
 	}
 
-	var firstMount *corev1.VolumeMount
+	var dataMount *corev1.VolumeMount
+	var dataDir string
 	for i := range tiflash.Spec.Volumes {
 		vol := &tiflash.Spec.Volumes[i]
-		name := v1alpha1.NamePrefix + "tiflash"
-		if vol.Name != "" {
-			name = name + "-" + vol.Name
-		}
+		name := v1alpha1.NamePrefix + "-" + vol.Name
 		vols = append(vols, corev1.Volume{
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					// the format is "data{i}-tiflash-xxx" to compatible with TiDB Operator v1
-					ClaimName: PersistentVolumeClaimName(tiflash.PodName(), i),
+					ClaimName: PersistentVolumeClaimName(tiflash.PodName(), vol.Name),
 				},
 			},
 		})
@@ -115,8 +113,14 @@ func newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, configHash str
 			MountPath: vol.Path,
 		}
 		mounts = append(mounts, mount)
-		if i == 0 {
-			firstMount = &mount
+		for _, usage := range vol.For {
+			if usage.Type == v1alpha1.VolumeUsageTypeTiFlashData {
+				dataMount = &mount
+				dataDir = vol.Path
+				if usage.SubPath != "" {
+					dataDir = path.Join(vol.Path, usage.SubPath)
+				}
+			}
 		}
 	}
 
@@ -154,8 +158,8 @@ func newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, configHash str
 			Subdomain:    tiflash.Spec.Subdomain,
 			NodeSelector: tiflash.Spec.Topology,
 			InitContainers: []corev1.Container{
-				*buildLogTailerContainer(tiflash, v1alpha1.TiFlashServerLogContainerName, tiflashcfg.GetServerLogPath(tiflash), firstMount),
-				*buildLogTailerContainer(tiflash, v1alpha1.TiFlashErrorLogContainerName, tiflashcfg.GetErrorLogPath(tiflash), firstMount),
+				*buildLogTailerContainer(tiflash, v1alpha1.TiFlashServerLogContainerName, tiflashcfg.GetServerLogPath(dataDir), dataMount),
+				*buildLogTailerContainer(tiflash, v1alpha1.TiFlashErrorLogContainerName, tiflashcfg.GetErrorLogPath(dataDir), dataMount),
 			},
 			Containers: []corev1.Container{
 				{
@@ -216,12 +220,14 @@ func buildLogTailerContainer(tiflash *v1alpha1.TiFlash, containerName, logFile s
 		Name:          containerName,
 		Image:         img,
 		RestartPolicy: &restartPolicy,
-		VolumeMounts:  []corev1.VolumeMount{*mount},
 		Command: []string{
 			"sh",
 			"-c",
 			fmt.Sprintf("touch %s; tail -n0 -F %s;", logFile, logFile),
 		},
+	}
+	if mount != nil {
+		c.VolumeMounts = append(c.VolumeMounts, *mount)
 	}
 	if tiflash.Spec.LogTailer != nil {
 		c.Resources = k8s.GetResourceRequirements(tiflash.Spec.LogTailer.Resources)

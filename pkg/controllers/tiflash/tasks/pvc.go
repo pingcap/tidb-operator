@@ -24,12 +24,13 @@ import (
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/volumes"
 )
 
-func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm volumes.Modifier) task.Task {
+func TaskPVC(state common.TiFlashState, logger logr.Logger, c client.Client, vm volumes.Modifier) task.Task {
 	return task.NameTaskFunc("PVC", func(ctx context.Context) task.Result {
 		pvcs := newPVCs(state.TiFlash())
 		if wait, err := volumes.SyncPVCs(ctx, c, pvcs, vm, logger); err != nil {
@@ -48,8 +49,7 @@ func newPVCs(tiflash *v1alpha1.TiFlash) []*corev1.PersistentVolumeClaim {
 		vol := &tiflash.Spec.Volumes[i]
 		pvcs = append(pvcs, &corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
-				// the format is "data{i}-tiflash-xxx" to compatible with TiDB Operator v1
-				Name:      PersistentVolumeClaimName(tiflash.PodName(), i),
+				Name:      PersistentVolumeClaimName(tiflash.PodName(), vol.Name),
 				Namespace: tiflash.Namespace,
 				Labels: maputil.Merge(tiflash.Labels, map[string]string{
 					v1alpha1.LabelKeyInstance: tiflash.Name,
