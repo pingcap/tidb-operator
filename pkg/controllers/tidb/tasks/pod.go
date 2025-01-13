@@ -252,8 +252,12 @@ func newPod(cluster *v1alpha1.Cluster,
 					Resources:    k8s.GetResourceRequirements(tidb.Spec.Resources),
 					Lifecycle: &corev1.Lifecycle{
 						PreStop: &corev1.LifecycleHandler{
-							Sleep: &corev1.SleepAction{
-								Seconds: preStopSleepSeconds,
+							Exec: &corev1.ExecAction{
+								Command: []string{
+									"/bin/sh",
+									"-c",
+									fmt.Sprintf("sleep %d", preStopSleepSeconds),
+								},
 							},
 						},
 					},
