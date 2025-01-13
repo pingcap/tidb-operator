@@ -33,7 +33,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-const fakeVersion = "v1.2.3"
+const (
+	fakeVersion = "v1.2.3"
+	podSpecHash = "6b85d6945f"
+)
 
 func TestTaskPod(t *testing.T) {
 	now := metav1.Now()
@@ -173,7 +176,7 @@ func TestTaskPod(t *testing.T) {
 					pod: fake.FakeObj("aaa-tikv-xxx", func(obj *corev1.Pod) *corev1.Pod {
 						obj.Labels = map[string]string{
 							v1alpha1.LabelKeyConfigHash:  "newest",
-							v1alpha1.LabelKeyPodSpecHash: "59f798884b",
+							v1alpha1.LabelKeyPodSpecHash: podSpecHash,
 						}
 						return obj
 					}),
@@ -197,7 +200,7 @@ func TestTaskPod(t *testing.T) {
 					pod: fake.FakeObj("aaa-tikv-xxx", func(obj *corev1.Pod) *corev1.Pod {
 						obj.Labels = map[string]string{
 							v1alpha1.LabelKeyConfigHash:  "old",
-							v1alpha1.LabelKeyPodSpecHash: "59f798884b",
+							v1alpha1.LabelKeyPodSpecHash: podSpecHash,
 						}
 						return obj
 					}),
@@ -221,7 +224,7 @@ func TestTaskPod(t *testing.T) {
 					pod: fake.FakeObj("aaa-tikv-xxx", func(obj *corev1.Pod) *corev1.Pod {
 						obj.Labels = map[string]string{
 							v1alpha1.LabelKeyConfigHash:  "newest",
-							v1alpha1.LabelKeyPodSpecHash: "59f798884b",
+							v1alpha1.LabelKeyPodSpecHash: podSpecHash,
 							"xxx":                        "yyy",
 						}
 						return obj
@@ -246,7 +249,7 @@ func TestTaskPod(t *testing.T) {
 					pod: fake.FakeObj("aaa-tikv-xxx", func(obj *corev1.Pod) *corev1.Pod {
 						obj.Labels = map[string]string{
 							v1alpha1.LabelKeyConfigHash:  "newest",
-							v1alpha1.LabelKeyPodSpecHash: "59f798884b",
+							v1alpha1.LabelKeyPodSpecHash: podSpecHash,
 							"xxx":                        "yyy",
 						}
 						return obj
@@ -272,7 +275,7 @@ func TestTaskPod(t *testing.T) {
 						obj.Labels = map[string]string{
 							v1alpha1.LabelKeyInstance:    "aaa-xxx",
 							v1alpha1.LabelKeyConfigHash:  "newest",
-							v1alpha1.LabelKeyPodSpecHash: "59f798884b",
+							v1alpha1.LabelKeyPodSpecHash: podSpecHash,
 						}
 						return obj
 					}),
