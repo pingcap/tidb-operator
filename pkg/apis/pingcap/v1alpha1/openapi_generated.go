@@ -1832,7 +1832,7 @@ func schema_pkg_apis_pingcap_v1alpha1_CompactSpec(ref common.ReferenceCallback) 
 					},
 					"br": {
 						SchemaProps: spec.SchemaProps{
-							Description: "BRConfig is the configs for BR *** Note: This field should generally not be left empty, unless you are certain the BR config *** can be obtained from another source, such as a schedule CR.",
+							Description: "BRConfig is the configs for BR",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig"),
 						},
 					},

@@ -5601,9 +5601,7 @@ StorageProvider
 <p>
 (Members of <code>StorageProvider</code> are embedded into this type.)
 </p>
-<p>StorageProvider configures where and how backups should be stored.
-*** Note: This field should generally not be left empty, unless you are certain the storage provider
-*** can be obtained from another source, such as a schedule CR.</p>
+<p>StorageProvider configures where and how backups should be stored.</p>
 </td>
 </tr>
 <tr>
@@ -5681,9 +5679,7 @@ BRConfig
 </em>
 </td>
 <td>
-<p>BRConfig is the configs for BR
-*** Note: This field should generally not be left empty, unless you are certain the BR config
-*** can be obtained from another source, such as a schedule CR.</p>
+<p>BRConfig is the configs for BR</p>
 </td>
 </tr>
 <tr>
@@ -5942,9 +5938,7 @@ StorageProvider
 <p>
 (Members of <code>StorageProvider</code> are embedded into this type.)
 </p>
-<p>StorageProvider configures where and how backups should be stored.
-*** Note: This field should generally not be left empty, unless you are certain the storage provider
-*** can be obtained from another source, such as a schedule CR.</p>
+<p>StorageProvider configures where and how backups should be stored.</p>
 </td>
 </tr>
 <tr>
@@ -6022,9 +6016,7 @@ BRConfig
 </em>
 </td>
 <td>
-<p>BRConfig is the configs for BR
-*** Note: This field should generally not be left empty, unless you are certain the BR config
-*** can be obtained from another source, such as a schedule CR.</p>
+<p>BRConfig is the configs for BR</p>
 </td>
 </tr>
 <tr>
