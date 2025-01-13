@@ -44,8 +44,7 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		if pod != nil &&
 			statefulset.IsPodRunningAndReady(pod) &&
 			!state.PodIsTerminating &&
-			state.Store != nil &&
-			state.Store.NodeState == v1alpha1.StoreStateServing {
+			state.StoreState == v1alpha1.StoreStateServing {
 			healthy = true
 		}
 		needUpdate = syncHealthCond(tiflash, healthy) || needUpdate
@@ -66,11 +65,13 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 			}
 		}
 
+		if state.PodIsTerminating {
+			return task.Retry(defaultTaskWaitDuration).With("pod may be terminating, requeue to retry")
+		}
+
 		// TODO: use a condition to refactor it
-		if tiflash.Status.ID == "" || tiflash.Status.State != v1alpha1.StoreStateServing || !v1alpha1.IsUpToDate(tiflash) {
-			// can we only rely on the PD member events for this condition?
-			// TODO(liubo02): change to task.Wait
-			return task.Retry(defaultTaskWaitDuration).With("tiflash may not be initialized, retry")
+		if !healthy || tiflash.Status.ID == "" {
+			return task.Wait().With("tiflash may not be synced, wait")
 		}
 
 		return task.Complete().With("status is synced")

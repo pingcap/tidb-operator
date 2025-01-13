@@ -45,13 +45,12 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		if pod != nil &&
 			statefulset.IsPodRunningAndReady(pod) &&
 			!state.PodIsTerminating &&
-			state.Store != nil &&
-			state.Store.NodeState == v1alpha1.StoreStateServing {
+			state.StoreState == v1alpha1.StoreStateServing {
 			healthy = true
 		}
 		needUpdate = syncHealthCond(tikv, healthy) || needUpdate
 		needUpdate = syncSuspendCond(tikv) || needUpdate
-		needUpdate = syncLeadersEvictedCond(tikv, state.Store, state.LeaderEvicting) || needUpdate
+		needUpdate = syncLeadersEvictedCond(tikv, state.Store, state.LeaderEvicting, state.IsPDAvailable) || needUpdate
 		needUpdate = SetIfChanged(&tikv.Status.ID, state.StoreID) || needUpdate
 		needUpdate = SetIfChanged(&tikv.Status.State, state.StoreState) || needUpdate
 
@@ -68,11 +67,17 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 			}
 		}
 
+		if state.PodIsTerminating {
+			return task.Retry(defaultTaskWaitDuration).With("pod is terminating, retry after it's terminated")
+		}
+
+		if state.LeaderEvicting {
+			return task.Wait().With("tikv is evicting leader, wait")
+		}
+
 		// TODO: use a condition to refactor it
-		if tikv.Status.ID == "" || tikv.Status.State != v1alpha1.StoreStateServing || !v1alpha1.IsUpToDate(tikv) {
-			// can we only rely on the PD member events for this condition?
-			// TODO(liubo02): change to task.Wait
-			return task.Retry(defaultTaskWaitDuration).With("tikv may not be initialized, retry")
+		if !healthy || tikv.Status.ID == "" {
+			return task.Wait().With("tikv may not be ready, wait")
 		}
 
 		return task.Complete().With("status is synced")
@@ -112,19 +117,23 @@ func syncSuspendCond(tikv *v1alpha1.TiKV) bool {
 }
 
 // Status of this condition can only transfer as the below
-func syncLeadersEvictedCond(tikv *v1alpha1.TiKV, store *pdv1.Store, isEvicting bool) bool {
+func syncLeadersEvictedCond(tikv *v1alpha1.TiKV, store *pdv1.Store, isEvicting, isPDAvail bool) bool {
 	status := metav1.ConditionFalse
 	reason := "NotEvicted"
 	msg := "leaders are not all evicted"
 	switch {
-	case store == nil:
+	case isPDAvail && store == nil:
 		status = metav1.ConditionTrue
 		reason = "StoreIsRemoved"
 		msg = "store does not exist"
-	case isEvicting && store.LeaderCount == 0:
+	case isPDAvail && isEvicting && store.LeaderCount == 0:
 		status = metav1.ConditionTrue
 		reason = "Evicted"
 		msg = "all leaders are evicted"
+	case !isPDAvail:
+		status = metav1.ConditionUnknown
+		reason = "Unknown"
+		msg = "cannot get leaders info from pd"
 	}
 
 	return meta.SetStatusCondition(&tikv.Status.Conditions, metav1.Condition{

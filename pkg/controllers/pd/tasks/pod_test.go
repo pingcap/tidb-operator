@@ -310,7 +310,7 @@ func TestTaskPod(t *testing.T) {
 					pod: fake.FakeObj("aaa-pd-xxx", func(obj *corev1.Pod) *corev1.Pod {
 						obj.Labels = map[string]string{
 							v1alpha1.LabelKeyConfigHash:  "old",
-							v1alpha1.LabelKeyPodSpecHash: "7cd7474797",
+							v1alpha1.LabelKeyPodSpecHash: "6d6499ffc7",
 						}
 						return obj
 					}),
@@ -319,7 +319,6 @@ func TestTaskPod(t *testing.T) {
 			},
 
 			expectedPodIsTerminating: true,
-			expectUpdatedPod:         false,
 			expectedStatus:           task.SWait,
 		},
 		{

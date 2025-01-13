@@ -26,10 +26,8 @@ func ConfigMapName(tidbName string) string {
 
 func PersistentVolumeClaimName(podName, volName string) string {
 	// ref: https://github.com/pingcap/tidb-operator/blob/v1.6.0/pkg/apis/pingcap/v1alpha1/helpers.go#L92
-	if volName == "" {
-		return "tidb-" + podName
-	}
-	return "tidb-" + podName + "-" + volName
+	// NOTE: for v1, should use component as volName of data, e.g. tidb
+	return volName + "-" + podName
 }
 
 // TiDBServiceURL returns the service URL of a tidb member.

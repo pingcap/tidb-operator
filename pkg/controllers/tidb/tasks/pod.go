@@ -73,7 +73,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 			}
 
 			state.PodIsTerminating = true
-			return task.Complete().With("pod is deleting")
+			return task.Wait().With("pod is deleting")
 		} else if res == k8s.CompareResultUpdate {
 			logger.Info("will update the pod in place")
 			if err := c.Apply(ctx, expected); err != nil {
@@ -252,8 +252,12 @@ func newPod(cluster *v1alpha1.Cluster,
 					Resources:    k8s.GetResourceRequirements(tidb.Spec.Resources),
 					Lifecycle: &corev1.Lifecycle{
 						PreStop: &corev1.LifecycleHandler{
-							Sleep: &corev1.SleepAction{
-								Seconds: preStopSleepSeconds,
+							Exec: &corev1.ExecAction{
+								Command: []string{
+									"/bin/sh",
+									"-c",
+									fmt.Sprintf("sleep %d", preStopSleepSeconds),
+								},
 							},
 						},
 					},

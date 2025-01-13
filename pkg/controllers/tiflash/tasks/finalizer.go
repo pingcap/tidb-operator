@@ -69,7 +69,7 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 			}
 		default:
 			// get store info successfully and the store still exists
-			if err := state.PDClient.DeleteStore(ctx, state.StoreID); err != nil {
+			if err := state.PDClient.Underlay().DeleteStore(ctx, state.StoreID); err != nil {
 				return task.Fail().With("cannot delete store %s: %v", state.StoreID, err)
 			}
 
