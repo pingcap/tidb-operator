@@ -292,36 +292,36 @@ func (bm *backupScheduleManager) deleteLastcompactJob(bs *v1alpha1.BackupSchedul
 // It returns a controller.RequeueError if the backup is still running,
 // otherwise it updates the LastCompactTime or returns any encountered error.
 func (bm *backupScheduleManager) handleLastCompact(ns, bsName, lastCompact string, bs *v1alpha1.BackupSchedule) error {
-    if lastCompact == "" {
-        return nil
-    }
+	if lastCompact == "" {
+		return nil
+	}
 
-    compact, err := bm.deps.CompactBackupLister.CompactBackups(ns).Get(lastCompact)
-    if err != nil {
-        if errors.IsNotFound(err) {
-            return nil
-        }
-        return fmt.Errorf("backup schedule %s/%s: get compact backup %s failed: %w", ns, bsName, lastCompact, err)
-    }
+	compact, err := bm.deps.CompactBackupLister.CompactBackups(ns).Get(lastCompact)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("backup schedule %s/%s: get compact backup %s failed: %w", ns, bsName, lastCompact, err)
+	}
 
-    var timestamp string
-    switch compact.Status.State {
-    case string(v1alpha1.BackupComplete):
-        timestamp = compact.Spec.EndTs
-    case string(v1alpha1.BackupFailed):
-        timestamp = compact.Spec.StartTs
-    default:
-        return controller.RequeueErrorf("backup schedule %s/%s: compact backup %s is still running", ns, bsName, lastCompact)
-    }
+	var timestamp string
+	switch compact.Status.State {
+	case string(v1alpha1.BackupComplete):
+		timestamp = compact.Spec.EndTs
+	case string(v1alpha1.BackupFailed):
+		timestamp = compact.Spec.StartTs
+	default:
+		return controller.RequeueErrorf("backup schedule %s/%s: compact backup %s is still running", ns, bsName, lastCompact)
+	}
 
-    t, err := config.ParseTSStringToGoTime(timestamp)
-    if err != nil {
-        return perrors.AddStack(err)
-    }
+	t, err := config.ParseTSStringToGoTime(timestamp)
+	if err != nil {
+		return perrors.AddStack(err)
+	}
 
-    if err := bm.deps.CompactControl.DeleteCompactBackup(compact); err != nil {
-        return fmt.Errorf("backup schedule %s/%s: delete compact backup %s failed: %w", ns, bsName, lastCompact, err)
-    }
+	if err := bm.deps.CompactControl.DeleteCompactBackup(compact); err != nil {
+		return fmt.Errorf("backup schedule %s/%s: delete compact backup %s failed: %w", ns, bsName, lastCompact, err)
+	}
 
 	if !t.IsZero() && t.Before(bs.Status.LogBackupStartTs.Time) {
 		return fmt.Errorf("backupSchedule %s/%s last compact time can't rollback (from %v to %v)", bs.GetNamespace(), bs.GetName(), bs.Status.LogBackupStartTs, t)
@@ -330,46 +330,46 @@ func (bm *backupScheduleManager) handleLastCompact(ns, bsName, lastCompact strin
 		return fmt.Errorf("backupSchedule %s/%s last compact time can't rollback (from %v to %v)", bs.GetNamespace(), bs.GetName(), bs.Status.LastCompactTime, t)
 	}
 	bs.Status.LastCompactTime = &metav1.Time{Time: t}
-    return nil
+	return nil
 }
 
 func (bm *backupScheduleManager) canPerformNextCompact(bs *v1alpha1.BackupSchedule) error {
-    ns := bs.GetNamespace()
-    bsName := bs.GetName()
+	ns := bs.GetNamespace()
+	bsName := bs.GetName()
 
 	if bs.Status.LogBackupStartTs == nil {
 		return nil
 	}
 
-    // Determine if the backup schedule is part of a group
-    bsGroupName := bs.GetLabels()[label.BackupScheduleGroupLabelKey]
-    if bsGroupName == "" {
-        return bm.handleLastCompact(ns, bsName, bs.Status.LastCompact, bs)
-    }
+	// Determine if the backup schedule is part of a group
+	bsGroupName := bs.GetLabels()[label.BackupScheduleGroupLabelKey]
+	if bsGroupName == "" {
+		return bm.handleLastCompact(ns, bsName, bs.Status.LastCompact, bs)
+	}
 
-    backupScheduleGroupLabels := label.NewBackupScheduleGroup(bsGroupName)
-    selector, err := backupScheduleGroupLabels.Selector()
-    if err != nil {
-        return fmt.Errorf("generate backup schedule group %s label selector failed: %w", bsGroupName, err)
-    }
+	backupScheduleGroupLabels := label.NewBackupScheduleGroup(bsGroupName)
+	selector, err := backupScheduleGroupLabels.Selector()
+	if err != nil {
+		return fmt.Errorf("generate backup schedule group %s label selector failed: %w", bsGroupName, err)
+	}
 
-    bss, err := bm.deps.BackupScheduleLister.BackupSchedules(ns).List(selector)
-    if err != nil {
-        return fmt.Errorf("backup schedule %s/%s: list backup schedules failed: %w", ns, bsName, err)
-    }
+	bss, err := bm.deps.BackupScheduleLister.BackupSchedules(ns).List(selector)
+	if err != nil {
+		return fmt.Errorf("backup schedule %s/%s: list backup schedules failed: %w", ns, bsName, err)
+	}
 
-    for _, bsMember := range bss {
-        if err := bm.handleLastCompact(ns, bsName, bsMember.Status.LastCompact, bsMember); err != nil {
-            // If it's a requeue error, propagate it
-            if controller.IsRequeueError(err) {
-                return err
-            }
-            // For other errors, return immediately
-            return fmt.Errorf("backup schedule %s/%s: processing compact failed: %w", ns, bsName, err)
-        }
-    }
+	for _, bsMember := range bss {
+		if err := bm.handleLastCompact(ns, bsName, bsMember.Status.LastCompact, bsMember); err != nil {
+			// If it's a requeue error, propagate it
+			if controller.IsRequeueError(err) {
+				return err
+			}
+			// For other errors, return immediately
+			return fmt.Errorf("backup schedule %s/%s: processing compact failed: %w", ns, bsName, err)
+		}
+	}
 
-    return nil
+	return nil
 }
 
 func (bm *backupScheduleManager) performLogBackupIfNeeded(bs *v1alpha1.BackupSchedule) error {
