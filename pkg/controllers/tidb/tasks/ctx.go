@@ -40,8 +40,7 @@ type ReconcileContext struct {
 	TiDBClient tidbapi.TiDBClient
 	PDClient   pdapi.PDClient
 
-	Healthy   bool
-	Suspended bool
+	Healthy bool
 
 	GracefulWaitTimeInSeconds int64
 

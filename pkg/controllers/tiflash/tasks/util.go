@@ -16,6 +16,10 @@ package tasks
 
 import (
 	"fmt"
+
+	corev1 "k8s.io/api/core/v1"
+
+	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 )
 
 func ConfigMapName(podName string) string {
@@ -26,4 +30,25 @@ func PersistentVolumeClaimName(podName, volName string) string {
 	// ref: https://github.com/pingcap/tidb-operator/blob/486cc85c8380efc4f36b3125a1abba9e3146a2c8/pkg/apis/pingcap/v1alpha1/helpers.go#L105
 	// NOTE: for v1, volName should be data0, data1, ...
 	return fmt.Sprintf("%s-%s", volName, podName)
+}
+
+// Real spec.volumes[*].name of pod
+// TODO(liubo02): extract to namer pkg
+func VolumeName(volName string) string {
+	return v1alpha1.VolNamePrefix + volName
+}
+
+func VolumeMount(name string, mount *v1alpha1.VolumeMount) *corev1.VolumeMount {
+	vm := &corev1.VolumeMount{
+		Name:      name,
+		MountPath: mount.MountPath,
+		SubPath:   mount.SubPath,
+	}
+	if mount.Type == v1alpha1.VolumeMountTypeTiFlashData {
+		if vm.MountPath == "" {
+			vm.MountPath = v1alpha1.VolumeMountTiFlashDataDefaultPath
+		}
+	}
+
+	return vm
 }

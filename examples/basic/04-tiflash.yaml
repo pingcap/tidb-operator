@@ -24,9 +24,6 @@ spec:
       proxyConfig: ""
       volumes:
       - name: data
-        # to compatible with the cluster managed by TiDB Operator v1
-        # this path should often be /data0
-        path: /data0
-        for:
+        mounts:
         - type: data
         storage: 100Gi

@@ -102,25 +102,23 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash) e
 		c.Security.KeyPath = path.Join(v1alpha1.TiFlashClusterTLSMountPath, corev1.TLSPrivateKeyKey)
 	}
 
+	var dataDir string
 	for i := range tiflash.Spec.Volumes {
 		vol := &tiflash.Spec.Volumes[i]
-		for _, usage := range vol.For {
-			if usage.Type != v1alpha1.VolumeUsageTypeTiFlashData {
+		for _, mount := range vol.Mounts {
+			if mount.Type != v1alpha1.VolumeMountTypeTiFlashData {
 				continue
 			}
-			dataDir := vol.Path
-			if usage.SubPath != "" {
-				dataDir = path.Join(vol.Path, usage.SubPath)
-			}
-
-			c.TmpPath = getTmpPath(dataDir)
-			c.Storage.Main.Dir = []string{getMainStorageDir(dataDir)}
-			c.Storage.Raft.Dir = []string{getRaftStorageDir(dataDir)}
-			c.Flash.Proxy.DataDir = getProxyDataDir(dataDir)
-			c.Logger.Log = GetServerLogPath(dataDir)
-			c.Logger.Errorlog = GetErrorLogPath(dataDir)
+			dataDir = mount.MountPath
 		}
 	}
+
+	c.TmpPath = getTmpPath(dataDir)
+	c.Storage.Main.Dir = []string{getMainStorageDir(dataDir)}
+	c.Storage.Raft.Dir = []string{getRaftStorageDir(dataDir)}
+	c.Flash.Proxy.DataDir = getProxyDataDir(dataDir)
+	c.Logger.Log = GetServerLogPath(dataDir)
+	c.Logger.Errorlog = GetErrorLogPath(dataDir)
 
 	c.Flash.ServiceAddr = GetServiceAddr(tiflash)
 	// /etc/tiflash/proxy.toml
@@ -229,26 +227,40 @@ func getProxyAdvertiseStatusAddr(tiflash *v1alpha1.TiFlash) string {
 	return fmt.Sprintf("%s.%s.%s:%d", tiflash.PodName(), tiflash.Spec.Subdomain, ns, tiflash.GetProxyStatusPort())
 }
 
+func GetDataDir(dataDir string) string {
+	if dataDir == "" {
+		return v1alpha1.VolumeMountTiFlashDataDefaultPath
+	}
+
+	return dataDir
+}
+
 func GetServerLogPath(dataDir string) string {
+	dataDir = GetDataDir(dataDir)
 	return fmt.Sprintf("%s/logs/server.log", dataDir)
 }
 
 func GetErrorLogPath(dataDir string) string {
+	dataDir = GetDataDir(dataDir)
 	return fmt.Sprintf("%s/logs/error.log", dataDir)
 }
 
 func getTmpPath(dataDir string) string {
+	dataDir = GetDataDir(dataDir)
 	return fmt.Sprintf("%s/tmp", dataDir)
 }
 
 func getMainStorageDir(dataDir string) string {
+	dataDir = GetDataDir(dataDir)
 	return fmt.Sprintf("%s/db", dataDir)
 }
 
 func getRaftStorageDir(dataDir string) string {
+	dataDir = GetDataDir(dataDir)
 	return fmt.Sprintf("%s/kvstore", dataDir)
 }
 
 func getProxyDataDir(dataDir string) string {
+	dataDir = GetDataDir(dataDir)
 	return fmt.Sprintf("%s/proxy", dataDir)
 }
