@@ -36,8 +36,7 @@ func NewPDGroup(ns string, patches ...GroupPatch[*runtime.PDGroup]) *v1alpha1.PD
 					Volumes: []v1alpha1.Volume{
 						{
 							Name:    "data",
-							Path:    "/var/lib/pd",
-							For:     []v1alpha1.VolumeUsage{{Type: "data"}},
+							Mounts:  []v1alpha1.VolumeMount{{Type: "data"}},
 							Storage: resource.MustParse("1Gi"),
 						},
 					},

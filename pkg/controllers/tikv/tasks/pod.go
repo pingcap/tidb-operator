@@ -151,10 +151,7 @@ func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, configHash string) *
 
 	for i := range tikv.Spec.Volumes {
 		vol := &tikv.Spec.Volumes[i]
-		name := v1alpha1.NamePrefix + "tikv"
-		if vol.Name != "" {
-			name = name + "-" + vol.Name
-		}
+		name := VolumeName(vol.Name)
 		vols = append(vols, corev1.Volume{
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
@@ -163,10 +160,10 @@ func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, configHash string) *
 				},
 			},
 		})
-		mounts = append(mounts, corev1.VolumeMount{
-			Name:      name,
-			MountPath: vol.Path,
-		})
+		for i := range vol.Mounts {
+			mount := VolumeMount(name, &vol.Mounts[i])
+			mounts = append(mounts, *mount)
+		}
 	}
 
 	if cluster.IsTLSClusterEnabled() {

@@ -223,20 +223,20 @@ spec:
                             A volume can be mounted for multiple different usages.
                             For example, a volume can be mounted for both data and raft log.
                           properties:
-                            for:
-                              description: |-
-                                For defines the usage of this volume
-                                At least one usage is needed for a new volume
+                            mounts:
+                              description: Mounts defines mount infos of this volume
                               items:
                                 properties:
+                                  mountPath:
+                                    description: Mount path of volume, if it's not
+                                      set, use the default path of this type
+                                    type: string
                                   subPath:
-                                    description: SubPath is the relative path of the
-                                      volume's mount path.
+                                    description: SubPath is the path of the volume's
+                                      root path.
                                     type: string
                                   type:
-                                    description: |-
-                                      Type is a usage type of the volume.
-                                      A volume can be defined for multiple usages.
+                                    description: Type is a type of the volume mount.
                                     type: string
                                 required:
                                 - type
@@ -246,9 +246,6 @@ spec:
                               description: |-
                                 Name is volume name.
                                 If not specified, the PVC name will be "{component}-{podName}"
-                              type: string
-                            path:
-                              description: Path is mount path of this volume
                               type: string
                             storage:
                               anyOf:
@@ -273,8 +270,7 @@ spec:
                                 It's only available when the feature is enabled.
                               type: string
                           required:
-                          - for
-                          - path
+                          - mounts
                           - storage
                           type: object
                         type: array

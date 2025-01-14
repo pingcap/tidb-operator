@@ -86,10 +86,9 @@ func TestOverlay(t *testing.T) {
 				Volumes: []v1alpha1.Volume{
 					{
 						Name: "data",
-						Path: "/var/lib/tikv",
-						For: []v1alpha1.VolumeUsage{
+						Mounts: []v1alpha1.VolumeMount{
 							{
-								Type: v1alpha1.VolumeUsageTypeTiKVData,
+								Type: v1alpha1.VolumeMountTypeTiKVData,
 							},
 						},
 						Storage: resource.Quantity{
