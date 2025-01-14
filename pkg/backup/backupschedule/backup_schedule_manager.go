@@ -304,7 +304,7 @@ func (bm *backupScheduleManager) handleLastCompact(ns, bsName, lastCompact strin
 		return fmt.Errorf("backup schedule %s/%s: get compact backup %s failed: %w", ns, bsName, lastCompact, err)
 	}
 
-	var timestamp string
+	var lastCompactTs string
 	switch compact.Status.State {
 	case string(v1alpha1.BackupComplete):
 		timestamp = compact.Spec.EndTs
