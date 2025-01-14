@@ -79,14 +79,16 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, peers []*v1
 
 	for i := range pd.Spec.Volumes {
 		vol := &pd.Spec.Volumes[i]
-		for _, usage := range vol.For {
-			if usage.Type == v1alpha1.VolumeUsageTypePDData {
-				c.DataDir = vol.Path
-				if usage.SubPath != "" {
-					c.DataDir = path.Join(vol.Path, usage.SubPath)
-				}
+		for k := range vol.Mounts {
+			mount := &vol.Mounts[k]
+			if mount.Type == v1alpha1.VolumeMountTypePDData {
+				c.DataDir = mount.MountPath
 			}
 		}
+	}
+
+	if c.DataDir == "" {
+		c.DataDir = v1alpha1.VolumeMountPDDataDefaultPath
 	}
 
 	c.InitialClusterToken = pd.Spec.Cluster.Name

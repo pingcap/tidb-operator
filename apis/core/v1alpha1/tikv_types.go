@@ -30,9 +30,11 @@ var (
 )
 
 const (
-	// VolumeUsageTypeTiKVData is the main data dir for the tikv
-	// The default sub path of this type is "data"
-	VolumeUsageTypeTiKVData VolumeUsageType = "data"
+	// VolumeMountTypeTiKVData is the main data dir for the tikv
+	// The default sub path of this type is ""
+	VolumeMountTypeTiKVData VolumeMountType = "data"
+
+	VolumeMountTiKVDataDefaultPath = "/var/lib/tikv"
 )
 
 const (

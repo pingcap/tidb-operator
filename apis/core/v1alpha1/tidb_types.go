@@ -31,6 +31,15 @@ var (
 )
 
 const (
+	// VolumeUsageTypeTiDBSlowLog means the data dir of slowlog
+	// The default sub path is "slowlog"
+	// Users can define a persistent volume for slowlog, or an empty dir will be used.
+	VolumeMountTypeTiDBSlowLog VolumeMountType = "slowlog"
+
+	VolumeMountTiDBSlowLogDefaultPath = "/var/log/tidb"
+)
+
+const (
 	TiDBPortNameClient    = "mysql-client"
 	TiDBPortNameStatus    = "status"
 	DefaultTiDBPortClient = 4000
@@ -81,7 +90,6 @@ const (
 const (
 	TiDBSlowLogContainerName     = NamePrefix + "slowlog"
 	TiDBDefaultSlowLogVolumeName = NamePrefix + "slowlog"
-	TiDBDefaultSlowLogDir        = "/var/log/tidb"
 	TiDBSlowLogFileName          = "slowlog"
 )
 
@@ -405,11 +413,6 @@ type TiDBSlowLog struct {
 	// Image to tail slowlog to stdout
 	// Default is busybox:1.37.0
 	Image *string `json:"image,omitempty"`
-
-	// VolumeName is the name of the volume used to share the slow log file between the main container and the sidecar.
-	// If not set, a temparary volume will be used.
-	// Otherwise, it should be a name of a volume defined in the `volumes` field of the TiDBTemplateSpec.
-	VolumeName string `json:"volumeName,omitempty"`
 
 	// ResourceRequirements defines the resource requirements for the slow log sidecar.
 	Resources ResourceRequirements `json:"resources,omitempty"`

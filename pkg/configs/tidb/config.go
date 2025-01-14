@@ -179,16 +179,25 @@ func removeHTTPPrefix(url string) string {
 func getSlowQueryFile(tidb *v1alpha1.TiDB) string {
 	if !tidb.IsSeparateSlowLogEnabled() {
 		return ""
-	} else if tidb.Spec.SlowLog == nil || tidb.Spec.SlowLog.VolumeName == "" {
-		return path.Join(v1alpha1.TiDBDefaultSlowLogDir, v1alpha1.TiDBSlowLogFileName)
 	}
 
+	var dir string
 	for i := range tidb.Spec.Volumes {
 		vol := &tidb.Spec.Volumes[i]
-		if vol.Name == tidb.Spec.SlowLog.VolumeName {
-			return path.Join(vol.Path, v1alpha1.TiDBSlowLogFileName)
+		for k := range vol.Mounts {
+			mount := &vol.Mounts[k]
+
+			if mount.Type != v1alpha1.VolumeMountTypeTiDBSlowLog {
+				continue
+			}
+
+			dir = mount.MountPath
 		}
 	}
 
-	return "" // should not reach here
+	if dir == "" {
+		dir = v1alpha1.VolumeMountTiDBSlowLogDefaultPath
+	}
+
+	return path.Join(dir, v1alpha1.TiDBSlowLogFileName)
 }

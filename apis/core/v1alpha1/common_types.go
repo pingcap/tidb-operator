@@ -78,6 +78,10 @@ const (
 	// Users may overlay some fields in managed resource such as pods. Names with this
 	// prefix is preserved to avoid conflicts with fields defined by users.
 	NamePrefix = "ti-"
+
+	// VolNamePrefix is defined for custom persistent volume which may have name conflicts
+	// with the volumes managed by tidb operator
+	VolNamePrefix = NamePrefix + "vol-"
 )
 
 const (
@@ -193,12 +197,8 @@ type Volume struct {
 	// If not specified, the PVC name will be "{component}-{podName}"
 	Name string `json:"name,omitempty"`
 
-	// Path is mount path of this volume
-	Path string `json:"path"`
-
-	// For defines the usage of this volume
-	// At least one usage is needed for a new volume
-	For []VolumeUsage `json:"for"`
+	// Mounts defines mount infos of this volume
+	Mounts []VolumeMount `json:"mounts"`
 
 	// Storage defines the request size of this volume
 	Storage resource.Quantity `json:"storage"`
@@ -216,15 +216,16 @@ type Volume struct {
 	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
 }
 
-type VolumeUsage struct {
-	// Type is a usage type of the volume.
-	// A volume can be defined for multiple usages.
-	Type VolumeUsageType `json:"type"`
-	// SubPath is the relative path of the volume's mount path.
+type VolumeMount struct {
+	// Type is a type of the volume mount.
+	Type VolumeMountType `json:"type"`
+	// Mount path of volume, if it's not set, use the default path of this type
+	MountPath string `json:"mountPath,omitempty"`
+	// SubPath is the path of the volume's root path.
 	SubPath string `json:"subPath,omitempty"`
 }
 
-type VolumeUsageType string
+type VolumeMountType string
 
 // Port defines a listen port
 type Port struct {
