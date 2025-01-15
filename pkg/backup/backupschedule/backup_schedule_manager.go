@@ -56,6 +56,31 @@ func (bm *backupScheduleManager) doCompact(bs *v1alpha1.BackupSchedule, startTim
 	return err
 }
 
+// calEndTs calculates the end timestamp (`endTs`) for a backup job and determines the scope of
+// backup compaction. If the last compact job is not delayed, it sets `endTs` to `startTs + interval`.
+// If the last compact job is delayed, it will try to compact the within `3*interval`.
+// A `nextCompact` is introduced to make the endTs align with the snapshot backup time as much as possible.
+// 
+// Algorithm Overview:
+// 1. Define a `fastCompactLimit` as 3 times the backup interval from the current `startTs`. 
+//    This limit ensures that no compact job spans an excessively large data range in a single operation.
+//    This will only apply if the lastCompactTime is delayed.
+//
+// 2. Gather potential targets for `endTs` calculation, including:
+//    - `nextCompact`: The next compaction time limit, also the unachieved target in the last compact.
+//    - `lastBackup`: The timestamp of the last completed backup.
+//    - `scheduleTime`: The next scheduled backup time.
+//
+// 3. Iterate through the targets to determine the appropriate `endTs`:
+//    - Skip targets that are invalid (nil) or earlier than the current `startTs`.
+//    - If a target exceeds the `fastCompactLimit`, set `endTs` to `fastCompactLimit` and update `nextCompact`
+//      to the deferred target time for future processing.
+//    - Otherwise, if the target is within `fastCompactLimit`, set `endTs` to the target time and clear `nextCompact`.
+//
+// 4. Update `BackupSchedule.Status.NextCompactTime` to reflect the new `nextCompact` value. If `nextCompact` is not nil,
+//    it indicates that the last compaction did not reach the target.
+//
+// 5. If no valid targets are found, the compact is not delayed. Set `endTs` to `startTs + interval`.
 func calEndTs(bs *v1alpha1.BackupSchedule, startTs time.Time, interval time.Duration, scheduleTime *time.Time) time.Time {
 	lastBackup := bs.Status.LastBackupTime
 	nextCompact := bs.Status.NextCompactTime
