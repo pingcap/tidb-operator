@@ -54,7 +54,9 @@ func CalculateHashAndSetLabels(pod *corev1.Pod) {
 
 	// This prevents the hash from being changed when new fields are added to the `PodSpec` due to K8s version upgrades.
 	buf := bytes.Buffer{}
-	_ = podEncoder.Encode(&corev1.Pod{Spec: *spec}, &buf)
+	if err := podEncoder.Encode(&corev1.Pod{Spec: *spec}, &buf); err != nil {
+		panic(fmt.Errorf("failed to encode pod spec, %w", err))
+	}
 	hasher := fnv.New32a()
 	hashutil.DeepHashObject(hasher, buf.Bytes())
 
