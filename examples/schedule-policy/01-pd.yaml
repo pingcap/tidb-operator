@@ -27,7 +27,6 @@ spec:
       config: ""
       volumes:
       - name: data
-        path: /var/lib/pd
-        for:
+        mounts:
         - type: data
         storage: 20Gi

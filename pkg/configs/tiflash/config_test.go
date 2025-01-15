@@ -109,10 +109,10 @@ func TestOverlay(t *testing.T) {
 				Volumes: []v1alpha1.Volume{
 					{
 						Name: "data",
-						Path: "/data0",
-						For: []v1alpha1.VolumeUsage{
+						Mounts: []v1alpha1.VolumeMount{
 							{
-								Type: v1alpha1.VolumeUsageTypeTiFlashData,
+								MountPath: "/data0",
+								Type:      v1alpha1.VolumeMountTypeTiFlashData,
 							},
 						},
 					},

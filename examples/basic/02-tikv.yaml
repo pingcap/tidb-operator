@@ -24,7 +24,6 @@ spec:
         level = "info"
       volumes:
       - name: data
-        path: /var/lib/tikv
-        for:
+        mounts:
         - type: data
         storage: 100Gi

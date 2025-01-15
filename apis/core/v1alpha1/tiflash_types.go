@@ -42,9 +42,10 @@ const (
 )
 
 const (
-	// VolumeUsageTypeTiFlashData is the main data dir for the tiflash
-	// The default sub path of this type is ""
-	VolumeUsageTypeTiFlashData VolumeUsageType = "data"
+	// VolumeMountTypeTiFlashData is the main data dir for the tiflash
+	VolumeMountTypeTiFlashData VolumeMountType = "data"
+
+	VolumeMountTiFlashDataDefaultPath = "/var/lib/tiflash"
 )
 
 const (
