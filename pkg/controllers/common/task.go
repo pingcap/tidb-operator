@@ -18,13 +18,12 @@ import (
 	"cmp"
 	"context"
 	"fmt"
-	"slices"
-	"strings"
-
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	kuberuntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"slices"
+	"strings"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
@@ -179,6 +178,6 @@ func TaskSuspendPod(state PodState, c client.Client) task.Task {
 			return task.Fail().With("can't delete pod %s/%s: %v", pod.Namespace, pod.Name, err)
 		}
 
-		return task.Wait().With("pod is deleting")
+		return task.Retry(task.DefaultRequeueAfter).With("pod is deleting")
 	})
 }

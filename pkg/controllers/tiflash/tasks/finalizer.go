@@ -41,7 +41,7 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 			}
 
 			if wait {
-				return task.Wait().With("wait all subresources deleted")
+				return task.Retry(task.DefaultRequeueAfter).With("wait all subresources deleted")
 			}
 
 			// whole cluster is deleting
@@ -60,7 +60,7 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 			}
 
 			if wait {
-				return task.Wait().With("wait all subresources deleted")
+				return task.Retry(task.DefaultRequeueAfter).With("wait all subresources deleted")
 			}
 			// Store ID is empty may because of tiflash is not initialized
 			// TODO: check whether tiflash is initialized
