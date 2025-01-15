@@ -15,6 +15,7 @@ package backupschedule
 
 import (
 	"fmt"
+	"math"
 	"path"
 	"sort"
 	"strings"
@@ -652,6 +653,19 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 			return
 		}
 		klog.Infof("backup schedule %s/%s gc backup %s success", ns, bsName, backup.GetName())
+	}
+
+	var compactProgress uint64
+	if bs.Spec.CompactBackupTemplate == nil {
+		compactProgress = math.MaxUint64
+	} else if bs.Status.LastCompactTime == nil {
+		compactProgress = 0
+	} else {
+		compactProgress = config.GoTimeToTS(bs.Status.LastCompactTime.Time)
+	}
+
+	if truncateTSO > compactProgress {
+		truncateTSO = compactProgress
 	}
 
 	if truncateTSO > 0 {
