@@ -37,7 +37,7 @@ import (
 
 const (
 	fakeVersion         = "v1.2.3"
-	expectedPodSpecHash = "765648cb46"
+	expectedPodSpecHash = "7d4f6bf985"
 )
 
 func TestTaskPod(t *testing.T) {

@@ -32,7 +32,7 @@ import (
 
 const (
 	fakeVersion = "v1.2.3"
-	fakePodHash = "76b9ffc44"
+	fakePodHash = "5bf69bf8f9"
 )
 
 func TestTaskPod(t *testing.T) {
