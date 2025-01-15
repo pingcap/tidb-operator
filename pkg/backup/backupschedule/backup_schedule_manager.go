@@ -288,31 +288,6 @@ func (bm *backupScheduleManager) canPerformNextBackup(bs *v1alpha1.BackupSchedul
 	return nil
 }
 
-func (bm *backupScheduleManager) deleteLastcompactJob(bs *v1alpha1.BackupSchedule) error {
-	ns := bs.GetNamespace()
-	bsName := bs.GetName()
-
-	compact, err := bm.deps.CompactBackupLister.CompactBackups(ns).Get(bs.Status.LastCompact)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil
-		}
-		return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, bs.Status.LastBackup, err)
-	}
-
-	jobName := compact.GetName()
-	job, err := bm.deps.JobLister.Jobs(ns).Get(jobName)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil
-		}
-		return fmt.Errorf("backup schedule %s/%s, get backup %s job %s failed, err: %v", ns, bsName, compact.GetName(), jobName, err)
-	}
-
-	compact.SetGroupVersionKind(controller.CompactBackupControllerKind)
-	return bm.deps.JobControl.DeleteJob(compact, job)
-}
-
 // canPerformNextCompact handles the compact backup processing logic.
 // It returns a controller.RequeueError if the backup is still running,
 // otherwise it updates the LastCompactTime or returns any encountered error.
