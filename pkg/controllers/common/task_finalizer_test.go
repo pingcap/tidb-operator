@@ -251,7 +251,7 @@ func testTaskGroupFinalizerDel[
 				),
 			},
 
-			expectedStatus: task.SWait,
+			expectedStatus: task.SRetry,
 			expectedObj: fake.Fake(func(obj RG) RG {
 				obj.SetName("aaa")
 				obj.SetDeletionTimestamp(&now)

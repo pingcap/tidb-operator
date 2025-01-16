@@ -98,7 +98,7 @@ func TaskGroupFinalizerDel[
 			return task.Fail().With("cannot delete subresources: %w", err)
 		}
 		if wait {
-			return task.Wait().With("wait all subresources deleted")
+			return task.Retry(defaultDelWaitTime).With("wait all subresources deleted")
 		}
 
 		if err := k8s.RemoveFinalizer(ctx, c, gt.To(state.Group())); err != nil {

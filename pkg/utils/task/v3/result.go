@@ -20,6 +20,10 @@ import (
 	"time"
 )
 
+const (
+	DefaultRequeueAfter = 5 * time.Second
+)
+
 type Status int
 
 const (

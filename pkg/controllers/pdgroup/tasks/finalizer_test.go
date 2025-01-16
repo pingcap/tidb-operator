@@ -118,7 +118,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 				),
 			},
 
-			expectedStatus: task.SWait,
+			expectedStatus: task.SRetry,
 			expectedObj: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				obj.Spec.Cluster.Name = defaultTestClusterName
 				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
