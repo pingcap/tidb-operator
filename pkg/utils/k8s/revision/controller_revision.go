@@ -148,6 +148,7 @@ func getPatch(obj client.Object, gvk schema.GroupVersionKind) ([]byte, error) {
 				}),
 			gvk.GroupVersion(),
 		)
+		encoderMap[gvk.GroupVersion()] = encoder
 	}
 
 	buf := bytes.Buffer{}
