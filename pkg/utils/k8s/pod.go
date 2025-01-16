@@ -15,31 +15,54 @@
 package k8s
 
 import (
+	"bytes"
 	"fmt"
 	"hash/fnv"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	serializerjson "k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/client-go/kubernetes/scheme"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	hashutil "github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/util/hash"
 )
 
+var podEncoder = scheme.Codecs.EncoderForVersion(
+	serializerjson.NewSerializerWithOptions(
+		serializerjson.DefaultMetaFactory,
+		scheme.Scheme,
+		scheme.Scheme,
+		serializerjson.SerializerOptions{
+			Yaml:   false,
+			Pretty: false,
+			Strict: true,
+		}),
+	corev1.SchemeGroupVersion,
+)
+
 // CalculateHashAndSetLabels calculate the hash of pod spec and set it to the pod labels.
 func CalculateHashAndSetLabels(pod *corev1.Pod) {
-	hasher := fnv.New32a()
-	if pod.Labels == nil {
-		pod.Labels = map[string]string{}
-	}
 	spec := pod.Spec.DeepCopy()
 	for i := range spec.InitContainers {
 		c := &spec.InitContainers[i]
 		// ignores init containers image change to support hot reload image for sidecar
 		c.Image = ""
 	}
-	hashutil.DeepHashObject(hasher, spec)
+
+	// This prevents the hash from being changed when new fields are added to the `PodSpec` due to K8s version upgrades.
+	buf := bytes.Buffer{}
+	if err := podEncoder.Encode(&corev1.Pod{Spec: *spec}, &buf); err != nil {
+		panic(fmt.Errorf("failed to encode pod spec, %w", err))
+	}
+	hasher := fnv.New32a()
+	hashutil.DeepHashObject(hasher, buf.Bytes())
+
+	if pod.Labels == nil {
+		pod.Labels = map[string]string{}
+	}
 	pod.Labels[v1alpha1.LabelKeyPodSpecHash] = rand.SafeEncodeString(fmt.Sprint(hasher.Sum32()))
 }
 
