@@ -33,10 +33,10 @@ func TestValidate(t *testing.T) {
 		TmpPath: "/data0/tmp",
 		Storage: Storage{
 			Main: StorageMain{
-				Dir: []string{"/data0/db"},
+				Dir: []string{"/data0/db-not-equal"},
 			},
 			Raft: StorageRaft{
-				Dir: []string{"/data0/kvstore"},
+				Dir: []string{"/data0/kvstore-not-equal"},
 			},
 		},
 		Flash: Flash{
