@@ -179,6 +179,6 @@ func TaskSuspendPod(state PodState, c client.Client) task.Task {
 			return task.Fail().With("can't delete pod %s/%s: %v", pod.Namespace, pod.Name, err)
 		}
 
-		return task.Wait().With("pod is deleting")
+		return task.Retry(task.DefaultRequeueAfter).With("pod is deleting")
 	})
 }

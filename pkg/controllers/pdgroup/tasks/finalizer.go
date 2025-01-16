@@ -69,7 +69,7 @@ func TaskFinalizerDel(state State, c client.Client, m pdm.PDClientManager) task.
 			return task.Fail().With("cannot delete subresources: %w", err)
 		}
 		if wait {
-			return task.Wait().With("wait all subresources deleted")
+			return task.Retry(task.DefaultRequeueAfter).With("wait all subresources deleted")
 		}
 
 		if err := k8s.RemoveFinalizer(ctx, c, state.PDGroup()); err != nil {

@@ -33,7 +33,7 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 			return task.Fail().With("cannot delete subresources: %w", err)
 		}
 		if wait {
-			return task.Wait().With("wait all subresources deleted")
+			return task.Retry(task.DefaultRequeueAfter).With("wait all subresources deleted")
 		}
 		if err := k8s.RemoveFinalizer(ctx, c, state.TiDB()); err != nil {
 			return task.Fail().With("cannot remove finalizer: %w", err)
