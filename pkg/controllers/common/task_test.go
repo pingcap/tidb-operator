@@ -358,7 +358,7 @@ func TestTaskSuspendPod(t *testing.T) {
 			objs: []client.Object{
 				fake.FakeObj[corev1.Pod]("aaa"),
 			},
-			expectedResult: task.SWait,
+			expectedResult: task.SRetry,
 			expectedObj:    fake.FakeObj[corev1.Pod]("aaa"),
 		},
 		{

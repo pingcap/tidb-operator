@@ -122,7 +122,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			},
 			needDelMember: true,
 
-			expectedStatus: task.SWait,
+			expectedStatus: task.SRetry,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
 				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
 				return obj
@@ -287,7 +287,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 				}),
 			},
 
-			expectedStatus: task.SWait,
+			expectedStatus: task.SRetry,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
 				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
 				return obj
