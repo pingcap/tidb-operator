@@ -37,6 +37,8 @@ import (
 
 const (
 	defaultReadinessProbeInitialDelaySeconds = 5
+
+	metricsPath = "/metrics"
 )
 
 func TaskPod(state *ReconcileContext, c client.Client) task.Task {
@@ -182,7 +184,7 @@ func newPod(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, configHash string) *core
 		})
 	}
 
-	anno := maputil.Copy(pd.GetAnnotations())
+	anno := maputil.Merge(pd.GetAnnotations(), k8s.AnnoProm(pd.GetClientPort(), metricsPath))
 	// TODO: should not inherit all labels and annotations into pod
 	delete(anno, v1alpha1.AnnoKeyInitialClusterNum)
 	pod := &corev1.Pod{

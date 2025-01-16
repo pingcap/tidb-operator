@@ -34,6 +34,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
+const (
+	metricsPath = "/metrics"
+)
+
 func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
@@ -142,7 +146,9 @@ func newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, configHash str
 				v1alpha1.LabelKeyInstance:   tiflash.Name,
 				v1alpha1.LabelKeyConfigHash: configHash,
 			}),
-			Annotations: maputil.Copy(tiflash.GetAnnotations()),
+			Annotations: maputil.Merge(tiflash.GetAnnotations(),
+				k8s.AnnoProm(tiflash.GetMetricsPort(), metricsPath),
+				k8s.AnnoAdditionalProm("tiflash.proxy", tiflash.GetProxyStatusPort())),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(tiflash, v1alpha1.SchemeGroupVersion.WithKind("TiFlash")),
 			},
