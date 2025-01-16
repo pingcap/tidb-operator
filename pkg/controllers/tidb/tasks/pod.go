@@ -44,6 +44,8 @@ const (
 	// defaultReadinessProbeInitialDelaySeconds is the default initial delay seconds for readiness probe.
 	// This is the same value as TiDB Operator v1.
 	defaultReadinessProbeInitialDelaySeconds = 10
+
+	metricsPath = "/metrics"
 )
 
 func TaskPod(state *ReconcileContext, c client.Client) task.Task {
@@ -225,7 +227,7 @@ func newPod(cluster *v1alpha1.Cluster,
 				v1alpha1.LabelKeyInstance:   tidb.Name,
 				v1alpha1.LabelKeyConfigHash: configHash,
 			}),
-			Annotations: maputil.Copy(tidb.GetAnnotations()),
+			Annotations: maputil.Merge(tidb.GetAnnotations(), k8s.AnnoProm(tidb.GetStatusPort(), metricsPath)),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(tidb, v1alpha1.SchemeGroupVersion.WithKind("TiDB")),
 			},
