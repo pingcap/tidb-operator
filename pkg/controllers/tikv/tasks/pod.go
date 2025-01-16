@@ -39,6 +39,8 @@ const (
 	MinGracePeriodSeconds = 30
 	// Assume that approximately 200 regions are transferred for 1s
 	RegionsPerSecond = 200
+
+	metricsPath = "/metrics"
 )
 
 func TaskSuspendPod(state *ReconcileContext, c client.Client) task.Task {
@@ -195,7 +197,7 @@ func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, configHash string) *
 				v1alpha1.LabelKeyInstance:   tikv.Name,
 				v1alpha1.LabelKeyConfigHash: configHash,
 			}),
-			Annotations: maputil.Copy(tikv.GetAnnotations()),
+			Annotations: maputil.Merge(tikv.GetAnnotations(), k8s.AnnoProm(tikv.GetStatusPort(), metricsPath)),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(tikv, v1alpha1.SchemeGroupVersion.WithKind("TiKV")),
 			},
