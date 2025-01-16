@@ -75,7 +75,7 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 				return task.Retry(defaultTaskWaitDuration).With("tidb is not healthy, requeue to retry")
 			}
 
-			return task.Retry(task.DefaultRequeueAfter).With("pod of tidb is not ready, wait")
+			return task.Wait().With("pod of tidb is not ready, wait")
 		}
 
 		return task.Complete().With("status is synced")

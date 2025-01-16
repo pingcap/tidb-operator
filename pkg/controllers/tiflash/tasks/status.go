@@ -71,7 +71,7 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 
 		// TODO: use a condition to refactor it
 		if !healthy || tiflash.Status.ID == "" {
-			return task.Retry(task.DefaultRequeueAfter).With("tiflash may not be synced, wait")
+			return task.Wait().With("tiflash may not be synced, wait")
 		}
 
 		return task.Complete().With("status is synced")

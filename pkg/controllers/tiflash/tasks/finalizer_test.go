@@ -83,7 +83,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			},
 			subresources: fakeSubresources("Pod", "ConfigMap", "PersistentVolumeClaim"),
 
-			expectedStatus: task.SWait,
+			expectedStatus: task.SRetry,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
 				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
 				return obj
@@ -298,7 +298,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			},
 			subresources: fakeSubresources("Pod"),
 
-			expectedStatus: task.SWait,
+			expectedStatus: task.SRetry,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
 				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
 				return obj
