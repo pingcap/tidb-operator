@@ -549,7 +549,6 @@ func TestCalEndTs(t *testing.T) {
 	schedule = startTs.Add(5 * cpInterval)
 	s.Status.LastBackupTime = &metav1.Time{Time: startTs.Add(2 * cpInterval)}
 	s.Status.NextCompactTime = &metav1.Time{Time: startTs.Add(1 * cpInterval)}
-	nextCopy = s.Status.NextCompactTime.DeepCopy()
 	endTs = calEndTs(&s, startTs, cpInterval, &schedule)
 	require.Equal(t, endTs, startTs.Add(1*cpInterval))
 	require.Nil(t, s.Status.NextCompactTime)
