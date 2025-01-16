@@ -92,16 +92,6 @@ type Security struct {
 }
 
 func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash) error {
-	if err := c.Validate(); err != nil {
-		return err
-	}
-
-	if cluster.IsTLSClusterEnabled() {
-		c.Security.CAPath = path.Join(v1alpha1.TiFlashClusterTLSMountPath, corev1.ServiceAccountRootCAKey)
-		c.Security.CertPath = path.Join(v1alpha1.TiFlashClusterTLSMountPath, corev1.TLSCertKey)
-		c.Security.KeyPath = path.Join(v1alpha1.TiFlashClusterTLSMountPath, corev1.TLSPrivateKeyKey)
-	}
-
 	var dataDir string
 	for i := range tiflash.Spec.Volumes {
 		vol := &tiflash.Spec.Volumes[i]
@@ -111,6 +101,16 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash) e
 			}
 			dataDir = mount.MountPath
 		}
+	}
+
+	if err := c.Validate(dataDir); err != nil {
+		return err
+	}
+
+	if cluster.IsTLSClusterEnabled() {
+		c.Security.CAPath = path.Join(v1alpha1.TiFlashClusterTLSMountPath, corev1.ServiceAccountRootCAKey)
+		c.Security.CertPath = path.Join(v1alpha1.TiFlashClusterTLSMountPath, corev1.TLSCertKey)
+		c.Security.KeyPath = path.Join(v1alpha1.TiFlashClusterTLSMountPath, corev1.TLSPrivateKeyKey)
 	}
 
 	c.TmpPath = getTmpPath(dataDir)
@@ -135,7 +135,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash) e
 }
 
 //nolint:gocyclo // refactor if possible
-func (c *Config) Validate() error {
+func (c *Config) Validate(dataDir string) error {
 	fields := []string{}
 
 	if c.Security.CAPath != "" {
@@ -152,10 +152,10 @@ func (c *Config) Validate() error {
 		fields = append(fields, "tmp_path")
 	}
 
-	if c.Storage.Main.Dir != nil {
+	if c.Storage.Main.Dir != nil && !areSlicesEqual(c.Storage.Main.Dir, []string{getMainStorageDir(dataDir)}) {
 		fields = append(fields, "storage.main.dir")
 	}
-	if c.Storage.Raft.Dir != nil {
+	if c.Storage.Raft.Dir != nil && !areSlicesEqual(c.Storage.Raft.Dir, []string{getRaftStorageDir(dataDir)}) {
 		fields = append(fields, "storage.raft.dir")
 	}
 
@@ -165,7 +165,7 @@ func (c *Config) Validate() error {
 	if c.Flash.Proxy.Config != "" {
 		fields = append(fields, "flash.proxy.config")
 	}
-	if c.Flash.Proxy.DataDir != "" {
+	if c.Flash.Proxy.DataDir != "" && c.Flash.Proxy.DataDir != getProxyDataDir(dataDir) {
 		fields = append(fields, "flash.proxy.data-dir")
 	}
 	if c.Flash.Proxy.Addr != "" {
@@ -263,4 +263,16 @@ func getRaftStorageDir(dataDir string) string {
 func getProxyDataDir(dataDir string) string {
 	dataDir = GetDataDir(dataDir)
 	return fmt.Sprintf("%s/proxy", dataDir)
+}
+
+func areSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, sa := range a {
+		if sa != b[i] {
+			return false
+		}
+	}
+	return true
 }
