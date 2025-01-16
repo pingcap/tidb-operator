@@ -72,7 +72,7 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		}
 
 		if state.LeaderEvicting {
-			return task.Wait().With("tikv is evicting leader, wait")
+			return task.Retry(task.DefaultRequeueAfter).With("tikv is evicting leader, wait")
 		}
 
 		// TODO: use a condition to refactor it
