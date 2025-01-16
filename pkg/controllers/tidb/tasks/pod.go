@@ -110,9 +110,10 @@ func newPod(cluster *v1alpha1.Cluster,
 		},
 	}
 
+	var slowLogMount *corev1.VolumeMount
 	for i := range tidb.Spec.Volumes {
 		vol := &tidb.Spec.Volumes[i]
-		name := genVolumeNameFromVolume(vol)
+		name := VolumeName(vol.Name)
 		vols = append(vols, corev1.Volume{
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
@@ -121,10 +122,15 @@ func newPod(cluster *v1alpha1.Cluster,
 				},
 			},
 		})
-		mounts = append(mounts, corev1.VolumeMount{
-			Name:      name,
-			MountPath: vol.Path,
-		})
+
+		for i := range vol.Mounts {
+			mount := &vol.Mounts[i]
+			vm := VolumeMount(name, mount)
+			mounts = append(mounts, *vm)
+			if mount.Type == v1alpha1.VolumeMountTypeTiDBSlowLog {
+				slowLogMount = vm
+			}
+		}
 	}
 
 	if tidb.IsMySQLTLSEnabled() {
@@ -201,14 +207,14 @@ func newPod(cluster *v1alpha1.Cluster,
 
 	var slowLogContainer *corev1.Container
 	if tidb.IsSeparateSlowLogEnabled() {
-		vol, mount := buildSlowLogVolumeAndMount(tidb)
-		if vol != nil {
+		// no persistent slowlog volume
+		if slowLogMount == nil {
+			vol, mount := defaultSlowLogVolumeAndMount()
 			vols = append(vols, *vol)
-		}
-		if mount != nil {
 			mounts = append(mounts, *mount)
+			slowLogMount = mount
 		}
-		slowLogContainer = buildSlowLogContainer(tidb, mount)
+		slowLogContainer = buildSlowLogContainer(tidb, slowLogMount)
 	}
 
 	pod := &corev1.Pod{
@@ -284,13 +290,7 @@ func newPod(cluster *v1alpha1.Cluster,
 	return pod
 }
 
-func genVolumeNameFromVolume(vol *v1alpha1.Volume) string {
-	name := v1alpha1.NamePrefix + "tidb"
-	if vol.Name != "" {
-		name = name + "-" + vol.Name
-	}
-	return name
-}
+// TODO(liubo02): extract to namer pkg
 
 func buildTiDBReadinessProbHandler(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, clientPort, statusPort int32) corev1.ProbeHandler {
 	probeType := v1alpha1.TCPProbeType // default to TCP probe
@@ -338,38 +338,19 @@ func buildTiDBProbeCommand(cluster *v1alpha1.Cluster, statusPort int32) (command
 	return
 }
 
-func buildSlowLogVolumeAndMount(tidb *v1alpha1.TiDB) (*corev1.Volume, *corev1.VolumeMount) {
-	if tidb.Spec.SlowLog == nil || tidb.Spec.SlowLog.VolumeName == "" {
-		return &corev1.Volume{
-				Name: v1alpha1.TiDBDefaultSlowLogVolumeName,
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
-			}, &corev1.VolumeMount{
-				Name:      v1alpha1.TiDBDefaultSlowLogVolumeName,
-				MountPath: v1alpha1.TiDBDefaultSlowLogDir,
-			}
-	}
-
-	// if using a custom volume, the volume and mount should already be defined
-	return nil, nil
+func defaultSlowLogVolumeAndMount() (*corev1.Volume, *corev1.VolumeMount) {
+	return &corev1.Volume{
+			Name: v1alpha1.TiDBDefaultSlowLogVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		}, &corev1.VolumeMount{
+			Name:      v1alpha1.TiDBDefaultSlowLogVolumeName,
+			MountPath: v1alpha1.VolumeMountTiDBSlowLogDefaultPath,
+		}
 }
 
 func buildSlowLogContainer(tidb *v1alpha1.TiDB, mount *corev1.VolumeMount) *corev1.Container {
-	if mount == nil {
-		// no temparary volume for slow log, find the volume defined in the spec
-		for i := range tidb.Spec.Volumes {
-			vol := &tidb.Spec.Volumes[i]
-			if vol.Name == tidb.Spec.SlowLog.VolumeName {
-				mount = &corev1.VolumeMount{
-					Name:      genVolumeNameFromVolume(vol),
-					MountPath: vol.Path,
-				}
-				break // should always find the volume
-			}
-		}
-	}
-
 	slowlogFile := path.Join(mount.MountPath, v1alpha1.TiDBSlowLogFileName)
 	img := v1alpha1.DefaultHelperImage
 	if tidb.Spec.SlowLog != nil && tidb.Spec.SlowLog.Image != nil && *tidb.Spec.SlowLog.Image != "" {

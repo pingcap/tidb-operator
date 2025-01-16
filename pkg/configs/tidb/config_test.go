@@ -130,17 +130,18 @@ func TestOverlay(t *testing.T) {
 
 	// store slowlog in PVC
 	tidb2 := tidb.DeepCopy()
-	tidb2.Spec.SlowLog = &v1alpha1.TiDBSlowLog{
-		VolumeName: "slowlog",
-	}
 	tidb2.Spec.Volumes = []v1alpha1.Volume{
 		{
 			Name: "slowlog",
-			Path: "/var/log/slowlog",
+			Mounts: []v1alpha1.VolumeMount{
+				{
+					Type: v1alpha1.VolumeMountTypeTiDBSlowLog,
+				},
+			},
 		},
 	}
 	cfg2 := &Config{}
 	err = cfg2.Overlay(cluster, tidb2)
 	require.NoError(t, err)
-	assert.Equal(t, "/var/log/slowlog/slowlog", cfg2.Log.SlowQueryFile)
+	assert.Equal(t, "/var/log/tidb/slowlog", cfg2.Log.SlowQueryFile)
 }

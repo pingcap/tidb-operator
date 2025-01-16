@@ -21,7 +21,6 @@ spec:
         cert-allowed-cn = ["TiDB"]
       volumes:
       - name: data
-        path: /data0
-        for:
+        mounts:
         - type: data
         storage: 100Gi

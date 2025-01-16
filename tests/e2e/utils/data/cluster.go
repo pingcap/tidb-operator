@@ -68,8 +68,7 @@ func NewPDGroup(namespace, name, clusterName string, replicas *int32, apply func
 					Volumes: []v1alpha1.Volume{
 						{
 							Name:    "data",
-							Path:    "/var/lib/pd",
-							For:     []v1alpha1.VolumeUsage{{Type: "data"}},
+							Mounts:  []v1alpha1.VolumeMount{{Type: "data"}},
 							Storage: StorageSizeGi2quantity(1),
 						},
 					},
@@ -104,8 +103,7 @@ func NewTiKVGroup(namespace, name, clusterName string, replicas *int32, apply fu
 					Volumes: []v1alpha1.Volume{
 						{
 							Name:    "data",
-							Path:    "/var/lib/tikv",
-							For:     []v1alpha1.VolumeUsage{{Type: "data"}},
+							Mounts:  []v1alpha1.VolumeMount{{Type: "data"}},
 							Storage: StorageSizeGi2quantity(1),
 						},
 					},
@@ -151,7 +149,8 @@ func NewTiDBGroup(namespace, name, clusterName string, replicas *int32, apply fu
 }
 
 func NewTiFlashGroup(namespace, name, clusterName string, replicas *int32,
-	apply func(group *v1alpha1.TiFlashGroup)) *v1alpha1.TiFlashGroup {
+	apply func(group *v1alpha1.TiFlashGroup),
+) *v1alpha1.TiFlashGroup {
 	flashg := &v1alpha1.TiFlashGroup{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
@@ -172,8 +171,7 @@ func NewTiFlashGroup(namespace, name, clusterName string, replicas *int32,
 					Volumes: []v1alpha1.Volume{
 						{
 							Name:    "data",
-							Path:    "/data0", // different path format
-							For:     []v1alpha1.VolumeUsage{{Type: "data"}},
+							Mounts:  []v1alpha1.VolumeMount{{Type: "data"}},
 							Storage: StorageSizeGi2quantity(1),
 						},
 					},

@@ -73,14 +73,15 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV) error {
 
 	for i := range tikv.Spec.Volumes {
 		vol := &tikv.Spec.Volumes[i]
-		for _, usage := range vol.For {
-			if usage.Type == v1alpha1.VolumeUsageTypeTiKVData {
-				c.Storage.DataDir = vol.Path
-				if usage.SubPath != "" {
-					c.Storage.DataDir = path.Join(vol.Path, usage.SubPath)
-				}
+		for _, mount := range vol.Mounts {
+			if mount.Type == v1alpha1.VolumeMountTypeTiKVData {
+				c.Storage.DataDir = mount.MountPath
 			}
 		}
+	}
+
+	if c.Storage.DataDir == "" {
+		c.Storage.DataDir = v1alpha1.VolumeMountTiKVDataDefaultPath
 	}
 
 	return nil

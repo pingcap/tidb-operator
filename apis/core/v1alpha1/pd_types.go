@@ -30,9 +30,11 @@ var (
 )
 
 const (
-	// VolumeUsageTypePDData means data dir of PD
-	// The default sub path is "data"
-	VolumeUsageTypePDData VolumeUsageType = "data"
+	// VolumeMountTypePDData means data dir of PD
+	VolumeMountTypePDData VolumeMountType = "data"
+
+	VolumeMountPDDataDefaultPath    = "/var/lib/pd"
+	VolumeMountPDDataDefaultSubPath = ""
 )
 
 const (

@@ -17,6 +17,8 @@ package tasks
 import (
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 )
 
@@ -33,4 +35,25 @@ func PersistentVolumeClaimName(podName, volName string) string {
 // TiDBServiceURL returns the service URL of a tidb member.
 func TiDBServiceURL(tidb *v1alpha1.TiDB, scheme string) string {
 	return fmt.Sprintf("%s://%s.%s.%s.svc:%d", scheme, tidb.PodName(), tidb.Spec.Subdomain, tidb.Namespace, tidb.GetStatusPort())
+}
+
+// Real spec.volumes[*].name of pod
+// TODO(liubo02): extract to namer pkg
+func VolumeName(volName string) string {
+	return v1alpha1.VolNamePrefix + volName
+}
+
+func VolumeMount(name string, mount *v1alpha1.VolumeMount) *corev1.VolumeMount {
+	vm := &corev1.VolumeMount{
+		Name:      name,
+		MountPath: mount.MountPath,
+		SubPath:   mount.SubPath,
+	}
+	if mount.Type == v1alpha1.VolumeMountTypeTiDBSlowLog {
+		if vm.MountPath == "" {
+			vm.MountPath = v1alpha1.VolumeMountTiDBSlowLogDefaultPath
+		}
+	}
+
+	return vm
 }

@@ -17,7 +17,6 @@ package tasks
 import (
 	"context"
 	"fmt"
-	"path"
 	"path/filepath"
 
 	corev1 "k8s.io/api/core/v1"
@@ -99,7 +98,7 @@ func newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, configHash str
 	var dataDir string
 	for i := range tiflash.Spec.Volumes {
 		vol := &tiflash.Spec.Volumes[i]
-		name := v1alpha1.NamePrefix + "-" + vol.Name
+		name := VolumeName(vol.Name)
 		vols = append(vols, corev1.Volume{
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
@@ -108,19 +107,14 @@ func newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, configHash str
 				},
 			},
 		})
-		mount := corev1.VolumeMount{
-			Name:      name,
-			MountPath: vol.Path,
-		}
-		mounts = append(mounts, mount)
-		for _, usage := range vol.For {
-			if usage.Type == v1alpha1.VolumeUsageTypeTiFlashData {
-				dataMount = &mount
-				dataDir = vol.Path
-				if usage.SubPath != "" {
-					dataDir = path.Join(vol.Path, usage.SubPath)
-				}
+		for i := range vol.Mounts {
+			mount := &vol.Mounts[i]
+			vm := VolumeMount(name, mount)
+			if mount.Type == v1alpha1.VolumeMountTypeTiFlashData {
+				dataMount = vm
+				dataDir = dataMount.MountPath
 			}
+			mounts = append(mounts, *vm)
 		}
 	}
 
