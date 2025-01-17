@@ -59,6 +59,7 @@ func ControllerRevisionName(prefix string, hash string) string {
 // so the name is likely unique. If the returned error is nil, the returned ControllerRevision is valid. If the
 // returned error is not nil, the returned ControllerRevision is invalid for use.
 func NewControllerRevision(parent metav1.Object,
+	component string,
 	templateLabels map[string]string,
 	data runtime.RawExtension,
 	revision int64,
@@ -77,7 +78,7 @@ func NewControllerRevision(parent metav1.Object,
 		Revision: revision,
 	}
 	hash := HashControllerRevision(cr, collisionCount)
-	cr.Name = ControllerRevisionName(parent.GetName(), hash)
+	cr.Name = ControllerRevisionName(parent.GetName()+"-"+component, hash)
 	cr.Labels[HashLabel] = hash
 	return cr, nil
 }

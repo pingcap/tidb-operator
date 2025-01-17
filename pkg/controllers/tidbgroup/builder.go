@@ -46,7 +46,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskGroupStatusSuspend[runtime.TiDBGroupTuple](state, r.Client),
 		),
 
-		common.TaskRevision(state, r.Client),
+		common.TaskRevision[runtime.TiDBGroupTuple](state, r.Client),
 		tasks.TaskService(state, r.Client),
 		tasks.TaskUpdater(state, r.Client),
 		tasks.TaskStatusAvailable(state, r.Client),

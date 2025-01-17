@@ -92,8 +92,8 @@ type GroupAndInstanceSliceState[
 	InstanceSliceState[I]
 }
 
-type RevisionStateInitializer interface {
-	RevisionInitializer() RevisionInitializer
+type RevisionStateInitializer[G runtime.Group] interface {
+	RevisionInitializer() RevisionInitializer[G]
 }
 
 type RevisionState interface {

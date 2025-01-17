@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -98,7 +99,7 @@ func TestState(t *testing.T) {
 				common.TaskContextTiFlashGroup(s, fc),
 				common.TaskContextCluster(s, fc),
 				common.TaskContextTiFlashSlice(s, fc),
-				common.TaskRevision(s, fc),
+				common.TaskRevision[runtime.TiFlashGroupTuple](s, fc),
 			))
 			assert.Equal(tt, task.SComplete.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)

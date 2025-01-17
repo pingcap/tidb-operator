@@ -18,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
@@ -39,7 +38,7 @@ type State interface {
 	common.PDGroupStateInitializer
 	common.ClusterStateInitializer
 	common.PDSliceStateInitializer
-	common.RevisionStateInitializer
+	common.RevisionStateInitializer[*runtime.PDGroup]
 
 	common.PDGroupState
 	common.ClusterState
@@ -100,23 +99,24 @@ func (s *state) PDSliceInitializer() common.PDSliceInitializer {
 		Initializer()
 }
 
-func (s *state) RevisionInitializer() common.RevisionInitializer {
-	return common.NewRevision(common.RevisionSetterFunc(func(update, current string, collisionCount int32) {
-		s.updateRevision = update
-		s.currentRevision = current
-		s.collisionCount = collisionCount
-	})).
+func (s *state) RevisionInitializer() common.RevisionInitializer[*runtime.PDGroup] {
+	return common.NewRevision[*runtime.PDGroup](
+		common.RevisionSetterFunc(func(update, current string, collisionCount int32) {
+			s.updateRevision = update
+			s.currentRevision = current
+			s.collisionCount = collisionCount
+		})).
 		WithCurrentRevision(common.Lazy[string](func() string {
 			return s.pdg.Status.CurrentRevision
 		})).
 		WithCollisionCount(common.Lazy[*int32](func() *int32 {
 			return s.pdg.Status.CollisionCount
 		})).
-		WithParent(common.Lazy[client.Object](func() client.Object {
+		WithParent(common.Lazy[*runtime.PDGroup](func() *runtime.PDGroup {
 			pdg := s.pdg.DeepCopy()
 			// always ignore bootstrapped field in spec
 			pdg.Spec.Bootstrapped = false
-			return pdg
+			return runtime.FromPDGroup(pdg)
 		})).
 		WithLabels(s.Labels()).
 		Initializer()

@@ -18,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
@@ -39,7 +38,7 @@ type State interface {
 	common.TiDBGroupStateInitializer
 	common.ClusterStateInitializer
 	common.TiDBSliceStateInitializer
-	common.RevisionStateInitializer
+	common.RevisionStateInitializer[*runtime.TiDBGroup]
 
 	common.TiDBGroupState
 	common.ClusterState
@@ -100,20 +99,21 @@ func (s *state) TiDBSliceInitializer() common.TiDBSliceInitializer {
 		Initializer()
 }
 
-func (s *state) RevisionInitializer() common.RevisionInitializer {
-	return common.NewRevision(common.RevisionSetterFunc(func(update, current string, collisionCount int32) {
-		s.updateRevision = update
-		s.currentRevision = current
-		s.collisionCount = collisionCount
-	})).
+func (s *state) RevisionInitializer() common.RevisionInitializer[*runtime.TiDBGroup] {
+	return common.NewRevision[*runtime.TiDBGroup](
+		common.RevisionSetterFunc(func(update, current string, collisionCount int32) {
+			s.updateRevision = update
+			s.currentRevision = current
+			s.collisionCount = collisionCount
+		})).
 		WithCurrentRevision(common.Lazy[string](func() string {
 			return s.dbg.Status.CurrentRevision
 		})).
 		WithCollisionCount(common.Lazy[*int32](func() *int32 {
 			return s.dbg.Status.CollisionCount
 		})).
-		WithParent(common.Lazy[client.Object](func() client.Object {
-			return s.dbg
+		WithParent(common.Lazy[*runtime.TiDBGroup](func() *runtime.TiDBGroup {
+			return s.Group()
 		})).
 		WithLabels(s.Labels()).
 		Initializer()

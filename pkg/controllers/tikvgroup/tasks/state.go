@@ -18,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
@@ -39,7 +38,7 @@ type State interface {
 	common.TiKVGroupStateInitializer
 	common.ClusterStateInitializer
 	common.TiKVSliceStateInitializer
-	common.RevisionStateInitializer
+	common.RevisionStateInitializer[*runtime.TiKVGroup]
 
 	common.TiKVGroupState
 	common.ClusterState
@@ -100,20 +99,21 @@ func (s *state) TiKVSliceInitializer() common.TiKVSliceInitializer {
 		Initializer()
 }
 
-func (s *state) RevisionInitializer() common.RevisionInitializer {
-	return common.NewRevision(common.RevisionSetterFunc(func(update, current string, collisionCount int32) {
-		s.updateRevision = update
-		s.currentRevision = current
-		s.collisionCount = collisionCount
-	})).
+func (s *state) RevisionInitializer() common.RevisionInitializer[*runtime.TiKVGroup] {
+	return common.NewRevision[*runtime.TiKVGroup](
+		common.RevisionSetterFunc(func(update, current string, collisionCount int32) {
+			s.updateRevision = update
+			s.currentRevision = current
+			s.collisionCount = collisionCount
+		})).
 		WithCurrentRevision(common.Lazy[string](func() string {
 			return s.kvg.Status.CurrentRevision
 		})).
 		WithCollisionCount(common.Lazy[*int32](func() *int32 {
 			return s.kvg.Status.CollisionCount
 		})).
-		WithParent(common.Lazy[client.Object](func() client.Object {
-			return s.kvg
+		WithParent(common.Lazy[*runtime.TiKVGroup](func() *runtime.TiKVGroup {
+			return s.Group()
 		})).
 		WithLabels(s.Labels()).
 		Initializer()

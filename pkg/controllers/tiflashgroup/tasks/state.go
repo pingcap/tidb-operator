@@ -18,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
@@ -39,7 +38,7 @@ type State interface {
 	common.TiFlashGroupStateInitializer
 	common.ClusterStateInitializer
 	common.TiFlashSliceStateInitializer
-	common.RevisionStateInitializer
+	common.RevisionStateInitializer[*runtime.TiFlashGroup]
 
 	common.TiFlashGroupState
 	common.ClusterState
@@ -100,20 +99,21 @@ func (s *state) TiFlashSliceInitializer() common.TiFlashSliceInitializer {
 		Initializer()
 }
 
-func (s *state) RevisionInitializer() common.RevisionInitializer {
-	return common.NewRevision(common.RevisionSetterFunc(func(update, current string, collisionCount int32) {
-		s.updateRevision = update
-		s.currentRevision = current
-		s.collisionCount = collisionCount
-	})).
+func (s *state) RevisionInitializer() common.RevisionInitializer[*runtime.TiFlashGroup] {
+	return common.NewRevision[*runtime.TiFlashGroup](
+		common.RevisionSetterFunc(func(update, current string, collisionCount int32) {
+			s.updateRevision = update
+			s.currentRevision = current
+			s.collisionCount = collisionCount
+		})).
 		WithCurrentRevision(common.Lazy[string](func() string {
 			return s.fg.Status.CurrentRevision
 		})).
 		WithCollisionCount(common.Lazy[*int32](func() *int32 {
 			return s.fg.Status.CollisionCount
 		})).
-		WithParent(common.Lazy[client.Object](func() client.Object {
-			return s.fg
+		WithParent(common.Lazy[*runtime.TiFlashGroup](func() *runtime.TiFlashGroup {
+			return s.Group()
 		})).
 		WithLabels(s.Labels()).
 		Initializer()
