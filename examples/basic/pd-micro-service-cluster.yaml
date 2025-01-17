@@ -5,7 +5,6 @@ apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
   name: basic
-  namespace: pingcap
 spec:
   version: v8.5.0
   timezone: UTC
