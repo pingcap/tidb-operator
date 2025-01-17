@@ -207,12 +207,12 @@ func TestGetCurrentAndUpdate(t *testing.T) {
 			Replicas: ptr.To[int32](1),
 		},
 	}
-	rev1, err := newRevision(pdg, nil, pdg.GVK(), 1, ptr.To[int32](0))
+	rev1, err := newRevision(pdg, "pd", nil, pdg.GVK(), 1, ptr.To[int32](0))
 	require.NoError(t, err)
 
 	pdg2 := pdg.DeepCopy()
 	pdg2.Spec.Replicas = ptr.To[int32](2)
-	rev2, err := newRevision(pdg2, nil, pdg2.GVK(), 2, ptr.To[int32](0))
+	rev2, err := newRevision(pdg2, "pd", nil, pdg2.GVK(), 2, ptr.To[int32](0))
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -229,8 +229,8 @@ func TestGetCurrentAndUpdate(t *testing.T) {
 			group:          pdg,
 			revisions:      []*appsv1.ControllerRevision{},
 			accessor:       pdg,
-			expectedCurRev: "basic-687bcf9d45",
-			expectedUpdRev: "basic-687bcf9d45",
+			expectedCurRev: "basic-pd-687bcf9d45",
+			expectedUpdRev: "basic-pd-687bcf9d45",
 			expectedErr:    false,
 		},
 		{
@@ -238,8 +238,8 @@ func TestGetCurrentAndUpdate(t *testing.T) {
 			group:          pdg2,
 			revisions:      []*appsv1.ControllerRevision{rev1, rev2},
 			accessor:       pdg2,
-			expectedCurRev: "basic-5f5f578c9d",
-			expectedUpdRev: "basic-5f5f578c9d",
+			expectedCurRev: "basic-pd-5f5f578c9d",
+			expectedUpdRev: "basic-pd-5f5f578c9d",
 			expectedErr:    false,
 		},
 		{
@@ -247,8 +247,8 @@ func TestGetCurrentAndUpdate(t *testing.T) {
 			group:          pdg,
 			revisions:      []*appsv1.ControllerRevision{rev1, rev2},
 			accessor:       pdg,
-			expectedCurRev: "basic-687bcf9d45",
-			expectedUpdRev: "basic-687bcf9d45",
+			expectedCurRev: "basic-pd-687bcf9d45",
+			expectedUpdRev: "basic-pd-687bcf9d45",
 			expectedErr:    false,
 		},
 	}
@@ -261,7 +261,7 @@ func TestGetCurrentAndUpdate(t *testing.T) {
 					return revision, nil
 				},
 			}
-			curRev, updRev, _, err := GetCurrentAndUpdate(context.TODO(), tt.group, nil, tt.revisions, cli, tt.accessor.CurrentRevision(), tt.accessor.CollisionCount())
+			curRev, updRev, _, err := GetCurrentAndUpdate(context.TODO(), tt.group, "pd", nil, tt.revisions, cli, tt.accessor.CurrentRevision(), tt.accessor.CollisionCount())
 			if tt.expectedErr {
 				require.Error(t, err)
 			} else {

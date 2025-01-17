@@ -14,7 +14,9 @@
 
 package common
 
-import "github.com/pingcap/tidb-operator/pkg/client"
+import (
+	"github.com/pingcap/tidb-operator/pkg/runtime"
+)
 
 type Setter[T any] interface {
 	Set(T)
@@ -50,8 +52,8 @@ type CollisionCountOption interface {
 	CollisionCount() *int32
 }
 
-type ParentOption interface {
-	Parent() client.Object
+type ParentOption[G runtime.Group] interface {
+	Parent() G
 }
 
 type (
