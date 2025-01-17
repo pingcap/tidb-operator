@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
 	revisionutil "github.com/pingcap/tidb-operator/pkg/utils/k8s/revision"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/history"
@@ -35,78 +36,83 @@ func (f RevisionSetterFunc) Set(update, current string, collisionCount int32) {
 	f(update, current, collisionCount)
 }
 
-type Revision interface {
-	WithCurrentRevision(CurrentRevisionOption) Revision
-	WithCollisionCount(CollisionCountOption) Revision
-	WithParent(ParentOption) Revision
-	WithLabels(LabelsOption) Revision
-	Initializer() RevisionInitializer
+type Revision[G runtime.Group] interface {
+	WithCurrentRevision(CurrentRevisionOption) Revision[G]
+	WithCollisionCount(CollisionCountOption) Revision[G]
+	WithParent(ParentOption[G]) Revision[G]
+	WithLabels(LabelsOption) Revision[G]
+	Initializer() RevisionInitializer[G]
 }
 
-type RevisionInitializer interface {
+type RevisionInitializer[G runtime.Group] interface {
 	LabelsOption
-	ParentOption
+	ParentOption[G]
 	CurrentRevision() string
 	CollisionCount() *int32
 	RevisionSetter
 }
 
-type revision struct {
+type revision[G runtime.Group] struct {
 	RevisionSetter
 
-	parent          ParentOption
+	parent          ParentOption[G]
 	currentRevision CurrentRevisionOption
 	collisionCount  CollisionCountOption
 	labels          LabelsOption
 }
 
-func NewRevision(setter RevisionSetter) Revision {
-	return &revision{
+func NewRevision[G runtime.Group](setter RevisionSetter) Revision[G] {
+	return &revision[G]{
 		RevisionSetter: setter,
 	}
 }
 
-func (r *revision) WithParent(parent ParentOption) Revision {
+func (r *revision[G]) WithParent(parent ParentOption[G]) Revision[G] {
 	r.parent = parent
 	return r
 }
 
-func (r *revision) WithCurrentRevision(rev CurrentRevisionOption) Revision {
+func (r *revision[G]) WithCurrentRevision(rev CurrentRevisionOption) Revision[G] {
 	r.currentRevision = rev
 	return r
 }
 
-func (r *revision) WithCollisionCount(collisionCount CollisionCountOption) Revision {
+func (r *revision[G]) WithCollisionCount(collisionCount CollisionCountOption) Revision[G] {
 	r.collisionCount = collisionCount
 	return r
 }
 
-func (r *revision) WithLabels(ls LabelsOption) Revision {
+func (r *revision[G]) WithLabels(ls LabelsOption) Revision[G] {
 	r.labels = ls
 	return r
 }
 
-func (r *revision) Initializer() RevisionInitializer {
+func (r *revision[G]) Initializer() RevisionInitializer[G] {
 	return r
 }
 
-func (r *revision) Parent() client.Object {
+func (r *revision[G]) Parent() G {
 	return r.parent.Parent()
 }
 
-func (r *revision) CurrentRevision() string {
+func (r *revision[G]) CurrentRevision() string {
 	return r.currentRevision.CurrentRevision()
 }
 
-func (r *revision) CollisionCount() *int32 {
+func (r *revision[G]) CollisionCount() *int32 {
 	return r.collisionCount.CollisionCount()
 }
 
-func (r *revision) Labels() map[string]string {
+func (r *revision[G]) Labels() map[string]string {
 	return r.labels.Labels()
 }
 
-func TaskRevision(state RevisionStateInitializer, c client.Client) task.Task {
+func TaskRevision[
+	GT runtime.GroupTuple[OG, RG],
+	OG client.Object,
+	RG runtime.Group,
+](state RevisionStateInitializer[RG], c client.Client) task.Task {
+	var gt GT
 	w := state.RevisionInitializer()
 	return task.NameTaskFunc("ContextRevision", func(ctx context.Context) task.Result {
 		historyCli := history.NewClient(c)
@@ -115,7 +121,7 @@ func TaskRevision(state RevisionStateInitializer, c client.Client) task.Task {
 		lbs := w.Labels()
 		selector := labels.SelectorFromSet(labels.Set(lbs))
 
-		revisions, err := historyCli.ListControllerRevisions(parent, selector)
+		revisions, err := historyCli.ListControllerRevisions(gt.To(parent), selector)
 		if err != nil {
 			return task.Fail().With("cannot list controller revisions: %w", err)
 		}
@@ -124,7 +130,8 @@ func TaskRevision(state RevisionStateInitializer, c client.Client) task.Task {
 		// Get the current(old) and update(new) ControllerRevisions.
 		currentRevision, updateRevision, collisionCount, err := revisionutil.GetCurrentAndUpdate(
 			ctx,
-			parent,
+			gt.To(parent),
+			parent.Component(),
 			lbs,
 			revisions,
 			historyCli,

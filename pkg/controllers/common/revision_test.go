@@ -21,23 +21,23 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 
-	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-type fakeRevisionStateInitializer struct {
+type fakeRevisionStateInitializer[G runtime.Group] struct {
 	fakeRevisionState
 
 	currentRevision CurrentRevisionOption
 	collisionCount  CollisionCountOption
-	parent          ParentOption
+	parent          ParentOption[G]
 	labels          LabelsOption
 }
 
-func (f *fakeRevisionStateInitializer) RevisionInitializer() RevisionInitializer {
-	return NewRevision(&f.fakeRevisionState).
+func (f *fakeRevisionStateInitializer[G]) RevisionInitializer() RevisionInitializer[G] {
+	return NewRevision[G](&f.fakeRevisionState).
 		WithCurrentRevision(f.currentRevision).
 		WithCollisionCount(f.collisionCount).
 		WithParent(f.parent).
@@ -53,7 +53,7 @@ const (
 func TestTaskRevision(t *testing.T) {
 	cases := []struct {
 		desc  string
-		state *fakeRevisionStateInitializer
+		state *fakeRevisionStateInitializer[*runtime.PDGroup]
 		objs  []client.Object
 
 		expectedResult          task.Status
@@ -63,15 +63,21 @@ func TestTaskRevision(t *testing.T) {
 	}{
 		{
 			desc: "no revisions",
-			state: &fakeRevisionStateInitializer{
+			state: &fakeRevisionStateInitializer[*runtime.PDGroup]{
 				currentRevision: Lazy[string](func() string {
 					return ""
 				}),
 				collisionCount: Lazy[*int32](func() *int32 {
 					return nil
 				}),
-				parent: Lazy[client.Object](func() client.Object {
-					return fake.FakeObj("aaa", fake.Label[v1alpha1.PDGroup]("aaa", "bbb"))
+				parent: Lazy[*runtime.PDGroup](func() *runtime.PDGroup {
+					return fake.Fake(func(obj *runtime.PDGroup) *runtime.PDGroup {
+						obj.SetName("aaa")
+						obj.Labels = map[string]string{
+							"aaa": "bbb",
+						}
+						return obj
+					})
 				}),
 				labels: Labels{
 					"ccc": "ddd",
@@ -82,15 +88,21 @@ func TestTaskRevision(t *testing.T) {
 		},
 		{
 			desc: "has a revision",
-			state: &fakeRevisionStateInitializer{
+			state: &fakeRevisionStateInitializer[*runtime.PDGroup]{
 				currentRevision: Lazy[string](func() string {
 					return "xxx"
 				}),
 				collisionCount: Lazy[*int32](func() *int32 {
 					return nil
 				}),
-				parent: Lazy[client.Object](func() client.Object {
-					return fake.FakeObj("aaa", fake.Label[v1alpha1.PDGroup]("aaa", "bbb"))
+				parent: Lazy[*runtime.PDGroup](func() *runtime.PDGroup {
+					return fake.Fake(func(obj *runtime.PDGroup) *runtime.PDGroup {
+						obj.SetName("aaa")
+						obj.Labels = map[string]string{
+							"aaa": "bbb",
+						}
+						return obj
+					})
 				}),
 				labels: Labels{
 					"ccc": "ddd",
@@ -104,15 +116,21 @@ func TestTaskRevision(t *testing.T) {
 		},
 		{
 			desc: "has a coflict revision",
-			state: &fakeRevisionStateInitializer{
+			state: &fakeRevisionStateInitializer[*runtime.PDGroup]{
 				currentRevision: Lazy[string](func() string {
 					return fakeOldRevision
 				}),
 				collisionCount: Lazy[*int32](func() *int32 {
 					return nil
 				}),
-				parent: Lazy[client.Object](func() client.Object {
-					return fake.FakeObj("aaa", fake.Label[v1alpha1.PDGroup]("aaa", "bbb"))
+				parent: Lazy[*runtime.PDGroup](func() *runtime.PDGroup {
+					return fake.Fake(func(obj *runtime.PDGroup) *runtime.PDGroup {
+						obj.SetName("aaa")
+						obj.Labels = map[string]string{
+							"aaa": "bbb",
+						}
+						return obj
+					})
 				}),
 				labels: Labels{
 					"ccc": "ddd",
@@ -127,15 +145,21 @@ func TestTaskRevision(t *testing.T) {
 		},
 		{
 			desc: "has two coflict revision",
-			state: &fakeRevisionStateInitializer{
+			state: &fakeRevisionStateInitializer[*runtime.PDGroup]{
 				currentRevision: Lazy[string](func() string {
 					return fakeOldRevision
 				}),
 				collisionCount: Lazy[*int32](func() *int32 {
 					return nil
 				}),
-				parent: Lazy[client.Object](func() client.Object {
-					return fake.FakeObj("aaa", fake.Label[v1alpha1.PDGroup]("aaa", "bbb"))
+				parent: Lazy[*runtime.PDGroup](func() *runtime.PDGroup {
+					return fake.Fake(func(obj *runtime.PDGroup) *runtime.PDGroup {
+						obj.SetName("aaa")
+						obj.Labels = map[string]string{
+							"aaa": "bbb",
+						}
+						return obj
+					})
 				}),
 				labels: Labels{
 					"ccc": "ddd",
@@ -158,7 +182,7 @@ func TestTaskRevision(t *testing.T) {
 
 			fc := client.NewFakeClient(c.objs...)
 
-			res, done := task.RunTask(context.Background(), TaskRevision(c.state, fc))
+			res, done := task.RunTask(context.Background(), TaskRevision[runtime.PDGroupTuple](c.state, fc))
 			assert.Equal(tt, c.expectedResult.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
 			update, current, collisionCount := c.state.Revision()
@@ -175,7 +199,7 @@ func TestTaskRevision(t *testing.T) {
 			})
 
 			// rerun Revision task and make sure that status is unchanged
-			res2, _ := task.RunTask(context.Background(), TaskRevision(c.state, fc))
+			res2, _ := task.RunTask(context.Background(), TaskRevision[runtime.PDGroupTuple](c.state, fc))
 			assert.Equal(tt, c.expectedResult.String(), res2.Status().String(), c.desc)
 			update, current, collisionCount = c.state.Revision()
 			assert.Equal(tt, c.expectedUpdateRevision, update, c.desc)

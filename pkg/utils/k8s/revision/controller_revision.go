@@ -49,6 +49,7 @@ var encoderMap = map[schema.GroupVersion]kuberuntime.Encoder{}
 func GetCurrentAndUpdate(
 	_ context.Context,
 	group client.Object,
+	component string,
 	labels map[string]string,
 	revisions []*appsv1.ControllerRevision,
 	cli history.Interface,
@@ -69,7 +70,7 @@ func GetCurrentAndUpdate(
 		return nil, nil, collisionCount, fmt.Errorf("cannot get gvk of group: %w", err)
 	}
 	// create a new revision from the current object
-	updateRevision, err = newRevision(group, labels, gvk, statefulset.NextRevision(revisions), &collisionCount)
+	updateRevision, err = newRevision(group, component, labels, gvk, statefulset.NextRevision(revisions), &collisionCount)
 	if err != nil {
 		return nil, nil, collisionCount, fmt.Errorf("failed to new a revision: %w", err)
 	}
@@ -114,14 +115,14 @@ func GetCurrentAndUpdate(
 }
 
 // newRevision creates a new ControllerRevision containing a patch that reapplies the target state of CR.
-func newRevision(obj client.Object, labels map[string]string, gvk schema.GroupVersionKind,
+func newRevision(obj client.Object, component string, labels map[string]string, gvk schema.GroupVersionKind,
 	revision int64, collisionCount *int32,
 ) (*appsv1.ControllerRevision, error) {
 	patch, err := getPatch(obj, gvk)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get patch: %w", err)
 	}
-	cr, err := history.NewControllerRevision(obj, labels, kuberuntime.RawExtension{Raw: patch}, revision, collisionCount)
+	cr, err := history.NewControllerRevision(obj, component, labels, kuberuntime.RawExtension{Raw: patch}, revision, collisionCount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a revision: %w", err)
 	}
