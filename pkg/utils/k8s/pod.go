@@ -125,3 +125,33 @@ func GetResourceRequirements(req v1alpha1.ResourceRequirements) corev1.ResourceR
 	}
 	return ret
 }
+
+// AnnoProm returns the prometheus annotations for a pod.
+func AnnoProm(port int32, path string) map[string]string {
+	return map[string]string{
+		"prometheus.io/scrape": "true",
+		"prometheus.io/port":   fmt.Sprintf("%d", port),
+		"prometheus.io/path":   path,
+	}
+}
+
+// AnnoAdditionalProm returns the additional prometheus annotations for a pod.
+// Some pods may have multiple prometheus endpoints.
+// We assume the same path is used for all endpoints.
+func AnnoAdditionalProm(name string, port int32) map[string]string {
+	return map[string]string{
+		fmt.Sprintf("%s.prometheus.io/port", name): fmt.Sprintf("%d", port),
+	}
+}
+
+// LabelsForTidbCluster returns some labels with "app.kubernetes.io" prefix.
+// NOTE: these labels are deprecated and they are used for TiDB Operator v1 compatibility.
+// If you are developing a new feature, please use labels with "pingcap.com" prefix instead.
+func LabelsK8sApp(cluster, component string) map[string]string {
+	return map[string]string{
+		"app.kubernetes.io/component":  component,
+		"app.kubernetes.io/instance":   cluster,
+		"app.kubernetes.io/managed-by": "tidb-operator",
+		"app.kubernetes.io/name":       "tidb-cluster",
+	}
+}
