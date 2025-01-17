@@ -194,7 +194,7 @@ func newPod(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, configHash string) *core
 			Labels: maputil.Merge(pd.Labels, map[string]string{
 				v1alpha1.LabelKeyInstance:   pd.Name,
 				v1alpha1.LabelKeyConfigHash: configHash,
-			}),
+			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentPD)),
 			Annotations: anno,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(pd, v1alpha1.SchemeGroupVersion.WithKind("PD")),

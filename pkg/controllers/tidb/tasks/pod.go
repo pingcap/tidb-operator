@@ -226,7 +226,7 @@ func newPod(cluster *v1alpha1.Cluster,
 			Labels: maputil.Merge(tidb.Labels, map[string]string{
 				v1alpha1.LabelKeyInstance:   tidb.Name,
 				v1alpha1.LabelKeyConfigHash: configHash,
-			}),
+			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiDB)),
 			Annotations: maputil.Merge(tidb.GetAnnotations(), k8s.AnnoProm(tidb.GetStatusPort(), metricsPath)),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(tidb, v1alpha1.SchemeGroupVersion.WithKind("TiDB")),
