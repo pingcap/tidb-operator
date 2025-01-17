@@ -5,7 +5,7 @@
 # timezone is the default system timzone
 timezone: UTC
 
-image: pingcap/tidb-lightning:v7.5.3
+image: pingcap/tidb-lightning:v7.5.5
 imagePullPolicy: IfNotPresent
 # imagePullSecrets: []
 

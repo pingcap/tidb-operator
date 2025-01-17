@@ -22,12 +22,10 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 fi
 
 # parameters
-OPERATOR_OLD="v1.5.3"
-OPERATOR_NEW="v1.5.4"
-TIDB_OLD="v7.5.1"
-TIDB_NEW="v7.5.3"
-DM_OLD="v7.5.1"
-DM_NEW="v7.5.3"
+OPERATOR_OLD="v1.5.4"
+OPERATOR_NEW="v1.5.5"
+TIDB_OLD="v7.5.3"
+TIDB_NEW="v7.5.5"
 
 find ./deploy -name "*\.tf"| xargs $SED_BIN -i "s/$OPERATOR_OLD/$OPERATOR_NEW/g"
 find ./charts -name "*\.yaml"| xargs $SED_BIN -i "s/$OPERATOR_OLD/$OPERATOR_NEW/g"
