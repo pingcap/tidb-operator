@@ -26,17 +26,17 @@ import (
 
 func TestValidate(t *testing.T) {
 	cfgValid := &Config{}
-	err := cfgValid.Validate()
+	err := cfgValid.Validate("/data0")
 	require.NoError(t, err)
 
 	cfgInvalid := &Config{
 		TmpPath: "/data0/tmp",
 		Storage: Storage{
 			Main: StorageMain{
-				Dir: []string{"/data0/db"},
+				Dir: []string{"/data0/db-not-equal"},
 			},
 			Raft: StorageRaft{
-				Dir: []string{"/data0/kvstore"},
+				Dir: []string{"/data0/kvstore-not-equal"},
 			},
 		},
 		Flash: Flash{
@@ -66,7 +66,7 @@ func TestValidate(t *testing.T) {
 		},
 	}
 
-	err = cfgInvalid.Validate()
+	err = cfgInvalid.Validate("/data0")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "tmp_path")
 	require.Contains(t, err.Error(), "storage.main.dir")
@@ -84,6 +84,27 @@ func TestValidate(t *testing.T) {
 	require.Contains(t, err.Error(), "security.ca_path")
 	require.Contains(t, err.Error(), "security.cert_path")
 	require.Contains(t, err.Error(), "security.key_path")
+}
+
+func TestValidateEqual(t *testing.T) {
+	cfg := &Config{
+		Storage: Storage{
+			Main: StorageMain{
+				Dir: []string{"/data0/db"},
+			},
+			Raft: StorageRaft{
+				Dir: []string{"/data0/kvstore"},
+			},
+		},
+		Flash: Flash{
+			Proxy: Proxy{
+				DataDir: "/data0/proxy",
+			},
+		},
+	}
+
+	err := cfg.Validate("/data0")
+	require.NoError(t, err)
 }
 
 func TestOverlay(t *testing.T) {
