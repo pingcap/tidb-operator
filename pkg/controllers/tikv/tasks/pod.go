@@ -196,7 +196,7 @@ func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, configHash string) *
 			Labels: maputil.Merge(tikv.Labels, map[string]string{
 				v1alpha1.LabelKeyInstance:   tikv.Name,
 				v1alpha1.LabelKeyConfigHash: configHash,
-			}),
+			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiKV)),
 			Annotations: maputil.Merge(tikv.GetAnnotations(), k8s.AnnoProm(tikv.GetStatusPort(), metricsPath)),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(tikv, v1alpha1.SchemeGroupVersion.WithKind("TiKV")),

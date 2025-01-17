@@ -162,3 +162,27 @@ func TestGetResourceRequirements(t *testing.T) {
 	assert.Equal(t, res.Requests[corev1.ResourceMemory], memory)
 	assert.Equal(t, res.Limits[corev1.ResourceMemory], memory)
 }
+
+func TestPromAnno(t *testing.T) {
+	anno := AnnoProm(8234, "/metrics")
+	require.Equal(t, map[string]string{
+		"prometheus.io/scrape": "true",
+		"prometheus.io/port":   "8234",
+		"prometheus.io/path":   "/metrics",
+	}, anno)
+
+	annoAdditional := AnnoAdditionalProm("tiflash.proxy", 20292)
+	require.Equal(t, map[string]string{
+		"tiflash.proxy.prometheus.io/port": "20292",
+	}, annoAdditional)
+}
+
+func TestLabelsK8sApp(t *testing.T) {
+	labels := LabelsK8sApp("db", "tikv")
+	require.Equal(t, map[string]string{
+		"app.kubernetes.io/component":  "tikv",
+		"app.kubernetes.io/instance":   "db",
+		"app.kubernetes.io/managed-by": "tidb-operator",
+		"app.kubernetes.io/name":       "tidb-cluster",
+	}, labels)
+}
