@@ -348,14 +348,13 @@ func (bm *backupScheduleManager) performLogBackupIfNeeded(bs *v1alpha1.BackupSch
 
 	startTs := bm.now()
 	logBackup := buildLogBackup(bs, startTs)
-	oldLogBackup, err := bm.deps.BackupControl.GetBackup(logBackup)
+	_, err := bm.deps.BackupControl.GetBackup(logBackup)
 	if err == nil {
-		if err := bm.deps.BackupControl.DeleteBackup(oldLogBackup); err != nil {
-			return fmt.Errorf("backup schedule %s/%s, delete log backup %s failed, err: %v", ns, bsName, oldLogBackup.Name, err)
-		}
+		klog.Errorf("backup schedule %s/%s, log backup %s already exists", ns, bsName, logBackup.Name)
+		return err
 	}
-	if err != nil && !errors.IsNotFound(err) {
-		klog.Errorf("backup schedule %s/%s, get log backup %s failed, err: %v", ns, bsName, oldLogBackup.Name, err)
+	if !errors.IsNotFound(err) {
+		klog.Errorf("backup schedule %s/%s, get log backup %s failed, err: %v", ns, bsName, logBackup.Name, err)
 		return err
 	}
 
