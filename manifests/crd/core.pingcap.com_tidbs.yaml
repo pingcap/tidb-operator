@@ -131,24 +131,6 @@ spec:
                     required:
                     - jwks
                     type: object
-                  bootstrapSQL:
-                    description: |-
-                      BootstrapSQL refer to a configmap which contains the bootstrap SQL file with the key `bootstrap-sql`,
-                      which will only be executed when a TiDB cluster bootstrap on the first time.
-                      The field should be set ONLY when create the first TiDB group for a cluster, since it only take effect on the first time bootstrap.
-                      Only v6.5.1+ supports this feature.
-                    properties:
-                      name:
-                        default: ""
-                        description: |-
-                          Name of the referent.
-                          This field is effectively required, but due to backwards compatibility is
-                          allowed to be empty. Instances of this type with an empty value here are
-                          almost certainly wrong.
-                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                        type: string
-                    type: object
-                    x-kubernetes-map-type: atomic
                   tls:
                     description: Whether enable the TLS connection between the TiDB
                       server and MySQL client.

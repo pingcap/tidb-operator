@@ -20,8 +20,8 @@
 package v1alpha1
 
 import (
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -115,6 +115,11 @@ func (in *ClusterSpec) DeepCopyInto(out *ClusterSpec) {
 		*out = new(TLSCluster)
 		**out = **in
 	}
+	if in.BootstrapSQL != nil {
+		in, out := &in.BootstrapSQL, &out.BootstrapSQL
+		*out = new(v1.LocalObjectReference)
+		**out = **in
+	}
 	if in.RevisionHistoryLimit != nil {
 		in, out := &in.RevisionHistoryLimit, &out.RevisionHistoryLimit
 		*out = new(int32)
@@ -143,7 +148,7 @@ func (in *ClusterStatus) DeepCopyInto(out *ClusterStatus) {
 	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
-		*out = make([]v1.Condition, len(*in))
+		*out = make([]metav1.Condition, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -166,7 +171,7 @@ func (in *CommonStatus) DeepCopyInto(out *CommonStatus) {
 	*out = *in
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
-		*out = make([]v1.Condition, len(*in))
+		*out = make([]metav1.Condition, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -616,7 +621,7 @@ func (in *PersistentVolumeClaimOverlay) DeepCopyInto(out *PersistentVolumeClaimO
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 	if in.Spec != nil {
 		in, out := &in.Spec, &out.Spec
-		*out = new(corev1.PersistentVolumeClaimSpec)
+		*out = new(v1.PersistentVolumeClaimSpec)
 		(*in).DeepCopyInto(*out)
 	}
 	return
@@ -638,7 +643,7 @@ func (in *PodOverlay) DeepCopyInto(out *PodOverlay) {
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 	if in.Spec != nil {
 		in, out := &in.Spec, &out.Spec
-		*out = new(corev1.PodSpec)
+		*out = new(v1.PodSpec)
 		(*in).DeepCopyInto(*out)
 	}
 	return
@@ -1083,11 +1088,6 @@ func (in *TiDBSecurity) DeepCopyInto(out *TiDBSecurity) {
 		in, out := &in.TLS, &out.TLS
 		*out = new(TiDBTLS)
 		(*in).DeepCopyInto(*out)
-	}
-	if in.BootstrapSQL != nil {
-		in, out := &in.BootstrapSQL, &out.BootstrapSQL
-		*out = new(corev1.LocalObjectReference)
-		**out = **in
 	}
 	if in.AuthToken != nil {
 		in, out := &in.AuthToken, &out.AuthToken

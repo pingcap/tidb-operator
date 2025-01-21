@@ -55,7 +55,6 @@ import (
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/tests/e2e/config"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/data"
-	"github.com/pingcap/tidb-operator/tests/e2e/utils/jwt"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/k8s"
 	utiltidb "github.com/pingcap/tidb-operator/tests/e2e/utils/tidb"
 )
@@ -1357,144 +1356,6 @@ var _ = Describe("TiDB Cluster", func() {
 	})
 
 	Context("TiDB Feature", func() {
-		It("should init a cluster with bootstrap SQL specified", func() {
-			By("Creating a ConfigMap with bootstrap SQL")
-			bsqlCm := corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "bootstrap-sql",
-					Namespace: ns.Name,
-				},
-				Data: map[string]string{
-					v1alpha1.BootstrapSQLConfigMapKey: "SET PASSWORD FOR 'root'@'%' = 'pingcap';",
-				},
-			}
-			Expect(k8sClient.Create(ctx, &bsqlCm)).To(Succeed())
-
-			By("Creating the components with bootstrap SQL")
-			pdg := data.NewPDGroup(ns.Name, "pdg", tc.Name, ptr.To(int32(1)), nil)
-			kvg := data.NewTiKVGroup(ns.Name, "kvg", tc.Name, ptr.To(int32(1)), nil)
-			dbg := data.NewTiDBGroup(ns.Name, "dbg", tc.Name, ptr.To(int32(1)), func(group *v1alpha1.TiDBGroup) {
-				group.Spec.Template.Spec.Security = &v1alpha1.TiDBSecurity{
-					BootstrapSQL: &corev1.LocalObjectReference{
-						Name: bsqlCm.Name,
-					},
-				}
-			})
-			Expect(k8sClient.Create(ctx, pdg)).To(Succeed())
-			Expect(k8sClient.Create(ctx, kvg)).To(Succeed())
-			Expect(k8sClient.Create(ctx, dbg)).To(Succeed())
-
-			By("Checking the status of the cluster and the connection to the TiDB service")
-			Eventually(func(g Gomega) {
-				tcGet, ready := utiltidb.IsClusterReady(k8sClient, tc.Name, tc.Namespace)
-				g.Expect(ready).To(BeTrue())
-				g.Expect(len(tcGet.Status.PD)).NotTo(BeZero())
-				for _, compStatus := range tcGet.Status.Components {
-					switch compStatus.Kind {
-					case v1alpha1.ComponentKindPD, v1alpha1.ComponentKindTiKV, v1alpha1.ComponentKindTiDB:
-						g.Expect(compStatus.Replicas).To(Equal(int32(1)))
-					default:
-						g.Expect(compStatus.Replicas).To(BeZero())
-					}
-				}
-
-				g.Expect(utiltidb.AreAllInstancesReady(k8sClient, pdg,
-					[]*v1alpha1.TiKVGroup{kvg}, []*v1alpha1.TiDBGroup{dbg}, nil)).To(Succeed())
-
-				// connect with the password set in bootstrap SQL
-				g.Expect(utiltidb.IsTiDBConnectable(ctx, k8sClient, fw,
-					tc.Namespace, tc.Name, dbg.Name, "root", "pingcap", "")).To(Succeed())
-			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
-		})
-
-		It("should connect to the TiDB cluster with JWT authentication", func() {
-			const (
-				kid   = "the-key-id-0"
-				sub   = "user@pingcap.com"
-				email = "user@pingcap.com"
-				iss   = "issuer-abc"
-			)
-			token, err := jwt.GenerateJWT(kid, sub, email, iss)
-			if err != nil {
-				Skip(fmt.Sprintf("failed to generate JWT token: %v", err))
-			}
-
-			// use Bootstrap SQL to create the a user with JWT authentication
-			bsqlCm := corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "bootstrap-sql",
-					Namespace: ns.Name,
-				},
-				Data: map[string]string{
-					v1alpha1.BootstrapSQLConfigMapKey: fmt.Sprintf(
-						`CREATE USER '%s' IDENTIFIED WITH 'tidb_auth_token' REQUIRE TOKEN_ISSUER '%s' ATTRIBUTE '{"email": "%s"}';
-GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%"),
-				},
-			}
-
-			// The `tidb_auth_token` authentication method requires clients to support
-			// the `mysql_clear_password` plugin to send the token to TiDB in plain text.
-			// Therefore, it's better to enale TLS between clients and servers before using `tidb_auth_token`.
-			By("Installing the certificates for conmutication between MySQL client and TiDB server")
-			Expect(installTiDBIssuer(ctx, yamlApplier, ns.Name, tc.Name)).To(Succeed())
-			Expect(installTiDBCertificates(ctx, yamlApplier, ns.Name, tc.Name, "dbg")).To(Succeed())
-
-			pdg := data.NewPDGroup(ns.Name, "pdg", tc.Name, ptr.To(int32(1)), nil)
-			kvg := data.NewTiKVGroup(ns.Name, "kvg", tc.Name, ptr.To(int32(1)), nil)
-			dbg := data.NewTiDBGroup(ns.Name, "dbg", tc.Name, ptr.To(int32(1)), func(group *v1alpha1.TiDBGroup) {
-				group.Spec.Template.Spec.Security = &v1alpha1.TiDBSecurity{
-					TLS: &v1alpha1.TiDBTLS{
-						MySQL: &v1alpha1.TLS{
-							Enabled: true,
-						},
-					},
-					BootstrapSQL: &corev1.LocalObjectReference{
-						Name: bsqlCm.Name,
-					},
-					AuthToken: &v1alpha1.TiDBAuthToken{
-						JWKs: corev1.LocalObjectReference{
-							Name: "jwks-secret",
-						},
-					},
-				}
-			})
-
-			By("Creating the JWKS secret")
-			jwksSecret := jwt.GenerateJWKSSecret(dbg.Namespace, "jwks-secret")
-			Expect(k8sClient.Create(ctx, &jwksSecret)).To(Succeed())
-
-			By("Creating the ConfigMap with a user created by Bootstrap SQL")
-			Expect(k8sClient.Create(ctx, &bsqlCm)).To(Succeed())
-
-			By("Creating the components with JWT authentication")
-			Expect(k8sClient.Create(ctx, pdg)).To(Succeed())
-			Expect(k8sClient.Create(ctx, kvg)).To(Succeed())
-			Expect(k8sClient.Create(ctx, dbg)).To(Succeed())
-
-			By("Checking the status of the cluster and the connection to the TiDB service")
-			Eventually(func(g Gomega) {
-				tcGet, ready := utiltidb.IsClusterReady(k8sClient, tc.Name, tc.Namespace)
-				g.Expect(ready).To(BeTrue())
-				g.Expect(len(tcGet.Status.PD)).NotTo(BeZero())
-				for _, compStatus := range tcGet.Status.Components {
-					switch compStatus.Kind {
-					case v1alpha1.ComponentKindPD, v1alpha1.ComponentKindTiKV, v1alpha1.ComponentKindTiDB:
-						g.Expect(compStatus.Replicas).To(Equal(int32(1)))
-					default:
-						g.Expect(compStatus.Replicas).To(BeZero())
-					}
-				}
-
-				g.Expect(utiltidb.AreAllInstancesReady(k8sClient, pdg,
-					[]*v1alpha1.TiKVGroup{kvg}, []*v1alpha1.TiDBGroup{dbg}, nil)).To(Succeed())
-
-				// connect with the JWT token
-				// TODO(liubo02): extract to common namer pkg
-				g.Expect(utiltidb.IsTiDBConnectable(ctx, k8sClient, fw,
-					tc.Namespace, tc.Name, dbg.Name, sub, token, dbg.Name+"-tidb-client-secret")).To(Succeed())
-			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
-		})
-
 		It("should set store labels for TiKV and TiFlash, set server lables for TiDB", func() {
 			By("Creating the components with location labels")
 			pdg := data.NewPDGroup(ns.Name, "pdg", tc.Name, ptr.To(int32(1)), func(group *v1alpha1.PDGroup) {
@@ -1677,6 +1538,7 @@ location-labels = ["region", "zone", "host"]`
 									Name:  "testing-workload",
 									Image: "pingcap/testing-workload:latest",
 									Args: []string{
+										"--action", "workload",
 										"--host", clusterIP,
 										"--duration", "8",
 										"--max-connections", "30",

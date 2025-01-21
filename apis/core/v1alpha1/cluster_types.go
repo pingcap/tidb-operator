@@ -17,6 +17,7 @@ package v1alpha1
 import (
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -74,6 +75,11 @@ type ClusterSpec struct {
 
 	// Whether enable the TLS connection between TiDB cluster components.
 	TLSCluster *TLSCluster `json:"tlsCluster,omitempty"`
+
+	// BootstrapSQL refers to a configmap which contains the bootstrap SQL file with the key `bootstrap-sql`,
+	// which will only be executed when a TiDB cluster bootstrap on the first time.
+	// Only v6.5.1+ supports this feature.
+	BootstrapSQL *corev1.LocalObjectReference `json:"bootstrapSQL,omitempty"`
 
 	// UpgradePolicy defines the upgrade policy for the cluster.
 	UpgradePolicy UpgradePolicy `json:"upgradePolicy,omitempty"`

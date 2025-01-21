@@ -127,7 +127,7 @@ function e2e::prepare() {
 
     e2e::install_crds
     e2e::install_rbac
-    
+
     # build the operator image and load it into the kind cluster
     image::build prestop-checker operator testing-workload --push
     e2e::uninstall_operator

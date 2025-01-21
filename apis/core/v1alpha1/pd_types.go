@@ -33,8 +33,7 @@ const (
 	// VolumeMountTypePDData means data dir of PD
 	VolumeMountTypePDData VolumeMountType = "data"
 
-	VolumeMountPDDataDefaultPath    = "/var/lib/pd"
-	VolumeMountPDDataDefaultSubPath = ""
+	VolumeMountPDDataDefaultPath = "/var/lib/pd"
 )
 
 const (

@@ -12,25 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package scheme
+package framework
 
 import (
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"context"
+
+	"github.com/onsi/ginkgo/v2"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
-// Scheme is used by client to visit kubernetes API.
-var (
-	Scheme         = runtime.NewScheme()
-	Codecs         = serializer.NewCodecFactory(Scheme)
-	ParameterCodec = runtime.NewParameterCodec(Scheme)
-)
-
-func init() {
-	utilruntime.Must(clientgoscheme.AddToScheme(Scheme))
-	utilruntime.Must(v1alpha1.Install(Scheme))
+func (f *Framework) WaitForTiDBGroupReady(ctx context.Context, dbg *v1alpha1.TiDBGroup) {
+	// TODO: maybe wait for cluster ready
+	ginkgo.By("wait for tidb group ready")
+	f.Must(waiter.WaitForTiDBsHealthy(ctx, f.Client, dbg, waiter.LongTaskTimeout))
+	f.Must(waiter.WaitForPodsReady(ctx, f.Client, runtime.FromTiDBGroup(dbg), waiter.LongTaskTimeout))
 }

@@ -25,6 +25,7 @@ import (
 
 	_ "github.com/pingcap/tidb-operator/tests/e2e/cluster"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/pd"
+	_ "github.com/pingcap/tidb-operator/tests/e2e/tidb"
 )
 
 func TestE2E(t *testing.T) {
