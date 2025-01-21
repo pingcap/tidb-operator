@@ -57,7 +57,7 @@ func (bm *backupScheduleManager) doCompact(bs *v1alpha1.BackupSchedule, startTim
 	return err
 }
 
-func calEndTs(bs *v1alpha1.BackupSchedule, startTs time.Time, interval time.Duration) time.Time {
+func calEndTs(bs *v1alpha1.BackupSchedule, startTs time.Time, interval time.Duration, maxEndTs time.Time) time.Time {
 	fastCompactLimit := startTs.Add(3 * interval)
 	var endTs time.Time
 
@@ -77,14 +77,13 @@ func calEndTs(bs *v1alpha1.BackupSchedule, startTs time.Time, interval time.Dura
 	} else if lastBackupTime != nil && lastBackupTime.After(startTs) {
 		endTs, bs.Status.NextCompactTime = checkTarget(lastBackupTime.Time)
 	} else {
-		endTs = startTs.Add(interval)
-		bs.Status.NextCompactTime = nil
+		endTs, bs.Status.NextCompactTime = checkTarget(maxEndTs)
 	}
 
 	return endTs
 }
 
-func (bm *backupScheduleManager) performCompact(bs *v1alpha1.BackupSchedule, maxEndTime time.Time) error {
+func (bm *backupScheduleManager) performCompact(bs *v1alpha1.BackupSchedule, maxEndTime time.Time, nowFn nowFn) error {
 	if bs.Spec.CompactInterval == nil || bs.Status.LogBackup == nil {
 		return nil
 	}
@@ -105,15 +104,22 @@ func (bm *backupScheduleManager) performCompact(bs *v1alpha1.BackupSchedule, max
 		return fmt.Errorf("failed to parse compact interval: %w", err)
 	}
 
-	endTs = calEndTs(bs, startTs, interval)
+	endTs = calEndTs(bs, startTs, interval, maxEndTime)
 	klog.Infof("backupSchedule %s/%s endTs is %v", bs.GetNamespace(), bs.GetName(), endTs)
 
-	if endTs.After(maxEndTime) {
-		klog.Infof("backupSchedule %s/%s next compact time is not reached: %v", bs.GetNamespace(), bs.GetName(), endTs)
+	if endTs.Equal(startTs) {
+		klog.Infof("backupSchedule %s/%s log backup no progress yet, skip", bs.GetNamespace(), bs.GetName())
 		return nil
 	}
 
-	if err := bm.doCompact(bs, startTs, endTs, maxEndTime); err != nil {
+	now := nowFn()
+	expect := bs.Status.LastCompactTime.Time.Add(interval)
+	if now.Before(expect) {
+		klog.Infof("backupSchedule %s/%s compact time is not reached yet, expect: %v", bs.GetNamespace(), bs.GetName(), expect)
+		return nil
+	}
+
+	if err := bm.doCompact(bs, startTs, endTs, now); err != nil {
 		return err
 	}
 
@@ -146,7 +152,7 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 	defer func() {
 		if err := bm.canPerformNextCompact(bs); err != nil {
 			klog.Errorf("backupSchedule %s/%s can not perform next compact, err: %v", bs.GetNamespace(), bs.GetName(), err)
-		} else if err := bm.performCompact(bs, *checkpoint); err != nil {
+		} else if err := bm.performCompact(bs, *checkpoint, bm.now); err != nil {
 			klog.Errorf("backupSchedule %s/%s perform compact failed, err: %v", bs.GetNamespace(), bs.GetName(), err)
 		}
 	}()
