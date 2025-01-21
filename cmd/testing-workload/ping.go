@@ -12,25 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package scheme
+package main
 
 import (
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-
-	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
+	"context"
+	"database/sql"
+	"time"
 )
 
-// Scheme is used by client to visit kubernetes API.
-var (
-	Scheme         = runtime.NewScheme()
-	Codecs         = serializer.NewCodecFactory(Scheme)
-	ParameterCodec = runtime.NewParameterCodec(Scheme)
-)
+const defaultTimeout = 10 * time.Second
 
-func init() {
-	utilruntime.Must(clientgoscheme.AddToScheme(Scheme))
-	utilruntime.Must(v1alpha1.Install(Scheme))
+func Ping(db *sql.DB) error {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+	defer cancel()
+
+	if err := db.PingContext(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }

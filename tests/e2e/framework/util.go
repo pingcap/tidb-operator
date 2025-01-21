@@ -15,15 +15,20 @@
 package framework
 
 import (
+	"context"
 	"fmt"
+	"io"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 )
 
-func newClient(configPath, ctxName string) (client.Client, error) {
+func newConfig(configPath, ctxName string) (*rest.Config, error) {
 	rule := clientcmd.NewDefaultClientConfigLoadingRules()
 	rule.ExplicitPath = configPath
 
@@ -33,11 +38,34 @@ func newClient(configPath, ctxName string) (client.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("can't parse kubeconfig: %w", err)
 	}
-	c, err := client.New(kubeconfig, client.Options{
+
+	return kubeconfig, nil
+}
+
+func newClient(cfg *rest.Config) (client.Client, error) {
+	c, err := client.New(cfg, client.Options{
 		Scheme: scheme.Scheme,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("can't new client: %w", err)
 	}
 	return c, nil
+}
+
+func newRESTClientForPod(cfg *rest.Config) (rest.Interface, error) {
+	httpClient, err := rest.HTTPClientFor(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("cannot new http client: %w", err)
+	}
+	return apiutil.RESTClientForGVK(corev1.SchemeGroupVersion.WithKind("Pod"), false, cfg, scheme.Codecs, httpClient)
+}
+
+func logPod(ctx context.Context, c rest.Interface, pod *corev1.Pod) (io.ReadCloser, error) {
+	req := c.Get().
+		Namespace(pod.Namespace).
+		Name(pod.Name).
+		Resource("pods").
+		SubResource("log").
+		VersionedParams(&corev1.PodLogOptions{}, scheme.ParameterCodec)
+	return req.Stream(ctx)
 }

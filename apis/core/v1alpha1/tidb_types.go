@@ -366,13 +366,6 @@ type TiDBSecurity struct {
 	// TODO(liubo02): rename the TiDBTLSClient struct,
 	TLS *TiDBTLS `json:"tls,omitempty"`
 
-	// BootstrapSQL refer to a configmap which contains the bootstrap SQL file with the key `bootstrap-sql`,
-	// which will only be executed when a TiDB cluster bootstrap on the first time.
-	// The field should be set ONLY when create the first TiDB group for a cluster, since it only take effect on the first time bootstrap.
-	// Only v6.5.1+ supports this feature.
-	// TODO(liubo02): move to cluster spec
-	BootstrapSQL *corev1.LocalObjectReference `json:"bootstrapSQL,omitempty"`
-
 	// Whether enable `tidb_auth_token` authentication method.
 	// To enable this feature, a K8s secret named `<groupName>-tidb-auth-token-jwks-secret` must be created to store the JWKs.
 	// ref: https://docs.pingcap.com/tidb/stable/security-compatibility-with-mysql#tidb_auth_token
@@ -511,10 +504,6 @@ func (in *TiDB) IsMySQLTLSEnabled() bool {
 func (in *TiDB) MySQLTLSSecretName() string {
 	prefix, _ := in.NamePrefixAndSuffix()
 	return prefix + "-tidb-server-secret"
-}
-
-func (in *TiDB) IsBootstrapSQLEnabled() bool {
-	return in.Spec.Security != nil && in.Spec.Security.BootstrapSQL != nil
 }
 
 func (in *TiDB) IsTokenBasedAuthEnabled() bool {

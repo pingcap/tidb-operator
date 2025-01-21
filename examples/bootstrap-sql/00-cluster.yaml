@@ -2,4 +2,6 @@ apiVersion: core.pingcap.com/v1alpha1
 kind: Cluster
 metadata:
   name: bsql
-spec: {}
+spec:
+  bootstrapSQL:
+    name: bsql

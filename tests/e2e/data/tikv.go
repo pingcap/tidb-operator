@@ -23,19 +23,19 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
-func NewPDGroup(ns string, patches ...GroupPatch[*runtime.PDGroup]) *v1alpha1.PDGroup {
-	pdg := &runtime.PDGroup{
+func NewTiKVGroup(ns string, patches ...GroupPatch[*runtime.TiKVGroup]) *v1alpha1.TiKVGroup {
+	kvg := &runtime.TiKVGroup{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,
-			Name:      defaultPDGroupName,
+			Name:      defaultTiKVGroupName,
 		},
-		Spec: v1alpha1.PDGroupSpec{
+		Spec: v1alpha1.TiKVGroupSpec{
 			Cluster:  v1alpha1.ClusterReference{Name: defaultClusterName},
-			Version:  defaultVersion,
 			Replicas: ptr.To[int32](1),
-			Template: v1alpha1.PDTemplate{
-				Spec: v1alpha1.PDTemplateSpec{
-					Image: ptr.To(defaultImageRegistry + "pd"),
+			Version:  defaultVersion,
+			Template: v1alpha1.TiKVTemplate{
+				Spec: v1alpha1.TiKVTemplateSpec{
+					Image: ptr.To(defaultImageRegistry + "tikv"),
 					Volumes: []v1alpha1.Volume{
 						{
 							Name:    "data",
@@ -48,8 +48,8 @@ func NewPDGroup(ns string, patches ...GroupPatch[*runtime.PDGroup]) *v1alpha1.PD
 		},
 	}
 	for _, p := range patches {
-		p(pdg)
+		p(kvg)
 	}
 
-	return runtime.ToPDGroup(pdg)
+	return runtime.ToTiKVGroup(kvg)
 }

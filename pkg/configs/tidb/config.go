@@ -92,7 +92,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) error {
 
 	c.Log.SlowQueryFile = getSlowQueryFile(tidb)
 
-	if tidb.IsBootstrapSQLEnabled() {
+	if cluster.Spec.BootstrapSQL != nil {
 		c.InitializeSQLFile = path.Join(v1alpha1.BootstrapSQLFilePath, v1alpha1.BootstrapSQLFileName)
 	}
 
