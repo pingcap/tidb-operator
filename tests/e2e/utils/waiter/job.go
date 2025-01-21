@@ -12,25 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package scheme
+package waiter
 
 import (
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"context"
+	"fmt"
+	"time"
 
-	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
+	batchv1 "k8s.io/api/batch/v1"
+
+	"github.com/pingcap/tidb-operator/pkg/client"
 )
 
-// Scheme is used by client to visit kubernetes API.
-var (
-	Scheme         = runtime.NewScheme()
-	Codecs         = serializer.NewCodecFactory(Scheme)
-	ParameterCodec = runtime.NewParameterCodec(Scheme)
-)
+func WaitForJobComplete(ctx context.Context, c client.Client, job *batchv1.Job, timeout time.Duration) error {
+	return WaitForObject(ctx, c, job, func() error {
+		for _, cond := range job.Status.Conditions {
+			switch cond.Type {
+			case batchv1.JobComplete:
+				return nil
+			case batchv1.JobFailed:
+				return fmt.Errorf("job is failed: %v", cond.Message)
+			}
+		}
 
-func init() {
-	utilruntime.Must(clientgoscheme.AddToScheme(Scheme))
-	utilruntime.Must(v1alpha1.Install(Scheme))
+		return fmt.Errorf("job status is unknown")
+	}, timeout)
 }

@@ -167,13 +167,13 @@ func newPod(cluster *v1alpha1.Cluster,
 		})
 	}
 
-	if tidb.IsBootstrapSQLEnabled() {
+	if cluster.Spec.BootstrapSQL != nil {
 		vols = append(vols, corev1.Volume{
 			Name: v1alpha1.BootstrapSQLVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: tidb.Spec.Security.BootstrapSQL.Name,
+						Name: cluster.Spec.BootstrapSQL.Name,
 					},
 					Items: []corev1.KeyToPath{
 						{

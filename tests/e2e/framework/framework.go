@@ -20,9 +20,12 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
@@ -32,6 +35,8 @@ type Framework struct {
 	Cluster   *v1alpha1.Cluster
 
 	Client client.Client
+
+	podLogClient rest.Interface
 }
 
 func New() *Framework {
@@ -40,36 +45,90 @@ func New() *Framework {
 
 func (f *Framework) Setup() {
 	// TODO: get context and config path from options
-	c, err := newClient("", "")
+	cfg, err := newConfig("", "")
+	gomega.Expect(err).To(gomega.Succeed())
+
+	c, err := newClient(cfg)
 	gomega.Expect(err).To(gomega.Succeed())
 	f.Client = c
+
+	podLogClient, err := newRESTClientForPod(cfg)
+	gomega.Expect(err).To(gomega.Succeed())
+	f.podLogClient = podLogClient
 
 	ginkgo.BeforeEach(func(ctx context.Context) {
 		ns := data.NewNamespace()
 
 		f.Namespace = ns
-		f.Cluster = data.NewCluster(ns.Name)
-
-		gomega.Expect(
-			f.Client.Create(ctx, f.Namespace),
-		).To(gomega.Succeed())
-
-		gomega.Expect(
-			f.Client.Create(ctx, f.Cluster),
-		).To(gomega.Succeed())
+		ginkgo.By("Creating a namespace")
+		f.Must(f.Client.Create(ctx, f.Namespace))
 
 		ginkgo.DeferCleanup(func(ctx context.Context) {
 			ginkgo.By("Delete the namespace")
-
-			gomega.Expect(
-				f.Client.Delete(ctx, f.Namespace),
-			).To(gomega.Succeed())
+			f.Must(f.Client.Delete(ctx, f.Namespace))
 
 			ginkgo.By("Ensure the namespace can be deleted")
+			f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Namespace, waiter.ShortTaskTimeout))
+		})
+	})
+}
 
-			gomega.Expect(
-				waiter.WaitForObjectDeleted(ctx, f.Client, f.Namespace, waiter.ShortTaskTimeout),
-			).To(gomega.Succeed())
+func (f *Framework) SetupCluster(ps ...data.ClusterPatch) {
+	ginkgo.BeforeEach(func(ctx context.Context) {
+		f.Cluster = data.NewCluster(f.Namespace.Name, ps...)
+		ginkgo.By("Creating a cluster")
+		f.Must(f.Client.Create(ctx, f.Cluster))
+
+		ginkgo.DeferCleanup(func(ctx context.Context) {
+			ginkgo.By("Delete the cluster")
+			f.Must(f.Client.Delete(ctx, f.Cluster))
+
+			ginkgo.By("Ensure the cluster can be deleted")
+			f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Cluster, waiter.ShortTaskTimeout))
+		})
+	})
+}
+
+func (f *Framework) MustCreatePD(ctx context.Context, ps ...data.GroupPatch[*runtime.PDGroup]) *v1alpha1.PDGroup {
+	pdg := data.NewPDGroup(f.Namespace.Name, ps...)
+	ginkgo.By("Creating a pd group")
+	f.Must(f.Client.Create(ctx, pdg))
+
+	return pdg
+}
+
+func (f *Framework) MustCreateTiKV(ctx context.Context, ps ...data.GroupPatch[*runtime.TiKVGroup]) *v1alpha1.TiKVGroup {
+	kvg := data.NewTiKVGroup(f.Namespace.Name, ps...)
+	ginkgo.By("Creating a tikv group")
+	f.Must(f.Client.Create(ctx, kvg))
+
+	return kvg
+}
+
+func (f *Framework) MustCreateTiDB(ctx context.Context, ps ...data.GroupPatch[*runtime.TiDBGroup]) *v1alpha1.TiDBGroup {
+	dbg := data.NewTiDBGroup(f.Namespace.Name, ps...)
+	ginkgo.By("Creating a tidb group")
+	f.Must(f.Client.Create(ctx, dbg))
+
+	return dbg
+}
+
+func (f *Framework) SetupBootstrapSQL(sql string) {
+	ginkgo.BeforeEach(func(ctx context.Context) {
+		cm := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      data.BootstrapSQLName,
+				Namespace: f.Namespace.Name,
+			},
+			Data: map[string]string{
+				v1alpha1.BootstrapSQLConfigMapKey: sql,
+			},
+		}
+		ginkgo.By("Creating a bootstrap sql configmap")
+		f.Must(f.Client.Create(ctx, cm))
+		ginkgo.DeferCleanup(func(ctx context.Context) {
+			ginkgo.By("Delete the bootstrap sql configmap")
+			f.Must(f.Client.Delete(ctx, cm))
 		})
 	})
 }

@@ -73,6 +73,9 @@ func TestOverlay(t *testing.T) {
 	cluster := &v1alpha1.Cluster{
 		Spec: v1alpha1.ClusterSpec{
 			TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
+			BootstrapSQL: &corev1.LocalObjectReference{
+				Name: "bootstrap-sql",
+			},
 		},
 		Status: v1alpha1.ClusterStatus{
 			PD: "https://basic-pd.ns1:2379",
@@ -94,9 +97,6 @@ func TestOverlay(t *testing.T) {
 						JWKs: corev1.LocalObjectReference{
 							Name: "auth-token-jwks",
 						},
-					},
-					BootstrapSQL: &corev1.LocalObjectReference{
-						Name: "bootstrap-sql",
 					},
 					TLS: &v1alpha1.TiDBTLS{
 						MySQL: &v1alpha1.TLS{

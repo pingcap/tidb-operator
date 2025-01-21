@@ -32,6 +32,14 @@ const (
 	defaultTiFlashGroupName = "fg"
 
 	defaultVersion = "v8.1.0"
+
+	defaultImageRegistry = "gcr.io/pingcap-public/dbaas/"
+	defaultHelperImage   = "gcr.io/pingcap-public/dbaas/busybox:1.36.0"
+)
+
+const (
+	// TODO(liubo02): extract to namer
+	DefaultTiDBServiceName = defaultTiDBGroupName + "-tidb"
 )
 
 func WithReplicas[G runtime.Group](replicas int32) GroupPatch[G] {

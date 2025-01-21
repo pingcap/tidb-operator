@@ -20,6 +20,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/onsi/ginkgo/v2"
+
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
@@ -28,6 +30,7 @@ import (
 
 func (f *Framework) WaitForPDGroupReady(ctx context.Context, pdg *v1alpha1.PDGroup) {
 	// TODO: maybe wait for cluster ready
+	ginkgo.By("wait for pd group ready")
 	f.Must(waiter.WaitForPDsHealthy(ctx, f.Client, pdg, waiter.LongTaskTimeout))
 	f.Must(waiter.WaitForPodsReady(ctx, f.Client, runtime.FromPDGroup(pdg), waiter.LongTaskTimeout))
 }

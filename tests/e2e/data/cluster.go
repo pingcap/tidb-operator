@@ -15,13 +15,18 @@
 package data
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 )
 
-func NewCluster(namespace string) *v1alpha1.Cluster {
-	return &v1alpha1.Cluster{
+const (
+	BootstrapSQLName = "bootstrap-sql"
+)
+
+func NewCluster(namespace string, patches ...ClusterPatch) *v1alpha1.Cluster {
+	c := &v1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      defaultClusterName,
@@ -29,5 +34,19 @@ func NewCluster(namespace string) *v1alpha1.Cluster {
 		Spec: v1alpha1.ClusterSpec{
 			UpgradePolicy: v1alpha1.UpgradePolicyDefault,
 		},
+	}
+
+	for _, p := range patches {
+		p(c)
+	}
+
+	return c
+}
+
+func WithBootstrapSQL() ClusterPatch {
+	return func(obj *v1alpha1.Cluster) {
+		obj.Spec.BootstrapSQL = &corev1.LocalObjectReference{
+			Name: BootstrapSQLName,
+		}
 	}
 }

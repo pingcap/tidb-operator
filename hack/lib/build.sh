@@ -36,7 +36,7 @@ function build::go() {
     go build -v \
         -ldflags "$(version::ldflags)" \
         -o ${OUTPUT_DIR}/${os}/${arch}/bin/${target} \
-        ${ROOT}/cmd/${target}/main.go
+        ${ROOT}/cmd/${target}/.
 }
 
 function build::all() {
