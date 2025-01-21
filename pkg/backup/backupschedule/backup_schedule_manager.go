@@ -70,7 +70,7 @@ func (bm *backupScheduleManager) doCompact(bs *v1alpha1.BackupSchedule, startTim
 // 2. Gather potential targets for `endTs` calculation, including:
 //   - `nextCompact`: The next compaction time limit, also the unachieved target in the last compact.
 //   - `lastBackup`: The timestamp of the last completed backup.
-//   - `scheduleTime`: The scheduled(current) backup time.
+//   - `scheduleTime`: The scheduled (current) backup time.
 //
 // 3. Iterate through the targets to determine the appropriate `endTs`:
 //
