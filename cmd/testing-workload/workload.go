@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -28,6 +29,10 @@ func Workload(db *sql.DB) error {
 		return err
 	}
 
+	// keep it to pass e2e
+	// TODO(liubo02): it's not reasonable for graceful shutdown test
+	db.SetConnMaxLifetime(time.Minute)
+
 	db.SetMaxIdleConns(maxConnections)
 	db.SetMaxOpenConns(maxConnections)
 
@@ -40,15 +45,15 @@ func Workload(db *sql.DB) error {
 	var totalCount, failCount atomic.Uint64
 	var wg sync.WaitGroup
 
-	timer := time.NewTimer(time.Duration(durationInMinutes) * time.Minute)
-
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(durationInMinutes)*time.Minute)
+	defer cancel()
 	for i := 1; i <= maxConnections; i++ {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
 			for {
 				select {
-				case <-timer.C:
+				case <-ctx.Done():
 					return
 				default:
 					err := executeSimpleTransaction(db, id, table)
