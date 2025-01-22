@@ -651,13 +651,13 @@ string
 </tr>
 <tr>
 <td>
-<code>compactInterval</code></br>
+<code>compactSpan</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>LogBackupInterval is the interval of log backup.</p>
+<p>CompactSpan is to specify how long backups we want to compact.</p>
 </td>
 </tr>
 <tr>
@@ -4009,13 +4009,13 @@ string
 </tr>
 <tr>
 <td>
-<code>compactInterval</code></br>
+<code>compactSpan</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>LogBackupInterval is the interval of log backup.</p>
+<p>CompactSpan is to specify how long backups we want to compact.</p>
 </td>
 </tr>
 <tr>
@@ -4207,7 +4207,7 @@ Kubernetes meta/v1.Time
 </tr>
 <tr>
 <td>
-<code>lastCompactTime</code></br>
+<code>lastCompactTs</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta">
 Kubernetes meta/v1.Time
@@ -4215,12 +4215,12 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>LastCompactTime represents the time when the last compact was compacted</p>
+<p>LastCompactTs represents the endTs of the last compact</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>nextCompactTime</code></br>
+<code>nextCompactEndTs</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta">
 Kubernetes meta/v1.Time
@@ -4228,8 +4228,7 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>NextBackupTime represents the time when the next compact will be scheduled, it should
-equal to a passed lastBackupTime</p>
+<p>NextCompactEndTs represents the scheduled endTs of next compact</p>
 </td>
 </tr>
 <tr>

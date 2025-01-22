@@ -57,34 +57,36 @@ func (bm *backupScheduleManager) doCompact(bs *v1alpha1.BackupSchedule, startTim
 	return err
 }
 
-func calEndTs(bs *v1alpha1.BackupSchedule, startTs time.Time, interval time.Duration, maxEndTs time.Time) time.Time {
-	fastCompactLimit := startTs.Add(3 * interval)
+func calEndTs(bs *v1alpha1.BackupSchedule, startTs time.Time, span time.Duration, maxEndTs time.Time) time.Time {
+	compactLimit := startTs.Add(span)
 	var endTs time.Time
 
-	nextCompactTime := bs.Status.NextCompactTime
-	lastBackupTime := bs.Status.LastBackupTime
-
-	// Helper function to compare a candidate target with 'fastCompactLimit'.
 	checkTarget := func(target time.Time) (time.Time, *metav1.Time) {
-		if target.After(fastCompactLimit) {
-			return fastCompactLimit, &metav1.Time{Time: target}
+		if target.After(compactLimit) {
+			return compactLimit, &metav1.Time{Time: target}
+		} else if target.Before(compactLimit) {
+			return startTs, nil
 		}
 		return target, nil
 	}
 
-	if nextCompactTime != nil && nextCompactTime.After(startTs) {
-		endTs, bs.Status.NextCompactTime = checkTarget(nextCompactTime.Time)
-	} else if lastBackupTime != nil && lastBackupTime.After(startTs) {
-		endTs, bs.Status.NextCompactTime = checkTarget(lastBackupTime.Time)
-	} else {
-		endTs, bs.Status.NextCompactTime = checkTarget(maxEndTs)
+	var target time.Time
+	switch {
+	case bs.Status.NextCompactEndTs != nil && bs.Status.NextCompactEndTs.After(startTs):
+		target = bs.Status.NextCompactEndTs.Time
+	case bs.Status.LastBackupTime != nil && bs.Status.LastBackupTime.After(startTs):
+		target = bs.Status.LastBackupTime.Time
+	default:
+		target = maxEndTs
 	}
+
+	endTs, bs.Status.NextCompactEndTs = checkTarget(target)
 
 	return endTs
 }
 
 func (bm *backupScheduleManager) performCompact(bs *v1alpha1.BackupSchedule, maxEndTime time.Time, nowFn nowFn) error {
-	if bs.Spec.CompactInterval == nil || bs.Status.LogBackup == nil {
+	if bs.Spec.CompactSpan == nil || bs.Status.LogBackup == nil {
 		return nil
 	}
 
@@ -92,34 +94,26 @@ func (bm *backupScheduleManager) performCompact(bs *v1alpha1.BackupSchedule, max
 	switch {
 	case bs.Status.LogBackupStartTs == nil:
 		return fmt.Errorf("Compact failed: %s/%s, please start a log backup before compact it", bs.GetNamespace(), bs.GetName())
-	case bs.Status.LastCompactTime == nil:
+	case bs.Status.LastCompactTs == nil:
 		startTs = bs.Status.LogBackupStartTs.Time
 	default:
-		startTs = bs.Status.LastCompactTime.Time
+		startTs = bs.Status.LastCompactTs.Time
 	}
 	klog.Infof("backupSchedule %s/%s startTs is %v", bs.GetNamespace(), bs.GetName(), startTs)
 
-	interval, err := time.ParseDuration(*bs.Spec.CompactInterval)
+	span, err := time.ParseDuration(*bs.Spec.CompactSpan)
 	if err != nil {
 		return fmt.Errorf("failed to parse compact interval: %w", err)
 	}
 
-	endTs = calEndTs(bs, startTs, interval, maxEndTime)
-	klog.Infof("backupSchedule %s/%s endTs is %v", bs.GetNamespace(), bs.GetName(), endTs)
-
+	endTs = calEndTs(bs, startTs, span, maxEndTime)
 	if endTs.Equal(startTs) {
-		klog.Infof("backupSchedule %s/%s log backup no progress yet, skip", bs.GetNamespace(), bs.GetName())
+		klog.Infof("backupSchedule %s/%s compact time is not reached yet, skip", bs.GetNamespace(), bs.GetName())
 		return nil
 	}
 
-	now := nowFn()
-	expect := bs.Status.LastCompactTime.Time.Add(interval)
-	if now.Before(expect) {
-		klog.Infof("backupSchedule %s/%s compact time is not reached yet, expect: %v", bs.GetNamespace(), bs.GetName(), expect)
-		return nil
-	}
-
-	if err := bm.doCompact(bs, startTs, endTs, now); err != nil {
+	klog.Infof("backupSchedule %s/%s compact: from %v to %v", bs.GetNamespace(), bs.GetName(), startTs, endTs)
+	if err := bm.doCompact(bs, startTs, endTs, nowFn()); err != nil {
 		return err
 	}
 
@@ -261,7 +255,7 @@ func (bm *backupScheduleManager) canPerformNextBackup(bs *v1alpha1.BackupSchedul
 
 // canPerformNextCompact handles the compact backup processing logic.
 // It returns a controller.RequeueError if the backup is still running,
-// otherwise it updates the LastCompactTime or returns any encountered error.
+// otherwise it updates the LastCompactTs or returns any encountered error.
 func (bm *backupScheduleManager) canPerformNextCompact(bs *v1alpha1.BackupSchedule) error {
 	if bs.Status.LastCompact == "" {
 		return nil
@@ -298,11 +292,11 @@ func (bm *backupScheduleManager) canPerformNextCompact(bs *v1alpha1.BackupSchedu
 		klog.Errorf("backupSchedule %s/%s last compact time can't rollback (from %v to %v)", bs.GetNamespace(), bs.GetName(), bs.Status.LogBackupStartTs, currentCompactTime)
 		return nil
 	}
-	if bs.Status.LastCompactTime != nil && currentCompactTime.Before(bs.Status.LastCompactTime.Time) {
-		klog.Errorf("backupSchedule %s/%s last compact time can't rollback (from %v to %v)", bs.GetNamespace(), bs.GetName(), bs.Status.LastCompactTime, currentCompactTime)
+	if bs.Status.LastCompactTs != nil && currentCompactTime.Before(bs.Status.LastCompactTs.Time) {
+		klog.Errorf("backupSchedule %s/%s last compact time can't rollback (from %v to %v)", bs.GetNamespace(), bs.GetName(), bs.Status.LastCompactTs, currentCompactTime)
 		return nil
 	}
-	bs.Status.LastCompactTime = &metav1.Time{Time: currentCompactTime}
+	bs.Status.LastCompactTs = &metav1.Time{Time: currentCompactTime}
 	return nil
 }
 
@@ -629,10 +623,10 @@ func (bm *backupScheduleManager) backupGCByMaxReservedTime(bs *v1alpha1.BackupSc
 	var compactProgress uint64
 	if bs.Spec.CompactBackupTemplate == nil {
 		compactProgress = math.MaxUint64
-	} else if bs.Status.LastCompactTime == nil {
+	} else if bs.Status.LastCompactTs == nil {
 		compactProgress = 0
 	} else {
-		compactProgress = config.GoTimeToTS(bs.Status.LastCompactTime.Time)
+		compactProgress = config.GoTimeToTS(bs.Status.LastCompactTs.Time)
 	}
 
 	if truncateTSO > compactProgress {
@@ -944,10 +938,10 @@ func calLastCompactTs(bs *v1alpha1.BackupSchedule, compact *v1alpha1.CompactBack
 	if !compactTime.IsZero() && compactTime.Before(bs.Status.LogBackupStartTs.Time) {
 		klog.Errorf("backupSchedule %s/%s compact time can't rollback (from %v to %v)", bs.GetNamespace(), bs.GetName(), bs.Status.LogBackupStartTs, compactTime)
 	}
-	if bs.Status.LastCompactTime != nil && compactTime.Before(bs.Status.LastCompactTime.Time) {
+	if bs.Status.LastCompactTs != nil && compactTime.Before(bs.Status.LastCompactTs.Time) {
 		return
 	}
-	bs.Status.LastCompactTime = &metav1.Time{Time: compactTime}
+	bs.Status.LastCompactTs = &metav1.Time{Time: compactTime}
 }
 
 func checkTruncateTSOWithinLogBackupRange(logBackup *v1alpha1.Backup, truncateTSO uint64) (bool, error) {
