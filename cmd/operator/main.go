@@ -209,7 +209,7 @@ func addIndexer(ctx context.Context, mgr ctrl.Manager) error {
 }
 
 func setupControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientManager, vm volumes.Modifier) error {
-	if err := cluster.Setup(mgr, c); err != nil {
+	if err := cluster.Setup(mgr, c, pdcm); err != nil {
 		return fmt.Errorf("unable to create controller Cluster: %w", err)
 	}
 	if err := pdgroup.Setup(mgr, c, pdcm); err != nil {
