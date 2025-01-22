@@ -149,6 +149,9 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 	klog.Infof("backupSchedule %s/%s next scheduled time is %v", bs.GetNamespace(), bs.GetName(), scheduledTime)
 
 	defer func() {
+		if bs.Spec.CompactBackupTemplate == nil {
+			return
+		}
 		if err := bm.canPerformNextCompact(bs); err != nil {
 			klog.Errorf("backupSchedule %s/%s can not perform next compact, err: %v", bs.GetNamespace(), bs.GetName(), err)
 		} else if err := bm.performCompact(bs, checkpoint, bm.now); err != nil {
