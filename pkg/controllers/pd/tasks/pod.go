@@ -44,7 +44,7 @@ const (
 func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
-		expected := newPod(state.Cluster(), state.PD(), state.ConfigHash)
+		expected := newPod(state)
 		if state.Pod() == nil {
 			// We have to refresh cache of members to make sure a pd without pod is unhealthy.
 			// If the healthy info is out of date, the operator may mark this pd up-to-date unexpectedly
@@ -130,7 +130,9 @@ func preDeleteCheck(
 	return false, nil
 }
 
-func newPod(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, configHash string) *corev1.Pod {
+func newPod(state *ReconcileContext) *corev1.Pod {
+	cluster := state.Cluster()
+	pd := state.PD()
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -193,7 +195,8 @@ func newPod(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, configHash string) *core
 			Name:      pd.PodName(),
 			Labels: maputil.Merge(pd.Labels, map[string]string{
 				v1alpha1.LabelKeyInstance:   pd.Name,
-				v1alpha1.LabelKeyConfigHash: configHash,
+				v1alpha1.LabelKeyConfigHash: state.ConfigHash,
+				v1alpha1.LabelKeyClusterID:  state.ClusterID,
 			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentPD)),
 			Annotations: anno,
 			OwnerReferences: []metav1.OwnerReference{

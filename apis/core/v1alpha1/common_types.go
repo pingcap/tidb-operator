@@ -71,6 +71,16 @@ const (
 	// Instead, we choose to hash the user-specified config,
 	// and the worst case is that users expect a reboot but it doesn't happen.
 	LabelKeyConfigHash = LabelKeyPrefix + "config-hash"
+
+	// LabelKeyClusterID is the unique identifier of the cluster.
+	// It has a different prefix for backward compatibility with TiDB Operator v1.
+	LabelKeyClusterID = "tidb.pingcap.com/cluster-id"
+	// LabelKeyMemberID is the unique identifier of a PD member.
+	// It has a different prefix for backward compatibility with TiDB Operator v1.
+	LabelKeyMemberID = "tidb.pingcap.com/member-id"
+	// LabelKeyStoreID is the unique identifier of a TiKV or TiFlash store.
+	// It has a different prefix for backward compatibility with TiDB Operator v1.
+	LabelKeyStoreID = "tidb.pingcap.com/store-id"
 )
 
 const (

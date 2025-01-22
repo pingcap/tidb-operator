@@ -145,6 +145,7 @@ func newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, configHash str
 			Labels: maputil.Merge(tiflash.Labels, map[string]string{
 				v1alpha1.LabelKeyInstance:   tiflash.Name,
 				v1alpha1.LabelKeyConfigHash: configHash,
+				v1alpha1.LabelKeyClusterID:  cluster.Status.ID,
 			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiFlash)),
 			Annotations: maputil.Merge(tiflash.GetAnnotations(),
 				k8s.AnnoProm(tiflash.GetMetricsPort(), metricsPath),
