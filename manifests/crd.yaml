@@ -4491,7 +4491,7 @@ spec:
                   useKMS:
                     type: boolean
                 type: object
-              compactInterval:
+              compactSpan:
                 type: string
               gcs:
                 properties:
@@ -7560,7 +7560,7 @@ spec:
                 type: string
               lastCompact:
                 type: string
-              lastCompactTime:
+              lastCompactTs:
                 format: date-time
                 type: string
               logBackup:
@@ -7568,7 +7568,7 @@ spec:
               logBackupStartTs:
                 format: date-time
                 type: string
-              nextCompactTime:
+              nextCompactEndTs:
                 format: date-time
                 type: string
             type: object
