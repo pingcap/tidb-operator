@@ -691,7 +691,6 @@ func (bm *backupScheduleManager) compactGCByMaxReservedTime(bs *v1alpha1.BackupS
 	}
 
 	for _, compact := range expired {
-		calLastCompactTs(bs, compact)
 		// delete the expired backup
 		if err = bm.deps.CompactControl.DeleteCompactBackup(compact); err != nil {
 			klog.Errorf("backup schedule %s/%s gc compact %s failed, err %v", ns, bsName, compact.GetName(), err)
@@ -933,33 +932,6 @@ func calLogBackupTruncateTSO(backupsList []*v1alpha1.Backup, logBackup *v1alpha1
 	return 0, nil
 }
 
-func calLastCompactTs(bs *v1alpha1.BackupSchedule, compact *v1alpha1.CompactBackup) {
-	state := compact.Status.State
-	if state != string(v1alpha1.BackupComplete) && state != string(v1alpha1.BackupFailed) {
-		return
-	}
-
-	var compactTs string
-	if state == string(v1alpha1.BackupComplete) {
-		compactTs = compact.Spec.EndTs
-	} else if state == string(v1alpha1.BackupFailed) {
-		compactTs = compact.Spec.StartTs
-	}
-
-	compactTime, err := config.ParseTSStringToGoTime(compactTs)
-	if err != nil {
-		klog.Errorf("parse compact ts %s failed, err: %s", compactTs, err)
-	}
-
-	if !compactTime.IsZero() && compactTime.Before(bs.Status.LogBackupStartTs.Time) {
-		klog.Errorf("backupSchedule %s/%s compact time can't rollback (from %v to %v)", bs.GetNamespace(), bs.GetName(), bs.Status.LogBackupStartTs, compactTime)
-	}
-	if bs.Status.LastCompactTs != nil && compactTime.Before(bs.Status.LastCompactTs.Time) {
-		return
-	}
-	bs.Status.LastCompactTs = &metav1.Time{Time: compactTime}
-}
-
 func checkTruncateTSOWithinLogBackupRange(logBackup *v1alpha1.Backup, truncateTSO uint64) (bool, error) {
 	var (
 		startTSO      uint64
@@ -1034,7 +1006,6 @@ func (bm *backupScheduleManager) compactGCByMaxBackups(bs *v1alpha1.BackupSchedu
 	var deleteCount int
 	for i, compact := range compactList {
 		if i < int(*bs.Spec.MaxBackups) {
-			calLastCompactTs(bs, compact)
 			continue
 		}
 		// delete the backup
