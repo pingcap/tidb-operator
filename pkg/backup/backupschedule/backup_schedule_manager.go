@@ -306,19 +306,19 @@ func (bm *backupScheduleManager) canPerformNextCompact(bs *v1alpha1.BackupSchedu
 }
 
 func (bm *backupScheduleManager) checkLogBackupStatus(bs *v1alpha1.BackupSchedule) (*time.Time, error) {
-	ns := bs.GetNamespace()
-	bsName := bs.GetName()
-
 	// no log backup
 	if bs.Spec.LogBackupTemplate == nil {
 		return nil, nil
 	}
 
+	ns := bs.GetNamespace()
+	bsName := bs.GetName()
 	startTs := bm.now()
 	logBackup := buildLogBackup(bs, startTs)
+
 	existedLog, err := bm.deps.BackupControl.GetBackup(logBackup)
 	if err == nil {
-		if bs.Status.LogBackup == nil{
+		if bs.Status.LogBackup == nil {
 			return nil, fmt.Errorf("backup schedule %s/%s, log backup %s already exists", ns, bsName, *bs.Status.LogBackup)
 		}
 
@@ -326,7 +326,7 @@ func (bm *backupScheduleManager) checkLogBackupStatus(bs *v1alpha1.BackupSchedul
 		if err != nil {
 			return nil, err
 		}
-		
+
 		return &checkpoint, nil
 	}
 	if !errors.IsNotFound(err) {
@@ -335,6 +335,9 @@ func (bm *backupScheduleManager) checkLogBackupStatus(bs *v1alpha1.BackupSchedul
 	}
 
 	// log backup not found, create log backup
+	if bs.Status.LogBackup != nil {
+		return nil, fmt.Errorf("backup schedule %s/%s, log backup %s not found", ns, bsName, *bs.Status.LogBackup)
+	}
 	_, err = bm.deps.BackupControl.CreateBackup(logBackup)
 	if err != nil {
 		return nil, fmt.Errorf("backup schedule %s/%s, create log backup %s failed, err: %v", ns, bsName, logBackup.Name, err)
