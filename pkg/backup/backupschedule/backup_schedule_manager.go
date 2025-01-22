@@ -58,31 +58,36 @@ func (bm *backupScheduleManager) doCompact(bs *v1alpha1.BackupSchedule, startTim
 }
 
 func calEndTs(bs *v1alpha1.BackupSchedule, startTs time.Time, span time.Duration, maxEndTs time.Time) time.Time {
-	compactLimit := startTs.Add(span)
-	var endTs time.Time
+	fastCompactLimit := startTs.Add(2 * span)
 
-	checkTarget := func(target time.Time) (time.Time, *metav1.Time) {
-		if target.After(compactLimit) {
-			return compactLimit, &metav1.Time{Time: target}
-		} else if target.Before(compactLimit) {
-			return startTs, nil
+	// capEndTs checks if t goes beyond fastCompactLimit:
+	//   - if so, we set NextCompactEndTs to t and return fastCompactLimit
+	//   - otherwise, we clear NextCompactEndTs and return t
+	capEndTs := func(t time.Time) time.Time {
+		if t.After(fastCompactLimit) {
+			bs.Status.NextCompactEndTs = &metav1.Time{Time: t}
+			return fastCompactLimit
 		}
-		return target, nil
+		bs.Status.NextCompactEndTs = nil
+		return t
 	}
 
-	var target time.Time
-	switch {
-	case bs.Status.NextCompactEndTs != nil && bs.Status.NextCompactEndTs.After(startTs):
-		target = bs.Status.NextCompactEndTs.Time
-	case bs.Status.LastBackupTime != nil && bs.Status.LastBackupTime.After(startTs):
-		target = bs.Status.LastBackupTime.Time
-	default:
-		target = maxEndTs
+	// validCandidate checks whether the passed time pointer is non-nil, strictly
+	// after startTs, and does not exceed maxEndTs.
+	validCandidate := func(t *metav1.Time) bool {
+		return t != nil && t.After(startTs) && !t.Time.After(maxEndTs)
 	}
 
-	endTs, bs.Status.NextCompactEndTs = checkTarget(target)
-
-	return endTs
+	if validCandidate(bs.Status.NextCompactEndTs) {
+		return capEndTs(bs.Status.NextCompactEndTs.Time)
+	}
+	if validCandidate(bs.Status.LastBackupTime) {
+		return capEndTs(bs.Status.LastBackupTime.Time)
+	}
+	if maxEndTs.Before(startTs.Add(span)) {
+		return startTs
+	}
+	return startTs.Add(span)
 }
 
 func (bm *backupScheduleManager) performCompact(bs *v1alpha1.BackupSchedule, maxEndTime time.Time, nowFn nowFn) error {
@@ -108,7 +113,7 @@ func (bm *backupScheduleManager) performCompact(bs *v1alpha1.BackupSchedule, max
 
 	endTs = calEndTs(bs, startTs, span, maxEndTime)
 	if endTs.Equal(startTs) {
-		klog.Infof("backupSchedule %s/%s compact time is not reached yet, skip", bs.GetNamespace(), bs.GetName())
+		klog.Infof("backupSchedule %s/%s log checkpoint is %v, less than compact span, skip", bs.GetNamespace(), bs.GetName(), maxEndTime)
 		return nil
 	}
 
