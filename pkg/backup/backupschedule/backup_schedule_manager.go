@@ -318,10 +318,15 @@ func (bm *backupScheduleManager) checkLogBackupStatus(bs *v1alpha1.BackupSchedul
 	logBackup := buildLogBackup(bs, startTs)
 	existedLog, err := bm.deps.BackupControl.GetBackup(logBackup)
 	if err == nil {
+		if bs.Status.LogBackup == nil{
+			return nil, fmt.Errorf("backup schedule %s/%s, log backup %s already exists", ns, bsName, *bs.Status.LogBackup)
+		}
+
 		checkpoint, err := config.ParseTSStringToGoTime(existedLog.Status.LogCheckpointTs)
 		if err != nil {
 			return nil, err
 		}
+		
 		return &checkpoint, nil
 	}
 	if !errors.IsNotFound(err) {
