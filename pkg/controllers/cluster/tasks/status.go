@@ -83,6 +83,7 @@ func (t *TaskStatus) Sync(ctx task.Context[ReconcileContext]) task.Result {
 
 	if rtx.Cluster.Status.ID == "" {
 		// no watch for this, so we need to retry
+		//nolint:mnd // only one usage
 		return task.Retry(5 * time.Second).With("cluster id is not set")
 	}
 	return task.Complete().With("updated status")
