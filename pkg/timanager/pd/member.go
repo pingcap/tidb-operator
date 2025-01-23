@@ -91,6 +91,7 @@ func (l *memberLister) List(ctx context.Context) (*pdv1.MemberList, error) {
 				Name:      m.Name,
 				Namespace: l.cluster,
 			},
+			ClusterID:      strconv.FormatUint(info.Header.ClusterId, 10),
 			ID:             strconv.FormatUint(m.MemberId, 10),
 			PeerUrls:       m.PeerUrls,
 			ClientUrls:     m.ClientUrls,

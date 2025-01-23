@@ -41,7 +41,7 @@ const (
 func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
-		expected := newPod(state.Cluster(), state.TiFlash(), state.ConfigHash)
+		expected := newPod(state)
 		if state.Pod() == nil {
 			if err := c.Apply(ctx, expected); err != nil {
 				return task.Fail().With("can't apply pod of tiflash: %w", err)
@@ -77,7 +77,9 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, configHash string) *corev1.Pod {
+func newPod(state *ReconcileContext) *corev1.Pod {
+	cluster := state.Cluster()
+	tiflash := state.TiFlash()
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -144,7 +146,9 @@ func newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, configHash str
 			Name:      tiflash.PodName(),
 			Labels: maputil.Merge(tiflash.Labels, map[string]string{
 				v1alpha1.LabelKeyInstance:   tiflash.Name,
-				v1alpha1.LabelKeyConfigHash: configHash,
+				v1alpha1.LabelKeyConfigHash: state.ConfigHash,
+				v1alpha1.LabelKeyClusterID:  cluster.Status.ID,
+				v1alpha1.LabelKeyStoreID:    state.StoreID,
 			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiFlash)),
 			Annotations: maputil.Merge(tiflash.GetAnnotations(),
 				k8s.AnnoProm(tiflash.GetMetricsPort(), metricsPath),

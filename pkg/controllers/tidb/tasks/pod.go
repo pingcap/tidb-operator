@@ -52,7 +52,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 
-		expected := newPod(state.Cluster(), state.TiDB(), state.GracefulWaitTimeInSeconds, state.ConfigHash)
+		expected := newPod(state)
 		if state.Pod() == nil {
 			if err := c.Apply(ctx, expected); err != nil {
 				return task.Fail().With("can't create pod of tidb: %w", err)
@@ -89,9 +89,9 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func newPod(cluster *v1alpha1.Cluster,
-	tidb *v1alpha1.TiDB, gracePeriod int64, configHash string,
-) *corev1.Pod {
+func newPod(state *ReconcileContext) *corev1.Pod {
+	cluster := state.Cluster()
+	tidb := state.TiDB()
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -225,7 +225,8 @@ func newPod(cluster *v1alpha1.Cluster,
 			Name:      tidb.PodName(),
 			Labels: maputil.Merge(tidb.Labels, map[string]string{
 				v1alpha1.LabelKeyInstance:   tidb.Name,
-				v1alpha1.LabelKeyConfigHash: configHash,
+				v1alpha1.LabelKeyConfigHash: state.ConfigHash,
+				v1alpha1.LabelKeyClusterID:  cluster.Status.ID,
 			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiDB)),
 			Annotations: maputil.Merge(tidb.GetAnnotations(), k8s.AnnoProm(tidb.GetStatusPort(), metricsPath)),
 			OwnerReferences: []metav1.OwnerReference{
@@ -276,7 +277,7 @@ func newPod(cluster *v1alpha1.Cluster,
 				},
 			},
 			Volumes:                       vols,
-			TerminationGracePeriodSeconds: ptr.To(gracePeriod + preStopSleepSeconds + bufferSeconds),
+			TerminationGracePeriodSeconds: ptr.To(state.GracefulWaitTimeInSeconds + preStopSleepSeconds + bufferSeconds),
 		},
 	}
 
