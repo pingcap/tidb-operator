@@ -309,38 +309,33 @@ func (bm *backupScheduleManager) canPerformNextCompact(bs *v1alpha1.BackupSchedu
 }
 
 func (bm *backupScheduleManager) checkLogBackupStatus(bs *v1alpha1.BackupSchedule) (*time.Time, error) {
-	// no log backup
 	if bs.Spec.LogBackupTemplate == nil {
 		return nil, nil
 	}
 
+	if bs.Status.LogBackup == nil {
+		return bm.tryCreateLogBackup(bs)
+	}
+
+	return bm.checkLogBackupCheckpoint(bs)
+}
+
+func (bm *backupScheduleManager) tryCreateLogBackup(bs *v1alpha1.BackupSchedule) (*time.Time, error) {
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
 	startTs := bm.now()
 	logBackup := buildLogBackup(bs, startTs)
 
-	existedLog, err := bm.deps.BackupControl.GetBackup(logBackup)
+	// Check if the log backup already exists
+	_, err := bm.deps.BackupControl.GetBackup(logBackup)
 	if err == nil {
-		if bs.Status.LogBackup == nil {
-			return nil, fmt.Errorf("backup schedule %s/%s, log backup %s already exists", ns, bsName, *bs.Status.LogBackup)
-		}
-
-		checkpoint, err := config.ParseTSStringToGoTime(existedLog.Status.LogCheckpointTs)
-		if err != nil {
-			return nil, err
-		}
-
-		return &checkpoint, nil
+		return nil, fmt.Errorf("backup schedule %s/%s, log backup %s already exists", ns, bsName, logBackup.Name)
 	}
 	if !errors.IsNotFound(err) {
 		klog.Errorf("backup schedule %s/%s, get log backup %s failed, err: %v", ns, bsName, logBackup.Name, err)
 		return nil, err
 	}
 
-	// log backup not found, create log backup
-	if bs.Status.LogBackup != nil {
-		return nil, fmt.Errorf("backup schedule %s/%s, log backup %s not found", ns, bsName, *bs.Status.LogBackup)
-	}
 	_, err = bm.deps.BackupControl.CreateBackup(logBackup)
 	if err != nil {
 		return nil, fmt.Errorf("backup schedule %s/%s, create log backup %s failed, err: %v", ns, bsName, logBackup.Name, err)
@@ -351,6 +346,35 @@ func (bm *backupScheduleManager) checkLogBackupStatus(bs *v1alpha1.BackupSchedul
 	bs.Status.LogBackup = &logBackup.Name
 	bs.Status.LogBackupStartTs = &metav1.Time{Time: startTs}
 	return &startTs, nil
+}
+
+func (bm *backupScheduleManager) checkLogBackupCheckpoint(bs *v1alpha1.BackupSchedule) (*time.Time, error) {
+	ns := bs.GetNamespace()
+	bsName := bs.GetName()
+
+	logBackupName := *bs.Status.LogBackup
+	logBackup := &v1alpha1.Backup{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: ns,
+			Name:      logBackupName,
+		},
+	}
+
+	existedLog, err := bm.deps.BackupControl.GetBackup(logBackup)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil, fmt.Errorf("backup schedule %s/%s, log backup %s not found", ns, bsName, logBackupName)
+		}
+		klog.Errorf("backup schedule %s/%s, get log backup %s failed, err: %v", ns, bsName, logBackupName, err)
+		return nil, err
+	}
+
+	checkpoint, err := config.ParseTSStringToGoTime(existedLog.Status.LogCheckpointTs)
+	if err != nil {
+		return nil, err
+	}
+
+	return &checkpoint, nil
 }
 
 // getLastScheduledTime return the newest time need to be scheduled according last backup time.
