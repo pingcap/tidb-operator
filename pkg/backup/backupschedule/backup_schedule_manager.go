@@ -132,6 +132,7 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) (err error) {
 		return controller.IgnoreErrorf("backupSchedule %s/%s has been paused", bs.GetNamespace(), bs.GetName())
 	}
 
+	// log backup
 	var checkpoint *time.Time
 	switch {
 	case bs.Spec.LogBackupTemplate == nil:
@@ -149,6 +150,7 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) (err error) {
 		}
 	}
 
+	// compact
 	defer func() {
 		if bs.Spec.LogBackupTemplate == nil || bs.Spec.CompactBackupTemplate == nil {
 			return
@@ -160,6 +162,7 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) (err error) {
 		}
 	}()
 
+	// snapshot backup
 	if err := bm.canPerformNextBackup(bs); err != nil {
 		return err
 	}
