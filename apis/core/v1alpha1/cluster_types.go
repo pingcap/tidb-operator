@@ -155,6 +155,9 @@ type ClusterStatus struct {
 	// +listMapKey=type
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 
+	// ID is the cluster id.
+	ID string `json:"id"`
+
 	// PD means url of the pd service, it's prepared for internal use
 	// e.g. https://pd:2379
 	PD string `json:"pd,omitempty"`

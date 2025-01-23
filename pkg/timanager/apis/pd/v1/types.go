@@ -119,6 +119,7 @@ type Member struct {
 	// Invalid means pd svc is unavailable and store info is untrusted
 	Invalid bool `json:"invalid,omitempty"`
 
+	ClusterID      string   `json:"cluster_id,omitempty"`
 	ID             string   `json:"id"`
 	PeerUrls       []string `json:"peer_urls,omitempty"`
 	ClientUrls     []string `json:"client_urls,omitempty"`

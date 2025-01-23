@@ -76,6 +76,7 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		if !healthy || !state.Initialized {
 			return task.Wait().With("pd may not be initialized or healthy, wait for next event")
 		}
+		// TODO(csuzhangxc): if we reach here, is "ClusterID" always set?
 
 		return task.Complete().With("status is synced")
 	})

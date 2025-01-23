@@ -29,7 +29,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/volumes"
@@ -38,7 +37,7 @@ import (
 func TestTaskPVC(t *testing.T) {
 	cases := []struct {
 		desc          string
-		state         common.TiKVState
+		state         *ReconcileContext
 		pvcs          []*corev1.PersistentVolumeClaim
 		unexpectedErr bool
 
@@ -47,40 +46,49 @@ func TestTaskPVC(t *testing.T) {
 	}{
 		{
 			desc: "no pvc",
-			state: &state{
-				tikv: fake.FakeObj[v1alpha1.TiKV]("aaa-xxx"),
+			state: &ReconcileContext{
+				State: &state{
+					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
+					tikv:    fake.FakeObj[v1alpha1.TiKV]("aaa-xxx"),
+				},
 			},
 			expectedStatus: task.SComplete,
 			expectedPVCNum: 0,
 		},
 		{
 			desc: "create a data vol",
-			state: &state{
-				tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-					obj.Spec.Volumes = []v1alpha1.Volume{
-						{
-							Name:    "data",
-							Storage: resource.MustParse("10Gi"),
-						},
-					}
-					return obj
-				}),
+			state: &ReconcileContext{
+				State: &state{
+					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
+					tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Spec.Volumes = []v1alpha1.Volume{
+							{
+								Name:    "data",
+								Storage: resource.MustParse("10Gi"),
+							},
+						}
+						return obj
+					}),
+				},
 			},
 			expectedStatus: task.SComplete,
 			expectedPVCNum: 1,
 		},
 		{
 			desc: "has a data vol",
-			state: &state{
-				tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-					obj.Spec.Volumes = []v1alpha1.Volume{
-						{
-							Name:    "data",
-							Storage: resource.MustParse("10Gi"),
-						},
-					}
-					return obj
-				}),
+			state: &ReconcileContext{
+				State: &state{
+					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
+					tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Spec.Volumes = []v1alpha1.Volume{
+							{
+								Name:    "data",
+								Storage: resource.MustParse("10Gi"),
+							},
+						}
+						return obj
+					}),
+				},
 			},
 			pvcs: []*corev1.PersistentVolumeClaim{
 				fake.FakeObj("data-aaa-tikv-xxx", func(obj *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
@@ -93,16 +101,19 @@ func TestTaskPVC(t *testing.T) {
 		},
 		{
 			desc: "has a data vol, but failed to apply",
-			state: &state{
-				tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-					obj.Spec.Volumes = []v1alpha1.Volume{
-						{
-							Name:    "data",
-							Storage: resource.MustParse("10Gi"),
-						},
-					}
-					return obj
-				}),
+			state: &ReconcileContext{
+				State: &state{
+					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
+					tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Spec.Volumes = []v1alpha1.Volume{
+							{
+								Name:    "data",
+								Storage: resource.MustParse("10Gi"),
+							},
+						}
+						return obj
+					}),
+				},
 			},
 			pvcs: []*corev1.PersistentVolumeClaim{
 				fake.FakeObj("data-aaa-tikv-xxx", func(obj *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
@@ -132,7 +143,7 @@ func TestTaskPVC(t *testing.T) {
 
 			ctrl := gomock.NewController(tt)
 			vm := volumes.NewMockModifier(ctrl)
-			expectedPVCs := newPVCs(c.state.TiKV())
+			expectedPVCs := newPVCs(c.state)
 			for _, expected := range expectedPVCs {
 				for _, current := range c.pvcs {
 					if current.Name == expected.Name {

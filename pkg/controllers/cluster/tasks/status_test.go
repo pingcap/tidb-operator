@@ -15,15 +15,23 @@
 package tasks
 
 import (
+	"context"
+	"strconv"
 	"testing"
 
 	"github.com/go-logr/logr"
+	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
+	"github.com/pingcap/tidb-operator/pkg/timanager"
+	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task"
 )
@@ -36,6 +44,7 @@ func TestStatusUpdater(t *testing.T) {
 		expected   task.Result
 		components []v1alpha1.ComponentStatus
 		conditions []metav1.Condition
+		clusterID  uint64
 	}{
 		{
 			desc: "creating cluster",
@@ -46,6 +55,7 @@ func TestStatusUpdater(t *testing.T) {
 			pdGroup: fake.FakeObj(
 				"pd-group",
 				func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+					obj.Spec.Cluster.Name = "test"
 					obj.Spec.Replicas = new(int32)
 					*obj.Spec.Replicas = 3
 					return obj
@@ -72,6 +82,7 @@ func TestStatusUpdater(t *testing.T) {
 					Status: metav1.ConditionFalse,
 				},
 			},
+			clusterID: 123,
 		},
 	}
 
@@ -84,8 +95,14 @@ func TestStatusUpdater(t *testing.T) {
 			ctx.Cluster = c.cluster
 			ctx.PDGroup = c.pdGroup
 
+			m := newFakePDClientManager(tt, getCluster(ctx, &metapb.Cluster{
+				Id: c.clusterID,
+			}, nil))
+			m.Start(ctx)
+			require.NoError(tt, m.Register(ctx.PDGroup))
+
 			fc := client.NewFakeClient(c.cluster)
-			tk := NewTaskStatus(logr.Discard(), fc)
+			tk := NewTaskStatus(logr.Discard(), fc, m)
 			res := tk.Sync(ctx)
 			assert.Equal(tt, c.expected, res)
 			assert.Equal(tt, c.cluster.Generation, c.cluster.Status.ObservedGeneration)
@@ -99,6 +116,39 @@ func TestStatusUpdater(t *testing.T) {
 				})
 			}
 			assert.Equal(tt, c.conditions, conditions)
+			assert.Equal(tt, strconv.FormatUint(c.clusterID, 10), c.cluster.Status.ID)
 		})
+	}
+}
+
+func newFakePDClientManager(t *testing.T, acts ...action) pdm.PDClientManager {
+	return timanager.NewManagerBuilder[*v1alpha1.PDGroup, pdapi.PDClient, pdm.PDClient]().
+		WithNewUnderlayClientFunc(func(*v1alpha1.PDGroup) (pdapi.PDClient, error) {
+			return nil, nil
+		}).
+		WithNewClientFunc(func(string, pdapi.PDClient, timanager.SharedInformerFactory[pdapi.PDClient]) pdm.PDClient {
+			return NewFakePDClient(t, acts...)
+		}).
+		WithCacheKeysFunc(pdm.CacheKeys).
+		Build()
+}
+
+func NewFakePDClient(t *testing.T, acts ...action) pdm.PDClient {
+	ctrl := gomock.NewController(t)
+	pdc := pdm.NewMockPDClient(ctrl)
+	for _, act := range acts {
+		act(ctrl, pdc)
+	}
+
+	return pdc
+}
+
+type action func(ctrl *gomock.Controller, pdc *pdm.MockPDClient)
+
+func getCluster(ctx context.Context, cluster *metapb.Cluster, err error) action {
+	return func(ctrl *gomock.Controller, pdc *pdm.MockPDClient) {
+		underlay := pdapi.NewMockPDClient(ctrl)
+		pdc.EXPECT().Underlay().Return(underlay).AnyTimes()
+		underlay.EXPECT().GetCluster(ctx).Return(cluster, err).AnyTimes()
 	}
 }

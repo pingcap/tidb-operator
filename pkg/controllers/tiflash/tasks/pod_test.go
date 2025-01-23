@@ -266,7 +266,7 @@ func TestTaskPod(t *testing.T) {
 			assert.Equal(tt, c.expectedPodIsTerminating, c.state.PodIsTerminating, c.desc)
 
 			if c.expectUpdatedPod {
-				expectedPod := newPod(c.state.Cluster(), c.state.TiFlash(), c.state.ConfigHash)
+				expectedPod := newPod(c.state)
 				actual := c.state.Pod().DeepCopy()
 				actual.Kind = ""
 				actual.APIVersion = ""

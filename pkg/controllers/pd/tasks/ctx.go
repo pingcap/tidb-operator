@@ -34,8 +34,9 @@ type ReconcileContext struct {
 	Initialized bool
 	Healthy     bool
 
-	MemberID string
-	IsLeader bool
+	ClusterID string
+	MemberID  string
+	IsLeader  bool
 
 	// ConfigHash stores the hash of **user-specified** config (i.e.`.Spec.Config`),
 	// which will be used to determine whether the config has changed.
@@ -71,6 +72,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 			return task.Fail().With("cannot get member: %w", err)
 		}
 
+		state.ClusterID = m.ClusterID
 		state.MemberID = m.ID
 		state.IsLeader = m.IsLeader
 

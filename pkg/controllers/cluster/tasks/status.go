@@ -15,9 +15,12 @@
 package tasks
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sort"
+	"strconv"
+	"time"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -25,18 +28,21 @@ import (
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/task"
 )
 
 type TaskStatus struct {
-	Logger logr.Logger
-	Client client.Client
+	Logger          logr.Logger
+	Client          client.Client
+	PDClientManager pdm.PDClientManager
 }
 
-func NewTaskStatus(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
+func NewTaskStatus(logger logr.Logger, c client.Client, pdcm pdm.PDClientManager) task.Task[ReconcileContext] {
 	return &TaskStatus{
-		Logger: logger,
-		Client: c,
+		Logger:          logger,
+		Client:          c,
+		PDClientManager: pdcm,
 	}
 }
 
@@ -67,6 +73,7 @@ func (t *TaskStatus) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	}
 	needUpdate = t.syncComponentStatus(rtx) || needUpdate
 	needUpdate = t.syncConditions(rtx) || needUpdate
+	needUpdate = t.syncClusterID(ctx, rtx) || needUpdate
 
 	if needUpdate {
 		if err := t.Client.Status().Update(ctx, rtx.Cluster); err != nil {
@@ -74,6 +81,11 @@ func (t *TaskStatus) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		}
 	}
 
+	if rtx.Cluster.Status.ID == "" {
+		// no watch for this, so we need to retry
+		//nolint:mnd // only one usage
+		return task.Retry(5 * time.Second).With("cluster id is not set")
+	}
 	return task.Complete().With("updated status")
 }
 
@@ -192,4 +204,30 @@ func (*TaskStatus) syncConditions(rtx *ReconcileContext) bool {
 		Reason:             v1alpha1.ClusterSuspendReason,
 		Message:            suspendMessage,
 	}) || changed
+}
+
+func (t *TaskStatus) syncClusterID(ctx context.Context, rtx *ReconcileContext) bool {
+	if rtx.Cluster.Status.ID != "" {
+		// already synced, this will nerver change
+		return false
+	}
+
+	pdClient, ok := t.PDClientManager.Get(pdm.PrimaryKey(rtx.Cluster.Namespace, rtx.Cluster.Name))
+	if !ok {
+		t.Logger.Info("pd client is not registered")
+		return false // wait for next sync
+	}
+
+	cluster, err := pdClient.Underlay().GetCluster(ctx)
+	if err != nil {
+		t.Logger.Error(err, "failed to get cluster info")
+		return false
+	}
+
+	if cluster.Id == 0 {
+		return false
+	}
+
+	rtx.Cluster.Status.ID = strconv.FormatUint(cluster.Id, 10)
+	return true
 }

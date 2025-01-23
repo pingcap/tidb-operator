@@ -41,6 +41,8 @@ func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Obje
 
 			if newObj.Status.PD != oldObj.Status.PD {
 				r.Logger.Info("pd url is updating", "from", oldObj.Status.PD, "to", newObj.Status.PD)
+			} else if newObj.Status.ID != oldObj.Status.ID {
+				r.Logger.Info("cluster id is updating", "from", oldObj.Status.ID, "to", newObj.Status.ID)
 			} else if !reflect.DeepEqual(oldObj.Spec.SuspendAction, newObj.Spec.SuspendAction) {
 				r.Logger.Info("suspend action is updating", "from", oldObj.Spec.SuspendAction, "to", newObj.Spec.SuspendAction)
 			} else if oldObj.Spec.Paused != newObj.Spec.Paused {

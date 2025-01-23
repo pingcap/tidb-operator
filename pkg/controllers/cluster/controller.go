@@ -28,19 +28,22 @@ import (
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/cluster/tasks"
+	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task"
 )
 
 type Reconciler struct {
-	Logger logr.Logger
-	Client client.Client
+	Logger          logr.Logger
+	Client          client.Client
+	PDClientManager pdm.PDClientManager
 }
 
-func Setup(mgr manager.Manager, c client.Client) error {
+func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager) error {
 	r := &Reconciler{
-		Logger: mgr.GetLogger().WithName("Cluster"),
-		Client: c,
+		Logger:          mgr.GetLogger().WithName("Cluster"),
+		Client:          c,
+		PDClientManager: pdcm,
 	}
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.Cluster{}).
 		Watches(&v1alpha1.PDGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroup)).
@@ -85,7 +88,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	runner.AddTasks(
 		tasks.NewTaskContext(logger, r.Client),
 		tasks.NewTaskFinalizer(logger, r.Client),
-		tasks.NewTaskStatus(logger, r.Client),
+		tasks.NewTaskStatus(logger, r.Client, r.PDClientManager),
 	)
 
 	return runner.Run(rtx)

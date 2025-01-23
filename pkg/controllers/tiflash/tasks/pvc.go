@@ -24,15 +24,15 @@ import (
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/controllers/common"
+	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/volumes"
 )
 
-func TaskPVC(state common.TiFlashState, logger logr.Logger, c client.Client, vm volumes.Modifier) task.Task {
+func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm volumes.Modifier) task.Task {
 	return task.NameTaskFunc("PVC", func(ctx context.Context) task.Result {
-		pvcs := newPVCs(state.TiFlash())
+		pvcs := newPVCs(state)
 		if wait, err := volumes.SyncPVCs(ctx, c, pvcs, vm, logger); err != nil {
 			return task.Fail().With("failed to sync pvcs: %w", err)
 		} else if wait {
@@ -43,7 +43,9 @@ func TaskPVC(state common.TiFlashState, logger logr.Logger, c client.Client, vm 
 	})
 }
 
-func newPVCs(tiflash *v1alpha1.TiFlash) []*corev1.PersistentVolumeClaim {
+func newPVCs(state *ReconcileContext) []*corev1.PersistentVolumeClaim {
+	cluster := state.Cluster()
+	tiflash := state.TiFlash()
 	pvcs := make([]*corev1.PersistentVolumeClaim, 0, len(tiflash.Spec.Volumes))
 	for i := range tiflash.Spec.Volumes {
 		vol := &tiflash.Spec.Volumes[i]
@@ -52,8 +54,10 @@ func newPVCs(tiflash *v1alpha1.TiFlash) []*corev1.PersistentVolumeClaim {
 				Name:      PersistentVolumeClaimName(tiflash.PodName(), vol.Name),
 				Namespace: tiflash.Namespace,
 				Labels: maputil.Merge(tiflash.Labels, map[string]string{
-					v1alpha1.LabelKeyInstance: tiflash.Name,
-				}),
+					v1alpha1.LabelKeyInstance:  tiflash.Name,
+					v1alpha1.LabelKeyClusterID: cluster.Status.ID,
+					v1alpha1.LabelKeyStoreID:   state.StoreID,
+				}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiFlash)),
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(tiflash, v1alpha1.SchemeGroupVersion.WithKind("TiFlash")),
 				},
