@@ -90,7 +90,7 @@ func calEndTs(bs *v1alpha1.BackupSchedule, startTs time.Time, span time.Duration
 	return startTs.Add(span)
 }
 
-func (bm *backupScheduleManager) performCompact(bs *v1alpha1.BackupSchedule, maxEndTime *time.Time, nowFn nowFn) error {
+func (bm *backupScheduleManager) createCompact(bs *v1alpha1.BackupSchedule, maxEndTime *time.Time, nowFn nowFn) error {
 	if bs.Spec.CompactSpan == nil || bs.Status.LogBackup == nil || maxEndTime == nil {
 		return nil
 	}
@@ -125,16 +125,28 @@ func (bm *backupScheduleManager) performCompact(bs *v1alpha1.BackupSchedule, max
 	return nil
 }
 
-func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
+func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) (err error) {
 	defer bm.backupGC(bs)
 
 	if bs.Spec.Pause {
 		return controller.IgnoreErrorf("backupSchedule %s/%s has been paused", bs.GetNamespace(), bs.GetName())
 	}
 
-	checkpoint, err := bm.checkLogBackupStatus(bs)
-	if err != nil {
-		return err
+	var checkpoint *time.Time
+	switch {
+	case bs.Spec.LogBackupTemplate == nil:
+		break
+
+	case bs.Status.LogBackup == nil:
+		if err = bm.createLogBackup(bs); err != nil {
+			return err
+		}
+
+	default:
+		checkpoint, err = bm.getLogBackupCheckpoint(bs)
+		if err != nil {
+			return err
+		}
 	}
 
 	if err := bm.canPerformNextBackup(bs); err != nil {
@@ -149,12 +161,12 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 	klog.Infof("backupSchedule %s/%s next scheduled time is %v", bs.GetNamespace(), bs.GetName(), scheduledTime)
 
 	defer func() {
-		if bs.Spec.CompactBackupTemplate == nil {
+		if bs.Spec.LogBackupTemplate == nil || bs.Spec.CompactBackupTemplate == nil {
 			return
 		}
 		if err := bm.canPerformNextCompact(bs); err != nil {
 			klog.Errorf("backupSchedule %s/%s can not perform next compact, err: %v", bs.GetNamespace(), bs.GetName(), err)
-		} else if err := bm.performCompact(bs, checkpoint, bm.now); err != nil {
+		} else if err := bm.createCompact(bs, checkpoint, bm.now); err != nil {
 			klog.Errorf("backupSchedule %s/%s perform compact failed, err: %v", bs.GetNamespace(), bs.GetName(), err)
 		}
 	}()
@@ -166,7 +178,7 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) error {
 
 	// Delete the last backup job for releasing the backup PVC
 	if err := bm.deleteLastBackupJob(bs); err != nil {
-		return nil
+		return err
 	}
 
 	backup, err := createBackup(bm.deps.BackupControl, bs, *scheduledTime)
@@ -308,19 +320,11 @@ func (bm *backupScheduleManager) canPerformNextCompact(bs *v1alpha1.BackupSchedu
 	return nil
 }
 
-func (bm *backupScheduleManager) checkLogBackupStatus(bs *v1alpha1.BackupSchedule) (*time.Time, error) {
-	if bs.Spec.LogBackupTemplate == nil {
-		return nil, nil
+func (bm *backupScheduleManager) createLogBackup(bs *v1alpha1.BackupSchedule) error {
+	if bs.Spec.LogBackupTemplate == nil || bs.Status.LogBackup != nil {
+		return nil
 	}
 
-	if bs.Status.LogBackup == nil {
-		return bm.tryCreateLogBackup(bs)
-	}
-
-	return bm.checkLogBackupCheckpoint(bs)
-}
-
-func (bm *backupScheduleManager) tryCreateLogBackup(bs *v1alpha1.BackupSchedule) (*time.Time, error) {
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
 	startTs := bm.now()
@@ -329,26 +333,30 @@ func (bm *backupScheduleManager) tryCreateLogBackup(bs *v1alpha1.BackupSchedule)
 	// Check if the log backup already exists
 	_, err := bm.deps.BackupControl.GetBackup(logBackup)
 	if err == nil {
-		return nil, fmt.Errorf("backup schedule %s/%s, log backup %s already exists", ns, bsName, logBackup.Name)
+		return fmt.Errorf("backup schedule %s/%s, log backup %s already exists", ns, bsName, logBackup.Name)
 	}
 	if !errors.IsNotFound(err) {
 		klog.Errorf("backup schedule %s/%s, get log backup %s failed, err: %v", ns, bsName, logBackup.Name, err)
-		return nil, err
+		return err
 	}
 
 	_, err = bm.deps.BackupControl.CreateBackup(logBackup)
 	if err != nil {
-		return nil, fmt.Errorf("backup schedule %s/%s, create log backup %s failed, err: %v", ns, bsName, logBackup.Name, err)
+		return fmt.Errorf("backup schedule %s/%s, create log backup %s failed, err: %v", ns, bsName, logBackup.Name, err)
 	}
 
 	klog.Infof("backup schedule %s/%s, create log backup %s successfully", ns, bsName, logBackup.Name)
 
 	bs.Status.LogBackup = &logBackup.Name
 	bs.Status.LogBackupStartTs = &metav1.Time{Time: startTs}
-	return &startTs, nil
+	return nil
 }
 
-func (bm *backupScheduleManager) checkLogBackupCheckpoint(bs *v1alpha1.BackupSchedule) (*time.Time, error) {
+func (bm *backupScheduleManager) getLogBackupCheckpoint(bs *v1alpha1.BackupSchedule) (*time.Time, error) {
+	if bs.Spec.LogBackupTemplate == nil || bs.Status.LogBackup == nil {
+		return nil, nil
+	}
+
 	ns := bs.GetNamespace()
 	bsName := bs.GetName()
 
@@ -373,6 +381,7 @@ func (bm *backupScheduleManager) checkLogBackupCheckpoint(bs *v1alpha1.BackupSch
 	if err != nil {
 		return nil, err
 	}
+	klog.Infof("backup schedule %s/%s, log backup %s checkpoint is %v", ns, bsName, logBackupName, checkpoint)
 
 	return &checkpoint, nil
 }
