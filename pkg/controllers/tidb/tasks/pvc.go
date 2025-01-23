@@ -23,15 +23,15 @@ import (
 
 	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/controllers/common"
+	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/volumes"
 )
 
-func TaskPVC(state common.TiDBState, logger logr.Logger, c client.Client, vm volumes.Modifier) task.Task {
+func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm volumes.Modifier) task.Task {
 	return task.NameTaskFunc("PVC", func(ctx context.Context) task.Result {
-		pvcs := newPVCs(state.TiDB())
+		pvcs := newPVCs(state)
 		if wait, err := volumes.SyncPVCs(ctx, c, pvcs, vm, logger); err != nil {
 			return task.Fail().With("failed to sync pvcs: %w", err)
 		} else if wait {
@@ -42,7 +42,9 @@ func TaskPVC(state common.TiDBState, logger logr.Logger, c client.Client, vm vol
 	})
 }
 
-func newPVCs(tidb *v1alpha1.TiDB) []*corev1.PersistentVolumeClaim {
+func newPVCs(state *ReconcileContext) []*corev1.PersistentVolumeClaim {
+	cluster := state.Cluster()
+	tidb := state.TiDB()
 	pvcs := make([]*corev1.PersistentVolumeClaim, 0, len(tidb.Spec.Volumes))
 	for i := range tidb.Spec.Volumes {
 		vol := &tidb.Spec.Volumes[i]
@@ -51,8 +53,9 @@ func newPVCs(tidb *v1alpha1.TiDB) []*corev1.PersistentVolumeClaim {
 				Name:      PersistentVolumeClaimName(tidb.PodName(), vol.Name),
 				Namespace: tidb.Namespace,
 				Labels: maputil.Merge(tidb.Labels, map[string]string{
-					v1alpha1.LabelKeyInstance: tidb.Name,
-				}),
+					v1alpha1.LabelKeyInstance:  tidb.Name,
+					v1alpha1.LabelKeyClusterID: cluster.Status.ID,
+				}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiDB)),
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(tidb, v1alpha1.SchemeGroupVersion.WithKind("TiDB")),
 				},

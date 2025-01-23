@@ -63,7 +63,7 @@ func TaskSuspendPod(state *ReconcileContext, c client.Client) task.Task {
 func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
-		expected := newPod(state.Cluster(), state.TiKV(), state.ConfigHash)
+		expected := newPod(state)
 		if state.Pod() == nil {
 			if err := c.Apply(ctx, expected); err != nil {
 				return task.Fail().With("can't apply pod of tikv: %w", err)
@@ -120,7 +120,9 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, configHash string) *corev1.Pod {
+func newPod(state *ReconcileContext) *corev1.Pod {
+	cluster := state.Cluster()
+	tikv := state.TiKV()
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -195,8 +197,9 @@ func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, configHash string) *
 			Name:      tikv.PodName(),
 			Labels: maputil.Merge(tikv.Labels, map[string]string{
 				v1alpha1.LabelKeyInstance:   tikv.Name,
-				v1alpha1.LabelKeyConfigHash: configHash,
+				v1alpha1.LabelKeyConfigHash: state.ConfigHash,
 				v1alpha1.LabelKeyClusterID:  cluster.Status.ID,
+				v1alpha1.LabelKeyStoreID:    state.StoreID,
 			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiKV)),
 			Annotations: maputil.Merge(tikv.GetAnnotations(), k8s.AnnoProm(tikv.GetStatusPort(), metricsPath)),
 			OwnerReferences: []metav1.OwnerReference{

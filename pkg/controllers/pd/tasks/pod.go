@@ -197,6 +197,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 				v1alpha1.LabelKeyInstance:   pd.Name,
 				v1alpha1.LabelKeyConfigHash: state.ConfigHash,
 				v1alpha1.LabelKeyClusterID:  state.ClusterID,
+				v1alpha1.LabelKeyMemberID:   state.MemberID,
 			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentPD)),
 			Annotations: anno,
 			OwnerReferences: []metav1.OwnerReference{
