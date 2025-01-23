@@ -2191,6 +2191,8 @@ type BackupSpec struct {
 	// When a GC happens, the current time minus this value is the safe point.
 	TikvGCLifeTime *string `json:"tikvGCLifeTime,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
+	// *** Note: This field should generally not be left empty, unless you are certain the storage provider
+	// *** can be obtained from another source, such as a schedule CR.
 	StorageProvider `json:",inline"`
 	// The storageClassName of the persistent volume for Backup data storage.
 	// Defaults to Kubernetes default storage class.
@@ -2199,6 +2201,8 @@ type BackupSpec struct {
 	// StorageSize is the request storage size for backup job
 	StorageSize string `json:"storageSize,omitempty"`
 	// BRConfig is the configs for BR
+	// *** Note: This field should generally not be left empty, unless you are certain the BR config
+	// *** can be obtained from another source, such as a schedule CR.
 	BR *BRConfig `json:"br,omitempty"`
 	// CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
@@ -2555,11 +2559,16 @@ type BackupScheduleSpec struct {
 	MaxBackups *int32 `json:"maxBackups,omitempty"`
 	// MaxReservedTime is to specify how long backups we want to keep.
 	MaxReservedTime *string `json:"maxReservedTime,omitempty"`
+	// CompactSpan is to specify how long backups we want to compact.
+	CompactSpan *string `json:"compactSpan,omitempty"`
 	// BackupTemplate is the specification of the backup structure to get scheduled.
 	BackupTemplate BackupSpec `json:"backupTemplate"`
 	// LogBackupTemplate is the specification of the log backup structure to get scheduled.
 	// +optional
 	LogBackupTemplate *BackupSpec `json:"logBackupTemplate"`
+	// CompactBackupTemplate is the specification of the compact backup structure to get scheduled.
+	// +optional
+	CompactBackupTemplate *CompactSpec `json:"compactBackupTemplate"`
 	// The storageClassName of the persistent volume for Backup data storage if not storage class name set in BackupSpec.
 	// Defaults to Kubernetes default storage class.
 	// +optional
@@ -2569,16 +2578,30 @@ type BackupScheduleSpec struct {
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	// BRConfig is the configs for BR
+	// +optional
+	BR *BRConfig `json:"br,omitempty"`
+	// StorageProvider configures where and how backups should be stored.
+	// +optional
+	StorageProvider `json:",inline"`
 }
 
 // BackupScheduleStatus represents the current state of a BackupSchedule.
 type BackupScheduleStatus struct {
 	// LastBackup represents the last backup.
 	LastBackup string `json:"lastBackup,omitempty"`
+	// LastCompact represents the last compact
+	LastCompact string `json:"lastCompact,omitempty"`
 	// logBackup represents the name of log backup.
 	LogBackup *string `json:"logBackup,omitempty"`
+	// LogBackupStartTs represents the start time of log backup
+	LogBackupStartTs *metav1.Time `json:"logBackupStartTs,omitempty"`
 	// LastBackupTime represents the last time the backup was successfully created.
 	LastBackupTime *metav1.Time `json:"lastBackupTime,omitempty"`
+	// LastCompactTs represents the endTs of the last compact
+	LastCompactTs *metav1.Time `json:"lastCompactTs,omitempty"`
+	// NextCompactEndTs represents the scheduled endTs of next compact
+	NextCompactEndTs *metav1.Time `json:"nextCompactEndTs,omitempty"`
 	// AllBackupCleanTime represents the time when all backup entries are cleaned up
 	AllBackupCleanTime *metav1.Time `json:"allBackupCleanTime,omitempty"`
 }
@@ -3499,6 +3522,8 @@ type CompactSpec struct {
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
+	// *** Note: This field should generally not be left empty, unless you are certain the storage provider
+	// *** can be obtained from another source, such as a schedule CR.
 	StorageProvider `json:",inline"`
 	// StartTs is the start ts of the compact backup.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
@@ -3520,6 +3545,8 @@ type CompactSpec struct {
 	// +optional
 	ToolImage string `json:"toolImage,omitempty"`
 	// BRConfig is the configs for BR
+	// *** Note: This field should generally not be left empty, unless you are certain the BR config
+	// *** can be obtained from another source, such as a schedule CR.
 	BR *BRConfig `json:"br,omitempty"`
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
 	// +optional
