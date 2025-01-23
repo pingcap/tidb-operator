@@ -73,13 +73,13 @@ const (
 	LabelKeyConfigHash = LabelKeyPrefix + "config-hash"
 
 	// LabelKeyClusterID is the unique identifier of the cluster.
-	// It has a different prefix for backward compatibility with TiDB Operator v1.
+	// This label is used for backward compatibility with TiDB Operator v1, so it has a different prefix.
 	LabelKeyClusterID = "tidb.pingcap.com/cluster-id"
 	// LabelKeyMemberID is the unique identifier of a PD member.
-	// It has a different prefix for backward compatibility with TiDB Operator v1.
+	// This label is used for backward compatibility with TiDB Operator v1, so it has a different prefix.
 	LabelKeyMemberID = "tidb.pingcap.com/member-id"
 	// LabelKeyStoreID is the unique identifier of a TiKV or TiFlash store.
-	// It has a different prefix for backward compatibility with TiDB Operator v1.
+	// This label is used for backward compatibility with TiDB Operator v1, so it has a different prefix.
 	LabelKeyStoreID = "tidb.pingcap.com/store-id"
 )
 
