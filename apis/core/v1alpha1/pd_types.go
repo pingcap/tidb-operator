@@ -278,8 +278,9 @@ type PDGroupSpec struct {
 	Replicas *int32           `json:"replicas"`
 	Version  string           `json:"version"`
 
-	// Bootstrapped means that pd cluster has been bootstrapped
-	// It's no need to initialize a new cluster
+	// Bootstrapped means that pd cluster has been bootstrapped,
+	// and there is no need to initialize a new cluster.
+	// In other words, this PD group will just join an existing cluster.
 	// Normally, this field is automatically changed by operator.
 	// If it's true, it cannot be set to false for security
 	Bootstrapped bool `json:"bootstrapped,omitempty"`

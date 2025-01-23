@@ -216,6 +216,17 @@ func TestTaskPod(t *testing.T) {
 							}
 							return obj
 						}),
+						fake.FakeObj("aaa-yyy", func(obj *v1alpha1.PD) *v1alpha1.PD {
+							obj.Spec.Version = fakeVersion
+							obj.Status.Conditions = []metav1.Condition{
+								{
+									Type:               v1alpha1.CondHealth,
+									Status:             metav1.ConditionFalse,
+									LastTransitionTime: metav1.Now(),
+								},
+							}
+							return obj
+						}),
 					},
 				},
 				Healthy:  true,
@@ -223,6 +234,46 @@ func TestTaskPod(t *testing.T) {
 			},
 
 			expectedStatus: task.SFail,
+		},
+		{
+			desc: "pod spec changed, pod is healthy, pod is leader, only one pd",
+			state: &ReconcileContext{
+				State: &state{
+					pd: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
+						obj.Spec.Version = fakeVersion
+						obj.Status.Conditions = []metav1.Condition{
+							{
+								Type:   v1alpha1.CondHealth,
+								Status: metav1.ConditionTrue,
+							},
+						}
+						return obj
+					}),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
+					pod: fake.FakeObj("aaa-pd-xxx", func(obj *corev1.Pod) *corev1.Pod {
+						return obj
+					}),
+					pds: []*v1alpha1.PD{
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
+							obj.Spec.Version = fakeVersion
+							obj.Status.Conditions = []metav1.Condition{
+								{
+									Type:               v1alpha1.CondHealth,
+									Status:             metav1.ConditionTrue,
+									LastTransitionTime: metav1.Now(),
+								},
+							}
+							return obj
+						}),
+					},
+				},
+				Healthy:  true,
+				IsLeader: true,
+			},
+
+			expectUpdatedPod:         false,
+			expectedPodIsTerminating: true,
+			expectedStatus:           task.SWait,
 		},
 		{
 			desc: "pod spec changed, pod is healthy, pod is not leader",
