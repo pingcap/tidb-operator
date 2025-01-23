@@ -149,17 +149,6 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) (err error) {
 		}
 	}
 
-	if err := bm.canPerformNextBackup(bs); err != nil {
-		return err
-	}
-
-	scheduledTime, err := getLastScheduledTime(bs, bm.now)
-	if err != nil {
-		return err
-	}
-
-	klog.Infof("backupSchedule %s/%s next scheduled time is %v", bs.GetNamespace(), bs.GetName(), scheduledTime)
-
 	defer func() {
 		if bs.Spec.LogBackupTemplate == nil || bs.Spec.CompactBackupTemplate == nil {
 			return
@@ -170,6 +159,17 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) (err error) {
 			klog.Errorf("backupSchedule %s/%s perform compact failed, err: %v", bs.GetNamespace(), bs.GetName(), err)
 		}
 	}()
+
+	if err := bm.canPerformNextBackup(bs); err != nil {
+		return err
+	}
+
+	scheduledTime, err := getLastScheduledTime(bs, bm.now)
+	if err != nil {
+		return err
+	}
+
+	klog.Infof("backupSchedule %s/%s next scheduled time is %v", bs.GetNamespace(), bs.GetName(), scheduledTime)
 
 	if scheduledTime == nil {
 		return nil
