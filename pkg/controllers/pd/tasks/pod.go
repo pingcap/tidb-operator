@@ -112,6 +112,11 @@ func preDeleteCheck(
 ) (bool, error) {
 	// TODO: add quorum check. After stopping this pd, quorum should not be lost
 
+	if len(peers) == 1 {
+		logger.Info("no need to transfer leader because there is only one pd")
+		return false, nil
+	}
+
 	if isLeader {
 		peer := LongestHealthPeer(pd, peers)
 		if peer == "" {

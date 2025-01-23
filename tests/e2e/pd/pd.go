@@ -99,10 +99,40 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 	})
 
 	ginkgo.Context("Update", label.P0, label.Update, func() {
-		ginkgo.It("support rolling update PD by change config file", func(ctx context.Context) {
+		ginkgo.It("support rolling update PD by change config file with 3 replicas", func(ctx context.Context) {
 			pdg := data.NewPDGroup(
 				f.Namespace.Name,
 				data.WithReplicas[*runtime.PDGroup](3),
+			)
+
+			ginkgo.By("Create PDGroup")
+			f.Must(f.Client.Create(ctx, pdg))
+			f.WaitForPDGroupReady(ctx, pdg)
+
+			patch := client.MergeFrom(pdg.DeepCopy())
+			pdg.Spec.Template.Spec.Config = `log.level = 'warn'`
+
+			nctx, cancel := context.WithCancel(ctx)
+			ch := make(chan struct{})
+			go func() {
+				defer close(ch)
+				defer ginkgo.GinkgoRecover()
+				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromPDGroup(pdg), waiter.LongTaskTimeout))
+			}()
+
+			changeTime := time.Now()
+			ginkgo.By("Change config of the PDGroup")
+			f.Must(f.Client.Patch(ctx, pdg, patch))
+			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromPDGroup(pdg), changeTime, waiter.LongTaskTimeout))
+			f.WaitForPDGroupReady(ctx, pdg)
+			cancel()
+			<-ch
+		})
+
+		ginkgo.It("support update PD by change config file with 1 replica", func(ctx context.Context) {
+			pdg := data.NewPDGroup(
+				f.Namespace.Name,
+				data.WithReplicas[*runtime.PDGroup](1),
 			)
 
 			ginkgo.By("Create PDGroup")
