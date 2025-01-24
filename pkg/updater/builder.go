@@ -15,6 +15,7 @@
 package updater
 
 import (
+	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
@@ -55,7 +56,7 @@ type builder[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct 
 }
 
 func (b *builder[T, O, R]) Build() Executor {
-	update, outdated := split(b.instances, b.rev)
+	update, outdated, deleted := split(b.instances, b.rev)
 
 	updatePolicies := b.updatePreferPolicies
 	updatePolicies = append(updatePolicies, PreferUnavailable[R]())
@@ -65,6 +66,7 @@ func (b *builder[T, O, R]) Build() Executor {
 
 		update:   NewState(update),
 		outdated: NewState(outdated),
+		deleted:  NewState(deleted),
 
 		addHooks:    b.addHooks,
 		updateHooks: append(b.updateHooks, KeepName[R](), KeepTopology[R]()),
@@ -141,7 +143,7 @@ func (b *builder[T, O, R]) WithUpdatePreferPolicy(ps ...PreferPolicy[R]) Builder
 	return b
 }
 
-func split[R runtime.Instance](all []R, rev string) (update, outdated []R) {
+func split[R runtime.Instance](all []R, rev string) (update, outdated, deleted []R) {
 	for _, instance := range all {
 		// if instance is deleting, just ignore it
 		// TODO(liubo02): make sure it's ok for PD
@@ -150,12 +152,14 @@ func split[R runtime.Instance](all []R, rev string) (update, outdated []R) {
 		}
 		if instance.GetUpdateRevision() == rev {
 			update = append(update, instance)
+		} else if _, ok := instance.GetAnnotations()[v1alpha1.AnnoKeyDeferDelete]; ok {
+			deleted = append(deleted, instance)
 		} else {
 			outdated = append(outdated, instance)
 		}
 	}
 
-	return update, outdated
+	return update, outdated, deleted
 }
 
 func countUnavailable[R runtime.Instance](all []R) int {

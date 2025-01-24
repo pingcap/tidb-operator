@@ -55,7 +55,7 @@ func TestTaskUpdater(t *testing.T) {
 				},
 			},
 
-			expectedStatus:     task.SComplete,
+			expectedStatus:     task.SWait,
 			expectedTiFlashNum: 1,
 		},
 		{
@@ -103,7 +103,7 @@ func TestTaskUpdater(t *testing.T) {
 				},
 			},
 
-			expectedStatus:     task.SComplete,
+			expectedStatus:     task.SWait,
 			expectedTiFlashNum: 2,
 		},
 		{
@@ -236,7 +236,7 @@ func TestTaskUpdater(t *testing.T) {
 				},
 			},
 
-			expectedStatus:     task.SComplete,
+			expectedStatus:     task.SWait,
 			expectedTiFlashNum: 3,
 		},
 	}

@@ -44,3 +44,7 @@ var ObjectKeyFromObject = client.ObjectKeyFromObject
 var IgnoreNotFound = client.IgnoreNotFound
 
 type GracePeriodSeconds = client.GracePeriodSeconds
+
+type MergeFromOption = client.MergeFromOption
+
+var RawPatch = client.RawPatch
