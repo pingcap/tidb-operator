@@ -16,8 +16,12 @@ package updater
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
@@ -41,6 +45,8 @@ type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 
 	update   State[R]
 	outdated State[R]
+	// deleted set records all instances that are marked by defer delete annotation
+	deleted State[R]
 
 	addHooks    []AddHook[R]
 	updateHooks []UpdateHook[R]
@@ -112,7 +118,7 @@ func (act *actor[T, O, R]) ScaleInOutdated(ctx context.Context) (bool, error) {
 	obj := act.outdated.Del(name)
 	isUnavailable := !obj.IsHealthy() || !obj.IsUpToDate()
 
-	if err := act.c.Delete(ctx, act.converter.To(obj)); err != nil {
+	if err := act.deferDelete(ctx, obj); err != nil {
 		return false, err
 	}
 
@@ -121,6 +127,40 @@ func (act *actor[T, O, R]) ScaleInOutdated(ctx context.Context) (bool, error) {
 	}
 
 	return isUnavailable, nil
+}
+
+type Patch struct {
+	Metadata Metadata `json:"metadata"`
+}
+
+type Metadata struct {
+	ResourceVersion string            `json:"resourceVersion"`
+	Annotations     map[string]string `json:"annotations"`
+}
+
+func (act *actor[T, O, R]) deferDelete(ctx context.Context, obj R) error {
+	o := act.converter.To(obj)
+	p := Patch{
+		Metadata: Metadata{
+			ResourceVersion: o.GetResourceVersion(),
+			Annotations: map[string]string{
+				v1alpha1.AnnoKeyDeferDelete: v1alpha1.AnnoValTrue,
+			},
+		},
+	}
+
+	data, err := json.Marshal(&p)
+	if err != nil {
+		return fmt.Errorf("invaid patch: %w", err)
+	}
+
+	if err := act.c.Patch(ctx, o, client.RawPatch(types.MergePatchType, data)); err != nil {
+		return fmt.Errorf("cannot mark obj %s/%s as defer delete: %w", obj.GetNamespace(), obj.GetName(), err)
+	}
+
+	act.deleted.Add(obj)
+
+	return nil
 }
 
 func (act *actor[T, O, R]) Update(ctx context.Context) error {
@@ -140,6 +180,16 @@ func (act *actor[T, O, R]) Update(ctx context.Context) error {
 	}
 
 	act.update.Add(update)
+
+	return nil
+}
+
+func (act *actor[T, O, R]) Cleanup(ctx context.Context) error {
+	for _, item := range act.deleted.List() {
+		if err := act.c.Delete(ctx, act.converter.To(item)); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

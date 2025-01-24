@@ -59,8 +59,8 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 		})
 	})
 
-	ginkgo.Context("Scale", label.P0, label.Scale, func() {
-		ginkgo.It("support scale PD form 3 to 5", func(ctx context.Context) {
+	ginkgo.Context("Scale and Update", label.P0, func() {
+		ginkgo.It("support scale PD form 3 to 5", label.Scale, func(ctx context.Context) {
 			pdg := data.NewPDGroup(
 				f.Namespace.Name,
 				data.WithReplicas[*runtime.PDGroup](3),
@@ -78,7 +78,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 			f.WaitForPDGroupReady(ctx, pdg)
 		})
 
-		ginkgo.It("support scale PD form 5 to 3", func(ctx context.Context) {
+		ginkgo.It("support scale PD form 5 to 3", label.Scale, func(ctx context.Context) {
 			pdg := data.NewPDGroup(
 				f.Namespace.Name,
 				//nolint:mnd // easy for test
@@ -96,10 +96,8 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 			f.Must(f.Client.Patch(ctx, pdg, patch))
 			f.WaitForPDGroupReady(ctx, pdg)
 		})
-	})
 
-	ginkgo.Context("Update", label.P0, label.Update, func() {
-		ginkgo.It("support rolling update PD by change config file with 3 replicas", func(ctx context.Context) {
+		ginkgo.It("support rolling update PD by change config file", label.Update, func(ctx context.Context) {
 			pdg := data.NewPDGroup(
 				f.Namespace.Name,
 				data.WithReplicas[*runtime.PDGroup](3),
@@ -117,7 +115,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 			go func() {
 				defer close(ch)
 				defer ginkgo.GinkgoRecover()
-				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromPDGroup(pdg), waiter.LongTaskTimeout))
+				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromPDGroup(pdg), 0, waiter.LongTaskTimeout))
 			}()
 
 			changeTime := time.Now()
@@ -129,10 +127,11 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 			<-ch
 		})
 
-		ginkgo.It("support update PD by change config file with 1 replica", func(ctx context.Context) {
+		ginkgo.It("support scale PD form 5 to 3 and rolling update at same time", label.Scale, label.Update, func(ctx context.Context) {
 			pdg := data.NewPDGroup(
 				f.Namespace.Name,
-				data.WithReplicas[*runtime.PDGroup](1),
+				//nolint:mnd // easy for test
+				data.WithReplicas[*runtime.PDGroup](5),
 			)
 
 			ginkgo.By("Create PDGroup")
@@ -140,6 +139,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 			f.WaitForPDGroupReady(ctx, pdg)
 
 			patch := client.MergeFrom(pdg.DeepCopy())
+			pdg.Spec.Replicas = ptr.To[int32](3)
 			pdg.Spec.Template.Spec.Config = `log.level = 'warn'`
 
 			nctx, cancel := context.WithCancel(ctx)
@@ -147,11 +147,11 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 			go func() {
 				defer close(ch)
 				defer ginkgo.GinkgoRecover()
-				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromPDGroup(pdg), waiter.LongTaskTimeout))
+				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromPDGroup(pdg), -2, waiter.LongTaskTimeout))
 			}()
 
 			changeTime := time.Now()
-			ginkgo.By("Change config of the PDGroup")
+			ginkgo.By("Change config and replicas of the PDGroup")
 			f.Must(f.Client.Patch(ctx, pdg, patch))
 			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromPDGroup(pdg), changeTime, waiter.LongTaskTimeout))
 			f.WaitForPDGroupReady(ctx, pdg)

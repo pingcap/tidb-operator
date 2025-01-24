@@ -23,6 +23,9 @@ type Actor interface {
 	Update(ctx context.Context) error
 	ScaleInUpdate(ctx context.Context) (unavailable bool, _ error)
 	ScaleInOutdated(ctx context.Context) (unavailable bool, _ error)
+
+	// delete all instances marked as defer deletion
+	Cleanup(ctx context.Context) error
 }
 
 // TODO: return instance list after Do
@@ -150,7 +153,7 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 					checkAvail = true
 				}
 			} else {
-				// ex.update + ex.outdated > ex.desired + min(ex.maxSurge, ex.outdated) and ex.update >= ex.desired
+				// ex.update + ex.outdated > ex.desired + min(ex.maxSurge, ex.outdated) and ex.update <= ex.desired
 				// => ex.outdated > min(ex.maxSurge, ex.outdated)
 				// => ex.outdated > 0
 				unavailable, err := ex.act.ScaleInOutdated(ctx)
@@ -171,6 +174,15 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 				return true, nil
 			}
 		}
+	}
+
+	if ex.unavailableUpdate > 0 {
+		// wait until update are all available
+		return true, nil
+	}
+
+	if err := ex.act.Cleanup(ctx); err != nil {
+		return false, err
 	}
 
 	return false, nil

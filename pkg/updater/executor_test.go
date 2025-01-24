@@ -29,6 +29,7 @@ const (
 	actionUpdate
 	actionScaleInUpdate
 	actionScaleInOutdated
+	actionCleanup
 )
 
 type FakeActor struct {
@@ -74,6 +75,11 @@ func (a *FakeActor) Update(_ context.Context) error {
 	return nil
 }
 
+func (a *FakeActor) Cleanup(_ context.Context) error {
+	a.Actions = append(a.Actions, actionCleanup)
+	return nil
+}
+
 func TestExecutor(t *testing.T) {
 	cases := []struct {
 		desc                string
@@ -91,13 +97,15 @@ func TestExecutor(t *testing.T) {
 		expectedWait    bool
 	}{
 		{
-			desc:            "do nothing",
-			update:          3,
-			outdated:        0,
-			desired:         3,
-			maxSurge:        1,
-			maxUnavailable:  1,
-			expectedActions: nil,
+			desc:           "do nothing",
+			update:         3,
+			outdated:       0,
+			desired:        3,
+			maxSurge:       1,
+			maxUnavailable: 1,
+			expectedActions: []action{
+				actionCleanup,
+			},
 		},
 		{
 			desc:           "scale out from 0 with 0 maxSurge",
@@ -111,6 +119,7 @@ func TestExecutor(t *testing.T) {
 				actionScaleOut,
 				actionScaleOut,
 			},
+			expectedWait: true,
 		},
 		{
 			desc:           "scale out from 0 with 1 maxSurge",
@@ -124,6 +133,7 @@ func TestExecutor(t *testing.T) {
 				actionScaleOut,
 				actionScaleOut,
 			},
+			expectedWait: true,
 		},
 		{
 			desc:           "scale in to 0",
@@ -136,6 +146,7 @@ func TestExecutor(t *testing.T) {
 				actionScaleInUpdate,
 				actionScaleInUpdate,
 				actionScaleInUpdate,
+				actionCleanup,
 			},
 		},
 		{
@@ -172,6 +183,7 @@ func TestExecutor(t *testing.T) {
 			expectedActions: []action{
 				actionUpdate,
 			},
+			expectedWait: true,
 		},
 		{
 			desc:           "rolling update with 1 maxSurge and 0 maxUnavailable(0)",
@@ -218,6 +230,7 @@ func TestExecutor(t *testing.T) {
 			maxUnavailable: 0,
 			expectedActions: []action{
 				actionScaleInOutdated,
+				actionCleanup,
 			},
 		},
 		{
@@ -259,6 +272,7 @@ func TestExecutor(t *testing.T) {
 			expectedActions: []action{
 				actionScaleInOutdated,
 			},
+			expectedWait: true,
 		},
 		{
 			desc:           "rolling update with 1 maxSurge and 1 maxUnavailable(1)",
@@ -271,6 +285,7 @@ func TestExecutor(t *testing.T) {
 				actionUpdate,
 				actionScaleInOutdated,
 			},
+			expectedWait: true,
 		},
 		{
 			desc:           "rolling update with 2 maxSurge and 0 maxUnavailable(0)",
@@ -307,6 +322,7 @@ func TestExecutor(t *testing.T) {
 			maxUnavailable: 0,
 			expectedActions: []action{
 				actionScaleInOutdated,
+				actionCleanup,
 			},
 		},
 		{
@@ -356,6 +372,7 @@ func TestExecutor(t *testing.T) {
 			expectedActions: []action{
 				actionUpdate,
 			},
+			expectedWait: true,
 		},
 		{
 			desc:           "scale out and rolling update at same time with 1 maxSurge and 0 maxUnavailable(0)",
@@ -404,6 +421,7 @@ func TestExecutor(t *testing.T) {
 			maxUnavailable: 0,
 			expectedActions: []action{
 				actionScaleInOutdated,
+				actionCleanup,
 			},
 		},
 		{
@@ -442,6 +460,7 @@ func TestExecutor(t *testing.T) {
 			maxUnavailable: 1,
 			expectedActions: []action{
 				actionScaleInOutdated,
+				actionCleanup,
 			},
 		},
 		{
@@ -480,6 +499,7 @@ func TestExecutor(t *testing.T) {
 			expectedActions: []action{
 				actionUpdate,
 			},
+			expectedWait: true,
 		},
 		{
 			desc:           "scale in and rolling update at same time with 1 maxSurge and 0 maxUnavailable(0)",
@@ -527,6 +547,7 @@ func TestExecutor(t *testing.T) {
 			maxUnavailable: 0,
 			expectedActions: []action{
 				actionScaleInOutdated,
+				actionCleanup,
 			},
 		},
 		{
@@ -554,6 +575,7 @@ func TestExecutor(t *testing.T) {
 				actionUpdate,
 				actionScaleInOutdated,
 			},
+			expectedWait: true,
 		},
 		{
 			desc:                "rolling update with all are unavailable(0)",
@@ -568,6 +590,7 @@ func TestExecutor(t *testing.T) {
 				actionUpdate,
 				actionUpdate,
 			},
+			expectedWait: true,
 		},
 		{
 			desc:              "scale in when all are unavailable(0)",
@@ -581,6 +604,7 @@ func TestExecutor(t *testing.T) {
 				actionScaleInUpdate,
 				actionScaleInUpdate,
 			},
+			expectedWait: true,
 		},
 		{
 			desc:                "complex case(0)",
@@ -639,6 +663,7 @@ func TestExecutor(t *testing.T) {
 				actionUpdate,
 				actionUpdate,
 			},
+			expectedWait: true,
 		},
 		{
 			desc:                "complex case(2-1)",
@@ -678,6 +703,7 @@ func TestExecutor(t *testing.T) {
 			expectedActions: []action{
 				actionUpdate,
 			},
+			expectedWait: true,
 		},
 		{
 			desc:                "complex case(3-1)",
@@ -703,6 +729,7 @@ func TestExecutor(t *testing.T) {
 			expectedActions: []action{
 				actionUpdate,
 			},
+			expectedWait: true,
 		},
 		{
 			desc:                "complex case(3-3)",
@@ -728,6 +755,7 @@ func TestExecutor(t *testing.T) {
 			expectedActions: []action{
 				actionUpdate,
 			},
+			expectedWait: true,
 		},
 		{
 			desc:                "complex case(3-5)",
@@ -741,6 +769,7 @@ func TestExecutor(t *testing.T) {
 			expectedActions: []action{
 				actionUpdate,
 			},
+			expectedWait: true,
 		},
 	}
 

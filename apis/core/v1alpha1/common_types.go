@@ -35,9 +35,15 @@ const (
 const (
 	// Finalizer is the finalizer used by all resources managed by TiDB Operator.
 	Finalizer = "core.pingcap.com/finalizer"
+)
 
+const (
+	KeyPrefix = "pingcap.com/"
+)
+
+const (
 	// LabelKeyPrefix defines key prefix of well known labels
-	LabelKeyPrefix = "pingcap.com/"
+	LabelKeyPrefix = KeyPrefix
 
 	// LabelKeyManagedBy means resources are managed by tidb operator
 	LabelKeyManagedBy         = LabelKeyPrefix + "managed-by"
@@ -81,6 +87,17 @@ const (
 	// LabelKeyStoreID is the unique identifier of a TiKV or TiFlash store.
 	// This label is used for backward compatibility with TiDB Operator v1, so it has a different prefix.
 	LabelKeyStoreID = "tidb.pingcap.com/store-id"
+)
+
+const (
+	// AnnoKeyPrefix defines key prefix of well known annotations
+	AnnoKeyPrefix = KeyPrefix
+
+	// all bool anno will use this val as default
+	AnnoValTrue = "true"
+
+	// means the instance is marked as deleted and will be deleted later
+	AnnoKeyDeferDelete = AnnoKeyPrefix + "defer-delete"
 )
 
 const (

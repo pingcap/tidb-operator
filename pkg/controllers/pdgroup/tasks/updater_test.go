@@ -55,7 +55,7 @@ func TestTaskUpdater(t *testing.T) {
 				},
 			},
 
-			expectedStatus: task.SComplete,
+			expectedStatus: task.SWait,
 			expectedPDNum:  1,
 		},
 		{
@@ -103,7 +103,7 @@ func TestTaskUpdater(t *testing.T) {
 				},
 			},
 
-			expectedStatus: task.SComplete,
+			expectedStatus: task.SWait,
 			expectedPDNum:  2,
 		},
 		{
@@ -236,7 +236,7 @@ func TestTaskUpdater(t *testing.T) {
 				},
 			},
 
-			expectedStatus: task.SComplete,
+			expectedStatus: task.SWait,
 			expectedPDNum:  3,
 		},
 	}
