@@ -91,7 +91,7 @@ const (
 
 const (
 	// AnnoKeyPrefix defines key prefix of well known annotations
-	AnnoKeyPrefix = "pingcap.com/"
+	AnnoKeyPrefix = KeyPrefix
 
 	// all bool anno will use this val as default
 	AnnoValTrue = "true"
