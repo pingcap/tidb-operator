@@ -50,12 +50,12 @@ func TestBuilder(t *testing.T) {
 		{
 			desc:         "scale out",
 			desired:      3,
-			expectedWait: false,
+			expectedWait: true,
 		},
 		{
 			desc:         "scale in",
 			desired:      1,
-			expectedWait: false,
+			expectedWait: true,
 		},
 	}
 

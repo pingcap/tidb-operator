@@ -46,11 +46,66 @@ func WaitPodsRollingUpdateOnce[G runtime.Group](
 	ctx context.Context,
 	c client.Client,
 	g G,
+	// scale means scale out/in before/after rolling update
+	// k means scale out k instances and -k means scale in k instances
+	// 0 means only rolling update
+	scale int,
 	timeout time.Duration,
 ) error {
-	podMap := map[string]podInfo{}
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(ctx, timeout)
 	defer cancel()
+
+	podMap, err := generatePodInfoMapByWatch(ctx, c, g)
+	if err != nil {
+		return err
+	}
+
+	infos := []podInfo{}
+	for _, v := range podMap {
+		infos = append(infos, v)
+	}
+	sortPodInfos(infos)
+	detail := strings.Builder{}
+	for _, info := range infos {
+		if info.deletionTime.IsZero() {
+			detail.WriteString(fmt.Sprintf("%v(%v) created at %s\n", info.name, info.uid, info.creationTime))
+		} else {
+			detail.WriteString(fmt.Sprintf("%v(%v) created at %s, deleted at %s\n", info.name, info.uid, info.creationTime, info.deletionTime))
+		}
+	}
+
+	if scale > 0 {
+		for i := range scale {
+			if !infos[i].deletionTime.IsZero() {
+				return fmt.Errorf("expect scale out %v pods before rolling update, detail:\n%v", scale, detail.String())
+			}
+		}
+
+		infos = infos[scale:]
+	}
+	if scale < 0 {
+		for i := range -scale {
+			if infos[len(infos)-1-i].deletionTime.IsZero() {
+				return fmt.Errorf("expect scale in %v pods after rolling update, detail:\n%v", scale, detail.String())
+			}
+		}
+		infos = infos[:len(infos)+scale]
+	}
+
+	if len(infos) != 2*int(g.Replicas()) {
+		return fmt.Errorf("expect %v pods info, now only %v, detail:\n%v", 2*g.Replicas(), len(infos), detail.String())
+	}
+	for i := range g.Replicas() {
+		if infos[2*i].name != infos[2*i+1].name {
+			return fmt.Errorf("pod may be restarted at same time, detail:\n%v", detail.String())
+		}
+	}
+
+	return nil
+}
+
+func generatePodInfoMapByWatch[G runtime.Group](ctx context.Context, c client.Client, g G) (map[string]podInfo, error) {
+	podMap := map[string]podInfo{}
 	lw := newListWatch(ctx, c, g)
 	_, err := watchtools.UntilWithSync(ctx, lw, &corev1.Pod{}, nil, func(event watch.Event) (bool, error) {
 		pod, ok := event.Object.(*corev1.Pod)
@@ -77,33 +132,10 @@ func WaitPodsRollingUpdateOnce[G runtime.Group](
 	})
 
 	if !wait.Interrupted(err) {
-		return fmt.Errorf("watch stopped unexpected: %w", err)
+		return nil, fmt.Errorf("watch stopped unexpected: %w", err)
 	}
 
-	infos := []podInfo{}
-	for _, v := range podMap {
-		infos = append(infos, v)
-	}
-	sortPodInfos(infos)
-	detail := strings.Builder{}
-	for _, info := range infos {
-		if info.deletionTime.IsZero() {
-			detail.WriteString(fmt.Sprintf("%v(%v) created at %s\n", info.name, info.uid, info.creationTime))
-		} else {
-			detail.WriteString(fmt.Sprintf("%v(%v) created at %s, deleted at %s\n", info.name, info.uid, info.creationTime, info.deletionTime))
-		}
-	}
-
-	if len(infos) != 2*int(g.Replicas()) {
-		return fmt.Errorf("expect %v pods info, now only %v, detail:\n%v", 2*g.Replicas(), len(infos), detail.String())
-	}
-	for i := range g.Replicas() {
-		if infos[2*i].name != infos[2*i+1].name {
-			return fmt.Errorf("pod may be restarted at same time, detail:\n%v", detail.String())
-		}
-	}
-
-	return nil
+	return podMap, nil
 }
 
 func newListWatch[G runtime.Group](ctx context.Context, c client.Client, g G) cache.ListerWatcher {
