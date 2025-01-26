@@ -95,7 +95,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 }
 
 func needVersionUpgrade(kvg *v1alpha1.TiKVGroup) bool {
-	return kvg.Spec.Version != kvg.Status.Version && kvg.Status.Version != ""
+	return kvg.Spec.Template.Spec.Version != kvg.Status.Version && kvg.Status.Version != ""
 }
 
 const (
@@ -126,7 +126,6 @@ func TiKVNewer(kvg *v1alpha1.TiKVGroup, rev string) updater.NewFactory[*runtime.
 			},
 			Spec: v1alpha1.TiKVSpec{
 				Cluster:          kvg.Spec.Cluster,
-				Version:          kvg.Spec.Version,
 				Subdomain:        HeadlessServiceName(kvg.Name),
 				TiKVTemplateSpec: *spec,
 			},

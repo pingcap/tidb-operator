@@ -46,8 +46,8 @@ func (f *fakeRevisionStateInitializer[G]) RevisionInitializer() RevisionInitiali
 }
 
 const (
-	fakeOldRevision = "aaa-c9f48df69"
-	fakeNewRevision = "aaa-c9f48df68"
+	fakeOldRevision = "aaa-77554fbd78"
+	fakeNewRevision = "aaa-77554fbd79"
 )
 
 func TestTaskRevision(t *testing.T) {
@@ -169,7 +169,7 @@ func TestTaskRevision(t *testing.T) {
 				fake.FakeObj(fakeOldRevision, fake.Label[appsv1.ControllerRevision]("ccc", "ddd")),
 				fake.FakeObj(fakeNewRevision, fake.Label[appsv1.ControllerRevision]("ccc", "ddd")),
 			},
-			expectedUpdateRevision:  "aaa-c9f48df6c",
+			expectedUpdateRevision:  "aaa-77554fbd76",
 			expectedCurrentRevision: fakeOldRevision,
 			expectedCollisionCount:  2,
 		},

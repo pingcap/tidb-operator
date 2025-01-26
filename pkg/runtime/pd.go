@@ -188,7 +188,7 @@ func (pdg *PDGroup) Replicas() int32 {
 }
 
 func (pdg *PDGroup) Version() string {
-	return pdg.Spec.Version
+	return pdg.Spec.Template.Spec.Version
 }
 
 func (pdg *PDGroup) Cluster() string {

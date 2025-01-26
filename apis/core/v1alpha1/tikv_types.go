@@ -148,7 +148,7 @@ func (in *TiKVGroup) GetDesiredReplicas() int32 {
 }
 
 func (in *TiKVGroup) GetDesiredVersion() string {
-	return in.Spec.Version
+	return in.Spec.Template.Spec.Version
 }
 
 func (in *TiKVGroup) GetActualVersion() string {
@@ -281,7 +281,6 @@ func (in *TiKV) TLSClusterSecretName() string {
 type TiKVGroupSpec struct {
 	Cluster  ClusterReference `json:"cluster"`
 	Replicas *int32           `json:"replicas"`
-	Version  string           `json:"version"`
 
 	// +listType=map
 	// +listMapKey=type
@@ -298,6 +297,7 @@ type TiKVTemplate struct {
 // TiKVTemplateSpec can only be specified in TiKVGroup
 // TODO: It's name may need to be changed to distinguish from PodTemplateSpec
 type TiKVTemplateSpec struct {
+	Version string `json:"version"`
 	// Image is tikv's image
 	// If tag is omitted, version will be used as the image tag.
 	// Default is pingcap/tikv
@@ -351,8 +351,6 @@ type TiKVSpec struct {
 	// It will be translated into a node affinity config
 	// Topology cannot be changed
 	Topology Topology `json:"topology,omitempty"`
-	// Version specifies the TiKV version
-	Version string `json:"version"`
 	// Subdomain means the subdomain of the exported tikv dns.
 	// A same tikv group will use a same subdomain
 	Subdomain string `json:"subdomain"`

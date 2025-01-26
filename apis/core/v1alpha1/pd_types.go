@@ -111,7 +111,7 @@ func (in *PDGroup) GetDesiredReplicas() int32 {
 }
 
 func (in *PDGroup) GetDesiredVersion() string {
-	return in.Spec.Version
+	return in.Spec.Template.Spec.Version
 }
 
 func (in *PDGroup) GetActualVersion() string {
@@ -276,7 +276,6 @@ func (in *PD) TLSClusterSecretName() string {
 type PDGroupSpec struct {
 	Cluster  ClusterReference `json:"cluster"`
 	Replicas *int32           `json:"replicas"`
-	Version  string           `json:"version"`
 
 	// Bootstrapped means that pd cluster has been bootstrapped,
 	// and there is no need to initialize a new cluster.
@@ -285,6 +284,8 @@ type PDGroupSpec struct {
 	// If it's true, it cannot be set to false for security
 	Bootstrapped bool `json:"bootstrapped,omitempty"`
 
+	// +listType=map
+	// +listMapKey=type
 	SchedulePolicies []SchedulePolicy `json:"schedulePolicies,omitempty"`
 
 	Template PDTemplate `json:"template"`
@@ -298,6 +299,7 @@ type PDTemplate struct {
 // PDTemplateSpec can only be specified in PDGroup
 // TODO: It's name may need to be changed to distinguish from PodTemplateSpec
 type PDTemplateSpec struct {
+	Version string `json:"version"`
 	// Image is pd's image
 	// If tag is omitted, version will be used as the image tag.
 	// Default is pingcap/pd
@@ -343,9 +345,6 @@ type PDSpec struct {
 	// It will be translated into a node affinity config
 	// Topology cannot be changed
 	Topology Topology `json:"topology,omitempty"`
-
-	// Version specifies the PD version
-	Version string `json:"version"`
 
 	// Subdomain means the subdomain of the exported pd dns.
 	// A same pd cluster will use a same subdomain

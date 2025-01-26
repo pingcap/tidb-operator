@@ -188,7 +188,7 @@ func (fg *TiFlashGroup) Replicas() int32 {
 }
 
 func (fg *TiFlashGroup) Version() string {
-	return fg.Spec.Version
+	return fg.Spec.Template.Spec.Version
 }
 
 func (fg *TiFlashGroup) Cluster() string {

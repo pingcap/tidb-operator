@@ -215,6 +215,8 @@ spec:
                             - HotReload
                             type: string
                         type: object
+                      version:
+                        type: string
                       volumes:
                         description: Volumes defines data volume of TiKV
                         items:
@@ -276,18 +278,16 @@ spec:
                         type: array
                     required:
                     - config
+                    - version
                     - volumes
                     type: object
                 required:
                 - spec
                 type: object
-              version:
-                type: string
             required:
             - cluster
             - replicas
             - template
-            - version
             type: object
           status:
             properties:

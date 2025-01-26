@@ -188,7 +188,7 @@ func (dbg *TiDBGroup) Replicas() int32 {
 }
 
 func (dbg *TiDBGroup) Version() string {
-	return dbg.Spec.Version
+	return dbg.Spec.Template.Spec.Version
 }
 
 func (dbg *TiDBGroup) Cluster() string {

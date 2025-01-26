@@ -35,11 +35,11 @@ func NewTiDBGroup(ns string, patches ...GroupPatch[*runtime.TiDBGroup]) *v1alpha
 		},
 		Spec: v1alpha1.TiDBGroupSpec{
 			Cluster:  v1alpha1.ClusterReference{Name: defaultClusterName},
-			Version:  defaultVersion,
 			Replicas: ptr.To[int32](1),
 			Template: v1alpha1.TiDBTemplate{
 				Spec: v1alpha1.TiDBTemplateSpec{
-					Image: ptr.To(defaultImageRegistry + "tidb"),
+					Version: defaultVersion,
+					Image:   ptr.To(defaultImageRegistry + "tidb"),
 					SlowLog: &v1alpha1.TiDBSlowLog{
 						Image: ptr.To(defaultHelperImage),
 					},
