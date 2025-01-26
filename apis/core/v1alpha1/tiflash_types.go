@@ -113,7 +113,7 @@ func (in *TiFlashGroup) GetDesiredReplicas() int32 {
 }
 
 func (in *TiFlashGroup) GetDesiredVersion() string {
-	return in.Spec.Version
+	return in.Spec.Template.Spec.Version
 }
 
 func (in *TiFlashGroup) GetActualVersion() string {
@@ -305,8 +305,9 @@ func (in *TiFlash) TLSClusterSecretName() string {
 type TiFlashGroupSpec struct {
 	Cluster  ClusterReference `json:"cluster"`
 	Replicas *int32           `json:"replicas"`
-	Version  string           `json:"version"`
 
+	// +listType=map
+	// +listMapKey=type
 	SchedulePolicies []SchedulePolicy `json:"schedulePolicies,omitempty"`
 	Template         TiFlashTemplate  `json:"template"`
 }
@@ -317,6 +318,7 @@ type TiFlashTemplate struct {
 }
 
 type TiFlashTemplateSpec struct {
+	Version string `json:"version"`
 	// Image is tiflash's image
 	// If tag is omitted, version will be used as the image tag.
 	// Default is pingcap/tiflash
@@ -382,8 +384,6 @@ type TiFlashSpec struct {
 	// It will be translated into a node affinity config
 	// Topology cannot be changed
 	Topology Topology `json:"topology,omitempty"`
-	// Version specifies the TiFlash version
-	Version string `json:"version"`
 	// Subdomain means the subdomain of the exported TiFlash dns.
 	// A same TiFlash group will use a same subdomain
 	Subdomain string `json:"subdomain"`

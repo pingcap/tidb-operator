@@ -195,7 +195,6 @@ spec:
                     type: string
                 type: object
               version:
-                description: Version specifies the TiFlash version
                 type: string
               volumes:
                 description: Volumes defines data volume of TiFlash

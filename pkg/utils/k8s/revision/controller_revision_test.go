@@ -207,13 +207,21 @@ func TestGetCurrentAndUpdate(t *testing.T) {
 			Replicas: ptr.To[int32](1),
 		},
 	}
-	rev1, err := newRevision(pdg, "pd", nil, pdg.GVK(), 1, ptr.To[int32](0))
+	rev1, err := newRevision(pdg, "pd", nil, pdg.GVK(), 0, ptr.To[int32](0))
 	require.NoError(t, err)
 
 	pdg2 := pdg.DeepCopy()
-	pdg2.Spec.Replicas = ptr.To[int32](2)
-	rev2, err := newRevision(pdg2, "pd", nil, pdg2.GVK(), 2, ptr.To[int32](0))
+	pdg2.Spec.Replicas = ptr.To[int32](3)
+	rev2, err := newRevision(pdg2, "pd", nil, pdg2.GVK(), 1, ptr.To[int32](0))
 	require.NoError(t, err)
+
+	pdg3 := pdg.DeepCopy()
+	pdg3.Spec.Template.Spec.Version = "xxx"
+	rev3, err := newRevision(pdg3, "pd", nil, pdg3.GVK(), 2, ptr.To[int32](0))
+	require.NoError(t, err)
+
+	require.Equal(t, rev1.Name, rev2.Name)
+	require.NotEqual(t, rev1.Name, rev3.Name)
 
 	tests := []struct {
 		name           string
@@ -229,26 +237,26 @@ func TestGetCurrentAndUpdate(t *testing.T) {
 			group:          pdg,
 			revisions:      []*appsv1.ControllerRevision{},
 			accessor:       pdg,
-			expectedCurRev: "basic-pd-687bcf9d45",
-			expectedUpdRev: "basic-pd-687bcf9d45",
+			expectedCurRev: rev1.Name,
+			expectedUpdRev: rev1.Name,
 			expectedErr:    false,
 		},
 		{
-			name:           "match the prior revision",
+			name:           "change replicas, no revision change",
 			group:          pdg2,
-			revisions:      []*appsv1.ControllerRevision{rev1, rev2},
+			revisions:      []*appsv1.ControllerRevision{rev1},
 			accessor:       pdg2,
-			expectedCurRev: "basic-pd-5f5f578c9d",
-			expectedUpdRev: "basic-pd-5f5f578c9d",
+			expectedCurRev: rev1.Name,
+			expectedUpdRev: rev1.Name,
 			expectedErr:    false,
 		},
 		{
-			name:           "match an earlier revision",
-			group:          pdg,
-			revisions:      []*appsv1.ControllerRevision{rev1, rev2},
-			accessor:       pdg,
-			expectedCurRev: "basic-pd-687bcf9d45",
-			expectedUpdRev: "basic-pd-687bcf9d45",
+			name:           "change template",
+			group:          pdg3,
+			revisions:      []*appsv1.ControllerRevision{rev1},
+			accessor:       pdg3,
+			expectedCurRev: rev3.Name,
+			expectedUpdRev: rev3.Name,
 			expectedErr:    false,
 		},
 	}

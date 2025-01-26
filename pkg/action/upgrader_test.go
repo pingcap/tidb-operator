@@ -201,7 +201,11 @@ func TestUpgradePolicy(t *testing.T) {
 			Cluster: v1alpha1.ClusterReference{
 				Name: "tc",
 			},
-			Version: "v8.5.0",
+			Template: v1alpha1.PDTemplate{
+				Spec: v1alpha1.PDTemplateSpec{
+					Version: "v8.5.0",
+				},
+			},
 		},
 		Status: v1alpha1.PDGroupStatus{
 			GroupStatus: v1alpha1.GroupStatus{
@@ -222,7 +226,11 @@ func TestUpgradePolicy(t *testing.T) {
 			Cluster: v1alpha1.ClusterReference{
 				Name: "tc",
 			},
-			Version: "v8.5.0",
+			Template: v1alpha1.TiKVTemplate{
+				Spec: v1alpha1.TiKVTemplateSpec{
+					Version: "v8.5.0",
+				},
+			},
 		},
 		Status: v1alpha1.TiKVGroupStatus{
 			GroupStatus: v1alpha1.GroupStatus{

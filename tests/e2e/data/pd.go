@@ -31,11 +31,11 @@ func NewPDGroup(ns string, patches ...GroupPatch[*runtime.PDGroup]) *v1alpha1.PD
 		},
 		Spec: v1alpha1.PDGroupSpec{
 			Cluster:  v1alpha1.ClusterReference{Name: defaultClusterName},
-			Version:  defaultVersion,
 			Replicas: ptr.To[int32](1),
 			Template: v1alpha1.PDTemplate{
 				Spec: v1alpha1.PDTemplateSpec{
-					Image: ptr.To(defaultImageRegistry + "pd"),
+					Version: defaultVersion,
+					Image:   ptr.To(defaultImageRegistry + "pd"),
 					Volumes: []v1alpha1.Volume{
 						{
 							Name:    "data",

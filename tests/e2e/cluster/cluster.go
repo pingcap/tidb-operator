@@ -1158,7 +1158,7 @@ var _ = Describe("TiDB Cluster", func() {
 				By("Checking the version of tikv group")
 				var kvgGet v1alpha1.TiKVGroup
 				Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: tc.Namespace, Name: kvg.Name}, &kvgGet)).To(Succeed())
-				oldVersion := kvgGet.Spec.Version
+				oldVersion := kvgGet.Spec.Template.Spec.Version
 				Expect(oldVersion).NotTo(BeEmpty())
 				Expect(kvgGet.Status.Version).To(Equal(oldVersion))
 				v, err := semver.NewVersion(oldVersion)
@@ -1166,7 +1166,7 @@ var _ = Describe("TiDB Cluster", func() {
 				newVersion := "v" + v.IncMinor().String()
 
 				By(fmt.Sprintf("Updating the version of the tikv group from %s to %s", oldVersion, newVersion))
-				kvgGet.Spec.Version = newVersion
+				kvgGet.Spec.Template.Spec.Version = newVersion
 				Expect(k8sClient.Update(ctx, &kvgGet)).To(Succeed())
 
 				Consistently(func(g Gomega) {
@@ -1177,7 +1177,7 @@ var _ = Describe("TiDB Cluster", func() {
 
 					// tikv should not be upgraded
 					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: tc.Namespace, Name: kvg.Name}, &kvgGet)).To(Succeed())
-					g.Expect(kvgGet.Spec.Version).To(Equal(newVersion))
+					g.Expect(kvgGet.Spec.Template.Spec.Version).To(Equal(newVersion))
 					g.Expect(kvgGet.Status.Version).To(Equal(oldVersion))
 				}).WithTimeout(1 * time.Minute).WithPolling(createClusterPolling).Should(Succeed())
 
@@ -1190,15 +1190,15 @@ var _ = Describe("TiDB Cluster", func() {
 				By("Upgrading the pd group")
 				var pdgGet v1alpha1.PDGroup
 				Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: tc.Namespace, Name: pdg.Name}, &pdgGet)).To(Succeed())
-				Expect(pdgGet.Spec.Version).To(Equal(oldVersion))
+				Expect(pdgGet.Spec.Template.Spec.Version).To(Equal(oldVersion))
 				Expect(pdgGet.Status.Version).To(Equal(oldVersion))
-				pdgGet.Spec.Version = newVersion
+				pdgGet.Spec.Template.Spec.Version = newVersion
 				Expect(k8sClient.Update(ctx, &pdgGet)).To(Succeed())
 
 				By("Checking the version of pd group when paused")
 				Consistently(func(g Gomega) {
 					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: tc.Namespace, Name: pdg.Name}, &pdgGet)).To(Succeed())
-					g.Expect(pdgGet.Spec.Version).To(Equal(newVersion))
+					g.Expect(pdgGet.Spec.Template.Spec.Version).To(Equal(newVersion))
 					g.Expect(pdgGet.Status.Version).To(Equal(oldVersion))
 				}).WithTimeout(1 * time.Minute).WithPolling(createClusterPolling).Should(Succeed())
 
@@ -1215,7 +1215,7 @@ var _ = Describe("TiDB Cluster", func() {
 
 					// pd and tikv should be upgraded
 					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: tc.Namespace, Name: pdg.Name}, &pdgGet)).To(Succeed())
-					g.Expect(pdgGet.Spec.Version).To(Equal(newVersion))
+					g.Expect(pdgGet.Spec.Template.Spec.Version).To(Equal(newVersion))
 					g.Expect(pdgGet.Status.Version).To(Equal(newVersion))
 					var pdPods corev1.PodList
 					g.Expect(k8sClient.List(ctx, &pdPods, client.InNamespace(tc.Namespace),
@@ -1229,7 +1229,7 @@ var _ = Describe("TiDB Cluster", func() {
 					}
 
 					g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: tc.Namespace, Name: kvg.Name}, &kvgGet)).To(Succeed())
-					g.Expect(kvgGet.Spec.Version).To(Equal(newVersion))
+					g.Expect(kvgGet.Spec.Template.Spec.Version).To(Equal(newVersion))
 					g.Expect(kvgGet.Status.Version).To(Equal(newVersion))
 					g.Expect(k8sClient.List(ctx, &pdPods, client.InNamespace(tc.Namespace),
 						client.MatchingLabels{v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV}))

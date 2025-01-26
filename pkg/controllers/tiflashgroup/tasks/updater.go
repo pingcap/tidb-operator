@@ -93,8 +93,8 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func needVersionUpgrade(flashg *v1alpha1.TiFlashGroup) bool {
-	return flashg.Spec.Version != flashg.Status.Version && flashg.Status.Version != ""
+func needVersionUpgrade(fg *v1alpha1.TiFlashGroup) bool {
+	return fg.Spec.Template.Spec.Version != fg.Status.Version && fg.Status.Version != ""
 }
 
 const (
@@ -124,7 +124,6 @@ func TiFlashNewer(fg *v1alpha1.TiFlashGroup, rev string) updater.NewFactory[*run
 			},
 			Spec: v1alpha1.TiFlashSpec{
 				Cluster:             fg.Spec.Cluster,
-				Version:             fg.Spec.Version,
 				Subdomain:           HeadlessServiceName(fg.Name),
 				TiFlashTemplateSpec: *spec,
 			},

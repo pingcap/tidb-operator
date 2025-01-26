@@ -242,7 +242,6 @@ spec:
                     type: string
                 type: object
               version:
-                description: Version specifies the TiDB version.
                 type: string
               volumes:
                 description: Volumes defines data volume of TiDB, it is optional.

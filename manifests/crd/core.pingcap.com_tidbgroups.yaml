@@ -97,6 +97,9 @@ spec:
                   - type
                   type: object
                 type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
               service:
                 description: Service defines some fields used to override the default
                   service.
@@ -330,6 +333,8 @@ spec:
                             - HotReload
                             type: string
                         type: object
+                      version:
+                        type: string
                       volumes:
                         description: Volumes defines data volume of TiDB, it is optional.
                         items:
@@ -391,17 +396,15 @@ spec:
                         type: array
                     required:
                     - config
+                    - version
                     type: object
                 required:
                 - spec
                 type: object
-              version:
-                type: string
             required:
             - cluster
             - replicas
             - template
-            - version
             type: object
           status:
             properties:

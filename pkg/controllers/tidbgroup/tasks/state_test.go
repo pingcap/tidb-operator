@@ -79,8 +79,8 @@ func TestState(t *testing.T) {
 						return obj
 					}),
 				},
-				updateRevision:  "aaa-659f78b499",
-				currentRevision: "aaa-659f78b499",
+				updateRevision:  "aaa-dfb684447",
+				currentRevision: "aaa-dfb684447",
 			},
 		},
 	}

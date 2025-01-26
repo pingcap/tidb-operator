@@ -94,7 +94,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 }
 
 func needVersionUpgrade(dbg *v1alpha1.TiDBGroup) bool {
-	return dbg.Spec.Version != dbg.Status.Version && dbg.Status.Version != ""
+	return dbg.Spec.Template.Spec.Version != dbg.Status.Version && dbg.Status.Version != ""
 }
 
 const (
@@ -124,7 +124,6 @@ func TiDBNewer(dbg *v1alpha1.TiDBGroup, rev string) updater.NewFactory[*runtime.
 			},
 			Spec: v1alpha1.TiDBSpec{
 				Cluster:          dbg.Spec.Cluster,
-				Version:          dbg.Spec.Version,
 				Subdomain:        HeadlessServiceName(dbg.Name), // same as headless service
 				TiDBTemplateSpec: *spec,
 			},

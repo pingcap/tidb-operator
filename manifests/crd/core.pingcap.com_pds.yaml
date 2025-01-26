@@ -151,7 +151,6 @@ spec:
                     type: string
                 type: object
               version:
-                description: Version specifies the PD version
                 type: string
               volumes:
                 description: Volumes defines persistent volumes of PD
