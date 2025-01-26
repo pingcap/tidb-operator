@@ -99,7 +99,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 }
 
 func needVersionUpgrade(pdg *v1alpha1.PDGroup) bool {
-	return pdg.Spec.Version != pdg.Status.Version && pdg.Status.Version != ""
+	return pdg.Spec.Template.Spec.Version != pdg.Status.Version && pdg.Status.Version != ""
 }
 
 const (
@@ -141,7 +141,6 @@ func PDNewer(pdg *v1alpha1.PDGroup, rev string) updater.NewFactory[*runtime.PD] 
 			},
 			Spec: v1alpha1.PDSpec{
 				Cluster:        pdg.Spec.Cluster,
-				Version:        pdg.Spec.Version,
 				Subdomain:      HeadlessServiceName(pdg.Name),
 				PDTemplateSpec: *spec,
 			},

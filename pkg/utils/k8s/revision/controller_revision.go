@@ -163,9 +163,14 @@ func getPatch(obj client.Object, gvk schema.GroupVersionKind) ([]byte, error) {
 	}
 
 	objCopy := make(map[string]any)
-	objCopy["$patch"] = "replace"
-	objCopy["spec"] = raw["spec"].(map[string]any)
-	return json.Marshal(objCopy)
+	specCopy := make(map[string]any)
+	spec := raw["spec"].(map[string]any)
+	template := spec["template"].(map[string]any)
+	specCopy["template"] = template
+	template["$patch"] = "replace"
+	objCopy["spec"] = specCopy
+	patch, err := json.Marshal(objCopy)
+	return patch, err
 }
 
 // TruncateHistory truncates any non-live ControllerRevisions in revisions from group's history.

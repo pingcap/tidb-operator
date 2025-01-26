@@ -142,7 +142,7 @@ func (in *TiDBGroup) GetDesiredReplicas() int32 {
 }
 
 func (in *TiDBGroup) GetDesiredVersion() string {
-	return in.Spec.Version
+	return in.Spec.Template.Spec.Version
 }
 
 func (in *TiDBGroup) GetActualVersion() string {
@@ -315,11 +315,12 @@ func (in *TiDB) TLSClusterSecretName() string {
 type TiDBGroupSpec struct {
 	Cluster  ClusterReference `json:"cluster"`
 	Replicas *int32           `json:"replicas"`
-	Version  string           `json:"version"`
 
 	// Service defines some fields used to override the default service.
 	Service *TiDBService `json:"service,omitempty"`
 
+	// +listType=map
+	// +listMapKey=type
 	SchedulePolicies []SchedulePolicy `json:"schedulePolicies,omitempty"`
 
 	Template TiDBTemplate `json:"template"`
@@ -332,6 +333,7 @@ type TiDBTemplate struct {
 
 // TiDBTemplateSpec can only be specified in TiDBGroup.
 type TiDBTemplateSpec struct {
+	Version string `json:"version"`
 	// Image is tidb's image
 	// If tag is omitted, version will be used as the image tag.
 	// Default is pingcap/tidb
@@ -479,9 +481,6 @@ type TiDBSpec struct {
 	// It will be translated into a node affnity config.
 	// Topology cannot be changed.
 	Topology Topology `json:"topology,omitempty"`
-
-	// Version specifies the TiDB version.
-	Version string `json:"version"`
 
 	// Subdomain means the subdomain of the exported pd dns.
 	// A same pd cluster will use a same subdomain

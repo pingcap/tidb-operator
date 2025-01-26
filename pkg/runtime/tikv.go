@@ -188,7 +188,7 @@ func (kvg *TiKVGroup) Replicas() int32 {
 }
 
 func (kvg *TiKVGroup) Version() string {
-	return kvg.Spec.Version
+	return kvg.Spec.Template.Spec.Version
 }
 
 func (kvg *TiKVGroup) Cluster() string {

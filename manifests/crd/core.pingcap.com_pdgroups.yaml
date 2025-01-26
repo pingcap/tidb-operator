@@ -105,6 +105,9 @@ spec:
                   - type
                   type: object
                 type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
               template:
                 properties:
                   metadata:
@@ -215,6 +218,8 @@ spec:
                             - HotReload
                             type: string
                         type: object
+                      version:
+                        type: string
                       volumes:
                         description: Volumes defines persistent volumes of PD
                         items:
@@ -276,18 +281,16 @@ spec:
                         type: array
                     required:
                     - config
+                    - version
                     - volumes
                     type: object
                 required:
                 - spec
                 type: object
-              version:
-                type: string
             required:
             - cluster
             - replicas
             - template
-            - version
             type: object
           status:
             properties:

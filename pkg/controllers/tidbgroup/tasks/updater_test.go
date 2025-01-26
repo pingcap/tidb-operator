@@ -65,7 +65,7 @@ func TestTaskUpdater(t *testing.T) {
 					dbg: fake.FakeObj("aaa", func(obj *v1alpha1.TiDBGroup) *v1alpha1.TiDBGroup {
 						// use an wrong version to trigger version check
 						// TODO(liubo02): it's not happened actually. Maybe remove whole checking
-						obj.Spec.Version = "xxx"
+						obj.Spec.Template.Spec.Version = "xxx"
 						obj.Status.Version = "yyy"
 						return obj
 					}),

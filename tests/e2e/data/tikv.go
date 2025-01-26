@@ -32,10 +32,10 @@ func NewTiKVGroup(ns string, patches ...GroupPatch[*runtime.TiKVGroup]) *v1alpha
 		Spec: v1alpha1.TiKVGroupSpec{
 			Cluster:  v1alpha1.ClusterReference{Name: defaultClusterName},
 			Replicas: ptr.To[int32](1),
-			Version:  defaultVersion,
 			Template: v1alpha1.TiKVTemplate{
 				Spec: v1alpha1.TiKVTemplateSpec{
-					Image: ptr.To(defaultImageRegistry + "tikv"),
+					Version: defaultVersion,
+					Image:   ptr.To(defaultImageRegistry + "tikv"),
 					Volumes: []v1alpha1.Volume{
 						{
 							Name:    "data",

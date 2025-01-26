@@ -61,10 +61,10 @@ func NewPDGroup(namespace, name, clusterName string, replicas *int32, apply func
 		Spec: v1alpha1.PDGroupSpec{
 			Cluster:  v1alpha1.ClusterReference{Name: clusterName},
 			Replicas: replicas,
-			Version:  version,
 			Template: v1alpha1.PDTemplate{
 				Spec: v1alpha1.PDTemplateSpec{
-					Image: ptr.To(imageRegistry + "pd"),
+					Version: version,
+					Image:   ptr.To(imageRegistry + "pd"),
 					Volumes: []v1alpha1.Volume{
 						{
 							Name:    "data",
@@ -95,11 +95,11 @@ func NewTiKVGroup(namespace, name, clusterName string, replicas *int32, apply fu
 		},
 		Spec: v1alpha1.TiKVGroupSpec{
 			Cluster:  v1alpha1.ClusterReference{Name: clusterName},
-			Version:  version,
 			Replicas: replicas,
 			Template: v1alpha1.TiKVTemplate{
 				Spec: v1alpha1.TiKVTemplateSpec{
-					Image: ptr.To(imageRegistry + "tikv"),
+					Version: version,
+					Image:   ptr.To(imageRegistry + "tikv"),
 					Volumes: []v1alpha1.Volume{
 						{
 							Name:    "data",
@@ -130,11 +130,11 @@ func NewTiDBGroup(namespace, name, clusterName string, replicas *int32, apply fu
 		},
 		Spec: v1alpha1.TiDBGroupSpec{
 			Cluster:  v1alpha1.ClusterReference{Name: clusterName},
-			Version:  version,
 			Replicas: replicas,
 			Template: v1alpha1.TiDBTemplate{
 				Spec: v1alpha1.TiDBTemplateSpec{
-					Image: ptr.To(imageRegistry + "tidb"),
+					Version: version,
+					Image:   ptr.To(imageRegistry + "tidb"),
 					SlowLog: &v1alpha1.TiDBSlowLog{
 						Image: ptr.To(helperImage),
 					},
@@ -163,11 +163,11 @@ func NewTiFlashGroup(namespace, name, clusterName string, replicas *int32,
 		},
 		Spec: v1alpha1.TiFlashGroupSpec{
 			Cluster:  v1alpha1.ClusterReference{Name: clusterName},
-			Version:  version,
 			Replicas: replicas,
 			Template: v1alpha1.TiFlashTemplate{
 				Spec: v1alpha1.TiFlashTemplateSpec{
-					Image: ptr.To(imageRegistry + "tiflash"),
+					Version: version,
+					Image:   ptr.To(imageRegistry + "tiflash"),
 					Volumes: []v1alpha1.Volume{
 						{
 							Name:    "data",
