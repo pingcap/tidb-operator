@@ -93,7 +93,6 @@ func WaitPodsRollingUpdateOnce[G runtime.Group](
 			}
 		}
 		infos = infos[:len(infos)+scale]
-		rollingUpdateTimes += scale
 	}
 
 	if len(infos) != 2*rollingUpdateTimes {
