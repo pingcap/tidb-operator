@@ -1585,9 +1585,11 @@ const (
 //
 // - `none`: doing nothing.
 // - `delete-pod`: delete pod and remove the evict-leader scheduler from PD.
+// - `delete-pod-and-flush-log-backup`: delete pod, remove the evict-leader scheduler from PD and flush the running log backup task.
 const (
-	EvictLeaderValueNone      = "none"
-	EvictLeaderValueDeletePod = "delete-pod"
+	EvictLeaderValueNone                       = "none"
+	EvictLeaderValueDeletePod                  = "delete-pod"
+	EvictLeaderValueDeletePodAndFlushLogBackup = "delete-pod-and-flush-log-backup"
 )
 
 // The `Value` of PD leader transfer annotation controls the behavior when the leader is transferred to another member, the valid value is one of:
@@ -1614,9 +1616,10 @@ const (
 )
 
 type EvictLeaderStatus struct {
-	PodCreateTime metav1.Time `json:"podCreateTime,omitempty"`
-	BeginTime     metav1.Time `json:"beginTime,omitempty"`
-	Value         string      `json:"value,omitempty"`
+	PodCreateTime    metav1.Time `json:"podCreateTime,omitempty"`
+	BeginTime        metav1.Time `json:"beginTime,omitempty"`
+	Value            string      `json:"value,omitempty"`
+	LogBackupFlushed bool        `json:"logBackupFlushed,omitempty"`
 }
 
 const (

@@ -380,6 +380,7 @@ func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.
 		switch value {
 		case v1alpha1.EvictLeaderValueNone:
 		case v1alpha1.EvictLeaderValueDeletePod:
+		case v1alpha1.EvictLeaderValueDeletePodAndFlushLogBackup:
 		default:
 			klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, key, pod.Namespace, pod.Name)
 			return reconcile.Result{}, nil
@@ -435,7 +436,7 @@ func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.
 		}
 
 		// delete pod after eviction finished if needed
-		if value == v1alpha1.EvictLeaderValueDeletePod {
+		if value == v1alpha1.EvictLeaderValueDeletePod || value == v1alpha1.EvictLeaderValueDeletePodAndFlushLogBackup {
 			tlsEnabled := tc.IsTLSClusterEnabled()
 			kvClient := c.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name, pod.Name, tc.Spec.ClusterDomain, tlsEnabled)
 			leaderCount, err := kvClient.GetLeaderCount()
@@ -446,6 +447,15 @@ func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.
 			klog.Infof("Region leader count is %d for Pod %s/%s", leaderCount, pod.Namespace, pod.Name)
 
 			if leaderCount == 0 {
+				if value == v1alpha1.EvictLeaderValueDeletePodAndFlushLogBackup {
+					if err := kvClient.FlushLogBackupTasks(ctx); err != nil {
+						klog.ErrorS(err, "failed to force flush the log backup task.")
+					} else {
+						// Wait a while so TiKV is able to send the flush result to the advancer.
+						time.Sleep(3 * time.Second)
+					}
+				}
+
 				err = c.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
 				if err != nil && !errors.IsNotFound(err) {
 					return reconcile.Result{}, perrors.Annotatef(err, "failed to delete pod %q", pod.Name)

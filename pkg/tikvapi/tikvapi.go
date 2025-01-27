@@ -14,15 +14,22 @@
 package tikvapi
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
+	"github.com/pingcap/errors"
+	logbackup "github.com/pingcap/kvproto/pkg/logbackuppb"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prom2json"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/credentials"
 	"k8s.io/klog/v2"
 )
 
@@ -36,12 +43,61 @@ const (
 // TiKVClient provides tikv server's api
 type TiKVClient interface {
 	GetLeaderCount() (int, error)
+	FlushLogBackupTasks(ctx context.Context) error
+}
+
+type lazyGRPCConn struct {
+	target string
+	opts   []grpc.DialOption
+
+	initMu sync.Mutex
+	cached *grpc.ClientConn
+}
+
+func (l *lazyGRPCConn) conn() (*grpc.ClientConn, error) {
+	l.initMu.Lock()
+	defer l.initMu.Unlock()
+
+	if l.cached != nil && l.cached.GetState() != connectivity.Shutdown {
+		return l.cached, nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancel()
+	ch, err := grpc.DialContext(ctx, l.target, l.opts...)
+	if err != nil {
+		return nil, errors.Annotatef(err, "during connecting to %s", l.target)
+	}
+
+	l.cached = ch
+	return ch, nil
 }
 
 // tikvClient is default implementation of TiKVClient
 type tikvClient struct {
-	url        string
-	httpClient *http.Client
+	url           string
+	httpClient    *http.Client
+	grpcConnector *lazyGRPCConn
+}
+
+// FlushLogBackupTasks implements TiKVClient.
+func (c *tikvClient) FlushLogBackupTasks(ctx context.Context) error {
+	conn, err := c.grpcConnector.conn()
+	if err != nil {
+		return err
+	}
+	cli := logbackup.NewLogBackupClient(conn)
+	res, err := cli.FlushNow(ctx, &logbackup.FlushNowRequest{}, grpc.WaitForReady(true))
+	if err != nil {
+		return err
+	}
+
+	for _, r := range res.Results {
+		if !r.Success {
+			return errors.Errorf("force flush failed for task %s: %s", r.TaskName, r.ErrorMessage)
+		}
+	}
+	return nil
 }
 
 // GetLeaderCount gets region leader count from the URL
@@ -74,15 +130,29 @@ func (c *tikvClient) GetLeaderCount() (int, error) {
 	return 0, fmt.Errorf("metric %s{type=\"%s\"} not found for %s", metricNameRegionCount, labelNameLeaderCount, apiURL)
 }
 
+type TiKVClientOpts struct {
+	HTTPEndpoint      string
+	GRPCEndpoint      string
+	Timeout           time.Duration
+	TLSConfig         *tls.Config
+	DisableKeepAlives bool
+}
+
 // NewTiKVClient returns a new TiKVClient
-func NewTiKVClient(url string, timeout time.Duration, tlsConfig *tls.Config, disableKeepalive bool) TiKVClient {
+func NewTiKVClient(opts TiKVClientOpts) TiKVClient {
 	return &tikvClient{
-		url: url,
+		url: opts.HTTPEndpoint,
+		grpcConnector: &lazyGRPCConn{
+			target: opts.GRPCEndpoint,
+			opts: []grpc.DialOption{
+				grpc.WithTransportCredentials(credentials.NewTLS(opts.TLSConfig)),
+			},
+		},
 		httpClient: &http.Client{
-			Timeout: timeout,
+			Timeout: opts.Timeout,
 			Transport: &http.Transport{
-				TLSClientConfig:       tlsConfig,
-				DisableKeepAlives:     disableKeepalive,
+				TLSClientConfig:       opts.TLSConfig,
+				DisableKeepAlives:     opts.DisableKeepAlives,
 				ResponseHeaderTimeout: 10 * time.Second,
 				TLSHandshakeTimeout:   10 * time.Second,
 				DialContext: (&net.Dialer{

@@ -641,8 +641,8 @@ github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8 h1:USx2/E1bX46VG32FI
 github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8/go.mod h1:B1+S9LNcuMyLH/4HMTViQOJevkGiik3wW2AN9zb2fNQ=
 github.com/pingcap/errors v0.11.4 h1:lFuQV/oaUMGcD2tqt+01ROSmJs75VG1ToEOkZIZ4nE4=
 github.com/pingcap/errors v0.11.4/go.mod h1:Oi8TUi2kEtXXLMJk9l1cGmz20kV3TaQ0usTwv5KuLY8=
-github.com/pingcap/kvproto v0.0.0-20231122054644-fb0f5c2a0a10 h1:qnhfzwdWOy8oOSZYX7/aK9XKDs4hJ6P/Gg+s7Sr9VKY=
-github.com/pingcap/kvproto v0.0.0-20231122054644-fb0f5c2a0a10/go.mod h1:rXxWk2UnwfUhLXha1jxRWPADw9eMZGWEWCg92Tgmb/8=
+github.com/pingcap/kvproto v0.0.0-20250117122752-2b87602a94a1 h1:rTAyiswGyWSGHJVa4Mkhdi8YfGqfA4LrUVKsH9nrJ8E=
+github.com/pingcap/kvproto v0.0.0-20250117122752-2b87602a94a1/go.mod h1:rXxWk2UnwfUhLXha1jxRWPADw9eMZGWEWCg92Tgmb/8=
 github.com/pingcap/tiproxy/lib v0.0.0-20230907130944-eb5b4b9c9e79 h1:q2ILYQoB7COkkkE+dA3hwIFHZHYxOwDBpR3AYenb/hM=
 github.com/pingcap/tiproxy/lib v0.0.0-20230907130944-eb5b4b9c9e79/go.mod h1:LL2iRLUCzFd/zThAfn3BTA4ywSzv1etnJsOIydzsokk=
 github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsKMEsNbx1VGcRFpLqf3715MtcvvzbA=
