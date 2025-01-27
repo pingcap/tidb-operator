@@ -74,6 +74,8 @@ func WaitPodsRollingUpdateOnce[G runtime.Group](
 		}
 	}
 
+	rollingUpdateTimes := int(g.Replicas())
+
 	if scale > 0 {
 		for i := range scale {
 			if !infos[i].deletionTime.IsZero() {
@@ -82,6 +84,7 @@ func WaitPodsRollingUpdateOnce[G runtime.Group](
 		}
 
 		infos = infos[scale:]
+		rollingUpdateTimes -= scale
 	}
 	if scale < 0 {
 		for i := range -scale {
@@ -90,12 +93,13 @@ func WaitPodsRollingUpdateOnce[G runtime.Group](
 			}
 		}
 		infos = infos[:len(infos)+scale]
+		rollingUpdateTimes += scale
 	}
 
-	if len(infos) != 2*int(g.Replicas()) {
-		return fmt.Errorf("expect %v pods info, now only %v, detail:\n%v", 2*g.Replicas(), len(infos), detail.String())
+	if len(infos) != 2*rollingUpdateTimes {
+		return fmt.Errorf("expect %v pods info, now only %v, detail:\n%v", 2*rollingUpdateTimes, len(infos), detail.String())
 	}
-	for i := range g.Replicas() {
+	for i := range rollingUpdateTimes {
 		if infos[2*i].name != infos[2*i+1].name {
 			return fmt.Errorf("pod may be restarted at same time, detail:\n%v", detail.String())
 		}
@@ -249,4 +253,28 @@ func WaitForPodsRecreated[G runtime.Group](
 		v1alpha1.LabelKeyGroup:     g.GetName(),
 		v1alpha1.LabelKeyComponent: g.Component(),
 	})
+}
+
+func MaxPodsCreateTimestamp[G runtime.Group](
+	ctx context.Context,
+	c client.Client,
+	g G,
+) (*time.Time, error) {
+	list := corev1.PodList{}
+	if err := c.List(ctx, &list, client.InNamespace(g.GetNamespace()), client.MatchingLabels{
+		v1alpha1.LabelKeyCluster:   g.Cluster(),
+		v1alpha1.LabelKeyGroup:     g.GetName(),
+		v1alpha1.LabelKeyComponent: g.Component(),
+	}); err != nil {
+		return nil, err
+	}
+	maxTime := &time.Time{}
+	for i := range list.Items {
+		pod := &list.Items[i]
+		if pod.CreationTimestamp.After(*maxTime) {
+			maxTime = &pod.CreationTimestamp.Time
+		}
+	}
+
+	return maxTime, nil
 }
