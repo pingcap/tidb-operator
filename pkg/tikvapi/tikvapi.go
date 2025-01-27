@@ -20,6 +20,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -30,6 +31,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"k8s.io/klog/v2"
 )
 
@@ -87,7 +89,7 @@ func (c *tikvClient) FlushLogBackupTasks(ctx context.Context) error {
 		return err
 	}
 	cli := logbackup.NewLogBackupClient(conn)
-	res, err := cli.FlushNow(ctx, &logbackup.FlushNowRequest{}, grpc.WaitForReady(true))
+	res, err := cli.FlushNow(ctx, &logbackup.FlushNowRequest{})
 	if err != nil {
 		return err
 	}
@@ -140,14 +142,20 @@ type TiKVClientOpts struct {
 
 // NewTiKVClient returns a new TiKVClient
 func NewTiKVClient(opts TiKVClientOpts) TiKVClient {
+	var conn lazyGRPCConn
+	if strings.HasPrefix(opts.GRPCEndpoint, "https://") {
+		conn.opts = append(conn.opts, grpc.WithTransportCredentials(credentials.NewTLS(opts.TLSConfig)))
+	} else {
+		conn.opts = append(conn.opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	}
+	conn.target = opts.GRPCEndpoint
+	for _, prefix := range []string{"http://", "https://"} {
+		conn.target = strings.TrimPrefix(conn.target, prefix)
+	}
+
 	return &tikvClient{
-		url: opts.HTTPEndpoint,
-		grpcConnector: &lazyGRPCConn{
-			target: opts.GRPCEndpoint,
-			opts: []grpc.DialOption{
-				grpc.WithTransportCredentials(credentials.NewTLS(opts.TLSConfig)),
-			},
-		},
+		url:           opts.HTTPEndpoint,
+		grpcConnector: &conn,
 		httpClient: &http.Client{
 			Timeout: opts.Timeout,
 			Transport: &http.Transport{
