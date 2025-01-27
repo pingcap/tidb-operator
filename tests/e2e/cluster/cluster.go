@@ -537,7 +537,6 @@ var _ = Describe("TiDB Cluster", func() {
 			Eventually(func(g Gomega) {
 				podList, err = clientSet.CoreV1().Pods(tc.Namespace).List(ctx, metav1.ListOptions{})
 				g.Expect(err).To(BeNil())
-				//nolint:mnd // easy to understand
 				g.Expect(len(podList.Items)).To(Equal(4))
 			}).WithTimeout(time.Minute).WithPolling(createClusterPolling).Should(Succeed())
 
@@ -676,7 +675,6 @@ var _ = Describe("TiDB Cluster", func() {
 			var kvgGet v1alpha1.TiKVGroup
 			Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: tc.Namespace, Name: kvg.Name}, &kvgGet)).To(Succeed())
 			Expect(len(kvgGet.Spec.Template.Spec.Volumes)).To(Equal(1))
-			//nolint:mnd // easy to understand
 			kvgGet.Spec.Template.Spec.Volumes[0].Storage = data.StorageSizeGi2quantity(5)
 			Expect(k8sClient.Update(ctx, &kvgGet)).To(Succeed())
 
@@ -692,7 +690,6 @@ var _ = Describe("TiDB Cluster", func() {
 				pvcList, err := clientSet.CoreV1().PersistentVolumeClaims(tc.Namespace).List(ctx, listOpts)
 				Expect(err).To(BeNil())
 				Expect(len(pvcList.Items)).To(Equal(1))
-				//nolint:mnd // easy to understand
 				Expect(pvcList.Items[0].Status.Capacity.Storage()).To(Equal(data.StorageSizeGi2quantity(5)))
 			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
 		})
@@ -908,7 +905,6 @@ var _ = Describe("TiDB Cluster", func() {
 					GinkgoWriter.Printf("%v(%v) created at %s, deleted at %s\n", info.name, info.uid, info.creationTime, info.deletionTime)
 				}
 			}
-			//nolint:mnd // easy to understand
 			Expect(len(infos)).To(Equal(6))
 			Expect(infos[0].name).To(Equal(infos[1].name))
 			Expect(infos[2].name).To(Equal(infos[3].name))
@@ -1127,7 +1123,6 @@ var _ = Describe("TiDB Cluster", func() {
 						GinkgoWriter.Printf("%v(%v) created at %s, deleted at %s\n", info.name, info.uid, info.creationTime, info.deletionTime)
 					}
 				}
-				//nolint:mnd // easy to understand
 				Expect(len(infos)).To(Equal(6))
 				Expect(infos[0].name).To(Equal(infos[1].name))
 				Expect(infos[2].name).To(Equal(infos[3].name))
@@ -1307,8 +1302,7 @@ var _ = Describe("TiDB Cluster", func() {
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
 									// TODO(liubo02): extract to a namer pkg
-									SecretName: groupName + "-" + componentName + "-cluster-secret",
-									//nolint:mnd // easy to understand
+									SecretName:  groupName + "-" + componentName + "-cluster-secret",
 									DefaultMode: ptr.To(int32(420)),
 								},
 							},
@@ -1327,8 +1321,7 @@ var _ = Describe("TiDB Cluster", func() {
 								VolumeSource: corev1.VolumeSource{
 									Secret: &corev1.SecretVolumeSource{
 										// TODO(liubo02): extract to a namer pkg
-										SecretName: dbg.Name + "-tidb-server-secret",
-										//nolint:mnd // easy to understand
+										SecretName:  dbg.Name + "-tidb-server-secret",
 										DefaultMode: ptr.To(int32(420)),
 									},
 								},
@@ -1446,7 +1439,7 @@ location-labels = ["region", "zone", "host"]`
 					g.Expect(v).To(ContainSubstring(`zone=`))
 					g.Expect(v).To(ContainSubstring(`host=`))
 				}
-			}).WithTimeout(time.Minute).WithPolling(5 * time.Second).Should(Succeed()) //nolint:mnd // easy to understand
+			}).WithTimeout(time.Minute).WithPolling(5 * time.Second).Should(Succeed())
 		})
 
 		It("should enable readiness probe for PD, TiKV and TiFlash", func() {
@@ -1489,8 +1482,8 @@ location-labels = ["region", "zone", "host"]`
 					Expect(pod.Spec.Containers[0].ReadinessProbe.TimeoutSeconds).To(Equal(int32(1)))
 					Expect(pod.Spec.Containers[0].ReadinessProbe.FailureThreshold).To(Equal(int32(3)))
 					Expect(pod.Spec.Containers[0].ReadinessProbe.SuccessThreshold).To(Equal(int32(1)))
-					Expect(pod.Spec.Containers[0].ReadinessProbe.InitialDelaySeconds).To(Equal(int32(10))) //nolint:mnd // default value in Operator
-					Expect(pod.Spec.Containers[0].ReadinessProbe.PeriodSeconds).To(Equal(int32(10)))       //nolint:mnd // easy to understand
+					Expect(pod.Spec.Containers[0].ReadinessProbe.InitialDelaySeconds).To(Equal(int32(10)))
+					Expect(pod.Spec.Containers[0].ReadinessProbe.PeriodSeconds).To(Equal(int32(10)))
 					Expect(pod.Spec.Containers[0].ReadinessProbe.TCPSocket).NotTo(BeNil())
 				}
 			}
