@@ -12,28 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package label
-
-import "github.com/onsi/ginkgo/v2"
-
-var (
-	// Components
-	Cluster = ginkgo.Label("component:Cluster")
-	PD      = ginkgo.Label("component:PD")
-	TiDB    = ginkgo.Label("component:TiDB")
-	TiKV    = ginkgo.Label("component:TiKV")
-	TiFlash = ginkgo.Label("component:TiFlash")
-
-	// Priority
-	P0 = ginkgo.Label("P0")
-	P1 = ginkgo.Label("P1")
-	P2 = ginkgo.Label("P2")
-
-	// Operations
-	Update  = ginkgo.Label("op:Update")
-	Scale   = ginkgo.Label("op:Scale")
-	Suspend = ginkgo.Label("op:Suspend")
-
-	// Env
-	MultipleAZ = ginkgo.Label("env:MultipleAZ")
-)
+package tikv

@@ -44,6 +44,11 @@ linters-settings:
       - '3'
     ignored-functions:
       - strings.SplitN
+    ignored-files:
+      - 'tests/e2e/cluster/.+\.go$'
+      - 'tests/e2e/pd/.+\.go$'
+      - 'tests/e2e/tidb/.+\.go$'
+      - 'tests/e2e/tikv/.+\.go$'
   govet:
     enable:
       - nilness
