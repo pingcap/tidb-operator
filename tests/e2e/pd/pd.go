@@ -71,7 +71,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 			f.WaitForPDGroupReady(ctx, pdg)
 
 			patch := client.MergeFrom(pdg.DeepCopy())
-			pdg.Spec.Replicas = ptr.To[int32](5) //nolint:mnd // easy for test
+			pdg.Spec.Replicas = ptr.To[int32](5)
 
 			ginkgo.By("Change replica of the PDGroup")
 			f.Must(f.Client.Patch(ctx, pdg, patch))
@@ -81,7 +81,6 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 		ginkgo.It("support scale PD form 5 to 3", label.Scale, func(ctx context.Context) {
 			pdg := data.NewPDGroup(
 				f.Namespace.Name,
-				//nolint:mnd // easy for test
 				data.WithReplicas[*runtime.PDGroup](5),
 			)
 
@@ -130,7 +129,6 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 		ginkgo.It("support scale PD form 5 to 3 and rolling update at same time", label.Scale, label.Update, func(ctx context.Context) {
 			pdg := data.NewPDGroup(
 				f.Namespace.Name,
-				//nolint:mnd // easy for test
 				data.WithReplicas[*runtime.PDGroup](5),
 			)
 

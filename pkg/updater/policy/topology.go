@@ -40,7 +40,7 @@ func NewTopologyPolicy[R runtime.Instance](ts []v1alpha1.ScheduleTopology, rs ..
 		scheduler: s,
 	}
 	for _, r := range rs {
-		p.Add(r)
+		p.scheduler.Add(r.GetName(), r.GetTopology())
 	}
 	return p, nil
 }

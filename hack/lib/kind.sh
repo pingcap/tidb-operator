@@ -56,6 +56,15 @@ networking:
   ipFamily: dual
 nodes:
 - role: control-plane
+- role: worker
+  labels:
+    zone: zone-a
+- role: worker
+  labels:
+    zone: zone-b
+- role: worker
+  labels:
+    zone: zone-c
 EOF
 
 

@@ -53,3 +53,30 @@ func NewTiKVGroup(ns string, patches ...GroupPatch[*runtime.TiKVGroup]) *v1alpha
 
 	return runtime.ToTiKVGroup(kvg)
 }
+
+func WithEvenlySpreadPolicy() GroupPatch[*runtime.TiKVGroup] {
+	return func(obj *runtime.TiKVGroup) {
+		obj.Spec.SchedulePolicies = append(obj.Spec.SchedulePolicies, v1alpha1.SchedulePolicy{
+			Type: v1alpha1.SchedulePolicyTypeEvenlySpread,
+			EvenlySpread: &v1alpha1.SchedulePolicyEvenlySpread{
+				Topologies: []v1alpha1.ScheduleTopology{
+					{
+						Topology: v1alpha1.Topology{
+							"zone": "zone-a",
+						},
+					},
+					{
+						Topology: v1alpha1.Topology{
+							"zone": "zone-b",
+						},
+					},
+					{
+						Topology: v1alpha1.Topology{
+							"zone": "zone-c",
+						},
+					},
+				},
+			},
+		})
+	}
+}
