@@ -16,19 +16,13 @@ spec:
     br:
       cluster: myCluster
       sendCredToTikv: true
-      # clusterNamespce: backupNamespace
+      # clusterNamespace: backupNamespace
       # logLevel: info
       # statusAddr: <status-addr>
       # concurrency: 4
       # rateLimit: 0
       # timeAgo: <time>
       # checksum: true
-    from:
-      host:         172.30.6.56
-      secretName:   mysecret
-      # port:         4000
-      # user:         root
-      # tlsClientSecretName: <backup-tls-secretname>
     gcs:
       provider: gcp
       region: us-west-2

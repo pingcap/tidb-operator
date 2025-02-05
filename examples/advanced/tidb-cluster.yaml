@@ -10,7 +10,7 @@ spec:
   #######################
 
   ## TiDB cluster version
-  version: "v7.5.1"
+  version: "v8.5.0"
 
   ## Time zone of TiDB cluster Pods
   timezone: UTC
@@ -167,6 +167,9 @@ spec:
   ## Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
   # topologySpreadConstraints:
   # - topologyKey: topology.kubernetes.io/zone
+  #   maxSkew: 1
+  #   minDomains: 3
+  #   nodeAffinityPolicy: Honor
 
   ###########################
   # TiDB Cluster Components #
@@ -215,7 +218,7 @@ spec:
     #############################
 
     ## The following block overwrites TiDB cluster-level configurations in `spec`
-    # version: "v7.5.1"
+    # version: "v8.5.0"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets:
     # - name: secretName
@@ -352,6 +355,9 @@ spec:
     ## Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
     # topologySpreadConstraints:
     # - topologyKey: topology.kubernetes.io/zone
+    #   maxSkew: 1
+    #   minDomains: 3
+    #   nodeAffinityPolicy: Honor
 
   tidb:
     ############################
@@ -402,7 +408,7 @@ spec:
     ###############################
 
     ## The following block overwrites TiDB cluster-level configurations in `spec`
-    # version: "v7.5.1"
+    # version: "v8.5.0"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets:
     # - name: secretName
@@ -573,6 +579,9 @@ spec:
     ## Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
     # topologySpreadConstraints:
     # - topologyKey: topology.kubernetes.io/zone
+    #   maxSkew: 1
+    #   minDomains: 3
+    #   nodeAffinityPolicy: Honor
 
   tikv:
     ############################
@@ -610,7 +619,7 @@ spec:
     ###############################
 
     ## The following block overwrites TiDB cluster-level configurations in `spec`
-    # version: "v7.5.1"
+    # version: "v8.5.0"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets:
     # - name: secretName
@@ -786,12 +795,15 @@ spec:
     ## Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
     # topologySpreadConstraints:
     # - topologyKey: topology.kubernetes.io/zone
+    #   maxSkew: 1
+    #   minDomains: 3
+    #   nodeAffinityPolicy: Honor
 
   ## Deploy TiDB Binlog of a TiDB cluster
   ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/deploy-tidb-binlog/#deploy-pump
   # pump:
   #   baseImage: pingcap/tidb-binlog
-  #   version: "v7.5.1"
+  #   version: "v8.5.0"
   #   replicas: 1
   #   storageClassName: local-storage
   #   requests:
@@ -812,7 +824,7 @@ spec:
   #     app.kubernetes.io/component: pump
   #   annotations:
   #     node.kubernetes.io/instance-type: some-vm-type
-  #   tolerations: {}
+  #   tolerations: []
   #   configUpdateStrategy: RollingUpdate
   #   statefulSetUpdateStrategy: RollingUpdate
   #   podSecurityContext: {}
@@ -828,12 +840,15 @@ spec:
   #   # Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
   #   topologySpreadConstraints:
   #   - topologyKey: topology.kubernetes.io/zone
+  #     maxSkew: 1
+  #     minDomains: 3
+  #     nodeAffinityPolicy: Honor
 
   ## TiCDC is a tool for replicating the incremental data of TiDB
   ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/deploy-ticdc/
   # ticdc:
   #   baseImage: pingcap/ticdc
-  #   version: "v7.5.1"
+  #   version: "v8.5.0"
   #   replicas: 3
   #   storageClassName: local-storage
   #   requests:
@@ -853,7 +868,7 @@ spec:
   #     app.kubernetes.io/component: ticdc
   #   annotations:
   #     node.kubernetes.io/instance-type: some-vm-type
-  #   tolerations: {}
+  #   tolerations: []
   #   configUpdateStrategy: RollingUpdate
   #   statefulSetUpdateStrategy: RollingUpdate
   #   podSecurityContext: {}
@@ -871,6 +886,9 @@ spec:
   #   # Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
   #   topologySpreadConstraints:
   #   - topologyKey: topology.kubernetes.io/zone
+  #     maxSkew: 1
+  #     minDomains: 3
+  #     nodeAffinityPolicy: Honor
 
   ## TiFlash is the columnar storage extension of TiKV
   ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/deploy-tiflash/
@@ -879,7 +897,7 @@ spec:
   #   # Basic TiFlash Configuration #
   #   ###############################
   #   baseImage: pingcap/tiflash
-  #   version: "v7.5.1"
+  #   version: "v8.5.0"
   #   replicas: 1
   #   # limits:
   #   #   cpu: 2000m
@@ -900,7 +918,7 @@ spec:
   #     app.kubernetes.io/component: tiflash
   #   annotations:
   #     node.kubernetes.io/instance-type: some-vm-type
-  #   tolerations: {}
+  #   tolerations: []
   #   configUpdateStrategy: RollingUpdate
   #   statefulSetUpdateStrategy: RollingUpdate
   #   podSecurityContext: {}
@@ -952,8 +970,11 @@ spec:
   #     # configure the configuration file for TiFlash Proxy process
   #     proxy: |
   #       [security]
-  #         cert-allowed-cn = "CNNAME"
+  #         cert-allowed-cn = ["CNNAME"]
   #   # TopologySpreadConstraints for pod scheduling, will overwrite the cluster level spread constraints setting
   #   # Ref: pkg/apis/pingcap/v1alpha1/types.go#TopologySpreadConstraint
   #   topologySpreadConstraints:
   #   - topologyKey: topology.kubernetes.io/zone
+  #     maxSkew: 1
+  #     minDomains: 3
+  #     nodeAffinityPolicy: Honor

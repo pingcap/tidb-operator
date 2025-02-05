@@ -37,13 +37,16 @@ const (
 	defaultSeparateRocksDBLog = false
 	defaultSeparateRaftLog    = false
 	defaultEnablePVReclaim    = false
+	defaultEnablePVCReplace   = false
 	// defaultEvictLeaderTimeout is the timeout limit of evict leader
 	defaultEvictLeaderTimeout            = 1500 * time.Minute
 	defaultWaitLeaderTransferBackTimeout = 400 * time.Second
+	RetryEvictLeaderInterval             = 10 * time.Minute
 	// defaultTiCDCGracefulShutdownTimeout is the timeout limit of graceful
 	// shutdown a TiCDC pod.
 	defaultTiCDCGracefulShutdownTimeout = 10 * time.Minute
 	defaultPDStartTimeout               = 30
+	defaultPDInitWaitTime               = 0
 
 	// the latest version
 	versionLatest = "latest"
@@ -95,7 +98,7 @@ func (tc *TidbCluster) PDVersion() string {
 	return getImageVersion(tc.PDImage())
 }
 
-// PDMSImage return the image used by specified PD MicroService.
+// PDMSImage return the image used by specified PD microservice.
 //
 // If PDMS isn't specified, return empty string.
 func (tc *TidbCluster) PDMSImage(spec *PDMSSpec) string {
@@ -124,7 +127,7 @@ func (tc *TidbCluster) PDMSImage(spec *PDMSSpec) string {
 	return image
 }
 
-// PDMSVersion return the image version used by specified PD MicroService.
+// PDMSVersion return the image version used by specified PD microservice.
 //
 // If PDMS isn't specified, return empty string.
 func (tc *TidbCluster) PDMSVersion(name string) string {
@@ -289,6 +292,23 @@ func (tc *TidbCluster) TiProxyImage() string {
 		}
 	}
 	return image
+}
+
+// TiProxyVersion returns the image version used by TiProxy.
+//
+// If TiProxy isn't specified, return empty string.
+func (tc *TidbCluster) TiProxyVersion() string {
+	if tc.Spec.TiProxy == nil {
+		return ""
+	}
+
+	image := tc.TiProxyImage()
+	colonIdx := strings.LastIndexByte(image, ':')
+	if colonIdx >= 0 {
+		return image[colonIdx+1:]
+	}
+
+	return "latest"
 }
 
 // TiCDCVersion returns the image version used by TiCDC.
@@ -612,7 +632,7 @@ func (tc *TidbCluster) PDStsDesiredReplicas() int32 {
 	}
 	var spareReplaceReplicas int32 = 0
 	if tc.Status.PD.VolReplaceInProgress {
-		spareReplaceReplicas = 1
+		spareReplaceReplicas = *tc.Spec.PD.SpareVolReplaceReplicas
 	}
 	return tc.Spec.PD.Replicas + tc.GetPDDeletedFailureReplicas() + spareReplaceReplicas
 }
@@ -690,7 +710,7 @@ func (tc *TidbCluster) TiKVStsDesiredReplicas() int32 {
 	}
 	var spareReplaceReplicas int32 = 0
 	if tc.Status.TiKV.VolReplaceInProgress {
-		spareReplaceReplicas = 1
+		spareReplaceReplicas = *tc.Spec.TiKV.SpareVolReplaceReplicas
 	}
 	return tc.Spec.TiKV.Replicas + int32(len(tc.Status.TiKV.FailureStores)) + spareReplaceReplicas
 }
@@ -724,7 +744,7 @@ func (tc *TidbCluster) TiFlashAllPodsStarted() bool {
 	return tc.TiFlashStsDesiredReplicas() == tc.TiFlashStsActualReplicas()
 }
 
-// TiFlashAllPodsStarted return whether all stores of TiFlash are ready.
+// TiFlashAllStoresReady return whether all stores of TiFlash are ready.
 //
 // If TiFlash isn't specified, return false.
 func (tc *TidbCluster) TiFlashAllStoresReady() bool {
@@ -1045,6 +1065,14 @@ func (tc *TidbCluster) IsPVReclaimEnabled() bool {
 	return *enabled
 }
 
+func (tc *TidbCluster) IsPVCReplaceEnabled() bool {
+	enabled := tc.Spec.EnablePVCReplace
+	if enabled == nil {
+		return defaultEnablePVCReplace
+	}
+	return *enabled
+}
+
 func (tc *TidbCluster) IsTiDBBinlogEnabled() bool {
 	var binlogEnabled *bool
 	if tc.Spec.TiDB != nil {
@@ -1358,4 +1386,11 @@ func (tc *TidbCluster) PDStartTimeout() int {
 		return tc.Spec.PD.StartTimeout
 	}
 	return defaultPDStartTimeout
+}
+
+func (tc *TidbCluster) PDInitWaitTime() int {
+	if tc.Spec.PD != nil && tc.Spec.PD.InitWaitTime != 0 {
+		return tc.Spec.PD.InitWaitTime
+	}
+	return defaultPDInitWaitTime
 }

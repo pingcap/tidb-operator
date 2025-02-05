@@ -18,7 +18,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -57,14 +56,14 @@ func NewPDMSMemberManager(dependencies *controller.Dependencies, pdMSScaler Scal
 	}
 }
 
-// Sync for all PD Micro Service components.
+// Sync for all PD microservice components.
 func (m *pdMSMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	// Need to start PD API
 	if tc.Spec.PDMS != nil && tc.Spec.PD == nil {
-		klog.Infof("PD Micro Service is enabled, but PD is not enabled, skip syncing PD Micro Service")
+		klog.Infof("PD microservice is enabled, but PD is not enabled, skip syncing PD microservice")
 		return nil
 	}
-	// remove all micro service components if PDMS is not enabled
+	// remove all microservice components if PDMS is not enabled
 	// PDMS need to be enabled when PD.Mode is ms && PDMS is not nil
 	if tc.Spec.PDMS == nil || (tc.Spec.PD != nil && tc.Spec.PD.Mode != "ms") {
 		for _, comp := range tc.Status.PDMS {
@@ -96,7 +95,7 @@ func (m *pdMSMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
-	// init PD Micro Service status
+	// init PD microservice status
 	if tc.Status.PDMS == nil {
 		tc.Status.PDMS = make(map[string]*v1alpha1.PDMSStatus)
 	}
@@ -116,10 +115,10 @@ func (m *pdMSMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-// syncSingleService for single PD Micro Service components.
+// syncSingleService for single PD microservice components.
 func (m *pdMSMemberManager) syncSingleService(tc *v1alpha1.TidbCluster, curSpec *v1alpha1.PDMSSpec) error {
 	curService := curSpec.Name
-	// Skip sync if PD Micro Service is suspended
+	// Skip sync if PD microservice is suspended
 	componentMemberType := v1alpha1.PDMSMemberType(curService)
 	needSuspend, err := m.suspender.SuspendComponent(tc, componentMemberType)
 	if err != nil {
@@ -130,17 +129,17 @@ func (m *pdMSMemberManager) syncSingleService(tc *v1alpha1.TidbCluster, curSpec 
 		return nil
 	}
 
-	// Sync PD Micro Service
+	// Sync PD microservice
 	if err := m.syncPDMSService(tc, curSpec); err != nil {
 		return err
 	}
 
-	// Sync PD Micro Service Headless Service
+	// Sync PD microservice headless service
 	if err := m.syncPDMSHeadlessService(tc, curSpec); err != nil {
 		return err
 	}
 
-	// Sync PD Micro Service StatefulSet
+	// Sync PD microservice statefulSet
 	return m.syncPDMSStatefulSet(tc, curSpec)
 }
 
@@ -773,15 +772,6 @@ func (m *pdMSMemberManager) getPDMSConfigMap(tc *v1alpha1.TidbCluster, curSpec *
 		},
 	}
 	return cm, nil
-}
-
-// PDMSSupportMicroServices returns true if the given version of PDMS supports microservices.
-func PDMSSupportMicroServices(version string) (bool, error) {
-	v, err := semver.NewVersion(version)
-	if err != nil {
-		return true, err
-	}
-	return v.Major() >= 7 && v.Minor() >= 2 && v.Patch() >= 0, nil
 }
 
 type FakePDMSMemberManager struct {

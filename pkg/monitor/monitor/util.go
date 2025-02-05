@@ -19,7 +19,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	semver "github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -253,10 +252,9 @@ func getMonitorRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.PolicyRule
 func getMonitorClusterRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.PolicyRule) *rbac.ClusterRole {
 	return &rbac.ClusterRole{
 		ObjectMeta: meta.ObjectMeta{
-			Name:            GetMonitorObjectNameCrossNamespace(monitor),
-			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
-			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+			Name:      GetMonitorObjectNameCrossNamespace(monitor),
+			Namespace: monitor.Namespace,
+			Labels:    buildTidbMonitorLabel(monitor.Name),
 		},
 		Rules: policyRules,
 	}
@@ -265,10 +263,9 @@ func getMonitorClusterRole(monitor *v1alpha1.TidbMonitor, policyRules []rbac.Pol
 func getMonitorClusterRoleBinding(sa *core.ServiceAccount, role *rbac.ClusterRole, monitor *v1alpha1.TidbMonitor) *rbac.ClusterRoleBinding {
 	return &rbac.ClusterRoleBinding{
 		ObjectMeta: meta.ObjectMeta{
-			Name:            GetMonitorObjectNameCrossNamespace(monitor),
-			Namespace:       monitor.Namespace,
-			Labels:          buildTidbMonitorLabel(monitor.Name),
-			OwnerReferences: []meta.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
+			Name:      GetMonitorObjectNameCrossNamespace(monitor),
+			Namespace: monitor.Namespace,
+			Labels:    buildTidbMonitorLabel(monitor.Name),
 		},
 		Subjects: []rbac.Subject{
 			{
@@ -329,10 +326,6 @@ func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbClu
 				Value: "http://127.0.0.1:9090",
 			},
 			{
-				Name:  "TZ",
-				Value: monitor.Timezone(),
-			},
-			{
 				Name:  "TIDB_VERSION",
 				Value: getAlertManagerRulesVersion(monitor),
 			},
@@ -368,6 +361,13 @@ func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbClu
 			{
 				Name:  "TIDB_CLUSTER_NAMESPACE",
 				Value: tc.Namespace,
+			},
+		}...)
+	} else {
+		container.Env = append(container.Env, []core.EnvVar{
+			{
+				Name:  "TZ",
+				Value: monitor.Timezone(),
 			},
 		}...)
 	}
@@ -1486,9 +1486,8 @@ func generateRemoteWrite(monitor *v1alpha1.TidbMonitor, store *Store) (yaml.MapI
 	}
 	for i, spec := range monitor.Spec.Prometheus.RemoteWrite {
 		//defaults
-		if spec.RemoteTimeout == nil {
-			duration := model.Duration(30 * time.Second)
-			spec.RemoteTimeout = &duration
+		if spec.RemoteTimeout == "" {
+			spec.RemoteTimeout = "30s"
 		}
 
 		cfg := yaml.MapSlice{

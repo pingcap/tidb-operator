@@ -16,6 +16,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -151,6 +152,11 @@ func UpdateStatefulSet(setCtl controller.StatefulSetControlInterface, object run
 	if ok {
 		set.Annotations[label.AnnStsLastSyncTimestamp] = v
 	}
+	controllerMo, ok := object.(metav1.Object)
+	if !ok {
+		return fmt.Errorf("%T is not a metav1.Object, cannot call UpdateStatefulSet", object)
+	}
+	set.Annotations[label.AnnoOwnerGeneration] = strconv.FormatInt(controllerMo.GetGeneration(), 10)
 
 	err := SetStatefulSetLastAppliedConfigAnnotation(&set)
 	if err != nil {

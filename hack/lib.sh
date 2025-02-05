@@ -37,7 +37,7 @@ JQ_VERSION=${JQ_VERSION:-1.6}
 HELM_VERSION=${HELM_VERSION:-3.11.0}
 KIND_VERSION=${KIND_VERSION:-0.19.0}
 KIND_BIN=$OUTPUT_BIN/kind
-KUBETEST2_VERSION=v0.1.0
+KUBETEST2_VERSION=v1.6.0 # the real version is v0.1.0, it's just hosted in TiDB Operator v1.6.0 release
 KUBETEST2_BIN=$OUTPUT_BIN/kubetest2
 AWS_K8S_TESTER_VERSION=v1.1.5
 AWS_K8S_TESTER_BIN=$OUTPUT_BIN/aws-k8s-tester
@@ -235,7 +235,7 @@ function hack::__ensure_kubetest2() {
     local tmpfile=$(mktemp)
     trap "test -f $tmpfile && rm $tmpfile" RETURN
     echo "info: downloading $n $KUBETEST2_VERSION"
-    curl --retry 10 -L -o - https://github.com/cofyc/kubetest2-release/releases/download/$KUBETEST2_VERSION/$n-$OS-$ARCH.gz | gunzip > $tmpfile
+    curl --retry 10 -L -o - https://github.com/pingcap/tidb-operator/releases/download/$KUBETEST2_VERSION/$n-$OS-$ARCH.gz | gunzip > $tmpfile
     mv $tmpfile $OUTPUT_BIN/$n
     chmod +x $OUTPUT_BIN/$n
 }
@@ -279,12 +279,12 @@ function hack::ensure_misspell() {
 
 function hack::ensure_golangci_lint() {
   echo "Installing golangci_lint..."
-  GOBIN=$OUTPUT_BIN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.2
+  GOBIN=$OUTPUT_BIN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0
 }
 
 function hack::ensure_controller_gen() {
     echo "Installing controller_gen..."
-    GOBIN=$OUTPUT_BIN go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.2
+    GOBIN=$OUTPUT_BIN go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.15.0
 }
 
 function hack::ensure_goimports() {

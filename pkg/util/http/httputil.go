@@ -14,6 +14,7 @@
 package httputil
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -36,7 +37,7 @@ func ReadErrorBody(body io.Reader) (err error) {
 	if err != nil {
 		return err
 	}
-	return fmt.Errorf(string(bodyBytes))
+	return errors.New(string(bodyBytes))
 }
 
 // GetBodyOK returns the body or an error if the response is not okay

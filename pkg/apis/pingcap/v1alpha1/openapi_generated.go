@@ -46,6 +46,9 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CleanOption":                   schema_pkg_apis_pingcap_v1alpha1_CleanOption(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ClusterRef":                    schema_pkg_apis_pingcap_v1alpha1_ClusterRef(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CommonConfig":                  schema_pkg_apis_pingcap_v1alpha1_CommonConfig(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CompactBackup":                 schema_pkg_apis_pingcap_v1alpha1_CompactBackup(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CompactBackupList":             schema_pkg_apis_pingcap_v1alpha1_CompactBackupList(ref),
+		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CompactSpec":                   schema_pkg_apis_pingcap_v1alpha1_CompactSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ComponentSpec":                 schema_pkg_apis_pingcap_v1alpha1_ComponentSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ConfigMapRef":                  schema_pkg_apis_pingcap_v1alpha1_ConfigMapRef(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DMCluster":                     schema_pkg_apis_pingcap_v1alpha1_DMCluster(ref),
@@ -580,6 +583,20 @@ func schema_pkg_apis_pingcap_v1alpha1_AzblobStorageProvider(ref common.Reference
 							Format:      "",
 						},
 					},
+					"storageAccount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StorageAccount is the storage account of the azure blob storage If this field is set, then use this to set backup-manager env Otherwise retrieve the storage account from secret",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"sasToken": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SasToken is the sas token of the storage account",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"prefix": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Prefix of the data path.",
@@ -914,6 +931,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 							Format:      "",
 						},
 					},
+					"compactSpan": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CompactSpan is to specify how long backups we want to compact.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"backupTemplate": {
 						SchemaProps: spec.SchemaProps{
 							Description: "BackupTemplate is the specification of the backup structure to get scheduled.",
@@ -925,6 +949,12 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 						SchemaProps: spec.SchemaProps{
 							Description: "LogBackupTemplate is the specification of the log backup structure to get scheduled.",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupSpec"),
+						},
+					},
+					"compactBackupTemplate": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CompactBackupTemplate is the specification of the compact backup structure to get scheduled.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CompactSpec"),
 						},
 					},
 					"storageClassName": {
@@ -955,12 +985,38 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 							},
 						},
 					},
+					"br": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BRConfig is the configs for BR",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig"),
+						},
+					},
+					"s3": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider"),
+						},
+					},
+					"gcs": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider"),
+						},
+					},
+					"azblob": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AzblobStorageProvider"),
+						},
+					},
+					"local": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LocalStorageProvider"),
+						},
+					},
 				},
 				Required: []string{"schedule", "backupTemplate"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupSpec", "k8s.io/api/core/v1.LocalObjectReference"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AzblobStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CompactSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LocalStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "k8s.io/api/core/v1.LocalObjectReference"},
 	}
 }
 
@@ -1054,13 +1110,20 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref common.ReferenceCallback) c
 					},
 					"br": {
 						SchemaProps: spec.SchemaProps{
-							Description: "BRConfig is the configs for BR",
+							Description: "BRConfig is the configs for BR *** Note: This field should generally not be left empty, unless you are certain the BR config *** can be obtained from another source, such as a schedule CR.",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig"),
 						},
 					},
 					"commitTs": {
 						SchemaProps: spec.SchemaProps{
 							Description: "CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup. Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'. Default is current timestamp.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"logSubcommand": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Subcommand is the subcommand for BR, such as start, stop, pause etc.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -1597,6 +1660,269 @@ func schema_pkg_apis_pingcap_v1alpha1_CommonConfig(ref common.ReferenceCallback)
 		},
 		Dependencies: []string{
 			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Flash", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FlashLogger"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_CompactBackup(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CompactSpec"),
+						},
+					},
+				},
+				Required: []string{"spec"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CompactSpec"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_CompactBackupList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CompactList contains a list of Compact Backup.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CompactBackup"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CompactBackup"},
+	}
+}
+
+func schema_pkg_apis_pingcap_v1alpha1_CompactSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CompactSpec contains the backup specification for a tidb cluster.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"resources": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/api/core/v1.ResourceRequirements"),
+						},
+					},
+					"env": {
+						SchemaProps: spec.SchemaProps{
+							Description: "List of environment variables to set in the container, like v1.Container.Env. Note that the following builtin env vars will be overwritten by values set here - S3_PROVIDER - S3_ENDPOINT - AWS_REGION - AWS_ACL - AWS_STORAGE_CLASS - AWS_DEFAULT_REGION - AWS_ACCESS_KEY_ID - AWS_SECRET_ACCESS_KEY - GCS_PROJECT_ID - GCS_OBJECT_ACL - GCS_BUCKET_ACL - GCS_LOCATION - GCS_STORAGE_CLASS - GCS_SERVICE_ACCOUNT_JSON_KEY - BR_LOG_TO_TERM",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.EnvVar"),
+									},
+								},
+							},
+						},
+					},
+					"s3": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider"),
+						},
+					},
+					"gcs": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider"),
+						},
+					},
+					"azblob": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AzblobStorageProvider"),
+						},
+					},
+					"local": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LocalStorageProvider"),
+						},
+					},
+					"startTs": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StartTs is the start ts of the compact backup. Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"endTs": {
+						SchemaProps: spec.SchemaProps{
+							Description: "EndTs is the end ts of the compact backup. Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'. Default is current timestamp.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"concurrency": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Concurrency is the concurrency of compact backup job",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"tolerations": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Base tolerations of backup Pods, components may add more tolerations upon this respectively",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.Toleration"),
+									},
+								},
+							},
+						},
+					},
+					"toolImage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BrImage specifies the br image used in compact `Backup`. For examples `spec.brImage: pingcap/br:v4.0.8` For BR image, if it does not contain tag, Pod will use image 'BrImage:${TiKV_Version}'.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"br": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BRConfig is the configs for BR *** Note: This field should generally not be left empty, unless you are certain the BR config *** can be obtained from another source, such as a schedule CR.",
+							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig"),
+						},
+					},
+					"imagePullSecrets": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.LocalObjectReference"),
+									},
+								},
+							},
+						},
+					},
+					"affinity": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Affinity of backup Pods",
+							Ref:         ref("k8s.io/api/core/v1.Affinity"),
+						},
+					},
+					"useKMS": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Use KMS to decrypt the secrets",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"serviceAccount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Specify service account of backup",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"podSecurityContext": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodSecurityContext of the component",
+							Ref:         ref("k8s.io/api/core/v1.PodSecurityContext"),
+						},
+					},
+					"priorityClassName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PriorityClassName of Backup Job Pods",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"maxRetryTimes": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"additionalVolumes": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Additional volumes of component pod.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.Volume"),
+									},
+								},
+							},
+						},
+					},
+					"additionalVolumeMounts": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Additional volume mounts of component pod.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.VolumeMount"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AzblobStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.GcsStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.LocalStorageProvider", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount"},
 	}
 }
 
@@ -5571,7 +5897,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDMSSpec(ref common.ReferenceCallback) com
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "PDMSSpec contains details of PD Micro Service",
+				Description: "PDMSSpec contains details of PD microservice",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"version": {
@@ -5912,7 +6238,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDMSSpec(ref common.ReferenceCallback) com
 					},
 					"name": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Name of the PD Micro Service",
+							Description: "Name of the PD microservice",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
@@ -5942,7 +6268,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDMSSpec(ref common.ReferenceCallback) com
 					},
 					"service": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Service defines a Kubernetes service of PD Micro Service cluster. Optional: Defaults to `.spec.services` in favor of backward compatibility",
+							Description: "Service defines a Kubernetes service of PD microservice cluster. Optional: Defaults to `.spec.services` in favor of backward compatibility",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec"),
 						},
 					},
@@ -5955,7 +6281,7 @@ func schema_pkg_apis_pingcap_v1alpha1_PDMSSpec(ref common.ReferenceCallback) com
 					},
 					"config": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Config is the Configuration of pd Micro Service servers",
+							Description: "Config is the configuration of PD microservice servers",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.PDConfigWraper"),
 						},
 					},
@@ -5982,14 +6308,14 @@ func schema_pkg_apis_pingcap_v1alpha1_PDMSSpec(ref common.ReferenceCallback) com
 					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The storageClassName of the persistent volume for PD Micro Service log storage. Defaults to Kubernetes default storage class.",
+							Description: "The storageClassName of the persistent volume for PD microservice log storage. Defaults to Kubernetes default storage class.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"storageVolumes": {
 						SchemaProps: spec.SchemaProps{
-							Description: "StorageVolumes configure additional storage for PD Micro Service pods.",
+							Description: "StorageVolumes configure additional storage for PD microservice pods.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -6907,11 +7233,25 @@ func schema_pkg_apis_pingcap_v1alpha1_PDSpec(ref common.ReferenceCallback) commo
 							Format:      "int32",
 						},
 					},
+					"initWaitTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Wait time before pd get started. This wait time is to allow the new DNS record to propagate, ensuring that the PD DNS resolves to the same IP address as the pod.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 					"mode": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Mode is the mode of PD cluster",
 							Type:        []string{"string"},
 							Format:      "",
+						},
+					},
+					"spareVolReplaceReplicas": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The default number of spare replicas to scale up when using VolumeReplace feature. In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid zone skew after volume replace (total replicas always whole multiples of zones). Optional: Defaults to 1",
+							Type:        []string{"integer"},
+							Format:      "int32",
 						},
 					},
 				},
@@ -7942,8 +8282,8 @@ func schema_pkg_apis_pingcap_v1alpha1_RemoteWriteSpec(ref common.ReferenceCallba
 					},
 					"remoteTimeout": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"integer"},
-							Format: "int64",
+							Type:   []string{"string"},
+							Format: "",
 						},
 					},
 					"writeRelabelConfigs": {
@@ -8164,7 +8504,7 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 					},
 					"logRestoreStartTs": {
 						SchemaProps: spec.SchemaProps{
-							Description: "LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.",
+							Description: "LogRestoreStartTs is the start timestamp which log restore from.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -8704,6 +9044,13 @@ func schema_pkg_apis_pingcap_v1alpha1_ServiceSpec(ref common.ReferenceCallback) 
 									},
 								},
 							},
+						},
+					},
+					"loadBalancerClass": {
+						SchemaProps: spec.SchemaProps{
+							Description: "loadBalancerClass is the class of the load balancer implementation this Service belongs to. If specified, the value of this field must be a label-style identifier, with an optional prefix, e.g. \"internal-vip\" or \"example.com/internal-vip\". Unprefixed names are reserved for end-users. This field can only be set when the Service type is 'LoadBalancer'. If not set, the default load balancer implementation is used, today this is typically done through the cloud provider integration, but should apply for any default implementation. If set, it is assumed that a load balancer implementation is watching for Services with a matching class. Any default load balancer implementation (e.g. cloud providers) should ignore Services that set this field. This field can only be set when creating or updating a Service to type 'LoadBalancer'. Once set, it can not be changed. This field will be wiped when a service is updated to a non 'LoadBalancer' type.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
@@ -10404,6 +10751,21 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 						SchemaProps: spec.SchemaProps{
 							Description: "CustomizedStartupProbe is the customized startup probe for TiDB. You can provide your own startup probe for TiDB. The image will be an init container, and the tidb-server container will copy the probe binary from it, and execute it. The probe binary in the image should be placed under the root directory, i.e., `/your-probe`.",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CustomizedProbe"),
+						},
+					},
+					"arguments": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Arguments is the extra command line arguments for TiDB server.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
 						},
 					},
 				},
@@ -13386,6 +13748,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiKVSpec(ref common.ReferenceCallback) com
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ScalePolicy"),
 						},
 					},
+					"spareVolReplaceReplicas": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The default number of spare replicas to scale up when using VolumeReplace feature. In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid zone skew after volume replace (total replicas always whole multiples of zones). Optional: Defaults to 1",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 				},
 				Required: []string{"replicas"},
 			},
@@ -14058,6 +14427,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiProxySpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"certLayout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TiProxyCertLayout is the certificate layout of TiProxy that determines how tidb-operator mount cert secrets and how configure TLS configurations for tiproxy.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"baseImage": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Base image of the component, image tag is now allowed during validation",
@@ -14650,6 +15026,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 					"enablePVReclaim": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Whether enable PVC reclaim for orphan PVC left by statefulset scale-in Optional: Defaults to false",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"enablePVCReplace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether enable PVC replace to recreate the PVC with different specs Optional: Defaults to false",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},

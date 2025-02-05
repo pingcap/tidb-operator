@@ -184,7 +184,7 @@ func generateGcsCertEnvVar(gcs *v1alpha1.GcsStorageProvider) ([]corev1.EnvVar, s
 }
 
 // generateAzblobCertEnvVar generate the env info in order to access azure blob storage
-func generateAzblobCertEnvVar(azblob *v1alpha1.AzblobStorageProvider, useAAD bool) ([]corev1.EnvVar, string, error) {
+func generateAzblobCertEnvVar(azblob *v1alpha1.AzblobStorageProvider, secret *corev1.Secret, useSasToken bool) ([]corev1.EnvVar, string, error) {
 	if len(azblob.AccessTier) == 0 {
 		azblob.AccessTier = "Cool"
 	}
@@ -193,64 +193,63 @@ func generateAzblobCertEnvVar(azblob *v1alpha1.AzblobStorageProvider, useAAD boo
 			Name:  "AZURE_ACCESS_TIER",
 			Value: azblob.AccessTier,
 		},
+		{
+			Name:  "AZURE_STORAGE_ACCOUNT",
+			Value: azblob.StorageAccount,
+		},
 	}
-	if azblob.SecretName != "" {
+	if useSasToken {
+		return envVars, "", nil
+	}
+	_, exist := CheckAllKeysExistInSecret(secret, constants.AzblobClientID, constants.AzblobClientScrt, constants.AzblobTenantID)
+	if exist { // using AAD auth
 		envVars = append(envVars, []corev1.EnvVar{
 			{
-				Name: "AZURE_STORAGE_ACCOUNT",
+				Name: "AZURE_CLIENT_ID",
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: azblob.SecretName},
-						Key:                  constants.AzblobAccountName,
+						Key:                  constants.AzblobClientID,
+					},
+				},
+			},
+			{
+				Name: "AZURE_CLIENT_SECRET",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: azblob.SecretName},
+						Key:                  constants.AzblobClientScrt,
+					},
+				},
+			},
+			{
+				Name: "AZURE_TENANT_ID",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: azblob.SecretName},
+						Key:                  constants.AzblobTenantID,
 					},
 				},
 			},
 		}...)
-		if useAAD {
-			envVars = append(envVars, []corev1.EnvVar{
-				{
-					Name: "AZURE_CLIENT_ID",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{Name: azblob.SecretName},
-							Key:                  constants.AzblobClientID,
-						},
-					},
-				},
-				{
-					Name: "AZURE_CLIENT_SECRET",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{Name: azblob.SecretName},
-							Key:                  constants.AzblobClientScrt,
-						},
-					},
-				},
-				{
-					Name: "AZURE_TENANT_ID",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{Name: azblob.SecretName},
-							Key:                  constants.AzblobTenantID,
-						},
-					},
-				},
-			}...)
-		} else {
-			envVars = append(envVars, []corev1.EnvVar{
-				{
-					Name: "AZURE_STORAGE_KEY",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{Name: azblob.SecretName},
-							Key:                  constants.AzblobAccountKey,
-						},
-					},
-				},
-			}...)
-		}
+		return envVars, "", nil
 	}
-	return envVars, "", nil
+	_, exist = CheckAllKeysExistInSecret(secret, constants.AzblobAccountKey)
+	if exist { // use access key auth
+		envVars = append(envVars, []corev1.EnvVar{
+			{
+				Name: "AZURE_STORAGE_KEY",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: azblob.SecretName},
+						Key:                  constants.AzblobAccountKey,
+					},
+				},
+			},
+		}...)
+		return envVars, "", nil
+	}
+	return nil, "azblobKeyOrAADMissing", fmt.Errorf("secret %s/%s missing some keys", secret.Namespace, secret.Name)
 }
 
 // GenerateStorageCertEnv generate the env info in order to access backend backup storage
@@ -303,27 +302,25 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider v1alpha1.StoragePro
 			return certEnv, reason, err
 		}
 	case v1alpha1.BackupStorageTypeAzblob:
-		useAAD := true
 		azblobSecretName := provider.Azblob.SecretName
+		var secret *corev1.Secret
 		if azblobSecretName != "" {
-			secret, err := secretLister.Secrets(ns).Get(azblobSecretName)
+			secret, err = secretLister.Secrets(ns).Get(azblobSecretName)
 			if err != nil {
 				err := fmt.Errorf("get azblob secret %s/%s failed, err: %v", ns, azblobSecretName, err)
 				return certEnv, "GetAzblobSecretFailed", err
 			}
-
-			keyStrAAD, exist := CheckAllKeysExistInSecret(secret, constants.AzblobAccountName, constants.AzblobClientID, constants.AzblobClientScrt, constants.AzblobTenantID)
-			if !exist {
-				keyStrShared, exist := CheckAllKeysExistInSecret(secret, constants.AzblobAccountName, constants.AzblobAccountKey)
-				if !exist {
-					err := fmt.Errorf("the azblob secret %s/%s missing some keys for AAD %s or shared %s", ns, azblobSecretName, keyStrAAD, keyStrShared)
-					return certEnv, "azblobKeyNotExist", err
-				}
-				useAAD = false
-			}
 		}
-
-		certEnv, reason, err = generateAzblobCertEnvVar(provider.Azblob, useAAD)
+		if provider.Azblob.StorageAccount == "" { // try to get storageAccount from secret
+			account := string(secret.Data[constants.AzblobAccountName])
+			if account == "" {
+				err := fmt.Errorf("secret %s/%s missing some keys, storage account unspecified: %v", ns, azblobSecretName, secret.Data)
+				return certEnv, "azblobAccountNotExist", err
+			}
+			provider.Azblob.StorageAccount = account
+		}
+		useSasToken := provider.Azblob.SasToken != ""
+		certEnv, reason, err = generateAzblobCertEnvVar(provider.Azblob, secret, useSasToken)
 
 		if err != nil {
 			return certEnv, reason, err
@@ -468,7 +465,7 @@ func validateAccessConfig(config *v1alpha1.TiDBAccessConfig) string {
 }
 
 // ValidateBackup validates backup sepc
-func ValidateBackup(backup *v1alpha1.Backup, tikvImage string, acrossK8s bool) error {
+func ValidateBackup(backup *v1alpha1.Backup, tikvImage string, tc *v1alpha1.TidbCluster) error {
 	ns := backup.Namespace
 	name := backup.Name
 
@@ -542,8 +539,12 @@ func ValidateBackup(backup *v1alpha1.Backup, tikvImage string, acrossK8s bool) e
 		// validate volume snapshot backup
 		if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
 			// only support across k8s now. TODO compatible for single k8s
-			if !acrossK8s {
+			if tc == nil || !tc.AcrossK8s() {
 				return errors.New("only support volume snapshot backup across k8s clusters")
+			}
+
+			if len(tc.Status.TiKV.Stores) == 0 || tc.Spec.TiKV.Replicas == 0 {
+				return errors.New("not support backup TiDB cluster with no tikv replica")
 			}
 		}
 
@@ -594,6 +595,18 @@ func ValidateRestore(restore *v1alpha1.Restore, tikvImage string, acrossK8s bool
 
 		if (restore.Spec.Type == v1alpha1.BackupTypeDB || restore.Spec.Type == v1alpha1.BackupTypeTable) && restore.Spec.BR.DB == "" {
 			return fmt.Errorf("DB should be configured for BR with restore type %s in spec of %s/%s", restore.Spec.Type, ns, name)
+		}
+
+		if restore.Spec.Mode == v1alpha1.RestoreModePiTR {
+			_, err := GetStoragePath(restore.Spec.PitrFullBackupStorageProvider)
+			// err is nil when there is a valid storage provider
+			if err == nil && restore.Spec.LogRestoreStartTs != "" {
+				return fmt.Errorf("pitrFullBackupStorageProvider and logRestoreStartTs option can not co-exists in pitr mode")
+			}
+
+			if err != nil && restore.Spec.LogRestoreStartTs == "" {
+				return fmt.Errorf("either pitrFullBackupStorageProvider or logRestoreStartTs option needs to be passed in pitr mode")
+			}
 		}
 
 		if restore.Spec.Type == v1alpha1.BackupTypeTable && restore.Spec.BR.Table == "" {

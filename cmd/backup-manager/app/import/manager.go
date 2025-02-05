@@ -27,6 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/klog/v2"
 )
 
@@ -85,6 +86,13 @@ func (rm *RestoreManager) ProcessRestore() error {
 		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
+	}
+
+	crData, err := json.Marshal(restore)
+	if err != nil {
+		klog.Errorf("failed to marshal restore %v to json, err: %s", restore, err)
+	} else {
+		klog.Infof("start to process restore: %s", string(crData))
 	}
 
 	rm.setOptions(restore)

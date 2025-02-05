@@ -161,6 +161,14 @@ const (
 	StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery = "PreferPDAddressesOverDiscovery"
 )
 
+type TiProxyCertLayout string
+
+const (
+	TiProxyCertLayoutLegacy TiProxyCertLayout = ""
+	// TiProxyCertLayoutV1 is a refined version of legacy layout. It's more intuitive and more flexible.
+	TiProxyCertLayoutV1 TiProxyCertLayout = "v1"
+)
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -294,6 +302,11 @@ type TidbClusterSpec struct {
 	// Optional: Defaults to false
 	// +optional
 	EnablePVReclaim *bool `json:"enablePVReclaim,omitempty"`
+
+	// Whether enable PVC replace to recreate the PVC with different specs
+	// Optional: Defaults to false
+	// +optional
+	EnablePVCReplace *bool `json:"enablePVCReplace,omitempty"`
 
 	// Whether enable the TLS connection between TiDB server components
 	// Optional: Defaults to nil
@@ -567,19 +580,32 @@ type PDSpec struct {
 	// +kubebuilder:default=30
 	StartTimeout int `json:"startTimeout,omitempty"`
 
+	// Wait time before pd get started. This wait time is to allow the new DNS record to propagate,
+	// ensuring that the PD DNS resolves to the same IP address as the pod.
+	// +kubebuilder:default=0
+	InitWaitTime int `json:"initWaitTime,omitempty"`
+
 	// Mode is the mode of PD cluster
 	// +optional
 	// +kubebuilder:validation:Enum:="";"ms"
 	Mode string `json:"mode,omitempty"`
+
+	// The default number of spare replicas to scale up when using VolumeReplace feature.
+	// In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid
+	// zone skew after volume replace (total replicas always whole multiples of zones).
+	// Optional: Defaults to 1
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	SpareVolReplaceReplicas *int32 `json:"spareVolReplaceReplicas,omitempty"`
 }
 
 // +k8s:openapi-gen=true
-// PDMSSpec contains details of PD Micro Service
+// PDMSSpec contains details of PD microservice
 type PDMSSpec struct {
 	ComponentSpec               `json:",inline"`
 	corev1.ResourceRequirements `json:",inline"`
 
-	// Name of the PD Micro Service
+	// Name of the PD microservice
 	// +kubebuilder:validation:Enum:="tso";"scheduling"
 	Name string `json:"name"`
 
@@ -595,7 +621,7 @@ type PDMSSpec struct {
 	// +optional
 	BaseImage *string `json:"baseImage"`
 
-	// Service defines a Kubernetes service of PD Micro Service cluster.
+	// Service defines a Kubernetes service of PD microservice cluster.
 	// Optional: Defaults to `.spec.services` in favor of backward compatibility
 	// +optional
 	Service *ServiceSpec `json:"service,omitempty"`
@@ -606,7 +632,7 @@ type PDMSSpec struct {
 	// +optional
 	MaxFailoverCount *int32 `json:"maxFailoverCount,omitempty"`
 
-	// Config is the Configuration of pd Micro Service servers
+	// Config is the configuration of PD microservice servers
 	// +optional
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:validation:XPreserveUnknownFields
@@ -626,12 +652,12 @@ type PDMSSpec struct {
 	// +kubebuilder:validation:Enum:="";"v1"
 	StartUpScriptVersion string `json:"startUpScriptVersion,omitempty"`
 
-	// The storageClassName of the persistent volume for PD Micro Service log storage.
+	// The storageClassName of the persistent volume for PD microservice log storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
-	// StorageVolumes configure additional storage for PD Micro Service pods.
+	// StorageVolumes configure additional storage for PD microservice pods.
 	// +optional
 	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
 
@@ -753,6 +779,14 @@ type TiKVSpec struct {
 	// ScalePolicy is the scale configuration for TiKV
 	// +optional
 	ScalePolicy ScalePolicy `json:"scalePolicy,omitempty"`
+
+	// The default number of spare replicas to scale up when using VolumeReplace feature.
+	// In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid
+	// zone skew after volume replace (total replicas always whole multiples of zones).
+	// Optional: Defaults to 1
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	SpareVolReplaceReplicas *int32 `json:"spareVolReplaceReplicas,omitempty"`
 }
 
 // TiFlashSpec contains details of TiFlash members
@@ -905,6 +939,11 @@ type TiProxySpec struct {
 	// used by TiProxy to check health status.
 	// +optional
 	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
+
+	// TiProxyCertLayout is the certificate layout of TiProxy that determines how tidb-operator mount cert secrets
+	// and how configure TLS configurations for tiproxy.
+	// +optional
+	CertLayout TiProxyCertLayout `json:"certLayout,omitempty"`
 
 	// Base image of the component, image tag is now allowed during validation
 	// +kubebuilder:default=pingcap/tiproxy
@@ -1059,6 +1098,10 @@ type TiDBSpec struct {
 	// The probe binary in the image should be placed under the root directory, i.e., `/your-probe`.
 	// +optional
 	CustomizedStartupProbe *CustomizedProbe `json:"customizedStartupProbe,omitempty"`
+
+	// Arguments is the extra command line arguments for TiDB server.
+	// +optional
+	Arguments []string `json:"arguments,omitempty"`
 }
 
 type CustomizedProbe struct {
@@ -1394,6 +1437,19 @@ type ServiceSpec struct {
 	// Optional: Defaults to omitted
 	// +optional
 	LoadBalancerSourceRanges []string `json:"loadBalancerSourceRanges,omitempty"`
+
+	// loadBalancerClass is the class of the load balancer implementation this Service belongs to.
+	// If specified, the value of this field must be a label-style identifier, with an optional prefix,
+	// e.g. "internal-vip" or "example.com/internal-vip". Unprefixed names are reserved for end-users.
+	// This field can only be set when the Service type is 'LoadBalancer'. If not set, the default load
+	// balancer implementation is used, today this is typically done through the cloud provider integration,
+	// but should apply for any default implementation. If set, it is assumed that a load balancer
+	// implementation is watching for Services with a matching class. Any default load balancer
+	// implementation (e.g. cloud providers) should ignore Services that set this field.
+	// This field can only be set when creating or updating a Service to type 'LoadBalancer'.
+	// Once set, it can not be changed. This field will be wiped when a service is updated to a non 'LoadBalancer' type.
+	// +optional
+	LoadBalancerClass *string `json:"loadBalancerClass,omitempty" protobuf:"bytes,21,opt,name=loadBalancerClass"`
 }
 
 // TiDBServiceSpec defines `.tidb.service` field of `TidbCluster.spec`.
@@ -1466,7 +1522,7 @@ type PDStatus struct {
 	VolReplaceInProgress bool `json:"volReplaceInProgress,omitempty"`
 }
 
-// PDMSStatus is PD Micro Service Status
+// PDMSStatus is PD microservice status
 type PDMSStatus struct {
 	Name string `json:"name,omitempty"`
 	// +optional
@@ -1669,6 +1725,8 @@ type TiFlashStatus struct {
 	// +optional
 	// +nullable
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	// Indicates that a Volume replace using VolumeReplacing feature is in progress.
+	VolReplaceInProgress bool `json:"volReplaceInProgress,omitempty"`
 }
 
 // TiProxyMember is TiProxy member
@@ -1982,6 +2040,12 @@ type AzblobStorageProvider struct {
 	// SecretName is the name of secret which stores the
 	// azblob service account credentials.
 	SecretName string `json:"secretName,omitempty"`
+	// StorageAccount is the storage account of the azure blob storage
+	// If this field is set, then use this to set backup-manager env
+	// Otherwise retrieve the storage account from secret
+	StorageAccount string `json:"storageAccount,omitempty"`
+	// SasToken is the sas token of the storage account
+	SasToken string `json:"sasToken,omitempty"`
 	// Prefix of the data path.
 	Prefix string `json:"prefix,omitempty"`
 }
@@ -2094,6 +2158,8 @@ type Progress struct {
 
 // BackupSpec contains the backup specification for a tidb cluster.
 // +k8s:openapi-gen=true
+// +kubebuilder:validation:XValidation:rule="has(self.logSubcommand) ? !has(self.logStop) : true",message="Field `logStop` is the old version field, please use `logSubcommand` instead"
+// +kubebuilder:validation:XValidation:rule="has(self.logStop) ? !has(self.logSubcommand) : true",message="Field `logStop` is the old version field, please use `logSubcommand` instead"
 type BackupSpec struct {
 	corev1.ResourceRequirements `json:"resources,omitempty"`
 	// List of environment variables to set in the container, like v1.Container.Env.
@@ -2127,6 +2193,8 @@ type BackupSpec struct {
 	// When a GC happens, the current time minus this value is the safe point.
 	TikvGCLifeTime *string `json:"tikvGCLifeTime,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
+	// *** Note: This field should generally not be left empty, unless you are certain the storage provider
+	// *** can be obtained from another source, such as a schedule CR.
 	StorageProvider `json:",inline"`
 	// The storageClassName of the persistent volume for Backup data storage.
 	// Defaults to Kubernetes default storage class.
@@ -2135,12 +2203,18 @@ type BackupSpec struct {
 	// StorageSize is the request storage size for backup job
 	StorageSize string `json:"storageSize,omitempty"`
 	// BRConfig is the configs for BR
+	// *** Note: This field should generally not be left empty, unless you are certain the BR config
+	// *** can be obtained from another source, such as a schedule CR.
 	BR *BRConfig `json:"br,omitempty"`
 	// CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
 	// Default is current timestamp.
 	// +optional
 	CommitTs string `json:"commitTs,omitempty"`
+	// Subcommand is the subcommand for BR, such as start, stop, pause etc.
+	// +optional
+	// +kubebuilder:validation:Enum:="log-start";"log-stop";"log-pause"
+	LogSubcommand LogSubCommandType `json:"logSubcommand,omitempty"`
 	// LogTruncateUntil is log backup truncate until timestamp.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
 	// +optional
@@ -2181,6 +2255,8 @@ type BackupSpec struct {
 	// Specify service account of backup
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 	// CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained
+	// +kubebuilder:validation:Enum:=Retain;OnFailure;Delete
+	// +kubebuilder:default=Retain
 	CleanPolicy CleanPolicyType `json:"cleanPolicy,omitempty"`
 	// CleanOption controls the behavior of clean.
 	CleanOption *CleanOption `json:"cleanOption,omitempty"`
@@ -2312,6 +2388,9 @@ const (
 	BackupComplete BackupConditionType = "Complete"
 	// BackupClean means the clean job has been created to clean backup data
 	BackupClean BackupConditionType = "Clean"
+	// BackupRepeatable should ONLY be used in log backup
+	// It means some log backup sub-command completed and the log backup can be re-run
+	BackupRepeatable BackupConditionType = "Repeatable"
 	// BackupFailed means the backup has failed.
 	BackupFailed BackupConditionType = "Failed"
 	// BackupRetryTheFailed means this failure can be retried
@@ -2322,6 +2401,8 @@ const (
 	BackupInvalid BackupConditionType = "Invalid"
 	// BackupPrepare means the backup prepare backup process
 	BackupPrepare BackupConditionType = "Prepare"
+	// BackupPaused means the backup was paused
+	BackupPaused BackupConditionType = "Paused"
 	// BackupStopped means the backup was stopped, just log backup has this condition
 	BackupStopped BackupConditionType = "Stopped"
 	// BackupRestart means the backup was restarted, now just support snapshot backup
@@ -2361,6 +2442,12 @@ const (
 	LogTruncateCommand LogSubCommandType = "log-truncate"
 	// LogStopCommand is the stop command of log backup.
 	LogStopCommand LogSubCommandType = "log-stop"
+	// LogPauseCommand is the pause command of log backup.
+	LogPauseCommand LogSubCommandType = "log-pause"
+	// LogResumeCommand is the resume command of log backup.
+	LogResumeCommand LogSubCommandType = "log-resume"
+	// LogUnknownCommand is the unknown command of log backup.
+	LogUnknownCommand LogSubCommandType = "log-unknown"
 )
 
 // LogSubCommandStatus is the log backup subcommand's status.
@@ -2474,11 +2561,16 @@ type BackupScheduleSpec struct {
 	MaxBackups *int32 `json:"maxBackups,omitempty"`
 	// MaxReservedTime is to specify how long backups we want to keep.
 	MaxReservedTime *string `json:"maxReservedTime,omitempty"`
+	// CompactSpan is to specify how long backups we want to compact.
+	CompactSpan *string `json:"compactSpan,omitempty"`
 	// BackupTemplate is the specification of the backup structure to get scheduled.
 	BackupTemplate BackupSpec `json:"backupTemplate"`
 	// LogBackupTemplate is the specification of the log backup structure to get scheduled.
 	// +optional
 	LogBackupTemplate *BackupSpec `json:"logBackupTemplate"`
+	// CompactBackupTemplate is the specification of the compact backup structure to get scheduled.
+	// +optional
+	CompactBackupTemplate *CompactSpec `json:"compactBackupTemplate"`
 	// The storageClassName of the persistent volume for Backup data storage if not storage class name set in BackupSpec.
 	// Defaults to Kubernetes default storage class.
 	// +optional
@@ -2488,16 +2580,30 @@ type BackupScheduleSpec struct {
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	// BRConfig is the configs for BR
+	// +optional
+	BR *BRConfig `json:"br,omitempty"`
+	// StorageProvider configures where and how backups should be stored.
+	// +optional
+	StorageProvider `json:",inline"`
 }
 
 // BackupScheduleStatus represents the current state of a BackupSchedule.
 type BackupScheduleStatus struct {
 	// LastBackup represents the last backup.
 	LastBackup string `json:"lastBackup,omitempty"`
+	// LastCompact represents the last compact
+	LastCompact string `json:"lastCompact,omitempty"`
 	// logBackup represents the name of log backup.
 	LogBackup *string `json:"logBackup,omitempty"`
+	// LogBackupStartTs represents the start time of log backup
+	LogBackupStartTs *metav1.Time `json:"logBackupStartTs,omitempty"`
 	// LastBackupTime represents the last time the backup was successfully created.
 	LastBackupTime *metav1.Time `json:"lastBackupTime,omitempty"`
+	// LastCompactTs represents the endTs of the last compact
+	LastCompactTs *metav1.Time `json:"lastCompactTs,omitempty"`
+	// NextCompactEndTs represents the scheduled endTs of next compact
+	NextCompactEndTs *metav1.Time `json:"nextCompactEndTs,omitempty"`
 	// AllBackupCleanTime represents the time when all backup entries are cleaned up
 	AllBackupCleanTime *metav1.Time `json:"allBackupCleanTime,omitempty"`
 }
@@ -2561,6 +2667,8 @@ const (
 	// RestoreVolumeComplete means the Restore has successfully executed part-1 and the
 	// backup volumes have been rebuilded from the corresponding snapshot
 	RestoreVolumeComplete RestoreConditionType = "VolumeComplete"
+	// CleanVolumeComplete means volumes are cleaned successfully if restore volume failed
+	CleanVolumeComplete RestoreConditionType = "CleanVolumeComplete"
 	// RestoreWarmUpStarted means the Restore has successfully started warm up pods to
 	// initialize volumes restored from snapshots
 	RestoreWarmUpStarted RestoreConditionType = "WarmUpStarted"
@@ -2625,7 +2733,8 @@ type RestoreSpec struct {
 	Mode RestoreMode `json:"restoreMode,omitempty"`
 	// PitrRestoredTs is the pitr restored ts.
 	PitrRestoredTs string `json:"pitrRestoredTs,omitempty"`
-	// LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.
+	// LogRestoreStartTs is the start timestamp which log restore from.
+	// +optional
 	LogRestoreStartTs string `json:"logRestoreStartTs,omitempty"`
 	// FederalVolumeRestorePhase indicates which phase to execute in federal volume restore
 	// +optional
@@ -2641,6 +2750,7 @@ type RestoreSpec struct {
 	// StorageProvider configures where and how backups should be stored.
 	StorageProvider `json:",inline"`
 	// PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.
+	// +optional
 	PitrFullBackupStorageProvider StorageProvider `json:"pitrFullBackupStorageProvider,omitempty"`
 	// The storageClassName of the persistent volume for Restore data storage.
 	// Defaults to Kubernetes default storage class.
@@ -3280,11 +3390,69 @@ type TopologySpreadConstraint struct {
 	// and identical values are considered to be in the same topology.
 	// We consider each <key, value> as a "bucket", and try to put balanced number
 	// of pods into each bucket.
-	// MaxSkew is default set to 1
 	// WhenUnsatisfiable is default set to DoNotSchedule
 	// LabelSelector is generated by component type
 	// See pkg/apis/pingcap/v1alpha1/tidbcluster_component.go#TopologySpreadConstraints()
 	TopologyKey string `json:"topologyKey"`
+
+	// MaxSkew describes the degree to which pods may be unevenly distributed.
+	// When `whenUnsatisfiable=DoNotSchedule`, it is the maximum permitted difference
+	// between the number of matching pods in the target topology and the global minimum.
+	// The global minimum is the minimum number of matching pods in an eligible domain
+	// or zero if the number of eligible domains is less than MinDomains.
+	// For example, in a 3-zone cluster, MaxSkew is set to 1, and pods with the same
+	// labelSelector spread as 2/2/1:
+	// In this case, the global minimum is 1.
+	// +-------+-------+-------+
+	// | zone1 | zone2 | zone3 |
+	// +-------+-------+-------+
+	// |  P P  |  P P  |   P   |
+	// +-------+-------+-------+
+	// - if MaxSkew is 1, incoming pod can only be scheduled to zone3 to become 2/2/2;
+	// scheduling it onto zone1(zone2) would make the ActualSkew(3-1) on zone1(zone2)
+	// violate MaxSkew(1).
+	// - if MaxSkew is 2, incoming pod can be scheduled onto any zone.
+	// When `whenUnsatisfiable=ScheduleAnyway`, it is used to give higher precedence
+	// to topologies that satisfy it.
+	// Default value is 1.
+	// +kubebuilder:default=1
+	// +optional
+	MaxSkew int32 `json:"maxSkew" protobuf:"varint,1,opt,name=maxSkew"`
+
+	// MinDomains indicates a minimum number of eligible domains.
+	// When the number of eligible domains with matching topology keys is less than minDomains,
+	// Pod Topology Spread treats "global minimum" as 0, and then the calculation of Skew is performed.
+	// And when the number of eligible domains with matching topology keys equals or greater than minDomains,
+	// this value has no effect on scheduling.
+	// As a result, when the number of eligible domains is less than minDomains,
+	// scheduler won't schedule more than maxSkew Pods to those domains.
+	// If value is nil, the constraint behaves as if MinDomains is equal to 1.
+	// Valid values are integers greater than 0.
+	// When value is not nil, WhenUnsatisfiable must be DoNotSchedule.
+	//
+	// For example, in a 3-zone cluster, MaxSkew is set to 2, MinDomains is set to 5 and pods with the same
+	// labelSelector spread as 2/2/2:
+	// +-------+-------+-------+
+	// | zone1 | zone2 | zone3 |
+	// +-------+-------+-------+
+	// |  P P  |  P P  |  P P  |
+	// +-------+-------+-------+
+	// The number of domains is less than 5(MinDomains), so "global minimum" is treated as 0.
+	// In this situation, new pod with the same labelSelector cannot be scheduled,
+	// because computed skew will be 3(3 - 0) if new Pod is scheduled to any of the three zones,
+	// it will violate MaxSkew.
+	// +optional
+	MinDomains *int32 `json:"minDomains,omitempty" protobuf:"varint,5,opt,name=minDomains"`
+
+	// NodeAffinityPolicy indicates how we will treat Pod's nodeAffinity/nodeSelector
+	// when calculating pod topology spread skew. Options are:
+	// - Honor: only nodes matching nodeAffinity/nodeSelector are included in the calculations.
+	// - Ignore: nodeAffinity/nodeSelector are ignored. All nodes are included in the calculations.
+	//
+	// If this value is nil, the behavior is equivalent to the Honor policy.
+	// +optional
+	NodeAffinityPolicy *corev1.NodeInclusionPolicy `json:"nodeAffinityPolicy,omitempty" protobuf:"bytes,6,opt,name=nodeAffinityPolicy"`
+
 	// MatchLabels is used to overwrite generated corev1.TopologySpreadConstraints.LabelSelector
 	// corev1.TopologySpreadConstraint generated in component_spec.go will set a
 	// LabelSelector automatically with some KV.
@@ -3313,4 +3481,134 @@ type ScalePolicy struct {
 	// +kubebuilder:default=1
 	// +optional
 	ScaleOutParallelism *int32 `json:"scaleOutParallelism,omitempty"`
+}
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
+// +kubebuilder:resource:shortName="cpbk"
+// +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.state`,description="The current status of the compact backup"
+// +kubebuilder:printcolumn:name="Progress",type=string,JSONPath=`.status.progress`,description="The progress of the compact backup"
+// +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.message`,description="The message of the compact backup"
+type CompactBackup struct {
+	metav1.TypeMeta `json:",inline"`
+	// +k8s:openapi-gen=false
+	metav1.ObjectMeta `json:"metadata"`
+
+	Spec CompactSpec `json:"spec"`
+	// +k8s:openapi-gen=false
+	Status CompactStatus `json:"status,omitempty"`
+}
+
+// CompactSpec contains the backup specification for a tidb cluster.
+// +k8s:openapi-gen=true
+type CompactSpec struct {
+	corev1.ResourceRequirements `json:"resources,omitempty"`
+	// List of environment variables to set in the container, like v1.Container.Env.
+	// Note that the following builtin env vars will be overwritten by values set here
+	// - S3_PROVIDER
+	// - S3_ENDPOINT
+	// - AWS_REGION
+	// - AWS_ACL
+	// - AWS_STORAGE_CLASS
+	// - AWS_DEFAULT_REGION
+	// - AWS_ACCESS_KEY_ID
+	// - AWS_SECRET_ACCESS_KEY
+	// - GCS_PROJECT_ID
+	// - GCS_OBJECT_ACL
+	// - GCS_BUCKET_ACL
+	// - GCS_LOCATION
+	// - GCS_STORAGE_CLASS
+	// - GCS_SERVICE_ACCOUNT_JSON_KEY
+	// - BR_LOG_TO_TERM
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
+	// StorageProvider configures where and how backups should be stored.
+	// *** Note: This field should generally not be left empty, unless you are certain the storage provider
+	// *** can be obtained from another source, such as a schedule CR.
+	StorageProvider `json:",inline"`
+	// StartTs is the start ts of the compact backup.
+	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
+	StartTs string `json:"startTs,omitempty"`
+	// EndTs is the end ts of the compact backup.
+	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
+	// Default is current timestamp.
+	// +optional
+	EndTs string `json:"endTs,omitempty"`
+	// Concurrency is the concurrency of compact backup job
+	// +kubebuilder:default=4
+	Concurrency int `json:"concurrency,omitempty"`
+	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
+	// +optional
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+	// BrImage specifies the br image used in compact `Backup`.
+	// For examples `spec.brImage: pingcap/br:v4.0.8`
+	// For BR image, if it does not contain tag, Pod will use image 'BrImage:${TiKV_Version}'.
+	// +optional
+	ToolImage string `json:"toolImage,omitempty"`
+	// BRConfig is the configs for BR
+	// *** Note: This field should generally not be left empty, unless you are certain the BR config
+	// *** can be obtained from another source, such as a schedule CR.
+	BR *BRConfig `json:"br,omitempty"`
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
+	// +optional
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	// Affinity of backup Pods
+	// +optional
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+	// Use KMS to decrypt the secrets
+	UseKMS bool `json:"useKMS,omitempty"`
+	// Specify service account of backup
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
+	// PodSecurityContext of the component
+	// +optional
+	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+
+	// PriorityClassName of Backup Job Pods
+	PriorityClassName string `json:"priorityClassName,omitempty"`
+
+	// BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup
+	// +kubebuilder:default=6
+	MaxRetryTimes int32 `json:"maxRetryTimes,omitempty"`
+
+	// Additional volumes of component pod.
+	// +optional
+	AdditionalVolumes []corev1.Volume `json:"additionalVolumes,omitempty"`
+	// Additional volume mounts of component pod.
+	// +optional
+	AdditionalVolumeMounts []corev1.VolumeMount `json:"additionalVolumeMounts,omitempty"`
+}
+
+// CompactRetryRecord is the record of compact backoff retry
+type CompactRetryRecord struct {
+	// RetryNum is the number of retry
+	RetryNum int `json:"retryNum,omitempty"`
+	// DetectFailedAt is the time when detect failure
+	DetectFailedAt metav1.Time `json:"detectFailedAt,omitempty"`
+	// Reason is the reason of retry
+	RetryReason string `json:"retryReason,omitempty"`
+}
+
+type CompactStatus struct {
+	// State is the current state of the backup
+	State string `json:"state,omitempty"`
+	// Progress is the progress of the backup
+	Progress string `json:"progress,omitempty"`
+	// Message is the error message of the backup
+	Message string `json:"message,omitempty"`
+	// RetryStatus is status of the backoff retry, it will be used when backup pod or job exited unexpectedly
+	RetryStatus []CompactRetryRecord `json:"backoffRetryStatus,omitempty"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// +k8s:openapi-gen=true
+// CompactList contains a list of Compact Backup.
+type CompactBackupList struct {
+	metav1.TypeMeta `json:",inline"`
+	// +k8s:openapi-gen=false
+	metav1.ListMeta `json:"metadata"`
+
+	Items []CompactBackup `json:"items"`
 }

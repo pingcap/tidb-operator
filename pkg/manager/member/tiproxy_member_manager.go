@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/pingcap/tidb-operator/pkg/util/cmpver"
 
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -40,10 +41,19 @@ import (
 	"k8s.io/utils/pointer"
 )
 
-const tiproxyVolumeMountPath = "/var/lib/tiproxy"
-const tiproxySQLPath = "/var/lib/tiproxy-sql-tls"
-const tiproxyServerPath = "/var/lib/tiproxy-server-tls"
-const tiproxyHTTPServerPath = "/var/lib/tiproxy-http-server-tls"
+const (
+	tiproxyVolumeMountPath = "/var/lib/tiproxy"
+
+	// [security.sql-tls]
+	tiproxySQLPath = "/var/lib/tiproxy-sql-tls"
+	// [security.server-tls]
+	tiproxyServerPath = "/var/lib/tiproxy-server-tls"
+	// [security.server-http-tls]
+	tiproxyHTTPServerPath = "/var/lib/tiproxy-http-server-tls"
+	// [security.cluster-tls]
+	tiproxyClusterCertPath        = "/var/lib/tiproxy-tls"
+	tiProxyClusterCertVolumeMount = "tiproxy-tls"
+)
 
 func labelTiProxy(tc *v1alpha1.TidbCluster) label.Label {
 	instanceName := tc.GetInstanceName()
@@ -127,44 +137,10 @@ func (m *tiproxyMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps
 		cfgWrapper.Set("proxy.require-backend-tls", false)
 	}
 
-	tlsCluster := tc.IsTLSClusterEnabled()
-	tlsTiDB := tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled()
-	if tlsCluster {
-		cfgWrapper.Set("security.cluster-tls.ca", path.Join(util.ClusterClientTLSPath, "ca.crt"))
-		cfgWrapper.Set("security.cluster-tls.key", path.Join(util.ClusterClientTLSPath, "tls.key"))
-		cfgWrapper.Set("security.cluster-tls.cert", path.Join(util.ClusterClientTLSPath, "tls.crt"))
-	}
-	if tlsTiDB {
-		cfgWrapper.Set("security.server-tls.ca", path.Join(tiproxyServerPath, "ca.crt"))
-		cfgWrapper.Set("security.server-tls.key", path.Join(tiproxyServerPath, "tls.key"))
-		cfgWrapper.Set("security.server-tls.cert", path.Join(tiproxyServerPath, "tls.crt"))
-		if cfgWrapper.Get("security.server-tls.skip-ca") == nil {
-			cfgWrapper.Set("security.server-tls.skip-ca", true)
-		}
-
-		if tc.Spec.TiProxy.SSLEnableTiDB || !tc.SkipTLSWhenConnectTiDB() {
-			if cfgWrapper.Get("security.sql-tls.skip-ca") == nil && tc.Spec.TiDB.TLSClient.SkipInternalClientCA {
-				cfgWrapper.Set("security.sql-tls.skip-ca", true)
-			} else {
-				cfgWrapper.Set("security.sql-tls.ca", path.Join(tiproxySQLPath, "ca.crt"))
-			}
-			if !tc.Spec.TiDB.TLSClient.DisableClientAuthn {
-				cfgWrapper.Set("security.sql-tls.key", path.Join(tiproxySQLPath, "tls.key"))
-				cfgWrapper.Set("security.sql-tls.cert", path.Join(tiproxySQLPath, "tls.crt"))
-			}
-		}
-	}
-	// TODO: this should only be set on `tlsCluster`. `tlsTiDB` check is for backward compatibility.
-	// and it should be removed in the future.
-	if tlsCluster || tlsTiDB {
-		p := tiproxyServerPath
-		if !tlsTiDB {
-			p = tiproxyHTTPServerPath
-		}
-		cfgWrapper.Set("security.server-http-tls.ca", path.Join(p, "ca.crt"))
-		cfgWrapper.Set("security.server-http-tls.key", path.Join(p, "tls.key"))
-		cfgWrapper.Set("security.server-http-tls.cert", path.Join(p, "tls.crt"))
-		cfgWrapper.Set("security.server-http-tls.skip-ca", true)
+	if tc.Spec.TiProxy.CertLayout == v1alpha1.TiProxyCertLayoutV1 {
+		m.modifyConfigMapForTLSV1(tc, cfgWrapper)
+	} else {
+		m.modifyConfigMapForTLSLegacy(tc, cfgWrapper)
 	}
 
 	cfgBytes, err := cfgWrapper.MarshalTOML()
@@ -252,6 +228,11 @@ func (m *tiproxyMemberManager) syncStatefulSet(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
+	// If setting labels fails, log and continue.
+	if _, err := m.setLabelsForTiProxy(tc); err != nil {
+		klog.Errorf("set labels for TiProxy sts %s/%s failed, error: %v", ns, tcName, err)
+	}
+
 	// Scaling takes precedence over upgrading because:
 	// - if a pod fails in the upgrading, users may want to delete it or add
 	//   new replicas
@@ -301,7 +282,7 @@ func (m *tiproxyMemberManager) syncStatus(tc *v1alpha1.TidbCluster, sts *apps.St
 		}
 		healthInfo, err := m.deps.ProxyControl.IsHealth(tc, id)
 		if err != nil {
-			klog.V(4).Infof("tiproxy[%d] is not health: %+v", id, err)
+			klog.Infof("tiproxy[%d] is not health: %+v", id, err)
 			memberStatus.Health = false
 		} else {
 			memberStatus.Health = true
@@ -437,62 +418,17 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 		annMount,
 	}
 
-	tlsCluster := tc.IsTLSClusterEnabled()
-	tlsTiDB := tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled()
-	if tlsCluster {
-		volMounts = append(volMounts, corev1.VolumeMount{
-			Name:      util.ClusterClientVolName,
-			ReadOnly:  true,
-			MountPath: util.ClusterClientTLSPath,
-		})
-
-		vols = append(vols, corev1.Volume{
-			Name: util.ClusterClientVolName, VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.ClusterClientTLSSecretName(tc.Name),
-				},
-			},
-		})
+	var (
+		tlsVols      []corev1.Volume
+		tlsVolMounts []corev1.VolumeMount
+	)
+	if tc.Spec.TiProxy.CertLayout == v1alpha1.TiProxyCertLayoutV1 {
+		tlsVols, tlsVolMounts = m.buildVolumesAndVolumeMountsForTLSV1(tc)
+	} else {
+		tlsVols, tlsVolMounts = m.buildVolumesAndVolumeMountsForTLSLegacy(tc)
 	}
-	if tlsTiDB {
-		volMounts = append(volMounts, corev1.VolumeMount{
-			Name: "tidb-server-tls", ReadOnly: true, MountPath: tiproxyServerPath,
-		})
-
-		vols = append(vols, corev1.Volume{
-			Name: "tidb-server-tls", VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.TiDBServerTLSSecretName(tc.Name),
-				},
-			},
-		})
-
-		if tc.Spec.TiProxy.SSLEnableTiDB || !tc.SkipTLSWhenConnectTiDB() {
-			volMounts = append(volMounts, corev1.VolumeMount{
-				Name: "tidb-client-tls", ReadOnly: true, MountPath: tiproxySQLPath,
-			})
-			vols = append(vols, corev1.Volume{
-				Name: "tidb-client-tls", VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: util.TiDBClientTLSSecretName(tc.Name, tc.Spec.TiProxy.TLSClientSecretName),
-					},
-				},
-			})
-		}
-	}
-	if tlsCluster && !tlsTiDB {
-		volMounts = append(volMounts, corev1.VolumeMount{
-			Name: "tiproxy-tls", ReadOnly: true, MountPath: tiproxyHTTPServerPath,
-		})
-
-		vols = append(vols, corev1.Volume{
-			Name: "tiproxy-tls", VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.ClusterTLSSecretName(tc.Name, label.TiProxyLabelVal),
-				},
-			},
-		})
-	}
+	vols = append(vols, tlsVols...)
+	volMounts = append(volMounts, tlsVolMounts...)
 
 	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
 	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.TiProxy.StorageVolumes, tc.Spec.TiProxy.StorageClassName, v1alpha1.TiProxyMemberType)
@@ -601,6 +537,208 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 	return tiproxySts, nil
 }
 
+func (m *tiproxyMemberManager) modifyConfigMapForTLSLegacy(tc *v1alpha1.TidbCluster, cfgWrapper *v1alpha1.TiProxyConfigWraper) {
+	tlsCluster := tc.IsTLSClusterEnabled()
+	tlsTiDB := tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled()
+	if tlsCluster {
+		cfgWrapper.Set("security.cluster-tls.ca", path.Join(util.ClusterClientTLSPath, "ca.crt"))
+		cfgWrapper.Set("security.cluster-tls.key", path.Join(util.ClusterClientTLSPath, "tls.key"))
+		cfgWrapper.Set("security.cluster-tls.cert", path.Join(util.ClusterClientTLSPath, "tls.crt"))
+	}
+	if tlsTiDB {
+		cfgWrapper.Set("security.server-tls.ca", path.Join(tiproxyServerPath, "ca.crt"))
+		cfgWrapper.Set("security.server-tls.key", path.Join(tiproxyServerPath, "tls.key"))
+		cfgWrapper.Set("security.server-tls.cert", path.Join(tiproxyServerPath, "tls.crt"))
+		if cfgWrapper.Get("security.server-tls.skip-ca") == nil {
+			cfgWrapper.Set("security.server-tls.skip-ca", true)
+		}
+
+		if tc.Spec.TiProxy.SSLEnableTiDB || !tc.SkipTLSWhenConnectTiDB() {
+			if cfgWrapper.Get("security.sql-tls.skip-ca") == nil && tc.Spec.TiDB.TLSClient.SkipInternalClientCA {
+				cfgWrapper.Set("security.sql-tls.skip-ca", true)
+			} else {
+				cfgWrapper.Set("security.sql-tls.ca", path.Join(tiproxySQLPath, "ca.crt"))
+			}
+			if !tc.Spec.TiDB.TLSClient.DisableClientAuthn {
+				cfgWrapper.Set("security.sql-tls.key", path.Join(tiproxySQLPath, "tls.key"))
+				cfgWrapper.Set("security.sql-tls.cert", path.Join(tiproxySQLPath, "tls.crt"))
+			}
+		}
+	}
+	// TODO: this should only be set on `tlsCluster`. `tlsTiDB` check is for backward compatibility.
+	// and it should be removed in the future.
+	if tlsCluster || tlsTiDB {
+		p := tiproxyServerPath
+		if !tlsTiDB {
+			p = tiproxyHTTPServerPath
+		}
+		cfgWrapper.Set("security.server-http-tls.ca", path.Join(p, "ca.crt"))
+		cfgWrapper.Set("security.server-http-tls.key", path.Join(p, "tls.key"))
+		cfgWrapper.Set("security.server-http-tls.cert", path.Join(p, "tls.crt"))
+		cfgWrapper.Set("security.server-http-tls.skip-ca", true)
+	}
+}
+
+func (m *tiproxyMemberManager) buildVolumesAndVolumeMountsForTLSLegacy(tc *v1alpha1.TidbCluster) ([]corev1.Volume, []corev1.VolumeMount) {
+	var (
+		vols      []corev1.Volume
+		volMounts []corev1.VolumeMount
+	)
+
+	tlsCluster := tc.IsTLSClusterEnabled()
+	tlsTiDB := tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled()
+	if tlsCluster {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name:      util.ClusterClientVolName,
+			ReadOnly:  true,
+			MountPath: util.ClusterClientTLSPath,
+		})
+
+		vols = append(vols, corev1.Volume{
+			Name: util.ClusterClientVolName, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.ClusterClientTLSSecretName(tc.Name),
+				},
+			},
+		})
+	}
+	if tlsTiDB {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tidb-server-tls", ReadOnly: true, MountPath: tiproxyServerPath,
+		})
+
+		vols = append(vols, corev1.Volume{
+			Name: "tidb-server-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.TiDBServerTLSSecretName(tc.Name),
+				},
+			},
+		})
+
+		if tc.Spec.TiProxy.SSLEnableTiDB || !tc.SkipTLSWhenConnectTiDB() {
+			volMounts = append(volMounts, corev1.VolumeMount{
+				Name: "tidb-client-tls", ReadOnly: true, MountPath: tiproxySQLPath,
+			})
+			vols = append(vols, corev1.Volume{
+				Name: "tidb-client-tls", VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: util.TiDBClientTLSSecretName(tc.Name, tc.Spec.TiProxy.TLSClientSecretName),
+					},
+				},
+			})
+		}
+	}
+	if tlsCluster && !tlsTiDB {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tiproxy-tls", ReadOnly: true, MountPath: tiproxyHTTPServerPath,
+		})
+
+		vols = append(vols, corev1.Volume{
+			Name: "tiproxy-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.ClusterTLSSecretName(tc.Name, label.TiProxyLabelVal),
+				},
+			},
+		})
+	}
+	return vols, volMounts
+}
+
+func (m *tiproxyMemberManager) buildVolumesAndVolumeMountsForTLSV1(tc *v1alpha1.TidbCluster) ([]corev1.Volume, []corev1.VolumeMount) {
+	var (
+		vols      []corev1.Volume
+		volMounts []corev1.VolumeMount
+	)
+
+	tlsCluster := tc.IsTLSClusterEnabled()
+	tlsTiDB := tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled()
+	if tlsCluster {
+		// This cert is not directly used by tiproxy itself, but mount it is useful for debug purpose.
+		// the common client mTLS cert
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name:      util.ClusterClientVolName,
+			ReadOnly:  true,
+			MountPath: util.ClusterClientTLSPath,
+		})
+		vols = append(vols, corev1.Volume{
+			Name: util.ClusterClientVolName, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.ClusterClientTLSSecretName(tc.Name),
+				},
+			},
+		})
+
+		// inter-components (cluster) mTLS cert for tiproxy
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name:      tiProxyClusterCertVolumeMount,
+			ReadOnly:  true,
+			MountPath: tiproxyClusterCertPath,
+		})
+		vols = append(vols, corev1.Volume{
+			Name: tiProxyClusterCertVolumeMount, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.ClusterTLSSecretName(tc.Name, label.TiProxyLabelVal),
+				},
+			},
+		})
+	}
+
+	// use the same server-side cert at SQL port (default 4000) for tiproxy and tidb
+	if tlsTiDB {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: "tidb-server-tls", ReadOnly: true, MountPath: tiproxyServerPath,
+		})
+
+		vols = append(vols, corev1.Volume{
+			Name: "tidb-server-tls", VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.TiDBServerTLSSecretName(tc.Name),
+				},
+			},
+		})
+	}
+
+	return vols, volMounts
+}
+
+func (m *tiproxyMemberManager) modifyConfigMapForTLSV1(tc *v1alpha1.TidbCluster, cfgWrapper *v1alpha1.TiProxyConfigWraper) {
+	tlsCluster := tc.IsTLSClusterEnabled()
+	tlsTiDB := tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled()
+	if tlsCluster {
+		cfgWrapper.Set("security.cluster-tls.ca", path.Join(tiproxyClusterCertPath, "ca.crt"))
+		cfgWrapper.Set("security.cluster-tls.key", path.Join(tiproxyClusterCertPath, "tls.key"))
+		cfgWrapper.Set("security.cluster-tls.cert", path.Join(tiproxyClusterCertPath, "tls.crt"))
+	}
+
+	if tlsTiDB {
+		cfgWrapper.Set("security.server-tls.key", path.Join(tiproxyServerPath, "tls.key"))
+		cfgWrapper.Set("security.server-tls.cert", path.Join(tiproxyServerPath, "tls.crt"))
+		if cfgWrapper.Get("security.server-tls.skip-ca") == nil {
+			cfgWrapper.Set("security.server-tls.skip-ca", true)
+		}
+
+		// Note: We don't present any client cert/key when tiproxy connect to tidb server. Instead, just mount the ca cert
+		// of tidb server-side cert to verify tidb server-side cert.
+		// Client cert/key is not required for enabling TLS between SQL client and server.
+		if tc.Spec.TiProxy.SSLEnableTiDB || !tc.SkipTLSWhenConnectTiDB() {
+			if cfgWrapper.Get("security.sql-tls.skip-ca") == nil && tc.Spec.TiDB.TLSClient.SkipInternalClientCA {
+				cfgWrapper.Set("security.sql-tls.skip-ca", true)
+			} else {
+				// the ca.crt in `tiproxyServerPath` is the CA cert of tidb server-side cert. So we use
+				// it to verify the tidb server-side cert presented by tidb-server when tiproxy connect to tidb-server.
+				cfgWrapper.Set("security.sql-tls.ca", path.Join(tiproxyServerPath, "ca.crt"))
+			}
+		}
+	}
+
+	// use the same cert as cluster mTLS cert for tiproxy HTTP server to simplify the cert management.
+	cfgWrapper.Set("security.server-http-tls.ca", path.Join(tiproxyClusterCertPath, "ca.crt"))
+	cfgWrapper.Set("security.server-http-tls.key", path.Join(tiproxyClusterCertPath, "tls.key"))
+	cfgWrapper.Set("security.server-http-tls.cert", path.Join(tiproxyClusterCertPath, "tls.crt"))
+	// todo: Mount `db-cluster-client-secret` to TiproxyControl (pkg/controller/tiproxy_control.go) so that we can remove this.
+	cfgWrapper.Set("security.server-http-tls.skip-ca", true)
+}
+
 func (m *tiproxyMemberManager) statefulSetIsUpgradingFn(podLister corelisters.PodLister, set *apps.StatefulSet, tc *v1alpha1.TidbCluster) (bool, error) {
 	if mngerutils.StatefulSetIsUpgrading(set) {
 		return true, nil
@@ -625,6 +763,88 @@ func (m *tiproxyMemberManager) statefulSetIsUpgradingFn(podLister corelisters.Po
 	}
 
 	return false, nil
+}
+
+const tiproxySupportLabelsMinVersion = "1.1.0"
+
+func (m *tiproxyMemberManager) setLabelsForTiProxy(tc *v1alpha1.TidbCluster) (int, error) {
+	tiproxyVersion := tc.TiProxyVersion()
+	isOlder, err := cmpver.Compare(tiproxyVersion, cmpver.Less, tiproxySupportLabelsMinVersion)
+	// meet a custom build of tiproxy without version in tag, directly return as if it was old tiproxy that doesn't support set labels
+	if err != nil {
+		klog.Warningf("parse tiproxy version '%s' failed, skip setting labels for TiProxy of TiDB cluster %s/%s. err: %v", tiproxyVersion, tc.Namespace, tc.Name, err)
+		return 0, nil
+	}
+	// meet an old version tiproxy, directly return because tiproxy doesn't have configs for labels
+	if isOlder {
+		return 0, nil
+	}
+	if m.deps.NodeLister == nil || m.deps.PodLister == nil {
+		klog.Infof("Node lister or pod listener is unavailable, skip setting labels for TiProxy of TiDB cluster %s/%s. This may be caused by no relevant permissions", tc.Namespace, tc.Name)
+		return 0, nil
+	}
+
+	ns := tc.GetNamespace()
+	// for unit test
+	setCount := 0
+
+	pdCli := controller.GetPDClient(m.deps.PDControl, tc)
+	config, err := pdCli.GetConfig()
+	if err != nil {
+		return setCount, err
+	}
+
+	var zoneLabel string
+outer:
+	for _, label := range topologyZoneLabels {
+		for _, l := range config.Replication.LocationLabels {
+			if l == label {
+				zoneLabel = l
+				break outer
+			}
+		}
+	}
+
+	if zoneLabel == "" {
+		klog.V(4).Infof("zone labels not found in pd location-labels %v, skip set labels", config.Replication.LocationLabels)
+		return 0, nil
+	}
+
+	for name, proxy := range tc.Status.TiProxy.Members {
+		if !proxy.Health {
+			continue
+		}
+		ordinal, err := parserOrdinal(name)
+		if err != nil {
+			return setCount, err
+		}
+
+		pod, err := m.deps.PodLister.Pods(ns).Get(name)
+		if err != nil || pod == nil {
+			klog.Warningf("failed to get pod %s for cluster %s/%s, error: %+v", name, ns, tc.GetName(), err)
+			continue
+		}
+		if len(pod.Spec.NodeName) == 0 {
+			klog.V(4).Infof("node name of pod %s in cluster %s/%s is empty", name, ns, tc.GetName())
+			continue
+		}
+		labels, err := getNodeLabels(m.deps.NodeLister, pod.Spec.NodeName, config.Replication.LocationLabels)
+		if err != nil || len(labels) == 0 {
+			klog.Warningf("node: [%s] has no node labels %v, skipping set labels for Pod: [%s/%s]", pod.Spec.NodeName, config.Replication.LocationLabels, ns, name)
+			continue
+		}
+		// add the special `zone` label because tiproxy depends on this label for az-aware routing.
+		labels[tidbDCLabel] = labels[zoneLabel]
+
+		if err := m.deps.ProxyControl.SetLabels(tc, ordinal, labels); err != nil {
+			klog.Warningf("cluster %s/%s set server labels for pod %s failed, error: %v", ns, tc.GetName(), name, err)
+			continue
+		}
+
+		setCount++
+	}
+
+	return setCount, nil
 }
 
 type FakeTiProxyMemberManager struct {

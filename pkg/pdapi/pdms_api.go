@@ -14,22 +14,28 @@
 package pdapi
 
 import (
+	"bytes"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
 	httputil "github.com/pingcap/tidb-operator/pkg/util/http"
+	"k8s.io/klog/v2"
 )
 
 // PDMSClient provides pd MS server's api
 type PDMSClient interface {
 	// GetHealth returns ping result
 	GetHealth() error
+	// TransferPrimary transfers the primary to the newPrimary
+	TransferPrimary(newPrimary string) error
 }
 
 var (
-	pdMSHealthPrefix = "api/v1/health"
+	pdMSHealthPrefix          = "api/v1/health"
+	pdMSPrimaryTransferPrefix = "api/v1/primary/transfer"
 )
 
 // pdMSClient is default implementation of PDClient
@@ -58,6 +64,7 @@ func NewPDMSClient(serviceName, url string, timeout time.Duration, tlsConfig *tl
 func (c *pdMSClient) GetHealth() error {
 	// only support TSO service
 	if c.serviceName != TSOServiceName {
+		klog.Errorf("only support TSO service, but got %s", c.serviceName)
 		return nil
 	}
 	apiURL := fmt.Sprintf("%s/%s/%s", c.url, c.serviceName, pdMSHealthPrefix)
@@ -65,5 +72,23 @@ func (c *pdMSClient) GetHealth() error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (c *pdMSClient) TransferPrimary(newPrimary string) error {
+	apiURL := fmt.Sprintf("%s/%s/%s", c.url, c.serviceName, pdMSPrimaryTransferPrefix)
+	data, err := json.Marshal(struct {
+		NewPrimary string `json:"new_primary"`
+	}{
+		NewPrimary: newPrimary,
+	})
+	if err != nil {
+		return err
+	}
+	_, err = httputil.PostBodyOK(c.httpClient, apiURL, bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

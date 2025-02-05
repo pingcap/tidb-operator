@@ -84,6 +84,22 @@ const ComponentCustomKey = "component-test-key"
 
 // GetTidbCluster returns a TidbCluster resource configured for testing
 func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
+	tc := GetTidbClusterWithoutPDMS(ns, name, version)
+
+	random := rand.Intn(2)
+	if random != 0 && version == utilimage.PDMSImage {
+		log.Logf("[GetTidbCluster] tidbcluster's pd mode is micro-service in this situation, "+
+			"version: %s, tc name: %s, namespace: %s", version, name, ns)
+		// 50% random in pdms mode
+		tc = AddPDMSForTidbCluster(tc)
+	}
+
+	return tc
+}
+
+// GetTidbClusterWithoutPDMS returns a TidbCluster resource configured for testing.
+// in some cases, it won't support pdms mode, so we can't use pdms mode in this situation.
+func GetTidbClusterWithoutPDMS(ns, name, version string) *v1alpha1.TidbCluster {
 	// We assume all unparsable versions are greater or equal to v4.0.0-beta,
 	// e.g. nightly.
 	tikvConfig := v1alpha1.NewTiKVConfig()
@@ -191,14 +207,6 @@ func GetTidbCluster(ns, name, version string) *v1alpha1.TidbCluster {
 				},
 			},
 		},
-	}
-
-	random := rand.Intn(2)
-	if random != 0 && version == utilimage.PDMSImage {
-		log.Logf("[GetTidbCluster] tidbcluster's pd mode is micro-service in this situation, "+
-			"version: %s, tc name: %s, namespace: %s", version, name, ns)
-		// 50% random in pdms mode
-		tc = AddPDMSForTidbCluster(tc)
 	}
 
 	return tc
@@ -798,29 +806,17 @@ func AddPDMSForTidbCluster(tc *v1alpha1.TidbCluster) *v1alpha1.TidbCluster {
 	if tc.Spec.PDMS != nil {
 		return tc
 	}
-	pdmsImage := "hub.pingcap.net/devbuild/pd"
-	version := "v8.0.0-4193"
-	// TODO: remove pd version when released pdms
-	tc.Spec.PD.BaseImage = "hub.pingcap.net/devbuild/pd"
-	tc.Spec.PD.Version = &version
+	pdmsImage := "pingcap/pd"
 	tc.Spec.PDMS = []*v1alpha1.PDMSSpec{
 		{
-			Name: tsoService,
-			// TODO: replace pdms image when released pdms
-			BaseImage: &pdmsImage,
-			ComponentSpec: v1alpha1.ComponentSpec{
-				Version: &version,
-			},
+			Name:                 tsoService,
+			BaseImage:            &pdmsImage,
 			Replicas:             2,
 			ResourceRequirements: WithStorage(BurstableSmall, "10Gi"),
 		},
 		{
-			Name: schedulingService,
-			// TODO: replace pdms image when released pdms
-			BaseImage: &pdmsImage,
-			ComponentSpec: v1alpha1.ComponentSpec{
-				Version: &version,
-			},
+			Name:                 schedulingService,
+			BaseImage:            &pdmsImage,
 			Replicas:             1,
 			ResourceRequirements: WithStorage(BurstableSmall, "10Gi"),
 		},

@@ -189,7 +189,9 @@ StorageProvider
 <p>
 (Members of <code>StorageProvider</code> are embedded into this type.)
 </p>
-<p>StorageProvider configures where and how backups should be stored.</p>
+<p>StorageProvider configures where and how backups should be stored.
+*** Note: This field should generally not be left empty, unless you are certain the storage provider
+*** can be obtained from another source, such as a schedule CR.</p>
 </td>
 </tr>
 <tr>
@@ -226,7 +228,9 @@ BRConfig
 </em>
 </td>
 <td>
-<p>BRConfig is the configs for BR</p>
+<p>BRConfig is the configs for BR
+*** Note: This field should generally not be left empty, unless you are certain the BR config
+*** can be obtained from another source, such as a schedule CR.</p>
 </td>
 </tr>
 <tr>
@@ -241,6 +245,20 @@ string
 <p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
 Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
 Default is current timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logSubcommand</code></br>
+<em>
+<a href="#logsubcommandtype">
+LogSubCommandType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Subcommand is the subcommand for BR, such as start, stop, pause etc.</p>
 </td>
 </tr>
 <tr>
@@ -633,6 +651,17 @@ string
 </tr>
 <tr>
 <td>
+<code>compactSpan</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>CompactSpan is to specify how long backups we want to compact.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>backupTemplate</code></br>
 <em>
 <a href="#backupspec">
@@ -656,6 +685,20 @@ BackupSpec
 <td>
 <em>(Optional)</em>
 <p>LogBackupTemplate is the specification of the log backup structure to get scheduled.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>compactBackupTemplate</code></br>
+<em>
+<a href="#compactspec">
+CompactSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CompactBackupTemplate is the specification of the compact backup structure to get scheduled.</p>
 </td>
 </tr>
 <tr>
@@ -694,6 +737,37 @@ string
 <td>
 <em>(Optional)</em>
 <p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>br</code></br>
+<em>
+<a href="#brconfig">
+BRConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>BRConfig is the configs for BR</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>StorageProvider</code></br>
+<em>
+<a href="#storageprovider">
+StorageProvider
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>StorageProvider</code> are embedded into this type.)
+</p>
+<em>(Optional)</em>
+<p>StorageProvider configures where and how backups should be stored.</p>
 </td>
 </tr>
 </table>
@@ -1336,7 +1410,8 @@ string
 </em>
 </td>
 <td>
-<p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
+<em>(Optional)</em>
+<p>LogRestoreStartTs is the start timestamp which log restore from.</p>
 </td>
 </tr>
 <tr>
@@ -1405,6 +1480,7 @@ StorageProvider
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.</p>
 </td>
 </tr>
@@ -1977,6 +2053,19 @@ bool
 <td>
 <em>(Optional)</em>
 <p>Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enablePVCReplace</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable PVC replace to recreate the PVC with different specs
 Optional: Defaults to false</p>
 </td>
 </tr>
@@ -3379,6 +3468,30 @@ azblob service account credentials.</p>
 </tr>
 <tr>
 <td>
+<code>storageAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>StorageAccount is the storage account of the azure blob storage
+If this field is set, then use this to set backup-manager env
+Otherwise retrieve the storage account from secret</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sasToken</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SasToken is the sas token of the storage account</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>prefix</code></br>
 <em>
 string
@@ -3393,7 +3506,9 @@ string
 <h3 id="brconfig">BRConfig</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#backupschedulespec">BackupScheduleSpec</a>, 
 <a href="#backupspec">BackupSpec</a>, 
+<a href="#compactspec">CompactSpec</a>, 
 <a href="#restorespec">RestoreSpec</a>)
 </p>
 <p>
@@ -3884,6 +3999,17 @@ string
 </tr>
 <tr>
 <td>
+<code>compactSpan</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>CompactSpan is to specify how long backups we want to compact.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>backupTemplate</code></br>
 <em>
 <a href="#backupspec">
@@ -3907,6 +4033,20 @@ BackupSpec
 <td>
 <em>(Optional)</em>
 <p>LogBackupTemplate is the specification of the log backup structure to get scheduled.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>compactBackupTemplate</code></br>
+<em>
+<a href="#compactspec">
+CompactSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CompactBackupTemplate is the specification of the compact backup structure to get scheduled.</p>
 </td>
 </tr>
 <tr>
@@ -3947,6 +4087,37 @@ string
 <p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>br</code></br>
+<em>
+<a href="#brconfig">
+BRConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>BRConfig is the configs for BR</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>StorageProvider</code></br>
+<em>
+<a href="#storageprovider">
+StorageProvider
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>StorageProvider</code> are embedded into this type.)
+</p>
+<em>(Optional)</em>
+<p>StorageProvider configures where and how backups should be stored.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="backupschedulestatus">BackupScheduleStatus</h3>
@@ -3978,6 +4149,17 @@ string
 </tr>
 <tr>
 <td>
+<code>lastCompact</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LastCompact represents the last compact</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>logBackup</code></br>
 <em>
 string
@@ -3985,6 +4167,19 @@ string
 </td>
 <td>
 <p>logBackup represents the name of log backup.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logBackupStartTs</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>LogBackupStartTs represents the start time of log backup</p>
 </td>
 </tr>
 <tr>
@@ -3998,6 +4193,32 @@ Kubernetes meta/v1.Time
 </td>
 <td>
 <p>LastBackupTime represents the last time the backup was successfully created.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastCompactTs</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>LastCompactTs represents the endTs of the last compact</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>nextCompactEndTs</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>NextCompactEndTs represents the scheduled endTs of next compact</p>
 </td>
 </tr>
 <tr>
@@ -4139,7 +4360,9 @@ StorageProvider
 <p>
 (Members of <code>StorageProvider</code> are embedded into this type.)
 </p>
-<p>StorageProvider configures where and how backups should be stored.</p>
+<p>StorageProvider configures where and how backups should be stored.
+*** Note: This field should generally not be left empty, unless you are certain the storage provider
+*** can be obtained from another source, such as a schedule CR.</p>
 </td>
 </tr>
 <tr>
@@ -4176,7 +4399,9 @@ BRConfig
 </em>
 </td>
 <td>
-<p>BRConfig is the configs for BR</p>
+<p>BRConfig is the configs for BR
+*** Note: This field should generally not be left empty, unless you are certain the BR config
+*** can be obtained from another source, such as a schedule CR.</p>
 </td>
 </tr>
 <tr>
@@ -4191,6 +4416,20 @@ string
 <p>CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
 Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
 Default is current timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logSubcommand</code></br>
+<em>
+<a href="#logsubcommandtype">
+LogSubCommandType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Subcommand is the subcommand for BR, such as start, stop, pause etc.</p>
 </td>
 </tr>
 <tr>
@@ -5264,6 +5503,704 @@ FlashSecurity
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="compactbackup">CompactBackup</h3>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>metadata</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code></br>
+<em>
+<a href="#compactspec">
+CompactSpec
+</a>
+</em>
+</td>
+<td>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>env</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#envvar-v1-core">
+[]Kubernetes core/v1.EnvVar
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>List of environment variables to set in the container, like v1.Container.Env.
+Note that the following builtin env vars will be overwritten by values set here
+- S3_PROVIDER
+- S3_ENDPOINT
+- AWS_REGION
+- AWS_ACL
+- AWS_STORAGE_CLASS
+- AWS_DEFAULT_REGION
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
+- GCS_PROJECT_ID
+- GCS_OBJECT_ACL
+- GCS_BUCKET_ACL
+- GCS_LOCATION
+- GCS_STORAGE_CLASS
+- GCS_SERVICE_ACCOUNT_JSON_KEY
+- BR_LOG_TO_TERM</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>StorageProvider</code></br>
+<em>
+<a href="#storageprovider">
+StorageProvider
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>StorageProvider</code> are embedded into this type.)
+</p>
+<p>StorageProvider configures where and how backups should be stored.
+*** Note: This field should generally not be left empty, unless you are certain the storage provider
+*** can be obtained from another source, such as a schedule CR.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>startTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>StartTs is the start ts of the compact backup.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>endTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EndTs is the end ts of the compact backup.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
+Default is current timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>concurrency</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>Concurrency is the concurrency of compact backup job</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tolerations</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#toleration-v1-core">
+[]Kubernetes core/v1.Toleration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base tolerations of backup Pods, components may add more tolerations upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>toolImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>BrImage specifies the br image used in compact <code>Backup</code>.
+For examples <code>spec.brImage: pingcap/br:v4.0.8</code>
+For BR image, if it does not contain tag, Pod will use image &lsquo;BrImage:${TiKV_Version}&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>br</code></br>
+<em>
+<a href="#brconfig">
+BRConfig
+</a>
+</em>
+</td>
+<td>
+<p>BRConfig is the configs for BR
+*** Note: This field should generally not be left empty, unless you are certain the BR config
+*** can be obtained from another source, such as a schedule CR.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>affinity</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#affinity-v1-core">
+Kubernetes core/v1.Affinity
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Affinity of backup Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>useKMS</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Use KMS to decrypt the secrets</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify service account of backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>priorityClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PriorityClassName of Backup Job Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxRetryTimes</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalVolumes</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#volume-v1-core">
+[]Kubernetes core/v1.Volume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional volumes of component pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalVolumeMounts</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#volumemount-v1-core">
+[]Kubernetes core/v1.VolumeMount
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional volume mounts of component pod.</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code></br>
+<em>
+<a href="#compactstatus">
+CompactStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="compactretryrecord">CompactRetryRecord</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#compactstatus">CompactStatus</a>)
+</p>
+<p>
+<p>CompactRetryRecord is the record of compact backoff retry</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>retryNum</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>RetryNum is the number of retry</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>detectFailedAt</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>DetectFailedAt is the time when detect failure</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>retryReason</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Reason is the reason of retry</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="compactspec">CompactSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#backupschedulespec">BackupScheduleSpec</a>, 
+<a href="#compactbackup">CompactBackup</a>)
+</p>
+<p>
+<p>CompactSpec contains the backup specification for a tidb cluster.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>env</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#envvar-v1-core">
+[]Kubernetes core/v1.EnvVar
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>List of environment variables to set in the container, like v1.Container.Env.
+Note that the following builtin env vars will be overwritten by values set here
+- S3_PROVIDER
+- S3_ENDPOINT
+- AWS_REGION
+- AWS_ACL
+- AWS_STORAGE_CLASS
+- AWS_DEFAULT_REGION
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
+- GCS_PROJECT_ID
+- GCS_OBJECT_ACL
+- GCS_BUCKET_ACL
+- GCS_LOCATION
+- GCS_STORAGE_CLASS
+- GCS_SERVICE_ACCOUNT_JSON_KEY
+- BR_LOG_TO_TERM</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>StorageProvider</code></br>
+<em>
+<a href="#storageprovider">
+StorageProvider
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>StorageProvider</code> are embedded into this type.)
+</p>
+<p>StorageProvider configures where and how backups should be stored.
+*** Note: This field should generally not be left empty, unless you are certain the storage provider
+*** can be obtained from another source, such as a schedule CR.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>startTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>StartTs is the start ts of the compact backup.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>endTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EndTs is the end ts of the compact backup.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.
+Default is current timestamp.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>concurrency</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>Concurrency is the concurrency of compact backup job</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tolerations</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#toleration-v1-core">
+[]Kubernetes core/v1.Toleration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base tolerations of backup Pods, components may add more tolerations upon this respectively</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>toolImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>BrImage specifies the br image used in compact <code>Backup</code>.
+For examples <code>spec.brImage: pingcap/br:v4.0.8</code>
+For BR image, if it does not contain tag, Pod will use image &lsquo;BrImage:${TiKV_Version}&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>br</code></br>
+<em>
+<a href="#brconfig">
+BRConfig
+</a>
+</em>
+</td>
+<td>
+<p>BRConfig is the configs for BR
+*** Note: This field should generally not be left empty, unless you are certain the BR config
+*** can be obtained from another source, such as a schedule CR.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullSecrets</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#localobjectreference-v1-core">
+[]Kubernetes core/v1.LocalObjectReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>affinity</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#affinity-v1-core">
+Kubernetes core/v1.Affinity
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Affinity of backup Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>useKMS</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Use KMS to decrypt the secrets</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify service account of backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podSecurityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#podsecuritycontext-v1-core">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodSecurityContext of the component</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>priorityClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PriorityClassName of Backup Job Pods</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxRetryTimes</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>BackoffRetryPolicy the backoff retry policy, currently only valid for snapshot backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalVolumes</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#volume-v1-core">
+[]Kubernetes core/v1.Volume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional volumes of component pod.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalVolumeMounts</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#volumemount-v1-core">
+[]Kubernetes core/v1.VolumeMount
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Additional volume mounts of component pod.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="compactstatus">CompactStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#compactbackup">CompactBackup</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>state</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>State is the current state of the backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>progress</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Progress is the progress of the backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>message</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Message is the error message of the backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backoffRetryStatus</code></br>
+<em>
+<a href="#compactretryrecord">
+[]CompactRetryRecord
+</a>
+</em>
+</td>
+<td>
+<p>RetryStatus is status of the backoff retry, it will be used when backup pod or job exited unexpectedly</p>
 </td>
 </tr>
 </tbody>
@@ -8851,6 +9788,7 @@ BackupConditionType
 <p>
 (<em>Appears on:</em>
 <a href="#backupcondition">BackupCondition</a>, 
+<a href="#backupspec">BackupSpec</a>, 
 <a href="#logsubcommandstatus">LogSubCommandStatus</a>)
 </p>
 <p>
@@ -10904,7 +11842,7 @@ message.</p>
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
-<p>PDMSSpec contains details of PD Micro Service</p>
+<p>PDMSSpec contains details of PD microservice</p>
 </p>
 <table>
 <thead>
@@ -10952,7 +11890,7 @@ string
 </em>
 </td>
 <td>
-<p>Name of the PD Micro Service</p>
+<p>Name of the PD microservice</p>
 </td>
 </tr>
 <tr>
@@ -11000,7 +11938,7 @@ ServiceSpec
 </td>
 <td>
 <em>(Optional)</em>
-<p>Service defines a Kubernetes service of PD Micro Service cluster.
+<p>Service defines a Kubernetes service of PD microservice cluster.
 Optional: Defaults to <code>.spec.services</code> in favor of backward compatibility</p>
 </td>
 </tr>
@@ -11028,7 +11966,7 @@ PDConfigWraper
 </td>
 <td>
 <em>(Optional)</em>
-<p>Config is the Configuration of pd Micro Service servers</p>
+<p>Config is the configuration of PD microservice servers</p>
 </td>
 </tr>
 <tr>
@@ -11077,7 +12015,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>The storageClassName of the persistent volume for PD Micro Service log storage.
+<p>The storageClassName of the persistent volume for PD microservice log storage.
 Defaults to Kubernetes default storage class.</p>
 </td>
 </tr>
@@ -11092,7 +12030,7 @@ Defaults to Kubernetes default storage class.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>StorageVolumes configure additional storage for PD Micro Service pods.</p>
+<p>StorageVolumes configure additional storage for PD microservice pods.</p>
 </td>
 </tr>
 <tr>
@@ -11114,7 +12052,7 @@ int
 <a href="#tidbclusterstatus">TidbClusterStatus</a>)
 </p>
 <p>
-<p>PDMSStatus is PD Micro Service Status</p>
+<p>PDMSStatus is PD microservice status</p>
 </p>
 <table>
 <thead>
@@ -12306,6 +13244,18 @@ int
 </tr>
 <tr>
 <td>
+<code>initWaitTime</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>Wait time before pd get started. This wait time is to allow the new DNS record to propagate,
+ensuring that the PD DNS resolves to the same IP address as the pod.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>mode</code></br>
 <em>
 string
@@ -12314,6 +13264,21 @@ string
 <td>
 <em>(Optional)</em>
 <p>Mode is the mode of PD cluster</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>spareVolReplaceReplicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The default number of spare replicas to scale up when using VolumeReplace feature.
+In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid
+zone skew after volume replace (total replicas always whole multiples of zones).
+Optional: Defaults to 1</p>
 </td>
 </tr>
 </tbody>
@@ -14057,7 +15022,7 @@ string
 <td>
 <code>action</code></br>
 <em>
-github.com/prometheus/prometheus/config.RelabelAction
+github.com/prometheus/prometheus/model/relabel.Action
 </em>
 </td>
 <td>
@@ -14156,7 +15121,7 @@ Only valid in Prometheus versions 2.15.0 and newer.</p>
 <td>
 <code>remoteTimeout</code></br>
 <em>
-github.com/prometheus/common/model.Duration
+string
 </em>
 </td>
 <td>
@@ -14491,7 +15456,8 @@ string
 </em>
 </td>
 <td>
-<p>LogRestoreStartTs is the start timestamp which log restore from and it will be used in the future.</p>
+<em>(Optional)</em>
+<p>LogRestoreStartTs is the start timestamp which log restore from.</p>
 </td>
 </tr>
 <tr>
@@ -14560,6 +15526,7 @@ StorageProvider
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.</p>
 </td>
 </tr>
@@ -15541,6 +16508,27 @@ More info: <a href="https://kubernetes.io/docs/concepts/services-networking/serv
 Optional: Defaults to omitted</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>loadBalancerClass</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>loadBalancerClass is the class of the load balancer implementation this Service belongs to.
+If specified, the value of this field must be a label-style identifier, with an optional prefix,
+e.g. &ldquo;internal-vip&rdquo; or &ldquo;example.com/internal-vip&rdquo;. Unprefixed names are reserved for end-users.
+This field can only be set when the Service type is &lsquo;LoadBalancer&rsquo;. If not set, the default load
+balancer implementation is used, today this is typically done through the cloud provider integration,
+but should apply for any default implementation. If set, it is assumed that a load balancer
+implementation is watching for Services with a matching class. Any default load balancer
+implementation (e.g. cloud providers) should ignore Services that set this field.
+This field can only be set when creating or updating a Service to type &lsquo;LoadBalancer&rsquo;.
+Once set, it can not be changed. This field will be wiped when a service is updated to a non &lsquo;LoadBalancer&rsquo; type.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="startscriptv2featureflag">StartScriptV2FeatureFlag</h3>
@@ -15763,7 +16751,9 @@ More info: <a href="https://kubernetes.io/docs/concepts/storage/persistent-volum
 <h3 id="storageprovider">StorageProvider</h3>
 <p>
 (<em>Appears on:</em>
+<a href="#backupschedulespec">BackupScheduleSpec</a>, 
 <a href="#backupspec">BackupSpec</a>, 
+<a href="#compactspec">CompactSpec</a>, 
 <a href="#restorespec">RestoreSpec</a>)
 </p>
 <p>
@@ -17934,6 +18924,18 @@ CustomizedProbe
 You can provide your own startup probe for TiDB.
 The image will be an init container, and the tidb-server container will copy the probe binary from it, and execute it.
 The probe binary in the image should be placed under the root directory, i.e., <code>/your-probe</code>.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>arguments</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Arguments is the extra command line arguments for TiDB server.</p>
 </td>
 </tr>
 </tbody>
@@ -22624,6 +23626,21 @@ ScalePolicy
 <p>ScalePolicy is the scale configuration for TiKV</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>spareVolReplaceReplicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The default number of spare replicas to scale up when using VolumeReplace feature.
+In multi-az deployments with topology spread constraints you may need to set this to number of zones to avoid
+zone skew after volume replace (total replicas always whole multiples of zones).
+Optional: Defaults to 1</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tikvstatus">TiKVStatus</h3>
@@ -23398,6 +24415,13 @@ int32
 </tr>
 </tbody>
 </table>
+<h3 id="tiproxycertlayout">TiProxyCertLayout</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tiproxyspec">TiProxySpec</a>)
+</p>
+<p>
+</p>
 <h3 id="tiproxyconfigwraper">TiProxyConfigWraper</h3>
 <p>
 (<em>Appears on:</em>
@@ -23582,6 +24606,21 @@ string
 <em>(Optional)</em>
 <p>TLSClientSecretName is the name of secret which stores tidb server client certificate
 used by TiProxy to check health status.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>certLayout</code></br>
+<em>
+<a href="#tiproxycertlayout">
+TiProxyCertLayout
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TiProxyCertLayout is the certificate layout of TiProxy that determines how tidb-operator mount cert secrets
+and how configure TLS configurations for tiproxy.</p>
 </td>
 </tr>
 <tr>
@@ -24382,6 +25421,19 @@ bool
 <td>
 <em>(Optional)</em>
 <p>Whether enable PVC reclaim for orphan PVC left by statefulset scale-in
+Optional: Defaults to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enablePVCReplace</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Whether enable PVC replace to recreate the PVC with different specs
 Optional: Defaults to false</p>
 </td>
 </tr>
@@ -26529,10 +27581,84 @@ string
 and identical values are considered to be in the same topology.
 We consider each <key, value> as a &ldquo;bucket&rdquo;, and try to put balanced number
 of pods into each bucket.
-MaxSkew is default set to 1
 WhenUnsatisfiable is default set to DoNotSchedule
 LabelSelector is generated by component type
 See pkg/apis/pingcap/v1alpha1/tidbcluster_component.go#TopologySpreadConstraints()</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxSkew</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MaxSkew describes the degree to which pods may be unevenly distributed.
+When <code>whenUnsatisfiable=DoNotSchedule</code>, it is the maximum permitted difference
+between the number of matching pods in the target topology and the global minimum.
+The global minimum is the minimum number of matching pods in an eligible domain
+or zero if the number of eligible domains is less than MinDomains.
+For example, in a 3-zone cluster, MaxSkew is set to 1, and pods with the same
+labelSelector spread as 2/2/1:
+In this case, the global minimum is 1.
+| zone1 | zone2 | zone3 |
+|  P P  |  P P  |   P   |
+- if MaxSkew is 1, incoming pod can only be scheduled to zone3 to become 2/2/2;
+scheduling it onto zone1(zone2) would make the ActualSkew(3-1) on zone1(zone2)
+violate MaxSkew(1).
+- if MaxSkew is 2, incoming pod can be scheduled onto any zone.
+When <code>whenUnsatisfiable=ScheduleAnyway</code>, it is used to give higher precedence
+to topologies that satisfy it.
+Default value is 1.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>minDomains</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MinDomains indicates a minimum number of eligible domains.
+When the number of eligible domains with matching topology keys is less than minDomains,
+Pod Topology Spread treats &ldquo;global minimum&rdquo; as 0, and then the calculation of Skew is performed.
+And when the number of eligible domains with matching topology keys equals or greater than minDomains,
+this value has no effect on scheduling.
+As a result, when the number of eligible domains is less than minDomains,
+scheduler won&rsquo;t schedule more than maxSkew Pods to those domains.
+If value is nil, the constraint behaves as if MinDomains is equal to 1.
+Valid values are integers greater than 0.
+When value is not nil, WhenUnsatisfiable must be DoNotSchedule.</p>
+<p>For example, in a 3-zone cluster, MaxSkew is set to 2, MinDomains is set to 5 and pods with the same
+labelSelector spread as 2/2/2:
+| zone1 | zone2 | zone3 |
+|  P P  |  P P  |  P P  |
+The number of domains is less than 5(MinDomains), so &ldquo;global minimum&rdquo; is treated as 0.
+In this situation, new pod with the same labelSelector cannot be scheduled,
+because computed skew will be 3(3 - 0) if new Pod is scheduled to any of the three zones,
+it will violate MaxSkew.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>nodeAffinityPolicy</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#nodeinclusionpolicy-v1-core">
+Kubernetes core/v1.NodeInclusionPolicy
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>NodeAffinityPolicy indicates how we will treat Pod&rsquo;s nodeAffinity/nodeSelector
+when calculating pod topology spread skew. Options are:
+- Honor: only nodes matching nodeAffinity/nodeSelector are included in the calculations.
+- Ignore: nodeAffinity/nodeSelector are ignored. All nodes are included in the calculations.</p>
+<p>If this value is nil, the behavior is equivalent to the Honor policy.</p>
 </td>
 </tr>
 <tr>

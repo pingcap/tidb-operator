@@ -195,6 +195,7 @@ type Controls struct {
 	ProxyControl       TiProxyControlInterface
 	TiDBControl        TiDBControlInterface
 	BackupControl      BackupControlInterface
+	CompactControl     CompactBackupControlInterface
 	RestoreControl     RestoreControlInterface
 	SecretControl      SecretControlInterface
 }
@@ -233,6 +234,7 @@ type Dependencies struct {
 	TiDBClusterAutoScalerLister listers.TidbClusterAutoScalerLister
 	DMClusterLister             listers.DMClusterLister
 	BackupLister                listers.BackupLister
+	CompactBackupLister         listers.CompactBackupLister
 	RestoreLister               listers.RestoreLister
 	BackupScheduleLister        listers.BackupScheduleLister
 	TiDBInitializerLister       listers.TidbInitializerLister
@@ -293,9 +295,10 @@ func newRealControls(
 		TiDBClusterControl: NewRealTidbClusterControl(clientset, tidbClusterLister, recorder),
 		DMClusterControl:   NewRealDMClusterControl(clientset, dmClusterLister, recorder),
 		CDCControl:         NewDefaultTiCDCControl(secretLister),
-		ProxyControl:       NewDefaultTiProxyControl(secretLister),
+		ProxyControl:       NewDefaultTiProxyControl(),
 		TiDBControl:        NewDefaultTiDBControl(secretLister),
 		BackupControl:      NewRealBackupControl(clientset, recorder),
+		CompactControl:     NewRealCompactControl(clientset, recorder),
 		RestoreControl:     NewRealRestoreControl(clientset, restoreLister, recorder),
 		SecretControl:      NewRealSecretControl(kubeClientset, secretLister, recorder),
 	}
@@ -378,6 +381,7 @@ func newDependencies(
 		TiDBClusterAutoScalerLister: informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers().Lister(),
 		DMClusterLister:             informerFactory.Pingcap().V1alpha1().DMClusters().Lister(),
 		BackupLister:                informerFactory.Pingcap().V1alpha1().Backups().Lister(),
+		CompactBackupLister:         informerFactory.Pingcap().V1alpha1().CompactBackups().Lister(),
 		RestoreLister:               informerFactory.Pingcap().V1alpha1().Restores().Lister(),
 		BackupScheduleLister:        informerFactory.Pingcap().V1alpha1().BackupSchedules().Lister(),
 		TiDBInitializerLister:       informerFactory.Pingcap().V1alpha1().TidbInitializers().Lister(),
@@ -455,6 +459,7 @@ func newFakeControl(kubeClientset kubernetes.Interface, informerFactory informer
 		CDCControl:         NewFakeTiCDCControl(),
 		TiDBControl:        NewFakeTiDBControl(kubeInformerFactory.Core().V1().Secrets().Lister()),
 		BackupControl:      NewFakeBackupControl(informerFactory.Pingcap().V1alpha1().Backups()),
+		ProxyControl:       NewFakeTiProxyControl(),
 		SecretControl:      NewFakeSecretControl(kubeInformerFactory.Core().V1().Secrets()),
 	}
 }

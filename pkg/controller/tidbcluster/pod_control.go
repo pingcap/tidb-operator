@@ -170,7 +170,7 @@ func (c *PodController) processNextWorkItem() bool {
 	return true
 }
 
-func (c *PodController) sync(key string) (reconcile.Result, error) {
+func (c *PodController) sync(key string) (result reconcile.Result, err error) {
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -213,6 +213,16 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 	defer func() {
 		duration := time.Since(startTime)
 		metrics.ReconcileTime.WithLabelValues(c.Name()).Observe(duration.Seconds())
+
+		if err == nil {
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelSuccess).Inc()
+		} else if perrors.Find(err, controller.IsRequeueError) != nil {
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelRequeue).Inc()
+		} else {
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelError).Inc()
+			metrics.ReconcileErrors.WithLabelValues(c.Name()).Inc()
+		}
+
 		klog.V(4).Infof("Finished syncing TidbCluster pod %q (%v)", key, duration)
 	}()
 
@@ -225,6 +235,8 @@ func (c *PodController) sync(key string) (reconcile.Result, error) {
 		return c.syncTiKVPod(ctx, pod, tc)
 	case label.TiDBLabelVal:
 		return c.syncTiDBPod(ctx, pod, tc)
+	case label.TiFlashLabelVal:
+		return c.syncTiFlashPod(ctx, pod, tc)
 	default:
 		return reconcile.Result{}, nil
 	}
@@ -575,6 +587,65 @@ func (c *PodController) syncTiKVPodForReplaceVolume(ctx context.Context, pod *co
 	}
 }
 
+func (c *PodController) syncTiFlashPod(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+	result, err := c.syncTiFlashPodForReplaceVolume(ctx, pod, tc)
+	return result, err
+}
+
+func (c *PodController) syncTiFlashPodForReplaceVolume(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
+	value, exist := pod.Annotations[v1alpha1.ReplaceVolumeAnnKey]
+	if !exist {
+		return reconcile.Result{}, nil
+	}
+	if value != v1alpha1.ReplaceVolumeValueTrue {
+		klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, v1alpha1.ReplaceVolumeAnnKey, pod.Namespace, pod.Name)
+		return reconcile.Result{}, nil
+	}
+	if tc.PDUpgrading() || tc.PDScaling() {
+		klog.Infof("TidbCluster: [%s/%s]'s pd status is %s, "+
+			"tiflash status is %s can not replace tiflash volume",
+			tc.GetNamespace(), tc.GetName(),
+			tc.Status.PD.Phase, tc.Status.TiFlash.Phase)
+		return reconcile.Result{RequeueAfter: RequeueInterval}, nil
+	}
+	pdClient := c.getPDClient(tc)
+	storeID, err := member.TiFlashStoreIDFromStatus(tc, pod.Name)
+	if err != nil {
+		storeIDStr, exist := pod.Labels[label.StoreIDLabelKey]
+		if !exist {
+			return reconcile.Result{}, perrors.Annotatef(err, "failed to get tiflash store id from status or label for pod %s/%s", pod.Namespace, pod.Name)
+		}
+		storeID, err = strconv.ParseUint(storeIDStr, 10, 64)
+		if err != nil {
+			return reconcile.Result{}, perrors.Annotatef(err, "Could not parse storeId (%s) from label for pod %s/%s", storeIDStr, pod.Namespace, pod.Name)
+		}
+	}
+	if pod.Labels[label.StoreIDLabelKey] == "" {
+		return reconcile.Result{Requeue: true}, fmt.Errorf("StoreID not yet updated on pod label")
+	}
+	storeInfo, err := pdClient.GetStore(storeID)
+	if err != nil {
+		return reconcile.Result{}, perrors.Annotatef(err, "failed to get tiflash store info from pd for storeid %d pod %s/%s", storeID, pod.Namespace, pod.Name)
+	}
+	if storeInfo.Store.StateName == v1alpha1.TiKVStateUp {
+		if !tc.TiFlashAllStoresReady() {
+			return reconcile.Result{Requeue: true}, fmt.Errorf("not all TiFlash stores ready before replace")
+		}
+		// 1. Delete store
+		klog.Infof("storeid %d is Up, deleting due to replace volume annotation.", storeID)
+		pdClient.DeleteStore(storeID)
+		return reconcile.Result{RequeueAfter: c.recheckStoreTombstoneDuration}, nil
+	} else if storeInfo.Store.StateName == v1alpha1.TiKVStateOffline {
+		// 2. Wait for Tombstone
+		return reconcile.Result{RequeueAfter: c.recheckStoreTombstoneDuration}, fmt.Errorf("StoreID %d not yet Tombstone", storeID)
+	} else if storeInfo.Store.StateName == v1alpha1.TiKVStateTombstone {
+		// 3. Delete PVCs & 4. Delete Pod.
+		return c.deletePVCsAndPodFn(c.deps, ctx, pod, tc)
+	} else {
+		return reconcile.Result{}, fmt.Errorf("cannot replace volume when store in state: %s for storeid %d pod %s/%s", storeInfo.Store.StateName, storeID, pod.Namespace, pod.Name)
+	}
+}
+
 func (c *PodController) syncTiDBPod(ctx context.Context, pod *corev1.Pod, tc *v1alpha1.TidbCluster) (reconcile.Result, error) {
 	result, err := c.syncTiDBPodForReplaceVolume(ctx, pod, tc)
 	if err != nil || result.Requeue || result.RequeueAfter > 0 {
@@ -710,7 +781,7 @@ func (c *PodController) isEvictLeaderExpired(pod *corev1.Pod, annKey string) boo
 				return true
 			}
 		} else {
-			klog.Warningf("Can't parse %s value %s on %s/%s. Mark pod as expired right away. Err: ", annKey, evictionExpirationTime, pod.Namespace, pod.Name, err)
+			klog.Warningf("Can't parse %s value %s on %s/%s. Mark pod as expired right away. Err: %s", annKey, evictionExpirationTime, pod.Namespace, pod.Name, err)
 			return true
 		}
 	}

@@ -54,7 +54,7 @@ metadata:
 spec:
   containers:
   - name: main
-    image: hub.pingcap.net/tidb-operator/kubekins-e2e:v6-go1.21.3
+    image: hub.pingcap.net/tidb-operator/kubekins-e2e:v8-go1.23.1
     command:
     - runner.sh
     - exec
@@ -170,6 +170,7 @@ def build(String name, String code, Map resources = e2ePodResources) {
                             echo "====== shell env ======"
                             echo "pwd: \$(pwd)"
                             env
+                            unset GOSUMDB
                             echo "====== go env ======"
                             go env
                             echo "====== docker version ======"
@@ -178,6 +179,7 @@ def build(String name, String code, Map resources = e2ePodResources) {
                         }
                         stage('Run') {
                             sh """#!/bin/bash
+                            unset GOSUMDB
                             export GOPATH=${WORKSPACE}/go
                             export ARTIFACTS=${ARTIFACTS}
                             export RUNNER_SUITE_NAME=${name}
@@ -351,6 +353,9 @@ try {
                             sh """#!/bin/bash
                             set -eu
                             echo "info: building"
+                            unset GOSUMDB
+                            echo "====== go env ======"
+                            go env
                             echo "info: patch charts and golang code to enable coverage profile"
                             ./hack/e2e-patch-codecov.sh
                             export CUSTOM_PORT_TIDB_SERVER=${CUSTOM_PORT_TIDB_SERVER}
@@ -379,6 +384,7 @@ try {
                         withCredentials([usernamePassword(credentialsId: 'TIDB_OPERATOR_HUB_AUTH', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
                             sh """#!/bin/bash
                             set -eu
+                            unset GOSUMDB
                             echo "save GTI_COMMIT export script into file"
                             echo "export GIT_COMMIT=\$(git rev-parse HEAD)" > EXPORT_GIT_COMMIT
                             echo "info: logging into hub.pingcap.net"

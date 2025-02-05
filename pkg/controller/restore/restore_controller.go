@@ -118,11 +118,21 @@ func (c *Controller) processNextWorkItem() bool {
 }
 
 // sync syncs the given restore.
-func (c *Controller) sync(key string) error {
+func (c *Controller) sync(key string) (err error) {
 	startTime := time.Now()
 	defer func() {
 		duration := time.Since(startTime)
 		metrics.ReconcileTime.WithLabelValues(c.Name()).Observe(duration.Seconds())
+
+		if err == nil {
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelSuccess).Inc()
+		} else if perrors.Find(err, controller.IsRequeueError) != nil {
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelRequeue).Inc()
+		} else {
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelError).Inc()
+			metrics.ReconcileErrors.WithLabelValues(c.Name()).Inc()
+		}
+
 		klog.V(4).Infof("Finished syncing Restore %q (%v)", key, duration)
 	}()
 
@@ -167,6 +177,12 @@ func (c *Controller) updateRestore(cur interface{}) {
 		}
 
 		klog.V(4).Infof("restore %s/%s is Complete, skipping.", ns, name)
+		return
+	}
+
+	if v1alpha1.IsRestoreVolumeFailed(newRestore) && !v1alpha1.IsCleanVolumeComplete(newRestore) {
+		// restore volume failed, need to clean created volumes
+		c.enqueueRestore(newRestore)
 		return
 	}
 

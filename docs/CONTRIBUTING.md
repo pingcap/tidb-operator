@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-Please install [Go 1.21.x](https://go.dev/doc/install). If you want to run TiDB Operator locally, please also install the latest version of [Docker](https://www.docker.com/get-started/), [kind](https://kind.sigs.k8s.io/docs/user/quick-start/), [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl) and [Helm](https://helm.sh/docs/intro/quickstart/).
+Please install [Go 1.23.x](https://go.dev/doc/install). If you want to run TiDB Operator locally, please also install the latest version of [Docker](https://www.docker.com/get-started/), [kind](https://kind.sigs.k8s.io/docs/user/quick-start/), [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl) and [Helm](https://helm.sh/docs/intro/quickstart/).
 
 ## Workflow
 
@@ -95,7 +95,7 @@ This will show errors if your code change does not pass checks (e.g. fmt, lint).
 If you change code related to CRD, such as type definitions in `pkg/apis/pingcap/v1alpha1/types.go`, please also run following commands to generate necessary code and artifacts.
 
 ```sh
-$ hack/update-all.sh
+$ make generate
 ```
 
 #### Start TiDB Operator locally and do manual tests

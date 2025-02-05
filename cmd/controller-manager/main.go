@@ -31,6 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller/autoscaler"
 	"github.com/pingcap/tidb-operator/pkg/controller/backup"
 	"github.com/pingcap/tidb-operator/pkg/controller/backupschedule"
+	compact "github.com/pingcap/tidb-operator/pkg/controller/compactbackup"
 	"github.com/pingcap/tidb-operator/pkg/controller/dmcluster"
 	"github.com/pingcap/tidb-operator/pkg/controller/restore"
 	"github.com/pingcap/tidb-operator/pkg/controller/tidbcluster"
@@ -169,6 +170,11 @@ func main() {
 
 		initMetrics := func(c Controller) {
 			metrics.ActiveWorkers.WithLabelValues(c.Name()).Set(0)
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelSuccess).Add(0)
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelError).Add(0)
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelRequeue).Add(0)
+			metrics.ReconcileErrors.WithLabelValues(c.Name()).Add(0)
+			metrics.WorkerCount.WithLabelValues(c.Name()).Set(float64(cliCfg.Workers))
 		}
 
 		// Initialize all controllers
@@ -177,6 +183,7 @@ func main() {
 			tidbcluster.NewPodController(deps),
 			dmcluster.NewController(deps),
 			backup.NewController(deps),
+			compact.NewController(deps),
 			restore.NewController(deps),
 			backupschedule.NewController(deps),
 			tidbinitializer.NewController(deps),

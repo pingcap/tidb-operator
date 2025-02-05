@@ -124,11 +124,21 @@ func (c *Controller) processNextWorkItem() bool {
 }
 
 // sync syncs the given backup.
-func (c *Controller) sync(key string) error {
+func (c *Controller) sync(key string) (err error) {
 	startTime := time.Now()
 	defer func() {
 		duration := time.Since(startTime)
 		metrics.ReconcileTime.WithLabelValues(c.Name()).Observe(duration.Seconds())
+
+		if err == nil {
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelSuccess).Inc()
+		} else if perrors.Find(err, controller.IsRequeueError) != nil {
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelRequeue).Inc()
+		} else {
+			metrics.ReconcileTotal.WithLabelValues(c.Name(), metrics.LabelError).Inc()
+			metrics.ReconcileErrors.WithLabelValues(c.Name()).Inc()
+		}
+
 		klog.V(4).Infof("Finished syncing Backup %q (%v)", key, duration)
 	}()
 
@@ -198,7 +208,6 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
-	// TODO: log backup check all subcommand job's pod status
 	if newBackup.Spec.Mode != v1alpha1.BackupModeLog {
 		// we will create backup job when we mark backup as scheduled status,
 		// but the backup job or its pod may failed due to insufficient resources or other reasons in k8s,
@@ -225,7 +234,7 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
-	if v1alpha1.IsBackupScheduled(newBackup) || v1alpha1.IsBackupRunning(newBackup) || v1alpha1.IsBackupPrepared(newBackup) || v1alpha1.IsLogBackupStopped(newBackup) {
+	if v1alpha1.IsBackupScheduled(newBackup) || v1alpha1.IsBackupRunning(newBackup) || v1alpha1.IsBackupPrepared(newBackup) || v1alpha1.IsBackupFailed(newBackup) {
 		klog.V(4).Infof("backup %s/%s is already Scheduled, Running, Preparing or Failed, skipping.", ns, name)
 		return
 	}

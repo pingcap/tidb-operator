@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/member/constants"
+	"github.com/pingcap/tidb-operator/pkg/util/cmpver"
 )
 
 // PDStartScriptModel contain fields for rendering PD start script
@@ -38,13 +39,16 @@ type PDStartScriptModel struct {
 	ExtraArgs          string
 	PDAddresses        string
 	PDStartTimeout     int
+	PDInitWaitTime     int
 }
 
-// PDMSStartScriptModel contain fields for rendering PD Micro Service start script
+// PDMSStartScriptModel contain fields for rendering PD microservice start script
 type PDMSStartScriptModel struct {
 	PDStartTimeout int
+	PDInitWaitTime int
 	PDAddresses    string
 
+	PDMSName            string
 	PDMSDomain          string
 	ListenAddr          string
 	AdvertiseListenAddr string
@@ -90,13 +94,15 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	m.PDStartTimeout = tc.PDStartTimeout()
 
+	m.PDInitWaitTime = tc.PDInitWaitTime()
+
 	waitForDnsNameIpMatchOnStartup := slices.Contains(
 		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch)
 
 	mode := ""
 	if tc.Spec.PD.Mode == "ms" && tc.Spec.PDMS != nil {
 		mode = "api"
-		// default enbled the dns detection
+		// default enabled the dns detection
 		waitForDnsNameIpMatchOnStartup = true
 	}
 	pdStartScriptTpl := template.Must(
@@ -106,7 +112,7 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 			componentCommonScript +
 				replacePdStartScriptCustomPorts(
 					replacePdStartScriptDnsAwaitPart(waitForDnsNameIpMatchOnStartup,
-						enableMicroServiceModeDynamic(mode, pdStartScript)))),
+						enableMicroserviceModeDynamic(mode, pdStartScript)))),
 	)
 
 	return renderTemplateFunc(pdStartScriptTpl, m)
@@ -132,7 +138,17 @@ func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error
 		m.PDMSDomain = m.PDMSDomain + "." + tc.Spec.ClusterDomain
 	}
 
+	if check, err := pdMSSupportMicroservicesWithName.Check(tc.PDMSVersion(name)); check && err == nil {
+		m.PDMSName = "${PDMS_POD_NAME}"
+		if tc.Spec.ClusterDomain != "" {
+			m.PDMSName = m.PDMSDomain
+		}
+		name = fmt.Sprintf("%s --name=%s", name, m.PDMSName)
+	}
+
 	m.PDStartTimeout = tc.PDStartTimeout()
+
+	m.PDInitWaitTime = tc.PDInitWaitTime()
 
 	preferPDAddressesOverDiscovery := slices.Contains(
 		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery)
@@ -169,7 +185,7 @@ func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error
 			componentCommonScript +
 				replacePdStartScriptCustomPorts(
 					replacePdStartScriptDnsAwaitPart(waitForDnsNameIpMatchOnStartup,
-						enableMicroServiceModeDynamic(name, pdmsStartScriptTplText)))))
+						enableMicroserviceModeDynamic(name, pdmsStartScriptTplText)))))
 
 	return renderTemplateFunc(msStartScriptTpl, m)
 }
@@ -181,10 +197,12 @@ const (
 	pdWaitForDnsIpMatchSubScript = `
 componentDomain=${PD_DOMAIN}
 waitThreshold={{ .PDStartTimeout }}
+initWaitTime={{ .PDInitWaitTime }}
+sleep initWaitTime
 nsLookupCmd="dig ${componentDomain} A ${componentDomain} AAAA +search +short"
 ` + componentCommonWaitForDnsIpMatchScript
 
-	pdEnableMicroServiceSubScript = "services"
+	pdEnableMicroserviceSubScript = "services"
 
 	pdWaitForDnsOnlySubScript = `
 
@@ -223,7 +241,7 @@ done
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN={{ .PDDomain }}` +
 		dnsAwaitPart + `
-ARGS="` + pdEnableMicroService + `--data-dir={{ .DataDir }} \
+ARGS="` + pdEnableMicroservice + `--data-dir={{ .DataDir }} \
 --name={{ .PDName }} \
 --peer-urls={{ .PeerURL }} \
 --advertise-peer-urls={{ .AdvertisePeerURL }} \
@@ -277,7 +295,7 @@ PD_DOMAIN={{ .PDMSDomain }}` +
 		dnsAwaitPart + `
 {{- if .AcrossK8s -}} {{ template "AcrossK8sSubscript" . }} {{- end }}
 
-ARGS="` + pdEnableMicroService + `--listen-addr={{ .ListenAddr }} \
+ARGS="` + pdEnableMicroservice + `--listen-addr={{ .ListenAddr }} \
 --advertise-listen-addr={{ .AdvertiseListenAddr }} \
 --backend-endpoints={{ .PDAddresses }} \
 --config=/etc/pd/pd.toml \
@@ -307,10 +325,20 @@ func replacePdStartScriptDnsAwaitPart(withLocalIpMatch bool, startScript string)
 	}
 }
 
-func enableMicroServiceModeDynamic(ms string, startScript string) string {
-	if ms != "" {
-		return strings.ReplaceAll(startScript, pdEnableMicroService, fmt.Sprintf(" %s %s ", pdEnableMicroServiceSubScript, ms))
+// startParams has different values for different PD related service:
+//   - for original `PD`, startParams should be empty.
+//   - for `PD API` service, startParams should be `api`
+//   - for `TSO` and `Scheduling`, startParams should be `tso` and `scheduling` respectively.
+//     NOTICE: in `8.3.0` we have supported `name` start parameter, so we will pass `tso name=${PDMS_POD_NAME}` to startParams.
+func enableMicroserviceModeDynamic(startParams string, startScript string) string {
+	if startParams != "" {
+		return strings.ReplaceAll(startScript, pdEnableMicroservice, fmt.Sprintf(" %s %s ", pdEnableMicroserviceSubScript, startParams))
 	} else {
-		return strings.ReplaceAll(startScript, pdEnableMicroService, "")
+		// for original `PD`,  should be empty.
+		return strings.ReplaceAll(startScript, pdEnableMicroservice, "")
 	}
 }
+
+// PDMSSupportMicroservicesWithName returns true if the given version of PDMS supports microservices with name.
+// related https://github.com/tikv/pd/pull/8461.
+var pdMSSupportMicroservicesWithName, _ = cmpver.NewConstraint(cmpver.GreaterOrEqual, "v8.3.0")

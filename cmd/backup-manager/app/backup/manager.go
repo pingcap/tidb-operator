@@ -35,6 +35,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 )
@@ -101,6 +102,13 @@ func (bm *Manager) ProcessBackup() error {
 		return errorutils.NewAggregate(errs)
 	}
 
+	crData, err := json.Marshal(backup)
+	if err != nil {
+		klog.Errorf("failed to marshal backup %v to json, err: %v", backup, err)
+	} else {
+		klog.Infof("start to process backup: %s", string(crData))
+	}
+
 	// we treat snapshot backup as restarted if its status is not scheduled when backup pod just start to run
 	// we will clean backup data before run br command
 	if backup.Spec.Mode == v1alpha1.BackupModeSnapshot && (backup.Status.Phase != v1alpha1.BackupScheduled || v1alpha1.IsBackupRestart(backup)) {
@@ -131,6 +139,9 @@ func (bm *Manager) ProcessBackup() error {
 		// skip the DB initialization if spec.from is not specified
 		return bm.performBackup(ctx, backup.DeepCopy(), nil)
 	}
+
+	klog.Infof("start to connect to tidb server (%s:%d) as the .spec.from field is specified",
+		backup.Spec.From.Host, backup.Spec.From.Port)
 
 	// validate and create from db
 	var db *sql.DB
@@ -187,7 +198,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 
 	var errs []error
 
-	backupFullPath, err := util.GetStoragePath(backup)
+	backupFullPath, err := util.GetStoragePath(&backup.Spec.StorageProvider)
 	if err != nil {
 		errs = append(errs, err)
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
@@ -461,6 +472,10 @@ func (bm *Manager) performLogBackup(ctx context.Context, backup *v1alpha1.Backup
 		resultStatus, reason, err = bm.stopLogBackup(ctx, backup)
 	case string(v1alpha1.LogTruncateCommand):
 		resultStatus, reason, err = bm.truncateLogBackup(ctx, backup)
+	case string(v1alpha1.LogResumeCommand):
+		resultStatus, reason, err = bm.resumeLogBackup(ctx, backup)
+	case string(v1alpha1.LogPauseCommand):
+		resultStatus, reason, err = bm.pauseLogBackup(ctx, backup)
 	default:
 		return fmt.Errorf("log backup %s unknown log subcommand %s", bm, bm.SubCommand)
 	}
@@ -491,7 +506,7 @@ func (bm *Manager) performLogBackup(ctx context.Context, backup *v1alpha1.Backup
 // startLogBackup starts log backup.
 func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) (*controller.BackupUpdateStatus, string, error) {
 	started := time.Now()
-	backupFullPath, err := util.GetStoragePath(backup)
+	backupFullPath, err := util.GetStoragePath(&backup.Spec.StorageProvider)
 	if err != nil {
 		klog.Errorf("Get backup full path of cluster %s failed, err: %s", bm, err)
 		return nil, "GetBackupRemotePathFailed", err
@@ -516,7 +531,7 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 
 	if backupErr != nil {
 		klog.Errorf("Start log backup of cluster %s failed, err: %s", bm, backupErr)
-		return nil, "StartLogBackuFailed", backupErr
+		return nil, "StartLogBackupFailed", backupErr
 	}
 	klog.Infof("Start log backup of cluster %s to %s success", bm, backupFullPath)
 
@@ -536,6 +551,36 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 		TimeStarted:   &metav1.Time{Time: started},
 		TimeCompleted: &metav1.Time{Time: finish},
 		CommitTs:      &ts,
+	}
+	return updateStatus, "", nil
+}
+
+// resumeLogBackup resume log backup.
+func (bm *Manager) resumeLogBackup(ctx context.Context, backup *v1alpha1.Backup) (*controller.BackupUpdateStatus, string, error) {
+	started := time.Now()
+
+	// change Prepare to Running before real backup process start
+	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Command: v1alpha1.LogResumeCommand,
+		Type:    v1alpha1.BackupRunning,
+		Status:  corev1.ConditionTrue,
+	}, nil); err != nil {
+		return nil, "UpdateStatusFailed", err
+	}
+
+	// run br binary to do the real job
+	backupErr := bm.doResumeLogBackup(ctx, backup)
+
+	if backupErr != nil {
+		klog.Errorf("Resume log backup of cluster %s failed, err: %s", bm, backupErr)
+		return nil, "ResumeLogBackuFailed", backupErr
+	}
+	klog.Infof("Resume log backup of cluster %s success", bm)
+
+	finish := time.Now()
+	updateStatus := &controller.BackupUpdateStatus{
+		TimeStarted:   &metav1.Time{Time: started},
+		TimeCompleted: &metav1.Time{Time: finish},
 	}
 	return updateStatus, "", nil
 }
@@ -561,6 +606,37 @@ func (bm *Manager) stopLogBackup(ctx context.Context, backup *v1alpha1.Backup) (
 		return nil, "StopLogBackupFailed", backupErr
 	}
 	klog.Infof("Stop log backup of cluster %s success", bm)
+
+	finish := time.Now()
+
+	updateStatus := &controller.BackupUpdateStatus{
+		TimeStarted:   &metav1.Time{Time: started},
+		TimeCompleted: &metav1.Time{Time: finish},
+	}
+	return updateStatus, "", nil
+}
+
+// pauseLogBackup pauses log backup.
+func (bm *Manager) pauseLogBackup(ctx context.Context, backup *v1alpha1.Backup) (*controller.BackupUpdateStatus, string, error) {
+	started := time.Now()
+
+	// change Prepare to Running before real backup process start
+	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Command: v1alpha1.LogPauseCommand,
+		Type:    v1alpha1.BackupRunning,
+		Status:  corev1.ConditionTrue,
+	}, nil); err != nil {
+		return nil, "UpdateStatusFailed", err
+	}
+
+	// run br binary to do the real job
+	backupErr := bm.doPauseLogBackup(ctx, backup)
+
+	if backupErr != nil {
+		klog.Errorf("Pause log backup of cluster %s failed, err: %s", bm, backupErr)
+		return nil, "PauseLogBackupFailed", backupErr
+	}
+	klog.Infof("Pause log backup of cluster %s success", bm)
 
 	finish := time.Now()
 

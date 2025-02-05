@@ -19,6 +19,8 @@ const (
 	// BackupNameTimeFormat is the time format for generate backup CR name
 	BackupNameTimeFormat = "2006-01-02t15-04-05"
 
+	BackupTimestampFormat = "2006-01-02 15:04:05"
+
 	// DefaultTidbUser is the default tidb user for login tidb cluster
 	DefaultTidbUser = "root"
 )
@@ -65,6 +67,11 @@ var (
 	// NOTE: this should be 8300 in TiCDC itself, but we have used 8301 in TiDB Operator at the beginning
 	DefaultTiCDCPort = int32(8301)
 	customPortTiCDC  = "8301"
+
+	DefaultTiProxyServerPort = int32(6000)
+	customPortTiProxyServer  = "6000"
+	DefaultTiProxyStatusPort = int32(3080)
+	customPortTiProxyStatus  = "3080"
 )
 
 func init() {
@@ -151,6 +158,18 @@ func init() {
 
 	if port, err := strconv.ParseUint(customPortTiCDC, 10, 32); err == nil {
 		DefaultTiCDCPort = int32(port)
+	} else {
+		panic(err)
+	}
+
+	if port, err := strconv.ParseUint(customPortTiProxyServer, 10, 32); err == nil {
+		DefaultTiProxyServerPort = int32(port)
+	} else {
+		panic(err)
+	}
+
+	if port, err := strconv.ParseUint(customPortTiProxyStatus, 10, 32); err == nil {
+		DefaultTiProxyStatusPort = int32(port)
 	} else {
 		panic(err)
 	}

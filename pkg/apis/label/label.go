@@ -53,6 +53,9 @@ const (
 	// BackupScheduleLabelKey is backup schedule key
 	BackupScheduleLabelKey string = "tidb.pingcap.com/backup-schedule"
 
+	// BackupScheduleGroupLabelKey is backup schedule group key
+	BackupScheduleGroupLabelKey string = "tidb.pingcap.com/backup-schedule-group"
+
 	// BackupLabelKey is backup key
 	BackupLabelKey string = "tidb.pingcap.com/backup"
 
@@ -111,6 +114,10 @@ const (
 	// AnnoPrefixConfigMapNameBeforeDelete is the last used ConfigMap name before STS deleted. xxx_member_manager should use its
 	// annotation value as ConfigMap name if the value is not empty when it tries to CREATE or RESTORE sts.
 	AnnoPrefixConfigMapNameBeforeDelete = "tidb.pingcap.com/configmap-name-before-delete-"
+	// AnnoOwnerGeneration store the generation of owner, for example, save generation of TC into tikv STS's annotation.
+	// It's useful for scenario where you need to know whether the STS is already updated with the latest TC.spec.{component}.
+	// Though the number of owner of object may more than one, but in our scenario, it's only one.
+	AnnoOwnerGeneration = "tidb.pingcap.com/owner-generation"
 
 	// AnnPVCScaleInTime is pvc scaled in time key used in PVC for e2e test only
 	AnnPVCScaleInTime = "tidb.pingcap.com/scale-in-time"
@@ -184,6 +191,9 @@ const (
 	DiscoveryLabelVal string = "discovery"
 	// TiDBMonitorVal is Monitor label value
 	TiDBMonitorVal string = "monitor"
+
+	// TiDBMonitorProtectionFinalizer is the name of finalizer on TidbMonitors
+	TiDBMonitorProtectionFinalizer string = "tidb.pingcap.com/monitor-protection"
 
 	// CleanJobLabelVal is clean job label value
 	CleanJobLabelVal string = "clean"
@@ -282,7 +292,7 @@ func NewRestore() Label {
 	}
 }
 
-// NewBackupSchedule initialize a new Label for backups of bakcup schedule
+// NewBackupSchedule initialize a new Label for backups of backup schedule
 func NewBackupSchedule() Label {
 	return Label{
 		NameLabelKey:      BackupScheduleJobLabelVal,
@@ -316,6 +326,12 @@ func NewGroup() Label {
 	return Label{
 		NameLabelKey:      "tidb-cluster-group",
 		ManagedByLabelKey: TiDBOperator,
+	}
+}
+
+func NewBackupScheduleGroup(val string) Label {
+	return Label{
+		BackupScheduleGroupLabelKey: val,
 	}
 }
 

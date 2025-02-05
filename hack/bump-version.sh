@@ -22,12 +22,10 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 fi
 
 # parameters
-OPERATOR_OLD="v1\.6\.0-alpha.10"
-OPERATOR_NEW="v1\.6\.0-beta.1"
-TIDB_OLD="v7\.1\.1"
-TIDB_NEW="v7\.5\.1"
-DM_OLD="v7.1.1"
-DM_NEW="v7.5.1"
+OPERATOR_OLD="v1.6.0"
+OPERATOR_NEW="v1.6.1"
+TIDB_OLD="v8.1.0"
+TIDB_NEW="v8.5.0"
 
 find ./deploy -name "*\.tf"| xargs $SED_BIN -i "s/$OPERATOR_OLD/$OPERATOR_NEW/g"
 find ./charts -name "*\.yaml"| xargs $SED_BIN -i "s/$OPERATOR_OLD/$OPERATOR_NEW/g"
@@ -37,7 +35,5 @@ find ./examples -name "*\.yaml"| xargs $SED_BIN -i "s/$TIDB_OLD/$TIDB_NEW/g"
 find ./deploy -name "*\.tf"| xargs $SED_BIN -i "s/$TIDB_OLD/$TIDB_NEW/g"
 find ./charts -name "*\.yaml"| xargs $SED_BIN -i "s/$TIDB_OLD/$TIDB_NEW/g"
 $SED_BIN -i "s/$TIDB_OLD/$TIDB_NEW/g" images/tidb-backup-manager/Dockerfile
-
-find ./examples -name "*\.yaml"| xargs $SED_BIN -i "s/$DM_OLD/$DM_NEW/g"
 
 find ./ -name "*\.mod" | xargs $SED_BIN -i -E "s/(github.com\/pingcap\/tidb-operator\/.+) ($OPERATOR_OLD)/\1 $OPERATOR_NEW/g"

@@ -14,6 +14,7 @@
 package monitor
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -72,6 +73,8 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 		if tm.Spec.Shards == nil {
 			tm.Spec.Shards = pointer.Int32Ptr(0)
 		}
+		_, err = tmm.deps.Clientset.PingcapV1alpha1().TidbMonitors(tm.Namespace).Create(context.Background(), tm, metav1.CreateOptions{})
+		g.Expect(err).NotTo(HaveOccurred())
 
 		err = tmm.SyncMonitor(tm)
 		if test.errExpectFn != nil {
@@ -138,13 +141,13 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 				g.Expect(err).NotTo(HaveOccurred())
 
 				url := "http://127.0.0.1/a/b/c"
-				remoteTimeout := model.Duration(30 * time.Second)
+				remoteTimeout := "30s"
 				testTime := 10 * time.Second
 				monitor.Spec.Prometheus.RemoteWrite = []*v1alpha1.RemoteWriteSpec{
 					{
 						URL:           url,
 						Name:          "test",
-						RemoteTimeout: &remoteTimeout,
+						RemoteTimeout: remoteTimeout,
 						WriteRelabelConfigs: []v1alpha1.RelabelConfig{
 							{
 								SourceLabels: []model.LabelName{"test1", "test2"},
@@ -548,6 +551,8 @@ func TestTidbMonitorSyncUpdate(t *testing.T) {
 		if test.prepare != nil {
 			test.prepare(tmm, tm)
 		}
+		_, err = tmm.deps.Clientset.PingcapV1alpha1().TidbMonitors(tm.Namespace).Create(context.Background(), tm, metav1.CreateOptions{})
+		g.Expect(err).NotTo(HaveOccurred())
 
 		err = tmm.SyncMonitor(tm)
 

@@ -103,28 +103,28 @@ func EnsureDirectoryExist(dirName string) error {
 }
 
 // GetStoragePath generate the path of a specific storage
-func GetStoragePath(backup *v1alpha1.Backup) (string, error) {
+func GetStoragePath(StorageProvider *v1alpha1.StorageProvider) (string, error) {
 	var url, bucket, prefix string
-	st := util.GetStorageType(backup.Spec.StorageProvider)
+	st := util.GetStorageType(*StorageProvider)
 	switch st {
 	case v1alpha1.BackupStorageTypeS3:
-		prefix = backup.Spec.StorageProvider.S3.Prefix
-		bucket = backup.Spec.StorageProvider.S3.Bucket
+		prefix = StorageProvider.S3.Prefix
+		bucket = StorageProvider.S3.Bucket
 		url = fmt.Sprintf("s3://%s", path.Join(bucket, prefix))
 		return url, nil
 	case v1alpha1.BackupStorageTypeGcs:
-		prefix = backup.Spec.StorageProvider.Gcs.Prefix
-		bucket = backup.Spec.StorageProvider.Gcs.Bucket
+		prefix = StorageProvider.Gcs.Prefix
+		bucket = StorageProvider.Gcs.Bucket
 		url = fmt.Sprintf("gcs://%s/", path.Join(bucket, prefix))
 		return url, nil
 	case v1alpha1.BackupStorageTypeAzblob:
-		prefix = backup.Spec.StorageProvider.Azblob.Prefix
-		bucket = backup.Spec.StorageProvider.Azblob.Container
+		prefix = StorageProvider.Azblob.Prefix
+		bucket = StorageProvider.Azblob.Container
 		url = fmt.Sprintf("azure://%s/", path.Join(bucket, prefix))
 		return url, nil
 	case v1alpha1.BackupStorageTypeLocal:
-		prefix = backup.Spec.StorageProvider.Local.Prefix
-		mountPath := backup.Spec.StorageProvider.Local.VolumeMount.MountPath
+		prefix = StorageProvider.Local.Prefix
+		mountPath := StorageProvider.Local.VolumeMount.MountPath
 		url = fmt.Sprintf("local://%s", path.Join(mountPath, prefix))
 		return url, nil
 	default:
@@ -175,7 +175,7 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, error
 	}
 	args = append(args, storageArgs...)
 
-	if spec.TableFilter != nil && len(spec.TableFilter) > 0 {
+	if len(spec.TableFilter) > 0 {
 		for _, tableFilter := range spec.TableFilter {
 			args = append(args, "--filter", tableFilter)
 		}
@@ -204,7 +204,7 @@ func ConstructDumplingOptionsForBackup(backup *v1alpha1.Backup) []string {
 	var args []string
 	config := backup.Spec
 
-	if config.TableFilter != nil && len(config.TableFilter) > 0 {
+	if len(config.TableFilter) > 0 {
 		for _, tableFilter := range config.TableFilter {
 			args = append(args, "--filter", tableFilter)
 		}
@@ -244,7 +244,7 @@ func ConstructBRGlobalOptionsForRestore(restore *v1alpha1.Restore) ([]string, er
 	}
 	args = append(args, storageArgs...)
 
-	if config.TableFilter != nil && len(config.TableFilter) > 0 {
+	if len(config.TableFilter) > 0 {
 		for _, tableFilter := range config.TableFilter {
 			args = append(args, "--filter", tableFilter)
 		}
@@ -535,7 +535,9 @@ func ReadAllStdErrToChannel(stdErr io.Reader, errMsgCh chan []byte) {
 func GracefullyShutDownSubProcess(ctx context.Context, cmd *exec.Cmd) {
 	<-ctx.Done()
 	klog.Errorf("context done, err: %s. start to shut down sub process gracefully", ctx.Err().Error())
-	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+	if cmd.Process == nil {
+		klog.Infof("sub process not started, won't send SIGTERM")
+	} else if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
 		klog.Errorf("send SIGTERM to sub process error: %s", err.Error())
 	} else {
 		klog.Infof("send SIGTERM to sub process successfully")

@@ -112,12 +112,12 @@ func (m *tikvMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	if tc.Spec.PD != nil && !tc.PDIsAvailable() {
 		return controller.RequeueErrorf("TidbCluster: [%s/%s], waiting for PD cluster running", ns, tcName)
 	}
-	// Check if all PD Micro Services are available
+	// Check if all PD microservices are available
 	if tc.Spec.PDMS != nil && (tc.Spec.PD != nil && tc.Spec.PD.Mode == "ms") {
 		for _, pdms := range tc.Spec.PDMS {
-			if err = controller.GetPDMSClient(m.deps.PDControl, tc, pdms.Name); err != nil {
+			if cli := controller.GetPDMSClient(m.deps.PDControl, tc, pdms.Name); cli == nil {
 				return controller.RequeueErrorf("PDMS component %s for TidbCluster: [%s/%s], "+
-					"waiting for PD micro service cluster running, error: %v", pdms.Name, ns, tcName, err)
+					"waiting for PD microservice cluster running", pdms.Name, ns, tcName)
 			}
 		}
 	}
