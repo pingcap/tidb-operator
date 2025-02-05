@@ -14,6 +14,7 @@
 package member
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
@@ -240,7 +241,11 @@ func (u *tikvUpgrader) evictLeaderBeforeUpgrade(tc *v1alpha1.TidbCluster, upgrad
 	}
 
 	if leaderCount == 0 {
-		klog.Infof("%s: leader count is 0, so ready to upgrade", logPrefix)
+		klog.Infof("%s: leader count is 0, so ready to upgrade, triggering force flush when there are some log backup tasks", logPrefix)
+		err := u.triggerForceFlush(tc, upgradePod)
+		if err != nil {
+			klog.Warningf("%s: failed to trigger force flush, continuing: %s", logPrefix, err)
+		}
 		return true, nil
 	}
 
@@ -337,6 +342,12 @@ func (u *tikvUpgrader) endEvictLeaderAfterUpgrade(tc *v1alpha1.TidbCluster, pod 
 
 	return true, nil
 
+}
+
+func (u *tikvUpgrader) triggerForceFlush(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
+	pdcli := u.deps.TiKVControl.GetTiKVPodClient(tc.GetNamespace(), tc.GetName(), pod.GetName(), tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled())
+	cxLogger := klog.NewContext(context.Background(), klog.Background().WithValues("pod", pod.GetName(), "pod.ns", pod.GetNamespace()))
+	return pdcli.FlushLogBackupTasks(cxLogger)
 }
 
 func (u *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64, pod *corev1.Pod) error {

@@ -380,7 +380,6 @@ func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.
 		switch value {
 		case v1alpha1.EvictLeaderValueNone:
 		case v1alpha1.EvictLeaderValueDeletePod:
-		case v1alpha1.EvictLeaderValueDeletePodAndFlushLogBackup:
 		default:
 			klog.Warningf("Ignore unknown value %q of annotation %q for Pod %s/%s", value, key, pod.Namespace, pod.Name)
 			return reconcile.Result{}, nil
@@ -436,7 +435,7 @@ func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.
 		}
 
 		// delete pod after eviction finished if needed
-		if value == v1alpha1.EvictLeaderValueDeletePod || value == v1alpha1.EvictLeaderValueDeletePodAndFlushLogBackup {
+		if value == v1alpha1.EvictLeaderValueDeletePod {
 			tlsEnabled := tc.IsTLSClusterEnabled()
 			kvClient := c.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name, pod.Name, tc.Spec.ClusterDomain, tlsEnabled)
 			leaderCount, err := kvClient.GetLeaderCount()
@@ -447,14 +446,8 @@ func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.
 			klog.Infof("Region leader count is %d for Pod %s/%s", leaderCount, pod.Namespace, pod.Name)
 
 			if leaderCount == 0 {
-				if value == v1alpha1.EvictLeaderValueDeletePodAndFlushLogBackup {
-					if err := kvClient.FlushLogBackupTasks(ctx); err != nil {
-						klog.ErrorS(err, "failed to force flush the log backup task.", "pod", pod.Name, "pod.ns", pod.Namespace)
-					} else {
-						klog.InfoS("successfully flushed the log backup task.", "pod", pod.Name, "pod.ns", pod.Namespace)
-						// Wait a while so TiKV is able to send the flush result to the advancer.
-						time.Sleep(3 * time.Second)
-					}
+				if err := kvClient.FlushLogBackupTasks(ctx); err != nil {
+					klog.ErrorS(err, "failed to flush log backup tasks. continue to delete pod...", "pod", pod.Name, "pod.ns", pod.Namespace)
 				}
 
 				err = c.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
@@ -507,7 +500,7 @@ func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.
 
 		evictStatus := tc.Status.TiKV.EvictLeader[pod.Name]
 		if evictStatus != nil {
-			if evictStatus.Value == v1alpha1.EvictLeaderValueDeletePod || evictStatus.Value == v1alpha1.EvictLeaderValueDeletePodAndFlushLogBackup {
+			if evictStatus.Value == v1alpha1.EvictLeaderValueDeletePod {
 				if k8s.IsPodReady(pod) {
 					err := endEvict()
 					if err != nil {

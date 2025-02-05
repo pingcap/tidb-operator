@@ -21,7 +21,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/pingcap/errors"
@@ -29,7 +28,6 @@ import (
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prom2json"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"k8s.io/klog/v2"
@@ -51,27 +49,16 @@ type TiKVClient interface {
 type lazyGRPCConn struct {
 	target string
 	opts   []grpc.DialOption
-
-	initMu sync.Mutex
-	cached *grpc.ClientConn
 }
 
-func (l *lazyGRPCConn) conn() (*grpc.ClientConn, error) {
-	l.initMu.Lock()
-	defer l.initMu.Unlock()
-
-	if l.cached != nil && l.cached.GetState() != connectivity.Shutdown {
-		return l.cached, nil
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
+func (l *lazyGRPCConn) conn(ctx context.Context) (*grpc.ClientConn, error) {
+	ctx, cancel := context.WithTimeout(ctx, DefaultTimeout)
 	defer cancel()
 	ch, err := grpc.DialContext(ctx, l.target, l.opts...)
 	if err != nil {
 		return nil, errors.Annotatef(err, "during connecting to %s", l.target)
 	}
 
-	l.cached = ch
 	return ch, nil
 }
 
@@ -84,21 +71,40 @@ type tikvClient struct {
 
 // FlushLogBackupTasks implements TiKVClient.
 func (c *tikvClient) FlushLogBackupTasks(ctx context.Context) error {
-	conn, err := c.grpcConnector.conn()
+	logger := klog.FromContext(ctx)
+
+	// For now we are using one-shot sessions, because the `TiKVClient`
+	// interface doesn't provide a `Close` method...
+	conn, err := c.grpcConnector.conn(ctx)
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err := conn.Close(); err != nil {
+			logger.Error(err, "tikvClient: failed to close grpc connection")
+		}
+	}()
+
 	cli := logbackup.NewLogBackupClient(conn)
 	res, err := cli.FlushNow(ctx, &logbackup.FlushNowRequest{})
 	if err != nil {
 		return err
 	}
 
+	// Fast path: no task, return early.
+	if len(res.Results) == 0 {
+		return nil
+	}
+
 	for _, r := range res.Results {
-		if !r.Success {
+		if r.Success {
+			logger.Info("successfully flushed the log backup task.", "task", r.TaskName)
+		} else {
 			return errors.Errorf("force flush failed for task %s: %s", r.TaskName, r.ErrorMessage)
 		}
 	}
+	// Wait a while so TiKV is able to send the flush result to the advancer.
+	time.Sleep(3 * time.Second)
 	return nil
 }
 
