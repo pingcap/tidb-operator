@@ -79,8 +79,8 @@ func TestState(t *testing.T) {
 						return obj
 					}),
 				},
-				updateRevision:  "aaa-77554fbd78",
-				currentRevision: "aaa-77554fbd78",
+				updateRevision:  "aaa-tiflash-77554fbd78",
+				currentRevision: "aaa-tiflash-77554fbd78",
 			},
 		},
 	}

@@ -47,7 +47,7 @@ var encoderMap = map[schema.GroupVersion]kuberuntime.Encoder{}
 // a new revision, or modify the Revision of an existing revision if an update to ComponentGroup is detected.
 // This method expects that revisions is sorted when supplied.
 func GetCurrentAndUpdate(
-	_ context.Context,
+	ctx context.Context,
 	group client.Object,
 	component string,
 	labels map[string]string,
@@ -86,13 +86,13 @@ func GetCurrentAndUpdate(
 	} else if equalCount > 0 {
 		// if the equivalent revision is not immediately prior we will roll back by incrementing the
 		// Revision of the equivalent revision
-		updateRevision, err = cli.UpdateControllerRevision(equalRevisions[equalCount-1], updateRevision.Revision)
+		updateRevision, err = cli.UpdateControllerRevision(ctx, equalRevisions[equalCount-1], updateRevision.Revision)
 		if err != nil {
 			return nil, nil, collisionCount, fmt.Errorf("failed to update a revision: %w", err)
 		}
 	} else {
 		// if there is no equivalent revision we create a new one
-		updateRevision, err = cli.CreateControllerRevision(group, updateRevision, &collisionCount)
+		updateRevision, err = cli.CreateControllerRevision(ctx, group, updateRevision, &collisionCount)
 		if err != nil {
 			return nil, nil, collisionCount, fmt.Errorf("failed to create a revision: %w", err)
 		}
@@ -180,6 +180,7 @@ func getPatch(obj client.Object, gvk schema.GroupVersionKind) ([]byte, error) {
 // until only RevisionHistoryLimit revisions remain.
 // This method expects that revisions is sorted when supplied.
 func TruncateHistory[T runtime.Instance](
+	ctx context.Context,
 	cli history.Interface,
 	instances []T,
 	revisions []*appsv1.ControllerRevision,
@@ -224,7 +225,7 @@ func TruncateHistory[T runtime.Instance](
 	// delete any non-live history to maintain the revision limit.
 	hist = hist[:(historyLen - historyLimit)]
 	for i := 0; i < len(hist); i++ {
-		if err := cli.DeleteControllerRevision(hist[i]); err != nil {
+		if err := cli.DeleteControllerRevision(ctx, hist[i]); err != nil {
 			return fmt.Errorf("failed to delete controller revision %s: %w", hist[i].Name, err)
 		}
 	}
