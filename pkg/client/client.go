@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"reflect"
 
+	openapi_v3 "github.com/google/gnostic-models/openapiv3"
+	"google.golang.org/protobuf/proto"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -27,12 +29,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/managedfields"
 	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/openapi"
 	"k8s.io/client-go/rest"
-	"k8s.io/kube-openapi/pkg/util/proto"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/structured-merge-diff/v4/typed"
 
 	"github.com/pingcap/tidb-operator/pkg/scheme"
+	forkedproto "github.com/pingcap/tidb-operator/third_party/kube-openapi/pkg/util/proto"
 )
 
 const (
@@ -163,25 +166,44 @@ type GVKParser interface {
 	Type(gvk schema.GroupVersionKind) *typed.ParseableType
 }
 
+type gvkParser struct {
+	parsers map[schema.GroupVersion]GVKParser
+}
+
+func (p *gvkParser) Type(gvk schema.GroupVersionKind) *typed.ParseableType {
+	parser, ok := p.parsers[gvk.GroupVersion()]
+	if !ok {
+		return nil
+	}
+	return parser.Type(gvk)
+}
+
+func gvToAPIPath(gv schema.GroupVersion) string {
+	var resourcePath string
+	if gv.Group == "" {
+		resourcePath = fmt.Sprintf("api/%s", gv.Version)
+	} else {
+		resourcePath = fmt.Sprintf("apis/%s/%s", gv.Group, gv.Version)
+	}
+	return resourcePath
+}
+
 func New(cfg *rest.Config, opts client.Options) (Client, error) {
 	dc, err := discovery.NewDiscoveryClientForConfig(cfg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot new discovery client: %w", err)
 	}
 
-	doc, err := dc.OpenAPISchema()
+	oc := dc.OpenAPIV3()
+	paths, err := oc.Paths()
 	if err != nil {
 		return nil, err
 	}
+	gvs := scheme.GroupVersions
 
-	models, err := proto.NewOpenAPIData(doc)
+	parser, err := NewGVKParser(gvs, paths)
 	if err != nil {
-		return nil, err
-	}
-
-	parser, err := managedfields.NewGVKParser(models, false)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot new gvk parser: %w", err)
 	}
 
 	c, err := client.NewWithWatch(cfg, opts)
@@ -193,6 +215,45 @@ func New(cfg *rest.Config, opts client.Options) (Client, error) {
 		WithWatch: c,
 		parser:    parser,
 	}, nil
+}
+
+func NewGVKParser(gvs []schema.GroupVersion, paths map[string]openapi.GroupVersion) (GVKParser, error) {
+	parser := &gvkParser{
+		parsers: map[schema.GroupVersion]GVKParser{},
+	}
+	for _, gv := range gvs {
+		path := gvToAPIPath(gv)
+		gvc, ok := paths[path]
+		if !ok {
+			return nil, fmt.Errorf("cannot find openapi doc of gv %v", gv.String())
+		}
+		if err := parser.addGroupVersion(gv, gvc); err != nil {
+			return nil, err
+		}
+	}
+
+	return parser, nil
+}
+
+func (p *gvkParser) addGroupVersion(gv schema.GroupVersion, gvc openapi.GroupVersion) error {
+	bs, err := gvc.Schema(openapi.ContentTypeOpenAPIV3PB)
+	if err != nil {
+		return err
+	}
+	var doc openapi_v3.Document
+	if err2 := proto.Unmarshal(bs, &doc); err2 != nil {
+		return err2
+	}
+	models, err := forkedproto.NewOpenAPIV3Data(&doc)
+	if err != nil {
+		return err
+	}
+	parser, err := managedfields.NewGVKParser(models, false)
+	if err != nil {
+		return err
+	}
+	p.parsers[gv] = parser
+	return nil
 }
 
 func newObject(x client.Object) client.Object {

@@ -15,7 +15,11 @@
 package scheme
 
 import (
+	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
+	storagev1beta1 "k8s.io/api/storage/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -33,4 +37,11 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(Scheme))
 	utilruntime.Must(v1alpha1.Install(Scheme))
+}
+
+var GroupVersions = []schema.GroupVersion{
+	corev1.SchemeGroupVersion,
+	storagev1.SchemeGroupVersion,
+	v1alpha1.SchemeGroupVersion,
+	storagev1beta1.SchemeGroupVersion,
 }
