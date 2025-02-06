@@ -38,7 +38,7 @@ type FakeHistoryClient struct {
 	CreateFunc func(parent client.Object, revision *appsv1.ControllerRevision, collisionCount *int32) (*appsv1.ControllerRevision, error)
 }
 
-func (f *FakeHistoryClient) CreateControllerRevision(parent client.Object, revision *appsv1.ControllerRevision, collisionCount *int32) (*appsv1.ControllerRevision, error) {
+func (f *FakeHistoryClient) CreateControllerRevision(_ context.Context, parent client.Object, revision *appsv1.ControllerRevision, collisionCount *int32) (*appsv1.ControllerRevision, error) {
 	if f.CreateFunc != nil {
 		rev, err := f.CreateFunc(parent, revision, collisionCount)
 		if err != nil {
@@ -49,7 +49,7 @@ func (f *FakeHistoryClient) CreateControllerRevision(parent client.Object, revis
 	return nil, nil
 }
 
-func (f *FakeHistoryClient) DeleteControllerRevision(revision *appsv1.ControllerRevision) error {
+func (f *FakeHistoryClient) DeleteControllerRevision(_ context.Context, revision *appsv1.ControllerRevision) error {
 	for i, r := range f.Revisions {
 		if r.Name == revision.Name {
 			f.Revisions = append(f.Revisions[:i], f.Revisions[i+1:]...)
@@ -59,11 +59,11 @@ func (f *FakeHistoryClient) DeleteControllerRevision(revision *appsv1.Controller
 	return nil
 }
 
-func (f *FakeHistoryClient) ListControllerRevisions(_ client.Object, _ labels.Selector) ([]*appsv1.ControllerRevision, error) {
+func (f *FakeHistoryClient) ListControllerRevisions(_ context.Context, _ client.Object, _ labels.Selector) ([]*appsv1.ControllerRevision, error) {
 	return f.Revisions, nil
 }
 
-func (f *FakeHistoryClient) UpdateControllerRevision(revision *appsv1.ControllerRevision, newRevision int64) (*appsv1.ControllerRevision, error) {
+func (f *FakeHistoryClient) UpdateControllerRevision(_ context.Context, revision *appsv1.ControllerRevision, newRevision int64) (*appsv1.ControllerRevision, error) {
 	for _, r := range f.Revisions {
 		if r.Name == revision.Name {
 			r.Revision = newRevision
@@ -176,10 +176,11 @@ func TestTruncateHistory(t *testing.T) {
 			cli := &FakeHistoryClient{
 				Revisions: tt.revisions,
 			}
-			err := TruncateHistory(cli, runtime.FromTiDBSlice(tt.instances), tt.revisions, tt.current.Name, tt.update.Name, tt.limit)
+			ctx := context.TODO()
+			err := TruncateHistory(ctx, cli, runtime.FromTiDBSlice(tt.instances), tt.revisions, tt.current.Name, tt.update.Name, tt.limit)
 			require.NoError(t, err)
 
-			remainingRevisions, err := cli.ListControllerRevisions(nil, labels.Everything())
+			remainingRevisions, err := cli.ListControllerRevisions(ctx, nil, labels.Everything())
 			require.NoError(t, err)
 			assert.Equal(t, len(tt.expected), len(remainingRevisions))
 			m := make(map[string]struct{}, len(remainingRevisions))
