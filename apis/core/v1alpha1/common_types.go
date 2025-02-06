@@ -87,6 +87,8 @@ const (
 	// LabelKeyStoreID is the unique identifier of a TiKV or TiFlash store.
 	// This label is used for backward compatibility with TiDB Operator v1, so it has a different prefix.
 	LabelKeyStoreID = "tidb.pingcap.com/store-id"
+
+	LabelKeyVolumeName = LabelKeyPrefix + "volume-name"
 )
 
 const (

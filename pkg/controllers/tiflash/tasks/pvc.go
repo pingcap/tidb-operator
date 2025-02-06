@@ -54,9 +54,10 @@ func newPVCs(state *ReconcileContext) []*corev1.PersistentVolumeClaim {
 				Name:      PersistentVolumeClaimName(tiflash.PodName(), vol.Name),
 				Namespace: tiflash.Namespace,
 				Labels: maputil.Merge(tiflash.Labels, map[string]string{
-					v1alpha1.LabelKeyInstance:  tiflash.Name,
-					v1alpha1.LabelKeyClusterID: cluster.Status.ID,
-					v1alpha1.LabelKeyStoreID:   state.StoreID,
+					v1alpha1.LabelKeyInstance:   tiflash.Name,
+					v1alpha1.LabelKeyClusterID:  cluster.Status.ID,
+					v1alpha1.LabelKeyStoreID:    state.StoreID,
+					v1alpha1.LabelKeyVolumeName: vol.Name,
 				}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiFlash)),
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(tiflash, v1alpha1.SchemeGroupVersion.WithKind("TiFlash")),

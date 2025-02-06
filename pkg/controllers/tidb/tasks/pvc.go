@@ -53,8 +53,9 @@ func newPVCs(state *ReconcileContext) []*corev1.PersistentVolumeClaim {
 				Name:      PersistentVolumeClaimName(tidb.PodName(), vol.Name),
 				Namespace: tidb.Namespace,
 				Labels: maputil.Merge(tidb.Labels, map[string]string{
-					v1alpha1.LabelKeyInstance:  tidb.Name,
-					v1alpha1.LabelKeyClusterID: cluster.Status.ID,
+					v1alpha1.LabelKeyInstance:   tidb.Name,
+					v1alpha1.LabelKeyClusterID:  cluster.Status.ID,
+					v1alpha1.LabelKeyVolumeName: vol.Name,
 				}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiDB)),
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(tidb, v1alpha1.SchemeGroupVersion.WithKind("TiDB")),
