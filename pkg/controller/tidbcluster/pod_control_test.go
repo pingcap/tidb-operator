@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	logbackup "github.com/pingcap/kvproto/pkg/logbackuppb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -49,9 +48,9 @@ func (c *kvClient) GetLeaderCount() (int, error) {
 }
 
 // FlushLogBackupTasks implements tikvapi.TiKVClient.
-func (c *kvClient) FlushLogBackupTasks(ctx context.Context) (*logbackup.FlushNowResponse, error) {
+func (c *kvClient) FlushLogBackupTasks(ctx context.Context) error {
 	c.logBackupFlushed.Store(true)
-	return new(logbackup.FlushNowResponse), nil
+	return nil
 }
 
 func TestTiKVPodSyncForEviction(t *testing.T) {

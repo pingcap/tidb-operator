@@ -1641,7 +1641,6 @@ const (
 //
 // - `none`: doing nothing.
 // - `delete-pod`: delete pod and remove the evict-leader scheduler from PD.
-// - `delete-pod-and-flush-log-backup`: delete pod, remove the evict-leader scheduler from PD and flush the running log backup task.
 const (
 	EvictLeaderValueNone      = "none"
 	EvictLeaderValueDeletePod = "delete-pod"
