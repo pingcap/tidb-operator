@@ -1,8 +1,12 @@
-name: add-v2-label
+name: auto-job-v2
 
 on:
   pull_request:
     types: [opened]
+
+permissions:
+  contents: read
+  pull-requests: write
 
 jobs:
   add-v2-label:
