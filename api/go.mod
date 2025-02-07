@@ -1,4 +1,4 @@
-module github.com/pingcap/tidb-operator/apis/core
+module github.com/pingcap/tidb-operator/api/v2
 
 go 1.22.0
 
