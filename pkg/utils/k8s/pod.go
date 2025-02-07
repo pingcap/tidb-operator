@@ -25,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	hashutil "github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/util/hash"
 )

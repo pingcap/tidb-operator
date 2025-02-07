@@ -173,7 +173,7 @@ type Interface interface {
 	// ListControllerRevisions lists all ControllerRevisions matching selector and owned by parent or no other
 	// controller. If the returned error is nil the returned slice of ControllerRevisions is valid. If the
 	// returned error is not nil, the returned slice is not valid.
-	ListControllerRevisions(parent client.Object, selector labels.Selector) ([]*appsv1.ControllerRevision, error)
+	ListControllerRevisions(ctx context.Context, parent client.Object, selector labels.Selector) ([]*appsv1.ControllerRevision, error)
 	// CreateControllerRevision attempts to create the revision as owned by parent via a ControllerRef. If name
 	// collision occurs, collisionCount (incremented each time collision occurs except for the first time) is
 	// added to the hash of the revision, and it is renamed using ControllerRevisionName. Implementations may
@@ -181,29 +181,33 @@ type Interface interface {
 	// error is not nil, creation failed. If the returned error is nil, the returned ControllerRevision has been
 	// created.
 	// Callers must make sure that collisionCount is not nil. An error is returned if it is.
-	CreateControllerRevision(parent client.Object, revision *appsv1.ControllerRevision, collisionCount *int32) (*appsv1.ControllerRevision, error)
+	CreateControllerRevision(ctx context.Context, parent client.Object, revision *appsv1.ControllerRevision, collisionCount *int32) (*appsv1.ControllerRevision, error)
 	// DeleteControllerRevision attempts to delete revision. If the returned error is not nil, deletion has failed.
-	DeleteControllerRevision(revision *appsv1.ControllerRevision) error
+	DeleteControllerRevision(ctx context.Context, revision *appsv1.ControllerRevision) error
 	// UpdateControllerRevision updates revision such that its Revision is equal to newRevision. Implementations
 	// may retry on conflict. If the returned error is nil, the update was successful and returned ControllerRevision
 	// is valid. If the returned error is not nil, the update failed and the returned ControllerRevision is invalid.
-	UpdateControllerRevision(revision *appsv1.ControllerRevision, newRevision int64) (*appsv1.ControllerRevision, error)
+	UpdateControllerRevision(ctx context.Context, revision *appsv1.ControllerRevision, newRevision int64) (*appsv1.ControllerRevision, error)
 }
 
 // NewClient returns an instance of Interface that uses client to communicate with the API Server and lister to list
 // ControllerRevisions. This method should be used to create an Interface for all scenarios other than testing.
-func NewClient(cli client.Client) Interface {
-	return &realHistory{cli: cli}
+func NewClient(cli client.Client, component string) Interface {
+	return &realHistory{
+		cli:       cli,
+		component: component,
+	}
 }
 
 type realHistory struct {
-	cli client.Client
+	cli       client.Client
+	component string
 }
 
-func (rh *realHistory) ListControllerRevisions(parent client.Object, selector labels.Selector) ([]*appsv1.ControllerRevision, error) {
+func (rh *realHistory) ListControllerRevisions(ctx context.Context, parent client.Object, selector labels.Selector) ([]*appsv1.ControllerRevision, error) {
 	// List all revisions in the namespace that match the selector
 	var list appsv1.ControllerRevisionList
-	if err := rh.cli.List(context.TODO(), &list, &client.ListOptions{
+	if err := rh.cli.List(ctx, &list, &client.ListOptions{
 		Namespace:     parent.GetNamespace(),
 		LabelSelector: selector,
 	}); err != nil {
@@ -220,7 +224,7 @@ func (rh *realHistory) ListControllerRevisions(parent client.Object, selector la
 	return owned, nil
 }
 
-func (rh *realHistory) CreateControllerRevision(parent client.Object, revision *appsv1.ControllerRevision, collisionCount *int32) (*appsv1.ControllerRevision, error) {
+func (rh *realHistory) CreateControllerRevision(ctx context.Context, parent client.Object, revision *appsv1.ControllerRevision, collisionCount *int32) (*appsv1.ControllerRevision, error) {
 	if collisionCount == nil {
 		return nil, fmt.Errorf("collisionCount should not be nil")
 	}
@@ -228,13 +232,14 @@ func (rh *realHistory) CreateControllerRevision(parent client.Object, revision *
 	// Clone the input
 	clone := revision.DeepCopy()
 
+	namePrefix := parent.GetName() + "-" + rh.component
 	// Continue to attempt to create the revision updating the name with a new hash on each iteration
 	for {
 		hash := HashControllerRevision(revision, collisionCount)
 		// Update the revisions name
-		clone.Name = ControllerRevisionName(parent.GetName(), hash)
+		clone.Name = ControllerRevisionName(namePrefix, hash)
 		clone.Namespace = parent.GetNamespace()
-		err := rh.cli.Create(context.TODO(), clone)
+		err := rh.cli.Create(ctx, clone)
 		if errors.IsAlreadyExists(err) {
 			var exists appsv1.ControllerRevision
 			if err := rh.cli.Get(context.TODO(), client.ObjectKey{
@@ -253,19 +258,19 @@ func (rh *realHistory) CreateControllerRevision(parent client.Object, revision *
 	}
 }
 
-func (rh *realHistory) UpdateControllerRevision(revision *appsv1.ControllerRevision, newRevision int64) (*appsv1.ControllerRevision, error) {
+func (rh *realHistory) UpdateControllerRevision(ctx context.Context, revision *appsv1.ControllerRevision, newRevision int64) (*appsv1.ControllerRevision, error) {
 	clone := revision.DeepCopy()
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		if clone.Revision == newRevision {
 			return nil
 		}
 		clone.Revision = newRevision
-		updateErr := rh.cli.Update(context.TODO(), clone)
+		updateErr := rh.cli.Update(ctx, clone)
 		if updateErr == nil {
 			return nil
 		}
 		var updated appsv1.ControllerRevision
-		if err := rh.cli.Get(context.TODO(), client.ObjectKey{
+		if err := rh.cli.Get(ctx, client.ObjectKey{
 			Namespace: clone.Namespace,
 			Name:      clone.Name,
 		}, &updated); err == nil {
@@ -277,6 +282,6 @@ func (rh *realHistory) UpdateControllerRevision(revision *appsv1.ControllerRevis
 	return clone, err
 }
 
-func (rh *realHistory) DeleteControllerRevision(revision *appsv1.ControllerRevision) error {
-	return rh.cli.Delete(context.TODO(), revision)
+func (rh *realHistory) DeleteControllerRevision(ctx context.Context, revision *appsv1.ControllerRevision) error {
+	return rh.cli.Delete(ctx, revision)
 }

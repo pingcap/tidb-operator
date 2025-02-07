@@ -115,13 +115,13 @@ func TaskRevision[
 	var gt GT
 	w := state.RevisionInitializer()
 	return task.NameTaskFunc("ContextRevision", func(ctx context.Context) task.Result {
-		historyCli := history.NewClient(c)
 		parent := w.Parent()
+		historyCli := history.NewClient(c, parent.Component())
 
 		lbs := w.Labels()
 		selector := labels.SelectorFromSet(labels.Set(lbs))
 
-		revisions, err := historyCli.ListControllerRevisions(gt.To(parent), selector)
+		revisions, err := historyCli.ListControllerRevisions(ctx, gt.To(parent), selector)
 		if err != nil {
 			return task.Fail().With("cannot list controller revisions: %w", err)
 		}

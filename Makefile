@@ -15,7 +15,7 @@
 ROOT = $(CURDIR)
 OUTPUT_DIR = $(ROOT)/_output
 BIN_DIR = $(OUTPUT_DIR)/bin
-CORE_API_PATH = $(ROOT)/apis/core
+API_PATH = $(ROOT)/api
 PD_API_PATH = $(ROOT)/pkg/timanager/apis/pd
 GO_MODULE := github.com/pingcap/tidb-operator
 OVERLAY_PKG_DIR = $(ROOT)/pkg/overlay
@@ -54,12 +54,12 @@ codegen: bin/deepcopy-gen bin/register-gen bin/overlay-gen
 	$(REGISTER_GEN) \
 		--output-file=zz_generated.register.go \
 		--go-header-file=$(BOILERPLATE_FILE) \
-		$(CORE_API_PATH)/...
+		$(API_PATH)/...
 
 	$(DEEPCOPY_GEN) \
 		--output-file=zz_generated.deepcopy.go \
 		--go-header-file=$(BOILERPLATE_FILE) \
-		$(CORE_API_PATH)/...
+		$(API_PATH)/...
 
 	$(REGISTER_GEN) \
 		--output-file=zz_generated.register.go \
@@ -80,16 +80,16 @@ overlaygen: bin/overlay-gen
 
 .PHONY: crd
 crd: bin/controller-gen
-	$(CONTROLLER_GEN) crd:generateEmbeddedObjectMeta=true output:crd:artifacts:config=$(ROOT)/manifests/crd paths=$(CORE_API_PATH)/...
+	$(CONTROLLER_GEN) crd:generateEmbeddedObjectMeta=true output:crd:artifacts:config=$(ROOT)/manifests/crd paths=$(API_PATH)/...
 
 # Deprecate this generator, rbac generator cannot well handle nonResourceURLs
 .PHONY: rbac
 rbac: bin/controller-gen
-	$(CONTROLLER_GEN) rbac:roleName=tidb-operator output:rbac:artifacts:config=$(ROOT)/manifests/rbac paths=$(CORE_API_PATH)/...
+	$(CONTROLLER_GEN) rbac:roleName=tidb-operator output:rbac:artifacts:config=$(ROOT)/manifests/rbac paths=$(API_PATH)/...
 
 .PHONY: tidy
 tidy:
-	cd $(CORE_API_PATH) && go mod tidy
+	cd $(API_PATH) && go mod tidy
 	go mod tidy
 
 gengo: GEN_DIR ?= ./...
