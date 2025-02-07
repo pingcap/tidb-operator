@@ -1,0 +1,18 @@
+name: add-v2-label
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  add-v2-label:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Add v2 label if target branch is feature/v2
+        if: github.event.pull_request.base.ref == 'feature/v2'
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          labels: 'v2'
