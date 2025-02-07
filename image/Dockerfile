@@ -10,13 +10,13 @@ ENV GOCACHE=/go/cache
 
 COPY go.mod .
 COPY go.sum .
-COPY apis/core/go.mod apis/core/go.mod
-COPY apis/core/go.sum apis/core/go.sum
+COPY api/go.mod api/go.mod
+COPY api/go.sum api/go.sum
 
 RUN --mount=type=cache,target=/go/pkg/mod/ \
     go mod download -x
 RUN --mount=type=cache,target=/go/pkg/mod/ \
-    cd apis/core && go mod download -x
+    cd api && go mod download -x
 
 COPY . .
 

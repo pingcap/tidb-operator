@@ -20,7 +20,7 @@ require (
 	github.com/onsi/gomega v1.34.1
 	github.com/pelletier/go-toml/v2 v2.2.2
 	github.com/pingcap/kvproto v0.0.0-20240403065636-c699538f7aa1
-	github.com/pingcap/tidb-operator/apis/core v0.0.0-00000000000000-000000000000
+	github.com/pingcap/tidb-operator/api/v2 v2.0.0-00000000000000-000000000000
 	github.com/prometheus/client_golang v1.19.1
 	github.com/prometheus/client_model v0.6.1
 	github.com/prometheus/common v0.55.0
@@ -48,7 +48,7 @@ require (
 	sigs.k8s.io/yaml v1.4.0
 )
 
-replace github.com/pingcap/tidb-operator/apis/core => ./apis/core
+replace github.com/pingcap/tidb-operator/api/v2 => ./api
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect

@@ -22,7 +22,7 @@ import (
 	"github.com/pelletier/go-toml/v2"
 	"k8s.io/apimachinery/pkg/util/rand"
 
-	"github.com/pingcap/tidb-operator/apis/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	hashutil "github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/util/hash"
 )
 
