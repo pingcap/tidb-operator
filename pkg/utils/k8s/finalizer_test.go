@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 )
@@ -36,7 +37,7 @@ func TestFinalizer(t *testing.T) {
 	// check if finalizer is added
 	err = cli.Get(context.Background(), client.ObjectKey{Namespace: obj.GetNamespace(), Name: obj.GetName()}, obj)
 	require.NoError(t, err)
-	require.Contains(t, obj.GetFinalizers(), v1alpha1.Finalizer)
+	require.Contains(t, obj.GetFinalizers(), meta.Finalizer)
 
 	// call EnsureFinalizer again, should not update the object
 	err = EnsureFinalizer(context.Background(), cli, obj)
@@ -49,5 +50,5 @@ func TestFinalizer(t *testing.T) {
 	// check if finalizer is removed
 	err = cli.Get(context.Background(), client.ObjectKey{Namespace: obj.GetNamespace(), Name: obj.GetName()}, obj)
 	require.NoError(t, err)
-	require.NotContains(t, obj.GetFinalizers(), v1alpha1.Finalizer)
+	require.NotContains(t, obj.GetFinalizers(), meta.Finalizer)
 }

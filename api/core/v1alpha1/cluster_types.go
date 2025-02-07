@@ -21,23 +21,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const (
-	PDClusterTLSVolumeName = NamePrefix + "pd-tls"
-	PDClusterTLSMountPath  = "/var/lib/pd-tls"
-
-	TiKVClusterTLSVolumeName = NamePrefix + "tikv-tls"
-	TiKVClusterTLSMountPath  = "/var/lib/tikv-tls"
-
-	TiDBClusterTLSVolumeName = NamePrefix + "tidb-tls"
-	TiDBClusterTLSMountPath  = "/var/lib/tidb-tls"
-
-	TiFlashClusterTLSVolumeName = NamePrefix + "tiflash-tls"
-	TiFlashClusterTLSMountPath  = "/var/lib/tiflash-tls"
-
-	ClusterTLSClientVolumeName = NamePrefix + "cluster-client-tls"
-	ClusterTLSClientMountPath  = "/var/lib/cluster-client-tls"
-)
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 

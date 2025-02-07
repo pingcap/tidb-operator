@@ -32,42 +32,29 @@ const (
 	ReasonUnsuspended = "Unsuspended"
 )
 
+// TODO(liubo02): move to meta
 const (
-	// Finalizer is the finalizer used by all resources managed by TiDB Operator.
-	Finalizer = "core.pingcap.com/finalizer"
-)
-
-const (
+	// KeyPrefix defines key prefix of well known labels and annotations
 	KeyPrefix = "pingcap.com/"
-)
-
-const (
-	// LabelKeyPrefix defines key prefix of well known labels
-	LabelKeyPrefix = KeyPrefix
 
 	// LabelKeyManagedBy means resources are managed by tidb operator
-	LabelKeyManagedBy         = LabelKeyPrefix + "managed-by"
+	LabelKeyManagedBy         = KeyPrefix + "managed-by"
 	LabelValManagedByOperator = "tidb-operator"
 
 	// LabelKeyCluster means which tidb cluster the resource belongs to
-	LabelKeyCluster = LabelKeyPrefix + "cluster"
-
+	LabelKeyCluster = KeyPrefix + "cluster"
 	// LabelKeyComponent means the component of the resource
-	LabelKeyComponent        = LabelKeyPrefix + "component"
-	LabelValComponentPD      = "pd"
-	LabelValComponentTiDB    = "tidb"
-	LabelValComponentTiKV    = "tikv"
-	LabelValComponentTiFlash = "tiflash"
-
+	LabelKeyComponent = KeyPrefix + "component"
 	// LabelKeyGroup means the component group of the resource
-	LabelKeyGroup = LabelKeyPrefix + "group"
+	LabelKeyGroup = KeyPrefix + "group"
 	// LabelKeyInstance means the instance of the resource
-	LabelKeyInstance = LabelKeyPrefix + "instance"
+	LabelKeyInstance = KeyPrefix + "instance"
 
 	// LabelKeyPodSpecHash is the hash of the pod spec.
-	LabelKeyPodSpecHash = LabelKeyPrefix + "pod-spec-hash"
+	LabelKeyPodSpecHash = KeyPrefix + "pod-spec-hash"
 
-	LabelKeyInstanceRevisionHash = LabelKeyPrefix + "instance-revision-hash"
+	// LabelKeyInstanceRevisionHash is the revision hash of the instance
+	LabelKeyInstanceRevisionHash = KeyPrefix + "instance-revision-hash"
 
 	// LabelKeyConfigHash is the hash of the user-specified config (i.e., `.Spec.Config`),
 	// which will be used to determine whether the config has changed.
@@ -76,7 +63,15 @@ const (
 	// potentially triggering an unexpected rolling update.
 	// Instead, we choose to hash the user-specified config,
 	// and the worst case is that users expect a reboot but it doesn't happen.
-	LabelKeyConfigHash = LabelKeyPrefix + "config-hash"
+	LabelKeyConfigHash = KeyPrefix + "config-hash"
+)
+
+const (
+	// Label value for meta.LabelKeyComponent
+	LabelValComponentPD      = "pd"
+	LabelValComponentTiDB    = "tidb"
+	LabelValComponentTiKV    = "tikv"
+	LabelValComponentTiFlash = "tiflash"
 
 	// LabelKeyClusterID is the unique identifier of the cluster.
 	// This label is used for backward compatibility with TiDB Operator v1, so it has a different prefix.
@@ -95,63 +90,13 @@ const (
 
 const (
 	// AnnoKeyPrefix defines key prefix of well known annotations
-	AnnoKeyPrefix = KeyPrefix
+	AnnoKeyPrefix = "core.pingcap.com/"
 
 	// all bool anno will use this val as default
 	AnnoValTrue = "true"
 
 	// means the instance is marked as deleted and will be deleted later
 	AnnoKeyDeferDelete = AnnoKeyPrefix + "defer-delete"
-)
-
-const (
-	// NamePrefix for "names" in k8s resources
-	// Users may overlay some fields in managed resource such as pods. Names with this
-	// prefix is preserved to avoid conflicts with fields defined by users.
-	NamePrefix = "ti-"
-
-	// VolNamePrefix is defined for custom persistent volume which may have name conflicts
-	// with the volumes managed by tidb operator
-	VolNamePrefix = NamePrefix + "vol-"
-)
-
-const (
-	// All volume names
-	//
-	// VolumeNameConfig defines volume name for main config file
-	VolumeNameConfig = NamePrefix + "config"
-	// VolumeNamePrestopChecker defines volume name for pre stop checker cmd
-	VolumeNamePrestopChecker = NamePrefix + "prestop-checker"
-
-	// All container names
-	//
-	// Main component containers of the tidb cluster
-	ContainerNamePD      = "pd"
-	ContainerNameTiKV    = "tikv"
-	ContainerNameTiDB    = "tidb"
-	ContainerNameTiFlash = "tiflash"
-	// An init container to copy pre stop checker cmd to main container
-	ContainerNamePrestopChecker = NamePrefix + "prestop-checker"
-)
-
-const (
-	DirNameConfigPD      = "/etc/pd"
-	DirNameConfigTiKV    = "/etc/tikv"
-	DirNameConfigTiDB    = "/etc/tidb"
-	DirNameConfigTiFlash = "/etc/tiflash"
-
-	// ConfigFileName defines default name of config file
-	ConfigFileName = "config.toml"
-
-	// ConfigFileTiFlashProxyName defines default name of tiflash proxy config file
-	ConfigFileTiFlashProxyName = "proxy.toml"
-
-	// PrestopDirName defines dir path of pre stop checker cmd
-	DirNamePrestop = "/prestop"
-)
-
-const (
-	DefaultHelperImage = "busybox:1.37.0"
 )
 
 // ConfigUpdateStrategy represents the strategy to update configuration.
@@ -191,6 +136,8 @@ type ObjectMeta struct {
 	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
+// ClusterReference is a reference to cluster
+// NOTE: namespace may be added into the reference in the future
 type ClusterReference struct {
 	Name string `json:"name"`
 }

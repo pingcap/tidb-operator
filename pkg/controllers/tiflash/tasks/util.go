@@ -20,6 +20,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 func ConfigMapName(podName string) string {
@@ -35,7 +36,7 @@ func PersistentVolumeClaimName(podName, volName string) string {
 // Real spec.volumes[*].name of pod
 // TODO(liubo02): extract to namer pkg
 func VolumeName(volName string) string {
-	return v1alpha1.VolNamePrefix + volName
+	return meta.VolNamePrefix + volName
 }
 
 func VolumeMount(name string, mount *v1alpha1.VolumeMount) *corev1.VolumeMount {

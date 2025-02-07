@@ -51,6 +51,9 @@ spec:
           spec:
             properties:
               cluster:
+                description: |-
+                  ClusterReference is a reference to cluster
+                  NOTE: namespace may be added into the reference in the future
                 properties:
                   name:
                     type: string

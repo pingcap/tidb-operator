@@ -23,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task"
@@ -71,7 +72,7 @@ func TestFinalizer(t *testing.T) {
 			tk := NewTaskFinalizer(logr.Discard(), fc)
 			res := tk.Sync(ctx)
 			assert.Equal(tt, c.expected, res)
-			assert.Equal(tt, c.hasFinalizer, controllerutil.ContainsFinalizer(c.cluster, v1alpha1.Finalizer))
+			assert.Equal(tt, c.hasFinalizer, controllerutil.ContainsFinalizer(c.cluster, meta.Finalizer))
 		})
 	}
 }

@@ -108,9 +108,9 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash) e
 	}
 
 	if cluster.IsTLSClusterEnabled() {
-		c.Security.CAPath = path.Join(v1alpha1.TiFlashClusterTLSMountPath, corev1.ServiceAccountRootCAKey)
-		c.Security.CertPath = path.Join(v1alpha1.TiFlashClusterTLSMountPath, corev1.TLSCertKey)
-		c.Security.KeyPath = path.Join(v1alpha1.TiFlashClusterTLSMountPath, corev1.TLSPrivateKeyKey)
+		c.Security.CAPath = path.Join(v1alpha1.DirPathClusterTLSTiFlash, corev1.ServiceAccountRootCAKey)
+		c.Security.CertPath = path.Join(v1alpha1.DirPathClusterTLSTiFlash, corev1.TLSCertKey)
+		c.Security.KeyPath = path.Join(v1alpha1.DirPathClusterTLSTiFlash, corev1.TLSPrivateKeyKey)
 	}
 
 	c.TmpPath = getTmpPath(dataDir)
@@ -122,7 +122,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash) e
 
 	c.Flash.ServiceAddr = GetServiceAddr(tiflash)
 	// /etc/tiflash/proxy.toml
-	c.Flash.Proxy.Config = path.Join(v1alpha1.DirNameConfigTiFlash, v1alpha1.ConfigFileTiFlashProxyName)
+	c.Flash.Proxy.Config = path.Join(v1alpha1.DirPathConfigTiFlash, v1alpha1.FileNameConfigTiFlashProxy)
 	c.Flash.Proxy.Addr = getProxyAddr(tiflash)
 	c.Flash.Proxy.AdvertiseAddr = getProxyAdvertiseAddr(tiflash)
 	c.Flash.Proxy.AdvertiseStatusAddr = getProxyAdvertiseStatusAddr(tiflash)

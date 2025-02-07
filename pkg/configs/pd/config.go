@@ -66,9 +66,9 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, peers []*v1
 	scheme := "http"
 	if cluster.IsTLSClusterEnabled() {
 		scheme = "https"
-		c.Security.CAPath = path.Join(v1alpha1.PDClusterTLSMountPath, corev1.ServiceAccountRootCAKey)
-		c.Security.CertPath = path.Join(v1alpha1.PDClusterTLSMountPath, corev1.TLSCertKey)
-		c.Security.KeyPath = path.Join(v1alpha1.PDClusterTLSMountPath, corev1.TLSPrivateKeyKey)
+		c.Security.CAPath = path.Join(v1alpha1.DirPathClusterTLSPD, corev1.ServiceAccountRootCAKey)
+		c.Security.CertPath = path.Join(v1alpha1.DirPathClusterTLSPD, corev1.TLSCertKey)
+		c.Security.KeyPath = path.Join(v1alpha1.DirPathClusterTLSPD, corev1.TLSPrivateKeyKey)
 	}
 
 	c.Name = pd.Name

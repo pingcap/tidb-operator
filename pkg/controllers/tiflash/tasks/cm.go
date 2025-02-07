@@ -83,8 +83,8 @@ func newConfigMap(tiflash *v1alpha1.TiFlash, flashData, proxyData []byte, hash s
 			},
 		},
 		Data: map[string]string{
-			v1alpha1.ConfigFileName:             string(flashData),
-			v1alpha1.ConfigFileTiFlashProxyName: string(proxyData),
+			v1alpha1.FileNameConfig:             string(flashData),
+			v1alpha1.FileNameConfigTiFlashProxy: string(proxyData),
 		},
 	}
 }

@@ -154,7 +154,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 	mounts := []corev1.VolumeMount{
 		{
 			Name:      v1alpha1.VolumeNameConfig,
-			MountPath: v1alpha1.DirNameConfigPD,
+			MountPath: v1alpha1.DirPathConfigPD,
 		},
 	}
 
@@ -177,7 +177,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 
 	if cluster.IsTLSClusterEnabled() {
 		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.PDClusterTLSVolumeName,
+			Name: v1alpha1.VolumeNameClusterTLS,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: pd.TLSClusterSecretName(),
@@ -185,8 +185,8 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			},
 		})
 		mounts = append(mounts, corev1.VolumeMount{
-			Name:      v1alpha1.PDClusterTLSVolumeName,
-			MountPath: v1alpha1.PDClusterTLSMountPath,
+			Name:      v1alpha1.VolumeNameClusterTLS,
+			MountPath: v1alpha1.DirPathClusterTLSPD,
 			ReadOnly:  true,
 		})
 	}
@@ -221,7 +221,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 					Command: []string{
 						"/pd-server",
 						"--config",
-						filepath.Join(v1alpha1.DirNameConfigPD, v1alpha1.ConfigFileName),
+						filepath.Join(v1alpha1.DirPathConfigPD, v1alpha1.FileNameConfig),
 					},
 					Ports: []corev1.ContainerPort{
 						{

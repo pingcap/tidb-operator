@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
@@ -64,7 +65,7 @@ func testTaskGroupFinalizerAdd[
 			expectedStatus: task.SComplete,
 			expectedObj: fake.Fake(func(obj RG) RG {
 				obj.SetName("aaa")
-				obj.SetFinalizers([]string{v1alpha1.Finalizer})
+				obj.SetFinalizers([]string{meta.Finalizer})
 				return obj
 			}),
 		},
@@ -91,7 +92,7 @@ func testTaskGroupFinalizerAdd[
 			expectedStatus: task.SComplete,
 			expectedObj: fake.Fake(func(obj RG) RG {
 				obj.SetName("aaa")
-				obj.SetFinalizers(append(obj.GetFinalizers(), "xxxx", v1alpha1.Finalizer))
+				obj.SetFinalizers(append(obj.GetFinalizers(), "xxxx", meta.Finalizer))
 				return obj
 			}),
 		},
@@ -100,14 +101,14 @@ func testTaskGroupFinalizerAdd[
 			state: FakeGroupState(
 				fake.Fake(func(obj RG) RG {
 					obj.SetName("aaa")
-					obj.SetFinalizers(append(obj.GetFinalizers(), v1alpha1.Finalizer))
+					obj.SetFinalizers(append(obj.GetFinalizers(), meta.Finalizer))
 					return obj
 				}),
 			),
 			expectedStatus: task.SComplete,
 			expectedObj: fake.Fake(func(obj RG) RG {
 				obj.SetName("aaa")
-				obj.SetFinalizers(append(obj.GetFinalizers(), v1alpha1.Finalizer))
+				obj.SetFinalizers(append(obj.GetFinalizers(), meta.Finalizer))
 				return obj
 			}),
 		},
@@ -116,7 +117,7 @@ func testTaskGroupFinalizerAdd[
 			state: FakeGroupState(
 				fake.Fake(func(obj RG) RG {
 					obj.SetName("aaa")
-					obj.SetFinalizers(append(obj.GetFinalizers(), v1alpha1.Finalizer))
+					obj.SetFinalizers(append(obj.GetFinalizers(), meta.Finalizer))
 					return obj
 				}),
 			),
@@ -201,7 +202,7 @@ func testTaskGroupFinalizerDel[
 					obj.SetName("aaa")
 					obj.SetDeletionTimestamp(&now)
 					obj.SetFinalizers([]string{
-						v1alpha1.Finalizer,
+						meta.Finalizer,
 					})
 					return obj
 				}),
@@ -221,7 +222,7 @@ func testTaskGroupFinalizerDel[
 					obj.SetName("aaa")
 					obj.SetDeletionTimestamp(&now)
 					obj.SetFinalizers([]string{
-						v1alpha1.Finalizer,
+						meta.Finalizer,
 					})
 					return obj
 				}),
@@ -237,7 +238,7 @@ func testTaskGroupFinalizerDel[
 					obj.SetName("aaa")
 					obj.SetDeletionTimestamp(&now)
 					obj.SetFinalizers([]string{
-						v1alpha1.Finalizer,
+						meta.Finalizer,
 					})
 					return obj
 				}),
@@ -256,7 +257,7 @@ func testTaskGroupFinalizerDel[
 				obj.SetName("aaa")
 				obj.SetDeletionTimestamp(&now)
 				obj.SetFinalizers([]string{
-					v1alpha1.Finalizer,
+					meta.Finalizer,
 				})
 				return obj
 			}),
@@ -268,7 +269,7 @@ func testTaskGroupFinalizerDel[
 					obj.SetName("aaa")
 					obj.SetDeletionTimestamp(&now)
 					obj.SetFinalizers([]string{
-						v1alpha1.Finalizer,
+						meta.Finalizer,
 					})
 					return obj
 				}),
@@ -292,14 +293,14 @@ func testTaskGroupFinalizerDel[
 					obj.SetName("aaa")
 					obj.SetDeletionTimestamp(&now)
 					obj.SetFinalizers([]string{
-						v1alpha1.Finalizer,
+						meta.Finalizer,
 					})
 					return obj
 				}),
 				fake.Fake(func(obj RI) RI {
 					obj.SetName("aaa")
 					obj.SetFinalizers([]string{
-						v1alpha1.Finalizer,
+						meta.Finalizer,
 					})
 					return obj
 				}),
@@ -309,7 +310,7 @@ func testTaskGroupFinalizerDel[
 				obj.SetName("aaa")
 				obj.SetDeletionTimestamp(&now)
 				obj.SetFinalizers([]string{
-					v1alpha1.Finalizer,
+					meta.Finalizer,
 				})
 				return obj
 			}),
@@ -321,14 +322,14 @@ func testTaskGroupFinalizerDel[
 					obj.SetName("aaa")
 					obj.SetDeletionTimestamp(&now)
 					obj.SetFinalizers([]string{
-						v1alpha1.Finalizer,
+						meta.Finalizer,
 					})
 					return obj
 				}),
 				fake.Fake(func(obj RI) RI {
 					obj.SetName("aaa")
 					obj.SetFinalizers([]string{
-						v1alpha1.Finalizer,
+						meta.Finalizer,
 					})
 					return obj
 				}),
@@ -344,7 +345,7 @@ func testTaskGroupFinalizerDel[
 					obj.SetName("aaa")
 					obj.SetDeletionTimestamp(&now)
 					obj.SetFinalizers([]string{
-						v1alpha1.Finalizer,
+						meta.Finalizer,
 					})
 					return obj
 				}),
@@ -352,7 +353,7 @@ func testTaskGroupFinalizerDel[
 					obj.SetName("aaa")
 					obj.SetDeletionTimestamp(&now)
 					obj.SetFinalizers([]string{
-						v1alpha1.Finalizer,
+						meta.Finalizer,
 					})
 					return obj
 				}),

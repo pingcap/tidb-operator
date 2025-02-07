@@ -96,7 +96,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 	mounts := []corev1.VolumeMount{
 		{
 			Name:      v1alpha1.VolumeNameConfig,
-			MountPath: v1alpha1.DirNameConfigTiFlash,
+			MountPath: v1alpha1.DirPathConfigTiFlash,
 		},
 	}
 
@@ -126,7 +126,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 
 	if cluster.IsTLSClusterEnabled() {
 		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.TiFlashClusterTLSVolumeName,
+			Name: v1alpha1.VolumeNameClusterTLS,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: tiflash.TLSClusterSecretName(),
@@ -134,8 +134,8 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			},
 		})
 		mounts = append(mounts, corev1.VolumeMount{
-			Name:      v1alpha1.TiFlashClusterTLSVolumeName,
-			MountPath: v1alpha1.TiFlashClusterTLSMountPath,
+			Name:      v1alpha1.VolumeNameClusterTLS,
+			MountPath: v1alpha1.DirPathClusterTLSTiFlash,
 			ReadOnly:  true,
 		})
 	}
@@ -162,8 +162,8 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			Subdomain:    tiflash.Spec.Subdomain,
 			NodeSelector: tiflash.Spec.Topology,
 			InitContainers: []corev1.Container{
-				*buildLogTailerContainer(tiflash, v1alpha1.TiFlashServerLogContainerName, tiflashcfg.GetServerLogPath(dataDir), dataMount),
-				*buildLogTailerContainer(tiflash, v1alpha1.TiFlashErrorLogContainerName, tiflashcfg.GetErrorLogPath(dataDir), dataMount),
+				*buildLogTailerContainer(tiflash, v1alpha1.ContainerNameTiFlashServerLog, tiflashcfg.GetServerLogPath(dataDir), dataMount),
+				*buildLogTailerContainer(tiflash, v1alpha1.ContainerNameTiFlashErrorLog, tiflashcfg.GetErrorLogPath(dataDir), dataMount),
 			},
 			Containers: []corev1.Container{
 				{
@@ -174,7 +174,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 						"/tiflash/tiflash",
 						"server",
 						"--config-file",
-						filepath.Join(v1alpha1.DirNameConfigTiFlash, v1alpha1.ConfigFileName),
+						filepath.Join(v1alpha1.DirPathConfigTiFlash, v1alpha1.FileNameConfig),
 					},
 					Ports: []corev1.ContainerPort{
 						// no `tcp_port` and `http_port` as they are are deprecated in tiflash since v7.1.0.
@@ -215,10 +215,12 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 }
 
 func buildLogTailerContainer(tiflash *v1alpha1.TiFlash, containerName, logFile string, mount *corev1.VolumeMount) *corev1.Container {
-	img := v1alpha1.DefaultHelperImage
-	if tiflash.Spec.LogTailer != nil && tiflash.Spec.LogTailer.Image != nil && *tiflash.Spec.LogTailer.Image != "" {
-		img = *tiflash.Spec.LogTailer.Image
+	img := image.Helper.Image(nil)
+
+	if tiflash.Spec.LogTailer != nil {
+		img = image.Helper.Image(tiflash.Spec.LogTailer.Image)
 	}
+
 	restartPolicy := corev1.ContainerRestartPolicyAlways // sidecar container in `initContainers`
 	c := &corev1.Container{
 		Name:          containerName,

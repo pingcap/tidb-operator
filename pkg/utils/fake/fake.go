@@ -23,7 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 type Object[T any] interface {
@@ -92,7 +92,7 @@ func DeleteNow[T any, PT Object[T]]() ChangeFunc[T, PT] {
 
 func AddFinalizer[T any, PT Object[T]]() ChangeFunc[T, PT] {
 	return func(obj PT) PT {
-		controllerutil.AddFinalizer(obj, v1alpha1.Finalizer)
+		controllerutil.AddFinalizer(obj, meta.Finalizer)
 		return obj
 	}
 }
