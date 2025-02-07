@@ -4,9 +4,7 @@ on:
   pull_request:
     types: [opened, reopened]
 
-permissions:
-  contents: read
-  pull-requests: write
+permissions: write-all
 
 jobs:
   add-v2-label:
