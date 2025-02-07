@@ -1298,7 +1298,7 @@ var _ = Describe("TiDB Cluster", func() {
 
 						// check for mTLS
 						g.Expect(pod.Spec.Volumes).To(ContainElement(corev1.Volume{
-							Name: fmt.Sprintf("ti-%s-tls", componentName),
+							Name: v1alpha1.VolumeNameClusterTLS,
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
 									// TODO(liubo02): extract to a namer pkg
@@ -1308,7 +1308,7 @@ var _ = Describe("TiDB Cluster", func() {
 							},
 						}))
 						g.Expect(pod.Spec.Containers[0].VolumeMounts).To(ContainElement(corev1.VolumeMount{
-							Name:      fmt.Sprintf("ti-%s-tls", componentName),
+							Name:      v1alpha1.VolumeNameClusterTLS,
 							MountPath: fmt.Sprintf("/var/lib/%s-tls", componentName),
 							ReadOnly:  true,
 						}))
