@@ -88,6 +88,8 @@ const (
 	// This label is used for backward compatibility with TiDB Operator v1, so it has a different prefix.
 	LabelKeyStoreID = "tidb.pingcap.com/store-id"
 
+	// LabelKeyVolumeName is used to distinguish different volumes, e.g. data volumes, log volumes, etc.
+	// This label will be added to the PVCs created by the tidb operator.
 	LabelKeyVolumeName = LabelKeyPrefix + "volume-name"
 )
 
