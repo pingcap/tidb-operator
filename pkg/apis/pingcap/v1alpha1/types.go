@@ -1670,10 +1670,9 @@ const (
 )
 
 type EvictLeaderStatus struct {
-	PodCreateTime    metav1.Time `json:"podCreateTime,omitempty"`
-	BeginTime        metav1.Time `json:"beginTime,omitempty"`
-	Value            string      `json:"value,omitempty"`
-	LogBackupFlushed bool        `json:"logBackupFlushed,omitempty"`
+	PodCreateTime metav1.Time `json:"podCreateTime,omitempty"`
+	BeginTime     metav1.Time `json:"beginTime,omitempty"`
+	Value         string      `json:"value,omitempty"`
 }
 
 const (
