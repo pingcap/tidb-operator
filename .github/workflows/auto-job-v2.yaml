@@ -20,3 +20,16 @@ jobs:
         uses: actions-ecosystem/action-add-labels@v1
         with:
           labels: 'v2'
+
+   add-e2e-comment:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Add comment if target branch is feature/e2e
+        if: github.event.pull_request.base.ref == 'feature/e2e'
+        uses: actions-ecosystem/action-create-comment@v1
+        with:
+          body: |
+            /run-pull-e2e-kind-v2
