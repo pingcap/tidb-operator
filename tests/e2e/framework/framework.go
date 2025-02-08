@@ -121,7 +121,7 @@ func (f *Framework) SetupBootstrapSQL(sql string) {
 				Namespace: f.Namespace.Name,
 			},
 			Data: map[string]string{
-				v1alpha1.BootstrapSQLConfigMapKey: sql,
+				v1alpha1.ConfigMapKeyBootstrapSQL: sql,
 			},
 		}
 		ginkgo.By("Creating a bootstrap sql configmap")

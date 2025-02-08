@@ -52,6 +52,9 @@ spec:
             description: TiDBGroupSpec describes the common attributes of a TiDBGroup.
             properties:
               cluster:
+                description: |-
+                  ClusterReference is a reference to cluster
+                  NOTE: namespace may be added into the reference in the future
                 properties:
                   name:
                     type: string

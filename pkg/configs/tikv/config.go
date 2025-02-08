@@ -60,9 +60,9 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV) error {
 	}
 
 	if cluster.IsTLSClusterEnabled() {
-		c.Security.CAPath = path.Join(v1alpha1.TiKVClusterTLSMountPath, corev1.ServiceAccountRootCAKey)
-		c.Security.CertPath = path.Join(v1alpha1.TiKVClusterTLSMountPath, corev1.TLSCertKey)
-		c.Security.KeyPath = path.Join(v1alpha1.TiKVClusterTLSMountPath, corev1.TLSPrivateKeyKey)
+		c.Security.CAPath = path.Join(v1alpha1.DirPathClusterTLSTiKV, corev1.ServiceAccountRootCAKey)
+		c.Security.CertPath = path.Join(v1alpha1.DirPathClusterTLSTiKV, corev1.TLSCertKey)
+		c.Security.KeyPath = path.Join(v1alpha1.DirPathClusterTLSTiKV, corev1.TLSPrivateKeyKey)
 	}
 
 	c.Server.Addr = getClientURLs(tikv)

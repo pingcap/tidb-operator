@@ -145,11 +145,11 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 	mounts := []corev1.VolumeMount{
 		{
 			Name:      v1alpha1.VolumeNameConfig,
-			MountPath: v1alpha1.DirNameConfigTiKV,
+			MountPath: v1alpha1.DirPathConfigTiKV,
 		},
 		{
 			Name:      v1alpha1.VolumeNamePrestopChecker,
-			MountPath: v1alpha1.DirNamePrestop,
+			MountPath: v1alpha1.DirPathPrestop,
 		},
 	}
 
@@ -172,7 +172,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 
 	if cluster.IsTLSClusterEnabled() {
 		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.TiKVClusterTLSVolumeName,
+			Name: v1alpha1.VolumeNameClusterTLS,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: tikv.TLSClusterSecretName(),
@@ -180,8 +180,8 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			},
 		})
 		mounts = append(mounts, corev1.VolumeMount{
-			Name:      v1alpha1.TiKVClusterTLSVolumeName,
-			MountPath: v1alpha1.TiKVClusterTLSMountPath,
+			Name:      v1alpha1.VolumeNameClusterTLS,
+			MountPath: v1alpha1.DirPathClusterTLSTiKV,
 			ReadOnly:  true,
 		})
 	}
@@ -224,13 +224,13 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 					Command: []string{
 						"/bin/sh",
 						"-c",
-						"cp /prestop-checker " + v1alpha1.DirNamePrestop + "/;",
+						"cp /prestop-checker " + v1alpha1.DirPathPrestop + "/;",
 						// + "sleep infinity",
 					},
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      v1alpha1.VolumeNamePrestopChecker,
-							MountPath: v1alpha1.DirNamePrestop,
+							MountPath: v1alpha1.DirPathPrestop,
 						},
 					},
 				},
@@ -243,7 +243,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 					Command: []string{
 						"/tikv-server",
 						"--config",
-						filepath.Join(v1alpha1.DirNameConfigTiKV, v1alpha1.ConfigFileName),
+						filepath.Join(v1alpha1.DirPathConfigTiKV, v1alpha1.FileNameConfig),
 					},
 					Ports: []corev1.ContainerPort{
 						{
@@ -285,7 +285,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 
 func buildPrestopCheckScript(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV) string {
 	sb := strings.Builder{}
-	sb.WriteString(v1alpha1.DirNamePrestop)
+	sb.WriteString(v1alpha1.DirPathPrestop)
 	sb.WriteString("/prestop-checker")
 	sb.WriteString(" -pd ")
 	sb.WriteString(cluster.Status.PD)
@@ -294,13 +294,13 @@ func buildPrestopCheckScript(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV) str
 
 	if cluster.IsTLSClusterEnabled() {
 		sb.WriteString(" -ca ")
-		sb.WriteString(v1alpha1.TiKVClusterTLSMountPath)
+		sb.WriteString(v1alpha1.DirPathClusterTLSTiKV)
 		sb.WriteString("/ca.crt")
 		sb.WriteString(" -tls ")
-		sb.WriteString(v1alpha1.TiKVClusterTLSMountPath)
+		sb.WriteString(v1alpha1.DirPathClusterTLSTiKV)
 		sb.WriteString("/tls.crt")
 		sb.WriteString(" -key ")
-		sb.WriteString(v1alpha1.TiKVClusterTLSMountPath)
+		sb.WriteString(v1alpha1.DirPathClusterTLSTiKV)
 		sb.WriteString("/tls.key")
 	}
 

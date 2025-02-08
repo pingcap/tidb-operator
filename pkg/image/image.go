@@ -29,6 +29,7 @@ const (
 
 	// TODO: use versioned image
 	PrestopChecker Tagged = "pingcap/prestop-checker:latest"
+	Helper         Tagged = "busybox:1.37.0"
 )
 
 // Tagged is image with image tag

@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -67,7 +68,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tidb: fake.FakeObj("aaa", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
@@ -80,7 +81,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 
 			expectedStatus: task.SRetry,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
-				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 				return obj
 			}),
 		},
@@ -89,7 +90,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tidb: fake.FakeObj("aaa", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
@@ -104,7 +105,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 
 			expectedStatus: task.SFail,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
-				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 				return obj
 			}),
 		},
@@ -113,7 +114,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tidb: fake.FakeObj("aaa", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
@@ -128,7 +129,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 
 			expectedStatus: task.SFail,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
-				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 				return obj
 			}),
 		},
@@ -137,7 +138,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tidb: fake.FakeObj("aaa", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
@@ -152,7 +153,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 
 			expectedStatus: task.SFail,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
-				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 				return obj
 			}),
 		},
@@ -161,7 +162,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tidb: fake.FakeObj("aaa", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
@@ -182,7 +183,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tidb: fake.FakeObj("aaa", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {

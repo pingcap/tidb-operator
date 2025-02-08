@@ -22,6 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 func PersistentVolumeClaimName(podName, volName string) string {
@@ -53,7 +54,7 @@ func LongestHealthPeer(pd *v1alpha1.PD, peers []*v1alpha1.PD) string {
 // Real spec.volumes[*].name of pod
 // TODO(liubo02): extract to namer pkg
 func VolumeName(volName string) string {
-	return v1alpha1.VolNamePrefix + volName
+	return metav1alpha1.VolNamePrefix + volName
 }
 
 func VolumeMount(name string, mount *v1alpha1.VolumeMount) *corev1.VolumeMount {

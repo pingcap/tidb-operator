@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
 	"github.com/pingcap/tidb-operator/pkg/timanager"
@@ -71,7 +72,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &state{
 				pdg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 					obj.Spec.Cluster.Name = defaultTestClusterName
-					obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+					obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 					return obj
 				}),
 				cluster: fake.FakeObj[v1alpha1.Cluster](defaultTestClusterName),
@@ -90,7 +91,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &state{
 				pdg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 					obj.Spec.Cluster.Name = defaultTestClusterName
-					obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+					obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 					return obj
 				}),
 				cluster: fake.FakeObj[v1alpha1.Cluster](defaultTestClusterName),
@@ -104,7 +105,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &state{
 				pdg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 					obj.Spec.Cluster.Name = defaultTestClusterName
-					obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+					obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 					return obj
 				}),
 				cluster: fake.FakeObj[v1alpha1.Cluster](defaultTestClusterName),
@@ -121,7 +122,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			expectedStatus: task.SRetry,
 			expectedObj: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				obj.Spec.Cluster.Name = defaultTestClusterName
-				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 				return obj
 			}),
 		},
@@ -130,7 +131,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &state{
 				pdg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 					obj.Spec.Cluster.Name = defaultTestClusterName
-					obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+					obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 					return obj
 				}),
 				cluster: fake.FakeObj[v1alpha1.Cluster](defaultTestClusterName),
@@ -152,13 +153,13 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &state{
 				pdg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 					obj.Spec.Cluster.Name = defaultTestClusterName
-					obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+					obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 					return obj
 				}),
 				cluster: fake.FakeObj[v1alpha1.Cluster](defaultTestClusterName),
 				pds: []*v1alpha1.PD{
 					fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 				},
@@ -167,7 +168,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			expectedStatus: task.SWait,
 			expectedObj: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				obj.Spec.Cluster.Name = defaultTestClusterName
-				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 				return obj
 			}),
 		},
@@ -176,13 +177,13 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &state{
 				pdg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 					obj.Spec.Cluster.Name = defaultTestClusterName
-					obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+					obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 					return obj
 				}),
 				cluster: fake.FakeObj[v1alpha1.Cluster](defaultTestClusterName),
 				pds: []*v1alpha1.PD{
 					fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 				},
@@ -196,13 +197,13 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &state{
 				pdg: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 					obj.Spec.Cluster.Name = defaultTestClusterName
-					obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+					obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 					return obj
 				}),
 				cluster: fake.FakeObj[v1alpha1.Cluster](defaultTestClusterName),
 				pds: []*v1alpha1.PD{
 					fake.FakeObj("aaa", fake.DeleteNow[v1alpha1.PD](), func(obj *v1alpha1.PD) *v1alpha1.PD {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 				},

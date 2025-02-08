@@ -79,25 +79,25 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) error {
 
 	if tidb.IsMySQLTLSEnabled() {
 		// TODO(csuzhangxc): disable Client Authn
-		c.Security.SSLCA = path.Join(v1alpha1.TiDBSQLTLSMountPath, corev1.ServiceAccountRootCAKey)
-		c.Security.SSLCert = path.Join(v1alpha1.TiDBSQLTLSMountPath, corev1.TLSCertKey)
-		c.Security.SSLKey = path.Join(v1alpha1.TiDBSQLTLSMountPath, corev1.TLSPrivateKeyKey)
+		c.Security.SSLCA = path.Join(v1alpha1.DirPathMySQLTLS, corev1.ServiceAccountRootCAKey)
+		c.Security.SSLCert = path.Join(v1alpha1.DirPathMySQLTLS, corev1.TLSCertKey)
+		c.Security.SSLKey = path.Join(v1alpha1.DirPathMySQLTLS, corev1.TLSPrivateKeyKey)
 	}
 
 	if cluster.IsTLSClusterEnabled() {
-		c.Security.ClusterSSLCA = path.Join(v1alpha1.TiDBClusterTLSMountPath, corev1.ServiceAccountRootCAKey)
-		c.Security.ClusterSSLCert = path.Join(v1alpha1.TiDBClusterTLSMountPath, corev1.TLSCertKey)
-		c.Security.ClusterSSLKey = path.Join(v1alpha1.TiDBClusterTLSMountPath, corev1.TLSPrivateKeyKey)
+		c.Security.ClusterSSLCA = path.Join(v1alpha1.DirPathClusterTLSTiDB, corev1.ServiceAccountRootCAKey)
+		c.Security.ClusterSSLCert = path.Join(v1alpha1.DirPathClusterTLSTiDB, corev1.TLSCertKey)
+		c.Security.ClusterSSLKey = path.Join(v1alpha1.DirPathClusterTLSTiDB, corev1.TLSPrivateKeyKey)
 	}
 
 	c.Log.SlowQueryFile = getSlowQueryFile(tidb)
 
 	if cluster.Spec.BootstrapSQL != nil {
-		c.InitializeSQLFile = path.Join(v1alpha1.BootstrapSQLFilePath, v1alpha1.BootstrapSQLFileName)
+		c.InitializeSQLFile = path.Join(v1alpha1.DirPathBootstrapSQL, v1alpha1.FileNameBootstrapSQL)
 	}
 
 	if tidb.IsTokenBasedAuthEnabled() {
-		c.Security.AuthTokenJwks = path.Join(v1alpha1.TiDBAuthTokenPath, v1alpha1.TiDBAuthTokenJWKS)
+		c.Security.AuthTokenJwks = path.Join(v1alpha1.DirPathTiDBAuthToken, v1alpha1.FileNameTiDBAuthTokenJWKS)
 	}
 
 	// If not set, use default value.
@@ -196,8 +196,8 @@ func getSlowQueryFile(tidb *v1alpha1.TiDB) string {
 	}
 
 	if dir == "" {
-		dir = v1alpha1.VolumeMountTiDBSlowLogDefaultPath
+		dir = v1alpha1.DirPathTiDBSlowLogDefault
 	}
 
-	return path.Join(dir, v1alpha1.TiDBSlowLogFileName)
+	return path.Join(dir, v1alpha1.FileNameTiDBSlowLog)
 }
