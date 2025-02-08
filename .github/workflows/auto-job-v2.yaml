@@ -18,7 +18,7 @@ jobs:
         with:
           labels: 'v2'
 
-      - name: Add E2E trigger comment if target branch is feature/e2e
+      - name: Add E2E trigger comment if target branch is feature/v2
         if: github.event.pull_request.base.ref == 'feature/v2'
         uses: actions-ecosystem/action-create-comment@v1
         with:
