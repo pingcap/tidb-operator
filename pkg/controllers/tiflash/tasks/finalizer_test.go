@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
@@ -72,7 +73,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
@@ -85,7 +86,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 
 			expectedStatus: task.SRetry,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 				return obj
 			}),
 		},
@@ -94,7 +95,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
@@ -109,7 +110,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 
 			expectedStatus: task.SFail,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 				return obj
 			}),
 		},
@@ -118,7 +119,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
@@ -133,7 +134,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 
 			expectedStatus: task.SFail,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 				return obj
 			}),
 		},
@@ -142,7 +143,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
@@ -157,7 +158,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 
 			expectedStatus: task.SFail,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 				return obj
 			}),
 		},
@@ -166,7 +167,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
@@ -187,7 +188,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
@@ -208,7 +209,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
@@ -220,7 +221,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 
 			expectedStatus: task.SRetry,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 				return obj
 			}),
 		},
@@ -248,7 +249,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
@@ -269,7 +270,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
@@ -287,7 +288,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
@@ -300,7 +301,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 
 			expectedStatus: task.SRetry,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 				return obj
 			}),
 		},
@@ -309,7 +310,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
@@ -328,7 +329,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
@@ -348,7 +349,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
@@ -361,7 +362,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 
 			expectedStatus: task.SRetry,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 				return obj
 			}),
 		},
@@ -370,7 +371,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
@@ -384,7 +385,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 
 			expectedStatus: task.SFail,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 				return obj
 			}),
 		},

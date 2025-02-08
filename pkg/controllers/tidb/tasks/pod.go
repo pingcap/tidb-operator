@@ -108,7 +108,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 	mounts := []corev1.VolumeMount{
 		{
 			Name:      v1alpha1.VolumeNameConfig,
-			MountPath: v1alpha1.DirNameConfigTiDB,
+			MountPath: v1alpha1.DirPathConfigTiDB,
 		},
 	}
 
@@ -137,7 +137,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 
 	if tidb.IsMySQLTLSEnabled() {
 		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.TiDBSQLTLSVolumeName,
+			Name: v1alpha1.VolumeNameMySQLTLS,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: tidb.MySQLTLSSecretName(),
@@ -145,15 +145,15 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			},
 		})
 		mounts = append(mounts, corev1.VolumeMount{
-			Name:      v1alpha1.TiDBSQLTLSVolumeName,
-			MountPath: v1alpha1.TiDBSQLTLSMountPath,
+			Name:      v1alpha1.VolumeNameMySQLTLS,
+			MountPath: v1alpha1.DirPathMySQLTLS,
 			ReadOnly:  true,
 		})
 	}
 
 	if cluster.IsTLSClusterEnabled() {
 		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.TiDBClusterTLSVolumeName,
+			Name: v1alpha1.VolumeNameClusterTLS,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: tidb.TLSClusterSecretName(),
@@ -161,15 +161,15 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			},
 		})
 		mounts = append(mounts, corev1.VolumeMount{
-			Name:      v1alpha1.TiDBClusterTLSVolumeName,
-			MountPath: v1alpha1.TiDBClusterTLSMountPath,
+			Name:      v1alpha1.VolumeNameClusterTLS,
+			MountPath: v1alpha1.DirPathClusterTLSTiDB,
 			ReadOnly:  true,
 		})
 	}
 
 	if cluster.Spec.BootstrapSQL != nil {
 		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.BootstrapSQLVolumeName,
+			Name: v1alpha1.VolumeNameBootstrapSQL,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -177,23 +177,23 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 					},
 					Items: []corev1.KeyToPath{
 						{
-							Key:  v1alpha1.BootstrapSQLConfigMapKey,
-							Path: v1alpha1.BootstrapSQLFileName,
+							Key:  v1alpha1.ConfigMapKeyBootstrapSQL,
+							Path: v1alpha1.FileNameBootstrapSQL,
 						},
 					},
 				},
 			},
 		})
 		mounts = append(mounts, corev1.VolumeMount{
-			Name:      v1alpha1.BootstrapSQLVolumeName,
-			MountPath: v1alpha1.BootstrapSQLFilePath,
+			Name:      v1alpha1.VolumeNameBootstrapSQL,
+			MountPath: v1alpha1.DirPathBootstrapSQL,
 			ReadOnly:  true,
 		})
 	}
 
 	if tidb.IsTokenBasedAuthEnabled() {
 		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.TiDBAuthTokenVolumeName,
+			Name: v1alpha1.VolumeNameTiDBAuthToken,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: tidb.AuthTokenJWKSSecretName(),
@@ -201,8 +201,8 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			},
 		})
 		mounts = append(mounts, corev1.VolumeMount{
-			Name:      v1alpha1.TiDBAuthTokenVolumeName,
-			MountPath: v1alpha1.TiDBAuthTokenPath,
+			Name:      v1alpha1.VolumeNameTiDBAuthToken,
+			MountPath: v1alpha1.DirPathTiDBAuthToken,
 			ReadOnly:  true,
 		})
 	}
@@ -245,7 +245,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 					Command: []string{
 						"/tidb-server",
 						"--config",
-						filepath.Join(v1alpha1.DirNameConfigTiDB, v1alpha1.ConfigFileName),
+						filepath.Join(v1alpha1.DirPathConfigTiDB, v1alpha1.FileNameConfig),
 					},
 					Ports: []corev1.ContainerPort{
 						{
@@ -333,9 +333,9 @@ func buildTiDBProbeCommand(cluster *v1alpha1.Cluster, statusPort int32) (command
 		"--location")
 
 	if cluster.IsTLSClusterEnabled() {
-		cacert := path.Join(v1alpha1.TiDBClusterTLSMountPath, corev1.ServiceAccountRootCAKey)
-		cert := path.Join(v1alpha1.TiDBClusterTLSMountPath, corev1.TLSCertKey)
-		key := path.Join(v1alpha1.TiDBClusterTLSMountPath, corev1.TLSPrivateKeyKey)
+		cacert := path.Join(v1alpha1.DirPathClusterTLSTiDB, corev1.ServiceAccountRootCAKey)
+		cert := path.Join(v1alpha1.DirPathClusterTLSTiDB, corev1.TLSCertKey)
+		key := path.Join(v1alpha1.DirPathClusterTLSTiDB, corev1.TLSPrivateKeyKey)
 		command = append(command, "--cacert", cacert, "--cert", cert, "--key", key)
 	}
 	return
@@ -343,25 +343,27 @@ func buildTiDBProbeCommand(cluster *v1alpha1.Cluster, statusPort int32) (command
 
 func defaultSlowLogVolumeAndMount() (*corev1.Volume, *corev1.VolumeMount) {
 	return &corev1.Volume{
-			Name: v1alpha1.TiDBDefaultSlowLogVolumeName,
+			Name: v1alpha1.VolumeNameTiDBSlowLogDefault,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		}, &corev1.VolumeMount{
-			Name:      v1alpha1.TiDBDefaultSlowLogVolumeName,
-			MountPath: v1alpha1.VolumeMountTiDBSlowLogDefaultPath,
+			Name:      v1alpha1.VolumeNameTiDBSlowLogDefault,
+			MountPath: v1alpha1.DirPathTiDBSlowLogDefault,
 		}
 }
 
 func buildSlowLogContainer(tidb *v1alpha1.TiDB, mount *corev1.VolumeMount) *corev1.Container {
-	slowlogFile := path.Join(mount.MountPath, v1alpha1.TiDBSlowLogFileName)
-	img := v1alpha1.DefaultHelperImage
-	if tidb.Spec.SlowLog != nil && tidb.Spec.SlowLog.Image != nil && *tidb.Spec.SlowLog.Image != "" {
-		img = *tidb.Spec.SlowLog.Image
+	slowlogFile := path.Join(mount.MountPath, v1alpha1.FileNameTiDBSlowLog)
+	img := image.Helper.Image(nil)
+
+	if tidb.Spec.SlowLog != nil {
+		img = image.Helper.Image(tidb.Spec.SlowLog.Image)
 	}
+
 	restartPolicy := corev1.ContainerRestartPolicyAlways // sidecar container in `initContainers`
 	c := &corev1.Container{
-		Name:          v1alpha1.TiDBSlowLogContainerName,
+		Name:          v1alpha1.ContainerNameTiDBSlowLog,
 		Image:         img,
 		RestartPolicy: &restartPolicy,
 		VolumeMounts:  []corev1.VolumeMount{*mount},

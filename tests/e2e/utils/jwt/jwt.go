@@ -52,7 +52,7 @@ func GenerateJWKSSecret(ns, name string) v1.Secret {
 			Name:      name,
 		},
 		Data: map[string][]byte{
-			v1alpha1.TiDBAuthTokenJWKS: []byte(jwksJSON),
+			v1alpha1.FileNameTiDBAuthTokenJWKS: []byte(jwksJSON),
 		},
 	}
 }

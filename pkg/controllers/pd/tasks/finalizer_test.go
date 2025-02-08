@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
@@ -84,7 +85,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 				},
@@ -124,7 +125,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 
 			expectedStatus: task.SRetry,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 				return obj
 			}),
 		},
@@ -133,7 +134,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 				},
@@ -161,7 +162,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 				},
@@ -189,7 +190,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 				},
@@ -217,7 +218,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 				},
@@ -237,7 +238,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 				},
@@ -269,7 +270,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 				},
@@ -289,7 +290,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 
 			expectedStatus: task.SRetry,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 				return obj
 			}),
 		},
@@ -298,7 +299,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 				},
@@ -324,7 +325,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 				},
@@ -342,7 +343,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 				},
@@ -357,7 +358,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-						obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 				},
@@ -366,7 +367,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 
 			expectedStatus: task.SFail,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-				obj.Finalizers = append(obj.Finalizers, v1alpha1.Finalizer)
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 				return obj
 			}),
 		},

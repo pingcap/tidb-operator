@@ -77,7 +77,7 @@ func newConfigMap(pd *v1alpha1.PD, data []byte, hash string) *corev1.ConfigMap {
 			},
 		},
 		Data: map[string]string{
-			v1alpha1.ConfigFileName: string(data),
+			v1alpha1.FileNameConfig: string(data),
 		},
 	}
 }

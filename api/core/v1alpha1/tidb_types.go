@@ -18,7 +18,7 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
+	metautil "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/utils/ptr"
@@ -32,8 +32,7 @@ var (
 
 const (
 	// VolumeUsageTypeTiDBSlowLog means the data dir of slowlog
-	// The default sub path is "slowlog"
-	// Users can define a persistent volume for slowlog, or an empty dir will be used.
+	// Users can define a persistent volume for slowlog, or an emptydir will be used.
 	VolumeMountTypeTiDBSlowLog VolumeMountType = "slowlog"
 
 	VolumeMountTiDBSlowLogDefaultPath = "/var/log/tidb"
@@ -54,26 +53,6 @@ const (
 )
 
 const (
-	// TiDBSQLTLSVolumeName is the volume name for the TLS secret used by TLS communication between TiDB server and MySQL client.
-	TiDBSQLTLSVolumeName = NamePrefix + "tidb-sql-tls"
-	// TiDBSQLTLSMountPath is the volume mount path for the TLS secret used by TLS communication between TiDB server and MySQL client.
-	TiDBSQLTLSMountPath = "/var/lib/tidb-sql-tls"
-)
-
-const (
-	BootstrapSQLVolumeName   = NamePrefix + "tidb-bootstrap-sql"
-	BootstrapSQLFilePath     = "/etc/tidb-bootstrap"
-	BootstrapSQLFileName     = "bootstrap.sql"
-	BootstrapSQLConfigMapKey = "bootstrap-sql"
-)
-
-const (
-	TiDBAuthTokenVolumeName = NamePrefix + "tidb-auth-token"
-	TiDBAuthTokenPath       = "/var/lib/tidb-auth-token"
-	TiDBAuthTokenJWKS       = "tidb_auth_token_jwks.json"
-)
-
-const (
 	TiDBCondHealth   = "Health"
 	TiDBHealthReason = "TiDBHealth"
 
@@ -85,12 +64,6 @@ const (
 
 	TiDBGroupCondSuspended = "Suspended"
 	TiDBGroupSuspendReason = "TiDBGroupSuspend"
-)
-
-const (
-	TiDBSlowLogContainerName     = NamePrefix + "slowlog"
-	TiDBDefaultSlowLogVolumeName = NamePrefix + "slowlog"
-	TiDBSlowLogFileName          = "slowlog"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -181,7 +154,7 @@ func (in *TiDBGroup) ComponentKind() ComponentKind {
 }
 
 func (in *TiDBGroup) IsHealthy() bool {
-	return meta.IsStatusConditionTrue(in.Status.Conditions, TiDBGroupCondAvailable) && in.DeletionTimestamp.IsZero()
+	return metautil.IsStatusConditionTrue(in.Status.Conditions, TiDBGroupCondAvailable) && in.DeletionTimestamp.IsZero()
 }
 
 func (in *TiDBGroup) GetClientPort() int32 {
@@ -270,7 +243,7 @@ func (in *TiDB) CollisionCount() *int32 {
 }
 
 func (in *TiDB) IsHealthy() bool {
-	return meta.IsStatusConditionTrue(in.Status.Conditions, TiDBCondHealth) && in.DeletionTimestamp.IsZero()
+	return metautil.IsStatusConditionTrue(in.Status.Conditions, TiDBCondHealth) && in.DeletionTimestamp.IsZero()
 }
 
 func (in *TiDB) GetClientPort() int32 {

@@ -56,9 +56,9 @@ func (c *ProxyConfig) Overlay(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFla
 	}
 
 	if cluster.IsTLSClusterEnabled() {
-		c.Security.CAPath = path.Join(v1alpha1.TiFlashClusterTLSMountPath, corev1.ServiceAccountRootCAKey)
-		c.Security.CertPath = path.Join(v1alpha1.TiFlashClusterTLSMountPath, corev1.TLSCertKey)
-		c.Security.KeyPath = path.Join(v1alpha1.TiFlashClusterTLSMountPath, corev1.TLSPrivateKeyKey)
+		c.Security.CAPath = path.Join(v1alpha1.DirPathClusterTLSTiFlash, corev1.ServiceAccountRootCAKey)
+		c.Security.CertPath = path.Join(v1alpha1.DirPathClusterTLSTiFlash, corev1.TLSCertKey)
+		c.Security.KeyPath = path.Join(v1alpha1.DirPathClusterTLSTiFlash, corev1.TLSPrivateKeyKey)
 	}
 
 	if c.LogLevel == "" {

@@ -71,7 +71,7 @@ func newConfigMap(tikv *v1alpha1.TiKV, data []byte, hash string) *corev1.ConfigM
 			},
 		},
 		Data: map[string]string{
-			v1alpha1.ConfigFileName: string(data),
+			v1alpha1.FileNameConfig: string(data),
 		},
 	}
 }

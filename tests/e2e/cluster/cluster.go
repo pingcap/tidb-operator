@@ -400,7 +400,7 @@ var _ = Describe("TiDB Cluster", func() {
 			Expect(len(tidbPodList.Items)).To(Equal(1))
 			tidbPod := tidbPodList.Items[0]
 			Expect(tidbPod.Spec.InitContainers).To(HaveLen(1)) // sidercar container in `initContainers`
-			Expect(tidbPod.Spec.InitContainers[0].Name).To(Equal(v1alpha1.TiDBSlowLogContainerName))
+			Expect(tidbPod.Spec.InitContainers[0].Name).To(Equal(v1alpha1.ContainerNameTiDBSlowLog))
 
 			var tiflashPodList corev1.PodList
 			Expect(k8sClient.List(ctx, &tiflashPodList, client.InNamespace(tc.Namespace), client.MatchingLabels{
@@ -410,8 +410,8 @@ var _ = Describe("TiDB Cluster", func() {
 			Expect(len(tiflashPodList.Items)).To(Equal(1))
 			tiflashPod := tiflashPodList.Items[0]
 			Expect(tiflashPod.Spec.InitContainers).To(HaveLen(2))
-			Expect(tiflashPod.Spec.InitContainers[0].Name).To(Equal(v1alpha1.TiFlashServerLogContainerName))
-			Expect(tiflashPod.Spec.InitContainers[1].Name).To(Equal(v1alpha1.TiFlashErrorLogContainerName))
+			Expect(tiflashPod.Spec.InitContainers[0].Name).To(Equal(v1alpha1.ContainerNameTiFlashServerLog))
+			Expect(tiflashPod.Spec.InitContainers[1].Name).To(Equal(v1alpha1.ContainerNameTiFlashErrorLog))
 		})
 
 		It("should suspend and resume the tidb cluster", func() {
@@ -1298,7 +1298,7 @@ var _ = Describe("TiDB Cluster", func() {
 
 						// check for mTLS
 						g.Expect(pod.Spec.Volumes).To(ContainElement(corev1.Volume{
-							Name: fmt.Sprintf("%s%s-tls", v1alpha1.NamePrefix, componentName),
+							Name: v1alpha1.VolumeNameClusterTLS,
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
 									// TODO(liubo02): extract to a namer pkg
@@ -1308,7 +1308,7 @@ var _ = Describe("TiDB Cluster", func() {
 							},
 						}))
 						g.Expect(pod.Spec.Containers[0].VolumeMounts).To(ContainElement(corev1.VolumeMount{
-							Name:      fmt.Sprintf("%s%s-tls", v1alpha1.NamePrefix, componentName),
+							Name:      v1alpha1.VolumeNameClusterTLS,
 							MountPath: fmt.Sprintf("/var/lib/%s-tls", componentName),
 							ReadOnly:  true,
 						}))
@@ -1317,7 +1317,7 @@ var _ = Describe("TiDB Cluster", func() {
 						case v1alpha1.LabelValComponentTiDB:
 							// check for TiDB server & mysql client TLS
 							g.Expect(pod.Spec.Volumes).To(ContainElement(corev1.Volume{
-								Name: v1alpha1.TiDBSQLTLSVolumeName,
+								Name: v1alpha1.VolumeNameMySQLTLS,
 								VolumeSource: corev1.VolumeSource{
 									Secret: &corev1.SecretVolumeSource{
 										// TODO(liubo02): extract to a namer pkg
@@ -1327,8 +1327,8 @@ var _ = Describe("TiDB Cluster", func() {
 								},
 							}))
 							g.Expect(pod.Spec.Containers[0].VolumeMounts).To(ContainElement(corev1.VolumeMount{
-								Name:      v1alpha1.TiDBSQLTLSVolumeName,
-								MountPath: v1alpha1.TiDBSQLTLSMountPath,
+								Name:      v1alpha1.VolumeNameMySQLTLS,
+								MountPath: v1alpha1.DirPathMySQLTLS,
 								ReadOnly:  true,
 							}))
 						}
