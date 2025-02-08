@@ -9,7 +9,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  add-v2-label:
+  auto-job:
     runs-on: ubuntu-24.04
     steps:
       - name: Add v2 label if target branch is feature/v2
@@ -18,12 +18,10 @@ jobs:
         with:
           labels: 'v2'
 
-   add-e2e-comment:
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Add comment if target branch is feature/e2e
+      - name: Add E2E trigger comment if target branch is feature/e2e
         if: github.event.pull_request.base.ref == 'feature/e2e'
         uses: actions-ecosystem/action-create-comment@v1
         with:
+          github_token: ${{ github.token }}
           body: |
             /run-pull-e2e-kind-v2
