@@ -153,6 +153,7 @@ const (
 	ComponentKindTiKV    ComponentKind = "TiKV"
 	ComponentKindTiDB    ComponentKind = "TiDB"
 	ComponentKindTiFlash ComponentKind = "TiFlash"
+	ComponentKindTiCDC   ComponentKind = "TiCDC"
 )
 
 // ComponentStatus is the status of a component in the cluster.
