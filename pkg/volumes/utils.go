@@ -30,7 +30,7 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/utils/kubefeat"
+	"github.com/pingcap/tidb-operator/pkg/utils/features"
 	"github.com/pingcap/tidb-operator/pkg/volumes/cloud/aws"
 )
 
@@ -214,8 +214,8 @@ func isVolumeExpansionSupported(sc *storagev1.StorageClass) (bool, error) {
 
 // NewModifier creates a volume modifier.
 func NewModifier(ctx context.Context, logger logr.Logger, cli client.Client) (Modifier, error) {
-	if kubefeat.FeatureGates.Stage(kubefeat.VolumeAttributesClass).Enabled(kubefeat.ANY) {
-		logger.Info("use k8s native modifier since the feature gate of VolumeAttributesClass is enabled")
+	if features.DefaultFeatureGate.Enabled(features.NativeVolumeModifying) {
+		logger.Info("use k8s native modifier")
 		return NewNativeModifier(cli, logger), nil
 	}
 

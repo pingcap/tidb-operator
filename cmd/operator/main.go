@@ -50,6 +50,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
+	"github.com/pingcap/tidb-operator/pkg/utils/features"
 	"github.com/pingcap/tidb-operator/pkg/utils/kubefeat"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/pkg/volumes"
@@ -89,6 +90,7 @@ func main() {
 		}),
 	}
 	opts.BindFlags(flag.CommandLine)
+	features.DefaultFeatureGate.AddFlag(flag.CommandLine)
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
