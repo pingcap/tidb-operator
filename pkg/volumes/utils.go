@@ -30,6 +30,7 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/utils/kubefeat"
 	"github.com/pingcap/tidb-operator/pkg/volumes/cloud/aws"
 )
 
@@ -212,12 +213,15 @@ func isVolumeExpansionSupported(sc *storagev1.StorageClass) (bool, error) {
 }
 
 // NewModifier creates a volume modifier.
-// TODO: check the feature gate via webhook to decide whether to use the native modifier.
 func NewModifier(ctx context.Context, logger logr.Logger, cli client.Client) (Modifier, error) {
+	if kubefeat.FeatureGates.Stage(kubefeat.VolumeAttributesClass).Enabled(kubefeat.ANY) {
+		logger.Info("use k8s native modifier since the feature gate of VolumeAttributesClass is enabled")
+		return NewNativeModifier(cli, logger), nil
+	}
+
 	awsCfg, err := awsconfig.LoadDefaultConfig(ctx)
 	if err != nil {
-		logger.Error(err, "failed to load aws config, will use native modifier")
-		return NewNativeModifier(cli, logger), nil
+		return nil, fmt.Errorf("failed to load aws config: %w", err)
 	}
 	logger.Info("use aws ebs modifier")
 	return NewRawModifier(aws.NewEBSModifier(&awsCfg, logger), cli, logger), nil
