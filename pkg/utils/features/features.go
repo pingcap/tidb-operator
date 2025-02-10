@@ -25,8 +25,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
+const (
+	usageTemplate = "A set of key={true,false} pairs to enable/disable features, like `foo=true,bar=false`, available features: %s"
+)
+
 var (
 	allFeatures     = sets.NewString(NativeVolumeModifying)
+	usage           = fmt.Sprintf(usageTemplate, strings.Join(allFeatures.List(), ","))
 	defaultFeatures = map[string]bool{
 		NativeVolumeModifying: false,
 	}
@@ -58,7 +63,7 @@ type featureGate struct {
 }
 
 func (f *featureGate) AddFlag(_ *flag.FlagSet) {
-	flag.Var(f, "features", fmt.Sprintf("A set of key={true,false} pairs to enable/disable features, available features: %s", strings.Join(allFeatures.List(), ",")))
+	flag.Var(f, "features", usage)
 }
 
 func (f *featureGate) Enabled(key string) bool {
@@ -81,7 +86,7 @@ func (f *featureGate) String() string {
 func (f *featureGate) Set(value string) error {
 	m := make(map[string]bool)
 	for _, s := range strings.Split(value, ",") {
-		if len(s) == 0 {
+		if s == "" {
 			continue
 		}
 		arr := strings.SplitN(s, "=", 2)
@@ -92,7 +97,7 @@ func (f *featureGate) Set(value string) error {
 		v := strings.TrimSpace(arr[1])
 		boolValue, err := strconv.ParseBool(v)
 		if err != nil {
-			return fmt.Errorf("invalid value of %s=%s, err: %v", k, v, err)
+			return fmt.Errorf("invalid value of %s=%s, err: %w", k, v, err)
 		}
 		m[k] = boolValue
 	}

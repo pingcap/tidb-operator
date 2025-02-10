@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSet(t *testing.T) {
@@ -46,7 +47,7 @@ func TestSet(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gates := NewDefaultFeatureGate()
-			assert.NoError(t, gates.Set(tt.setStr))
+			require.NoError(t, gates.Set(tt.setStr))
 			assert.Equal(t, tt.wantStr, gates.String())
 		})
 	}
