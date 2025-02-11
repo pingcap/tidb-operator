@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/utils/task"
 )
@@ -71,7 +72,7 @@ func (t *TaskContext) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	}
 	rtx.Cluster = &cluster
 
-	if cluster.ShouldPauseReconcile() {
+	if coreutil.ShouldPauseReconcile(rtx.Cluster) {
 		return task.Complete().Break().With("cluster reconciliation is paused")
 	}
 

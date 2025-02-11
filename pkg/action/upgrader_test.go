@@ -16,264 +16,319 @@ package action
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
 	"github.com/go-logr/logr"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 )
 
-func Test_areGroupsUpgraded(t *testing.T) {
-	tests := []struct {
-		name      string
-		version   string
-		groups    []v1alpha1.Group
-		want      bool
-		wantError bool
-	}{
-		{
-			name:      "invalid version",
-			version:   "foo",
-			groups:    []v1alpha1.Group{},
-			want:      false,
-			wantError: true,
-		},
-		{
-			name:      "no groups",
-			version:   "v8.1.0",
-			groups:    []v1alpha1.Group{},
-			want:      true,
-			wantError: false,
-		},
-		{
-			name:    "all groups upgraded to the same version",
-			version: "v8.1.0",
-			groups: []v1alpha1.Group{
-				&v1alpha1.FakeGroup{Healthy: true, ActualVersion: "v8.1.0"},
-				&v1alpha1.FakeGroup{Healthy: true, ActualVersion: "v8.1.0"},
-			},
-			want:      true,
-			wantError: false,
-		},
-		{
-			name:    "all groups upgraded to the newer version",
-			version: "v8.1.0",
-			groups: []v1alpha1.Group{
-				&v1alpha1.FakeGroup{Healthy: true, ActualVersion: "v8.1.1"},
-				&v1alpha1.FakeGroup{Healthy: true, ActualVersion: "v8.1.1"},
-			},
-			want:      true,
-			wantError: false,
-		},
-		{
-			name:    "one group not upgraded",
-			version: "v6.5.1",
-			groups: []v1alpha1.Group{
-				&v1alpha1.FakeGroup{Healthy: true, ActualVersion: "v6.5.1"},
-				&v1alpha1.FakeGroup{Healthy: true, ActualVersion: "v6.5.0"},
-			},
-			want:      false,
-			wantError: false,
-		},
-	}
+const (
+	expectedVersion = "v8.1.0"
+	previousVersion = "v8.0.0"
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := areGroupsUpgraded(tt.version, tt.groups)
-			if (err != nil) != tt.wantError {
-				t.Errorf("areGroupsUpgraded() error = %v, wantError %v", err, tt.wantError)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("areGroupsUpgraded() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
+	defaultCluster = "test"
+)
 
-func Test_getDependentGroups(t *testing.T) {
-	tests := []struct {
-		name         string
-		existingObjs []client.Object
-		group        v1alpha1.Group
-		wantGroups   []v1alpha1.Group
-		wantErr      bool
-	}{
-		{
-			name:  "pd: no dependent groups",
-			group: &v1alpha1.FakeGroup{ComponentKindVal: v1alpha1.ComponentKindPD},
-		},
-		{
-			name:       "tidb depends on tikv but not found tikv groups",
-			group:      &v1alpha1.FakeGroup{ComponentKindVal: v1alpha1.ComponentKindTiDB},
-			wantGroups: []v1alpha1.Group{},
-		},
-		{
-			name: "tikv depends on tiflash when has tiflash",
-			existingObjs: []client.Object{
-				fake.FakeObj[v1alpha1.TiFlashGroup]("tiflash",
-					fake.SetNamespace[v1alpha1.TiFlashGroup]("test"),
-					fake.Label[v1alpha1.TiFlashGroup](v1alpha1.LabelKeyCluster, "tc"),
-					fake.Label[v1alpha1.TiFlashGroup](v1alpha1.LabelKeyComponent, v1alpha1.LabelValComponentTiFlash),
-				),
-				fake.FakeObj[v1alpha1.PDGroup]("pd",
-					fake.SetNamespace[v1alpha1.PDGroup]("test"),
-					fake.Label[v1alpha1.PDGroup](v1alpha1.LabelKeyCluster, "tc"),
-					fake.Label[v1alpha1.PDGroup](v1alpha1.LabelKeyComponent, v1alpha1.LabelValComponentPD),
-				),
-			},
-			group: &v1alpha1.FakeGroup{ComponentKindVal: v1alpha1.ComponentKindTiKV, Namespace: "test", ClusterName: "tc"},
-			wantGroups: []v1alpha1.Group{
-				fake.FakeObj[v1alpha1.TiFlashGroup]("tiflash",
-					fake.SetNamespace[v1alpha1.TiFlashGroup]("test"),
-					fake.Label[v1alpha1.TiFlashGroup](v1alpha1.LabelKeyCluster, "tc"),
-					fake.Label[v1alpha1.TiFlashGroup](v1alpha1.LabelKeyComponent, v1alpha1.LabelValComponentTiFlash),
-				),
-			},
-		},
-		{
-			name: "tikv depends on pd when has no tiflash",
-			existingObjs: []client.Object{
-				fake.FakeObj[v1alpha1.PDGroup]("pd",
-					fake.SetNamespace[v1alpha1.PDGroup]("test"),
-					fake.Label[v1alpha1.PDGroup](v1alpha1.LabelKeyCluster, "tc"),
-					fake.Label[v1alpha1.PDGroup](v1alpha1.LabelKeyComponent, v1alpha1.LabelValComponentPD),
-				),
-			},
-			group: &v1alpha1.FakeGroup{ComponentKindVal: v1alpha1.ComponentKindTiKV, Namespace: "test", ClusterName: "tc"},
-			wantGroups: []v1alpha1.Group{
-				fake.FakeObj[v1alpha1.PDGroup]("pd",
-					fake.SetNamespace[v1alpha1.PDGroup]("test"),
-					fake.Label[v1alpha1.PDGroup](v1alpha1.LabelKeyCluster, "tc"),
-					fake.Label[v1alpha1.PDGroup](v1alpha1.LabelKeyComponent, v1alpha1.LabelValComponentPD),
-				),
-			},
-		},
-		{
-			name: "tiflash depends on pd",
-			existingObjs: []client.Object{
-				fake.FakeObj[v1alpha1.PDGroup]("pd",
-					fake.SetNamespace[v1alpha1.PDGroup]("test"),
-					fake.Label[v1alpha1.PDGroup](v1alpha1.LabelKeyCluster, "tc"),
-					fake.Label[v1alpha1.PDGroup](v1alpha1.LabelKeyComponent, v1alpha1.LabelValComponentPD),
-				),
-			},
-			group: &v1alpha1.FakeGroup{ComponentKindVal: v1alpha1.ComponentKindTiFlash, Namespace: "test", ClusterName: "tc"},
-			wantGroups: []v1alpha1.Group{
-				fake.FakeObj[v1alpha1.PDGroup]("pd",
-					fake.SetNamespace[v1alpha1.PDGroup]("test"),
-					fake.Label[v1alpha1.PDGroup](v1alpha1.LabelKeyCluster, "tc"),
-					fake.Label[v1alpha1.PDGroup](v1alpha1.LabelKeyComponent, v1alpha1.LabelValComponentPD),
-				),
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cli := client.NewFakeClient(tt.existingObjs...)
-			gotGroups, err := getDependentGroups(context.TODO(), cli, tt.group)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("getDependentGroups() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(gotGroups, tt.wantGroups) {
-				t.Errorf("getDependentGroups() gotGroups = %v, want %v", gotGroups, tt.wantGroups)
-			}
-		})
-	}
-}
-
-func TestUpgradePolicy(t *testing.T) {
-	pdg := &v1alpha1.PDGroup{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "test",
-			Name:      "pd",
-			Labels: map[string]string{
-				v1alpha1.LabelKeyCluster:   "tc",
-				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
-			},
-		},
-		Spec: v1alpha1.PDGroupSpec{
-			Cluster: v1alpha1.ClusterReference{
-				Name: "tc",
-			},
-			Template: v1alpha1.PDTemplate{
-				Spec: v1alpha1.PDTemplateSpec{
-					Version: "v8.5.0",
-				},
-			},
-		},
-		Status: v1alpha1.PDGroupStatus{
-			GroupStatus: v1alpha1.GroupStatus{
-				Version: "v8.1.0", // not upgraded
-			},
-		},
-	}
-	kvg := &v1alpha1.TiKVGroup{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "test",
-			Name:      "tikv",
-			Labels: map[string]string{
-				v1alpha1.LabelKeyCluster:   "tc",
-				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
-			},
-		},
-		Spec: v1alpha1.TiKVGroupSpec{
-			Cluster: v1alpha1.ClusterReference{
-				Name: "tc",
-			},
-			Template: v1alpha1.TiKVTemplate{
-				Spec: v1alpha1.TiKVTemplateSpec{
-					Version: "v8.5.0",
-				},
-			},
-		},
-		Status: v1alpha1.TiKVGroupStatus{
-			GroupStatus: v1alpha1.GroupStatus{
-				Version: "v8.1.0", // not upgraded
-			},
-		},
-	}
-
-	tests := []struct {
-		name       string
+func TestPDUpgradePolicy(t *testing.T) {
+	cases := []struct {
+		desc       string
+		objs       []client.Object
 		policy     v1alpha1.UpgradePolicy
 		canUpgrade bool
 	}{
 		{
-			name:       "no constraints",
+			desc:       "no constraints",
 			policy:     v1alpha1.UpgradePolicyNoConstraints,
 			canUpgrade: true,
 		},
 		{
-			name:       "default policy",
+			desc:       "default",
+			policy:     v1alpha1.UpgradePolicyDefault,
+			canUpgrade: true,
+		},
+	}
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			testUpgradePolicy[scope.PDGroup](
+				tt,
+				c.desc,
+				c.objs,
+				c.policy,
+				fakeGroup[scope.PDGroup]("test", defaultCluster, expectedVersion, previousVersion),
+				c.canUpgrade,
+			)
+		})
+	}
+}
+
+func TestTiFlashUpgradePolicy(t *testing.T) {
+	cases := []struct {
+		desc       string
+		objs       []client.Object
+		policy     v1alpha1.UpgradePolicy
+		canUpgrade bool
+	}{
+		{
+			desc: "no constraints",
+			objs: []client.Object{
+				fakeGroup[scope.PDGroup]("test", defaultCluster, expectedVersion, previousVersion),
+			},
+			policy:     v1alpha1.UpgradePolicyNoConstraints,
+			canUpgrade: true,
+		},
+		{
+			desc: "default, pd is not upgraded",
+			objs: []client.Object{
+				fakeGroup[scope.PDGroup]("test", defaultCluster, expectedVersion, previousVersion),
+			},
 			policy:     v1alpha1.UpgradePolicyDefault,
 			canUpgrade: false,
 		},
 		{
-			name:       "unknown policy",
-			policy:     "unknown",
+			desc: "default, pd is upgraded",
+			objs: []client.Object{
+				fakeGroup[scope.PDGroup]("test", defaultCluster, expectedVersion, expectedVersion),
+			},
+			policy:     v1alpha1.UpgradePolicyDefault,
+			canUpgrade: true,
+		},
+	}
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			testUpgradePolicy[scope.TiFlashGroup](
+				tt,
+				c.desc,
+				c.objs,
+				c.policy,
+				fakeGroup[scope.TiFlashGroup]("test", defaultCluster, expectedVersion, previousVersion),
+				c.canUpgrade,
+			)
+		})
+	}
+}
+
+func TestTiKVUpgradePolicy(t *testing.T) {
+	cases := []struct {
+		desc       string
+		objs       []client.Object
+		policy     v1alpha1.UpgradePolicy
+		canUpgrade bool
+	}{
+		{
+			desc:   "no constraints",
+			policy: v1alpha1.UpgradePolicyNoConstraints,
+			objs: []client.Object{
+				fakeGroup[scope.PDGroup]("test", defaultCluster, expectedVersion, previousVersion),
+				fakeGroup[scope.TiFlashGroup]("test", defaultCluster, expectedVersion, previousVersion),
+			},
+			canUpgrade: true,
+		},
+		{
+			desc: "default, pd is not upgraded and no tiflash",
+			objs: []client.Object{
+				fakeGroup[scope.PDGroup]("test", defaultCluster, expectedVersion, previousVersion),
+			},
+			policy:     v1alpha1.UpgradePolicyDefault,
+			canUpgrade: false,
+		},
+		{
+			desc: "default, pd and tiflash are not upgraded",
+			objs: []client.Object{
+				fakeGroup[scope.PDGroup]("test", defaultCluster, expectedVersion, previousVersion),
+				fakeGroup[scope.TiFlashGroup]("test", defaultCluster, expectedVersion, previousVersion),
+			},
+			policy:     v1alpha1.UpgradePolicyDefault,
+			canUpgrade: false,
+		},
+		{
+			desc: "default, pd is upgraded and no tiflash",
+			objs: []client.Object{
+				fakeGroup[scope.PDGroup]("test", defaultCluster, expectedVersion, expectedVersion),
+			},
+			policy:     v1alpha1.UpgradePolicyDefault,
+			canUpgrade: true,
+		},
+		{
+			desc: "default, pd is upgraded and tiflash is not upgraded",
+			objs: []client.Object{
+				fakeGroup[scope.PDGroup]("test", defaultCluster, expectedVersion, expectedVersion),
+				fakeGroup[scope.TiFlashGroup]("test", defaultCluster, expectedVersion, previousVersion),
+			},
+			policy:     v1alpha1.UpgradePolicyDefault,
+			canUpgrade: false,
+		},
+		{
+			desc: "default, pd and tiflash are upgraded",
+			objs: []client.Object{
+				fakeGroup[scope.PDGroup]("test", defaultCluster, expectedVersion, expectedVersion),
+				fakeGroup[scope.TiFlashGroup]("test", defaultCluster, expectedVersion, expectedVersion),
+			},
+			policy:     v1alpha1.UpgradePolicyDefault,
+			canUpgrade: true,
+		},
+		{
+			desc: "default, all tiflashes are upgraded",
+			objs: []client.Object{
+				fakeGroup[scope.PDGroup]("test", defaultCluster, expectedVersion, expectedVersion),
+				fakeGroup[scope.TiFlashGroup]("test", defaultCluster, expectedVersion, expectedVersion),
+				fakeGroup[scope.TiFlashGroup]("test-2", defaultCluster, expectedVersion, expectedVersion),
+			},
+			policy:     v1alpha1.UpgradePolicyDefault,
+			canUpgrade: true,
+		},
+		{
+			desc: "default, one tiflash is not upgraded",
+			objs: []client.Object{
+				fakeGroup[scope.PDGroup]("test", defaultCluster, expectedVersion, expectedVersion),
+				fakeGroup[scope.TiFlashGroup]("test", defaultCluster, expectedVersion, previousVersion),
+				fakeGroup[scope.TiFlashGroup]("test-2", defaultCluster, expectedVersion, expectedVersion),
+			},
+			policy:     v1alpha1.UpgradePolicyDefault,
 			canUpgrade: false,
 		},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cluster := v1alpha1.Cluster{
-				Spec: v1alpha1.ClusterSpec{
-					UpgradePolicy: tt.policy,
-				},
-			}
-			cli := client.NewFakeClient(pdg, kvg)
-			checker := NewUpgradeChecker(cli, &cluster, logr.Discard())
-			got := checker.CanUpgrade(context.TODO(), kvg)
-			if got != tt.canUpgrade {
-				t.Errorf("CanUpgrade() got = %v, want %v", got, tt.canUpgrade)
-			}
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			testUpgradePolicy[scope.TiKVGroup](
+				tt,
+				c.desc,
+				c.objs,
+				c.policy,
+				fakeGroup[scope.TiKVGroup]("test", defaultCluster, expectedVersion, previousVersion),
+				c.canUpgrade,
+			)
 		})
 	}
+}
+
+func TestTiDBUpgradePolicy(t *testing.T) {
+	cases := []struct {
+		desc       string
+		objs       []client.Object
+		policy     v1alpha1.UpgradePolicy
+		canUpgrade bool
+	}{
+		{
+			desc: "no constraints",
+			objs: []client.Object{
+				fakeGroup[scope.PDGroup]("test", defaultCluster, expectedVersion, previousVersion),
+				fakeGroup[scope.TiKVGroup]("test", defaultCluster, expectedVersion, previousVersion),
+				fakeGroup[scope.TiFlashGroup]("test", defaultCluster, expectedVersion, previousVersion),
+			},
+			policy:     v1alpha1.UpgradePolicyNoConstraints,
+			canUpgrade: true,
+		},
+		{
+			desc: "default, pd and tikv are not upgraded",
+			objs: []client.Object{
+				fakeGroup[scope.PDGroup]("test", defaultCluster, expectedVersion, previousVersion),
+				fakeGroup[scope.TiKVGroup]("test", defaultCluster, expectedVersion, previousVersion),
+			},
+			policy:     v1alpha1.UpgradePolicyDefault,
+			canUpgrade: false,
+		},
+		{
+			desc: "default, pd is upgraded and tikv is not",
+			objs: []client.Object{
+				fakeGroup[scope.PDGroup]("test", defaultCluster, expectedVersion, expectedVersion),
+				fakeGroup[scope.TiKVGroup]("test", defaultCluster, expectedVersion, previousVersion),
+			},
+			policy:     v1alpha1.UpgradePolicyDefault,
+			canUpgrade: false,
+		},
+		{
+			desc: "default, pd and tikv are upgraded",
+			objs: []client.Object{
+				fakeGroup[scope.PDGroup]("test", defaultCluster, expectedVersion, expectedVersion),
+				fakeGroup[scope.TiKVGroup]("test", defaultCluster, expectedVersion, expectedVersion),
+			},
+			policy:     v1alpha1.UpgradePolicyDefault,
+			canUpgrade: true,
+		},
+		{
+			desc: "default, pd and tikv are upgraded and tiflash is not",
+			objs: []client.Object{
+				fakeGroup[scope.PDGroup]("test", defaultCluster, expectedVersion, expectedVersion),
+				fakeGroup[scope.TiKVGroup]("test", defaultCluster, expectedVersion, expectedVersion),
+				fakeGroup[scope.TiFlashGroup]("test", defaultCluster, expectedVersion, previousVersion),
+			},
+			policy:     v1alpha1.UpgradePolicyDefault,
+			canUpgrade: false,
+		},
+		{
+			desc: "default, pd and tikv and tiflash are upgraded",
+			objs: []client.Object{
+				fakeGroup[scope.PDGroup]("test", defaultCluster, expectedVersion, expectedVersion),
+				fakeGroup[scope.TiKVGroup]("test", defaultCluster, expectedVersion, expectedVersion),
+				fakeGroup[scope.TiFlashGroup]("test", defaultCluster, expectedVersion, expectedVersion),
+			},
+			policy:     v1alpha1.UpgradePolicyDefault,
+			canUpgrade: true,
+		},
+	}
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			testUpgradePolicy[scope.TiDBGroup](
+				tt,
+				c.desc,
+				c.objs,
+				c.policy,
+				fakeGroup[scope.TiDBGroup]("test", defaultCluster, expectedVersion, previousVersion),
+				c.canUpgrade,
+			)
+		})
+	}
+}
+
+func testUpgradePolicy[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](t *testing.T, desc string, objs []client.Object, policy v1alpha1.UpgradePolicy, group F, canUpgrade bool) {
+	t.Parallel()
+	cluster := v1alpha1.Cluster{
+		Spec: v1alpha1.ClusterSpec{
+			UpgradePolicy: policy,
+		},
+	}
+	objs = append(objs, group)
+	cli := client.NewFakeClient(objs...)
+	checker := NewUpgradeChecker[S](cli, &cluster, logr.Discard())
+	assert.Equal(t, canUpgrade, checker.CanUpgrade(context.TODO(), group), desc)
+}
+
+func fakeGroup[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.GroupT[G],
+	G runtime.GroupSet,
+](name, cluster, version, currentVersion string) F {
+	obj := fake.Fake(func(obj T) T {
+		obj.SetName(name)
+		obj.SetLabels(map[string]string{
+			v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+			v1alpha1.LabelKeyCluster:   cluster,
+			v1alpha1.LabelKeyComponent: scope.Component[S](),
+		})
+		obj.SetCluster(cluster)
+		obj.SetVersion(version)
+		obj.SetStatusVersion(currentVersion)
+		obj.SetReplicas(3)
+		obj.SetStatusReplicas(3, 3, 3, 3)
+		obj.SetStatusRevision("xxx", "xxx", nil)
+
+		return obj
+	})
+	var s S
+	return s.To(obj)
 }

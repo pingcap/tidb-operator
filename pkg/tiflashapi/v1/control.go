@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	tlsutil "github.com/pingcap/tidb-operator/pkg/utils/tls"
 )
@@ -38,8 +38,7 @@ type TiFlashControlInterface interface {
 }
 
 // defaultTiFlashControl is the default implementation of TiFlashControlInterface.
-type defaultTiFlashControl struct {
-}
+type defaultTiFlashControl struct{}
 
 // NewDefaultTiFlashControl returns a defaultTiFlashControl instance
 func NewDefaultTiFlashControl() TiFlashControlInterface {
@@ -57,7 +56,7 @@ func (*defaultTiFlashControl) GetTiFlashPodClient(ctx context.Context, cli clien
 
 	if tlsEnabled {
 		scheme = "https"
-		tlsConfig, err = tlsutil.GetTLSConfigFromSecret(ctx, cli, namespace, v1alpha1.TLSClusterClientSecretName(tcName))
+		tlsConfig, err = tlsutil.GetTLSConfigFromSecret(ctx, cli, namespace, coreutil.TLSClusterClientSecretName(tcName))
 		if err != nil {
 			return NewTiFlashClient(TiFlashPodClientURL(namespace, tcName, podName, scheme), defaultTiFlashClientTimeout, tlsConfig, true),
 				fmt.Errorf("unable to get tls config for TiDB cluster %q, tiflash client may not work: %w", tcName, err)

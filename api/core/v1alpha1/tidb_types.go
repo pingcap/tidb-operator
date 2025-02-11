@@ -15,19 +15,8 @@
 package v1alpha1
 
 import (
-	"strings"
-
 	corev1 "k8s.io/api/core/v1"
-	metautil "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/utils/ptr"
-)
-
-var (
-	_ GroupList         = &TiDBGroupList{}
-	_ Group             = &TiDBGroup{}
-	_ ComponentAccessor = &TiDB{}
 )
 
 const (
@@ -77,14 +66,6 @@ type TiDBGroupList struct {
 	Items []TiDBGroup `json:"items"`
 }
 
-func (l *TiDBGroupList) ToSlice() []Group {
-	groups := make([]Group, 0, len(l.Items))
-	for i := range l.Items {
-		groups = append(groups, &l.Items[i])
-	}
-	return groups
-}
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
@@ -101,74 +82,6 @@ type TiDBGroup struct {
 
 	Spec   TiDBGroupSpec   `json:"spec,omitempty"`
 	Status TiDBGroupStatus `json:"status,omitempty"`
-}
-
-func (in *TiDBGroup) GetClusterName() string {
-	return in.Spec.Cluster.Name
-}
-
-func (in *TiDBGroup) GetDesiredReplicas() int32 {
-	if in.Spec.Replicas == nil {
-		return 0
-	}
-	return *in.Spec.Replicas
-}
-
-func (in *TiDBGroup) GetDesiredVersion() string {
-	return in.Spec.Template.Spec.Version
-}
-
-func (in *TiDBGroup) GetActualVersion() string {
-	return in.Status.Version
-}
-
-func (in *TiDBGroup) GetStatus() GroupStatus {
-	return in.Status.GroupStatus
-}
-
-func (in *TiDBGroup) GVK() schema.GroupVersionKind {
-	return SchemeGroupVersion.WithKind("TiDBGroup")
-}
-
-func (in *TiDBGroup) ObservedGeneration() int64 {
-	return in.Status.ObservedGeneration
-}
-
-func (in *TiDBGroup) CurrentRevision() string {
-	return in.Status.CurrentRevision
-}
-
-func (in *TiDBGroup) UpdateRevision() string {
-	return in.Status.UpdateRevision
-}
-
-func (in *TiDBGroup) CollisionCount() *int32 {
-	if in.Status.CollisionCount == nil {
-		return nil
-	}
-	return ptr.To(*in.Status.CollisionCount)
-}
-
-func (in *TiDBGroup) ComponentKind() ComponentKind {
-	return ComponentKindTiDB
-}
-
-func (in *TiDBGroup) IsHealthy() bool {
-	return metautil.IsStatusConditionTrue(in.Status.Conditions, TiDBGroupCondAvailable) && in.DeletionTimestamp.IsZero()
-}
-
-func (in *TiDBGroup) GetClientPort() int32 {
-	if in.Spec.Template.Spec.Server.Ports.Client != nil {
-		return in.Spec.Template.Spec.Server.Ports.Client.Port
-	}
-	return DefaultTiDBPortClient
-}
-
-func (in *TiDBGroup) GetStatusPort() int32 {
-	if in.Spec.Template.Spec.Server.Ports.Status != nil {
-		return in.Spec.Template.Spec.Server.Ports.Status.Port
-	}
-	return DefaultTiDBPortStatus
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -198,90 +111,6 @@ type TiDB struct {
 
 	Spec   TiDBSpec   `json:"spec,omitempty"`
 	Status TiDBStatus `json:"status,omitempty"`
-}
-
-func (in *TiDB) GetClusterName() string {
-	return in.Spec.Cluster.Name
-}
-
-func (in *TiDB) GetName() string {
-	return in.Name
-}
-
-func (in *TiDB) ComponentKind() ComponentKind {
-	return ComponentKindTiDB
-}
-
-func (in *TiDB) GVK() schema.GroupVersionKind {
-	return SchemeGroupVersion.WithKind("TiDB")
-}
-
-func (in *TiDB) IsSeparateSlowLogEnabled() bool {
-	if in.Spec.SlowLog == nil {
-		return true // enabled by default
-	}
-	return !in.Spec.SlowLog.Disabled
-}
-
-func (in *TiDB) ObservedGeneration() int64 {
-	return in.Status.ObservedGeneration
-}
-
-func (in *TiDB) CurrentRevision() string {
-	return in.Status.CurrentRevision
-}
-
-func (in *TiDB) UpdateRevision() string {
-	return in.Status.UpdateRevision
-}
-
-func (in *TiDB) CollisionCount() *int32 {
-	if in.Status.CollisionCount == nil {
-		return nil
-	}
-	return ptr.To(*in.Status.CollisionCount)
-}
-
-func (in *TiDB) IsHealthy() bool {
-	return metautil.IsStatusConditionTrue(in.Status.Conditions, TiDBCondHealth) && in.DeletionTimestamp.IsZero()
-}
-
-func (in *TiDB) GetClientPort() int32 {
-	if in.Spec.Server.Ports.Client != nil {
-		return in.Spec.Server.Ports.Client.Port
-	}
-	return DefaultTiDBPortClient
-}
-
-func (in *TiDB) GetStatusPort() int32 {
-	if in.Spec.Server.Ports.Status != nil {
-		return in.Spec.Server.Ports.Status.Port
-	}
-	return DefaultTiDBPortStatus
-}
-
-// NOTE: name prefix is used to generate all names of underlying resources of this instance
-func (in *TiDB) NamePrefixAndSuffix() (prefix, suffix string) {
-	index := strings.LastIndexByte(in.Name, '-')
-	// TODO(liubo02): validate name to avoid '-' is not found
-	if index == -1 {
-		panic("cannot get name prefix")
-	}
-	return in.Name[:index], in.Name[index+1:]
-}
-
-// This name is not only for pod, but also configMap, hostname and almost all underlying resources
-// TODO(liubo02): rename to more reasonable one
-func (in *TiDB) PodName() string {
-	prefix, suffix := in.NamePrefixAndSuffix()
-	return prefix + "-tidb-" + suffix
-}
-
-// TLSClusterSecretName returns the mTLS secret name for a component.
-// TODO(liubo02): move to namer
-func (in *TiDB) TLSClusterSecretName() string {
-	prefix, _ := in.NamePrefixAndSuffix()
-	return prefix + "-tidb-cluster-secret"
 }
 
 // TiDBGroupSpec describes the common attributes of a TiDBGroup.
@@ -465,26 +294,4 @@ type TiDBSpec struct {
 
 type TiDBStatus struct {
 	CommonStatus `json:",inline"`
-}
-
-// IsMySQLTLSEnabled returns whether the TLS between TiDB server and MySQL client is enabled.
-func (in *TiDB) IsMySQLTLSEnabled() bool {
-	return in.Spec.Security != nil && in.Spec.Security.TLS != nil && in.Spec.Security.TLS.MySQL != nil && in.Spec.Security.TLS.MySQL.Enabled
-}
-
-// MySQLTLSSecretName returns the secret name used in TiDB server for the TLS between TiDB server and MySQL client.
-func (in *TiDB) MySQLTLSSecretName() string {
-	prefix, _ := in.NamePrefixAndSuffix()
-	return prefix + "-tidb-server-secret"
-}
-
-func (in *TiDB) IsTokenBasedAuthEnabled() bool {
-	return in.Spec.Security != nil && in.Spec.Security.AuthToken != nil
-}
-
-func (in *TiDB) AuthTokenJWKSSecretName() string {
-	if in.IsTokenBasedAuthEnabled() {
-		return in.Spec.Security.AuthToken.JWKs.Name
-	}
-	return ""
 }

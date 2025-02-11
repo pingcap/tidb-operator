@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -71,13 +72,13 @@ func newHeadlessService(kvg *v1alpha1.TiKVGroup) *corev1.Service {
 			Ports: []corev1.ServicePort{
 				{
 					Name:       v1alpha1.TiKVPortNameClient,
-					Port:       kvg.GetClientPort(),
+					Port:       coreutil.TiKVGroupClientPort(kvg),
 					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromString(v1alpha1.TiKVPortNameClient),
 				},
 				{
 					Name:       v1alpha1.TiKVPortNameStatus,
-					Port:       kvg.GetStatusPort(),
+					Port:       coreutil.TiKVGroupStatusPort(kvg),
 					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromString(v1alpha1.TiKVPortNameStatus),
 				},

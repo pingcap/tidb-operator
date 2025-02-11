@@ -27,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/action"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
 	"github.com/pingcap/tidb-operator/pkg/updater/policy"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
@@ -44,7 +45,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 		logger := logr.FromContextOrDiscard(ctx)
 		pdg := state.PDGroup()
 
-		checker := action.NewUpgradeChecker(c, state.Cluster(), logger)
+		checker := action.NewUpgradeChecker[scope.PDGroup](c, state.Cluster(), logger)
 
 		if needVersionUpgrade(pdg) && !checker.CanUpgrade(ctx, pdg) {
 			// TODO(liubo02): change to Wait

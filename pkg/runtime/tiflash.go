@@ -158,6 +158,10 @@ func (f *TiFlash) SetObservedGeneration(g int64) {
 	f.Status.ObservedGeneration = g
 }
 
+func (f *TiFlash) SetCluster(cluster string) {
+	f.Spec.Cluster.Name = cluster
+}
+
 func (f *TiFlash) Cluster() string {
 	return f.Spec.Cluster.Name
 }
@@ -187,8 +191,16 @@ func (fg *TiFlashGroup) Replicas() int32 {
 	return *fg.Spec.Replicas
 }
 
+func (fg *TiFlashGroup) SetVersion(version string) {
+	fg.Spec.Template.Spec.Version = version
+}
+
 func (fg *TiFlashGroup) Version() string {
 	return fg.Spec.Template.Spec.Version
+}
+
+func (fg *TiFlashGroup) SetCluster(cluster string) {
+	fg.Spec.Cluster.Name = cluster
 }
 
 func (fg *TiFlashGroup) Cluster() string {

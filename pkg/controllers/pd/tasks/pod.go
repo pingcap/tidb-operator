@@ -25,9 +25,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/image"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
@@ -144,7 +146,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: pd.PodName(),
+						Name: coreutil.PodName[scope.PD](pd),
 					},
 				},
 			},
@@ -165,7 +167,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: PersistentVolumeClaimName(pd.PodName(), vol.Name),
+					ClaimName: PersistentVolumeClaimName(coreutil.PodName[scope.PD](pd), vol.Name),
 				},
 			},
 		})
@@ -175,12 +177,12 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 		}
 	}
 
-	if cluster.IsTLSClusterEnabled() {
+	if coreutil.IsTLSClusterEnabled(cluster) {
 		vols = append(vols, corev1.Volume{
 			Name: v1alpha1.VolumeNameClusterTLS,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: pd.TLSClusterSecretName(),
+					SecretName: coreutil.TLSClusterSecretName[scope.PD](pd),
 				},
 			},
 		})
@@ -191,13 +193,13 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 		})
 	}
 
-	anno := maputil.Merge(pd.GetAnnotations(), k8s.AnnoProm(pd.GetClientPort(), metricsPath))
+	anno := maputil.Merge(pd.GetAnnotations(), k8s.AnnoProm(coreutil.PDClientPort(pd), metricsPath))
 	// TODO: should not inherit all labels and annotations into pod
 	delete(anno, v1alpha1.AnnoKeyInitialClusterNum)
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: pd.Namespace,
-			Name:      pd.PodName(),
+			Name:      coreutil.PodName[scope.PD](pd),
 			Labels: maputil.Merge(pd.Labels, map[string]string{
 				v1alpha1.LabelKeyInstance:   pd.Name,
 				v1alpha1.LabelKeyConfigHash: state.ConfigHash,
@@ -210,7 +212,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			},
 		},
 		Spec: corev1.PodSpec{
-			Hostname:     pd.PodName(),
+			Hostname:     coreutil.PodName[scope.PD](pd),
 			Subdomain:    pd.Spec.Subdomain,
 			NodeSelector: pd.Spec.Topology,
 			Containers: []corev1.Container{
@@ -226,16 +228,16 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 					Ports: []corev1.ContainerPort{
 						{
 							Name:          v1alpha1.PDPortNameClient,
-							ContainerPort: pd.GetClientPort(),
+							ContainerPort: coreutil.PDClientPort(pd),
 						},
 						{
 							Name:          v1alpha1.PDPortNamePeer,
-							ContainerPort: pd.GetPeerPort(),
+							ContainerPort: coreutil.PDPeerPort(pd),
 						},
 					},
 					VolumeMounts:   mounts,
 					Resources:      k8s.GetResourceRequirements(pd.Spec.Resources),
-					ReadinessProbe: buildPDReadinessProbe(pd.GetClientPort()),
+					ReadinessProbe: buildPDReadinessProbe(coreutil.PDClientPort(pd)),
 				},
 			},
 			Volumes: vols,

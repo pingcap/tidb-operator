@@ -20,137 +20,234 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/api/meta"
+	kuberuntime "k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
-type UpgradePolicy interface {
-	ArePreconditionsMet(ctx context.Context, cli client.Client, group v1alpha1.Group) (bool, error)
+type UpgradePolicy[
+	G client.Object,
+] interface {
+	ArePreconditionsMet(ctx context.Context, cli client.Client, group G) (bool, error)
 }
 
-var (
-	_ UpgradePolicy = &defaultPolicy{}
-	_ UpgradePolicy = &noConstraint{}
-)
+type noConstraints[G client.Object] struct{}
 
-type defaultPolicy struct{}
+func (noConstraints[G]) ArePreconditionsMet(_ context.Context, _ client.Client, _ G) (bool, error) {
+	return true, nil
+}
 
-func (defaultPolicy) ArePreconditionsMet(ctx context.Context, cli client.Client, group v1alpha1.Group) (bool, error) {
-	groups, err := getDependentGroups(ctx, cli, group)
-	if err != nil {
-		return false, fmt.Errorf("cannot get dependent groups for %s/%s: %w", group.GetNamespace(), group.GetName(), err)
+func NewNoConstraints[G client.Object]() UpgradePolicy[G] {
+	return noConstraints[G]{}
+}
+
+type defaultPolicy[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+] struct{}
+
+func NewDefault[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+]() UpgradePolicy[F] {
+	return defaultPolicy[S, F, T]{}
+}
+
+func (defaultPolicy[S, F, T]) ArePreconditionsMet(ctx context.Context, cli client.Client, group F) (bool, error) {
+	ns := group.GetNamespace()
+	cluster := coreutil.Cluster[S](group)
+	version := coreutil.Version[S](group)
+
+	var comps []string
+	switch scope.Component[S]() {
+	case v1alpha1.LabelValComponentPD:
+	case v1alpha1.LabelValComponentTiKV:
+		comps = append(comps,
+			v1alpha1.LabelValComponentTiFlash,
+			v1alpha1.LabelValComponentPD,
+		)
+	case v1alpha1.LabelValComponentTiDB:
+		comps = append(comps,
+			v1alpha1.LabelValComponentTiKV,
+			v1alpha1.LabelValComponentTiFlash,
+			v1alpha1.LabelValComponentPD,
+		)
+	case v1alpha1.LabelValComponentTiFlash:
+		comps = append(comps,
+			v1alpha1.LabelValComponentPD,
+		)
+	default:
+		return false, fmt.Errorf("unknown component: %s", scope.Component[S]())
 	}
-	return areGroupsUpgraded(group.GetDesiredVersion(), groups)
+
+	return checkComponentsUpgraded(ctx, cli, ns, cluster, version, comps...)
 }
 
-// getDependentGroups returns the groups that depend on the given group when upgrade.
-func getDependentGroups(ctx context.Context, cli client.Client, group v1alpha1.Group) (groups []v1alpha1.Group, err error) {
-	switch group.ComponentKind() {
-	case v1alpha1.ComponentKindPD:
-
-	case v1alpha1.ComponentKindTiDB:
-		var kvgList v1alpha1.TiKVGroupList
-		if err = cli.List(ctx, &kvgList, client.InNamespace(group.GetNamespace()), client.MatchingLabels{
-			v1alpha1.LabelKeyCluster:   group.GetClusterName(),
-			v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
-		}); err != nil {
-			return nil, fmt.Errorf("cannot list TiKVGroups: %w", err)
-		}
-		groups = kvgList.ToSlice()
-
-	case v1alpha1.ComponentKindTiKV:
-		var tiflashGroupList v1alpha1.TiFlashGroupList
-		if err = cli.List(ctx, &tiflashGroupList, client.InNamespace(group.GetNamespace()), client.MatchingLabels{
-			v1alpha1.LabelKeyCluster:   group.GetClusterName(),
-			v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiFlash,
-		}); err != nil {
-			return nil, fmt.Errorf("cannot list TiFlashGroups: %w", err)
-		}
-		groups = tiflashGroupList.ToSlice()
-		// If there is no TiFlashGroup, should check PDGroups.
-		if len(groups) == 0 {
-			groups, err = listPDGroups(ctx, cli, group.GetNamespace(), group.GetClusterName())
+func checkComponentsUpgraded(ctx context.Context, c client.Client, ns, cluster, version string, comps ...string) (bool, error) {
+	for _, comp := range comps {
+		switch comp {
+		case v1alpha1.LabelValComponentPD:
+			upgraded, err := checkOneComponentUpgraded[scope.PDGroup](ctx, c, ns, cluster, version)
 			if err != nil {
-				return nil, fmt.Errorf("cannot list PDGroups: %w", err)
+				return false, err
 			}
-		}
-
-	case v1alpha1.ComponentKindTiFlash:
-		groups, err = listPDGroups(ctx, cli, group.GetNamespace(), group.GetClusterName())
-		if err != nil {
-			return nil, fmt.Errorf("cannot list PDGroups: %w", err)
+			if !upgraded {
+				return false, nil
+			}
+		case v1alpha1.LabelValComponentTiKV:
+			upgraded, err := checkOneComponentUpgraded[scope.TiKVGroup](ctx, c, ns, cluster, version)
+			if err != nil {
+				return false, err
+			}
+			if !upgraded {
+				return false, nil
+			}
+		case v1alpha1.LabelValComponentTiDB:
+			upgraded, err := checkOneComponentUpgraded[scope.TiDBGroup](ctx, c, ns, cluster, version)
+			if err != nil {
+				return false, err
+			}
+			if !upgraded {
+				return false, nil
+			}
+		case v1alpha1.LabelValComponentTiFlash:
+			upgraded, err := checkOneComponentUpgraded[scope.TiFlashGroup](ctx, c, ns, cluster, version)
+			if err != nil {
+				return false, err
+			}
+			if !upgraded {
+				return false, nil
+			}
+		default:
+			return false, fmt.Errorf("unknown component: %s", comp)
 		}
 	}
 
-	return groups, nil
+	return true, nil
 }
 
-func listPDGroups(ctx context.Context, cli client.Client, ns, clusterName string) ([]v1alpha1.Group, error) {
-	var pdgList v1alpha1.PDGroupList
-	if err := cli.List(ctx, &pdgList, client.InNamespace(ns), client.MatchingLabels{
-		v1alpha1.LabelKeyCluster:   clusterName,
-		v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
+func checkOneComponentUpgraded[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](ctx context.Context, c client.Client, ns, cluster, version string) (bool, error) {
+	comp := scope.Component[S]()
+	groups, err := listGroups[S](ctx, c, ns, cluster)
+	if err != nil {
+		return false, fmt.Errorf("cannot list %s groups: %w", comp, err)
+	}
+
+	upgraded, err := isUpgraded[S](groups, version)
+	if err != nil {
+		return false, fmt.Errorf("cannot check whether %s groups are upgraded: %w", comp, err)
+	}
+
+	return upgraded, nil
+}
+
+func listGroups[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](ctx context.Context, c client.Client, ns, cluster string) ([]F, error) {
+	l := scope.NewList[S]()
+	if err := c.List(ctx, l, client.InNamespace(ns), client.MatchingLabels{
+		v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+		v1alpha1.LabelKeyCluster:   cluster,
+		v1alpha1.LabelKeyComponent: scope.Component[S](),
 	}); err != nil {
-		return nil, fmt.Errorf("cannot list PDGroups: %w", err)
+		return nil, err
 	}
-	return pdgList.ToSlice(), nil
+
+	objs := make([]F, 0, meta.LenList(l))
+	if err := meta.EachListItem(l, func(item kuberuntime.Object) error {
+		obj, ok := item.(F)
+		if !ok {
+			// unreachable
+			return fmt.Errorf("cannot convert item")
+		}
+		objs = append(objs, obj)
+		return nil
+	}); err != nil {
+		// unreachable
+		return nil, err
+	}
+
+	return objs, nil
 }
 
-// areGroupsUpgraded checks if all groups' version are greater or equal to the desired version.
-func areGroupsUpgraded(version string, groups []v1alpha1.Group) (bool, error) {
-	desiredVer, err := semver.NewVersion(version)
+func isUpgraded[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](groups []F, version string) (bool, error) {
+	// fast path, if no groups, no need to parse version
+	if len(groups) == 0 {
+		return true, nil
+	}
+
+	ver, err := semver.NewVersion(version)
 	if err != nil {
 		return false, fmt.Errorf("cannot parse the desired version: %s", version)
 	}
 
 	for _, group := range groups {
-		v, e := semver.NewVersion(group.GetActualVersion())
+		statusVer := coreutil.StatusVersion[S](group)
+		v, e := semver.NewVersion(statusVer)
 		if e != nil {
-			return false, fmt.Errorf("cannot parse the group status version: %s", group.GetActualVersion())
+			return false, fmt.Errorf("cannot parse the group status version: %s", statusVer)
 		}
-		if !v.GreaterThanEqual(desiredVer) || !v1alpha1.IsGroupHealthyAndUpToDate(group) {
+		if !v.GreaterThanEqual(ver) || !coreutil.IsGroupHealthyAndUpToDate[S](group) {
 			return false, nil
 		}
 	}
 	return true, nil
 }
 
-type noConstraint struct{}
-
-func (noConstraint) ArePreconditionsMet(_ context.Context, _ client.Client, _ v1alpha1.Group) (bool, error) {
-	return true, nil
+type UpgradeChecker[G client.Object] interface {
+	CanUpgrade(context.Context, G) bool
 }
 
-type UpgradeChecker interface {
-	CanUpgrade(context.Context, v1alpha1.Group) bool
-}
-
-type upgradeChecker struct {
+type upgradeChecker[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+] struct {
 	cli    client.Client
 	logger logr.Logger
-	policy UpgradePolicy
+	policy UpgradePolicy[F]
 }
 
-func NewUpgradeChecker(cli client.Client, cluster *v1alpha1.Cluster, logger logr.Logger) UpgradeChecker {
-	var policy UpgradePolicy
+func NewUpgradeChecker[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](cli client.Client, cluster *v1alpha1.Cluster, logger logr.Logger) UpgradeChecker[F] {
+	var p UpgradePolicy[F]
 	switch cluster.Spec.UpgradePolicy {
 	case v1alpha1.UpgradePolicyNoConstraints:
-		policy = &noConstraint{}
+		p = NewNoConstraints[F]()
 	case v1alpha1.UpgradePolicyDefault:
-		policy = &defaultPolicy{}
+		p = NewDefault[S]()
 	default:
 		logger.Info("unknown upgrade policy, use the default one", "policy", cluster.Spec.UpgradePolicy)
-		policy = &defaultPolicy{}
+		p = NewDefault[S]()
 	}
-	return &upgradeChecker{cli: cli, logger: logger, policy: policy}
+	return &upgradeChecker[S, F, T]{cli: cli, logger: logger, policy: p}
 }
 
-func (c *upgradeChecker) CanUpgrade(ctx context.Context, group v1alpha1.Group) bool {
+func (c *upgradeChecker[S, F, T]) CanUpgrade(ctx context.Context, group F) bool {
 	yes, err := c.policy.ArePreconditionsMet(ctx, c.cli, group)
 	if err != nil {
 		c.logger.Error(err, "failed to check preconditions for upgrading", "group_ns",
-			group.GetNamespace(), "group_name", group.GetName(), "component", group.ComponentKind())
+			group.GetNamespace(), "group_name", group.GetName(), "component", scope.Component[S]())
 	}
 	return yes
 }

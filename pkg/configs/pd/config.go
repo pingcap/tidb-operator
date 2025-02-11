@@ -23,6 +23,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
 const (
@@ -64,7 +66,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, peers []*v1
 	}
 
 	scheme := "http"
-	if cluster.IsTLSClusterEnabled() {
+	if coreutil.IsTLSClusterEnabled(cluster) {
 		scheme = "https"
 		c.Security.CAPath = path.Join(v1alpha1.DirPathClusterTLSPD, corev1.ServiceAccountRootCAKey)
 		c.Security.CertPath = path.Join(v1alpha1.DirPathClusterTLSPD, corev1.TLSCertKey)
@@ -165,7 +167,7 @@ func (c *Config) Validate() error {
 }
 
 func getClientURLs(pd *v1alpha1.PD, scheme string) string {
-	return fmt.Sprintf("%s://[::]:%d", scheme, pd.GetClientPort())
+	return fmt.Sprintf("%s://[::]:%d", scheme, coreutil.PDClientPort(pd))
 }
 
 func getAdvertiseClientURLs(pd *v1alpha1.PD, scheme string) string {
@@ -173,12 +175,12 @@ func getAdvertiseClientURLs(pd *v1alpha1.PD, scheme string) string {
 	if ns == "" {
 		ns = corev1.NamespaceDefault
 	}
-	host := pd.PodName() + "." + pd.Spec.Subdomain + "." + ns
-	return fmt.Sprintf("%s://%s:%d", scheme, host, pd.GetClientPort())
+	host := coreutil.PodName[scope.PD](pd) + "." + pd.Spec.Subdomain + "." + ns
+	return fmt.Sprintf("%s://%s:%d", scheme, host, coreutil.PDClientPort(pd))
 }
 
 func getPeerURLs(pd *v1alpha1.PD, scheme string) string {
-	return fmt.Sprintf("%s://[::]:%d", scheme, pd.GetPeerPort())
+	return fmt.Sprintf("%s://[::]:%d", scheme, coreutil.PDPeerPort(pd))
 }
 
 func getAdvertisePeerURLs(pd *v1alpha1.PD, scheme string) string {
@@ -186,8 +188,8 @@ func getAdvertisePeerURLs(pd *v1alpha1.PD, scheme string) string {
 	if ns == "" {
 		ns = corev1.NamespaceDefault
 	}
-	host := pd.PodName() + "." + pd.Spec.Subdomain + "." + ns
-	return fmt.Sprintf("%s://%s:%d", scheme, host, pd.GetPeerPort())
+	host := coreutil.PodName[scope.PD](pd) + "." + pd.Spec.Subdomain + "." + ns
+	return fmt.Sprintf("%s://%s:%d", scheme, host, coreutil.PDPeerPort(pd))
 }
 
 func getInitialCluster(peers []*v1alpha1.PD, scheme string) string {

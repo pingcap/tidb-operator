@@ -21,8 +21,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	pdcfg "github.com/pingcap/tidb-operator/pkg/configs/pd"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/hasher"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -66,7 +68,7 @@ func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 func newConfigMap(pd *v1alpha1.PD, data []byte, hash string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      pd.PodName(),
+			Name:      coreutil.PodName[scope.PD](pd),
 			Namespace: pd.Namespace,
 			Labels: maputil.Merge(pd.Labels, map[string]string{
 				v1alpha1.LabelKeyInstance:   pd.Name,

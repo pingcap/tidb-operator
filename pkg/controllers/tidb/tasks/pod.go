@@ -27,9 +27,11 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/image"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -98,7 +100,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: tidb.PodName(),
+						Name: coreutil.PodName[scope.TiDB](tidb),
 					},
 				},
 			},
@@ -120,7 +122,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: PersistentVolumeClaimName(tidb.PodName(), vol.Name),
+					ClaimName: PersistentVolumeClaimName(coreutil.PodName[scope.TiDB](tidb), vol.Name),
 				},
 			},
 		})
@@ -135,12 +137,12 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 		}
 	}
 
-	if tidb.IsMySQLTLSEnabled() {
+	if coreutil.IsMySQLTLSEnabled(tidb) {
 		vols = append(vols, corev1.Volume{
 			Name: v1alpha1.VolumeNameMySQLTLS,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: tidb.MySQLTLSSecretName(),
+					SecretName: coreutil.MySQLTLSSecretName(tidb),
 				},
 			},
 		})
@@ -151,12 +153,12 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 		})
 	}
 
-	if cluster.IsTLSClusterEnabled() {
+	if coreutil.IsTLSClusterEnabled(cluster) {
 		vols = append(vols, corev1.Volume{
 			Name: v1alpha1.VolumeNameClusterTLS,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: tidb.TLSClusterSecretName(),
+					SecretName: coreutil.TLSClusterSecretName[scope.TiDB](tidb),
 				},
 			},
 		})
@@ -191,12 +193,12 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 		})
 	}
 
-	if tidb.IsTokenBasedAuthEnabled() {
+	if coreutil.IsTokenBasedAuthEnabled(tidb) {
 		vols = append(vols, corev1.Volume{
 			Name: v1alpha1.VolumeNameTiDBAuthToken,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: tidb.AuthTokenJWKSSecretName(),
+					SecretName: coreutil.AuthTokenJWKSSecretName(tidb),
 				},
 			},
 		})
@@ -208,7 +210,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 	}
 
 	var slowLogContainer *corev1.Container
-	if tidb.IsSeparateSlowLogEnabled() {
+	if coreutil.IsSeparateSlowLogEnabled(tidb) {
 		// no persistent slowlog volume
 		if slowLogMount == nil {
 			vol, mount := defaultSlowLogVolumeAndMount()
@@ -222,19 +224,19 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: tidb.Namespace,
-			Name:      tidb.PodName(),
+			Name:      coreutil.PodName[scope.TiDB](tidb),
 			Labels: maputil.Merge(tidb.Labels, map[string]string{
 				v1alpha1.LabelKeyInstance:   tidb.Name,
 				v1alpha1.LabelKeyConfigHash: state.ConfigHash,
 				v1alpha1.LabelKeyClusterID:  cluster.Status.ID,
 			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiDB)),
-			Annotations: maputil.Merge(tidb.GetAnnotations(), k8s.AnnoProm(tidb.GetStatusPort(), metricsPath)),
+			Annotations: maputil.Merge(tidb.GetAnnotations(), k8s.AnnoProm(coreutil.TiDBStatusPort(tidb), metricsPath)),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(tidb, v1alpha1.SchemeGroupVersion.WithKind("TiDB")),
 			},
 		},
 		Spec: corev1.PodSpec{
-			Hostname:     tidb.PodName(),
+			Hostname:     coreutil.PodName[scope.TiDB](tidb),
 			Subdomain:    tidb.Spec.Subdomain,
 			NodeSelector: tidb.Spec.Topology,
 			Containers: []corev1.Container{
@@ -250,11 +252,11 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 					Ports: []corev1.ContainerPort{
 						{
 							Name:          v1alpha1.TiDBPortNameClient,
-							ContainerPort: tidb.GetClientPort(),
+							ContainerPort: coreutil.TiDBClientPort(tidb),
 						},
 						{
 							Name:          v1alpha1.TiDBPortNameStatus,
-							ContainerPort: tidb.GetStatusPort(),
+							ContainerPort: coreutil.TiDBStatusPort(tidb),
 						},
 					},
 					VolumeMounts: mounts,
@@ -271,7 +273,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 						},
 					},
 					ReadinessProbe: &corev1.Probe{
-						ProbeHandler:        buildTiDBReadinessProbHandler(cluster, tidb, tidb.GetClientPort(), tidb.GetStatusPort()),
+						ProbeHandler:        buildTiDBReadinessProbHandler(cluster, tidb, coreutil.TiDBClientPort(tidb), coreutil.TiDBStatusPort(tidb)),
 						InitialDelaySeconds: defaultReadinessProbeInitialDelaySeconds,
 					},
 				},
@@ -318,7 +320,7 @@ func buildTiDBReadinessProbHandler(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiD
 
 func buildTiDBProbeCommand(cluster *v1alpha1.Cluster, statusPort int32) (command []string) {
 	scheme := "http"
-	if cluster.IsTLSClusterEnabled() {
+	if coreutil.IsTLSClusterEnabled(cluster) {
 		scheme = "https"
 	}
 	host := "127.0.0.1"
@@ -332,7 +334,7 @@ func buildTiDBProbeCommand(cluster *v1alpha1.Cluster, statusPort int32) (command
 		// follow 301 or 302 redirect
 		"--location")
 
-	if cluster.IsTLSClusterEnabled() {
+	if coreutil.IsTLSClusterEnabled(cluster) {
 		cacert := path.Join(v1alpha1.DirPathClusterTLSTiDB, corev1.ServiceAccountRootCAKey)
 		cert := path.Join(v1alpha1.DirPathClusterTLSTiDB, corev1.TLSCertKey)
 		key := path.Join(v1alpha1.DirPathClusterTLSTiDB, corev1.TLSPrivateKeyKey)

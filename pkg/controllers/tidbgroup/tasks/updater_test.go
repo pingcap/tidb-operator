@@ -41,6 +41,7 @@ func TestTaskUpdater(t *testing.T) {
 	cases := []struct {
 		desc          string
 		state         *ReconcileContext
+		objs          []client.Object
 		unexpectedErr bool
 
 		expectedStatus  task.Status
@@ -63,14 +64,26 @@ func TestTaskUpdater(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					dbg: fake.FakeObj("aaa", func(obj *v1alpha1.TiDBGroup) *v1alpha1.TiDBGroup {
-						// use an wrong version to trigger version check
-						// TODO(liubo02): it's not happened actually. Maybe remove whole checking
-						obj.Spec.Template.Spec.Version = "xxx"
-						obj.Status.Version = "yyy"
+						obj.Spec.Template.Spec.Version = "v8.1.0"
+						obj.Spec.Cluster.Name = "cluster"
+						obj.Status.Version = "v8.0.0"
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
 				},
+			},
+			objs: []client.Object{
+				fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+					obj.SetLabels(map[string]string{
+						v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+						v1alpha1.LabelKeyCluster:   "cluster",
+						v1alpha1.LabelKeyComponent: "pd",
+					})
+					obj.Spec.Replicas = ptr.To[int32](1)
+					obj.Spec.Template.Spec.Version = "v8.1.0"
+					obj.Status.Version = "v8.0.0"
+					return obj
+				}),
 			},
 
 			expectedStatus: task.SRetry,
@@ -247,7 +260,8 @@ func TestTaskUpdater(t *testing.T) {
 			tt.Parallel()
 
 			ctx := context.Background()
-			fc := client.NewFakeClient(c.state.TiDBGroup(), c.state.Cluster())
+			c.objs = append(c.objs, c.state.TiDBGroup(), c.state.Cluster())
+			fc := client.NewFakeClient(c.objs...)
 			for _, obj := range c.state.TiDBSlice() {
 				require.NoError(tt, fc.Apply(ctx, obj), c.desc)
 			}
