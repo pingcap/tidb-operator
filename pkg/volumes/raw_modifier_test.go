@@ -71,6 +71,20 @@ func withParameters(params map[string]string) fake.ChangeFunc[storagev1.StorageC
 	}
 }
 
+func withProvisioner(p string) fake.ChangeFunc[storagev1.StorageClass, *storagev1.StorageClass] {
+	return func(sc *storagev1.StorageClass) *storagev1.StorageClass {
+		sc.Provisioner = p
+		return sc
+	}
+}
+
+func withAllowVolumeExpansion() fake.ChangeFunc[storagev1.StorageClass, *storagev1.StorageClass] {
+	return func(sc *storagev1.StorageClass) *storagev1.StorageClass {
+		sc.AllowVolumeExpansion = ptr.To(true)
+		return sc
+	}
+}
+
 func getObjectsFromActualVolume(vol *ActualVolume) []client.Object {
 	var objs []client.Object
 	if vol != nil {
@@ -129,7 +143,7 @@ func Test_rawModifier_GetActualVolume(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cli := client.NewFakeClient(tt.existingObjs...)
-			m := NewRawModifier(aws.NewFakeEBSModifier(tt.getState), cli, logr.Discard())
+			m := NewRawModifier(nil, cli, logr.Discard())
 			got, err := m.GetActualVolume(context.TODO(), tt.desired, tt.current)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetActualVolume() error = %v, wantErr %v", err, tt.wantErr)
@@ -145,13 +159,13 @@ func Test_rawModifier_GetActualVolume(t *testing.T) {
 
 func Test_rawModifier_getVolumePhase(t *testing.T) {
 	tests := []struct {
-		name           string
-		volumeModifier cloud.VolumeModifier
-		clock          time.Clock
-		vol            *ActualVolume
-		want           VolumePhase
-		wantStr        string
-		shouldModify   bool
+		name            string
+		volumeModifiers map[string]cloud.VolumeModifier
+		clock           time.Clock
+		vol             *ActualVolume
+		want            VolumePhase
+		wantStr         string
+		shouldModify    bool
 	}{
 		{
 			name: "no need to modify",
@@ -160,12 +174,15 @@ func Test_rawModifier_getVolumePhase(t *testing.T) {
 					Size:             resource.MustParse("10Gi"),
 					StorageClassName: ptr.To("sc-0"),
 				},
-				PVC: fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-0", withPVCSpec(ptr.To("sc-0"), nil, "pv-0", "10Gi"), withPVCStatus("10Gi", nil)),
+				PVC:          fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-0", withPVCSpec(ptr.To("sc-0"), nil, "pv-0", "10Gi"), withPVCStatus("10Gi", nil)),
+				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test")),
 			},
-			volumeModifier: &cloud.FakeVolumeModifier{},
-			want:           VolumePhaseModified,
-			wantStr:        "Modified",
-			shouldModify:   false,
+			volumeModifiers: map[string]cloud.VolumeModifier{
+				"test": &cloud.FakeVolumeModifier{},
+			},
+			want:         VolumePhaseModified,
+			wantStr:      "Modified",
+			shouldModify: false,
 		},
 		{
 			name: "change storage class",
@@ -176,13 +193,15 @@ func Test_rawModifier_getVolumePhase(t *testing.T) {
 					StorageClass:     fake.FakeObj[storagev1.StorageClass]("sc-1", withParameters(map[string]string{"iops": "100"})),
 				},
 				PVC:          fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-0", withPVCSpec(ptr.To("sc-0"), nil, "pv-0", "10Gi"), withPVCStatus("10Gi", nil)),
-				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0"),
+				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test")),
 				PV:           fake.FakeObj[corev1.PersistentVolume]("pv-0"),
 			},
-			volumeModifier: &cloud.FakeVolumeModifier{},
-			want:           VolumePhasePreparing,
-			wantStr:        "Preparing",
-			shouldModify:   true,
+			volumeModifiers: map[string]cloud.VolumeModifier{
+				"test": &cloud.FakeVolumeModifier{},
+			},
+			want:         VolumePhasePreparing,
+			wantStr:      "Preparing",
+			shouldModify: true,
 		},
 		{
 			name: "increase size",
@@ -191,12 +210,15 @@ func Test_rawModifier_getVolumePhase(t *testing.T) {
 					Size:             resource.MustParse("100Gi"),
 					StorageClassName: ptr.To("sc-0"),
 				},
-				PVC: fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-0", withPVCSpec(ptr.To("sc-0"), nil, "pv-0", "10Gi"), withPVCStatus("10Gi", nil)),
+				PVC:          fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-0", withPVCSpec(ptr.To("sc-0"), nil, "pv-0", "10Gi"), withPVCStatus("10Gi", nil)),
+				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test"), withAllowVolumeExpansion()),
 			},
-			volumeModifier: &cloud.FakeVolumeModifier{},
-			want:           VolumePhasePreparing,
-			wantStr:        "Preparing",
-			shouldModify:   true,
+			volumeModifiers: map[string]cloud.VolumeModifier{
+				"test": &cloud.FakeVolumeModifier{},
+			},
+			want:         VolumePhasePreparing,
+			wantStr:      "Preparing",
+			shouldModify: true,
 		},
 		{
 			name: "decrease size",
@@ -205,12 +227,15 @@ func Test_rawModifier_getVolumePhase(t *testing.T) {
 					Size:             resource.MustParse("1Gi"),
 					StorageClassName: ptr.To("sc-0"),
 				},
-				PVC: fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-1", withPVCSpec(ptr.To("sc-0"), nil, "pv-1", "20Gi"), withPVCStatus("20Gi", nil)),
+				PVC:          fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-1", withPVCSpec(ptr.To("sc-0"), nil, "pv-1", "20Gi"), withPVCStatus("20Gi", nil)),
+				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test")),
 			},
-			volumeModifier: &cloud.FakeVolumeModifier{},
-			want:           VolumePhaseCannotModify,
-			wantStr:        "CannotModify",
-			shouldModify:   false,
+			volumeModifiers: map[string]cloud.VolumeModifier{
+				"test": &cloud.FakeVolumeModifier{},
+			},
+			want:         VolumePhaseCannotModify,
+			wantStr:      "CannotModify",
+			shouldModify: false,
 		},
 		{
 			name: "modifying",
@@ -224,11 +249,14 @@ func Test_rawModifier_getVolumePhase(t *testing.T) {
 					withPVCAnnotation(annoKeyPVCSpecRevision, "2"),
 					withPVCAnnotation(annoKeyPVCStatusRevision, "1"),
 				),
+				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test"), withAllowVolumeExpansion()),
 			},
-			volumeModifier: &cloud.FakeVolumeModifier{},
-			want:           VolumePhaseModifying,
-			wantStr:        "Modifying",
-			shouldModify:   true,
+			volumeModifiers: map[string]cloud.VolumeModifier{
+				"test": &cloud.FakeVolumeModifier{},
+			},
+			want:         VolumePhaseModifying,
+			wantStr:      "Modifying",
+			shouldModify: true,
 		},
 		{
 			name: "wait for next time",
@@ -241,12 +269,15 @@ func Test_rawModifier_getVolumePhase(t *testing.T) {
 					withPVCSpec(ptr.To("sc-0"), nil, "pv-0", "10Gi"), withPVCStatus("10Gi", nil),
 					withPVCAnnotation(annoKeyPVCLastTransitionTimestamp, "2121-01-01T00:00:00Z"), // a future time
 				),
+				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test"), withAllowVolumeExpansion()),
 			},
-			clock:          time.RealClock{},
-			volumeModifier: &cloud.FakeVolumeModifier{},
-			want:           VolumePhasePending,
-			wantStr:        "Pending",
-			shouldModify:   false,
+			clock: time.RealClock{},
+			volumeModifiers: map[string]cloud.VolumeModifier{
+				"test": &cloud.FakeVolumeModifier{},
+			},
+			want:         VolumePhasePending,
+			wantStr:      "Pending",
+			shouldModify: false,
 		},
 		{
 			name: "no need to wait for next time",
@@ -259,21 +290,24 @@ func Test_rawModifier_getVolumePhase(t *testing.T) {
 					withPVCSpec(ptr.To("sc-0"), nil, "pv-0", "10Gi"), withPVCStatus("10Gi", nil),
 					withPVCAnnotation(annoKeyPVCLastTransitionTimestamp, "2021-01-01T00:00:00Z"), // a past time
 				),
+				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test"), withAllowVolumeExpansion()),
 			},
-			clock:          time.RealClock{},
-			volumeModifier: &cloud.FakeVolumeModifier{},
-			want:           VolumePhasePreparing,
-			wantStr:        "Preparing",
-			shouldModify:   true,
+			clock: time.RealClock{},
+			volumeModifiers: map[string]cloud.VolumeModifier{
+				"test": &cloud.FakeVolumeModifier{},
+			},
+			want:         VolumePhasePreparing,
+			wantStr:      "Preparing",
+			shouldModify: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := &rawModifier{
-				k8sClient:      client.NewFakeClient(getObjectsFromActualVolume(tt.vol)...),
-				logger:         logr.Logger{},
-				volumeModifier: tt.volumeModifier,
-				clock:          tt.clock,
+				k8sClient:       client.NewFakeClient(getObjectsFromActualVolume(tt.vol)...),
+				logger:          logr.Discard(),
+				volumeModifiers: tt.volumeModifiers,
+				clock:           tt.clock,
 			}
 			if got := m.getVolumePhase(tt.vol); got != tt.want {
 				t.Errorf("getVolumePhase() = %v, want %v", got, tt.want)
@@ -315,6 +349,7 @@ func Test_rawModifier_Modify(t *testing.T) {
 					Size:             resource.MustParse("20Gi"),
 					StorageClassName: ptr.To("sc-0"),
 				},
+				StorageClass: fake.FakeObj("sc-0", withProvisioner("ebs.csi.aws.com"), withAllowVolumeExpansion()),
 			},
 			wantErr: true,
 		},
@@ -330,6 +365,7 @@ func Test_rawModifier_Modify(t *testing.T) {
 					Size:             resource.MustParse("20Gi"),
 					StorageClassName: ptr.To("sc-0"),
 				},
+				StorageClass: fake.FakeObj("sc-0", withProvisioner("ebs.csi.aws.com"), withAllowVolumeExpansion()),
 			},
 			wantErr: true,
 		},
@@ -345,6 +381,7 @@ func Test_rawModifier_Modify(t *testing.T) {
 					Size:             resource.MustParse("20Gi"),
 					StorageClassName: ptr.To("sc-0"),
 				},
+				StorageClass: fake.FakeObj("sc-0", withProvisioner("ebs.csi.aws.com"), withAllowVolumeExpansion()),
 			},
 			wantErr: false,
 		},
@@ -352,10 +389,12 @@ func Test_rawModifier_Modify(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := &rawModifier{
-				k8sClient:      client.NewFakeClient(getObjectsFromActualVolume(tt.vol)...),
-				logger:         logr.Discard(),
-				volumeModifier: aws.NewFakeEBSModifier(tt.getState),
-				clock:          &time.RealClock{},
+				k8sClient: client.NewFakeClient(getObjectsFromActualVolume(tt.vol)...),
+				logger:    logr.Discard(),
+				volumeModifiers: map[string]cloud.VolumeModifier{
+					"ebs.csi.aws.com": aws.NewFakeEBSModifier(tt.getState),
+				},
+				clock: &time.RealClock{},
 			}
 			if err := m.Modify(context.TODO(), tt.vol); (err != nil) != tt.wantErr {
 				t.Errorf("Modify() error = %v, wantErr %v", err, tt.wantErr)

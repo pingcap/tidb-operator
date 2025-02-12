@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"time"
 
+	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -26,25 +27,36 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	timeutils "github.com/pingcap/tidb-operator/pkg/utils/time"
 	"github.com/pingcap/tidb-operator/pkg/volumes/cloud"
+	"github.com/pingcap/tidb-operator/pkg/volumes/cloud/aws"
+	"github.com/pingcap/tidb-operator/pkg/volumes/cloud/azure"
 )
 
 var _ Modifier = &rawModifier{}
 
 // rawModifier modifies volumes by calling cloud provider API.
 type rawModifier struct {
-	k8sClient      client.Client
-	logger         logr.Logger
-	volumeModifier cloud.VolumeModifier
-	clock          timeutils.Clock
+	k8sClient       client.Client
+	logger          logr.Logger
+	volumeModifiers map[string]cloud.VolumeModifier
+	clock           timeutils.Clock
 }
 
-func NewRawModifier(modifier cloud.VolumeModifier, k8sClient client.Client, logger logr.Logger) Modifier {
-	return &rawModifier{
-		k8sClient:      k8sClient,
-		logger:         logger,
-		clock:          &timeutils.RealClock{},
-		volumeModifier: modifier,
+func NewRawModifier(awsCfg *awssdk.Config, k8sClient client.Client, logger logr.Logger) Modifier {
+	rw := &rawModifier{
+		k8sClient:       k8sClient,
+		logger:          logger,
+		clock:           &timeutils.RealClock{},
+		volumeModifiers: make(map[string]cloud.VolumeModifier, 2),
 	}
+
+	if awsCfg != nil {
+		ebsModifier := aws.NewEBSModifier(awsCfg, logger)
+		rw.volumeModifiers[ebsModifier.Name()] = ebsModifier
+	}
+	diskModifier := azure.NewDiskModifier(logger)
+	rw.volumeModifiers[diskModifier.Name()] = diskModifier
+
+	return rw
 }
 
 func (m *rawModifier) GetActualVolume(ctx context.Context, expect, current *corev1.PersistentVolumeClaim) (*ActualVolume, error) {
@@ -97,7 +109,12 @@ func (m *rawModifier) Modify(ctx context.Context, vol *ActualVolume) error {
 	case VolumePhaseModifying:
 		pvc := vol.PVC.DeepCopy()
 		pvc.Spec.Resources.Requests[corev1.ResourceStorage] = vol.Desired.Size
-		wait, err := m.volumeModifier.Modify(ctx, pvc, vol.PV, vol.Desired.StorageClass)
+
+		modifier, ok := m.volumeModifiers[vol.StorageClass.Provisioner]
+		if !ok {
+			return fmt.Errorf("no cloud volume modifier for storage class provisioner %s", vol.StorageClass.Provisioner)
+		}
+		wait, err := modifier.Modify(ctx, pvc, vol.PV, vol.Desired.StorageClass)
 		if err != nil {
 			return err
 		}
@@ -157,7 +174,7 @@ func (m *rawModifier) getVolumePhase(vol *ActualVolume) VolumePhase {
 		return VolumePhaseModified
 	}
 
-	if m.waitForNextTime(vol.PVC) {
+	if m.waitForNextTime(vol.PVC, vol.StorageClass.Provisioner) {
 		return VolumePhasePending
 	}
 
@@ -195,10 +212,14 @@ func (m *rawModifier) validate(vol *ActualVolume) error {
 	desiredPVC := vol.PVC.DeepCopy()
 	desiredPVC.Spec.Resources.Requests[corev1.ResourceStorage] = desired
 
-	return m.volumeModifier.Validate(vol.PVC, desiredPVC, vol.StorageClass, vol.Desired.StorageClass)
+	modifier, ok := m.volumeModifiers[vol.StorageClass.Provisioner]
+	if !ok {
+		return fmt.Errorf("no cloud volume modifier for storage class provisioner %s", vol.StorageClass.Provisioner)
+	}
+	return modifier.Validate(vol.PVC, desiredPVC, vol.StorageClass, vol.Desired.StorageClass)
 }
 
-func (m *rawModifier) waitForNextTime(pvc *corev1.PersistentVolumeClaim) bool {
+func (m *rawModifier) waitForNextTime(pvc *corev1.PersistentVolumeClaim, provisioner string) bool {
 	str, ok := pvc.Annotations[annoKeyPVCLastTransitionTimestamp]
 	if !ok {
 		return false
@@ -209,8 +230,8 @@ func (m *rawModifier) waitForNextTime(pvc *corev1.PersistentVolumeClaim) bool {
 	}
 
 	waitDur := defaultModifyWaitingDuration
-	if m != nil {
-		waitDur = m.volumeModifier.MinWaitDuration()
+	if modifier, ok := m.volumeModifiers[provisioner]; ok {
+		waitDur = modifier.MinWaitDuration()
 	}
 
 	if d := m.clock.Since(timestamp); d < waitDur {
