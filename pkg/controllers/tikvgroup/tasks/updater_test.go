@@ -74,11 +74,7 @@ func TestTaskUpdater(t *testing.T) {
 			},
 			objs: []client.Object{
 				fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
-					obj.SetLabels(map[string]string{
-						v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-						v1alpha1.LabelKeyCluster:   "cluster",
-						v1alpha1.LabelKeyComponent: "pd",
-					})
+					obj.Spec.Cluster.Name = "cluster"
 					obj.Spec.Replicas = ptr.To[int32](1)
 					obj.Spec.Template.Spec.Version = "v8.1.0"
 					obj.Status.Version = "v8.0.0"

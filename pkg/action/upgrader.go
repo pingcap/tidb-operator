@@ -158,10 +158,8 @@ func listGroups[
 	T runtime.Group,
 ](ctx context.Context, c client.Client, ns, cluster string) ([]F, error) {
 	l := scope.NewList[S]()
-	if err := c.List(ctx, l, client.InNamespace(ns), client.MatchingLabels{
-		v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-		v1alpha1.LabelKeyCluster:   cluster,
-		v1alpha1.LabelKeyComponent: scope.Component[S](),
+	if err := c.List(ctx, l, client.InNamespace(ns), client.MatchingFields{
+		"spec.cluster.name": cluster,
 	}); err != nil {
 		return nil, err
 	}
@@ -249,5 +247,7 @@ func (c *upgradeChecker[S, F, T]) CanUpgrade(ctx context.Context, group F) bool 
 		c.logger.Error(err, "failed to check preconditions for upgrading", "group_ns",
 			group.GetNamespace(), "group_name", group.GetName(), "component", scope.Component[S]())
 	}
+	c.logger.Info("check preconditions for upgrading", "group_ns",
+		group.GetNamespace(), "group_name", group.GetName(), "component", scope.Component[S](), "result", yes)
 	return yes
 }

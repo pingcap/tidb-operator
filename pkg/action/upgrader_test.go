@@ -315,11 +315,6 @@ func fakeGroup[
 ](name, cluster, version, currentVersion string) F {
 	obj := fake.Fake(func(obj T) T {
 		obj.SetName(name)
-		obj.SetLabels(map[string]string{
-			v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-			v1alpha1.LabelKeyCluster:   cluster,
-			v1alpha1.LabelKeyComponent: scope.Component[S](),
-		})
 		obj.SetCluster(cluster)
 		obj.SetVersion(version)
 		obj.SetStatusVersion(currentVersion)
