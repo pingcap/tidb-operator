@@ -30,7 +30,6 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/volumes/cloud/aws"
 )
 
 const (
@@ -219,8 +218,8 @@ func NewModifier(ctx context.Context, logger logr.Logger, cli client.Client) (Mo
 		logger.Error(err, "failed to load aws config, will use native modifier")
 		return NewNativeModifier(cli, logger), nil
 	}
-	logger.Info("use aws ebs modifier")
-	return NewRawModifier(aws.NewEBSModifier(&awsCfg, logger), cli, logger), nil
+	logger.Info("use raw modifier")
+	return NewRawModifier(&awsCfg, cli, logger), nil
 }
 
 // SyncPVCs gets the actual PVCs and compares them with the expected PVCs.
