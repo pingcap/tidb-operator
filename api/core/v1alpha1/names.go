@@ -34,6 +34,8 @@ const (
 	//
 	// VolumeNameClusterTLS defines volume name for the TLS secret used between components in the TiDB cluster
 	VolumeNameClusterTLS = meta.NamePrefix + "tls"
+	// VolumeNameClusterClientTLS defines volume name for any one-time job accessing the TiDB cluster components
+	VolumeNameClusterClientTLS = meta.NamePrefix + "cluster-client-tls"
 	// VolumeNameMySQLTLS is the volume name for the TLS secret used by TLS communication between TiDB server and MySQL client.
 	VolumeNameMySQLTLS = meta.NamePrefix + "tidb-sql-tls"
 )
@@ -87,8 +89,12 @@ const (
 	DirPathClusterTLSTiKV    = "/var/lib/tikv-tls"
 	DirPathClusterTLSTiDB    = "/var/lib/tidb-tls"
 	DirPathClusterTLSTiFlash = "/var/lib/tiflash-tls"
+	DirPathClusterClientTLS  = "/var/lib/cluster-client-tls"
 	// Dir path of tls file for tidb and mysql client
 	DirPathMySQLTLS = "/var/lib/tidb-sql-tls"
+
+	// BR
+	PathBRBin = "/var/lib/br-bin"
 )
 
 // All file names
