@@ -23,33 +23,10 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/utils/ptr"
+
+	"github.com/pingcap/tidb-operator/pkg/volumes/cloud"
 )
-
-func newTestPVC(size string) *corev1.PersistentVolumeClaim {
-	return &corev1.PersistentVolumeClaim{
-		Spec: corev1.PersistentVolumeClaimSpec{
-			Resources: corev1.VolumeResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: resource.MustParse(size),
-				},
-			},
-		},
-	}
-}
-
-func newTestPV(volID string) *corev1.PersistentVolume {
-	return &corev1.PersistentVolume{
-		Spec: corev1.PersistentVolumeSpec{
-			PersistentVolumeSource: corev1.PersistentVolumeSource{
-				CSI: &corev1.CSIPersistentVolumeSource{
-					VolumeHandle: volID,
-				},
-			},
-		},
-	}
-}
 
 func newTestStorageClass(provisioner, typ, iops, throughput string) *storagev1.StorageClass {
 	return &storagev1.StorageClass{
@@ -63,8 +40,8 @@ func newTestStorageClass(provisioner, typ, iops, throughput string) *storagev1.S
 }
 
 func TestModifyVolume(t *testing.T) {
-	initialPVC := newTestPVC("10Gi")
-	initialPV := newTestPV("aaa")
+	initialPVC := cloud.NewTestPVC("10Gi")
+	initialPV := cloud.NewTestPV("aaa")
 	initialSC := newTestStorageClass("", "gp3", "3000", "125")
 
 	cases := []struct {
@@ -133,7 +110,7 @@ func TestModifyVolume(t *testing.T) {
 		},
 		{
 			desc: "volume has been modified, but size is changed",
-			pvc:  newTestPVC("20Gi"),
+			pvc:  cloud.NewTestPVC("20Gi"),
 			pv:   initialPV,
 			sc:   initialSC,
 
@@ -159,7 +136,7 @@ func TestModifyVolume(t *testing.T) {
 		},
 		{
 			desc: "volume is modifying, but size/sc is changed",
-			pvc:  newTestPVC("20Gi"),
+			pvc:  cloud.NewTestPVC("20Gi"),
 			pv:   initialPV,
 			sc:   newTestStorageClass("", "gp2", "3000", "300"),
 

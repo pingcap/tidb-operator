@@ -30,6 +30,7 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/utils/ptr"
 
+	"github.com/pingcap/tidb-operator/pkg/utils"
 	"github.com/pingcap/tidb-operator/pkg/volumes/cloud"
 )
 
@@ -178,13 +179,13 @@ func (m *EBSModifier) Modify(ctx context.Context, pvc *corev1.PersistentVolumeCl
 
 // If some params are not set, assume they are equal.
 func (*EBSModifier) diffVolume(actual, desired *Volume) bool {
-	if diffInt32(actual.IOPS, desired.IOPS) {
+	if utils.ValuesDiffer(actual.IOPS, desired.IOPS) {
 		return true
 	}
-	if diffInt32(actual.Throughput, desired.Throughput) {
+	if utils.ValuesDiffer(actual.Throughput, desired.Throughput) {
 		return true
 	}
-	if diffInt32(actual.Size, desired.Size) {
+	if utils.ValuesDiffer(actual.Size, desired.Size) {
 		return true
 	}
 	if actual.Type == "" || desired.Type == "" {
@@ -195,18 +196,6 @@ func (*EBSModifier) diffVolume(actual, desired *Volume) bool {
 	}
 
 	return false
-}
-
-func diffInt32(a, b *int32) bool {
-	if a == nil || b == nil {
-		return false
-	}
-
-	if *a == *b {
-		return false
-	}
-
-	return true
 }
 
 func (m *EBSModifier) getCurrentVolumeStatus(ctx context.Context, id string) (*Volume, error) {
