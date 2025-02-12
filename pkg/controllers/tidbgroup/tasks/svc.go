@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -46,33 +47,33 @@ func TaskService(state common.TiDBGroupState, c client.Client) task.Task {
 	})
 }
 
-func newHeadlessService(tidbg *v1alpha1.TiDBGroup) *corev1.Service {
+func newHeadlessService(dbg *v1alpha1.TiDBGroup) *corev1.Service {
 	ipFamilyPolicy := corev1.IPFamilyPolicyPreferDualStack
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      HeadlessServiceName(tidbg.Name),
-			Namespace: tidbg.Namespace,
+			Name:      HeadlessServiceName(dbg.Name),
+			Namespace: dbg.Namespace,
 			Labels: map[string]string{
 				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
 				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiDB,
-				v1alpha1.LabelKeyCluster:   tidbg.Spec.Cluster.Name,
-				v1alpha1.LabelKeyGroup:     tidbg.Name,
+				v1alpha1.LabelKeyCluster:   dbg.Spec.Cluster.Name,
+				v1alpha1.LabelKeyGroup:     dbg.Name,
 			},
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(tidbg, v1alpha1.SchemeGroupVersion.WithKind("TiDBGroup")),
+				*metav1.NewControllerRef(dbg, v1alpha1.SchemeGroupVersion.WithKind("TiDBGroup")),
 			},
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{
 				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
 				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiDB,
-				v1alpha1.LabelKeyCluster:   tidbg.Spec.Cluster.Name,
-				v1alpha1.LabelKeyGroup:     tidbg.Name,
+				v1alpha1.LabelKeyCluster:   dbg.Spec.Cluster.Name,
+				v1alpha1.LabelKeyGroup:     dbg.Name,
 			},
 			Ports: []corev1.ServicePort{
 				{
 					Name:       v1alpha1.TiDBPortNameStatus,
-					Port:       tidbg.GetStatusPort(),
+					Port:       coreutil.TiDBGroupStatusPort(dbg),
 					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromString(v1alpha1.TiDBPortNameStatus),
 				},
@@ -84,40 +85,40 @@ func newHeadlessService(tidbg *v1alpha1.TiDBGroup) *corev1.Service {
 	}
 }
 
-func newInternalService(tidbg *v1alpha1.TiDBGroup) *corev1.Service {
+func newInternalService(dbg *v1alpha1.TiDBGroup) *corev1.Service {
 	ipFamilyPolicy := corev1.IPFamilyPolicyPreferDualStack
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      InternalServiceName(tidbg.Name),
-			Namespace: tidbg.Namespace,
+			Name:      InternalServiceName(dbg.Name),
+			Namespace: dbg.Namespace,
 			Labels: map[string]string{
 				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
 				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiDB,
-				v1alpha1.LabelKeyCluster:   tidbg.Spec.Cluster.Name,
-				v1alpha1.LabelKeyGroup:     tidbg.Name,
+				v1alpha1.LabelKeyCluster:   dbg.Spec.Cluster.Name,
+				v1alpha1.LabelKeyGroup:     dbg.Name,
 			},
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(tidbg, v1alpha1.SchemeGroupVersion.WithKind("TiDBGroup")),
+				*metav1.NewControllerRef(dbg, v1alpha1.SchemeGroupVersion.WithKind("TiDBGroup")),
 			},
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{
 				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
 				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiDB,
-				v1alpha1.LabelKeyCluster:   tidbg.Spec.Cluster.Name,
-				v1alpha1.LabelKeyGroup:     tidbg.Name,
+				v1alpha1.LabelKeyCluster:   dbg.Spec.Cluster.Name,
+				v1alpha1.LabelKeyGroup:     dbg.Name,
 			},
 			Ports: []corev1.ServicePort{
 				{
 					Name:       v1alpha1.TiDBPortNameClient,
-					Port:       tidbg.GetClientPort(),
+					Port:       coreutil.TiDBGroupClientPort(dbg),
 					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromString(v1alpha1.TiDBPortNameClient),
 				},
 				{
 					Name:       v1alpha1.TiDBPortNameStatus,
-					Port:       tidbg.GetStatusPort(),
+					Port:       coreutil.TiDBGroupStatusPort(dbg),
 					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromString(v1alpha1.TiDBPortNameStatus),
 				},

@@ -158,6 +158,10 @@ func (pd *PD) SetObservedGeneration(g int64) {
 	pd.Status.ObservedGeneration = g
 }
 
+func (pd *PD) SetCluster(cluster string) {
+	pd.Spec.Cluster.Name = cluster
+}
+
 func (pd *PD) Cluster() string {
 	return pd.Spec.Cluster.Name
 }
@@ -187,8 +191,16 @@ func (pdg *PDGroup) Replicas() int32 {
 	return *pdg.Spec.Replicas
 }
 
+func (pdg *PDGroup) SetVersion(version string) {
+	pdg.Spec.Template.Spec.Version = version
+}
+
 func (pdg *PDGroup) Version() string {
 	return pdg.Spec.Template.Spec.Version
+}
+
+func (pdg *PDGroup) SetCluster(cluster string) {
+	pdg.Spec.Cluster.Name = cluster
 }
 
 func (pdg *PDGroup) Cluster() string {

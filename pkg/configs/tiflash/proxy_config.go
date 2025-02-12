@@ -21,6 +21,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 )
 
 const (
@@ -55,7 +56,7 @@ func (c *ProxyConfig) Overlay(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFla
 		return err
 	}
 
-	if cluster.IsTLSClusterEnabled() {
+	if coreutil.IsTLSClusterEnabled(cluster) {
 		c.Security.CAPath = path.Join(v1alpha1.DirPathClusterTLSTiFlash, corev1.ServiceAccountRootCAKey)
 		c.Security.CertPath = path.Join(v1alpha1.DirPathClusterTLSTiFlash, corev1.TLSCertKey)
 		c.Security.KeyPath = path.Join(v1alpha1.DirPathClusterTLSTiFlash, corev1.TLSPrivateKeyKey)
@@ -94,5 +95,5 @@ func (c *ProxyConfig) Validate() error {
 }
 
 func getProxyStatusAddr(tiflash *v1alpha1.TiFlash) string {
-	return fmt.Sprintf("[::]:%d", tiflash.GetProxyStatusPort())
+	return fmt.Sprintf("[::]:%d", coreutil.TiFlashProxyStatusPort(tiflash))
 }

@@ -59,23 +59,6 @@ func TestTaskUpdater(t *testing.T) {
 			expectedPDNum:  1,
 		},
 		{
-			desc: "version upgrade check",
-			state: &ReconcileContext{
-				State: &state{
-					pdg: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
-						// use an wrong version to trigger version check
-						// TODO(liubo02): it's not happened actually. Maybe remove whole checking
-						obj.Spec.Template.Spec.Version = "xxx"
-						obj.Status.Version = "yyy"
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-				},
-			},
-
-			expectedStatus: task.SRetry,
-		},
-		{
 			desc: "1 updated pd with 1 replicas",
 			state: &ReconcileContext{
 				State: &state{

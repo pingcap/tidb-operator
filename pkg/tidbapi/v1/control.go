@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	tlsutil "github.com/pingcap/tidb-operator/pkg/utils/tls"
 )
@@ -38,8 +38,7 @@ type TiDBControlInterface interface {
 }
 
 // defaultTiDBControl is the default implementation of TiDBControlInterface.
-type defaultTiDBControl struct {
-}
+type defaultTiDBControl struct{}
 
 // NewDefaultTiDBControl returns a defaultTiDBControl instance.
 func NewDefaultTiDBControl() TiDBControlInterface {
@@ -57,7 +56,7 @@ func (*defaultTiDBControl) GetTiDBPodClient(ctx context.Context, cli client.Clie
 
 	if tlsEnabled {
 		scheme = "https"
-		tlsConfig, err = tlsutil.GetTLSConfigFromSecret(ctx, cli, namespace, v1alpha1.TLSClusterClientSecretName(tcName))
+		tlsConfig, err = tlsutil.GetTLSConfigFromSecret(ctx, cli, namespace, coreutil.TLSClusterClientSecretName(tcName))
 		if err != nil {
 			return NewTiDBClient(TiDBPodClientURL(namespace, tcName, podName, clusterDomain, scheme), defaultTiDBClientTimeout, tlsConfig),
 				fmt.Errorf("unable to get tls config for TiDB cluster %q, tidb client may not work: %w", tcName, err)

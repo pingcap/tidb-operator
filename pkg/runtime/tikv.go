@@ -158,6 +158,10 @@ func (kv *TiKV) SetObservedGeneration(g int64) {
 	kv.Status.ObservedGeneration = g
 }
 
+func (kv *TiKV) SetCluster(cluster string) {
+	kv.Spec.Cluster.Name = cluster
+}
+
 func (kv *TiKV) Cluster() string {
 	return kv.Spec.Cluster.Name
 }
@@ -187,8 +191,16 @@ func (kvg *TiKVGroup) Replicas() int32 {
 	return *kvg.Spec.Replicas
 }
 
+func (kvg *TiKVGroup) SetVersion(version string) {
+	kvg.Spec.Template.Spec.Version = version
+}
+
 func (kvg *TiKVGroup) Version() string {
 	return kvg.Spec.Template.Spec.Version
+}
+
+func (kvg *TiKVGroup) SetCluster(cluster string) {
+	kvg.Spec.Cluster.Name = cluster
 }
 
 func (kvg *TiKVGroup) Cluster() string {

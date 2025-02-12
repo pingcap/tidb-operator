@@ -19,16 +19,17 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/go-logr/logr"
-
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	tiflashcfg "github.com/pingcap/tidb-operator/pkg/configs/tiflash"
 	"github.com/pingcap/tidb-operator/pkg/image"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -86,7 +87,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: tiflash.PodName(),
+						Name: coreutil.PodName[scope.TiFlash](tiflash),
 					},
 				},
 			},
@@ -109,7 +110,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: PersistentVolumeClaimName(tiflash.PodName(), vol.Name),
+					ClaimName: PersistentVolumeClaimName(coreutil.PodName[scope.TiFlash](tiflash), vol.Name),
 				},
 			},
 		})
@@ -124,12 +125,12 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 		}
 	}
 
-	if cluster.IsTLSClusterEnabled() {
+	if coreutil.IsTLSClusterEnabled(cluster) {
 		vols = append(vols, corev1.Volume{
 			Name: v1alpha1.VolumeNameClusterTLS,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: tiflash.TLSClusterSecretName(),
+					SecretName: coreutil.TLSClusterSecretName[scope.TiFlash](tiflash),
 				},
 			},
 		})
@@ -143,7 +144,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: tiflash.Namespace,
-			Name:      tiflash.PodName(),
+			Name:      coreutil.PodName[scope.TiFlash](tiflash),
 			Labels: maputil.Merge(tiflash.Labels, map[string]string{
 				v1alpha1.LabelKeyInstance:   tiflash.Name,
 				v1alpha1.LabelKeyConfigHash: state.ConfigHash,
@@ -151,14 +152,14 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 				v1alpha1.LabelKeyStoreID:    state.StoreID,
 			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiFlash)),
 			Annotations: maputil.Merge(tiflash.GetAnnotations(),
-				k8s.AnnoProm(tiflash.GetMetricsPort(), metricsPath),
-				k8s.AnnoAdditionalProm("tiflash.proxy", tiflash.GetProxyStatusPort())),
+				k8s.AnnoProm(coreutil.TiFlashMetricsPort(tiflash), metricsPath),
+				k8s.AnnoAdditionalProm("tiflash.proxy", coreutil.TiFlashProxyStatusPort(tiflash))),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(tiflash, v1alpha1.SchemeGroupVersion.WithKind("TiFlash")),
 			},
 		},
 		Spec: corev1.PodSpec{
-			Hostname:     tiflash.PodName(),
+			Hostname:     coreutil.PodName[scope.TiFlash](tiflash),
 			Subdomain:    tiflash.Spec.Subdomain,
 			NodeSelector: tiflash.Spec.Topology,
 			InitContainers: []corev1.Container{
@@ -182,20 +183,20 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 						// and also no `interserver_http_port`
 						{
 							Name:          v1alpha1.TiFlashPortNameFlash,
-							ContainerPort: tiflash.GetFlashPort(),
+							ContainerPort: coreutil.TiFlashFlashPort(tiflash),
 						},
 						{
 							Name:          v1alpha1.TiFlashPortNameMetrics,
-							ContainerPort: tiflash.GetMetricsPort(),
+							ContainerPort: coreutil.TiFlashMetricsPort(tiflash),
 						},
 						{
 							Name:          v1alpha1.TiFlashPortNameProxy,
-							ContainerPort: tiflash.GetProxyPort(),
+							ContainerPort: coreutil.TiFlashProxyPort(tiflash),
 						},
 						{
 							// no this port in v1
 							Name:          v1alpha1.TiFlashPortNameProxyStatus,
-							ContainerPort: tiflash.GetProxyStatusPort(),
+							ContainerPort: coreutil.TiFlashProxyStatusPort(tiflash),
 						},
 					},
 					VolumeMounts: mounts,

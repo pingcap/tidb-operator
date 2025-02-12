@@ -19,6 +19,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	kvcfg "github.com/pingcap/tidb-operator/pkg/configs/tikv"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
@@ -73,7 +74,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		state.Store, state.StoreID, state.StoreState = s, s.ID, string(s.NodeState)
 
 		// TODO: cache evict leader scheduler info, then we don't need to check suspend here
-		if state.Cluster().ShouldSuspendCompute() {
+		if coreutil.ShouldSuspendCompute(state.Cluster()) {
 			return task.Complete().With("cluster is suspending")
 		}
 		scheduler, err := state.PDClient.Underlay().GetEvictLeaderScheduler(ctx, state.StoreID)

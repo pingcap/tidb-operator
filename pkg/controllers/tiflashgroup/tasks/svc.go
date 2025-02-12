@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -70,25 +71,25 @@ func newHeadlessService(fg *v1alpha1.TiFlashGroup) *corev1.Service {
 			Ports: []corev1.ServicePort{
 				{
 					Name:       v1alpha1.TiFlashPortNameFlash,
-					Port:       fg.GetFlashPort(),
+					Port:       coreutil.TiFlashGroupFlashPort(fg),
 					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromString(v1alpha1.TiFlashPortNameFlash),
 				},
 				{
 					Name:       v1alpha1.TiFlashPortNameProxy,
-					Port:       fg.GetProxyPort(),
+					Port:       coreutil.TiFlashGroupProxyPort(fg),
 					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromString(v1alpha1.TiFlashPortNameProxy),
 				},
 				{
 					Name:       v1alpha1.TiFlashPortNameMetrics,
-					Port:       fg.GetMetricsPort(),
+					Port:       coreutil.TiFlashGroupMetricsPort(fg),
 					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromString(v1alpha1.TiFlashPortNameMetrics),
 				},
 				{
 					Name:       v1alpha1.TiFlashPortNameProxyStatus,
-					Port:       fg.GetProxyStatusPort(),
+					Port:       coreutil.TiFlashGroupProxyStatusPort(fg),
 					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromString(v1alpha1.TiFlashPortNameProxyStatus),
 				},

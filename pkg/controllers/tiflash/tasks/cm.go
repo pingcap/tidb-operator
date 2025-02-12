@@ -21,8 +21,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	tiflashcfg "github.com/pingcap/tidb-operator/pkg/configs/tiflash"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/hasher"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -72,7 +74,7 @@ func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 func newConfigMap(tiflash *v1alpha1.TiFlash, flashData, proxyData []byte, hash string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      tiflash.PodName(),
+			Name:      coreutil.PodName[scope.TiFlash](tiflash),
 			Namespace: tiflash.Namespace,
 			Labels: maputil.Merge(tiflash.Labels, map[string]string{
 				v1alpha1.LabelKeyInstance:   tiflash.Name,
