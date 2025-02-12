@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -75,13 +76,13 @@ func newHeadlessService(pdg *v1alpha1.PDGroup) *corev1.Service {
 			Ports: []corev1.ServicePort{
 				{
 					Name:       v1alpha1.PDPortNameClient,
-					Port:       pdg.GetClientPort(),
+					Port:       coreutil.PDGroupClientPort(pdg),
 					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromString(v1alpha1.PDPortNameClient),
 				},
 				{
 					Name:       v1alpha1.PDPortNamePeer,
-					Port:       pdg.GetPeerPort(),
+					Port:       coreutil.PDGroupPeerPort(pdg),
 					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromString(v1alpha1.PDPortNamePeer),
 				},
@@ -119,13 +120,13 @@ func newInternalService(pdg *v1alpha1.PDGroup) *corev1.Service {
 			Ports: []corev1.ServicePort{
 				{
 					Name:       v1alpha1.PDPortNameClient,
-					Port:       pdg.GetClientPort(),
+					Port:       coreutil.PDGroupClientPort(pdg),
 					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromString(v1alpha1.PDPortNameClient),
 				},
 				{
 					Name:       v1alpha1.PDPortNamePeer,
-					Port:       pdg.GetPeerPort(),
+					Port:       coreutil.PDGroupPeerPort(pdg),
 					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromString(v1alpha1.PDPortNamePeer),
 				},

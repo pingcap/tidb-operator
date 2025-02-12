@@ -15,8 +15,6 @@
 package v1alpha1
 
 import (
-	"fmt"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -165,32 +163,6 @@ type ComponentStatus struct {
 	// Replicas is the number of desired replicas of the component.
 	// +kubebuilder:validation:Required
 	Replicas int32 `json:"replicas"`
-}
-
-// ShouldSuspendCompute returns whether the cluster should suspend compute.
-func (c *Cluster) ShouldSuspendCompute() bool {
-	return c.Spec.SuspendAction != nil && c.Spec.SuspendAction.SuspendCompute
-}
-
-// IsTLSClusterEnabled returns whether the cluster has enabled mTLS.
-func (c *Cluster) IsTLSClusterEnabled() bool {
-	return c.Spec.TLSCluster != nil && c.Spec.TLSCluster.Enabled
-}
-
-// ClusterClientTLSSecretName returns the mTLS secret name for the cluster client.
-// TODO: move it to namer pkg
-func (c *Cluster) ClusterClientTLSSecretName() string {
-	return TLSClusterClientSecretName(c.Name)
-}
-
-// TLSClusterClientSecretName returns the mTLS secret name for the cluster client.
-// TODO: move it to namer pkg
-func TLSClusterClientSecretName(clusterName string) string {
-	return fmt.Sprintf("%s-cluster-client-secret", clusterName)
-}
-
-func (c *Cluster) ShouldPauseReconcile() bool {
-	return c.Spec.Paused
 }
 
 const (

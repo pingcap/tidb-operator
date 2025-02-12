@@ -40,6 +40,7 @@ import (
 	"sigs.k8s.io/structured-merge-diff/v4/typed"
 	"sigs.k8s.io/yaml"
 
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 )
 
@@ -516,8 +517,30 @@ func (c *fakeUnderlayClient) ListReactionFunc(action *testing.ListActionImpl) (b
 	return true, obj, nil
 }
 
-// TODO: support field selector
-func filterList(objs []runtime.Object, ls labels.Selector, _ fields.Selector) ([]runtime.Object, error) {
+func objToSelectableFields(obj runtime.Object) fields.Fields {
+	switch t := obj.(type) {
+	case *v1alpha1.PDGroup:
+		return fields.Set{
+			"spec.cluster.name": t.Spec.Cluster.Name,
+		}
+	case *v1alpha1.TiDBGroup:
+		return fields.Set{
+			"spec.cluster.name": t.Spec.Cluster.Name,
+		}
+	case *v1alpha1.TiKVGroup:
+		return fields.Set{
+			"spec.cluster.name": t.Spec.Cluster.Name,
+		}
+	case *v1alpha1.TiFlashGroup:
+		return fields.Set{
+			"spec.cluster.name": t.Spec.Cluster.Name,
+		}
+	}
+
+	return nil
+}
+
+func filterList(objs []runtime.Object, ls labels.Selector, fs fields.Selector) ([]runtime.Object, error) {
 	out := make([]runtime.Object, 0, len(objs))
 	for _, obj := range objs {
 		m, err := meta.Accessor(obj)
@@ -526,6 +549,11 @@ func filterList(objs []runtime.Object, ls labels.Selector, _ fields.Selector) ([
 		}
 		if ls != nil {
 			if !ls.Matches(labels.Set(m.GetLabels())) {
+				continue
+			}
+		}
+		if fs != nil {
+			if !fs.Matches(objToSelectableFields(obj)) {
 				continue
 			}
 		}

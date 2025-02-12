@@ -21,7 +21,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -35,7 +37,7 @@ func TaskStatusAvailable(state State, c client.Client) task.Task {
 		msg := "no tidb instance is available"
 
 		for _, db := range dbs {
-			if db.IsHealthy() {
+			if coreutil.IsHealthy[scope.TiDB](db) {
 				status = metav1.ConditionTrue
 				reason = "Available"
 				msg = "tidb group is available"

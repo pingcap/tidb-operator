@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/task"
@@ -61,11 +62,11 @@ func (t *TaskStatus) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	if rtx.PDGroup != nil {
 		// TODO: extract into a common util
 		scheme := "http"
-		if rtx.Cluster.IsTLSClusterEnabled() {
+		if coreutil.IsTLSClusterEnabled(rtx.Cluster) {
 			scheme = "https"
 		}
 		// TODO(liubo02): extract a common util to get pd addr
-		pdAddr := fmt.Sprintf("%s://%s-pd.%s:%d", scheme, rtx.PDGroup.Name, rtx.PDGroup.Namespace, rtx.PDGroup.GetClientPort())
+		pdAddr := fmt.Sprintf("%s://%s-pd.%s:%d", scheme, rtx.PDGroup.Name, rtx.PDGroup.Namespace, coreutil.PDGroupClientPort(rtx.PDGroup))
 		if rtx.Cluster.Status.PD != pdAddr { // TODO(csuzhangxc): verify switch between TLS and non-TLS
 			rtx.Cluster.Status.PD = pdAddr
 			needUpdate = true
@@ -194,7 +195,7 @@ func (*TaskStatus) syncConditions(rtx *ReconcileContext) bool {
 	if suspended {
 		suspendStatus = metav1.ConditionTrue
 		suspendMessage = "Cluster is suspended"
-	} else if rtx.Cluster.ShouldSuspendCompute() {
+	} else if coreutil.ShouldSuspendCompute(rtx.Cluster) {
 		suspendMessage = "Cluster is suspending"
 	}
 	return meta.SetStatusCondition(&rtx.Cluster.Status.Conditions, metav1.Condition{

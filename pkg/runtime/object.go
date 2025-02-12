@@ -23,13 +23,16 @@ import (
 type Object interface {
 	metav1.Object
 
-	Cluster() string
 	Component() string
-	Conditions() []metav1.Condition
-	SetConditions([]metav1.Condition)
 
-	ObservedGeneration() int64
+	SetCluster(cluster string)
+	Cluster() string
+
+	SetConditions([]metav1.Condition)
+	Conditions() []metav1.Condition
+
 	SetObservedGeneration(int64)
+	ObservedGeneration() int64
 }
 
 type ObjectT[T ObjectSet] interface {

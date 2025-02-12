@@ -15,19 +15,20 @@
 package common
 
 import (
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
 func CondClusterIsSuspending(ctx ClusterState) task.Condition {
 	return task.CondFunc(func() bool {
-		return ctx.Cluster().ShouldSuspendCompute()
+		return coreutil.ShouldSuspendCompute(ctx.Cluster())
 	})
 }
 
 func CondClusterIsPaused(ctx ClusterState) task.Condition {
 	return task.CondFunc(func() bool {
-		return ctx.Cluster().ShouldPauseReconcile()
+		return coreutil.ShouldPauseReconcile(ctx.Cluster())
 	})
 }
 

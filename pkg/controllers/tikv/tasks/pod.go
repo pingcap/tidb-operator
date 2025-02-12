@@ -26,10 +26,12 @@ import (
 	"github.com/go-logr/logr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	kvcfg "github.com/pingcap/tidb-operator/pkg/configs/tikv"
 	"github.com/pingcap/tidb-operator/pkg/image"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -129,7 +131,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: tikv.PodName(),
+						Name: coreutil.PodName[scope.TiKV](tikv),
 					},
 				},
 			},
@@ -160,7 +162,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: PersistentVolumeClaimName(tikv.PodName(), vol.Name),
+					ClaimName: PersistentVolumeClaimName(coreutil.PodName[scope.TiKV](tikv), vol.Name),
 				},
 			},
 		})
@@ -170,12 +172,12 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 		}
 	}
 
-	if cluster.IsTLSClusterEnabled() {
+	if coreutil.IsTLSClusterEnabled(cluster) {
 		vols = append(vols, corev1.Volume{
 			Name: v1alpha1.VolumeNameClusterTLS,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: tikv.TLSClusterSecretName(),
+					SecretName: coreutil.TLSClusterSecretName[scope.TiKV](tikv),
 				},
 			},
 		})
@@ -194,14 +196,14 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: tikv.Namespace,
-			Name:      tikv.PodName(),
+			Name:      coreutil.PodName[scope.TiKV](tikv),
 			Labels: maputil.Merge(tikv.Labels, map[string]string{
 				v1alpha1.LabelKeyInstance:   tikv.Name,
 				v1alpha1.LabelKeyConfigHash: state.ConfigHash,
 				v1alpha1.LabelKeyClusterID:  cluster.Status.ID,
 				v1alpha1.LabelKeyStoreID:    state.StoreID,
 			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiKV)),
-			Annotations: maputil.Merge(tikv.GetAnnotations(), k8s.AnnoProm(tikv.GetStatusPort(), metricsPath)),
+			Annotations: maputil.Merge(tikv.GetAnnotations(), k8s.AnnoProm(coreutil.TiKVStatusPort(tikv), metricsPath)),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(tikv, v1alpha1.SchemeGroupVersion.WithKind("TiKV")),
 			},
@@ -210,7 +212,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			// TODO: make the max grace period seconds configurable
 			//nolint:mnd // refactor to use a constant
 			TerminationGracePeriodSeconds: ptr.To[int64](65535),
-			Hostname:                      tikv.PodName(),
+			Hostname:                      coreutil.PodName[scope.TiKV](tikv),
 			Subdomain:                     tikv.Spec.Subdomain,
 			NodeSelector:                  tikv.Spec.Topology,
 			InitContainers: []corev1.Container{
@@ -248,11 +250,11 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 					Ports: []corev1.ContainerPort{
 						{
 							Name:          v1alpha1.TiKVPortNameClient,
-							ContainerPort: tikv.GetClientPort(),
+							ContainerPort: coreutil.TiKVClientPort(tikv),
 						},
 						{
 							Name:          v1alpha1.TiKVPortNameStatus,
-							ContainerPort: tikv.GetStatusPort(),
+							ContainerPort: coreutil.TiKVStatusPort(tikv),
 						},
 					},
 					VolumeMounts: mounts,
@@ -292,7 +294,7 @@ func buildPrestopCheckScript(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV) str
 	sb.WriteString(" -addr ")
 	sb.WriteString(kvcfg.GetAdvertiseClientURLs(tikv))
 
-	if cluster.IsTLSClusterEnabled() {
+	if coreutil.IsTLSClusterEnabled(cluster) {
 		sb.WriteString(" -ca ")
 		sb.WriteString(v1alpha1.DirPathClusterTLSTiKV)
 		sb.WriteString("/ca.crt")

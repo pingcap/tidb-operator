@@ -15,18 +15,7 @@
 package v1alpha1
 
 import (
-	"strings"
-
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/utils/ptr"
-)
-
-var (
-	_ GroupList         = &TiKVGroupList{}
-	_ Group             = &TiKVGroup{}
-	_ ComponentAccessor = &TiKV{}
 )
 
 const (
@@ -78,14 +67,6 @@ type TiKVGroupList struct {
 	Items []TiKVGroup `json:"items"`
 }
 
-func (l *TiKVGroupList) ToSlice() []Group {
-	groups := make([]Group, 0, len(l.Items))
-	for i := range l.Items {
-		groups = append(groups, &l.Items[i])
-	}
-	return groups
-}
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
@@ -102,75 +83,6 @@ type TiKVGroup struct {
 
 	Spec   TiKVGroupSpec   `json:"spec,omitempty"`
 	Status TiKVGroupStatus `json:"status,omitempty"`
-}
-
-func (in *TiKVGroup) GetClusterName() string {
-	return in.Spec.Cluster.Name
-}
-
-func (in *TiKVGroup) ComponentKind() ComponentKind {
-	return ComponentKindTiKV
-}
-
-func (in *TiKVGroup) GVK() schema.GroupVersionKind {
-	return SchemeGroupVersion.WithKind("TiKVGroup")
-}
-
-func (in *TiKVGroup) ObservedGeneration() int64 {
-	return in.Status.ObservedGeneration
-}
-
-func (in *TiKVGroup) CurrentRevision() string {
-	return in.Status.CurrentRevision
-}
-
-func (in *TiKVGroup) UpdateRevision() string {
-	return in.Status.UpdateRevision
-}
-
-func (in *TiKVGroup) CollisionCount() *int32 {
-	if in.Status.CollisionCount == nil {
-		return nil
-	}
-	return ptr.To(*in.Status.CollisionCount)
-}
-
-func (in *TiKVGroup) IsHealthy() bool {
-	// TODO implement me
-	return true
-}
-
-func (in *TiKVGroup) GetDesiredReplicas() int32 {
-	if in.Spec.Replicas == nil {
-		return 0
-	}
-	return *in.Spec.Replicas
-}
-
-func (in *TiKVGroup) GetDesiredVersion() string {
-	return in.Spec.Template.Spec.Version
-}
-
-func (in *TiKVGroup) GetActualVersion() string {
-	return in.Status.Version
-}
-
-func (in *TiKVGroup) GetStatus() GroupStatus {
-	return in.Status.GroupStatus
-}
-
-func (in *TiKVGroup) GetClientPort() int32 {
-	if in.Spec.Template.Spec.Server.Ports.Client != nil {
-		return in.Spec.Template.Spec.Server.Ports.Client.Port
-	}
-	return DefaultTiKVPortClient
-}
-
-func (in *TiKVGroup) GetStatusPort() int32 {
-	if in.Spec.Template.Spec.Server.Ports.Status != nil {
-		return in.Spec.Template.Spec.Server.Ports.Status.Port
-	}
-	return DefaultTiKVPortStatus
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -202,79 +114,6 @@ type TiKV struct {
 
 	Spec   TiKVSpec   `json:"spec,omitempty"`
 	Status TiKVStatus `json:"status,omitempty"`
-}
-
-func (in *TiKV) GetClusterName() string {
-	return in.Spec.Cluster.Name
-}
-
-func (in *TiKV) ComponentKind() ComponentKind {
-	return ComponentKindTiKV
-}
-
-func (in *TiKV) GVK() schema.GroupVersionKind {
-	return SchemeGroupVersion.WithKind("TiKV")
-}
-
-func (in *TiKV) ObservedGeneration() int64 {
-	return in.Status.ObservedGeneration
-}
-
-func (in *TiKV) CurrentRevision() string {
-	return in.Status.CurrentRevision
-}
-
-func (in *TiKV) UpdateRevision() string {
-	return in.Status.UpdateRevision
-}
-
-func (in *TiKV) CollisionCount() *int32 {
-	if in.Status.CollisionCount == nil {
-		return nil
-	}
-	return ptr.To(*in.Status.CollisionCount)
-}
-
-func (in *TiKV) IsHealthy() bool {
-	return meta.IsStatusConditionTrue(in.Status.Conditions, TiKVCondHealth) && in.DeletionTimestamp.IsZero()
-}
-
-func (in *TiKV) GetClientPort() int32 {
-	if in.Spec.Server.Ports.Client != nil {
-		return in.Spec.Server.Ports.Client.Port
-	}
-	return DefaultTiKVPortClient
-}
-
-func (in *TiKV) GetStatusPort() int32 {
-	if in.Spec.Server.Ports.Status != nil {
-		return in.Spec.Server.Ports.Status.Port
-	}
-	return DefaultTiKVPortStatus
-}
-
-// NOTE: name prefix is used to generate all names of underlying resources of this instance
-func (in *TiKV) NamePrefixAndSuffix() (prefix, suffix string) {
-	index := strings.LastIndexByte(in.Name, '-')
-	// TODO(liubo02): validate name to avoid '-' is not found
-	if index == -1 {
-		panic("cannot get name prefix")
-	}
-	return in.Name[:index], in.Name[index+1:]
-}
-
-// This name is not only for pod, but also configMap, hostname and almost all underlying resources
-// TODO(liubo02): rename to more reasonable one
-func (in *TiKV) PodName() string {
-	prefix, suffix := in.NamePrefixAndSuffix()
-	return prefix + "-tikv-" + suffix
-}
-
-// TLSClusterSecretName returns the mTLS secret name for a component.
-// TODO(liubo02): move to namer
-func (in *TiKV) TLSClusterSecretName() string {
-	prefix, _ := in.NamePrefixAndSuffix()
-	return prefix + "-tikv-cluster-secret"
 }
 
 // TiKVGroupSpec describes the common attributes of a TiKVGroup

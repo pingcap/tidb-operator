@@ -22,6 +22,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
 const (
@@ -68,7 +70,7 @@ type Log struct {
 }
 
 func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) error {
-	if err := c.Validate(tidb.IsSeparateSlowLogEnabled()); err != nil {
+	if err := c.Validate(coreutil.IsSeparateSlowLogEnabled(tidb)); err != nil {
 		return err
 	}
 
@@ -77,14 +79,14 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) error {
 	c.Host = "::"
 	c.Path = removeHTTPPrefix(cluster.Status.PD)
 
-	if tidb.IsMySQLTLSEnabled() {
+	if coreutil.IsMySQLTLSEnabled(tidb) {
 		// TODO(csuzhangxc): disable Client Authn
 		c.Security.SSLCA = path.Join(v1alpha1.DirPathMySQLTLS, corev1.ServiceAccountRootCAKey)
 		c.Security.SSLCert = path.Join(v1alpha1.DirPathMySQLTLS, corev1.TLSCertKey)
 		c.Security.SSLKey = path.Join(v1alpha1.DirPathMySQLTLS, corev1.TLSPrivateKeyKey)
 	}
 
-	if cluster.IsTLSClusterEnabled() {
+	if coreutil.IsTLSClusterEnabled(cluster) {
 		c.Security.ClusterSSLCA = path.Join(v1alpha1.DirPathClusterTLSTiDB, corev1.ServiceAccountRootCAKey)
 		c.Security.ClusterSSLCert = path.Join(v1alpha1.DirPathClusterTLSTiDB, corev1.TLSCertKey)
 		c.Security.ClusterSSLKey = path.Join(v1alpha1.DirPathClusterTLSTiDB, corev1.TLSPrivateKeyKey)
@@ -96,7 +98,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) error {
 		c.InitializeSQLFile = path.Join(v1alpha1.DirPathBootstrapSQL, v1alpha1.FileNameBootstrapSQL)
 	}
 
-	if tidb.IsTokenBasedAuthEnabled() {
+	if coreutil.IsTokenBasedAuthEnabled(tidb) {
 		c.Security.AuthTokenJwks = path.Join(v1alpha1.DirPathTiDBAuthToken, v1alpha1.FileNameTiDBAuthTokenJWKS)
 	}
 
@@ -167,7 +169,7 @@ func getAdvertiseAddress(tidb *v1alpha1.TiDB) string {
 	if ns == "" {
 		ns = corev1.NamespaceDefault
 	}
-	return tidb.PodName() + "." + tidb.Spec.Subdomain + "." + ns + ".svc"
+	return coreutil.PodName[scope.TiDB](tidb) + "." + tidb.Spec.Subdomain + "." + ns + ".svc"
 }
 
 func removeHTTPPrefix(url string) string {
@@ -177,7 +179,7 @@ func removeHTTPPrefix(url string) string {
 }
 
 func getSlowQueryFile(tidb *v1alpha1.TiDB) string {
-	if !tidb.IsSeparateSlowLogEnabled() {
+	if !coreutil.IsSeparateSlowLogEnabled(tidb) {
 		return ""
 	}
 

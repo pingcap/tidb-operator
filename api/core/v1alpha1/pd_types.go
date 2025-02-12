@@ -15,18 +15,7 @@
 package v1alpha1
 
 import (
-	"strings"
-
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/utils/ptr"
-)
-
-var (
-	_ GroupList         = &PDGroupList{}
-	_ Group             = &PDGroup{}
-	_ ComponentAccessor = &PD{}
 )
 
 const (
@@ -73,14 +62,6 @@ type PDGroupList struct {
 	Items []PDGroup `json:"items"`
 }
 
-func (l *PDGroupList) ToSlice() []Group {
-	groups := make([]Group, 0, len(l.Items))
-	for i := range l.Items {
-		groups = append(groups, &l.Items[i])
-	}
-	return groups
-}
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
@@ -97,75 +78,6 @@ type PDGroup struct {
 
 	Spec   PDGroupSpec   `json:"spec,omitempty"`
 	Status PDGroupStatus `json:"status,omitempty"`
-}
-
-func (in *PDGroup) GetClusterName() string {
-	return in.Spec.Cluster.Name
-}
-
-func (in *PDGroup) GetDesiredReplicas() int32 {
-	if in.Spec.Replicas == nil {
-		return 0
-	}
-	return *in.Spec.Replicas
-}
-
-func (in *PDGroup) GetDesiredVersion() string {
-	return in.Spec.Template.Spec.Version
-}
-
-func (in *PDGroup) GetActualVersion() string {
-	return in.Status.Version
-}
-
-func (in *PDGroup) GetStatus() GroupStatus {
-	return in.Status.GroupStatus
-}
-
-func (in *PDGroup) ComponentKind() ComponentKind {
-	return ComponentKindPD
-}
-
-func (in *PDGroup) GVK() schema.GroupVersionKind {
-	return SchemeGroupVersion.WithKind("PDGroup")
-}
-
-func (in *PDGroup) ObservedGeneration() int64 {
-	return in.Status.ObservedGeneration
-}
-
-func (in *PDGroup) CurrentRevision() string {
-	return in.Status.CurrentRevision
-}
-
-func (in *PDGroup) UpdateRevision() string {
-	return in.Status.UpdateRevision
-}
-
-func (in *PDGroup) CollisionCount() *int32 {
-	if in.Status.CollisionCount == nil {
-		return nil
-	}
-	return ptr.To(*in.Status.CollisionCount)
-}
-
-func (in *PDGroup) IsHealthy() bool {
-	// TODO implement me
-	return true
-}
-
-func (in *PDGroup) GetClientPort() int32 {
-	if in.Spec.Template.Spec.Server.Ports.Client != nil {
-		return in.Spec.Template.Spec.Server.Ports.Client.Port
-	}
-	return DefaultPDPortClient
-}
-
-func (in *PDGroup) GetPeerPort() int32 {
-	if in.Spec.Template.Spec.Server.Ports.Peer != nil {
-		return in.Spec.Template.Spec.Server.Ports.Peer.Port
-	}
-	return DefaultPDPortPeer
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -197,79 +109,6 @@ type PD struct {
 
 	Spec   PDSpec   `json:"spec,omitempty"`
 	Status PDStatus `json:"status,omitempty"`
-}
-
-func (in *PD) GetClusterName() string {
-	return in.Spec.Cluster.Name
-}
-
-func (in *PD) ComponentKind() ComponentKind {
-	return ComponentKindPD
-}
-
-func (in *PD) GVK() schema.GroupVersionKind {
-	return SchemeGroupVersion.WithKind("PD")
-}
-
-func (in *PD) ObservedGeneration() int64 {
-	return in.Status.ObservedGeneration
-}
-
-func (in *PD) CurrentRevision() string {
-	return in.Status.CurrentRevision
-}
-
-func (in *PD) UpdateRevision() string {
-	return in.Status.UpdateRevision
-}
-
-func (in *PD) CollisionCount() *int32 {
-	if in.Status.CollisionCount == nil {
-		return nil
-	}
-	return ptr.To(*in.Status.CollisionCount)
-}
-
-func (in *PD) IsHealthy() bool {
-	return meta.IsStatusConditionTrue(in.Status.Conditions, PDCondHealth) && in.DeletionTimestamp.IsZero()
-}
-
-func (in *PD) GetClientPort() int32 {
-	if in.Spec.Server.Ports.Client != nil {
-		return in.Spec.Server.Ports.Client.Port
-	}
-	return DefaultPDPortClient
-}
-
-func (in *PD) GetPeerPort() int32 {
-	if in.Spec.Server.Ports.Peer != nil {
-		return in.Spec.Server.Ports.Peer.Port
-	}
-	return DefaultPDPortPeer
-}
-
-// NOTE: name prefix is used to generate all names of underlying resources of this instance
-func (in *PD) NamePrefixAndSuffix() (prefix, suffix string) {
-	index := strings.LastIndexByte(in.Name, '-')
-	// TODO(liubo02): validate name to avoid '-' is not found
-	if index == -1 {
-		panic("cannot get name prefix")
-	}
-	return in.Name[:index], in.Name[index+1:]
-}
-
-// This name is not only for pod, but also configMap, hostname and almost all underlying resources
-// TODO(liubo02): rename to more reasonable one
-func (in *PD) PodName() string {
-	prefix, suffix := in.NamePrefixAndSuffix()
-	return prefix + "-pd-" + suffix
-}
-
-// TLSClusterSecretName returns the mTLS secret name for a component.
-// TODO(liubo02): move to namer
-func (in *PD) TLSClusterSecretName() string {
-	prefix, _ := in.NamePrefixAndSuffix()
-	return prefix + "-pd-cluster-secret"
 }
 
 // PDGroupSpec describes the common attributes of a PDGroup

@@ -21,6 +21,8 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
 func ConfigMapName(tidbName string) string {
@@ -35,7 +37,13 @@ func PersistentVolumeClaimName(podName, volName string) string {
 
 // TiDBServiceURL returns the service URL of a tidb member.
 func TiDBServiceURL(tidb *v1alpha1.TiDB, scheme string) string {
-	return fmt.Sprintf("%s://%s.%s.%s.svc:%d", scheme, tidb.PodName(), tidb.Spec.Subdomain, tidb.Namespace, tidb.GetStatusPort())
+	return fmt.Sprintf("%s://%s.%s.%s.svc:%d",
+		scheme,
+		coreutil.PodName[scope.TiDB](tidb),
+		tidb.Spec.Subdomain,
+		tidb.Namespace,
+		coreutil.TiDBStatusPort(tidb),
+	)
 }
 
 // Real spec.volumes[*].name of pod

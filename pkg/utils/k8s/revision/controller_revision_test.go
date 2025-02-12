@@ -24,10 +24,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/history"
 )
@@ -208,17 +210,20 @@ func TestGetCurrentAndUpdate(t *testing.T) {
 			Replicas: ptr.To[int32](1),
 		},
 	}
-	rev1, err := newRevision(pdg, "pd", nil, pdg.GVK(), 0, ptr.To[int32](0))
+	gvk, err := apiutil.GVKForObject(pdg, scheme.Scheme)
+	require.NoError(t, err)
+
+	rev1, err := newRevision(pdg, "pd", nil, gvk, 0, ptr.To[int32](0))
 	require.NoError(t, err)
 
 	pdg2 := pdg.DeepCopy()
 	pdg2.Spec.Replicas = ptr.To[int32](3)
-	rev2, err := newRevision(pdg2, "pd", nil, pdg2.GVK(), 1, ptr.To[int32](0))
+	rev2, err := newRevision(pdg2, "pd", nil, gvk, 1, ptr.To[int32](0))
 	require.NoError(t, err)
 
 	pdg3 := pdg.DeepCopy()
 	pdg3.Spec.Template.Spec.Version = "xxx"
-	rev3, err := newRevision(pdg3, "pd", nil, pdg3.GVK(), 2, ptr.To[int32](0))
+	rev3, err := newRevision(pdg3, "pd", nil, gvk, 2, ptr.To[int32](0))
 	require.NoError(t, err)
 
 	require.Equal(t, rev1.Name, rev2.Name)
@@ -228,7 +233,7 @@ func TestGetCurrentAndUpdate(t *testing.T) {
 		name           string
 		group          client.Object
 		revisions      []*appsv1.ControllerRevision
-		accessor       v1alpha1.ComponentAccessor
+		accessor       *v1alpha1.PDGroup
 		expectedCurRev string
 		expectedUpdRev string
 		expectedErr    bool
@@ -270,7 +275,7 @@ func TestGetCurrentAndUpdate(t *testing.T) {
 					return revision, nil
 				},
 			}
-			curRev, updRev, _, err := GetCurrentAndUpdate(context.TODO(), tt.group, "pd", nil, tt.revisions, cli, tt.accessor.CurrentRevision(), tt.accessor.CollisionCount())
+			curRev, updRev, _, err := GetCurrentAndUpdate(context.TODO(), tt.group, "pd", nil, tt.revisions, cli, tt.accessor.Status.CurrentRevision, tt.accessor.Status.CollisionCount)
 			if tt.expectedErr {
 				require.Error(t, err)
 			} else {

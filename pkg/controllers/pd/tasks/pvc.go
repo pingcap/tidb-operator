@@ -22,7 +22,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -52,7 +54,7 @@ func newPVCs(state *ReconcileContext) []*corev1.PersistentVolumeClaim {
 		vol := &pd.Spec.Volumes[i]
 		pvcs = append(pvcs, &corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      PersistentVolumeClaimName(pd.PodName(), vol.Name),
+				Name:      PersistentVolumeClaimName(coreutil.PodName[scope.PD](pd), vol.Name),
 				Namespace: pd.Namespace,
 				Labels: maputil.Merge(pd.Labels, map[string]string{
 					v1alpha1.LabelKeyInstance:   pd.Name,
