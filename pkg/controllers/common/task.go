@@ -143,6 +143,11 @@ func TaskContextTiFlashGroup(state TiFlashGroupStateInitializer, c client.Client
 	return taskContextResource("TiFlashGroup", w, c, false)
 }
 
+func TaskContextTiCDCGroup(state TiCDCGroupStateInitializer, c client.Client) task.Task {
+	w := state.TiCDCGroupInitializer()
+	return taskContextResource("TiCDCGroup", w, c, false)
+}
+
 func TaskContextPDSlice(state PDSliceStateInitializer, c client.Client) task.Task {
 	w := state.PDSliceInitializer()
 	return taskContextResourceSlice("PDSlice", w, &v1alpha1.PDList{}, c)
@@ -161,6 +166,11 @@ func TaskContextTiDBSlice(state TiDBSliceStateInitializer, c client.Client) task
 func TaskContextTiFlashSlice(state TiFlashSliceStateInitializer, c client.Client) task.Task {
 	w := state.TiFlashSliceInitializer()
 	return taskContextResourceSlice("TiFlashSlice", w, &v1alpha1.TiFlashList{}, c)
+}
+
+func TaskContextTiCDCSlice(state TiCDCSliceStateInitializer, c client.Client) task.Task {
+	w := state.TiCDCSliceInitializer()
+	return taskContextResourceSlice("TiCDCSlice", w, &v1alpha1.TiCDCList{}, c)
 }
 
 func TaskSuspendPod(state PodState, c client.Client) task.Task {

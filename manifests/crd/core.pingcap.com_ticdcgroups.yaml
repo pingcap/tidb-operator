@@ -201,8 +201,8 @@ spec:
                           ports:
                             description: Ports defines all ports listened by TiCDC
                             properties:
-                              client:
-                                description: Client defines port for TiCDC's api service
+                              port:
+                                description: Port defines main port for TiCDC.
                                 properties:
                                   port:
                                     format: int32

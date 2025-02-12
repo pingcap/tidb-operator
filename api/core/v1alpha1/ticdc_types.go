@@ -31,10 +31,8 @@ var (
 )
 
 const (
-	TiCDCPortNameClient    = "client"
-	TiCDCPortNamePeer      = "peer"
-	DefaultTiCDCPortClient = 2379
-	DefaultTiCDCPortPeer   = 2380
+	TiCDCPortName    = "ticdc" // main port
+	DefaultTiCDCPort = 8300
 )
 
 const (
@@ -144,11 +142,11 @@ func (in *TiCDCGroup) IsHealthy() bool {
 	return true
 }
 
-func (in *TiCDCGroup) GetClientPort() int32 {
-	if in.Spec.Template.Spec.Server.Ports.Client != nil {
-		return in.Spec.Template.Spec.Server.Ports.Client.Port
+func (in *TiCDCGroup) GetPort() int32 {
+	if in.Spec.Template.Spec.Server.Ports.Port != nil {
+		return in.Spec.Template.Spec.Server.Ports.Port.Port
 	}
-	return DefaultTiCDCPortClient
+	return DefaultTiCDCPort
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -216,11 +214,11 @@ func (in *TiCDC) IsHealthy() bool {
 	return meta.IsStatusConditionTrue(in.Status.Conditions, TiCDCCondHealth) && in.DeletionTimestamp.IsZero()
 }
 
-func (in *TiCDC) GetClientPort() int32 {
-	if in.Spec.Server.Ports.Client != nil {
-		return in.Spec.Server.Ports.Client.Port
+func (in *TiCDC) GetPort() int32 {
+	if in.Spec.Server.Ports.Port != nil {
+		return in.Spec.Server.Ports.Port.Port
 	}
-	return DefaultTiCDCPortClient
+	return DefaultTiCDCPort
 }
 
 func (in *TiCDC) GetGracefulShutdownTimeout() time.Duration {
@@ -318,8 +316,8 @@ type TiCDCServer struct {
 }
 
 type TiCDCPorts struct {
-	// Client defines port for TiCDC's api service
-	Client *Port `json:"client,omitempty"`
+	// Port defines main port for TiCDC.
+	Port *Port `json:"port,omitempty"`
 }
 
 type TiCDCGroupStatus struct {

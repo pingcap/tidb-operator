@@ -41,6 +41,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/cluster"
 	"github.com/pingcap/tidb-operator/pkg/controllers/pd"
 	"github.com/pingcap/tidb-operator/pkg/controllers/pdgroup"
+	"github.com/pingcap/tidb-operator/pkg/controllers/ticdcgroup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tidb"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tidbgroup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tiflash"
@@ -235,6 +236,9 @@ func setupControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientManage
 	}
 	if err := tiflash.Setup(mgr, c, pdcm, vm); err != nil {
 		return fmt.Errorf("unable to create controller TiFlash: %w", err)
+	}
+	if err := ticdcgroup.Setup(mgr, c); err != nil {
+		return fmt.Errorf("unable to create controller TiCDCGroup: %w", err)
 	}
 	return nil
 }
