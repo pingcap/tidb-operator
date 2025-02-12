@@ -1,7 +1,7 @@
 name: auto-job-v2
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, reopened, synchronize]
 
 permissions:
@@ -11,8 +11,6 @@ permissions:
 jobs:
   auto-job:
     runs-on: ubuntu-24.04
-    permissions:
-      pull-requests: write
     steps:
       - name: Add v2 label if target branch is feature/v2
         if: github.event.pull_request.base.ref == 'feature/v2'
