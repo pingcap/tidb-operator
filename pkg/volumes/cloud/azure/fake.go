@@ -22,14 +22,33 @@ import (
 )
 
 type FakeDiskClient struct {
-	GetFunc         func(ctx context.Context, resourceGroupName string, diskName string, options *armcompute.DisksClientGetOptions) (armcompute.DisksClientGetResponse, error)
-	BeginUpdateFunc func(ctx context.Context, resourceGroupName string, diskName string, parameters armcompute.DiskUpdate, options *armcompute.DisksClientBeginUpdateOptions) (*azruntime.Poller[armcompute.DisksClientUpdateResponse], error)
+	GetFunc func(
+		ctx context.Context,
+		resourceGroupName, diskName string,
+		options *armcompute.DisksClientGetOptions,
+	) (armcompute.DisksClientGetResponse, error)
+
+	BeginUpdateFunc func(
+		ctx context.Context,
+		resourceGroupName, diskName string,
+		parameters armcompute.DiskUpdate,
+		options *armcompute.DisksClientBeginUpdateOptions,
+	) (*azruntime.Poller[armcompute.DisksClientUpdateResponse], error)
 }
 
-func (m *FakeDiskClient) Get(ctx context.Context, resourceGroupName string, diskName string, options *armcompute.DisksClientGetOptions) (armcompute.DisksClientGetResponse, error) {
+func (m *FakeDiskClient) Get(
+	ctx context.Context,
+	resourceGroupName, diskName string,
+	options *armcompute.DisksClientGetOptions,
+) (armcompute.DisksClientGetResponse, error) {
 	return m.GetFunc(ctx, resourceGroupName, diskName, options)
 }
 
-func (m *FakeDiskClient) BeginUpdate(ctx context.Context, resourceGroupName string, diskName string, parameters armcompute.DiskUpdate, options *armcompute.DisksClientBeginUpdateOptions) (*azruntime.Poller[armcompute.DisksClientUpdateResponse], error) {
+func (m *FakeDiskClient) BeginUpdate(
+	ctx context.Context,
+	resourceGroupName, diskName string,
+	parameters armcompute.DiskUpdate,
+	options *armcompute.DisksClientBeginUpdateOptions,
+) (*azruntime.Poller[armcompute.DisksClientUpdateResponse], error) {
 	return m.BeginUpdateFunc(ctx, resourceGroupName, diskName, parameters, options)
 }

@@ -53,7 +53,7 @@ func TestModifyVolume(t *testing.T) {
 			pvc:  cloud.NewTestPVC("10Gi"),
 			pv:   cloud.NewTestPV("/subscriptions/123/resourceGroups/rg1/providers/Microsoft.Compute/disks/disk1"),
 			FakeDiskClient: &FakeDiskClient{
-				GetFunc: func(ctx context.Context, resourceGroupName string, diskName string, options *armcompute.DisksClientGetOptions) (armcompute.DisksClientGetResponse, error) {
+				GetFunc: func(_ context.Context, _, _ string, _ *armcompute.DisksClientGetOptions) (armcompute.DisksClientGetResponse, error) {
 					return armcompute.DisksClientGetResponse{
 						Disk: armcompute.Disk{
 							ID: to.Ptr("/subscriptions/123/resourceGroups/rg1/providers/Microsoft.Compute/disks/disk1"),
@@ -68,7 +68,7 @@ func TestModifyVolume(t *testing.T) {
 						},
 					}, nil
 				},
-				BeginUpdateFunc: func(ctx context.Context, resourceGroupName string, diskName string, parameters armcompute.DiskUpdate, options *armcompute.DisksClientBeginUpdateOptions) (*azruntime.Poller[armcompute.DisksClientUpdateResponse], error) {
+				BeginUpdateFunc: func(_ context.Context, _, _ string, _ armcompute.DiskUpdate, _ *armcompute.DisksClientBeginUpdateOptions) (*azruntime.Poller[armcompute.DisksClientUpdateResponse], error) {
 					return nil, nil
 				},
 			},
@@ -88,7 +88,7 @@ func TestModifyVolume(t *testing.T) {
 			pvc:  cloud.NewTestPVC("10Gi"),
 			pv:   cloud.NewTestPV("/subscriptions/123/resourceGroups/rg1/providers/Microsoft.Compute/disks/disk1"),
 			FakeDiskClient: &FakeDiskClient{
-				GetFunc: func(ctx context.Context, resourceGroupName string, diskName string, options *armcompute.DisksClientGetOptions) (armcompute.DisksClientGetResponse, error) {
+				GetFunc: func(_ context.Context, _, _ string, _ *armcompute.DisksClientGetOptions) (armcompute.DisksClientGetResponse, error) {
 					return armcompute.DisksClientGetResponse{
 						Disk: armcompute.Disk{
 							ID: to.Ptr("/subscriptions/123/resourceGroups/rg1/providers/Microsoft.Compute/disks/disk1"),
@@ -103,7 +103,7 @@ func TestModifyVolume(t *testing.T) {
 						},
 					}, nil
 				},
-				BeginUpdateFunc: func(ctx context.Context, resourceGroupName string, diskName string, parameters armcompute.DiskUpdate, options *armcompute.DisksClientBeginUpdateOptions) (*azruntime.Poller[armcompute.DisksClientUpdateResponse], error) {
+				BeginUpdateFunc: func(_ context.Context, _, _ string, _ armcompute.DiskUpdate, _ *armcompute.DisksClientBeginUpdateOptions) (*azruntime.Poller[armcompute.DisksClientUpdateResponse], error) {
 					return nil, errors.New("begin update failed, please try again")
 				},
 			},
@@ -115,7 +115,7 @@ func TestModifyVolume(t *testing.T) {
 			pvc:  cloud.NewTestPVC("10Gi"),
 			pv:   cloud.NewTestPV("/subscriptions/123/resourceGroups/rg1/providers/Microsoft.Compute/disks/disk1"),
 			FakeDiskClient: &FakeDiskClient{
-				GetFunc: func(ctx context.Context, resourceGroupName string, diskName string, options *armcompute.DisksClientGetOptions) (armcompute.DisksClientGetResponse, error) {
+				GetFunc: func(_ context.Context, _, _ string, _ *armcompute.DisksClientGetOptions) (armcompute.DisksClientGetResponse, error) {
 					return armcompute.DisksClientGetResponse{
 						Disk: armcompute.Disk{
 							ID: to.Ptr("/subscriptions/123/resourceGroups/rg1/providers/Microsoft.Compute/disks/disk1"),
@@ -139,7 +139,7 @@ func TestModifyVolume(t *testing.T) {
 			pvc:  cloud.NewTestPVC("10Gi"),
 			pv:   cloud.NewTestPV("/subscriptions/123/resourceGroups/rg1/providers/Microsoft.Compute/disks/disk1"),
 			FakeDiskClient: &FakeDiskClient{
-				GetFunc: func(ctx context.Context, resourceGroupName string, diskName string, options *armcompute.DisksClientGetOptions) (armcompute.DisksClientGetResponse, error) {
+				GetFunc: func(_ context.Context, _, _ string, _ *armcompute.DisksClientGetOptions) (armcompute.DisksClientGetResponse, error) {
 					return armcompute.DisksClientGetResponse{
 						Disk: armcompute.Disk{
 							ID: to.Ptr("/subscriptions/123/resourceGroups/rg1/providers/Microsoft.Compute/disks/disk1"),
@@ -154,7 +154,7 @@ func TestModifyVolume(t *testing.T) {
 						},
 					}, nil
 				},
-				BeginUpdateFunc: func(ctx context.Context, resourceGroupName string, diskName string, parameters armcompute.DiskUpdate, options *armcompute.DisksClientBeginUpdateOptions) (*azruntime.Poller[armcompute.DisksClientUpdateResponse], error) {
+				BeginUpdateFunc: func(_ context.Context, _, _ string, _ armcompute.DiskUpdate, _ *armcompute.DisksClientBeginUpdateOptions) (*azruntime.Poller[armcompute.DisksClientUpdateResponse], error) {
 					return nil, nil
 				},
 			},

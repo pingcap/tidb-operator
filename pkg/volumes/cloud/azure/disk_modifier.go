@@ -34,8 +34,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/volumes/cloud"
 )
 
-var defaultWaitDuration = time.Hour * 6
-
 const (
 	paramKeyThroughput = "DiskMBpsReadWrite"
 	paramKeyIOPS       = "DiskIOPSReadWrite"
@@ -43,6 +41,10 @@ const (
 
 	maxSize = 32767 // Azure Disk max size in GiB
 	minSize = 1
+
+	volumeIDPartsLength = 9
+
+	defaultWaitDuration = 6 * time.Hour
 )
 
 type DiskModifier struct {
@@ -53,12 +55,21 @@ type DiskModifier struct {
 }
 
 type DiskClient interface {
-	Get(ctx context.Context, resourceGroupName string, diskName string, options *armcompute.DisksClientGetOptions) (armcompute.DisksClientGetResponse, error)
-	BeginUpdate(ctx context.Context, resourceGroupName string, diskName string, parameters armcompute.DiskUpdate, options *armcompute.DisksClientBeginUpdateOptions) (*azruntime.Poller[armcompute.DisksClientUpdateResponse], error)
+	Get(
+		ctx context.Context,
+		resourceGroupName, diskName string,
+		opts *armcompute.DisksClientGetOptions,
+	) (armcompute.DisksClientGetResponse, error)
+
+	BeginUpdate(ctx context.Context,
+		resourceGroupName, diskName string,
+		parameters armcompute.DiskUpdate,
+		options *armcompute.DisksClientBeginUpdateOptions,
+	) (*azruntime.Poller[armcompute.DisksClientUpdateResponse], error)
 }
 
 type Volume struct {
-	VolumeId   string
+	VolumeID   string
 	Size       *int32
 	IOPS       *int64
 	Throughput *int64
@@ -71,7 +82,7 @@ func NewDiskModifier(logger logr.Logger) cloud.VolumeModifier {
 	}
 }
 
-func (m *DiskModifier) Name() string {
+func (*DiskModifier) Name() string {
 	return "disk.csi.azure.com"
 }
 
@@ -89,7 +100,12 @@ func (m *DiskModifier) Validate(_, _ *corev1.PersistentVolumeClaim, ssc, dsc *st
 	return nil
 }
 
-func (m *DiskModifier) Modify(ctx context.Context, pvc *corev1.PersistentVolumeClaim, pv *corev1.PersistentVolume, sc *storagev1.StorageClass) ( /*wait*/ bool, error) {
+func (m *DiskModifier) Modify(
+	ctx context.Context,
+	pvc *corev1.PersistentVolumeClaim,
+	pv *corev1.PersistentVolume,
+	sc *storagev1.StorageClass,
+) ( /*wait*/ bool, error) {
 	logger := m.Logger.WithValues("namespace", pvc.Namespace, "pvc", pvc.Name)
 	logger.Info("Starting Modify for PVC")
 
@@ -99,12 +115,12 @@ func (m *DiskModifier) Modify(ctx context.Context, pvc *corev1.PersistentVolumeC
 	}
 
 	// Getting expected volume for PVC
-	desired, err := m.getExpectedVolume(pvc, pv, sc)
+	desired, err := getExpectedVolume(pvc, pv, sc)
 	if err != nil {
 		return false, fmt.Errorf("error getting expected volume: %w", err)
 	}
 
-	diskName, subscriptionID, resourceGroupName, err := getDiskInfoFromVolumeID(desired.VolumeId)
+	diskName, subscriptionID, resourceGroupName, err := getDiskInfoFromVolumeID(desired.VolumeID)
 	if err != nil {
 		return false, fmt.Errorf("failed to get Azure disk info from PV: %w", err)
 	}
@@ -114,13 +130,13 @@ func (m *DiskModifier) Modify(ctx context.Context, pvc *corev1.PersistentVolumeC
 	}
 
 	// Getting current volume status for PVC
-	actual, err := m.getCurrentVolumeStatus(ctx, desired.VolumeId)
+	actual, err := m.getCurrentVolumeStatus(ctx, desired.VolumeID)
 	if err != nil {
 		return false, fmt.Errorf("getting current volume status: %w", err)
 	}
 
 	if actual != nil {
-		if !m.diffVolume(actual, desired) {
+		if !diffVolume(actual, desired) {
 			// if actual volume is equal to desired volume, return completed
 			logger.Info("Volume modification is already completed for PVC")
 			return false, nil
@@ -144,7 +160,7 @@ func (m *DiskModifier) Modify(ctx context.Context, pvc *corev1.PersistentVolumeC
 
 // diffVolume checks if the actual volume is equal to the desired volume.
 // If actual volume is equal to desired volume, return false.
-func (m *DiskModifier) diffVolume(actual, desired *Volume) bool {
+func diffVolume(actual, desired *Volume) bool {
 	return utils.ValuesDiffer(actual.IOPS, desired.IOPS) ||
 		utils.ValuesDiffer(actual.Throughput, desired.Throughput) ||
 		utils.ValuesDiffer(actual.Size, desired.Size) ||
@@ -164,7 +180,7 @@ func (m *DiskModifier) getCurrentVolumeStatus(ctx context.Context, volumeID stri
 
 	disk := diskResponse.Disk
 	return &Volume{
-		VolumeId:   *disk.ID,
+		VolumeID:   *disk.ID,
 		Size:       disk.Properties.DiskSizeGB,
 		IOPS:       disk.Properties.DiskIOPSReadWrite,
 		Throughput: disk.Properties.DiskMBpsReadWrite,
@@ -172,29 +188,33 @@ func (m *DiskModifier) getCurrentVolumeStatus(ctx context.Context, volumeID stri
 	}, nil
 }
 
-func (m *DiskModifier) getExpectedVolume(pvc *corev1.PersistentVolumeClaim, pv *corev1.PersistentVolume, sc *storagev1.StorageClass) (*Volume, error) {
-	v := Volume{}
+func getExpectedVolume(
+	pvc *corev1.PersistentVolumeClaim,
+	pv *corev1.PersistentVolume,
+	sc *storagev1.StorageClass,
+) (*Volume, error) {
+	v := Volume{
+		VolumeID: pv.Spec.CSI.VolumeHandle,
+	}
 	if err := utilerrors.NewAggregate([]error{
-		m.setArgsFromPVC(&v, pvc),
-		m.setArgsFromPV(&v, pv),
-		m.setArgsFromStorageClass(&v, sc),
+		setArgsFromPVC(&v, pvc),
+		setArgsFromStorageClass(&v, sc),
 	}); err != nil {
 		return nil, err
 	}
-
 	return &v, nil
 }
 
-func (m *DiskModifier) MinWaitDuration() time.Duration {
+func (*DiskModifier) MinWaitDuration() time.Duration {
 	return defaultWaitDuration
 }
 
-func (m *DiskModifier) setArgsFromPVC(v *Volume, pvc *corev1.PersistentVolumeClaim) error {
+func setArgsFromPVC(v *Volume, pvc *corev1.PersistentVolumeClaim) error {
 	size, err := getSizeFromPVC(pvc)
 	if err != nil {
 		return err
 	}
-	v.Size = ptr.To(int32(size))
+	v.Size = ptr.To(int32(size)) //nolint: gosec // by design
 	return nil
 }
 
@@ -209,12 +229,7 @@ func getSizeFromPVC(pvc *corev1.PersistentVolumeClaim) (int64, error) {
 	return size, nil
 }
 
-func (m *DiskModifier) setArgsFromPV(v *Volume, pv *corev1.PersistentVolume) error {
-	v.VolumeId = pv.Spec.CSI.VolumeHandle
-	return nil
-}
-
-func (m *DiskModifier) setArgsFromStorageClass(v *Volume, sc *storagev1.StorageClass) error {
+func setArgsFromStorageClass(v *Volume, sc *storagev1.StorageClass) error {
 	if sc == nil {
 		return nil
 	}
@@ -247,11 +262,11 @@ func getParamInt64(params map[string]string, key string) (*int64, error) {
 	return ptr.To(param), nil
 }
 
-func getDiskInfoFromVolumeID(volumeID string) (diskName string, subscriptionID string, resourceGroupName string, err error) {
+func getDiskInfoFromVolumeID(volumeID string) (diskName, subscriptionID, resourceGroupName string, err error) {
 	// get diskName, subscriptionID, resourceGroupName from volumeHandle
 	// example: /subscriptions/xxxx/resourceGroups/xxxx/providers/Microsoft.Compute/disks/xxxx
 	parts := strings.Split(volumeID, "/")
-	if len(parts) != 9 {
+	if len(parts) != volumeIDPartsLength {
 		return "", "", "", fmt.Errorf("invalid volumeHandle format")
 	}
 	subscriptionID = parts[2]

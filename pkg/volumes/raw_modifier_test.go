@@ -78,9 +78,9 @@ func withProvisioner(p string) fake.ChangeFunc[storagev1.StorageClass, *storagev
 	}
 }
 
-func withAllowVolumeExpansion(allow bool) fake.ChangeFunc[storagev1.StorageClass, *storagev1.StorageClass] {
+func withAllowVolumeExpansion() fake.ChangeFunc[storagev1.StorageClass, *storagev1.StorageClass] {
 	return func(sc *storagev1.StorageClass) *storagev1.StorageClass {
-		sc.AllowVolumeExpansion = ptr.To(allow)
+		sc.AllowVolumeExpansion = ptr.To(true)
 		return sc
 	}
 }
@@ -211,7 +211,7 @@ func Test_rawModifier_getVolumePhase(t *testing.T) {
 					StorageClassName: ptr.To("sc-0"),
 				},
 				PVC:          fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-0", withPVCSpec(ptr.To("sc-0"), nil, "pv-0", "10Gi"), withPVCStatus("10Gi", nil)),
-				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test"), withAllowVolumeExpansion(true)),
+				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test"), withAllowVolumeExpansion()),
 			},
 			volumeModifiers: map[string]cloud.VolumeModifier{
 				"test": &cloud.FakeVolumeModifier{},
@@ -249,7 +249,7 @@ func Test_rawModifier_getVolumePhase(t *testing.T) {
 					withPVCAnnotation(annoKeyPVCSpecRevision, "2"),
 					withPVCAnnotation(annoKeyPVCStatusRevision, "1"),
 				),
-				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test"), withAllowVolumeExpansion(true)),
+				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test"), withAllowVolumeExpansion()),
 			},
 			volumeModifiers: map[string]cloud.VolumeModifier{
 				"test": &cloud.FakeVolumeModifier{},
@@ -269,7 +269,7 @@ func Test_rawModifier_getVolumePhase(t *testing.T) {
 					withPVCSpec(ptr.To("sc-0"), nil, "pv-0", "10Gi"), withPVCStatus("10Gi", nil),
 					withPVCAnnotation(annoKeyPVCLastTransitionTimestamp, "2121-01-01T00:00:00Z"), // a future time
 				),
-				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test"), withAllowVolumeExpansion(true)),
+				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test"), withAllowVolumeExpansion()),
 			},
 			clock: time.RealClock{},
 			volumeModifiers: map[string]cloud.VolumeModifier{
@@ -290,7 +290,7 @@ func Test_rawModifier_getVolumePhase(t *testing.T) {
 					withPVCSpec(ptr.To("sc-0"), nil, "pv-0", "10Gi"), withPVCStatus("10Gi", nil),
 					withPVCAnnotation(annoKeyPVCLastTransitionTimestamp, "2021-01-01T00:00:00Z"), // a past time
 				),
-				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test"), withAllowVolumeExpansion(true)),
+				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test"), withAllowVolumeExpansion()),
 			},
 			clock: time.RealClock{},
 			volumeModifiers: map[string]cloud.VolumeModifier{
@@ -349,7 +349,7 @@ func Test_rawModifier_Modify(t *testing.T) {
 					Size:             resource.MustParse("20Gi"),
 					StorageClassName: ptr.To("sc-0"),
 				},
-				StorageClass: fake.FakeObj("sc-0", withProvisioner("ebs.csi.aws.com"), withAllowVolumeExpansion(true)),
+				StorageClass: fake.FakeObj("sc-0", withProvisioner("ebs.csi.aws.com"), withAllowVolumeExpansion()),
 			},
 			wantErr: true,
 		},
@@ -365,7 +365,7 @@ func Test_rawModifier_Modify(t *testing.T) {
 					Size:             resource.MustParse("20Gi"),
 					StorageClassName: ptr.To("sc-0"),
 				},
-				StorageClass: fake.FakeObj("sc-0", withProvisioner("ebs.csi.aws.com"), withAllowVolumeExpansion(true)),
+				StorageClass: fake.FakeObj("sc-0", withProvisioner("ebs.csi.aws.com"), withAllowVolumeExpansion()),
 			},
 			wantErr: true,
 		},
@@ -381,7 +381,7 @@ func Test_rawModifier_Modify(t *testing.T) {
 					Size:             resource.MustParse("20Gi"),
 					StorageClassName: ptr.To("sc-0"),
 				},
-				StorageClass: fake.FakeObj("sc-0", withProvisioner("ebs.csi.aws.com"), withAllowVolumeExpansion(true)),
+				StorageClass: fake.FakeObj("sc-0", withProvisioner("ebs.csi.aws.com"), withAllowVolumeExpansion()),
 			},
 			wantErr: false,
 		},
