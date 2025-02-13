@@ -1,0 +1,67 @@
+// Copyright 2024 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package runtime
+
+import (
+	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+// Job is the interface for a job. for example, backup, restore, etc.
+type Job interface {
+	Object
+
+	Object() client.Object
+}
+
+// br
+type (
+	Backup brv1alpha1.Backup
+)
+
+var _ Job = &Backup{}
+
+func (b *Backup) Cluster() string {
+	return b.Spec.BR.Cluster
+}
+
+func (b *Backup) Component() string {
+	return v1alpha1.LabelValComponentBackup
+}
+
+func (b *Backup) Conditions() []metav1.Condition {
+	return b.Status.Conditions
+}
+
+func (b *Backup) SetConditions(conds []metav1.Condition) {
+	b.Status.Conditions = conds
+}
+
+func (b *Backup) ObservedGeneration() int64 {
+	// return b.Status.ObservedGeneration
+	// fixme(ideascf): do we need this?
+	return 0
+}
+
+func (b *Backup) SetObservedGeneration(g int64) {
+	// fixme(ideascf): do we need this?
+	// b.Status.ObservedGeneration = g
+}
+
+func (b *Backup) Object() client.Object {
+	return (*brv1alpha1.Backup)(b)
+}
