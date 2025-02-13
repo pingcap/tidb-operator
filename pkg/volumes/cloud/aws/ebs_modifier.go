@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/smithy-go"
@@ -106,9 +106,8 @@ type Volume struct {
 }
 
 // NewEBSModifier creates a new EBS volume modifier.
-func NewEBSModifier(cfg *aws.Config, logger logr.Logger) cloud.VolumeModifier {
+func NewEBSModifier(logger logr.Logger) cloud.VolumeModifier {
 	return &EBSModifier{
-		cli:    ec2.NewFromConfig(*cfg),
 		logger: logger,
 	}
 }
@@ -132,8 +131,18 @@ func (m *EBSModifier) Validate(_, _ *corev1.PersistentVolumeClaim, ssc, dsc *sto
 	return nil
 }
 
+func NewClient(ctx context.Context) (EC2VolumeAPI, error) {
+	cfg, err := awsconfig.LoadDefaultConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return ec2.NewFromConfig(cfg), nil
+}
+
 func (m *EBSModifier) Modify(ctx context.Context, pvc *corev1.PersistentVolumeClaim,
-	pv *corev1.PersistentVolume, sc *storagev1.StorageClass) ( /*wait*/ bool, error) {
+	pv *corev1.PersistentVolume, sc *storagev1.StorageClass,
+) ( /*wait*/ bool, error) {
 	if pv == nil {
 		m.logger.Info("Persistent volume is nil, skip modifying PV. This may be caused by no relevant permissions", "pv", pvc.Spec.VolumeName)
 		return false, nil
@@ -142,6 +151,14 @@ func (m *EBSModifier) Modify(ctx context.Context, pvc *corev1.PersistentVolumeCl
 	desired, err := m.getExpectedVolume(pvc, pv, sc)
 	if err != nil {
 		return false, err
+	}
+
+	if m.cli == nil {
+		cli, err := NewClient(ctx)
+		if err != nil {
+			return false, fmt.Errorf("cannot new aws client: %w", err)
+		}
+		m.cli = cli
 	}
 
 	actual, err := m.getCurrentVolumeStatus(ctx, desired.VolumeID)
@@ -243,7 +260,8 @@ func (m *EBSModifier) getCurrentVolumeStatus(ctx context.Context, id string) (*V
 }
 
 func (m *EBSModifier) getExpectedVolume(pvc *corev1.PersistentVolumeClaim,
-	pv *corev1.PersistentVolume, sc *storagev1.StorageClass) (*Volume, error) {
+	pv *corev1.PersistentVolume, sc *storagev1.StorageClass,
+) (*Volume, error) {
 	// get storage size in GiB from PVC
 	quantity := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
 	sizeBytes := quantity.ScaledValue(0)

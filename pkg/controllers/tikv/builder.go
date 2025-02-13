@@ -53,7 +53,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// normal process
 		tasks.TaskConfigMap(state, r.Client),
-		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifier),
+		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifierFactory),
 		tasks.TaskPod(state, r.Client),
 		tasks.TaskStoreLabels(state, r.Client),
 		tasks.TaskEvictLeader(state),

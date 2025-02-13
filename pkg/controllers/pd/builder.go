@@ -51,7 +51,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		common.TaskContextPDSlice(state, r.Client),
 		tasks.TaskConfigMap(state, r.Client),
-		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifier),
+		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifierFactory),
 		tasks.TaskPod(state, r.Client),
 		// If pd client has not been registered yet, do not update status of the pd
 		task.IfBreak(tasks.CondPDClientIsNotRegisterred(state),
