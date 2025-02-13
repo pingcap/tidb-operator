@@ -316,7 +316,29 @@ func TestPvcReplacerSync(t *testing.T) {
 		if tt.isScale {
 			tc.Status.TiKV.Phase = v1alpha1.ScalePhase
 		}
+		tc.Status.TiKV.Stores = map[string]v1alpha1.TiKVStore{
+			"1": {ID: "1", State: v1alpha1.TiKVStateUp, PodName: "test-cluster-tikv-1", LeaderCount: 5},
+		}
 		syncErr := replacer.Sync(tc)
+		if tt.expectAnnotationOnPod1 {
+			g.Expect(syncErr == nil)
+			// another iteration
+			syncErr = replacer.Sync(tc)
+			g.Expect(syncErr == nil)
+			deps.KubeInformerFactory.WaitForCacheSync(stop)
+			// simulate eviction of all leaders now
+			tc.Status.TiKV.EvictLeader = make(map[string]*v1alpha1.EvictLeaderStatus)
+			tc.Status.TiKV.EvictLeader["test-cluster-tikv-1"] = &v1alpha1.EvictLeaderStatus{
+				PodCreateTime: metav1.Now(),
+				BeginTime:     metav1.Now(),
+				//Value:         value,
+			}
+			store := tc.Status.TiKV.Stores["1"] // Retrieve the struct
+			store.LeaderCount = 0               // Set LeaderCount to 0 now
+			tc.Status.TiKV.Stores["1"] = store  // Reassign the modified struct
+			// call again, it should now proceed with replacing volumes
+			syncErr = replacer.Sync(tc)
+		}
 		deps.KubeInformerFactory.WaitForCacheSync(stop)
 		if tt.expectStsDeleted {
 			g.Eventually(func() error {
@@ -331,7 +353,11 @@ func TestPvcReplacerSync(t *testing.T) {
 			g.Eventually(func() map[string]string {
 				pod1, _ := deps.PodLister.Pods(tc.Namespace).Get("test-cluster-tikv-1")
 				return pod1.Annotations
-			}, testMatchTimeout, testMatchInterval).Should(HaveKeyWithValue(v1alpha1.ReplaceVolumeAnnKey, v1alpha1.ReplaceVolumeValueTrue))
+			}, testMatchTimeout, testMatchInterval).Should(
+				SatisfyAll(
+					HaveKeyWithValue(v1alpha1.ReplaceVolumeAnnKey, v1alpha1.ReplaceVolumeValueTrue),
+					HaveKeyWithValue(v1alpha1.EvictLeaderAnnKey, v1alpha1.EvictLeaderValueDeletePod),
+				), "Expected both annotations to be present in pod annotations")
 			g.Expect(syncErr.Error()).To(ContainSubstring("started volume replace"))
 		} else if syncErr != nil {
 			g.Expect(syncErr.Error()).To(Not(ContainSubstring("started volume replace")))
