@@ -38,12 +38,13 @@ import (
 	"unsafe"
 
 	"github.com/Masterminds/semver"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
+
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/constants"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/klog/v2"
 )
 
 var (
@@ -480,7 +481,7 @@ func validateAccessConfig(config *brv1alpha1.TiDBAccessConfig) string {
 }
 
 // ValidateBackup validates backup sepc
-func ValidateBackup(backup *brv1alpha1.Backup, tikvImage string, cluster *corev1alpha1.Cluster) error {
+func ValidateBackup(backup *brv1alpha1.Backup, tikvVersion string, cluster *corev1alpha1.Cluster) error {
 	ns := backup.Namespace
 	name := backup.Name
 
@@ -492,7 +493,7 @@ func ValidateBackup(backup *brv1alpha1.Backup, tikvImage string, cluster *corev1
 			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
 		}
 	} else {
-		if !canSkipSetGCLifeTime(tikvImage) {
+		if !canSkipSetGCLifeTime(tikvVersion) {
 			if reason := validateAccessConfig(backup.Spec.From); reason != "" {
 				return fmt.Errorf(reason, ns, name)
 			}
@@ -533,8 +534,8 @@ func ValidateBackup(backup *brv1alpha1.Backup, tikvImage string, cluster *corev1
 
 		// validate log backup
 		if backup.Spec.Mode == brv1alpha1.BackupModeLog {
-			if !isLogBackSupport(tikvImage) {
-				return fmt.Errorf("tikv %s doesn't support log backup in spec of %s/%s, the first version is v6.1.0", tikvImage, ns, name)
+			if !isLogBackSupport(tikvVersion) {
+				return fmt.Errorf("tikv %s doesn't support log backup in spec of %s/%s, the first version is v6.1.0", tikvVersion, ns, name)
 			}
 			var err error
 			_, err = brv1alpha1.ParseTSString(backup.Spec.CommitTs)
@@ -581,7 +582,7 @@ func ValidateBackup(backup *brv1alpha1.Backup, tikvImage string, cluster *corev1
 }
 
 // ValidateRestore checks whether a restore spec is valid.
-func ValidateRestore(restore *brv1alpha1.Restore, tikvImage string, acrossK8s bool) error {
+func ValidateRestore(restore *brv1alpha1.Restore, tikvVersion string, acrossK8s bool) error {
 	ns := restore.Namespace
 	name := restore.Name
 
@@ -593,7 +594,7 @@ func ValidateRestore(restore *brv1alpha1.Restore, tikvImage string, acrossK8s bo
 			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
 		}
 	} else {
-		if !canSkipSetGCLifeTime(tikvImage) {
+		if !canSkipSetGCLifeTime(tikvVersion) {
 			if reason := validateAccessConfig(restore.Spec.To); reason != "" {
 				return fmt.Errorf(reason, ns, name)
 			}
@@ -714,11 +715,10 @@ func ParseImage(image string) (string, string) {
 }
 
 // canSkipSetGCLifeTime returns if setting tikv_gc_life_time can be skipped based on the TiKV version
-func canSkipSetGCLifeTime(image string) bool {
-	_, version := ParseImage(image)
-	v, err := semver.NewVersion(version)
+func canSkipSetGCLifeTime(tikvVersion string) bool {
+	v, err := semver.NewVersion(tikvVersion)
 	if err != nil {
-		klog.Errorf("Parse version %s failure, error: %v", version, err)
+		klog.Errorf("Parse version %s failure, error: %v", tikvVersion, err)
 		return true
 	}
 	if tikvLessThanV408.Check(v) {
@@ -741,11 +741,10 @@ func StringToBytes(s string) []byte {
 }
 
 // isLogBackSupport returns whether tikv supports log backup
-func isLogBackSupport(tikvImage string) bool {
-	_, version := ParseImage(tikvImage)
-	v, err := semver.NewVersion(version)
+func isLogBackSupport(tikvVersion string) bool {
+	v, err := semver.NewVersion(tikvVersion)
 	if err != nil {
-		klog.Errorf("Parse version %s failure, error: %v", version, err)
+		klog.Errorf("Parse version %s failure, error: %v", tikvVersion, err)
 		return true
 	}
 	if tikvLessThanV610.Check(v) {

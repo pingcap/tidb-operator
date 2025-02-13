@@ -20,15 +20,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/constants"
-	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
-	backuputil "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
-	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -37,6 +28,17 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
+
+	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/constants"
+	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
+	backuputil "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
+	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 )
 
 var (
@@ -296,9 +298,12 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 			}, nil)
 			return err
 		}
+		tikvGroup, err := util.FirstTikvGroup(bm.cli, backupNamespace, backup.Spec.BR.Cluster)
+		if err != nil {
+			return err
+		}
 
-		tikvImage := "" // FIXME(ideascf): set tikv image
-		err = backuputil.ValidateBackup(backup, tikvImage, cluster)
+		err = backuputil.ValidateBackup(backup, tikvGroup.Spec.Template.Spec.Version, cluster)
 	}
 
 	if err != nil {
@@ -750,6 +755,10 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 	if err != nil {
 		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster), err
 	}
+	tikvGroup, err := util.FirstTikvGroup(bm.cli, ns, backup.Spec.BR.Cluster)
+	if err != nil {
+		return nil, fmt.Sprintf("failed to get tikv group %s/%s", ns, backup.Spec.BR.Cluster), err
+	}
 
 	var (
 		envVars []corev1.EnvVar
@@ -782,8 +791,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--backupName=%s", name),
 	}
-	tikvImage := "" // FIXME(ideascf): set tikv image
-	_, tikvVersion := backuputil.ParseImage(tikvImage)
+	tikvVersion := tikvGroup.Spec.Template.Spec.Version
 	if tikvVersion != "" {
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
@@ -827,7 +835,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
 
-	if cluster.IsTLSClusterEnabled() {
+	if coreutil.IsTLSClusterEnabled(cluster) {
 		args = append(args, "--cluster-tls=true")
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      corev1alpha1.VolumeNameClusterClientTLS,
@@ -838,7 +846,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 			Name: corev1alpha1.VolumeNameClusterClientTLS,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: corev1alpha1.TLSClusterClientSecretName(backup.Spec.BR.Cluster),
+					SecretName: coreutil.TLSClusterClientSecretName(backup.Spec.BR.Cluster),
 				},
 			},
 		})
