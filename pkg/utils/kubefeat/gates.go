@@ -88,6 +88,9 @@ func (g *featureGates) Stage(key Feature) StagedFeature {
 }
 
 func MustInitFeatureGates(cfg *rest.Config) {
+	if defaultFeatureGates != nil {
+		return
+	}
 	gates, err := NewFeatureGates(cfg)
 	if err != nil {
 		// TODO: use a common panic util to panic
