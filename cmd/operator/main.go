@@ -38,6 +38,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/controllers/br/backup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/cluster"
 	"github.com/pingcap/tidb-operator/pkg/controllers/pd"
 	"github.com/pingcap/tidb-operator/pkg/controllers/pdgroup"
@@ -233,6 +234,11 @@ func setupControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientManage
 	if err := tiflash.Setup(mgr, c, pdcm, vm); err != nil {
 		return fmt.Errorf("unable to create controller TiFlash: %w", err)
 	}
+	// set up BR controllers start
+	if err := backup.Setup(mgr, c, pdcm); err != nil {
+		return fmt.Errorf("unable to create controller TiFlash: %w", err)
+	}
+	// set up BR controllers end
 	return nil
 }
 
