@@ -75,6 +75,10 @@ type InstanceState[I runtime.Instance] interface {
 	Instance() I
 }
 
+type JobState[J runtime.Job] interface {
+	Job() J
+}
+
 type InstanceAndPodState[I runtime.Instance] interface {
 	InstanceState[I]
 	PodState

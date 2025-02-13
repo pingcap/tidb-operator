@@ -35,6 +35,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
+func TaskContextResource[T any, PT Object[T]](name string, w ResourceInitializer[T], c client.Client, shouldExist bool) task.Task {
+	return taskContextResource[T, PT](name, w, c, shouldExist)
+}
+
 func taskContextResource[T any, PT Object[T]](name string, w ResourceInitializer[T], c client.Client, shouldExist bool) task.Task {
 	return task.NameTaskFunc("Context"+name, func(ctx context.Context) task.Result {
 		var obj PT = new(T)
