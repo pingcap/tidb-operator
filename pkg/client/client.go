@@ -35,6 +35,7 @@ import (
 	"sigs.k8s.io/structured-merge-diff/v4/typed"
 
 	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/pkg/utils/kubefeat"
 	forkedproto "github.com/pingcap/tidb-operator/third_party/kube-openapi/pkg/util/proto"
 )
 
@@ -189,6 +190,8 @@ func gvToAPIPath(gv schema.GroupVersion) string {
 }
 
 func New(cfg *rest.Config, opts client.Options) (Client, error) {
+	kubefeat.MustInitFeatureGates(cfg)
+
 	dc, err := discovery.NewDiscoveryClientForConfig(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("cannot new discovery client: %w", err)
@@ -199,7 +202,7 @@ func New(cfg *rest.Config, opts client.Options) (Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	gvs := scheme.GroupVersions
+	gvs := scheme.GroupVersions()
 
 	parser, err := NewGVKParser(gvs, paths)
 	if err != nil {
