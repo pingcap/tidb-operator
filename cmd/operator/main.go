@@ -283,7 +283,7 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 			Label: labels.Everything(),
 		},
 	}
-	if kubefeat.FeatureGates.Stage(kubefeat.VolumeAttributesClass).Enabled(kubefeat.BETA) {
+	if kubefeat.Stage(kubefeat.VolumeAttributesClass).Enabled(kubefeat.BETA) {
 		byObj[&storagev1beta1.VolumeAttributesClass{}] = cache.ByObject{
 			Label: labels.Everything(),
 		}
