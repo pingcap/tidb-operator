@@ -103,15 +103,16 @@ type BackupManager interface {
 }
 
 type backupManager struct {
-	cli           client.Client
-	backupCleaner BackupCleaner
-	backupTracker BackupTracker
-	statusUpdater BackupConditionUpdaterInterface
+	cli                client.Client
+	backupCleaner      BackupCleaner
+	backupTracker      BackupTracker
+	statusUpdater      BackupConditionUpdaterInterface
+	backupManagerImage string
 	// manifestFetchers []ManifestFetcher
 }
 
 // NewBackupManager return backupManager
-func NewBackupManager(cli client.Client, pdcm pdm.PDClientManager, eventRecorder record.EventRecorder) BackupManager {
+func NewBackupManager(cli client.Client, pdcm pdm.PDClientManager, eventRecorder record.EventRecorder, backupManagerImage string) BackupManager {
 	statusUpdater := NewRealBackupConditionUpdater(cli, eventRecorder)
 	// TODO(ideascf): remove me, EBS volume snapshot backup is deprecated in v2
 	// manifestFetchers := []ManifestFetcher{
@@ -122,10 +123,11 @@ func NewBackupManager(cli client.Client, pdcm pdm.PDClientManager, eventRecorder
 	// 	NewTiDBNgMonitoringFetcher(deps.TiDBNGMonitoringLister),
 	// }
 	return &backupManager{
-		cli:           cli,
-		backupCleaner: NewBackupCleaner(cli, statusUpdater),
-		backupTracker: NewBackupTracker(cli, pdcm, statusUpdater),
-		statusUpdater: statusUpdater,
+		cli:                cli,
+		backupCleaner:      NewBackupCleaner(cli, statusUpdater, backupManagerImage),
+		backupTracker:      NewBackupTracker(cli, pdcm, statusUpdater),
+		statusUpdater:      statusUpdater,
+		backupManagerImage: backupManagerImage,
 		// manifestFetchers: manifestFetchers,
 	}
 }

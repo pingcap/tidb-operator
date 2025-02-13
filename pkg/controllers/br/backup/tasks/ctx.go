@@ -21,6 +21,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
+type Config struct {
+	BackupManagerImage string
+}
 type ReconcileContext struct {
 	PDClientManager pdm.PDClientManager
 	State
@@ -29,6 +32,8 @@ type ReconcileContext struct {
 
 	// mark pdgroup is bootstrapped if cache of pd is synced
 	IsBootstrapped bool
+
+	Config Config
 }
 
 // TODO: move to pdapi

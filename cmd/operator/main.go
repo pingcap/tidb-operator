@@ -58,6 +58,14 @@ import (
 
 var setupLog = ctrl.Log.WithName("setup").WithValues(version.Get().KeysAndValues()...)
 
+type brConfig struct {
+	backupManagerImage string
+}
+
+var (
+	brConf = &brConfig{}
+)
+
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
@@ -65,6 +73,7 @@ func main() {
 	var maxConcurrentReconciles int
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.StringVar(&brConf.backupManagerImage, "backup-manager-image", "", "The image of backup-manager.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", true,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -235,7 +244,9 @@ func setupControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientManage
 		return fmt.Errorf("unable to create controller TiFlash: %w", err)
 	}
 	// set up BR controllers start
-	if err := backup.Setup(mgr, c, pdcm); err != nil {
+	if err := backup.Setup(mgr, c, pdcm, backup.Config{
+		BackupManagerImage: brConf.backupManagerImage,
+	}); err != nil {
 		return fmt.Errorf("unable to create controller TiFlash: %w", err)
 	}
 	// set up BR controllers end

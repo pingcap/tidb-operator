@@ -19,31 +19,36 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"k8s.io/client-go/tools/record"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/backup/tasks"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
-	"k8s.io/client-go/tools/record"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
+type Config tasks.Config
 type Reconciler struct {
 	Logger        logr.Logger
 	Client        client.Client
 	PDCM          pdm.PDClientManager
 	EventRecorder record.EventRecorder
+
+	Config Config
 }
 
-func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager) error {
+func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, conf Config) error {
 	r := &Reconciler{
 		Logger:        mgr.GetLogger().WithName("Backup"),
 		Client:        c,
 		PDCM:          pdcm,
 		EventRecorder: mgr.GetEventRecorderFor("backup"),
+		Config:        conf,
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.Backup{}).
@@ -66,6 +71,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	rtx := &tasks.ReconcileContext{
 		PDClientManager: r.PDCM,
 		State:           tasks.NewState(req.NamespacedName),
+		Config:          tasks.Config(r.Config),
 	}
 
 	runner := r.NewRunner(rtx, reporter)

@@ -47,15 +47,17 @@ type BackupCleaner interface {
 }
 
 type backupCleaner struct {
-	cli           client.Client
-	statusUpdater BackupConditionUpdaterInterface
+	cli                client.Client
+	statusUpdater      BackupConditionUpdaterInterface
+	backupManagerImage string
 }
 
 // NewBackupCleaner returns a BackupCleaner
-func NewBackupCleaner(cli client.Client, statusUpdater BackupConditionUpdaterInterface) BackupCleaner {
+func NewBackupCleaner(cli client.Client, statusUpdater BackupConditionUpdaterInterface, backupManagerImage string) BackupCleaner {
 	return &backupCleaner{
-		cli:           cli,
-		statusUpdater: statusUpdater,
+		cli:                cli,
+		statusUpdater:      statusUpdater,
+		backupManagerImage: backupManagerImage,
 	}
 }
 
@@ -287,7 +289,7 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 			Containers: []corev1.Container{
 				{
 					Name:            metav1alpha1.BackupJobLabelVal,
-					Image:           "", // FIXME(ideascf): set backup-manager's image
+					Image:           bc.backupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Env:             util.AppendEnvIfPresent(envVars, "TZ"),
@@ -491,7 +493,7 @@ func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1
 			Containers: []corev1.Container{
 				{
 					Name:            metav1alpha1.BackupJobLabelVal,
-					Image:           "", // FIXME(ideascf): set backup-manager's image
+					Image:           bc.backupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    volumeMounts,
