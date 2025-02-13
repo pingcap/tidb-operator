@@ -199,7 +199,7 @@ func New(cfg *rest.Config, opts client.Options) (Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	gvs := scheme.GroupVersions
+	gvs := scheme.GroupVersions()
 
 	parser, err := NewGVKParser(gvs, paths)
 	if err != nil {
