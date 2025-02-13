@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/meta"
+	kuberuntime "k8s.io/apimachinery/pkg/runtime"
+
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	"k8s.io/apimachinery/pkg/api/meta"
-	kuberuntime "k8s.io/apimachinery/pkg/runtime"
 )
 
 func ListGroups[
