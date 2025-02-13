@@ -154,8 +154,8 @@ func (m *EBSModifier) Modify(ctx context.Context, pvc *corev1.PersistentVolumeCl
 	}
 
 	if m.cli == nil {
-		cli, err := NewClient(ctx)
-		if err != nil {
+		cli, err2 := NewClient(ctx)
+		if err2 != nil {
 			return false, fmt.Errorf("cannot new aws client: %w", err)
 		}
 		m.cli = cli

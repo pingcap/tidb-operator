@@ -1,3 +1,17 @@
+// Copyright 2024 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package features
 
 import (
@@ -48,7 +62,7 @@ func TestFeatureGates(t *testing.T) {
 		},
 		{
 			desc: "in another cluster, bbb is enabled",
-			cluster: fakeCluster("xxx", "aaa", 1, uid1, []meta.FeatureGate{
+			cluster: fakeCluster("xxx", "bbb", 1, uid1, []meta.FeatureGate{
 				{
 					Name: meta.Feature("bbb"),
 				},
@@ -80,7 +94,7 @@ func TestFeatureGates(t *testing.T) {
 			enabled: false,
 		},
 		{
-			// not happend actually
+			// not happen actually
 			desc: "cluster uid and generation are not changed, only test cache is worked, aaa is still disabled",
 			cluster: fakeCluster("", "aaa", 2, uid1, []meta.FeatureGate{
 				{
@@ -92,7 +106,7 @@ func TestFeatureGates(t *testing.T) {
 			enabled: false,
 		},
 		{
-			// not happend actually
+			// not happen actually
 			desc: "cluster uid and generation are not changed, only test cache is worked, bbb is still enabled",
 			cluster: fakeCluster("", "aaa", 2, uid1, []meta.FeatureGate{
 				{
@@ -137,12 +151,10 @@ func TestFeatureGates(t *testing.T) {
 			assert.Panics(t, func() {
 				fg.Enabled(c.cluster.Namespace, c.cluster.Name, c.feat)
 			}, c.desc)
-
 		}
 		fg.Register(c.cluster)
 		enabled := fg.Enabled(c.cluster.Namespace, c.cluster.Name, c.feat)
 		assert.Equal(t, c.enabled, enabled, c.desc)
-
 	}
 }
 

@@ -20,6 +20,7 @@
 package v1alpha1
 
 import (
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -125,6 +126,11 @@ func (in *ClusterSpec) DeepCopyInto(out *ClusterSpec) {
 		*out = new(int32)
 		**out = **in
 	}
+	if in.FeatureGates != nil {
+		in, out := &in.FeatureGates, &out.FeatureGates
+		*out = make([]metav1alpha1.FeatureGate, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
@@ -152,6 +158,11 @@ func (in *ClusterStatus) DeepCopyInto(out *ClusterStatus) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.FeatureGates != nil {
+		in, out := &in.FeatureGates, &out.FeatureGates
+		*out = make([]metav1alpha1.FeatureGateStatus, len(*in))
+		copy(*out, *in)
 	}
 	return
 }
