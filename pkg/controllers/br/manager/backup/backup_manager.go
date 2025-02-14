@@ -76,7 +76,7 @@ type BackupUpdateStatus struct {
 	// ProgressStep the step name of progress.
 	ProgressStep *string
 	// Progress is the step's progress value.
-	Progress *float64
+	Progress *int
 	// ProgressUpdateTime is the progress update time.
 	ProgressUpdateTime *metav1.Time
 

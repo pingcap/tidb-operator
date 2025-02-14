@@ -18,13 +18,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 )
 
 // BackupConditionUpdaterInterface enables updating Backup conditions.
@@ -57,7 +58,7 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 		currentBackup := &v1alpha1.Backup{}
 		if err := u.cli.Get(context.TODO(), client.ObjectKey{Namespace: ns, Name: backupName}, currentBackup); err == nil {
 			// make a copy so we don't mutate the shared cache
-			*backup = *(currentBackup.DeepCopy()) // FIXME(chenfei): do we need to deep copy or just assign?
+			*backup = *(currentBackup.DeepCopy()) // FIXME(ideascf): do we need to deep copy or just assign?
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %v", ns, backupName, err))
 			return err
@@ -422,7 +423,7 @@ func updateLogSubCommandConditionOnly(status *v1alpha1.LogSubCommandStatus, cond
 }
 
 // updateBRProgress updates progress for backup/restore.
-func updateBRProgress(progresses []v1alpha1.Progress, step *string, progress *float64, updateTime *metav1.Time) ([]v1alpha1.Progress, bool) {
+func updateBRProgress(progresses []v1alpha1.Progress, step *string, progress *int, updateTime *metav1.Time) ([]v1alpha1.Progress, bool) {
 	var oldProgress *v1alpha1.Progress
 	for i, p := range progresses {
 		if p.Step == *step {
