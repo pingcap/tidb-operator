@@ -33,52 +33,56 @@ const (
 
 // TODO(liubo02): extract to common task
 //
-//nolint:gocyclo // refactor is possible
+//nolint:gocyclo // refactor if possible
 func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Status", func(ctx context.Context) task.Result {
 		needUpdate := false
-		tiflash := state.TiFlash()
+		ticdc := state.TiCDC()
 		pod := state.Pod()
 		// TODO(liubo02): simplify it
 		var healthy bool
+
 		if pod != nil &&
 			statefulset.IsPodRunningAndReady(pod) &&
 			!state.PodIsTerminating &&
-			state.StoreState == v1alpha1.StoreStateServing {
+			state.Healthy {
 			healthy = true
 		}
-		needUpdate = syncHealthCond(tiflash, healthy) || needUpdate
-		needUpdate = syncSuspendCond(tiflash) || needUpdate
-		needUpdate = SetIfChanged(&tiflash.Status.ID, state.StoreID) || needUpdate
-		needUpdate = SetIfChanged(&tiflash.Status.State, state.StoreState) || needUpdate
 
-		needUpdate = SetIfChanged(&tiflash.Status.ObservedGeneration, tiflash.Generation) || needUpdate
-		needUpdate = SetIfChanged(&tiflash.Status.UpdateRevision, tiflash.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+		needUpdate = syncHealthCond(ticdc, healthy) || needUpdate
+		needUpdate = syncSuspendCond(ticdc) || needUpdate
+
+		needUpdate = SetIfChanged(&ticdc.Status.ObservedGeneration, ticdc.Generation) || needUpdate
+		needUpdate = SetIfChanged(&ticdc.Status.UpdateRevision, ticdc.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 
 		if healthy {
-			needUpdate = SetIfChanged(&tiflash.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+			needUpdate = SetIfChanged(&ticdc.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 		}
 
 		if needUpdate {
-			if err := c.Status().Update(ctx, tiflash); err != nil {
+			if err := c.Status().Update(ctx, state.TiCDC()); err != nil {
 				return task.Fail().With("cannot update status: %w", err)
 			}
 		}
 
-		if state.PodIsTerminating {
-			return task.Retry(defaultTaskWaitDuration).With("pod may be terminating, requeue to retry")
-		}
+		if !healthy {
+			// TODO(liubo02): delete pod should retrigger the events, try to change to wait
+			if state.PodIsTerminating {
+				return task.Retry(defaultTaskWaitDuration).With("pod may be terminating, requeue to retry")
+			}
 
-		// TODO: use a condition to refactor it
-		if !healthy || tiflash.Status.ID == "" {
-			return task.Wait().With("tiflash may not be synced, wait")
+			if pod != nil && statefulset.IsPodRunningAndReady(pod) {
+				return task.Retry(defaultTaskWaitDuration).With("ticdc is not healthy, requeue to retry")
+			}
+
+			return task.Wait().With("pod of ticdc is not ready, wait")
 		}
 
 		return task.Complete().With("status is synced")
 	})
 }
 
-func syncHealthCond(tiflash *v1alpha1.TiFlash, healthy bool) bool {
+func syncHealthCond(ticdc *v1alpha1.TiCDC, healthy bool) bool {
 	var (
 		status = metav1.ConditionFalse
 		reason = "Unhealthy"
@@ -90,21 +94,21 @@ func syncHealthCond(tiflash *v1alpha1.TiFlash, healthy bool) bool {
 		msg = "instance is healthy"
 	}
 
-	return meta.SetStatusCondition(&tiflash.Status.Conditions, metav1.Condition{
+	return meta.SetStatusCondition(&ticdc.Status.Conditions, metav1.Condition{
 		Type:               v1alpha1.CondHealth,
 		Status:             status,
-		ObservedGeneration: tiflash.Generation,
+		ObservedGeneration: ticdc.Generation,
 		Reason:             reason,
 		Message:            msg,
 	})
 }
 
-func syncSuspendCond(tiflash *v1alpha1.TiFlash) bool {
+func syncSuspendCond(ticdc *v1alpha1.TiCDC) bool {
 	// always set it as unsuspended
-	return meta.SetStatusCondition(&tiflash.Status.Conditions, metav1.Condition{
+	return meta.SetStatusCondition(&ticdc.Status.Conditions, metav1.Condition{
 		Type:               v1alpha1.CondSuspended,
 		Status:             metav1.ConditionFalse,
-		ObservedGeneration: tiflash.Generation,
+		ObservedGeneration: ticdc.Generation,
 		Reason:             v1alpha1.ReasonUnsuspended,
 		Message:            "instance is not suspended",
 	})
@@ -112,9 +116,6 @@ func syncSuspendCond(tiflash *v1alpha1.TiFlash) bool {
 
 // TODO: move to utils
 func SetIfChanged[T comparable](dst *T, src T) bool {
-	if src == *new(T) {
-		return false
-	}
 	if *dst != src {
 		*dst = src
 		return true

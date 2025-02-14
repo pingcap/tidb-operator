@@ -93,7 +93,7 @@ func TestTaskStatus(t *testing.T) {
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
 						Reason:             v1alpha1.ReasonUnsuspended,
-						Message:            "instace is not suspended",
+						Message:            "instance is not suspended",
 					},
 				}
 
@@ -153,7 +153,7 @@ func TestTaskStatus(t *testing.T) {
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
 						Reason:             v1alpha1.ReasonUnsuspended,
-						Message:            "instace is not suspended",
+						Message:            "instance is not suspended",
 					},
 				}
 
@@ -212,7 +212,7 @@ func TestTaskStatus(t *testing.T) {
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
 						Reason:             v1alpha1.ReasonUnsuspended,
-						Message:            "instace is not suspended",
+						Message:            "instance is not suspended",
 					},
 				}
 
@@ -270,7 +270,7 @@ func TestTaskStatus(t *testing.T) {
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
 						Reason:             v1alpha1.ReasonUnsuspended,
-						Message:            "instace is not suspended",
+						Message:            "instance is not suspended",
 					},
 				}
 

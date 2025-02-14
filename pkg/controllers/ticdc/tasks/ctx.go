@@ -16,11 +16,16 @@ package tasks
 
 import (
 	"context"
+	"crypto/tls"
+	"fmt"
 	"time"
 
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/ticdcapi/v1"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	tlsutil "github.com/pingcap/tidb-operator/pkg/utils/tls"
 )
 
 const (
@@ -38,7 +43,7 @@ type ReconcileContext struct {
 
 	// ConfigHash stores the hash of **user-specified** config (i.e.`.Spec.Config`),
 	// which will be used to determine whether the config has changed.
-	// This ensures that our config overlay logic will not restart the tidb cluster unexpectedly.
+	// This ensures that our config overlay logic will not restart the TiCDC cluster unexpectedly.
 	ConfigHash string
 
 	// Pod cannot be updated when call DELETE API, so we have to set this field to indicate
@@ -48,6 +53,28 @@ type ReconcileContext struct {
 
 func TaskContextInfoFromTiCDC(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("ContextInfoFromTiCDC", func(ctx context.Context) task.Result {
+		var (
+			scheme    = "http"
+			tlsConfig *tls.Config
+		)
+		ck := state.Cluster()
+		if coreutil.IsTLSClusterEnabled(ck) {
+			scheme = "https"
+			var err error
+			tlsConfig, err = tlsutil.GetTLSConfigFromSecret(ctx, c,
+				ck.Namespace, coreutil.TLSClusterClientSecretName(ck.Name))
+			if err != nil {
+				return task.Fail().With("cannot get tls config from secret: %w", err)
+			}
+		}
+		state.TiCDCClient = ticdcapi.NewTiCDCClient(TiCDCServiceURL(state.TiCDC(), scheme),
+			coreutil.PodName[scope.TiCDC](state.TiCDC()), ticdcRequestTimeout, tlsConfig)
+		healthy, err := state.TiCDCClient.IsHealthy(ctx)
+		if err != nil {
+			return task.Complete().With(
+				fmt.Sprintf("context without health info is completed, ticdc can't be reached: %v", err))
+		}
+		state.Healthy = healthy
 
 		return task.Complete().With("get info from ticdc")
 	})

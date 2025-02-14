@@ -47,11 +47,10 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// normal process
 		tasks.TaskContextInfoFromTiCDC(state, r.Client),
-		// tasks.TaskConfigMap(state, r.Client),
-		// tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifier),
-		// tasks.TaskPod(state, r.Client),
-		// tasks.TaskServerLabels(state, r.Client),
-		// tasks.TaskStatus(state, r.Client),
+		tasks.TaskConfigMap(state, r.Client),
+		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifierFactory),
+		tasks.TaskPod(state, r.Client),
+		tasks.TaskStatus(state, r.Client),
 	)
 
 	return runner
