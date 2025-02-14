@@ -33,14 +33,15 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/pingcap/errors"
 	kvbackup "github.com/pingcap/kvproto/pkg/brpb"
-	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
-	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+
+	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
+	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
 )
 
 var (
@@ -200,74 +201,78 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, error
 	return args, nil
 }
 
+/*
 // ConstructDumplingOptionsForBackup constructs dumpling options for backup
-func ConstructDumplingOptionsForBackup(backup *v1alpha1.Backup) []string {
-	var args []string
-	config := backup.Spec
 
-	if len(config.TableFilter) > 0 {
-		for _, tableFilter := range config.TableFilter {
-			args = append(args, "--filter", tableFilter)
-		}
-	} else if config.Dumpling != nil && config.Dumpling.TableFilter != nil && len(config.Dumpling.TableFilter) > 0 {
-		for _, tableFilter := range config.Dumpling.TableFilter {
-			args = append(args, "--filter", tableFilter)
-		}
-	} else {
-		args = append(args, defaultTableFilterOptions...)
-	}
+	func ConstructDumplingOptionsForBackup(backup *v1alpha1.Backup) []string {
+		var args []string
+		config := backup.Spec
 
-	if config.Dumpling == nil {
-		args = append(args, defaultOptions...)
+		if len(config.TableFilter) > 0 {
+			for _, tableFilter := range config.TableFilter {
+				args = append(args, "--filter", tableFilter)
+			}
+		} else if config.Dumpling != nil && config.Dumpling.TableFilter != nil && len(config.Dumpling.TableFilter) > 0 {
+			for _, tableFilter := range config.Dumpling.TableFilter {
+				args = append(args, "--filter", tableFilter)
+			}
+		} else {
+			args = append(args, defaultTableFilterOptions...)
+		}
+
+		if config.Dumpling == nil {
+			args = append(args, defaultOptions...)
+			return args
+		}
+
+		if len(config.Dumpling.Options) != 0 {
+			args = append(args, config.Dumpling.Options...)
+		} else {
+			args = append(args, defaultOptions...)
+		}
+
 		return args
 	}
 
-	if len(config.Dumpling.Options) != 0 {
-		args = append(args, config.Dumpling.Options...)
-	} else {
-		args = append(args, defaultOptions...)
-	}
-
-	return args
-}
-
 // ConstructBRGlobalOptionsForRestore constructs BR global options for restore.
-func ConstructBRGlobalOptionsForRestore(restore *v1alpha1.Restore) ([]string, error) {
-	var args []string
-	config := restore.Spec
-	if config.BR == nil {
-		return nil, fmt.Errorf("no config for br in restore %s/%s", restore.Namespace, restore.Name)
-	}
-	args = append(args, constructBRGlobalOptions(config.BR)...)
-	storageArgs, err := util.GenStorageArgsForFlag(restore.Spec.StorageProvider, "")
-	if err != nil {
-		return nil, err
-	}
-	args = append(args, storageArgs...)
 
-	if len(config.TableFilter) > 0 {
-		for _, tableFilter := range config.TableFilter {
-			args = append(args, "--filter", tableFilter)
+	func ConstructBRGlobalOptionsForRestore(restore *v1alpha1.Restore) ([]string, error) {
+		var args []string
+		config := restore.Spec
+		if config.BR == nil {
+			return nil, fmt.Errorf("no config for br in restore %s/%s", restore.Namespace, restore.Name)
 		}
+		args = append(args, constructBRGlobalOptions(config.BR)...)
+		storageArgs, err := util.GenStorageArgsForFlag(restore.Spec.StorageProvider, "")
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, storageArgs...)
+
+		if len(config.TableFilter) > 0 {
+			for _, tableFilter := range config.TableFilter {
+				args = append(args, "--filter", tableFilter)
+			}
+			return args, nil
+		}
+
+		switch restore.Spec.Type {
+		case v1alpha1.BackupTypeTable:
+			if config.BR.Table != "" {
+				args = append(args, fmt.Sprintf("--table=%s", config.BR.Table))
+			}
+			if config.BR.DB != "" {
+				args = append(args, fmt.Sprintf("--db=%s", config.BR.DB))
+			}
+		case v1alpha1.BackupTypeDB:
+			if config.BR.DB != "" {
+				args = append(args, fmt.Sprintf("--db=%s", config.BR.DB))
+			}
+		}
+
 		return args, nil
 	}
-
-	switch restore.Spec.Type {
-	case v1alpha1.BackupTypeTable:
-		if config.BR.Table != "" {
-			args = append(args, fmt.Sprintf("--table=%s", config.BR.Table))
-		}
-		if config.BR.DB != "" {
-			args = append(args, fmt.Sprintf("--db=%s", config.BR.DB))
-		}
-	case v1alpha1.BackupTypeDB:
-		if config.BR.DB != "" {
-			args = append(args, fmt.Sprintf("--db=%s", config.BR.DB))
-		}
-	}
-
-	return args, nil
-}
+*/
 
 // constructBRGlobalOptions constructs BR basic global options.
 func constructBRGlobalOptions(config *v1alpha1.BRConfig) []string {

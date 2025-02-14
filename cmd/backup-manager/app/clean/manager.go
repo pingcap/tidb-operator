@@ -32,14 +32,14 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
-	backupMgr "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/backup"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	backupMgr "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/backup"
 )
 
 // Manager mainly used to manage backup related work
@@ -66,7 +66,11 @@ func (bm *Manager) ProcessCleanBackup() error {
 	ctx, cancel := util.GetContextForTerminationSignals(fmt.Sprintf("clean %s", bm.BackupName))
 	defer cancel()
 
-	backup, err := bm.backupLister.Backups(bm.Namespace).Get(bm.BackupName)
+	backup := &v1alpha1.Backup{}
+	err := bm.cli.Get(ctx, client.ObjectKey{
+		Namespace: bm.Namespace,
+		Name:      bm.BackupName,
+	}, backup)
 	if err != nil {
 		return fmt.Errorf("can't find cluster %s backup %s CRD object, err: %v", bm, bm.BackupName, err)
 	}
@@ -78,10 +82,12 @@ func (bm *Manager) performCleanBackup(ctx context.Context, backup *v1alpha1.Back
 	if backup.Status.BackupPath == "" {
 		klog.Errorf("cluster %s backup path is empty", bm)
 		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "BackupPathIsEmpty",
-			Message: fmt.Sprintf("the cluster %s backup path is empty", bm),
+			Condition: metav1.Condition{
+				Type:    string(v1alpha1.BackupFailed),
+				Status:  metav1.ConditionTrue,
+				Reason:  "BackupPathIsEmpty",
+				Message: fmt.Sprintf("the cluster %s backup path is empty", bm),
+			},
 		}, nil)
 	}
 
@@ -117,10 +123,12 @@ func (bm *Manager) performCleanBackup(ctx context.Context, backup *v1alpha1.Back
 		errs = append(errs, err)
 		klog.Errorf("clean cluster %s backup %s failed, err: %s", bm, backup.Status.BackupPath, err)
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupCleanFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "CleanBackupDataFailed",
-			Message: err.Error(),
+			Condition: metav1.Condition{
+				Type:    string(v1alpha1.BackupCleanFailed),
+				Status:  metav1.ConditionTrue,
+				Reason:  "CleanBackupDataFailed",
+				Message: err.Error(),
+			},
 		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
@@ -128,18 +136,22 @@ func (bm *Manager) performCleanBackup(ctx context.Context, backup *v1alpha1.Back
 
 	klog.Infof("clean cluster %s backup %s success", bm, backup.Status.BackupPath)
 	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Type:   v1alpha1.BackupClean,
-		Status: corev1.ConditionTrue,
+		Condition: metav1.Condition{
+			Type:   string(v1alpha1.BackupClean),
+			Status: metav1.ConditionTrue,
+		},
 	}, nil)
 }
 
 // getNextBackup to get next backup sorted by start time
 func (bm *Manager) getNextBackup(ctx context.Context, backup *v1alpha1.Backup) *v1alpha1.Backup {
 	var err error
-	bks, err := bm.backupLister.Backups(backup.Namespace).List(labels.Everything())
+	backupList := &v1alpha1.BackupList{}
+	err = bm.cli.List(ctx, backupList, client.InNamespace(backup.Namespace))
 	if err != nil {
 		return nil
 	}
+	bks := backupList.Items
 
 	// sort the backup list by TimeStarted, since volume snapshot is point-in-time (start time) backup
 	sort.Slice(bks, func(i, j int) bool {
@@ -156,10 +168,10 @@ func (bm *Manager) getNextBackup(ctx context.Context, backup *v1alpha1.Backup) *
 }
 
 // getVolumeSnapshotBackup get the first volume-snapshot backup from backup list, which may contain non-volume snapshot
-func (bm *Manager) getVolumeSnapshotBackup(backups []*v1alpha1.Backup) *v1alpha1.Backup {
+func (bm *Manager) getVolumeSnapshotBackup(backups []v1alpha1.Backup) *v1alpha1.Backup {
 	for _, bk := range backups {
 		if bk.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
-			return bk
+			return &bk
 		}
 	}
 

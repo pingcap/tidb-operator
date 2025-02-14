@@ -12,26 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Copyright 2019 PingCAP, Inc.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package clean
 
 import (
+	"context"
 	"fmt"
+	"io"
+	"os/exec"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/klog"
+
+	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	bkutil "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
 )
 
 var (
@@ -149,6 +145,7 @@ func (bo *Options) deleteVolumeSnapshots(meta *bkutil.EBSBasedBRMeta, deleteRati
 
 	return nil
 }
+*/
 
 // CleanBRRemoteBackupData clean the backup data from remote
 func (bo *Options) CleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1.Backup) error {
@@ -271,4 +268,3 @@ func (bo *Options) copyRemoteBackupMetaToLocal(ctx context.Context, bucket strin
 	klog.Infof("cluster %s backup %s was copy successfully", bo, bucket)
 	return nil
 }
-*/

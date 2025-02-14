@@ -40,13 +40,15 @@ import (
 	"strings"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
+
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	backupMgr "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/backup"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog/v2"
 )
 
 // Options contains the input arguments to the backup command
@@ -275,11 +277,12 @@ func (bo *Options) backupCommandTemplate(backup *v1alpha1.Backup, specificArgs [
 		clusterNamespace = backup.Namespace
 	}
 	args := make([]string, 0)
-	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:%d", backup.Spec.BR.Cluster, clusterNamespace, v1alpha1.DefaultPDClientPort))
+	// fixme(ideascf): use PDGroupClientPort?
+	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:%d", backup.Spec.BR.Cluster, clusterNamespace, corev1alpha1.DefaultPDPortClient))
 	if bo.TLSCluster {
-		args = append(args, fmt.Sprintf("--ca=%s", path.Join(corev1alpha1.PathClusterClientTLS, corev1.ServiceAccountRootCAKey)))
-		args = append(args, fmt.Sprintf("--cert=%s", path.Join(corev1alpha1.PathClusterClientTLS, corev1.TLSCertKey)))
-		args = append(args, fmt.Sprintf("--key=%s", path.Join(corev1alpha1.PathClusterClientTLS, corev1.TLSPrivateKeyKey)))
+		args = append(args, fmt.Sprintf("--ca=%s", path.Join(corev1alpha1.DirPathClusterClientTLS, corev1.ServiceAccountRootCAKey)))
+		args = append(args, fmt.Sprintf("--cert=%s", path.Join(corev1alpha1.DirPathClusterClientTLS, corev1.TLSCertKey)))
+		args = append(args, fmt.Sprintf("--key=%s", path.Join(corev1alpha1.DirPathClusterClientTLS, corev1.TLSPrivateKeyKey)))
 	}
 
 	if skipBackupArgs {
@@ -400,7 +403,7 @@ func (bo *Options) updateProgressFromFile(
 			}
 			if err := statusUpdater.Update(backup, nil, &backupMgr.BackupUpdateStatus{
 				ProgressStep:       &progressStep,
-				Progress:           &progress,
+				Progress:           ptr.To(int(progress)),
 				ProgressUpdateTime: &metav1.Time{Time: time.Now()},
 			}); err != nil {
 				klog.Errorf("Failed to update BackupUpdateStatus for cluster %s, %v", bo, err)

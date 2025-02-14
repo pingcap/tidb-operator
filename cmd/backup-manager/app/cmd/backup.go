@@ -32,22 +32,25 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/backup"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
-	"github.com/pingcap/tidb-operator/pkg/client"
-	backupMgr "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/backup"
-	"github.com/pingcap/tidb-operator/pkg/scheme"
-	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/backup"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	backupMgr "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/backup"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/pkg/version"
 )
 
 var setupLog = ctrl.Log.WithName("setup").WithValues(version.Get().KeysAndValues()...)
@@ -109,7 +112,7 @@ func runBackup(backupOpts backup.Options, kubecfg string) error {
 	// // waiting for the shared informer's store has synced.
 	// cache.WaitForCacheSync(ctx.Done(), backupInformer.Informer().HasSynced)
 
-	recorder := util.NewEventRecorder(newcli, "backup")
+	recorder := record.NewBroadcaster().NewRecorder(scheme.Scheme, corev1.EventSource{Component: "backup"})
 	statusUpdater := backupMgr.NewRealBackupConditionUpdater(newcli, recorder)
 	klog.Infof("start to process backup %s", backupOpts.String())
 	bm := backup.NewManager(newcli, statusUpdater, backupOpts)

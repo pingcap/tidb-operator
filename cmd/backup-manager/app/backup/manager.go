@@ -17,6 +17,7 @@ package backup
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -25,19 +26,18 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/dustin/go-humanize"
 	"github.com/pingcap/errors"
+
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/clean"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 
-	backupMgr "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/backup"
-	bkconstants "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/constants"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	backupMgr "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/backup"
 )
 
 const (
@@ -47,7 +47,7 @@ const (
 
 // Manager mainly used to manage backup related work
 type Manager struct {
-	backupLister  listers.BackupLister
+	cli           client.Client
 	StatusUpdater backupMgr.BackupConditionUpdaterInterface
 	Options
 }
@@ -58,12 +58,13 @@ func NewManager(
 	statusUpdater backupMgr.BackupConditionUpdaterInterface,
 	backupOpts Options) *Manager {
 	return &Manager{
-		backupLister,
+		cli,
 		statusUpdater,
 		backupOpts,
 	}
 }
 
+/* TODO(ideascf): remove this function, br.spec.From is deprecated in v2
 func (bm *Manager) setFromDBOptions(backup *v1alpha1.Backup) {
 	bm.Options.Host = backup.Spec.From.Host
 
@@ -81,6 +82,7 @@ func (bm *Manager) setFromDBOptions(backup *v1alpha1.Backup) {
 
 	bm.Options.Password = util.GetOptionValueFromEnv(bkconstants.TidbPasswordKey, bkconstants.BackupManagerEnvVarPrefix)
 }
+*/
 
 // ProcessBackup used to process the backup logic
 func (bm *Manager) ProcessBackup() error {
@@ -88,15 +90,18 @@ func (bm *Manager) ProcessBackup() error {
 	defer cancel()
 
 	var errs []error
-	backup, err := bm.backupLister.Backups(bm.Namespace).Get(bm.ResourceName)
+	backup := &v1alpha1.Backup{}
+	err := bm.cli.Get(ctx, client.ObjectKey{Namespace: bm.Namespace, Name: bm.ResourceName}, backup)
 	if err != nil {
 		errs = append(errs, err)
 		klog.Errorf("can't find cluster %s backup %s CRD object, err: %v", bm, bm.ResourceName, err)
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "GetBackupCRFailed",
-			Message: err.Error(),
+			Condition: metav1.Condition{
+				Type:    string(v1alpha1.BackupFailed),
+				Status:  metav1.ConditionTrue,
+				Reason:  "GetBackupCRFailed",
+				Message: err.Error(),
+			},
 		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
@@ -114,8 +119,10 @@ func (bm *Manager) ProcessBackup() error {
 	if backup.Spec.Mode == v1alpha1.BackupModeSnapshot && (backup.Status.Phase != v1alpha1.BackupScheduled || v1alpha1.IsBackupRestart(backup)) {
 		klog.Infof("snapshot backup %s was restarted, status is %s", bm, backup.Status.Phase)
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:   v1alpha1.BackupRestart,
-			Status: corev1.ConditionTrue,
+			Condition: metav1.Condition{
+				Type:   string(v1alpha1.BackupRestart),
+				Status: metav1.ConditionTrue,
+			},
 		}, nil)
 		if uerr != nil {
 			errs = append(errs, uerr)
@@ -206,10 +213,12 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	if err != nil {
 		errs = append(errs, err)
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "GetBackupRemotePathFailed",
-			Message: err.Error(),
+			Condition: metav1.Condition{
+				Type:    string(v1alpha1.BackupFailed),
+				Status:  metav1.ConditionTrue,
+				Reason:  "GetBackupRemotePathFailed",
+				Message: err.Error(),
+			},
 		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
@@ -219,8 +228,10 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 		BackupPath: &backupFullPath,
 	}
 	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Type:   v1alpha1.BackupPrepare,
-		Status: corev1.ConditionTrue,
+		Condition: metav1.Condition{
+			Type:   string(v1alpha1.BackupPrepare),
+			Status: metav1.ConditionTrue,
+		},
 	}, updatePathStatus); err != nil {
 		return err
 	}
@@ -237,10 +248,12 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 			errs = append(errs, err)
 			klog.Errorf("cluster %s get %s failed, err: %s", bm, constants.TikvGCVariable, err)
 			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  "GetTikvGCLifeTimeFailed",
-				Message: err.Error(),
+				Condition: metav1.Condition{
+					Type:    string(v1alpha1.BackupFailed),
+					Status:  metav1.ConditionTrue,
+					Reason:  "GetTikvGCLifeTimeFailed",
+					Message: err.Error(),
+				},
 			}, nil)
 			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
@@ -252,10 +265,12 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 			errs = append(errs, err)
 			klog.Errorf("cluster %s parse old %s failed, err: %s", bm, constants.TikvGCVariable, err)
 			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  "ParseOldTikvGCLifeTimeFailed",
-				Message: err.Error(),
+				Condition: metav1.Condition{
+					Type:    string(v1alpha1.BackupFailed),
+					Status:  metav1.ConditionTrue,
+					Reason:  "ParseOldTikvGCLifeTimeFailed",
+					Message: err.Error(),
+				},
 			}, nil)
 			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
@@ -268,10 +283,12 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 				errs = append(errs, err)
 				klog.Errorf("cluster %s parse configured %s failed, err: %s", bm, constants.TikvGCVariable, err)
 				uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-					Type:    v1alpha1.BackupFailed,
-					Status:  corev1.ConditionTrue,
-					Reason:  "ParseConfiguredTikvGCLifeTimeFailed",
-					Message: err.Error(),
+					Condition: metav1.Condition{
+						Type:    string(v1alpha1.BackupFailed),
+						Status:  metav1.ConditionTrue,
+						Reason:  "ParseConfiguredTikvGCLifeTimeFailed",
+						Message: err.Error(),
+					},
 				}, nil)
 				errs = append(errs, uerr)
 				return errorutils.NewAggregate(errs)
@@ -283,10 +300,12 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 				errs = append(errs, err)
 				klog.Errorf("cluster %s parse default %s failed, err: %s", bm, constants.TikvGCVariable, err)
 				uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-					Type:    v1alpha1.BackupFailed,
-					Status:  corev1.ConditionTrue,
-					Reason:  "ParseDefaultTikvGCLifeTimeFailed",
-					Message: err.Error(),
+					Condition: metav1.Condition{
+						Type:    string(v1alpha1.BackupFailed),
+						Status:  metav1.ConditionTrue,
+						Reason:  "ParseDefaultTikvGCLifeTimeFailed",
+						Message: err.Error(),
+					},
 				}, nil)
 				errs = append(errs, uerr)
 				return errorutils.NewAggregate(errs)
@@ -299,10 +318,12 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 				errs = append(errs, err)
 				klog.Errorf("cluster %s set tikv GC life time to %s failed, err: %s", bm, tikvGCLifeTime, err)
 				uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-					Type:    v1alpha1.BackupFailed,
-					Status:  corev1.ConditionTrue,
-					Reason:  "SetTikvGCLifeTimeFailed",
-					Message: err.Error(),
+					Condition: metav1.Condition{
+						Type:    string(v1alpha1.BackupFailed),
+						Status:  metav1.ConditionTrue,
+						Reason:  "SetTikvGCLifeTimeFailed",
+						Message: err.Error(),
+					},
 				}, nil)
 				errs = append(errs, uerr)
 				return errorutils.NewAggregate(errs)
@@ -322,8 +343,10 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 
 	// change Prepare to Running before real backup process start
 	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Type:   v1alpha1.BackupRunning,
-		Status: corev1.ConditionTrue,
+		Condition: metav1.Condition{
+			Type:   string(v1alpha1.BackupRunning),
+			Status: metav1.ConditionTrue,
+		},
 	}, nil); err != nil {
 		return err
 	}
@@ -331,30 +354,31 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	// run br binary to do the real job
 	backupErr := bm.backupData(ctx, backup, bm.StatusUpdater)
 
-	defer func() {
-		// Calculate the backup size for ebs backup job even if it fails
-		if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && !bm.Initialize {
-			fullBackupSize, incrementalBackupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider, backup.Spec.CalcSizeLevel)
-			if err != nil {
-				klog.Errorf("Failed to calc volume snapshot backup, err: %v", err)
-				return
-			}
+	// TODO(ideascf): remove this function, EBS volume snapshot backup is deprecated in v2
+	// defer func() {
+	// 	// Calculate the backup size for ebs backup job even if it fails
+	// 	if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && !bm.Initialize {
+	// 		fullBackupSize, incrementalBackupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider, backup.Spec.CalcSizeLevel)
+	// 		if err != nil {
+	// 			klog.Errorf("Failed to calc volume snapshot backup, err: %v", err)
+	// 			return
+	// 		}
 
-			backupSizeReadable := humanize.Bytes(uint64(fullBackupSize))
-			incrementalBackupSizeReadable := humanize.Bytes(uint64(incrementalBackupSize))
-			updateStatus := &backupMgr.BackupUpdateStatus{
-				BackupSize:                    &fullBackupSize,
-				BackupSizeReadable:            &backupSizeReadable,
-				IncrementalBackupSize:         &incrementalBackupSize,
-				IncrementalBackupSizeReadable: &incrementalBackupSizeReadable,
-				TimeCompleted:                 &metav1.Time{Time: time.Now()},
-			}
+	// 		backupSizeReadable := humanize.Bytes(uint64(fullBackupSize))
+	// 		incrementalBackupSizeReadable := humanize.Bytes(uint64(incrementalBackupSize))
+	// 		updateStatus := &backupMgr.BackupUpdateStatus{
+	// 			BackupSize:                    &fullBackupSize,
+	// 			BackupSizeReadable:            &backupSizeReadable,
+	// 			IncrementalBackupSize:         &incrementalBackupSize,
+	// 			IncrementalBackupSizeReadable: &incrementalBackupSizeReadable,
+	// 			TimeCompleted:                 &metav1.Time{Time: time.Now()},
+	// 		}
 
-			if err := bm.StatusUpdater.Update(backup, nil, updateStatus); err != nil {
-				klog.Errorf("update backup size to status error: %v", err)
-			}
-		}
-	}()
+	// 		if err := bm.StatusUpdater.Update(backup, nil, updateStatus); err != nil {
+	// 			klog.Errorf("update backup size to status error: %v", err)
+	// 		}
+	// 	}
+	// }()
 
 	if db != nil && oldTikvGCTimeDuration < tikvGCTimeDuration {
 		// use another context to revert `tikv_gc_life_time` back.
@@ -370,10 +394,12 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 			klog.Errorf("cluster %s reset tikv GC life time to %s failed, err: %s", bm, oldTikvGCTime, err)
 
 			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  "ResetTikvGCLifeTimeFailed",
-				Message: err.Error(),
+				Condition: metav1.Condition{
+					Type:    string(v1alpha1.BackupFailed),
+					Status:  metav1.ConditionTrue,
+					Reason:  "ResetTikvGCLifeTimeFailed",
+					Message: err.Error(),
+				},
 			}, nil)
 			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
@@ -393,10 +419,12 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 			}
 		}
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    failedCondition,
-			Status:  corev1.ConditionTrue,
-			Reason:  "BackupDataToRemoteFailed",
-			Message: backupErr.Error(),
+			Condition: metav1.Condition{
+				Type:    string(failedCondition),
+				Status:  metav1.ConditionTrue,
+				Reason:  "BackupDataToRemoteFailed",
+				Message: backupErr.Error(),
+			},
 		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
@@ -422,10 +450,12 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 			errs = append(errs, err)
 			klog.Errorf("Get backup metadata for backup files in %s of cluster %s failed, err: %s", backupFullPath, bm, err)
 			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Type:    v1alpha1.BackupFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  "GetBackupMetadataFailed",
-				Message: err.Error(),
+				Condition: metav1.Condition{
+					Type:    string(v1alpha1.BackupFailed),
+					Status:  metav1.ConditionTrue,
+					Reason:  "GetBackupMetadataFailed",
+					Message: err.Error(),
+				},
 			}, nil)
 			errs = append(errs, uerr)
 			return errorutils.NewAggregate(errs)
@@ -447,8 +477,10 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	}
 
 	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Type:   completeCondition,
-		Status: corev1.ConditionTrue,
+		Condition: metav1.Condition{
+			Type:   string(completeCondition),
+			Status: metav1.ConditionTrue,
+		},
 	}, updateStatus)
 }
 
@@ -462,8 +494,10 @@ func (bm *Manager) performLogBackup(ctx context.Context, backup *v1alpha1.Backup
 
 	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Command: v1alpha1.LogSubCommandType(bm.SubCommand),
-		Type:    v1alpha1.BackupPrepare,
-		Status:  corev1.ConditionTrue,
+		Condition: metav1.Condition{
+			Type:   string(v1alpha1.BackupPrepare),
+			Status: metav1.ConditionTrue,
+		},
 	}, nil); err != nil {
 		return err
 	}
@@ -491,10 +525,12 @@ func (bm *Manager) performLogBackup(ctx context.Context, backup *v1alpha1.Backup
 		// update failed status
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: v1alpha1.LogSubCommandType(bm.SubCommand),
-			Type:    v1alpha1.BackupFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  reason,
-			Message: err.Error(),
+			Condition: metav1.Condition{
+				Type:    string(v1alpha1.BackupFailed),
+				Status:  metav1.ConditionTrue,
+				Reason:  reason,
+				Message: err.Error(),
+			},
 		}, nil)
 		errs = append(errs, uerr)
 		return errorutils.NewAggregate(errs)
@@ -502,8 +538,10 @@ func (bm *Manager) performLogBackup(ctx context.Context, backup *v1alpha1.Backup
 
 	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Command: v1alpha1.LogSubCommandType(bm.SubCommand),
-		Type:    v1alpha1.BackupComplete,
-		Status:  corev1.ConditionTrue,
+		Condition: metav1.Condition{
+			Type:   string(v1alpha1.BackupComplete),
+			Status: metav1.ConditionTrue,
+		},
 	}, resultStatus)
 }
 
@@ -524,8 +562,10 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 	// change Prepare to Running before real backup process start
 	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Command: v1alpha1.LogStartCommand,
-		Type:    v1alpha1.BackupRunning,
-		Status:  corev1.ConditionTrue,
+		Condition: metav1.Condition{
+			Type:   string(v1alpha1.BackupRunning),
+			Status: metav1.ConditionTrue,
+		},
 	}, updatePathStatus); err != nil {
 		return nil, "UpdateStatusFailed", err
 	}
@@ -566,8 +606,10 @@ func (bm *Manager) resumeLogBackup(ctx context.Context, backup *v1alpha1.Backup)
 	// change Prepare to Running before real backup process start
 	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Command: v1alpha1.LogResumeCommand,
-		Type:    v1alpha1.BackupRunning,
-		Status:  corev1.ConditionTrue,
+		Condition: metav1.Condition{
+			Type:   string(v1alpha1.BackupRunning),
+			Status: metav1.ConditionTrue,
+		},
 	}, nil); err != nil {
 		return nil, "UpdateStatusFailed", err
 	}
@@ -596,8 +638,10 @@ func (bm *Manager) stopLogBackup(ctx context.Context, backup *v1alpha1.Backup) (
 	// change Prepare to Running before real backup process start
 	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Command: v1alpha1.LogStopCommand,
-		Type:    v1alpha1.BackupRunning,
-		Status:  corev1.ConditionTrue,
+		Condition: metav1.Condition{
+			Type:   string(v1alpha1.BackupRunning),
+			Status: metav1.ConditionTrue,
+		},
 	}, nil); err != nil {
 		return nil, "UpdateStatusFailed", err
 	}
@@ -627,8 +671,10 @@ func (bm *Manager) pauseLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 	// change Prepare to Running before real backup process start
 	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Command: v1alpha1.LogPauseCommand,
-		Type:    v1alpha1.BackupRunning,
-		Status:  corev1.ConditionTrue,
+		Condition: metav1.Condition{
+			Type:   string(v1alpha1.BackupRunning),
+			Status: metav1.ConditionTrue,
+		},
 	}, nil); err != nil {
 		return nil, "UpdateStatusFailed", err
 	}
@@ -658,8 +704,10 @@ func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backu
 	// change Prepare to Running before real backup process start
 	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Command: v1alpha1.LogTruncateCommand,
-		Type:    v1alpha1.BackupRunning,
-		Status:  corev1.ConditionTrue,
+		Condition: metav1.Condition{
+			Type:   string(v1alpha1.BackupRunning),
+			Status: metav1.ConditionTrue,
+		},
 	}, nil); err != nil {
 		return nil, "UpdateStatusFailed", err
 	}
@@ -687,8 +735,10 @@ func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backu
 // it will keep running until the process is killed
 func (bm *Manager) performVolumeBackupInitialize(ctx context.Context, backup *v1alpha1.Backup) error {
 	err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Type:   v1alpha1.BackupRunning,
-		Status: corev1.ConditionTrue,
+		Condition: metav1.Condition{
+			Type:   string(v1alpha1.BackupRunning),
+			Status: metav1.ConditionTrue,
+		},
 	}, nil)
 	if err != nil {
 		return err
@@ -698,10 +748,12 @@ func (bm *Manager) performVolumeBackupInitialize(ctx context.Context, backup *v1
 		errs := make([]error, 0, 2)
 		errs = append(errs, err)
 		updateErr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.VolumeBackupInitializeFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "InitializeVolumeBackupFailed",
-			Message: err.Error(),
+			Condition: metav1.Condition{
+				Type:    string(v1alpha1.VolumeBackupInitializeFailed),
+				Status:  metav1.ConditionTrue,
+				Reason:  "InitializeVolumeBackupFailed",
+				Message: err.Error(),
+			},
 		}, nil)
 		if updateErr != nil {
 			errs = append(errs, updateErr)
@@ -763,8 +815,10 @@ func (vb *VolumeBackupInitializeManager) tryUpdateBackupStatus() {
 	}
 
 	err := vb.statusUpdater.Update(vb.backup, &v1alpha1.BackupCondition{
-		Type:   v1alpha1.VolumeBackupInitialized,
-		Status: corev1.ConditionTrue,
+		Condition: metav1.Condition{
+			Type:   string(v1alpha1.VolumeBackupInitialized),
+			Status: metav1.ConditionTrue,
+		},
 	}, nil)
 	if err == nil {
 		vb.done = true
