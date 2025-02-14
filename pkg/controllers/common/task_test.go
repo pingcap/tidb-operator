@@ -413,7 +413,6 @@ func TestFeatureGates(t *testing.T) {
 				name: "xxx",
 				obj: fake.FakeObj("xxx", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
 					obj.Generation = 1
-					obj.UID = "old"
 					return obj
 				}),
 			},
@@ -425,7 +424,6 @@ func TestFeatureGates(t *testing.T) {
 				name: "xxx",
 				obj: fake.FakeObj("xxx", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
 					obj.Generation = 2
-					obj.UID = "old"
 					return obj
 				}),
 			},
@@ -437,7 +435,7 @@ func TestFeatureGates(t *testing.T) {
 				name: "xxx",
 				obj: fake.FakeObj("xxx", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
 					obj.Generation = 1
-					obj.UID = "new"
+					obj.UID = "newuid"
 					return obj
 				}),
 			},
@@ -452,7 +450,6 @@ func TestFeatureGates(t *testing.T) {
 
 			features.Register(fake.FakeObj("xxx", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
 				obj.Generation = 1
-				obj.UID = "old"
 				return obj
 			}))
 

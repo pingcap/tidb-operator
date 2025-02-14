@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -156,14 +157,14 @@ func TestFeatureGates(t *testing.T) {
 
 		err := fg.Verify(c.cluster)
 		if c.failToVerify {
-			assert.Error(t, err, c.desc)
+			require.Error(t, err, c.desc)
 		} else {
-			assert.NoError(t, err, c.desc)
+			require.NoError(t, err, c.desc)
 		}
 
 		if c.deregister {
 			fg.Deregister(c.cluster.Namespace, c.cluster.Name)
-			assert.Error(t, fg.Verify(c.cluster), c.desc)
+			require.Error(t, fg.Verify(c.cluster), c.desc)
 			assert.Panics(t, func() {
 				fg.Enabled(c.cluster.Namespace, c.cluster.Name, c.feat)
 			}, c.desc)
