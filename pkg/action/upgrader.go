@@ -22,11 +22,11 @@ import (
 	"github.com/go-logr/logr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	"github.com/pingcap/tidb-operator/pkg/utils/topology"
 )
 
 type UpgradePolicy[
@@ -138,7 +138,7 @@ func checkOneComponentUpgraded[
 	T runtime.Group,
 ](ctx context.Context, c client.Client, ns, cluster, version string) (bool, error) {
 	comp := scope.Component[S]()
-	groups, err := topology.ListGroups[S](ctx, c, ns, cluster)
+	groups, err := apicall.ListGroups[S](ctx, c, ns, cluster)
 	if err != nil {
 		return false, fmt.Errorf("cannot list %s groups: %w", comp, err)
 	}
