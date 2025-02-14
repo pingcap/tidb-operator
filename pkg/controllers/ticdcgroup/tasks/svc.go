@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -67,7 +68,7 @@ func newHeadlessService(cdcg *v1alpha1.TiCDCGroup) *corev1.Service {
 			Ports: []corev1.ServicePort{
 				{
 					Name:       v1alpha1.TiCDCPortName,
-					Port:       cdcg.GetPort(),
+					Port:       coreutil.TiCDCGroupPort(cdcg),
 					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromString(v1alpha1.TiCDCPortName),
 				},

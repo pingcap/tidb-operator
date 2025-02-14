@@ -15,19 +15,7 @@
 package v1alpha1
 
 import (
-	"strings"
-	"time"
-
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/utils/ptr"
-)
-
-var (
-	_ GroupList         = &TiCDCGroupList{}
-	_ Group             = &TiCDCGroup{}
-	_ ComponentAccessor = &TiCDC{}
 )
 
 const (
@@ -61,14 +49,6 @@ type TiCDCGroupList struct {
 	Items []TiCDCGroup `json:"items"`
 }
 
-func (l *TiCDCGroupList) ToSlice() []Group {
-	groups := make([]Group, 0, len(l.Items))
-	for i := range l.Items {
-		groups = append(groups, &l.Items[i])
-	}
-	return groups
-}
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
@@ -85,68 +65,6 @@ type TiCDCGroup struct {
 
 	Spec   TiCDCGroupSpec   `json:"spec,omitempty"`
 	Status TiCDCGroupStatus `json:"status,omitempty"`
-}
-
-func (in *TiCDCGroup) GetClusterName() string {
-	return in.Spec.Cluster.Name
-}
-
-func (in *TiCDCGroup) GetDesiredReplicas() int32 {
-	if in.Spec.Replicas == nil {
-		return 0
-	}
-	return *in.Spec.Replicas
-}
-
-func (in *TiCDCGroup) GetDesiredVersion() string {
-	return in.Spec.Template.Spec.Version
-}
-
-func (in *TiCDCGroup) GetActualVersion() string {
-	return in.Status.Version
-}
-
-func (in *TiCDCGroup) GetStatus() GroupStatus {
-	return in.Status.GroupStatus
-}
-
-func (in *TiCDCGroup) ComponentKind() ComponentKind {
-	return ComponentKindTiCDC
-}
-
-func (in *TiCDCGroup) GVK() schema.GroupVersionKind {
-	return SchemeGroupVersion.WithKind("TiCDCGroup")
-}
-
-func (in *TiCDCGroup) ObservedGeneration() int64 {
-	return in.Status.ObservedGeneration
-}
-
-func (in *TiCDCGroup) CurrentRevision() string {
-	return in.Status.CurrentRevision
-}
-
-func (in *TiCDCGroup) UpdateRevision() string {
-	return in.Status.UpdateRevision
-}
-
-func (in *TiCDCGroup) CollisionCount() *int32 {
-	if in.Status.CollisionCount == nil {
-		return nil
-	}
-	return ptr.To(*in.Status.CollisionCount)
-}
-
-func (in *TiCDCGroup) IsHealthy() bool {
-	// TODO implement me
-	return true
-}
-
-func (in *TiCDCGroup) GetPort() int32 {
-	if in.Spec.Template.Spec.Server.Ports.Port != nil {
-		return in.Spec.Template.Spec.Server.Ports.Port.Port
-	}
-	return DefaultTiCDCPort
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -177,79 +95,6 @@ type TiCDC struct {
 
 	Spec   TiCDCSpec   `json:"spec,omitempty"`
 	Status TiCDCStatus `json:"status,omitempty"`
-}
-
-func (in *TiCDC) GetClusterName() string {
-	return in.Spec.Cluster.Name
-}
-
-func (in *TiCDC) ComponentKind() ComponentKind {
-	return ComponentKindTiCDC
-}
-
-func (in *TiCDC) GVK() schema.GroupVersionKind {
-	return SchemeGroupVersion.WithKind("TiCDC")
-}
-
-func (in *TiCDC) ObservedGeneration() int64 {
-	return in.Status.ObservedGeneration
-}
-
-func (in *TiCDC) CurrentRevision() string {
-	return in.Status.CurrentRevision
-}
-
-func (in *TiCDC) UpdateRevision() string {
-	return in.Status.UpdateRevision
-}
-
-func (in *TiCDC) CollisionCount() *int32 {
-	if in.Status.CollisionCount == nil {
-		return nil
-	}
-	return ptr.To(*in.Status.CollisionCount)
-}
-
-func (in *TiCDC) IsHealthy() bool {
-	return meta.IsStatusConditionTrue(in.Status.Conditions, TiCDCCondHealth) && in.DeletionTimestamp.IsZero()
-}
-
-func (in *TiCDC) GetPort() int32 {
-	if in.Spec.Server.Ports.Port != nil {
-		return in.Spec.Server.Ports.Port.Port
-	}
-	return DefaultTiCDCPort
-}
-
-func (in *TiCDC) GetGracefulShutdownTimeout() time.Duration {
-	if in.Spec.GracefulShutdownTimeout != nil {
-		return in.Spec.GracefulShutdownTimeout.Duration
-	}
-	return 10 * time.Minute
-}
-
-// NOTE: name prefix is used to generate all names of underlying resources of this instance
-func (in *TiCDC) NamePrefixAndSuffix() (prefix, suffix string) {
-	index := strings.LastIndexByte(in.Name, '-')
-	// TODO(liubo02): validate name to avoid '-' is not found
-	if index == -1 {
-		panic("cannot get name prefix")
-	}
-	return in.Name[:index], in.Name[index+1:]
-}
-
-// This name is not only for pod, but also configMap, hostname and almost all underlying resources
-// TODO(liubo02): rename to more reasonable one
-func (in *TiCDC) PodName() string {
-	prefix, suffix := in.NamePrefixAndSuffix()
-	return prefix + "-ticdc-" + suffix
-}
-
-// TLSClusterSecretName returns the mTLS secret name for a component.
-// TODO(liubo02): move to namer
-func (in *TiCDC) TLSClusterSecretName() string {
-	prefix, _ := in.NamePrefixAndSuffix()
-	return prefix + "-ticdc-cluster-secret"
 }
 
 // TiCDCGroupSpec describes the common attributes of a TiCDCGroup

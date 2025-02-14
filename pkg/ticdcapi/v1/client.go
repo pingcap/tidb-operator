@@ -120,13 +120,13 @@ func (c *ticdcClient) DrainCapture(ctx context.Context) (int, error) {
 	}
 	data, err := json.Marshal(payload)
 	if err != nil {
-		return 0, fmt.Errorf("ticdc drain capture failed, marshal request error: %v", err)
+		return 0, fmt.Errorf("ticdc drain capture failed, marshal request error: %w", err)
 	}
 	apiURL := fmt.Sprintf("%s/%s", c.url, drainCapturePath)
 	// Put instead of Post here
 	body, err := httputil.PutBodyOK(ctx, c.httpClient, apiURL, bytes.NewBuffer(data))
 	if err != nil {
-		return 0, fmt.Errorf("ticdc drain capture failed, request error: %v", err)
+		return 0, fmt.Errorf("ticdc drain capture failed, request error: %w", err)
 	}
 
 	var resp drainCaptureResp
@@ -167,7 +167,6 @@ func (c *ticdcClient) ResignOwner(ctx context.Context) (bool, error) {
 }
 
 func (c *ticdcClient) IsHealthy(ctx context.Context) (bool, error) {
-
 	captures, err := c.getCaptures(ctx)
 	if err != nil {
 		return false, err

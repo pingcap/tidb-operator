@@ -48,27 +48,6 @@ type ReconcileContext struct {
 
 func TaskContextInfoFromTiCDC(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("ContextInfoFromTiCDC", func(ctx context.Context) task.Result {
-		/*var (
-			scheme    = "http"
-			tlsConfig *tls.Config
-		)
-		ck := state.Cluster()
-		if ck.IsTLSClusterEnabled() {
-			scheme = "https"
-			var err error
-			tlsConfig, err = tlsutil.GetTLSConfigFromSecret(ctx, c,
-				ck.Namespace, v1alpha1.TLSClusterClientSecretName(ck.Name))
-			if err != nil {
-				return task.Fail().With("cannot get tls config from secret: %w", err)
-			}
-		}
-		state.TiDBClient = tidbapi.NewTiDBClient(TiDBServiceURL(state.TiDB(), scheme), ticdcRequestTimeout, tlsConfig)
-		health, err := state.TiDBClient.GetHealth(ctx)
-		if err != nil {
-			return task.Complete().With(
-				fmt.Sprintf("context without health info is completed, ticdc can't be reached: %v", err))
-		}
-		state.Healthy = health*/
 
 		return task.Complete().With("get info from ticdc")
 	})

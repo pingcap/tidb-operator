@@ -25,6 +25,37 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var (
+	capturesURL        = "/api/v1/captures"
+	capturesOneJSONStr = `
+[
+	{
+		"id": "44dd2708-faee-486b-8b4c-260f61bfb2d9",
+		"is_owner": true,
+		"address": "basic-ticdc-0.basic-ticdc-peer.default.svc:8301",
+		"cluster_id": "default"
+	}
+]
+`
+
+	capturesTwoJSONStr = `
+[
+	{
+		"id": "44dd2708-faee-486b-8b4c-260f61bfb2d9",
+		"is_owner": true,
+		"address": "basic-ticdc-0.basic-ticdc-peer.default.svc:8301",
+		"cluster_id": "default"
+	},
+	{
+		"id": "5a5b4c48-8ab0-41f7-bd59-a8bd233f1e38",
+		"is_owner": false,
+		"address": "basic-ticdc-1.basic-ticdc-peer.default.svc:8301",
+		"cluster_id": "default"
+	}
+]
+`
+)
+
 func TestTiCDCClient_GetStatus(t *testing.T) {
 	jsonStr := `
 {
@@ -50,21 +81,11 @@ func TestTiCDCClient_GetStatus(t *testing.T) {
 }
 
 func TestTiCDCClient_DrainCapture(t *testing.T) {
-	capturesJsonStr := `
-[
-	{
-		"id": "44dd2708-faee-486b-8b4c-260f61bfb2d9",
-		"is_owner": true,
-		"address": "basic-ticdc-0.basic-ticdc-peer.default.svc:8301",
-		"cluster_id": "default"
-	}
-]
-`
 	// only one capture
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/api/v1/captures", r.URL.Path)
+		assert.Equal(t, capturesURL, r.URL.Path)
 		assert.Equal(t, http.MethodGet, r.Method)
-		_, err := w.Write([]byte(capturesJsonStr))
+		_, err := w.Write([]byte(capturesOneJSONStr))
 		assert.NoError(t, err)
 	}))
 	defer server.Close()
@@ -74,31 +95,15 @@ func TestTiCDCClient_DrainCapture(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 0, tableCount)
 
-	capturesJsonStr = `
-[
-	{
-		"id": "44dd2708-faee-486b-8b4c-260f61bfb2d9",
-		"is_owner": true,
-		"address": "basic-ticdc-0.basic-ticdc-peer.default.svc:8301",
-		"cluster_id": "default"
-	},
-	{
-		"id": "5a5b4c48-8ab0-41f7-bd59-a8bd233f1e38",
-		"is_owner": false,
-		"address": "basic-ticdc-1.basic-ticdc-peer.default.svc:8301",
-		"cluster_id": "default"
-	}
-]
-`
 	// two captures, resign owner
 	server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/api/v1/captures" {
+		if r.URL.Path == capturesURL {
 			assert.Equal(t, http.MethodGet, r.Method)
-			_, err := w.Write([]byte(capturesJsonStr))
+			_, err = w.Write([]byte(capturesTwoJSONStr))
 			assert.NoError(t, err)
 		} else if r.URL.Path == "/api/v1/captures/drain" {
 			assert.Equal(t, http.MethodPut, r.Method)
-			_, err := w.Write([]byte(`{"current_table_count": 0}`))
+			_, err = w.Write([]byte(`{"current_table_count": 0}`))
 			assert.NoError(t, err)
 		}
 	}))
@@ -111,9 +116,9 @@ func TestTiCDCClient_DrainCapture(t *testing.T) {
 
 	// do not support this API
 	server3 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/api/v1/captures" {
+		if r.URL.Path == capturesURL {
 			assert.Equal(t, http.MethodGet, r.Method)
-			_, err := w.Write([]byte(capturesJsonStr))
+			_, err = w.Write([]byte(capturesTwoJSONStr))
 			assert.NoError(t, err)
 		} else if r.URL.Path == "/api/v1/captures/drain" {
 			assert.Equal(t, http.MethodPut, r.Method)
@@ -129,21 +134,11 @@ func TestTiCDCClient_DrainCapture(t *testing.T) {
 }
 
 func TestTiCDCClient_ResignOwner(t *testing.T) {
-	capturesJsonStr := `
-[
-	{
-		"id": "44dd2708-faee-486b-8b4c-260f61bfb2d9",
-		"is_owner": true,
-		"address": "basic-ticdc-0.basic-ticdc-peer.default.svc:8301",
-		"cluster_id": "default"
-	}
-]
-`
 	// only one capture
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/api/v1/captures", r.URL.Path)
+		assert.Equal(t, capturesURL, r.URL.Path)
 		assert.Equal(t, http.MethodGet, r.Method)
-		_, err := w.Write([]byte(capturesJsonStr))
+		_, err := w.Write([]byte(capturesOneJSONStr))
 		assert.NoError(t, err)
 	}))
 	defer server.Close()
@@ -153,26 +148,10 @@ func TestTiCDCClient_ResignOwner(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, ok)
 
-	capturesJsonStr = `
-[
-	{
-		"id": "44dd2708-faee-486b-8b4c-260f61bfb2d9",
-		"is_owner": true,
-		"address": "basic-ticdc-0.basic-ticdc-peer.default.svc:8301",
-		"cluster_id": "default"
-	},
-	{
-		"id": "5a5b4c48-8ab0-41f7-bd59-a8bd233f1e38",
-		"is_owner": false,
-		"address": "basic-ticdc-1.basic-ticdc-peer.default.svc:8301",
-		"cluster_id": "default"
-	}
-]
-`
 	server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/api/v1/captures" {
+		if r.URL.Path == capturesURL {
 			assert.Equal(t, http.MethodGet, r.Method)
-			_, err := w.Write([]byte(capturesJsonStr))
+			_, err = w.Write([]byte(capturesTwoJSONStr))
 			assert.NoError(t, err)
 		} else if r.URL.Path == "/api/v1/owner/resign" {
 			assert.Equal(t, http.MethodPost, r.Method)
@@ -215,7 +194,7 @@ func TestTiCDCClient_IsHealthy(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, ok)
 
-	capturesJsonStr := `
+	capturesJSONStr := `
 [
 	{
 		"id": "44dd2708-faee-486b-8b4c-260f61bfb2d9",
@@ -229,7 +208,7 @@ func TestTiCDCClient_IsHealthy(t *testing.T) {
 	server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/api/v1/captures", r.URL.Path)
 		assert.Equal(t, http.MethodGet, r.Method)
-		_, err := w.Write([]byte(capturesJsonStr))
+		_, err = w.Write([]byte(capturesJSONStr))
 		assert.NoError(t, err)
 	}))
 	defer server2.Close()
@@ -239,25 +218,15 @@ func TestTiCDCClient_IsHealthy(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, ok)
 
-	capturesJsonStr = `
-[
-	{
-		"id": "44dd2708-faee-486b-8b4c-260f61bfb2d9",
-		"is_owner": true,
-		"address": "basic-ticdc-0.basic-ticdc-peer.default.svc:8301",
-		"cluster_id": "default"
-	}
-]
-`
 	// owner exists and healthy
 	server3 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/captures" {
 			assert.Equal(t, http.MethodGet, r.Method)
-			_, err := w.Write([]byte(capturesJsonStr))
+			_, err = w.Write([]byte(capturesOneJSONStr))
 			assert.NoError(t, err)
 		} else if r.URL.Path == "/api/v1/health" {
 			assert.Equal(t, http.MethodGet, r.Method)
-			_, err := w.Write([]byte("ok"))
+			_, err = w.Write([]byte("ok"))
 			assert.NoError(t, err)
 		}
 	}))
@@ -297,7 +266,7 @@ func TestTiCDCClient_getCaptures(t *testing.T) {
 	client := NewTiCDCClient(server.URL, "basic-ticdc-1", 5*time.Second, nil)
 	captures, err := client.(*ticdcClient).getCaptures(context.Background())
 	require.NoError(t, err)
-	assert.Equal(t, 2, len(captures))
+	assert.Len(t, captures, 2)
 	assert.Equal(t, "44dd2708-faee-486b-8b4c-260f61bfb2d9", captures[0].ID)
 	assert.Equal(t, "5a5b4c48-8ab0-41f7-bd59-a8bd233f1e38", captures[1].ID)
 	assert.Equal(t, "basic-ticdc-0.basic-ticdc-peer.default.svc:8301", captures[0].AdvertiseAddr)
@@ -348,49 +317,3 @@ func Test_getThisAndOwnerCaptureInfo(t *testing.T) {
 		})
 	}
 }
-
-/*
-func TestTiDBClient_GetInfo(t *testing.T) {
-	jsonStr := `
-{
- "is_owner": true,
- "max_procs": 10,
- "gogc": 500,
- "version": "8.0.11-TiDB-v8.1.0",
- "git_hash": "945d07c5d5c7a1ae212f6013adfb187f2de24b23",
- "ddl_id": "fe4de332-a1c5-46ba-a1d0-762c716345d3",
- "ip": "basic-tidb-9lbgl4.basic-tidb-peer.default.svc",
- "listening_port": 4000,
- "status_port": 10080,
- "lease": "45s",
- "binlog_status": "Off",
- "start_timestamp": 1735095910,
- "labels": {},
- "server_id": 85
-}`
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/info", r.URL.Path)
-		assert.Equal(t, http.MethodGet, r.Method)
-		_, err := w.Write([]byte(jsonStr))
-		assert.NoError(t, err)
-	}))
-	defer server.Close()
-
-	client := NewTiDBClient(server.URL, 5*time.Second, nil)
-	info, err := client.GetInfo(context.Background())
-	require.NoError(t, err)
-	assert.True(t, info.IsOwner)
-}
-
-func TestTiDBClient_SetServerLabels(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/labels", r.URL.Path)
-		assert.Equal(t, http.MethodPost, r.Method)
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	client := NewTiDBClient(server.URL, 5*time.Second, nil)
-	err := client.SetServerLabels(context.Background(), map[string]string{"region": "us-west-1"})
-	require.NoError(t, err)
-}*/

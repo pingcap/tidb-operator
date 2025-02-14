@@ -158,6 +158,10 @@ func (cdc *TiCDC) SetObservedGeneration(g int64) {
 	cdc.Status.ObservedGeneration = g
 }
 
+func (cdc *TiCDC) SetCluster(cluster string) {
+	cdc.Spec.Cluster.Name = cluster
+}
+
 func (cdc *TiCDC) Cluster() string {
 	return cdc.Spec.Cluster.Name
 }
@@ -187,8 +191,16 @@ func (cdcg *TiCDCGroup) Replicas() int32 {
 	return *cdcg.Spec.Replicas
 }
 
+func (cdcg *TiCDCGroup) SetVersion(version string) {
+	cdcg.Spec.Template.Spec.Version = version
+}
+
 func (cdcg *TiCDCGroup) Version() string {
 	return cdcg.Spec.Template.Spec.Version
+}
+
+func (cdcg *TiCDCGroup) SetCluster(cluster string) {
+	cdcg.Spec.Cluster.Name = cluster
 }
 
 func (cdcg *TiCDCGroup) Cluster() string {

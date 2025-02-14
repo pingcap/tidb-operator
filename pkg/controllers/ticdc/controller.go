@@ -33,16 +33,16 @@ import (
 )
 
 type Reconciler struct {
-	Logger         logr.Logger
-	Client         client.Client
-	VolumeModifier volumes.Modifier
+	Logger                logr.Logger
+	Client                client.Client
+	VolumeModifierFactory volumes.ModifierFactory
 }
 
-func Setup(mgr manager.Manager, c client.Client, vm volumes.Modifier) error {
+func Setup(mgr manager.Manager, c client.Client, vm volumes.ModifierFactory) error {
 	r := &Reconciler{
-		Logger:         mgr.GetLogger().WithName("TiCDC"),
-		Client:         c,
-		VolumeModifier: vm,
+		Logger:                mgr.GetLogger().WithName("TiCDC"),
+		Client:                c,
+		VolumeModifierFactory: vm,
 	}
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.TiCDC{}).
 		Owns(&corev1.Pod{}).
