@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/utils/task"
 )
 
@@ -67,10 +68,12 @@ func (t *TaskContext) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		if !errors.IsNotFound(err) {
 			return task.Fail().With("can't get tidb cluster: %w", err)
 		}
+		features.Deregister(rtx.Key.Namespace, rtx.Key.Name)
 
 		return task.Complete().Break().With("tidb cluster has been deleted")
 	}
 	rtx.Cluster = &cluster
+	features.Register(rtx.Cluster)
 
 	if coreutil.ShouldPauseReconcile(rtx.Cluster) {
 		return task.Complete().Break().With("cluster reconciliation is paused")

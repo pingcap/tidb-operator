@@ -31,10 +31,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/volumes"
 )
 
-func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm volumes.Modifier) task.Task {
+func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm volumes.ModifierFactory) task.Task {
 	return task.NameTaskFunc("PVC", func(ctx context.Context) task.Result {
+		ck := state.Cluster()
 		pvcs := newPVCs(state)
-		if wait, err := volumes.SyncPVCs(ctx, c, pvcs, vm, logger); err != nil {
+		if wait, err := volumes.SyncPVCs(ctx, c, pvcs, vm.New(ck.Namespace, ck.Name), logger); err != nil {
 			return task.Fail().With("failed to sync pvcs: %v", err)
 		} else if wait {
 			return task.Wait().With("waiting for pvcs to be synced")
