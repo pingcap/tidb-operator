@@ -20,10 +20,9 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/api/meta"
-	kuberuntime "k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
@@ -139,7 +138,7 @@ func checkOneComponentUpgraded[
 	T runtime.Group,
 ](ctx context.Context, c client.Client, ns, cluster, version string) (bool, error) {
 	comp := scope.Component[S]()
-	groups, err := listGroups[S](ctx, c, ns, cluster)
+	groups, err := apicall.ListGroups[S](ctx, c, ns, cluster)
 	if err != nil {
 		return false, fmt.Errorf("cannot list %s groups: %w", comp, err)
 	}
@@ -150,35 +149,6 @@ func checkOneComponentUpgraded[
 	}
 
 	return upgraded, nil
-}
-
-func listGroups[
-	S scope.Group[F, T],
-	F client.Object,
-	T runtime.Group,
-](ctx context.Context, c client.Client, ns, cluster string) ([]F, error) {
-	l := scope.NewList[S]()
-	if err := c.List(ctx, l, client.InNamespace(ns), client.MatchingFields{
-		"spec.cluster.name": cluster,
-	}); err != nil {
-		return nil, err
-	}
-
-	objs := make([]F, 0, meta.LenList(l))
-	if err := meta.EachListItem(l, func(item kuberuntime.Object) error {
-		obj, ok := item.(F)
-		if !ok {
-			// unreachable
-			return fmt.Errorf("cannot convert item")
-		}
-		objs = append(objs, obj)
-		return nil
-	}); err != nil {
-		// unreachable
-		return nil, err
-	}
-
-	return objs, nil
 }
 
 func isUpgraded[
