@@ -34,9 +34,10 @@ func TestFeatureGates(t *testing.T) {
 		desc    string
 		cluster *v1alpha1.Cluster
 
-		deregister bool
-		feat       meta.Feature
-		enabled    bool
+		deregister   bool
+		failToVerify bool
+		feat         meta.Feature
+		enabled      bool
 	}{
 		{
 			desc: "aaa is enabled",
@@ -46,8 +47,10 @@ func TestFeatureGates(t *testing.T) {
 				},
 			}),
 
-			feat:    meta.Feature("aaa"),
-			enabled: true,
+			// no cluster is registered
+			failToVerify: true,
+			feat:         meta.Feature("aaa"),
+			enabled:      true,
 		},
 		{
 			desc: "bbb is not enabled",
@@ -68,8 +71,9 @@ func TestFeatureGates(t *testing.T) {
 				},
 			}),
 
-			feat:    meta.Feature("bbb"),
-			enabled: true,
+			failToVerify: true,
+			feat:         meta.Feature("bbb"),
+			enabled:      true,
 		},
 		{
 			desc: "enable bbb and disable aaa",
@@ -79,8 +83,10 @@ func TestFeatureGates(t *testing.T) {
 				},
 			}),
 
-			feat:    meta.Feature("bbb"),
-			enabled: true,
+			// cluster is changed
+			failToVerify: true,
+			feat:         meta.Feature("bbb"),
+			enabled:      true,
 		},
 		{
 			desc: "enable bbb and disable aaa",
@@ -125,8 +131,10 @@ func TestFeatureGates(t *testing.T) {
 				},
 			}),
 
-			feat:    meta.Feature("aaa"),
-			enabled: true,
+			// cluster's uid is changed
+			failToVerify: true,
+			feat:         meta.Feature("aaa"),
+			enabled:      true,
 		},
 		{
 			desc: "deregister is worked",
@@ -146,8 +154,16 @@ func TestFeatureGates(t *testing.T) {
 	for i := range cases {
 		c := &cases[i]
 
+		err := fg.Verify(c.cluster)
+		if c.failToVerify {
+			assert.Error(t, err, c.desc)
+		} else {
+			assert.NoError(t, err, c.desc)
+		}
+
 		if c.deregister {
 			fg.Deregister(c.cluster.Namespace, c.cluster.Name)
+			assert.Error(t, fg.Verify(c.cluster), c.desc)
 			assert.Panics(t, func() {
 				fg.Enabled(c.cluster.Namespace, c.cluster.Name, c.feat)
 			}, c.desc)

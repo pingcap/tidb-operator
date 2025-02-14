@@ -26,6 +26,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -392,6 +393,73 @@ func TestTaskSuspendPod(t *testing.T) {
 			if !c.unexpectedErr {
 				assert.Equal(tt, c.expectedObj, c.state.obj, c.desc)
 			}
+		})
+	}
+}
+
+func TestFeatureGates(t *testing.T) {
+	cases := []struct {
+		desc          string
+		state         *fakeState[v1alpha1.Cluster]
+		objs          []client.Object
+		unexpectedErr bool
+
+		expectedResult task.Status
+		expectedObj    *corev1.Pod
+	}{
+		{
+			desc: "up to date",
+			state: &fakeState[v1alpha1.Cluster]{
+				name: "xxx",
+				obj: fake.FakeObj("xxx", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+					obj.Generation = 1
+					obj.UID = "old"
+					return obj
+				}),
+			},
+			expectedResult: task.SComplete,
+		},
+		{
+			desc: "generation is changed",
+			state: &fakeState[v1alpha1.Cluster]{
+				name: "xxx",
+				obj: fake.FakeObj("xxx", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+					obj.Generation = 2
+					obj.UID = "old"
+					return obj
+				}),
+			},
+			expectedResult: task.SFail,
+		},
+		{
+			desc: "uid is changed",
+			state: &fakeState[v1alpha1.Cluster]{
+				name: "xxx",
+				obj: fake.FakeObj("xxx", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+					obj.Generation = 1
+					obj.UID = "new"
+					return obj
+				}),
+			},
+			expectedResult: task.SFail,
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			features.Register(fake.FakeObj("xxx", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+				obj.Generation = 1
+				obj.UID = "old"
+				return obj
+			}))
+
+			s := &fakeClusterState{s: c.state}
+			res, done := task.RunTask(context.Background(), TaskFeatureGates(s))
+			assert.Equal(tt, c.expectedResult, res.Status(), c.desc)
+			assert.False(tt, done, c.desc)
 		})
 	}
 }

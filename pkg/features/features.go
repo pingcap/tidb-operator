@@ -15,6 +15,7 @@
 package features
 
 import (
+	"fmt"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -34,6 +35,10 @@ func Register(c *v1alpha1.Cluster) {
 	defaultFeatureGates.Register(c)
 }
 
+func Verify(c *v1alpha1.Cluster) error {
+	return defaultFeatureGates.Verify(c)
+}
+
 func Deregister(ns, name string) {
 	defaultFeatureGates.Deregister(ns, name)
 }
@@ -42,11 +47,12 @@ type FeatureGates interface {
 	Enabled(ns, name string, feat meta.Feature) bool
 
 	Register(c *v1alpha1.Cluster)
+	Verify(c *v1alpha1.Cluster) error
 	Deregister(ns, name string)
 }
 
 type gates struct {
-	lock sync.Mutex
+	lock sync.RWMutex
 
 	features map[string]featureSet
 }
@@ -64,8 +70,8 @@ func NewFeatureGates() FeatureGates {
 }
 
 func (g *gates) Enabled(ns, name string, feat meta.Feature) bool {
-	g.lock.Lock()
-	defer g.lock.Unlock()
+	g.lock.RLock()
+	defer g.lock.RUnlock()
 
 	key := types.NamespacedName{
 		Namespace: ns,
@@ -104,6 +110,27 @@ func (g *gates) Register(c *v1alpha1.Cluster) {
 			set:        s,
 		}
 	}
+}
+
+func (g *gates) Verify(c *v1alpha1.Cluster) error {
+	g.lock.RLock()
+	defer g.lock.RUnlock()
+
+	key := types.NamespacedName{
+		Namespace: c.Namespace,
+		Name:      c.Name,
+	}.String()
+
+	fs, ok := g.features[key]
+	if !ok || fs.uid != c.UID || fs.generation != c.Generation {
+		return fmt.Errorf("feature gates of %s are not up to date, uid %s => %s, generation %d => %d",
+			key,
+			fs.uid, c.UID,
+			fs.generation, c.Generation,
+		)
+	}
+
+	return nil
 }
 
 func (g *gates) Deregister(ns, name string) {
