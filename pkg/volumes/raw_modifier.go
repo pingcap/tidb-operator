@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"time"
 
-	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -41,7 +40,7 @@ type rawModifier struct {
 	clock           timeutils.Clock
 }
 
-func NewRawModifier(awsCfg *awssdk.Config, k8sClient client.Client, logger logr.Logger) Modifier {
+func NewRawModifier(k8sClient client.Client, logger logr.Logger) Modifier {
 	rw := &rawModifier{
 		k8sClient:       k8sClient,
 		logger:          logger,
@@ -49,10 +48,11 @@ func NewRawModifier(awsCfg *awssdk.Config, k8sClient client.Client, logger logr.
 		volumeModifiers: make(map[string]cloud.VolumeModifier, 2),
 	}
 
-	if awsCfg != nil {
-		ebsModifier := aws.NewEBSModifier(awsCfg, logger)
-		rw.volumeModifiers[ebsModifier.Name()] = ebsModifier
-	}
+	// aws
+	ebsModifier := aws.NewEBSModifier(logger)
+	rw.volumeModifiers[ebsModifier.Name()] = ebsModifier
+
+	// azure
 	diskModifier := azure.NewDiskModifier(logger)
 	rw.volumeModifiers[diskModifier.Name()] = diskModifier
 

@@ -143,6 +143,8 @@ func TestTaskPVC(t *testing.T) {
 
 			ctrl := gomock.NewController(tt)
 			vm := volumes.NewMockModifier(ctrl)
+			vf := volumes.NewMockModifierFactory(ctrl)
+			vf.EXPECT().New("", "aaa").Return(vm)
 			expectedPVCs := newPVCs(c.state)
 			for _, expected := range expectedPVCs {
 				for _, current := range c.pvcs {
@@ -164,7 +166,7 @@ func TestTaskPVC(t *testing.T) {
 				fc.WithError("patch", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
 			}
 
-			res, done := task.RunTask(ctx, TaskPVC(c.state, logr.Discard(), fc, vm))
+			res, done := task.RunTask(ctx, TaskPVC(c.state, logr.Discard(), fc, vf))
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), res.Message())
 			assert.False(tt, done, c.desc)
 
