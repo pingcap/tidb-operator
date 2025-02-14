@@ -21,6 +21,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
 // Config is a subset config of tiflash
@@ -107,7 +109,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash) e
 		return err
 	}
 
-	if cluster.IsTLSClusterEnabled() {
+	if coreutil.IsTLSClusterEnabled(cluster) {
 		c.Security.CAPath = path.Join(v1alpha1.DirPathClusterTLSTiFlash, corev1.ServiceAccountRootCAKey)
 		c.Security.CertPath = path.Join(v1alpha1.DirPathClusterTLSTiFlash, corev1.TLSCertKey)
 		c.Security.KeyPath = path.Join(v1alpha1.DirPathClusterTLSTiFlash, corev1.TLSPrivateKeyKey)
@@ -129,7 +131,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash) e
 
 	c.Raft.PdAddr = cluster.Status.PD
 
-	c.Status.MetricsPort = int(tiflash.GetMetricsPort())
+	c.Status.MetricsPort = int(coreutil.TiFlashMetricsPort(tiflash))
 
 	return nil
 }
@@ -204,11 +206,11 @@ func GetServiceAddr(tiflash *v1alpha1.TiFlash) string {
 	if ns == "" {
 		ns = corev1.NamespaceDefault
 	}
-	return fmt.Sprintf("%s.%s.%s:%d", tiflash.PodName(), tiflash.Spec.Subdomain, ns, tiflash.GetFlashPort())
+	return fmt.Sprintf("%s.%s.%s:%d", coreutil.PodName[scope.TiFlash](tiflash), tiflash.Spec.Subdomain, ns, coreutil.TiFlashFlashPort(tiflash))
 }
 
 func getProxyAddr(tiflash *v1alpha1.TiFlash) string {
-	return fmt.Sprintf("[::]:%d", tiflash.GetProxyPort())
+	return fmt.Sprintf("[::]:%d", coreutil.TiFlashProxyPort(tiflash))
 }
 
 func getProxyAdvertiseAddr(tiflash *v1alpha1.TiFlash) string {
@@ -216,7 +218,7 @@ func getProxyAdvertiseAddr(tiflash *v1alpha1.TiFlash) string {
 	if ns == "" {
 		ns = corev1.NamespaceDefault
 	}
-	return fmt.Sprintf("%s.%s.%s:%d", tiflash.PodName(), tiflash.Spec.Subdomain, ns, tiflash.GetProxyPort())
+	return fmt.Sprintf("%s.%s.%s:%d", coreutil.PodName[scope.TiFlash](tiflash), tiflash.Spec.Subdomain, ns, coreutil.TiFlashProxyPort(tiflash))
 }
 
 func getProxyAdvertiseStatusAddr(tiflash *v1alpha1.TiFlash) string {
@@ -224,7 +226,12 @@ func getProxyAdvertiseStatusAddr(tiflash *v1alpha1.TiFlash) string {
 	if ns == "" {
 		ns = corev1.NamespaceDefault
 	}
-	return fmt.Sprintf("%s.%s.%s:%d", tiflash.PodName(), tiflash.Spec.Subdomain, ns, tiflash.GetProxyStatusPort())
+	return fmt.Sprintf("%s.%s.%s:%d",
+		coreutil.PodName[scope.TiFlash](tiflash),
+		tiflash.Spec.Subdomain,
+		ns,
+		coreutil.TiFlashProxyStatusPort(tiflash),
+	)
 }
 
 func GetDataDir(dataDir string) string {

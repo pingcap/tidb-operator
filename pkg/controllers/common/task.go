@@ -28,6 +28,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -195,5 +196,15 @@ func TaskSuspendPod(state PodState, c client.Client) task.Task {
 		}
 
 		return task.Retry(task.DefaultRequeueAfter).With("pod is deleting")
+	})
+}
+
+func TaskFeatureGates(state ClusterState) task.Task {
+	return task.NameTaskFunc("FeatureGates", func(context.Context) task.Result {
+		if err := features.Verify(state.Cluster()); err != nil {
+			return task.Fail().With("feature gates are not up to date: %v", err)
+		}
+
+		return task.Complete().With("feature gates are initialized")
 	})
 }

@@ -25,32 +25,40 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-var FeatureGates Gates
+var defaultFeatureGates Gates
+
+func Stage(key Feature) StagedFeature {
+	if defaultFeatureGates == nil {
+		panic("please init featureGates before use it")
+	}
+
+	return defaultFeatureGates.Stage(key)
+}
 
 type Gates interface {
 	Stage(key Feature) StagedFeature
 }
 
 type StagedFeature interface {
-	Enabled(Stage) bool
+	Enabled(FeatureStage) bool
 }
 
 type featureGates struct {
 	feats map[Feature]spec
 }
 
-type Stage int
+type FeatureStage int
 
 const (
-	INVAILD Stage = 0
+	INVAILD FeatureStage = 0
 
-	ALPHA Stage = 1 << iota
+	ALPHA FeatureStage = 1 << iota
 	BETA
 	STABLE
 	ANY = ALPHA | BETA | STABLE
 )
 
-func stageFromString(s string) Stage {
+func stageFromString(s string) FeatureStage {
 	switch s {
 	case "ALPHA":
 		return ALPHA
@@ -65,10 +73,10 @@ func stageFromString(s string) Stage {
 
 type spec struct {
 	enabled bool
-	stage   Stage
+	stage   FeatureStage
 }
 
-func (s spec) Enabled(stage Stage) bool {
+func (s spec) Enabled(stage FeatureStage) bool {
 	if s.stage&stage == 0 {
 		return false
 	}
@@ -80,6 +88,9 @@ func (g *featureGates) Stage(key Feature) StagedFeature {
 }
 
 func MustInitFeatureGates(cfg *rest.Config) {
+	if defaultFeatureGates != nil {
+		return
+	}
 	gates, err := NewFeatureGates(cfg)
 	if err != nil {
 		// TODO: use a common panic util to panic
@@ -88,7 +99,7 @@ func MustInitFeatureGates(cfg *rest.Config) {
 
 	fmt.Println("init feature gates")
 
-	FeatureGates = gates
+	defaultFeatureGates = gates
 }
 
 func NewFeatureGates(cfg *rest.Config) (Gates, error) {

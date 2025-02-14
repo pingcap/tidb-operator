@@ -158,6 +158,10 @@ func (db *TiDB) SetObservedGeneration(g int64) {
 	db.Status.ObservedGeneration = g
 }
 
+func (db *TiDB) SetCluster(cluster string) {
+	db.Spec.Cluster.Name = cluster
+}
+
 func (db *TiDB) Cluster() string {
 	return db.Spec.Cluster.Name
 }
@@ -187,8 +191,16 @@ func (dbg *TiDBGroup) Replicas() int32 {
 	return *dbg.Spec.Replicas
 }
 
+func (dbg *TiDBGroup) SetVersion(version string) {
+	dbg.Spec.Template.Spec.Version = version
+}
+
 func (dbg *TiDBGroup) Version() string {
 	return dbg.Spec.Template.Spec.Version
+}
+
+func (dbg *TiDBGroup) SetCluster(cluster string) {
+	dbg.Spec.Cluster.Name = cluster
 }
 
 func (dbg *TiDBGroup) Cluster() string {

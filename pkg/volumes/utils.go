@@ -20,7 +20,6 @@ import (
 	"strconv"
 	"time"
 
-	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -29,8 +28,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 
+	"github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/volumes/cloud/aws"
+	"github.com/pingcap/tidb-operator/pkg/features"
 )
 
 const (
@@ -211,16 +211,39 @@ func isVolumeExpansionSupported(sc *storagev1.StorageClass) (bool, error) {
 	return *sc.AllowVolumeExpansion, nil
 }
 
-// NewModifier creates a volume modifier.
-// TODO: check the feature gate via webhook to decide whether to use the native modifier.
-func NewModifier(ctx context.Context, logger logr.Logger, cli client.Client) (Modifier, error) {
-	awsCfg, err := awsconfig.LoadDefaultConfig(ctx)
-	if err != nil {
-		logger.Error(err, "failed to load aws config, will use native modifier")
-		return NewNativeModifier(cli, logger), nil
+type ModifierFactory interface {
+	// new modifier for cluster
+	New(ns, name string) Modifier
+}
+
+type modifierFactory struct {
+	cli    client.Client
+	logger logr.Logger
+
+	native Modifier
+	raw    Modifier
+}
+
+func (f *modifierFactory) New(ns, name string) Modifier {
+	if features.Enabled(ns, name, v1alpha1.VolumeAttributeClass) {
+		if f.native == nil {
+			f.native = NewNativeModifier(f.cli, f.logger)
+		}
+		return f.native
 	}
-	logger.Info("use aws ebs modifier")
-	return NewRawModifier(aws.NewEBSModifier(&awsCfg, logger), cli, logger), nil
+	if f.raw == nil {
+		f.raw = NewRawModifier(f.cli, f.logger)
+	}
+
+	return f.raw
+}
+
+// NewModifierFactory creates a volume modifier factory.
+func NewModifierFactory(logger logr.Logger, cli client.Client) ModifierFactory {
+	return &modifierFactory{
+		cli:    cli,
+		logger: logger,
+	}
 }
 
 // SyncPVCs gets the actual PVCs and compares them with the expected PVCs.

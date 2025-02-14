@@ -15,18 +15,7 @@
 package v1alpha1
 
 import (
-	"strings"
-
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/utils/ptr"
-)
-
-var (
-	_ GroupList         = &TiFlashGroupList{}
-	_ Group             = &TiFlashGroup{}
-	_ ComponentAccessor = &TiFlash{}
 )
 
 const (
@@ -70,14 +59,6 @@ type TiFlashGroupList struct {
 	Items []TiFlashGroup `json:"items"`
 }
 
-func (l *TiFlashGroupList) ToSlice() []Group {
-	groups := make([]Group, 0, len(l.Items))
-	for i := range l.Items {
-		groups = append(groups, &l.Items[i])
-	}
-	return groups
-}
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
@@ -94,89 +75,6 @@ type TiFlashGroup struct {
 
 	Spec   TiFlashGroupSpec   `json:"spec,omitempty"`
 	Status TiFlashGroupStatus `json:"status,omitempty"`
-}
-
-func (in *TiFlashGroup) GetClusterName() string {
-	return in.Spec.Cluster.Name
-}
-
-func (in *TiFlashGroup) GetDesiredReplicas() int32 {
-	if in.Spec.Replicas == nil {
-		return 0
-	}
-	return *in.Spec.Replicas
-}
-
-func (in *TiFlashGroup) GetDesiredVersion() string {
-	return in.Spec.Template.Spec.Version
-}
-
-func (in *TiFlashGroup) GetActualVersion() string {
-	return in.Status.Version
-}
-
-func (in *TiFlashGroup) GetStatus() GroupStatus {
-	return in.Status.GroupStatus
-}
-
-func (in *TiFlashGroup) ComponentKind() ComponentKind {
-	return ComponentKindTiFlash
-}
-
-func (in *TiFlashGroup) GVK() schema.GroupVersionKind {
-	return SchemeGroupVersion.WithKind("TiFlashGroup")
-}
-
-func (in *TiFlashGroup) ObservedGeneration() int64 {
-	return in.Status.ObservedGeneration
-}
-
-func (in *TiFlashGroup) CurrentRevision() string {
-	return in.Status.CurrentRevision
-}
-
-func (in *TiFlashGroup) UpdateRevision() string {
-	return in.Status.UpdateRevision
-}
-
-func (in *TiFlashGroup) CollisionCount() *int32 {
-	if in.Status.CollisionCount == nil {
-		return nil
-	}
-	return ptr.To(*in.Status.CollisionCount)
-}
-
-func (in *TiFlashGroup) IsHealthy() bool {
-	// TODO implement me
-	return true
-}
-
-func (in *TiFlashGroup) GetFlashPort() int32 {
-	if in.Spec.Template.Spec.Server.Ports.Flash != nil {
-		return in.Spec.Template.Spec.Server.Ports.Flash.Port
-	}
-	return DefaultTiFlashPortFlash
-}
-
-func (in *TiFlashGroup) GetProxyPort() int32 {
-	if in.Spec.Template.Spec.Server.Ports.Proxy != nil {
-		return in.Spec.Template.Spec.Server.Ports.Proxy.Port
-	}
-	return DefaultTiFlashPortProxy
-}
-
-func (in *TiFlashGroup) GetMetricsPort() int32 {
-	if in.Spec.Template.Spec.Server.Ports.Metrics != nil {
-		return in.Spec.Template.Spec.Server.Ports.Metrics.Port
-	}
-	return DefaultTiFlashPortMetrics
-}
-
-func (in *TiFlashGroup) GetProxyStatusPort() int32 {
-	if in.Spec.Template.Spec.Server.Ports.ProxyStatus != nil {
-		return in.Spec.Template.Spec.Server.Ports.ProxyStatus.Port
-	}
-	return DefaultTiFlashPortProxyStatus
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -208,93 +106,6 @@ type TiFlash struct {
 
 	Spec   TiFlashSpec   `json:"spec,omitempty"`
 	Status TiFlashStatus `json:"status,omitempty"`
-}
-
-func (in *TiFlash) GetClusterName() string {
-	return in.Spec.Cluster.Name
-}
-
-func (in *TiFlash) ComponentKind() ComponentKind {
-	return ComponentKindTiFlash
-}
-
-func (in *TiFlash) GVK() schema.GroupVersionKind {
-	return SchemeGroupVersion.WithKind("TiFlash")
-}
-
-func (in *TiFlash) ObservedGeneration() int64 {
-	return in.Status.ObservedGeneration
-}
-
-func (in *TiFlash) CurrentRevision() string {
-	return in.Status.CurrentRevision
-}
-
-func (in *TiFlash) UpdateRevision() string {
-	return in.Status.UpdateRevision
-}
-
-func (in *TiFlash) CollisionCount() *int32 {
-	if in.Status.CollisionCount == nil {
-		return nil
-	}
-	return ptr.To(*in.Status.CollisionCount)
-}
-
-func (in *TiFlash) IsHealthy() bool {
-	return meta.IsStatusConditionTrue(in.Status.Conditions, TiFlashCondHealth) && in.DeletionTimestamp.IsZero()
-}
-
-func (in *TiFlash) GetFlashPort() int32 {
-	if in.Spec.Server.Ports.Flash != nil {
-		return in.Spec.Server.Ports.Flash.Port
-	}
-	return DefaultTiFlashPortFlash
-}
-
-func (in *TiFlash) GetProxyPort() int32 {
-	if in.Spec.Server.Ports.Proxy != nil {
-		return in.Spec.Server.Ports.Proxy.Port
-	}
-	return DefaultTiFlashPortProxy
-}
-
-func (in *TiFlash) GetMetricsPort() int32 {
-	if in.Spec.Server.Ports.Metrics != nil {
-		return in.Spec.Server.Ports.Metrics.Port
-	}
-	return DefaultTiFlashPortMetrics
-}
-
-func (in *TiFlash) GetProxyStatusPort() int32 {
-	if in.Spec.Server.Ports.ProxyStatus != nil {
-		return in.Spec.Server.Ports.ProxyStatus.Port
-	}
-	return DefaultTiFlashPortProxyStatus
-}
-
-// NOTE: name prefix is used to generate all names of underlying resources of this instance
-func (in *TiFlash) NamePrefixAndSuffix() (prefix, suffix string) {
-	index := strings.LastIndexByte(in.Name, '-')
-	// TODO(liubo02): validate name to avoid '-' is not found
-	if index == -1 {
-		panic("cannot get name prefix")
-	}
-	return in.Name[:index], in.Name[index+1:]
-}
-
-// This name is not only for pod, but also configMap, hostname and almost all underlying resources
-// TODO(liubo02): rename to more reasonable one
-func (in *TiFlash) PodName() string {
-	prefix, suffix := in.NamePrefixAndSuffix()
-	return prefix + "-tiflash-" + suffix
-}
-
-// TLSClusterSecretName returns the mTLS secret name for a component.
-// TODO(liubo02): move to namer
-func (in *TiFlash) TLSClusterSecretName() string {
-	prefix, _ := in.NamePrefixAndSuffix()
-	return prefix + "-tiflash-cluster-secret"
 }
 
 type TiFlashGroupSpec struct {

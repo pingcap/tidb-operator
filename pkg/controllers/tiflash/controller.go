@@ -35,18 +35,18 @@ import (
 )
 
 type Reconciler struct {
-	Logger          logr.Logger
-	Client          client.Client
-	VolumeModifier  volumes.Modifier
-	PDClientManager pdm.PDClientManager
+	Logger                logr.Logger
+	Client                client.Client
+	VolumeModifierFactory volumes.ModifierFactory
+	PDClientManager       pdm.PDClientManager
 }
 
-func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, vm volumes.Modifier) error {
+func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, vm volumes.ModifierFactory) error {
 	r := &Reconciler{
-		Logger:          mgr.GetLogger().WithName("TiFlash"),
-		Client:          c,
-		VolumeModifier:  vm,
-		PDClientManager: pdcm,
+		Logger:                mgr.GetLogger().WithName("TiFlash"),
+		Client:                c,
+		VolumeModifierFactory: vm,
+		PDClientManager:       pdcm,
 	}
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.TiFlash{}).
 		Owns(&corev1.Pod{}).

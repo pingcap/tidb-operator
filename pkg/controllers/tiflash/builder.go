@@ -30,6 +30,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// get cluster info, FinalizerDel will use it
 		common.TaskContextCluster(state, r.Client),
+		common.TaskFeatureGates(state),
 		// check whether it's paused
 		task.IfBreak(common.CondClusterIsPaused(state)),
 
@@ -50,7 +51,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// normal process
 		tasks.TaskConfigMap(state, r.Client),
-		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifier),
+		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifierFactory),
 		tasks.TaskPod(state, r.Client),
 		tasks.TaskStoreLabels(state, r.Client),
 		tasks.TaskStatus(state, r.Client),

@@ -26,8 +26,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/cluster/tasks"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task"
@@ -46,24 +49,32 @@ func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager) error
 		PDClientManager: pdcm,
 	}
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.Cluster{}).
-		Watches(&v1alpha1.PDGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroup)).
-		Watches(&v1alpha1.TiKVGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroup)).
-		Watches(&v1alpha1.TiDBGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroup)).
-		Watches(&v1alpha1.TiFlashGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroup)).
+		Watches(&v1alpha1.PDGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.PDGroup]())).
+		Watches(&v1alpha1.TiKVGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.TiKVGroup]())).
+		Watches(&v1alpha1.TiDBGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.TiDBGroup]())).
+		Watches(&v1alpha1.TiFlashGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.TiFlashGroup]())).
 		WithOptions(controller.Options{RateLimiter: k8s.RateLimiter}).
 		Complete(r)
 }
 
-func enqueueForGroup(_ context.Context, obj client.Object) []reconcile.Request {
-	group := obj.(v1alpha1.Group)
-	return []reconcile.Request{
-		{
-			NamespacedName: client.ObjectKey{
-				Namespace: obj.GetNamespace(),
-				Name:      group.GetClusterName(),
-			},
+func enqueueForGroupFunc[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+]() handler.MapFunc {
+	return handler.MapFunc(
+		func(_ context.Context, obj client.Object) []reconcile.Request {
+			t := obj.(F)
+			return []reconcile.Request{
+				{
+					NamespacedName: client.ObjectKey{
+						Namespace: obj.GetNamespace(),
+						Name:      coreutil.Cluster[S](t),
+					},
+				},
+			}
 		},
-	}
+	)
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {

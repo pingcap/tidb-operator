@@ -76,6 +76,15 @@ spec:
                     type: string
                 type: object
                 x-kubernetes-map-type: atomic
+              featureGates:
+                items:
+                  properties:
+                    name:
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
               paused:
                 description: Paused specifies whether to pause the reconciliation
                   loop for all components of the cluster.
@@ -215,6 +224,19 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
+              featureGates:
+                description: FeatureGates of this cluster
+                items:
+                  properties:
+                    name:
+                      type: string
+                    stage:
+                      type: string
+                  required:
+                  - name
+                  - stage
+                  type: object
+                type: array
               id:
                 description: ID is the cluster id.
                 type: string

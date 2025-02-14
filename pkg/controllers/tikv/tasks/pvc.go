@@ -22,17 +22,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/volumes"
 )
 
-func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm volumes.Modifier) task.Task {
+func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm volumes.ModifierFactory) task.Task {
 	return task.NameTaskFunc("PVC", func(ctx context.Context) task.Result {
+		ck := state.Cluster()
 		pvcs := newPVCs(state)
-		if wait, err := volumes.SyncPVCs(ctx, c, pvcs, vm, logger); err != nil {
+		if wait, err := volumes.SyncPVCs(ctx, c, pvcs, vm.New(ck.Namespace, ck.Name), logger); err != nil {
 			return task.Fail().With("failed to sync pvcs: %w", err)
 		} else if wait {
 			return task.Complete().With("waiting for pvcs to be synced")
@@ -50,7 +53,7 @@ func newPVCs(state *ReconcileContext) []*corev1.PersistentVolumeClaim {
 		vol := tikv.Spec.Volumes[i]
 		pvcs = append(pvcs, &corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      PersistentVolumeClaimName(tikv.PodName(), vol.Name),
+				Name:      PersistentVolumeClaimName(coreutil.PodName[scope.TiKV](tikv), vol.Name),
 				Namespace: tikv.Namespace,
 				Labels: maputil.Merge(tikv.Labels, map[string]string{
 					v1alpha1.LabelKeyInstance:   tikv.Name,

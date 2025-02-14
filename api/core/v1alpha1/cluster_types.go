@@ -15,10 +15,10 @@
 package v1alpha1
 
 import (
-	"fmt"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -76,6 +76,8 @@ type ClusterSpec struct {
 	// The default value is 10.
 	// +kubebuilder:validation:Minimum=0
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
+
+	FeatureGates []meta.FeatureGate `json:"featureGates,omitempty"`
 }
 
 type SuspendAction struct {
@@ -144,6 +146,9 @@ type ClusterStatus struct {
 	// PD means url of the pd service, it's prepared for internal use
 	// e.g. https://pd:2379
 	PD string `json:"pd,omitempty"`
+
+	// FeatureGates of this cluster
+	FeatureGates []meta.FeatureGateStatus `json:"featureGates,omitempty"`
 }
 
 type ComponentKind string
@@ -166,32 +171,6 @@ type ComponentStatus struct {
 	// Replicas is the number of desired replicas of the component.
 	// +kubebuilder:validation:Required
 	Replicas int32 `json:"replicas"`
-}
-
-// ShouldSuspendCompute returns whether the cluster should suspend compute.
-func (c *Cluster) ShouldSuspendCompute() bool {
-	return c.Spec.SuspendAction != nil && c.Spec.SuspendAction.SuspendCompute
-}
-
-// IsTLSClusterEnabled returns whether the cluster has enabled mTLS.
-func (c *Cluster) IsTLSClusterEnabled() bool {
-	return c.Spec.TLSCluster != nil && c.Spec.TLSCluster.Enabled
-}
-
-// ClusterClientTLSSecretName returns the mTLS secret name for the cluster client.
-// TODO: move it to namer pkg
-func (c *Cluster) ClusterClientTLSSecretName() string {
-	return TLSClusterClientSecretName(c.Name)
-}
-
-// TLSClusterClientSecretName returns the mTLS secret name for the cluster client.
-// TODO: move it to namer pkg
-func TLSClusterClientSecretName(clusterName string) string {
-	return fmt.Sprintf("%s-cluster-client-secret", clusterName)
-}
-
-func (c *Cluster) ShouldPauseReconcile() bool {
-	return c.Spec.Paused
 }
 
 const (

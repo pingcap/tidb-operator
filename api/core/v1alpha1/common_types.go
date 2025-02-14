@@ -18,7 +18,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 const (
@@ -303,74 +302,4 @@ type UpdateStrategy struct {
 // TODO(liubo02): add more tls configs
 type TLS struct {
 	Enabled bool `json:"enabled,omitempty"`
-}
-
-// ComponentAccessor is the interface to access details of instances/groups managed by TiDB Operator.
-type ComponentAccessor interface {
-	GetName() string
-	GetNamespace() string
-	GetClusterName() string
-	ComponentKind() ComponentKind
-
-	// GVK returns the GroupVersionKind of the instance/group.
-	GVK() schema.GroupVersionKind
-	GetGeneration() int64
-	ObservedGeneration() int64
-	CurrentRevision() string
-	UpdateRevision() string
-	CollisionCount() *int32
-
-	IsHealthy() bool
-}
-
-func IsUpToDate(a ComponentAccessor) bool {
-	return IsReconciled(a) && a.CurrentRevision() == a.UpdateRevision()
-}
-
-func StatusChanged(a ComponentAccessor, s CommonStatus) bool {
-	return a.CurrentRevision() != s.CurrentRevision || a.UpdateRevision() != s.UpdateRevision || a.CollisionCount() != s.CollisionCount
-}
-
-func IsReconciled(a ComponentAccessor) bool {
-	return a.ObservedGeneration() == a.GetGeneration()
-}
-
-// Instance is the interface for all components.
-type Instance interface {
-	ComponentAccessor
-	*PD | *TiDB | *TiKV | *TiFlash
-}
-
-func AllInstancesSynced[T Instance](instances []T, rev string) bool {
-	for _, instance := range instances {
-		if !IsUpToDate(instance) || instance.CurrentRevision() != rev {
-			return false
-		}
-	}
-	return true
-}
-
-// Group is the interface for all component groups.
-type Group interface {
-	ComponentAccessor
-
-	GetDesiredReplicas() int32
-	GetDesiredVersion() string
-	GetActualVersion() string
-	GetStatus() GroupStatus
-}
-
-func IsGroupHealthyAndUpToDate(g Group) bool {
-	return g.IsHealthy() && IsUpToDate(g) && g.GetStatus().ReadyReplicas == g.GetDesiredReplicas()
-}
-
-// GroupType is used for generic functions.
-type GroupType interface {
-	Group
-
-	*PDGroup | *TiDBGroup | *TiKVGroup | *TiFlashGroup
-}
-
-type GroupList interface {
-	ToSlice() []Group
 }

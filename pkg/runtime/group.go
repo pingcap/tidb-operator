@@ -21,6 +21,8 @@ type Group interface {
 
 	SetReplicas(replicas int32)
 	Replicas() int32
+
+	SetVersion(versions string)
 	Version() string
 
 	SetStatusVersion(version string)

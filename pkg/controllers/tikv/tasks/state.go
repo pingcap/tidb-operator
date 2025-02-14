@@ -19,8 +19,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
 type state struct {
@@ -92,7 +94,7 @@ func (s *state) PodInitializer() common.PodInitializer {
 	return common.NewResource(s.SetPod).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithName(common.Lazy[string](func() string {
-			return s.tikv.PodName()
+			return coreutil.PodName[scope.TiKV](s.tikv)
 		})).
 		Initializer()
 }

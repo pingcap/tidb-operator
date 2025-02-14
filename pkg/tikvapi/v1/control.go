@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	tlsutil "github.com/pingcap/tidb-operator/pkg/utils/tls"
 )
@@ -38,8 +38,7 @@ type TiKVControlInterface interface {
 }
 
 // defaultTiKVControl is the default implementation of TiKVControlInterface.
-type defaultTiKVControl struct {
-}
+type defaultTiKVControl struct{}
 
 // NewDefaultTiKVControl returns a defaultTiKVControl instance.
 func NewDefaultTiKVControl() TiKVControlInterface {
@@ -57,7 +56,7 @@ func (*defaultTiKVControl) GetTiKVPodClient(ctx context.Context, cli client.Clie
 
 	if tlsEnabled {
 		scheme = "https"
-		tlsConfig, err = tlsutil.GetTLSConfigFromSecret(ctx, cli, namespace, v1alpha1.TLSClusterClientSecretName(tcName))
+		tlsConfig, err = tlsutil.GetTLSConfigFromSecret(ctx, cli, namespace, coreutil.TLSClusterClientSecretName(tcName))
 		if err != nil {
 			return NewTiKVClient(TiKVPodClientURL(namespace, tcName, podName, scheme, clusterDomain), defaultTiKVClientTimeout, tlsConfig, true),
 				fmt.Errorf("unable to get tls config for TiDB cluster %q, tikv client may not work: %w", tcName, err)
