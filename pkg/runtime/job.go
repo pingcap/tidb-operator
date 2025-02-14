@@ -15,10 +15,11 @@
 package runtime
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Job is the interface for a job. for example, backup, restore, etc.
@@ -34,6 +35,10 @@ type (
 )
 
 var _ Job = &Backup{}
+
+func (b *Backup) SetCluster(cluster string) {
+	b.Spec.BR.Cluster = cluster
+}
 
 func (b *Backup) Cluster() string {
 	return b.Spec.BR.Cluster

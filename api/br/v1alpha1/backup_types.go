@@ -274,16 +274,17 @@ type CleanOption struct {
 
 	BatchDeleteOption `json:",inline"`
 
+	// TODO(ideascf): remove this field, EBS volume snapshot backup is deprecated in v2
 	// SnapshotsDeleteRatio represents the number of snapshots deleted per second
 	// +kubebuilder:default=1
-	SnapshotsDeleteRatio float64 `json:"snapshotsDeleteRatio,omitempty"`
+	// SnapshotsDeleteRatio float64 `json:"snapshotsDeleteRatio,omitempty"`
 }
 
 type Progress struct {
 	// Step is the step name of progress
 	Step string `json:"step,omitempty"`
 	// Progress is the backup progress value
-	Progress float64 `json:"progress,omitempty"`
+	Progress int `json:"progress,omitempty"` // TODO(ideascf): type changed from float64 to int
 	// LastTransitionTime is the update time
 	// +nullable
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
