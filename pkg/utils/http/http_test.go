@@ -88,10 +88,12 @@ func TestDoBodyOK(t *testing.T) {
 			want:   []byte(""),
 		},
 		{
-			desc:   "PutBodyOK",
-			method: PutBodyOK,
-			path:   "/ok",
-			want:   []byte(""),
+			desc: "PutBodyOK",
+			method: func(ctx context.Context, c *http.Client, s string) ([]byte, error) {
+				return PutBodyOK(ctx, c, s, bytes.NewReader([]byte("ok")))
+			},
+			path: "/ok",
+			want: []byte("ok"),
 		},
 		{
 			desc:   "DeleteBodyOK",

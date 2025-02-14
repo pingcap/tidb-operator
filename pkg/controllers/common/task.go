@@ -113,6 +113,11 @@ func TaskContextTiFlash(state TiFlashStateInitializer, c client.Client) task.Tas
 	return taskContextResource("TiFlash", w, c, false)
 }
 
+func TaskContextTiCDC(state TiCDCStateInitializer, c client.Client) task.Task {
+	w := state.TiCDCInitializer()
+	return taskContextResource("TiCDC", w, c, false)
+}
+
 func TaskContextCluster(state ClusterStateInitializer, c client.Client) task.Task {
 	w := state.ClusterInitializer()
 	return taskContextResource("Cluster", w, c, true)

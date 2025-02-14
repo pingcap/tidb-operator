@@ -41,6 +41,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/cluster"
 	"github.com/pingcap/tidb-operator/pkg/controllers/pd"
 	"github.com/pingcap/tidb-operator/pkg/controllers/pdgroup"
+	"github.com/pingcap/tidb-operator/pkg/controllers/ticdc"
 	"github.com/pingcap/tidb-operator/pkg/controllers/ticdcgroup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tidb"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tidbgroup"
@@ -240,6 +241,9 @@ func setupControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientManage
 	if err := ticdcgroup.Setup(mgr, c); err != nil {
 		return fmt.Errorf("unable to create controller TiCDCGroup: %w", err)
 	}
+	if err := ticdc.Setup(mgr, c, vm); err != nil {
+		return fmt.Errorf("unable to create controller TiCDC: %w", err)
+	}
 	return nil
 }
 
@@ -270,6 +274,12 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 			Label: labels.Everything(),
 		},
 		&v1alpha1.TiFlash{}: {
+			Label: labels.Everything(),
+		},
+		&v1alpha1.TiCDCGroup{}: {
+			Label: labels.Everything(),
+		},
+		&v1alpha1.TiCDC{}: {
 			Label: labels.Everything(),
 		},
 		&corev1.Secret{}: {

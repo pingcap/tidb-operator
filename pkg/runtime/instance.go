@@ -43,7 +43,7 @@ type InstanceT[T InstanceSet] interface {
 }
 
 type InstanceSet interface {
-	PD | TiDB | TiKV | TiFlash
+	PD | TiDB | TiKV | TiFlash | TiCDC
 }
 
 type InstanceTuple[PT client.Object, PU Instance] interface {

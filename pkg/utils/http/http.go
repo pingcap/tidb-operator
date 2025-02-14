@@ -46,8 +46,8 @@ func GetBodyOK(ctx context.Context, httpClient *http.Client, apiURL string) ([]b
 }
 
 // PutBodyOK will PUT and returns the body or an error if the response is not okay
-func PutBodyOK(ctx context.Context, httpClient *http.Client, apiURL string) ([]byte, error) {
-	return DoBodyOK(ctx, httpClient, apiURL, "PUT", nil)
+func PutBodyOK(ctx context.Context, httpClient *http.Client, apiURL string, reqBody io.Reader) ([]byte, error) {
+	return DoBodyOK(ctx, httpClient, apiURL, "PUT", reqBody)
 }
 
 // DeleteBodyOK will DELETE and returns the body or an error if the response is not okay
@@ -77,7 +77,7 @@ func DoBodyOK(ctx context.Context, httpClient *http.Client, apiURL, method strin
 		return nil, err
 	}
 	if res.StatusCode >= http.StatusBadRequest {
-		errMsg := fmt.Errorf("error response %v URL %s,body response: %s", res.StatusCode, apiURL, string(body))
+		errMsg := fmt.Errorf("error response %v URL %s, body response: %s", res.StatusCode, apiURL, string(body))
 		return nil, errMsg
 	}
 	return body, err
