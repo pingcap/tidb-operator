@@ -25,6 +25,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/utils/kubefeat"
 )
 
 // Scheme is used by client to visit kubernetes API.
@@ -39,9 +40,15 @@ func init() {
 	utilruntime.Must(v1alpha1.Install(Scheme))
 }
 
-var GroupVersions = []schema.GroupVersion{
-	corev1.SchemeGroupVersion,
-	storagev1.SchemeGroupVersion,
-	v1alpha1.SchemeGroupVersion,
-	storagev1beta1.SchemeGroupVersion,
+func GroupVersions() []schema.GroupVersion {
+	gvs := []schema.GroupVersion{
+		corev1.SchemeGroupVersion,
+		storagev1.SchemeGroupVersion,
+		v1alpha1.SchemeGroupVersion,
+	}
+	if kubefeat.Stage(kubefeat.VolumeAttributesClass).Enabled(kubefeat.BETA) {
+		gvs = append(gvs, storagev1beta1.SchemeGroupVersion)
+	}
+
+	return gvs
 }

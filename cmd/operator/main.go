@@ -147,10 +147,7 @@ func setup(ctx context.Context, mgr ctrl.Manager) error {
 	pdcm := pdm.NewPDClientManager(mgr.GetLogger(), c)
 
 	logger.Info("setup volume modifier")
-	vm, err := volumes.NewModifier(ctx, mgr.GetLogger().WithName("VolumeModifier"), c)
-	if err != nil {
-		return fmt.Errorf("failed to create volume modifier: %w", err)
-	}
+	vm := volumes.NewModifierFactory(mgr.GetLogger().WithName("VolumeModifier"), c)
 
 	setupLog.Info("setup controllers")
 	if err := setupControllers(mgr, c, pdcm, vm); err != nil {
@@ -208,7 +205,7 @@ func addIndexer(ctx context.Context, mgr ctrl.Manager) error {
 	return nil
 }
 
-func setupControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientManager, vm volumes.Modifier) error {
+func setupControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientManager, vm volumes.ModifierFactory) error {
 	if err := cluster.Setup(mgr, c, pdcm); err != nil {
 		return fmt.Errorf("unable to create controller Cluster: %w", err)
 	}
@@ -283,7 +280,7 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 			Label: labels.Everything(),
 		},
 	}
-	if kubefeat.FeatureGates.Stage(kubefeat.VolumeAttributesClass).Enabled(kubefeat.BETA) {
+	if kubefeat.Stage(kubefeat.VolumeAttributesClass).Enabled(kubefeat.BETA) {
 		byObj[&storagev1beta1.VolumeAttributesClass{}] = cache.ByObject{
 			Label: labels.Everything(),
 		}

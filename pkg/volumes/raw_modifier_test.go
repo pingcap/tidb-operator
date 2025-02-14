@@ -143,7 +143,7 @@ func Test_rawModifier_GetActualVolume(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cli := client.NewFakeClient(tt.existingObjs...)
-			m := NewRawModifier(nil, cli, logr.Discard())
+			m := NewRawModifier(cli, logr.Discard())
 			got, err := m.GetActualVolume(context.TODO(), tt.desired, tt.current)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetActualVolume() error = %v, wantErr %v", err, tt.wantErr)

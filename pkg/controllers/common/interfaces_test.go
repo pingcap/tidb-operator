@@ -158,8 +158,8 @@ func FakeGroupAndInstanceSliceState[
 	RI runtime.Instance,
 ](g RG, s ...RI) GroupAndInstanceSliceState[RG, RI] {
 	return &fakeGroupAndInstanceSliceState[RG, RI]{
-		GroupState:         FakeGroupState[RG](g),
-		InstanceSliceState: FakeInstanceSliceState[RI](s),
+		GroupState:         FakeGroupState(g),
+		InstanceSliceState: FakeInstanceSliceState(s),
 	}
 }
 
@@ -207,8 +207,8 @@ func FakeGroupAndInstanceSliceAndRevisionState[
 	s ...RI,
 ) GroupAndInstanceSliceAndRevisionState[RG, RI] {
 	return &fakeGroupAndInstanceSliceAndRevisionState[RG, RI]{
-		GroupState:         FakeGroupState[RG](g),
-		InstanceSliceState: FakeInstanceSliceState[RI](s),
+		GroupState:         FakeGroupState(g),
+		InstanceSliceState: FakeInstanceSliceState(s),
 		RevisionState:      FakeRevisionState(update, current, collisionCount),
 	}
 }

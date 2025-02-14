@@ -17,6 +17,8 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -74,6 +76,8 @@ type ClusterSpec struct {
 	// The default value is 10.
 	// +kubebuilder:validation:Minimum=0
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
+
+	FeatureGates []meta.FeatureGate `json:"featureGates,omitempty"`
 }
 
 type SuspendAction struct {
@@ -142,6 +146,9 @@ type ClusterStatus struct {
 	// PD means url of the pd service, it's prepared for internal use
 	// e.g. https://pd:2379
 	PD string `json:"pd,omitempty"`
+
+	// FeatureGates of this cluster
+	FeatureGates []meta.FeatureGateStatus `json:"featureGates,omitempty"`
 }
 
 type ComponentKind string

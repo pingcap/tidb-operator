@@ -37,18 +37,18 @@ import (
 )
 
 type Reconciler struct {
-	Logger          logr.Logger
-	Client          client.Client
-	PDClientManager pdm.PDClientManager
-	VolumeModifier  volumes.Modifier
+	Logger                logr.Logger
+	Client                client.Client
+	PDClientManager       pdm.PDClientManager
+	VolumeModifierFactory volumes.ModifierFactory
 }
 
-func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, vm volumes.Modifier) error {
+func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, vm volumes.ModifierFactory) error {
 	r := &Reconciler{
-		Logger:          mgr.GetLogger().WithName("PD"),
-		Client:          c,
-		PDClientManager: pdcm,
-		VolumeModifier:  vm,
+		Logger:                mgr.GetLogger().WithName("PD"),
+		Client:                c,
+		PDClientManager:       pdcm,
+		VolumeModifierFactory: vm,
 	}
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.PD{}).
 		Owns(&corev1.Pod{}).
