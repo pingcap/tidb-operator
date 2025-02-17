@@ -79,8 +79,8 @@ func TestState(t *testing.T) {
 						return obj
 					}),
 				},
-				updateRevision:  "aaa-ticdc-5464f78f9d",
-				currentRevision: "aaa-ticdc-5464f78f9d",
+				updateRevision:  "aaa-ticdc-659495f66",
+				currentRevision: "aaa-ticdc-659495f66",
 			},
 		},
 	}

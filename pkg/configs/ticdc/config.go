@@ -58,7 +58,6 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, ticdc *v1alpha1.TiCDC) error
 	return nil
 }
 
-//nolint:gocyclo // refactor if possible
 func (c *Config) Validate() error {
 	var fields []string
 

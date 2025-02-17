@@ -59,13 +59,16 @@ func (*defaultTiCDCControl) GetTiCDCPodClient(ctx context.Context, cli client.Cl
 		scheme = "https"
 		tlsConfig, err = tlsutil.GetTLSConfigFromSecret(ctx, cli, namespace, coreutil.TLSClusterClientSecretName(tcName))
 		if err != nil {
-			return NewTiCDCClient(TiCDCPodClientURL(namespace, tcName, podName, clusterDomain, scheme), podName, defaultTiCDCClientTimeout, tlsConfig),
+			return NewTiCDCClient(TiCDCPodClientURL(namespace, tcName, podName, clusterDomain, scheme),
+					podName, defaultTiCDCClientTimeout, tlsConfig),
 				fmt.Errorf("unable to get tls config for TiCDC cluster %q, ticdc client may not work: %w", tcName, err)
 		}
-		return NewTiCDCClient(TiCDCPodClientURL(namespace, tcName, podName, clusterDomain, scheme), podName, defaultTiCDCClientTimeout, tlsConfig), nil
+		return NewTiCDCClient(TiCDCPodClientURL(namespace, tcName, podName, clusterDomain, scheme),
+			podName, defaultTiCDCClientTimeout, tlsConfig), nil
 	}
 
-	return NewTiCDCClient(TiCDCPodClientURL(namespace, tcName, podName, clusterDomain, scheme), podName, defaultTiCDCClientTimeout, tlsConfig), nil
+	return NewTiCDCClient(TiCDCPodClientURL(namespace, tcName, podName, clusterDomain, scheme),
+		podName, defaultTiCDCClientTimeout, tlsConfig), nil
 }
 
 // TiCDCPodClientURL builds the URL of a TiCDC pod client.
