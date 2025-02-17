@@ -315,6 +315,7 @@ type BackupSpec struct {
 	// - BR_LOG_TO_TERM
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
+	// Deprecated: it's deprecated in v2.  TODO(ideascf): remove it in v2
 	// From is the tidb cluster that needs to backup.
 	From *TiDBAccessConfig `json:"from,omitempty"`
 	// Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.
@@ -366,6 +367,7 @@ type BackupSpec struct {
 	// ResumeGcSchedule indicates whether resume gc and pd scheduler for EBS volume snapshot backup
 	// +optional
 	ResumeGcSchedule bool `json:"resumeGcSchedule,omitempty"`
+	// Deprecated: it's deprecated in v2.  TODO(ideascf): remove it in v2
 	// DumplingConfig is the configs for dumpling
 	Dumpling *DumplingConfig `json:"dumpling,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
