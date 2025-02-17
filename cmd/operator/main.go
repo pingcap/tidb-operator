@@ -167,7 +167,7 @@ func setup(ctx context.Context, mgr ctrl.Manager) error {
 		os.Exit(1)
 	}
 	if err := setupBRControllers(mgr, c, pdcm); err != nil {
-		setupLog.Error(err, "unable to setup controllers")
+		setupLog.Error(err, "unable to setup BR controllers")
 		os.Exit(1)
 	}
 
@@ -313,9 +313,6 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 
 		// BR objects start //
 		&brv1alpha1.Backup{}: {
-			Label: labels.Everything(),
-		},
-		&brv1alpha1.BackupSchedule{}: {
 			Label: labels.Everything(),
 		},
 		&brv1alpha1.Restore{}: {

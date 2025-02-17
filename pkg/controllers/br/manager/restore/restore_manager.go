@@ -27,10 +27,11 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/apis/label"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/constants"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
@@ -249,6 +250,9 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return err
 	}
 
+	klog.Infof("restore %s/%s creating job %s.", ns, name, restoreJobName)
+	jobBytes, _ := yaml.Marshal(job)
+	klog.Infof("job: %s", string(jobBytes)) // TODO(ideascf): remove it
 	if err := rm.cli.Create(context.TODO(), job); err != nil {
 		errMsg := fmt.Errorf("create restore %s/%s job %s failed, err: %w", ns, name, restoreJobName, err)
 		_ = rm.statusUpdater.Update(restore, &metav1.Condition{
@@ -814,7 +818,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.RestoreModeSnapshot))
 	}
 
-	jobLabels := util.CombineStringMap(label.NewRestore().Instance(restore.GetInstanceName()).RestoreJob().Restore(name), restore.Labels)
+	jobLabels := util.CombineStringMap(metav1alpha1.NewRestore().Instance(restore.GetInstanceName()).RestoreJob().Restore(name), restore.Labels)
 	podLabels := jobLabels
 	jobAnnotations := restore.Annotations
 	podAnnotations := jobAnnotations
@@ -923,7 +927,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			},
 			Containers: []corev1.Container{
 				{
-					Name:            label.RestoreJobLabelVal,
+					Name:            metav1alpha1.RestoreJobLabelVal,
 					Image:           rm.backupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,

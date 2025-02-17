@@ -28,9 +28,9 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/restore"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	restoreMgr "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/restore"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 )

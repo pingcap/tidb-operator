@@ -236,7 +236,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	// create k8s job
 	klog.Infof("backup %s/%s creating job %s.", ns, name, backupJobName)
 	jobBytes, _ := yaml.Marshal(job)
-	klog.Infof("job: %s", string(jobBytes))
+	klog.Infof("job: %s", string(jobBytes)) // TODO(ideascf): remove it
 	if err := bm.cli.Create(context.TODO(), job); err != nil {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %w", ns, name, backupJobName, err)
 		_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
