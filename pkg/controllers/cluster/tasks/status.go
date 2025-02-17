@@ -132,6 +132,17 @@ func (*TaskStatus) syncComponentStatus(rtx *ReconcileContext) bool {
 		components = append(components, tidb)
 	}
 
+	if len(rtx.TiCDCGroups) > 0 {
+		ticdc := v1alpha1.ComponentStatus{Kind: v1alpha1.ComponentKindTiCDC}
+		for _, ticdcGroup := range rtx.TiCDCGroups {
+			if ticdcGroup.Spec.Replicas != nil {
+
+				ticdc.Replicas += *ticdcGroup.Spec.Replicas
+			}
+		}
+		components = append(components, ticdc)
+	}
+
 	sort.Slice(components, func(i, j int) bool {
 		return components[i].Kind < components[j].Kind
 	})
@@ -183,6 +194,18 @@ func (*TaskStatus) syncConditions(rtx *ReconcileContext) bool {
 	if suspended {
 		for _, tikvGroup := range rtx.TiKVGroups {
 			if !meta.IsStatusConditionTrue(tikvGroup.Status.Conditions, v1alpha1.TiKVGroupCondSuspended) {
+				suspended = false
+				break
+			}
+		}
+		for _, tiflashGroup := range rtx.TiFlashGroups {
+			if !meta.IsStatusConditionTrue(tiflashGroup.Status.Conditions, v1alpha1.TiFlashGroupCondSuspended) {
+				suspended = false
+				break
+			}
+		}
+		for _, ticdcGroup := range rtx.TiCDCGroups {
+			if !meta.IsStatusConditionTrue(ticdcGroup.Status.Conditions, v1alpha1.TiCDCGroupCondSuspended) {
 				suspended = false
 				break
 			}

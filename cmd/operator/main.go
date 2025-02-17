@@ -204,6 +204,13 @@ func addIndexer(ctx context.Context, mgr ctrl.Manager) error {
 		return err
 	}
 
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.TiCDCGroup{}, "spec.cluster.name", func(obj client.Object) []string {
+		ticdcGroup := obj.(*v1alpha1.TiCDCGroup)
+		return []string{ticdcGroup.Spec.Cluster.Name}
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }
 
