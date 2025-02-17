@@ -28,7 +28,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -37,10 +36,7 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	backupMgr "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/backup"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
-	"github.com/pingcap/tidb-operator/pkg/version"
 )
-
-var setupLog = ctrl.Log.WithName("setup").WithValues(version.Get().KeysAndValues()...)
 
 // NewBackupCommand implements the backup command
 func NewBackupCommand() *cobra.Command {
