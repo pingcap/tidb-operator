@@ -12,19 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Copyright 2019 PingCAP, Inc.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package backup
 
 import (
@@ -36,14 +23,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
-	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
+
+	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client"
+	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 )
 
 var (
