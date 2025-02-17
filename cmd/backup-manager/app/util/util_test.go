@@ -17,7 +17,6 @@ package util
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -29,7 +28,7 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -395,19 +394,19 @@ func TestConstructBRGlobalOptionsForRestore(t *testing.T) {
 
 func TestGetCommitTsFromMetadata(t *testing.T) {
 	g := NewGomegaWithT(t)
-	tmpdir, err := ioutil.TempDir("", "test-get-commitTs-metadata")
+	tmpdir, err := os.MkdirTemp("", "test-get-commitTs-metadata")
 	g.Expect(err).To(Succeed())
 
 	defer os.RemoveAll(tmpdir)
 	metaDataFileName := filepath.Join(tmpdir, appconstant.MetaDataFile)
 
-	err = ioutil.WriteFile(metaDataFileName, []byte(`Started dump at: 2019-06-13 10:00:04
+	err = os.WriteFile(metaDataFileName, []byte(`Started dump at: 2019-06-13 10:00:04
 		SHOW MASTER STATUS:
 			Log: tidb-binlog
 			Pos: 409054741514944513
 			GTID:
 
-		Finished dump at: 2019-06-13 10:00:04`), 0644)
+		Finished dump at: 2019-06-13 10:00:04`), 0600)
 	g.Expect(err).To(Succeed())
 
 	commitTs, err := GetCommitTsFromMetadata(tmpdir)
@@ -498,7 +497,6 @@ func TestConstructRcloneArgs(t *testing.T) {
 			g.Expect(opts).To(Equal(tt.expect))
 		})
 	}
-
 }
 
 func TestRetryOnError(t *testing.T) {
@@ -660,7 +658,7 @@ func newBackup() *v1alpha1.Backup {
 					SecretName: "demo",
 				},
 			},
-			StorageClassName: pointer.StringPtr("local-storage"),
+			StorageClassName: ptr.To("local-storage"),
 			StorageSize:      "1Gi",
 		},
 	}
@@ -692,7 +690,7 @@ func newRestore() *v1alpha1.Restore {
 					SecretName: "demo",
 				},
 			},
-			StorageClassName: pointer.StringPtr("local-storage"),
+			StorageClassName: ptr.To("local-storage"),
 			StorageSize:      "1Gi",
 		},
 	}

@@ -30,9 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
-	bkconstants "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/constants"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/restore"
 	restoreMgr "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/restore"
 )
@@ -55,6 +53,7 @@ func NewManager(
 	}
 }
 
+/* TODO(ideascf): remove it in v2. it's depended by restore.spec.to
 func (rm *Manager) setOptions(restore *v1alpha1.Restore) {
 	rm.Options.Host = restore.Spec.To.Host
 
@@ -72,6 +71,7 @@ func (rm *Manager) setOptions(restore *v1alpha1.Restore) {
 
 	rm.Options.Password = util.GetOptionValueFromEnv(bkconstants.TidbPasswordKey, bkconstants.BackupManagerEnvVarPrefix)
 }
+*/
 
 // ProcessRestore used to process the restore logic
 func (rm *Manager) ProcessRestore() error {

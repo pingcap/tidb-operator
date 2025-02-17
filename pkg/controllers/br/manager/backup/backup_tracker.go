@@ -56,12 +56,7 @@ type backupTracker struct {
 	statusUpdater BackupConditionUpdaterInterface
 
 	operateLock sync.Mutex
-	logBackups  map[string]*trackDepends
-}
-
-// trackDepends is the tracker depends, such as tidb cluster info.
-type trackDepends struct {
-	cluster *corev1alpha1.Cluster
+	logBackups  map[string]bool
 }
 
 // NewBackupTracker returns a BackupTracker
@@ -69,7 +64,7 @@ func NewBackupTracker(cli client.Client, pdcm pdm.PDClientManager, statusUpdater
 	tracker := &backupTracker{
 		cli:           cli,
 		statusUpdater: statusUpdater,
-		logBackups:    make(map[string]*trackDepends),
+		logBackups:    make(map[string]bool),
 		pdcm:          pdcm,
 	}
 	go tracker.initTrackLogBackupsProgress()
@@ -130,6 +125,7 @@ func (bt *backupTracker) StartTrackLogBackupProgress(backup *v1alpha1.Backup) er
 	if err != nil {
 		return err
 	}
+	bt.logBackups[logkey] = true
 	go bt.refreshLogBackupCheckpointTs(ns, name)
 	return nil
 }
@@ -164,7 +160,7 @@ func (bt *backupTracker) getLogBackupTC(backup *v1alpha1.Backup) (*corev1alpha1.
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("get log backup %s/%s tidbcluster %s/%s failed, err is %v", ns, name, clusterNamespace, backup.Spec.BR.Cluster, err)
+		return nil, fmt.Errorf("get log backup %s/%s tidbcluster %s/%s failed, err is %w", ns, name, clusterNamespace, backup.Spec.BR.Cluster, err)
 	}
 	return cluster, nil
 }

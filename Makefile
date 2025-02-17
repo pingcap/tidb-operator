@@ -117,6 +117,10 @@ verify/%:
 lint: bin/golangci-lint
 	$(GOLANGCI_LINT) run ./...
 
+.PHONY: lint-fix
+lint-fix: bin/golangci-lint
+	$(GOLANGCI_LINT) run ./... --fix
+
 .PHONY: unit
 unit:
 	go test $$(go list -e ./... | grep -v cmd | grep -v tools | grep -v tests | grep -v third_party) \

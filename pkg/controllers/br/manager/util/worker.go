@@ -66,7 +66,7 @@ func (pool *WorkerPool) IdleCount() int {
 
 // Limit is the limit of the pool
 func (pool *WorkerPool) Limit() int {
-	return int(pool.limit)
+	return int(pool.limit) //nolint:gosec
 }
 
 // Apply executes a task.

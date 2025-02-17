@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
@@ -69,34 +69,34 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		restoreNamespace string
 	)
 
-	if restore.Spec.BR == nil {
-		err = backuputil.ValidateRestore(restore, "", false)
-	} else {
-		restoreNamespace = restore.GetNamespace()
-		if restore.Spec.BR.ClusterNamespace != "" {
-			restoreNamespace = restore.Spec.BR.ClusterNamespace
-		}
-
-		cluster = &corev1alpha1.Cluster{}
-		err = rm.cli.Get(context.TODO(), client.ObjectKey{Namespace: restoreNamespace, Name: restore.Spec.BR.Cluster}, cluster)
-		if err != nil {
-			reason := fmt.Sprintf("failed to fetch tidbcluster %s/%s", restoreNamespace, restore.Spec.BR.Cluster)
-			_ = rm.statusUpdater.Update(restore, &metav1.Condition{
-				Type:    string(v1alpha1.RestoreRetryFailed),
-				Status:  metav1.ConditionTrue,
-				Reason:  reason,
-				Message: err.Error(),
-			}, nil)
-			return err
-		}
-		tikvGroup, err := util.FirstTikvGroup(rm.cli, cluster.Namespace, cluster.Name)
-		if err != nil {
-			return fmt.Errorf("failed to get first tikv group: %v", err)
-		}
-
-		err = backuputil.ValidateRestore(restore, tikvGroup.Spec.Template.Spec.Version, false) // TODO(ideascf): cluster.Spec.AcrossK8s?
+	// TODO(ideascf): remove it in v2. .spec.br is required in v2
+	// if restore.Spec.BR == nil {
+	// 	err = backuputil.ValidateRestore(restore, "", false)
+	// } else {
+	restoreNamespace = restore.GetNamespace()
+	if restore.Spec.BR.ClusterNamespace != "" {
+		restoreNamespace = restore.Spec.BR.ClusterNamespace
 	}
 
+	cluster = &corev1alpha1.Cluster{}
+	err = rm.cli.Get(context.TODO(), client.ObjectKey{Namespace: restoreNamespace, Name: restore.Spec.BR.Cluster}, cluster)
+	if err != nil {
+		reason := fmt.Sprintf("failed to fetch tidbcluster %s/%s", restoreNamespace, restore.Spec.BR.Cluster)
+		_ = rm.statusUpdater.Update(restore, &metav1.Condition{
+			Type:    string(v1alpha1.RestoreRetryFailed),
+			Status:  metav1.ConditionTrue,
+			Reason:  reason,
+			Message: err.Error(),
+		}, nil)
+		return err
+	}
+	tikvGroup, err := util.FirstTikvGroup(rm.cli, cluster.Namespace, cluster.Name)
+	if err != nil {
+		return fmt.Errorf("failed to get first tikv group: %w", err)
+	}
+
+	err = backuputil.ValidateRestore(restore, tikvGroup.Spec.Template.Spec.Version, false) // TODO(ideascf): cluster.Spec.AcrossK8s?
+	// }
 	if err != nil {
 		_ = rm.statusUpdater.Update(restore, &metav1.Condition{
 			Type:    string(v1alpha1.RestoreInvalid),
@@ -109,7 +109,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return fmt.Errorf("invalid restore spec %s/%s", ns, name)
 	}
 
-	// nolint: lll
+	//nolint: lll
 	/* TODO(ideascf): remove it in v2. Volume snapshot restore is not supported in v2
 	if restore.Spec.BR != nil && restore.Spec.Mode == v1alpha1.RestoreModeVolumeSnapshot {
 		err = rm.validateRestore(restore, tc)
@@ -193,7 +193,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		klog.Infof("restore job %s/%s has been created, skip", ns, restoreJobName)
 		return nil
 	} else if !errors.IsNotFound(err) {
-		return fmt.Errorf("restore %s/%s get job %s failed, err: %v", ns, name, restoreJobName, err)
+		return fmt.Errorf("restore %s/%s get job %s failed, err: %w", ns, name, restoreJobName, err)
 	}
 
 	var (
@@ -224,22 +224,20 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	// 		return err
 	// 	}
 	// } else
-	{
-		job, reason, err = rm.makeRestoreJob(restore)
-		if err != nil {
-			_ = rm.statusUpdater.Update(restore, &metav1.Condition{
-				Type:    string(v1alpha1.RestoreRetryFailed),
-				Status:  metav1.ConditionTrue,
-				Reason:  reason,
-				Message: err.Error(),
-			}, nil)
-			return err
-		}
+	job, reason, err = rm.makeRestoreJob(restore)
+	if err != nil {
+		_ = rm.statusUpdater.Update(restore, &metav1.Condition{
+			Type:    string(v1alpha1.RestoreRetryFailed),
+			Status:  metav1.ConditionTrue,
+			Reason:  reason,
+			Message: err.Error(),
+		}, nil)
+		return err
 	}
 
 	if err := rm.cli.Create(context.TODO(), job); err != nil {
-		errMsg := fmt.Errorf("create restore %s/%s job %s failed, err: %v", ns, name, restoreJobName, err)
-		rm.statusUpdater.Update(restore, &metav1.Condition{
+		errMsg := fmt.Errorf("create restore %s/%s job %s failed, err: %w", ns, name, restoreJobName, err)
+		_ = rm.statusUpdater.Update(restore, &metav1.Condition{
 			Type:    string(v1alpha1.RestoreRetryFailed),
 			Status:  metav1.ConditionTrue,
 			Reason:  "CreateRestoreJobFailed",
@@ -761,7 +759,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 
 	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.UseKMS, restore.Spec.StorageProvider, rm.cli)
 	if err != nil {
-		return nil, reason, fmt.Errorf("restore %s/%s, %v", ns, name, err)
+		return nil, reason, fmt.Errorf("restore %s/%s, %w", ns, name, err)
 	}
 
 	envVars = append(envVars, storageEnv...)
@@ -940,7 +938,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			},
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: pointer.Int32Ptr(0),
+			BackoffLimit: ptr.To(int32(0)),
 			Template:     *podSpec,
 		},
 	}
@@ -948,13 +946,14 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	return job, "", nil
 }
 
+/* TODO(ideascf): remove it in v2. EBS snapshot restore is not supported in v2
+
 type pvcInfo struct {
 	pvc        *corev1.PersistentVolumeClaim
 	volumeName string
 	number     int
 }
 
-/* TODO(ideascf): remove it in v2. EBS snapshot restore is not supported in v2
 
 func (rm *restoreManager) warmUpTiKVVolumesSync(r *v1alpha1.Restore, tc *corev1alpha1.Cluster) error {
 	warmUpImage := r.Spec.WarmupImage

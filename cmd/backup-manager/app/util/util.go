@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -52,19 +51,19 @@ var (
 	}
 	// DefaultVersion is the default tikv and br version
 	DefaultVersion = "4.0"
-	defaultOptions = []string{
-		// "--tidb-force-priority=LOW_PRIORITY",
-		"--threads=16",
-		"--rows=10000",
-	}
-	defaultTableFilterOptions = []string{
-		"--filter", "*.*",
-		"--filter", constants.DefaultTableFilter,
-	}
+	// defaultOptions = []string{
+	// 	// "--tidb-force-priority=LOW_PRIORITY",
+	// 	"--threads=16",
+	// 	"--rows=10000",
+	// }
+	// defaultTableFilterOptions = []string{
+	// 	"--filter", "*.*",
+	// 	"--filter", constants.DefaultTableFilter,
+	// }
 )
 
 func validCmdFlagFunc(flag *pflag.Flag) {
-	if len(flag.Value.String()) > 0 {
+	if flag.Value.String() != "" {
 		return
 	}
 	// optional flag
@@ -92,7 +91,7 @@ func EnsureDirectoryExist(dirName string) error {
 	if os.IsNotExist(err) {
 		errDir := os.MkdirAll(dirName, os.ModePerm)
 		if errDir != nil {
-			return fmt.Errorf("create dir %s failed. err: %v", dirName, err)
+			return fmt.Errorf("create dir %s failed. err: %w", dirName, err)
 		}
 		return nil
 	}
@@ -105,28 +104,28 @@ func EnsureDirectoryExist(dirName string) error {
 }
 
 // GetStoragePath generate the path of a specific storage
-func GetStoragePath(StorageProvider *v1alpha1.StorageProvider) (string, error) {
+func GetStoragePath(storageProvider *v1alpha1.StorageProvider) (string, error) {
 	var url, bucket, prefix string
-	st := util.GetStorageType(*StorageProvider)
+	st := util.GetStorageType(*storageProvider)
 	switch st {
 	case v1alpha1.BackupStorageTypeS3:
-		prefix = StorageProvider.S3.Prefix
-		bucket = StorageProvider.S3.Bucket
+		prefix = storageProvider.S3.Prefix
+		bucket = storageProvider.S3.Bucket
 		url = fmt.Sprintf("s3://%s", path.Join(bucket, prefix))
 		return url, nil
 	case v1alpha1.BackupStorageTypeGcs:
-		prefix = StorageProvider.Gcs.Prefix
-		bucket = StorageProvider.Gcs.Bucket
+		prefix = storageProvider.Gcs.Prefix
+		bucket = storageProvider.Gcs.Bucket
 		url = fmt.Sprintf("gcs://%s/", path.Join(bucket, prefix))
 		return url, nil
 	case v1alpha1.BackupStorageTypeAzblob:
-		prefix = StorageProvider.Azblob.Prefix
-		bucket = StorageProvider.Azblob.Container
+		prefix = storageProvider.Azblob.Prefix
+		bucket = storageProvider.Azblob.Container
 		url = fmt.Sprintf("azure://%s/", path.Join(bucket, prefix))
 		return url, nil
 	case v1alpha1.BackupStorageTypeLocal:
-		prefix = StorageProvider.Local.Prefix
-		mountPath := StorageProvider.Local.VolumeMount.MountPath
+		prefix = storageProvider.Local.Prefix
+		mountPath := storageProvider.Local.VolumeMount.MountPath
 		url = fmt.Sprintf("local://%s", path.Join(mountPath, prefix))
 		return url, nil
 	default:
@@ -336,9 +335,9 @@ func GetCommitTsFromMetadata(backupPath string) (string, error) {
 	if exist := IsFileExist(metaFile); !exist {
 		return commitTs, fmt.Errorf("file %s does not exist or is not regular file", metaFile)
 	}
-	contents, err := ioutil.ReadFile(metaFile)
+	contents, err := os.ReadFile(metaFile)
 	if err != nil {
-		return commitTs, fmt.Errorf("read metadata file %s failed, err: %v", metaFile, err)
+		return commitTs, fmt.Errorf("read metadata file %s failed, err: %w", metaFile, err)
 	}
 
 	for _, lineStr := range strings.Split(string(contents), "\n") {
@@ -361,7 +360,7 @@ func GetBRArchiveSize(meta *kvbackup.BackupMeta) uint64 {
 		return meta.BackupSize
 	}
 	// ASSERT: the version of meta must be v1
-	total := uint64(meta.Size())
+	total := uint64(meta.Size()) //nolint: gosec
 	for _, file := range meta.Files {
 		total += file.Size_
 	}

@@ -238,8 +238,8 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	jobBytes, _ := yaml.Marshal(job)
 	klog.Infof("job: %s", string(jobBytes))
 	if err := bm.cli.Create(context.TODO(), job); err != nil {
-		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %v", ns, name, backupJobName, err)
-		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %w", ns, name, backupJobName, err)
+		_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: logBackupSubcommand,
 			Condition: metav1.Condition{
 				Type:    string(v1alpha1.BackupRetryTheFailed),
@@ -266,53 +266,54 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 	name := backup.GetName()
 	var err error
 	logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
-	if backup.Spec.BR == nil {
-		err = backuputil.ValidateBackup(backup, "", nil)
-	} else {
-		if backup.Spec.Mode == v1alpha1.BackupModeLog && logBackupSubcommand == v1alpha1.LogUnknownCommand {
-			err = fmt.Errorf("log backup %s/%s subcommand `%s` is not supported", ns, name, backup.Spec.LogSubcommand)
-			_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Command: logBackupSubcommand,
-				Condition: metav1.Condition{
-					Type:    string(v1alpha1.BackupRetryTheFailed),
-					Status:  metav1.ConditionTrue,
-					Reason:  err.Error(),
-					Message: err.Error(),
-				},
-			}, nil)
-			return err
-		}
 
-		backupNamespace := backup.GetNamespace()
-		if backup.Spec.BR.ClusterNamespace != "" {
-			backupNamespace = backup.Spec.BR.ClusterNamespace
-		}
-
-		cluster := &corev1alpha1.Cluster{}
-		err = bm.cli.Get(context.TODO(), types.NamespacedName{Namespace: backupNamespace, Name: backup.Spec.BR.Cluster}, cluster)
-		if err != nil {
-			reason := fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster)
-			_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Command: logBackupSubcommand,
-				Condition: metav1.Condition{
-					Type:    string(v1alpha1.BackupRetryTheFailed),
-					Status:  metav1.ConditionTrue,
-					Reason:  reason,
-					Message: err.Error(),
-				},
-			}, nil)
-			return err
-		}
-		tikvGroup, err := util.FirstTikvGroup(bm.cli, backupNamespace, backup.Spec.BR.Cluster)
-		if err != nil {
-			return err
-		}
-
-		err = backuputil.ValidateBackup(backup, tikvGroup.Spec.Template.Spec.Version, cluster)
+	// TODO(ideascf): remove it in v2. .spec.br is required in v2
+	// if backup.Spec.BR == nil {
+	// 	err = backuputil.ValidateBackup(backup, "", nil)
+	// } else {
+	if backup.Spec.Mode == v1alpha1.BackupModeLog && logBackupSubcommand == v1alpha1.LogUnknownCommand {
+		err = fmt.Errorf("log backup %s/%s subcommand `%s` is not supported", ns, name, backup.Spec.LogSubcommand)
+		_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Command: logBackupSubcommand,
+			Condition: metav1.Condition{
+				Type:    string(v1alpha1.BackupRetryTheFailed),
+				Status:  metav1.ConditionTrue,
+				Reason:  err.Error(),
+				Message: err.Error(),
+			},
+		}, nil)
+		return err
 	}
 
+	backupNamespace := backup.GetNamespace()
+	if backup.Spec.BR.ClusterNamespace != "" {
+		backupNamespace = backup.Spec.BR.ClusterNamespace
+	}
+
+	cluster := &corev1alpha1.Cluster{}
+	err = bm.cli.Get(context.TODO(), types.NamespacedName{Namespace: backupNamespace, Name: backup.Spec.BR.Cluster}, cluster)
 	if err != nil {
-		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		reason := fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster)
+		_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Command: logBackupSubcommand,
+			Condition: metav1.Condition{
+				Type:    string(v1alpha1.BackupRetryTheFailed),
+				Status:  metav1.ConditionTrue,
+				Reason:  reason,
+				Message: err.Error(),
+			},
+		}, nil)
+		return err
+	}
+	tikvGroup, err := util.FirstTikvGroup(bm.cli, backupNamespace, backup.Spec.BR.Cluster)
+	if err != nil {
+		return err
+	}
+
+	err = backuputil.ValidateBackup(backup, tikvGroup.Spec.Template.Spec.Version, cluster)
+	// }
+	if err != nil {
+		_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: logBackupSubcommand,
 			Condition: metav1.Condition{
 				Type:    string(v1alpha1.BackupInvalid),
@@ -464,7 +465,7 @@ func (bm *backupManager) checkVolumeBackupSnapshotsCreated(b *v1alpha1.Backup) e
 }
 */
 
-// skipBackupSync skip backup sync, if return true, backup can be skiped directly.
+// skipBackupSync skip backup sync, if return true, backup can be skipped directly.
 func (bm *backupManager) skipBackupSync(backup *v1alpha1.Backup) (bool, error) {
 	if backup.Spec.Mode == v1alpha1.BackupModeLog {
 		return bm.skipLogBackupSync(backup)
@@ -500,7 +501,7 @@ func (bm *backupManager) waitPreTaskDone(backup *v1alpha1.Backup) error {
 	}
 
 	if !errors.IsNotFound(err) {
-		return fmt.Errorf("backup %s/%s get job %s failed, err: %v", ns, name, backupJobName, err)
+		return fmt.Errorf("backup %s/%s get job %s failed, err: %w", ns, name, backupJobName, err)
 	}
 	return nil
 }
@@ -534,7 +535,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 		if err != nil {
 			// don't retry on dup metadata file existing error
 			if reason == "FileExistedInExternalStorage" {
-				bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+				_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 					Command: logBackupSubcommand,
 					Condition: metav1.Condition{
 						Type:    string(v1alpha1.BackupFailed),
@@ -546,7 +547,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 				// TODO(ideascf): use controller.IgnoreErrorf
 				return nil, nil, "", fmt.Errorf("%s, reason is %s", err.Error(), reason)
 			} else {
-				bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+				_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 					Command: logBackupSubcommand,
 					Condition: metav1.Condition{
 						Type:    string(v1alpha1.BackupRetryTheFailed),
@@ -563,7 +564,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 			// log start need to start tracker
 			err = bm.backupTracker.StartTrackLogBackupProgress(backup)
 			if err != nil {
-				bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+				_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 					Command: logBackupSubcommand,
 					Condition: metav1.Condition{
 						Type:    string(v1alpha1.BackupRetryTheFailed),
@@ -745,6 +746,7 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 }
 */
 
+// nolint: gocyclo
 // makeBRBackupJob requires that backup.Spec.BR != nil
 func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
@@ -779,7 +781,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 
 	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.cli)
 	if err != nil {
-		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
+		return nil, reason, fmt.Errorf("backup %s/%s, %w", ns, name, err)
 	}
 
 	envVars = append(envVars, storageEnv...)
@@ -857,7 +859,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		})
 	}
 
-	// fixme(ideascf): do we need do client-tls for tidb?
+	// TODO(ideascf): do we need do client-tls for tidb?
 	// if backup.Spec.From != nil && tc.Spec.TiDB != nil && tc.Spec.TiDB.TLSClient != nil && tc.Spec.TiDB.TLSClient.Enabled && !tc.SkipTLSWhenConnectTiDB() {
 	// 	args = append(args, "--client-tls=true")
 	// 	if tc.Spec.TiDB.TLSClient.SkipInternalClientCA {
@@ -943,7 +945,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 			Containers: []corev1.Container{
 				{
 					Name:            corev1alpha1.LabelValComponentBackup,
-					Image:           "", // fixme(ideascf): set backup-manager image
+					Image:           bm.backupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    volumeMounts,
@@ -990,6 +992,8 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 	return job, "", nil
 }
 
+/* TODO(ideascf): remove me, volume snapshot backup is deprecated in v2
+
 func (bm *backupManager) setBackupPodResourceRequirementsEmpty(podSpec *corev1.PodTemplateSpec) {
 	for _, c := range podSpec.Spec.InitContainers {
 		c.Resources.Requests = make(corev1.ResourceList, 0)
@@ -1000,8 +1004,6 @@ func (bm *backupManager) setBackupPodResourceRequirementsEmpty(podSpec *corev1.P
 		c.Resources.Limits = make(corev1.ResourceList, 0)
 	}
 }
-
-/* TODO(ideascf): remove me, volume snapshot backup is deprecated in v2
 
 // save cluster meta to external storage since k8s size limitation on annotation/configMap
 func (bm *backupManager) saveClusterMetaToExternalStorage(b *v1alpha1.Backup, csb *snapshotter.CloudSnapBackup) (string, error) {
@@ -1197,7 +1199,7 @@ func (bm *backupManager) skipSnapshotBackupSync(backup *v1alpha1.Backup) (bool, 
 	}
 
 	if !errors.IsNotFound(err) {
-		return false, fmt.Errorf("backup %s/%s get job %s failed, err: %v", ns, name, backupJobName, err)
+		return false, fmt.Errorf("backup %s/%s get job %s failed, err: %w", ns, name, backupJobName, err)
 	}
 	return false, nil
 }
@@ -1384,7 +1386,7 @@ func waitOldBackupJobDone(ns, name, backupJobName string, bm *backupManager, bac
 
 		klog.Infof("backup %s/%s job %s has complete or failed, will delete job", ns, name, backupJobName)
 		if err := bm.cli.Delete(context.TODO(), oldJob); err != nil {
-			return fmt.Errorf("backup %s/%s delete job %s failed, err: %v", ns, name, backupJobName, err)
+			return fmt.Errorf("backup %s/%s delete job %s failed, err: %w", ns, name, backupJobName, err)
 		}
 	}
 

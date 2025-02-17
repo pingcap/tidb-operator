@@ -38,6 +38,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 )
 
+const (
+	defaultCacheSyncWaitTimeout = 30 * time.Second
+)
+
 // NewBackupCommand implements the backup command
 func NewBackupCommand() *cobra.Command {
 	bo := backup.Options{}
@@ -79,7 +83,7 @@ func runBackup(backupOpts backup.Options, kubecfg string) error {
 		return err
 	}
 
-	newcli, err := newClient(context.Background(), kubeconfig, scheme.Scheme)
+	newcli, err := newClient(context.Background(), kubeconfig, scheme.Scheme, []client.Object{&v1alpha1.Backup{}})
 	if err != nil {
 		return err
 	}
@@ -101,7 +105,7 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 	return byObj
 }
 
-func newClient(ctx context.Context, cfg *rest.Config, s *runtime.Scheme) (client.Client, error) {
+func newClient(ctx context.Context, cfg *rest.Config, s *runtime.Scheme, disabledFor []client.Object) (client.Client, error) {
 	hc, err := rest.HTTPClientFor(cfg)
 	if err != nil {
 		return nil, err
@@ -116,10 +120,10 @@ func newClient(ctx context.Context, cfg *rest.Config, s *runtime.Scheme) (client
 	}
 
 	// it will not return any errors
-	// nolint: errcheck
+	//nolint: errcheck
 	go reader.Start(ctx)
 
-	nctx, cancel := context.WithTimeout(ctx, time.Second*30)
+	nctx, cancel := context.WithTimeout(ctx, defaultCacheSyncWaitTimeout)
 	defer cancel()
 	if !reader.WaitForCacheSync(nctx) {
 		return nil, fmt.Errorf("cache is not synced: %w", nctx.Err())
@@ -130,7 +134,7 @@ func newClient(ctx context.Context, cfg *rest.Config, s *runtime.Scheme) (client
 		HTTPClient: hc,
 		Cache: &client.CacheOptions{
 			Reader:     reader,
-			DisableFor: []client.Object{&v1alpha1.Backup{}}, // no cache for backup
+			DisableFor: disabledFor,
 		},
 	})
 	if err != nil {

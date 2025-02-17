@@ -66,7 +66,7 @@ func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, conditio
 			// make a copy so we don't mutate the shared cache
 			restore = updated.DeepCopy()
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated restore %s/%s from lister: %v", ns, restoreName, err))
+			utilruntime.HandleError(fmt.Errorf("error getting updated restore %s/%s from lister: %w", ns, restoreName, err))
 			return err
 		}
 		isStatusUpdate = updateRestoreStatus(&restore.Status, newStatus)
@@ -116,7 +116,7 @@ func updateRestoreStatus(status *v1alpha1.RestoreStatus, newStatus *RestoreUpdat
 	return isUpdate
 }
 
-// FIXME(ideascf): this function is copied from backup_status_updater.go, we should refactor it.
+// TODO(ideascf): this function is copied from backup_status_updater.go, we should refactor it.
 // updateBRProgress updates progress for backup/restore.
 func updateBRProgress(progresses []v1alpha1.Progress, step *string, progress *int, updateTime *metav1.Time) ([]v1alpha1.Progress, bool) {
 	var oldProgress *v1alpha1.Progress

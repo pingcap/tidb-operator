@@ -41,6 +41,10 @@ import (
 )
 
 const (
+	ReasonUpdateStatusFailed = "UpdateStatusFailed"
+)
+
+const (
 	gcPausedKeyword          = "GC is paused"
 	pdSchedulesPausedKeyword = "Schedulers are paused"
 )
@@ -205,6 +209,7 @@ func (bm *Manager) validateAndCreateFromDB(ctx context.Context, backup *v1alpha1
 }
 */
 
+// nolint: gocyclo
 func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, db *sql.DB) error {
 	started := time.Now()
 
@@ -336,8 +341,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	// clean snapshot backup data if it was restarted
 	if backup.Spec.Mode == v1alpha1.BackupModeSnapshot && v1alpha1.IsBackupRestart(backup) && !bm.isBRCanContinueRunByCheckpoint() {
 		klog.Infof("clean snapshot backup %s data before run br command, backup path is %s", bm, backup.Status.BackupPath)
-		err := bm.cleanSnapshotBackupEnv(ctx, backup)
-		if err != nil {
+		if err := bm.cleanSnapshotBackupEnv(ctx, backup); err != nil {
 			return errors.Annotatef(err, "clean snapshot backup %s failed", bm)
 		}
 	}
@@ -383,8 +387,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 
 	if db != nil && oldTikvGCTimeDuration < tikvGCTimeDuration {
 		// use another context to revert `tikv_gc_life_time` back.
-		// `DefaultTerminationGracePeriodSeconds` for a pod is 30, so we use a smaller timeout value here.
-		ctx2, cancel2 := context.WithTimeout(context.Background(), 25*time.Second)
+		ctx2, cancel2 := context.WithTimeout(context.Background(), constants.DefaultTikvGCSetTimeout)
 		defer cancel2()
 		err = bm.SetTikvGCLifeTime(ctx2, db, oldTikvGCTime)
 		if err != nil {
@@ -462,8 +465,8 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 			return errorutils.NewAggregate(errs)
 		}
 		klog.Infof("Get br metadata for backup files in %s of cluster %s success", backupFullPath, bm)
-		backupSize := int64(util.GetBRArchiveSize(backupMeta))
-		backupSizeReadable := humanize.Bytes(uint64(backupSize))
+		backupSize := int64(util.GetBRArchiveSize(backupMeta))   //nolint:gosec
+		backupSizeReadable := humanize.Bytes(uint64(backupSize)) //nolint: gosec
 		commitTS := backupMeta.EndVersion
 		klog.Infof("Get size %d for backup files in %s of cluster %s success", backupSize, backupFullPath, bm)
 		klog.Infof("Get cluster %s commitTs %d success", bm, commitTS)
@@ -568,7 +571,7 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 			Status: metav1.ConditionTrue,
 		},
 	}, updatePathStatus); err != nil {
-		return nil, "UpdateStatusFailed", err
+		return nil, ReasonUpdateStatusFailed, err
 	}
 
 	// run br binary to do the real job
@@ -612,7 +615,7 @@ func (bm *Manager) resumeLogBackup(ctx context.Context, backup *v1alpha1.Backup)
 			Status: metav1.ConditionTrue,
 		},
 	}, nil); err != nil {
-		return nil, "UpdateStatusFailed", err
+		return nil, ReasonUpdateStatusFailed, err
 	}
 
 	// run br binary to do the real job
@@ -644,7 +647,7 @@ func (bm *Manager) stopLogBackup(ctx context.Context, backup *v1alpha1.Backup) (
 			Status: metav1.ConditionTrue,
 		},
 	}, nil); err != nil {
-		return nil, "UpdateStatusFailed", err
+		return nil, ReasonUpdateStatusFailed, err
 	}
 
 	// run br binary to do the real job
@@ -677,7 +680,7 @@ func (bm *Manager) pauseLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 			Status: metav1.ConditionTrue,
 		},
 	}, nil); err != nil {
-		return nil, "UpdateStatusFailed", err
+		return nil, ReasonUpdateStatusFailed, err
 	}
 
 	// run br binary to do the real job
@@ -710,7 +713,7 @@ func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backu
 			Status: metav1.ConditionTrue,
 		},
 	}, nil); err != nil {
-		return nil, "UpdateStatusFailed", err
+		return nil, ReasonUpdateStatusFailed, err
 	}
 
 	// run br binary to do the real job

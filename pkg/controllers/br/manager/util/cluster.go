@@ -31,7 +31,7 @@ func FirstTikvGroup(cli client.Client, ns, cluster string) (*v1alpha1.TiKVGroup,
 		return nil, fmt.Errorf("failed to list tikv groups: %w", err)
 	}
 	if len(tikvGroups) == 0 {
-		return nil, fmt.Errorf("no tikv groups found in cluster %w", cluster)
+		return nil, fmt.Errorf("no tikv groups found in cluster %s", cluster)
 	}
 	tikvGroup := tikvGroups[0]
 	return tikvGroup, nil

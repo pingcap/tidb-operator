@@ -125,7 +125,7 @@ func (bc *backupCleaner) StopLogBackup(backup *v1alpha1.Backup) error {
 
 	// create k8s job
 	if err := bc.cli.Create(context.Background(), job); err != nil {
-		errMsg := fmt.Errorf("stop log backup %s/%s job %s failed, err: %v", ns, name, stopLogJobName, err)
+		errMsg := fmt.Errorf("stop log backup %s/%s job %s failed, err: %w", ns, name, stopLogJobName, err)
 		_ = bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: v1alpha1.LogStopCommand,
 			Condition: metav1.Condition{
@@ -159,7 +159,7 @@ func (bc *backupCleaner) CleanData(backup *v1alpha1.Backup) error {
 
 	finished, err := bc.ensureBackupJobFinished(backup)
 	if err != nil {
-		return fmt.Errorf("ensure %s/%s jobs finished failed: %s", ns, name, err)
+		return fmt.Errorf("ensure %s/%s jobs finished failed: %w", ns, name, err)
 	}
 	if !finished {
 		klog.Infof("wait for backup %s/%s jobs to finish", ns, name)
@@ -200,7 +200,7 @@ func (bc *backupCleaner) CleanData(backup *v1alpha1.Backup) error {
 	// not found clean job, create it
 	job, reason, err := bc.makeCleanJob(backup)
 	if err != nil {
-		bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		_ = bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Condition: metav1.Condition{
 				Type:    string(v1alpha1.BackupRetryTheFailed),
 				Status:  metav1.ConditionTrue,
@@ -212,8 +212,8 @@ func (bc *backupCleaner) CleanData(backup *v1alpha1.Backup) error {
 	}
 
 	if err := bc.cli.Create(context.TODO(), job); err != nil {
-		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %v", ns, name, cleanJobName, err)
-		bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %w", ns, name, cleanJobName, err)
+		_ = bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Condition: metav1.Condition{
 				Type:    string(v1alpha1.BackupRetryTheFailed),
 				Status:  metav1.ConditionTrue,
@@ -357,7 +357,7 @@ func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1
 
 	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bc.cli)
 	if err != nil {
-		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
+		return nil, reason, fmt.Errorf("backup %s/%s, %w", ns, name, err)
 	}
 
 	envVars = append(envVars, storageEnv...)
@@ -407,7 +407,7 @@ func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1
 		})
 	}
 
-	// fixme(ideascf): do we need do client-tls for tidb?
+	// TODO(ideascf): do we need do client-tls for tidb?
 	// if backup.Spec.From != nil && tc.Spec.TiDB != nil && tc.Spec.TiDB.TLSClient != nil && tc.Spec.TiDB.TLSClient.Enabled && !tc.SkipTLSWhenConnectTiDB() {
 	// 	args = append(args, "--client-tls=true")
 	// 	if tc.Spec.TiDB.TLSClient.SkipInternalClientCA {
@@ -531,7 +531,6 @@ func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1
 
 // ensureBackupJobFinished ensures that all backup jobs have finished, deleting any running jobs.
 func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool, error) {
-
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	backupJobNames := bc.getBackupJobNames(backup)

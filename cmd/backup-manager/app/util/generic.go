@@ -29,18 +29,10 @@ package util
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"database/sql"
-	"errors"
 	"fmt"
-	"io/ioutil"
-	"path"
 
-	"github.com/go-sql-driver/mysql"
-	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
-	corev1 "k8s.io/api/core/v1"
 )
 
 // GenericOptions contains the generic input arguments to the backup/restore command
@@ -68,54 +60,57 @@ func (bo *GenericOptions) String() string {
 	return fmt.Sprintf("%s/%s", bo.Namespace, bo.ResourceName)
 }
 
-func (bo *GenericOptions) GetDSN(enabledTLSClient bool) (string, error) {
-	if !enabledTLSClient {
-		return fmt.Sprintf("%s:%s@(%s:%d)/%s?charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, constants.TidbMetaDB), nil
-	}
-	rootCertPool := x509.NewCertPool()
-	if !bo.SkipClientCA {
-		pem, err := ioutil.ReadFile(path.Join(corev1alpha1.DirPathTiDBClientTLS, corev1.ServiceAccountRootCAKey))
+/*
+	func (bo *GenericOptions) GetDSN(enabledTLSClient bool) (string, error) {
+		if !enabledTLSClient {
+			return fmt.Sprintf("%s:%s@(%s:%d)/%s?charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, constants.TidbMetaDB), nil
+		}
+		rootCertPool := x509.NewCertPool()
+		if !bo.SkipClientCA {
+			pem, err := ioutil.ReadFile(path.Join(corev1alpha1.DirPathTiDBClientTLS, corev1.ServiceAccountRootCAKey))
+			if err != nil {
+				return "", err
+			}
+			if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
+				return "", errors.New("Failed to append PEM")
+			}
+		}
+
+		clientCert := make([]tls.Certificate, 0, 1)
+		certs, err := tls.LoadX509KeyPair(
+			path.Join(corev1alpha1.DirPathTiDBClientTLS, corev1.TLSCertKey),
+			path.Join(corev1alpha1.DirPathTiDBClientTLS, corev1.TLSPrivateKeyKey))
 		if err != nil {
 			return "", err
 		}
-		if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
-			return "", errors.New("Failed to append PEM")
-		}
+		clientCert = append(clientCert, certs)
+		mysql.RegisterTLSConfig("customer", &tls.Config{
+			RootCAs:            rootCertPool,
+			Certificates:       clientCert,
+			ServerName:         bo.Host,
+			InsecureSkipVerify: bo.SkipClientCA,
+		})
+		return fmt.Sprintf("%s:%s@(%s:%d)/%s?tls=customer&charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, constants.TidbMetaDB), nil
 	}
-
-	clientCert := make([]tls.Certificate, 0, 1)
-	certs, err := tls.LoadX509KeyPair(
-		path.Join(corev1alpha1.DirPathTiDBClientTLS, corev1.TLSCertKey),
-		path.Join(corev1alpha1.DirPathTiDBClientTLS, corev1.TLSPrivateKeyKey))
-	if err != nil {
-		return "", err
-	}
-	clientCert = append(clientCert, certs)
-	mysql.RegisterTLSConfig("customer", &tls.Config{
-		RootCAs:            rootCertPool,
-		Certificates:       clientCert,
-		ServerName:         bo.Host,
-		InsecureSkipVerify: bo.SkipClientCA,
-	})
-	return fmt.Sprintf("%s:%s@(%s:%d)/%s?tls=customer&charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, constants.TidbMetaDB), nil
-}
+*/
 
 func (bo *GenericOptions) GetTikvGCLifeTime(ctx context.Context, db *sql.DB) (string, error) {
 	var tikvGCTime string
-	sql := fmt.Sprintf("select variable_value from %s where variable_name= ?", constants.TidbMetaTable) // nolint: gosec
+	sql := fmt.Sprintf("select variable_value from %s where variable_name= ?", constants.TidbMetaTable) //nolint: gosec
 	row := db.QueryRowContext(ctx, sql, constants.TikvGCVariable)
 	err := row.Scan(&tikvGCTime)
 	if err != nil {
-		return tikvGCTime, fmt.Errorf("query cluster %s %s failed, sql: %s, err: %v", bo, constants.TikvGCVariable, sql, err)
+		return tikvGCTime, fmt.Errorf("query cluster %s %s failed, sql: %s, err: %w", bo, constants.TikvGCVariable, sql, err)
 	}
 	return tikvGCTime, nil
 }
 
 func (bo *GenericOptions) SetTikvGCLifeTime(ctx context.Context, db *sql.DB, gcTime string) error {
+	// nolint: gosec
 	sql := fmt.Sprintf("update %s set variable_value = ? where variable_name = ?", constants.TidbMetaTable)
 	_, err := db.ExecContext(ctx, sql, gcTime, constants.TikvGCVariable)
 	if err != nil {
-		return fmt.Errorf("set cluster %s %s failed, sql: %s, err: %v", bo, constants.TikvGCVariable, sql, err)
+		return fmt.Errorf("set cluster %s %s failed, sql: %s, err: %w", bo, constants.TikvGCVariable, sql, err)
 	}
 	return nil
 }

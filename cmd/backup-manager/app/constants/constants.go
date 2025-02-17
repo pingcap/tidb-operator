@@ -26,6 +26,10 @@ const (
 	// CheckTimeout is the maximum time to wait for the tidb cluster ready
 	CheckTimeout = 30 * time.Minute
 
+	// `DefaultTerminationGracePeriodSeconds` for a pod is 30, so we use a smaller timeout value here.
+	// DefaultTikvGCSetTimeout is the default timeout for changing tikv gc life time
+	DefaultTikvGCSetTimeout = 25 * time.Second
+
 	// BackupRootPath is the root path to backup data
 	BackupRootPath = "/backup"
 

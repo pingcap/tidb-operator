@@ -29,6 +29,7 @@ package util
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -121,7 +122,7 @@ func TestPageIterator(t *testing.T) {
 				}
 			}
 
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			count++
@@ -273,10 +274,12 @@ func TestStorageBackendBasic(t *testing.T) {
 		s3patches := gomonkey.ApplyFunc(newS3Storage, func(conf *s3Config, cred *StorageCredential) (*blob.Bucket, error) {
 			return nil, nil
 		})
+		//nolint: gocritic // no need
 		defer s3patches.Reset()
 		gcsPatches := gomonkey.ApplyFunc(newGcsStorage, func(conf *gcsConfig) (*blob.Bucket, error) {
 			return nil, nil
 		})
+		//nolint: gocritic // no need
 		defer gcsPatches.Reset()
 		azblobPatches := gomonkey.ApplyFunc(newAzblobStorage, func(conf *azblobConfig) (*blob.Bucket, error) {
 			return nil, nil
@@ -285,6 +288,7 @@ func TestStorageBackendBasic(t *testing.T) {
 		localPatches := gomonkey.ApplyFunc(newLocalStorage, func(conf *localConfig) (*blob.Bucket, error) {
 			return nil, nil
 		})
+		//nolint: gocritic // no need
 		defer localPatches.Reset()
 
 		backend, err := NewStorageBackend(provider, &StorageCredential{})
@@ -442,7 +446,6 @@ func TestStorageBackendBatchDeleteObjects(t *testing.T) {
 
 		result := tcase.backend.BatchDeleteObjects(context.TODO(), nil, tcase.opt)
 		g.Expect(result == expectedResult).Should(gomega.BeTrue())
-
 	}
 }
 
@@ -488,7 +491,6 @@ func TestBatchDeleteObjectsOfS3(t *testing.T) {
 		errMap := map[string]bool{}     // contain objects that are expected to be failed
 		setedErr := fmt.Errorf("error object")
 		cli.deleteObjects = func(input *s3.DeleteObjectsInput) (*s3.DeleteObjectsOutput, error) {
-
 			if *input.Bucket != bucket {
 				panic("bucket isn't same")
 			}

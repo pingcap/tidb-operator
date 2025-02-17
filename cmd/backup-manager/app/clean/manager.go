@@ -17,7 +17,6 @@ package clean
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
@@ -59,7 +58,7 @@ func (bm *Manager) ProcessCleanBackup() error {
 		Name:      bm.BackupName,
 	}, backup)
 	if err != nil {
-		return fmt.Errorf("can't find cluster %s backup %s CRD object, err: %v", bm, bm.BackupName, err)
+		return fmt.Errorf("can't find cluster %s backup %s CRD object, err: %w", bm, bm.BackupName, err)
 	}
 
 	return bm.performCleanBackup(ctx, backup.DeepCopy())
@@ -130,6 +129,7 @@ func (bm *Manager) performCleanBackup(ctx context.Context, backup *v1alpha1.Back
 	}, nil)
 }
 
+/* TODO(ideascf): remove it in v2. EBS volume snapshot backup is deprecated in v2
 // getNextBackup to get next backup sorted by start time
 func (bm *Manager) getNextBackup(ctx context.Context, backup *v1alpha1.Backup) *v1alpha1.Backup {
 	var err error
@@ -165,3 +165,4 @@ func (bm *Manager) getVolumeSnapshotBackup(backups []v1alpha1.Backup) *v1alpha1.
 	// reach end of backup list, there is no volume snapshot backups
 	return nil
 }
+*/

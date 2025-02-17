@@ -16,6 +16,7 @@ package clean
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os/exec"
@@ -180,8 +181,8 @@ func (bo *Options) cleanBRRemoteBackupDataOnce(ctx context.Context, backend *bku
 		index++
 		logPrefix := fmt.Sprintf("For backup %s clean %d-%d", bo, round, index)
 
-		objs, err := iter.Next(ctx, int(opt.PageSize))
-		if err == io.EOF {
+		objs, err := iter.Next(ctx, int(opt.PageSize)) //nolint:gosec
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -228,8 +229,11 @@ func (bo *Options) cleanBRRemoteBackupDataOnce(ctx context.Context, backend *bku
 		return fmt.Errorf("some objects failed to be deleted")
 	}
 
-	objs, err := backend.ListPage(nil).Next(ctx, int(opt.PageSize))
-	if err != nil && err != io.EOF {
+	objs, err := backend.ListPage(nil).Next(ctx, int(opt.PageSize)) //nolint:gosec
+	if errors.Is(err, io.EOF) {
+		return nil
+	}
+	if err != nil {
 		return err
 	}
 	if len(objs) != 0 {
@@ -244,27 +248,29 @@ func (bo *Options) cleanRemoteBackupData(ctx context.Context, bucket string, opt
 	args := util.ConstructRcloneArgs(constants.RcloneConfigArg, opts, "delete", destBucket, "", true)
 	output, err := exec.CommandContext(ctx, "rclone", args...).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute rclone delete command failed, output: %s, err: %v", bo, string(output), err)
+		return fmt.Errorf("cluster %s, execute rclone delete command failed, output: %s, err: %w", bo, string(output), err)
 	}
 
 	args = util.ConstructRcloneArgs(constants.RcloneConfigArg, opts, "delete", fmt.Sprintf("%s.tmp", destBucket), "", true)
 	output, err = exec.CommandContext(ctx, "rclone", args...).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute rclone delete command failed, output: %s, err: %v", bo, string(output), err)
+		return fmt.Errorf("cluster %s, execute rclone delete command failed, output: %s, err: %w", bo, string(output), err)
 	}
 
 	klog.Infof("cluster %s backup %s was deleted successfully", bo, bucket)
 	return nil
 }
 
+/* TODO(ideascf): remove it in v2. EBS volume snapshot backup is deprecated in v2
 // copy remote backupmeta to local
 func (bo *Options) copyRemoteBackupMetaToLocal(ctx context.Context, bucket string, opts []string) error {
 	destBucket := util.NormalizeBucketURI(bucket)
 	args := util.ConstructRcloneArgs(constants.RcloneConfigArg, opts, "copy", fmt.Sprintf("%s/backupmeta", destBucket), "/", true)
 	output, err := exec.CommandContext(ctx, "rclone", args...).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute rclone copy command failed, output: %s, err: %v", bo, string(output), err)
+		return fmt.Errorf("cluster %s, execute rclone copy command failed, output: %s, err: %w", bo, string(output), err)
 	}
 	klog.Infof("cluster %s backup %s was copy successfully", bo, bucket)
 	return nil
 }
+*/

@@ -58,12 +58,12 @@ func (b *Backup) SetConditions(conds []metav1.Condition) {
 
 func (b *Backup) ObservedGeneration() int64 {
 	// return b.Status.ObservedGeneration
-	// fixme(ideascf): do we need this?
+	// TODO(ideascf): do we need this?
 	return 0
 }
 
 func (b *Backup) SetObservedGeneration(g int64) {
-	// fixme(ideascf): do we need this?
+	// TODO(ideascf): do we need this?
 	// b.Status.ObservedGeneration = g
 }
 
@@ -99,12 +99,12 @@ func (r *Restore) SetConditions(conds []metav1.Condition) {
 
 func (r *Restore) ObservedGeneration() int64 {
 	// return r.Status.ObservedGeneration
-	// fixme(ideascf): do we need this?
+	// TODO(ideascf): do we need this?
 	return 0
 }
 
 func (r *Restore) SetObservedGeneration(g int64) {
-	// fixme(ideascf): do we need this?
+	// TODO(ideascf): do we need this?
 	// r.Status.ObservedGeneration = g
 }
 

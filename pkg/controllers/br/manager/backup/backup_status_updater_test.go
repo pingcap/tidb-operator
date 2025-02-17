@@ -32,8 +32,9 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 )
 
 func TestUpdateBackupStatus(t *testing.T) {

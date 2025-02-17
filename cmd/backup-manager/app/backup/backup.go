@@ -19,18 +19,14 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -229,6 +225,7 @@ func (bo *Options) doTruncateLogBackup(ctx context.Context, backup *v1alpha1.Bac
 	return bo.brCommandRun(ctx, fullArgs)
 }
 
+/* TODO(ideascf): remove this function. EBS volume snapshot backup is deprecated in v2
 // doInitializeVolumeBackup generates br args to stop GC and PD schedules
 // and update backup status to VolumeBackupInitialized when watches corresponding logs
 func (bo *Options) doInitializeVolumeBackup(
@@ -252,6 +249,7 @@ func (bo *Options) doInitializeVolumeBackup(
 	logCallback := backupInitializeMgr.UpdateBackupStatus
 	return bo.brCommandRunWithLogCallback(ctx, fullArgs, logCallback)
 }
+*/
 
 // logBackupCommandTemplate is the template to generate br args.
 func (bo *Options) backupCommandTemplate(backup *v1alpha1.Backup, specificArgs []string, skipBackupArgs bool) ([]string, error) {
@@ -264,7 +262,7 @@ func (bo *Options) backupCommandTemplate(backup *v1alpha1.Backup, specificArgs [
 		clusterNamespace = backup.Namespace
 	}
 	args := make([]string, 0)
-	// fixme(ideascf): use PDGroupClientPort?
+	// TODO(ideascf): use PDGroupClientPort?
 	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:%d", backup.Spec.BR.Cluster, clusterNamespace, corev1alpha1.DefaultPDPortClient))
 	if bo.TLSCluster {
 		args = append(args, fmt.Sprintf("--ca=%s", path.Join(corev1alpha1.DirPathClusterClientTLS, corev1.ServiceAccountRootCAKey)))
@@ -303,15 +301,15 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 
 	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
-		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", bo, err)
+		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %w", bo, err)
 	}
 	stdErr, err := cmd.StderrPipe()
 	if err != nil {
-		return fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", bo, err)
+		return fmt.Errorf("cluster %s, create stderr pipe failed, err: %w", bo, err)
 	}
 	err = cmd.Start()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", bo, fullArgs, err)
+		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %w", bo, fullArgs, err)
 	}
 
 	// only the initialization command of volume snapshot backup use gracefully shutting down
@@ -349,7 +347,7 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 	}
 	err = cmd.Wait()
 	if err != nil {
-		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", bo, errMsg, err)
+		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %w", bo, errMsg, err)
 	}
 
 	e2eTestSimulate(bo)
@@ -358,6 +356,7 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 	return nil
 }
 
+/* TODO(ideascf): remove this function. EBS volume snapshot backup is deprecated in v2
 func (bo *Options) updateProgressFromFile(
 	stopCh <-chan struct{},
 	backup *v1alpha1.Backup,
@@ -400,6 +399,7 @@ func (bo *Options) updateProgressFromFile(
 		}
 	}
 }
+*/
 
 // TODO use https://github.com/pingcap/failpoint instead e2e test env
 func e2eTestSimulate(bo *Options) {

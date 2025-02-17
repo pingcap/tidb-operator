@@ -52,6 +52,7 @@ type Options struct {
 	UseFSR bool
 }
 
+// nolint: gocyclo
 func (ro *Options) restoreData(
 	ctx context.Context,
 	restore *v1alpha1.Restore,
@@ -137,15 +138,15 @@ func (ro *Options) restoreData(
 
 	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
-		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %v", ro, err)
+		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %w", ro, err)
 	}
 	stdErr, err := cmd.StderrPipe()
 	if err != nil {
-		return fmt.Errorf("cluster %s, create stderr pipe failed, err: %v", ro, err)
+		return fmt.Errorf("cluster %s, create stderr pipe failed, err: %w", ro, err)
 	}
 	err = cmd.Start()
 	if err != nil {
-		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %v", ro, fullArgs, err)
+		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %w", ro, fullArgs, err)
 	}
 
 	var (
@@ -195,7 +196,7 @@ func (ro *Options) restoreData(
 
 	err = cmd.Wait()
 	if err != nil {
-		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %v", ro, errMsg, err)
+		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %w", ro, errMsg, err)
 	}
 
 	if csbPath != "" {

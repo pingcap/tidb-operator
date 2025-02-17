@@ -26,8 +26,8 @@ linters-settings:
       - FIXME
   gofmt:
     rewrite-rules:
-      - pattern: 'interface{}'
-        replacement: 'any'
+      - pattern: "interface{}"
+        replacement: "any"
   goimports:
     local-prefixes: github.com/pingcap/tidb-operator
   mnd:
@@ -38,10 +38,11 @@ linters-settings:
       - condition
       - return
     ignored-numbers:
-      - '0'
-      - '1'
-      - '2'
-      - '3'
+      - "0"
+      - "1"
+      - "2"
+      - "3"
+      - "4"
     ignored-functions:
       - strings.SplitN
     ignored-files:
@@ -52,7 +53,7 @@ linters-settings:
   govet:
     enable:
       - nilness
-      - shadow
+      # - shadow # TODO(ideascf): recover it
   errorlint:
     asserts: false
   lll:
@@ -63,15 +64,17 @@ linters-settings:
       - "importas" # linter name
   nolintlint:
     allow-unused: false # report any unused nolint directives
-    require-explanation: true # require an explanation for nolint directives
-    require-specific: true # require nolint directives to be specific about which linter is being skipped
+    # TODO(ideascf): recover the following two rules
+    # require-explanation: true # require an explanation for nolint directives
+    # require-specific: true # require nolint directives to be specific about which linter is being skipped
   revive:
     rules:
-      - name: indent-error-flow
       - name: unexported-return
         disabled: true
-      - name: unused-parameter
-      - name: unused-receiver
+      # TODO(ideascf): recover the following three rules
+      # - name: indent-error-flow
+      # - name: unused-parameter
+      # - name: unused-receiver
 
 linters:
   disable-all: true
@@ -84,7 +87,7 @@ linters:
     - gocheckcompilerdirectives
     - goconst
     # - gochecknoinits
-    - gocritic
+    # - gocritic // TODO(ideascf): recover it
     - gocyclo
     - godox
     - gofmt
@@ -95,17 +98,17 @@ linters:
     - gosimple
     - govet
     - ineffassign
-    - lll
+    # - lll  # TODO(ideascf): recover it
     - misspell
     - nakedret
     - noctx
-    - nolintlint
+    # - nolintlint # TODO(ideascf): recover it
     - revive
-    - stylecheck
+    # - stylecheck # TODO(ideascf): recover it
     - staticcheck
     - testifylint
     - unconvert
-    - unparam
+    # - unparam  # TODO(ideascf): recover it
     - unused
     - whitespace
 

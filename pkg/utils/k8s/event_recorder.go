@@ -15,12 +15,13 @@
 package k8s
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	eventv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
+
+	"github.com/pingcap/tidb-operator/pkg/scheme"
 )
 
 // NewEventRecorder return the specify source's recoder

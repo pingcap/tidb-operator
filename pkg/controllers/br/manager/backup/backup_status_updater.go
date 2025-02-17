@@ -66,9 +66,9 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 		currentBackup := &v1alpha1.Backup{}
 		if err := u.cli.Get(context.TODO(), client.ObjectKey{Namespace: ns, Name: backupName}, currentBackup); err == nil {
 			// make a copy so we don't mutate the shared cache
-			*backup = *(currentBackup.DeepCopy()) // FIXME(ideascf): do we need to deep copy or just assign?
+			*backup = *(currentBackup.DeepCopy()) // TODO(ideascf): do we need to deep copy or just assign?
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %v", ns, backupName, err))
+			utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %w", ns, backupName, err))
 			return err
 		}
 		isUpdate := false
@@ -92,6 +92,7 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 	return err
 }
 
+// nolint: gocyclo
 // updateBackupStatus updates existing Backup status.
 // from the fields in BackupUpdateStatus.
 func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateStatus) bool {
@@ -223,6 +224,7 @@ func updateLogSubcommandStatus(backup *v1alpha1.Backup, condition *v1alpha1.Back
 	return false
 }
 
+// nolint: gocyclo
 // updateWholeLogBackupStatus updates the whole log backup status.
 func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, status *BackupUpdateStatus) bool {
 	// call real update interface to update whole status
@@ -474,6 +476,7 @@ func updateBRProgress(progresses []v1alpha1.Progress, step *string, progress *in
 	return progresses, isUpdate
 }
 
+// nolint: gocyclo
 func updateBackoffRetryStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateStatus) bool {
 	isUpdate := false
 	currentRecord := getCurrentBackoffRetryRecord(status, newStatus)

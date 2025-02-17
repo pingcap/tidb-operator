@@ -26,6 +26,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/restore"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
@@ -75,7 +76,7 @@ func runRestore(restoreOpts restore.Options, kubecfg string) error {
 		return err
 	}
 
-	newcli, err := newClient(context.Background(), kubeconfig, scheme.Scheme)
+	newcli, err := newClient(context.Background(), kubeconfig, scheme.Scheme, []client.Object{&v1alpha1.Restore{}})
 	if err != nil {
 		return err
 	}

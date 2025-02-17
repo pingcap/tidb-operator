@@ -138,7 +138,6 @@ type RestoreSpec struct {
 	// - BR_LOG_TO_TERM
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
-	// Deprecated
 	// TODO(ideascf): remove it in v2
 	// To is the tidb cluster that needs to restore.
 	To *TiDBAccessConfig `json:"to,omitempty"`

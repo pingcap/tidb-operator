@@ -34,6 +34,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/constants"
 )
 
+const (
+	ReasonUnsupportedStorageType = "UnsupportedStorageType"
+)
+
 var (
 	// the first version which allows skipping setting tikv_gc_life_time
 	// https://github.com/pingcap/br/pull/553
@@ -252,6 +256,7 @@ func generateAzblobCertEnvVar(azblob *brv1alpha1.AzblobStorageProvider, secret *
 }
 
 // GenerateStorageCertEnv generate the env info in order to access backend backup storage
+// nolint: gocyclo
 func GenerateStorageCertEnv(ns string, useKMS bool, provider brv1alpha1.StorageProvider, cli client.Client) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
 	var reason string
@@ -263,9 +268,8 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider brv1alpha1.StorageP
 		s3SecretName := provider.S3.SecretName
 		if s3SecretName != "" {
 			secret := &corev1.Secret{}
-			err := cli.Get(context.TODO(), client.ObjectKey{Namespace: ns, Name: s3SecretName}, secret)
-			if err != nil {
-				err := fmt.Errorf("get s3 secret %s/%s failed, err: %v", ns, s3SecretName, err)
+			if err := cli.Get(context.TODO(), client.ObjectKey{Namespace: ns, Name: s3SecretName}, secret); err != nil {
+				err := fmt.Errorf("get s3 secret %s/%s failed, err: %w", ns, s3SecretName, err)
 				return certEnv, "GetS3SecretFailed", err
 			}
 
@@ -286,7 +290,7 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider brv1alpha1.StorageP
 			secret := &corev1.Secret{}
 			err := cli.Get(context.TODO(), client.ObjectKey{Namespace: ns, Name: gcsSecretName}, secret)
 			if err != nil {
-				err := fmt.Errorf("get gcs secret %s/%s failed, err: %v", ns, gcsSecretName, err)
+				err := fmt.Errorf("get gcs secret %s/%s failed, err: %w", ns, gcsSecretName, err)
 				return certEnv, "GetGcsSecretFailed", err
 			}
 
@@ -306,10 +310,9 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider brv1alpha1.StorageP
 		azblobSecretName := provider.Azblob.SecretName
 		var secret *corev1.Secret
 		if azblobSecretName != "" {
-			secret := &corev1.Secret{}
-			err := cli.Get(context.TODO(), client.ObjectKey{Namespace: ns, Name: azblobSecretName}, secret)
-			if err != nil {
-				err := fmt.Errorf("get azblob secret %s/%s failed, err: %v", ns, azblobSecretName, err)
+			secret = &corev1.Secret{}
+			if err := cli.Get(context.TODO(), client.ObjectKey{Namespace: ns, Name: azblobSecretName}, secret); err != nil {
+				err := fmt.Errorf("get azblob secret %s/%s failed, err: %w", ns, azblobSecretName, err)
 				return certEnv, "GetAzblobSecretFailed", err
 			}
 		}
@@ -331,7 +334,7 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider brv1alpha1.StorageP
 		return []corev1.EnvVar{}, "", nil
 	default:
 		err := fmt.Errorf("unsupported storage type %s", storageType)
-		return certEnv, "UnsupportedStorageType", err
+		return certEnv, ReasonUnsupportedStorageType, err
 	}
 	return certEnv, reason, nil
 }
@@ -351,7 +354,7 @@ func GenerateTidbPasswordEnv(ns, tcName, tidbSecretName string, useKMS bool, cli
 	secret := &corev1.Secret{}
 	err := cli.Get(context.TODO(), client.ObjectKey{Namespace: ns, Name: tidbSecretName}, secret)
 	if err != nil {
-		err = fmt.Errorf("backup %s/%s get tidb secret %s failed, err: %v", ns, tcName, tidbSecretName, err)
+		err = fmt.Errorf("backup %s/%s get tidb secret %s failed, err: %w", ns, tcName, tidbSecretName, err)
 		return certEnv, "GetTidbSecretFailed", err
 	}
 
@@ -390,7 +393,7 @@ func GetBackupBucketName(backup *brv1alpha1.Backup) (string, string, error) {
 	case brv1alpha1.BackupStorageTypeGcs:
 		bucketName = backup.Spec.Gcs.Bucket
 	default:
-		return bucketName, "UnsupportedStorageType", fmt.Errorf("backup %s/%s unsupported storage type %s", ns, name, storageType)
+		return bucketName, ReasonUnsupportedStorageType, fmt.Errorf("backup %s/%s unsupported storage type %s", ns, name, storageType)
 	}
 	return bucketName, "", nil
 }
@@ -408,7 +411,7 @@ func GetBackupPrefixName(backup *brv1alpha1.Backup) (string, string, error) {
 	case brv1alpha1.BackupStorageTypeGcs:
 		prefix = backup.Spec.Gcs.Prefix
 	default:
-		return prefix, "UnsupportedStorageType", fmt.Errorf("backup %s/%s unsupported storage type %s", ns, name, storageType)
+		return prefix, ReasonUnsupportedStorageType, fmt.Errorf("backup %s/%s unsupported storage type %s", ns, name, storageType)
 	}
 	return prefix, "", nil
 }
@@ -442,7 +445,7 @@ func GetBackupDataPath(provider brv1alpha1.StorageProvider) (string, string, err
 	case brv1alpha1.BackupStorageTypeGcs:
 		backupPath = provider.Gcs.Path
 	default:
-		return backupPath, "UnsupportedStorageType", fmt.Errorf("unsupported storage type %s", storageType)
+		return backupPath, ReasonUnsupportedStorageType, fmt.Errorf("unsupported storage type %s", storageType)
 	}
 	protocolPrefix := fmt.Sprintf("%s://", string(storageType))
 	if strings.HasPrefix(backupPath, protocolPrefix) {
@@ -467,6 +470,7 @@ func validateAccessConfig(config *brv1alpha1.TiDBAccessConfig) string {
 	return ""
 }
 
+// nolint: gocyclo
 // ValidateBackup validates backup sepc
 func ValidateBackup(backup *brv1alpha1.Backup, tikvVersion string, cluster *corev1alpha1.Cluster) error {
 	ns := backup.Namespace
@@ -531,7 +535,6 @@ func ValidateBackup(backup *brv1alpha1.Backup, tikvVersion string, cluster *core
 			}
 			if brv1alpha1.ParseLogBackupSubcommand(backup) == brv1alpha1.LogTruncateCommand && backup.Spec.LogTruncateUntil == "" {
 				return fmt.Errorf("log backup %s/%s truncate command missing 'logTruncateUntil'", ns, name)
-
 			}
 			_, err = brv1alpha1.ParseTSString(backup.Spec.LogTruncateUntil)
 			if err != nil {
@@ -555,19 +558,20 @@ func ValidateBackup(backup *brv1alpha1.Backup, tikvVersion string, cluster *core
 		if backup.Spec.BackoffRetryPolicy.MinRetryDuration != "" {
 			_, err := time.ParseDuration(backup.Spec.BackoffRetryPolicy.MinRetryDuration)
 			if err != nil {
-				return fmt.Errorf("fail to parse minRetryDuration %s of backup %s/%s, %v", backup.Spec.BackoffRetryPolicy.MinRetryDuration, backup.Namespace, backup.Name, err)
+				return fmt.Errorf("fail to parse minRetryDuration %s of backup %s/%s, %w", backup.Spec.BackoffRetryPolicy.MinRetryDuration, backup.Namespace, backup.Name, err)
 			}
 		}
 		if backup.Spec.BackoffRetryPolicy.RetryTimeout != "" {
 			_, err := time.ParseDuration(backup.Spec.BackoffRetryPolicy.RetryTimeout)
 			if err != nil {
-				return fmt.Errorf("fail to parse retryTimeout %s of backup %s/%s, %v", backup.Spec.BackoffRetryPolicy.RetryTimeout, backup.Namespace, backup.Name, err)
+				return fmt.Errorf("fail to parse retryTimeout %s of backup %s/%s, %w", backup.Spec.BackoffRetryPolicy.RetryTimeout, backup.Namespace, backup.Name, err)
 			}
 		}
 	}
 	return nil
 }
 
+// nolint: gocyclo
 // ValidateRestore checks whether a restore spec is valid.
 func ValidateRestore(restore *brv1alpha1.Restore, tikvVersion string, acrossK8s bool) error {
 	ns := restore.Namespace

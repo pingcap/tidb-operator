@@ -3043,9 +3043,7 @@ spec:
                   Default is current timestamp.
                 type: string
               dumpling:
-                description: |-
-                  Deprecated: it's deprecated in v2.  TODO(ideascf): remove it in v2
-                  DumplingConfig is the configs for dumpling
+                description: DumplingConfig is the configs for dumpling
                 properties:
                   options:
                     description: Options means options for backup data to remote storage
@@ -3200,9 +3198,7 @@ spec:
                   in federal volume backup
                 type: string
               from:
-                description: |-
-                  Deprecated: it's deprecated in v2.  TODO(ideascf): remove it in v2
-                  From is the tidb cluster that needs to backup.
+                description: From is the tidb cluster that needs to backup.
                 properties:
                   host:
                     description: Host is the tidb cluster access address

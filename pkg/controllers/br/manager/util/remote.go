@@ -222,7 +222,11 @@ type BatchDeleteObjectsResult struct {
 // BatchDeleteObjects delete multi objects
 //
 // Depending on storage type, it use function 'BatchDeleteObjectsOfS3' or 'BatchDeleteObjectsConcurrently'
-func (b *StorageBackend) BatchDeleteObjects(ctx context.Context, objs []*blob.ListObject, opt v1alpha1.BatchDeleteOption) *BatchDeleteObjectsResult {
+func (b *StorageBackend) BatchDeleteObjects(
+	ctx context.Context,
+	objs []*blob.ListObject,
+	opt v1alpha1.BatchDeleteOption,
+) *BatchDeleteObjectsResult {
 	var result *BatchDeleteObjectsResult
 
 	s3cli, ok := b.AsS3()
@@ -353,7 +357,6 @@ func GetStorageCredential(ns string, provider v1alpha1.StorageProvider, secretLi
 					cred,
 				}
 			}
-
 		}
 	//TODO: will support gcs
 	case v1alpha1.BackupStorageTypeGcs:
@@ -384,23 +387,19 @@ func GenStorageArgsForFlag(provider v1alpha1.StorageProvider, flag string) ([]st
 		return strs, nil
 	case v1alpha1.BackupStorageTypeLocal:
 		localConfig := makeLocalConfig(provider.Local)
-		cmdOpts, err := newLocalStorageOptionForFlag(localConfig, flag)
-		if err != nil {
-			return nil, err
-		}
-		return cmdOpts, nil
+		return newLocalStorageOptionForFlag(localConfig, flag), nil
 	default:
 		return nil, fmt.Errorf("storage %s not supported yet", st)
 	}
 }
 
 // newLocalStorageOption constructs `--flag local://$PATH` arg for br
-func newLocalStorageOptionForFlag(conf *localConfig, flag string) ([]string, error) {
+func newLocalStorageOptionForFlag(conf *localConfig, flag string) []string {
 	if flag != "" && flag != defaultStorageFlag {
 		// now just set path to special flag
-		return []string{fmt.Sprintf("--%s=local://%s", flag, path.Join(conf.mountPath, conf.prefix))}, nil
+		return []string{fmt.Sprintf("--%s=local://%s", flag, path.Join(conf.mountPath, conf.prefix))}
 	}
-	return []string{fmt.Sprintf("--storage=local://%s", path.Join(conf.mountPath, conf.prefix))}, nil
+	return []string{fmt.Sprintf("--storage=local://%s", path.Join(conf.mountPath, conf.prefix))}
 }
 
 // newS3StorageOption constructs the arg for --flag option and the remote path for br
@@ -471,7 +470,6 @@ func newS3Storage(conf *s3Config, cred *StorageCredential) (*blob.Bucket, error)
 		return nil, err
 	}
 	return blob.PrefixedBucket(bkt, strings.Trim(conf.prefix, "/")+"/"), nil
-
 }
 
 // newGcsStorage initialize a new gcs storage
@@ -759,7 +757,7 @@ func (i *PageIterator) Next(ctx context.Context, pageSize int) ([]*blob.ListObje
 
 	for len(objs) < pageSize {
 		obj, err := i.iter.Next(ctx)
-		if err == io.EOF && len(objs) != 0 {
+		if errors.Is(err, io.EOF) && len(objs) != 0 {
 			// if err is EOF, but objects has been read, return nil.
 			// and the next call will return io.EOF.
 			break
@@ -787,7 +785,7 @@ type MockDriver struct {
 	Type v1alpha1.BackupStorageType
 }
 
-func (d *MockDriver) As(i interface{}) bool {
+func (d *MockDriver) As(i any) bool {
 	switch d.Type {
 	case v1alpha1.BackupStorageTypeS3:
 		_, ok := i.(**s3.S3)
