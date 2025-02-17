@@ -138,9 +138,10 @@ func (bm *Manager) ProcessBackup() error {
 		return bm.performLogBackup(ctx, backup.DeepCopy())
 	}
 
-	if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && bm.Initialize {
-		return bm.performVolumeBackupInitialize(ctx, backup.DeepCopy())
-	}
+	// TODO(ideascf): remove this function, EBS volume snapshot backup is deprecated in v2
+	// if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && bm.Initialize {
+	// 	return bm.performVolumeBackupInitialize(ctx, backup.DeepCopy())
+	// }
 
 	if backup.Spec.From == nil {
 		// skip the DB initialization if spec.from is not specified
@@ -731,6 +732,7 @@ func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backu
 	return updateStatus, "", nil
 }
 
+/* TODO(ideascf): remove this function, EBS volume snapshot backup is deprecated in v2
 // performVolumeBackupInitialize execute br to stop GC and PD schedules
 // it will keep running until the process is killed
 func (bm *Manager) performVolumeBackupInitialize(ctx context.Context, backup *v1alpha1.Backup) error {
@@ -763,6 +765,7 @@ func (bm *Manager) performVolumeBackupInitialize(ctx context.Context, backup *v1
 
 	return nil
 }
+*/
 
 func (bm *Manager) cleanSnapshotBackupEnv(ctx context.Context, backup *v1alpha1.Backup) error {
 	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {

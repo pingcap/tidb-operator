@@ -310,8 +310,8 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 	if len(fullArgs) == 0 {
 		return fmt.Errorf("command is invalid, fullArgs: %v", fullArgs)
 	}
-	klog.Infof("Running br command with args: %v", fullArgs)
 	bin := filepath.Join(corev1alpha1.PathBRBin, "br")
+	klog.Infof("Running br command: %s %v", bin, fullArgs)
 	cmd := exec.Command(bin, fullArgs...)
 
 	stdOut, err := cmd.StdoutPipe()

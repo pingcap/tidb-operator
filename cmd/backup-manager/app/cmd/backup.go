@@ -83,7 +83,15 @@ func NewBackupCommand() *cobra.Command {
 }
 
 func runBackup(backupOpts backup.Options, kubecfg string) error {
-	kubeconfig, err := clientcmd.BuildConfigFromFlags("", kubecfg)
+	var (
+		kubeconfig *rest.Config
+		err        error
+	)
+	if kubecfg != "" {
+		kubeconfig, err = clientcmd.BuildConfigFromFlags("", kubecfg)
+	} else {
+		kubeconfig, err = rest.InClusterConfig()
+	}
 	if err != nil {
 		return err
 	}
@@ -157,7 +165,8 @@ func newClient(ctx context.Context, cfg *rest.Config, s *runtime.Scheme) (client
 		Scheme:     s,
 		HTTPClient: hc,
 		Cache: &client.CacheOptions{
-			Reader: reader,
+			Reader:     reader,
+			DisableFor: []client.Object{&v1alpha1.Backup{}}, // no cache for backup
 		},
 	})
 	if err != nil {
