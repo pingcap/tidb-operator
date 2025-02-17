@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
+	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/backup"
@@ -164,6 +165,10 @@ func setup(ctx context.Context, mgr ctrl.Manager) error {
 		setupLog.Error(err, "unable to setup controllers")
 		os.Exit(1)
 	}
+	if err := setupBRControllers(mgr, c, pdcm); err != nil {
+		setupLog.Error(err, "unable to setup controllers")
+		os.Exit(1)
+	}
 
 	logger.Info("start pd client manager")
 	pdcm.Start(ctx)
@@ -243,13 +248,16 @@ func setupControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientManage
 	if err := tiflash.Setup(mgr, c, pdcm, vm); err != nil {
 		return fmt.Errorf("unable to create controller TiFlash: %w", err)
 	}
-	// set up BR controllers start
+
+	return nil
+}
+
+func setupBRControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientManager) error {
 	if err := backup.Setup(mgr, c, pdcm, backup.Config{
 		BackupManagerImage: brConf.backupManagerImage,
 	}); err != nil {
-		return fmt.Errorf("unable to create controller TiFlash: %w", err)
+		return fmt.Errorf("unable to create controller Backup: %w", err)
 	}
-	// set up BR controllers end
 	return nil
 }
 
@@ -296,6 +304,18 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 		&storagev1.StorageClass{}: {
 			Label: labels.Everything(),
 		},
+
+		// BR objects start //
+		&brv1alpha1.Backup{}: {
+			Label: labels.Everything(),
+		},
+		&brv1alpha1.BackupSchedule{}: {
+			Label: labels.Everything(),
+		},
+		&brv1alpha1.Restore{}: {
+			Label: labels.Everything(),
+		},
+		// BR objects end //
 	}
 	if kubefeat.Stage(kubefeat.VolumeAttributesClass).Enabled(kubefeat.BETA) {
 		byObj[&storagev1beta1.VolumeAttributesClass{}] = cache.ByObject{
