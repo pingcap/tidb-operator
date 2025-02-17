@@ -991,7 +991,7 @@ func (in *RestoreStatus) DeepCopyInto(out *RestoreStatus) {
 	in.TimeCompleted.DeepCopyInto(&out.TimeCompleted)
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
-		*out = make([]RestoreCondition, len(*in))
+		*out = make([]metav1.Condition, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

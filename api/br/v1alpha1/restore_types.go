@@ -138,6 +138,8 @@ type RestoreSpec struct {
 	// - BR_LOG_TO_TERM
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
+	// Deprecated
+	// TODO(ideascf): remove it in v2
 	// To is the tidb cluster that needs to restore.
 	To *TiDBAccessConfig `json:"to,omitempty"`
 	// Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.
@@ -273,7 +275,7 @@ type RestoreStatus struct {
 	// Phase is a user readable state inferred from the underlying Restore conditions
 	Phase RestoreConditionType `json:"phase,omitempty"`
 	// +nullable
-	Conditions []RestoreCondition `json:"conditions,omitempty"`
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 	// Progresses is the progress of restore.
 	// +nullable
 	Progresses []Progress `json:"progresses,omitempty"`

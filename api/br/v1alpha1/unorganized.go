@@ -24,6 +24,11 @@ import (
 )
 
 const (
+	// DefaultTidbUser is the default tidb user for login tidb cluster
+	DefaultTidbUser = "root"
+)
+
+const (
 	// BackupNameTimeFormat is the time format for generate backup CR name
 	BackupNameTimeFormat = "2006-01-02t15-04-05"
 )

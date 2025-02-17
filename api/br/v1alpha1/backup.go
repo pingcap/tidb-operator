@@ -116,7 +116,9 @@ func (bk *Backup) GetCleanOption() CleanOption {
 
 var (
 	// BackupControllerKind contains the schema.GroupVersionKind for backup controller type.
-	BackupControllerKind = SchemeGroupVersion.WithKind("Backup")
+	BackupControllerKind         = SchemeGroupVersion.WithKind("Backup")
+	backupScheduleControllerKind = SchemeGroupVersion.WithKind("BackupSchedule")
+	RestoreControllerKind        = SchemeGroupVersion.WithKind("Restore")
 )
 
 // TODO(ideascf): copy UT
@@ -145,6 +147,34 @@ func GetBackupCondition(status *BackupStatus, conditionType BackupConditionType)
 		}
 	}
 	return -1, nil
+}
+
+// GetRestoreOwnerRef returns Restore's OwnerReference
+func GetRestoreOwnerRef(restore *Restore) metav1.OwnerReference {
+	controller := true
+	blockOwnerDeletion := true
+	return metav1.OwnerReference{
+		APIVersion:         RestoreControllerKind.GroupVersion().String(),
+		Kind:               RestoreControllerKind.Kind,
+		Name:               restore.GetName(),
+		UID:                restore.GetUID(),
+		Controller:         &controller,
+		BlockOwnerDeletion: &blockOwnerDeletion,
+	}
+}
+
+// GetBackupScheduleOwnerRef returns BackupSchedule's OwnerReference
+func GetBackupScheduleOwnerRef(bs *BackupSchedule) metav1.OwnerReference {
+	controller := true
+	blockOwnerDeletion := true
+	return metav1.OwnerReference{
+		APIVersion:         backupScheduleControllerKind.GroupVersion().String(),
+		Kind:               backupScheduleControllerKind.Kind,
+		Name:               bs.GetName(),
+		UID:                bs.GetUID(),
+		Controller:         &controller,
+		BlockOwnerDeletion: &blockOwnerDeletion,
+	}
 }
 
 // UpdateBackupCondition updates existing Backup condition or creates a new

@@ -17,7 +17,6 @@ package v1alpha1
 import (
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
@@ -52,12 +51,12 @@ func (rs *Restore) GetInstanceName() string {
 // }
 
 // GetRestoreCondition get the specify type's RestoreCondition from the given RestoreStatus
-func GetRestoreCondition(status *RestoreStatus, conditionType RestoreConditionType) (int, *RestoreCondition) {
+func GetRestoreCondition(status *RestoreStatus, conditionType RestoreConditionType) (int, *metav1.Condition) {
 	if status == nil {
 		return -1, nil
 	}
 	for i := range status.Conditions {
-		if status.Conditions[i].Type == conditionType {
+		if status.Conditions[i].Type == string(conditionType) {
 			return i, &status.Conditions[i]
 		}
 	}
@@ -67,14 +66,14 @@ func GetRestoreCondition(status *RestoreStatus, conditionType RestoreConditionTy
 // UpdateRestoreCondition updates existing Restore condition or creates a new
 // one. Sets LastTransitionTime to now if the status has changed.
 // Returns true if Restore condition has changed or has been added.
-func UpdateRestoreCondition(status *RestoreStatus, condition *RestoreCondition) bool {
+func UpdateRestoreCondition(status *RestoreStatus, condition *metav1.Condition) bool {
 	if condition == nil {
 		return false
 	}
 	condition.LastTransitionTime = metav1.Now()
-	status.Phase = condition.Type
+	status.Phase = RestoreConditionType(condition.Type)
 	// Try to find this Restore condition.
-	conditionIndex, oldCondition := GetRestoreCondition(status, condition.Type)
+	conditionIndex, oldCondition := GetRestoreCondition(status, RestoreConditionType(condition.Type))
 
 	if oldCondition == nil {
 		// We are adding new Restore condition.
@@ -99,37 +98,37 @@ func UpdateRestoreCondition(status *RestoreStatus, condition *RestoreCondition) 
 // IsRestoreInvalid returns true if a Restore has invalid condition set
 func IsRestoreInvalid(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreInvalid)
-	return condition != nil && condition.Status == corev1.ConditionTrue
+	return condition != nil && condition.Status == metav1.ConditionTrue
 }
 
 // IsRestoreComplete returns true if a Restore has successfully completed
 func IsRestoreComplete(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreComplete)
-	return condition != nil && condition.Status == corev1.ConditionTrue
+	return condition != nil && condition.Status == metav1.ConditionTrue
 }
 
 // IsRestoreScheduled returns true if a Restore has successfully scheduled
 func IsRestoreScheduled(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreScheduled)
-	return condition != nil && condition.Status == corev1.ConditionTrue
+	return condition != nil && condition.Status == metav1.ConditionTrue
 }
 
 // IsRestoreRunning returns true if a Restore is Running
 func IsRestoreRunning(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreRunning)
-	return condition != nil && condition.Status == corev1.ConditionTrue
+	return condition != nil && condition.Status == metav1.ConditionTrue
 }
 
 // IsRestoreFailed returns true if a Restore is Failed
 func IsRestoreFailed(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreFailed)
-	return condition != nil && condition.Status == corev1.ConditionTrue
+	return condition != nil && condition.Status == metav1.ConditionTrue
 }
 
 // IsRestoreVolumeComplete returns true if a Restore for volume has successfully completed
 func IsRestoreVolumeComplete(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreVolumeComplete)
-	return condition != nil && condition.Status == corev1.ConditionTrue
+	return condition != nil && condition.Status == metav1.ConditionTrue
 }
 
 // IsRestoreVolumeFailed returns true if a Restore for volume is Failed
@@ -142,29 +141,29 @@ func IsRestoreVolumeFailed(restore *Restore) bool {
 // IsCleanVolumeComplete returns true if restored volumes are cleaned
 func IsCleanVolumeComplete(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, CleanVolumeComplete)
-	return condition != nil && condition.Status == corev1.ConditionTrue
+	return condition != nil && condition.Status == metav1.ConditionTrue
 }
 
 // IsRestoreWarmUpStarted returns true if all the warmup jobs has successfully started
 func IsRestoreWarmUpStarted(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreWarmUpStarted)
-	return condition != nil && condition.Status == corev1.ConditionTrue
+	return condition != nil && condition.Status == metav1.ConditionTrue
 }
 
 // IsRestoreWarmUpComplete returns true if all the warmup jobs has successfully finished
 func IsRestoreWarmUpComplete(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreWarmUpComplete)
-	return condition != nil && condition.Status == corev1.ConditionTrue
+	return condition != nil && condition.Status == metav1.ConditionTrue
 }
 
 // IsRestoreTiKVComplete returns true if all TiKVs run successfully during volume restore
 func IsRestoreTiKVComplete(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreTiKVComplete)
-	return condition != nil && condition.Status == corev1.ConditionTrue
+	return condition != nil && condition.Status == metav1.ConditionTrue
 }
 
 // IsRestoreDataComplete returns true if a Restore for data consistency has successfully completed
 func IsRestoreDataComplete(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreDataComplete)
-	return condition != nil && condition.Status == corev1.ConditionTrue
+	return condition != nil && condition.Status == metav1.ConditionTrue
 }
