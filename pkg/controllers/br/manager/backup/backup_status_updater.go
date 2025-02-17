@@ -50,6 +50,13 @@ func NewRealBackupConditionUpdater(
 }
 
 func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) error {
+	// TODO(ideascf): set reason for all
+	if condition != nil {
+		if condition.Reason == "" {
+			condition.Reason = condition.Type
+		}
+	}
+
 	ns := backup.GetNamespace()
 	backupName := backup.GetName()
 	// try best effort to guarantee backup is updated.
@@ -71,7 +78,7 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 			isUpdate = updateSnapshotBackupStatus(backup, condition, newStatus)
 		}
 		if isUpdate {
-			err := u.cli.Update(context.TODO(), backup)
+			err := u.cli.Status().Update(context.TODO(), backup)
 			if err == nil {
 				klog.Infof("Backup: [%s/%s] updated successfully", ns, backupName)
 				return nil

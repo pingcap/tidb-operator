@@ -28,6 +28,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/yaml"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
@@ -234,6 +235,8 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 
 	// create k8s job
 	klog.Infof("backup %s/%s creating job %s.", ns, name, backupJobName)
+	jobBytes, _ := yaml.Marshal(job)
+	klog.Infof("job: %s", string(jobBytes))
 	if err := bm.cli.Create(context.TODO(), job); err != nil {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %v", ns, name, backupJobName, err)
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
@@ -492,11 +495,11 @@ func (bm *backupManager) waitPreTaskDone(backup *v1alpha1.Backup) error {
 	// log backup should wait old job done
 	oldJob := &batchv1.Job{}
 	err := bm.cli.Get(context.TODO(), client.ObjectKey{Namespace: ns, Name: backupJobName}, oldJob)
-	if oldJob != nil {
+	if err == nil {
 		return waitOldBackupJobDone(ns, name, backupJobName, bm, backup, oldJob)
 	}
 
-	if err != nil && !errors.IsNotFound(err) {
+	if !errors.IsNotFound(err) {
 		return fmt.Errorf("backup %s/%s get job %s failed, err: %v", ns, name, backupJobName, err)
 	}
 	return nil
