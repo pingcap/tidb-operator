@@ -31,11 +31,12 @@ type state struct {
 	cluster *v1alpha1.Cluster
 	tidb    *v1alpha1.TiDB
 	pod     *corev1.Pod
+
+	statusChanged bool
 }
 
 type State interface {
 	common.TiDBStateInitializer
-	common.ClusterStateInitializer
 	common.PodStateInitializer
 
 	common.TiDBState
@@ -43,6 +44,8 @@ type State interface {
 	common.PodState
 
 	common.InstanceState[*runtime.TiDB]
+
+	common.ContextClusterNewer[*v1alpha1.TiDB]
 
 	SetPod(*corev1.Pod)
 }
@@ -70,23 +73,30 @@ func (s *state) Instance() *runtime.TiDB {
 	return runtime.FromTiDB(s.tidb)
 }
 
+func (s *state) Object() *v1alpha1.TiDB {
+	return s.tidb
+}
+
+func (s *state) IsStatusChanged() bool {
+	return s.statusChanged
+}
+
 func (s *state) SetPod(pod *corev1.Pod) {
 	s.pod = pod
+}
+
+func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
+	s.cluster = cluster
+}
+
+func (s *state) SetStatusChanged() {
+	s.statusChanged = true
 }
 
 func (s *state) TiDBInitializer() common.TiDBInitializer {
 	return common.NewResource(func(tidb *v1alpha1.TiDB) { s.tidb = tidb }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithName(common.Name(s.key.Name)).
-		Initializer()
-}
-
-func (s *state) ClusterInitializer() common.ClusterInitializer {
-	return common.NewResource(func(cluster *v1alpha1.Cluster) { s.cluster = cluster }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Lazy[string](func() string {
-			return s.tidb.Spec.Cluster.Name
-		})).
 		Initializer()
 }
 

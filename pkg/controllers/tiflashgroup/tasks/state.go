@@ -36,7 +36,6 @@ type state struct {
 
 type State interface {
 	common.TiFlashGroupStateInitializer
-	common.ClusterStateInitializer
 	common.TiFlashSliceStateInitializer
 	common.RevisionStateInitializer[*runtime.TiFlashGroup]
 
@@ -46,6 +45,9 @@ type State interface {
 	common.RevisionState
 
 	common.GroupState[*runtime.TiFlashGroup]
+
+	common.ContextClusterNewer[*v1alpha1.TiFlashGroup]
+
 	common.InstanceSliceState[*runtime.TiFlash]
 }
 
@@ -54,6 +56,10 @@ func NewState(key types.NamespacedName) State {
 		key: key,
 	}
 	return s
+}
+
+func (s *state) Object() *v1alpha1.TiFlashGroup {
+	return s.fg
 }
 
 func (s *state) TiFlashGroup() *v1alpha1.TiFlashGroup {
@@ -76,19 +82,14 @@ func (s *state) Slice() []*runtime.TiFlash {
 	return runtime.FromTiFlashSlice(s.fs)
 }
 
+func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
+	s.cluster = cluster
+}
+
 func (s *state) TiFlashGroupInitializer() common.TiFlashGroupInitializer {
 	return common.NewResource(func(fg *v1alpha1.TiFlashGroup) { s.fg = fg }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithName(common.Name(s.key.Name)).
-		Initializer()
-}
-
-func (s *state) ClusterInitializer() common.ClusterInitializer {
-	return common.NewResource(func(cluster *v1alpha1.Cluster) { s.cluster = cluster }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Lazy[string](func() string {
-			return s.fg.Spec.Cluster.Name
-		})).
 		Initializer()
 }
 
