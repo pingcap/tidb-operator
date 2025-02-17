@@ -233,46 +233,45 @@ func ConstructBRGlobalOptionsForBackup(backup *v1alpha1.Backup) ([]string, error
 
 		return args
 	}
+*/
 
 // ConstructBRGlobalOptionsForRestore constructs BR global options for restore.
+func ConstructBRGlobalOptionsForRestore(restore *v1alpha1.Restore) ([]string, error) {
+	var args []string
+	config := restore.Spec
+	if config.BR == nil {
+		return nil, fmt.Errorf("no config for br in restore %s/%s", restore.Namespace, restore.Name)
+	}
+	args = append(args, constructBRGlobalOptions(config.BR)...)
+	storageArgs, err := util.GenStorageArgsForFlag(restore.Spec.StorageProvider, "")
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, storageArgs...)
 
-	func ConstructBRGlobalOptionsForRestore(restore *v1alpha1.Restore) ([]string, error) {
-		var args []string
-		config := restore.Spec
-		if config.BR == nil {
-			return nil, fmt.Errorf("no config for br in restore %s/%s", restore.Namespace, restore.Name)
+	if len(config.TableFilter) > 0 {
+		for _, tableFilter := range config.TableFilter {
+			args = append(args, "--filter", tableFilter)
 		}
-		args = append(args, constructBRGlobalOptions(config.BR)...)
-		storageArgs, err := util.GenStorageArgsForFlag(restore.Spec.StorageProvider, "")
-		if err != nil {
-			return nil, err
-		}
-		args = append(args, storageArgs...)
-
-		if len(config.TableFilter) > 0 {
-			for _, tableFilter := range config.TableFilter {
-				args = append(args, "--filter", tableFilter)
-			}
-			return args, nil
-		}
-
-		switch restore.Spec.Type {
-		case v1alpha1.BackupTypeTable:
-			if config.BR.Table != "" {
-				args = append(args, fmt.Sprintf("--table=%s", config.BR.Table))
-			}
-			if config.BR.DB != "" {
-				args = append(args, fmt.Sprintf("--db=%s", config.BR.DB))
-			}
-		case v1alpha1.BackupTypeDB:
-			if config.BR.DB != "" {
-				args = append(args, fmt.Sprintf("--db=%s", config.BR.DB))
-			}
-		}
-
 		return args, nil
 	}
-*/
+
+	switch restore.Spec.Type {
+	case v1alpha1.BackupTypeTable:
+		if config.BR.Table != "" {
+			args = append(args, fmt.Sprintf("--table=%s", config.BR.Table))
+		}
+		if config.BR.DB != "" {
+			args = append(args, fmt.Sprintf("--db=%s", config.BR.DB))
+		}
+	case v1alpha1.BackupTypeDB:
+		if config.BR.DB != "" {
+			args = append(args, fmt.Sprintf("--db=%s", config.BR.DB))
+		}
+	}
+
+	return args, nil
+}
 
 // constructBRGlobalOptions constructs BR basic global options.
 func constructBRGlobalOptions(config *v1alpha1.BRConfig) []string {

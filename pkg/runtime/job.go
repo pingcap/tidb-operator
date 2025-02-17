@@ -70,3 +70,44 @@ func (b *Backup) SetObservedGeneration(g int64) {
 func (b *Backup) Object() client.Object {
 	return (*brv1alpha1.Backup)(b)
 }
+
+type (
+	Restore brv1alpha1.Restore
+)
+
+var _ Job = &Restore{}
+
+func (r *Restore) SetCluster(cluster string) {
+	r.Spec.BR.Cluster = cluster
+}
+
+func (r *Restore) Cluster() string {
+	return r.Spec.BR.Cluster
+}
+
+func (r *Restore) Component() string {
+	return v1alpha1.LabelValComponentRestore
+}
+
+func (r *Restore) Conditions() []metav1.Condition {
+	return r.Status.Conditions
+}
+
+func (r *Restore) SetConditions(conds []metav1.Condition) {
+	r.Status.Conditions = conds
+}
+
+func (r *Restore) ObservedGeneration() int64 {
+	// return r.Status.ObservedGeneration
+	// fixme(ideascf): do we need this?
+	return 0
+}
+
+func (r *Restore) SetObservedGeneration(g int64) {
+	// fixme(ideascf): do we need this?
+	// r.Status.ObservedGeneration = g
+}
+
+func (r *Restore) Object() client.Object {
+	return (*brv1alpha1.Restore)(r)
+}

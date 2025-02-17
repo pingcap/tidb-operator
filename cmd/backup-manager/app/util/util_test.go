@@ -25,15 +25,17 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	appconstant "github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
+
+	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+	appconstant "github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 )
 
+/* TODO(ideascf): remove it in v2
 func TestConstructDumplingOptionsForBackup(t *testing.T) {
 	g := NewGomegaWithT(t)
 
@@ -131,6 +133,7 @@ func TestConstructDumplingOptionsForBackup(t *testing.T) {
 		})
 	}
 }
+*/
 
 func TestConstructBRGlobalOptionsForBackup(t *testing.T) {
 	g := NewGomegaWithT(t)

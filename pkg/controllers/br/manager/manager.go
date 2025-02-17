@@ -18,14 +18,6 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 )
 
-// RestoreManager implements the logic for manage restore.
-type RestoreManager interface {
-	// Sync	implements the logic for syncing Restore.
-	Sync(backup *v1alpha1.Restore) error
-	// UpdateCondition updates the condition for a Restore.
-	UpdateCondition(restore *v1alpha1.Restore, condition *v1alpha1.RestoreCondition) error
-}
-
 // BackupScheduleManager implements the logic for manage backupSchedule.
 type BackupScheduleManager interface {
 	// Sync	implements the logic for syncing BackupSchedule.
