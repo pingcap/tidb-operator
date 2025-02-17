@@ -145,7 +145,7 @@ type TiCDCTemplateSpec struct {
 }
 
 type TiCDCSecurity struct {
-	TLS *TiCDCTLS `json:"tls,omitempty" default:"{}"`
+	TLS *TiCDCTLS `json:"tls,omitempty"`
 }
 
 type TiCDCTLS struct {

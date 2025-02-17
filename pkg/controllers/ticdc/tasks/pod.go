@@ -153,20 +153,22 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 		})
 	}
 
-	for _, secretName := range ticdc.Spec.Security.TLS.SinkTLSSecretNames {
-		vols = append(vols, corev1.Volume{
-			Name: secretName,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: secretName,
+	if ticdc.Spec.Security != nil && ticdc.Spec.Security.TLS != nil {
+		for _, secretName := range ticdc.Spec.Security.TLS.SinkTLSSecretNames {
+			vols = append(vols, corev1.Volume{
+				Name: secretName,
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: secretName,
+					},
 				},
-			},
-		})
-		mounts = append(mounts, corev1.VolumeMount{
-			Name:      secretName,
-			MountPath: fmt.Sprintf("%s/%s", v1alpha1.DirPathTiCDCSinkTLS, secretName),
-			ReadOnly:  true,
-		})
+			})
+			mounts = append(mounts, corev1.VolumeMount{
+				Name:      secretName,
+				MountPath: fmt.Sprintf("%s/%s", v1alpha1.DirPathTiCDCSinkTLS, secretName),
+				ReadOnly:  true,
+			})
+		}
 	}
 
 	pod := &corev1.Pod{
