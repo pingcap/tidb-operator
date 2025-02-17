@@ -218,7 +218,6 @@ func TaskContextCluster[
 			}
 
 			return task.Fail().With("cannot find %s: %v", key, err)
-
 		}
 		state.SetCluster(&cluster)
 		return task.Complete().With("cluster is set")
