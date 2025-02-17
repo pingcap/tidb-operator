@@ -40,7 +40,6 @@ type ReconcileContext struct {
 	Healthy bool
 
 	MemberID string
-	IsOwner  bool
 
 	GracefulWaitTimeInSeconds int64
 
@@ -84,7 +83,6 @@ func TaskContextInfoFromTiCDC(state *ReconcileContext, c client.Client) task.Tas
 			return task.Fail().With("failed to get status from TiCDC: %w", err)
 		}
 		state.MemberID = status.ID
-		state.IsOwner = status.IsOwner
 
 		return task.Complete().With("get info from ticdc")
 	})

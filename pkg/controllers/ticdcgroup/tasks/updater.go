@@ -69,6 +69,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 
 		updateRevision, _, _ := state.Revision()
 
+		// TODO: get the real time owner info from TiCDC and prefer non-owner when scaling in or updating
 		wait, err := updater.New[runtime.TiCDCTuple]().
 			WithInstances(cdcs...).
 			WithDesired(int(state.Group().Replicas())).
@@ -80,11 +81,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			WithAddHooks(topoPolicy).
 			WithDelHooks(topoPolicy).
 			WithScaleInPreferPolicy(
-				NotOwnerPolicy(),
 				topoPolicy,
-			).
-			WithUpdatePreferPolicy(
-				NotOwnerPolicy(),
 			).
 			Build().
 			Do(ctx)

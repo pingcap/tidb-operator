@@ -84,7 +84,6 @@ type TiCDCList struct {
 // +kubebuilder:resource:categories=tc
 // +kubebuilder:resource:categories=peer
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
-// +kubebuilder:printcolumn:name="Owner",type=string,JSONPath=`.status.isOwner`
 // +kubebuilder:printcolumn:name="Healthy",type=string,JSONPath=`.status.conditions[?(@.type=="Health")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
@@ -194,6 +193,6 @@ type TiCDCStatus struct {
 	// ID is the member id of this TiCDC instance
 	ID string `json:"id"`
 
-	// IsOwner indicates whether this TiCDC is the owner
-	IsOwner bool `json:"isOwner"`
+	// should we need to save IsOwner in status?
+	// but this value may be changed when scaling in or rolling update
 }

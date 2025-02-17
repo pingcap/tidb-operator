@@ -16,23 +16,8 @@ package tasks
 
 import (
 	"fmt"
-
-	"github.com/pingcap/tidb-operator/pkg/runtime"
-	"github.com/pingcap/tidb-operator/pkg/updater"
 )
 
 func HeadlessServiceName(groupName string) string {
 	return fmt.Sprintf("%s-ticdc-peer", groupName)
-}
-
-func NotOwnerPolicy() updater.PreferPolicy[*runtime.TiCDC] {
-	return updater.PreferPolicyFunc[*runtime.TiCDC](func(cdcs []*runtime.TiCDC) []*runtime.TiCDC {
-		var notOwner []*runtime.TiCDC
-		for _, cdc := range cdcs {
-			if !cdc.Status.IsOwner {
-				notOwner = append(notOwner, cdc)
-			}
-		}
-		return notOwner
-	})
 }

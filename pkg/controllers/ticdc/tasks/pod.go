@@ -28,9 +28,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/image"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/pkg/ticdcapi/v1"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
 
 const (
@@ -62,6 +64,16 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 
 		if res == k8s.CompareResultRecreate || (configChanged &&
 			state.TiCDC().Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart) {
+			if state.Healthy || statefulset.IsPodReady(state.Pod()) {
+				wait, err := preDeleteCheck(ctx, logger, state.TiCDCClient)
+				if err != nil {
+					return task.Fail().With("can't delete pod of ticdc: %v", err)
+				}
+
+				if wait {
+					return task.Wait().With("wait for ticdc caputure to be drained")
+				}
+			}
 			logger.Info("will recreate the pod")
 			if err := c.Delete(ctx, state.Pod()); err != nil {
 				return task.Fail().With("can't delete pod of ticdc: %w", err)
@@ -191,4 +203,33 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 
 	k8s.CalculateHashAndSetLabels(pod)
 	return pod
+}
+
+func preDeleteCheck(
+	ctx context.Context,
+	logger logr.Logger,
+	cdcClient ticdcapi.TiCDCClient,
+) (bool, error) {
+	// TODO(csuzhangxc): update to use prestop-checker with `gracefulShutdownTimeout`
+
+	// both `ResignOwner` and `DrainCapture` will check the capture count
+	resigned, err := cdcClient.ResignOwner(ctx)
+	if err != nil {
+		return false, err
+	}
+	if !resigned {
+		logger.Info("wait for resigning owner")
+		return true, nil
+	}
+
+	tableCount, err := cdcClient.DrainCapture(ctx)
+	if err != nil {
+		return false, err
+	}
+	if tableCount > 0 {
+		logger.Info("wait for draining capture", "tableCount", tableCount)
+		return true, nil
+	}
+
+	return false, nil
 }

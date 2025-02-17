@@ -37,7 +37,7 @@ const (
 )
 
 // TiCDCClient provides TiDB server's APIs used by TiDB Operator.
-// NOTE: Some of these APIs are only available in v6.5.0 or later.
+// NOTE: Some of these APIs are only available in v6.3.0 or later.
 type TiCDCClient interface {
 	// GetStatus returns ticdc's status
 	GetStatus(ctx context.Context) (*CaptureStatus, error)

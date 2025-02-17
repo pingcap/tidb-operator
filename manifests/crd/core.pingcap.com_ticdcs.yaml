@@ -20,9 +20,6 @@ spec:
     - jsonPath: .spec.cluster.name
       name: Cluster
       type: string
-    - jsonPath: .status.isOwner
-      name: Owner
-      type: string
     - jsonPath: .status.conditions[?(@.type=="Health")].status
       name: Healthy
       type: string
@@ -296,9 +293,6 @@ spec:
               id:
                 description: ID is the member id of this TiCDC instance
                 type: string
-              isOwner:
-                description: IsOwner indicates whether this TiCDC is the owner
-                type: boolean
               observedGeneration:
                 description: |-
                   ObservedGeneration is the most recent generation observed by the controller.
@@ -311,7 +305,6 @@ spec:
                 type: string
             required:
             - id
-            - isOwner
             type: object
         type: object
     served: true

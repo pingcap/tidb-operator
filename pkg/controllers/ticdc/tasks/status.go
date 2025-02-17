@@ -55,7 +55,6 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		if state.MemberID != "" {
 			needUpdate = SetIfChanged(&ticdc.Status.ID, state.MemberID) || needUpdate
 		}
-		needUpdate = SetIfChanged(&ticdc.Status.IsOwner, state.IsOwner) || needUpdate
 		needUpdate = SetIfChanged(&ticdc.Status.ObservedGeneration, ticdc.Generation) || needUpdate
 		needUpdate = SetIfChanged(&ticdc.Status.UpdateRevision, ticdc.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 
