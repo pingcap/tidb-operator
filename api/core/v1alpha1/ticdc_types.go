@@ -126,7 +126,7 @@ type TiCDCTemplateSpec struct {
 	Resources      ResourceRequirements `json:"resources,omitempty"`
 	UpdateStrategy UpdateStrategy       `json:"updateStrategy,omitempty"`
 	// Config defines config file of TiCDC
-	Config ConfigFile `json:"config"`
+	Config ConfigFile `json:"config,omitempty"`
 
 	Security *TiCDCSecurity `json:"security,omitempty"`
 

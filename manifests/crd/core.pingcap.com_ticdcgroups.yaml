@@ -287,7 +287,6 @@ spec:
                           type: object
                         type: array
                     required:
-                    - config
                     - version
                     type: object
                 required:

@@ -9,7 +9,7 @@ metadata:
 spec:
   cluster:
     name: basic
-  replicas: 1
+  replicas: 2
   template:
     metadata:
       annotations:
@@ -19,8 +19,6 @@ spec:
       resources:
         cpu: "1"
         memory: 2Gi
-      config: |
-        log-level = "debug"
       overlay:
         pod:
           spec:

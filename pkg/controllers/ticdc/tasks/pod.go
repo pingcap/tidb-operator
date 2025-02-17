@@ -43,6 +43,10 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 
 		expected := newPod(state)
 		if state.Pod() == nil {
+			// Pod needs PD address as a parameter
+			if state.Cluster().Status.PD == "" {
+				return task.Wait().With("wait until pd's status is set")
+			}
 			if err := c.Apply(ctx, expected); err != nil {
 				return task.Fail().With("can't create pod of ticdc: %w", err)
 			}
