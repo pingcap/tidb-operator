@@ -34,18 +34,18 @@ func Run() error {
 	pflag.CommandLine.SetNormalizeFunc(cliflag.WordSepNormalizeFunc)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
-	pflag.Set("logtostderr", "true")
+	_ = pflag.Set("logtostderr", "true")
 	// We do not want these flags to show up in --help
 	// These MarkHidden calls must be after the lines above
-	pflag.CommandLine.MarkHidden("version")
-	pflag.CommandLine.MarkHidden("google-json-key")
-	pflag.CommandLine.MarkHidden("log-flush-frequency")
-	pflag.CommandLine.MarkHidden("alsologtostderr")
-	pflag.CommandLine.MarkHidden("log-backtrace-at")
-	pflag.CommandLine.MarkHidden("log-dir")
-	pflag.CommandLine.MarkHidden("logtostderr")
-	pflag.CommandLine.MarkHidden("stderrthreshold")
-	pflag.CommandLine.MarkHidden("vmodule")
+	_ = pflag.CommandLine.MarkHidden("version")
+	_ = pflag.CommandLine.MarkHidden("google-json-key")
+	_ = pflag.CommandLine.MarkHidden("log-flush-frequency")
+	_ = pflag.CommandLine.MarkHidden("alsologtostderr")
+	_ = pflag.CommandLine.MarkHidden("log-backtrace-at")
+	_ = pflag.CommandLine.MarkHidden("log-dir")
+	_ = pflag.CommandLine.MarkHidden("logtostderr")
+	_ = pflag.CommandLine.MarkHidden("stderrthreshold")
+	_ = pflag.CommandLine.MarkHidden("vmodule")
 	command := cmd.NewBackupMgrCommand()
 	return command.Execute()
 }

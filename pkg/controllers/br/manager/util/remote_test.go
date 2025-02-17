@@ -46,7 +46,7 @@ import (
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/driver"
 
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 )
 
 type mockS3Client struct {

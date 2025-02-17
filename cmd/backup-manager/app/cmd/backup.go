@@ -88,25 +88,6 @@ func runBackup(backupOpts backup.Options, kubecfg string) error {
 		return err
 	}
 
-	// kubeCli, cli, err := util.NewKubeAndCRCli(kubecfg)
-	// if err != nil {
-	// 	return err
-	// }
-	// options := []informers.SharedInformerOption{
-	// 	informers.WithNamespace(backupOpts.Namespace),
-	// }
-	// informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, constants.ResyncDuration, options...)
-	// recorder := util.NewEventRecorder(kubeCli, "backup")
-	// backupInformer := informerFactory.Pingcap().V1alpha1().Backups()
-	// statusUpdater := backupMgr.NewRealBackupConditionUpdater(cli, recorder)
-
-	// ctx, cancel := context.WithCancel(context.Background())
-	// defer cancel()
-	// go informerFactory.Start(ctx.Done())
-
-	// // waiting for the shared informer's store has synced.
-	// cache.WaitForCacheSync(ctx.Done(), backupInformer.Informer().HasSynced)
-
 	recorder := record.NewBroadcaster().NewRecorder(scheme.Scheme, corev1.EventSource{Component: "backup"})
 	statusUpdater := backupMgr.NewRealBackupConditionUpdater(newcli, recorder)
 	klog.Infof("start to process backup %s", backupOpts.String())

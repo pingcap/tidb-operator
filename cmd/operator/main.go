@@ -40,6 +40,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/backup"
+	"github.com/pingcap/tidb-operator/pkg/controllers/br/restore"
 	"github.com/pingcap/tidb-operator/pkg/controllers/cluster"
 	"github.com/pingcap/tidb-operator/pkg/controllers/pd"
 	"github.com/pingcap/tidb-operator/pkg/controllers/pdgroup"
@@ -257,6 +258,11 @@ func setupBRControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientMana
 		BackupManagerImage: brConf.backupManagerImage,
 	}); err != nil {
 		return fmt.Errorf("unable to create controller Backup: %w", err)
+	}
+	if err := restore.Setup(mgr, c, pdcm, restore.Config{
+		BackupManagerImage: brConf.backupManagerImage,
+	}); err != nil {
+		return fmt.Errorf("unable to create controller Restore: %w", err)
 	}
 	return nil
 }

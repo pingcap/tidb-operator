@@ -32,6 +32,7 @@ import (
 	"k8s.io/utils/pointer"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	appconstant "github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 )
 
@@ -647,7 +648,7 @@ func newBackup() *v1alpha1.Backup {
 		Spec: v1alpha1.BackupSpec{
 			From: &v1alpha1.TiDBAccessConfig{
 				Host:       "10.1.1.2",
-				Port:       v1alpha1.DefaultTiDBServerPort,
+				Port:       corev1alpha1.DefaultTiDBPortClient,
 				User:       v1alpha1.DefaultTidbUser,
 				SecretName: "demo1-tidb-secret",
 			},
@@ -679,7 +680,7 @@ func newRestore() *v1alpha1.Restore {
 		Spec: v1alpha1.RestoreSpec{
 			To: &v1alpha1.TiDBAccessConfig{
 				Host:       "10.1.1.2",
-				Port:       v1alpha1.DefaultTiDBServerPort,
+				Port:       corev1alpha1.DefaultTiDBPortClient,
 				User:       v1alpha1.DefaultTidbUser,
 				SecretName: "demo1-tidb-secret",
 			},

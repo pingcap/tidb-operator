@@ -105,7 +105,7 @@ func (bc *backupCleaner) StopLogBackup(backup *v1alpha1.Backup) error {
 		// already have a clean job running，return directly
 		return nil
 	} else if !errors.IsNotFound(err) {
-		bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		_ = bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Condition: metav1.Condition{
 				Type:    string(v1alpha1.BackupRetryTheFailed),
 				Status:  metav1.ConditionTrue,
@@ -126,7 +126,7 @@ func (bc *backupCleaner) StopLogBackup(backup *v1alpha1.Backup) error {
 	// create k8s job
 	if err := bc.cli.Create(context.Background(), job); err != nil {
 		errMsg := fmt.Errorf("stop log backup %s/%s job %s failed, err: %v", ns, name, stopLogJobName, err)
-		bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		_ = bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: v1alpha1.LogStopCommand,
 			Condition: metav1.Condition{
 				Type:    string(v1alpha1.BackupRetryTheFailed),
@@ -175,7 +175,7 @@ func (bc *backupCleaner) CleanData(backup *v1alpha1.Backup) error {
 		// already have a clean job running，return directly
 		return nil
 	} else if !errors.IsNotFound(err) {
-		bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		_ = bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Condition: metav1.Condition{
 				Type:    string(v1alpha1.BackupRetryTheFailed),
 				Status:  metav1.ConditionTrue,

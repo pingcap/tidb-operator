@@ -35,7 +35,7 @@ type RestoreUpdateStatus struct {
 
 // RestoreConditionUpdaterInterface enables updating Restore conditions.
 type RestoreConditionUpdaterInterface interface {
-	Update(restore *v1alpha1.Restore, condition *v1alpha1.RestoreCondition, newStatus *RestoreUpdateStatus) error
+	Update(restore *v1alpha1.Restore, condition *metav1.Condition, newStatus *RestoreUpdateStatus) error
 }
 
 type realRestoreConditionUpdater struct {
@@ -53,7 +53,7 @@ func NewRealRestoreConditionUpdater(
 	}
 }
 
-func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, condition *v1alpha1.RestoreCondition, newStatus *RestoreUpdateStatus) error {
+func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, condition *metav1.Condition, newStatus *RestoreUpdateStatus) error {
 	ns := restore.GetNamespace()
 	restoreName := restore.GetName()
 	var isStatusUpdate bool

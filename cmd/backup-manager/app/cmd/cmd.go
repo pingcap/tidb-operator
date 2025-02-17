@@ -40,5 +40,5 @@ func NewBackupMgrCommand() *cobra.Command {
 }
 
 func runHelp(cmd *cobra.Command, _ []string) {
-	cmd.Help()
+	_ = cmd.Help()
 }

@@ -33,7 +33,7 @@ type RestoreManager interface {
 	// Sync	implements the logic for syncing Restore.
 	Sync(backup *v1alpha1.Restore) error
 	// UpdateCondition updates the condition for a Restore.
-	UpdateCondition(restore *v1alpha1.Restore, condition *v1alpha1.RestoreCondition) error
+	UpdateCondition(restore *v1alpha1.Restore, condition *metav1.Condition) error
 }
 
 type restoreManager struct {
@@ -55,7 +55,7 @@ func (rm *restoreManager) Sync(restore *v1alpha1.Restore) error {
 	return rm.syncRestoreJob(restore)
 }
 
-func (rm *restoreManager) UpdateCondition(restore *v1alpha1.Restore, condition *v1alpha1.RestoreCondition) error {
+func (rm *restoreManager) UpdateCondition(restore *v1alpha1.Restore, condition *metav1.Condition) error {
 	return rm.statusUpdater.Update(restore, condition, nil)
 }
 
@@ -81,9 +81,9 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		err = rm.cli.Get(context.TODO(), client.ObjectKey{Namespace: restoreNamespace, Name: restore.Spec.BR.Cluster}, cluster)
 		if err != nil {
 			reason := fmt.Sprintf("failed to fetch tidbcluster %s/%s", restoreNamespace, restore.Spec.BR.Cluster)
-			rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-				Type:    v1alpha1.RestoreRetryFailed,
-				Status:  corev1.ConditionTrue,
+			_ = rm.statusUpdater.Update(restore, &metav1.Condition{
+				Type:    string(v1alpha1.RestoreRetryFailed),
+				Status:  metav1.ConditionTrue,
 				Reason:  reason,
 				Message: err.Error(),
 			}, nil)
@@ -98,9 +98,9 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	}
 
 	if err != nil {
-		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:    v1alpha1.RestoreInvalid,
-			Status:  corev1.ConditionTrue,
+		_ = rm.statusUpdater.Update(restore, &metav1.Condition{
+			Type:    string(v1alpha1.RestoreInvalid),
+			Status:  metav1.ConditionTrue,
 			Reason:  "InvalidSpec",
 			Message: err.Error(),
 		}, nil)
@@ -109,6 +109,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return fmt.Errorf("invalid restore spec %s/%s", ns, name)
 	}
 
+	// nolint: lll
 	/* TODO(ideascf): remove it in v2. Volume snapshot restore is not supported in v2
 	if restore.Spec.BR != nil && restore.Spec.Mode == v1alpha1.RestoreModeVolumeSnapshot {
 		err = rm.validateRestore(restore, tc)
@@ -226,9 +227,9 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	{
 		job, reason, err = rm.makeRestoreJob(restore)
 		if err != nil {
-			rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-				Type:    v1alpha1.RestoreRetryFailed,
-				Status:  corev1.ConditionTrue,
+			_ = rm.statusUpdater.Update(restore, &metav1.Condition{
+				Type:    string(v1alpha1.RestoreRetryFailed),
+				Status:  metav1.ConditionTrue,
 				Reason:  reason,
 				Message: err.Error(),
 			}, nil)
@@ -238,9 +239,9 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 
 	if err := rm.cli.Create(context.TODO(), job); err != nil {
 		errMsg := fmt.Errorf("create restore %s/%s job %s failed, err: %v", ns, name, restoreJobName, err)
-		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:    v1alpha1.RestoreRetryFailed,
-			Status:  corev1.ConditionTrue,
+		rm.statusUpdater.Update(restore, &metav1.Condition{
+			Type:    string(v1alpha1.RestoreRetryFailed),
+			Status:  metav1.ConditionTrue,
 			Reason:  "CreateRestoreJobFailed",
 			Message: errMsg.Error(),
 		}, nil)
@@ -255,9 +256,9 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	// running when the first job is running. To avoid the phase going back from running to scheduled, we
 	// don't update the condition when the scheduled condition has already been set to true.
 	if !v1alpha1.IsRestoreScheduled(restore) {
-		return rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:   v1alpha1.RestoreScheduled,
-			Status: corev1.ConditionTrue,
+		return rm.statusUpdater.Update(restore, &metav1.Condition{
+			Type:   string(v1alpha1.RestoreScheduled),
+			Status: metav1.ConditionTrue,
 		}, nil)
 	}
 	return nil
@@ -1483,7 +1484,7 @@ func (frm *FakeRestoreManager) Sync(_ *v1alpha1.Restore) error {
 	return frm.err
 }
 
-func (frm *FakeRestoreManager) UpdateCondition(_ *v1alpha1.Restore, _ *v1alpha1.RestoreCondition) error {
+func (frm *FakeRestoreManager) UpdateCondition(_ *v1alpha1.Restore, _ *metav1.Condition) error {
 	return nil
 }
 

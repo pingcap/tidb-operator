@@ -271,7 +271,7 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 	} else {
 		if backup.Spec.Mode == v1alpha1.BackupModeLog && logBackupSubcommand == v1alpha1.LogUnknownCommand {
 			err = fmt.Errorf("log backup %s/%s subcommand `%s` is not supported", ns, name, backup.Spec.LogSubcommand)
-			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 				Command: logBackupSubcommand,
 				Condition: metav1.Condition{
 					Type:    string(v1alpha1.BackupRetryTheFailed),
@@ -292,7 +292,7 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 		err = bm.cli.Get(context.TODO(), types.NamespacedName{Namespace: backupNamespace, Name: backup.Spec.BR.Cluster}, cluster)
 		if err != nil {
 			reason := fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster)
-			bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 				Command: logBackupSubcommand,
 				Condition: metav1.Condition{
 					Type:    string(v1alpha1.BackupRetryTheFailed),

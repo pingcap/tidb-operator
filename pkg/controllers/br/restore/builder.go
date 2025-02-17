@@ -60,8 +60,5 @@ func needToAddFinalizer(restore *v1alpha1.Restore) bool {
 }
 
 func needToRemoveFinalizer(restore *v1alpha1.Restore) bool {
-	return restore.DeletionTimestamp != nil && (
-		v1alpha1.IsRestoreComplete(restore) ||
-		v1alpha1.IsRestoreFailed(restore)
-	)
+	return restore.DeletionTimestamp != nil && (v1alpha1.IsRestoreComplete(restore) || v1alpha1.IsRestoreFailed(restore))
 }

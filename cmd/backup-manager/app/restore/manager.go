@@ -21,7 +21,6 @@ import (
 	"strconv"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
@@ -85,9 +84,9 @@ func (rm *Manager) ProcessRestore() error {
 	if err != nil {
 		errs = append(errs, err)
 		klog.Errorf("can't find cluster %s restore %s CRD object, err: %v", rm, rm.ResourceName, err)
-		uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:    v1alpha1.RestoreFailed,
-			Status:  corev1.ConditionTrue,
+		uerr := rm.StatusUpdater.Update(restore, &metav1.Condition{
+			Type:    string(v1alpha1.RestoreFailed),
+			Status:  metav1.ConditionTrue,
 			Reason:  "GetRestoreCRFailed",
 			Message: err.Error(),
 		}, nil)
@@ -156,9 +155,9 @@ func (rm *Manager) ProcessRestore() error {
 func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore, db *sql.DB) error {
 	started := time.Now()
 
-	err := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-		Type:   v1alpha1.RestoreRunning,
-		Status: corev1.ConditionTrue,
+	err := rm.StatusUpdater.Update(restore, &metav1.Condition{
+		Type:   string(v1alpha1.RestoreRunning),
+		Status: metav1.ConditionTrue,
 	}, nil)
 	if err != nil {
 		return err
@@ -285,9 +284,9 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 	if restoreErr != nil {
 		errs = append(errs, restoreErr)
 		klog.Errorf("restore cluster %s from %s failed, err: %s", rm, restore.Spec.Type, restoreErr)
-		uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:    v1alpha1.RestoreFailed,
-			Status:  corev1.ConditionTrue,
+		uerr := rm.StatusUpdater.Update(restore, &metav1.Condition{
+			Type:    string(v1alpha1.RestoreFailed),
+			Status:  metav1.ConditionTrue,
 			Reason:  "RestoreDataFromRemoteFailed",
 			Message: restoreErr.Error(),
 		}, nil)
@@ -316,9 +315,9 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 		if err != nil {
 			errs = append(errs, err)
 			klog.Errorf("get cluster %s commitTs failed, err: %s", rm, err)
-			uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-				Type:    v1alpha1.RestoreFailed,
-				Status:  corev1.ConditionTrue,
+			uerr := rm.StatusUpdater.Update(restore, &metav1.Condition{
+				Type:    string(v1alpha1.RestoreFailed),
+				Status:  metav1.ConditionTrue,
 				Reason:  "GetCommitTsFailed",
 				Message: err.Error(),
 			}, nil)
@@ -340,8 +339,8 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 	if allFinished {
 		updateStatus.TimeCompleted = &metav1.Time{Time: time.Now()}
 	}
-	return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-		Type:   restoreType,
-		Status: corev1.ConditionTrue,
+	return rm.StatusUpdater.Update(restore, &metav1.Condition{
+		Type:   string(restoreType),
+		Status: metav1.ConditionTrue,
 	}, updateStatus)
 }
