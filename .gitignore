@@ -2,3 +2,4 @@ _output
 output
 .idea/
 coverage.txt
+.vscode/
