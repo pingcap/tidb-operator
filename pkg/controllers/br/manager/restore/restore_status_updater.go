@@ -68,6 +68,13 @@ func NewRealRestoreConditionUpdater(
 }
 
 func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, condition *metav1.Condition, newStatus *RestoreUpdateStatus) error {
+	// TODO(ideascf): set reason for all
+	if condition != nil {
+		if condition.Reason == "" {
+			condition.Reason = condition.Type
+		}
+	}
+
 	ns := restore.GetNamespace()
 	restoreName := restore.GetName()
 	var isStatusUpdate bool
@@ -86,7 +93,7 @@ func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, conditio
 		isStatusUpdate = updateRestoreStatus(&restore.Status, newStatus)
 		isConditionUpdate = v1alpha1.UpdateRestoreCondition(&restore.Status, condition)
 		if isStatusUpdate || isConditionUpdate {
-			updateErr := u.cli.Update(context.TODO(), restore)
+			updateErr := u.cli.Status().Update(context.TODO(), restore)
 			if updateErr == nil {
 				klog.Infof("Restore: [%s/%s] updated successfully", ns, restoreName)
 				return nil
