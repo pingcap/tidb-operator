@@ -27,7 +27,7 @@ KIND_VERSION ?= v0.24.0
 # TODO: use kubectl in _output
 KUBECTL = kubectl -n tidb-admin --context kind-tidb-operator
 
-ALL_CMD = operator prestop-checker testing-workload
+ALL_CMD = operator prestop-checker testing-workload backup-manager
 .PHONY: build
 build: $(addprefix build/,$(ALL_CMD))
 build/%:
