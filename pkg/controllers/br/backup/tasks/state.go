@@ -87,7 +87,7 @@ func (s *state) Labels() common.LabelsOption {
 	return common.Lazy[map[string]string](func() map[string]string {
 		return map[string]string{
 			v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-			v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentBackup,
+			v1alpha1.LabelKeyComponent: brv1alpha1.LabelValComponentBackup,
 			v1alpha1.LabelKeyCluster:   s.cluster.Name,
 		}
 	})

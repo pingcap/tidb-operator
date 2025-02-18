@@ -432,7 +432,7 @@ func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1
 	brVolumeMount := corev1.VolumeMount{
 		Name:      "br-bin",
 		ReadOnly:  false,
-		MountPath: corev1alpha1.PathBRBin,
+		MountPath: v1alpha1.DirPathBRBin,
 	}
 	volumeMounts = append(volumeMounts, brVolumeMount)
 
@@ -484,7 +484,7 @@ func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1
 					Name:            "br",
 					Image:           brImage,
 					Command:         []string{"/bin/sh", "-c"},
-					Args:            []string{fmt.Sprintf("cp /br %s/br; echo 'BR copy finished'", corev1alpha1.PathBRBin)},
+					Args:            []string{fmt.Sprintf("cp /br %s/br; echo 'BR copy finished'", v1alpha1.DirPathBRBin)},
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    []corev1.VolumeMount{brVolumeMount},
 					Resources:       backup.Spec.ResourceRequirements,

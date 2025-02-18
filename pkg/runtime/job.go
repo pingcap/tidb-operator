@@ -18,7 +18,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 )
 
@@ -45,7 +44,7 @@ func (b *Backup) Cluster() string {
 }
 
 func (b *Backup) Component() string {
-	return v1alpha1.LabelValComponentBackup
+	return brv1alpha1.LabelValComponentBackup
 }
 
 func (b *Backup) Conditions() []metav1.Condition {
@@ -86,7 +85,7 @@ func (r *Restore) Cluster() string {
 }
 
 func (r *Restore) Component() string {
-	return v1alpha1.LabelValComponentRestore
+	return brv1alpha1.LabelValComponentRestore
 }
 
 func (r *Restore) Conditions() []metav1.Condition {

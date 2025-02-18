@@ -31,6 +31,8 @@ const (
 const (
 	// BackupNameTimeFormat is the time format for generate backup CR name
 	BackupNameTimeFormat = "2006-01-02t15-04-05"
+
+	BackupTimestampFormat = "2006-01-02 15:04:05"
 )
 
 // ParseTSString supports TSO or datetime, e.g. '400036290571534337', '2006-01-02 15:04:05'

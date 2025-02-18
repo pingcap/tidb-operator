@@ -112,7 +112,7 @@ func (ro *Options) restoreData(
 		args = append(args, "--type=aws-ebs")
 		if ro.Prepare {
 			args = append(args, "--prepare")
-			csbPath = path.Join(corev1alpha1.PathBRBin, "csb_restore.json")
+			csbPath = path.Join(v1alpha1.DirPathBRBin, "csb_restore.json")
 			args = append(args, fmt.Sprintf("--output-file=%s", csbPath))
 			args = append(args, fmt.Sprintf("--target-az=%s", ro.TargetAZ))
 			if ro.UseFSR {
@@ -133,7 +133,7 @@ func (ro *Options) restoreData(
 	}
 	fullArgs = append(fullArgs, args...)
 	klog.Infof("Running br command with args: %v", fullArgs)
-	bin := path.Join(corev1alpha1.PathBRBin, "br")
+	bin := path.Join(v1alpha1.DirPathBRBin, "br")
 	cmd := exec.Command(bin, fullArgs...)
 
 	stdOut, err := cmd.StdoutPipe()

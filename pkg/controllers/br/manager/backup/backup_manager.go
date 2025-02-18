@@ -884,7 +884,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 	brVolumeMount := corev1.VolumeMount{
 		Name:      "br-bin",
 		ReadOnly:  false,
-		MountPath: corev1alpha1.PathBRBin,
+		MountPath: v1alpha1.DirPathBRBin,
 	}
 	volumeMounts = append(volumeMounts, brVolumeMount)
 
@@ -936,7 +936,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 					Name:            "br",
 					Image:           brImage,
 					Command:         []string{"/bin/sh", "-c"},
-					Args:            []string{fmt.Sprintf("cp /br %s/br; echo 'BR copy finished'", corev1alpha1.PathBRBin)},
+					Args:            []string{fmt.Sprintf("cp /br %s/br; echo 'BR copy finished'", v1alpha1.DirPathBRBin)},
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    []corev1.VolumeMount{brVolumeMount},
 					Resources:       backup.Spec.ResourceRequirements,
@@ -944,7 +944,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 			},
 			Containers: []corev1.Container{
 				{
-					Name:            corev1alpha1.LabelValComponentBackup,
+					Name:            brv1alpha1.LabelValComponentBackup,
 					Image:           bm.backupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,

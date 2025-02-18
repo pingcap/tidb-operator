@@ -75,8 +75,6 @@ const (
 	LabelValComponentTiDB    = "tidb"
 	LabelValComponentTiKV    = "tikv"
 	LabelValComponentTiFlash = "tiflash"
-	LabelValComponentBackup  = "backup"
-	LabelValComponentRestore = "restore"
 
 	// LabelKeyClusterID is the unique identifier of the cluster.
 	// This label is used for backward compatibility with TiDB Operator v1, so it has a different prefix.

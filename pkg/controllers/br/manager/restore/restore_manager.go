@@ -867,7 +867,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	brVolumeMount := corev1.VolumeMount{
 		Name:      "br-bin",
 		ReadOnly:  false,
-		MountPath: corev1alpha1.PathBRBin,
+		MountPath: v1alpha1.DirPathBRBin,
 	}
 	volumeMounts = append(volumeMounts, brVolumeMount)
 
@@ -919,7 +919,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 					Name:            "br",
 					Image:           brImage,
 					Command:         []string{"/bin/sh", "-c"},
-					Args:            []string{fmt.Sprintf("cp /br %s/br; echo 'BR copy finished'", corev1alpha1.PathBRBin)},
+					Args:            []string{fmt.Sprintf("cp /br %s/br; echo 'BR copy finished'", v1alpha1.DirPathBRBin)},
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    []corev1.VolumeMount{brVolumeMount},
 					Resources:       restore.Spec.ResourceRequirements,

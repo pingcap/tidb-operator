@@ -93,9 +93,6 @@ const (
 	DirPathClusterClientTLS  = "/var/lib/cluster-client-tls"
 	// Dir path of tls file for tidb and mysql client
 	DirPathMySQLTLS = "/var/lib/tidb-sql-tls"
-
-	// BR
-	PathBRBin = "/var/lib/br-bin"
 )
 
 // All file names
