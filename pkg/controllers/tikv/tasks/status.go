@@ -112,7 +112,7 @@ func syncSuspendCond(tikv *v1alpha1.TiKV) bool {
 		Status:             metav1.ConditionFalse,
 		ObservedGeneration: tikv.Generation,
 		Reason:             v1alpha1.ReasonUnsuspended,
-		Message:            "instace is not suspended",
+		Message:            "instance is not suspended",
 	})
 }
 

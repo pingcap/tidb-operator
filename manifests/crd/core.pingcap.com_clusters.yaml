@@ -150,6 +150,7 @@ spec:
                       - TiKV
                       - TiDB
                       - TiFlash
+                      - TiCDC
                       type: string
                     replicas:
                       description: Replicas is the number of desired replicas of the

@@ -178,7 +178,7 @@ func IsClusterReady(cli client.Client, name, ns string) (*v1alpha1.Cluster, bool
 }
 
 func AreAllInstancesReady(cli client.Client, pdg *v1alpha1.PDGroup, kvg []*v1alpha1.TiKVGroup,
-	dbg []*v1alpha1.TiDBGroup, flashg []*v1alpha1.TiFlashGroup,
+	dbg []*v1alpha1.TiDBGroup, flashg []*v1alpha1.TiFlashGroup, ticdcg []*v1alpha1.TiCDCGroup,
 ) error {
 	if err := AreAllPDHealthy(cli, pdg); err != nil {
 		return err
@@ -195,6 +195,11 @@ func AreAllInstancesReady(cli client.Client, pdg *v1alpha1.PDGroup, kvg []*v1alp
 	}
 	for _, flash := range flashg {
 		if err := AreAllTiFlashHealthy(cli, flash); err != nil {
+			return err
+		}
+	}
+	for _, ticdc := range ticdcg {
+		if err := AreAllTiCDCHealthy(cli, ticdc); err != nil {
 			return err
 		}
 	}
@@ -359,5 +364,43 @@ func AreAllTiFlashHealthy(cli client.Client, flashg *v1alpha1.TiFlashGroup) erro
 		}
 	}
 
+	return nil
+}
+
+func AreAllTiCDCHealthy(cli client.Client, ticdcg *v1alpha1.TiCDCGroup) error {
+	var ticdcList v1alpha1.TiCDCList
+	if err := cli.List(context.TODO(), &ticdcList, client.InNamespace(ticdcg.Namespace), client.MatchingLabels{
+		v1alpha1.LabelKeyGroup:     ticdcg.Name,
+		v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiCDC,
+	}); err != nil {
+		return fmt.Errorf("failed to list ticdc %s/%s: %w", ticdcg.Namespace, ticdcg.Name, err)
+	}
+	if len(ticdcList.Items) != int(*ticdcg.Spec.Replicas) {
+		return fmt.Errorf("ticdc %s/%s replicas %d not equal to %d", ticdcg.Namespace, ticdcg.Name, len(ticdcList.Items), *ticdcg.Spec.Replicas)
+	}
+	for i := range ticdcList.Items {
+		ticdc := &ticdcList.Items[i]
+		if !meta.IsStatusConditionPresentAndEqual(ticdc.Status.Conditions, v1alpha1.TiCDCCondHealth, metav1.ConditionTrue) {
+			return fmt.Errorf("ticdc %s/%s is not healthy", ticdc.Namespace, ticdc.Name)
+		}
+	}
+
+	var podList corev1.PodList
+	if err := cli.List(context.TODO(), &podList, client.InNamespace(ticdcg.Namespace), client.MatchingLabels{
+		v1alpha1.LabelKeyCluster:   ticdcg.Spec.Cluster.Name,
+		v1alpha1.LabelKeyGroup:     ticdcg.Name,
+		v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiCDC,
+	}); err != nil {
+		return fmt.Errorf("failed to list ticdc pod %s/%s: %w", ticdcg.Namespace, ticdcg.Name, err)
+	}
+	if len(podList.Items) != int(*ticdcg.Spec.Replicas) {
+		return fmt.Errorf("ticdc %s/%s pod replicas %d not equal to %d", ticdcg.Namespace, ticdcg.Name, len(podList.Items), *ticdcg.Spec.Replicas)
+	}
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+		if pod.Status.Phase != corev1.PodRunning {
+			return fmt.Errorf("ticdc %s/%s pod %s is not running, current phase: %s", ticdcg.Namespace, ticdcg.Name, pod.Name, pod.Status.Phase)
+		}
+	}
 	return nil
 }

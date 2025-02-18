@@ -48,6 +48,7 @@ const (
 	ContainerNameTiKV    = "tikv"
 	ContainerNameTiDB    = "tidb"
 	ContainerNameTiFlash = "tiflash"
+	ContainerNameTiCDC   = "ticdc"
 
 	// An init container to copy pre stop checker cmd to main container
 	ContainerNamePrestopChecker = meta.NamePrefix + "prestop-checker"
@@ -72,6 +73,7 @@ const (
 	DirPathConfigTiKV    = "/etc/tikv"
 	DirPathConfigTiDB    = "/etc/tidb"
 	DirPathConfigTiFlash = "/etc/tiflash"
+	DirPathConfigTiCDC   = "/etc/ticdc"
 
 	// DirPathPrestop defines dir path of pre stop checker cmd
 	DirPathPrestop = "/prestop"
@@ -91,6 +93,7 @@ const (
 	DirPathTiDBClientTLS     = "/var/lib/tidb-client-tls" // FIXME(ideascf): do we need this?
 	DirPathClusterTLSTiFlash = "/var/lib/tiflash-tls"
 	DirPathClusterClientTLS  = "/var/lib/cluster-client-tls"
+	DirPathClusterTLSTiCDC   = "/var/lib/ticdc-tls"
 	// Dir path of tls file for tidb and mysql client
 	DirPathMySQLTLS = "/var/lib/tidb-sql-tls"
 )

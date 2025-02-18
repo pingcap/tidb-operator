@@ -51,6 +51,10 @@ type (
 	TiFlashInitializer      = ResourceInitializer[v1alpha1.TiFlash]
 	TiFlashSliceInitializer = ResourceSliceInitializer[v1alpha1.TiFlash]
 
+	TiCDCGroupInitializer = ResourceInitializer[v1alpha1.TiCDCGroup]
+	TiCDCInitializer      = ResourceInitializer[v1alpha1.TiCDC]
+	TiCDCSliceInitializer = ResourceSliceInitializer[v1alpha1.TiCDC]
+
 	PodInitializer = ResourceInitializer[corev1.Pod]
 )
 
@@ -203,6 +207,27 @@ type (
 	}
 	TiFlashSliceState interface {
 		TiFlashSlice() []*v1alpha1.TiFlash
+	}
+)
+
+type (
+	TiCDCGroupStateInitializer interface {
+		TiCDCGroupInitializer() TiCDCGroupInitializer
+	}
+	TiCDCGroupState interface {
+		TiCDCGroup() *v1alpha1.TiCDCGroup
+	}
+	TiCDCStateInitializer interface {
+		TiCDCInitializer() TiCDCInitializer
+	}
+	TiCDCState interface {
+		TiCDC() *v1alpha1.TiCDC
+	}
+	TiCDCSliceStateInitializer interface {
+		TiCDCSliceInitializer() TiCDCSliceInitializer
+	}
+	TiCDCSliceState interface {
+		TiCDCSlice() []*v1alpha1.TiCDC
 	}
 )
 

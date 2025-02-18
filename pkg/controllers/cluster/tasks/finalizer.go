@@ -49,7 +49,8 @@ func (t *TaskFinalizer) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		return task.Complete().With("ensured finalizer")
 	}
 
-	if rtx.PDGroup == nil && len(rtx.TiKVGroups) == 0 && len(rtx.TiDBGroups) == 0 && len(rtx.TiFlashGroups) == 0 {
+	if rtx.PDGroup == nil && len(rtx.TiKVGroups) == 0 && len(rtx.TiDBGroups) == 0 &&
+		len(rtx.TiFlashGroups) == 0 && len(rtx.TiCDCGroups) == 0 {
 		if err := k8s.RemoveFinalizer(ctx, t.Client, rtx.Cluster); err != nil {
 			return task.Fail().With("can't remove finalizer: %w", err)
 		}
@@ -79,6 +80,13 @@ func (t *TaskFinalizer) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		//nolint:gocritic // not a real issue, see https://github.com/go-critic/go-critic/issues/1448
 		if err := t.Client.Delete(ctx, tidbGroup); client.IgnoreNotFound(err) != nil {
 			return task.Fail().With("can't delete tidb group: %w", err)
+		}
+	}
+
+	for _, ticdcGroup := range rtx.TiCDCGroups {
+		//nolint:gocritic // not a real issue, see https://github.com/go-critic/go-critic/issues/1448
+		if err := t.Client.Delete(ctx, ticdcGroup); client.IgnoreNotFound(err) != nil {
+			return task.Fail().With("can't delete ticdc group: %w", err)
 		}
 	}
 

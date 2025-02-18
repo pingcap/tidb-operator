@@ -49,10 +49,16 @@
 // +kubebuilder:rbac:groups=core.pingcap.com,resources=tiflashgroups/status,verbs=get;list;watch;update
 // +kubebuilder:rbac:groups=core.pingcap.com,resources=tiflashes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core.pingcap.com,resources=tiflashes/status,verbs=get;list;watch;update;patch
+//
 // +kubebuilder:rbac:groups=core.pingcap.com,resources=tidbgroups,verbs=get;list;watch;delete;update
 // +kubebuilder:rbac:groups=core.pingcap.com,resources=tidbgroups/status,verbs=get;list;watch;update
 // +kubebuilder:rbac:groups=core.pingcap.com,resources=tidbs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core.pingcap.com,resources=tidbs/status,verbs=get;list;watch;update;patch
+//
+// +kubebuilder:rbac:groups=core.pingcap.com,resources=ticdcgroups,verbs=get;list;watch;delete;update
+// +kubebuilder:rbac:groups=core.pingcap.com,resources=ticdcgroups/status,verbs=get;list;watch;update
+// +kubebuilder:rbac:groups=core.pingcap.com,resources=ticdcs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core.pingcap.com,resources=ticdcs/status,verbs=get;list;watch;update;patch
 //
 // +kubebuilder:rbac:resources="",verbs=get,urls=/metrics
 //
