@@ -27,8 +27,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -114,11 +117,6 @@ func TaskContextTiFlash(state TiFlashStateInitializer, c client.Client) task.Tas
 	return taskContextResource("TiFlash", w, c, false)
 }
 
-func TaskContextCluster(state ClusterStateInitializer, c client.Client) task.Task {
-	w := state.ClusterInitializer()
-	return taskContextResource("Cluster", w, c, true)
-}
-
 func TaskContextPod(state PodStateInitializer, c client.Client) task.Task {
 	w := state.PodInitializer()
 	return taskContextResource("Pod", w, c, false)
@@ -191,5 +189,37 @@ func TaskFeatureGates(state ClusterState) task.Task {
 		}
 
 		return task.Complete().With("feature gates are initialized")
+	})
+}
+
+type ContextClusterNewer[
+	F client.Object,
+] interface {
+	Object() F
+	SetCluster(c *v1alpha1.Cluster)
+}
+
+func TaskContextCluster[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](state ContextClusterNewer[F], c client.Client) task.Task {
+	return task.NameTaskFunc("ContextCluster", func(ctx context.Context) task.Result {
+		cluster := v1alpha1.Cluster{}
+		obj := state.Object()
+
+		key := types.NamespacedName{
+			Namespace: obj.GetNamespace(),
+			Name:      coreutil.Cluster[S](obj),
+		}
+		if err := c.Get(ctx, key, &cluster); err != nil {
+			if !errors.IsNotFound(err) {
+				return task.Fail().With("can't get %s: %v", key, err)
+			}
+
+			return task.Fail().With("cannot find %s: %v", key, err)
+		}
+		state.SetCluster(&cluster)
+		return task.Complete().With("cluster is set")
 	})
 }
