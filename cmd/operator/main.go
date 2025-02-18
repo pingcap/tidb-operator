@@ -263,7 +263,7 @@ func setupControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientManage
 	}
 	if err := ticdc.Setup(mgr, c, vm); err != nil {
 		return fmt.Errorf("unable to create controller TiCDC: %w", err)
-  }
+	}
 	return nil
 }
 
