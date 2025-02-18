@@ -27,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -95,10 +96,35 @@ func TestTaskContextPD(t *testing.T) {
 	}
 }
 
+type fakeObjectState[
+	F client.Object,
+] struct {
+	obj     F
+	cluster *v1alpha1.Cluster
+}
+
+func (s *fakeObjectState[F]) Object() F {
+	return s.obj
+}
+
+func (s *fakeObjectState[F]) SetCluster(c *v1alpha1.Cluster) {
+	s.cluster = c
+}
+
+func newFakeObjectState[
+	F client.Object,
+](f F) *fakeObjectState[F] {
+	return &fakeObjectState[F]{
+		obj: f,
+	}
+}
+
 func TestTaskContextCluster(t *testing.T) {
+	const ns = "aaa"
+	const name = "bbb"
 	cases := []struct {
 		desc          string
-		state         *fakeState[v1alpha1.Cluster]
+		state         *fakeObjectState[*v1alpha1.PD]
 		objs          []client.Object
 		unexpectedErr bool
 
@@ -107,32 +133,35 @@ func TestTaskContextCluster(t *testing.T) {
 	}{
 		{
 			desc: "success",
-			state: &fakeState[v1alpha1.Cluster]{
-				ns:   "aaa",
-				name: "aaa",
-			},
+			state: newFakeObjectState(fake.FakeObj(name, func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Namespace = ns
+				obj.Spec.Cluster.Name = name
+				return obj
+			})),
 			objs: []client.Object{
-				fake.FakeObj("aaa", fake.SetNamespace[v1alpha1.Cluster]("aaa")),
+				fake.FakeObj(name, fake.SetNamespace[v1alpha1.Cluster](ns)),
 			},
 			expectedResult: task.SComplete,
-			expectedObj:    fake.FakeObj("aaa", fake.SetNamespace[v1alpha1.Cluster]("aaa")),
+			expectedObj:    fake.FakeObj(name, fake.SetNamespace[v1alpha1.Cluster](ns)),
 		},
 		{
 			desc: "not found",
-			state: &fakeState[v1alpha1.Cluster]{
-				ns:   "aaa",
-				name: "aaa",
-			},
+			state: newFakeObjectState(fake.FakeObj(name, func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Namespace = ns
+				obj.Spec.Cluster.Name = name
+				return obj
+			})),
 			expectedResult: task.SFail,
 		},
 		{
 			desc: "has unexpected error",
-			state: &fakeState[v1alpha1.Cluster]{
-				ns:   "aaa",
-				name: "aaa",
-			},
+			state: newFakeObjectState(fake.FakeObj(name, func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Namespace = ns
+				obj.Spec.Cluster.Name = name
+				return obj
+			})),
 			objs: []client.Object{
-				fake.FakeObj("aaa", fake.SetNamespace[v1alpha1.Cluster]("aaa")),
+				fake.FakeObj(name, fake.SetNamespace[v1alpha1.Cluster](ns)),
 			},
 			unexpectedErr:  true,
 			expectedResult: task.SFail,
@@ -149,12 +178,10 @@ func TestTaskContextCluster(t *testing.T) {
 			if c.unexpectedErr {
 				fc.WithError("*", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
 			}
-			s := &fakeClusterState{s: c.state}
-
-			res, done := task.RunTask(context.Background(), TaskContextCluster(s, fc))
+			res, done := task.RunTask(context.Background(), TaskContextCluster[scope.PD](c.state, fc))
 			assert.Equal(tt, c.expectedResult, res.Status(), c.desc)
 			assert.False(tt, done, c.desc)
-			assert.Equal(tt, c.expectedObj, c.state.obj, c.desc)
+			assert.Equal(tt, c.expectedObj, c.state.cluster, c.desc)
 		})
 	}
 }

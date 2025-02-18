@@ -35,7 +35,6 @@ type state struct {
 
 type State interface {
 	common.TiFlashStateInitializer
-	common.ClusterStateInitializer
 	common.PodStateInitializer
 
 	common.TiFlashState
@@ -43,6 +42,8 @@ type State interface {
 	common.PodState
 
 	common.InstanceState[*runtime.TiFlash]
+
+	common.ContextClusterNewer[*v1alpha1.TiFlash]
 
 	SetPod(*corev1.Pod)
 }
@@ -52,6 +53,10 @@ func NewState(key types.NamespacedName) State {
 		key: key,
 	}
 	return s
+}
+
+func (s *state) Object() *v1alpha1.TiFlash {
+	return s.tiflash
 }
 
 func (s *state) TiFlash() *v1alpha1.TiFlash {
@@ -74,19 +79,14 @@ func (s *state) SetPod(pod *corev1.Pod) {
 	s.pod = pod
 }
 
+func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
+	s.cluster = cluster
+}
+
 func (s *state) TiFlashInitializer() common.TiFlashInitializer {
 	return common.NewResource(func(tiflash *v1alpha1.TiFlash) { s.tiflash = tiflash }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithName(common.Name(s.key.Name)).
-		Initializer()
-}
-
-func (s *state) ClusterInitializer() common.ClusterInitializer {
-	return common.NewResource(func(cluster *v1alpha1.Cluster) { s.cluster = cluster }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Lazy[string](func() string {
-			return s.tiflash.Spec.Cluster.Name
-		})).
 		Initializer()
 }
 

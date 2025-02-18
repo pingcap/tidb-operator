@@ -36,7 +36,6 @@ type state struct {
 
 type State interface {
 	common.PDStateInitializer
-	common.ClusterStateInitializer
 	common.PodStateInitializer
 	common.PDSliceStateInitializer
 
@@ -46,6 +45,9 @@ type State interface {
 	common.PDSliceState
 
 	common.InstanceState[*runtime.PD]
+
+	common.ContextClusterNewer[*v1alpha1.PD]
+
 	SetPod(*corev1.Pod)
 }
 
@@ -54,6 +56,10 @@ func NewState(key types.NamespacedName) State {
 		key: key,
 	}
 	return s
+}
+
+func (s *state) Object() *v1alpha1.PD {
+	return s.pd
 }
 
 func (s *state) PD() *v1alpha1.PD {
@@ -76,6 +82,10 @@ func (s *state) SetPod(pod *corev1.Pod) {
 	s.pod = pod
 }
 
+func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
+	s.cluster = cluster
+}
+
 func (s *state) PDSlice() []*v1alpha1.PD {
 	return s.pds
 }
@@ -84,15 +94,6 @@ func (s *state) PDInitializer() common.PDInitializer {
 	return common.NewResource(func(pd *v1alpha1.PD) { s.pd = pd }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithName(common.Name(s.key.Name)).
-		Initializer()
-}
-
-func (s *state) ClusterInitializer() common.ClusterInitializer {
-	return common.NewResource(func(cluster *v1alpha1.Cluster) { s.cluster = cluster }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Lazy[string](func() string {
-			return s.pd.Spec.Cluster.Name
-		})).
 		Initializer()
 }
 

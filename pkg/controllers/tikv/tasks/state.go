@@ -35,7 +35,6 @@ type state struct {
 
 type State interface {
 	common.TiKVStateInitializer
-	common.ClusterStateInitializer
 	common.PodStateInitializer
 
 	common.TiKVState
@@ -43,6 +42,8 @@ type State interface {
 	common.PodState
 
 	common.InstanceState[*runtime.TiKV]
+
+	common.ContextClusterNewer[*v1alpha1.TiKV]
 
 	SetPod(*corev1.Pod)
 }
@@ -52,6 +53,10 @@ func NewState(key types.NamespacedName) State {
 		key: key,
 	}
 	return s
+}
+
+func (s *state) Object() *v1alpha1.TiKV {
+	return s.tikv
 }
 
 func (s *state) TiKV() *v1alpha1.TiKV {
@@ -74,19 +79,14 @@ func (s *state) SetPod(pod *corev1.Pod) {
 	s.pod = pod
 }
 
+func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
+	s.cluster = cluster
+}
+
 func (s *state) TiKVInitializer() common.TiKVInitializer {
 	return common.NewResource(func(tikv *v1alpha1.TiKV) { s.tikv = tikv }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithName(common.Name(s.key.Name)).
-		Initializer()
-}
-
-func (s *state) ClusterInitializer() common.ClusterInitializer {
-	return common.NewResource(func(cluster *v1alpha1.Cluster) { s.cluster = cluster }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Lazy[string](func() string {
-			return s.tikv.Spec.Cluster.Name
-		})).
 		Initializer()
 }
 
