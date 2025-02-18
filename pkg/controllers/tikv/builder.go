@@ -50,7 +50,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			// NOTE: suspend tikv pod should delete with grace peroid
 			// TODO(liubo02): combine with the common one
 			tasks.TaskSuspendPod(state, r.Client),
-			common.TaskInstanceStatusSuspend[runtime.TiKVTuple](state, r.Client),
+			common.TaskInstanceConditionSuspended[scope.TiKV](state),
+			common.TaskStatusPersister[scope.TiKV](state, r.Client),
 		),
 
 		// normal process

@@ -41,7 +41,7 @@ func (f *Framework) WaitForPDGroupSuspended(ctx context.Context, pdg *v1alpha1.P
 		ctx,
 		f.Client,
 		pdg,
-		v1alpha1.PDGroupCondSuspended,
+		v1alpha1.CondSuspended,
 		metav1.ConditionTrue,
 		waiter.ShortTaskTimeout,
 	))
@@ -52,7 +52,7 @@ func (f *Framework) WaitForPDGroupReadyAndNotSuspended(ctx context.Context, pdg 
 		ctx,
 		f.Client,
 		pdg,
-		v1alpha1.PDGroupCondSuspended,
+		v1alpha1.CondSuspended,
 		metav1.ConditionFalse,
 		waiter.ShortTaskTimeout,
 	))

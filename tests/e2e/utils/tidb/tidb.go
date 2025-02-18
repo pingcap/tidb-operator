@@ -41,7 +41,8 @@ func GetTiDBDSN(host, user, password, database, params string, port int) string 
 
 // PortForwardAndGetTiDBDSN create a port forward for TiDB and return its DSN.
 func PortForwardAndGetTiDBDSN(fw k8s.PortForwarder, ns, svcName,
-	user, password, database, params string) (string, context.CancelFunc, error) {
+	user, password, database, params string,
+) (string, context.CancelFunc, error) {
 	localHost, localPort, cancel, err := k8s.ForwardOnePort(fw, ns, fmt.Sprintf("svc/%s", svcName), uint16(v1alpha1.DefaultTiDBPortClient))
 	if err != nil {
 		return "", dummyCancel, err
@@ -222,7 +223,7 @@ func AreAllPDHealthy(cli client.Client, pdg *v1alpha1.PDGroup) error {
 		if !meta.IsStatusConditionPresentAndEqual(pd.Status.Conditions, v1alpha1.PDCondInitialized, metav1.ConditionTrue) {
 			return fmt.Errorf("pd %s/%s is not initialized", pd.Namespace, pd.Name)
 		}
-		if !meta.IsStatusConditionPresentAndEqual(pd.Status.Conditions, v1alpha1.PDCondHealth, metav1.ConditionTrue) {
+		if !meta.IsStatusConditionPresentAndEqual(pd.Status.Conditions, v1alpha1.CondReady, metav1.ConditionTrue) {
 			return fmt.Errorf("pd %s/%s is not healthy", pd.Namespace, pd.Name)
 		}
 	}
@@ -300,7 +301,7 @@ func AreAllTiDBHealthy(cli client.Client, dbg *v1alpha1.TiDBGroup) error {
 	}
 	for i := range tidbList.Items {
 		tidb := &tidbList.Items[i]
-		if !meta.IsStatusConditionPresentAndEqual(tidb.Status.Conditions, v1alpha1.TiDBCondHealth, metav1.ConditionTrue) {
+		if !meta.IsStatusConditionPresentAndEqual(tidb.Status.Conditions, v1alpha1.CondReady, metav1.ConditionTrue) {
 			return fmt.Errorf("tidb %s/%s is not healthy", tidb.Namespace, tidb.Name)
 		}
 	}

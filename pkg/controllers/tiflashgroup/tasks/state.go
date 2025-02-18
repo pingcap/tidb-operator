@@ -32,6 +32,8 @@ type state struct {
 	updateRevision  string
 	currentRevision string
 	collisionCount  int32
+
+	statusChanged bool
 }
 
 type State interface {
@@ -49,6 +51,9 @@ type State interface {
 	common.ContextClusterNewer[*v1alpha1.TiFlashGroup]
 
 	common.InstanceSliceState[*runtime.TiFlash]
+
+	common.StatusUpdater
+	common.StatusPersister[*v1alpha1.TiFlashGroup]
 }
 
 func NewState(key types.NamespacedName) State {
@@ -84,6 +89,14 @@ func (s *state) Slice() []*runtime.TiFlash {
 
 func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
 	s.cluster = cluster
+}
+
+func (s *state) IsStatusChanged() bool {
+	return s.statusChanged
+}
+
+func (s *state) SetStatusChanged() {
+	s.statusChanged = true
 }
 
 func (s *state) TiFlashGroupInitializer() common.TiFlashGroupInitializer {

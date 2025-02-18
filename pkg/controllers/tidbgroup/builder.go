@@ -43,16 +43,24 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		),
 		common.TaskGroupFinalizerAdd[runtime.TiDBGroupTuple](state, r.Client),
 
+		common.TaskRevision[runtime.TiDBGroupTuple](state, r.Client),
+
 		task.IfBreak(
 			common.CondClusterIsSuspending(state),
-			common.TaskGroupStatusSuspend[runtime.TiDBGroupTuple](state, r.Client),
+			common.TaskGroupConditionSuspended[scope.TiDBGroup](state),
+			common.TaskGroupConditionReady[scope.TiDBGroup](state),
+			common.TaskGroupConditionSynced[scope.TiDBGroup](state),
+			common.TaskStatusPersister[scope.TiDBGroup](state, r.Client),
 		),
 
-		common.TaskRevision[runtime.TiDBGroupTuple](state, r.Client),
 		tasks.TaskService(state, r.Client),
 		tasks.TaskUpdater(state, r.Client),
-		tasks.TaskStatusAvailable(state, r.Client),
-		common.TaskGroupStatus[runtime.TiDBGroupTuple](state, r.Client),
+		common.TaskGroupConditionSuspended[scope.TiDBGroup](state),
+		common.TaskGroupConditionReady[scope.TiDBGroup](state),
+		common.TaskGroupConditionSynced[scope.TiDBGroup](state),
+		common.TaskStatusRevisionAndReplicas[scope.TiDBGroup](state),
+		tasks.TaskStatusAvailable(state),
+		common.TaskStatusPersister[scope.TiDBGroup](state, r.Client),
 	)
 
 	return runner

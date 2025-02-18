@@ -83,7 +83,7 @@ func TestTaskStatus(t *testing.T) {
 				obj.Status.CurrentRevision = "keep"
 				obj.Status.Conditions = []metav1.Condition{
 					{
-						Type:               v1alpha1.CondHealth,
+						Type:               v1alpha1.CondReady,
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
 						Reason:             "Unhealthy",
@@ -151,7 +151,7 @@ func TestTaskStatus(t *testing.T) {
 				obj.Status.CurrentRevision = oldRevision
 				obj.Status.Conditions = []metav1.Condition{
 					{
-						Type:               v1alpha1.CondHealth,
+						Type:               v1alpha1.CondReady,
 						Status:             metav1.ConditionTrue,
 						ObservedGeneration: 3,
 						Reason:             "Healthy",
@@ -218,7 +218,7 @@ func TestTaskStatus(t *testing.T) {
 				obj.Status.UpdateRevision = newRevision
 				obj.Status.Conditions = []metav1.Condition{
 					{
-						Type:               v1alpha1.CondHealth,
+						Type:               v1alpha1.CondReady,
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
 						Reason:             "Unhealthy",
@@ -284,7 +284,7 @@ func TestTaskStatus(t *testing.T) {
 				obj.Status.UpdateRevision = newRevision
 				obj.Status.Conditions = []metav1.Condition{
 					{
-						Type:               v1alpha1.CondHealth,
+						Type:               v1alpha1.CondReady,
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
 						Reason:             "Unhealthy",
@@ -354,7 +354,7 @@ func TestTaskStatus(t *testing.T) {
 				obj.Status.UpdateRevision = newRevision
 				obj.Status.Conditions = []metav1.Condition{
 					{
-						Type:               v1alpha1.CondHealth,
+						Type:               v1alpha1.CondReady,
 						Status:             metav1.ConditionTrue,
 						ObservedGeneration: 3,
 						Reason:             "Healthy",
@@ -419,7 +419,7 @@ func TestTaskStatus(t *testing.T) {
 				obj.Status.UpdateRevision = newRevision
 				obj.Status.Conditions = []metav1.Condition{
 					{
-						Type:               v1alpha1.CondHealth,
+						Type:               v1alpha1.CondReady,
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
 						Reason:             "Unhealthy",

@@ -451,20 +451,20 @@ var _ = Describe("TiDB Cluster", func() {
 			checkSuspendCondtion := func(g Gomega, condStatus metav1.ConditionStatus) {
 				var pdGroup v1alpha1.PDGroup
 				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: ns.Name, Name: "pdg"}, &pdGroup)).To(Succeed())
-				g.Expect(meta.IsStatusConditionPresentAndEqual(pdGroup.Status.Conditions, v1alpha1.PDGroupCondSuspended, condStatus)).To(BeTrue())
+				g.Expect(meta.IsStatusConditionPresentAndEqual(pdGroup.Status.Conditions, v1alpha1.CondSuspended, condStatus)).To(BeTrue())
 
 				var tikvGroup v1alpha1.TiKVGroup
 				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: ns.Name, Name: "kvg"}, &tikvGroup)).To(Succeed())
-				g.Expect(meta.IsStatusConditionPresentAndEqual(tikvGroup.Status.Conditions, v1alpha1.TiKVGroupCondSuspended, condStatus)).To(BeTrue())
+				g.Expect(meta.IsStatusConditionPresentAndEqual(tikvGroup.Status.Conditions, v1alpha1.CondSuspended, condStatus)).To(BeTrue())
 
 				var tidbGroup v1alpha1.TiDBGroup
 				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: ns.Name, Name: "dbg"}, &tidbGroup)).To(Succeed())
-				g.Expect(meta.IsStatusConditionPresentAndEqual(tidbGroup.Status.Conditions, v1alpha1.TiDBGroupCondSuspended, condStatus)).To(BeTrue())
+				g.Expect(meta.IsStatusConditionPresentAndEqual(tidbGroup.Status.Conditions, v1alpha1.CondSuspended, condStatus)).To(BeTrue())
 
 				var flashGroup v1alpha1.TiFlashGroup
 				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: ns.Name, Name: "flashg"}, &flashGroup)).To(Succeed())
 				g.Expect(meta.IsStatusConditionPresentAndEqual(
-					flashGroup.Status.Conditions, v1alpha1.TiFlashGroupCondSuspended, condStatus)).To(BeTrue())
+					flashGroup.Status.Conditions, v1alpha1.CondSuspended, condStatus)).To(BeTrue())
 
 				var cdcGroup v1alpha1.TiCDCGroup
 				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: ns.Name, Name: "cdcg"}, &cdcGroup)).To(Succeed())
@@ -481,7 +481,7 @@ var _ = Describe("TiDB Cluster", func() {
 				g.Expect(len(pdList.Items)).To(Equal(1))
 				pd := pdList.Items[0]
 				g.Expect(pd.Spec.Cluster.Name).To(Equal(tc.Name))
-				g.Expect(meta.IsStatusConditionPresentAndEqual(pd.Status.Conditions, v1alpha1.PDCondSuspended, condStatus)).To(BeTrue())
+				g.Expect(meta.IsStatusConditionPresentAndEqual(pd.Status.Conditions, v1alpha1.CondSuspended, condStatus)).To(BeTrue())
 
 				var tikvList v1alpha1.TiKVList
 				g.Expect(k8sClient.List(ctx, &tikvList, client.InNamespace(tc.Namespace), client.MatchingLabels{
@@ -493,7 +493,7 @@ var _ = Describe("TiDB Cluster", func() {
 				g.Expect(len(tikvList.Items)).To(Equal(1))
 				tikv := tikvList.Items[0]
 				g.Expect(tikv.Spec.Cluster.Name).To(Equal(tc.Name))
-				g.Expect(meta.IsStatusConditionPresentAndEqual(tikv.Status.Conditions, v1alpha1.TiKVCondSuspended, condStatus)).To(BeTrue())
+				g.Expect(meta.IsStatusConditionPresentAndEqual(tikv.Status.Conditions, v1alpha1.CondSuspended, condStatus)).To(BeTrue())
 
 				var tidbList v1alpha1.TiDBList
 				g.Expect(k8sClient.List(ctx, &tidbList, client.InNamespace(tc.Namespace), client.MatchingLabels{
@@ -505,7 +505,7 @@ var _ = Describe("TiDB Cluster", func() {
 				g.Expect(len(tidbList.Items)).To(Equal(1))
 				tidb := tidbList.Items[0]
 				g.Expect(tidb.Spec.Cluster.Name).To(Equal(tc.Name))
-				g.Expect(meta.IsStatusConditionPresentAndEqual(tidb.Status.Conditions, v1alpha1.TiDBCondSuspended, condStatus)).To(BeTrue())
+				g.Expect(meta.IsStatusConditionPresentAndEqual(tidb.Status.Conditions, v1alpha1.CondSuspended, condStatus)).To(BeTrue())
 
 				var flashList v1alpha1.TiFlashList
 				g.Expect(k8sClient.List(ctx, &flashList, client.InNamespace(tc.Namespace), client.MatchingLabels{
@@ -517,7 +517,7 @@ var _ = Describe("TiDB Cluster", func() {
 				g.Expect(len(flashList.Items)).To(Equal(1))
 				flash := flashList.Items[0]
 				g.Expect(flash.Spec.Cluster.Name).To(Equal(tc.Name))
-				g.Expect(meta.IsStatusConditionPresentAndEqual(flash.Status.Conditions, v1alpha1.TiFlashCondSuspended, condStatus)).To(BeTrue())
+				g.Expect(meta.IsStatusConditionPresentAndEqual(flash.Status.Conditions, v1alpha1.CondSuspended, condStatus)).To(BeTrue())
 
 				var cdcList v1alpha1.TiCDCList
 				g.Expect(k8sClient.List(ctx, &cdcList, client.InNamespace(tc.Namespace), client.MatchingLabels{

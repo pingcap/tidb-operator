@@ -112,7 +112,7 @@ func PreferUnavailable[R runtime.Instance]() PreferPolicy[R] {
 	return PreferPolicyFunc[R](func(s []R) []R {
 		unavail := []R{}
 		for _, in := range s {
-			if !in.IsUpToDate() || !in.IsHealthy() {
+			if !in.IsUpToDate() || !in.IsReady() {
 				unavail = append(unavail, in)
 			}
 		}

@@ -40,7 +40,7 @@ func WaitForPDsHealthy(ctx context.Context, c client.Client, pdg *v1alpha1.PDGro
 			if !meta.IsStatusConditionPresentAndEqual(pd.Status.Conditions, v1alpha1.PDCondInitialized, metav1.ConditionTrue) {
 				return fmt.Errorf("pd %s/%s is not initialized", pd.Namespace, pd.Name)
 			}
-			if !meta.IsStatusConditionPresentAndEqual(pd.Status.Conditions, v1alpha1.PDCondHealth, metav1.ConditionTrue) {
+			if !meta.IsStatusConditionPresentAndEqual(pd.Status.Conditions, v1alpha1.CondReady, metav1.ConditionTrue) {
 				return fmt.Errorf("pd %s/%s is not healthy", pd.Namespace, pd.Name)
 			}
 		}

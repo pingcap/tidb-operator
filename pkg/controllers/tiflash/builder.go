@@ -47,7 +47,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskContextPod(state, r.Client),
 		task.IfBreak(common.CondClusterIsSuspending(state),
 			common.TaskSuspendPod(state, r.Client),
-			common.TaskInstanceStatusSuspend[runtime.TiFlashTuple](state, r.Client),
+			common.TaskInstanceConditionSuspended[scope.TiFlash](state),
+			common.TaskStatusPersister[scope.TiFlash](state, r.Client),
 		),
 
 		// normal process

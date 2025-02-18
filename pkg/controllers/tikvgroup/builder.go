@@ -45,13 +45,20 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		task.IfBreak(
 			common.CondClusterIsSuspending(state),
-			common.TaskGroupStatusSuspend[runtime.TiKVGroupTuple](state, r.Client),
+			common.TaskGroupConditionSuspended[scope.TiKVGroup](state),
+			common.TaskGroupConditionReady[scope.TiKVGroup](state),
+			common.TaskGroupConditionSynced[scope.TiKVGroup](state),
+			common.TaskStatusPersister[scope.TiKVGroup](state, r.Client),
 		),
 
 		common.TaskRevision[runtime.TiKVGroupTuple](state, r.Client),
 		tasks.TaskService(state, r.Client),
 		tasks.TaskUpdater(state, r.Client),
-		common.TaskGroupStatus[runtime.TiKVGroupTuple](state, r.Client),
+		common.TaskGroupConditionSuspended[scope.TiKVGroup](state),
+		common.TaskGroupConditionReady[scope.TiKVGroup](state),
+		common.TaskGroupConditionSynced[scope.TiKVGroup](state),
+		common.TaskStatusRevisionAndReplicas[scope.TiKVGroup](state),
+		common.TaskStatusPersister[scope.TiKVGroup](state, r.Client),
 	)
 
 	return runner

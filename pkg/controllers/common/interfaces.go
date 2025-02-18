@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
 type Object[T any] interface {
@@ -90,6 +91,14 @@ type InstanceAndPodState[I runtime.Instance] interface {
 
 type InstanceSliceState[I runtime.Instance] interface {
 	Slice() []I
+}
+
+type ObjectState[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+] interface {
+	Object() F
 }
 
 type GroupAndInstanceSliceState[

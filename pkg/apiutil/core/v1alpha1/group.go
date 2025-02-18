@@ -36,6 +36,14 @@ func StatusVersion[
 	return scope.From[S](f).StatusVersion()
 }
 
+func Replicas[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](f F) int32 {
+	return scope.From[S](f).Replicas()
+}
+
 // TODO: simplify it by a condition
 func IsGroupHealthyAndUpToDate[
 	S scope.Group[F, T],
@@ -54,4 +62,56 @@ func IsGroupHealthyAndUpToDate[
 		// replicas are all ready
 		updateReplicas == replicas &&
 		currentReplicas == replicas
+}
+
+func SetStatusVersion[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](f F) bool {
+	obj := scope.From[S](f)
+	v := obj.StatusVersion()
+	if setIfChanged(&v, obj.Version()) {
+		obj.SetStatusVersion(v)
+		return true
+	}
+
+	return false
+}
+
+func SetStatusReplicas[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](f F, newReplicas, newReady, newUpdate, newCurrent int32) bool {
+	obj := scope.From[S](f)
+	replicas, ready, update, current := obj.StatusReplicas()
+	changed := setIfChanged(&replicas, newReplicas)
+	changed = setIfChanged(&ready, newReady) || changed
+	changed = setIfChanged(&update, newUpdate) || changed
+	changed = setIfChanged(&current, newCurrent) || changed
+	if changed {
+		obj.SetStatusReplicas(replicas, ready, update, current)
+		return changed
+	}
+
+	return false
+}
+
+func SetStatusRevision[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](f F, newUpdate, newCurrent string, newCollisionCount int32) bool {
+	obj := scope.From[S](f)
+	update, current, collisionCount := obj.StatusRevision()
+	changed := setIfChanged(&update, newUpdate)
+	changed = setIfChanged(&current, newCurrent) || changed
+	changed = newAndSetIfChanged(&collisionCount, newCollisionCount) || changed
+	if changed {
+		obj.SetStatusRevision(update, current, collisionCount)
+		return changed
+	}
+
+	return false
 }

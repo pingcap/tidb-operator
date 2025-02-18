@@ -134,8 +134,8 @@ func (pd *PD) SetCurrentRevision(rev string) {
 	pd.Status.CurrentRevision = rev
 }
 
-func (pd *PD) IsHealthy() bool {
-	return meta.IsStatusConditionTrue(pd.Status.Conditions, v1alpha1.PDCondHealth)
+func (pd *PD) IsReady() bool {
+	return meta.IsStatusConditionTrue(pd.Status.Conditions, v1alpha1.CondReady)
 }
 
 func (pd *PD) IsUpToDate() bool {

@@ -145,7 +145,7 @@ func TestTaskPod(t *testing.T) {
 						obj.Spec.Version = fakeVersion
 						obj.Status.Conditions = []metav1.Condition{
 							{
-								Type:   v1alpha1.CondHealth,
+								Type:   v1alpha1.CondReady,
 								Status: metav1.ConditionTrue,
 							},
 						}
@@ -160,7 +160,7 @@ func TestTaskPod(t *testing.T) {
 							obj.Spec.Version = fakeVersion
 							obj.Status.Conditions = []metav1.Condition{
 								{
-									Type:               v1alpha1.CondHealth,
+									Type:               v1alpha1.CondReady,
 									Status:             metav1.ConditionTrue,
 									LastTransitionTime: metav1.Now(),
 								},
@@ -171,7 +171,7 @@ func TestTaskPod(t *testing.T) {
 							obj.Spec.Version = fakeVersion
 							obj.Status.Conditions = []metav1.Condition{
 								{
-									Type:   v1alpha1.CondHealth,
+									Type:   v1alpha1.CondReady,
 									Status: metav1.ConditionTrue,
 								},
 							}
@@ -194,7 +194,7 @@ func TestTaskPod(t *testing.T) {
 						obj.Spec.Version = fakeVersion
 						obj.Status.Conditions = []metav1.Condition{
 							{
-								Type:   v1alpha1.CondHealth,
+								Type:   v1alpha1.CondReady,
 								Status: metav1.ConditionTrue,
 							},
 						}
@@ -209,7 +209,7 @@ func TestTaskPod(t *testing.T) {
 							obj.Spec.Version = fakeVersion
 							obj.Status.Conditions = []metav1.Condition{
 								{
-									Type:               v1alpha1.CondHealth,
+									Type:               v1alpha1.CondReady,
 									Status:             metav1.ConditionTrue,
 									LastTransitionTime: metav1.Now(),
 								},
@@ -220,7 +220,7 @@ func TestTaskPod(t *testing.T) {
 							obj.Spec.Version = fakeVersion
 							obj.Status.Conditions = []metav1.Condition{
 								{
-									Type:               v1alpha1.CondHealth,
+									Type:               v1alpha1.CondReady,
 									Status:             metav1.ConditionFalse,
 									LastTransitionTime: metav1.Now(),
 								},
@@ -243,7 +243,7 @@ func TestTaskPod(t *testing.T) {
 						obj.Spec.Version = fakeVersion
 						obj.Status.Conditions = []metav1.Condition{
 							{
-								Type:   v1alpha1.CondHealth,
+								Type:   v1alpha1.CondReady,
 								Status: metav1.ConditionTrue,
 							},
 						}
@@ -258,7 +258,7 @@ func TestTaskPod(t *testing.T) {
 							obj.Spec.Version = fakeVersion
 							obj.Status.Conditions = []metav1.Condition{
 								{
-									Type:               v1alpha1.CondHealth,
+									Type:               v1alpha1.CondReady,
 									Status:             metav1.ConditionTrue,
 									LastTransitionTime: metav1.Now(),
 								},
@@ -283,7 +283,7 @@ func TestTaskPod(t *testing.T) {
 						obj.Spec.Version = fakeVersion
 						obj.Status.Conditions = []metav1.Condition{
 							{
-								Type:   v1alpha1.CondHealth,
+								Type:   v1alpha1.CondReady,
 								Status: metav1.ConditionTrue,
 							},
 						}
@@ -298,7 +298,7 @@ func TestTaskPod(t *testing.T) {
 							obj.Spec.Version = fakeVersion
 							obj.Status.Conditions = []metav1.Condition{
 								{
-									Type:               v1alpha1.CondHealth,
+									Type:               v1alpha1.CondReady,
 									Status:             metav1.ConditionTrue,
 									LastTransitionTime: metav1.Now(),
 								},
@@ -309,7 +309,7 @@ func TestTaskPod(t *testing.T) {
 							obj.Spec.Version = fakeVersion
 							obj.Status.Conditions = []metav1.Condition{
 								{
-									Type:   v1alpha1.CondHealth,
+									Type:   v1alpha1.CondReady,
 									Status: metav1.ConditionTrue,
 								},
 							}

@@ -165,7 +165,7 @@ func split[R runtime.Instance](all []R, rev string) (update, outdated, deleted [
 func countUnavailable[R runtime.Instance](all []R) int {
 	unavailable := 0
 	for _, instance := range all {
-		if !instance.IsHealthy() || !instance.IsUpToDate() {
+		if !instance.IsReady() || !instance.IsUpToDate() {
 			unavailable += 1
 		}
 	}

@@ -22,13 +22,12 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-func TaskStatusAvailable(state State, c client.Client) task.Task {
-	return task.NameTaskFunc("Status", func(ctx context.Context) task.Result {
+func TaskStatusAvailable(state State) task.Task {
+	return task.NameTaskFunc("Status", func(context.Context) task.Result {
 		dbg := state.TiDBGroup()
 		dbs := state.TiDBSlice()
 
@@ -37,7 +36,7 @@ func TaskStatusAvailable(state State, c client.Client) task.Task {
 		msg := "no tidb instance is available"
 
 		for _, db := range dbs {
-			if coreutil.IsHealthy[scope.TiDB](db) {
+			if coreutil.IsReady[scope.TiDB](db) {
 				status = metav1.ConditionTrue
 				reason = "Available"
 				msg = "tidb group is available"
@@ -53,9 +52,7 @@ func TaskStatusAvailable(state State, c client.Client) task.Task {
 		})
 		// TODO(liubo02): only update status once
 		if needUpdate {
-			if err := c.Status().Update(ctx, dbg); err != nil {
-				return task.Fail().With("cannot update status: %w", err)
-			}
+			state.SetStatusChanged()
 		}
 		return task.Complete().With("status is synced")
 	})

@@ -42,17 +42,8 @@ const (
 )
 
 const (
-	TiDBCondHealth   = "Health"
-	TiDBHealthReason = "TiDBHealth"
-
-	TiDBCondSuspended = "Suspended"
-	TiDBSuspendReason = "TiDBSuspend"
-
 	TiDBGroupCondAvailable   = "Available"
 	TiDBGroupAvailableReason = "TiDBGroupAvailable"
-
-	TiDBGroupCondSuspended = "Suspended"
-	TiDBGroupSuspendReason = "TiDBGroupSuspend"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
