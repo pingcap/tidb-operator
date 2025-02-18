@@ -110,7 +110,7 @@ func syncSuspendCond(pd *v1alpha1.PD) bool {
 		Status:             metav1.ConditionFalse,
 		ObservedGeneration: pd.Generation,
 		Reason:             v1alpha1.ReasonUnsuspended,
-		Message:            "instace is not suspended",
+		Message:            "instance is not suspended",
 	})
 }
 

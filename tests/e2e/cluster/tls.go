@@ -247,6 +247,37 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
+  name: {{ .TiCDCGroupName }}-ticdc-cluster-secret
+  namespace: {{ .Namespace }}
+spec:
+  secretName: {{ .TiCDCGroupName }}-ticdc-cluster-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+      - PingCAP
+  commonName: "TiDB"
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+  - "{{ .TiCDCGroupName }}-ticdc-peer"
+  - "{{ .TiCDCGroupName }}-ticdc-peer.{{ .Namespace }}"
+  - "{{ .TiCDCGroupName }}-ticdc-peer.{{ .Namespace }}.svc"
+  - "*.{{ .TiCDCGroupName }}-ticdc-peer"
+  - "*.{{ .TiCDCGroupName }}-ticdc-peer.{{ .Namespace }}"
+  - "*.{{ .TiCDCGroupName }}-ticdc-peer.{{ .Namespace }}.svc"
+  ipAddresses:
+  - 127.0.0.1
+  - ::1
+  issuerRef:
+    name: {{ .ClusterName }}-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
   name: {{ .ClusterName }}-cluster-client-secret
   namespace: {{ .Namespace }}
 spec:
@@ -272,6 +303,7 @@ type tcTmplMeta struct {
 	TiKVGroupName    string
 	TiDBGroupName    string
 	TiFlashGroupName string
+	TiCDCGroupName   string
 }
 
 func installTiDBIssuer(ctx context.Context, yamlApplier *k8s.YAMLApplier, ns, clusterName string) error {
@@ -285,11 +317,12 @@ func installTiDBCertificates(ctx context.Context, yamlApplier *k8s.YAMLApplier, 
 }
 
 func installTiDBComponentsCertificates(ctx context.Context, yamlApplier *k8s.YAMLApplier, ns, clusterName string,
-	pdGroupName, tikvGroupName, tidbGroupName, tiFlashGroupName string,
+	pdGroupName, tikvGroupName, tidbGroupName, tiFlashGroupName, tiCDCGroupName string,
 ) error {
 	return installCert(ctx, yamlApplier, tidbComponentsCertificatesTmpl, tcTmplMeta{
 		Namespace: ns, ClusterName: clusterName,
-		PDGroupName: pdGroupName, TiKVGroupName: tikvGroupName, TiDBGroupName: tidbGroupName, TiFlashGroupName: tiFlashGroupName,
+		PDGroupName: pdGroupName, TiKVGroupName: tikvGroupName,
+		TiDBGroupName: tidbGroupName, TiFlashGroupName: tiFlashGroupName, TiCDCGroupName: tiCDCGroupName,
 	})
 }
 

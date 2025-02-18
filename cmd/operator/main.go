@@ -41,6 +41,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/cluster"
 	"github.com/pingcap/tidb-operator/pkg/controllers/pd"
 	"github.com/pingcap/tidb-operator/pkg/controllers/pdgroup"
+	"github.com/pingcap/tidb-operator/pkg/controllers/ticdc"
+	"github.com/pingcap/tidb-operator/pkg/controllers/ticdcgroup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tidb"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tidbgroup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tiflash"
@@ -202,6 +204,13 @@ func addIndexer(ctx context.Context, mgr ctrl.Manager) error {
 		return err
 	}
 
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.TiCDCGroup{}, "spec.cluster.name", func(obj client.Object) []string {
+		ticdcGroup := obj.(*v1alpha1.TiCDCGroup)
+		return []string{ticdcGroup.Spec.Cluster.Name}
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -233,6 +242,12 @@ func setupControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientManage
 	if err := tiflash.Setup(mgr, c, pdcm, vm); err != nil {
 		return fmt.Errorf("unable to create controller TiFlash: %w", err)
 	}
+	if err := ticdcgroup.Setup(mgr, c); err != nil {
+		return fmt.Errorf("unable to create controller TiCDCGroup: %w", err)
+	}
+	if err := ticdc.Setup(mgr, c, vm); err != nil {
+		return fmt.Errorf("unable to create controller TiCDC: %w", err)
+	}
 	return nil
 }
 
@@ -263,6 +278,12 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 			Label: labels.Everything(),
 		},
 		&v1alpha1.TiFlash{}: {
+			Label: labels.Everything(),
+		},
+		&v1alpha1.TiCDCGroup{}: {
+			Label: labels.Everything(),
+		},
+		&v1alpha1.TiCDC{}: {
 			Label: labels.Everything(),
 		},
 		&corev1.Secret{}: {

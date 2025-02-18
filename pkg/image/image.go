@@ -26,6 +26,7 @@ const (
 	TiDB    Untagged = "pingcap/tidb"
 	TiKV    Untagged = "pingcap/tikv"
 	TiFlash Untagged = "pingcap/tiflash"
+	TiCDC   Untagged = "pingcap/ticdc"
 
 	// TODO: use versioned image
 	PrestopChecker Tagged = "pingcap/prestop-checker:latest"
