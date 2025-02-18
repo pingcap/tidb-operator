@@ -38,6 +38,7 @@ type ReconcileContext struct {
 	TiKVGroups    []*v1alpha1.TiKVGroup
 	TiFlashGroups []*v1alpha1.TiFlashGroup
 	TiDBGroups    []*v1alpha1.TiDBGroup
+	TiCDCGroups   []*v1alpha1.TiCDCGroup
 }
 
 func (ctx *ReconcileContext) Self() *ReconcileContext {
@@ -116,6 +117,15 @@ func (t *TaskContext) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	}
 	for i := range tidbGroupList.Items {
 		rtx.TiDBGroups = append(rtx.TiDBGroups, &tidbGroupList.Items[i])
+	}
+
+	var ticdcGroupList v1alpha1.TiCDCGroupList
+	if err := t.Client.List(ctx, &ticdcGroupList, client.InNamespace(rtx.Key.Namespace),
+		client.MatchingFields{"spec.cluster.name": rtx.Key.Name}); err != nil {
+		return task.Fail().With("can't list ticdc group: %w", err)
+	}
+	for i := range ticdcGroupList.Items {
+		rtx.TiCDCGroups = append(rtx.TiCDCGroups, &ticdcGroupList.Items[i])
 	}
 
 	return task.Complete().With("new context completed")

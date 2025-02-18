@@ -90,6 +90,7 @@ func (t *TaskStatus) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	return task.Complete().With("updated status")
 }
 
+//nolint:gocyclo // refactor if possible
 func (*TaskStatus) syncComponentStatus(rtx *ReconcileContext) bool {
 	components := make([]v1alpha1.ComponentStatus, 0)
 	if rtx.PDGroup != nil {
@@ -132,6 +133,16 @@ func (*TaskStatus) syncComponentStatus(rtx *ReconcileContext) bool {
 		components = append(components, tidb)
 	}
 
+	if len(rtx.TiCDCGroups) > 0 {
+		ticdc := v1alpha1.ComponentStatus{Kind: v1alpha1.ComponentKindTiCDC}
+		for _, ticdcGroup := range rtx.TiCDCGroups {
+			if ticdcGroup.Spec.Replicas != nil {
+				ticdc.Replicas += *ticdcGroup.Spec.Replicas
+			}
+		}
+		components = append(components, ticdc)
+	}
+
 	sort.Slice(components, func(i, j int) bool {
 		return components[i].Kind < components[j].Kind
 	})
@@ -143,6 +154,7 @@ func (*TaskStatus) syncComponentStatus(rtx *ReconcileContext) bool {
 	return true
 }
 
+//nolint:gocyclo // refactor if possible
 func (*TaskStatus) syncConditions(rtx *ReconcileContext) bool {
 	// TODO(csuzhangxc): calculate progressing condition based on components' observed generation?
 	prgCond := metav1.Condition{
@@ -183,6 +195,18 @@ func (*TaskStatus) syncConditions(rtx *ReconcileContext) bool {
 	if suspended {
 		for _, tikvGroup := range rtx.TiKVGroups {
 			if !meta.IsStatusConditionTrue(tikvGroup.Status.Conditions, v1alpha1.TiKVGroupCondSuspended) {
+				suspended = false
+				break
+			}
+		}
+		for _, tiflashGroup := range rtx.TiFlashGroups {
+			if !meta.IsStatusConditionTrue(tiflashGroup.Status.Conditions, v1alpha1.TiFlashGroupCondSuspended) {
+				suspended = false
+				break
+			}
+		}
+		for _, ticdcGroup := range rtx.TiCDCGroups {
+			if !meta.IsStatusConditionTrue(ticdcGroup.Status.Conditions, v1alpha1.TiCDCGroupCondSuspended) {
 				suspended = false
 				break
 			}

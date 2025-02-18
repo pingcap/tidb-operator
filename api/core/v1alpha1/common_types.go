@@ -75,6 +75,7 @@ const (
 	LabelValComponentTiDB    = "tidb"
 	LabelValComponentTiKV    = "tikv"
 	LabelValComponentTiFlash = "tiflash"
+	LabelValComponentTiCDC   = "ticdc"
 
 	// LabelKeyClusterID is the unique identifier of the cluster.
 	// This label is used for backward compatibility with TiDB Operator v1, so it has a different prefix.
@@ -196,7 +197,8 @@ type Volume struct {
 type VolumeMount struct {
 	// Type is a type of the volume mount.
 	Type VolumeMountType `json:"type"`
-	// Mount path of volume, if it's not set, use the default path of this type
+	// Mount path of volume, if it's not set, use the default path of this type.
+	// TODO: webhook for empty path if it's not a built-in type.
 	MountPath string `json:"mountPath,omitempty"`
 	// SubPath is the path of the volume's root path.
 	SubPath string `json:"subPath,omitempty"`

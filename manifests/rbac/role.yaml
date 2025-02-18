@@ -63,6 +63,7 @@ rules:
   resources:
   - clusters
   - pdgroups/status
+  - ticdcgroups/status
   - tidbgroups/status
   - tiflashgroups/status
   - tikvgroups/status
@@ -83,6 +84,7 @@ rules:
   - core.pingcap.com
   resources:
   - pdgroups
+  - ticdcgroups
   - tidbgroups
   - tiflashgroups
   - tikvgroups
@@ -96,6 +98,7 @@ rules:
   - core.pingcap.com
   resources:
   - pds
+  - ticdcs
   - tidbs
   - tiflashes
   - tikvs
@@ -111,6 +114,7 @@ rules:
   - core.pingcap.com
   resources:
   - pds/status
+  - ticdcs/status
   - tidbs/status
   - tiflashes/status
   - tikvs/status

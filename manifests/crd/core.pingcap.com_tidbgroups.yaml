@@ -352,7 +352,7 @@ spec:
                                 properties:
                                   mountPath:
                                     description: Mount path of volume, if it's not
-                                      set, use the default path of this type
+                                      set, use the default path of this type.
                                     type: string
                                   subPath:
                                     description: SubPath is the path of the volume's

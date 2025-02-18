@@ -94,7 +94,7 @@ func TestTaskStatus(t *testing.T) {
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
 						Reason:             v1alpha1.ReasonUnsuspended,
-						Message:            "instace is not suspended",
+						Message:            "instance is not suspended",
 					},
 					{
 						Type:               v1alpha1.TiKVCondLeadersEvicted,
@@ -162,7 +162,7 @@ func TestTaskStatus(t *testing.T) {
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
 						Reason:             v1alpha1.ReasonUnsuspended,
-						Message:            "instace is not suspended",
+						Message:            "instance is not suspended",
 					},
 					{
 						Type:               v1alpha1.TiKVCondLeadersEvicted,
@@ -229,7 +229,7 @@ func TestTaskStatus(t *testing.T) {
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
 						Reason:             v1alpha1.ReasonUnsuspended,
-						Message:            "instace is not suspended",
+						Message:            "instance is not suspended",
 					},
 					{
 						Type:               v1alpha1.TiKVCondLeadersEvicted,
@@ -295,7 +295,7 @@ func TestTaskStatus(t *testing.T) {
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
 						Reason:             v1alpha1.ReasonUnsuspended,
-						Message:            "instace is not suspended",
+						Message:            "instance is not suspended",
 					},
 					{
 						Type:               v1alpha1.TiKVCondLeadersEvicted,
@@ -365,7 +365,7 @@ func TestTaskStatus(t *testing.T) {
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
 						Reason:             v1alpha1.ReasonUnsuspended,
-						Message:            "instace is not suspended",
+						Message:            "instance is not suspended",
 					},
 					{
 						Type:               v1alpha1.TiKVCondLeadersEvicted,
@@ -430,7 +430,7 @@ func TestTaskStatus(t *testing.T) {
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
 						Reason:             v1alpha1.ReasonUnsuspended,
-						Message:            "instace is not suspended",
+						Message:            "instance is not suspended",
 					},
 					{
 						Type:               v1alpha1.TiKVCondLeadersEvicted,

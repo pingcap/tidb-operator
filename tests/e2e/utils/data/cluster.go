@@ -187,3 +187,33 @@ func NewTiFlashGroup(namespace, name, clusterName string, replicas *int32,
 	}
 	return flashg
 }
+
+func NewTiCDCGroup(namespace, name, clusterName string, replicas *int32,
+	apply func(group *v1alpha1.TiCDCGroup),
+) *v1alpha1.TiCDCGroup {
+	cdcg := &v1alpha1.TiCDCGroup{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      name,
+			Labels: map[string]string{
+				v1alpha1.LabelKeyGroup:     name,
+				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiCDC,
+				v1alpha1.LabelKeyCluster:   clusterName,
+			},
+		},
+		Spec: v1alpha1.TiCDCGroupSpec{
+			Cluster:  v1alpha1.ClusterReference{Name: clusterName},
+			Replicas: replicas,
+			Template: v1alpha1.TiCDCTemplate{
+				Spec: v1alpha1.TiCDCTemplateSpec{
+					Version: version,
+					Image:   ptr.To(imageRegistry + "ticdc"),
+				},
+			},
+		},
+	}
+	if apply != nil {
+		apply(cdcg)
+	}
+	return cdcg
+}

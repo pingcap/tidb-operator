@@ -1,0 +1,39 @@
+apiVersion: core.pingcap.com/v1alpha1
+kind: TiCDCGroup
+metadata:
+  name: ticdc
+  labels:
+    pingcap.com/group: ticdc
+    pingcap.com/component: ticdc
+    pingcap.com/cluster: basic
+spec:
+  cluster:
+    name: basic
+  replicas: 2
+  template:
+    metadata:
+      annotations:
+        author: pingcap
+    spec:
+      version: v8.1.0
+      resources:
+        cpu: "1"
+        memory: 2Gi
+      overlay:
+        pod:
+          spec:
+            containers:
+            - name: ticdc
+              volumeMounts:
+              - mountPath: /var/lib/ticdc
+                name: data
+            volumes:
+            - ephemeral:
+                volumeClaimTemplate:
+                  spec:
+                    accessModes:
+                    - ReadWriteOnce
+                    resources:
+                      requests:
+                        storage: 100Gi
+              name: data
