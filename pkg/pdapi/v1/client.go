@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -34,9 +35,13 @@ import (
 )
 
 const (
+	DefaultTimeout       = 5 * time.Second
 	evictSchedulerLeader = "evict-leader-scheduler"
 	tiKVNotBootstrapped  = `TiKV cluster not bootstrapped, please start TiKV first"`
 )
+
+// Namespace is a newtype of a string
+type Namespace string
 
 // PDWriter defines write api call of pd
 // TODO: move all Get api call to PDClient
@@ -75,6 +80,8 @@ type PDWriter interface {
 	GetPDLeader(ctx context.Context) (*pdpb.Member, error)
 	// TransferPDLeader transfers PD leader to specified member.
 	TransferPDLeader(ctx context.Context, name string) error
+
+	GetPDEtcdClient() (PDEtcdClient, error)
 }
 
 // PDClient provides PD server's APIs used by TiDB Operator.
@@ -113,6 +120,10 @@ var (
 type pdClient struct {
 	url        string
 	httpClient *http.Client
+	tlsConfig  *tls.Config
+
+	etcdmutex     sync.Mutex
+	pdEtcdClients map[string]PDEtcdClient
 }
 
 // NewPDClient returns a new PDClient
@@ -123,7 +134,23 @@ func NewPDClient(url string, timeout time.Duration, tlsConfig *tls.Config) PDCli
 			Timeout:   timeout,
 			Transport: &http.Transport{TLSClientConfig: tlsConfig},
 		},
+		tlsConfig:     tlsConfig,
+		pdEtcdClients: make(map[string]PDEtcdClient),
 	}
+}
+
+func (pdc *pdClient) GetPDEtcdClient() (PDEtcdClient, error) {
+	pdc.etcdmutex.Lock()
+	defer pdc.etcdmutex.Unlock()
+
+	if _, ok := pdc.pdEtcdClients[pdc.url]; !ok {
+		etcdCli, err := NewPdEtcdClient(pdc.url, DefaultTimeout, pdc.tlsConfig)
+		if err != nil {
+			return nil, err
+		}
+		pdc.pdEtcdClients[pdc.url] = &noOpClose{PDEtcdClient: etcdCli}
+	}
+	return pdc.pdEtcdClients[pdc.url], nil
 }
 
 func (c *pdClient) GetHealth(ctx context.Context) (*HealthInfo, error) {

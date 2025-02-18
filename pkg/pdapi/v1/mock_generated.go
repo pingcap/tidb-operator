@@ -227,6 +227,21 @@ func (mr *MockPDClientMockRecorder) GetMembers(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMembers", reflect.TypeOf((*MockPDClient)(nil).GetMembers), ctx)
 }
 
+// GetPDEtcdClient mocks base method.
+func (m *MockPDClient) GetPDEtcdClient() (PDEtcdClient, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPDEtcdClient")
+	ret0, _ := ret[0].(PDEtcdClient)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPDEtcdClient indicates an expected call of GetPDEtcdClient.
+func (mr *MockPDClientMockRecorder) GetPDEtcdClient() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPDEtcdClient", reflect.TypeOf((*MockPDClient)(nil).GetPDEtcdClient))
+}
+
 // GetPDLeader mocks base method.
 func (m *MockPDClient) GetPDLeader(ctx context.Context) (*pdpb.Member, error) {
 	m.ctrl.T.Helper()
