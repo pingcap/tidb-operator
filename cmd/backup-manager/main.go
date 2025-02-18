@@ -17,11 +17,9 @@ package main
 import (
 	"os"
 
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app"
-	// Enable FIPS when necessary
 	"k8s.io/klog/v2"
 
-	_ "github.com/pingcap/tidb-operator/pkg/fips"
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app"
 )
 
 func main() {

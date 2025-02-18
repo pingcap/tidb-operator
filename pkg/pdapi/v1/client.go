@@ -134,7 +134,8 @@ func NewPDClient(url string, timeout time.Duration, tlsConfig *tls.Config) PDCli
 			Timeout:   timeout,
 			Transport: &http.Transport{TLSClientConfig: tlsConfig},
 		},
-		tlsConfig: tlsConfig,
+		tlsConfig:     tlsConfig,
+		pdEtcdClients: make(map[string]PDEtcdClient),
 	}
 }
 

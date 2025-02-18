@@ -28,18 +28,10 @@ type ReconcileContext struct {
 	PDClientManager pdm.PDClientManager
 	State
 
-	Members []Member
-
 	// mark pdgroup is bootstrapped if cache of pd is synced
 	IsBootstrapped bool
 
 	Config Config
-}
-
-// TODO: move to pdapi
-type Member struct {
-	ID   string
-	Name string
 }
 
 func TaskContextRestore(state RestoreStateInitializer, c client.Client) task.Task {
