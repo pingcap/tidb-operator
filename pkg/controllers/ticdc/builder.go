@@ -18,6 +18,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/controllers/ticdc/tasks"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -29,7 +30,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(common.CondInstanceHasBeenDeleted(state)),
 
 		// get cluster info, FinalizerDel will use it
-		common.TaskContextCluster(state, r.Client),
+		common.TaskContextCluster[scope.TiCDC](state, r.Client),
 		common.TaskFeatureGates(state),
 		// check whether it's paused
 		task.IfBreak(common.CondClusterIsPaused(state)),

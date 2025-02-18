@@ -35,7 +35,6 @@ type state struct {
 
 type State interface {
 	common.TiCDCStateInitializer
-	common.ClusterStateInitializer
 	common.PodStateInitializer
 
 	common.TiCDCState
@@ -43,6 +42,8 @@ type State interface {
 	common.PodState
 
 	common.InstanceState[*runtime.TiCDC]
+
+	common.ContextClusterNewer[*v1alpha1.TiCDC]
 
 	SetPod(*corev1.Pod)
 }
@@ -52,6 +53,10 @@ func NewState(key types.NamespacedName) State {
 		key: key,
 	}
 	return s
+}
+
+func (s *state) Object() *v1alpha1.TiCDC {
+	return s.ticdc
 }
 
 func (s *state) TiCDC() *v1alpha1.TiCDC {
@@ -74,19 +79,14 @@ func (s *state) SetPod(pod *corev1.Pod) {
 	s.pod = pod
 }
 
+func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
+	s.cluster = cluster
+}
+
 func (s *state) TiCDCInitializer() common.TiCDCInitializer {
 	return common.NewResource(func(ticdc *v1alpha1.TiCDC) { s.ticdc = ticdc }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithName(common.Name(s.key.Name)).
-		Initializer()
-}
-
-func (s *state) ClusterInitializer() common.ClusterInitializer {
-	return common.NewResource(func(cluster *v1alpha1.Cluster) { s.cluster = cluster }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Lazy[string](func() string {
-			return s.ticdc.Spec.Cluster.Name
-		})).
 		Initializer()
 }
 

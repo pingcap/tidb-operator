@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -97,7 +98,7 @@ func TestState(t *testing.T) {
 			ctx := context.Background()
 			res, done := task.RunTask(ctx, task.Block(
 				common.TaskContextTiCDCGroup(s, fc),
-				common.TaskContextCluster(s, fc),
+				common.TaskContextCluster[scope.TiCDCGroup](s, fc),
 				common.TaskContextTiCDCSlice(s, fc),
 				common.TaskRevision[runtime.TiCDCGroupTuple](s, fc),
 			))

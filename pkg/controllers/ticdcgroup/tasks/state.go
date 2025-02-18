@@ -36,7 +36,6 @@ type state struct {
 
 type State interface {
 	common.TiCDCGroupStateInitializer
-	common.ClusterStateInitializer
 	common.TiCDCSliceStateInitializer
 	common.RevisionStateInitializer[*runtime.TiCDCGroup]
 
@@ -46,6 +45,9 @@ type State interface {
 	common.RevisionState
 
 	common.GroupState[*runtime.TiCDCGroup]
+
+	common.ContextClusterNewer[*v1alpha1.TiCDCGroup]
+
 	common.InstanceSliceState[*runtime.TiCDC]
 }
 
@@ -54,6 +56,10 @@ func NewState(key types.NamespacedName) State {
 		key: key,
 	}
 	return s
+}
+
+func (s *state) Object() *v1alpha1.TiCDCGroup {
+	return s.cdcg
 }
 
 func (s *state) TiCDCGroup() *v1alpha1.TiCDCGroup {
@@ -76,19 +82,14 @@ func (s *state) Slice() []*runtime.TiCDC {
 	return runtime.FromTiCDCSlice(s.cdcs)
 }
 
+func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
+	s.cluster = cluster
+}
+
 func (s *state) TiCDCGroupInitializer() common.TiCDCGroupInitializer {
 	return common.NewResource(func(cdcg *v1alpha1.TiCDCGroup) { s.cdcg = cdcg }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithName(common.Name(s.key.Name)).
-		Initializer()
-}
-
-func (s *state) ClusterInitializer() common.ClusterInitializer {
-	return common.NewResource(func(cluster *v1alpha1.Cluster) { s.cluster = cluster }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Lazy[string](func() string {
-			return s.cdcg.Spec.Cluster.Name
-		})).
 		Initializer()
 }
 
