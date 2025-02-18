@@ -21,12 +21,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apicall"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	"github.com/pingcap/tidb-operator/pkg/utils/topology"
 )
 
 func FirstTikvGroup(cli client.Client, ns, cluster string) (*v1alpha1.TiKVGroup, error) {
-	tikvGroups, err := topology.ListGroups[scope.TiKVGroup](context.TODO(), cli, ns, cluster)
+	tikvGroups, err := apicall.ListGroups[scope.TiKVGroup](context.TODO(), cli, ns, cluster)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list tikv groups: %w", err)
 	}
