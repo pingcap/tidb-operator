@@ -20,14 +20,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
-func Cluster[
-	S scope.Object[F, T],
-	F client.Object,
-	T runtime.Object,
-](f F) string {
-	return scope.From[S](f).Cluster()
-}
-
 func Version[
 	S scope.Group[F, T],
 	F client.Object,

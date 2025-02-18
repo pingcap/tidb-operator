@@ -33,19 +33,19 @@ func TestResource(t *testing.T) {
 	}{
 		{
 			desc:         "normal",
-			ns:           Namespace("aaa"),
+			ns:           Namespace("xxx"),
 			name:         Name("bbb"),
 			obj:          42,
-			expectedNs:   "aaa",
+			expectedNs:   "xxx",
 			expectedName: "bbb",
 			expectedObj:  42,
 		},
 		{
 			desc:         "use name func",
-			ns:           Lazy[string](func() string { return "aaa" }),
+			ns:           Lazy[string](func() string { return "xxx" }),
 			name:         Lazy[string](func() string { return "bbb" }),
 			obj:          42,
-			expectedNs:   "aaa",
+			expectedNs:   "xxx",
 			expectedName: "bbb",
 			expectedObj:  42,
 		},
@@ -85,10 +85,10 @@ func TestResourceSlice(t *testing.T) {
 	}{
 		{
 			desc:       "normal",
-			ns:         Namespace("aaa"),
+			ns:         Namespace("nnn"),
 			labels:     Labels(map[string]string{"xxx": "yyy"}),
 			objs:       []*int{ptr.To(42)},
-			expectedNs: "aaa",
+			expectedNs: "nnn",
 			expectedLabels: map[string]string{
 				"xxx": "yyy",
 			},
@@ -96,10 +96,10 @@ func TestResourceSlice(t *testing.T) {
 		},
 		{
 			desc:       "use func",
-			ns:         Lazy[string](func() string { return "aaa" }),
+			ns:         Lazy[string](func() string { return "nnn" }),
 			labels:     LabelsFunc(func() map[string]string { return map[string]string{"xxx": "yyy"} }),
 			objs:       []*int{ptr.To(42)},
-			expectedNs: "aaa",
+			expectedNs: "nnn",
 			expectedLabels: map[string]string{
 				"xxx": "yyy",
 			},

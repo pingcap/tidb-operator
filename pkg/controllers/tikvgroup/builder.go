@@ -18,6 +18,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tikvgroup/tasks"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -29,7 +30,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(common.CondGroupHasBeenDeleted(state)),
 
 		// get cluster
-		common.TaskContextCluster(state, r.Client),
+		common.TaskContextCluster[scope.TiKVGroup](state, r.Client),
 		common.TaskFeatureGates(state),
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),

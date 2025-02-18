@@ -36,7 +36,6 @@ type state struct {
 
 type State interface {
 	common.TiKVGroupStateInitializer
-	common.ClusterStateInitializer
 	common.TiKVSliceStateInitializer
 	common.RevisionStateInitializer[*runtime.TiKVGroup]
 
@@ -46,6 +45,9 @@ type State interface {
 	common.RevisionState
 
 	common.GroupState[*runtime.TiKVGroup]
+
+	common.ContextClusterNewer[*v1alpha1.TiKVGroup]
+
 	common.InstanceSliceState[*runtime.TiKV]
 }
 
@@ -54,6 +56,10 @@ func NewState(key types.NamespacedName) State {
 		key: key,
 	}
 	return s
+}
+
+func (s *state) Object() *v1alpha1.TiKVGroup {
+	return s.kvg
 }
 
 func (s *state) TiKVGroup() *v1alpha1.TiKVGroup {
@@ -76,19 +82,14 @@ func (s *state) Slice() []*runtime.TiKV {
 	return runtime.FromTiKVSlice(s.kvs)
 }
 
+func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
+	s.cluster = cluster
+}
+
 func (s *state) TiKVGroupInitializer() common.TiKVGroupInitializer {
 	return common.NewResource(func(kvg *v1alpha1.TiKVGroup) { s.kvg = kvg }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithName(common.Name(s.key.Name)).
-		Initializer()
-}
-
-func (s *state) ClusterInitializer() common.ClusterInitializer {
-	return common.NewResource(func(cluster *v1alpha1.Cluster) { s.cluster = cluster }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Lazy[string](func() string {
-			return s.kvg.Spec.Cluster.Name
-		})).
 		Initializer()
 }
 

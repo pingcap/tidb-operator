@@ -36,7 +36,6 @@ type state struct {
 
 type State interface {
 	common.TiDBGroupStateInitializer
-	common.ClusterStateInitializer
 	common.TiDBSliceStateInitializer
 	common.RevisionStateInitializer[*runtime.TiDBGroup]
 
@@ -46,6 +45,9 @@ type State interface {
 	common.RevisionState
 
 	common.GroupState[*runtime.TiDBGroup]
+
+	common.ContextClusterNewer[*v1alpha1.TiDBGroup]
+
 	common.InstanceSliceState[*runtime.TiDB]
 }
 
@@ -54,6 +56,10 @@ func NewState(key types.NamespacedName) State {
 		key: key,
 	}
 	return s
+}
+
+func (s *state) Object() *v1alpha1.TiDBGroup {
+	return s.dbg
 }
 
 func (s *state) TiDBGroup() *v1alpha1.TiDBGroup {
@@ -76,19 +82,14 @@ func (s *state) Slice() []*runtime.TiDB {
 	return runtime.FromTiDBSlice(s.dbs)
 }
 
+func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
+	s.cluster = cluster
+}
+
 func (s *state) TiDBGroupInitializer() common.TiDBGroupInitializer {
 	return common.NewResource(func(dbg *v1alpha1.TiDBGroup) { s.dbg = dbg }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithName(common.Name(s.key.Name)).
-		Initializer()
-}
-
-func (s *state) ClusterInitializer() common.ClusterInitializer {
-	return common.NewResource(func(cluster *v1alpha1.Cluster) { s.cluster = cluster }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Lazy[string](func() string {
-			return s.dbg.Spec.Cluster.Name
-		})).
 		Initializer()
 }
 

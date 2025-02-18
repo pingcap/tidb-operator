@@ -36,7 +36,6 @@ type state struct {
 
 type State interface {
 	common.PDGroupStateInitializer
-	common.ClusterStateInitializer
 	common.PDSliceStateInitializer
 	common.RevisionStateInitializer[*runtime.PDGroup]
 
@@ -46,6 +45,9 @@ type State interface {
 	common.RevisionState
 
 	common.GroupState[*runtime.PDGroup]
+
+	common.ContextClusterNewer[*v1alpha1.PDGroup]
+
 	common.InstanceSliceState[*runtime.PD]
 }
 
@@ -54,6 +56,10 @@ func NewState(key types.NamespacedName) State {
 		key: key,
 	}
 	return s
+}
+
+func (s *state) Object() *v1alpha1.PDGroup {
+	return s.pdg
 }
 
 func (s *state) PDGroup() *v1alpha1.PDGroup {
@@ -76,19 +82,14 @@ func (s *state) Slice() []*runtime.PD {
 	return runtime.FromPDSlice(s.pds)
 }
 
+func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
+	s.cluster = cluster
+}
+
 func (s *state) PDGroupInitializer() common.PDGroupInitializer {
 	return common.NewResource(func(pdg *v1alpha1.PDGroup) { s.pdg = pdg }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithName(common.Name(s.key.Name)).
-		Initializer()
-}
-
-func (s *state) ClusterInitializer() common.ClusterInitializer {
-	return common.NewResource(func(cluster *v1alpha1.Cluster) { s.cluster = cluster }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Lazy[string](func() string {
-			return s.pdg.Spec.Cluster.Name
-		})).
 		Initializer()
 }
 
