@@ -1154,7 +1154,7 @@ var _ = Describe("TiDB Cluster", func() {
 
 					podList, err := clientSet.CoreV1().Pods(tc.Namespace).List(ctx, listOpts)
 					g.Expect(err).To(BeNil())
-					g.Expect(len(podList.Items)).To(Equal(4))
+					g.Expect(len(podList.Items)).To(Equal(3))
 					for _, pod := range podList.Items {
 						// Ensure pods are re-created
 						g.Expect(pod.Status.StartTime).ShouldNot(BeNil())
