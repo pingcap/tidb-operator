@@ -182,19 +182,6 @@ spec:
                             pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                             x-kubernetes-int-or-string: true
                         type: object
-                      security:
-                        properties:
-                          tls:
-                            properties:
-                              sinkTLSSecretNames:
-                                description: |-
-                                  SinkTLSSecretNames are the names of secrets that store the
-                                  client certificate for the sink.
-                                items:
-                                  type: string
-                                type: array
-                            type: object
-                        type: object
                       server:
                         description: Server defines server config for TiCDC
                         properties:
@@ -227,8 +214,9 @@ spec:
                       version:
                         type: string
                       volumes:
-                        description: Volumes defines persistent volumes of TiCDC,
-                          it is optional.
+                        description: |-
+                          Volumes defines persistent volumes of TiCDC, it is optional.
+                          If you want to use ephemeral storage or mount sink TLS certs, you can use "overlay" instead.
                         items:
                           description: |-
                             Volume defines a persistent volume, it will be mounted at a specified root path

@@ -92,8 +92,6 @@ const (
 	DirPathClusterTLSTiCDC   = "/var/lib/ticdc-tls"
 	// Dir path of tls file for tidb and mysql client
 	DirPathMySQLTLS = "/var/lib/tidb-sql-tls"
-	// Base dir path of tls files for ticdc and sink
-	DirPathTiCDCSinkTLS = "/var/lib/sink-tls"
 )
 
 // All file names

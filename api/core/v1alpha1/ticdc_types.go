@@ -127,9 +127,8 @@ type TiCDCTemplateSpec struct {
 	// Config defines config file of TiCDC
 	Config ConfigFile `json:"config,omitempty"`
 
-	Security *TiCDCSecurity `json:"security,omitempty"`
-
 	// Volumes defines persistent volumes of TiCDC, it is optional.
+	// If you want to use ephemeral storage or mount sink TLS certs, you can use "overlay" instead.
 	Volumes []Volume `json:"volumes,omitempty"`
 	// Overlay defines a k8s native resource template patch
 	// All resources(pod, pvcs, ...) managed by TiCDC can be overlayed by this field
@@ -142,16 +141,6 @@ type TiCDCTemplateSpec struct {
 	// Encoded in the format of Go Duration.
 	// Defaults to 10m
 	GracefulShutdownTimeout *metav1.Duration `json:"gracefulShutdownTimeout,omitempty"`
-}
-
-type TiCDCSecurity struct {
-	TLS *TiCDCTLS `json:"tls,omitempty"`
-}
-
-type TiCDCTLS struct {
-	// SinkTLSSecretNames are the names of secrets that store the
-	// client certificate for the sink.
-	SinkTLSSecretNames []string `json:"sinkTLSSecretNames,omitempty"`
 }
 
 type TiCDCServer struct {
