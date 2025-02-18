@@ -78,7 +78,7 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 				return task.Retry(defaultTaskWaitDuration).With("ticdc is not healthy, requeue to retry")
 			}
 
-			return task.Wait().With("pod of ticdc is not ready, wait")
+			return task.Retry(defaultTaskWaitDuration).With("pod of ticdc is not ready, requeue to retry")
 		}
 
 		return task.Complete().With("status is synced")

@@ -27,7 +27,6 @@ import (
 
 // Config is a subset config of ticdc
 // Only our managed fields are defined in here.
-// ref: https://github.com/pingcap/tidb/blob/master/pkg/config/config.go
 type Config struct {
 	Addr          string `toml:"addr"`
 	AdvertiseAddr string `toml:"advertise-addr"`
