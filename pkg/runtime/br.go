@@ -33,6 +33,14 @@ type (
 	Backup brv1alpha1.Backup
 )
 
+func FromBackup(b *brv1alpha1.Backup) *Backup {
+	return (*Backup)(b)
+}
+
+func ToBackup(b *Backup) *brv1alpha1.Backup {
+	return (*brv1alpha1.Backup)(b)
+}
+
 var _ Job = &Backup{}
 
 func (b *Backup) SetCluster(cluster string) {
@@ -108,5 +116,13 @@ func (r *Restore) SetObservedGeneration(g int64) {
 }
 
 func (r *Restore) Object() client.Object {
+	return (*brv1alpha1.Restore)(r)
+}
+
+func FromRestore(r *brv1alpha1.Restore) *Restore {
+	return (*Restore)(r)
+}
+
+func ToRestore(r *Restore) *brv1alpha1.Restore {
 	return (*brv1alpha1.Restore)(r)
 }

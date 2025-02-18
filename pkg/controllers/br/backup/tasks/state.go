@@ -43,11 +43,11 @@ type state struct {
 
 type State interface {
 	BackupStateInitializer
-	common.ClusterStateInitializer
 
 	BackupState
 	common.ClusterState
 	common.JobState[*runtime.Backup]
+	common.ContextClusterNewer[*brv1alpha1.Backup]
 }
 
 var _ State = &state{}
@@ -67,19 +67,18 @@ func (s *state) Cluster() *v1alpha1.Cluster {
 	return s.cluster
 }
 
+func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
+	s.cluster = cluster
+}
+
+func (s *state) Object() *brv1alpha1.Backup {
+	return s.backup
+}
+
 func (s *state) BackupInitializer() BackupInitializer {
 	return common.NewResource(func(backup *brv1alpha1.Backup) { s.backup = backup }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithName(common.Name(s.key.Name)).
-		Initializer()
-}
-
-func (s *state) ClusterInitializer() common.ClusterInitializer {
-	return common.NewResource(func(cluster *v1alpha1.Cluster) { s.cluster = cluster }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Lazy[string](func() string {
-			return s.backup.Spec.BR.Cluster
-		})).
 		Initializer()
 }
 

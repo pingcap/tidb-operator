@@ -19,6 +19,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/restore/tasks"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -42,7 +43,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		),
 
 		// get cluster
-		common.TaskContextCluster(state, r.Client),
+		common.TaskContextCluster[scope.Restore](state, r.Client),
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)), // TODO(ideascf): do we need to pause job also?
 		task.IfBreak(

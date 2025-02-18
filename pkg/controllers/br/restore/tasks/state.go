@@ -43,10 +43,9 @@ type state struct {
 
 type State interface {
 	RestoreStateInitializer
-	common.ClusterStateInitializer
-
 	RestoreState
 	common.ClusterState
+	common.ContextClusterNewer[*brv1alpha1.Restore]
 	common.JobState[*runtime.Restore]
 }
 
@@ -67,19 +66,18 @@ func (s *state) Cluster() *v1alpha1.Cluster {
 	return s.cluster
 }
 
+func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
+	s.cluster = cluster
+}
+
+func (s *state) Object() *brv1alpha1.Restore {
+	return s.restore
+}
+
 func (s *state) RestoreInitializer() RestoreInitializer {
 	return common.NewResource(func(restore *brv1alpha1.Restore) { s.restore = restore }).
 		WithNamespace(common.Namespace(s.key.Namespace)).
 		WithName(common.Name(s.key.Name)).
-		Initializer()
-}
-
-func (s *state) ClusterInitializer() common.ClusterInitializer {
-	return common.NewResource(func(cluster *v1alpha1.Cluster) { s.cluster = cluster }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Lazy[string](func() string {
-			return s.restore.Spec.BR.Cluster
-		})).
 		Initializer()
 }
 
