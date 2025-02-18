@@ -120,6 +120,8 @@ func newFakeObjectState[
 }
 
 func TestTaskContextCluster(t *testing.T) {
+	const ns = "aaa"
+	const name = "bbb"
 	cases := []struct {
 		desc          string
 		state         *fakeObjectState[*v1alpha1.PD]
@@ -131,35 +133,35 @@ func TestTaskContextCluster(t *testing.T) {
 	}{
 		{
 			desc: "success",
-			state: newFakeObjectState(fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-				obj.Namespace = "aaa"
-				obj.Spec.Cluster.Name = "aaa"
+			state: newFakeObjectState(fake.FakeObj(name, func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Namespace = ns
+				obj.Spec.Cluster.Name = name
 				return obj
 			})),
 			objs: []client.Object{
-				fake.FakeObj("aaa", fake.SetNamespace[v1alpha1.Cluster]("aaa")),
+				fake.FakeObj(name, fake.SetNamespace[v1alpha1.Cluster](ns)),
 			},
 			expectedResult: task.SComplete,
-			expectedObj:    fake.FakeObj("aaa", fake.SetNamespace[v1alpha1.Cluster]("aaa")),
+			expectedObj:    fake.FakeObj(name, fake.SetNamespace[v1alpha1.Cluster](ns)),
 		},
 		{
 			desc: "not found",
-			state: newFakeObjectState(fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-				obj.Namespace = "aaa"
-				obj.Spec.Cluster.Name = "aaa"
+			state: newFakeObjectState(fake.FakeObj(name, func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Namespace = ns
+				obj.Spec.Cluster.Name = name
 				return obj
 			})),
 			expectedResult: task.SFail,
 		},
 		{
 			desc: "has unexpected error",
-			state: newFakeObjectState(fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-				obj.Namespace = "aaa"
-				obj.Spec.Cluster.Name = "aaa"
+			state: newFakeObjectState(fake.FakeObj(name, func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Namespace = ns
+				obj.Spec.Cluster.Name = name
 				return obj
 			})),
 			objs: []client.Object{
-				fake.FakeObj("aaa", fake.SetNamespace[v1alpha1.Cluster]("aaa")),
+				fake.FakeObj(name, fake.SetNamespace[v1alpha1.Cluster](ns)),
 			},
 			unexpectedErr:  true,
 			expectedResult: task.SFail,
