@@ -62,3 +62,17 @@ COPY --from=builder ./_output/$TARGETPLATFORM/bin/testing-workload testing-workl
 USER 65532:65532
 
 ENTRYPOINT ["/testing-workload"]
+
+
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS backup-manager
+
+ARG TARGETPLATFORM
+
+WORKDIR /
+
+COPY --from=builder ./_output/$TARGETPLATFORM/bin/backup-manager backup-manager
+
+# nonroot user of distroless
+USER 65532:65532
+
+ENTRYPOINT ["/backup-manager"]

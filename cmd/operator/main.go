@@ -36,8 +36,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
+	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/controllers/br/backup"
+	"github.com/pingcap/tidb-operator/pkg/controllers/br/restore"
 	"github.com/pingcap/tidb-operator/pkg/controllers/cluster"
 	"github.com/pingcap/tidb-operator/pkg/controllers/pd"
 	"github.com/pingcap/tidb-operator/pkg/controllers/pdgroup"
@@ -59,6 +62,14 @@ import (
 
 var setupLog = ctrl.Log.WithName("setup").WithValues(version.Get().KeysAndValues()...)
 
+type brConfig struct {
+	backupManagerImage string
+}
+
+var (
+	brConf = &brConfig{}
+)
+
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
@@ -66,6 +77,7 @@ func main() {
 	var maxConcurrentReconciles int
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.StringVar(&brConf.backupManagerImage, "backup-manager-image", "", "The image of backup-manager.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", true,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -154,6 +166,10 @@ func setup(ctx context.Context, mgr ctrl.Manager) error {
 	setupLog.Info("setup controllers")
 	if err := setupControllers(mgr, c, pdcm, vm); err != nil {
 		setupLog.Error(err, "unable to setup controllers")
+		os.Exit(1)
+	}
+	if err := setupBRControllers(mgr, c, pdcm); err != nil {
+		setupLog.Error(err, "unable to setup BR controllers")
 		os.Exit(1)
 	}
 
@@ -251,6 +267,20 @@ func setupControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientManage
 	return nil
 }
 
+func setupBRControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientManager) error {
+	if err := backup.Setup(mgr, c, pdcm, backup.Config{
+		BackupManagerImage: brConf.backupManagerImage,
+	}); err != nil {
+		return fmt.Errorf("unable to create controller Backup: %w", err)
+	}
+	if err := restore.Setup(mgr, c, pdcm, restore.Config{
+		BackupManagerImage: brConf.backupManagerImage,
+	}); err != nil {
+		return fmt.Errorf("unable to create controller Restore: %w", err)
+	}
+	return nil
+}
+
 func BuildCacheByObject() map[client.Object]cache.ByObject {
 	byObj := map[client.Object]cache.ByObject{
 		&v1alpha1.Cluster{}: {
@@ -300,6 +330,15 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 		&storagev1.StorageClass{}: {
 			Label: labels.Everything(),
 		},
+
+		// BR objects start //
+		&brv1alpha1.Backup{}: {
+			Label: labels.Everything(),
+		},
+		&brv1alpha1.Restore{}: {
+			Label: labels.Everything(),
+		},
+		// BR objects end //
 	}
 	if kubefeat.Stage(kubefeat.VolumeAttributesClass).Enabled(kubefeat.BETA) {
 		byObj[&storagev1beta1.VolumeAttributesClass{}] = cache.ByObject{

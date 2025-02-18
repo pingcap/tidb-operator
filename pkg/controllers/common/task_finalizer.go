@@ -108,3 +108,25 @@ func TaskGroupFinalizerDel[
 		return task.Complete().With("finalizer has been removed")
 	})
 }
+
+func TaskJobFinalizerAdd[
+	J runtime.Job,
+](state JobState[J], c client.Client) task.Task {
+	return task.NameTaskFunc("FinalizerAdd", func(ctx context.Context) task.Result {
+		if err := k8s.EnsureFinalizer(ctx, c, state.Job().Object()); err != nil {
+			return task.Fail().With("failed to ensure finalizer has been added: %v", err)
+		}
+		return task.Complete().With("finalizer is added")
+	})
+}
+
+func TaskJobFinalizerDel[
+	J runtime.Job,
+](state JobState[J], c client.Client) task.Task {
+	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
+		if err := k8s.RemoveFinalizer(ctx, c, state.Job().Object()); err != nil {
+			return task.Fail().With("failed to ensure finalizer has been removed: %v", err)
+		}
+		return task.Complete().With("finalizer is removed")
+	})
+}

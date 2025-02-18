@@ -125,6 +125,19 @@ rules:
   - update
   - watch
 - apiGroups:
+  - br.pingcap.com
+  resources:
+  - backups
+  - backups/status
+  - restores
+  - restores/status
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - storage.k8s.io
   resources:
   - storageclasses
