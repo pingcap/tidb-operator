@@ -29,12 +29,12 @@ const (
 )
 
 const (
-	// Ready means all managed resources are ready
-	// NOTE: It not means all managed resources are up to date
+	// Ready means all managed resources are ready.
+	// NOTE: It does not mean all managed resources are up to date.
 	CondReady = "Ready"
 
 	// Synced means all specs of managed resources are as expected and
-	// nothing need to do in controller but only status updation
+	// nothing need to do in controller but only status updation.
 	CondSynced = "Synced"
 )
 
