@@ -39,9 +39,6 @@ const (
 )
 
 var (
-	// the first version which allows skipping setting tikv_gc_life_time
-	// https://github.com/pingcap/br/pull/553
-	tikvLessThanV408, _ = semver.NewConstraint("<v4.0.8-0")
 	// the first version which supports log backup
 	tikvLessThanV610, _ = semver.NewConstraint("<v6.1.0-0")
 )
@@ -479,11 +476,6 @@ func ValidateBackup(backup *brv1alpha1.Backup, tikvVersion string, cluster *core
 	if backup.Spec.BR == nil {
 		return fmt.Errorf(".spec.br is required in spec of %s/%s", ns, name)
 	} else {
-		if !canSkipSetGCLifeTime(tikvVersion) {
-			if reason := validateAccessConfig(nil); reason != "" {
-				return fmt.Errorf(reason, ns, name)
-			}
-		}
 		if backup.Spec.BR.Cluster == "" {
 			return fmt.Errorf("cluster should be configured for BR in spec of %s/%s", ns, name)
 		}
@@ -562,11 +554,6 @@ func ValidateRestore(restore *brv1alpha1.Restore, tikvVersion string, acrossK8s 
 	if restore.Spec.BR == nil {
 		return fmt.Errorf(".spec.br is required in spec of %s/%s", ns, name)
 	} else {
-		if !canSkipSetGCLifeTime(tikvVersion) {
-			if reason := validateAccessConfig(nil); reason != "" {
-				return fmt.Errorf(reason, ns, name)
-			}
-		}
 		if restore.Spec.BR.Cluster == "" {
 			return fmt.Errorf("cluster should be configured for BR in spec of %s/%s", ns, name)
 		}
@@ -680,19 +667,6 @@ func ParseImage(image string) (string, string) {
 		name = image
 	}
 	return name, tag
-}
-
-// canSkipSetGCLifeTime returns if setting tikv_gc_life_time can be skipped based on the TiKV version
-func canSkipSetGCLifeTime(tikvVersion string) bool {
-	v, err := semver.NewVersion(tikvVersion)
-	if err != nil {
-		klog.Errorf("Parse version %s failure, error: %v", tikvVersion, err)
-		return true
-	}
-	if tikvLessThanV408.Check(v) {
-		return false
-	}
-	return true
 }
 
 func BytesToString(b []byte) string {
