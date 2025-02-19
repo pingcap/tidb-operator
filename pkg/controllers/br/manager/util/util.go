@@ -542,19 +542,6 @@ func ValidateBackup(backup *brv1alpha1.Backup, tikvVersion string, cluster *core
 			}
 		}
 
-		// TODO(ideascf): remove these lines, the volume snapshot backup is deprecated in v2
-		// // validate volume snapshot backup
-		// if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
-		// 	// only support across k8s now. TODO compatible for single k8s
-		// 	if tc == nil || !tc.AcrossK8s() {
-		// 		return errors.New("only support volume snapshot backup across k8s clusters")
-		// 	}
-
-		// 	if len(tc.Status.TiKV.Stores) == 0 || tc.Spec.TiKV.Replicas == 0 {
-		// 		return errors.New("not support backup TiDB cluster with no tikv replica")
-		// 	}
-		// }
-
 		if backup.Spec.BackoffRetryPolicy.MinRetryDuration != "" {
 			_, err := time.ParseDuration(backup.Spec.BackoffRetryPolicy.MinRetryDuration)
 			if err != nil {
@@ -784,56 +771,3 @@ func GetOptions(provider brv1alpha1.StorageProvider) []string {
 		return nil
 	}
 }
-
-// TODO(ideascf): EBS volume snapshot backup is deprecated in v2
-// // getVolSnapBackupMetaData get backup metadata from cloud storage
-// func GetVolSnapBackupMetaData(r *v1alpha1.Restore, secretLister corelisterv1.SecretLister) (*EBSBasedBRMeta, error) {
-// 	// since the restore meta is small (~5M), assume 1 minutes is enough
-// 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Minute*1))
-// 	defer cancel()
-
-// 	klog.Infof("read the backup meta from external storage")
-// 	cred := GetStorageCredential(r.Namespace, r.Spec.StorageProvider, secretLister)
-// 	s, err := NewStorageBackend(r.Spec.StorageProvider, cred)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer s.Close()
-
-// 	var metaInfo []byte
-// 	// use exponential backoff, every retry duration is duration * factor ^ (used_step - 1)
-// 	backoff := wait.Backoff{
-// 		Duration: time.Second,
-// 		Steps:    6,
-// 		Factor:   2.0,
-// 		Cap:      time.Minute,
-// 	}
-// 	readBackupMeta := func() error {
-// 		exist, err := s.Exists(ctx, constants.MetaFile)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		if !exist {
-// 			return fmt.Errorf("%s not exist", constants.MetaFile)
-// 		}
-// 		metaInfo, err = s.ReadAll(ctx, constants.MetaFile)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		return nil
-// 	}
-// 	isRetry := func(err error) bool {
-// 		return !strings.Contains(err.Error(), "not exist")
-// 	}
-// 	err = retry.OnError(backoff, isRetry, readBackupMeta)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("read backup meta from bucket %s and prefix %s, err: %v", s.GetBucket(), s.GetPrefix(), err)
-// 	}
-
-// 	backupMeta := &EBSBasedBRMeta{}
-// 	err = json.Unmarshal(metaInfo, backupMeta)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("unmarshal backup meta from bucket %s and prefix %s, err: %v", s.GetBucket(), s.GetPrefix(), err)
-// 	}
-// 	return backupMeta, nil
-// }

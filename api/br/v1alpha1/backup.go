@@ -469,7 +469,6 @@ func IsLogBackupAlreadyStart(backup *Backup) bool {
 	return backup.Spec.Mode == BackupModeLog && backup.Status.CommitTs != ""
 }
 
-// TODO(ideascf): do we need theses functions?
 // IsLogBackupAlreadyTruncate return whether log backup has already truncated.
 func IsLogBackupAlreadyTruncate(backup *Backup) bool {
 	if backup.Spec.Mode != BackupModeLog {

@@ -79,23 +79,6 @@ func (bm *Manager) performCleanBackup(ctx context.Context, backup *v1alpha1.Back
 
 	var errs []error
 	var err error
-	// TODO(ideascf): remove theses lines, EBS volume snapshot backup is deprecated in v2
-	// volume-snapshot backup requires to delete the snapshot firstly, then delete the backup meta file
-	// volume-snapshot is incremental snapshot per volume. Any backup deletion will take effects on next volume-snapshot backup
-	// we need update backup size of the impacted the volume-snapshot backup.
-	// if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
-	// 	nextNackup := bm.getNextBackup(ctx, backup)
-	// 	if nextNackup == nil {
-	// 		klog.Errorf("get next backup for cluster %s backup is nil", bm)
-	// 	}
-
-	// 	// clean backup will delete all vol snapshots
-	// 	err = bm.cleanBackupMetaWithVolSnapshots(ctx, backup)
-	// 	if err != nil {
-	// 		klog.Errorf("delete backup %s for cluster %s backup failure", backup.Name, bm)
-	// 	}
-
-	// } else
 	{
 		if backup.Spec.BR != nil {
 			err = bm.CleanBRRemoteBackupData(ctx, backup)
@@ -128,41 +111,3 @@ func (bm *Manager) performCleanBackup(ctx context.Context, backup *v1alpha1.Back
 		},
 	}, nil)
 }
-
-/* TODO(ideascf): remove it in v2. EBS volume snapshot backup is deprecated in v2
-// getNextBackup to get next backup sorted by start time
-func (bm *Manager) getNextBackup(ctx context.Context, backup *v1alpha1.Backup) *v1alpha1.Backup {
-	var err error
-	backupList := &v1alpha1.BackupList{}
-	err = bm.cli.List(ctx, backupList, client.InNamespace(backup.Namespace))
-	if err != nil {
-		return nil
-	}
-	bks := backupList.Items
-
-	// sort the backup list by TimeStarted, since volume snapshot is point-in-time (start time) backup
-	sort.Slice(bks, func(i, j int) bool {
-		return bks[i].Status.TimeStarted.Before(&bks[j].Status.TimeStarted)
-	})
-
-	for i, bk := range bks {
-		if backup.Name == bk.Name {
-			return bm.getVolumeSnapshotBackup(bks[i+1:])
-		}
-	}
-
-	return nil
-}
-
-// getVolumeSnapshotBackup get the first volume-snapshot backup from backup list, which may contain non-volume snapshot
-func (bm *Manager) getVolumeSnapshotBackup(backups []v1alpha1.Backup) *v1alpha1.Backup {
-	for _, bk := range backups {
-		if bk.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
-			return &bk
-		}
-	}
-
-	// reach end of backup list, there is no volume snapshot backups
-	return nil
-}
-*/
