@@ -469,7 +469,7 @@ var _ = Describe("TiDB Cluster", func() {
 				var cdcGroup v1alpha1.TiCDCGroup
 				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: ns.Name, Name: "cdcg"}, &cdcGroup)).To(Succeed())
 				g.Expect(meta.IsStatusConditionPresentAndEqual(
-					cdcGroup.Status.Conditions, v1alpha1.TiCDCGroupCondSuspended, condStatus)).To(BeTrue())
+					cdcGroup.Status.Conditions, v1alpha1.CondSuspended, condStatus)).To(BeTrue())
 
 				var pdList v1alpha1.PDList
 				g.Expect(k8sClient.List(ctx, &pdList, client.InNamespace(tc.Namespace), client.MatchingLabels{
@@ -529,7 +529,7 @@ var _ = Describe("TiDB Cluster", func() {
 				g.Expect(len(cdcList.Items)).To(Equal(1))
 				cdc := cdcList.Items[0]
 				g.Expect(cdc.Spec.Cluster.Name).To(Equal(tc.Name))
-				g.Expect(meta.IsStatusConditionPresentAndEqual(cdc.Status.Conditions, v1alpha1.TiCDCCondSuspended, condStatus)).To(BeTrue())
+				g.Expect(meta.IsStatusConditionPresentAndEqual(cdc.Status.Conditions, v1alpha1.CondSuspended, condStatus)).To(BeTrue())
 
 				var tcGet v1alpha1.Cluster
 				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: tc.Namespace, Name: tc.Name}, &tcGet)).To(Succeed())

@@ -200,13 +200,13 @@ func (*TaskStatus) syncConditions(rtx *ReconcileContext) bool {
 			}
 		}
 		for _, tiflashGroup := range rtx.TiFlashGroups {
-			if !meta.IsStatusConditionTrue(tiflashGroup.Status.Conditions, v1alpha1.TiFlashGroupCondSuspended) {
+			if !meta.IsStatusConditionTrue(tiflashGroup.Status.Conditions, v1alpha1.CondSuspended) {
 				suspended = false
 				break
 			}
 		}
 		for _, ticdcGroup := range rtx.TiCDCGroups {
-			if !meta.IsStatusConditionTrue(ticdcGroup.Status.Conditions, v1alpha1.TiCDCGroupCondSuspended) {
+			if !meta.IsStatusConditionTrue(ticdcGroup.Status.Conditions, v1alpha1.CondSuspended) {
 				suspended = false
 				break
 			}

@@ -381,7 +381,7 @@ func AreAllTiCDCHealthy(cli client.Client, ticdcg *v1alpha1.TiCDCGroup) error {
 	}
 	for i := range ticdcList.Items {
 		ticdc := &ticdcList.Items[i]
-		if !meta.IsStatusConditionPresentAndEqual(ticdc.Status.Conditions, v1alpha1.TiCDCCondHealth, metav1.ConditionTrue) {
+		if !meta.IsStatusConditionPresentAndEqual(ticdc.Status.Conditions, v1alpha1.CondReady, metav1.ConditionTrue) {
 			return fmt.Errorf("ticdc %s/%s is not healthy", ticdc.Namespace, ticdc.Name)
 		}
 	}
