@@ -21,14 +21,21 @@ import (
 )
 
 const (
-	// CondHealth is a condition to display whether the instance is health
-	CondHealth = "Health"
-
 	// CondSuspended is a condition to display whether the group or instance is suspended
 	CondSuspended     = "Suspended"
 	ReasonSuspended   = "Suspended"
 	ReasonSuspending  = "Suspending"
 	ReasonUnsuspended = "Unsuspended"
+)
+
+const (
+	// Ready means all managed resources are ready.
+	// NOTE: It does not mean all managed resources are up to date.
+	CondReady = "Ready"
+
+	// Synced means all specs of managed resources are as expected and
+	// nothing need to do in controller but only status updation.
+	CondSynced = "Synced"
 )
 
 // TODO(liubo02): move to meta

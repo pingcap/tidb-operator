@@ -37,7 +37,7 @@ func WaitForTiDBsHealthy(ctx context.Context, c client.Client, dbg *v1alpha1.TiD
 			if db.Generation != db.Status.ObservedGeneration {
 				return fmt.Errorf("db %s/%s is not synced", db.Namespace, db.Name)
 			}
-			if !meta.IsStatusConditionPresentAndEqual(db.Status.Conditions, v1alpha1.TiDBCondHealth, metav1.ConditionTrue) {
+			if !meta.IsStatusConditionPresentAndEqual(db.Status.Conditions, v1alpha1.CondReady, metav1.ConditionTrue) {
 				return fmt.Errorf("db %s/%s is not healthy", db.Namespace, db.Name)
 			}
 		}

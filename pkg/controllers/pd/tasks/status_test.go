@@ -88,7 +88,7 @@ func TestTaskStatus(t *testing.T) {
 						Message:            "instance is initialized",
 					},
 					{
-						Type:               v1alpha1.CondHealth,
+						Type:               v1alpha1.CondReady,
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
 						Reason:             "Unhealthy",
@@ -156,7 +156,7 @@ func TestTaskStatus(t *testing.T) {
 						Message:            "instance is initialized",
 					},
 					{
-						Type:               v1alpha1.CondHealth,
+						Type:               v1alpha1.CondReady,
 						Status:             metav1.ConditionTrue,
 						ObservedGeneration: 3,
 						Reason:             "Healthy",
@@ -225,7 +225,7 @@ func TestTaskStatus(t *testing.T) {
 						Message:            "instance is initialized",
 					},
 					{
-						Type:               v1alpha1.CondHealth,
+						Type:               v1alpha1.CondReady,
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
 						Reason:             "Unhealthy",
@@ -293,7 +293,7 @@ func TestTaskStatus(t *testing.T) {
 						Message:            "instance has not been initialized yet",
 					},
 					{
-						Type:               v1alpha1.CondHealth,
+						Type:               v1alpha1.CondReady,
 						Status:             metav1.ConditionTrue,
 						ObservedGeneration: 3,
 						Reason:             "Healthy",
@@ -359,7 +359,7 @@ func TestTaskStatus(t *testing.T) {
 						Message:            "instance has not been initialized yet",
 					},
 					{
-						Type:               v1alpha1.CondHealth,
+						Type:               v1alpha1.CondReady,
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
 						Reason:             "Unhealthy",

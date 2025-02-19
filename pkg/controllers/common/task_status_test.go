@@ -21,502 +21,927 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-const (
-	oldRevision = "old"
-	newRevision = "new"
-)
-
-func TestTaskGroupStatusSuspend(t *testing.T) {
-	t.Run("PDGroup", testTaskGroupStatusSuspend[runtime.PDGroupTuple, runtime.PD])
-	t.Run("TiKVGroup", testTaskGroupStatusSuspend[runtime.TiKVGroupTuple, runtime.TiKV])
-	t.Run("TiDBGroup", testTaskGroupStatusSuspend[runtime.TiDBGroupTuple, runtime.TiDB])
-	t.Run("TiFlashGroup", testTaskGroupStatusSuspend[runtime.TiFlashGroupTuple, runtime.TiFlash])
-}
-
-func testTaskGroupStatusSuspend[
-	GT runtime.GroupTuple[OG, RG],
-	I runtime.InstanceSet,
-	OG client.Object,
-	RG runtime.GroupT[G],
-	G runtime.GroupSet,
-	RI runtime.InstanceT[I],
-](t *testing.T) {
+func TestTaskStatusPersister(t *testing.T) {
 	cases := []struct {
 		desc          string
-		state         GroupAndInstanceSliceState[RG, RI]
+		obj           *v1alpha1.PD
+		statusChanged bool
+
 		unexpectedErr bool
 
 		expectedStatus task.Status
-		expectedObj    RG
+		expectedObj    *v1alpha1.PD
 	}{
 		{
-			desc: "no instance",
-			state: FakeGroupAndInstanceSliceState[RG, RI](
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					obj.SetGeneration(3)
-					return obj
-				}),
-			),
+			desc: "not changed",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				return obj
+			}),
+			expectedStatus: task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				return obj
+			}),
+		},
+		{
+			desc: "generation is changed",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Generation = 10
+				return obj
+			}),
+			expectedStatus: task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.IsLeader = true
+				obj.Generation = 10
+				obj.Status.ObservedGeneration = 10
+				return obj
+			}),
+		},
+		{
+			desc: "status is changed",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				return obj
+			}),
+			statusChanged:  true,
+			expectedStatus: task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.IsLeader = true
+				return obj
+			}),
+		},
+		{
+			desc: "status is changed",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				return obj
+			}),
+			statusChanged:  true,
+			expectedStatus: task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.IsLeader = true
+				return obj
+			}),
+		},
+		{
+			desc: "failed to update status",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				return obj
+			}),
+			statusChanged:  true,
+			unexpectedErr:  true,
+			expectedStatus: task.SFail,
+		},
+	}
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			fc := client.NewFakeClient(c.obj.DeepCopy())
+
+			if c.unexpectedErr {
+				fc.WithError("*", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
+			}
+
+			c.obj.Status.IsLeader = true
+
+			ctrl := gomock.NewController(tt)
+			state := NewMockStatusPersister[*v1alpha1.PD](ctrl)
+			state.EXPECT().Object().Return(c.obj)
+			state.EXPECT().IsStatusChanged().Return(c.statusChanged)
+
+			ctx := context.Background()
+			res, done := task.RunTask(ctx, TaskStatusPersister[scope.PD](state, fc))
+			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
+			assert.False(tt, done, c.desc)
+			if c.unexpectedErr {
+				return
+			}
+			obj := &v1alpha1.PD{}
+			require.NoError(tt, fc.Get(ctx, client.ObjectKey{Name: "aaa"}, obj), c.desc)
+			assert.Equal(tt, c.expectedObj, obj, c.desc)
+		})
+	}
+}
+
+func TestTaskInstanceConditionSuspended(t *testing.T) {
+	cases := []struct {
+		desc    string
+		obj     *v1alpha1.PD
+		cluster *v1alpha1.Cluster
+		pod     *corev1.Pod
+
+		expectedStatusChanged bool
+		expectedStatus        task.Status
+		expectedObj           *v1alpha1.PD
+	}{
+		{
+			desc: "no pod and not suspend",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				return obj
+			}),
+			cluster: fake.FakeObj("aaa", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+				return obj
+			}),
+			expectedStatusChanged: true,
 
 			expectedStatus: task.SComplete,
-			expectedObj: fake.Fake(func(obj RG) RG {
-				obj.SetName("aaa")
-				obj.SetGeneration(3)
-				obj.SetObservedGeneration(3)
-				obj.SetConditions([]metav1.Condition{
-					{
-						Type:               v1alpha1.CondSuspended,
-						Status:             metav1.ConditionTrue,
-						ObservedGeneration: 3,
-						Reason:             v1alpha1.ReasonSuspended,
-						Message:            "group is suspended",
-					},
-				})
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unsuspended(),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "no pod and not suspend, not changed",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unsuspended(),
+				}
+				return obj
+			}),
+			cluster: fake.FakeObj("aaa", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+				return obj
+			}),
+
+			expectedStatus: task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unsuspended(),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "no pod and suspend",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				return obj
+			}),
+			cluster: fake.FakeObj("aaa", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+				obj.Spec.SuspendAction = &v1alpha1.SuspendAction{
+					SuspendCompute: true,
+				}
+				return obj
+			}),
+			expectedStatusChanged: true,
+
+			expectedStatus: task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Suspended(),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "has pod and suspend",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				return obj
+			}),
+			cluster: fake.FakeObj("aaa", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+				obj.Spec.SuspendAction = &v1alpha1.SuspendAction{
+					SuspendCompute: true,
+				}
+				return obj
+			}),
+			pod: fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
+				return obj
+			}),
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Suspending(),
+				}
+				return obj
+			}),
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			ctrl := gomock.NewController(tt)
+			state := NewMockInstanceCondSuspendedUpdater[*v1alpha1.PD](ctrl)
+			state.EXPECT().Object().Return(c.obj)
+			state.EXPECT().Cluster().Return(c.cluster)
+			state.EXPECT().Pod().Return(c.pod)
+			if c.expectedStatusChanged {
+				state.EXPECT().SetStatusChanged()
+			}
+
+			ctx := context.Background()
+			res, done := task.RunTask(ctx, TaskInstanceConditionSuspended[scope.PD](state))
+			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
+			assert.False(tt, done, c.desc)
+			// ignore time
+			for i := range c.obj.Status.Conditions {
+				cond := &c.obj.Status.Conditions[i]
+				cond.LastTransitionTime = metav1.Time{}
+			}
+			assert.Equal(tt, c.expectedObj, c.obj, c.desc)
+		})
+	}
+}
+
+func TestTaskGroupConditionSuspended(t *testing.T) {
+	cases := []struct {
+		desc      string
+		obj       *v1alpha1.PDGroup
+		instances []*v1alpha1.PD
+		cluster   *v1alpha1.Cluster
+
+		expectedStatusChanged bool
+		expectedStatus        task.Status
+		expectedObj           *v1alpha1.PDGroup
+	}{
+		{
+			desc: "no instance and not suspend",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				return obj
+			}),
+			cluster: fake.FakeObj("aaa", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+				return obj
+			}),
+			expectedStatusChanged: true,
+
+			expectedStatus: task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unsuspended(),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "no instance and not suspend, not changed",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unsuspended(),
+				}
+				return obj
+			}),
+			cluster: fake.FakeObj("aaa", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+				return obj
+			}),
+
+			expectedStatus: task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unsuspended(),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "no instance and suspend",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				return obj
+			}),
+			cluster: fake.FakeObj("aaa", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+				obj.Spec.SuspendAction = &v1alpha1.SuspendAction{
+					SuspendCompute: true,
+				}
+				return obj
+			}),
+			expectedStatusChanged: true,
+
+			expectedStatus: task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Suspended(),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "no instance and suspend, not changed",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Suspended(),
+				}
+				return obj
+			}),
+			cluster: fake.FakeObj("aaa", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+				obj.Spec.SuspendAction = &v1alpha1.SuspendAction{
+					SuspendCompute: true,
+				}
+				return obj
+			}),
+
+			expectedStatus: task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Suspended(),
+				}
 				return obj
 			}),
 		},
 		{
 			desc: "all instances are suspended",
-			state: FakeGroupAndInstanceSliceState(
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					obj.SetGeneration(3)
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				return obj
+			}),
+			cluster: fake.FakeObj("aaa", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+				obj.Spec.SuspendAction = &v1alpha1.SuspendAction{
+					SuspendCompute: true,
+				}
+				return obj
+			}),
+			instances: []*v1alpha1.PD{
+				fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.Conditions = []metav1.Condition{
+						*coreutil.Suspended(),
+					}
 					return obj
 				}),
-				fake.Fake(func(obj RI) RI {
-					obj.SetName("aaa")
-					obj.SetConditions([]metav1.Condition{
-						{
-							Type:   v1alpha1.CondSuspended,
-							Status: metav1.ConditionTrue,
-						},
-					})
+				fake.FakeObj("bbb", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.Conditions = []metav1.Condition{
+						*coreutil.Suspended(),
+					}
 					return obj
 				}),
-			),
+			},
 
-			expectedStatus: task.SComplete,
-			expectedObj: fake.Fake(func(obj RG) RG {
-				obj.SetName("aaa")
-				obj.SetGeneration(3)
-				obj.SetObservedGeneration(3)
-				obj.SetConditions([]metav1.Condition{
-					{
-						Type:               v1alpha1.CondSuspended,
-						Status:             metav1.ConditionTrue,
-						ObservedGeneration: 3,
-						Reason:             v1alpha1.ReasonSuspended,
-						Message:            "group is suspended",
-					},
-				})
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Suspended(),
+				}
 				return obj
 			}),
 		},
 		{
 			desc: "one instance is not suspended",
-			state: FakeGroupAndInstanceSliceState(
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					obj.SetGeneration(3)
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				return obj
+			}),
+			cluster: fake.FakeObj("aaa", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+				obj.Spec.SuspendAction = &v1alpha1.SuspendAction{
+					SuspendCompute: true,
+				}
+				return obj
+			}),
+			instances: []*v1alpha1.PD{
+				fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.Conditions = []metav1.Condition{
+						*coreutil.Suspended(),
+					}
 					return obj
 				}),
-				fake.Fake(func(obj RI) RI {
-					obj.SetName("aaa")
-					obj.SetConditions([]metav1.Condition{
-						{
-							Type:   v1alpha1.CondSuspended,
-							Status: metav1.ConditionFalse,
-						},
-					})
+				fake.FakeObj("bbb", func(obj *v1alpha1.PD) *v1alpha1.PD {
 					return obj
 				}),
-			),
+			},
 
-			expectedStatus: task.SComplete,
-			expectedObj: fake.Fake(func(obj RG) RG {
-				obj.SetName("aaa")
-				obj.SetGeneration(3)
-				obj.SetObservedGeneration(3)
-				obj.SetConditions([]metav1.Condition{
-					{
-						Type:               v1alpha1.CondSuspended,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             v1alpha1.ReasonSuspending,
-						Message:            "group is suspending",
-					},
-				})
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Suspending(),
+				}
 				return obj
 			}),
 		},
-		{
-			desc: "all instances are suspended but cannot call api",
-			state: FakeGroupAndInstanceSliceState(
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					obj.SetGeneration(3)
-					return obj
-				}),
-				fake.Fake(func(obj RI) RI {
-					obj.SetName("aaa")
-					obj.SetConditions([]metav1.Condition{
-						{
-							Type:   v1alpha1.CondSuspended,
-							Status: metav1.ConditionTrue,
-						},
-					})
-					return obj
-				}),
-			),
-			unexpectedErr: true,
-
-			expectedStatus: task.SFail,
-		},
-		{
-			desc: "all instances are suspended and group is up to date and cannot call api",
-			state: FakeGroupAndInstanceSliceState(
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					obj.SetGeneration(3)
-					obj.SetObservedGeneration(3)
-					obj.SetConditions([]metav1.Condition{
-						{
-							Type:               v1alpha1.CondSuspended,
-							Status:             metav1.ConditionTrue,
-							ObservedGeneration: 3,
-							Reason:             v1alpha1.ReasonSuspended,
-							Message:            "group is suspended",
-						},
-					})
-					return obj
-				}),
-				fake.Fake(func(obj RI) RI {
-					obj.SetName("aaa")
-					obj.SetConditions([]metav1.Condition{
-						{
-							Type:   v1alpha1.CondSuspended,
-							Status: metav1.ConditionTrue,
-						},
-					})
-					return obj
-				}),
-			),
-			unexpectedErr: true,
-
-			expectedStatus: task.SComplete,
-		},
 	}
 
-	var gt GT
 	for i := range cases {
 		c := &cases[i]
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
-			fc := client.NewFakeClient(gt.To(c.state.Group()))
-			if c.unexpectedErr {
-				fc.WithError("*", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
+			ctrl := gomock.NewController(tt)
+			state := NewMockGroupCondSuspendedUpdater[*v1alpha1.PDGroup, *runtime.PD](ctrl)
+			state.EXPECT().Object().Return(c.obj)
+			state.EXPECT().Cluster().Return(c.cluster)
+			state.EXPECT().Slice().Return(runtime.FromPDSlice(c.instances))
+			if c.expectedStatusChanged {
+				state.EXPECT().SetStatusChanged()
 			}
 
 			ctx := context.Background()
-			res, done := task.RunTask(ctx, TaskGroupStatusSuspend[GT](c.state, fc))
+			res, done := task.RunTask(ctx, TaskGroupConditionSuspended[scope.PDGroup](state))
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
-
-			// no need to check update result
-			if c.unexpectedErr {
-				return
-			}
-
-			obj := gt.To(new(G))
-			require.NoError(tt, fc.Get(ctx, client.ObjectKey{Name: "aaa"}, obj), c.desc)
-			rg := gt.From(obj)
-			conds := rg.Conditions()
-			for i := range conds {
-				cond := &conds[i]
+			// ignore time
+			for i := range c.obj.Status.Conditions {
+				cond := &c.obj.Status.Conditions[i]
 				cond.LastTransitionTime = metav1.Time{}
 			}
-			assert.Equal(tt, c.expectedObj, rg, c.desc)
+			assert.Equal(tt, c.expectedObj, c.obj, c.desc)
 		})
 	}
 }
 
-func TestTaskGroupStatus(t *testing.T) {
-	t.Run("PDGroup", testTaskGroupStatus[runtime.PDGroupTuple, runtime.PD])
-	t.Run("TiKVGroup", testTaskGroupStatus[runtime.TiKVGroupTuple, runtime.TiKV])
-	t.Run("TiDBGroup", testTaskGroupStatus[runtime.TiDBGroupTuple, runtime.TiDB])
-	t.Run("TiFlashGroup", testTaskGroupStatus[runtime.TiFlashGroupTuple, runtime.TiFlash])
-}
-
-func testTaskGroupStatus[
-	GT runtime.GroupTuple[OG, RG],
-	I runtime.InstanceSet,
-	OG client.Object,
-	RG runtime.GroupT[G],
-	G runtime.GroupSet,
-	RI runtime.InstanceT[I],
-](t *testing.T) {
+func TestTaskGroupConditionReady(t *testing.T) {
 	cases := []struct {
-		desc          string
-		state         GroupAndInstanceSliceAndRevisionState[RG, RI]
-		unexpectedErr bool
+		desc      string
+		obj       *v1alpha1.PDGroup
+		instances []*v1alpha1.PD
 
-		expectedStatus task.Status
-		expectedObj    RG
+		expectedStatusChanged bool
+		expectedStatus        task.Status
+		expectedObj           *v1alpha1.PDGroup
 	}{
 		{
 			desc: "no instances",
-			state: FakeGroupAndInstanceSliceAndRevisionState[RG, RI](
-				newRevision,
-				oldRevision,
-				3,
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					obj.SetGeneration(3)
-					return obj
-				}),
-			),
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				return obj
+			}),
 
-			expectedStatus: task.SComplete,
-			expectedObj: fake.Fake(func(obj RG) RG {
-				obj.SetName("aaa")
-				obj.SetGeneration(3)
-				obj.SetConditions([]metav1.Condition{
-					{
-						Type:               v1alpha1.CondSuspended,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             v1alpha1.ReasonUnsuspended,
-						Message:            "group is not suspended",
-					},
-				})
-				obj.SetObservedGeneration(3)
-				obj.SetStatusReplicas(0, 0, 0, 0)
-				obj.SetStatusRevision(newRevision, newRevision, ptr.To[int32](3))
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unready(),
+				}
 				return obj
 			}),
 		},
 		{
-			desc: "all instances are outdated and healthy",
-			state: FakeGroupAndInstanceSliceAndRevisionState(
-				newRevision,
-				oldRevision,
-				0,
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					obj.SetGeneration(3)
-					return obj
-				}),
-				fake.Fake(func(obj RI) RI {
-					obj.SetName("aaa")
-					obj.SetCurrentRevision(oldRevision)
-					obj.SetConditions([]metav1.Condition{
-						{
-							Type:   v1alpha1.CondHealth,
-							Status: metav1.ConditionTrue,
-						},
-					})
-					return obj
-				}),
-			),
-
+			desc: "no instances, not changed",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unready(),
+				}
+				return obj
+			}),
 			expectedStatus: task.SComplete,
-			expectedObj: fake.Fake(func(obj RG) RG {
-				obj.SetName("aaa")
-				obj.SetGeneration(3)
-				obj.SetConditions([]metav1.Condition{
-					{
-						Type:               v1alpha1.CondSuspended,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             v1alpha1.ReasonUnsuspended,
-						Message:            "group is not suspended",
-					},
-				})
-				obj.SetObservedGeneration(3)
-				obj.SetStatusReplicas(1, 1, 0, 1)
-				obj.SetStatusRevision(newRevision, oldRevision, nil)
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unready(),
+				}
 				return obj
 			}),
 		},
 		{
-			desc: "all instances are updated and healthy",
-			state: FakeGroupAndInstanceSliceAndRevisionState(
-				newRevision,
-				oldRevision,
-				0,
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					obj.SetGeneration(3)
+			desc: "all instances are ready",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				return obj
+			}),
+			instances: []*v1alpha1.PD{
+				fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.Conditions = []metav1.Condition{
+						*coreutil.Ready(),
+					}
 					return obj
 				}),
-				fake.Fake(func(obj RI) RI {
-					obj.SetName("aaa")
-					obj.SetCurrentRevision(newRevision)
-					obj.SetConditions([]metav1.Condition{
-						{
-							Type:   v1alpha1.CondHealth,
-							Status: metav1.ConditionTrue,
-						},
-					})
+				fake.FakeObj("bbb", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.Conditions = []metav1.Condition{
+						*coreutil.Ready(),
+					}
 					return obj
 				}),
-			),
+			},
 
-			expectedStatus: task.SComplete,
-			expectedObj: fake.Fake(func(obj RG) RG {
-				obj.SetName("aaa")
-				obj.SetGeneration(3)
-				obj.SetConditions([]metav1.Condition{
-					{
-						Type:               v1alpha1.CondSuspended,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             v1alpha1.ReasonUnsuspended,
-						Message:            "group is not suspended",
-					},
-				})
-				obj.SetObservedGeneration(3)
-				obj.SetStatusReplicas(1, 1, 1, 0)
-				obj.SetStatusRevision(newRevision, newRevision, nil)
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Ready(),
+				}
 				return obj
 			}),
 		},
 		{
-			desc: "all instances are updated but not healthy",
-			state: FakeGroupAndInstanceSliceAndRevisionState(
-				newRevision,
-				oldRevision,
-				0,
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					obj.SetGeneration(3)
-					return obj
-				}),
-				fake.Fake(func(obj RI) RI {
-					obj.SetName("aaa")
-					obj.SetCurrentRevision(newRevision)
-					return obj
-				}),
-			),
-
-			expectedStatus: task.SComplete,
-			expectedObj: fake.Fake(func(obj RG) RG {
-				obj.SetName("aaa")
-				obj.SetGeneration(3)
-				obj.SetConditions([]metav1.Condition{
-					{
-						Type:               v1alpha1.CondSuspended,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             v1alpha1.ReasonUnsuspended,
-						Message:            "group is not suspended",
-					},
-				})
-				obj.SetObservedGeneration(3)
-				obj.SetStatusReplicas(1, 0, 1, 0)
-				obj.SetStatusRevision(newRevision, newRevision, nil)
+			desc: "one instance is not ready",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				return obj
 			}),
-		},
-		{
-			desc: "status changed but cannot call api",
-			state: FakeGroupAndInstanceSliceAndRevisionState(
-				newRevision,
-				oldRevision,
-				0,
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					obj.SetGeneration(3)
+			instances: []*v1alpha1.PD{
+				fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.Conditions = []metav1.Condition{
+						*coreutil.Ready(),
+					}
 					return obj
 				}),
-				fake.Fake(func(obj RI) RI {
-					obj.SetName("aaa")
-					obj.SetCurrentRevision(newRevision)
+				fake.FakeObj("bbb", func(obj *v1alpha1.PD) *v1alpha1.PD {
 					return obj
 				}),
-			),
-			unexpectedErr: true,
+			},
 
-			expectedStatus: task.SFail,
-		},
-		{
-			desc: "status is not changed and cannot call api",
-			state: FakeGroupAndInstanceSliceAndRevisionState(
-				newRevision,
-				oldRevision,
-				0,
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					obj.SetGeneration(3)
-					obj.SetConditions([]metav1.Condition{
-						{
-							Type:               v1alpha1.CondSuspended,
-							Status:             metav1.ConditionFalse,
-							ObservedGeneration: 3,
-							Reason:             v1alpha1.ReasonUnsuspended,
-							Message:            "group is not suspended",
-						},
-					})
-					obj.SetObservedGeneration(3)
-					obj.SetStatusReplicas(1, 0, 1, 0)
-					obj.SetStatusRevision(newRevision, newRevision, nil)
-					return obj
-				}),
-				fake.Fake(func(obj RI) RI {
-					obj.SetName("aaa")
-					obj.SetCurrentRevision(newRevision)
-					return obj
-				}),
-			),
-			unexpectedErr: true,
-
-			expectedStatus: task.SComplete,
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unready(),
+				}
+				return obj
+			}),
 		},
 	}
 
-	var gt GT
 	for i := range cases {
 		c := &cases[i]
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
-			fc := client.NewFakeClient(gt.To(c.state.Group()))
-			if c.unexpectedErr {
-				fc.WithError("*", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
+			ctrl := gomock.NewController(tt)
+			state := NewMockGroupCondReadyUpdater[*v1alpha1.PDGroup, *runtime.PD](ctrl)
+			state.EXPECT().Object().Return(c.obj)
+			state.EXPECT().Slice().Return(runtime.FromPDSlice(c.instances))
+			if c.expectedStatusChanged {
+				state.EXPECT().SetStatusChanged()
 			}
 
 			ctx := context.Background()
-			res, done := task.RunTask(ctx, TaskGroupStatus[GT](c.state, fc))
-			assert.Equal(tt, c.expectedStatus, res.Status(), c.desc)
+			res, done := task.RunTask(ctx, TaskGroupConditionReady[scope.PDGroup](state))
+			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
-
-			// no need to check update result
-			if c.unexpectedErr {
-				return
-			}
-
-			var g RG = new(G)
-			require.NoError(tt, fc.Get(ctx, client.ObjectKey{Name: "aaa"}, gt.To(g)), c.desc)
-
-			conds := g.Conditions()
-			for i := range conds {
-				cond := &conds[i]
+			// ignore time
+			for i := range c.obj.Status.Conditions {
+				cond := &c.obj.Status.Conditions[i]
 				cond.LastTransitionTime = metav1.Time{}
 			}
-			assert.Equal(tt, c.expectedObj, g, c.desc)
+			assert.Equal(tt, c.expectedObj, c.obj, c.desc)
+		})
+	}
+}
+
+func TestTaskGroupConditionSynced(t *testing.T) {
+	const newRevision = "new"
+	const oldRevision = "old"
+	cases := []struct {
+		desc      string
+		obj       *v1alpha1.PDGroup
+		instances []*v1alpha1.PD
+
+		expectedStatusChanged bool
+		expectedStatus        task.Status
+		expectedObj           *v1alpha1.PDGroup
+	}{
+		{
+			desc: "no instances and 0 desired replicas",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Replicas = ptr.To[int32](0)
+				return obj
+			}),
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Synced(),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "no instances and 1 desired replicas",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				return obj
+			}),
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unsynced(),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "no instances and 1 desired replicas, not changed",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unsynced(),
+				}
+				return obj
+			}),
+			expectedStatus: task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unsynced(),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "all instances are updated",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Replicas = ptr.To[int32](2)
+				return obj
+			}),
+			instances: []*v1alpha1.PD{
+				fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.CurrentRevision = newRevision
+					return obj
+				}),
+				fake.FakeObj("bbb", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.CurrentRevision = newRevision
+					return obj
+				}),
+			},
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Synced(),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "one instance is not updated",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Replicas = ptr.To[int32](2)
+				return obj
+			}),
+			instances: []*v1alpha1.PD{
+				fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.CurrentRevision = newRevision
+					return obj
+				}),
+				fake.FakeObj("bbb", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.CurrentRevision = oldRevision
+					return obj
+				}),
+			},
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unsynced(),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "only one instance but desired is two",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Replicas = ptr.To[int32](2)
+				return obj
+			}),
+			instances: []*v1alpha1.PD{
+				fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.CurrentRevision = newRevision
+					return obj
+				}),
+			},
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unsynced(),
+				}
+				return obj
+			}),
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			ctrl := gomock.NewController(tt)
+			state := NewMockGroupCondSyncedUpdater[*v1alpha1.PDGroup, *runtime.PD](ctrl)
+			state.EXPECT().Object().Return(c.obj)
+			state.EXPECT().Revision().Return(newRevision, oldRevision, int32(0))
+			state.EXPECT().Slice().Return(runtime.FromPDSlice(c.instances))
+			if c.expectedStatusChanged {
+				state.EXPECT().SetStatusChanged()
+			}
+
+			ctx := context.Background()
+			res, done := task.RunTask(ctx, TaskGroupConditionSynced[scope.PDGroup](state))
+			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
+			assert.False(tt, done, c.desc)
+			// ignore time
+			for i := range c.obj.Status.Conditions {
+				cond := &c.obj.Status.Conditions[i]
+				cond.LastTransitionTime = metav1.Time{}
+			}
+			assert.Equal(tt, c.expectedObj.Status, c.obj.Status, c.desc)
+		})
+	}
+}
+
+func TestTaskStatusRevisionAndReplicas(t *testing.T) {
+	const newRevision = "new"
+	const oldRevision = "old"
+	cases := []struct {
+		desc      string
+		obj       *v1alpha1.PDGroup
+		instances []*v1alpha1.PD
+
+		expectedStatusChanged bool
+		expectedStatus        task.Status
+		expectedObj           *v1alpha1.PDGroup
+	}{
+		{
+			desc: "no instances and 1 desired",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				return obj
+			}),
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.UpdateRevision = newRevision
+				obj.Status.CurrentRevision = oldRevision
+				return obj
+			}),
+		},
+		{
+			desc: "no instances and 1 desired, not changed",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.UpdateRevision = newRevision
+				obj.Status.CurrentRevision = oldRevision
+				return obj
+			}),
+
+			expectedStatus: task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.UpdateRevision = newRevision
+				obj.Status.CurrentRevision = oldRevision
+				return obj
+			}),
+		},
+		{
+			desc: "no instances and 0 desired",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Replicas = ptr.To[int32](0)
+				return obj
+			}),
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.UpdateRevision = newRevision
+				obj.Status.CurrentRevision = newRevision
+				return obj
+			}),
+		},
+		{
+			desc: "2 updated instances and 1 desired",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				return obj
+			}),
+			instances: []*v1alpha1.PD{
+				fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.CurrentRevision = newRevision
+					return obj
+				}),
+				fake.FakeObj("bbb", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.CurrentRevision = newRevision
+					return obj
+				}),
+			},
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.UpdateRevision = newRevision
+				obj.Status.CurrentRevision = oldRevision
+				obj.Status.Replicas = 2
+				obj.Status.ReadyReplicas = 0
+				obj.Status.UpdatedReplicas = 2
+				obj.Status.CurrentReplicas = 0
+				return obj
+			}),
+		},
+		{
+			desc: "2 updated instances and 2 desired",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Replicas = ptr.To[int32](2)
+				return obj
+			}),
+			instances: []*v1alpha1.PD{
+				fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.CurrentRevision = newRevision
+					return obj
+				}),
+				fake.FakeObj("bbb", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.CurrentRevision = newRevision
+					return obj
+				}),
+			},
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.UpdateRevision = newRevision
+				obj.Status.CurrentRevision = newRevision
+				obj.Status.Replicas = 2
+				obj.Status.ReadyReplicas = 0
+				obj.Status.UpdatedReplicas = 2
+				obj.Status.CurrentReplicas = 2
+				return obj
+			}),
+		},
+		{
+			desc: "1 updated instances and 2 desired",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Replicas = ptr.To[int32](2)
+				return obj
+			}),
+			instances: []*v1alpha1.PD{
+				fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.CurrentRevision = newRevision
+					return obj
+				}),
+				fake.FakeObj("bbb", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.CurrentRevision = oldRevision
+					return obj
+				}),
+			},
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.UpdateRevision = newRevision
+				obj.Status.CurrentRevision = oldRevision
+				obj.Status.Replicas = 2
+				obj.Status.ReadyReplicas = 0
+				obj.Status.UpdatedReplicas = 1
+				obj.Status.CurrentReplicas = 1
+				return obj
+			}),
+		},
+		{
+			desc: "2 updated and ready instances and 2 desired",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Replicas = ptr.To[int32](2)
+				return obj
+			}),
+			instances: []*v1alpha1.PD{
+				fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.CurrentRevision = newRevision
+					obj.Status.Conditions = []metav1.Condition{
+						*coreutil.Ready(),
+					}
+					return obj
+				}),
+				fake.FakeObj("bbb", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.CurrentRevision = newRevision
+					obj.Status.Conditions = []metav1.Condition{
+						*coreutil.Ready(),
+					}
+					return obj
+				}),
+			},
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.UpdateRevision = newRevision
+				obj.Status.CurrentRevision = newRevision
+				obj.Status.Replicas = 2
+				obj.Status.ReadyReplicas = 2
+				obj.Status.UpdatedReplicas = 2
+				obj.Status.CurrentReplicas = 2
+				return obj
+			}),
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			ctrl := gomock.NewController(tt)
+			state := NewMockStatusRevisionAndReplicasUpdater[*v1alpha1.PDGroup, *runtime.PD](ctrl)
+			state.EXPECT().Object().Return(c.obj)
+			state.EXPECT().Revision().Return(newRevision, oldRevision, int32(0))
+			state.EXPECT().Slice().Return(runtime.FromPDSlice(c.instances))
+			if c.expectedStatusChanged {
+				state.EXPECT().SetStatusChanged()
+			}
+
+			ctx := context.Background()
+			res, done := task.RunTask(ctx, TaskStatusRevisionAndReplicas[scope.PDGroup](state))
+			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
+			assert.False(tt, done, c.desc)
+			// ignore time
+			for i := range c.obj.Status.Conditions {
+				cond := &c.obj.Status.Conditions[i]
+				cond.LastTransitionTime = metav1.Time{}
+			}
+			assert.Equal(tt, c.expectedObj.Status, c.obj.Status, c.desc)
 		})
 	}
 }

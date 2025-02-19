@@ -285,7 +285,7 @@ func fakeAvailableTiFlash(name string, fg *v1alpha1.TiFlashGroup, rev string) *v
 		tiflash := runtime.ToTiFlash(TiFlashNewer(fg, rev).New())
 		tiflash.Name = ""
 		tiflash.Status.Conditions = append(tiflash.Status.Conditions, metav1.Condition{
-			Type:   v1alpha1.TiFlashCondHealth,
+			Type:   v1alpha1.CondReady,
 			Status: metav1.ConditionTrue,
 		})
 		tiflash.Status.CurrentRevision = rev

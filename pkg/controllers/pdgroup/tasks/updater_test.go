@@ -258,7 +258,7 @@ func fakeAvailablePD(name string, pdg *v1alpha1.PDGroup, rev string) *v1alpha1.P
 		pd := runtime.ToPD(PDNewer(pdg, rev).New())
 		pd.Name = ""
 		pd.Status.Conditions = append(pd.Status.Conditions, metav1.Condition{
-			Type:   v1alpha1.PDCondHealth,
+			Type:   v1alpha1.CondReady,
 			Status: metav1.ConditionTrue,
 		})
 		pd.Status.CurrentRevision = rev

@@ -24,18 +24,8 @@ const (
 )
 
 const (
-	// TODO: combine all Health condition
-	TiCDCCondHealth   = "Health"
-	TiCDCHealthReason = "TiCDCHealth"
-
-	TiCDCCondSuspended = "Suspended"
-	TiCDCSuspendReason = "TiCDCSuspend"
-
 	TiCDCGroupCondAvailable   = "Available"
 	TiCDCGroupAvailableReason = "TiCDCGroupAvailable"
-
-	TiCDCGroupCondSuspended = "Suspended"
-	TiCDCGroupSuspendReason = "TiCDCGroupSuspend"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

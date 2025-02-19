@@ -22,12 +22,12 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
-func IsHealthy[
+func IsReady[
 	S scope.Instance[F, T],
 	F client.Object,
 	T runtime.Instance,
 ](f F) bool {
-	return scope.From[S](f).IsHealthy()
+	return scope.From[S](f).IsReady()
 }
 
 func NamePrefixAndSuffix[

@@ -95,7 +95,7 @@ func syncHealthCond(pd *v1alpha1.PD, healthy bool) bool {
 	}
 
 	return meta.SetStatusCondition(&pd.Status.Conditions, metav1.Condition{
-		Type:               v1alpha1.CondHealth,
+		Type:               v1alpha1.CondReady,
 		Status:             status,
 		ObservedGeneration: pd.Generation,
 		Reason:             reason,

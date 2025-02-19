@@ -37,7 +37,7 @@ func WaitForTiKVsHealthy(ctx context.Context, c client.Client, kvg *v1alpha1.TiK
 			if kv.Generation != kv.Status.ObservedGeneration {
 				return fmt.Errorf("kv %s/%s is not synced", kv.Namespace, kv.Name)
 			}
-			if !meta.IsStatusConditionPresentAndEqual(kv.Status.Conditions, v1alpha1.TiKVCondHealth, metav1.ConditionTrue) {
+			if !meta.IsStatusConditionPresentAndEqual(kv.Status.Conditions, v1alpha1.CondReady, metav1.ConditionTrue) {
 				return fmt.Errorf("kv %s/%s is not healthy", kv.Namespace, kv.Name)
 			}
 		}

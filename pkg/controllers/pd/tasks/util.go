@@ -38,7 +38,7 @@ func LongestHealthPeer(pd *v1alpha1.PD, peers []*v1alpha1.PD) string {
 		if peer.Name == pd.Name {
 			continue
 		}
-		cond := meta.FindStatusCondition(peer.Status.Conditions, v1alpha1.PDCondHealth)
+		cond := meta.FindStatusCondition(peer.Status.Conditions, v1alpha1.CondReady)
 		if cond == nil || cond.Status != metav1.ConditionTrue {
 			continue
 		}

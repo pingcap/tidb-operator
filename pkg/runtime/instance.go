@@ -26,7 +26,7 @@ type Instance interface {
 	SetTopology(topo v1alpha1.Topology)
 
 	GetUpdateRevision() string
-	IsHealthy() bool
+	IsReady() bool
 	// IsUpToDate means all resources managed by the instance is up to date
 	// NOTE: It does not mean the instance is updated to the newest revision
 	// TODO: may be change a more meaningful name?

@@ -37,17 +37,6 @@ const (
 	VolumeMountTiFlashDataDefaultPath = "/var/lib/tiflash"
 )
 
-const (
-	TiFlashCondHealth   = "Health"
-	TiFlashHealthReason = "TiFlashHealth"
-
-	TiFlashCondSuspended = "Suspended"
-	TiFlashSuspendReason = "TiFlashSuspend"
-
-	TiFlashGroupCondSuspended = "Suspended"
-	TiFlashGroupSuspendReason = "TiFlashGroupSuspend"
-)
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 

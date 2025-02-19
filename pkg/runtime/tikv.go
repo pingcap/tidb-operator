@@ -134,8 +134,8 @@ func (kv *TiKV) SetCurrentRevision(rev string) {
 	kv.Status.CurrentRevision = rev
 }
 
-func (kv *TiKV) IsHealthy() bool {
-	return meta.IsStatusConditionTrue(kv.Status.Conditions, v1alpha1.TiKVCondHealth)
+func (kv *TiKV) IsReady() bool {
+	return meta.IsStatusConditionTrue(kv.Status.Conditions, v1alpha1.CondReady)
 }
 
 func (kv *TiKV) IsUpToDate() bool {
