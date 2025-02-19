@@ -66,8 +66,6 @@ const (
 	RestoreModeSnapshot RestoreMode = "snapshot"
 	// RestoreModePiTR represents PiTR restore which is from a snapshot backup and log backup.
 	RestoreModePiTR RestoreMode = "pitr"
-	// RestoreModeVolumeSnapshot represents restore from a volume snapshot backup.
-	RestoreModeVolumeSnapshot RestoreMode = "volume-snapshot"
 )
 
 // RestoreConditionType represents a valid condition of a Restore.
@@ -78,16 +76,6 @@ const (
 	RestoreScheduled RestoreConditionType = "Scheduled"
 	// RestoreRunning means the Restore is currently being executed.
 	RestoreRunning RestoreConditionType = "Running"
-	// RestoreVolumeComplete means the Restore has successfully executed part-1 and the
-	// backup volumes have been rebuilded from the corresponding snapshot
-	RestoreVolumeComplete RestoreConditionType = "VolumeComplete"
-	// CleanVolumeComplete means volumes are cleaned successfully if restore volume failed
-	CleanVolumeComplete RestoreConditionType = "CleanVolumeComplete"
-	// RestoreWarmUpStarted means the Restore has successfully started warm up pods to
-	// initialize volumes restored from snapshots
-	RestoreWarmUpStarted RestoreConditionType = "WarmUpStarted"
-	// RestoreWarmUpComplete means the Restore has successfully warmed up all TiKV volumes
-	RestoreWarmUpComplete RestoreConditionType = "WarmUpComplete"
 	// RestoreDataComplete means the Restore has successfully executed part-2 and the
 	// data in restore volumes has been deal with consistency based on min_resolved_ts
 	RestoreDataComplete RestoreConditionType = "DataComplete"
@@ -138,9 +126,6 @@ type RestoreSpec struct {
 	// - BR_LOG_TO_TERM
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
-	// TODO(ideascf): remove it in v2
-	// To is the tidb cluster that needs to restore.
-	To *TiDBAccessConfig `json:"to,omitempty"`
 	// Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.
 	Type BackupType `json:"backupType,omitempty"`
 	// Mode is the restore mode. such as snapshot or pitr.
@@ -151,13 +136,6 @@ type RestoreSpec struct {
 	// LogRestoreStartTs is the start timestamp which log restore from.
 	// +optional
 	LogRestoreStartTs string `json:"logRestoreStartTs,omitempty"`
-	// FederalVolumeRestorePhase indicates which phase to execute in federal volume restore
-	// +optional
-	FederalVolumeRestorePhase FederalVolumeRestorePhase `json:"federalVolumeRestorePhase,omitempty"`
-	// VolumeAZ indicates which AZ the volume snapshots restore to.
-	// it is only valid for mode of volume-snapshot
-	// +optional
-	VolumeAZ string `json:"volumeAZ,omitempty"`
 	// TikvGCLifeTime is to specify the safe gc life time for restore.
 	// The time limit during which data is retained for each GC, in the format of Go Duration.
 	// When a GC happens, the current time minus this value is the safe point.
@@ -195,15 +173,6 @@ type RestoreSpec struct {
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// TableFilter means Table filter expression for 'db.table' matching. BR supports this from v4.0.3.
 	TableFilter []string `json:"tableFilter,omitempty"`
-	// Warmup represents whether to initialize TiKV volumes after volume snapshot restore
-	// +optional
-	Warmup RestoreWarmupMode `json:"warmup,omitempty"`
-	// WarmupImage represents using what image to initialize TiKV volumes
-	// +optional
-	WarmupImage string `json:"warmupImage,omitempty"`
-	// WarmupStrategy
-	// +kubebuilder:default=hybrid
-	WarmupStrategy RestoreWarmupStrategy `json:"warmupStrategy,omitempty"`
 
 	// PodSecurityContext of the component
 	// +optional
@@ -222,42 +191,6 @@ type RestoreSpec struct {
 	// +kubebuilder:default=false
 	TolerateSingleTiKVOutage bool `json:"tolerateSingleTiKVOutage,omitempty"`
 }
-
-// FederalVolumeRestorePhase represents a phase to execute in federal volume restore
-type FederalVolumeRestorePhase string
-
-const (
-	// FederalVolumeRestoreVolume means restore volumes of TiKV and start TiKV
-	FederalVolumeRestoreVolume FederalVolumeRestorePhase = "restore-volume"
-	// FederalVolumeRestoreData means restore data of TiKV to resolved TS
-	FederalVolumeRestoreData FederalVolumeRestorePhase = "restore-data"
-	// FederalVolumeRestoreFinish means restart TiKV and set recoveryMode true
-	FederalVolumeRestoreFinish FederalVolumeRestorePhase = "restore-finish"
-)
-
-// RestoreWarmupMode represents when to initialize TiKV volumes
-type RestoreWarmupMode string
-
-const (
-	// RestoreWarmupModeSync means initialize TiKV volumes before TiKV starts
-	RestoreWarmupModeSync RestoreWarmupMode = "sync"
-	// RestoreWarmupModeASync means initialize TiKV volumes after restore complete
-	RestoreWarmupModeASync RestoreWarmupMode = "async"
-)
-
-// RestoreWarmupStrategy represents how to initialize TiKV volumes
-type RestoreWarmupStrategy string
-
-const (
-	// RestoreWarmupStrategyFio warms up all data block by block. (use fio)
-	RestoreWarmupStrategyFio RestoreWarmupStrategy = "fio"
-	// RestoreWarmupStrategyHybrid warms up data volume by read sst files one by one, other (e.g. WAL or Raft) will be warmed up via fio.
-	RestoreWarmupStrategyHybrid RestoreWarmupStrategy = "hybrid"
-	// RestoreWarmupStrategyFsr warms up data volume by enabling Fast Snapshot Restore, other (e.g. WAL or Raft) will be warmed up via fio.
-	RestoreWarmupStrategyFsr RestoreWarmupStrategy = "fsr"
-	// RestoreWarmupStrategyCheckOnly warm up none data volumes and check wal consistency
-	RestoreWarmupStrategyCheckOnly RestoreWarmupStrategy = "check-wal-only"
-)
 
 // RestoreStatus represents the current status of a tidb cluster restore.
 type RestoreStatus struct {

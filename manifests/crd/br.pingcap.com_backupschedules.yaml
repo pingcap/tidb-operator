@@ -3011,11 +3011,6 @@ spec:
                     required:
                     - cluster
                     type: object
-                  calcSizeLevel:
-                    default: all
-                    description: CalcSizeLevel determines how to size calculation
-                      of snapshots for EBS volume snapshot backup
-                    type: string
                   cleanOption:
                     description: CleanOption controls the behavior of clean.
                     properties:
@@ -3069,23 +3064,6 @@ spec:
                       Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
                       Default is current timestamp.
                     type: string
-                  dumpling:
-                    description: DumplingConfig is the configs for dumpling
-                    properties:
-                      options:
-                        description: Options means options for backup data to remote
-                          storage with dumpling.
-                        items:
-                          type: string
-                        type: array
-                      tableFilter:
-                        description: Deprecated. Please use `Spec.TableFilter` instead.
-                          TableFilter means Table filter expression for 'db.table'
-                          matching
-                        items:
-                          type: string
-                        type: array
-                    type: object
                   env:
                     description: |-
                       List of environment variables to set in the container, like v1.Container.Env.
@@ -3223,37 +3201,6 @@ spec:
                       - name
                       type: object
                     type: array
-                  federalVolumeBackupPhase:
-                    description: FederalVolumeBackupPhase indicates which phase to
-                      execute in federal volume backup
-                    type: string
-                  from:
-                    description: From is the tidb cluster that needs to backup.
-                    properties:
-                      host:
-                        description: Host is the tidb cluster access address
-                        type: string
-                      port:
-                        description: Port is the port number to use for connecting
-                          tidb cluster
-                        format: int32
-                        type: integer
-                      secretName:
-                        description: SecretName is the name of secret which stores
-                          tidb cluster's password.
-                        type: string
-                      tlsClientSecretName:
-                        description: |-
-                          TLSClientSecretName is the name of secret which stores tidb server client certificate
-                          Optional: Defaults to nil
-                        type: string
-                      user:
-                        description: User is the user for login tidb cluster
-                        type: string
-                    required:
-                    - host
-                    - secretName
-                    type: object
                   gcs:
                     description: GcsStorageProvider represents the google cloud storage
                       for storing backups.
@@ -5462,10 +5409,6 @@ spec:
                           More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                         type: object
                     type: object
-                  resumeGcSchedule:
-                    description: ResumeGcSchedule indicates whether resume gc and
-                      pd scheduler for EBS volume snapshot backup
-                    type: boolean
                   s3:
                     description: S3StorageProvider represents a S3 compliant storage
                       for storing backups.
@@ -15818,11 +15761,6 @@ spec:
                     required:
                     - cluster
                     type: object
-                  calcSizeLevel:
-                    default: all
-                    description: CalcSizeLevel determines how to size calculation
-                      of snapshots for EBS volume snapshot backup
-                    type: string
                   cleanOption:
                     description: CleanOption controls the behavior of clean.
                     properties:
@@ -15876,23 +15814,6 @@ spec:
                       Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
                       Default is current timestamp.
                     type: string
-                  dumpling:
-                    description: DumplingConfig is the configs for dumpling
-                    properties:
-                      options:
-                        description: Options means options for backup data to remote
-                          storage with dumpling.
-                        items:
-                          type: string
-                        type: array
-                      tableFilter:
-                        description: Deprecated. Please use `Spec.TableFilter` instead.
-                          TableFilter means Table filter expression for 'db.table'
-                          matching
-                        items:
-                          type: string
-                        type: array
-                    type: object
                   env:
                     description: |-
                       List of environment variables to set in the container, like v1.Container.Env.
@@ -16030,37 +15951,6 @@ spec:
                       - name
                       type: object
                     type: array
-                  federalVolumeBackupPhase:
-                    description: FederalVolumeBackupPhase indicates which phase to
-                      execute in federal volume backup
-                    type: string
-                  from:
-                    description: From is the tidb cluster that needs to backup.
-                    properties:
-                      host:
-                        description: Host is the tidb cluster access address
-                        type: string
-                      port:
-                        description: Port is the port number to use for connecting
-                          tidb cluster
-                        format: int32
-                        type: integer
-                      secretName:
-                        description: SecretName is the name of secret which stores
-                          tidb cluster's password.
-                        type: string
-                      tlsClientSecretName:
-                        description: |-
-                          TLSClientSecretName is the name of secret which stores tidb server client certificate
-                          Optional: Defaults to nil
-                        type: string
-                      user:
-                        description: User is the user for login tidb cluster
-                        type: string
-                    required:
-                    - host
-                    - secretName
-                    type: object
                   gcs:
                     description: GcsStorageProvider represents the google cloud storage
                       for storing backups.
@@ -18269,10 +18159,6 @@ spec:
                           More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                         type: object
                     type: object
-                  resumeGcSchedule:
-                    description: ResumeGcSchedule indicates whether resume gc and
-                      pd scheduler for EBS volume snapshot backup
-                    type: boolean
                   s3:
                     description: S3StorageProvider represents a S3 compliant storage
                       for storing backups.

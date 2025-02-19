@@ -31,7 +31,6 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
-	backupMgr "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/backup"
 )
 
 // Options contains the input arguments to the backup command
@@ -43,7 +42,6 @@ type Options struct {
 func (bo *Options) backupData(
 	ctx context.Context,
 	backup *v1alpha1.Backup,
-	statusUpdater backupMgr.BackupConditionUpdaterInterface,
 ) error {
 	var backupType string
 	if backup.Spec.Type == "" {
@@ -57,58 +55,6 @@ func (bo *Options) backupData(
 	}
 
 	var logCallback func(line string)
-	// TODO(ideascf): remove these lines, EBS volume snapshot backup is deprecated in v2
-	// Add extra args for volume snapshot backup.
-	// if bo.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && !bo.Initialize {
-	// 	var (
-	// 		progressFile = "progress.txt"
-	// 		progressStep = "Full Backup"
-	// 		successTag   = "EBS backup success"
-	// 	)
-	// 	localCSBFile := path.Join(corev1alpha1.PathBRBin, "csb_backup.json")
-	// 	// read cluster meta from external storage and pass it to BR
-	// 	klog.Infof("read the cluster meta from external storage")
-	// 	externalStorage, err := pkgutil.NewStorageBackend(backup.Spec.StorageProvider, &pkgutil.StorageCredential{})
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	clustermeta, err := externalStorage.ReadAll(ctx, constants.ClusterBackupMeta)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	err = os.WriteFile(localCSBFile, []byte(clustermeta), 0644)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	// Currently, we only support aws ebs volume snapshot.
-	// 	specificArgs = append(specificArgs, "--type=aws-ebs")
-	// 	specificArgs = append(specificArgs, fmt.Sprintf("--volume-file=%s", localCSBFile))
-	// 	specificArgs = append(specificArgs, "--operator-paused-gc-and-scheduler=true")
-	// 	logCallback = func(line string) {
-	// 		if strings.Contains(line, successTag) {
-	// 			extract := strings.Split(line, successTag)[1]
-	// 			tsStr := regexp.MustCompile(`resolved_ts=(\d+)`).FindString(extract)
-	// 			ts := strings.ReplaceAll(tsStr, "resolved_ts=", "")
-	// 			klog.Infof("%s resolved_ts: %s", successTag, ts)
-
-	// 			progress := 100.0
-	// 			if err := statusUpdater.Update(backup, nil, &backupMgr.BackupUpdateStatus{
-	// 				CommitTs:           &ts,
-	// 				ProgressStep:       &progressStep,
-	// 				Progress:           &progress,
-	// 				ProgressUpdateTime: &metav1.Time{Time: time.Now()},
-	// 			}); err != nil {
-	// 				klog.Errorf("Failed to update BackupUpdateStatus for cluster %s, %v", bo, err)
-	// 			}
-	// 		}
-	// 	}
-
-	// 	progressCtx, cancel := context.WithCancel(ctx)
-	// 	defer cancel()
-	// 	go bo.updateProgressFromFile(progressCtx.Done(), backup, progressFile, progressStep, statusUpdater)
-	// } else
 	if bo.Mode == string(v1alpha1.BackupModeSnapshot) {
 		if backup.Spec.CommitTs != "" {
 			specificArgs = append(specificArgs, fmt.Sprintf("--backupts=%s", backup.Spec.CommitTs))
@@ -225,32 +171,6 @@ func (bo *Options) doTruncateLogBackup(ctx context.Context, backup *v1alpha1.Bac
 	return bo.brCommandRun(ctx, fullArgs)
 }
 
-/* TODO(ideascf): remove this function. EBS volume snapshot backup is deprecated in v2
-// doInitializeVolumeBackup generates br args to stop GC and PD schedules
-// and update backup status to VolumeBackupInitialized when watches corresponding logs
-func (bo *Options) doInitializeVolumeBackup(
-	ctx context.Context,
-	backup *v1alpha1.Backup,
-	statusUpdater backupMgr.BackupConditionUpdaterInterface,
-) error {
-	specificArgs := []string{
-		"operator",
-		"pause-gc-and-schedulers",
-	}
-	fullArgs, err := bo.backupCommandTemplate(backup, specificArgs, true)
-	if err != nil {
-		return err
-	}
-
-	backupInitializeMgr := &VolumeBackupInitializeManager{
-		backup:        backup,
-		statusUpdater: statusUpdater,
-	}
-	logCallback := backupInitializeMgr.UpdateBackupStatus
-	return bo.brCommandRunWithLogCallback(ctx, fullArgs, logCallback)
-}
-*/
-
 // logBackupCommandTemplate is the template to generate br args.
 func (bo *Options) backupCommandTemplate(backup *v1alpha1.Backup, specificArgs []string, skipBackupArgs bool) ([]string, error) {
 	if len(specificArgs) == 0 {
@@ -312,12 +232,6 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 		return fmt.Errorf("cluster %s, execute br command failed, args: %s, err: %w", bo, fullArgs, err)
 	}
 
-	// only the initialization command of volume snapshot backup use gracefully shutting down
-	// because it should resume gc and pd scheduler immediately
-	if bo.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && bo.Initialize {
-		go backupUtil.GracefullyShutDownSubProcess(ctx, cmd)
-	}
-
 	var errMsg string
 	stdErrCh := make(chan []byte, 1)
 	go backupUtil.ReadAllStdErrToChannel(stdErr, stdErrCh)
@@ -355,51 +269,6 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 	klog.Infof("Run br commond %v for cluster %s successfully", fullArgs, bo)
 	return nil
 }
-
-/* TODO(ideascf): remove this function. EBS volume snapshot backup is deprecated in v2
-func (bo *Options) updateProgressFromFile(
-	stopCh <-chan struct{},
-	backup *v1alpha1.Backup,
-	progressFile string,
-	progressStep string,
-	statusUpdater backupMgr.BackupConditionUpdaterInterface,
-) {
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			data, err := os.ReadFile(progressFile)
-			if err != nil {
-				if !os.IsNotExist(err) {
-					klog.Warningf("Failed to read progress file %s: %v", progressFile, err)
-				}
-				continue
-			}
-			progressStr := strings.TrimSpace(string(data))
-			progressStr = strings.TrimSuffix(progressStr, "%")
-			if progressStr == "" {
-				continue
-			}
-			progress, err := strconv.ParseFloat(progressStr, 64)
-			if err != nil {
-				klog.Warningf("Failed to parse progress %s, err: %v", string(data), err)
-				continue
-			}
-			if err := statusUpdater.Update(backup, nil, &backupMgr.BackupUpdateStatus{
-				ProgressStep:       &progressStep,
-				Progress:           ptr.To(int(progress)),
-				ProgressUpdateTime: &metav1.Time{Time: time.Now()},
-			}); err != nil {
-				klog.Errorf("Failed to update BackupUpdateStatus for cluster %s, %v", bo, err)
-			}
-		case <-stopCh:
-			return
-		}
-	}
-}
-*/
 
 // TODO use https://github.com/pingcap/failpoint instead e2e test env
 func e2eTestSimulate(bo *Options) {

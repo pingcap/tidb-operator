@@ -24,9 +24,6 @@ import (
 
 // GetRestoreJobName return the restore job name
 func (rs *Restore) GetRestoreJobName() string {
-	if IsRestoreVolumeComplete(rs) && !IsRestoreDataComplete(rs) {
-		return fmt.Sprintf("restore-data-%s", rs.GetName())
-	}
 	return fmt.Sprintf("restore-%s", rs.GetName())
 }
 
@@ -122,37 +119,6 @@ func IsRestoreRunning(restore *Restore) bool {
 // IsRestoreFailed returns true if a Restore is Failed
 func IsRestoreFailed(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreFailed)
-	return condition != nil && condition.Status == metav1.ConditionTrue
-}
-
-// IsRestoreVolumeComplete returns true if a Restore for volume has successfully completed
-func IsRestoreVolumeComplete(restore *Restore) bool {
-	_, condition := GetRestoreCondition(&restore.Status, RestoreVolumeComplete)
-	return condition != nil && condition.Status == metav1.ConditionTrue
-}
-
-// IsRestoreVolumeFailed returns true if a Restore for volume is Failed
-func IsRestoreVolumeFailed(restore *Restore) bool {
-	return restore.Spec.Mode == RestoreModeVolumeSnapshot &&
-		IsRestoreFailed(restore) &&
-		!IsRestoreVolumeComplete(restore)
-}
-
-// IsCleanVolumeComplete returns true if restored volumes are cleaned
-func IsCleanVolumeComplete(restore *Restore) bool {
-	_, condition := GetRestoreCondition(&restore.Status, CleanVolumeComplete)
-	return condition != nil && condition.Status == metav1.ConditionTrue
-}
-
-// IsRestoreWarmUpStarted returns true if all the warmup jobs has successfully started
-func IsRestoreWarmUpStarted(restore *Restore) bool {
-	_, condition := GetRestoreCondition(&restore.Status, RestoreWarmUpStarted)
-	return condition != nil && condition.Status == metav1.ConditionTrue
-}
-
-// IsRestoreWarmUpComplete returns true if all the warmup jobs has successfully finished
-func IsRestoreWarmUpComplete(restore *Restore) bool {
-	_, condition := GetRestoreCondition(&restore.Status, RestoreWarmUpComplete)
 	return condition != nil && condition.Status == metav1.ConditionTrue
 }
 

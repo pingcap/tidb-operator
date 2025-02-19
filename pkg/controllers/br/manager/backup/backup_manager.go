@@ -28,7 +28,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/yaml"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
@@ -61,11 +60,6 @@ type BackupUpdateStatus struct {
 	BackupSizeReadable *string
 	// BackupSize is the data size of the backup.
 	BackupSize *int64
-	// the difference with IncrementalBackupSize is that its format is human readable
-	IncrementalBackupSizeReadable *string
-	// IncrementalBackupSize is the incremental data size of the backup, it is only used for volume snapshot backup
-	// it is the real size of volume snapshot backup
-	IncrementalBackupSize *int64
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs *string
 	// LogCheckpointTs is the ts of log backup process.
@@ -109,27 +103,18 @@ type backupManager struct {
 	backupTracker      BackupTracker
 	statusUpdater      BackupConditionUpdaterInterface
 	backupManagerImage string
-	// manifestFetchers []ManifestFetcher
 }
 
 // NewBackupManager return backupManager
 func NewBackupManager(cli client.Client, pdcm pdm.PDClientManager, eventRecorder record.EventRecorder, backupManagerImage string) BackupManager {
 	statusUpdater := NewRealBackupConditionUpdater(cli, eventRecorder)
-	// TODO(ideascf): remove me, EBS volume snapshot backup is deprecated in v2
-	// manifestFetchers := []ManifestFetcher{
-	// 	NewTiDBClusterAutoScalerFetcher(deps.TiDBClusterAutoScalerLister),
-	// 	NewTiDBDashboardFetcher(deps.TiDBDashboardLister),
-	// 	NewTiDBInitializerFetcher(deps.TiDBInitializerLister),
-	// 	NewTiDBMonitorFetcher(deps.TiDBMonitorLister),
-	// 	NewTiDBNgMonitoringFetcher(deps.TiDBNGMonitoringLister),
-	// }
+
 	return &backupManager{
 		cli:                cli,
 		backupCleaner:      NewBackupCleaner(cli, statusUpdater, backupManagerImage),
 		backupTracker:      NewBackupTracker(cli, pdcm, statusUpdater),
 		statusUpdater:      statusUpdater,
 		backupManagerImage: backupManagerImage,
-		// manifestFetchers: manifestFetchers,
 	}
 }
 
@@ -161,26 +146,6 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 	var err error
 
-	// TODO(ideascf): remove me, volume snapshot backup is deprecated in v2
-	// if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
-	// 	if v1alpha1.IsBackupFailed(backup) || v1alpha1.IsVolumeBackupFailed(backup) {
-	// 		// if volume backup failed, we should delete initialize job to resume GC and pd schedule
-	// 		if err := bm.deleteVolumeBackupInitializeJob(backup); err != nil {
-	// 			return err
-	// 		}
-	// 	} else if err := bm.checkVolumeBackupInitializeJobRunning(backup); err != nil {
-	// 		// check volume backup initialize job, we should ensure the job is existed during volume backup
-	// 		klog.Errorf("backup %s/%s check volume backup initialize job error %v.", ns, name, err)
-	// 		return err
-	// 	}
-	// 	if backup.Spec.ResumeGcSchedule {
-	// 		if err := bm.resumeGCScheduleForVolumeBackup(backup); err != nil {
-	// 			klog.Errorf("backup %s/%s resume gc and pd scheduler error %v.", ns, name, err)
-	// 			return err
-	// 		}
-	// 	}
-	// }
-
 	if v1alpha1.IsBackupComplete(backup) || v1alpha1.IsBackupFailed(backup) {
 		return nil
 	}
@@ -190,12 +155,6 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		klog.Errorf("backup %s/%s validate error %v.", ns, name, err)
 		return err
 	}
-
-	// TODO(ideascf): remove me, volume snapshot backup is deprecated in v2
-	// if err = bm.checkVolumeBackupSnapshotsCreated(backup); err != nil {
-	// 	klog.Errorf("backup %s/%s check snapshots created error %v.", ns, name, err)
-	// 	return err
-	// }
 
 	// skip backup
 	skip := false
@@ -214,16 +173,6 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		return err
 	}
 
-	// TODO(ideascf): remove me, volume snapshot backup is deprecated in v2
-	// if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot &&
-	// 	backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupTeardown {
-	// 	if err := bm.teardownVolumeBackup(backup); err != nil {
-	// 		klog.Errorf("backup %s/%s teardown volume backup error %v.", ns, name, err)
-	// 		return err
-	// 	}
-	// 	return nil
-	// }
-
 	// make backup job
 	var job *batchv1.Job
 	var reason string
@@ -235,8 +184,6 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 
 	// create k8s job
 	klog.Infof("backup %s/%s creating job %s.", ns, name, backupJobName)
-	jobBytes, _ := yaml.Marshal(job)
-	klog.Infof("job: %s", string(jobBytes)) // TODO(ideascf): remove it
 	if err := bm.cli.Create(context.TODO(), job); err != nil {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %w", ns, name, backupJobName, err)
 		_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
@@ -267,10 +214,6 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 	var err error
 	logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 
-	// TODO(ideascf): remove it in v2. .spec.br is required in v2
-	// if backup.Spec.BR == nil {
-	// 	err = backuputil.ValidateBackup(backup, "", nil)
-	// } else {
 	if backup.Spec.Mode == v1alpha1.BackupModeLog && logBackupSubcommand == v1alpha1.LogUnknownCommand {
 		err = fmt.Errorf("log backup %s/%s subcommand `%s` is not supported", ns, name, backup.Spec.LogSubcommand)
 		_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
@@ -311,7 +254,6 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 	}
 
 	err = backuputil.ValidateBackup(backup, tikvGroup.Spec.Template.Spec.Version, cluster)
-	// }
 	if err != nil {
 		_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: logBackupSubcommand,
@@ -329,149 +271,10 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 	return nil
 }
 
-/* TODO(ideascf): remove me, EBS volume snapshot is deprecated
-// checkVolumeBackupInitializeJobRunning check if volume backup initialized job is running during volume backup
-func (bm *backupManager) checkVolumeBackupInitializeJobRunning(backup *v1alpha1.Backup) error {
-	if backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupTeardown {
-		return nil
-	}
-	if backup.Spec.FederalVolumeBackupPhase != v1alpha1.FederalVolumeBackupInitialize &&
-		!v1alpha1.IsVolumeBackupInitialized(backup) {
-		// the backup isn't responsible for initialization
-		return nil
-	}
-	if v1alpha1.IsVolumeBackupSnapshotsCreated(backup) && backup.Spec.ResumeGcSchedule {
-		// all the volume snapshots has created
-		return nil
-	}
-	if !v1alpha1.IsBackupScheduled(backup) || v1alpha1.IsVolumeBackupInitializeFailed(backup) {
-		return nil
-	}
-
-	ns := backup.GetNamespace()
-	name := backup.GetName()
-	initializeJobName := backup.GetVolumeBackupInitializeJobName()
-	initializeJob, err := bm.deps.JobLister.Jobs(ns).Get(initializeJobName)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return fmt.Errorf("backup %s/%s get job %s failed, err: %v", ns, name, initializeJobName, err)
-		}
-		// volume backup initialize job was deleted during volume backup
-		// we can't ensure GC and PD schedules are stopped, set backup VolumeBackupInitializeFailed
-		updateErr := bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.VolumeBackupInitializeFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "InitializeJobDeleted",
-			Message: "init job deleted before all the volume snapshots are created",
-		}, nil)
-		if updateErr != nil {
-			return updateErr
-		}
-		return controller.IgnoreErrorf("backup %s/%s job was deleted, set it VolumeBackupInitializeFailed", ns, name)
-	}
-
-	jobCompleteOrFailed := false
-	for _, condition := range initializeJob.Status.Conditions {
-		if condition.Type == batchv1.JobFailed || condition.Type == batchv1.JobComplete {
-			jobCompleteOrFailed = true
-			break
-		}
-	}
-	if jobCompleteOrFailed {
-		// volume backup initialize job was completed or failed during volume backup
-		// we can't ensure GC and PD schedules are stopped, set backup VolumeBackupInitializeFailed
-		updateErr := bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.VolumeBackupInitializeFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "InitializeJobCompletedOrFailed",
-			Message: "init job completed or failed before all the volume snapshots are created",
-		}, nil)
-		if updateErr != nil {
-			return updateErr
-		}
-		return controller.IgnoreErrorf("backup %s/%s job was completed or failed, set it VolumeBackupInitializeFailed", ns, name)
-	}
-
-	return nil
-}
-
-func (bm *backupManager) resumeGCScheduleForVolumeBackup(b *v1alpha1.Backup) error {
-	if b.Spec.Mode != v1alpha1.BackupModeVolumeSnapshot || !b.Spec.ResumeGcSchedule {
-		return nil
-	}
-	if v1alpha1.IsVolumeBackupInitializeFailed(b) {
-		return nil
-	}
-	if v1alpha1.IsVolumeBackupInitializeComplete(b) {
-		return nil
-	}
-
-	ns := b.GetNamespace()
-	name := b.GetName()
-	if !v1alpha1.IsVolumeBackupSnapshotsCreated(b) {
-		klog.Infof("backup %s/%s volume snapshots not created, can't resume gc and pd scheduler", ns, name)
-		return nil
-	}
-	if err := bm.deleteVolumeBackupInitializeJob(b); err != nil {
-		return fmt.Errorf("delete initialize job failed, err: %s", err.Error())
-	}
-	klog.Infof("backup %s/%s resumed GC and PD scheduler successfully", ns, name)
-	err := bm.statusUpdater.Update(b, &v1alpha1.BackupCondition{
-		Type:   v1alpha1.VolumeBackupInitializeComplete,
-		Status: corev1.ConditionTrue,
-	}, nil)
-	if err != nil {
-		return fmt.Errorf("update status to VolumeBackupInitializeComplete error: %s", err.Error())
-	}
-	return nil
-}
-
-func (bm *backupManager) checkVolumeBackupSnapshotsCreated(b *v1alpha1.Backup) error {
-	if b.Spec.Mode != v1alpha1.BackupModeVolumeSnapshot || b.Spec.FederalVolumeBackupPhase != v1alpha1.FederalVolumeBackupExecute {
-		return nil
-	}
-	if v1alpha1.IsVolumeBackupInitializeFailed(b) {
-		return nil
-	}
-	if v1alpha1.IsVolumeBackupSnapshotsCreated(b) {
-		return nil
-	}
-
-	ns := b.GetNamespace()
-	name := b.GetName()
-	cred := backuputil.GetStorageCredential(b.Namespace, b.Spec.StorageProvider, bm.deps.SecretLister)
-	externalStorage, err := backuputil.NewStorageBackend(b.Spec.StorageProvider, cred)
-	if err != nil {
-		return fmt.Errorf("create storage backend error: %s", err.Error())
-	}
-
-	ctx := context.Background()
-	existed, err := externalStorage.Exists(ctx, constants.MetaFile)
-	if err != nil {
-		return fmt.Errorf("check backupmeta existed error: %s", err.Error())
-	}
-	if !existed {
-		return nil
-	}
-	klog.Infof("backup %s/%s volume snapshots have created", ns, name)
-	err = bm.statusUpdater.Update(b, &v1alpha1.BackupCondition{
-		Type:   v1alpha1.VolumeBackupSnapshotsCreated,
-		Status: corev1.ConditionTrue,
-	}, nil)
-	if err != nil {
-		return fmt.Errorf("update status to VolumeBackupSnapshotsCreated error: %s", err.Error())
-	}
-	return nil
-}
-*/
-
 // skipBackupSync skip backup sync, if return true, backup can be skipped directly.
 func (bm *backupManager) skipBackupSync(backup *v1alpha1.Backup) (bool, error) {
 	if backup.Spec.Mode == v1alpha1.BackupModeLog {
 		return bm.skipLogBackupSync(backup)
-		// TODO(ideascf): remove me, volume snapshot backup is deprecated in v2
-		// } else if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
-		// 	return bm.skipVolumeSnapshotBackupSync(backup)
 	} else {
 		return bm.skipSnapshotBackupSync(backup)
 	}
@@ -514,20 +317,6 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 		err          error
 	)
 
-	// TODO(ideascf): remove me, export is deprecated in v2
-	// if backup.Spec.BR == nil {
-	// 	// not found backup job, so we need to create it
-	// 	job, reason, err = bm.makeExportJob(backup)
-	// 	if err != nil {
-	// 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-	// 			Type:    v1alpha1.BackupRetryTheFailed,
-	// 			Status:  corev1.ConditionTrue,
-	// 			Reason:  reason,
-	// 			Message: err.Error(),
-	// 		}, nil)
-	// 		return nil, nil, "", err
-	// 	}
-	// } else {
 	{
 		logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 		// not found backup job, so we need to create it
@@ -584,168 +373,6 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 	return job, updateStatus, reason, nil
 }
 
-/* TODO(ideascf): remove me, export is deprecated in v2
-func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
-	ns := backup.GetNamespace()
-	name := backup.GetName()
-
-	envVars, reason, err := backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, bm.deps.SecretLister)
-	if err != nil {
-		return nil, reason, err
-	}
-
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.deps.SecretLister)
-	if err != nil {
-		return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
-	}
-	envVars = append(envVars, storageEnv...)
-
-	// set env vars specified in backup.Spec.Env
-	envVars = util.AppendOverwriteEnv(envVars, backup.Spec.Env)
-
-	// TODO: make pvc request storage size configurable
-	reason, err = bm.ensureBackupPVCExist(backup)
-	if err != nil {
-		return nil, reason, err
-	}
-
-	bucketName, reason, err := backuputil.GetBackupBucketName(backup)
-	if err != nil {
-		return nil, reason, err
-	}
-
-	args := []string{
-		"export",
-		fmt.Sprintf("--namespace=%s", ns),
-		fmt.Sprintf("--backupName=%s", name),
-		fmt.Sprintf("--bucket=%s", bucketName),
-		fmt.Sprintf("--storageType=%s", backuputil.GetStorageType(backup.Spec.StorageProvider)),
-	}
-
-	volumeMounts := []corev1.VolumeMount{}
-	volumes := []corev1.Volume{}
-	initContainers := []corev1.Container{}
-
-	if len(backup.Spec.AdditionalVolumes) > 0 {
-		volumes = append(volumes, backup.Spec.AdditionalVolumes...)
-	}
-	if len(backup.Spec.AdditionalVolumeMounts) > 0 {
-		volumeMounts = append(volumeMounts, backup.Spec.AdditionalVolumeMounts...)
-	}
-
-	if backup.Spec.From.TLSClientSecretName != nil {
-		args = append(args, "--client-tls=true")
-		clientSecretName := *backup.Spec.From.TLSClientSecretName
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      "tidb-client-tls",
-			ReadOnly:  true,
-			MountPath: util.TiDBClientTLSPath,
-		})
-		volumes = append(volumes, corev1.Volume{
-			Name: "tidb-client-tls",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: clientSecretName,
-				},
-			},
-		})
-	}
-
-	if backup.Spec.ToolImage != "" {
-		dumplingVolumeMount := corev1.VolumeMount{
-			Name:      "dumpling-bin",
-			ReadOnly:  false,
-			MountPath: util.DumplingBinPath,
-		}
-		volumeMounts = append(volumeMounts, dumplingVolumeMount)
-		volumes = append(volumes, corev1.Volume{
-			Name: "dumpling-bin",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		})
-		initContainers = append(initContainers, corev1.Container{
-			Name:            "dumpling",
-			Image:           backup.Spec.ToolImage,
-			Command:         []string{"/bin/sh", "-c"},
-			Args:            []string{fmt.Sprintf("cp /dumpling %s/dumpling; echo 'dumpling copy finished'", util.DumplingBinPath)},
-			ImagePullPolicy: corev1.PullIfNotPresent,
-			VolumeMounts:    []corev1.VolumeMount{dumplingVolumeMount},
-			Resources:       backup.Spec.ResourceRequirements,
-		})
-	}
-
-	serviceAccount := constants.DefaultServiceAccountName
-	if backup.Spec.ServiceAccount != "" {
-		serviceAccount = backup.Spec.ServiceAccount
-	}
-
-	jobLabels := util.CombineStringMap(label.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name), backup.Labels)
-	podLabels := jobLabels
-	jobAnnotations := backup.Annotations
-	podAnnotations := backup.Annotations
-
-	// TODO: need add ResourceRequirement for backup job
-	podSpec := &corev1.PodTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels:      podLabels,
-			Annotations: podAnnotations,
-		},
-		Spec: corev1.PodSpec{
-			SecurityContext:    backup.Spec.PodSecurityContext,
-			ServiceAccountName: serviceAccount,
-			InitContainers:     initContainers,
-			Containers: []corev1.Container{
-				{
-					Name:            label.BackupJobLabelVal,
-					Image:           bm.deps.CLIConfig.TiDBBackupManagerImage,
-					Args:            args,
-					ImagePullPolicy: corev1.PullIfNotPresent,
-					VolumeMounts: append([]corev1.VolumeMount{
-						{Name: label.BackupJobLabelVal, MountPath: constants.BackupRootPath},
-					}, volumeMounts...),
-					Env:       util.AppendEnvIfPresent(envVars, "TZ"),
-					Resources: backup.Spec.ResourceRequirements,
-				},
-			},
-			RestartPolicy:    corev1.RestartPolicyNever,
-			Tolerations:      backup.Spec.Tolerations,
-			ImagePullSecrets: backup.Spec.ImagePullSecrets,
-			Affinity:         backup.Spec.Affinity,
-			Volumes: append([]corev1.Volume{
-				{
-					Name: label.BackupJobLabelVal,
-					VolumeSource: corev1.VolumeSource{
-						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-							ClaimName: backup.GetBackupPVCName(),
-						},
-					},
-				},
-			}, volumes...),
-			PriorityClassName: backup.Spec.PriorityClassName,
-		},
-	}
-
-	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        backup.GetBackupJobName(),
-			Namespace:   ns,
-			Labels:      jobLabels,
-			Annotations: jobAnnotations,
-			OwnerReferences: []metav1.OwnerReference{
-				controller.GetBackupOwnerRef(backup),
-			},
-		},
-		Spec: batchv1.JobSpec{
-			BackoffLimit: pointer.Int32Ptr(0),
-			Template:     *podSpec,
-		},
-	}
-
-	return job, "", nil
-}
-*/
-
 // nolint: gocyclo
 // makeBRBackupJob requires that backup.Spec.BR != nil
 func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
@@ -771,13 +398,6 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		envVars []corev1.EnvVar
 		reason  string
 	)
-	// TODO(ideascf): remove me, .Spec.From is deprecated in v2
-	// if backup.Spec.From != nil {
-	// 	envVars, reason, err = backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, bm.deps.SecretLister)
-	// 	if err != nil {
-	// 		return nil, reason, err
-	// 	}
-	// }
 
 	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.cli)
 	if err != nil {
@@ -818,18 +438,6 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 				args = append(args, fmt.Sprintf("--truncate-until=%s", backup.Spec.LogTruncateUntil))
 			}
 		}
-	// TODO(ideascf): remove me, volume snapshot backup is deprecated in v2
-	// case v1alpha1.BackupModeVolumeSnapshot:
-	// 	if backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupExecute {
-	// 		reason, err = bm.volumeSnapshotBackup(backup, tc)
-	// 		if err != nil {
-	// 			return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
-	// 		}
-	// 	} else if backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupInitialize {
-	// 		jobName = backup.GetVolumeBackupInitializeJobName()
-	// 		args = append(args, "--initialize=true")
-	// 	}
-	// 	args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeVolumeSnapshot))
 	default:
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeSnapshot))
 	}
@@ -978,213 +586,8 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		},
 	}
 
-	// TODO(ideascf): remove me, volume snapshot backup is deprecated in v2
-	// // for volume backup initializing job, we should set resource requirement empty
-	// // avoid it consuming too much resource
-	// if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot &&
-	// 	backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupInitialize {
-	// 	bm.setBackupPodResourceRequirementsEmpty(&job.Spec.Template)
-	// 	// for volume backup initializing job, set deadline of the job in case it blocks GC and pd schedule indefinitely
-	// 	job.Spec.ActiveDeadlineSeconds = pointer.Int64(int64(backup.Spec.VolumeBackupInitJobMaxActiveSeconds))
-	// 	klog.Infof("init job [%s] deadline is %d", job.Name, *job.Spec.ActiveDeadlineSeconds)
-	// }
-
 	return job, "", nil
 }
-
-/* TODO(ideascf): remove me, volume snapshot backup is deprecated in v2
-
-func (bm *backupManager) setBackupPodResourceRequirementsEmpty(podSpec *corev1.PodTemplateSpec) {
-	for _, c := range podSpec.Spec.InitContainers {
-		c.Resources.Requests = make(corev1.ResourceList, 0)
-		c.Resources.Limits = make(corev1.ResourceList, 0)
-	}
-	for _, c := range podSpec.Spec.Containers {
-		c.Resources.Requests = make(corev1.ResourceList, 0)
-		c.Resources.Limits = make(corev1.ResourceList, 0)
-	}
-}
-
-// save cluster meta to external storage since k8s size limitation on annotation/configMap
-func (bm *backupManager) saveClusterMetaToExternalStorage(b *v1alpha1.Backup, csb *snapshotter.CloudSnapBackup) (string, error) {
-
-	data, err := json.Marshal(csb)
-	if err != nil {
-		return "ParseCloudSnapshotBackupFailed", err
-	}
-	// since the cluster meta is small (~5M), assume 1 minutes is enough
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Minute*1))
-	defer cancel()
-
-	// write a file into external storage
-	klog.Infof("save the cluster meta to external storage")
-	cred := backuputil.GetStorageCredential(b.Namespace, b.Spec.StorageProvider, bm.deps.SecretLister)
-	externalStorage, err := backuputil.NewStorageBackend(b.Spec.StorageProvider, cred)
-	if err != nil {
-		return "NewStorageBackendFailed", err
-	}
-
-	// if file existed, it looks backup write into a storage has backup already
-	exist, err := externalStorage.Exists(ctx, constants.ClusterBackupMeta)
-	if err != nil {
-		return "FileExistedInExternalStorageFailed", err
-	}
-	if exist {
-		return "FileExistedInExternalStorage", fmt.Errorf("%s exist", constants.ClusterBackupMeta)
-	}
-
-	err = externalStorage.WriteAll(ctx, constants.ClusterBackupMeta, data, nil)
-	if err != nil {
-		return "SaveFileToExternalStorageFailed", err
-	}
-	return "", nil
-}
-
-func (bm *backupManager) volumeSnapshotBackup(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) (string, error) {
-	if err := bm.backupManifests(b, tc); err != nil {
-		return "BackupManifestsFailed", err
-	}
-
-	s, reason, err := snapshotter.NewSnapshotterForBackup(b.Spec.Mode, bm.deps)
-	if err != nil {
-		return reason, err
-	}
-
-	csb, reason, err := s.GenerateBackupMetadata(b, tc)
-	if err != nil {
-		return reason, err
-	}
-
-	if reason, err = bm.saveClusterMetaToExternalStorage(b, csb); err != nil {
-		return reason, err
-	}
-	return "", nil
-}
-
-func (bm *backupManager) backupManifests(b *v1alpha1.Backup, tc *v1alpha1.TidbCluster) error {
-	cred := backuputil.GetStorageCredential(b.Namespace, b.Spec.StorageProvider, bm.deps.SecretLister)
-	externalStorage, err := backuputil.NewStorageBackend(b.Spec.StorageProvider, cred)
-	if err != nil {
-		return err
-	}
-
-	manifests := make([]runtime.Object, 0, 4)
-	manifests = append(manifests, tc)
-	for _, fetcher := range bm.manifestFetchers {
-		objects, err := fetcher.ListByTC(tc)
-		if err != nil {
-			return err
-		}
-		manifests = append(manifests, objects...)
-	}
-
-	for _, manifest := range manifests {
-		if err := bm.saveManifest(b, manifest.DeepCopyObject(), externalStorage); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (bm *backupManager) saveManifest(b *v1alpha1.Backup, manifest runtime.Object, externalStorage *backuputil.StorageBackend) error {
-	if manifest.GetObjectKind().GroupVersionKind().Empty() {
-		gvk, err := controller.InferObjectKind(manifest)
-		if err != nil {
-			return err
-		}
-		manifest.GetObjectKind().SetGroupVersionKind(gvk)
-	}
-	kind := manifest.GetObjectKind().GroupVersionKind().Kind
-	metadataAccessor, err := meta.Accessor(manifest)
-	if err != nil {
-		return err
-	}
-	namespace := metadataAccessor.GetNamespace()
-	name := metadataAccessor.GetName()
-	// remove managedFields because it is used for k8s internal housekeeping, and we don't need them in backup
-	metadataAccessor.SetManagedFields(nil)
-	klog.Infof("%s/%s get manifest meta, kind: %s, namespace: %s, name: %s", b.Namespace, b.Name, kind, namespace, name)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-
-	filePath := path.Join(constants.ClusterManifests, namespace, kind, fmt.Sprintf("%s.yaml", name))
-	existed, err := externalStorage.Exists(ctx, filePath)
-	if err != nil {
-		return err
-	}
-	if existed {
-		return nil
-	}
-
-	buf := bytes.NewBuffer(make([]byte, 0, 1024))
-	printer := printers.YAMLPrinter{}
-	if err := printer.PrintObj(manifest, buf); err != nil {
-		return err
-	}
-	if err := externalStorage.WriteAll(ctx, filePath, buf.Bytes(), nil); err != nil {
-		return err
-	}
-	klog.Infof("%s/%s upload manifest %s successfully", b.Namespace, b.Name, filePath)
-	return nil
-}
-*/
-
-/* TODO(ideascf): remove me, export is deprecated in v2
-func (bm *backupManager) ensureBackupPVCExist(backup *v1alpha1.Backup) (string, error) {
-	ns := backup.GetNamespace()
-	name := backup.GetName()
-
-	storageSize := constants.DefaultStorageSize
-	if backup.Spec.StorageSize != "" {
-		storageSize = backup.Spec.StorageSize
-	}
-	rs, err := resource.ParseQuantity(storageSize)
-	if err != nil {
-		errMsg := fmt.Errorf("backup %s/%s parse storage size %s failed, err: %v", ns, name, constants.DefaultStorageSize, err)
-		return "ParseStorageSizeFailed", errMsg
-	}
-	backupPVCName := backup.GetBackupPVCName()
-	pvc, err := bm.deps.PVCLister.PersistentVolumeClaims(ns).Get(backupPVCName)
-
-	if err == nil {
-		if pvcRs := pvc.Spec.Resources.Requests[corev1.ResourceStorage]; pvcRs.Cmp(rs) == -1 {
-			return "PVCStorageSizeTooSmall", fmt.Errorf("%s/%s's backup pvc %s's storage size %s is less than expected storage size %s, please delete old pvc to continue", ns, name, pvc.GetName(), pvcRs.String(), rs.String())
-		}
-		return "", nil
-	}
-
-	if !errors.IsNotFound(err) {
-		return "GetPVCFailed", fmt.Errorf("backup %s/%s get pvc %s failed, err: %v", ns, name, backupPVCName, err)
-	}
-
-	// not found PVC, so we need to create PVC for backup job
-	pvc = &corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      backupPVCName,
-			Namespace: ns,
-			Labels:    label.NewBackup().Instance(backup.GetInstanceName()),
-		},
-		Spec: corev1.PersistentVolumeClaimSpec{
-			AccessModes: []corev1.PersistentVolumeAccessMode{
-				corev1.ReadWriteOnce,
-			},
-			Resources: corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: rs,
-				},
-			},
-			StorageClassName: backup.Spec.StorageClassName,
-		},
-	}
-
-	if err := bm.deps.GeneralPVCControl.CreatePVC(backup, pvc); err != nil {
-		errMsg := fmt.Errorf("backup %s/%s create backup pvc %s failed, err: %v", ns, name, pvc.GetName(), err)
-		return "CreatePVCFailed", errMsg
-	}
-	return "", nil
-}
-*/
 
 // skipSnapshotBackupSync skip snapshot backup, returns true if can be skipped.
 func (bm *backupManager) skipSnapshotBackupSync(backup *v1alpha1.Backup) (bool, error) {
@@ -1238,118 +641,6 @@ func (bm *backupManager) skipLogBackupSync(backup *v1alpha1.Backup) (bool, error
 	return false, nil
 }
 
-/* TODO(ideascf): remove me, volume snapshot backup is deprecated in v2
-// skipVolumeSnapshotBackupSync skip volume snapshot backup, returns true if can be skipped.
-func (bm *backupManager) skipVolumeSnapshotBackupSync(backup *v1alpha1.Backup) (bool, error) {
-	if backup.Spec.Mode != v1alpha1.BackupModeVolumeSnapshot {
-		return false, nil
-	}
-
-	ns := backup.GetNamespace()
-	name := backup.GetName()
-	var backupJobName string
-	switch backup.Spec.FederalVolumeBackupPhase {
-	case v1alpha1.FederalVolumeBackupInitialize, v1alpha1.FederalVolumeBackupTeardown:
-		backupJobName = backup.GetVolumeBackupInitializeJobName()
-	default:
-		backupJobName = backup.GetBackupJobName()
-	}
-
-	_, err := bm.deps.JobLister.Jobs(ns).Get(backupJobName)
-	if err == nil {
-		// for teardown phase, we should delete the backup job, so we can't skip when job exists
-		return backup.Spec.FederalVolumeBackupPhase != v1alpha1.FederalVolumeBackupTeardown, nil
-	}
-	if !errors.IsNotFound(err) {
-		return false, fmt.Errorf("backup %s/%s get job %s failed, err: %v", ns, name, backupJobName, err)
-	}
-	return false, nil
-}
-// teardownVolumeBackup delete the initializing job and set backup to complete status
-func (bm *backupManager) teardownVolumeBackup(backup *v1alpha1.Backup) (err error) {
-	ns := backup.GetNamespace()
-	name := backup.GetName()
-	backupInitializeJobName := backup.GetVolumeBackupInitializeJobName()
-	jobCompleteOrFailed := false
-
-	defer func() {
-		if err != nil {
-			return
-		}
-
-		// if backup is failed or complete, just delete job, not modify status
-		if v1alpha1.IsBackupFailed(backup) || v1alpha1.IsBackupComplete(backup) {
-			return
-		}
-		backupCondition := v1alpha1.BackupComplete
-		// if volume backup failed in previous phase, we should set backup failed
-		if v1alpha1.IsVolumeBackupInitializeFailed(backup) || v1alpha1.IsVolumeBackupFailed(backup) {
-			backupCondition = v1alpha1.BackupFailed
-		}
-		// if job exists but isn't running, we can't ensure GC and PD schedules are stopped during volume backup
-		// the volume snapshots are invalid, we should set backup failed
-		if jobCompleteOrFailed {
-			backupCondition = v1alpha1.BackupFailed
-		}
-		err = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:   backupCondition,
-			Status: corev1.ConditionTrue,
-		}, nil)
-	}()
-
-	if v1alpha1.IsVolumeBackupInitializeComplete(backup) {
-		return nil
-	}
-	backupInitializeJob, err := bm.deps.JobLister.Jobs(ns).Get(backupInitializeJobName)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil
-		}
-		return fmt.Errorf("backup %s/%s get initializing job %s failed, err: %v",
-			ns, name, backupInitializeJobName, err)
-	}
-
-	for _, condition := range backupInitializeJob.Status.Conditions {
-		if condition.Type == batchv1.JobFailed || condition.Type == batchv1.JobComplete {
-			jobCompleteOrFailed = true
-			break
-		}
-	}
-	if jobCompleteOrFailed {
-		return nil
-	}
-
-	// delete the initializing job to resume GC and PD schedules
-	if err := bm.deps.JobControl.DeleteJob(backup, backupInitializeJob); err != nil {
-		return fmt.Errorf("backup %s/%s delete initializing job %s failed, err: %v",
-			ns, name, backupInitializeJobName, err)
-	}
-	return nil
-}
-
-func (bm *backupManager) deleteVolumeBackupInitializeJob(backup *v1alpha1.Backup) error {
-	ns := backup.GetNamespace()
-	name := backup.GetName()
-	backupInitializeJobName := backup.GetVolumeBackupInitializeJobName()
-
-	backupInitializeJob, err := bm.deps.JobLister.Jobs(ns).Get(backupInitializeJobName)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			klog.Infof("backup %s/%s doesn't find initializing job %s, ignore it", ns, name, backupInitializeJobName)
-			return nil
-		}
-		return fmt.Errorf("backup %s/%s get initializing job %s failed, err: %v",
-			ns, name, backupInitializeJobName, err)
-	}
-
-	if err := bm.deps.JobControl.DeleteJob(backup, backupInitializeJob); err != nil {
-		return fmt.Errorf("backup %s/%s delete initializing job %s failed, err: %v",
-			ns, name, backupInitializeJobName, err)
-	}
-	return nil
-}
-*/
-
 // shouldLogBackupCommandRequeue returns whether log backup subcommand should requeue.
 // truncate and stop should wait start complete, otherwise, we should requeue this key.
 func shouldLogBackupCommandRequeue(backup *v1alpha1.Backup) bool {
@@ -1378,12 +669,6 @@ func waitOldBackupJobDone(ns, name, backupJobName string, bm *backupManager, bac
 		}
 	}
 	if finished {
-		// when teardown volume snapshot backup, just wait execution job done, don't need to delete the execution job
-		if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot &&
-			backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupTeardown {
-			return nil
-		}
-
 		klog.Infof("backup %s/%s job %s has complete or failed, will delete job", ns, name, backupJobName)
 		if err := bm.cli.Delete(context.TODO(), oldJob); err != nil {
 			return fmt.Errorf("backup %s/%s delete job %s failed, err: %w", ns, name, backupJobName, err)
