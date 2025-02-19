@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 
 	// registry mysql drive
 	_ "github.com/go-sql-driver/mysql"
@@ -32,9 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/restore"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
-	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	restoreMgr "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/restore"
-	brutil "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 )
 
@@ -62,6 +59,7 @@ func NewRestoreCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&ro.Prepare, "prepare", false, "Whether to prepare for restore")
 	cmd.Flags().StringVar(&ro.TargetAZ, "target-az", "", "For volume-snapshot restore, which az the volume snapshots restore to")
 	cmd.Flags().BoolVar(&ro.UseFSR, "use-fsr", false, "EBS snapshot restore use FSR for TiKV data volumes or not")
+	cmd.Flags().StringVar(&ro.PDAddress, "pd-addr", "", "PD Address, for example: db-pd.tidb1234:2379")
 	return cmd
 }
 
@@ -84,33 +82,9 @@ func runRestore(restoreOpts restore.Options, kubecfg string) error {
 		return err
 	}
 
-	// set PD Address
-	pdAddress, err := getPDAddressForRestore(newcli, restoreOpts)
-	if err != nil {
-		return err
-	}
-	restoreOpts.PDAddress = pdAddress
-
 	recorder := record.NewBroadcaster().NewRecorder(scheme.Scheme, corev1.EventSource{Component: "restore"})
 	statusUpdater := restoreMgr.NewRealRestoreConditionUpdater(newcli, recorder)
 	klog.Infof("start to process restore %s", restoreOpts.String())
 	rm := restore.NewManager(newcli, statusUpdater, restoreOpts)
 	return rm.ProcessRestore()
-}
-
-func getPDAddressForRestore(cli client.Client, ro restore.Options) (string, error) {
-	r := &v1alpha1.Restore{}
-	err := cli.Get(context.Background(), client.ObjectKey{Namespace: ro.Namespace, Name: ro.ResourceName}, r)
-	if err != nil {
-		return "", err
-	}
-	return getPDAddress(cli, r.Spec.BR.ClusterNamespace, r.Spec.BR.Cluster)
-}
-
-func getPDAddress(cli client.Client, clusterNs, clusterName string) (string, error) {
-	pdg, err := brutil.FirstPDGroup(cli, clusterNs, clusterName)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%s-pd.%s:%d", pdg.Spec.Cluster.Name, pdg.Namespace, coreutil.PDGroupClientPort(pdg)), nil
 }

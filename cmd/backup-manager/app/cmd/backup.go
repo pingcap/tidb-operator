@@ -66,6 +66,7 @@ func NewBackupCommand() *cobra.Command {
 	cmd.Flags().StringVar(&bo.CommitTS, "commit-ts", "0", "the log backup start ts")
 	cmd.Flags().StringVar(&bo.TruncateUntil, "truncate-until", "0", "the log backup truncate until")
 	cmd.Flags().BoolVar(&bo.Initialize, "initialize", false, "Whether execute initialize process for volume backup")
+	cmd.Flags().StringVar(&bo.PDAddress, "pd-addr", "", "PD Address, for example: db-pd.tidb1234:2379")
 	return cmd
 }
 
@@ -87,13 +88,6 @@ func runBackup(backupOpts backup.Options, kubecfg string) error {
 	if err != nil {
 		return err
 	}
-
-	// set PD Address
-	pdAddress, err := getPDAddressForBackup(newcli, backupOpts)
-	if err != nil {
-		return err
-	}
-	backupOpts.PDAddress = pdAddress
 
 	recorder := record.NewBroadcaster().NewRecorder(scheme.Scheme, corev1.EventSource{Component: "backup"})
 	statusUpdater := backupMgr.NewRealBackupConditionUpdater(newcli, recorder)
@@ -149,13 +143,4 @@ func newClient(ctx context.Context, cfg *rest.Config, s *runtime.Scheme, disable
 	}
 
 	return c, nil
-}
-
-func getPDAddressForBackup(cli client.Client, bo backup.Options) (string, error) {
-	b := &v1alpha1.Backup{}
-	err := cli.Get(context.Background(), client.ObjectKey{Namespace: bo.Namespace, Name: bo.ResourceName}, b)
-	if err != nil {
-		return "", err
-	}
-	return getPDAddress(cli, b.Spec.BR.ClusterNamespace, b.Spec.BR.Cluster)
 }
