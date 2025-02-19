@@ -31,109 +31,8 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	appconstant "github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 )
-
-/* TODO(ideascf): remove it in v2
-func TestConstructDumplingOptionsForBackup(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	type testcase struct {
-		name              string
-		hasBackupFilter   bool
-		hasDumplingFilter bool
-		hasOptions        bool
-	}
-
-	tests := []*testcase{
-		{
-			name:              "backup filter is empty and dumpling config is empty",
-			hasOptions:        false,
-			hasBackupFilter:   false,
-			hasDumplingFilter: false,
-		},
-		{
-			name:              "backup filter is empty and customize dumpling options but not set table regex",
-			hasOptions:        true,
-			hasBackupFilter:   false,
-			hasDumplingFilter: false,
-		},
-		{
-			name:              "backup filter is empty and customize dumpling table regex but not customize options",
-			hasOptions:        false,
-			hasBackupFilter:   false,
-			hasDumplingFilter: true,
-		},
-		{
-			name:              "backup filter is empty and customize dumpling table regex and customize options",
-			hasOptions:        true,
-			hasBackupFilter:   false,
-			hasDumplingFilter: true,
-		},
-		{
-			name:              "customize backup filter and dumpling config is empty",
-			hasOptions:        false,
-			hasBackupFilter:   true,
-			hasDumplingFilter: false,
-		},
-		{
-			name:              "customize backup filter and customize dumpling options but not set table regex",
-			hasOptions:        true,
-			hasBackupFilter:   true,
-			hasDumplingFilter: false,
-		},
-		{
-			name:              "customize backup filter and customize dumpling table regex but not customize options",
-			hasOptions:        false,
-			hasBackupFilter:   true,
-			hasDumplingFilter: true,
-		},
-		{
-			name:              "customize backup filter and customize dumpling table regex and customize options",
-			hasOptions:        true,
-			hasBackupFilter:   true,
-			hasDumplingFilter: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			backup := newBackup()
-
-			customBackupFilter := []string{"mysql.*"}
-			customDumplingFilter := []string{"mysql2.*"}
-			customOptions := []string{"--consistency=snapshot"}
-
-			var expectArgs []string
-
-			if tt.hasBackupFilter || tt.hasDumplingFilter || tt.hasOptions {
-				backup.Spec.Dumpling = &v1alpha1.DumplingConfig{}
-			}
-
-			if tt.hasBackupFilter {
-				backup.Spec.TableFilter = customBackupFilter
-				expectArgs = append(expectArgs, "--filter", customBackupFilter[0])
-			} else if tt.hasDumplingFilter {
-				backup.Spec.Dumpling.TableFilter = customDumplingFilter
-				expectArgs = append(expectArgs, "--filter", customDumplingFilter[0])
-			} else {
-				expectArgs = append(expectArgs, defaultTableFilterOptions...)
-			}
-
-			if tt.hasOptions {
-				backup.Spec.Dumpling.Options = customOptions
-				expectArgs = append(expectArgs, customOptions...)
-			} else {
-				expectArgs = append(expectArgs, defaultOptions...)
-			}
-
-			generateArgs := ConstructDumplingOptionsForBackup(backup)
-			g.Expect(apiequality.Semantic.DeepEqual(generateArgs, expectArgs)).To(Equal(true))
-		})
-	}
-}
-*/
 
 func TestConstructBRGlobalOptionsForBackup(t *testing.T) {
 	g := NewGomegaWithT(t)
@@ -644,12 +543,6 @@ func newBackup() *v1alpha1.Backup {
 			UID:       types.UID("test-bk"),
 		},
 		Spec: v1alpha1.BackupSpec{
-			From: &v1alpha1.TiDBAccessConfig{
-				Host:       "10.1.1.2",
-				Port:       corev1alpha1.DefaultTiDBPortClient,
-				User:       v1alpha1.DefaultTidbUser,
-				SecretName: "demo1-tidb-secret",
-			},
 			StorageProvider: v1alpha1.StorageProvider{
 				S3: &v1alpha1.S3StorageProvider{
 					Provider:   v1alpha1.S3StorageProviderTypeCeph,
@@ -676,12 +569,6 @@ func newRestore() *v1alpha1.Restore {
 			UID:       types.UID("test-re"),
 		},
 		Spec: v1alpha1.RestoreSpec{
-			To: &v1alpha1.TiDBAccessConfig{
-				Host:       "10.1.1.2",
-				Port:       corev1alpha1.DefaultTiDBPortClient,
-				User:       v1alpha1.DefaultTidbUser,
-				SecretName: "demo1-tidb-secret",
-			},
 			StorageProvider: v1alpha1.StorageProvider{
 				S3: &v1alpha1.S3StorageProvider{
 					Provider:   v1alpha1.S3StorageProviderTypeCeph,
