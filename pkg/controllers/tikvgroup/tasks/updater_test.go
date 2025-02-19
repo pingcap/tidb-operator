@@ -285,7 +285,7 @@ func fakeAvailableTiKV(name string, kvg *v1alpha1.TiKVGroup, rev string) *v1alph
 		tikv := runtime.ToTiKV(TiKVNewer(kvg, rev).New())
 		tikv.Name = ""
 		tikv.Status.Conditions = append(tikv.Status.Conditions, metav1.Condition{
-			Type:   v1alpha1.TiKVCondHealth,
+			Type:   v1alpha1.CondReady,
 			Status: metav1.ConditionTrue,
 		})
 		tikv.Status.CurrentRevision = rev

@@ -34,16 +34,7 @@ const (
 )
 
 const (
-	TiKVCondHealth   = CondHealth
-	TiKVHealthReason = "TiKVHealth"
-
 	TiKVCondLeadersEvicted = "LeadersEvicted"
-
-	TiKVCondSuspended = CondSuspended
-	TiKVSuspendReason = "TiKVSuspend"
-
-	TiKVGroupCondSuspended = CondSuspended
-	TiKVGroupSuspendReason = "TiKVGroupSuspend"
 )
 
 const (

@@ -91,7 +91,7 @@ func syncHealthCond(tiflash *v1alpha1.TiFlash, healthy bool) bool {
 	}
 
 	return meta.SetStatusCondition(&tiflash.Status.Conditions, metav1.Condition{
-		Type:               v1alpha1.CondHealth,
+		Type:               v1alpha1.CondReady,
 		Status:             status,
 		ObservedGeneration: tiflash.Generation,
 		Reason:             reason,

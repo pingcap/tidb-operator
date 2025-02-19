@@ -15,6 +15,10 @@
 package coreutil
 
 import (
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
@@ -26,4 +30,47 @@ func Cluster[
 	T runtime.Object,
 ](f F) string {
 	return scope.From[S](f).Cluster()
+}
+
+func IsSynced[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F) bool {
+	t := scope.From[S](f)
+	return meta.IsStatusConditionTrue(t.Conditions(), v1alpha1.CondSynced)
+}
+
+func SetStatusObservedGeneration[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F) bool {
+	t := scope.From[S](f)
+	gen := t.ObservedGeneration()
+	if setIfChanged(&gen, t.GetGeneration()) {
+		t.SetObservedGeneration(gen)
+		return true
+	}
+
+	return false
+}
+
+func SetStatusCondition[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F, conds ...metav1.Condition) bool {
+	obj := scope.From[S](f)
+	cur := obj.Conditions()
+	needUpdate := false
+	for _, cond := range conds {
+		cond.ObservedGeneration = obj.GetGeneration()
+		needUpdate = meta.SetStatusCondition(&cur, cond) || needUpdate
+	}
+	if needUpdate {
+		obj.SetConditions(cur)
+		return true
+	}
+	return false
 }

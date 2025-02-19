@@ -285,7 +285,7 @@ func fakeAvailableTiDB(name string, dbg *v1alpha1.TiDBGroup, rev string) *v1alph
 		tidb := runtime.ToTiDB(TiDBNewer(dbg, rev).New())
 		tidb.Name = ""
 		tidb.Status.Conditions = append(tidb.Status.Conditions, metav1.Condition{
-			Type:   v1alpha1.TiDBCondHealth,
+			Type:   v1alpha1.CondReady,
 			Status: metav1.ConditionTrue,
 		})
 		tidb.Status.CurrentRevision = rev

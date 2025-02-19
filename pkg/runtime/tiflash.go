@@ -134,8 +134,8 @@ func (f *TiFlash) SetCurrentRevision(rev string) {
 	f.Status.CurrentRevision = rev
 }
 
-func (f *TiFlash) IsHealthy() bool {
-	return meta.IsStatusConditionTrue(f.Status.Conditions, v1alpha1.TiFlashCondHealth)
+func (f *TiFlash) IsReady() bool {
+	return meta.IsStatusConditionTrue(f.Status.Conditions, v1alpha1.CondReady)
 }
 
 func (f *TiFlash) IsUpToDate() bool {

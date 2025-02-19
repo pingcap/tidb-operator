@@ -97,7 +97,7 @@ func (act *actor[T, O, R]) ScaleInUpdate(ctx context.Context) (bool, error) {
 	}
 	obj := act.update.Del(name)
 
-	isUnavailable := !obj.IsHealthy() || !obj.IsUpToDate()
+	isUnavailable := !obj.IsReady() || !obj.IsUpToDate()
 
 	if err := act.c.Delete(ctx, act.converter.To(obj)); err != nil {
 		return false, err
@@ -116,7 +116,7 @@ func (act *actor[T, O, R]) ScaleInOutdated(ctx context.Context) (bool, error) {
 		return false, err
 	}
 	obj := act.outdated.Del(name)
-	isUnavailable := !obj.IsHealthy() || !obj.IsUpToDate()
+	isUnavailable := !obj.IsReady() || !obj.IsUpToDate()
 
 	if err := act.deferDelete(ctx, obj); err != nil {
 		return false, err

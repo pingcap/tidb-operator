@@ -134,8 +134,8 @@ func (cdc *TiCDC) SetCurrentRevision(rev string) {
 	cdc.Status.CurrentRevision = rev
 }
 
-func (cdc *TiCDC) IsHealthy() bool {
-	return meta.IsStatusConditionTrue(cdc.Status.Conditions, v1alpha1.TiCDCCondHealth)
+func (cdc *TiCDC) IsReady() bool {
+	return meta.IsStatusConditionTrue(cdc.Status.Conditions, v1alpha1.CondReady)
 }
 
 func (cdc *TiCDC) IsUpToDate() bool {

@@ -97,7 +97,7 @@ func syncHealthCond(tikv *v1alpha1.TiKV, healthy bool) bool {
 	}
 
 	return meta.SetStatusCondition(&tikv.Status.Conditions, metav1.Condition{
-		Type:               v1alpha1.CondHealth,
+		Type:               v1alpha1.CondReady,
 		Status:             status,
 		ObservedGeneration: tikv.Generation,
 		Reason:             reason,

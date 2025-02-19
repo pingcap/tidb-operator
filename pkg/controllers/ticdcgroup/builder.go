@@ -43,14 +43,22 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		),
 		common.TaskGroupFinalizerAdd[runtime.TiCDCGroupTuple](state, r.Client),
 
+		common.TaskRevision[runtime.TiCDCGroupTuple](state, r.Client),
+
 		task.IfBreak(
 			common.CondClusterIsSuspending(state),
-			common.TaskGroupStatusSuspend[runtime.TiCDCGroupTuple](state, r.Client),
+			common.TaskGroupConditionSuspended[scope.TiCDCGroup](state),
+			common.TaskGroupConditionReady[scope.TiCDCGroup](state),
+			common.TaskGroupConditionSynced[scope.TiCDCGroup](state),
+			common.TaskStatusPersister[scope.TiCDCGroup](state, r.Client),
 		),
-		common.TaskRevision[runtime.TiCDCGroupTuple](state, r.Client),
 		tasks.TaskService(state, r.Client),
 		tasks.TaskUpdater(state, r.Client),
-		common.TaskGroupStatus[runtime.TiCDCGroupTuple](state, r.Client),
+		common.TaskGroupConditionSuspended[scope.TiCDCGroup](state),
+		common.TaskGroupConditionReady[scope.TiCDCGroup](state),
+		common.TaskGroupConditionSynced[scope.TiCDCGroup](state),
+		common.TaskStatusRevisionAndReplicas[scope.TiCDCGroup](state),
+		common.TaskStatusPersister[scope.TiCDCGroup](state, r.Client),
 	)
 
 	return runner

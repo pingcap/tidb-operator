@@ -177,7 +177,7 @@ func (*TaskStatus) syncConditions(rtx *ReconcileContext) bool {
 		Reason:             v1alpha1.ClusterAvailableReason,
 		Message:            "Cluster is not available",
 	}
-	suspended := rtx.PDGroup != nil && meta.IsStatusConditionTrue(rtx.PDGroup.Status.Conditions, v1alpha1.PDGroupCondSuspended)
+	suspended := rtx.PDGroup != nil && meta.IsStatusConditionTrue(rtx.PDGroup.Status.Conditions, v1alpha1.CondSuspended)
 	for _, tidbg := range rtx.TiDBGroups {
 		if meta.IsStatusConditionTrue(tidbg.Status.Conditions, v1alpha1.TiDBGroupCondAvailable) {
 			// if any tidb group is available, the cluster is available
@@ -185,7 +185,7 @@ func (*TaskStatus) syncConditions(rtx *ReconcileContext) bool {
 			availCond.Message = "Cluster is available"
 			break
 		}
-		if !meta.IsStatusConditionTrue(tidbg.Status.Conditions, v1alpha1.TiDBGroupCondSuspended) {
+		if !meta.IsStatusConditionTrue(tidbg.Status.Conditions, v1alpha1.CondSuspended) {
 			// if any group is not suspended, the cluster is not suspended
 			suspended = false
 		}
@@ -194,19 +194,19 @@ func (*TaskStatus) syncConditions(rtx *ReconcileContext) bool {
 
 	if suspended {
 		for _, tikvGroup := range rtx.TiKVGroups {
-			if !meta.IsStatusConditionTrue(tikvGroup.Status.Conditions, v1alpha1.TiKVGroupCondSuspended) {
+			if !meta.IsStatusConditionTrue(tikvGroup.Status.Conditions, v1alpha1.CondSuspended) {
 				suspended = false
 				break
 			}
 		}
 		for _, tiflashGroup := range rtx.TiFlashGroups {
-			if !meta.IsStatusConditionTrue(tiflashGroup.Status.Conditions, v1alpha1.TiFlashGroupCondSuspended) {
+			if !meta.IsStatusConditionTrue(tiflashGroup.Status.Conditions, v1alpha1.CondSuspended) {
 				suspended = false
 				break
 			}
 		}
 		for _, ticdcGroup := range rtx.TiCDCGroups {
-			if !meta.IsStatusConditionTrue(ticdcGroup.Status.Conditions, v1alpha1.TiCDCGroupCondSuspended) {
+			if !meta.IsStatusConditionTrue(ticdcGroup.Status.Conditions, v1alpha1.CondSuspended) {
 				suspended = false
 				break
 			}
