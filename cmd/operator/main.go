@@ -164,10 +164,11 @@ func setup(ctx context.Context, mgr ctrl.Manager) error {
 	vm := volumes.NewModifierFactory(mgr.GetLogger().WithName("VolumeModifier"), c)
 
 	setupLog.Info("setup controllers")
-	if err := setupControllers(mgr, c, pdcm, vm); err != nil {
-		setupLog.Error(err, "unable to setup controllers")
-		os.Exit(1)
-	}
+	// if err := setupControllers(mgr, c, pdcm, vm); err != nil {
+	// 	setupLog.Error(err, "unable to setup controllers")
+	// 	os.Exit(1)
+	// }
+	_ = vm
 	if err := setupBRControllers(mgr, c, pdcm); err != nil {
 		setupLog.Error(err, "unable to setup BR controllers")
 		os.Exit(1)

@@ -315,9 +315,6 @@ type BackupSpec struct {
 	// - BR_LOG_TO_TERM
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
-	// TODO(ideascf): remove it in v2
-	// From is the tidb cluster that needs to backup.
-	From *TiDBAccessConfig `json:"from,omitempty"`
 	// Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.
 	Type BackupType `json:"backupType,omitempty"`
 	// Mode is the backup mode, such as snapshot backup or log backup.

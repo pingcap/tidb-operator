@@ -3227,33 +3227,6 @@ spec:
                     description: FederalVolumeBackupPhase indicates which phase to
                       execute in federal volume backup
                     type: string
-                  from:
-                    description: From is the tidb cluster that needs to backup.
-                    properties:
-                      host:
-                        description: Host is the tidb cluster access address
-                        type: string
-                      port:
-                        description: Port is the port number to use for connecting
-                          tidb cluster
-                        format: int32
-                        type: integer
-                      secretName:
-                        description: SecretName is the name of secret which stores
-                          tidb cluster's password.
-                        type: string
-                      tlsClientSecretName:
-                        description: |-
-                          TLSClientSecretName is the name of secret which stores tidb server client certificate
-                          Optional: Defaults to nil
-                        type: string
-                      user:
-                        description: User is the user for login tidb cluster
-                        type: string
-                    required:
-                    - host
-                    - secretName
-                    type: object
                   gcs:
                     description: GcsStorageProvider represents the google cloud storage
                       for storing backups.
@@ -16034,33 +16007,6 @@ spec:
                     description: FederalVolumeBackupPhase indicates which phase to
                       execute in federal volume backup
                     type: string
-                  from:
-                    description: From is the tidb cluster that needs to backup.
-                    properties:
-                      host:
-                        description: Host is the tidb cluster access address
-                        type: string
-                      port:
-                        description: Port is the port number to use for connecting
-                          tidb cluster
-                        format: int32
-                        type: integer
-                      secretName:
-                        description: SecretName is the name of secret which stores
-                          tidb cluster's password.
-                        type: string
-                      tlsClientSecretName:
-                        description: |-
-                          TLSClientSecretName is the name of secret which stores tidb server client certificate
-                          Optional: Defaults to nil
-                        type: string
-                      user:
-                        description: User is the user for login tidb cluster
-                        type: string
-                    required:
-                    - host
-                    - secretName
-                    type: object
                   gcs:
                     description: GcsStorageProvider represents the google cloud storage
                       for storing backups.

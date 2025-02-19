@@ -259,7 +259,6 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 	}
 
 	err = backuputil.ValidateBackup(backup, tikvGroup.Spec.Template.Spec.Version, cluster)
-	// }
 	if err != nil {
 		_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: logBackupSubcommand,

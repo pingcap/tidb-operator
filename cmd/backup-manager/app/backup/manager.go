@@ -122,11 +122,8 @@ func (bm *Manager) ProcessBackup() error {
 		return bm.performLogBackup(ctx, backup.DeepCopy())
 	}
 
-	if backup.Spec.From == nil {
-		// skip the DB initialization if spec.from is not specified
-		return bm.performBackup(ctx, backup.DeepCopy(), nil)
-	}
-	return fmt.Errorf("spec.From must be nil")
+	// skip the DB initialization if spec.from is not specified
+	return bm.performBackup(ctx, backup.DeepCopy(), nil)
 }
 
 // nolint: gocyclo

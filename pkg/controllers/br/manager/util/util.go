@@ -477,15 +477,10 @@ func ValidateBackup(backup *brv1alpha1.Backup, tikvVersion string, cluster *core
 	name := backup.Name
 
 	if backup.Spec.BR == nil {
-		if reason := validateAccessConfig(backup.Spec.From); reason != "" {
-			return fmt.Errorf(reason, ns, name)
-		}
-		if backup.Spec.StorageSize == "" {
-			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
-		}
+		return fmt.Errorf(".spec.br is required in spec of %s/%s", ns, name)
 	} else {
 		if !canSkipSetGCLifeTime(tikvVersion) {
-			if reason := validateAccessConfig(backup.Spec.From); reason != "" {
+			if reason := validateAccessConfig(nil); reason != "" {
 				return fmt.Errorf(reason, ns, name)
 			}
 		}
