@@ -138,9 +138,6 @@ type RestoreSpec struct {
 	// - BR_LOG_TO_TERM
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
-	// TODO(ideascf): remove it in v2
-	// To is the tidb cluster that needs to restore.
-	To *TiDBAccessConfig `json:"to,omitempty"`
 	// Type is the backup type for tidb cluster and only used when Mode = snapshot, such as full, db, table.
 	Type BackupType `json:"backupType,omitempty"`
 	// Mode is the restore mode. such as snapshot or pitr.

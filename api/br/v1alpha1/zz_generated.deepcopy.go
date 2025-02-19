@@ -903,11 +903,6 @@ func (in *RestoreSpec) DeepCopyInto(out *RestoreSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.To != nil {
-		in, out := &in.To, &out.To
-		*out = new(TiDBAccessConfig)
-		(*in).DeepCopyInto(*out)
-	}
 	if in.TikvGCLifeTime != nil {
 		in, out := &in.TikvGCLifeTime, &out.TikvGCLifeTime
 		*out = new(string)

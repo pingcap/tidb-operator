@@ -83,11 +83,7 @@ func (rm *Manager) ProcessRestore() error {
 		klog.Infof("start to process restore: %s", string(crData))
 	}
 
-	if restore.Spec.To == nil {
-		return rm.performRestore(ctx, restore.DeepCopy())
-	}
-
-	return fmt.Errorf("set .spec.to field is not supported in v2")
+	return rm.performRestore(ctx, restore.DeepCopy())
 }
 
 func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore) error {

@@ -7317,33 +7317,6 @@ spec:
                   The time limit during which data is retained for each GC, in the format of Go Duration.
                   When a GC happens, the current time minus this value is the safe point.
                 type: string
-              to:
-                description: To is the tidb cluster that needs to restore.
-                properties:
-                  host:
-                    description: Host is the tidb cluster access address
-                    type: string
-                  port:
-                    description: Port is the port number to use for connecting tidb
-                      cluster
-                    format: int32
-                    type: integer
-                  secretName:
-                    description: SecretName is the name of secret which stores tidb
-                      cluster's password.
-                    type: string
-                  tlsClientSecretName:
-                    description: |-
-                      TLSClientSecretName is the name of secret which stores tidb server client certificate
-                      Optional: Defaults to nil
-                    type: string
-                  user:
-                    description: User is the user for login tidb cluster
-                    type: string
-                required:
-                - host
-                - secretName
-                type: object
               tolerateSingleTiKVOutage:
                 default: false
                 description: TolerateSingleTiKVOutage indicates whether to tolerate

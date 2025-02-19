@@ -560,15 +560,10 @@ func ValidateRestore(restore *brv1alpha1.Restore, tikvVersion string, acrossK8s 
 	name := restore.Name
 
 	if restore.Spec.BR == nil {
-		if reason := validateAccessConfig(restore.Spec.To); reason != "" {
-			return fmt.Errorf(reason, ns, name)
-		}
-		if restore.Spec.StorageSize == "" {
-			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
-		}
+		return fmt.Errorf(".spec.br is required in spec of %s/%s", ns, name)
 	} else {
 		if !canSkipSetGCLifeTime(tikvVersion) {
-			if reason := validateAccessConfig(restore.Spec.To); reason != "" {
+			if reason := validateAccessConfig(nil); reason != "" {
 				return fmt.Errorf(reason, ns, name)
 			}
 		}
