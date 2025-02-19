@@ -43,11 +43,6 @@ const (
 	ReasonUpdateStatusFailed = "UpdateStatusFailed"
 )
 
-const (
-	gcPausedKeyword          = "GC is paused"
-	pdSchedulesPausedKeyword = "Schedulers are paused"
-)
-
 // Manager mainly used to manage backup related work
 type Manager struct {
 	cli           client.Client
