@@ -459,14 +459,14 @@ func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.
 
 			if leaderCount == 0 {
 				if err := kvClient.FlushLogBackupTasks(ctx); err != nil {
-					klog.ErrorS(err, "failed to flush log backup tasks. continue to delete pod...", "pod", pod.Name, "pod.ns", pod.Namespace)
+					klog.Errorf("failed to flush log backup tasks due to %s continue to delete pod %s/%s", err, pod.Namespace, pod.Name)
 				}
 
 				err = c.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
 				if err != nil && !errors.IsNotFound(err) {
 					return reconcile.Result{}, perrors.Annotatef(err, "failed to delete pod %q", pod.Name)
 				}
-				klog.InfoS("successfully deleted the pod.", "pod", pod.Name, "pod.ns", pod.Namespace)
+				klog.Infof("successfully deleted the pod %s/%s", pod.Namespace, pod.Name)
 			} else {
 				// re-check leader count next time
 				return reconcile.Result{RequeueAfter: c.recheckLeaderCountDuration}, nil
