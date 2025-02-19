@@ -103,8 +103,6 @@ func (c *tikvClient) FlushLogBackupTasks(ctx context.Context) error {
 			return errors.Errorf("force flush failed for task %s: %s", r.TaskName, r.ErrorMessage)
 		}
 	}
-	// Wait a while so TiKV is able to send the flush result to the advancer.
-	time.Sleep(3 * time.Second)
 	return nil
 }
 
