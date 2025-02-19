@@ -24,9 +24,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/Masterminds/semver"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
@@ -36,11 +34,6 @@ import (
 
 const (
 	ReasonUnsupportedStorageType = "UnsupportedStorageType"
-)
-
-var (
-	// the first version which supports log backup
-	tikvLessThanV610, _ = semver.NewConstraint("<v6.1.0-0")
 )
 
 // CheckAllKeysExistInSecret check if all keys are included in the specific secret
@@ -512,9 +505,6 @@ func ValidateBackup(backup *brv1alpha1.Backup, tikvVersion string, cluster *core
 
 		// validate log backup
 		if backup.Spec.Mode == brv1alpha1.BackupModeLog {
-			if !isLogBackSupport(tikvVersion) {
-				return fmt.Errorf("tikv %s doesn't support log backup in spec of %s/%s, the first version is v6.1.0", tikvVersion, ns, name)
-			}
 			var err error
 			_, err = brv1alpha1.ParseTSString(backup.Spec.CommitTs)
 			if err != nil {
@@ -680,19 +670,6 @@ func StringToBytes(s string) []byte {
 			Cap int
 		}{s, len(s)},
 	))
-}
-
-// isLogBackSupport returns whether tikv supports log backup
-func isLogBackSupport(tikvVersion string) bool {
-	v, err := semver.NewVersion(tikvVersion)
-	if err != nil {
-		klog.Errorf("Parse version %s failure, error: %v", tikvVersion, err)
-		return true
-	}
-	if tikvLessThanV610.Check(v) {
-		return false
-	}
-	return true
 }
 
 // GetStorageRestorePath generate the path of a specific storage from Restore
