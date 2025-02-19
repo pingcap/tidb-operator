@@ -105,8 +105,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return fmt.Errorf("failed to get first tikv group: %w", err)
 	}
 
-	err = backuputil.ValidateRestore(restore, tikvGroup.Spec.Template.Spec.Version, false) // TODO(ideascf): cluster.Spec.AcrossK8s?
-	// }
+	err = backuputil.ValidateRestore(restore, tikvGroup.Spec.Template.Spec.Version)
 	if err != nil {
 		_ = rm.statusUpdater.Update(restore, &metav1.Condition{
 			Type:    string(v1alpha1.RestoreInvalid),

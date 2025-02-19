@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
@@ -120,9 +121,12 @@ func (bt *backupTracker) StartTrackLogBackupProgress(backup *v1alpha1.Backup) er
 		return nil
 	}
 	klog.Infof("add log backup %s/%s to tracker", ns, name)
-	// TODO(ideascf): do we need this?
 	_, err := bt.getLogBackupTC(backup)
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			klog.Infof("log backup %s/%s cluster %s/%s not found, will skip", ns, name, backup.Spec.BR.ClusterNamespace, backup.Spec.BR.Cluster)
+			return nil
+		}
 		return err
 	}
 	bt.logBackups[logkey] = true

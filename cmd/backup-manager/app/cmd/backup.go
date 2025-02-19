@@ -88,6 +88,13 @@ func runBackup(backupOpts backup.Options, kubecfg string) error {
 		return err
 	}
 
+	// set PD Address
+	pdAddress, err := getPDAddressForBackup(newcli, backupOpts)
+	if err != nil {
+		return err
+	}
+	backupOpts.PDAddress = pdAddress
+
 	recorder := record.NewBroadcaster().NewRecorder(scheme.Scheme, corev1.EventSource{Component: "backup"})
 	statusUpdater := backupMgr.NewRealBackupConditionUpdater(newcli, recorder)
 	klog.Infof("start to process backup %s", backupOpts.String())
@@ -142,4 +149,13 @@ func newClient(ctx context.Context, cfg *rest.Config, s *runtime.Scheme, disable
 	}
 
 	return c, nil
+}
+
+func getPDAddressForBackup(cli client.Client, bo backup.Options) (string, error) {
+	b := &v1alpha1.Backup{}
+	err := cli.Get(context.Background(), client.ObjectKey{Namespace: bo.Namespace, Name: bo.ResourceName}, b)
+	if err != nil {
+		return "", err
+	}
+	return getPDAddress(cli, b.Spec.BR.ClusterNamespace, b.Spec.BR.Cluster)
 }

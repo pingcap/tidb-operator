@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
 )
 
 // BackupConditionUpdaterInterface enables updating Backup conditions.
@@ -51,7 +52,7 @@ func NewRealBackupConditionUpdater(
 }
 
 func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) error {
-	// TODO(ideascf): set reason for all
+	// reason is required so that we do set if it's empty
 	if condition != nil {
 		if condition.Reason == "" {
 			condition.Reason = condition.Type
@@ -66,7 +67,7 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 		currentBackup := &v1alpha1.Backup{}
 		if err := u.cli.Get(context.TODO(), client.ObjectKey{Namespace: ns, Name: backupName}, currentBackup); err == nil {
 			// make a copy so we don't mutate the shared cache
-			*backup = *(currentBackup.DeepCopy()) // TODO(ideascf): do we need to deep copy or just assign?
+			*backup = *(currentBackup.DeepCopy())
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated backup %s/%s from lister: %w", ns, backupName, err))
 			return err
@@ -134,7 +135,7 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 		isUpdate = true
 	}
 	if newStatus.ProgressStep != nil {
-		progresses, updated := updateBRProgress(status.Progresses, newStatus.ProgressStep, newStatus.Progress, newStatus.ProgressUpdateTime)
+		progresses, updated := util.UpdateBRProgress(status.Progresses, newStatus.ProgressStep, newStatus.Progress, newStatus.ProgressUpdateTime)
 		if updated {
 			status.Progresses = progresses
 			isUpdate = true
@@ -422,50 +423,6 @@ func updateLogSubCommandConditionOnly(status *v1alpha1.LogSubCommandStatus, cond
 	}
 	// Return true if one of the fields have changed.
 	return isUpdate
-}
-
-// updateBRProgress updates progress for backup/restore.
-func updateBRProgress(progresses []v1alpha1.Progress, step *string, progress *int, updateTime *metav1.Time) ([]v1alpha1.Progress, bool) {
-	var oldProgress *v1alpha1.Progress
-	for i, p := range progresses {
-		if p.Step == *step {
-			oldProgress = &progresses[i]
-			break
-		}
-	}
-
-	makeSureLastProgressOver := func() {
-		size := len(progresses)
-		if size == 0 || progresses[size-1].Progress >= 100 {
-			return
-		}
-		progresses[size-1].Progress = 100
-		progresses[size-1].LastTransitionTime = metav1.Time{Time: time.Now()}
-	}
-
-	// no such progress, will new
-	if oldProgress == nil {
-		makeSureLastProgressOver()
-		progresses = append(progresses, v1alpha1.Progress{
-			Step:               *step,
-			Progress:           *progress,
-			LastTransitionTime: *updateTime,
-		})
-		return progresses, true
-	}
-
-	isUpdate := false
-	if oldProgress.Progress < *progress {
-		oldProgress.Progress = *progress
-		isUpdate = true
-	}
-
-	if oldProgress.LastTransitionTime != *updateTime {
-		oldProgress.LastTransitionTime = *updateTime
-		isUpdate = true
-	}
-
-	return progresses, isUpdate
 }
 
 // nolint: gocyclo

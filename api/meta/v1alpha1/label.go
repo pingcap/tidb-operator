@@ -20,7 +20,8 @@ const (
 	KeyPrefix = "pingcap.com/"
 
 	// LabelKeyManagedBy means resources are managed by tidb operator
-	LabelKeyManagedBy = KeyPrefix + "managed-by"
+	LabelKeyManagedBy           = KeyPrefix + "managed-by"
+	LabelValueManagedByOperator = "tidb-operator"
 )
 
 const (
@@ -103,7 +104,7 @@ func (l Label) Restore(val string) Label {
 func NewBackup() Label {
 	return Label{
 		NameLabelKey:      BackupJobLabelVal,
-		LabelKeyManagedBy: "backup-operator", // TODO(ideascf): change to tidb-operator??
+		LabelKeyManagedBy: LabelValueManagedByOperator,
 	}
 }
 
@@ -111,7 +112,7 @@ func NewBackup() Label {
 func NewRestore() Label {
 	return Label{
 		NameLabelKey:      RestoreJobLabelVal,
-		LabelKeyManagedBy: "restore-operator",
+		LabelKeyManagedBy: LabelValueManagedByOperator,
 	}
 }
 
@@ -119,6 +120,6 @@ func NewRestore() Label {
 func NewBackupSchedule() Label {
 	return Label{
 		NameLabelKey:      BackupScheduleJobLabelVal,
-		LabelKeyManagedBy: "backup-schedule-operator",
+		LabelKeyManagedBy: LabelValueManagedByOperator,
 	}
 }

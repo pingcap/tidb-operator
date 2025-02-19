@@ -259,7 +259,7 @@ type Progress struct {
 	// Step is the step name of progress
 	Step string `json:"step,omitempty"`
 	// Progress is the backup progress value
-	Progress int `json:"progress,omitempty"` // TODO(ideascf): type changed from float64 to int
+	Progress int `json:"progress,omitempty"`
 	// LastTransitionTime is the update time
 	// +nullable
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`

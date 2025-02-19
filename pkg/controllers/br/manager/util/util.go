@@ -24,6 +24,7 @@ import (
 	"unsafe"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
@@ -521,7 +522,7 @@ func ValidateBackup(backup *brv1alpha1.Backup, tikvVersion string, cluster *core
 
 // nolint: gocyclo
 // ValidateRestore checks whether a restore spec is valid.
-func ValidateRestore(restore *brv1alpha1.Restore, tikvVersion string, acrossK8s bool) error {
+func ValidateRestore(restore *brv1alpha1.Restore, tikvVersion string) error {
 	ns := restore.Namespace
 	name := restore.Name
 
@@ -688,4 +689,48 @@ func GetOptions(provider brv1alpha1.StorageProvider) []string {
 	default:
 		return nil
 	}
+}
+
+// updateBRProgress updates progress for backup/restore.
+func UpdateBRProgress(progresses []brv1alpha1.Progress, step *string, progress *int, updateTime *metav1.Time) ([]brv1alpha1.Progress, bool) {
+	var oldProgress *brv1alpha1.Progress
+	for i, p := range progresses {
+		if p.Step == *step {
+			oldProgress = &progresses[i]
+			break
+		}
+	}
+
+	makeSureLastProgressOver := func() {
+		size := len(progresses)
+		if size == 0 || progresses[size-1].Progress >= 100 {
+			return
+		}
+		progresses[size-1].Progress = 100
+		progresses[size-1].LastTransitionTime = metav1.Time{Time: time.Now()}
+	}
+
+	// no such progress, will new
+	if oldProgress == nil {
+		makeSureLastProgressOver()
+		progresses = append(progresses, brv1alpha1.Progress{
+			Step:               *step,
+			Progress:           *progress,
+			LastTransitionTime: *updateTime,
+		})
+		return progresses, true
+	}
+
+	isUpdate := false
+	if oldProgress.Progress < *progress {
+		oldProgress.Progress = *progress
+		isUpdate = true
+	}
+
+	if oldProgress.LastTransitionTime != *updateTime {
+		oldProgress.LastTransitionTime = *updateTime
+		isUpdate = true
+	}
+
+	return progresses, isUpdate
 }

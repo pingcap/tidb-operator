@@ -50,6 +50,8 @@ type Options struct {
 	TargetAZ string
 	// UseFSR to indicate if use FSR for TiKV data volumes during EBS snapshot restore
 	UseFSR bool
+	// PDAddress is the address of the PD, for example: db-pd.tidb12345:2379
+	PDAddress string
 }
 
 // nolint: gocyclo
@@ -58,12 +60,8 @@ func (ro *Options) restoreData(
 	restore *v1alpha1.Restore,
 	statusUpdater restore.RestoreConditionUpdaterInterface,
 ) error {
-	clusterNamespace := restore.Spec.BR.ClusterNamespace
-	if restore.Spec.BR.ClusterNamespace == "" {
-		clusterNamespace = restore.Namespace
-	}
 	args := make([]string, 0)
-	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:%d", restore.Spec.BR.Cluster, clusterNamespace, corev1alpha1.DefaultPDPortClient))
+	args = append(args, fmt.Sprintf("--pd=%s", ro.PDAddress))
 	if ro.TLSCluster {
 		args = append(args, fmt.Sprintf("--ca=%s", path.Join(corev1alpha1.DirPathClusterClientTLS, corev1.ServiceAccountRootCAKey)))
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(corev1alpha1.DirPathClusterClientTLS, corev1.TLSCertKey)))
