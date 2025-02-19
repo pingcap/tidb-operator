@@ -48,7 +48,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(
 			common.CondClusterIsSuspending(state),
 			common.TaskSuspendPod(state, r.Client),
-			common.TaskInstanceStatusSuspend[runtime.PDTuple](state, r.Client),
+			common.TaskInstanceConditionSuspended[scope.PD](state),
+			common.TaskStatusPersister[scope.PD](state, r.Client),
 		),
 
 		common.TaskContextPDSlice(state, r.Client),

@@ -134,8 +134,8 @@ func (db *TiDB) SetCurrentRevision(rev string) {
 	db.Status.CurrentRevision = rev
 }
 
-func (db *TiDB) IsHealthy() bool {
-	return meta.IsStatusConditionTrue(db.Status.Conditions, v1alpha1.TiDBCondHealth)
+func (db *TiDB) IsReady() bool {
+	return meta.IsStatusConditionTrue(db.Status.Conditions, v1alpha1.CondReady)
 }
 
 func (db *TiDB) IsUpToDate() bool {

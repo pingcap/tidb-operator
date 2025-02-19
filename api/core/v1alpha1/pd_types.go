@@ -33,18 +33,8 @@ const (
 )
 
 const (
-	// TODO: combine all Health condition
-	PDCondHealth   = "Health"
-	PDHealthReason = "PDHealth"
-
 	// PDCondInitialized means the operator detects that the PD instance has joined the cluster
 	PDCondInitialized = "Initialized"
-
-	PDCondSuspended = "Suspended"
-	PDSuspendReason = "PDSuspend"
-
-	PDGroupCondSuspended = "Suspended"
-	PDGroupSuspendReason = "PDGroupSuspend"
 )
 
 const (

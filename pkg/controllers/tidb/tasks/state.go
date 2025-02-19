@@ -47,6 +47,9 @@ type State interface {
 
 	common.ContextClusterNewer[*v1alpha1.TiDB]
 
+	common.StatusPersister[*v1alpha1.TiDB]
+	common.StatusUpdater
+
 	SetPod(*corev1.Pod)
 }
 

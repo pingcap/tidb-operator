@@ -32,6 +32,8 @@ type state struct {
 	pd      *v1alpha1.PD
 	pod     *corev1.Pod
 	pds     []*v1alpha1.PD
+
+	statusChanged bool
 }
 
 type State interface {
@@ -47,6 +49,9 @@ type State interface {
 	common.InstanceState[*runtime.PD]
 
 	common.ContextClusterNewer[*v1alpha1.PD]
+
+	common.StatusUpdater
+	common.StatusPersister[*v1alpha1.PD]
 
 	SetPod(*corev1.Pod)
 }
@@ -84,6 +89,14 @@ func (s *state) SetPod(pod *corev1.Pod) {
 
 func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
 	s.cluster = cluster
+}
+
+func (s *state) IsStatusChanged() bool {
+	return s.statusChanged
+}
+
+func (s *state) SetStatusChanged() {
+	s.statusChanged = true
 }
 
 func (s *state) PDSlice() []*v1alpha1.PD {

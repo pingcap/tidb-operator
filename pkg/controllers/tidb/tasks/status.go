@@ -95,7 +95,7 @@ func syncHealthCond(tidb *v1alpha1.TiDB, healthy bool) bool {
 	}
 
 	return meta.SetStatusCondition(&tidb.Status.Conditions, metav1.Condition{
-		Type:               v1alpha1.CondHealth,
+		Type:               v1alpha1.CondReady,
 		Status:             status,
 		ObservedGeneration: tidb.Generation,
 		Reason:             reason,

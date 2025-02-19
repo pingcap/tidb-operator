@@ -31,6 +31,8 @@ type state struct {
 	cluster *v1alpha1.Cluster
 	tiflash *v1alpha1.TiFlash
 	pod     *corev1.Pod
+
+	statusChanged bool
 }
 
 type State interface {
@@ -44,6 +46,9 @@ type State interface {
 	common.InstanceState[*runtime.TiFlash]
 
 	common.ContextClusterNewer[*v1alpha1.TiFlash]
+
+	common.StatusUpdater
+	common.StatusPersister[*v1alpha1.TiFlash]
 
 	SetPod(*corev1.Pod)
 }
@@ -81,6 +86,14 @@ func (s *state) SetPod(pod *corev1.Pod) {
 
 func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
 	s.cluster = cluster
+}
+
+func (s *state) IsStatusChanged() bool {
+	return s.statusChanged
+}
+
+func (s *state) SetStatusChanged() {
+	s.statusChanged = true
 }
 
 func (s *state) TiFlashInitializer() common.TiFlashInitializer {
