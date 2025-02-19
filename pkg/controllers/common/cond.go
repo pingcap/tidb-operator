@@ -58,6 +58,6 @@ func CondInstanceHasBeenDeleted[RI runtime.InstanceT[I], I runtime.InstanceSet](
 
 func CondJobHasBeenDeleted[J runtime.Job](state JobState[J]) task.Condition {
 	return task.CondFunc(func() bool {
-		return state.Job().Object().GetDeletionTimestamp() != nil
+		return !state.Job().Object().GetDeletionTimestamp().IsZero()
 	})
 }
