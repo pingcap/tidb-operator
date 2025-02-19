@@ -532,6 +532,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 				{
 					Name:            brv1alpha1.LabelValComponentBackup,
 					Image:           bm.backupManagerImage,
+					Command:         []string{"/backup-manager"},
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    volumeMounts,

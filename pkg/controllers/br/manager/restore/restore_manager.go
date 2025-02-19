@@ -317,6 +317,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 				{
 					Name:            metav1alpha1.RestoreJobLabelVal,
 					Image:           rm.backupManagerImage,
+					Command:         []string{"/backup-manager"},
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    volumeMounts,
