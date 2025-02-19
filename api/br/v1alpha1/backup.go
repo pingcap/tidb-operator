@@ -291,58 +291,6 @@ func IsBackupPrepared(backup *Backup) bool {
 	return condition != nil && condition.Status == metav1.ConditionTrue
 }
 
-// IsVolumeBackupInitialized returns true if volume backup is initialized
-func IsVolumeBackupInitialized(backup *Backup) bool {
-	if backup.Spec.Mode != BackupModeVolumeSnapshot {
-		return false
-	}
-	_, condition := GetBackupCondition(&backup.Status, VolumeBackupInitialized)
-	return condition != nil && condition.Status == metav1.ConditionTrue
-}
-
-// IsVolumeBackupInitializeFailed returns true if volume backup is initialized failed
-func IsVolumeBackupInitializeFailed(backup *Backup) bool {
-	if backup.Spec.Mode != BackupModeVolumeSnapshot {
-		return false
-	}
-	_, condition := GetBackupCondition(&backup.Status, VolumeBackupInitializeFailed)
-	return condition != nil && condition.Status == metav1.ConditionTrue
-}
-
-func IsVolumeBackupSnapshotsCreated(backup *Backup) bool {
-	if backup.Spec.Mode != BackupModeVolumeSnapshot {
-		return false
-	}
-	_, condition := GetBackupCondition(&backup.Status, VolumeBackupSnapshotsCreated)
-	return condition != nil && condition.Status == metav1.ConditionTrue
-}
-
-func IsVolumeBackupInitializeComplete(backup *Backup) bool {
-	if backup.Spec.Mode != BackupModeVolumeSnapshot {
-		return false
-	}
-	_, condition := GetBackupCondition(&backup.Status, VolumeBackupInitializeComplete)
-	return condition != nil && condition.Status == metav1.ConditionTrue
-}
-
-// IsVolumeBackupComplete returns true if volume backup is complete
-func IsVolumeBackupComplete(backup *Backup) bool {
-	if backup.Spec.Mode != BackupModeVolumeSnapshot {
-		return false
-	}
-	_, condition := GetBackupCondition(&backup.Status, VolumeBackupComplete)
-	return condition != nil && condition.Status == metav1.ConditionTrue
-}
-
-// IsVolumeBackupFailed returns true if volume backup is failed
-func IsVolumeBackupFailed(backup *Backup) bool {
-	if backup.Spec.Mode != BackupModeVolumeSnapshot {
-		return false
-	}
-	_, condition := GetBackupCondition(&backup.Status, VolumeBackupFailed)
-	return condition != nil && condition.Status == metav1.ConditionTrue
-}
-
 // IsBackupClean returns true if a Backup has been successfully cleaned up
 func IsBackupClean(backup *Backup) bool {
 	// TODO: now we don't handle fault state, maybe we should consider it in the future

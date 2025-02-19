@@ -107,24 +107,6 @@ func (ro *Options) restoreData(
 			args = append(args, fullBackupArgs...)
 		}
 		restoreType = "point"
-	case string(v1alpha1.RestoreModeVolumeSnapshot):
-		// Currently, we only support aws ebs volume snapshot.
-		args = append(args, "--type=aws-ebs")
-		if ro.Prepare {
-			args = append(args, "--prepare")
-			csbPath = path.Join(v1alpha1.DirPathBRBin, "csb_restore.json")
-			args = append(args, fmt.Sprintf("--output-file=%s", csbPath))
-			args = append(args, fmt.Sprintf("--target-az=%s", ro.TargetAZ))
-			if ro.UseFSR {
-				args = append(args, "--use-fsr=true")
-			} else {
-				args = append(args, "--use-fsr=false")
-			}
-			progressStep = "Volume Restore"
-		} else {
-			progressStep = "Data Restore"
-		}
-		useProgressFile = true
 	}
 
 	fullArgs := []string{

@@ -31,7 +31,6 @@ import (
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.phase`,description="The current status of the backup"
 // +kubebuilder:printcolumn:name="BackupPath",type=string,JSONPath=`.status.backupPath`,description="The full path of backup data"
 // +kubebuilder:printcolumn:name="BackupSize",type=string,JSONPath=`.status.backupSizeReadable`,description="The data size of the backup"
-// +kubebuilder:printcolumn:name="IncrementalBackupSize",type=string,JSONPath=`.status.incrementalBackupSizeReadable`,description="The real size of volume snapshot backup, only valid to volume snapshot backup",priority=10
 // +kubebuilder:printcolumn:name="CommitTS",type=string,JSONPath=`.status.commitTs`,description="The commit ts of the backup"
 // +kubebuilder:printcolumn:name="LogTruncateUntil",type=string,JSONPath=`.status.logSuccessTruncateUntil`,description="The log backup truncate until ts"
 // +kubebuilder:printcolumn:name="Started",type=date,JSONPath=`.status.timeStarted`,description="The time at which the backup was started",priority=1
@@ -209,26 +208,7 @@ const (
 	BackupModeSnapshot BackupMode = "snapshot"
 	// BackupModeLog represents the log backup of tidb cluster.
 	BackupModeLog BackupMode = "log"
-	// BackupModeVolumeSnapshot represents volume backup of tidb cluster.
-	BackupModeVolumeSnapshot BackupMode = "volume-snapshot"
 )
-
-// TiDBAccessConfig defines the configuration for access tidb cluster
-// +k8s:openapi-gen=true
-type TiDBAccessConfig struct {
-	// Host is the tidb cluster access address
-	Host string `json:"host"`
-	// Port is the port number to use for connecting tidb cluster
-	Port int32 `json:"port,omitempty"`
-	// User is the user for login tidb cluster
-	User string `json:"user,omitempty"`
-	// SecretName is the name of secret which stores tidb cluster's password.
-	SecretName string `json:"secretName"`
-	// TLSClientSecretName is the name of secret which stores tidb server client certificate
-	// Optional: Defaults to nil
-	// +optional
-	TLSClientSecretName *string `json:"tlsClientSecretName,omitempty"`
-}
 
 // +k8s:openapi-gen=true
 // CleanPolicyType represents the clean policy of backup data in remote storage
@@ -273,11 +253,6 @@ type CleanOption struct {
 	BackoffEnabled bool `json:"backoffEnabled,omitempty"`
 
 	BatchDeleteOption `json:",inline"`
-
-	// TODO(ideascf): remove this field, EBS volume snapshot backup is deprecated in v2
-	// SnapshotsDeleteRatio represents the number of snapshots deleted per second
-	// +kubebuilder:default=1
-	// SnapshotsDeleteRatio float64 `json:"snapshotsDeleteRatio,omitempty"`
 }
 
 type Progress struct {
@@ -354,19 +329,6 @@ type BackupSpec struct {
 	// LogStop indicates that will stop the log backup.
 	// +optional
 	LogStop bool `json:"logStop,omitempty"`
-	// CalcSizeLevel determines how to size calculation of snapshots for EBS volume snapshot backup
-	// +optional
-	// +kubebuilder:default="all"
-	CalcSizeLevel string `json:"calcSizeLevel,omitempty"`
-	// FederalVolumeBackupPhase indicates which phase to execute in federal volume backup
-	// +optional
-	FederalVolumeBackupPhase FederalVolumeBackupPhase `json:"federalVolumeBackupPhase,omitempty"`
-	// ResumeGcSchedule indicates whether resume gc and pd scheduler for EBS volume snapshot backup
-	// +optional
-	ResumeGcSchedule bool `json:"resumeGcSchedule,omitempty"`
-	// TODO(ideascf): remove it in v2
-	// DumplingConfig is the configs for dumpling
-	Dumpling *DumplingConfig `json:"dumpling,omitempty"`
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
@@ -413,27 +375,6 @@ type BackupSpec struct {
 	// VolumeBackupInitJobMaxActiveSeconds represents the deadline (in seconds) of the vbk init job
 	// +kubebuilder:default=600
 	VolumeBackupInitJobMaxActiveSeconds int `json:"volumeBackupInitJobMaxActiveSeconds,omitempty"`
-}
-
-// FederalVolumeBackupPhase represents a phase to execute in federal volume backup
-type FederalVolumeBackupPhase string
-
-const (
-	// FederalVolumeBackupInitialize means we should stop GC and PD schedule
-	FederalVolumeBackupInitialize FederalVolumeBackupPhase = "initialize"
-	// FederalVolumeBackupExecute means we should take volume snapshots for TiKV
-	FederalVolumeBackupExecute FederalVolumeBackupPhase = "execute"
-	// FederalVolumeBackupTeardown means we should resume GC and PD schedule
-	FederalVolumeBackupTeardown FederalVolumeBackupPhase = "teardown"
-)
-
-// +k8s:openapi-gen=true
-// DumplingConfig contains config for dumpling
-type DumplingConfig struct {
-	// Options means options for backup data to remote storage with dumpling.
-	Options []string `json:"options,omitempty"`
-	// Deprecated. Please use `Spec.TableFilter` instead. TableFilter means Table filter expression for 'db.table' matching
-	TableFilter []string `json:"tableFilter,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -540,18 +481,6 @@ const (
 	BackupStopped BackupConditionType = "Stopped"
 	// BackupRestart means the backup was restarted, now just support snapshot backup
 	BackupRestart BackupConditionType = "Restart"
-	// VolumeBackupInitialized means the volume backup has stopped GC and PD scheduler
-	VolumeBackupInitialized BackupConditionType = "VolumeBackupInitialized"
-	// VolumeBackupInitializeFailed means the volume backup initialize job failed
-	VolumeBackupInitializeFailed BackupConditionType = "VolumeBackupInitializeFailed"
-	// VolumeBackupSnapshotsCreated means the local volume snapshots created, and they won't be changed
-	VolumeBackupSnapshotsCreated BackupConditionType = "VolumeBackupSnapshotsCreated"
-	// VolumeBackupInitializeComplete means the volume backup has safely resumed GC and PD scheduler
-	VolumeBackupInitializeComplete BackupConditionType = "VolumeBackupInitializeComplete"
-	// VolumeBackupComplete means the volume backup has taken volume snapshots successfully
-	VolumeBackupComplete BackupConditionType = "VolumeBackupComplete"
-	// VolumeBackupFailed means the volume backup take volume snapshots failed
-	VolumeBackupFailed BackupConditionType = "VolumeBackupFailed"
 )
 
 // BackupCondition describes the observed state of a Backup at a certain point.
@@ -559,13 +488,6 @@ type BackupCondition struct {
 	Command LogSubCommandType `json:"command,omitempty"`
 
 	metav1.Condition `json:",inline"`
-	// TODO(ideascf):  remove these fields
-	// Type    BackupConditionType    `json:"type"`
-	// Status  corev1.ConditionStatus `json:"status"`
-	// // +nullable
-	// LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
-	// Reason             string      `json:"reason,omitempty"`
-	// Message            string      `json:"message,omitempty"`
 }
 
 // LogSubCommandType is the log backup subcommand type.
@@ -625,11 +547,6 @@ type BackupStatus struct {
 	BackupSizeReadable string `json:"backupSizeReadable,omitempty"`
 	// BackupSize is the data size of the backup.
 	BackupSize int64 `json:"backupSize,omitempty"`
-	// the difference with IncrementalBackupSize is that its format is human readable
-	IncrementalBackupSizeReadable string `json:"incrementalBackupSizeReadable,omitempty"`
-	// IncrementalBackupSize is the incremental data size of the backup, it is only used for volume snapshot backup
-	// it is the real size of volume snapshot backup
-	IncrementalBackupSize int64 `json:"incrementalBackupSize,omitempty"`
 	// CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
 	CommitTs string `json:"commitTs,omitempty"`
 	// LogSuccessTruncateUntil is log backup already successfully truncate until timestamp.

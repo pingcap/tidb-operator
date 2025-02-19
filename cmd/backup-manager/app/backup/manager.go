@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/Masterminds/semver"
@@ -306,13 +305,6 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 		errs = append(errs, backupErr)
 		klog.Errorf("backup cluster %s data failed, err: %s", bm, backupErr)
 		failedCondition := v1alpha1.BackupFailed
-		if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) {
-			if bm.Initialize {
-				failedCondition = v1alpha1.VolumeBackupInitializeFailed
-			} else {
-				failedCondition = v1alpha1.VolumeBackupFailed
-			}
-		}
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Condition: metav1.Condition{
 				Type:    string(failedCondition),
@@ -329,16 +321,6 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	var updateStatus *backupMgr.BackupUpdateStatus
 	completeCondition := v1alpha1.BackupComplete
 	switch bm.Mode {
-	case string(v1alpha1.BackupModeVolumeSnapshot):
-		if !bm.Initialize {
-			completeCondition = v1alpha1.VolumeBackupComplete
-			// In volume snapshot mode, commitTS have been updated according to the
-			// br command output, so we don't need to update it here.
-			updateStatus = &backupMgr.BackupUpdateStatus{
-				TimeStarted:   &metav1.Time{Time: started},
-				TimeCompleted: &metav1.Time{Time: time.Now()},
-			}
-		}
 	default:
 		backupMeta, err := util.GetBRMetaData(ctx, backup.Spec.StorageProvider)
 		if err != nil {
@@ -643,49 +625,4 @@ func (bm *Manager) isBRCanContinueRunByCheckpoint() bool {
 	}
 	lessThanV651, _ := semver.NewConstraint("<v6.5.1-0")
 	return !lessThanV651.Check(v)
-}
-
-// VolumeBackupInitializeManager manages volume backup initializing status
-type VolumeBackupInitializeManager struct {
-	done               bool
-	gcStopped          bool
-	pdSchedulesStopped bool
-
-	backup        *v1alpha1.Backup
-	statusUpdater backupMgr.BackupConditionUpdaterInterface
-}
-
-// UpdateBackupStatus extracts information from log line and update backup status to VolumeBackupInitialized
-// when GC and PD schedules are all stopped
-func (vb *VolumeBackupInitializeManager) UpdateBackupStatus(logLine string) {
-	if vb.done {
-		return
-	}
-
-	if strings.Contains(logLine, gcPausedKeyword) {
-		vb.gcStopped = true
-	} else if strings.Contains(logLine, pdSchedulesPausedKeyword) {
-		vb.pdSchedulesStopped = true
-	}
-	vb.tryUpdateBackupStatus()
-}
-
-// tryUpdateBackupStatus tries to update backup status
-func (vb *VolumeBackupInitializeManager) tryUpdateBackupStatus() {
-	if !vb.gcStopped || !vb.pdSchedulesStopped {
-		return
-	}
-
-	err := vb.statusUpdater.Update(vb.backup, &v1alpha1.BackupCondition{
-		Condition: metav1.Condition{
-			Type:   string(v1alpha1.VolumeBackupInitialized),
-			Status: metav1.ConditionTrue,
-		},
-	}, nil)
-	if err == nil {
-		vb.done = true
-	} else {
-		klog.Warningf("backup %s/%s update status to VolumeBackupInitialized failed, err: %s",
-			vb.backup.Namespace, vb.backup.Name, err.Error())
-	}
 }

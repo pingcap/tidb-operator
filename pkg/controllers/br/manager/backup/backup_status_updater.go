@@ -121,14 +121,6 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 		status.BackupSize = *newStatus.BackupSize
 		isUpdate = true
 	}
-	if newStatus.IncrementalBackupSizeReadable != nil && status.IncrementalBackupSizeReadable != *newStatus.IncrementalBackupSizeReadable {
-		status.IncrementalBackupSizeReadable = *newStatus.IncrementalBackupSizeReadable
-		isUpdate = true
-	}
-	if newStatus.IncrementalBackupSize != nil && status.IncrementalBackupSize != *newStatus.IncrementalBackupSize {
-		status.IncrementalBackupSize = *newStatus.IncrementalBackupSize
-		isUpdate = true
-	}
 	if newStatus.CommitTs != nil && status.CommitTs != *newStatus.CommitTs {
 		status.CommitTs = *newStatus.CommitTs
 		isUpdate = true

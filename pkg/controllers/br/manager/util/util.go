@@ -16,7 +16,6 @@ package util
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/url"
 	"path"
@@ -445,21 +444,6 @@ func GetBackupDataPath(provider brv1alpha1.StorageProvider) (string, string, err
 	return fmt.Sprintf("%s://%s", string(storageType), backupPath), "", nil
 }
 
-func validateAccessConfig(config *brv1alpha1.TiDBAccessConfig) string {
-	if config == nil {
-		return "missing cluster config in spec of %s/%s"
-	} else {
-		if config.Host == "" {
-			return "missing cluster config in spec of %s/%s"
-		}
-
-		if config.SecretName == "" {
-			return "missing tidbSecretName config in spec of %s/%s"
-		}
-	}
-	return ""
-}
-
 // nolint: gocyclo
 // ValidateBackup validates backup sepc
 func ValidateBackup(backup *brv1alpha1.Backup, tikvVersion string, cluster *corev1alpha1.Cluster) error {
@@ -587,13 +571,6 @@ func ValidateRestore(restore *brv1alpha1.Restore, tikvVersion string, acrossK8s 
 		} else if restore.Spec.Local != nil {
 			if err := validateLocal(ns, name, restore.Spec.Local); err != nil {
 				return err
-			}
-		}
-
-		if restore.Spec.Mode == brv1alpha1.RestoreModeVolumeSnapshot {
-			// only support across k8s now. TODO compatible for single k8s
-			if !acrossK8s {
-				return errors.New("only support volume snapshot restore across k8s clusters")
 			}
 		}
 	}

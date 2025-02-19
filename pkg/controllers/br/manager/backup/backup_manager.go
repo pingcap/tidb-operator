@@ -60,11 +60,6 @@ type BackupUpdateStatus struct {
 	BackupSizeReadable *string
 	// BackupSize is the data size of the backup.
 	BackupSize *int64
-	// the difference with IncrementalBackupSize is that its format is human readable
-	IncrementalBackupSizeReadable *string
-	// IncrementalBackupSize is the incremental data size of the backup, it is only used for volume snapshot backup
-	// it is the real size of volume snapshot backup
-	IncrementalBackupSize *int64
 	// CommitTs is the snapshot time point of tidb cluster.
 	CommitTs *string
 	// LogCheckpointTs is the ts of log backup process.
@@ -674,12 +669,6 @@ func waitOldBackupJobDone(ns, name, backupJobName string, bm *backupManager, bac
 		}
 	}
 	if finished {
-		// when teardown volume snapshot backup, just wait execution job done, don't need to delete the execution job
-		if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot &&
-			backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupTeardown {
-			return nil
-		}
-
 		klog.Infof("backup %s/%s job %s has complete or failed, will delete job", ns, name, backupJobName)
 		if err := bm.cli.Delete(context.TODO(), oldJob); err != nil {
 			return fmt.Errorf("backup %s/%s delete job %s failed, err: %w", ns, name, backupJobName, err)
