@@ -234,8 +234,8 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
-	if v1alpha1.IsBackupScheduled(newBackup) || v1alpha1.IsBackupRunning(newBackup) || v1alpha1.IsBackupPrepared(newBackup) || v1alpha1.IsBackupFailed(newBackup) {
-		klog.V(4).Infof("backup %s/%s is already Scheduled, Running, Preparing or Failed, skipping.", ns, name)
+	if v1alpha1.IsBackupScheduled(newBackup) || v1alpha1.IsBackupRunning(newBackup) || v1alpha1.IsBackupPrepared(newBackup) || v1alpha1.IsBackupFailed(newBackup) || v1alpha1.IsBackupInvalid(newBackup) {
+		klog.V(4).Infof("backup %s/%s is already Scheduled, Running, Preparing, Failed or InValid, skipping.", ns, name)
 		return
 	}
 

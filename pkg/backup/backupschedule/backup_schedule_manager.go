@@ -237,7 +237,7 @@ func (bm *backupScheduleManager) canPerformNextBackup(bs *v1alpha1.BackupSchedul
 			return fmt.Errorf("backup schedule %s/%s, get backup %s failed, err: %v", ns, bsName, bs.Status.LastBackup, err)
 		}
 
-		if v1alpha1.IsBackupComplete(backup) || (v1alpha1.IsBackupScheduled(backup) && v1alpha1.IsBackupFailed(backup)) {
+		if v1alpha1.IsBackupComplete(backup) || (v1alpha1.IsBackupScheduled(backup) && v1alpha1.IsBackupFailed(backup)) || v1alpha1.IsBackupInvalid(backup) {
 			return nil
 		}
 		// skip this sync round of the backup schedule and waiting the last backup.
@@ -752,8 +752,8 @@ func separateSnapshotBackupsAndLogBackup(backupsList []*v1alpha1.Backup) ([]*v1a
 			logBackup = backup
 			continue
 		}
-		// Completed or failed backups will be GC'ed
-		if !(v1alpha1.IsBackupFailed(backup) || v1alpha1.IsBackupComplete(backup)) {
+		// Completed, failed or invalid backups will be GC'ed
+		if !(v1alpha1.IsBackupFailed(backup) || v1alpha1.IsBackupComplete(backup) || v1alpha1.IsBackupInvalid(backup)) {
 			continue
 		}
 		ascBackupList = append(ascBackupList, backup)
