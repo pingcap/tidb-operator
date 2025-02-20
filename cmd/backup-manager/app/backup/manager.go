@@ -114,7 +114,6 @@ func (bm *Manager) ProcessBackup() error {
 		return bm.performLogBackup(ctx, backup.DeepCopy())
 	}
 
-	// skip the DB initialization if spec.from is not specified
 	return bm.performBackup(ctx, backup.DeepCopy())
 }
 
@@ -319,7 +318,6 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 
 	// run br binary to do the real job
 	backupErr := bm.doStartLogBackup(ctx, backup)
-
 	if backupErr != nil {
 		klog.Errorf("Start log backup of cluster %s failed, err: %s", bm, backupErr)
 		return nil, "StartLogBackupFailed", backupErr

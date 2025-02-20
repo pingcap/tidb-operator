@@ -153,7 +153,11 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 func updateSnapshotBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
 	var isStatusUpdate, isConditionUpdate bool
 	isStatusUpdate = updateBackupStatus(&backup.Status, newStatus)
-	isConditionUpdate = v1alpha1.UpdateBackupCondition(&backup.Status, &condition.Condition)
+	var metaCondition *metav1.Condition
+	if condition != nil {
+		metaCondition = &condition.Condition
+	}
+	isConditionUpdate = v1alpha1.UpdateBackupCondition(&backup.Status, metaCondition)
 	return isStatusUpdate || isConditionUpdate
 }
 
@@ -223,7 +227,11 @@ func updateWholeLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 	// call real update interface to update whole status
 	doUpdateStatusAndCondition := func(newCondition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
 		isStatusUpdate := updateBackupStatus(&backup.Status, newStatus)
-		isConditionUpdate := v1alpha1.UpdateBackupCondition(&backup.Status, &newCondition.Condition)
+		var metaCondition *metav1.Condition
+		if newCondition != nil {
+			metaCondition = &newCondition.Condition
+		}
+		isConditionUpdate := v1alpha1.UpdateBackupCondition(&backup.Status, metaCondition)
 		return isStatusUpdate || isConditionUpdate
 	}
 
