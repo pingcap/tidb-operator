@@ -867,11 +867,6 @@ func (in *RestoreSpec) DeepCopyInto(out *RestoreSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.TikvGCLifeTime != nil {
-		in, out := &in.TikvGCLifeTime, &out.TikvGCLifeTime
-		*out = new(string)
-		**out = **in
-	}
 	in.StorageProvider.DeepCopyInto(&out.StorageProvider)
 	in.PitrFullBackupStorageProvider.DeepCopyInto(&out.PitrFullBackupStorageProvider)
 	if in.StorageClassName != nil {
