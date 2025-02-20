@@ -47,40 +47,6 @@ func (bo *GenericOptions) String() string {
 	return fmt.Sprintf("%s/%s", bo.Namespace, bo.ResourceName)
 }
 
-/*
-	func (bo *GenericOptions) GetDSN(enabledTLSClient bool) (string, error) {
-		if !enabledTLSClient {
-			return fmt.Sprintf("%s:%s@(%s:%d)/%s?charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, constants.TidbMetaDB), nil
-		}
-		rootCertPool := x509.NewCertPool()
-		if !bo.SkipClientCA {
-			pem, err := ioutil.ReadFile(path.Join(corev1alpha1.DirPathTiDBClientTLS, corev1.ServiceAccountRootCAKey))
-			if err != nil {
-				return "", err
-			}
-			if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
-				return "", errors.New("Failed to append PEM")
-			}
-		}
-
-		clientCert := make([]tls.Certificate, 0, 1)
-		certs, err := tls.LoadX509KeyPair(
-			path.Join(corev1alpha1.DirPathTiDBClientTLS, corev1.TLSCertKey),
-			path.Join(corev1alpha1.DirPathTiDBClientTLS, corev1.TLSPrivateKeyKey))
-		if err != nil {
-			return "", err
-		}
-		clientCert = append(clientCert, certs)
-		mysql.RegisterTLSConfig("customer", &tls.Config{
-			RootCAs:            rootCertPool,
-			Certificates:       clientCert,
-			ServerName:         bo.Host,
-			InsecureSkipVerify: bo.SkipClientCA,
-		})
-		return fmt.Sprintf("%s:%s@(%s:%d)/%s?tls=customer&charset=utf8", bo.User, bo.Password, bo.Host, bo.Port, constants.TidbMetaDB), nil
-	}
-*/
-
 func (bo *GenericOptions) GetTikvGCLifeTime(ctx context.Context, db *sql.DB) (string, error) {
 	var tikvGCTime string
 	sql := fmt.Sprintf("select variable_value from %s where variable_name= ?", constants.TidbMetaTable) //nolint: gosec
