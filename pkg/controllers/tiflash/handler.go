@@ -109,8 +109,8 @@ func (r *Reconciler) StoreEventHandler() handler.TypedEventHandler[client.Object
 }
 
 func (r *Reconciler) getRequestOfTiFlashStore(ctx context.Context, s *pdv1.Store) (reconcile.Request, error) {
-	if s.Engine() != pdv1.StoreEngineTiFlash {
-		return reconcile.Request{}, fmt.Errorf("store is not tiflash")
+	if s.Engine() != pdv1.StoreEngineTiFlash && s.Engine() != pdv1.StoreEngineTiFlashCompute {
+		return reconcile.Request{}, fmt.Errorf("store is not tiflash, engine: %s", s.Engine())
 	}
 
 	ns, cluster := pdm.SplitPrimaryKey(s.Namespace)

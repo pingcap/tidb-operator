@@ -76,8 +76,9 @@ func (s *Store) Engine() StoreEngine {
 type StoreEngine string
 
 const (
-	StoreEngineTiKV    StoreEngine = "tikv"
-	StoreEngineTiFlash StoreEngine = "tiflash"
+	StoreEngineTiKV           StoreEngine = "tikv"
+	StoreEngineTiFlash        StoreEngine = "tiflash"
+	StoreEngineTiFlashCompute StoreEngine = "tiflash_compute"
 )
 
 type StoreState string
