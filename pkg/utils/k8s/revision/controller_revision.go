@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	appsv1 "k8s.io/api/apps/v1"
 	kuberuntime "k8s.io/apimachinery/pkg/runtime"
@@ -38,7 +39,8 @@ const (
 	defaultRevisionHistoryLimit = 10
 )
 
-var encoderMap = map[schema.GroupVersion]kuberuntime.Encoder{}
+// encoderMap is a map of `GroupVersion` to `kuberuntime.Encoder`.
+var encoderMap sync.Map
 
 // GetCurrentAndUpdate returns the current and update ControllerRevisions. It also
 // returns a collision count that records the number of name collisions set saw when creating
@@ -135,7 +137,8 @@ func newRevision(obj client.Object, component string, labels map[string]string, 
 // getPatch returns a merge patch that can be applied to restore a CR to a previous version.
 // The current state that we save is just the spec.
 func getPatch(obj client.Object, gvk schema.GroupVersionKind) ([]byte, error) {
-	encoder, ok := encoderMap[gvk.GroupVersion()]
+	var encoder kuberuntime.Encoder
+	val, ok := encoderMap.Load(gvk.GroupVersion())
 	if !ok {
 		encoder = scheme.Codecs.EncoderForVersion(
 			serializerjson.NewSerializerWithOptions(
@@ -149,7 +152,9 @@ func getPatch(obj client.Object, gvk schema.GroupVersionKind) ([]byte, error) {
 				}),
 			gvk.GroupVersion(),
 		)
-		encoderMap[gvk.GroupVersion()] = encoder
+		encoderMap.Store(gvk.GroupVersion(), encoder)
+	} else {
+		encoder = val.(kuberuntime.Encoder)
 	}
 
 	buf := bytes.Buffer{}
