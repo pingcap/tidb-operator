@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/Masterminds/semver"
@@ -44,11 +43,6 @@ const (
 	ReasonUpdateStatusFailed = "UpdateStatusFailed"
 )
 
-const (
-	gcPausedKeyword          = "GC is paused"
-	pdSchedulesPausedKeyword = "Schedulers are paused"
-)
-
 // Manager mainly used to manage backup related work
 type Manager struct {
 	cli           client.Client
@@ -67,26 +61,6 @@ func NewManager(
 		backupOpts,
 	}
 }
-
-/* TODO(ideascf): remove this function, br.spec.From is deprecated in v2
-func (bm *Manager) setFromDBOptions(backup *v1alpha1.Backup) {
-	bm.Options.Host = backup.Spec.From.Host
-
-	if backup.Spec.From.Port != 0 {
-		bm.Options.Port = backup.Spec.From.Port
-	} else {
-		bm.Options.Port = v1alpha1.DefaultTiDBServerPort
-	}
-
-	if backup.Spec.From.User != "" {
-		bm.Options.User = backup.Spec.From.User
-	} else {
-		bm.Options.User = v1alpha1.DefaultTidbUser
-	}
-
-	bm.Options.Password = util.GetOptionValueFromEnv(bkconstants.TidbPasswordKey, bkconstants.BackupManagerEnvVarPrefix)
-}
-*/
 
 // ProcessBackup used to process the backup logic
 func (bm *Manager) ProcessBackup() error {
@@ -142,72 +116,9 @@ func (bm *Manager) ProcessBackup() error {
 		return bm.performLogBackup(ctx, backup.DeepCopy())
 	}
 
-	// TODO(ideascf): remove this function, EBS volume snapshot backup is deprecated in v2
-	// if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && bm.Initialize {
-	// 	return bm.performVolumeBackupInitialize(ctx, backup.DeepCopy())
-	// }
-
-	if backup.Spec.From == nil {
-		// skip the DB initialization if spec.from is not specified
-		return bm.performBackup(ctx, backup.DeepCopy(), nil)
-	}
-	return fmt.Errorf("spec.From must be nil")
-
-	// TODO(ideascf): backup.Spec.From is deprecated in v2
-	// klog.Infof("start to connect to tidb server (%s:%d) as the .spec.from field is specified",
-	// 	backup.Spec.From.Host, backup.Spec.From.Port)
-
-	// // validate and create from db
-	// var db *sql.DB
-	// db, err = bm.validateAndCreateFromDB(ctx, backup.DeepCopy())
-	// if err != nil {
-	// 	return err
-	// }
-
-	// defer db.Close()
-	// return bm.performBackup(ctx, backup.DeepCopy(), db)
+	// skip the DB initialization if spec.from is not specified
+	return bm.performBackup(ctx, backup.DeepCopy(), nil)
 }
-
-/*
-// validateAndCreateFromDB validate and create from db.
-func (bm *Manager) validateAndCreateFromDB(ctx context.Context, backup *v1alpha1.Backup) (*sql.DB, error) {
-	bm.setFromDBOptions(backup)
-	var db *sql.DB
-	var dsn string
-	var errs []error
-	err := wait.PollImmediate(constants.PollInterval, constants.CheckTimeout, func() (done bool, err error) {
-		dsn, err = bm.GetDSN(bm.TLSClient)
-		if err != nil {
-			klog.Errorf("can't get dsn of tidb cluster %s, err: %s", bm, err)
-			return false, err
-		}
-		db, err = pkgutil.OpenDB(ctx, dsn)
-		if err != nil {
-			klog.Warningf("can't connect to tidb cluster %s, err: %s", bm, err)
-			if ctx.Err() != nil {
-				return false, ctx.Err()
-			}
-			return false, nil
-		}
-		return true, nil
-	})
-
-	if err != nil {
-		errs = append(errs, err)
-		klog.Errorf("cluster %s connect failed, err: %s", bm, err)
-		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    v1alpha1.BackupFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "ConnectTidbFailed",
-			Message: err.Error(),
-		}, nil)
-		errs = append(errs, uerr)
-		return nil, errorutils.NewAggregate(errs)
-	}
-
-	return db, nil
-}
-*/
 
 // nolint: gocyclo
 func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, db *sql.DB) error {
@@ -357,33 +268,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	}
 
 	// run br binary to do the real job
-	backupErr := bm.backupData(ctx, backup, bm.StatusUpdater)
-
-	// TODO(ideascf): remove this function, EBS volume snapshot backup is deprecated in v2
-	// defer func() {
-	// 	// Calculate the backup size for ebs backup job even if it fails
-	// 	if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) && !bm.Initialize {
-	// 		fullBackupSize, incrementalBackupSize, err := util.CalcVolSnapBackupSize(ctx, backup.Spec.StorageProvider, backup.Spec.CalcSizeLevel)
-	// 		if err != nil {
-	// 			klog.Errorf("Failed to calc volume snapshot backup, err: %v", err)
-	// 			return
-	// 		}
-
-	// 		backupSizeReadable := humanize.Bytes(uint64(fullBackupSize))
-	// 		incrementalBackupSizeReadable := humanize.Bytes(uint64(incrementalBackupSize))
-	// 		updateStatus := &backupMgr.BackupUpdateStatus{
-	// 			BackupSize:                    &fullBackupSize,
-	// 			BackupSizeReadable:            &backupSizeReadable,
-	// 			IncrementalBackupSize:         &incrementalBackupSize,
-	// 			IncrementalBackupSizeReadable: &incrementalBackupSizeReadable,
-	// 			TimeCompleted:                 &metav1.Time{Time: time.Now()},
-	// 		}
-
-	// 		if err := bm.StatusUpdater.Update(backup, nil, updateStatus); err != nil {
-	// 			klog.Errorf("update backup size to status error: %v", err)
-	// 		}
-	// 	}
-	// }()
+	backupErr := bm.backupData(ctx, backup)
 
 	if db != nil && oldTikvGCTimeDuration < tikvGCTimeDuration {
 		// use another context to revert `tikv_gc_life_time` back.
@@ -415,13 +300,6 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 		errs = append(errs, backupErr)
 		klog.Errorf("backup cluster %s data failed, err: %s", bm, backupErr)
 		failedCondition := v1alpha1.BackupFailed
-		if bm.Mode == string(v1alpha1.BackupModeVolumeSnapshot) {
-			if bm.Initialize {
-				failedCondition = v1alpha1.VolumeBackupInitializeFailed
-			} else {
-				failedCondition = v1alpha1.VolumeBackupFailed
-			}
-		}
 		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Condition: metav1.Condition{
 				Type:    string(failedCondition),
@@ -438,16 +316,6 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 	var updateStatus *backupMgr.BackupUpdateStatus
 	completeCondition := v1alpha1.BackupComplete
 	switch bm.Mode {
-	case string(v1alpha1.BackupModeVolumeSnapshot):
-		if !bm.Initialize {
-			completeCondition = v1alpha1.VolumeBackupComplete
-			// In volume snapshot mode, commitTS have been updated according to the
-			// br command output, so we don't need to update it here.
-			updateStatus = &backupMgr.BackupUpdateStatus{
-				TimeStarted:   &metav1.Time{Time: started},
-				TimeCompleted: &metav1.Time{Time: time.Now()},
-			}
-		}
 	default:
 		backupMeta, err := util.GetBRMetaData(ctx, backup.Spec.StorageProvider)
 		if err != nil {
@@ -735,41 +603,6 @@ func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backu
 	return updateStatus, "", nil
 }
 
-/* TODO(ideascf): remove this function, EBS volume snapshot backup is deprecated in v2
-// performVolumeBackupInitialize execute br to stop GC and PD schedules
-// it will keep running until the process is killed
-func (bm *Manager) performVolumeBackupInitialize(ctx context.Context, backup *v1alpha1.Backup) error {
-	err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Condition: metav1.Condition{
-			Type:   string(v1alpha1.BackupRunning),
-			Status: metav1.ConditionTrue,
-		},
-	}, nil)
-	if err != nil {
-		return err
-	}
-
-	if err = bm.doInitializeVolumeBackup(ctx, backup, bm.StatusUpdater); err != nil {
-		errs := make([]error, 0, 2)
-		errs = append(errs, err)
-		updateErr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Condition: metav1.Condition{
-				Type:    string(v1alpha1.VolumeBackupInitializeFailed),
-				Status:  metav1.ConditionTrue,
-				Reason:  "InitializeVolumeBackupFailed",
-				Message: err.Error(),
-			},
-		}, nil)
-		if updateErr != nil {
-			errs = append(errs, updateErr)
-		}
-		return errorutils.NewAggregate(errs)
-	}
-
-	return nil
-}
-*/
-
 func (bm *Manager) cleanSnapshotBackupEnv(ctx context.Context, backup *v1alpha1.Backup) error {
 	if backup.Spec.Mode != v1alpha1.BackupModeSnapshot {
 		return nil
@@ -787,49 +620,4 @@ func (bm *Manager) isBRCanContinueRunByCheckpoint() bool {
 	}
 	lessThanV651, _ := semver.NewConstraint("<v6.5.1-0")
 	return !lessThanV651.Check(v)
-}
-
-// VolumeBackupInitializeManager manages volume backup initializing status
-type VolumeBackupInitializeManager struct {
-	done               bool
-	gcStopped          bool
-	pdSchedulesStopped bool
-
-	backup        *v1alpha1.Backup
-	statusUpdater backupMgr.BackupConditionUpdaterInterface
-}
-
-// UpdateBackupStatus extracts information from log line and update backup status to VolumeBackupInitialized
-// when GC and PD schedules are all stopped
-func (vb *VolumeBackupInitializeManager) UpdateBackupStatus(logLine string) {
-	if vb.done {
-		return
-	}
-
-	if strings.Contains(logLine, gcPausedKeyword) {
-		vb.gcStopped = true
-	} else if strings.Contains(logLine, pdSchedulesPausedKeyword) {
-		vb.pdSchedulesStopped = true
-	}
-	vb.tryUpdateBackupStatus()
-}
-
-// tryUpdateBackupStatus tries to update backup status
-func (vb *VolumeBackupInitializeManager) tryUpdateBackupStatus() {
-	if !vb.gcStopped || !vb.pdSchedulesStopped {
-		return
-	}
-
-	err := vb.statusUpdater.Update(vb.backup, &v1alpha1.BackupCondition{
-		Condition: metav1.Condition{
-			Type:   string(v1alpha1.VolumeBackupInitialized),
-			Status: metav1.ConditionTrue,
-		},
-	}, nil)
-	if err == nil {
-		vb.done = true
-	} else {
-		klog.Warningf("backup %s/%s update status to VolumeBackupInitialized failed, err: %s",
-			vb.backup.Namespace, vb.backup.Name, err.Error())
-	}
 }

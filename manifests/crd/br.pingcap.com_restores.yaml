@@ -3064,10 +3064,6 @@ spec:
                   - name
                   type: object
                 type: array
-              federalVolumeRestorePhase:
-                description: FederalVolumeRestorePhase indicates which phase to execute
-                  in federal volume restore
-                type: string
               gcs:
                 description: GcsStorageProvider represents the google cloud storage
                   for storing backups.
@@ -7317,33 +7313,6 @@ spec:
                   The time limit during which data is retained for each GC, in the format of Go Duration.
                   When a GC happens, the current time minus this value is the safe point.
                 type: string
-              to:
-                description: To is the tidb cluster that needs to restore.
-                properties:
-                  host:
-                    description: Host is the tidb cluster access address
-                    type: string
-                  port:
-                    description: Port is the port number to use for connecting tidb
-                      cluster
-                    format: int32
-                    type: integer
-                  secretName:
-                    description: SecretName is the name of secret which stores tidb
-                      cluster's password.
-                    type: string
-                  tlsClientSecretName:
-                    description: |-
-                      TLSClientSecretName is the name of secret which stores tidb server client certificate
-                      Optional: Defaults to nil
-                    type: string
-                  user:
-                    description: User is the user for login tidb cluster
-                    type: string
-                required:
-                - host
-                - secretName
-                type: object
               tolerateSingleTiKVOutage:
                 default: false
                 description: TolerateSingleTiKVOutage indicates whether to tolerate
@@ -7398,23 +7367,6 @@ spec:
               useKMS:
                 description: Use KMS to decrypt the secrets
                 type: boolean
-              volumeAZ:
-                description: |-
-                  VolumeAZ indicates which AZ the volume snapshots restore to.
-                  it is only valid for mode of volume-snapshot
-                type: string
-              warmup:
-                description: Warmup represents whether to initialize TiKV volumes
-                  after volume snapshot restore
-                type: string
-              warmupImage:
-                description: WarmupImage represents using what image to initialize
-                  TiKV volumes
-                type: string
-              warmupStrategy:
-                default: hybrid
-                description: WarmupStrategy
-                type: string
             type: object
           status:
             description: RestoreStatus represents the current status of a tidb cluster

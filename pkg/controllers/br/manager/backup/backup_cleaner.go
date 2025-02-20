@@ -348,13 +348,6 @@ func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1
 		envVars []corev1.EnvVar
 		reason  string
 	)
-	if backup.Spec.From != nil {
-		envVars, reason, err = backuputil.GenerateTidbPasswordEnv(ns, name, backup.Spec.From.SecretName, backup.Spec.UseKMS, bc.cli)
-		if err != nil {
-			return nil, reason, err
-		}
-	}
-
 	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bc.cli)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %w", ns, name, err)

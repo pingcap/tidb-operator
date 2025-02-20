@@ -16,7 +16,6 @@ package util
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/url"
 	"path"
@@ -24,9 +23,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/Masterminds/semver"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
@@ -36,14 +33,6 @@ import (
 
 const (
 	ReasonUnsupportedStorageType = "UnsupportedStorageType"
-)
-
-var (
-	// the first version which allows skipping setting tikv_gc_life_time
-	// https://github.com/pingcap/br/pull/553
-	tikvLessThanV408, _ = semver.NewConstraint("<v4.0.8-0")
-	// the first version which supports log backup
-	tikvLessThanV610, _ = semver.NewConstraint("<v6.1.0-0")
 )
 
 // CheckAllKeysExistInSecret check if all keys are included in the specific secret
@@ -455,21 +444,6 @@ func GetBackupDataPath(provider brv1alpha1.StorageProvider) (string, string, err
 	return fmt.Sprintf("%s://%s", string(storageType), backupPath), "", nil
 }
 
-func validateAccessConfig(config *brv1alpha1.TiDBAccessConfig) string {
-	if config == nil {
-		return "missing cluster config in spec of %s/%s"
-	} else {
-		if config.Host == "" {
-			return "missing cluster config in spec of %s/%s"
-		}
-
-		if config.SecretName == "" {
-			return "missing tidbSecretName config in spec of %s/%s"
-		}
-	}
-	return ""
-}
-
 // nolint: gocyclo
 // ValidateBackup validates backup sepc
 func ValidateBackup(backup *brv1alpha1.Backup, tikvVersion string, cluster *corev1alpha1.Cluster) error {
@@ -477,18 +451,8 @@ func ValidateBackup(backup *brv1alpha1.Backup, tikvVersion string, cluster *core
 	name := backup.Name
 
 	if backup.Spec.BR == nil {
-		if reason := validateAccessConfig(backup.Spec.From); reason != "" {
-			return fmt.Errorf(reason, ns, name)
-		}
-		if backup.Spec.StorageSize == "" {
-			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
-		}
+		return fmt.Errorf(".spec.br is required in spec of %s/%s", ns, name)
 	} else {
-		if !canSkipSetGCLifeTime(tikvVersion) {
-			if reason := validateAccessConfig(backup.Spec.From); reason != "" {
-				return fmt.Errorf(reason, ns, name)
-			}
-		}
 		if backup.Spec.BR.Cluster == "" {
 			return fmt.Errorf("cluster should be configured for BR in spec of %s/%s", ns, name)
 		}
@@ -525,9 +489,6 @@ func ValidateBackup(backup *brv1alpha1.Backup, tikvVersion string, cluster *core
 
 		// validate log backup
 		if backup.Spec.Mode == brv1alpha1.BackupModeLog {
-			if !isLogBackSupport(tikvVersion) {
-				return fmt.Errorf("tikv %s doesn't support log backup in spec of %s/%s, the first version is v6.1.0", tikvVersion, ns, name)
-			}
 			var err error
 			_, err = brv1alpha1.ParseTSString(backup.Spec.CommitTs)
 			if err != nil {
@@ -541,19 +502,6 @@ func ValidateBackup(backup *brv1alpha1.Backup, tikvVersion string, cluster *core
 				return err
 			}
 		}
-
-		// TODO(ideascf): remove these lines, the volume snapshot backup is deprecated in v2
-		// // validate volume snapshot backup
-		// if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
-		// 	// only support across k8s now. TODO compatible for single k8s
-		// 	if tc == nil || !tc.AcrossK8s() {
-		// 		return errors.New("only support volume snapshot backup across k8s clusters")
-		// 	}
-
-		// 	if len(tc.Status.TiKV.Stores) == 0 || tc.Spec.TiKV.Replicas == 0 {
-		// 		return errors.New("not support backup TiDB cluster with no tikv replica")
-		// 	}
-		// }
 
 		if backup.Spec.BackoffRetryPolicy.MinRetryDuration != "" {
 			_, err := time.ParseDuration(backup.Spec.BackoffRetryPolicy.MinRetryDuration)
@@ -578,18 +526,8 @@ func ValidateRestore(restore *brv1alpha1.Restore, tikvVersion string, acrossK8s 
 	name := restore.Name
 
 	if restore.Spec.BR == nil {
-		if reason := validateAccessConfig(restore.Spec.To); reason != "" {
-			return fmt.Errorf(reason, ns, name)
-		}
-		if restore.Spec.StorageSize == "" {
-			return fmt.Errorf("missing StorageSize config in spec of %s/%s", ns, name)
-		}
+		return fmt.Errorf(".spec.br is required in spec of %s/%s", ns, name)
 	} else {
-		if !canSkipSetGCLifeTime(tikvVersion) {
-			if reason := validateAccessConfig(restore.Spec.To); reason != "" {
-				return fmt.Errorf(reason, ns, name)
-			}
-		}
 		if restore.Spec.BR.Cluster == "" {
 			return fmt.Errorf("cluster should be configured for BR in spec of %s/%s", ns, name)
 		}
@@ -633,13 +571,6 @@ func ValidateRestore(restore *brv1alpha1.Restore, tikvVersion string, acrossK8s 
 		} else if restore.Spec.Local != nil {
 			if err := validateLocal(ns, name, restore.Spec.Local); err != nil {
 				return err
-			}
-		}
-
-		if restore.Spec.Mode == brv1alpha1.RestoreModeVolumeSnapshot {
-			// only support across k8s now. TODO compatible for single k8s
-			if !acrossK8s {
-				return errors.New("only support volume snapshot restore across k8s clusters")
 			}
 		}
 	}
@@ -705,19 +636,6 @@ func ParseImage(image string) (string, string) {
 	return name, tag
 }
 
-// canSkipSetGCLifeTime returns if setting tikv_gc_life_time can be skipped based on the TiKV version
-func canSkipSetGCLifeTime(tikvVersion string) bool {
-	v, err := semver.NewVersion(tikvVersion)
-	if err != nil {
-		klog.Errorf("Parse version %s failure, error: %v", tikvVersion, err)
-		return true
-	}
-	if tikvLessThanV408.Check(v) {
-		return false
-	}
-	return true
-}
-
 func BytesToString(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
@@ -729,19 +647,6 @@ func StringToBytes(s string) []byte {
 			Cap int
 		}{s, len(s)},
 	))
-}
-
-// isLogBackSupport returns whether tikv supports log backup
-func isLogBackSupport(tikvVersion string) bool {
-	v, err := semver.NewVersion(tikvVersion)
-	if err != nil {
-		klog.Errorf("Parse version %s failure, error: %v", tikvVersion, err)
-		return true
-	}
-	if tikvLessThanV610.Check(v) {
-		return false
-	}
-	return true
 }
 
 // GetStorageRestorePath generate the path of a specific storage from Restore
@@ -784,56 +689,3 @@ func GetOptions(provider brv1alpha1.StorageProvider) []string {
 		return nil
 	}
 }
-
-// TODO(ideascf): EBS volume snapshot backup is deprecated in v2
-// // getVolSnapBackupMetaData get backup metadata from cloud storage
-// func GetVolSnapBackupMetaData(r *v1alpha1.Restore, secretLister corelisterv1.SecretLister) (*EBSBasedBRMeta, error) {
-// 	// since the restore meta is small (~5M), assume 1 minutes is enough
-// 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Minute*1))
-// 	defer cancel()
-
-// 	klog.Infof("read the backup meta from external storage")
-// 	cred := GetStorageCredential(r.Namespace, r.Spec.StorageProvider, secretLister)
-// 	s, err := NewStorageBackend(r.Spec.StorageProvider, cred)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer s.Close()
-
-// 	var metaInfo []byte
-// 	// use exponential backoff, every retry duration is duration * factor ^ (used_step - 1)
-// 	backoff := wait.Backoff{
-// 		Duration: time.Second,
-// 		Steps:    6,
-// 		Factor:   2.0,
-// 		Cap:      time.Minute,
-// 	}
-// 	readBackupMeta := func() error {
-// 		exist, err := s.Exists(ctx, constants.MetaFile)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		if !exist {
-// 			return fmt.Errorf("%s not exist", constants.MetaFile)
-// 		}
-// 		metaInfo, err = s.ReadAll(ctx, constants.MetaFile)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		return nil
-// 	}
-// 	isRetry := func(err error) bool {
-// 		return !strings.Contains(err.Error(), "not exist")
-// 	}
-// 	err = retry.OnError(backoff, isRetry, readBackupMeta)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("read backup meta from bucket %s and prefix %s, err: %v", s.GetBucket(), s.GetPrefix(), err)
-// 	}
-
-// 	backupMeta := &EBSBasedBRMeta{}
-// 	err = json.Unmarshal(metaInfo, backupMeta)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("unmarshal backup meta from bucket %s and prefix %s, err: %v", s.GetBucket(), s.GetPrefix(), err)
-// 	}
-// 	return backupMeta, nil
-// }
