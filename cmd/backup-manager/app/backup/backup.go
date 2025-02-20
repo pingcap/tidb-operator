@@ -36,6 +36,8 @@ import (
 // Options contains the input arguments to the backup command
 type Options struct {
 	backupUtil.GenericOptions
+	// PDAddress is the address of the PD, for example: db-pd.tidb12345:2379
+	PDAddress string
 }
 
 // backupData generates br args and runs br binary to do the real backup work
@@ -177,13 +179,8 @@ func (bo *Options) backupCommandTemplate(backup *v1alpha1.Backup, specificArgs [
 		return nil, fmt.Errorf("backup command is invalid, Args: %v", specificArgs)
 	}
 
-	clusterNamespace := backup.Spec.BR.ClusterNamespace
-	if backup.Spec.BR.ClusterNamespace == "" {
-		clusterNamespace = backup.Namespace
-	}
 	args := make([]string, 0)
-	// TODO(ideascf): use PDGroupClientPort?
-	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:%d", backup.Spec.BR.Cluster, clusterNamespace, corev1alpha1.DefaultPDPortClient))
+	args = append(args, fmt.Sprintf("--pd=%s", bo.PDAddress))
 	if bo.TLSCluster {
 		args = append(args, fmt.Sprintf("--ca=%s", path.Join(corev1alpha1.DirPathClusterClientTLS, corev1.ServiceAccountRootCAKey)))
 		args = append(args, fmt.Sprintf("--cert=%s", path.Join(corev1alpha1.DirPathClusterClientTLS, corev1.TLSCertKey)))

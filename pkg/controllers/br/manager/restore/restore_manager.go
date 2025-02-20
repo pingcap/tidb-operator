@@ -22,6 +22,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
@@ -105,8 +106,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return fmt.Errorf("failed to get first tikv group: %w", err)
 	}
 
-	err = backuputil.ValidateRestore(restore, tikvGroup.Spec.Template.Spec.Version, false) // TODO(ideascf): cluster.Spec.AcrossK8s?
-	// }
+	err = backuputil.ValidateRestore(restore, tikvGroup.Spec.Template.Spec.Version)
 	if err != nil {
 		_ = rm.statusUpdater.Update(restore, &metav1.Condition{
 			Type:    string(v1alpha1.RestoreInvalid),
@@ -149,7 +149,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	}
 
 	klog.Infof("restore %s/%s creating job %s.", ns, name, restoreJobName)
-	if err := rm.cli.Create(context.TODO(), job); err != nil {
+	if err := rm.cli.Create(context.TODO(), job); err != nil && !apierrors.IsAlreadyExists(err) {
 		errMsg := fmt.Errorf("create restore %s/%s job %s failed, err: %w", ns, name, restoreJobName, err)
 		_ = rm.statusUpdater.Update(restore, &metav1.Condition{
 			Type:    string(v1alpha1.RestoreRetryFailed),
@@ -192,6 +192,10 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	if err != nil {
 		return nil, fmt.Sprintf("failed to get first tikv group: %v", err), err
 	}
+	pdGroup, err := util.FirstPDGroup(rm.cli, ns, cluster.Name)
+	if err != nil {
+		return nil, fmt.Sprintf("failed to get first pd group: %v", err), err
+	}
 
 	var (
 		envVars []corev1.EnvVar
@@ -215,6 +219,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		"restore",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--restoreName=%s", name),
+		fmt.Sprintf("--pd-addr=%s", fmt.Sprintf("%s-pd.%s:%d", pdGroup.Spec.Cluster.Name, pdGroup.Namespace, coreutil.PDGroupClientPort(pdGroup))),
 	}
 	tikvVersion := tikvGroup.Spec.Template.Spec.Version
 	if tikvVersion != "" {
@@ -318,6 +323,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 				{
 					Name:            metav1alpha1.RestoreJobLabelVal,
 					Image:           rm.backupManagerImage,
+					Command:         []string{"/backup-manager"},
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    volumeMounts,

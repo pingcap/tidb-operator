@@ -5125,7 +5125,9 @@ spec:
                     - volumeMount
                     type: object
                   logStop:
-                    description: LogStop indicates that will stop the log backup.
+                    description: |-
+                      Deprecated: use LogSubcommand instead. it will be removed later.
+                      LogStop indicates that will stop the log backup.
                     type: boolean
                   logSubcommand:
                     description: Subcommand is the subcommand for BR, such as start,
@@ -5134,11 +5136,14 @@ spec:
                     - log-start
                     - log-stop
                     - log-pause
+                    - log-resume
+                    - log-truncate
                     type: string
                   logTruncateUntil:
                     description: |-
                       LogTruncateUntil is log backup truncate until timestamp.
                       Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
+                      It's required when LogSubcommand is "log-truncate".
                     type: string
                   podSecurityContext:
                     description: PodSecurityContext of the component
@@ -5476,12 +5481,6 @@ spec:
                     items:
                       type: string
                     type: array
-                  tikvGCLifeTime:
-                    description: |-
-                      TikvGCLifeTime is to specify the safe gc life time for backup.
-                      The time limit during which data is retained for each GC, in the format of Go Duration.
-                      When a GC happens, the current time minus this value is the safe point.
-                    type: string
                   tolerations:
                     description: Base tolerations of backup Pods, components may add
                       more tolerations upon this respectively
@@ -17875,7 +17874,9 @@ spec:
                     - volumeMount
                     type: object
                   logStop:
-                    description: LogStop indicates that will stop the log backup.
+                    description: |-
+                      Deprecated: use LogSubcommand instead. it will be removed later.
+                      LogStop indicates that will stop the log backup.
                     type: boolean
                   logSubcommand:
                     description: Subcommand is the subcommand for BR, such as start,
@@ -17884,11 +17885,14 @@ spec:
                     - log-start
                     - log-stop
                     - log-pause
+                    - log-resume
+                    - log-truncate
                     type: string
                   logTruncateUntil:
                     description: |-
                       LogTruncateUntil is log backup truncate until timestamp.
                       Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
+                      It's required when LogSubcommand is "log-truncate".
                     type: string
                   podSecurityContext:
                     description: PodSecurityContext of the component
@@ -18226,12 +18230,6 @@ spec:
                     items:
                       type: string
                     type: array
-                  tikvGCLifeTime:
-                    description: |-
-                      TikvGCLifeTime is to specify the safe gc life time for backup.
-                      The time limit during which data is retained for each GC, in the format of Go Duration.
-                      When a GC happens, the current time minus this value is the safe point.
-                    type: string
                   tolerations:
                     description: Base tolerations of backup Pods, components may add
                       more tolerations upon this respectively

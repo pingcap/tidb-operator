@@ -400,28 +400,6 @@ func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1
 		})
 	}
 
-	// TODO(ideascf): do we need do client-tls for tidb?
-	// if backup.Spec.From != nil && tc.Spec.TiDB != nil && tc.Spec.TiDB.TLSClient != nil && tc.Spec.TiDB.TLSClient.Enabled && !tc.SkipTLSWhenConnectTiDB() {
-	// 	args = append(args, "--client-tls=true")
-	// 	if tc.Spec.TiDB.TLSClient.SkipInternalClientCA {
-	// 		args = append(args, "--skipClientCA=true")
-	// 	}
-
-	// 	volumeMounts = append(volumeMounts, corev1.VolumeMount{
-	// 		Name:      "tidb-client-tls",
-	// 		ReadOnly:  true,
-	// 		MountPath: corev1alpha1.DirPathClusterTLSTiDB,
-	// 	})
-	// 	volumes = append(volumes, corev1.Volume{
-	// 		Name: "tidb-client-tls",
-	// 		VolumeSource: corev1.VolumeSource{
-	// 			Secret: &corev1.SecretVolumeSource{
-	// 				SecretName: util.TiDBClientTLSSecretName(backup.Spec.BR.Cluster, backup.Spec.From.TLSClientSecretName),
-	// 			},
-	// 		},
-	// 	})
-	// }
-
 	brVolumeMount := corev1.VolumeMount{
 		Name:      "br-bin",
 		ReadOnly:  false,

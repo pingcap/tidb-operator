@@ -7307,12 +7307,6 @@ spec:
                 items:
                   type: string
                 type: array
-              tikvGCLifeTime:
-                description: |-
-                  TikvGCLifeTime is to specify the safe gc life time for restore.
-                  The time limit during which data is retained for each GC, in the format of Go Duration.
-                  When a GC happens, the current time minus this value is the safe point.
-                type: string
               tolerateSingleTiKVOutage:
                 default: false
                 description: TolerateSingleTiKVOutage indicates whether to tolerate

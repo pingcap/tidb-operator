@@ -68,19 +68,6 @@ func (bk *Backup) GetAllLogBackupJobName() []string {
 	}
 }
 
-// TODO(ideascf): do we need these functions?
-// // GetTidbEndpointHash return the hash string base on tidb cluster's host and port
-//
-//	func (bk *Backup) GetTidbEndpointHash() string {
-//		return HashContents([]byte(bk.Spec.From.GetTidbEndpoint()))
-//	}
-//
-// // GetBackupPVCName return the backup pvc name
-//
-//	func (bk *Backup) GetBackupPVCName() string {
-//		return fmt.Sprintf("backup-pvc-%s", bk.GetTidbEndpointHash())
-//	}
-//
 // GetInstanceName return the backup instance name
 func (bk *Backup) GetInstanceName() string {
 	if bk.Labels != nil {
@@ -121,7 +108,6 @@ var (
 	RestoreControllerKind        = SchemeGroupVersion.WithKind("Restore")
 )
 
-// TODO(ideascf): copy UT
 // GetBackupOwnerRef returns Backup's OwnerReference
 func GetBackupOwnerRef(backup *Backup) metav1.OwnerReference {
 	controller := true

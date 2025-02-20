@@ -17,6 +17,7 @@ package util
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -33,6 +34,24 @@ func FirstTikvGroup(cli client.Client, ns, cluster string) (*v1alpha1.TiKVGroup,
 	if len(tikvGroups) == 0 {
 		return nil, fmt.Errorf("no tikv groups found in cluster %s", cluster)
 	}
+	sort.Slice(tikvGroups, func(i, j int) bool {
+		return tikvGroups[i].CreationTimestamp.Before(&tikvGroups[j].CreationTimestamp)
+	})
 	tikvGroup := tikvGroups[0]
 	return tikvGroup, nil
+}
+
+func FirstPDGroup(cli client.Client, ns, cluster string) (*v1alpha1.PDGroup, error) {
+	pdGroups, err := apicall.ListGroups[scope.PDGroup](context.TODO(), cli, ns, cluster)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list pd groups: %w", err)
+	}
+	if len(pdGroups) == 0 {
+		return nil, fmt.Errorf("no pd groups found in cluster %s", cluster)
+	}
+	sort.Slice(pdGroups, func(i, j int) bool {
+		return pdGroups[i].CreationTimestamp.Before(&pdGroups[j].CreationTimestamp)
+	})
+	pdGroup := pdGroups[0]
+	return pdGroup, nil
 }

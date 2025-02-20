@@ -76,11 +76,6 @@ const (
 	RestoreScheduled RestoreConditionType = "Scheduled"
 	// RestoreRunning means the Restore is currently being executed.
 	RestoreRunning RestoreConditionType = "Running"
-	// RestoreDataComplete means the Restore has successfully executed part-2 and the
-	// data in restore volumes has been deal with consistency based on min_resolved_ts
-	RestoreDataComplete RestoreConditionType = "DataComplete"
-	// RestoreTiKVComplete means in volume restore, all TiKV instances are started and up
-	RestoreTiKVComplete RestoreConditionType = "TikvComplete"
 	// RestoreComplete means the Restore has successfully executed and the
 	// backup data has been loaded into tidb cluster.
 	RestoreComplete RestoreConditionType = "Complete"
@@ -131,28 +126,27 @@ type RestoreSpec struct {
 	// Mode is the restore mode. such as snapshot or pitr.
 	// +kubebuilder:default=snapshot
 	Mode RestoreMode `json:"restoreMode,omitempty"`
+	// StorageProvider configures where and how backups should be stored.
+	StorageProvider `json:",inline"`
+	// BR is the configs for BR.
+	BR *BRConfig `json:"br,omitempty"`
+
 	// PitrRestoredTs is the pitr restored ts.
 	PitrRestoredTs string `json:"pitrRestoredTs,omitempty"`
 	// LogRestoreStartTs is the start timestamp which log restore from.
 	// +optional
 	LogRestoreStartTs string `json:"logRestoreStartTs,omitempty"`
-	// TikvGCLifeTime is to specify the safe gc life time for restore.
-	// The time limit during which data is retained for each GC, in the format of Go Duration.
-	// When a GC happens, the current time minus this value is the safe point.
-	TikvGCLifeTime *string `json:"tikvGCLifeTime,omitempty"`
-	// StorageProvider configures where and how backups should be stored.
-	StorageProvider `json:",inline"`
 	// PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.
 	// +optional
 	PitrFullBackupStorageProvider StorageProvider `json:"pitrFullBackupStorageProvider,omitempty"`
+
 	// The storageClassName of the persistent volume for Restore data storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 	// StorageSize is the request storage size for backup job
 	StorageSize string `json:"storageSize,omitempty"`
-	// BR is the configs for BR.
-	BR *BRConfig `json:"br,omitempty"`
+
 	// Base tolerations of restore Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`

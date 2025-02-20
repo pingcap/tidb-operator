@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
 )
 
 // RestoreUpdateStatus represents the status of a restore to be updated.
@@ -68,7 +69,7 @@ func NewRealRestoreConditionUpdater(
 }
 
 func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, condition *metav1.Condition, newStatus *RestoreUpdateStatus) error {
-	// TODO(ideascf): set reason for all
+	// reason is required so that we do set if it's empty
 	if condition != nil {
 		if condition.Reason == "" {
 			condition.Reason = condition.Type
@@ -127,7 +128,7 @@ func updateRestoreStatus(status *v1alpha1.RestoreStatus, newStatus *RestoreUpdat
 		isUpdate = true
 	}
 	if newStatus.ProgressStep != nil {
-		progresses, updated := updateBRProgress(status.Progresses, newStatus.ProgressStep, newStatus.Progress, newStatus.ProgressUpdateTime)
+		progresses, updated := util.UpdateBRProgress(status.Progresses, newStatus.ProgressStep, newStatus.Progress, newStatus.ProgressUpdateTime)
 		if updated {
 			status.Progresses = progresses
 			isUpdate = true
@@ -135,51 +136,6 @@ func updateRestoreStatus(status *v1alpha1.RestoreStatus, newStatus *RestoreUpdat
 	}
 
 	return isUpdate
-}
-
-// TODO(ideascf): this function is copied from backup_status_updater.go, we should refactor it.
-// updateBRProgress updates progress for backup/restore.
-func updateBRProgress(progresses []v1alpha1.Progress, step *string, progress *int, updateTime *metav1.Time) ([]v1alpha1.Progress, bool) {
-	var oldProgress *v1alpha1.Progress
-	for i, p := range progresses {
-		if p.Step == *step {
-			oldProgress = &progresses[i]
-			break
-		}
-	}
-
-	makeSureLastProgressOver := func() {
-		size := len(progresses)
-		if size == 0 || progresses[size-1].Progress >= 100 {
-			return
-		}
-		progresses[size-1].Progress = 100
-		progresses[size-1].LastTransitionTime = metav1.Time{Time: time.Now()}
-	}
-
-	// no such progress, will new
-	if oldProgress == nil {
-		makeSureLastProgressOver()
-		progresses = append(progresses, v1alpha1.Progress{
-			Step:               *step,
-			Progress:           *progress,
-			LastTransitionTime: *updateTime,
-		})
-		return progresses, true
-	}
-
-	isUpdate := false
-	if oldProgress.Progress < *progress {
-		oldProgress.Progress = *progress
-		isUpdate = true
-	}
-
-	if oldProgress.LastTransitionTime != *updateTime {
-		oldProgress.LastTransitionTime = *updateTime
-		isUpdate = true
-	}
-
-	return progresses, isUpdate
 }
 
 var _ RestoreConditionUpdaterInterface = &realRestoreConditionUpdater{}
