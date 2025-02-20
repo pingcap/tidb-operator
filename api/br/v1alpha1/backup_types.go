@@ -299,16 +299,17 @@ type BackupSpec struct {
 	// *** Note: This field should generally not be left empty, unless you are certain the storage provider
 	// *** can be obtained from another source, such as a schedule CR.
 	StorageProvider `json:",inline"`
+	// BRConfig is the configs for BR
+	// *** Note: This field should generally not be left empty, unless you are certain the BR config
+	// *** can be obtained from another source, such as a schedule CR.
+	BR *BRConfig `json:"br,omitempty"`
+
 	// The storageClassName of the persistent volume for Backup data storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 	// StorageSize is the request storage size for backup job
 	StorageSize string `json:"storageSize,omitempty"`
-	// BRConfig is the configs for BR
-	// *** Note: This field should generally not be left empty, unless you are certain the BR config
-	// *** can be obtained from another source, such as a schedule CR.
-	BR *BRConfig `json:"br,omitempty"`
 
 	// CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.

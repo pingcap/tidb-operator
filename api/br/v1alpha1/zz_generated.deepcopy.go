@@ -386,15 +386,15 @@ func (in *BackupSpec) DeepCopyInto(out *BackupSpec) {
 		}
 	}
 	in.StorageProvider.DeepCopyInto(&out.StorageProvider)
-	if in.StorageClassName != nil {
-		in, out := &in.StorageClassName, &out.StorageClassName
-		*out = new(string)
-		**out = **in
-	}
 	if in.BR != nil {
 		in, out := &in.BR, &out.BR
 		*out = new(BRConfig)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.StorageClassName != nil {
+		in, out := &in.StorageClassName, &out.StorageClassName
+		*out = new(string)
+		**out = **in
 	}
 	if in.Tolerations != nil {
 		in, out := &in.Tolerations, &out.Tolerations
@@ -868,16 +868,16 @@ func (in *RestoreSpec) DeepCopyInto(out *RestoreSpec) {
 		}
 	}
 	in.StorageProvider.DeepCopyInto(&out.StorageProvider)
+	if in.BR != nil {
+		in, out := &in.BR, &out.BR
+		*out = new(BRConfig)
+		(*in).DeepCopyInto(*out)
+	}
 	in.PitrFullBackupStorageProvider.DeepCopyInto(&out.PitrFullBackupStorageProvider)
 	if in.StorageClassName != nil {
 		in, out := &in.StorageClassName, &out.StorageClassName
 		*out = new(string)
 		**out = **in
-	}
-	if in.BR != nil {
-		in, out := &in.BR, &out.BR
-		*out = new(BRConfig)
-		(*in).DeepCopyInto(*out)
 	}
 	if in.Tolerations != nil {
 		in, out := &in.Tolerations, &out.Tolerations

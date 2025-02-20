@@ -126,24 +126,27 @@ type RestoreSpec struct {
 	// Mode is the restore mode. such as snapshot or pitr.
 	// +kubebuilder:default=snapshot
 	Mode RestoreMode `json:"restoreMode,omitempty"`
+	// StorageProvider configures where and how backups should be stored.
+	StorageProvider `json:",inline"`
+	// BR is the configs for BR.
+	BR *BRConfig `json:"br,omitempty"`
+
 	// PitrRestoredTs is the pitr restored ts.
 	PitrRestoredTs string `json:"pitrRestoredTs,omitempty"`
 	// LogRestoreStartTs is the start timestamp which log restore from.
 	// +optional
 	LogRestoreStartTs string `json:"logRestoreStartTs,omitempty"`
-	// StorageProvider configures where and how backups should be stored.
-	StorageProvider `json:",inline"`
 	// PitrFullBackupStorageProvider configures where and how pitr dependent full backup should be stored.
 	// +optional
 	PitrFullBackupStorageProvider StorageProvider `json:"pitrFullBackupStorageProvider,omitempty"`
+
 	// The storageClassName of the persistent volume for Restore data storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 	// StorageSize is the request storage size for backup job
 	StorageSize string `json:"storageSize,omitempty"`
-	// BR is the configs for BR.
-	BR *BRConfig `json:"br,omitempty"`
+
 	// Base tolerations of restore Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
