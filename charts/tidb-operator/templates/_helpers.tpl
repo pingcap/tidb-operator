@@ -57,5 +57,5 @@ By default, we extract the v<major>.<minor>.<patch> part from the KubeVersion, e
 - v1.15.11-gke.15 -> v1.15.11 (GKE)
 */}}
 {{- define "kube-scheduler.image_tag" -}}
-{{- default (regexFind "^v\\d+\\.\\d+\\.\\d+" .Capabilities.KubeVersion.GitVersion) .Values.scheduler.kubeSchedulerImageTag -}}
+{{- default (regexFind "^v\\d+\\.\\d+\\.\\d+" .Capabilities.KubeVersion.Version) .Values.scheduler.kubeSchedulerImageTag -}}
 {{- end -}}
