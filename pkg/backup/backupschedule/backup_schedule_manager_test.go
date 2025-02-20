@@ -70,6 +70,17 @@ func TestManager(t *testing.T) {
 	g.Expect(err).Should(BeNil())
 	helper.deleteBackup(bk)
 
+	// test last backup invalid state
+	bk.Status.Conditions = nil
+	bk.Status.Conditions = append(bk.Status.Conditions, v1alpha1.BackupCondition{
+		Type:   v1alpha1.BackupInvalid,
+		Status: v1.ConditionTrue,
+	})
+	helper.createBackup(bk)
+	err = m.canPerformNextBackup(bs)
+	g.Expect(err).Should(BeNil())
+	helper.deleteBackup(bk)
+
 	// test last backup failed state and not scheduled yet
 	bk.Status.Conditions = nil
 	bk.Status.Conditions = append(bk.Status.Conditions, v1alpha1.BackupCondition{
