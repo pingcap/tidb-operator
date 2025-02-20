@@ -192,7 +192,6 @@ func TestCombineStringMap(t *testing.T) {
 
 	res = CombineStringMap(nil, b, c, dropped)
 	g.Expect(res).Should(Equal(expect2))
-
 }
 
 func TestCopyStringMap(t *testing.T) {
