@@ -121,15 +121,3 @@ func IsRestoreFailed(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreFailed)
 	return condition != nil && condition.Status == metav1.ConditionTrue
 }
-
-// IsRestoreTiKVComplete returns true if all TiKVs run successfully during volume restore
-func IsRestoreTiKVComplete(restore *Restore) bool {
-	_, condition := GetRestoreCondition(&restore.Status, RestoreTiKVComplete)
-	return condition != nil && condition.Status == metav1.ConditionTrue
-}
-
-// IsRestoreDataComplete returns true if a Restore for data consistency has successfully completed
-func IsRestoreDataComplete(restore *Restore) bool {
-	_, condition := GetRestoreCondition(&restore.Status, RestoreDataComplete)
-	return condition != nil && condition.Status == metav1.ConditionTrue
-}

@@ -76,11 +76,6 @@ const (
 	RestoreScheduled RestoreConditionType = "Scheduled"
 	// RestoreRunning means the Restore is currently being executed.
 	RestoreRunning RestoreConditionType = "Running"
-	// RestoreDataComplete means the Restore has successfully executed part-2 and the
-	// data in restore volumes has been deal with consistency based on min_resolved_ts
-	RestoreDataComplete RestoreConditionType = "DataComplete"
-	// RestoreTiKVComplete means in volume restore, all TiKV instances are started and up
-	RestoreTiKVComplete RestoreConditionType = "TikvComplete"
 	// RestoreComplete means the Restore has successfully executed and the
 	// backup data has been loaded into tidb cluster.
 	RestoreComplete RestoreConditionType = "Complete"
