@@ -23,6 +23,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -184,7 +185,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 
 	// create k8s job
 	klog.Infof("backup %s/%s creating job %s.", ns, name, backupJobName)
-	if err := bm.cli.Create(context.TODO(), job); err != nil {
+	if err := bm.cli.Create(context.TODO(), job); err != nil && !apierrors.IsAlreadyExists(err) {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %w", ns, name, backupJobName, err)
 		_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: logBackupSubcommand,
@@ -393,6 +394,10 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 	if err != nil {
 		return nil, fmt.Sprintf("failed to get tikv group %s/%s", ns, backup.Spec.BR.Cluster), err
 	}
+	pdGroup, err := util.FirstPDGroup(bm.cli, ns, cluster.Name)
+	if err != nil {
+		return nil, fmt.Sprintf("failed to get first pd group: %v", err), err
+	}
 
 	var (
 		envVars []corev1.EnvVar
@@ -417,6 +422,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		"backup",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--backupName=%s", name),
+		fmt.Sprintf("--pd-addr=%s", fmt.Sprintf("%s-pd.%s:%d", pdGroup.Spec.Cluster.Name, pdGroup.Namespace, coreutil.PDGroupClientPort(pdGroup))),
 	}
 	tikvVersion := tikvGroup.Spec.Template.Spec.Version
 	if tikvVersion != "" {
@@ -466,28 +472,6 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 			},
 		})
 	}
-
-	// TODO(ideascf): do we need do client-tls for tidb?
-	// if backup.Spec.From != nil && tc.Spec.TiDB != nil && tc.Spec.TiDB.TLSClient != nil && tc.Spec.TiDB.TLSClient.Enabled && !tc.SkipTLSWhenConnectTiDB() {
-	// 	args = append(args, "--client-tls=true")
-	// 	if tc.Spec.TiDB.TLSClient.SkipInternalClientCA {
-	// 		args = append(args, "--skipClientCA=true")
-	// 	}
-
-	// 	volumeMounts = append(volumeMounts, corev1.VolumeMount{
-	// 		Name:      "tidb-client-tls",
-	// 		ReadOnly:  true,
-	// 		MountPath: util.TiDBClientTLSPath,
-	// 	})
-	// 	volumes = append(volumes, corev1.Volume{
-	// 		Name: "tidb-client-tls",
-	// 		VolumeSource: corev1.VolumeSource{
-	// 			Secret: &corev1.SecretVolumeSource{
-	// 				SecretName: util.TiDBClientTLSSecretName(backup.Spec.BR.Cluster, backup.Spec.From.TLSClientSecretName),
-	// 			},
-	// 		},
-	// 	})
-	// }
 
 	brVolumeMount := corev1.VolumeMount{
 		Name:      "br-bin",
@@ -554,6 +538,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 				{
 					Name:            brv1alpha1.LabelValComponentBackup,
 					Image:           bm.backupManagerImage,
+					Command:         []string{"/backup-manager"},
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    volumeMounts,

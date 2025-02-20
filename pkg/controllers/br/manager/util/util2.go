@@ -20,9 +20,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// NOTE: copy from tidb-operator/pkg/util/
-
-// TODO(ideascf): copy UT
 // AppendOverwriteEnv appends envs b into a and overwrites the envs whose names already exist
 // in b.
 // Note that this will not change relative order of envs.
@@ -44,7 +41,6 @@ func AppendOverwriteEnv(a []corev1.EnvVar, b []corev1.EnvVar) []corev1.EnvVar {
 	return a
 }
 
-// TODO(ideascf): copy UT
 // AppendEnvIfPresent appends the given environment if present
 func AppendEnvIfPresent(envs []corev1.EnvVar, name string) []corev1.EnvVar {
 	for _, e := range envs {
@@ -61,7 +57,6 @@ func AppendEnvIfPresent(envs []corev1.EnvVar, name string) []corev1.EnvVar {
 	return envs
 }
 
-// TODO(ideascf): copy UT
 // CombineStringMap merges maps into a new map.
 // NOTE: if the same key exists in multiple source maps, the value of the first one will be kept.
 // so we suggest to :
@@ -79,7 +74,6 @@ func CombineStringMap(maps ...map[string]string) map[string]string {
 	return r
 }
 
-// TODO(ideascf): copy UT
 // CopyStringMap copy annotations to a new string map
 func CopyStringMap(src map[string]string) map[string]string {
 	if src == nil {

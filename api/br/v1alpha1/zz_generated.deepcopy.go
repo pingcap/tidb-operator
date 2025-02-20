@@ -385,21 +385,16 @@ func (in *BackupSpec) DeepCopyInto(out *BackupSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.TikvGCLifeTime != nil {
-		in, out := &in.TikvGCLifeTime, &out.TikvGCLifeTime
-		*out = new(string)
-		**out = **in
-	}
 	in.StorageProvider.DeepCopyInto(&out.StorageProvider)
-	if in.StorageClassName != nil {
-		in, out := &in.StorageClassName, &out.StorageClassName
-		*out = new(string)
-		**out = **in
-	}
 	if in.BR != nil {
 		in, out := &in.BR, &out.BR
 		*out = new(BRConfig)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.StorageClassName != nil {
+		in, out := &in.StorageClassName, &out.StorageClassName
+		*out = new(string)
+		**out = **in
 	}
 	if in.Tolerations != nil {
 		in, out := &in.Tolerations, &out.Tolerations
@@ -872,22 +867,17 @@ func (in *RestoreSpec) DeepCopyInto(out *RestoreSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.TikvGCLifeTime != nil {
-		in, out := &in.TikvGCLifeTime, &out.TikvGCLifeTime
-		*out = new(string)
-		**out = **in
-	}
 	in.StorageProvider.DeepCopyInto(&out.StorageProvider)
+	if in.BR != nil {
+		in, out := &in.BR, &out.BR
+		*out = new(BRConfig)
+		(*in).DeepCopyInto(*out)
+	}
 	in.PitrFullBackupStorageProvider.DeepCopyInto(&out.PitrFullBackupStorageProvider)
 	if in.StorageClassName != nil {
 		in, out := &in.StorageClassName, &out.StorageClassName
 		*out = new(string)
 		**out = **in
-	}
-	if in.BR != nil {
-		in, out := &in.BR, &out.BR
-		*out = new(BRConfig)
-		(*in).DeepCopyInto(*out)
 	}
 	if in.Tolerations != nil {
 		in, out := &in.Tolerations, &out.Tolerations

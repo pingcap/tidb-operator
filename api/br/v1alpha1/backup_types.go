@@ -259,7 +259,7 @@ type Progress struct {
 	// Step is the step name of progress
 	Step string `json:"step,omitempty"`
 	// Progress is the backup progress value
-	Progress int `json:"progress,omitempty"` // TODO(ideascf): type changed from float64 to int
+	Progress int `json:"progress,omitempty"`
 	// LastTransitionTime is the update time
 	// +nullable
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
@@ -295,24 +295,22 @@ type BackupSpec struct {
 	// Mode is the backup mode, such as snapshot backup or log backup.
 	// +kubebuilder:default=snapshot
 	Mode BackupMode `json:"backupMode,omitempty"`
-	// TikvGCLifeTime is to specify the safe gc life time for backup.
-	// The time limit during which data is retained for each GC, in the format of Go Duration.
-	// When a GC happens, the current time minus this value is the safe point.
-	TikvGCLifeTime *string `json:"tikvGCLifeTime,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
 	// *** Note: This field should generally not be left empty, unless you are certain the storage provider
 	// *** can be obtained from another source, such as a schedule CR.
 	StorageProvider `json:",inline"`
+	// BRConfig is the configs for BR
+	// *** Note: This field should generally not be left empty, unless you are certain the BR config
+	// *** can be obtained from another source, such as a schedule CR.
+	BR *BRConfig `json:"br,omitempty"`
+
 	// The storageClassName of the persistent volume for Backup data storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 	// StorageSize is the request storage size for backup job
 	StorageSize string `json:"storageSize,omitempty"`
-	// BRConfig is the configs for BR
-	// *** Note: This field should generally not be left empty, unless you are certain the BR config
-	// *** can be obtained from another source, such as a schedule CR.
-	BR *BRConfig `json:"br,omitempty"`
+
 	// CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
 	// Default is current timestamp.
@@ -320,15 +318,18 @@ type BackupSpec struct {
 	CommitTs string `json:"commitTs,omitempty"`
 	// Subcommand is the subcommand for BR, such as start, stop, pause etc.
 	// +optional
-	// +kubebuilder:validation:Enum:="log-start";"log-stop";"log-pause"
+	// +kubebuilder:validation:Enum:="log-start";"log-stop";"log-pause";"log-resume";"log-truncate"
 	LogSubcommand LogSubCommandType `json:"logSubcommand,omitempty"`
 	// LogTruncateUntil is log backup truncate until timestamp.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
+	// It's required when LogSubcommand is "log-truncate".
 	// +optional
 	LogTruncateUntil string `json:"logTruncateUntil,omitempty"`
+	// Deprecated: use LogSubcommand instead. it will be removed later.
 	// LogStop indicates that will stop the log backup.
 	// +optional
 	LogStop bool `json:"logStop,omitempty"`
+
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
@@ -349,6 +350,7 @@ type BackupSpec struct {
 	UseKMS bool `json:"useKMS,omitempty"`
 	// Specify service account of backup
 	ServiceAccount string `json:"serviceAccount,omitempty"`
+
 	// CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained
 	// +kubebuilder:validation:Enum:=Retain;OnFailure;Delete
 	// +kubebuilder:default=Retain

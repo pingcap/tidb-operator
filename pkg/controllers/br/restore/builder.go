@@ -27,8 +27,6 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 	runner := task.NewTaskRunner(reporter,
 		// get backup
 		tasks.TaskContextRestore(state, r.Client),
-		// if it's gone just return
-		task.IfBreak(common.CondJobHasBeenDeleted(state)),
 
 		// finalizer management
 		task.If(task.CondFunc(func() bool {
@@ -41,6 +39,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		}),
 			common.TaskJobFinalizerDel[*runtime.Restore](state, r.Client),
 		),
+		// if it's gone just return
+		task.IfBreak(common.CondJobHasBeenDeleted(state)),
 
 		// get cluster
 		common.TaskContextCluster[scope.Restore](state, r.Client),

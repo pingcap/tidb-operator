@@ -16,7 +16,6 @@ package backup
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -28,7 +27,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/clean"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -116,12 +114,11 @@ func (bm *Manager) ProcessBackup() error {
 		return bm.performLogBackup(ctx, backup.DeepCopy())
 	}
 
-	// skip the DB initialization if spec.from is not specified
-	return bm.performBackup(ctx, backup.DeepCopy(), nil)
+	return bm.performBackup(ctx, backup.DeepCopy())
 }
 
 // nolint: gocyclo
-func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, db *sql.DB) error {
+func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup) error {
 	started := time.Now()
 
 	var errs []error
@@ -153,102 +150,6 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 		return err
 	}
 
-	var (
-		oldTikvGCTime, tikvGCLifeTime             string
-		oldTikvGCTimeDuration, tikvGCTimeDuration time.Duration
-	)
-
-	// set tikv gc life time to prevent gc when backing up data
-	if db != nil {
-		oldTikvGCTime, err = bm.GetTikvGCLifeTime(ctx, db)
-		if err != nil {
-			errs = append(errs, err)
-			klog.Errorf("cluster %s get %s failed, err: %s", bm, constants.TikvGCVariable, err)
-			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Condition: metav1.Condition{
-					Type:    string(v1alpha1.BackupFailed),
-					Status:  metav1.ConditionTrue,
-					Reason:  "GetTikvGCLifeTimeFailed",
-					Message: err.Error(),
-				},
-			}, nil)
-			errs = append(errs, uerr)
-			return errorutils.NewAggregate(errs)
-		}
-		klog.Infof("cluster %s %s is %s", bm, constants.TikvGCVariable, oldTikvGCTime)
-
-		oldTikvGCTimeDuration, err = time.ParseDuration(oldTikvGCTime)
-		if err != nil {
-			errs = append(errs, err)
-			klog.Errorf("cluster %s parse old %s failed, err: %s", bm, constants.TikvGCVariable, err)
-			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Condition: metav1.Condition{
-					Type:    string(v1alpha1.BackupFailed),
-					Status:  metav1.ConditionTrue,
-					Reason:  "ParseOldTikvGCLifeTimeFailed",
-					Message: err.Error(),
-				},
-			}, nil)
-			errs = append(errs, uerr)
-			return errorutils.NewAggregate(errs)
-		}
-
-		if backup.Spec.TikvGCLifeTime != nil {
-			tikvGCLifeTime = *backup.Spec.TikvGCLifeTime
-			tikvGCTimeDuration, err = time.ParseDuration(tikvGCLifeTime)
-			if err != nil {
-				errs = append(errs, err)
-				klog.Errorf("cluster %s parse configured %s failed, err: %s", bm, constants.TikvGCVariable, err)
-				uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-					Condition: metav1.Condition{
-						Type:    string(v1alpha1.BackupFailed),
-						Status:  metav1.ConditionTrue,
-						Reason:  "ParseConfiguredTikvGCLifeTimeFailed",
-						Message: err.Error(),
-					},
-				}, nil)
-				errs = append(errs, uerr)
-				return errorutils.NewAggregate(errs)
-			}
-		} else {
-			tikvGCLifeTime = constants.TikvGCLifeTime
-			tikvGCTimeDuration, err = time.ParseDuration(tikvGCLifeTime)
-			if err != nil {
-				errs = append(errs, err)
-				klog.Errorf("cluster %s parse default %s failed, err: %s", bm, constants.TikvGCVariable, err)
-				uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-					Condition: metav1.Condition{
-						Type:    string(v1alpha1.BackupFailed),
-						Status:  metav1.ConditionTrue,
-						Reason:  "ParseDefaultTikvGCLifeTimeFailed",
-						Message: err.Error(),
-					},
-				}, nil)
-				errs = append(errs, uerr)
-				return errorutils.NewAggregate(errs)
-			}
-		}
-
-		if oldTikvGCTimeDuration < tikvGCTimeDuration {
-			err = bm.SetTikvGCLifeTime(ctx, db, tikvGCLifeTime)
-			if err != nil {
-				errs = append(errs, err)
-				klog.Errorf("cluster %s set tikv GC life time to %s failed, err: %s", bm, tikvGCLifeTime, err)
-				uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-					Condition: metav1.Condition{
-						Type:    string(v1alpha1.BackupFailed),
-						Status:  metav1.ConditionTrue,
-						Reason:  "SetTikvGCLifeTimeFailed",
-						Message: err.Error(),
-					},
-				}, nil)
-				errs = append(errs, uerr)
-				return errorutils.NewAggregate(errs)
-			}
-			klog.Infof("set cluster %s %s to %s success", bm, constants.TikvGCVariable, tikvGCLifeTime)
-		}
-	}
-
 	// clean snapshot backup data if it was restarted
 	if backup.Spec.Mode == v1alpha1.BackupModeSnapshot && v1alpha1.IsBackupRestart(backup) && !bm.isBRCanContinueRunByCheckpoint() {
 		klog.Infof("clean snapshot backup %s data before run br command, backup path is %s", bm, backup.Status.BackupPath)
@@ -269,33 +170,6 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup, d
 
 	// run br binary to do the real job
 	backupErr := bm.backupData(ctx, backup)
-
-	if db != nil && oldTikvGCTimeDuration < tikvGCTimeDuration {
-		// use another context to revert `tikv_gc_life_time` back.
-		ctx2, cancel2 := context.WithTimeout(context.Background(), constants.DefaultTikvGCSetTimeout)
-		defer cancel2()
-		err = bm.SetTikvGCLifeTime(ctx2, db, oldTikvGCTime)
-		if err != nil {
-			if backupErr != nil {
-				errs = append(errs, backupErr)
-			}
-			errs = append(errs, err)
-			klog.Errorf("cluster %s reset tikv GC life time to %s failed, err: %s", bm, oldTikvGCTime, err)
-
-			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
-				Condition: metav1.Condition{
-					Type:    string(v1alpha1.BackupFailed),
-					Status:  metav1.ConditionTrue,
-					Reason:  "ResetTikvGCLifeTimeFailed",
-					Message: err.Error(),
-				},
-			}, nil)
-			errs = append(errs, uerr)
-			return errorutils.NewAggregate(errs)
-		}
-		klog.Infof("reset cluster %s %s to %s success", bm, constants.TikvGCVariable, oldTikvGCTime)
-	}
-
 	if backupErr != nil {
 		errs = append(errs, backupErr)
 		klog.Errorf("backup cluster %s data failed, err: %s", bm, backupErr)
@@ -444,7 +318,6 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 
 	// run br binary to do the real job
 	backupErr := bm.doStartLogBackup(ctx, backup)
-
 	if backupErr != nil {
 		klog.Errorf("Start log backup of cluster %s failed, err: %s", bm, backupErr)
 		return nil, "StartLogBackupFailed", backupErr

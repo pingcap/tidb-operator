@@ -66,6 +66,7 @@ func NewBackupCommand() *cobra.Command {
 	cmd.Flags().StringVar(&bo.CommitTS, "commit-ts", "0", "the log backup start ts")
 	cmd.Flags().StringVar(&bo.TruncateUntil, "truncate-until", "0", "the log backup truncate until")
 	cmd.Flags().BoolVar(&bo.Initialize, "initialize", false, "Whether execute initialize process for volume backup")
+	cmd.Flags().StringVar(&bo.PDAddress, "pd-addr", "", "PD Address, for example: db-pd.tidb1234:2379")
 	return cmd
 }
 
