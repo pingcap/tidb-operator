@@ -295,10 +295,6 @@ type BackupSpec struct {
 	// Mode is the backup mode, such as snapshot backup or log backup.
 	// +kubebuilder:default=snapshot
 	Mode BackupMode `json:"backupMode,omitempty"`
-	// TikvGCLifeTime is to specify the safe gc life time for backup.
-	// The time limit during which data is retained for each GC, in the format of Go Duration.
-	// When a GC happens, the current time minus this value is the safe point.
-	TikvGCLifeTime *string `json:"tikvGCLifeTime,omitempty"`
 	// StorageProvider configures where and how backups should be stored.
 	// *** Note: This field should generally not be left empty, unless you are certain the storage provider
 	// *** can be obtained from another source, such as a schedule CR.

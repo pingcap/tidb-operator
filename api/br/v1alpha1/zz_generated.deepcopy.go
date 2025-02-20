@@ -385,11 +385,6 @@ func (in *BackupSpec) DeepCopyInto(out *BackupSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.TikvGCLifeTime != nil {
-		in, out := &in.TikvGCLifeTime, &out.TikvGCLifeTime
-		*out = new(string)
-		**out = **in
-	}
 	in.StorageProvider.DeepCopyInto(&out.StorageProvider)
 	if in.StorageClassName != nil {
 		in, out := &in.StorageClassName, &out.StorageClassName
