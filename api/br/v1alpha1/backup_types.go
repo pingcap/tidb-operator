@@ -309,6 +309,7 @@ type BackupSpec struct {
 	// *** Note: This field should generally not be left empty, unless you are certain the BR config
 	// *** can be obtained from another source, such as a schedule CR.
 	BR *BRConfig `json:"br,omitempty"`
+
 	// CommitTs is the commit ts of the backup, snapshot ts for full backup or start ts for log backup.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
 	// Default is current timestamp.
@@ -316,15 +317,18 @@ type BackupSpec struct {
 	CommitTs string `json:"commitTs,omitempty"`
 	// Subcommand is the subcommand for BR, such as start, stop, pause etc.
 	// +optional
-	// +kubebuilder:validation:Enum:="log-start";"log-stop";"log-pause"
+	// +kubebuilder:validation:Enum:="log-start";"log-stop";"log-pause";"log-resume";"log-truncate"
 	LogSubcommand LogSubCommandType `json:"logSubcommand,omitempty"`
 	// LogTruncateUntil is log backup truncate until timestamp.
 	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
+	// It's required when LogSubcommand is "log-truncate".
 	// +optional
 	LogTruncateUntil string `json:"logTruncateUntil,omitempty"`
+	// Deprecated: use LogSubcommand instead. it will be removed later.
 	// LogStop indicates that will stop the log backup.
 	// +optional
 	LogStop bool `json:"logStop,omitempty"`
+
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
@@ -345,6 +349,7 @@ type BackupSpec struct {
 	UseKMS bool `json:"useKMS,omitempty"`
 	// Specify service account of backup
 	ServiceAccount string `json:"serviceAccount,omitempty"`
+
 	// CleanPolicy denotes whether to clean backup data when the object is deleted from the cluster, if not set, the backup data will be retained
 	// +kubebuilder:validation:Enum:=Retain;OnFailure;Delete
 	// +kubebuilder:default=Retain
