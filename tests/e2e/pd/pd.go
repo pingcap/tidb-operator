@@ -33,7 +33,6 @@ import (
 var _ = ginkgo.Describe("PD", label.PD, func() {
 	f := framework.New()
 	f.Setup()
-	f.SetupCluster()
 
 	ginkgo.Context("Basic", label.P0, func() {
 		ginkgo.It("support create PD with 1 replica", func(ctx context.Context) {

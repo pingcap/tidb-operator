@@ -55,3 +55,7 @@ func (TiCDCGroup) Component() string {
 func (TiCDCGroup) NewList() client.ObjectList {
 	return &v1alpha1.TiCDCGroupList{}
 }
+
+func (TiCDCGroup) NewInstanceList() client.ObjectList {
+	return &v1alpha1.TiCDCList{}
+}

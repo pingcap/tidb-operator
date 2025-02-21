@@ -20,8 +20,11 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	kuberuntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
@@ -53,4 +56,22 @@ func ListGroups[
 	}
 
 	return objs, nil
+}
+
+func GetCluster[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](ctx context.Context, c client.Client, obj F) (*v1alpha1.Cluster, error) {
+	cluster := &v1alpha1.Cluster{}
+
+	key := types.NamespacedName{
+		Namespace: obj.GetNamespace(),
+		Name:      coreutil.Cluster[S](obj),
+	}
+	if err := c.Get(ctx, key, cluster); err != nil {
+		return nil, err
+	}
+
+	return cluster, nil
 }
