@@ -20371,6 +20371,10 @@ spec:
                 type: object
               logRestoreStartTs:
                 type: string
+              maxRetryTimes:
+                default: 0
+                format: int32
+                type: integer
               pitrFullBackupStorageProvider:
                 properties:
                   azblob:
