@@ -921,7 +921,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			},
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: pointer.Int32Ptr(0),
+			BackoffLimit: &restore.Spec.BackoffLimit,
 			Template:     *podSpec,
 		},
 	}
