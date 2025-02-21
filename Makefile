@@ -193,3 +193,8 @@ LICENSE_EYE = $(BIN_DIR)/license-eye
 bin/license-eye:
 	if [ ! -f $(LICENSE_EYE) ]; then $(ROOT)/hack/download.sh go_install $(LICENSE_EYE) github.com/apache/skywalking-eyes/cmd/license-eye v0.6.0; fi
 
+
+.PHONY: bin/ginkgo
+GINKGO = $(BIN_DIR)/ginkgo
+bin/ginkgo:
+	$(ROOT)/hack/download.sh go_install $(GINKGO) github.com/onsi/ginkgo/v2/ginkgo

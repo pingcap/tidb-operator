@@ -33,7 +33,9 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 	f := framework.New()
 	f.Setup()
 
-	ginkgo.DescribeTableSubtree("Leader Eviction", label.P1,
+	// NOTE(liubo02): this case is failed in e2e env because of the cgroup v2.
+	// Enable it if env is fixed.
+	ginkgo.PDescribeTableSubtree("Leader Eviction", label.P1,
 		func(tls bool) {
 			if tls {
 				f.SetupCluster(data.WithClusterTLS())
