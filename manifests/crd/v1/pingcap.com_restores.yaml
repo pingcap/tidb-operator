@@ -1167,6 +1167,10 @@ spec:
                   storageAccount:
                     type: string
                 type: object
+              backoffLimit:
+                default: 0
+                format: int32
+                type: integer
               backupType:
                 type: string
               br:
