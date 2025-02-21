@@ -1653,6 +1653,16 @@ bool
 <p>TolerateSingleTiKVOutage indicates whether to tolerate a single failure of a store without data loss</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>backoffLimit</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -14397,6 +14407,16 @@ bool
 </td>
 <td>
 <p>TolerateSingleTiKVOutage indicates whether to tolerate a single failure of a store without data loss</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backoffLimit</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
