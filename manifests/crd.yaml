@@ -17289,6 +17289,10 @@ spec:
                   storageAccount:
                     type: string
                 type: object
+              backoffLimit:
+                default: 0
+                format: int32
+                type: integer
               backupType:
                 type: string
               br:
@@ -18161,10 +18165,6 @@ spec:
                 type: object
               logRestoreStartTs:
                 type: string
-              maxRetryTimes:
-                default: 0
-                format: int32
-                type: integer
               pitrFullBackupStorageProvider:
                 properties:
                   azblob:

@@ -1655,7 +1655,7 @@ bool
 </tr>
 <tr>
 <td>
-<code>maxRetryTimes</code></br>
+<code>backoffLimit</code></br>
 <em>
 int32
 </em>
@@ -14901,7 +14901,7 @@ bool
 </tr>
 <tr>
 <td>
-<code>maxRetryTimes</code></br>
+<code>backoffLimit</code></br>
 <em>
 int32
 </em>
