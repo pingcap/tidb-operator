@@ -22,7 +22,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
 type Config struct {
@@ -68,9 +67,9 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV) error {
 	}
 
 	c.Server.Addr = getClientURLs(tikv)
-	c.Server.AdvertiseAddr = GetAdvertiseClientURLs(tikv)
+	c.Server.AdvertiseAddr = coreutil.TiKVAdvertiseClientURLs(tikv)
 	c.Server.StatusAddr = getStatusURLs(tikv)
-	c.Server.AdvertiseStatusAddr = getAdvertiseStatusURLs(tikv)
+	c.Server.AdvertiseStatusAddr = coreutil.TiKVAdvertiseStatusURLs(tikv)
 	c.PD.Endpoints = []string{cluster.Status.PD}
 
 	for i := range tikv.Spec.Volumes {
@@ -133,22 +132,6 @@ func getClientURLs(tikv *v1alpha1.TiKV) string {
 	return fmt.Sprintf("[::]:%d", coreutil.TiKVClientPort(tikv))
 }
 
-func GetAdvertiseClientURLs(tikv *v1alpha1.TiKV) string {
-	ns := tikv.Namespace
-	if ns == "" {
-		ns = corev1.NamespaceDefault
-	}
-	return fmt.Sprintf("%s.%s.%s:%d", coreutil.PodName[scope.TiKV](tikv), tikv.Spec.Subdomain, ns, coreutil.TiKVClientPort(tikv))
-}
-
 func getStatusURLs(tikv *v1alpha1.TiKV) string {
 	return fmt.Sprintf("[::]:%d", coreutil.TiKVStatusPort(tikv))
-}
-
-func getAdvertiseStatusURLs(tikv *v1alpha1.TiKV) string {
-	ns := tikv.Namespace
-	if ns == "" {
-		ns = corev1.NamespaceDefault
-	}
-	return fmt.Sprintf("%s.%s.%s:%d", coreutil.PodName[scope.TiKV](tikv), tikv.Spec.Subdomain, ns, coreutil.TiKVStatusPort(tikv))
 }

@@ -26,8 +26,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	kvcfg "github.com/pingcap/tidb-operator/pkg/configs/tikv"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 )
@@ -35,7 +35,8 @@ import (
 func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Object, reconcile.Request] {
 	return handler.TypedFuncs[client.Object, reconcile.Request]{
 		UpdateFunc: func(ctx context.Context, event event.TypedUpdateEvent[client.Object],
-			queue workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
+		) {
 			oldObj := event.ObjectOld.(*v1alpha1.Cluster)
 			newObj := event.ObjectNew.(*v1alpha1.Cluster)
 
@@ -77,7 +78,8 @@ func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Obje
 func (r *Reconciler) StoreEventHandler() handler.TypedEventHandler[client.Object, reconcile.Request] {
 	return handler.TypedFuncs[client.Object, reconcile.Request]{
 		CreateFunc: func(ctx context.Context, event event.TypedCreateEvent[client.Object],
-			queue workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
+		) {
 			s := event.Object.(*pdv1.Store)
 			req, err := r.getRequestOfTiKVStore(ctx, s)
 			if err != nil {
@@ -87,7 +89,8 @@ func (r *Reconciler) StoreEventHandler() handler.TypedEventHandler[client.Object
 		},
 
 		UpdateFunc: func(ctx context.Context, event event.TypedUpdateEvent[client.Object],
-			queue workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
+		) {
 			s := event.ObjectNew.(*pdv1.Store)
 			req, err := r.getRequestOfTiKVStore(ctx, s)
 			if err != nil {
@@ -97,7 +100,8 @@ func (r *Reconciler) StoreEventHandler() handler.TypedEventHandler[client.Object
 		},
 
 		DeleteFunc: func(ctx context.Context, event event.TypedDeleteEvent[client.Object],
-			queue workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
+		) {
 			s := event.Object.(*pdv1.Store)
 			req, err := r.getRequestOfTiKVStore(ctx, s)
 			if err != nil {
@@ -126,7 +130,7 @@ func (r *Reconciler) getRequestOfTiKVStore(ctx context.Context, s *pdv1.Store) (
 
 	for i := range kvl.Items {
 		tikv := &kvl.Items[i]
-		if s.Name == kvcfg.GetAdvertiseClientURLs(tikv) {
+		if s.Name == coreutil.TiKVAdvertiseClientURLs(tikv) {
 			return reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      tikv.Name,

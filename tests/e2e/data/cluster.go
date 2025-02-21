@@ -50,3 +50,11 @@ func WithBootstrapSQL() ClusterPatch {
 		}
 	}
 }
+
+func WithClusterTLS() ClusterPatch {
+	return func(obj *v1alpha1.Cluster) {
+		obj.Spec.TLSCluster = &v1alpha1.TLSCluster{
+			Enabled: true,
+		}
+	}
+}

@@ -55,3 +55,7 @@ func (TiDBGroup) Component() string {
 func (TiDBGroup) NewList() client.ObjectList {
 	return &v1alpha1.TiDBGroupList{}
 }
+
+func (TiDBGroup) NewInstanceList() client.ObjectList {
+	return &v1alpha1.TiDBList{}
+}

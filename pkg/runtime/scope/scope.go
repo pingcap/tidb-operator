@@ -35,8 +35,13 @@ type Instance[F client.Object, T runtime.Instance] interface {
 // runtime.Group <-> api.Group
 type Group[F client.Object, T runtime.Group] interface {
 	Scheme
+	GroupScheme
 	From(F) T
 	To(T) F
+}
+
+type GroupScheme interface {
+	NewInstanceList() client.ObjectList
 }
 
 // []runtime.Instance <-> []api.Instance
@@ -70,4 +75,9 @@ func Component[S Scheme]() string {
 func NewList[S Scheme]() client.ObjectList {
 	var s S
 	return s.NewList()
+}
+
+func NewInstanceList[S GroupScheme]() client.ObjectList {
+	var s S
+	return s.NewInstanceList()
 }

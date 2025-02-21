@@ -28,49 +28,98 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
+	"github.com/pingcap/tidb-operator/pkg/tikvapi/v1"
 )
 
 const (
-	defaultPDRequestTimout = 10 * time.Second
+	defaultRequestTimout = 10 * time.Second
 )
 
-var (
-	pd   string
-	addr string
-	ca   string
-	cert string
-	key  string
-)
+type Options struct {
+	Mode           string
+	PD             string
+	TiKVStatusAddr string
 
-func main() {
-	flag.StringVar(&pd, "pd", "", "pd url")
-	flag.StringVar(&addr, "addr", "", "tikv advertised client url")
-	flag.StringVar(&addr, "ca", "", "ca path")
-	flag.StringVar(&addr, "cert", "", "cert path")
-	flag.StringVar(&addr, "key", "", "key path")
+	TLS  bool
+	CA   string
+	Cert string
+	Key  string
+}
+
+func (opt *Options) Parse() {
+	flag.StringVar(&opt.Mode, "mode", "", "mode prestop checker, now support tikv only")
+	flag.StringVar(&opt.PD, "pd", "", "pd url")
+	flag.StringVar(&opt.TiKVStatusAddr, "tikv-status-addr", "", "tikv status addr url")
+
+	flag.BoolVar(&opt.TLS, "tls", false, "enable tls or not")
+	flag.StringVar(&opt.CA, "ca", "", "ca path")
+	flag.StringVar(&opt.Cert, "cert", "", "cert path")
+	flag.StringVar(&opt.Key, "key", "", "key path")
 	flag.Parse()
 
-	u, err := url.Parse(pd)
-	if err != nil {
-		panic("cannot recognize pd addr: " + err.Error())
-	}
+	fmt.Println("options: ", opt)
+}
+
+type Config struct {
+	PDClient   pdapi.PDClient
+	TiKVClient tikvapi.TiKVClient
+
+	TiKVStatusAddr string
+}
+
+func (opt *Options) Complete() (*Config, error) {
+	c := Config{}
 
 	var tlsCfg *tls.Config
-	if u.Scheme == "https" {
-		cfg, err := loadTLSConfig(ca, cert, key)
+	if opt.TLS {
+		cfg, err := loadTLSConfig(opt.CA, opt.Cert, opt.Key)
 		if err != nil {
-			panic("cannot load tls config: " + err.Error())
+			return nil, fmt.Errorf("cannot load tls config: %w", err)
 		}
 		tlsCfg = cfg
 	}
 
-	c := pdapi.NewPDClient(pd, defaultPDRequestTimout, tlsCfg)
+	u, err := url.Parse(opt.PD)
+	if err != nil {
+		return nil, fmt.Errorf("cannot recognize pd addr: %w", err)
+	}
+
+	var tikvURL string
+
+	if opt.TLS {
+		tikvURL = "https://" + opt.TiKVStatusAddr
+		u.Scheme = "https"
+	} else {
+		tikvURL = "http://" + opt.TiKVStatusAddr
+		u.Scheme = "http"
+	}
+
+	if _, err := url.Parse(tikvURL); err != nil {
+		return nil, fmt.Errorf("cannot recognize tikv status addr: %w", err)
+	}
+
+	c.PDClient = pdapi.NewPDClient(u.String(), defaultRequestTimout, tlsCfg)
+	c.TiKVClient = tikvapi.NewTiKVClient(tikvURL, defaultRequestTimout, tlsCfg, false)
+	c.TiKVStatusAddr = opt.TiKVStatusAddr
+
+	return &c, nil
+}
+
+func main() {
+	opt := Options{}
+	opt.Parse()
+
+	cfg, err := opt.Complete()
+	if err != nil {
+		panic("invalid config for prestop-checker: " + err.Error())
+	}
+
 	var storeID string
 
 	//nolint:mnd // refactor to a constant if needed
-	if err := wait.PollUntilContextTimeout(context.TODO(), time.Second, time.Second*30,
-		true, func(ctx context.Context) (done bool, err error) {
-			info, err := c.GetStores(ctx)
+	if err := wait.PollUntilContextTimeout(context.TODO(), time.Second, time.Second*30, true,
+		func(ctx context.Context) (done bool, err error) {
+			info, err := cfg.PDClient.GetStores(ctx)
 			if err != nil {
 				fmt.Printf("cannot list stores, try again: %v\n", err)
 				return false, nil
@@ -80,7 +129,7 @@ func main() {
 				if s.Store == nil {
 					continue
 				}
-				if s.Store.Address != addr {
+				if s.Store.StatusAddress != cfg.TiKVStatusAddr {
 					continue
 				}
 
@@ -89,20 +138,21 @@ func main() {
 			}
 
 			return false, nil
-		}); err != nil {
+		},
+	); err != nil {
 		panic("cannot find the store, arg addr is wrong or the store has been deleted")
 	}
 
 	fmt.Println("pre stop checking, store id:", storeID)
 
 	if err := wait.PollUntilContextCancel(context.TODO(), time.Second, true, func(ctx context.Context) (done bool, err error) {
-		s, err := c.GetStore(ctx, storeID)
+		leaderCount, err := cfg.TiKVClient.GetLeaderCount()
 		if err != nil {
-			fmt.Printf("cannot get store, try again: %v\n", err)
+			fmt.Printf("cannot get leader count, try again: %v\n", err)
 			return false, nil
 		}
-		if s.Status.LeaderCount != 0 {
-			fmt.Printf("pre stop checking, current leader count: %v\n", s.Status.LeaderCount)
+		if leaderCount != 0 {
+			fmt.Printf("pre stop checking, current leader count: %v\n", leaderCount)
 			return false, nil
 		}
 		return true, nil

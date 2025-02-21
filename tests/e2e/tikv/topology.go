@@ -32,7 +32,6 @@ import (
 var _ = ginkgo.Describe("Topology", label.TiKV, label.MultipleAZ, label.P0, func() {
 	f := framework.New()
 	f.Setup()
-	f.SetupCluster()
 
 	ginkgo.It("Create tikv evenly spread in multiple azs", func(ctx context.Context) {
 		ginkgo.By("Creating cluster")
