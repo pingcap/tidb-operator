@@ -104,7 +104,7 @@ func (w *Workload) DeferPrintLogs() {
 			gomega.Expect(len(podList.Items)).To(gomega.Equal(1))
 
 			pod := &podList.Items[0]
-			logs, err := logPod(ctx, w.f.podLogClient, pod)
+			logs, err := logPod(ctx, w.f.podLogClient, pod, false)
 			gomega.Expect(err).To(gomega.Succeed())
 			defer logs.Close()
 

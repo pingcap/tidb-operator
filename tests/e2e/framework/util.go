@@ -60,12 +60,12 @@ func newRESTClientForPod(cfg *rest.Config) (rest.Interface, error) {
 	return apiutil.RESTClientForGVK(corev1.SchemeGroupVersion.WithKind("Pod"), false, cfg, scheme.Codecs, httpClient)
 }
 
-func logPod(ctx context.Context, c rest.Interface, pod *corev1.Pod) (io.ReadCloser, error) {
+func logPod(ctx context.Context, c rest.Interface, pod *corev1.Pod, follow bool) (io.ReadCloser, error) {
 	req := c.Get().
 		Namespace(pod.Namespace).
 		Name(pod.Name).
 		Resource("pods").
 		SubResource("log").
-		VersionedParams(&corev1.PodLogOptions{}, scheme.ParameterCodec)
+		VersionedParams(&corev1.PodLogOptions{Follow: follow}, scheme.ParameterCodec)
 	return req.Stream(ctx)
 }

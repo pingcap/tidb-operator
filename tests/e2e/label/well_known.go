@@ -18,11 +18,11 @@ import "github.com/onsi/ginkgo/v2"
 
 var (
 	// Components
-	Cluster = ginkgo.Label("component:Cluster")
-	PD      = ginkgo.Label("component:PD")
-	TiDB    = ginkgo.Label("component:TiDB")
-	TiKV    = ginkgo.Label("component:TiKV")
-	TiFlash = ginkgo.Label("component:TiFlash")
+	Cluster = ginkgo.Label("c:Cluster")
+	PD      = ginkgo.Label("c:PD")
+	TiDB    = ginkgo.Label("c:TiDB")
+	TiKV    = ginkgo.Label("c:TiKV")
+	TiFlash = ginkgo.Label("c:TiFlash")
 
 	// Priority
 	P0 = ginkgo.Label("P0")
@@ -36,4 +36,7 @@ var (
 
 	// Env
 	MultipleAZ = ginkgo.Label("env:MultipleAZ")
+
+	// Feature
+	FeatureTLS = ginkgo.Label("f:TLS")
 )

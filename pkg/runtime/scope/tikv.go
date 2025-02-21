@@ -55,3 +55,7 @@ func (TiKVGroup) Component() string {
 func (TiKVGroup) NewList() client.ObjectList {
 	return &v1alpha1.TiKVGroupList{}
 }
+
+func (TiKVGroup) NewInstanceList() client.ObjectList {
+	return &v1alpha1.TiKVList{}
+}

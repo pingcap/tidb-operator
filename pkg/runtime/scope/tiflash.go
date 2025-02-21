@@ -55,3 +55,7 @@ func (TiFlashGroup) Component() string {
 func (TiFlashGroup) NewList() client.ObjectList {
 	return &v1alpha1.TiFlashGroupList{}
 }
+
+func (TiFlashGroup) NewInstanceList() client.ObjectList {
+	return &v1alpha1.TiFlashList{}
+}

@@ -55,3 +55,7 @@ func (PDGroup) Component() string {
 func (PDGroup) NewList() client.ObjectList {
 	return &v1alpha1.PDGroupList{}
 }
+
+func (PDGroup) NewInstanceList() client.ObjectList {
+	return &v1alpha1.PDList{}
+}

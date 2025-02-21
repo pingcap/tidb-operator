@@ -28,7 +28,6 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	kvcfg "github.com/pingcap/tidb-operator/pkg/configs/tikv"
 	"github.com/pingcap/tidb-operator/pkg/image"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
@@ -291,14 +290,15 @@ func buildPrestopCheckScript(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV) str
 	sb.WriteString("/prestop-checker")
 	sb.WriteString(" -pd ")
 	sb.WriteString(cluster.Status.PD)
-	sb.WriteString(" -addr ")
-	sb.WriteString(kvcfg.GetAdvertiseClientURLs(tikv))
+	sb.WriteString(" -tikv-status-addr ")
+	sb.WriteString(coreutil.TiKVAdvertiseStatusURLs(tikv))
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
+		sb.WriteString(" -tls ")
 		sb.WriteString(" -ca ")
 		sb.WriteString(v1alpha1.DirPathClusterTLSTiKV)
 		sb.WriteString("/ca.crt")
-		sb.WriteString(" -tls ")
+		sb.WriteString(" -cert ")
 		sb.WriteString(v1alpha1.DirPathClusterTLSTiKV)
 		sb.WriteString("/tls.crt")
 		sb.WriteString(" -key ")

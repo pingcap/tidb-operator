@@ -37,6 +37,8 @@ type Framework struct {
 	Client client.Client
 
 	podLogClient rest.Interface
+
+	clusterPatches []data.ClusterPatch
 }
 
 func New() *Framework {
@@ -71,11 +73,9 @@ func (f *Framework) Setup() {
 			f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Namespace, waiter.ShortTaskTimeout))
 		})
 	})
-}
 
-func (f *Framework) SetupCluster(ps ...data.ClusterPatch) {
-	ginkgo.BeforeEach(func(ctx context.Context) {
-		f.Cluster = data.NewCluster(f.Namespace.Name, ps...)
+	ginkgo.JustBeforeEach(func(ctx context.Context) {
+		f.Cluster = data.NewCluster(f.Namespace.Name, f.clusterPatches...)
 		ginkgo.By("Creating a cluster")
 		f.Must(f.Client.Create(ctx, f.Cluster))
 
@@ -86,6 +86,12 @@ func (f *Framework) SetupCluster(ps ...data.ClusterPatch) {
 			ginkgo.By("Ensure the cluster can be deleted")
 			f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Cluster, waiter.ShortTaskTimeout))
 		})
+	})
+}
+
+func (f *Framework) SetupCluster(ps ...data.ClusterPatch) {
+	ginkgo.BeforeEach(func(context.Context) {
+		f.clusterPatches = ps
 	})
 }
 

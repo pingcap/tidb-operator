@@ -27,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apicall"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
@@ -224,21 +224,11 @@ func TaskContextCluster[
 	T runtime.Object,
 ](state ContextClusterNewer[F], c client.Client) task.Task {
 	return task.NameTaskFunc("ContextCluster", func(ctx context.Context) task.Result {
-		cluster := v1alpha1.Cluster{}
-		obj := state.Object()
-
-		key := types.NamespacedName{
-			Namespace: obj.GetNamespace(),
-			Name:      coreutil.Cluster[S](obj),
+		cluster, err := apicall.GetCluster[S](ctx, c, state.Object())
+		if err != nil {
+			return task.Fail().With("cannot get cluster: %v", err)
 		}
-		if err := c.Get(ctx, key, &cluster); err != nil {
-			if !errors.IsNotFound(err) {
-				return task.Fail().With("can't get %s: %v", key, err)
-			}
-
-			return task.Fail().With("cannot find %s: %v", key, err)
-		}
-		state.SetCluster(&cluster)
+		state.SetCluster(cluster)
 		return task.Complete().With("cluster is set")
 	})
 }
