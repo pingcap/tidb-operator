@@ -17,10 +17,12 @@ package tasks
 import (
 	"context"
 	"path/filepath"
+	"strings"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
@@ -37,6 +39,8 @@ import (
 
 const (
 	metricsPath = "/metrics"
+
+	defaultGracefulShutdownSeconds = 30
 )
 
 func TaskPod(state *ReconcileContext, c client.Client) task.Task {
@@ -108,12 +112,22 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 				},
 			},
 		},
+		{
+			Name: v1alpha1.VolumeNamePrestopChecker,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
 	}
 
 	mounts := []corev1.VolumeMount{
 		{
 			Name:      v1alpha1.VolumeNameConfig,
 			MountPath: v1alpha1.DirPathConfigTiCDC,
+		},
+		{
+			Name:      v1alpha1.VolumeNamePrestopChecker,
+			MountPath: v1alpha1.DirPathPrestop,
 		},
 	}
 
@@ -152,6 +166,11 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 		})
 	}
 
+	var preStopImage *string
+	if ticdc.Spec.PreStop != nil {
+		preStopImage = ticdc.Spec.PreStop.Image
+	}
+
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ticdc.Namespace,
@@ -167,9 +186,32 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			},
 		},
 		Spec: corev1.PodSpec{
-			Hostname:     coreutil.PodName[scope.TiCDC](ticdc),
-			Subdomain:    ticdc.Spec.Subdomain,
-			NodeSelector: ticdc.Spec.Topology,
+			TerminationGracePeriodSeconds: ptr.To[int64](defaultGracefulShutdownSeconds),
+			Hostname:                      coreutil.PodName[scope.TiCDC](ticdc),
+			Subdomain:                     ticdc.Spec.Subdomain,
+			NodeSelector:                  ticdc.Spec.Topology,
+			InitContainers: []corev1.Container{
+				{
+					// TODO: support hot reload checker
+					// NOTE: now sidecar cannot be restarted because of this https://github.com/kubernetes/kubernetes/pull/126525.
+					Name:            v1alpha1.ContainerNamePrestopChecker,
+					Image:           image.PrestopChecker.Image(preStopImage),
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					// RestartPolicy:   ptr.To(corev1.ContainerRestartPolicyAlways),
+					Command: []string{
+						"/bin/sh",
+						"-c",
+						"cp /prestop-checker " + v1alpha1.DirPathPrestop + "/;",
+						// + "sleep infinity",
+					},
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      v1alpha1.VolumeNamePrestopChecker,
+							MountPath: v1alpha1.DirPathPrestop,
+						},
+					},
+				},
+			},
 			Containers: []corev1.Container{
 				{
 					Name:            v1alpha1.ContainerNameTiCDC,
@@ -191,6 +233,18 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 					},
 					VolumeMounts: mounts,
 					Resources:    k8s.GetResourceRequirements(ticdc.Spec.Resources),
+					Lifecycle: &corev1.Lifecycle{
+						// TODO: change to a real pre stop action
+						PreStop: &corev1.LifecycleHandler{
+							Exec: &corev1.ExecAction{
+								Command: []string{
+									"/bin/sh",
+									"-c",
+									buildPrestopCheckScript(cluster, ticdc),
+								},
+							},
+						},
+					},
 				},
 			},
 			Volumes: vols,
@@ -232,4 +286,31 @@ func preDeleteCheck(
 	}
 
 	return false, nil
+}
+
+func buildPrestopCheckScript(cluster *v1alpha1.Cluster, ticdc *v1alpha1.TiCDC) string {
+	sb := strings.Builder{}
+	sb.WriteString(v1alpha1.DirPathPrestop)
+	sb.WriteString("/prestop-checker")
+	sb.WriteString(" -mode ")
+	sb.WriteString(" ticdc ")
+	sb.WriteString(" -ticdc-status-addr ")
+	sb.WriteString(coreutil.TiCDCAdvertiseURL(ticdc))
+
+	if coreutil.IsTLSClusterEnabled(cluster) {
+		sb.WriteString(" -tls ")
+		sb.WriteString(" -ca ")
+		sb.WriteString(v1alpha1.DirPathClusterTLSTiCDC)
+		sb.WriteString("/ca.crt")
+		sb.WriteString(" -cert ")
+		sb.WriteString(v1alpha1.DirPathClusterTLSTiCDC)
+		sb.WriteString("/tls.crt")
+		sb.WriteString(" -key ")
+		sb.WriteString(v1alpha1.DirPathClusterTLSTiCDC)
+		sb.WriteString("/tls.key")
+	}
+
+	sb.WriteString(" > /proc/1/fd/1")
+
+	return sb.String()
 }

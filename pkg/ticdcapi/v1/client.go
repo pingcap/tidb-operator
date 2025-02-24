@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"strings"
 	"time"
 
 	httputil "github.com/pingcap/tidb-operator/pkg/utils/http"
@@ -57,20 +56,23 @@ type TiCDCClient interface {
 
 // ticdcClient is the default implementation of TiCDCClient.
 type ticdcClient struct {
-	url          string
-	instanceName string
-	httpClient   *http.Client
+	enableTLS  bool
+	addr       string
+	httpClient *http.Client
+}
+
+func (c *ticdcClient) URL() string {
+	if c.enableTLS {
+		return "https://" + c.addr
+	}
+
+	return "http://" + c.addr
 }
 
 // NewTiCDCClient returns a new TiCDCClient.
-func NewTiCDCClient(url, instanceName string, timeout time.Duration, tlsConfig *tls.Config) TiCDCClient {
-	var disableKeepalive bool
-	if tlsConfig != nil {
-		disableKeepalive = true
-	}
-	return &ticdcClient{
-		url:          url,
-		instanceName: instanceName,
+func NewTiCDCClient(addr string, timeout time.Duration, tlsConfig *tls.Config, disableKeepalive bool) TiCDCClient {
+	c := &ticdcClient{
+		addr: addr,
 		httpClient: &http.Client{
 			Timeout: timeout,
 			Transport: &http.Transport{
@@ -84,10 +86,15 @@ func NewTiCDCClient(url, instanceName string, timeout time.Duration, tlsConfig *
 			},
 		},
 	}
+	if tlsConfig != nil {
+		c.enableTLS = true
+	}
+
+	return c
 }
 
 func (c *ticdcClient) GetStatus(ctx context.Context) (*CaptureStatus, error) {
-	apiURL := fmt.Sprintf("%s/%s", c.url, statusPath)
+	apiURL := fmt.Sprintf("%s/%s", c.URL(), statusPath)
 	body, err := httputil.GetBodyOK(ctx, c.httpClient, apiURL)
 	if err != nil {
 		return nil, err
@@ -107,9 +114,9 @@ func (c *ticdcClient) DrainCapture(ctx context.Context) (int, error) {
 		return 0, nil
 	}
 
-	this, owner := getThisAndOwnerCaptureInfo(c.instanceName, captures)
+	this, owner := getThisAndOwnerCaptureInfo(c.addr, captures)
 	if this == nil {
-		return 0, fmt.Errorf("capture not found, instance: %s, captures: %+v", c.instanceName, captures)
+		return 0, fmt.Errorf("capture not found, instance: %s, captures: %+v", c.addr, captures)
 	}
 	if owner == nil {
 		return 0, fmt.Errorf("owner not found, captures: %+v", captures)
@@ -122,7 +129,7 @@ func (c *ticdcClient) DrainCapture(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("ticdc drain capture failed, marshal request error: %w", err)
 	}
-	apiURL := fmt.Sprintf("%s/%s", c.url, drainCapturePath)
+	apiURL := fmt.Sprintf("%s/%s", c.URL(), drainCapturePath)
 	// Put instead of Post here
 	body, err := httputil.PutBodyOK(ctx, c.httpClient, apiURL, bytes.NewBuffer(data))
 	if err != nil {
@@ -148,7 +155,7 @@ func (c *ticdcClient) ResignOwner(ctx context.Context) (bool, error) {
 		return true, nil
 	}
 
-	this, owner := getThisAndOwnerCaptureInfo(c.instanceName, captures)
+	this, owner := getThisAndOwnerCaptureInfo(c.addr, captures)
 	if owner != nil && this != nil {
 		if owner.ID != this.ID {
 			// Ownership has been transferred another capture
@@ -160,7 +167,7 @@ func (c *ticdcClient) ResignOwner(ctx context.Context) (bool, error) {
 		return true, nil
 	}
 
-	apiURL := fmt.Sprintf("%s/%s", c.url, resignOwnerPath)
+	apiURL := fmt.Sprintf("%s/%s", c.URL(), resignOwnerPath)
 	_, err = httputil.PostBodyOK(ctx, c.httpClient, apiURL, nil)
 	// always return false, let the caller to retry and check the above condition
 	return false, err
@@ -176,13 +183,13 @@ func (c *ticdcClient) IsHealthy(ctx context.Context) (bool, error) {
 		return true, nil
 	}
 
-	_, owner := getThisAndOwnerCaptureInfo(c.instanceName, captures)
+	_, owner := getThisAndOwnerCaptureInfo(c.addr, captures)
 	if owner == nil {
 		// Unhealthy, owner is not found
 		return false, nil
 	}
 
-	apiURL := fmt.Sprintf("%s/%s", c.url, healthPath)
+	apiURL := fmt.Sprintf("%s/%s", c.URL(), healthPath)
 	_, err = httputil.GetBodyOK(ctx, c.httpClient, apiURL)
 	if err != nil {
 		return false, err
@@ -191,7 +198,7 @@ func (c *ticdcClient) IsHealthy(ctx context.Context) (bool, error) {
 }
 
 func (c *ticdcClient) getCaptures(ctx context.Context) ([]captureInfo, error) {
-	apiURL := fmt.Sprintf("%s/%s", c.url, getCapturesPath)
+	apiURL := fmt.Sprintf("%s/%s", c.URL(), getCapturesPath)
 	body, err := httputil.GetBodyOK(ctx, c.httpClient, apiURL)
 	if err != nil {
 		return nil, err
@@ -202,11 +209,10 @@ func (c *ticdcClient) getCaptures(ctx context.Context) ([]captureInfo, error) {
 	return resp, err
 }
 
-func getThisAndOwnerCaptureInfo(thisInstance string, captures []captureInfo) (this, owner *captureInfo) {
+func getThisAndOwnerCaptureInfo(addr string, captures []captureInfo) (this, owner *captureInfo) {
 	for i := range captures {
 		cp := &captures[i]
-		sl := strings.Split(cp.AdvertiseAddr, ".")
-		if len(sl) > 0 && sl[0] == thisInstance {
+		if cp.AdvertiseAddr == addr {
 			this = cp
 		}
 		if cp.IsOwner {
