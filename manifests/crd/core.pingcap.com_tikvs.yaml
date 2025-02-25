@@ -10,7 +10,6 @@ spec:
   names:
     categories:
     - tc
-    - kv
     - instance
     kind: TiKV
     listKind: TiKVList
