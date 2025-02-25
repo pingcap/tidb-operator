@@ -9,7 +9,9 @@ spec:
   group: core.pingcap.com
   names:
     categories:
-    - tg
+    - tc
+    - pd
+    - group
     kind: PDGroup
     listKind: PDGroupList
     plural: pdgroups
@@ -20,8 +22,26 @@ spec:
     - jsonPath: .spec.cluster.name
       name: Cluster
       type: string
-    - jsonPath: .status.conditions[?(@.type=="Available")].status
-      name: Available
+    - jsonPath: .spec.replicas
+      name: Desired
+      type: string
+    - jsonPath: .status.readyReplicas
+      name: Ready
+      type: string
+    - jsonPath: .status.updatedReplicas
+      name: Updated
+      type: string
+    - jsonPath: .status.updateRevision
+      name: UpdateRevision
+      type: string
+    - jsonPath: .status.currentRevision
+      name: CurrentRevision
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Synced")].status
+      name: Synced
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
       type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
