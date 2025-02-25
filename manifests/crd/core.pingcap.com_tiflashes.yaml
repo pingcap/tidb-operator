@@ -9,7 +9,9 @@ spec:
   group: core.pingcap.com
   names:
     categories:
-    - tiflash
+    - tc
+    - flash
+    - instance
     kind: TiFlash
     listKind: TiFlashList
     plural: tiflashes
@@ -26,8 +28,11 @@ spec:
     - jsonPath: .status.state
       name: StoreState
       type: string
-    - jsonPath: .status.conditions[?(@.type=="Health")].status
-      name: Healthy
+    - jsonPath: .status.conditions[?(@.type=="Synced")].status
+      name: Synced
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
       type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
