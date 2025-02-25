@@ -126,11 +126,14 @@ type TiCDCTemplateSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Overlay *Overlay `json:"overlay,omitempty"`
 
-	// GracefulShutdownTimeout is the timeout of gracefully shutdown a TiCDC pod
-	// when scaling in or rolling update.
-	// Encoded in the format of Go Duration.
-	// Defaults to 10m
-	GracefulShutdownTimeout *metav1.Duration `json:"gracefulShutdownTimeout,omitempty"`
+	// PreStop defines preStop config
+	PreStop *TiCDCPreStop `json:"preStop,omitempty"`
+}
+
+type TiCDCPreStop struct {
+	// Image of pre stop checker
+	// Default is pingcap/prestop-checker:latest
+	Image *string `json:"image,omitempty"`
 }
 
 type TiCDCServer struct {
@@ -174,4 +177,6 @@ type TiCDCStatus struct {
 
 	// should we need to save IsOwner in status?
 	// but this value may be changed when scaling in or rolling update
+	// TODO(liubo02): change to use condition
+	IsOwner bool `json:"isOwner"`
 }
