@@ -15,17 +15,26 @@
 package framework
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
+
+	"github.com/pingcap/tidb-operator/pkg/apicall"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
 func newConfig(configPath, ctxName string) (*rest.Config, error) {
@@ -68,4 +77,54 @@ func logPod(ctx context.Context, c rest.Interface, pod *corev1.Pod, follow bool)
 		SubResource("log").
 		VersionedParams(&corev1.PodLogOptions{Follow: follow}, scheme.ParameterCodec)
 	return req.Stream(ctx)
+}
+
+func waitInstanceLogContains[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](ctx context.Context, f *Framework, instance F, substr string) {
+	pod, err := apicall.GetPod[S](ctx, f.Client, instance)
+	gomega.Expect(err).To(gomega.Succeed())
+
+	logs, err := logPod(ctx, f.podLogClient, pod, true)
+	gomega.Expect(err).To(gomega.Succeed())
+	defer logs.Close()
+
+	sb := strings.Builder{}
+	reader := bufio.NewReader(logs)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			ginkgo.AddReportEntry("PodLogs", sb.String())
+			ginkgo.Fail(fmt.Sprintf("cannot find str '%s' in logs", substr))
+			return
+		}
+
+		if strings.Contains(line, substr) {
+			return
+		}
+
+		sb.WriteString(line)
+	}
+}
+
+func restartInstancePod[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](ctx context.Context, f *Framework, instance F) {
+	pod, err := apicall.GetPod[S](ctx, f.Client, instance)
+	gomega.Expect(err).To(gomega.Succeed())
+	f.Must(f.Client.Delete(ctx, pod))
+
+	createTime := pod.CreationTimestamp
+
+	f.Must(waiter.WaitForObject(ctx, f.Client, pod, func() error {
+		if !pod.CreationTimestamp.Equal(&createTime) {
+			return nil
+		}
+
+		return fmt.Errorf("pod is not recreated")
+	}, waiter.LongTaskTimeout))
 }

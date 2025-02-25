@@ -15,36 +15,35 @@
 package data
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
-type (
-	ClusterPatch                func(obj *v1alpha1.Cluster)
-	GroupPatch[G runtime.Group] func(obj G)
-)
-
-const (
-	defaultClusterName      = "tc"
-	defaultPDGroupName      = "pdg"
-	defaultTiDBGroupName    = "dbg"
-	defaultTiKVGroupName    = "kvg"
-	defaultTiFlashGroupName = "fg"
-	defaultTiCDCGroupName   = "cg"
-
-	defaultVersion = "v8.1.0"
-
-	defaultImageRegistry = "gcr.io/pingcap-public/dbaas/"
-	defaultHelperImage   = "gcr.io/pingcap-public/dbaas/busybox:1.36.0"
-)
-
-const (
-	// TODO(liubo02): extract to namer
-	DefaultTiDBServiceName = defaultTiDBGroupName + "-tidb"
-)
-
-func WithReplicas[G runtime.Group](replicas int32) GroupPatch[G] {
-	return func(obj G) {
-		obj.SetReplicas(replicas)
+func NewTiCDCGroup(ns string, patches ...GroupPatch[*runtime.TiCDCGroup]) *v1alpha1.TiCDCGroup {
+	cg := &runtime.TiCDCGroup{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: ns,
+			Name:      defaultTiCDCGroupName,
+		},
+		Spec: v1alpha1.TiCDCGroupSpec{
+			Cluster: v1alpha1.ClusterReference{
+				Name: defaultClusterName,
+			},
+			Replicas: ptr.To[int32](1),
+			Template: v1alpha1.TiCDCTemplate{
+				Spec: v1alpha1.TiCDCTemplateSpec{
+					Version: defaultVersion,
+					Image:   ptr.To(defaultImageRegistry + "ticdc"),
+				},
+			},
+		},
 	}
+	for _, p := range patches {
+		p(cg)
+	}
+
+	return runtime.ToTiCDCGroup(cg)
 }

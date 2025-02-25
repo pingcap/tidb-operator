@@ -15,23 +15,28 @@
 package framework
 
 import (
-	"bufio"
 	"context"
-	"fmt"
 	"math"
 	"strings"
 
 	"github.com/onsi/ginkgo/v2"
-	"github.com/onsi/gomega"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/apicall"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/topology"
+	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
+
+func (f *Framework) MustCreateTiKV(ctx context.Context, ps ...data.GroupPatch[*runtime.TiKVGroup]) *v1alpha1.TiKVGroup {
+	kvg := data.NewTiKVGroup(f.Namespace.Name, ps...)
+	ginkgo.By("Creating a tikv group")
+	f.Must(f.Client.Create(ctx, kvg))
+
+	return kvg
+}
 
 func (f *Framework) WaitForTiKVGroupReady(ctx context.Context, kvg *v1alpha1.TiKVGroup) {
 	// TODO: maybe wait for cluster ready
@@ -91,48 +96,10 @@ func (f *Framework) MustEvenlySpreadTiKV(ctx context.Context, kvg *v1alpha1.TiKV
 	f.True(maximum-minimum <= 1)
 }
 
-func (f *Framework) WaitTiKVLogContains(ctx context.Context, kv *v1alpha1.TiKV, substr string) {
-	pod, err := apicall.GetPod[scope.TiKV](ctx, f.Client, kv)
-	gomega.Expect(err).To(gomega.Succeed())
-
-	logs, err := logPod(ctx, f.podLogClient, pod, true)
-	gomega.Expect(err).To(gomega.Succeed())
-	defer logs.Close()
-
-	sb := strings.Builder{}
-	reader := bufio.NewReader(logs)
-	for {
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			ginkgo.AddReportEntry("PodLogs", sb.String())
-			ginkgo.Fail(fmt.Sprintf("cannot find str '%s' in logs", substr))
-			return
-		}
-
-		if strings.Contains(line, substr) {
-			return
-		}
-
-		sb.WriteString(line)
-	}
-}
-
 func (f *Framework) WaitTiKVPreStopHookSuccess(ctx context.Context, kv *v1alpha1.TiKV) {
-	f.WaitTiKVLogContains(ctx, kv, "all leaders have been evicted")
+	waitInstanceLogContains[scope.TiKV](ctx, f, kv, "all leaders have been evicted")
 }
 
 func (f *Framework) RestartTiKVPod(ctx context.Context, kv *v1alpha1.TiKV) {
-	pod, err := apicall.GetPod[scope.TiKV](ctx, f.Client, kv)
-	gomega.Expect(err).To(gomega.Succeed())
-	f.Must(f.Client.Delete(ctx, pod))
-
-	createTime := pod.CreationTimestamp
-
-	f.Must(waiter.WaitForObject(ctx, f.Client, pod, func() error {
-		if !pod.CreationTimestamp.Equal(&createTime) {
-			return nil
-		}
-
-		return fmt.Errorf("pod is not recreated")
-	}, waiter.LongTaskTimeout))
+	restartInstancePod[scope.TiKV](ctx, f, kv)
 }

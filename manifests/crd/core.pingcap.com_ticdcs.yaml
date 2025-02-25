@@ -62,13 +62,6 @@ spec:
               config:
                 description: Config defines config file of TiCDC
                 type: string
-              gracefulShutdownTimeout:
-                description: |-
-                  GracefulShutdownTimeout is the timeout of gracefully shutdown a TiCDC pod
-                  when scaling in or rolling update.
-                  Encoded in the format of Go Duration.
-                  Defaults to 10m
-                type: string
               image:
                 description: |-
                   Image is TiCDC's image
@@ -80,6 +73,15 @@ spec:
                   Overlay defines a k8s native resource template patch
                   All resources(pod, pvcs, ...) managed by TiCDC can be overlayed by this field
                 x-kubernetes-preserve-unknown-fields: true
+              preStop:
+                description: PreStop defines preStop config
+                properties:
+                  image:
+                    description: |-
+                      Image of pre stop checker
+                      Default is pingcap/prestop-checker:latest
+                    type: string
+                type: object
               resources:
                 description: |-
                   ResourceRequirements describes the compute resource requirements.
@@ -282,6 +284,11 @@ spec:
               id:
                 description: ID is the member id of this TiCDC instance
                 type: string
+              isOwner:
+                description: |-
+                  should we need to save IsOwner in status?
+                  but this value may be changed when scaling in or rolling update
+                type: boolean
               observedGeneration:
                 description: |-
                   ObservedGeneration is the most recent generation observed by the controller.
@@ -294,6 +301,7 @@ spec:
                 type: string
             required:
             - id
+            - isOwner
             type: object
         type: object
     served: true

@@ -191,5 +191,6 @@ type PDStatus struct {
 
 	// IsLeader indicates whether this pd is the leader
 	// NOTE: it's a snapshot from PD, not always up to date
+	// TODO(liubo02): change to use condition
 	IsLeader bool `json:"isLeader"`
 }
