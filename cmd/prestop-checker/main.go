@@ -138,7 +138,7 @@ func (opt *Options) Complete() (*Config, error) {
 			return nil, fmt.Errorf("cannot recognize ticdc status addr: %w", err)
 		}
 
-		c.TiCDC.Client = ticdcapi.NewTiCDCClient(opt.TiCDCStatusAddr, defaultRequestTimout, tlsCfg, false)
+		c.TiCDC.Client = ticdcapi.NewTiCDCClient(opt.TiCDCStatusAddr, ticdcapi.WithTLS(tlsCfg))
 
 	default:
 		return nil, fmt.Errorf("invalid mode: %s, now only support [tikv, ticdc]", opt.Mode)

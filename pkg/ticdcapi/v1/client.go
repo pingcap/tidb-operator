@@ -56,28 +56,80 @@ type TiCDCClient interface {
 
 // ticdcClient is the default implementation of TiCDCClient.
 type ticdcClient struct {
+	url        string
 	enableTLS  bool
 	addr       string
 	httpClient *http.Client
 }
 
 func (c *ticdcClient) URL() string {
-	if c.enableTLS {
-		return "https://" + c.addr
+	if c.url != "" {
+		return c.url
 	}
 
-	return "http://" + c.addr
+	if c.enableTLS {
+		c.url = "https://" + c.addr
+	}
+
+	c.url = "http://" + c.addr
+
+	return c.url
+}
+
+type Options struct {
+	URL string
+
+	Timeout           time.Duration
+	TLS               *tls.Config
+	DisableKeepAlives bool
+}
+
+type Option func(opt *Options)
+
+func defaultOptions() *Options {
+	return &Options{
+		Timeout: time.Second * 10,
+	}
+}
+
+func WithURL(url string) Option {
+	return func(opt *Options) {
+		opt.URL = url
+	}
+}
+
+func WithTimeout(timeout time.Duration) Option {
+	return func(opt *Options) {
+		opt.Timeout = timeout
+	}
+}
+
+func WithTLS(cfg *tls.Config) Option {
+	return func(opt *Options) {
+		opt.TLS = cfg
+	}
+}
+
+func DisableKeepAlives() Option {
+	return func(opt *Options) {
+		opt.DisableKeepAlives = true
+	}
 }
 
 // NewTiCDCClient returns a new TiCDCClient.
-func NewTiCDCClient(addr string, timeout time.Duration, tlsConfig *tls.Config, disableKeepalive bool) TiCDCClient {
+func NewTiCDCClient(addr string, opts ...Option) TiCDCClient {
+	options := defaultOptions()
+	for _, opt := range opts {
+		opt(options)
+	}
 	c := &ticdcClient{
+		url:  options.URL,
 		addr: addr,
 		httpClient: &http.Client{
-			Timeout: timeout,
+			Timeout: options.Timeout,
 			Transport: &http.Transport{
-				TLSClientConfig:       tlsConfig,
-				DisableKeepAlives:     disableKeepalive,
+				TLSClientConfig:       options.TLS,
+				DisableKeepAlives:     options.DisableKeepAlives,
 				ResponseHeaderTimeout: 10 * time.Second,
 				TLSHandshakeTimeout:   10 * time.Second,
 				DialContext: (&net.Dialer{
@@ -86,7 +138,8 @@ func NewTiCDCClient(addr string, timeout time.Duration, tlsConfig *tls.Config, d
 			},
 		},
 	}
-	if tlsConfig != nil {
+
+	if options.TLS != nil {
 		c.enableTLS = true
 	}
 

@@ -19,7 +19,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -74,7 +73,7 @@ func TestTiCDCClient_GetStatus(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewTiCDCClient(server.URL, "basic-ticdc-0", 5*time.Second, nil)
+	client := NewTiCDCClient("basic-ticdc-0.basic-ticdc-peer.default.svc:8301", WithURL(server.URL))
 	status, err := client.GetStatus(context.Background())
 	require.NoError(t, err)
 	assert.True(t, status.IsOwner)
@@ -90,7 +89,7 @@ func TestTiCDCClient_DrainCapture(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewTiCDCClient(server.URL, "basic-ticdc-0", 5*time.Second, nil)
+	client := NewTiCDCClient("basic-ticdc-0.basic-ticdc-peer.default.svc:8301", WithURL(server.URL))
 	tableCount, err := client.DrainCapture(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, 0, tableCount)
@@ -109,7 +108,7 @@ func TestTiCDCClient_DrainCapture(t *testing.T) {
 	}))
 	defer server2.Close()
 
-	client2 := NewTiCDCClient(server2.URL, "basic-ticdc-1", 5*time.Second, nil)
+	client2 := NewTiCDCClient("basic-ticdc-1.basic-ticdc-peer.default.svc:8301", WithURL(server2.URL))
 	tableCount, err = client2.DrainCapture(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, 0, tableCount)
@@ -127,7 +126,7 @@ func TestTiCDCClient_DrainCapture(t *testing.T) {
 	}))
 	defer server3.Close()
 
-	client3 := NewTiCDCClient(server3.URL, "basic-ticdc-0", 5*time.Second, nil)
+	client3 := NewTiCDCClient("basic-ticdc-0.basic-ticdc-peer.default.svc:8301", WithURL(server3.URL))
 	tableCount, err = client3.DrainCapture(context.Background())
 	require.Error(t, err)
 	assert.Equal(t, 0, tableCount)
@@ -143,7 +142,7 @@ func TestTiCDCClient_ResignOwner(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewTiCDCClient(server.URL, "basic-ticdc-0", 5*time.Second, nil)
+	client := NewTiCDCClient("basic-ticdc-0.basic-ticdc-peer.default.svc:8301", WithURL(server.URL))
 	ok, err := client.ResignOwner(context.Background())
 	require.NoError(t, err)
 	assert.True(t, ok)
@@ -161,19 +160,19 @@ func TestTiCDCClient_ResignOwner(t *testing.T) {
 	defer server2.Close()
 
 	// two captures, current capture is owner
-	client2 := NewTiCDCClient(server2.URL, "basic-ticdc-0", 5*time.Second, nil)
+	client2 := NewTiCDCClient("basic-ticdc-0.basic-ticdc-peer.default.svc:8301", WithURL(server2.URL))
 	ok, err = client2.ResignOwner(context.Background())
 	require.NoError(t, err)
 	assert.False(t, ok)
 
 	// two captures, current capture is not owner
-	client3 := NewTiCDCClient(server2.URL, "basic-ticdc-1", 5*time.Second, nil)
+	client3 := NewTiCDCClient("basic-ticdc-1.basic-ticdc-peer.default.svc:8301", WithURL(server2.URL))
 	ok, err = client3.ResignOwner(context.Background())
 	require.NoError(t, err)
 	assert.True(t, ok)
 
 	// two captures, but this instance is not found
-	client4 := NewTiCDCClient(server2.URL, "basic-ticdc-2", 5*time.Second, nil)
+	client4 := NewTiCDCClient("basic-ticdc-2.basic-ticdc-peer.default.svc:8301", WithURL(server2.URL))
 	ok, err = client4.ResignOwner(context.Background())
 	require.NoError(t, err)
 	assert.True(t, ok)
@@ -189,7 +188,7 @@ func TestTiCDCClient_IsHealthy(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewTiCDCClient(server.URL, "basic-ticdc-0", 5*time.Second, nil)
+	client := NewTiCDCClient("basic-ticdc-0.basic-ticdc-peer.default.svc:8301", WithURL(server.URL))
 	ok, err := client.IsHealthy(context.Background())
 	require.NoError(t, err)
 	assert.True(t, ok)
@@ -213,7 +212,7 @@ func TestTiCDCClient_IsHealthy(t *testing.T) {
 	}))
 	defer server2.Close()
 
-	client2 := NewTiCDCClient(server2.URL, "basic-ticdc-0", 5*time.Second, nil)
+	client2 := NewTiCDCClient("basic-ticdc-0.basic-ticdc-peer.default.svc:8301", WithURL(server2.URL))
 	ok, err = client2.IsHealthy(context.Background())
 	require.NoError(t, err)
 	assert.False(t, ok)
@@ -232,7 +231,7 @@ func TestTiCDCClient_IsHealthy(t *testing.T) {
 	}))
 	defer server3.Close()
 
-	client3 := NewTiCDCClient(server3.URL, "basic-ticdc-0", 5*time.Second, nil)
+	client3 := NewTiCDCClient("basic-ticdc-0.basic-ticdc-peer.default.svc:8301", WithURL(server3.URL))
 	ok, err = client3.IsHealthy(context.Background())
 	require.NoError(t, err)
 	assert.True(t, ok)
@@ -263,7 +262,7 @@ func TestTiCDCClient_getCaptures(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewTiCDCClient(server.URL, "basic-ticdc-1", 5*time.Second, nil)
+	client := NewTiCDCClient("basic-ticdc-1.basic-ticdc-peer.default.svc:8301", WithURL(server.URL))
 	captures, err := client.(*ticdcClient).getCaptures(context.Background())
 	require.NoError(t, err)
 	assert.Len(t, captures, 2)
@@ -297,13 +296,13 @@ func Test_getThisAndOwnerCaptureInfo(t *testing.T) {
 	}{
 		{
 			name:     "test owner capture",
-			instance: "basic-ticdc-0",
+			instance: "basic-ticdc-0.basic-ticdc-peer.default.svc:8301",
 			this:     captures[0],
 			owner:    captures[0],
 		},
 		{
 			name:     "test non-owner capture",
-			instance: "basic-ticdc-1",
+			instance: "basic-ticdc-1.basic-ticdc-peer.default.svc:8301",
 			this:     captures[1],
 			owner:    captures[0],
 		},

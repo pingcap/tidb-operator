@@ -18,17 +18,12 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"time"
 
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/ticdcapi/v1"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	tlsutil "github.com/pingcap/tidb-operator/pkg/utils/tls"
-)
-
-const (
-	ticdcRequestTimeout = 10 * time.Second
 )
 
 type ReconcileContext struct {
@@ -64,7 +59,11 @@ func TaskContextInfoFromTiCDC(state *ReconcileContext, c client.Client) task.Tas
 			}
 		}
 		// TODO(liubo02): cache client
-		state.TiCDCClient = ticdcapi.NewTiCDCClient(coreutil.TiCDCAdvertiseURL(state.TiCDC()), ticdcRequestTimeout, tlsConfig, true)
+		state.TiCDCClient = ticdcapi.NewTiCDCClient(coreutil.TiCDCAdvertiseURL(state.TiCDC()),
+			ticdcapi.WithTLS(tlsConfig),
+			// TODO(liubo02): fix it
+			ticdcapi.DisableKeepAlives(),
+		)
 		healthy, err := state.TiCDCClient.IsHealthy(ctx)
 		if err != nil {
 			return task.Complete().With(
