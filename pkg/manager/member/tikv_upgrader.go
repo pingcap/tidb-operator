@@ -354,9 +354,15 @@ func (u *tikvUpgrader) endEvictLeaderAfterUpgrade(tc *v1alpha1.TidbCluster, pod 
 }
 
 func (u *tikvUpgrader) triggerForceFlush(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
-	pdcli := u.deps.TiKVControl.GetTiKVPodClient(tc.GetNamespace(), tc.GetName(), pod.GetName(), tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled())
-	cxLogger := klog.NewContext(context.Background(), klog.Background().WithValues("pod", pod.GetName(), "pod.ns", pod.GetNamespace()))
-	return pdcli.FlushLogBackupTasks(cxLogger)
+	logger := klog.Background().WithValues("pod", pod.GetName(), "pod.ns", pod.GetNamespace())
+	cxLogger := klog.NewContext(context.Background(), logger)
+
+	if _, ok := tc.Annotations[v1alpha1.AnnoKeySkipFlushLogBackup]; ok {
+		logger.Info("Skipped flush log backup.", "tc", tc.Name, "namespace", tc.Namespace)
+		return nil
+	}
+	kvcli := u.deps.TiKVControl.GetTiKVPodClient(tc.GetNamespace(), tc.GetName(), pod.GetName(), tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled())
+	return kvcli.FlushLogBackupTasks(cxLogger)
 }
 
 func (u *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64, pod *corev1.Pod) error {

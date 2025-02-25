@@ -458,8 +458,12 @@ func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.
 			klog.Infof("Region leader count is %d for Pod %s/%s", leaderCount, pod.Namespace, pod.Name)
 
 			if leaderCount == 0 {
-				if err := kvClient.FlushLogBackupTasks(ctx); err != nil {
-					klog.Errorf("failed to flush log backup tasks due to %s continue to delete pod %s/%s", err, pod.Namespace, pod.Name)
+				if _, ok := tc.Annotations[v1alpha1.AnnoKeySkipFlushLogBackup]; !ok {
+					if err := kvClient.FlushLogBackupTasks(ctx); err != nil {
+						klog.Errorf("failed to flush log backup tasks due to %s continue to delete pod %s/%s", err, pod.Namespace, pod.Name)
+					}
+				} else {
+					klog.Infof("skipping flush log backup for the pod %s/%s of tc %s/%s", pod.Namespace, pod.Name, tc.Namespace, tc.Name)
 				}
 
 				err = c.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
