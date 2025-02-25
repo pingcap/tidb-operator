@@ -35,7 +35,7 @@ var _ = ginkgo.Describe("TiCDC", label.TiCDC, func() {
 
 	// NOTE(liubo02): this case is failed in e2e env because of the cgroup v2.
 	// Enable it if env is fixed.
-	ginkgo.DescribeTableSubtree("Leader Eviction", label.P1,
+	ginkgo.PDescribeTableSubtree("Leader Eviction", label.P1,
 		func(enableTLS bool) {
 			if enableTLS {
 				f.SetupCluster(data.WithClusterTLS())
