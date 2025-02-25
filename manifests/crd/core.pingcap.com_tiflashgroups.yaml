@@ -10,11 +10,12 @@ spec:
   names:
     categories:
     - tc
-    - flash
     - group
     kind: TiFlashGroup
     listKind: TiFlashGroupList
     plural: tiflashgroups
+    shortNames:
+    - fg
     singular: tiflashgroup
   scope: Namespaced
   versions:

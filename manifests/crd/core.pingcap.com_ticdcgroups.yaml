@@ -10,11 +10,12 @@ spec:
   names:
     categories:
     - tc
-    - cdc
     - group
     kind: TiCDCGroup
     listKind: TiCDCGroupList
     plural: ticdcgroups
+    shortNames:
+    - cg
     singular: ticdcgroup
   scope: Namespaced
   versions:

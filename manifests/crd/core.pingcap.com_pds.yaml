@@ -10,7 +10,6 @@ spec:
   names:
     categories:
     - tc
-    - pd
     - instance
     kind: PD
     listKind: PDList

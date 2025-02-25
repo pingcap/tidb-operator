@@ -10,11 +10,12 @@ spec:
   names:
     categories:
     - tc
-    - kv
     - group
     kind: TiKVGroup
     listKind: TiKVGroupList
     plural: tikvgroups
+    shortNames:
+    - kvg
     singular: tikvgroup
   scope: Namespaced
   versions:

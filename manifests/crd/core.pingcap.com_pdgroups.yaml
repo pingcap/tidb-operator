@@ -10,11 +10,12 @@ spec:
   names:
     categories:
     - tc
-    - pd
     - group
     kind: PDGroup
     listKind: PDGroupList
     plural: pdgroups
+    shortNames:
+    - pdg
     singular: pdgroup
   scope: Namespaced
   versions:
