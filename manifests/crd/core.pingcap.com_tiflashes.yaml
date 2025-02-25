@@ -10,7 +10,6 @@ spec:
   names:
     categories:
     - tc
-    - flash
     - instance
     kind: TiFlash
     listKind: TiFlashList

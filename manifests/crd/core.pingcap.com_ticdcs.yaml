@@ -10,7 +10,6 @@ spec:
   names:
     categories:
     - tc
-    - cdc
     - instance
     kind: TiCDC
     listKind: TiCDCList

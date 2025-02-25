@@ -51,7 +51,8 @@ type TiFlashGroupList struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories=tc;flash;group
+// +kubebuilder:resource:categories=tc;group
+// +kubebuilder:resource:shortName=fg
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Desired",type=string,JSONPath=`.spec.replicas`
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.readyReplicas`
@@ -85,7 +86,7 @@ type TiFlashList struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories=tc;flash;instance
+// +kubebuilder:resource:categories=tc;instance
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="StoreID",type=string,JSONPath=`.status.id`
 // +kubebuilder:printcolumn:name="StoreState",type=string,JSONPath=`.status.state`

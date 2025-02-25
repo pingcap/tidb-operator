@@ -8,13 +8,11 @@ metadata:
 spec:
   group: core.pingcap.com
   names:
-    categories:
-    - tc
-    - db
-    - group
     kind: TiDBGroup
     listKind: TiDBGroupList
     plural: tidbgroups
+    shortNames:
+    - dbg
     singular: tidbgroup
   scope: Namespaced
   versions:

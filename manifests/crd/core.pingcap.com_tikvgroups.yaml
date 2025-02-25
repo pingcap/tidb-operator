@@ -8,13 +8,11 @@ metadata:
 spec:
   group: core.pingcap.com
   names:
-    categories:
-    - tc
-    - kv
-    - group
     kind: TiKVGroup
     listKind: TiKVGroupList
     plural: tikvgroups
+    shortNames:
+    - kvg
     singular: tikvgroup
   scope: Namespaced
   versions:
