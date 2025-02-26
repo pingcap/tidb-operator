@@ -15,6 +15,8 @@
 package runtime
 
 import (
+	"time"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
@@ -24,8 +26,44 @@ import (
 // Job is the interface for a job. for example, backup, restore, etc.
 type Job interface {
 	Object
+	// Failed returns true if the job is Failed
+	Failed() bool
+	// Completed returns true if the job is Completed
+	Completed() bool
+
+	// K8sJob returns the k8s job object key
+	K8sJob() client.ObjectKey
 
 	Object() client.Object
+}
+
+type RetryResult string
+
+const (
+	RetryResultTriggered   RetryResult = "Triggered"
+	RetryResultExceedLimit RetryResult = "ExceedLimit"
+)
+
+type PostRetryData struct {
+	Result      RetryResult
+	Reason      string
+	Message     string
+	TriggeredAt time.Time // set if the result is Triggered
+
+	IsExceedRetryTimes bool
+	IsRetryTimeout     bool
+}
+type RetriableJob interface {
+	Job
+
+	// NeedRetry returns true if the job needs to be retried
+	NeedRetry() bool
+	// LastRetryRecord returns the last retry record of the job
+	LastRetryRecord() (brv1alpha1.BackoffRetryRecord, bool)
+	// Retry is called when the job is retried
+	Retry(reason, originalReason string, now time.Time) (nextRunAt *time.Time, _ error)
+	// PostRetry is called when the job is retried
+	PostRetry(now time.Time) error
 }
 
 // br
@@ -42,6 +80,38 @@ func ToBackup(b *Backup) *brv1alpha1.Backup {
 }
 
 var _ Job = &Backup{}
+
+func (b *Backup) Completed() bool {
+	return brv1alpha1.IsBackupComplete(ToBackup(b))
+}
+
+func (b *Backup) Failed() bool {
+	return brv1alpha1.IsBackupFailed(ToBackup(b))
+}
+
+func (b *Backup) K8sJob() client.ObjectKey {
+	return client.ObjectKey{
+		Namespace: b.Namespace,
+		Name:      ToBackup(b).GetBackupJobName(),
+	}
+}
+
+func (b *Backup) NeedRetry() bool {
+	// only snapshot backup can be retried
+	return b.Spec.Mode == brv1alpha1.BackupModeSnapshot
+}
+
+func (b *Backup) LastRetryRecord() (brv1alpha1.BackoffRetryRecord, bool) {
+	return ToBackup(b).LastRetryRecord()
+}
+
+func (b *Backup) Retry(reason, originalReason string, now time.Time) (nextRunAt *time.Time, _ error) {
+	return ToBackup(b).Retry(reason, originalReason, now)
+}
+
+func (b *Backup) PostRetry(now time.Time) error {
+	return ToBackup(b).PostRetry(now)
+}
 
 func (b *Backup) SetCluster(cluster string) {
 	b.Spec.BR.Cluster = cluster
@@ -83,6 +153,21 @@ type (
 )
 
 var _ Job = &Restore{}
+
+func (r *Restore) Completed() bool {
+	return brv1alpha1.IsRestoreComplete(ToRestore(r))
+}
+
+func (r *Restore) Failed() bool {
+	return brv1alpha1.IsRestoreFailed(ToRestore(r))
+}
+
+func (r *Restore) K8sJob() client.ObjectKey {
+	return client.ObjectKey{
+		Namespace: r.Namespace,
+		Name:      ToRestore(r).GetRestoreJobName(),
+	}
+}
 
 func (r *Restore) SetCluster(cluster string) {
 	r.Spec.BR.Cluster = cluster
