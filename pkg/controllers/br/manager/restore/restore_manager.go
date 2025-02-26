@@ -127,8 +127,8 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	restoreJob := &batchv1.Job{}
 	err = rm.cli.Get(context.TODO(), client.ObjectKey{Namespace: restore.Namespace, Name: restoreJobName}, restoreJob)
 	if err == nil {
-		klog.Infof("restore job %s/%s has been created, skip", ns, restoreJobName)
-		return nil
+		klog.Infof("restore job %s/%s has been created, sync job status", ns, restoreJobName)
+		return rm.syncK8sJobStatus(restore, restoreJob)
 	} else if !errors.IsNotFound(err) {
 		return fmt.Errorf("restore %s/%s get job %s failed, err: %w", ns, name, restoreJobName, err)
 	}
@@ -357,6 +357,44 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	}
 
 	return job, "", nil
+}
+
+func (rm *restoreManager) syncK8sJobStatus(restore *v1alpha1.Restore, job *batchv1.Job) error {
+	// Get job condition by type
+	getJobCondition := func(job *batchv1.Job, condType batchv1.JobConditionType) *batchv1.JobCondition {
+		for i := range job.Status.Conditions {
+			if job.Status.Conditions[i].Type == condType {
+				return &job.Status.Conditions[i]
+			}
+		}
+		return nil
+	}
+
+	// Check for job completion
+	cond := getJobCondition(job, batchv1.JobComplete)
+	// set only when the backup-manager job doesn't set the RestoreComplete condition
+	if cond != nil && cond.Status == corev1.ConditionTrue && !v1alpha1.IsRestoreComplete(restore) {
+		return rm.statusUpdater.Update(restore, &metav1.Condition{
+			Type:    string(v1alpha1.RestoreComplete),
+			Status:  metav1.ConditionTrue,
+			Reason:  "RestoreComplete",
+			Message: "Restore job completed",
+		}, nil)
+	}
+
+	// Check for job failure
+	cond = getJobCondition(job, batchv1.JobFailed)
+	// set only when the backup-manager job doesn't set the RestoreFailed condition
+	if cond != nil && cond.Status == corev1.ConditionTrue && !v1alpha1.IsRestoreFailed(restore) {
+		return rm.statusUpdater.Update(restore, &metav1.Condition{
+			Type:    string(v1alpha1.RestoreFailed),
+			Status:  metav1.ConditionTrue,
+			Reason:  "RestoreFailed",
+			Message: cond.Message,
+		}, nil)
+	}
+
+	return nil
 }
 
 var _ RestoreManager = &restoreManager{}

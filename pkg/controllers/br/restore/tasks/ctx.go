@@ -15,10 +15,7 @@
 package tasks
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
 type Config struct {
@@ -32,9 +29,4 @@ type ReconcileContext struct {
 	IsBootstrapped bool
 
 	Config Config
-}
-
-func TaskContextRestore(state RestoreStateInitializer, c client.Client) task.Task {
-	w := state.RestoreInitializer()
-	return common.TaskContextResource("Restore", w, c, false)
 }
