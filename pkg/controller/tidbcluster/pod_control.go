@@ -459,7 +459,11 @@ func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.
 
 			if leaderCount == 0 {
 				if _, ok := tc.Annotations[v1alpha1.AnnoKeySkipFlushLogBackup]; !ok {
-					if err := kvClient.FlushLogBackupTasks(ctx); err != nil {
+					// This is a block call, for more details, see `triggerForceFlush` in `tikv_upgrader.go`.
+					timeoutCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+					defer cancel()
+
+					if err := kvClient.FlushLogBackupTasks(timeoutCtx); err != nil {
 						klog.Errorf("failed to flush log backup tasks due to %s continue to delete pod %s/%s", err, pod.Namespace, pod.Name)
 					}
 				} else {
