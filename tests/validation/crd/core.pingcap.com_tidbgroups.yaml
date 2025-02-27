@@ -1,0 +1,549 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.1
+  name: tidbgroups.core.pingcap.com
+spec:
+  group: core.pingcap.com
+  names:
+    categories:
+    - tc
+    - group
+    kind: TiDBGroup
+    listKind: TiDBGroupList
+    plural: tidbgroups
+    shortNames:
+    - dbg
+    singular: tidbgroup
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.cluster.name
+      name: Cluster
+      type: string
+    - jsonPath: .spec.replicas
+      name: Desired
+      type: string
+    - jsonPath: .status.readyReplicas
+      name: Ready
+      type: string
+    - jsonPath: .status.updatedReplicas
+      name: Updated
+      type: string
+    - jsonPath: .status.updateRevision
+      name: UpdateRevision
+      type: string
+    - jsonPath: .status.currentRevision
+      name: CurrentRevision
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Synced")].status
+      name: Synced
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: TiDBGroup defines a group of similar TiDB instances.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: TiDBGroupSpec describes the common attributes of a TiDBGroup.
+            properties:
+              cluster:
+                description: |-
+                  ClusterReference is a reference to cluster
+                  NOTE: namespace may be added into the reference in the future
+                properties:
+                  name:
+                    type: string
+                required:
+                - name
+                type: object
+              replicas:
+                format: int32
+                type: integer
+              schedulePolicies:
+                items:
+                  description: SchedulePolicy defines how instances of the group schedules
+                    its pod.
+                  properties:
+                    evenlySpread:
+                      properties:
+                        topologies:
+                          description: All instances of a group will evenly spread
+                            in differnet topologies
+                          items:
+                            properties:
+                              topology:
+                                additionalProperties:
+                                  type: string
+                                description: Topology means the topo for scheduling
+                                type: object
+                              weight:
+                                description: |-
+                                  Weight defines how many pods will be scheduled to this topo
+                                  default is 1
+                                format: int32
+                                type: integer
+                            required:
+                            - topology
+                            type: object
+                          type: array
+                      required:
+                      - topologies
+                      type: object
+                    type:
+                      type: string
+                  required:
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              service:
+                description: Service defines some fields used to override the default
+                  service.
+                properties:
+                  type:
+                    description: |-
+                      type determines how the Service is exposed. Defaults to ClusterIP. Valid
+                      options are ExternalName, ClusterIP, NodePort, and LoadBalancer.
+                      "ClusterIP" allocates a cluster-internal IP address for load-balancing
+                      to endpoints. Endpoints are determined by the selector or if that is not
+                      specified, by manual construction of an Endpoints object or
+                      EndpointSlice objects. If clusterIP is "None", no virtual IP is
+                      allocated and the endpoints are published as a set of endpoints rather
+                      than a virtual IP.
+                      "NodePort" builds on ClusterIP and allocates a port on every node which
+                      routes to the same endpoints as the clusterIP.
+                      "LoadBalancer" builds on NodePort and creates an external load-balancer
+                      (if supported in the current cloud) which routes to the same endpoints
+                      as the clusterIP.
+                      "ExternalName" aliases this service to the specified externalName.
+                      Several other fields do not apply to ExternalName services.
+                      More info: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+                    type: string
+                type: object
+              template:
+                properties:
+                  metadata:
+                    description: |-
+                      ObjectMeta is defined for replacing the embedded metav1.ObjectMeta
+                      Now only labels and annotations are allowed
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          Annotations is an unstructured key value map stored with a resource that may be
+                          set by external tools to store and retrieve arbitrary metadata. They are not
+                          queryable and should be preserved when modifying objects.
+                          More info: http://kubernetes.io/docs/user-guide/annotations
+                        type: object
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          Map of string keys and values that can be used to organize and categorize
+                          (scope and select) objects. May match selectors of replication controllers
+                          and services.
+                          More info: http://kubernetes.io/docs/user-guide/labels
+                        type: object
+                      name:
+                        description: |-
+                          Name must be unique within a namespace. Is required when creating resources, although
+                          some resources may allow a client to request the generation of an appropriate name
+                          automatically. Name is primarily intended for creation idempotence and configuration
+                          definition.
+                          Cannot be updated.
+                          More info: http://kubernetes.io/docs/user-guide/identifiers#names
+                        type: string
+                    type: object
+                  spec:
+                    description: TiDBTemplateSpec can only be specified in TiDBGroup.
+                    properties:
+                      config:
+                        description: Config defines config file of TiDB.
+                        type: string
+                      image:
+                        description: |-
+                          Image is tidb's image
+                          If tag is omitted, version will be used as the image tag.
+                          Default is pingcap/tidb
+                        type: string
+                      overlay:
+                        description: |-
+                          Overlay defines a k8s native resource template patch.
+                          All resources(pod, pvcs, ...) managed by TiDB can be overlayed by this field.
+                        x-kubernetes-preserve-unknown-fields: true
+                      probes:
+                        description: Probes defines probes for TiDB.
+                        properties:
+                          readiness:
+                            description: |-
+                              Readiness defines the readiness probe for TiDB.
+                              The default handler is a TCP socket on the client port.
+                            properties:
+                              type:
+                                description: |-
+                                  "tcp" will use TCP socket to connect component port.
+                                  "command" will probe the status api of tidb.
+                                enum:
+                                - tcp
+                                - command
+                                type: string
+                            type: object
+                        type: object
+                      resources:
+                        description: Resources defines resource required by TiDB.
+                        properties:
+                          cpu:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          memory:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                        type: object
+                      security:
+                        properties:
+                          authToken:
+                            description: |-
+                              Whether enable `tidb_auth_token` authentication method.
+                              To enable this feature, a K8s secret named `<groupName>-tidb-auth-token-jwks-secret` must be created to store the JWKs.
+                              ref: https://docs.pingcap.com/tidb/stable/security-compatibility-with-mysql#tidb_auth_token
+                              Defaults to false.
+                            properties:
+                              jwks:
+                                description: Secret name of jwks
+                                properties:
+                                  name:
+                                    default: ""
+                                    description: |-
+                                      Name of the referent.
+                                      This field is effectively required, but due to backwards compatibility is
+                                      allowed to be empty. Instances of this type with an empty value here are
+                                      almost certainly wrong.
+                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                    type: string
+                                type: object
+                                x-kubernetes-map-type: atomic
+                            required:
+                            - jwks
+                            type: object
+                          tls:
+                            description: Whether enable the TLS connection between
+                              the TiDB server and MySQL client.
+                            properties:
+                              mysql:
+                                description: |-
+                                  When enabled, TiDB will accept TLS encrypted connections from MySQL clients.
+                                  The steps to enable this feature:
+                                    1. Generate a TiDB server-side certificate and a client-side certifiacete for the TiDB cluster.
+                                       There are multiple ways to generate certificates:
+                                         - user-provided certificates: https://docs.pingcap.com/tidb/stable/generate-self-signed-certificates
+                                         - use the K8s built-in certificate signing system signed certificates: https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/
+                                         - or use cert-manager signed certificates: https://cert-manager.io/
+                                    2. Create a K8s Secret object which contains the TiDB server-side certificate created above.
+                                       The name of this Secret must be: <groupName>-tidb-server-secret.
+                                         kubectl create secret generic <groupName>-tidb-server-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+                                    3. Create a K8s Secret object which contains the TiDB client-side certificate created above which will be used by TiDB Operator.
+                                       The name of this Secret must be: <groupName>-tidb-client-secret.
+                                         kubectl create secret generic <groupName>-tidb-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+                                    4. Set Enabled to `true`.
+                                properties:
+                                  enabled:
+                                    type: boolean
+                                type: object
+                            type: object
+                        type: object
+                      server:
+                        description: Server defines the server configuration of TiDB.
+                        properties:
+                          ports:
+                            description: Port defines all ports listened by TiDB.
+                            properties:
+                              client:
+                                description: Client defines port for TiDB's SQL service.
+                                properties:
+                                  port:
+                                    format: int32
+                                    type: integer
+                                required:
+                                - port
+                                type: object
+                              status:
+                                description: Status defines port for TiDB status API.
+                                properties:
+                                  port:
+                                    format: int32
+                                    type: integer
+                                required:
+                                - port
+                                type: object
+                            type: object
+                        type: object
+                      slowLog:
+                        description: |-
+                          SlowLog defines the separate slow log configuration for TiDB.
+                          When enabled, a sidecar container will be created to output the slow log to its stdout.
+                        properties:
+                          disable:
+                            description: |-
+                              Disabled indicates whether the separate slow log is disabled.
+                              Defaults to false. In other words, the separate slow log is enabled by default.
+                            type: boolean
+                          image:
+                            description: |-
+                              Image to tail slowlog to stdout
+                              Default is busybox:1.37.0
+                            type: string
+                          resources:
+                            description: ResourceRequirements defines the resource
+                              requirements for the slow log sidecar.
+                            properties:
+                              cpu:
+                                anyOf:
+                                - type: integer
+                                - type: string
+                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                x-kubernetes-int-or-string: true
+                              memory:
+                                anyOf:
+                                - type: integer
+                                - type: string
+                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                x-kubernetes-int-or-string: true
+                            type: object
+                        type: object
+                      updateStrategy:
+                        properties:
+                          config:
+                            default: Restart
+                            description: |-
+                              Config determines how the configuration change is applied to the cluster.
+                              Valid values are "Restart" (by default) and "HotReload".
+                            enum:
+                            - Restart
+                            - HotReload
+                            type: string
+                        type: object
+                      version:
+                        type: string
+                      volumes:
+                        description: Volumes defines data volume of TiDB, it is optional.
+                        items:
+                          description: |-
+                            Volume defines a persistent volume, it will be mounted at a specified root path
+                            A volume can be mounted for multiple different usages.
+                            For example, a volume can be mounted for both data and raft log.
+                          properties:
+                            mounts:
+                              description: Mounts defines mount infos of this volume
+                              items:
+                                properties:
+                                  mountPath:
+                                    description: Mount path of volume, if it's not
+                                      set, use the default path of this type.
+                                    type: string
+                                  subPath:
+                                    description: SubPath is the path of the volume's
+                                      root path.
+                                    type: string
+                                  type:
+                                    description: Type is a type of the volume mount.
+                                    type: string
+                                required:
+                                - type
+                                type: object
+                              type: array
+                            name:
+                              description: |-
+                                Name is volume name.
+                                If not specified, the PVC name will be "{component}-{podName}"
+                              type: string
+                            storage:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: Storage defines the request size of this
+                                volume
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            storageClassName:
+                              description: |-
+                                StorageClassName means the storage class the volume used.
+                                You can modify volumes' attributes by changing the StorageClass
+                                when VolumeAttributesClass is not available.
+                                Note that only newly created PV will use the new StorageClass.
+                              type: string
+                            volumeAttributesClassName:
+                              description: |-
+                                VolumeAttributesClassName means the VolumeAttributesClass the volume used.
+                                You can modify volumes' attributes by changing it.
+                                This feature is introduced since K8s 1.29 as alpha feature and disabled by default.
+                                It's only available when the feature is enabled.
+                              type: string
+                          required:
+                          - mounts
+                          - storage
+                          type: object
+                        type: array
+                    required:
+                    - config
+                    - version
+                    type: object
+                required:
+                - spec
+                type: object
+            required:
+            - cluster
+            - replicas
+            - template
+            type: object
+          status:
+            properties:
+              collisionCount:
+                description: |-
+                  CollisionCount is the count of hash collisions. The controller
+                  uses this field as a collision avoidance mechanism when it needs to create the name for the
+                  newest ControllerRevision.
+                format: int32
+                type: integer
+              conditions:
+                description: Conditions contain details of the current state.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              currentReplicas:
+                description: |-
+                  CurrentReplicas is the number of Instances created by the Group controller from the Group version
+                  indicated by currentRevision.
+                format: int32
+                type: integer
+              currentRevision:
+                description: CurrentRevision is the revision of the Controller that
+                  created the resource.
+                type: string
+              observedGeneration:
+                description: |-
+                  ObservedGeneration is the most recent generation observed by the controller.
+                  It's used to determine whether the controller has reconciled the latest spec.
+                format: int64
+                type: integer
+              readyReplicas:
+                description: ReadyReplicas is the number of Instances created for
+                  this ComponentGroup with a Ready Condition.
+                format: int32
+                type: integer
+              replicas:
+                description: Replicas is the number of Instance created by the controller.
+                format: int32
+                type: integer
+              updateRevision:
+                description: UpdateRevision is the revision of the Controller that
+                  should modify the resource.
+                type: string
+              updatedReplicas:
+                description: |-
+                  UpdatedReplicas is the number of Instances created by the Group controller from the Group version
+                  indicated by updateRevision.
+                format: int32
+                type: integer
+              version:
+                description: |-
+                  Version is the version of all instances in the group.
+                  It will be same as the `spec.version` only when all instances are upgraded to the desired version.
+                type: string
+            required:
+            - currentReplicas
+            - readyReplicas
+            - replicas
+            - updatedReplicas
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

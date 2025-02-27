@@ -272,12 +272,14 @@ type TiDBGroupStatus struct {
 	GroupStatus  `json:",inline"`
 }
 
+// +kubebuilder:validation:XValidation:rule="(!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology) && has(self.topology))",fieldPath=".topology",message="topology can only be set when created"
 type TiDBSpec struct {
 	Cluster ClusterReference `json:"cluster"`
 
 	// Topology defines the topology domain of this TiDB instance.
 	// It will be translated into a node affnity config.
 	// Topology cannot be changed.
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="topology is immutable"
 	Topology Topology `json:"topology,omitempty"`
 
 	// Subdomain means the subdomain of the exported pd dns.
