@@ -22,6 +22,7 @@ header:
     - '**/go.work'
     - '**/go.work.sum'
     - '**/LICENSE'
+    - tests/validation/crd/**
     - third_party/**
     - '**/OWNERS'
     - OWNERS_ALIASES

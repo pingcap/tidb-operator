@@ -156,6 +156,7 @@ type TiCDCGroupStatus struct {
 }
 
 // TiCDCSpec describes the common attributes of a TiCDC instance
+// +kubebuilder:validation:XValidation:rule="(!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology) && has(self.topology))",fieldPath=".topology",message="topology can only be set when created"
 type TiCDCSpec struct {
 	// Cluster is a reference of tidb cluster
 	Cluster ClusterReference `json:"cluster"`
@@ -163,6 +164,7 @@ type TiCDCSpec struct {
 	// Topology defines the topology domain of this TiCDC instance
 	// It will be translated into a node affinity config
 	// Topology cannot be changed
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="topology is immutable"
 	Topology Topology `json:"topology,omitempty"`
 
 	// Subdomain means the subdomain of the exported TiCDC DNS.

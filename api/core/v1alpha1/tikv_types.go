@@ -179,12 +179,14 @@ type TiKVGroupStatus struct {
 	GroupStatus  `json:",inline"`
 }
 
+// +kubebuilder:validation:XValidation:rule="(!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology) && has(self.topology))",fieldPath=".topology",message="topology can only be set when created"
 type TiKVSpec struct {
 	// Cluster is a reference of tidb cluster
 	Cluster ClusterReference `json:"cluster"`
 	// Topology defines the topology domain of this pd instance
 	// It will be translated into a node affinity config
 	// Topology cannot be changed
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="topology is immutable"
 	Topology Topology `json:"topology,omitempty"`
 	// Subdomain means the subdomain of the exported tikv dns.
 	// A same tikv group will use a same subdomain
