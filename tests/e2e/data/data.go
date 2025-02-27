@@ -47,3 +47,21 @@ func WithReplicas[G runtime.Group](replicas int32) GroupPatch[G] {
 		obj.SetReplicas(replicas)
 	}
 }
+
+func WithGroupName[G runtime.Group](name string) GroupPatch[G] {
+	return func(obj G) {
+		obj.SetName(name)
+	}
+}
+
+func WithGroupVersion[G runtime.Group](version string) GroupPatch[G] {
+	return func(obj G) {
+		obj.SetVersion(version)
+	}
+}
+
+func WithGroupCluster[G runtime.Group](cluster string) GroupPatch[G] {
+	return func(obj G) {
+		obj.SetCluster(cluster)
+	}
+}

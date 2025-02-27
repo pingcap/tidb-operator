@@ -28,7 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 )
 
-func newConfig(configPath, ctxName string) (*rest.Config, error) {
+func NewConfig(configPath, ctxName string) (*rest.Config, error) {
 	rule := clientcmd.NewDefaultClientConfigLoadingRules()
 	rule.ExplicitPath = configPath
 

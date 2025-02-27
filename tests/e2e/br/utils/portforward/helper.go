@@ -12,27 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package e2e
+package portforward
 
 import (
-	"io"
-	"testing"
-
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	_ "github.com/pingcap/tidb-operator/tests/e2e/br"
-	_ "github.com/pingcap/tidb-operator/tests/e2e/cluster"
-	_ "github.com/pingcap/tidb-operator/tests/e2e/pd"
-	_ "github.com/pingcap/tidb-operator/tests/e2e/tidb"
-	_ "github.com/pingcap/tidb-operator/tests/e2e/tikv"
+	"context"
+	"fmt"
+	"strconv"
 )
 
-func TestE2E(t *testing.T) {
-	ctrl.SetLogger(zap.New(zap.WriteTo(io.Discard)))
-
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "E2E Suite")
+// ForwardOnePort provide a helper to forward only one port
+// and return local endpoint
+func ForwardOnePort(ctx context.Context, fw PortForwarder, ns, resourceName string, port int) (string, error) {
+	ports, err := fw.Forward(ctx, ns, resourceName, []int{port})
+	if err != nil {
+		return "", err
+	}
+	if len(ports) != 1 {
+		return "", fmt.Errorf("portforward expect only one port, but now %v", len(ports))
+	}
+	localPort := int(ports[0].Local)
+	return "localhost:" + strconv.Itoa(localPort), nil
 }

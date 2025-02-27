@@ -12,27 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package e2e
+package image
 
-import (
-	"io"
-	"testing"
-
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	_ "github.com/pingcap/tidb-operator/tests/e2e/br"
-	_ "github.com/pingcap/tidb-operator/tests/e2e/cluster"
-	_ "github.com/pingcap/tidb-operator/tests/e2e/pd"
-	_ "github.com/pingcap/tidb-operator/tests/e2e/tidb"
-	_ "github.com/pingcap/tidb-operator/tests/e2e/tikv"
+var (
+	TiDBPreviousVersions []string = []string{"v8.1.0"}
 )
 
-func TestE2E(t *testing.T) {
-	ctrl.SetLogger(zap.New(zap.WriteTo(io.Discard)))
+const (
+	// TiDB Version
+	TiDBLatestPrev = "v8.1.0"
+	TiDBLatest     = "v8.2.0" // different version with PDMSImage
 
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "E2E Suite")
-}
+	// specific version
+	// TiDBV7x5x3 = "v7.5.3"
+)
