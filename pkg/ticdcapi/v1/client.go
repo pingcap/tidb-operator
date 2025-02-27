@@ -69,9 +69,9 @@ func (c *ticdcClient) URL() string {
 
 	if c.enableTLS {
 		c.url = "https://" + c.addr
+	} else {
+		c.url = "http://" + c.addr
 	}
-
-	c.url = "http://" + c.addr
 
 	return c.url
 }
