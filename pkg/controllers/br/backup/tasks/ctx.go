@@ -15,15 +15,16 @@
 package tasks
 
 import (
-	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
+	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/backup"
 )
 
 type Config struct {
 	BackupManagerImage string
 }
 type ReconcileContext struct {
-	PDClientManager pdm.PDClientManager
 	State
 
-	Config Config
+	Config        Config
+	BackupManager backup.BackupManager
+	BackupCleaner backup.BackupCleaner
 }

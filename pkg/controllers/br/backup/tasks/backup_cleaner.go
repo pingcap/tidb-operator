@@ -23,13 +23,15 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-func TaskRestoreManager(state *ReconcileContext, c client.Client, recorder record.EventRecorder) task.Task {
-	return task.NameTaskFunc("RestoreManager", func(ctx context.Context) task.Result {
-		err := state.RestoreManager.Sync(state.Restore())
-		if err != nil {
-			return task.Fail().With("sync restore manager failed: %s", err)
+func TaskBackupCleaner(state *ReconcileContext, c client.Client, recorder record.EventRecorder) task.Task {
+	return task.NameTaskFunc("BackupCleaner", func(ctx context.Context) task.Result {
+		// because a finalizer is installed on the backup on creation, when backup is deleted,
+		// backup.DeletionTimestamp will be set, controller will be informed with an onUpdate event,
+		// this is the moment that we can do clean up work.
+		if err := state.BackupCleaner.Clean(state.Backup()); err != nil {
+			return task.Fail().With("clean backup failed: %s", err)
 		}
 
-		return task.Complete().With("restore manager synced")
+		return task.Complete().With("backup cleaned")
 	})
 }

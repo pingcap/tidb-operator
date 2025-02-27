@@ -19,7 +19,9 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 )
 
@@ -30,6 +32,10 @@ type Job interface {
 	Failed() bool
 	// Completed returns true if the job is Completed
 	Completed() bool
+	// NeedAddFinalizer returns true if the job needs a finalizer
+	NeedAddFinalizer() bool
+	// NeedRemoveFinalizer returns true if the job needs to remove the finalizer
+	NeedRemoveFinalizer() bool
 
 	// K8sJob returns the k8s job object key
 	K8sJob() client.ObjectKey
@@ -61,7 +67,7 @@ type RetriableJob interface {
 	// LastRetryRecord returns the last retry record of the job
 	LastRetryRecord() (brv1alpha1.BackoffRetryRecord, bool)
 	// Retry is called when the job is retried
-	Retry(reason, originalReason string, now time.Time) (nextRunAt *time.Time, _ error)
+	Retry(reason, originalReason string, now time.Time) (nextRunAfter *time.Duration, _ error)
 	// PostRetry is called when the job is retried
 	PostRetry(now time.Time) error
 }
@@ -80,6 +86,35 @@ func ToBackup(b *Backup) *brv1alpha1.Backup {
 }
 
 var _ Job = &Backup{}
+
+func (b *Backup) NeedAddFinalizer() bool {
+	bk := ToBackup(b)
+	return bk.DeletionTimestamp == nil && brv1alpha1.IsCleanCandidate(bk)
+}
+
+func (b *Backup) NeedRemoveFinalizer() bool {
+	bk := ToBackup(b)
+	return brv1alpha1.IsCleanCandidate(bk) && isBackupDeletionCandidate(bk) && brv1alpha1.IsBackupClean(bk)
+}
+
+func isBackupDeletionCandidate(backup *v1alpha1.Backup) bool {
+	return backup.DeletionTimestamp != nil && ContainsString(backup.Finalizers, metav1alpha1.Finalizer, nil)
+}
+
+// TODO(ideascf): move this to pkg/utils/k8s
+// ContainsString checks if a given slice of strings contains the provided string.
+// If a modifier func is provided, it is called with the slice item before the comparation.
+func ContainsString(slice []string, s string, modifier func(s string) string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+		if modifier != nil && modifier(item) == s {
+			return true
+		}
+	}
+	return false
+}
 
 func (b *Backup) Completed() bool {
 	return brv1alpha1.IsBackupComplete(ToBackup(b))
@@ -105,7 +140,7 @@ func (b *Backup) LastRetryRecord() (brv1alpha1.BackoffRetryRecord, bool) {
 	return ToBackup(b).LastRetryRecord()
 }
 
-func (b *Backup) Retry(reason, originalReason string, now time.Time) (nextRunAt *time.Time, _ error) {
+func (b *Backup) Retry(reason, originalReason string, now time.Time) (nextRunAt *time.Duration, _ error) {
 	return ToBackup(b).Retry(reason, originalReason, now)
 }
 
@@ -153,6 +188,15 @@ type (
 )
 
 var _ Job = &Restore{}
+
+// FIXME(ideascf): this is a temporary solution, we need to find a better way to handle this
+func (r *Restore) NeedAddFinalizer() bool {
+	return !(r.Completed() || r.Failed())
+}
+
+func (r *Restore) NeedRemoveFinalizer() bool {
+	return r.Completed() || r.Failed()
+}
 
 func (r *Restore) Completed() bool {
 	return brv1alpha1.IsRestoreComplete(ToRestore(r))

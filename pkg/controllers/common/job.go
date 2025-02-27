@@ -19,12 +19,12 @@ import (
 	"fmt"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/klog"
-	ctrl "sigs.k8s.io/controller-runtime"
-
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
+	rtClient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
@@ -39,46 +39,50 @@ var (
 type jobLifecycleManager struct {
 }
 
-func (m *jobLifecycleManager) Sync(ctx context.Context, job runtime.Job, c client.Client) (*ctrl.Result, error) {
+func (m *jobLifecycleManager) Sync(ctx context.Context, job runtime.Job, c client.Client) error {
 	jobNs, jobName := job.Object().GetNamespace(), job.Object().GetName()
 
 	// TODO(ideascf): how to handle if the job is deleted, wait for the job to be Completed or Failed?
 
 	// finalizer management
-	if job.Completed() || job.Failed() {
-		if err := k8s.RemoveFinalizer(ctx, c, job.Object()); err != nil {
-			return nil, fmt.Errorf("failed to remove finalizer for job %s: %s", job.Object(), err)
+	if job.NeedAddFinalizer() {
+		if err := k8s.EnsureFinalizer(ctx, c, job.Object()); err != nil {
+			return fmt.Errorf("failed to ensure finalizer for job %s: %s", job.Object(), err)
 		}
-		klog.V(4).Infof("job %s/%s is Finished, skipping.", jobNs, jobName)
-		return &ctrl.Result{}, nil
 	}
-	if err := k8s.EnsureFinalizer(ctx, c, job.Object()); err != nil {
-		return nil, fmt.Errorf("failed to ensure finalizer for job %s: %s", job.Object(), err)
+	if job.NeedRemoveFinalizer() {
+		if err := k8s.RemoveFinalizer(ctx, c, job.Object()); err != nil {
+			return fmt.Errorf("failed to remove finalizer for job %s: %s", job.Object(), err)
+		}
 	}
 
 	// do retry if needed
 	retriable, ok := job.(runtime.RetriableJob)
 	if !ok {
-		return nil, nil
+		return nil
 	}
-
 	if !retriable.NeedRetry() {
-		return nil, nil
+		return nil
+	}
+	if job.Completed() || job.Failed() {
+		klog.Infof("job %s/%s is Finished, skipping retry.", jobNs, jobName)
+		return nil
 	}
 
+	klog.Infof("do retry for %s/%s", jobNs, jobName)
 	jobFailed, reason, originalReason, err := m.detectK8sJobFailure(ctx, c, retriable)
 	if err != nil {
 		klog.Errorf("Fail to detect backup %s/%s failure, error %v", jobNs, jobName, err)
-		return nil, err
+		return err
 	}
 	if !jobFailed {
-		return nil, nil
+		return nil
 	}
 	if err := m.retryWithBackoffPolicy(ctx, c, retriable, reason, originalReason); err != nil {
-		klog.Errorf("Fail to restart snapshot backup %s/%s, error %v", jobNs, jobName, err)
-		return nil, err
+		klog.Errorf("Fail to restart snapshot backup %s/%s: %v", jobNs, jobName, err)
+		return err
 	}
-	return nil, nil
+	return nil
 }
 
 func (m *jobLifecycleManager) detectK8sJobFailure(ctx context.Context, c client.Client, job runtime.RetriableJob) (
@@ -134,7 +138,7 @@ func (m *jobLifecycleManager) isK8sJobFailed(ctx context.Context, cli client.Cli
 		klog.Errorf("Fail to get k8s job %s for backup %s/%s, error %v ", k8sJobKey, j.GetNamespace(), j.GetName(), err)
 		return false, "", "", err
 	}
-	if errors.IsNotFound(err) {
+	if errors.IsNotFound(err) || k8sJob.DeletionTimestamp != nil {
 		return false, "", "", nil
 	}
 
@@ -154,22 +158,21 @@ func (m *jobLifecycleManager) retryWithBackoffPolicy(ctx context.Context, c clie
 		name = job.Object().GetName()
 		now  = time.Now()
 	)
-	klog.V(4).Infof("retry job %s/%s, retry reason %s, original reason %s", ns, name, reason, originalReason)
+	klog.Infof("retry job %s/%s, retry reason %s, original reason %s", ns, name, reason, originalReason)
 
 	// retry is already created
 	lastRetryRecord, ok := job.LastRetryRecord()
 	if ok && !lastRetryRecord.IsTriggered() {
 		if !m.isTimeToRetry(lastRetryRecord, now) {
-			klog.V(4).Infof("backup %s/%s is not the time to retry, expected retry time is %s, now is %s", ns, name, lastRetryRecord.ExpectedRetryAt, now)
-			// TODO(ideascf): requeue after expected retry time // &ctrl.Result{RequeueAfter: time.Until(curRetryRecord.ExpectedRetryAt.Time)},
-			return nil
+			klog.Infof("backup %s/%s is not the time to retry, expected retry time is %s, now is %s", ns, name, lastRetryRecord.ExpectedRetryAt, now)
+			return RequeueErrorf(lastRetryRecord.ExpectedRetryAt.Time.Sub(now)+time.Second, "retry backup %s/%s after %s", ns, name, now.Sub(lastRetryRecord.ExpectedRetryAt.Time))
 		}
 		return m.doRetryLogic(ctx, c, job, now)
 	}
 
 	// create next retry
 	if err := m.createNextRetry(ctx, c, job, reason, originalReason, now); err != nil {
-		return fmt.Errorf("failed to create next retry: %w", err)
+		return fmt.Errorf("create next retry: %w", err)
 	}
 
 	return nil
@@ -181,8 +184,8 @@ func (m *jobLifecycleManager) createNextRetry(ctx context.Context, c client.Clie
 	ns := j.GetNamespace()
 	name := j.GetName()
 
-	klog.Infof("craete the next retry for %s/%s", ns, name)
-	nextRunAt, err := job.Retry(reason, originalReason, now)
+	klog.Infof("create the next retry for %s/%s", ns, name)
+	nextRunAfter, err := job.Retry(reason, originalReason, now)
 	if err != nil {
 		klog.Errorf("Fail to retry backup %s/%s, %v", ns, name, err)
 		return err
@@ -191,8 +194,8 @@ func (m *jobLifecycleManager) createNextRetry(ctx context.Context, c client.Clie
 		klog.Errorf("Fail to update the retry status of backup %s/%s, %v", ns, name, err)
 		return err
 	}
-	if nextRunAt != nil {
-		return nil // fixme(ideascf): requeue after expected retry time
+	if nextRunAfter != nil {
+		return RequeueErrorf(*nextRunAfter, "retry backup %s/%s after %s", ns, name, *nextRunAfter)
 	}
 	return nil
 }
@@ -205,18 +208,19 @@ func (m *jobLifecycleManager) doRetryLogic(ctx context.Context, c client.Client,
 		name = job.Object().GetName()
 	)
 
-	klog.V(4).Infof("job %s/%s is retrying after it has been scheduled", ns, name)
+	klog.Infof("job %s/%s is retrying after it has been scheduled", ns, name)
 
 	// clean job
 	k8sJobKey := job.K8sJob()
 	k8sJob := &batchv1.Job{}
 	k8sJob.Namespace = k8sJobKey.Namespace
 	k8sJob.Name = k8sJobKey.Name
-	if err := client.IgnoreNotFound(c.Delete(ctx, k8sJob)); err != nil {
+	if err := c.Delete(ctx, k8sJob, rtClient.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 		klog.Errorf("faled to clean k8s Job %s/%s for %s: %s", job.GetNamespace(), job.GetName(), job.K8sJob(), err)
 		return err
 	}
 
+	klog.Infof("k8s job %s/%s is deleted", ns, k8sJobKey.Name)
 	// do post retry
 	if err := job.PostRetry(now); err != nil {
 		klog.Errorf("Fail to post retry for backup %s/%s, %v", ns, name, err)
@@ -231,6 +235,5 @@ func (m *jobLifecycleManager) doRetryLogic(ctx context.Context, c client.Client,
 }
 
 func (m *jobLifecycleManager) isTimeToRetry(retryRecord brv1alpha1.BackoffRetryRecord, now time.Time) bool {
-	return now.Unix() > retryRecord.ExpectedRetryAt.Unix()
-
+	return now.After(retryRecord.ExpectedRetryAt.Time)
 }

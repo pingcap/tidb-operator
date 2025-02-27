@@ -31,6 +31,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.CondClusterIsSuspending(state),
 		),
 
+		tasks.TaskBackupCleaner(state, r.Client, r.EventRecorder),
 		tasks.TaskBackupManager(state, r.Client, r.EventRecorder),
 	)
 

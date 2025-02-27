@@ -26,9 +26,9 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
+	rtClient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
@@ -100,19 +100,15 @@ type BackupManager interface {
 
 type backupManager struct {
 	cli                client.Client
-	backupCleaner      BackupCleaner
 	backupTracker      BackupTracker
 	statusUpdater      BackupConditionUpdaterInterface
 	backupManagerImage string
 }
 
 // NewBackupManager return backupManager
-func NewBackupManager(cli client.Client, pdcm pdm.PDClientManager, eventRecorder record.EventRecorder, backupManagerImage string) BackupManager {
-	statusUpdater := NewRealBackupConditionUpdater(cli, eventRecorder)
-
+func NewBackupManager(cli client.Client, pdcm pdm.PDClientManager, statusUpdater BackupConditionUpdaterInterface, backupManagerImage string) BackupManager {
 	return &backupManager{
 		cli:                cli,
-		backupCleaner:      NewBackupCleaner(cli, statusUpdater, backupManagerImage),
 		backupTracker:      NewBackupTracker(cli, pdcm, statusUpdater),
 		statusUpdater:      statusUpdater,
 		backupManagerImage: backupManagerImage,
@@ -120,13 +116,6 @@ func NewBackupManager(cli client.Client, pdcm pdm.PDClientManager, eventRecorder
 }
 
 func (bm *backupManager) Sync(backup *v1alpha1.Backup) error {
-	// because a finalizer is installed on the backup on creation, when backup is deleted,
-	// backup.DeletionTimestamp will be set, controller will be informed with an onUpdate event,
-	// this is the moment that we can do clean up work.
-	if err := bm.backupCleaner.Clean(backup); err != nil {
-		return err
-	}
-
 	if backup.DeletionTimestamp != nil {
 		// backup is being deleted, don't do anything, return directly.
 		return nil
@@ -422,7 +411,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		"backup",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--backupName=%s", name),
-		fmt.Sprintf("--pd-addr=%s", fmt.Sprintf("%s-pd.%s:%d", pdGroup.Spec.Cluster.Name, pdGroup.Namespace, coreutil.PDGroupClientPort(pdGroup))),
+		fmt.Sprintf("--pd-addr=%s", fmt.Sprintf("%s-pd.%s:%d", pdGroup.Name, pdGroup.Namespace, coreutil.PDGroupClientPort(pdGroup))),
 	}
 	tikvVersion := tikvGroup.Spec.Template.Spec.Version
 	if tikvVersion != "" {
@@ -612,6 +601,10 @@ func (bm *backupManager) skipLogBackupSync(backup *v1alpha1.Backup) (bool, error
 			TimeCompleted:      &metav1.Time{Time: time.Now()},
 			LogTruncatingUntil: &backup.Spec.LogTruncateUntil,
 		}
+		// to avoid LogSuccessTruncateUntil is empty when we mark truncate command as complete
+		if backup.Status.LogSuccessTruncateUntil == "" {
+			updateStatus.LogSuccessTruncateUntil = &backup.Spec.LogTruncateUntil
+		}
 		err = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: v1alpha1.LogTruncateCommand,
 			Condition: metav1.Condition{
@@ -655,7 +648,7 @@ func waitOldBackupJobDone(ns, name, backupJobName string, bm *backupManager, bac
 	}
 	if finished {
 		klog.Infof("backup %s/%s job %s has complete or failed, will delete job", ns, name, backupJobName)
-		if err := bm.cli.Delete(context.TODO(), oldJob); err != nil {
+		if err := bm.cli.Delete(context.TODO(), oldJob, rtClient.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 			return fmt.Errorf("backup %s/%s delete job %s failed, err: %w", ns, name, backupJobName, err)
 		}
 	}

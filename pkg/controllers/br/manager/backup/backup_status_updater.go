@@ -59,6 +59,8 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 		}
 	}
 
+	klog.Infof("Update backup status: %s/%s, condition: %+v, newStatus: %+v", backup.GetNamespace(), backup.GetName(), condition, newStatus)
+
 	ns := backup.GetNamespace()
 	backupName := backup.GetName()
 	// try best effort to guarantee backup is updated.
@@ -166,11 +168,14 @@ func updateSnapshotBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 func updateLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
 	// update whole backup status
 	isWholeStatusUpdate := updateWholeLogBackupStatus(backup, condition, newStatus)
-	// DeletionTimestamp is not nil when delete and clean backup, no subcommand status needs to be updated
-	// LogCheckpointTs is not nil when just update checkpoint ts, no subcommand status needs to be updated
-	if backup.DeletionTimestamp != nil || (newStatus != nil && newStatus.LogCheckpointTs != nil) {
-		return isWholeStatusUpdate
-	}
+
+	// TODO(ideascf): why???
+	// // DeletionTimestamp is not nil when delete and clean backup, no subcommand status needs to be updated
+	// // LogCheckpointTs is not nil when just update checkpoint ts, no subcommand status needs to be updated
+	// if backup.DeletionTimestamp != nil || (newStatus != nil && newStatus.LogCheckpointTs != nil) {
+	// 	return isWholeStatusUpdate
+	// }
+
 	// update subcommand status
 	isSubCommandStatusUpdate := updateLogSubcommandStatus(backup, condition, newStatus)
 	return isSubCommandStatusUpdate || isWholeStatusUpdate

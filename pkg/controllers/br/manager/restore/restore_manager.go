@@ -219,7 +219,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		"restore",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--restoreName=%s", name),
-		fmt.Sprintf("--pd-addr=%s", fmt.Sprintf("%s-pd.%s:%d", pdGroup.Spec.Cluster.Name, pdGroup.Namespace, coreutil.PDGroupClientPort(pdGroup))),
+		fmt.Sprintf("--pd-addr=%s", fmt.Sprintf("%s-pd.%s:%d", pdGroup.Name, pdGroup.Namespace, coreutil.PDGroupClientPort(pdGroup))),
 	}
 	tikvVersion := tikvGroup.Spec.Template.Spec.Version
 	if tikvVersion != "" {

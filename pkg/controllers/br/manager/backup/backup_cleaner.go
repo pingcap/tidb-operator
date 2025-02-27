@@ -27,6 +27,7 @@ import (
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
+	rtClient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
@@ -85,8 +86,10 @@ func (bc *backupCleaner) StopLogBackup(backup *v1alpha1.Backup) error {
 		return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: v1alpha1.LogStopCommand,
 			Condition: metav1.Condition{
-				Type:   string(v1alpha1.BackupComplete),
-				Status: metav1.ConditionTrue,
+				Type:    string(v1alpha1.BackupComplete),
+				Status:  metav1.ConditionTrue,
+				Reason:  "LogBackupNotStarted",
+				Message: "Log backup has not started, so there is no need to stop it",
 			},
 		}, nil)
 	}
@@ -132,7 +135,7 @@ func (bc *backupCleaner) StopLogBackup(backup *v1alpha1.Backup) error {
 				Type:    string(v1alpha1.BackupRetryTheFailed),
 				Status:  metav1.ConditionTrue,
 				Reason:  "StopLogBackupJobFailed",
-				Message: errMsg.Error(),
+				Message: fmt.Sprintf("failed to create stop log backup job, err: %s", err),
 			},
 		}, nil)
 		return errMsg
@@ -141,8 +144,10 @@ func (bc *backupCleaner) StopLogBackup(backup *v1alpha1.Backup) error {
 	return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Command: v1alpha1.LogStopCommand,
 		Condition: metav1.Condition{
-			Type:   string(v1alpha1.BackupScheduled),
-			Status: metav1.ConditionTrue,
+			Type:    string(v1alpha1.BackupScheduled),
+			Status:  metav1.ConditionTrue,
+			Reason:  "StopLogBackupJobCreated",
+			Message: fmt.Sprintf("Stop log backup job %s created", stopLogJobName),
 		},
 	}, nil)
 }
@@ -191,8 +196,10 @@ func (bc *backupCleaner) CleanData(backup *v1alpha1.Backup) error {
 		// the backup path is empty, so there is no need to clean up backup data
 		return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Condition: metav1.Condition{
-				Type:   string(v1alpha1.BackupClean),
-				Status: metav1.ConditionTrue,
+				Type:    string(v1alpha1.BackupClean),
+				Status:  metav1.ConditionTrue,
+				Reason:  "DataCleaned",
+				Message: "The backup path is empty, so there is no need to clean up backup data",
 			},
 		}, nil)
 	}
@@ -226,8 +233,10 @@ func (bc *backupCleaner) CleanData(backup *v1alpha1.Backup) error {
 
 	return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Condition: metav1.Condition{
-			Type:   string(v1alpha1.BackupClean),
-			Status: metav1.ConditionFalse,
+			Type:    string(v1alpha1.BackupClean),
+			Status:  metav1.ConditionFalse,
+			Reason:  "CleanJobCreated",
+			Message: fmt.Sprintf("Clean job %s created", cleanJobName),
 		},
 	}, nil)
 }
@@ -343,6 +352,10 @@ func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1
 	if err != nil {
 		return nil, fmt.Sprintf("failed to get first tikv group: %v", err), err
 	}
+	pdGroup, err := util.FirstPDGroup(bc.cli, ns, cluster.Name)
+	if err != nil {
+		return nil, fmt.Sprintf("failed to get first pd group: %v", err), err
+	}
 
 	var (
 		envVars []corev1.EnvVar
@@ -366,6 +379,7 @@ func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1
 		"backup",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--backupName=%s", name),
+		fmt.Sprintf("--pd-addr=%s", fmt.Sprintf("%s-pd.%s:%d", pdGroup.Name, pdGroup.Namespace, coreutil.PDGroupClientPort(pdGroup))),
 	}
 	tikvVersion := tikvGroup.Spec.Template.Spec.Version
 	if tikvVersion != "" {
@@ -531,7 +545,7 @@ func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool,
 		}
 
 		klog.Infof("backup %s/%s job %s is running, cleaner will delete it and wait it done", ns, name, jobName)
-		if err := bc.cli.Delete(context.TODO(), job); err != nil {
+		if err := bc.cli.Delete(context.TODO(), job, rtClient.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 			errs = append(errs, err)
 		}
 
