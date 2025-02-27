@@ -20,6 +20,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
@@ -466,10 +467,10 @@ func (b *Backup) LastRetryRecord() (BackoffRetryRecord, bool) {
 
 // TODO(ideascf): extract this to a common function
 // Retry creates and records the next retry time and reason, the real retry will happen at record.ExpectedRetryAt
-func (b *Backup) Retry(reason, originalReason string, now time.Time) (nextRunAt *time.Time, _ error) {
+func (b *Backup) Retry(reason, originalReason string, now time.Time) (nextRunAfter *time.Duration, _ error) {
 	lastRetry, ok := b.LastRetryRecord()
-	if ok && lastRetry.RealRetryAt != nil {
-		return nil, fmt.Errorf("retry num %d already triggered", lastRetry.RetryNum)
+	if ok && lastRetry.RealRetryAt == nil {
+		return nil, fmt.Errorf("retry num %d is retrying", lastRetry.RetryNum)
 	}
 
 	// check whether the retry is exceed limit
@@ -509,7 +510,7 @@ func (b *Backup) Retry(reason, originalReason string, now time.Time) (nextRunAt 
 		Reason:  "RetryFailedBackup",
 		Message: fmt.Sprintf("reason %s, original reason %s", record.RetryReason, record.OriginalReason),
 	})
-	return &nextRetryTime.Time, nil
+	return ptr.To(nextRetryTime.Sub(now)), nil
 }
 
 // PostRetry records the retry result, in other words, the retry is triggered
