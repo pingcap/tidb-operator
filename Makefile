@@ -82,7 +82,7 @@ overlaygen: bin/overlay-gen
 .PHONY: crd
 crd: bin/controller-gen
 	$(CONTROLLER_GEN) crd:generateEmbeddedObjectMeta=true output:crd:artifacts:config=$(ROOT)/manifests/crd paths=$(API_PATH)/...
-	$(CONTROLLER_GEN) crd:generateEmbeddedObjectMeta=true output:crd:artifacts:config=$(ROOT)/tests/validation/crd paths=$(API_PATH)/...
+	$(CONTROLLER_GEN) crd:generateEmbeddedObjectMeta=true output:crd:artifacts:config=$(VALIDATION_TEST_PATH)/crd paths=$(API_PATH)/...
 
 # Deprecate this generator, rbac generator cannot well handle nonResourceURLs
 .PHONY: rbac
@@ -126,6 +126,7 @@ lint-fix: bin/golangci-lint
 
 .PHONY: unit
 unit:
+	cd $(VALIDATION_TEST_PATH) && go test ./...
 	go test $$(go list -e ./... | grep -v cmd | grep -v tools | grep -v tests/e2e | grep -v third_party) \
 		-cover -coverprofile=coverage.txt -covermode=atomic
 	sed -i.bak '/generated/d;/fake.go/d' coverage.txt && rm coverage.txt.bak
