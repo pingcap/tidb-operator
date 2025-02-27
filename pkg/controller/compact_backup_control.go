@@ -34,8 +34,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
+	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions/pingcap/v1alpha1"
+	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 )
@@ -104,4 +107,41 @@ func (c *realCompactControl) DeleteCompactBackup(compact *v1alpha1.CompactBackup
 	}
 	c.recordCompactEvent("delete", compact, err)
 	return err
+}
+
+type FakeCompactControl struct {
+	compactLister        listers.CompactBackupLister
+	compactIndexer       cache.Indexer
+	createCompactTracker RequestTracker
+	deletecompactTracker RequestTracker
+}
+
+// NewFakeCompactControl returns a FakeCompactControl
+func NewFakeCompactControl(compactInformer informers.CompactBackupInformer) *FakeCompactControl {
+	return &FakeCompactControl{
+		compactInformer.Lister(),
+		compactInformer.Informer().GetIndexer(),
+		RequestTracker{},
+		RequestTracker{},
+	}
+}
+
+func (fc *FakeCompactControl) CreateCompactBackup(compact *v1alpha1.CompactBackup) (*v1alpha1.CompactBackup, error) {
+	defer fc.createCompactTracker.Inc()
+	if fc.createCompactTracker.ErrorReady() {
+		defer fc.createCompactTracker.Reset()
+		return compact, fc.createCompactTracker.GetError()
+	}
+
+	return compact, fc.compactIndexer.Add(compact)
+}
+
+func (fc *FakeCompactControl) DeleteCompactBackup(compact *v1alpha1.CompactBackup) error {
+	defer fc.createCompactTracker.Inc()
+	if fc.createCompactTracker.ErrorReady() {
+		defer fc.createCompactTracker.Reset()
+		return fc.createCompactTracker.GetError()
+	}
+
+	return fc.compactIndexer.Delete(compact)
 }

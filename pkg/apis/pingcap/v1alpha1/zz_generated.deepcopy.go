@@ -345,8 +345,8 @@ func (in *BackupScheduleSpec) DeepCopyInto(out *BackupScheduleSpec) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.CompactSpan != nil {
-		in, out := &in.CompactSpan, &out.CompactSpan
+	if in.CompactInterval != nil {
+		in, out := &in.CompactInterval, &out.CompactInterval
 		*out = new(string)
 		**out = **in
 	}
@@ -406,8 +406,12 @@ func (in *BackupScheduleStatus) DeepCopyInto(out *BackupScheduleStatus) {
 		in, out := &in.LastBackupTime, &out.LastBackupTime
 		*out = (*in).DeepCopy()
 	}
-	if in.LastCompactTs != nil {
-		in, out := &in.LastCompactTs, &out.LastCompactTs
+	if in.LastCompactProgress != nil {
+		in, out := &in.LastCompactProgress, &out.LastCompactProgress
+		*out = (*in).DeepCopy()
+	}
+	if in.LastCompactExecutionTs != nil {
+		in, out := &in.LastCompactExecutionTs, &out.LastCompactExecutionTs
 		*out = (*in).DeepCopy()
 	}
 	if in.NextCompactEndTs != nil {

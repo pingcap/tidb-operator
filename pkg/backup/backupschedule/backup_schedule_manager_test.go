@@ -138,6 +138,7 @@ func TestManager(t *testing.T) {
 	g.Expect(err).Should(BeNil())
 	helper.checkBacklist(bs.Namespace, 2, true)
 }
+
 func TestMultiSchedules(t *testing.T) {
 	g := NewGomegaWithT(t)
 	helper := newHelper(t)
@@ -370,6 +371,34 @@ func TestBuildBackup(t *testing.T) {
 	if diff := cmp.Diff(bk, get); diff != "" {
 		t.Errorf("unexpected (-want, +got): %s", diff)
 	}
+}
+
+func TestSyncWithCompact(t *testing.T) {
+	g := NewGomegaWithT(t)
+	helper := newHelper(t)
+	defer helper.close()
+	deps := helper.deps
+	m := NewBackupScheduleManager(deps).(*backupScheduleManager)
+	var err error
+	bs := &v1alpha1.BackupSchedule{}
+	bs.Namespace = "ns"
+	bs.Name = "bsname"
+	bs.Spec.Schedule = "0 0 * * *" // Run at midnight every day
+	bs.Spec.CompactInterval = pointer.StringPtr("30m")
+	bs.Spec.MaxReservedTime = pointer.StringPtr("71h")
+
+	now := time.Now()
+	bs.Spec.CompactBackupTemplate = &v1alpha1.CompactSpec{Concurrency: 4}
+	bs.Spec.LogBackupTemplate = &v1alpha1.BackupSpec{Mode: v1alpha1.BackupModeLog}
+	logBackup := buildLogBackup(bs, now.Add(-1*time.Hour))
+	logBackup.Status.CommitTs = getTSOStr(now.Add(-1 * time.Hour).Unix())
+	logBackup.Status.LogCheckpointTs = getTSOStr(now.Unix())
+	helper.createBackup(logBackup)
+	bs.Status.LogBackup = &logBackup.Name
+	bs.Status.LogBackupStartTs = &metav1.Time{Time: now.Add(-1 * time.Hour)}
+
+	err = m.Sync(bs)
+	g.Expect(err).Should(BeNil())
 }
 
 func TestCalculateExpiredBackupsWithLogBackup(t *testing.T) {
