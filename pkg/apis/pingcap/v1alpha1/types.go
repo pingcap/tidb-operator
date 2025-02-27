@@ -2564,8 +2564,8 @@ type BackupScheduleSpec struct {
 	MaxBackups *int32 `json:"maxBackups,omitempty"`
 	// MaxReservedTime is to specify how long backups we want to keep.
 	MaxReservedTime *string `json:"maxReservedTime,omitempty"`
-	// CompactSpan is to specify how long backups we want to compact.
-	CompactSpan *string `json:"compactSpan,omitempty"`
+	// CompactInterval is to specify how long backups we want to compact.
+	CompactInterval *string `json:"compactInterval,omitempty"`
 	// BackupTemplate is the specification of the backup structure to get scheduled.
 	BackupTemplate BackupSpec `json:"backupTemplate"`
 	// LogBackupTemplate is the specification of the log backup structure to get scheduled.
@@ -2603,8 +2603,10 @@ type BackupScheduleStatus struct {
 	LogBackupStartTs *metav1.Time `json:"logBackupStartTs,omitempty"`
 	// LastBackupTime represents the last time the backup was successfully created.
 	LastBackupTime *metav1.Time `json:"lastBackupTime,omitempty"`
-	// LastCompactTs represents the endTs of the last compact
-	LastCompactTs *metav1.Time `json:"lastCompactTs,omitempty"`
+	// LastCompactProgress represents the endTs of the last compact
+	LastCompactProgress *metav1.Time `json:"lastCompactProgress,omitempty"`
+	// LastCompactExecutionTs represents the endTs of the last compact
+	LastCompactExecutionTs *metav1.Time `json:"lastCompactExecutionTs,omitempty"`
 	// NextCompactEndTs represents the scheduled endTs of next compact
 	NextCompactEndTs *metav1.Time `json:"nextCompactEndTs,omitempty"`
 	// AllBackupCleanTime represents the time when all backup entries are cleaned up
