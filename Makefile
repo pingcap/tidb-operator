@@ -143,6 +143,14 @@ e2e/run:
 e2e: bin/kind crd
 	$(ROOT)/hack/e2e.sh --prepare run $(GINKGO_OPTS)
 
+.PHONY: e2e/reinstall-operator
+e2e/reinstall-operator:
+	$(ROOT)/hack/e2e.sh --reinstall-operator
+
+.PHONY: e2e/reinstall-backup-manager
+e2e/reinstall-backup-manager:
+	$(ROOT)/hack/e2e.sh --reinstall-backup-manager
+
 .PHONY: kube
 kube: bin/kind
 	@echo "ensure that the kubernetes env is existing"
