@@ -118,9 +118,14 @@ func (bm *backupScheduleManager) createCompact(bs *v1alpha1.BackupSchedule, maxE
 		return nil
 	}
 
-	if endTs.After(bs.Status.LastBackupTime.Time) && nowFn().Before(bs.Status.LastCompactExecutionTs.Time.Add(span)){
+	switch {
+	case bs.Status.LastBackupTime != nil && !endTs.After(bs.Status.LastBackupTime.Time):
+	case endTs.After(startTs.Add(span)):
+	case nowFn().After(bs.Status.LastCompactExecutionTs.Time.Add(span)):
+	default:
 		return nil
 	}
+	
 
 	klog.Infof("backupSchedule %s/%s compact: from %v to %v", bs.GetNamespace(), bs.GetName(), startTs, endTs)
 	if err := bm.doCompact(bs, startTs, endTs, nowFn()); err != nil {

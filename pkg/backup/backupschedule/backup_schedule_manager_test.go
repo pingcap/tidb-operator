@@ -399,6 +399,9 @@ func TestSyncWithCompact(t *testing.T) {
 
 	err = m.Sync(bs)
 	g.Expect(err).Should(BeNil())
+	_, err = deps.CompactBackupLister.CompactBackups(bs.Namespace).Get(bs.Status.LastCompact)
+	g.Expect(err).Should(BeNil())
+	g.Expect(bs.Status.LastCompactProgress.Time,now)
 }
 
 func TestCalculateExpiredBackupsWithLogBackup(t *testing.T) {
