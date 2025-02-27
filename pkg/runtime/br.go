@@ -189,7 +189,6 @@ type (
 
 var _ Job = &Restore{}
 
-// FIXME(ideascf): this is a temporary solution, we need to find a better way to handle this
 func (r *Restore) NeedAddFinalizer() bool {
 	return !(r.Completed() || r.Failed())
 }
