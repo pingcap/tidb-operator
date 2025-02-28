@@ -25,13 +25,14 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -82,7 +83,8 @@ func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, conf 
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := r.Logger.WithValues("backup", req.NamespacedName)
+	uuid := uuid.NewUUID()
+	logger := log.FromContext(ctx).WithValues("backup", req.NamespacedName, "uuid", uuid)
 	reporter := task.NewTableTaskReporter()
 
 	startTime := time.Now()
@@ -109,6 +111,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
+	}
+
+	if v1alpha1.IsBackupInvalid(backup) {
+		logger.Info("backup is invalid, skip reconcile", "namespace", backup.Namespace, "backup", backup.Name)
+		return ctrl.Result{}, nil
 	}
 
 	rtx := &tasks.ReconcileContext{
@@ -146,7 +153,8 @@ func (r *Reconciler) resolveBackupFromJob(
 	job *batchv1.Job,
 	queue workqueue.TypedRateLimitingInterface[reconcile.Request],
 ) error {
-	klog.Infof("job event handler: %s/%s", job.Namespace, job.Name)
+	logger := log.FromContext(ctx)
+	logger.Info("job event handler", "namespace", job.Namespace, "job", job.Name)
 
 	owner := metav1.GetControllerOf(job)
 	if owner == nil {

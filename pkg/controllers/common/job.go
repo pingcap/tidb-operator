@@ -56,6 +56,11 @@ func (m *jobLifecycleManager) Sync(ctx context.Context, job runtime.Job, c clien
 		}
 	}
 
+	if job.Completed() || job.Failed() || job.Invalid() {
+		klog.Infof("job %s/%s is Finished, skipping retry.", jobNs, jobName)
+		return nil
+	}
+
 	// do retry if needed
 	retriable, ok := job.(runtime.RetriableJob)
 	if !ok {
@@ -64,11 +69,6 @@ func (m *jobLifecycleManager) Sync(ctx context.Context, job runtime.Job, c clien
 	if !retriable.NeedRetry() {
 		return nil
 	}
-	if job.Completed() || job.Failed() {
-		klog.Infof("job %s/%s is Finished, skipping retry.", jobNs, jobName)
-		return nil
-	}
-
 	klog.Infof("do retry for %s/%s", jobNs, jobName)
 	jobFailed, reason, originalReason, err := m.detectK8sJobFailure(ctx, c, retriable)
 	if err != nil {

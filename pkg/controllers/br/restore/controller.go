@@ -103,6 +103,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
+	if v1alpha1.IsRestoreInvalid(restore) {
+		logger.Info("restore is invalid, skip reconcile", "namespace", restore.Namespace, "restore", restore.Name)
+		return ctrl.Result{}, nil
+	}
+
 	rtx := &tasks.ReconcileContext{
 		State:          tasks.NewState(restore),
 		Config:         tasks.Config(r.Config),

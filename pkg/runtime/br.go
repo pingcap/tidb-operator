@@ -33,6 +33,8 @@ type Job interface {
 	Failed() bool
 	// Completed returns true if the job is Completed
 	Completed() bool
+	// Invalid returns true if the job is invalid
+	Invalid() bool
 	// NeedAddFinalizer returns true if the job needs a finalizer
 	NeedAddFinalizer() bool
 	// NeedRemoveFinalizer returns true if the job needs to remove the finalizer
@@ -112,6 +114,10 @@ func (b *Backup) Failed() bool {
 	return brv1alpha1.IsBackupFailed(ToBackup(b))
 }
 
+func (b *Backup) Invalid() bool {
+	return brv1alpha1.IsBackupInvalid(ToBackup(b))
+}
+
 func (b *Backup) K8sJob() client.ObjectKey {
 	return client.ObjectKey{
 		Namespace: b.Namespace,
@@ -189,6 +195,10 @@ func (r *Restore) Completed() bool {
 
 func (r *Restore) Failed() bool {
 	return brv1alpha1.IsRestoreFailed(ToRestore(r))
+}
+
+func (r *Restore) Invalid() bool {
+	return brv1alpha1.IsRestoreInvalid(ToRestore(r))
 }
 
 func (r *Restore) K8sJob() client.ObjectKey {
