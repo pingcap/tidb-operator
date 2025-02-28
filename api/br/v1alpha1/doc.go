@@ -40,7 +40,7 @@
 // +kubebuilder:rbac:groups=br.pingcap.com,resources=compactbackup,verbs=get;list;watch;update
 // +kubebuilder:rbac:groups=br.pingcap.com,resources=compactbackup/status,verbs=get;update;patch
 //
-// +kubebuilder:rbac:resources="",verbs=get,urls=/metrics
+// +kubebuilder:rbac:verbs=get,urls=/metrics
 //
 // Package v1alpha1 is the v1alpha1 version of br tidb operator api
 package v1alpha1

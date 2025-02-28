@@ -170,7 +170,7 @@ logs/operator:
 
 CONTROLLER_GEN = $(BIN_DIR)/controller-gen
 bin/controller-gen:
-	$(ROOT)/hack/download.sh go_install $(CONTROLLER_GEN) sigs.k8s.io/controller-tools/cmd/controller-gen
+	$(ROOT)/hack/download.sh go_install $(CONTROLLER_GEN) sigs.k8s.io/controller-tools/cmd/controller-gen v0.17.2
 
 DEEPCOPY_GEN = $(BIN_DIR)/deepcopy-gen
 bin/deepcopy-gen:

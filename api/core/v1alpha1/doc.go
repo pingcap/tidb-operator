@@ -60,7 +60,7 @@
 // +kubebuilder:rbac:groups=core.pingcap.com,resources=ticdcs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core.pingcap.com,resources=ticdcs/status,verbs=get;list;watch;update;patch
 //
-// +kubebuilder:rbac:resources="",verbs=get,urls=/metrics
+// +kubebuilder:rbac:verbs=get,urls=/metrics
 //
 // Package v1alpha1 is the v1alpha1 version of core tidb operator api
 package v1alpha1
