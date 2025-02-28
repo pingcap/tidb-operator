@@ -35,12 +35,22 @@ require (
 	github.com/pingcap/TiProxy/lib v0.0.0-20230201020701-df06ec482c69
 	github.com/pingcap/advanced-statefulset/client v1.17.1-0.20230403114412-d141a788a127
 	github.com/pingcap/errors v0.11.4
+<<<<<<< HEAD
 	github.com/pingcap/kvproto v0.0.0-20231122054644-fb0f5c2a0a10
 	github.com/pingcap/tidb-operator/pkg/apis v1.5.5
 	github.com/pingcap/tidb-operator/pkg/client v1.5.5
 	github.com/prometheus/client_golang v1.7.1
 	github.com/prometheus/client_model v0.3.0
 	github.com/prometheus/common v0.26.0
+=======
+	github.com/pingcap/kvproto v0.0.0-20250117122752-2b87602a94a1
+	github.com/pingcap/tidb-operator/pkg/apis v1.6.1
+	github.com/pingcap/tidb-operator/pkg/client v1.6.1
+	github.com/pingcap/tiproxy/lib v0.0.0-20230907130944-eb5b4b9c9e79
+	github.com/prometheus/client_golang v1.17.0
+	github.com/prometheus/client_model v0.6.1
+	github.com/prometheus/common v0.45.0
+>>>>>>> dc33d0608 (Added TiKV RPC CLI and flush log backup tasks in graceful shutdown (#6057))
 	github.com/prometheus/prom2json v1.3.0
 	github.com/r3labs/diff/v2 v2.15.1
 	github.com/robfig/cron v1.1.0
