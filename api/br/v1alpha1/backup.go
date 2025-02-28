@@ -16,8 +16,11 @@ package v1alpha1
 
 import (
 	"fmt"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
@@ -449,4 +452,138 @@ func IsLogBackupAlreadyPaused(backup *Backup) bool {
 // IsLogBackupAlreadyRunning return whether log backup has already resumed.
 func IsLogBackupAlreadyRunning(backup *Backup) bool {
 	return backup.Spec.Mode == BackupModeLog && backup.Status.Phase == BackupRunning
+}
+
+func (r BackoffRetryRecord) IsTriggered() bool {
+	return r.RealRetryAt != nil
+}
+
+func (b *Backup) LastRetryRecord() (BackoffRetryRecord, bool) {
+	if len(b.Status.BackoffRetryStatus) == 0 {
+		return BackoffRetryRecord{}, false
+	}
+	return b.Status.BackoffRetryStatus[len(b.Status.BackoffRetryStatus)-1], true
+}
+
+// TODO(ideascf): extract this to a common function
+// Retry creates and records the next retry time and reason, the real retry will happen at record.ExpectedRetryAt
+func (b *Backup) Retry(reason, originalReason string, now time.Time) (nextRunAfter *time.Duration, _ error) {
+	lastRetry, ok := b.LastRetryRecord()
+	if ok && lastRetry.RealRetryAt == nil {
+		return nil, fmt.Errorf("retry num %d is retrying", lastRetry.RetryNum)
+	}
+
+	// check whether the retry is exceed limit
+	exceedReason, err := isBackoffRetryExeedLimit(&b.Spec.BackoffRetryPolicy, b.Status.BackoffRetryStatus, now)
+	if err != nil {
+		return nil, fmt.Errorf("check whether the retry is exceed limit for backup %s/%s: %s", b.Namespace, b.Name, err)
+	}
+	if exceedReason != "" {
+		UpdateBackupCondition(&b.Status, &metav1.Condition{
+			Type:    string(BackupFailed),
+			Status:  metav1.ConditionTrue,
+			Reason:  "ExceedRetryLimit",
+			Message: exceedReason,
+		})
+		return nil, nil
+	}
+
+	// calculate the next retry time
+	retryNum := len(b.Status.BackoffRetryStatus) + 1
+	nextRetryTime, err := calcNextRetryTime(&b.Spec.BackoffRetryPolicy, b.Status.BackoffRetryStatus, retryNum, now)
+	if err != nil {
+		return nil, fmt.Errorf("calculate the next retry time for backup %s/%s: %s", b.Namespace, b.Name, err)
+	}
+
+	// record the next retry record
+	record := BackoffRetryRecord{
+		RetryNum:        retryNum,
+		DetectFailedAt:  &metav1.Time{Time: now},
+		ExpectedRetryAt: &nextRetryTime,
+		RetryReason:     reason,
+		OriginalReason:  originalReason,
+	}
+	b.Status.BackoffRetryStatus = append(b.Status.BackoffRetryStatus, record)
+	UpdateBackupCondition(&b.Status, &metav1.Condition{
+		Type:    string(BackupRetryTheFailed),
+		Status:  metav1.ConditionTrue,
+		Reason:  "RetryFailedBackup",
+		Message: fmt.Sprintf("reason %s, original reason %s", record.RetryReason, record.OriginalReason),
+	})
+	return ptr.To(nextRetryTime.Sub(now)), nil
+}
+
+// PostRetry records the retry result, in other words, the retry is triggered
+func (b *Backup) PostRetry(now time.Time) error {
+	if len(b.Status.BackoffRetryStatus) == 0 {
+		return fmt.Errorf("no retry status found")
+	}
+	lastRetry := &b.Status.BackoffRetryStatus[len(b.Status.BackoffRetryStatus)-1]
+	if lastRetry.RealRetryAt != nil {
+		// is already triggered, ignore
+		return nil
+	}
+
+	lastRetry.RealRetryAt = &metav1.Time{Time: now}
+	UpdateBackupCondition(&b.Status, &metav1.Condition{
+		Type:    string(BackupRestart),
+		Status:  metav1.ConditionTrue,
+		Reason:  "RetryTriggered",
+		Message: fmt.Sprintf("retry triggered at %s", now),
+	})
+	return nil
+}
+
+// isBackoffRetryExeedLimit checks whether the `newRetry` is exceed limit.
+// The `exceedReason` will be empty if the `newRetry` is not exceed limit.
+func isBackoffRetryExeedLimit(retryPolicy *BackoffRetryPolicy, retryRecords []BackoffRetryRecord, now time.Time) (exceedReason string, _ error) {
+	failedReason := ""
+	// check is exceed retry limit
+	isExceedRetryTimes := isExceedRetryTimes(retryPolicy, retryRecords)
+	if isExceedRetryTimes {
+		failedReason = fmt.Sprintf("exceed retry times, max is %d. ", retryPolicy.MaxRetryTimes)
+	}
+	isRetryTimeout, err := isRetryTimeout(retryPolicy, retryRecords, now)
+	if err != nil {
+		klog.Errorf("fail to check whether the retry is timeout")
+		return "", err
+	}
+	if isRetryTimeout {
+		failedReason = fmt.Sprintf("retry timeout, max is %s.", retryPolicy.RetryTimeout)
+	}
+	if isExceedRetryTimes || isRetryTimeout {
+		return failedReason, nil
+	}
+	return "", nil
+}
+
+func isExceedRetryTimes(policy *BackoffRetryPolicy, records []BackoffRetryRecord) bool {
+	if len(records) == 0 {
+		return false
+	}
+
+	currentRetryNum := records[len(records)-1].RetryNum
+	return currentRetryNum >= policy.MaxRetryTimes
+}
+
+func isRetryTimeout(policy *BackoffRetryPolicy, records []BackoffRetryRecord, now time.Time) (bool, error) {
+	if len(records) == 0 {
+		return false, nil
+	}
+	firstDetectAt := records[0].DetectFailedAt
+	retryTimeout, err := time.ParseDuration(policy.RetryTimeout)
+	if err != nil {
+		klog.Errorf("fail to parse retryTimeout(%s): %s", policy.RetryTimeout, err)
+		return false, err
+	}
+	return now.Unix()-firstDetectAt.Unix() > int64(retryTimeout)/int64(time.Second), nil
+}
+
+func calcNextRetryTime(policy *BackoffRetryPolicy, records []BackoffRetryRecord, retryNum int, now time.Time) (metav1.Time, error) {
+	minDuration, err := time.ParseDuration(policy.MinRetryDuration)
+	if err != nil {
+		return metav1.Time{}, fmt.Errorf("fail to parse minRetryDuration %s: %s", policy.MinRetryDuration, err)
+	}
+	duration := time.Duration(minDuration.Nanoseconds() << (retryNum - 1))
+	return metav1.NewTime(now.Add(duration)), nil
 }

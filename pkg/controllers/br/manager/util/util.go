@@ -247,7 +247,7 @@ func generateAzblobCertEnvVar(azblob *brv1alpha1.AzblobStorageProvider, secret *
 
 // GenerateStorageCertEnv generate the env info in order to access backend backup storage
 // nolint: gocyclo
-func GenerateStorageCertEnv(ns string, useKMS bool, provider brv1alpha1.StorageProvider, cli client.Client) ([]corev1.EnvVar, string, error) {
+func GenerateStorageCertEnv(ctx context.Context, ns string, useKMS bool, provider brv1alpha1.StorageProvider, cli client.Client) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
 	var reason string
 	var err error
@@ -258,7 +258,7 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider brv1alpha1.StorageP
 		s3SecretName := provider.S3.SecretName
 		if s3SecretName != "" {
 			secret := &corev1.Secret{}
-			if err := cli.Get(context.TODO(), client.ObjectKey{Namespace: ns, Name: s3SecretName}, secret); err != nil {
+			if err := cli.Get(ctx, client.ObjectKey{Namespace: ns, Name: s3SecretName}, secret); err != nil {
 				err := fmt.Errorf("get s3 secret %s/%s failed, err: %w", ns, s3SecretName, err)
 				return certEnv, "GetS3SecretFailed", err
 			}
@@ -278,7 +278,7 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider brv1alpha1.StorageP
 		gcsSecretName := provider.Gcs.SecretName
 		if gcsSecretName != "" {
 			secret := &corev1.Secret{}
-			err := cli.Get(context.TODO(), client.ObjectKey{Namespace: ns, Name: gcsSecretName}, secret)
+			err := cli.Get(ctx, client.ObjectKey{Namespace: ns, Name: gcsSecretName}, secret)
 			if err != nil {
 				err := fmt.Errorf("get gcs secret %s/%s failed, err: %w", ns, gcsSecretName, err)
 				return certEnv, "GetGcsSecretFailed", err
@@ -301,7 +301,7 @@ func GenerateStorageCertEnv(ns string, useKMS bool, provider brv1alpha1.StorageP
 		var secret *corev1.Secret
 		if azblobSecretName != "" {
 			secret = &corev1.Secret{}
-			if err := cli.Get(context.TODO(), client.ObjectKey{Namespace: ns, Name: azblobSecretName}, secret); err != nil {
+			if err := cli.Get(ctx, client.ObjectKey{Namespace: ns, Name: azblobSecretName}, secret); err != nil {
 				err := fmt.Errorf("get azblob secret %s/%s failed, err: %w", ns, azblobSecretName, err)
 				return certEnv, "GetAzblobSecretFailed", err
 			}
@@ -338,11 +338,11 @@ func getPasswordKey(useKMS bool) string {
 }
 
 // GenerateTidbPasswordEnv generate the password EnvVar
-func GenerateTidbPasswordEnv(ns, tcName, tidbSecretName string, useKMS bool, cli client.Client) ([]corev1.EnvVar, string, error) {
+func GenerateTidbPasswordEnv(ctx context.Context, ns, tcName, tidbSecretName string, useKMS bool, cli client.Client) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
 	var passwordKey string
 	secret := &corev1.Secret{}
-	err := cli.Get(context.TODO(), client.ObjectKey{Namespace: ns, Name: tidbSecretName}, secret)
+	err := cli.Get(ctx, client.ObjectKey{Namespace: ns, Name: tidbSecretName}, secret)
 	if err != nil {
 		err = fmt.Errorf("backup %s/%s get tidb secret %s failed, err: %w", ns, tcName, tidbSecretName, err)
 		return certEnv, "GetTidbSecretFailed", err

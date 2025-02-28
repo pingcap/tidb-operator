@@ -14,6 +14,11 @@
 
 package v1alpha1
 
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+)
+
 // fixme(ideascf): it's copied from tidb-operator/api/core/v1alpha1/common_types.go
 const (
 	// KeyPrefix defines key prefix of well known labels and annotations
@@ -98,6 +103,16 @@ func (l Label) BackupSchedule(val string) Label {
 func (l Label) Restore(val string) Label {
 	l[RestoreLabelKey] = val
 	return l
+}
+
+// Selector gets labels.Selector from label
+func (l Label) Selector() (labels.Selector, error) {
+	return metav1.LabelSelectorAsSelector(l.LabelSelector())
+}
+
+// LabelSelector gets LabelSelector from label
+func (l Label) LabelSelector() *metav1.LabelSelector {
+	return &metav1.LabelSelector{MatchLabels: l}
 }
 
 // NewBackup initialize a new Label for Jobs of bakcup

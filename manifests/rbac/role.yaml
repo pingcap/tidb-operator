@@ -9,30 +9,6 @@ rules:
   verbs:
   - get
 - apiGroups:
-  - apps
-  resources:
-  - controllerrevisions
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - coordination.k8s.io
-  resources:
-  - leases
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
   - ""
   resources:
   - configmaps
@@ -57,6 +33,65 @@ rules:
   verbs:
   - get
   - list
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - controllerrevisions
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - br.pingcap.com
+  resources:
+  - backups
+  - backupschedules
+  - compactbackups
+  - restores
+  verbs:
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - br.pingcap.com
+  resources:
+  - backups/status
+  - backupschedules/status
+  - compactbackups/status
+  - restores/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - core.pingcap.com
@@ -118,19 +153,6 @@ rules:
   - tidbs/status
   - tiflashes/status
   - tikvs/status
-  verbs:
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - br.pingcap.com
-  resources:
-  - backups
-  - backups/status
-  - restores
-  - restores/status
   verbs:
   - get
   - list

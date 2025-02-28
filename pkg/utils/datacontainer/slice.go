@@ -12,14 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package manager
+package datacontainer
 
-import (
-	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-)
-
-// BackupScheduleManager implements the logic for manage backupSchedule.
-type BackupScheduleManager interface {
-	// Sync	implements the logic for syncing BackupSchedule.
-	Sync(backup *v1alpha1.BackupSchedule) error
+// ContainsString checks if a given slice of strings contains the provided string.
+// If a modifier func is provided, it is called with the slice item before the comparation.
+func ContainsString(slice []string, s string, modifier func(s string) string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+		if modifier != nil && modifier(item) == s {
+			return true
+		}
+	}
+	return false
 }

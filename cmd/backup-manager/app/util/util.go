@@ -549,9 +549,9 @@ func GracefullyShutDownSubProcess(ctx context.Context, cmd *exec.Cmd) {
 }
 
 const (
-	e2eBackupEnv                string = "E2E_TEST_ENV"
-	e2eExtendBackupTime         string = "Extend_BACKUP_TIME"
-	e2eExtendBackupTimeAndPanic string = "Extend_BACKUP_TIME_AND_PANIC"
+	e2eBackupEnv        string = "E2E_TEST_ENV"
+	e2eExtendBackupTime string = "E2E_TEST_FLAG_EXTEND_BACKUP_TIME"
+	e2eTestFlagPanic    string = "E2E_TEST_FLAG_PANIC"
 )
 
 func IsE2EExtendBackupTime() bool {
@@ -559,7 +559,7 @@ func IsE2EExtendBackupTime() bool {
 	return strings.Contains(e2eEnv, e2eExtendBackupTime)
 }
 
-func IsE2EExtendBackupTimeAndPanic() bool {
+func IsE2ETestPanic() bool {
 	e2eEnv := os.Getenv(e2eBackupEnv)
-	return strings.Contains(e2eEnv, e2eExtendBackupTimeAndPanic)
+	return strings.Contains(e2eEnv, e2eTestFlagPanic)
 }

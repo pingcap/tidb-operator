@@ -306,17 +306,17 @@ type tcTmplMeta struct {
 	TiCDCGroupName   string
 }
 
-func installTiDBIssuer(ctx context.Context, yamlApplier *k8s.YAMLApplier, ns, clusterName string) error {
+func InstallTiDBIssuer(ctx context.Context, yamlApplier *k8s.YAMLApplier, ns, clusterName string) error {
 	return installCert(ctx, yamlApplier, tidbIssuerTmpl, tcTmplMeta{Namespace: ns, ClusterName: clusterName})
 }
 
-func installTiDBCertificates(ctx context.Context, yamlApplier *k8s.YAMLApplier, ns, clusterName, tidbGroupName string) error {
+func InstallTiDBCertificates(ctx context.Context, yamlApplier *k8s.YAMLApplier, ns, clusterName, tidbGroupName string) error {
 	return installCert(ctx, yamlApplier, tidbCertificatesTmpl, tcTmplMeta{
 		Namespace: ns, ClusterName: clusterName, TiDBGroupName: tidbGroupName,
 	})
 }
 
-func installTiDBComponentsCertificates(ctx context.Context, yamlApplier *k8s.YAMLApplier, ns, clusterName string,
+func InstallTiDBComponentsCertificates(ctx context.Context, yamlApplier *k8s.YAMLApplier, ns, clusterName string,
 	pdGroupName, tikvGroupName, tidbGroupName, tiFlashGroupName, tiCDCGroupName string,
 ) error {
 	return installCert(ctx, yamlApplier, tidbComponentsCertificatesTmpl, tcTmplMeta{

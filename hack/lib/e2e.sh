@@ -129,21 +129,43 @@ function e2e::prepare() {
     e2e::install_rbac
 
     # build the operator image and load it into the kind cluster
-    image::build prestop-checker operator testing-workload --push
+    image::build prestop-checker operator testing-workload backup-manager --push
     e2e::uninstall_operator
     e2e::install_operator
 
     image:prepare
 }
 
+function e2e::reinstall_operator() {
+    image::build operator --push
+    e2e::uninstall_operator
+    e2e::install_operator
+}
+
+
+function e2e::reinstall_backup_manager() {
+    image::build backup-manager --push
+}
+
+
 function e2e::e2e() {
     local ginkgo_opts=()
     local prepare=0
     local run=0
+    local reinstall_operator=0
+    local reinstall_backup_manager=0
     while [[ $# -gt 0 ]]; do
         case $1 in
         --prepare)
             prepare=1
+            shift
+            ;;
+        --reinstall-operator)
+            reinstall_operator=1
+            shift
+            ;;
+        --reinstall-backup-manager)
+            reinstall_backup_manager=1
             shift
             ;;
         run)
@@ -164,6 +186,10 @@ function e2e::e2e() {
 
     if [[ $prepare -eq 1 ]]; then
         e2e::prepare
+    elif [[ $reinstall_operator -eq 1 ]]; then
+        e2e::reinstall_operator
+    elif [[ $reinstall_backup_manager -eq 1 ]]; then
+        e2e::reinstall_backup_manager
     fi
     if [[ $run -eq 1 ]]; then
         e2e::run "${ginkgo_opts[@]}"

@@ -15,8 +15,6 @@
 package tasks
 
 import (
-	"k8s.io/apimachinery/pkg/types"
-
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
@@ -24,26 +22,17 @@ import (
 )
 
 type (
-	BackupInitializer = common.ResourceInitializer[brv1alpha1.Backup]
-
-	BackupStateInitializer interface {
-		BackupInitializer() BackupInitializer
-	}
 	BackupState interface {
 		Backup() *brv1alpha1.Backup
 	}
 )
 
 type state struct {
-	key types.NamespacedName
-
 	cluster *v1alpha1.Cluster
 	backup  *brv1alpha1.Backup
 }
 
 type State interface {
-	BackupStateInitializer
-
 	BackupState
 	common.ClusterState
 	common.JobState[*runtime.Backup]
@@ -52,9 +41,9 @@ type State interface {
 
 var _ State = &state{}
 
-func NewState(key types.NamespacedName) State {
+func NewState(backup *brv1alpha1.Backup) State {
 	s := &state{
-		key: key,
+		backup: backup,
 	}
 	return s
 }
@@ -73,13 +62,6 @@ func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
 
 func (s *state) Object() *brv1alpha1.Backup {
 	return s.backup
-}
-
-func (s *state) BackupInitializer() BackupInitializer {
-	return common.NewResource(func(backup *brv1alpha1.Backup) { s.backup = backup }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Name(s.key.Name)).
-		Initializer()
 }
 
 func (s *state) Labels() common.LabelsOption {

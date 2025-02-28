@@ -23,6 +23,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/google/gnostic-models v0.6.8
 	github.com/google/go-cmp v0.6.0
+	github.com/minio/minio-go/v6 v6.0.57
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onsi/ginkgo/v2 v2.22.1
@@ -41,7 +42,6 @@ require (
 	go.etcd.io/etcd/client/v3 v3.5.14
 	go.uber.org/mock v0.4.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/sync v0.10.0
 	google.golang.org/protobuf v1.36.4
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -147,12 +147,15 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/klauspost/cpuid v1.2.3 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-ieproxy v0.0.1 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
+	github.com/minio/md5-simd v1.1.0 // indirect
+	github.com/minio/sha256-simd v0.1.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/moby/spdystream v0.4.0 // indirect
@@ -191,6 +194,7 @@ require (
 	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/oauth2 v0.24.0 // indirect
+	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/term v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
@@ -205,6 +209,7 @@ require (
 	google.golang.org/grpc v1.70.0 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
+	gopkg.in/ini.v1 v1.42.0 // indirect
 	k8s.io/apiextensions-apiserver v0.31.0 // indirect
 	k8s.io/klog v1.0.0
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect

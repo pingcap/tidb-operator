@@ -25,9 +25,9 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -36,6 +36,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/constants"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
 	backuputil "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
+	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 )
 
 const (
@@ -46,9 +47,9 @@ const (
 // RestoreManager implements the logic for manage restore.
 type RestoreManager interface {
 	// Sync	implements the logic for syncing Restore.
-	Sync(backup *v1alpha1.Restore) error
+	Sync(ctx context.Context, restore *v1alpha1.Restore) error
 	// UpdateCondition updates the condition for a Restore.
-	UpdateCondition(restore *v1alpha1.Restore, condition *metav1.Condition) error
+	UpdateCondition(ctx context.Context, restore *v1alpha1.Restore, condition *metav1.Condition) error
 }
 
 type restoreManager struct {
@@ -66,15 +67,16 @@ func NewRestoreManager(cli client.Client, eventRecorder record.EventRecorder, ba
 	}
 }
 
-func (rm *restoreManager) Sync(restore *v1alpha1.Restore) error {
-	return rm.syncRestoreJob(restore)
+func (rm *restoreManager) Sync(ctx context.Context, restore *v1alpha1.Restore) error {
+	return rm.syncRestoreJob(ctx, restore)
 }
 
-func (rm *restoreManager) UpdateCondition(restore *v1alpha1.Restore, condition *metav1.Condition) error {
-	return rm.statusUpdater.Update(restore, condition, nil)
+func (rm *restoreManager) UpdateCondition(ctx context.Context, restore *v1alpha1.Restore, condition *metav1.Condition) error {
+	return rm.statusUpdater.Update(ctx, restore, condition, nil)
 }
 
-func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
+func (rm *restoreManager) syncRestoreJob(ctx context.Context, restore *v1alpha1.Restore) error {
+	logger := log.FromContext(ctx)
 	ns := restore.GetNamespace()
 	name := restore.GetName()
 
@@ -90,10 +92,10 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	}
 
 	cluster = &corev1alpha1.Cluster{}
-	err = rm.cli.Get(context.TODO(), client.ObjectKey{Namespace: restoreNamespace, Name: restore.Spec.BR.Cluster}, cluster)
+	err = rm.cli.Get(ctx, client.ObjectKey{Namespace: restoreNamespace, Name: restore.Spec.BR.Cluster}, cluster)
 	if err != nil {
 		reason := fmt.Sprintf("failed to fetch tidbcluster %s/%s", restoreNamespace, restore.Spec.BR.Cluster)
-		_ = rm.statusUpdater.Update(restore, &metav1.Condition{
+		_ = rm.statusUpdater.Update(ctx, restore, &metav1.Condition{
 			Type:    string(v1alpha1.RestoreRetryFailed),
 			Status:  metav1.ConditionTrue,
 			Reason:  reason,
@@ -101,22 +103,21 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		}, nil)
 		return err
 	}
-	tikvGroup, err := util.FirstTikvGroup(rm.cli, cluster.Namespace, cluster.Name)
+	tikvGroup, err := util.FirstTikvGroup(ctx, rm.cli, cluster.Namespace, cluster.Name)
 	if err != nil {
 		return fmt.Errorf("failed to get first tikv group: %w", err)
 	}
 
 	err = backuputil.ValidateRestore(restore, tikvGroup.Spec.Template.Spec.Version)
 	if err != nil {
-		_ = rm.statusUpdater.Update(restore, &metav1.Condition{
+		_ = rm.statusUpdater.Update(ctx, restore, &metav1.Condition{
 			Type:    string(v1alpha1.RestoreInvalid),
 			Status:  metav1.ConditionTrue,
 			Reason:  "InvalidSpec",
 			Message: err.Error(),
 		}, nil)
 
-		// TODO(ideascf): use controller.IgnoreErrorf
-		return fmt.Errorf("invalid restore spec %s/%s", ns, name)
+		return common.IgnoreErrorf("invalid restore spec %s/%s", ns, name)
 	}
 
 	if v1alpha1.IsRestoreFailed(restore) {
@@ -125,10 +126,10 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 
 	restoreJobName := restore.GetRestoreJobName()
 	restoreJob := &batchv1.Job{}
-	err = rm.cli.Get(context.TODO(), client.ObjectKey{Namespace: restore.Namespace, Name: restoreJobName}, restoreJob)
+	err = rm.cli.Get(ctx, client.ObjectKey{Namespace: restore.Namespace, Name: restoreJobName}, restoreJob)
 	if err == nil {
-		klog.Infof("restore job %s/%s has been created, skip", ns, restoreJobName)
-		return nil
+		logger.Info("restore job has been created, sync job status", "namespace", ns, "restoreJobName", restoreJobName)
+		return rm.syncK8sJobStatus(ctx, restore, restoreJob)
 	} else if !errors.IsNotFound(err) {
 		return fmt.Errorf("restore %s/%s get job %s failed, err: %w", ns, name, restoreJobName, err)
 	}
@@ -137,9 +138,9 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		job    *batchv1.Job
 		reason string
 	)
-	job, reason, err = rm.makeRestoreJob(restore)
+	job, reason, err = rm.makeRestoreJob(ctx, restore)
 	if err != nil {
-		_ = rm.statusUpdater.Update(restore, &metav1.Condition{
+		_ = rm.statusUpdater.Update(ctx, restore, &metav1.Condition{
 			Type:    string(v1alpha1.RestoreRetryFailed),
 			Status:  metav1.ConditionTrue,
 			Reason:  reason,
@@ -148,10 +149,10 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return err
 	}
 
-	klog.Infof("restore %s/%s creating job %s.", ns, name, restoreJobName)
-	if err := rm.cli.Create(context.TODO(), job); err != nil && !apierrors.IsAlreadyExists(err) {
+	logger.Info("restore creating job", "namespace", ns, "restoreJobName", restoreJobName)
+	if err := rm.cli.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
 		errMsg := fmt.Errorf("create restore %s/%s job %s failed, err: %w", ns, name, restoreJobName, err)
-		_ = rm.statusUpdater.Update(restore, &metav1.Condition{
+		_ = rm.statusUpdater.Update(ctx, restore, &metav1.Condition{
 			Type:    string(v1alpha1.RestoreRetryFailed),
 			Status:  metav1.ConditionTrue,
 			Reason:  "CreateRestoreJobFailed",
@@ -168,7 +169,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	// running when the first job is running. To avoid the phase going back from running to scheduled, we
 	// don't update the condition when the scheduled condition has already been set to true.
 	if !v1alpha1.IsRestoreScheduled(restore) {
-		return rm.statusUpdater.Update(restore, &metav1.Condition{
+		return rm.statusUpdater.Update(ctx, restore, &metav1.Condition{
 			Type:   string(v1alpha1.RestoreScheduled),
 			Status: metav1.ConditionTrue,
 		}, nil)
@@ -176,7 +177,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	return nil
 }
 
-func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Job, string, error) {
+func (rm *restoreManager) makeRestoreJob(ctx context.Context, restore *v1alpha1.Restore) (*batchv1.Job, string, error) {
 	ns := restore.GetNamespace()
 	name := restore.GetName()
 	restoreNamespace := ns
@@ -184,15 +185,15 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		restoreNamespace = restore.Spec.BR.ClusterNamespace
 	}
 	cluster := &corev1alpha1.Cluster{}
-	err := rm.cli.Get(context.TODO(), client.ObjectKey{Namespace: restoreNamespace, Name: restore.Spec.BR.Cluster}, cluster)
+	err := rm.cli.Get(ctx, client.ObjectKey{Namespace: restoreNamespace, Name: restore.Spec.BR.Cluster}, cluster)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", restoreNamespace, restore.Spec.BR.Cluster), err
 	}
-	tikvGroup, err := util.FirstTikvGroup(rm.cli, ns, cluster.Name)
+	tikvGroup, err := util.FirstTikvGroup(ctx, rm.cli, ns, cluster.Name)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to get first tikv group: %v", err), err
 	}
-	pdGroup, err := util.FirstPDGroup(rm.cli, ns, cluster.Name)
+	pdGroup, err := util.FirstPDGroup(ctx, rm.cli, ns, cluster.Name)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to get first pd group: %v", err), err
 	}
@@ -202,7 +203,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		reason  string
 	)
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.UseKMS, restore.Spec.StorageProvider, rm.cli)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ctx, ns, restore.Spec.UseKMS, restore.Spec.StorageProvider, rm.cli)
 	if err != nil {
 		return nil, reason, fmt.Errorf("restore %s/%s, %w", ns, name, err)
 	}
@@ -219,7 +220,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		"restore",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--restoreName=%s", name),
-		fmt.Sprintf("--pd-addr=%s", fmt.Sprintf("%s-pd.%s:%d", pdGroup.Spec.Cluster.Name, pdGroup.Namespace, coreutil.PDGroupClientPort(pdGroup))),
+		fmt.Sprintf("--pd-addr=%s", fmt.Sprintf("%s-pd.%s:%d", pdGroup.Name, pdGroup.Namespace, coreutil.PDGroupClientPort(pdGroup))),
 	}
 	tikvVersion := tikvGroup.Spec.Template.Spec.Version
 	if tikvVersion != "" {
@@ -359,6 +360,44 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	return job, "", nil
 }
 
+func (rm *restoreManager) syncK8sJobStatus(ctx context.Context, restore *v1alpha1.Restore, job *batchv1.Job) error {
+	// Get job condition by type
+	getJobCondition := func(job *batchv1.Job, condType batchv1.JobConditionType) *batchv1.JobCondition {
+		for i := range job.Status.Conditions {
+			if job.Status.Conditions[i].Type == condType {
+				return &job.Status.Conditions[i]
+			}
+		}
+		return nil
+	}
+
+	// Check for job completion
+	cond := getJobCondition(job, batchv1.JobComplete)
+	// set only when the backup-manager job doesn't set the RestoreComplete condition
+	if cond != nil && cond.Status == corev1.ConditionTrue && !v1alpha1.IsRestoreComplete(restore) {
+		return rm.statusUpdater.Update(ctx, restore, &metav1.Condition{
+			Type:    string(v1alpha1.RestoreComplete),
+			Status:  metav1.ConditionTrue,
+			Reason:  "RestoreComplete",
+			Message: "Restore job completed",
+		}, nil)
+	}
+
+	// Check for job failure
+	cond = getJobCondition(job, batchv1.JobFailed)
+	// set only when the backup-manager job doesn't set the RestoreFailed condition
+	if cond != nil && cond.Status == corev1.ConditionTrue && !v1alpha1.IsRestoreFailed(restore) {
+		return rm.statusUpdater.Update(ctx, restore, &metav1.Condition{
+			Type:    string(v1alpha1.RestoreFailed),
+			Status:  metav1.ConditionTrue,
+			Reason:  "RestoreFailed",
+			Message: cond.Message,
+		}, nil)
+	}
+
+	return nil
+}
+
 var _ RestoreManager = &restoreManager{}
 
 type FakeRestoreManager struct {
@@ -373,11 +412,11 @@ func (frm *FakeRestoreManager) SetSyncError(err error) {
 	frm.err = err
 }
 
-func (frm *FakeRestoreManager) Sync(_ *v1alpha1.Restore) error {
+func (frm *FakeRestoreManager) Sync(_ context.Context, _ *v1alpha1.Restore) error {
 	return frm.err
 }
 
-func (frm *FakeRestoreManager) UpdateCondition(_ *v1alpha1.Restore, _ *metav1.Condition) error {
+func (frm *FakeRestoreManager) UpdateCondition(_ context.Context, _ *v1alpha1.Restore, _ *metav1.Condition) error {
 	return nil
 }
 

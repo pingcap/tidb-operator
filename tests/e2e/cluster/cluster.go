@@ -1309,9 +1309,9 @@ var _ = Describe("TiDB Cluster", func() {
 	Context("TLS", func() {
 		It("should enable TLS for MySQL Client and between TiDB components", func() {
 			By("Installing the certificates")
-			Expect(installTiDBIssuer(ctx, yamlApplier, ns.Name, tc.Name)).To(Succeed())
-			Expect(installTiDBCertificates(ctx, yamlApplier, ns.Name, tc.Name, "dbg")).To(Succeed())
-			Expect(installTiDBComponentsCertificates(ctx, yamlApplier, ns.Name, tc.Name, "pdg", "kvg", "dbg", "flashg", "cdcg")).To(Succeed())
+			Expect(InstallTiDBIssuer(ctx, yamlApplier, ns.Name, tc.Name)).To(Succeed())
+			Expect(InstallTiDBCertificates(ctx, yamlApplier, ns.Name, tc.Name, "dbg")).To(Succeed())
+			Expect(InstallTiDBComponentsCertificates(ctx, yamlApplier, ns.Name, tc.Name, "pdg", "kvg", "dbg", "flashg", "cdcg")).To(Succeed())
 
 			By("Enabling TLS for TiDB components")
 			var tcGet v1alpha1.Cluster

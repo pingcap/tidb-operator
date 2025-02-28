@@ -15,26 +15,15 @@
 package tasks
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/controllers/common"
-	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	restoreMgr "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/restore"
 )
 
 type Config struct {
 	BackupManagerImage string
 }
 type ReconcileContext struct {
-	PDClientManager pdm.PDClientManager
 	State
 
-	// mark pdgroup is bootstrapped if cache of pd is synced
-	IsBootstrapped bool
-
-	Config Config
-}
-
-func TaskContextRestore(state RestoreStateInitializer, c client.Client) task.Task {
-	w := state.RestoreInitializer()
-	return common.TaskContextResource("Restore", w, c, false)
+	Config         Config
+	RestoreManager restoreMgr.RestoreManager
 }
