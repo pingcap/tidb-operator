@@ -28,17 +28,17 @@
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 //
-// +kubebuilder:rbac:groups=br.pingcap.com,resources=backup,verbs=get;list;watch;update
-// +kubebuilder:rbac:groups=br.pingcap.com,resources=backup/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=br.pingcap.com,resources=backups,verbs=get;list;watch;update
+// +kubebuilder:rbac:groups=br.pingcap.com,resources=backups/status,verbs=get;update;patch
 //
-// +kubebuilder:rbac:groups=br.pingcap.com,resources=restore,verbs=get;list;watch;update
-// +kubebuilder:rbac:groups=br.pingcap.com,resources=restore/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=br.pingcap.com,resources=restores,verbs=get;list;watch;update
+// +kubebuilder:rbac:groups=br.pingcap.com,resources=restores/status,verbs=get;update;patch
 //
 // +kubebuilder:rbac:groups=br.pingcap.com,resources=backupschedules,verbs=get;list;watch;update
 // +kubebuilder:rbac:groups=br.pingcap.com,resources=backupschedules/status,verbs=get;update;patch
 //
-// +kubebuilder:rbac:groups=br.pingcap.com,resources=compactbackup,verbs=get;list;watch;update
-// +kubebuilder:rbac:groups=br.pingcap.com,resources=compactbackup/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=br.pingcap.com,resources=compactbackups,verbs=get;list;watch;update
+// +kubebuilder:rbac:groups=br.pingcap.com,resources=compactbackups/status,verbs=get;update;patch
 //
 // +kubebuilder:rbac:verbs=get,urls=/metrics
 //

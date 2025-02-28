@@ -61,10 +61,10 @@ rules:
 - apiGroups:
   - br.pingcap.com
   resources:
-  - backup
+  - backups
   - backupschedules
-  - compactbackup
-  - restore
+  - compactbackups
+  - restores
   verbs:
   - get
   - list
@@ -73,10 +73,10 @@ rules:
 - apiGroups:
   - br.pingcap.com
   resources:
-  - backup/status
+  - backups/status
   - backupschedules/status
-  - compactbackup/status
-  - restore/status
+  - compactbackups/status
+  - restores/status
   verbs:
   - get
   - patch
