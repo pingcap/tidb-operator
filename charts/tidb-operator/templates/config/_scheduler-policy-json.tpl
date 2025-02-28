@@ -11,10 +11,10 @@
     {"name": "CheckVolumeBinding"},
     {"name": "MaxGCEPDVolumeCount"},
     {"name": "MatchInterPodAffinity"},
-{{- if semverCompare "~1.11.0" .Capabilities.KubeVersion.GitVersion }}
+{{- if semverCompare "~1.11.0" .Capabilities.KubeVersion.Version }}
     {"name": "CheckNodePIDPressure"},
 {{- end }}
-{{- if semverCompare "<1.12-0" .Capabilities.KubeVersion.GitVersion }}
+{{- if semverCompare "<1.12-0" .Capabilities.KubeVersion.Version }}
     {"name": "CheckNodeCondition"},
     {"name": "CheckNodeMemoryPressure"},
     {"name": "CheckNodeDiskPressure"},

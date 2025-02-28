@@ -1,5 +1,5 @@
 {{- if (hasKey .Values.scheduler "create" | ternary .Values.scheduler.create true) }}
-{{- $lgK8sV119 := (semverCompare ">=1.19.0-0" .Capabilities.KubeVersion.GitVersion) }}
+{{- $lgK8sV119 := (semverCompare ">=1.19.0-0" .Capabilities.KubeVersion.Version) }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
