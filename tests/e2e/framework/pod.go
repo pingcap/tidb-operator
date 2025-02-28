@@ -29,9 +29,6 @@ import (
 )
 
 const (
-	// podStartTimeout is how long to wait for the pod to be started.
-	podStartTimeout = 5 * time.Minute
-
 	// poll is how often to poll pods, nodes and claims.
 	poll = 2 * time.Second
 )
@@ -43,13 +40,13 @@ var errPodCompleted = fmt.Errorf("pod ran to completion")
 // WaitTimeoutForPodReadyInNamespace waits the given timeout duration for the
 // specified pod to be ready and running.
 func WaitTimeoutForPodReadyInNamespace(c client.Client, podName, namespace string, timeout time.Duration) error {
-	return wait.PollImmediate(poll, timeout, podRunningAndReady(c, podName, namespace))
+	return wait.PollUntilContextCancel(context.TODO(), poll, true, podRunningAndReady(c, podName, namespace))
 }
 
-func podRunningAndReady(c client.Client, podName, namespace string) wait.ConditionFunc {
-	return func() (bool, error) {
+func podRunningAndReady(c client.Client, podName, namespace string) wait.ConditionWithContextFunc {
+	return func(ctx context.Context) (bool, error) {
 		pod := &v1.Pod{}
-		err := c.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: podName}, pod)
+		err := c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: podName}, pod)
 		if err != nil {
 			return false, err
 		}

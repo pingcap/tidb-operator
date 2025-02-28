@@ -47,12 +47,12 @@ func (m *jobLifecycleManager) Sync(ctx context.Context, job runtime.Job, c clien
 	// finalizer management
 	if job.NeedAddFinalizer() {
 		if err := k8s.EnsureFinalizer(ctx, c, job.Object()); err != nil {
-			return fmt.Errorf("failed to ensure finalizer for job %s: %s", job.Object(), err)
+			return fmt.Errorf("failed to ensure finalizer for job %s: %w", job.Object(), err)
 		}
 	}
 	if job.NeedRemoveFinalizer() {
 		if err := k8s.RemoveFinalizer(ctx, c, job.Object()); err != nil {
-			return fmt.Errorf("failed to remove finalizer for job %s: %s", job.Object(), err)
+			return fmt.Errorf("failed to remove finalizer for job %s: %w", job.Object(), err)
 		}
 	}
 
@@ -130,7 +130,6 @@ func (m *jobLifecycleManager) isFailureAlreadyRecorded(job runtime.RetriableJob)
 
 func (m *jobLifecycleManager) isK8sJobFailed(ctx context.Context, cli client.Client, job runtime.Job) (
 	jobFailed bool, reason string, originalReason string, err error) {
-
 	j := job.Object()
 	k8sJobKey := job.K8sJob()
 	k8sJob := batchv1.Job{}

@@ -947,7 +947,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		})
 
 		ginkgo.It("kill backup pod and exceed retryTimeout", func() {
-			ginkgo.Skip("unstable case, after restart: there may be some backup files in the path already, please specify a correct backup directory")
+			// ginkgo.Skip("unstable case, after restart: there may be some backup files in the path already, please specify a correct backup directory")
 
 			backupClusterName := "kill-backup-pod-exceed-timeout-test"
 			backupVersion := utilimage.TiDBLatest
@@ -974,10 +974,11 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			ginkgo.By("Start backup and wait to running")
 			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, func(backup *v1alpha1.Backup) {
 				backup.Spec.BackoffRetryPolicy = v1alpha1.BackoffRetryPolicy{
-					MinRetryDuration: "70s",
+					MinRetryDuration: "10s",
 					MaxRetryTimes:    2,
-					RetryTimeout:     "2m",
+					RetryTimeout:     "1m",
 				}
+				// panic every 30s
 				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime + "," + e2eTestFlagPanic}}
 			})
 			f.Must(err)
@@ -996,10 +997,12 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				f.Must(err)
 				return num == 1
 			}))
+			// 30s(panic wait time) + 10s(backup pod restart time) pass
 
 			ginkgo.By("wait backup pod failed by simulate panic")
 			err = brframework.WaitBackupPodOnPhase(f, backup, v1.PodFailed, backupCompleteTimeout)
 			f.Must(err)
+			// 30s pass. 70s in total, exceed the RetryTimeout(1m)
 
 			ginkgo.By("wait auto restart backup pod until backup failed")
 			err = brframework.WaitForBackupFailed(f.Client, ns, backupName, backupCompleteTimeout)
@@ -1033,6 +1036,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			ginkgo.By("Wait for pitr-master TiDB cluster ready")
 			err = waiter.WaitForClusterReady(ctx, f.Client, ns, masterClusterName, tidbReadyTimeout)
 			f.Must(err)
+			time.Sleep(10 * time.Second) // wait for tidb cluster to be more stable
 
 			ginkgo.By("Create RBAC for backup")
 			err = createRBAC(f)

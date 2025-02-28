@@ -31,7 +31,7 @@ func (re *RequeueError) Error() string {
 }
 
 // RequeueErrorf returns a RequeueError
-func RequeueErrorf(duration time.Duration, format string, a ...interface{}) error {
+func RequeueErrorf(duration time.Duration, format string, a ...any) error {
 	return &RequeueError{
 		Duration: duration,
 		s:        fmt.Sprintf(format, a...),
@@ -54,7 +54,7 @@ func (re *IgnoreError) Error() string {
 }
 
 // IgnoreErrorf returns a IgnoreError
-func IgnoreErrorf(format string, a ...interface{}) error {
+func IgnoreErrorf(format string, a ...any) error {
 	return &IgnoreError{fmt.Sprintf(format, a...)}
 }
 
