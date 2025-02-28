@@ -18,6 +18,8 @@ spec:
       containers:
       - command:
         - /operator
+        args:
+          - --backup-manager-image=pingcap/backup-manager:latest
         image: pingcap/operator:latest
         imagePullPolicy: IfNotPresent
         name: operator

@@ -214,8 +214,10 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 	}
 	bin := filepath.Join(v1alpha1.DirPathBRBin, "br")
 	klog.Infof("Running br command: %s %v", bin, fullArgs)
-	cmd := exec.Command(bin, fullArgs...)
 
+	e2eTestSimulate(bo)
+
+	cmd := exec.Command(bin, fullArgs...)
 	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %w", bo, err)
@@ -261,8 +263,6 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 		return fmt.Errorf("cluster %s, wait pipe message failed, errMsg %s, err: %w", bo, errMsg, err)
 	}
 
-	e2eTestSimulate(bo)
-
 	klog.Infof("Run br commond %v for cluster %s successfully", fullArgs, bo)
 	return nil
 }
@@ -270,16 +270,12 @@ func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []s
 // TODO use https://github.com/pingcap/failpoint instead e2e test env
 func e2eTestSimulate(bo *Options) {
 	if backupUtil.IsE2EExtendBackupTime() {
-		for i := 0; i < 5*60; i++ {
+		for i := 0; i < 30; i++ {
 			klog.Infof("simulate br running for backup %s", bo)
-			time.Sleep(time.Second * 1)
+			time.Sleep(time.Second)
 		}
 	}
-	if backupUtil.IsE2EExtendBackupTimeAndPanic() {
-		for i := 0; i < 2*60; i++ {
-			klog.Infof("simulate br running for backup %s", bo)
-			time.Sleep(time.Second * 1)
-		}
+	if backupUtil.IsE2ETestPanic() {
 		panic("simulate backup pod unexpected termination for e2e test")
 	}
 }

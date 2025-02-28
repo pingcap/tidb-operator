@@ -67,7 +67,7 @@ func (bm *Manager) ProcessCleanBackup() error {
 func (bm *Manager) performCleanBackup(ctx context.Context, backup *v1alpha1.Backup) error {
 	if backup.Status.BackupPath == "" {
 		klog.Errorf("cluster %s backup path is empty", bm)
-		return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		return bm.StatusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Condition: metav1.Condition{
 				Type:    string(v1alpha1.BackupFailed),
 				Status:  metav1.ConditionTrue,
@@ -91,7 +91,7 @@ func (bm *Manager) performCleanBackup(ctx context.Context, backup *v1alpha1.Back
 	if err != nil {
 		errs = append(errs, err)
 		klog.Errorf("clean cluster %s backup %s failed, err: %s", bm, backup.Status.BackupPath, err)
-		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		uerr := bm.StatusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Condition: metav1.Condition{
 				Type:    string(v1alpha1.BackupCleanFailed),
 				Status:  metav1.ConditionTrue,
@@ -104,7 +104,7 @@ func (bm *Manager) performCleanBackup(ctx context.Context, backup *v1alpha1.Back
 	}
 
 	klog.Infof("clean cluster %s backup %s success", bm, backup.Status.BackupPath)
-	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	return bm.StatusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 		Condition: metav1.Condition{
 			Type:   string(v1alpha1.BackupClean),
 			Status: metav1.ConditionTrue,

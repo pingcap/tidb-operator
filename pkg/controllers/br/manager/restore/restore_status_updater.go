@@ -23,8 +23,8 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
-	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
@@ -50,7 +50,7 @@ type RestoreUpdateStatus struct {
 
 // RestoreConditionUpdaterInterface enables updating Restore conditions.
 type RestoreConditionUpdaterInterface interface {
-	Update(restore *v1alpha1.Restore, condition *metav1.Condition, newStatus *RestoreUpdateStatus) error
+	Update(ctx context.Context, restore *v1alpha1.Restore, condition *metav1.Condition, newStatus *RestoreUpdateStatus) error
 }
 
 type realRestoreConditionUpdater struct {
@@ -68,7 +68,8 @@ func NewRealRestoreConditionUpdater(
 	}
 }
 
-func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, condition *metav1.Condition, newStatus *RestoreUpdateStatus) error {
+func (u *realRestoreConditionUpdater) Update(ctx context.Context, restore *v1alpha1.Restore, condition *metav1.Condition, newStatus *RestoreUpdateStatus) error {
+	logger := log.FromContext(ctx)
 	// reason is required so that we do set if it's empty
 	if condition != nil {
 		if condition.Reason == "" {
@@ -84,7 +85,7 @@ func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, conditio
 	err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
 		updated := &v1alpha1.Restore{}
 		// Always get the latest restore before update.
-		if err := u.cli.Get(context.TODO(), client.ObjectKey{Namespace: ns, Name: restoreName}, updated); err == nil {
+		if err := u.cli.Get(ctx, client.ObjectKey{Namespace: ns, Name: restoreName}, updated); err == nil {
 			// make a copy so we don't mutate the shared cache
 			restore = updated.DeepCopy()
 		} else {
@@ -94,12 +95,12 @@ func (u *realRestoreConditionUpdater) Update(restore *v1alpha1.Restore, conditio
 		isStatusUpdate = updateRestoreStatus(&restore.Status, newStatus)
 		isConditionUpdate = v1alpha1.UpdateRestoreCondition(&restore.Status, condition)
 		if isStatusUpdate || isConditionUpdate {
-			updateErr := u.cli.Status().Update(context.TODO(), restore)
+			updateErr := u.cli.Status().Update(ctx, restore)
 			if updateErr == nil {
-				klog.Infof("Restore: [%s/%s] updated successfully", ns, restoreName)
+				logger.Info("Restore updated successfully", "namespace", ns, "restore", restoreName)
 				return nil
 			}
-			klog.Errorf("Failed to update restore [%s/%s], error: %v", ns, restoreName, updateErr)
+			logger.Error(updateErr, "Failed to update restore", "namespace", ns, "restore", restoreName)
 			return updateErr
 		}
 		return nil

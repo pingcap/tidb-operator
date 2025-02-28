@@ -25,8 +25,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
+	rtClient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
@@ -43,7 +44,7 @@ var _ BackupCleaner = &backupCleaner{}
 
 // BackupCleaner implements the logic for cleaning backup
 type BackupCleaner interface {
-	Clean(backup *v1alpha1.Backup) error
+	Clean(ctx context.Context, backup *v1alpha1.Backup) error
 }
 
 type backupCleaner struct {
@@ -61,20 +62,23 @@ func NewBackupCleaner(cli client.Client, statusUpdater BackupConditionUpdaterInt
 	}
 }
 
-func (bc *backupCleaner) Clean(backup *v1alpha1.Backup) error {
+func (bc *backupCleaner) Clean(ctx context.Context, backup *v1alpha1.Backup) error {
+	logger := log.FromContext(ctx)
 	if backup.DeletionTimestamp == nil {
 		// The backup object has not been deleted，do nothing
 		return nil
 	}
 
-	klog.Infof("prepare to clean backup %s/%s", backup.GetNamespace(), backup.GetName())
-	if err := bc.StopLogBackup(backup); err != nil {
+	logger.Info("prepare to clean backup", "namespace", backup.GetNamespace(), "backup", backup.GetName())
+	if err := bc.StopLogBackup(ctx, backup); err != nil {
 		return err
 	}
-	return bc.CleanData(backup)
+	return bc.CleanData(ctx, backup)
 }
 
-func (bc *backupCleaner) StopLogBackup(backup *v1alpha1.Backup) error {
+func (bc *backupCleaner) StopLogBackup(ctx context.Context, backup *v1alpha1.Backup) error {
+	logger := log.FromContext(ctx)
+
 	if backup.Spec.Mode != v1alpha1.BackupModeLog {
 		return nil
 	}
@@ -82,11 +86,13 @@ func (bc *backupCleaner) StopLogBackup(backup *v1alpha1.Backup) error {
 		return fmt.Errorf("backup %s/%s spec.BR shouldn't be nil", backup.GetNamespace(), backup.GetName())
 	}
 	if !v1alpha1.IsLogBackupAlreadyStart(backup) {
-		return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		return bc.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Command: v1alpha1.LogStopCommand,
 			Condition: metav1.Condition{
-				Type:   string(v1alpha1.BackupComplete),
-				Status: metav1.ConditionTrue,
+				Type:    string(v1alpha1.BackupComplete),
+				Status:  metav1.ConditionTrue,
+				Reason:  "LogBackupNotStarted",
+				Message: "Log backup has not started, so there is no need to stop it",
 			},
 		}, nil)
 	}
@@ -100,12 +106,12 @@ func (bc *backupCleaner) StopLogBackup(backup *v1alpha1.Backup) error {
 
 	var err error
 	job := &batchv1.Job{}
-	err = bc.cli.Get(context.Background(), types.NamespacedName{Namespace: ns, Name: stopLogJobName}, job)
+	err = bc.cli.Get(ctx, types.NamespacedName{Namespace: ns, Name: stopLogJobName}, job)
 	if err == nil {
 		// already have a clean job running，return directly
 		return nil
 	} else if !errors.IsNotFound(err) {
-		_ = bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		_ = bc.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Condition: metav1.Condition{
 				Type:    string(v1alpha1.BackupRetryTheFailed),
 				Status:  metav1.ConditionTrue,
@@ -118,36 +124,40 @@ func (bc *backupCleaner) StopLogBackup(backup *v1alpha1.Backup) error {
 
 	// make backup job
 	var reason string
-	if job, reason, err = bc.makeStopLogBackupJob(backup); err != nil {
-		klog.Errorf("backup %s/%s create job %s failed, reason is %s, error %v.", ns, name, stopLogJobName, reason, err)
+	if job, reason, err = bc.makeStopLogBackupJob(ctx, backup); err != nil {
+		logger.Error(err, "failed to make stop log backup job", "namespace", ns, "backup", name, "job", stopLogJobName, "reason", reason)
 		return err
 	}
 
 	// create k8s job
-	if err := bc.cli.Create(context.Background(), job); err != nil {
+	if err := bc.cli.Create(ctx, job); err != nil {
 		errMsg := fmt.Errorf("stop log backup %s/%s job %s failed, err: %w", ns, name, stopLogJobName, err)
-		_ = bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		_ = bc.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Command: v1alpha1.LogStopCommand,
 			Condition: metav1.Condition{
 				Type:    string(v1alpha1.BackupRetryTheFailed),
 				Status:  metav1.ConditionTrue,
 				Reason:  "StopLogBackupJobFailed",
-				Message: errMsg.Error(),
+				Message: fmt.Sprintf("failed to create stop log backup job, err: %s", err),
 			},
 		}, nil)
 		return errMsg
 	}
 
-	return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	return bc.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 		Command: v1alpha1.LogStopCommand,
 		Condition: metav1.Condition{
-			Type:   string(v1alpha1.BackupScheduled),
-			Status: metav1.ConditionTrue,
+			Type:    string(v1alpha1.BackupScheduled),
+			Status:  metav1.ConditionTrue,
+			Reason:  "StopLogBackupJobCreated",
+			Message: fmt.Sprintf("Stop log backup job %s created", stopLogJobName),
 		},
 	}, nil)
 }
 
-func (bc *backupCleaner) CleanData(backup *v1alpha1.Backup) error {
+func (bc *backupCleaner) CleanData(ctx context.Context, backup *v1alpha1.Backup) error {
+	logger := log.FromContext(ctx)
+
 	if backup.DeletionTimestamp == nil || !v1alpha1.IsCleanCandidate(backup) || v1alpha1.NeedRetainData(backup) {
 		// The backup object has not been deleted or we need to retain backup data，do nothing
 		return nil
@@ -155,27 +165,27 @@ func (bc *backupCleaner) CleanData(backup *v1alpha1.Backup) error {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	klog.Infof("start to ensure that backup %s/%s jobs have finished", ns, name)
+	logger.Info("start to ensure that backup jobs have finished", "namespace", ns, "backup", name)
 
-	finished, err := bc.ensureBackupJobFinished(backup)
+	finished, err := bc.ensureBackupJobFinished(ctx, backup)
 	if err != nil {
 		return fmt.Errorf("ensure %s/%s jobs finished failed: %w", ns, name, err)
 	}
 	if !finished {
-		klog.Infof("wait for backup %s/%s jobs to finish", ns, name)
+		logger.Info("wait for backup jobs to finish", "namespace", ns, "backup", name)
 		return nil
 	}
 
-	klog.Infof("start to clean backup %s/%s", ns, name)
+	logger.Info("start to clean backup", "namespace", ns, "backup", name)
 
 	cleanJobName := backup.GetCleanJobName()
 	cleanJob := &batchv1.Job{}
-	err = bc.cli.Get(context.TODO(), types.NamespacedName{Namespace: ns, Name: cleanJobName}, cleanJob)
+	err = bc.cli.Get(ctx, types.NamespacedName{Namespace: ns, Name: cleanJobName}, cleanJob)
 	if err == nil {
 		// already have a clean job running，return directly
 		return nil
 	} else if !errors.IsNotFound(err) {
-		_ = bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		_ = bc.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Condition: metav1.Condition{
 				Type:    string(v1alpha1.BackupRetryTheFailed),
 				Status:  metav1.ConditionTrue,
@@ -189,18 +199,20 @@ func (bc *backupCleaner) CleanData(backup *v1alpha1.Backup) error {
 	// no found the clean job, we start to create the clean job.
 	if backup.Status.BackupPath == "" {
 		// the backup path is empty, so there is no need to clean up backup data
-		return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		return bc.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Condition: metav1.Condition{
-				Type:   string(v1alpha1.BackupClean),
-				Status: metav1.ConditionTrue,
+				Type:    string(v1alpha1.BackupClean),
+				Status:  metav1.ConditionTrue,
+				Reason:  "DataCleaned",
+				Message: "The backup path is empty, so there is no need to clean up backup data",
 			},
 		}, nil)
 	}
 
 	// not found clean job, create it
-	job, reason, err := bc.makeCleanJob(backup)
+	job, reason, err := bc.makeCleanJob(ctx, backup)
 	if err != nil {
-		_ = bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		_ = bc.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Condition: metav1.Condition{
 				Type:    string(v1alpha1.BackupRetryTheFailed),
 				Status:  metav1.ConditionTrue,
@@ -211,9 +223,9 @@ func (bc *backupCleaner) CleanData(backup *v1alpha1.Backup) error {
 		return err
 	}
 
-	if err := bc.cli.Create(context.TODO(), job); err != nil {
+	if err := bc.cli.Create(ctx, job); err != nil {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %w", ns, name, cleanJobName, err)
-		_ = bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		_ = bc.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Condition: metav1.Condition{
 				Type:    string(v1alpha1.BackupRetryTheFailed),
 				Status:  metav1.ConditionTrue,
@@ -224,19 +236,23 @@ func (bc *backupCleaner) CleanData(backup *v1alpha1.Backup) error {
 		return errMsg
 	}
 
-	return bc.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	return bc.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 		Condition: metav1.Condition{
-			Type:   string(v1alpha1.BackupClean),
-			Status: metav1.ConditionFalse,
+			Type:    string(v1alpha1.BackupClean),
+			Status:  metav1.ConditionFalse,
+			Reason:  "CleanJobCreated",
+			Message: fmt.Sprintf("Clean job %s created", cleanJobName),
 		},
 	}, nil)
 }
 
-func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
+func (bc *backupCleaner) makeCleanJob(ctx context.Context, backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
+	logger := log.FromContext(ctx)
+
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	envVars, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bc.cli)
+	envVars, reason, err := backuputil.GenerateStorageCertEnv(ctx, ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bc.cli)
 	if err != nil {
 		return nil, reason, err
 	}
@@ -255,7 +271,7 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 
 	// mount volumes if specified
 	if backup.Spec.Local != nil {
-		klog.Info("mounting local volumes in Backup.Spec")
+		logger.Info("mounting local volumes in Backup.Spec")
 		localVolume := backup.Spec.Local.Volume
 		localVolumeMount := backup.Spec.Local.VolumeMount
 		volumes = append(volumes, localVolume)
@@ -325,7 +341,7 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 	return job, "", nil
 }
 
-func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
+func (bc *backupCleaner) makeStopLogBackupJob(ctx context.Context, backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	jobName := backup.GetStopLogBackupJobName()
@@ -335,20 +351,24 @@ func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1
 	}
 
 	cluster := &corev1alpha1.Cluster{}
-	err := bc.cli.Get(context.TODO(), types.NamespacedName{Namespace: backupNamespace, Name: backup.Spec.BR.Cluster}, cluster)
+	err := bc.cli.Get(ctx, types.NamespacedName{Namespace: backupNamespace, Name: backup.Spec.BR.Cluster}, cluster)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster), err
 	}
-	tikvGroup, err := util.FirstTikvGroup(bc.cli, ns, cluster.Name)
+	tikvGroup, err := util.FirstTikvGroup(ctx, bc.cli, ns, cluster.Name)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to get first tikv group: %v", err), err
+	}
+	pdGroup, err := util.FirstPDGroup(ctx, bc.cli, ns, cluster.Name)
+	if err != nil {
+		return nil, fmt.Sprintf("failed to get first pd group: %v", err), err
 	}
 
 	var (
 		envVars []corev1.EnvVar
 		reason  string
 	)
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bc.cli)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ctx, ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bc.cli)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %w", ns, name, err)
 	}
@@ -366,6 +386,7 @@ func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1
 		"backup",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--backupName=%s", name),
+		fmt.Sprintf("--pd-addr=%s", fmt.Sprintf("%s-pd.%s:%d", pdGroup.Name, pdGroup.Namespace, coreutil.PDGroupClientPort(pdGroup))),
 	}
 	tikvVersion := tikvGroup.Spec.Template.Spec.Version
 	if tikvVersion != "" {
@@ -501,7 +522,9 @@ func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1
 }
 
 // ensureBackupJobFinished ensures that all backup jobs have finished, deleting any running jobs.
-func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool, error) {
+func (bc *backupCleaner) ensureBackupJobFinished(ctx context.Context, backup *v1alpha1.Backup) (bool, error) {
+	logger := log.FromContext(ctx)
+
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	backupJobNames := bc.getBackupJobNames(backup)
@@ -511,7 +534,7 @@ func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool,
 
 	for _, jobName := range backupJobNames {
 		job := &batchv1.Job{}
-		err := bc.cli.Get(context.TODO(), types.NamespacedName{Namespace: ns, Name: jobName}, job)
+		err := bc.cli.Get(ctx, types.NamespacedName{Namespace: ns, Name: jobName}, job)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				continue
@@ -521,7 +544,7 @@ func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool,
 		}
 
 		if job.DeletionTimestamp != nil {
-			klog.Infof("backup %s/%s job %s is being deleted, cleaner will wait", ns, name, jobName)
+			logger.Info("backup job is being deleted, cleaner will wait", "namespace", ns, "backup", name, "job", jobName)
 			isAllFinished = false
 			continue
 		}
@@ -530,8 +553,8 @@ func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool,
 			continue
 		}
 
-		klog.Infof("backup %s/%s job %s is running, cleaner will delete it and wait it done", ns, name, jobName)
-		if err := bc.cli.Delete(context.TODO(), job); err != nil {
+		logger.Info("backup job is running, cleaner will delete it and wait it done", "namespace", ns, "backup", name, "job", jobName)
+		if err := bc.cli.Delete(ctx, job, rtClient.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 			errs = append(errs, err)
 		}
 
@@ -543,7 +566,7 @@ func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool,
 	}
 
 	if backup.Spec.Mode == v1alpha1.BackupModeLog {
-		isLogStopJobFinished, err := bc.isLogStopJobFinished(backup)
+		isLogStopJobFinished, err := bc.isLogStopJobFinished(ctx, backup)
 		if err != nil {
 			return false, err
 		}
@@ -554,7 +577,9 @@ func (bc *backupCleaner) ensureBackupJobFinished(backup *v1alpha1.Backup) (bool,
 	return isAllFinished, nil
 }
 
-func (bc *backupCleaner) isLogStopJobFinished(backup *v1alpha1.Backup) (bool, error) {
+func (bc *backupCleaner) isLogStopJobFinished(ctx context.Context, backup *v1alpha1.Backup) (bool, error) {
+	logger := log.FromContext(ctx)
+
 	if backup.Spec.Mode != v1alpha1.BackupModeLog {
 		return true, nil
 	}
@@ -566,17 +591,17 @@ func (bc *backupCleaner) isLogStopJobFinished(backup *v1alpha1.Backup) (bool, er
 	name := backup.GetName()
 	stopLogJob := backup.GetStopLogBackupJobName()
 	job := &batchv1.Job{}
-	err := bc.cli.Get(context.TODO(), types.NamespacedName{Namespace: ns, Name: stopLogJob}, job)
+	err := bc.cli.Get(ctx, types.NamespacedName{Namespace: ns, Name: stopLogJob}, job)
 	if err == nil {
 		if !bc.isJobDoneOrFailed(job) {
-			klog.Infof("log backup %s/%s is running stop task, cleaner will wait until done", ns, name)
+			logger.Info("log backup is running stop task, cleaner will wait until done", "namespace", ns, "backup", name, "job", stopLogJob)
 			return false, nil
 		} else if bc.isJobFailed(job) {
-			klog.Errorf("log backup %s/%s stopping task %s failed", ns, name, stopLogJob)
+			logger.Error(nil, "log backup stopping task failed", "namespace", ns, "backup", name, "job", stopLogJob)
 		}
 		return true, nil
 	} else if errors.IsNotFound(err) {
-		klog.Warningf("log backup %s/%s stopping-task %s not found, log backup may has failed before cleaning", ns, name, stopLogJob)
+		logger.Info("log backup stopping-task not found, log backup may has failed before cleaning", "namespace", ns, "backup", name, "job", stopLogJob)
 		return true, nil
 	}
 	return false, err

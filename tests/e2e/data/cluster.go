@@ -58,3 +58,9 @@ func WithClusterTLS() ClusterPatch {
 		}
 	}
 }
+
+func WithClusterName(name string) ClusterPatch {
+	return func(obj *v1alpha1.Cluster) {
+		obj.Name = name
+	}
+}

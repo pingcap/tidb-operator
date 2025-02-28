@@ -16,6 +16,7 @@ package framework
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -45,9 +46,33 @@ func New() *Framework {
 	return &Framework{}
 }
 
-func (f *Framework) Setup() {
+type SetupOptions struct {
+	SkipWaitForClusterDeleted   bool
+	SkipWaitForNamespaceDeleted bool
+}
+
+type SetupOption func(opts *SetupOptions)
+
+func WithSkipWaitForClusterDeleted() SetupOption {
+	return func(opts *SetupOptions) {
+		opts.SkipWaitForClusterDeleted = true
+	}
+}
+
+func WithSkipWaitForNamespaceDeleted() SetupOption {
+	return func(opts *SetupOptions) {
+		opts.SkipWaitForNamespaceDeleted = true
+	}
+}
+
+func (f *Framework) Setup(opts ...SetupOption) {
+	options := &SetupOptions{}
+	for _, opt := range opts {
+		opt(options)
+	}
+
 	// TODO: get context and config path from options
-	cfg, err := newConfig("", "")
+	cfg, err := NewConfig("", "")
 	gomega.Expect(err).To(gomega.Succeed())
 
 	c, err := newClient(cfg)
@@ -62,15 +87,17 @@ func (f *Framework) Setup() {
 		ns := data.NewNamespace()
 
 		f.Namespace = ns
-		ginkgo.By("Creating a namespace")
+		ginkgo.By(fmt.Sprintf("Creating a namespace %s", f.Namespace.Name))
 		f.Must(f.Client.Create(ctx, f.Namespace))
 
 		ginkgo.DeferCleanup(func(ctx context.Context) {
-			ginkgo.By("Delete the namespace")
+			ginkgo.By(fmt.Sprintf("Delete the namespace %s", f.Namespace.Name))
 			f.Must(f.Client.Delete(ctx, f.Namespace))
 
-			ginkgo.By("Ensure the namespace can be deleted")
-			f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Namespace, waiter.ShortTaskTimeout))
+			if !options.SkipWaitForNamespaceDeleted {
+				ginkgo.By(fmt.Sprintf("Ensure the namespace %s can be deleted", f.Namespace.Name))
+				f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Namespace, waiter.ShortTaskTimeout))
+			}
 		})
 	})
 
@@ -80,11 +107,13 @@ func (f *Framework) Setup() {
 		f.Must(f.Client.Create(ctx, f.Cluster))
 
 		ginkgo.DeferCleanup(func(ctx context.Context) {
-			ginkgo.By("Delete the cluster")
+			ginkgo.By(fmt.Sprintf("Delete the cluster: %s", f.Cluster.Name))
 			f.Must(f.Client.Delete(ctx, f.Cluster))
 
-			ginkgo.By("Ensure the cluster can be deleted")
-			f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Cluster, waiter.ShortTaskTimeout))
+			if !options.SkipWaitForClusterDeleted {
+				ginkgo.By(fmt.Sprintf("Ensure the cluster: %s can be deleted", f.Cluster.Name))
+				f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Cluster, waiter.ShortTaskTimeout))
+			}
 		})
 	})
 }
@@ -93,6 +122,14 @@ func (f *Framework) SetupCluster(ps ...data.ClusterPatch) {
 	ginkgo.BeforeEach(func(context.Context) {
 		f.clusterPatches = ps
 	})
+}
+
+func (f *Framework) MustCreateCluster(ctx context.Context, ps ...data.ClusterPatch) *v1alpha1.Cluster {
+	tc := data.NewCluster(f.Namespace.Name, ps...)
+	ginkgo.By("Creating a cluster")
+	f.Must(f.Client.Create(ctx, tc))
+
+	return tc
 }
 
 func (f *Framework) MustCreatePD(ctx context.Context, ps ...data.GroupPatch[*runtime.PDGroup]) *v1alpha1.PDGroup {

@@ -45,7 +45,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/constants"
@@ -333,7 +333,8 @@ func BatchDeleteObjectsConcurrently(ctx context.Context, bucket *blob.Bucket, ob
 	return result
 }
 
-func GetStorageCredential(ns string, provider v1alpha1.StorageProvider, secretLister corelisterv1.SecretLister) *StorageCredential {
+func GetStorageCredential(ctx context.Context, ns string, provider v1alpha1.StorageProvider, secretLister corelisterv1.SecretLister) *StorageCredential {
+	logger := log.FromContext(ctx)
 	var err error
 	var secret *corev1.Secret
 	storageType := GetStorageType(provider)
@@ -344,7 +345,7 @@ func GetStorageCredential(ns string, provider v1alpha1.StorageProvider, secretLi
 		if s3SecretName != "" {
 			secret, err = secretLister.Secrets(ns).Get(s3SecretName)
 			if err != nil {
-				klog.Errorf("Get the secret key failed.")
+				logger.Error(err, "Get the secret key failed.")
 				return &StorageCredential{}
 			}
 

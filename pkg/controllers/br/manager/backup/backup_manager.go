@@ -26,9 +26,9 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
-	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
+	rtClient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
@@ -39,7 +39,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/constants"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
 	backuputil "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
+	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
 var (
@@ -93,54 +95,44 @@ type BackupUpdateStatus struct {
 // BackupManager implements the logic for manage backup.
 type BackupManager interface {
 	// Sync	implements the logic for syncing Backup.
-	Sync(backup *v1alpha1.Backup) error
+	Sync(ctx context.Context, backup *v1alpha1.Backup) error
 	// UpdateStatus updates the status for a Backup, include condition and status info.
-	UpdateStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) error
+	UpdateStatus(ctx context.Context, backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) error
 }
 
 type backupManager struct {
 	cli                client.Client
-	backupCleaner      BackupCleaner
 	backupTracker      BackupTracker
 	statusUpdater      BackupConditionUpdaterInterface
 	backupManagerImage string
 }
 
 // NewBackupManager return backupManager
-func NewBackupManager(cli client.Client, pdcm pdm.PDClientManager, eventRecorder record.EventRecorder, backupManagerImage string) BackupManager {
-	statusUpdater := NewRealBackupConditionUpdater(cli, eventRecorder)
-
+func NewBackupManager(cli client.Client, pdcm pdm.PDClientManager, statusUpdater BackupConditionUpdaterInterface, backupManagerImage string) BackupManager {
 	return &backupManager{
 		cli:                cli,
-		backupCleaner:      NewBackupCleaner(cli, statusUpdater, backupManagerImage),
 		backupTracker:      NewBackupTracker(cli, pdcm, statusUpdater),
 		statusUpdater:      statusUpdater,
 		backupManagerImage: backupManagerImage,
 	}
 }
 
-func (bm *backupManager) Sync(backup *v1alpha1.Backup) error {
-	// because a finalizer is installed on the backup on creation, when backup is deleted,
-	// backup.DeletionTimestamp will be set, controller will be informed with an onUpdate event,
-	// this is the moment that we can do clean up work.
-	if err := bm.backupCleaner.Clean(backup); err != nil {
-		return err
-	}
-
+func (bm *backupManager) Sync(ctx context.Context, backup *v1alpha1.Backup) error {
 	if backup.DeletionTimestamp != nil {
 		// backup is being deleted, don't do anything, return directly.
 		return nil
 	}
 
-	return bm.syncBackupJob(backup)
+	return bm.syncBackupJob(ctx, backup)
 }
 
 // UpdateStatus updates the status for a Backup, include condition and status info.
-func (bm *backupManager) UpdateStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) error {
-	return bm.statusUpdater.Update(backup, condition, newStatus)
+func (bm *backupManager) UpdateStatus(ctx context.Context, backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) error {
+	return bm.statusUpdater.Update(ctx, backup, condition, newStatus)
 }
 
-func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
+func (bm *backupManager) syncBackupJob(ctx context.Context, backup *v1alpha1.Backup) error {
+	logger := log.FromContext(ctx)
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	backupJobName := backup.GetBackupJobName()
@@ -152,25 +144,25 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	}
 
 	// validate backup
-	if err = bm.validateBackup(backup); err != nil {
-		klog.Errorf("backup %s/%s validate error %v.", ns, name, err)
+	if err = bm.validateBackup(ctx, backup); err != nil {
+		logger.Error(err, "backup validate error", "namespace", ns, "backup", name)
 		return err
 	}
 
 	// skip backup
 	skip := false
-	if skip, err = bm.skipBackupSync(backup); err != nil {
-		klog.Errorf("backup %s/%s skip error %v.", ns, name, err)
+	if skip, err = bm.skipBackupSync(ctx, backup); err != nil {
+		logger.Error(err, "backup skip error", "namespace", ns, "backup", name)
 		return err
 	}
 	if skip {
-		klog.Infof("backup %s/%s is already done and skip sync.", ns, name)
+		logger.Info("backup is already done and skip sync", "namespace", ns, "backup", name)
 		return nil
 	}
 
 	// wait pre task done
-	if err = bm.waitPreTaskDone(backup); err != nil {
-		klog.Errorf("backup %s/%s wait pre task done error %v.", ns, name, err)
+	if err = bm.waitPreTaskDone(ctx, backup); err != nil {
+		logger.Error(err, "backup wait pre task done error", "namespace", ns, "backup", name)
 		return err
 	}
 
@@ -178,16 +170,16 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	var job *batchv1.Job
 	var reason string
 	var updateStatus *BackupUpdateStatus
-	if job, updateStatus, reason, err = bm.makeBackupJob(backup); err != nil {
-		klog.Errorf("backup %s/%s create job %s failed, reason is %s, error %v.", ns, name, backupJobName, reason, err)
+	if job, updateStatus, reason, err = bm.makeBackupJob(ctx, backup); err != nil {
+		logger.Error(err, "backup create job failed", "namespace", ns, "backup", name, "job", backupJobName, "reason", reason)
 		return err
 	}
 
 	// create k8s job
-	klog.Infof("backup %s/%s creating job %s.", ns, name, backupJobName)
-	if err := bm.cli.Create(context.TODO(), job); err != nil && !apierrors.IsAlreadyExists(err) {
+	logger.Info("backup creating job", "namespace", ns, "backup", name, "job", backupJobName)
+	if err := bm.cli.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %w", ns, name, backupJobName, err)
-		_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		_ = bm.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Command: logBackupSubcommand,
 			Condition: metav1.Condition{
 				Type:    string(v1alpha1.BackupRetryTheFailed),
@@ -199,7 +191,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		return errMsg
 	}
 
-	return bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	return bm.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 		Command: logBackupSubcommand,
 		Condition: metav1.Condition{
 			Type:   string(v1alpha1.BackupScheduled),
@@ -209,7 +201,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 }
 
 // validateBackup validates backup and returns error if backup is invalid
-func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
+func (bm *backupManager) validateBackup(ctx context.Context, backup *v1alpha1.Backup) error {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	var err error
@@ -217,7 +209,7 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 
 	if backup.Spec.Mode == v1alpha1.BackupModeLog && logBackupSubcommand == v1alpha1.LogUnknownCommand {
 		err = fmt.Errorf("log backup %s/%s subcommand `%s` is not supported", ns, name, backup.Spec.LogSubcommand)
-		_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		_ = bm.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Command: logBackupSubcommand,
 			Condition: metav1.Condition{
 				Type:    string(v1alpha1.BackupRetryTheFailed),
@@ -235,10 +227,10 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 	}
 
 	cluster := &corev1alpha1.Cluster{}
-	err = bm.cli.Get(context.TODO(), types.NamespacedName{Namespace: backupNamespace, Name: backup.Spec.BR.Cluster}, cluster)
+	err = bm.cli.Get(ctx, types.NamespacedName{Namespace: backupNamespace, Name: backup.Spec.BR.Cluster}, cluster)
 	if err != nil {
 		reason := fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster)
-		_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		_ = bm.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Command: logBackupSubcommand,
 			Condition: metav1.Condition{
 				Type:    string(v1alpha1.BackupRetryTheFailed),
@@ -249,14 +241,14 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 		}, nil)
 		return err
 	}
-	tikvGroup, err := util.FirstTikvGroup(bm.cli, backupNamespace, backup.Spec.BR.Cluster)
+	tikvGroup, err := util.FirstTikvGroup(ctx, bm.cli, backupNamespace, backup.Spec.BR.Cluster)
 	if err != nil {
 		return err
 	}
 
 	err = backuputil.ValidateBackup(backup, tikvGroup.Spec.Template.Spec.Version, cluster)
 	if err != nil {
-		_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		_ = bm.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Command: logBackupSubcommand,
 			Condition: metav1.Condition{
 				Type:    string(v1alpha1.BackupInvalid),
@@ -266,25 +258,25 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 			},
 		}, nil)
 
-		// TODO(ideascf): Use IgnoreErrorf
-		return fmt.Errorf("invalid backup spec %s/%s cause %s", ns, name, err.Error())
+		return common.IgnoreErrorf("invalid backup spec %s/%s cause %s", ns, name, err.Error())
 	}
 	return nil
 }
 
 // skipBackupSync skip backup sync, if return true, backup can be skipped directly.
-func (bm *backupManager) skipBackupSync(backup *v1alpha1.Backup) (bool, error) {
+func (bm *backupManager) skipBackupSync(ctx context.Context, backup *v1alpha1.Backup) (bool, error) {
 	if backup.Spec.Mode == v1alpha1.BackupModeLog {
-		return bm.skipLogBackupSync(backup)
+		return bm.skipLogBackupSync(ctx, backup)
 	} else {
-		return bm.skipSnapshotBackupSync(backup)
+		return bm.skipSnapshotBackupSync(ctx, backup)
 	}
 }
 
 // waitPreTaskDone waits pre task done. this can make sure there is only one backup job running.
 // 1. wait other command done, such as truncate/stop wait start done.
 // 2. wait command's job done
-func (bm *backupManager) waitPreTaskDone(backup *v1alpha1.Backup) error {
+func (bm *backupManager) waitPreTaskDone(ctx context.Context, backup *v1alpha1.Backup) error {
+	logger := log.FromContext(ctx)
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	backupJobName := backup.GetBackupJobName()
@@ -292,16 +284,15 @@ func (bm *backupManager) waitPreTaskDone(backup *v1alpha1.Backup) error {
 	// check whether backup should wait and requeue
 	if shouldLogBackupCommandRequeue(backup) {
 		logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
-		klog.Infof("log backup %s/%s subcommand %s should wait log backup start complete, will requeue.", ns, name, logBackupSubcommand)
-		// TODO(ideascf): use controller.RequeueErrorf
-		return fmt.Errorf("log backup %s/%s command %s should wait log backup start complete", ns, name, logBackupSubcommand)
+		logger.Info("log backup should wait log backup start complete, will requeue", "namespace", ns, "backup", name, "command", logBackupSubcommand)
+		return common.RequeueErrorf(task.DefaultRequeueAfter, "log backup %s/%s command %s should wait log backup start complete", ns, name, logBackupSubcommand)
 	}
 
 	// log backup should wait old job done
 	oldJob := &batchv1.Job{}
-	err := bm.cli.Get(context.TODO(), client.ObjectKey{Namespace: ns, Name: backupJobName}, oldJob)
+	err := bm.cli.Get(ctx, client.ObjectKey{Namespace: ns, Name: backupJobName}, oldJob)
 	if err == nil {
-		return waitOldBackupJobDone(ns, name, backupJobName, bm, backup, oldJob)
+		return waitOldBackupJobDone(ctx, ns, name, backupJobName, bm, backup, oldJob)
 	}
 
 	if !errors.IsNotFound(err) {
@@ -310,7 +301,7 @@ func (bm *backupManager) waitPreTaskDone(backup *v1alpha1.Backup) error {
 	return nil
 }
 
-func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *BackupUpdateStatus, string, error) {
+func (bm *backupManager) makeBackupJob(ctx context.Context, backup *v1alpha1.Backup) (*batchv1.Job, *BackupUpdateStatus, string, error) {
 	var (
 		job          *batchv1.Job
 		updateStatus *BackupUpdateStatus
@@ -321,11 +312,11 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 	{
 		logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 		// not found backup job, so we need to create it
-		job, reason, err = bm.makeBRBackupJob(backup)
+		job, reason, err = bm.makeBRBackupJob(ctx, backup)
 		if err != nil {
 			// don't retry on dup metadata file existing error
 			if reason == "FileExistedInExternalStorage" {
-				_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+				_ = bm.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 					Command: logBackupSubcommand,
 					Condition: metav1.Condition{
 						Type:    string(v1alpha1.BackupFailed),
@@ -334,10 +325,9 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 						Message: err.Error(),
 					},
 				}, nil)
-				// TODO(ideascf): use controller.IgnoreErrorf
-				return nil, nil, "", fmt.Errorf("%s, reason is %s", err.Error(), reason)
+				return nil, nil, "", common.IgnoreErrorf("%s, reason is %s", err.Error(), reason)
 			} else {
-				_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+				_ = bm.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 					Command: logBackupSubcommand,
 					Condition: metav1.Condition{
 						Type:    string(v1alpha1.BackupRetryTheFailed),
@@ -352,9 +342,9 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 
 		if logBackupSubcommand == v1alpha1.LogStartCommand {
 			// log start need to start tracker
-			err = bm.backupTracker.StartTrackLogBackupProgress(backup)
+			err = bm.backupTracker.StartTrackLogBackupProgress(ctx, backup)
 			if err != nil {
-				_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+				_ = bm.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 					Command: logBackupSubcommand,
 					Condition: metav1.Condition{
 						Type:    string(v1alpha1.BackupRetryTheFailed),
@@ -376,7 +366,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 
 // nolint: gocyclo
 // makeBRBackupJob requires that backup.Spec.BR != nil
-func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
+func (bm *backupManager) makeBRBackupJob(ctx context.Context, backup *v1alpha1.Backup) (*batchv1.Job, string, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	jobName := backup.GetBackupJobName()
@@ -386,15 +376,15 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 	}
 
 	cluster := &corev1alpha1.Cluster{}
-	err := bm.cli.Get(context.TODO(), client.ObjectKey{Namespace: backupNamespace, Name: backup.Spec.BR.Cluster}, cluster)
+	err := bm.cli.Get(ctx, client.ObjectKey{Namespace: backupNamespace, Name: backup.Spec.BR.Cluster}, cluster)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster), err
 	}
-	tikvGroup, err := util.FirstTikvGroup(bm.cli, ns, backup.Spec.BR.Cluster)
+	tikvGroup, err := util.FirstTikvGroup(ctx, bm.cli, ns, backup.Spec.BR.Cluster)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to get tikv group %s/%s", ns, backup.Spec.BR.Cluster), err
 	}
-	pdGroup, err := util.FirstPDGroup(bm.cli, ns, cluster.Name)
+	pdGroup, err := util.FirstPDGroup(ctx, bm.cli, ns, cluster.Name)
 	if err != nil {
 		return nil, fmt.Sprintf("failed to get first pd group: %v", err), err
 	}
@@ -404,7 +394,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		reason  string
 	)
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.cli)
+	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ctx, ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.cli)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %w", ns, name, err)
 	}
@@ -422,7 +412,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		"backup",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--backupName=%s", name),
-		fmt.Sprintf("--pd-addr=%s", fmt.Sprintf("%s-pd.%s:%d", pdGroup.Spec.Cluster.Name, pdGroup.Namespace, coreutil.PDGroupClientPort(pdGroup))),
+		fmt.Sprintf("--pd-addr=%s", fmt.Sprintf("%s-pd.%s:%d", pdGroup.Name, pdGroup.Namespace, coreutil.PDGroupClientPort(pdGroup))),
 	}
 	tikvVersion := tikvGroup.Spec.Template.Spec.Version
 	if tikvVersion != "" {
@@ -575,13 +565,13 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 }
 
 // skipSnapshotBackupSync skip snapshot backup, returns true if can be skipped.
-func (bm *backupManager) skipSnapshotBackupSync(backup *v1alpha1.Backup) (bool, error) {
+func (bm *backupManager) skipSnapshotBackupSync(ctx context.Context, backup *v1alpha1.Backup) (bool, error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	backupJobName := backup.GetBackupJobName()
 
 	job := &batchv1.Job{}
-	err := bm.cli.Get(context.TODO(), client.ObjectKey{Namespace: ns, Name: backupJobName}, job)
+	err := bm.cli.Get(ctx, client.ObjectKey{Namespace: ns, Name: backupJobName}, job)
 	if err == nil {
 		return true, nil
 	}
@@ -593,7 +583,8 @@ func (bm *backupManager) skipSnapshotBackupSync(backup *v1alpha1.Backup) (bool, 
 }
 
 // skipLogBackupSync skips log backup, returns true if it can be skipped.
-func (bm *backupManager) skipLogBackupSync(backup *v1alpha1.Backup) (bool, error) {
+func (bm *backupManager) skipLogBackupSync(ctx context.Context, backup *v1alpha1.Backup) (bool, error) {
+	logger := log.FromContext(ctx)
 	if backup.Spec.Mode != v1alpha1.BackupModeLog {
 		return false, nil
 	}
@@ -612,14 +603,18 @@ func (bm *backupManager) skipLogBackupSync(backup *v1alpha1.Backup) (bool, error
 			TimeCompleted:      &metav1.Time{Time: time.Now()},
 			LogTruncatingUntil: &backup.Spec.LogTruncateUntil,
 		}
-		err = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		// to avoid LogSuccessTruncateUntil is empty when we mark truncate command as complete
+		if backup.Status.LogSuccessTruncateUntil == "" {
+			updateStatus.LogSuccessTruncateUntil = &backup.Spec.LogTruncateUntil
+		}
+		err = bm.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Command: v1alpha1.LogTruncateCommand,
 			Condition: metav1.Condition{
 				Type:   string(v1alpha1.BackupComplete),
 				Status: metav1.ConditionTrue,
 			},
 		}, updateStatus)
-		klog.Infof("log backup %s/%s subcommand %s is already done, will skip sync.", backup.Namespace, backup.Name, command)
+		logger.Info("log backup subcommand is already done, will skip sync", "namespace", backup.Namespace, "backup", backup.Name, "command", command)
 		return true, err
 	}
 
@@ -641,10 +636,10 @@ func shouldLogBackupCommandRequeue(backup *v1alpha1.Backup) bool {
 }
 
 // waitOldBackupJobDone wait old backup job done
-func waitOldBackupJobDone(ns, name, backupJobName string, bm *backupManager, backup *v1alpha1.Backup, oldJob *batchv1.Job) error {
+func waitOldBackupJobDone(ctx context.Context, ns, name, backupJobName string, bm *backupManager, backup *v1alpha1.Backup, oldJob *batchv1.Job) error {
+	logger := log.FromContext(ctx)
 	if oldJob.DeletionTimestamp != nil {
-		// TODO(ideascf): use controller.RequeueErrorf
-		return fmt.Errorf("backup %s/%s job %s is being deleted", ns, name, backupJobName)
+		return common.RequeueErrorf(task.DefaultRequeueAfter, "backup %s/%s job %s is being deleted", ns, name, backupJobName)
 	}
 	finished := false
 	for _, c := range oldJob.Status.Conditions {
@@ -654,15 +649,13 @@ func waitOldBackupJobDone(ns, name, backupJobName string, bm *backupManager, bac
 		}
 	}
 	if finished {
-		klog.Infof("backup %s/%s job %s has complete or failed, will delete job", ns, name, backupJobName)
-		if err := bm.cli.Delete(context.TODO(), oldJob); err != nil {
+		logger.Info("backup job has complete or failed, will delete job", "namespace", ns, "backup", name, "job", backupJobName)
+		if err := bm.cli.Delete(ctx, oldJob, rtClient.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 			return fmt.Errorf("backup %s/%s delete job %s failed, err: %w", ns, name, backupJobName, err)
 		}
 	}
 
-	// job running no need to requeue, because delete job will call update and it will requeue
-	// TODO(ideascf): use controller.IgnoreErrorf
-	return fmt.Errorf("backup %s/%s job %s is running, will be ignored", ns, name, backupJobName)
+	return common.RequeueErrorf(task.DefaultRequeueAfter, "backup %s/%s job %s is running, will be ignored", ns, name, backupJobName)
 }
 
 var _ BackupManager = &backupManager{}
@@ -679,12 +672,12 @@ func (m *FakeBackupManager) SetSyncError(err error) {
 	m.err = err
 }
 
-func (m *FakeBackupManager) Sync(_ *v1alpha1.Backup) error {
+func (m *FakeBackupManager) Sync(_ context.Context, _ *v1alpha1.Backup) error {
 	return m.err
 }
 
 // UpdateStatus updates the status for a Backup, include condition and status info.
-func (m *FakeBackupManager) UpdateStatus(_ *v1alpha1.Backup, _ *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) error {
+func (m *FakeBackupManager) UpdateStatus(_ context.Context, _ *v1alpha1.Backup, _ *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) error {
 	return nil
 }
 

@@ -126,6 +126,7 @@ issues:
   exclude-files:
     - ".*/br/.*/_test.go"
     - ".*/br/.*/testutils/.*"
+    - "tests/e2e/br/.*/*.go"
 
 run:
   timeout: 15m

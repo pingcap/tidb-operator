@@ -26,8 +26,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
-func FirstTikvGroup(cli client.Client, ns, cluster string) (*v1alpha1.TiKVGroup, error) {
-	tikvGroups, err := apicall.ListGroups[scope.TiKVGroup](context.TODO(), cli, ns, cluster)
+func FirstTikvGroup(ctx context.Context, cli client.Client, ns, cluster string) (*v1alpha1.TiKVGroup, error) {
+	tikvGroups, err := apicall.ListGroups[scope.TiKVGroup](ctx, cli, ns, cluster)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list tikv groups: %w", err)
 	}
@@ -41,8 +41,8 @@ func FirstTikvGroup(cli client.Client, ns, cluster string) (*v1alpha1.TiKVGroup,
 	return tikvGroup, nil
 }
 
-func FirstPDGroup(cli client.Client, ns, cluster string) (*v1alpha1.PDGroup, error) {
-	pdGroups, err := apicall.ListGroups[scope.PDGroup](context.TODO(), cli, ns, cluster)
+func FirstPDGroup(ctx context.Context, cli client.Client, ns, cluster string) (*v1alpha1.PDGroup, error) {
+	pdGroups, err := apicall.ListGroups[scope.PDGroup](ctx, cli, ns, cluster)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list pd groups: %w", err)
 	}

@@ -23,8 +23,8 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
-	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
@@ -32,7 +32,7 @@ import (
 
 // BackupConditionUpdaterInterface enables updating Backup conditions.
 type BackupConditionUpdaterInterface interface {
-	Update(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) error
+	Update(ctx context.Context, backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) error
 }
 
 type realBackupConditionUpdater struct {
@@ -51,7 +51,8 @@ func NewRealBackupConditionUpdater(
 	}
 }
 
-func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) error {
+func (u *realBackupConditionUpdater) Update(ctx context.Context, backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) error {
+	logger := log.FromContext(ctx)
 	// reason is required so that we do set if it's empty
 	if condition != nil {
 		if condition.Reason == "" {
@@ -59,13 +60,15 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 		}
 	}
 
+	logger.Info("Update backup status", "namespace", backup.GetNamespace(), "backup", backup.GetName(), "condition", condition, "newStatus", newStatus)
+
 	ns := backup.GetNamespace()
 	backupName := backup.GetName()
 	// try best effort to guarantee backup is updated.
 	err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
 		// Always get the latest backup before update.
 		currentBackup := &v1alpha1.Backup{}
-		if err := u.cli.Get(context.TODO(), client.ObjectKey{Namespace: ns, Name: backupName}, currentBackup); err == nil {
+		if err := u.cli.Get(ctx, client.ObjectKey{Namespace: ns, Name: backupName}, currentBackup); err == nil {
 			// make a copy so we don't mutate the shared cache
 			*backup = *(currentBackup.DeepCopy())
 		} else {
@@ -80,12 +83,12 @@ func (u *realBackupConditionUpdater) Update(backup *v1alpha1.Backup, condition *
 			isUpdate = updateSnapshotBackupStatus(backup, condition, newStatus)
 		}
 		if isUpdate {
-			err := u.cli.Status().Update(context.TODO(), backup)
+			err := u.cli.Status().Update(ctx, backup)
 			if err == nil {
-				klog.Infof("Backup: [%s/%s] updated successfully", ns, backupName)
+				logger.Info("Backup updated successfully", "namespace", ns, "backup", backupName)
 				return nil
 			}
-			klog.Errorf("Failed to update backup [%s/%s], error: %v", ns, backupName, err)
+			logger.Error(err, "Failed to update backup", "namespace", ns, "backup", backupName)
 			return err
 		}
 		return nil
@@ -166,11 +169,14 @@ func updateSnapshotBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.Bac
 func updateLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) bool {
 	// update whole backup status
 	isWholeStatusUpdate := updateWholeLogBackupStatus(backup, condition, newStatus)
-	// DeletionTimestamp is not nil when delete and clean backup, no subcommand status needs to be updated
-	// LogCheckpointTs is not nil when just update checkpoint ts, no subcommand status needs to be updated
-	if backup.DeletionTimestamp != nil || (newStatus != nil && newStatus.LogCheckpointTs != nil) {
-		return isWholeStatusUpdate
-	}
+
+	// TODO(ideascf): should do this?
+	// // DeletionTimestamp is not nil when delete and clean backup, no subcommand status needs to be updated
+	// // LogCheckpointTs is not nil when just update checkpoint ts, no subcommand status needs to be updated
+	// if backup.DeletionTimestamp != nil || (newStatus != nil && newStatus.LogCheckpointTs != nil) {
+	// 	return isWholeStatusUpdate
+	// }
+
 	// update subcommand status
 	isSubCommandStatusUpdate := updateLogSubcommandStatus(backup, condition, newStatus)
 	return isSubCommandStatusUpdate || isWholeStatusUpdate

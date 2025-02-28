@@ -26,8 +26,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/util/retry"
-	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -43,7 +44,7 @@ var (
 
 // BackupTracker implements the logic for tracking log backup progress
 type BackupTracker interface {
-	StartTrackLogBackupProgress(backup *v1alpha1.Backup) error
+	StartTrackLogBackupProgress(ctx context.Context, backup *v1alpha1.Backup) error
 }
 
 // the main processes of log backup track:
@@ -74,38 +75,41 @@ func NewBackupTracker(cli client.Client, pdcm pdm.PDClientManager, statusUpdater
 
 // initTrackLogBackupsProgress lists all log backups and track their progress.
 func (bt *backupTracker) initTrackLogBackupsProgress() {
+	ctx := context.Background()
+	logger := log.FromContext(ctx)
 	var (
 		backups *v1alpha1.BackupList
 		err     error
 	)
 	err = retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
 		backups = &v1alpha1.BackupList{}
-		err = bt.cli.List(context.TODO(), backups)
+		err = bt.cli.List(ctx, backups)
 		if err != nil {
-			klog.Warningf("list backups error %v, will retry", err)
+			logger.Error(err, "list backups error, will retry")
 			return err
 		}
 		return nil
 	})
 	if err != nil {
-		klog.Errorf("list backups error %v after retry, skip track all log backups progress when init, will track when log backup start", err)
+		logger.Error(err, "list backups error after retry, skip track all log backups progress when init, will track when log backup start")
 		return
 	}
 
-	klog.Infof("list backups success, size %d", len(backups.Items))
+	logger.Info("list backups success", "size", len(backups.Items))
 	for i := range backups.Items {
 		backup := backups.Items[i]
 		if backup.Spec.Mode == v1alpha1.BackupModeLog {
-			err = bt.StartTrackLogBackupProgress(&backup)
+			err = bt.StartTrackLogBackupProgress(ctx, &backup)
 			if err != nil {
-				klog.Warningf("start track log backup %s/%s error %v, will skip and track when log backup start", backup.Namespace, backup.Name, err)
+				logger.Error(err, "start track log backup error, will skip and track when log backup start", "namespace", backup.Namespace, "backup", backup.Name)
 			}
 		}
 	}
 }
 
 // StartTrackLogBackupProgress starts to track log backup progress.
-func (bt *backupTracker) StartTrackLogBackupProgress(backup *v1alpha1.Backup) error {
+func (bt *backupTracker) StartTrackLogBackupProgress(ctx context.Context, backup *v1alpha1.Backup) error {
+	logger := log.FromContext(ctx)
 	if backup.Spec.Mode != v1alpha1.BackupModeLog {
 		return nil
 	}
@@ -117,14 +121,14 @@ func (bt *backupTracker) StartTrackLogBackupProgress(backup *v1alpha1.Backup) er
 
 	logkey := genLogBackupKey(ns, name)
 	if _, exist := bt.logBackups[logkey]; exist {
-		klog.Infof("log backup %s/%s has exist in tracker %s", ns, name, logkey)
+		logger.Info("log backup has exist in tracker", "namespace", ns, "backup", name, "key", logkey)
 		return nil
 	}
-	klog.Infof("add log backup %s/%s to tracker", ns, name)
-	_, err := bt.getLogBackupTC(backup)
+	logger.Info("add log backup to tracker", "namespace", ns, "backup", name)
+	_, err := bt.getLogBackupTC(ctx, backup)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			klog.Infof("log backup %s/%s cluster %s/%s not found, will skip", ns, name, backup.Spec.BR.ClusterNamespace, backup.Spec.BR.Cluster)
+			logger.Info("log backup cluster not found, will skip", "namespace", ns, "backup", name, "clusterNamespace", backup.Spec.BR.ClusterNamespace, "cluster", backup.Spec.BR.Cluster)
 			return nil
 		}
 		return err
@@ -142,7 +146,8 @@ func (bt *backupTracker) removeLogBackup(ns, name string) {
 }
 
 // getLogBackupTC gets log backup's tidb cluster info.
-func (bt *backupTracker) getLogBackupTC(backup *v1alpha1.Backup) (*corev1alpha1.Cluster, error) {
+func (bt *backupTracker) getLogBackupTC(ctx context.Context, backup *v1alpha1.Backup) (*corev1alpha1.Cluster, error) {
+	logger := log.FromContext(ctx)
 	var (
 		ns               = backup.Namespace
 		name             = backup.Name
@@ -155,9 +160,9 @@ func (bt *backupTracker) getLogBackupTC(backup *v1alpha1.Backup) (*corev1alpha1.
 	}
 
 	err = retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
-		err = bt.cli.Get(context.TODO(), types.NamespacedName{Namespace: clusterNamespace, Name: backup.Spec.BR.Cluster}, cluster)
+		err = bt.cli.Get(ctx, types.NamespacedName{Namespace: clusterNamespace, Name: backup.Spec.BR.Cluster}, cluster)
 		if err != nil {
-			klog.Warningf("get log backup %s/%s tidbcluster %s/%s failed and will retry, err is %v", ns, name, clusterNamespace, backup.Spec.BR.Cluster, err)
+			logger.Error(err, "get log backup tidbcluster failed and will retry", "namespace", ns, "backup", name, "clusterNamespace", clusterNamespace, "cluster", backup.Spec.BR.Cluster)
 			return err
 		}
 		return nil
@@ -171,6 +176,9 @@ func (bt *backupTracker) getLogBackupTC(backup *v1alpha1.Backup) (*corev1alpha1.
 
 // refreshLogBackupCheckpointTs updates log backup progress periodically.
 func (bt *backupTracker) refreshLogBackupCheckpointTs(ns, name string) {
+	ctx := context.Background()
+	logger := log.FromContext(ctx).WithValues("backupTrackerId", uuid.NewUUID())
+	ctx = log.IntoContext(ctx, logger)
 	ticker := time.NewTicker(refreshCheckpointTsPeriod)
 	defer ticker.Stop()
 
@@ -180,67 +188,68 @@ func (bt *backupTracker) refreshLogBackupCheckpointTs(ns, name string) {
 			return
 		}
 		backup := &v1alpha1.Backup{}
-		err := bt.cli.Get(context.TODO(), types.NamespacedName{Namespace: ns, Name: name}, backup)
+		err := bt.cli.Get(ctx, types.NamespacedName{Namespace: ns, Name: name}, backup)
 		if errors.IsNotFound(err) {
-			klog.Infof("log backup %s/%s has been deleted, will remove %s from tracker", ns, name, logkey)
+			logger.Info("log backup has been deleted, will remove from tracker", "namespace", ns, "backup", name, "key", logkey)
 			bt.removeLogBackup(ns, name)
 			return
 		}
 		if err != nil {
-			klog.Infof("get log backup %s/%s error %v, will skip to the next time", ns, name, err)
+			logger.Error(err, "get log backup error, will skip to the next time", "namespace", ns, "backup", name)
 			continue
 		}
 		if backup.DeletionTimestamp != nil || backup.Status.Phase == v1alpha1.BackupComplete {
-			klog.Infof("log backup %s/%s is being deleting or complete, will remove %s from tracker", ns, name, logkey)
+			logger.Info("log backup is being deleting or complete, will remove from tracker", "namespace", ns, "backup", name, "key", logkey)
 			bt.removeLogBackup(ns, name)
 			return
 		}
 		if backup.Status.Phase != v1alpha1.BackupRunning {
-			klog.Infof("log backup %s/%s is not running, will skip to the next time refresh", ns, name)
+			logger.Info("log backup is not running, will skip to the next time refresh", "namespace", ns, "backup", name)
 			continue
 		}
-		bt.doRefreshLogBackupCheckpointTs(backup)
+		bt.doRefreshLogBackupCheckpointTs(ctx, backup)
 	}
 }
 
 // doRefreshLogBackupCheckpointTs gets log backup checkpoint ts from pd and updates log backup cr.
-func (bt *backupTracker) doRefreshLogBackupCheckpointTs(backup *v1alpha1.Backup) {
+func (bt *backupTracker) doRefreshLogBackupCheckpointTs(ctx context.Context, backup *v1alpha1.Backup) {
+	logger := log.FromContext(ctx)
 	ns := backup.Namespace
 	name := backup.Name
 	pc, ok := bt.pdcm.Get(pdm.PrimaryKey(backup.Namespace, backup.Spec.BR.Cluster))
 	if !ok {
-		klog.Errorf("get log backup %s/%s pd client error", ns, name)
+		logger.Error(nil, "get log backup pd client error", "namespace", ns, "backup", name)
 		return
 	}
 	// Note: `pc` doesn't require close, because it's a shared client.
 	etcdCli, err := pc.Underlay().GetPDEtcdClient()
 	if err != nil {
-		klog.Errorf("get log backup %s/%s pd etcd client error %v", ns, name, err)
+		logger.Error(err, "get log backup pd etcd client error", "namespace", ns, "backup", name)
 		return
 	}
 	defer etcdCli.Close()
 
 	key := path.Join(streamKeyPrefix, taskCheckpointPath, name)
-	klog.Infof("log backup %s/%s checkpointTS key %s", ns, name, key)
+	logger.Info("log backup checkpointTS key", "namespace", ns, "backup", name, "key", key)
 
 	kvs, err := etcdCli.Get(key, true)
 	if err != nil {
-		klog.Errorf("get log backup %s/%s checkpointTS error %v", ns, name, err)
+		logger.Error(err, "get log backup checkpointTS error", "namespace", ns, "backup", name)
 		return
 	}
 	if len(kvs) < 1 {
-		klog.Errorf("log backup %s/%s checkpointTS not found", ns, name)
+		logger.Error(nil, "log backup checkpointTS not found", "namespace", ns, "backup", name)
 		return
 	}
 	ckTS := strconv.FormatUint(binary.BigEndian.Uint64(kvs[0].Value), 10)
 
-	klog.Infof("update log backup %s/%s checkpointTS %s", ns, name, ckTS)
+	logger.Info("update log backup checkpointTS", "namespace", ns, "backup", name, "checkpointTS", ckTS)
 	updateStatus := &BackupUpdateStatus{
 		LogCheckpointTs: &ckTS,
 	}
-	err = bt.statusUpdater.Update(backup, nil, updateStatus)
+	err = bt.statusUpdater.Update(ctx, backup, nil, updateStatus)
 	if err != nil {
-		klog.Errorf("update log backup %s/%s checkpointTS %s failed %v", ns, name, ckTS, err)
+		logger.Error(err, "update log backup checkpointTS failed", "namespace", ns, "backup", name, "checkpointTS", ckTS)
 		return
 	}
 }
