@@ -17,6 +17,7 @@ OUTPUT_DIR = $(ROOT)/_output
 BIN_DIR = $(OUTPUT_DIR)/bin
 API_PATH = $(ROOT)/api
 PD_API_PATH = $(ROOT)/pkg/timanager/apis/pd
+VALIDATION_TEST_PATH = $(ROOT)/tests/validation
 GO_MODULE := github.com/pingcap/tidb-operator
 OVERLAY_PKG_DIR = $(ROOT)/pkg/overlay
 BOILERPLATE_FILE = $(ROOT)/hack/boilerplate/boilerplate.go.txt
@@ -81,6 +82,7 @@ overlaygen: bin/overlay-gen
 .PHONY: crd
 crd: bin/controller-gen
 	$(CONTROLLER_GEN) crd:generateEmbeddedObjectMeta=true output:crd:artifacts:config=$(ROOT)/manifests/crd paths=$(API_PATH)/...
+	$(CONTROLLER_GEN) crd:generateEmbeddedObjectMeta=true output:crd:artifacts:config=$(VALIDATION_TEST_PATH)/crd paths=$(API_PATH)/...
 
 # Deprecate this generator, rbac generator cannot well handle nonResourceURLs
 .PHONY: rbac
@@ -90,6 +92,7 @@ rbac: bin/controller-gen
 .PHONY: tidy
 tidy:
 	cd $(API_PATH) && go mod tidy
+	cd $(VALIDATION_TEST_PATH) && go mod tidy
 	go mod tidy
 
 gengo: GEN_DIR ?= ./...
@@ -123,7 +126,8 @@ lint-fix: bin/golangci-lint
 
 .PHONY: unit
 unit:
-	go test $$(go list -e ./... | grep -v cmd | grep -v tools | grep -v tests | grep -v third_party) \
+	cd $(VALIDATION_TEST_PATH) && go test ./...
+	go test $$(go list -e ./... | grep -v cmd | grep -v tools | grep -v tests/e2e | grep -v third_party) \
 		-cover -coverprofile=coverage.txt -covermode=atomic
 	sed -i.bak '/generated/d;/fake.go/d' coverage.txt && rm coverage.txt.bak
 
@@ -200,7 +204,6 @@ bin/kind:
 LICENSE_EYE = $(BIN_DIR)/license-eye
 bin/license-eye:
 	if [ ! -f $(LICENSE_EYE) ]; then $(ROOT)/hack/download.sh go_install $(LICENSE_EYE) github.com/apache/skywalking-eyes/cmd/license-eye v0.6.0; fi
-
 
 .PHONY: bin/ginkgo
 GINKGO = $(BIN_DIR)/ginkgo

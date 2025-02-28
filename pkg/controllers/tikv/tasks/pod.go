@@ -259,7 +259,6 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 					VolumeMounts: mounts,
 					Resources:    k8s.GetResourceRequirements(tikv.Spec.Resources),
 					Lifecycle: &corev1.Lifecycle{
-						// TODO: change to a real pre stop action
 						PreStop: &corev1.LifecycleHandler{
 							Exec: &corev1.ExecAction{
 								Command: []string{
@@ -288,6 +287,8 @@ func buildPrestopCheckScript(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV) str
 	sb := strings.Builder{}
 	sb.WriteString(v1alpha1.DirPathPrestop)
 	sb.WriteString("/prestop-checker")
+	sb.WriteString(" -mode ")
+	sb.WriteString(" tikv ")
 	sb.WriteString(" -pd ")
 	sb.WriteString(cluster.Status.PD)
 	sb.WriteString(" -tikv-status-addr ")

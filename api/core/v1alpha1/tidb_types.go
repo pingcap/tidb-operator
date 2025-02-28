@@ -60,10 +60,15 @@ type TiDBGroupList struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories=tc
-// +kubebuilder:resource:categories=tg
+// +kubebuilder:resource:categories=tc;group,shortName=dbg
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
-// +kubebuilder:printcolumn:name="Available",type=string,JSONPath=`.status.conditions[?(@.type=="Available")].status`
+// +kubebuilder:printcolumn:name="Desired",type=string,JSONPath=`.spec.replicas`
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.readyReplicas`
+// +kubebuilder:printcolumn:name="Updated",type=string,JSONPath=`.status.updatedReplicas`
+// +kubebuilder:printcolumn:name="UpdateRevision",type=string,JSONPath=`.status.updateRevision`
+// +kubebuilder:printcolumn:name="CurrentRevision",type=string,JSONPath=`.status.currentRevision`
+// +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // TiDBGroup defines a group of similar TiDB instances.
@@ -89,10 +94,10 @@ type TiDBList struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories=tc
-// +kubebuilder:resource:categories=tidb
+// +kubebuilder:resource:categories=tc;instance
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
-// +kubebuilder:printcolumn:name="Healthy",type=string,JSONPath=`.status.conditions[?(@.type=="Health")].status`
+// +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // TiDB defines a TiDB instance.
@@ -267,12 +272,14 @@ type TiDBGroupStatus struct {
 	GroupStatus  `json:",inline"`
 }
 
+// +kubebuilder:validation:XValidation:rule="(!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology) && has(self.topology))",fieldPath=".topology",message="topology can only be set when created"
 type TiDBSpec struct {
 	Cluster ClusterReference `json:"cluster"`
 
 	// Topology defines the topology domain of this TiDB instance.
 	// It will be translated into a node affnity config.
 	// Topology cannot be changed.
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="topology is immutable"
 	Topology Topology `json:"topology,omitempty"`
 
 	// Subdomain means the subdomain of the exported pd dns.

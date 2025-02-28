@@ -123,10 +123,10 @@ issues:
         - dupl
         - mnd
         - lll
-
-run:
-  timeout: 15m
-  skip-files:
+  exclude-files:
     - ".*/br/.*/_test.go"
     - ".*/br/.*/testutils/.*"
     - "tests/e2e/br/.*/*.go"
+
+run:
+  timeout: 15m

@@ -46,7 +46,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, ticdc *v1alpha1.TiCDC) error
 	}
 
 	c.Addr = getAddr(ticdc)
-	c.AdvertiseAddr = getAdvertiseAdd(ticdc)
+	c.AdvertiseAddr = getAdvertiseAddr(ticdc)
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
 		c.Security.CAPath = path.Join(v1alpha1.DirPathClusterTLSTiCDC, corev1.ServiceAccountRootCAKey)
@@ -88,7 +88,7 @@ func getAddr(ticdc *v1alpha1.TiCDC) string {
 	return fmt.Sprintf("[::]:%d", coreutil.TiCDCPort(ticdc))
 }
 
-func getAdvertiseAdd(ticdc *v1alpha1.TiCDC) string {
+func getAdvertiseAddr(ticdc *v1alpha1.TiCDC) string {
 	ns := ticdc.Namespace
 	if ns == "" {
 		ns = corev1.NamespaceDefault

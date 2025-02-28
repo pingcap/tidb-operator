@@ -140,14 +140,6 @@ func (f *Framework) MustCreatePD(ctx context.Context, ps ...data.GroupPatch[*run
 	return pdg
 }
 
-func (f *Framework) MustCreateTiKV(ctx context.Context, ps ...data.GroupPatch[*runtime.TiKVGroup]) *v1alpha1.TiKVGroup {
-	kvg := data.NewTiKVGroup(f.Namespace.Name, ps...)
-	ginkgo.By("Creating a tikv group")
-	f.Must(f.Client.Create(ctx, kvg))
-
-	return kvg
-}
-
 func (f *Framework) MustCreateTiDB(ctx context.Context, ps ...data.GroupPatch[*runtime.TiDBGroup]) *v1alpha1.TiDBGroup {
 	dbg := data.NewTiDBGroup(f.Namespace.Name, ps...)
 	ginkgo.By("Creating a tidb group")

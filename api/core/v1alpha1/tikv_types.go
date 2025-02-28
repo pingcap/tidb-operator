@@ -61,10 +61,15 @@ type TiKVGroupList struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories=tc
-// +kubebuilder:resource:categories=tg
+// +kubebuilder:resource:categories=tc;group,shortName=kvg
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
-// +kubebuilder:printcolumn:name="Available",type=string,JSONPath=`.status.conditions[?(@.type=="Available")].status`
+// +kubebuilder:printcolumn:name="Desired",type=string,JSONPath=`.spec.replicas`
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.readyReplicas`
+// +kubebuilder:printcolumn:name="Updated",type=string,JSONPath=`.status.updatedReplicas`
+// +kubebuilder:printcolumn:name="UpdateRevision",type=string,JSONPath=`.status.updateRevision`
+// +kubebuilder:printcolumn:name="CurrentRevision",type=string,JSONPath=`.status.currentRevision`
+// +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // TiKVGroup defines a group of similar TiKV instances
@@ -90,12 +95,12 @@ type TiKVList struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories=tc
-// +kubebuilder:resource:categories=tikv
+// +kubebuilder:resource:categories=tc;instance
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="StoreID",type=string,JSONPath=`.status.id`
 // +kubebuilder:printcolumn:name="StoreState",type=string,JSONPath=`.status.state`
-// +kubebuilder:printcolumn:name="Healthy",type=string,JSONPath=`.status.conditions[?(@.type=="Health")].status`
+// +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // TiKV defines a TiKV instance
@@ -174,12 +179,14 @@ type TiKVGroupStatus struct {
 	GroupStatus  `json:",inline"`
 }
 
+// +kubebuilder:validation:XValidation:rule="(!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology) && has(self.topology))",fieldPath=".topology",message="topology can only be set when created"
 type TiKVSpec struct {
 	// Cluster is a reference of tidb cluster
 	Cluster ClusterReference `json:"cluster"`
 	// Topology defines the topology domain of this pd instance
 	// It will be translated into a node affinity config
 	// Topology cannot be changed
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="topology is immutable"
 	Topology Topology `json:"topology,omitempty"`
 	// Subdomain means the subdomain of the exported tikv dns.
 	// A same tikv group will use a same subdomain

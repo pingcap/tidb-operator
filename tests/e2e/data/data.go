@@ -30,6 +30,7 @@ const (
 	defaultTiDBGroupName    = "dbg"
 	defaultTiKVGroupName    = "kvg"
 	defaultTiFlashGroupName = "fg"
+	defaultTiCDCGroupName   = "cg"
 
 	defaultVersion = "v8.1.0"
 

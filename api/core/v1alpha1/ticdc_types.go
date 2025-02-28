@@ -42,10 +42,14 @@ type TiCDCGroupList struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories=tc
-// +kubebuilder:resource:categories=tg
+// +kubebuilder:resource:categories=tc;group,shortName=cg
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
-// +kubebuilder:printcolumn:name="Available",type=string,JSONPath=`.status.conditions[?(@.type=="Available")].status`
+// +kubebuilder:printcolumn:name="Desired",type=string,JSONPath=`.spec.replicas`
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.readyReplicas`
+// +kubebuilder:printcolumn:name="Updated",type=string,JSONPath=`.status.updatedReplicas`
+// +kubebuilder:printcolumn:name="UpdateRevision",type=string,JSONPath=`.status.updateRevision`
+// +kubebuilder:printcolumn:name="CurrentRevision",type=string,JSONPath=`.status.currentRevision`
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // TiCDCGroup defines a group of similar TiCDC instances
@@ -71,10 +75,10 @@ type TiCDCList struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories=tc
-// +kubebuilder:resource:categories=peer
+// +kubebuilder:resource:categories=tc;instance
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
-// +kubebuilder:printcolumn:name="Healthy",type=string,JSONPath=`.status.conditions[?(@.type=="Health")].status`
+// +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // TiCDC defines a TiCDC instance
@@ -126,11 +130,14 @@ type TiCDCTemplateSpec struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Overlay *Overlay `json:"overlay,omitempty"`
 
-	// GracefulShutdownTimeout is the timeout of gracefully shutdown a TiCDC pod
-	// when scaling in or rolling update.
-	// Encoded in the format of Go Duration.
-	// Defaults to 10m
-	GracefulShutdownTimeout *metav1.Duration `json:"gracefulShutdownTimeout,omitempty"`
+	// PreStop defines preStop config
+	PreStop *TiCDCPreStop `json:"preStop,omitempty"`
+}
+
+type TiCDCPreStop struct {
+	// Image of pre stop checker
+	// Default is pingcap/prestop-checker:latest
+	Image *string `json:"image,omitempty"`
 }
 
 type TiCDCServer struct {
@@ -149,6 +156,7 @@ type TiCDCGroupStatus struct {
 }
 
 // TiCDCSpec describes the common attributes of a TiCDC instance
+// +kubebuilder:validation:XValidation:rule="(!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology) && has(self.topology))",fieldPath=".topology",message="topology can only be set when created"
 type TiCDCSpec struct {
 	// Cluster is a reference of tidb cluster
 	Cluster ClusterReference `json:"cluster"`
@@ -156,6 +164,7 @@ type TiCDCSpec struct {
 	// Topology defines the topology domain of this TiCDC instance
 	// It will be translated into a node affinity config
 	// Topology cannot be changed
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="topology is immutable"
 	Topology Topology `json:"topology,omitempty"`
 
 	// Subdomain means the subdomain of the exported TiCDC DNS.
@@ -174,4 +183,6 @@ type TiCDCStatus struct {
 
 	// should we need to save IsOwner in status?
 	// but this value may be changed when scaling in or rolling update
+	// TODO(liubo02): change to use condition
+	IsOwner bool `json:"isOwner"`
 }
