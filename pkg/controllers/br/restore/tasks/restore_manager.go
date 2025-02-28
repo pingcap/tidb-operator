@@ -25,7 +25,7 @@ import (
 
 func TaskRestoreManager(state *ReconcileContext, c client.Client, recorder record.EventRecorder) task.Task {
 	return task.NameTaskFunc("RestoreManager", func(ctx context.Context) task.Result {
-		err := state.RestoreManager.Sync(state.Restore())
+		err := state.RestoreManager.Sync(ctx, state.Restore())
 		if err != nil {
 			return task.Fail().With("sync restore manager failed: %s", err)
 		}

@@ -28,7 +28,7 @@ func TaskBackupCleaner(state *ReconcileContext, c client.Client, recorder record
 		// because a finalizer is installed on the backup on creation, when backup is deleted,
 		// backup.DeletionTimestamp will be set, controller will be informed with an onUpdate event,
 		// this is the moment that we can do clean up work.
-		if err := state.BackupCleaner.Clean(state.Backup()); err != nil {
+		if err := state.BackupCleaner.Clean(ctx, state.Backup()); err != nil {
 			return task.Fail().With("clean backup failed: %s", err)
 		}
 

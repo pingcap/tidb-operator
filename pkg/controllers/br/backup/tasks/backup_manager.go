@@ -25,7 +25,7 @@ import (
 
 func TaskBackupManager(state *ReconcileContext, c client.Client, recorder record.EventRecorder) task.Task {
 	return task.NameTaskFunc("BackupManager", func(ctx context.Context) task.Result {
-		err := state.BackupManager.Sync(state.Backup())
+		err := state.BackupManager.Sync(ctx, state.Backup())
 		if err != nil {
 			return task.Fail().With("sync backup manager failed: %s", err)
 		}

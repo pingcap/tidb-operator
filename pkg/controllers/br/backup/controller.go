@@ -25,7 +25,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -83,8 +82,7 @@ func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, conf 
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	uuid := uuid.NewUUID()
-	logger := log.FromContext(ctx).WithValues("backup", req.NamespacedName, "uuid", uuid)
+	logger := log.FromContext(ctx).WithValues("backup", req.NamespacedName)
 	reporter := task.NewTableTaskReporter()
 
 	startTime := time.Now()
@@ -171,7 +169,7 @@ func (r *Reconciler) resolveBackupFromJob(
 		Namespace: namespace,
 	}, backup); err != nil {
 		if apierrors.IsNotFound(err) {
-			r.Logger.Info("backup not found by Job, skip reconcile", "namespace", job.Namespace, "job", job.Name)
+			logger.Info("backup not found by Job, skip reconcile", "namespace", job.Namespace, "job", job.Name)
 			return nil
 		}
 		return err
@@ -180,7 +178,7 @@ func (r *Reconciler) resolveBackupFromJob(
 		return fmt.Errorf("backup %s/%s is not the owner of job %s/%s", namespace, owner.Name, namespace, job.Name)
 	}
 
-	r.Logger.Info("queue add", "reason", "k8s job change", "namespace", backup.Namespace, "backup", backup.Name)
+	logger.Info("queue add", "reason", "k8s job change", "namespace", backup.Namespace, "backup", backup.Name)
 	queue.Add(reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      backup.Name,

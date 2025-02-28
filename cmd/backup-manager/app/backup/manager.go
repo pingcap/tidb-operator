@@ -71,7 +71,7 @@ func (bm *Manager) ProcessBackup() error {
 	if err != nil {
 		errs = append(errs, err)
 		klog.Errorf("can't find cluster %s backup %s CRD object, err: %v", bm, bm.ResourceName, err)
-		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		uerr := bm.StatusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Condition: metav1.Condition{
 				Type:    string(v1alpha1.BackupFailed),
 				Status:  metav1.ConditionTrue,
@@ -94,7 +94,7 @@ func (bm *Manager) ProcessBackup() error {
 	// we will clean backup data before run br command
 	if backup.Spec.Mode == v1alpha1.BackupModeSnapshot && (backup.Status.Phase != v1alpha1.BackupScheduled || v1alpha1.IsBackupRestart(backup)) {
 		klog.Infof("snapshot backup %s was restarted, status is %s", bm, backup.Status.Phase)
-		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		uerr := bm.StatusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Condition: metav1.Condition{
 				Type:   string(v1alpha1.BackupRestart),
 				Status: metav1.ConditionTrue,
@@ -126,7 +126,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup) e
 	backupFullPath, err := util.GetStoragePath(&backup.Spec.StorageProvider)
 	if err != nil {
 		errs = append(errs, err)
-		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		uerr := bm.StatusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Condition: metav1.Condition{
 				Type:    string(v1alpha1.BackupFailed),
 				Status:  metav1.ConditionTrue,
@@ -141,7 +141,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup) e
 	updatePathStatus := &backupMgr.BackupUpdateStatus{
 		BackupPath: &backupFullPath,
 	}
-	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	if err := bm.StatusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 		Condition: metav1.Condition{
 			Type:   string(v1alpha1.BackupPrepare),
 			Status: metav1.ConditionTrue,
@@ -159,7 +159,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup) e
 	}
 
 	// change Prepare to Running before real backup process start
-	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	if err := bm.StatusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 		Condition: metav1.Condition{
 			Type:   string(v1alpha1.BackupRunning),
 			Status: metav1.ConditionTrue,
@@ -174,7 +174,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup) e
 		errs = append(errs, backupErr)
 		klog.Errorf("backup cluster %s data failed, err: %s", bm, backupErr)
 		failedCondition := v1alpha1.BackupFailed
-		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		uerr := bm.StatusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Condition: metav1.Condition{
 				Type:    string(failedCondition),
 				Status:  metav1.ConditionTrue,
@@ -195,7 +195,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup) e
 		if err != nil {
 			errs = append(errs, err)
 			klog.Errorf("Get backup metadata for backup files in %s of cluster %s failed, err: %s", backupFullPath, bm, err)
-			uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			uerr := bm.StatusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 				Condition: metav1.Condition{
 					Type:    string(v1alpha1.BackupFailed),
 					Status:  metav1.ConditionTrue,
@@ -222,7 +222,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup) e
 		}
 	}
 
-	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	return bm.StatusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 		Condition: metav1.Condition{
 			Type:   string(completeCondition),
 			Status: metav1.ConditionTrue,
@@ -238,7 +238,7 @@ func (bm *Manager) performLogBackup(ctx context.Context, backup *v1alpha1.Backup
 		resultStatus *backupMgr.BackupUpdateStatus
 	)
 
-	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	if err := bm.StatusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 		Command: v1alpha1.LogSubCommandType(bm.SubCommand),
 		Condition: metav1.Condition{
 			Type:   string(v1alpha1.BackupPrepare),
@@ -269,7 +269,7 @@ func (bm *Manager) performLogBackup(ctx context.Context, backup *v1alpha1.Backup
 		errs := make([]error, 0)
 		errs = append(errs, err)
 		// update failed status
-		uerr := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		uerr := bm.StatusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Command: v1alpha1.LogSubCommandType(bm.SubCommand),
 			Condition: metav1.Condition{
 				Type:    string(v1alpha1.BackupFailed),
@@ -282,7 +282,7 @@ func (bm *Manager) performLogBackup(ctx context.Context, backup *v1alpha1.Backup
 		return errorutils.NewAggregate(errs)
 	}
 
-	return bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	return bm.StatusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 		Command: v1alpha1.LogSubCommandType(bm.SubCommand),
 		Condition: metav1.Condition{
 			Type:   string(v1alpha1.BackupComplete),
@@ -306,7 +306,7 @@ func (bm *Manager) startLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 	}
 
 	// change Prepare to Running before real backup process start
-	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	if err := bm.StatusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 		Command: v1alpha1.LogStartCommand,
 		Condition: metav1.Condition{
 			Type:   string(v1alpha1.BackupRunning),
@@ -349,7 +349,7 @@ func (bm *Manager) resumeLogBackup(ctx context.Context, backup *v1alpha1.Backup)
 	started := time.Now()
 
 	// change Prepare to Running before real backup process start
-	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	if err := bm.StatusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 		Command: v1alpha1.LogResumeCommand,
 		Condition: metav1.Condition{
 			Type:   string(v1alpha1.BackupRunning),
@@ -381,7 +381,7 @@ func (bm *Manager) stopLogBackup(ctx context.Context, backup *v1alpha1.Backup) (
 	started := time.Now()
 
 	// change Prepare to Running before real backup process start
-	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	if err := bm.StatusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 		Command: v1alpha1.LogStopCommand,
 		Condition: metav1.Condition{
 			Type:   string(v1alpha1.BackupRunning),
@@ -414,7 +414,7 @@ func (bm *Manager) pauseLogBackup(ctx context.Context, backup *v1alpha1.Backup) 
 	started := time.Now()
 
 	// change Prepare to Running before real backup process start
-	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	if err := bm.StatusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 		Command: v1alpha1.LogPauseCommand,
 		Condition: metav1.Condition{
 			Type:   string(v1alpha1.BackupRunning),
@@ -447,7 +447,7 @@ func (bm *Manager) truncateLogBackup(ctx context.Context, backup *v1alpha1.Backu
 	started := time.Now()
 
 	// change Prepare to Running before real backup process start
-	if err := bm.StatusUpdater.Update(backup, &v1alpha1.BackupCondition{
+	if err := bm.StatusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 		Command: v1alpha1.LogTruncateCommand,
 		Condition: metav1.Condition{
 			Type:   string(v1alpha1.BackupRunning),

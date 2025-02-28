@@ -63,7 +63,7 @@ func (rm *Manager) ProcessRestore() error {
 	if err != nil {
 		errs = append(errs, err)
 		klog.Errorf("can't find cluster %s restore %s CRD object, err: %v", rm, rm.ResourceName, err)
-		uerr := rm.StatusUpdater.Update(restore, &metav1.Condition{
+		uerr := rm.StatusUpdater.Update(ctx, restore, &metav1.Condition{
 			Type:    string(v1alpha1.RestoreFailed),
 			Status:  metav1.ConditionTrue,
 			Reason:  "GetRestoreCRFailed",
@@ -89,7 +89,7 @@ func (rm *Manager) ProcessRestore() error {
 func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore) error {
 	started := time.Now()
 
-	err := rm.StatusUpdater.Update(restore, &metav1.Condition{
+	err := rm.StatusUpdater.Update(ctx, restore, &metav1.Condition{
 		Type:   string(v1alpha1.RestoreRunning),
 		Status: metav1.ConditionTrue,
 	}, nil)
@@ -102,7 +102,7 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 	if restoreErr != nil {
 		errs = append(errs, restoreErr)
 		klog.Errorf("restore cluster %s from %s failed, err: %s", rm, restore.Spec.Type, restoreErr)
-		uerr := rm.StatusUpdater.Update(restore, &metav1.Condition{
+		uerr := rm.StatusUpdater.Update(ctx, restore, &metav1.Condition{
 			Type:    string(v1alpha1.RestoreFailed),
 			Status:  metav1.ConditionTrue,
 			Reason:  "RestoreDataFromRemoteFailed",
@@ -124,7 +124,7 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 		if err != nil {
 			errs = append(errs, err)
 			klog.Errorf("get cluster %s commitTs failed, err: %s", rm, err)
-			uerr := rm.StatusUpdater.Update(restore, &metav1.Condition{
+			uerr := rm.StatusUpdater.Update(ctx, restore, &metav1.Condition{
 				Type:    string(v1alpha1.RestoreFailed),
 				Status:  metav1.ConditionTrue,
 				Reason:  "GetCommitTsFailed",
@@ -148,7 +148,7 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 	if allFinished {
 		updateStatus.TimeCompleted = &metav1.Time{Time: time.Now()}
 	}
-	return rm.StatusUpdater.Update(restore, &metav1.Condition{
+	return rm.StatusUpdater.Update(ctx, restore, &metav1.Condition{
 		Type:   string(restoreType),
 		Status: metav1.ConditionTrue,
 	}, updateStatus)

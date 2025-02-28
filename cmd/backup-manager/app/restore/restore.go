@@ -156,9 +156,9 @@ func (ro *Options) restoreData(
 			errMsg += line
 		} else {
 			if !useProgressFile {
-				ro.updateProgressAccordingToBrLog(line, restore, statusUpdater)
+				ro.updateProgressAccordingToBrLog(ctx, line, restore, statusUpdater)
 			}
-			ro.updateResolvedTSForCSB(line, restore, progressStep, statusUpdater)
+			ro.updateResolvedTSForCSB(ctx, line, restore, progressStep, statusUpdater)
 		}
 		klog.Info(strings.Replace(line, "\n", "", -1))
 		if err != nil {
@@ -193,7 +193,7 @@ func (ro *Options) restoreData(
 		progressWg.Wait()
 
 		progress := 100
-		if err := statusUpdater.Update(restore, nil, &restoreMgr.RestoreUpdateStatus{
+		if err := statusUpdater.Update(ctx, restore, nil, &restoreMgr.RestoreUpdateStatus{
 			ProgressStep:       &progressStep,
 			Progress:           &progress,
 			ProgressUpdateTime: &metav1.Time{Time: time.Now()},
@@ -258,7 +258,7 @@ func constructBROptions(restore *v1alpha1.Restore) ([]string, error) {
 }
 
 // updateProgressAccordingToBrLog update restore progress according to the br log.
-func (ro *Options) updateProgressAccordingToBrLog(line string, restore *v1alpha1.Restore, statusUpdater restoreMgr.RestoreConditionUpdaterInterface) {
+func (ro *Options) updateProgressAccordingToBrLog(ctx context.Context, line string, restore *v1alpha1.Restore, statusUpdater restoreMgr.RestoreConditionUpdaterInterface) {
 	step, progress := backupUtil.ParseRestoreProgress(line)
 	if step != "" {
 		fvalue, progressUpdateErr := strconv.ParseFloat(progress, 64)
@@ -267,7 +267,7 @@ func (ro *Options) updateProgressAccordingToBrLog(line string, restore *v1alpha1
 			fvalue = 0
 		}
 		klog.Infof("update restore %s step %s progress %s float value %f", ro, step, progress, fvalue)
-		progressUpdateErr = statusUpdater.Update(restore, nil, &restoreMgr.RestoreUpdateStatus{
+		progressUpdateErr = statusUpdater.Update(ctx, restore, nil, &restoreMgr.RestoreUpdateStatus{
 			ProgressStep:       &step,
 			Progress:           ptr.To(int(fvalue)),
 			ProgressUpdateTime: &metav1.Time{Time: time.Now()},
@@ -279,6 +279,7 @@ func (ro *Options) updateProgressAccordingToBrLog(line string, restore *v1alpha1
 }
 
 func (ro *Options) updateResolvedTSForCSB(
+	ctx context.Context,
 	line string,
 	restore *v1alpha1.Restore,
 	progressStep string,
@@ -293,7 +294,7 @@ func (ro *Options) updateResolvedTSForCSB(
 		klog.Infof("%s resolved_ts: %s", successTag, ts)
 
 		progress := 100
-		if err := statusUpdater.Update(restore, nil, &restoreMgr.RestoreUpdateStatus{
+		if err := statusUpdater.Update(ctx, restore, nil, &restoreMgr.RestoreUpdateStatus{
 			CommitTs:           &ts,
 			ProgressStep:       &progressStep,
 			Progress:           &progress,
@@ -313,6 +314,7 @@ func (ro *Options) updateProgressFromFile(
 ) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
+	ctx := context.Background()
 
 	for {
 		select {
@@ -334,7 +336,7 @@ func (ro *Options) updateProgressFromFile(
 				klog.Warningf("Failed to parse progress %s, err: %v", string(data), err)
 				continue
 			}
-			if err := statusUpdater.Update(restore, nil, &restoreMgr.RestoreUpdateStatus{
+			if err := statusUpdater.Update(ctx, restore, nil, &restoreMgr.RestoreUpdateStatus{
 				ProgressStep:       &progressStep,
 				Progress:           ptr.To(int(progress)),
 				ProgressUpdateTime: &metav1.Time{Time: time.Now()},

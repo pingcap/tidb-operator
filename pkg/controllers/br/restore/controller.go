@@ -27,11 +27,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -75,7 +75,7 @@ func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, conf 
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := r.Logger.WithValues("restore", req.NamespacedName)
+	logger := log.FromContext(ctx).WithValues("restore", req.NamespacedName)
 	reporter := task.NewTableTaskReporter()
 
 	startTime := time.Now()
@@ -139,7 +139,8 @@ func (r *Reconciler) JobEventHandler() handler.TypedEventHandler[client.Object, 
 }
 
 func (r *Reconciler) resolveRestoreFromJob(ctx context.Context, namespace string, job *batchv1.Job, queue workqueue.TypedRateLimitingInterface[reconcile.Request]) error {
-	klog.Infof("job event handler: %s/%s", job.Namespace, job.Name)
+	logger := log.FromContext(ctx)
+	logger.Info("job event handler", "namespace", job.Namespace, "job", job.Name)
 
 	owner := metav1.GetControllerOf(job)
 	if owner == nil {
@@ -156,7 +157,7 @@ func (r *Reconciler) resolveRestoreFromJob(ctx context.Context, namespace string
 		Namespace: namespace,
 	}, restore); err != nil {
 		if apierrors.IsNotFound(err) {
-			r.Logger.Info("restore not found by Job, skip reconcile", "namespace", job.Namespace, "job", job.Name)
+			logger.Info("restore not found by Job, skip reconcile", "namespace", job.Namespace, "job", job.Name)
 			return nil
 		}
 		return err
@@ -165,7 +166,7 @@ func (r *Reconciler) resolveRestoreFromJob(ctx context.Context, namespace string
 		return fmt.Errorf("restore %s/%s is not the owner of job %s/%s", namespace, owner.Name, namespace, job.Name)
 	}
 
-	r.Logger.Info("queue add", "reason", "k8s job change", "namespace", restore.Namespace, "restore", restore.Name)
+	logger.Info("queue add", "reason", "k8s job change", "namespace", restore.Namespace, "restore", restore.Name)
 	queue.Add(reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      restore.Name,
