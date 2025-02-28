@@ -169,7 +169,7 @@ func updateLogBackupStatus(backup *v1alpha1.Backup, condition *v1alpha1.BackupCo
 	// update whole backup status
 	isWholeStatusUpdate := updateWholeLogBackupStatus(backup, condition, newStatus)
 
-	// TODO(ideascf): why???
+	// TODO(ideascf): should do this?
 	// // DeletionTimestamp is not nil when delete and clean backup, no subcommand status needs to be updated
 	// // LogCheckpointTs is not nil when just update checkpoint ts, no subcommand status needs to be updated
 	// if backup.DeletionTimestamp != nil || (newStatus != nil && newStatus.LogCheckpointTs != nil) {

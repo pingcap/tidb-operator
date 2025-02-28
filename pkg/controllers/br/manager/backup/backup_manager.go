@@ -39,7 +39,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/constants"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
 	backuputil "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
+	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
 var (
@@ -255,8 +257,7 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 			},
 		}, nil)
 
-		// TODO(ideascf): Use IgnoreErrorf
-		return fmt.Errorf("invalid backup spec %s/%s cause %s", ns, name, err.Error())
+		return common.IgnoreErrorf("invalid backup spec %s/%s cause %s", ns, name, err.Error())
 	}
 	return nil
 }
@@ -282,8 +283,7 @@ func (bm *backupManager) waitPreTaskDone(backup *v1alpha1.Backup) error {
 	if shouldLogBackupCommandRequeue(backup) {
 		logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 		klog.Infof("log backup %s/%s subcommand %s should wait log backup start complete, will requeue.", ns, name, logBackupSubcommand)
-		// TODO(ideascf): use controller.RequeueErrorf
-		return fmt.Errorf("log backup %s/%s command %s should wait log backup start complete", ns, name, logBackupSubcommand)
+		return common.RequeueErrorf(task.DefaultRequeueAfter, "log backup %s/%s command %s should wait log backup start complete", ns, name, logBackupSubcommand)
 	}
 
 	// log backup should wait old job done
@@ -323,8 +323,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 						Message: err.Error(),
 					},
 				}, nil)
-				// TODO(ideascf): use controller.IgnoreErrorf
-				return nil, nil, "", fmt.Errorf("%s, reason is %s", err.Error(), reason)
+				return nil, nil, "", common.IgnoreErrorf("%s, reason is %s", err.Error(), reason)
 			} else {
 				_ = bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 					Command: logBackupSubcommand,
@@ -636,8 +635,7 @@ func shouldLogBackupCommandRequeue(backup *v1alpha1.Backup) bool {
 // waitOldBackupJobDone wait old backup job done
 func waitOldBackupJobDone(ns, name, backupJobName string, bm *backupManager, backup *v1alpha1.Backup, oldJob *batchv1.Job) error {
 	if oldJob.DeletionTimestamp != nil {
-		// TODO(ideascf): use controller.RequeueErrorf
-		return fmt.Errorf("backup %s/%s job %s is being deleted", ns, name, backupJobName)
+		return common.RequeueErrorf(task.DefaultRequeueAfter, "backup %s/%s job %s is being deleted", ns, name, backupJobName)
 	}
 	finished := false
 	for _, c := range oldJob.Status.Conditions {
@@ -653,9 +651,7 @@ func waitOldBackupJobDone(ns, name, backupJobName string, bm *backupManager, bac
 		}
 	}
 
-	// job running no need to requeue, because delete job will call update and it will requeue
-	// TODO(ideascf): use controller.IgnoreErrorf
-	return fmt.Errorf("backup %s/%s job %s is running, will be ignored", ns, name, backupJobName)
+	return common.RequeueErrorf(task.DefaultRequeueAfter, "backup %s/%s job %s is running, will be ignored", ns, name, backupJobName)
 }
 
 var _ BackupManager = &backupManager{}

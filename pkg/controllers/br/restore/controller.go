@@ -96,6 +96,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		if errors.As(err, &requeueErr) {
 			return ctrl.Result{RequeueAfter: requeueErr.Duration}, nil
 		}
+		if common.IsIgnoreError(err) {
+			logger.Info("ignore restore", "namespace", restore.Namespace, "restore", restore.Name, "reason", err)
+			return ctrl.Result{}, nil
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -165,9 +169,3 @@ func (r *Reconciler) resolveRestoreFromJob(ctx context.Context, namespace string
 	})
 	return nil
 }
-
-// TODO(ideascf):
-// metrics?
-// IgnoredError?
-// RateLimiter?
-// webhook to check invalid, completed, failed?

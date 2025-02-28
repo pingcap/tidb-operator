@@ -104,6 +104,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			logger.Info("requeue backup", "namespace", backup.Namespace, "backup", backup.Name, "duration", requeueErr.Duration)
 			return ctrl.Result{RequeueAfter: requeueErr.Duration}, nil
 		}
+		if common.IsIgnoreError(err) {
+			logger.Info("ignore backup", "namespace", backup.Namespace, "backup", backup.Name, "reason", err)
+			return ctrl.Result{}, nil
+		}
 		return ctrl.Result{}, err
 	}
 

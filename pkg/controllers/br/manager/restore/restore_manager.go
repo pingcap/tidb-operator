@@ -36,6 +36,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/constants"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
 	backuputil "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
+	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 )
 
 const (
@@ -115,8 +116,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 			Message: err.Error(),
 		}, nil)
 
-		// TODO(ideascf): use controller.IgnoreErrorf
-		return fmt.Errorf("invalid restore spec %s/%s", ns, name)
+		return common.IgnoreErrorf("invalid restore spec %s/%s", ns, name)
 	}
 
 	if v1alpha1.IsRestoreFailed(restore) {
