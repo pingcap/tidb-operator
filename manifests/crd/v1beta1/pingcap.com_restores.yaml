@@ -1021,6 +1021,9 @@ spec:
                 secretName:
                   type: string
               type: object
+            backoffLimit:
+              format: int32
+              type: integer
             backupType:
               type: string
             br:
