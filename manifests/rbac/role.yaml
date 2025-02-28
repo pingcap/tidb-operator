@@ -6,6 +6,8 @@ metadata:
 rules:
 - nonResourceURLs:
   - /metrics
+  resources:
+  - ""
   verbs:
   - get
 - apiGroups:
@@ -20,6 +22,41 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - br.pingcap.com
+  resources:
+  - backup
+  - backupschedules
+  - compactbackup
+  - restore
+  verbs:
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - br.pingcap.com
+  resources:
+  - backup/status
+  - backupschedules/status
+  - compactbackup/status
+  - restore/status
+  verbs:
+  - get
+  - patch
+  - update
 - apiGroups:
   - coordination.k8s.io
   resources:
@@ -57,18 +94,6 @@ rules:
   verbs:
   - get
   - list
-  - watch
-- apiGroups:
-  - "batch"
-  resources:
-  - jobs
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
   - watch
 - apiGroups:
   - core.pingcap.com
@@ -130,19 +155,6 @@ rules:
   - tidbs/status
   - tiflashes/status
   - tikvs/status
-  verbs:
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - br.pingcap.com
-  resources:
-  - backups
-  - backups/status
-  - restores
-  - restores/status
   verbs:
   - get
   - list

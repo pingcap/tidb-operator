@@ -18,14 +18,15 @@
 //
 // +kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;watch;create;update;patch;delete
 //
-// +kubebuilder:rbac:groups=br,resources=pods,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=br,resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=br,resources=persistentvolumes,verbs=get;list;watch
-// +kubebuilder:rbac:groups=br,resources=services,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=br,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=br,resources=events,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=br,resources=secrets,verbs=get;list;watch
-// +kubebuilder:rbac:groups=br,resources=nodes,verbs=get;list;watch
+// +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=persistentvolumes,verbs=get;list;watch
+// +kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=events,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch
+// +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch
+// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 //
 // +kubebuilder:rbac:groups=br.pingcap.com,resources=backup,verbs=get;list;watch;update
 // +kubebuilder:rbac:groups=br.pingcap.com,resources=backup/status,verbs=get;update;patch
