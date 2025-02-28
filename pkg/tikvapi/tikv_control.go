@@ -49,20 +49,27 @@ func (tc *defaultTiKVControl) GetTiKVPodClient(namespace string, tcName string, 
 
 	var tlsConfig *tls.Config
 	var err error
-	var scheme = "http"
+	var configOfSchema = func(scheme string) TiKVClientOpts {
+		return TiKVClientOpts{
+			HTTPEndpoint:      TiKVPodClientURL(namespace, tcName, podName, scheme, clusterDomain),
+			GRPCEndpoint:      TiKVGRPCClientURL(namespace, tcName, podName, scheme, clusterDomain),
+			Timeout:           DefaultTimeout,
+			TLSConfig:         tlsConfig,
+			DisableKeepAlives: true,
+		}
+	}
 
 	if tlsEnabled {
-		scheme = "https"
 		tlsConfig, err = pdapi.GetTLSConfig(tc.secretLister, pdapi.Namespace(namespace), util.ClusterClientTLSSecretName(tcName))
 		if err != nil {
 			klog.Errorf("Unable to get tls config for TiKV cluster %q, tikv client may not work: %v", tcName, err)
-			return NewTiKVClient(TiKVPodClientURL(namespace, tcName, podName, scheme, clusterDomain), DefaultTimeout, tlsConfig, true)
+			return NewTiKVClient(configOfSchema("https"))
 		}
 
-		return NewTiKVClient(TiKVPodClientURL(namespace, tcName, podName, scheme, clusterDomain), DefaultTimeout, tlsConfig, true)
+		return NewTiKVClient(configOfSchema("https"))
 	}
 
-	return NewTiKVClient(TiKVPodClientURL(namespace, tcName, podName, scheme, clusterDomain), DefaultTimeout, tlsConfig, true)
+	return NewTiKVClient(configOfSchema("http"))
 }
 
 func tikvPodClientKey(schema, namespace, clusterName, podName string) string {
@@ -71,10 +78,23 @@ func tikvPodClientKey(schema, namespace, clusterName, podName string) string {
 
 // TiKVPodClientURL builds the url of tikv pod client
 func TiKVPodClientURL(namespace, clusterName, podName, scheme, clusterDomain string) string {
+	return attachPort(tiKVBaseURL(namespace, clusterName, podName, scheme, clusterDomain), v1alpha1.DefaultTiKVStatusPort)
+}
+
+// TiKVGRPCURL builds the url of tikv grpc client
+func TiKVGRPCClientURL(namespace, clusterName, podName, scheme, clusterDomain string) string {
+	return attachPort(tiKVBaseURL(namespace, clusterName, podName, scheme, clusterDomain), v1alpha1.DefaultTiKVServerPort)
+}
+
+func tiKVBaseURL(namespace, clusterName, podName, scheme, clusterDomain string) string {
 	if clusterDomain != "" {
-		return fmt.Sprintf("%s://%s.%s-tikv-peer.%s.svc.%s:%d", scheme, podName, clusterName, namespace, clusterDomain, v1alpha1.DefaultTiKVStatusPort)
+		return fmt.Sprintf("%s://%s.%s-tikv-peer.%s.svc.%s", scheme, podName, clusterName, namespace, clusterDomain)
 	}
-	return fmt.Sprintf("%s://%s.%s-tikv-peer.%s:%d", scheme, podName, clusterName, namespace, v1alpha1.DefaultTiKVStatusPort)
+	return fmt.Sprintf("%s://%s.%s-tikv-peer.%s", scheme, podName, clusterName, namespace)
+}
+
+func attachPort(path string, port int32) string {
+	return fmt.Sprintf("%s:%d", path, port)
 }
 
 // FakeTiKVControl implements a fake version of TiKVControlInterface.
