@@ -119,9 +119,12 @@ func (bm *backupScheduleManager) createCompact(bs *v1alpha1.BackupSchedule, maxE
 	}
 
 	switch {
+	// If the compact haven't catch up lastBackup, compact until reach lastBackup
 	case bs.Status.LastBackupTime != nil && !endTs.After(bs.Status.LastBackupTime.Time):
+	// If the new progress is larger than span, compact
 	case endTs.After(startTs.Add(span)):
-	case nowFn().After(bs.Status.LastCompactExecutionTs.Time.Add(span)):
+	// routinely compact in case log backup got stuck
+	case nowFn().Sub(startTs) > span:
 	default:
 		return nil
 	}
