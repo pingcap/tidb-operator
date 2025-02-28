@@ -23,7 +23,7 @@ import (
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/tests/e2e/utils/k8s"
+	"github.com/pingcap/tidb-operator/pkg/utils/datacontainer"
 )
 
 // Job is the interface for a job. for example, backup, restore, etc.
@@ -101,7 +101,7 @@ func (b *Backup) NeedRemoveFinalizer() bool {
 }
 
 func isBackupDeletionCandidate(backup *v1alpha1.Backup) bool {
-	return backup.DeletionTimestamp != nil && k8s.ContainsString(backup.Finalizers, metav1alpha1.Finalizer, nil)
+	return backup.DeletionTimestamp != nil && datacontainer.ContainsString(backup.Finalizers, metav1alpha1.Finalizer, nil)
 }
 
 // TODO(ideascf): move this to pkg/utils/k8s
