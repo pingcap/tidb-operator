@@ -14,13 +14,15 @@
 package tikvapi
 
 import (
+	"context"
 	"fmt"
 )
 
 type ActionType string
 
 const (
-	GetLeaderCountActionType ActionType = "GetLeaderCount"
+	GetLeaderCountActionType      ActionType = "GetLeaderCount"
+	FlushLogBackupTasksActionType ActionType = "FlushLogBackupTasks"
 )
 
 type NotFoundReaction struct {
@@ -71,4 +73,11 @@ func (c *FakeTiKVClient) GetLeaderCount() (int, error) {
 		return 0, err
 	}
 	return result.(int), nil
+}
+
+// FlushLogBackupTasks implements TiKVClient.
+func (c *FakeTiKVClient) FlushLogBackupTasks(ctx context.Context) error {
+	action := &Action{}
+	_, err := c.fakeAPI(FlushLogBackupTasksActionType, action)
+	return err
 }
