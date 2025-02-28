@@ -294,6 +294,17 @@ func (h *helper) setDataPlaneFailed(ctx context.Context) {
 	h.g.Expect(err).To(gomega.BeNil())
 }
 
+func (h *helper) setDataPlaneFailed4Invalid(ctx context.Context) {
+	backupMember1, err := h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).Get(ctx, h.backupMemberName1, metav1.GetOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+	pingcapv1alpha1.UpdateBackupCondition(&backupMember1.Status, &pingcapv1alpha1.BackupCondition{
+		Status: corev1.ConditionTrue,
+		Type:   pingcapv1alpha1.BackupInvalid,
+	})
+	_, err = h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).UpdateStatus(ctx, backupMember1, metav1.UpdateOptions{})
+	h.g.Expect(err).To(gomega.BeNil())
+}
+
 func (h *helper) setAllDataPlanesFailed(ctx context.Context) {
 	backupMember1, err := h.dataPlaneClient1.PingcapV1alpha1().Backups(fakeTcNamespace1).Get(ctx, h.backupMemberName1, metav1.GetOptions{})
 	h.g.Expect(err).To(gomega.BeNil())
@@ -445,6 +456,32 @@ func TestVolumeBackupVolumeFailed(t *testing.T) {
 
 	// all data planes failed
 	h.setAllDataPlanesFailed(ctx)
+	err = h.bm.Sync(volumeBackup)
+	h.g.Expect(err).To(gomega.BeNil())
+	h.assertFailed(volumeBackup)
+}
+
+func TestVolumeBackupFailed4Invalid(t *testing.T) {
+	ctx := context.Background()
+	backupName := "backup-2"
+	backupNamespace := "ns-2"
+	h := newHelper(t, backupName, backupNamespace)
+
+	// create volume backup
+	volumeBackup := h.createVolumeBackup(ctx)
+
+	// run initialize phase
+	err := h.bm.Sync(volumeBackup)
+	h.g.Expect(err).To(gomega.BeNil())
+	h.assertRunInitialize(ctx, volumeBackup)
+
+	// invalid member backup, run teardown
+	h.setDataPlaneFailed4Invalid(ctx)
+	err = h.bm.Sync(volumeBackup)
+	h.g.Expect(err).To(gomega.BeNil())
+	h.assertRunTeardown(ctx, volumeBackup, true)
+
+	// volume backup failed
 	err = h.bm.Sync(volumeBackup)
 	h.g.Expect(err).To(gomega.BeNil())
 	h.assertFailed(volumeBackup)

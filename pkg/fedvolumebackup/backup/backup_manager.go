@@ -263,7 +263,7 @@ func (bm *backupManager) waitBackupMemberInitialized(ctx context.Context, volume
 				Message: errMsg,
 			}
 		}
-		if pingcapv1alpha1.IsBackupFailed(backupMember.backup) {
+		if pingcapv1alpha1.IsBackupFailed(backupMember.backup) || pingcapv1alpha1.IsBackupInvalid(backupMember.backup) {
 			errMsg := fmt.Sprintf("backup member %s of cluster %s failed", backupMember.backup.Name, backupMember.k8sClusterName)
 			return &fedvolumebackup.BRDataPlaneFailedError{
 				Reason:  reasonVolumeBackupMemberFailed,
@@ -343,7 +343,8 @@ func (bm *backupManager) waitVolumeSnapshotsCreated(backupMembers []*volumeBacku
 	for _, backupMember := range backupMembers {
 		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) ||
 			pingcapv1alpha1.IsVolumeBackupFailed(backupMember.backup) ||
-			pingcapv1alpha1.IsBackupFailed(backupMember.backup) {
+			pingcapv1alpha1.IsBackupFailed(backupMember.backup) ||
+			pingcapv1alpha1.IsBackupInvalid(backupMember.backup) {
 			errMsg := fmt.Sprintf("backup member %s of cluster %s failed", backupMember.backup.Name, backupMember.k8sClusterName)
 			return &fedvolumebackup.BRDataPlaneFailedError{
 				Reason:  reasonVolumeBackupMemberFailed,
@@ -363,7 +364,8 @@ func (bm *backupManager) waitBackupMemberInitializeComplete(volumeBackup *v1alph
 	for _, backupMember := range backupMembers {
 		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) ||
 			pingcapv1alpha1.IsVolumeBackupFailed(backupMember.backup) ||
-			pingcapv1alpha1.IsBackupFailed(backupMember.backup) {
+			pingcapv1alpha1.IsBackupFailed(backupMember.backup) ||
+			pingcapv1alpha1.IsBackupInvalid(backupMember.backup) {
 			errMsg := fmt.Sprintf("backup member %s of cluster %s failed", backupMember.backup.Name, backupMember.k8sClusterName)
 			return &fedvolumebackup.BRDataPlaneFailedError{
 				Reason:  reasonVolumeBackupMemberFailed,
@@ -385,7 +387,8 @@ func (bm *backupManager) waitVolumeSnapshotsComplete(backupMembers []*volumeBack
 	for _, backupMember := range backupMembers {
 		if pingcapv1alpha1.IsVolumeBackupInitializeFailed(backupMember.backup) ||
 			pingcapv1alpha1.IsVolumeBackupFailed(backupMember.backup) ||
-			pingcapv1alpha1.IsBackupFailed(backupMember.backup) {
+			pingcapv1alpha1.IsBackupFailed(backupMember.backup) ||
+			pingcapv1alpha1.IsBackupInvalid(backupMember.backup) {
 			errMsg := fmt.Sprintf("backup member %s of cluster %s failed", backupMember.backup.Name, backupMember.k8sClusterName)
 			return &fedvolumebackup.BRDataPlaneFailedError{
 				Reason:  reasonVolumeBackupMemberFailed,
@@ -436,6 +439,10 @@ func (bm *backupManager) waitVolumeBackupComplete(ctx context.Context, volumeBac
 		} else if pingcapv1alpha1.IsBackupFailed(backupMember.backup) {
 			failedBackups = append(failedBackups, backupMember)
 			klog.Errorf("VolumeBackup %s/%s backup member %s of cluster %s is failed",
+				volumeBackup.Namespace, volumeBackup.Name, backupMember.backup.Name, backupMember.k8sClusterName)
+		} else if pingcapv1alpha1.IsBackupInvalid(backupMember.backup) {
+			failedBackups = append(failedBackups, backupMember)
+			klog.Errorf("VolumeBackup %s/%s backup member %s of cluster %s is invalid",
 				volumeBackup.Namespace, volumeBackup.Name, backupMember.backup.Name, backupMember.k8sClusterName)
 		} else if !pingcapv1alpha1.IsBackupComplete(backupMember.backup) {
 			isBackupRunning = true

@@ -398,7 +398,7 @@ func TestCalculateExpiredBackups(t *testing.T) {
 		// 3 backups should be deleted
 		{
 			backups: []*v1alpha1.VolumeBackup{
-				fakeBackup(&last3Day),
+				fakeFailedBackup(&last3Day),
 				fakeBackup(&last2Day),
 				fakeBackup(&last1Day),
 				fakeBackup(&last10Min),
@@ -568,6 +568,19 @@ func fakeBackup(ts *time.Time) *v1alpha1.VolumeBackup {
 	backup.CreationTimestamp = metav1.Time{Time: *ts}
 	backup.Status.Conditions = append(backup.Status.Conditions, v1alpha1.VolumeBackupCondition{
 		Type:   v1alpha1.VolumeBackupComplete,
+		Status: v1.ConditionTrue,
+	})
+	return backup
+}
+
+func fakeFailedBackup(ts *time.Time) *v1alpha1.VolumeBackup {
+	backup := &v1alpha1.VolumeBackup{}
+	if ts == nil {
+		return backup
+	}
+	backup.CreationTimestamp = metav1.Time{Time: *ts}
+	backup.Status.Conditions = append(backup.Status.Conditions, v1alpha1.VolumeBackupCondition{
+		Type:   v1alpha1.VolumeBackupFailed,
 		Status: v1.ConditionTrue,
 	})
 	return backup
