@@ -29,8 +29,8 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
+	"github.com/pingcap/tidb-operator/tests/e2e/utils/k8s"
 )
 
 const (
@@ -44,10 +44,10 @@ const (
 type minioStorage struct {
 	c client.Client
 	// use portforward to visit service if e2e is not run in cluster
-	fw portforward.PortForwarder
+	fw k8s.PortForwarder
 }
 
-func NewMinio(c client.Client, fw portforward.PortForwarder) Interface {
+func NewMinio(c client.Client, fw k8s.PortForwarder) Interface {
 	return &minioStorage{
 		c:  c,
 		fw: fw,
@@ -93,7 +93,11 @@ func (s *minioStorage) forwardPort(ctx context.Context, ns string) (string, erro
 	if s.fw == nil {
 		return getDefaultAddr(ns), nil
 	}
-	return portforward.ForwardOnePort(ctx, s.fw, ns, "svc/"+minioName, 9000)
+	host, port, _, err := k8s.ForwardOnePort(s.fw, ns, "svc/"+minioName, 9000)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s:%d", host, port), nil
 }
 
 func getDefaultAddr(ns string) string {

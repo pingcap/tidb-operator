@@ -20,7 +20,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
+	"github.com/pingcap/tidb-operator/tests/e2e/utils/k8s"
 )
 
 type Interface interface {
@@ -32,7 +32,7 @@ type Interface interface {
 	Bucket() string
 }
 
-func New(provider string, c client.Client, fw portforward.PortForwarder) (Interface, error) {
+func New(provider string, c client.Client, fw k8s.PortForwarder) (Interface, error) {
 	switch provider {
 	case "kind":
 		return NewMinio(c, fw), nil

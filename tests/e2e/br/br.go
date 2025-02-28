@@ -42,11 +42,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	brframework "github.com/pingcap/tidb-operator/tests/e2e/br/framework"
-	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/cluster"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/db/blockwriter"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/utils/image"
+	"github.com/pingcap/tidb-operator/tests/e2e/utils/k8s"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
@@ -197,13 +197,15 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		}
 
 		ginkgo.By("Forward backup TiDB cluster service")
-		backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), int(corev1alpha1.DefaultTiDBPortClient))
+		backupHost, backupPort, cancel, err := k8s.ForwardOnePort(f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), corev1alpha1.DefaultTiDBPortClient)
 		f.Must(err)
-		err = initDatabase(backupHost, dbName)
+		defer cancel()
+		backupDomain := fmt.Sprintf("%s:%d", backupHost, backupPort)
+		err = initDatabase(backupDomain, dbName)
 		f.Must(err)
 
 		ginkgo.By("Write data into backup TiDB cluster")
-		backupDSN := getDefaultDSN(backupHost, dbName)
+		backupDSN := getDefaultDSN(backupDomain, dbName)
 		err = blockwriter.New().Write(context.Background(), backupDSN)
 		f.Must(err)
 
@@ -224,11 +226,12 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		f.Must(err)
 
 		ginkgo.By("Forward restore TiDB cluster service")
-		restoreHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(restoreClusterName), int(corev1alpha1.DefaultTiDBPortClient))
+		restoreHost, restorePort, cancel, err := k8s.ForwardOnePort(f.PortForwarder, ns, getTiDBServiceResourceName(restoreClusterName), corev1alpha1.DefaultTiDBPortClient)
 		f.Must(err)
-
+		defer cancel()
+		restoreDomain := fmt.Sprintf("%s:%d", restoreHost, restorePort)
 		ginkgo.By("Validate restore result")
-		restoreDSN := getDefaultDSN(restoreHost, dbName)
+		restoreDSN := getDefaultDSN(restoreDomain, dbName)
 		err = checkDataIsSame(backupDSN, restoreDSN)
 		f.Must(err)
 	}
@@ -294,13 +297,15 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			f.Must(err)
 
 			ginkgo.By("Forward backup TiDB cluster service")
-			backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), int(corev1alpha1.DefaultTiDBPortClient))
+			backupHost, backupPort, cancel, err := k8s.ForwardOnePort(f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), corev1alpha1.DefaultTiDBPortClient)
 			f.Must(err)
-			err = initDatabase(backupHost, dbName)
+			defer cancel()
+			backupDomain := fmt.Sprintf("%s:%d", backupHost, backupPort)
+			err = initDatabase(backupDomain, dbName)
 			f.Must(err)
 
 			ginkgo.By("Write data into backup TiDB cluster")
-			backupDSN := getDefaultDSN(backupHost, dbName)
+			backupDSN := getDefaultDSN(backupDomain, dbName)
 			err = blockwriter.New().Write(context.Background(), backupDSN)
 			f.Must(err)
 
@@ -1060,22 +1065,26 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			ExpectNotEqual(fullBackup.Status.CommitTs, "")
 
 			ginkgo.By("Forward master TiDB cluster service")
-			masterHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(masterClusterName), int(corev1alpha1.DefaultTiDBPortClient))
+			masterHost, masterPort, cancel, err := k8s.ForwardOnePort(f.PortForwarder, ns, getTiDBServiceResourceName(masterClusterName), corev1alpha1.DefaultTiDBPortClient)
 			f.Must(err)
-			err = initDatabase(masterHost, dbName)
+			defer cancel()
+			masterDomain := fmt.Sprintf("%s:%d", masterHost, masterPort)
+			err = initDatabase(masterDomain, dbName)
 			f.Must(err)
 
 			ginkgo.By("Write data into master TiDB cluster")
-			masterDSN := getDefaultDSN(masterHost, dbName)
+			masterDSN := getDefaultDSN(masterDomain, dbName)
 			err = blockwriter.New().Write(context.Background(), masterDSN)
 			f.Must(err)
 
 			ginkgo.By("Forward master PD service")
-			masterPDHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getPDServiceResourceName(masterClusterName), int(corev1alpha1.DefaultPDPortClient))
+			masterPDHost, masterPDPort, cancel, err := k8s.ForwardOnePort(f.PortForwarder, ns, getPDServiceResourceName(masterClusterName), corev1alpha1.DefaultPDPortClient)
 			f.Must(err)
+			defer cancel()
+			masterPDDomain := fmt.Sprintf("%s:%d", masterPDHost, masterPDPort)
 			ginkgo.By("Wait log backup reach current ts")
 			currentTS := strconv.FormatUint(v1alpha1.GoTimeToTS(time.Now()), 10)
-			err = brframework.WaitForLogBackupReachTS(logBackupName, masterPDHost, currentTS, logbackupCatchUpTimeout)
+			err = brframework.WaitForLogBackupReachTS(logBackupName, masterPDDomain, currentTS, logbackupCatchUpTimeout)
 			f.Must(err)
 
 			ginkgo.By("wait log backup progress reach current ts")
@@ -1105,11 +1114,13 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			f.Must(err)
 
 			ginkgo.By("Forward restore TiDB cluster service")
-			backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), int(corev1alpha1.DefaultTiDBPortClient))
+			backupHost, backupPort, cancel, err := k8s.ForwardOnePort(f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), corev1alpha1.DefaultTiDBPortClient)
 			f.Must(err)
+			defer cancel()
+			backupDomain := fmt.Sprintf("%s:%d", backupHost, backupPort)
 
 			ginkgo.By("Validate pitr restore result")
-			backupDSN := getDefaultDSN(backupHost, dbName)
+			backupDSN := getDefaultDSN(backupDomain, dbName)
 			err = checkDataIsSame(masterDSN, backupDSN)
 			f.Must(err)
 
@@ -1717,11 +1728,12 @@ func WaitForPDReady(f *brframework.Framework, ns, name string, timeout time.Dura
 		scheme = "http://"
 	}
 	// get host
-	masterPDDomain, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getPDServiceResourceName(name), int(corev1alpha1.DefaultPDPortClient))
+	masterPDHost, masterPDPort, cancel, err := k8s.ForwardOnePort(f.PortForwarder, ns, getPDServiceResourceName(name), corev1alpha1.DefaultPDPortClient)
 	if err != nil {
 		return err
 	}
-
+	defer cancel()
+	masterPDDomain := fmt.Sprintf("%s:%d", masterPDHost, masterPDPort)
 	pdUrl := fmt.Sprintf("%s%s", scheme, masterPDDomain)
 	pdcli := pdapi.NewPDClient(pdUrl, 30*time.Second, nil)
 	return wait.PollUntilContextTimeout(ctx, 2*time.Second, timeout, true, func(ctx context.Context) (bool, error) {

@@ -15,6 +15,8 @@
 package framework
 
 import (
+	"context"
+
 	"github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -22,15 +24,17 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
+	"k8s.io/client-go/tools/clientcmd"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/s3"
+	"github.com/pingcap/tidb-operator/tests/e2e/config"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/k8s"
 )
@@ -39,12 +43,18 @@ type Framework struct {
 	*framework.Framework
 
 	// PortForwarder is defined to visit pod in local.
-	PortForwarder portforward.PortForwarder
+	PortForwarder k8s.PortForwarder
 
 	// Storage defines interface of s3 storage
 	Storage s3.Interface
 
 	YamlApplier *k8s.YAMLApplier
+}
+
+func LoadClientRawConfig() (clientcmdapi.Config, error) {
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+	overrides := &clientcmd.ConfigOverrides{ClusterDefaults: clientcmd.ClusterDefaults}
+	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, overrides).RawConfig()
 }
 
 func NewFramework(baseName string) *Framework {
@@ -57,20 +67,23 @@ func NewFramework(baseName string) *Framework {
 		framework.WithSkipWaitForClusterDeleted(),
 	)
 
-	config, err := framework.NewConfig("", "")
+	var err error
+	// TODO: only run once
+	clientRawConfig, err := LoadClientRawConfig()
 	gomega.Expect(err).To(gomega.Succeed())
-
-	f.PortForwarder, err = portforward.NewPortForwarderForConfig(config)
+	f.PortForwarder, err = k8s.NewPortForwarder(context.Background(), config.NewSimpleRESTClientGetter(&clientRawConfig))
 	gomega.Expect(err).To(gomega.Succeed())
 
 	provider := "kind"
 	f.Storage, err = s3.New(provider, f.Client, f.PortForwarder)
 	gomega.Expect(err).To(gomega.Succeed())
 
+	conf, err := framework.NewConfig("", "")
+	gomega.Expect(err).To(gomega.Succeed())
 	// build yaml applier
 	clientSet, _, restConfig := initK8sClient()
 	_ = restConfig
-	dynamicClient := dynamic.NewForConfigOrDie(config)
+	dynamicClient := dynamic.NewForConfigOrDie(conf)
 	cachedDiscovery := cacheddiscovery.NewMemCacheClient(clientSet.Discovery())
 	restmapper := restmapper.NewDeferredDiscoveryRESTMapper(cachedDiscovery)
 	restmapper.Reset()
