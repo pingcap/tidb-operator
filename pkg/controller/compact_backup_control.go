@@ -133,6 +133,7 @@ func (fc *FakeCompactControl) CreateCompactBackup(compact *v1alpha1.CompactBacku
 		return compact, fc.createCompactTracker.GetError()
 	}
 
+	compact.Status.State = string(v1alpha1.BackupComplete)
 	return compact, fc.compactIndexer.Add(compact)
 }
 

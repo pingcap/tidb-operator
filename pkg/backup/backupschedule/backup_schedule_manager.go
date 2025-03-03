@@ -59,7 +59,12 @@ func (bm *backupScheduleManager) doCompact(bs *v1alpha1.BackupSchedule, startTim
 }
 
 func calEndTs(bs *v1alpha1.BackupSchedule, startTs time.Time, span time.Duration, maxEndTs time.Time) time.Time {
-	fastCompactLimit := startTs.Add(2 * span)
+	var fastCompactLimit time.Time
+	if maxEndTs.Sub(startTs) < 2*span {
+		fastCompactLimit = maxEndTs
+	} else {
+		fastCompactLimit = startTs.Add(2*span)
+	}
 
 	// capEndTs checks if t goes beyond fastCompactLimit:
 	//   - if so, we set NextCompactEndTs to t and return fastCompactLimit
@@ -76,7 +81,7 @@ func calEndTs(bs *v1alpha1.BackupSchedule, startTs time.Time, span time.Duration
 	// validCandidate checks whether the passed time pointer is non-nil, strictly
 	// after startTs, and does not exceed maxEndTs.
 	validCandidate := func(t *metav1.Time) bool {
-		return t != nil && t.After(startTs) && !t.Time.After(maxEndTs)
+		return t != nil && t.After(startTs)
 	}
 
 	if validCandidate(bs.Status.NextCompactEndTs) {
