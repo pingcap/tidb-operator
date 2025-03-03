@@ -118,23 +118,22 @@ func (bm *backupScheduleManager) createCompact(bs *v1alpha1.BackupSchedule, maxE
 	}
 
 	endTs = calEndTs(bs, startTs, span, *maxEndTime)
-	if endTs.Equal(startTs) {
-		klog.Infof("backupSchedule %s/%s log checkpoint is %v, no progress since the last time, skip", bs.GetNamespace(), bs.GetName(), maxEndTime)
-		return nil
-	}
 
 	switch {
-	// If the compact haven't catch up lastBackup, compact until reach lastBackup
-	case bs.Status.LastBackupTime != nil && !endTs.After(bs.Status.LastBackupTime.Time):
-	// If the new progress is larger than span, compact
-	case endTs.After(startTs.Add(span)):
-	// routinely compact in case log backup got stuck
-	case nowFn().Sub(bs.Status.LastCompactExecutionTs.Time) > span:
+	case endTs.Before(*maxEndTime):
+	case endTs.Equal(*maxEndTime) && nowFn().Sub(bs.Status.LastCompactExecutionTs.Time) > span:
+	case endTs.After(*maxEndTime):
+		return fmt.Errorf("compact should never exceed checkpoint %v, endTs: %v", maxEndTime, endTs)
 	default:
 		return nil
 	}
-
-	klog.Infof("backupSchedule %s/%s compact: from %v to %v", bs.GetNamespace(), bs.GetName(), startTs, endTs)
+	
+	klog.Infof("backupSchedule %s/%s compact: from %v to %v", 
+		bs.GetNamespace(), 
+		bs.GetName(), 
+		startTs.Format(v1alpha1.BackupTimestampFormat),
+		endTs.Format(v1alpha1.BackupTimestampFormat),
+	)
 	if err := bm.doCompact(bs, startTs, endTs, nowFn()); err != nil {
 		return err
 	}
