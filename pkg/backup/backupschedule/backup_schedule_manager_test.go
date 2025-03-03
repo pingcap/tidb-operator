@@ -438,6 +438,37 @@ func TestSyncWithFastCompact(t *testing.T) {
 	g.Expect(lastCompact.Spec.EndTs).Should(Equal(expectEndTs))
 }
 
+func TestSyncWithCompactRoutineCompact(t *testing.T) {
+	g := NewGomegaWithT(t)
+	helper := newHelper(t)
+	defer helper.close()
+	deps := helper.deps
+	m := NewBackupScheduleManager(deps).(*backupScheduleManager)
+	var err error
+	bs := &v1alpha1.BackupSchedule{}
+	bs.Namespace = "ns"
+	bs.Name = "bsname"
+	bs.Spec.Schedule = "0 0 * * *" // Run at midnight every day
+	bs.Spec.CompactInterval = pointer.StringPtr("30m")
+	bs.Spec.MaxReservedTime = pointer.StringPtr("71h")
+
+	now := time.Now()
+	bs.Spec.CompactBackupTemplate = &v1alpha1.CompactSpec{Concurrency: 4}
+	bs.Spec.LogBackupTemplate = &v1alpha1.BackupSpec{Mode: v1alpha1.BackupModeLog}
+	logBackup := buildLogBackup(bs, now.Add(-1*time.Hour))
+	logBackup.Status.CommitTs = getTSOStr(now.Add(-1 * time.Hour).Unix())
+	logBackup.Status.LogCheckpointTs = getTSOStr(now.Unix())
+	helper.createBackup(logBackup)
+	bs.Status.LogBackup = &logBackup.Name
+	bs.Status.LogBackupStartTs = &metav1.Time{Time: now.Add(-1 * time.Hour)}
+	logBackup.Status.LogCheckpointTs = getTSOStr(now.Add(-1 * time.Hour).Unix())
+	bs.Status.LastCompactProgress = &metav1.Time{Time: now}
+	bs.Status.LastCompactExecutionTs = &metav1.Time{Time: now.Add(-30 * time.Minute)}
+
+	err = m.Sync(bs)
+	g.Expect(err).Should(BeNil())
+}
+
 func TestCalculateExpiredBackupsWithLogBackup(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testCase struct {
