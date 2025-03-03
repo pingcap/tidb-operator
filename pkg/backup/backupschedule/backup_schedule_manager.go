@@ -129,9 +129,13 @@ func (bm *backupScheduleManager) createCompact(bs *v1alpha1.BackupSchedule, maxE
 	// If the new progress is larger than span, compact
 	case endTs.After(startTs.Add(span)):
 	// routinely compact in case log backup got stuck
-	case nowFn().Sub(startTs) > span:
+	case nowFn().Sub(bs.Status.LastCompactExecutionTs.Time) > span:
 	default:
 		return nil
+	}
+
+	if endTs.Before(bs.Status.LastCompactProgress.Time) {
+		klog.Errorf("backupSchedule %s/%s progress can't rollback (from %v to %v)", bs.GetNamespace(), bs.GetName(), bs.Status.LastCompactProgress, endTs)
 	}
 
 	klog.Infof("backupSchedule %s/%s compact: from %v to %v", bs.GetNamespace(), bs.GetName(), startTs, endTs)
