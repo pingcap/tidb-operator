@@ -169,6 +169,11 @@ const (
 	TiProxyCertLayoutV1 TiProxyCertLayout = "v1"
 )
 
+const (
+	// AnnoKeySkipFlushLogBackup when set to a `TidbCluster`, during restarting the cluster, log backup tasks won't be flushed.
+	AnnoKeySkipFlushLogBackup = "tidb.pingcap.com/tikv-restart-without-flush-log-backup"
+)
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -2804,6 +2809,8 @@ type RestoreSpec struct {
 	// TolerateSingleTiKVOutage indicates whether to tolerate a single failure of a store without data loss
 	// +kubebuilder:default=false
 	TolerateSingleTiKVOutage bool `json:"tolerateSingleTiKVOutage,omitempty"`
+	// +kubebuilder:default=0
+	BackoffLimit int32 `json:"backoffLimit,omitempty"`
 }
 
 // FederalVolumeRestorePhase represents a phase to execute in federal volume restore

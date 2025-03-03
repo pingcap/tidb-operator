@@ -458,10 +458,23 @@ func (c *PodController) syncTiKVPodForEviction(ctx context.Context, pod *corev1.
 			klog.Infof("Region leader count is %d for Pod %s/%s", leaderCount, pod.Namespace, pod.Name)
 
 			if leaderCount == 0 {
+				if _, ok := tc.Annotations[v1alpha1.AnnoKeySkipFlushLogBackup]; !ok {
+					// This is a block call, for more details, see `triggerForceFlush` in `tikv_upgrader.go`.
+					timeoutCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+					defer cancel()
+
+					if err := kvClient.FlushLogBackupTasks(timeoutCtx); err != nil {
+						klog.Errorf("failed to flush log backup tasks due to %s continue to delete pod %s/%s", err, pod.Namespace, pod.Name)
+					}
+				} else {
+					klog.Infof("skipping flush log backup for the pod %s/%s of tc %s/%s", pod.Namespace, pod.Name, tc.Namespace, tc.Name)
+				}
+
 				err = c.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, metav1.DeleteOptions{})
 				if err != nil && !errors.IsNotFound(err) {
 					return reconcile.Result{}, perrors.Annotatef(err, "failed to delete pod %q", pod.Name)
 				}
+				klog.Infof("successfully deleted the pod %s/%s", pod.Namespace, pod.Name)
 			} else {
 				// re-check leader count next time
 				return reconcile.Result{RequeueAfter: c.recheckLeaderCountDuration}, nil
