@@ -63,7 +63,7 @@ func calEndTs(bs *v1alpha1.BackupSchedule, startTs time.Time, span time.Duration
 	if maxEndTs.Sub(startTs) < 2*span {
 		fastCompactLimit = maxEndTs
 	} else {
-		fastCompactLimit = startTs.Add(2*span)
+		fastCompactLimit = startTs.Add(2 * span)
 	}
 
 	// capEndTs checks if t goes beyond fastCompactLimit:
@@ -133,7 +133,6 @@ func (bm *backupScheduleManager) createCompact(bs *v1alpha1.BackupSchedule, maxE
 	default:
 		return nil
 	}
-	
 
 	klog.Infof("backupSchedule %s/%s compact: from %v to %v", bs.GetNamespace(), bs.GetName(), startTs, endTs)
 	if err := bm.doCompact(bs, startTs, endTs, nowFn()); err != nil {

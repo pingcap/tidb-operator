@@ -401,7 +401,7 @@ func TestSyncWithCompact(t *testing.T) {
 	g.Expect(err).Should(BeNil())
 	_, err = deps.CompactBackupLister.CompactBackups(bs.Namespace).Get(bs.Status.LastCompact)
 	g.Expect(err).Should(BeNil())
-	g.Expect(bs.Status.LastCompactProgress.Time,now)
+	g.Expect(bs.Status.LastCompactProgress.Time, now)
 }
 
 func TestSyncWithFastCompact(t *testing.T) {
@@ -434,7 +434,7 @@ func TestSyncWithFastCompact(t *testing.T) {
 	lastCompact, err := deps.CompactBackupLister.CompactBackups(bs.Namespace).Get(bs.Status.LastCompact)
 	g.Expect(err).Should(BeNil())
 	//expect to compact 2*5minutes
-	expectEndTs := now.Add(-50*time.Minute).UTC().Format(v1alpha1.BackupTimestampFormat)
+	expectEndTs := now.Add(-50 * time.Minute).UTC().Format(v1alpha1.BackupTimestampFormat)
 	g.Expect(lastCompact.Spec.EndTs).Should(Equal(expectEndTs))
 }
 
