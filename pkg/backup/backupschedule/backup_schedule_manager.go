@@ -134,10 +134,6 @@ func (bm *backupScheduleManager) createCompact(bs *v1alpha1.BackupSchedule, maxE
 		return nil
 	}
 
-	if endTs.Before(bs.Status.LastCompactProgress.Time) {
-		klog.Errorf("backupSchedule %s/%s progress can't rollback (from %v to %v)", bs.GetNamespace(), bs.GetName(), bs.Status.LastCompactProgress, endTs)
-	}
-
 	klog.Infof("backupSchedule %s/%s compact: from %v to %v", bs.GetNamespace(), bs.GetName(), startTs, endTs)
 	if err := bm.doCompact(bs, startTs, endTs, nowFn()); err != nil {
 		return err
