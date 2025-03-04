@@ -129,22 +129,20 @@ func handleVersion(version *apiextensionsv1.CustomResourceDefinitionVersion, key
 	handleSelectedJSONSchemaProps(version.Schema.OpenAPIV3Schema, keys...)
 }
 
-func handleSelectedJSONSchemaProps(props *apiextensionsv1.JSONSchemaProps, keys ...string) error {
+func handleSelectedJSONSchemaProps(props *apiextensionsv1.JSONSchemaProps, keys ...string) {
 	if len(keys) == 0 {
 		handleJSONSchemaProps(props, nil)
-		return nil
+		return
 	}
 
 	key := keys[0]
 	child, ok := props.Properties[key]
 	if !ok {
-		return fmt.Errorf("no prop %v", keys)
+		fmt.Println("cannot find keys: ", keys)
+		panic("no props")
 	}
-	if err := handleSelectedJSONSchemaProps(&child, keys[1:]...); err != nil {
-		return fmt.Errorf("cannot select props: %w", err)
-	}
+	handleSelectedJSONSchemaProps(&child, keys[1:]...)
 	props.Properties[key] = child
-	return nil
 }
 
 func handleJSONSchemaProps(props *apiextensionsv1.JSONSchemaProps, retainKeys []string) {
