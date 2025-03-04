@@ -459,6 +459,7 @@ func newFakeControl(kubeClientset kubernetes.Interface, informerFactory informer
 		CDCControl:         NewFakeTiCDCControl(),
 		TiDBControl:        NewFakeTiDBControl(kubeInformerFactory.Core().V1().Secrets().Lister()),
 		BackupControl:      NewFakeBackupControl(informerFactory.Pingcap().V1alpha1().Backups()),
+		CompactControl:     NewFakeCompactControl(informerFactory.Pingcap().V1alpha1().CompactBackups()),
 		ProxyControl:       NewFakeTiProxyControl(),
 		SecretControl:      NewFakeSecretControl(kubeInformerFactory.Core().V1().Secrets()),
 	}
