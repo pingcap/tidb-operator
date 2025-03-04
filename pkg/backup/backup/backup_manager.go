@@ -116,7 +116,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		}
 	}
 
-	if v1alpha1.IsBackupComplete(backup) || v1alpha1.IsBackupFailed(backup) {
+	if v1alpha1.IsBackupComplete(backup) || v1alpha1.IsBackupFailed(backup) || v1alpha1.IsBackupInvalid(backup) {
 		return nil
 	}
 
@@ -1161,8 +1161,8 @@ func (bm *backupManager) teardownVolumeBackup(backup *v1alpha1.Backup) (err erro
 			return
 		}
 
-		// if backup is failed or complete, just delete job, not modify status
-		if v1alpha1.IsBackupFailed(backup) || v1alpha1.IsBackupComplete(backup) {
+		// if backup is failed, complete or invalid, just delete job, not modify status
+		if v1alpha1.IsBackupFailed(backup) || v1alpha1.IsBackupComplete(backup) || v1alpha1.IsBackupInvalid(backup) {
 			return
 		}
 		backupCondition := v1alpha1.BackupComplete
