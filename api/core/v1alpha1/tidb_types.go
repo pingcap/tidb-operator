@@ -156,8 +156,6 @@ type TiDBTemplateSpec struct {
 
 	// Overlay defines a k8s native resource template patch.
 	// All resources(pod, pvcs, ...) managed by TiDB can be overlayed by this field.
-	// +kubebuilder:validation:Schemaless
-	// +kubebuilder:pruning:PreserveUnknownFields
 	Overlay *Overlay `json:"overlay,omitempty"`
 }
 
