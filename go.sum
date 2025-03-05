@@ -766,8 +766,8 @@ k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340 h1:BZqlfIlq5YbRMFko6/PM7F
 k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340/go.mod h1:yD4MZYeKMBwQKVht279WycxKyM84kkAx2DPrTXaeb98=
 k8s.io/kubectl v0.31.0 h1:kANwAAPVY02r4U4jARP/C+Q1sssCcN/1p9Nk+7BQKVg=
 k8s.io/kubectl v0.31.0/go.mod h1:pB47hhFypGsaHAPjlwrNbvhXgmuAr01ZBvAIIUaI8d4=
-k8s.io/utils v0.0.0-20240921022957-49e7df575cb6 h1:MDF6h2H/h4tbzmtIKTuctcwZmY0tY9mD9fNT47QO6HI=
-k8s.io/utils v0.0.0-20240921022957-49e7df575cb6/go.mod h1:OLgZIPagt7ERELqWJFomSt595RzquPNLL48iOWgYOg0=
+k8s.io/utils v0.0.0-20241210054802-24370beab758 h1:sdbE21q2nlQtFh65saZY+rRM6x6aJJI8IUa1AmH/qa0=
+k8s.io/utils v0.0.0-20241210054802-24370beab758/go.mod h1:OLgZIPagt7ERELqWJFomSt595RzquPNLL48iOWgYOg0=
 pack.ag/amqp v0.11.2/go.mod h1:4/cbmt4EJXSKlG6LCfWHoqmN0uFdy5i/+YFz+fTfhV4=
 sigs.k8s.io/controller-runtime v0.19.0-beta.0 h1:2dhsJeWBmzrnSE+NMourFWen0lSRg3JYs3Pp04+cJss=
 sigs.k8s.io/controller-runtime v0.19.0-beta.0/go.mod h1:DsWafTWWtE45ewmWCXm3Tsend5uwveZCkpYfod82SXE=
