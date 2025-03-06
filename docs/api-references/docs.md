@@ -651,13 +651,13 @@ string
 </tr>
 <tr>
 <td>
-<code>compactSpan</code></br>
+<code>compactInterval</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>CompactSpan is to specify how long backups we want to compact.</p>
+<p>CompactInterval is to specify how long backups we want to compact.</p>
 </td>
 </tr>
 <tr>
@@ -4009,13 +4009,13 @@ string
 </tr>
 <tr>
 <td>
-<code>compactSpan</code></br>
+<code>compactInterval</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>CompactSpan is to specify how long backups we want to compact.</p>
+<p>CompactInterval is to specify how long backups we want to compact.</p>
 </td>
 </tr>
 <tr>
@@ -4207,7 +4207,7 @@ Kubernetes meta/v1.Time
 </tr>
 <tr>
 <td>
-<code>lastCompactTs</code></br>
+<code>lastCompactProgress</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta">
 Kubernetes meta/v1.Time
@@ -4215,7 +4215,20 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>LastCompactTs represents the endTs of the last compact</p>
+<p>LastCompactProgress represents the endTs of the last compact</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastCompactExecutionTs</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>LastCompactExecutionTs represents the endTs of the last compact</p>
 </td>
 </tr>
 <tr>
