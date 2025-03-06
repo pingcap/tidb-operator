@@ -77,6 +77,8 @@ type ClusterSpec struct {
 	// +kubebuilder:validation:Minimum=0
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 
+	// +listType=map
+	// +listMapKey=name
 	FeatureGates []meta.FeatureGate `json:"featureGates,omitempty"`
 }
 
@@ -148,6 +150,8 @@ type ClusterStatus struct {
 	PD string `json:"pd,omitempty"`
 
 	// FeatureGates of this cluster
+	// +listType=map
+	// +listMapKey=name
 	FeatureGates []meta.FeatureGateStatus `json:"featureGates,omitempty"`
 }
 

@@ -85,6 +85,9 @@ spec:
                   - name
                   type: object
                 type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               paused:
                 description: Paused specifies whether to pause the reconciliation
                   loop for all components of the cluster.
@@ -238,6 +241,9 @@ spec:
                   - stage
                   type: object
                 type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               id:
                 description: ID is the cluster id.
                 type: string
