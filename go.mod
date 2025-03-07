@@ -40,7 +40,7 @@ require (
 	github.com/pingcap/kvproto v0.0.0-20250117122752-2b87602a94a1
 	github.com/pingcap/tidb-operator/pkg/apis v1.6.1
 	github.com/pingcap/tidb-operator/pkg/client v1.6.1
-	github.com/pingcap/tiproxy/lib v0.0.0-20230907130944-eb5b4b9c9e79
+	github.com/pingcap/tiproxy/lib v0.0.0-20250306075742-dbd13a2a1755
 	github.com/prometheus/client_golang v1.17.0
 	github.com/prometheus/client_model v0.6.1
 	github.com/prometheus/common v0.45.0
@@ -213,8 +213,8 @@ require (
 	golang.org/x/exp v0.0.0-20231206192017-f3f8817b8deb // indirect
 	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/oauth2 v0.15.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
-	golang.org/x/term v0.27.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/api v0.153.0 // indirect
