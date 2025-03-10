@@ -30,7 +30,7 @@ var _ = ginkgo.Describe("TiDB", label.TiDB, func() {
 	f := framework.New()
 	f.Setup()
 
-	ginkgo.Context("Bootstrap SQL", label.P1, func() {
+	ginkgo.Context("Bootstrap SQL", label.P1, label.FeatureBootstrapSQL, func() {
 		sql := "SET PASSWORD FOR 'root'@'%' = 'pingcap';"
 
 		f.SetupBootstrapSQL(sql)
@@ -51,7 +51,7 @@ var _ = ginkgo.Describe("TiDB", label.TiDB, func() {
 		})
 	})
 
-	ginkgo.Context("Auth token", label.P1, func() {
+	ginkgo.Context("Auth token", label.P1, label.FeatureAuthToken, func() {
 		const (
 			kid   = "the-key-id-0"
 			sub   = "user@pingcap.com"

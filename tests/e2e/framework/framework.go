@@ -49,6 +49,7 @@ func New() *Framework {
 type SetupOptions struct {
 	SkipWaitForClusterDeleted   bool
 	SkipWaitForNamespaceDeleted bool
+	SkipClusterCreation         bool
 }
 
 type SetupOption func(opts *SetupOptions)
@@ -62,6 +63,12 @@ func WithSkipWaitForClusterDeleted() SetupOption {
 func WithSkipWaitForNamespaceDeleted() SetupOption {
 	return func(opts *SetupOptions) {
 		opts.SkipWaitForNamespaceDeleted = true
+	}
+}
+
+func WithSkipClusterCreation() SetupOption {
+	return func(opts *SetupOptions) {
+		opts.SkipClusterCreation = true
 	}
 }
 
@@ -101,21 +108,23 @@ func (f *Framework) Setup(opts ...SetupOption) {
 		})
 	})
 
-	ginkgo.JustBeforeEach(func(ctx context.Context) {
-		f.Cluster = data.NewCluster(f.Namespace.Name, f.clusterPatches...)
-		ginkgo.By("Creating a cluster")
-		f.Must(f.Client.Create(ctx, f.Cluster))
+	if !options.SkipClusterCreation {
+		ginkgo.JustBeforeEach(func(ctx context.Context) {
+			f.Cluster = data.NewCluster(f.Namespace.Name, f.clusterPatches...)
+			ginkgo.By("Creating a cluster")
+			f.Must(f.Client.Create(ctx, f.Cluster))
 
-		ginkgo.DeferCleanup(func(ctx context.Context) {
-			ginkgo.By(fmt.Sprintf("Delete the cluster: %s", f.Cluster.Name))
-			f.Must(f.Client.Delete(ctx, f.Cluster))
+			ginkgo.DeferCleanup(func(ctx context.Context) {
+				ginkgo.By(fmt.Sprintf("Delete the cluster: %s", f.Cluster.Name))
+				f.Must(f.Client.Delete(ctx, f.Cluster))
 
-			if !options.SkipWaitForClusterDeleted {
-				ginkgo.By(fmt.Sprintf("Ensure the cluster: %s can be deleted", f.Cluster.Name))
-				f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Cluster, waiter.ShortTaskTimeout))
-			}
+				if !options.SkipWaitForClusterDeleted {
+					ginkgo.By(fmt.Sprintf("Ensure the cluster: %s can be deleted", f.Cluster.Name))
+					f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Cluster, waiter.ShortTaskTimeout))
+				}
+			})
 		})
-	})
+	}
 }
 
 func (f *Framework) SetupCluster(ps ...data.ClusterPatch) {

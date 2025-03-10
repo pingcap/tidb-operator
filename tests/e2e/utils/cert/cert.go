@@ -17,15 +17,11 @@ package cert
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"html/template"
-	"io"
-
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/util/yaml"
 
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/tests/e2e/utils/yaml"
 )
 
 var tidbIssuerTmpl = `
@@ -342,7 +338,7 @@ func installCert(ctx context.Context, c client.Client, tmplStr string, tp any) e
 		return fmt.Errorf("error when executing template: %w", err)
 	}
 
-	objs, err := DecodeYAML(&buf)
+	objs, err := yaml.DecodeYAML(&buf)
 	if err != nil {
 		return fmt.Errorf("decode failed: %w", err)
 	}
@@ -354,21 +350,4 @@ func installCert(ctx context.Context, c client.Client, tmplStr string, tp any) e
 	}
 
 	return nil
-}
-
-func DecodeYAML(r io.Reader) ([]*unstructured.Unstructured, error) {
-	var objects []*unstructured.Unstructured
-	//nolint:mnd // refactor to a constant if needed
-	decoder := yaml.NewYAMLOrJSONDecoder(r, 4096)
-	for {
-		obj := &unstructured.Unstructured{}
-		if err := decoder.Decode(obj); err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			return nil, err
-		}
-		objects = append(objects, obj)
-	}
-	return objects, nil
 }

@@ -22,8 +22,9 @@ header:
     - '**/go.work'
     - '**/go.work.sum'
     - '**/LICENSE'
-    - tests/validation/crd/**
+    - tests/validation/crd
     - third_party/**
+    - tests/e2e/example/data
     - '**/OWNERS'
     - OWNERS_ALIASES
   comment: on-failure

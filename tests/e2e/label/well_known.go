@@ -39,5 +39,11 @@ var (
 	MultipleAZ = ginkgo.Label("env:MultipleAZ")
 
 	// Feature
-	FeatureTLS = ginkgo.Label("f:TLS")
+	FeatureTLS          = ginkgo.Label("f:TLS")
+	FeatureAuthToken    = ginkgo.Label("f:AuthToken")
+	FeatureBootstrapSQL = ginkgo.Label("f:BootstrapSQL")
+
+	// Kind
+	KindExample = ginkgo.Label("k:Example")
+	KindBasic   = ginkgo.Label("k:Basic")
 )
