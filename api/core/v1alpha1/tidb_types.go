@@ -61,6 +61,7 @@ type TiDBGroupList struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:categories=tc;group,shortName=dbg
+// +kubebuilder:selectablefield:JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Desired",type=string,JSONPath=`.spec.replicas`
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.readyReplicas`
@@ -95,6 +96,7 @@ type TiDBList struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:categories=tc;instance
+// +kubebuilder:selectablefield:JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`

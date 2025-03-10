@@ -9,7 +9,6 @@ metadata:
 spec:
   cluster:
     name: basic
-  version: v8.1.0
   replicas: 2
   service:
     type: ClusterIP
@@ -18,6 +17,7 @@ spec:
       annotations:
         author: pingcap
     spec:
+      version: v8.1.0
       resources:
         cpu: "1"
         memory: 2Gi
