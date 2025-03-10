@@ -1562,7 +1562,9 @@ location-labels = ["region", "zone", "host"]`
 		It("should be able to gracefully shutdown tidb", func() {
 			pdg := data.NewPDGroup(ns.Name, "pdg", tc.Name, ptr.To(int32(1)), nil)
 			kvg := data.NewTiKVGroup(ns.Name, "kvg", tc.Name, ptr.To(int32(1)), nil)
-			dbg := data.NewTiDBGroup(ns.Name, "dbg", tc.Name, ptr.To(int32(3)), nil)
+			dbg := data.NewTiDBGroup(ns.Name, "dbg", tc.Name, ptr.To(int32(3)), func(group *v1alpha1.TiDBGroup) {
+				group.Spec.Template.Spec.Config = "graceful-wait-before-shutdown = 60"
+			})
 			Expect(k8sClient.Create(ctx, pdg)).To(Succeed())
 			Expect(k8sClient.Create(ctx, kvg)).To(Succeed())
 			Expect(k8sClient.Create(ctx, dbg)).To(Succeed())

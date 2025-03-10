@@ -47,8 +47,7 @@ func TestValidate(t *testing.T) {
 		Log: Log{
 			SlowQueryFile: "/path/to/slow-query-file",
 		},
-		InitializeSQLFile:          "/path/to/initialize-sql-file",
-		GracefulWaitBeforeShutdown: 10,
+		InitializeSQLFile: "/path/to/initialize-sql-file",
 	}
 
 	err = cfgInvalid.Validate(true)
@@ -66,7 +65,6 @@ func TestValidate(t *testing.T) {
 	assert.Contains(t, err.Error(), "security.auth-token-jwks")
 	assert.Contains(t, err.Error(), "log.slow-query-file")
 	assert.Contains(t, err.Error(), "initialize-sql-file")
-	assert.NotContains(t, err.Error(), "graceful-wait-before-shutdown") // can be set by the user
 }
 
 func TestOverlay(t *testing.T) {
@@ -108,9 +106,7 @@ func TestOverlay(t *testing.T) {
 		},
 	}
 
-	cfg := &Config{
-		GracefulWaitBeforeShutdown: 100,
-	}
+	cfg := &Config{}
 	err := cfg.Overlay(cluster, tidb)
 	require.NoError(t, err)
 	assert.Equal(t, "tikv", cfg.Store)
@@ -126,7 +122,6 @@ func TestOverlay(t *testing.T) {
 	assert.Equal(t, "/var/lib/tidb-auth-token/tidb_auth_token_jwks.json", cfg.Security.AuthTokenJwks)
 	assert.Equal(t, "/var/log/tidb/slowlog", cfg.Log.SlowQueryFile)
 	assert.Equal(t, "/etc/tidb-bootstrap/bootstrap.sql", cfg.InitializeSQLFile)
-	assert.Equal(t, 100, cfg.GracefulWaitBeforeShutdown)
 
 	// store slowlog in PVC
 	tidb2 := tidb.DeepCopy()
