@@ -131,7 +131,7 @@ type TiFlashTemplateSpec struct {
 	Resources ResourceRequirements `json:"resources,omitempty"`
 
 	// Config defines config file of TiFlash
-	Config ConfigFile `json:"config"`
+	Config ConfigFile `json:"config,omitempty"`
 
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 

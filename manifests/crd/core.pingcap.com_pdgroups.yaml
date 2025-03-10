@@ -8577,7 +8577,6 @@ spec:
                           type: object
                         type: array
                     required:
-                    - config
                     - version
                     - volumes
                     type: object

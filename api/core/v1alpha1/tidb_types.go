@@ -145,7 +145,7 @@ type TiDBTemplateSpec struct {
 	// Resources defines resource required by TiDB.
 	Resources ResourceRequirements `json:"resources,omitempty"`
 	// Config defines config file of TiDB.
-	Config         ConfigFile     `json:"config"`
+	Config         ConfigFile     `json:"config,omitempty"`
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 
 	Security *TiDBSecurity `json:"security,omitempty"`

@@ -144,7 +144,7 @@ type TiKVTemplateSpec struct {
 	// Resources defines resource required by TiKV
 	Resources ResourceRequirements `json:"resources,omitempty"`
 	// Config defines config file of TiKV
-	Config         ConfigFile     `json:"config"`
+	Config         ConfigFile     `json:"config,omitempty"`
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 	// Volumes defines data volume of TiKV
 	Volumes []Volume `json:"volumes"`

@@ -144,7 +144,7 @@ type PDTemplateSpec struct {
 	Resources      ResourceRequirements `json:"resources,omitempty"`
 	UpdateStrategy UpdateStrategy       `json:"updateStrategy,omitempty"`
 	// Config defines config file of PD
-	Config ConfigFile `json:"config"`
+	Config ConfigFile `json:"config,omitempty"`
 	// Volumes defines persistent volumes of PD
 	Volumes []Volume `json:"volumes"`
 	// Overlay defines a k8s native resource template patch

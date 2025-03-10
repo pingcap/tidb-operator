@@ -8347,7 +8347,6 @@ spec:
                 type: array
             required:
             - cluster
-            - config
             - subdomain
             - version
             - volumes
