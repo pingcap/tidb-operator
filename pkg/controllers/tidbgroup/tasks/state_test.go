@@ -80,8 +80,8 @@ func TestState(t *testing.T) {
 						return obj
 					}),
 				},
-				updateRevision:  "aaa-tidb-dfb684447",
-				currentRevision: "aaa-tidb-dfb684447",
+				updateRevision:  "aaa-tidb-759f6c5bdc",
+				currentRevision: "aaa-tidb-759f6c5bdc",
 			},
 		},
 	}
