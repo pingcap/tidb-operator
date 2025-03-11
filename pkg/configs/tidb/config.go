@@ -26,13 +26,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
-const (
-	// defaultGracefulWaitBeforeShutdownInSeconds is the default value of the tidb config `graceful-wait-before-shutdown`,
-	// which is set by the operator if not set by the user, for graceful shutdown.
-	// Note that the default value is zero in tidb-server.
-	defaultGracefulWaitBeforeShutdownInSeconds = 60
-)
-
 // Config is a subset config of tidb
 // Only our managed fields are defined in here.
 // ref: https://github.com/pingcap/tidb/blob/master/pkg/config/config.go
@@ -100,11 +93,6 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) error {
 
 	if coreutil.IsTokenBasedAuthEnabled(tidb) {
 		c.Security.AuthTokenJwks = path.Join(v1alpha1.DirPathTiDBAuthToken, v1alpha1.FileNameTiDBAuthTokenJWKS)
-	}
-
-	// If not set, use default value.
-	if c.GracefulWaitBeforeShutdown == 0 {
-		c.GracefulWaitBeforeShutdown = defaultGracefulWaitBeforeShutdownInSeconds
 	}
 
 	return nil
