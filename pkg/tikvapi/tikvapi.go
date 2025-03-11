@@ -29,7 +29,6 @@ import (
 	"github.com/prometheus/prom2json"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
 	"k8s.io/klog/v2"
 )
 
@@ -150,7 +149,7 @@ func NewTiKVClient(opts TiKVClientOpts) TiKVClient {
 	if strings.HasPrefix(opts.GRPCEndpoint, "https://") {
 		conn.opts = append(conn.opts, grpc.WithTransportCredentials(credentials.NewTLS(opts.TLSConfig)))
 	} else {
-		conn.opts = append(conn.opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		conn.opts = append(conn.opts, grpc.WithInsecure())
 	}
 	conn.target = opts.GRPCEndpoint
 	for _, prefix := range []string{"http://", "https://"} {
