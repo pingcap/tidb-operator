@@ -38,8 +38,12 @@ import (
 )
 
 const (
+	// gracefulCloseConnectionsTimeout is the amount of time tidb-server wait for the ongoing txt to finished.
+	// The value is fixed in tidb-server.
+	gracefulCloseConnectionsTimeout = 15
+
 	// bufferSeconds is the extra seconds to wait for the pod to be deleted.
-	bufferSeconds = 3
+	bufferSeconds = 5
 	// preStopSleepSeconds is the seconds to sleep before the pod is deleted.
 	preStopSleepSeconds = 10
 
@@ -279,7 +283,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 				},
 			},
 			Volumes:                       vols,
-			TerminationGracePeriodSeconds: ptr.To(state.GracefulWaitTimeInSeconds + preStopSleepSeconds + bufferSeconds),
+			TerminationGracePeriodSeconds: ptr.To(state.GracefulWaitTimeInSeconds + preStopSleepSeconds + gracefulCloseConnectionsTimeout + bufferSeconds),
 		},
 	}
 
