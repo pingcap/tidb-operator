@@ -27,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/pointer"
@@ -144,6 +145,7 @@ func TestManager(t *testing.T) {
 	logBackup.Status.LogCheckpointTs = getTSOStr(now.Unix())
 	helper.createBackup(logBackup)
 	bs.Status.LogBackup = &logBackup.Name
+	bs.Status.LogBackupStartTs = &metav1.Time{Time: now.Add(-72 * time.Hour)}
 	bs.Spec.MaxReservedTime = pointer.StringPtr("23h")
 	err = m.Sync(bs)
 	g.Expect(err).Should(BeNil())
@@ -412,7 +414,6 @@ func TestSyncWithCompact(t *testing.T) {
 	g.Expect(err).Should(BeNil())
 	_, err = deps.CompactBackupLister.CompactBackups(bs.Namespace).Get(bs.Status.LastCompact)
 	g.Expect(err).Should(BeNil())
-	g.Expect(bs.Status.LastCompactProgress.Time, now)
 }
 
 func TestSyncWithFastCompact(t *testing.T) {
@@ -425,7 +426,7 @@ func TestSyncWithFastCompact(t *testing.T) {
 	bs := &v1alpha1.BackupSchedule{}
 	bs.Namespace = "ns"
 	bs.Name = "bsname"
-	bs.Spec.Schedule = "0/10 0 * * *" // Run every 10m
+	bs.Spec.Schedule = "0/60 0 * * *" // Run every 60m
 	bs.Spec.CompactInterval = pointer.StringPtr("5m")
 	bs.Spec.MaxReservedTime = pointer.StringPtr("71h")
 
@@ -444,8 +445,8 @@ func TestSyncWithFastCompact(t *testing.T) {
 	g.Expect(err).Should(BeNil())
 	lastCompact, err := deps.CompactBackupLister.CompactBackups(bs.Namespace).Get(bs.Status.LastCompact)
 	g.Expect(err).Should(BeNil())
-	//expect to compact 2*5minutes
-	expectEndTs := now.Add(-50 * time.Minute).UTC().Format(v1alpha1.BackupTimestampFormat)
+	//expect to compact 3*5minutes
+	expectEndTs := now.Add(-45 * time.Minute).UTC().Format(v1alpha1.BackupTimestampFormat)
 	g.Expect(lastCompact.Spec.EndTs).Should(Equal(expectEndTs))
 }
 
@@ -472,15 +473,14 @@ func TestSyncWithCompactRoutineCompact(t *testing.T) {
 	helper.createBackup(logBackup)
 	bs.Status.LogBackup = &logBackup.Name
 	bs.Status.LogBackupStartTs = &metav1.Time{Time: now.Add(-1 * time.Hour)}
-	logBackup.Status.LogCheckpointTs = getTSOStr(now.Add(-1 * time.Hour).Unix())
-	bs.Status.LastCompactProgress = &metav1.Time{Time: now}
-	bs.Status.LastCompactExecutionTs = &metav1.Time{Time: now.Add(-30 * time.Minute)}
+	logBackup.Status.LogCheckpointTs = getTSOStr(now.Unix())
+	bs.Status.LastCompactProgress = &metav1.Time{Time: now.Add(-10 * time.Minute)}
+	bs.Status.LastCompactExecutionTs = &metav1.Time{Time: now.Add(-20 * time.Minute)}
 
 	err = m.Sync(bs)
 	g.Expect(err).Should(BeNil())
 	_, err = deps.CompactBackupLister.CompactBackups(bs.Namespace).Get(bs.Status.LastCompact)
-	g.Expect(err).Should(BeNil())
-	g.Expect(bs.Status.LastCompactProgress.Time, now)
+	g.Expect(errors.IsNotFound(err)).Should(BeTrue())
 }
 
 func TestCalculateExpiredBackupsWithLogBackup(t *testing.T) {

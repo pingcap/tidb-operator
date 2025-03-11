@@ -6199,7 +6199,7 @@ string
 </em>
 </td>
 <td>
-<p>Progress is the progress of the backup</p>
+<p>Progress is the detailed progress of a running backup</p>
 </td>
 </tr>
 <tr>
@@ -6211,6 +6211,17 @@ string
 </td>
 <td>
 <p>Message is the error message of the backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxEndTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>maxEndTs is the real endTs processed by the compact backup</p>
 </td>
 </tr>
 <tr>
