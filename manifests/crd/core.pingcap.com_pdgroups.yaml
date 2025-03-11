@@ -8577,7 +8577,6 @@ spec:
                           type: object
                         type: array
                     required:
-                    - config
                     - version
                     - volumes
                     type: object
@@ -8702,6 +8701,8 @@ spec:
             - updatedReplicas
             type: object
         type: object
+    selectableFields:
+    - jsonPath: .spec.cluster.name
     served: true
     storage: true
     subresources:

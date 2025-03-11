@@ -80,8 +80,8 @@ func TestState(t *testing.T) {
 						return obj
 					}),
 				},
-				updateRevision:  "aaa-tiflash-77554fbd78",
-				currentRevision: "aaa-tiflash-77554fbd78",
+				updateRevision:  "aaa-tiflash-68cf8745d6",
+				currentRevision: "aaa-tiflash-68cf8745d6",
 			},
 		},
 	}

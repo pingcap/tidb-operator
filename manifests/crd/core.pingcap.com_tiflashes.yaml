@@ -8347,7 +8347,6 @@ spec:
                 type: array
             required:
             - cluster
-            - config
             - subdomain
             - version
             - volumes
@@ -8445,6 +8444,8 @@ spec:
                 type: string
             type: object
         type: object
+    selectableFields:
+    - jsonPath: .spec.cluster.name
     served: true
     storage: true
     subresources:
