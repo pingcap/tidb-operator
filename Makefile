@@ -82,7 +82,6 @@ overlaygen: bin/overlay-gen
 .PHONY: crd
 crd: bin/controller-gen build/crd-modifier
 	$(CONTROLLER_GEN) crd:generateEmbeddedObjectMeta=true output:crd:artifacts:config=$(ROOT)/manifests/crd paths=$(API_PATH)/...
-	$(CONTROLLER_GEN) crd:generateEmbeddedObjectMeta=true output:crd:artifacts:config=$(VALIDATION_TEST_PATH)/crd paths=$(API_PATH)/...
 	$(BIN_DIR)/crd-modifier -dir $(ROOT)/manifests/crd
 
 # Deprecate this generator, rbac generator cannot well handle nonResourceURLs

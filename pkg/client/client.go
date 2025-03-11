@@ -18,14 +18,17 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"reflect"
 
+	"github.com/go-json-experiment/json"
+	jsonv1 "github.com/go-json-experiment/json/v1"
 	openapi_v3 "github.com/google/gnostic-models/openapiv3"
 	"google.golang.org/protobuf/proto"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
+	kuberuntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/managedfields"
 	"k8s.io/client-go/discovery"
@@ -33,6 +36,7 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/structured-merge-diff/v4/typed"
+	"sigs.k8s.io/yaml"
 
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/utils/kubefeat"
@@ -145,15 +149,7 @@ func (*applyPatch) Type() types.PatchType {
 
 func (p *applyPatch) Data(client.Object) ([]byte, error) {
 	encoder := scheme.Codecs.EncoderForVersion(
-		json.NewSerializerWithOptions(
-			json.DefaultMetaFactory,
-			scheme.Scheme,
-			scheme.Scheme,
-			json.SerializerOptions{
-				Yaml:   true,
-				Pretty: false,
-				Strict: true,
-			}),
+		patchEncoder{},
 		p.gvk.GroupVersion(),
 	)
 	buf := bytes.Buffer{}
@@ -161,6 +157,25 @@ func (p *applyPatch) Data(client.Object) ([]byte, error) {
 		return nil, fmt.Errorf("failed to encode patch: %w", err)
 	}
 	return buf.Bytes(), nil
+}
+
+type patchEncoder struct{}
+
+func (patchEncoder) Encode(obj kuberuntime.Object, w io.Writer) error {
+	json, err := json.Marshal(obj, jsonv1.OmitEmptyWithLegacyDefinition(true), json.OmitZeroStructFields(true))
+	if err != nil {
+		return err
+	}
+	data, err := yaml.JSONToYAML(json)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(data)
+	return err
+}
+
+func (patchEncoder) Identifier() kuberuntime.Identifier {
+	return kuberuntime.Identifier("custom")
 }
 
 type GVKParser interface {
