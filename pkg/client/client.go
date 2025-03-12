@@ -34,6 +34,7 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/openapi"
 	"k8s.io/client-go/rest"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/structured-merge-diff/v4/typed"
 	"sigs.k8s.io/yaml"
@@ -116,6 +117,7 @@ func (p *applier) ApplyWithResult(ctx context.Context, obj client.Object) (Apply
 		gvk:      gvks[0],
 	}, &client.PatchOptions{
 		FieldManager: DefaultFieldManager,
+		Force:        ptr.To(true),
 	}); err != nil {
 		return ApplyResultUnchanged, fmt.Errorf("cannot apply patch: %w", err)
 	}
