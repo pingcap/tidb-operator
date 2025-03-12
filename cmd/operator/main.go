@@ -66,9 +66,7 @@ type brConfig struct {
 	backupManagerImage string
 }
 
-var (
-	brConf = &brConfig{}
-)
+var brConf = &brConfig{}
 
 func main() {
 	var metricsAddr string
@@ -112,6 +110,9 @@ func main() {
 	})
 
 	kubeconfig := ctrl.GetConfigOrDie()
+	// Set user agent to tidb-operator to make sure all field managers are tidb-operator
+	// if it's not set explicitly, it may be binary name
+	kubeconfig.UserAgent = client.DefaultFieldManager
 	kubefeat.MustInitFeatureGates(kubeconfig)
 
 	mgr, err := ctrl.NewManager(kubeconfig, ctrl.Options{
