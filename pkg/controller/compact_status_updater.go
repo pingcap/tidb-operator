@@ -76,6 +76,7 @@ func (r *CompactStatusUpdater) Event(compact *v1alpha1.CompactBackup, ty, reason
 func (r *CompactStatusUpdater) UpdateStatus(compact *v1alpha1.CompactBackup, newStatus v1alpha1.CompactStatus) error {
 	ns := compact.GetNamespace()
 	compactName := compact.GetName()
+	maxEndTs := compact.Status.MaxEndTs
 
 	now := time.Now()
 	canUpdateProgress := true
@@ -112,6 +113,10 @@ func (r *CompactStatusUpdater) UpdateStatus(compact *v1alpha1.CompactBackup, new
 		}
 		if newStatus.RetryStatus != nil && newStatus.RetryStatus[0].RetryNum == len(compact.Status.RetryStatus) {
 			compact.Status.RetryStatus = append(compact.Status.RetryStatus, newStatus.RetryStatus[0])
+			updated = true
+		}
+		if maxEndTs != "" && compact.Status.MaxEndTs < maxEndTs {
+			compact.Status.MaxEndTs = maxEndTs
 			updated = true
 		}
 
