@@ -139,13 +139,7 @@ const (
 	StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery = "PreferPDAddressesOverDiscovery"
 )
 
-type TiProxyCertLayout string
-
 const (
-	TiProxyCertLayoutLegacy TiProxyCertLayout = ""
-	// TiProxyCertLayoutV1 is a refined version of legacy layout. It's more intuitive and more flexible.
-	TiProxyCertLayoutV1 TiProxyCertLayout = "v1"
-
 	// AnnoKeySkipFlushLogBackup when set to a `TidbCluster`, during restarting the cluster, log backup tasks won't be flushed.
 	AnnoKeySkipFlushLogBackup = "tidb.pingcap.com/tikv-restart-without-flush-log-backup"
 )
