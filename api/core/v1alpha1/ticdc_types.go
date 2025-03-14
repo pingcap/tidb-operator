@@ -125,6 +125,8 @@ type TiCDCTemplateSpec struct {
 
 	// Volumes defines persistent volumes of TiCDC, it is optional.
 	// If you want to use ephemeral storage or mount sink TLS certs, you can use "overlay" instead.
+	// +listType=map
+	// +listMapKey=name
 	Volumes []Volume `json:"volumes,omitempty"`
 	// Overlay defines a k8s native resource template patch
 	// All resources(pod, pvcs, ...) managed by TiCDC can be overlayed by this field
