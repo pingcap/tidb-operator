@@ -150,6 +150,8 @@ type TiDBTemplateSpec struct {
 
 	Security *TiDBSecurity `json:"security,omitempty"`
 	// Volumes defines data volume of TiDB, it is optional.
+	// +listType=map
+	// +listMapKey=name
 	Volumes []Volume `json:"volumes,omitempty"`
 
 	// SlowLog defines the separate slow log configuration for TiDB.

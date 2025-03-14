@@ -146,6 +146,8 @@ type PDTemplateSpec struct {
 	// Config defines config file of PD
 	Config ConfigFile `json:"config,omitempty"`
 	// Volumes defines persistent volumes of PD
+	// +listType=map
+	// +listMapKey=name
 	Volumes []Volume `json:"volumes"`
 	// Overlay defines a k8s native resource template patch
 	// All resources(pod, pvcs, ...) managed by PD can be overlayed by this field

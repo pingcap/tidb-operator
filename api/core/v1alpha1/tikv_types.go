@@ -147,6 +147,8 @@ type TiKVTemplateSpec struct {
 	Config         ConfigFile     `json:"config,omitempty"`
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 	// Volumes defines data volume of TiKV
+	// +listType=map
+	// +listMapKey=name
 	Volumes []Volume `json:"volumes"`
 
 	// PreStop defines preStop config

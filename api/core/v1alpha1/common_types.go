@@ -158,13 +158,20 @@ type Topology map[string]string
 // Overlay defines some templates of k8s native resources.
 // Users can specify this field to overlay the spec of managed resources(pod, pvcs, ...).
 type Overlay struct {
-	Pod                    *PodOverlay                    `json:"pod,omitempty"`
-	PersistentVolumeClaims []PersistentVolumeClaimOverlay `json:"volumeClaims,omitempty"`
+	Pod *PodOverlay `json:"pod,omitempty"`
+	// +listType=map
+	// +listMapKey=name
+	PersistentVolumeClaims []NamedPersistentVolumeClaimOverlay `json:"volumeClaims,omitempty"`
 }
 
 type PodOverlay struct {
 	ObjectMeta `json:"metadata,omitempty"`
 	Spec       *corev1.PodSpec `json:"spec,omitempty"`
+}
+
+type NamedPersistentVolumeClaimOverlay struct {
+	Name                  string                       `json:"name"`
+	PersistentVolumeClaim PersistentVolumeClaimOverlay `json:"volumeClaim"`
 }
 
 type PersistentVolumeClaimOverlay struct {
@@ -179,10 +186,11 @@ type ConfigFile string
 // For example, a volume can be mounted for both data and raft log.
 type Volume struct {
 	// Name is volume name.
-	// If not specified, the PVC name will be "{component}-{podName}"
-	Name string `json:"name,omitempty"`
+	Name string `json:"name"`
 
 	// Mounts defines mount infos of this volume
+	// NOTE(liubo02): it cannot be a list map because the key is "type" or "mountPath" which is not supported
+	// +listType=atomic
 	Mounts []VolumeMount `json:"mounts"`
 
 	// Storage defines the request size of this volume
@@ -257,6 +265,8 @@ type ResourceRequirements struct {
 // CommonStatus defines common status fields for instances and groups managed by TiDB Operator.
 type CommonStatus struct {
 	// Conditions contain details of the current state.
+	// +listType=map
+	// +listMapKey=type
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
 	// ObservedGeneration is the most recent generation observed by the controller.
