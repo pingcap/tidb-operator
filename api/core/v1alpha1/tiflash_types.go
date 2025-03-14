@@ -139,6 +139,8 @@ type TiFlashTemplateSpec struct {
 	ProxyConfig ConfigFile `json:"proxyConfig,omitempty"`
 
 	// Volumes defines data volume of TiFlash
+	// +listType=map
+	// +listMapKey=name
 	Volumes []Volume `json:"volumes"`
 
 	// LogTailer defines the sidercar log tailer config of TiFlash.
