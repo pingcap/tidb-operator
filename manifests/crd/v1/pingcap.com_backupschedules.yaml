@@ -7571,9 +7571,6 @@ spec:
               logBackupStartTs:
                 format: date-time
                 type: string
-              nextCompactEndTs:
-                format: date-time
-                type: string
             type: object
         required:
         - metadata

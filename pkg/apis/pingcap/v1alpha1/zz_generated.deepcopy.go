@@ -414,10 +414,6 @@ func (in *BackupScheduleStatus) DeepCopyInto(out *BackupScheduleStatus) {
 		in, out := &in.LastCompactExecutionTs, &out.LastCompactExecutionTs
 		*out = (*in).DeepCopy()
 	}
-	if in.NextCompactEndTs != nil {
-		in, out := &in.NextCompactEndTs, &out.NextCompactEndTs
-		*out = (*in).DeepCopy()
-	}
 	if in.AllBackupCleanTime != nil {
 		in, out := &in.AllBackupCleanTime, &out.AllBackupCleanTime
 		*out = (*in).DeepCopy()

@@ -176,10 +176,10 @@ func (r *CompactStatusUpdater) OnProgress(ctx context.Context, compact *v1alpha1
 	newStatus := v1alpha1.CompactStatus{}
 	if endTs != "" {
 		newStatus.EndTs = endTs
-	} 
+	}
 	if p != nil {
 		progress := fmt.Sprintf("[READ_META(%d/%d),COMPACT_WORK(%d/%d)]",
-		p.MetaCompleted, p.MetaTotal, p.BytesCompacted, p.BytesToCompact)
+			p.MetaCompleted, p.MetaTotal, p.BytesCompacted, p.BytesToCompact)
 
 		newStatus.Progress = progress
 	}
