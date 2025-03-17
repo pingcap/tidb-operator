@@ -2607,8 +2607,6 @@ type BackupScheduleStatus struct {
 	LastCompactProgress *metav1.Time `json:"lastCompactProgress,omitempty"`
 	// LastCompactExecutionTs represents the execution time of the last compact
 	LastCompactExecutionTs *metav1.Time `json:"lastCompactExecutionTs,omitempty"`
-	// NextCompactEndTs represents the scheduled endTs of next compact
-	NextCompactEndTs *metav1.Time `json:"nextCompactEndTs,omitempty"`
 	// AllBackupCleanTime represents the time when all backup entries are cleaned up
 	AllBackupCleanTime *metav1.Time `json:"allBackupCleanTime,omitempty"`
 }

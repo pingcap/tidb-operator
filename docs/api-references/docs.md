@@ -4233,19 +4233,6 @@ Kubernetes meta/v1.Time
 </tr>
 <tr>
 <td>
-<code>nextCompactEndTs</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta">
-Kubernetes meta/v1.Time
-</a>
-</em>
-</td>
-<td>
-<p>NextCompactEndTs represents the scheduled endTs of next compact</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>allBackupCleanTime</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta">
