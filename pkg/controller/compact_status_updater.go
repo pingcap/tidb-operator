@@ -49,7 +49,7 @@ type CompactStatusUpdaterInterface interface {
 	OnSchedule(ctx context.Context, compact *v1alpha1.CompactBackup, err error) error
 	OnCreateJob(ctx context.Context, compact *v1alpha1.CompactBackup, err error) error
 	OnStart(ctx context.Context, compact *v1alpha1.CompactBackup) error
-	OnProgress(ctx context.Context, compact *v1alpha1.CompactBackup, p Progress) error
+	OnProgress(ctx context.Context, compact *v1alpha1.CompactBackup, p *Progress, endTs string) error
 	OnFinish(ctx context.Context, compact *v1alpha1.CompactBackup, err error) error
 	OnJobFailed(ctx context.Context, compact *v1alpha1.CompactBackup, reason string) error
 }
@@ -76,7 +76,6 @@ func (r *CompactStatusUpdater) Event(compact *v1alpha1.CompactBackup, ty, reason
 func (r *CompactStatusUpdater) UpdateStatus(compact *v1alpha1.CompactBackup, newStatus v1alpha1.CompactStatus) error {
 	ns := compact.GetNamespace()
 	compactName := compact.GetName()
-	maxEndTs := compact.Status.MaxEndTs
 
 	now := time.Now()
 	canUpdateProgress := true
@@ -115,8 +114,8 @@ func (r *CompactStatusUpdater) UpdateStatus(compact *v1alpha1.CompactBackup, new
 			compact.Status.RetryStatus = append(compact.Status.RetryStatus, newStatus.RetryStatus[0])
 			updated = true
 		}
-		if maxEndTs != "" && compact.Status.MaxEndTs < maxEndTs {
-			compact.Status.MaxEndTs = maxEndTs
+		if newStatus.EndTs != "" && compact.Status.EndTs < newStatus.EndTs {
+			compact.Status.EndTs = newStatus.EndTs
 			updated = true
 		}
 
@@ -173,13 +172,18 @@ func (r *CompactStatusUpdater) OnStart(ctx context.Context, compact *v1alpha1.Co
 	return r.UpdateStatus(compact, newStauts)
 }
 
-func (r *CompactStatusUpdater) OnProgress(ctx context.Context, compact *v1alpha1.CompactBackup, p Progress) error {
-	progress := fmt.Sprintf("[READ_META(%d/%d),COMPACT_WORK(%d/%d)]",
+func (r *CompactStatusUpdater) OnProgress(ctx context.Context, compact *v1alpha1.CompactBackup, p *Progress, endTs string) error {
+	newStatus := v1alpha1.CompactStatus{}
+	if endTs != "" {
+		newStatus.EndTs = endTs
+	} 
+	if p != nil {
+		progress := fmt.Sprintf("[READ_META(%d/%d),COMPACT_WORK(%d/%d)]",
 		p.MetaCompleted, p.MetaTotal, p.BytesCompacted, p.BytesToCompact)
 
-	newStatus := v1alpha1.CompactStatus{
-		Progress: progress,
+		newStatus.Progress = progress
 	}
+
 	return r.UpdateStatus(compact, newStatus)
 }
 

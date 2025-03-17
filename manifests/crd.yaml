@@ -10069,7 +10069,7 @@ spec:
       name: Status
       type: string
     - description: The endTs of the compact backup
-      jsonPath: .status.maxEndTs
+      jsonPath: .status.endTs
       name: EndTs
       type: string
     - description: The detailed progress of a running compact backup
@@ -12245,7 +12245,7 @@ spec:
                       type: string
                   type: object
                 type: array
-              maxEndTs:
+              endTs:
                 type: string
               message:
                 type: string
