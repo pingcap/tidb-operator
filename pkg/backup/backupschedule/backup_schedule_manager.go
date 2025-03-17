@@ -112,7 +112,7 @@ func (bm *backupScheduleManager) createCompact(bs *v1alpha1.BackupSchedule, chec
 	}
 	klog.Infof("backupSchedule %s/%s startTs is %v", bs.GetNamespace(), bs.GetName(), startTs)
 
-	if startTs.After(*checkpoint) {
+	if !startTs.Before(*checkpoint) {
 		klog.Infof("backupSchedule %s/%s compact: startTs %v is after checkpoint %v, skip compact", bs.GetNamespace(), bs.GetName(), startTs, checkpoint)
 		return nil
 	}
