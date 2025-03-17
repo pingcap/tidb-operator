@@ -180,8 +180,6 @@ func (cm *Manager) compactCmd(ctx context.Context, base64Storage string) *exec.C
 		strconv.FormatUint(cm.options.UntilTS, 10),
 		"-N",
 		strconv.FormatUint(cm.options.Concurrency, 10),
-		"--minimal-compaction-size",
-		"0",
 	}
 	return exec.CommandContext(ctx, ctl, args...)
 }
