@@ -188,7 +188,7 @@ func (cm *Manager) compactCmd(ctx context.Context, base64Storage string) *exec.C
 
 func (cm *Manager) processCompactionLogs(ctx context.Context, logStream io.Reader) error {
 	dec := json.NewDecoder(logStream)
-
+	currentEndTS, _ := strconv.ParseUint(cm.compact.Status.EndTs, 10, 64)
 	for dec.More() {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -205,15 +205,15 @@ func (cm *Manager) processCompactionLogs(ctx context.Context, logStream io.Reade
 		}
 		line.Raw = raw
 
-		if err := cm.processLogLine(ctx, line); err != nil {
+		if err := cm.processLogLine(ctx, line, &currentEndTS); err != nil {
 			return err
 		}
 	}
-
+	cm.statusUpdater.OnProgress(ctx, cm.compact, nil, strconv.FormatUint(currentEndTS, 10))
 	return nil
 }
 
-func (cm *Manager) processLogLine(ctx context.Context, l logLine) error {
+func (cm *Manager) processLogLine(ctx context.Context, l logLine, currentEndTS *uint64) error {
 	fmtError := func(err error, format string) error {
 		return errors.Annotatef(err, format, string(l.Raw))
 	}
@@ -224,7 +224,7 @@ func (cm *Manager) processLogLine(ctx context.Context, l logLine) error {
 		if err := json.Unmarshal(l.Raw, &prog); err != nil {
 			return fmtError(err, "failed to decode progress message: %s")
 		}
-		cm.statusUpdater.OnProgress(ctx, cm.compact, prog)
+		cm.statusUpdater.OnProgress(ctx, cm.compact, &prog, "")
 
 	case messageCompactionSpawn:
 		var ts struct {
@@ -234,9 +234,8 @@ func (cm *Manager) processLogLine(ctx context.Context, l logLine) error {
 			return fmtError(err, "failed to decode input_max_ts message: %s")
 		}
 
-		currentTS, _ := strconv.ParseUint(cm.compact.Status.MaxEndTs, 10, 64)
-		if ts.Input_max_ts > currentTS {
-			cm.compact.Status.MaxEndTs = strconv.FormatUint(ts.Input_max_ts, 10)
+		if ts.Input_max_ts > *currentEndTS {
+			*currentEndTS = ts.Input_max_ts
 		}
 
 	case messageCompactAborted:

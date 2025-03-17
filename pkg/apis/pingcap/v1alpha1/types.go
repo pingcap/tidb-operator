@@ -2605,7 +2605,7 @@ type BackupScheduleStatus struct {
 	LastBackupTime *metav1.Time `json:"lastBackupTime,omitempty"`
 	// LastCompactProgress represents the endTs of the last compact
 	LastCompactProgress *metav1.Time `json:"lastCompactProgress,omitempty"`
-	// LastCompactExecutionTs represents the endTs of the last compact
+	// LastCompactExecutionTs represents the execution time of the last compact
 	LastCompactExecutionTs *metav1.Time `json:"lastCompactExecutionTs,omitempty"`
 	// NextCompactEndTs represents the scheduled endTs of next compact
 	NextCompactEndTs *metav1.Time `json:"nextCompactEndTs,omitempty"`
@@ -3495,7 +3495,7 @@ type ScalePolicy struct {
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:shortName="cpbk"
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.state`,description="The current status of the compact backup"
-// +kubebuilder:printcolumn:name="EndTs",type=string,JSONPath=`.status.maxEndTs`,description="The endTs of the compact backup"
+// +kubebuilder:printcolumn:name="EndTs",type=string,JSONPath=`.status.endTs`,description="The endTs of the compact backup"
 // +kubebuilder:printcolumn:name="Progress",type=string,JSONPath=`.status.progress`,description="The detailed progress of a running compact backup"
 // +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.message`,description="The message of the compact backup"
 type CompactBackup struct {
@@ -3605,8 +3605,8 @@ type CompactStatus struct {
 	Progress string `json:"progress,omitempty"`
 	// Message is the error message of the backup
 	Message string `json:"message,omitempty"`
-	// maxEndTs is the real endTs processed by the compact backup
-	MaxEndTs string `json:"maxEndTs,omitempty"`
+	// endTs is the real endTs processed by the compact backup
+	EndTs string `json:"endTs,omitempty"`
 	// RetryStatus is status of the backoff retry, it will be used when backup pod or job exited unexpectedly
 	RetryStatus []CompactRetryRecord `json:"backoffRetryStatus,omitempty"`
 }

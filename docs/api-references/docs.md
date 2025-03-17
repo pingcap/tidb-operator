@@ -4228,7 +4228,7 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>LastCompactExecutionTs represents the endTs of the last compact</p>
+<p>LastCompactExecutionTs represents the execution time of the last compact</p>
 </td>
 </tr>
 <tr>
@@ -6215,13 +6215,13 @@ string
 </tr>
 <tr>
 <td>
-<code>maxEndTs</code></br>
+<code>endTs</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>maxEndTs is the real endTs processed by the compact backup</p>
+<p>endTs is the real endTs processed by the compact backup</p>
 </td>
 </tr>
 <tr>
