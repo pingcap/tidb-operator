@@ -45,9 +45,9 @@ func NamePrefixAndSuffix[
 // TODO(liubo02): rename to more reasonable one
 // TODO(liubo02): move to namer
 func PodName[
-	S scope.Object[F, T],
+	S scope.Instance[F, T],
 	F client.Object,
-	T runtime.Object,
+	T runtime.Instance,
 ](f F) string {
 	prefix, suffix := NamePrefixAndSuffix(f)
 	return prefix + "-" + scope.Component[S]() + "-" + suffix
@@ -61,4 +61,12 @@ func TLSClusterSecretName[
 ](f F) string {
 	prefix, _ := NamePrefixAndSuffix(f)
 	return prefix + "-" + scope.Component[S]() + "-cluster-secret"
+}
+
+func UpdateRevision[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](f F) string {
+	return scope.From[S](f).GetUpdateRevision()
 }

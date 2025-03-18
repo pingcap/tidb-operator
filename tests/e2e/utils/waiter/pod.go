@@ -46,10 +46,8 @@ func WaitPodsRollingUpdateOnce[G runtime.Group](
 	ctx context.Context,
 	c client.Client,
 	g G,
-	// scale means scale out/in before/after rolling update
-	// k means scale out k instances and -k means scale in k instances
-	// 0 means only rolling update
-	scale int,
+	from int,
+	surge int,
 	timeout time.Duration,
 ) error {
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(ctx, timeout)
@@ -74,26 +72,42 @@ func WaitPodsRollingUpdateOnce[G runtime.Group](
 		}
 	}
 
-	rollingUpdateTimes := int(g.Replicas())
+	var scaleOut, scaleIn, rollingUpdateTimes int
 
-	if scale > 0 {
-		for i := range scale {
-			if !infos[i].deletionTime.IsZero() {
-				return fmt.Errorf("expect scale out %v pods before rolling update, detail:\n%v", scale, detail.String())
-			}
-		}
+	to := int(g.Replicas())
+	delta := to - from
 
-		infos = infos[scale:]
-		rollingUpdateTimes -= scale
+	if delta > 0 {
+		scaleOut = delta + surge
+		scaleIn = surge
+		rollingUpdateTimes = from - scaleIn
 	}
-	if scale < 0 {
-		for i := range -scale {
-			if infos[len(infos)-1-i].deletionTime.IsZero() {
-				return fmt.Errorf("expect scale in %v pods after rolling update, detail:\n%v", scale, detail.String())
-			}
+	if delta == 0 {
+		scaleOut = surge
+		scaleIn = surge
+		rollingUpdateTimes = from - scaleIn
+	}
+
+	if delta < 0 {
+		scaleOut = 0
+		scaleIn = -delta
+		rollingUpdateTimes = from - scaleIn
+	}
+
+	for i := range scaleOut {
+		if !infos[i].deletionTime.IsZero() {
+			return fmt.Errorf("expect scale out %v pods before rolling update, detail:\n%v", scaleOut, detail.String())
 		}
-		infos = infos[:len(infos)+scale]
 	}
+
+	infos = infos[scaleOut:]
+
+	for i := range scaleIn {
+		if infos[len(infos)-1-i].deletionTime.IsZero() {
+			return fmt.Errorf("expect scale in %v pods after rolling update, detail:\n%v", scaleIn, detail.String())
+		}
+	}
+	infos = infos[:len(infos)-scaleIn]
 
 	if len(infos) != 2*rollingUpdateTimes {
 		return fmt.Errorf("expect %v pods info, now only %v, detail:\n%v", 2*rollingUpdateTimes, len(infos), detail.String())
@@ -191,40 +205,28 @@ func sortPodInfos(infos []podInfo) {
 }
 
 func WaitForPodsReady[G runtime.Group](ctx context.Context, c client.Client, g G, timeout time.Duration) error {
-	list := corev1.PodList{}
-	return WaitForList(ctx, c, &list, func() error {
-		if len(list.Items) != int(g.Replicas()) {
-			return fmt.Errorf("%s/%s pod replicas %d not equal to %d", g.GetNamespace(), g.GetName(), len(list.Items), g.Replicas())
+	return WaitForPodsCondition(ctx, c, g, func(pod *corev1.Pod) error {
+		if pod.Status.Phase != corev1.PodRunning {
+			return fmt.Errorf("%s/%s pod %s is not running, current phase: %s", g.GetNamespace(), g.GetName(), pod.Name, pod.Status.Phase)
 		}
-		for i := range list.Items {
-			pod := &list.Items[i]
-			if pod.Status.Phase != corev1.PodRunning {
-				return fmt.Errorf("%s/%s pod %s is not running, current phase: %s", g.GetNamespace(), g.GetName(), pod.Name, pod.Status.Phase)
+		for i := range pod.Status.Conditions {
+			cond := &pod.Status.Conditions[i]
+			if cond.Type != corev1.PodReady {
+				continue
 			}
-			for i := range pod.Status.Conditions {
-				cond := &pod.Status.Conditions[i]
-				if cond.Type != corev1.PodReady {
-					continue
-				}
-				if cond.Status != corev1.ConditionTrue {
-					return fmt.Errorf("%s/%s pod %s is not ready, current status: %s, reason: %v, message: %v",
-						g.GetNamespace(),
-						g.GetName(),
-						pod.Name,
-						cond.Status,
-						cond.Reason,
-						cond.Message,
-					)
-				}
+			if cond.Status != corev1.ConditionTrue {
+				return fmt.Errorf("%s/%s pod %s is not ready, current status: %s, reason: %v, message: %v",
+					g.GetNamespace(),
+					g.GetName(),
+					pod.Name,
+					cond.Status,
+					cond.Reason,
+					cond.Message,
+				)
 			}
 		}
-
 		return nil
-	}, timeout, client.InNamespace(g.GetNamespace()), client.MatchingLabels{
-		v1alpha1.LabelKeyCluster:   g.Cluster(),
-		v1alpha1.LabelKeyGroup:     g.GetName(),
-		v1alpha1.LabelKeyComponent: g.Component(),
-	})
+	}, timeout)
 }
 
 func WaitForPodsRecreated[G runtime.Group](
@@ -234,6 +236,21 @@ func WaitForPodsRecreated[G runtime.Group](
 	changeTime time.Time,
 	timeout time.Duration,
 ) error {
+	return WaitForPodsCondition(ctx, c, g, func(pod *corev1.Pod) error {
+		if pod.CreationTimestamp.Time.Before(changeTime) {
+			return fmt.Errorf("pod %s/%s is created at %v before change time %v", pod.Namespace, pod.Name, pod.CreationTimestamp, changeTime)
+		}
+		return nil
+	}, timeout)
+}
+
+func WaitForPodsCondition[G runtime.Group](
+	ctx context.Context,
+	c client.Client,
+	g G,
+	cond func(pod *corev1.Pod) error,
+	timeout time.Duration,
+) error {
 	list := corev1.PodList{}
 	return WaitForList(ctx, c, &list, func() error {
 		if len(list.Items) != int(g.Replicas()) {
@@ -241,8 +258,8 @@ func WaitForPodsRecreated[G runtime.Group](
 		}
 		for i := range list.Items {
 			pod := &list.Items[i]
-			if pod.CreationTimestamp.Time.Before(changeTime) {
-				return fmt.Errorf("pod %s/%s is created at %v before change time %v", pod.Namespace, pod.Name, pod.CreationTimestamp, changeTime)
+			if err := cond(pod); err != nil {
+				return err
 			}
 		}
 

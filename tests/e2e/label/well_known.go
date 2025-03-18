@@ -42,6 +42,7 @@ var (
 	FeatureTLS          = ginkgo.Label("f:TLS")
 	FeatureAuthToken    = ginkgo.Label("f:AuthToken")
 	FeatureBootstrapSQL = ginkgo.Label("f:BootstrapSQL")
+	FeatureHotReload    = ginkgo.Label("f:HotReload")
 
 	// Kind
 	KindExample = ginkgo.Label("k:Example")

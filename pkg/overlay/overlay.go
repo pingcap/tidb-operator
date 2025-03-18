@@ -15,6 +15,8 @@
 package overlay
 
 import (
+	"maps"
+
 	corev1 "k8s.io/api/core/v1"
 	resource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,12 +35,17 @@ func OverlayPod(pod *corev1.Pod, overlay *v1alpha1.PodOverlay) {
 	//
 	// TODO: validate that conflict keys cannot be added into overlay
 	// But now, just overwrite the conflict keys.
-	for k, v := range pod.Spec.NodeSelector {
-		src.Spec.NodeSelector[k] = v
+	if pod.Spec.NodeSelector != nil {
+		if src.Spec.NodeSelector == nil {
+			src.Spec.NodeSelector = map[string]string{}
+		}
+		maps.Copy(src.Spec.NodeSelector, pod.Spec.NodeSelector)
 	}
 
 	overlayObjectMeta(&pod.ObjectMeta, convertObjectMeta(&src.ObjectMeta))
-	overlayPodSpec(&pod.Spec, src.Spec)
+	if src.Spec != nil {
+		overlayPodSpec(&pod.Spec, src.Spec)
+	}
 }
 
 func convertObjectMeta(meta *v1alpha1.ObjectMeta) *metav1.ObjectMeta {
@@ -59,17 +66,13 @@ func overlayObjectMeta(dst, src *metav1.ObjectMeta) {
 		if dst.Labels == nil {
 			dst.Labels = map[string]string{}
 		}
-		for k, v := range src.Labels {
-			dst.Labels[k] = v
-		}
+		maps.Copy(dst.Labels, src.Labels)
 	}
 
 	if src.Annotations != nil {
 		if dst.Annotations == nil {
 			dst.Annotations = map[string]string{}
 		}
-		for k, v := range src.Annotations {
-			dst.Annotations[k] = v
-		}
+		maps.Copy(dst.Annotations, src.Annotations)
 	}
 }
