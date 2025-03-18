@@ -75,7 +75,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 				}
 
 				if wait {
-					return task.Wait().With("wait for ticdc caputure to be drained")
+					return task.Retry(task.DefaultRequeueAfter).With("wait for ticdc capture to be drained")
 				}
 			}
 			logger.Info("will recreate the pod")
