@@ -30,17 +30,6 @@ func NeedRestartInstance(group *v1alpha1.TiDBGroup, instance *v1alpha1.TiDB) boo
 	return !equal(previous, current)
 }
 
-func NeedRestartPod(instance *v1alpha1.TiDB, prev string) bool {
-	current := TiDB(instance)
-	previous := &v1alpha1.TiDBTemplateSpec{}
-	if err := json.Unmarshal([]byte(prev), previous); err != nil {
-		// ignore it and just assume previous is lost
-		// it means the the instance will try to restart the pod
-	}
-
-	return !equal(previous, current)
-}
-
 func EncodeTiDB(instance *v1alpha1.TiDB) ([]byte, error) {
 	spec := TiDB(instance)
 	return json.Marshal(spec)
