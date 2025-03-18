@@ -18,6 +18,7 @@ import (
 	"context"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -75,7 +76,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 				}
 
 				if wait {
-					return task.Wait().With("wait for ticdc caputure to be drained")
+					return task.Retry(5 * time.Second).With("wait for ticdc capture to be drained")
 				}
 			}
 			logger.Info("will recreate the pod")
