@@ -169,7 +169,9 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 					f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiDBGroup(dbg), 3, 1, waiter.LongTaskTimeout))
 				}()
 
-				changeTime := time.Now()
+				maxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
+				f.Must(err)
+				changeTime := maxTime.Add(time.Second)
 
 				ginkgo.By("Patch TiDBGroup")
 				f.Must(f.Client.Patch(ctx, dbg, patch))
@@ -277,7 +279,10 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiDBGroup(dbg), 5, 1, waiter.LongTaskTimeout))
 			}()
 
-			changeTime := time.Now()
+			maxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
+			f.Must(err)
+			changeTime := maxTime.Add(time.Second)
+
 			ginkgo.By("Change config and replicas of the TiDBGroup")
 			f.Must(f.Client.Patch(ctx, dbg, patch))
 			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), changeTime, waiter.LongTaskTimeout))
