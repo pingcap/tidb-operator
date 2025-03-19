@@ -20,6 +20,7 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
+	"math"
 	"net/url"
 	"os"
 	"strconv"
@@ -34,6 +35,7 @@ import (
 
 const (
 	defaultRequestTimout = 10 * time.Second
+	maxFailTimes         = 10
 )
 
 type Options struct {
@@ -179,17 +181,30 @@ func RunTiKVPrestopHook(ctx context.Context, cfg *TiKVConfig) error {
 
 	fmt.Println("pre stop checking, store id:", storeID)
 
+	minCount := math.MaxInt
+	var failTimes int
 	if err := wait.PollUntilContextCancel(ctx, time.Second, true, func(ctx context.Context) (done bool, err error) {
 		leaderCount, err := cfg.Client.GetLeaderCount()
 		if err != nil {
 			fmt.Printf("cannot get leader count, try again: %v\n", err)
 			return false, nil
 		}
-		if leaderCount != 0 {
-			fmt.Printf("pre stop checking, current leader count: %v\n", leaderCount)
-			return false, nil
+		if leaderCount == 0 {
+			return true, nil
 		}
-		return true, nil
+		if leaderCount >= minCount {
+			failTimes += 1
+			// leader count doesn't desc in 10s, stop graceful shutdown
+			if failTimes > maxFailTimes {
+				return false, fmt.Errorf("leader count does not desc in 10 times, stop graceful shutdown")
+			}
+		} else {
+			minCount = leaderCount
+			failTimes = 0
+		}
+
+		fmt.Printf("pre stop checking, current leader count: %v\n", leaderCount)
+		return false, nil
 	}); err != nil {
 		return fmt.Errorf("poll error: %w", err)
 	}
