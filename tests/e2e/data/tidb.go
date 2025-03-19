@@ -81,3 +81,9 @@ func WithTLS() GroupPatch[*runtime.TiDBGroup] {
 		}
 	}
 }
+
+func WithHotReloadPolicy() GroupPatch[*runtime.TiDBGroup] {
+	return func(obj *runtime.TiDBGroup) {
+		obj.Spec.Template.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyHotReload
+	}
+}
