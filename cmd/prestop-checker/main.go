@@ -35,7 +35,7 @@ import (
 
 const (
 	defaultRequestTimout = 10 * time.Second
-	maxFailTimes         = 10
+	maxFailTimes         = 30
 )
 
 type Options struct {
