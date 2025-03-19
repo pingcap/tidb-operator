@@ -35,6 +35,7 @@ type (
 	MatchingFields = client.MatchingFields
 	InNamespace    = client.InNamespace
 	ListOptions    = client.ListOptions
+	DeleteOptions  = client.DeleteOptions
 )
 
 type PropagationPolicy = client.PropagationPolicy
