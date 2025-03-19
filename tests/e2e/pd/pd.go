@@ -113,7 +113,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 			go func() {
 				defer close(ch)
 				defer ginkgo.GinkgoRecover()
-				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromPDGroup(pdg), 0, waiter.LongTaskTimeout))
+				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromPDGroup(pdg), 3, 0, waiter.LongTaskTimeout))
 			}()
 
 			changeTime := time.Now()
@@ -144,7 +144,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 			go func() {
 				defer close(ch)
 				defer ginkgo.GinkgoRecover()
-				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromPDGroup(pdg), -2, waiter.LongTaskTimeout))
+				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromPDGroup(pdg), 5, 0, waiter.LongTaskTimeout))
 			}()
 
 			changeTime := time.Now()

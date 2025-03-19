@@ -24,6 +24,8 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/checker"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
@@ -69,12 +71,22 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 
 		updateRevision, _, _ := state.Revision()
 
+		needUpdate, needRestart := precheckInstances(dbg, runtime.ToTiDBSlice(dbs), updateRevision)
+		if !needUpdate {
+			return task.Complete().With("all instances are synced")
+		}
+
+		maxSurge, maxUnavailable := 0, 1
+		if needRestart {
+			maxSurge, maxUnavailable = 1, 0
+		}
+
 		wait, err := updater.New[runtime.TiDBTuple]().
 			WithInstances(dbs...).
 			WithDesired(int(state.Group().Replicas())).
 			WithClient(c).
-			WithMaxSurge(0).
-			WithMaxUnavailable(1).
+			WithMaxSurge(maxSurge).
+			WithMaxUnavailable(maxUnavailable).
 			WithRevision(updateRevision).
 			WithNewFactory(TiDBNewer(dbg, updateRevision)).
 			WithAddHooks(topoPolicy).
@@ -102,6 +114,24 @@ const (
 	suffixLen = 6
 )
 
+func precheckInstances(dbg *v1alpha1.TiDBGroup, dbs []*v1alpha1.TiDB, updateRevision string) (needUpdate bool, needRestart bool) {
+	if len(dbs) != int(coreutil.Replicas[scope.TiDBGroup](dbg)) {
+		needUpdate = true
+	}
+	for _, db := range dbs {
+		if coreutil.UpdateRevision[scope.TiDB](db) == updateRevision {
+			continue
+		}
+
+		needUpdate = true
+		if checker.NeedRestartInstance(dbg, db) {
+			needRestart = true
+		}
+	}
+
+	return needUpdate, needRestart
+}
+
 func TiDBNewer(dbg *v1alpha1.TiDBGroup, rev string) updater.NewFactory[*runtime.TiDB] {
 	return updater.NewFunc[*runtime.TiDB](func() *runtime.TiDB {
 		name := fmt.Sprintf("%s-%s", dbg.Name, random.Random(suffixLen))
@@ -118,7 +148,7 @@ func TiDBNewer(dbg *v1alpha1.TiDBGroup, rev string) updater.NewFactory[*runtime.
 					v1alpha1.LabelKeyGroup:                dbg.Name,
 					v1alpha1.LabelKeyInstanceRevisionHash: rev,
 				}),
-				Annotations: maputil.Copy(dbg.Spec.Template.Annotations),
+				Annotations: maputil.Merge(dbg.Spec.Template.Annotations),
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(dbg, v1alpha1.SchemeGroupVersion.WithKind("TiDBGroup")),
 				},
