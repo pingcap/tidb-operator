@@ -29,17 +29,15 @@ import (
 
 const (
 	removingWaitInterval = 10 * time.Second
+	// for deleted store, we'll set grace period to the default
+	defaultGracePeriod = 30
 )
 
 func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
-		regionCount := 0
-		if state.Store != nil {
-			regionCount = state.Store.RegionCount
-		}
 		switch {
 		case !state.Cluster().GetDeletionTimestamp().IsZero():
-			wait, err := EnsureSubResourcesDeleted(ctx, c, state.TiKV(), regionCount)
+			wait, err := EnsureSubResourcesDeleted(ctx, c, state.TiKV())
 			if err != nil {
 				return task.Fail().With("cannot delete subresources: %w", err)
 			}
@@ -56,7 +54,7 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 			return task.Retry(removingWaitInterval).With("wait until the store is removed")
 
 		case state.StoreState == v1alpha1.StoreStateRemoved || state.StoreID == "":
-			wait, err := EnsureSubResourcesDeleted(ctx, c, state.TiKV(), regionCount)
+			wait, err := EnsureSubResourcesDeleted(ctx, c, state.TiKV())
 			if err != nil {
 				return task.Fail().With("cannot delete subresources: %w", err)
 			}
@@ -81,9 +79,8 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func EnsureSubResourcesDeleted(ctx context.Context, c client.Client, tikv *v1alpha1.TiKV, regionCount int) (wait bool, _ error) {
-	gracePeriod := CalcGracePeriod(regionCount)
-	wait1, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromTiKV(tikv), &corev1.PodList{}, client.GracePeriodSeconds(gracePeriod))
+func EnsureSubResourcesDeleted(ctx context.Context, c client.Client, tikv *v1alpha1.TiKV) (wait bool, _ error) {
+	wait1, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromTiKV(tikv), &corev1.PodList{}, client.GracePeriodSeconds(defaultGracePeriod))
 	if err != nil {
 		return false, err
 	}
