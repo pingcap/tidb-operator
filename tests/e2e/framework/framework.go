@@ -103,7 +103,7 @@ func (f *Framework) Setup(opts ...SetupOption) {
 
 			if !options.SkipWaitForNamespaceDeleted {
 				ginkgo.By(fmt.Sprintf("Ensure the namespace %s can be deleted", f.Namespace.Name))
-				f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Namespace, waiter.ShortTaskTimeout))
+				f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Namespace, waiter.LongTaskTimeout))
 			}
 		})
 	})
@@ -120,7 +120,7 @@ func (f *Framework) Setup(opts ...SetupOption) {
 
 				if !options.SkipWaitForClusterDeleted {
 					ginkgo.By(fmt.Sprintf("Ensure the cluster: %s can be deleted", f.Cluster.Name))
-					f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Cluster, waiter.ShortTaskTimeout))
+					f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Cluster, waiter.LongTaskTimeout))
 				}
 			})
 		})
