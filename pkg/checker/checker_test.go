@@ -18,8 +18,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 func TestNeedRestartInstance(t *testing.T) {
@@ -54,6 +56,53 @@ func TestNeedRestartInstance(t *testing.T) {
 				},
 			},
 			need: false,
+		},
+		{
+			desc: "add a restart annotation",
+			dbg: &v1alpha1.TiDBGroup{
+				Spec: v1alpha1.TiDBGroupSpec{
+					Template: v1alpha1.TiDBTemplate{
+						ObjectMeta: v1alpha1.ObjectMeta{
+							Annotations: map[string]string{
+								metav1alpha1.RestartAnnotationKey: "foo",
+							},
+						},
+						Spec: v1alpha1.TiDBTemplateSpec{},
+					},
+				},
+			},
+			db: &v1alpha1.TiDB{
+				Spec: v1alpha1.TiDBSpec{
+					TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{},
+				},
+			},
+			need: true,
+		},
+		{
+			desc: "update the restart annotation",
+			dbg: &v1alpha1.TiDBGroup{
+				Spec: v1alpha1.TiDBGroupSpec{
+					Template: v1alpha1.TiDBTemplate{
+						ObjectMeta: v1alpha1.ObjectMeta{
+							Annotations: map[string]string{
+								metav1alpha1.RestartAnnotationKey: "foo",
+							},
+						},
+						Spec: v1alpha1.TiDBTemplateSpec{},
+					},
+				},
+			},
+			db: &v1alpha1.TiDB{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						metav1alpha1.RestartAnnotationKey: "bar",
+					},
+				},
+				Spec: v1alpha1.TiDBSpec{
+					TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{},
+				},
+			},
+			need: true,
 		},
 	}
 

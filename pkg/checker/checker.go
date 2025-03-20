@@ -15,24 +15,18 @@
 package checker
 
 import (
-	"encoding/json"
-
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 func NeedRestartInstance(group *v1alpha1.TiDBGroup, instance *v1alpha1.TiDB) bool {
 	current := TiDBGroup(group)
 	previous := TiDB(instance)
 
-	return !equal(previous, current)
-}
-
-func EncodeTiDB(instance *v1alpha1.TiDB) ([]byte, error) {
-	spec := TiDB(instance)
-	return json.Marshal(spec)
+	return !equal(previous, current) || group.Spec.Template.Annotations[metav1alpha1.RestartAnnotationKey] != instance.Annotations[metav1alpha1.RestartAnnotationKey]
 }
 
 func TiDBGroup(group *v1alpha1.TiDBGroup) *v1alpha1.TiDBTemplateSpec {
