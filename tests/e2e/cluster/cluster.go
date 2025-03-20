@@ -95,6 +95,7 @@ func LoadClientRawConfig() (clientcmdapi.Config, error) {
 	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, overrides).RawConfig()
 }
 
+// nolint: goconst // just for test
 var _ = Describe("TiDB Cluster", func() {
 	var (
 		clientSet   kubernetes.Interface
