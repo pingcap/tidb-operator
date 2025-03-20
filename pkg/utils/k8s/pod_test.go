@@ -24,6 +24,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 )
 
@@ -33,7 +34,6 @@ func TestComparePods(t *testing.T) {
 		current  *corev1.Pod
 		expected *corev1.Pod
 		want     CompareResult
-		wantStr  string
 	}{
 		{
 			name: "test equal",
@@ -43,8 +43,7 @@ func TestComparePods(t *testing.T) {
 			expected: fake.FakeObj("pod",
 				fake.Label[corev1.Pod](v1alpha1.LabelKeyPodSpecHash, "foo"),
 			),
-			want:    CompareResultEqual,
-			wantStr: "Equal",
+			want: CompareResultEqual,
 		},
 		{
 			name: "revision should not be ignored",
@@ -56,8 +55,7 @@ func TestComparePods(t *testing.T) {
 				fake.Label[corev1.Pod](v1alpha1.LabelKeyPodSpecHash, "foo"),
 				fake.Label[corev1.Pod](v1alpha1.LabelKeyInstanceRevisionHash, "v1"),
 			),
-			want:    CompareResultUpdate,
-			wantStr: "Update",
+			want: CompareResultUpdate,
 		},
 		{
 			name: "only labels different",
@@ -71,8 +69,7 @@ func TestComparePods(t *testing.T) {
 				fake.Label[corev1.Pod]("test", "test"),
 				fake.Label[corev1.Pod](v1alpha1.LabelKeyInstanceRevisionHash, "v1"),
 			),
-			want:    CompareResultUpdate,
-			wantStr: "Update",
+			want: CompareResultUpdate,
 		},
 		{
 			name: "only annotations different",
@@ -86,8 +83,7 @@ func TestComparePods(t *testing.T) {
 				fake.Label[corev1.Pod]("test", "bar"),
 				fake.Annotation[corev1.Pod]("k1", "v2"),
 			),
-			want:    CompareResultUpdate,
-			wantStr: "Update",
+			want: CompareResultUpdate,
 		},
 		{
 			name: "test recreate",
@@ -97,17 +93,36 @@ func TestComparePods(t *testing.T) {
 			expected: fake.FakeObj("pod",
 				fake.Label[corev1.Pod](v1alpha1.LabelKeyPodSpecHash, "bar"),
 			),
-			want:    CompareResultRecreate,
-			wantStr: "Recreate",
+			want: CompareResultRecreate,
+		},
+		{
+			name: "test restart annotation 1",
+			current: fake.FakeObj("pod",
+				fake.Label[corev1.Pod](v1alpha1.LabelKeyPodSpecHash, "foo"),
+			),
+			expected: fake.FakeObj("pod",
+				fake.Label[corev1.Pod](v1alpha1.LabelKeyPodSpecHash, "foo"),
+				fake.Annotation[corev1.Pod](metav1alpha1.RestartAnnotationKey, "now"),
+			),
+			want: CompareResultRecreate,
+		},
+		{
+			name: "test restart annotation 2 ",
+			current: fake.FakeObj("pod",
+				fake.Label[corev1.Pod](v1alpha1.LabelKeyPodSpecHash, "foo"),
+				fake.Annotation[corev1.Pod](metav1alpha1.RestartAnnotationKey, "before"),
+			),
+			expected: fake.FakeObj("pod",
+				fake.Label[corev1.Pod](v1alpha1.LabelKeyPodSpecHash, "foo"),
+				fake.Annotation[corev1.Pod](metav1alpha1.RestartAnnotationKey, "now"),
+			),
+			want: CompareResultRecreate,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := ComparePods(tt.current, tt.expected); got != tt.want {
 				t.Errorf("ComparePods() = %v, want %v", got, tt.want)
-			}
-			if got := ComparePods(tt.current, tt.expected).String(); got != tt.wantStr {
-				t.Errorf("ComparePods() = %v, want %v", got, tt.wantStr)
 			}
 		})
 	}

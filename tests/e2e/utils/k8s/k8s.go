@@ -15,12 +15,16 @@
 package k8s
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"slices"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/utils/ptr"
@@ -122,4 +126,16 @@ func getTimeFromEvent(e watch.Event) time.Time {
 		return e.Object.(*corev1.Pod).DeletionTimestamp.Time
 	}
 	return time.Time{}
+}
+
+func GetPodUIDMap(ctx context.Context, clientSet kubernetes.Interface, namespace string, opts metav1.ListOptions) (map[string]string, error) {
+	podList, err := clientSet.CoreV1().Pods(namespace).List(ctx, opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pod list: %w", err)
+	}
+	podMap := make(map[string]string, len(podList.Items))
+	for _, pod := range podList.Items {
+		podMap[pod.Name] = string(pod.GetUID())
+	}
+	return podMap, nil
 }

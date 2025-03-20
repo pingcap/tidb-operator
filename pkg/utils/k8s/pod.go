@@ -26,6 +26,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	hashutil "github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/util/hash"
 )
@@ -90,13 +91,12 @@ func (r CompareResult) String() string {
 // ComparePods compares two pods and returns the result of comparison.
 // TODO: add check for changes that can be updated without recreating the pod.
 func ComparePods(current, expected *corev1.Pod) CompareResult {
-	if current.GetLabels()[v1alpha1.LabelKeyPodSpecHash] == expected.GetLabels()[v1alpha1.LabelKeyPodSpecHash] {
-		// The revision hash will always be different when there is a change, so ignore it.
-		p1, p2 := current.DeepCopy(), expected.DeepCopy()
-		// We also should update labels of pods even if revisions are not equal
-		// delete(p1.Labels, v1alpha1.LabelKeyInstanceRevisionHash)
-		// delete(p2.Labels, v1alpha1.LabelKeyInstanceRevisionHash)
-		if !maputil.AreEqual(p1.Labels, p2.Labels) || !maputil.AreEqual(p1.Annotations, p2.Annotations) {
+	if current.Labels[v1alpha1.LabelKeyPodSpecHash] == expected.Labels[v1alpha1.LabelKeyPodSpecHash] {
+		if current.Annotations[metav1alpha1.RestartAnnotationKey] != expected.Annotations[metav1alpha1.RestartAnnotationKey] {
+			// Restart annotation is different, need to recreate the pod.
+			return CompareResultRecreate
+		}
+		if !maputil.AreEqual(current.Labels, expected.Labels) || !maputil.AreEqual(current.Annotations, expected.Annotations) {
 			// Labels or annotations are different, need to update the pod.
 			return CompareResultUpdate
 		}
