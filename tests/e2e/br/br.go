@@ -1166,7 +1166,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 	ginkgo.Context("Compact backup Test", func() {
 		ginkgo.It("test normal function", func() {
-			backupVersion := utilimage.TiDBLatest
+			backupVersion := utilimage.TiDBNightlyVersion
 			enableTLS := false
 			skipCA := false
 			ns := f.Namespace.Name
