@@ -53,6 +53,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&TidbClusterList{},
 		&Backup{},
 		&BackupList{},
+		&CompactBackup{},
+		&CompactBackupList{},
 		&BackupSchedule{},
 		&BackupScheduleList{},
 		&Restore{},

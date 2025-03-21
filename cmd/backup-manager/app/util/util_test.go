@@ -260,7 +260,7 @@ func TestGetRemotePath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p, err := GetStoragePath(tt.backup)
+			p, err := GetStoragePath(&tt.backup.Spec.StorageProvider)
 			if tt.err {
 				g.Expect(err).To(HaveOccurred())
 				return
