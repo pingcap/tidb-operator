@@ -931,9 +931,9 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 							Format:      "",
 						},
 					},
-					"compactSpan": {
+					"compactInterval": {
 						SchemaProps: spec.SchemaProps{
-							Description: "CompactSpan is to specify how long backups we want to compact.",
+							Description: "CompactInterval is to specify how long backups we want to compact.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
