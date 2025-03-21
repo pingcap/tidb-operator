@@ -94,12 +94,14 @@ func (bm *backupScheduleManager) createCompact(bs *v1alpha1.BackupSchedule, chec
 	endTs = calEndTs(startTs, span, *checkpoint)
 	klog.Infof("backupSchedule %s/%s expected startTs is %v, endTs is %v", bs.GetNamespace(), bs.GetName(), startTs, endTs)
 
-	if endTs.Sub(bs.Status.LogBackupStartTs.Time) < span {
-		return nil
-	}
 	if endTs.After(*checkpoint) {
 		return fmt.Errorf("compact should never exceed checkpoint %v, endTs: %v", checkpoint, endTs)
 	}
+	// skip compact if log backup just started
+	if endTs.Sub(bs.Status.LogBackupStartTs.Time) < span {
+		return nil
+	}
+	// skip compact if not reach compact interval
 	if bs.Status.LastCompactExecutionTs != nil && nowFn().Sub(bs.Status.LastCompactExecutionTs.Time) < span {
 		return nil
 	}
