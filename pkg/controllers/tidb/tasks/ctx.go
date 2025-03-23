@@ -42,8 +42,6 @@ type ReconcileContext struct {
 
 	Healthy bool
 
-	GracefulWaitTimeInSeconds int64
-
 	// ConfigHash stores the hash of **user-specified** config (i.e.`.Spec.Config`),
 	// which will be used to determine whether the config has changed.
 	// This ensures that our config overlay logic will not restart the tidb cluster unexpectedly.
