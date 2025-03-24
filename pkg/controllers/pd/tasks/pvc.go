@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/overlay"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
@@ -34,7 +35,7 @@ import (
 func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm volumes.ModifierFactory) task.Task {
 	return task.NameTaskFunc("PVC", func(ctx context.Context) task.Result {
 		ck := state.Cluster()
-		pvcs := newPVCs(state)
+		pvcs := newPVCs(state.Cluster(), state.PD(), state.ClusterID, state.MemberID)
 		if wait, err := volumes.SyncPVCs(ctx, c, pvcs, vm.New(ck.Namespace, ck.Name), logger); err != nil {
 			return task.Fail().With("failed to sync pvcs: %v", err)
 		} else if wait {
@@ -47,20 +48,20 @@ func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm vo
 	})
 }
 
-func newPVCs(state *ReconcileContext) []*corev1.PersistentVolumeClaim {
-	cluster := state.Cluster()
-	pd := state.PD()
+func newPVCs(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, clusterID, memberID string) []*corev1.PersistentVolumeClaim {
 	pvcs := make([]*corev1.PersistentVolumeClaim, 0, len(pd.Spec.Volumes))
+	nameToIndex := map[string]int{}
 	for i := range pd.Spec.Volumes {
 		vol := &pd.Spec.Volumes[i]
+		nameToIndex[vol.Name] = i
 		pvcs = append(pvcs, &corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      PersistentVolumeClaimName(coreutil.PodName[scope.PD](pd), vol.Name),
 				Namespace: pd.Namespace,
 				Labels: maputil.Merge(pd.Labels, map[string]string{
 					v1alpha1.LabelKeyInstance:   pd.Name,
-					v1alpha1.LabelKeyClusterID:  state.ClusterID,
-					v1alpha1.LabelKeyMemberID:   state.MemberID,
+					v1alpha1.LabelKeyClusterID:  clusterID,
+					v1alpha1.LabelKeyMemberID:   memberID,
 					v1alpha1.LabelKeyVolumeName: vol.Name,
 				}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentPD)),
 				OwnerReferences: []metav1.OwnerReference{
@@ -80,6 +81,18 @@ func newPVCs(state *ReconcileContext) []*corev1.PersistentVolumeClaim {
 				VolumeAttributesClassName: vol.VolumeAttributesClassName,
 			},
 		})
+	}
+
+	if pd.Spec.Overlay != nil {
+		for _, o := range pd.Spec.Overlay.PersistentVolumeClaims {
+			index, ok := nameToIndex[o.Name]
+			if !ok {
+				// TODO(liubo02): it should be validated
+				panic("vol name" + o.Name + "doesn't exist")
+			}
+
+			overlay.OverlayPersistentVolumeClaim(pvcs[index], &o.PersistentVolumeClaim)
+		}
 	}
 
 	return pvcs

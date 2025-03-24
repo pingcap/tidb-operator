@@ -24,6 +24,14 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 )
 
+func OverlayPersistentVolumeClaim(pvc *corev1.PersistentVolumeClaim, overlay *v1alpha1.PersistentVolumeClaimOverlay) {
+	if overlay == nil {
+		return
+	}
+	overlayObjectMeta(&pvc.ObjectMeta, convertObjectMeta(&overlay.ObjectMeta))
+	// TODO: overlay pvc spec
+}
+
 func OverlayPod(pod *corev1.Pod, overlay *v1alpha1.PodOverlay) {
 	if overlay == nil {
 		return
