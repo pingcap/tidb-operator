@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/image"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
+	"github.com/pingcap/tidb-operator/pkg/reloadable"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/ticdcapi/v1"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
@@ -47,7 +48,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 
-		expected := newPod(state)
+		expected := newPod(state.Cluster(), state.TiCDC())
 		if state.Pod() == nil {
 			// Pod needs PD address as a parameter
 			if state.Cluster().Status.PD == "" {
@@ -61,13 +62,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 			return task.Complete().With("pod is created")
 		}
 
-		res := k8s.ComparePods(state.Pod(), expected)
-		curHash, expectHash := state.Pod().Labels[v1alpha1.LabelKeyConfigHash], expected.Labels[v1alpha1.LabelKeyConfigHash]
-		configChanged := curHash != expectHash
-		logger.Info("compare pod", "result", res, "configChanged", configChanged, "currentConfigHash", curHash, "expectConfigHash", expectHash)
-
-		if res == k8s.CompareResultRecreate || (configChanged &&
-			state.TiCDC().Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart) {
+		if !reloadable.CheckTiCDCPod(state.TiCDC(), state.Pod()) {
 			if state.Healthy || statefulset.IsPodReady(state.Pod()) {
 				wait, err := preDeleteCheck(ctx, logger, state.TiCDCClient)
 				if err != nil {
@@ -85,22 +80,21 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 
 			state.PodIsTerminating = true
 			return task.Wait().With("pod is deleting")
-		} else if res == k8s.CompareResultUpdate {
-			logger.Info("will update the pod in place")
-			if err := c.Apply(ctx, expected); err != nil {
-				return task.Fail().With("can't apply pod of ticdc: %w", err)
-			}
-
-			state.SetPod(expected)
 		}
+
+		logger.Info("will update the pod in place")
+		if err := c.Apply(ctx, expected); err != nil {
+			return task.Fail().With("can't apply pod of tikv: %w", err)
+		}
+
+		// write apply result back to ctx
+		state.SetPod(expected)
 
 		return task.Complete().With("pod is synced")
 	})
 }
 
-func newPod(state *ReconcileContext) *corev1.Pod {
-	cluster := state.Cluster()
-	ticdc := state.TiCDC()
+func newPod(cluster *v1alpha1.Cluster, ticdc *v1alpha1.TiCDC) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -176,9 +170,8 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			Namespace: ticdc.Namespace,
 			Name:      coreutil.PodName[scope.TiCDC](ticdc),
 			Labels: maputil.Merge(ticdc.Labels, map[string]string{
-				v1alpha1.LabelKeyInstance:   ticdc.Name,
-				v1alpha1.LabelKeyConfigHash: state.ConfigHash,
-				v1alpha1.LabelKeyClusterID:  cluster.Status.ID,
+				v1alpha1.LabelKeyInstance:  ticdc.Name,
+				v1alpha1.LabelKeyClusterID: cluster.Status.ID,
 			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiCDC)),
 			Annotations: maputil.Merge(ticdc.GetAnnotations(), k8s.AnnoProm(coreutil.TiCDCPort(ticdc), metricsPath)),
 			OwnerReferences: []metav1.OwnerReference{
@@ -255,7 +248,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 		overlay.OverlayPod(pod, ticdc.Spec.Overlay.Pod)
 	}
 
-	k8s.CalculateHashAndSetLabels(pod)
+	reloadable.MustEncodeLastTiCDCTemplate(ticdc, pod)
 	return pod
 }
 

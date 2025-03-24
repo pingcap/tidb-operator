@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	tiflashcfg "github.com/pingcap/tidb-operator/pkg/configs/tiflash"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	"github.com/pingcap/tidb-operator/pkg/utils/hasher"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/utils/toml"
@@ -59,11 +58,7 @@ func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 			return task.Fail().With("tiflash proxy config cannot be encoded: %w", err)
 		}
 
-		state.ConfigHash, err = hasher.GenerateHash(state.TiFlash().Spec.Config, state.TiFlash().Spec.ProxyConfig)
-		if err != nil {
-			return task.Fail().With("failed to generate hash for tiflash's config: %w", err)
-		}
-		expected := newConfigMap(state.TiFlash(), flashData, proxyData, state.ConfigHash)
+		expected := newConfigMap(state.TiFlash(), flashData, proxyData)
 		if e := c.Apply(ctx, expected); e != nil {
 			return task.Fail().With("can't create/update cm of tiflash: %w", e)
 		}
@@ -71,14 +66,13 @@ func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func newConfigMap(tiflash *v1alpha1.TiFlash, flashData, proxyData []byte, hash string) *corev1.ConfigMap {
+func newConfigMap(tiflash *v1alpha1.TiFlash, flashData, proxyData []byte) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      coreutil.PodName[scope.TiFlash](tiflash),
 			Namespace: tiflash.Namespace,
 			Labels: maputil.Merge(tiflash.Labels, map[string]string{
-				v1alpha1.LabelKeyInstance:   tiflash.Name,
-				v1alpha1.LabelKeyConfigHash: hash,
+				v1alpha1.LabelKeyInstance: tiflash.Name,
 			}),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(tiflash, v1alpha1.SchemeGroupVersion.WithKind("TiFlash")),

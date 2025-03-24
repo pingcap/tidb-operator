@@ -37,7 +37,6 @@ func TestTaskConfigMap(t *testing.T) {
 		state         *ReconcileContext
 		objs          []client.Object
 		unexpectedErr bool
-		invalidConfig bool
 
 		expectedStatus task.Status
 	}{
@@ -62,7 +61,6 @@ func TestTaskConfigMap(t *testing.T) {
 					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
 				},
 			},
-			invalidConfig:  true,
 			expectedStatus: task.SFail,
 		},
 		{
@@ -76,7 +74,6 @@ func TestTaskConfigMap(t *testing.T) {
 					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
 				},
 			},
-			invalidConfig:  true,
 			expectedStatus: task.SFail,
 		},
 		{
@@ -143,11 +140,6 @@ func TestTaskConfigMap(t *testing.T) {
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), res.Message())
 			assert.False(tt, done, c.desc)
 
-			if !c.invalidConfig {
-				// config hash should be set
-				assert.NotEmpty(tt, c.state.ConfigHash, c.desc)
-			}
-
 			if c.expectedStatus == task.SComplete {
 				cm := corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
@@ -155,7 +147,7 @@ func TestTaskConfigMap(t *testing.T) {
 					},
 				}
 				require.NoError(tt, fc.Get(ctx, client.ObjectKeyFromObject(&cm), &cm), c.desc)
-				assert.Equal(tt, c.state.ConfigHash, cm.Labels[v1alpha1.LabelKeyConfigHash], c.desc)
+				assert.NotEmpty(tt, cm.Data, c.desc)
 			}
 		})
 	}
