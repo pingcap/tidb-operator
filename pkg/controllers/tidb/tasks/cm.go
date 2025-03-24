@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	tidbcfg "github.com/pingcap/tidb-operator/pkg/configs/tidb"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	"github.com/pingcap/tidb-operator/pkg/utils/hasher"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/utils/toml"
@@ -47,11 +46,7 @@ func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 			return task.Fail().With("tidb config cannot be encoded: %w", err)
 		}
 
-		state.ConfigHash, err = hasher.GenerateHash(state.TiDB().Spec.Config)
-		if err != nil {
-			return task.Fail().With("failed to generate hash for `tidb.spec.config`: %w", err)
-		}
-		expected := newConfigMap(state.TiDB(), data, state.ConfigHash)
+		expected := newConfigMap(state.TiDB(), data)
 		if e := c.Apply(ctx, expected); e != nil {
 			return task.Fail().With("can't create/update cm of tidb: %w", e)
 		}
@@ -59,14 +54,13 @@ func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func newConfigMap(tidb *v1alpha1.TiDB, data []byte, hash string) *corev1.ConfigMap {
+func newConfigMap(tidb *v1alpha1.TiDB, data []byte) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      coreutil.PodName[scope.TiDB](tidb),
 			Namespace: tidb.Namespace,
 			Labels: maputil.Merge(tidb.Labels, map[string]string{
-				v1alpha1.LabelKeyInstance:   tidb.Name,
-				v1alpha1.LabelKeyConfigHash: hash,
+				v1alpha1.LabelKeyInstance: tidb.Name,
 			}),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(tidb, v1alpha1.SchemeGroupVersion.WithKind("TiDB")),

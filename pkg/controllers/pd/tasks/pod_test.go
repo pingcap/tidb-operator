@@ -36,8 +36,9 @@ import (
 )
 
 const (
-	fakeVersion         = "v1.2.3"
-	expectedPodSpecHash = "7d4f6bf985"
+	fakeVersion    = "v1.2.3"
+	fakeNewVersion = "v1.3.3"
+	changedConfig  = `log.level = 'warn'`
 )
 
 func TestTaskPod(t *testing.T) {
@@ -101,7 +102,7 @@ func TestTaskPod(t *testing.T) {
 			expectedStatus: task.SFail,
 		},
 		{
-			desc: "pod spec changed",
+			desc: "version is changed",
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
@@ -109,9 +110,13 @@ func TestTaskPod(t *testing.T) {
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fake.FakeObj("aaa-pd-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						return obj
-					}),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
+							obj.Spec.Version = fakeNewVersion
+							return obj
+						}),
+					),
 				},
 			},
 
@@ -120,7 +125,7 @@ func TestTaskPod(t *testing.T) {
 			expectedStatus:           task.SWait,
 		},
 		{
-			desc: "pod spec changed, failed to delete",
+			desc: "version is changed, failed to delete",
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
@@ -128,9 +133,13 @@ func TestTaskPod(t *testing.T) {
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fake.FakeObj("aaa-pd-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						return obj
-					}),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
+							obj.Spec.Version = fakeNewVersion
+							return obj
+						}),
+					),
 				},
 			},
 			unexpectedErr: true,
@@ -138,7 +147,7 @@ func TestTaskPod(t *testing.T) {
 			expectedStatus: task.SFail,
 		},
 		{
-			desc: "pod spec changed, pod is healthy, pod is leader",
+			desc: "version is changed, pod is healthy, pod is leader",
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
@@ -152,9 +161,19 @@ func TestTaskPod(t *testing.T) {
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fake.FakeObj("aaa-pd-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						return obj
-					}),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
+							obj.Spec.Version = fakeNewVersion
+							obj.Status.Conditions = []metav1.Condition{
+								{
+									Type:   v1alpha1.CondReady,
+									Status: metav1.ConditionTrue,
+								},
+							}
+							return obj
+						}),
+					),
 					pds: []*v1alpha1.PD{
 						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
 							obj.Spec.Version = fakeVersion
@@ -187,7 +206,7 @@ func TestTaskPod(t *testing.T) {
 			expectedStatus: task.SWait,
 		},
 		{
-			desc: "pod spec changed, pod is healthy, pod is leader, no transferee",
+			desc: "version is changed, pod is healthy, pod is leader, no transferee",
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
@@ -201,9 +220,19 @@ func TestTaskPod(t *testing.T) {
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fake.FakeObj("aaa-pd-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						return obj
-					}),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
+							obj.Spec.Version = fakeNewVersion
+							obj.Status.Conditions = []metav1.Condition{
+								{
+									Type:   v1alpha1.CondReady,
+									Status: metav1.ConditionTrue,
+								},
+							}
+							return obj
+						}),
+					),
 					pds: []*v1alpha1.PD{
 						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
 							obj.Spec.Version = fakeVersion
@@ -236,7 +265,7 @@ func TestTaskPod(t *testing.T) {
 			expectedStatus: task.SFail,
 		},
 		{
-			desc: "pod spec changed, pod is healthy, pod is leader, only one pd",
+			desc: "version is changed, pod is healthy, pod is leader, only one pd",
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
@@ -250,9 +279,19 @@ func TestTaskPod(t *testing.T) {
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fake.FakeObj("aaa-pd-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						return obj
-					}),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
+							obj.Spec.Version = fakeNewVersion
+							obj.Status.Conditions = []metav1.Condition{
+								{
+									Type:   v1alpha1.CondReady,
+									Status: metav1.ConditionTrue,
+								},
+							}
+							return obj
+						}),
+					),
 					pds: []*v1alpha1.PD{
 						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
 							obj.Spec.Version = fakeVersion
@@ -276,7 +315,7 @@ func TestTaskPod(t *testing.T) {
 			expectedStatus:           task.SWait,
 		},
 		{
-			desc: "pod spec changed, pod is healthy, pod is not leader",
+			desc: "version is changed, pod is healthy, pod is not leader",
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
@@ -290,9 +329,19 @@ func TestTaskPod(t *testing.T) {
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fake.FakeObj("aaa-pd-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						return obj
-					}),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
+							obj.Spec.Version = fakeNewVersion
+							obj.Status.Conditions = []metav1.Condition{
+								{
+									Type:   v1alpha1.CondReady,
+									Status: metav1.ConditionTrue,
+								},
+							}
+							return obj
+						}),
+					),
 					pds: []*v1alpha1.PD{
 						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
 							obj.Spec.Version = fakeVersion
@@ -325,7 +374,7 @@ func TestTaskPod(t *testing.T) {
 			expectedStatus:           task.SWait,
 		},
 		{
-			desc: "pod spec hash not changed, config changed, hot reload policy",
+			desc: "config changed, hot reload policy",
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
@@ -334,22 +383,23 @@ func TestTaskPod(t *testing.T) {
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fake.FakeObj("aaa-pd-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyConfigHash:  "newest",
-							v1alpha1.LabelKeyPodSpecHash: expectedPodSpecHash,
-						}
-						return obj
-					}),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
+							obj.Spec.Version = fakeVersion
+							obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyHotReload
+							obj.Spec.Config = changedConfig
+							return obj
+						}),
+					),
 				},
-				ConfigHash: "newest",
 			},
 
 			expectUpdatedPod: true,
 			expectedStatus:   task.SComplete,
 		},
 		{
-			desc: "pod spec hash not changed, config changed, restart policy",
+			desc: "config changed, restart policy",
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
@@ -358,22 +408,23 @@ func TestTaskPod(t *testing.T) {
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fake.FakeObj("aaa-pd-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyConfigHash:  "old",
-							v1alpha1.LabelKeyPodSpecHash: "6d6499ffc7",
-						}
-						return obj
-					}),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
+							obj.Spec.Version = fakeVersion
+							obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
+							obj.Spec.Config = changedConfig
+							return obj
+						}),
+					),
 				},
-				ConfigHash: "newest",
 			},
 
 			expectedPodIsTerminating: true,
 			expectedStatus:           task.SWait,
 		},
 		{
-			desc: "pod spec hash not changed, pod labels changed, config not changed",
+			desc: "pod labels changed, config not changed",
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
@@ -382,23 +433,31 @@ func TestTaskPod(t *testing.T) {
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fake.FakeObj("aaa-pd-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyConfigHash:  "newest",
-							v1alpha1.LabelKeyPodSpecHash: expectedPodSpecHash,
-							"xxx":                        "yyy",
-						}
-						return obj
-					}),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
+							obj.Spec.Version = fakeVersion
+							obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
+							obj.Spec.Overlay = &v1alpha1.Overlay{
+								Pod: &v1alpha1.PodOverlay{
+									ObjectMeta: v1alpha1.ObjectMeta{
+										Labels: map[string]string{
+											"test": "test",
+										},
+									},
+								},
+							}
+							return obj
+						}),
+					),
 				},
-				ConfigHash: "newest",
 			},
 
 			expectUpdatedPod: true,
 			expectedStatus:   task.SComplete,
 		},
 		{
-			desc: "pod spec hash not changed, pod labels changed, config not changed, apply failed",
+			desc: "pod labels changed, config not changed, apply failed",
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
@@ -407,16 +466,24 @@ func TestTaskPod(t *testing.T) {
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fake.FakeObj("aaa-pd-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyConfigHash:  "newest",
-							v1alpha1.LabelKeyPodSpecHash: "6d6499ffc7",
-							"xxx":                        "yyy",
-						}
-						return obj
-					}),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
+							obj.Spec.Version = fakeVersion
+							obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
+							obj.Spec.Overlay = &v1alpha1.Overlay{
+								Pod: &v1alpha1.PodOverlay{
+									ObjectMeta: v1alpha1.ObjectMeta{
+										Labels: map[string]string{
+											"test": "test",
+										},
+									},
+								},
+							}
+							return obj
+						}),
+					),
 				},
-				ConfigHash: "newest",
 			},
 			unexpectedErr: true,
 
@@ -432,16 +499,15 @@ func TestTaskPod(t *testing.T) {
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fake.FakeObj("aaa-pd-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyInstance:    "aaa-xxx",
-							v1alpha1.LabelKeyConfigHash:  "newest",
-							v1alpha1.LabelKeyPodSpecHash: expectedPodSpecHash,
-						}
-						return obj
-					}),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.PD) *v1alpha1.PD {
+							obj.Spec.Version = fakeVersion
+							obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
+							return obj
+						}),
+					),
 				},
-				ConfigHash: "newest",
 			},
 
 			expectedStatus: task.SComplete,
@@ -493,7 +559,7 @@ func TestTaskPod(t *testing.T) {
 			assert.Equal(tt, c.expectedPodIsTerminating, c.state.PodIsTerminating, c.desc)
 
 			if c.expectUpdatedPod {
-				expectedPod := newPod(c.state)
+				expectedPod := newPod(c.state.Cluster(), c.state.PD(), "", "")
 				actual := c.state.Pod().DeepCopy()
 				actual.Kind = ""
 				actual.APIVersion = ""
@@ -530,4 +596,8 @@ func transferLeader(ctx context.Context, name string, err error) action {
 		pdc.EXPECT().Underlay().Return(underlay)
 		underlay.EXPECT().TransferPDLeader(ctx, name).Return(err)
 	}
+}
+
+func fakePod(c *v1alpha1.Cluster, pd *v1alpha1.PD) *corev1.Pod {
+	return newPod(c, pd, "", "")
 }

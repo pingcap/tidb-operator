@@ -31,8 +31,9 @@ import (
 )
 
 const (
-	fakeVersion = "v1.2.3"
-	podSpecHash = "796b575645"
+	fakeVersion    = "v1.2.3"
+	fakeNewVersion = "v1.3.3"
+	changedConfig  = `log.level = 'warn'`
 )
 
 func TestTaskPod(t *testing.T) {
@@ -78,7 +79,7 @@ func TestTaskPod(t *testing.T) {
 			expectedStatus: task.SFail,
 		},
 		{
-			desc: "pod spec changed",
+			desc: "version is changed",
 			state: &ReconcileContext{
 				State: &state{
 					tidb: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
@@ -86,9 +87,13 @@ func TestTaskPod(t *testing.T) {
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fake.FakeObj("aaa-tidb-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						return obj
-					}),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
+							obj.Spec.Version = fakeNewVersion
+							return obj
+						}),
+					),
 				},
 			},
 
@@ -96,7 +101,7 @@ func TestTaskPod(t *testing.T) {
 			expectedStatus:           task.SWait,
 		},
 		{
-			desc: "pod spec changed, failed to delete",
+			desc: "version is changed, failed to delete",
 			state: &ReconcileContext{
 				State: &state{
 					tidb: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
@@ -104,9 +109,13 @@ func TestTaskPod(t *testing.T) {
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fake.FakeObj("aaa-tidb-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						return obj
-					}),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
+							obj.Spec.Version = fakeNewVersion
+							return obj
+						}),
+					),
 				},
 			},
 			unexpectedErr: true,
@@ -114,7 +123,7 @@ func TestTaskPod(t *testing.T) {
 			expectedStatus: task.SFail,
 		},
 		{
-			desc: "pod spec hash not changed, config changed, hot reload policy",
+			desc: "config changed, hot reload policy",
 			state: &ReconcileContext{
 				State: &state{
 					tidb: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
@@ -123,22 +132,23 @@ func TestTaskPod(t *testing.T) {
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fake.FakeObj("aaa-tidb-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyConfigHash:  "newest",
-							v1alpha1.LabelKeyPodSpecHash: podSpecHash,
-						}
-						return obj
-					}),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
+							obj.Spec.Version = fakeVersion
+							obj.Spec.Config = changedConfig
+							obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyHotReload
+							return obj
+						}),
+					),
 				},
-				ConfigHash: "newest",
 			},
 
 			expectUpdatedPod: true,
 			expectedStatus:   task.SComplete,
 		},
 		{
-			desc: "pod spec hash not changed, config changed, restart policy",
+			desc: "config changed, restart policy",
 			state: &ReconcileContext{
 				State: &state{
 					tidb: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
@@ -147,22 +157,23 @@ func TestTaskPod(t *testing.T) {
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fake.FakeObj("aaa-tidb-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyConfigHash:  "old",
-							v1alpha1.LabelKeyPodSpecHash: podSpecHash,
-						}
-						return obj
-					}),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
+							obj.Spec.Version = fakeVersion
+							obj.Spec.Config = changedConfig
+							obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
+							return obj
+						}),
+					),
 				},
-				ConfigHash: "newest",
 			},
 
 			expectedPodIsTerminating: true,
 			expectedStatus:           task.SWait,
 		},
 		{
-			desc: "pod spec hash not changed, pod labels changed, config not changed",
+			desc: "pod labels changed, config not changed",
 			state: &ReconcileContext{
 				State: &state{
 					tidb: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
@@ -171,23 +182,31 @@ func TestTaskPod(t *testing.T) {
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fake.FakeObj("aaa-tidb-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyConfigHash:  "newest",
-							v1alpha1.LabelKeyPodSpecHash: podSpecHash,
-							"xxx":                        "yyy",
-						}
-						return obj
-					}),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
+							obj.Spec.Version = fakeVersion
+							obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
+							obj.Spec.Overlay = &v1alpha1.Overlay{
+								Pod: &v1alpha1.PodOverlay{
+									ObjectMeta: v1alpha1.ObjectMeta{
+										Labels: map[string]string{
+											"test": "test",
+										},
+									},
+								},
+							}
+							return obj
+						}),
+					),
 				},
-				ConfigHash: "newest",
 			},
 
 			expectUpdatedPod: true,
 			expectedStatus:   task.SComplete,
 		},
 		{
-			desc: "pod spec hash not changed, pod labels changed, config not changed, apply failed",
+			desc: "pod labels changed, config not changed, apply failed",
 			state: &ReconcileContext{
 				State: &state{
 					tidb: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
@@ -196,16 +215,24 @@ func TestTaskPod(t *testing.T) {
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fake.FakeObj("aaa-tidb-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyConfigHash:  "newest",
-							v1alpha1.LabelKeyPodSpecHash: podSpecHash,
-							"xxx":                        "yyy",
-						}
-						return obj
-					}),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
+							obj.Spec.Version = fakeVersion
+							obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
+							obj.Spec.Overlay = &v1alpha1.Overlay{
+								Pod: &v1alpha1.PodOverlay{
+									ObjectMeta: v1alpha1.ObjectMeta{
+										Labels: map[string]string{
+											"test": "test",
+										},
+									},
+								},
+							}
+							return obj
+						}),
+					),
 				},
-				ConfigHash: "newest",
 			},
 			unexpectedErr: true,
 
@@ -221,16 +248,15 @@ func TestTaskPod(t *testing.T) {
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fake.FakeObj("aaa-tidb-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyInstance:    "aaa-xxx",
-							v1alpha1.LabelKeyConfigHash:  "newest",
-							v1alpha1.LabelKeyPodSpecHash: podSpecHash,
-						}
-						return obj
-					}),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
+							obj.Spec.Version = fakeVersion
+							obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
+							return obj
+						}),
+					),
 				},
-				ConfigHash: "newest",
 			},
 
 			expectedStatus: task.SComplete,
@@ -266,7 +292,7 @@ func TestTaskPod(t *testing.T) {
 			assert.Equal(tt, c.expectedPodIsTerminating, c.state.PodIsTerminating, c.desc)
 
 			if c.expectUpdatedPod {
-				expectedPod := newPod(c.state)
+				expectedPod := newPod(c.state.Cluster(), c.state.TiDB())
 				actual := c.state.Pod().DeepCopy()
 				actual.Kind = ""
 				actual.APIVersion = ""
@@ -275,4 +301,8 @@ func TestTaskPod(t *testing.T) {
 			}
 		})
 	}
+}
+
+func fakePod(c *v1alpha1.Cluster, tidb *v1alpha1.TiDB) *corev1.Pod {
+	return newPod(c, tidb)
 }

@@ -25,8 +25,8 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/checker"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/reloadable"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
@@ -124,7 +124,7 @@ func precheckInstances(dbg *v1alpha1.TiDBGroup, dbs []*v1alpha1.TiDB, updateRevi
 		}
 
 		needUpdate = true
-		if checker.NeedRestartInstance(dbg, db) {
+		if !reloadable.CheckTiDB(dbg, db) {
 			needRestart = true
 		}
 	}
