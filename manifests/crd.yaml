@@ -4491,7 +4491,7 @@ spec:
                   useKMS:
                     type: boolean
                 type: object
-              compactSpan:
+              compactInterval:
                 type: string
               gcs:
                 properties:
@@ -7560,15 +7560,15 @@ spec:
                 type: string
               lastCompact:
                 type: string
-              lastCompactTs:
+              lastCompactExecutionTs:
+                format: date-time
+                type: string
+              lastCompactProgress:
                 format: date-time
                 type: string
               logBackup:
                 type: string
               logBackupStartTs:
-                format: date-time
-                type: string
-              nextCompactEndTs:
                 format: date-time
                 type: string
             type: object
@@ -10065,7 +10065,11 @@ spec:
       jsonPath: .status.state
       name: Status
       type: string
-    - description: The progress of the compact backup
+    - description: The endTs of the compact backup
+      jsonPath: .status.endTs
+      name: EndTs
+      type: string
+    - description: The detailed progress of a running compact backup
       jsonPath: .status.progress
       name: Progress
       type: string
@@ -12238,6 +12242,8 @@ spec:
                       type: string
                   type: object
                 type: array
+              endTs:
+                type: string
               message:
                 type: string
               progress:

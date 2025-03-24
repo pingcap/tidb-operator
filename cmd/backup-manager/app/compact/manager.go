@@ -35,8 +35,9 @@ import (
 )
 
 const (
-	messageCompactionDone = "Finishing compaction."
-	messageCompactAborted = "Compaction aborted."
+	messageCompactionDone  = "Finishing compaction."
+	messageCompactionSpawn = "Spawning compaction."
+	messageCompactAborted  = "Compaction aborted."
 )
 
 // logLine is line of JSON log.
@@ -82,8 +83,7 @@ func (cm *Manager) kvCtlBin() string {
 }
 
 // ProcessBackup used to process the backup logic
-func (cm *Manager) ProcessCompact() error {
-	var err error
+func (cm *Manager) ProcessCompact() (err error) {
 	ctx, cancel := backuputil.GetContextForTerminationSignals(cm.options.ResourceName)
 	defer cancel()
 
@@ -152,10 +152,15 @@ func (cm *Manager) runCompaction(ctx context.Context, base64Storage string) (err
 	cm.statusUpdater.OnStart(ctx, cm.compact)
 	err = cm.processCompactionLogs(ctx, io.TeeReader(tikvLog, os.Stdout))
 	if err != nil {
+		cmd.Process.Kill()
 		return err
 	}
 
-	return cmd.Wait()
+	if waitErr := cmd.Wait(); waitErr != nil {
+		klog.Errorf("Command exited with error: %v", waitErr)
+		return waitErr
+	}
+	return nil
 }
 
 func (cm *Manager) compactCmd(ctx context.Context, base64Storage string) *exec.Cmd {
@@ -181,7 +186,7 @@ func (cm *Manager) compactCmd(ctx context.Context, base64Storage string) *exec.C
 
 func (cm *Manager) processCompactionLogs(ctx context.Context, logStream io.Reader) error {
 	dec := json.NewDecoder(logStream)
-
+	currentEndTS, _ := strconv.ParseUint(cm.compact.Status.EndTs, 10, 64)
 	for dec.More() {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -198,32 +203,49 @@ func (cm *Manager) processCompactionLogs(ctx context.Context, logStream io.Reade
 		}
 		line.Raw = raw
 
-		if err := cm.processLogLine(ctx, line); err != nil {
+		if err := cm.processLogLine(ctx, line, &currentEndTS); err != nil {
 			return err
 		}
 	}
-
+	cm.statusUpdater.OnProgress(ctx, cm.compact, nil, strconv.FormatUint(currentEndTS, 10))
 	return nil
 }
 
-func (cm *Manager) processLogLine(ctx context.Context, l logLine) error {
+func (cm *Manager) processLogLine(ctx context.Context, l logLine, currentEndTS *uint64) error {
+	fmtError := func(err error, format string) error {
+		return errors.Annotatef(err, format, string(l.Raw))
+	}
+
 	switch l.Message {
 	case messageCompactionDone:
 		var prog controller.Progress
 		if err := json.Unmarshal(l.Raw, &prog); err != nil {
-			return errors.Annotatef(err, "failed to decode progress message: %s", string(l.Raw))
+			return fmtError(err, "failed to decode progress message: %s")
 		}
-		cm.statusUpdater.OnProgress(ctx, cm.compact, prog)
-		return nil
+		cm.statusUpdater.OnProgress(ctx, cm.compact, &prog, "")
+
+	case messageCompactionSpawn:
+		var ts struct {
+			Input_max_ts uint64 `json:"input_max_ts"`
+		}
+		if err := json.Unmarshal(l.Raw, &ts); err != nil {
+			return fmtError(err, "failed to decode input_max_ts message: %s")
+		}
+
+		if ts.Input_max_ts > *currentEndTS {
+			*currentEndTS = ts.Input_max_ts
+		}
+
 	case messageCompactAborted:
-		errContainer := struct {
+		var errMsg struct {
 			Err string `json:"err"`
-		}{}
-		if err := json.Unmarshal(l.Raw, &errContainer); err != nil {
-			return errors.Annotatef(err, "failed to decode error message: %s", string(l.Raw))
 		}
-		return errors.New(errContainer.Err)
+		if err := json.Unmarshal(l.Raw, &errMsg); err != nil {
+			return fmtError(err, "failed to decode error message: %s")
+		}
+		return errors.New(errMsg.Err)
+
 	default:
-		return nil
 	}
+	return nil
 }

@@ -2564,8 +2564,8 @@ type BackupScheduleSpec struct {
 	MaxBackups *int32 `json:"maxBackups,omitempty"`
 	// MaxReservedTime is to specify how long backups we want to keep.
 	MaxReservedTime *string `json:"maxReservedTime,omitempty"`
-	// CompactSpan is to specify how long backups we want to compact.
-	CompactSpan *string `json:"compactSpan,omitempty"`
+	// CompactInterval is to specify how long backups we want to compact.
+	CompactInterval *string `json:"compactInterval,omitempty"`
 	// BackupTemplate is the specification of the backup structure to get scheduled.
 	BackupTemplate BackupSpec `json:"backupTemplate"`
 	// LogBackupTemplate is the specification of the log backup structure to get scheduled.
@@ -2603,10 +2603,10 @@ type BackupScheduleStatus struct {
 	LogBackupStartTs *metav1.Time `json:"logBackupStartTs,omitempty"`
 	// LastBackupTime represents the last time the backup was successfully created.
 	LastBackupTime *metav1.Time `json:"lastBackupTime,omitempty"`
-	// LastCompactTs represents the endTs of the last compact
-	LastCompactTs *metav1.Time `json:"lastCompactTs,omitempty"`
-	// NextCompactEndTs represents the scheduled endTs of next compact
-	NextCompactEndTs *metav1.Time `json:"nextCompactEndTs,omitempty"`
+	// LastCompactProgress represents the endTs of the last compact
+	LastCompactProgress *metav1.Time `json:"lastCompactProgress,omitempty"`
+	// LastCompactExecutionTs represents the execution time of the last compact
+	LastCompactExecutionTs *metav1.Time `json:"lastCompactExecutionTs,omitempty"`
 	// AllBackupCleanTime represents the time when all backup entries are cleaned up
 	AllBackupCleanTime *metav1.Time `json:"allBackupCleanTime,omitempty"`
 }
@@ -3493,7 +3493,8 @@ type ScalePolicy struct {
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:shortName="cpbk"
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.state`,description="The current status of the compact backup"
-// +kubebuilder:printcolumn:name="Progress",type=string,JSONPath=`.status.progress`,description="The progress of the compact backup"
+// +kubebuilder:printcolumn:name="EndTs",type=string,JSONPath=`.status.endTs`,description="The endTs of the compact backup"
+// +kubebuilder:printcolumn:name="Progress",type=string,JSONPath=`.status.progress`,description="The detailed progress of a running compact backup"
 // +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.message`,description="The message of the compact backup"
 type CompactBackup struct {
 	metav1.TypeMeta `json:",inline"`
@@ -3598,10 +3599,12 @@ type CompactRetryRecord struct {
 type CompactStatus struct {
 	// State is the current state of the backup
 	State string `json:"state,omitempty"`
-	// Progress is the progress of the backup
+	// Progress is the detailed progress of a running backup
 	Progress string `json:"progress,omitempty"`
 	// Message is the error message of the backup
 	Message string `json:"message,omitempty"`
+	// endTs is the real endTs processed by the compact backup
+	EndTs string `json:"endTs,omitempty"`
 	// RetryStatus is status of the backoff retry, it will be used when backup pod or job exited unexpectedly
 	RetryStatus []CompactRetryRecord `json:"backoffRetryStatus,omitempty"`
 }
