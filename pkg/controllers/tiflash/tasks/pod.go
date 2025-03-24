@@ -29,6 +29,7 @@ import (
 	tiflashcfg "github.com/pingcap/tidb-operator/pkg/configs/tiflash"
 	"github.com/pingcap/tidb-operator/pkg/image"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
+	"github.com/pingcap/tidb-operator/pkg/reloadable"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
@@ -42,7 +43,7 @@ const (
 func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
-		expected := newPod(state)
+		expected := newPod(state.Cluster(), state.TiFlash(), state.StoreID)
 		if state.Pod() == nil {
 			if err := c.Apply(ctx, expected); err != nil {
 				return task.Fail().With("can't apply pod of tiflash: %w", err)
@@ -52,13 +53,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 			return task.Complete().With("pod is created")
 		}
 
-		res := k8s.ComparePods(state.Pod(), expected)
-		curHash, expectHash := state.Pod().Labels[v1alpha1.LabelKeyConfigHash], expected.Labels[v1alpha1.LabelKeyConfigHash]
-		configChanged := curHash != expectHash
-		logger.Info("compare pod", "result", res, "configChanged", configChanged, "currentConfigHash", curHash, "expectConfigHash", expectHash)
-
-		if res == k8s.CompareResultRecreate || (configChanged &&
-			state.TiFlash().Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart) {
+		if !reloadable.CheckTiFlashPod(state.TiFlash(), state.Pod()) {
 			logger.Info("will recreate the pod")
 			if err := c.Delete(ctx, state.Pod()); err != nil {
 				return task.Fail().With("can't delete pod of tiflash: %w", err)
@@ -66,21 +61,19 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 
 			state.PodIsTerminating = true
 			return task.Wait().With("pod is deleting")
-		} else if res == k8s.CompareResultUpdate {
-			logger.Info("will update the pod in place")
-			if err := c.Apply(ctx, expected); err != nil {
-				return task.Fail().With("can't apply pod of tiflash: %w", err)
-			}
-			state.SetPod(expected)
 		}
+
+		logger.Info("will update the pod in place")
+		if err := c.Apply(ctx, expected); err != nil {
+			return task.Fail().With("can't apply pod of tiflash: %w", err)
+		}
+		state.SetPod(expected)
 
 		return task.Complete().With("pod is synced")
 	})
 }
 
-func newPod(state *ReconcileContext) *corev1.Pod {
-	cluster := state.Cluster()
-	tiflash := state.TiFlash()
+func newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, storeID string) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -146,10 +139,9 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			Namespace: tiflash.Namespace,
 			Name:      coreutil.PodName[scope.TiFlash](tiflash),
 			Labels: maputil.Merge(tiflash.Labels, map[string]string{
-				v1alpha1.LabelKeyInstance:   tiflash.Name,
-				v1alpha1.LabelKeyConfigHash: state.ConfigHash,
-				v1alpha1.LabelKeyClusterID:  cluster.Status.ID,
-				v1alpha1.LabelKeyStoreID:    state.StoreID,
+				v1alpha1.LabelKeyInstance:  tiflash.Name,
+				v1alpha1.LabelKeyClusterID: cluster.Status.ID,
+				v1alpha1.LabelKeyStoreID:   storeID,
 			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiFlash)),
 			Annotations: maputil.Merge(tiflash.GetAnnotations(),
 				k8s.AnnoProm(coreutil.TiFlashMetricsPort(tiflash), metricsPath),
@@ -211,7 +203,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 		overlay.OverlayPod(pod, tiflash.Spec.Overlay.Pod)
 	}
 
-	k8s.CalculateHashAndSetLabels(pod)
+	reloadable.MustEncodeLastTiFlashTemplate(tiflash, pod)
 	return pod
 }
 

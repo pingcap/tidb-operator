@@ -1,0 +1,111 @@
+// Copyright 2024 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package reloadable
+
+import (
+	"encoding/json"
+
+	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
+
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+)
+
+// CheckTiFlash returns whether changes are reloadable. No change also means reloadable.
+// We assume that only when the instance template is changed, the pod spec will change.
+// Instance copies the template spec from group directly,
+// so we can use the template of instance directly as the last template.
+// This function is used in the group controller.
+func CheckTiFlash(group *v1alpha1.TiFlashGroup, instance *v1alpha1.TiFlash) bool {
+	groupTmpl := &group.Spec.Template.Spec
+	instanceTmpl := &instance.Spec.TiFlashTemplateSpec
+
+	return equalTiFlashTemplate(groupTmpl, instanceTmpl)
+}
+
+// CheckTiFlashPod returns whether changes are reloadable. No change also means reloadable.
+// Pod records the last template in annotation.
+// We use a same way to check whether changes are reloadable.
+// This function is used in the instance controller.
+func CheckTiFlashPod(instance *v1alpha1.TiFlash, pod *corev1.Pod) bool {
+	lastInstanceTemplate := pod.Annotations[v1alpha1.AnnoKeyLastInstanceTemplate]
+
+	spec := &v1alpha1.TiFlashTemplateSpec{}
+	if err := json.Unmarshal([]byte(lastInstanceTemplate), spec); err != nil {
+		// last template is not found or unexpectedly changed
+		return true
+	}
+
+	instanceTmpl := &instance.Spec.TiFlashTemplateSpec
+
+	return equalTiFlashTemplate(instanceTmpl, spec)
+}
+
+func EncodeLastTiFlashTemplate(instance *v1alpha1.TiFlash, pod *corev1.Pod) error {
+	if pod.Annotations == nil {
+		pod.Annotations = map[string]string{}
+	}
+	instanceTmpl := &instance.Spec.TiFlashTemplateSpec
+	data, err := json.Marshal(instanceTmpl)
+	if err != nil {
+		return err
+	}
+	pod.Annotations[v1alpha1.AnnoKeyLastInstanceTemplate] = string(data)
+
+	return nil
+}
+
+func MustEncodeLastTiFlashTemplate(instance *v1alpha1.TiFlash, pod *corev1.Pod) {
+	if err := EncodeLastTiFlashTemplate(instance, pod); err != nil {
+		panic("cannot encode tiflash template: " + err.Error())
+	}
+}
+
+// convertTiFlashTemplate will ignore some fields
+// TODO: set default for some empty fields
+func convertTiFlashTemplate(tmpl *v1alpha1.TiFlashTemplateSpec) *v1alpha1.TiFlashTemplateSpec {
+	newTmpl := tmpl.DeepCopy()
+
+	if newTmpl.LogTailer != nil {
+		newTmpl.LogTailer.Image = nil
+	}
+
+	newTmpl.Volumes = convertVolumes(newTmpl.Volumes)
+	newTmpl.Overlay = convertOverlay(newTmpl.Overlay)
+
+	return newTmpl
+}
+
+func equalTiFlashTemplate(p, c *v1alpha1.TiFlashTemplateSpec) bool {
+	p = convertTiFlashTemplate(p)
+	c = convertTiFlashTemplate(c)
+	// not equal only when current strategy is Restart and config is changed
+	switch c.UpdateStrategy.Config {
+	case v1alpha1.ConfigUpdateStrategyRestart:
+		if p.Config != c.Config || p.ProxyConfig != c.ProxyConfig {
+			return false
+		}
+	}
+
+	// ignore these fields
+	p.Config = ""
+	c.Config = ""
+	p.ProxyConfig = ""
+	c.ProxyConfig = ""
+	p.UpdateStrategy.Config = ""
+	c.UpdateStrategy.Config = ""
+
+	return apiequality.Semantic.DeepEqual(p, c)
+}

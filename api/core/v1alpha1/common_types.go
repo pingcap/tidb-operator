@@ -104,6 +104,9 @@ const (
 
 	// means the instance is marked as deleted and will be deleted later
 	AnnoKeyDeferDelete = AnnoKeyPrefix + "defer-delete"
+
+	// Last instance template is recorded to check whether the pod should be restarted
+	AnnoKeyLastInstanceTemplate = AnnoKeyPrefix + "last-instance-template"
 )
 
 // ConfigUpdateStrategy represents the strategy to update configuration.

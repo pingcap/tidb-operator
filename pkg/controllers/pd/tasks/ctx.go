@@ -38,11 +38,6 @@ type ReconcileContext struct {
 	MemberID  string
 	IsLeader  bool
 
-	// ConfigHash stores the hash of **user-specified** config (i.e.`.Spec.Config`),
-	// which will be used to determine whether the config has changed.
-	// This ensures that our config overlay logic will not restart the tidb cluster unexpectedly.
-	ConfigHash string
-
 	// Pod cannot be updated when call DELETE API, so we have to set this field to indicate
 	// the underlay pod has been deleting
 	PodIsTerminating bool

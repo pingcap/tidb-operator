@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	tikvcfg "github.com/pingcap/tidb-operator/pkg/configs/tikv"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	"github.com/pingcap/tidb-operator/pkg/utils/hasher"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/utils/toml"
@@ -47,11 +46,7 @@ func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 			return task.Fail().With("tikv config cannot be encoded: %w", err)
 		}
 
-		state.ConfigHash, err = hasher.GenerateHash(state.TiKV().Spec.Config)
-		if err != nil {
-			return task.Fail().With("failed to generate hash for `tikv.spec.config`: %w", err)
-		}
-		expected := newConfigMap(state.TiKV(), data, state.ConfigHash)
+		expected := newConfigMap(state.TiKV(), data)
 		if e := c.Apply(ctx, expected); e != nil {
 			return task.Fail().With("can't create/update cm of tikv: %w", e)
 		}
@@ -59,14 +54,13 @@ func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func newConfigMap(tikv *v1alpha1.TiKV, data []byte, hash string) *corev1.ConfigMap {
+func newConfigMap(tikv *v1alpha1.TiKV, data []byte) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      coreutil.PodName[scope.TiKV](tikv),
 			Namespace: tikv.Namespace,
 			Labels: maputil.Merge(tikv.Labels, map[string]string{
-				v1alpha1.LabelKeyInstance:   tikv.Name,
-				v1alpha1.LabelKeyConfigHash: hash,
+				v1alpha1.LabelKeyInstance: tikv.Name,
 			}),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(tikv, v1alpha1.SchemeGroupVersion.WithKind("TiKV")),

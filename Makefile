@@ -118,11 +118,11 @@ verify/%:
 
 .PHONY: lint
 lint: bin/golangci-lint
-	$(GOLANGCI_LINT) run ./...
+	$(GOLANGCI_LINT) run -v ./...
 
 .PHONY: lint-fix
 lint-fix: bin/golangci-lint
-	$(GOLANGCI_LINT) run ./... --fix
+	$(GOLANGCI_LINT) run -v ./... --fix
 
 .PHONY: unit
 unit:
@@ -193,7 +193,7 @@ bin/overlay-gen:
 GOLANGCI_LINT = $(BIN_DIR)/golangci-lint
 bin/golangci-lint:
 	# DON'T track the version of this cmd by go.mod
-	$(ROOT)/hack/download.sh go_install $(GOLANGCI_LINT) github.com/golangci/golangci-lint/cmd/golangci-lint v1.62.2 "version --format=short"
+	$(ROOT)/hack/download.sh go_install $(GOLANGCI_LINT) github.com/golangci/golangci-lint/cmd/golangci-lint v1.64.8 "version --format=short"
 
 .PHONY: bin/kind
 KIND = $(BIN_DIR)/kind

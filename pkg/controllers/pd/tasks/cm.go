@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	pdcfg "github.com/pingcap/tidb-operator/pkg/configs/pd"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	"github.com/pingcap/tidb-operator/pkg/utils/hasher"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/utils/toml"
@@ -51,13 +50,7 @@ func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 			return task.Fail().With("pd config cannot be encoded: %v", err)
 		}
 
-		// TODO(liubo02): avoid decode toml twice
-		hash, err := hasher.GenerateHash(state.PD().Spec.Config)
-		if err != nil {
-			return task.Fail().With("failed to generate hash for `pd.spec.config`: %v", err)
-		}
-		state.ConfigHash = hash
-		expected := newConfigMap(state.PD(), data, state.ConfigHash)
+		expected := newConfigMap(state.PD(), data)
 		if err := c.Apply(ctx, expected); err != nil {
 			return task.Fail().With("can't create/update the cm of pd: %v", err)
 		}
@@ -65,14 +58,13 @@ func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func newConfigMap(pd *v1alpha1.PD, data []byte, hash string) *corev1.ConfigMap {
+func newConfigMap(pd *v1alpha1.PD, data []byte) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      coreutil.PodName[scope.PD](pd),
 			Namespace: pd.Namespace,
 			Labels: maputil.Merge(pd.Labels, map[string]string{
-				v1alpha1.LabelKeyInstance:   pd.Name,
-				v1alpha1.LabelKeyConfigHash: hash,
+				v1alpha1.LabelKeyInstance: pd.Name,
 			}),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(pd, v1alpha1.SchemeGroupVersion.WithKind("PD")),

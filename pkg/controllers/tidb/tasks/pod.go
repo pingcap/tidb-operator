@@ -31,6 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/image"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
+	"github.com/pingcap/tidb-operator/pkg/reloadable"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
@@ -58,7 +59,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 
-		expected := newPod(state)
+		expected := newPod(state.Cluster(), state.TiDB(), state.GracefulWaitTimeInSeconds)
 		if state.Pod() == nil {
 			if err := c.Apply(ctx, expected); err != nil {
 				return task.Fail().With("can't create pod of tidb: %w", err)
@@ -68,36 +69,28 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 			return task.Complete().With("pod is created")
 		}
 
-		res := k8s.ComparePods(state.Pod(), expected)
-		curHash, expectHash := state.Pod().Labels[v1alpha1.LabelKeyConfigHash], expected.Labels[v1alpha1.LabelKeyConfigHash]
-		configChanged := curHash != expectHash
-		logger.Info("compare pod", "result", res, "configChanged", configChanged, "currentConfigHash", curHash, "expectConfigHash", expectHash)
-
-		if res == k8s.CompareResultRecreate || (configChanged &&
-			state.TiDB().Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart) {
+		if !reloadable.CheckTiDBPod(state.TiDB(), state.Pod()) {
 			logger.Info("will recreate the pod")
 			if err := c.Delete(ctx, state.Pod()); err != nil {
 				return task.Fail().With("can't delete pod of tidb: %w", err)
 			}
 
 			state.PodIsTerminating = true
-			return task.Wait().With("pod is deleting")
-		} else if res == k8s.CompareResultUpdate {
-			logger.Info("will update the pod in place")
-			if err := c.Apply(ctx, expected); err != nil {
-				return task.Fail().With("can't apply pod of tidb: %w", err)
-			}
-
-			state.SetPod(expected)
+			return task.Wait().With("pod is restarting")
 		}
+
+		logger.Info("try to update the pod in place")
+		if err := c.Apply(ctx, expected); err != nil {
+			return task.Fail().With("can't apply pod of tidb: %w", err)
+		}
+
+		state.SetPod(expected)
 
 		return task.Complete().With("pod is synced")
 	})
 }
 
-func newPod(state *ReconcileContext) *corev1.Pod {
-	cluster := state.Cluster()
-	tidb := state.TiDB()
+func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, gracePeriod int64) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -230,11 +223,13 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			Namespace: tidb.Namespace,
 			Name:      coreutil.PodName[scope.TiDB](tidb),
 			Labels: maputil.Merge(tidb.Labels, map[string]string{
-				v1alpha1.LabelKeyInstance:   tidb.Name,
-				v1alpha1.LabelKeyConfigHash: state.ConfigHash,
-				v1alpha1.LabelKeyClusterID:  cluster.Status.ID,
+				v1alpha1.LabelKeyInstance:  tidb.Name,
+				v1alpha1.LabelKeyClusterID: cluster.Status.ID,
 			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiDB)),
-			Annotations: maputil.Merge(tidb.GetAnnotations(), k8s.AnnoProm(coreutil.TiDBStatusPort(tidb), metricsPath)),
+
+			Annotations: maputil.Merge(tidb.GetAnnotations(),
+				k8s.AnnoProm(coreutil.TiDBStatusPort(tidb), metricsPath),
+			),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(tidb, v1alpha1.SchemeGroupVersion.WithKind("TiDB")),
 			},
@@ -283,7 +278,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 				},
 			},
 			Volumes:                       vols,
-			TerminationGracePeriodSeconds: ptr.To(state.GracefulWaitTimeInSeconds + preStopSleepSeconds + gracefulCloseConnectionsTimeout + bufferSeconds),
+			TerminationGracePeriodSeconds: ptr.To(gracePeriod + preStopSleepSeconds + gracefulCloseConnectionsTimeout + bufferSeconds),
 		},
 	}
 
@@ -295,12 +290,12 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 		overlay.OverlayPod(pod, tidb.Spec.Overlay.Pod)
 	}
 
-	k8s.CalculateHashAndSetLabels(pod)
+	reloadable.MustEncodeLastTiDBTemplate(tidb, pod)
+
 	return pod
 }
 
 // TODO(liubo02): extract to namer pkg
-
 func buildTiDBReadinessProbHandler(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, clientPort, statusPort int32) corev1.ProbeHandler {
 	probeType := v1alpha1.TCPProbeType // default to TCP probe
 	if tidb.Spec.Probes.Readiness != nil && tidb.Spec.Probes.Readiness.Type != nil {

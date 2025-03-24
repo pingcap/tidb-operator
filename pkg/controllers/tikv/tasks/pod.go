@@ -30,6 +30,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/image"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
+	"github.com/pingcap/tidb-operator/pkg/reloadable"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
@@ -64,7 +65,7 @@ func TaskSuspendPod(state *ReconcileContext, c client.Client) task.Task {
 func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
-		expected := newPod(state)
+		expected := newPod(state.Cluster(), state.TiKV(), state.StoreID)
 		if state.Pod() == nil {
 			if err := c.Apply(ctx, expected); err != nil {
 				return task.Fail().With("can't apply pod of tikv: %w", err)
@@ -74,28 +75,16 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 			return task.Complete().With("pod is created")
 		}
 
-		// minimize the deletion grace period seconds
+		// Now we cannot minimize the deletion grace period because of a bug
+		// See https://github.com/kubernetes/kubernetes/issues/83916.
+		// TODO(liubo02): support minimize the deletion grace period seconds
 		if !state.Pod().GetDeletionTimestamp().IsZero() {
-			regionCount := 0
-			if state.Store != nil {
-				regionCount = state.Store.RegionCount
-			}
-			if err := DeletePodWithGracePeriod(ctx, c, state.Pod(), regionCount); err != nil {
-				return task.Fail().With("can't minimize the deletion grace period of pod of tikv: %w", err)
-			}
-
 			state.PodIsTerminating = true
 			// key will be requeued after the pod is changed
 			return task.Wait().With("pod is deleting")
 		}
 
-		res := k8s.ComparePods(state.Pod(), expected)
-		curHash, expectHash := state.Pod().Labels[v1alpha1.LabelKeyConfigHash], expected.Labels[v1alpha1.LabelKeyConfigHash]
-		configChanged := curHash != expectHash
-		logger.Info("compare pod", "result", res, "configChanged", configChanged, "currentConfigHash", curHash, "expectConfigHash", expectHash)
-
-		if res == k8s.CompareResultRecreate || (configChanged &&
-			state.TiKV().Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart) {
+		if !reloadable.CheckTiKVPod(state.TiKV(), state.Pod()) {
 			logger.Info("will recreate the pod")
 			regionCount := 0
 			if state.Store != nil {
@@ -107,23 +96,21 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 
 			state.PodIsTerminating = true
 			return task.Wait().With("pod is deleting")
-		} else if res == k8s.CompareResultUpdate {
-			logger.Info("will update the pod in place")
-			if err := c.Apply(ctx, expected); err != nil {
-				return task.Fail().With("can't apply pod of tikv: %w", err)
-			}
-
-			// write apply result back to ctx
-			state.SetPod(expected)
 		}
+
+		logger.Info("will update the pod in place")
+		if err := c.Apply(ctx, expected); err != nil {
+			return task.Fail().With("can't apply pod of tikv: %w", err)
+		}
+
+		// write apply result back to ctx
+		state.SetPod(expected)
 
 		return task.Complete().With("pod is synced")
 	})
 }
 
-func newPod(state *ReconcileContext) *corev1.Pod {
-	cluster := state.Cluster()
-	tikv := state.TiKV()
+func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, storeID string) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -197,10 +184,9 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			Namespace: tikv.Namespace,
 			Name:      coreutil.PodName[scope.TiKV](tikv),
 			Labels: maputil.Merge(tikv.Labels, map[string]string{
-				v1alpha1.LabelKeyInstance:   tikv.Name,
-				v1alpha1.LabelKeyConfigHash: state.ConfigHash,
-				v1alpha1.LabelKeyClusterID:  cluster.Status.ID,
-				v1alpha1.LabelKeyStoreID:    state.StoreID,
+				v1alpha1.LabelKeyInstance:  tikv.Name,
+				v1alpha1.LabelKeyClusterID: cluster.Status.ID,
+				v1alpha1.LabelKeyStoreID:   storeID,
 			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiKV)),
 			Annotations: maputil.Merge(tikv.GetAnnotations(), k8s.AnnoProm(coreutil.TiKVStatusPort(tikv), metricsPath)),
 			OwnerReferences: []metav1.OwnerReference{
@@ -279,7 +265,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 		overlay.OverlayPod(pod, tikv.Spec.Overlay.Pod)
 	}
 
-	k8s.CalculateHashAndSetLabels(pod)
+	reloadable.MustEncodeLastTiKVTemplate(tikv, pod)
 	return pod
 }
 
