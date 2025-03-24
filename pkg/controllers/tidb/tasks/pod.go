@@ -226,8 +226,8 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 	}
 
 	sleepSeconds := defaultPreStopSleepSeconds
-	if tidb.Spec.TiDBTemplateSpec.PreStopHookSleepSeconds != nil {
-		sleepSeconds = *tidb.Spec.TiDBTemplateSpec.PreStopHookSleepSeconds
+	if tidb.Spec.TiDBTemplateSpec.PreStopHook != nil {
+		sleepSeconds = tidb.Spec.TiDBTemplateSpec.PreStopHook.SleepSeconds
 	}
 
 	pod := &corev1.Pod{
