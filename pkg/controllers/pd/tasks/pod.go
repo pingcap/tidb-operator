@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/image"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
+	"github.com/pingcap/tidb-operator/pkg/reloadable"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
@@ -46,7 +47,7 @@ const (
 func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
-		expected := newPod(state)
+		expected := newPod(state.Cluster(), state.PD(), state.ClusterID, state.MemberID)
 		if state.Pod() == nil {
 			// We have to refresh cache of members to make sure a pd without pod is unhealthy.
 			// If the healthy info is out of date, the operator may mark this pd up-to-date unexpectedly
@@ -62,13 +63,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 			return task.Complete().With("pod is synced")
 		}
 
-		res := k8s.ComparePods(state.Pod(), expected)
-		curHash, expectHash := state.Pod().Labels[v1alpha1.LabelKeyConfigHash], expected.Labels[v1alpha1.LabelKeyConfigHash]
-		configChanged := curHash != expectHash
-		logger.Info("compare pod", "result", res, "configChanged", configChanged, "currentConfigHash", curHash, "expectConfigHash", expectHash)
-
-		if res == k8s.CompareResultRecreate ||
-			(configChanged && state.PD().Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart) {
+		if !reloadable.CheckPDPod(state.PD(), state.Pod()) {
 			// NOTE: both rtx.Healthy and rtx.Pod are not always newest
 			// So pre delete check may also be skipped in some cases, for example,
 			// the PD is just started.
@@ -92,13 +87,13 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 			state.PodIsTerminating = true
 
 			return task.Wait().With("pod is deleting")
-		} else if res == k8s.CompareResultUpdate {
-			logger.Info("will update the pod in place")
-			if err := c.Apply(ctx, expected); err != nil {
-				return task.Fail().With("can't apply pod of pd: %v", err)
-			}
-			state.SetPod(expected)
 		}
+
+		logger.Info("will update the pod in place")
+		if err := c.Apply(ctx, expected); err != nil {
+			return task.Fail().With("can't apply pod of pd: %v", err)
+		}
+		state.SetPod(expected)
 
 		return task.Complete().With("pod is synced")
 	})
@@ -137,9 +132,7 @@ func preDeleteCheck(
 	return false, nil
 }
 
-func newPod(state *ReconcileContext) *corev1.Pod {
-	cluster := state.Cluster()
-	pd := state.PD()
+func newPod(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, clusterID, memberID string) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -201,10 +194,9 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 			Namespace: pd.Namespace,
 			Name:      coreutil.PodName[scope.PD](pd),
 			Labels: maputil.Merge(pd.Labels, map[string]string{
-				v1alpha1.LabelKeyInstance:   pd.Name,
-				v1alpha1.LabelKeyConfigHash: state.ConfigHash,
-				v1alpha1.LabelKeyClusterID:  state.ClusterID,
-				v1alpha1.LabelKeyMemberID:   state.MemberID,
+				v1alpha1.LabelKeyInstance:  pd.Name,
+				v1alpha1.LabelKeyClusterID: clusterID,
+				v1alpha1.LabelKeyMemberID:  memberID,
 			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentPD)),
 			Annotations: anno,
 			OwnerReferences: []metav1.OwnerReference{
@@ -248,7 +240,7 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 		overlay.OverlayPod(pod, pd.Spec.Overlay.Pod)
 	}
 
-	k8s.CalculateHashAndSetLabels(pod)
+	reloadable.MustEncodeLastPDTemplate(pd, pod)
 	return pod
 }
 

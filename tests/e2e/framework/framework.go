@@ -131,6 +131,9 @@ func (f *Framework) SetupCluster(ps ...data.ClusterPatch) {
 	ginkgo.BeforeEach(func(context.Context) {
 		f.clusterPatches = ps
 	})
+	ginkgo.AfterEach(func(context.Context) {
+		f.clusterPatches = nil
+	})
 }
 
 func (f *Framework) MustCreateCluster(ctx context.Context, ps ...data.ClusterPatch) *v1alpha1.Cluster {
