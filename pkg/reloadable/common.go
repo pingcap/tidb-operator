@@ -40,6 +40,9 @@ func convertOverlay(o *v1alpha1.Overlay) *v1alpha1.Overlay {
 		c.Image = ""
 	}
 
+	// ignore all pvc overlay
+	o.PersistentVolumeClaims = nil
+
 	return o
 }
 
