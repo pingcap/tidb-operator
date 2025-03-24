@@ -31,7 +31,7 @@ func Workload(db *sql.DB) error {
 
 	// keep it to pass e2e
 	// TODO(liubo02): it's not reasonable for graceful shutdown test
-	db.SetConnMaxLifetime(time.Minute)
+	db.SetConnMaxLifetime(time.Duration(maxLifeTimeSec) * time.Second)
 
 	db.SetMaxIdleConns(maxConnections)
 	db.SetMaxOpenConns(maxConnections)

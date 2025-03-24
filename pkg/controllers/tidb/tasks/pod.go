@@ -24,6 +24,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
@@ -37,6 +38,15 @@ import (
 )
 
 const (
+	// gracefulCloseConnectionsTimeout is the amount of time tidb-server wait for the ongoing txt to finished.
+	// The value is fixed in tidb-server.
+	gracefulCloseConnectionsTimeout = 15
+
+	// bufferSeconds is the extra seconds to wait for the pod to be terminated.
+	bufferSeconds = 5
+	// preStopSleepSeconds is the seconds to sleep before the container is terminated.
+	defaultPreStopSleepSeconds int32 = 10
+
 	// defaultReadinessProbeInitialDelaySeconds is the default initial delay seconds for readiness probe.
 	// This is the same value as TiDB Operator v1.
 	defaultReadinessProbeInitialDelaySeconds = 10
@@ -215,6 +225,11 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 		slowLogContainer = buildSlowLogContainer(tidb, slowLogMount)
 	}
 
+	sleepSeconds := defaultPreStopSleepSeconds
+	if tidb.Spec.TiDBTemplateSpec.PreStopHookSleepSeconds != nil {
+		sleepSeconds = *tidb.Spec.TiDBTemplateSpec.PreStopHookSleepSeconds
+	}
+
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: tidb.Namespace,
@@ -255,13 +270,25 @@ func newPod(state *ReconcileContext) *corev1.Pod {
 					},
 					VolumeMounts: mounts,
 					Resources:    k8s.GetResourceRequirements(tidb.Spec.Resources),
+					Lifecycle: &corev1.Lifecycle{
+						PreStop: &corev1.LifecycleHandler{
+							Exec: &corev1.ExecAction{
+								Command: []string{
+									"/bin/sh",
+									"-c",
+									fmt.Sprintf("sleep %d", sleepSeconds),
+								},
+							},
+						},
+					},
 					ReadinessProbe: &corev1.Probe{
 						ProbeHandler:        buildTiDBReadinessProbHandler(cluster, tidb, coreutil.TiDBClientPort(tidb), coreutil.TiDBStatusPort(tidb)),
 						InitialDelaySeconds: defaultReadinessProbeInitialDelaySeconds,
 					},
 				},
 			},
-			Volumes: vols,
+			Volumes:                       vols,
+			TerminationGracePeriodSeconds: ptr.To(int64(sleepSeconds + gracefulCloseConnectionsTimeout + bufferSeconds)),
 		},
 	}
 

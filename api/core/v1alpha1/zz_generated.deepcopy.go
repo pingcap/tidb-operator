@@ -1608,6 +1608,11 @@ func (in *TiDBTemplateSpec) DeepCopyInto(out *TiDBTemplateSpec) {
 		*out = new(TiDBSlowLog)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.PreStopHookSleepSeconds != nil {
+		in, out := &in.PreStopHookSleepSeconds, &out.PreStopHookSleepSeconds
+		*out = new(int32)
+		**out = **in
+	}
 	if in.Overlay != nil {
 		in, out := &in.Overlay, &out.Overlay
 		*out = new(Overlay)
