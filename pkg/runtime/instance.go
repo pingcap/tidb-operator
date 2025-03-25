@@ -34,6 +34,8 @@ type Instance interface {
 
 	CurrentRevision() string
 	SetCurrentRevision(rev string)
+
+	PodOverlay() *v1alpha1.PodOverlay
 }
 
 type InstanceT[T InstanceSet] interface {

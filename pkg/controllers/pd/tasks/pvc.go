@@ -58,12 +58,16 @@ func newPVCs(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, clusterID, memberID str
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      PersistentVolumeClaimName(coreutil.PodName[scope.PD](pd), vol.Name),
 				Namespace: pd.Namespace,
-				Labels: maputil.Merge(pd.Labels, map[string]string{
-					v1alpha1.LabelKeyInstance:   pd.Name,
-					v1alpha1.LabelKeyClusterID:  clusterID,
-					v1alpha1.LabelKeyMemberID:   memberID,
-					v1alpha1.LabelKeyVolumeName: vol.Name,
-				}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentPD)),
+				Labels: maputil.Merge(
+					coreutil.PersistentVolumeClaimLabels[scope.PD](pd, vol.Name),
+					// legacy labels in v1
+					map[string]string{
+						v1alpha1.LabelKeyClusterID: clusterID,
+						v1alpha1.LabelKeyMemberID:  memberID,
+					},
+					// TODO: remove it
+					k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentPD),
+				),
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(pd, v1alpha1.SchemeGroupVersion.WithKind("PD")),
 				},

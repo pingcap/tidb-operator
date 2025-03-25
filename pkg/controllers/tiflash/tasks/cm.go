@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	tiflashcfg "github.com/pingcap/tidb-operator/pkg/configs/tiflash"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/utils/toml"
 )
@@ -71,9 +70,7 @@ func newConfigMap(tiflash *v1alpha1.TiFlash, flashData, proxyData []byte) *corev
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      coreutil.PodName[scope.TiFlash](tiflash),
 			Namespace: tiflash.Namespace,
-			Labels: maputil.Merge(tiflash.Labels, map[string]string{
-				v1alpha1.LabelKeyInstance: tiflash.Name,
-			}),
+			Labels:    coreutil.ConfigMapLabels[scope.TiFlash](tiflash),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(tiflash, v1alpha1.SchemeGroupVersion.WithKind("TiFlash")),
 			},

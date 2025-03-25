@@ -169,11 +169,16 @@ func newPod(cluster *v1alpha1.Cluster, ticdc *v1alpha1.TiCDC) *corev1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ticdc.Namespace,
 			Name:      coreutil.PodName[scope.TiCDC](ticdc),
-			Labels: maputil.Merge(ticdc.Labels, map[string]string{
-				v1alpha1.LabelKeyInstance:  ticdc.Name,
-				v1alpha1.LabelKeyClusterID: cluster.Status.ID,
-			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiCDC)),
-			Annotations: maputil.Merge(ticdc.GetAnnotations(), k8s.AnnoProm(coreutil.TiCDCPort(ticdc), metricsPath)),
+			Labels: maputil.Merge(
+				coreutil.PodLabels[scope.TiCDC](ticdc),
+				// legacy labels in v1
+				map[string]string{
+					v1alpha1.LabelKeyClusterID: cluster.Status.ID,
+				},
+				// TODO: remove it
+				k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiCDC),
+			),
+			Annotations: maputil.Merge(k8s.AnnoProm(coreutil.TiCDCPort(ticdc), metricsPath)),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(ticdc, v1alpha1.SchemeGroupVersion.WithKind("TiCDC")),
 			},
