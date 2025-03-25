@@ -32,7 +32,7 @@ func CheckTiFlash(group *v1alpha1.TiFlashGroup, instance *v1alpha1.TiFlash) bool
 	groupTmpl := &group.Spec.Template.Spec
 	instanceTmpl := &instance.Spec.TiFlashTemplateSpec
 
-	return equalTiFlashTemplate(groupTmpl, instanceTmpl)
+	return equalTiFlashTemplate(groupTmpl, instanceTmpl) && !restartAnnotationsChanged(group.Spec.Template.Annotations, instance.GetAnnotations())
 }
 
 // CheckTiFlashPod returns whether changes are reloadable. No change also means reloadable.
@@ -50,7 +50,7 @@ func CheckTiFlashPod(instance *v1alpha1.TiFlash, pod *corev1.Pod) bool {
 
 	instanceTmpl := &instance.Spec.TiFlashTemplateSpec
 
-	return equalTiFlashTemplate(instanceTmpl, spec)
+	return equalTiFlashTemplate(instanceTmpl, spec) && !restartAnnotationsChanged(instance.GetAnnotations(), pod.GetAnnotations())
 }
 
 func EncodeLastTiFlashTemplate(instance *v1alpha1.TiFlash, pod *corev1.Pod) error {

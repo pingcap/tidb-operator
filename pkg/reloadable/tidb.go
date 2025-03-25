@@ -32,7 +32,7 @@ func CheckTiDB(group *v1alpha1.TiDBGroup, instance *v1alpha1.TiDB) bool {
 	groupTmpl := &group.Spec.Template.Spec
 	instanceTmpl := &instance.Spec.TiDBTemplateSpec
 
-	return equalTiDBTemplate(groupTmpl, instanceTmpl)
+	return equalTiDBTemplate(groupTmpl, instanceTmpl) && !restartAnnotationsChanged(group.Spec.Template.Annotations, instance.GetAnnotations())
 }
 
 // CheckTiDBPod returns whether changes are reloadable. No change also means reloadable.
@@ -50,7 +50,7 @@ func CheckTiDBPod(instance *v1alpha1.TiDB, pod *corev1.Pod) bool {
 
 	instanceTmpl := &instance.Spec.TiDBTemplateSpec
 
-	return equalTiDBTemplate(instanceTmpl, spec)
+	return equalTiDBTemplate(instanceTmpl, spec) && !restartAnnotationsChanged(instance.GetAnnotations(), pod.GetAnnotations())
 }
 
 func EncodeLastTiDBTemplate(instance *v1alpha1.TiDB, pod *corev1.Pod) error {

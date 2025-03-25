@@ -32,7 +32,7 @@ func CheckPD(group *v1alpha1.PDGroup, instance *v1alpha1.PD) bool {
 	groupTmpl := &group.Spec.Template.Spec
 	instanceTmpl := &instance.Spec.PDTemplateSpec
 
-	return equalPDTemplate(groupTmpl, instanceTmpl)
+	return equalPDTemplate(groupTmpl, instanceTmpl) && !restartAnnotationsChanged(group.Spec.Template.Annotations, instance.GetAnnotations())
 }
 
 // CheckPDPod returns whether changes are reloadable. No change also means reloadable.
@@ -50,7 +50,7 @@ func CheckPDPod(instance *v1alpha1.PD, pod *corev1.Pod) bool {
 
 	instanceTmpl := &instance.Spec.PDTemplateSpec
 
-	return equalPDTemplate(instanceTmpl, spec)
+	return equalPDTemplate(instanceTmpl, spec) && !restartAnnotationsChanged(instance.GetAnnotations(), pod.GetAnnotations())
 }
 
 func EncodeLastPDTemplate(instance *v1alpha1.PD, pod *corev1.Pod) error {
