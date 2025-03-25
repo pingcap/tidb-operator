@@ -32,7 +32,7 @@ func CheckTiCDC(group *v1alpha1.TiCDCGroup, instance *v1alpha1.TiCDC) bool {
 	groupTmpl := &group.Spec.Template.Spec
 	instanceTmpl := &instance.Spec.TiCDCTemplateSpec
 
-	return equalTiCDCTemplate(groupTmpl, instanceTmpl)
+	return equalTiCDCTemplate(groupTmpl, instanceTmpl) && !restartAnnotationsChanged(group.Spec.Template.Annotations, instance.GetAnnotations())
 }
 
 // CheckTiCDCPod returns whether changes are reloadable. No change also means reloadable.
@@ -50,7 +50,7 @@ func CheckTiCDCPod(instance *v1alpha1.TiCDC, pod *corev1.Pod) bool {
 
 	instanceTmpl := &instance.Spec.TiCDCTemplateSpec
 
-	return equalTiCDCTemplate(instanceTmpl, spec)
+	return equalTiCDCTemplate(instanceTmpl, spec) && !restartAnnotationsChanged(instance.GetAnnotations(), pod.GetAnnotations())
 }
 
 func EncodeLastTiCDCTemplate(instance *v1alpha1.TiCDC, pod *corev1.Pod) error {

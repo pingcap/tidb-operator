@@ -32,7 +32,7 @@ func CheckTiKV(group *v1alpha1.TiKVGroup, instance *v1alpha1.TiKV) bool {
 	groupTmpl := &group.Spec.Template.Spec
 	instanceTmpl := &instance.Spec.TiKVTemplateSpec
 
-	return equalTiKVTemplate(groupTmpl, instanceTmpl)
+	return equalTiKVTemplate(groupTmpl, instanceTmpl) && !restartAnnotationsChanged(group.Spec.Template.Annotations, instance.GetAnnotations())
 }
 
 // CheckTiKVPod returns whether changes are reloadable. No change also means reloadable.
@@ -50,7 +50,7 @@ func CheckTiKVPod(instance *v1alpha1.TiKV, pod *corev1.Pod) bool {
 
 	instanceTmpl := &instance.Spec.TiKVTemplateSpec
 
-	return equalTiKVTemplate(instanceTmpl, spec)
+	return equalTiKVTemplate(instanceTmpl, spec) && !restartAnnotationsChanged(instance.GetAnnotations(), pod.GetAnnotations())
 }
 
 func EncodeLastTiKVTemplate(instance *v1alpha1.TiKV, pod *corev1.Pod) error {
