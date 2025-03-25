@@ -15,8 +15,9 @@
 package v1alpha1
 
 const (
-	// RestartAnnotationKey is the annotation key for the restart operation.
-	// You can add the annotation to a Group CR's `.Spec.Template.Annotations` to restart all instances of the group.
+	// RestartAnnotationPrefix is used for the restart operation.
+	// You can add an annotation with this prefix to a Group CR's `.Spec.Template.Annotations`,
+	// to restart all instances of the group, like `restart.pingcap.com/foo=bar`.
 	// The value of this annotation is used to ensure that the restart is idempotent.
-	RestartAnnotationKey = KeyPrefix + "restart"
+	RestartAnnotationPrefix = "restart." + KeyPrefix
 )

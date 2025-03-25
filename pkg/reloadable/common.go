@@ -15,10 +15,13 @@
 package reloadable
 
 import (
+	"strings"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 func convertOverlay(o *v1alpha1.Overlay) *v1alpha1.Overlay {
@@ -55,4 +58,32 @@ func convertVolumes(vols []v1alpha1.Volume) []v1alpha1.Volume {
 	}
 
 	return vols
+}
+
+func filterRestartAnnotations(annotations map[string]string) map[string]string {
+	restartAnnotations := make(map[string]string, len(annotations))
+
+	for k, v := range annotations {
+		if strings.HasPrefix(k, metav1alpha1.RestartAnnotationPrefix) {
+			restartAnnotations[k] = v
+		}
+	}
+
+	return restartAnnotations
+}
+
+func restartAnnotationsChanged(a1, a2 map[string]string) bool {
+	restartAnnotations1, restartAnnotations2 := filterRestartAnnotations(a1), filterRestartAnnotations(a2)
+
+	if len(restartAnnotations1) != len(restartAnnotations2) {
+		return true
+	}
+
+	for k, v := range restartAnnotations1 {
+		if v2, ok := restartAnnotations2[k]; !ok || v != v2 {
+			return true
+		}
+	}
+
+	return false
 }

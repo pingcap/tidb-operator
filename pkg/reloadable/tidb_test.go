@@ -64,7 +64,7 @@ func TestCheckTiDB(t *testing.T) {
 					Template: v1alpha1.TiDBTemplate{
 						ObjectMeta: v1alpha1.ObjectMeta{
 							Annotations: map[string]string{
-								metav1alpha1.RestartAnnotationKey: "foo",
+								metav1alpha1.RestartAnnotationPrefix + "foo": "bar",
 							},
 						},
 						Spec: v1alpha1.TiDBTemplateSpec{},
@@ -76,7 +76,7 @@ func TestCheckTiDB(t *testing.T) {
 					TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{},
 				},
 			},
-			need: true,
+			reloadable: false,
 		},
 		{
 			desc: "update the restart annotation",
@@ -85,7 +85,7 @@ func TestCheckTiDB(t *testing.T) {
 					Template: v1alpha1.TiDBTemplate{
 						ObjectMeta: v1alpha1.ObjectMeta{
 							Annotations: map[string]string{
-								metav1alpha1.RestartAnnotationKey: "foo",
+								metav1alpha1.RestartAnnotationPrefix + "foo": "bar",
 							},
 						},
 						Spec: v1alpha1.TiDBTemplateSpec{},
@@ -95,14 +95,14 @@ func TestCheckTiDB(t *testing.T) {
 			db: &v1alpha1.TiDB{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						metav1alpha1.RestartAnnotationKey: "bar",
+						metav1alpha1.RestartAnnotationPrefix + "foo": "zoo",
 					},
 				},
 				Spec: v1alpha1.TiDBSpec{
 					TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{},
 				},
 			},
-			need: true,
+			reloadable: false,
 		},
 	}
 

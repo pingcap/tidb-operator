@@ -1106,7 +1106,7 @@ var _ = Describe("TiDB Cluster", func() {
 			if kvgGet.Spec.Template.Annotations == nil {
 				kvgGet.Spec.Template.Annotations = map[string]string{}
 			}
-			kvgGet.Spec.Template.Annotations[metav1alpha1.RestartAnnotationKey] = "test"
+			kvgGet.Spec.Template.Annotations[metav1alpha1.RestartAnnotationPrefix+"e2e"] = "test"
 			updateTime = time.Now()
 			Expect(k8sClient.Update(ctx, &kvgGet)).To(Succeed())
 
@@ -1161,7 +1161,7 @@ var _ = Describe("TiDB Cluster", func() {
 			if kvgGet.Spec.Template.Annotations == nil {
 				kvgGet.Spec.Template.Annotations = map[string]string{}
 			}
-			kvgGet.Spec.Template.Annotations[metav1alpha1.RestartAnnotationKey] = "test-again"
+			kvgGet.Spec.Template.Annotations[metav1alpha1.RestartAnnotationPrefix+"e2e"] = "test-again"
 			updateTime = time.Now()
 			Expect(k8sClient.Update(ctx, &kvgGet)).To(Succeed())
 			Eventually(func(g Gomega) {
