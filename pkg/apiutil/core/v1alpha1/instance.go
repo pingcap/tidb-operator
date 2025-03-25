@@ -112,7 +112,6 @@ func PersistentVolumeClaimLabels[
 	F client.Object,
 	T runtime.Instance,
 ](f F, volName string) map[string]string {
-	return instanceSubresourceLabels[S](f)
 	return maputil.MergeTo(instanceSubresourceLabels[S](f), map[string]string{
 		v1alpha1.LabelKeyVolumeName: volName,
 	})

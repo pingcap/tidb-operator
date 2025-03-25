@@ -52,7 +52,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/tests/e2e/config"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/k8s"
@@ -1106,7 +1105,7 @@ var _ = Describe("TiDB Cluster", func() {
 			if kvgGet.Spec.Template.Annotations == nil {
 				kvgGet.Spec.Template.Annotations = map[string]string{}
 			}
-			kvgGet.Spec.Template.Annotations[metav1alpha1.RestartAnnotationPrefix+"e2e"] = "test"
+			kvgGet.Spec.Template.Annotations["e2e"] = "test"
 			updateTime = time.Now()
 			Expect(k8sClient.Update(ctx, &kvgGet)).To(Succeed())
 
@@ -1161,7 +1160,7 @@ var _ = Describe("TiDB Cluster", func() {
 			if kvgGet.Spec.Template.Annotations == nil {
 				kvgGet.Spec.Template.Annotations = map[string]string{}
 			}
-			kvgGet.Spec.Template.Annotations[metav1alpha1.RestartAnnotationPrefix+"e2e"] = "test-again"
+			kvgGet.Spec.Template.Annotations["e2e"] = "test-again"
 			updateTime = time.Now()
 			Expect(k8sClient.Update(ctx, &kvgGet)).To(Succeed())
 			Eventually(func(g Gomega) {
