@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package checker
+package reloadable
 
 import (
 	"testing"
@@ -24,12 +24,12 @@ import (
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
-func TestNeedRestartInstance(t *testing.T) {
+func TestCheckTiDB(t *testing.T) {
 	cases := []struct {
-		desc string
-		dbg  *v1alpha1.TiDBGroup
-		db   *v1alpha1.TiDB
-		need bool
+		desc       string
+		dbg        *v1alpha1.TiDBGroup
+		db         *v1alpha1.TiDB
+		reloadable bool
 	}{
 		{
 			desc: "add pod labels overlay",
@@ -55,7 +55,7 @@ func TestNeedRestartInstance(t *testing.T) {
 					},
 				},
 			},
-			need: false,
+			reloadable: true,
 		},
 		{
 			desc: "add a restart annotation",
@@ -109,8 +109,8 @@ func TestNeedRestartInstance(t *testing.T) {
 	for i := range cases {
 		c := &cases[i]
 		t.Run(c.desc, func(tt *testing.T) {
-			res := NeedRestartInstance(c.dbg, c.db)
-			assert.Equal(tt, c.need, res, c.desc)
+			res := CheckTiDB(c.dbg, c.db)
+			assert.Equal(tt, c.reloadable, res, c.desc)
 		})
 	}
 }
