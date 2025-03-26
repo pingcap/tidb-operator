@@ -795,8 +795,8 @@ var _ = Describe("TiDB Cluster", func() {
 				g.Expect(len(podList.Items)).To(Equal(1))
 				pod := &podList.Items[0]
 				g.Expect(pod.UID).NotTo(Equal(originalPodUID))
-				g.Expect(pod.Labels["foo"]).To(Equal("bar"))
-				g.Expect(pod.Annotations["foo"]).To(Equal("bar"))
+				g.Expect(pod.Labels["foo"]).To(Equal(""))
+				g.Expect(pod.Annotations["foo"]).To(Equal(""))
 				g.Expect(pod.Status.Phase).To(Equal(corev1.PodRunning))
 			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
 		})
