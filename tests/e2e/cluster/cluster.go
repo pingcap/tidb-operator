@@ -773,7 +773,7 @@ var _ = Describe("TiDB Cluster", func() {
 			podList, err := clientSet.CoreV1().Pods(tc.Namespace).List(ctx, listOpts)
 			Expect(err).To(BeNil())
 			Expect(len(podList.Items)).To(Equal(1))
-			originalPodName, originalPodUID := podList.Items[0].Name, podList.Items[0].UID
+			originalPodUID := podList.Items[0].UID
 
 			By("Changing labels and annotations")
 			var dbgGet v1alpha1.TiDBGroup
@@ -790,8 +790,10 @@ var _ = Describe("TiDB Cluster", func() {
 
 			By("Checking the pods are recreated")
 			Eventually(func(g Gomega) {
-				var pod corev1.Pod
-				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: tc.Namespace, Name: originalPodName}, &pod)).To(Succeed())
+				podList, err := clientSet.CoreV1().Pods(tc.Namespace).List(ctx, listOpts)
+				g.Expect(err).To(BeNil())
+				g.Expect(len(podList.Items)).To(Equal(1))
+				pod := &podList.Items[1]
 				g.Expect(pod.UID).NotTo(Equal(originalPodUID))
 				g.Expect(pod.Labels["foo"]).To(Equal("bar"))
 				g.Expect(pod.Annotations["foo"]).To(Equal("bar"))
