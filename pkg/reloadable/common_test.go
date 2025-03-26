@@ -215,6 +215,7 @@ func TestConvertAnnotations(t *testing.T) {
 			desc: "ignore keys",
 			in: map[string]string{
 				v1alpha1.AnnoKeyInitialClusterNum: "10",
+				v1alpha1.AnnoKeyDeferDelete:       "xxx",
 				"test":                            "test",
 			},
 			out: map[string]string{
