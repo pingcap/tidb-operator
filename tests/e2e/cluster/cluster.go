@@ -793,7 +793,7 @@ var _ = Describe("TiDB Cluster", func() {
 				podList, err := clientSet.CoreV1().Pods(tc.Namespace).List(ctx, listOpts)
 				g.Expect(err).To(BeNil())
 				g.Expect(len(podList.Items)).To(Equal(1))
-				pod := &podList.Items[1]
+				pod := &podList.Items[0]
 				g.Expect(pod.UID).NotTo(Equal(originalPodUID))
 				g.Expect(pod.Labels["foo"]).To(Equal("bar"))
 				g.Expect(pod.Annotations["foo"]).To(Equal("bar"))
