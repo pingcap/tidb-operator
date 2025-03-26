@@ -18,7 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
@@ -116,6 +116,7 @@ func GetBackup(ns, name, tcName string, s3Config *v1alpha1.S3StorageProvider) *v
 			StorageProvider: v1alpha1.StorageProvider{
 				S3: s3Config,
 			},
+			ToolImage: "gcr.io/pingcap-public/dbaas/br",
 			BR: &v1alpha1.BRConfig{
 				Cluster:          tcName,
 				ClusterNamespace: ns,
@@ -139,11 +140,12 @@ func GetRestore(ns, name, tcName string, s3Config *v1alpha1.S3StorageProvider) *
 			StorageProvider: v1alpha1.StorageProvider{
 				S3: s3Config,
 			},
+			ToolImage: "gcr.io/pingcap-public/dbaas/br",
 			BR: &v1alpha1.BRConfig{
 				Cluster:           tcName,
 				ClusterNamespace:  ns,
 				SendCredToTikv:    &sendCredToTikv,
-				CheckRequirements: pointer.BoolPtr(false), // workaround for https://docs.pingcap.com/tidb/stable/backup-and-restore-faq#why-does-br-report-new_collations_enabled_on_first_bootstrap-mismatch
+				CheckRequirements: ptr.To(false), // workaround for https://docs.pingcap.com/tidb/stable/backup-and-restore-faq#why-does-br-report-new_collations_enabled_on_first_bootstrap-mismatch
 				Options: []string{
 					// ref: https://docs.pingcap.com/tidb/stable/backup-and-restore-overview#version-compatibility
 					"--with-sys-table=false",
