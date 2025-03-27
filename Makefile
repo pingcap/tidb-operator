@@ -134,7 +134,6 @@ unit:
 .PHONY: check
 check: lint unit verify
 
-
 .PHONY: e2e/prepare
 e2e/prepare: bin/kind crd
 	$(ROOT)/hack/e2e.sh --prepare

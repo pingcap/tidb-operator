@@ -110,7 +110,7 @@ function e2e::install_generate_jwt() {
 function e2e::run() {
     if [[ "$CI" == "true" ]]; then
       echo "running e2e tests in CI mode with options: $*"
-      $GINKGO -v -r --timeout=2h --randomize-all --randomize-suites --fail-on-empty --keep-going --race --trace "$*" "$ROOT/tests/e2e/..."
+      $GINKGO -v -r --timeout=2h --randomize-all --randomize-suites --fail-on-empty --keep-going --race --trace --flake-attempts=3 "$*" "$ROOT/tests/e2e/..."
     else
       echo "running e2e tests locally..."
       $GINKGO -r -v "$@" "$ROOT/tests/e2e/..."

@@ -42,8 +42,6 @@ type ReconcileContext struct {
 
 	Healthy bool
 
-	GracefulWaitTimeInSeconds int64
-
 	// Pod cannot be updated when call DELETE API, so we have to set this field to indicate
 	// the underlay pod has been deleting
 	PodIsTerminating bool

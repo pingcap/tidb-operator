@@ -43,10 +43,10 @@ const (
 	// The value is fixed in tidb-server.
 	gracefulCloseConnectionsTimeout = 15
 
-	// bufferSeconds is the extra seconds to wait for the pod to be deleted.
+	// bufferSeconds is the extra seconds to wait for the pod to be terminated.
 	bufferSeconds = 5
-	// preStopSleepSeconds is the seconds to sleep before the pod is deleted.
-	preStopSleepSeconds = 10
+	// preStopSleepSeconds is the seconds to sleep before the container is terminated.
+	defaultPreStopSleepSeconds int32 = 10
 
 	// defaultReadinessProbeInitialDelaySeconds is the default initial delay seconds for readiness probe.
 	// This is the same value as TiDB Operator v1.
@@ -59,7 +59,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 
-		expected := newPod(state.Cluster(), state.TiDB(), state.GracefulWaitTimeInSeconds)
+		expected := newPod(state.Cluster(), state.TiDB())
 		if state.Pod() == nil {
 			if err := c.Apply(ctx, expected); err != nil {
 				return task.Fail().With("can't create pod of tidb: %w", err)
@@ -90,7 +90,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, gracePeriod int64) *corev1.Pod {
+func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -218,6 +218,11 @@ func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, gracePeriod int64) *
 		slowLogContainer = buildSlowLogContainer(tidb, slowLogMount)
 	}
 
+	sleepSeconds := defaultPreStopSleepSeconds
+	if tidb.Spec.TiDBTemplateSpec.PreStop != nil {
+		sleepSeconds = tidb.Spec.TiDBTemplateSpec.PreStop.SleepSeconds
+	}
+
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: tidb.Namespace,
@@ -271,7 +276,7 @@ func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, gracePeriod int64) *
 								Command: []string{
 									"/bin/sh",
 									"-c",
-									fmt.Sprintf("sleep %d", preStopSleepSeconds),
+									fmt.Sprintf("sleep %d", sleepSeconds),
 								},
 							},
 						},
@@ -283,7 +288,7 @@ func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, gracePeriod int64) *
 				},
 			},
 			Volumes:                       vols,
-			TerminationGracePeriodSeconds: ptr.To(gracePeriod + preStopSleepSeconds + gracefulCloseConnectionsTimeout + bufferSeconds),
+			TerminationGracePeriodSeconds: ptr.To(int64(sleepSeconds + gracefulCloseConnectionsTimeout + bufferSeconds)),
 		},
 	}
 
@@ -317,7 +322,7 @@ func buildTiDBReadinessProbHandler(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiD
 
 	return corev1.ProbeHandler{
 		TCPSocket: &corev1.TCPSocketAction{
-			Port: intstr.FromInt(int(clientPort)),
+			Port: intstr.FromInt32(clientPort),
 		},
 	}
 }

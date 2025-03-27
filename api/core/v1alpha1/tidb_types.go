@@ -158,9 +158,21 @@ type TiDBTemplateSpec struct {
 	// When enabled, a sidecar container will be created to output the slow log to its stdout.
 	SlowLog *TiDBSlowLog `json:"slowLog,omitempty"`
 
+	// PreStop defines the preStop config for the tidb container.
+	PreStop *TiDBPreStop `json:"preStop,omitempty"`
+
 	// Overlay defines a k8s native resource template patch.
 	// All resources(pod, pvcs, ...) managed by TiDB can be overlayed by this field.
 	Overlay *Overlay `json:"overlay,omitempty"`
+}
+
+type TiDBPreStop struct {
+	// SleepSeconds is the seconds to sleep before sending the SIGTERM to the tidb container.
+	// It's useful to achieve a graceful shutdown of the tidb container.
+	// Operator will calculate the tidb pod's `terminationGracePeriod` based on this field:
+	// `terminationGracePeriod` = `preStopHookSleepSeconds` + 15(gracefulCloseConnectionsTimeout) + 5(buffer)
+	// Default is 10 seconds.
+	SleepSeconds int32 `json:"sleepSeconds,omitempty"`
 }
 
 type TiDBSecurity struct {
