@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	tikvcfg "github.com/pingcap/tidb-operator/pkg/configs/tikv"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/utils/toml"
 )
@@ -59,9 +58,7 @@ func newConfigMap(tikv *v1alpha1.TiKV, data []byte) *corev1.ConfigMap {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      coreutil.PodName[scope.TiKV](tikv),
 			Namespace: tikv.Namespace,
-			Labels: maputil.Merge(tikv.Labels, map[string]string{
-				v1alpha1.LabelKeyInstance: tikv.Name,
-			}),
+			Labels:    coreutil.ConfigMapLabels[scope.TiKV](tikv),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(tikv, v1alpha1.SchemeGroupVersion.WithKind("TiKV")),
 			},

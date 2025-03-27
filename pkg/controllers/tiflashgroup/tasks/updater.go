@@ -24,12 +24,12 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
 	"github.com/pingcap/tidb-operator/pkg/updater/policy"
-	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/random"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -109,16 +109,10 @@ func TiFlashNewer(fg *v1alpha1.TiFlashGroup, rev string) updater.NewFactory[*run
 
 		tiflash := &v1alpha1.TiFlash{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: fg.Namespace,
-				Name:      name,
-				Labels: maputil.Merge(fg.Spec.Template.Labels, map[string]string{
-					v1alpha1.LabelKeyManagedBy:            v1alpha1.LabelValManagedByOperator,
-					v1alpha1.LabelKeyComponent:            v1alpha1.LabelValComponentTiFlash,
-					v1alpha1.LabelKeyCluster:              fg.Spec.Cluster.Name,
-					v1alpha1.LabelKeyGroup:                fg.Name,
-					v1alpha1.LabelKeyInstanceRevisionHash: rev,
-				}),
-				Annotations: maputil.Copy(fg.Spec.Template.Annotations),
+				Namespace:   fg.Namespace,
+				Name:        name,
+				Labels:      coreutil.InstanceLabels[scope.TiFlashGroup](fg, rev),
+				Annotations: coreutil.InstanceAnnotations[scope.TiFlashGroup](fg),
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(fg, v1alpha1.SchemeGroupVersion.WithKind("TiFlashGroup")),
 				},

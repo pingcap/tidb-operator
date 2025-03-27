@@ -29,10 +29,10 @@ import (
 // so we can use the template of instance directly as the last template.
 // This function is used in the group controller.
 func CheckTiFlash(group *v1alpha1.TiFlashGroup, instance *v1alpha1.TiFlash) bool {
-	groupTmpl := &group.Spec.Template.Spec
-	instanceTmpl := &instance.Spec.TiFlashTemplateSpec
+	groupTmpl := &group.Spec.Template
+	instanceTmpl := templateFromTiFlash(instance)
 
-	return equalTiFlashTemplate(groupTmpl, instanceTmpl) && !restartAnnotationsChanged(group.Spec.Template.Annotations, instance.GetAnnotations())
+	return equalTiFlashTemplate(groupTmpl, instanceTmpl)
 }
 
 // CheckTiFlashPod returns whether changes are reloadable. No change also means reloadable.
@@ -42,22 +42,23 @@ func CheckTiFlash(group *v1alpha1.TiFlashGroup, instance *v1alpha1.TiFlash) bool
 func CheckTiFlashPod(instance *v1alpha1.TiFlash, pod *corev1.Pod) bool {
 	lastInstanceTemplate := pod.Annotations[v1alpha1.AnnoKeyLastInstanceTemplate]
 
-	spec := &v1alpha1.TiFlashTemplateSpec{}
-	if err := json.Unmarshal([]byte(lastInstanceTemplate), spec); err != nil {
+	tmpl := &v1alpha1.TiFlashTemplate{}
+	if err := json.Unmarshal([]byte(lastInstanceTemplate), tmpl); err != nil {
 		// last template is not found or unexpectedly changed
 		return true
 	}
 
-	instanceTmpl := &instance.Spec.TiFlashTemplateSpec
+	instanceTmpl := templateFromTiFlash(instance)
 
-	return equalTiFlashTemplate(instanceTmpl, spec) && !restartAnnotationsChanged(instance.GetAnnotations(), pod.GetAnnotations())
+	return equalTiFlashTemplate(instanceTmpl, tmpl)
 }
 
 func EncodeLastTiFlashTemplate(instance *v1alpha1.TiFlash, pod *corev1.Pod) error {
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
 	}
-	instanceTmpl := &instance.Spec.TiFlashTemplateSpec
+	instanceTmpl := templateFromTiFlash(instance)
+
 	data, err := json.Marshal(instanceTmpl)
 	if err != nil {
 		return err
@@ -73,39 +74,53 @@ func MustEncodeLastTiFlashTemplate(instance *v1alpha1.TiFlash, pod *corev1.Pod) 
 	}
 }
 
+// TODO: ignore inherited labels and annotations
+func templateFromTiFlash(f *v1alpha1.TiFlash) *v1alpha1.TiFlashTemplate {
+	return &v1alpha1.TiFlashTemplate{
+		ObjectMeta: v1alpha1.ObjectMeta{
+			Labels:      f.Labels,
+			Annotations: f.Annotations,
+		},
+		Spec: f.Spec.TiFlashTemplateSpec,
+	}
+}
+
 // convertTiFlashTemplate will ignore some fields
 // TODO: set default for some empty fields
-func convertTiFlashTemplate(tmpl *v1alpha1.TiFlashTemplateSpec) *v1alpha1.TiFlashTemplateSpec {
+func convertTiFlashTemplate(tmpl *v1alpha1.TiFlashTemplate) *v1alpha1.TiFlashTemplate {
 	newTmpl := tmpl.DeepCopy()
 
-	if newTmpl.LogTailer != nil {
-		newTmpl.LogTailer.Image = nil
+	newTmpl.Labels = convertLabels(newTmpl.Labels)
+	newTmpl.Annotations = convertAnnotations(newTmpl.Annotations)
+
+	if newTmpl.Spec.LogTailer != nil {
+		newTmpl.Spec.LogTailer.Image = nil
 	}
 
-	newTmpl.Volumes = convertVolumes(newTmpl.Volumes)
-	newTmpl.Overlay = convertOverlay(newTmpl.Overlay)
+	newTmpl.Spec.Volumes = convertVolumes(newTmpl.Spec.Volumes)
+	newTmpl.Spec.Overlay = convertOverlay(newTmpl.Spec.Overlay)
 
 	return newTmpl
 }
 
-func equalTiFlashTemplate(p, c *v1alpha1.TiFlashTemplateSpec) bool {
+func equalTiFlashTemplate(p, c *v1alpha1.TiFlashTemplate) bool {
 	p = convertTiFlashTemplate(p)
 	c = convertTiFlashTemplate(c)
 	// not equal only when current strategy is Restart and config is changed
-	switch c.UpdateStrategy.Config {
+	switch c.Spec.UpdateStrategy.Config {
 	case v1alpha1.ConfigUpdateStrategyRestart:
-		if p.Config != c.Config || p.ProxyConfig != c.ProxyConfig {
+		if p.Spec.Config != c.Spec.Config || p.Spec.ProxyConfig != c.Spec.ProxyConfig {
 			return false
 		}
 	}
 
 	// ignore these fields
-	p.Config = ""
-	c.Config = ""
-	p.ProxyConfig = ""
-	c.ProxyConfig = ""
-	p.UpdateStrategy.Config = ""
-	c.UpdateStrategy.Config = ""
+	p.Spec.Config = ""
+	c.Spec.Config = ""
+	p.Spec.ProxyConfig = ""
+	c.Spec.ProxyConfig = ""
+	p.Spec.UpdateStrategy.Config = ""
+	c.Spec.UpdateStrategy.Config = ""
 
 	return apiequality.Semantic.DeepEqual(p, c)
 }

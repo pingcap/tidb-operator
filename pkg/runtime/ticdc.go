@@ -170,6 +170,13 @@ func (*TiCDC) Component() string {
 	return v1alpha1.LabelValComponentTiCDC
 }
 
+func (cdc *TiCDC) PodOverlay() *v1alpha1.PodOverlay {
+	if cdc.Spec.Overlay == nil {
+		return nil
+	}
+	return cdc.Spec.Overlay.Pod
+}
+
 var _ Group = &TiCDCGroup{}
 
 func (cdcg *TiCDCGroup) DeepCopyObject() runtime.Object {
@@ -259,4 +266,12 @@ func (cdcg *TiCDCGroup) StatusRevision() (update, current string, collisionCount
 	return cdcg.Status.UpdateRevision,
 		cdcg.Status.CurrentRevision,
 		cdcg.Status.CollisionCount
+}
+
+func (cdcg *TiCDCGroup) TemplateLabels() map[string]string {
+	return cdcg.Spec.Template.Labels
+}
+
+func (cdcg *TiCDCGroup) TemplateAnnotations() map[string]string {
+	return cdcg.Spec.Template.Annotations
 }

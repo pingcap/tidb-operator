@@ -56,11 +56,15 @@ func newPVCs(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) []*corev1.Persisten
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      PersistentVolumeClaimName(coreutil.PodName[scope.TiDB](tidb), vol.Name),
 				Namespace: tidb.Namespace,
-				Labels: maputil.Merge(tidb.Labels, map[string]string{
-					v1alpha1.LabelKeyInstance:   tidb.Name,
-					v1alpha1.LabelKeyClusterID:  cluster.Status.ID,
-					v1alpha1.LabelKeyVolumeName: vol.Name,
-				}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiDB)),
+				Labels: maputil.Merge(
+					coreutil.PersistentVolumeClaimLabels[scope.TiDB](tidb, vol.Name),
+					// legacy labels in v1
+					map[string]string{
+						v1alpha1.LabelKeyClusterID: cluster.Status.ID,
+					},
+					// TODO: remove it
+					k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiDB),
+				),
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(tidb, v1alpha1.SchemeGroupVersion.WithKind("TiDB")),
 				},

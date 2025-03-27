@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	tidbcfg "github.com/pingcap/tidb-operator/pkg/configs/tidb"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/utils/toml"
 )
@@ -62,9 +61,7 @@ func newConfigMap(tidb *v1alpha1.TiDB, data []byte) *corev1.ConfigMap {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      coreutil.PodName[scope.TiDB](tidb),
 			Namespace: tidb.Namespace,
-			Labels: maputil.Merge(tidb.Labels, map[string]string{
-				v1alpha1.LabelKeyInstance: tidb.Name,
-			}),
+			Labels:    coreutil.ConfigMapLabels[scope.TiDB](tidb),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(tidb, v1alpha1.SchemeGroupVersion.WithKind("TiDB")),
 			},

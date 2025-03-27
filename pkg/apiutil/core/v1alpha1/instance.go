@@ -17,9 +17,11 @@ package coreutil
 import (
 	"strings"
 
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 )
 
 func IsReady[
@@ -69,4 +71,48 @@ func UpdateRevision[
 	T runtime.Instance,
 ](f F) string {
 	return scope.From[S](f).GetUpdateRevision()
+}
+
+func instanceSubresourceLabels[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](f F) map[string]string {
+	obj := scope.From[S](f)
+
+	return maputil.MergeTo(maputil.Select(obj.GetLabels(),
+		v1alpha1.LabelKeyGroup,
+		v1alpha1.LabelKeyInstanceRevisionHash,
+	), map[string]string{
+		v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+		v1alpha1.LabelKeyComponent: obj.Component(),
+		v1alpha1.LabelKeyCluster:   obj.Cluster(),
+		v1alpha1.LabelKeyInstance:  f.GetName(),
+	})
+}
+
+func PodLabels[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](f F) map[string]string {
+	return instanceSubresourceLabels[S](f)
+}
+
+func ConfigMapLabels[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](f F) map[string]string {
+	return instanceSubresourceLabels[S](f)
+}
+
+func PersistentVolumeClaimLabels[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](f F, volName string) map[string]string {
+	return maputil.MergeTo(instanceSubresourceLabels[S](f), map[string]string{
+		v1alpha1.LabelKeyVolumeName: volName,
+	})
 }

@@ -15,9 +15,13 @@
 package coreutil
 
 import (
+	"maps"
+
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 )
 
 func Version[
@@ -114,4 +118,30 @@ func SetStatusRevision[
 	}
 
 	return false
+}
+
+func InstanceLabels[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](f F, rev string) map[string]string {
+	obj := scope.From[S](f)
+
+	return maputil.Merge(obj.TemplateLabels(), map[string]string{
+		v1alpha1.LabelKeyManagedBy:            v1alpha1.LabelValManagedByOperator,
+		v1alpha1.LabelKeyComponent:            obj.Component(),
+		v1alpha1.LabelKeyCluster:              obj.Cluster(),
+		v1alpha1.LabelKeyGroup:                f.GetName(),
+		v1alpha1.LabelKeyInstanceRevisionHash: rev,
+	})
+}
+
+func InstanceAnnotations[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](f F) map[string]string {
+	obj := scope.From[S](f)
+
+	return maps.Clone(obj.TemplateAnnotations())
 }

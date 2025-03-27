@@ -170,6 +170,13 @@ func (*TiKV) Component() string {
 	return v1alpha1.LabelValComponentTiKV
 }
 
+func (kv *TiKV) PodOverlay() *v1alpha1.PodOverlay {
+	if kv.Spec.Overlay == nil {
+		return nil
+	}
+	return kv.Spec.Overlay.Pod
+}
+
 var _ Group = &TiKVGroup{}
 
 func (kvg *TiKVGroup) DeepCopyObject() runtime.Object {
@@ -259,4 +266,12 @@ func (kvg *TiKVGroup) StatusRevision() (update, current string, collisionCount *
 	return kvg.Status.UpdateRevision,
 		kvg.Status.CurrentRevision,
 		kvg.Status.CollisionCount
+}
+
+func (kvg *TiKVGroup) TemplateLabels() map[string]string {
+	return kvg.Spec.Template.Labels
+}
+
+func (kvg *TiKVGroup) TemplateAnnotations() map[string]string {
+	return kvg.Spec.Template.Annotations
 }
