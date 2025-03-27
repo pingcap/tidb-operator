@@ -52,7 +52,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/tests/e2e/config"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/k8s"
@@ -750,7 +749,7 @@ var _ = Describe("TiDB Cluster", func() {
 			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
 		})
 
-		It("should not recreate pods for labels/annotations modification", func() {
+		It("should recreate pods for labels/annotations modification", func() {
 			pdg := data.NewPDGroup(ns.Name, "pdg", tc.Name, ptr.To(int32(1)), nil)
 			kvg := data.NewTiKVGroup(ns.Name, "kvg", tc.Name, ptr.To(int32(1)), nil)
 			dbg := data.NewTiDBGroup(ns.Name, "dbg", tc.Name, ptr.To(int32(1)), nil)
@@ -774,7 +773,7 @@ var _ = Describe("TiDB Cluster", func() {
 			podList, err := clientSet.CoreV1().Pods(tc.Namespace).List(ctx, listOpts)
 			Expect(err).To(BeNil())
 			Expect(len(podList.Items)).To(Equal(1))
-			originalPodName, originalPodUID := podList.Items[0].Name, podList.Items[0].UID
+			originalPodUID := podList.Items[0].UID
 
 			By("Changing labels and annotations")
 			var dbgGet v1alpha1.TiDBGroup
@@ -789,13 +788,15 @@ var _ = Describe("TiDB Cluster", func() {
 			dbgGet.Spec.Template.Annotations["foo"] = "bar"
 			Expect(k8sClient.Update(ctx, &dbgGet)).To(Succeed())
 
-			By("Checking the pods are not recreated")
+			By("Checking the pods are recreated")
 			Eventually(func(g Gomega) {
-				var pod corev1.Pod
-				g.Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: tc.Namespace, Name: originalPodName}, &pod)).To(Succeed())
-				g.Expect(pod.UID).To(Equal(originalPodUID))
-				g.Expect(pod.Labels["foo"]).To(Equal("bar"))
-				g.Expect(pod.Annotations["foo"]).To(Equal("bar"))
+				podList, err := clientSet.CoreV1().Pods(tc.Namespace).List(ctx, listOpts)
+				g.Expect(err).To(BeNil())
+				g.Expect(len(podList.Items)).To(Equal(1))
+				pod := &podList.Items[0]
+				g.Expect(pod.UID).NotTo(Equal(originalPodUID))
+				g.Expect(pod.Labels["foo"]).To(Equal(""))
+				g.Expect(pod.Annotations["foo"]).To(Equal(""))
 				g.Expect(pod.Status.Phase).To(Equal(corev1.PodRunning))
 			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
 		})
@@ -866,10 +867,15 @@ var _ = Describe("TiDB Cluster", func() {
 			assertConfigMaps("warn")
 
 			testUpdateWithoutRolling("annotation", func(tk *v1alpha1.TiKVGroup) {
-				if tk.Spec.Template.Annotations == nil {
-					tk.Spec.Template.Annotations = make(map[string]string)
+				tk.Spec.Template.Spec.Overlay = &v1alpha1.Overlay{
+					Pod: &v1alpha1.PodOverlay{
+						ObjectMeta: v1alpha1.ObjectMeta{
+							Annotations: map[string]string{
+								"foo": "bar",
+							},
+						},
+					},
 				}
-				tk.Spec.Template.Annotations["foo"] = "bar"
 			})
 		})
 
@@ -1106,7 +1112,7 @@ var _ = Describe("TiDB Cluster", func() {
 			if kvgGet.Spec.Template.Annotations == nil {
 				kvgGet.Spec.Template.Annotations = map[string]string{}
 			}
-			kvgGet.Spec.Template.Annotations[metav1alpha1.RestartAnnotationPrefix+"e2e"] = "test"
+			kvgGet.Spec.Template.Annotations["e2e"] = "test"
 			updateTime = time.Now()
 			Expect(k8sClient.Update(ctx, &kvgGet)).To(Succeed())
 
@@ -1161,7 +1167,7 @@ var _ = Describe("TiDB Cluster", func() {
 			if kvgGet.Spec.Template.Annotations == nil {
 				kvgGet.Spec.Template.Annotations = map[string]string{}
 			}
-			kvgGet.Spec.Template.Annotations[metav1alpha1.RestartAnnotationPrefix+"e2e"] = "test-again"
+			kvgGet.Spec.Template.Annotations["e2e"] = "test-again"
 			updateTime = time.Now()
 			Expect(k8sClient.Update(ctx, &kvgGet)).To(Succeed())
 			Eventually(func(g Gomega) {

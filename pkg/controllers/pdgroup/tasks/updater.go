@@ -25,6 +25,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
@@ -126,16 +127,10 @@ func PDNewer(pdg *v1alpha1.PDGroup, rev string) updater.NewFactory[*runtime.PD] 
 
 		peer := &v1alpha1.PD{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: pdg.Namespace,
-				Name:      name,
-				Labels: maputil.Merge(pdg.Spec.Template.Labels, map[string]string{
-					v1alpha1.LabelKeyManagedBy:            v1alpha1.LabelValManagedByOperator,
-					v1alpha1.LabelKeyComponent:            v1alpha1.LabelValComponentPD,
-					v1alpha1.LabelKeyCluster:              pdg.Spec.Cluster.Name,
-					v1alpha1.LabelKeyGroup:                pdg.Name,
-					v1alpha1.LabelKeyInstanceRevisionHash: rev,
-				}),
-				Annotations: maputil.Merge(pdg.Spec.Template.Annotations, bootAnno),
+				Namespace:   pdg.Namespace,
+				Name:        name,
+				Labels:      coreutil.InstanceLabels[scope.PDGroup](pdg, rev),
+				Annotations: coreutil.InstanceAnnotations[scope.PDGroup](pdg),
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(pdg, v1alpha1.SchemeGroupVersion.WithKind("PDGroup")),
 				},
@@ -146,6 +141,8 @@ func PDNewer(pdg *v1alpha1.PDGroup, rev string) updater.NewFactory[*runtime.PD] 
 				PDTemplateSpec: *spec,
 			},
 		}
+
+		peer.Annotations = maputil.MergeTo(peer.Annotations, bootAnno)
 
 		return runtime.FromPD(peer)
 	})

@@ -17,133 +17,218 @@ package reloadable
 import (
 	"testing"
 
-	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/utils/ptr"
+
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 )
 
-func TestRestartAnnotationsChanged(t *testing.T) {
-	tests := []struct {
-		name string
-		a1   map[string]string
-		a2   map[string]string
-		want bool
+func TestConvertOverlay(t *testing.T) {
+	cases := []struct {
+		desc string
+		in   *v1alpha1.Overlay
+		out  *v1alpha1.Overlay
 	}{
 		{
-			name: "both nil",
-			a1:   nil,
-			a2:   nil,
-			want: false,
-		},
-		{
-			name: "both empty",
-			a1:   map[string]string{},
-			a2:   map[string]string{},
-			want: false,
-		},
-		{
-			name: "one empty, one with restart annotation",
-			a1:   map[string]string{},
-			a2:   map[string]string{metav1alpha1.RestartAnnotationPrefix + "key": "value"},
-			want: true,
-		},
-		{
-			name: "one nil, one with restart annotation",
-			a1:   map[string]string{metav1alpha1.RestartAnnotationPrefix + "key": "value"},
-			a2:   nil,
-			want: true,
-		},
-		{
-			name: "both with same restart annotation",
-			a1:   map[string]string{metav1alpha1.RestartAnnotationPrefix + "key": "value"},
-			a2:   map[string]string{metav1alpha1.RestartAnnotationPrefix + "key": "value"},
-			want: false,
-		},
-		{
-			name: "both with different restart annotations",
-			a1:   map[string]string{metav1alpha1.RestartAnnotationPrefix + "key1": "value1"},
-			a2:   map[string]string{metav1alpha1.RestartAnnotationPrefix + "key2": "value2"},
-			want: true,
-		},
-		{
-			name: "one with non-restart annotation",
-			a1:   map[string]string{"non-restart-key": "value"},
-			a2:   map[string]string{metav1alpha1.RestartAnnotationPrefix + "key": "value"},
-			want: true,
-		},
-		{
-			name: "both with same non-restart annotation",
-			a1:   map[string]string{"non-restart-key": "value"},
-			a2:   map[string]string{"non-restart-key": "value"},
-			want: false,
-		},
-		{
-			name: "same restart key with different values",
-			a1:   map[string]string{metav1alpha1.RestartAnnotationPrefix + "key": "value1"},
-			a2:   map[string]string{metav1alpha1.RestartAnnotationPrefix + "key": "value2"},
-			want: true,
-		},
-		{
-			name: "multiple restart keys with one differing value",
-			a1: map[string]string{
-				metav1alpha1.RestartAnnotationPrefix + "k1": "v1",
-				metav1alpha1.RestartAnnotationPrefix + "k2": "v2",
+			desc: "nil",
+			in:   nil,
+			out: &v1alpha1.Overlay{
+				Pod: &v1alpha1.PodOverlay{
+					Spec: &corev1.PodSpec{},
+				},
 			},
-			a2: map[string]string{
-				metav1alpha1.RestartAnnotationPrefix + "k1": "v1",
-				metav1alpha1.RestartAnnotationPrefix + "k2": "v3",
-			},
-			want: true,
 		},
 		{
-			name: "different count of restart annotations",
-			a1:   map[string]string{metav1alpha1.RestartAnnotationPrefix + "k1": "v1"},
-			a2: map[string]string{
-				metav1alpha1.RestartAnnotationPrefix + "k1": "v1",
-				metav1alpha1.RestartAnnotationPrefix + "k2": "v2",
+			desc: "pod is nil",
+			in:   &v1alpha1.Overlay{},
+			out: &v1alpha1.Overlay{
+				Pod: &v1alpha1.PodOverlay{
+					Spec: &corev1.PodSpec{},
+				},
 			},
-			want: true,
 		},
 		{
-			name: "same restart keys but different non-restart annotations",
-			a1: map[string]string{
-				metav1alpha1.RestartAnnotationPrefix + "key": "value",
-				"other1": "x",
+			desc: "pod spec is nil",
+			in: &v1alpha1.Overlay{
+				Pod: &v1alpha1.PodOverlay{},
 			},
-			a2: map[string]string{
-				metav1alpha1.RestartAnnotationPrefix + "key": "value",
-				"other2": "y",
+			out: &v1alpha1.Overlay{
+				Pod: &v1alpha1.PodOverlay{
+					Spec: &corev1.PodSpec{},
+				},
 			},
-			want: false,
 		},
 		{
-			name: "multiple same restart annotations",
-			a1: map[string]string{
-				metav1alpha1.RestartAnnotationPrefix + "k1": "v1",
-				metav1alpha1.RestartAnnotationPrefix + "k2": "v2",
+			desc: "ignore pod labels and annotations",
+			in: &v1alpha1.Overlay{
+				Pod: &v1alpha1.PodOverlay{
+					ObjectMeta: v1alpha1.ObjectMeta{
+						Labels: map[string]string{
+							"test": "test",
+						},
+						Annotations: map[string]string{
+							"test": "test",
+						},
+					},
+				},
 			},
-			a2: map[string]string{
-				metav1alpha1.RestartAnnotationPrefix + "k1": "v1",
-				metav1alpha1.RestartAnnotationPrefix + "k2": "v2",
+			out: &v1alpha1.Overlay{
+				Pod: &v1alpha1.PodOverlay{
+					Spec: &corev1.PodSpec{},
+				},
 			},
-			want: false,
 		},
 		{
-			name: "same number of restart keys but different keys",
-			a1: map[string]string{
-				metav1alpha1.RestartAnnotationPrefix + "k1": "v1",
-				metav1alpha1.RestartAnnotationPrefix + "k2": "v2",
+			desc: "ignore pvcs",
+			in: &v1alpha1.Overlay{
+				Pod: &v1alpha1.PodOverlay{},
+				PersistentVolumeClaims: []v1alpha1.NamedPersistentVolumeClaimOverlay{
+					{
+						Name:                  "aaa",
+						PersistentVolumeClaim: v1alpha1.PersistentVolumeClaimOverlay{},
+					},
+				},
 			},
-			a2: map[string]string{
-				metav1alpha1.RestartAnnotationPrefix + "k1": "v1",
-				metav1alpha1.RestartAnnotationPrefix + "k3": "v3",
+			out: &v1alpha1.Overlay{
+				Pod: &v1alpha1.PodOverlay{
+					Spec: &corev1.PodSpec{},
+				},
 			},
-			want: true,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := restartAnnotationsChanged(tt.a1, tt.a2); got != tt.want {
-				t.Errorf("restartAnnotationsChanged() = %v, want %v", got, tt.want)
-			}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			res := convertOverlay(c.in)
+			assert.Equal(tt, c.out, res, c.desc)
+		})
+	}
+}
+
+func TestConvertVolumes(t *testing.T) {
+	cases := []struct {
+		desc string
+		in   []v1alpha1.Volume
+		out  []v1alpha1.Volume
+	}{
+		{
+			desc: "nil",
+		},
+		{
+			desc: "empty",
+			in:   []v1alpha1.Volume{},
+			out:  []v1alpha1.Volume{},
+		},
+		{
+			desc: "ignore storage and storage class and volume attribute class",
+			in: []v1alpha1.Volume{
+				{
+					Name:                      "aaa",
+					Storage:                   resource.MustParse("5Gi"),
+					StorageClassName:          ptr.To("test"),
+					VolumeAttributesClassName: ptr.To("test"),
+				},
+				{
+					Name:                      "bbb",
+					Storage:                   resource.MustParse("5Gi"),
+					StorageClassName:          ptr.To("test"),
+					VolumeAttributesClassName: ptr.To("test"),
+				},
+			},
+			out: []v1alpha1.Volume{
+				{
+					Name: "aaa",
+				},
+				{
+					Name: "bbb",
+				},
+			},
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			res := convertVolumes(c.in)
+			assert.Equal(tt, c.out, res, c.desc)
+		})
+	}
+}
+
+func TestConvertLabels(t *testing.T) {
+	cases := []struct {
+		desc string
+		in   map[string]string
+		out  map[string]string
+	}{
+		{
+			desc: "nil",
+		},
+		{
+			desc: "empty",
+			in:   map[string]string{},
+			out:  map[string]string{},
+		},
+		{
+			desc: "ignore keys",
+			in: map[string]string{
+				v1alpha1.LabelKeyManagedBy:            "xxx",
+				v1alpha1.LabelKeyComponent:            "yyy",
+				v1alpha1.LabelKeyCluster:              "zzz",
+				v1alpha1.LabelKeyGroup:                "aaa",
+				v1alpha1.LabelKeyInstanceRevisionHash: "bbb",
+				"test":                                "test",
+			},
+			out: map[string]string{
+				"test": "test",
+			},
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			res := convertLabels(c.in)
+			assert.Equal(tt, c.out, res, c.desc)
+		})
+	}
+}
+
+func TestConvertAnnotations(t *testing.T) {
+	cases := []struct {
+		desc string
+		in   map[string]string
+		out  map[string]string
+	}{
+		{
+			desc: "nil",
+		},
+		{
+			desc: "empty",
+			in:   map[string]string{},
+			out:  map[string]string{},
+		},
+		{
+			desc: "ignore keys",
+			in: map[string]string{
+				v1alpha1.AnnoKeyInitialClusterNum: "10",
+				v1alpha1.AnnoKeyDeferDelete:       "xxx",
+				"test":                            "test",
+			},
+			out: map[string]string{
+				"test": "test",
+			},
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			res := convertAnnotations(c.in)
+			assert.Equal(tt, c.out, res, c.desc)
 		})
 	}
 }

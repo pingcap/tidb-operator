@@ -21,7 +21,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 func TestCheckTiDB(t *testing.T) {
@@ -64,7 +63,7 @@ func TestCheckTiDB(t *testing.T) {
 					Template: v1alpha1.TiDBTemplate{
 						ObjectMeta: v1alpha1.ObjectMeta{
 							Annotations: map[string]string{
-								metav1alpha1.RestartAnnotationPrefix + "foo": "bar",
+								"foo": "bar",
 							},
 						},
 						Spec: v1alpha1.TiDBTemplateSpec{},
@@ -85,7 +84,7 @@ func TestCheckTiDB(t *testing.T) {
 					Template: v1alpha1.TiDBTemplate{
 						ObjectMeta: v1alpha1.ObjectMeta{
 							Annotations: map[string]string{
-								metav1alpha1.RestartAnnotationPrefix + "foo": "bar",
+								"foo": "bar",
 							},
 						},
 						Spec: v1alpha1.TiDBTemplateSpec{},
@@ -95,7 +94,7 @@ func TestCheckTiDB(t *testing.T) {
 			db: &v1alpha1.TiDB{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						metav1alpha1.RestartAnnotationPrefix + "foo": "zoo",
+						"foo": "zoo",
 					},
 				},
 				Spec: v1alpha1.TiDBSpec{

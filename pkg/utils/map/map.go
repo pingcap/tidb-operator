@@ -14,40 +14,22 @@
 
 package maputil
 
+import "maps"
+
 // Merge merges all maps to a new one.
 func Merge[K comparable, V any](maps ...map[K]V) map[K]V {
 	return MergeTo(nil, maps...)
 }
 
 // MergeTo merges all maps to the original one.
-func MergeTo[K comparable, V any](original map[K]V, maps ...map[K]V) map[K]V {
+func MergeTo[K comparable, V any](original map[K]V, ms ...map[K]V) map[K]V {
 	if original == nil {
 		original = make(map[K]V)
 	}
-	for _, m := range maps {
-		for k, v := range m {
-			original[k] = v
-		}
+	for _, m := range ms {
+		maps.Copy(original, m)
 	}
 	return original
-}
-
-// Copy returns a copy of the given map.
-func Copy[K comparable, V any](originalMap map[K]V) map[K]V {
-	if originalMap == nil {
-		return nil
-	}
-	// Create a new map to store the copied key-value pairs with the same capacity as the original map
-	copiedMap := make(map[K]V, len(originalMap))
-
-	// Iterate over the original map's key-value pairs
-	for key, value := range originalMap {
-		// Add the key-value pair into the new map, since the value is not a reference type, it is safe to copy directly
-		copiedMap[key] = value
-	}
-
-	// Return the deep copied map
-	return copiedMap
 }
 
 // AreEqual checks if two maps are equal.
@@ -62,4 +44,18 @@ func AreEqual[K comparable](map1, map2 map[K]string) bool {
 		}
 	}
 	return true
+}
+
+// Select returns a new map with selected keys and values of the originalMap
+func Select[K comparable, V any](originalMap map[K]V, keys ...K) map[K]V {
+	ret := make(map[K]V)
+
+	for _, k := range keys {
+		v, ok := originalMap[k]
+		if ok {
+			ret[k] = v
+		}
+	}
+
+	return ret
 }

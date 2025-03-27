@@ -186,19 +186,21 @@ func newPod(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, clusterID, memberID stri
 		})
 	}
 
-	anno := maputil.Merge(pd.GetAnnotations(), k8s.AnnoProm(coreutil.PDClientPort(pd), metricsPath))
-	// TODO: should not inherit all labels and annotations into pod
-	delete(anno, v1alpha1.AnnoKeyInitialClusterNum)
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: pd.Namespace,
 			Name:      coreutil.PodName[scope.PD](pd),
-			Labels: maputil.Merge(pd.Labels, map[string]string{
-				v1alpha1.LabelKeyInstance:  pd.Name,
-				v1alpha1.LabelKeyClusterID: clusterID,
-				v1alpha1.LabelKeyMemberID:  memberID,
-			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentPD)),
-			Annotations: anno,
+			Labels: maputil.Merge(
+				coreutil.PodLabels[scope.PD](pd),
+				// legacy labels in v1
+				map[string]string{
+					v1alpha1.LabelKeyClusterID: clusterID,
+					v1alpha1.LabelKeyMemberID:  memberID,
+				},
+				// TODO: remove it
+				k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentPD),
+			),
+			Annotations: maputil.Merge(k8s.AnnoProm(coreutil.PDClientPort(pd), metricsPath)),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(pd, v1alpha1.SchemeGroupVersion.WithKind("PD")),
 			},

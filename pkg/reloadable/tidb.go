@@ -29,10 +29,10 @@ import (
 // so we can use the template of instance directly as the last template.
 // This function is used in the group controller.
 func CheckTiDB(group *v1alpha1.TiDBGroup, instance *v1alpha1.TiDB) bool {
-	groupTmpl := &group.Spec.Template.Spec
-	instanceTmpl := &instance.Spec.TiDBTemplateSpec
+	groupTmpl := &group.Spec.Template
+	instanceTmpl := templateFromTiDB(instance)
 
-	return equalTiDBTemplate(groupTmpl, instanceTmpl) && !restartAnnotationsChanged(group.Spec.Template.Annotations, instance.GetAnnotations())
+	return equalTiDBTemplate(groupTmpl, instanceTmpl)
 }
 
 // CheckTiDBPod returns whether changes are reloadable. No change also means reloadable.
@@ -42,22 +42,23 @@ func CheckTiDB(group *v1alpha1.TiDBGroup, instance *v1alpha1.TiDB) bool {
 func CheckTiDBPod(instance *v1alpha1.TiDB, pod *corev1.Pod) bool {
 	lastInstanceTemplate := pod.Annotations[v1alpha1.AnnoKeyLastInstanceTemplate]
 
-	spec := &v1alpha1.TiDBTemplateSpec{}
-	if err := json.Unmarshal([]byte(lastInstanceTemplate), spec); err != nil {
+	tmpl := &v1alpha1.TiDBTemplate{}
+	if err := json.Unmarshal([]byte(lastInstanceTemplate), tmpl); err != nil {
 		// last template is not found or unexpectedly changed
 		return true
 	}
 
-	instanceTmpl := &instance.Spec.TiDBTemplateSpec
+	instanceTmpl := templateFromTiDB(instance)
 
-	return equalTiDBTemplate(instanceTmpl, spec) && !restartAnnotationsChanged(instance.GetAnnotations(), pod.GetAnnotations())
+	return equalTiDBTemplate(instanceTmpl, tmpl)
 }
 
 func EncodeLastTiDBTemplate(instance *v1alpha1.TiDB, pod *corev1.Pod) error {
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
 	}
-	instanceTmpl := &instance.Spec.TiDBTemplateSpec
+	instanceTmpl := templateFromTiDB(instance)
+
 	data, err := json.Marshal(instanceTmpl)
 	if err != nil {
 		return err
@@ -73,37 +74,51 @@ func MustEncodeLastTiDBTemplate(instance *v1alpha1.TiDB, pod *corev1.Pod) {
 	}
 }
 
+// TODO: ignore inherited labels and annotations
+func templateFromTiDB(db *v1alpha1.TiDB) *v1alpha1.TiDBTemplate {
+	return &v1alpha1.TiDBTemplate{
+		ObjectMeta: v1alpha1.ObjectMeta{
+			Labels:      db.Labels,
+			Annotations: db.Annotations,
+		},
+		Spec: db.Spec.TiDBTemplateSpec,
+	}
+}
+
 // convertTiDBTemplate will ignore some fields
 // TODO: set default for some empty fields
-func convertTiDBTemplate(tmpl *v1alpha1.TiDBTemplateSpec) *v1alpha1.TiDBTemplateSpec {
+func convertTiDBTemplate(tmpl *v1alpha1.TiDBTemplate) *v1alpha1.TiDBTemplate {
 	newTmpl := tmpl.DeepCopy()
 
-	if newTmpl.SlowLog != nil {
-		newTmpl.SlowLog.Image = nil
+	newTmpl.Labels = convertLabels(newTmpl.Labels)
+	newTmpl.Annotations = convertAnnotations(newTmpl.Annotations)
+
+	if newTmpl.Spec.SlowLog != nil {
+		newTmpl.Spec.SlowLog.Image = nil
 	}
 
-	newTmpl.Volumes = convertVolumes(newTmpl.Volumes)
-	newTmpl.Overlay = convertOverlay(newTmpl.Overlay)
+	newTmpl.Spec.Volumes = convertVolumes(newTmpl.Spec.Volumes)
+	newTmpl.Spec.Overlay = convertOverlay(newTmpl.Spec.Overlay)
 
 	return newTmpl
 }
 
-func equalTiDBTemplate(p, c *v1alpha1.TiDBTemplateSpec) bool {
+func equalTiDBTemplate(p, c *v1alpha1.TiDBTemplate) bool {
 	p = convertTiDBTemplate(p)
 	c = convertTiDBTemplate(c)
 	// not equal only when current strategy is Restart and config is changed
-	switch c.UpdateStrategy.Config {
+	switch c.Spec.UpdateStrategy.Config {
 	case v1alpha1.ConfigUpdateStrategyRestart:
-		if p.Config != c.Config {
+		if p.Spec.Config != c.Spec.Config {
 			return false
 		}
 	}
 
 	// ignore these fields
-	p.Config = ""
-	c.Config = ""
-	p.UpdateStrategy.Config = ""
-	c.UpdateStrategy.Config = ""
+	p.Spec.Config = ""
+	c.Spec.Config = ""
+	p.Spec.UpdateStrategy.Config = ""
+	c.Spec.UpdateStrategy.Config = ""
 
 	return apiequality.Semantic.DeepEqual(p, c)
 }

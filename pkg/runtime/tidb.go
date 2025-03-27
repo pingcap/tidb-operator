@@ -170,6 +170,13 @@ func (*TiDB) Component() string {
 	return v1alpha1.LabelValComponentTiDB
 }
 
+func (db *TiDB) PodOverlay() *v1alpha1.PodOverlay {
+	if db.Spec.Overlay == nil {
+		return nil
+	}
+	return db.Spec.Overlay.Pod
+}
+
 var _ Group = &TiDBGroup{}
 
 func (dbg *TiDBGroup) DeepCopyObject() runtime.Object {
@@ -259,4 +266,12 @@ func (dbg *TiDBGroup) StatusRevision() (update, current string, collisionCount *
 	return dbg.Status.UpdateRevision,
 		dbg.Status.CurrentRevision,
 		dbg.Status.CollisionCount
+}
+
+func (dbg *TiDBGroup) TemplateLabels() map[string]string {
+	return dbg.Spec.Template.Labels
+}
+
+func (dbg *TiDBGroup) TemplateAnnotations() map[string]string {
+	return dbg.Spec.Template.Annotations
 }

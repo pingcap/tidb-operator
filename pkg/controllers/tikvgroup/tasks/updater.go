@@ -24,12 +24,12 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
 	"github.com/pingcap/tidb-operator/pkg/updater/policy"
-	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/random"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -111,16 +111,10 @@ func TiKVNewer(kvg *v1alpha1.TiKVGroup, rev string) updater.NewFactory[*runtime.
 
 		tikv := &v1alpha1.TiKV{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: kvg.Namespace,
-				Name:      name,
-				Labels: maputil.Merge(kvg.Spec.Template.Labels, map[string]string{
-					v1alpha1.LabelKeyManagedBy:            v1alpha1.LabelValManagedByOperator,
-					v1alpha1.LabelKeyComponent:            v1alpha1.LabelValComponentTiKV,
-					v1alpha1.LabelKeyCluster:              kvg.Spec.Cluster.Name,
-					v1alpha1.LabelKeyGroup:                kvg.Name,
-					v1alpha1.LabelKeyInstanceRevisionHash: rev,
-				}),
-				Annotations: maputil.Copy(kvg.Spec.Template.Annotations),
+				Namespace:   kvg.Namespace,
+				Name:        name,
+				Labels:      coreutil.InstanceLabels[scope.TiKVGroup](kvg, rev),
+				Annotations: coreutil.InstanceAnnotations[scope.TiKVGroup](kvg),
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(kvg, v1alpha1.SchemeGroupVersion.WithKind("TiKVGroup")),
 				},
