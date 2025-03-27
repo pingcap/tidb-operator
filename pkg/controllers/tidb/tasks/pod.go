@@ -227,11 +227,17 @@ func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) *corev1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: tidb.Namespace,
 			Name:      coreutil.PodName[scope.TiDB](tidb),
-			Labels: maputil.Merge(tidb.Labels, map[string]string{
-				v1alpha1.LabelKeyInstance:  tidb.Name,
-				v1alpha1.LabelKeyClusterID: cluster.Status.ID,
-			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiDB)),
-			Annotations: maputil.Merge(tidb.GetAnnotations(),
+			Labels: maputil.Merge(
+				coreutil.PodLabels[scope.TiDB](tidb),
+				// legacy labels in v1
+				map[string]string{
+					v1alpha1.LabelKeyClusterID: cluster.Status.ID,
+				},
+				// TODO: remove it
+				k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiDB),
+			),
+
+			Annotations: maputil.Merge(
 				k8s.AnnoProm(coreutil.TiDBStatusPort(tidb), metricsPath),
 			),
 			OwnerReferences: []metav1.OwnerReference{

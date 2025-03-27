@@ -183,12 +183,17 @@ func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, storeID string) *cor
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: tikv.Namespace,
 			Name:      coreutil.PodName[scope.TiKV](tikv),
-			Labels: maputil.Merge(tikv.Labels, map[string]string{
-				v1alpha1.LabelKeyInstance:  tikv.Name,
-				v1alpha1.LabelKeyClusterID: cluster.Status.ID,
-				v1alpha1.LabelKeyStoreID:   storeID,
-			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiKV)),
-			Annotations: maputil.Merge(tikv.GetAnnotations(), k8s.AnnoProm(coreutil.TiKVStatusPort(tikv), metricsPath)),
+			Labels: maputil.Merge(
+				coreutil.PodLabels[scope.TiKV](tikv),
+				// legacy labels in v1
+				map[string]string{
+					v1alpha1.LabelKeyClusterID: cluster.Status.ID,
+					v1alpha1.LabelKeyStoreID:   storeID,
+				},
+				// TODO: remove it
+				k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiKV),
+			),
+			Annotations: maputil.Merge(k8s.AnnoProm(coreutil.TiKVStatusPort(tikv), metricsPath)),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(tikv, v1alpha1.SchemeGroupVersion.WithKind("TiKV")),
 			},

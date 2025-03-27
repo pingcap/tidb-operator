@@ -138,12 +138,17 @@ func newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, storeID string
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: tiflash.Namespace,
 			Name:      coreutil.PodName[scope.TiFlash](tiflash),
-			Labels: maputil.Merge(tiflash.Labels, map[string]string{
-				v1alpha1.LabelKeyInstance:  tiflash.Name,
-				v1alpha1.LabelKeyClusterID: cluster.Status.ID,
-				v1alpha1.LabelKeyStoreID:   storeID,
-			}, k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiFlash)),
-			Annotations: maputil.Merge(tiflash.GetAnnotations(),
+			Labels: maputil.Merge(
+				coreutil.PodLabels[scope.TiFlash](tiflash),
+				// legacy labels in v1
+				map[string]string{
+					v1alpha1.LabelKeyClusterID: cluster.Status.ID,
+					v1alpha1.LabelKeyStoreID:   storeID,
+				},
+				// TODO: remove it
+				k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiFlash),
+			),
+			Annotations: maputil.Merge(
 				k8s.AnnoProm(coreutil.TiFlashMetricsPort(tiflash), metricsPath),
 				k8s.AnnoAdditionalProm("tiflash.proxy", coreutil.TiFlashProxyStatusPort(tiflash))),
 			OwnerReferences: []metav1.OwnerReference{

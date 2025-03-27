@@ -31,7 +31,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
 	"github.com/pingcap/tidb-operator/pkg/updater/policy"
-	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/random"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -139,16 +138,10 @@ func TiDBNewer(dbg *v1alpha1.TiDBGroup, rev string) updater.NewFactory[*runtime.
 
 		tidb := &v1alpha1.TiDB{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: dbg.Namespace,
-				Name:      name,
-				Labels: maputil.Merge(dbg.Spec.Template.Labels, map[string]string{
-					v1alpha1.LabelKeyManagedBy:            v1alpha1.LabelValManagedByOperator,
-					v1alpha1.LabelKeyComponent:            v1alpha1.LabelValComponentTiDB,
-					v1alpha1.LabelKeyCluster:              dbg.Spec.Cluster.Name,
-					v1alpha1.LabelKeyGroup:                dbg.Name,
-					v1alpha1.LabelKeyInstanceRevisionHash: rev,
-				}),
-				Annotations: maputil.Merge(dbg.Spec.Template.Annotations),
+				Namespace:   dbg.Namespace,
+				Name:        name,
+				Labels:      coreutil.InstanceLabels[scope.TiDBGroup](dbg, rev),
+				Annotations: coreutil.InstanceAnnotations[scope.TiDBGroup](dbg),
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(dbg, v1alpha1.SchemeGroupVersion.WithKind("TiDBGroup")),
 				},
