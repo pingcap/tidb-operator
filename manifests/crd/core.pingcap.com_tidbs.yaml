@@ -8174,6 +8174,19 @@ spec:
                     - name
                     x-kubernetes-list-type: map
                 type: object
+              preStop:
+                description: PreStop defines the preStop config for the tidb container.
+                properties:
+                  sleepSeconds:
+                    description: |-
+                      SleepSeconds is the seconds to sleep before sending the SIGTERM to the tidb container.
+                      It's useful to achieve a graceful shutdown of the tidb container.
+                      Operator will calculate the tidb pod's `terminationGracePeriod` based on this field:
+                      `terminationGracePeriod` = `preStopHookSleepSeconds` + 15(gracefulCloseConnectionsTimeout) + 5(buffer)
+                      Default is 10 seconds.
+                    format: int32
+                    type: integer
+                type: object
               probes:
                 description: Probes defines probes for TiDB.
                 properties:

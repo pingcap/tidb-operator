@@ -39,9 +39,6 @@ func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 		if err := cfg.Overlay(state.Cluster(), state.TiDB()); err != nil {
 			return task.Fail().With("cannot generate tidb config: %w", err)
 		}
-		// NOTE(liubo02): don't use val in config file to generate pod
-		// TODO(liubo02): add a new field in api to control both config file and pod spec
-		state.GracefulWaitTimeInSeconds = int64(cfg.GracefulWaitBeforeShutdown)
 
 		data, err := encoder.Encode(&cfg)
 		if err != nil {

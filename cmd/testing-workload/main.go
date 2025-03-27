@@ -33,6 +33,7 @@ var (
 	maxConnections    int
 	sleepIntervalSec  int
 	longTxnSleepSec   int
+	maxLifeTimeSec    int
 )
 
 //nolint:mnd // default values
@@ -46,6 +47,7 @@ func main() {
 	flag.IntVar(&maxConnections, "max-connections", 30, "max connections")
 	flag.IntVar(&sleepIntervalSec, "sleep-interval", 1, "sleep interval in seconds")
 	flag.IntVar(&longTxnSleepSec, "long-txn-sleep", 10, "how many seconds to sleep to simulate a long transaction")
+	flag.IntVar(&maxLifeTimeSec, "max-lifetime", 60, "max lifetime in seconds")
 	flag.Parse()
 
 	// enable "cleartext client side plugin" for `tidb_auth_token`.
