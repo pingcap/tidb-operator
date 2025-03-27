@@ -31,6 +31,9 @@ type Group interface {
 	StatusReplicas() (replicas, ready, update, current int32)
 	SetStatusRevision(update, current string, collisionCount *int32)
 	StatusRevision() (update, current string, collisionCount *int32)
+
+	TemplateLabels() map[string]string
+	TemplateAnnotations() map[string]string
 }
 
 type GroupT[T GroupSet] interface {

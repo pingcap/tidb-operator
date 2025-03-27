@@ -62,46 +62,6 @@ func TestMerge(t *testing.T) {
 	}
 }
 
-func TestCopy(t *testing.T) {
-	cases := []struct {
-		desc     string
-		original map[string]string
-		expected map[string]string
-	}{
-		{
-			desc:     "nil",
-			original: nil,
-			expected: nil,
-		},
-		{
-			desc:     "empty",
-			original: map[string]string{},
-			expected: map[string]string{},
-		},
-		{
-			desc: "normal",
-			original: map[string]string{
-				"aa": "aa",
-				"bb": "bb",
-			},
-			expected: map[string]string{
-				"aa": "aa",
-				"bb": "bb",
-			},
-		},
-	}
-
-	for i := range cases {
-		c := &cases[i]
-		t.Run(c.desc, func(tt *testing.T) {
-			tt.Parallel()
-
-			res := Copy(c.original)
-			assert.Equal(tt, c.expected, res)
-		})
-	}
-}
-
 func TestAreEqual(t *testing.T) {
 	cases := []struct {
 		desc     string

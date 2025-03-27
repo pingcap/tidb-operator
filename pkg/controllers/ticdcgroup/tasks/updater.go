@@ -24,12 +24,12 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
 	"github.com/pingcap/tidb-operator/pkg/updater/policy"
-	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/random"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -110,16 +110,10 @@ func TiCDCNewer(cdcg *v1alpha1.TiCDCGroup, rev string) updater.NewFactory[*runti
 
 		ticdc := &v1alpha1.TiCDC{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: cdcg.Namespace,
-				Name:      name,
-				Labels: maputil.Merge(cdcg.Spec.Template.Labels, map[string]string{
-					v1alpha1.LabelKeyManagedBy:            v1alpha1.LabelValManagedByOperator,
-					v1alpha1.LabelKeyComponent:            v1alpha1.LabelValComponentTiCDC,
-					v1alpha1.LabelKeyCluster:              cdcg.Spec.Cluster.Name,
-					v1alpha1.LabelKeyGroup:                cdcg.Name,
-					v1alpha1.LabelKeyInstanceRevisionHash: rev,
-				}),
-				Annotations: maputil.Copy(cdcg.Spec.Template.Annotations),
+				Namespace:   cdcg.Namespace,
+				Name:        name,
+				Labels:      coreutil.InstanceLabels[scope.TiCDCGroup](cdcg, rev),
+				Annotations: coreutil.InstanceAnnotations[scope.TiCDCGroup](cdcg),
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(cdcg, v1alpha1.SchemeGroupVersion.WithKind("TiCDCGroup")),
 				},

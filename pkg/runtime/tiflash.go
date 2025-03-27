@@ -170,6 +170,13 @@ func (*TiFlash) Component() string {
 	return v1alpha1.LabelValComponentTiFlash
 }
 
+func (f *TiFlash) PodOverlay() *v1alpha1.PodOverlay {
+	if f.Spec.Overlay == nil {
+		return nil
+	}
+	return f.Spec.Overlay.Pod
+}
+
 var _ Group = &TiFlashGroup{}
 
 func (fg *TiFlashGroup) DeepCopyObject() runtime.Object {
@@ -259,4 +266,12 @@ func (fg *TiFlashGroup) StatusRevision() (update, current string, collisionCount
 	return fg.Status.UpdateRevision,
 		fg.Status.CurrentRevision,
 		fg.Status.CollisionCount
+}
+
+func (fg *TiFlashGroup) TemplateLabels() map[string]string {
+	return fg.Spec.Template.Labels
+}
+
+func (fg *TiFlashGroup) TemplateAnnotations() map[string]string {
+	return fg.Spec.Template.Annotations
 }

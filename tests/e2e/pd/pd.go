@@ -59,7 +59,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 	})
 
 	ginkgo.Context("Scale and Update", label.P0, func() {
-		ginkgo.It("support scale PD form 3 to 5", label.Scale, func(ctx context.Context) {
+		ginkgo.It("support scale PD from 3 to 5", label.Scale, func(ctx context.Context) {
 			pdg := data.NewPDGroup(
 				f.Namespace.Name,
 				data.WithReplicas[*runtime.PDGroup](3),
@@ -77,7 +77,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 			f.WaitForPDGroupReady(ctx, pdg)
 		})
 
-		ginkgo.It("support scale PD form 5 to 3", label.Scale, func(ctx context.Context) {
+		ginkgo.It("support scale PD from 5 to 3", label.Scale, func(ctx context.Context) {
 			pdg := data.NewPDGroup(
 				f.Namespace.Name,
 				data.WithReplicas[*runtime.PDGroup](5),
@@ -125,7 +125,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 			<-ch
 		})
 
-		ginkgo.It("support scale PD form 5 to 3 and rolling update at same time", label.Scale, label.Update, func(ctx context.Context) {
+		ginkgo.It("support scale PD from 5 to 3 and rolling update at same time", label.Scale, label.Update, func(ctx context.Context) {
 			pdg := data.NewPDGroup(
 				f.Namespace.Name,
 				data.WithReplicas[*runtime.PDGroup](5),

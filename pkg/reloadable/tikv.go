@@ -29,10 +29,10 @@ import (
 // so we can use the template of instance directly as the last template.
 // This function is used in the group controller.
 func CheckTiKV(group *v1alpha1.TiKVGroup, instance *v1alpha1.TiKV) bool {
-	groupTmpl := &group.Spec.Template.Spec
-	instanceTmpl := &instance.Spec.TiKVTemplateSpec
+	groupTmpl := &group.Spec.Template
+	instanceTmpl := templateFromTiKV(instance)
 
-	return equalTiKVTemplate(groupTmpl, instanceTmpl) && !restartAnnotationsChanged(group.Spec.Template.Annotations, instance.GetAnnotations())
+	return equalTiKVTemplate(groupTmpl, instanceTmpl)
 }
 
 // CheckTiKVPod returns whether changes are reloadable. No change also means reloadable.
@@ -42,22 +42,23 @@ func CheckTiKV(group *v1alpha1.TiKVGroup, instance *v1alpha1.TiKV) bool {
 func CheckTiKVPod(instance *v1alpha1.TiKV, pod *corev1.Pod) bool {
 	lastInstanceTemplate := pod.Annotations[v1alpha1.AnnoKeyLastInstanceTemplate]
 
-	spec := &v1alpha1.TiKVTemplateSpec{}
-	if err := json.Unmarshal([]byte(lastInstanceTemplate), spec); err != nil {
+	tmpl := &v1alpha1.TiKVTemplate{}
+	if err := json.Unmarshal([]byte(lastInstanceTemplate), tmpl); err != nil {
 		// last template is not found or unexpectedly changed
 		return true
 	}
 
-	instanceTmpl := &instance.Spec.TiKVTemplateSpec
+	instanceTmpl := templateFromTiKV(instance)
 
-	return equalTiKVTemplate(instanceTmpl, spec) && !restartAnnotationsChanged(instance.GetAnnotations(), pod.GetAnnotations())
+	return equalTiKVTemplate(instanceTmpl, tmpl)
 }
 
 func EncodeLastTiKVTemplate(instance *v1alpha1.TiKV, pod *corev1.Pod) error {
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
 	}
-	instanceTmpl := &instance.Spec.TiKVTemplateSpec
+	instanceTmpl := templateFromTiKV(instance)
+
 	data, err := json.Marshal(instanceTmpl)
 	if err != nil {
 		return err
@@ -73,37 +74,51 @@ func MustEncodeLastTiKVTemplate(instance *v1alpha1.TiKV, pod *corev1.Pod) {
 	}
 }
 
+// TODO: ignore inherited labels and annotations
+func templateFromTiKV(kv *v1alpha1.TiKV) *v1alpha1.TiKVTemplate {
+	return &v1alpha1.TiKVTemplate{
+		ObjectMeta: v1alpha1.ObjectMeta{
+			Labels:      kv.Labels,
+			Annotations: kv.Annotations,
+		},
+		Spec: kv.Spec.TiKVTemplateSpec,
+	}
+}
+
 // convertTiKVTemplate will ignore some fields
 // TODO: set default for some empty fields
-func convertTiKVTemplate(tmpl *v1alpha1.TiKVTemplateSpec) *v1alpha1.TiKVTemplateSpec {
+func convertTiKVTemplate(tmpl *v1alpha1.TiKVTemplate) *v1alpha1.TiKVTemplate {
 	newTmpl := tmpl.DeepCopy()
 
-	if newTmpl.PreStop != nil {
-		newTmpl.PreStop.Image = nil
+	newTmpl.Labels = convertLabels(newTmpl.Labels)
+	newTmpl.Annotations = convertAnnotations(newTmpl.Annotations)
+
+	if newTmpl.Spec.PreStop != nil {
+		newTmpl.Spec.PreStop.Image = nil
 	}
 
-	newTmpl.Volumes = convertVolumes(newTmpl.Volumes)
-	newTmpl.Overlay = convertOverlay(newTmpl.Overlay)
+	newTmpl.Spec.Volumes = convertVolumes(newTmpl.Spec.Volumes)
+	newTmpl.Spec.Overlay = convertOverlay(newTmpl.Spec.Overlay)
 
 	return newTmpl
 }
 
-func equalTiKVTemplate(p, c *v1alpha1.TiKVTemplateSpec) bool {
+func equalTiKVTemplate(p, c *v1alpha1.TiKVTemplate) bool {
 	p = convertTiKVTemplate(p)
 	c = convertTiKVTemplate(c)
 	// not equal only when current strategy is Restart and config is changed
-	switch c.UpdateStrategy.Config {
+	switch c.Spec.UpdateStrategy.Config {
 	case v1alpha1.ConfigUpdateStrategyRestart:
-		if p.Config != c.Config {
+		if p.Spec.Config != c.Spec.Config {
 			return false
 		}
 	}
 
 	// ignore these fields
-	p.Config = ""
-	c.Config = ""
-	p.UpdateStrategy.Config = ""
-	c.UpdateStrategy.Config = ""
+	p.Spec.Config = ""
+	c.Spec.Config = ""
+	p.Spec.UpdateStrategy.Config = ""
+	c.Spec.UpdateStrategy.Config = ""
 
 	return apiequality.Semantic.DeepEqual(p, c)
 }

@@ -170,6 +170,13 @@ func (*PD) Component() string {
 	return v1alpha1.LabelValComponentPD
 }
 
+func (pd *PD) PodOverlay() *v1alpha1.PodOverlay {
+	if pd.Spec.Overlay == nil {
+		return nil
+	}
+	return pd.Spec.Overlay.Pod
+}
+
 var _ Group = &PDGroup{}
 
 func (pdg *PDGroup) DeepCopyObject() runtime.Object {
@@ -259,4 +266,12 @@ func (pdg *PDGroup) StatusRevision() (update, current string, collisionCount *in
 	return pdg.Status.UpdateRevision,
 		pdg.Status.CurrentRevision,
 		pdg.Status.CollisionCount
+}
+
+func (pdg *PDGroup) TemplateLabels() map[string]string {
+	return pdg.Spec.Template.Labels
+}
+
+func (pdg *PDGroup) TemplateAnnotations() map[string]string {
+	return pdg.Spec.Template.Annotations
 }

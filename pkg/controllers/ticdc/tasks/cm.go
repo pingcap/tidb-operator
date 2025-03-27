@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	ticdccfg "github.com/pingcap/tidb-operator/pkg/configs/ticdc"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/utils/toml"
 )
@@ -59,9 +58,7 @@ func newConfigMap(ticdc *v1alpha1.TiCDC, data []byte) *corev1.ConfigMap {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      coreutil.PodName[scope.TiCDC](ticdc),
 			Namespace: ticdc.Namespace,
-			Labels: maputil.Merge(ticdc.Labels, map[string]string{
-				v1alpha1.LabelKeyInstance: ticdc.Name,
-			}),
+			Labels:    coreutil.ConfigMapLabels[scope.TiCDC](ticdc),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(ticdc, v1alpha1.SchemeGroupVersion.WithKind("TiCDC")),
 			},

@@ -29,10 +29,10 @@ import (
 // so we can use the template of instance directly as the last template.
 // This function is used in the group controller.
 func CheckTiCDC(group *v1alpha1.TiCDCGroup, instance *v1alpha1.TiCDC) bool {
-	groupTmpl := &group.Spec.Template.Spec
-	instanceTmpl := &instance.Spec.TiCDCTemplateSpec
+	groupTmpl := &group.Spec.Template
+	instanceTmpl := templateFromTiCDC(instance)
 
-	return equalTiCDCTemplate(groupTmpl, instanceTmpl) && !restartAnnotationsChanged(group.Spec.Template.Annotations, instance.GetAnnotations())
+	return equalTiCDCTemplate(groupTmpl, instanceTmpl)
 }
 
 // CheckTiCDCPod returns whether changes are reloadable. No change also means reloadable.
@@ -42,22 +42,24 @@ func CheckTiCDC(group *v1alpha1.TiCDCGroup, instance *v1alpha1.TiCDC) bool {
 func CheckTiCDCPod(instance *v1alpha1.TiCDC, pod *corev1.Pod) bool {
 	lastInstanceTemplate := pod.Annotations[v1alpha1.AnnoKeyLastInstanceTemplate]
 
-	spec := &v1alpha1.TiCDCTemplateSpec{}
-	if err := json.Unmarshal([]byte(lastInstanceTemplate), spec); err != nil {
+	tmpl := &v1alpha1.TiCDCTemplate{}
+	if err := json.Unmarshal([]byte(lastInstanceTemplate), tmpl); err != nil {
 		// last template is not found or unexpectedly changed
 		return true
 	}
 
-	instanceTmpl := &instance.Spec.TiCDCTemplateSpec
+	instanceTmpl := templateFromTiCDC(instance)
 
-	return equalTiCDCTemplate(instanceTmpl, spec) && !restartAnnotationsChanged(instance.GetAnnotations(), pod.GetAnnotations())
+	return equalTiCDCTemplate(instanceTmpl, tmpl)
 }
 
 func EncodeLastTiCDCTemplate(instance *v1alpha1.TiCDC, pod *corev1.Pod) error {
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
 	}
-	instanceTmpl := &instance.Spec.TiCDCTemplateSpec
+
+	instanceTmpl := templateFromTiCDC(instance)
+
 	data, err := json.Marshal(instanceTmpl)
 	if err != nil {
 		return err
@@ -73,37 +75,51 @@ func MustEncodeLastTiCDCTemplate(instance *v1alpha1.TiCDC, pod *corev1.Pod) {
 	}
 }
 
+// TODO: ignore inherited labels and annotations
+func templateFromTiCDC(cdc *v1alpha1.TiCDC) *v1alpha1.TiCDCTemplate {
+	return &v1alpha1.TiCDCTemplate{
+		ObjectMeta: v1alpha1.ObjectMeta{
+			Labels:      cdc.Labels,
+			Annotations: cdc.Annotations,
+		},
+		Spec: cdc.Spec.TiCDCTemplateSpec,
+	}
+}
+
 // convertTiCDCTemplate will ignore some fields
 // TODO: set default for some empty fields
-func convertTiCDCTemplate(tmpl *v1alpha1.TiCDCTemplateSpec) *v1alpha1.TiCDCTemplateSpec {
+func convertTiCDCTemplate(tmpl *v1alpha1.TiCDCTemplate) *v1alpha1.TiCDCTemplate {
 	newTmpl := tmpl.DeepCopy()
 
-	if newTmpl.PreStop != nil {
-		newTmpl.PreStop.Image = nil
+	newTmpl.Labels = convertLabels(newTmpl.Labels)
+	newTmpl.Annotations = convertAnnotations(newTmpl.Annotations)
+
+	if newTmpl.Spec.PreStop != nil {
+		newTmpl.Spec.PreStop.Image = nil
 	}
 
-	newTmpl.Volumes = convertVolumes(newTmpl.Volumes)
-	newTmpl.Overlay = convertOverlay(newTmpl.Overlay)
+	newTmpl.Spec.Volumes = convertVolumes(newTmpl.Spec.Volumes)
+	newTmpl.Spec.Overlay = convertOverlay(newTmpl.Spec.Overlay)
 
 	return newTmpl
 }
 
-func equalTiCDCTemplate(p, c *v1alpha1.TiCDCTemplateSpec) bool {
+func equalTiCDCTemplate(p, c *v1alpha1.TiCDCTemplate) bool {
 	p = convertTiCDCTemplate(p)
 	c = convertTiCDCTemplate(c)
 	// not equal only when current strategy is Restart and config is changed
-	switch c.UpdateStrategy.Config {
+	switch c.Spec.UpdateStrategy.Config {
 	case v1alpha1.ConfigUpdateStrategyRestart:
-		if p.Config != c.Config {
+		if p.Spec.Config != c.Spec.Config {
 			return false
 		}
 	}
 
 	// ignore these fields
-	p.Config = ""
-	c.Config = ""
-	p.UpdateStrategy.Config = ""
-	c.UpdateStrategy.Config = ""
+	p.Spec.Config = ""
+	c.Spec.Config = ""
+	p.Spec.UpdateStrategy.Config = ""
+	c.Spec.UpdateStrategy.Config = ""
 
 	return apiequality.Semantic.DeepEqual(p, c)
 }
