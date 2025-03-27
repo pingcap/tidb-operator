@@ -8174,8 +8174,8 @@ spec:
                     - name
                     x-kubernetes-list-type: map
                 type: object
-              preStopHook:
-                description: PreStopHook defines the preStop hook for the tidb container.
+              preStop:
+                description: PreStop defines the preStop config for the tidb container.
                 properties:
                   sleepSeconds:
                     description: |-

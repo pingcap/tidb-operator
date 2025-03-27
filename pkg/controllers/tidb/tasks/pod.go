@@ -219,8 +219,8 @@ func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) *corev1.Pod {
 	}
 
 	sleepSeconds := defaultPreStopSleepSeconds
-	if tidb.Spec.TiDBTemplateSpec.PreStopHook != nil {
-		sleepSeconds = tidb.Spec.TiDBTemplateSpec.PreStopHook.SleepSeconds
+	if tidb.Spec.TiDBTemplateSpec.PreStop != nil {
+		sleepSeconds = tidb.Spec.TiDBTemplateSpec.PreStop.SleepSeconds
 	}
 
 	pod := &corev1.Pod{
