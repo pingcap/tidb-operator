@@ -18,10 +18,9 @@ import (
 	"context"
 	"fmt"
 
-	storagev1 "k8s.io/api/storage/v1"
-
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	storagev1beta1 "k8s.io/api/storage/v1beta1"
 
 	"github.com/pingcap/tidb-operator/pkg/client"
@@ -92,17 +91,10 @@ func (m *nativeModifier) ShouldModify(_ context.Context, actual *ActualVolume) (
 		return false
 	}
 
-	if isStorageClassChanged(actual.GetStorageClassName(), actual.Desired.GetStorageClassName()) {
-		m.logger.Info("cannot change storage class",
-			"namespace", actual.PVC.Namespace, "name", actual.PVC.Name,
-			"current", actual.GetStorageClassName(), "desired", actual.Desired.GetStorageClassName())
-		return false
-	}
-
 	vacChanged := isVolumeAttributesClassChanged(actual)
 	if vacChanged && actual.Desired.VAC != nil && actual.StorageClass != nil &&
 		actual.Desired.VAC.DriverName != actual.StorageClass.Provisioner {
-		m.logger.Info("the drive name in VAC should be same as the providioner in StorageClass",
+		m.logger.Info("the drive name in VAC should be same as the provisioner in StorageClass",
 			"namespace", actual.PVC.Namespace, "name", actual.PVC.Name,
 			"in VAC", actual.Desired.VAC.DriverName, "in StorageClass", actual.StorageClass.Provisioner)
 		return false
