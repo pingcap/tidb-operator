@@ -8616,11 +8616,6 @@ spec:
                           SlowLog defines the separate slow log configuration for TiDB.
                           When enabled, a sidecar container will be created to output the slow log to its stdout.
                         properties:
-                          disable:
-                            description: |-
-                              Disabled indicates whether the separate slow log is disabled.
-                              Defaults to false. In other words, the separate slow log is enabled by default.
-                            type: boolean
                           image:
                             description: |-
                               Image to tail slowlog to stdout

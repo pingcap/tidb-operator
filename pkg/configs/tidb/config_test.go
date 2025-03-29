@@ -90,6 +90,7 @@ func TestOverlay(t *testing.T) {
 			},
 			Subdomain: "basic-tidb-peer",
 			TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{
+				SlowLog: &v1alpha1.TiDBSlowLog{},
 				Security: &v1alpha1.TiDBSecurity{
 					AuthToken: &v1alpha1.TiDBAuthToken{
 						JWKs: corev1.LocalObjectReference{
