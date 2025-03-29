@@ -213,10 +213,6 @@ type TiDBProb struct {
 }
 
 type TiDBSlowLog struct {
-	// Disabled indicates whether the separate slow log is disabled.
-	// Defaults to false. In other words, the separate slow log is enabled by default.
-	Disabled bool `json:"disable,omitempty"`
-
 	// Image to tail slowlog to stdout
 	// Default is busybox:1.37.0
 	Image *string `json:"image,omitempty"`

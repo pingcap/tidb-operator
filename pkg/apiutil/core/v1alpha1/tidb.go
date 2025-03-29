@@ -67,8 +67,5 @@ func AuthTokenJWKSSecretName(db *v1alpha1.TiDB) string {
 }
 
 func IsSeparateSlowLogEnabled(db *v1alpha1.TiDB) bool {
-	if db.Spec.SlowLog == nil {
-		return true // enabled by default
-	}
-	return !db.Spec.SlowLog.Disabled
+	return db.Spec.SlowLog != nil
 }
