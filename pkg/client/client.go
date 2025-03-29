@@ -18,17 +18,17 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"reflect"
 
-	"github.com/go-json-experiment/json"
-	jsonv1 "github.com/go-json-experiment/json/v1"
+	"github.com/go-logr/logr"
 	openapi_v3 "github.com/google/gnostic-models/openapiv3"
 	"google.golang.org/protobuf/proto"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
-	kuberuntime "k8s.io/apimachinery/pkg/runtime"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	serializerjson "k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/managedfields"
 	"k8s.io/client-go/discovery"
@@ -36,8 +36,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/structured-merge-diff/v4/fieldpath"
 	"sigs.k8s.io/structured-merge-diff/v4/typed"
-	"sigs.k8s.io/yaml"
 
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	"github.com/pingcap/tidb-operator/pkg/utils/kubefeat"
@@ -62,13 +62,30 @@ const (
 	ApplyResultCreated
 )
 
+func (r ApplyResult) String() string {
+	switch r {
+	case ApplyResultUpdated:
+		return "updated"
+	case ApplyResultUnchanged:
+		return "unchanged"
+	case ApplyResultCreated:
+		return "created"
+	}
+
+	return "unknown"
+}
+
 type applier struct {
 	client.WithWatch
 	parser GVKParser
 }
 
 func (p *applier) Apply(ctx context.Context, obj client.Object) error {
-	_, err := p.ApplyWithResult(ctx, obj)
+	logger := logr.FromContextOrDiscard(ctx)
+	res, err := p.ApplyWithResult(ctx, obj)
+	if err == nil {
+		logger.Info("apply success", "kind", reflect.TypeOf(obj), "namespace", obj.GetNamespace(), "name", obj.GetName(), "result", res)
+	}
 	return err
 }
 
@@ -81,9 +98,9 @@ func (p *applier) ApplyWithResult(ctx context.Context, obj client.Object) (Apply
 		return ApplyResultUnchanged, fmt.Errorf("cannot get gvk of obj %T", obj)
 	}
 
-	expected, ok := obj.DeepCopyObject().(client.Object)
-	if !ok {
-		panic("it's unreachable")
+	expected, err := convertToUnstructured(gvks[0], obj)
+	if err != nil {
+		return ApplyResultUnchanged, err
 	}
 
 	hasCreated := true
@@ -96,18 +113,16 @@ func (p *applier) ApplyWithResult(ctx context.Context, obj client.Object) (Apply
 	}
 
 	if hasCreated {
-		lastApplied := newObject(obj)
-
-		if err := p.Extract(obj, DefaultFieldManager, gvks[0], lastApplied, ""); err != nil {
+		current, err := convertToUnstructured(gvks[0], obj)
+		if err != nil {
+			return ApplyResultUnchanged, err
+		}
+		lastApplied, err := p.Extract(current, DefaultFieldManager, gvks[0], "")
+		if err != nil {
 			return ApplyResultUnchanged, fmt.Errorf("cannot extract last applied patch: %w", err)
 		}
 
-		// ignore name, namespace and gvk
-		lastApplied.SetName(obj.GetName())
-		lastApplied.SetNamespace(obj.GetNamespace())
-		lastApplied.GetObjectKind().SetGroupVersionKind(expected.GetObjectKind().GroupVersionKind())
-
-		if equality.Semantic.DeepEqual(expected, lastApplied) {
+		if equality.Semantic.DeepDerivative(expected.Object, lastApplied) {
 			return ApplyResultUnchanged, nil
 		}
 	}
@@ -129,15 +144,57 @@ func (p *applier) ApplyWithResult(ctx context.Context, obj client.Object) (Apply
 	return ApplyResultCreated, nil
 }
 
-func (p *applier) Extract(current client.Object, fieldManager string, gvk schema.GroupVersionKind, patch any, subresource string) error {
+func (p *applier) Extract(current *unstructured.Unstructured, fieldManager string, gvk schema.GroupVersionKind, subresource string) (map[string]any, error) {
 	tpd := p.parser.Type(gvk)
 	if tpd == nil {
-		return fmt.Errorf("can't find specified type: %s", gvk)
+		return nil, fmt.Errorf("can't find specified type: %s", gvk)
 	}
-	if err := managedfields.ExtractInto(current, *tpd, fieldManager, patch, subresource); err != nil {
-		return err
+	typedObj, err := tpd.FromUnstructured(current.Object)
+	if err != nil {
+		return nil, fmt.Errorf("error converting obj to typed: %w", err)
 	}
-	return nil
+
+	var fe *metav1.ManagedFieldsEntry
+	objManagedFields := current.GetManagedFields()
+	for i := range objManagedFields {
+		mf := &objManagedFields[i]
+		if mf.Manager == fieldManager && mf.Operation == metav1.ManagedFieldsOperationApply && mf.Subresource == subresource {
+			fe = mf
+		}
+	}
+
+	if fe == nil {
+		return nil, fmt.Errorf("cannot find managed fields: %w", err)
+	}
+
+	fieldset := &fieldpath.Set{}
+	if err = fieldset.FromJSON(bytes.NewReader(fe.FieldsV1.Raw)); err != nil {
+		return nil, fmt.Errorf("error marshaling FieldsV1 to JSON: %w", err)
+	}
+
+	u := typedObj.ExtractItems(fieldset.Leaves()).AsValue().Unstructured()
+	m, ok := u.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("unable to convert managed fields for %s to unstructured, expected map, got %T", fieldManager, u)
+	}
+
+	m["apiVersion"] = gvk.GroupVersion().String()
+	m["kind"] = gvk.Kind
+	mu, ok := m["metadata"]
+	if !ok {
+		mu = map[string]any{}
+	}
+	metadata, ok := mu.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("unable to convert metadata to map[string]any, expected map, got %T", mu)
+	}
+	metadata["name"] = current.GetName()
+	if current.GetNamespace() != "" {
+		metadata["namespace"] = current.GetNamespace()
+	}
+	m["metadata"] = metadata
+
+	return m, nil
 }
 
 type applyPatch struct {
@@ -151,7 +208,15 @@ func (*applyPatch) Type() types.PatchType {
 
 func (p *applyPatch) Data(client.Object) ([]byte, error) {
 	encoder := scheme.Codecs.EncoderForVersion(
-		patchEncoder{},
+		serializerjson.NewSerializerWithOptions(
+			serializerjson.DefaultMetaFactory,
+			scheme.Scheme,
+			scheme.Scheme,
+			serializerjson.SerializerOptions{
+				Yaml:   false,
+				Pretty: false,
+				Strict: true,
+			}),
 		p.gvk.GroupVersion(),
 	)
 	buf := bytes.Buffer{}
@@ -159,25 +224,6 @@ func (p *applyPatch) Data(client.Object) ([]byte, error) {
 		return nil, fmt.Errorf("failed to encode patch: %w", err)
 	}
 	return buf.Bytes(), nil
-}
-
-type patchEncoder struct{}
-
-func (patchEncoder) Encode(obj kuberuntime.Object, w io.Writer) error {
-	json, err := json.Marshal(obj, jsonv1.OmitEmptyWithLegacyDefinition(true), json.OmitZeroStructFields(true))
-	if err != nil {
-		return err
-	}
-	data, err := yaml.JSONToYAML(json)
-	if err != nil {
-		return err
-	}
-	_, err = w.Write(data)
-	return err
-}
-
-func (patchEncoder) Identifier() kuberuntime.Identifier {
-	return kuberuntime.Identifier("custom")
 }
 
 type GVKParser interface {
@@ -274,13 +320,4 @@ func (p *gvkParser) addGroupVersion(gv schema.GroupVersion, gvc openapi.GroupVer
 	}
 	p.parsers[gv] = parser
 	return nil
-}
-
-func newObject(x client.Object) client.Object {
-	if x == nil {
-		return nil
-	}
-	res := reflect.ValueOf(x).Elem()
-	n := reflect.New(res.Type())
-	return n.Interface().(client.Object)
 }

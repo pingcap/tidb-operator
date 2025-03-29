@@ -190,6 +190,10 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 					},
 				}
 			}),
+			// this case tests a overlay which may contain null creationTimestamp
+			ginkgo.Entry("change config file with ephemeral volume", label.OverlayEphemeralVolume, func(g *v1alpha1.TiDBGroup) {
+				g.Spec.Template.Spec.Config = changedConfig
+			}, data.WithEphemeralVolume()),
 		)
 
 		ginkgo.DescribeTable("support hot reload TiDB", label.Update, label.FeatureHotReload,

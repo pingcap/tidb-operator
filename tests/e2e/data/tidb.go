@@ -16,6 +16,7 @@ package data
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
@@ -85,5 +86,41 @@ func WithTLS() GroupPatch[*runtime.TiDBGroup] {
 func WithHotReloadPolicy() GroupPatch[*runtime.TiDBGroup] {
 	return func(obj *runtime.TiDBGroup) {
 		obj.Spec.Template.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyHotReload
+	}
+}
+
+func WithEphemeralVolume() GroupPatch[*runtime.TiDBGroup] {
+	return func(obj *runtime.TiDBGroup) {
+		if obj.Spec.Template.Spec.Overlay == nil {
+			obj.Spec.Template.Spec.Overlay = &v1alpha1.Overlay{}
+		}
+		o := obj.Spec.Template.Spec.Overlay
+		if o.Pod == nil {
+			o.Pod = &v1alpha1.PodOverlay{}
+		}
+
+		if o.Pod.Spec == nil {
+			o.Pod.Spec = &corev1.PodSpec{}
+		}
+
+		o.Pod.Spec.Volumes = append(o.Pod.Spec.Volumes, corev1.Volume{
+			Name: "ephemeral-vol-test",
+			VolumeSource: corev1.VolumeSource{
+				Ephemeral: &corev1.EphemeralVolumeSource{
+					VolumeClaimTemplate: &corev1.PersistentVolumeClaimTemplate{
+						Spec: corev1.PersistentVolumeClaimSpec{
+							AccessModes: []corev1.PersistentVolumeAccessMode{
+								corev1.ReadWriteOnce,
+							},
+							Resources: corev1.VolumeResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceStorage: resource.MustParse("1Gi"),
+								},
+							},
+						},
+					},
+				},
+			},
+		})
 	}
 }
