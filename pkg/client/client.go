@@ -164,7 +164,7 @@ func (p *applier) Extract(current *unstructured.Unstructured, fieldManager strin
 	}
 
 	if fe == nil {
-		return nil, fmt.Errorf("cannot find managed fields: %w", err)
+		return nil, nil
 	}
 
 	fieldset := &fieldpath.Set{}
