@@ -139,9 +139,14 @@ func (d *Definitions) ParseSchemaV3(s *openapi_v3.Schema, path *proto.Path) (pro
 		return d.parseV3Array(s, path)
 	case proto.String, proto.Number, proto.Integer, proto.Boolean:
 		return d.parseV3Primitive(s, path)
-	default:
-		return d.parseV3Arbitrary(s, path)
 	}
+
+	// NOTE(liubo02): many refs are in allOf
+	if len(s.GetAllOf()) == 1 {
+		return d.ParseV3SchemaOrReference(s.GetAllOf()[0], path)
+	}
+
+	return d.parseV3Arbitrary(s, path)
 }
 
 func (d *Definitions) parseV3Kind(s *openapi_v3.Schema, path *proto.Path) (proto.Schema, error) {
