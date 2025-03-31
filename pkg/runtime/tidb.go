@@ -135,7 +135,14 @@ func (db *TiDB) SetCurrentRevision(rev string) {
 }
 
 func (db *TiDB) IsReady() bool {
-	return meta.IsStatusConditionTrue(db.Status.Conditions, v1alpha1.CondReady)
+	cond := meta.FindStatusCondition(db.Status.Conditions, v1alpha1.CondReady)
+	if cond == nil {
+		return false
+	}
+	if cond.ObservedGeneration != db.GetGeneration() {
+		return false
+	}
+	return cond.Status == metav1.ConditionTrue
 }
 
 func (db *TiDB) IsUpToDate() bool {

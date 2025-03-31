@@ -135,7 +135,14 @@ func (pd *PD) SetCurrentRevision(rev string) {
 }
 
 func (pd *PD) IsReady() bool {
-	return meta.IsStatusConditionTrue(pd.Status.Conditions, v1alpha1.CondReady)
+	cond := meta.FindStatusCondition(pd.Status.Conditions, v1alpha1.CondReady)
+	if cond == nil {
+		return false
+	}
+	if cond.ObservedGeneration != pd.GetGeneration() {
+		return false
+	}
+	return cond.Status == metav1.ConditionTrue
 }
 
 func (pd *PD) IsUpToDate() bool {
