@@ -44,6 +44,9 @@ var (
 	FeatureBootstrapSQL = ginkgo.Label("f:BootstrapSQL")
 	FeatureHotReload    = ginkgo.Label("f:HotReload")
 
+	// Overlay
+	OverlayEphemeralVolume = ginkgo.Label("o:EphemeralVolume")
+
 	// Kind
 	KindExample = ginkgo.Label("k:Example")
 	KindBasic   = ginkgo.Label("k:Basic")
