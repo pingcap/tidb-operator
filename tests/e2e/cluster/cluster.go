@@ -1555,7 +1555,7 @@ location-labels = ["region", "zone", "host"]`
 			kvg := data.NewTiKVGroup(ns.Name, "kvg", tc.Name, ptr.To(int32(1)), nil)
 			dbg := data.NewTiDBGroup(ns.Name, "dbg", tc.Name, ptr.To(int32(3)), func(group *v1alpha1.TiDBGroup) {
 				group.Spec.Template.Spec.PreStop = &v1alpha1.TiDBPreStop{
-					SleepSeconds: 70,
+					SleepSeconds: 80,
 				}
 			})
 			Expect(k8sClient.Create(ctx, pdg)).To(Succeed())
