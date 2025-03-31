@@ -135,7 +135,14 @@ func (kv *TiKV) SetCurrentRevision(rev string) {
 }
 
 func (kv *TiKV) IsReady() bool {
-	return meta.IsStatusConditionTrue(kv.Status.Conditions, v1alpha1.CondReady)
+	cond := meta.FindStatusCondition(kv.Status.Conditions, v1alpha1.CondReady)
+	if cond == nil {
+		return false
+	}
+	if cond.ObservedGeneration != kv.GetGeneration() {
+		return false
+	}
+	return cond.Status == metav1.ConditionTrue
 }
 
 func (kv *TiKV) IsUpToDate() bool {

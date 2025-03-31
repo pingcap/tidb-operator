@@ -135,7 +135,14 @@ func (f *TiFlash) SetCurrentRevision(rev string) {
 }
 
 func (f *TiFlash) IsReady() bool {
-	return meta.IsStatusConditionTrue(f.Status.Conditions, v1alpha1.CondReady)
+	cond := meta.FindStatusCondition(f.Status.Conditions, v1alpha1.CondReady)
+	if cond == nil {
+		return false
+	}
+	if cond.ObservedGeneration != f.GetGeneration() {
+		return false
+	}
+	return cond.Status == metav1.ConditionTrue
 }
 
 func (f *TiFlash) IsUpToDate() bool {
