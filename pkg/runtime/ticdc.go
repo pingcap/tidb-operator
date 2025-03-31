@@ -135,7 +135,14 @@ func (cdc *TiCDC) SetCurrentRevision(rev string) {
 }
 
 func (cdc *TiCDC) IsReady() bool {
-	return meta.IsStatusConditionTrue(cdc.Status.Conditions, v1alpha1.CondReady)
+	cond := meta.FindStatusCondition(cdc.Status.Conditions, v1alpha1.CondReady)
+	if cond == nil {
+		return false
+	}
+	if cond.ObservedGeneration != cdc.GetGeneration() {
+		return false
+	}
+	return cond.Status == metav1.ConditionTrue
 }
 
 func (cdc *TiCDC) IsUpToDate() bool {

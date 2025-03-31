@@ -219,8 +219,8 @@ func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) *corev1.Pod {
 	}
 
 	sleepSeconds := defaultPreStopSleepSeconds
-	if tidb.Spec.TiDBTemplateSpec.PreStop != nil {
-		sleepSeconds = tidb.Spec.TiDBTemplateSpec.PreStop.SleepSeconds
+	if tidb.Spec.PreStop != nil {
+		sleepSeconds = tidb.Spec.PreStop.SleepSeconds
 	}
 
 	pod := &corev1.Pod{
@@ -282,7 +282,7 @@ func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) *corev1.Pod {
 						},
 					},
 					ReadinessProbe: &corev1.Probe{
-						ProbeHandler:        buildTiDBReadinessProbHandler(cluster, tidb, coreutil.TiDBClientPort(tidb), coreutil.TiDBStatusPort(tidb)),
+						ProbeHandler:        buildTiDBReadinessProbeHandler(cluster, tidb, coreutil.TiDBClientPort(tidb), coreutil.TiDBStatusPort(tidb)),
 						InitialDelaySeconds: defaultReadinessProbeInitialDelaySeconds,
 					},
 				},
@@ -306,7 +306,7 @@ func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) *corev1.Pod {
 }
 
 // TODO(liubo02): extract to namer pkg
-func buildTiDBReadinessProbHandler(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, clientPort, statusPort int32) corev1.ProbeHandler {
+func buildTiDBReadinessProbeHandler(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, clientPort, statusPort int32) corev1.ProbeHandler {
 	probeType := v1alpha1.TCPProbeType // default to TCP probe
 	if tidb.Spec.Probes.Readiness != nil && tidb.Spec.Probes.Readiness.Type != nil {
 		probeType = *tidb.Spec.Probes.Readiness.Type
