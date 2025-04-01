@@ -2735,6 +2735,7 @@ type RestoreSpec struct {
 	// +kubebuilder:default=snapshot
 	Mode RestoreMode `json:"restoreMode,omitempty"`
 	// PitrRestoredTs is the pitr restored ts.
+	// +optional
 	PitrRestoredTs string `json:"pitrRestoredTs,omitempty"`
 	// LogRestoreStartTs is the start timestamp which log restore from.
 	// +optional
