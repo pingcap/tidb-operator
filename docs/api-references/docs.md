@@ -1399,6 +1399,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>PitrRestoredTs is the pitr restored ts.</p>
 </td>
 </tr>
@@ -15466,6 +15467,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>PitrRestoredTs is the pitr restored ts.</p>
 </td>
 </tr>
