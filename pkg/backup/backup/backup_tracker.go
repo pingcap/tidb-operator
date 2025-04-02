@@ -237,6 +237,21 @@ func (bt *backupTracker) doRefreshLogBackupCheckpointTs(backup *v1alpha1.Backup,
 	}
 }
 
+func (bt *backupTracker) updateLogKernelStatus(backup *v1alpha1.Backup, dep *trackDepends) error {
+	ns := backup.Namespace
+	name := backup.Name
+	etcdCli, err := bt.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(dep.tc.Namespace), dep.tc.Name,
+		dep.tc.IsTLSClusterEnabled(), pdapi.ClusterRef(dep.tc.Spec.ClusterDomain))
+	if err != nil {
+		klog.Errorf("get log backup %s/%s pd cli error %v", ns, name, err)
+		return err
+	}
+	defer etcdCli.Close()
+	//fill code
+
+	return nil
+}
+
 func genLogBackupKey(ns, name string) string {
 	return fmt.Sprintf("%s.%s", ns, name)
 }
