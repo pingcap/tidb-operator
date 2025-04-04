@@ -36,7 +36,8 @@ import (
 )
 
 type kvClient struct {
-	leaderCount int32
+	leaderCount      int32
+	logBackupFlushed atomic.Bool
 }
 
 var _ tikvapi.TiKVClient = &kvClient{}
@@ -44,6 +45,12 @@ var _ tikvapi.TiKVClient = &kvClient{}
 func (c *kvClient) GetLeaderCount() (int, error) {
 	count := atomic.LoadInt32(&c.leaderCount)
 	return int(count), nil
+}
+
+// FlushLogBackupTasks implements tikvapi.TiKVClient.
+func (c *kvClient) FlushLogBackupTasks(ctx context.Context) error {
+	c.logBackupFlushed.Store(true)
+	return nil
 }
 
 func TestTiKVPodSyncForEviction(t *testing.T) {
@@ -166,6 +173,7 @@ func TestTiKVPodSyncForEviction(t *testing.T) {
 		stat := c.getPodStat(pod)
 		return stat.finishAnnotationCounts
 	}, timeout, interval).ShouldNot(Equal(0), "should finish annotation")
+	g.Expect(kvClient.logBackupFlushed.Load()).To(BeTrue(), "should flushed log backup tasks")
 }
 
 func TestTiKVPodSyncForReplaceVolume(t *testing.T) {
