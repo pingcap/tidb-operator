@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/backup/snapshotter"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -381,7 +382,14 @@ func (bm *backupManager) checkVolumeBackupSnapshotsCreated(b *v1alpha1.Backup) e
 // skipBackupSync skip backup sync, if return true, backup can be skiped directly.
 func (bm *backupManager) skipBackupSync(backup *v1alpha1.Backup) (bool, error) {
 	if backup.Spec.Mode == v1alpha1.BackupModeLog {
-		return bm.skipLogBackupSync(backup)
+		skip, err := bm.skipLogBackupSync(backup)
+		if err != nil {
+			return skip, err
+		}
+		if !skip {
+			return skip, err
+		}
+		return bm.SyncLogKernelStatus(backup)
 	} else if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
 		return bm.skipVolumeSnapshotBackupSync(backup)
 	} else {
@@ -1086,6 +1094,30 @@ func (bm *backupManager) skipSnapshotBackupSync(backup *v1alpha1.Backup) (bool, 
 		return false, fmt.Errorf("backup %s/%s get job %s failed, err: %v", ns, name, backupJobName, err)
 	}
 	return false, nil
+}
+
+func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool,error) {
+	ns := backup.Namespace
+	name := backup.Name
+	tc, err := bm.backupTracker.GetLogBackupTC(backup)
+	if err != nil {
+		return false, err
+	}
+	if tc == nil {
+		return false, nil
+	}
+
+	etcdCli, err := bm.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Name,
+		tc.IsTLSClusterEnabled(), pdapi.ClusterRef(tc.Spec.ClusterDomain))
+	if err != nil {
+		klog.Errorf("get log backup %s/%s pd cli error %v", ns, name, err)
+		return false, err
+	}
+	defer etcdCli.Close()
+
+	
+
+	return true, nil
 }
 
 // skipLogBackupSync skips log backup, returns true if it can be skipped.
