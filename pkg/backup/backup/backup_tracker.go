@@ -34,7 +34,9 @@ import (
 var (
 	refreshCheckpointTsPeriod = time.Minute * 1
 	streamKeyPrefix           = "/tidb/br-stream"
+	taskInfoPath              = "/info"
 	taskCheckpointPath        = "/checkpoint"
+	taskLastErrorPath         = "/last-error"
 )
 
 // BackupTracker implements the logic for tracking log backup progress
@@ -241,7 +243,7 @@ func (bt *backupTracker) updateLogKernelStatus(backup *v1alpha1.Backup, dep *tra
 		return err
 	}
 	defer etcdCli.Close()
-	//fill code
+	//
 
 	return nil
 }
