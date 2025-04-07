@@ -43,6 +43,7 @@ var (
 // BackupTracker implements the logic for tracking log backup progress
 type BackupTracker interface {
 	StartTrackLogBackupProgress(backup *v1alpha1.Backup) error
+	GetLogBackupTC(backup *v1alpha1.Backup) (*v1alpha1.TidbCluster, error)
 }
 
 // the main processes of log backup track:
@@ -126,7 +127,7 @@ func (bt *backupTracker) StartTrackLogBackupProgress(backup *v1alpha1.Backup) er
 		return nil
 	}
 	klog.Infof("add log backup %s/%s to tracker", ns, name)
-	tc, err := bt.getLogBackupTC(backup)
+	tc, err := bt.GetLogBackupTC(backup)
 	if err != nil {
 		return err
 	}
@@ -143,7 +144,7 @@ func (bt *backupTracker) removeLogBackup(ns, name string) {
 }
 
 // getLogBackupTC gets log backup's tidb cluster info.
-func (bt *backupTracker) getLogBackupTC(backup *v1alpha1.Backup) (*v1alpha1.TidbCluster, error) {
+func (bt *backupTracker) GetLogBackupTC(backup *v1alpha1.Backup) (*v1alpha1.TidbCluster, error) {
 	var (
 		ns               = backup.Namespace
 		name             = backup.Name
@@ -237,21 +238,6 @@ func (bt *backupTracker) doRefreshLogBackupCheckpointTs(backup *v1alpha1.Backup,
 		klog.Errorf("update log backup %s/%s checkpointTS %s failed %v", ns, name, ckTS, err)
 		return
 	}
-}
-
-func (bt *backupTracker) updateLogKernelStatus(backup *v1alpha1.Backup, dep *trackDepends) error {
-	ns := backup.Namespace
-	name := backup.Name
-	etcdCli, err := bt.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(dep.tc.Namespace), dep.tc.Name,
-		dep.tc.IsTLSClusterEnabled(), pdapi.ClusterRef(dep.tc.Spec.ClusterDomain))
-	if err != nil {
-		klog.Errorf("get log backup %s/%s pd cli error %v", ns, name, err)
-		return err
-	}
-	defer etcdCli.Close()
-	//
-
-	return nil
 }
 
 func genLogBackupKey(ns, name string) string {
