@@ -28,8 +28,6 @@ type ReconcileContext struct {
 	State
 
 	PDClient pdm.PDClient
-	// this means whether pd is available
-	IsAvailable bool
 	// This is single truth whether pd is initialized
 	Initialized bool
 	Healthy     bool
@@ -73,7 +71,6 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 
 		// set available and trust health info only when member info is valid
 		if !m.Invalid {
-			state.IsAvailable = true
 			state.Healthy = m.Health
 		}
 
