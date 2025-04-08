@@ -381,18 +381,15 @@ func (bm *backupManager) checkVolumeBackupSnapshotsCreated(b *v1alpha1.Backup) e
 
 // skipBackupSync skip backup sync, if return true, backup can be skiped directly.
 func (bm *backupManager) skipBackupSync(backup *v1alpha1.Backup) (bool, error) {
-	if backup.Spec.Mode == v1alpha1.BackupModeLog {
-		skip, err := bm.skipLogBackupSync(backup)
-		if err != nil {
-			return skip, err
-		}
-		if !skip {
+	switch backup.Spec.Mode {
+	case v1alpha1.BackupModeLog:
+		if skip, err := bm.skipLogBackupSync(backup); err != nil || !skip {
 			return skip, err
 		}
 		return bm.SyncLogKernelStatus(backup)
-	} else if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
+	case v1alpha1.BackupModeVolumeSnapshot:
 		return bm.skipVolumeSnapshotBackupSync(backup)
-	} else {
+	default:
 		return bm.skipSnapshotBackupSync(backup)
 	}
 }
@@ -1096,28 +1093,43 @@ func (bm *backupManager) skipSnapshotBackupSync(backup *v1alpha1.Backup) (bool, 
 	return false, nil
 }
 
-func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool,error) {
+func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) error {
 	ns := backup.Namespace
 	name := backup.Name
 	tc, err := bm.backupTracker.GetLogBackupTC(backup)
 	if err != nil {
-		return false, err
+		return err
 	}
 	if tc == nil {
-		return false, nil
+		return fmt.Errorf("backup %s/%s get tc failed", ns, name)
 	}
 
 	etcdCli, err := bm.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Name,
 		tc.IsTLSClusterEnabled(), pdapi.ClusterRef(tc.Spec.ClusterDomain))
 	if err != nil {
 		klog.Errorf("get log backup %s/%s pd cli error %v", ns, name, err)
-		return false, err
+		return err
 	}
 	defer etcdCli.Close()
 
-	
+	key := path.Join(streamKeyPrefix, taskPausePath, name)
+	klog.Infof("log backup %s/%s checkpointTS key %s", ns, name, key)
 
-	return true, nil
+	kvs, err := etcdCli.Get(key, true)
+	if err != nil {
+		klog.Errorf("get log backup %s/%s pause key error %v", ns, name, err)
+		return err
+	}
+	if len(kvs) < 1 {
+		klog.Errorf("log backup %s/%s pause key not found", ns, name)
+		return err
+	}
+	v := kvs[0].Value 
+	//handle v
+	if len(v) < 1 {
+		klog.Errorf("log backup %s/%s pause key value is empty", ns, name)
+	}
+	return nil
 }
 
 // skipLogBackupSync skips log backup, returns true if it can be skipped.
