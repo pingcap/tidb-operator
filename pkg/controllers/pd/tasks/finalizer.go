@@ -28,41 +28,22 @@ import (
 
 func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
-		switch {
-		// get member info successfully and the member still exists
-		case state.IsAvailable && state.MemberID != "":
-			// TODO: check whether quorum will be lost?
-			if err := state.PDClient.Underlay().DeleteMember(ctx, state.PD().Name); err != nil {
-				return task.Fail().With("cannot delete member: %v", err)
-			}
+		// TODO: check whether quorum will be lost?
+		if err := state.PDClient.Underlay().DeleteMember(ctx, state.PD().Name); err != nil {
+			return task.Fail().With("cannot delete member: %v", err)
+		}
 
-			wait, err := EnsureSubResourcesDeleted(ctx, c, state.PD())
-			if err != nil {
-				return task.Fail().With("cannot delete subresources: %v", err)
-			}
+		wait, err := EnsureSubResourcesDeleted(ctx, c, state.PD())
+		if err != nil {
+			return task.Fail().With("cannot delete subresources: %v", err)
+		}
 
-			if wait {
-				return task.Retry(task.DefaultRequeueAfter).With("wait all subresources deleted")
-			}
+		if wait {
+			return task.Retry(task.DefaultRequeueAfter).With("wait all subresources deleted")
+		}
 
-			if err := k8s.RemoveFinalizer(ctx, c, state.PD()); err != nil {
-				return task.Fail().With("cannot remove finalizer: %v", err)
-			}
-		case state.IsAvailable:
-			wait, err := EnsureSubResourcesDeleted(ctx, c, state.PD())
-			if err != nil {
-				return task.Fail().With("cannot delete subresources: %v", err)
-			}
-			if wait {
-				return task.Retry(task.DefaultRequeueAfter).With("wait all subresources deleted")
-			}
-
-			if err := k8s.RemoveFinalizer(ctx, c, state.PD()); err != nil {
-				return task.Fail().With("cannot remove finalizer: %v", err)
-			}
-		case !state.IsAvailable:
-			// it may block some unsafe operations
-			return task.Fail().With("pd cluster is not available")
+		if err := k8s.RemoveFinalizer(ctx, c, state.PD()); err != nil {
+			return task.Fail().With("cannot remove finalizer: %v", err)
 		}
 
 		return task.Complete().With("finalizer is removed")
