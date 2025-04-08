@@ -47,15 +47,13 @@ func TestTaskFinalizerDel(t *testing.T) {
 		expectedObj    *v1alpha1.PD
 	}{
 		{
-			desc: "available, member id is set, no sub resources, no finalizer",
+			desc: "no sub resources, no finalizer",
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
 						return obj
 					}),
 				},
-				IsAvailable: true,
-				MemberID:    "aaa",
 			},
 			needDelMember: true,
 
@@ -65,15 +63,13 @@ func TestTaskFinalizerDel(t *testing.T) {
 			}),
 		},
 		{
-			desc: "available, member id is set, failed to delete member",
+			desc: "failed to delete member",
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
 						return obj
 					}),
 				},
-				IsAvailable: true,
-				MemberID:    "aaa",
 			},
 			needDelMember:          true,
 			unexpectedDelMemberErr: true,
@@ -81,7 +77,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			expectedStatus: task.SFail,
 		},
 		{
-			desc: "available, member id is set, has sub resources, has finalizer",
+			desc: "has sub resources, has finalizer",
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
@@ -89,8 +85,6 @@ func TestTaskFinalizerDel(t *testing.T) {
 						return obj
 					}),
 				},
-				IsAvailable: true,
-				MemberID:    "aaa",
 			},
 			subresources: []client.Object{
 				fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
@@ -130,7 +124,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			}),
 		},
 		{
-			desc: "available, member id is set, has sub resources(pod), failed to del sub resource",
+			desc: "has sub resources(pod), failed to del sub resource",
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
@@ -138,8 +132,6 @@ func TestTaskFinalizerDel(t *testing.T) {
 						return obj
 					}),
 				},
-				IsAvailable: true,
-				MemberID:    "aaa",
 			},
 			subresources: []client.Object{
 				fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
@@ -158,7 +150,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			expectedStatus: task.SFail,
 		},
 		{
-			desc: "available, member id is set, has sub resources(cm), failed to del sub resource",
+			desc: "has sub resources(cm), failed to del sub resource",
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
@@ -166,8 +158,6 @@ func TestTaskFinalizerDel(t *testing.T) {
 						return obj
 					}),
 				},
-				IsAvailable: true,
-				MemberID:    "aaa",
 			},
 			subresources: []client.Object{
 				fake.FakeObj("aaa", func(obj *corev1.ConfigMap) *corev1.ConfigMap {
@@ -186,7 +176,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			expectedStatus: task.SFail,
 		},
 		{
-			desc: "available, member id is set, has sub resources(pvc), failed to del sub resource",
+			desc: "has sub resources(pvc), failed to del sub resource",
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
@@ -194,8 +184,6 @@ func TestTaskFinalizerDel(t *testing.T) {
 						return obj
 					}),
 				},
-				IsAvailable: true,
-				MemberID:    "aaa",
 			},
 			subresources: []client.Object{
 				fake.FakeObj("aaa", func(obj *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
@@ -214,7 +202,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			expectedStatus: task.SFail,
 		},
 		{
-			desc: "available, member id is set, no sub resources, has finalizer",
+			desc: "no sub resources, has finalizer",
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
@@ -222,8 +210,6 @@ func TestTaskFinalizerDel(t *testing.T) {
 						return obj
 					}),
 				},
-				IsAvailable: true,
-				MemberID:    "aaa",
 			},
 			needDelMember: true,
 
@@ -234,7 +220,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			}),
 		},
 		{
-			desc: "available, member id is set, no sub resources, has finalizer, failed to del finalizer",
+			desc: "no sub resources, has finalizer, failed to del finalizer",
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
@@ -242,134 +228,11 @@ func TestTaskFinalizerDel(t *testing.T) {
 						return obj
 					}),
 				},
-				IsAvailable: true,
-				MemberID:    "aaa",
 			},
 			needDelMember: true,
 			unexpectedErr: true,
 
 			expectedStatus: task.SFail,
-		},
-		{
-			desc: "available, member id is not set, no sub resources, no finalizer",
-			state: &ReconcileContext{
-				State: &state{
-					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-						return obj
-					}),
-				},
-				IsAvailable: true,
-			},
-			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-				return obj
-			}),
-		},
-		{
-			desc: "available, member id is not set, has sub resources, has finalizer",
-			state: &ReconcileContext{
-				State: &state{
-					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
-				IsAvailable: true,
-			},
-			subresources: []client.Object{
-				fake.FakeObj("aaa", func(obj *corev1.ConfigMap) *corev1.ConfigMap {
-					obj.Labels = map[string]string{
-						v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-						v1alpha1.LabelKeyInstance:  "aaa",
-						v1alpha1.LabelKeyCluster:   "",
-						v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
-					}
-					return obj
-				}),
-			},
-
-			expectedStatus: task.SRetry,
-			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
-		},
-		{
-			desc: "available, member id is not set, has sub resources, failed to del sub resource",
-			state: &ReconcileContext{
-				State: &state{
-					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
-				IsAvailable: true,
-			},
-			subresources: []client.Object{
-				fake.FakeObj("aaa", func(obj *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
-					obj.Labels = map[string]string{
-						v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-						v1alpha1.LabelKeyInstance:  "aaa",
-						v1alpha1.LabelKeyCluster:   "",
-						v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
-					}
-					return obj
-				}),
-			},
-			unexpectedErr: true,
-
-			expectedStatus: task.SFail,
-		},
-		{
-			desc: "available, member id is not set, no sub resources, has finalizer",
-			state: &ReconcileContext{
-				State: &state{
-					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
-				IsAvailable: true,
-			},
-
-			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-				obj.Finalizers = []string{}
-				return obj
-			}),
-		},
-		{
-			desc: "available, member id is not set, no sub resources, has finalizer, failed to del finalizer",
-			state: &ReconcileContext{
-				State: &state{
-					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
-				IsAvailable: true,
-			},
-			unexpectedErr: true,
-
-			expectedStatus: task.SFail,
-		},
-		{
-			desc: "unavailable",
-			state: &ReconcileContext{
-				State: &state{
-					pd: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
-				IsAvailable: false,
-			},
-
-			expectedStatus: task.SFail,
-			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
 		},
 	}
 
@@ -400,7 +263,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 				if c.unexpectedDelMemberErr {
 					retErr = fmt.Errorf("fake err")
 				}
-				acts = append(acts, deleteMember(ctx, c.state.MemberID, retErr))
+				acts = append(acts, deleteMember(ctx, c.state.PD().Name, retErr))
 			}
 
 			pdc := NewFakePDClient(tt, acts...)
