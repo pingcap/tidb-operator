@@ -1121,15 +1121,18 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) error {
 		return err
 	}
 	if len(kvs) < 1 {
-		klog.Errorf("log backup %s/%s pause key not found", ns, name)
+		klog.Infof("log backup %s/%s running normally", ns, name)
+		return nil
+	}
+	info, err := NewPauseV2Info(kvs[0])
+	if err != nil {
+		klog.Errorf("parse log backup %s/%s pause key error %v", ns, name, err)
 		return err
 	}
-	v := kvs[0].Value 
-	//handle v
-	if len(v) < 1 {
-		klog.Errorf("log backup %s/%s pause key value is empty", ns, name)
-	}
-	return nil
+
+
+	klog.Errorf("log backup %s/%s paused by error", ns, name)
+	return fmt.Errorf("log backup %s/%s paused by error", ns, name)
 }
 
 // skipLogBackupSync skips log backup, returns true if it can be skipped.
