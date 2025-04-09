@@ -14,10 +14,10 @@ package backup
 
 import (
 	"encoding/json"
+	"fmt"
 	"mime"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/juju/errors"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 )
@@ -76,7 +76,7 @@ func NewPauseV2Info(kv *pdapi.KeyValue) (*PauseV2Info, error) {
 	return &pauseV2, nil
 }
 
-func (p *PauseV2Info) Error() (string, error) {
+func (p *PauseV2Info) ParseError() (string, error) {
 	m, param, err := mime.ParseMediaType(p.PayloadType)
 	if err != nil {
 		return "", errors.Annotatef(err, "%s isn't a valid mime type", p.PayloadType)
@@ -95,12 +95,12 @@ func (p *PauseV2Info) Error() (string, error) {
 			return "", errors.Errorf("only type brpb.StreamBackupError is supported (%s)", p.PayloadType)
 		}
 		var msg StreamBackupError
-		err := proto.Unmarshal(p.Payload, &msg)
+		err := json.Unmarshal(p.Payload, &msg)
 		if err != nil {
-			return nil, errors.Annotatef(err, "failed to unmarshal the payload")
+			return "", errors.Annotatef(err, "failed to unmarshal the payload")
 		}
-		return &msg, nil
+		return fmt.Sprintf("Paused by error(store %d): %s", msg.StoreId, msg.ErrorMessage), nil
 	default:
-		return nil, errors.Errorf("unsupported payload type %s", m)
+		return "", errors.Errorf("unsupported payload type %s", m)
 	}
 }
