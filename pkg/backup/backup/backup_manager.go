@@ -1129,10 +1129,17 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) error {
 		klog.Errorf("parse log backup %s/%s pause key error %v", ns, name, err)
 		return err
 	}
+	if info.Severity == SeverityError {
+		if msg, err := info.ParseError(); err != nil {
+			return err
+		} else {
+			klog.Errorf("log backup %s/%s paused by error: %s", ns, name, msg)
+			return fmt.Errorf("log backup %s/%s paused by error: %s", ns, name, msg)
+		}
+	}
 
-
-	klog.Errorf("log backup %s/%s paused by error", ns, name)
-	return fmt.Errorf("log backup %s/%s paused by error", ns, name)
+	klog.Infof("log backup %s/%s paused by manual", ns, name)
+	return nil
 }
 
 // skipLogBackupSync skips log backup, returns true if it can be skipped.
