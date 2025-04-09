@@ -53,7 +53,7 @@ type Equality[T any, PT Object[T]] interface {
 
 func NewPoller[T any, PT Object[T], L client.ObjectList](
 	name string,
-	_ logr.Logger,
+	logger logr.Logger,
 	lister Lister[T, PT, L],
 	eq Equality[T, PT],
 	interval time.Duration,
@@ -63,6 +63,7 @@ func NewPoller[T any, PT Object[T], L client.ObjectList](
 		interval: interval,
 		lister:   lister,
 		equality: eq,
+		logger:   logger,
 	}
 }
 
