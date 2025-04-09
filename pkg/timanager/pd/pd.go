@@ -150,8 +150,9 @@ var NewUnderlayClientFunc = func(c client.Client) timanager.NewUnderlayClientFun
 	}
 }
 
-func NewPDClientManager(_ logr.Logger, c client.Client) PDClientManager {
+func NewPDClientManager(logger logr.Logger, c client.Client) PDClientManager {
 	m := timanager.NewManagerBuilder[*v1alpha1.PDGroup, pdapi.PDClient, PDClient]().
+		WithLogger(logger).
 		WithNewUnderlayClientFunc(NewUnderlayClientFunc(c)).
 		WithNewClientFunc(NewClient).
 		WithCacheKeysFunc(CacheKeys).
