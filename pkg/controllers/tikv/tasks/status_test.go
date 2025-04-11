@@ -62,11 +62,11 @@ func TestTaskStatus(t *testing.T) {
 						obj.Status.ObservedGeneration = 3
 						return obj
 					}),
+					storeState: v1alpha1.StoreStateServing,
 				},
 				IsPDAvailable: true,
 				Store:         &pdv1.Store{},
 				StoreID:       fakeTiKVName,
-				StoreState:    v1alpha1.StoreStateServing,
 			},
 
 			expectedStatus: task.SWait,
@@ -130,11 +130,11 @@ func TestTaskStatus(t *testing.T) {
 						})
 						return obj
 					}),
+					storeState: v1alpha1.StoreStateServing,
 				},
 				IsPDAvailable: true,
 				Store:         &pdv1.Store{},
 				StoreID:       fakeTiKVName,
-				StoreState:    v1alpha1.StoreStateServing,
 			},
 
 			expectedStatus: task.SComplete,
@@ -332,12 +332,12 @@ func TestTaskStatus(t *testing.T) {
 						})
 						return obj
 					}),
+					storeState: v1alpha1.StoreStateServing,
 				},
 				IsPDAvailable:  true,
 				LeaderEvicting: true,
 				Store:          &pdv1.Store{},
 				StoreID:        fakeTiKVName,
-				StoreState:     v1alpha1.StoreStateServing,
 			},
 
 			expectedStatus: task.SWait,
