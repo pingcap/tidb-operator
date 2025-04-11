@@ -32,6 +32,7 @@ type state struct {
 	tikv    *v1alpha1.TiKV
 	pod     *corev1.Pod
 
+	storeState    string
 	statusChanged bool
 }
 
@@ -50,6 +51,7 @@ type State interface {
 	common.StatusUpdater
 	common.StatusPersister[*v1alpha1.TiKV]
 
+	common.StoreState
 	SetPod(*corev1.Pod)
 }
 
@@ -110,4 +112,16 @@ func (s *state) PodInitializer() common.PodInitializer {
 			return coreutil.PodName[scope.TiKV](s.tikv)
 		})).
 		Initializer()
+}
+
+func (s *state) GetStoreState() string {
+	return s.storeState
+}
+
+func (s *state) SetStoreState(state string) {
+	s.storeState = state
+}
+
+func (s *state) IsStoreUp() bool {
+	return s.storeState == v1alpha1.StoreStatePreparing || s.storeState == v1alpha1.StoreStateServing
 }

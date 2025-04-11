@@ -49,11 +49,11 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 			if err := k8s.RemoveFinalizer(ctx, c, state.TiKV()); err != nil {
 				return task.Fail().With("cannot remove finalizer: %w", err)
 			}
-		case state.StoreState == v1alpha1.StoreStateRemoving:
+		case state.GetStoreState() == v1alpha1.StoreStateRemoving:
 			// TODO: Complete task and retrigger reconciliation by polling PD
 			return task.Retry(removingWaitInterval).With("wait until the store is removed")
 
-		case state.StoreState == v1alpha1.StoreStateRemoved || state.StoreID == "":
+		case state.GetStoreState() == v1alpha1.StoreStateRemoved || state.StoreID == "":
 			wait, err := EnsureSubResourcesDeleted(ctx, c, state.TiKV())
 			if err != nil {
 				return task.Fail().With("cannot delete subresources: %w", err)

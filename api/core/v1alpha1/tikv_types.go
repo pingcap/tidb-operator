@@ -40,7 +40,6 @@ const (
 const (
 	// store state for both TiKV and TiFlash stores
 
-	StoreStateUnknown   = "Unknown"
 	StoreStatePreparing = "Preparing"
 	StoreStateServing   = "Serving"
 	StoreStateRemoving  = "Removing"

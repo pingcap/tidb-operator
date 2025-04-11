@@ -23,7 +23,6 @@ import (
 	"github.com/pingcap/kvproto/pkg/metapb"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -32,7 +31,7 @@ import (
 func TaskStoreLabels(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("StoreLabels", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
-		if state.StoreState != v1alpha1.StoreStateServing || state.PodIsTerminating || state.Pod() == nil {
+		if !state.IsStoreUp() || state.PodIsTerminating || state.Pod() == nil {
 			return task.Complete().With("skip sync store labels as the store is not serving")
 		}
 

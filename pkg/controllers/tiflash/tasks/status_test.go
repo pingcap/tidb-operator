@@ -62,10 +62,10 @@ func TestTaskStatus(t *testing.T) {
 						obj.Status.ObservedGeneration = 3
 						return obj
 					}),
+					storeState: v1alpha1.StoreStateServing,
 				},
-				Store:      &pdv1.Store{},
-				StoreID:    fakeTiFlashName,
-				StoreState: v1alpha1.StoreStateServing,
+				Store:   &pdv1.Store{},
+				StoreID: fakeTiFlashName,
 			},
 
 			expectedStatus: task.SWait,
@@ -122,10 +122,10 @@ func TestTaskStatus(t *testing.T) {
 						})
 						return obj
 					}),
+					storeState: v1alpha1.StoreStateServing,
 				},
-				Store:      &pdv1.Store{},
-				StoreID:    fakeTiFlashName,
-				StoreState: v1alpha1.StoreStateServing,
+				Store:   &pdv1.Store{},
+				StoreID: fakeTiFlashName,
 			},
 
 			expectedStatus: task.SComplete,

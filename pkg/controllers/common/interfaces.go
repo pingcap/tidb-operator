@@ -248,3 +248,9 @@ type (
 		Pod() *corev1.Pod
 	}
 )
+
+type StoreState interface {
+	GetStoreState() string
+	SetStoreState(string)
+	IsStoreUp() bool
+}

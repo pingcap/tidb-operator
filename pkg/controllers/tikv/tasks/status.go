@@ -45,14 +45,14 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		if pod != nil &&
 			statefulset.IsPodRunningAndReady(pod) &&
 			!state.PodIsTerminating &&
-			state.StoreState == v1alpha1.StoreStateServing {
+			state.IsStoreUp() {
 			healthy = true
 		}
 		needUpdate = syncHealthCond(tikv, healthy) || needUpdate
 		needUpdate = syncSuspendCond(tikv) || needUpdate
 		needUpdate = syncLeadersEvictedCond(tikv, state.Store, state.LeaderEvicting, state.IsPDAvailable) || needUpdate
 		needUpdate = SetIfChanged(&tikv.Status.ID, state.StoreID) || needUpdate
-		needUpdate = SetIfChanged(&tikv.Status.State, state.StoreState) || needUpdate
+		needUpdate = SetIfChanged(&tikv.Status.State, state.GetStoreState()) || needUpdate
 
 		needUpdate = SetIfChanged(&tikv.Status.ObservedGeneration, tikv.Generation) || needUpdate
 		needUpdate = SetIfChanged(&tikv.Status.UpdateRevision, tikv.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate

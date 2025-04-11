@@ -215,8 +215,8 @@ func TestTaskFinalizerDel(t *testing.T) {
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
 						return obj
 					}),
+					storeState: v1alpha1.StoreStateRemoving,
 				},
-				StoreState: v1alpha1.StoreStateRemoving,
 			},
 
 			expectedStatus: task.SRetry,
@@ -235,8 +235,8 @@ func TestTaskFinalizerDel(t *testing.T) {
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
 						return obj
 					}),
+					storeState: v1alpha1.StoreStateRemoved,
 				},
-				StoreState: v1alpha1.StoreStateRemoved,
 			},
 
 			expectedStatus: task.SComplete,
@@ -255,8 +255,8 @@ func TestTaskFinalizerDel(t *testing.T) {
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
 						return obj
 					}),
+					storeState: v1alpha1.StoreStateRemoved,
 				},
-				StoreState: v1alpha1.StoreStateRemoved,
 			},
 
 			expectedStatus: task.SComplete,
@@ -276,8 +276,8 @@ func TestTaskFinalizerDel(t *testing.T) {
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
 						return obj
 					}),
+					storeState: v1alpha1.StoreStateRemoved,
 				},
-				StoreState: v1alpha1.StoreStateRemoved,
 			},
 			unexpectedErr: true,
 
@@ -294,8 +294,8 @@ func TestTaskFinalizerDel(t *testing.T) {
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
 						return obj
 					}),
+					storeState: v1alpha1.StoreStateRemoved,
 				},
-				StoreState: v1alpha1.StoreStateRemoved,
 			},
 			subresources: fakeSubresources("Pod"),
 
@@ -316,8 +316,8 @@ func TestTaskFinalizerDel(t *testing.T) {
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
 						return obj
 					}),
+					storeState: v1alpha1.StoreStateRemoved,
 				},
-				StoreState: v1alpha1.StoreStateRemoved,
 			},
 			subresources:  fakeSubresources("Pod"),
 			unexpectedErr: true,
