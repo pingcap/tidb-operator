@@ -252,5 +252,7 @@ type (
 type StoreState interface {
 	GetStoreState() string
 	SetStoreState(string)
+	// IsStoreUp returns true if the store state is `Preparing` or `Serving`,
+	// which means the store is in the state of providing services.
 	IsStoreUp() bool
 }

@@ -40,10 +40,14 @@ const (
 const (
 	// store state for both TiKV and TiFlash stores
 
+	// StoreStatePreparing means there are no regions on this store.
+	// In this state, the store is ready to serve.
 	StoreStatePreparing = "Preparing"
-	StoreStateServing   = "Serving"
-	StoreStateRemoving  = "Removing"
-	StoreStateRemoved   = "Removed"
+	// StoreStateServing means the number of regions reaches a certain proportion.
+	// In this state, the store is ready to serve.
+	StoreStateServing  = "Serving"
+	StoreStateRemoving = "Removing"
+	StoreStateRemoved  = "Removed"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
