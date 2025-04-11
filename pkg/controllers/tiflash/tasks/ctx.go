@@ -34,7 +34,6 @@ type ReconcileContext struct {
 
 	Store       *pdv1.Store
 	StoreID     string
-	StoreState  string
 	StoreLabels []*metapb.StoreLabel
 
 	// Pod cannot be updated when call DELETE API, so we have to set this field to indicate
@@ -63,7 +62,8 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 			return task.Complete().With("store does not exist")
 		}
 
-		state.Store, state.StoreID, state.StoreState = s, s.ID, string(s.NodeState)
+		state.Store, state.StoreID = s, s.ID
+		state.SetStoreState(string(s.NodeState))
 		state.StoreLabels = make([]*metapb.StoreLabel, len(s.Labels))
 		for k, v := range s.Labels {
 			state.StoreLabels = append(state.StoreLabels, &metapb.StoreLabel{Key: k, Value: v})

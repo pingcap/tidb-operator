@@ -44,13 +44,13 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		if pod != nil &&
 			statefulset.IsPodRunningAndReady(pod) &&
 			!state.PodIsTerminating &&
-			state.StoreState == v1alpha1.StoreStateServing {
+			state.IsStoreUp() {
 			healthy = true
 		}
 		needUpdate = syncHealthCond(tiflash, healthy) || needUpdate
 		needUpdate = syncSuspendCond(tiflash) || needUpdate
 		needUpdate = SetIfChanged(&tiflash.Status.ID, state.StoreID) || needUpdate
-		needUpdate = SetIfChanged(&tiflash.Status.State, state.StoreState) || needUpdate
+		needUpdate = SetIfChanged(&tiflash.Status.State, state.GetStoreState()) || needUpdate
 
 		needUpdate = SetIfChanged(&tiflash.Status.ObservedGeneration, tiflash.Generation) || needUpdate
 		needUpdate = SetIfChanged(&tiflash.Status.UpdateRevision, tiflash.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate

@@ -28,10 +28,10 @@ import (
 type state struct {
 	key types.NamespacedName
 
-	cluster *v1alpha1.Cluster
-	tiflash *v1alpha1.TiFlash
-	pod     *corev1.Pod
-
+	cluster       *v1alpha1.Cluster
+	tiflash       *v1alpha1.TiFlash
+	pod           *corev1.Pod
+	storeState    string
 	statusChanged bool
 }
 
@@ -49,6 +49,8 @@ type State interface {
 
 	common.StatusUpdater
 	common.StatusPersister[*v1alpha1.TiFlash]
+
+	common.StoreState
 
 	SetPod(*corev1.Pod)
 }
@@ -110,4 +112,16 @@ func (s *state) PodInitializer() common.PodInitializer {
 			return coreutil.PodName[scope.TiFlash](s.tiflash)
 		})).
 		Initializer()
+}
+
+func (s *state) GetStoreState() string {
+	return s.storeState
+}
+
+func (s *state) SetStoreState(state string) {
+	s.storeState = state
+}
+
+func (s *state) IsStoreUp() bool {
+	return s.storeState == v1alpha1.StoreStatePreparing || s.storeState == v1alpha1.StoreStateServing
 }
