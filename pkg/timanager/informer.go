@@ -151,17 +151,18 @@ func (f *factory[UnderlayClient]) InformerFor(obj runtime.Object) cache.SharedIn
 		return informer
 	}
 
-	poller, ok := f.pollers[informerType]
+	p, ok := f.pollers[informerType]
 	if !ok {
-		newPollerFunc, ok := f.newPollerFuncMap[informerType]
-		if !ok {
+		newPollerFunc, ok2 := f.newPollerFuncMap[informerType]
+		if !ok2 {
 			// TODO: fix it
 			panic("unrecognized type")
 		}
-		poller = newPollerFunc(f.name, f.logger, f.c)
+		p = newPollerFunc(f.name, f.logger, f.c)
+		f.pollers[informerType] = p
 	}
 
-	lw := NewListerWatcher[UnderlayClient](f.logger, poller)
+	lw := NewListerWatcher[UnderlayClient](f.logger, p)
 
 	informer = cache.NewSharedIndexInformer(
 		lw,
@@ -179,11 +180,12 @@ func (f *factory[UnderlayClient]) Refresh(obj runtime.Object) {
 	defer f.lock.Unlock()
 
 	informerType := reflect.TypeOf(obj)
-	poller, ok := f.pollers[informerType]
+	p, ok := f.pollers[informerType]
 	if !ok {
+		f.logger.Info("no poller for type", "type", informerType)
 		return
 	}
-	poller.Refresh()
+	p.Refresh()
 }
 
 type ListerWatcher[UnderlayClient any] interface {
