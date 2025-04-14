@@ -109,7 +109,7 @@ func SplitPrimaryKey(key string) (ns, cluster string) {
 // If any keys are changed, client will be renewed
 // The first key is primary key to get client from manager
 func CacheKeys(pdg *v1alpha1.PDGroup) ([]string, error) {
-	keys := []string{}
+	var keys []string
 
 	keys = append(keys,
 		PrimaryKey(pdg.Namespace, pdg.Spec.Cluster.Name), // cluster name as primary key

@@ -86,7 +86,7 @@ type StoreState string
 const (
 	StoreStateUp        StoreState = "Up"
 	StoreStateOffline   StoreState = "Offline"
-	StoreStateTombstore StoreState = "Tombstone"
+	StoreStateTombstone StoreState = "Tombstone"
 )
 
 type NodeState string
