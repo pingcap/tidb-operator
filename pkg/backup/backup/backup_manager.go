@@ -1112,33 +1112,47 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) error {
 	}
 	defer etcdCli.Close()
 
-	key := path.Join(streamKeyPrefix, taskPausePath, name)
-	klog.Infof("log backup %s/%s checkpointTS key %s", ns, name, key)
+	logKey := path.Join(streamKeyPrefix, taskInfoPath, name)
+	logKvs, err := etcdCli.Get(logKey, true)
+	if err != nil {
+		klog.Errorf("get log backup %s/%s key error %v", ns, name, err)
+	}
+	if len(logKvs) < 1 {
+		return fmt.Errorf("log backup %s/%s not found in etcd", ns, name)
+	}
 
-	kvs, err := etcdCli.Get(key, true)
+	pause := false
+	pauseKey := path.Join(streamKeyPrefix, taskPausePath, name)
+	pauseKvs, err := etcdCli.Get(pauseKey, true)
 	if err != nil {
 		klog.Errorf("get log backup %s/%s pause key error %v", ns, name, err)
 		return err
 	}
-	if len(kvs) < 1 {
+	if len(pauseKvs) < 1 {
 		klog.Infof("log backup %s/%s running normally", ns, name)
-		return nil
 	}
-	info, err := NewPauseV2Info(kvs[0])
+	pauseInfo, err := NewPauseV2Info(pauseKvs[0])
 	if err != nil {
 		klog.Errorf("parse log backup %s/%s pause key error %v", ns, name, err)
 		return err
 	}
-	if info.Severity == SeverityError {
-		if msg, err := info.ParseError(); err != nil {
+	pause = true
+
+	var errMsg string
+	if pauseInfo.Severity == SeverityError {
+		errMsg, err = pauseInfo.ParseError()
+		if err != nil {
 			return err
 		} else {
-			klog.Errorf("log backup %s/%s paused by error: %s", ns, name, msg)
-			return fmt.Errorf("log backup %s/%s paused by error: %s", ns, name, msg)
+			klog.Errorf("log backup %s/%s paused by error: %s", ns, name, errMsg)
+			return fmt.Errorf("log backup %s/%s paused by error: %s", ns, name, errMsg)
 		}
 	}
 
-	klog.Infof("log backup %s/%s paused by manual", ns, name)
+	if !pause && (!v1alpha1.IsBackupRunning(backup) || !v1alpha1.IsBackupComplete(backup)) {
+	}
+	
+
 	return nil
 }
 
