@@ -1093,22 +1093,26 @@ func (bm *backupManager) skipSnapshotBackupSync(backup *v1alpha1.Backup) (bool, 
 	return false, nil
 }
 
-func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) error {
+func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, error) {
+	if backup.Status.Phase == v1alpha1.BackupStopped {
+		return true, nil
+	}
+
 	ns := backup.Namespace
 	name := backup.Name
 	tc, err := bm.backupTracker.GetLogBackupTC(backup)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if tc == nil {
-		return fmt.Errorf("backup %s/%s get tc failed", ns, name)
+		return false, fmt.Errorf("backup %s/%s get tc failed", ns, name)
 	}
 
 	etcdCli, err := bm.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Name,
 		tc.IsTLSClusterEnabled(), pdapi.ClusterRef(tc.Spec.ClusterDomain))
 	if err != nil {
 		klog.Errorf("get log backup %s/%s pd cli error %v", ns, name, err)
-		return err
+		return false, err
 	}
 	defer etcdCli.Close()
 
@@ -1118,7 +1122,7 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) error {
 		klog.Errorf("get log backup %s/%s key error %v", ns, name, err)
 	}
 	if len(logKvs) < 1 {
-		return fmt.Errorf("log backup %s/%s not found in etcd", ns, name)
+		return false, fmt.Errorf("log backup %s/%s not found in etcd", ns, name)
 	}
 
 	pause := false
@@ -1126,7 +1130,7 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) error {
 	pauseKvs, err := etcdCli.Get(pauseKey, true)
 	if err != nil {
 		klog.Errorf("get log backup %s/%s pause key error %v", ns, name, err)
-		return err
+		return false, err
 	}
 	if len(pauseKvs) < 1 {
 		klog.Infof("log backup %s/%s running normally", ns, name)
@@ -1134,26 +1138,41 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) error {
 	pauseInfo, err := NewPauseV2Info(pauseKvs[0])
 	if err != nil {
 		klog.Errorf("parse log backup %s/%s pause key error %v", ns, name, err)
-		return err
+		return false, err
 	}
 	pause = true
 
-	var errMsg string
+	errMsg := ""
 	if pauseInfo.Severity == SeverityError {
 		errMsg, err = pauseInfo.ParseError()
 		if err != nil {
-			return err
+			return false, err
 		} else {
 			klog.Errorf("log backup %s/%s paused by error: %s", ns, name, errMsg)
-			return fmt.Errorf("log backup %s/%s paused by error: %s", ns, name, errMsg)
+			return false, fmt.Errorf("log backup %s/%s paused by error: %s", ns, name, errMsg)
 		}
 	}
 
-	if !pause && (!v1alpha1.IsBackupRunning(backup) || !v1alpha1.IsBackupComplete(backup)) {
+	expectState := backup.Status.Phase
+	if !pause{
+		expectState = v1alpha1.BackupRunning
+	} else if pauseInfo.Severity == SeverityError {
+		expectState = v1alpha1.BackupFailed
+	} else if pauseInfo.Severity == SeverityManual {
+		expectState = v1alpha1.BackupPaused
+	}
+
+	if backup.Status.Phase != expectState {
+		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Type:    expectState,
+			Status:  corev1.ConditionTrue,
+			Reason:  "LogbackupForceSync",
+			Message: errMsg,
+		}, nil)
 	}
 	
 
-	return nil
+	return true, nil
 }
 
 // skipLogBackupSync skips log backup, returns true if it can be skipped.

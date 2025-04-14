@@ -2417,6 +2417,8 @@ const (
 	BackupScheduled BackupConditionType = "Scheduled"
 	// BackupRunning means the backup is currently being executed.
 	BackupRunning BackupConditionType = "Running"
+	// BackupForcedRunning means the backup is currently being executed
+	BackupForcedRunning BackupConditionType = "Running(Forced)"
 	// BackupComplete means the backup has successfully executed and the
 	// resulting artifact has been stored in backend storage.
 	BackupComplete BackupConditionType = "Complete"
@@ -2437,6 +2439,8 @@ const (
 	BackupPrepare BackupConditionType = "Prepare"
 	// BackupPaused means the backup was paused
 	BackupPaused BackupConditionType = "Paused"
+	// BackupForcedPaused means the backup was paused
+	BackupForcedPaused BackupConditionType = "Paused(Forced)"
 	// BackupStopped means the backup was stopped, just log backup has this condition
 	BackupStopped BackupConditionType = "Stopped"
 	// BackupRestart means the backup was restarted, now just support snapshot backup
