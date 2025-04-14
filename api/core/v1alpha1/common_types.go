@@ -31,7 +31,19 @@ const (
 const (
 	// Ready means all managed resources are ready.
 	// NOTE: It does not mean all managed resources are up to date.
+	//
+	// condition
 	CondReady = "Ready"
+	// reason for both
+	ReasonReady   = "Ready"
+	ReasonUnready = "Unready"
+	// reason for group
+	ReasonNotAllInstancesReady = "NotAllInstancesReady"
+	// reason for instance
+	ReasonPodNotCreated      = "PodNotCreated"
+	ReasonPodNotReady        = "PodNotReady"
+	ReasonPodTerminating     = "PodTerminating"
+	ReasonInstanceNotHealthy = "InstanceNotHealthy"
 
 	// Synced means all specs of managed resources are as expected and
 	// nothing need to do in controller but only status updation.

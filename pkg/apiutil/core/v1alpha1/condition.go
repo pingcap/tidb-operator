@@ -15,6 +15,8 @@
 package coreutil
 
 import (
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -51,17 +53,34 @@ func Ready() *metav1.Condition {
 	return &metav1.Condition{
 		Type:    v1alpha1.CondReady,
 		Status:  metav1.ConditionTrue,
-		Reason:  "Ready",
+		Reason:  v1alpha1.CondReady,
 		Message: "all subreources are ready",
 	}
 }
 
-func Unready() *metav1.Condition {
+func Unready(reason string) *metav1.Condition {
+	var msg string
+	switch reason {
+	case v1alpha1.ReasonNotAllInstancesReady:
+		msg = "not all instances are ready"
+	case v1alpha1.ReasonPodNotCreated:
+		msg = "pod of the instance does not exist"
+	case v1alpha1.ReasonPodNotReady:
+		msg = "pod of the instance is not ready"
+	case v1alpha1.ReasonPodTerminating:
+		msg = "pod of the instance is terminating"
+	case v1alpha1.ReasonInstanceNotHealthy:
+		msg = "instance is not probed as healthy"
+	default:
+		msg = fmt.Sprintf("unready because of unknown reason: %s", reason)
+		reason = v1alpha1.ReasonUnready
+	}
+
 	return &metav1.Condition{
 		Type:    v1alpha1.CondReady,
 		Status:  metav1.ConditionFalse,
-		Reason:  "Unready",
-		Message: "not all instances are ready",
+		Reason:  reason,
+		Message: msg,
 	}
 }
 

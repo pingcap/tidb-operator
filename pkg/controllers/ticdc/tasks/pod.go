@@ -49,7 +49,8 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 		logger := logr.FromContextOrDiscard(ctx)
 
 		expected := newPod(state.Cluster(), state.TiCDC())
-		if state.Pod() == nil {
+		pod := state.Pod()
+		if pod == nil {
 			// Pod needs PD address as a parameter
 			if state.Cluster().Status.PD == "" {
 				return task.Wait().With("wait until pd's status is set")
@@ -62,8 +63,8 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 			return task.Complete().With("pod is created")
 		}
 
-		if !reloadable.CheckTiCDCPod(state.TiCDC(), state.Pod()) {
-			if state.Healthy || statefulset.IsPodReady(state.Pod()) {
+		if !reloadable.CheckTiCDCPod(state.TiCDC(), pod) {
+			if state.IsHealthy() || statefulset.IsPodReady(pod) {
 				wait, err := preDeleteCheck(ctx, logger, state.TiCDCClient)
 				if err != nil {
 					return task.Fail().With("can't delete pod of ticdc: %v", err)
@@ -74,11 +75,11 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 				}
 			}
 			logger.Info("will recreate the pod")
-			if err := c.Delete(ctx, state.Pod()); err != nil {
+			if err := c.Delete(ctx, pod); err != nil {
 				return task.Fail().With("can't delete pod of ticdc: %w", err)
 			}
 
-			state.PodIsTerminating = true
+			state.DeletePod(pod)
 			return task.Wait().With("pod is deleting")
 		}
 

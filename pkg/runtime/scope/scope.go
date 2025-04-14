@@ -15,7 +15,8 @@
 package scope
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 

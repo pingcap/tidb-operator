@@ -19,10 +19,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
-	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
 type state struct {
@@ -32,16 +30,23 @@ type state struct {
 	tidb    *v1alpha1.TiDB
 	pod     *corev1.Pod
 
+	// Pod cannot be updated when call DELETE API, so we have to set this field to indicate
+	// the underlay pod has been deleting
+	isPodTerminating bool
+
 	statusChanged bool
+
+	healthy bool
 }
 
 type State interface {
 	common.TiDBStateInitializer
-	common.PodStateInitializer
 
 	common.TiDBState
 	common.ClusterState
+
 	common.PodState
+	common.PodStateUpdater
 
 	common.InstanceState[*runtime.TiDB]
 
@@ -50,7 +55,8 @@ type State interface {
 	common.StatusPersister[*v1alpha1.TiDB]
 	common.StatusUpdater
 
-	SetPod(*corev1.Pod)
+	common.HealthyState
+	common.HealthyStateUpdater
 }
 
 func NewState(key types.NamespacedName) State {
@@ -72,6 +78,10 @@ func (s *state) Pod() *corev1.Pod {
 	return s.pod
 }
 
+func (s *state) IsPodTerminating() bool {
+	return s.isPodTerminating
+}
+
 func (s *state) Instance() *runtime.TiDB {
 	return runtime.FromTiDB(s.tidb)
 }
@@ -85,6 +95,14 @@ func (s *state) IsStatusChanged() bool {
 }
 
 func (s *state) SetPod(pod *corev1.Pod) {
+	s.pod = pod
+	if pod != nil && !pod.GetDeletionTimestamp().IsZero() {
+		s.isPodTerminating = true
+	}
+}
+
+func (s *state) DeletePod(pod *corev1.Pod) {
+	s.isPodTerminating = true
 	s.pod = pod
 }
 
@@ -103,11 +121,10 @@ func (s *state) TiDBInitializer() common.TiDBInitializer {
 		Initializer()
 }
 
-func (s *state) PodInitializer() common.PodInitializer {
-	return common.NewResource(s.SetPod).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Lazy[string](func() string {
-			return coreutil.PodName[scope.TiDB](s.tidb)
-		})).
-		Initializer()
+func (s *state) IsHealthy() bool {
+	return s.healthy
+}
+
+func (s *state) SetHealthy() {
+	s.healthy = true
 }

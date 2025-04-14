@@ -49,7 +49,7 @@ func TestTaskStatus(t *testing.T) {
 		expectedObj    *v1alpha1.PD
 	}{
 		{
-			desc: "no pod but healthy",
+			desc: "not ready",
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj(fakePDName, func(obj *v1alpha1.PD) *v1alpha1.PD {
@@ -60,8 +60,8 @@ func TestTaskStatus(t *testing.T) {
 						obj.Status.CurrentRevision = "keep"
 						return obj
 					}),
+					healthy: true,
 				},
-				Healthy:     true,
 				Initialized: true,
 				IsLeader:    true,
 				MemberID:    fakePDName,
@@ -88,13 +88,6 @@ func TestTaskStatus(t *testing.T) {
 						Message:            "instance is initialized",
 					},
 					{
-						Type:               v1alpha1.CondReady,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             "Unhealthy",
-						Message:            "instance is not healthy",
-					},
-					{
 						Type:               v1alpha1.CondSuspended,
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
@@ -107,13 +100,20 @@ func TestTaskStatus(t *testing.T) {
 			}),
 		},
 		{
-			desc: "pod is healthy",
+			desc: "is ready",
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj(fakePDName, func(obj *v1alpha1.PD) *v1alpha1.PD {
 						obj.Generation = 3
 						obj.Labels = map[string]string{
 							v1alpha1.LabelKeyInstanceRevisionHash: newRevision,
+						}
+						obj.Status.Conditions = []metav1.Condition{
+							{
+								Type:               v1alpha1.CondReady,
+								Status:             metav1.ConditionTrue,
+								ObservedGeneration: 3,
+							},
 						}
 						return obj
 					}),
@@ -128,8 +128,8 @@ func TestTaskStatus(t *testing.T) {
 						})
 						return obj
 					}),
+					healthy: true,
 				},
-				Healthy:     true,
 				Initialized: true,
 				IsLeader:    true,
 				MemberID:    fakePDName,
@@ -149,18 +149,16 @@ func TestTaskStatus(t *testing.T) {
 				obj.Status.CurrentRevision = oldRevision
 				obj.Status.Conditions = []metav1.Condition{
 					{
+						Type:               v1alpha1.CondReady,
+						Status:             metav1.ConditionTrue,
+						ObservedGeneration: 3,
+					},
+					{
 						Type:               v1alpha1.PDCondInitialized,
 						Status:             metav1.ConditionTrue,
 						ObservedGeneration: 3,
 						Reason:             "Initialized",
 						Message:            "instance is initialized",
-					},
-					{
-						Type:               v1alpha1.CondReady,
-						Status:             metav1.ConditionTrue,
-						ObservedGeneration: 3,
-						Reason:             "Healthy",
-						Message:            "instance is healthy",
 					},
 					{
 						Type:               v1alpha1.CondSuspended,
@@ -197,12 +195,12 @@ func TestTaskStatus(t *testing.T) {
 						})
 						return obj
 					}),
+					healthy:          true,
+					isPodTerminating: true,
 				},
-				PodIsTerminating: true,
-				Healthy:          true,
-				Initialized:      true,
-				IsLeader:         true,
-				MemberID:         fakePDName,
+				Initialized: true,
+				IsLeader:    true,
+				MemberID:    fakePDName,
 			},
 
 			expectedStatus: task.SRetry,
@@ -225,13 +223,6 @@ func TestTaskStatus(t *testing.T) {
 						Message:            "instance is initialized",
 					},
 					{
-						Type:               v1alpha1.CondReady,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             "Unhealthy",
-						Message:            "instance is not healthy",
-					},
-					{
 						Type:               v1alpha1.CondSuspended,
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
@@ -252,6 +243,13 @@ func TestTaskStatus(t *testing.T) {
 						obj.Labels = map[string]string{
 							v1alpha1.LabelKeyInstanceRevisionHash: newRevision,
 						}
+						obj.Status.Conditions = []metav1.Condition{
+							{
+								Type:               v1alpha1.CondReady,
+								Status:             metav1.ConditionTrue,
+								ObservedGeneration: 3,
+							},
+						}
 						return obj
 					}),
 					pod: fake.FakeObj("aaa-pd-xxx", func(obj *corev1.Pod) *corev1.Pod {
@@ -266,8 +264,8 @@ func TestTaskStatus(t *testing.T) {
 						})
 						return obj
 					}),
+					healthy: true,
 				},
-				Healthy:  true,
 				IsLeader: true,
 				MemberID: fakePDName,
 			},
@@ -286,18 +284,16 @@ func TestTaskStatus(t *testing.T) {
 				obj.Status.UpdateRevision = newRevision
 				obj.Status.Conditions = []metav1.Condition{
 					{
+						Type:               v1alpha1.CondReady,
+						Status:             metav1.ConditionTrue,
+						ObservedGeneration: 3,
+					},
+					{
 						Type:               v1alpha1.PDCondInitialized,
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
 						Reason:             "Uninitialized",
 						Message:            "instance has not been initialized yet",
-					},
-					{
-						Type:               v1alpha1.CondReady,
-						Status:             metav1.ConditionTrue,
-						ObservedGeneration: 3,
-						Reason:             "Healthy",
-						Message:            "instance is healthy",
 					},
 					{
 						Type:               v1alpha1.CondSuspended,
@@ -312,7 +308,7 @@ func TestTaskStatus(t *testing.T) {
 			}),
 		},
 		{
-			desc: "not init and not healthy",
+			desc: "not init and not ready",
 			state: &ReconcileContext{
 				State: &state{
 					pd: fake.FakeObj(fakePDName, func(obj *v1alpha1.PD) *v1alpha1.PD {
@@ -357,13 +353,6 @@ func TestTaskStatus(t *testing.T) {
 						ObservedGeneration: 3,
 						Reason:             "Uninitialized",
 						Message:            "instance has not been initialized yet",
-					},
-					{
-						Type:               v1alpha1.CondReady,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             "Unhealthy",
-						Message:            "instance is not healthy",
 					},
 					{
 						Type:               v1alpha1.CondSuspended,

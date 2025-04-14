@@ -14,7 +14,7 @@
 
 package runtime
 
-import "github.com/pingcap/tidb-operator/pkg/client"
+import "sigs.k8s.io/controller-runtime/pkg/client"
 
 type Group interface {
 	Object

@@ -41,10 +41,11 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskInstanceFinalizerAdd[runtime.TiCDCTuple](state, r.Client),
 
 		// get pod and check whether the cluster is suspending
-		common.TaskContextPod(state, r.Client),
+		common.TaskContextPod[scope.TiCDC](state, r.Client),
 		task.IfBreak(common.CondClusterIsSuspending(state),
 			common.TaskSuspendPod(state, r.Client),
 			common.TaskInstanceConditionSuspended[scope.TiCDC](state),
+			common.TaskInstanceConditionReady[scope.TiCDC](state),
 			common.TaskStatusPersister[scope.TiCDC](state, r.Client),
 		),
 
@@ -53,6 +54,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskConfigMap(state, r.Client),
 		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifierFactory),
 		tasks.TaskPod(state, r.Client),
+		common.TaskInstanceConditionReady[scope.TiCDC](state),
 		tasks.TaskStatus(state, r.Client),
 	)
 

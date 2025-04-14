@@ -30,15 +30,10 @@ type ReconcileContext struct {
 	PDClient pdm.PDClient
 	// This is single truth whether pd is initialized
 	Initialized bool
-	Healthy     bool
 
 	ClusterID string
 	MemberID  string
 	IsLeader  bool
-
-	// Pod cannot be updated when call DELETE API, so we have to set this field to indicate
-	// the underlay pod has been deleting
-	PodIsTerminating bool
 }
 
 func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task.Task {
@@ -71,7 +66,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 
 		// set available and trust health info only when member info is valid
 		if !m.Invalid {
-			state.Healthy = m.Health
+			state.SetHealthy()
 		}
 
 		return task.Complete().With("pd is ready")

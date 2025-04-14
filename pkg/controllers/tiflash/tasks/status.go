@@ -22,9 +22,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
-	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
 
 const (
@@ -36,18 +37,10 @@ const (
 //nolint:gocyclo // refactor is possible
 func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Status", func(ctx context.Context) task.Result {
-		needUpdate := false
+		needUpdate := state.IsStatusChanged()
 		tiflash := state.TiFlash()
 		pod := state.Pod()
-		// TODO(liubo02): simplify it
-		var healthy bool
-		if pod != nil &&
-			statefulset.IsPodRunningAndReady(pod) &&
-			!state.PodIsTerminating &&
-			state.IsStoreUp() {
-			healthy = true
-		}
-		needUpdate = syncHealthCond(tiflash, healthy) || needUpdate
+		ready := coreutil.IsReady[scope.TiFlash](tiflash)
 		needUpdate = syncSuspendCond(tiflash) || needUpdate
 		needUpdate = SetIfChanged(&tiflash.Status.ID, state.StoreID) || needUpdate
 		needUpdate = SetIfChanged(&tiflash.Status.State, state.GetStoreState()) || needUpdate
@@ -55,7 +48,7 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		needUpdate = SetIfChanged(&tiflash.Status.ObservedGeneration, tiflash.Generation) || needUpdate
 		needUpdate = SetIfChanged(&tiflash.Status.UpdateRevision, tiflash.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 
-		if healthy {
+		if ready {
 			needUpdate = SetIfChanged(&tiflash.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 		}
 
@@ -65,37 +58,16 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 			}
 		}
 
-		if state.PodIsTerminating {
+		if state.IsPodTerminating() {
 			return task.Retry(defaultTaskWaitDuration).With("pod may be terminating, requeue to retry")
 		}
 
 		// TODO: use a condition to refactor it
-		if !healthy || tiflash.Status.ID == "" {
+		if !ready || tiflash.Status.ID == "" {
 			return task.Wait().With("tiflash may not be synced, wait")
 		}
 
 		return task.Complete().With("status is synced")
-	})
-}
-
-func syncHealthCond(tiflash *v1alpha1.TiFlash, healthy bool) bool {
-	var (
-		status = metav1.ConditionFalse
-		reason = "Unhealthy"
-		msg    = "instance is not healthy"
-	)
-	if healthy {
-		status = metav1.ConditionTrue
-		reason = "Healthy"
-		msg = "instance is healthy"
-	}
-
-	return meta.SetStatusCondition(&tiflash.Status.Conditions, metav1.Condition{
-		Type:               v1alpha1.CondReady,
-		Status:             status,
-		ObservedGeneration: tiflash.Generation,
-		Reason:             reason,
-		Message:            msg,
 	})
 }
 

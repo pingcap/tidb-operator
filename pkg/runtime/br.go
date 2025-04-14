@@ -18,11 +18,10 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/utils/datacontainer"
 )
 
@@ -100,7 +99,7 @@ func (b *Backup) NeedRemoveFinalizer() bool {
 	return brv1alpha1.IsCleanCandidate(bk) && isBackupDeletionCandidate(bk) && brv1alpha1.IsBackupClean(bk)
 }
 
-func isBackupDeletionCandidate(backup *v1alpha1.Backup) bool {
+func isBackupDeletionCandidate(backup *brv1alpha1.Backup) bool {
 	return backup.DeletionTimestamp != nil && datacontainer.ContainsString(backup.Finalizers, metav1alpha1.Finalizer, nil)
 }
 

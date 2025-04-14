@@ -91,6 +91,10 @@ func (f *fakePodState) PodInitializer() PodInitializer {
 	return f.s.Initializer()
 }
 
+func (f *fakePodState) IsPodTerminating() bool {
+	return false
+}
+
 type fakePDSliceState struct {
 	s *fakeSliceState[v1alpha1.PD]
 }
