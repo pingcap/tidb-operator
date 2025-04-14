@@ -37,7 +37,7 @@ type Poller interface {
 	// IF Run is called multiple times, the previous one will be stopped
 	// immediately and start a new one to push event to new channel
 	Run(ctx context.Context, ch chan<- watch.Event)
-	// Poll once immediately
+	// Refresh once immediately
 	Refresh()
 }
 
@@ -59,11 +59,12 @@ func NewPoller[T any, PT Object[T], L client.ObjectList](
 	interval time.Duration,
 ) Poller {
 	return &poller[T, PT, L]{
-		name:     name,
-		interval: interval,
-		lister:   lister,
-		equality: eq,
-		logger:   logger,
+		name:      name,
+		interval:  interval,
+		lister:    lister,
+		equality:  eq,
+		logger:    logger,
+		refreshCh: make(chan struct{}, bufSize),
 	}
 }
 
