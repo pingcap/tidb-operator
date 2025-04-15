@@ -2453,6 +2453,9 @@ spec:
                 format: date-time
                 nullable: true
                 type: string
+              timeSynced:
+                format: date-time
+                type: string
               timeTaken:
                 type: string
             type: object

@@ -38,7 +38,7 @@ var (
 	taskInfoPath              = "/info"
 	taskCheckpointPath        = "/checkpoint"
 	taskLastErrorPath         = "/last-error"
-	taskPausePath        = "/pause"
+	taskPausePath             = "/pause"
 )
 
 // BackupTracker implements the logic for tracking log backup progress

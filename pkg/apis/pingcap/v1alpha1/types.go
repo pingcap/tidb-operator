@@ -2514,6 +2514,9 @@ type BackupStatus struct {
 	TimeStarted metav1.Time `json:"timeStarted,omitempty"`
 	// TimeCompleted is the time at which the backup was completed.
 	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
+	// TimeSynced is the time at which the backup was synced to kernel state.
+	// +optional
+	TimeSynced metav1.Time `json:"timeSynced,omitempty"`
 	// +nullable
 	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
 	// TimeTaken is the time that backup takes, it is TimeCompleted - TimeStarted
