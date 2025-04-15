@@ -48,11 +48,12 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		expected := newPod(state.Cluster(), state.PD(), state.ClusterID, state.MemberID)
-		if state.Pod() == nil {
+		pod := state.Pod()
+		if pod == nil {
 			// We have to refresh cache of members to make sure a pd without pod is unhealthy.
 			// If the healthy info is out of date, the operator may mark this pd up-to-date unexpectedly
 			// and begin to update the next PD.
-			if state.Healthy {
+			if state.IsHealthy() {
 				state.PDClient.Members().Refresh()
 				return task.Wait().With("wait until pd's status becomes unhealthy")
 			}
@@ -63,11 +64,11 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 			return task.Complete().With("pod is synced")
 		}
 
-		if !reloadable.CheckPDPod(state.PD(), state.Pod()) {
+		if !reloadable.CheckPDPod(state.PD(), pod) {
 			// NOTE: both rtx.Healthy and rtx.Pod are not always newest
 			// So pre delete check may also be skipped in some cases, for example,
 			// the PD is just started.
-			if state.Healthy || statefulset.IsPodReady(state.Pod()) {
+			if state.IsHealthy() || statefulset.IsPodReady(pod) {
 				wait, err := preDeleteCheck(ctx, logger, state.PDClient, state.PD(), state.PDSlice(), state.IsLeader)
 				if err != nil {
 					return task.Fail().With("can't delete pod of pd: %v", err)
@@ -78,13 +79,13 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 				}
 			}
 
-			logger.Info("will delete the pod to recreate", "name", state.Pod().Name, "namespace", state.Pod().Namespace, "UID", state.Pod().UID)
+			logger.Info("will delete the pod to recreate", "name", pod.Name, "namespace", pod.Namespace, "UID", pod.UID)
 
-			if err := c.Delete(ctx, state.Pod()); err != nil {
+			if err := c.Delete(ctx, pod); err != nil {
 				return task.Fail().With("can't delete pod of pd: %v", err)
 			}
 
-			state.PodIsTerminating = true
+			state.DeletePod(pod)
 
 			return task.Wait().With("pod is deleting")
 		}

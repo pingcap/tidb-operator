@@ -44,7 +44,8 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		expected := newPod(state.Cluster(), state.TiFlash(), state.StoreID)
-		if state.Pod() == nil {
+		pod := state.Pod()
+		if pod == nil {
 			if err := c.Apply(ctx, expected); err != nil {
 				return task.Fail().With("can't apply pod of tiflash: %w", err)
 			}
@@ -53,13 +54,13 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 			return task.Complete().With("pod is created")
 		}
 
-		if !reloadable.CheckTiFlashPod(state.TiFlash(), state.Pod()) {
+		if !reloadable.CheckTiFlashPod(state.TiFlash(), pod) {
 			logger.Info("will recreate the pod")
-			if err := c.Delete(ctx, state.Pod()); err != nil {
+			if err := c.Delete(ctx, pod); err != nil {
 				return task.Fail().With("can't delete pod of tiflash: %w", err)
 			}
 
-			state.PodIsTerminating = true
+			state.DeletePod(pod)
 			return task.Wait().With("pod is deleting")
 		}
 

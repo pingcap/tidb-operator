@@ -43,12 +43,13 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskInstanceFinalizerAdd[runtime.PDTuple](state, r.Client),
 
 		// get pod
-		common.TaskContextPod(state, r.Client),
+		common.TaskContextPod[scope.PD](state, r.Client),
 
 		task.IfBreak(
 			common.CondClusterIsSuspending(state),
 			common.TaskSuspendPod(state, r.Client),
 			common.TaskInstanceConditionSuspended[scope.PD](state),
+			common.TaskInstanceConditionReady[scope.PD](state),
 			common.TaskStatusPersister[scope.PD](state, r.Client),
 		),
 
@@ -60,6 +61,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(tasks.CondPDClientIsNotRegisterred(state),
 			tasks.TaskStatusUnknown(),
 		),
+		common.TaskInstanceConditionReady[scope.PD](state),
 		tasks.TaskStatus(state, r.Client),
 	)
 

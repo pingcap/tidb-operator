@@ -64,8 +64,8 @@ func TestTaskPod(t *testing.T) {
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
+					healthy: true,
 				},
-				Healthy: true,
 			},
 			needRefresh: true,
 
@@ -197,8 +197,8 @@ func TestTaskPod(t *testing.T) {
 							return obj
 						}),
 					},
+					healthy: true,
 				},
-				Healthy:  true,
 				IsLeader: true,
 			},
 			needTrasferTo: "aaa-yyy",
@@ -257,8 +257,8 @@ func TestTaskPod(t *testing.T) {
 							return obj
 						}),
 					},
+					healthy: true,
 				},
-				Healthy:  true,
 				IsLeader: true,
 			},
 
@@ -305,8 +305,8 @@ func TestTaskPod(t *testing.T) {
 							return obj
 						}),
 					},
+					healthy: true,
 				},
-				Healthy:  true,
 				IsLeader: true,
 			},
 
@@ -365,8 +365,8 @@ func TestTaskPod(t *testing.T) {
 							return obj
 						}),
 					},
+					healthy: true,
 				},
-				Healthy: true,
 			},
 
 			expectUpdatedPod:         false,
@@ -556,7 +556,7 @@ func TestTaskPod(t *testing.T) {
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), res.Message())
 			assert.False(tt, done, c.desc)
 
-			assert.Equal(tt, c.expectedPodIsTerminating, c.state.PodIsTerminating, c.desc)
+			assert.Equal(tt, c.expectedPodIsTerminating, c.state.IsPodTerminating(), c.desc)
 
 			if c.expectUpdatedPod {
 				expectedPod := newPod(c.state.Cluster(), c.state.PD(), "", "")

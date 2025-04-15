@@ -22,7 +22,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
@@ -36,26 +38,18 @@ const (
 //nolint:gocyclo // refactor if possible
 func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Status", func(ctx context.Context) task.Result {
-		needUpdate := false
+		needUpdate := state.IsStatusChanged()
 		tidb := state.TiDB()
 		pod := state.Pod()
-		// TODO(liubo02): simplify it
-		var healthy bool
 
-		if pod != nil &&
-			statefulset.IsPodRunningAndReady(pod) &&
-			!state.PodIsTerminating &&
-			state.Healthy {
-			healthy = true
-		}
+		ready := coreutil.IsReady[scope.TiDB](tidb)
 
-		needUpdate = syncHealthCond(tidb, healthy) || needUpdate
 		needUpdate = syncSuspendCond(tidb) || needUpdate
 
 		needUpdate = SetIfChanged(&tidb.Status.ObservedGeneration, tidb.Generation) || needUpdate
 		needUpdate = SetIfChanged(&tidb.Status.UpdateRevision, tidb.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 
-		if healthy {
+		if ready {
 			needUpdate = SetIfChanged(&tidb.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 		}
 
@@ -65,9 +59,9 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 			}
 		}
 
-		if !healthy {
+		if !ready {
 			// TODO(liubo02): delete pod should retrigger the events, try to change to wait
-			if state.PodIsTerminating {
+			if state.IsPodTerminating() {
 				return task.Retry(defaultTaskWaitDuration).With("pod may be terminating, requeue to retry")
 			}
 
@@ -79,27 +73,6 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		}
 
 		return task.Complete().With("status is synced")
-	})
-}
-
-func syncHealthCond(tidb *v1alpha1.TiDB, healthy bool) bool {
-	var (
-		status = metav1.ConditionFalse
-		reason = "Unhealthy"
-		msg    = "instance is not healthy"
-	)
-	if healthy {
-		status = metav1.ConditionTrue
-		reason = "Healthy"
-		msg = "instance is healthy"
-	}
-
-	return meta.SetStatusCondition(&tidb.Status.Conditions, metav1.Condition{
-		Type:               v1alpha1.CondReady,
-		Status:             status,
-		ObservedGeneration: tidb.Generation,
-		Reason:             reason,
-		Message:            msg,
 	})
 }
 

@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate ${GOBIN}/mockgen -write_command_comment=false -copyright_file ${BOILERPLATE_FILE} -destination mock_generated.go -package=common ${GO_MODULE}/pkg/controllers/common StatusPersister,InstanceCondSuspendedUpdater,GroupCondSuspendedUpdater,GroupCondReadyUpdater,GroupCondSyncedUpdater,StatusRevisionAndReplicasUpdater
+//go:generate ${GOBIN}/mockgen -write_command_comment=false -copyright_file ${BOILERPLATE_FILE} -destination mock_generated.go -package=common ${GO_MODULE}/pkg/controllers/common StatusPersister,InstanceCondSuspendedUpdater,InstanceCondReadyUpdater,GroupCondSuspendedUpdater,GroupCondReadyUpdater,GroupCondSyncedUpdater,StatusRevisionAndReplicasUpdater
 package common
 
 import (
 	"context"
 
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
@@ -26,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
 
 type StatusPersister[T client.Object] interface {
@@ -99,6 +101,61 @@ func TaskInstanceConditionSuspended[
 		}
 
 		return task.Complete().With("suspended condition is not changed")
+	})
+}
+
+type InstanceCondReadyUpdater[T client.Object] interface {
+	StatusUpdater
+	PodState
+	HealthyState
+	Object() T
+}
+
+func TaskInstanceConditionReady[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](state InstanceCondReadyUpdater[F]) task.Task {
+	return task.NameTaskFunc("CondReady", func(ctx context.Context) task.Result {
+		instance := state.Object()
+		pod := state.Pod()
+
+		var needUpdate, isReady bool
+		var reason string
+		switch {
+		case pod == nil:
+			reason = v1alpha1.ReasonPodNotCreated
+		case state.IsPodTerminating():
+			reason = v1alpha1.ReasonPodTerminating
+		case !statefulset.IsPodRunningAndReady(pod):
+			reason = v1alpha1.ReasonPodNotReady
+		case !state.IsHealthy():
+			reason = v1alpha1.ReasonInstanceNotHealthy
+		default:
+			isReady = true
+		}
+
+		var cond *metav1.Condition
+		if isReady {
+			cond = coreutil.Ready()
+		} else {
+			cond = coreutil.Unready(reason)
+		}
+
+		needUpdate = coreutil.SetStatusCondition[S](
+			instance,
+			*cond,
+		) || needUpdate
+
+		if needUpdate {
+			state.SetStatusChanged()
+		}
+
+		if !isReady {
+			return task.Wait().With("instance is unready")
+		}
+
+		return task.Complete().With("instance is ready")
 	})
 }
 
@@ -191,7 +248,7 @@ func TaskGroupConditionReady[
 			// TODO(liubo02): more info when unready
 			needUpdate = coreutil.SetStatusCondition[S](
 				g,
-				*coreutil.Unready(),
+				*coreutil.Unready(v1alpha1.ReasonNotAllInstancesReady),
 			) || needUpdate
 		}
 
@@ -244,10 +301,10 @@ func TaskGroupConditionSynced[
 
 		if needUpdate {
 			state.SetStatusChanged()
-			return task.Complete().With("ready condition is changed")
+			return task.Complete().With("sync condition is changed")
 		}
 
-		return task.Complete().With("ready condition is not changed")
+		return task.Complete().With("sync condition is not changed")
 	})
 }
 

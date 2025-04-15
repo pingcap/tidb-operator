@@ -60,7 +60,8 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 		logger := logr.FromContextOrDiscard(ctx)
 
 		expected := newPod(state.Cluster(), state.TiDB())
-		if state.Pod() == nil {
+		pod := state.Pod()
+		if pod == nil {
 			if err := c.Apply(ctx, expected); err != nil {
 				return task.Fail().With("can't create pod of tidb: %w", err)
 			}
@@ -69,13 +70,13 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 			return task.Complete().With("pod is created")
 		}
 
-		if !reloadable.CheckTiDBPod(state.TiDB(), state.Pod()) {
+		if !reloadable.CheckTiDBPod(state.TiDB(), pod) {
 			logger.Info("will recreate the pod")
-			if err := c.Delete(ctx, state.Pod()); err != nil {
+			if err := c.Delete(ctx, pod); err != nil {
 				return task.Fail().With("can't delete pod of tidb: %w", err)
 			}
 
-			state.PodIsTerminating = true
+			state.DeletePod(pod)
 			return task.Wait().With("pod is restarting")
 		}
 

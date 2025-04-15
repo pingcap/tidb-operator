@@ -317,7 +317,7 @@ func TestTaskPod(t *testing.T) {
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), res.Message())
 			assert.False(tt, done, c.desc)
 
-			assert.Equal(tt, c.expectedPodIsTerminating, c.state.PodIsTerminating, c.desc)
+			assert.Equal(tt, c.expectedPodIsTerminating, c.state.IsPodTerminating(), c.desc)
 
 			if c.expectUpdatedPod {
 				expectedPod := newPod(c.state.Cluster(), c.state.TiCDC())

@@ -50,7 +50,7 @@ func TestTaskStatus(t *testing.T) {
 		expectedObj    *v1alpha1.TiKV
 	}{
 		{
-			desc: "no pod but healthy",
+			desc: "not ready",
 			state: &ReconcileContext{
 				State: &state{
 					tikv: fake.FakeObj(fakeTiKVName, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
@@ -83,13 +83,6 @@ func TestTaskStatus(t *testing.T) {
 				obj.Status.CurrentRevision = "keep"
 				obj.Status.Conditions = []metav1.Condition{
 					{
-						Type:               v1alpha1.CondReady,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             "Unhealthy",
-						Message:            "instance is not healthy",
-					},
-					{
 						Type:               v1alpha1.CondSuspended,
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
@@ -109,13 +102,20 @@ func TestTaskStatus(t *testing.T) {
 			}),
 		},
 		{
-			desc: "pod is healthy",
+			desc: "is ready",
 			state: &ReconcileContext{
 				State: &state{
 					tikv: fake.FakeObj(fakeTiKVName, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						obj.Generation = 3
 						obj.Labels = map[string]string{
 							v1alpha1.LabelKeyInstanceRevisionHash: newRevision,
+						}
+						obj.Status.Conditions = []metav1.Condition{
+							{
+								Type:               v1alpha1.CondReady,
+								Status:             metav1.ConditionTrue,
+								ObservedGeneration: 3,
+							},
 						}
 						return obj
 					}),
@@ -154,8 +154,6 @@ func TestTaskStatus(t *testing.T) {
 						Type:               v1alpha1.CondReady,
 						Status:             metav1.ConditionTrue,
 						ObservedGeneration: 3,
-						Reason:             "Healthy",
-						Message:            "instance is healthy",
 					},
 					{
 						Type:               v1alpha1.CondSuspended,
@@ -199,11 +197,11 @@ func TestTaskStatus(t *testing.T) {
 						})
 						return obj
 					}),
+					isPodTerminating: true,
 				},
-				IsPDAvailable:    true,
-				Store:            &pdv1.Store{},
-				StoreID:          fakeTiKVName,
-				PodIsTerminating: true,
+				IsPDAvailable: true,
+				Store:         &pdv1.Store{},
+				StoreID:       fakeTiKVName,
 			},
 
 			expectedStatus: task.SRetry,
@@ -217,79 +215,6 @@ func TestTaskStatus(t *testing.T) {
 				obj.Status.ID = fakeTiKVName
 				obj.Status.UpdateRevision = newRevision
 				obj.Status.Conditions = []metav1.Condition{
-					{
-						Type:               v1alpha1.CondReady,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             "Unhealthy",
-						Message:            "instance is not healthy",
-					},
-					{
-						Type:               v1alpha1.CondSuspended,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             v1alpha1.ReasonUnsuspended,
-						Message:            "instance is not suspended",
-					},
-					{
-						Type:               v1alpha1.TiKVCondLeadersEvicted,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             "NotEvicted",
-						Message:            "leaders are not all evicted",
-					},
-				}
-
-				return obj
-			}),
-		},
-		{
-			desc: "not serving",
-			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj(fakeTiKVName, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Generation = 3
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyInstanceRevisionHash: newRevision,
-						}
-						return obj
-					}),
-					pod: fake.FakeObj("aaa-tikv-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						obj.SetDeletionTimestamp(&now)
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyInstanceRevisionHash: oldRevision,
-						}
-						obj.Status.Phase = corev1.PodRunning
-						obj.Status.Conditions = append(obj.Status.Conditions, corev1.PodCondition{
-							Type:   corev1.PodReady,
-							Status: corev1.ConditionTrue,
-						})
-						return obj
-					}),
-				},
-				IsPDAvailable: true,
-				Store:         &pdv1.Store{},
-				StoreID:       fakeTiKVName,
-			},
-
-			expectedStatus: task.SWait,
-			expectedObj: fake.FakeObj(fakeTiKVName, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Generation = 3
-				obj.Labels = map[string]string{
-					v1alpha1.LabelKeyInstanceRevisionHash: newRevision,
-				}
-
-				obj.Status.ObservedGeneration = 3
-				obj.Status.ID = fakeTiKVName
-				obj.Status.UpdateRevision = newRevision
-				obj.Status.Conditions = []metav1.Condition{
-					{
-						Type:               v1alpha1.CondReady,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             "Unhealthy",
-						Message:            "instance is not healthy",
-					},
 					{
 						Type:               v1alpha1.CondSuspended,
 						Status:             metav1.ConditionFalse,
@@ -317,6 +242,13 @@ func TestTaskStatus(t *testing.T) {
 						obj.Generation = 3
 						obj.Labels = map[string]string{
 							v1alpha1.LabelKeyInstanceRevisionHash: newRevision,
+						}
+						obj.Status.Conditions = []metav1.Condition{
+							{
+								Type:               v1alpha1.CondReady,
+								Status:             metav1.ConditionTrue,
+								ObservedGeneration: 3,
+							},
 						}
 						return obj
 					}),
@@ -357,8 +289,6 @@ func TestTaskStatus(t *testing.T) {
 						Type:               v1alpha1.CondReady,
 						Status:             metav1.ConditionTrue,
 						ObservedGeneration: 3,
-						Reason:             "Healthy",
-						Message:            "instance is healthy",
 					},
 					{
 						Type:               v1alpha1.CondSuspended,
@@ -418,13 +348,6 @@ func TestTaskStatus(t *testing.T) {
 				obj.Status.ID = fakeTiKVName
 				obj.Status.UpdateRevision = newRevision
 				obj.Status.Conditions = []metav1.Condition{
-					{
-						Type:               v1alpha1.CondReady,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             "Unhealthy",
-						Message:            "instance is not healthy",
-					},
 					{
 						Type:               v1alpha1.CondSuspended,
 						Status:             metav1.ConditionFalse,

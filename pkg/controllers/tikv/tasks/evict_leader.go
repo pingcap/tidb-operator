@@ -25,7 +25,7 @@ func TaskEvictLeader(state *ReconcileContext) task.Task {
 		switch {
 		case state.Store == nil:
 			return task.Complete().With("store has been deleted or not created")
-		case state.PodIsTerminating:
+		case state.IsPodTerminating():
 			if !state.LeaderEvicting {
 				if err := state.PDClient.Underlay().BeginEvictLeader(ctx, state.StoreID); err != nil {
 					return task.Fail().With("cannot add evict leader scheduler: %v", err)

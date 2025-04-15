@@ -21,9 +21,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
 )
 
 type Object[T any] interface {
@@ -123,6 +128,36 @@ func GVK[T any, PT Object[T]](gv schema.GroupVersion) ChangeFunc[T, PT] {
 func UID[T any, PT Object[T]](uid string) ChangeFunc[T, PT] {
 	return func(obj PT) PT {
 		obj.SetUID(types.UID(uid))
+
+		return obj
+	}
+}
+
+func InstanceOwner[
+	S scope.Instance[F, T],
+	O any, PO Object[O],
+	F client.Object,
+	T runtime.Instance,
+](owner F) ChangeFunc[O, PO] {
+	return func(obj PO) PO {
+		ls := obj.GetLabels()
+		if ls == nil {
+			ls = map[string]string{}
+		}
+		ls[v1alpha1.LabelKeyManagedBy] = v1alpha1.LabelValManagedByOperator
+		ls[v1alpha1.LabelKeyComponent] = scope.Component[S]()
+		ls[v1alpha1.LabelKeyInstance] = owner.GetName()
+
+		obj.SetLabels(ls)
+
+		gvk, err := apiutil.GVKForObject(owner, scheme.Scheme)
+		if err != nil {
+			panic(err)
+		}
+
+		obj.SetOwnerReferences([]metav1.OwnerReference{
+			*metav1.NewControllerRef(owner, gvk),
+		})
 
 		return obj
 	}

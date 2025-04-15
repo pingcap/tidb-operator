@@ -34,6 +34,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
 
 func TestTaskStatusPersister(t *testing.T) {
@@ -261,6 +262,215 @@ func TestTaskInstanceConditionSuspended(t *testing.T) {
 	}
 }
 
+func TestTaskInstanceConditionReady(t *testing.T) {
+	cases := []struct {
+		desc    string
+		obj     *v1alpha1.PD
+		pod     *corev1.Pod
+		healthy bool
+
+		expectedStatusChanged bool
+		expectedStatus        task.Status
+		expectedObj           *v1alpha1.PD
+	}{
+		{
+			desc: "no pod",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				return obj
+			}),
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SWait,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unready(v1alpha1.ReasonPodNotCreated),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "pod is terminating",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				return obj
+			}),
+			pod: fake.FakeObj("aaa", fake.DeleteNow[corev1.Pod]()),
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SWait,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unready(v1alpha1.ReasonPodTerminating),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "pod is not ready",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				return obj
+			}),
+			pod: fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
+				obj.Status.Conditions = []corev1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionFalse,
+					},
+				}
+				return obj
+			}),
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SWait,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unready(v1alpha1.ReasonPodNotReady),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "pod is not running",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				return obj
+			}),
+			pod: fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
+				obj.Status.Conditions = []corev1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue,
+					},
+				}
+				return obj
+			}),
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SWait,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unready(v1alpha1.ReasonPodNotReady),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "instance is not healthy",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				return obj
+			}),
+			pod: fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
+				obj.Status.Phase = corev1.PodRunning
+				obj.Status.Conditions = []corev1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue,
+					},
+				}
+				return obj
+			}),
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SWait,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unready(v1alpha1.ReasonInstanceNotHealthy),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "instance is ready",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				return obj
+			}),
+			pod: fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
+				obj.Status.Phase = corev1.PodRunning
+				obj.Status.Conditions = []corev1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue,
+					},
+				}
+				return obj
+			}),
+			healthy: true,
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Ready(),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "instance has been ready",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Ready(),
+				}
+				return obj
+			}),
+			pod: fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
+				obj.Status.Phase = corev1.PodRunning
+				obj.Status.Conditions = []corev1.PodCondition{
+					{
+						Type:   corev1.PodReady,
+						Status: corev1.ConditionTrue,
+					},
+				}
+				return obj
+			}),
+			healthy: true,
+
+			expectedStatus: task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Ready(),
+				}
+				return obj
+			}),
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			ctrl := gomock.NewController(tt)
+			state := NewMockInstanceCondReadyUpdater[*v1alpha1.PD](ctrl)
+			state.EXPECT().Object().Return(c.obj)
+			state.EXPECT().Pod().Return(c.pod)
+			switch {
+			case c.pod == nil:
+			case !c.pod.GetDeletionTimestamp().IsZero():
+				state.EXPECT().IsPodTerminating().Return(true)
+			case !statefulset.IsPodRunningAndReady(c.pod):
+				state.EXPECT().IsPodTerminating().Return(false)
+			default:
+				state.EXPECT().IsPodTerminating().Return(false)
+				state.EXPECT().IsHealthy().Return(c.healthy)
+			}
+
+			if c.expectedStatusChanged {
+				state.EXPECT().SetStatusChanged()
+			}
+
+			ctx := context.Background()
+			res, done := task.RunTask(ctx, TaskInstanceConditionReady[scope.PD](state))
+			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
+			assert.False(tt, done, c.desc)
+			// ignore time
+			for i := range c.obj.Status.Conditions {
+				cond := &c.obj.Status.Conditions[i]
+				cond.LastTransitionTime = metav1.Time{}
+			}
+			assert.Equal(tt, c.expectedObj, c.obj, c.desc)
+		})
+	}
+}
+
 func TestTaskGroupConditionSuspended(t *testing.T) {
 	cases := []struct {
 		desc      string
@@ -471,7 +681,7 @@ func TestTaskGroupConditionReady(t *testing.T) {
 			expectedStatus:        task.SComplete,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				obj.Status.Conditions = []metav1.Condition{
-					*coreutil.Unready(),
+					*coreutil.Unready(v1alpha1.ReasonNotAllInstancesReady),
 				}
 				return obj
 			}),
@@ -480,14 +690,14 @@ func TestTaskGroupConditionReady(t *testing.T) {
 			desc: "no instances, not changed",
 			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				obj.Status.Conditions = []metav1.Condition{
-					*coreutil.Unready(),
+					*coreutil.Unready(v1alpha1.ReasonNotAllInstancesReady),
 				}
 				return obj
 			}),
 			expectedStatus: task.SComplete,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				obj.Status.Conditions = []metav1.Condition{
-					*coreutil.Unready(),
+					*coreutil.Unready(v1alpha1.ReasonNotAllInstancesReady),
 				}
 				return obj
 			}),
@@ -542,7 +752,7 @@ func TestTaskGroupConditionReady(t *testing.T) {
 			expectedStatus:        task.SComplete,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				obj.Status.Conditions = []metav1.Condition{
-					*coreutil.Unready(),
+					*coreutil.Unready(v1alpha1.ReasonNotAllInstancesReady),
 				}
 				return obj
 			}),

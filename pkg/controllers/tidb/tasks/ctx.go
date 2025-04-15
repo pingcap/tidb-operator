@@ -39,12 +39,6 @@ type ReconcileContext struct {
 
 	TiDBClient tidbapi.TiDBClient
 	PDClient   pdapi.PDClient
-
-	Healthy bool
-
-	// Pod cannot be updated when call DELETE API, so we have to set this field to indicate
-	// the underlay pod has been deleting
-	PodIsTerminating bool
 }
 
 func TaskContextInfoFromPDAndTiDB(state *ReconcileContext, c client.Client, cm pdm.PDClientManager) task.Task {
@@ -69,7 +63,9 @@ func TaskContextInfoFromPDAndTiDB(state *ReconcileContext, c client.Client, cm p
 			return task.Complete().With(
 				fmt.Sprintf("context without health info is completed, tidb can't be reached: %v", err))
 		}
-		state.Healthy = health
+		if health {
+			state.SetHealthy()
+		}
 
 		pdc, ok := cm.Get(pdm.PrimaryKey(ck.Namespace, ck.Name))
 		if !ok {

@@ -31,14 +31,8 @@ type ReconcileContext struct {
 
 	TiCDCClient ticdcapi.TiCDCClient
 
-	Healthy bool
-
 	MemberID string
 	IsOwner  bool
-
-	// Pod cannot be updated when call DELETE API, so we have to set this field to indicate
-	// the underlay pod has been deleting
-	PodIsTerminating bool
 }
 
 func TaskContextInfoFromTiCDC(state *ReconcileContext, c client.Client) task.Task {
@@ -64,7 +58,9 @@ func TaskContextInfoFromTiCDC(state *ReconcileContext, c client.Client) task.Tas
 			return task.Complete().With(
 				fmt.Sprintf("context without health info is completed, ticdc can't be reached: %v", err))
 		}
-		state.Healthy = healthy
+		if healthy {
+			state.SetHealthy()
+		}
 
 		status, err := state.TiCDCClient.GetStatus(ctx)
 		if err != nil {

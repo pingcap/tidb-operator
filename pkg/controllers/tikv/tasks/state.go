@@ -19,10 +19,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
-	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
 type state struct {
@@ -32,17 +30,22 @@ type state struct {
 	tikv    *v1alpha1.TiKV
 	pod     *corev1.Pod
 
+	// Pod cannot be updated when call DELETE API, so we have to set this field to indicate
+	// the underlay pod has been deleting
+	isPodTerminating bool
+
 	storeState    string
 	statusChanged bool
 }
 
 type State interface {
 	common.TiKVStateInitializer
-	common.PodStateInitializer
 
 	common.TiKVState
 	common.ClusterState
+
 	common.PodState
+	common.PodStateUpdater
 
 	common.InstanceState[*runtime.TiKV]
 
@@ -52,7 +55,9 @@ type State interface {
 	common.StatusPersister[*v1alpha1.TiKV]
 
 	common.StoreState
-	SetPod(*corev1.Pod)
+	common.StoreStateUpdater
+
+	common.HealthyState
 }
 
 func NewState(key types.NamespacedName) State {
@@ -78,11 +83,23 @@ func (s *state) Pod() *corev1.Pod {
 	return s.pod
 }
 
+func (s *state) IsPodTerminating() bool {
+	return s.isPodTerminating
+}
+
 func (s *state) Instance() *runtime.TiKV {
 	return runtime.FromTiKV(s.tikv)
 }
 
 func (s *state) SetPod(pod *corev1.Pod) {
+	s.pod = pod
+	if pod != nil && !pod.GetDeletionTimestamp().IsZero() {
+		s.isPodTerminating = true
+	}
+}
+
+func (s *state) DeletePod(pod *corev1.Pod) {
+	s.isPodTerminating = true
 	s.pod = pod
 }
 
@@ -105,15 +122,6 @@ func (s *state) TiKVInitializer() common.TiKVInitializer {
 		Initializer()
 }
 
-func (s *state) PodInitializer() common.PodInitializer {
-	return common.NewResource(s.SetPod).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Lazy[string](func() string {
-			return coreutil.PodName[scope.TiKV](s.tikv)
-		})).
-		Initializer()
-}
-
 func (s *state) GetStoreState() string {
 	return s.storeState
 }
@@ -124,4 +132,8 @@ func (s *state) SetStoreState(state string) {
 
 func (s *state) IsStoreUp() bool {
 	return s.storeState == v1alpha1.StoreStatePreparing || s.storeState == v1alpha1.StoreStateServing
+}
+
+func (s *state) IsHealthy() bool {
+	return s.IsStoreUp()
 }

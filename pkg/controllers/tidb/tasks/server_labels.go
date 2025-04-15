@@ -34,7 +34,7 @@ var (
 
 func TaskServerLabels(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("ServerLabels", func(ctx context.Context) task.Result {
-		if !state.Healthy || state.Pod() == nil || state.PodIsTerminating {
+		if !state.IsHealthy() || state.Pod() == nil || state.IsPodTerminating() {
 			return task.Complete().With("skip sync server labels as the instance is not healthy")
 		}
 		if state.PDClient == nil {

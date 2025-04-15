@@ -21,6 +21,7 @@ import (
 	"slices"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	kuberuntime "k8s.io/apimachinery/pkg/runtime"
@@ -126,11 +127,6 @@ func TaskContextTiCDC(state TiCDCStateInitializer, c client.Client) task.Task {
 	return taskContextResource("TiCDC", w, c, false)
 }
 
-func TaskContextPod(state PodStateInitializer, c client.Client) task.Task {
-	w := state.PodInitializer()
-	return taskContextResource("Pod", w, c, false)
-}
-
 func TaskContextPDGroup(state PDGroupStateInitializer, c client.Client) task.Task {
 	w := state.PDGroupInitializer()
 	return taskContextResource("PDGroup", w, c, false)
@@ -230,5 +226,31 @@ func TaskContextCluster[
 		}
 		state.SetCluster(cluster)
 		return task.Complete().With("cluster is set")
+	})
+}
+
+type ContextPodNewer[
+	F client.Object,
+] interface {
+	Object() F
+	SetPod(pod *corev1.Pod)
+}
+
+func TaskContextPod[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](state ContextPodNewer[F], c client.Client) task.Task {
+	return task.NameTaskFunc("ContextPod", func(ctx context.Context) task.Result {
+		pod, err := apicall.GetPod[S](ctx, c, state.Object())
+		if err != nil {
+			return task.Fail().With("cannot get pod: %v", err)
+		}
+		if pod == nil {
+			return task.Complete().With("pod doesn't exist")
+		}
+
+		state.SetPod(pod)
+		return task.Complete().With("pod is set")
 	})
 }

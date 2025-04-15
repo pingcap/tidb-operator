@@ -67,7 +67,7 @@ func TestState(t *testing.T) {
 					}
 					return obj
 				}),
-				fake.FakeObj[corev1.Pod]("aaa-pd-xxx"),
+				fake.FakeObj("aaa-pd-xxx", fake.InstanceOwner[scope.PD, corev1.Pod](fake.FakeObj[v1alpha1.PD]("aaa-xxx"))),
 			},
 
 			expected: &state{
@@ -104,7 +104,7 @@ func TestState(t *testing.T) {
 						return obj
 					}),
 				},
-				pod: fake.FakeObj[corev1.Pod]("aaa-pd-xxx"),
+				pod: fake.FakeObj("aaa-pd-xxx", fake.InstanceOwner[scope.PD, corev1.Pod](fake.FakeObj[v1alpha1.PD]("aaa-xxx"))),
 			},
 		},
 	}
@@ -123,7 +123,7 @@ func TestState(t *testing.T) {
 				common.TaskContextPD(s, fc),
 				common.TaskContextCluster[scope.PD](s, fc),
 				common.TaskContextPDSlice(s, fc),
-				common.TaskContextPod(s, fc),
+				common.TaskContextPod[scope.PD](s, fc),
 			))
 			assert.Equal(tt, task.SComplete, res.Status(), c.desc)
 			assert.False(tt, done, c.desc)

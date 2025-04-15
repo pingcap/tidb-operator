@@ -19,29 +19,33 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
-	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
 type state struct {
 	key types.NamespacedName
 
-	cluster       *v1alpha1.Cluster
-	tiflash       *v1alpha1.TiFlash
-	pod           *corev1.Pod
+	cluster *v1alpha1.Cluster
+	tiflash *v1alpha1.TiFlash
+	pod     *corev1.Pod
+
+	// Pod cannot be updated when call DELETE API, so we have to set this field to indicate
+	// the underlay pod has been deleting
+	isPodTerminating bool
+
 	storeState    string
 	statusChanged bool
 }
 
 type State interface {
 	common.TiFlashStateInitializer
-	common.PodStateInitializer
 
 	common.TiFlashState
 	common.ClusterState
+
 	common.PodState
+	common.PodStateUpdater
 
 	common.InstanceState[*runtime.TiFlash]
 
@@ -51,8 +55,9 @@ type State interface {
 	common.StatusPersister[*v1alpha1.TiFlash]
 
 	common.StoreState
+	common.StoreStateUpdater
 
-	SetPod(*corev1.Pod)
+	common.HealthyState
 }
 
 func NewState(key types.NamespacedName) State {
@@ -78,11 +83,23 @@ func (s *state) Pod() *corev1.Pod {
 	return s.pod
 }
 
+func (s *state) IsPodTerminating() bool {
+	return s.isPodTerminating
+}
+
 func (s *state) Instance() *runtime.TiFlash {
 	return runtime.FromTiFlash(s.tiflash)
 }
 
 func (s *state) SetPod(pod *corev1.Pod) {
+	s.pod = pod
+	if pod != nil && !pod.GetDeletionTimestamp().IsZero() {
+		s.isPodTerminating = true
+	}
+}
+
+func (s *state) DeletePod(pod *corev1.Pod) {
+	s.isPodTerminating = true
 	s.pod = pod
 }
 
@@ -105,15 +122,6 @@ func (s *state) TiFlashInitializer() common.TiFlashInitializer {
 		Initializer()
 }
 
-func (s *state) PodInitializer() common.PodInitializer {
-	return common.NewResource(s.SetPod).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Lazy[string](func() string {
-			return coreutil.PodName[scope.TiFlash](s.tiflash)
-		})).
-		Initializer()
-}
-
 func (s *state) GetStoreState() string {
 	return s.storeState
 }
@@ -124,4 +132,8 @@ func (s *state) SetStoreState(state string) {
 
 func (s *state) IsStoreUp() bool {
 	return s.storeState == v1alpha1.StoreStatePreparing || s.storeState == v1alpha1.StoreStateServing
+}
+
+func (s *state) IsHealthy() bool {
+	return s.IsStoreUp()
 }

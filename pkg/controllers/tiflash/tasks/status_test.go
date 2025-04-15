@@ -50,7 +50,7 @@ func TestTaskStatus(t *testing.T) {
 		expectedObj    *v1alpha1.TiFlash
 	}{
 		{
-			desc: "no pod but healthy",
+			desc: "not ready",
 			state: &ReconcileContext{
 				State: &state{
 					tiflash: fake.FakeObj(fakeTiFlashName, func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
@@ -82,13 +82,6 @@ func TestTaskStatus(t *testing.T) {
 				obj.Status.CurrentRevision = "keep"
 				obj.Status.Conditions = []metav1.Condition{
 					{
-						Type:               v1alpha1.CondReady,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             "Unhealthy",
-						Message:            "instance is not healthy",
-					},
-					{
 						Type:               v1alpha1.CondSuspended,
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
@@ -101,13 +94,20 @@ func TestTaskStatus(t *testing.T) {
 			}),
 		},
 		{
-			desc: "pod is healthy",
+			desc: "is ready",
 			state: &ReconcileContext{
 				State: &state{
 					tiflash: fake.FakeObj(fakeTiFlashName, func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
 						obj.Generation = 3
 						obj.Labels = map[string]string{
 							v1alpha1.LabelKeyInstanceRevisionHash: newRevision,
+						}
+						obj.Status.Conditions = []metav1.Condition{
+							{
+								Type:               v1alpha1.CondReady,
+								Status:             metav1.ConditionTrue,
+								ObservedGeneration: 3,
+							},
 						}
 						return obj
 					}),
@@ -145,8 +145,6 @@ func TestTaskStatus(t *testing.T) {
 						Type:               v1alpha1.CondReady,
 						Status:             metav1.ConditionTrue,
 						ObservedGeneration: 3,
-						Reason:             "Healthy",
-						Message:            "instance is healthy",
 					},
 					{
 						Type:               v1alpha1.CondSuspended,
@@ -183,10 +181,10 @@ func TestTaskStatus(t *testing.T) {
 						})
 						return obj
 					}),
+					isPodTerminating: true,
 				},
-				Store:            &pdv1.Store{},
-				StoreID:          fakeTiFlashName,
-				PodIsTerminating: true,
+				Store:   &pdv1.Store{},
+				StoreID: fakeTiFlashName,
 			},
 
 			expectedStatus: task.SRetry,
@@ -200,71 +198,6 @@ func TestTaskStatus(t *testing.T) {
 				obj.Status.ID = fakeTiFlashName
 				obj.Status.UpdateRevision = newRevision
 				obj.Status.Conditions = []metav1.Condition{
-					{
-						Type:               v1alpha1.CondReady,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             "Unhealthy",
-						Message:            "instance is not healthy",
-					},
-					{
-						Type:               v1alpha1.CondSuspended,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             v1alpha1.ReasonUnsuspended,
-						Message:            "instance is not suspended",
-					},
-				}
-
-				return obj
-			}),
-		},
-		{
-			desc: "not serving",
-			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj(fakeTiFlashName, func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Generation = 3
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyInstanceRevisionHash: newRevision,
-						}
-						return obj
-					}),
-					pod: fake.FakeObj("aaa-tiflash-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						obj.SetDeletionTimestamp(&now)
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyInstanceRevisionHash: oldRevision,
-						}
-						obj.Status.Phase = corev1.PodRunning
-						obj.Status.Conditions = append(obj.Status.Conditions, corev1.PodCondition{
-							Type:   corev1.PodReady,
-							Status: corev1.ConditionTrue,
-						})
-						return obj
-					}),
-				},
-				Store:   &pdv1.Store{},
-				StoreID: fakeTiFlashName,
-			},
-
-			expectedStatus: task.SWait,
-			expectedObj: fake.FakeObj(fakeTiFlashName, func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				obj.Generation = 3
-				obj.Labels = map[string]string{
-					v1alpha1.LabelKeyInstanceRevisionHash: newRevision,
-				}
-
-				obj.Status.ObservedGeneration = 3
-				obj.Status.ID = fakeTiFlashName
-				obj.Status.UpdateRevision = newRevision
-				obj.Status.Conditions = []metav1.Condition{
-					{
-						Type:               v1alpha1.CondReady,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             "Unhealthy",
-						Message:            "instance is not healthy",
-					},
 					{
 						Type:               v1alpha1.CondSuspended,
 						Status:             metav1.ConditionFalse,
