@@ -4568,6 +4568,22 @@ TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/
 </tr>
 <tr>
 <td>
+<code>timeSynced</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TimeCompleted is the time at which the backup was completed.
+TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a>
+TimeSynced is the time at which the backup was synced to kernel state.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>timeCompleted</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta">
@@ -4576,8 +4592,6 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>TimeCompleted is the time at which the backup was completed.
-TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
 </td>
 </tr>
 <tr>

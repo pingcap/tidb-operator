@@ -1117,6 +1117,8 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 	}
 	defer etcdCli.Close()
 
+	backup.Status.TimeSynced = metav1.Time{Time: time.Now()}
+
 	logKey := path.Join(streamKeyPrefix, taskInfoPath, name)
 	_, err = bm.queryEtcdKey(etcdCli, logKey, true)
 	if err != nil {
@@ -1157,14 +1159,14 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 }
 
 func (bm *backupManager) queryEtcdKey(etcdCli pdapi.PDEtcdClient, keyPath string, required bool) ([]*pdapi.KeyValue, error) {
-    kvs, err := etcdCli.Get(keyPath, true)
-    if err != nil {
-        return nil, fmt.Errorf("query etcd key %s failed: %v", keyPath, err)
-    }
-    if required && len(kvs) == 0 {
-        return nil, fmt.Errorf("required etcd key %s not found", keyPath)
-    }
-    return kvs, nil
+	kvs, err := etcdCli.Get(keyPath, true)
+	if err != nil {
+		return nil, fmt.Errorf("query etcd key %s failed: %v", keyPath, err)
+	}
+	if required && len(kvs) == 0 {
+		return nil, fmt.Errorf("required etcd key %s not found", keyPath)
+	}
+	return kvs, nil
 }
 
 func (bm *backupManager) parsePauseStatus(kvs *pdapi.KeyValue, logPrefix string) (bool, string, error) {
