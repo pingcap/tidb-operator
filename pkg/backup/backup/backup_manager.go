@@ -1153,25 +1153,25 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 		}
 	}
 
-	expectState := backup.Status.Phase
+	kernelState := backup.Spec.LogSubcommand
 	if !pause{
-		expectState = v1alpha1.BackupRunning
+		kernelState = v1alpha1.LogStartCommand
 	} else if pauseInfo.Severity == SeverityError {
-		expectState = v1alpha1.BackupFailed
+		kernelState = v1alpha1.LogKernelError
 	} else if pauseInfo.Severity == SeverityManual {
-		expectState = v1alpha1.BackupPaused
+		kernelState = v1alpha1.LogPauseCommand
 	}
 
-	if backup.Status.Phase != expectState {
+	if backup.Spec.LogSubcommand != kernelState {
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Type:    expectState,
+			Command: kernelState,
+			Type:    v1alpha1.BackupComplete,
 			Status:  corev1.ConditionTrue,
 			Reason:  "LogbackupForceSync",
 			Message: errMsg,
 		}, nil)
 	}
 	
-
 	return true, nil
 }
 
