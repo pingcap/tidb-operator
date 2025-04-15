@@ -101,6 +101,7 @@ type fakeObjectState[
 ] struct {
 	obj     F
 	cluster *v1alpha1.Cluster
+	pod     *corev1.Pod
 }
 
 func (s *fakeObjectState[F]) Object() F {
@@ -109,6 +110,10 @@ func (s *fakeObjectState[F]) Object() F {
 
 func (s *fakeObjectState[F]) SetCluster(c *v1alpha1.Cluster) {
 	s.cluster = c
+}
+
+func (s *fakeObjectState[F]) SetPod(pod *corev1.Pod) {
+	s.pod = pod
 }
 
 func newFakeObjectState[
@@ -187,9 +192,10 @@ func TestTaskContextCluster(t *testing.T) {
 }
 
 func TestTaskContextPod(t *testing.T) {
+	const name = "bbb"
 	cases := []struct {
 		desc          string
-		state         *fakeState[corev1.Pod]
+		state         *fakeObjectState[*v1alpha1.PD]
 		objs          []client.Object
 		unexpectedErr bool
 
@@ -198,32 +204,30 @@ func TestTaskContextPod(t *testing.T) {
 	}{
 		{
 			desc: "success",
-			state: &fakeState[corev1.Pod]{
-				ns:   "aaa",
-				name: "aaa",
-			},
+			state: newFakeObjectState(fake.FakeObj(name, func(obj *v1alpha1.PD) *v1alpha1.PD {
+				return obj
+			})),
 			objs: []client.Object{
-				fake.FakeObj("aaa", fake.SetNamespace[corev1.Pod]("aaa")),
+				fake.FakeObj(name, fake.InstanceOwner[scope.PD, corev1.Pod](fake.FakeObj[v1alpha1.PD](name))),
 			},
 			expectedResult: task.SComplete,
-			expectedObj:    fake.FakeObj("aaa", fake.SetNamespace[corev1.Pod]("aaa")),
+			expectedObj:    fake.FakeObj(name, fake.InstanceOwner[scope.PD, corev1.Pod](fake.FakeObj[v1alpha1.PD](name))),
 		},
 		{
 			desc: "not found",
-			state: &fakeState[corev1.Pod]{
-				ns:   "aaa",
-				name: "aaa",
-			},
+			state: newFakeObjectState(fake.FakeObj(name, func(obj *v1alpha1.PD) *v1alpha1.PD {
+				return obj
+			})),
+			objs:           []client.Object{},
 			expectedResult: task.SComplete,
 		},
 		{
 			desc: "has unexpected error",
-			state: &fakeState[corev1.Pod]{
-				ns:   "aaa",
-				name: "aaa",
-			},
+			state: newFakeObjectState(fake.FakeObj(name, func(obj *v1alpha1.PD) *v1alpha1.PD {
+				return obj
+			})),
 			objs: []client.Object{
-				fake.FakeObj("aaa", fake.SetNamespace[corev1.Pod]("aaa")),
+				fake.FakeObj(name, fake.InstanceOwner[scope.PD, corev1.Pod](fake.FakeObj[v1alpha1.PD](name))),
 			},
 			unexpectedErr:  true,
 			expectedResult: task.SFail,
@@ -241,11 +245,10 @@ func TestTaskContextPod(t *testing.T) {
 				fc.WithError("*", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
 			}
 
-			s := &fakePodState{s: c.state}
-			res, done := task.RunTask(context.Background(), TaskContextPod(s, fc))
+			res, done := task.RunTask(context.Background(), TaskContextPod[scope.PD](c.state, fc))
 			assert.Equal(tt, c.expectedResult, res.Status(), c.desc)
 			assert.False(tt, done, c.desc)
-			assert.Equal(tt, c.expectedObj, c.state.obj, c.desc)
+			assert.Equal(tt, c.expectedObj, c.state.pod, c.desc)
 		})
 	}
 }

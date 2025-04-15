@@ -47,17 +47,19 @@ const (
 
 func TaskSuspendPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("PodSuspend", func(ctx context.Context) task.Result {
-		if state.Pod() == nil {
+		pod := state.Pod()
+		if pod == nil {
 			return task.Complete().With("pod has been deleted")
 		}
 		regionCount := 0
 		if state.Store != nil {
 			regionCount = state.Store.RegionCount
 		}
-		if err := DeletePodWithGracePeriod(ctx, c, state.Pod(), regionCount); err != nil {
+		if err := DeletePodWithGracePeriod(ctx, c, pod, regionCount); err != nil {
 			return task.Fail().With("can't delete pod of tikv: %w", err)
 		}
-		state.PodIsTerminating = true
+		state.DeletePod(pod)
+
 		return task.Wait().With("pod is deleting")
 	})
 }
@@ -66,7 +68,8 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		expected := newPod(state.Cluster(), state.TiKV(), state.StoreID)
-		if state.Pod() == nil {
+		pod := state.Pod()
+		if pod == nil {
 			if err := c.Apply(ctx, expected); err != nil {
 				return task.Fail().With("can't apply pod of tikv: %w", err)
 			}
@@ -78,23 +81,22 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 		// Now we cannot minimize the deletion grace period because of a bug
 		// See https://github.com/kubernetes/kubernetes/issues/83916.
 		// TODO(liubo02): support minimize the deletion grace period seconds
-		if !state.Pod().GetDeletionTimestamp().IsZero() {
-			state.PodIsTerminating = true
+		if !pod.GetDeletionTimestamp().IsZero() {
 			// key will be requeued after the pod is changed
 			return task.Wait().With("pod is deleting")
 		}
 
-		if !reloadable.CheckTiKVPod(state.TiKV(), state.Pod()) {
+		if !reloadable.CheckTiKVPod(state.TiKV(), pod) {
 			logger.Info("will recreate the pod")
 			regionCount := 0
 			if state.Store != nil {
 				regionCount = state.Store.RegionCount
 			}
-			if err := DeletePodWithGracePeriod(ctx, c, state.Pod(), regionCount); err != nil {
+			if err := DeletePodWithGracePeriod(ctx, c, pod, regionCount); err != nil {
 				return task.Fail().With("can't minimize the deletion grace period of pod of tikv: %w", err)
 			}
 
-			state.PodIsTerminating = true
+			state.DeletePod(pod)
 			return task.Wait().With("pod is deleting")
 		}
 

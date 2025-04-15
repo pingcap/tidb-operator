@@ -22,9 +22,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
-	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
 
 func TaskStatusUnknown() task.Task {
@@ -36,21 +37,12 @@ func TaskStatusUnknown() task.Task {
 //nolint:gocyclo // refactor if possible
 func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Status", func(ctx context.Context) task.Result {
-		needUpdate := false
+		needUpdate := state.IsStatusChanged()
 		pd := state.PD()
 		pod := state.Pod()
-		// TODO(liubo02): simplify it
-		var healthy bool
-
-		if pod != nil &&
-			statefulset.IsPodRunningAndReady(pod) &&
-			!state.PodIsTerminating &&
-			state.Healthy {
-			healthy = true
-		}
+		ready := coreutil.IsReady[scope.PD](pd)
 
 		needUpdate = syncInitializedCond(pd, state.Initialized) || needUpdate
-		needUpdate = syncHealthCond(pd, healthy) || needUpdate
 		needUpdate = syncSuspendCond(pd) || needUpdate
 
 		if state.MemberID != "" {
@@ -59,7 +51,7 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		needUpdate = SetIfChanged(&pd.Status.IsLeader, state.IsLeader) || needUpdate
 		needUpdate = SetIfChanged(&pd.Status.ObservedGeneration, pd.Generation) || needUpdate
 		needUpdate = SetIfChanged(&pd.Status.UpdateRevision, pd.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
-		if healthy {
+		if ready {
 			needUpdate = SetIfChanged(&pd.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 		}
 
@@ -68,38 +60,17 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 				return task.Fail().With("cannot update status: %v", err)
 			}
 		}
-		if state.PodIsTerminating {
+		if state.IsPodTerminating() {
 			//nolint:mnd // refactor to use a constant
 			return task.Retry(5 * time.Second).With("pod is terminating, retry after it's terminated")
 		}
 
-		if !healthy || !state.Initialized {
+		if !ready || !state.Initialized {
 			return task.Wait().With("pd may not be initialized or healthy, wait for next event")
 		}
 		// TODO(csuzhangxc): if we reach here, is "ClusterID" always set?
 
 		return task.Complete().With("status is synced")
-	})
-}
-
-func syncHealthCond(pd *v1alpha1.PD, healthy bool) bool {
-	var (
-		status = metav1.ConditionFalse
-		reason = "Unhealthy"
-		msg    = "instance is not healthy"
-	)
-	if healthy {
-		status = metav1.ConditionTrue
-		reason = "Healthy"
-		msg = "instance is healthy"
-	}
-
-	return meta.SetStatusCondition(&pd.Status.Conditions, metav1.Condition{
-		Type:               v1alpha1.CondReady,
-		Status:             status,
-		ObservedGeneration: pd.Generation,
-		Reason:             reason,
-		Message:            msg,
 	})
 }
 

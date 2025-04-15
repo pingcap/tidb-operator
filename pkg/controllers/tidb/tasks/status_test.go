@@ -49,7 +49,7 @@ func TestTaskStatus(t *testing.T) {
 		expectedObj    *v1alpha1.TiDB
 	}{
 		{
-			desc: "no pod but healthy",
+			desc: "not ready",
 			state: &ReconcileContext{
 				State: &state{
 					tidb: fake.FakeObj(fakeTiDBName, func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
@@ -61,8 +61,8 @@ func TestTaskStatus(t *testing.T) {
 						obj.Status.ObservedGeneration = 3
 						return obj
 					}),
+					healthy: true,
 				},
-				Healthy: true,
 			},
 
 			expectedStatus: task.SWait,
@@ -77,13 +77,6 @@ func TestTaskStatus(t *testing.T) {
 				obj.Status.CurrentRevision = "keep"
 				obj.Status.Conditions = []metav1.Condition{
 					{
-						Type:               v1alpha1.CondReady,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             "Unhealthy",
-						Message:            "instance is not healthy",
-					},
-					{
 						Type:               v1alpha1.CondSuspended,
 						Status:             metav1.ConditionFalse,
 						ObservedGeneration: 3,
@@ -96,13 +89,20 @@ func TestTaskStatus(t *testing.T) {
 			}),
 		},
 		{
-			desc: "pod is healthy",
+			desc: "is ready",
 			state: &ReconcileContext{
 				State: &state{
 					tidb: fake.FakeObj(fakeTiDBName, func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
 						obj.Generation = 3
 						obj.Labels = map[string]string{
 							v1alpha1.LabelKeyInstanceRevisionHash: newRevision,
+						}
+						obj.Status.Conditions = []metav1.Condition{
+							{
+								Type:               v1alpha1.CondReady,
+								Status:             metav1.ConditionTrue,
+								ObservedGeneration: 3,
+							},
 						}
 						return obj
 					}),
@@ -117,8 +117,8 @@ func TestTaskStatus(t *testing.T) {
 						})
 						return obj
 					}),
+					healthy: true,
 				},
-				Healthy: true,
 			},
 
 			expectedStatus: task.SComplete,
@@ -136,8 +136,6 @@ func TestTaskStatus(t *testing.T) {
 						Type:               v1alpha1.CondReady,
 						Status:             metav1.ConditionTrue,
 						ObservedGeneration: 3,
-						Reason:             "Healthy",
-						Message:            "instance is healthy",
 					},
 					{
 						Type:               v1alpha1.CondSuspended,
@@ -174,63 +172,8 @@ func TestTaskStatus(t *testing.T) {
 						})
 						return obj
 					}),
-				},
-				PodIsTerminating: true,
-				Healthy:          true,
-			},
-
-			expectedStatus: task.SRetry,
-			expectedObj: fake.FakeObj(fakeTiDBName, func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
-				obj.Generation = 3
-				obj.Labels = map[string]string{
-					v1alpha1.LabelKeyInstanceRevisionHash: newRevision,
-				}
-
-				obj.Status.ObservedGeneration = 3
-				obj.Status.UpdateRevision = newRevision
-				obj.Status.Conditions = []metav1.Condition{
-					{
-						Type:               v1alpha1.CondReady,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             "Unhealthy",
-						Message:            "instance is not healthy",
-					},
-					{
-						Type:               v1alpha1.CondSuspended,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             v1alpha1.ReasonUnsuspended,
-						Message:            "instance is not suspended",
-					},
-				}
-
-				return obj
-			}),
-		},
-		{
-			desc: "pod is ready but tidb is not healthy",
-			state: &ReconcileContext{
-				State: &state{
-					tidb: fake.FakeObj(fakeTiDBName, func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
-						obj.Generation = 3
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyInstanceRevisionHash: newRevision,
-						}
-						return obj
-					}),
-					pod: fake.FakeObj("aaa-tidb-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						obj.SetDeletionTimestamp(&now)
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyInstanceRevisionHash: oldRevision,
-						}
-						obj.Status.Phase = corev1.PodRunning
-						obj.Status.Conditions = append(obj.Status.Conditions, corev1.PodCondition{
-							Type:   corev1.PodReady,
-							Status: corev1.ConditionTrue,
-						})
-						return obj
-					}),
+					isPodTerminating: true,
+					healthy:          true,
 				},
 			},
 
@@ -244,13 +187,6 @@ func TestTaskStatus(t *testing.T) {
 				obj.Status.ObservedGeneration = 3
 				obj.Status.UpdateRevision = newRevision
 				obj.Status.Conditions = []metav1.Condition{
-					{
-						Type:               v1alpha1.CondReady,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             "Unhealthy",
-						Message:            "instance is not healthy",
-					},
 					{
 						Type:               v1alpha1.CondSuspended,
 						Status:             metav1.ConditionFalse,

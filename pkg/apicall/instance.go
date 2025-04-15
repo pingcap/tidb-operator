@@ -41,6 +41,10 @@ func GetPod[
 		return nil, err
 	}
 
+	if len(pl.Items) == 0 {
+		return nil, nil
+	}
+
 	if len(pl.Items) != 1 {
 		return nil, fmt.Errorf("expected only 1 pod, but now %d", len(pl.Items))
 	}

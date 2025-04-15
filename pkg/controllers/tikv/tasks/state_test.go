@@ -49,7 +49,7 @@ func TestState(t *testing.T) {
 					return obj
 				}),
 				fake.FakeObj[v1alpha1.Cluster]("aaa"),
-				fake.FakeObj[corev1.Pod]("aaa-tikv-xxx"),
+				fake.FakeObj("aaa-tikv-xxx", fake.InstanceOwner[scope.TiKV, corev1.Pod](fake.FakeObj[v1alpha1.TiKV]("aaa-xxx"))),
 			},
 
 			expected: &state{
@@ -61,7 +61,7 @@ func TestState(t *testing.T) {
 					return obj
 				}),
 				cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-				pod:     fake.FakeObj[corev1.Pod]("aaa-tikv-xxx"),
+				pod:     fake.FakeObj("aaa-tikv-xxx", fake.InstanceOwner[scope.TiKV, corev1.Pod](fake.FakeObj[v1alpha1.TiKV]("aaa-xxx"))),
 			},
 		},
 	}
@@ -79,7 +79,7 @@ func TestState(t *testing.T) {
 			res, done := task.RunTask(ctx, task.Block(
 				common.TaskContextTiKV(s, fc),
 				common.TaskContextCluster[scope.TiKV](s, fc),
-				common.TaskContextPod(s, fc),
+				common.TaskContextPod[scope.TiKV](s, fc),
 			))
 			assert.Equal(tt, task.SComplete, res.Status(), c.desc)
 			assert.False(tt, done, c.desc)

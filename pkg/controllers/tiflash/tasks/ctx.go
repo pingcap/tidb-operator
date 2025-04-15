@@ -35,10 +35,6 @@ type ReconcileContext struct {
 	Store       *pdv1.Store
 	StoreID     string
 	StoreLabels []*metapb.StoreLabel
-
-	// Pod cannot be updated when call DELETE API, so we have to set this field to indicate
-	// the underlay pod has been deleting
-	PodIsTerminating bool
 }
 
 func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task.Task {

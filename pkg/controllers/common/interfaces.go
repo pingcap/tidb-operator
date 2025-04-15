@@ -246,13 +246,38 @@ type (
 	}
 	PodState interface {
 		Pod() *corev1.Pod
+		IsPodTerminating() bool
+	}
+	PodStateUpdater interface {
+		// It will be called after get or update api calls to k8s
+		SetPod(pod *corev1.Pod)
+		// Pod cannot be updated when call DELETE API, so we have to mark pod is deleting after calling DELETE api
+		DeletePod(pod *corev1.Pod)
 	}
 )
 
 type StoreState interface {
 	GetStoreState() string
-	SetStoreState(string)
 	// IsStoreUp returns true if the store state is `Preparing` or `Serving`,
 	// which means the store is in the state of providing services.
 	IsStoreUp() bool
+}
+
+type StoreStateUpdater interface {
+	SetStoreState(string)
+}
+
+type HealthyState interface {
+	// It means the instance is healthy to serve.
+	// Normally, it's from PD or api exposed by the instance.
+	// Now the operator checks it just like a liveness/readiness prober.
+	// It may be removed if all components support /ready api in the future.
+	// And then we can use pod's ready condition directly to check whether the instance
+	// is ready.
+	// But now, we still probe health from the operator.
+	IsHealthy() bool
+}
+
+type HealthyStateUpdater interface {
+	SetHealthy()
 }
