@@ -65,7 +65,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		state.IsLeader = m.IsLeader
 
 		// set available and trust health info only when member info is valid
-		if !m.Invalid {
+		if !m.Invalid && m.Health {
 			state.SetHealthy()
 		}
 
