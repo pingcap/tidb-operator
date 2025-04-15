@@ -117,10 +117,6 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		}
 	}
 
-	if v1alpha1.IsBackupComplete(backup) || v1alpha1.IsBackupFailed(backup) || v1alpha1.IsBackupInvalid(backup) {
-		return nil
-	}
-
 	// validate backup
 	if err = bm.validateBackup(backup); err != nil {
 		klog.Errorf("backup %s/%s validate error %v.", ns, name, err)
@@ -134,13 +130,17 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 
 	// skip backup
 	skip := false
-	backup.Status.TimeSynced = metav1.Time{Time: time.Now()}
+	backup.Status.TimeSynced = &metav1.Time{Time: time.Now()}
 	if skip, err = bm.skipBackupSync(backup); err != nil {
 		klog.Errorf("backup %s/%s skip error %v.", ns, name, err)
 		return err
 	}
 	if skip {
 		klog.Infof("backup %s/%s is already done and skip sync.", ns, name)
+		return nil
+	}
+
+	if v1alpha1.IsBackupComplete(backup) || v1alpha1.IsBackupFailed(backup) || v1alpha1.IsBackupInvalid(backup) {
 		return nil
 	}
 
@@ -1132,7 +1132,7 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 		return false, err
 	}
 
-	pauseState, errMsg, err := bm.parsePauseStatus(pauseKVs[0], logPrefix)
+	isPaused, errMsg, err := bm.parsePauseStatus(pauseKVs, logPrefix)
 	if err != nil {
 		return false, err
 	}
@@ -1148,7 +1148,7 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 		return true, nil
 	}
 
-	kernelState := determineKernelState(pauseState)
+	kernelState := determineKernelState(isPaused)
 	bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 		Command: kernelState,
 		Type:    v1alpha1.BackupComplete,
@@ -1170,8 +1170,11 @@ func (bm *backupManager) queryEtcdKey(etcdCli pdapi.PDEtcdClient, keyPath string
 	return kvs, nil
 }
 
-func (bm *backupManager) parsePauseStatus(kvs *pdapi.KeyValue, logPrefix string) (bool, string, error) {
-	pauseInfo, err := NewPauseV2Info(kvs)
+func (bm *backupManager) parsePauseStatus(kvs []*pdapi.KeyValue, logPrefix string) (bool, string, error) {
+	if len(kvs) == 0 {
+		return false, "", nil
+	}
+	pauseInfo, err := NewPauseV2Info(kvs[0])
 	if err != nil {
 		return false, "", fmt.Errorf("%s parse pause info failed, err: %v", logPrefix, err)
 	}
