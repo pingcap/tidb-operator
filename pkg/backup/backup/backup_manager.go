@@ -134,6 +134,7 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 
 	// skip backup
 	skip := false
+	backup.Status.TimeSynced = metav1.Time{Time: time.Now()}
 	if skip, err = bm.skipBackupSync(backup); err != nil {
 		klog.Errorf("backup %s/%s skip error %v.", ns, name, err)
 		return err
@@ -1118,8 +1119,6 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 		return false, fmt.Errorf("%s get etcd client failed, err: %v", logPrefix, err)
 	}
 	defer etcdCli.Close()
-
-	backup.Status.TimeSynced = metav1.Time{Time: time.Now()}
 
 	logKey := path.Join(streamKeyPrefix, taskInfoPath, name)
 	_, err = bm.queryEtcdKey(etcdCli, logKey, true)
