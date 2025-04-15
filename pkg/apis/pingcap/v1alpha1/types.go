@@ -2480,8 +2480,6 @@ const (
 	LogPauseCommand LogSubCommandType = "log-pause"
 	// LogResumeCommand is the resume command of log backup.
 	LogResumeCommand LogSubCommandType = "log-resume"
-	// LogKernelError is the kernel error command of log backup.
-	LogKernelError LogSubCommandType = "log-error"
 	// LogUnknownCommand is the unknown command of log backup.
 	LogUnknownCommand LogSubCommandType = "log-unknown"
 )

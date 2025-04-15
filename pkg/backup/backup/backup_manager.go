@@ -1098,81 +1098,98 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 		return true, nil
 	}
 
-	ns := backup.Namespace
-	name := backup.Name
+	ns, name := backup.Namespace, backup.Name
+	logPrefix := fmt.Sprintf("log backup %s/%s", ns, name)
+
 	tc, err := bm.backupTracker.GetLogBackupTC(backup)
-	if err != nil {
-		return false, err
-	}
-	if tc == nil {
-		return false, fmt.Errorf("backup %s/%s get tc failed", ns, name)
+	if err != nil || tc == nil {
+		return false, fmt.Errorf("%s get tidbcluster failed, err: %v", logPrefix, err)
 	}
 
-	etcdCli, err := bm.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Name,
-		tc.IsTLSClusterEnabled(), pdapi.ClusterRef(tc.Spec.ClusterDomain))
+	etcdCli, err := bm.deps.PDControl.GetPDEtcdClient(
+		pdapi.Namespace(tc.Namespace),
+		tc.Name,
+		tc.IsTLSClusterEnabled(),
+		pdapi.ClusterRef(tc.Spec.ClusterDomain),
+	)
 	if err != nil {
-		klog.Errorf("get log backup %s/%s pd cli error %v", ns, name, err)
-		return false, err
+		return false, fmt.Errorf("%s get etcd client failed, err: %v", logPrefix, err)
 	}
 	defer etcdCli.Close()
 
 	logKey := path.Join(streamKeyPrefix, taskInfoPath, name)
-	logKvs, err := etcdCli.Get(logKey, true)
+	_, err = bm.queryEtcdKey(etcdCli, logKey, true)
 	if err != nil {
-		klog.Errorf("get log backup %s/%s key error %v", ns, name, err)
-	}
-	if len(logKvs) < 1 {
-		return false, fmt.Errorf("log backup %s/%s not found in etcd", ns, name)
+		return false, err
 	}
 
-	pause := false
 	pauseKey := path.Join(streamKeyPrefix, taskPausePath, name)
-	pauseKvs, err := etcdCli.Get(pauseKey, true)
+	pauseKVs, err := bm.queryEtcdKey(etcdCli, pauseKey, false)
 	if err != nil {
-		klog.Errorf("get log backup %s/%s pause key error %v", ns, name, err)
 		return false, err
 	}
-	if len(pauseKvs) < 1 {
-		klog.Infof("log backup %s/%s running normally", ns, name)
-	}
-	pauseInfo, err := NewPauseV2Info(pauseKvs[0])
+
+	pauseState, errMsg, err := bm.parsePauseStatus(pauseKVs[0], logPrefix)
 	if err != nil {
-		klog.Errorf("parse log backup %s/%s pause key error %v", ns, name, err)
 		return false, err
 	}
-	pause = true
 
-	errMsg := ""
-	if pauseInfo.Severity == SeverityError {
-		errMsg, err = pauseInfo.ParseError()
-		if err != nil {
-			return false, err
-		} else {
-			klog.Errorf("log backup %s/%s paused by error: %s", ns, name, errMsg)
-			return false, fmt.Errorf("log backup %s/%s paused by error: %s", ns, name, errMsg)
-		}
-	}
-
-	kernelState := backup.Spec.LogSubcommand
-	if !pause{
-		kernelState = v1alpha1.LogStartCommand
-	} else if pauseInfo.Severity == SeverityError {
-		kernelState = v1alpha1.LogKernelError
-	} else if pauseInfo.Severity == SeverityManual {
-		kernelState = v1alpha1.LogPauseCommand
-	}
-
-	if backup.Spec.LogSubcommand != kernelState {
+	if errMsg != "" {
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Command: kernelState,
-			Type:    v1alpha1.BackupComplete,
+			Command: backup.Spec.LogSubcommand,
+			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
-			Reason:  "LogbackupForceSync",
+			Reason:  "LogBackupKernelError",
 			Message: errMsg,
 		}, nil)
+		return true, nil
 	}
-	
+
+	kernelState := determineKernelState(pauseState)
+	bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Command: kernelState,
+		Type:    v1alpha1.BackupComplete,
+		Status:  corev1.ConditionTrue,
+		Reason:  "LogBackupKernelSync",
+		Message: "",
+	}, nil)
 	return true, nil
+}
+
+func (bm *backupManager) queryEtcdKey(etcdCli pdapi.PDEtcdClient, keyPath string, required bool) ([]*pdapi.KeyValue, error) {
+    kvs, err := etcdCli.Get(keyPath, true)
+    if err != nil {
+        return nil, fmt.Errorf("query etcd key %s failed: %v", keyPath, err)
+    }
+    if required && len(kvs) == 0 {
+        return nil, fmt.Errorf("required etcd key %s not found", keyPath)
+    }
+    return kvs, nil
+}
+
+func (bm *backupManager) parsePauseStatus(kvs *pdapi.KeyValue, logPrefix string) (bool, string, error) {
+	pauseInfo, err := NewPauseV2Info(kvs)
+	if err != nil {
+		return false, "", fmt.Errorf("%s parse pause info failed, err: %v", logPrefix, err)
+	}
+
+	if pauseInfo.Severity == SeverityError {
+		errMsg, parseErr := pauseInfo.ParseError()
+		if parseErr != nil {
+			return false, "", fmt.Errorf("%s parse error failed, err: %v", logPrefix, parseErr)
+		}
+		klog.ErrorS(nil, "Log backup paused by error", "namespace", logPrefix, "error", errMsg)
+		return true, errMsg, nil
+	}
+
+	return true, "", nil
+}
+
+func determineKernelState(paused bool) v1alpha1.LogSubCommandType {
+	if paused {
+		return v1alpha1.LogPauseCommand
+	}
+	return v1alpha1.LogStartCommand
 }
 
 // skipLogBackupSync skips log backup, returns true if it can be skipped.
