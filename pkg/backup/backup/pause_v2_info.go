@@ -53,7 +53,7 @@ type PauseV2Info struct {
 	// OperatorPID is the pid of the operator process.
 	OperatorPID int `json:"operation_pid"`
 	// OperationTime is the time when the task was paused.
-	OperationTime RFC3339Time `json:"operation_time"`
+	OperationTime time.Time `json:"operation_time"`
 	// PayloadType is the mime type of the payload.
 	// For now, only the two types are supported:
 	// - application/x-protobuf?messagetype=brpb.StreamBackupError
