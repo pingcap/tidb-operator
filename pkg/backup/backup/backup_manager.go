@@ -1149,14 +1149,15 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 		return true, nil
 	}
 
-	kernelState := determineKernelState(isPaused)
-	bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-		Command: kernelState,
-		Type:    v1alpha1.BackupComplete,
-		Status:  corev1.ConditionTrue,
-		Reason:  "LogBackupKernelSync",
-		Message: "",
-	}, updateStatus)
+	if kernelState := determineKernelState(isPaused); kernelState != backup.Spec.LogSubcommand {
+		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Command: kernelState,
+			Type:    v1alpha1.BackupComplete,
+			Status:  corev1.ConditionTrue,
+			Reason:  "LogBackupKernelSync",
+		}, updateStatus)
+	}
+
 	return true, nil
 }
 

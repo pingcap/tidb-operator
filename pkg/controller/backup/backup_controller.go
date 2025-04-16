@@ -179,16 +179,9 @@ func (c *Controller) updateBackup(cur interface{}) {
 		return
 	}
 
-	if v1alpha1.IsBackupComplete(newBackup) {
-		if newBackup.Spec.Mode != v1alpha1.BackupModeLog {
-			klog.V(4).Infof("backup %s/%s is complete, skipping.", ns, name)
-			return
-		}
-		if newBackup.Status.TimeSynced != nil && time.Since(newBackup.Status.TimeSynced.Time) < 1*time.Minute && v1alpha1.IsBackupComplete(newBackup) {
-			klog.V(4).Infof("backup %s/%s is complete, skipping.", ns, name)
-			return
-		}
-		klog.V(4).Infof("backup %s/%s is complete, but should sync periodically, enqueue", ns, name)
+	if newBackup.Spec.Mode != v1alpha1.BackupModeLog && v1alpha1.IsBackupComplete(newBackup) {
+		klog.V(4).Infof("backup %s/%s is complete, skipping.", ns, name)
+		return
 	}
 
 	if v1alpha1.IsBackupFailed(newBackup) {
