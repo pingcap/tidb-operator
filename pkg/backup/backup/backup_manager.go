@@ -1121,21 +1121,12 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 	}
 	defer etcdCli.Close()
 
-	var exists bool
-	logKey := path.Join(streamKeyPrefix, taskInfoPath, name)
-	checkLogExist := func() error {
-		kvs, err := bm.queryEtcdKey(etcdCli, logKey, false)
-		if err != nil {
-			return fmt.Errorf("%s query etcd key %s failed: %v", logPrefix, logKey, err)
-		}
-		
-		exists = (len(kvs) > 0)
-		return nil 
-	}	
-	if err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, checkLogExist); err != nil {
-		return false, fmt.Errorf("%s query etcd key %s failed: %v", logPrefix, logKey, err)
+
+	exist, err := bm.checkLogKeyExist(etcdCli, ns, name)
+	if err != nil {
+		return false, fmt.Errorf("%s check log backup key exist failed, err: %v", logPrefix, err)
 	}
-	if !exists {
+	if !exist {
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: backup.Spec.LogSubcommand,
 			Type:    v1alpha1.BackupFailed,
@@ -1143,34 +1134,23 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 			Reason:  "LogBackupKeyNotFound",
 			Message: "log backup etcd key not found in routine sync",
 		}, updateStatus)
-		return false, fmt.Errorf("%s log backup etcd key %s not found", logPrefix, logKey)
+		return false, fmt.Errorf("%s log backup etcd key not found", logPrefix)
 	}
 
 	pauseStatus, err := bm.parsePauseStatus(etcdCli, ns, name)
 	if err != nil {
 		return false, err
 	}
-
-	if pauseStatus.Message != "" {
-		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Command: backup.Spec.LogSubcommand,
-			Type:    v1alpha1.BackupFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "LogBackupKernelError",
-			Message: pauseStatus.Message,
-		}, updateStatus)
-		return true, nil
-	}
-
 	if kernelState := determineKernelState(pauseStatus.IsPaused); kernelState != backup.Spec.LogSubcommand {
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: kernelState,
 			Type:    v1alpha1.BackupComplete,
 			Status:  corev1.ConditionTrue,
 			Reason:  "LogBackupKernelSync",
+			Message: pauseStatus.Message,
 		}, updateStatus)
 	}
-
+	
 	return true, nil
 }
 
@@ -1183,6 +1163,24 @@ func (bm *backupManager) queryEtcdKey(etcdCli pdapi.PDEtcdClient, keyPath string
 		return nil, fmt.Errorf("required etcd key %s not found", keyPath)
 	}
 	return kvs, nil
+}
+
+func (bm *backupManager) checkLogKeyExist(etcdCli pdapi.PDEtcdClient, ns, name string) (bool, error) {
+	var exists bool
+	logKey := path.Join(streamKeyPrefix, taskInfoPath, name)
+	checkLogExist := func() error {
+		kvs, err := bm.queryEtcdKey(etcdCli, logKey, false)
+		if err != nil {
+			return fmt.Errorf("Backup %s/%s query etcd key %s failed: %v", ns, name, logKey, err)
+		}
+		
+		exists = (len(kvs) > 0)
+		return nil 
+	}	
+	if err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, checkLogExist); err != nil {
+		return false, fmt.Errorf("Backup %s/%s query etcd key %s failed: %v", ns, name, logKey, err)
+	}
+	return exists, nil
 }
 
 func (bm *backupManager) parsePauseStatus(etcdCli pdapi.PDEtcdClient, ns, name string) (PauseStatus,error) {
