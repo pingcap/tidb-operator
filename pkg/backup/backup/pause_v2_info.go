@@ -66,7 +66,7 @@ type PauseV2Info struct {
 func NewPauseV2Info(kv *pdapi.KeyValue) (*PauseV2Info, error) {
 	rawPauseV2 := kv.Value
 	if len(rawPauseV2) == 0 {
-		return nil, nil
+		return nil, errors.Errorf("pause payload is empty in %s", kv.Key)
 	}
 	var pauseV2 PauseV2Info
 	err := json.Unmarshal(rawPauseV2, &pauseV2)
