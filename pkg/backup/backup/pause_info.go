@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/juju/errors"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 )
 
 // RFC3339Time is a wrapper of `time.Time` that marshals to a RFC3339
@@ -30,6 +29,12 @@ const (
 	SeverityError  = "ERROR"
 	SeverityManual = "MANUAL"
 )
+
+type PauseStatus struct {
+	IsPaused   bool
+	ErrMessage string
+	Error      error
+}
 
 type StreamBackupError struct {
 	// the unix epoch time (in millisecs) of the time the error reported.
@@ -63,17 +68,22 @@ type PauseV2Info struct {
 	Payload []byte `json:"payload"`
 }
 
-func NewPauseV2Info(kv *pdapi.KeyValue) (*PauseV2Info, error) {
-	rawPauseV2 := kv.Value
-	if len(rawPauseV2) == 0 {
-		return nil, errors.Errorf("pause payload is empty in %s", kv.Key)
-	}
+func NewPauseV2Info(data []byte) (*PauseV2Info, error) {
 	var pauseV2 PauseV2Info
-	err := json.Unmarshal(rawPauseV2, &pauseV2)
+	err := json.Unmarshal(data, &pauseV2)
 	if err != nil {
-		return nil, errors.Annotatef(err, "failed to unmarshal pause payload for kv pair %s", kv.Key)
+		return nil, errors.Annotatef(err, "failed to unmarshal pause payload")
 	}
 	return &pauseV2, nil
+}
+
+func ParseBackupError(data []byte) (string, error) {
+	var sbErr StreamBackupError
+	err := json.Unmarshal(data, &sbErr)
+	if err != nil {
+		return "", errors.Annotatef(err, "failed to unmarshal backup error")
+	}
+	return fmt.Sprintf("Paused by error(store %d): %s", sbErr.StoreId, &sbErr.ErrorMessage), nil
 }
 
 func (p *PauseV2Info) ParseError() (string, error) {
@@ -94,12 +104,11 @@ func (p *PauseV2Info) ParseError() (string, error) {
 		if msgType != "brpb.StreamBackupError" {
 			return "", errors.Errorf("only type brpb.StreamBackupError is supported (%s)", p.PayloadType)
 		}
-		var msg StreamBackupError
-		err := json.Unmarshal(p.Payload, &msg)
+		errMsg, err := ParseBackupError(p.Payload)
 		if err != nil {
-			return "", errors.Annotatef(err, "failed to unmarshal the payload")
+			return "", err
 		}
-		return fmt.Sprintf("Paused by error(store %d): %s", msg.StoreId, msg.ErrorMessage), nil
+		return errMsg, nil
 	default:
 		return "", errors.Errorf("unsupported payload type %s", m)
 	}
