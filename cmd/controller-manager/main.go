@@ -28,7 +28,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/controller/autoscaler"
 	"github.com/pingcap/tidb-operator/pkg/controller/backup"
 	"github.com/pingcap/tidb-operator/pkg/controller/backupschedule"
 	compact "github.com/pingcap/tidb-operator/pkg/controller/compactbackup"
@@ -190,9 +189,6 @@ func main() {
 			tidbmonitor.NewController(deps),
 			tidbngmonitoring.NewController(deps),
 			tidbdashboard.NewController(deps),
-		}
-		if features.DefaultFeatureGate.Enabled(features.AutoScaling) {
-			controllers = append(controllers, autoscaler.NewController(deps))
 		}
 
 		// Start informer factories after all controllers are initialized.

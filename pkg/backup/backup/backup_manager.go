@@ -54,7 +54,6 @@ type backupManager struct {
 func NewBackupManager(deps *controller.Dependencies) backup.BackupManager {
 	statusUpdater := controller.NewRealBackupConditionUpdater(deps.Clientset, deps.BackupLister, deps.Recorder)
 	manifestFetchers := []ManifestFetcher{
-		NewTiDBClusterAutoScalerFetcher(deps.TiDBClusterAutoScalerLister),
 		NewTiDBDashboardFetcher(deps.TiDBDashboardLister),
 		NewTiDBInitializerFetcher(deps.TiDBInitializerLister),
 		NewTiDBMonitorFetcher(deps.TiDBMonitorLister),
@@ -214,7 +213,6 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 		}
 
 		var tc *v1alpha1.TidbCluster
-		// bm.deps.TiDBClusterAutoScalerLister.List()
 		tc, err = bm.deps.TiDBClusterLister.TidbClusters(backupNamespace).Get(backup.Spec.BR.Cluster)
 		if err != nil {
 			reason := fmt.Sprintf("failed to fetch tidbcluster %s/%s", backupNamespace, backup.Spec.BR.Cluster)

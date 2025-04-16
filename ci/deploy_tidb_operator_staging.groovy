@@ -32,8 +32,6 @@ admissionWebhook:
   failurePolicy:
     validation: Fail
     mutation: Fail
-features:
-  - AutoScaling=true
 '''
 
 def call(BUILD_BRANCH) {
