@@ -118,20 +118,6 @@ func TestGetBackupScheduleOwnerRef(t *testing.T) {
 	g.Expect(*ref.BlockOwnerDeletion).To(BeTrue())
 }
 
-func TestGetTiDBClusterAutoScalerOwnerRef(t *testing.T) {
-	g := NewGomegaWithT(t)
-
-	tc := newTidbClusterAutoScaler()
-	tc.UID = types.UID("demo-uid")
-	ref := GetTiDBClusterAutoScalerOwnerRef(tc)
-	g.Expect(ref.APIVersion).To(Equal(tidbClusterAutoScalerKind.GroupVersion().String()))
-	g.Expect(ref.Kind).To(Equal(tidbClusterAutoScalerKind.Kind))
-	g.Expect(ref.Name).To(Equal(tc.GetName()))
-	g.Expect(ref.UID).To(Equal(types.UID("demo-uid")))
-	g.Expect(*ref.Controller).To(BeTrue())
-	g.Expect(*ref.BlockOwnerDeletion).To(BeTrue())
-}
-
 func TestGetTiDBNGMonitoringOwnerRef(t *testing.T) {
 	g := NewGomegaWithT(t)
 
@@ -575,22 +561,6 @@ func newTidbCluster() *v1alpha1.TidbCluster {
 			TiKV:            &v1alpha1.TiKVSpec{},
 			TiDB:            &v1alpha1.TiDBSpec{},
 			PVReclaimPolicy: &retainPVP,
-		},
-	}
-	return tc
-}
-
-func newTidbClusterAutoScaler() *v1alpha1.TidbClusterAutoScaler {
-	tc := &v1alpha1.TidbClusterAutoScaler{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "demo",
-			Namespace: metav1.NamespaceDefault,
-		},
-		Spec: v1alpha1.TidbClusterAutoScalerSpec{
-			Cluster: v1alpha1.TidbClusterRef{
-				Name:      "demo",
-				Namespace: metav1.NamespaceDefault,
-			},
 		},
 	}
 	return tc

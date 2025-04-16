@@ -554,23 +554,6 @@ func GetS3Secret(namespace, accessKey, secretKey string) *corev1.Secret {
 	}
 }
 
-func GetTidbClusterAutoScaler(name, ns string, tc *v1alpha1.TidbCluster, tm *v1alpha1.TidbMonitor) *v1alpha1.TidbClusterAutoScaler {
-	return &v1alpha1.TidbClusterAutoScaler{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: ns,
-		},
-		Spec: v1alpha1.TidbClusterAutoScalerSpec{
-			Cluster: v1alpha1.TidbClusterRef{
-				Name:      tc.Name,
-				Namespace: tc.Namespace,
-			},
-			TiKV: nil,
-			TiDB: nil,
-		},
-	}
-}
-
 const (
 	BRType     = "br"
 	DumperType = "dumper"

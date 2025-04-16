@@ -28,8 +28,6 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource":                  schema_pkg_apis_pingcap_v1alpha1_AutoResource(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule":                      schema_pkg_apis_pingcap_v1alpha1_AutoRule(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AzblobStorageProvider":         schema_pkg_apis_pingcap_v1alpha1_AzblobStorageProvider(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BRConfig":                      schema_pkg_apis_pingcap_v1alpha1_BRConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Backup":                        schema_pkg_apis_pingcap_v1alpha1_Backup(ref),
@@ -39,8 +37,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupScheduleSpec":            schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BackupSpec":                    schema_pkg_apis_pingcap_v1alpha1_BackupSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BasicAuth":                     schema_pkg_apis_pingcap_v1alpha1_BasicAuth(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BasicAutoScalerSpec":           schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BasicAutoScalerStatus":         schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerStatus(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.BatchDeleteOption":             schema_pkg_apis_pingcap_v1alpha1_BatchDeleteOption(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Binlog":                        schema_pkg_apis_pingcap_v1alpha1_Binlog(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CleanOption":                   schema_pkg_apis_pingcap_v1alpha1_CleanOption(ref),
@@ -60,8 +56,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DiscoverySpec":                 schema_pkg_apis_pingcap_v1alpha1_DiscoverySpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.DumplingConfig":                schema_pkg_apis_pingcap_v1alpha1_DumplingConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Experimental":                  schema_pkg_apis_pingcap_v1alpha1_Experimental(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig":                schema_pkg_apis_pingcap_v1alpha1_ExternalConfig(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint":              schema_pkg_apis_pingcap_v1alpha1_ExternalEndpoint(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Failover":                      schema_pkg_apis_pingcap_v1alpha1_Failover(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.FileLogConfig":                 schema_pkg_apis_pingcap_v1alpha1_FileLogConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Flash":                         schema_pkg_apis_pingcap_v1alpha1_Flash(ref),
@@ -117,7 +111,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.RestoreSpec":                   schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.S3StorageProvider":             schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SafeTLSConfig":                 schema_pkg_apis_pingcap_v1alpha1_SafeTLSConfig(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SecretRef":                     schema_pkg_apis_pingcap_v1alpha1_SecretRef(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Security":                      schema_pkg_apis_pingcap_v1alpha1_Security(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ServiceSpec":                   schema_pkg_apis_pingcap_v1alpha1_ServiceSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Status":                        schema_pkg_apis_pingcap_v1alpha1_Status(ref),
@@ -162,14 +155,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVTitanDBConfig":             schema_pkg_apis_pingcap_v1alpha1_TiKVTitanDBConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiKVUnifiedReadPoolConfig":     schema_pkg_apis_pingcap_v1alpha1_TiKVUnifiedReadPoolConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiProxySpec":                   schema_pkg_apis_pingcap_v1alpha1_TiProxySpec(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbAutoScalerSpec":            schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbAutoScalerStatus":          schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerStatus(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbCluster":                   schema_pkg_apis_pingcap_v1alpha1_TidbCluster(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScaler":         schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScaler(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScalerList":     schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerList(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScalerRef":      schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerRef(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScalerSpec":     schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerSpec(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScalerStatus":   schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerStatus(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterList":               schema_pkg_apis_pingcap_v1alpha1_TidbClusterList(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef":                schema_pkg_apis_pingcap_v1alpha1_TidbClusterRef(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterSpec":               schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref),
@@ -182,13 +168,10 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbInitializerStatus":         schema_pkg_apis_pingcap_v1alpha1_TidbInitializerStatus(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbMonitor":                   schema_pkg_apis_pingcap_v1alpha1_TidbMonitor(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbMonitorList":               schema_pkg_apis_pingcap_v1alpha1_TidbMonitorList(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbMonitorRef":                schema_pkg_apis_pingcap_v1alpha1_TidbMonitorRef(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbMonitorSpec":               schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbNGMonitoring":              schema_pkg_apis_pingcap_v1alpha1_TidbNGMonitoring(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbNGMonitoringList":          schema_pkg_apis_pingcap_v1alpha1_TidbNGMonitoringList(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbNGMonitoringSpec":          schema_pkg_apis_pingcap_v1alpha1_TidbNGMonitoringSpec(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TikvAutoScalerSpec":            schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref),
-		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TikvAutoScalerStatus":          schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerStatus(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TxnLocalLatches":               schema_pkg_apis_pingcap_v1alpha1_TxnLocalLatches(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerConfig":                  schema_pkg_apis_pingcap_v1alpha1_WorkerConfig(ref),
 		"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.WorkerSpec":                    schema_pkg_apis_pingcap_v1alpha1_WorkerSpec(ref),
@@ -457,94 +440,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"k8s.io/apimachinery/pkg/apis/meta/v1.TypeMeta":                  schema_pkg_apis_meta_v1_TypeMeta(ref),
 		"k8s.io/apimachinery/pkg/apis/meta/v1.UpdateOptions":             schema_pkg_apis_meta_v1_UpdateOptions(ref),
 		"k8s.io/apimachinery/pkg/apis/meta/v1.WatchEvent":                schema_pkg_apis_meta_v1_WatchEvent(ref),
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_AutoResource(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "AutoResource describes the resource type definitions",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"cpu": {
-						SchemaProps: spec.SchemaProps{
-							Description: "CPU defines the CPU of this resource type",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
-						},
-					},
-					"memory": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Memory defines the memory of this resource type",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
-						},
-					},
-					"storage": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Storage defines the storage of this resource type",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
-						},
-					},
-					"count": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Count defines the max availabel count of this resource type",
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-				},
-				Required: []string{"cpu", "memory"},
-			},
-		},
-		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/api/resource.Quantity"},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_AutoRule(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "AutoRule describes the rules for auto-scaling with PD API",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"max_threshold": {
-						SchemaProps: spec.SchemaProps{
-							Description: "MaxThreshold defines the threshold to scale out",
-							Default:     0,
-							Type:        []string{"number"},
-							Format:      "double",
-						},
-					},
-					"min_threshold": {
-						SchemaProps: spec.SchemaProps{
-							Description: "MinThreshold defines the threshold to scale in, not applicable to `storage` rule",
-							Type:        []string{"number"},
-							Format:      "double",
-						},
-					},
-					"resource_types": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ResourceTypes defines the resource types that can be used for scaling",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
-									},
-								},
-							},
-						},
-					},
-				},
-				Required: []string{"max_threshold"},
-			},
-		},
 	}
 }
 
@@ -1341,92 +1236,6 @@ func schema_pkg_apis_pingcap_v1alpha1_BasicAuth(ref common.ReferenceCallback) co
 		},
 		Dependencies: []string{
 			"k8s.io/api/core/v1.SecretKeySelector"},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "BasicAutoScalerSpec describes the basic spec for auto-scaling",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"rules": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Rules defines the rules for auto-scaling with PD API",
-							Type:        []string{"object"},
-							AdditionalProperties: &spec.SchemaOrBool{
-								Allows: true,
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule"),
-									},
-								},
-							},
-						},
-					},
-					"scaleInIntervalSeconds": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in If not set, the default ScaleInIntervalSeconds will be set to 500",
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-					"scaleOutIntervalSeconds": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out If not set, the default ScaleOutIntervalSeconds will be set to 300",
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-					"external": {
-						SchemaProps: spec.SchemaProps{
-							Description: "External makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
-						},
-					},
-					"resources": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Resources represent the resource type definitions that can be used for TiDB/TiKV The key is resource_type name of the resource",
-							Type:        []string{"object"},
-							AdditionalProperties: &spec.SchemaOrBool{
-								Allows: true,
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_BasicAutoScalerStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "BasicAutoScalerStatus describe the basic auto-scaling status",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"lastAutoScalingTimestamp": {
-						SchemaProps: spec.SchemaProps{
-							Description: "LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
@@ -3469,83 +3278,6 @@ func schema_pkg_apis_pingcap_v1alpha1_Experimental(ref common.ReferenceCallback)
 				},
 			},
 		},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_ExternalConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "ExternalConfig represents the external config.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"endpoint": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ExternalEndpoint makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
-							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint"),
-						},
-					},
-					"maxReplicas": {
-						SchemaProps: spec.SchemaProps{
-							Description: "maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale out.",
-							Default:     0,
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-				},
-				Required: []string{"maxReplicas"},
-			},
-		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalEndpoint"},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_ExternalEndpoint(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "ExternalEndpoint describes the external service endpoint which provides the ability to get the tikv/tidb auto-scaling recommended replicas",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"host": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Host indicates the external service's host",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"port": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Port indicates the external service's port",
-							Default:     0,
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-					"path": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Path indicates the external service's path",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"tlsSecret": {
-						SchemaProps: spec.SchemaProps{
-							Description: "TLSSecret indicates the Secret which stores the TLS configuration. If set, the operator will use https to communicate to the external service",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SecretRef"),
-						},
-					},
-				},
-				Required: []string{"host", "port", "path"},
-			},
-		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SecretRef"},
 	}
 }
 
@@ -8876,34 +8608,6 @@ func schema_pkg_apis_pingcap_v1alpha1_SafeTLSConfig(ref common.ReferenceCallback
 		},
 		Dependencies: []string{
 			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SecretOrConfigMap", "k8s.io/api/core/v1.SecretKeySelector"},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_SecretRef(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "SecretRef indicates to secret ref",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"name": {
-						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
-						},
-					},
-					"namespace": {
-						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
-						},
-					},
-				},
-				Required: []string{"name", "namespace"},
-			},
-		},
 	}
 }
 
@@ -14484,92 +14188,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TiProxySpec(ref common.ReferenceCallback) 
 	}
 }
 
-func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "TidbAutoScalerSpec describes the spec for tidb auto-scaling",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"rules": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Rules defines the rules for auto-scaling with PD API",
-							Type:        []string{"object"},
-							AdditionalProperties: &spec.SchemaOrBool{
-								Allows: true,
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule"),
-									},
-								},
-							},
-						},
-					},
-					"scaleInIntervalSeconds": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in If not set, the default ScaleInIntervalSeconds will be set to 500",
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-					"scaleOutIntervalSeconds": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out If not set, the default ScaleOutIntervalSeconds will be set to 300",
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-					"external": {
-						SchemaProps: spec.SchemaProps{
-							Description: "External makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
-						},
-					},
-					"resources": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Resources represent the resource type definitions that can be used for TiDB/TiKV The key is resource_type name of the resource",
-							Type:        []string{"object"},
-							AdditionalProperties: &spec.SchemaOrBool{
-								Allows: true,
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_TidbAutoScalerStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "TidbAutoScalerStatus describe the auto-scaling status of tidb",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"lastAutoScalingTimestamp": {
-						SchemaProps: spec.SchemaProps{
-							Description: "LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
-	}
-}
-
 func schema_pkg_apis_pingcap_v1alpha1_TidbCluster(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -14604,201 +14222,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbCluster(ref common.ReferenceCallback) 
 		},
 		Dependencies: []string{
 			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterSpec"},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScaler(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "TidbClusterAutoScaler is the control script's spec",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"kind": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"apiVersion": {
-						SchemaProps: spec.SchemaProps{
-							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"spec": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Spec describes the state of the TidbClusterAutoScaler",
-							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScalerSpec"),
-						},
-					},
-					"status": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Status describe the status of the TidbClusterAutoScaler",
-							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScalerStatus"),
-						},
-					},
-				},
-				Required: []string{"spec"},
-			},
-		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScalerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScalerStatus"},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerList(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "TidbClusterAutoScalerList is TidbClusterAutoScaler list",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"kind": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"apiVersion": {
-						SchemaProps: spec.SchemaProps{
-							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"items": {
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScaler"),
-									},
-								},
-							},
-						},
-					},
-				},
-				Required: []string{"items"},
-			},
-		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterAutoScaler"},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerRef(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "TidbClusterAutoScalerRef indicates to the target auto-scaler ref",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"name": {
-						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
-						},
-					},
-					"namespace": {
-						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
-						},
-					},
-				},
-				Required: []string{"name", "namespace"},
-			},
-		},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "TidbAutoScalerSpec describes the state of the TidbClusterAutoScaler",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"cluster": {
-						SchemaProps: spec.SchemaProps{
-							Description: "TidbClusterRef describe the target TidbCluster",
-							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef"),
-						},
-					},
-					"tikv": {
-						SchemaProps: spec.SchemaProps{
-							Description: "TiKV represents the auto-scaling spec for tikv",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TikvAutoScalerSpec"),
-						},
-					},
-					"tidb": {
-						SchemaProps: spec.SchemaProps{
-							Description: "TiDB represents the auto-scaling spec for tidb",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbAutoScalerSpec"),
-						},
-					},
-				},
-				Required: []string{"cluster"},
-			},
-		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbAutoScalerSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TikvAutoScalerSpec"},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_TidbClusterAutoScalerStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "TidbClusterAutoScalerStatus describe the whole status",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"tikv": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Tikv describes the status of each group for the tikv in the last auto-scaling reconciliation",
-							Type:        []string{"object"},
-							AdditionalProperties: &spec.SchemaOrBool{
-								Allows: true,
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TikvAutoScalerStatus"),
-									},
-								},
-							},
-						},
-					},
-					"tidb": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Tidb describes the status of each group for the tidb in the last auto-scaling reconciliation",
-							Type:        []string{"object"},
-							AdditionalProperties: &spec.SchemaOrBool{
-								Allows: true,
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbAutoScalerStatus"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbAutoScalerStatus", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TikvAutoScalerStatus"},
 	}
 }
 
@@ -16211,42 +15634,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorList(ref common.ReferenceCallba
 	}
 }
 
-func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorRef(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "TidbMonitorRef reference to a TidbMonitor",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"namespace": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Namespace is the namespace that TidbMonitor object locates, default to the same namespace with TidbClusterAutoScaler",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"name": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Name is the name of TidbMonitor object",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"grafanaEnabled": {
-						SchemaProps: spec.SchemaProps{
-							Description: "GrafanaEnabled indicate whether the grafana is enabled for this target tidbmonitor",
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
-				},
-				Required: []string{"name"},
-			},
-		},
-	}
-}
-
 func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -16982,92 +16369,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbNGMonitoringSpec(ref common.ReferenceC
 		},
 		Dependencies: []string{
 			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.NGMonitoringSpec", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SuspendAction", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TidbClusterRef", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount"},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "TikvAutoScalerSpec describes the spec for tikv auto-scaling",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"rules": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Rules defines the rules for auto-scaling with PD API",
-							Type:        []string{"object"},
-							AdditionalProperties: &spec.SchemaOrBool{
-								Allows: true,
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule"),
-									},
-								},
-							},
-						},
-					},
-					"scaleInIntervalSeconds": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ScaleInIntervalSeconds represents the duration seconds between each auto-scaling-in If not set, the default ScaleInIntervalSeconds will be set to 500",
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-					"scaleOutIntervalSeconds": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ScaleOutIntervalSeconds represents the duration seconds between each auto-scaling-out If not set, the default ScaleOutIntervalSeconds will be set to 300",
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
-					"external": {
-						SchemaProps: spec.SchemaProps{
-							Description: "External makes the auto-scaler controller able to query the external service to fetch the recommended replicas for TiKV/TiDB",
-							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"),
-						},
-					},
-					"resources": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Resources represent the resource type definitions that can be used for TiDB/TiKV The key is resource_type name of the resource",
-							Type:        []string{"object"},
-							AdditionalProperties: &spec.SchemaOrBool{
-								Allows: true,
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoResource", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.AutoRule", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.ExternalConfig"},
-	}
-}
-
-func schema_pkg_apis_pingcap_v1alpha1_TikvAutoScalerStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "TikvAutoScalerStatus describe the auto-scaling status of tikv",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"lastAutoScalingTimestamp": {
-						SchemaProps: spec.SchemaProps{
-							Description: "LastAutoScalingTimestamp describes the last auto-scaling timestamp for the component(tidb/tikv)",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 

@@ -25324,16 +25324,6 @@ spec:
             type: object
           status:
             properties:
-              auto-scaler:
-                properties:
-                  name:
-                    type: string
-                  namespace:
-                    type: string
-                required:
-                - name
-                - namespace
-                type: object
               clusterID:
                 type: string
               conditions:

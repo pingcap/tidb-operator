@@ -65,8 +65,6 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&TidbInitializerList{},
 		&TidbMonitor{},
 		&TidbMonitorList{},
-		&TidbClusterAutoScaler{},
-		&TidbClusterAutoScalerList{},
 		&DMCluster{},
 		&DMClusterList{},
 		&TidbNGMonitoring{},

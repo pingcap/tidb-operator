@@ -29,8 +29,6 @@ type RestoreExpansion interface{}
 
 type TidbClusterExpansion interface{}
 
-type TidbClusterAutoScalerExpansion interface{}
-
 type TidbDashboardExpansion interface{}
 
 type TidbInitializerExpansion interface{}

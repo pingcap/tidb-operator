@@ -36,7 +36,6 @@ ADD bin/ginkgo /usr/local/bin/
 ADD bin/e2e.test /usr/local/bin/
 ADD bin/webhook /usr/local/bin/
 ADD bin/blockwriter /usr/local/bin/
-ADD bin/mock-prometheus /bin/prometheus
 
 COPY tikv.toml /etc/tikv.toml
 

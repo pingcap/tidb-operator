@@ -30,7 +30,6 @@ var (
 	defaultFeatures = map[string]bool{
 		StableScheduling:    true,
 		AdvancedStatefulSet: false,
-		AutoScaling:         false,
 		VolumeModifying:     false,
 		VolumeReplacing:     false,
 	}
@@ -44,9 +43,6 @@ const (
 
 	// AdvancedStatefulSet controls whether to use AdvancedStatefulSet to manage pods
 	AdvancedStatefulSet string = "AdvancedStatefulSet"
-
-	// AutoScaling controls whether to use TidbClusterAutoScaler to auto scale-in/out pods
-	AutoScaling string = "AutoScaling"
 
 	// VolumeModifying controls whether allow to modify volumes
 	// NOTE: volume resize is always allowed even if this feature is disabled

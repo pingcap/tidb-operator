@@ -167,8 +167,6 @@ e2e-build: ## Build binaries for test
 	$(GO_TEST) -c -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/e2e.test ./tests/e2e
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/webhook ./tests/cmd/webhook
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/blockwriter ./tests/cmd/blockwriter
-	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/e2e/bin/mock-prometheus ./tests/cmd/mock-monitor
-
 
 debug-docker-push: debug-build-docker
 	docker push "${DOCKER_REPO}/tidb-control:latest"

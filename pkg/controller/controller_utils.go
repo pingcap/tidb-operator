@@ -61,9 +61,6 @@ var (
 	// tidbMonitorControllerKind contains the schema.GroupVersionKind for TidbMonitor controller type.
 	tidbMonitorControllerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbMonitor")
 
-	// tidbClusterAutoScalerKind contains the schema.GroupVersionKind for TidbClusterAutoScaler controller type.
-	tidbClusterAutoScalerKind = v1alpha1.SchemeGroupVersion.WithKind("TidbClusterAutoScaler")
-
 	// tidbNGMonitoringKind contains the schema.GroupVersionKind for TidbNGMonitoring controller type.
 	tidbNGMonitoringKind = v1alpha1.SchemeGroupVersion.WithKind("TidbNGMonitoring")
 
@@ -226,19 +223,6 @@ func GetTiDBMonitorOwnerRef(monitor *v1alpha1.TidbMonitor) metav1.OwnerReference
 		Kind:               tidbMonitorControllerKind.Kind,
 		Name:               monitor.GetName(),
 		UID:                monitor.GetUID(),
-		Controller:         &controller,
-		BlockOwnerDeletion: &blockOwnerDeletion,
-	}
-}
-
-func GetTiDBClusterAutoScalerOwnerRef(tac *v1alpha1.TidbClusterAutoScaler) metav1.OwnerReference {
-	controller := true
-	blockOwnerDeletion := true
-	return metav1.OwnerReference{
-		APIVersion:         tidbClusterAutoScalerKind.GroupVersion().String(),
-		Kind:               tidbClusterAutoScalerKind.Kind,
-		Name:               tac.GetName(),
-		UID:                tac.GetUID(),
 		Controller:         &controller,
 		BlockOwnerDeletion: &blockOwnerDeletion,
 	}

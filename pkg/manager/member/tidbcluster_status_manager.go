@@ -23,7 +23,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/klog/v2"
 )
 
@@ -44,11 +43,6 @@ func NewTidbClusterStatusManager(deps *controller.Dependencies) *TidbClusterStat
 }
 
 func (m *TidbClusterStatusManager) Sync(tc *v1alpha1.TidbCluster) error {
-	err := m.syncAutoScalerRef(tc)
-	if err != nil {
-		return err
-	}
-
 	return m.syncTiDBInfoKey(tc)
 }
 
@@ -160,41 +154,6 @@ func (m *TidbClusterStatusManager) syncTiDBInfoKey(tc *v1alpha1.TidbCluster) err
 		}
 	}
 
-	return nil
-}
-
-// syncAutoScalerRef delete the orphan info key that we do not expect the instance to be exist now logically.
-func (m *TidbClusterStatusManager) syncAutoScalerRef(tc *v1alpha1.TidbCluster) error {
-	if tc.Status.AutoScaler == nil {
-		klog.V(4).Infof("tc[%s/%s] autoscaler is empty", tc.Namespace, tc.Name)
-		return nil
-	}
-	tacNamespace := tc.Status.AutoScaler.Namespace
-	tacName := tc.Status.AutoScaler.Name
-	tac, err := m.deps.TiDBClusterAutoScalerLister.TidbClusterAutoScalers(tacNamespace).Get(tacName)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			klog.Infof("tc[%s/%s] failed to find tac[%s/%s]", tc.Namespace, tc.Name, tacNamespace, tacName)
-			tc.Status.AutoScaler = nil
-			err = nil
-		} else {
-			err = fmt.Errorf("syncAutoScalerRef: failed to get tac %s/%s for cluster %s/%s, error: %s", tacNamespace, tacName, tc.GetNamespace(), tc.GetName(), err)
-		}
-		return err
-	}
-	if tac.Spec.Cluster.Name != tc.Name {
-		klog.Infof("tc[%s/%s]'s target tac[%s/%s]'s cluster have been changed", tc.Namespace, tc.Name, tac.Namespace, tac.Name)
-		tc.Status.AutoScaler = nil
-		return nil
-	}
-	if len(tac.Spec.Cluster.Namespace) < 1 {
-		return nil
-	}
-	if tac.Spec.Cluster.Namespace != tc.Namespace {
-		klog.Infof("tc[%s/%s]'s target tac[%s/%s]'s cluster namespace have been changed", tc.Namespace, tc.Name, tac.Namespace, tac.Name)
-		tc.Status.AutoScaler = nil
-		return nil
-	}
 	return nil
 }
 

@@ -216,31 +216,30 @@ type Dependencies struct {
 	Recorder                       record.EventRecorder
 
 	// Listers
-	ServiceLister               corelisterv1.ServiceLister
-	EndpointLister              corelisterv1.EndpointsLister
-	PVCLister                   corelisterv1.PersistentVolumeClaimLister
-	PVLister                    corelisterv1.PersistentVolumeLister
-	PodLister                   corelisterv1.PodLister
-	NodeLister                  corelisterv1.NodeLister
-	SecretLister                corelisterv1.SecretLister
-	ConfigMapLister             corelisterv1.ConfigMapLister
-	StatefulSetLister           appslisters.StatefulSetLister
-	DeploymentLister            appslisters.DeploymentLister
-	JobLister                   batchlisters.JobLister
-	IngressLister               networklister.IngressLister
-	IngressV1Beta1Lister        extensionslister.IngressLister // TODO: in order to be compatibility with kubernetes which less than v1.19, remove it if v1.19- is not supported
-	StorageClassLister          storagelister.StorageClassLister
-	TiDBClusterLister           listers.TidbClusterLister
-	TiDBClusterAutoScalerLister listers.TidbClusterAutoScalerLister
-	DMClusterLister             listers.DMClusterLister
-	BackupLister                listers.BackupLister
-	CompactBackupLister         listers.CompactBackupLister
-	RestoreLister               listers.RestoreLister
-	BackupScheduleLister        listers.BackupScheduleLister
-	TiDBInitializerLister       listers.TidbInitializerLister
-	TiDBMonitorLister           listers.TidbMonitorLister
-	TiDBNGMonitoringLister      listers.TidbNGMonitoringLister
-	TiDBDashboardLister         listers.TidbDashboardLister
+	ServiceLister          corelisterv1.ServiceLister
+	EndpointLister         corelisterv1.EndpointsLister
+	PVCLister              corelisterv1.PersistentVolumeClaimLister
+	PVLister               corelisterv1.PersistentVolumeLister
+	PodLister              corelisterv1.PodLister
+	NodeLister             corelisterv1.NodeLister
+	SecretLister           corelisterv1.SecretLister
+	ConfigMapLister        corelisterv1.ConfigMapLister
+	StatefulSetLister      appslisters.StatefulSetLister
+	DeploymentLister       appslisters.DeploymentLister
+	JobLister              batchlisters.JobLister
+	IngressLister          networklister.IngressLister
+	IngressV1Beta1Lister   extensionslister.IngressLister // TODO: in order to be compatibility with kubernetes which less than v1.19, remove it if v1.19- is not supported
+	StorageClassLister     storagelister.StorageClassLister
+	TiDBClusterLister      listers.TidbClusterLister
+	DMClusterLister        listers.DMClusterLister
+	BackupLister           listers.BackupLister
+	CompactBackupLister    listers.CompactBackupLister
+	RestoreLister          listers.RestoreLister
+	BackupScheduleLister   listers.BackupScheduleLister
+	TiDBInitializerLister  listers.TidbInitializerLister
+	TiDBMonitorLister      listers.TidbMonitorLister
+	TiDBNGMonitoringLister listers.TidbNGMonitoringLister
+	TiDBDashboardLister    listers.TidbDashboardLister
 
 	// Controls
 	Controls
@@ -363,31 +362,30 @@ func newDependencies(
 		Recorder:                       recorder,
 
 		// Listers
-		ServiceLister:               kubeInformerFactory.Core().V1().Services().Lister(),
-		EndpointLister:              kubeInformerFactory.Core().V1().Endpoints().Lister(),
-		PVCLister:                   kubeInformerFactory.Core().V1().PersistentVolumeClaims().Lister(),
-		PVLister:                    pvLister,
-		PodLister:                   kubeInformerFactory.Core().V1().Pods().Lister(),
-		NodeLister:                  nodeLister,
-		SecretLister:                kubeInformerFactory.Core().V1().Secrets().Lister(),
-		ConfigMapLister:             labelFilterKubeInformerFactory.Core().V1().ConfigMaps().Lister(),
-		StatefulSetLister:           kubeInformerFactory.Apps().V1().StatefulSets().Lister(),
-		DeploymentLister:            kubeInformerFactory.Apps().V1().Deployments().Lister(),
-		StorageClassLister:          scLister,
-		JobLister:                   kubeInformerFactory.Batch().V1().Jobs().Lister(),
-		IngressLister:               ingLister,
-		IngressV1Beta1Lister:        ingv1beta1Lister,
-		TiDBClusterLister:           informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
-		TiDBClusterAutoScalerLister: informerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers().Lister(),
-		DMClusterLister:             informerFactory.Pingcap().V1alpha1().DMClusters().Lister(),
-		BackupLister:                informerFactory.Pingcap().V1alpha1().Backups().Lister(),
-		CompactBackupLister:         informerFactory.Pingcap().V1alpha1().CompactBackups().Lister(),
-		RestoreLister:               informerFactory.Pingcap().V1alpha1().Restores().Lister(),
-		BackupScheduleLister:        informerFactory.Pingcap().V1alpha1().BackupSchedules().Lister(),
-		TiDBInitializerLister:       informerFactory.Pingcap().V1alpha1().TidbInitializers().Lister(),
-		TiDBMonitorLister:           informerFactory.Pingcap().V1alpha1().TidbMonitors().Lister(),
-		TiDBNGMonitoringLister:      informerFactory.Pingcap().V1alpha1().TidbNGMonitorings().Lister(),
-		TiDBDashboardLister:         informerFactory.Pingcap().V1alpha1().TidbDashboards().Lister(),
+		ServiceLister:          kubeInformerFactory.Core().V1().Services().Lister(),
+		EndpointLister:         kubeInformerFactory.Core().V1().Endpoints().Lister(),
+		PVCLister:              kubeInformerFactory.Core().V1().PersistentVolumeClaims().Lister(),
+		PVLister:               pvLister,
+		PodLister:              kubeInformerFactory.Core().V1().Pods().Lister(),
+		NodeLister:             nodeLister,
+		SecretLister:           kubeInformerFactory.Core().V1().Secrets().Lister(),
+		ConfigMapLister:        labelFilterKubeInformerFactory.Core().V1().ConfigMaps().Lister(),
+		StatefulSetLister:      kubeInformerFactory.Apps().V1().StatefulSets().Lister(),
+		DeploymentLister:       kubeInformerFactory.Apps().V1().Deployments().Lister(),
+		StorageClassLister:     scLister,
+		JobLister:              kubeInformerFactory.Batch().V1().Jobs().Lister(),
+		IngressLister:          ingLister,
+		IngressV1Beta1Lister:   ingv1beta1Lister,
+		TiDBClusterLister:      informerFactory.Pingcap().V1alpha1().TidbClusters().Lister(),
+		DMClusterLister:        informerFactory.Pingcap().V1alpha1().DMClusters().Lister(),
+		BackupLister:           informerFactory.Pingcap().V1alpha1().Backups().Lister(),
+		CompactBackupLister:    informerFactory.Pingcap().V1alpha1().CompactBackups().Lister(),
+		RestoreLister:          informerFactory.Pingcap().V1alpha1().Restores().Lister(),
+		BackupScheduleLister:   informerFactory.Pingcap().V1alpha1().BackupSchedules().Lister(),
+		TiDBInitializerLister:  informerFactory.Pingcap().V1alpha1().TidbInitializers().Lister(),
+		TiDBMonitorLister:      informerFactory.Pingcap().V1alpha1().TidbMonitors().Lister(),
+		TiDBNGMonitoringLister: informerFactory.Pingcap().V1alpha1().TidbNGMonitorings().Lister(),
+		TiDBDashboardLister:    informerFactory.Pingcap().V1alpha1().TidbDashboards().Lister(),
 
 		AWSConfig: cfg,
 	}, nil

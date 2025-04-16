@@ -95,38 +95,6 @@ func (f *TiDBMonitorFetcher) ListByTC(tc *v1alpha1.TidbCluster) (objects []runti
 	return
 }
 
-type TiDBClusterAutoScalerFetcher struct {
-	lister listers.TidbClusterAutoScalerLister
-}
-
-func NewTiDBClusterAutoScalerFetcher(lister listers.TidbClusterAutoScalerLister) ManifestFetcher {
-	return &TiDBClusterAutoScalerFetcher{
-		lister: lister,
-	}
-}
-
-func (f *TiDBClusterAutoScalerFetcher) ListByTC(tc *v1alpha1.TidbCluster) (objects []runtime.Object, err error) {
-	emptySelector := labels.NewSelector()
-	autoScalers, err := f.lister.List(emptySelector)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, autoScaler := range autoScalers {
-		name := autoScaler.Spec.Cluster.Name
-		namespace := autoScaler.Spec.Cluster.Namespace
-		if namespace == "" {
-			namespace = autoScaler.Namespace
-		}
-		if name == tc.Name && namespace == tc.Namespace {
-			klog.Infof("TiDBClusterAutoScaler %s/%s matches tc %s/%s",
-				autoScaler.Namespace, autoScaler.Name, tc.Namespace, tc.Name)
-			objects = append(objects, autoScaler)
-		}
-	}
-	return
-}
-
 type TiDBInitializerFetcher struct {
 	lister listers.TidbInitializerLister
 }
