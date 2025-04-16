@@ -844,7 +844,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 					Name:            label.BackupJobLabelVal,
 					Image:           bm.deps.CLIConfig.TiDBBackupManagerImage,
 					Args:            args,
-					ImagePullPolicy: corev1.PullIfNotPresent,
+					ImagePullPolicy: corev1.PullAlways,
 					VolumeMounts:    volumeMounts,
 					Env:             util.AppendEnvIfPresent(envVars, "TZ"),
 					Resources:       backup.Spec.ResourceRequirements,
@@ -1174,7 +1174,7 @@ func (bm *backupManager) parsePauseStatus(kvs []*pdapi.KeyValue, logPrefix strin
 	}
 	pauseInfo, err := NewPauseV2Info(kvs[0])
 	if err != nil {
-		return false, "", fmt.Errorf("%s parse pause info failed, err: %v", logPrefix, err)
+		return false, "", err
 	}
 
 	if pauseInfo.Severity == SeverityError {
