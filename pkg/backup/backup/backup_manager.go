@@ -39,6 +39,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/printers"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 )
@@ -1097,6 +1098,9 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 	if backup.Status.Phase == v1alpha1.BackupStopped {
 		return true, nil
 	}
+	updateStatus := &controller.BackupUpdateStatus{
+		TimeSynced: &metav1.Time{Time: time.Now()},
+	}
 
 	ns, name := backup.Namespace, backup.Name
 	logPrefix := fmt.Sprintf("log backup %s/%s", ns, name)
@@ -1117,33 +1121,48 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 	}
 	defer etcdCli.Close()
 
+	var exists bool
 	logKey := path.Join(streamKeyPrefix, taskInfoPath, name)
-	_, err = bm.queryEtcdKey(etcdCli, logKey, true)
+	checkLogExist := func() error {
+		kvs, err := bm.queryEtcdKey(etcdCli, logKey, false)
+		if err != nil {
+			return fmt.Errorf("%s query etcd key %s failed: %v", logPrefix, logKey, err)
+		}
+		
+		exists = (len(kvs) > 0)
+		return nil 
+	}	
+	if err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, checkLogExist); err != nil {
+		return false, fmt.Errorf("%s query etcd key %s failed: %v", logPrefix, logKey, err)
+	}
+	if !exists {
+		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Command: backup.Spec.LogSubcommand,
+			Type:    v1alpha1.BackupFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "LogBackupKeyNotFound",
+			Message: "log backup etcd key not found in routine sync",
+		}, updateStatus)
+		return false, fmt.Errorf("%s log backup etcd key %s not found", logPrefix, logKey)
+	}
+
+	pauseStatus, err := bm.parsePauseStatus(etcdCli, ns, name)
 	if err != nil {
 		return false, err
 	}
 
-	isPaused, errMsg, err := bm.parsePauseStatus(&etcdCli, ns, name)
-	if err != nil {
-		return false, err
-	}
-
-	updateStatus := &controller.BackupUpdateStatus{
-		TimeSynced: &metav1.Time{Time: time.Now()},
-	}
-
-	if errMsg != "" {
+	if pauseStatus.Message != "" {
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: backup.Spec.LogSubcommand,
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "LogBackupKernelError",
-			Message: errMsg,
+			Message: pauseStatus.Message,
 		}, updateStatus)
 		return true, nil
 	}
 
-	if kernelState := determineKernelState(isPaused); kernelState != backup.Spec.LogSubcommand {
+	if kernelState := determineKernelState(pauseStatus.IsPaused); kernelState != backup.Spec.LogSubcommand {
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: kernelState,
 			Type:    v1alpha1.BackupComplete,
@@ -1166,48 +1185,65 @@ func (bm *backupManager) queryEtcdKey(etcdCli pdapi.PDEtcdClient, keyPath string
 	return kvs, nil
 }
 
-func (bm *backupManager) parsePauseStatus(etcdCli pdapi.PDEtcdClient, ns,name string) (bool, string, error) {
-	pauseKey := path.Join(streamKeyPrefix, taskPausePath, name)
-	pauseKVs, err := bm.queryEtcdKey(etcdCli, pauseKey, false)
-	if err != nil {
-		return false, "", err
-	}
-	if len(pauseKVs) == 0 {
-		return false, "", nil
-	}
-	rawPauseV2 := pauseKVs[0].Value
+func (bm *backupManager) parsePauseStatus(etcdCli pdapi.PDEtcdClient, ns, name string) (PauseStatus,error) {
+    status := PauseStatus{}
+    pauseKey := path.Join(streamKeyPrefix, taskPausePath, name)
+    pauseKVs, err := bm.queryEtcdKey(etcdCli, pauseKey, false)
+    if err != nil { 
+        return status, fmt.Errorf("backup %s/%s query pause key %s failed: %w",ns, name, pauseKey, err)
+    }
+	// handle no pause key
+    if len(pauseKVs) == 0 {
+        return status, nil
+    }
 
-	// the cluster uses old version of pause
-	if len(rawPauseV2) == 0 {
-		errorKey := path.Join(streamKeyPrefix, taskLastErrorPath, name)
-		errorKVs, err := bm.queryEtcdKey(etcdCli, errorKey, false)
-		if err != nil {
-			return false, "", err
-		}
-		if len(errorKVs) == 0 {
-			return true, "", nil
-		}
-		errMsg, err := ParseBackupError(errorKVs[0].Value)
-		if err != nil {
-			return false, "", fmt.Errorf("parse backup error failed, err: %v", err)
-		}
-		return true, errMsg, nil
-	}
-	pauseInfo, err := NewPauseV2Info(rawPauseV2)
-	if err != nil {
-		return false, "", err
-	}
+    rawPauseV2 := pauseKVs[0].Value
+    if len(rawPauseV2) == 0 {
+        return bm.handlePauseV1(etcdCli, ns, name)
+    }
+    return bm.handlePauseV2(rawPauseV2, ns, name)
+}
 
-	if pauseInfo.Severity == SeverityError {
-		errMsg, parseErr := pauseInfo.ParseError()
-		if parseErr != nil {
-			return false, "", fmt.Errorf("%s/%s parse error failed, err: %v", ns, name, parseErr)
-		}
-		klog.Errorf("%s/%s log backup error: %s", ns, name, errMsg)
-		return true, errMsg, nil
-	}
+func (bm *backupManager) handlePauseV1(etcdCli pdapi.PDEtcdClient, ns, name string) (PauseStatus, error) {
+    status := PauseStatus{IsPaused: true}
+    
+    errorKey := path.Join(streamKeyPrefix, taskLastErrorPath, name)
+    errorKVs, err := bm.queryEtcdKey(etcdCli, errorKey, false)
+    if err != nil {
+        return status, fmt.Errorf("backup %s/%s query error key failed: %w", ns, name, err)
+    }
+	// handle no error
+    if len(errorKVs) == 0 {
+        return status, nil
+    }
+    
+    errMsg, err := ParseBackupError(errorKVs[0].Value)
+    if err != nil {
+        return status, fmt.Errorf("backup %s/%s parse error key failed: %w", ns, name, err)
+    }
+    
+    status.Message = errMsg
+    return status, nil
+}
 
-	return true, "", nil
+func (bm *backupManager) handlePauseV2(rawData []byte, ns, name string) (PauseStatus, error) {
+    status := PauseStatus{IsPaused: true}
+    
+    pauseInfo, err := NewPauseV2Info(rawData)
+    if err != nil {
+        return status, fmt.Errorf("backup %s/%s parse pause info failed: %w", ns, name, err)
+    }
+    if pauseInfo.Severity == SeverityManual {
+		return status, nil
+    }
+
+	errMsg, parseErr := pauseInfo.ParseError()
+	if parseErr != nil {
+		return status, fmt.Errorf("backup %s/%s parse error message failed: %w", ns, name, parseErr)
+	}
+	status.Message = errMsg
+	klog.Errorf("%s/%s log backup error: %s", ns, name, errMsg)
+    return status, nil
 }
 
 func determineKernelState(paused bool) v1alpha1.LogSubCommandType {
