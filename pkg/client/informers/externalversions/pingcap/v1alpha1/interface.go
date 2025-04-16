@@ -35,8 +35,6 @@ type Interface interface {
 	Restores() RestoreInformer
 	// TidbClusters returns a TidbClusterInformer.
 	TidbClusters() TidbClusterInformer
-	// TidbClusterAutoScalers returns a TidbClusterAutoScalerInformer.
-	TidbClusterAutoScalers() TidbClusterAutoScalerInformer
 	// TidbDashboards returns a TidbDashboardInformer.
 	TidbDashboards() TidbDashboardInformer
 	// TidbInitializers returns a TidbInitializerInformer.
@@ -91,11 +89,6 @@ func (v *version) Restores() RestoreInformer {
 // TidbClusters returns a TidbClusterInformer.
 func (v *version) TidbClusters() TidbClusterInformer {
 	return &tidbClusterInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
-// TidbClusterAutoScalers returns a TidbClusterAutoScalerInformer.
-func (v *version) TidbClusterAutoScalers() TidbClusterAutoScalerInformer {
-	return &tidbClusterAutoScalerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // TidbDashboards returns a TidbDashboardInformer.

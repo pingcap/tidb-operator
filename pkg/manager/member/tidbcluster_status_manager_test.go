@@ -19,11 +19,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/gomega"
-	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned/fake"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
 )
 
 func TestTidbPattern(t *testing.T) {
@@ -69,101 +65,4 @@ func TestTidbPattern(t *testing.T) {
 
 	m = pattern.Match([]byte("othername-tidb-0.basic-tidb-peer.otherns.svc.other.d1.d2"))
 	g.Expect(m).Should(BeFalse())
-}
-
-func TestSyncAutoScalerRef(t *testing.T) {
-	g := NewGomegaWithT(t)
-	testcases := []struct {
-		name              string
-		haveRef           bool
-		autoScalerExisted bool
-		correctRef        bool
-		expectedStatusRef *v1alpha1.TidbClusterAutoScalerRef
-	}{
-		{
-			name:              "empty Reference",
-			haveRef:           false,
-			autoScalerExisted: false,
-			correctRef:        false,
-			expectedStatusRef: nil,
-		},
-		{
-			name:              "normal",
-			haveRef:           true,
-			autoScalerExisted: true,
-			correctRef:        true,
-			expectedStatusRef: &v1alpha1.TidbClusterAutoScalerRef{
-				Name:      "auto-scaler",
-				Namespace: "default",
-			},
-		},
-		{
-			name:              "target auto-scaler not existed",
-			haveRef:           true,
-			autoScalerExisted: false,
-			correctRef:        false,
-			expectedStatusRef: nil,
-		},
-		{
-			name:              "target auto-scaler have changed the cluster target",
-			haveRef:           true,
-			autoScalerExisted: true,
-			correctRef:        false,
-			expectedStatusRef: nil,
-		},
-	}
-	for _, testcase := range testcases {
-		t.Run(testcase.name, func(t *testing.T) {
-			tsm, _, _, scalerInder := newFakeTidbClusterStatusManager()
-			tc := newTidbCluster()
-			tc.Namespace = "default"
-			tac := newTidbClusterAutoScaler(tc)
-			if testcase.haveRef {
-				tc.Status.AutoScaler = &v1alpha1.TidbClusterAutoScalerRef{
-					Name:      tac.Name,
-					Namespace: tac.Namespace,
-				}
-			} else {
-				tc.Status.AutoScaler = nil
-			}
-			if !testcase.correctRef {
-				tac.Spec.Cluster.Name = "1234"
-			}
-
-			if testcase.autoScalerExisted {
-				scalerInder.Add(tac)
-			}
-			err := tsm.syncAutoScalerRef(tc)
-			g.Expect(err).ShouldNot(HaveOccurred())
-			if testcase.expectedStatusRef == nil {
-				g.Expect(tc.Status.AutoScaler).Should(BeNil())
-			} else {
-				g.Expect(tc.Status.AutoScaler).ShouldNot(BeNil())
-				g.Expect(tc.Status.AutoScaler.Name).Should(Equal(testcase.expectedStatusRef.Name))
-				g.Expect(tc.Status.AutoScaler.Namespace).Should(Equal(testcase.expectedStatusRef.Namespace))
-			}
-		})
-	}
-}
-
-func newFakeTidbClusterStatusManager() (*TidbClusterStatusManager, kubernetes.Interface, *fake.Clientset, cache.Indexer) {
-	fakeDeps := controller.NewFakeDependencies()
-	scalerInformer := fakeDeps.InformerFactory.Pingcap().V1alpha1().TidbClusterAutoScalers()
-	scalerInder := scalerInformer.Informer().GetIndexer()
-	cli := fakeDeps.Clientset.(*fake.Clientset)
-	return NewTidbClusterStatusManager(fakeDeps), fakeDeps.KubeClientset, cli, scalerInder
-}
-
-func newTidbClusterAutoScaler(tc *v1alpha1.TidbCluster) *v1alpha1.TidbClusterAutoScaler {
-	tac := &v1alpha1.TidbClusterAutoScaler{
-		Spec: v1alpha1.TidbClusterAutoScalerSpec{
-			Cluster: v1alpha1.TidbClusterRef{
-				Namespace: tc.Namespace,
-				Name:      tc.Name,
-			},
-		},
-	}
-	tac.Name = "auto-scaler"
-	tac.Namespace = "default"
-	return tac
 }
