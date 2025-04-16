@@ -32,8 +32,7 @@ const (
 
 type PauseStatus struct {
 	IsPaused   bool
-	ErrMessage string
-	Error      error
+	Message string
 }
 
 type StreamBackupError struct {
@@ -83,7 +82,7 @@ func ParseBackupError(data []byte) (string, error) {
 	if err != nil {
 		return "", errors.Annotatef(err, "failed to unmarshal backup error")
 	}
-	return fmt.Sprintf("Paused by error(store %d): %s", sbErr.StoreId, &sbErr.ErrorMessage), nil
+	return fmt.Sprintf("Paused by error(store %d): %s", sbErr.StoreId, sbErr.ErrorMessage), nil
 }
 
 func (p *PauseV2Info) ParseError() (string, error) {
