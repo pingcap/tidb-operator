@@ -1123,13 +1123,7 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 		return false, err
 	}
 
-	pauseKey := path.Join(streamKeyPrefix, taskPausePath, name)
-	pauseKVs, err := bm.queryEtcdKey(etcdCli, pauseKey, false)
-	if err != nil {
-		return false, err
-	}
-
-	isPaused, errMsg, err := bm.parsePauseStatus(pauseKVs, logPrefix)
+	isPaused, errMsg, err := bm.parsePauseStatus(&etcdCli, ns, name)
 	if err != nil {
 		return false, err
 	}
@@ -1172,11 +1166,34 @@ func (bm *backupManager) queryEtcdKey(etcdCli pdapi.PDEtcdClient, keyPath string
 	return kvs, nil
 }
 
-func (bm *backupManager) parsePauseStatus(kvs []*pdapi.KeyValue, logPrefix string) (bool, string, error) {
-	if len(kvs) == 0 {
+func (bm *backupManager) parsePauseStatus(etcdCli pdapi.PDEtcdClient, ns,name string) (bool, string, error) {
+	pauseKey := path.Join(streamKeyPrefix, taskPausePath, name)
+	pauseKVs, err := bm.queryEtcdKey(etcdCli, pauseKey, false)
+	if err != nil {
+		return false, "", err
+	}
+	if len(pauseKVs) == 0 {
 		return false, "", nil
 	}
-	pauseInfo, err := NewPauseV2Info(kvs[0])
+	rawPauseV2 := pauseKVs[0].Value
+
+	// the cluster uses old version of pause
+	if len(rawPauseV2) == 0 {
+		errorKey := path.Join(streamKeyPrefix, taskLastErrorPath, name)
+		errorKVs, err := bm.queryEtcdKey(etcdCli, errorKey, false)
+		if err != nil {
+			return false, "", err
+		}
+		if len(errorKVs) == 0 {
+			return true, "", nil
+		}
+		errMsg, err := ParseBackupError(errorKVs[0].Value)
+		if err != nil {
+			return false, "", fmt.Errorf("parse backup error failed, err: %v", err)
+		}
+		return true, errMsg, nil
+	}
+	pauseInfo, err := NewPauseV2Info(rawPauseV2)
 	if err != nil {
 		return false, "", err
 	}
@@ -1184,9 +1201,9 @@ func (bm *backupManager) parsePauseStatus(kvs []*pdapi.KeyValue, logPrefix strin
 	if pauseInfo.Severity == SeverityError {
 		errMsg, parseErr := pauseInfo.ParseError()
 		if parseErr != nil {
-			return false, "", fmt.Errorf("%s parse error failed, err: %v", logPrefix, parseErr)
+			return false, "", fmt.Errorf("%s/%s parse error failed, err: %v", ns, name, parseErr)
 		}
-		klog.ErrorS(nil, "Log backup paused by error", "namespace", logPrefix, "error", errMsg)
+		klog.Errorf("%s/%s log backup error: %s", ns, name, errMsg)
 		return true, errMsg, nil
 	}
 
