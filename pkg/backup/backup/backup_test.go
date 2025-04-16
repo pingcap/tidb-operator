@@ -501,7 +501,7 @@ func TestVolumeBackupAgainstTCWithNoTiKV(t *testing.T) {
 }
 
 func TestUnmarshalPauseV2Info(t *testing.T) {
-    input := `{
+	input := `{
         "severity": "manual",
         "operation_hostname": "host-01",
         "operation_pid": 1234,
@@ -509,7 +509,7 @@ func TestUnmarshalPauseV2Info(t *testing.T) {
         "payload_type": "text/plain",
         "payload": "SGVsbG8="
     }`
-    var info PauseV2Info
-    err := json.Unmarshal([]byte(input), &info)
-    require.NoError(t, err)
+	var info PauseV2Info
+	err := json.Unmarshal([]byte(input), &info)
+	require.NoError(t, err)
 }
