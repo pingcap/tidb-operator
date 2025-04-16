@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
@@ -33,7 +34,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -129,7 +129,6 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 
 	// skip backup
 	skip := false
-	backup.Status.TimeSynced = &metav1.Time{Time: time.Now()}
 	if skip, err = bm.skipBackupSync(backup); err != nil {
 		klog.Errorf("backup %s/%s skip error %v.", ns, name, err)
 		return err
@@ -385,7 +384,7 @@ func (bm *backupManager) skipBackupSync(backup *v1alpha1.Backup) (bool, error) {
 	switch backup.Spec.Mode {
 	case v1alpha1.BackupModeLog:
 		if skip, err := bm.skipLogBackupSync(backup); err != nil || !skip {
-			return skip, err
+			return skip, errors.Trace(err)
 		}
 		return bm.SyncLogKernelStatus(backup)
 	case v1alpha1.BackupModeVolumeSnapshot:
@@ -1135,6 +1134,10 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 		return false, err
 	}
 
+	updateStatus := &controller.BackupUpdateStatus{
+		TimeSynced: &metav1.Time{Time: time.Now()},
+	}
+
 	if errMsg != "" {
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: backup.Spec.LogSubcommand,
@@ -1142,7 +1145,7 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 			Status:  corev1.ConditionTrue,
 			Reason:  "LogBackupKernelError",
 			Message: errMsg,
-		}, nil)
+		}, updateStatus)
 		return true, nil
 	}
 
@@ -1153,7 +1156,7 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 		Status:  corev1.ConditionTrue,
 		Reason:  "LogBackupKernelSync",
 		Message: "",
-	}, nil)
+	}, updateStatus)
 	return true, nil
 }
 

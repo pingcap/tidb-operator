@@ -184,7 +184,7 @@ func (c *Controller) updateBackup(cur interface{}) {
 			klog.V(4).Infof("backup %s/%s is complete, skipping.", ns, name)
 			return
 		}
-		if newBackup.Status.TimeSynced != nil && time.Since(newBackup.Status.TimeSynced.Time) < 3*time.Minute && v1alpha1.IsBackupComplete(newBackup) {
+		if newBackup.Status.TimeSynced != nil && time.Since(newBackup.Status.TimeSynced.Time) < 1*time.Minute && v1alpha1.IsBackupComplete(newBackup) {
 			klog.V(4).Infof("backup %s/%s is complete, skipping.", ns, name)
 			return
 		}
