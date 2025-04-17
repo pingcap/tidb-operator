@@ -1142,6 +1142,9 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 		return false, err
 	}
 	if kernelState := determineKernelState(pauseStatus.IsPaused); kernelState != backup.Spec.LogSubcommand {
+		if kernelState == v1alpha1.LogStartCommand {
+			kernelState = v1alpha1.LogResumeCommand
+		}
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: kernelState,
 			Type:    v1alpha1.BackupComplete,
