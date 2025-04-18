@@ -206,6 +206,74 @@ func TestTidbClusterConditionUpdater_Ready(t *testing.T) {
 			wantMessage: "TiDB(s) are not healthy",
 		},
 		{
+			name: "tiproxy(s) not healthy",
+			tc: &v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						Replicas: 1,
+					},
+					TiKV: &v1alpha1.TiKVSpec{
+						Replicas: 1,
+					},
+					TiDB: &v1alpha1.TiDBSpec{
+						Replicas: 1,
+					},
+					TiProxy: &v1alpha1.TiProxySpec{
+						Replicas: 1,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					PD: v1alpha1.PDStatus{
+						Members: map[string]v1alpha1.PDMember{
+							"pd-0": {
+								Health: true,
+							},
+						},
+						StatefulSet: &appsv1.StatefulSetStatus{
+							CurrentRevision: "2",
+							UpdateRevision:  "2",
+						},
+					},
+					TiDB: v1alpha1.TiDBStatus{
+						Members: map[string]v1alpha1.TiDBMember{
+							"tidb-0": {
+								Health: true,
+							},
+						},
+						StatefulSet: &appsv1.StatefulSetStatus{
+							CurrentRevision: "2",
+							UpdateRevision:  "2",
+						},
+					},
+					TiProxy: v1alpha1.TiProxyStatus{
+						Members: map[string]v1alpha1.TiProxyMember{
+							"tiproxy-0": {
+								Health: false,
+							},
+						},
+						StatefulSet: &appsv1.StatefulSetStatus{
+							CurrentRevision: "2",
+							UpdateRevision:  "2",
+						},
+					},
+					TiKV: v1alpha1.TiKVStatus{
+						Stores: map[string]v1alpha1.TiKVStore{
+							"tikv-0": {
+								State: "Up",
+							},
+						},
+						StatefulSet: &appsv1.StatefulSetStatus{
+							CurrentRevision: "2",
+							UpdateRevision:  "2",
+						},
+					},
+				},
+			},
+			wantStatus:  v1.ConditionFalse,
+			wantReason:  utiltidbcluster.TiProxyUnhealthy,
+			wantMessage: "TiProxy(s) are not healthy",
+		},
+		{
 			name: "tiflash(s) not healthy",
 			tc: &v1alpha1.TidbCluster{
 				Spec: v1alpha1.TidbClusterSpec{

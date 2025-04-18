@@ -36,6 +36,8 @@ const (
 	TiFlashStoreNotUp = "TiFlashStoreNotUp"
 	// TiCDCCaptureNotReady is added when one of ticdc capture is not ready.
 	TiCDCCaptureNotReady = "TiCDCCaptureNotReady"
+	// TiProxyUnhealthy is added when one of tiproxy pods is unhealthy.
+	TiProxyUnhealthy = "TiProxyUnhealthy"
 )
 
 // NewTidbClusterCondition creates a new tidbcluster condition.

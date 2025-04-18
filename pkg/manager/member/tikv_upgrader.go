@@ -346,7 +346,7 @@ func (u *tikvUpgrader) endEvictLeaderAfterUpgrade(tc *v1alpha1.TidbCluster, pod 
 		}
 		return done, nil
 	} else {
-		klog.V(4).Infof("%s: miss leader count before upgrade, so skip waiting leaders for transfer back", logPrefix)
+		klog.Infof("%s: miss leader count before upgrade, so skip waiting leaders for transfer back", logPrefix)
 	}
 
 	return true, nil
@@ -377,6 +377,8 @@ func (u *tikvUpgrader) beginEvictLeader(tc *v1alpha1.TidbCluster, storeID uint64
 	if status, exist := tc.Status.TiKV.Stores[strconv.Itoa(int(storeID))]; exist {
 		status.LeaderCountBeforeUpgrade = pointer.Int32Ptr(int32(status.LeaderCount))
 		tc.Status.TiKV.Stores[strconv.Itoa(int(storeID))] = status
+		klog.Infof("beginEvictLeader: record leader count before upgrade for store %d of %s/%s, leader count: %d",
+			storeID, ns, podName, *status.LeaderCountBeforeUpgrade)
 	}
 
 	err := controller.GetPDClient(u.deps.PDControl, tc).BeginEvictLeader(storeID)
