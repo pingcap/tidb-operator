@@ -61,13 +61,13 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			}
 		}
 
+		updateRevision, _, _ := state.Revision()
+
 		cdcs := state.Slice()
-		topoPolicy, err := policy.NewTopologyPolicy(topos, cdcs...)
+		topoPolicy, err := policy.NewTopologyPolicy(topos, updateRevision, cdcs...)
 		if err != nil {
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
-
-		updateRevision, _, _ := state.Revision()
 
 		// TODO: get the real time owner info from TiCDC and prefer non-owner when scaling in or updating
 		wait, err := updater.New[runtime.TiCDCTuple]().
@@ -80,6 +80,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			WithNewFactory(TiCDCNewer(cdcg, updateRevision)).
 			WithAddHooks(topoPolicy).
 			WithDelHooks(topoPolicy).
+			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
 				topoPolicy,
 			).
