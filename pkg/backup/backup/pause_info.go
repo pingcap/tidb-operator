@@ -10,6 +10,7 @@
 // distributed under the License is distributed on an "AS IS" BASIS,
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package backup
 
 import (
@@ -31,8 +32,8 @@ const (
 )
 
 type PauseStatus struct {
-	IsPaused   bool
-	Message string
+	IsPaused bool
+	Message  string
 }
 
 type StreamBackupError struct {
