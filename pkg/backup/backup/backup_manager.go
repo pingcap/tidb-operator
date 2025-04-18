@@ -1121,7 +1121,6 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 	}
 	defer etcdCli.Close()
 
-
 	exist, err := bm.checkLogKeyExist(etcdCli, ns, name)
 	if err != nil {
 		return false, fmt.Errorf("%s check log backup key exist failed, err: %v", logPrefix, err)
@@ -1153,7 +1152,7 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 			Message: pauseStatus.Message,
 		}, updateStatus)
 	}
-	
+
 	return true, nil
 }
 
@@ -1176,67 +1175,67 @@ func (bm *backupManager) checkLogKeyExist(etcdCli pdapi.PDEtcdClient, ns, name s
 		if err != nil {
 			return fmt.Errorf("Backup %s/%s query etcd key %s failed: %v", ns, name, logKey, err)
 		}
-		
+
 		exists = (len(kvs) > 0)
-		return nil 
-	}	
+		return nil
+	}
 	if err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, checkLogExist); err != nil {
 		return false, fmt.Errorf("Backup %s/%s query etcd key %s failed: %v", ns, name, logKey, err)
 	}
 	return exists, nil
 }
 
-func (bm *backupManager) parsePauseStatus(etcdCli pdapi.PDEtcdClient, ns, name string) (PauseStatus,error) {
-    status := PauseStatus{}
-    pauseKey := path.Join(streamKeyPrefix, taskPausePath, name)
-    pauseKVs, err := bm.queryEtcdKey(etcdCli, pauseKey, false)
-    if err != nil { 
-        return status, fmt.Errorf("backup %s/%s query pause key %s failed: %w",ns, name, pauseKey, err)
-    }
+func (bm *backupManager) parsePauseStatus(etcdCli pdapi.PDEtcdClient, ns, name string) (PauseStatus, error) {
+	status := PauseStatus{}
+	pauseKey := path.Join(streamKeyPrefix, taskPausePath, name)
+	pauseKVs, err := bm.queryEtcdKey(etcdCli, pauseKey, false)
+	if err != nil {
+		return status, fmt.Errorf("backup %s/%s query pause key %s failed: %w", ns, name, pauseKey, err)
+	}
 	// handle no pause key
-    if len(pauseKVs) == 0 {
-        return status, nil
-    }
+	if len(pauseKVs) == 0 {
+		return status, nil
+	}
 
-    rawPauseV2 := pauseKVs[0].Value
-    if len(rawPauseV2) == 0 {
-        return bm.handlePauseV1(etcdCli, ns, name)
-    }
-    return bm.handlePauseV2(rawPauseV2, ns, name)
+	rawPauseV2 := pauseKVs[0].Value
+	if len(rawPauseV2) == 0 {
+		return bm.handlePauseV1(etcdCli, ns, name)
+	}
+	return bm.handlePauseV2(rawPauseV2, ns, name)
 }
 
 func (bm *backupManager) handlePauseV1(etcdCli pdapi.PDEtcdClient, ns, name string) (PauseStatus, error) {
-    status := PauseStatus{IsPaused: true}
-    
-    errorKey := path.Join(streamKeyPrefix, taskLastErrorPath, name)
-    errorKVs, err := bm.queryEtcdKey(etcdCli, errorKey, false)
-    if err != nil {
-        return status, fmt.Errorf("backup %s/%s query error key failed: %w", ns, name, err)
-    }
+	status := PauseStatus{IsPaused: true}
+
+	errorKey := path.Join(streamKeyPrefix, taskLastErrorPath, name)
+	errorKVs, err := bm.queryEtcdKey(etcdCli, errorKey, false)
+	if err != nil {
+		return status, fmt.Errorf("backup %s/%s query error key failed: %w", ns, name, err)
+	}
 	// handle no error
-    if len(errorKVs) == 0 {
-        return status, nil
-    }
-    
-    errMsg, err := ParseBackupError(errorKVs[0].Value)
-    if err != nil {
-        return status, fmt.Errorf("backup %s/%s parse error key failed: %w", ns, name, err)
-    }
-    
-    status.Message = errMsg
-    return status, nil
+	if len(errorKVs) == 0 {
+		return status, nil
+	}
+
+	errMsg, err := ParseBackupError(errorKVs[0].Value)
+	if err != nil {
+		return status, fmt.Errorf("backup %s/%s parse error key failed: %w", ns, name, err)
+	}
+
+	status.Message = errMsg
+	return status, nil
 }
 
 func (bm *backupManager) handlePauseV2(rawData []byte, ns, name string) (PauseStatus, error) {
-    status := PauseStatus{IsPaused: true}
-    
-    pauseInfo, err := NewPauseV2Info(rawData)
-    if err != nil {
-        return status, fmt.Errorf("backup %s/%s parse pause info failed: %w", ns, name, err)
-    }
-    if pauseInfo.Severity == SeverityManual {
+	status := PauseStatus{IsPaused: true}
+
+	pauseInfo, err := NewPauseV2Info(rawData)
+	if err != nil {
+		return status, fmt.Errorf("backup %s/%s parse pause info failed: %w", ns, name, err)
+	}
+	if pauseInfo.Severity == SeverityManual {
 		return status, nil
-    }
+	}
 
 	errMsg, parseErr := pauseInfo.ParseError()
 	if parseErr != nil {
@@ -1244,7 +1243,7 @@ func (bm *backupManager) handlePauseV2(rawData []byte, ns, name string) (PauseSt
 	}
 	status.Message = errMsg
 	klog.Errorf("%s/%s log backup error: %s", ns, name, errMsg)
-    return status, nil
+	return status, nil
 }
 
 func determineKernelState(paused bool) v1alpha1.LogSubCommandType {
