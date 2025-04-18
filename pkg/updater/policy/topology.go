@@ -108,7 +108,7 @@ func (p *topologyPolicy[R]) Prefer(allowed []R) []R {
 }
 
 // choose a preferred topology
-// - prefer all instances are well spreaded
+// - prefer all instances are well spread
 // - if no
 func choose(all, update []v1alpha1.Topology) v1alpha1.Topology {
 	// No topology is preferred
@@ -116,12 +116,12 @@ func choose(all, update []v1alpha1.Topology) v1alpha1.Topology {
 	if len(all) == 0 {
 		return nil
 	}
-	// Only one topology can be choosen
+	// Only one topology can be chosen
 	if len(all) == 1 {
 		return all[0]
 	}
 
-	// More than one topologies can be choosen
+	// More than one topologies can be chosen
 	// Try to find the first topology which is in both all and update
 	for _, at := range all {
 		for _, bt := range update {
@@ -131,7 +131,7 @@ func choose(all, update []v1alpha1.Topology) v1alpha1.Topology {
 		}
 	}
 
-	// No intersection of prefered topologies of all and update
-	// just return the first prefered topology of all
+	// No intersection of preferred topologies of all and update
+	// just return the first preferred topology of all
 	return all[0]
 }
