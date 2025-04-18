@@ -15,6 +15,7 @@ package backup
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -25,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/stretchr/testify/require"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -496,4 +498,18 @@ func TestVolumeBackupAgainstTCWithNoTiKV(t *testing.T) {
 
 	err = bm.syncBackupJob(backup)
 	g.Expect(err.Error()).Should(MatchRegexp("not support backup TiDB cluster with no tikv replica"))
+}
+
+func TestUnmarshalPauseV2Info(t *testing.T) {
+	input := `{
+        "severity": "manual",
+        "operation_hostname": "host-01",
+        "operation_pid": 1234,
+        "operation_time": "2023-10-05T15:04:05Z",
+        "payload_type": "text/plain",
+        "payload": "SGVsbG8="
+    }`
+	var info PauseV2Info
+	err := json.Unmarshal([]byte(input), &info)
+	require.NoError(t, err)
 }

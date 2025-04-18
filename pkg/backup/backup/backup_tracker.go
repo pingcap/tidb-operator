@@ -34,12 +34,16 @@ import (
 var (
 	refreshCheckpointTsPeriod = time.Minute * 1
 	streamKeyPrefix           = "/tidb/br-stream"
+	taskInfoPath              = "/info"
 	taskCheckpointPath        = "/checkpoint"
+	taskLastErrorPath         = "/last-error"
+	taskPausePath             = "/pause"
 )
 
 // BackupTracker implements the logic for tracking log backup progress
 type BackupTracker interface {
 	StartTrackLogBackupProgress(backup *v1alpha1.Backup) error
+	GetLogBackupTC(backup *v1alpha1.Backup) (*v1alpha1.TidbCluster, error)
 }
 
 // the main processes of log backup track:
@@ -118,7 +122,7 @@ func (bt *backupTracker) StartTrackLogBackupProgress(backup *v1alpha1.Backup) er
 		return nil
 	}
 	klog.Infof("add log backup %s/%s to tracker", ns, name)
-	tc, err := bt.getLogBackupTC(backup)
+	tc, err := bt.GetLogBackupTC(backup)
 	if err != nil {
 		return err
 	}
@@ -135,7 +139,7 @@ func (bt *backupTracker) removeLogBackup(ns, name string) {
 }
 
 // getLogBackupTC gets log backup's tidb cluster info.
-func (bt *backupTracker) getLogBackupTC(backup *v1alpha1.Backup) (*v1alpha1.TidbCluster, error) {
+func (bt *backupTracker) GetLogBackupTC(backup *v1alpha1.Backup) (*v1alpha1.TidbCluster, error) {
 	var (
 		ns               = backup.Namespace
 		name             = backup.Name

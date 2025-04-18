@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
@@ -29,15 +30,16 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/backup/snapshotter"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/printers"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 )
@@ -115,10 +117,6 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		}
 	}
 
-	if v1alpha1.IsBackupComplete(backup) || v1alpha1.IsBackupFailed(backup) || v1alpha1.IsBackupInvalid(backup) {
-		return nil
-	}
-
 	// validate backup
 	if err = bm.validateBackup(backup); err != nil {
 		klog.Errorf("backup %s/%s validate error %v.", ns, name, err)
@@ -138,6 +136,10 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	}
 	if skip {
 		klog.Infof("backup %s/%s is already done and skip sync.", ns, name)
+		return nil
+	}
+
+	if v1alpha1.IsBackupComplete(backup) || v1alpha1.IsBackupFailed(backup) || v1alpha1.IsBackupInvalid(backup) {
 		return nil
 	}
 
@@ -380,11 +382,15 @@ func (bm *backupManager) checkVolumeBackupSnapshotsCreated(b *v1alpha1.Backup) e
 
 // skipBackupSync skip backup sync, if return true, backup can be skiped directly.
 func (bm *backupManager) skipBackupSync(backup *v1alpha1.Backup) (bool, error) {
-	if backup.Spec.Mode == v1alpha1.BackupModeLog {
-		return bm.skipLogBackupSync(backup)
-	} else if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
+	switch backup.Spec.Mode {
+	case v1alpha1.BackupModeLog:
+		if skip, err := bm.skipLogBackupSync(backup); err != nil || !skip {
+			return skip, errors.Trace(err)
+		}
+		return bm.SyncLogKernelStatus(backup)
+	case v1alpha1.BackupModeVolumeSnapshot:
 		return bm.skipVolumeSnapshotBackupSync(backup)
-	} else {
+	default:
 		return bm.skipSnapshotBackupSync(backup)
 	}
 }
@@ -838,7 +844,7 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 					Name:            label.BackupJobLabelVal,
 					Image:           bm.deps.CLIConfig.TiDBBackupManagerImage,
 					Args:            args,
-					ImagePullPolicy: corev1.PullIfNotPresent,
+					ImagePullPolicy: corev1.PullAlways,
 					VolumeMounts:    volumeMounts,
 					Env:             util.AppendEnvIfPresent(envVars, "TZ"),
 					Resources:       backup.Spec.ResourceRequirements,
@@ -1086,6 +1092,165 @@ func (bm *backupManager) skipSnapshotBackupSync(backup *v1alpha1.Backup) (bool, 
 		return false, fmt.Errorf("backup %s/%s get job %s failed, err: %v", ns, name, backupJobName, err)
 	}
 	return false, nil
+}
+
+func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, error) {
+	if backup.Status.Phase == v1alpha1.BackupStopped {
+		return true, nil
+	}
+	updateStatus := &controller.BackupUpdateStatus{
+		TimeSynced: &metav1.Time{Time: time.Now()},
+	}
+
+	ns, name := backup.Namespace, backup.Name
+	logPrefix := fmt.Sprintf("log backup %s/%s", ns, name)
+
+	tc, err := bm.backupTracker.GetLogBackupTC(backup)
+	if err != nil || tc == nil {
+		return false, fmt.Errorf("%s get tidbcluster failed, err: %v", logPrefix, err)
+	}
+
+	etcdCli, err := bm.deps.PDControl.GetPDEtcdClient(
+		pdapi.Namespace(tc.Namespace),
+		tc.Name,
+		tc.IsTLSClusterEnabled(),
+		pdapi.ClusterRef(tc.Spec.ClusterDomain),
+	)
+	if err != nil {
+		return false, fmt.Errorf("%s get etcd client failed, err: %v", logPrefix, err)
+	}
+	defer etcdCli.Close()
+
+	exist, err := bm.checkLogKeyExist(etcdCli, ns, name)
+	if err != nil {
+		return false, fmt.Errorf("%s check log backup key exist failed, err: %v", logPrefix, err)
+	}
+	if !exist {
+		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Command: backup.Spec.LogSubcommand,
+			Type:    v1alpha1.BackupFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "LogBackupKeyNotFound",
+			Message: "log backup etcd key not found in routine sync",
+		}, updateStatus)
+		return false, fmt.Errorf("%s log backup etcd key not found", logPrefix)
+	}
+
+	pauseStatus, err := bm.parsePauseStatus(etcdCli, ns, name)
+	if err != nil {
+		return false, err
+	}
+	if kernelState := determineKernelState(pauseStatus.IsPaused); kernelState != backup.Spec.LogSubcommand {
+		if kernelState == v1alpha1.LogStartCommand {
+			kernelState = v1alpha1.LogResumeCommand
+		}
+		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Command: kernelState,
+			Type:    v1alpha1.BackupComplete,
+			Status:  corev1.ConditionTrue,
+			Reason:  "LogBackupKernelSync",
+			Message: pauseStatus.Message,
+		}, updateStatus)
+	}
+
+	return true, nil
+}
+
+func (bm *backupManager) queryEtcdKey(etcdCli pdapi.PDEtcdClient, keyPath string, required bool) ([]*pdapi.KeyValue, error) {
+	kvs, err := etcdCli.Get(keyPath, true)
+	if err != nil {
+		return nil, fmt.Errorf("query etcd key %s failed: %v", keyPath, err)
+	}
+	if required && len(kvs) == 0 {
+		return nil, fmt.Errorf("required etcd key %s not found", keyPath)
+	}
+	return kvs, nil
+}
+
+func (bm *backupManager) checkLogKeyExist(etcdCli pdapi.PDEtcdClient, ns, name string) (bool, error) {
+	var exists bool
+	logKey := path.Join(streamKeyPrefix, taskInfoPath, name)
+	checkLogExist := func() error {
+		kvs, err := bm.queryEtcdKey(etcdCli, logKey, false)
+		if err != nil {
+			return fmt.Errorf("Backup %s/%s query etcd key %s failed: %v", ns, name, logKey, err)
+		}
+
+		exists = (len(kvs) > 0)
+		return nil
+	}
+	if err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, checkLogExist); err != nil {
+		return false, fmt.Errorf("Backup %s/%s query etcd key %s failed: %v", ns, name, logKey, err)
+	}
+	return exists, nil
+}
+
+func (bm *backupManager) parsePauseStatus(etcdCli pdapi.PDEtcdClient, ns, name string) (PauseStatus, error) {
+	status := PauseStatus{}
+	pauseKey := path.Join(streamKeyPrefix, taskPausePath, name)
+	pauseKVs, err := bm.queryEtcdKey(etcdCli, pauseKey, false)
+	if err != nil {
+		return status, fmt.Errorf("backup %s/%s query pause key %s failed: %w", ns, name, pauseKey, err)
+	}
+	// handle no pause key
+	if len(pauseKVs) == 0 {
+		return status, nil
+	}
+
+	rawPauseV2 := pauseKVs[0].Value
+	if len(rawPauseV2) == 0 {
+		return bm.handlePauseV1(etcdCli, ns, name)
+	}
+	return bm.handlePauseV2(rawPauseV2, ns, name)
+}
+
+func (bm *backupManager) handlePauseV1(etcdCli pdapi.PDEtcdClient, ns, name string) (PauseStatus, error) {
+	status := PauseStatus{IsPaused: true}
+
+	errorKey := path.Join(streamKeyPrefix, taskLastErrorPath, name)
+	errorKVs, err := bm.queryEtcdKey(etcdCli, errorKey, false)
+	if err != nil {
+		return status, fmt.Errorf("backup %s/%s query error key failed: %w", ns, name, err)
+	}
+	// handle no error
+	if len(errorKVs) == 0 {
+		return status, nil
+	}
+
+	errMsg, err := ParseBackupError(errorKVs[0].Value)
+	if err != nil {
+		return status, fmt.Errorf("backup %s/%s parse error key failed: %w", ns, name, err)
+	}
+
+	status.Message = errMsg
+	return status, nil
+}
+
+func (bm *backupManager) handlePauseV2(rawData []byte, ns, name string) (PauseStatus, error) {
+	status := PauseStatus{IsPaused: true}
+
+	pauseInfo, err := NewPauseV2Info(rawData)
+	if err != nil {
+		return status, fmt.Errorf("backup %s/%s parse pause info failed: %w", ns, name, err)
+	}
+	if pauseInfo.Severity == SeverityManual {
+		return status, nil
+	}
+
+	errMsg, parseErr := pauseInfo.ParseError()
+	if parseErr != nil {
+		return status, fmt.Errorf("backup %s/%s parse error message failed: %w", ns, name, parseErr)
+	}
+	status.Message = errMsg
+	klog.Errorf("%s/%s log backup error: %s", ns, name, errMsg)
+	return status, nil
+}
+
+func determineKernelState(paused bool) v1alpha1.LogSubCommandType {
+	if paused {
+		return v1alpha1.LogPauseCommand
+	}
+	return v1alpha1.LogStartCommand
 }
 
 // skipLogBackupSync skips log backup, returns true if it can be skipped.
