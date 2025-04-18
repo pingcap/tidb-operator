@@ -61,13 +61,13 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			}
 		}
 
+		updateRevision, _, _ := state.Revision()
+
 		fs := state.Slice()
-		topoPolicy, err := policy.NewTopologyPolicy(topos, fs...)
+		topoPolicy, err := policy.NewTopologyPolicy(topos, updateRevision, fs...)
 		if err != nil {
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
-
-		updateRevision, _, _ := state.Revision()
 
 		wait, err := updater.New[runtime.TiFlashTuple]().
 			WithInstances(fs...).
@@ -79,6 +79,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			WithNewFactory(TiFlashNewer(fg, updateRevision)).
 			WithAddHooks(topoPolicy).
 			WithDelHooks(topoPolicy).
+			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
 				topoPolicy,
 			).

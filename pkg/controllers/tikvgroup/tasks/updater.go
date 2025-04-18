@@ -61,14 +61,14 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			}
 		}
 
+		updateRevision, _, _ := state.Revision()
+
 		kvs := state.Slice()
 
-		topoPolicy, err := policy.NewTopologyPolicy(topos, kvs...)
+		topoPolicy, err := policy.NewTopologyPolicy(topos, updateRevision, kvs...)
 		if err != nil {
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
-
-		updateRevision, _, _ := state.Revision()
 
 		wait, err := updater.New[runtime.TiKVTuple]().
 			WithInstances(kvs...).
@@ -80,6 +80,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			WithNewFactory(TiKVNewer(kvg, updateRevision)).
 			WithAddHooks(topoPolicy).
 			WithDelHooks(topoPolicy).
+			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
 				topoPolicy,
 			).

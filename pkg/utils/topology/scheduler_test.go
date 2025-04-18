@@ -15,7 +15,6 @@
 package topology
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"testing"
@@ -139,10 +138,14 @@ func TestEncoder(t *testing.T) {
 
 func TestSchedulerAdd(t *testing.T) {
 	cases := []struct {
-		desc             string
-		st               []v1alpha1.ScheduleTopology
-		expectedNextAdds []int
-		expectedNextDels []int
+		desc    string
+		st      []v1alpha1.ScheduleTopology
+		initial []int
+		adds    []int
+		dels    []int
+
+		expectedNextAdds map[int][]int
+		expectedCounts   []int
 	}{
 		{
 			desc: "normal",
@@ -163,12 +166,13 @@ func TestSchedulerAdd(t *testing.T) {
 					},
 				},
 			},
-			expectedNextAdds: []int{
+			adds: []int{
 				0, 1, 2, 0, 1, 2, 0, 1, 2,
 			},
-			expectedNextDels: []int{
-				0, 1, 2, 0, 1, 2, 0, 1, 2,
+			dels: []int{
+				0, 1, 2, 0, 1, 2,
 			},
+			expectedCounts: []int{1, 1, 1},
 		},
 		{
 			desc: "one zone have high weight",
@@ -190,14 +194,15 @@ func TestSchedulerAdd(t *testing.T) {
 					},
 				},
 			},
-			expectedNextAdds: []int{
+			adds: []int{
 				0, 1, 2, 0, 0, 0, 0, // 5, 1, 1
 				0, 1, 0, 2, 0, 0, 0, // 10, 2, 2
 			},
-			expectedNextDels: []int{
+			dels: []int{
 				0, 1, 0, 2, 0, 0, 0,
 				0, 0, 0, 0, 1, 2, 0,
 			},
+			expectedCounts: []int{0, 0, 0},
 		},
 		{
 			desc: "one zone have very high weight and no zone is starved",
@@ -219,14 +224,15 @@ func TestSchedulerAdd(t *testing.T) {
 					},
 				},
 			},
-			expectedNextAdds: []int{
+			adds: []int{
 				0, 1, 2, // 1, 1, 1
 				0, 0, 0, 0, // ...
 			},
-			expectedNextDels: []int{
+			dels: []int{
 				0, 0, 0, 0,
 				1, 2, 0,
 			},
+			expectedCounts: []int{0, 0, 0},
 		},
 		{
 			desc: "complex case",
@@ -250,7 +256,7 @@ func TestSchedulerAdd(t *testing.T) {
 					Weight: ptr.To[int32](2),
 				},
 			},
-			expectedNextAdds: []int{
+			adds: []int{
 				// 1, 1, 1, no starved
 				0, 1, 2,
 				// 4, 1, 1,
@@ -270,7 +276,7 @@ func TestSchedulerAdd(t *testing.T) {
 				// 9, 3, 2
 				0, 0,
 			},
-			expectedNextDels: []int{
+			dels: []int{
 				// 9-1, 3, 2, 9*14-14*9=0, 3*14-14*3=0, 2*14-14*2=0
 				0,
 				// 8, 3-1, 2, 8*14-13*9=-5, 3*14-13*3=3, 2*14-13*2=2
@@ -286,6 +292,36 @@ func TestSchedulerAdd(t *testing.T) {
 				0, 0, 0, 0,
 				2, 1, 0,
 			},
+			expectedCounts: []int{0, 0, 0},
+		},
+		{
+			desc: "ensure next add can return all available topologies",
+			st: []v1alpha1.ScheduleTopology{
+				{
+					Topology: v1alpha1.Topology{
+						"zone": "aaa",
+					},
+				},
+				{
+					Topology: v1alpha1.Topology{
+						"zone": "bbb",
+					},
+				},
+				{
+					Topology: v1alpha1.Topology{
+						"zone": "ccc",
+					},
+				},
+			},
+			adds: []int{
+				2, 1, 0,
+			},
+			expectedNextAdds: map[int][]int{
+				0: {0, 1, 2},
+				1: {0, 1},
+				2: {0},
+			},
+			expectedCounts: []int{1, 1, 1},
 		},
 	}
 
@@ -295,30 +331,54 @@ func TestSchedulerAdd(t *testing.T) {
 			s, err := New(c.st)
 			require.NoError(tt, err, c.desc)
 
-			for i, next := range c.expectedNextAdds {
-				topo := s.NextAdd()
-				assert.Equal(tt, c.st[next].Topology, topo, "index %v", i)
-				s.Add(genInstanceName(next, i), topo)
+			counts := make([]int, len(c.st))
+
+			for i, topo := range c.initial {
+				s.Add(genInstanceName(topo, i), c.st[topo].Topology)
+				counts[topo]++
 			}
-			for i, next := range c.expectedNextDels {
-				topoPrefix := strconv.Itoa(next)
-				names := s.NextDel()
-				for _, name := range names {
-					prefix := getInstancePrefix(name)
-					assert.Equal(tt, topoPrefix, prefix, "index %v", i)
+
+			for i, next := range c.adds {
+				topos := s.NextAdd()
+				assert.Contains(tt, topos, c.st[next].Topology, "add round %v", i)
+				if c.expectedNextAdds != nil {
+					nextAdds, ok := c.expectedNextAdds[i]
+					if ok {
+						assert.Equal(tt, len(nextAdds), len(topos))
+						for i, topo := range nextAdds {
+							assert.Equal(tt, topos[i], c.st[topo].Topology)
+						}
+					}
 				}
-				fmt.Println(names)
-				s.Del(names[0])
+				s.Add(genInstanceName(next, i+len(c.initial)), c.st[next].Topology)
+				counts[next]++
 			}
+			for i, next := range c.dels {
+				names := s.NextDel()
+				var choosed string
+				nextIndex := strconv.Itoa(next)
+				for _, name := range names {
+					topoIndex := getInstanceTopologyIndex(name)
+					if topoIndex == nextIndex {
+						choosed = name
+						break
+					}
+				}
+				assert.NotEmpty(tt, choosed, "del round %v", i)
+				s.Del(choosed)
+				counts[next]--
+			}
+
+			assert.Equal(tt, c.expectedCounts, counts)
 		})
 	}
 }
 
-func genInstanceName(topoIndex, index int) string {
-	return strconv.Itoa(topoIndex) + ":" + strconv.Itoa(index)
+func genInstanceName(topoIndex, round int) string {
+	return strconv.Itoa(topoIndex) + ":" + strconv.Itoa(round)
 }
 
-func getInstancePrefix(name string) string {
+func getInstanceTopologyIndex(name string) string {
 	ss := strings.Split(name, ":")
 	return ss[0]
 }
