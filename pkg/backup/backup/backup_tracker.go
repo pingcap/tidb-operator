@@ -17,6 +17,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"os"
 	"path"
 	"strconv"
 	"sync"
@@ -76,10 +77,15 @@ func (bt *backupTracker) initTrackLogBackupsProgress() {
 		backups *v1alpha1.BackupList
 		err     error
 	)
+	ns := ""
+	if !bt.deps.CLIConfig.ClusterScoped {
+		ns = os.Getenv("NAMESPACE")
+	}
+
 	err = retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
-		backups, err = bt.deps.Clientset.PingcapV1alpha1().Backups("").List(context.TODO(), metav1.ListOptions{})
+		backups, err = bt.deps.Clientset.PingcapV1alpha1().Backups(ns).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
-			klog.Warningf("list backups error %v, will retry", err)
+			klog.Warningf("list backups from namespace %s error %v, will retry", ns, err)
 			return err
 		}
 		return nil
