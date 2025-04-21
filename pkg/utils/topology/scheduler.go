@@ -16,6 +16,7 @@ package topology
 
 import (
 	"fmt"
+	"slices"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -27,8 +28,8 @@ type Scheduler interface {
 	// Add adds an scheduled instance.
 	// All scheduled instances should be added before calling Next()
 	Add(name string, topo v1alpha1.Topology)
-	// NextAdd returns the topology of the next pending instance
-	NextAdd() v1alpha1.Topology
+	// NextAdd returns available topologies of the next pending instance
+	NextAdd() []v1alpha1.Topology
 	// Del removes an scheduled instance.
 	Del(name string)
 	// NextDel returns names which can be choosed to del
@@ -90,6 +91,9 @@ type topologyScheduler struct {
 }
 
 func (s *topologyScheduler) Add(name string, t v1alpha1.Topology) {
+	if _, ok := s.nameToIndex[name]; ok {
+		s.Del(name)
+	}
 	hash := s.e.Encode(t)
 	index, ok := s.hashToIndex[hash]
 	if !ok {
@@ -119,13 +123,13 @@ func (s *topologyScheduler) Del(name string) {
 	}
 }
 
-func (s *topologyScheduler) NextAdd() v1alpha1.Topology {
+func (s *topologyScheduler) NextAdd() []v1alpha1.Topology {
 	// only unknown topo
 	if len(s.info) == 1 {
 		return nil
 	}
 	maximum := int64(0)
-	choosed := 0
+	var choosed []int
 	for i, v := range s.info[:len(s.info)-1] {
 		count := v.names.Len()
 		// avoid some topos are starved
@@ -139,21 +143,28 @@ func (s *topologyScheduler) NextAdd() v1alpha1.Topology {
 		score := int64(v.weight)*int64(s.totalCount) - int64(count)*s.totalWeight
 		if score > maximum {
 			maximum = score
-			choosed = i
+			choosed = []int{i}
+		} else if score == maximum {
+			choosed = append(choosed, i)
 		}
 	}
 
-	return s.info[choosed].topo
+	var topos []v1alpha1.Topology
+	for _, i := range choosed {
+		topos = append(topos, s.info[i].topo)
+	}
+
+	return topos
 }
 
 func (s *topologyScheduler) NextDel() []string {
 	unknown := s.info[len(s.info)-1]
 	if unknown.names.Len() != 0 {
-		return unknown.names.UnsortedList()
+		return sets.List(unknown.names)
 	}
 
 	maximum := -int64(s.totalCount+len(s.info)-1) * s.totalWeight
-	choosed := 0
+	var choosed []int
 	for i, v := range s.info[:len(s.info)-1] {
 		count := v.names.Len()
 		if count == 0 {
@@ -165,11 +176,20 @@ func (s *topologyScheduler) NextDel() []string {
 		score := int64(count)*s.totalWeight - int64(s.totalCount)*int64(v.weight)
 		if score > maximum {
 			maximum = score
-			choosed = i
+			choosed = []int{i}
+		} else if score == maximum {
+			choosed = append(choosed, i)
 		}
 	}
 
-	return s.info[choosed].names.UnsortedList()
+	var names []string
+	for _, i := range choosed {
+		names = append(names, s.info[i].names.UnsortedList()...)
+	}
+
+	slices.Sort(names)
+
+	return names
 }
 
 // Encoder is defined to encode a map to a unique string
@@ -202,7 +222,7 @@ func (e *encoder) Encode(t v1alpha1.Topology) string {
 		a := count / 8
 		b := count % 8
 		if a >= len(hash) {
-			for i := 0; i < a-len(hash); i++ {
+			for range a - len(hash) {
 				hash = append(hash, 0)
 			}
 			hash = append(hash, 1<<b)

@@ -15,6 +15,9 @@
 package updater
 
 import (
+	"cmp"
+	"slices"
+
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
@@ -59,6 +62,9 @@ func (s *state[R]) List() []R {
 	for _, obj := range s.nameToObj {
 		l = append(l, obj)
 	}
+	slices.SortFunc(l, func(a, b R) int {
+		return cmp.Compare(a.GetName(), b.GetName())
+	})
 	return l
 }
 

@@ -38,7 +38,7 @@ var _ = ginkgo.Describe("Topology", label.TiKV, label.MultipleAZ, label.P0, func
 		pdg := f.MustCreatePD(ctx)
 		kvg := f.MustCreateTiKV(ctx,
 			data.WithReplicas[*runtime.TiKVGroup](6),
-			data.WithEvenlySpreadPolicy(),
+			data.WithTiKVEvenlySpreadPolicy(),
 		)
 
 		f.WaitForPDGroupReady(ctx, pdg)
@@ -52,7 +52,7 @@ var _ = ginkgo.Describe("Topology", label.TiKV, label.MultipleAZ, label.P0, func
 		pdg := f.MustCreatePD(ctx)
 		kvg := f.MustCreateTiKV(ctx,
 			data.WithReplicas[*runtime.TiKVGroup](3),
-			data.WithEvenlySpreadPolicy(),
+			data.WithTiKVEvenlySpreadPolicy(),
 		)
 
 		f.WaitForPDGroupReady(ctx, pdg)
