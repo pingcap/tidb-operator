@@ -62,13 +62,13 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			}
 		}
 
+		updateRevision, _, _ := state.Revision()
+
 		dbs := state.Slice()
-		topoPolicy, err := policy.NewTopologyPolicy(topos, dbs...)
+		topoPolicy, err := policy.NewTopologyPolicy(topos, updateRevision, dbs...)
 		if err != nil {
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
-
-		updateRevision, _, _ := state.Revision()
 
 		needUpdate, needRestart := precheckInstances(dbg, runtime.ToTiDBSlice(dbs), updateRevision)
 		if !needUpdate {
@@ -90,6 +90,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			WithNewFactory(TiDBNewer(dbg, updateRevision)).
 			WithAddHooks(topoPolicy).
 			WithDelHooks(topoPolicy).
+			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
 				topoPolicy,
 			).

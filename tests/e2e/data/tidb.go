@@ -124,3 +124,31 @@ func WithEphemeralVolume() GroupPatch[*runtime.TiDBGroup] {
 		})
 	}
 }
+
+// TODO: combine with WithTiKVEvenlySpreadPolicy
+func WithTiDBEvenlySpreadPolicy() GroupPatch[*runtime.TiDBGroup] {
+	return func(obj *runtime.TiDBGroup) {
+		obj.Spec.SchedulePolicies = append(obj.Spec.SchedulePolicies, v1alpha1.SchedulePolicy{
+			Type: v1alpha1.SchedulePolicyTypeEvenlySpread,
+			EvenlySpread: &v1alpha1.SchedulePolicyEvenlySpread{
+				Topologies: []v1alpha1.ScheduleTopology{
+					{
+						Topology: v1alpha1.Topology{
+							"zone": "zone-a",
+						},
+					},
+					{
+						Topology: v1alpha1.Topology{
+							"zone": "zone-b",
+						},
+					},
+					{
+						Topology: v1alpha1.Topology{
+							"zone": "zone-c",
+						},
+					},
+				},
+			},
+		})
+	}
+}

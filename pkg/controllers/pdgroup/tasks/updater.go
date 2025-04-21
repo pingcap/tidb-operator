@@ -63,13 +63,13 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			}
 		}
 
+		updateRevision, _, _ := state.Revision()
+
 		pds := state.Slice()
-		topoPolicy, err := policy.NewTopologyPolicy(topos, pds...)
+		topoPolicy, err := policy.NewTopologyPolicy(topos, updateRevision, pds...)
 		if err != nil {
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
-
-		updateRevision, _, _ := state.Revision()
 
 		wait, err := updater.New[runtime.PDTuple]().
 			WithInstances(pds...).
@@ -81,6 +81,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			WithNewFactory(PDNewer(pdg, updateRevision)).
 			WithAddHooks(topoPolicy).
 			WithDelHooks(topoPolicy).
+			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
 				NotLeaderPolicy(),
 				topoPolicy,
