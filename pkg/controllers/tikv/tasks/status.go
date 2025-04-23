@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
+	"github.com/pingcap/tidb-operator/pkg/utils"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -46,14 +47,14 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 
 		needUpdate = syncSuspendCond(tikv) || needUpdate
 		needUpdate = syncLeadersEvictedCond(tikv, state.Store, state.LeaderEvicting, state.IsPDAvailable) || needUpdate
-		needUpdate = SetIfChanged(&tikv.Status.ID, state.StoreID) || needUpdate
-		needUpdate = SetIfChanged(&tikv.Status.State, state.GetStoreState()) || needUpdate
+		needUpdate = utils.SetIfChanged(&tikv.Status.ID, state.StoreID) || needUpdate
+		needUpdate = utils.SetIfChanged(&tikv.Status.State, state.GetStoreState()) || needUpdate
 
-		needUpdate = SetIfChanged(&tikv.Status.ObservedGeneration, tikv.Generation) || needUpdate
-		needUpdate = SetIfChanged(&tikv.Status.UpdateRevision, tikv.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+		needUpdate = utils.SetIfChanged(&tikv.Status.ObservedGeneration, tikv.Generation) || needUpdate
+		needUpdate = utils.SetIfChanged(&tikv.Status.UpdateRevision, tikv.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 
 		if ready {
-			needUpdate = SetIfChanged(&tikv.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+			needUpdate = utils.SetIfChanged(&tikv.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 		}
 
 		if needUpdate {
@@ -117,17 +118,4 @@ func syncLeadersEvictedCond(tikv *v1alpha1.TiKV, store *pdv1.Store, isEvicting, 
 		Reason:             reason,
 		Message:            msg,
 	})
-}
-
-// TODO: move to utils
-func SetIfChanged[T comparable](dst *T, src T) bool {
-	if src == *new(T) {
-		return false
-	}
-	if *dst != src {
-		*dst = src
-		return true
-	}
-
-	return false
 }

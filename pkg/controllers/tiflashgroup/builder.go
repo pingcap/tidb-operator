@@ -40,6 +40,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		task.IfBreak(common.CondGroupIsDeleting(state),
 			common.TaskGroupFinalizerDel[runtime.TiFlashGroupTuple, runtime.TiFlashTuple](state, r.Client),
+			common.TaskStatusPersister[scope.TiFlashGroup](state, r.Client),
 		),
 		common.TaskGroupFinalizerAdd[runtime.TiFlashGroupTuple](state, r.Client),
 

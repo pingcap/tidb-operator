@@ -40,6 +40,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		task.IfBreak(common.CondGroupIsDeleting(state),
 			tasks.TaskFinalizerDel(state, r.Client, r.PDClientManager),
+			common.TaskStatusPersister[scope.PDGroup](state, r.Client),
 		),
 		common.TaskGroupFinalizerAdd[runtime.PDGroupTuple](state, r.Client),
 

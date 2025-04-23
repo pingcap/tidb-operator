@@ -25,6 +25,7 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/pkg/utils"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -42,14 +43,14 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		pod := state.Pod()
 		ready := coreutil.IsReady[scope.TiFlash](tiflash)
 		needUpdate = syncSuspendCond(tiflash) || needUpdate
-		needUpdate = SetIfChanged(&tiflash.Status.ID, state.StoreID) || needUpdate
-		needUpdate = SetIfChanged(&tiflash.Status.State, state.GetStoreState()) || needUpdate
+		needUpdate = utils.SetIfChanged(&tiflash.Status.ID, state.StoreID) || needUpdate
+		needUpdate = utils.SetIfChanged(&tiflash.Status.State, state.GetStoreState()) || needUpdate
 
-		needUpdate = SetIfChanged(&tiflash.Status.ObservedGeneration, tiflash.Generation) || needUpdate
-		needUpdate = SetIfChanged(&tiflash.Status.UpdateRevision, tiflash.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+		needUpdate = utils.SetIfChanged(&tiflash.Status.ObservedGeneration, tiflash.Generation) || needUpdate
+		needUpdate = utils.SetIfChanged(&tiflash.Status.UpdateRevision, tiflash.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 
 		if ready {
-			needUpdate = SetIfChanged(&tiflash.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+			needUpdate = utils.SetIfChanged(&tiflash.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 		}
 
 		if needUpdate {
@@ -80,17 +81,4 @@ func syncSuspendCond(tiflash *v1alpha1.TiFlash) bool {
 		Reason:             v1alpha1.ReasonUnsuspended,
 		Message:            "instance is not suspended",
 	})
-}
-
-// TODO: move to utils
-func SetIfChanged[T comparable](dst *T, src T) bool {
-	if src == *new(T) {
-		return false
-	}
-	if *dst != src {
-		*dst = src
-		return true
-	}
-
-	return false
 }
