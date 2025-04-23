@@ -19,6 +19,7 @@ set -o nounset
 set -o pipefail
 
 ROOT=$(cd $(dirname "${BASH_SOURCE[0]}")/..; pwd -P)
+source $ROOT/hack/lib/vars.sh
 
 OPERATOR=$ROOT/manifests/tidb-operator.yaml
 CRDS=$ROOT/manifests/tidb-operator.crds.yaml
@@ -26,10 +27,12 @@ CRDS=$ROOT/manifests/tidb-operator.crds.yaml
 echo -n > $CRDS
 echo -n > $OPERATOR
 for f in $ROOT/manifests/crd/*.yaml; do
-    cat $f >> $CRDS;
-    cat $f >> $OPERATOR;
+    echo "append $f"
+    cat $f >> $CRDS
+    cat $f >> $OPERATOR
 done
 
 for f in $ROOT/manifests/deploy/*.yaml; do
+    echo "append $f"
     cat $f >> $OPERATOR
 done
