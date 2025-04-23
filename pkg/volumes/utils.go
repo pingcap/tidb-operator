@@ -284,7 +284,10 @@ func SyncPVCs(ctx context.Context, cli client.Client,
 		if vm.ShouldModify(ctx, vol) {
 			logger.Info("modifying volume's attributes", "volume", vol.String())
 			if e := vm.Modify(ctx, vol); e != nil {
-				return false, fmt.Errorf("failed to modify volume's attributes %s/%s: %w", expectPVC.Namespace, expectPVC.Name, e)
+				if !IsWaitError(e) {
+					return false, fmt.Errorf("failed to modify volume's attributes %s/%s: %w", expectPVC.Namespace, expectPVC.Name, e)
+				}
+				wait = true
 			}
 			continue
 		}

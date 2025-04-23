@@ -119,7 +119,7 @@ func (m *rawModifier) Modify(ctx context.Context, vol *ActualVolume) error {
 			return err
 		}
 		if wait {
-			return fmt.Errorf("wait for volume %s/%s modification completed", vol.PVC.Namespace, vol.PVC.Name)
+			return &WaitError{Message: fmt.Sprintf("wait for volume %s/%s modification completed", vol.PVC.Namespace, vol.PVC.Name)}
 		}
 
 		// try to resize fs
@@ -128,7 +128,7 @@ func (m *rawModifier) Modify(ctx context.Context, vol *ActualVolume) error {
 			return err
 		}
 		if !synced {
-			return fmt.Errorf("wait for fs resize completed")
+			return &WaitError{Message: "wait for fs resize completed"}
 		}
 		if err := m.modifyPVCAnnoStatus(ctx, vol); err != nil {
 			return err
