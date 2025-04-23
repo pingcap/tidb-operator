@@ -64,11 +64,6 @@ function e2e::install_crds() {
     $KUBECTL apply --server-side=true -f $ROOT/manifests/crd
 }
 
-function e2e::install_rbac() {
-    echo "installing RBAC..."
-    $KUBECTL -n $V_DEPLOY_NAMESPACE apply --server-side=true -f $ROOT/manifests/rbac
-}
-
 function e2e::install_operator() {
     echo "installing operator..."
     $KUBECTL -n $V_DEPLOY_NAMESPACE apply --server-side=true -f $ROOT/manifests/deploy
@@ -126,7 +121,6 @@ function e2e::prepare() {
     e2e::ensure_cert_manager
 
     e2e::install_crds
-    e2e::install_rbac
 
     # build the operator image and load it into the kind cluster
     image::build prestop-checker operator testing-workload backup-manager --push
