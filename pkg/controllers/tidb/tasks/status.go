@@ -87,5 +87,3 @@ func syncSuspendCond(tidb *v1alpha1.TiDB) bool {
 		Message:            "instance is not suspended",
 	})
 }
-
-// Use the common utility function from pkg/utils

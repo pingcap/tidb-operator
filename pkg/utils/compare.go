@@ -38,9 +38,11 @@ func SetIfChanged[T comparable](dst *T, src T) bool {
 // If the destination is nil, it creates a new instance and sets it to the source value.
 func NewAndSetIfChanged[T comparable](dst **T, src T) bool {
 	if *dst == nil {
-		*dst = new(T)
-		**dst = src
-		return true
+		zero := new(T)
+		if *zero == src {
+			return false
+		}
+		*dst = zero
 	}
 
 	return SetIfChanged(*dst, src)

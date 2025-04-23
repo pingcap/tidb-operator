@@ -91,5 +91,3 @@ func syncSuspendCond(ticdc *v1alpha1.TiCDC) bool {
 		Message:            "instance is not suspended",
 	})
 }
-
-// Use the common utility function from pkg/utils

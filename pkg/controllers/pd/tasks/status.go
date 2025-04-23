@@ -114,5 +114,3 @@ func syncInitializedCond(pd *v1alpha1.PD, initialized bool) bool {
 		Message:            msg,
 	})
 }
-
-// Use the common utility function from pkg/utils

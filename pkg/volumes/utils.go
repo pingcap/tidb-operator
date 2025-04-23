@@ -246,6 +246,50 @@ func NewModifierFactory(logger logr.Logger, cli client.Client) ModifierFactory {
 	}
 }
 
+// handleVolumeModification attempts to modify a volume's attributes if needed
+// Returns:
+// - needWait: true if we need to wait for the operation to complete
+// - skipUpdate: true if we should skip the update process
+// - err: any error that occurred
+func handleVolumeModification(
+	ctx context.Context,
+	vm Modifier,
+	vol *ActualVolume,
+	expectPVC *corev1.PersistentVolumeClaim,
+	logger logr.Logger,
+) (needWait bool, skipUpdate bool, err error) {
+	if !vm.ShouldModify(ctx, vol) {
+		logger.Info("volume's attributes are not changed", "volume", vol.String())
+		return false, false, nil
+	}
+
+	logger.Info("modifying volume's attributes", "volume", vol.String())
+	if err := vm.Modify(ctx, vol); err != nil {
+		if IsWaitError(err) {
+			return true, true, nil
+		}
+		return false, false, fmt.Errorf("failed to modify volume's attributes %s/%s: %w",
+			expectPVC.Namespace, expectPVC.Name, err)
+	}
+
+	return false, true, nil
+}
+
+// updatePVC updates an existing PVC
+func updatePVC(ctx context.Context, cli client.Client, expectPVC, actualPVC *corev1.PersistentVolumeClaim) error {
+	// Avoid updating the storage class name as it's immutable.
+	if expectPVC.Spec.StorageClassName != nil &&
+		actualPVC.Spec.StorageClassName != nil &&
+		*expectPVC.Spec.StorageClassName != *actualPVC.Spec.StorageClassName {
+		expectPVC.Spec.StorageClassName = actualPVC.Spec.StorageClassName
+	}
+
+	if err := cli.Apply(ctx, expectPVC); err != nil {
+		return fmt.Errorf("can't update PVC %s/%s: %w", expectPVC.Namespace, expectPVC.Name, err)
+	}
+	return nil
+}
+
 // SyncPVCs gets the actual PVCs and compares them with the expected PVCs.
 // If the actual PVCs are different from the expected PVCs, it will update the PVCs.
 func SyncPVCs(ctx context.Context, cli client.Client,
@@ -255,10 +299,10 @@ func SyncPVCs(ctx context.Context, cli client.Client,
 		var actualPVC corev1.PersistentVolumeClaim
 		if err := cli.Get(ctx, client.ObjectKey{Namespace: expectPVC.Namespace, Name: expectPVC.Name}, &actualPVC); err != nil {
 			if !errors.IsNotFound(err) {
-				return false, fmt.Errorf("can't get expectPVC %s/%s: %w", expectPVC.Namespace, expectPVC.Name, err)
+				return false, fmt.Errorf("can't get PVC %s/%s: %w", expectPVC.Namespace, expectPVC.Name, err)
 			}
 
-			// Create PVC
+			// Create PVC if it doesn't exist
 			if e := cli.Apply(ctx, expectPVC); e != nil {
 				return false, fmt.Errorf("can't create expectPVC %s/%s: %w", expectPVC.Namespace, expectPVC.Name, e)
 			}
@@ -281,26 +325,20 @@ func SyncPVCs(ctx context.Context, cli client.Client,
 		if err != nil {
 			return false, fmt.Errorf("failed to get the actual volume: %w", err)
 		}
-		if vm.ShouldModify(ctx, vol) {
-			logger.Info("modifying volume's attributes", "volume", vol.String())
-			if e := vm.Modify(ctx, vol); e != nil {
-				if !IsWaitError(e) {
-					return false, fmt.Errorf("failed to modify volume's attributes %s/%s: %w", expectPVC.Namespace, expectPVC.Name, e)
-				}
-				wait = true
-			}
+
+		needWait, skipUpdate, err := handleVolumeModification(ctx, vm, vol, expectPVC, logger)
+		if err != nil {
+			return false, err
+		}
+		if needWait {
+			wait = true
+		}
+		if skipUpdate {
 			continue
 		}
 
-		logger.Info("volume's attributes are not changed", "volume", vol.String())
-		if expectPVC.Spec.StorageClassName != nil &&
-			actualPVC.Spec.StorageClassName != nil &&
-			*expectPVC.Spec.StorageClassName != *actualPVC.Spec.StorageClassName {
-			// Avoid updating the storage class name as it's immutable.
-			expectPVC.Spec.StorageClassName = actualPVC.Spec.StorageClassName
-		}
-		if err := cli.Apply(ctx, expectPVC); err != nil {
-			return false, fmt.Errorf("can't update expectPVC %s/%s: %w", expectPVC.Namespace, expectPVC.Name, err)
+		if err := updatePVC(ctx, cli, expectPVC, &actualPVC); err != nil {
+			return false, err
 		}
 	}
 	return wait, nil
