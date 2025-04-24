@@ -20,11 +20,14 @@ import (
 	"testing"
 	"time"
 
+	gomonkey "github.com/agiledragon/gomonkey/v2"
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
+	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"gocloud.dev/blob/memblob"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -246,12 +249,32 @@ func TestBackupManagerDumpling(t *testing.T) {
 	g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(gomega.ContainElement(env2No))
 }
 
+func mockExternalStorage() func() {
+	bucket := memblob.OpenBucket(nil)
+	backend := &backuputil.StorageBackend{
+		Bucket: bucket,
+	}
+
+	s3patches := gomonkey.ApplyFunc(backuputil.NewStorageBackend, func(provider v1alpha1.StorageProvider, cred *backuputil.StorageCredential) (*backuputil.StorageBackend, error) {
+		return backend, nil
+	})
+
+	return func() {
+		bucket.Close()
+		s3patches.Reset()
+	}
+}
+
 func TestBackupManagerBR(t *testing.T) {
 	g := NewGomegaWithT(t)
 	helper := newHelper(t)
 	defer helper.Close()
 	deps := helper.Deps
 	var err error
+
+	// mock external storage to backup cluster manifests
+	cleanup := mockExternalStorage()
+	defer cleanup()
 
 	bm := NewBackupManager(deps).(*backupManager)
 

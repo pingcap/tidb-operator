@@ -723,6 +723,11 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 		}
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeVolumeSnapshot))
 	default:
+		klog.Infof("Backup cluster manifests for snapshot backup %s/%s", ns, name)
+		err = bm.backupManifests(backup, tc)
+		if err != nil {
+			return nil, "BackupManifestsFailed", fmt.Errorf("Backup cluster manifests failed for snapshot backup %s/%s, ignoring error: %v", ns, name, err)
+		}
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeSnapshot))
 	}
 
