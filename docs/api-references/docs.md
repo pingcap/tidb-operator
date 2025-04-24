@@ -5331,6 +5331,17 @@ For BR image, if it does not contain tag, Pod will use image &lsquo;BrImage:${Ti
 </tr>
 <tr>
 <td>
+<code>tikvImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
 <code>br</code></br>
 <em>
 <a href="#brconfig">
@@ -5668,6 +5679,17 @@ string
 <p>BrImage specifies the br image used in compact <code>Backup</code>.
 For examples <code>spec.brImage: pingcap/br:v4.0.8</code>
 For BR image, if it does not contain tag, Pod will use image &lsquo;BrImage:${TiKV_Version}&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tikvImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 <tr>

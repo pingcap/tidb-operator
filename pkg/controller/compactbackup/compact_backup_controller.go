@@ -17,7 +17,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"strings"
 	"time"
 
 	"github.com/pingcap/errors"
@@ -358,12 +357,16 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 	_, tikvVersion := backuputil.ParseImage(tikvImage)
 	brImage := "pingcap/br:" + tikvVersion
 	if compact.Spec.ToolImage != "" {
-		toolImage := compact.Spec.ToolImage
-		if !strings.ContainsRune(compact.Spec.ToolImage, ':') {
-			toolImage = fmt.Sprintf("%s:%s", toolImage, tikvVersion)
+		brImage, toolVersion := backuputil.ParseImage(compact.Spec.ToolImage)
+		if toolVersion == "" {
+			brImage = fmt.Sprintf("%s:%s", brImage, tikvVersion)
 		}
-
-		brImage = toolImage
+	}
+	if compact.Spec.TiKVImage != "" {
+		tikvImage, ctlVersion := backuputil.ParseImage(compact.Spec.TiKVImage)
+		if ctlVersion == "" {
+			tikvImage = fmt.Sprintf("%s:%s", tikvImage, tikvVersion)
+		}
 	}
 	klog.Infof("Compact %s/%s use br image %s and tikv image %s", ns, name, brImage, tikvImage)
 

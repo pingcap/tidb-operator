@@ -1639,6 +1639,12 @@ func schema_pkg_apis_pingcap_v1alpha1_CompactSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"tikvImage": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
 					"br": {
 						SchemaProps: spec.SchemaProps{
 							Description: "BRConfig is the configs for BR *** Note: This field should generally not be left empty, unless you are certain the BR config *** can be obtained from another source, such as a schedule CR.",
