@@ -3552,6 +3552,8 @@ type CompactSpec struct {
 	// For BR image, if it does not contain tag, Pod will use image 'BrImage:${TiKV_Version}'.
 	// +optional
 	ToolImage string `json:"toolImage,omitempty"`
+	// +optional
+	TiKVImage string `json:"tikvImage,omitempty"`
 	// BRConfig is the configs for BR
 	// *** Note: This field should generally not be left empty, unless you are certain the BR config
 	// *** can be obtained from another source, such as a schedule CR.
