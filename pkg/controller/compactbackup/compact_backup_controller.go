@@ -354,18 +354,24 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", ns, compact.Spec.BR.Cluster), err
 	}
 	tikvImage := tc.TiKVImage()
-	_, tikvVersion := backuputil.ParseImage(tikvImage)
-	brImage := "pingcap/br:" + tikvVersion
+	_, tcVersion := backuputil.ParseImage(tikvImage)
+	brImage := "pingcap/br:" + tcVersion
 	if compact.Spec.ToolImage != "" {
-		brImage, toolVersion := backuputil.ParseImage(compact.Spec.ToolImage)
-		if toolVersion == "" {
-			brImage = fmt.Sprintf("%s:%s", brImage, tikvVersion)
+		var brVersion string
+		brImage, brVersion = backuputil.ParseImage(compact.Spec.ToolImage)
+		if brVersion != "" {
+			brImage = fmt.Sprintf("%s:%s", brImage, brVersion)
+		} else {
+			brImage = fmt.Sprintf("%s:%s", brImage, tcVersion)
 		}
 	}
 	if compact.Spec.TiKVImage != "" {
-		tikvImage, ctlVersion := backuputil.ParseImage(compact.Spec.TiKVImage)
-		if ctlVersion == "" {
+		var tikvVersion string
+		tikvImage, tikvVersion = backuputil.ParseImage(compact.Spec.TiKVImage)
+		if tikvVersion != "" {
 			tikvImage = fmt.Sprintf("%s:%s", tikvImage, tikvVersion)
+		} else {
+			tikvImage = fmt.Sprintf("%s:%s", tikvImage, tcVersion)
 		}
 	}
 	klog.Infof("Compact %s/%s use br image %s and tikv image %s", ns, name, brImage, tikvImage)
