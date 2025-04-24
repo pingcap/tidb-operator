@@ -4470,6 +4470,8 @@ spec:
                     type: string
                   startTs:
                     type: string
+                  tikvImage:
+                    type: string
                   tolerations:
                     items:
                       properties:
@@ -12206,6 +12208,8 @@ spec:
               serviceAccount:
                 type: string
               startTs:
+                type: string
+              tikvImage:
                 type: string
               tolerations:
                 items:

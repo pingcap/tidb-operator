@@ -3547,11 +3547,16 @@ type CompactSpec struct {
 	// Base tolerations of backup Pods, components may add more tolerations upon this respectively
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
-	// BrImage specifies the br image used in compact `Backup`.
-	// For examples `spec.brImage: pingcap/br:v4.0.8`
-	// For BR image, if it does not contain tag, Pod will use image 'BrImage:${TiKV_Version}'.
+	// ToolImage specifies the br image used in compact `Backup`.
+	// For examples `spec.toolImage: pingcap/br:v4.0.8`
+	// For BR image, if it does not contain tag, Pod will use the same version in tc 'BrImage:${TiKV_Version}'.
 	// +optional
 	ToolImage string `json:"toolImage,omitempty"`
+	// TikvImage specifies the tikv image used in compact `Backup`.
+	// For examples `spec.tikvImage: pingcap/tikv:v9.0.0`
+	// For TiKV image, if it does not contain tag, Pod will use the same version in tc 'TiKVImage:${TiKV_Version}'.
+	// +optional
+	TiKVImage string `json:"tikvImage,omitempty"`
 	// BRConfig is the configs for BR
 	// *** Note: This field should generally not be left empty, unless you are certain the BR config
 	// *** can be obtained from another source, such as a schedule CR.
