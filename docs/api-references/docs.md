@@ -5324,9 +5324,9 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>BrImage specifies the br image used in compact <code>Backup</code>.
-For examples <code>spec.brImage: pingcap/br:v4.0.8</code>
-For BR image, if it does not contain tag, Pod will use image &lsquo;BrImage:${TiKV_Version}&rsquo;.</p>
+<p>ToolImage specifies the br image used in compact <code>Backup</code>.
+For examples <code>spec.toolImage: pingcap/br:v4.0.8</code>
+For BR image, if it does not contain tag, Pod will use the same version in tc &lsquo;BrImage:${TiKV_Version}&rsquo;.</p>
 </td>
 </tr>
 <tr>
@@ -5338,6 +5338,9 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>TikvImage specifies the tikv image used in compact <code>Backup</code>.
+For examples <code>spec.tikvImage: pingcap/tikv:v9.0.0</code>
+For TiKV image, if it does not contain tag, Pod will use the same version in tc &lsquo;TiKVImage:${TiKV_Version}&rsquo;.</p>
 </td>
 </tr>
 <tr>
@@ -5676,9 +5679,9 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>BrImage specifies the br image used in compact <code>Backup</code>.
-For examples <code>spec.brImage: pingcap/br:v4.0.8</code>
-For BR image, if it does not contain tag, Pod will use image &lsquo;BrImage:${TiKV_Version}&rsquo;.</p>
+<p>ToolImage specifies the br image used in compact <code>Backup</code>.
+For examples <code>spec.toolImage: pingcap/br:v4.0.8</code>
+For BR image, if it does not contain tag, Pod will use the same version in tc &lsquo;BrImage:${TiKV_Version}&rsquo;.</p>
 </td>
 </tr>
 <tr>
@@ -5690,6 +5693,9 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>TikvImage specifies the tikv image used in compact <code>Backup</code>.
+For examples <code>spec.tikvImage: pingcap/tikv:v9.0.0</code>
+For TiKV image, if it does not contain tag, Pod will use the same version in tc &lsquo;TiKVImage:${TiKV_Version}&rsquo;.</p>
 </td>
 </tr>
 <tr>
