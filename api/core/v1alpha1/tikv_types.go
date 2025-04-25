@@ -203,10 +203,5 @@ type TiKVSpec struct {
 
 type TiKVStatus struct {
 	CommonStatus `json:",inline"`
-
-	// Store ID
-	ID string `json:"id,omitempty"`
-
-	// Store State
-	State string `json:"state,omitempty"`
+	StoreStatus  `json:",inline"`
 }

@@ -25,7 +25,7 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	"github.com/pingcap/tidb-operator/pkg/utils"
+	"github.com/pingcap/tidb-operator/pkg/utils/compare"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -43,14 +43,14 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		pod := state.Pod()
 		ready := coreutil.IsReady[scope.TiFlash](tiflash)
 		needUpdate = syncSuspendCond(tiflash) || needUpdate
-		needUpdate = utils.SetIfChanged(&tiflash.Status.ID, state.StoreID) || needUpdate
-		needUpdate = utils.SetIfChanged(&tiflash.Status.State, state.GetStoreState()) || needUpdate
+		needUpdate = compare.SetIfChanged(&tiflash.Status.ID, state.StoreID) || needUpdate
+		needUpdate = compare.SetIfChanged(&tiflash.Status.State, state.GetStoreState()) || needUpdate
 
-		needUpdate = utils.SetIfChanged(&tiflash.Status.ObservedGeneration, tiflash.Generation) || needUpdate
-		needUpdate = utils.SetIfChanged(&tiflash.Status.UpdateRevision, tiflash.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+		needUpdate = compare.SetIfChanged(&tiflash.Status.ObservedGeneration, tiflash.Generation) || needUpdate
+		needUpdate = compare.SetIfChanged(&tiflash.Status.UpdateRevision, tiflash.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 
 		if ready {
-			needUpdate = utils.SetIfChanged(&tiflash.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+			needUpdate = compare.SetIfChanged(&tiflash.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 		}
 
 		if needUpdate {
@@ -69,6 +69,21 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		}
 
 		return task.Complete().With("status is synced")
+	})
+}
+
+func TaskStoreStatus(state *ReconcileContext) task.Task {
+	return task.NameTaskFunc("StoreStatus", func(ctx context.Context) task.Result {
+		needUpdate := state.IsStatusChanged()
+		tiflash := state.TiFlash()
+		needUpdate = compare.SetIfChanged(&tiflash.Status.ID, state.StoreID) || needUpdate
+		needUpdate = compare.SetIfChanged(&tiflash.Status.State, state.GetStoreState()) || needUpdate
+		if needUpdate {
+			state.SetStatusChanged()
+			return task.Complete().With("store state is changed")
+		}
+
+		return task.Complete().With("store state is not changed")
 	})
 }
 

@@ -301,6 +301,15 @@ type CommonStatus struct {
 	CollisionCount *int32 `json:"collisionCount,omitempty"`
 }
 
+// StoreStatus defines the common status fields for all stores.
+type StoreStatus struct {
+	// ID is the store id.
+	ID string `json:"id,omitempty"`
+
+	// State is the store state.
+	State string `json:"state,omitempty"`
+}
+
 // GroupStatus defines the common status fields for all component groups.
 type GroupStatus struct {
 	// Version is the version of all instances in the group.
