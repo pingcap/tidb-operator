@@ -47,7 +47,6 @@ push/%:
 .PHONY: deploy
 deploy: crd
 	$(KUBECTL) apply --server-side=true -f $(ROOT)/manifests/crd
-	$(KUBECTL) apply --server-side=true -f $(ROOT)/manifests/rbac
 	$(KUBECTL) apply --server-side=true -f $(ROOT)/manifests/deploy
 
 .PHONY: codegen
@@ -79,15 +78,19 @@ overlaygen: bin/overlay-gen
 		--go-header-file=$(BOILERPLATE_FILE) \
 		k8s.io/api/core/v1
 
+.PHONY: yamlgen
+yamlgen: crd
+	$(ROOT)/hack/yaml.sh
+
+.PHONY: doc
+doc: bin/mdtoc
+	find docs -name "*.md" | xargs $(MDTOC) --inplace --max-depth 5
+
 .PHONY: crd
 crd: bin/controller-gen build/crd-modifier
 	$(CONTROLLER_GEN) crd:generateEmbeddedObjectMeta=true output:crd:artifacts:config=$(ROOT)/manifests/crd paths=$(API_PATH)/...
 	$(BIN_DIR)/crd-modifier -dir $(ROOT)/manifests/crd
 
-# Deprecate this generator, rbac generator cannot well handle nonResourceURLs
-.PHONY: rbac
-rbac: bin/controller-gen
-	$(CONTROLLER_GEN) rbac:roleName=tidb-operator output:rbac:artifacts:config=$(ROOT)/manifests/rbac paths=$(API_PATH)/...
 
 .PHONY: tidy
 tidy:
@@ -103,7 +106,7 @@ gengo: bin/mockgen
 license: bin/license-eye
 	$(LICENSE_EYE) -c .github/licenserc.yaml header fix
 
-ALL_GEN = tidy codegen crd gengo overlaygen
+ALL_GEN = tidy codegen crd gengo overlaygen yamlgen doc
 .PHONY: generate
 generate: $(ALL_GEN) license
 
@@ -208,3 +211,8 @@ bin/license-eye:
 GINKGO = $(BIN_DIR)/ginkgo
 bin/ginkgo:
 	$(ROOT)/hack/download.sh go_install $(GINKGO) github.com/onsi/ginkgo/v2/ginkgo
+
+.PHONY: bin/mdtoc
+MDTOC = $(BIN_DIR)/mdtoc
+bin/mdtoc:
+	$(ROOT)/hack/download.sh go_install $(MDTOC) sigs.k8s.io/mdtoc v1.1.0

@@ -23,6 +23,10 @@ set -o pipefail
 
 ROOT=$(cd $(dirname "${BASH_SOURCE[0]}")/../..; pwd -P)
 
+# Set LC_ALL to avoid sort issue
+# See https://www.gnu.org/software/coreutils/manual/html_node/ls-invocation.html#ls-invocation
+readonly LC_ALL=C
+
 # ---
 # Global variables definitions.
 # All variables should be in format V_XXX
