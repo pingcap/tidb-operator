@@ -1,5 +1,16 @@
 # Architecture of the TiDB Operator(v2)
 
+<!-- toc -->
+- [Overview](#overview)
+- [Goals](#goals)
+- [Key changes](#key-changes)
+- [Arch](#arch)
+- [CRD](#crd)
+  - [Cluster](#cluster)
+  - [Component Group](#component-group)
+  - [Instance](#instance)
+<!-- /toc -->
+
 ## Overview
 
 TiDB Operator is a software to manage multiple TiDB clusters in the Kubernetes platform. It's designed based on the [operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).

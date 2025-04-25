@@ -1,5 +1,23 @@
 # TiDB Operator(v2) Development Guide
 
+<!-- toc -->
+- [Prerequisites](#prerequisites)
+- [Workflow](#workflow)
+  - [Step 1: Fork TiDB Operator on GitHub](#step-1-fork-tidb-operator-on-github)
+  - [Step 2: Clone fork to local machine](#step-2-clone-fork-to-local-machine)
+  - [Step 3: Branch](#step-3-branch)
+  - [Step 4: Develop](#step-4-develop)
+    - [Edit the code](#edit-the-code)
+    - [Genearate and check](#genearate-and-check)
+    - [Start TiDB Operator locally and do manual tests](#start-tidb-operator-locally-and-do-manual-tests)
+  - [Step 5: Keep your branch in sync](#step-5-keep-your-branch-in-sync)
+  - [Step 6: Commit](#step-6-commit)
+  - [Step 7: Push](#step-7-push)
+  - [Step 8: Create a pull request](#step-8-create-a-pull-request)
+  - [Step 9: Get a code review](#step-9-get-a-code-review)
+- [Developer Docs](#developer-docs)
+<!-- /toc -->
+
 ## Prerequisites
 
 Please install [Go 1.23.x](https://go.dev/doc/install). If you want to run TiDB Operator locally, please also install the latest version of [Docker](https://www.docker.com/get-started/).

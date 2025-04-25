@@ -1,5 +1,10 @@
 # Conventions of TiDB Operator
 
+<!-- toc -->
+- [Code conventions](#code-conventions)
+- [Directory and file conventions](#directory-and-file-conventions)
+<!-- /toc -->
+
 Conventions are copied from [Kubernetes Conventions](https://www.kubernetes.dev/docs/guide/coding-convention), with some unused items removed.
 
 ## Code conventions
