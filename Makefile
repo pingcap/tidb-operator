@@ -82,6 +82,10 @@ overlaygen: bin/overlay-gen
 yamlgen: crd
 	$(ROOT)/hack/yaml.sh
 
+.PHONY: doc
+doc: bin/mdtoc
+	find docs -name "*.md" | xargs $(MDTOC) --inplace --max-depth 5
+
 .PHONY: crd
 crd: bin/controller-gen build/crd-modifier
 	$(CONTROLLER_GEN) crd:generateEmbeddedObjectMeta=true output:crd:artifacts:config=$(ROOT)/manifests/crd paths=$(API_PATH)/...
@@ -102,7 +106,7 @@ gengo: bin/mockgen
 license: bin/license-eye
 	$(LICENSE_EYE) -c .github/licenserc.yaml header fix
 
-ALL_GEN = tidy codegen crd gengo overlaygen yamlgen
+ALL_GEN = tidy codegen crd gengo overlaygen yamlgen doc
 .PHONY: generate
 generate: $(ALL_GEN) license
 
@@ -207,3 +211,8 @@ bin/license-eye:
 GINKGO = $(BIN_DIR)/ginkgo
 bin/ginkgo:
 	$(ROOT)/hack/download.sh go_install $(GINKGO) github.com/onsi/ginkgo/v2/ginkgo
+
+.PHONY: bin/mdtoc
+MDTOC = $(BIN_DIR)/mdtoc
+bin/mdtoc:
+	$(ROOT)/hack/download.sh go_install $(MDTOC) sigs.k8s.io/mdtoc v1.1.0
