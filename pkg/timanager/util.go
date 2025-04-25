@@ -131,8 +131,6 @@ type cached[Client, UnderlayClient any] struct {
 	c Client
 	f SharedInformerFactory[UnderlayClient]
 
-	cancel context.CancelFunc
-
 	cacheKeys []string
 }
 
@@ -157,14 +155,9 @@ func (c *cached[Client, UnderlayClient]) Keys() []string {
 }
 
 func (c *cached[Client, UnderlayClient]) Start(ctx context.Context) {
-	nctx, cancel := context.WithCancel(ctx)
-	c.cancel = cancel
-	c.f.Start(nctx.Done())
+	c.f.Start(ctx.Done())
 }
 
 func (c *cached[Client, UnderlayClient]) Stop() {
-	if c.cancel != nil {
-		c.cancel()
-	}
 	c.f.Shutdown()
 }
