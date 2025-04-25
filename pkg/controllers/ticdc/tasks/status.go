@@ -25,6 +25,7 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/pkg/utils/compare"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
@@ -47,14 +48,14 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		needUpdate = syncSuspendCond(ticdc) || needUpdate
 
 		if state.MemberID != "" {
-			needUpdate = SetIfChanged(&ticdc.Status.ID, state.MemberID) || needUpdate
+			needUpdate = compare.SetIfChanged(&ticdc.Status.ID, state.MemberID) || needUpdate
 		}
-		needUpdate = SetIfChanged(&ticdc.Status.IsOwner, state.IsOwner) || needUpdate
-		needUpdate = SetIfChanged(&ticdc.Status.ObservedGeneration, ticdc.Generation) || needUpdate
-		needUpdate = SetIfChanged(&ticdc.Status.UpdateRevision, ticdc.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+		needUpdate = compare.SetIfChanged(&ticdc.Status.IsOwner, state.IsOwner) || needUpdate
+		needUpdate = compare.SetIfChanged(&ticdc.Status.ObservedGeneration, ticdc.Generation) || needUpdate
+		needUpdate = compare.SetIfChanged(&ticdc.Status.UpdateRevision, ticdc.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 
 		if ready {
-			needUpdate = SetIfChanged(&ticdc.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+			needUpdate = compare.SetIfChanged(&ticdc.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 		}
 
 		if needUpdate {
@@ -89,14 +90,4 @@ func syncSuspendCond(ticdc *v1alpha1.TiCDC) bool {
 		Reason:             v1alpha1.ReasonUnsuspended,
 		Message:            "instance is not suspended",
 	})
-}
-
-// TODO: move to utils
-func SetIfChanged[T comparable](dst *T, src T) bool {
-	if *dst != src {
-		*dst = src
-		return true
-	}
-
-	return false
 }

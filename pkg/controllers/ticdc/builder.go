@@ -37,6 +37,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		task.IfBreak(common.CondInstanceIsDeleting(state),
 			tasks.TaskFinalizerDel(state, r.Client),
+			common.TaskInstanceConditionReady[scope.TiCDC](state),
+			common.TaskStatusPersister[scope.TiCDC](state, r.Client),
 		),
 		common.TaskInstanceFinalizerAdd[runtime.TiCDCTuple](state, r.Client),
 

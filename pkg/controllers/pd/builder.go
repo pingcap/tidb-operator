@@ -39,6 +39,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskContextInfoFromPD(state, r.PDClientManager),
 		task.IfBreak(common.CondInstanceIsDeleting(state),
 			tasks.TaskFinalizerDel(state, r.Client),
+			common.TaskInstanceConditionReady[scope.PD](state),
+			common.TaskStatusPersister[scope.PD](state, r.Client),
 		),
 		common.TaskInstanceFinalizerAdd[runtime.PDTuple](state, r.Client),
 

@@ -25,6 +25,7 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/pkg/utils/compare"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -46,13 +47,13 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		needUpdate = syncSuspendCond(pd) || needUpdate
 
 		if state.MemberID != "" {
-			needUpdate = SetIfChanged(&pd.Status.ID, state.MemberID) || needUpdate
+			needUpdate = compare.SetIfChanged(&pd.Status.ID, state.MemberID) || needUpdate
 		}
-		needUpdate = SetIfChanged(&pd.Status.IsLeader, state.IsLeader) || needUpdate
-		needUpdate = SetIfChanged(&pd.Status.ObservedGeneration, pd.Generation) || needUpdate
-		needUpdate = SetIfChanged(&pd.Status.UpdateRevision, pd.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+		needUpdate = compare.SetIfChanged(&pd.Status.IsLeader, state.IsLeader) || needUpdate
+		needUpdate = compare.SetIfChanged(&pd.Status.ObservedGeneration, pd.Generation) || needUpdate
+		needUpdate = compare.SetIfChanged(&pd.Status.UpdateRevision, pd.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 		if ready {
-			needUpdate = SetIfChanged(&pd.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+			needUpdate = compare.SetIfChanged(&pd.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 		}
 
 		if needUpdate {
@@ -112,14 +113,4 @@ func syncInitializedCond(pd *v1alpha1.PD, initialized bool) bool {
 		Reason:             reason,
 		Message:            msg,
 	})
-}
-
-// TODO: move to utils
-func SetIfChanged[T comparable](dst *T, src T) bool {
-	if *dst != src {
-		*dst = src
-		return true
-	}
-
-	return false
 }
