@@ -8447,7 +8447,7 @@ spec:
                   created the resource.
                 type: string
               id:
-                description: Store ID
+                description: ID is the store id.
                 type: string
               observedGeneration:
                 description: |-
@@ -8456,7 +8456,7 @@ spec:
                 format: int64
                 type: integer
               state:
-                description: Store State
+                description: State is the store state.
                 type: string
               updateRevision:
                 description: UpdateRevision is the revision of the Controller that

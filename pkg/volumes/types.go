@@ -17,6 +17,7 @@ package volumes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -24,6 +25,23 @@ import (
 	storagev1beta1 "k8s.io/api/storage/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
+
+// WaitError is a special error type that indicates the operation is not failed but needs to wait.
+type WaitError struct {
+	Message string
+}
+
+// Error implements the error interface.
+func (e *WaitError) Error() string {
+	return e.Message
+}
+
+// IsWaitError checks if an error is a WaitError.
+func IsWaitError(err error) bool {
+	var waitError *WaitError
+	ok := errors.As(err, &waitError)
+	return ok
+}
 
 type Modifier interface {
 	GetActualVolume(ctx context.Context, expect, current *corev1.PersistentVolumeClaim) (*ActualVolume, error)

@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
+	"github.com/pingcap/tidb-operator/pkg/utils/compare"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -46,14 +47,14 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 
 		needUpdate = syncSuspendCond(tikv) || needUpdate
 		needUpdate = syncLeadersEvictedCond(tikv, state.Store, state.LeaderEvicting, state.IsPDAvailable) || needUpdate
-		needUpdate = SetIfChanged(&tikv.Status.ID, state.StoreID) || needUpdate
-		needUpdate = SetIfChanged(&tikv.Status.State, state.GetStoreState()) || needUpdate
+		needUpdate = compare.SetIfChanged(&tikv.Status.ID, state.StoreID) || needUpdate
+		needUpdate = compare.SetIfChanged(&tikv.Status.State, state.GetStoreState()) || needUpdate
 
-		needUpdate = SetIfChanged(&tikv.Status.ObservedGeneration, tikv.Generation) || needUpdate
-		needUpdate = SetIfChanged(&tikv.Status.UpdateRevision, tikv.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+		needUpdate = compare.SetIfChanged(&tikv.Status.ObservedGeneration, tikv.Generation) || needUpdate
+		needUpdate = compare.SetIfChanged(&tikv.Status.UpdateRevision, tikv.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 
 		if ready {
-			needUpdate = SetIfChanged(&tikv.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+			needUpdate = compare.SetIfChanged(&tikv.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 		}
 
 		if needUpdate {
@@ -90,6 +91,21 @@ func syncSuspendCond(tikv *v1alpha1.TiKV) bool {
 	})
 }
 
+func TaskStoreStatus(state *ReconcileContext) task.Task {
+	return task.NameTaskFunc("StoreStatus", func(ctx context.Context) task.Result {
+		needUpdate := state.IsStatusChanged()
+		tikv := state.TiKV()
+		needUpdate = compare.SetIfChanged(&tikv.Status.ID, state.StoreID) || needUpdate
+		needUpdate = compare.SetIfChanged(&tikv.Status.State, state.GetStoreState()) || needUpdate
+		if needUpdate {
+			state.SetStatusChanged()
+			return task.Complete().With("store state is changed")
+		}
+
+		return task.Complete().With("store state is not changed")
+	})
+}
+
 // Status of this condition can only transfer as the below
 func syncLeadersEvictedCond(tikv *v1alpha1.TiKV, store *pdv1.Store, isEvicting, isPDAvail bool) bool {
 	status := metav1.ConditionFalse
@@ -117,17 +133,4 @@ func syncLeadersEvictedCond(tikv *v1alpha1.TiKV, store *pdv1.Store, isEvicting, 
 		Reason:             reason,
 		Message:            msg,
 	})
-}
-
-// TODO: move to utils
-func SetIfChanged[T comparable](dst *T, src T) bool {
-	if src == *new(T) {
-		return false
-	}
-	if *dst != src {
-		*dst = src
-		return true
-	}
-
-	return false
 }

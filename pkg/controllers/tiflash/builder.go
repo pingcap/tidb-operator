@@ -40,6 +40,9 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		task.IfBreak(common.CondInstanceIsDeleting(state),
 			tasks.TaskFinalizerDel(state, r.Client),
+			common.TaskInstanceConditionReady[scope.TiFlash](state),
+			tasks.TaskStoreStatus(state),
+			common.TaskStatusPersister[scope.TiFlash](state, r.Client),
 		),
 		common.TaskInstanceFinalizerAdd[runtime.TiFlashTuple](state, r.Client),
 

@@ -40,6 +40,10 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		task.IfBreak(common.CondGroupIsDeleting(state),
 			common.TaskGroupFinalizerDel[runtime.TiCDCGroupTuple, runtime.TiCDCTuple](state, r.Client),
+			common.TaskGroupConditionReady[scope.TiCDCGroup](state),
+			common.TaskGroupConditionSynced[scope.TiCDCGroup](state),
+			common.TaskStatusRevisionAndReplicas[scope.TiCDCGroup](state),
+			common.TaskStatusPersister[scope.TiCDCGroup](state, r.Client),
 		),
 		common.TaskGroupFinalizerAdd[runtime.TiCDCGroupTuple](state, r.Client),
 
