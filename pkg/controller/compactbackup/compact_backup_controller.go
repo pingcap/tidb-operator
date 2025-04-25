@@ -17,7 +17,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"strings"
 	"time"
 
 	"github.com/pingcap/errors"
@@ -355,15 +354,25 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 		return nil, fmt.Sprintf("failed to fetch tidbcluster %s/%s", ns, compact.Spec.BR.Cluster), err
 	}
 	tikvImage := tc.TiKVImage()
-	_, tikvVersion := backuputil.ParseImage(tikvImage)
-	brImage := "pingcap/br:" + tikvVersion
+	_, tcVersion := backuputil.ParseImage(tikvImage)
+	brImage := "pingcap/br:" + tcVersion
 	if compact.Spec.ToolImage != "" {
-		toolImage := compact.Spec.ToolImage
-		if !strings.ContainsRune(compact.Spec.ToolImage, ':') {
-			toolImage = fmt.Sprintf("%s:%s", toolImage, tikvVersion)
+		var brVersion string
+		brImage, brVersion = backuputil.ParseImage(compact.Spec.ToolImage)
+		if brVersion != "" {
+			brImage = fmt.Sprintf("%s:%s", brImage, brVersion)
+		} else {
+			brImage = fmt.Sprintf("%s:%s", brImage, tcVersion)
 		}
-
-		brImage = toolImage
+	}
+	if compact.Spec.TiKVImage != "" {
+		var tikvVersion string
+		tikvImage, tikvVersion = backuputil.ParseImage(compact.Spec.TiKVImage)
+		if tikvVersion != "" {
+			tikvImage = fmt.Sprintf("%s:%s", tikvImage, tikvVersion)
+		} else {
+			tikvImage = fmt.Sprintf("%s:%s", tikvImage, tcVersion)
+		}
 	}
 	klog.Infof("Compact %s/%s use br image %s and tikv image %s", ns, name, brImage, tikvImage)
 
