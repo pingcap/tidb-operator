@@ -22,7 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	"github.com/pingcap/tidb-operator/pkg/utils"
+	"github.com/pingcap/tidb-operator/pkg/utils/compare"
 )
 
 func Cluster[
@@ -49,7 +49,7 @@ func SetStatusObservedGeneration[
 ](f F) bool {
 	t := scope.From[S](f)
 	gen := t.ObservedGeneration()
-	if utils.SetIfChanged(&gen, t.GetGeneration()) {
+	if compare.SetIfChanged(&gen, t.GetGeneration()) {
 		t.SetObservedGeneration(gen)
 		return true
 	}

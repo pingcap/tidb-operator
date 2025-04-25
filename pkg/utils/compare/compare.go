@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package utils
+package compare
 
 // SetIfChanged sets the destination pointer to the source value if they are different.
 // Returns true if the value was changed, false otherwise.

@@ -21,7 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	"github.com/pingcap/tidb-operator/pkg/utils"
+	"github.com/pingcap/tidb-operator/pkg/utils/compare"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 )
 
@@ -76,7 +76,7 @@ func SetStatusVersion[
 ](f F) bool {
 	obj := scope.From[S](f)
 	v := obj.StatusVersion()
-	if utils.SetIfChanged(&v, obj.Version()) {
+	if compare.SetIfChanged(&v, obj.Version()) {
 		obj.SetStatusVersion(v)
 		return true
 	}
@@ -91,10 +91,10 @@ func SetStatusReplicas[
 ](f F, newReplicas, newReady, newUpdate, newCurrent int32) bool {
 	obj := scope.From[S](f)
 	replicas, ready, update, current := obj.StatusReplicas()
-	changed := utils.SetIfChanged(&replicas, newReplicas)
-	changed = utils.SetIfChanged(&ready, newReady) || changed
-	changed = utils.SetIfChanged(&update, newUpdate) || changed
-	changed = utils.SetIfChanged(&current, newCurrent) || changed
+	changed := compare.SetIfChanged(&replicas, newReplicas)
+	changed = compare.SetIfChanged(&ready, newReady) || changed
+	changed = compare.SetIfChanged(&update, newUpdate) || changed
+	changed = compare.SetIfChanged(&current, newCurrent) || changed
 	if changed {
 		obj.SetStatusReplicas(replicas, ready, update, current)
 		return changed
@@ -110,9 +110,9 @@ func SetStatusRevision[
 ](f F, newUpdate, newCurrent string, newCollisionCount int32) bool {
 	obj := scope.From[S](f)
 	update, current, collisionCount := obj.StatusRevision()
-	changed := utils.SetIfChanged(&update, newUpdate)
-	changed = utils.SetIfChanged(&current, newCurrent) || changed
-	changed = utils.NewAndSetIfChanged(&collisionCount, newCollisionCount) || changed
+	changed := compare.SetIfChanged(&update, newUpdate)
+	changed = compare.SetIfChanged(&current, newCurrent) || changed
+	changed = compare.NewAndSetIfChanged(&collisionCount, newCollisionCount) || changed
 	if changed {
 		obj.SetStatusRevision(update, current, collisionCount)
 		return changed
