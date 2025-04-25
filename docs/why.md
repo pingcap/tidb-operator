@@ -1,5 +1,17 @@
 # Why we need a new TiDB Operator
 
+<!-- toc -->
+- [Issues](#issues)
+  - [StatefulSet is not flexible enough](#statefulset-is-not-flexible-enough)
+  - [TidbCluster is tooooo large](#tidbcluster-is-tooooo-large)
+  - [Too many unmanaged kubernetes fields](#too-many-unmanaged-kubernetes-fields)
+  - [Missing validation](#missing-validation)
+  - [Compatibility with Kubernetes and TiDB](#compatibility-with-kubernetes-and-tidb)
+- [Future](#future)
+  - [Autoscaling](#autoscaling)
+  - [Kubectl plugin](#kubectl-plugin)
+<!-- /toc -->
+
 From its initial design through multiple iterations, TiDB Operator(v1) has faced and resolved many challenges. However, some issues remain inadequately addressed and have grown more pressing as TiDB and Kubernetes have evolved. These unresolved problems hinder the TiDB Operator(v1)'s maintenance and development.
 
 ## Issues
