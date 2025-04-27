@@ -132,6 +132,8 @@ type cached[Client, UnderlayClient any] struct {
 	f SharedInformerFactory[UnderlayClient]
 
 	cacheKeys []string
+
+	stopCh chan struct{}
 }
 
 func NewCache[Client, UnderlayClient any](keys []string, c Client, f SharedInformerFactory[UnderlayClient]) Cache[Client, UnderlayClient] {
@@ -139,6 +141,7 @@ func NewCache[Client, UnderlayClient any](keys []string, c Client, f SharedInfor
 		c:         c,
 		f:         f,
 		cacheKeys: keys,
+		stopCh:    make(chan struct{}),
 	}
 }
 
@@ -155,9 +158,15 @@ func (c *cached[Client, UnderlayClient]) Keys() []string {
 }
 
 func (c *cached[Client, UnderlayClient]) Start(ctx context.Context) {
-	c.f.Start(ctx.Done())
+	go func() {
+		<-ctx.Done()
+		c.Stop()
+	}()
+
+	c.f.Start(c.stopCh)
 }
 
 func (c *cached[Client, UnderlayClient]) Stop() {
+	close(c.stopCh)
 	c.f.Shutdown()
 }
