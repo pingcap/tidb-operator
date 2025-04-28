@@ -39,7 +39,7 @@ func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm vo
 		if wait, err := volumes.SyncPVCs(ctx, c, pvcs, vm.New(ck.Namespace, ck.Name), logger); err != nil {
 			return task.Fail().With("failed to sync pvcs: %w", err)
 		} else if wait {
-			return task.Complete().With("waiting for pvcs to be synced")
+			return task.Retry(task.DefaultRequeueAfter).With("waiting for pvcs to be synced")
 		}
 
 		return task.Complete().With("pvcs are synced")
