@@ -18,6 +18,7 @@ import (
 	"cmp"
 	"context"
 	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -33,23 +34,36 @@ import (
 )
 
 type FakeLister[T any, PT Object[T]] struct {
-	L List[T, PT]
+	lock sync.Mutex
+	L    List[T, PT]
 }
 
 func (l *FakeLister[T, PT]) List(_ context.Context) (*List[T, PT], error) {
+	l.lock.Lock()
+	defer l.lock.Unlock()
 	return &l.L, nil
 }
 
-func (l *FakeLister[T, PT]) GetItems(_ *List[T, PT]) []PT {
-	objs := make([]PT, 0, len(l.L.Items))
-	for i := range l.L.Items {
-		objs = append(objs, &l.L.Items[i])
+func (l *FakeLister[T, PT]) GetItems(list *List[T, PT]) []PT {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+
+	objs := make([]PT, 0, len(list.Items))
+	for i := range list.Items {
+		objs = append(objs, &list.Items[i])
 	}
 	return objs
 }
 
 func (*FakeLister[T, PT]) MarkAsInvalid(PT) bool {
 	return false
+}
+
+func (l *FakeLister[T, PT]) UpdateItems(items []T) {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+
+	l.L.Items = items
 }
 
 func TestPoller(t *testing.T) {

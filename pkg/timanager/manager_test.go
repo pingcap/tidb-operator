@@ -325,7 +325,7 @@ func TestClientManagerSource(t *testing.T) {
 			})
 			assert.True(tt, synced)
 
-			lister.L.Items = c.updated
+			lister.UpdateItems(c.updated)
 
 			select {
 			case <-ctx.Done():
