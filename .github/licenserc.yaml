@@ -9,6 +9,7 @@ header:
     - _output/**
     - ci/**
     - examples/**
+    - charts/**
     - image/**
     - manifests/**
     - .gitignore
