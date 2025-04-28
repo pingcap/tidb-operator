@@ -129,8 +129,8 @@ lint-fix: bin/golangci-lint
 
 .PHONY: unit
 unit:
-	cd $(VALIDATION_TEST_PATH) && go test ./...
-	go test $$(go list -e ./... | grep -v cmd | grep -v tools | grep -v tests/e2e | grep -v third_party) \
+	cd $(VALIDATION_TEST_PATH) && go test -race ./...
+	go test -race $$(go list -e ./... | grep -v cmd | grep -v tools | grep -v tests/e2e | grep -v third_party) \
 		-cover -coverprofile=coverage.txt -covermode=atomic
 	sed -i.bak '/generated/d;/fake.go/d' coverage.txt && rm coverage.txt.bak
 
