@@ -1,0 +1,47 @@
+{{- if .Values.webhook.create -}}
+# This policy is defined to avoid unexpected deletion of tikv pods.
+# We cannot change grace period after it has been set because of this issue
+# https://github.com/kubernetes/kubernetes/issues/83916.
+# Therefore, we forbid this action to avoid the deletion of tikv pods hanging
+# when deleting whole namespace directly or deleting pods manually.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: "delete-pod.policy.pingcap.com"
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: webhook
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [""]
+      apiVersions: ["v1"]
+      operations: ["DELETE"]
+      resources: ["pods"]
+  validations:
+  - expression: "has(request.options.gracePeriodSeconds) && request.options.gracePeriodSeconds < 65535"
+    messageExpression: "'gracePeriodSeconds(' + string(request.options.gracePeriodSeconds) + ') is unset, it must be set when delete tikv pod' "
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: "delete-pod.policy.pingcap.com"
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: webhook
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  policyName: "delete-pod.policy.pingcap.com"
+  validationActions: [Deny]
+  matchResources:
+    objectSelector:
+      matchLabels:
+        pingcap.com/managed-by: tidb-operator
+        pingcap.com/component: tikv
+{{- end }}

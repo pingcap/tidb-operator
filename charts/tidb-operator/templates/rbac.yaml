@@ -1,0 +1,78 @@
+{{- if .Values.rbac.create -}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  {{- if eq .Values.appendReleaseSuffix true}}
+  name: {{ .Values.operator.serviceAccount }}-{{ .Release.Name }}
+  {{- else }}
+  name: {{ .Values.operator.serviceAccount }}
+  {{- end }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: tidb-operator
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Release.Name }}:tidb-operator
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: tidb-operator
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+rules:
+  - nonResourceURLs: ["/metrics"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["configmaps", "events", "persistentvolumeclaims", "pods", "services"]
+    verbs: ["*"]
+  - apiGroups: [""]
+    resources: ["nodes", "persistentvolumes", "secrets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["controllerrevisions"]
+    verbs: ["*"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["*"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses", "volumeattributesclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["*"]
+  - apiGroups: ["core.pingcap.com"]
+    resources: ["*"]
+    verbs: ["*"]
+  - apiGroups: ["br.pingcap.com"]
+    resources: ["*"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Release.Name }}:tidb-operator
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: tidb-operator
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Release.Name }}:tidb-operator
+subjects:
+  - kind: ServiceAccount
+    {{- if eq .Values.appendReleaseSuffix true}}
+    name: {{ .Values.operator.serviceAccount }}-{{ .Release.Name }}
+    {{- else }}
+    name: {{ .Values.operator.serviceAccount }}
+    {{- end }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
