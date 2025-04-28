@@ -123,7 +123,7 @@ type TSOTemplateSpec struct {
 	// Volumes defines persistent volumes of TSO
 	// +listType=map
 	// +listMapKey=name
-	Volumes []Volume `json:"volumes"`
+	Volumes []Volume `json:"volumes,omitempty"`
 
 	// Overlay defines a k8s native resource template patch
 	// All resources(pod, pvcs, ...) managed by TSO can be overlayed by this field
