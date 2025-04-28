@@ -30,7 +30,7 @@ var InstanceCRDs = []string{
 	"crd/core.pingcap.com_tidbs.yaml",
 	"crd/core.pingcap.com_tiflashes.yaml",
 	"crd/core.pingcap.com_ticdcs.yaml",
-	"crd/core.pingcap.com_tsoes.yaml",
+	"crd/core.pingcap.com_tsos.yaml",
 }
 
 type Case struct {
