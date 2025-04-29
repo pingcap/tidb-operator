@@ -78,7 +78,11 @@ spec:
                   NOTE: namespace may be added into the reference in the future
                 properties:
                   name:
+                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                     type: string
+                    x-kubernetes-validations:
+                    - message: cluster name is immutable
+                      rule: self == oldSelf
                 required:
                 - name
                 type: object
@@ -101,6 +105,7 @@ spec:
                                 additionalProperties:
                                   type: string
                                 description: Topology means the topo for scheduling
+                                minProperties: 1
                                 type: object
                               weight:
                                 description: |-
@@ -8752,7 +8757,6 @@ spec:
                         x-kubernetes-list-type: map
                     required:
                     - version
-                    - volumes
                     type: object
                 required:
                 - spec

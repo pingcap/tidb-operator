@@ -62,7 +62,11 @@ spec:
                 description: Cluster is a reference of tidb cluster
                 properties:
                   name:
+                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                     type: string
+                    x-kubernetes-validations:
+                    - message: cluster name is immutable
+                      rule: self == oldSelf
                 required:
                 - name
                 type: object
@@ -8399,6 +8403,7 @@ spec:
                   Topology defines the topology domain of this tso instance
                   It will be translated into a node affinity config
                   Topology cannot be changed
+                minProperties: 1
                 type: object
                 x-kubernetes-validations:
                 - message: topology is immutable
@@ -8484,7 +8489,6 @@ spec:
             - cluster
             - subdomain
             - version
-            - volumes
             type: object
             x-kubernetes-validations:
             - fieldPath: .topology
