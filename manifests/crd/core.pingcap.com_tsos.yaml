@@ -21,9 +21,6 @@ spec:
     - jsonPath: .spec.cluster.name
       name: Cluster
       type: string
-    - jsonPath: .status.isLeader
-      name: Leader
-      type: string
     - jsonPath: .status.conditions[?(@.type=="Synced")].status
       name: Synced
       type: string
