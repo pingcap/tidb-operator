@@ -330,6 +330,7 @@ func SyncPVCs(ctx context.Context, cli client.Client,
 		if err != nil {
 			return false, err
 		}
+		logger.Info("handle volume modification", "needWait", needWait, "skipUpdate", skipUpdate, "pvc", expectPVC.Name)
 		if needWait {
 			wait = true
 		}
