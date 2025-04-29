@@ -20,6 +20,7 @@ PD_API_PATH = $(ROOT)/pkg/timanager/apis/pd
 VALIDATION_TEST_PATH = $(ROOT)/tests/validation
 GO_MODULE := github.com/pingcap/tidb-operator
 OVERLAY_PKG_DIR = $(ROOT)/pkg/overlay
+RUNTIME_PKG_DIR = $(ROOT)/pkg/runtime
 BOILERPLATE_FILE = $(ROOT)/hack/boilerplate/boilerplate.go.txt
 MOCK_BOILERPLATE_FILE = $(ROOT)/hack/boilerplate/boilerplate.txt
 
@@ -78,6 +79,13 @@ overlaygen: bin/overlay-gen
 		--go-header-file=$(BOILERPLATE_FILE) \
 		k8s.io/api/core/v1
 
+.PHONY: runtimegen
+runtimegen: bin/runtime-gen
+	$(RUNTIME_GEN) \
+		--output-dir=$(RUNTIME_PKG_DIR) \
+		--go-header-file=$(BOILERPLATE_FILE) \
+		github.com/pingcap/tidb-operator/api/v2/core/v1alpha1
+
 .PHONY: yamlgen
 yamlgen: crd
 	$(ROOT)/hack/yaml.sh
@@ -106,7 +114,7 @@ gengo: bin/mockgen
 license: bin/license-eye
 	$(LICENSE_EYE) -c .github/licenserc.yaml header fix
 
-ALL_GEN = tidy codegen crd gengo overlaygen yamlgen doc
+ALL_GEN = tidy codegen crd gengo overlaygen runtimegen yamlgen doc
 .PHONY: generate
 generate: $(ALL_GEN) license
 
@@ -189,6 +197,10 @@ bin/mockgen:
 OVERLAY_GEN = $(BIN_DIR)/overlay-gen
 bin/overlay-gen:
 	$(ROOT)/hack/build.sh overlay-gen
+
+RUNTIME_GEN = $(BIN_DIR)/runtime-gen
+bin/runtime-gen:
+	$(ROOT)/hack/build.sh runtime-gen
 
 
 .PHONY: bin/golangci-lint

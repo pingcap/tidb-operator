@@ -15,6 +15,8 @@
 package policy
 
 import (
+	"cmp"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -191,6 +193,10 @@ func TestTopologyPolicy(t *testing.T) {
 					outdated = append(outdated, in)
 				}
 			}
+
+			slices.SortFunc(outdated, func(a, b *v1alpha1.PD) int {
+				return cmp.Compare(a.GetName(), b.GetName())
+			})
 
 			preferred := policy.Prefer(runtime.FromPDSlice(outdated))
 			assert.Equal(tt, c.expectedPrefered, runtime.ToPDSlice(preferred))
