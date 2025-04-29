@@ -28,7 +28,7 @@ func TestScheduler(t *testing.T) {
 		transferSchedulerCases(t, ClusterReference(), "spec", "cluster")...,
 	)
 
-	Validate(t, "crd/core.pingcap.com_Schedulers.yaml", cases)
+	Validate(t, "crd/core.pingcap.com_schedulers.yaml", cases)
 }
 
 func basicScheduler() map[string]any {
@@ -36,7 +36,7 @@ func basicScheduler() map[string]any {
 apiVersion: core.pingcap.com/v1alpha1
 kind: Scheduler
 metadata:
-  name: Scheduler
+  name: scheduler
 spec:
   cluster:
     name: test
