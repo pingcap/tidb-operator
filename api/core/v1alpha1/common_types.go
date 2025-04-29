@@ -162,6 +162,8 @@ type ObjectMeta struct {
 // ClusterReference is a reference to cluster
 // NOTE: namespace may be added into the reference in the future
 type ClusterReference struct {
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="cluster name is immutable"
+	// +kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
 	Name string `json:"name"`
 }
 
@@ -169,6 +171,7 @@ type ClusterReference struct {
 // e.g. topology.kubernetes.io/zone: us-west-1a
 // It will be translated to pod.spec.nodeSelector
 // IMPORTANT: Topology is immutable for an instance
+// +kubebuilder:validation:MinProperties=1
 type Topology map[string]string
 
 // Overlay defines some templates of k8s native resources.
