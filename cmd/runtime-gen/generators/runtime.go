@@ -30,7 +30,6 @@ type runtimeGenerator struct {
 	targetPackage string
 	kind          string
 	imports       namer.ImportTracker
-	funcTracker   map[string]map[string]struct{}
 }
 
 func NewRuntimeGenerator(outputFilename, kind, targetPackage string) generator.Generator {
