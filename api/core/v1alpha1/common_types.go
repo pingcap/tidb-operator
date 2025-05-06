@@ -90,12 +90,13 @@ const (
 
 const (
 	// Label value for meta.LabelKeyComponent
-	LabelValComponentPD      = "pd"
-	LabelValComponentTiDB    = "tidb"
-	LabelValComponentTiKV    = "tikv"
-	LabelValComponentTiFlash = "tiflash"
-	LabelValComponentTiCDC   = "ticdc"
-	LabelValComponentTSO     = "tso"
+	LabelValComponentPD        = "pd"
+	LabelValComponentTiDB      = "tidb"
+	LabelValComponentTiKV      = "tikv"
+	LabelValComponentTiFlash   = "tiflash"
+	LabelValComponentTiCDC     = "ticdc"
+	LabelValComponentTSO       = "tso"
+	LabelValComponentScheduler = "scheduler"
 
 	// LabelKeyClusterID is the unique identifier of the cluster.
 	// This label is used for backward compatibility with TiDB Operator v1, so it has a different prefix.
