@@ -77,7 +77,7 @@ func TaskInstanceFinalizerAdd[
 
 const defaultDelWaitTime = 10 * time.Second
 
-type GroupFinalizerDel[
+type GroupFinalizerDelState[
 	GF client.Object,
 	I client.Object,
 ] interface {
@@ -90,7 +90,7 @@ func TaskGroupFinalizerDel[
 	GF client.Object,
 	GT runtime.Group,
 	I client.Object,
-](state GroupFinalizerDel[GF, I], c client.Client) task.Task {
+](state GroupFinalizerDelState[GF, I], c client.Client) task.Task {
 	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
 		var errList []error
 		var names []string

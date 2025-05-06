@@ -62,6 +62,9 @@ func (*TaskContext) Name() string {
 	return "Context"
 }
 
+// TODO: refactor to use task v3
+//
+//nolint:gocyclo // refactor later
 func (t *TaskContext) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	rtx := ctx.Self()
 

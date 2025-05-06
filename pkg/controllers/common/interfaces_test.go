@@ -18,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
@@ -214,5 +215,33 @@ func FakeGroupAndInstanceSliceAndRevisionState[
 		GroupState:         FakeGroupState(g),
 		InstanceSliceState: FakeInstanceSliceState(s),
 		RevisionState:      FakeRevisionState(update, current, collisionCount),
+	}
+}
+
+type fakeObjectState[
+	F client.Object,
+] struct {
+	obj     F
+	cluster *v1alpha1.Cluster
+	pod     *corev1.Pod
+}
+
+func (s *fakeObjectState[F]) Object() F {
+	return s.obj
+}
+
+func (s *fakeObjectState[F]) SetCluster(c *v1alpha1.Cluster) {
+	s.cluster = c
+}
+
+func (s *fakeObjectState[F]) SetPod(pod *corev1.Pod) {
+	s.pod = pod
+}
+
+func newFakeObjectState[
+	F client.Object,
+](f F) *fakeObjectState[F] {
+	return &fakeObjectState[F]{
+		obj: f,
 	}
 }

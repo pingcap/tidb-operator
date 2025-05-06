@@ -35,8 +35,6 @@ type state struct {
 	isPodTerminating bool
 
 	statusChanged bool
-
-	healthy bool
 }
 
 type State interface {
