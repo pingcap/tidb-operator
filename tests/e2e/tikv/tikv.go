@@ -19,7 +19,6 @@ import (
 
 	"github.com/onsi/ginkgo/v2"
 
-	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apicall"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
@@ -57,7 +56,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 				f.WaitForPDGroupReady(ctx, pdg)
 				f.WaitForTiKVGroupReady(ctx, kvg)
 
-				kvs, err := apicall.ListInstances[scope.TiKVGroup, *v1alpha1.TiKV](ctx, f.Client, kvg)
+				kvs, err := apicall.ListInstances[scope.TiKVGroup](ctx, f.Client, kvg)
 				f.Must(err)
 
 				kv := kvs[0]

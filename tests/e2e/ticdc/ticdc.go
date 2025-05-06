@@ -59,7 +59,7 @@ var _ = ginkgo.Describe("TiCDC", label.TiCDC, func() {
 				f.WaitForTiKVGroupReady(ctx, kvg)
 				f.WaitForTiCDCGroupReady(ctx, cg)
 
-				cdcs, err := apicall.ListInstances[scope.TiCDCGroup, *v1alpha1.TiCDC](ctx, f.Client, cg)
+				cdcs, err := apicall.ListInstances[scope.TiCDCGroup](ctx, f.Client, cg)
 				f.Must(err)
 
 				var owner *v1alpha1.TiCDC

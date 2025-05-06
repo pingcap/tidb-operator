@@ -49,14 +49,22 @@ func (TiKVGroup) To(t *runtime.TiKVGroup) *v1alpha1.TiKVGroup {
 	return runtime.ToTiKVGroup(t)
 }
 
+func (TiKVGroup) NewInstanceList() *v1alpha1.TiKVList {
+	return &v1alpha1.TiKVList{}
+}
+
+func (TiKVGroup) GetInstanceItems(l *v1alpha1.TiKVList) []*v1alpha1.TiKV {
+	items := make([]*v1alpha1.TiKV, 0, len(l.Items))
+	for i := range l.Items {
+		items = append(items, &l.Items[i])
+	}
+	return items
+}
+
 func (TiKVGroup) Component() string {
 	return v1alpha1.LabelValComponentTiKV
 }
 
 func (TiKVGroup) NewList() client.ObjectList {
 	return &v1alpha1.TiKVGroupList{}
-}
-
-func (TiKVGroup) NewInstanceList() client.ObjectList {
-	return &v1alpha1.TiKVList{}
 }

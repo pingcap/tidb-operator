@@ -52,6 +52,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/tiflashgroup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tikv"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tikvgroup"
+	"github.com/pingcap/tidb-operator/pkg/controllers/tso"
+	"github.com/pingcap/tidb-operator/pkg/controllers/tsogroup"
 	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
@@ -228,6 +230,13 @@ func addIndexer(ctx context.Context, mgr ctrl.Manager) error {
 		return err
 	}
 
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.TSOGroup{}, "spec.cluster.name", func(obj client.Object) []string {
+		tg := obj.(*v1alpha1.TSOGroup)
+		return []string{tg.Spec.Cluster.Name}
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -264,6 +273,12 @@ func setupControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientManage
 	}
 	if err := ticdc.Setup(mgr, c, vm); err != nil {
 		return fmt.Errorf("unable to create controller TiCDC: %w", err)
+	}
+	if err := tsogroup.Setup(mgr, c); err != nil {
+		return fmt.Errorf("unable to create controller TSOGroup: %w", err)
+	}
+	if err := tso.Setup(mgr, c, pdcm, vm); err != nil {
+		return fmt.Errorf("unable to create controller TSO: %w", err)
 	}
 	return nil
 }
@@ -315,6 +330,12 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 			Label: labels.Everything(),
 		},
 		&v1alpha1.TiCDC{}: {
+			Label: labels.Everything(),
+		},
+		&v1alpha1.TSOGroup{}: {
+			Label: labels.Everything(),
+		},
+		&v1alpha1.TSO{}: {
 			Label: labels.Everything(),
 		},
 		&corev1.Secret{}: {

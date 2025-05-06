@@ -51,6 +51,7 @@ type State interface {
 	common.ContextClusterNewer[*v1alpha1.TiCDCGroup]
 
 	common.InstanceSliceState[*runtime.TiCDC]
+	common.SliceState[*v1alpha1.TiCDC]
 
 	common.StatusUpdater
 	common.StatusPersister[*v1alpha1.TiCDCGroup]
@@ -85,6 +86,10 @@ func (s *state) TiCDCSlice() []*v1alpha1.TiCDC {
 
 func (s *state) Slice() []*runtime.TiCDC {
 	return runtime.FromTiCDCSlice(s.cdcs)
+}
+
+func (s *state) InstanceSlice() []*v1alpha1.TiCDC {
+	return s.cdcs
 }
 
 func (s *state) SetCluster(cluster *v1alpha1.Cluster) {

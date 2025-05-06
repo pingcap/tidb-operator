@@ -184,6 +184,9 @@ spec:
                           If tag is omitted, version will be used as the image tag.
                           Default is pingcap/pd
                         type: string
+                      mode:
+                        description: Mode of pd, default is normal
+                        type: string
                       overlay:
                         description: |-
                           Overlay defines a k8s native resource template patch

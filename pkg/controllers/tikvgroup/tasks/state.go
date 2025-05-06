@@ -51,6 +51,7 @@ type State interface {
 	common.ContextClusterNewer[*v1alpha1.TiKVGroup]
 
 	common.InstanceSliceState[*runtime.TiKV]
+	common.SliceState[*v1alpha1.TiKV]
 
 	common.StatusUpdater
 	common.StatusPersister[*v1alpha1.TiKVGroup]
@@ -85,6 +86,10 @@ func (s *state) TiKVSlice() []*v1alpha1.TiKV {
 
 func (s *state) Slice() []*runtime.TiKV {
 	return runtime.FromTiKVSlice(s.kvs)
+}
+
+func (s *state) InstanceSlice() []*v1alpha1.TiKV {
+	return s.kvs
 }
 
 func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
