@@ -33,41 +33,12 @@ type ObjectList[T any] interface {
 }
 
 type (
-	ClusterInitializer = ResourceInitializer[v1alpha1.Cluster]
-
-	PDGroupInitializer = ResourceInitializer[v1alpha1.PDGroup]
-	PDInitializer      = ResourceInitializer[v1alpha1.PD]
-	PDSliceInitializer = ResourceSliceInitializer[v1alpha1.PD]
-
-	TiKVGroupInitializer = ResourceInitializer[v1alpha1.TiKVGroup]
-	TiKVInitializer      = ResourceInitializer[v1alpha1.TiKV]
-	TiKVSliceInitializer = ResourceSliceInitializer[v1alpha1.TiKV]
-
-	TiDBGroupInitializer = ResourceInitializer[v1alpha1.TiDBGroup]
-	TiDBInitializer      = ResourceInitializer[v1alpha1.TiDB]
-	TiDBSliceInitializer = ResourceSliceInitializer[v1alpha1.TiDB]
-
-	TiFlashGroupInitializer = ResourceInitializer[v1alpha1.TiFlashGroup]
-	TiFlashInitializer      = ResourceInitializer[v1alpha1.TiFlash]
+	PDSliceInitializer      = ResourceSliceInitializer[v1alpha1.PD]
+	TiKVSliceInitializer    = ResourceSliceInitializer[v1alpha1.TiKV]
+	TiDBSliceInitializer    = ResourceSliceInitializer[v1alpha1.TiDB]
 	TiFlashSliceInitializer = ResourceSliceInitializer[v1alpha1.TiFlash]
-
-	TiCDCGroupInitializer = ResourceInitializer[v1alpha1.TiCDCGroup]
-	TiCDCInitializer      = ResourceInitializer[v1alpha1.TiCDC]
-	TiCDCSliceInitializer = ResourceSliceInitializer[v1alpha1.TiCDC]
-
-	PodInitializer = ResourceInitializer[corev1.Pod]
+	TiCDCSliceInitializer   = ResourceSliceInitializer[v1alpha1.TiCDC]
 )
-
-type (
-	// DEPRECATED: remove it
-	ClusterStateInitializer interface {
-		ClusterInitializer() ClusterInitializer
-	}
-)
-
-type GroupStateInitializer[G runtime.GroupSet] interface {
-	GroupInitializer() ResourceInitializer[G]
-}
 
 type GroupState[G runtime.Group] interface {
 	Group() G
@@ -125,14 +96,8 @@ type ClusterAndGroupAndInstanceSliceState[
 }
 
 type (
-	PDGroupStateInitializer interface {
-		PDGroupInitializer() PDGroupInitializer
-	}
 	PDGroupState interface {
 		PDGroup() *v1alpha1.PDGroup
-	}
-	PDStateInitializer interface {
-		PDInitializer() PDInitializer
 	}
 	PDState interface {
 		PD() *v1alpha1.PD
@@ -146,14 +111,8 @@ type (
 )
 
 type (
-	TiKVGroupStateInitializer interface {
-		TiKVGroupInitializer() TiKVGroupInitializer
-	}
 	TiKVGroupState interface {
 		TiKVGroup() *v1alpha1.TiKVGroup
-	}
-	TiKVStateInitializer interface {
-		TiKVInitializer() TiKVInitializer
 	}
 	TiKVState interface {
 		TiKV() *v1alpha1.TiKV
@@ -167,14 +126,8 @@ type (
 )
 
 type (
-	TiDBGroupStateInitializer interface {
-		TiDBGroupInitializer() TiDBGroupInitializer
-	}
 	TiDBGroupState interface {
 		TiDBGroup() *v1alpha1.TiDBGroup
-	}
-	TiDBStateInitializer interface {
-		TiDBInitializer() TiDBInitializer
 	}
 	TiDBState interface {
 		TiDB() *v1alpha1.TiDB
@@ -188,14 +141,8 @@ type (
 )
 
 type (
-	TiFlashGroupStateInitializer interface {
-		TiFlashGroupInitializer() TiFlashGroupInitializer
-	}
 	TiFlashGroupState interface {
 		TiFlashGroup() *v1alpha1.TiFlashGroup
-	}
-	TiFlashStateInitializer interface {
-		TiFlashInitializer() TiFlashInitializer
 	}
 	TiFlashState interface {
 		TiFlash() *v1alpha1.TiFlash
@@ -209,14 +156,8 @@ type (
 )
 
 type (
-	TiCDCGroupStateInitializer interface {
-		TiCDCGroupInitializer() TiCDCGroupInitializer
-	}
 	TiCDCGroupState interface {
 		TiCDCGroup() *v1alpha1.TiCDCGroup
-	}
-	TiCDCStateInitializer interface {
-		TiCDCInitializer() TiCDCInitializer
 	}
 	TiCDCState interface {
 		TiCDC() *v1alpha1.TiCDC
@@ -226,13 +167,6 @@ type (
 	}
 	TiCDCSliceState interface {
 		TiCDCSlice() []*v1alpha1.TiCDC
-	}
-)
-
-type (
-	// DEPRECATED: remove it
-	PodStateInitializer interface {
-		PodInitializer() PodInitializer
 	}
 )
 

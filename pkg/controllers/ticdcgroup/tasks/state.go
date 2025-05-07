@@ -37,7 +37,6 @@ type state struct {
 }
 
 type State interface {
-	common.TiCDCGroupStateInitializer
 	common.TiCDCSliceStateInitializer
 	common.RevisionStateInitializer[*runtime.TiCDCGroup]
 
@@ -49,6 +48,7 @@ type State interface {
 	common.GroupState[*runtime.TiCDCGroup]
 
 	common.ContextClusterNewer[*v1alpha1.TiCDCGroup]
+	common.ContextObjectNewer[*v1alpha1.TiCDCGroup]
 
 	common.InstanceSliceState[*runtime.TiCDC]
 	common.SliceState[*v1alpha1.TiCDC]
@@ -64,8 +64,16 @@ func NewState(key types.NamespacedName) State {
 	return s
 }
 
+func (s *state) Key() types.NamespacedName {
+	return s.key
+}
+
 func (s *state) Object() *v1alpha1.TiCDCGroup {
 	return s.cdcg
+}
+
+func (s *state) SetObject(cg *v1alpha1.TiCDCGroup) {
+	s.cdcg = cg
 }
 
 func (s *state) TiCDCGroup() *v1alpha1.TiCDCGroup {
@@ -102,13 +110,6 @@ func (s *state) IsStatusChanged() bool {
 
 func (s *state) SetStatusChanged() {
 	s.statusChanged = true
-}
-
-func (s *state) TiCDCGroupInitializer() common.TiCDCGroupInitializer {
-	return common.NewResource(func(cdcg *v1alpha1.TiCDCGroup) { s.cdcg = cdcg }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Name(s.key.Name)).
-		Initializer()
 }
 
 func (s *state) TiCDCSliceInitializer() common.TiCDCSliceInitializer {

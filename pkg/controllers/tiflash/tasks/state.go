@@ -39,8 +39,6 @@ type state struct {
 }
 
 type State interface {
-	common.TiFlashStateInitializer
-
 	common.TiFlashState
 	common.ClusterState
 
@@ -50,6 +48,7 @@ type State interface {
 	common.InstanceState[*runtime.TiFlash]
 
 	common.ContextClusterNewer[*v1alpha1.TiFlash]
+	common.ContextObjectNewer[*v1alpha1.TiFlash]
 
 	common.StatusUpdater
 	common.StatusPersister[*v1alpha1.TiFlash]
@@ -67,8 +66,16 @@ func NewState(key types.NamespacedName) State {
 	return s
 }
 
+func (s *state) Key() types.NamespacedName {
+	return s.key
+}
+
 func (s *state) Object() *v1alpha1.TiFlash {
 	return s.tiflash
+}
+
+func (s *state) SetObject(f *v1alpha1.TiFlash) {
+	s.tiflash = f
 }
 
 func (s *state) TiFlash() *v1alpha1.TiFlash {
@@ -113,13 +120,6 @@ func (s *state) IsStatusChanged() bool {
 
 func (s *state) SetStatusChanged() {
 	s.statusChanged = true
-}
-
-func (s *state) TiFlashInitializer() common.TiFlashInitializer {
-	return common.NewResource(func(tiflash *v1alpha1.TiFlash) { s.tiflash = tiflash }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Name(s.key.Name)).
-		Initializer()
 }
 
 func (s *state) GetStoreState() string {
