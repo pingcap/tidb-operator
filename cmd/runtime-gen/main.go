@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/pflag"
 	_ "k8s.io/api/core/v1"
@@ -62,14 +63,14 @@ func main() {
 }
 
 type Args struct {
-	outputFile   string
-	outputDir    string
-	goHeaderFile string
+	outputFilePrefix string
+	outputDir        string
+	goHeaderFile     string
 }
 
 // AddFlags adds this tool's flags to the flagset.
 func (args *Args) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&args.outputFile, "output-file", "zz_generated.runtime",
+	fs.StringVar(&args.outputFilePrefix, "output-file-prefix", "zz_generated",
 		"the name of the file to be generated (without extensions)")
 	fs.StringVar(&args.outputDir, "output-dir", "",
 		"the output dir, default is dir of input")
@@ -109,7 +110,6 @@ func getTargets(_ *generator.Context, args *Args) []generator.Target {
 		os.Exit(1)
 	}
 
-	targetPackage := "github.com/pingcap/tidb-operator/pkg/runtime"
 	targets := []generator.Target{}
 
 	kinds := []string{
@@ -122,25 +122,34 @@ func getTargets(_ *generator.Context, args *Args) []generator.Target {
 		"scheduler",
 	}
 
+	runtimeTargetPkg := "github.com/pingcap/tidb-operator/pkg/runtime"
+	runtimePrefix := args.outputFilePrefix + ".runtime"
 	targets = append(targets, &generator.SimpleTarget{
 		PkgName:       "runtime",
-		PkgPath:       targetPackage,
+		PkgPath:       runtimeTargetPkg,
 		PkgDir:        args.outputDir,
 		HeaderComment: boilerplate,
-
-		// FilterFunc returns true if this Package cares about this type.
-		// Each Generator has its own Filter method which will be checked
-		// subsequently.  This will be called for every type in every
-		// loaded package, not just things in our inputs.
-		// FilterFunc: func(_ *generator.Context, t *types.Type) bool {},
-
-		// GeneratorsFunc returns a list of Generators, each of which is
-		// responsible for a single output file (though multiple generators
-		// may write to the same one).
 		GeneratorsFunc: func(_ *generator.Context) []generator.Generator {
 			var gs []generator.Generator
 			for _, kind := range kinds {
-				gs = append(gs, generators.NewRuntimeGenerator(args.outputFile, kind, targetPackage))
+				gs = append(gs, generators.NewRuntimeGenerator(runtimePrefix, kind, runtimeTargetPkg))
+			}
+			return gs
+		},
+	})
+
+	scopeTargetPkg := filepath.Join(runtimeTargetPkg, "scope")
+	scopePrefix := args.outputFilePrefix + ".scope"
+	targets = append(targets, &generator.SimpleTarget{
+		PkgName:       "scope",
+		PkgPath:       scopeTargetPkg,
+		PkgDir:        filepath.Join(args.outputDir, "scope"),
+		HeaderComment: boilerplate,
+
+		GeneratorsFunc: func(_ *generator.Context) []generator.Generator {
+			var gs []generator.Generator
+			for _, kind := range kinds {
+				gs = append(gs, generators.NewScopeGenerator(scopePrefix, kind, scopeTargetPkg))
 			}
 			return gs
 		},

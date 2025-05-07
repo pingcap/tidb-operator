@@ -160,26 +160,28 @@ func TaskInstanceConditionReady[
 }
 
 type GroupCondSuspendedUpdater[
-	T client.Object,
-	I runtime.Instance,
+	G client.Object,
+	I client.Object,
 ] interface {
 	StatusUpdater
 	ClusterState
 
-	InstanceSliceState[I]
+	SliceState[I]
 
-	Object() T
+	Object() G
 }
 
 func TaskGroupConditionSuspended[
-	S scope.Group[F, T],
+	S scope.GroupInstance[F, T, IS],
+	IS scope.Instance[IF, IT],
 	F client.Object,
 	T runtime.Group,
-	I runtime.Instance,
-](state GroupCondSuspendedUpdater[F, I]) task.Task {
+	IF client.Object,
+	IT runtime.Instance,
+](state GroupCondSuspendedUpdater[F, IF]) task.Task {
 	return task.NameTaskFunc("CondSuspended", func(context.Context) task.Result {
 		g := state.Object()
-		objs := state.Slice()
+		objs := state.InstanceSlice()
 		cluster := state.Cluster()
 
 		var needUpdate bool
@@ -187,7 +189,7 @@ func TaskGroupConditionSuspended[
 		if coreutil.ShouldSuspendCompute(cluster) {
 			suspended := true
 			for _, obj := range objs {
-				if !meta.IsStatusConditionTrue(obj.Conditions(), v1alpha1.CondSuspended) {
+				if !meta.IsStatusConditionTrue(coreutil.StatusConditions[IS](obj), v1alpha1.CondSuspended) {
 					suspended = false
 				}
 			}
@@ -219,26 +221,28 @@ func TaskGroupConditionSuspended[
 }
 
 type GroupCondReadyUpdater[
-	T client.Object,
-	I runtime.Instance,
+	G client.Object,
+	I client.Object,
 ] interface {
 	StatusUpdater
-	InstanceSliceState[I]
+	SliceState[I]
 
-	Object() T
+	Object() G
 }
 
 func TaskGroupConditionReady[
-	S scope.Group[F, T],
+	S scope.GroupInstance[F, T, IS],
+	IS scope.Instance[IF, IT],
 	F client.Object,
 	T runtime.Group,
-	I runtime.Instance,
-](state GroupCondReadyUpdater[F, I]) task.Task {
+	IF client.Object,
+	IT runtime.Instance,
+](state GroupCondReadyUpdater[F, IF]) task.Task {
 	return task.NameTaskFunc("CondReady", func(context.Context) task.Result {
 		g := state.Object()
 		var needUpdate bool
 
-		replicas, readyReplicas := calcReadyReplicas(state.Slice())
+		replicas, readyReplicas := calcReadyReplicas[IS](state.InstanceSlice())
 		if readyReplicas == replicas && replicas != 0 {
 			needUpdate = coreutil.SetStatusCondition[S](
 				g,
@@ -262,28 +266,30 @@ func TaskGroupConditionReady[
 }
 
 type GroupCondSyncedUpdater[
-	T client.Object,
-	I runtime.Instance,
+	G client.Object,
+	I client.Object,
 ] interface {
 	StatusUpdater
-	InstanceSliceState[I]
+	SliceState[I]
 	RevisionState
 
-	Object() T
+	Object() G
 }
 
 func TaskGroupConditionSynced[
-	S scope.Group[F, T],
+	S scope.GroupInstance[F, T, IS],
+	IS scope.Instance[IF, IT],
 	F client.Object,
 	T runtime.Group,
-	I runtime.Instance,
-](state GroupCondSyncedUpdater[F, I]) task.Task {
+	IF client.Object,
+	IT runtime.Instance,
+](state GroupCondSyncedUpdater[F, IF]) task.Task {
 	return task.NameTaskFunc("CondSynced", func(context.Context) task.Result {
 		g := state.Object()
 		var needUpdate bool
 
 		updateRevision, _, _ := state.Revision()
-		replicas, updateReplicas := calcUpdateReplicas(state.Slice(), updateRevision)
+		replicas, updateReplicas := calcUpdateReplicas[IS](state.InstanceSlice(), updateRevision)
 
 		// instances are updated and num of instances is as expected
 		if updateReplicas == replicas && replicas == coreutil.Replicas[S](g) {
@@ -309,29 +315,31 @@ func TaskGroupConditionSynced[
 }
 
 type StatusRevisionAndReplicasUpdater[
-	T client.Object,
-	I runtime.Instance,
+	G client.Object,
+	I client.Object,
 ] interface {
 	StatusUpdater
-	InstanceSliceState[I]
+	SliceState[I]
 	RevisionState
 
-	Object() T
+	Object() G
 }
 
 func TaskStatusRevisionAndReplicas[
-	S scope.Group[F, T],
+	S scope.GroupInstance[F, T, IS],
+	IS scope.Instance[IF, IT],
 	F client.Object,
 	T runtime.Group,
-	I runtime.Instance,
-](state StatusRevisionAndReplicasUpdater[F, I]) task.Task {
+	IF client.Object,
+	IT runtime.Instance,
+](state StatusRevisionAndReplicasUpdater[F, IF]) task.Task {
 	return task.NameTaskFunc("Status", func(context.Context) task.Result {
 		g := state.Object()
 
 		var needUpdate bool
 
 		updateRevision, currentRevision, collisionCount := state.Revision()
-		replicas, readyReplicas, updateReplicas, currentReplicas := calcReplicas(state.Slice(), updateRevision, currentRevision)
+		replicas, readyReplicas, updateReplicas, currentReplicas := calcReplicas[IS](state.InstanceSlice(), updateRevision, currentRevision)
 
 		// all instances are updated
 		if updateReplicas == replicas && replicas == coreutil.Replicas[S](g) {
@@ -355,13 +363,17 @@ func TaskStatusRevisionAndReplicas[
 	})
 }
 
-func calcUpdateReplicas[I runtime.Instance](instances []I, updateRevision string) (
+func calcUpdateReplicas[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](instances []F, updateRevision string) (
 	replicas,
 	updateReplicas int32,
 ) {
 	for _, peer := range instances {
 		replicas++
-		if peer.CurrentRevision() == updateRevision {
+		if coreutil.CurrentRevision[S](peer) == updateRevision {
 			updateReplicas++
 		}
 	}
@@ -369,13 +381,17 @@ func calcUpdateReplicas[I runtime.Instance](instances []I, updateRevision string
 	return
 }
 
-func calcReadyReplicas[I runtime.Instance](instances []I) (
+func calcReadyReplicas[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](instances []F) (
 	replicas,
 	readyReplicas int32,
 ) {
 	for _, peer := range instances {
 		replicas++
-		if peer.IsReady() {
+		if coreutil.IsReady[S](peer) {
 			readyReplicas++
 		}
 	}
@@ -383,7 +399,11 @@ func calcReadyReplicas[I runtime.Instance](instances []I) (
 	return
 }
 
-func calcReplicas[I runtime.Instance](instances []I, updateRevision, currentRevision string) (
+func calcReplicas[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](instances []F, updateRevision, currentRevision string) (
 	replicas,
 	readyReplicas,
 	updateReplicas,
@@ -391,13 +411,13 @@ func calcReplicas[I runtime.Instance](instances []I, updateRevision, currentRevi
 ) {
 	for _, peer := range instances {
 		replicas++
-		if peer.IsReady() {
+		if coreutil.IsReady[S](peer) {
 			readyReplicas++
 		}
-		if peer.CurrentRevision() == currentRevision {
+		if coreutil.CurrentRevision[S](peer) == currentRevision {
 			currentReplicas++
 		}
-		if peer.CurrentRevision() == updateRevision {
+		if coreutil.CurrentRevision[S](peer) == updateRevision {
 			updateReplicas++
 		}
 	}

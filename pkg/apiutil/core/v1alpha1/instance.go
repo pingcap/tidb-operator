@@ -73,6 +73,14 @@ func UpdateRevision[
 	return scope.From[S](f).GetUpdateRevision()
 }
 
+func CurrentRevision[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](f F) string {
+	return scope.From[S](f).CurrentRevision()
+}
+
 func instanceSubresourceLabels[
 	S scope.Instance[F, T],
 	F client.Object,

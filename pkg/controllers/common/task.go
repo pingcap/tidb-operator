@@ -244,7 +244,8 @@ type ContextSliceNewer[
 }
 
 func TaskContextSlice[
-	S scope.InstanceSlice[GF, GT, IL, I],
+	S scope.GroupInstance[GF, GT, IS],
+	IS scope.List[IL, I],
 	GF client.Object,
 	GT runtime.Group,
 	IL client.ObjectList,
