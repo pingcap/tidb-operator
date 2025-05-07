@@ -49,14 +49,22 @@ func (TiCDCGroup) To(t *runtime.TiCDCGroup) *v1alpha1.TiCDCGroup {
 	return runtime.ToTiCDCGroup(t)
 }
 
+func (TiCDCGroup) NewInstanceList() *v1alpha1.TiCDCList {
+	return &v1alpha1.TiCDCList{}
+}
+
+func (TiCDCGroup) GetInstanceItems(l *v1alpha1.TiCDCList) []*v1alpha1.TiCDC {
+	items := make([]*v1alpha1.TiCDC, 0, len(l.Items))
+	for i := range l.Items {
+		items = append(items, &l.Items[i])
+	}
+	return items
+}
+
 func (TiCDCGroup) Component() string {
 	return v1alpha1.LabelValComponentTiCDC
 }
 
 func (TiCDCGroup) NewList() client.ObjectList {
 	return &v1alpha1.TiCDCGroupList{}
-}
-
-func (TiCDCGroup) NewInstanceList() client.ObjectList {
-	return &v1alpha1.TiCDCList{}
 }

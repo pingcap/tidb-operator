@@ -39,7 +39,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskContextTiDBSlice(state, r.Client),
 
 		task.IfBreak(common.CondGroupIsDeleting(state),
-			common.TaskGroupFinalizerDel[runtime.TiDBGroupTuple, runtime.TiDBTuple](state, r.Client),
+			common.TaskGroupFinalizerDel[scope.TiDBGroup](state, r.Client),
 			common.TaskGroupConditionReady[scope.TiDBGroup](state),
 			common.TaskGroupConditionSynced[scope.TiDBGroup](state),
 			common.TaskStatusRevisionAndReplicas[scope.TiDBGroup](state),

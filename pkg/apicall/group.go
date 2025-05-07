@@ -15,11 +15,9 @@
 package apicall
 
 import (
+	"cmp"
 	"context"
-	"fmt"
-
-	"k8s.io/apimachinery/pkg/api/meta"
-	kuberuntime "k8s.io/apimachinery/pkg/runtime"
+	"slices"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
@@ -29,11 +27,12 @@ import (
 )
 
 func ListInstances[
-	S scope.Group[F, T],
+	S scope.InstanceSlice[GF, GT, IL, I],
+	GF client.Object,
+	GT runtime.Group,
+	IL client.ObjectList,
 	I client.Object,
-	F client.Object,
-	T runtime.Group,
-](ctx context.Context, c client.Client, g F) ([]I, error) {
+](ctx context.Context, c client.Client, g GF) ([]I, error) {
 	l := scope.NewInstanceList[S]()
 	if err := c.List(ctx, l, client.InNamespace(g.GetNamespace()), client.MatchingLabels{
 		v1alpha1.LabelKeyCluster:   coreutil.Cluster[S](g),
@@ -43,19 +42,12 @@ func ListInstances[
 		return nil, err
 	}
 
-	objs := make([]I, 0, meta.LenList(l))
-	if err := meta.EachListItem(l, func(item kuberuntime.Object) error {
-		obj, ok := item.(I)
-		if !ok {
-			// unreachable
-			return fmt.Errorf("cannot convert item")
-		}
-		objs = append(objs, obj)
-		return nil
-	}); err != nil {
-		// unreachable
-		return nil, err
-	}
+	objs := scope.GetInstanceItems[S](l)
+
+	// always sort instances
+	slices.SortFunc(objs, func(a, b I) int {
+		return cmp.Compare(a.GetName(), b.GetName())
+	})
 
 	return objs, nil
 }

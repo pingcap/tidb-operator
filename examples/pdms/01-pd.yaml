@@ -1,0 +1,23 @@
+apiVersion: core.pingcap.com/v1alpha1
+kind: PDGroup
+metadata:
+  name: pd
+spec:
+  cluster:
+    name: pdms
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        author: pingcap
+    spec:
+      version: v8.1.0
+      mode: ms
+      config: |
+        [log]
+        level = "debug"
+      volumes:
+      - name: data
+        mounts:
+        - type: data
+        storage: 20Gi

@@ -207,10 +207,65 @@ func TaskFeatureGates(state ClusterState) task.Task {
 	})
 }
 
+type ContextObjectNewer[
+	F client.Object,
+] interface {
+	Key() types.NamespacedName
+	SetObject(f F)
+}
+
+func TaskContextObject[
+	S scope.Object[F, T],
+	F Object[O],
+	T runtime.Object,
+	O any,
+](state ContextObjectNewer[F], c client.Client) task.Task {
+	return task.NameTaskFunc("ContextObject", func(ctx context.Context) task.Result {
+		key := state.Key()
+		var obj F = new(O)
+		if err := c.Get(ctx, key, obj); err != nil {
+			if !errors.IsNotFound(err) {
+				return task.Fail().With("can't get %s: %v", key, err)
+			}
+
+			return task.Complete().With("obj %s does not exist", key)
+		}
+		state.SetObject(obj)
+		return task.Complete().With("object is set")
+	})
+}
+
+type ContextSliceNewer[
+	GF client.Object,
+	IF client.Object,
+] interface {
+	ObjectState[GF]
+	SetInstanceSlice(f []IF)
+}
+
+func TaskContextSlice[
+	S scope.InstanceSlice[GF, GT, IL, I],
+	GF client.Object,
+	GT runtime.Group,
+	IL client.ObjectList,
+	I client.Object,
+](state ContextSliceNewer[GF, I], c client.Client) task.Task {
+	return task.NameTaskFunc("ContextSlice", func(ctx context.Context) task.Result {
+		g := state.Object()
+		objs, err := apicall.ListInstances[S](ctx, c, g)
+		if err != nil {
+			return task.Fail().With("cannot get instance slice: %v", err)
+		}
+
+		state.SetInstanceSlice(objs)
+		return task.Complete().With("instance slice is set")
+	})
+}
+
 type ContextClusterNewer[
 	F client.Object,
 ] interface {
-	Object() F
+	ObjectState[F]
 	SetCluster(c *v1alpha1.Cluster)
 }
 
@@ -232,7 +287,7 @@ func TaskContextCluster[
 type ContextPodNewer[
 	F client.Object,
 ] interface {
-	Object() F
+	ObjectState[F]
 	SetPod(pod *corev1.Pod)
 }
 

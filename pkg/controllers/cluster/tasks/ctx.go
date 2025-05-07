@@ -39,6 +39,7 @@ type ReconcileContext struct {
 	TiFlashGroups []*v1alpha1.TiFlashGroup
 	TiDBGroups    []*v1alpha1.TiDBGroup
 	TiCDCGroups   []*v1alpha1.TiCDCGroup
+	TSOGroups     []*v1alpha1.TSOGroup
 }
 
 func (ctx *ReconcileContext) Self() *ReconcileContext {
@@ -61,6 +62,9 @@ func (*TaskContext) Name() string {
 	return "Context"
 }
 
+// TODO: refactor to use task v3
+//
+//nolint:gocyclo // refactor later
 func (t *TaskContext) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	rtx := ctx.Self()
 
@@ -90,6 +94,15 @@ func (t *TaskContext) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	}
 	if len(pdGroupList.Items) != 0 {
 		rtx.PDGroup = &pdGroupList.Items[0]
+	}
+
+	var tgl v1alpha1.TSOGroupList
+	if err := t.Client.List(ctx, &tgl, client.InNamespace(rtx.Key.Namespace),
+		client.MatchingFields{"spec.cluster.name": rtx.Key.Name}); err != nil {
+		return task.Fail().With("can't list tso group: %w", err)
+	}
+	for i := range tgl.Items {
+		rtx.TSOGroups = append(rtx.TSOGroups, &tgl.Items[i])
 	}
 
 	var tikvGroupList v1alpha1.TiKVGroupList

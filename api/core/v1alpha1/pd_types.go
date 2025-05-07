@@ -139,6 +139,9 @@ type PDTemplateSpec struct {
 	// If tag is omitted, version will be used as the image tag.
 	// Default is pingcap/pd
 	Image *string `json:"image,omitempty"`
+
+	// Mode of pd, default is normal
+	Mode PDMode `json:"mode,omitempty"`
 	// Server defines server config for PD
 	Server         PDServer             `json:"server,omitempty"`
 	Resources      ResourceRequirements `json:"resources,omitempty"`
@@ -153,6 +156,16 @@ type PDTemplateSpec struct {
 	// All resources(pod, pvcs, ...) managed by PD can be overlayed by this field
 	Overlay *Overlay `json:"overlay,omitempty"`
 }
+
+type PDMode string
+
+const (
+	// Normal mode of PD, all services are provided by a single component
+	PDModeNormal = ""
+	// Micro Service Mode of PD, some services(TSO,Scheduler) are separated from PD
+	// See https://docs.pingcap.com/tidb/stable/pd-microservices/
+	PDModeMS = "ms"
+)
 
 type PDServer struct {
 	// Ports defines all ports listened by pd

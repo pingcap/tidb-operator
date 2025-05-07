@@ -36,28 +36,39 @@ type Instance[F client.Object, T runtime.Instance] interface {
 // runtime.Group <-> api.Group
 type Group[F client.Object, T runtime.Group] interface {
 	Scheme
-	GroupScheme
 	From(F) T
 	To(T) F
 }
 
-type GroupScheme interface {
-	NewInstanceList() client.ObjectList
+// api.group -> []api.Instance
+type InstanceSlice[
+	GF client.Object,
+	GT runtime.Group,
+	IL client.ObjectList,
+	I client.Object,
+] interface {
+	Group[GF, GT]
+	InstanceListCreator[IL]
+	InstanceItemsGetter[IL, I]
 }
 
-// []runtime.Instance <-> []api.Instance
-type InstanceSlice[F client.Object, T runtime.Instance] interface {
-	From([]F) []T
-	To([]T) []F
+type InstanceListCreator[
+	L client.ObjectList,
+] interface {
+	NewInstanceList() L
+}
+
+type InstanceItemsGetter[
+	IL client.ObjectList,
+	I client.Object,
+] interface {
+	GetInstanceItems(IL) []I
 }
 
 type Scheme interface {
 	Component() string
 	NewList() client.ObjectList
 }
-
-// runtime.Group --> api.InstanceList
-// type GroupList[F any, T any] interface{}
 
 func From[
 	S Object[F, T],
@@ -78,7 +89,19 @@ func NewList[S Scheme]() client.ObjectList {
 	return s.NewList()
 }
 
-func NewInstanceList[S GroupScheme]() client.ObjectList {
+func NewInstanceList[
+	S InstanceListCreator[L],
+	L client.ObjectList,
+]() L {
 	var s S
 	return s.NewInstanceList()
+}
+
+func GetInstanceItems[
+	S InstanceItemsGetter[IL, I],
+	IL client.ObjectList,
+	I client.Object,
+](l IL) []I {
+	var s S
+	return s.GetInstanceItems(l)
 }

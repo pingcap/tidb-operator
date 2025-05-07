@@ -20,7 +20,6 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
-	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
 type Object[T any] interface {
@@ -60,11 +59,9 @@ type (
 )
 
 type (
+	// DEPRECATED: remove it
 	ClusterStateInitializer interface {
 		ClusterInitializer() ClusterInitializer
-	}
-	ClusterState interface {
-		Cluster() *v1alpha1.Cluster
 	}
 )
 
@@ -91,14 +88,6 @@ type InstanceAndPodState[I runtime.Instance] interface {
 
 type InstanceSliceState[I runtime.Instance] interface {
 	Slice() []I
-}
-
-type ObjectState[
-	S scope.Object[F, T],
-	F client.Object,
-	T runtime.Object,
-] interface {
-	Object() F
 }
 
 type GroupAndInstanceSliceState[
@@ -241,9 +230,29 @@ type (
 )
 
 type (
+	// DEPRECATED: remove it
 	PodStateInitializer interface {
 		PodInitializer() PodInitializer
 	}
+)
+
+type ObjectState[
+	F client.Object,
+] interface {
+	Object() F
+}
+
+type ClusterState interface {
+	Cluster() *v1alpha1.Cluster
+}
+
+type SliceState[
+	F client.Object,
+] interface {
+	InstanceSlice() []F
+}
+
+type (
 	PodState interface {
 		Pod() *corev1.Pod
 		IsPodTerminating() bool

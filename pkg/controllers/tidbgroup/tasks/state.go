@@ -51,6 +51,7 @@ type State interface {
 	common.ContextClusterNewer[*v1alpha1.TiDBGroup]
 
 	common.InstanceSliceState[*runtime.TiDB]
+	common.SliceState[*v1alpha1.TiDB]
 
 	common.StatusUpdater
 	common.StatusPersister[*v1alpha1.TiDBGroup]
@@ -85,6 +86,10 @@ func (s *state) TiDBSlice() []*v1alpha1.TiDB {
 
 func (s *state) Slice() []*runtime.TiDB {
 	return runtime.FromTiDBSlice(s.dbs)
+}
+
+func (s *state) InstanceSlice() []*v1alpha1.TiDB {
+	return s.dbs
 }
 
 func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
