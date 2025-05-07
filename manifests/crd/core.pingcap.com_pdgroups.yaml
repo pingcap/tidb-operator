@@ -185,8 +185,13 @@ spec:
                           Default is pingcap/pd
                         type: string
                       mode:
-                        description: Mode of pd, default is normal
+                        description: |-
+                          Mode of pd, default is normal
+                          Now it cannot be changed after creation. It may be supported in the future.
                         type: string
+                        x-kubernetes-validations:
+                        - message: pd mode is immutable now, it may be supported later
+                          rule: self == oldSelf
                       overlay:
                         description: |-
                           Overlay defines a k8s native resource template patch
@@ -8605,6 +8610,11 @@ spec:
                     - version
                     - volumes
                     type: object
+                    x-kubernetes-validations:
+                    - fieldPath: .mode
+                      message: pd mode can only be set when creating now
+                      rule: (!has(oldSelf.mode) && !has(self.mode)) || (has(oldSelf.mode)
+                        && has(self.mode))
                 required:
                 - spec
                 type: object
