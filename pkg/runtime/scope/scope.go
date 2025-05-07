@@ -69,6 +69,15 @@ type GroupInstance[
 	Instance() IS
 }
 
+type GroupList[
+	F client.Object,
+	T runtime.Group,
+	L client.ObjectList,
+] interface {
+	Group[F, T]
+	List[L, F]
+}
+
 type InstanceList[
 	F client.Object,
 	T runtime.Instance,
