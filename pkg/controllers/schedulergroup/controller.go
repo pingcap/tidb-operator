@@ -45,12 +45,12 @@ type Reconciler struct {
 
 func Setup(mgr manager.Manager, c client.Client) error {
 	r := &Reconciler{
-		Logger: mgr.GetLogger().WithName("SchedulerGroup"), // Changed TSOGroup to SchedulerGroup
+		Logger: mgr.GetLogger().WithName("SchedulerGroup"),
 		Client: c,
 	}
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.SchedulerGroup{}). // Changed TSOGroup to SchedulerGroup
-		Owns(&v1alpha1.Scheduler{}).     // Changed TSO to Scheduler
+		For(&v1alpha1.SchedulerGroup{}).
+		Owns(&v1alpha1.Scheduler{}).
 		// Only care about the generation change (i.e. spec update)
 		Watches(&v1alpha1.Cluster{}, r.ClusterEventHandler(), builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		WithOptions(controller.Options{RateLimiter: k8s.RateLimiter}).
@@ -64,17 +64,17 @@ func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Obje
 		) {
 			cluster := event.ObjectNew.(*v1alpha1.Cluster)
 
-			var list v1alpha1.SchedulerGroupList // Changed TSOGroupList to SchedulerGroupList
+			var list v1alpha1.SchedulerGroupList
 			if err := r.Client.List(ctx, &list, client.InNamespace(cluster.Namespace),
 				client.MatchingFields{"spec.cluster.name": cluster.Name}); err != nil {
 				if !errors.IsNotFound(err) {
-					r.Logger.Error(err, "cannot list all scheduler groups", "ns", cluster.Namespace, "cluster", cluster.Name) // Changed tso groups to scheduler groups
+					r.Logger.Error(err, "cannot list all scheduler groups", "ns", cluster.Namespace, "cluster", cluster.Name)
 				}
 				return
 			}
 
 			for i := range list.Items {
-				sg := &list.Items[i] // Changed kvg to sg (scheduler group)
+				sg := &list.Items[i]
 				queue.Add(reconcile.Request{
 					NamespacedName: types.NamespacedName{
 						Name:      sg.Name,
@@ -87,7 +87,7 @@ func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Obje
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := r.Logger.WithValues("schedulergroup", req.NamespacedName) // Changed tsogroup to schedulergroup
+	logger := r.Logger.WithValues("schedulergroup", req.NamespacedName)
 	reporter := task.NewTableTaskReporter()
 
 	startTime := time.Now()

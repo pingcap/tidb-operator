@@ -20,5 +20,5 @@ import (
 
 // TODO: fix length issue
 func HeadlessServiceName(groupName string) string {
-	return fmt.Sprintf("%s-scheduler-peer", groupName) // Changed tso to scheduler
+	return fmt.Sprintf("%s-scheduler-peer", groupName)
 }

@@ -38,7 +38,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// get all schedulers
 		common.TaskContextSlice[scope.SchedulerGroup](state, r.Client),
 
-		task.IfBreak(common.CondGroupIsDeleting(state),
+		task.IfBreak(common.CondObjectIsDeleting[scope.SchedulerGroup](state),
 			common.TaskGroupFinalizerDel[scope.SchedulerGroup](state, r.Client),
 			common.TaskGroupConditionReady[scope.SchedulerGroup](state),
 			common.TaskGroupConditionSynced[scope.SchedulerGroup](state),

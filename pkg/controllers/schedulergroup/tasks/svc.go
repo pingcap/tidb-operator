@@ -30,33 +30,33 @@ import (
 )
 
 // TODO: extract svc to a common task
-func TaskService(state common.ObjectState[*v1alpha1.SchedulerGroup], c client.Client) task.Task { // Changed TSOGroup to SchedulerGroup
+func TaskService(state common.ObjectState[*v1alpha1.SchedulerGroup], c client.Client) task.Task {
 	return task.NameTaskFunc("Service", func(ctx context.Context) task.Result {
-		sg := state.Object() // Changed tg to sg
+		sg := state.Object()
 
-		svc := newHeadlessService(sg) // Changed tg to sg
+		svc := newHeadlessService(sg)
 		if err := c.Apply(ctx, svc); err != nil {
-			return task.Fail().With(fmt.Sprintf("can't create headless service of scheduler: %v", err)) // Changed tso to scheduler
+			return task.Fail().With(fmt.Sprintf("can't create headless service of scheduler: %v", err))
 		}
 
-		return task.Complete().With("headless service of scheduler has been applied") // Changed tso to scheduler
+		return task.Complete().With("headless service of scheduler has been applied")
 	})
 }
 
-func newHeadlessService(sg *v1alpha1.SchedulerGroup) *corev1.Service { // Changed tg to sg
+func newHeadlessService(sg *v1alpha1.SchedulerGroup) *corev1.Service {
 	ipFamilyPolicy := corev1.IPFamilyPolicyPreferDualStack
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      HeadlessServiceName(sg.Name), // Changed tg to sg
-			Namespace: sg.Namespace,                 // Changed tg to sg
+			Name:      HeadlessServiceName(sg.Name),
+			Namespace: sg.Namespace,
 			Labels: map[string]string{
 				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentScheduler, // Changed TSO to Scheduler
-				v1alpha1.LabelKeyCluster:   sg.Spec.Cluster.Name,                // Changed tg to sg
-				v1alpha1.LabelKeyGroup:     sg.Name,                             // Changed tg to sg
+				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentScheduler,
+				v1alpha1.LabelKeyCluster:   sg.Spec.Cluster.Name,
+				v1alpha1.LabelKeyGroup:     sg.Name,
 			},
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(sg, v1alpha1.SchemeGroupVersion.WithKind("SchedulerGroup")), // Changed tg to sg, TSOGroup to SchedulerGroup
+				*metav1.NewControllerRef(sg, v1alpha1.SchemeGroupVersion.WithKind("SchedulerGroup")),
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -65,16 +65,16 @@ func newHeadlessService(sg *v1alpha1.SchedulerGroup) *corev1.Service { // Change
 			IPFamilyPolicy: &ipFamilyPolicy,
 			Selector: map[string]string{
 				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentScheduler, // Changed TSO to Scheduler
-				v1alpha1.LabelKeyCluster:   sg.Spec.Cluster.Name,                // Changed tg to sg
-				v1alpha1.LabelKeyGroup:     sg.Name,                             // Changed tg to sg
+				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentScheduler,
+				v1alpha1.LabelKeyCluster:   sg.Spec.Cluster.Name,
+				v1alpha1.LabelKeyGroup:     sg.Name,
 			},
 			Ports: []corev1.ServicePort{
 				{
-					Name:       v1alpha1.SchedulerPortNameClient,      // TODO: Define SchedulerPortNameClient in api/v2/core/v1alpha1/constants.go (similar to TSOPortNameClient)
-					Port:       coreutil.SchedulerGroupClientPort(sg), // TODO: Define SchedulerGroupClientPort in apiutil/core/v1alpha1/util.go (similar to TSOGroupClientPort)
+					Name:       v1alpha1.SchedulerPortNameClient,
+					Port:       coreutil.SchedulerGroupClientPort(sg),
 					Protocol:   corev1.ProtocolTCP,
-					TargetPort: intstr.FromString(v1alpha1.SchedulerPortNameClient), // TODO: Use defined SchedulerPortNameClient
+					TargetPort: intstr.FromString(v1alpha1.SchedulerPortNameClient),
 				},
 			},
 			PublishNotReadyAddresses: true,

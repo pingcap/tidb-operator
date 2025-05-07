@@ -249,51 +249,109 @@ func addIndexer(ctx context.Context, mgr ctrl.Manager) error {
 	return nil
 }
 
+type controllerSetup struct {
+	name      string
+	setupFunc func() error
+}
+
 func setupControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientManager, vm volumes.ModifierFactory) error {
-	if err := cluster.Setup(mgr, c, pdcm); err != nil {
-		return fmt.Errorf("unable to create controller Cluster: %w", err)
+	setups := []controllerSetup{
+		{
+			name: "Cluster",
+			setupFunc: func() error {
+				return cluster.Setup(mgr, c, pdcm)
+			},
+		},
+		{
+			name: "PDGroup",
+			setupFunc: func() error {
+				return pdgroup.Setup(mgr, c, pdcm)
+			},
+		},
+		{
+			name: "PD",
+			setupFunc: func() error {
+				return pd.Setup(mgr, c, pdcm, vm)
+			},
+		},
+		{
+			name: "TiDBGroup",
+			setupFunc: func() error {
+				return tidbgroup.Setup(mgr, c)
+			},
+		},
+		{
+			name: "TiDB",
+			setupFunc: func() error {
+				return tidb.Setup(mgr, c, pdcm, vm)
+			},
+		},
+		{
+			name: "TiKVGroup",
+			setupFunc: func() error {
+				return tikvgroup.Setup(mgr, c)
+			},
+		},
+		{
+			name: "TiKV",
+			setupFunc: func() error {
+				return tikv.Setup(mgr, c, pdcm, vm)
+			},
+		},
+		{
+			name: "TiFlashGroup",
+			setupFunc: func() error {
+				return tiflashgroup.Setup(mgr, c)
+			},
+		},
+		{
+			name: "TiFlash",
+			setupFunc: func() error {
+				return tiflash.Setup(mgr, c, pdcm, vm)
+			},
+		},
+		{
+			name: "TiCDCGroup",
+			setupFunc: func() error {
+				return ticdcgroup.Setup(mgr, c)
+			},
+		},
+		{
+			name: "TiCDC",
+			setupFunc: func() error {
+				return ticdc.Setup(mgr, c, vm)
+			},
+		},
+		{
+			name: "TSOGroup",
+			setupFunc: func() error {
+				return tsogroup.Setup(mgr, c)
+			},
+		},
+		{
+			name: "TSO",
+			setupFunc: func() error {
+				return tso.Setup(mgr, c, pdcm, vm)
+			},
+		},
+		{
+			name: "SchedulerGroup",
+			setupFunc: func() error {
+				return schedulergroup.Setup(mgr, c)
+			},
+		},
+		{
+			name: "Scheduler",
+			setupFunc: func() error {
+				return scheduler.Setup(mgr, c, pdcm, vm)
+			},
+		},
 	}
-	if err := pdgroup.Setup(mgr, c, pdcm); err != nil {
-		return fmt.Errorf("unable to create controller PDGroup: %w", err)
-	}
-	if err := pd.Setup(mgr, c, pdcm, vm); err != nil {
-		return fmt.Errorf("unable to create controller PD: %w", err)
-	}
-	if err := tidbgroup.Setup(mgr, c); err != nil {
-		return fmt.Errorf("unable to create controller TiDBGroup: %w", err)
-	}
-	if err := tidb.Setup(mgr, c, pdcm, vm); err != nil {
-		return fmt.Errorf("unable to create controller TiDB: %w", err)
-	}
-	if err := tikvgroup.Setup(mgr, c); err != nil {
-		return fmt.Errorf("unable to create controller TiKVGroup: %w", err)
-	}
-	if err := tikv.Setup(mgr, c, pdcm, vm); err != nil {
-		return fmt.Errorf("unable to create controller TiKV: %w", err)
-	}
-	if err := tiflashgroup.Setup(mgr, c); err != nil {
-		return fmt.Errorf("unable to create controller TiFlashGroup: %w", err)
-	}
-	if err := tiflash.Setup(mgr, c, pdcm, vm); err != nil {
-		return fmt.Errorf("unable to create controller TiFlash: %w", err)
-	}
-	if err := ticdcgroup.Setup(mgr, c); err != nil {
-		return fmt.Errorf("unable to create controller TiCDCGroup: %w", err)
-	}
-	if err := ticdc.Setup(mgr, c, vm); err != nil {
-		return fmt.Errorf("unable to create controller TiCDC: %w", err)
-	}
-	if err := tsogroup.Setup(mgr, c); err != nil {
-		return fmt.Errorf("unable to create controller TSOGroup: %w", err)
-	}
-	if err := tso.Setup(mgr, c, pdcm, vm); err != nil {
-		return fmt.Errorf("unable to create controller TSO: %w", err)
-	}
-	if err := schedulergroup.Setup(mgr, c); err != nil {
-		return fmt.Errorf("unable to create controller SchedulerGroup: %w", err)
-	}
-	if err := scheduler.Setup(mgr, c, pdcm, vm); err != nil {
-		return fmt.Errorf("unable to create controller Scheduler: %w", err)
+
+	for _, s := range setups {
+		if err := s.setupFunc(); err != nil {
+			return fmt.Errorf("unable to create controller %s: %w", s.name, err)
+		}
 	}
 	return nil
 }

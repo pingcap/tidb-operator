@@ -38,18 +38,18 @@ type state struct {
 }
 
 type State interface {
-	common.ContextObjectNewer[*v1alpha1.Scheduler]  // Changed TSO to Scheduler
-	common.ContextClusterNewer[*v1alpha1.Scheduler] // Changed TSO to Scheduler
+	common.ContextObjectNewer[*v1alpha1.Scheduler]
+	common.ContextClusterNewer[*v1alpha1.Scheduler]
+	common.ObjectState[*v1alpha1.Scheduler]
 
 	common.ClusterState
-
 	common.PodState
 	common.PodStateUpdater
 
-	common.InstanceState[*runtime.Scheduler] // Changed TSO to Scheduler
+	common.InstanceState[*runtime.Scheduler]
 
 	common.StatusUpdater
-	common.StatusPersister[*v1alpha1.Scheduler] // Changed TSO to Scheduler
+	common.StatusPersister[*v1alpha1.Scheduler]
 
 	common.HealthyState
 }
@@ -65,7 +65,7 @@ func (s *state) Key() types.NamespacedName {
 	return s.key
 }
 
-func (s *state) Object() *v1alpha1.Scheduler { // Changed TSO to Scheduler
+func (s *state) Object() *v1alpha1.Scheduler {
 	return s.scheduler
 }
 
@@ -85,8 +85,8 @@ func (s *state) IsPodTerminating() bool {
 	return s.isPodTerminating
 }
 
-func (s *state) Instance() *runtime.Scheduler { // Changed TSO to Scheduler
-	return runtime.FromScheduler(s.scheduler) // Changed FromTSO to FromScheduler
+func (s *state) Instance() *runtime.Scheduler {
+	return runtime.FromScheduler(s.scheduler)
 }
 
 func (s *state) SetPod(pod *corev1.Pod) {
@@ -105,7 +105,7 @@ func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
 	s.cluster = cluster
 }
 
-func (s *state) SetObject(scheduler *v1alpha1.Scheduler) { // Changed tso to scheduler
+func (s *state) SetObject(scheduler *v1alpha1.Scheduler) {
 	s.scheduler = scheduler
 }
 

@@ -77,7 +77,7 @@ const (
 	DirPathConfigTiFlash   = "/etc/tiflash"
 	DirPathConfigTiCDC     = "/etc/ticdc"
 	DirPathConfigTSO       = "/etc/tso"
-	DirPathConfigScheduler = "etc/scheduler"
+	DirPathConfigScheduler = "/etc/scheduler"
 
 	// DirPathPrestop defines dir path of pre stop checker cmd
 	DirPathPrestop = "/prestop"

@@ -26,8 +26,8 @@ type state struct {
 	key types.NamespacedName
 
 	cluster    *v1alpha1.Cluster
-	sg         *v1alpha1.SchedulerGroup // Renamed from tg to sg (SchedulerGroup)
-	schedulers []*v1alpha1.Scheduler    // Renamed from ts to schedulers
+	sg         *v1alpha1.SchedulerGroup
+	schedulers []*v1alpha1.Scheduler
 
 	updateRevision  string
 	currentRevision string
@@ -37,21 +37,22 @@ type state struct {
 }
 
 type State interface {
-	common.ContextObjectNewer[*v1alpha1.SchedulerGroup]                     // Changed TSOGroup to SchedulerGroup
-	common.ContextClusterNewer[*v1alpha1.SchedulerGroup]                    // Changed TSOGroup to SchedulerGroup
-	common.ContextSliceNewer[*v1alpha1.SchedulerGroup, *v1alpha1.Scheduler] // Changed TSOGroup to SchedulerGroup, TSO to Scheduler
+	common.ContextObjectNewer[*v1alpha1.SchedulerGroup]
+	common.ContextClusterNewer[*v1alpha1.SchedulerGroup]
+	common.ContextSliceNewer[*v1alpha1.SchedulerGroup, *v1alpha1.Scheduler]
+	common.ObjectState[*v1alpha1.SchedulerGroup]
 
-	common.RevisionStateInitializer[*runtime.SchedulerGroup] // Changed TSOGroup to SchedulerGroup
+	common.RevisionStateInitializer[*runtime.SchedulerGroup]
 
 	common.ClusterState
-	common.InstanceSliceState[*runtime.Scheduler] // Changed TSO to Scheduler
-	common.SliceState[*v1alpha1.Scheduler]        // Changed TSO to Scheduler
+	common.InstanceSliceState[*runtime.Scheduler]
+	common.SliceState[*v1alpha1.Scheduler]
 	common.RevisionState
 
-	common.GroupState[*runtime.SchedulerGroup] // Changed TSOGroup to SchedulerGroup
+	common.GroupState[*runtime.SchedulerGroup]
 
 	common.StatusUpdater
-	common.StatusPersister[*v1alpha1.SchedulerGroup] // Changed TSOGroup to SchedulerGroup
+	common.StatusPersister[*v1alpha1.SchedulerGroup]
 }
 
 func NewState(key types.NamespacedName) State {
@@ -65,11 +66,11 @@ func (s *state) Key() types.NamespacedName {
 	return s.key
 }
 
-func (s *state) Object() *v1alpha1.SchedulerGroup { // Changed TSOGroup to SchedulerGroup
+func (s *state) Object() *v1alpha1.SchedulerGroup {
 	return s.sg
 }
 
-func (s *state) SetObject(sg *v1alpha1.SchedulerGroup) { // Changed tg to sg
+func (s *state) SetObject(sg *v1alpha1.SchedulerGroup) {
 	s.sg = sg
 }
 
@@ -77,27 +78,27 @@ func (s *state) SchedulerGroup() *v1alpha1.SchedulerGroup { // Added SchedulerGr
 	return s.sg
 }
 
-func (s *state) Group() *runtime.SchedulerGroup { // Changed TSOGroup to SchedulerGroup
-	return runtime.FromSchedulerGroup(s.sg) // Changed FromTSOGroup to FromSchedulerGroup
+func (s *state) Group() *runtime.SchedulerGroup {
+	return runtime.FromSchedulerGroup(s.sg)
 }
 
 func (s *state) Cluster() *v1alpha1.Cluster {
 	return s.cluster
 }
 
-func (s *state) SchedulerSlice() []*v1alpha1.Scheduler { // Changed TSOSlice to SchedulerSlice
+func (s *state) SchedulerSlice() []*v1alpha1.Scheduler {
 	return s.schedulers
 }
 
-func (s *state) Slice() []*runtime.Scheduler { // Changed TSO to Scheduler
-	return runtime.FromSchedulerSlice(s.schedulers) // Changed FromTSOSlice to FromSchedulerSlice
+func (s *state) Slice() []*runtime.Scheduler {
+	return runtime.FromSchedulerSlice(s.schedulers)
 }
 
-func (s *state) InstanceSlice() []*v1alpha1.Scheduler { // Changed TSO to Scheduler
+func (s *state) InstanceSlice() []*v1alpha1.Scheduler {
 	return s.schedulers
 }
 
-func (s *state) SetInstanceSlice(schedulers []*v1alpha1.Scheduler) { // Changed ts to schedulers
+func (s *state) SetInstanceSlice(schedulers []*v1alpha1.Scheduler) {
 	s.schedulers = schedulers
 }
 
@@ -113,7 +114,7 @@ func (s *state) SetStatusChanged() {
 	s.statusChanged = true
 }
 
-func (s *state) RevisionInitializer() common.RevisionInitializer[*runtime.SchedulerGroup] { // Changed TSOGroup to SchedulerGroup
+func (s *state) RevisionInitializer() common.RevisionInitializer[*runtime.SchedulerGroup] {
 	return common.NewRevision[*runtime.SchedulerGroup](
 		common.RevisionSetterFunc(func(update, current string, collisionCount int32) {
 			s.updateRevision = update
@@ -126,7 +127,7 @@ func (s *state) RevisionInitializer() common.RevisionInitializer[*runtime.Schedu
 		WithCollisionCount(common.Lazy[*int32](func() *int32 {
 			return s.sg.Status.CollisionCount
 		})).
-		WithParent(common.Lazy[*runtime.SchedulerGroup](func() *runtime.SchedulerGroup { // Changed TSOGroup to SchedulerGroup
+		WithParent(common.Lazy[*runtime.SchedulerGroup](func() *runtime.SchedulerGroup {
 			return s.Group()
 		})).
 		WithLabels(s.Labels()).
@@ -141,7 +142,7 @@ func (s *state) Labels() common.LabelsOption {
 	return common.Lazy[map[string]string](func() map[string]string {
 		return map[string]string{
 			v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-			v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentScheduler, // Changed TSO to Scheduler
+			v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentScheduler,
 			v1alpha1.LabelKeyCluster:   s.cluster.Name,
 			v1alpha1.LabelKeyGroup:     s.sg.Name,
 		}
