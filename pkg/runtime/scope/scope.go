@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// This package is defined to minimize specified generic types when call funcs
+// Normally only one type(e.g. scope.TiKV/scope.TiKVGroup) need be specified when call any generic funcs
 package scope
 
 import (
@@ -20,12 +22,15 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
+// Conversion between runtime object and api object
+// runtime.Object <-> api.Object
 type Object[F client.Object, T runtime.Object] interface {
 	Scheme
 	From(F) T
 	To(T) F
 }
 
+// Conversion between runtime instance and api instance
 // runtime.Instance <-> api.Instance
 type Instance[F client.Object, T runtime.Instance] interface {
 	Scheme
@@ -33,6 +38,7 @@ type Instance[F client.Object, T runtime.Instance] interface {
 	To(T) F
 }
 
+// Conversion between runtime group and api group
 // runtime.Group <-> api.Group
 type Group[F client.Object, T runtime.Group] interface {
 	Scheme
@@ -40,34 +46,49 @@ type Group[F client.Object, T runtime.Group] interface {
 	To(T) F
 }
 
-// api.group -> []api.Instance
-type InstanceSlice[
+// List defines an interface to refer api.ObjectList and api.Object type
+// See apicall.ListInstances for how to use it
+type List[
+	L client.ObjectList,
+	I client.Object,
+] interface {
+	NewList() L
+	GetItems(L) []I
+}
+
+// GroupInstance is defined to refer instance scope(IS) for
+// - Instance: conversion from api.Instance to runtime.Instance
+// - List: new api.InstanceList and get []api.Instance
+// - InstanceList: both of the above
+type GroupInstance[
 	GF client.Object,
 	GT runtime.Group,
-	IL client.ObjectList,
-	I client.Object,
+	IS any,
 ] interface {
 	Group[GF, GT]
-	InstanceListCreator[IL]
-	InstanceItemsGetter[IL, I]
+	Instance() IS
 }
 
-type InstanceListCreator[
+type GroupList[
+	F client.Object,
+	T runtime.Group,
 	L client.ObjectList,
 ] interface {
-	NewInstanceList() L
+	Group[F, T]
+	List[L, F]
 }
 
-type InstanceItemsGetter[
-	IL client.ObjectList,
-	I client.Object,
+type InstanceList[
+	F client.Object,
+	T runtime.Instance,
+	L client.ObjectList,
 ] interface {
-	GetInstanceItems(IL) []I
+	Instance[F, T]
+	List[L, F]
 }
 
 type Scheme interface {
 	Component() string
-	NewList() client.ObjectList
 }
 
 func From[
@@ -84,24 +105,20 @@ func Component[S Scheme]() string {
 	return s.Component()
 }
 
-func NewList[S Scheme]() client.ObjectList {
+func NewList[
+	S List[OL, O],
+	OL client.ObjectList,
+	O client.Object,
+]() OL {
 	var s S
 	return s.NewList()
 }
 
-func NewInstanceList[
-	S InstanceListCreator[L],
-	L client.ObjectList,
-]() L {
+func GetItems[
+	S List[OL, O],
+	OL client.ObjectList,
+	O client.Object,
+](l OL) []O {
 	var s S
-	return s.NewInstanceList()
-}
-
-func GetInstanceItems[
-	S InstanceItemsGetter[IL, I],
-	IL client.ObjectList,
-	I client.Object,
-](l IL) []I {
-	var s S
-	return s.GetInstanceItems(l)
+	return s.GetItems(l)
 }

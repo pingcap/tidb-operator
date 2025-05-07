@@ -75,3 +75,12 @@ func SetStatusCondition[
 	}
 	return false
 }
+
+func StatusConditions[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F) []metav1.Condition {
+	obj := scope.From[S](f)
+	return obj.Conditions()
+}

@@ -23,7 +23,6 @@ import (
 	reflect "reflect"
 
 	v1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	runtime "github.com/pingcap/tidb-operator/pkg/runtime"
 	gomock "go.uber.org/mock/gomock"
 	v1 "k8s.io/api/core/v1"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
@@ -266,31 +265,31 @@ func (mr *MockInstanceCondReadyUpdaterMockRecorder[T]) SetStatusChanged() *gomoc
 }
 
 // MockGroupCondSuspendedUpdater is a mock of GroupCondSuspendedUpdater interface.
-type MockGroupCondSuspendedUpdater[T client.Object, I runtime.Instance] struct {
+type MockGroupCondSuspendedUpdater[G client.Object, I client.Object] struct {
 	ctrl     *gomock.Controller
-	recorder *MockGroupCondSuspendedUpdaterMockRecorder[T, I]
+	recorder *MockGroupCondSuspendedUpdaterMockRecorder[G, I]
 	isgomock struct{}
 }
 
 // MockGroupCondSuspendedUpdaterMockRecorder is the mock recorder for MockGroupCondSuspendedUpdater.
-type MockGroupCondSuspendedUpdaterMockRecorder[T client.Object, I runtime.Instance] struct {
-	mock *MockGroupCondSuspendedUpdater[T, I]
+type MockGroupCondSuspendedUpdaterMockRecorder[G client.Object, I client.Object] struct {
+	mock *MockGroupCondSuspendedUpdater[G, I]
 }
 
 // NewMockGroupCondSuspendedUpdater creates a new mock instance.
-func NewMockGroupCondSuspendedUpdater[T client.Object, I runtime.Instance](ctrl *gomock.Controller) *MockGroupCondSuspendedUpdater[T, I] {
-	mock := &MockGroupCondSuspendedUpdater[T, I]{ctrl: ctrl}
-	mock.recorder = &MockGroupCondSuspendedUpdaterMockRecorder[T, I]{mock}
+func NewMockGroupCondSuspendedUpdater[G client.Object, I client.Object](ctrl *gomock.Controller) *MockGroupCondSuspendedUpdater[G, I] {
+	mock := &MockGroupCondSuspendedUpdater[G, I]{ctrl: ctrl}
+	mock.recorder = &MockGroupCondSuspendedUpdaterMockRecorder[G, I]{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockGroupCondSuspendedUpdater[T, I]) EXPECT() *MockGroupCondSuspendedUpdaterMockRecorder[T, I] {
+func (m *MockGroupCondSuspendedUpdater[G, I]) EXPECT() *MockGroupCondSuspendedUpdaterMockRecorder[G, I] {
 	return m.recorder
 }
 
 // Cluster mocks base method.
-func (m *MockGroupCondSuspendedUpdater[T, I]) Cluster() *v1alpha1.Cluster {
+func (m *MockGroupCondSuspendedUpdater[G, I]) Cluster() *v1alpha1.Cluster {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Cluster")
 	ret0, _ := ret[0].(*v1alpha1.Cluster)
@@ -298,155 +297,169 @@ func (m *MockGroupCondSuspendedUpdater[T, I]) Cluster() *v1alpha1.Cluster {
 }
 
 // Cluster indicates an expected call of Cluster.
-func (mr *MockGroupCondSuspendedUpdaterMockRecorder[T, I]) Cluster() *gomock.Call {
+func (mr *MockGroupCondSuspendedUpdaterMockRecorder[G, I]) Cluster() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cluster", reflect.TypeOf((*MockGroupCondSuspendedUpdater[T, I])(nil).Cluster))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cluster", reflect.TypeOf((*MockGroupCondSuspendedUpdater[G, I])(nil).Cluster))
+}
+
+// InstanceSlice mocks base method.
+func (m *MockGroupCondSuspendedUpdater[G, I]) InstanceSlice() []I {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InstanceSlice")
+	ret0, _ := ret[0].([]I)
+	return ret0
+}
+
+// InstanceSlice indicates an expected call of InstanceSlice.
+func (mr *MockGroupCondSuspendedUpdaterMockRecorder[G, I]) InstanceSlice() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstanceSlice", reflect.TypeOf((*MockGroupCondSuspendedUpdater[G, I])(nil).InstanceSlice))
 }
 
 // Object mocks base method.
-func (m *MockGroupCondSuspendedUpdater[T, I]) Object() T {
+func (m *MockGroupCondSuspendedUpdater[G, I]) Object() G {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Object")
-	ret0, _ := ret[0].(T)
+	ret0, _ := ret[0].(G)
 	return ret0
 }
 
 // Object indicates an expected call of Object.
-func (mr *MockGroupCondSuspendedUpdaterMockRecorder[T, I]) Object() *gomock.Call {
+func (mr *MockGroupCondSuspendedUpdaterMockRecorder[G, I]) Object() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Object", reflect.TypeOf((*MockGroupCondSuspendedUpdater[T, I])(nil).Object))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Object", reflect.TypeOf((*MockGroupCondSuspendedUpdater[G, I])(nil).Object))
 }
 
 // SetStatusChanged mocks base method.
-func (m *MockGroupCondSuspendedUpdater[T, I]) SetStatusChanged() {
+func (m *MockGroupCondSuspendedUpdater[G, I]) SetStatusChanged() {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SetStatusChanged")
 }
 
 // SetStatusChanged indicates an expected call of SetStatusChanged.
-func (mr *MockGroupCondSuspendedUpdaterMockRecorder[T, I]) SetStatusChanged() *gomock.Call {
+func (mr *MockGroupCondSuspendedUpdaterMockRecorder[G, I]) SetStatusChanged() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusChanged", reflect.TypeOf((*MockGroupCondSuspendedUpdater[T, I])(nil).SetStatusChanged))
-}
-
-// Slice mocks base method.
-func (m *MockGroupCondSuspendedUpdater[T, I]) Slice() []I {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Slice")
-	ret0, _ := ret[0].([]I)
-	return ret0
-}
-
-// Slice indicates an expected call of Slice.
-func (mr *MockGroupCondSuspendedUpdaterMockRecorder[T, I]) Slice() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Slice", reflect.TypeOf((*MockGroupCondSuspendedUpdater[T, I])(nil).Slice))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusChanged", reflect.TypeOf((*MockGroupCondSuspendedUpdater[G, I])(nil).SetStatusChanged))
 }
 
 // MockGroupCondReadyUpdater is a mock of GroupCondReadyUpdater interface.
-type MockGroupCondReadyUpdater[T client.Object, I runtime.Instance] struct {
+type MockGroupCondReadyUpdater[G client.Object, I client.Object] struct {
 	ctrl     *gomock.Controller
-	recorder *MockGroupCondReadyUpdaterMockRecorder[T, I]
+	recorder *MockGroupCondReadyUpdaterMockRecorder[G, I]
 	isgomock struct{}
 }
 
 // MockGroupCondReadyUpdaterMockRecorder is the mock recorder for MockGroupCondReadyUpdater.
-type MockGroupCondReadyUpdaterMockRecorder[T client.Object, I runtime.Instance] struct {
-	mock *MockGroupCondReadyUpdater[T, I]
+type MockGroupCondReadyUpdaterMockRecorder[G client.Object, I client.Object] struct {
+	mock *MockGroupCondReadyUpdater[G, I]
 }
 
 // NewMockGroupCondReadyUpdater creates a new mock instance.
-func NewMockGroupCondReadyUpdater[T client.Object, I runtime.Instance](ctrl *gomock.Controller) *MockGroupCondReadyUpdater[T, I] {
-	mock := &MockGroupCondReadyUpdater[T, I]{ctrl: ctrl}
-	mock.recorder = &MockGroupCondReadyUpdaterMockRecorder[T, I]{mock}
+func NewMockGroupCondReadyUpdater[G client.Object, I client.Object](ctrl *gomock.Controller) *MockGroupCondReadyUpdater[G, I] {
+	mock := &MockGroupCondReadyUpdater[G, I]{ctrl: ctrl}
+	mock.recorder = &MockGroupCondReadyUpdaterMockRecorder[G, I]{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockGroupCondReadyUpdater[T, I]) EXPECT() *MockGroupCondReadyUpdaterMockRecorder[T, I] {
+func (m *MockGroupCondReadyUpdater[G, I]) EXPECT() *MockGroupCondReadyUpdaterMockRecorder[G, I] {
 	return m.recorder
 }
 
+// InstanceSlice mocks base method.
+func (m *MockGroupCondReadyUpdater[G, I]) InstanceSlice() []I {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InstanceSlice")
+	ret0, _ := ret[0].([]I)
+	return ret0
+}
+
+// InstanceSlice indicates an expected call of InstanceSlice.
+func (mr *MockGroupCondReadyUpdaterMockRecorder[G, I]) InstanceSlice() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstanceSlice", reflect.TypeOf((*MockGroupCondReadyUpdater[G, I])(nil).InstanceSlice))
+}
+
 // Object mocks base method.
-func (m *MockGroupCondReadyUpdater[T, I]) Object() T {
+func (m *MockGroupCondReadyUpdater[G, I]) Object() G {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Object")
-	ret0, _ := ret[0].(T)
+	ret0, _ := ret[0].(G)
 	return ret0
 }
 
 // Object indicates an expected call of Object.
-func (mr *MockGroupCondReadyUpdaterMockRecorder[T, I]) Object() *gomock.Call {
+func (mr *MockGroupCondReadyUpdaterMockRecorder[G, I]) Object() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Object", reflect.TypeOf((*MockGroupCondReadyUpdater[T, I])(nil).Object))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Object", reflect.TypeOf((*MockGroupCondReadyUpdater[G, I])(nil).Object))
 }
 
 // SetStatusChanged mocks base method.
-func (m *MockGroupCondReadyUpdater[T, I]) SetStatusChanged() {
+func (m *MockGroupCondReadyUpdater[G, I]) SetStatusChanged() {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SetStatusChanged")
 }
 
 // SetStatusChanged indicates an expected call of SetStatusChanged.
-func (mr *MockGroupCondReadyUpdaterMockRecorder[T, I]) SetStatusChanged() *gomock.Call {
+func (mr *MockGroupCondReadyUpdaterMockRecorder[G, I]) SetStatusChanged() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusChanged", reflect.TypeOf((*MockGroupCondReadyUpdater[T, I])(nil).SetStatusChanged))
-}
-
-// Slice mocks base method.
-func (m *MockGroupCondReadyUpdater[T, I]) Slice() []I {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Slice")
-	ret0, _ := ret[0].([]I)
-	return ret0
-}
-
-// Slice indicates an expected call of Slice.
-func (mr *MockGroupCondReadyUpdaterMockRecorder[T, I]) Slice() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Slice", reflect.TypeOf((*MockGroupCondReadyUpdater[T, I])(nil).Slice))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusChanged", reflect.TypeOf((*MockGroupCondReadyUpdater[G, I])(nil).SetStatusChanged))
 }
 
 // MockGroupCondSyncedUpdater is a mock of GroupCondSyncedUpdater interface.
-type MockGroupCondSyncedUpdater[T client.Object, I runtime.Instance] struct {
+type MockGroupCondSyncedUpdater[G client.Object, I client.Object] struct {
 	ctrl     *gomock.Controller
-	recorder *MockGroupCondSyncedUpdaterMockRecorder[T, I]
+	recorder *MockGroupCondSyncedUpdaterMockRecorder[G, I]
 	isgomock struct{}
 }
 
 // MockGroupCondSyncedUpdaterMockRecorder is the mock recorder for MockGroupCondSyncedUpdater.
-type MockGroupCondSyncedUpdaterMockRecorder[T client.Object, I runtime.Instance] struct {
-	mock *MockGroupCondSyncedUpdater[T, I]
+type MockGroupCondSyncedUpdaterMockRecorder[G client.Object, I client.Object] struct {
+	mock *MockGroupCondSyncedUpdater[G, I]
 }
 
 // NewMockGroupCondSyncedUpdater creates a new mock instance.
-func NewMockGroupCondSyncedUpdater[T client.Object, I runtime.Instance](ctrl *gomock.Controller) *MockGroupCondSyncedUpdater[T, I] {
-	mock := &MockGroupCondSyncedUpdater[T, I]{ctrl: ctrl}
-	mock.recorder = &MockGroupCondSyncedUpdaterMockRecorder[T, I]{mock}
+func NewMockGroupCondSyncedUpdater[G client.Object, I client.Object](ctrl *gomock.Controller) *MockGroupCondSyncedUpdater[G, I] {
+	mock := &MockGroupCondSyncedUpdater[G, I]{ctrl: ctrl}
+	mock.recorder = &MockGroupCondSyncedUpdaterMockRecorder[G, I]{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockGroupCondSyncedUpdater[T, I]) EXPECT() *MockGroupCondSyncedUpdaterMockRecorder[T, I] {
+func (m *MockGroupCondSyncedUpdater[G, I]) EXPECT() *MockGroupCondSyncedUpdaterMockRecorder[G, I] {
 	return m.recorder
 }
 
+// InstanceSlice mocks base method.
+func (m *MockGroupCondSyncedUpdater[G, I]) InstanceSlice() []I {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InstanceSlice")
+	ret0, _ := ret[0].([]I)
+	return ret0
+}
+
+// InstanceSlice indicates an expected call of InstanceSlice.
+func (mr *MockGroupCondSyncedUpdaterMockRecorder[G, I]) InstanceSlice() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstanceSlice", reflect.TypeOf((*MockGroupCondSyncedUpdater[G, I])(nil).InstanceSlice))
+}
+
 // Object mocks base method.
-func (m *MockGroupCondSyncedUpdater[T, I]) Object() T {
+func (m *MockGroupCondSyncedUpdater[G, I]) Object() G {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Object")
-	ret0, _ := ret[0].(T)
+	ret0, _ := ret[0].(G)
 	return ret0
 }
 
 // Object indicates an expected call of Object.
-func (mr *MockGroupCondSyncedUpdaterMockRecorder[T, I]) Object() *gomock.Call {
+func (mr *MockGroupCondSyncedUpdaterMockRecorder[G, I]) Object() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Object", reflect.TypeOf((*MockGroupCondSyncedUpdater[T, I])(nil).Object))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Object", reflect.TypeOf((*MockGroupCondSyncedUpdater[G, I])(nil).Object))
 }
 
 // Revision mocks base method.
-func (m *MockGroupCondSyncedUpdater[T, I]) Revision() (string, string, int32) {
+func (m *MockGroupCondSyncedUpdater[G, I]) Revision() (string, string, int32) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Revision")
 	ret0, _ := ret[0].(string)
@@ -456,77 +469,77 @@ func (m *MockGroupCondSyncedUpdater[T, I]) Revision() (string, string, int32) {
 }
 
 // Revision indicates an expected call of Revision.
-func (mr *MockGroupCondSyncedUpdaterMockRecorder[T, I]) Revision() *gomock.Call {
+func (mr *MockGroupCondSyncedUpdaterMockRecorder[G, I]) Revision() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Revision", reflect.TypeOf((*MockGroupCondSyncedUpdater[T, I])(nil).Revision))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Revision", reflect.TypeOf((*MockGroupCondSyncedUpdater[G, I])(nil).Revision))
 }
 
 // SetStatusChanged mocks base method.
-func (m *MockGroupCondSyncedUpdater[T, I]) SetStatusChanged() {
+func (m *MockGroupCondSyncedUpdater[G, I]) SetStatusChanged() {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SetStatusChanged")
 }
 
 // SetStatusChanged indicates an expected call of SetStatusChanged.
-func (mr *MockGroupCondSyncedUpdaterMockRecorder[T, I]) SetStatusChanged() *gomock.Call {
+func (mr *MockGroupCondSyncedUpdaterMockRecorder[G, I]) SetStatusChanged() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusChanged", reflect.TypeOf((*MockGroupCondSyncedUpdater[T, I])(nil).SetStatusChanged))
-}
-
-// Slice mocks base method.
-func (m *MockGroupCondSyncedUpdater[T, I]) Slice() []I {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Slice")
-	ret0, _ := ret[0].([]I)
-	return ret0
-}
-
-// Slice indicates an expected call of Slice.
-func (mr *MockGroupCondSyncedUpdaterMockRecorder[T, I]) Slice() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Slice", reflect.TypeOf((*MockGroupCondSyncedUpdater[T, I])(nil).Slice))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusChanged", reflect.TypeOf((*MockGroupCondSyncedUpdater[G, I])(nil).SetStatusChanged))
 }
 
 // MockStatusRevisionAndReplicasUpdater is a mock of StatusRevisionAndReplicasUpdater interface.
-type MockStatusRevisionAndReplicasUpdater[T client.Object, I runtime.Instance] struct {
+type MockStatusRevisionAndReplicasUpdater[G client.Object, I client.Object] struct {
 	ctrl     *gomock.Controller
-	recorder *MockStatusRevisionAndReplicasUpdaterMockRecorder[T, I]
+	recorder *MockStatusRevisionAndReplicasUpdaterMockRecorder[G, I]
 	isgomock struct{}
 }
 
 // MockStatusRevisionAndReplicasUpdaterMockRecorder is the mock recorder for MockStatusRevisionAndReplicasUpdater.
-type MockStatusRevisionAndReplicasUpdaterMockRecorder[T client.Object, I runtime.Instance] struct {
-	mock *MockStatusRevisionAndReplicasUpdater[T, I]
+type MockStatusRevisionAndReplicasUpdaterMockRecorder[G client.Object, I client.Object] struct {
+	mock *MockStatusRevisionAndReplicasUpdater[G, I]
 }
 
 // NewMockStatusRevisionAndReplicasUpdater creates a new mock instance.
-func NewMockStatusRevisionAndReplicasUpdater[T client.Object, I runtime.Instance](ctrl *gomock.Controller) *MockStatusRevisionAndReplicasUpdater[T, I] {
-	mock := &MockStatusRevisionAndReplicasUpdater[T, I]{ctrl: ctrl}
-	mock.recorder = &MockStatusRevisionAndReplicasUpdaterMockRecorder[T, I]{mock}
+func NewMockStatusRevisionAndReplicasUpdater[G client.Object, I client.Object](ctrl *gomock.Controller) *MockStatusRevisionAndReplicasUpdater[G, I] {
+	mock := &MockStatusRevisionAndReplicasUpdater[G, I]{ctrl: ctrl}
+	mock.recorder = &MockStatusRevisionAndReplicasUpdaterMockRecorder[G, I]{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockStatusRevisionAndReplicasUpdater[T, I]) EXPECT() *MockStatusRevisionAndReplicasUpdaterMockRecorder[T, I] {
+func (m *MockStatusRevisionAndReplicasUpdater[G, I]) EXPECT() *MockStatusRevisionAndReplicasUpdaterMockRecorder[G, I] {
 	return m.recorder
 }
 
+// InstanceSlice mocks base method.
+func (m *MockStatusRevisionAndReplicasUpdater[G, I]) InstanceSlice() []I {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InstanceSlice")
+	ret0, _ := ret[0].([]I)
+	return ret0
+}
+
+// InstanceSlice indicates an expected call of InstanceSlice.
+func (mr *MockStatusRevisionAndReplicasUpdaterMockRecorder[G, I]) InstanceSlice() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InstanceSlice", reflect.TypeOf((*MockStatusRevisionAndReplicasUpdater[G, I])(nil).InstanceSlice))
+}
+
 // Object mocks base method.
-func (m *MockStatusRevisionAndReplicasUpdater[T, I]) Object() T {
+func (m *MockStatusRevisionAndReplicasUpdater[G, I]) Object() G {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Object")
-	ret0, _ := ret[0].(T)
+	ret0, _ := ret[0].(G)
 	return ret0
 }
 
 // Object indicates an expected call of Object.
-func (mr *MockStatusRevisionAndReplicasUpdaterMockRecorder[T, I]) Object() *gomock.Call {
+func (mr *MockStatusRevisionAndReplicasUpdaterMockRecorder[G, I]) Object() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Object", reflect.TypeOf((*MockStatusRevisionAndReplicasUpdater[T, I])(nil).Object))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Object", reflect.TypeOf((*MockStatusRevisionAndReplicasUpdater[G, I])(nil).Object))
 }
 
 // Revision mocks base method.
-func (m *MockStatusRevisionAndReplicasUpdater[T, I]) Revision() (string, string, int32) {
+func (m *MockStatusRevisionAndReplicasUpdater[G, I]) Revision() (string, string, int32) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Revision")
 	ret0, _ := ret[0].(string)
@@ -536,33 +549,19 @@ func (m *MockStatusRevisionAndReplicasUpdater[T, I]) Revision() (string, string,
 }
 
 // Revision indicates an expected call of Revision.
-func (mr *MockStatusRevisionAndReplicasUpdaterMockRecorder[T, I]) Revision() *gomock.Call {
+func (mr *MockStatusRevisionAndReplicasUpdaterMockRecorder[G, I]) Revision() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Revision", reflect.TypeOf((*MockStatusRevisionAndReplicasUpdater[T, I])(nil).Revision))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Revision", reflect.TypeOf((*MockStatusRevisionAndReplicasUpdater[G, I])(nil).Revision))
 }
 
 // SetStatusChanged mocks base method.
-func (m *MockStatusRevisionAndReplicasUpdater[T, I]) SetStatusChanged() {
+func (m *MockStatusRevisionAndReplicasUpdater[G, I]) SetStatusChanged() {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SetStatusChanged")
 }
 
 // SetStatusChanged indicates an expected call of SetStatusChanged.
-func (mr *MockStatusRevisionAndReplicasUpdaterMockRecorder[T, I]) SetStatusChanged() *gomock.Call {
+func (mr *MockStatusRevisionAndReplicasUpdaterMockRecorder[G, I]) SetStatusChanged() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusChanged", reflect.TypeOf((*MockStatusRevisionAndReplicasUpdater[T, I])(nil).SetStatusChanged))
-}
-
-// Slice mocks base method.
-func (m *MockStatusRevisionAndReplicasUpdater[T, I]) Slice() []I {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Slice")
-	ret0, _ := ret[0].([]I)
-	return ret0
-}
-
-// Slice indicates an expected call of Slice.
-func (mr *MockStatusRevisionAndReplicasUpdaterMockRecorder[T, I]) Slice() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Slice", reflect.TypeOf((*MockStatusRevisionAndReplicasUpdater[T, I])(nil).Slice))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusChanged", reflect.TypeOf((*MockStatusRevisionAndReplicasUpdater[G, I])(nil).SetStatusChanged))
 }

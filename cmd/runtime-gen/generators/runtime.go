@@ -59,16 +59,6 @@ func (g *runtimeGenerator) Namers(*generator.Context) namer.NameSystems {
 	}
 }
 
-type NameFunc func(t *types.Type) string
-
-func (f NameFunc) Name(t *types.Type) string {
-	return f(t)
-}
-
-func GroupToInstanceName(t *types.Type) string {
-	return strings.TrimSuffix(t.Name.Name, "Group")
-}
-
 func (g *runtimeGenerator) Imports(_ *generator.Context) (imports []string) {
 	importLines := []string{
 		`"k8s.io/apimachinery/pkg/api/meta"`,

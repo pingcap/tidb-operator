@@ -30,7 +30,6 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -639,10 +638,10 @@ func TestTaskGroupConditionSuspended(t *testing.T) {
 			tt.Parallel()
 
 			ctrl := gomock.NewController(tt)
-			state := NewMockGroupCondSuspendedUpdater[*v1alpha1.PDGroup, *runtime.PD](ctrl)
+			state := NewMockGroupCondSuspendedUpdater[*v1alpha1.PDGroup, *v1alpha1.PD](ctrl)
 			state.EXPECT().Object().Return(c.obj)
 			state.EXPECT().Cluster().Return(c.cluster)
-			state.EXPECT().Slice().Return(runtime.FromPDSlice(c.instances))
+			state.EXPECT().InstanceSlice().Return(c.instances)
 			if c.expectedStatusChanged {
 				state.EXPECT().SetStatusChanged()
 			}
@@ -765,9 +764,9 @@ func TestTaskGroupConditionReady(t *testing.T) {
 			tt.Parallel()
 
 			ctrl := gomock.NewController(tt)
-			state := NewMockGroupCondReadyUpdater[*v1alpha1.PDGroup, *runtime.PD](ctrl)
+			state := NewMockGroupCondReadyUpdater[*v1alpha1.PDGroup, *v1alpha1.PD](ctrl)
 			state.EXPECT().Object().Return(c.obj)
-			state.EXPECT().Slice().Return(runtime.FromPDSlice(c.instances))
+			state.EXPECT().InstanceSlice().Return(c.instances)
 			if c.expectedStatusChanged {
 				state.EXPECT().SetStatusChanged()
 			}
@@ -927,10 +926,10 @@ func TestTaskGroupConditionSynced(t *testing.T) {
 			tt.Parallel()
 
 			ctrl := gomock.NewController(tt)
-			state := NewMockGroupCondSyncedUpdater[*v1alpha1.PDGroup, *runtime.PD](ctrl)
+			state := NewMockGroupCondSyncedUpdater[*v1alpha1.PDGroup, *v1alpha1.PD](ctrl)
 			state.EXPECT().Object().Return(c.obj)
 			state.EXPECT().Revision().Return(newRevision, oldRevision, int32(0))
-			state.EXPECT().Slice().Return(runtime.FromPDSlice(c.instances))
+			state.EXPECT().InstanceSlice().Return(c.instances)
 			if c.expectedStatusChanged {
 				state.EXPECT().SetStatusChanged()
 			}
@@ -1134,10 +1133,10 @@ func TestTaskStatusRevisionAndReplicas(t *testing.T) {
 			tt.Parallel()
 
 			ctrl := gomock.NewController(tt)
-			state := NewMockStatusRevisionAndReplicasUpdater[*v1alpha1.PDGroup, *runtime.PD](ctrl)
+			state := NewMockStatusRevisionAndReplicasUpdater[*v1alpha1.PDGroup, *v1alpha1.PD](ctrl)
 			state.EXPECT().Object().Return(c.obj)
 			state.EXPECT().Revision().Return(newRevision, oldRevision, int32(0))
-			state.EXPECT().Slice().Return(runtime.FromPDSlice(c.instances))
+			state.EXPECT().InstanceSlice().Return(c.instances)
 			if c.expectedStatusChanged {
 				state.EXPECT().SetStatusChanged()
 			}
