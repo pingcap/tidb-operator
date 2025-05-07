@@ -97,7 +97,7 @@ func TestState(t *testing.T) {
 
 			ctx := context.Background()
 			res, done := task.RunTask(ctx, task.Block(
-				common.TaskContextTiCDCGroup(s, fc),
+				common.TaskContextObject[scope.TiCDCGroup](s, fc),
 				common.TaskContextCluster[scope.TiCDCGroup](s, fc),
 				common.TaskContextTiCDCSlice(s, fc),
 				common.TaskRevision[runtime.TiCDCGroupTuple](s, fc),

@@ -41,7 +41,6 @@ type state struct {
 }
 
 type State interface {
-	common.PDStateInitializer
 	common.PDSliceStateInitializer
 
 	common.PDState
@@ -54,6 +53,7 @@ type State interface {
 	common.InstanceState[*runtime.PD]
 
 	common.ContextClusterNewer[*v1alpha1.PD]
+	common.ContextObjectNewer[*v1alpha1.PD]
 
 	common.StatusUpdater
 	common.StatusPersister[*v1alpha1.PD]
@@ -69,8 +69,16 @@ func NewState(key types.NamespacedName) State {
 	return s
 }
 
+func (s *state) Key() types.NamespacedName {
+	return s.key
+}
+
 func (s *state) Object() *v1alpha1.PD {
 	return s.pd
+}
+
+func (s *state) SetObject(pd *v1alpha1.PD) {
+	s.pd = pd
 }
 
 func (s *state) PD() *v1alpha1.PD {
@@ -119,13 +127,6 @@ func (s *state) SetStatusChanged() {
 
 func (s *state) PDSlice() []*v1alpha1.PD {
 	return s.pds
-}
-
-func (s *state) PDInitializer() common.PDInitializer {
-	return common.NewResource(func(pd *v1alpha1.PD) { s.pd = pd }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Name(s.key.Name)).
-		Initializer()
 }
 
 func (s *state) PDSliceInitializer() common.PDSliceInitializer {

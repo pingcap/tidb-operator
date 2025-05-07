@@ -40,8 +40,6 @@ type state struct {
 }
 
 type State interface {
-	common.TiDBStateInitializer
-
 	common.TiDBState
 	common.ClusterState
 
@@ -51,6 +49,7 @@ type State interface {
 	common.InstanceState[*runtime.TiDB]
 
 	common.ContextClusterNewer[*v1alpha1.TiDB]
+	common.ContextObjectNewer[*v1alpha1.TiDB]
 
 	common.StatusPersister[*v1alpha1.TiDB]
 	common.StatusUpdater
@@ -64,6 +63,18 @@ func NewState(key types.NamespacedName) State {
 		key: key,
 	}
 	return s
+}
+
+func (s *state) Key() types.NamespacedName {
+	return s.key
+}
+
+func (s *state) Object() *v1alpha1.TiDB {
+	return s.tidb
+}
+
+func (s *state) SetObject(tidb *v1alpha1.TiDB) {
+	s.tidb = tidb
 }
 
 func (s *state) TiDB() *v1alpha1.TiDB {
@@ -84,10 +95,6 @@ func (s *state) IsPodTerminating() bool {
 
 func (s *state) Instance() *runtime.TiDB {
 	return runtime.FromTiDB(s.tidb)
-}
-
-func (s *state) Object() *v1alpha1.TiDB {
-	return s.tidb
 }
 
 func (s *state) IsStatusChanged() bool {
@@ -112,13 +119,6 @@ func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
 
 func (s *state) SetStatusChanged() {
 	s.statusChanged = true
-}
-
-func (s *state) TiDBInitializer() common.TiDBInitializer {
-	return common.NewResource(func(tidb *v1alpha1.TiDB) { s.tidb = tidb }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Name(s.key.Name)).
-		Initializer()
 }
 
 func (s *state) IsHealthy() bool {

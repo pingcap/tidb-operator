@@ -37,7 +37,6 @@ type state struct {
 }
 
 type State interface {
-	common.TiKVGroupStateInitializer
 	common.TiKVSliceStateInitializer
 	common.RevisionStateInitializer[*runtime.TiKVGroup]
 
@@ -49,6 +48,7 @@ type State interface {
 	common.GroupState[*runtime.TiKVGroup]
 
 	common.ContextClusterNewer[*v1alpha1.TiKVGroup]
+	common.ContextObjectNewer[*v1alpha1.TiKVGroup]
 
 	common.InstanceSliceState[*runtime.TiKV]
 	common.SliceState[*v1alpha1.TiKV]
@@ -64,8 +64,16 @@ func NewState(key types.NamespacedName) State {
 	return s
 }
 
+func (s *state) Key() types.NamespacedName {
+	return s.key
+}
+
 func (s *state) Object() *v1alpha1.TiKVGroup {
 	return s.kvg
+}
+
+func (s *state) SetObject(kvg *v1alpha1.TiKVGroup) {
+	s.kvg = kvg
 }
 
 func (s *state) TiKVGroup() *v1alpha1.TiKVGroup {
@@ -102,13 +110,6 @@ func (s *state) IsStatusChanged() bool {
 
 func (s *state) SetStatusChanged() {
 	s.statusChanged = true
-}
-
-func (s *state) TiKVGroupInitializer() common.TiKVGroupInitializer {
-	return common.NewResource(func(kvg *v1alpha1.TiKVGroup) { s.kvg = kvg }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Name(s.key.Name)).
-		Initializer()
 }
 
 func (s *state) TiKVSliceInitializer() common.TiKVSliceInitializer {
