@@ -353,15 +353,13 @@ func (u *tikvUpgrader) endEvictLeaderAfterUpgrade(tc *v1alpha1.TidbCluster, pod 
 }
 
 func (u *tikvUpgrader) triggerForceFlush(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
-	logger := klog.Background().WithValues("pod", pod.GetName(), "pod.ns", pod.GetNamespace())
-	cxLogger := klog.NewContext(context.Background(), logger)
 	// If we stuck here too long, the worker may be blocked and it then become impossible to do other operations.
 	// Given the default flush interval is ~3m, a normal cluster's flush shouldn't take longer than 3m.
-	timeoutCx, cancel := context.WithTimeout(cxLogger, 3*time.Minute)
+	timeoutCx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 
 	if _, ok := tc.Annotations[v1alpha1.AnnoKeySkipFlushLogBackup]; ok {
-		logger.Info("Skipped flush log backup.", "tc", tc.Name, "namespace", tc.Namespace)
+		klog.InfoS("Skipped flush log backup.", "tc", tc.Name, "namespace", tc.Namespace)
 		return nil
 	}
 	kvcli := u.deps.TiKVControl.GetTiKVPodClient(tc.GetNamespace(), tc.GetName(), pod.GetName(), tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled())
