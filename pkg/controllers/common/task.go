@@ -102,56 +102,6 @@ func taskContextResourceSlice[T any, PT Object[T]](
 	})
 }
 
-func TaskContextPD(state PDStateInitializer, c client.Client) task.Task {
-	w := state.PDInitializer()
-	return taskContextResource("PD", w, c, false)
-}
-
-func TaskContextTiKV(state TiKVStateInitializer, c client.Client) task.Task {
-	w := state.TiKVInitializer()
-	return taskContextResource("TiKV", w, c, false)
-}
-
-func TaskContextTiDB(state TiDBStateInitializer, c client.Client) task.Task {
-	w := state.TiDBInitializer()
-	return taskContextResource("TiDB", w, c, false)
-}
-
-func TaskContextTiFlash(state TiFlashStateInitializer, c client.Client) task.Task {
-	w := state.TiFlashInitializer()
-	return taskContextResource("TiFlash", w, c, false)
-}
-
-func TaskContextTiCDC(state TiCDCStateInitializer, c client.Client) task.Task {
-	w := state.TiCDCInitializer()
-	return taskContextResource("TiCDC", w, c, false)
-}
-
-func TaskContextPDGroup(state PDGroupStateInitializer, c client.Client) task.Task {
-	w := state.PDGroupInitializer()
-	return taskContextResource("PDGroup", w, c, false)
-}
-
-func TaskContextTiKVGroup(state TiKVGroupStateInitializer, c client.Client) task.Task {
-	w := state.TiKVGroupInitializer()
-	return taskContextResource("TiKVGroup", w, c, false)
-}
-
-func TaskContextTiDBGroup(state TiDBGroupStateInitializer, c client.Client) task.Task {
-	w := state.TiDBGroupInitializer()
-	return taskContextResource("TiDBGroup", w, c, false)
-}
-
-func TaskContextTiFlashGroup(state TiFlashGroupStateInitializer, c client.Client) task.Task {
-	w := state.TiFlashGroupInitializer()
-	return taskContextResource("TiFlashGroup", w, c, false)
-}
-
-func TaskContextTiCDCGroup(state TiCDCGroupStateInitializer, c client.Client) task.Task {
-	w := state.TiCDCGroupInitializer()
-	return taskContextResource("TiCDCGroup", w, c, false)
-}
-
 func TaskContextPDSlice(state PDSliceStateInitializer, c client.Client) task.Task {
 	w := state.PDSliceInitializer()
 	return taskContextResourceSlice("PDSlice", w, &v1alpha1.PDList{}, c)
@@ -244,7 +194,8 @@ type ContextSliceNewer[
 }
 
 func TaskContextSlice[
-	S scope.InstanceSlice[GF, GT, IL, I],
+	S scope.GroupInstance[GF, GT, IS],
+	IS scope.List[IL, I],
 	GF client.Object,
 	GT runtime.Group,
 	IL client.ObjectList,

@@ -97,7 +97,7 @@ func TestState(t *testing.T) {
 
 			ctx := context.Background()
 			res, done := task.RunTask(ctx, task.Block(
-				common.TaskContextTiFlashGroup(s, fc),
+				common.TaskContextObject[scope.TiFlashGroup](s, fc),
 				common.TaskContextCluster[scope.TiFlashGroup](s, fc),
 				common.TaskContextTiFlashSlice(s, fc),
 				common.TaskRevision[runtime.TiFlashGroupTuple](s, fc),

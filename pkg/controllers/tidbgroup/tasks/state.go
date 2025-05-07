@@ -37,7 +37,6 @@ type state struct {
 }
 
 type State interface {
-	common.TiDBGroupStateInitializer
 	common.TiDBSliceStateInitializer
 	common.RevisionStateInitializer[*runtime.TiDBGroup]
 
@@ -49,6 +48,7 @@ type State interface {
 	common.GroupState[*runtime.TiDBGroup]
 
 	common.ContextClusterNewer[*v1alpha1.TiDBGroup]
+	common.ContextObjectNewer[*v1alpha1.TiDBGroup]
 
 	common.InstanceSliceState[*runtime.TiDB]
 	common.SliceState[*v1alpha1.TiDB]
@@ -64,8 +64,16 @@ func NewState(key types.NamespacedName) State {
 	return s
 }
 
+func (s *state) Key() types.NamespacedName {
+	return s.key
+}
+
 func (s *state) Object() *v1alpha1.TiDBGroup {
 	return s.dbg
+}
+
+func (s *state) SetObject(dbg *v1alpha1.TiDBGroup) {
+	s.dbg = dbg
 }
 
 func (s *state) TiDBGroup() *v1alpha1.TiDBGroup {
@@ -102,13 +110,6 @@ func (s *state) IsStatusChanged() bool {
 
 func (s *state) SetStatusChanged() {
 	s.statusChanged = true
-}
-
-func (s *state) TiDBGroupInitializer() common.TiDBGroupInitializer {
-	return common.NewResource(func(dbg *v1alpha1.TiDBGroup) { s.dbg = dbg }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Name(s.key.Name)).
-		Initializer()
 }
 
 func (s *state) TiDBSliceInitializer() common.TiDBSliceInitializer {

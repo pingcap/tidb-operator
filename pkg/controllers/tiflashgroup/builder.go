@@ -25,7 +25,7 @@ import (
 func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.TaskReporter) task.TaskRunner {
 	runner := task.NewTaskRunner(reporter,
 		// get tiflashgroup
-		common.TaskContextTiFlashGroup(state, r.Client),
+		common.TaskContextObject[scope.TiFlashGroup](state, r.Client),
 		// if it's gone just return
 		task.IfBreak(common.CondGroupHasBeenDeleted(state)),
 

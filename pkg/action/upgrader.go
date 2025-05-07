@@ -131,9 +131,10 @@ func checkComponentsUpgraded(ctx context.Context, c client.Client, ns, cluster, 
 }
 
 func checkOneComponentUpgraded[
-	S scope.Group[F, T],
+	S scope.GroupList[F, T, L],
 	F client.Object,
 	T runtime.Group,
+	L client.ObjectList,
 ](ctx context.Context, c client.Client, ns, cluster, version string) (bool, error) {
 	comp := scope.Component[S]()
 	groups, err := apicall.ListGroups[S](ctx, c, ns, cluster)

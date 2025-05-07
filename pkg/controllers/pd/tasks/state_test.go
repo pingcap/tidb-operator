@@ -120,7 +120,7 @@ func TestState(t *testing.T) {
 
 			ctx := context.Background()
 			res, done := task.RunTask(ctx, task.Block(
-				common.TaskContextPD(s, fc),
+				common.TaskContextObject[scope.PD](s, fc),
 				common.TaskContextCluster[scope.PD](s, fc),
 				common.TaskContextPDSlice(s, fc),
 				common.TaskContextPod[scope.PD](s, fc),

@@ -39,8 +39,6 @@ type state struct {
 }
 
 type State interface {
-	common.TiKVStateInitializer
-
 	common.TiKVState
 	common.ClusterState
 
@@ -50,6 +48,7 @@ type State interface {
 	common.InstanceState[*runtime.TiKV]
 
 	common.ContextClusterNewer[*v1alpha1.TiKV]
+	common.ContextObjectNewer[*v1alpha1.TiKV]
 
 	common.StatusUpdater
 	common.StatusPersister[*v1alpha1.TiKV]
@@ -67,8 +66,16 @@ func NewState(key types.NamespacedName) State {
 	return s
 }
 
+func (s *state) Key() types.NamespacedName {
+	return s.key
+}
+
 func (s *state) Object() *v1alpha1.TiKV {
 	return s.tikv
+}
+
+func (s *state) SetObject(tikv *v1alpha1.TiKV) {
+	s.tikv = tikv
 }
 
 func (s *state) TiKV() *v1alpha1.TiKV {
@@ -113,13 +120,6 @@ func (s *state) IsStatusChanged() bool {
 
 func (s *state) SetStatusChanged() {
 	s.statusChanged = true
-}
-
-func (s *state) TiKVInitializer() common.TiKVInitializer {
-	return common.NewResource(func(tikv *v1alpha1.TiKV) { s.tikv = tikv }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Name(s.key.Name)).
-		Initializer()
 }
 
 func (s *state) GetStoreState() string {
