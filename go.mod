@@ -35,7 +35,7 @@ require (
 	github.com/pingcap/TiProxy/lib v0.0.0-20230201020701-df06ec482c69
 	github.com/pingcap/advanced-statefulset/client v1.17.1-0.20230403114412-d141a788a127
 	github.com/pingcap/errors v0.11.4
-	github.com/pingcap/kvproto v0.0.0-20231122054644-fb0f5c2a0a10
+	github.com/pingcap/kvproto v0.0.0-20250117122752-2b87602a94a1
 	github.com/pingcap/tidb-operator/pkg/apis v1.5.5
 	github.com/pingcap/tidb-operator/pkg/client v1.5.5
 	github.com/prometheus/client_golang v1.7.1
