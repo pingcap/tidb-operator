@@ -28,117 +28,80 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-func TestTaskGroupFinalizerAdd(t *testing.T) {
-	t.Run("PDGroup", testTaskGroupFinalizerAdd[runtime.PDGroupTuple])
-	t.Run("TiKVGroup", testTaskGroupFinalizerAdd[runtime.TiKVGroupTuple])
-	t.Run("TiDBGroup", testTaskGroupFinalizerAdd[runtime.TiDBGroupTuple])
-	t.Run("TiFlashGroup", testTaskGroupFinalizerAdd[runtime.TiFlashGroupTuple])
-}
-
-func testTaskGroupFinalizerAdd[
-	GT runtime.GroupTuple[OG, RG],
-	OG client.Object,
-	RG runtime.GroupT[G],
-	G runtime.GroupSet,
-](t *testing.T) {
+func TestTaskFinalizerAdd(t *testing.T) {
 	cases := []struct {
 		desc          string
-		state         GroupState[RG]
+		state         ObjectState[*v1alpha1.PD]
 		unexpectedErr bool
 
 		expectedStatus task.Status
-		expectedObj    RG
+		expectedObj    *v1alpha1.PD
 	}{
 		{
 			desc: "no finalizer",
-			state: FakeGroupState(
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					return obj
-				}),
+			state: newFakeObjectState(
+				fake.FakeObj[v1alpha1.PD]("aaa"),
 			),
 			expectedStatus: task.SComplete,
-			expectedObj: fake.Fake(func(obj RG) RG {
-				obj.SetName("aaa")
-				obj.SetFinalizers([]string{meta.Finalizer})
-				return obj
-			}),
+			expectedObj:    fake.FakeObj("aaa", fake.AddFinalizer[v1alpha1.PD]()),
 		},
 		{
 			desc: "no finalizer and cannot call api",
-			state: FakeGroupState(
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					return obj
-				}),
+			state: newFakeObjectState(
+				fake.FakeObj[v1alpha1.PD]("aaa"),
 			),
 			unexpectedErr:  true,
 			expectedStatus: task.SFail,
 		},
 		{
 			desc: "has another finalizer",
-			state: FakeGroupState(
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
+			state: newFakeObjectState(
+				fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
 					obj.SetFinalizers(append(obj.GetFinalizers(), "xxxx"))
 					return obj
 				}),
 			),
 			expectedStatus: task.SComplete,
-			expectedObj: fake.Fake(func(obj RG) RG {
-				obj.SetName("aaa")
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
 				obj.SetFinalizers(append(obj.GetFinalizers(), "xxxx", meta.Finalizer))
 				return obj
 			}),
 		},
 		{
 			desc: "already has the finalizer",
-			state: FakeGroupState(
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					obj.SetFinalizers(append(obj.GetFinalizers(), meta.Finalizer))
-					return obj
-				}),
+			state: newFakeObjectState(
+				fake.FakeObj("aaa", fake.AddFinalizer[v1alpha1.PD]()),
 			),
 			expectedStatus: task.SComplete,
-			expectedObj: fake.Fake(func(obj RG) RG {
-				obj.SetName("aaa")
-				obj.SetFinalizers(append(obj.GetFinalizers(), meta.Finalizer))
-				return obj
-			}),
+			expectedObj:    fake.FakeObj("aaa", fake.AddFinalizer[v1alpha1.PD]()),
 		},
 		{
 			desc: "already has the finalizer and cannot call api",
-			state: FakeGroupState(
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					obj.SetFinalizers(append(obj.GetFinalizers(), meta.Finalizer))
-					return obj
-				}),
+			state: newFakeObjectState(
+				fake.FakeObj("aaa", fake.AddFinalizer[v1alpha1.PD]()),
 			),
 			unexpectedErr:  true,
 			expectedStatus: task.SComplete,
 		},
 	}
 
-	var gt GT
 	for i := range cases {
 		c := &cases[i]
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
-			fc := client.NewFakeClient(gt.To(c.state.Group()))
+			fc := client.NewFakeClient(c.state.Object())
 			if c.unexpectedErr {
 				fc.WithError("*", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
 			}
 
 			ctx := context.Background()
-			res, done := task.RunTask(ctx, TaskGroupFinalizerAdd[GT](c.state, fc))
+			res, done := task.RunTask(ctx, TaskFinalizerAdd[scope.PD](c.state, fc))
 			assert.Equal(tt, c.expectedStatus, res.Status(), c.desc)
 			assert.False(tt, done, c.desc)
 
@@ -147,85 +110,73 @@ func testTaskGroupFinalizerAdd[
 				return
 			}
 
-			obj := gt.To(new(G))
+			obj := &v1alpha1.PD{}
 			require.NoError(tt, fc.Get(ctx, client.ObjectKey{Name: "aaa"}, obj), c.desc)
-			assert.Equal(tt, c.expectedObj, gt.From(obj), c.desc)
+			assert.Equal(tt, c.expectedObj, obj, c.desc)
 		})
 	}
 }
 
-func TestTaskGroupFinalizerDel(t *testing.T) {
-	t.Run("TiKVGroup", testTaskGroupFinalizerDel[runtime.TiKVGroupTuple, runtime.TiKVTuple])
-	t.Run("TiDBGroup", testTaskGroupFinalizerDel[runtime.TiDBGroupTuple, runtime.TiDBTuple])
+type fakeGroupFinalizerDelState[
+	G client.Object,
+	I client.Object,
+] struct {
+	g  G
+	is []I
 }
 
-func testTaskGroupFinalizerDel[
-	GT runtime.GroupTuple[OG, RG],
-	IT runtime.InstanceTuple[OI, RI],
-	OG client.Object,
-	RG runtime.GroupT[G],
-	OI client.Object,
-	RI runtime.InstanceT[I],
-	G runtime.GroupSet,
-	I runtime.InstanceSet,
-](t *testing.T) {
+func (s *fakeGroupFinalizerDelState[G, I]) Object() G {
+	return s.g
+}
+
+func (s *fakeGroupFinalizerDelState[G, I]) InstanceSlice() []I {
+	return s.is
+}
+
+func newFakeGroupFinalizerDelState[
+	I client.Object,
+	G client.Object,
+](g G, is ...I) *fakeGroupFinalizerDelState[G, I] {
+	return &fakeGroupFinalizerDelState[G, I]{
+		g:  g,
+		is: is,
+	}
+}
+
+func TestTaskGroupFinalizerDel(t *testing.T) {
 	now := metav1.Now()
 	cases := []struct {
 		desc          string
-		state         GroupAndInstanceSliceState[RG, RI]
+		state         GroupFinalizerDelState[*v1alpha1.PDGroup, *v1alpha1.PD]
 		subresources  []client.Object
 		unexpectedErr bool
 
 		expectedStatus task.Status
-		expectedObj    RG
+		expectedObj    *v1alpha1.PDGroup
 	}{
 		{
 			desc: "no instances and no sub resources and no finalizer",
-			state: FakeGroupAndInstanceSliceState[RG, RI](
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					obj.SetDeletionTimestamp(&now)
-					return obj
-				}),
+			state: newFakeGroupFinalizerDelState[*v1alpha1.PD](
+				fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now)),
 			),
 			expectedStatus: task.SComplete,
-			expectedObj: fake.Fake(func(obj RG) RG {
-				obj.SetName("aaa")
-				obj.SetDeletionTimestamp(&now)
-				return obj
-			}),
+			expectedObj:    fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now)),
 		},
 		{
 			desc: "no instances and no sub resources",
-			state: FakeGroupAndInstanceSliceState[RG, RI](
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					obj.SetDeletionTimestamp(&now)
-					obj.SetFinalizers([]string{
-						meta.Finalizer,
-					})
-					return obj
-				}),
+			state: newFakeGroupFinalizerDelState[*v1alpha1.PD](
+				fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), fake.AddFinalizer[v1alpha1.PDGroup]()),
 			),
 			expectedStatus: task.SComplete,
-			expectedObj: fake.Fake(func(obj RG) RG {
-				obj.SetName("aaa")
-				obj.SetDeletionTimestamp(&now)
+			expectedObj: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				obj.SetFinalizers([]string{})
 				return obj
 			}),
 		},
 		{
 			desc: "no instances and no sub resources but call api failed",
-			state: FakeGroupAndInstanceSliceState[RG, RI](
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					obj.SetDeletionTimestamp(&now)
-					obj.SetFinalizers([]string{
-						meta.Finalizer,
-					})
-					return obj
-				}),
+			state: newFakeGroupFinalizerDelState[*v1alpha1.PD](
+				fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), fake.AddFinalizer[v1alpha1.PDGroup]()),
 			),
 			unexpectedErr: true,
 
@@ -233,52 +184,31 @@ func testTaskGroupFinalizerDel[
 		},
 		{
 			desc: "no instances but has sub resources",
-			state: FakeGroupAndInstanceSliceState[RG, RI](
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					obj.SetDeletionTimestamp(&now)
-					obj.SetFinalizers([]string{
-						meta.Finalizer,
-					})
-					return obj
-				}),
+			state: newFakeGroupFinalizerDelState[*v1alpha1.PD](
+				fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), fake.AddFinalizer[v1alpha1.PDGroup]()),
 			),
 			subresources: []client.Object{
 				fake.FakeObj("aaa",
 					fake.Label[corev1.Service](v1alpha1.LabelKeyManagedBy, v1alpha1.LabelValManagedByOperator),
 					fake.Label[corev1.Service](v1alpha1.LabelKeyCluster, ""),
-					fake.Label[corev1.Service](v1alpha1.LabelKeyComponent, runtime.Component[G, RG]()),
+					fake.Label[corev1.Service](v1alpha1.LabelKeyComponent, v1alpha1.LabelValComponentPD),
 					fake.Label[corev1.Service](v1alpha1.LabelKeyGroup, "aaa"),
 				),
 			},
 
 			expectedStatus: task.SRetry,
-			expectedObj: fake.Fake(func(obj RG) RG {
-				obj.SetName("aaa")
-				obj.SetDeletionTimestamp(&now)
-				obj.SetFinalizers([]string{
-					meta.Finalizer,
-				})
-				return obj
-			}),
+			expectedObj:    fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), fake.AddFinalizer[v1alpha1.PDGroup]()),
 		},
 		{
 			desc: "no instances but has sub resources and call api failed",
-			state: FakeGroupAndInstanceSliceState[RG, RI](
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					obj.SetDeletionTimestamp(&now)
-					obj.SetFinalizers([]string{
-						meta.Finalizer,
-					})
-					return obj
-				}),
+			state: newFakeGroupFinalizerDelState[*v1alpha1.PD](
+				fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), fake.AddFinalizer[v1alpha1.PDGroup]()),
 			),
 			subresources: []client.Object{
 				fake.FakeObj("aaa",
 					fake.Label[corev1.Service](v1alpha1.LabelKeyManagedBy, v1alpha1.LabelValManagedByOperator),
 					fake.Label[corev1.Service](v1alpha1.LabelKeyCluster, ""),
-					fake.Label[corev1.Service](v1alpha1.LabelKeyComponent, runtime.Component[G, RG]()),
+					fake.Label[corev1.Service](v1alpha1.LabelKeyComponent, v1alpha1.LabelValComponentPD),
 					fake.Label[corev1.Service](v1alpha1.LabelKeyGroup, "aaa"),
 				),
 			},
@@ -288,51 +218,18 @@ func testTaskGroupFinalizerDel[
 		},
 		{
 			desc: "has instances with finalizer",
-			state: FakeGroupAndInstanceSliceState(
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					obj.SetDeletionTimestamp(&now)
-					obj.SetFinalizers([]string{
-						meta.Finalizer,
-					})
-					return obj
-				}),
-				fake.Fake(func(obj RI) RI {
-					obj.SetName("aaa")
-					obj.SetFinalizers([]string{
-						meta.Finalizer,
-					})
-					return obj
-				}),
+			state: newFakeGroupFinalizerDelState(
+				fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), fake.AddFinalizer[v1alpha1.PDGroup]()),
+				fake.FakeObj("aaa", fake.AddFinalizer[v1alpha1.PD]()),
 			),
 			expectedStatus: task.SRetry,
-			expectedObj: fake.Fake(func(obj RG) RG {
-				obj.SetName("aaa")
-				obj.SetDeletionTimestamp(&now)
-				obj.SetFinalizers([]string{
-					meta.Finalizer,
-				})
-				return obj
-			}),
+			expectedObj:    fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), fake.AddFinalizer[v1alpha1.PDGroup]()),
 		},
 		{
 			desc: "has instances with finalizer but call api failed",
-			state: FakeGroupAndInstanceSliceState(
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					obj.SetDeletionTimestamp(&now)
-					obj.SetFinalizers([]string{
-						meta.Finalizer,
-					})
-					return obj
-				}),
-				fake.Fake(func(obj RI) RI {
-					obj.SetName("aaa")
-					obj.SetFinalizers([]string{
-						meta.Finalizer,
-					})
-					return obj
-				}),
+			state: newFakeGroupFinalizerDelState(
+				fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), fake.AddFinalizer[v1alpha1.PDGroup]()),
+				fake.FakeObj("aaa", fake.AddFinalizer[v1alpha1.PD]()),
 			),
 			unexpectedErr: true,
 
@@ -340,23 +237,9 @@ func testTaskGroupFinalizerDel[
 		},
 		{
 			desc: "has deleting instances with finalizer but call api failed",
-			state: FakeGroupAndInstanceSliceState(
-				fake.Fake(func(obj RG) RG {
-					obj.SetName("aaa")
-					obj.SetDeletionTimestamp(&now)
-					obj.SetFinalizers([]string{
-						meta.Finalizer,
-					})
-					return obj
-				}),
-				fake.Fake(func(obj RI) RI {
-					obj.SetName("aaa")
-					obj.SetDeletionTimestamp(&now)
-					obj.SetFinalizers([]string{
-						meta.Finalizer,
-					})
-					return obj
-				}),
+			state: newFakeGroupFinalizerDelState(
+				fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), fake.AddFinalizer[v1alpha1.PDGroup]()),
+				fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PD](&now), fake.AddFinalizer[v1alpha1.PD]()),
 			),
 			unexpectedErr: true,
 
@@ -364,14 +247,16 @@ func testTaskGroupFinalizerDel[
 		},
 	}
 
-	var gt GT
 	for i := range cases {
 		c := &cases[i]
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
 			objs := []client.Object{
-				gt.To(c.state.Group()),
+				c.state.Object(),
+			}
+			for _, i := range c.state.InstanceSlice() {
+				objs = append(objs, i)
 			}
 
 			objs = append(objs, c.subresources...)
@@ -386,7 +271,7 @@ func testTaskGroupFinalizerDel[
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			res, done := task.RunTask(ctx, TaskGroupFinalizerDel[GT, IT](c.state, fc))
+			res, done := task.RunTask(ctx, TaskGroupFinalizerDel[scope.PDGroup](c.state, fc))
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
 
@@ -395,9 +280,9 @@ func testTaskGroupFinalizerDel[
 				return
 			}
 
-			obj := gt.To(new(G))
+			obj := &v1alpha1.PDGroup{}
 			require.NoError(tt, fc.Get(ctx, client.ObjectKey{Name: "aaa"}, obj), c.desc)
-			assert.Equal(tt, c.expectedObj, gt.From(obj), c.desc)
+			assert.Equal(tt, c.expectedObj, obj, c.desc)
 		})
 	}
 }

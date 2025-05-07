@@ -67,20 +67,27 @@ func (defaultPolicy[S, F, T]) ArePreconditionsMet(ctx context.Context, cli clien
 	var comps []string
 	switch scope.Component[S]() {
 	case v1alpha1.LabelValComponentPD:
+	case v1alpha1.LabelValComponentTSO:
+		comps = append(comps,
+			v1alpha1.LabelValComponentPD,
+		)
 	case v1alpha1.LabelValComponentTiKV:
 		comps = append(comps,
 			v1alpha1.LabelValComponentTiFlash,
 			v1alpha1.LabelValComponentPD,
+			v1alpha1.LabelValComponentTSO,
 		)
 	case v1alpha1.LabelValComponentTiDB:
 		comps = append(comps,
 			v1alpha1.LabelValComponentTiKV,
 			v1alpha1.LabelValComponentTiFlash,
 			v1alpha1.LabelValComponentPD,
+			v1alpha1.LabelValComponentTSO,
 		)
 	case v1alpha1.LabelValComponentTiFlash:
 		comps = append(comps,
 			v1alpha1.LabelValComponentPD,
+			v1alpha1.LabelValComponentTSO,
 		)
 	default:
 		return false, fmt.Errorf("unknown component: %s", scope.Component[S]())
@@ -91,41 +98,27 @@ func (defaultPolicy[S, F, T]) ArePreconditionsMet(ctx context.Context, cli clien
 
 func checkComponentsUpgraded(ctx context.Context, c client.Client, ns, cluster, version string, comps ...string) (bool, error) {
 	for _, comp := range comps {
+		var upgraded bool
+		var err error
 		switch comp {
 		case v1alpha1.LabelValComponentPD:
-			upgraded, err := checkOneComponentUpgraded[scope.PDGroup](ctx, c, ns, cluster, version)
-			if err != nil {
-				return false, err
-			}
-			if !upgraded {
-				return false, nil
-			}
+			upgraded, err = checkOneComponentUpgraded[scope.PDGroup](ctx, c, ns, cluster, version)
+		case v1alpha1.LabelValComponentTSO:
+			upgraded, err = checkOneComponentUpgraded[scope.TSOGroup](ctx, c, ns, cluster, version)
 		case v1alpha1.LabelValComponentTiKV:
-			upgraded, err := checkOneComponentUpgraded[scope.TiKVGroup](ctx, c, ns, cluster, version)
-			if err != nil {
-				return false, err
-			}
-			if !upgraded {
-				return false, nil
-			}
+			upgraded, err = checkOneComponentUpgraded[scope.TiKVGroup](ctx, c, ns, cluster, version)
 		case v1alpha1.LabelValComponentTiDB:
-			upgraded, err := checkOneComponentUpgraded[scope.TiDBGroup](ctx, c, ns, cluster, version)
-			if err != nil {
-				return false, err
-			}
-			if !upgraded {
-				return false, nil
-			}
+			upgraded, err = checkOneComponentUpgraded[scope.TiDBGroup](ctx, c, ns, cluster, version)
 		case v1alpha1.LabelValComponentTiFlash:
-			upgraded, err := checkOneComponentUpgraded[scope.TiFlashGroup](ctx, c, ns, cluster, version)
-			if err != nil {
-				return false, err
-			}
-			if !upgraded {
-				return false, nil
-			}
+			upgraded, err = checkOneComponentUpgraded[scope.TiFlashGroup](ctx, c, ns, cluster, version)
 		default:
 			return false, fmt.Errorf("unknown component: %s", comp)
+		}
+		if err != nil {
+			return false, err
+		}
+		if !upgraded {
+			return false, nil
 		}
 	}
 

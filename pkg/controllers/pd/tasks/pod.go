@@ -187,6 +187,13 @@ func newPod(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, clusterID, memberID stri
 		})
 	}
 
+	var cmd []string
+	cmd = append(cmd, "/pd-server")
+	if pd.Spec.Mode == v1alpha1.PDModeMS {
+		cmd = append(cmd, "services", "api")
+	}
+	cmd = append(cmd, "--config", filepath.Join(v1alpha1.DirPathConfigPD, v1alpha1.FileNameConfig))
+
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: pd.Namespace,
@@ -215,11 +222,7 @@ func newPod(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, clusterID, memberID stri
 					Name:            v1alpha1.ContainerNamePD,
 					Image:           image.PD.Image(pd.Spec.Image, pd.Spec.Version),
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					Command: []string{
-						"/pd-server",
-						"--config",
-						filepath.Join(v1alpha1.DirPathConfigPD, v1alpha1.FileNameConfig),
-					},
+					Command:         cmd,
 					Ports: []corev1.ContainerPort{
 						{
 							Name:          v1alpha1.PDPortNameClient,

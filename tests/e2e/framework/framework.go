@@ -160,6 +160,14 @@ func (f *Framework) MustCreateTiDB(ctx context.Context, ps ...data.GroupPatch[*r
 	return dbg
 }
 
+func (f *Framework) MustCreateTSO(ctx context.Context, ps ...data.GroupPatch[*runtime.TSOGroup]) *v1alpha1.TSOGroup {
+	tg := data.NewTSOGroup(f.Namespace.Name, ps...)
+	ginkgo.By("Creating a tso group")
+	f.Must(f.Client.Create(ctx, tg))
+
+	return tg
+}
+
 func (f *Framework) SetupBootstrapSQL(sql string) {
 	ginkgo.BeforeEach(func(ctx context.Context) {
 		cm := &corev1.ConfigMap{

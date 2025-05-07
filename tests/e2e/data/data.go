@@ -31,6 +31,7 @@ const (
 	defaultTiKVGroupName    = "kvg"
 	defaultTiFlashGroupName = "fg"
 	defaultTiCDCGroupName   = "cg"
+	defaultTSOGroupName     = "tg"
 
 	defaultVersion = "v8.1.0"
 

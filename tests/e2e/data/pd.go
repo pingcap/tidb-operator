@@ -53,3 +53,9 @@ func NewPDGroup(ns string, patches ...GroupPatch[*runtime.PDGroup]) *v1alpha1.PD
 
 	return runtime.ToPDGroup(pdg)
 }
+
+func WithMSMode() GroupPatch[*runtime.PDGroup] {
+	return func(obj *runtime.PDGroup) {
+		obj.Spec.Template.Spec.Mode = v1alpha1.PDModeMS
+	}
+}

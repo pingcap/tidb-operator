@@ -15,7 +15,7 @@ spec:
     listKind: TSOGroupList
     plural: tsogroups
     shortNames:
-    - tsog
+    - tg
     singular: tsogroup
   scope: Namespaced
   versions:

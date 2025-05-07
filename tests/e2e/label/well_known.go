@@ -43,6 +43,7 @@ var (
 	FeatureAuthToken    = ginkgo.Label("f:AuthToken")
 	FeatureBootstrapSQL = ginkgo.Label("f:BootstrapSQL")
 	FeatureHotReload    = ginkgo.Label("f:HotReload")
+	FeaturePDMS         = ginkgo.Label("f:PDMS")
 
 	// Overlay
 	OverlayEphemeralVolume = ginkgo.Label("o:EphemeralVolume")

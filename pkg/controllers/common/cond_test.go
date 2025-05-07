@@ -22,8 +22,71 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 )
+
+func TestCondObjectIsDeleting(t *testing.T) {
+	cases := []struct {
+		desc         string
+		state        ObjectState[*v1alpha1.PD]
+		expectedCond bool
+	}{
+		{
+			desc: "cond is false",
+			state: newFakeObjectState(
+				fake.FakeObj[v1alpha1.PD]("test"),
+			),
+		},
+		{
+			desc: "cond is true",
+			state: newFakeObjectState(
+				fake.FakeObj("test", fake.DeleteNow[v1alpha1.PD]()),
+			),
+			expectedCond: true,
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			cond := CondObjectIsDeleting[scope.PD](c.state)
+			assert.Equal(tt, c.expectedCond, cond.Satisfy(), c.desc)
+		})
+	}
+}
+
+func TestCondObjectHasBeenDeleted(t *testing.T) {
+	cases := []struct {
+		desc         string
+		state        ObjectState[*v1alpha1.PD]
+		expectedCond bool
+	}{
+		{
+			desc: "cond is false",
+			state: newFakeObjectState(
+				fake.FakeObj[v1alpha1.PD]("test"),
+			),
+		},
+		{
+			desc:         "cond is true",
+			state:        newFakeObjectState[*v1alpha1.PD](nil),
+			expectedCond: true,
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			cond := CondObjectHasBeenDeleted[scope.PD](c.state)
+			assert.Equal(tt, c.expectedCond, cond.Satisfy(), c.desc)
+		})
+	}
+}
 
 func TestCondInstanceIsDeleting(t *testing.T) {
 	t.Run("PD", testCondInstanceIsDeleting[runtime.PD])
