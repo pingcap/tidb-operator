@@ -30,9 +30,10 @@ import (
 )
 
 func ListGroups[
-	S scope.Group[F, T],
+	S scope.GroupList[F, T, L],
 	F client.Object,
 	T runtime.Group,
+	L client.ObjectList,
 ](ctx context.Context, c client.Client, ns, cluster string) ([]F, error) {
 	l := scope.NewList[S]()
 	if err := c.List(ctx, l, client.InNamespace(ns), client.MatchingFields{

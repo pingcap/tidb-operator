@@ -51,6 +51,7 @@ type State interface {
 	common.ContextClusterNewer[*v1alpha1.PDGroup]
 
 	common.InstanceSliceState[*runtime.PD]
+	common.SliceState[*v1alpha1.PD]
 
 	common.StatusUpdater
 	common.StatusPersister[*v1alpha1.PDGroup]
@@ -85,6 +86,10 @@ func (s *state) PDSlice() []*v1alpha1.PD {
 
 func (s *state) Slice() []*runtime.PD {
 	return runtime.FromPDSlice(s.pds)
+}
+
+func (s *state) InstanceSlice() []*v1alpha1.PD {
+	return s.pds
 }
 
 func (s *state) SetCluster(cluster *v1alpha1.Cluster) {

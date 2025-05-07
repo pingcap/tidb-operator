@@ -27,22 +27,23 @@ import (
 )
 
 func ListInstances[
-	S scope.InstanceSlice[GF, GT, IL, I],
+	GS scope.GroupInstance[GF, GT, IS],
+	IS scope.List[IL, I],
 	GF client.Object,
 	GT runtime.Group,
 	IL client.ObjectList,
 	I client.Object,
 ](ctx context.Context, c client.Client, g GF) ([]I, error) {
-	l := scope.NewInstanceList[S]()
+	l := scope.NewList[IS]()
 	if err := c.List(ctx, l, client.InNamespace(g.GetNamespace()), client.MatchingLabels{
-		v1alpha1.LabelKeyCluster:   coreutil.Cluster[S](g),
+		v1alpha1.LabelKeyCluster:   coreutil.Cluster[GS](g),
 		v1alpha1.LabelKeyGroup:     g.GetName(),
-		v1alpha1.LabelKeyComponent: scope.Component[S](),
+		v1alpha1.LabelKeyComponent: scope.Component[GS](),
 	}); err != nil {
 		return nil, err
 	}
 
-	objs := scope.GetInstanceItems[S](l)
+	objs := scope.GetItems[IS](l)
 
 	// always sort instances
 	slices.SortFunc(objs, func(a, b I) int {
