@@ -25,7 +25,7 @@ import (
 func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.TaskReporter) task.TaskRunner {
 	runner := task.NewTaskRunner(reporter,
 		// get tikvgroup
-		common.TaskContextTiKVGroup(state, r.Client),
+		common.TaskContextObject[scope.TiKVGroup](state, r.Client),
 		// if it's gone just return
 		task.IfBreak(common.CondGroupHasBeenDeleted(state)),
 

@@ -77,7 +77,7 @@ func TestState(t *testing.T) {
 
 			ctx := context.Background()
 			res, done := task.RunTask(ctx, task.Block(
-				common.TaskContextTiFlash(s, fc),
+				common.TaskContextObject[scope.TiFlash](s, fc),
 				common.TaskContextCluster[scope.TiFlash](s, fc),
 				common.TaskContextPod[scope.TiFlash](s, fc),
 			))
