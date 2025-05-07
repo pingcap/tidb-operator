@@ -44,6 +44,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/cluster"
 	"github.com/pingcap/tidb-operator/pkg/controllers/pd"
 	"github.com/pingcap/tidb-operator/pkg/controllers/pdgroup"
+	"github.com/pingcap/tidb-operator/pkg/controllers/scheduler"
+	"github.com/pingcap/tidb-operator/pkg/controllers/schedulergroup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/ticdc"
 	"github.com/pingcap/tidb-operator/pkg/controllers/ticdcgroup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tidb"
@@ -237,6 +239,13 @@ func addIndexer(ctx context.Context, mgr ctrl.Manager) error {
 		return err
 	}
 
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.SchedulerGroup{}, "spec.cluster.name", func(obj client.Object) []string {
+		sg := obj.(*v1alpha1.SchedulerGroup)
+		return []string{sg.Spec.Cluster.Name}
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -279,6 +288,12 @@ func setupControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientManage
 	}
 	if err := tso.Setup(mgr, c, pdcm, vm); err != nil {
 		return fmt.Errorf("unable to create controller TSO: %w", err)
+	}
+	if err := schedulergroup.Setup(mgr, c); err != nil {
+		return fmt.Errorf("unable to create controller SchedulerGroup: %w", err)
+	}
+	if err := scheduler.Setup(mgr, c, pdcm, vm); err != nil {
+		return fmt.Errorf("unable to create controller Scheduler: %w", err)
 	}
 	return nil
 }
@@ -336,6 +351,12 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 			Label: labels.Everything(),
 		},
 		&v1alpha1.TSO{}: {
+			Label: labels.Everything(),
+		},
+		&v1alpha1.SchedulerGroup{}: {
+			Label: labels.Everything(),
+		},
+		&v1alpha1.Scheduler{}: {
 			Label: labels.Everything(),
 		},
 		&corev1.Secret{}: {

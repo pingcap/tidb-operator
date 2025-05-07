@@ -33,6 +33,7 @@ var _ = ginkgo.Describe("PD", label.PD, label.FeaturePDMS, func() {
 		ginkgo.It("support create PD and TSO with 1 replica", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx, data.WithMSMode(), data.WithReplicas[*runtime.PDGroup](1))
 			tg := f.MustCreateTSO(ctx, data.WithReplicas[*runtime.TSOGroup](1))
+			sg := f.MustCreateScheduler(ctx, data.WithReplicas[*runtime.SchedulerGroup](1))
 
 			f.WaitForPDGroupReady(ctx, pdg)
 			f.WaitForTSOGroupReady(ctx, tg)

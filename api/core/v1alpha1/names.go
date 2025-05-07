@@ -44,12 +44,13 @@ const (
 const (
 	// Main component containers of the tidb cluster
 	// These names are well known so the name prefix is not added.
-	ContainerNamePD      = "pd"
-	ContainerNameTiKV    = "tikv"
-	ContainerNameTiDB    = "tidb"
-	ContainerNameTiFlash = "tiflash"
-	ContainerNameTiCDC   = "ticdc"
-	ContainerNameTSO     = "tso"
+	ContainerNamePD        = "pd"
+	ContainerNameTiKV      = "tikv"
+	ContainerNameTiDB      = "tidb"
+	ContainerNameTiFlash   = "tiflash"
+	ContainerNameTiCDC     = "ticdc"
+	ContainerNameTSO       = "tso"
+	ContainerNameScheduler = "scheduler"
 
 	// An init container to copy pre stop checker cmd to main container
 	ContainerNamePrestopChecker = meta.NamePrefix + "prestop-checker"
@@ -70,12 +71,13 @@ const (
 // All well known dir path
 const (
 	// config dir path
-	DirPathConfigPD      = "/etc/pd"
-	DirPathConfigTiKV    = "/etc/tikv"
-	DirPathConfigTiDB    = "/etc/tidb"
-	DirPathConfigTiFlash = "/etc/tiflash"
-	DirPathConfigTiCDC   = "/etc/ticdc"
-	DirPathConfigTSO     = "/etc/tso"
+	DirPathConfigPD        = "/etc/pd"
+	DirPathConfigTiKV      = "/etc/tikv"
+	DirPathConfigTiDB      = "/etc/tidb"
+	DirPathConfigTiFlash   = "/etc/tiflash"
+	DirPathConfigTiCDC     = "/etc/ticdc"
+	DirPathConfigTSO       = "/etc/tso"
+	DirPathConfigScheduler = "etc/scheduler"
 
 	// DirPathPrestop defines dir path of pre stop checker cmd
 	DirPathPrestop = "/prestop"
@@ -89,13 +91,14 @@ const (
 	// TLS
 	//
 	// Dir path of cluster tls file
-	DirPathClusterTLSPD      = "/var/lib/pd-tls"
-	DirPathClusterTLSTiKV    = "/var/lib/tikv-tls"
-	DirPathClusterTLSTiDB    = "/var/lib/tidb-tls"
-	DirPathClusterTLSTiFlash = "/var/lib/tiflash-tls"
-	DirPathClusterClientTLS  = "/var/lib/cluster-client-tls"
-	DirPathClusterTLSTiCDC   = "/var/lib/ticdc-tls"
-	DirPathClusterTLSTSO     = "/var/lib/tso-tls"
+	DirPathClusterTLSPD        = "/var/lib/pd-tls"
+	DirPathClusterTLSTiKV      = "/var/lib/tikv-tls"
+	DirPathClusterTLSTiDB      = "/var/lib/tidb-tls"
+	DirPathClusterTLSTiFlash   = "/var/lib/tiflash-tls"
+	DirPathClusterClientTLS    = "/var/lib/cluster-client-tls"
+	DirPathClusterTLSTiCDC     = "/var/lib/ticdc-tls"
+	DirPathClusterTLSTSO       = "/var/lib/tso-tls"
+	DirPathClusterTLSScheduler = "/var/lib/scheduler-tls"
 	// Dir path of tls file for tidb and mysql client
 	DirPathMySQLTLS = "/var/lib/tidb-sql-tls"
 )

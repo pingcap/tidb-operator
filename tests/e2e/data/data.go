@@ -25,13 +25,14 @@ type (
 )
 
 const (
-	defaultClusterName      = "tc"
-	defaultPDGroupName      = "pdg"
-	defaultTiDBGroupName    = "dbg"
-	defaultTiKVGroupName    = "kvg"
-	defaultTiFlashGroupName = "fg"
-	defaultTiCDCGroupName   = "cg"
-	defaultTSOGroupName     = "tg"
+	defaultClusterName        = "tc"
+	defaultPDGroupName        = "pdg"
+	defaultTiDBGroupName      = "dbg"
+	defaultTiKVGroupName      = "kvg"
+	defaultTiFlashGroupName   = "fg"
+	defaultTiCDCGroupName     = "cg"
+	defaultTSOGroupName       = "tg"
+	defaultSchedulerGroupName = "sg"
 
 	defaultVersion = "v8.1.0"
 
