@@ -70,8 +70,6 @@ type tikvClient struct {
 
 // FlushLogBackupTasks implements TiKVClient.
 func (c *tikvClient) FlushLogBackupTasks(ctx context.Context) error {
-	logger := klog.FromContext(ctx)
-
 	// For now we are using one-shot sessions, because the `TiKVClient`
 	// interface doesn't provide a `Close` method...
 	conn, err := c.grpcConnector.conn(ctx)
@@ -80,7 +78,7 @@ func (c *tikvClient) FlushLogBackupTasks(ctx context.Context) error {
 	}
 	defer func() {
 		if err := conn.Close(); err != nil {
-			logger.Error(err, "tikvClient: failed to close grpc connection")
+			klog.ErrorS(err, "tikvClient: failed to close grpc connection")
 		}
 	}()
 
@@ -97,7 +95,7 @@ func (c *tikvClient) FlushLogBackupTasks(ctx context.Context) error {
 
 	for _, r := range res.Results {
 		if r.Success {
-			logger.Info("successfully flushed the log backup task.", "task", r.TaskName)
+			klog.InfoS("successfully flushed the log backup task.", "task", r.TaskName)
 		} else {
 			return errors.Errorf("force flush failed for task %s: %s", r.TaskName, r.ErrorMessage)
 		}
