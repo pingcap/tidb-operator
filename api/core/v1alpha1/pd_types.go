@@ -160,8 +160,11 @@ type PDTemplateSpec struct {
 type PDMode string
 
 const (
+	// Normal mode of PD, all services are provided by a single component
 	PDModeNormal = ""
-	PDModeMS     = "ms"
+	// Micro Service Mode of PD, some services(TSO,Scheduler) are separated from PD
+	// See https://docs.pingcap.com/tidb/stable/pd-microservices/
+	PDModeMS = "ms"
 )
 
 type PDServer struct {
