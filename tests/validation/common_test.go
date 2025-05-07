@@ -154,7 +154,7 @@ func Topology() []Case {
 				"aaa": "ccc",
 			},
 			wantErrs: []string{
-				`spec.topology: Invalid value: "object": topology can only be set when created`,
+				`spec.topology: Invalid value: "object": topology can only be set when creating`,
 			},
 		},
 		{
@@ -163,7 +163,7 @@ func Topology() []Case {
 				"aaa": "ccc",
 			},
 			wantErrs: []string{
-				`spec.topology: Invalid value: "object": topology can only be set when created`,
+				`spec.topology: Invalid value: "object": topology can only be set when creating`,
 			},
 		},
 	}

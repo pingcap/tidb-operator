@@ -8326,7 +8326,7 @@ spec:
             type: object
             x-kubernetes-validations:
             - fieldPath: .topology
-              message: topology can only be set when created
+              message: topology can only be set when creating
               rule: (!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology)
                 && has(self.topology))
           status:

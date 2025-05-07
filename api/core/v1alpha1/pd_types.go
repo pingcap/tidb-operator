@@ -133,6 +133,7 @@ type PDTemplate struct {
 
 // PDTemplateSpec can only be specified in PDGroup
 // TODO: It's name may need to be changed to distinguish from PodTemplateSpec
+// +kubebuilder:validation:XValidation:rule="(!has(oldSelf.mode) && !has(self.mode)) || (has(oldSelf.mode) && has(self.mode))",fieldPath=".mode",message="pd mode can only be set when creating now"
 type PDTemplateSpec struct {
 	Version string `json:"version"`
 	// Image is pd's image
@@ -141,6 +142,8 @@ type PDTemplateSpec struct {
 	Image *string `json:"image,omitempty"`
 
 	// Mode of pd, default is normal
+	// Now it cannot be changed after creation. It may be supported in the future.
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="pd mode is immutable now, it may be supported later"
 	Mode PDMode `json:"mode,omitempty"`
 	// Server defines server config for PD
 	Server         PDServer             `json:"server,omitempty"`
@@ -185,7 +188,7 @@ type PDGroupStatus struct {
 }
 
 // PDSpec describes the common attributes of a PD instance
-// +kubebuilder:validation:XValidation:rule="(!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology) && has(self.topology))",fieldPath=".topology",message="topology can only be set when created"
+// +kubebuilder:validation:XValidation:rule="(!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology) && has(self.topology))",fieldPath=".topology",message="topology can only be set when creating"
 type PDSpec struct {
 	// Cluster is a reference of tidb cluster
 	Cluster ClusterReference `json:"cluster"`
