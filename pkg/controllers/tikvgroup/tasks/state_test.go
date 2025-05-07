@@ -94,7 +94,7 @@ func TestState(t *testing.T) {
 
 			ctx := context.Background()
 			res, done := task.RunTask(ctx, task.Block(
-				common.TaskContextTiKVGroup(s, fc),
+				common.TaskContextObject[scope.TiKVGroup](s, fc),
 				common.TaskContextCluster[scope.TiKVGroup](s, fc),
 				common.TaskContextTiKVSlice(s, fc),
 			))

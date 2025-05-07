@@ -32,7 +32,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-func TestTaskContextPD(t *testing.T) {
+func TestTaskContextObject(t *testing.T) {
 	cases := []struct {
 		desc          string
 		state         *fakeState[v1alpha1.PD]
@@ -87,8 +87,7 @@ func TestTaskContextPD(t *testing.T) {
 				fc.WithError("*", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
 			}
 
-			s := &fakePDState{s: c.state}
-			res, done := task.RunTask(context.Background(), TaskContextPD(s, fc))
+			res, done := task.RunTask(context.Background(), TaskContextObject[scope.PD](c.state, fc))
 			assert.Equal(tt, c.expectedResult, res.Status(), c.desc)
 			assert.False(tt, done, c.desc)
 			assert.Equal(tt, c.expectedObj, c.state.obj, c.desc)

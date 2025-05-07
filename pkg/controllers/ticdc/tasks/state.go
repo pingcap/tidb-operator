@@ -40,8 +40,6 @@ type state struct {
 }
 
 type State interface {
-	common.TiCDCStateInitializer
-
 	common.TiCDCState
 	common.ClusterState
 
@@ -51,6 +49,7 @@ type State interface {
 	common.InstanceState[*runtime.TiCDC]
 
 	common.ContextClusterNewer[*v1alpha1.TiCDC]
+	common.ContextObjectNewer[*v1alpha1.TiCDC]
 
 	common.StatusUpdater
 	common.StatusPersister[*v1alpha1.TiCDC]
@@ -66,8 +65,16 @@ func NewState(key types.NamespacedName) State {
 	return s
 }
 
+func (s *state) Key() types.NamespacedName {
+	return s.key
+}
+
 func (s *state) Object() *v1alpha1.TiCDC {
 	return s.ticdc
+}
+
+func (s *state) SetObject(cdc *v1alpha1.TiCDC) {
+	s.ticdc = cdc
 }
 
 func (s *state) TiCDC() *v1alpha1.TiCDC {
@@ -112,13 +119,6 @@ func (s *state) IsStatusChanged() bool {
 
 func (s *state) SetStatusChanged() {
 	s.statusChanged = true
-}
-
-func (s *state) TiCDCInitializer() common.TiCDCInitializer {
-	return common.NewResource(func(ticdc *v1alpha1.TiCDC) { s.ticdc = ticdc }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithName(common.Name(s.key.Name)).
-		Initializer()
 }
 
 func (s *state) IsHealthy() bool {
