@@ -45,9 +45,17 @@ const (
 	ReasonPodTerminating     = "PodTerminating"
 	ReasonInstanceNotHealthy = "InstanceNotHealthy"
 
-	// Synced means all specs of managed resources are as expected and
+	// Synced means all specs of managed resources are up to date and
 	// nothing need to do in controller but only status updation.
 	CondSynced = "Synced"
+	// reason for both
+	ReasonSynced   = "Synced"
+	ReasonUnsynced = "Unsynced"
+	// reason for group
+	ReasonNotAllInstancesUpToDate = "NotAllInstancesUpToDate"
+	// reason for instance
+	ReasonPodNotUpToDate = "PodNotUpToDate"
+	ReasonPodNotDeleted  = "PodNotDeleted"
 )
 
 // TODO(liubo02): move to meta

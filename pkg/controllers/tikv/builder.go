@@ -41,6 +41,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		task.IfBreak(common.CondInstanceIsDeleting(state),
 			tasks.TaskFinalizerDel(state, r.Client),
+			// TODO(liubo02): if the finalizer has been removed, no need to update status
+			common.TaskInstanceConditionSynced[scope.TiKV](state),
 			common.TaskInstanceConditionReady[scope.TiKV](state),
 			tasks.TaskStoreStatus(state),
 			common.TaskStatusPersister[scope.TiKV](state, r.Client),
@@ -54,6 +56,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			// TODO(liubo02): combine with the common one
 			tasks.TaskSuspendPod(state, r.Client),
 			common.TaskInstanceConditionSuspended[scope.TiKV](state),
+			common.TaskInstanceConditionSynced[scope.TiKV](state),
 			common.TaskInstanceConditionReady[scope.TiKV](state),
 			common.TaskStatusPersister[scope.TiKV](state, r.Client),
 		),
@@ -64,6 +67,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskPod(state, r.Client),
 		tasks.TaskStoreLabels(state, r.Client),
 		tasks.TaskEvictLeader(state),
+		common.TaskInstanceConditionSynced[scope.TiKV](state),
 		common.TaskInstanceConditionReady[scope.TiKV](state),
 		tasks.TaskStatus(state, r.Client),
 	)

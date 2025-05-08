@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate ${GOBIN}/mockgen -write_command_comment=false -copyright_file ${BOILERPLATE_FILE} -destination mock_generated.go -package=common ${GO_MODULE}/pkg/controllers/common StatusPersister,InstanceCondSuspendedUpdater,InstanceCondReadyUpdater,GroupCondSuspendedUpdater,GroupCondReadyUpdater,GroupCondSyncedUpdater,StatusRevisionAndReplicasUpdater
+//go:generate ${GOBIN}/mockgen -write_command_comment=false -copyright_file ${BOILERPLATE_FILE} -destination mock_generated.go -package=common ${GO_MODULE}/pkg/controllers/common StatusPersister,InstanceCondSuspendedUpdater,InstanceCondReadyUpdater,InstanceCondSyncedUpdater,GroupCondSuspendedUpdater,GroupCondReadyUpdater,GroupCondSyncedUpdater,StatusRevisionAndReplicasUpdater
 package common
 
 import (
@@ -159,6 +159,66 @@ func TaskInstanceConditionReady[
 	})
 }
 
+type InstanceCondSyncedUpdater[T client.Object] interface {
+	StatusUpdater
+	PodState
+	ClusterState
+	Object() T
+}
+
+func TaskInstanceConditionSynced[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](state InstanceCondSyncedUpdater[F]) task.Task {
+	return task.NameTaskFunc("CondSynced", func(ctx context.Context) task.Result {
+		instance := state.Object()
+		pod := state.Pod()
+		cluster := state.Cluster()
+
+		var needUpdate, isSynced bool
+		var reason string
+		if !instance.GetDeletionTimestamp().IsZero() || coreutil.ShouldSuspendCompute(cluster) {
+			if pod == nil {
+				isSynced = true
+			} else {
+				reason = v1alpha1.ReasonPodNotDeleted
+			}
+		} else {
+			if pod == nil ||
+				state.IsPodTerminating() ||
+				pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash] != coreutil.UpdateRevision[S](instance) {
+				reason = v1alpha1.ReasonPodNotUpToDate
+			} else {
+				// TODO(liubo02): now only check pod, pvcs should also be checked.
+				isSynced = true
+			}
+		}
+
+		var cond *metav1.Condition
+		if isSynced {
+			cond = coreutil.Synced()
+		} else {
+			cond = coreutil.Unsynced(reason)
+		}
+
+		needUpdate = coreutil.SetStatusCondition[S](
+			instance,
+			*cond,
+		) || needUpdate
+
+		if needUpdate {
+			state.SetStatusChanged()
+		}
+
+		if !isSynced {
+			return task.Wait().With("instance is unsynced")
+		}
+
+		return task.Complete().With("instance is synced")
+	})
+}
+
 type GroupCondSuspendedUpdater[
 	G client.Object,
 	I client.Object,
@@ -301,7 +361,7 @@ func TaskGroupConditionSynced[
 			// TODO(liubo02): more info when unsynced
 			needUpdate = coreutil.SetStatusCondition[S](
 				g,
-				*coreutil.Unsynced(),
+				*coreutil.Unsynced(v1alpha1.ReasonNotAllInstancesUpToDate),
 			) || needUpdate
 		}
 
