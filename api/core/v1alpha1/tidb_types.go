@@ -282,7 +282,7 @@ type TiDBGroupStatus struct {
 	GroupStatus  `json:",inline"`
 }
 
-// +kubebuilder:validation:XValidation:rule="(!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology) && has(self.topology))",fieldPath=".topology",message="topology can only be set when created"
+// +kubebuilder:validation:XValidation:rule="(!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology) && has(self.topology))",fieldPath=".topology",message="topology can only be set when creating"
 type TiDBSpec struct {
 	Cluster ClusterReference `json:"cluster"`
 

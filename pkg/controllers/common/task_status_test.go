@@ -470,6 +470,270 @@ func TestTaskInstanceConditionReady(t *testing.T) {
 	}
 }
 
+func TestTaskInstanceConditionSynced(t *testing.T) {
+	now := metav1.Now()
+	const rev = "xxx"
+	cases := []struct {
+		desc    string
+		obj     *v1alpha1.PD
+		pod     *corev1.Pod
+		cluster *v1alpha1.Cluster
+
+		expectedStatusChanged bool
+		expectedStatus        task.Status
+		expectedObj           *v1alpha1.PD
+	}{
+		{
+			desc:    "instance is deleting and pod exists",
+			obj:     fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PD](&now)),
+			cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
+			pod:     fake.FakeObj[corev1.Pod]("aaa"),
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SWait,
+			expectedObj: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PD](&now), func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unsynced(v1alpha1.ReasonPodNotDeleted),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "instance is deleting and no pod",
+			obj:  fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PD](&now)),
+			cluster: fake.FakeObj("aaa", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+				obj.Spec.SuspendAction = &v1alpha1.SuspendAction{
+					SuspendCompute: true,
+				}
+				return obj
+			}),
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PD](&now), func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Synced(),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "suspending and pod exists",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				return obj
+			}),
+			cluster: fake.FakeObj("aaa", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+				obj.Spec.SuspendAction = &v1alpha1.SuspendAction{
+					SuspendCompute: true,
+				}
+				return obj
+			}),
+			pod: fake.FakeObj[corev1.Pod]("aaa"),
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SWait,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unsynced(v1alpha1.ReasonPodNotDeleted),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "suspending and no pod",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				return obj
+			}),
+			cluster: fake.FakeObj("aaa", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+				obj.Spec.SuspendAction = &v1alpha1.SuspendAction{
+					SuspendCompute: true,
+				}
+				return obj
+			}),
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Synced(),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "suspending and no pod and has synced",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Synced(),
+				}
+				return obj
+			}),
+			cluster: fake.FakeObj("aaa", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+				obj.Spec.SuspendAction = &v1alpha1.SuspendAction{
+					SuspendCompute: true,
+				}
+				return obj
+			}),
+
+			expectedStatusChanged: false,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Synced(),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "no pod",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				return obj
+			}),
+			cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SWait,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unsynced(v1alpha1.ReasonPodNotUpToDate),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "pod is terminating",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				return obj
+			}),
+			pod:     fake.FakeObj("aaa", fake.DeleteNow[corev1.Pod]()),
+			cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SWait,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unsynced(v1alpha1.ReasonPodNotUpToDate),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "pod is not up to date",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Labels = map[string]string{}
+				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = rev
+				return obj
+			}),
+			pod: fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
+				obj.Labels = map[string]string{}
+				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = "yyy"
+				return obj
+			}),
+			cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SWait,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Labels = map[string]string{}
+				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = rev
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unsynced(v1alpha1.ReasonPodNotUpToDate),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "instance is synced",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Labels = map[string]string{}
+				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = rev
+				return obj
+			}),
+			pod: fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
+				obj.Labels = map[string]string{}
+				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = rev
+				return obj
+			}),
+			cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Labels = map[string]string{}
+				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = rev
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Synced(),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "instance has been synced",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Labels = map[string]string{}
+				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = rev
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Synced(),
+				}
+				return obj
+			}),
+			pod: fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
+				obj.Labels = map[string]string{}
+				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = rev
+				return obj
+			}),
+			cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
+
+			expectedStatus: task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.Labels = map[string]string{}
+				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = rev
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Synced(),
+				}
+				return obj
+			}),
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			ctrl := gomock.NewController(tt)
+			state := NewMockInstanceCondSyncedUpdater[*v1alpha1.PD](ctrl)
+			state.EXPECT().Object().Return(c.obj)
+			state.EXPECT().Pod().Return(c.pod)
+			state.EXPECT().Cluster().Return(c.cluster)
+			switch {
+			case !c.obj.GetDeletionTimestamp().IsZero():
+			case coreutil.ShouldSuspendCompute(c.cluster):
+			case c.pod == nil:
+			case !c.pod.GetDeletionTimestamp().IsZero():
+				state.EXPECT().IsPodTerminating().Return(true)
+			default:
+				state.EXPECT().IsPodTerminating().Return(false)
+			}
+
+			if c.expectedStatusChanged {
+				state.EXPECT().SetStatusChanged()
+			}
+
+			ctx := context.Background()
+			res, done := task.RunTask(ctx, TaskInstanceConditionSynced[scope.PD](state))
+			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
+			assert.False(tt, done, c.desc)
+			// ignore time
+			for i := range c.obj.Status.Conditions {
+				cond := &c.obj.Status.Conditions[i]
+				cond.LastTransitionTime = metav1.Time{}
+			}
+			assert.Equal(tt, c.expectedObj, c.obj, c.desc)
+		})
+	}
+}
+
 func TestTaskGroupConditionSuspended(t *testing.T) {
 	cases := []struct {
 		desc      string
@@ -823,7 +1087,7 @@ func TestTaskGroupConditionSynced(t *testing.T) {
 			expectedStatus:        task.SComplete,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				obj.Status.Conditions = []metav1.Condition{
-					*coreutil.Unsynced(),
+					*coreutil.Unsynced(v1alpha1.ReasonNotAllInstancesUpToDate),
 				}
 				return obj
 			}),
@@ -832,14 +1096,14 @@ func TestTaskGroupConditionSynced(t *testing.T) {
 			desc: "no instances and 1 desired replicas, not changed",
 			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				obj.Status.Conditions = []metav1.Condition{
-					*coreutil.Unsynced(),
+					*coreutil.Unsynced(v1alpha1.ReasonNotAllInstancesUpToDate),
 				}
 				return obj
 			}),
 			expectedStatus: task.SComplete,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				obj.Status.Conditions = []metav1.Condition{
-					*coreutil.Unsynced(),
+					*coreutil.Unsynced(v1alpha1.ReasonNotAllInstancesUpToDate),
 				}
 				return obj
 			}),
@@ -891,7 +1155,7 @@ func TestTaskGroupConditionSynced(t *testing.T) {
 			expectedStatus:        task.SComplete,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				obj.Status.Conditions = []metav1.Condition{
-					*coreutil.Unsynced(),
+					*coreutil.Unsynced(v1alpha1.ReasonNotAllInstancesUpToDate),
 				}
 				return obj
 			}),
@@ -913,7 +1177,7 @@ func TestTaskGroupConditionSynced(t *testing.T) {
 			expectedStatus:        task.SComplete,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				obj.Status.Conditions = []metav1.Condition{
-					*coreutil.Unsynced(),
+					*coreutil.Unsynced(v1alpha1.ReasonNotAllInstancesUpToDate),
 				}
 				return obj
 			}),
