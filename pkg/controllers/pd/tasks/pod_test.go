@@ -28,6 +28,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
@@ -42,6 +43,9 @@ const (
 )
 
 func TestTaskPod(t *testing.T) {
+	// TODO(liubo02): register feature gates per case
+	features.Register(fake.FakeObj[v1alpha1.Cluster]("aaa"))
+
 	cases := []struct {
 		desc          string
 		state         *ReconcileContext
@@ -553,6 +557,7 @@ func TestTaskPod(t *testing.T) {
 			}
 
 			res, done := task.RunTask(ctx, TaskPod(c.state, fc))
+
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), res.Message())
 			assert.False(tt, done, c.desc)
 
