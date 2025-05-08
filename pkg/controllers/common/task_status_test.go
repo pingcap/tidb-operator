@@ -472,6 +472,7 @@ func TestTaskInstanceConditionReady(t *testing.T) {
 
 func TestTaskInstanceConditionSynced(t *testing.T) {
 	now := metav1.Now()
+	const rev = "xxx"
 	cases := []struct {
 		desc    string
 		obj     *v1alpha1.PD
@@ -620,7 +621,7 @@ func TestTaskInstanceConditionSynced(t *testing.T) {
 			desc: "pod is not up to date",
 			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
 				obj.Labels = map[string]string{}
-				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = "xxx"
+				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = rev
 				return obj
 			}),
 			pod: fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
@@ -634,7 +635,7 @@ func TestTaskInstanceConditionSynced(t *testing.T) {
 			expectedStatus:        task.SWait,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
 				obj.Labels = map[string]string{}
-				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = "xxx"
+				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = rev
 				obj.Status.Conditions = []metav1.Condition{
 					*coreutil.Unsynced(v1alpha1.ReasonPodNotUpToDate),
 				}
@@ -645,12 +646,12 @@ func TestTaskInstanceConditionSynced(t *testing.T) {
 			desc: "instance is synced",
 			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
 				obj.Labels = map[string]string{}
-				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = "xxx"
+				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = rev
 				return obj
 			}),
 			pod: fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
 				obj.Labels = map[string]string{}
-				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = "xxx"
+				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = rev
 				return obj
 			}),
 			cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
@@ -659,7 +660,7 @@ func TestTaskInstanceConditionSynced(t *testing.T) {
 			expectedStatus:        task.SComplete,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
 				obj.Labels = map[string]string{}
-				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = "xxx"
+				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = rev
 				obj.Status.Conditions = []metav1.Condition{
 					*coreutil.Synced(),
 				}
@@ -670,7 +671,7 @@ func TestTaskInstanceConditionSynced(t *testing.T) {
 			desc: "instance has been synced",
 			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
 				obj.Labels = map[string]string{}
-				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = "xxx"
+				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = rev
 				obj.Status.Conditions = []metav1.Condition{
 					*coreutil.Synced(),
 				}
@@ -678,7 +679,7 @@ func TestTaskInstanceConditionSynced(t *testing.T) {
 			}),
 			pod: fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
 				obj.Labels = map[string]string{}
-				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = "xxx"
+				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = rev
 				return obj
 			}),
 			cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
@@ -686,7 +687,7 @@ func TestTaskInstanceConditionSynced(t *testing.T) {
 			expectedStatus: task.SComplete,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
 				obj.Labels = map[string]string{}
-				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = "xxx"
+				obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash] = rev
 				obj.Status.Conditions = []metav1.Condition{
 					*coreutil.Synced(),
 				}
