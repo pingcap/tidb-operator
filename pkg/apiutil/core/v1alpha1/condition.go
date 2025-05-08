@@ -88,16 +88,28 @@ func Synced() *metav1.Condition {
 	return &metav1.Condition{
 		Type:    v1alpha1.CondSynced,
 		Status:  metav1.ConditionTrue,
-		Reason:  "Synced",
+		Reason:  v1alpha1.ReasonSynced,
 		Message: "all subreources are synced",
 	}
 }
 
-func Unsynced() *metav1.Condition {
+func Unsynced(reason string) *metav1.Condition {
+	var msg string
+	switch reason {
+	case v1alpha1.ReasonNotAllInstancesUpToDate:
+		msg = "not all instances are up to date"
+	case v1alpha1.ReasonPodNotUpToDate:
+		msg = "pod is not up to date"
+	case v1alpha1.ReasonPodNotDeleted:
+		msg = "cluster is suspending or instance is deleting, pod still exists"
+	default:
+		msg = fmt.Sprintf("unsynced because of unknown reason: %s", reason)
+		reason = v1alpha1.ReasonUnsynced
+	}
 	return &metav1.Condition{
 		Type:    v1alpha1.CondSynced,
 		Status:  metav1.ConditionFalse,
-		Reason:  "Unsynced",
-		Message: "not all subreources are synced",
+		Reason:  reason,
+		Message: msg,
 	}
 }
