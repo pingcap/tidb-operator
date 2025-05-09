@@ -25,8 +25,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/image"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
 	"github.com/pingcap/tidb-operator/pkg/reloadable"
@@ -233,13 +235,16 @@ func newPod(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, clusterID, memberID stri
 							ContainerPort: coreutil.PDPeerPort(pd),
 						},
 					},
-					VolumeMounts:   mounts,
-					Resources:      k8s.GetResourceRequirements(pd.Spec.Resources),
-					ReadinessProbe: buildPDReadinessProbe(coreutil.PDClientPort(pd)),
+					VolumeMounts: mounts,
+					Resources:    k8s.GetResourceRequirements(pd.Spec.Resources),
 				},
 			},
 			Volumes: vols,
 		},
+	}
+
+	if !features.Enabled(cluster.Namespace, cluster.Name, metav1alpha1.DisablePDDefaultReadinessProbe) {
+		pod.Spec.Containers[0].ReadinessProbe = buildPDReadinessProbe(coreutil.PDClientPort(pd))
 	}
 
 	if pd.Spec.Overlay != nil {
