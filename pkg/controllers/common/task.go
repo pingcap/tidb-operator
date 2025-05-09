@@ -148,8 +148,8 @@ func TaskSuspendPod(state PodState, c client.Client) task.Task {
 }
 
 func TaskFeatureGates(state ClusterState) task.Task {
-	return task.NameTaskFunc("FeatureGates", func(context.Context) task.Result {
-		if err := features.Verify(state.Cluster()); err != nil {
+	return task.NameTaskFunc("FeatureGates", func(ctx context.Context) task.Result {
+		if err := features.Use(ctx, state.Cluster()); err != nil {
 			return task.Fail().With("feature gates are not up to date: %v", err)
 		}
 

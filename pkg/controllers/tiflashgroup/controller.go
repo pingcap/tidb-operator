@@ -87,6 +87,9 @@ func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Obje
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	logger := r.Logger.WithValues("tiflashgroup", req.NamespacedName)
 	reporter := task.NewTableTaskReporter()
 

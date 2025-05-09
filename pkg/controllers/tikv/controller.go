@@ -60,6 +60,9 @@ func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, vm vo
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	logger := r.Logger.WithValues("tikv", req.NamespacedName)
 	reporter := task.NewTableTaskReporter()
 

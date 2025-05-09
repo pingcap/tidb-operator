@@ -54,6 +54,9 @@ func Setup(mgr manager.Manager, c client.Client, vm volumes.ModifierFactory) err
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	logger := r.Logger.WithValues("ticdc", req.NamespacedName)
 	reporter := task.NewTableTaskReporter()
 

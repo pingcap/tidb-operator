@@ -15,7 +15,10 @@
 package features
 
 import (
+	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,152 +33,272 @@ func TestFeatureGates(t *testing.T) {
 	const (
 		uid1 = "aaa"
 		uid2 = "bbb"
+
+		featA = "aaa"
+		featB = "bbb"
 	)
+
+	type controller struct {
+		desc    string
+		feat    string
+		enabled bool
+
+		useCluster        *v1alpha1.Cluster
+		useBeforeRegister bool
+		skipUse           bool
+
+		failToUse bool
+	}
 	cases := []struct {
 		desc    string
 		cluster *v1alpha1.Cluster
 
-		deregister   bool
-		failToVerify bool
-		feat         meta.Feature
-		enabled      bool
+		deregister  bool
+		controllers []controller
 	}{
 		{
-			desc: "aaa is enabled",
-			cluster: fakeCluster("", "aaa", 1, uid1, []meta.FeatureGate{
-				{
-					Name: meta.Feature("aaa"),
-				},
-			}),
+			desc:    "aaa is enabled",
+			cluster: fakeCluster("", "aaa", 1, uid1, featA),
 
-			// no cluster is registered
-			failToVerify: true,
-			feat:         meta.Feature("aaa"),
-			enabled:      true,
+			controllers: []controller{
+				{
+					desc:              "not init",
+					useBeforeRegister: true,
+					failToUse:         true,
+				},
+				{
+					desc:    "inited",
+					feat:    featA,
+					enabled: true,
+				},
+				{
+					desc:    "bbb not enabled",
+					feat:    featB,
+					enabled: false,
+				},
+			},
 		},
 		{
-			desc: "bbb is not enabled",
-			cluster: fakeCluster("", "aaa", 1, uid1, []meta.FeatureGate{
-				{
-					Name: meta.Feature("aaa"),
-				},
-			}),
+			desc:    "in another cluster, bbb is enabled",
+			cluster: fakeCluster("xxx", "bbb", 1, uid1, featB),
 
-			feat:    meta.Feature("bbb"),
-			enabled: false,
+			controllers: []controller{
+				{
+					desc:              "not init",
+					useBeforeRegister: true,
+					failToUse:         true,
+				},
+				{
+					desc:    "inited",
+					feat:    featB,
+					enabled: true,
+				},
+				{
+					desc:    "aaa not enabled",
+					feat:    featA,
+					enabled: false,
+				},
+			},
 		},
 		{
-			desc: "in another cluster, bbb is enabled",
-			cluster: fakeCluster("xxx", "bbb", 1, uid1, []meta.FeatureGate{
-				{
-					Name: meta.Feature("bbb"),
-				},
-			}),
+			desc:    "feature gates are not changed, reuse",
+			cluster: fakeCluster("", "aaa", 1, uid1, featA),
 
-			failToVerify: true,
-			feat:         meta.Feature("bbb"),
-			enabled:      true,
+			controllers: []controller{
+				{
+					desc:              "before register",
+					useBeforeRegister: true,
+					feat:              featA,
+					enabled:           true,
+				},
+				{
+					desc:    "inited",
+					feat:    featA,
+					enabled: true,
+				},
+				{
+					desc:    "bbb not enabled",
+					feat:    featB,
+					enabled: false,
+				},
+			},
 		},
 		{
-			desc: "enable bbb and disable aaa",
-			cluster: fakeCluster("", "aaa", 2, uid1, []meta.FeatureGate{
-				{
-					Name: meta.Feature("bbb"),
-				},
-			}),
+			desc:    "feature gates are changed",
+			cluster: fakeCluster("", "aaa", 2, uid1, featB),
 
-			// cluster is changed
-			failToVerify: true,
-			feat:         meta.Feature("bbb"),
-			enabled:      true,
+			controllers: []controller{
+				{
+					desc:              "before register, feature gates are outdated",
+					useBeforeRegister: true,
+					failToUse:         true,
+				},
+				{
+					desc:              "still using legacy cluster",
+					useBeforeRegister: true,
+					useCluster:        fakeCluster("", "aaa", 1, uid1, featA),
+					feat:              featA,
+					enabled:           true,
+				},
+				{
+					desc:      "cannot use because of the outdated feature gates are still in use",
+					failToUse: true,
+				},
+				{
+					desc:    "not use, still use outdated feature gates, aaa is enabled",
+					skipUse: true,
+					feat:    featA,
+					enabled: true,
+				},
+				{
+					desc:    "not use, still use outdated feature gates, bbb is disabled",
+					skipUse: true,
+					feat:    featB,
+					enabled: false,
+				},
+			},
 		},
 		{
-			desc: "enable bbb and disable aaa",
-			cluster: fakeCluster("", "aaa", 2, uid1, []meta.FeatureGate{
-				{
-					Name: meta.Feature("bbb"),
-				},
-			}),
+			desc:    "ok to use",
+			cluster: fakeCluster("", "aaa", 2, uid1, featB),
 
-			feat:    meta.Feature("aaa"),
-			enabled: false,
+			controllers: []controller{
+				{
+					desc:              "before register, ok to use",
+					useBeforeRegister: true,
+					feat:              featB,
+					enabled:           true,
+				},
+				{
+					desc:    "after register, ok to use",
+					feat:    featB,
+					enabled: true,
+				},
+			},
 		},
 		{
-			// not happen actually
-			desc: "cluster uid and generation are not changed, only test cache is worked, aaa is still disabled",
-			cluster: fakeCluster("", "aaa", 2, uid1, []meta.FeatureGate{
-				{
-					Name: meta.Feature("aaa"),
-				},
-			}),
+			desc:    "uid and generation are changed but feature gates are not changed",
+			cluster: fakeCluster("", "aaa", 3, uid2, featB),
 
-			feat:    meta.Feature("aaa"),
-			enabled: false,
+			controllers: []controller{
+				{
+					desc:              "before register, ok to use",
+					useBeforeRegister: true,
+					feat:              featB,
+					enabled:           true,
+				},
+				{
+					desc:    "after register, ok to use",
+					feat:    featB,
+					enabled: true,
+				},
+			},
 		},
 		{
-			// not happen actually
-			desc: "cluster uid and generation are not changed, only test cache is worked, bbb is still enabled",
-			cluster: fakeCluster("", "aaa", 2, uid1, []meta.FeatureGate{
-				{
-					Name: meta.Feature("aaa"),
-				},
-			}),
-
-			feat:    meta.Feature("bbb"),
-			enabled: true,
-		},
-		{
-			desc: "cluster uid is changed",
-			cluster: fakeCluster("", "aaa", 2, uid2, []meta.FeatureGate{
-				{
-					Name: meta.Feature("aaa"),
-				},
-			}),
-
-			// cluster's uid is changed
-			failToVerify: true,
-			feat:         meta.Feature("aaa"),
-			enabled:      true,
-		},
-		{
-			desc: "deregister is worked",
-			cluster: fakeCluster("", "aaa", 2, uid2, []meta.FeatureGate{
-				{
-					Name: meta.Feature("bbb"),
-				},
-			}),
+			desc:       "deregister is worked",
+			cluster:    fakeCluster("", "aaa", 3, uid2, featB),
 			deregister: true,
 
-			feat:    meta.Feature("bbb"),
-			enabled: true,
+			controllers: []controller{
+				{
+					desc:              "before deregister, still ok to use",
+					useBeforeRegister: true,
+					feat:              featB,
+					enabled:           true,
+				},
+				{
+					desc:      "after deregister, fail to use",
+					failToUse: true,
+					feat:      featB,
+				},
+			},
 		},
 	}
 
 	fg := NewFeatureGates()
+	format := "%s: failed ctrl: %s"
+
 	for i := range cases {
 		c := &cases[i]
+		defer func() {
+			recover()
+		}()
 
-		err := fg.Verify(c.cluster)
-		if c.failToVerify {
-			require.Error(t, err, c.desc)
-		} else {
-			require.NoError(t, err, c.desc)
-		}
+		func() {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
-		if c.deregister {
-			fg.Deregister(c.cluster.Namespace, c.cluster.Name)
-			require.Error(t, fg.Verify(c.cluster), c.desc)
-			assert.Panics(t, func() {
-				fg.Enabled(c.cluster.Namespace, c.cluster.Name, c.feat)
-			}, c.desc)
-		}
-		fg.Register(c.cluster)
-		enabled := fg.Enabled(c.cluster.Namespace, c.cluster.Name, c.feat)
-		assert.Equal(t, c.enabled, enabled, c.desc)
+			for _, ctrl := range c.controllers {
+				if ctrl.useBeforeRegister && !ctrl.skipUse {
+					cluster := c.cluster
+					if ctrl.useCluster != nil {
+						cluster = ctrl.useCluster
+					}
+					err := fg.Use(ctx, cluster)
+					if ctrl.failToUse {
+						require.Error(t, err, format, c.desc, ctrl.desc)
+						fmt.Println("fail to use:", "desc:", c.desc, "ctrl:", ctrl.desc, "err:", err)
+					} else {
+						require.NoError(t, err, format, c.desc, ctrl.desc)
+					}
+				}
+			}
+			if c.deregister {
+				fg.Deregister(c.cluster.Namespace, c.cluster.Name)
+				for _, ctrl := range c.controllers {
+					if ctrl.useBeforeRegister || ctrl.skipUse {
+						continue
+					}
+					cluster := c.cluster
+					if ctrl.useCluster != nil {
+						cluster = ctrl.useCluster
+					}
+					require.Error(t, fg.Use(ctx, cluster), format, c.desc, ctrl.desc)
+					assert.Panics(t, func() {
+						fg.Enabled(c.cluster.Namespace, c.cluster.Name, meta.Feature(ctrl.feat))
+					}, format, c.desc, ctrl.desc)
+				}
+
+				return
+			}
+
+			fg.Register(c.cluster)
+
+			for _, ctrl := range c.controllers {
+				if !ctrl.useBeforeRegister && !ctrl.skipUse {
+					cluster := c.cluster
+					if ctrl.useCluster != nil {
+						cluster = ctrl.useCluster
+					}
+					err := fg.Use(ctx, cluster)
+					if ctrl.failToUse {
+						require.Error(t, err, format, c.desc, ctrl.desc)
+						fmt.Println("fail to use after:", "desc:", c.desc, "ctrl:", ctrl.desc, "err:", err)
+					} else {
+						require.NoError(t, err, format, c.desc, ctrl.desc)
+					}
+				}
+				if ctrl.failToUse {
+					continue
+				}
+				enabled := fg.Enabled(c.cluster.Namespace, c.cluster.Name, meta.Feature(ctrl.feat))
+				assert.Equal(t, ctrl.enabled, enabled, format, c.desc, ctrl.desc)
+			}
+
+			panic("panic to check dead lock")
+		}()
+		// wait an arbitrary time to make sure all `unuse` are finished
+		time.Sleep(time.Millisecond)
 	}
 }
 
-func fakeCluster(ns, name string, generation int64, uid types.UID, features []meta.FeatureGate) *v1alpha1.Cluster {
+func fakeCluster(ns, name string, generation int64, uid types.UID, features ...string) *v1alpha1.Cluster {
+	var fs []meta.FeatureGate
+	for _, feat := range features {
+		fs = append(fs, meta.FeatureGate{
+			Name: meta.Feature(feat),
+		})
+	}
 	return &v1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:       name,
@@ -184,7 +307,7 @@ func fakeCluster(ns, name string, generation int64, uid types.UID, features []me
 			UID:        uid,
 		},
 		Spec: v1alpha1.ClusterSpec{
-			FeatureGates: features,
+			FeatureGates: fs,
 		},
 	}
 }
