@@ -16,7 +16,6 @@ package features
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -29,6 +28,7 @@ import (
 	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
+// nolint: gocyclo // refactor later
 func TestFeatureGates(t *testing.T) {
 	const (
 		uid1 = "aaa"
@@ -221,7 +221,7 @@ func TestFeatureGates(t *testing.T) {
 	for i := range cases {
 		c := &cases[i]
 		defer func() {
-			recover()
+			_ = recover()
 		}()
 
 		func() {
@@ -237,7 +237,6 @@ func TestFeatureGates(t *testing.T) {
 					err := fg.Use(ctx, cluster)
 					if ctrl.failToUse {
 						require.Error(t, err, format, c.desc, ctrl.desc)
-						fmt.Println("fail to use:", "desc:", c.desc, "ctrl:", ctrl.desc, "err:", err)
 					} else {
 						require.NoError(t, err, format, c.desc, ctrl.desc)
 					}
@@ -273,7 +272,6 @@ func TestFeatureGates(t *testing.T) {
 					err := fg.Use(ctx, cluster)
 					if ctrl.failToUse {
 						require.Error(t, err, format, c.desc, ctrl.desc)
-						fmt.Println("fail to use after:", "desc:", c.desc, "ctrl:", ctrl.desc, "err:", err)
 					} else {
 						require.NoError(t, err, format, c.desc, ctrl.desc)
 					}

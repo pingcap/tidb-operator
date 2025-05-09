@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
@@ -420,7 +421,7 @@ func TestFeatureGates(t *testing.T) {
 			expectedResult: task.SComplete,
 		},
 		{
-			desc: "generation is changed",
+			desc: "generation is changed, but features are not",
 			state: &fakeState[v1alpha1.Cluster]{
 				name: "xxx",
 				obj: fake.FakeObj("xxx", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
@@ -428,15 +429,29 @@ func TestFeatureGates(t *testing.T) {
 					return obj
 				}),
 			},
-			expectedResult: task.SFail,
+			expectedResult: task.SComplete,
 		},
 		{
-			desc: "uid is changed",
+			desc: "uid is changed, but features are not",
 			state: &fakeState[v1alpha1.Cluster]{
 				name: "xxx",
 				obj: fake.FakeObj("xxx", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
 					obj.Generation = 1
 					obj.UID = "newuid"
+					return obj
+				}),
+			},
+			expectedResult: task.SComplete,
+		},
+		{
+			desc: "features are changed",
+			state: &fakeState[v1alpha1.Cluster]{
+				name: "xxx",
+				obj: fake.FakeObj("xxx", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+					obj.Generation = 2
+					obj.Spec.FeatureGates = append(obj.Spec.FeatureGates, metav1alpha1.FeatureGate{
+						Name: metav1alpha1.Feature("test"),
+					})
 					return obj
 				}),
 			},
@@ -454,8 +469,10 @@ func TestFeatureGates(t *testing.T) {
 				return obj
 			}))
 
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 			s := &fakeClusterState{s: c.state}
-			res, done := task.RunTask(context.Background(), TaskFeatureGates(s))
+			res, done := task.RunTask(ctx, TaskFeatureGates(s))
 			assert.Equal(tt, c.expectedResult, res.Status(), c.desc)
 			assert.False(tt, done, c.desc)
 		})
