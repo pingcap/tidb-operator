@@ -38,4 +38,10 @@ const (
 	// Support modify volume by VolumeAttributeClass
 	VolumeAttributeClass      Feature      = "VolumeAttributeClass"
 	VolumeAttributeClassStage FeatureStage = FeatureStageAlpha
+
+	// Disable PD's default readiness probe
+	// Now the pd's default readiness probe use TCP to probe client port
+	// It's not usefull and will print so many warn logs in PD's stdout/stderr
+	DisablePDDefaultReadinessProbe      Feature      = "DisablePDDefaultReadinessProbe"
+	DisablePDDefaultReadinessProbeStage FeatureStage = FeatureStageAlpha
 )
