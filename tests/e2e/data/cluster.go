@@ -19,6 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 const (
@@ -33,6 +34,12 @@ func NewCluster(namespace string, patches ...ClusterPatch) *v1alpha1.Cluster {
 		},
 		Spec: v1alpha1.ClusterSpec{
 			UpgradePolicy: v1alpha1.UpgradePolicyDefault,
+			FeatureGates: []metav1alpha1.FeatureGate{
+				{
+					// Disable PD Probe by default in e2e
+					Name: metav1alpha1.DisablePDDefaultReadinessProbe,
+				},
+			},
 		},
 	}
 
