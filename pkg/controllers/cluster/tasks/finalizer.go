@@ -54,7 +54,8 @@ func (t *TaskFinalizer) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		len(rtx.TiDBGroups) == 0 &&
 		len(rtx.TiFlashGroups) == 0 &&
 		len(rtx.TiCDCGroups) == 0 &&
-		len(rtx.TSOGroups) == 0 {
+		len(rtx.TSOGroups) == 0 &&
+		len(rtx.SchedulerGroups) == 0 {
 		if err := k8s.RemoveFinalizer(ctx, t.Client, rtx.Cluster); err != nil {
 			return task.Fail().With("can't remove finalizer: %w", err)
 		}
@@ -72,6 +73,12 @@ func (t *TaskFinalizer) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		//nolint:gocritic // not a real issue, see https://github.com/go-critic/go-critic/issues/1448
 		if err := t.Client.Delete(ctx, tg); client.IgnoreNotFound(err) != nil {
 			return task.Fail().With("can't delete tso group: %w", err)
+		}
+	}
+	for _, sg := range rtx.SchedulerGroups {
+		//nolint:gocritic // not a real issue, see https://github.com/go-critic/go-critic/issues/1448
+		if err := t.Client.Delete(ctx, sg); client.IgnoreNotFound(err) != nil {
+			return task.Fail().With("can't delete scheduler group: %w", err)
 		}
 	}
 	for _, tikvGroup := range rtx.TiKVGroups {

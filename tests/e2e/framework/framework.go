@@ -168,6 +168,13 @@ func (f *Framework) MustCreateTSO(ctx context.Context, ps ...data.GroupPatch[*ru
 	return tg
 }
 
+func (f *Framework) MustCreateScheduler(ctx context.Context, ps ...data.GroupPatch[*runtime.SchedulerGroup]) *v1alpha1.SchedulerGroup {
+	sg := data.NewSchedulerGroup(f.Namespace.Name, ps...)
+	ginkgo.By("Creating a scheduler group")
+	f.Must(f.Client.Create(ctx, sg))
+	return sg
+}
+
 func (f *Framework) SetupBootstrapSQL(sql string) {
 	ginkgo.BeforeEach(func(ctx context.Context) {
 		cm := &corev1.ConfigMap{

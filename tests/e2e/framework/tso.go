@@ -30,3 +30,10 @@ func (f *Framework) WaitForTSOGroupReady(ctx context.Context, tg *v1alpha1.TSOGr
 	f.Must(waiter.WaitForTSOsHealthy(ctx, f.Client, tg, waiter.LongTaskTimeout))
 	f.Must(waiter.WaitForPodsReady(ctx, f.Client, runtime.FromTSOGroup(tg), waiter.LongTaskTimeout))
 }
+
+func (f *Framework) WaitForSchedulerGroupReady(ctx context.Context, sg *v1alpha1.SchedulerGroup) {
+	// TODO: maybe wait for cluster ready
+	ginkgo.By("wait for scheduler group ready")
+	f.Must(waiter.WaitForSchedulersHealthy(ctx, f.Client, sg, waiter.LongTaskTimeout))
+	f.Must(waiter.WaitForPodsReady(ctx, f.Client, runtime.FromSchedulerGroup(sg), waiter.LongTaskTimeout))
+}
