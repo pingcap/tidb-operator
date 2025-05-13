@@ -103,6 +103,7 @@ rules:
   - tiflashgroups/status
   - tikvgroups/status
   - tsogroups/status
+  - schedulergroups/status
   verbs:
   - get
   - list
@@ -125,6 +126,7 @@ rules:
   - tiflashgroups
   - tikvgroups
   - tsogroups
+  - schedulergroups
   verbs:
   - delete
   - get
@@ -140,6 +142,7 @@ rules:
   - tiflashes
   - tikvs
   - tsos
+  - schedulers
   verbs:
   - create
   - delete
@@ -157,6 +160,7 @@ rules:
   - tiflashes/status
   - tikvs/status
   - tsos/status
+  - schedulers/status
   verbs:
   - get
   - list
