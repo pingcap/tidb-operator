@@ -9,7 +9,7 @@ operator:
   # Replica count for the operator deployment
   replicas: 1
   serviceAccount: tidb-operator
-  image: pingcap/tidb-operator:latest
+  image: pingcap/operator:latest
   pullPolicy: IfNotPresent
 # # REF: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
 #  priorityClassName: system-cluster-critical
