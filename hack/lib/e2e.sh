@@ -123,7 +123,7 @@ function e2e::prepare() {
     e2e::install_crds
 
     # build the operator image and load it into the kind cluster
-    image::build prestop-checker operator testing-workload backup-manager --push
+    image::build prestop-checker tidb-operator testing-workload backup-manager --push
     e2e::uninstall_operator
     e2e::install_operator
 
