@@ -104,6 +104,7 @@ rules:
   - tikvgroups/status
   - tsogroups/status
   - schedulergroups/status
+  - tiproxygroups/status
   verbs:
   - get
   - list
@@ -127,6 +128,7 @@ rules:
   - tikvgroups
   - tsogroups
   - schedulergroups
+  - tiproxygroups
   verbs:
   - delete
   - get
@@ -143,6 +145,7 @@ rules:
   - tikvs
   - tsos
   - schedulers
+  - tiproxies
   verbs:
   - create
   - delete
@@ -161,6 +164,7 @@ rules:
   - tikvs/status
   - tsos/status
   - schedulers/status
+  - tiproxies/status
   verbs:
   - get
   - list
