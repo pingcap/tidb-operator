@@ -1,0 +1,23 @@
+name: release-v2
+
+run-name: Release ${{ github.ref_name }}
+
+on:
+  push:
+    tags:
+      - "v2.*.*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: make release ${{ github.ref_name }}
+        run: V_RELEASE=${{ github.ref_name }} make release
+      - name: release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            _output/manifests/tidb-operator.crds.yaml
+            _output/manifests/tidb-operator.yaml
+

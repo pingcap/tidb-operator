@@ -29,7 +29,7 @@ KIND_VERSION ?= v0.24.0
 # TODO: use kubectl in _output
 KUBECTL = kubectl -n tidb-admin --context kind-tidb-operator
 
-ALL_CMD = operator prestop-checker testing-workload backup-manager
+ALL_CMD = tidb-operator prestop-checker testing-workload backup-manager
 .PHONY: build
 build: $(addprefix build/,$(ALL_CMD))
 build/%:
@@ -46,9 +46,9 @@ push/%:
 	$(ROOT)/hack/image.sh $* --push
 
 .PHONY: deploy
-deploy: crd
-	$(KUBECTL) apply --server-side=true -f $(ROOT)/manifests/crd
-	$(KUBECTL) apply --server-side=true -f $(ROOT)/manifests/deploy
+deploy: release
+	$(KUBECTL) apply --server-side=true -f $(OUTPUT_DIR)/manifests/tidb-operator.crds.yaml
+	$(KUBECTL) apply --server-side=true -f $(OUTPUT_DIR)/manifests/tidb-operator.yaml
 
 .PHONY: codegen
 codegen: bin/deepcopy-gen bin/register-gen bin/overlay-gen
@@ -86,9 +86,9 @@ runtimegen: bin/runtime-gen
 		--go-header-file=$(BOILERPLATE_FILE) \
 		github.com/pingcap/tidb-operator/api/v2/core/v1alpha1
 
-.PHONY: yamlgen
-yamlgen: crd
-	$(ROOT)/hack/yaml.sh
+.PHONY: release
+release: bin/helm crd
+	$(ROOT)/hack/release.sh
 
 .PHONY: doc
 doc: bin/mdtoc
@@ -114,7 +114,7 @@ gengo: bin/mockgen
 license: bin/license-eye
 	$(LICENSE_EYE) -c .github/licenserc.yaml header fix
 
-ALL_GEN = tidy codegen crd gengo overlaygen runtimegen yamlgen doc
+ALL_GEN = tidy codegen crd gengo overlaygen runtimegen doc
 .PHONY: generate
 generate: $(ALL_GEN) license
 
@@ -146,7 +146,7 @@ unit:
 check: lint unit verify
 
 .PHONY: e2e/prepare
-e2e/prepare: bin/kind crd
+e2e/prepare: bin/kind release
 	$(ROOT)/hack/e2e.sh --prepare
 
 .PHONY: e2e/run
@@ -154,7 +154,7 @@ e2e/run:
 	$(ROOT)/hack/e2e.sh run $(GINKGO_OPTS)
 
 .PHONY: e2e
-e2e: bin/kind crd
+e2e: bin/kind release
 	$(ROOT)/hack/e2e.sh --prepare run $(GINKGO_OPTS)
 
 .PHONY: e2e/reinstall-operator
@@ -228,3 +228,8 @@ bin/ginkgo:
 MDTOC = $(BIN_DIR)/mdtoc
 bin/mdtoc:
 	$(ROOT)/hack/download.sh go_install $(MDTOC) sigs.k8s.io/mdtoc v1.1.0
+
+.PHONY: bin/helm
+HELM = $(BIN_DIR)/helm
+bin/helm:
+	$(ROOT)/hack/download.sh go_install $(HELM) helm.sh/helm/v3/cmd/helm v3.17.3 "version --template='{{.Version}}' | xargs printf '%s.3'"
