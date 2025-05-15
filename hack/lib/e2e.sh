@@ -66,7 +66,7 @@ function e2e::install_crds() {
 
 function e2e::install_operator() {
     echo "installing operator..."
-    $KUBECTL -n $V_DEPLOY_NAMESPACE apply --server-side=true -f $OUTPUT_DIR/manifests/deploy
+    $KUBECTL -n $V_DEPLOY_NAMESPACE apply --server-side=true -f $OUTPUT_DIR/manifests/tidb-operator.yaml
 
     echo "waiting for operator to be ready..."
     $KUBECTL -n $V_DEPLOY_NAMESPACE wait --for=condition=Available --timeout=5m deployment/tidb-operator
@@ -80,7 +80,7 @@ function e2e::uninstall_operator() {
     fi
 
     echo "uninstalling operator..."
-    $KUBECTL -n $V_DEPLOY_NAMESPACE delete -f $OUTPUT_DIR/manifests/deploy
+    $KUBECTL -n $V_DEPLOY_NAMESPACE delete -f $OUTPUT_DIR/manifests/tidb-operator.yaml
 
     echo "waiting for operator to be deleted..."
     $KUBECTL -n $V_DEPLOY_NAMESPACE wait --for=delete --timeout=5m deployment/tidb-operator
