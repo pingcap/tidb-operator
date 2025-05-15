@@ -68,6 +68,9 @@ readonly V_TIDB_CLUSTER_VERSION_PREV=${V_TIDB_CLUSTER_VERSION_PREV:-"v8.1.0"}
 # V_KUBE_VERSION defines default test version of kubernetes
 readonly V_KUBE_VERSION=${V_KUBE_VERSION:-"v1.31.0"}
 
+# V_RELEASE defines the release version of tidb-operator
+readonly V_RELEASE=${V_RELEASE:-"latest"}
+
 
 # marker function
 function vars::loaded() {

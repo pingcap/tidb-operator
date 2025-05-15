@@ -24,18 +24,17 @@ RUN --mount=type=cache,target=/go/pkg/mod/ \
     --mount=type=cache,target=/go/cache \
     V_PLATFORMS=$TARGETPLATFORM ./hack/build.sh
 
-FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS operator
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS tidb-operator
 
 ARG TARGETPLATFORM
 
 WORKDIR /
 
-COPY --from=builder ./_output/$TARGETPLATFORM/bin/operator operator
+COPY --from=builder ./_output/$TARGETPLATFORM/bin/tidb-operator tidb-operator
 
-# nonroot user of distroless
 USER 65532:65532
 
-ENTRYPOINT ["/operator"]
+ENTRYPOINT ["/tidb-operator"]
 
 FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS prestop-checker
 
@@ -45,7 +44,6 @@ WORKDIR /
 
 COPY --from=builder ./_output/$TARGETPLATFORM/bin/prestop-checker prestop-checker
 
-# nonroot user of distroless
 USER 65532:65532
 
 ENTRYPOINT ["/prestop-checker"]
@@ -58,7 +56,6 @@ WORKDIR /
 
 COPY --from=builder ./_output/$TARGETPLATFORM/bin/testing-workload testing-workload
 
-# nonroot user of distroless
 USER 65532:65532
 
 ENTRYPOINT ["/testing-workload"]
@@ -72,7 +69,6 @@ WORKDIR /
 
 COPY --from=builder ./_output/$TARGETPLATFORM/bin/backup-manager backup-manager
 
-# nonroot user of distroless
 USER 65532:65532
 
 ENTRYPOINT ["/backup-manager"]
