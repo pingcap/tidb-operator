@@ -146,7 +146,7 @@ unit:
 check: lint unit verify
 
 .PHONY: e2e/prepare
-e2e/prepare: bin/kind crd
+e2e/prepare: bin/kind release
 	$(ROOT)/hack/e2e.sh --prepare
 
 .PHONY: e2e/run
@@ -154,7 +154,7 @@ e2e/run:
 	$(ROOT)/hack/e2e.sh run $(GINKGO_OPTS)
 
 .PHONY: e2e
-e2e: bin/kind crd
+e2e: bin/kind release
 	$(ROOT)/hack/e2e.sh --prepare run $(GINKGO_OPTS)
 
 .PHONY: e2e/reinstall-operator
