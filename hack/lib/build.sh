@@ -46,7 +46,7 @@ function build::all() {
         shift
     done
     if [[ ${#targets[@]} -eq 0 ]]; then
-        targets=("operator" "prestop-checker" "testing-workload" "backup-manager")
+        targets=("tidb-operator" "prestop-checker" "testing-workload" "backup-manager")
     fi
 
     local platforms
