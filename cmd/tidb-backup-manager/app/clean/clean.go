@@ -26,20 +26,18 @@ import (
 	"k8s.io/klog"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	"github.com/pingcap/tidb-operator/cmd/tidb-backup-manager/app/constants"
+	"github.com/pingcap/tidb-operator/cmd/tidb-backup-manager/app/util"
 	bkutil "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
 )
 
-var (
-	defaultBackoff = wait.Backoff{
-		Duration: 100 * time.Millisecond,
-		Factor:   2.0,
-		Jitter:   0,
-		Steps:    8,
-		Cap:      time.Second,
-	}
-)
+var defaultBackoff = wait.Backoff{
+	Duration: 100 * time.Millisecond,
+	Factor:   2.0,
+	Jitter:   0,
+	Steps:    8,
+	Cap:      time.Second,
+}
 
 const (
 	metaFile            = "/backupmeta"

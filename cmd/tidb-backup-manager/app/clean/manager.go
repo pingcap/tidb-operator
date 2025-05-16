@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	"github.com/pingcap/tidb-operator/cmd/tidb-backup-manager/app/util"
 	backupMgr "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/backup"
 )
 
@@ -39,7 +39,8 @@ type Manager struct {
 func NewManager(
 	cli client.Client,
 	statusUpdater backupMgr.BackupConditionUpdaterInterface,
-	backupOpts Options) *Manager {
+	backupOpts Options,
+) *Manager {
 	return &Manager{
 		cli,
 		statusUpdater,

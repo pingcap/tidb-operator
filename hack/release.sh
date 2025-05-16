@@ -42,7 +42,7 @@ cat << EOF > $OUTPUT/helm-values.yaml
 operator:
   image: pingcap/tidb-operator:${V_RELEASE}
 backupManager:
-  image: pingcap/backup-manager:${V_RELEASE}
+  image: pingcap/tidb-backup-manager:${V_RELEASE}
 EOF
 
 cat $BOILERPLATE > $OPERATOR
