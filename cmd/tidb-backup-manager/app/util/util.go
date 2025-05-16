@@ -39,7 +39,7 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
+	"github.com/pingcap/tidb-operator/cmd/tidb-backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
 )
 
@@ -491,7 +491,8 @@ func RetriableOnAnyError(err error) bool {
 // RetryOnError allows the caller to retry fn in case the error returned by fn.
 // sleep define the interval between two retries.
 func RetryOnError(ctx context.Context, attempts int, sleep time.Duration,
-	retriable func(error) bool, fn func() error) error {
+	retriable func(error) bool, fn func() error,
+) error {
 	var err error
 	for i := 0; i < attempts; i++ {
 		err = fn()

@@ -324,7 +324,7 @@ func (rm *restoreManager) makeRestoreJob(ctx context.Context, restore *v1alpha1.
 				{
 					Name:            metav1alpha1.RestoreJobLabelVal,
 					Image:           rm.backupManagerImage,
-					Command:         []string{"/backup-manager"},
+					Command:         []string{"/tidb-backup-manager"},
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    volumeMounts,
