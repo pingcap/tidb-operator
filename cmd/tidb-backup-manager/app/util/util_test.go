@@ -31,7 +31,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	appconstant "github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
+	appconstant "github.com/pingcap/tidb-operator/cmd/tidb-backup-manager/app/constants"
 )
 
 func TestConstructBRGlobalOptionsForBackup(t *testing.T) {
@@ -305,7 +305,7 @@ func TestGetCommitTsFromMetadata(t *testing.T) {
 			Pos: 409054741514944513
 			GTID:
 
-		Finished dump at: 2019-06-13 10:00:04`), 0600)
+		Finished dump at: 2019-06-13 10:00:04`), 0o600)
 	g.Expect(err).To(Succeed())
 
 	commitTs, err := GetCommitTsFromMetadata(tmpdir)
