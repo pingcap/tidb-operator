@@ -134,10 +134,13 @@ kind: TiDBGroup
 metadata:
   name: tidb-oltp
 spec:
-  # TiDBGroup should provide a method to set server labels dynamically, like adding a new field.
-  # Here is an example, not a real config.
-  serverLabels:
-    group: oltp
+  template:
+    spec:
+      server:
+        # TiDBGroup should add a new field to set server labels dynamically without restarting TiDB.
+        # Here is an example:
+        labels:
+          group: oltp
 ```
 
 #### 1:N
