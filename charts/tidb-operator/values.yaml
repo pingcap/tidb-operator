@@ -55,7 +55,7 @@ operator:
 
 # Backup manager image configuration
 backupManager:
-  image: pingcap/backup-manager:latest
+  image: pingcap/tidb-backup-manager:latest
 
 # RBAC configuration
 rbac:
