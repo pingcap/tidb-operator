@@ -44,9 +44,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-var (
-	_ BackupManager = &backupManager{}
-)
+var _ BackupManager = &backupManager{}
 
 // BackupUpdateStatus represents the status of a backup to be updated.
 // This structure should keep synced with the fields in `BackupStatus`
@@ -528,7 +526,7 @@ func (bm *backupManager) makeBRBackupJob(ctx context.Context, backup *v1alpha1.B
 				{
 					Name:            brv1alpha1.LabelValComponentBackup,
 					Image:           bm.backupManagerImage,
-					Command:         []string{"/backup-manager"},
+					Command:         []string{"/tidb-backup-manager"},
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					VolumeMounts:    volumeMounts,
