@@ -39,8 +39,9 @@ type Config struct {
 
 	Log Log `toml:"log"`
 
-	InitializeSQLFile          string `toml:"initialize-sql-file"`
-	GracefulWaitBeforeShutdown int    `toml:"graceful-wait-before-shutdown"`
+	InitializeSQLFile          string            `toml:"initialize-sql-file"`
+	GracefulWaitBeforeShutdown int               `toml:"graceful-wait-before-shutdown"`
+	ServerLabels               map[string]string `toml:"labels"`
 }
 
 type Security struct {
@@ -143,6 +144,10 @@ func (c *Config) Validate(separateSlowLog bool) error {
 
 	if c.InitializeSQLFile != "" {
 		fields = append(fields, "initialize-sql-file")
+	}
+
+	if len(c.ServerLabels) > 0 {
+		fields = append(fields, "labels")
 	}
 
 	if len(fields) == 0 {

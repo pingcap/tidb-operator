@@ -28,4 +28,5 @@ header:
     - tests/e2e/example/data
     - '**/OWNERS'
     - OWNERS_ALIASES
+    - .cursorignore
   comment: on-failure

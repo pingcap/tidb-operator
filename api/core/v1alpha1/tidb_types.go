@@ -190,6 +190,13 @@ type TiDBSecurity struct {
 type TiDBServer struct {
 	// Port defines all ports listened by TiDB.
 	Ports TiDBPorts `json:"ports,omitempty"`
+
+	// Labels defines the server labels of the TiDB server.
+	// TiDB Operator will ignore `labels` in TiDB's config file and use this field instead.
+	// Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+	//  - zone
+	//  - topology.kubernetes.io/zone
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 type TiDBPorts struct {

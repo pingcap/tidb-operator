@@ -2087,6 +2087,13 @@ func (in *TiDBSecurity) DeepCopy() *TiDBSecurity {
 func (in *TiDBServer) DeepCopyInto(out *TiDBServer) {
 	*out = *in
 	in.Ports.DeepCopyInto(&out.Ports)
+	if in.Labels != nil {
+		in, out := &in.Labels, &out.Labels
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	return
 }
 
