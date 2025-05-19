@@ -42,6 +42,7 @@ type podInfo struct {
 	deletionTime metav1.Time
 }
 
+// nolint: gocyclo // optimize later
 func WaitPodsRollingUpdateOnce[G runtime.Group](
 	ctx context.Context,
 	c client.Client,

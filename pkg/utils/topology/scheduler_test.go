@@ -344,7 +344,7 @@ func TestSchedulerAdd(t *testing.T) {
 				},
 			},
 			adds: []int{
-				0, 1, 2, 0
+				0, 1, 2,
 			},
 			dels: []int{
 				2, 1, 0,
