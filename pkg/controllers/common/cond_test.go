@@ -348,27 +348,27 @@ func TestCondClusterIsPaused(t *testing.T) {
 	}
 }
 
-func TestCondClusterPDAddrIsRegistered(t *testing.T) {
+func TestCondClusterPDAddrIsNotRegistered(t *testing.T) {
 	cases := []struct {
 		desc         string
 		state        *fakeState[v1alpha1.Cluster]
 		expectedCond bool
 	}{
 		{
-			desc: "cond is false",
+			desc: "cond is true",
 			state: &fakeState[v1alpha1.Cluster]{
 				obj: fake.FakeObj[v1alpha1.Cluster]("test"),
 			},
+			expectedCond: true,
 		},
 		{
-			desc: "cond is true",
+			desc: "cond is false",
 			state: &fakeState[v1alpha1.Cluster]{
 				obj: fake.FakeObj("test", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
 					obj.Status.PD = "http://pd:2379"
 					return obj
 				}),
 			},
-			expectedCond: true,
 		},
 	}
 
@@ -378,7 +378,7 @@ func TestCondClusterPDAddrIsRegistered(t *testing.T) {
 			tt.Parallel()
 
 			s := &fakeClusterState{s: c.state}
-			cond := CondClusterPDAddrIsRegistered(s)
+			cond := CondClusterPDAddrIsNotRegistered(s)
 			assert.Equal(tt, c.expectedCond, cond.Satisfy(), c.desc)
 		})
 	}

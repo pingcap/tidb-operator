@@ -32,7 +32,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// get cluster info, FinalizerDel will use it
 		common.TaskContextCluster[scope.TiDB](state, r.Client),
 		// return if cluster's status is not updated
-		task.IfBreak(common.CondClusterPDAddrIsRegistered(state)),
+		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
 		common.TaskFeatureGates(state),
 		// check whether it's paused
 		task.IfBreak(common.CondClusterIsPaused(state)),
