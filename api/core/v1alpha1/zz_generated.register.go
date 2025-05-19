@@ -89,6 +89,10 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&TiKVGroup{},
 		&TiKVGroupList{},
 		&TiKVList{},
+		&TiProxy{},
+		&TiProxyGroup{},
+		&TiProxyGroupList{},
+		&TiProxyList{},
 	)
 	// AddToGroupVersion allows the serialization of client types like ListOptions.
 	v1.AddToGroupVersion(scheme, SchemeGroupVersion)
