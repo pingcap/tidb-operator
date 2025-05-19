@@ -61,14 +61,14 @@ USER 65532:65532
 ENTRYPOINT ["/testing-workload"]
 
 
-FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS backup-manager
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS tidb-backup-manager
 
 ARG TARGETPLATFORM
 
 WORKDIR /
 
-COPY --from=builder ./_output/$TARGETPLATFORM/bin/backup-manager backup-manager
+COPY --from=builder ./_output/$TARGETPLATFORM/bin/tidb-backup-manager tidb-backup-manager
 
 USER 65532:65532
 
-ENTRYPOINT ["/backup-manager"]
+ENTRYPOINT ["/tidb-backup-manager"]

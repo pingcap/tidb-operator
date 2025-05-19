@@ -21,7 +21,7 @@ import (
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
 
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/cmd"
+	"github.com/pingcap/tidb-operator/cmd/tidb-backup-manager/app/cmd"
 )
 
 func Run() error {

@@ -19,7 +19,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
+	"github.com/pingcap/tidb-operator/cmd/tidb-backup-manager/app/constants"
 )
 
 // GenericOptions contains the generic input arguments to the backup/restore command

@@ -9,7 +9,6 @@
 - [Proposal](#proposal)
   - [User Stories (Optional)](#user-stories-optional)
     - [Story 1](#story-1)
-    - [Story 2](#story-2)
   - [Risks and Mitigations](#risks-and-mitigations)
 - [Design Details](#design-details)
   - [API](#api)
@@ -57,13 +56,9 @@ Items marked with (R) are required *prior to targeting to a release*.
 
 As a TiDB user, deploy TiProxy to provide load balancing, connection persistence, and service discovery.
 
-#### Story 2
-
-As a TiDB user, scale in and out TiProxy instances.
-
 ### Risks and Mitigations
 
-- It will be complex to manage the relationship between TiProxy and TiDB.
+- It will be complex to manage the relationship between TiProxy and TiDB, like traffic routing and certificate management.
   - Let users do this by themselves.
 
 ## Design Details
@@ -139,10 +134,13 @@ kind: TiDBGroup
 metadata:
   name: tidb-oltp
 spec:
-  # TiDBGroup should provide a method to set server labels dynamically, like adding a new field.
-  # Here is an example, not a real config.
-  serverLabels:
-    group: oltp
+  template:
+    spec:
+      server:
+        # TiDBGroup should add a new field to set server labels dynamically without restarting TiDB.
+        # Here is an example:
+        labels:
+          group: oltp
 ```
 
 #### 1:N
@@ -174,7 +172,7 @@ It is used to access TiDB or PD. It's controlled by Cluster CR's `spec.tlsCluste
 #### Server TLS
 
 There are two TLS objects:
-- `server-tls`: used to provide TLS on SQL port (6000). We will use tidb-server tls, if the corresponding tidb group enables SQL tls.
+- `server-tls`: used to provide TLS on SQL port (6000).
 - `server-http-tls`: used to provide TLS on HTTP status port (3080). Will use cluster tls.
 
 #### SQL TLS

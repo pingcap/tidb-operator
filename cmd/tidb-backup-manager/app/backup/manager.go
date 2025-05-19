@@ -26,8 +26,8 @@ import (
 	"github.com/pingcap/errors"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/clean"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	"github.com/pingcap/tidb-operator/cmd/tidb-backup-manager/app/clean"
+	"github.com/pingcap/tidb-operator/cmd/tidb-backup-manager/app/util"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
@@ -52,7 +52,8 @@ type Manager struct {
 func NewManager(
 	cli client.Client,
 	statusUpdater backupMgr.BackupConditionUpdaterInterface,
-	backupOpts Options) *Manager {
+	backupOpts Options,
+) *Manager {
 	return &Manager{
 		cli,
 		statusUpdater,
