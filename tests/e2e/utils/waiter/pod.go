@@ -208,10 +208,18 @@ func sortPodInfos(infos []podInfo) {
 			return a.creationTime.Compare(b.creationTime.Time)
 		}
 		if a.deletionTime.IsZero() {
-			return a.creationTime.Compare(b.deletionTime.Time)
+			if a.creationTime.Before(&b.deletionTime) {
+				return -1
+			} else {
+				return 1
+			}
 		}
 		if b.deletionTime.IsZero() {
-			return a.deletionTime.Compare(b.creationTime.Time)
+			if a.deletionTime.After(b.creationTime.Time) {
+				return 1
+			} else {
+				return -1
+			}
 		}
 		return a.deletionTime.Compare(b.deletionTime.Time)
 	})
