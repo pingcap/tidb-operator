@@ -16,6 +16,7 @@ package framework
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"strings"
 
@@ -46,15 +47,31 @@ func (f *Framework) MustEvenlySpreadTiDB(ctx context.Context, dbg *v1alpha1.TiDB
 	encoder := topology.NewEncoder()
 	topo := map[string]int{}
 
+	var st []v1alpha1.ScheduleTopology
+	for _, p := range dbg.Spec.SchedulePolicies {
+		switch p.Type {
+		case v1alpha1.SchedulePolicyTypeEvenlySpread:
+			st = p.EvenlySpread.Topologies
+		default:
+			// do nothing
+		}
+	}
+
+	for _, t := range st {
+		key := encoder.Encode(t.Topology)
+		topo[key] = 0
+	}
+
 	detail := strings.Builder{}
 	for i := range list.Items {
 		item := &list.Items[i]
+		fmt.Println(item.Name, item.Spec.Topology)
 
 		key := encoder.Encode(item.Spec.Topology)
 		val, ok := topo[key]
-		if !ok {
-			val = 0
-		}
+
+		f.True(ok, "unknown topology %s: %v", item.Name, item.Spec.Topology)
+
 		val += 1
 		topo[key] = val
 

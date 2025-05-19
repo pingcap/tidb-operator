@@ -39,6 +39,8 @@ func (f NewFunc[R]) New() R {
 type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 	c client.Client
 
+	noInPlaceUpdate bool
+
 	f NewFactory[R]
 
 	converter T
@@ -111,15 +113,24 @@ func (act *actor[T, O, R]) ScaleInUpdate(ctx context.Context) (bool, error) {
 }
 
 func (act *actor[T, O, R]) ScaleInOutdated(ctx context.Context) (bool, error) {
+	return act.scaleInOutdated(ctx, true)
+}
+
+func (act *actor[T, O, R]) scaleInOutdated(ctx context.Context, deferDel bool) (bool, error) {
 	name, err := act.chooseToScaleIn(act.outdated.List())
 	if err != nil {
 		return false, err
 	}
 	obj := act.outdated.Del(name)
 	isUnavailable := !obj.IsReady() || !obj.IsUpToDate()
-
-	if err := act.deferDelete(ctx, obj); err != nil {
-		return false, err
+	if deferDel {
+		if err := act.deferDelete(ctx, obj); err != nil {
+			return false, err
+		}
+	} else {
+		if err := act.c.Delete(ctx, act.converter.To(obj)); err != nil {
+			return false, err
+		}
 	}
 
 	for _, hook := range act.delHooks {
@@ -164,6 +175,17 @@ func (act *actor[T, O, R]) deferDelete(ctx context.Context, obj R) error {
 }
 
 func (act *actor[T, O, R]) Update(ctx context.Context) error {
+	if act.noInPlaceUpdate {
+		if _, err := act.scaleInOutdated(ctx, false); err != nil {
+			return err
+		}
+		if err := act.ScaleOut(ctx); err != nil {
+			return err
+		}
+
+		return nil
+	}
+
 	name, err := act.chooseToUpdate(act.outdated.List())
 	if err != nil {
 		return err

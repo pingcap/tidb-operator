@@ -145,6 +145,7 @@ func TestSchedulerAdd(t *testing.T) {
 		dels    []int
 
 		expectedNextAdds map[int][]int
+		expectedNextDels map[int][]int
 		expectedCounts   []int
 	}{
 		{
@@ -323,6 +324,38 @@ func TestSchedulerAdd(t *testing.T) {
 			},
 			expectedCounts: []int{1, 1, 1},
 		},
+		{
+			desc: "ensure next dels can return all available topologies",
+			st: []v1alpha1.ScheduleTopology{
+				{
+					Topology: v1alpha1.Topology{
+						"zone": "aaa",
+					},
+				},
+				{
+					Topology: v1alpha1.Topology{
+						"zone": "bbb",
+					},
+				},
+				{
+					Topology: v1alpha1.Topology{
+						"zone": "ccc",
+					},
+				},
+			},
+			adds: []int{
+				0, 1, 2, 0
+			},
+			dels: []int{
+				2, 1, 0,
+			},
+			expectedNextDels: map[int][]int{
+				0: {1, 1, 1},
+				1: {1, 1, 0},
+				2: {1, 0, 0},
+			},
+			expectedCounts: []int{0, 0, 0},
+		},
 	}
 
 	for i := range cases {
@@ -340,7 +373,6 @@ func TestSchedulerAdd(t *testing.T) {
 
 			for i, next := range c.adds {
 				topos := s.NextAdd()
-				assert.Contains(tt, topos, c.st[next].Topology, "add round %v", i)
 				if c.expectedNextAdds != nil {
 					nextAdds, ok := c.expectedNextAdds[i]
 					if ok {
@@ -350,11 +382,24 @@ func TestSchedulerAdd(t *testing.T) {
 						}
 					}
 				}
+				assert.Contains(tt, topos, c.st[next].Topology, "add round %v", i)
 				s.Add(genInstanceName(next, i+len(c.initial)), c.st[next].Topology)
 				counts[next]++
 			}
 			for i, next := range c.dels {
 				names := s.NextDel()
+				if c.expectedNextDels != nil {
+					nextDels, ok := c.expectedNextDels[i]
+					if ok {
+						actual := make([]int, len(c.st))
+						for _, name := range names {
+							topoIndex := getInstanceTopologyIndexNum(name)
+
+							actual[topoIndex] += 1
+						}
+						assert.Equal(tt, nextDels, actual)
+					}
+				}
 				var choosed string
 				nextIndex := strconv.Itoa(next)
 				for _, name := range names {
@@ -381,4 +426,14 @@ func genInstanceName(topoIndex, round int) string {
 func getInstanceTopologyIndex(name string) string {
 	ss := strings.Split(name, ":")
 	return ss[0]
+}
+
+func getInstanceTopologyIndexNum(name string) int {
+	index := getInstanceTopologyIndex(name)
+	i, err := strconv.ParseInt(index, 10, 32)
+	if err != nil {
+		panic(err)
+	}
+
+	return int(i)
 }

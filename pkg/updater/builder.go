@@ -33,6 +33,8 @@ type Builder[R runtime.Instance] interface {
 	WithDelHooks(hooks ...DelHook[R]) Builder[R]
 	WithScaleInPreferPolicy(ps ...PreferPolicy[R]) Builder[R]
 	WithUpdatePreferPolicy(ps ...PreferPolicy[R]) Builder[R]
+	// NoInPlaceUpdate if true, actor will use Scale in and Scale out to replace Update operation
+	WithNoInPaceUpdate(noUpdate bool) Builder[R]
 	Build() Executor
 }
 
@@ -42,6 +44,8 @@ type builder[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct 
 	maxSurge       int
 	maxUnavailable int
 	rev            string
+
+	noInPlaceUpdate bool
 
 	c client.Client
 
@@ -63,6 +67,8 @@ func (b *builder[T, O, R]) Build() Executor {
 	actor := &actor[T, O, R]{
 		c: b.c,
 		f: b.f,
+
+		noInPlaceUpdate: b.noInPlaceUpdate,
 
 		update:   NewState(update),
 		outdated: NewState(outdated),
@@ -140,6 +146,12 @@ func (b *builder[T, O, R]) WithScaleInPreferPolicy(ps ...PreferPolicy[R]) Builde
 
 func (b *builder[T, O, R]) WithUpdatePreferPolicy(ps ...PreferPolicy[R]) Builder[R] {
 	b.updatePreferPolicies = append(b.updatePreferPolicies, ps...)
+	return b
+}
+
+// NoInPlaceUpdate if true, actor will use Scale in and Scale out to replace Update operation
+func (b *builder[T, O, R]) WithNoInPaceUpdate(noUpdate bool) Builder[R] {
+	b.noInPlaceUpdate = noUpdate
 	return b
 }
 

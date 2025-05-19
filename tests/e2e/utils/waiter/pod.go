@@ -112,9 +112,21 @@ func WaitPodsRollingUpdateOnce[G runtime.Group](
 	if len(infos) != 2*rollingUpdateTimes {
 		return fmt.Errorf("expect %v pods info, now only %v, detail:\n%v", 2*rollingUpdateTimes, len(infos), detail.String())
 	}
+
 	for i := range rollingUpdateTimes {
-		if infos[2*i].name != infos[2*i+1].name {
-			return fmt.Errorf("pod may be restarted at same time, detail:\n%v", detail.String())
+		// skip if surge > 0 (no in place update) is larger than 0 (e.g. TiDB)
+		// NOTE: add new opt(no in place update) if some workloads support surge > 0 and in place update at the same time
+		if surge == 0 {
+			if infos[2*i].name != infos[2*i+1].name {
+				return fmt.Errorf("pod may be restarted at same time, detail:\n%v", detail.String())
+			}
+		}
+
+		if infos[2*i].deletionTime.IsZero() {
+			return fmt.Errorf("pod should be deleted, detail:\n%v", detail.String())
+		}
+		if !infos[2*i+1].deletionTime.IsZero() {
+			return fmt.Errorf("pod should not be deleted, detail:\n%v", detail.String())
 		}
 	}
 
