@@ -16,7 +16,6 @@ package framework
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"strings"
 
@@ -65,7 +64,6 @@ func (f *Framework) MustEvenlySpreadTiDB(ctx context.Context, dbg *v1alpha1.TiDB
 	detail := strings.Builder{}
 	for i := range list.Items {
 		item := &list.Items[i]
-		fmt.Println(item.Name, item.Spec.Topology)
 
 		key := encoder.Encode(item.Spec.Topology)
 		val, ok := topo[key]
