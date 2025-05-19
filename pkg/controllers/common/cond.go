@@ -33,6 +33,12 @@ func CondClusterIsPaused(ctx ClusterState) task.Condition {
 	})
 }
 
+func CondClusterPDAddrIsNotRegistered(ctx ClusterState) task.Condition {
+	return task.CondFunc(func() bool {
+		return ctx.Cluster().Status.PD == ""
+	})
+}
+
 // DEPRECATED: prefer CondObjectIsDeleting
 func CondGroupIsDeleting[G runtime.Group](state GroupState[G]) task.Condition {
 	return task.CondFunc(func() bool {
