@@ -477,12 +477,13 @@ func GenerateNGMonitoringHeadlessService(tngm *v1alpha1.TidbNGMonitoring) *corev
 
 func GenerateNGMonitoringStartScript(tngm *v1alpha1.TidbNGMonitoring, tc *v1alpha1.TidbCluster) (string, error) {
 	model := &NGMonitoringStartScriptModel{
-		TCName:            tc.Name,
-		TCNamespace:       tc.Namespace,
-		TCClusterDomain:   tc.Spec.ClusterDomain,
-		TNGMName:          tngm.Name,
-		TNGMNamespace:     tngm.Namespace,
-		TNGMClusterDomain: tngm.Spec.ClusterDomain,
+		TCName:              tc.Name,
+		TCNamespace:         tc.Namespace,
+		TCClusterDomain:     tc.Spec.ClusterDomain,
+		TNGMName:            tngm.Name,
+		TNGMNamespace:       tngm.Namespace,
+		TNGMClusterDomain:   tngm.Spec.ClusterDomain,
+		TNGMRetentionPeriod: tngm.Spec.NGMonitoring.RetentionPeriod,
 	}
 
 	script, err := model.RenderStartScript()

@@ -93,4 +93,42 @@ func TestNGMonitoringStartScriptModel(t *testing.T) {
 			g.Expect(addr).Should(Equal(testcase.expectAddr))
 		}
 	})
+	t.Run("NGMRetentionPeriod", func(t *testing.T) {
+		g := NewGomegaWithT(t)
+
+		type testcase struct {
+			model *NGMonitoringStartScriptModel
+
+			expectRetentionArg string
+		}
+
+		cases := []testcase{
+			{
+				model: &NGMonitoringStartScriptModel{
+					TNGMName:            "ng-monitoring",
+					TNGMNamespace:       "default",
+					TNGMRetentionPeriod: "1d",
+				},
+				expectRetentionArg: fmt.Sprintf("--retention-period %s", "1d"),
+			},
+			{
+				model: &NGMonitoringStartScriptModel{
+					TNGMName:            "ng-monitoring",
+					TNGMNamespace:       "default",
+					TNGMRetentionPeriod: "",
+				},
+				expectRetentionArg: "",
+			},
+		}
+
+		for _, testcase := range cases {
+			script, err := testcase.model.RenderStartScript()
+			g.Expect(err).ShouldNot(HaveOccurred())
+			if testcase.expectRetentionArg != "" {
+				g.Expect(script).Should(ContainSubstring(testcase.expectRetentionArg))
+			} else {
+				g.Expect(script).ShouldNot(ContainSubstring("--retention-period"))
+			}
+		}
+	})
 }
