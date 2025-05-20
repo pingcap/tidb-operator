@@ -199,6 +199,6 @@ func (*Framework) Must(err error) {
 	gomega.ExpectWithOffset(1, err).To(gomega.Succeed())
 }
 
-func (*Framework) True(b bool) {
-	gomega.ExpectWithOffset(1, b).To(gomega.BeTrue())
+func (*Framework) True(b bool, opts ...any) {
+	gomega.ExpectWithOffset(1, b).To(gomega.BeTrue(), opts...)
 }
