@@ -76,8 +76,10 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 		}
 
 		maxSurge, maxUnavailable := 0, 1
+		noUpdate := false
 		if needRestart {
 			maxSurge, maxUnavailable = 1, 0
+			noUpdate = true
 		}
 
 		wait, err := updater.New[runtime.TiDBTuple]().
@@ -94,6 +96,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			WithScaleInPreferPolicy(
 				topoPolicy,
 			).
+			WithNoInPaceUpdate(noUpdate).
 			Build().
 			Do(ctx)
 		if err != nil {
