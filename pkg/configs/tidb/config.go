@@ -17,13 +17,13 @@ package tidb
 import (
 	"fmt"
 	"path"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	stringutil "github.com/pingcap/tidb-operator/pkg/utils/string"
 )
 
 // Config is a subset config of tidb
@@ -70,7 +70,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) error {
 	c.Store = "tikv" // always use tikv
 	c.AdvertiseAddress = getAdvertiseAddress(tidb)
 	c.Host = "::"
-	c.Path = removeHTTPPrefix(cluster.Status.PD)
+	c.Path = stringutil.RemoveHTTPPrefix(cluster.Status.PD)
 
 	if coreutil.IsMySQLTLSEnabled(tidb) {
 		// TODO(csuzhangxc): disable Client Authn
@@ -158,12 +158,6 @@ func getAdvertiseAddress(tidb *v1alpha1.TiDB) string {
 		ns = corev1.NamespaceDefault
 	}
 	return coreutil.PodName[scope.TiDB](tidb) + "." + tidb.Spec.Subdomain + "." + ns + ".svc"
-}
-
-func removeHTTPPrefix(url string) string {
-	url = strings.TrimPrefix(url, "http://")
-	url = strings.TrimPrefix(url, "https://")
-	return url
 }
 
 func getSlowQueryFile(tidb *v1alpha1.TiDB) string {
