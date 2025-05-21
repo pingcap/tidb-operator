@@ -23,7 +23,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -31,14 +30,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/constants"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
-	backuputil "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -175,7 +172,7 @@ func (bm *backupManager) syncBackupJob(ctx context.Context, backup *v1alpha1.Bac
 
 	// create k8s job
 	logger.Info("backup creating job", "namespace", ns, "backup", name, "job", backupJobName)
-	if err := bm.cli.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
+	if err := bm.cli.Create(ctx, job); err != nil && !errors.IsAlreadyExists(err) {
 		errMsg := fmt.Errorf("create backup %s/%s job %s failed, err: %w", ns, name, backupJobName, err)
 		_ = bm.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Command: logBackupSubcommand,
@@ -244,7 +241,7 @@ func (bm *backupManager) validateBackup(ctx context.Context, backup *v1alpha1.Ba
 		return err
 	}
 
-	err = backuputil.ValidateBackup(backup, tikvGroup.Spec.Template.Spec.Version, cluster)
+	err = util.ValidateBackup(backup, tikvGroup.Spec.Template.Spec.Version, cluster)
 	if err != nil {
 		_ = bm.statusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Command: logBackupSubcommand,
@@ -338,7 +335,8 @@ func (bm *backupManager) makeBackupJob(ctx context.Context, backup *v1alpha1.Bac
 			}
 		}
 
-		if logBackupSubcommand == v1alpha1.LogStartCommand {
+		switch logBackupSubcommand {
+		case v1alpha1.LogStartCommand:
 			// log start need to start tracker
 			err = bm.backupTracker.StartTrackLogBackupProgress(ctx, backup)
 			if err != nil {
@@ -353,7 +351,7 @@ func (bm *backupManager) makeBackupJob(ctx context.Context, backup *v1alpha1.Bac
 				}, nil)
 				return nil, nil, "", err
 			}
-		} else if logBackupSubcommand == v1alpha1.LogTruncateCommand {
+		case v1alpha1.LogTruncateCommand:
 			updateStatus = &BackupUpdateStatus{
 				LogTruncatingUntil: &backup.Spec.LogTruncateUntil,
 			}
@@ -392,7 +390,7 @@ func (bm *backupManager) makeBRBackupJob(ctx context.Context, backup *v1alpha1.B
 		reason  string
 	)
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ctx, ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.cli)
+	storageEnv, reason, err := util.GenerateStorageCertEnv(ctx, ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bm.cli)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %w", ns, name, err)
 	}
@@ -441,8 +439,10 @@ func (bm *backupManager) makeBRBackupJob(ctx context.Context, backup *v1alpha1.B
 	jobAnnotations := backup.Annotations
 	podAnnotations := jobAnnotations
 
-	volumeMounts := []corev1.VolumeMount{}
-	volumes := []corev1.Volume{}
+	volumes, volumeMounts, err := util.GenerateStorageVolumesAndMounts(ctx, ns, backup.Spec.StorageProvider)
+	if err != nil {
+		return nil, "", fmt.Errorf("generate volumes and mounts for job of backup %s/%s failed, %w", ns, name, err)
+	}
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
 		args = append(args, "--cluster-tls=true")
@@ -524,7 +524,7 @@ func (bm *backupManager) makeBRBackupJob(ctx context.Context, backup *v1alpha1.B
 			},
 			Containers: []corev1.Container{
 				{
-					Name:            brv1alpha1.LabelValComponentBackup,
+					Name:            v1alpha1.LabelValComponentBackup,
 					Image:           bm.backupManagerImage,
 					Command:         []string{"/tidb-backup-manager"},
 					Args:            args,
@@ -550,7 +550,7 @@ func (bm *backupManager) makeBRBackupJob(ctx context.Context, backup *v1alpha1.B
 			Labels:      jobLabels,
 			Annotations: jobAnnotations,
 			OwnerReferences: []metav1.OwnerReference{
-				brv1alpha1.GetBackupOwnerRef(backup),
+				v1alpha1.GetBackupOwnerRef(backup),
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -634,7 +634,7 @@ func shouldLogBackupCommandRequeue(backup *v1alpha1.Backup) bool {
 }
 
 // waitOldBackupJobDone wait old backup job done
-func waitOldBackupJobDone(ctx context.Context, ns, name, backupJobName string, bm *backupManager, backup *v1alpha1.Backup, oldJob *batchv1.Job) error {
+func waitOldBackupJobDone(ctx context.Context, ns, name, backupJobName string, bm *backupManager, _ *v1alpha1.Backup, oldJob *batchv1.Job) error {
 	logger := log.FromContext(ctx)
 	if oldJob.DeletionTimestamp != nil {
 		return common.RequeueErrorf(task.DefaultRequeueAfter, "backup %s/%s job %s is being deleted", ns, name, backupJobName)
