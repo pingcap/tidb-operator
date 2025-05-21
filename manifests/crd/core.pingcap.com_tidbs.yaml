@@ -8287,9 +8287,14 @@ spec:
                       Labels defines the server labels of the TiDB server.
                       TiDB Operator will ignore `labels` in TiDB's config file and use this field instead.
                       Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+                       - host
+                       - region
                        - zone
-                       - topology.kubernetes.io/zone
                     type: object
+                    x-kubernetes-validations:
+                    - message: labels cannot contain 'host', 'region', or 'zone' keys
+                      rule: '!(''host'' in self) && !(''region'' in self) && !(''zone''
+                        in self)'
                   ports:
                     description: Port defines all ports listened by TiDB.
                     properties:
