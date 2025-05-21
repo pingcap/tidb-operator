@@ -8444,11 +8444,13 @@ spec:
                     description: |-
                       Labels defines the server labels of the TiProxy.
                       TiDB Operator will ignore `labels` in TiProxy's config file and use this field instead.
+                      Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+                       - zone
                     type: object
                     x-kubernetes-validations:
-                    - message: labels cannot contain 'host', 'region', or 'zone' keys
-                      rule: '!(''host'' in self) && !(''region'' in self) && !(''zone''
-                        in self)'
+                    - message: labels cannot contain 'zone', it's managed by TiDB
+                        Operator
+                      rule: '!(''zone'' in self)'
                   ports:
                     description: Port defines all ports listened by TiProxy.
                     properties:

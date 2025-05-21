@@ -16,7 +16,7 @@ package tiproxygroup
 
 import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
-	"github.com/pingcap/tidb-operator/pkg/controllers/tidbgroup/tasks"
+	"github.com/pingcap/tidb-operator/pkg/controllers/tiproxygroup/tasks"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"

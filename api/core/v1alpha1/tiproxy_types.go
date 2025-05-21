@@ -47,6 +47,7 @@ type TiProxyGroupList struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:subresource:scale:specpath=.spec.replicas,statuspath=.status.replicas,selectorpath=.status.selector
 // +kubebuilder:resource:categories=tc;group,shortName=pg
 // +kubebuilder:selectablefield:JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
@@ -164,7 +165,9 @@ type TiProxyServer struct {
 
 	// Labels defines the server labels of the TiProxy.
 	// TiDB Operator will ignore `labels` in TiProxy's config file and use this field instead.
-	// +kubebuilder:validation:XValidation:rule="!('host' in self) && !('region' in self) && !('zone' in self)",message="labels cannot contain 'host', 'region', or 'zone' keys"
+	// Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+	//  - zone
+	// +kubebuilder:validation:XValidation:rule="!('zone' in self)",message="labels cannot contain 'zone', it's managed by TiDB Operator"
 	Labels map[string]string `json:"labels,omitempty"`
 }
 

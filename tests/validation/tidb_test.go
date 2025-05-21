@@ -22,21 +22,21 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
-func TestTiProxy(t *testing.T) {
+func TestTiDB(t *testing.T) {
 	cases := []Case{}
-	cases = append(cases, transferTiProxyCases(t, Topology(), "spec", "topology")...)
-	cases = append(cases, transferTiProxyCases(t, ClusterReference(), "spec", "cluster")...)
-	cases = append(cases, transferTiProxyCases(t, tiproxyServerLabels(), "spec", "server", "labels")...)
+	cases = append(cases, transferTiDBCases(t, Topology(), "spec", "topology")...)
+	cases = append(cases, transferTiDBCases(t, ClusterReference(), "spec", "cluster")...)
+	cases = append(cases, transferTiDBCases(t, tidbServerLabels(), "spec", "server", "labels")...)
 
-	Validate(t, "crd/core.pingcap.com_tiproxies.yaml", cases)
+	Validate(t, "crd/core.pingcap.com_tidbs.yaml", cases)
 }
 
-func basicTiProxy() map[string]any {
+func basicTiDB() map[string]any {
 	data := []byte(`
 apiVersion: core.pingcap.com/v1alpha1
-kind: TiProxy
+kind: TiDB
 metadata:
-  name: tiproxy
+  name: tidb
 spec:
   cluster:
     name: test
@@ -51,11 +51,11 @@ spec:
 	return obj
 }
 
-func transferTiProxyCases(t *testing.T, cases []Case, fields ...string) []Case {
+func transferTiDBCases(t *testing.T, cases []Case, fields ...string) []Case {
 	for i := range cases {
 		c := &cases[i]
 
-		current := basicTiProxy()
+		current := basicTiDB()
 		if c.current == nil {
 			unstructured.RemoveNestedField(current, fields...)
 		} else {
@@ -69,7 +69,7 @@ func transferTiProxyCases(t *testing.T, cases []Case, fields ...string) []Case {
 			continue
 		}
 
-		old := basicTiProxy()
+		old := basicTiDB()
 		if c.old == nil {
 			unstructured.RemoveNestedField(old, fields...)
 		} else {
@@ -82,10 +82,26 @@ func transferTiProxyCases(t *testing.T, cases []Case, fields ...string) []Case {
 	return cases
 }
 
-func tiproxyServerLabels() []Case {
-	errMsg := "spec.server.labels: Invalid value: \"object\": labels cannot contain 'zone', it's managed by TiDB Operator"
+func tidbServerLabels() []Case {
+	errMsg := "spec.server.labels: Invalid value: \"object\": labels cannot contain 'host', 'region', or 'zone' keys"
 
 	return []Case{
+		{
+			desc:     "set host label",
+			isCreate: true,
+			current: map[string]any{
+				"host": "foo",
+			},
+			wantErrs: []string{errMsg},
+		},
+		{
+			desc:     "set region label",
+			isCreate: true,
+			current: map[string]any{
+				"region": "foo",
+			},
+			wantErrs: []string{errMsg},
+		},
 		{
 			desc:     "set zone label",
 			isCreate: true,

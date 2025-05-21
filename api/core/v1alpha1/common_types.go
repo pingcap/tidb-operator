@@ -330,6 +330,9 @@ type GroupStatus struct {
 	// It will be same as the `spec.version` only when all instances are upgraded to the desired version.
 	Version string `json:"version,omitempty"`
 
+	// Selector is the label selector for scale subresource.
+	Selector string `json:"selector"`
+
 	// Replicas is the number of Instance created by the controller.
 	Replicas int32 `json:"replicas"`
 

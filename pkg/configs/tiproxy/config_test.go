@@ -110,8 +110,8 @@ func TestOverlay(t *testing.T) {
 			want: &Config{
 				Proxy: Proxy{
 					Address:          "0.0.0.0:6000",
-					AdvertiseAddress: "db-tiproxy.db-tiproxy-peer.ns1.svc",
-					PDAddress:        "basic-pd.ns1:2379",
+					AdvertiseAddress: "db-tiproxy-foo.db-tiproxy-peer.ns1.svc",
+					PDAddress:        "db-pd.ns1:2379",
 				},
 				API: API{
 					Address: "0.0.0.0:3080",
@@ -128,7 +128,7 @@ func TestOverlay(t *testing.T) {
 					},
 				},
 				Status: v1alpha1.ClusterStatus{
-					PD: "https://basic-pd.ns1:2379",
+					PD: "https://db-pd.ns1:2379",
 				},
 			},
 			tiproxy: &v1alpha1.TiProxy{
@@ -143,8 +143,8 @@ func TestOverlay(t *testing.T) {
 			want: &Config{
 				Proxy: Proxy{
 					Address:          "0.0.0.0:6000",
-					AdvertiseAddress: "basic-tiproxy-0.tiproxy-peer.ns1.svc",
-					PDAddress:        "basic-pd.ns1:2379",
+					AdvertiseAddress: "db-tiproxy-foo.tiproxy-peer.ns1.svc",
+					PDAddress:        "db-pd.ns1:2379",
 				},
 				API: API{
 					Address: "0.0.0.0:3080",
@@ -169,7 +169,7 @@ func TestOverlay(t *testing.T) {
 			name: "config with MySQL TLS enabled",
 			cluster: &v1alpha1.Cluster{
 				Status: v1alpha1.ClusterStatus{
-					PD: "http://basic-pd.ns1:2379",
+					PD: "http://db-pd.ns1:2379",
 				},
 			},
 			tiproxy: &v1alpha1.TiProxy{
@@ -193,8 +193,8 @@ func TestOverlay(t *testing.T) {
 			want: &Config{
 				Proxy: Proxy{
 					Address:          "0.0.0.0:6000",
-					AdvertiseAddress: "basic-tiproxy-0.tiproxy-peer.ns1.svc",
-					PDAddress:        "basic-pd.ns1:2379",
+					AdvertiseAddress: "db-tiproxy-foo.tiproxy-peer.ns1.svc",
+					PDAddress:        "db-pd.ns1:2379",
 				},
 				API: API{
 					Address: "0.0.0.0:3080",
@@ -204,6 +204,52 @@ func TestOverlay(t *testing.T) {
 						CA:   "/var/lib/tiproxy-sql-tls/ca.crt",
 						Cert: "/var/lib/tiproxy-sql-tls/tls.crt",
 						Key:  "/var/lib/tiproxy-sql-tls/tls.key",
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "config with backend tls enabled",
+			cluster: &v1alpha1.Cluster{
+				Status: v1alpha1.ClusterStatus{
+					PD: "http://db-pd.ns1:2379",
+				},
+			},
+			tiproxy: &v1alpha1.TiProxy{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns1",
+					Name:      "db-foo",
+				},
+				Spec: v1alpha1.TiProxySpec{
+					Subdomain: "tiproxy-peer",
+					TiProxyTemplateSpec: v1alpha1.TiProxyTemplateSpec{
+						Security: &v1alpha1.TiProxySecurity{
+							TLS: &v1alpha1.TiProxyTLS{
+								Backend: &v1alpha1.TLS{
+									Enabled: true,
+									SkipCA:  true,
+								},
+							},
+						},
+					},
+				},
+			},
+			want: &Config{
+				Proxy: Proxy{
+					Address:          "0.0.0.0:6000",
+					AdvertiseAddress: "db-tiproxy-foo.tiproxy-peer.ns1.svc",
+					PDAddress:        "db-pd.ns1:2379",
+				},
+				API: API{
+					Address: "0.0.0.0:3080",
+				},
+				Security: Security{
+					SQLTLS: TLSConfig{
+						CA:     "/var/lib/tiproxy-tidb-tls/ca.crt",
+						Cert:   "/var/lib/tiproxy-tidb-tls/tls.crt",
+						Key:    "/var/lib/tiproxy-tidb-tls/tls.key",
+						SkipCA: true,
 					},
 				},
 			},

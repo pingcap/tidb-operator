@@ -21,6 +21,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
+	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -70,9 +71,9 @@ func TaskServerLabels(state *ReconcileContext, c client.Client) task.Task {
 			return task.Complete().With("zone labels not found in pd location-label, skip sync server labels")
 		}
 
-		serverLabels := k8s.GetNodeLabelsForKeys(&node, pdCfg.Replication.LocationLabels)
+		serverLabels := maputil.Merge(state.TiDB().Spec.Server.Labels, k8s.GetNodeLabelsForKeys(&node, pdCfg.Replication.LocationLabels))
 		if len(serverLabels) == 0 {
-			return task.Complete().With("no server labels from node %s to sync", nodeName)
+			return task.Complete().With("no server labels to sync")
 		}
 		serverLabels[tidbDCLabel] = serverLabels[zoneLabel]
 

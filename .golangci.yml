@@ -123,6 +123,7 @@ issues:
         - dupl
         - mnd
         - lll
+        - goconst
   exclude-files:
     - ".*/br/.*/_test.go"
     - ".*/br/.*/testutils/.*"

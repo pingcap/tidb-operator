@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tidb
+package tiproxy
 
 import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
-	"github.com/pingcap/tidb-operator/pkg/controllers/tidb/tasks"
+	"github.com/pingcap/tidb-operator/pkg/controllers/tiproxy/tasks"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -24,7 +24,7 @@ import (
 
 func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.TaskReporter) task.TaskRunner {
 	runner := task.NewTaskRunner(reporter,
-		// get tidb
+		// get tiproxy
 		common.TaskContextObject[scope.TiProxy](state, r.Client),
 		// if it's deleted just return
 		task.IfBreak(common.CondInstanceHasBeenDeleted(state)),

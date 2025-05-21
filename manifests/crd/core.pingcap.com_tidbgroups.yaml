@@ -8597,6 +8597,22 @@ spec:
                       server:
                         description: Server defines the server configuration of TiDB.
                         properties:
+                          labels:
+                            additionalProperties:
+                              type: string
+                            description: |-
+                              Labels defines the server labels of the TiDB server.
+                              TiDB Operator will ignore `labels` in TiDB's config file and use this field instead.
+                              Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+                               - host
+                               - region
+                               - zone
+                            type: object
+                            x-kubernetes-validations:
+                            - message: labels cannot contain 'host', 'region', or
+                                'zone' keys
+                              rule: '!(''host'' in self) && !(''region'' in self)
+                                && !(''zone'' in self)'
                           ports:
                             description: Port defines all ports listened by TiDB.
                             properties:
@@ -8831,6 +8847,9 @@ spec:
                 description: Replicas is the number of Instance created by the controller.
                 format: int32
                 type: integer
+              selector:
+                description: Selector is the label selector for scale subresource.
+                type: string
               updateRevision:
                 description: UpdateRevision is the revision of the Controller that
                   should modify the resource.
@@ -8850,6 +8869,7 @@ spec:
             - currentReplicas
             - readyReplicas
             - replicas
+            - selector
             - updatedReplicas
             type: object
         type: object
@@ -8858,4 +8878,8 @@ spec:
     served: true
     storage: true
     subresources:
+      scale:
+        labelSelectorPath: .status.selector
+        specReplicasPath: .spec.replicas
+        statusReplicasPath: .status.replicas
       status: {}
