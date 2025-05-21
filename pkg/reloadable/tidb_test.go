@@ -103,6 +103,26 @@ func TestCheckTiDB(t *testing.T) {
 			},
 			reloadable: false,
 		},
+		{
+			desc: "update the server labels",
+			dbg: &v1alpha1.TiDBGroup{
+				Spec: v1alpha1.TiDBGroupSpec{
+					Template: v1alpha1.TiDBTemplate{
+						Spec: v1alpha1.TiDBTemplateSpec{
+							Server: v1alpha1.TiDBServer{
+								Labels: map[string]string{"foo": "bar"},
+							},
+						},
+					},
+				},
+			},
+			db: &v1alpha1.TiDB{
+				Spec: v1alpha1.TiDBSpec{
+					TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{},
+				},
+			},
+			reloadable: true,
+		},
 	}
 
 	for i := range cases {
