@@ -22,7 +22,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/ptr"
@@ -35,7 +34,6 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/constants"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
-	backuputil "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 )
 
@@ -108,7 +106,7 @@ func (rm *restoreManager) syncRestoreJob(ctx context.Context, restore *v1alpha1.
 		return fmt.Errorf("failed to get first tikv group: %w", err)
 	}
 
-	err = backuputil.ValidateRestore(restore, tikvGroup.Spec.Template.Spec.Version)
+	err = util.ValidateRestore(restore, tikvGroup.Spec.Template.Spec.Version)
 	if err != nil {
 		_ = rm.statusUpdater.Update(ctx, restore, &metav1.Condition{
 			Type:    string(v1alpha1.RestoreInvalid),
@@ -150,7 +148,7 @@ func (rm *restoreManager) syncRestoreJob(ctx context.Context, restore *v1alpha1.
 	}
 
 	logger.Info("restore creating job", "namespace", ns, "restoreJobName", restoreJobName)
-	if err := rm.cli.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
+	if err := rm.cli.Create(ctx, job); err != nil && !errors.IsAlreadyExists(err) {
 		errMsg := fmt.Errorf("create restore %s/%s job %s failed, err: %w", ns, name, restoreJobName, err)
 		_ = rm.statusUpdater.Update(ctx, restore, &metav1.Condition{
 			Type:    string(v1alpha1.RestoreRetryFailed),
@@ -177,6 +175,7 @@ func (rm *restoreManager) syncRestoreJob(ctx context.Context, restore *v1alpha1.
 	return nil
 }
 
+// nolint: gocyclo // optimize in the future
 func (rm *restoreManager) makeRestoreJob(ctx context.Context, restore *v1alpha1.Restore) (*batchv1.Job, string, error) {
 	ns := restore.GetNamespace()
 	name := restore.GetName()
@@ -203,7 +202,7 @@ func (rm *restoreManager) makeRestoreJob(ctx context.Context, restore *v1alpha1.
 		reason  string
 	)
 
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ctx, ns, restore.Spec.UseKMS, restore.Spec.StorageProvider, rm.cli)
+	storageEnv, reason, err := util.GenerateStorageCertEnv(ctx, ns, restore.Spec.UseKMS, restore.Spec.StorageProvider, rm.cli)
 	if err != nil {
 		return nil, reason, fmt.Errorf("restore %s/%s, %w", ns, name, err)
 	}
@@ -240,8 +239,11 @@ func (rm *restoreManager) makeRestoreJob(ctx context.Context, restore *v1alpha1.
 	jobAnnotations := restore.Annotations
 	podAnnotations := jobAnnotations
 
-	volumeMounts := []corev1.VolumeMount{}
-	volumes := []corev1.Volume{}
+	volumes, volumeMounts, err := util.GenerateStorageVolumesAndMounts(ctx, ns, restore.Spec.StorageProvider)
+	if err != nil {
+		return nil, "", fmt.Errorf("generate volumes and mounts for clean job of restore %s/%s failed, %w", ns, name, err)
+	}
+
 	if coreutil.IsTLSClusterEnabled(cluster) {
 		args = append(args, "--cluster-tls=true")
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
