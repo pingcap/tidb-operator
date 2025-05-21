@@ -1418,3 +1418,81 @@ func TestTaskStatusRevisionAndReplicas(t *testing.T) {
 		})
 	}
 }
+
+func TestTaskGroupStatusSelector(t *testing.T) {
+	cases := []struct {
+		desc string
+		obj  *v1alpha1.PDGroup
+
+		expectedStatusChanged bool
+		expectedStatus        task.Status
+		expectedObj           *v1alpha1.PDGroup
+	}{
+		{
+			desc: "no selector",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Cluster.Name = "cc"
+				return obj
+			}),
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Selector = "pingcap.com/cluster=cc,pingcap.com/component=pd,pingcap.com/group=aaa,pingcap.com/managed-by=tidb-operator"
+				return obj
+			}),
+		},
+		{
+			desc: "has selector",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Cluster.Name = "cc"
+				obj.Status.Selector = "pingcap.com/cluster=cc,pingcap.com/component=pd,pingcap.com/group=aaa,pingcap.com/managed-by=tidb-operator"
+				return obj
+			}),
+
+			expectedStatusChanged: false,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Cluster.Name = "cc"
+				obj.Status.Selector = "pingcap.com/cluster=cc,pingcap.com/component=pd,pingcap.com/group=aaa,pingcap.com/managed-by=tidb-operator"
+				return obj
+			}),
+		},
+		{
+			desc: "selector will be sorted",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Cluster.Name = "cc"
+				obj.Status.Selector = "pingcap.com/component=pd,pingcap.com/group=aaa,pingcap.com/managed-by=tidb-operator,pingcap.com/cluster=cc"
+				return obj
+			}),
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Cluster.Name = "cc"
+				obj.Status.Selector = "pingcap.com/cluster=cc,pingcap.com/component=pd,pingcap.com/group=aaa,pingcap.com/managed-by=tidb-operator"
+				return obj
+			}),
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			ctrl := gomock.NewController(tt)
+			state := NewMockGroupStatusSelectorUpdater[*v1alpha1.PDGroup](ctrl)
+			state.EXPECT().Object().Return(c.obj)
+			if c.expectedStatusChanged {
+				state.EXPECT().SetStatusChanged()
+			}
+
+			ctx := context.Background()
+			res, done := task.RunTask(ctx, TaskGroupStatusSelector[scope.PDGroup](state))
+			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
+			assert.False(tt, done, c.desc)
+			assert.Equal(tt, c.expectedObj.Status, c.obj.Status, c.desc)
+		})
+	}
+}

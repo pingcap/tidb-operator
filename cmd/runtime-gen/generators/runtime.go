@@ -347,6 +347,14 @@ func (g *$.|pub$) StatusRevision() (update, current string, collisionCount *int3
 		g.Status.CollisionCount
 }
 
+func (g *$.|pub$) SetStatusSelector(l string) {
+	g.Status.Selector = l
+}
+
+func (g *$.|pub$) StatusSelector() string {
+	return g.Status.Selector
+}
+
 func (g *$.|pub$) TemplateLabels() map[string]string {
 	return g.Spec.Template.Labels
 }

@@ -282,6 +282,14 @@ func (g *SchedulerGroup) StatusRevision() (update, current string, collisionCoun
 		g.Status.CollisionCount
 }
 
+func (g *SchedulerGroup) SetStatusSelector(l string) {
+	g.Status.Selector = l
+}
+
+func (g *SchedulerGroup) StatusSelector() string {
+	return g.Status.Selector
+}
+
 func (g *SchedulerGroup) TemplateLabels() map[string]string {
 	return g.Spec.Template.Labels
 }

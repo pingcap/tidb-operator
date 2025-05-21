@@ -27,10 +27,15 @@ type Group interface {
 
 	SetStatusVersion(version string)
 	StatusVersion() string
+
 	SetStatusReplicas(replicas, ready, update, current int32)
 	StatusReplicas() (replicas, ready, update, current int32)
+
 	SetStatusRevision(update, current string, collisionCount *int32)
 	StatusRevision() (update, current string, collisionCount *int32)
+
+	SetStatusSelector(l string)
+	StatusSelector() string
 
 	TemplateLabels() map[string]string
 	TemplateAnnotations() map[string]string
