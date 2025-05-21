@@ -28,7 +28,7 @@ var shortLabelNameToK8sLabel = map[string][]string{
 }
 
 // GetNodeLabelsForKeys gets the labels of the node for the specified keys.
-// This function is used to get the lables for setting store & server labels.
+// This function is used to get the labels for setting store & server labels.
 func GetNodeLabelsForKeys(node *corev1.Node, keys []string) map[string]string {
 	labels := make(map[string]string)
 	for _, key := range keys {

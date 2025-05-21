@@ -48,6 +48,7 @@ func TestValidate(t *testing.T) {
 			SlowQueryFile: "/path/to/slow-query-file",
 		},
 		InitializeSQLFile: "/path/to/initialize-sql-file",
+		ServerLabels:      map[string]string{"foo": "bar"},
 	}
 
 	err = cfgInvalid.Validate(true)
@@ -65,6 +66,7 @@ func TestValidate(t *testing.T) {
 	assert.Contains(t, err.Error(), "security.auth-token-jwks")
 	assert.Contains(t, err.Error(), "log.slow-query-file")
 	assert.Contains(t, err.Error(), "initialize-sql-file")
+	assert.Contains(t, err.Error(), "labels")
 }
 
 func TestOverlay(t *testing.T) {

@@ -97,6 +97,9 @@ func convertTiDBTemplate(tmpl *v1alpha1.TiDBTemplate) *v1alpha1.TiDBTemplate {
 		newTmpl.Spec.SlowLog.Image = nil
 	}
 
+	// server labels can be updated dynamically
+	newTmpl.Spec.Server.Labels = map[string]string{}
+
 	newTmpl.Spec.Volumes = convertVolumes(newTmpl.Spec.Volumes)
 	newTmpl.Spec.Overlay = convertOverlay(newTmpl.Spec.Overlay)
 
