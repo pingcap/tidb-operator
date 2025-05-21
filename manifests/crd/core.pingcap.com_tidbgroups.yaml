@@ -98,7 +98,7 @@ spec:
                       properties:
                         topologies:
                           description: All instances of a group will evenly spread
-                            in differnet topologies
+                            in different topologies
                           items:
                             properties:
                               topology:
@@ -8586,6 +8586,10 @@ spec:
                                     4. Set Enabled to `true`.
                                 properties:
                                   enabled:
+                                    type: boolean
+                                  skipCA:
+                                    description: SkipCA is used to skip the CA verification
+                                      for the TLS connection.
                                     type: boolean
                                 type: object
                             type: object

@@ -155,6 +155,11 @@ type TiProxySecurity struct {
 type TiProxyServer struct {
 	// Port defines all ports listened by TiProxy.
 	Ports TiProxyPorts `json:"ports,omitempty"`
+
+	// Labels defines the server labels of the TiProxy.
+	// TiDB Operator will ignore `labels` in TiProxy's config file and use this field instead.
+	// +kubebuilder:validation:XValidation:rule="!('host' in self) && !('region' in self) && !('zone' in self)",message="labels cannot contain 'host', 'region', or 'zone' keys"
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 type TiProxyPorts struct {
@@ -178,9 +183,9 @@ type TiProxyProb struct {
 }
 
 type TiProxyTLS struct {
-	// When enabled, TiProxy will accept TLS encrypted connections from MySQL clients.
+	// MySQL defines the TLS configuration for connections between TiProxy and MySQL clients.
 	// The steps to enable this feature:
-	//   1. Generate a TiProxy server-side certificate and a client-side certificate for the TiProxy cluster.
+	//   1. Generate a TiProxy server-side certificate for the TiProxy cluster.
 	//      There are multiple ways to generate certificates:
 	//        - user-provided certificates: https://docs.pingcap.com/TiProxy/stable/generate-self-signed-certificates
 	//        - use the K8s built-in certificate signing system signed certificates: https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/
@@ -188,13 +193,11 @@ type TiProxyTLS struct {
 	//   2. Create a K8s Secret object which contains the TiProxy server-side certificate created above.
 	//      The name of this Secret must be: <groupName>-tiproxy-server-secret.
 	//        kubectl create secret generic <groupName>-tiproxy-server-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
-	//   3. Create a K8s Secret object which contains the TiProxy client-side certificate created above which will be used by TiProxy Operator.
-	//      The name of this Secret must be: <groupName>-tiproxy-client-secret.
-	//        kubectl create secret generic <groupName>-tiproxy-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
-	//   4. Set Enabled to `true`.
+	//   3. Set Enabled to `true`.
 	MySQL *TLS `json:"mysql,omitempty"`
 
-	// Backend defines the TLS configuration for connections between TiProxy and TiDB.
+	// Backend defines the TLS configuration for connections between TiProxy and TiDB servers.
+	// To enable this feature, the corresponding TiDB server must be configured with TLS enabled.
 	Backend *TLS `json:"backend,omitempty"`
 }
 
@@ -208,13 +211,13 @@ type TiProxySpec struct {
 	Cluster ClusterReference `json:"cluster"`
 
 	// Topology defines the topology domain of this TiProxy instance.
-	// It will be translated into a node affnity config.
+	// It will be translated into a node affinity config.
 	// Topology cannot be changed.
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="topology is immutable"
 	Topology Topology `json:"topology,omitempty"`
 
-	// Subdomain means the subdomain of the exported pd dns.
-	// A same pd cluster will use a same subdomain
+	// Subdomain means the subdomain of the exported tiproxy dns.
+	// A same tiproxy cluster will use a same subdomain
 	Subdomain string `json:"subdomain"`
 
 	// TiProxyTemplateSpec embeded some fields managed by TiProxyGroup.

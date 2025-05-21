@@ -99,8 +99,15 @@ const (
 	DirPathClusterTLSTiCDC     = "/var/lib/ticdc-tls"
 	DirPathClusterTLSTSO       = "/var/lib/tso-tls"
 	DirPathClusterTLSScheduler = "/var/lib/scheduler-tls"
-	// Dir path of tls file for tidb and mysql client
+	DirPathClusterTLSTiProxy   = "/var/lib/tiproxy-tls"
+	// DirPathMySQLTLS is the dir path of tls file for tidb and mysql client
 	DirPathMySQLTLS = "/var/lib/tidb-sql-tls"
+	// DirPathTiProxySQLTLS is the dir path of tls file for tiproxy and mysql client
+	DirPathTiProxySQLTLS = "/var/lib/tiproxy-sql-tls"
+	// DirPathTiProxyHTTPTLS is the dir path of tls file for tiproxy http server
+	DirPathTiProxyHTTPTLS = "/var/lib/tiproxy-http-tls"
+	// DirPathTiProxyTiDBTLS is the dir path of tls file for tiproxy and tidb
+	DirPathTiProxyTiDBTLS = "/var/lib/tiproxy-tidb-tls"
 )
 
 // All file names
