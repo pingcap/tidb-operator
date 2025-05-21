@@ -175,6 +175,7 @@ func (rm *restoreManager) syncRestoreJob(ctx context.Context, restore *v1alpha1.
 	return nil
 }
 
+// nolint: gocyclo // optimize in the future
 func (rm *restoreManager) makeRestoreJob(ctx context.Context, restore *v1alpha1.Restore) (*batchv1.Job, string, error) {
 	ns := restore.GetNamespace()
 	name := restore.GetName()
@@ -240,7 +241,7 @@ func (rm *restoreManager) makeRestoreJob(ctx context.Context, restore *v1alpha1.
 
 	volumes, volumeMounts, err := util.GenerateStorageVolumesAndMounts(ctx, ns, restore.Spec.StorageProvider)
 	if err != nil {
-		return nil, "CannotGenerateVolumes", fmt.Errorf("generate volumes and mounts for clean job of restore %s/%s failed, %w", ns, name, err)
+		return nil, "", fmt.Errorf("generate volumes and mounts for clean job of restore %s/%s failed, %w", ns, name, err)
 	}
 
 	if coreutil.IsTLSClusterEnabled(cluster) {

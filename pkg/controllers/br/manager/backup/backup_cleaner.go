@@ -266,7 +266,7 @@ func (bc *backupCleaner) makeCleanJob(ctx context.Context, backup *v1alpha1.Back
 
 	volumes, volumeMounts, err := util.GenerateStorageVolumesAndMounts(ctx, ns, backup.Spec.StorageProvider)
 	if err != nil {
-		return nil, "CannotGenerateVolumes", fmt.Errorf("generate volumes and mounts for clean job of backup %s/%s failed, %w", ns, name, err)
+		return nil, "", fmt.Errorf("generate volumes and mounts for clean job of backup %s/%s failed, %w", ns, name, err)
 	}
 
 	// mount volumes if specified
@@ -403,7 +403,7 @@ func (bc *backupCleaner) makeStopLogBackupJob(ctx context.Context, backup *v1alp
 
 	volumes, volumeMounts, err := util.GenerateStorageVolumesAndMounts(ctx, ns, backup.Spec.StorageProvider)
 	if err != nil {
-		return nil, "CannotGenerateVolumes", fmt.Errorf("generate volumes and mounts for job of stop log backup %s/%s failed, %w", ns, name, err)
+		return nil, "", fmt.Errorf("generate volumes and mounts for job of stop log backup %s/%s failed, %w", ns, name, err)
 	}
 
 	if coreutil.IsTLSClusterEnabled(cluster) {

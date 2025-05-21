@@ -441,7 +441,7 @@ func (bm *backupManager) makeBRBackupJob(ctx context.Context, backup *v1alpha1.B
 
 	volumes, volumeMounts, err := util.GenerateStorageVolumesAndMounts(ctx, ns, backup.Spec.StorageProvider)
 	if err != nil {
-		return nil, "CannotGenerateVolumes", fmt.Errorf("generate volumes and mounts for job of backup %s/%s failed, %w", ns, name, err)
+		return nil, "", fmt.Errorf("generate volumes and mounts for job of backup %s/%s failed, %w", ns, name, err)
 	}
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
