@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate ${GOBIN}/mockgen -write_command_comment=false -copyright_file ${BOILERPLATE_FILE} -destination mock_generated.go -package=common ${GO_MODULE}/pkg/controllers/common StatusPersister,InstanceCondSuspendedUpdater,InstanceCondReadyUpdater,InstanceCondSyncedUpdater,GroupCondSuspendedUpdater,GroupCondReadyUpdater,GroupCondSyncedUpdater,StatusRevisionAndReplicasUpdater
+//go:generate ${GOBIN}/mockgen -write_command_comment=false -copyright_file ${BOILERPLATE_FILE} -destination mock_generated.go -package=common ${GO_MODULE}/pkg/controllers/common StatusPersister,InstanceCondSuspendedUpdater,InstanceCondReadyUpdater,InstanceCondSyncedUpdater,GroupCondSuspendedUpdater,GroupCondReadyUpdater,GroupCondSyncedUpdater,GroupStatusSelectorUpdater,StatusRevisionAndReplicasUpdater
 package common
 
 import (
@@ -371,6 +371,33 @@ func TaskGroupConditionSynced[
 		}
 
 		return task.Complete().With("sync condition is not changed")
+	})
+}
+
+type GroupStatusSelectorUpdater[
+	G client.Object,
+] interface {
+	StatusUpdater
+
+	Object() G
+}
+
+func TaskGroupStatusSelector[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](state GroupStatusSelectorUpdater[F]) task.Task {
+	return task.NameTaskFunc("GroupStatusSelector", func(context.Context) task.Result {
+		g := state.Object()
+
+		needUpdate := coreutil.SetStatusSelector[S](g)
+
+		if needUpdate {
+			state.SetStatusChanged()
+			return task.Complete().With("selector is changed")
+		}
+
+		return task.Complete().With("selector is not changed")
 	})
 }
 

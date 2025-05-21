@@ -282,6 +282,14 @@ func (g *TiProxyGroup) StatusRevision() (update, current string, collisionCount 
 		g.Status.CollisionCount
 }
 
+func (g *TiProxyGroup) SetStatusSelector(l string) {
+	g.Status.Selector = l
+}
+
+func (g *TiProxyGroup) StatusSelector() string {
+	return g.Status.Selector
+}
+
 func (g *TiProxyGroup) TemplateLabels() map[string]string {
 	return g.Spec.Template.Labels
 }

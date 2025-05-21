@@ -282,6 +282,14 @@ func (g *TiCDCGroup) StatusRevision() (update, current string, collisionCount *i
 		g.Status.CollisionCount
 }
 
+func (g *TiCDCGroup) SetStatusSelector(l string) {
+	g.Status.Selector = l
+}
+
+func (g *TiCDCGroup) StatusSelector() string {
+	return g.Status.Selector
+}
+
 func (g *TiCDCGroup) TemplateLabels() map[string]string {
 	return g.Spec.Template.Labels
 }

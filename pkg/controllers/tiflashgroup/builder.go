@@ -58,6 +58,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskRevision[runtime.TiFlashGroupTuple](state, r.Client),
 		tasks.TaskService(state, r.Client),
 		tasks.TaskUpdater(state, r.Client),
+		common.TaskGroupStatusSelector[scope.TiFlashGroup](state),
 		common.TaskGroupConditionSuspended[scope.TiFlashGroup](state),
 		common.TaskGroupConditionReady[scope.TiFlashGroup](state),
 		common.TaskGroupConditionSynced[scope.TiFlashGroup](state),

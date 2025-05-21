@@ -8843,6 +8843,9 @@ spec:
                 description: Replicas is the number of Instance created by the controller.
                 format: int32
                 type: integer
+              selector:
+                description: Selector is the label selector for scale subresource.
+                type: string
               updateRevision:
                 description: UpdateRevision is the revision of the Controller that
                   should modify the resource.
@@ -8862,6 +8865,7 @@ spec:
             - currentReplicas
             - readyReplicas
             - replicas
+            - selector
             - updatedReplicas
             type: object
         type: object
@@ -8870,4 +8874,8 @@ spec:
     served: true
     storage: true
     subresources:
+      scale:
+        labelSelectorPath: .status.selector
+        specReplicasPath: .spec.replicas
+        statusReplicasPath: .status.replicas
       status: {}
