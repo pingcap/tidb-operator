@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/url"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 	"unsafe"
@@ -163,6 +164,7 @@ func generateGcsCertEnvVar(gcs *brv1alpha1.GcsStorageProvider) ([]corev1.EnvVar,
 		},
 	}
 	if gcs.SecretName != "" {
+		// NOTE: it may not be used actually, just keep the compatibility of tidb operator v1
 		envVars = append(envVars, corev1.EnvVar{
 			Name: "GCS_SERVICE_ACCOUNT_JSON_KEY",
 			ValueFrom: &corev1.EnvVarSource{
@@ -171,6 +173,11 @@ func generateGcsCertEnvVar(gcs *brv1alpha1.GcsStorageProvider) ([]corev1.EnvVar,
 					Key:                  constants.GcsCredentialsKey,
 				},
 			},
+		})
+		// mount credentials to /gcs and specify the default application credentials env
+		envVars = append(envVars, corev1.EnvVar{
+			Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+			Value: filepath.Join(constants.GcsCredentialsMountPath, constants.GcsCredentialsKey),
 		})
 	}
 	return envVars, "", nil
@@ -292,7 +299,6 @@ func GenerateStorageCertEnv(ctx context.Context, ns string, useKMS bool, provide
 		}
 
 		certEnv, reason, err = generateGcsCertEnvVar(provider.Gcs)
-
 		if err != nil {
 			return certEnv, reason, err
 		}
@@ -316,7 +322,6 @@ func GenerateStorageCertEnv(ctx context.Context, ns string, useKMS bool, provide
 		}
 		useSasToken := provider.Azblob.SasToken != ""
 		certEnv, reason, err = generateAzblobCertEnvVar(provider.Azblob, secret, useSasToken)
-
 		if err != nil {
 			return certEnv, reason, err
 		}
@@ -327,6 +332,42 @@ func GenerateStorageCertEnv(ctx context.Context, ns string, useKMS bool, provide
 		return certEnv, ReasonUnsupportedStorageType, err
 	}
 	return certEnv, reason, nil
+}
+
+func GenerateStorageVolumesAndMounts(ctx context.Context, ns string, provider brv1alpha1.StorageProvider) ([]corev1.Volume, []corev1.VolumeMount, error) {
+	var vols []corev1.Volume
+	var mounts []corev1.VolumeMount
+	storageType := GetStorageType(provider)
+
+	switch storageType {
+	case brv1alpha1.BackupStorageTypeS3:
+	case brv1alpha1.BackupStorageTypeGcs:
+		gcsSecretName := provider.Gcs.SecretName
+		if gcsSecretName == "" {
+			return nil, nil, nil
+		}
+
+		volName := constants.GcsCredentialsKey
+
+		vols = append(vols, corev1.Volume{
+			Name: volName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: gcsSecretName,
+				},
+			},
+		})
+		mounts = append(mounts, corev1.VolumeMount{
+			Name:      volName,
+			MountPath: constants.GcsCredentialsMountPath,
+		})
+
+		return vols, mounts, nil
+	case brv1alpha1.BackupStorageTypeAzblob:
+	case brv1alpha1.BackupStorageTypeLocal:
+	default:
+	}
+	return vols, mounts, nil
 }
 
 func getPasswordKey(useKMS bool) string {
