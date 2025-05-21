@@ -8646,8 +8646,6 @@ spec:
                             description: |-
                               SleepSeconds is the seconds to sleep before sending the SIGTERM to the TiProxy container.
                               It's useful to achieve a graceful shutdown of the TiProxy container.
-                              Operator will calculate the TiProxy pod's `terminationGracePeriod` based on this field:
-                              `terminationGracePeriod` = `preStopHookSleepSeconds` + 15(gracefulCloseConnectionsTimeout) + 5(buffer)
                               Default is 10 seconds.
                             format: int32
                             type: integer
@@ -8663,7 +8661,7 @@ spec:
                               type:
                                 description: |-
                                   "tcp" will use TCP socket to connect component port.
-                                  "command" will probe the status api of TiProxy.
+                                  "command" will probe the HTTP API of TiProxy.
                                 enum:
                                 - tcp
                                 - command
@@ -8744,6 +8742,15 @@ spec:
                           ports:
                             description: Port defines all ports listened by TiProxy.
                             properties:
+                              api:
+                                description: API defines port for TiProxy API service.
+                                properties:
+                                  port:
+                                    format: int32
+                                    type: integer
+                                required:
+                                - port
+                                type: object
                               client:
                                 description: Client defines port for TiProxy's SQL
                                   service.
@@ -8754,9 +8761,9 @@ spec:
                                 required:
                                 - port
                                 type: object
-                              status:
-                                description: Status defines port for TiProxy status
-                                  API.
+                              peer:
+                                description: Peer defines port for TiProxy's peer
+                                  service.
                                 properties:
                                   port:
                                     format: int32

@@ -19,10 +19,18 @@ import (
 )
 
 const (
-	TiProxyPortNameClient    = "mysql-client"
-	TiProxyPortNameStatus    = "status"
+	TiProxyPortNameClient = "mysql-client"
+	TiProxyPortNameAPI    = "api"
+	TiProxyPortNamePeer   = "peer"
+
 	DefaultTiProxyPortClient = 6000
-	DefaultTiProxyPortStatus = 3080
+	DefaultTiProxyPortAPI    = 3080
+	DefaultTiProxyPortPeer   = 3081
+)
+
+const (
+	TiProxyGroupCondAvailable   = "Available"
+	TiProxyGroupAvailableReason = "TiProxyGroupAvailable"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -141,8 +149,6 @@ type TiProxyTemplateSpec struct {
 type TiProxyPreStop struct {
 	// SleepSeconds is the seconds to sleep before sending the SIGTERM to the TiProxy container.
 	// It's useful to achieve a graceful shutdown of the TiProxy container.
-	// Operator will calculate the TiProxy pod's `terminationGracePeriod` based on this field:
-	// `terminationGracePeriod` = `preStopHookSleepSeconds` + 15(gracefulCloseConnectionsTimeout) + 5(buffer)
 	// Default is 10 seconds.
 	SleepSeconds int32 `json:"sleepSeconds,omitempty"`
 }
@@ -165,8 +171,10 @@ type TiProxyServer struct {
 type TiProxyPorts struct {
 	// Client defines port for TiProxy's SQL service.
 	Client *Port `json:"client,omitempty"`
-	// Status defines port for TiProxy status API.
-	Status *Port `json:"status,omitempty"`
+	// API defines port for TiProxy API service.
+	API *Port `json:"api,omitempty"`
+	// Peer defines port for TiProxy's peer service.
+	Peer *Port `json:"peer,omitempty"`
 }
 
 type TiProxyProbes struct {
@@ -177,7 +185,7 @@ type TiProxyProbes struct {
 
 type TiProxyProb struct {
 	// "tcp" will use TCP socket to connect component port.
-	// "command" will probe the status api of TiProxy.
+	// "command" will probe the HTTP API of TiProxy.
 	// +kubebuilder:validation:Enum=tcp;command
 	Type *string `json:"type,omitempty"`
 }

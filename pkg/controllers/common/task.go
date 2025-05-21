@@ -127,6 +127,11 @@ func TaskContextTiCDCSlice(state TiCDCSliceStateInitializer, c client.Client) ta
 	return taskContextResourceSlice("TiCDCSlice", w, &v1alpha1.TiCDCList{}, c)
 }
 
+func TaskContextTiProxySlice(state TiProxySliceStateInitializer, c client.Client) task.Task {
+	w := state.TiProxySliceInitializer()
+	return taskContextResourceSlice("TiProxySlice", w, &v1alpha1.TiProxyList{}, c)
+}
+
 func TaskSuspendPod(state PodState, c client.Client) task.Task {
 	return task.NameTaskFunc("SuspendPod", func(ctx context.Context) task.Result {
 		pod := state.Pod()

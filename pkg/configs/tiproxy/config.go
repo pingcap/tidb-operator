@@ -76,7 +76,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) e
 	c.Proxy.Address = fmt.Sprintf("0.0.0.0:%d", coreutil.TiProxyClientPort(tiproxy))
 	c.Proxy.AdvertiseAddress = getAdvertiseAddress(tiproxy)
 	c.Proxy.PDAddress = stringutil.RemoveHTTPPrefix(cluster.Status.PD)
-	c.API.Address = fmt.Sprintf("0.0.0.0:%d", coreutil.TiProxyStatusPort(tiproxy))
+	c.API.Address = fmt.Sprintf("0.0.0.0:%d", coreutil.TiProxyAPIPort(tiproxy))
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
 		c.Security.ClusterTLS.CA = path.Join(v1alpha1.DirPathClusterTLSTiProxy, corev1.ServiceAccountRootCAKey)
@@ -91,9 +91,9 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) e
 	}
 
 	if coreutil.IsTiProxyMySQLTLSEnabled(tiproxy) {
-		c.Security.ServerSQLTLS.CA = path.Join(v1alpha1.DirPathTiProxySQLTLS, corev1.ServiceAccountRootCAKey)
-		c.Security.ServerSQLTLS.Cert = path.Join(v1alpha1.DirPathTiProxySQLTLS, corev1.TLSCertKey)
-		c.Security.ServerSQLTLS.Key = path.Join(v1alpha1.DirPathTiProxySQLTLS, corev1.TLSPrivateKeyKey)
+		c.Security.ServerSQLTLS.CA = path.Join(v1alpha1.DirPathTiProxyMySQLTLS, corev1.ServiceAccountRootCAKey)
+		c.Security.ServerSQLTLS.Cert = path.Join(v1alpha1.DirPathTiProxyMySQLTLS, corev1.TLSCertKey)
+		c.Security.ServerSQLTLS.Key = path.Join(v1alpha1.DirPathTiProxyMySQLTLS, corev1.TLSPrivateKeyKey)
 		c.Security.ServerSQLTLS.SkipCA = coreutil.IsTiProxyMySQLTLSSkipCA(tiproxy)
 	}
 

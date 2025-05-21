@@ -23,11 +23,18 @@ func TiProxyGroupClientPort(proxyg *v1alpha1.TiProxyGroup) int32 {
 	return v1alpha1.DefaultTiProxyPortClient
 }
 
-func TiProxyGroupStatusPort(proxyg *v1alpha1.TiProxyGroup) int32 {
-	if proxyg.Spec.Template.Spec.Server.Ports.Status != nil {
-		return proxyg.Spec.Template.Spec.Server.Ports.Status.Port
+func TiProxyGroupAPIPort(proxyg *v1alpha1.TiProxyGroup) int32 {
+	if proxyg.Spec.Template.Spec.Server.Ports.API != nil {
+		return proxyg.Spec.Template.Spec.Server.Ports.API.Port
 	}
-	return v1alpha1.DefaultTiProxyPortStatus
+	return v1alpha1.DefaultTiProxyPortAPI
+}
+
+func TiProxyGroupPeerPort(proxyg *v1alpha1.TiProxyGroup) int32 {
+	if proxyg.Spec.Template.Spec.Server.Ports.Peer != nil {
+		return proxyg.Spec.Template.Spec.Server.Ports.Peer.Port
+	}
+	return v1alpha1.DefaultTiProxyPortPeer
 }
 
 func TiProxyClientPort(tiproxy *v1alpha1.TiProxy) int32 {
@@ -37,17 +44,29 @@ func TiProxyClientPort(tiproxy *v1alpha1.TiProxy) int32 {
 	return v1alpha1.DefaultTiProxyPortClient
 }
 
-func TiProxyStatusPort(tiproxy *v1alpha1.TiProxy) int32 {
-	if tiproxy.Spec.Server.Ports.Status != nil {
-		return tiproxy.Spec.Server.Ports.Status.Port
+func TiProxyAPIPort(tiproxy *v1alpha1.TiProxy) int32 {
+	if tiproxy.Spec.Server.Ports.API != nil {
+		return tiproxy.Spec.Server.Ports.API.Port
 	}
-	return v1alpha1.DefaultTiProxyPortStatus
+	return v1alpha1.DefaultTiProxyPortAPI
+}
+
+func TiProxyPeerPort(tiproxy *v1alpha1.TiProxy) int32 {
+	if tiproxy.Spec.Server.Ports.Peer != nil {
+		return tiproxy.Spec.Server.Ports.Peer.Port
+	}
+	return v1alpha1.DefaultTiProxyPortPeer
 }
 
 // TiProxyMySQLTLSSecretName returns the secret name used in TiProxy server for the TLS between TiProxy server and MySQL client.
 func TiProxyMySQLTLSSecretName(tiproxy *v1alpha1.TiProxy) string {
 	prefix, _ := NamePrefixAndSuffix(tiproxy)
 	return prefix + "-tiproxy-server-secret"
+}
+
+func TiProxyTiDBTLSSecretName(tiproxy *v1alpha1.TiProxy) string {
+	prefix, _ := NamePrefixAndSuffix(tiproxy)
+	return prefix + "-tiproxy-tidb-secret"
 }
 
 // IsTiProxyMySQLTLSEnabled returns whether the TLS between TiProxy server and MySQL client is enabled.

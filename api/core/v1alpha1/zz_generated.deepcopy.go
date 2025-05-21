@@ -3132,8 +3132,13 @@ func (in *TiProxyPorts) DeepCopyInto(out *TiProxyPorts) {
 		*out = new(Port)
 		**out = **in
 	}
-	if in.Status != nil {
-		in, out := &in.Status, &out.Status
+	if in.API != nil {
+		in, out := &in.API, &out.API
+		*out = new(Port)
+		**out = **in
+	}
+	if in.Peer != nil {
+		in, out := &in.Peer, &out.Peer
 		*out = new(Port)
 		**out = **in
 	}
