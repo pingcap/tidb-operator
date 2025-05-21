@@ -30,6 +30,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// get cluster
 		common.TaskContextCluster[scope.TSO](state, r.Client),
+		// return if cluster's status is not updated
+		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
 		common.TaskFeatureGates(state),
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),
