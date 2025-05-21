@@ -282,6 +282,14 @@ func (g *PDGroup) StatusRevision() (update, current string, collisionCount *int3
 		g.Status.CollisionCount
 }
 
+func (g *PDGroup) SetStatusSelector(l string) {
+	g.Status.Selector = l
+}
+
+func (g *PDGroup) StatusSelector() string {
+	return g.Status.Selector
+}
+
 func (g *PDGroup) TemplateLabels() map[string]string {
 	return g.Spec.Template.Labels
 }
