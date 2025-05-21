@@ -39,6 +39,9 @@ const (
 	// GcsCredentialsKey represents the gcs service account credentials json key in related secret
 	GcsCredentialsKey = "credentials"
 
+	// GcsCredentialsMountPath represents the mount path of credentials
+	GcsCredentialsMountPath = "/gcs"
+
 	// AzblobAccountName represents the Azure Storage Account using shared key credential in related secret
 	AzblobAccountName = "AZURE_STORAGE_ACCOUNT"
 

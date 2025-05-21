@@ -30,14 +30,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/constants"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
-	backuputil "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
 )
 
 var _ BackupCleaner = &backupCleaner{}
@@ -252,7 +250,7 @@ func (bc *backupCleaner) makeCleanJob(ctx context.Context, backup *v1alpha1.Back
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 
-	envVars, reason, err := backuputil.GenerateStorageCertEnv(ctx, ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bc.cli)
+	envVars, reason, err := util.GenerateStorageCertEnv(ctx, ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bc.cli)
 	if err != nil {
 		return nil, reason, err
 	}
@@ -266,8 +264,10 @@ func (bc *backupCleaner) makeCleanJob(ctx context.Context, backup *v1alpha1.Back
 		fmt.Sprintf("--backupName=%s", name),
 	}
 
-	var volumes []corev1.Volume
-	var volumeMounts []corev1.VolumeMount
+	volumes, volumeMounts, err := util.GenerateStorageVolumesAndMounts(ctx, ns, backup.Spec.StorageProvider)
+	if err != nil {
+		return nil, "", fmt.Errorf("generate volumes and mounts for clean job of backup %s/%s failed, %w", ns, name, err)
+	}
 
 	// mount volumes if specified
 	if backup.Spec.Local != nil {
@@ -329,7 +329,7 @@ func (bc *backupCleaner) makeCleanJob(ctx context.Context, backup *v1alpha1.Back
 			Labels:      jobLabels,
 			Annotations: backup.Annotations,
 			OwnerReferences: []metav1.OwnerReference{
-				brv1alpha1.GetBackupOwnerRef(backup),
+				v1alpha1.GetBackupOwnerRef(backup),
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -368,7 +368,7 @@ func (bc *backupCleaner) makeStopLogBackupJob(ctx context.Context, backup *v1alp
 		envVars []corev1.EnvVar
 		reason  string
 	)
-	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ctx, ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bc.cli)
+	storageEnv, reason, err := util.GenerateStorageCertEnv(ctx, ns, backup.Spec.UseKMS, backup.Spec.StorageProvider, bc.cli)
 	if err != nil {
 		return nil, reason, fmt.Errorf("backup %s/%s, %w", ns, name, err)
 	}
@@ -401,8 +401,10 @@ func (bc *backupCleaner) makeStopLogBackupJob(ctx context.Context, backup *v1alp
 	jobAnnotations := backup.Annotations
 	podAnnotations := jobAnnotations
 
-	volumeMounts := []corev1.VolumeMount{}
-	volumes := []corev1.Volume{}
+	volumes, volumeMounts, err := util.GenerateStorageVolumesAndMounts(ctx, ns, backup.Spec.StorageProvider)
+	if err != nil {
+		return nil, "", fmt.Errorf("generate volumes and mounts for job of stop log backup %s/%s failed, %w", ns, name, err)
+	}
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
 		args = append(args, "--cluster-tls=true")
@@ -509,7 +511,7 @@ func (bc *backupCleaner) makeStopLogBackupJob(ctx context.Context, backup *v1alp
 			Labels:      jobLabels,
 			Annotations: jobAnnotations,
 			OwnerReferences: []metav1.OwnerReference{
-				brv1alpha1.GetBackupOwnerRef(backup),
+				v1alpha1.GetBackupOwnerRef(backup),
 			},
 		},
 		Spec: batchv1.JobSpec{
