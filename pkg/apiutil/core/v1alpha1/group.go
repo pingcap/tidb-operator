@@ -17,6 +17,8 @@ package coreutil
 import (
 	"maps"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
@@ -145,4 +147,27 @@ func InstanceAnnotations[
 	obj := scope.From[S](f)
 
 	return maps.Clone(obj.TemplateAnnotations())
+}
+
+func SetStatusSelector[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](f F) bool {
+	obj := scope.From[S](f)
+
+	l := obj.StatusSelector()
+
+	changed := compare.SetIfChanged(&l, labels.Set{
+		v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+		v1alpha1.LabelKeyComponent: obj.Component(),
+		v1alpha1.LabelKeyCluster:   obj.Cluster(),
+		v1alpha1.LabelKeyGroup:     f.GetName(),
+	}.String())
+
+	if changed {
+		obj.SetStatusSelector(l)
+	}
+
+	return changed
 }

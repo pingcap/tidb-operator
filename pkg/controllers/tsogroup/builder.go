@@ -58,6 +58,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskRevision[runtime.TSOGroupTuple](state, r.Client),
 		tasks.TaskService(state, r.Client),
 		tasks.TaskUpdater(state, r.Client),
+		common.TaskGroupStatusSelector[scope.TSOGroup](state),
 		common.TaskGroupConditionSuspended[scope.TSOGroup](state),
 		common.TaskGroupConditionReady[scope.TSOGroup](state),
 		common.TaskGroupConditionSynced[scope.TSOGroup](state),
