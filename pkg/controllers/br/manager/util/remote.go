@@ -157,13 +157,13 @@ func (b *StorageBackend) StorageType() v1alpha1.BackupStorageType {
 
 func (b *StorageBackend) ListPage(opts *blob.ListOptions) *PageIterator {
 	return &PageIterator{
-		iter: b.Bucket.List(opts),
+		iter: b.List(opts),
 	}
 }
 
 func (b *StorageBackend) AsS3() (*s3.S3, bool) {
 	var s3cli *s3.S3
-	if ok := b.Bucket.As(&s3cli); !ok {
+	if ok := b.As(&s3cli); !ok {
 		return nil, false
 	}
 
@@ -517,7 +517,7 @@ type azblobSharedKeyCred struct {
 func newAzblobStorage(conf *azblobConfig) (*blob.Bucket, error) {
 	account := os.Getenv("AZURE_STORAGE_ACCOUNT")
 	if len(account) == 0 {
-		return nil, errors.New("No AZURE_STORAGE_ACCOUNT")
+		return nil, errors.New("no AZURE_STORAGE_ACCOUNT")
 	}
 
 	// Azure AAD Service Principal with access to the storage account.
@@ -548,7 +548,7 @@ func newAzblobStorage(conf *azblobConfig) (*blob.Bucket, error) {
 			sharedKey: accountKey,
 		})
 	} else {
-		return nil, errors.New("Missing necessary key(s) for credentials")
+		return nil, errors.New("missing necessary key(s) for credentials")
 	}
 
 	if err != nil {

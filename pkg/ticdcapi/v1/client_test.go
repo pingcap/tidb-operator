@@ -96,11 +96,12 @@ func TestTiCDCClient_DrainCapture(t *testing.T) {
 
 	// two captures, resign owner
 	server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == capturesURL {
+		switch r.URL.Path {
+		case capturesURL:
 			assert.Equal(t, http.MethodGet, r.Method)
 			_, err = w.Write([]byte(capturesTwoJSONStr))
 			assert.NoError(t, err)
-		} else if r.URL.Path == "/api/v1/captures/drain" {
+		case "/api/v1/captures/drain":
 			assert.Equal(t, http.MethodPut, r.Method)
 			_, err = w.Write([]byte(`{"current_table_count": 0}`))
 			assert.NoError(t, err)
@@ -115,11 +116,12 @@ func TestTiCDCClient_DrainCapture(t *testing.T) {
 
 	// do not support this API
 	server3 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == capturesURL {
+		switch r.URL.Path {
+		case capturesURL:
 			assert.Equal(t, http.MethodGet, r.Method)
 			_, err = w.Write([]byte(capturesTwoJSONStr))
 			assert.NoError(t, err)
-		} else if r.URL.Path == "/api/v1/captures/drain" {
+		case "/api/v1/captures/drain":
 			assert.Equal(t, http.MethodPut, r.Method)
 			w.WriteHeader(http.StatusNotImplemented)
 		}
@@ -148,11 +150,12 @@ func TestTiCDCClient_ResignOwner(t *testing.T) {
 	assert.True(t, ok)
 
 	server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == capturesURL {
+		switch r.URL.Path {
+		case capturesURL:
 			assert.Equal(t, http.MethodGet, r.Method)
 			_, err = w.Write([]byte(capturesTwoJSONStr))
 			assert.NoError(t, err)
-		} else if r.URL.Path == "/api/v1/owner/resign" {
+		case "/api/v1/owner/resign":
 			assert.Equal(t, http.MethodPost, r.Method)
 			w.WriteHeader(http.StatusOK)
 		}
@@ -219,11 +222,12 @@ func TestTiCDCClient_IsHealthy(t *testing.T) {
 
 	// owner exists and healthy
 	server3 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/api/v1/captures" {
+		switch r.URL.Path {
+		case "/api/v1/captures":
 			assert.Equal(t, http.MethodGet, r.Method)
 			_, err = w.Write([]byte(capturesOneJSONStr))
 			assert.NoError(t, err)
-		} else if r.URL.Path == "/api/v1/health" {
+		case "/api/v1/health":
 			assert.Equal(t, http.MethodGet, r.Method)
 			_, err = w.Write([]byte("ok"))
 			assert.NoError(t, err)

@@ -1,87 +1,8 @@
-linters-settings:
-  dupl:
-    threshold: 100
-  funlen:
-    lines: -1
-    statements: 50
-  goconst:
-    min-len: 2
-    min-occurrences: 3
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - experimental
-      - opinionated
-      - performance
-      - style
-    disabled-checks:
-      - dupImport # https://github.com/go-critic/go-critic/issues/845
-      - ifElseChain
-      - octalLiteral
-      - whyNoLint
-  gocyclo:
-    min-complexity: 15
-  godox:
-    keywords:
-      - FIXME
-  gofmt:
-    rewrite-rules:
-      - pattern: "interface{}"
-        replacement: "any"
-  goimports:
-    local-prefixes: github.com/pingcap/tidb-operator
-  mnd:
-    # don't include the "operation" and "assign"
-    checks:
-      - argument
-      - case
-      - condition
-      - return
-    ignored-numbers:
-      - "0"
-      - "1"
-      - "2"
-      - "3"
-      - "4"
-    ignored-functions:
-      - strings.SplitN
-    ignored-files:
-      - 'tests/e2e/cluster/.+\.go$'
-      - 'tests/e2e/pd/.+\.go$'
-      - 'tests/e2e/tidb/.+\.go$'
-      - 'tests/e2e/tikv/.+\.go$'
-  govet:
-    enable:
-      - nilness
-      # - shadow # TODO(ideascf): recover it
-  errorlint:
-    asserts: false
-  lll:
-    line-length: 140
-  misspell:
-    locale: US
-    ignore-words:
-      - "importas" # linter name
-  nolintlint:
-    allow-unused: false # report any unused nolint directives
-    # TODO(ideascf): recover the following two rules
-    # require-explanation: true # require an explanation for nolint directives
-    # require-specific: true # require nolint directives to be specific about which linter is being skipped
-  revive:
-    rules:
-      - name: unexported-return
-        disabled: true
-      # TODO(ideascf): recover the following three rules
-      # - name: indent-error-flow
-      # - name: unused-parameter
-      # - name: unused-receiver
-
+version: "2"
 linters:
-  disable-all: true
   enable:
     - bodyclose
     - dogsled
-    - errcheck
     - errorlint
     - copyloopvar
     - gocheckcompilerdirectives
@@ -90,12 +11,9 @@ linters:
     # - gocritic // TODO(ideascf): recover it
     - gocyclo
     - godox
-    - gofmt
-    - goimports
     - mnd
     - goprintffuncname
-    - gosec
-    - gosimple
+    # - gosec // TODO: uncomment this
     - govet
     - ineffassign
     # - lll  # TODO(ideascf): recover it
@@ -106,28 +24,97 @@ linters:
     - revive
     # - stylecheck # TODO(ideascf): recover it
     - staticcheck
-    - testifylint
+    # - testifylint  // TODO: uncomment this
     - unconvert
     # - unparam  # TODO(ideascf): recover it
     - unused
     - whitespace
-
-  # This list of linters is not a recommendation (same thing for all this configuration file).
-  # We intentionally use a limited set of linters.
-  # See the comment on top of this file.
-
-issues:
-  exclude-rules:
-    - path: (.+)_test\.go
-      linters:
-        - dupl
-        - mnd
-        - lll
-        - goconst
-  exclude-files:
-    - ".*/br/.*/_test.go"
-    - ".*/br/.*/testutils/.*"
-    - "tests/e2e/br/.*/*.go"
-
+  disable:
+    - errcheck # TODO: remove this
+  exclusions:
+    rules:
+      - path: (.+)_test\.go
+        linters:
+          - dupl
+          - mnd
+          - lll
+          - goconst
+    paths:
+      - ".*/br/.*/_test.go"
+      - ".*/br/.*/testutils/.*"
+      - "tests/e2e/br/.*"
+      - "third_party/.*"
+  settings:
+    dupl:
+      threshold: 100
+    funlen:
+      lines: -1
+      statements: 50
+    goconst:
+      min-len: 2
+      min-occurrences: 3
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - performance
+        - style
+      disabled-checks:
+        - dupImport # https://github.com/go-critic/go-critic/issues/845
+        - ifElseChain
+        - octalLiteral
+        - whyNoLint
+    gocyclo:
+      min-complexity: 15
+    godox:
+      keywords:
+        - FIXME
+    mnd:
+      checks:
+        - argument
+        - case
+        - condition
+        - return
+      ignored-numbers:
+        - "0"
+        - "1"
+        - "2"
+        - "3"
+        - "4"
+      ignored-functions:
+        - strings.SplitN
+      ignored-files:
+        - 'tests/e2e/cluster/.+\.go$'
+        - 'tests/e2e/pd/.+\.go$'
+        - 'tests/e2e/tidb/.+\.go$'
+        - 'tests/e2e/tikv/.+\.go$'
+    govet:
+      enable:
+        - nilness
+        # - shadow # TODO(ideascf): recover it
+    errorlint:
+      asserts: false
+    lll:
+      line-length: 140
+    misspell:
+      locale: US
+    nolintlint:
+      allow-unused: false # report any unused nolint directives
+      # TODO(ideascf): recover the following two rules
+      # require-explanation: true # require an explanation for nolint directives
+      # require-specific: true # require nolint directives to be specific about which linter is being skipped
+    revive:
+      rules:
+        - name: unexported-return
+          disabled: true
+        # TODO(ideascf): recover the following three rules
+        # - name: indent-error-flow
+        # - name: unused-parameter
+        # - name: unused-receiver
+    staticcheck:
+      dot-import-whitelist:
+        - "github.com/onsi/ginkgo/v2"
+        - "github.com/onsi/gomega"
 run:
   timeout: 15m

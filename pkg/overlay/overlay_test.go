@@ -90,12 +90,12 @@ func TestOverlayPod(t *testing.T) {
 		"aa": "aa",
 		"bb": "bb",
 		"zz": "456",
-	}, base.ObjectMeta.Annotations)
+	}, base.Annotations)
 	assert.Equal(t, map[string]string{
 		"aa": "aa",
 		"bb": "bb",
 		"zz": "456",
-	}, base.ObjectMeta.Labels)
+	}, base.Labels)
 	assert.Equal(t, map[string]string{
 		"aa": "aa",
 		"bb": "bb",
