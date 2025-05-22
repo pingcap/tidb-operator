@@ -207,7 +207,7 @@ bin/runtime-gen:
 GOLANGCI_LINT = $(BIN_DIR)/golangci-lint
 bin/golangci-lint:
 	# DON'T track the version of this cmd by go.mod
-	$(ROOT)/hack/download.sh go_install $(GOLANGCI_LINT) github.com/golangci/golangci-lint/cmd/golangci-lint v1.64.8 "version --format=short"
+	$(ROOT)/hack/download.sh go_install $(GOLANGCI_LINT) github.com/golangci/golangci-lint/v2/cmd/golangci-lint v2.1.6 "version --short"
 
 .PHONY: bin/kind
 KIND = $(BIN_DIR)/kind

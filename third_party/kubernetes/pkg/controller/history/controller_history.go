@@ -219,7 +219,6 @@ func (rh *realHistory) ListControllerRevisions(ctx context.Context, parent clien
 		if ref == nil || ref.UID == parent.GetUID() {
 			owned = append(owned, &list.Items[i])
 		}
-
 	}
 	return owned, nil
 }

@@ -23,7 +23,6 @@ import (
 	"sync"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -189,7 +188,7 @@ func (bt *backupTracker) refreshLogBackupCheckpointTs(ns, name string) {
 		}
 		backup := &v1alpha1.Backup{}
 		err := bt.cli.Get(ctx, types.NamespacedName{Namespace: ns, Name: name}, backup)
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			logger.Info("log backup has been deleted, will remove from tracker", "namespace", ns, "backup", name, "key", logkey)
 			bt.removeLogBackup(ns, name)
 			return
