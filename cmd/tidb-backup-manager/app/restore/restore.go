@@ -37,7 +37,6 @@ import (
 	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/tidb-backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/constants"
-	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/restore"
 	restoreMgr "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/restore"
 	pkgutil "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
 )
@@ -58,7 +57,7 @@ type Options struct {
 func (ro *Options) restoreData(
 	ctx context.Context,
 	restore *v1alpha1.Restore,
-	statusUpdater restore.RestoreConditionUpdaterInterface,
+	statusUpdater restoreMgr.RestoreConditionUpdaterInterface,
 ) error {
 	args := make([]string, 0)
 	args = append(args, fmt.Sprintf("--pd=%s", ro.PDAddress))
@@ -160,7 +159,7 @@ func (ro *Options) restoreData(
 			}
 			ro.updateResolvedTSForCSB(ctx, line, restore, progressStep, statusUpdater)
 		}
-		klog.Info(strings.Replace(line, "\n", "", -1))
+		klog.Info(strings.ReplaceAll(line, "\n", ""))
 		if err != nil {
 			if err != io.EOF {
 				klog.Errorf("read stdout error: %s", err.Error())

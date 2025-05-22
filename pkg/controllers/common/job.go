@@ -164,7 +164,7 @@ func (m *jobLifecycleManager) retryWithBackoffPolicy(ctx context.Context, c clie
 	if ok && !lastRetryRecord.IsTriggered() {
 		if !m.isTimeToRetry(lastRetryRecord, now) {
 			klog.Infof("backup %s/%s is not the time to retry, expected retry time is %s, now is %s", ns, name, lastRetryRecord.ExpectedRetryAt, now)
-			return RequeueErrorf(lastRetryRecord.ExpectedRetryAt.Time.Sub(now)+time.Second, "retry backup %s/%s after %s", ns, name, now.Sub(lastRetryRecord.ExpectedRetryAt.Time))
+			return RequeueErrorf(lastRetryRecord.ExpectedRetryAt.Sub(now)+time.Second, "retry backup %s/%s after %s", ns, name, now.Sub(lastRetryRecord.ExpectedRetryAt.Time))
 		}
 		return m.doRetryLogic(ctx, c, job, now)
 	}

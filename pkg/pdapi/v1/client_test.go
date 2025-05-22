@@ -573,11 +573,12 @@ func TestPDClient_DeleteMember(t *testing.T) {
   ]
 }`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/pd/api/v1/members" {
+		switch r.URL.Path {
+		case "/pd/api/v1/members":
 			w.Header().Set("Content-Type", "application/json")
 			_, err := w.Write([]byte(getMembersJSONStr))
 			assert.NoError(t, err)
-		} else if r.URL.Path == "/pd/api/v1/member/basic-7axwci" {
+		case "/pd/api/v1/member/basic-7axwci":
 			assert.Equal(t, http.MethodDelete, r.Method)
 			w.Header().Set("Content-Type", "application/json")
 			_, err := w.Write([]byte(`{}`))
@@ -608,11 +609,12 @@ func TestPDClient_DeleteMemberByID(t *testing.T) {
   ]
 }`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/pd/api/v1/members" {
+		switch r.URL.Path {
+		case "/pd/api/v1/members":
 			w.Header().Set("Content-Type", "application/json")
 			_, err := w.Write([]byte(getMembersJSONStr))
 			assert.NoError(t, err)
-		} else if r.URL.Path == "/pd/api/v1/member/1428427862495950874" {
+		case "/pd/api/v1/member/1428427862495950874":
 			assert.Equal(t, http.MethodDelete, r.Method)
 			w.Header().Set("Content-Type", "application/json")
 			_, err := w.Write([]byte(`{}`))
