@@ -60,32 +60,7 @@ func TestTaskUpdater(t *testing.T) {
 			expectedTiProxyNum: 1,
 		},
 		{
-			desc: "version upgrade check",
-			state: &ReconcileContext{
-				State: &state{
-					proxyg: fake.FakeObj("aaa", func(obj *v1alpha1.TiProxyGroup) *v1alpha1.TiProxyGroup {
-						obj.Spec.Template.Spec.Version = "v8.1.0"
-						obj.Spec.Cluster.Name = "cluster"
-						obj.Status.Version = "v8.0.0"
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-				},
-			},
-			objs: []client.Object{
-				fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
-					obj.Spec.Replicas = ptr.To[int32](1)
-					obj.Spec.Cluster.Name = "cluster"
-					obj.Spec.Template.Spec.Version = "v8.1.0"
-					obj.Status.Version = "v8.0.0"
-					return obj
-				}),
-			},
-
-			expectedStatus: task.SRetry,
-		},
-		{
-			desc: "1 updated tidb with 1 replicas",
+			desc: "1 updated tiproxy with 1 replicas",
 			state: &ReconcileContext{
 				State: &state{
 					proxyg:  fake.FakeObj[v1alpha1.TiProxyGroup]("aaa"),
@@ -131,7 +106,7 @@ func TestTaskUpdater(t *testing.T) {
 			expectedStatus: task.SFail,
 		},
 		{
-			desc: "1 outdated tidb with 2 replicas",
+			desc: "1 outdated tiproxy with 2 replicas",
 			state: &ReconcileContext{
 				State: &state{
 					proxyg: fake.FakeObj("aaa", func(obj *v1alpha1.TiProxyGroup) *v1alpha1.TiProxyGroup {
@@ -150,7 +125,7 @@ func TestTaskUpdater(t *testing.T) {
 			expectedTiProxyNum: 2,
 		},
 		{
-			desc: "1 outdated tidb with 2 replicas but cannot call api, will fail",
+			desc: "1 outdated tiproxy with 2 replicas but cannot call api, will fail",
 			state: &ReconcileContext{
 				State: &state{
 					proxyg: fake.FakeObj("aaa", func(obj *v1alpha1.TiProxyGroup) *v1alpha1.TiProxyGroup {
@@ -169,7 +144,7 @@ func TestTaskUpdater(t *testing.T) {
 			expectedStatus: task.SFail,
 		},
 		{
-			desc: "2 updated tidb with 2 replicas",
+			desc: "2 updated tiproxy with 2 replicas",
 			state: &ReconcileContext{
 				State: &state{
 					proxyg: fake.FakeObj("aaa", func(obj *v1alpha1.TiProxyGroup) *v1alpha1.TiProxyGroup {
@@ -189,7 +164,7 @@ func TestTaskUpdater(t *testing.T) {
 			expectedTiProxyNum: 2,
 		},
 		{
-			desc: "2 updated tidb with 2 replicas and cannot call api, can complete",
+			desc: "2 updated tiproxy with 2 replicas and cannot call api, can complete",
 			state: &ReconcileContext{
 				State: &state{
 					proxyg: fake.FakeObj("aaa", func(obj *v1alpha1.TiProxyGroup) *v1alpha1.TiProxyGroup {
