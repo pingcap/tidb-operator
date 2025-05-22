@@ -194,6 +194,7 @@ type Overlay struct {
 }
 
 type PodOverlay struct {
+	// +kubebuilder:validation:XValidation:rule="self.labels.all(key, !key.startsWith('pingcap.com/'))",message="cannot overlay pod labels starting with 'pingcap.com/'"
 	ObjectMeta `json:"metadata,omitempty"`
 	Spec       *corev1.PodSpec `json:"spec,omitempty"`
 }
