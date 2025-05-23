@@ -170,3 +170,45 @@ func Topology() []Case {
 
 	return cases
 }
+
+func PodOverlayLabels() []Case {
+	cases := []Case{
+		{
+			desc:     "no label overlay is ok",
+			isCreate: true,
+			current:  map[string]any{},
+		},
+		{
+			desc:     "ok to overlay normal labels",
+			isCreate: true,
+			current: map[string]any{
+				"labels": map[string]any{
+					"component": "bbb",
+				},
+			},
+		},
+		{
+			desc:     "cannot overlay pingcap.com/xxx labels",
+			isCreate: true,
+			current: map[string]any{
+				"labels": map[string]any{
+					"pingcap.com/xxx": "bbb",
+				},
+			},
+			wantErrs: []string{
+				`spec.overlay.pod.metadata: Invalid value: "object": cannot overlay pod labels starting with 'pingcap.com/'`,
+			},
+		},
+		{
+			desc:     "ok to overlay pingcap.com label",
+			isCreate: true,
+			current: map[string]any{
+				"labels": map[string]any{
+					"pingcap.com": "bbb",
+				},
+			},
+		},
+	}
+
+	return cases
+}
