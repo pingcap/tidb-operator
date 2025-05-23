@@ -181,7 +181,7 @@ type (
 var _ Job = &Restore{}
 
 func (r *Restore) NeedAddFinalizer() bool {
-	return !(r.Completed() || r.Failed())
+	return !r.Completed() && !r.Failed()
 }
 
 func (r *Restore) NeedRemoveFinalizer() bool {

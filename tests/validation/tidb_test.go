@@ -27,6 +27,7 @@ func TestTiDB(t *testing.T) {
 	cases = append(cases, transferTiDBCases(t, Topology(), "spec", "topology")...)
 	cases = append(cases, transferTiDBCases(t, ClusterReference(), "spec", "cluster")...)
 	cases = append(cases, transferTiDBCases(t, tidbServerLabels(), "spec", "server", "labels")...)
+	cases = append(cases, transferTiDBCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
 
 	Validate(t, "crd/core.pingcap.com_tidbs.yaml", cases)
 }
