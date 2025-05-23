@@ -30,6 +30,8 @@ func TestPD(t *testing.T) {
 		transferPDCases(t, ClusterReference(), "spec", "cluster")...)
 	cases = append(cases,
 		transferPDCases(t, PDMode(), "spec", "mode")...)
+	cases = append(cases,
+		transferPDCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
 
 	Validate(t, "crd/core.pingcap.com_pds.yaml", cases)
 }
