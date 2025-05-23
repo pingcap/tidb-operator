@@ -28,7 +28,7 @@ func TestTSO(t *testing.T) {
 		transferTSOCases(t, ClusterReference(), "spec", "cluster")...,
 	)
 	cases = append(cases,
-		transferTSOCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata", "labels")...)
+		transferTSOCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
 
 	Validate(t, "crd/core.pingcap.com_tsos.yaml", cases)
 }

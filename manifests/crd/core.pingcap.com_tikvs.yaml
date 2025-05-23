@@ -123,7 +123,7 @@ spec:
                         type: object
                         x-kubernetes-validations:
                         - message: cannot overlay pod labels starting with 'pingcap.com/'
-                          rule: self.labels.all(key, !key.startsWith('pingcap.com/'))
+                          rule: '!has(self.labels) || self.labels.all(key, !key.startsWith(''pingcap.com/''))'
                       spec:
                         description: PodSpec is a description of a pod.
                         properties:

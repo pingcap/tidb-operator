@@ -28,7 +28,7 @@ func TestScheduler(t *testing.T) {
 		transferSchedulerCases(t, ClusterReference(), "spec", "cluster")...,
 	)
 	cases = append(cases,
-		transferSchedulerCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata", "labels")...)
+		transferSchedulerCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
 
 	Validate(t, "crd/core.pingcap.com_schedulers.yaml", cases)
 }
