@@ -42,7 +42,7 @@ linters:
     paths:
       - ".*/br/.*/_test.go"
       - ".*/br/.*/testutils/.*"
-      - "tests/e2e/br/.*"
+      - "tests/e2e/.*"
       - "third_party/.*"
   settings:
     dupl:
