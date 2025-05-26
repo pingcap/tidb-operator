@@ -19,9 +19,6 @@ import (
 	"fmt"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 )
@@ -34,11 +31,8 @@ func WaitForTiFlashesHealthy(ctx context.Context, c client.Client, fg *v1alpha1.
 		}
 		for i := range list.Items {
 			f := &list.Items[i]
-			if f.Generation != f.Status.ObservedGeneration {
-				return fmt.Errorf("f %s/%s is not synced", f.Namespace, f.Name)
-			}
-			if !meta.IsStatusConditionPresentAndEqual(f.Status.Conditions, v1alpha1.CondReady, metav1.ConditionTrue) {
-				return fmt.Errorf("f %s/%s is not healthy", f.Namespace, f.Name)
+			if err := checkInstanceStatus(v1alpha1.LabelValComponentTiFlash, f.Name, f.Namespace, f.Generation, f.Status.CommonStatus); err != nil {
+				return err
 			}
 		}
 
