@@ -8360,8 +8360,6 @@ spec:
                     description: |-
                       SleepSeconds is the seconds to sleep before sending the SIGTERM to the TiProxy container.
                       It's useful to achieve a graceful shutdown of the TiProxy container.
-                      Operator will calculate the TiProxy pod's `terminationGracePeriod` based on this field:
-                      `terminationGracePeriod` = `preStopHookSleepSeconds` + 15(gracefulCloseConnectionsTimeout) + 5(buffer)
                       Default is 10 seconds.
                     format: int32
                     type: integer
@@ -8377,7 +8375,7 @@ spec:
                       type:
                         description: |-
                           "tcp" will use TCP socket to connect component port.
-                          "command" will probe the status api of TiProxy.
+                          "command" will probe the HTTP API of TiProxy.
                         enum:
                         - tcp
                         - command
@@ -8406,17 +8404,18 @@ spec:
                     description: Whether enable the TLS connection.
                     properties:
                       backend:
-                        description: Backend defines the TLS configuration for connections
-                          between TiProxy and TiDB.
+                        description: |-
+                          Backend defines the TLS configuration for connections between TiProxy and TiDB servers.
+                          To enable this feature, the corresponding TiDB server must be configured with TLS enabled.
                         properties:
                           enabled:
                             type: boolean
                         type: object
                       mysql:
                         description: |-
-                          When enabled, TiProxy will accept TLS encrypted connections from MySQL clients.
+                          MySQL defines the TLS configuration for connections between TiProxy and MySQL clients.
                           The steps to enable this feature:
-                            1. Generate a TiProxy server-side certificate and a client-side certificate for the TiProxy cluster.
+                            1. Generate a TiProxy server-side certificate for the TiProxy cluster.
                                There are multiple ways to generate certificates:
                                  - user-provided certificates: https://docs.pingcap.com/TiProxy/stable/generate-self-signed-certificates
                                  - use the K8s built-in certificate signing system signed certificates: https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/
@@ -8424,10 +8423,7 @@ spec:
                             2. Create a K8s Secret object which contains the TiProxy server-side certificate created above.
                                The name of this Secret must be: <groupName>-tiproxy-server-secret.
                                  kubectl create secret generic <groupName>-tiproxy-server-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
-                            3. Create a K8s Secret object which contains the TiProxy client-side certificate created above which will be used by TiProxy Operator.
-                               The name of this Secret must be: <groupName>-tiproxy-client-secret.
-                                 kubectl create secret generic <groupName>-tiproxy-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
-                            4. Set Enabled to `true`.
+                            3. Set Enabled to `true`.
                         properties:
                           enabled:
                             type: boolean
@@ -8437,9 +8433,31 @@ spec:
               server:
                 description: Server defines the server configuration of TiProxy.
                 properties:
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Labels defines the server labels of the TiProxy.
+                      TiDB Operator will ignore `labels` in TiProxy's config file and use this field instead.
+                      Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+                       - zone
+                    type: object
+                    x-kubernetes-validations:
+                    - message: labels cannot contain 'zone', it's managed by TiDB
+                        Operator
+                      rule: '!(''zone'' in self)'
                   ports:
                     description: Port defines all ports listened by TiProxy.
                     properties:
+                      api:
+                        description: API defines port for TiProxy API service.
+                        properties:
+                          port:
+                            format: int32
+                            type: integer
+                        required:
+                        - port
+                        type: object
                       client:
                         description: Client defines port for TiProxy's SQL service.
                         properties:
@@ -8449,8 +8467,8 @@ spec:
                         required:
                         - port
                         type: object
-                      status:
-                        description: Status defines port for TiProxy status API.
+                      peer:
+                        description: Peer defines port for TiProxy's peer service.
                         properties:
                           port:
                             format: int32
@@ -8462,15 +8480,15 @@ spec:
                 type: object
               subdomain:
                 description: |-
-                  Subdomain means the subdomain of the exported pd dns.
-                  A same pd cluster will use a same subdomain
+                  Subdomain means the subdomain of the exported tiproxy dns.
+                  A same tiproxy cluster will use a same subdomain
                 type: string
               topology:
                 additionalProperties:
                   type: string
                 description: |-
                   Topology defines the topology domain of this TiProxy instance.
-                  It will be translated into a node affnity config.
+                  It will be translated into a node affinity config.
                   Topology cannot be changed.
                 minProperties: 1
                 type: object

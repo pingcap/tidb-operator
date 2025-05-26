@@ -38,6 +38,7 @@ type (
 	TiDBSliceInitializer    = ResourceSliceInitializer[v1alpha1.TiDB]
 	TiFlashSliceInitializer = ResourceSliceInitializer[v1alpha1.TiFlash]
 	TiCDCSliceInitializer   = ResourceSliceInitializer[v1alpha1.TiCDC]
+	TiProxySliceInitializer = ResourceSliceInitializer[v1alpha1.TiProxy]
 )
 
 type GroupState[G runtime.Group] interface {
@@ -167,6 +168,21 @@ type (
 	}
 	TiCDCSliceState interface {
 		TiCDCSlice() []*v1alpha1.TiCDC
+	}
+)
+
+type (
+	TiProxyGroupState interface {
+		TiProxyGroup() *v1alpha1.TiProxyGroup
+	}
+	TiProxyState interface {
+		TiProxy() *v1alpha1.TiProxy
+	}
+	TiProxySliceStateInitializer interface {
+		TiProxySliceInitializer() TiProxySliceInitializer
+	}
+	TiProxySliceState interface {
+		TiProxySlice() []*v1alpha1.TiProxy
 	}
 )
 

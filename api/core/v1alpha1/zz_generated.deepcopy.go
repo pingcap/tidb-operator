@@ -3139,8 +3139,13 @@ func (in *TiProxyPorts) DeepCopyInto(out *TiProxyPorts) {
 		*out = new(Port)
 		**out = **in
 	}
-	if in.Status != nil {
-		in, out := &in.Status, &out.Status
+	if in.API != nil {
+		in, out := &in.API, &out.API
+		*out = new(Port)
+		**out = **in
+	}
+	if in.Peer != nil {
+		in, out := &in.Peer, &out.Peer
 		*out = new(Port)
 		**out = **in
 	}
@@ -3240,6 +3245,13 @@ func (in *TiProxySecurity) DeepCopy() *TiProxySecurity {
 func (in *TiProxyServer) DeepCopyInto(out *TiProxyServer) {
 	*out = *in
 	in.Ports.DeepCopyInto(&out.Ports)
+	if in.Labels != nil {
+		in, out := &in.Labels, &out.Labels
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	return
 }
 

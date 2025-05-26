@@ -24,6 +24,7 @@ var (
 	TiKV    = ginkgo.Label("c:TiKV")
 	TiFlash = ginkgo.Label("c:TiFlash")
 	TiCDC   = ginkgo.Label("c:TiCDC")
+	TiProxy = ginkgo.Label("c:TiProxy")
 
 	// Priority
 	P0 = ginkgo.Label("P0")

@@ -271,7 +271,7 @@ const (
 )
 
 type SchedulePolicyEvenlySpread struct {
-	// All instances of a group will evenly spread in differnet topologies
+	// All instances of a group will evenly spread in different topologies
 	Topologies []ScheduleTopology `json:"topologies"`
 }
 

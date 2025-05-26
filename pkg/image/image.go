@@ -31,6 +31,7 @@ const (
 	TSO Untagged = "pingcap/pd"
 	// Scheduler also use pd image
 	Scheduler Untagged = "pingcap/pd"
+	TiProxy   Untagged = "pingcap/tiproxy"
 
 	// TODO: use versioned image
 	PrestopChecker Tagged = "pingcap/prestop-checker:latest"
