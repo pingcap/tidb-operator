@@ -55,7 +55,8 @@ func (r *Reconciler) EventLogger() predicate.Funcs {
 func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Object, reconcile.Request] {
 	return handler.TypedFuncs[client.Object, reconcile.Request]{
 		UpdateFunc: func(ctx context.Context, event event.TypedUpdateEvent[client.Object],
-			queue workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
+		) {
 			oldObj := event.ObjectOld.(*v1alpha1.Cluster)
 			newObj := event.ObjectNew.(*v1alpha1.Cluster)
 
@@ -94,11 +95,12 @@ func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Obje
 func (r *Reconciler) MemberEventHandler() handler.TypedEventHandler[client.Object, reconcile.Request] {
 	return handler.TypedFuncs[client.Object, reconcile.Request]{
 		CreateFunc: func(_ context.Context, event event.TypedCreateEvent[client.Object],
-			queue workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
+		) {
 			m := event.Object.(*pdv1.Member)
 			ns, cluster := pdm.SplitPrimaryKey(m.Namespace)
 
-			r.Logger.Info("add member", "namespace", ns, "cluster", cluster, "name", m.Name)
+			r.Logger.Info("add member", "namespace", ns, "cluster", cluster, "name", m.Name, "health", m.Health, "invalid", m.Invalid)
 
 			queue.Add(reconcile.Request{
 				NamespacedName: types.NamespacedName{
@@ -109,11 +111,12 @@ func (r *Reconciler) MemberEventHandler() handler.TypedEventHandler[client.Objec
 		},
 
 		UpdateFunc: func(_ context.Context, event event.TypedUpdateEvent[client.Object],
-			queue workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
+		) {
 			m := event.ObjectNew.(*pdv1.Member)
 			ns, cluster := pdm.SplitPrimaryKey(m.Namespace)
 
-			r.Logger.Info("update member", "namespace", ns, "cluster", cluster, "name", m.Name)
+			r.Logger.Info("update member", "namespace", ns, "cluster", cluster, "name", m.Name, "health", m.Health, "invalid", m.Invalid)
 
 			queue.Add(reconcile.Request{
 				NamespacedName: types.NamespacedName{
@@ -123,7 +126,8 @@ func (r *Reconciler) MemberEventHandler() handler.TypedEventHandler[client.Objec
 			})
 		},
 		DeleteFunc: func(_ context.Context, event event.TypedDeleteEvent[client.Object],
-			queue workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
+		) {
 			m := event.Object.(*pdv1.Member)
 			ns, cluster := pdm.SplitPrimaryKey(m.Namespace)
 
