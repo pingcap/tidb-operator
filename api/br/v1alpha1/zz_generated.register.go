@@ -67,6 +67,10 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&CompactBackupList{},
 		&Restore{},
 		&RestoreList{},
+		&TiBR{},
+		&TiBRGC{},
+		&TiBRGCList{},
+		&TiBRList{},
 	)
 	// AddToGroupVersion allows the serialization of client types like ListOptions.
 	v1.AddToGroupVersion(scheme, SchemeGroupVersion)
