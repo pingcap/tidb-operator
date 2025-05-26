@@ -8277,10 +8277,6 @@ spec:
                         properties:
                           enabled:
                             type: boolean
-                          skipCA:
-                            description: SkipCA is used to skip the CA verification
-                              for the TLS connection.
-                            type: boolean
                         type: object
                     type: object
                 type: object

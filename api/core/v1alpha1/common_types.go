@@ -362,7 +362,4 @@ type UpdateStrategy struct {
 // TODO(liubo02): add more tls configs
 type TLS struct {
 	Enabled bool `json:"enabled,omitempty"`
-
-	// SkipCA is used to skip the CA verification for the TLS connection.
-	SkipCA bool `json:"skipCA,omitempty"`
 }

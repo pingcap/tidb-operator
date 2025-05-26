@@ -228,7 +228,6 @@ func TestOverlay(t *testing.T) {
 							TLS: &v1alpha1.TiProxyTLS{
 								Backend: &v1alpha1.TLS{
 									Enabled: true,
-									SkipCA:  true,
 								},
 							},
 						},
@@ -246,10 +245,9 @@ func TestOverlay(t *testing.T) {
 				},
 				Security: Security{
 					SQLTLS: TLSConfig{
-						CA:     "/var/lib/tiproxy-tidb-tls/ca.crt",
-						Cert:   "/var/lib/tiproxy-tidb-tls/tls.crt",
-						Key:    "/var/lib/tiproxy-tidb-tls/tls.key",
-						SkipCA: true,
+						CA:   "/var/lib/tiproxy-tidb-tls/ca.crt",
+						Cert: "/var/lib/tiproxy-tidb-tls/tls.crt",
+						Key:  "/var/lib/tiproxy-tidb-tls/tls.key",
 					},
 				},
 			},

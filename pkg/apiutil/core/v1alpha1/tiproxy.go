@@ -74,14 +74,6 @@ func IsTiProxyMySQLTLSEnabled(tiproxy *v1alpha1.TiProxy) bool {
 	return tiproxy.Spec.Security != nil && tiproxy.Spec.Security.TLS != nil && tiproxy.Spec.Security.TLS.MySQL != nil && tiproxy.Spec.Security.TLS.MySQL.Enabled
 }
 
-func IsTiProxyMySQLTLSSkipCA(tiproxy *v1alpha1.TiProxy) bool {
-	return tiproxy.Spec.Security != nil && tiproxy.Spec.Security.TLS != nil && tiproxy.Spec.Security.TLS.MySQL != nil && tiproxy.Spec.Security.TLS.MySQL.SkipCA
-}
-
 func IsTiProxyTiDBTLSEnabled(tiproxy *v1alpha1.TiProxy) bool {
 	return tiproxy.Spec.Security != nil && tiproxy.Spec.Security.TLS != nil && tiproxy.Spec.Security.TLS.Backend != nil && tiproxy.Spec.Security.TLS.Backend.Enabled
-}
-
-func IsTiProxyTiDBTLSSkipCA(tiproxy *v1alpha1.TiProxy) bool {
-	return tiproxy.Spec.Security != nil && tiproxy.Spec.Security.TLS != nil && tiproxy.Spec.Security.TLS.Backend != nil && tiproxy.Spec.Security.TLS.Backend.SkipCA
 }

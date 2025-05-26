@@ -94,14 +94,12 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) e
 		c.Security.ServerSQLTLS.CA = path.Join(v1alpha1.DirPathTiProxyMySQLTLS, corev1.ServiceAccountRootCAKey)
 		c.Security.ServerSQLTLS.Cert = path.Join(v1alpha1.DirPathTiProxyMySQLTLS, corev1.TLSCertKey)
 		c.Security.ServerSQLTLS.Key = path.Join(v1alpha1.DirPathTiProxyMySQLTLS, corev1.TLSPrivateKeyKey)
-		c.Security.ServerSQLTLS.SkipCA = coreutil.IsTiProxyMySQLTLSSkipCA(tiproxy)
 	}
 
 	if coreutil.IsTiProxyTiDBTLSEnabled(tiproxy) {
 		c.Security.SQLTLS.CA = path.Join(v1alpha1.DirPathTiProxyTiDBTLS, corev1.ServiceAccountRootCAKey)
 		c.Security.SQLTLS.Cert = path.Join(v1alpha1.DirPathTiProxyTiDBTLS, corev1.TLSCertKey)
 		c.Security.SQLTLS.Key = path.Join(v1alpha1.DirPathTiProxyTiDBTLS, corev1.TLSPrivateKeyKey)
-		c.Security.SQLTLS.SkipCA = coreutil.IsTiProxyTiDBTLSSkipCA(tiproxy)
 	}
 
 	return nil
