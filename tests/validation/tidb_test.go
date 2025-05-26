@@ -26,9 +26,8 @@ func TestTiDB(t *testing.T) {
 	cases := []Case{}
 	cases = append(cases, transferTiDBCases(t, Topology(), "spec", "topology")...)
 	cases = append(cases, transferTiDBCases(t, ClusterReference(), "spec", "cluster")...)
-	cases = append(cases, transferTiDBCases(t, serverLabels(), "spec", "server", "labels")...)
-	cases = append(cases,
-		transferTiDBCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
+	cases = append(cases, transferTiDBCases(t, tidbServerLabels(), "spec", "server", "labels")...)
+	cases = append(cases, transferTiDBCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
 
 	Validate(t, "crd/core.pingcap.com_tidbs.yaml", cases)
 }
@@ -84,7 +83,7 @@ func transferTiDBCases(t *testing.T, cases []Case, fields ...string) []Case {
 	return cases
 }
 
-func serverLabels() []Case {
+func tidbServerLabels() []Case {
 	errMsg := "spec.server.labels: Invalid value: \"object\": labels cannot contain 'host', 'region', or 'zone' keys"
 
 	return []Case{

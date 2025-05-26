@@ -38,6 +38,12 @@ const (
 	VolumeNameClusterClientTLS = meta.NamePrefix + "cluster-client-tls"
 	// VolumeNameMySQLTLS is the volume name for the TLS secret used by TLS communication between TiDB server and MySQL client.
 	VolumeNameMySQLTLS = meta.NamePrefix + "tidb-sql-tls"
+	// VolumeNameTiProxyMySQLTLS is the volume name for the TLS secret used by TLS communication between TiProxy and MySQL client.
+	VolumeNameTiProxyMySQLTLS = meta.NamePrefix + "tiproxy-sql-tls"
+	// VolumeNameTiProxyHTTPTLS is the volume name for the TLS secret used by TLS communication between TiProxy HTTP server and HTTP client.
+	VolumeNameTiProxyHTTPTLS = meta.NamePrefix + "tiproxy-http-tls"
+	// VolumeNameTiProxyTiDBTLS is the volume name for the TLS secret used by TLS communication between TiProxy and TiDB server.
+	VolumeNameTiProxyTiDBTLS = meta.NamePrefix + "tiproxy-tidb-tls"
 )
 
 // All container names
@@ -51,6 +57,7 @@ const (
 	ContainerNameTiCDC     = "ticdc"
 	ContainerNameTSO       = "tso"
 	ContainerNameScheduler = "scheduler"
+	ContainerNameTiProxy   = "tiproxy"
 
 	// An init container to copy pre stop checker cmd to main container
 	ContainerNamePrestopChecker = meta.NamePrefix + "prestop-checker"
@@ -78,6 +85,7 @@ const (
 	DirPathConfigTiCDC     = "/etc/ticdc"
 	DirPathConfigTSO       = "/etc/tso"
 	DirPathConfigScheduler = "/etc/scheduler"
+	DirPathConfigTiProxy   = "/etc/tiproxy"
 
 	// DirPathPrestop defines dir path of pre stop checker cmd
 	DirPathPrestop = "/prestop"
@@ -99,8 +107,15 @@ const (
 	DirPathClusterTLSTiCDC     = "/var/lib/ticdc-tls"
 	DirPathClusterTLSTSO       = "/var/lib/tso-tls"
 	DirPathClusterTLSScheduler = "/var/lib/scheduler-tls"
-	// Dir path of tls file for tidb and mysql client
+	DirPathClusterTLSTiProxy   = "/var/lib/tiproxy-tls"
+	// DirPathMySQLTLS is the dir path of tls file for tidb and mysql client
 	DirPathMySQLTLS = "/var/lib/tidb-sql-tls"
+	// DirPathTiProxyMySQLTLS is the dir path of tls file for tiproxy and mysql client
+	DirPathTiProxyMySQLTLS = "/var/lib/tiproxy-sql-tls"
+	// DirPathTiProxyHTTPTLS is the dir path of tls file for tiproxy http server
+	DirPathTiProxyHTTPTLS = "/var/lib/tiproxy-http-tls"
+	// DirPathTiProxyTiDBTLS is the dir path of tls file for tiproxy and tidb
+	DirPathTiProxyTiDBTLS = "/var/lib/tiproxy-tidb-tls"
 )
 
 // All file names
