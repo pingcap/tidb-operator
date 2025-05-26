@@ -97,7 +97,7 @@ spec:
                       properties:
                         topologies:
                           description: All instances of a group will evenly spread
-                            in differnet topologies
+                            in different topologies
                           items:
                             properties:
                               topology:

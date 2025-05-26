@@ -33,6 +33,7 @@ const (
 	defaultTiCDCGroupName     = "cg"
 	defaultTSOGroupName       = "tg"
 	defaultSchedulerGroupName = "sg"
+	defaultTiProxyGroupName   = "pg"
 
 	defaultVersion = "v8.1.0"
 

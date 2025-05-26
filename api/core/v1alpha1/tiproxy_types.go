@@ -19,10 +19,18 @@ import (
 )
 
 const (
-	TiProxyPortNameClient    = "mysql-client"
-	TiProxyPortNameStatus    = "status"
+	TiProxyPortNameClient = "mysql-client"
+	TiProxyPortNameAPI    = "api"
+	TiProxyPortNamePeer   = "peer"
+
 	DefaultTiProxyPortClient = 6000
-	DefaultTiProxyPortStatus = 3080
+	DefaultTiProxyPortAPI    = 3080
+	DefaultTiProxyPortPeer   = 3081
+)
+
+const (
+	TiProxyGroupCondAvailable   = "Available"
+	TiProxyGroupAvailableReason = "TiProxyGroupAvailable"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -142,8 +150,6 @@ type TiProxyTemplateSpec struct {
 type TiProxyPreStop struct {
 	// SleepSeconds is the seconds to sleep before sending the SIGTERM to the TiProxy container.
 	// It's useful to achieve a graceful shutdown of the TiProxy container.
-	// Operator will calculate the TiProxy pod's `terminationGracePeriod` based on this field:
-	// `terminationGracePeriod` = `preStopHookSleepSeconds` + 15(gracefulCloseConnectionsTimeout) + 5(buffer)
 	// Default is 10 seconds.
 	SleepSeconds int32 `json:"sleepSeconds,omitempty"`
 }
@@ -156,13 +162,22 @@ type TiProxySecurity struct {
 type TiProxyServer struct {
 	// Port defines all ports listened by TiProxy.
 	Ports TiProxyPorts `json:"ports,omitempty"`
+
+	// Labels defines the server labels of the TiProxy.
+	// TiDB Operator will ignore `labels` in TiProxy's config file and use this field instead.
+	// Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+	//  - zone
+	// +kubebuilder:validation:XValidation:rule="!('zone' in self)",message="labels cannot contain 'zone', it's managed by TiDB Operator"
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 type TiProxyPorts struct {
 	// Client defines port for TiProxy's SQL service.
 	Client *Port `json:"client,omitempty"`
-	// Status defines port for TiProxy status API.
-	Status *Port `json:"status,omitempty"`
+	// API defines port for TiProxy API service.
+	API *Port `json:"api,omitempty"`
+	// Peer defines port for TiProxy's peer service.
+	Peer *Port `json:"peer,omitempty"`
 }
 
 type TiProxyProbes struct {
@@ -173,15 +188,15 @@ type TiProxyProbes struct {
 
 type TiProxyProb struct {
 	// "tcp" will use TCP socket to connect component port.
-	// "command" will probe the status api of TiProxy.
+	// "command" will probe the HTTP API of TiProxy.
 	// +kubebuilder:validation:Enum=tcp;command
 	Type *string `json:"type,omitempty"`
 }
 
 type TiProxyTLS struct {
-	// When enabled, TiProxy will accept TLS encrypted connections from MySQL clients.
+	// MySQL defines the TLS configuration for connections between TiProxy and MySQL clients.
 	// The steps to enable this feature:
-	//   1. Generate a TiProxy server-side certificate and a client-side certificate for the TiProxy cluster.
+	//   1. Generate a TiProxy server-side certificate for the TiProxy cluster.
 	//      There are multiple ways to generate certificates:
 	//        - user-provided certificates: https://docs.pingcap.com/TiProxy/stable/generate-self-signed-certificates
 	//        - use the K8s built-in certificate signing system signed certificates: https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/
@@ -189,13 +204,11 @@ type TiProxyTLS struct {
 	//   2. Create a K8s Secret object which contains the TiProxy server-side certificate created above.
 	//      The name of this Secret must be: <groupName>-tiproxy-server-secret.
 	//        kubectl create secret generic <groupName>-tiproxy-server-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
-	//   3. Create a K8s Secret object which contains the TiProxy client-side certificate created above which will be used by TiProxy Operator.
-	//      The name of this Secret must be: <groupName>-tiproxy-client-secret.
-	//        kubectl create secret generic <groupName>-tiproxy-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
-	//   4. Set Enabled to `true`.
+	//   3. Set Enabled to `true`.
 	MySQL *TLS `json:"mysql,omitempty"`
 
-	// Backend defines the TLS configuration for connections between TiProxy and TiDB.
+	// Backend defines the TLS configuration for connections between TiProxy and TiDB servers.
+	// To enable this feature, the corresponding TiDB server must be configured with TLS enabled.
 	Backend *TLS `json:"backend,omitempty"`
 }
 
@@ -209,13 +222,13 @@ type TiProxySpec struct {
 	Cluster ClusterReference `json:"cluster"`
 
 	// Topology defines the topology domain of this TiProxy instance.
-	// It will be translated into a node affnity config.
+	// It will be translated into a node affinity config.
 	// Topology cannot be changed.
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="topology is immutable"
 	Topology Topology `json:"topology,omitempty"`
 
-	// Subdomain means the subdomain of the exported pd dns.
-	// A same pd cluster will use a same subdomain
+	// Subdomain means the subdomain of the exported tiproxy dns.
+	// A same tiproxy cluster will use a same subdomain
 	Subdomain string `json:"subdomain"`
 
 	// TiProxyTemplateSpec embeded some fields managed by TiProxyGroup.

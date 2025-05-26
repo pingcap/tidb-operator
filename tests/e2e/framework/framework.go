@@ -175,6 +175,13 @@ func (f *Framework) MustCreateScheduler(ctx context.Context, ps ...data.GroupPat
 	return sg
 }
 
+func (f *Framework) MustCreateTiProxy(ctx context.Context, ps ...data.GroupPatch[*runtime.TiProxyGroup]) *v1alpha1.TiProxyGroup {
+	tpg := data.NewTiProxyGroup(f.Namespace.Name, ps...)
+	ginkgo.By("Creating a tiproxy group")
+	f.Must(f.Client.Create(ctx, tpg))
+	return tpg
+}
+
 func (f *Framework) SetupBootstrapSQL(sql string) {
 	ginkgo.BeforeEach(func(ctx context.Context) {
 		cm := &corev1.ConfigMap{
