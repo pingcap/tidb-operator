@@ -67,9 +67,10 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		// set available and trust health info only when member info is valid
 		if !m.Invalid && m.Health {
 			state.SetHealthy()
+			return task.Complete().With("pd is ready")
 		}
 
-		return task.Complete().With("pd is ready")
+		return task.Wait().With("pd is unready, invalid: %v, health: %v", m.Invalid, m.Health)
 	})
 }
 
