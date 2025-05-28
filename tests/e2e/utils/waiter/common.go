@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
@@ -174,4 +175,15 @@ func WaitForObjectCondition[T runtime.ObjectTuple[O, U], O client.Object, U runt
 			cond.Message,
 		)
 	}, timeout)
+}
+
+func checkInstanceStatus(kind, name, ns string, generation int64, status v1alpha1.CommonStatus) error {
+	objID := fmt.Sprintf("%s %s/%s", kind, ns, name)
+	if generation != status.ObservedGeneration || !meta.IsStatusConditionPresentAndEqual(status.Conditions, v1alpha1.CondSynced, metav1.ConditionTrue) {
+		return fmt.Errorf("%s is not synced", objID)
+	}
+	if !meta.IsStatusConditionPresentAndEqual(status.Conditions, v1alpha1.CondReady, metav1.ConditionTrue) {
+		return fmt.Errorf("%s is not ready", objID)
+	}
+	return nil
 }
