@@ -19,9 +19,6 @@ import (
 	"fmt"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 )
@@ -34,14 +31,8 @@ func WaitForPDsHealthy(ctx context.Context, c client.Client, pdg *v1alpha1.PDGro
 		}
 		for i := range list.Items {
 			pd := &list.Items[i]
-			if pd.Generation != pd.Status.ObservedGeneration {
-				return fmt.Errorf("pd %s/%s is not synced", pd.Namespace, pd.Name)
-			}
-			if !meta.IsStatusConditionPresentAndEqual(pd.Status.Conditions, v1alpha1.PDCondInitialized, metav1.ConditionTrue) {
-				return fmt.Errorf("pd %s/%s is not initialized", pd.Namespace, pd.Name)
-			}
-			if !meta.IsStatusConditionPresentAndEqual(pd.Status.Conditions, v1alpha1.CondReady, metav1.ConditionTrue) {
-				return fmt.Errorf("pd %s/%s is not healthy", pd.Namespace, pd.Name)
+			if err := checkInstanceStatus(v1alpha1.LabelValComponentPD, pd.Name, pd.Namespace, pd.Generation, pd.Status.CommonStatus); err != nil {
+				return err
 			}
 		}
 

@@ -19,9 +19,6 @@ import (
 	"fmt"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 )
@@ -33,12 +30,9 @@ func WaitForTiProxysHealthy(ctx context.Context, c client.Client, proxyg *v1alph
 			return fmt.Errorf("db %s/%s replicas %d not equal to %d", proxyg.Namespace, proxyg.Name, len(list.Items), *proxyg.Spec.Replicas)
 		}
 		for i := range list.Items {
-			db := &list.Items[i]
-			if db.Generation != db.Status.ObservedGeneration {
-				return fmt.Errorf("db %s/%s is not synced", db.Namespace, db.Name)
-			}
-			if !meta.IsStatusConditionPresentAndEqual(db.Status.Conditions, v1alpha1.CondReady, metav1.ConditionTrue) {
-				return fmt.Errorf("db %s/%s is not healthy", db.Namespace, db.Name)
+			tiproxy := &list.Items[i]
+			if err := checkInstanceStatus(v1alpha1.LabelValComponentTiProxy, tiproxy.Name, tiproxy.Namespace, tiproxy.Generation, tiproxy.Status.CommonStatus); err != nil {
+				return err
 			}
 		}
 

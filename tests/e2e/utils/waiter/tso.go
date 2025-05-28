@@ -19,9 +19,6 @@ import (
 	"fmt"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 )
@@ -34,11 +31,8 @@ func WaitForTSOsHealthy(ctx context.Context, c client.Client, tg *v1alpha1.TSOGr
 		}
 		for i := range list.Items {
 			tso := &list.Items[i]
-			if tso.Generation != tso.Status.ObservedGeneration {
-				return fmt.Errorf("tso %s/%s is not synced", tso.Namespace, tso.Name)
-			}
-			if !meta.IsStatusConditionPresentAndEqual(tso.Status.Conditions, v1alpha1.CondReady, metav1.ConditionTrue) {
-				return fmt.Errorf("tso %s/%s is not healthy", tso.Namespace, tso.Name)
+			if err := checkInstanceStatus(v1alpha1.LabelValComponentTSO, tso.Name, tso.Namespace, tso.Generation, tso.Status.CommonStatus); err != nil {
+				return err
 			}
 		}
 
