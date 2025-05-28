@@ -54,6 +54,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/tiflashgroup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tikv"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tikvgroup"
+	"github.com/pingcap/tidb-operator/pkg/controllers/tiproxy"
+	"github.com/pingcap/tidb-operator/pkg/controllers/tiproxygroup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tso"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tsogroup"
 	"github.com/pingcap/tidb-operator/pkg/metrics"
@@ -246,6 +248,13 @@ func addIndexer(ctx context.Context, mgr ctrl.Manager) error {
 		return err
 	}
 
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.TiProxyGroup{}, "spec.cluster.name", func(obj client.Object) []string {
+		pg := obj.(*v1alpha1.TiProxyGroup)
+		return []string{pg.Spec.Cluster.Name}
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -344,6 +353,18 @@ func setupControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientManage
 			name: "Scheduler",
 			setupFunc: func() error {
 				return scheduler.Setup(mgr, c, pdcm, vm)
+			},
+		},
+		{
+			name: "TiProxyGroup",
+			setupFunc: func() error {
+				return tiproxygroup.Setup(mgr, c)
+			},
+		},
+		{
+			name: "TiProxy",
+			setupFunc: func() error {
+				return tiproxy.Setup(mgr, c, pdcm, vm)
 			},
 		},
 	}
