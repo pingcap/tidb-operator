@@ -12,16 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1alpha1
+package tasks
 
 const (
-	// DirPathBRBin is the directory path of br binary
-	DirPathBRBin = "/var/lib/br-bin"
-)
-
-const (
-	// Label value for meta.LabelKeyComponent
-	LabelValComponentBackup  = "backup"
-	LabelValComponentRestore = "restore"
-	LabelValComponentTiBR    = "tibr"
+	ConfigFileName     = "tibr-config.yaml"
+	StatefulSetReplica = int32(1)
+	APIServerPort      = 19500
+	SecretAccessMode   = int32(420)
 )

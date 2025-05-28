@@ -56,6 +56,10 @@ func OverlayPod(pod *corev1.Pod, overlay *v1alpha1.PodOverlay) {
 	}
 }
 
+func OverlayPodSpec(dst, src *corev1.PodSpec) {
+	overlayPodSpec(dst, src)
+}
+
 func convertObjectMeta(meta *v1alpha1.ObjectMeta) *metav1.ObjectMeta {
 	return &metav1.ObjectMeta{
 		Annotations: meta.Annotations,

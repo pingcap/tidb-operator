@@ -68,7 +68,9 @@ spec:
                   optional
                 properties:
                   at:
-                    description: At defines the schedule time of backup
+                    description: |-
+                      FIXME: it's hard to control the time in current auto backup runtime binary, this parameter is not actually works currently.
+                      At defines the schedule time of backup
                     format: int32
                     type: integer
                   type:
@@ -105,7 +107,9 @@ spec:
                 description: Image is image of br service, default is pingcap/tikv
                 type: string
               overlay:
-                description: Overlay defines a k8s native resource template patch
+                description: |-
+                  Overlay defines a k8s native resource template patch
+                  Notice: there will be two containers in the pod, one for auto backup, one as api server,if you want to overlay them please use the right name
                 properties:
                   pod:
                     properties:

@@ -1,0 +1,52 @@
+// Copyright 2024 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package tasks
+
+import (
+	v1alpha1br "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/image"
+)
+
+func ConfigMapName(tibr *v1alpha1br.TiBR) string {
+	return tibr.Name + "-config"
+}
+
+func StatefulSetName(tibr *v1alpha1br.TiBR) string {
+	return tibr.Name + "-sts"
+}
+
+func HeadlessSvcName(tibr *v1alpha1br.TiBR) string {
+	return tibr.Name + "-tibr-headless"
+}
+
+func SecretName(tibr *v1alpha1br.TiBR) string {
+	return tibr.Name + "-tibr-cluster-secret"
+}
+func TiBRSubResourceLabels(tibr *v1alpha1br.TiBR) map[string]string {
+	return map[string]string{
+		v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+		v1alpha1.LabelKeyComponent: v1alpha1br.LabelValComponentTiBR,
+		v1alpha1.LabelKeyCluster:   tibr.Spec.Cluster.Name,
+		v1alpha1.LabelKeyInstance:  tibr.Name,
+	}
+}
+
+func GetImage(tibr *v1alpha1br.TiBR) string {
+	if tibr.Spec.Image != nil {
+		return *tibr.Spec.Image
+	}
+	return string(image.TiKV)
+}
