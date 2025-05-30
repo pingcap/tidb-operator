@@ -44,7 +44,7 @@ const (
 	// defaultReadinessProbeInitialDelaySeconds is the default initial delay seconds for readiness probe.
 	defaultReadinessProbeInitialDelaySeconds = 5
 
-	metricsPath = "/api/metrics"
+	metricsPath = "/metrics"
 )
 
 func TaskPod(state *ReconcileContext, c client.Client) task.Task {
