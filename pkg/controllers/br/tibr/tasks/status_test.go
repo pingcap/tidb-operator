@@ -15,6 +15,9 @@
 package tasks
 
 import (
+	"fmt"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -141,6 +144,61 @@ func TestDoUpdateConditions(t *testing.T) {
 					assert.Equal(t, tt.expectSynced.Message, gotSynced.Message)
 				}
 			}
+		})
+	}
+}
+
+func TestEvaluateReadyStatus_TableDriven(t *testing.T) {
+	testCases := []struct {
+		name         string
+		ctx          *ReconcileContext
+		expectedMsgs []string
+	}{
+		{
+			name:         "All resources missing",
+			ctx:          &ReconcileContext{},
+			expectedMsgs: []string{"configmap is not existed", "statefulset is not existed", "headless service is not existed"},
+		},
+		{
+			name: "Only statefulset not ready",
+			ctx: &ReconcileContext{
+				configmap:   &corev1.ConfigMap{},
+				sts:         &appsv1.StatefulSet{Status: appsv1.StatefulSetStatus{ReadyReplicas: 0}},
+				headlessSvc: &corev1.Service{},
+			},
+			expectedMsgs: []string{fmt.Sprintf("ready replica of statefulset is not %d", StatefulSetReplica)},
+		},
+		{
+			name: "All resources ready",
+			ctx: &ReconcileContext{
+				configmap:   &corev1.ConfigMap{},
+				sts:         &appsv1.StatefulSet{Status: appsv1.StatefulSetStatus{ReadyReplicas: StatefulSetReplica}},
+				headlessSvc: &corev1.Service{},
+			},
+			expectedMsgs: []string{},
+		},
+		{
+			name: "Only headless service missing",
+			ctx: &ReconcileContext{
+				configmap: &corev1.ConfigMap{},
+				sts:       &appsv1.StatefulSet{Status: appsv1.StatefulSetStatus{ReadyReplicas: StatefulSetReplica}},
+			},
+			expectedMsgs: []string{"headless service is not existed"},
+		},
+		{
+			name: "Only configmap missing",
+			ctx: &ReconcileContext{
+				sts:         &appsv1.StatefulSet{Status: appsv1.StatefulSetStatus{ReadyReplicas: StatefulSetReplica}},
+				headlessSvc: &corev1.Service{},
+			},
+			expectedMsgs: []string{"configmap is not existed"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := evaluateReadyStatus(tc.ctx)
+			assert.ElementsMatch(t, tc.expectedMsgs, actual)
 		})
 	}
 }

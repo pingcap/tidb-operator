@@ -36,56 +36,59 @@ func condStatefulSetExist(rtx *ReconcileContext) t.Condition {
 	})
 }
 
-// statefulset assemble logic
-// 1. assemble volume claim templates from overlay(if user define volume claim for /data dir, he should overlay volume mount in container definition)
-// 2. assemble pod template,there will be different logic if tls enabled
-// 3. assemble pod template with overlay
-// 4. assemble statefulset sketch: meta, spec(pod template, volume claim templates, ...)
 func taskCreateStatefulSet(rtx *ReconcileContext) t.Task {
 	return t.NameTaskFunc("CreateStatefulSet", func(ctx context.Context) t.Result {
-		tibr := rtx.TiBR()
-		labels := TiBRSubResourceLabels(rtx.TiBR())
-		var volumeClaimTemplates []corev1.PersistentVolumeClaim
-		if tibr.Spec.Overlay != nil && len(tibr.Spec.Overlay.PersistentVolumeClaims) > 0 {
-			volumeClaimTemplates = assembleVolumeClaimTemplates(tibr.Spec.Overlay.PersistentVolumeClaims)
-		}
-		podSpec := assemblePodSpec(rtx)
-		if tibr.Spec.Overlay != nil && tibr.Spec.Overlay.Pod != nil {
-			overlay.OverlayPodSpec(podSpec, tibr.Spec.Overlay.Pod.Spec)
-		}
-
-		sts := &appsv1.StatefulSet{
-			ObjectMeta: v1.ObjectMeta{
-				Name:      StatefulSetName(tibr),
-				Namespace: rtx.NamespacedName().Namespace,
-				Labels:    labels,
-				OwnerReferences: []v1.OwnerReference{
-					*v1.NewControllerRef(rtx.TiBR(), v1alphabr.SchemeGroupVersion.WithKind("TiBR")),
-				},
-			},
-
-			Spec: appsv1.StatefulSetSpec{
-				ServiceName: HeadlessSvcName(tibr),
-				Replicas:    ptr.To(StatefulSetReplica),
-				Selector: &v1.LabelSelector{
-					MatchLabels: labels,
-				},
-				Template: corev1.PodTemplateSpec{
-					ObjectMeta: v1.ObjectMeta{
-						Labels: labels,
-					},
-					Spec: *podSpec,
-				},
-				VolumeClaimTemplates: volumeClaimTemplates,
-			},
-		}
-
-		err := rtx.Client().Create(ctx, sts)
+		err := rtx.Client().Create(ctx, assembleSts(rtx))
 		if err != nil {
 			return t.Fail().With("failed to create statefulset: %s", err.Error())
 		}
 		return t.Complete().With("statefulset created")
 	})
+}
+
+// assembleStatefulSet
+// 1. assemble volume claim templates from overlay(if user define volume claim for /data dir, he should overlay volume mount in container definition)
+// 2. assemble pod template,there will be different logic if tls enabled
+// 3. assemble pod template with overlay
+// 4. assemble statefulset sketch: meta, spec(pod template, volume claim templates, ...)
+func assembleSts(rtx *ReconcileContext) *appsv1.StatefulSet {
+	tibr := rtx.TiBR()
+	labels := TiBRSubResourceLabels(rtx.TiBR())
+	var volumeClaimTemplates []corev1.PersistentVolumeClaim
+	if tibr.Spec.Overlay != nil && len(tibr.Spec.Overlay.PersistentVolumeClaims) > 0 {
+		volumeClaimTemplates = assembleVolumeClaimTemplates(tibr.Spec.Overlay.PersistentVolumeClaims)
+	}
+	podSpec := assemblePodSpec(rtx)
+	if tibr.Spec.Overlay != nil && tibr.Spec.Overlay.Pod != nil {
+		overlay.OverlayPodSpec(podSpec, tibr.Spec.Overlay.Pod.Spec)
+	}
+
+	sts := &appsv1.StatefulSet{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      StatefulSetName(tibr),
+			Namespace: rtx.NamespacedName().Namespace,
+			Labels:    labels,
+			OwnerReferences: []v1.OwnerReference{
+				*v1.NewControllerRef(rtx.TiBR(), v1alphabr.SchemeGroupVersion.WithKind("TiBR")),
+			},
+		},
+
+		Spec: appsv1.StatefulSetSpec{
+			ServiceName: HeadlessSvcName(tibr),
+			Replicas:    ptr.To(StatefulSetReplica),
+			Selector: &v1.LabelSelector{
+				MatchLabels: labels,
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: v1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: *podSpec,
+			},
+			VolumeClaimTemplates: volumeClaimTemplates,
+		},
+	}
+	return sts
 }
 
 func assembleVolumeClaimTemplates(overlays []v1alpha1.NamedPersistentVolumeClaimOverlay) []corev1.PersistentVolumeClaim {
@@ -120,32 +123,21 @@ func assembleServerContainer(rtx *ReconcileContext) corev1.Container {
 	cmd := []string{
 		"/tikv-worker",
 		"--config",
-		"/etc/config/" + ConfigFileName,
+		ConfigMountPath + "/" + ConfigFileName,
 		"--addr",
 		fmt.Sprintf("0.0.0.0:%d", APIServerPort),
 		"--pd-endpoints",
 		pdAddr,
 		"--data-dir",
-		"/data",
+		DataMountPath,
 	}
 	if rtx.TLSEnabled() {
-		cmd = append(cmd, []string{
-			"--cacert",
-			"/var/lib/tibr-tls/ca.crt",
-			"--cert",
-			"/var/lib/tibr-tls/tls.crt",
-			"--key",
-			"/var/lib/tibr-tls/tls.key",
-		}...)
+		cmd = append(cmd, TLSCmdArgs...)
 	}
 
-	volumeMounts := []corev1.VolumeMount{{
-		Name: "config-volume", MountPath: "/etc/config",
-	}}
+	volumeMounts := []corev1.VolumeMount{configVolumeMount}
 	if rtx.TLSEnabled() {
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name: "tibr-tls", MountPath: "/var/lib/tibr-tls",
-		})
+		volumeMounts = append(volumeMounts, tlsVolumeMount)
 	}
 
 	return corev1.Container{
@@ -172,22 +164,13 @@ func assembleAutoBackupContainer(rtx *ReconcileContext) corev1.Container {
 		pdAddr,
 	}
 	if rtx.TLSEnabled() {
-		cmd = append(cmd, []string{
-			"--cacert",
-			"/var/lib/tibr-tls/ca.crt",
-			"--cert",
-			"/var/lib/tibr-tls/tls.crt",
-			"--key",
-			"/var/lib/tibr-tls/tls.key",
-		}...)
+		cmd = append(cmd, TLSCmdArgs...)
 	}
 
 	// volume
 	var volumeMounts []corev1.VolumeMount
 	if rtx.TLSEnabled() {
-		volumeMounts = []corev1.VolumeMount{{
-			Name: "tibr-tls", MountPath: "/var/lib/tibr-tls",
-		}}
+		volumeMounts = append(volumeMounts, tlsVolumeMount)
 	}
 
 	return corev1.Container{
@@ -214,7 +197,7 @@ func calculatePeriodSeconds(ty v1alphabr.TiBRAutoScheduleType) string {
 func assembleVolumes(rtx *ReconcileContext) []corev1.Volume {
 	volumes := []corev1.Volume{
 		{
-			Name: "config-volume",
+			Name: ConfigVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -226,7 +209,7 @@ func assembleVolumes(rtx *ReconcileContext) []corev1.Volume {
 	}
 	if rtx.TLSEnabled() {
 		volumes = append(volumes, corev1.Volume{
-			Name: "tibr-tls",
+			Name: TLSVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName:  SecretName(rtx.TiBR()),

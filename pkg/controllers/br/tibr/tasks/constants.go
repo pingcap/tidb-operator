@@ -14,9 +14,33 @@
 
 package tasks
 
+import corev1 "k8s.io/api/core/v1"
+
 const (
 	ConfigFileName     = "tibr-config.yaml"
 	StatefulSetReplica = int32(1)
 	APIServerPort      = 19500
 	SecretAccessMode   = int32(420)
+	ConfigVolumeName   = "config-volume"
+	TLSVolumeName      = "tibr-tls"
+	TLSMountPath       = "/var/lib/tibr-tls"
+	ConfigMountPath    = "/etc/config"
+	DataMountPath      = "/data"
+)
+
+var (
+	TLSCmdArgs = []string{
+		"--cacert",
+		TLSMountPath + "/ca.crt",
+		"--cert",
+		TLSMountPath + "/tls.crt",
+		"--key",
+		TLSMountPath + "/tls.key",
+	}
+	configVolumeMount = corev1.VolumeMount{
+		Name: ConfigVolumeName, MountPath: ConfigMountPath,
+	}
+	tlsVolumeMount = corev1.VolumeMount{
+		Name: TLSVolumeName, MountPath: TLSMountPath,
+	}
 )
