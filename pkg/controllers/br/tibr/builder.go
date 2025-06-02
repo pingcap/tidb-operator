@@ -25,30 +25,25 @@ func (r *Reconciler) NewRunner(rtx *tasks.ReconcileContext, reporter t.TaskRepor
 		tasks.TaskContextRefreshTiBR(rtx),
 		t.IfBreak(tasks.CondTiBRNotFound(rtx)),
 
-		t.Block(
-			// let owner reference handle deletion
-			t.IfBreak(tasks.CondTiBRIsDeleting(rtx)),
+		// let owner reference handle deletion
+		t.IfBreak(tasks.CondTiBRIsDeleting(rtx), tasks.TaskUpdateStatusIfNeeded(rtx)),
 
-			// escape if cluster not found or paused
-			tasks.TaskContextRefreshCluster(rtx),
-			t.IfBreak(tasks.CondClusterNotFound(rtx)),
-			t.IfBreak(common.CondClusterIsPaused(rtx)),
+		// escape if cluster not found or paused
+		tasks.TaskContextRefreshCluster(rtx),
+		t.IfBreak(tasks.CondClusterNotFound(rtx), tasks.TaskUpdateStatusIfNeeded(rtx)),
+		t.IfBreak(common.CondClusterIsPaused(rtx), tasks.TaskUpdateStatusIfNeeded(rtx)),
 
-			// refresh the sub-resources
-			tasks.TaskContextRefreshConfigMap(rtx),
-			tasks.TaskContextRefreshStatefulSet(rtx),
-			tasks.TaskContextRefreshHeadlessSvc(rtx),
+		// refresh the sub-resources
+		tasks.TaskContextRefreshConfigMap(rtx),
+		tasks.TaskContextRefreshStatefulSet(rtx),
+		tasks.TaskContextRefreshHeadlessSvc(rtx),
 
-			// cleanup sub-resources if cluster is suspending
-			t.IfBreak(common.CondClusterIsSuspending(rtx),
-				tasks.TaskEnsureSubResourcesCleanup(rtx)),
+		// cleanup sub-resources if cluster is suspending
+		t.IfBreak(common.CondClusterIsSuspending(rtx), tasks.TaskEnsureSubResourcesCleanup(rtx), tasks.TaskUpdateStatusIfNeeded(rtx)),
 
-			// ensure sub-resources
-			t.IfBreak(tasks.CondClusterIsNotReadyForBR(rtx)),
-			tasks.TaskEnsureSubResources(rtx),
-		),
-
-		// update status as finally
+		// ensure sub-resources
+		t.IfBreak(tasks.CondClusterIsNotReadyForBR(rtx), tasks.TaskUpdateStatusIfNeeded(rtx)),
+		tasks.TaskEnsureSubResources(rtx),
 		tasks.TaskUpdateStatusIfNeeded(rtx),
 	)
 
