@@ -29,7 +29,7 @@ import (
 
 func condPVCDeclared(rtx *ReconcileContext) t.Condition {
 	return t.CondFunc(func() bool {
-		return rtx.TiBR().Spec.Overlay != nil && len(rtx.TiBR().Spec.Overlay.PersistentVolumeClaims) != 0
+		return len(rtx.TiBR().Spec.Volumes) != 0
 	})
 }
 

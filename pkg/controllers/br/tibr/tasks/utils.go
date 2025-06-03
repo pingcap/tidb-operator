@@ -15,25 +15,27 @@
 package tasks
 
 import (
+	"fmt"
+
 	v1alpha1br "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/image"
 )
 
 func ConfigMapName(tibr *v1alpha1br.TiBR) string {
-	return tibr.Name + "-config"
+	return fmt.Sprintf("%s-%s-config", tibr.Name, ComponentName)
 }
 
 func StatefulSetName(tibr *v1alpha1br.TiBR) string {
-	return tibr.Name + "-sts"
+	return fmt.Sprintf("%s-%s-sts", tibr.Name, ComponentName)
 }
 
 func HeadlessSvcName(tibr *v1alpha1br.TiBR) string {
-	return tibr.Name + "-tibr-headless"
+	return fmt.Sprintf("%s-%s-headless", tibr.Name, ComponentName)
 }
 
 func SecretName(tibr *v1alpha1br.TiBR) string {
-	return tibr.Name + "-tibr-cluster-secret"
+	return fmt.Sprintf("%s-%s-cluster-secret", tibr.Name, ComponentName)
 }
 func TiBRSubResourceLabels(tibr *v1alpha1br.TiBR) map[string]string {
 	return map[string]string{

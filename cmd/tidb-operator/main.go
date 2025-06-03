@@ -400,6 +400,10 @@ func setupBRControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientMana
 }
 
 func BuildCacheByObject() map[client.Object]cache.ByObject {
+	managedByOperator := labels.SelectorFromSet(labels.Set{
+		v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+	})
+
 	byObj := map[client.Object]cache.ByObject{
 		&v1alpha1.Cluster{}: {
 			Label: labels.Everything(),
@@ -475,16 +479,16 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 			Label: labels.Everything(),
 		},
 		&appsv1.StatefulSet{}: {
-			Label: labels.Everything(),
+			Label: managedByOperator,
 		},
 		&corev1.ConfigMap{}: {
-			Label: labels.Everything(),
+			Label: managedByOperator,
 		},
 		&corev1.Service{}: {
-			Label: labels.Everything(),
+			Label: managedByOperator,
 		},
 		&corev1.PersistentVolumeClaim{}: {
-			Label: labels.Everything(),
+			Label: managedByOperator,
 		},
 		// TiBR objects end
 	}

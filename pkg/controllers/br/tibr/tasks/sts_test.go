@@ -16,11 +16,11 @@ package tasks
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -30,16 +30,12 @@ import (
 )
 
 func TestAssembleSts(t *testing.T) {
-	pvcOverlay := v1alpha1.NamedPersistentVolumeClaimOverlay{
+	volume := v1alpha1.Volume{
 		Name: "data",
-		PersistentVolumeClaim: v1alpha1.PersistentVolumeClaimOverlay{
-			Spec: &corev1.PersistentVolumeClaimSpec{
-				AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-				Resources: corev1.VolumeResourceRequirements{
-					Requests: corev1.ResourceList{"storage": resource.MustParse("10Gi")},
-				},
-			},
+		Mounts: []v1alpha1.VolumeMount{
+			{Type: "data", MountPath: v1alpha1br.VolumeTiBRDataDefaultMountPath},
 		},
+		Storage: resource.MustParse("10Gi"),
 	}
 
 	apiServerContainerOverlay := corev1.Container{Name: v1alpha1br.ContainerAPIServer, Image: "another-api-server-iamge"}
@@ -48,16 +44,16 @@ func TestAssembleSts(t *testing.T) {
 
 	testCases := []struct {
 		name                  string
+		volumes               []v1alpha1.Volume
 		overlay               *v1alpha1.Overlay
 		expectPVCCount        int
 		expectContainerNames  []string
 		expectContainersImage map[string]string
 	}{
 		{
-			name: "With PVC overlay",
-			overlay: &v1alpha1.Overlay{
-				PersistentVolumeClaims: []v1alpha1.NamedPersistentVolumeClaimOverlay{pvcOverlay},
-			},
+			name:                 "With Volumes definition",
+			volumes:              []v1alpha1.Volume{volume},
+			overlay:              nil,
 			expectPVCCount:       1,
 			expectContainerNames: []string{v1alpha1br.ContainerAPIServer, v1alpha1br.ContainerAutoBackup},
 			expectContainersImage: map[string]string{
@@ -66,7 +62,8 @@ func TestAssembleSts(t *testing.T) {
 			},
 		},
 		{
-			name: "With Pod overlay",
+			name:    "With Pod overlay",
+			volumes: nil,
 			overlay: &v1alpha1.Overlay{
 				Pod: &v1alpha1.PodOverlay{
 					Spec: &corev1.PodSpec{
@@ -83,9 +80,9 @@ func TestAssembleSts(t *testing.T) {
 			},
 		},
 		{
-			name: "With both overlays",
+			name:    "With both Pod overlay and Volumes definition",
+			volumes: []v1alpha1.Volume{volume},
 			overlay: &v1alpha1.Overlay{
-				PersistentVolumeClaims: []v1alpha1.NamedPersistentVolumeClaimOverlay{pvcOverlay},
 				Pod: &v1alpha1.PodOverlay{
 					Spec: &corev1.PodSpec{
 						Containers: []corev1.Container{apiServerContainerOverlay, autoBackupContainerOverlay, sidecar},
@@ -101,7 +98,8 @@ func TestAssembleSts(t *testing.T) {
 			},
 		},
 		{
-			name:                 "Without overlay",
+			name:                 "Without Pod overlay and Volumes definition",
+			volumes:              nil,
 			overlay:              nil,
 			expectPVCCount:       0,
 			expectContainerNames: []string{v1alpha1br.ContainerAPIServer, v1alpha1br.ContainerAutoBackup},
@@ -126,6 +124,7 @@ func TestAssembleSts(t *testing.T) {
 					},
 					Image:   ptr.To("default"),
 					Config:  "[native-br]\nenable-lightweight-backup = true",
+					Volumes: tc.volumes,
 					Overlay: tc.overlay,
 				},
 			}
@@ -145,7 +144,7 @@ func TestAssembleSts(t *testing.T) {
 
 			sts := assembleSts(rtx)
 
-			assert.Equal(t, "demo-sts", sts.Name)
+			assert.Equal(t, "demo-tibr-sts", sts.Name)
 			assert.Equal(t, "testing", sts.Namespace)
 			assert.Equal(t, "demo-tibr-headless", sts.Spec.ServiceName)
 			assert.Equal(t, []metav1.OwnerReference{*metav1.NewControllerRef(rtx.TiBR(), v1alpha1br.SchemeGroupVersion.WithKind("TiBR"))}, sts.OwnerReferences)
@@ -164,6 +163,138 @@ func TestAssembleSts(t *testing.T) {
 
 			for _, c := range sts.Spec.Template.Spec.Containers {
 				assert.Equal(t, tc.expectContainersImage[c.Name], c.Image)
+			}
+		})
+	}
+}
+
+func TestAssembleVolumeClaimIfNeeded(t *testing.T) {
+	fakeStorageClass := "standard"
+	fakeAttrClass := "ssd-fast"
+	volumeName := "data"
+	storage := resource.MustParse("1Gi")
+
+	tests := []struct {
+		name    string
+		tibr    *v1alpha1br.TiBR
+		wantPVC *corev1.PersistentVolumeClaim
+	}{
+		{
+			name:    "no volumes",
+			tibr:    &v1alpha1br.TiBR{},
+			wantPVC: nil,
+		},
+		{
+			name: "volume without overlay",
+			tibr: &v1alpha1br.TiBR{
+				Spec: v1alpha1br.TiBRSpec{
+					Volumes: []v1alpha1.Volume{
+						{
+							Name:                      volumeName,
+							Storage:                   storage,
+							StorageClassName:          &fakeStorageClass,
+							VolumeAttributesClassName: &fakeAttrClass,
+						},
+					},
+				},
+			},
+			wantPVC: &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: volumeName,
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					StorageClassName:          &fakeStorageClass,
+					VolumeAttributesClassName: &fakeAttrClass,
+					AccessModes:               []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceStorage: storage,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "volume with metadata overlay",
+			tibr: &v1alpha1br.TiBR{
+				Spec: v1alpha1br.TiBRSpec{
+					Volumes: []v1alpha1.Volume{
+						{
+							Name:             volumeName,
+							Storage:          storage,
+							StorageClassName: &fakeStorageClass,
+						},
+					},
+					Overlay: &v1alpha1.Overlay{
+						PersistentVolumeClaims: []v1alpha1.NamedPersistentVolumeClaimOverlay{
+							{
+								Name: volumeName,
+								PersistentVolumeClaim: v1alpha1.PersistentVolumeClaimOverlay{
+									ObjectMeta: v1alpha1.ObjectMeta{
+										Labels: map[string]string{"env": "test"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantPVC: &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   volumeName,
+					Labels: map[string]string{"env": "test"},
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					StorageClassName: &fakeStorageClass,
+					AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+					Resources: corev1.VolumeResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceStorage: storage,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := assembleVolumeClaimIfNeeded(tt.tibr)
+
+			if tt.wantPVC == nil {
+				if got != nil {
+					t.Errorf("expected nil PVC, got %v", got)
+				}
+				return
+			}
+
+			if got == nil {
+				t.Errorf("expected PVC, got nil")
+				return
+			}
+
+			if got.Name != tt.wantPVC.Name {
+				t.Errorf("PVC name mismatch: got %s, want %s", got.Name, tt.wantPVC.Name)
+			}
+
+			if sc := got.Spec.StorageClassName; sc == nil || *sc != *tt.wantPVC.Spec.StorageClassName {
+				t.Errorf("StorageClass mismatch: got %v, want %v", sc, tt.wantPVC.Spec.StorageClassName)
+			}
+
+			if vac := got.Spec.VolumeAttributesClassName; vac != nil && tt.wantPVC.Spec.VolumeAttributesClassName != nil && *vac != *tt.wantPVC.Spec.VolumeAttributesClassName {
+				t.Errorf("VolumeAttributesClassName mismatch: got %v, want %v", *vac, *tt.wantPVC.Spec.VolumeAttributesClassName)
+			}
+
+			gotStorage := got.Spec.Resources.Requests[corev1.ResourceStorage]
+			wantStorage := tt.wantPVC.Spec.Resources.Requests[corev1.ResourceStorage]
+			if gotStorage.Cmp(wantStorage) != 0 {
+				t.Errorf("Storage request mismatch: got %v, want %v", gotStorage.String(), wantStorage.String())
+			}
+
+			for k, v := range tt.wantPVC.Labels {
+				if got.Labels[k] != v {
+					t.Errorf("Label %q mismatch: got %q, want %q", k, got.Labels[k], v)
+				}
 			}
 		})
 	}
@@ -222,35 +353,73 @@ func TestAssembleServerContainer(t *testing.T) {
 	testCases := []struct {
 		name             string
 		tlsEnabled       bool
+		dataVolume       *v1alpha1.Volume
 		pdAddr           string
 		expectedCmdParts []string
 		expectedMounts   []string
 	}{
 		{
-			name:       "without TLS",
+			name:       "without TLS and dataVolume",
 			tlsEnabled: false,
+			dataVolume: nil,
 			pdAddr:     "pd.default.svc:2379",
 			expectedCmdParts: []string{
 				"/tikv-worker",
 				"--config", ConfigMountPath + "/" + ConfigFileName,
 				"--addr", fmt.Sprintf("0.0.0.0:%d", APIServerPort),
 				"--pd-endpoints", "pd.default.svc:2379",
-				"--data-dir", DataMountPath,
+				"--data-dir", v1alpha1br.VolumeTiBRDataDefaultMountPath,
 			},
 			expectedMounts: []string{ConfigVolumeName},
 		},
 		{
 			name:       "with TLS",
 			tlsEnabled: true,
+			dataVolume: nil,
 			pdAddr:     "pd.secure.svc:2379",
 			expectedCmdParts: append([]string{
 				"/tikv-worker",
 				"--config", ConfigMountPath + "/" + ConfigFileName,
 				"--addr", fmt.Sprintf("0.0.0.0:%d", APIServerPort),
 				"--pd-endpoints", "pd.secure.svc:2379",
-				"--data-dir", DataMountPath,
+				"--data-dir", v1alpha1br.VolumeTiBRDataDefaultMountPath,
 			}, TLSCmdArgs...),
 			expectedMounts: []string{ConfigVolumeName, TLSVolumeName},
+		},
+		{
+			name:       "with dataVolume",
+			tlsEnabled: false,
+			dataVolume: &v1alpha1.Volume{
+				Name: "data2",
+				Mounts: []v1alpha1.VolumeMount{
+					{MountPath: "dummyPath"},
+				},
+			},
+			pdAddr: "pd.secure.svc:2379",
+			expectedCmdParts: []string{
+				"/tikv-worker",
+				"--config", ConfigMountPath + "/" + ConfigFileName,
+				"--addr", fmt.Sprintf("0.0.0.0:%d", APIServerPort),
+				"--pd-endpoints", "pd.secure.svc:2379",
+				"--data-dir", "dummyPath",
+			},
+			expectedMounts: []string{ConfigVolumeName, "data2"},
+		},
+		{
+			name:       "with TLS and dataVolume",
+			tlsEnabled: true,
+			dataVolume: &v1alpha1.Volume{
+				Name: "data2",
+			},
+			pdAddr: "pd.secure.svc:2379",
+			expectedCmdParts: append([]string{
+				"/tikv-worker",
+				"--config", ConfigMountPath + "/" + ConfigFileName,
+				"--addr", fmt.Sprintf("0.0.0.0:%d", APIServerPort),
+				"--pd-endpoints", "pd.secure.svc:2379",
+				"--data-dir", v1alpha1br.VolumeTiBRDataDefaultMountPath,
+			}, TLSCmdArgs...),
+			expectedMounts: []string{ConfigVolumeName, TLSVolumeName, "data2"},
 		},
 	}
 
@@ -270,6 +439,9 @@ func TestAssembleServerContainer(t *testing.T) {
 					Status: v1alpha1.ClusterStatus{PD: tc.pdAddr},
 				},
 			}
+			if tc.dataVolume != nil {
+				rtx.tibr.Spec.Volumes = []v1alpha1.Volume{*tc.dataVolume}
+			}
 
 			c := assembleServerContainer(rtx)
 
@@ -282,6 +454,96 @@ func TestAssembleServerContainer(t *testing.T) {
 				mountNames = append(mountNames, vm.Name)
 			}
 			assert.ElementsMatch(t, tc.expectedMounts, mountNames)
+		})
+	}
+}
+
+func TestGenUserDefinedVolumeMount(t *testing.T) {
+	defaultName := v1alpha1br.VolumeTiBRData
+	defaultPath := v1alpha1br.VolumeTiBRDataDefaultMountPath
+
+	tests := []struct {
+		name     string
+		input    []v1alpha1.Volume
+		expected *corev1.VolumeMount
+	}{
+		{
+			name:     "empty volume list returns nil",
+			input:    nil,
+			expected: nil,
+		},
+		{
+			name: "default volume and mount path used",
+			input: []v1alpha1.Volume{
+				{},
+			},
+			expected: &corev1.VolumeMount{
+				Name:      defaultName,
+				MountPath: defaultPath,
+			},
+		},
+		{
+			name: "custom volume name",
+			input: []v1alpha1.Volume{
+				{
+					Name: "custom-vol",
+				},
+			},
+			expected: &corev1.VolumeMount{
+				Name:      "custom-vol",
+				MountPath: defaultPath,
+			},
+		},
+		{
+			name: "custom mount path",
+			input: []v1alpha1.Volume{
+				{
+					Mounts: []v1alpha1.VolumeMount{
+						{MountPath: "/custom/path"},
+					},
+				},
+			},
+			expected: &corev1.VolumeMount{
+				Name:      defaultName,
+				MountPath: "/custom/path",
+			},
+		},
+		{
+			name: "custom name and mount path",
+			input: []v1alpha1.Volume{
+				{
+					Name: "data-vol",
+					Mounts: []v1alpha1.VolumeMount{
+						{MountPath: "/mnt/data"},
+					},
+				},
+			},
+			expected: &corev1.VolumeMount{
+				Name:      "data-vol",
+				MountPath: "/mnt/data",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := genUserDefinedVolumeMount(tt.input)
+			if tt.expected == nil {
+				if got != nil {
+					t.Errorf("expected nil, got %+v", got)
+				}
+				return
+			}
+			if got == nil {
+				t.Errorf("expected non-nil, got nil")
+				return
+			}
+			if got.Name != tt.expected.Name {
+				t.Errorf("volume mount name mismatch: got %q, want %q", got.Name, tt.expected.Name)
+			}
+			if got.MountPath != tt.expected.MountPath {
+				t.Errorf("volume mount path mismatch: got %q, want %q", got.MountPath, tt.expected.MountPath)
+			}
 		})
 	}
 }
@@ -392,7 +654,7 @@ func TestAssembleVolumes(t *testing.T) {
 					VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
 							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "tibr-config", // assuming ConfigMapName returns <name>-config
+								Name: "tibr-tibr-config", // assuming ConfigMapName returns <name>-config
 							},
 						},
 					},
@@ -408,7 +670,7 @@ func TestAssembleVolumes(t *testing.T) {
 					VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
 							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "tibr-config",
+								Name: "tibr-tibr-config",
 							},
 						},
 					},

@@ -17,7 +17,6 @@ package tasks
 import (
 	"context"
 	"fmt"
-	"maps"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -27,6 +26,7 @@ import (
 	v1alphabr "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
+	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	t "github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -46,18 +46,10 @@ func taskCreateStatefulSet(rtx *ReconcileContext) t.Task {
 	})
 }
 
-// assembleStatefulSet
-// 1. assemble volume claim templates from overlay(if user define volume claim for /data dir, he should overlay volume mount in container definition)
-// 2. assemble pod template,there will be different logic if tls enabled
-// 3. assemble pod template with overlay
-// 4. assemble statefulset sketch: meta, spec(pod template, volume claim templates, ...)
 func assembleSts(rtx *ReconcileContext) *appsv1.StatefulSet {
 	tibr := rtx.TiBR()
 	labels := TiBRSubResourceLabels(rtx.TiBR())
-	var volumeClaimTemplates []corev1.PersistentVolumeClaim
-	if tibr.Spec.Overlay != nil && len(tibr.Spec.Overlay.PersistentVolumeClaims) > 0 {
-		volumeClaimTemplates = assembleVolumeClaimTemplates(tibr.Spec.Overlay.PersistentVolumeClaims)
-	}
+
 	podSpec := assemblePodSpec(rtx)
 	if tibr.Spec.Overlay != nil && tibr.Spec.Overlay.Pod != nil {
 		overlay.OverlayPodSpec(podSpec, tibr.Spec.Overlay.Pod.Spec)
@@ -85,26 +77,57 @@ func assembleSts(rtx *ReconcileContext) *appsv1.StatefulSet {
 				},
 				Spec: *podSpec,
 			},
-			VolumeClaimTemplates: volumeClaimTemplates,
 		},
 	}
+
+	volumeClaim := assembleVolumeClaimIfNeeded(tibr)
+	if volumeClaim != nil {
+		sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{*volumeClaim}
+	}
+
 	return sts
 }
 
-func assembleVolumeClaimTemplates(overlays []v1alpha1.NamedPersistentVolumeClaimOverlay) []corev1.PersistentVolumeClaim {
-	var pvs []corev1.PersistentVolumeClaim
-	for _, overlay := range overlays {
-		pv := corev1.PersistentVolumeClaim{
-			ObjectMeta: v1.ObjectMeta{
-				Name:        overlay.PersistentVolumeClaim.Name,
-				Labels:      maps.Clone(overlay.PersistentVolumeClaim.Labels),
-				Annotations: maps.Clone(overlay.PersistentVolumeClaim.Annotations),
-			},
-			Spec: *overlay.PersistentVolumeClaim.Spec,
-		}
-		pvs = append(pvs, pv)
+// Generate PVC from user-defined volumes
+// Notice: there should be at most one Volume, name as VolumeTiBRData with at most one Mount.
+// Notice: need to add mount info to volumeMounts in container definition
+func assembleVolumeClaimIfNeeded(tibr *v1alphabr.TiBR) *corev1.PersistentVolumeClaim {
+	if len(tibr.Spec.Volumes) == 0 {
+		return nil
 	}
-	return pvs
+
+	vol := tibr.Spec.Volumes[0]
+	pvc := &corev1.PersistentVolumeClaim{
+		ObjectMeta: v1.ObjectMeta{
+			Name: vol.Name,
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			StorageClassName: vol.StorageClassName,
+			AccessModes: []corev1.PersistentVolumeAccessMode{
+				corev1.ReadWriteOnce,
+			},
+			Resources: corev1.VolumeResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: vol.Storage,
+				},
+			},
+			VolumeAttributesClassName: vol.VolumeAttributesClassName,
+		},
+	}
+
+	// overlay PVC from user-defined volumes by PVC Overlay
+	if tibr.Spec.Overlay == nil || tibr.Spec.Overlay.PersistentVolumeClaims == nil {
+		return pvc
+	}
+	for _, ol := range tibr.Spec.Overlay.PersistentVolumeClaims {
+		if pvc.Name == ol.Name {
+			// Notice: currently only support overlay metadata
+			overlay.OverlayPersistentVolumeClaim(pvc, &ol.PersistentVolumeClaim)
+			break
+		}
+	}
+
+	return pvc
 }
 
 func assemblePodSpec(rtx *ReconcileContext) *corev1.PodSpec {
@@ -120,6 +143,13 @@ func assemblePodSpec(rtx *ReconcileContext) *corev1.PodSpec {
 
 func assembleServerContainer(rtx *ReconcileContext) corev1.Container {
 	pdAddr := rtx.Cluster().Status.PD
+	// Notice: there should be at most one Volume, name as VolumeTiBRData with at most one Mount.
+	dataVolumeMount := genUserDefinedVolumeMount(rtx.TiBR().Spec.Volumes)
+	dataDir := v1alphabr.VolumeTiBRDataDefaultMountPath
+	if dataVolumeMount != nil {
+		dataDir = dataVolumeMount.MountPath
+	}
+
 	cmd := []string{
 		"/tikv-worker",
 		"--config",
@@ -129,7 +159,7 @@ func assembleServerContainer(rtx *ReconcileContext) corev1.Container {
 		"--pd-endpoints",
 		pdAddr,
 		"--data-dir",
-		DataMountPath,
+		dataDir,
 	}
 	if rtx.TLSEnabled() {
 		cmd = append(cmd, TLSCmdArgs...)
@@ -140,12 +170,42 @@ func assembleServerContainer(rtx *ReconcileContext) corev1.Container {
 		volumeMounts = append(volumeMounts, tlsVolumeMount)
 	}
 
+	if dataVolumeMount != nil {
+		volumeMounts = append(volumeMounts, *dataVolumeMount)
+	}
+
 	return corev1.Container{
 		Name:         v1alphabr.ContainerAPIServer,
 		Image:        GetImage(rtx.TiBR()),
 		Command:      cmd,
 		VolumeMounts: volumeMounts,
+		// Notice: only set resources for api-server container, auto-backup container will use default resources
+		// since auto-backup container uses not much resource and logic in auto-backup container will be merged into api-server container in the future
+		Resources: k8s.GetResourceRequirements(rtx.TiBR().Spec.Resources),
 	}
+}
+
+func genUserDefinedVolumeMount(defs []v1alpha1.Volume) *corev1.VolumeMount {
+	if len(defs) == 0 {
+		return nil
+	}
+
+	def := defs[0]
+
+	vm := &corev1.VolumeMount{
+		Name:      v1alphabr.VolumeTiBRData,
+		MountPath: v1alphabr.VolumeTiBRDataDefaultMountPath,
+	}
+
+	// Name is the connection between Volume and VolumeMount
+	if def.Name != "" {
+		vm.Name = def.Name
+	}
+
+	if len(def.Mounts) != 0 && def.Mounts[0].MountPath != "" {
+		vm.MountPath = def.Mounts[0].MountPath
+	}
+	return vm
 }
 
 func assembleAutoBackupContainer(rtx *ReconcileContext) corev1.Container {

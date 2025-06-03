@@ -55,6 +55,15 @@ type TiBRSpec struct {
 	// Image is image of br service, default is pingcap/tikv
 	Image  *string             `json:"image,omitempty"`
 	Config v1alpha1.ConfigFile `json:"config,omitempty"`
+	// Resources defines resource required by TiBR.
+	Resources v1alpha1.ResourceRequirements `json:"resources,omitempty"`
+	// Volumes defines persistence data volume for TiBR, it is optional. please use it when need to restore a lot of data
+	// In TiBR use case, there should be at most one Volume, name as VolumeTiBRData with at most one Mount.
+	// Define this as array for future extension
+	// +listType=map
+	// +listMapKey=name
+	// +kubebuilder:validation:MaxItems=1
+	Volumes []v1alpha1.Volume `json:"volumes,omitempty"`
 	// Overlay defines a k8s native resource template patch
 	// Notice: there will be two containers in the pod, one for auto backup, one as api server,if you want to overlay them please use the right name
 	Overlay *v1alpha1.Overlay `json:"overlay,omitempty"`
@@ -63,6 +72,9 @@ type TiBRSpec struct {
 const (
 	ContainerAutoBackup = "auto-backup" // the container name for auto backup
 	ContainerAPIServer  = "api-server"  // the container name for api server
+
+	VolumeTiBRData                 = "data"
+	VolumeTiBRDataDefaultMountPath = "/data"
 )
 
 // TiBRStatus defines the observed state of TiBR.

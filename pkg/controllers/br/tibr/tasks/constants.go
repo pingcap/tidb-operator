@@ -17,6 +17,7 @@ package tasks
 import corev1 "k8s.io/api/core/v1"
 
 const (
+	ComponentName      = "tibr"
 	ConfigFileName     = "tibr-config.yaml"
 	StatefulSetReplica = int32(1)
 	APIServerPort      = 19500
@@ -25,7 +26,6 @@ const (
 	TLSVolumeName      = "tibr-tls"
 	TLSMountPath       = "/var/lib/tibr-tls"
 	ConfigMountPath    = "/etc/config"
-	DataMountPath      = "/data"
 )
 
 var (
