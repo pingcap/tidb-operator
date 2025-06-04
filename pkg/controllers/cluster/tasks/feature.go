@@ -103,7 +103,12 @@ func (t *TaskFeatureGates) Sync(ctx task.Context[ReconcileContext]) task.Result 
 }
 
 type Patch struct {
-	Spec Spec `json:"spec"`
+	Metadata Metadata `json:"metadata"`
+	Spec     Spec     `json:"spec"`
+}
+
+type Metadata struct {
+	ResourceVersion string `json:"resourceVersion"`
 }
 
 type Spec struct {
@@ -130,6 +135,9 @@ func patchFeatures[
 	logger.Info("update features", "add", add.UnsortedList(), "del", del.UnsortedList(), "ns", obj.GetNamespace(), "name", obj.GetName())
 
 	p := Patch{
+		Metadata: Metadata{
+			ResourceVersion: obj.GetResourceVersion(),
+		},
 		Spec: Spec{
 			Features: fs,
 		},
