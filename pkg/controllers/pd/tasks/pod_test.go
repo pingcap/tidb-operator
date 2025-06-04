@@ -31,6 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	stateutil "github.com/pingcap/tidb-operator/pkg/state"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
@@ -547,6 +548,8 @@ func TestTaskPod(t *testing.T) {
 			}
 
 			c.state.PDClient = NewFakePDClient(t, acts...)
+			s := c.state.State.(*state)
+			s.IFeatureGates = stateutil.NewFeatureGates[scope.PD](s)
 
 			if c.unexpectedErr {
 				// cannot update pod

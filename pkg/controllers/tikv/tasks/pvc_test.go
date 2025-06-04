@@ -29,8 +29,8 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	stateutil "github.com/pingcap/tidb-operator/pkg/state"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/volumes"
@@ -143,11 +143,13 @@ func TestTaskPVC(t *testing.T) {
 				require.NoError(tt, fc.Apply(ctx, obj), c.desc)
 			}
 
+			s := c.state.State.(*state)
+			s.IFeatureGates = stateutil.NewFeatureGates[scope.TiKV](s)
+
 			ctrl := gomock.NewController(tt)
 			vm := volumes.NewMockModifier(ctrl)
 			vf := volumes.NewMockModifierFactory(ctrl)
-			g := features.New[scope.TiKV](c.state.TiKV())
-			vf.EXPECT().New(g).Return(vm)
+			vf.EXPECT().New(c.state.FeatureGates()).Return(vm)
 			expectedPVCs := newPVCs(c.state.Cluster(), c.state.TiKV(), "")
 			for _, expected := range expectedPVCs {
 				for _, current := range c.pvcs {
