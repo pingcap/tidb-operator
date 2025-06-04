@@ -54,7 +54,10 @@ spec:
       sysctls:
       - name: net.core.somaxconn
         value: "32768"
-    config: {}
+    config: |
+      [log.file]
+        max-days = 30
+        max-backups = 30
     nodeSelector:
       dedicated: tikv
     tolerations:
