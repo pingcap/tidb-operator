@@ -24,8 +24,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	//nolint: stylecheck // too many changes, refactor later
-	//nolint: stylecheck // too many changes, refactor later
 
 	"github.com/Masterminds/semver/v3"
 	_ "github.com/go-sql-driver/mysql"
