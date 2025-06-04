@@ -212,3 +212,109 @@ func PodOverlayLabels() []Case {
 
 	return cases
 }
+
+func FeatureGates() []Case {
+	cases := []Case{
+		{
+			desc:     "create with empty feature gates",
+			isCreate: true,
+			current:  []any{},
+		},
+		{
+			desc:     "create with any feature gates",
+			isCreate: true,
+			current: []any{
+				map[string]any{
+					"name": "VolumeAttributeClass",
+				},
+			},
+		},
+		{
+			desc:     "create with FeatureModification",
+			isCreate: true,
+			current: []any{
+				map[string]any{
+					"name": "VolumeAttributeClass",
+				},
+				map[string]any{
+					"name": "FeatureModification",
+				},
+			},
+		},
+		{
+			desc: "can update feature gates if FeatureModification is enabled",
+			old: []any{
+				map[string]any{
+					"name": "VolumeAttributeClass",
+				},
+				map[string]any{
+					"name": "FeatureModification",
+				},
+			},
+			current: []any{
+				map[string]any{
+					"name": "DisablePDDefaultReadinessProbe",
+				},
+				map[string]any{
+					"name": "FeatureModification",
+				},
+			},
+		},
+		{
+			desc: "cannot update FeatureGates if FeatureModification is not enabled",
+			old: []any{
+				map[string]any{
+					"name": "VolumeAttributeClass",
+				},
+			},
+			current: []any{
+				map[string]any{
+					"name": "DisablePDDefaultReadinessProbe",
+				},
+			},
+			wantErrs: []string{
+				`spec.featureGates: Invalid value: "array": can only enable FeatureModification if it's not enabled`,
+			},
+		},
+		{
+			desc: "can only enable FeatureModification if FeatureModification is not enabled",
+			old: []any{
+				map[string]any{
+					"name": "VolumeAttributeClass",
+				},
+			},
+			current: []any{
+				map[string]any{
+					"name": "DisablePDDefaultReadinessProbe",
+				},
+				map[string]any{
+					"name": "FeatureModification",
+				},
+			},
+			wantErrs: []string{
+				`spec.featureGates: Invalid value: "array": can only enable FeatureModification if it's not enabled`,
+			},
+		},
+		{
+			desc: "cannot disable FeatureModification",
+			old: []any{
+				map[string]any{
+					"name": "VolumeAttributeClass",
+				},
+				map[string]any{
+					"name": "FeatureModification",
+				},
+			},
+			current: []any{
+				map[string]any{
+					"name": "VolumeAttributeClass",
+				},
+			},
+			wantErrs: []string{
+				`spec.featureGates: Invalid value: "array": cannot disable FeatureModification`,
+			},
+		},
+	}
+
+	return cases
+}

@@ -23,6 +23,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	features "github.com/pingcap/tidb-operator/pkg/features"
 	gomock "go.uber.org/mock/gomock"
 	v1 "k8s.io/api/core/v1"
 )
@@ -119,15 +120,15 @@ func (m *MockModifierFactory) EXPECT() *MockModifierFactoryMockRecorder {
 }
 
 // New mocks base method.
-func (m *MockModifierFactory) New(ns, name string) Modifier {
+func (m *MockModifierFactory) New(fg features.Gates) Modifier {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "New", ns, name)
+	ret := m.ctrl.Call(m, "New", fg)
 	ret0, _ := ret[0].(Modifier)
 	return ret0
 }
 
 // New indicates an expected call of New.
-func (mr *MockModifierFactoryMockRecorder) New(ns, name any) *gomock.Call {
+func (mr *MockModifierFactoryMockRecorder) New(fg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "New", reflect.TypeOf((*MockModifierFactory)(nil).New), ns, name)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "New", reflect.TypeOf((*MockModifierFactory)(nil).New), fg)
 }

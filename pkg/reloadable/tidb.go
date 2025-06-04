@@ -21,6 +21,8 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/features"
 )
 
 // CheckTiDB returns whether changes are reloadable. No change also means reloadable.
@@ -32,7 +34,8 @@ func CheckTiDB(group *v1alpha1.TiDBGroup, instance *v1alpha1.TiDB) bool {
 	groupTmpl := &group.Spec.Template
 	instanceTmpl := templateFromTiDB(instance)
 
-	return equalTiDBTemplate(groupTmpl, instanceTmpl)
+	return equalTiDBTemplate(groupTmpl, instanceTmpl) &&
+		features.Reloadable(meta.ComponentTiDB, group.Spec.Features, instance.Spec.Features)
 }
 
 // CheckTiDBPod returns whether changes are reloadable. No change also means reloadable.
@@ -41,6 +44,7 @@ func CheckTiDB(group *v1alpha1.TiDBGroup, instance *v1alpha1.TiDB) bool {
 // This function is used in the instance controller.
 func CheckTiDBPod(instance *v1alpha1.TiDB, pod *corev1.Pod) bool {
 	lastInstanceTemplate := pod.Annotations[v1alpha1.AnnoKeyLastInstanceTemplate]
+	lastFeatures := pod.Annotations[v1alpha1.AnnoKeyFeatures]
 
 	tmpl := &v1alpha1.TiDBTemplate{}
 	if err := json.Unmarshal([]byte(lastInstanceTemplate), tmpl); err != nil {
@@ -50,7 +54,8 @@ func CheckTiDBPod(instance *v1alpha1.TiDB, pod *corev1.Pod) bool {
 
 	instanceTmpl := templateFromTiDB(instance)
 
-	return equalTiDBTemplate(instanceTmpl, tmpl)
+	return equalTiDBTemplate(instanceTmpl, tmpl) &&
+		features.Reloadable(meta.ComponentTiDB, instance.Spec.Features, decodeFeatures(lastFeatures))
 }
 
 func EncodeLastTiDBTemplate(instance *v1alpha1.TiDB, pod *corev1.Pod) error {
@@ -64,6 +69,7 @@ func EncodeLastTiDBTemplate(instance *v1alpha1.TiDB, pod *corev1.Pod) error {
 		return err
 	}
 	pod.Annotations[v1alpha1.AnnoKeyLastInstanceTemplate] = string(data)
+	pod.Annotations[v1alpha1.AnnoKeyFeatures] = encodeFeatures(instance.Spec.Features)
 
 	return nil
 }

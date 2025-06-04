@@ -21,6 +21,8 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/features"
 )
 
 // CheckTiKV returns whether changes are reloadable. No change also means reloadable.
@@ -32,7 +34,8 @@ func CheckTiKV(group *v1alpha1.TiKVGroup, instance *v1alpha1.TiKV) bool {
 	groupTmpl := &group.Spec.Template
 	instanceTmpl := templateFromTiKV(instance)
 
-	return equalTiKVTemplate(groupTmpl, instanceTmpl)
+	return equalTiKVTemplate(groupTmpl, instanceTmpl) &&
+		features.Reloadable(meta.ComponentTiKV, group.Spec.Features, instance.Spec.Features)
 }
 
 // CheckTiKVPod returns whether changes are reloadable. No change also means reloadable.
@@ -41,6 +44,7 @@ func CheckTiKV(group *v1alpha1.TiKVGroup, instance *v1alpha1.TiKV) bool {
 // This function is used in the instance controller.
 func CheckTiKVPod(instance *v1alpha1.TiKV, pod *corev1.Pod) bool {
 	lastInstanceTemplate := pod.Annotations[v1alpha1.AnnoKeyLastInstanceTemplate]
+	lastFeatures := pod.Annotations[v1alpha1.AnnoKeyFeatures]
 
 	tmpl := &v1alpha1.TiKVTemplate{}
 	if err := json.Unmarshal([]byte(lastInstanceTemplate), tmpl); err != nil {
@@ -50,7 +54,8 @@ func CheckTiKVPod(instance *v1alpha1.TiKV, pod *corev1.Pod) bool {
 
 	instanceTmpl := templateFromTiKV(instance)
 
-	return equalTiKVTemplate(instanceTmpl, tmpl)
+	return equalTiKVTemplate(instanceTmpl, tmpl) &&
+		features.Reloadable(meta.ComponentTiKV, instance.Spec.Features, decodeFeatures(lastFeatures))
 }
 
 func EncodeLastTiKVTemplate(instance *v1alpha1.TiKV, pod *corev1.Pod) error {
@@ -64,6 +69,7 @@ func EncodeLastTiKVTemplate(instance *v1alpha1.TiKV, pod *corev1.Pod) error {
 		return err
 	}
 	pod.Annotations[v1alpha1.AnnoKeyLastInstanceTemplate] = string(data)
+	pod.Annotations[v1alpha1.AnnoKeyFeatures] = encodeFeatures(instance.Spec.Features)
 
 	return nil
 }

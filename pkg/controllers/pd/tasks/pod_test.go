@@ -30,6 +30,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
@@ -43,9 +44,6 @@ const (
 )
 
 func TestTaskPod(t *testing.T) {
-	// TODO(liubo02): register feature gates per case
-	features.Register(fake.FakeObj[v1alpha1.Cluster]("aaa"))
-
 	cases := []struct {
 		desc          string
 		state         *ReconcileContext
@@ -563,8 +561,10 @@ func TestTaskPod(t *testing.T) {
 
 			assert.Equal(tt, c.expectedPodIsTerminating, c.state.IsPodTerminating(), c.desc)
 
+			g := features.New[scope.PD](c.state.Object())
+
 			if c.expectUpdatedPod {
-				expectedPod := newPod(c.state.Cluster(), c.state.PD(), "", "")
+				expectedPod := newPod(c.state.Cluster(), c.state.PD(), g, "", "")
 				actual := c.state.Pod().DeepCopy()
 				actual.Kind = ""
 				actual.APIVersion = ""
@@ -604,5 +604,6 @@ func transferLeader(ctx context.Context, name string, err error) action {
 }
 
 func fakePod(c *v1alpha1.Cluster, pd *v1alpha1.PD) *corev1.Pod {
-	return newPod(c, pd, "", "")
+	g := features.New[scope.PD](pd)
+	return newPod(c, pd, g, "", "")
 }

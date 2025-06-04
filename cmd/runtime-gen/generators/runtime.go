@@ -66,6 +66,7 @@ func (g *runtimeGenerator) Imports(_ *generator.Context) (imports []string) {
 		`metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"`,
 
 		`"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"`,
+		`metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"`,
 	}
 	importLines = append(importLines, g.imports.ImportLines()...)
 
@@ -206,6 +207,10 @@ func (in *$.|pub$) PodOverlay() *v1alpha1.PodOverlay {
 		return nil
 	}
 	return in.Spec.Overlay.Pod
+}
+
+func (in *$.|pub$) Features() []metav1alpha1.Feature {
+	return in.Spec.Features
 }
 `, t)
 
@@ -361,6 +366,10 @@ func (g *$.|pub$) TemplateLabels() map[string]string {
 
 func (g *$.|pub$) TemplateAnnotations() map[string]string {
 	return g.Spec.Template.Annotations
+}
+
+func (g *$.|pub$) Features() []metav1alpha1.Feature {
+	return g.Spec.Features
 }
 `, t)
 

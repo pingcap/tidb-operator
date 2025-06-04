@@ -80,6 +80,14 @@ spec:
                 items:
                   properties:
                     name:
+                      description: |-
+                        Feature defines supported feature of a tidb cluster
+                        NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
+                        NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
+                      enum:
+                      - FeatureModification
+                      - VolumeAttributeClass
+                      - DisablePDDefaultReadinessProbe
                       type: string
                   required:
                   - name
@@ -88,6 +96,13 @@ spec:
                 x-kubernetes-list-map-keys:
                 - name
                 x-kubernetes-list-type: map
+                x-kubernetes-validations:
+                - message: can only enable FeatureModification if it's not enabled
+                  rule: oldSelf.exists(fg, fg.name == 'FeatureModification') || self.filter(fg,
+                    fg.name == 'FeatureModification') == oldSelf
+                - message: cannot disable FeatureModification
+                  rule: self.exists(fg, fg.name == 'FeatureModification') || !oldSelf.exists(fg,
+                    fg.name == 'FeatureModification')
               paused:
                 description: Paused specifies whether to pause the reconciliation
                   loop for all components of the cluster.
@@ -233,6 +248,14 @@ spec:
                 items:
                   properties:
                     name:
+                      description: |-
+                        Feature defines supported feature of a tidb cluster
+                        NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
+                        NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
+                      enum:
+                      - FeatureModification
+                      - VolumeAttributeClass
+                      - DisablePDDefaultReadinessProbe
                       type: string
                     stage:
                       type: string

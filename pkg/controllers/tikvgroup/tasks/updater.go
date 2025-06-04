@@ -122,6 +122,7 @@ func TiKVNewer(kvg *v1alpha1.TiKVGroup, rev string) updater.NewFactory[*runtime.
 			},
 			Spec: v1alpha1.TiKVSpec{
 				Cluster:          kvg.Spec.Cluster,
+				Features:         kvg.Spec.Features,
 				Subdomain:        HeadlessServiceName(kvg.Name),
 				TiKVTemplateSpec: *spec,
 			},

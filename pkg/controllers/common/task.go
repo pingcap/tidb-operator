@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -30,38 +29,10 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apicall"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
-
-func TaskContextResource[T any, PT Object[T]](name string, w ResourceInitializer[T], c client.Client, shouldExist bool) task.Task {
-	return taskContextResource[T, PT](name, w, c, shouldExist)
-}
-
-func taskContextResource[T any, PT Object[T]](name string, w ResourceInitializer[T], c client.Client, shouldExist bool) task.Task {
-	return task.NameTaskFunc("Context"+name, func(ctx context.Context) task.Result {
-		var obj PT = new(T)
-		key := types.NamespacedName{
-			Namespace: w.Namespace(),
-			Name:      w.Name(),
-		}
-		if err := c.Get(ctx, key, obj); err != nil {
-			if !errors.IsNotFound(err) {
-				return task.Fail().With("can't get %s: %v", key, err)
-			}
-
-			if shouldExist {
-				return task.Fail().With("cannot find %s: %v", key, err)
-			}
-
-			return task.Complete().With("obj %s does not exist", key)
-		}
-		w.Set(obj)
-		return task.Complete().With("%s is set", strings.ToLower(name))
-	})
-}
 
 func taskContextResourceSlice[T any, PT Object[T]](
 	name string,
@@ -149,16 +120,6 @@ func TaskSuspendPod(state PodState, c client.Client) task.Task {
 		}
 
 		return task.Retry(task.DefaultRequeueAfter).With("pod is deleting")
-	})
-}
-
-func TaskFeatureGates(state ClusterState) task.Task {
-	return task.NameTaskFunc("FeatureGates", func(context.Context) task.Result {
-		if err := features.Verify(state.Cluster()); err != nil {
-			return task.Fail().With("feature gates are not up to date: %v", err)
-		}
-
-		return task.Complete().With("feature gates are initialized")
 	})
 }
 
