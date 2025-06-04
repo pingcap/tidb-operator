@@ -16,17 +16,18 @@ package tikv
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/onsi/ginkgo/v2"
-	"github.com/onsi/gomega"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -38,14 +39,13 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/cert"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/k8s"
-	"github.com/pingcap/tidb-operator/tests/e2e/utils/tidb"
 )
 
-var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
+var _ = Describe("TiKV", label.TiKV, func() {
 	f := framework.New()
 	f.Setup()
 
-	ginkgo.DescribeTableSubtree("Leader Eviction", label.P1,
+	DescribeTableSubtree("Leader Eviction", label.P1,
 		func(tls bool) {
 			if tls {
 				f.SetupCluster(data.WithClusterTLS())
@@ -53,7 +53,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 
 			// NOTE(liubo02): this case is failed in e2e env because of the cgroup v2.
 			// Enable it if env is fixed.
-			ginkgo.PIt("leader evicted when delete tikv pod directly", func(ctx context.Context) {
+			PIt("leader evicted when delete tikv pod directly", func(ctx context.Context) {
 				if tls {
 					ns := f.Cluster.Namespace
 					cn := f.Cluster.Name
@@ -78,7 +78,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 				ch := make(chan struct{})
 				go func() {
 					defer close(ch)
-					defer ginkgo.GinkgoRecover()
+					defer GinkgoRecover()
 					f.WaitTiKVPreStopHookSuccess(nctx, kv)
 				}()
 
@@ -90,7 +90,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 
 			// If TLS is enabled, this test is not applicable because it relies on the PD API in this case.
 			if !tls {
-				ginkgo.It("should wait for leader count > 0 to restart the next TiKV", func(ctx context.Context) {
+				It("should wait for leader count > 0 to restart the next TiKV", func(ctx context.Context) {
 					pdg := f.MustCreatePD(ctx)
 					kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](3))
 					dbg := f.MustCreateTiDB(ctx)
@@ -98,52 +98,67 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 					f.WaitForTiKVGroupReady(ctx, kvg)
 					f.WaitForTiDBGroupReady(ctx, dbg)
 
+					// Get the cluster IP of the TiDB service
+					svcName := dbg.Name + "-tidb"
+					namespace := f.Namespace.Name
+					var clusterIP string
+					Eventually(func(g Gomega) {
+						var svc corev1.Service
+						err := f.Client.Get(ctx, client.ObjectKey{Name: svcName, Namespace: namespace}, &svc)
+						g.Expect(err).To(BeNil())
+						clusterIP = svc.Spec.ClusterIP
+					}).WithTimeout(2 * time.Minute).WithPolling(5 * time.Second).Should(Succeed())
+
 					// Import data to ensure enough leaders
-					ns := f.Namespace.Name
-					svcName := data.DefaultTiDBServiceName
-					dsn, cancel, err := tidb.PortForwardAndGetTiDBDSN(f.PortForwarder, ns, svcName, "root", "", "test", "charset=utf8mb4")
-					f.Must(err)
-					defer cancel()
-					db, err := sql.Open("mysql", dsn)
-					f.Must(err)
-					defer db.Close()
-					_, err = db.Exec("CREATE DATABASE IF NOT EXISTS e2e_test")
-					f.Must(err)
-					_, err = db.Exec("USE e2e_test")
-					f.Must(err)
-					_, err = db.Exec("CREATE TABLE t1 (id INT PRIMARY KEY AUTO_INCREMENT, v VARCHAR(1000))")
-					f.Must(err)
-					batchSize := 1000
-					total := 500000
-					for i := 0; i < total; i += batchSize {
-						end := i + batchSize
-						if end > total {
-							end = total
-						}
-						query := "INSERT INTO t1 (v) VALUES "
-						args := make([]interface{}, 0, end-i)
-						for j := i; j < end; j++ {
-							if j > i {
-								query += ","
-							}
-							query += "(?)"
-							args = append(args, strings.Repeat("x", 900)+fmt.Sprintf("%d", j))
-						}
-						_, err = db.Exec(query, args...)
-						f.Must(err)
+					By("Create a job to connect to the TiDB cluster to import data")
+					jobName := "import-data-job"
+					job := &batchv1.Job{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      jobName,
+							Namespace: namespace,
+						},
+						Spec: batchv1.JobSpec{
+							Template: corev1.PodTemplateSpec{
+								ObjectMeta: metav1.ObjectMeta{
+									Labels: map[string]string{
+										"app": jobName,
+									},
+								},
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{
+											Name:  "testing-workload",
+											Image: "pingcap/testing-workload:latest",
+											Args: []string{
+												"--action", "import",
+												"--host", clusterIP,
+												"--split-region-count", fmt.Sprintf("%d", 350),
+											},
+											ImagePullPolicy: corev1.PullIfNotPresent,
+										},
+									},
+									RestartPolicy: corev1.RestartPolicyNever,
+								},
+							},
+							BackoffLimit: ptr.To[int32](0),
+						},
 					}
-					_, err = db.Exec("SPLIT TABLE t1 BETWEEN (0) AND (500000) REGIONS 350")
-					f.Must(err)
+					Expect(f.Client.Create(ctx, job)).To(BeNil())
 
 					// Wait until leader count is sufficient
-					pdAddr, pdCancel := getFirstPDAddr(ctx, f, ns)
+					pdAddr, pdCancel := getFirstPDAddr(ctx, f, namespace)
 					defer pdCancel()
-					ginkgo.By(fmt.Sprintf("Wait until leader count is sufficient, PD address: %s", pdAddr))
-					gomega.Eventually(func(g gomega.Gomega) {
+					By(fmt.Sprintf("Wait until leader count is sufficient, PD address: %s", pdAddr))
+					Eventually(func(g Gomega) {
+						var jobGet batchv1.Job
+						err := f.Client.Get(ctx, client.ObjectKey{Name: jobName, Namespace: namespace}, &jobGet)
+						g.Expect(err).To(BeNil())
+						g.Expect(jobGet.Status.Succeeded).To(BeNumerically("==", 1))
+
 						count, err := getTotalLeaderCount(pdAddr)
-						g.Expect(err).ToNot(gomega.HaveOccurred())
-						g.Expect(count).To(gomega.BeNumerically(">", 300))
-					}, 2*time.Minute, 5*time.Second).Should(gomega.Succeed())
+						g.Expect(err).ToNot(HaveOccurred())
+						g.Expect(count).To(BeNumerically(">", 300))
+					}, 2*time.Minute, 5*time.Second).Should(Succeed())
 
 					// Define record structs
 					type LeaderRecord struct {
@@ -176,7 +191,6 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 							case <-ticker.C:
 								stores, err := getAllStoresInfo(pdAddr)
 								if err != nil {
-									// Optionally log the error, e.g., ginkgo.GinkgoWriter.Printf("Error getting all stores info: %v\n", err)
 									continue
 								}
 								leaderRecordsMu.Lock()
@@ -288,10 +302,10 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 							// If this is the last one, no need to check leader recovery
 							break
 						}
-						ginkgo.GinkgoWriter.Printf("TiKV %s restarted at %v, leader recovered at %v, next restart at %v\n",
+						GinkgoWriter.Printf("TiKV %s restarted at %v, leader recovered at %v, next restart at %v\n",
 							restart.PodName, restart.Time, leaderRecoveredAt, nextRestartAt)
-						gomega.Expect(leaderRecoveredAt).ToNot(gomega.BeZero(), "TiKV %s never recovered leader", restart.PodName)
-						gomega.Expect(leaderRecoveredAt).To(gomega.BeTemporally("<", nextRestartAt),
+						Expect(leaderRecoveredAt).ToNot(BeZero(), "TiKV %s never recovered leader", restart.PodName)
+						Expect(leaderRecoveredAt).To(BeTemporally("<", nextRestartAt),
 							"TiKV %s leader did not recover before next restart", restart.PodName)
 					}
 				})
@@ -303,8 +317,8 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 			}
 			return "NO TLS"
 		},
-		ginkgo.Entry(nil, false),
-		ginkgo.Entry(nil, label.FeatureTLS, true),
+		Entry(nil, false),
+		Entry(nil, label.FeatureTLS, true),
 	)
 })
 
