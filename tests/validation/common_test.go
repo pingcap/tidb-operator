@@ -261,6 +261,38 @@ func FeatureGates() []Case {
 			},
 		},
 		{
+			desc: "FeatureModification remains enabled, other features removed",
+			old: []any{
+				map[string]any{
+					"name": "VolumeAttributeClass",
+				},
+				map[string]any{
+					"name": "FeatureModification",
+				},
+			},
+			current: []any{
+				map[string]any{
+					"name": "FeatureModification",
+				},
+			},
+		},
+		{
+			desc: "FeatureModification remains enabled, other features added",
+			old: []any{
+				map[string]any{
+					"name": "FeatureModification",
+				},
+			},
+			current: []any{
+				map[string]any{
+					"name": "VolumeAttributeClass",
+				},
+				map[string]any{
+					"name": "FeatureModification",
+				},
+			},
+		},
+		{
 			desc: "cannot update FeatureGates if FeatureModification is not enabled",
 			old: []any{
 				map[string]any{
