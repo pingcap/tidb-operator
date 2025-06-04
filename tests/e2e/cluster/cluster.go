@@ -24,13 +24,12 @@ import (
 	"strings"
 	"sync"
 	"time"
+	//nolint: stylecheck // too many changes, refactor later
+	//nolint: stylecheck // too many changes, refactor later
 
 	"github.com/Masterminds/semver/v3"
 	_ "github.com/go-sql-driver/mysql"
-
-	//nolint: stylecheck // too many changes, refactor later
 	. "github.com/onsi/ginkgo/v2"
-	//nolint: stylecheck // too many changes, refactor later
 	. "github.com/onsi/gomega"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"

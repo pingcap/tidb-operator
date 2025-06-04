@@ -27,7 +27,9 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/tests/e2e/config"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
+	"github.com/pingcap/tidb-operator/tests/e2e/utils/k8s"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
@@ -40,6 +42,9 @@ type Framework struct {
 	podLogClient rest.Interface
 
 	clusterPatches []data.ClusterPatch
+
+	// PortForwarder is defined to visit pod in local.
+	PortForwarder k8s.PortForwarder
 }
 
 func New() *Framework {
@@ -90,6 +95,11 @@ func (f *Framework) Setup(opts ...SetupOption) {
 	gomega.Expect(err).To(gomega.Succeed())
 	f.podLogClient = podLogClient
 
+	clientRawConfig, err := k8s.LoadClientRawConfig()
+	gomega.Expect(err).To(gomega.Succeed())
+	f.PortForwarder, err = k8s.NewPortForwarder(context.Background(), config.NewSimpleRESTClientGetter(&clientRawConfig))
+	gomega.Expect(err).To(gomega.Succeed())
+
 	ginkgo.BeforeEach(func(ctx context.Context) {
 		ns := data.NewNamespace()
 
@@ -98,12 +108,16 @@ func (f *Framework) Setup(opts ...SetupOption) {
 		f.Must(f.Client.Create(ctx, f.Namespace))
 
 		ginkgo.DeferCleanup(func(ctx context.Context) {
-			ginkgo.By(fmt.Sprintf("Delete the namespace %s", f.Namespace.Name))
-			f.Must(f.Client.Delete(ctx, f.Namespace))
+			if !ginkgo.CurrentSpecReport().Failed() {
+				ginkgo.By(fmt.Sprintf("Delete the namespace %s", f.Namespace.Name))
+				f.Must(f.Client.Delete(ctx, f.Namespace))
 
-			if !options.SkipWaitForNamespaceDeleted {
-				ginkgo.By(fmt.Sprintf("Ensure the namespace %s can be deleted", f.Namespace.Name))
-				f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Namespace, waiter.LongTaskTimeout))
+				if !options.SkipWaitForNamespaceDeleted {
+					ginkgo.By(fmt.Sprintf("Ensure the namespace %s can be deleted", f.Namespace.Name))
+					f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Namespace, waiter.LongTaskTimeout))
+				}
+			} else {
+				ginkgo.By(fmt.Sprintf("Case failed, skip deleting namespace: %s", f.Namespace.Name))
 			}
 		})
 	})
@@ -115,12 +129,16 @@ func (f *Framework) Setup(opts ...SetupOption) {
 			f.Must(f.Client.Create(ctx, f.Cluster))
 
 			ginkgo.DeferCleanup(func(ctx context.Context) {
-				ginkgo.By(fmt.Sprintf("Delete the cluster: %s", f.Cluster.Name))
-				f.Must(f.Client.Delete(ctx, f.Cluster))
+				if !ginkgo.CurrentSpecReport().Failed() {
+					ginkgo.By(fmt.Sprintf("Delete the cluster: %s", f.Cluster.Name))
+					f.Must(f.Client.Delete(ctx, f.Cluster))
 
-				if !options.SkipWaitForClusterDeleted {
-					ginkgo.By(fmt.Sprintf("Ensure the cluster: %s can be deleted", f.Cluster.Name))
-					f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Cluster, waiter.LongTaskTimeout))
+					if !options.SkipWaitForClusterDeleted {
+						ginkgo.By(fmt.Sprintf("Ensure the cluster: %s can be deleted", f.Cluster.Name))
+						f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Cluster, waiter.LongTaskTimeout))
+					}
+				} else {
+					ginkgo.By(fmt.Sprintf("Case failed, skip deleting cluster: %s", f.Cluster.Name))
 				}
 			})
 		})

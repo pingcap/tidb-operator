@@ -27,6 +27,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/utils/ptr"
 )
 
@@ -38,6 +39,12 @@ func LoadConfig() (*rest.Config, error) {
 		kubeconfigPath = os.ExpandEnv("$HOME/.kube/config")
 	}
 	return clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+}
+
+func LoadClientRawConfig() (clientcmdapi.Config, error) {
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+	overrides := &clientcmd.ConfigOverrides{ClusterDefaults: clientcmd.ClusterDefaults}
+	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, overrides).RawConfig()
 }
 
 // CheckRollingRestartLogic checks if the rolling restart logic is correctly followed

@@ -18,17 +18,16 @@ import (
 	"context"
 
 	"github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
