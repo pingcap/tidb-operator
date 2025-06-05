@@ -38,7 +38,10 @@ spec:
     # storageClassName: local-storage
     requests:
       storage: "100Gi"
-    config: {}
+    config: |
+      [log.file]
+        max-days = 30
+        max-backups = 30
   tidb:
     imagePullPolicy: IfNotPresent
     baseImage: pingcap/tidb
