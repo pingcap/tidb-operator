@@ -35,11 +35,11 @@ type ClusterList struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories=tc
 // +kubebuilder:printcolumn:name="PD",type="integer",JSONPath=".status.components[?(@.kind==\"PD\")].replicas"
 // +kubebuilder:printcolumn:name="TiKV",type="integer",JSONPath=".status.components[?(@.kind==\"TiKV\")].replicas"
 // +kubebuilder:printcolumn:name="TiDB",type="integer",JSONPath=".status.components[?(@.kind==\"TiDB\")].replicas"
 // +kubebuilder:printcolumn:name="TiFlash",type="integer",JSONPath=".status.components[?(@.kind==\"TiFlash\")].replicas"
+// +kubebuilder:printcolumn:name="TiProxy",type="integer",JSONPath=".status.components[?(@.kind==\"TiProxy\")].replicas"
 // +kubebuilder:printcolumn:name="Available",type=string,JSONPath=`.status.conditions[?(@.type=="Available")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
@@ -166,13 +166,14 @@ const (
 	ComponentKindTiDB    ComponentKind = "TiDB"
 	ComponentKindTiFlash ComponentKind = "TiFlash"
 	ComponentKindTiCDC   ComponentKind = "TiCDC"
+	ComponentKindTiProxy ComponentKind = "TiProxy"
 )
 
 // ComponentStatus is the status of a component in the cluster.
 type ComponentStatus struct {
 	// Kind is the kind of the component, e.g., PD, TiKV, TiDB, TiFlash.
 	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Enum=PD;TiKV;TiDB;TiFlash;TiCDC
+	// +kubebuilder:validation:Enum=PD;TiKV;TiDB;TiFlash;TiCDC;TiProxy
 	Kind ComponentKind `json:"kind"`
 
 	// Replicas is the number of desired replicas of the component.
