@@ -12,16 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1alpha1
+package tasks
 
-const (
-	// DirPathBRBin is the directory path of br binary
-	DirPathBRBin = "/var/lib/br-bin"
+import (
+	"github.com/pingcap/tidb-operator/pkg/controllers/common"
+	t "github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-const (
-	// Label value for meta.LabelKeyComponent
-	LabelValComponentBackup  = "backup"
-	LabelValComponentRestore = "restore"
-	LabelValComponentTiBR    = "tibr"
-)
+func CondClusterNotFound(rtx *ReconcileContext) t.Condition {
+	return t.CondFunc(func() bool {
+		return rtx.Cluster() == nil
+	})
+}
+
+func CondClusterIsNotReadyForBR(rtx *ReconcileContext) t.Condition {
+	return common.CondClusterPDAddrIsNotRegistered(rtx)
+}

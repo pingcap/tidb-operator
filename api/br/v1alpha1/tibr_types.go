@@ -55,14 +55,43 @@ type TiBRSpec struct {
 	// Image is image of br service, default is pingcap/tikv
 	Image  *string             `json:"image,omitempty"`
 	Config v1alpha1.ConfigFile `json:"config,omitempty"`
+	// Resources defines resource required by TiBR.
+	Resources v1alpha1.ResourceRequirements `json:"resources,omitempty"`
+	// Volumes defines persistence data volume for TiBR, it is optional. please use it when need to restore a lot of data
+	// In TiBR use case, there should be at most one Volume, name as VolumeTiBRData with at most one Mount.
+	// Define this as array for future extension
+	// +listType=map
+	// +listMapKey=name
+	// +kubebuilder:validation:MaxItems=1
+	Volumes []v1alpha1.Volume `json:"volumes,omitempty"`
 	// Overlay defines a k8s native resource template patch
+	// Notice: there will be two containers in the pod, one for auto backup, one as api server,if you want to overlay them please use the right name
 	Overlay *v1alpha1.Overlay `json:"overlay,omitempty"`
 }
+
+const (
+	ContainerAutoBackup = "auto-backup" // the container name for auto backup
+	ContainerAPIServer  = "api-server"  // the container name for api server
+
+	VolumeTiBRData                 = "data"
+	VolumeTiBRDataDefaultMountPath = "/data"
+)
 
 // TiBRStatus defines the observed state of TiBR.
 type TiBRStatus struct {
 	v1alpha1.CommonStatus `json:",inline"`
 }
+
+const (
+	TiBRCondReady  = "Ready"
+	TiBRCondSynced = "Synced"
+
+	// TODO: need to make it more specific
+	TiBRReasonNotReady = "NotReady"
+	TiBRReasonReady    = "Ready"
+	TiBRReasonUnSynced = "UnSynced"
+	TiBRReasonSynced   = "Synced"
+)
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
@@ -88,6 +117,7 @@ type TiBRAutoSchedule struct {
 	// Type defines the schedule type, such as per-day, per-hour, per-minute
 	// +kubebuilder:validation:Enum=per-day;per-hour;per-minute
 	Type TiBRAutoScheduleType `json:"type"`
+	// FIXME: it's hard to control the time in current auto backup runtime binary, this parameter is not actually works currently.
 	// At defines the schedule time of backup
 	At uint32 `json:"at"`
 }
