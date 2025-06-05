@@ -24,7 +24,6 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/utils/task"
 )
 
@@ -41,6 +40,7 @@ type ReconcileContext struct {
 	TiCDCGroups     []*v1alpha1.TiCDCGroup
 	TSOGroups       []*v1alpha1.TSOGroup
 	SchedulerGroups []*v1alpha1.SchedulerGroup
+	TiProxyGroups   []*v1alpha1.TiProxyGroup
 }
 
 func (ctx *ReconcileContext) Self() *ReconcileContext {
@@ -74,12 +74,10 @@ func (t *TaskContext) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		if !errors.IsNotFound(err) {
 			return task.Fail().With("can't get tidb cluster: %w", err)
 		}
-		features.Deregister(rtx.Key.Namespace, rtx.Key.Name)
 
 		return task.Complete().Break().With("tidb cluster has been deleted")
 	}
 	rtx.Cluster = &cluster
-	features.Register(rtx.Cluster)
 
 	if coreutil.ShouldPauseReconcile(rtx.Cluster) {
 		return task.Complete().Break().With("cluster reconciliation is paused")
@@ -149,6 +147,15 @@ func (t *TaskContext) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	}
 	for i := range ticdcGroupList.Items {
 		rtx.TiCDCGroups = append(rtx.TiCDCGroups, &ticdcGroupList.Items[i])
+	}
+
+	var tiproxyGroupList v1alpha1.TiProxyGroupList
+	if err := t.Client.List(ctx, &tiproxyGroupList, client.InNamespace(rtx.Key.Namespace),
+		client.MatchingFields{"spec.cluster.name": rtx.Key.Name}); err != nil {
+		return task.Fail().With("can't list tiproxy group: %w", err)
+	}
+	for i := range tiproxyGroupList.Items {
+		rtx.TiProxyGroups = append(rtx.TiProxyGroups, &tiproxyGroupList.Items[i])
 	}
 
 	return task.Complete().With("new context completed")

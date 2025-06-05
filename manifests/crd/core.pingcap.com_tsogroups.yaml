@@ -9,7 +9,6 @@ spec:
   group: core.pingcap.com
   names:
     categories:
-    - tc
     - group
     kind: TSOGroup
     listKind: TSOGroupList
@@ -86,6 +85,19 @@ spec:
                 required:
                 - name
                 type: object
+              features:
+                description: Features are enabled feature
+                items:
+                  description: |-
+                    Feature defines supported feature of a tidb cluster
+                    NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
+                    NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
+                  enum:
+                  - FeatureModification
+                  - VolumeAttributeClass
+                  - DisablePDDefaultReadinessProbe
+                  type: string
+                type: array
               replicas:
                 format: int32
                 type: integer

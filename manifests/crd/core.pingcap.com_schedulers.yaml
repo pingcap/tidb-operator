@@ -9,7 +9,6 @@ spec:
   group: core.pingcap.com
   names:
     categories:
-    - tc
     - instance
     kind: Scheduler
     listKind: SchedulerList
@@ -73,6 +72,19 @@ spec:
                   Config defines config file of Scheduler
                   See https://docs.pingcap.com/tidb/stable/Scheduler-configuration-file/
                 type: string
+              features:
+                description: Features are enabled feature
+                items:
+                  description: |-
+                    Feature defines supported feature of a tidb cluster
+                    NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
+                    NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
+                  enum:
+                  - FeatureModification
+                  - VolumeAttributeClass
+                  - DisablePDDefaultReadinessProbe
+                  type: string
+                type: array
               image:
                 description: |-
                   Image is pd's image

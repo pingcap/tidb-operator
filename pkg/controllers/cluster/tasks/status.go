@@ -40,11 +40,12 @@ type TaskStatus struct {
 }
 
 func NewTaskStatus(logger logr.Logger, c client.Client, pdcm pdm.PDClientManager) task.Task[ReconcileContext] {
-	return &TaskStatus{
+	t := &TaskStatus{
 		Logger:          logger,
 		Client:          c,
 		PDClientManager: pdcm,
 	}
+	return t
 }
 
 func (*TaskStatus) Name() string {
@@ -141,6 +142,16 @@ func (*TaskStatus) syncComponentStatus(rtx *ReconcileContext) bool {
 			}
 		}
 		components = append(components, ticdc)
+	}
+
+	if len(rtx.TiProxyGroups) > 0 {
+		tiproxy := v1alpha1.ComponentStatus{Kind: v1alpha1.ComponentKindTiProxy}
+		for _, tiproxyGroup := range rtx.TiProxyGroups {
+			if tiproxyGroup.Spec.Replicas != nil {
+				tiproxy.Replicas += *tiproxyGroup.Spec.Replicas
+			}
+		}
+		components = append(components, tiproxy)
 	}
 
 	sort.Slice(components, func(i, j int) bool {

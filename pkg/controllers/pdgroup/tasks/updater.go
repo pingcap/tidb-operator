@@ -138,6 +138,7 @@ func PDNewer(pdg *v1alpha1.PDGroup, rev string) updater.NewFactory[*runtime.PD] 
 			},
 			Spec: v1alpha1.PDSpec{
 				Cluster:        pdg.Spec.Cluster,
+				Features:       pdg.Spec.Features,
 				Subdomain:      HeadlessServiceName(pdg.Name),
 				PDTemplateSpec: *spec,
 			},

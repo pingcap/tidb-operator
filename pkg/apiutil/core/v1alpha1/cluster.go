@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 // ShouldSuspendCompute returns whether the cluster should suspend compute.
@@ -38,4 +39,13 @@ func TLSClusterClientSecretName(clusterName string) string {
 
 func ShouldPauseReconcile(c *v1alpha1.Cluster) bool {
 	return c.Spec.Paused
+}
+
+func EnabledFeatures(c *v1alpha1.Cluster) []metav1alpha1.Feature {
+	fs := make([]metav1alpha1.Feature, 0, len(c.Spec.FeatureGates))
+	for _, fg := range c.Spec.FeatureGates {
+		fs = append(fs, fg.Name)
+	}
+
+	return fs
 }

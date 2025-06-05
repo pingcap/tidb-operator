@@ -23,6 +23,7 @@ import (
 	"unsafe"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -149,6 +150,10 @@ func (in *Scheduler) PodOverlay() *v1alpha1.PodOverlay {
 		return nil
 	}
 	return in.Spec.Overlay.Pod
+}
+
+func (in *Scheduler) Features() []metav1alpha1.Feature {
+	return in.Spec.Features
 }
 
 type (
@@ -296,4 +301,8 @@ func (g *SchedulerGroup) TemplateLabels() map[string]string {
 
 func (g *SchedulerGroup) TemplateAnnotations() map[string]string {
 	return g.Spec.Template.Annotations
+}
+
+func (g *SchedulerGroup) Features() []metav1alpha1.Feature {
+	return g.Spec.Features
 }

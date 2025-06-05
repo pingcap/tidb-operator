@@ -213,7 +213,7 @@ func isVolumeExpansionSupported(sc *storagev1.StorageClass) (bool, error) {
 
 type ModifierFactory interface {
 	// new modifier for cluster
-	New(ns, name string) Modifier
+	New(fg features.Gates) Modifier
 }
 
 type modifierFactory struct {
@@ -224,8 +224,8 @@ type modifierFactory struct {
 	raw    Modifier
 }
 
-func (f *modifierFactory) New(ns, name string) Modifier {
-	if features.Enabled(ns, name, v1alpha1.VolumeAttributeClass) {
+func (f *modifierFactory) New(fg features.Gates) Modifier {
+	if fg.Enabled(v1alpha1.VolumeAttributeClass) {
 		if f.native == nil {
 			f.native = NewNativeModifier(f.cli, f.logger)
 		}

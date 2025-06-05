@@ -21,6 +21,8 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/features"
 )
 
 // CheckTiFlash returns whether changes are reloadable. No change also means reloadable.
@@ -32,7 +34,8 @@ func CheckTiFlash(group *v1alpha1.TiFlashGroup, instance *v1alpha1.TiFlash) bool
 	groupTmpl := &group.Spec.Template
 	instanceTmpl := templateFromTiFlash(instance)
 
-	return equalTiFlashTemplate(groupTmpl, instanceTmpl)
+	return equalTiFlashTemplate(groupTmpl, instanceTmpl) &&
+		features.Reloadable(meta.ComponentTiFlash, group.Spec.Features, instance.Spec.Features)
 }
 
 // CheckTiFlashPod returns whether changes are reloadable. No change also means reloadable.
@@ -41,6 +44,7 @@ func CheckTiFlash(group *v1alpha1.TiFlashGroup, instance *v1alpha1.TiFlash) bool
 // This function is used in the instance controller.
 func CheckTiFlashPod(instance *v1alpha1.TiFlash, pod *corev1.Pod) bool {
 	lastInstanceTemplate := pod.Annotations[v1alpha1.AnnoKeyLastInstanceTemplate]
+	lastFeatures := pod.Annotations[v1alpha1.AnnoKeyFeatures]
 
 	tmpl := &v1alpha1.TiFlashTemplate{}
 	if err := json.Unmarshal([]byte(lastInstanceTemplate), tmpl); err != nil {
@@ -50,7 +54,8 @@ func CheckTiFlashPod(instance *v1alpha1.TiFlash, pod *corev1.Pod) bool {
 
 	instanceTmpl := templateFromTiFlash(instance)
 
-	return equalTiFlashTemplate(instanceTmpl, tmpl)
+	return equalTiFlashTemplate(instanceTmpl, tmpl) &&
+		features.Reloadable(meta.ComponentTiFlash, instance.Spec.Features, decodeFeatures(lastFeatures))
 }
 
 func EncodeLastTiFlashTemplate(instance *v1alpha1.TiFlash, pod *corev1.Pod) error {
@@ -64,6 +69,7 @@ func EncodeLastTiFlashTemplate(instance *v1alpha1.TiFlash, pod *corev1.Pod) erro
 		return err
 	}
 	pod.Annotations[v1alpha1.AnnoKeyLastInstanceTemplate] = string(data)
+	pod.Annotations[v1alpha1.AnnoKeyFeatures] = encodeFeatures(instance.Spec.Features)
 
 	return nil
 }

@@ -23,4 +23,5 @@ const (
 	// Label value for meta.LabelKeyComponent
 	LabelValComponentBackup  = "backup"
 	LabelValComponentRestore = "restore"
+	LabelValComponentTiBR    = "tibr"
 )

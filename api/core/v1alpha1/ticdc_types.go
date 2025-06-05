@@ -15,6 +15,7 @@
 package v1alpha1
 
 import (
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -43,7 +44,7 @@ type TiCDCGroupList struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:subresource:scale:specpath=.spec.replicas,statuspath=.status.replicas,selectorpath=.status.selector
-// +kubebuilder:resource:categories=tc;group,shortName=cg
+// +kubebuilder:resource:categories=group,shortName=cg
 // +kubebuilder:selectablefield:JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Desired",type=string,JSONPath=`.spec.replicas`
@@ -77,7 +78,7 @@ type TiCDCList struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:categories=tc;instance
+// +kubebuilder:resource:categories=instance
 // +kubebuilder:selectablefield:JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
@@ -95,8 +96,10 @@ type TiCDC struct {
 
 // TiCDCGroupSpec describes the common attributes of a TiCDCGroup
 type TiCDCGroupSpec struct {
-	Cluster  ClusterReference `json:"cluster"`
-	Replicas *int32           `json:"replicas"`
+	Cluster ClusterReference `json:"cluster"`
+	// Features are enabled feature
+	Features []meta.Feature `json:"features,omitempty"`
+	Replicas *int32         `json:"replicas"`
 
 	// +listType=map
 	// +listMapKey=type
@@ -163,6 +166,8 @@ type TiCDCGroupStatus struct {
 type TiCDCSpec struct {
 	// Cluster is a reference of tidb cluster
 	Cluster ClusterReference `json:"cluster"`
+	// Features are enabled feature
+	Features []meta.Feature `json:"features,omitempty"`
 
 	// Topology defines the topology domain of this TiCDC instance
 	// It will be translated into a node affinity config

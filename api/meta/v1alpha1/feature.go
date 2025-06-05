@@ -14,6 +14,12 @@
 
 package v1alpha1
 
+// Feature defines supported feature of a tidb cluster
+// NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
+// NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
+//
+// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributeClass;DisablePDDefaultReadinessProbe
+// +enum
 type Feature string
 
 type FeatureStage string
@@ -35,13 +41,19 @@ type FeatureGateStatus struct {
 }
 
 const (
+	// Support modify feature after cluster creation
+	// Now enable/disable any features will update groups by rolling update
+	// This feature cannot be disabled
+	FeatureModification      Feature      = "FeatureModification"
+	FeatureModificationStage FeatureStage = FeatureStageAlpha
+
 	// Support modify volume by VolumeAttributeClass
 	VolumeAttributeClass      Feature      = "VolumeAttributeClass"
 	VolumeAttributeClassStage FeatureStage = FeatureStageAlpha
 
 	// Disable PD's default readiness probe
 	// Now the pd's default readiness probe use TCP to probe client port
-	// It's not usefull and will print so many warn logs in PD's stdout/stderr
+	// It's not useful and will print so many warn logs in PD's stdout/stderr
 	DisablePDDefaultReadinessProbe      Feature      = "DisablePDDefaultReadinessProbe"
 	DisablePDDefaultReadinessProbeStage FeatureStage = FeatureStageAlpha
 )
