@@ -112,6 +112,9 @@ type NGMonitoringSpec struct {
 	// StorageVolumes configures additional storage for NG Monitoring pods.
 	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
 
+	// Retention period to store ng monitoring data
+	RetentionPeriod string `json:"retentionPeriod,omitempty"`
+
 	// Config is the configuration of ng monitoring
 	//
 	// +kubebuilder:validation:Schemaless

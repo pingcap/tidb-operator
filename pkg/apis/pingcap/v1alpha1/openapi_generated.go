@@ -5240,6 +5240,13 @@ func schema_pkg_apis_pingcap_v1alpha1_NGMonitoringSpec(ref common.ReferenceCallb
 							},
 						},
 					},
+					"retentionPeriod": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Retention period to store ng monitoring data",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"config": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Config is the configuration of ng monitoring",
