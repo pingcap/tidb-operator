@@ -174,6 +174,10 @@ func (b *Backup) Object() client.Object {
 	return (*brv1alpha1.Backup)(b)
 }
 
+func (b *Backup) Features() []metav1alpha1.Feature {
+	return nil
+}
+
 type (
 	Restore brv1alpha1.Restore
 )
@@ -238,6 +242,10 @@ func (r *Restore) SetObservedGeneration(g int64) {
 
 func (r *Restore) Object() client.Object {
 	return (*brv1alpha1.Restore)(r)
+}
+
+func (r *Restore) Features() []metav1alpha1.Feature {
+	return nil
 }
 
 func FromRestore(r *brv1alpha1.Restore) *Restore {

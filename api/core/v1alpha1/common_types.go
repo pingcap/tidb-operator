@@ -18,6 +18,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 const (
@@ -98,14 +100,14 @@ const (
 
 const (
 	// Label value for meta.LabelKeyComponent
-	LabelValComponentPD        = "pd"
-	LabelValComponentTiDB      = "tidb"
-	LabelValComponentTiKV      = "tikv"
-	LabelValComponentTiFlash   = "tiflash"
-	LabelValComponentTiCDC     = "ticdc"
-	LabelValComponentTSO       = "tso"
-	LabelValComponentScheduler = "scheduler"
-	LabelValComponentTiProxy   = "tiproxy"
+	LabelValComponentPD        = string(meta.ComponentPD)
+	LabelValComponentTiDB      = string(meta.ComponentTiDB)
+	LabelValComponentTiKV      = string(meta.ComponentTiKV)
+	LabelValComponentTiFlash   = string(meta.ComponentTiFlash)
+	LabelValComponentTiCDC     = string(meta.ComponentTiCDC)
+	LabelValComponentTSO       = string(meta.ComponentTSO)
+	LabelValComponentScheduler = string(meta.ComponentScheduler)
+	LabelValComponentTiProxy   = string(meta.ComponentTiProxy)
 
 	// LabelKeyClusterID is the unique identifier of the cluster.
 	// This label is used for backward compatibility with TiDB Operator v1, so it has a different prefix.
@@ -128,8 +130,11 @@ const (
 	// means the instance is marked as deleted and will be deleted later
 	AnnoKeyDeferDelete = AnnoKeyPrefix + "defer-delete"
 
-	// Last instance template is recorded to check whether the pod should be restarted
+	// Last instance template is recorded to check whether the pod should be restarted because of changes of instance template
 	AnnoKeyLastInstanceTemplate = AnnoKeyPrefix + "last-instance-template"
+
+	// Features is recorded to check whether the pod should be restarted because of changes of features
+	AnnoKeyFeatures = AnnoKeyPrefix + "features"
 )
 
 // ConfigUpdateStrategy represents the strategy to update configuration.

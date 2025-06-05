@@ -77,6 +77,8 @@ type ClusterSpec struct {
 	// +kubebuilder:validation:Minimum=0
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 
+	// +kubebuilder:validation:XValidation:rule="oldSelf.exists(fg, fg.name == 'FeatureModification') || self.filter(fg, fg.name != 'FeatureModification') == oldSelf",message="can only enable FeatureModification if it's not enabled"
+	// +kubebuilder:validation:XValidation:rule="self.exists(fg, fg.name == 'FeatureModification') || !oldSelf.exists(fg, fg.name == 'FeatureModification')",message="cannot disable FeatureModification"
 	// +listType=map
 	// +listMapKey=name
 	FeatureGates []meta.FeatureGate `json:"featureGates,omitempty"`
@@ -104,6 +106,7 @@ type TLSCluster struct {
 	//        For PD: kubectl create secret generic <groupName>-pd-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
 	//        For TiKV: kubectl create secret generic <groupName>-tikv-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
 	//        For TiDB: kubectl create secret generic <groupName>-tidb-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+	//        For TiBR: kubectl create secret generic <tibrName>-tibr-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
 	//        For Client: kubectl create secret generic <clusterName>-cluster-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
 	//        Same for other components.
 	// +optional

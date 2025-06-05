@@ -19,9 +19,6 @@ import (
 	"fmt"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 )
@@ -34,11 +31,8 @@ func WaitForSchedulersHealthy(ctx context.Context, c client.Client, sg *v1alpha1
 		}
 		for i := range list.Items {
 			s := &list.Items[i]
-			if s.Generation != s.Status.ObservedGeneration {
-				return fmt.Errorf("scheduler %s/%s is not synced", s.Namespace, s.Name)
-			}
-			if !meta.IsStatusConditionPresentAndEqual(s.Status.Conditions, v1alpha1.CondReady, metav1.ConditionTrue) {
-				return fmt.Errorf("scheduler %s/%s is not healthy", s.Namespace, s.Name)
+			if err := checkInstanceStatus(v1alpha1.LabelValComponentScheduler, s.Name, s.Namespace, s.Generation, s.Status.CommonStatus); err != nil {
+				return err
 			}
 		}
 

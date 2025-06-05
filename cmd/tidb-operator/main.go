@@ -21,6 +21,7 @@ import (
 	"os"
 
 	"go.uber.org/zap/zapcore"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	storagev1beta1 "k8s.io/api/storage/v1beta1"
@@ -41,6 +42,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/backup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/restore"
+	"github.com/pingcap/tidb-operator/pkg/controllers/br/tibr"
 	"github.com/pingcap/tidb-operator/pkg/controllers/cluster"
 	"github.com/pingcap/tidb-operator/pkg/controllers/pd"
 	"github.com/pingcap/tidb-operator/pkg/controllers/pdgroup"
@@ -54,6 +56,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/tiflashgroup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tikv"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tikvgroup"
+	"github.com/pingcap/tidb-operator/pkg/controllers/tiproxy"
+	"github.com/pingcap/tidb-operator/pkg/controllers/tiproxygroup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tso"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tsogroup"
 	"github.com/pingcap/tidb-operator/pkg/metrics"
@@ -246,6 +250,13 @@ func addIndexer(ctx context.Context, mgr ctrl.Manager) error {
 		return err
 	}
 
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.TiProxyGroup{}, "spec.cluster.name", func(obj client.Object) []string {
+		pg := obj.(*v1alpha1.TiProxyGroup)
+		return []string{pg.Spec.Cluster.Name}
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -346,6 +357,24 @@ func setupControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientManage
 				return scheduler.Setup(mgr, c, pdcm, vm)
 			},
 		},
+		{
+			name: "TiProxyGroup",
+			setupFunc: func() error {
+				return tiproxygroup.Setup(mgr, c)
+			},
+		},
+		{
+			name: "TiProxy",
+			setupFunc: func() error {
+				return tiproxy.Setup(mgr, c, pdcm, vm)
+			},
+		},
+		{
+			name: "TiBR",
+			setupFunc: func() error {
+				return tibr.Setup(mgr, c)
+			},
+		},
 	}
 
 	for _, s := range setups {
@@ -371,6 +400,10 @@ func setupBRControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientMana
 }
 
 func BuildCacheByObject() map[client.Object]cache.ByObject {
+	managedByOperator := labels.SelectorFromSet(labels.Set{
+		v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+	})
+
 	byObj := map[client.Object]cache.ByObject{
 		&v1alpha1.Cluster{}: {
 			Label: labels.Everything(),
@@ -440,6 +473,24 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 			Label: labels.Everything(),
 		},
 		// BR objects end //
+
+		// TiBR objects start
+		&brv1alpha1.TiBR{}: {
+			Label: labels.Everything(),
+		},
+		&appsv1.StatefulSet{}: {
+			Label: managedByOperator,
+		},
+		&corev1.ConfigMap{}: {
+			Label: managedByOperator,
+		},
+		&corev1.Service{}: {
+			Label: managedByOperator,
+		},
+		&corev1.PersistentVolumeClaim{}: {
+			Label: managedByOperator,
+		},
+		// TiBR objects end
 	}
 	if kubefeat.Stage(kubefeat.VolumeAttributesClass).Enabled(kubefeat.BETA) {
 		byObj[&storagev1beta1.VolumeAttributesClass{}] = cache.ByObject{

@@ -34,7 +34,7 @@ rules:
     resources: ["nodes", "persistentvolumes", "secrets"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["apps"]
-    resources: ["controllerrevisions"]
+    resources: ["controllerrevisions", "statefulsets"]
     verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
   - apiGroups: ["batch"]
     resources: ["jobs"]

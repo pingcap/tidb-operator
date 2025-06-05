@@ -31,7 +31,6 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// get cluster
 		common.TaskContextCluster[scope.TiProxyGroup](state, r.Client),
-		common.TaskFeatureGates(state),
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),
 

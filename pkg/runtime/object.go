@@ -17,6 +17,8 @@ package runtime
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 type Object interface {
@@ -32,6 +34,8 @@ type Object interface {
 
 	SetObservedGeneration(int64)
 	ObservedGeneration() int64
+
+	Features() []metav1alpha1.Feature
 }
 
 type ObjectT[T ObjectSet] interface {

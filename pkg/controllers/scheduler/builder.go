@@ -32,7 +32,6 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskContextCluster[scope.Scheduler](state, r.Client),
 		// return if cluster's status is not updated
 		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
-		common.TaskFeatureGates(state),
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),
 
@@ -40,6 +39,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// tasks.TaskContextInfoFromPD(state, r.PDClientManager),
 		task.IfBreak(common.CondObjectIsDeleting[scope.Scheduler](state),
 			tasks.TaskFinalizerDel(state, r.Client),
+			common.TaskInstanceConditionSynced[scope.Scheduler](state),
 			common.TaskInstanceConditionReady[scope.Scheduler](state),
 			common.TaskStatusPersister[scope.Scheduler](state, r.Client),
 		),
@@ -52,6 +52,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.CondClusterIsSuspending(state),
 			common.TaskSuspendPod(state, r.Client),
 			common.TaskInstanceConditionSuspended[scope.Scheduler](state),
+			common.TaskInstanceConditionSynced[scope.Scheduler](state),
 			common.TaskInstanceConditionReady[scope.Scheduler](state),
 			common.TaskStatusPersister[scope.Scheduler](state, r.Client),
 		),
@@ -59,6 +60,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskConfigMap(state, r.Client),
 		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifierFactory),
 		tasks.TaskPod(state, r.Client),
+		common.TaskInstanceConditionSynced[scope.Scheduler](state),
 		common.TaskInstanceConditionReady[scope.Scheduler](state),
 		tasks.TaskStatus(state, r.Client),
 	)

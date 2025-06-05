@@ -101,6 +101,47 @@ func TestIf(t *testing.T) {
 	}
 }
 
+func TestIfNot(t *testing.T) {
+	cases := []struct {
+		desc           string
+		task           Task
+		cond           Condition
+		expectedResult Result
+	}{
+		{
+			desc: "cond is true",
+			task: NameTaskFunc("aaa", func(context.Context) Result {
+				return Complete().With("success")
+			}),
+			cond:           condition(true),
+			expectedResult: nil,
+		},
+		{
+			desc: "cond is false",
+			task: NameTaskFunc("aaa", func(context.Context) Result {
+				return Complete().With("success")
+			}),
+			cond: condition(false),
+			expectedResult: newAggregate(
+				nameResult("aaa", Complete().With("success")),
+			),
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			ctx := context.Background()
+			task := IfNot(c.cond, c.task)
+			res, done := task.sync(ctx)
+			assert.Equal(tt, c.expectedResult, res, c.desc)
+			assert.False(tt, done, c.desc)
+		})
+	}
+}
+
 func TestBreak(t *testing.T) {
 	cases := []struct {
 		desc           string
@@ -256,6 +297,9 @@ func TestBlock(t *testing.T) {
 				Break(NameTaskFunc("bbb", func(context.Context) Result {
 					return Complete().With("success")
 				})),
+				NameTaskFunc("ccc", func(context.Context) Result {
+					return Complete().With("success")
+				}),
 			},
 			expectedResult: newAggregate(
 				nameResult("aaa", Complete().With("success")),

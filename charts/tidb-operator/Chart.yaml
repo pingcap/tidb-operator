@@ -19,7 +19,7 @@ maintainers:
   - name: fgksgf
     email: jianghuaxi@pingcap.com
 
-kubeVersion: ">=1.30.0"
+kubeVersion: ">=1.30.0-0"
 
 # will be set when package
 version: v0.0.0

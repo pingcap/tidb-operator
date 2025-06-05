@@ -121,6 +121,7 @@ func SchedulerNewer(sg *v1alpha1.SchedulerGroup, rev string) updater.NewFactory[
 			},
 			Spec: v1alpha1.SchedulerSpec{
 				Cluster:               sg.Spec.Cluster,
+				Features:              sg.Spec.Features,
 				Subdomain:             HeadlessServiceName(sg.Name), // same as headless service
 				SchedulerTemplateSpec: *spec,
 			},

@@ -19,9 +19,6 @@ import (
 	"fmt"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 )
@@ -34,11 +31,8 @@ func WaitForTiCDCsHealthy(ctx context.Context, c client.Client, cg *v1alpha1.TiC
 		}
 		for i := range list.Items {
 			cdc := &list.Items[i]
-			if cdc.Generation != cdc.Status.ObservedGeneration {
-				return fmt.Errorf("cdc %s/%s is not synced", cdc.Namespace, cdc.Name)
-			}
-			if !meta.IsStatusConditionPresentAndEqual(cdc.Status.Conditions, v1alpha1.CondReady, metav1.ConditionTrue) {
-				return fmt.Errorf("cdc %s/%s is not healthy", cdc.Namespace, cdc.Name)
+			if err := checkInstanceStatus(v1alpha1.LabelValComponentTiCDC, cdc.Name, cdc.Namespace, cdc.Generation, cdc.Status.CommonStatus); err != nil {
+				return err
 			}
 		}
 

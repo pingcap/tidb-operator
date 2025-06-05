@@ -15,6 +15,7 @@
 package v1alpha1
 
 import (
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -95,8 +96,10 @@ type TiCDC struct {
 
 // TiCDCGroupSpec describes the common attributes of a TiCDCGroup
 type TiCDCGroupSpec struct {
-	Cluster  ClusterReference `json:"cluster"`
-	Replicas *int32           `json:"replicas"`
+	Cluster ClusterReference `json:"cluster"`
+	// Features are enabled feature
+	Features []meta.Feature `json:"features,omitempty"`
+	Replicas *int32         `json:"replicas"`
 
 	// +listType=map
 	// +listMapKey=type
@@ -163,6 +166,8 @@ type TiCDCGroupStatus struct {
 type TiCDCSpec struct {
 	// Cluster is a reference of tidb cluster
 	Cluster ClusterReference `json:"cluster"`
+	// Features are enabled feature
+	Features []meta.Feature `json:"features,omitempty"`
 
 	// Topology defines the topology domain of this TiCDC instance
 	// It will be translated into a node affinity config

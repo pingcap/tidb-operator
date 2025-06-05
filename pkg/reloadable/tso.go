@@ -21,6 +21,8 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/features"
 )
 
 // CheckTSO returns whether changes are reloadable. No change also means reloadable.
@@ -32,7 +34,8 @@ func CheckTSO(group *v1alpha1.TSOGroup, instance *v1alpha1.TSO) bool {
 	groupTmpl := &group.Spec.Template
 	instanceTmpl := templateFromTSO(instance)
 
-	return equalTSOTemplate(groupTmpl, instanceTmpl)
+	return equalTSOTemplate(groupTmpl, instanceTmpl) &&
+		features.Reloadable(meta.ComponentTSO, group.Spec.Features, instance.Spec.Features)
 }
 
 // CheckTSOPod returns whether changes are reloadable. No change also means reloadable.
@@ -41,6 +44,7 @@ func CheckTSO(group *v1alpha1.TSOGroup, instance *v1alpha1.TSO) bool {
 // This function is used in the instance controller.
 func CheckTSOPod(instance *v1alpha1.TSO, pod *corev1.Pod) bool {
 	lastInstanceTemplate := pod.Annotations[v1alpha1.AnnoKeyLastInstanceTemplate]
+	lastFeatures := pod.Annotations[v1alpha1.AnnoKeyFeatures]
 
 	tmpl := &v1alpha1.TSOTemplate{}
 	if err := json.Unmarshal([]byte(lastInstanceTemplate), tmpl); err != nil {
@@ -50,7 +54,8 @@ func CheckTSOPod(instance *v1alpha1.TSO, pod *corev1.Pod) bool {
 
 	instanceTmpl := templateFromTSO(instance)
 
-	return equalTSOTemplate(instanceTmpl, tmpl)
+	return equalTSOTemplate(instanceTmpl, tmpl) &&
+		features.Reloadable(meta.ComponentTSO, instance.Spec.Features, decodeFeatures(lastFeatures))
 }
 
 func EncodeLastTSOTemplate(instance *v1alpha1.TSO, pod *corev1.Pod) error {
@@ -65,6 +70,7 @@ func EncodeLastTSOTemplate(instance *v1alpha1.TSO, pod *corev1.Pod) error {
 		return err
 	}
 	pod.Annotations[v1alpha1.AnnoKeyLastInstanceTemplate] = string(data)
+	pod.Annotations[v1alpha1.AnnoKeyFeatures] = encodeFeatures(instance.Spec.Features)
 
 	return nil
 }

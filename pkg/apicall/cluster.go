@@ -15,11 +15,10 @@
 package apicall
 
 import (
+	"cmp"
 	"context"
-	"fmt"
+	"slices"
 
-	"k8s.io/apimachinery/pkg/api/meta"
-	kuberuntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -42,19 +41,11 @@ func ListGroups[
 		return nil, err
 	}
 
-	objs := make([]F, 0, meta.LenList(l))
-	if err := meta.EachListItem(l, func(item kuberuntime.Object) error {
-		obj, ok := item.(F)
-		if !ok {
-			// unreachable
-			return fmt.Errorf("cannot convert item")
-		}
-		objs = append(objs, obj)
-		return nil
-	}); err != nil {
-		// unreachable
-		return nil, err
-	}
+	objs := scope.GetItems[S](l)
+	// always sort groups
+	slices.SortFunc(objs, func(a, b F) int {
+		return cmp.Compare(a.GetName(), b.GetName())
+	})
 
 	return objs, nil
 }

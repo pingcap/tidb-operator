@@ -40,11 +40,12 @@ type TaskStatus struct {
 }
 
 func NewTaskStatus(logger logr.Logger, c client.Client, pdcm pdm.PDClientManager) task.Task[ReconcileContext] {
-	return &TaskStatus{
+	t := &TaskStatus{
 		Logger:          logger,
 		Client:          c,
 		PDClientManager: pdcm,
 	}
+	return t
 }
 
 func (*TaskStatus) Name() string {

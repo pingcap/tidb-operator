@@ -21,6 +21,8 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/features"
 )
 
 // CheckScheduler returns whether changes are reloadable. No change also means reloadable.
@@ -32,7 +34,8 @@ func CheckScheduler(group *v1alpha1.SchedulerGroup, instance *v1alpha1.Scheduler
 	groupTmpl := &group.Spec.Template
 	instanceTmpl := templateFromScheduler(instance)
 
-	return equalSchedulerTemplate(groupTmpl, instanceTmpl)
+	return equalSchedulerTemplate(groupTmpl, instanceTmpl) &&
+		features.Reloadable(meta.ComponentScheduler, group.Spec.Features, instance.Spec.Features)
 }
 
 // CheckSchedulerPod returns whether changes are reloadable. No change also means reloadable.
@@ -41,6 +44,7 @@ func CheckScheduler(group *v1alpha1.SchedulerGroup, instance *v1alpha1.Scheduler
 // This function is used in the instance controller.
 func CheckSchedulerPod(instance *v1alpha1.Scheduler, pod *corev1.Pod) bool {
 	lastInstanceTemplate := pod.Annotations[v1alpha1.AnnoKeyLastInstanceTemplate]
+	lastFeatures := pod.Annotations[v1alpha1.AnnoKeyFeatures]
 
 	tmpl := &v1alpha1.SchedulerTemplate{}
 	if err := json.Unmarshal([]byte(lastInstanceTemplate), tmpl); err != nil {
@@ -50,7 +54,8 @@ func CheckSchedulerPod(instance *v1alpha1.Scheduler, pod *corev1.Pod) bool {
 
 	instanceTmpl := templateFromScheduler(instance)
 
-	return equalSchedulerTemplate(instanceTmpl, tmpl)
+	return equalSchedulerTemplate(instanceTmpl, tmpl) &&
+		features.Reloadable(meta.ComponentScheduler, instance.Spec.Features, decodeFeatures(lastFeatures))
 }
 
 func EncodeLastSchedulerTemplate(instance *v1alpha1.Scheduler, pod *corev1.Pod) error {
@@ -65,6 +70,7 @@ func EncodeLastSchedulerTemplate(instance *v1alpha1.Scheduler, pod *corev1.Pod) 
 		return err
 	}
 	pod.Annotations[v1alpha1.AnnoKeyLastInstanceTemplate] = string(data)
+	pod.Annotations[v1alpha1.AnnoKeyFeatures] = encodeFeatures(instance.Spec.Features)
 
 	return nil
 }

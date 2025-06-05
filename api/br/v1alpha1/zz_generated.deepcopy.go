@@ -1281,6 +1281,14 @@ func (in *TiBRSpec) DeepCopyInto(out *TiBRSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	in.Resources.DeepCopyInto(&out.Resources)
+	if in.Volumes != nil {
+		in, out := &in.Volumes, &out.Volumes
+		*out = make([]corev1alpha1.Volume, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.Overlay != nil {
 		in, out := &in.Overlay, &out.Overlay
 		*out = new(corev1alpha1.Overlay)

@@ -23,6 +23,7 @@ import (
 	"unsafe"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -149,6 +150,10 @@ func (in *TiCDC) PodOverlay() *v1alpha1.PodOverlay {
 		return nil
 	}
 	return in.Spec.Overlay.Pod
+}
+
+func (in *TiCDC) Features() []metav1alpha1.Feature {
+	return in.Spec.Features
 }
 
 type (
@@ -296,4 +301,8 @@ func (g *TiCDCGroup) TemplateLabels() map[string]string {
 
 func (g *TiCDCGroup) TemplateAnnotations() map[string]string {
 	return g.Spec.Template.Annotations
+}
+
+func (g *TiCDCGroup) Features() []metav1alpha1.Feature {
+	return g.Spec.Features
 }

@@ -80,6 +80,14 @@ spec:
                 items:
                   properties:
                     name:
+                      description: |-
+                        Feature defines supported feature of a tidb cluster
+                        NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
+                        NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
+                      enum:
+                      - FeatureModification
+                      - VolumeAttributeClass
+                      - DisablePDDefaultReadinessProbe
                       type: string
                   required:
                   - name
@@ -88,6 +96,13 @@ spec:
                 x-kubernetes-list-map-keys:
                 - name
                 x-kubernetes-list-type: map
+                x-kubernetes-validations:
+                - message: can only enable FeatureModification if it's not enabled
+                  rule: oldSelf.exists(fg, fg.name == 'FeatureModification') || self.filter(fg,
+                    fg.name != 'FeatureModification') == oldSelf
+                - message: cannot disable FeatureModification
+                  rule: self.exists(fg, fg.name == 'FeatureModification') || !oldSelf.exists(fg,
+                    fg.name == 'FeatureModification')
               paused:
                 description: Paused specifies whether to pause the reconciliation
                   loop for all components of the cluster.
@@ -129,6 +144,7 @@ spec:
                              For PD: kubectl create secret generic <groupName>-pd-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
                              For TiKV: kubectl create secret generic <groupName>-tikv-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
                              For TiDB: kubectl create secret generic <groupName>-tidb-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
+                             For TiBR: kubectl create secret generic <tibrName>-tibr-cluster-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
                              For Client: kubectl create secret generic <clusterName>-cluster-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
                              Same for other components.
                     type: boolean
@@ -233,6 +249,14 @@ spec:
                 items:
                   properties:
                     name:
+                      description: |-
+                        Feature defines supported feature of a tidb cluster
+                        NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
+                        NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
+                      enum:
+                      - FeatureModification
+                      - VolumeAttributeClass
+                      - DisablePDDefaultReadinessProbe
                       type: string
                     stage:
                       type: string
