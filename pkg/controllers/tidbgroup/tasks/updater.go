@@ -152,6 +152,7 @@ func TiDBNewer(dbg *v1alpha1.TiDBGroup, rev string) updater.NewFactory[*runtime.
 			},
 			Spec: v1alpha1.TiDBSpec{
 				Cluster:          dbg.Spec.Cluster,
+				Features:         dbg.Spec.Features,
 				Subdomain:        HeadlessServiceName(dbg.Name), // same as headless service
 				TiDBTemplateSpec: *spec,
 			},

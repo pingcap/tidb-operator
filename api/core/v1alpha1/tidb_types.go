@@ -15,6 +15,7 @@
 package v1alpha1
 
 import (
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -114,8 +115,12 @@ type TiDB struct {
 
 // TiDBGroupSpec describes the common attributes of a TiDBGroup.
 type TiDBGroupSpec struct {
-	Cluster  ClusterReference `json:"cluster"`
-	Replicas *int32           `json:"replicas"`
+	Cluster ClusterReference `json:"cluster"`
+
+	// Features are enabled feature
+	Features []meta.Feature `json:"features,omitempty"`
+
+	Replicas *int32 `json:"replicas"`
 
 	// Service defines some fields used to override the default service.
 	Service *TiDBService `json:"service,omitempty"`
@@ -295,6 +300,9 @@ type TiDBGroupStatus struct {
 // +kubebuilder:validation:XValidation:rule="(!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology) && has(self.topology))",fieldPath=".topology",message="topology can only be set when creating"
 type TiDBSpec struct {
 	Cluster ClusterReference `json:"cluster"`
+
+	// Features are enabled feature
+	Features []meta.Feature `json:"features,omitempty"`
 
 	// Topology defines the topology domain of this TiDB instance.
 	// It will be translated into a node affnity config.

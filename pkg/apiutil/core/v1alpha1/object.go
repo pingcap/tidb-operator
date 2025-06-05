@@ -19,6 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
@@ -83,4 +84,13 @@ func StatusConditions[
 ](f F) []metav1.Condition {
 	obj := scope.From[S](f)
 	return obj.Conditions()
+}
+
+func Features[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F) []metav1alpha1.Feature {
+	obj := scope.From[S](f)
+	return obj.Features()
 }

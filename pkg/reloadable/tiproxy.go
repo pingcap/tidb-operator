@@ -21,6 +21,8 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/features"
 )
 
 // CheckTiProxy returns whether changes are reloadable. No change also means reloadable.
@@ -32,7 +34,8 @@ func CheckTiProxy(group *v1alpha1.TiProxyGroup, instance *v1alpha1.TiProxy) bool
 	groupTmpl := &group.Spec.Template
 	instanceTmpl := templateFromTiProxy(instance)
 
-	return equalTiProxyTemplate(groupTmpl, instanceTmpl)
+	return equalTiProxyTemplate(groupTmpl, instanceTmpl) &&
+		features.Reloadable(meta.ComponentTiProxy, group.Spec.Features, instance.Spec.Features)
 }
 
 // CheckTiProxyPod returns whether changes are reloadable. No change also means reloadable.
@@ -41,6 +44,7 @@ func CheckTiProxy(group *v1alpha1.TiProxyGroup, instance *v1alpha1.TiProxy) bool
 // This function is used in the instance controller.
 func CheckTiProxyPod(instance *v1alpha1.TiProxy, pod *corev1.Pod) bool {
 	lastInstanceTemplate := pod.Annotations[v1alpha1.AnnoKeyLastInstanceTemplate]
+	lastFeatures := pod.Annotations[v1alpha1.AnnoKeyFeatures]
 
 	tmpl := &v1alpha1.TiProxyTemplate{}
 	if err := json.Unmarshal([]byte(lastInstanceTemplate), tmpl); err != nil {
@@ -50,7 +54,8 @@ func CheckTiProxyPod(instance *v1alpha1.TiProxy, pod *corev1.Pod) bool {
 
 	instanceTmpl := templateFromTiProxy(instance)
 
-	return equalTiProxyTemplate(instanceTmpl, tmpl)
+	return equalTiProxyTemplate(instanceTmpl, tmpl) &&
+		features.Reloadable(meta.ComponentTiProxy, instance.Spec.Features, decodeFeatures(lastFeatures))
 }
 
 func EncodeLastTiProxyTemplate(instance *v1alpha1.TiProxy, pod *corev1.Pod) error {
@@ -64,6 +69,7 @@ func EncodeLastTiProxyTemplate(instance *v1alpha1.TiProxy, pod *corev1.Pod) erro
 		return err
 	}
 	pod.Annotations[v1alpha1.AnnoKeyLastInstanceTemplate] = string(data)
+	pod.Annotations[v1alpha1.AnnoKeyFeatures] = encodeFeatures(instance.Spec.Features)
 
 	return nil
 }

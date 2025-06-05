@@ -121,6 +121,7 @@ func TSONewer(tg *v1alpha1.TSOGroup, rev string) updater.NewFactory[*runtime.TSO
 			},
 			Spec: v1alpha1.TSOSpec{
 				Cluster:         tg.Spec.Cluster,
+				Features:        tg.Spec.Features,
 				Subdomain:       HeadlessServiceName(tg.Name), // same as headless service
 				TSOTemplateSpec: *spec,
 			},

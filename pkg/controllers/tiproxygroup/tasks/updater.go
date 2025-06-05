@@ -144,6 +144,7 @@ func TiProxyNewer(proxyg *v1alpha1.TiProxyGroup, rev string) updater.NewFactory[
 			},
 			Spec: v1alpha1.TiProxySpec{
 				Cluster:             proxyg.Spec.Cluster,
+				Features:            proxyg.Spec.Features,
 				Subdomain:           HeadlessServiceName(proxyg.Name), // same as headless service
 				TiProxyTemplateSpec: *spec,
 			},

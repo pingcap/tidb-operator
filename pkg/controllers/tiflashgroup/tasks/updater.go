@@ -120,6 +120,7 @@ func TiFlashNewer(fg *v1alpha1.TiFlashGroup, rev string) updater.NewFactory[*run
 			},
 			Spec: v1alpha1.TiFlashSpec{
 				Cluster:             fg.Spec.Cluster,
+				Features:            fg.Spec.Features,
 				Subdomain:           HeadlessServiceName(fg.Name),
 				TiFlashTemplateSpec: *spec,
 			},

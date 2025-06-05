@@ -29,3 +29,17 @@ const (
 	// with the volumes managed by tidb operator
 	VolNamePrefix = NamePrefix + "vol-"
 )
+
+type Component string
+
+const (
+	// component name
+	ComponentPD        Component = "pd"
+	ComponentTiDB      Component = "tidb"
+	ComponentTiKV      Component = "tikv"
+	ComponentTiFlash   Component = "tiflash"
+	ComponentTiCDC     Component = "ticdc"
+	ComponentTSO       Component = "tso"
+	ComponentScheduler Component = "scheduler"
+	ComponentTiProxy   Component = "tiproxy"
+)

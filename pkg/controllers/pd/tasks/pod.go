@@ -49,7 +49,7 @@ const (
 func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
-		expected := newPod(state.Cluster(), state.PD(), state.ClusterID, state.MemberID)
+		expected := newPod(state.Cluster(), state.PD(), state.FeatureGates(), state.ClusterID, state.MemberID)
 		pod := state.Pod()
 		if pod == nil {
 			// We have to refresh cache of members to make sure a pd without pod is unhealthy.
@@ -135,7 +135,7 @@ func preDeleteCheck(
 	return false, nil
 }
 
-func newPod(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, clusterID, memberID string) *corev1.Pod {
+func newPod(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, g features.Gates, clusterID, memberID string) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -243,7 +243,7 @@ func newPod(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, clusterID, memberID stri
 		},
 	}
 
-	if !features.Enabled(cluster.Namespace, cluster.Name, metav1alpha1.DisablePDDefaultReadinessProbe) {
+	if !g.Enabled(metav1alpha1.DisablePDDefaultReadinessProbe) {
 		pod.Spec.Containers[0].ReadinessProbe = buildPDReadinessProbe(coreutil.PDClientPort(pd))
 	}
 

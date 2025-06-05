@@ -16,6 +16,8 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 const (
@@ -110,8 +112,12 @@ type PD struct {
 
 // PDGroupSpec describes the common attributes of a PDGroup
 type PDGroupSpec struct {
-	Cluster  ClusterReference `json:"cluster"`
-	Replicas *int32           `json:"replicas"`
+	Cluster ClusterReference `json:"cluster"`
+
+	// Features are enabled feature
+	Features []meta.Feature `json:"features,omitempty"`
+
+	Replicas *int32 `json:"replicas"`
 
 	// Bootstrapped means that pd cluster has been bootstrapped,
 	// and there is no need to initialize a new cluster.
@@ -193,6 +199,9 @@ type PDGroupStatus struct {
 type PDSpec struct {
 	// Cluster is a reference of tidb cluster
 	Cluster ClusterReference `json:"cluster"`
+
+	// Features are enabled feature
+	Features []meta.Feature `json:"features,omitempty"`
 
 	// Topology defines the topology domain of this pd instance
 	// It will be translated into a node affinity config

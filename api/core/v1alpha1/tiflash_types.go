@@ -15,6 +15,7 @@
 package v1alpha1
 
 import (
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -106,8 +107,10 @@ type TiFlash struct {
 }
 
 type TiFlashGroupSpec struct {
-	Cluster  ClusterReference `json:"cluster"`
-	Replicas *int32           `json:"replicas"`
+	Cluster ClusterReference `json:"cluster"`
+	// Features are enabled feature
+	Features []meta.Feature `json:"features,omitempty"`
+	Replicas *int32         `json:"replicas"`
 
 	// +listType=map
 	// +listMapKey=type
@@ -184,6 +187,8 @@ type TiFlashGroupStatus struct {
 type TiFlashSpec struct {
 	// Cluster is a reference of tidb cluster
 	Cluster ClusterReference `json:"cluster"`
+	// Features are enabled feature
+	Features []meta.Feature `json:"features,omitempty"`
 	// Topology defines the topology domain of this pd instance
 	// It will be translated into a node affinity config
 	// Topology cannot be changed

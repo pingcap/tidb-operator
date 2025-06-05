@@ -143,7 +143,7 @@ func transferPDCases(t *testing.T, cases []Case, fields ...string) []Case {
 			continue
 		}
 
-		old := basicTSO()
+		old := basicPD()
 		if c.old == nil {
 			unstructured.RemoveNestedField(old, fields...)
 		} else {
