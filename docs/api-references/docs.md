@@ -10407,6 +10407,17 @@ Defaults to Kubernetes default storage class.</p>
 </tr>
 <tr>
 <td>
+<code>retentionPeriod</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Retention period to store ng monitoring data</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>config</code></br>
 <em>
 github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig

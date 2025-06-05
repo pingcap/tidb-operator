@@ -27,9 +27,10 @@ type NGMonitoringStartScriptModel struct {
 	TCNamespace     string // namespace of tidb cluster's namespace
 	TCClusterDomain string // cluster domain of tidb cluster
 
-	TNGMName          string // name of tidb ng monitoring
-	TNGMNamespace     string // namespace of tidb ng monitoring
-	TNGMClusterDomain string // cluster domain of tidb ng monitoring
+	TNGMName            string // name of tidb ng monitoring
+	TNGMNamespace       string // namespace of tidb ng monitoring
+	TNGMClusterDomain   string // cluster domain of tidb ng monitoring
+	TNGMRetentionPeriod string // retention period of tidb ng monitoring
 }
 
 func (m *NGMonitoringStartScriptModel) FormatClusterDomain() string {
@@ -64,7 +65,8 @@ var ngMonitoringStartScriptTpl = template.Must(template.New("ng-monitoring-start
 	--pd.endpoints {{ .PDAddress }} \
 	--advertise-address {{ .NGMPeerAddress }} \
 	--config /etc/ng-monitoring/ng-monitoring.toml \
-	--storage.path /var/lib/ng-monitoring
+	--storage.path /var/lib/ng-monitoring{{- if .TNGMRetentionPeriod }} \
+	--retention-period {{ .TNGMRetentionPeriod }}{{- end }}
 `))
 
 func renderTemplateFunc(tpl *template.Template, model interface{}) (string, error) {
