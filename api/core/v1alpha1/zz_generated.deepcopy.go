@@ -405,6 +405,11 @@ func (in *PDGroupList) DeepCopyObject() runtime.Object {
 func (in *PDGroupSpec) DeepCopyInto(out *PDGroupSpec) {
 	*out = *in
 	out.Cluster = in.Cluster
+	if in.Features != nil {
+		in, out := &in.Features, &out.Features
+		*out = make([]metav1alpha1.Feature, len(*in))
+		copy(*out, *in)
+	}
 	if in.Replicas != nil {
 		in, out := &in.Replicas, &out.Replicas
 		*out = new(int32)
@@ -529,6 +534,11 @@ func (in *PDServer) DeepCopy() *PDServer {
 func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 	*out = *in
 	out.Cluster = in.Cluster
+	if in.Features != nil {
+		in, out := &in.Features, &out.Features
+		*out = make([]metav1alpha1.Feature, len(*in))
+		copy(*out, *in)
+	}
 	if in.Topology != nil {
 		in, out := &in.Topology, &out.Topology
 		*out = make(Topology, len(*in))
@@ -872,6 +882,11 @@ func (in *SchedulerGroupList) DeepCopyObject() runtime.Object {
 func (in *SchedulerGroupSpec) DeepCopyInto(out *SchedulerGroupSpec) {
 	*out = *in
 	out.Cluster = in.Cluster
+	if in.Features != nil {
+		in, out := &in.Features, &out.Features
+		*out = make([]metav1alpha1.Feature, len(*in))
+		copy(*out, *in)
+	}
 	if in.Replicas != nil {
 		in, out := &in.Replicas, &out.Replicas
 		*out = new(int32)
@@ -991,6 +1006,11 @@ func (in *SchedulerServer) DeepCopy() *SchedulerServer {
 func (in *SchedulerSpec) DeepCopyInto(out *SchedulerSpec) {
 	*out = *in
 	out.Cluster = in.Cluster
+	if in.Features != nil {
+		in, out := &in.Features, &out.Features
+		*out = make([]metav1alpha1.Feature, len(*in))
+		copy(*out, *in)
+	}
 	if in.Topology != nil {
 		in, out := &in.Topology, &out.Topology
 		*out = make(Topology, len(*in))
@@ -1240,6 +1260,11 @@ func (in *TSOGroupList) DeepCopyObject() runtime.Object {
 func (in *TSOGroupSpec) DeepCopyInto(out *TSOGroupSpec) {
 	*out = *in
 	out.Cluster = in.Cluster
+	if in.Features != nil {
+		in, out := &in.Features, &out.Features
+		*out = make([]metav1alpha1.Feature, len(*in))
+		copy(*out, *in)
+	}
 	if in.Replicas != nil {
 		in, out := &in.Replicas, &out.Replicas
 		*out = new(int32)
@@ -1359,6 +1384,11 @@ func (in *TSOServer) DeepCopy() *TSOServer {
 func (in *TSOSpec) DeepCopyInto(out *TSOSpec) {
 	*out = *in
 	out.Cluster = in.Cluster
+	if in.Features != nil {
+		in, out := &in.Features, &out.Features
+		*out = make([]metav1alpha1.Feature, len(*in))
+		copy(*out, *in)
+	}
 	if in.Topology != nil {
 		in, out := &in.Topology, &out.Topology
 		*out = make(Topology, len(*in))
@@ -1544,6 +1574,11 @@ func (in *TiCDCGroupList) DeepCopyObject() runtime.Object {
 func (in *TiCDCGroupSpec) DeepCopyInto(out *TiCDCGroupSpec) {
 	*out = *in
 	out.Cluster = in.Cluster
+	if in.Features != nil {
+		in, out := &in.Features, &out.Features
+		*out = make([]metav1alpha1.Feature, len(*in))
+		copy(*out, *in)
+	}
 	if in.Replicas != nil {
 		in, out := &in.Replicas, &out.Replicas
 		*out = new(int32)
@@ -1684,6 +1719,11 @@ func (in *TiCDCServer) DeepCopy() *TiCDCServer {
 func (in *TiCDCSpec) DeepCopyInto(out *TiCDCSpec) {
 	*out = *in
 	out.Cluster = in.Cluster
+	if in.Features != nil {
+		in, out := &in.Features, &out.Features
+		*out = make([]metav1alpha1.Feature, len(*in))
+		copy(*out, *in)
+	}
 	if in.Topology != nil {
 		in, out := &in.Topology, &out.Topology
 		*out = make(Topology, len(*in))
@@ -1891,6 +1931,11 @@ func (in *TiDBGroupList) DeepCopyObject() runtime.Object {
 func (in *TiDBGroupSpec) DeepCopyInto(out *TiDBGroupSpec) {
 	*out = *in
 	out.Cluster = in.Cluster
+	if in.Features != nil {
+		in, out := &in.Features, &out.Features
+		*out = make([]metav1alpha1.Feature, len(*in))
+		copy(*out, *in)
+	}
 	if in.Replicas != nil {
 		in, out := &in.Replicas, &out.Replicas
 		*out = new(int32)
@@ -2149,6 +2194,11 @@ func (in *TiDBSlowLog) DeepCopy() *TiDBSlowLog {
 func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 	*out = *in
 	out.Cluster = in.Cluster
+	if in.Features != nil {
+		in, out := &in.Features, &out.Features
+		*out = make([]metav1alpha1.Feature, len(*in))
+		copy(*out, *in)
+	}
 	if in.Topology != nil {
 		in, out := &in.Topology, &out.Topology
 		*out = make(Topology, len(*in))
@@ -2371,6 +2421,11 @@ func (in *TiFlashGroupList) DeepCopyObject() runtime.Object {
 func (in *TiFlashGroupSpec) DeepCopyInto(out *TiFlashGroupSpec) {
 	*out = *in
 	out.Cluster = in.Cluster
+	if in.Features != nil {
+		in, out := &in.Features, &out.Features
+		*out = make([]metav1alpha1.Feature, len(*in))
+		copy(*out, *in)
+	}
 	if in.Replicas != nil {
 		in, out := &in.Replicas, &out.Replicas
 		*out = new(int32)
@@ -2527,6 +2582,11 @@ func (in *TiFlashServer) DeepCopy() *TiFlashServer {
 func (in *TiFlashSpec) DeepCopyInto(out *TiFlashSpec) {
 	*out = *in
 	out.Cluster = in.Cluster
+	if in.Features != nil {
+		in, out := &in.Features, &out.Features
+		*out = make([]metav1alpha1.Feature, len(*in))
+		copy(*out, *in)
+	}
 	if in.Topology != nil {
 		in, out := &in.Topology, &out.Topology
 		*out = make(Topology, len(*in))
@@ -2718,6 +2778,11 @@ func (in *TiKVGroupList) DeepCopyObject() runtime.Object {
 func (in *TiKVGroupSpec) DeepCopyInto(out *TiKVGroupSpec) {
 	*out = *in
 	out.Cluster = in.Cluster
+	if in.Features != nil {
+		in, out := &in.Features, &out.Features
+		*out = make([]metav1alpha1.Feature, len(*in))
+		copy(*out, *in)
+	}
 	if in.Replicas != nil {
 		in, out := &in.Replicas, &out.Replicas
 		*out = new(int32)
@@ -2863,6 +2928,11 @@ func (in *TiKVServer) DeepCopy() *TiKVServer {
 func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 	*out = *in
 	out.Cluster = in.Cluster
+	if in.Features != nil {
+		in, out := &in.Features, &out.Features
+		*out = make([]metav1alpha1.Feature, len(*in))
+		copy(*out, *in)
+	}
 	if in.Topology != nil {
 		in, out := &in.Topology, &out.Topology
 		*out = make(Topology, len(*in))
@@ -3054,6 +3124,11 @@ func (in *TiProxyGroupList) DeepCopyObject() runtime.Object {
 func (in *TiProxyGroupSpec) DeepCopyInto(out *TiProxyGroupSpec) {
 	*out = *in
 	out.Cluster = in.Cluster
+	if in.Features != nil {
+		in, out := &in.Features, &out.Features
+		*out = make([]metav1alpha1.Feature, len(*in))
+		copy(*out, *in)
+	}
 	if in.Replicas != nil {
 		in, out := &in.Replicas, &out.Replicas
 		*out = new(int32)
@@ -3269,6 +3344,11 @@ func (in *TiProxyServer) DeepCopy() *TiProxyServer {
 func (in *TiProxySpec) DeepCopyInto(out *TiProxySpec) {
 	*out = *in
 	out.Cluster = in.Cluster
+	if in.Features != nil {
+		in, out := &in.Features, &out.Features
+		*out = make([]metav1alpha1.Feature, len(*in))
+		copy(*out, *in)
+	}
 	if in.Topology != nil {
 		in, out := &in.Topology, &out.Topology
 		*out = make(Topology, len(*in))

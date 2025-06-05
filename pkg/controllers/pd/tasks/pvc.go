@@ -34,9 +34,10 @@ import (
 
 func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm volumes.ModifierFactory) task.Task {
 	return task.NameTaskFunc("PVC", func(ctx context.Context) task.Result {
-		ck := state.Cluster()
-		pvcs := newPVCs(state.Cluster(), state.PD(), state.ClusterID, state.MemberID)
-		if wait, err := volumes.SyncPVCs(ctx, c, pvcs, vm.New(ck.Namespace, ck.Name), logger); err != nil {
+		cluster := state.Cluster()
+		obj := state.Object()
+		pvcs := newPVCs(cluster, obj, state.ClusterID, state.MemberID)
+		if wait, err := volumes.SyncPVCs(ctx, c, pvcs, vm.New(state.FeatureGates()), logger); err != nil {
 			return task.Fail().With("failed to sync pvcs: %v", err)
 		} else if wait {
 			return task.Retry(task.DefaultRequeueAfter).With("waiting for pvcs to be synced")

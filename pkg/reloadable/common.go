@@ -15,10 +15,13 @@
 package reloadable
 
 import (
+	"strings"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 func convertOverlay(o *v1alpha1.Overlay) *v1alpha1.Overlay {
@@ -71,4 +74,24 @@ func convertAnnotations(ls map[string]string) map[string]string {
 	delete(ls, v1alpha1.AnnoKeyInitialClusterNum)
 
 	return ls
+}
+
+func encodeFeatures[T ~string](items []T) string {
+	strs := make([]string, len(items))
+	for i, v := range items {
+		strs[i] = string(v)
+	}
+	return strings.Join(strs, ",")
+}
+
+func decodeFeatures(str string) []meta.Feature {
+	if str == "" {
+		return nil
+	}
+	strs := strings.Split(str, ",")
+	fs := make([]meta.Feature, 0, len(strs))
+	for _, s := range strs {
+		fs = append(fs, meta.Feature(s))
+	}
+	return fs
 }

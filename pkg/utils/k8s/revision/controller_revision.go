@@ -172,9 +172,13 @@ func getPatch(obj client.Object, gvk schema.GroupVersionKind) ([]byte, error) {
 	spec := raw["spec"].(map[string]any)
 	template := spec["template"].(map[string]any)
 	specCopy["template"] = template
+	if f, ok := spec["features"]; ok {
+		specCopy["features"] = f
+	}
 	template["$patch"] = "replace"
 	objCopy["spec"] = specCopy
 	patch, err := json.Marshal(objCopy)
+
 	return patch, err
 }
 

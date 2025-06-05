@@ -21,6 +21,8 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	stateutil "github.com/pingcap/tidb-operator/pkg/state"
 )
 
 type state struct {
@@ -37,6 +39,8 @@ type state struct {
 	statusChanged bool
 
 	healthy bool
+
+	stateutil.IFeatureGates
 }
 
 type State interface {
@@ -56,12 +60,15 @@ type State interface {
 
 	common.HealthyState
 	common.HealthyStateUpdater
+
+	stateutil.IFeatureGates
 }
 
 func NewState(key types.NamespacedName) State {
 	s := &state{
 		key: key,
 	}
+	s.IFeatureGates = stateutil.NewFeatureGates[scope.TiProxy](s)
 	return s
 }
 

@@ -219,6 +219,10 @@ func (s *fakeObjectState[F]) SetCluster(c *v1alpha1.Cluster) {
 	s.cluster = c
 }
 
+func (s *fakeObjectState[F]) Cluster() *v1alpha1.Cluster {
+	return s.cluster
+}
+
 func (s *fakeObjectState[F]) SetPod(pod *corev1.Pod) {
 	s.pod = pod
 }

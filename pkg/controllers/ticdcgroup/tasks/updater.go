@@ -121,6 +121,7 @@ func TiCDCNewer(cdcg *v1alpha1.TiCDCGroup, rev string) updater.NewFactory[*runti
 			},
 			Spec: v1alpha1.TiCDCSpec{
 				Cluster:           cdcg.Spec.Cluster,
+				Features:          cdcg.Spec.Features,
 				Subdomain:         HeadlessServiceName(cdcg.Name), // same as headless service
 				TiCDCTemplateSpec: *spec,
 			},

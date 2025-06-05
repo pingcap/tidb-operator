@@ -21,6 +21,8 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/features"
 )
 
 // CheckTiCDC returns whether changes are reloadable. No change also means reloadable.
@@ -32,7 +34,8 @@ func CheckTiCDC(group *v1alpha1.TiCDCGroup, instance *v1alpha1.TiCDC) bool {
 	groupTmpl := &group.Spec.Template
 	instanceTmpl := templateFromTiCDC(instance)
 
-	return equalTiCDCTemplate(groupTmpl, instanceTmpl)
+	return equalTiCDCTemplate(groupTmpl, instanceTmpl) &&
+		features.Reloadable(meta.ComponentTiCDC, group.Spec.Features, instance.Spec.Features)
 }
 
 // CheckTiCDCPod returns whether changes are reloadable. No change also means reloadable.
@@ -41,6 +44,7 @@ func CheckTiCDC(group *v1alpha1.TiCDCGroup, instance *v1alpha1.TiCDC) bool {
 // This function is used in the instance controller.
 func CheckTiCDCPod(instance *v1alpha1.TiCDC, pod *corev1.Pod) bool {
 	lastInstanceTemplate := pod.Annotations[v1alpha1.AnnoKeyLastInstanceTemplate]
+	lastFeatures := pod.Annotations[v1alpha1.AnnoKeyFeatures]
 
 	tmpl := &v1alpha1.TiCDCTemplate{}
 	if err := json.Unmarshal([]byte(lastInstanceTemplate), tmpl); err != nil {
@@ -50,7 +54,8 @@ func CheckTiCDCPod(instance *v1alpha1.TiCDC, pod *corev1.Pod) bool {
 
 	instanceTmpl := templateFromTiCDC(instance)
 
-	return equalTiCDCTemplate(instanceTmpl, tmpl)
+	return equalTiCDCTemplate(instanceTmpl, tmpl) &&
+		features.Reloadable(meta.ComponentTiCDC, instance.Spec.Features, decodeFeatures(lastFeatures))
 }
 
 func EncodeLastTiCDCTemplate(instance *v1alpha1.TiCDC, pod *corev1.Pod) error {
@@ -65,6 +70,7 @@ func EncodeLastTiCDCTemplate(instance *v1alpha1.TiCDC, pod *corev1.Pod) error {
 		return err
 	}
 	pod.Annotations[v1alpha1.AnnoKeyLastInstanceTemplate] = string(data)
+	pod.Annotations[v1alpha1.AnnoKeyFeatures] = encodeFeatures(instance.Spec.Features)
 
 	return nil
 }
