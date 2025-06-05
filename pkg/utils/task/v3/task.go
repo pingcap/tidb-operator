@@ -84,6 +84,12 @@ func If(cond Condition, tasks ...Task) Task {
 		cond: cond,
 	}
 }
+func IfNot(cond Condition, tasks ...Task) Task {
+	return &optionalTask{
+		Task: Block(tasks...),
+		cond: CondFunc(func() bool { return !cond.Satisfy() }),
+	}
+}
 
 type breakTask struct {
 	Task
