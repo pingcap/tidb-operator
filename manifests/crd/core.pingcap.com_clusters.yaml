@@ -99,7 +99,7 @@ spec:
                 x-kubernetes-validations:
                 - message: can only enable FeatureModification if it's not enabled
                   rule: oldSelf.exists(fg, fg.name == 'FeatureModification') || self.filter(fg,
-                    fg.name == 'FeatureModification') == oldSelf
+                    fg.name != 'FeatureModification') == oldSelf
                 - message: cannot disable FeatureModification
                   rule: self.exists(fg, fg.name == 'FeatureModification') || !oldSelf.exists(fg,
                     fg.name == 'FeatureModification')

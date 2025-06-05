@@ -77,7 +77,7 @@ type ClusterSpec struct {
 	// +kubebuilder:validation:Minimum=0
 	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 
-	// +kubebuilder:validation:XValidation:rule="oldSelf.exists(fg, fg.name == 'FeatureModification') || self.filter(fg, fg.name == 'FeatureModification') == oldSelf",message="can only enable FeatureModification if it's not enabled"
+	// +kubebuilder:validation:XValidation:rule="oldSelf.exists(fg, fg.name == 'FeatureModification') || self.filter(fg, fg.name != 'FeatureModification') == oldSelf",message="can only enable FeatureModification if it's not enabled"
 	// +kubebuilder:validation:XValidation:rule="self.exists(fg, fg.name == 'FeatureModification') || !oldSelf.exists(fg, fg.name == 'FeatureModification')",message="cannot disable FeatureModification"
 	// +listType=map
 	// +listMapKey=name

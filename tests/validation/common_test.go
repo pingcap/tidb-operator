@@ -221,8 +221,26 @@ func FeatureGates() []Case {
 			current:  []any{},
 		},
 		{
+			desc:    "update with empty feature gates",
+			old:     []any{},
+			current: []any{},
+		},
+		{
 			desc:     "create with any feature gates",
 			isCreate: true,
+			current: []any{
+				map[string]any{
+					"name": "VolumeAttributeClass",
+				},
+			},
+		},
+		{
+			desc: "update without any update",
+			old: []any{
+				map[string]any{
+					"name": "VolumeAttributeClass",
+				},
+			},
 			current: []any{
 				map[string]any{
 					"name": "VolumeAttributeClass",
