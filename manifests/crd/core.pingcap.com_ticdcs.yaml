@@ -9,7 +9,6 @@ spec:
   group: core.pingcap.com
   names:
     categories:
-    - tc
     - instance
     kind: TiCDC
     listKind: TiCDCList
