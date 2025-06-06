@@ -40,9 +40,12 @@ var _ = ginkgo.Describe("Topology", label.TiKV, label.MultipleAZ, label.P0, func
 			data.WithReplicas[*runtime.TiKVGroup](6),
 			data.WithTiKVEvenlySpreadPolicy(),
 		)
+		// Without a tidb group, the number of leader count may be zero.
+		dbg := f.MustCreateTiDB(ctx)
 
 		f.WaitForPDGroupReady(ctx, pdg)
 		f.WaitForTiKVGroupReady(ctx, kvg)
+		f.WaitForTiDBGroupReady(ctx, dbg)
 
 		f.MustEvenlySpreadTiKV(ctx, kvg)
 	})
@@ -54,9 +57,12 @@ var _ = ginkgo.Describe("Topology", label.TiKV, label.MultipleAZ, label.P0, func
 			data.WithReplicas[*runtime.TiKVGroup](3),
 			data.WithTiKVEvenlySpreadPolicy(),
 		)
+		// Without a tidb group, the number of leader count may be zero.
+		dbg := f.MustCreateTiDB(ctx)
 
 		f.WaitForPDGroupReady(ctx, pdg)
 		f.WaitForTiKVGroupReady(ctx, kvg)
+		f.WaitForTiDBGroupReady(ctx, dbg)
 
 		f.MustEvenlySpreadTiKV(ctx, kvg)
 

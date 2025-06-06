@@ -165,6 +165,10 @@ e2e/reinstall-operator:
 e2e/reinstall-backup-manager:
 	$(ROOT)/hack/e2e.sh --reinstall-backup-manager
 
+.PHONY: e2e/reload-testing-workload
+e2e/reload-testing-workload:
+	$(ROOT)/hack/e2e.sh --reload-testing-workload
+
 .PHONY: kube
 kube: bin/kind
 	@echo "ensure that the kubernetes env is existing"
