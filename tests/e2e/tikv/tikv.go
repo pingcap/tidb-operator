@@ -32,15 +32,15 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 	f := framework.New()
 	f.Setup()
 
-	// NOTE(liubo02): this case is failed in e2e env because of the cgroup v2.
-	// Enable it if env is fixed.
-	ginkgo.PDescribeTableSubtree("Leader Eviction", label.P1,
+	ginkgo.DescribeTableSubtree("Leader Eviction", label.P1,
 		func(tls bool) {
 			if tls {
 				f.SetupCluster(data.WithClusterTLS())
 			}
 
-			ginkgo.It("leader evicted when delete tikv pod directly", func(ctx context.Context) {
+			// NOTE(liubo02): this case is failed in e2e env because of the cgroup v2.
+			// Enable it if env is fixed.
+			ginkgo.PIt("leader evicted when delete tikv pod directly", func(ctx context.Context) {
 				if tls {
 					ns := f.Cluster.Namespace
 					cn := f.Cluster.Name

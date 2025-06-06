@@ -38,6 +38,7 @@ type state struct {
 
 	storeState    string
 	statusChanged bool
+	leaderCount   int
 
 	stateutil.IFeatureGates
 }
@@ -133,8 +134,16 @@ func (s *state) GetStoreState() string {
 	return s.storeState
 }
 
+func (s *state) GetLeaderCount() int {
+	return s.leaderCount
+}
+
 func (s *state) SetStoreState(state string) {
 	s.storeState = state
+}
+
+func (s *state) SetLeaderCount(count int) {
+	s.leaderCount = count
 }
 
 func (s *state) IsStoreUp() bool {
@@ -142,5 +151,6 @@ func (s *state) IsStoreUp() bool {
 }
 
 func (s *state) IsHealthy() bool {
-	return s.IsStoreUp()
+	// We should also check if the leader count is greater than 0.
+	return s.IsStoreUp() && s.GetLeaderCount() > 0
 }

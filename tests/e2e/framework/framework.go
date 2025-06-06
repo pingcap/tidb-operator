@@ -47,9 +47,10 @@ func New() *Framework {
 }
 
 type SetupOptions struct {
-	SkipWaitForClusterDeleted   bool
-	SkipWaitForNamespaceDeleted bool
-	SkipClusterCreation         bool
+	SkipWaitForClusterDeleted    bool
+	SkipWaitForNamespaceDeleted  bool
+	SkipClusterCreation          bool
+	SkipClusterDeletedWhenFailed bool
 }
 
 type SetupOption func(opts *SetupOptions)
@@ -69,6 +70,12 @@ func WithSkipWaitForNamespaceDeleted() SetupOption {
 func WithSkipClusterCreation() SetupOption {
 	return func(opts *SetupOptions) {
 		opts.SkipClusterCreation = true
+	}
+}
+
+func WithSkipClusterDeletionWhenFailed() SetupOption {
+	return func(opts *SetupOptions) {
+		opts.SkipClusterDeletedWhenFailed = true
 	}
 }
 
@@ -98,12 +105,16 @@ func (f *Framework) Setup(opts ...SetupOption) {
 		f.Must(f.Client.Create(ctx, f.Namespace))
 
 		ginkgo.DeferCleanup(func(ctx context.Context) {
-			ginkgo.By(fmt.Sprintf("Delete the namespace %s", f.Namespace.Name))
-			f.Must(f.Client.Delete(ctx, f.Namespace))
+			if options.SkipClusterDeletedWhenFailed && ginkgo.CurrentSpecReport().Failed() {
+				ginkgo.By(fmt.Sprintf("Case failed, skip cluster deletion: %s", f.Cluster.Name))
+			} else {
+				ginkgo.By(fmt.Sprintf("Delete the namespace %s", f.Namespace.Name))
+				f.Must(f.Client.Delete(ctx, f.Namespace))
 
-			if !options.SkipWaitForNamespaceDeleted {
-				ginkgo.By(fmt.Sprintf("Ensure the namespace %s can be deleted", f.Namespace.Name))
-				f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Namespace, waiter.LongTaskTimeout))
+				if !options.SkipWaitForNamespaceDeleted {
+					ginkgo.By(fmt.Sprintf("Ensure the namespace %s can be deleted", f.Namespace.Name))
+					f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Namespace, waiter.LongTaskTimeout))
+				}
 			}
 		})
 	})
@@ -115,12 +126,16 @@ func (f *Framework) Setup(opts ...SetupOption) {
 			f.Must(f.Client.Create(ctx, f.Cluster))
 
 			ginkgo.DeferCleanup(func(ctx context.Context) {
-				ginkgo.By(fmt.Sprintf("Delete the cluster: %s", f.Cluster.Name))
-				f.Must(f.Client.Delete(ctx, f.Cluster))
+				if options.SkipClusterDeletedWhenFailed && ginkgo.CurrentSpecReport().Failed() {
+					ginkgo.By(fmt.Sprintf("Case failed, skip cluster deletion: %s", f.Cluster.Name))
+				} else {
+					ginkgo.By(fmt.Sprintf("Delete the cluster: %s", f.Cluster.Name))
+					f.Must(f.Client.Delete(ctx, f.Cluster))
 
-				if !options.SkipWaitForClusterDeleted {
-					ginkgo.By(fmt.Sprintf("Ensure the cluster: %s can be deleted", f.Cluster.Name))
-					f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Cluster, waiter.LongTaskTimeout))
+					if !options.SkipWaitForClusterDeleted {
+						ginkgo.By(fmt.Sprintf("Ensure the cluster: %s can be deleted", f.Cluster.Name))
+						f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, f.Cluster, waiter.LongTaskTimeout))
+					}
 				}
 			})
 		})

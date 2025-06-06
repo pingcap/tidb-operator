@@ -144,3 +144,10 @@ func (s *state) IsStoreUp() bool {
 func (s *state) IsHealthy() bool {
 	return s.IsStoreUp()
 }
+
+func (s *state) GetLeaderCount() int {
+	// TiFlash doesn't have leaders
+	return 0
+}
+
+func (s *state) SetLeaderCount(_ int) {}

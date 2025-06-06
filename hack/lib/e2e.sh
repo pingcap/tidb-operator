@@ -13,12 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 set -o errexit
 set -o nounset
 set -o pipefail
 
-ROOT=$(cd $(dirname "${BASH_SOURCE[0]}")/../..; pwd -P)
+ROOT=$(
+    cd $(dirname "${BASH_SOURCE[0]}")/../..
+    pwd -P
+)
 
 source $ROOT/hack/lib/vars.sh
 source $ROOT/hack/lib/kind.sh
@@ -86,6 +88,10 @@ function e2e::uninstall_operator() {
     $KUBECTL -n $V_DEPLOY_NAMESPACE wait --for=delete --timeout=5m deployment/tidb-operator
 }
 
+function e2e::reload_testing_workload() {
+    image::build testing-workload --push
+}
+
 function e2e::install_ginkgo() {
     if ! command -v $GINKGO &>/dev/null; then
         echo "ginkgo not found, installing..."
@@ -104,11 +110,11 @@ function e2e::install_generate_jwt() {
 
 function e2e::run() {
     if [[ "$CI" == "true" ]]; then
-      echo "running e2e tests in CI mode with options: $*"
-      $GINKGO -v -r --timeout=2h --randomize-all --randomize-suites --fail-on-empty --keep-going --race --trace --flake-attempts=3 "$*" "$ROOT/tests/e2e/..."
+        echo "running e2e tests in CI mode with options: $*"
+        $GINKGO -v -r --timeout=2h --randomize-all --randomize-suites --fail-on-empty --keep-going --race --trace --flake-attempts=3 "$*" "$ROOT/tests/e2e/..."
     else
-      echo "running e2e tests locally..."
-      $GINKGO -r -v "$@" "$ROOT/tests/e2e/..."
+        echo "running e2e tests locally..."
+        $GINKGO -r -v "$@" "$ROOT/tests/e2e/..."
     fi
 }
 
@@ -136,11 +142,9 @@ function e2e::reinstall_operator() {
     e2e::install_operator
 }
 
-
 function e2e::reinstall_backup_manager() {
     image::build tidb-backup-manager --push
 }
-
 
 function e2e::e2e() {
     local ginkgo_opts=()
@@ -160,6 +164,10 @@ function e2e::e2e() {
             ;;
         --reinstall-backup-manager)
             reinstall_backup_manager=1
+            shift
+            ;;
+        --reload-testing-workload)
+            reload_testing_workload=1
             shift
             ;;
         run)
@@ -184,6 +192,8 @@ function e2e::e2e() {
         e2e::reinstall_operator
     elif [[ $reinstall_backup_manager -eq 1 ]]; then
         e2e::reinstall_backup_manager
+    elif [[ $reload_testing_workload -eq 1 ]]; then
+        e2e::reload_testing_workload
     fi
     if [[ $run -eq 1 ]]; then
         e2e::run "${ginkgo_opts[@]}"

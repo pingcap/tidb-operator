@@ -29,16 +29,23 @@ var (
 	user     string
 	password string
 
+	// Flags for workload action
 	durationInMinutes int
 	maxConnections    int
 	sleepIntervalSec  int
 	longTxnSleepSec   int
 	maxLifeTimeSec    int
+
+	// Flags for import action
+	batchSize        int
+	totalRows        int
+	importTable      string
+	splitRegionCount int
 )
 
 //nolint:mnd // default values
 func main() {
-	flag.StringVar(&action, "action", "ping", "ping, workload")
+	flag.StringVar(&action, "action", "ping", "ping, workload, import")
 	flag.StringVar(&host, "host", "", "host")
 	flag.StringVar(&user, "user", "root", "db user")
 	flag.StringVar(&password, "password", "", "db password")
@@ -48,6 +55,13 @@ func main() {
 	flag.IntVar(&sleepIntervalSec, "sleep-interval", 1, "sleep interval in seconds")
 	flag.IntVar(&longTxnSleepSec, "long-txn-sleep", 10, "how many seconds to sleep to simulate a long transaction")
 	flag.IntVar(&maxLifeTimeSec, "max-lifetime", 60, "max lifetime in seconds")
+
+	// Flags for import action
+	flag.IntVar(&batchSize, "batch-size", 1000, "batch size for import action")
+	flag.IntVar(&totalRows, "total-rows", 500000, "total rows to import for import action")
+	flag.StringVar(&importTable, "import-table", "t1", "table name for import action")
+	flag.IntVar(&splitRegionCount, "split-region-count", 0, "number of regions to split for import action")
+
 	flag.Parse()
 
 	// enable "cleartext client side plugin" for `tidb_auth_token`.
@@ -72,7 +86,17 @@ func main() {
 		if err := Workload(db); err != nil {
 			panic(err)
 		}
-
+	case "import":
+		importCfg := ImportDataConfig{
+			DB:               db,
+			BatchSize:        batchSize,
+			TotalRows:        totalRows,
+			TableName:        importTable,
+			SplitRegionCount: splitRegionCount,
+		}
+		if err := ImportData(importCfg); err != nil {
+			panic(err)
+		}
 	default:
 		panic("unknown action: " + action)
 	}
