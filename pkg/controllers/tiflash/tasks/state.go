@@ -146,6 +146,7 @@ func (s *state) IsHealthy() bool {
 }
 
 func (s *state) GetLeaderCount() int {
+	// TiFlash doesn't have leaders
 	return 0
 }
 

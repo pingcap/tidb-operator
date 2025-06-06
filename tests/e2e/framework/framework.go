@@ -27,9 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
-	"github.com/pingcap/tidb-operator/tests/e2e/config"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
-	"github.com/pingcap/tidb-operator/tests/e2e/utils/k8s"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
@@ -42,9 +40,6 @@ type Framework struct {
 	podLogClient rest.Interface
 
 	clusterPatches []data.ClusterPatch
-
-	// PortForwarder is defined to visit pod in local.
-	PortForwarder k8s.PortForwarder
 }
 
 func New() *Framework {
@@ -101,11 +96,6 @@ func (f *Framework) Setup(opts ...SetupOption) {
 	podLogClient, err := newRESTClientForPod(cfg)
 	gomega.Expect(err).To(gomega.Succeed())
 	f.podLogClient = podLogClient
-
-	clientRawConfig, err := k8s.LoadClientRawConfig()
-	gomega.Expect(err).To(gomega.Succeed())
-	f.PortForwarder, err = k8s.NewPortForwarder(context.Background(), config.NewSimpleRESTClientGetter(&clientRawConfig))
-	gomega.Expect(err).To(gomega.Succeed())
 
 	ginkgo.BeforeEach(func(ctx context.Context) {
 		ns := data.NewNamespace()

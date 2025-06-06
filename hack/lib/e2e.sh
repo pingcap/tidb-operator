@@ -89,7 +89,6 @@ function e2e::uninstall_operator() {
 }
 
 function e2e::reload_testing_workload() {
-    kind get nodes -n ${V_KIND_CLUSTER} | xargs -I{} docker exec -i {} crictl rmi docker.io/pingcap/testing-workload:latest || true
     image::build testing-workload --push
 }
 
