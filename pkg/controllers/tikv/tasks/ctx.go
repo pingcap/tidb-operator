@@ -61,14 +61,11 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 			return task.Complete().With("store does not exist")
 		}
 
-		regionCount, err := c.Underlay().GetRegionCount(ctx)
-		if err != nil {
-			return task.Fail().With("failed to get total region count: %w", err)
-		}
-		state.SetTotalRegionCount(regionCount)
 		state.Store, state.StoreID = s, s.ID
 		state.SetStoreState(string(s.NodeState))
 		state.SetLeaderCount(s.LeaderCount)
+		state.SetRegionCount(s.RegionCount)
+		state.SetStoreBusy(s.IsBusy)
 
 		// TODO: cache evict leader scheduler info, then we don't need to check suspend here
 		if coreutil.ShouldSuspendCompute(state.Cluster()) {

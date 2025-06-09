@@ -92,15 +92,10 @@ type PDClient interface {
 	// GetTombStoneStores() (*StoresInfo, error)
 	// GetStore gets a TiKV/TiFlash store for a specific store id of the cluster.
 	GetStore(ctx context.Context, storeID string) (*StoreInfo, error)
-
-	// GetRegionCount returns the number of regions of the cluster.
-	GetRegionCount(ctx context.Context) (uint64, error)
 	PDWriter
 }
 
 var (
-	regionCountPrefix = "pd/api/v1/stats/region"
-
 	healthPrefix    = "pd/api/v1/health"
 	configPrefix    = "pd/api/v1/config"
 	clusterIDPrefix = "pd/api/v1/cluster"
@@ -590,21 +585,4 @@ func (c *pdClient) TransferPDLeader(ctx context.Context, memberName string) erro
 	}
 	err2 := httputil.ReadErrorBody(res.Body)
 	return fmt.Errorf("failed %v to transfer pd leader to %s, error: %w", res.StatusCode, memberName, err2)
-}
-
-func (c *pdClient) GetRegionCount(ctx context.Context) (uint64, error) {
-	apiURL := fmt.Sprintf("%s/%s", c.url, regionCountPrefix)
-	body, err := httputil.GetBodyOK(ctx, c.httpClient, apiURL)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get region count: %w", err)
-	}
-
-	var rc struct {
-		Count uint64 `json:"count"`
-	}
-	if err := json.Unmarshal(body, &rc); err != nil {
-		return 0, fmt.Errorf("failed to unmarshal region count response: %w", err)
-	}
-
-	return rc.Count, nil
 }

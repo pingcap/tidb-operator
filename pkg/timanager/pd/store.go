@@ -120,6 +120,7 @@ func (*storeLister) convert(cluster string, s *pdapi.StoreInfo) *pdv1.Store {
 		NodeState:           pdv1.NodeState(s.Store.NodeState.String()),
 		StartTimestamp:      s.Store.StartTimestamp,
 		// LastHeartbeat:       s.Store.LastHeartbeat,
+		IsBusy: s.Status.IsBusy,
 
 		LeaderCount: s.Status.LeaderCount,
 		RegionCount: s.Status.RegionCount,

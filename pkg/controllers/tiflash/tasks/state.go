@@ -38,6 +38,8 @@ type state struct {
 
 	storeState    string
 	statusChanged bool
+	regionCount   int
+	storeBusy     bool
 
 	stateutil.IFeatureGates
 }
@@ -151,3 +153,19 @@ func (s *state) GetLeaderCount() int {
 }
 
 func (s *state) SetLeaderCount(_ int) {}
+
+func (s *state) GetRegionCount() int {
+	return s.regionCount
+}
+
+func (s *state) SetRegionCount(count int) {
+	s.regionCount = count
+}
+
+func (s *state) IsStoreBusy() bool {
+	return s.storeBusy
+}
+
+func (s *state) SetStoreBusy(busy bool) {
+	s.storeBusy = busy
+}
