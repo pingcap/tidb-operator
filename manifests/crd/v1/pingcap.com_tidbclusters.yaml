@@ -16863,6 +16863,10 @@ spec:
                     type: string
                   separateSlowLog:
                     type: boolean
+                  serverLabels:
+                    additionalProperties:
+                      type: string
+                    type: object
                   service:
                     properties:
                       additionalPorts:
@@ -25193,6 +25197,10 @@ spec:
                     type: object
                   schedulerName:
                     type: string
+                  serverLabels:
+                    additionalProperties:
+                      type: string
+                    type: object
                   serviceAccount:
                     type: string
                   sslEnableTiDB:

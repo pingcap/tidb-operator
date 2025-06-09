@@ -37,6 +37,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/util/cmpver"
+	maputil "github.com/pingcap/tidb-operator/pkg/util/map"
 
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -1260,8 +1261,13 @@ outer:
 			return setCount, err
 		}
 
-		labels, err := getNodeLabels(m.deps.NodeLister, db.NodeName, config.Replication.LocationLabels)
-		if err != nil || len(labels) == 0 {
+		node, err := m.deps.NodeLister.Get(db.NodeName)
+		if err != nil {
+			klog.Warningf("failed to get node %s of pod %s for cluster %s/%s, error: %+v", db.NodeName, name, ns, tc.GetName(), err)
+			continue
+		}
+		labels := maputil.Merge(tc.Spec.TiDB.ServerLabels, getLabelsFromNode(node, config.Replication.LocationLabels))
+		if len(labels) == 0 {
 			klog.Warningf("node: [%s] has no node labels %v, skipping set store labels for Pod: [%s/%s]", db.NodeName, config.Replication.LocationLabels, ns, name)
 			continue
 		}

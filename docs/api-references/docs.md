@@ -18497,6 +18497,22 @@ The probe binary in the image should be placed under the root directory, i.e., <
 <p>Arguments is the extra command line arguments for TiDB server.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>serverLabels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>ServerLabels defines the server labels of the TiDB server.
+Using both this field and config file to manage the labels is an undefined behavior.
+Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+- region, topology.kubernetes.io/region
+- zone, topology.kubernetes.io/zone
+- host</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbstatus">TiDBStatus</h3>
@@ -24233,6 +24249,22 @@ string
 <em>(Optional)</em>
 <p>The storageClassName of the persistent volume for TiProxy data storage.
 Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serverLabels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>ServerLabels defines the server labels of the TiProxy.
+Using both this field and config file to manage the labels is an undefined behavior.
+Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+- region, topology.kubernetes.io/region
+- zone, topology.kubernetes.io/zone
+- host</p>
 </td>
 </tr>
 </tbody>
