@@ -25,6 +25,12 @@ import (
 	stateutil "github.com/pingcap/tidb-operator/pkg/state"
 )
 
+const (
+	// minRegionCountForLeaderCountCheck is the minimum region count for leader count check.
+	// If the region count is less than this value, we will not check the leader count.
+	minRegionCountForLeaderCountCheck = 100
+)
+
 type state struct {
 	key types.NamespacedName
 
@@ -39,6 +45,8 @@ type state struct {
 	storeState    string
 	statusChanged bool
 	leaderCount   int
+	regionCount   int
+	storeBusy     bool
 
 	stateutil.IFeatureGates
 }
@@ -138,6 +146,10 @@ func (s *state) GetLeaderCount() int {
 	return s.leaderCount
 }
 
+func (s *state) GetRegionCount() int {
+	return s.regionCount
+}
+
 func (s *state) SetStoreState(state string) {
 	s.storeState = state
 }
@@ -146,11 +158,34 @@ func (s *state) SetLeaderCount(count int) {
 	s.leaderCount = count
 }
 
+func (s *state) SetRegionCount(count int) {
+	s.regionCount = count
+}
+
 func (s *state) IsStoreUp() bool {
 	return s.storeState == v1alpha1.StoreStatePreparing || s.storeState == v1alpha1.StoreStateServing
 }
 
 func (s *state) IsHealthy() bool {
-	// We should also check if the leader count is greater than 0.
-	return s.IsStoreUp() && s.GetLeaderCount() > 0
+	// We should also check if the leader count is enough.
+	// Especially when rolling restart tikv, we need to ensure the leader count of restarted tikv is enough.
+	return s.IsStoreUp() && !s.IsStoreBusy() && isLeaderCountEnough(s.GetLeaderCount(), s.GetRegionCount())
+}
+
+func (s *state) IsStoreBusy() bool {
+	return s.storeBusy
+}
+
+func (s *state) SetStoreBusy(busy bool) {
+	s.storeBusy = busy
+}
+
+// isLeaderCountEnough checks if the leader count is enough.
+// If the region count is greater than 100, we will check if the leader count is greater than 0.
+// Otherwise, we will return true because too small total region count.
+func isLeaderCountEnough(leaderCount int, regionCount int) bool {
+	if regionCount >= minRegionCountForLeaderCountCheck {
+		return leaderCount > 0
+	}
+	return true
 }
