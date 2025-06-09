@@ -17,9 +17,8 @@ package tasks
 import (
 	"context"
 
-	"k8s.io/apimachinery/pkg/api/errors"
-
 	"github.com/pingcap/kvproto/pkg/metapb"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	tiflashconfig "github.com/pingcap/tidb-operator/pkg/configs/tiflash"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
@@ -60,6 +59,9 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 
 		state.Store, state.StoreID = s, s.ID
 		state.SetStoreState(string(s.NodeState))
+		state.SetRegionCount(s.RegionCount)
+		state.SetStoreBusy(s.IsBusy)
+
 		state.StoreLabels = make([]*metapb.StoreLabel, len(s.Labels))
 		for k, v := range s.Labels {
 			state.StoreLabels = append(state.StoreLabels, &metapb.StoreLabel{Key: k, Value: v})

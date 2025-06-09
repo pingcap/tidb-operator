@@ -92,7 +92,6 @@ type PDClient interface {
 	// GetTombStoneStores() (*StoresInfo, error)
 	// GetStore gets a TiKV/TiFlash store for a specific store id of the cluster.
 	GetStore(ctx context.Context, storeID string) (*StoreInfo, error)
-
 	PDWriter
 }
 

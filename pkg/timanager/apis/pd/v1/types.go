@@ -60,7 +60,7 @@ type Store struct {
 	// SendingSnapCount   uint32      `json:"sending_snap_count"`
 	// ReceivingSnapCount uint32      `json:"receiving_snap_count"`
 	// ApplyingSnapCount  uint32      `json:"applying_snap_count"`
-	// IsBusy             bool        `json:"is_busy"`
+	IsBusy bool `json:"is_busy"`
 }
 
 func (s *Store) Engine() StoreEngine {

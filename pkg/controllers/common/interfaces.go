@@ -220,12 +220,17 @@ type StoreState interface {
 	// IsStoreUp returns true if the store state is `Preparing` or `Serving`,
 	// which means the store is in the state of providing services.
 	IsStoreUp() bool
+	// IsStoreBusy returns false if the proportion of regions that are ready exceeds 99%.
+	IsStoreBusy() bool
 	GetLeaderCount() int
+	GetRegionCount() int
 }
 
 type StoreStateUpdater interface {
 	SetStoreState(string)
 	SetLeaderCount(int)
+	SetRegionCount(int)
+	SetStoreBusy(bool)
 }
 
 type HealthyState interface {
