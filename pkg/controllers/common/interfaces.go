@@ -228,6 +228,14 @@ type StoreStateUpdater interface {
 	SetLeaderCount(int)
 }
 
+type RegionState interface {
+	GetTotalRegionCount() uint64
+}
+
+type RegionStateUpdater interface {
+	SetTotalRegionCount(uint64)
+}
+
 type HealthyState interface {
 	// It means the instance is healthy to serve.
 	// Normally, it's from PD or api exposed by the instance.

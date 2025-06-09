@@ -25,6 +25,12 @@ import (
 	stateutil "github.com/pingcap/tidb-operator/pkg/state"
 )
 
+const (
+	// minRegionCountForLeaderCountCheck is the minimum region count for leader count check.
+	// If the region count is less than this value, we will not check the leader count.
+	minRegionCountForLeaderCountCheck = 100
+)
+
 type state struct {
 	key types.NamespacedName
 
@@ -36,9 +42,10 @@ type state struct {
 	// the underlay pod has been deleting
 	isPodTerminating bool
 
-	storeState    string
-	statusChanged bool
-	leaderCount   int
+	storeState       string
+	statusChanged    bool
+	leaderCount      int
+	totalRegionCount uint64
 
 	stateutil.IFeatureGates
 }
@@ -60,6 +67,9 @@ type State interface {
 
 	common.StoreState
 	common.StoreStateUpdater
+
+	common.RegionState
+	common.RegionStateUpdater
 
 	common.HealthyState
 
@@ -138,6 +148,10 @@ func (s *state) GetLeaderCount() int {
 	return s.leaderCount
 }
 
+func (s *state) GetTotalRegionCount() uint64 {
+	return s.totalRegionCount
+}
+
 func (s *state) SetStoreState(state string) {
 	s.storeState = state
 }
@@ -146,11 +160,26 @@ func (s *state) SetLeaderCount(count int) {
 	s.leaderCount = count
 }
 
+func (s *state) SetTotalRegionCount(count uint64) {
+	s.totalRegionCount = count
+}
+
 func (s *state) IsStoreUp() bool {
 	return s.storeState == v1alpha1.StoreStatePreparing || s.storeState == v1alpha1.StoreStateServing
 }
 
 func (s *state) IsHealthy() bool {
-	// We should also check if the leader count is greater than 0.
-	return s.IsStoreUp() && s.GetLeaderCount() > 0
+	// We should also check if the leader count is enough.
+	// Especially when rolling restart tikv, we need to ensure the leader count of restarted tikv is enough.
+	return s.IsStoreUp() && isLeaderCountEnough(s.GetLeaderCount(), s.GetTotalRegionCount())
+}
+
+// isLeaderCountEnough checks if the leader count is enough.
+// If the region count is greater than 100, we will check if the leader count is greater than 0.
+// Otherwise, we will return true because too small total region count.
+func isLeaderCountEnough(leaderCount int, regionCount uint64) bool {
+	if regionCount >= minRegionCountForLeaderCountCheck {
+		return leaderCount > 0
+	}
+	return true
 }
