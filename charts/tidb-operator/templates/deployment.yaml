@@ -44,11 +44,11 @@ spec:
       - command:
         - /tidb-operator
         args:
-          - --backup-manager-image={{ .Values.backupManager.image }}
+          - --backup-manager-image="{{ template "image" (tuple .Values.backupManager.image $.Chart.AppVersion) }}"
         {{- if .Values.operator.extraArgs }}
         {{ toYaml .Values.operator.extraArgs | nindent 10 }}
         {{- end }}
-        image: "{{ .Values.operator.image }}"
+        image: "{{ template "image" (tuple .Values.operator.image $.Chart.AppVersion) }}"
         imagePullPolicy: {{ .Values.operator.pullPolicy | default "IfNotPresent" }}
         name: tidb-operator
         securityContext:

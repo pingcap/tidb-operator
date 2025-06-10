@@ -14,3 +14,14 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- $name := default .Chart.Name .Values.nameOverride -}}
 {{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
+
+{{/*
+It is copied from https://github.com/cert-manager/cert-manager/blob/v1.17.2/deploy/charts/cert-manager/templates/_helpers.tpl
+*/}}
+{{- define "image" -}}
+{{- $defaultTag := index . 1 -}}
+{{- with index . 0 -}}
+{{- if .registry -}}{{ printf "%s/%s" .registry .repository }}{{- else -}}{{- .repository -}}{{- end -}}
+{{- if .digest -}}{{ printf "@%s" .digest }}{{- else -}}{{ printf ":%s" (default $defaultTag .tag) }}{{- end -}}
+{{- end }}
+{{- end }}
