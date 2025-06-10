@@ -234,3 +234,26 @@ func newFakeObjectState[
 		obj: f,
 	}
 }
+
+type fakeServerLabelsState struct {
+	healthy      bool
+	pod          *corev1.Pod
+	serverLabels map[string]string
+}
+
+var _ ServerLabelsState = &fakeServerLabelsState{}
+
+func (s *fakeServerLabelsState) GetServerLabels() map[string]string {
+	return s.serverLabels
+}
+func (s *fakeServerLabelsState) IsHealthy() bool {
+	return s.healthy
+}
+
+func (s *fakeServerLabelsState) Pod() *corev1.Pod {
+	return s.pod
+}
+
+func (s *fakeServerLabelsState) IsPodTerminating() bool {
+	return s.pod != nil && s.pod.DeletionTimestamp != nil
+}
