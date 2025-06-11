@@ -32,6 +32,10 @@ import (
 	"k8s.io/klog/v2"
 )
 
+const (
+	defaultEvictLeaderTimeoutWhenScaleIn = time.Minute * 5
+)
+
 type tikvScaler struct {
 	generalScaler
 }
@@ -102,7 +106,7 @@ func (s *tikvScaler) scaleOutOne(tc *v1alpha1.TidbCluster, ordinal int32) error 
 }
 
 func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
-	scaleInTime := time.Now().Format(time.RFC3339)
+	scaleInTime := time.Now()
 	tc, ok := meta.(*v1alpha1.TidbCluster)
 	if !ok {
 		klog.Errorf("tikvScaler.ScaleIn: failed to convert cluster %s/%s, scale in will do nothing", meta.GetNamespace(), meta.GetName())
@@ -114,7 +118,7 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	_, ordinals, replicas, deleteSlots := scaleMulti(oldSet, newSet, scaleInParallelism)
 
 	klog.Infof("scaling in tikv statefulset %s/%s, ordinals: %v (replicas: %d, delete slots: %v), scaleInParallelism: %v, scaleInTime: %v",
-		oldSet.Namespace, oldSet.Name, ordinals, replicas, deleteSlots.List(), scaleInParallelism, scaleInTime)
+		oldSet.Namespace, oldSet.Name, ordinals, replicas, deleteSlots.List(), scaleInParallelism, scaleInTime.Format(time.RFC3339))
 
 	var (
 		upTikvStoreCount    int
@@ -174,7 +178,7 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	return errorutils.NewAggregate(errs)
 }
 
-func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upTikvStoreCount, deletedUpStoreCount, maxReplicas int, ordinal int32, scaleInTime string) (deletedUpStore int, err error) {
+func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upTikvStoreCount, deletedUpStoreCount, maxReplicas int, ordinal int32, scaleInTime time.Time) (deletedUpStore int, err error) {
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 	podName := ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
@@ -206,8 +210,53 @@ func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upT
 			if err != nil {
 				return deletedUpStore, err
 			}
-			if state != v1alpha1.TiKVStateOffline {
-				if err := controller.GetPDClient(s.deps.PDControl, tc).DeleteStore(id); err != nil {
+			pdc := controller.GetPDClient(s.deps.PDControl, tc)
+
+			var startTime *time.Time
+			startStr, ok := pod.Annotations[label.AnnoScaleInTime]
+			if ok {
+				t, err := time.Parse(time.RFC3339, startStr)
+				if err != nil {
+					klog.Warningf("tikvScaler.ScaleIn: cannot parse annotation %s in pod %s, cluster %s/%s: %v", label.AnnoScaleInTime, podName, ns, tcName, err)
+					// use current time as scaleInTime
+					startTime = &scaleInTime
+				} else {
+					startTime = &t
+				}
+			} else {
+				startTime = &scaleInTime
+			}
+			if err := ensureScaleInTimeAnnoInPod(tc, pod, s.deps.PodControl, startTime.Format(time.RFC3339)); err != nil {
+				return deletedUpStore, fmt.Errorf("cannot add annotation to pod: %w", err)
+			}
+
+			var leaderEvictedOrTimeout bool
+			// not timeout
+			if startTime.Add(defaultEvictLeaderTimeoutWhenScaleIn).Before(scaleInTime) {
+				leaderEvictedOrTimeout = true
+			}
+			if !leaderEvictedOrTimeout {
+				schedulerMap, err := pdc.GetEvictLeaderSchedulersForStores(id)
+				if err != nil {
+					return deletedUpStore, fmt.Errorf("cannot get scheduler of store %v: %w", id, err)
+				}
+				if _, ok := schedulerMap[id]; !ok {
+					if err := pdc.BeginEvictLeader(id); err != nil {
+						return deletedUpStore, fmt.Errorf("cannot evict leaders of store %v: %w", id, err)
+					}
+				}
+				kvcli := s.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name, podName, tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled())
+				leaderCount, err := kvcli.GetLeaderCount()
+				if err != nil {
+					return deletedUpStore, fmt.Errorf("cannot get leader count from store %v: %w", id, err)
+				}
+				if leaderCount == 0 {
+					leaderEvictedOrTimeout = true
+				}
+			}
+
+			if state != v1alpha1.TiKVStateOffline && leaderEvictedOrTimeout {
+				if err := pdc.DeleteStore(id); err != nil {
 					klog.Errorf("tikvScaler.ScaleIn: failed to delete store %d, %v", id, err)
 					return deletedUpStore, err
 				}
@@ -217,7 +266,6 @@ func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upT
 				}
 			}
 			return deletedUpStore, controller.RequeueErrorf("TiKV %s/%s store %d is still in cluster, state: %s", ns, podName, id, state)
-
 		}
 	}
 
@@ -245,7 +293,7 @@ func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upT
 			return deletedUpStore, fmt.Errorf("tikvScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
 		}
 		for _, pvc := range pvcs {
-			if err := addDeferDeletingAnnoToPVC(tc, pvc, s.deps.PVCControl, scaleInTime); err != nil {
+			if err := addDeferDeletingAnnoToPVC(tc, pvc, s.deps.PVCControl, scaleInTime.Format(time.RFC3339)); err != nil {
 				return deletedUpStore, err
 			}
 		}
