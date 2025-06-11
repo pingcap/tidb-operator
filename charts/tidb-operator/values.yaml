@@ -9,7 +9,12 @@ operator:
   # Replica count for the operator deployment
   replicas: 1
   serviceAccount: tidb-operator
-  image: pingcap/tidb-operator:latest
+  image:
+    # registry: docker.io
+    repository: pingcap/tidb-operator
+    # tag: vX.Y.Z
+    # digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+
   pullPolicy: IfNotPresent
 # # REF: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
 #  priorityClassName: system-cluster-critical
@@ -55,7 +60,11 @@ operator:
 
 # Backup manager image configuration
 backupManager:
-  image: pingcap/tidb-backup-manager:latest
+  image:
+    # registry: docker.io
+    repository: pingcap/tidb-backup-manager
+    # tag: vX.Y.Z
+    # digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
 
 # RBAC configuration
 rbac:
