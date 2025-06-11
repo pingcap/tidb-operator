@@ -30,6 +30,7 @@ import (
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/util/cmpver"
+	maputil "github.com/pingcap/tidb-operator/pkg/util/map"
 
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -828,8 +829,13 @@ outer:
 			klog.V(4).Infof("node name of pod %s in cluster %s/%s is empty", name, ns, tc.GetName())
 			continue
 		}
-		labels, err := getNodeLabels(m.deps.NodeLister, pod.Spec.NodeName, config.Replication.LocationLabels)
-		if err != nil || len(labels) == 0 {
+		node, err := m.deps.NodeLister.Get(pod.Spec.NodeName)
+		if err != nil {
+			klog.Warningf("failed to get node %s of pod %s for cluster %s/%s, error: %+v", pod.Spec.NodeName, name, ns, tc.GetName(), err)
+			continue
+		}
+		labels := maputil.Merge(tc.Spec.TiProxy.ServerLabels, getLabelsFromNode(node, config.Replication.LocationLabels))
+		if len(labels) == 0 {
 			klog.Warningf("node: [%s] has no node labels %v, skipping set labels for Pod: [%s/%s]", pod.Spec.NodeName, config.Replication.LocationLabels, ns, name)
 			continue
 		}

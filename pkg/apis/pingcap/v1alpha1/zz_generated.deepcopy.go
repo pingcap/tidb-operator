@@ -6259,6 +6259,13 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.ServerLabels != nil {
+		in, out := &in.ServerLabels, &out.ServerLabels
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	return
 }
 
@@ -8820,6 +8827,13 @@ func (in *TiProxySpec) DeepCopyInto(out *TiProxySpec) {
 		in, out := &in.StorageClassName, &out.StorageClassName
 		*out = new(string)
 		**out = **in
+	}
+	if in.ServerLabels != nil {
+		in, out := &in.ServerLabels, &out.ServerLabels
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 	return
 }

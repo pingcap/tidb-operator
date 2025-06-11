@@ -10492,6 +10492,22 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							},
 						},
 					},
+					"serverLabels": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ServerLabels defines the server labels of the TiDB server. Using both this field and config file to manage the labels is an undefined behavior. Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:\n - region, topology.kubernetes.io/region\n - zone, topology.kubernetes.io/zone\n - host",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
 				},
 				Required: []string{"replicas"},
 			},
@@ -14191,6 +14207,22 @@ func schema_pkg_apis_pingcap_v1alpha1_TiProxySpec(ref common.ReferenceCallback) 
 							Description: "The storageClassName of the persistent volume for TiProxy data storage. Defaults to Kubernetes default storage class.",
 							Type:        []string{"string"},
 							Format:      "",
+						},
+					},
+					"serverLabels": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ServerLabels defines the server labels of the TiProxy. Using both this field and config file to manage the labels is an undefined behavior. Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:\n - region, topology.kubernetes.io/region\n - zone, topology.kubernetes.io/zone\n - host",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
 						},
 					},
 				},
