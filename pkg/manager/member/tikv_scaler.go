@@ -178,7 +178,7 @@ func (s *tikvScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, newSe
 	return errorutils.NewAggregate(errs)
 }
 
-func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upTikvStoreCount, deletedUpStoreCount, maxReplicas int, ordinal int32, scaleInTime time.Time) (deletedUpStore int, err error) {
+func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upTikvStoreCount, deletedUpStoreCount, maxReplicas int, ordinal int32, currentTime time.Time) (deletedUpStore int, err error) {
 	tcName := tc.GetName()
 	ns := tc.GetNamespace()
 	podName := ordinalPodName(v1alpha1.TiKVMemberType, tcName, ordinal)
@@ -218,21 +218,20 @@ func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upT
 				t, err := time.Parse(time.RFC3339, startStr)
 				if err != nil {
 					klog.Warningf("tikvScaler.ScaleIn: cannot parse annotation %s in pod %s, cluster %s/%s: %v", label.AnnoScaleInTime, podName, ns, tcName, err)
-					// use current time as scaleInTime
-					startTime = &scaleInTime
+					// use current time as startInTime
+					startTime = &currentTime
 				} else {
 					startTime = &t
 				}
 			} else {
-				startTime = &scaleInTime
+				startTime = &currentTime
 			}
 			if err := ensureScaleInTimeAnnoInPod(tc, pod, s.deps.PodControl, startTime.Format(time.RFC3339)); err != nil {
 				return deletedUpStore, fmt.Errorf("cannot add annotation to pod: %w", err)
 			}
 
 			var leaderEvictedOrTimeout bool
-			// not timeout
-			if startTime.Add(defaultEvictLeaderTimeoutWhenScaleIn).Before(scaleInTime) {
+			if startTime.Add(defaultEvictLeaderTimeoutWhenScaleIn).Before(currentTime) {
 				leaderEvictedOrTimeout = true
 			}
 			if store.LeaderCount == 0 {
@@ -288,7 +287,7 @@ func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upT
 			return deletedUpStore, fmt.Errorf("tikvScaler.ScaleIn: failed to get pvcs for pod %s/%s in tc %s/%s, error: %s", ns, pod.Name, ns, tcName, err)
 		}
 		for _, pvc := range pvcs {
-			if err := addDeferDeletingAnnoToPVC(tc, pvc, s.deps.PVCControl, scaleInTime.Format(time.RFC3339)); err != nil {
+			if err := addDeferDeletingAnnoToPVC(tc, pvc, s.deps.PVCControl, currentTime.Format(time.RFC3339)); err != nil {
 				return deletedUpStore, err
 			}
 		}
