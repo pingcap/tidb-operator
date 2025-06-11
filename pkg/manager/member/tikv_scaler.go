@@ -235,6 +235,9 @@ func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upT
 			if startTime.Add(defaultEvictLeaderTimeoutWhenScaleIn).Before(scaleInTime) {
 				leaderEvictedOrTimeout = true
 			}
+			if store.LeaderCount == 0 {
+				leaderEvictedOrTimeout = true
+			}
 			if !leaderEvictedOrTimeout {
 				schedulerMap, err := pdc.GetEvictLeaderSchedulersForStores(id)
 				if err != nil {
@@ -244,14 +247,6 @@ func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upT
 					if err := pdc.BeginEvictLeader(id); err != nil {
 						return deletedUpStore, fmt.Errorf("cannot evict leaders of store %v: %w", id, err)
 					}
-				}
-				kvcli := s.deps.TiKVControl.GetTiKVPodClient(tc.Namespace, tc.Name, podName, tc.Spec.ClusterDomain, tc.IsTLSClusterEnabled())
-				leaderCount, err := kvcli.GetLeaderCount()
-				if err != nil {
-					return deletedUpStore, fmt.Errorf("cannot get leader count from store %v: %w", id, err)
-				}
-				if leaderCount == 0 {
-					leaderEvictedOrTimeout = true
 				}
 			}
 
