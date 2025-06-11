@@ -36,15 +36,17 @@ for f in $ROOT/manifests/crd/*.yaml; do
     cat $f >> $CRDS
 done
 
+echo "Generate tidb-operator charts"
+
+RELEASE_VERSION="v0.0.0"
+if [[ ${V_RELEASE} == "latest" ]]; then
+    ${HELM} package --app-version=${V_RELEASE} --version=${RELEASE_VERSION} --destination  ${OUTPUT} ${ROOT}/charts/tidb-operator
+else
+    RELEASE_VERSION=${V_RELEASE}
+    ${HELM} package --app-version=${V_RELEASE} --version=${RELEASE_VERSION} --destination  ${OUTPUT} ${ROOT}/charts/tidb-operator
+fi
 
 echo "Generate tidb-operator.yaml"
-cat << EOF > $OUTPUT/helm-values.yaml
-operator:
-  image: pingcap/tidb-operator:${V_RELEASE}
-backupManager:
-  image: pingcap/tidb-backup-manager:${V_RELEASE}
-EOF
-
 cat $BOILERPLATE > $OPERATOR
 cat << EOF >> $OPERATOR
 ---
@@ -54,8 +56,9 @@ metadata:
   name: tidb-admin
 EOF
 
-${HELM} template tidb-operator $ROOT/charts/tidb-operator \
-    -n ${V_DEPLOY_NAMESPACE} \
-    -f $OUTPUT/helm-values.yaml \
+
+${HELM} template tidb-operator ${OUTPUT}/tidb-operator-${RELEASE_VERSION}.tgz \
     --kube-version ${V_KUBE_VERSION} \
+    -n ${V_DEPLOY_NAMESPACE} \
     >> $OPERATOR
+
