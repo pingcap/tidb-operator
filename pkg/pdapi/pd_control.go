@@ -345,6 +345,10 @@ func (fpc *FakePDControl) SetPDClient(namespace Namespace, tcName string, pdclie
 	fpc.defaultPDControl.pdClients[genClientKey("http", namespace, tcName, "")] = pdclient
 }
 
+func (fpc *FakePDControl) SetPDClientForKey(key string, pdclient PDClient) {
+	fpc.defaultPDControl.pdClients[key] = pdclient
+}
+
 func (fpc *FakePDControl) SetPDClientWithClusterDomain(namespace Namespace, tcName string, tcClusterDomain string, pdclient PDClient) {
 	fpc.defaultPDControl.pdClients[genClientKey("http", namespace, tcName, tcClusterDomain)] = pdclient
 }
