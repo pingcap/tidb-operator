@@ -73,6 +73,14 @@ func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) p
 	return pdClient
 }
 
+// GetPDClientForMember tries to return a PDClient for a specific PD member.
+func GetPDClientForMember(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster, member *v1alpha1.PDMember) pdapi.PDClient {
+	if member == nil {
+		return nil
+	}
+	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), pdapi.SpecifyClient(member.ClientURL, member.Name))
+}
+
 // GetPDMSClient tries to return an available PDMSClient
 func GetPDMSClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster, serviceName string) pdapi.PDMSClient {
 	pdMSClient := getPDMSClientFromService(pdControl, tc, serviceName)
