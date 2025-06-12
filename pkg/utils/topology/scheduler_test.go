@@ -136,7 +136,7 @@ func TestEncoder(t *testing.T) {
 	}
 }
 
-func TestSchedulerAdd(t *testing.T) {
+func TestSchedulingAdd(t *testing.T) {
 	cases := []struct {
 		desc    string
 		st      []v1alpha1.ScheduleTopology

@@ -44,19 +44,19 @@ func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm vo
 	})
 }
 
-func newPVCs(scheduler *v1alpha1.Scheduler) []*corev1.PersistentVolumeClaim {
-	pvcs := make([]*corev1.PersistentVolumeClaim, 0, len(scheduler.Spec.Volumes))
+func newPVCs(scheduling *v1alpha1.Scheduling) []*corev1.PersistentVolumeClaim {
+	pvcs := make([]*corev1.PersistentVolumeClaim, 0, len(scheduling.Spec.Volumes))
 	nameToIndex := map[string]int{}
-	for i := range scheduler.Spec.Volumes {
-		vol := &scheduler.Spec.Volumes[i]
+	for i := range scheduling.Spec.Volumes {
+		vol := &scheduling.Spec.Volumes[i]
 		nameToIndex[vol.Name] = i
 		pvcs = append(pvcs, &corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      PersistentVolumeClaimName(coreutil.PodName[scope.Scheduler](scheduler), vol.Name),
-				Namespace: scheduler.Namespace,
-				Labels:    coreutil.PersistentVolumeClaimLabels[scope.Scheduler](scheduler, vol.Name),
+				Name:      PersistentVolumeClaimName(coreutil.PodName[scope.Scheduling](scheduling), vol.Name),
+				Namespace: scheduling.Namespace,
+				Labels:    coreutil.PersistentVolumeClaimLabels[scope.Scheduling](scheduling, vol.Name),
 				OwnerReferences: []metav1.OwnerReference{
-					*metav1.NewControllerRef(scheduler, v1alpha1.SchemeGroupVersion.WithKind("Scheduler")),
+					*metav1.NewControllerRef(scheduling, v1alpha1.SchemeGroupVersion.WithKind("Scheduling")),
 				},
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
@@ -74,8 +74,8 @@ func newPVCs(scheduler *v1alpha1.Scheduler) []*corev1.PersistentVolumeClaim {
 		})
 	}
 
-	if scheduler.Spec.Overlay != nil {
-		for _, o := range scheduler.Spec.Overlay.PersistentVolumeClaims {
+	if scheduling.Spec.Overlay != nil {
+		for _, o := range scheduling.Spec.Overlay.PersistentVolumeClaims {
 			index, ok := nameToIndex[o.Name]
 			if !ok {
 				// TODO(liubo02): it should be validated

@@ -30,24 +30,24 @@ var _ = ginkgo.Describe("PD", label.PD, label.FeaturePDMS, func() {
 	f.Setup()
 
 	ginkgo.Context("PDMS Basic", label.P0, func() {
-		ginkgo.It("support create PD, TSO, and scheduler with 1 replica", func(ctx context.Context) {
+		ginkgo.It("support create PD, TSO, and scheduling with 1 replica", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx, data.WithMSMode(), data.WithReplicas[*runtime.PDGroup](1))
 			tg := f.MustCreateTSO(ctx, data.WithReplicas[*runtime.TSOGroup](1))
-			sg := f.MustCreateScheduler(ctx, data.WithReplicas[*runtime.SchedulerGroup](1))
+			sg := f.MustCreateScheduling(ctx, data.WithReplicas[*runtime.SchedulingGroup](1))
 
 			f.WaitForPDGroupReady(ctx, pdg)
 			f.WaitForTSOGroupReady(ctx, tg)
-			f.WaitForSchedulerGroupReady(ctx, sg)
+			f.WaitForSchedulingGroupReady(ctx, sg)
 		})
 
-		ginkgo.It("support create 3 PD instances, 2 TSO instances, and 2 Scheduler instances", func(ctx context.Context) {
+		ginkgo.It("support create 3 PD instances, 2 TSO instances, and 2 Scheduling instances", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx, data.WithMSMode(), data.WithReplicas[*runtime.PDGroup](3))
 			tg := f.MustCreateTSO(ctx, data.WithReplicas[*runtime.TSOGroup](2))
-			sg := f.MustCreateScheduler(ctx, data.WithReplicas[*runtime.SchedulerGroup](2))
+			sg := f.MustCreateScheduling(ctx, data.WithReplicas[*runtime.SchedulingGroup](2))
 
 			f.WaitForPDGroupReady(ctx, pdg)
 			f.WaitForTSOGroupReady(ctx, tg)
-			f.WaitForSchedulerGroupReady(ctx, sg)
+			f.WaitForSchedulingGroupReady(ctx, sg)
 		})
 	})
 })

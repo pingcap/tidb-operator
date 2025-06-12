@@ -50,14 +50,14 @@ const (
 const (
 	// Main component containers of the tidb cluster
 	// These names are well known so the name prefix is not added.
-	ContainerNamePD        = "pd"
-	ContainerNameTiKV      = "tikv"
-	ContainerNameTiDB      = "tidb"
-	ContainerNameTiFlash   = "tiflash"
-	ContainerNameTiCDC     = "ticdc"
-	ContainerNameTSO       = "tso"
-	ContainerNameScheduler = "scheduler"
-	ContainerNameTiProxy   = "tiproxy"
+	ContainerNamePD         = "pd"
+	ContainerNameTiKV       = "tikv"
+	ContainerNameTiDB       = "tidb"
+	ContainerNameTiFlash    = "tiflash"
+	ContainerNameTiCDC      = "ticdc"
+	ContainerNameTSO        = "tso"
+	ContainerNameScheduling = "scheduling"
+	ContainerNameTiProxy    = "tiproxy"
 
 	// An init container to copy pre stop checker cmd to main container
 	ContainerNamePrestopChecker = meta.NamePrefix + "prestop-checker"
@@ -78,14 +78,14 @@ const (
 // All well known dir path
 const (
 	// config dir path
-	DirPathConfigPD        = "/etc/pd"
-	DirPathConfigTiKV      = "/etc/tikv"
-	DirPathConfigTiDB      = "/etc/tidb"
-	DirPathConfigTiFlash   = "/etc/tiflash"
-	DirPathConfigTiCDC     = "/etc/ticdc"
-	DirPathConfigTSO       = "/etc/tso"
-	DirPathConfigScheduler = "/etc/scheduler"
-	DirPathConfigTiProxy   = "/etc/tiproxy"
+	DirPathConfigPD         = "/etc/pd"
+	DirPathConfigTiKV       = "/etc/tikv"
+	DirPathConfigTiDB       = "/etc/tidb"
+	DirPathConfigTiFlash    = "/etc/tiflash"
+	DirPathConfigTiCDC      = "/etc/ticdc"
+	DirPathConfigTSO        = "/etc/tso"
+	DirPathConfigScheduling = "/etc/scheduling"
+	DirPathConfigTiProxy    = "/etc/tiproxy"
 
 	// DirPathPrestop defines dir path of pre stop checker cmd
 	DirPathPrestop = "/prestop"
@@ -99,15 +99,15 @@ const (
 	// TLS
 	//
 	// Dir path of cluster tls file
-	DirPathClusterTLSPD        = "/var/lib/pd-tls"
-	DirPathClusterTLSTiKV      = "/var/lib/tikv-tls"
-	DirPathClusterTLSTiDB      = "/var/lib/tidb-tls"
-	DirPathClusterTLSTiFlash   = "/var/lib/tiflash-tls"
-	DirPathClusterClientTLS    = "/var/lib/cluster-client-tls"
-	DirPathClusterTLSTiCDC     = "/var/lib/ticdc-tls"
-	DirPathClusterTLSTSO       = "/var/lib/tso-tls"
-	DirPathClusterTLSScheduler = "/var/lib/scheduler-tls"
-	DirPathClusterTLSTiProxy   = "/var/lib/tiproxy-tls"
+	DirPathClusterTLSPD         = "/var/lib/pd-tls"
+	DirPathClusterTLSTiKV       = "/var/lib/tikv-tls"
+	DirPathClusterTLSTiDB       = "/var/lib/tidb-tls"
+	DirPathClusterTLSTiFlash    = "/var/lib/tiflash-tls"
+	DirPathClusterClientTLS     = "/var/lib/cluster-client-tls"
+	DirPathClusterTLSTiCDC      = "/var/lib/ticdc-tls"
+	DirPathClusterTLSTSO        = "/var/lib/tso-tls"
+	DirPathClusterTLSScheduling = "/var/lib/scheduling-tls"
+	DirPathClusterTLSTiProxy    = "/var/lib/tiproxy-tls"
 	// DirPathMySQLTLS is the dir path of tls file for tidb and mysql client
 	DirPathMySQLTLS = "/var/lib/tidb-sql-tls"
 	// DirPathTiProxyMySQLTLS is the dir path of tls file for tiproxy and mysql client

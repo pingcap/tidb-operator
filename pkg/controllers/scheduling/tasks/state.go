@@ -28,9 +28,9 @@ import (
 type state struct {
 	key types.NamespacedName
 
-	cluster   *v1alpha1.Cluster
-	scheduler *v1alpha1.Scheduler // Renamed from tso to scheduler
-	pod       *corev1.Pod
+	cluster    *v1alpha1.Cluster
+	scheduling *v1alpha1.Scheduling
+	pod        *corev1.Pod
 
 	// Pod cannot be updated when call DELETE API, so we have to set this field to indicate
 	// the underlay pod has been deleting
@@ -42,18 +42,18 @@ type state struct {
 }
 
 type State interface {
-	common.ContextObjectNewer[*v1alpha1.Scheduler]
-	common.ContextClusterNewer[*v1alpha1.Scheduler]
-	common.ObjectState[*v1alpha1.Scheduler]
+	common.ContextObjectNewer[*v1alpha1.Scheduling]
+	common.ContextClusterNewer[*v1alpha1.Scheduling]
+	common.ObjectState[*v1alpha1.Scheduling]
 
 	common.ClusterState
 	common.PodState
 	common.PodStateUpdater
 
-	common.InstanceState[*runtime.Scheduler]
+	common.InstanceState[*runtime.Scheduling]
 
 	common.StatusUpdater
-	common.StatusPersister[*v1alpha1.Scheduler]
+	common.StatusPersister[*v1alpha1.Scheduling]
 
 	common.HealthyState
 
@@ -64,7 +64,7 @@ func NewState(key types.NamespacedName) State {
 	s := &state{
 		key: key,
 	}
-	s.IFeatureGates = stateutil.NewFeatureGates[scope.Scheduler](s)
+	s.IFeatureGates = stateutil.NewFeatureGates[scope.Scheduling](s)
 	return s
 }
 
@@ -72,12 +72,12 @@ func (s *state) Key() types.NamespacedName {
 	return s.key
 }
 
-func (s *state) Object() *v1alpha1.Scheduler {
-	return s.scheduler
+func (s *state) Object() *v1alpha1.Scheduling {
+	return s.scheduling
 }
 
-func (s *state) Scheduler() *v1alpha1.Scheduler { // Added Scheduler() method, similar to TSO()
-	return s.scheduler
+func (s *state) Scheduling() *v1alpha1.Scheduling { // Added Scheduling() method, similar to TSO()
+	return s.scheduling
 }
 
 func (s *state) Cluster() *v1alpha1.Cluster {
@@ -92,8 +92,8 @@ func (s *state) IsPodTerminating() bool {
 	return s.isPodTerminating
 }
 
-func (s *state) Instance() *runtime.Scheduler {
-	return runtime.FromScheduler(s.scheduler)
+func (s *state) Instance() *runtime.Scheduling {
+	return runtime.FromScheduling(s.scheduling)
 }
 
 func (s *state) SetPod(pod *corev1.Pod) {
@@ -112,8 +112,8 @@ func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
 	s.cluster = cluster
 }
 
-func (s *state) SetObject(scheduler *v1alpha1.Scheduler) {
-	s.scheduler = scheduler
+func (s *state) SetObject(scheduling *v1alpha1.Scheduling) {
+	s.scheduling = scheduling
 }
 
 func (s *state) IsStatusChanged() bool {

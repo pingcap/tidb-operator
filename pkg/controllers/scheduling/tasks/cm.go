@@ -23,7 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	schedulercfg "github.com/pingcap/tidb-operator/pkg/configs/scheduler"
+	schedulingcfg "github.com/pingcap/tidb-operator/pkg/configs/scheduling"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/utils/toml"
@@ -31,39 +31,39 @@ import (
 
 func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("ConfigMap", func(ctx context.Context) task.Result {
-		cfg := schedulercfg.Config{}
+		cfg := schedulingcfg.Config{}
 		cluster := state.Cluster()
 		obj := state.Object()
-		decoder, encoder := toml.Codec[schedulercfg.Config]()
+		decoder, encoder := toml.Codec[schedulingcfg.Config]()
 		if err := decoder.Decode([]byte(obj.Spec.Config), &cfg); err != nil {
-			return task.Fail().With("scheduler config cannot be decoded: %v", err)
+			return task.Fail().With("scheduling config cannot be decoded: %v", err)
 		}
 
 		if err := cfg.Overlay(cluster, obj); err != nil {
-			return task.Fail().With("cannot generate scheduler config: %v", err)
+			return task.Fail().With("cannot generate scheduling config: %v", err)
 		}
 
 		data, err := encoder.Encode(&cfg)
 		if err != nil {
-			return task.Fail().With("scheduler config cannot be encoded: %v", err)
+			return task.Fail().With("scheduling config cannot be encoded: %v", err)
 		}
 
 		expected := newConfigMap(obj, data)
 		if err := c.Apply(ctx, expected); err != nil {
-			return task.Fail().With("can't create/update the cm of scheduler: %v", err)
+			return task.Fail().With("can't create/update the cm of scheduling: %v", err)
 		}
 		return task.Complete().With("cm is synced")
 	})
 }
 
-func newConfigMap(scheduler *v1alpha1.Scheduler, data []byte) *corev1.ConfigMap {
+func newConfigMap(scheduling *v1alpha1.Scheduling, data []byte) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      coreutil.PodName[scope.Scheduler](scheduler),
-			Namespace: scheduler.Namespace,
-			Labels:    coreutil.ConfigMapLabels[scope.Scheduler](scheduler),
+			Name:      coreutil.PodName[scope.Scheduling](scheduling),
+			Namespace: scheduling.Namespace,
+			Labels:    coreutil.ConfigMapLabels[scope.Scheduling](scheduling),
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(scheduler, v1alpha1.SchemeGroupVersion.WithKind("Scheduler")),
+				*metav1.NewControllerRef(scheduling, v1alpha1.SchemeGroupVersion.WithKind("Scheduling")),
 			},
 		},
 		Data: map[string]string{

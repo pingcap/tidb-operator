@@ -12,21 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package framework
+package tasks
 
 import (
-	"context"
-
-	"github.com/onsi/ginkgo/v2"
-
-	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
-	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
+	"fmt"
 )
 
-func (f *Framework) WaitForSchedulerGroupReady(ctx context.Context, sg *v1alpha1.SchedulerGroup) {
-	// TODO: maybe wait for cluster ready
-	ginkgo.By("wait for scheduler group ready")
-	f.Must(waiter.WaitForSchedulersHealthy(ctx, f.Client, sg, waiter.LongTaskTimeout))
-	f.Must(waiter.WaitForPodsReady(ctx, f.Client, runtime.FromSchedulerGroup(sg), waiter.LongTaskTimeout))
+// TODO: fix length issue
+func HeadlessServiceName(groupName string) string {
+	return fmt.Sprintf("%s-scheduling-peer", groupName)
 }

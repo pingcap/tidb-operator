@@ -15,24 +15,25 @@
 package v1alpha1
 
 import (
-	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 const (
-	SchedulerPortNameClient    = "client"
-	DefaultSchedulerPortClient = 3379
+	SchedulingPortNameClient    = "client"
+	DefaultSchedulingPortClient = 3379
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 
-// SchedulerGroupList defines a list of Scheduler groups
-type SchedulerGroupList struct {
+// SchedulingGroupList defines a list of Scheduling groups
+type SchedulingGroupList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	Items []SchedulerGroup `json:"items"`
+	Items []SchedulingGroup `json:"items"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -51,24 +52,24 @@ type SchedulerGroupList struct {
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
-// SchedulerGroup defines a group of similar Scheduler instances
-type SchedulerGroup struct {
+// SchedulingGroup defines a group of similar Scheduling instances
+type SchedulingGroup struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   SchedulerGroupSpec   `json:"spec,omitempty"`
-	Status SchedulerGroupStatus `json:"status,omitempty"`
+	Spec   SchedulingGroupSpec   `json:"spec,omitempty"`
+	Status SchedulingGroupStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 
-// SchedulerList defines a list of Scheduler instances
-type SchedulerList struct {
+// SchedulingList defines a list of Scheduling instances
+type SchedulingList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	Items []Scheduler `json:"items"`
+	Items []Scheduling `json:"items"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -81,17 +82,17 @@ type SchedulerList struct {
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
-// Scheduler defines a Scheduler instance
-type Scheduler struct {
+// Scheduling defines a Scheduling instance
+type Scheduling struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   SchedulerSpec   `json:"spec,omitempty"`
-	Status SchedulerStatus `json:"status,omitempty"`
+	Spec   SchedulingSpec   `json:"spec,omitempty"`
+	Status SchedulingStatus `json:"status,omitempty"`
 }
 
-// SchedulerGroupSpec describes the common attributes of a SchedulerGroup
-type SchedulerGroupSpec struct {
+// SchedulingGroupSpec describes the common attributes of aSchedulingGroupup
+type SchedulingGroupSpec struct {
 	Cluster ClusterReference `json:"cluster"`
 	// Features are enabled feature
 	Features []meta.Feature `json:"features,omitempty"`
@@ -101,17 +102,17 @@ type SchedulerGroupSpec struct {
 	// +listMapKey=type
 	SchedulePolicies []SchedulePolicy `json:"schedulePolicies,omitempty"`
 
-	Template SchedulerTemplate `json:"template"`
+	Template SchedulingTemplate `json:"template"`
 }
 
-type SchedulerTemplate struct {
+type SchedulingTemplate struct {
 	ObjectMeta `json:"metadata,omitempty"`
-	Spec       SchedulerTemplateSpec `json:"spec"`
+	Spec       SchedulingTemplateSpec `json:"spec"`
 }
 
-// SchedulerTemplateSpec can only be specified in SchedulerGroup
+// SchedulingTemplateSpec can only be specified inSchedulingGroupup
 // TODO: It's name may need to be changed to distinguish from PodTemplateSpec
-type SchedulerTemplateSpec struct {
+type SchedulingTemplateSpec struct {
 	Version string `json:"version"`
 
 	// Image is pd's image
@@ -119,64 +120,64 @@ type SchedulerTemplateSpec struct {
 	// Default is pingcap/pd
 	Image *string `json:"image,omitempty"`
 
-	// Server defines server config for Scheduler
-	Server SchedulerServer `json:"server,omitempty"`
+	// Server defines server config for Scheduling
+	Server SchedulingServer `json:"server,omitempty"`
 
 	Resources ResourceRequirements `json:"resources,omitempty"`
 
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 
-	// Config defines config file of Scheduler
-	// See https://docs.pingcap.com/tidb/stable/Scheduler-configuration-file/
+	// Config defines config file of Scheduling
+	// See https://docs.pingcap.com/tidb/stable/Scheduling-configuration-file/
 	Config ConfigFile `json:"config,omitempty"`
 
-	// Volumes defines persistent volumes of Scheduler
+	// Volumes defines persistent volumes of Scheduling
 	// +listType=map
 	// +listMapKey=name
 	Volumes []Volume `json:"volumes,omitempty"`
 
 	// Overlay defines a k8s native resource template patch
-	// All resources(pod, pvcs, ...) managed by Scheduler can be overlayed by this field
+	// All resources(pod, pvcs, ...) managed by Scheduling can be overlayed by this field
 	Overlay *Overlay `json:"overlay,omitempty"`
 }
 
-type SchedulerServer struct {
-	// Ports defines all ports listened by Scheduler
-	Ports SchedulerPorts `json:"ports,omitempty"`
+type SchedulingServer struct {
+	// Ports defines all ports listened by Scheduling
+	Ports SchedulingPorts `json:"ports,omitempty"`
 }
 
-type SchedulerPorts struct {
-	// Client defines port for Scheduler's api service
+type SchedulingPorts struct {
+	// Client defines port for Scheduling's api service
 	Client *Port `json:"client,omitempty"`
 }
 
-type SchedulerGroupStatus struct {
+type SchedulingGroupStatus struct {
 	CommonStatus `json:",inline"`
 	GroupStatus  `json:",inline"`
 }
 
-// SchedulerSpec describes the common attributes of a Scheduler instance
+// SchedulingSpec describes the common attributes of a Scheduling instance
 // +kubebuilder:validation:XValidation:rule="(!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology) && has(self.topology))",fieldPath=".topology",message="topology can only be set when creating"
-type SchedulerSpec struct {
+type SchedulingSpec struct {
 	// Cluster is a reference of tidb cluster
 	Cluster ClusterReference `json:"cluster"`
 	// Features are enabled feature
 	Features []meta.Feature `json:"features,omitempty"`
 
-	// Topology defines the topology domain of this Scheduler instance
+	// Topology defines the topology domain of this Scheduling instance
 	// It will be translated into a node affinity config
 	// Topology cannot be changed
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="topology is immutable"
 	Topology Topology `json:"topology,omitempty"`
 
-	// Subdomain means the subdomain of the exported Scheduler dns.
-	// A same Scheduler cluster will use a same subdomain
+	// Subdomain means the subdomain of the exported Scheduling dns.
+	// A same Scheduling cluster will use a same subdomain
 	Subdomain string `json:"subdomain"`
 
-	// SchedulerTemplateSpec embedded some fields managed by SchedulerGroup
-	SchedulerTemplateSpec `json:",inline"`
+	// SchedulingTemplateSpec embedded some fields managed bySchedulingGroupup
+	SchedulingTemplateSpec `json:",inline"`
 }
 
-type SchedulerStatus struct {
+type SchedulingStatus struct {
 	CommonStatus `json:",inline"`
 }
