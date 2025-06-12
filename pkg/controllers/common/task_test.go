@@ -487,6 +487,9 @@ func TestTaskServerLabels(t *testing.T) {
 					obj.Spec.NodeName = "test-node"
 					return obj
 				}),
+				serverLabels: map[string]string{
+					"foo": "bar",
+				},
 			},
 			objs: []client.Object{
 				fake.FakeObj("test-node", func(obj *corev1.Node) *corev1.Node {
@@ -500,6 +503,9 @@ func TestTaskServerLabels(t *testing.T) {
 				},
 			},
 			expectedResult: task.SComplete,
+			expectedLabels: map[string]string{
+				"foo": "bar",
+			},
 		},
 		{
 			desc: "failed to set labels",
@@ -577,10 +583,16 @@ func TestTaskServerLabels(t *testing.T) {
 			pdClient := pdapi.NewMockPDClient(gomock.NewController(tt))
 			if c.pdConfig != nil {
 				pdClient.EXPECT().GetConfig(gomock.Any()).Return(c.pdConfig, nil)
-			}
-			if c.pdErr != nil {
+			} else if c.pdErr != nil {
 				pdClient.EXPECT().GetConfig(gomock.Any()).Return(nil, c.pdErr)
+			} else {
+				pdClient.EXPECT().GetConfig(gomock.Any()).Return(&pdapi.PDConfigFromAPI{
+					Replication: &pdapi.PDReplicationConfig{
+						LocationLabels: []string{},
+					},
+				}, nil).AnyTimes()
 			}
+			c.state.SetPDClient(pdClient)
 			setLabelsCalled := false
 			setLabelsFunc := func(ctx context.Context, labels map[string]string) error {
 				setLabelsCalled = true
@@ -591,7 +603,7 @@ func TestTaskServerLabels(t *testing.T) {
 				return nil
 			}
 
-			res, done := task.RunTask(context.Background(), TaskServerLabels[scope.TiDB](c.state, fc, pdClient, setLabelsFunc))
+			res, done := task.RunTask(context.Background(), TaskServerLabels[scope.TiDB](c.state, fc, setLabelsFunc))
 			assert.Equal(tt, c.expectedResult, res.Status(), c.desc)
 			assert.False(tt, done, c.desc)
 

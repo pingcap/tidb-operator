@@ -61,8 +61,9 @@ func TestState(t *testing.T) {
 					obj.Spec.Cluster.Name = "aaa"
 					return obj
 				}),
-				cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-				pod:     fake.FakeObj("aaa-tidb-xxx", fake.InstanceOwner[scope.TiDB, corev1.Pod](fake.FakeObj[v1alpha1.TiDB]("aaa-xxx"))),
+				cluster:   fake.FakeObj[v1alpha1.Cluster]("aaa"),
+				pod:       fake.FakeObj("aaa-tidb-xxx", fake.InstanceOwner[scope.TiDB, corev1.Pod](fake.FakeObj[v1alpha1.TiDB]("aaa-xxx"))),
+				IPDClient: stateutil.NewPDClientState(),
 			},
 		},
 	}

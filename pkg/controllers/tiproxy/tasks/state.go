@@ -41,6 +41,7 @@ type state struct {
 	healthy bool
 
 	stateutil.IFeatureGates
+	stateutil.IPDClient
 }
 
 type State interface {
@@ -64,6 +65,7 @@ type State interface {
 	common.ServerLabelsState
 
 	stateutil.IFeatureGates
+	stateutil.IPDClient
 }
 
 func NewState(key types.NamespacedName) State {

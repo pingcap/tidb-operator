@@ -62,7 +62,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskConfigMap(state, r.Client),
 		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifierFactory),
 		tasks.TaskPod(state, r.Client),
-		common.TaskServerLabels[scope.TiProxy](state, r.Client, state.PDClient, func(ctx context.Context, labels map[string]string) error {
+		common.TaskServerLabels[scope.TiProxy](state, r.Client, func(ctx context.Context, labels map[string]string) error {
 			return state.TiProxyClient.SetLabels(ctx, labels)
 		}),
 		common.TaskInstanceConditionSynced[scope.TiProxy](state),
