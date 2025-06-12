@@ -32,6 +32,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/cache"
@@ -1073,7 +1074,6 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				pod.Labels[label.StoreIDLabelKey] = s.storeIdLabel
 			}
 			podIndexer.Add(pod)
-
 		}
 
 		for _, s := range test.pods {
@@ -1189,7 +1189,8 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				storeIdLabel:  "13",
 			}},
 			scaleInParallelism: 1,
-		}, {
+		},
+		{
 			name:          "1 scaleInParallelism, store state is tombstone, update pvc failed",
 			tikvUpgrading: false,
 			storeFun:      multiTombstoneStoreFun,
@@ -1213,7 +1214,8 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				storeIdLabel:  "13",
 			}},
 			scaleInParallelism: 1,
-		}, {
+		},
+		{
 			name:          "1 scaleInParallelism, store state is tombstone",
 			tikvUpgrading: false,
 			storeFun:      multiTombstoneStoreFun,
@@ -1237,7 +1239,8 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				storeIdLabel:  "13",
 			}},
 			scaleInParallelism: 1,
-		}, {
+		},
+		{
 			name:          "2 scaleInParallelism, store is up, delete store failed",
 			tikvUpgrading: false,
 			storeFun:      normalStoreFun,
@@ -1261,7 +1264,8 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				storeIdLabel:  "13",
 			}},
 			scaleInParallelism: 2,
-		}, {
+		},
+		{
 			name:          "2 scaleInParallelism, store is up",
 			tikvUpgrading: false,
 			storeFun:      normalStoreFun,
@@ -1285,7 +1289,8 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				storeIdLabel:  "13",
 			}},
 			scaleInParallelism: 2,
-		}, {
+		},
+		{
 			name:          "2 scaleInParallelism, store state is tombstone",
 			tikvUpgrading: false,
 			storeFun:      multiTombstoneStoreFun,
@@ -1309,7 +1314,8 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				storeIdLabel:  "13",
 			}},
 			scaleInParallelism: 2,
-		}, {
+		},
+		{
 			name:          "3 scaleInParallelism, store state is tombstone, scaleInParallelism is bigger than needed",
 			tikvUpgrading: false,
 			storeFun:      multiTombstoneStoreFun,
@@ -1353,7 +1359,8 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				}
 				g.Expect(len(tc.Status.TiKV.TombstoneStores)).To(Equal(2))
 			},
-		}, {
+		},
+		{
 			name:          "2 scaleInParallelism, store state is tombstone, scaleInParallelism is smaller than needed",
 			tikvUpgrading: false,
 			storeFun: func(tc *v1alpha1.TidbCluster) {
@@ -1411,7 +1418,8 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				errExpectNil(g, err)
 				g.Expect(int(*newSet.Spec.Replicas)).To(Equal(3))
 			},
-		}, {
+		},
+		{
 			name:          "2 scaleInParallelism, able to scale in simultaneously while is upgrading",
 			tikvUpgrading: true,
 			storeFun:      multiTombstoneStoreFun,
@@ -1435,7 +1443,8 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				storeIdLabel:  "13",
 			}},
 			scaleInParallelism: 2,
-		}, {
+		},
+		{
 			name:          "2 maxScaleInReplica, tikv pod is not ready now, not sure if the status has been synced",
 			tikvUpgrading: false,
 			storeFun: func(tc *v1alpha1.TidbCluster) {
@@ -1462,7 +1471,8 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				storeIdLabel:  "13",
 			}},
 			scaleInParallelism: 2,
-		}, {
+		},
+		{
 			name:          "2 maxScaleInReplica, tikv pod is not ready now, make sure if the status has been synced",
 			tikvUpgrading: false,
 			storeFun: func(tc *v1alpha1.TidbCluster) {
@@ -1489,7 +1499,8 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				storeIdLabel:  "13",
 			}},
 			scaleInParallelism: 2,
-		}, {
+		},
+		{
 			name:          "2 maxScaleInReplica, store state is tombstone, don't have pvc",
 			tikvUpgrading: false,
 			storeFun:      multiTombstoneStoreFun,
@@ -1513,7 +1524,8 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				storeIdLabel:  "13",
 			}},
 			scaleInParallelism: 2,
-		}, {
+		},
+		{
 			name:          "2 maxScaleInReplica, 4 up stores, scale in TiKV simultaneously works but only scales one",
 			tikvUpgrading: false,
 			storeFun: func(tc *v1alpha1.TidbCluster) {
@@ -1578,7 +1590,8 @@ func TestTiKVScalerScaleInSimultaneously(t *testing.T) {
 				}
 				g.Expect(len(tc.Status.TiKV.TombstoneStores)).To(Equal(1))
 			},
-		}, {
+		},
+		{
 			name:          "2 maxScaleInReplica, 5 up stores with tiflash store, scale in TiKV simultaneously works but only scales one",
 			tikvUpgrading: false,
 			storeFun: func(tc *v1alpha1.TidbCluster) {
@@ -2060,7 +2073,11 @@ func newFakeTiKVScaler(resyncDuration ...time.Duration) (*tikvScaler, *pdapi.Fak
 	if len(resyncDuration) > 0 {
 		fakeDeps.CLIConfig.ResyncDuration = resyncDuration[0]
 	}
-	fakeDeps.PodControl = &podCtlMock{} // So that UpdateMetaInfo is no-op instead of changing labels.
+	fakeDeps.PodControl = &podCtlMock{
+		updatePod: func(_ runtime.Object, pod *corev1.Pod) (*corev1.Pod, error) {
+			return pod, nil
+		},
+	} // So that UpdateMetaInfo is no-op instead of changing labels.
 	pvcIndexer := fakeDeps.KubeInformerFactory.Core().V1().PersistentVolumeClaims().Informer().GetIndexer()
 	podIndexer := fakeDeps.KubeInformerFactory.Core().V1().Pods().Informer().GetIndexer()
 	pdControl := fakeDeps.PDControl.(*pdapi.FakePDControl)
