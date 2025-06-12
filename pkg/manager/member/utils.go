@@ -472,7 +472,7 @@ func ensureScaleInTimeAnnoInPod(tc *v1alpha1.TidbCluster, pod *corev1.Pod, podCo
 		klog.Errorf("failed to set pod %s/%s annotation %q to %q", tc.Namespace, pod.Name, label.AnnoScaleInTime, scaleInTime)
 		return err
 	}
-	klog.Infof("set PVC %s/%s annotation %q to %q successfully", tc.Namespace, pod.Name, label.AnnoScaleInTime, scaleInTime)
+	klog.Infof("set pod %s/%s annotation %q to %q successfully", tc.Namespace, pod.Name, label.AnnoScaleInTime, scaleInTime)
 	return nil
 }
 
