@@ -111,7 +111,10 @@ const (
 	AnnoOwnerGeneration = "tidb.pingcap.com/owner-generation"
 
 	// AnnPVCScaleInTime is pvc scaled in time key used in PVC for e2e test only
-	AnnPVCScaleInTime = "tidb.pingcap.com/scale-in-time"
+	AnnPVCScaleInTime = AnnoScaleInTime
+
+	// AnnoScaleInTime is scaled in time
+	AnnoScaleInTime = "tidb.pingcap.com/scale-in-time"
 
 	// AnnForceUpgradeVal is tc annotation value to indicate whether force upgrade should be done
 	AnnForceUpgradeVal = "true"
