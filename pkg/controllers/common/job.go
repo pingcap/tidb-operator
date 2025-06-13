@@ -214,6 +214,7 @@ func (m *jobLifecycleManager) doRetryLogic(ctx context.Context, c client.Client,
 	k8sJob := &batchv1.Job{}
 	k8sJob.Namespace = k8sJobKey.Namespace
 	k8sJob.Name = k8sJobKey.Name
+	//nolint:gocritic
 	if err := c.Delete(ctx, k8sJob, rtClient.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 		klog.Errorf("faled to clean k8s Job %s/%s for %s: %s", job.GetNamespace(), job.GetName(), job.K8sJob(), err)
 		return err

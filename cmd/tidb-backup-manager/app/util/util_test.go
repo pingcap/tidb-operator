@@ -81,9 +81,7 @@ func TestConstructBRGlobalOptionsForBackup(t *testing.T) {
 
 			backup.Spec.BR = &v1alpha1.BRConfig{Cluster: "cluster-1", ClusterNamespace: "default"}
 			var expectArgs []string
-			expectArgs = append(expectArgs, "--storage=s3://test1-demo1")
-			expectArgs = append(expectArgs, "--s3.provider=ceph")
-			expectArgs = append(expectArgs, "--s3.endpoint=http://10.0.0.1")
+			expectArgs = append(expectArgs, "--storage=s3://test1-demo1", "--s3.provider=ceph", "--s3.endpoint=http://10.0.0.1")
 
 			if tt.hasBackupFilter {
 				backup.Spec.TableFilter = customBackupFilter
@@ -94,8 +92,7 @@ func TestConstructBRGlobalOptionsForBackup(t *testing.T) {
 				backup.Spec.Type = v1alpha1.BackupTypeTable
 				backup.Spec.BR.Table = customTable[0]
 				backup.Spec.BR.DB = customDb[0]
-				expectArgs = append(expectArgs, fmt.Sprintf("--table=%s", customTable[0]))
-				expectArgs = append(expectArgs, fmt.Sprintf("--db=%s", customDb[0]))
+				expectArgs = append(expectArgs, fmt.Sprintf("--table=%s", customTable[0]), fmt.Sprintf("--db=%s", customDb[0]))
 			}
 
 			if tt.hasDB {
@@ -261,9 +258,7 @@ func TestConstructBRGlobalOptionsForRestore(t *testing.T) {
 
 			restore.Spec.BR = &v1alpha1.BRConfig{Cluster: "cluster-1", ClusterNamespace: "default"}
 			var expectArgs []string
-			expectArgs = append(expectArgs, "--storage=s3://test1-demo1")
-			expectArgs = append(expectArgs, "--s3.provider=ceph")
-			expectArgs = append(expectArgs, "--s3.endpoint=http://10.0.0.1")
+			expectArgs = append(expectArgs, "--storage=s3://test1-demo1", "--s3.provider=ceph", "--s3.endpoint=http://10.0.0.1")
 
 			if tt.hasRestoreFilter {
 				restore.Spec.TableFilter = customBackupFilter
@@ -274,8 +269,7 @@ func TestConstructBRGlobalOptionsForRestore(t *testing.T) {
 				restore.Spec.Type = v1alpha1.BackupTypeTable
 				restore.Spec.BR.Table = customTable[0]
 				restore.Spec.BR.DB = customDb[0]
-				expectArgs = append(expectArgs, fmt.Sprintf("--table=%s", customTable[0]))
-				expectArgs = append(expectArgs, fmt.Sprintf("--db=%s", customDb[0]))
+				expectArgs = append(expectArgs, fmt.Sprintf("--table=%s", customTable[0]), fmt.Sprintf("--db=%s", customDb[0]))
 			}
 
 			if tt.hasDB {
@@ -296,7 +290,7 @@ func TestGetCommitTsFromMetadata(t *testing.T) {
 	tmpdir, err := os.MkdirTemp("", "test-get-commitTs-metadata")
 	g.Expect(err).To(Succeed())
 
-	defer os.RemoveAll(tmpdir)
+	defer os.RemoveAll(tmpdir) //nolint:errcheck
 	metaDataFileName := filepath.Join(tmpdir, appconstant.MetaDataFile)
 
 	err = os.WriteFile(metaDataFileName, []byte(`Started dump at: 2019-06-13 10:00:04

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This package is defined to minimize specified generic types when call funcs
+// Package scope is defined to minimize specified generic types when call funcs
 // Normally only one type(e.g. scope.TiKV/scope.TiKVGroup) need be specified when call any generic funcs
 package scope
 
@@ -22,7 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
-// Conversion between runtime object and api object
+// Object is a conversion between runtime object and api object
 // runtime.Object <-> api.Object
 type Object[F client.Object, T runtime.Object] interface {
 	Scheme
@@ -30,7 +30,7 @@ type Object[F client.Object, T runtime.Object] interface {
 	To(T) F
 }
 
-// Conversion between runtime instance and api instance
+// Instance is a conversion between runtime instance and api instance
 // runtime.Instance <-> api.Instance
 type Instance[F client.Object, T runtime.Instance] interface {
 	Scheme
@@ -38,7 +38,7 @@ type Instance[F client.Object, T runtime.Instance] interface {
 	To(T) F
 }
 
-// Conversion between runtime group and api group
+// Group is a conversion between runtime group and api group
 // runtime.Group <-> api.Group
 type Group[F client.Object, T runtime.Group] interface {
 	Scheme

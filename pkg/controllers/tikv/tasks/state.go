@@ -183,7 +183,7 @@ func (s *state) SetStoreBusy(busy bool) {
 // isLeaderCountEnough checks if the leader count is enough.
 // If the region count is greater than 100, we will check if the leader count is greater than 0.
 // Otherwise, we will return true because too small total region count.
-func isLeaderCountEnough(leaderCount int, regionCount int) bool {
+func isLeaderCountEnough(leaderCount, regionCount int) bool {
 	if regionCount >= minRegionCountForLeaderCountCheck {
 		return leaderCount > 0
 	}

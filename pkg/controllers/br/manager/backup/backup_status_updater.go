@@ -40,7 +40,7 @@ type realBackupConditionUpdater struct {
 	recorder record.EventRecorder
 }
 
-// returns a BackupConditionUpdaterInterface that updates the Status of a Backup,
+// NewRealBackupConditionUpdater returns a BackupConditionUpdaterInterface that updates the Status of a Backup,
 func NewRealBackupConditionUpdater(
 	cli client.Client,
 	recorder record.EventRecorder,

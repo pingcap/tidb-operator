@@ -299,6 +299,7 @@ func (s *eventSource) HasSynced(key string) bool {
 	return hasSynced()
 }
 
+// NewResourceEventHandler creates a ResourceEventHandler.
 // See "sigs.k8s.io/controller-runtime/pkg/internal/source.NewEventHandler"
 func NewResourceEventHandler[O client.Object, R comparable](
 	ctx context.Context, h handler.TypedEventHandler[O, R],

@@ -138,18 +138,18 @@ func NewPDClient(url string, timeout time.Duration, tlsConfig *tls.Config) PDCli
 	}
 }
 
-func (pdc *pdClient) GetPDEtcdClient() (PDEtcdClient, error) {
-	pdc.etcdmutex.Lock()
-	defer pdc.etcdmutex.Unlock()
+func (c *pdClient) GetPDEtcdClient() (PDEtcdClient, error) {
+	c.etcdmutex.Lock()
+	defer c.etcdmutex.Unlock()
 
-	if _, ok := pdc.pdEtcdClients[pdc.url]; !ok {
-		etcdCli, err := NewPdEtcdClient(pdc.url, DefaultTimeout, pdc.tlsConfig)
+	if _, ok := c.pdEtcdClients[c.url]; !ok {
+		etcdCli, err := NewPdEtcdClient(c.url, DefaultTimeout, c.tlsConfig)
 		if err != nil {
 			return nil, err
 		}
-		pdc.pdEtcdClients[pdc.url] = &noOpClose{PDEtcdClient: etcdCli}
+		c.pdEtcdClients[c.url] = &noOpClose{PDEtcdClient: etcdCli}
 	}
-	return pdc.pdEtcdClients[pdc.url], nil
+	return c.pdEtcdClients[c.url], nil
 }
 
 func (c *pdClient) GetHealth(ctx context.Context) (*HealthInfo, error) {

@@ -34,7 +34,7 @@ func GetTLSConfigFromSecret(ctx context.Context, cli client.Client, namespace, s
 	return LoadTLSConfigFromSecret(&secret)
 }
 
-// LoadTlsConfigFromSecret loads *tls.Config from the given secret.
+// LoadTLSConfigFromSecret loads *tls.Config from the given secret.
 // The secret should often contain the following keys:
 // - "ca.crt": CA certificate
 // - "tls.crt": TLS certificate

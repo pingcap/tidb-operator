@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
-
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -160,7 +159,9 @@ func TestAppendEnvIfPresent(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			os.Clearenv()
 			for k, v := range tt.envs {
-				os.Setenv(k, v)
+				if err := os.Setenv(k, v); err != nil {
+					t.Fatalf("failed to set environment variable %s: %v", k, err)
+				}
 			}
 			got := AppendEnvIfPresent(tt.a, tt.n)
 			if diff := cmp.Diff(tt.want, got); diff != "" {

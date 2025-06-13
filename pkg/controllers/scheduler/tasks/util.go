@@ -27,7 +27,7 @@ func PersistentVolumeClaimName(podName, volName string) string {
 	return volName + "-" + podName
 }
 
-// Real spec.volumes[*].name of pod
+// VolumeName returns the real spec.volumes[*].name of pod
 // TODO(liubo02): extract to namer pkg
 func VolumeName(volName string) string {
 	return metav1alpha1.VolNamePrefix + volName

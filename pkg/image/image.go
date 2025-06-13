@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This package is defined to return image of components
+// Package image is defined to return image of components
 package image
 
 import (
@@ -44,6 +44,7 @@ type Tagged string
 // Untagged is image without image tag
 type Untagged string
 
+// Image returns the image with the given tag
 // Note: img must be validated before calling withVersion
 func (t Tagged) Image(img *string) string {
 	image := string(t)
@@ -54,6 +55,7 @@ func (t Tagged) Image(img *string) string {
 	return image
 }
 
+// Image returns the image with the given tag and version
 // Note: img must be validated before calling withVersion
 // TODO(liubo02): validate img and version
 func (t Untagged) Image(img *string, version string) string {

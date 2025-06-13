@@ -184,6 +184,8 @@ type params struct {
 }
 
 // TODO: handle panic
+//
+//nolint:staticcheck
 func NewParams(name string, t *types.Type, comments []string) Params {
 	return newParams(name, t, comments)
 }

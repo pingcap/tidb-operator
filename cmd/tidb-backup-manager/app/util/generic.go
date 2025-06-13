@@ -49,21 +49,21 @@ func (bo *GenericOptions) String() string {
 
 func (bo *GenericOptions) GetTikvGCLifeTime(ctx context.Context, db *sql.DB) (string, error) {
 	var tikvGCTime string
-	sql := fmt.Sprintf("select variable_value from %s where variable_name= ?", constants.TidbMetaTable) //nolint: gosec
-	row := db.QueryRowContext(ctx, sql, constants.TikvGCVariable)
+	sqlStr := fmt.Sprintf("select variable_value from %s where variable_name= ?", constants.TidbMetaTable) //nolint: gosec
+	row := db.QueryRowContext(ctx, sqlStr, constants.TikvGCVariable)
 	err := row.Scan(&tikvGCTime)
 	if err != nil {
-		return tikvGCTime, fmt.Errorf("query cluster %s %s failed, sql: %s, err: %w", bo, constants.TikvGCVariable, sql, err)
+		return tikvGCTime, fmt.Errorf("query cluster %s %s failed, sql: %s, err: %w", bo, constants.TikvGCVariable, sqlStr, err)
 	}
 	return tikvGCTime, nil
 }
 
 func (bo *GenericOptions) SetTikvGCLifeTime(ctx context.Context, db *sql.DB, gcTime string) error {
 	// nolint: gosec
-	sql := fmt.Sprintf("update %s set variable_value = ? where variable_name = ?", constants.TidbMetaTable)
-	_, err := db.ExecContext(ctx, sql, gcTime, constants.TikvGCVariable)
+	sqlStr := fmt.Sprintf("update %s set variable_value = ? where variable_name = ?", constants.TidbMetaTable)
+	_, err := db.ExecContext(ctx, sqlStr, gcTime, constants.TikvGCVariable)
 	if err != nil {
-		return fmt.Errorf("set cluster %s %s failed, sql: %s, err: %w", bo, constants.TikvGCVariable, sql, err)
+		return fmt.Errorf("set cluster %s %s failed, sql: %s, err: %w", bo, constants.TikvGCVariable, sqlStr, err)
 	}
 	return nil
 }

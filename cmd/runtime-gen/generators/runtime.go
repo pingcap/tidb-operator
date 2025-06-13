@@ -49,7 +49,7 @@ func NewRuntimeGenerator(outputFilename, kind, targetPackage string) generator.G
 // Filter method.
 func (g *runtimeGenerator) Filter(_ *generator.Context, t *types.Type) bool {
 	name := GroupToInstanceName(t)
-	return strings.ToLower(name) == g.kind
+	return strings.EqualFold(name, g.kind)
 }
 
 func (g *runtimeGenerator) Namers(*generator.Context) namer.NameSystems {

@@ -248,7 +248,7 @@ func (b *StorageBackend) BatchDeleteObjects(
 }
 
 // BatchDeleteObjectsOfS3 delete objects by batch delete api
-func BatchDeleteObjectsOfS3(ctx context.Context, s3cli s3iface.S3API, objs []*blob.ListObject, bucket string, prefix string, concurrency int) *BatchDeleteObjectsResult {
+func BatchDeleteObjectsOfS3(ctx context.Context, s3cli s3iface.S3API, objs []*blob.ListObject, bucket, prefix string, concurrency int) *BatchDeleteObjectsResult {
 	mu := &sync.Mutex{}
 	result := &BatchDeleteObjectsResult{}
 	batchSize := 1000
@@ -268,6 +268,7 @@ func BatchDeleteObjectsOfS3(ctx context.Context, s3cli s3iface.S3API, objs []*bl
 		}
 
 		// delete objects
+		//nolint:gocritic
 		delete := &s3.Delete{}
 		for _, obj := range objs[start:end] {
 			delete.Objects = append(delete.Objects, &s3.ObjectIdentifier{
@@ -369,7 +370,7 @@ func GetStorageCredential(ctx context.Context, ns string, provider v1alpha1.Stor
 	return &StorageCredential{}
 }
 
-// genStorageArgs returns the arg for --flag option and the remote/local path for br, default flag is storage.
+// GenStorageArgsForFlag returns the arg for --flag option and the remote/local path for br, default flag is storage.
 // TODO: add unit test
 func GenStorageArgsForFlag(provider v1alpha1.StorageProvider, flag string) ([]string, error) {
 	st := GetStorageType(provider)
@@ -406,13 +407,13 @@ func newLocalStorageOptionForFlag(conf *localConfig, flag string) []string {
 // newS3StorageOption constructs the arg for --flag option and the remote path for br
 func newS3StorageOptionForFlag(conf *s3Config, flag string) []string {
 	var s3options []string
-	path := fmt.Sprintf("s3://%s", path.Join(conf.bucket, conf.prefix))
+	p := fmt.Sprintf("s3://%s", path.Join(conf.bucket, conf.prefix))
 	if flag != "" && flag != defaultStorageFlag {
 		// now just set path to special flag
-		s3options = append(s3options, fmt.Sprintf("--%s=%s", flag, path))
+		s3options = append(s3options, fmt.Sprintf("--%s=%s", flag, p))
 		return s3options
 	}
-	s3options = append(s3options, fmt.Sprintf("--storage=%s", path))
+	s3options = append(s3options, fmt.Sprintf("--storage=%s", p))
 
 	if conf.region != "" {
 		s3options = append(s3options, fmt.Sprintf("--s3.region=%s", conf.region))
@@ -456,7 +457,6 @@ func newS3Storage(conf *s3Config, cred *StorageCredential) (*blob.Bucket, error)
 		awsConfig.WithCredentials(cred.awsCred)
 	}
 
-	// awsConfig.WithLogLevel(aws.LogDebugWithSigning)
 	awsSessionOpts := session.Options{
 		Config: *awsConfig,
 	}
@@ -516,7 +516,7 @@ type azblobSharedKeyCred struct {
 // newAzblobStorage initialize a new azblob storage
 func newAzblobStorage(conf *azblobConfig) (*blob.Bucket, error) {
 	account := os.Getenv("AZURE_STORAGE_ACCOUNT")
-	if len(account) == 0 {
+	if account == "" {
 		return nil, errors.New("no AZURE_STORAGE_ACCOUNT")
 	}
 
@@ -533,16 +533,16 @@ func newAzblobStorage(conf *azblobConfig) (*blob.Bucket, error) {
 
 	var bucket *blob.Bucket
 	var err error
-	if len(sasToken) != 0 {
+	if sasToken != "" {
 		bucket, err = newAzblobStorageUsingSasToken(conf, account, sasToken)
-	} else if len(clientID) != 0 && len(clientSecret) != 0 && len(tenantID) != 0 {
+	} else if clientID != "" && clientSecret != "" && tenantID != "" {
 		bucket, err = newAzblobStorageUsingAAD(conf, &azblobAADCred{
 			account:      account,
 			clientID:     clientID,
 			clientSecret: clientSecret,
 			tenantID:     tenantID,
 		})
-	} else if len(accountKey) != 0 {
+	} else if accountKey != "" {
 		bucket, err = newAzblobStorageUsingSharedKey(conf, &azblobSharedKeyCred{
 			account:   account,
 			sharedKey: accountKey,
@@ -624,13 +624,13 @@ func newAzblobStorageUsingSharedKey(conf *azblobConfig, cred *azblobSharedKeyCre
 // newGcsStorageOption constructs the arg for --flag option and the remote path for br
 func newGcsStorageOptionForFlag(conf *gcsConfig, flag string) []string {
 	var gcsoptions []string
-	path := fmt.Sprintf("gcs://%s/", path.Join(conf.bucket, conf.prefix))
+	p := fmt.Sprintf("gcs://%s/", path.Join(conf.bucket, conf.prefix))
 	if flag != "" && flag != defaultStorageFlag {
 		// now just set path to special flag
-		gcsoptions = append(gcsoptions, fmt.Sprintf("--%s=%s", flag, path))
+		gcsoptions = append(gcsoptions, fmt.Sprintf("--%s=%s", flag, p))
 		return gcsoptions
 	}
-	gcsoptions = append(gcsoptions, fmt.Sprintf("--storage=%s", path))
+	gcsoptions = append(gcsoptions, fmt.Sprintf("--storage=%s", p))
 
 	if conf.storageClass != "" {
 		gcsoptions = append(gcsoptions, fmt.Sprintf("--gcs.storage-class=%s", conf.storageClass))
@@ -644,7 +644,7 @@ func newGcsStorageOptionForFlag(conf *gcsConfig, flag string) []string {
 // newAzblobStorageOption constructs the arg for --flag option and the remote path for br
 func newAzblobStorageOptionForFlag(conf *azblobConfig, flag string) []string {
 	var azblobOptions []string
-	path := fmt.Sprintf("azure://%s/", path.Join(conf.container, conf.prefix))
+	p := fmt.Sprintf("azure://%s/", path.Join(conf.container, conf.prefix))
 	values := url.Values{}
 	if conf.storageAccount != "" {
 		values.Add("account-name", conf.storageAccount)
@@ -653,14 +653,14 @@ func newAzblobStorageOptionForFlag(conf *azblobConfig, flag string) []string {
 		values.Add("sas-token", conf.sasToken)
 	}
 	if v := values.Encode(); v != "" {
-		path = path + "?" + v
+		p = p + "?" + v
 	}
 	if flag != "" && flag != defaultStorageFlag {
 		// now just set path to special flag
-		azblobOptions = append(azblobOptions, fmt.Sprintf("--%s=%s", flag, path))
+		azblobOptions = append(azblobOptions, fmt.Sprintf("--%s=%s", flag, p))
 		return azblobOptions
 	}
-	azblobOptions = append(azblobOptions, fmt.Sprintf("--storage=%s", path))
+	azblobOptions = append(azblobOptions, fmt.Sprintf("--storage=%s", p))
 
 	if conf.accessTier != "" {
 		azblobOptions = append(azblobOptions, fmt.Sprintf("--azblob.access-tier=%s", conf.accessTier))
@@ -669,20 +669,20 @@ func newAzblobStorageOptionForFlag(conf *azblobConfig, flag string) []string {
 }
 
 // makeS3Config constructs s3Config parameters
-func makeS3Config(s3 *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Config {
+func makeS3Config(s3Provider *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Config {
 	conf := s3Config{}
 
-	path := strings.Trim(s3.Bucket, "/") + "/" + strings.Trim(s3.Prefix, "/")
-	fields := strings.SplitN(path, "/", 2)
+	p := strings.Trim(s3Provider.Bucket, "/") + "/" + strings.Trim(s3Provider.Prefix, "/")
+	fields := strings.SplitN(p, "/", 2)
 
 	conf.bucket = fields[0]
-	conf.region = s3.Region
-	conf.provider = string(s3.Provider)
+	conf.region = s3Provider.Region
+	conf.provider = string(s3Provider.Provider)
 	conf.prefix = fields[1]
-	conf.endpoint = s3.Endpoint
-	conf.sse = s3.SSE
-	conf.acl = s3.Acl
-	conf.storageClass = s3.StorageClass
+	conf.endpoint = s3Provider.Endpoint
+	conf.sse = s3Provider.SSE
+	conf.acl = s3Provider.Acl
+	conf.storageClass = s3Provider.StorageClass
 	conf.forcePathStyle = true
 	// In some cases, we need to set ForcePathStyle to false.
 	// Refer to: https://rclone.org/s3/#s3-force-path-style
@@ -701,8 +701,8 @@ func makeS3Config(s3 *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Config {
 func makeGcsConfig(gcs *v1alpha1.GcsStorageProvider, fakeRegion bool) *gcsConfig {
 	conf := gcsConfig{}
 
-	path := strings.Trim(gcs.Bucket, "/") + "/" + strings.Trim(gcs.Prefix, "/")
-	fields := strings.SplitN(path, "/", 2)
+	p := strings.Trim(gcs.Bucket, "/") + "/" + strings.Trim(gcs.Prefix, "/")
+	fields := strings.SplitN(p, "/", 2)
 
 	conf.bucket = fields[0]
 	conf.location = gcs.Location
@@ -717,18 +717,18 @@ func makeGcsConfig(gcs *v1alpha1.GcsStorageProvider, fakeRegion bool) *gcsConfig
 }
 
 // makeAzblobConfig constructs azblobConfig parameters
-func makeAzblobConfig(azblob *v1alpha1.AzblobStorageProvider) *azblobConfig {
+func makeAzblobConfig(azblobProvider *v1alpha1.AzblobStorageProvider) *azblobConfig {
 	conf := azblobConfig{
-		storageAccount: azblob.StorageAccount,
-		sasToken:       azblob.SasToken,
+		storageAccount: azblobProvider.StorageAccount,
+		sasToken:       azblobProvider.SasToken,
 	}
 
-	path := strings.Trim(azblob.Container, "/") + "/" + strings.Trim(azblob.Prefix, "/")
-	fields := strings.SplitN(path, "/", 2)
+	p := strings.Trim(azblobProvider.Container, "/") + "/" + strings.Trim(azblobProvider.Prefix, "/")
+	fields := strings.SplitN(p, "/", 2)
 
 	conf.container = fields[0]
-	conf.accessTier = azblob.AccessTier
-	conf.secretName = azblob.SecretName
+	conf.accessTier = azblobProvider.AccessTier
+	conf.secretName = azblobProvider.SecretName
 	conf.prefix = fields[1]
 
 	return &conf

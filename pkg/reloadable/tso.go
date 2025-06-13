@@ -109,11 +109,8 @@ func equalTSOTemplate(p, c *v1alpha1.TSOTemplate) bool {
 	p = convertTSOTemplate(p)
 	c = convertTSOTemplate(c)
 	// not equal only when current strategy is Restart and config is changed
-	switch c.Spec.UpdateStrategy.Config {
-	case v1alpha1.ConfigUpdateStrategyRestart:
-		if p.Spec.Config != c.Spec.Config {
-			return false
-		}
+	if c.Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart && p.Spec.Config != c.Spec.Config {
+		return false
 	}
 
 	// ignore these fields

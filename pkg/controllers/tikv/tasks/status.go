@@ -36,7 +36,7 @@ const (
 
 // TODO(liubo02): extract to common task
 //
-//nolint:gocyclo // refactor is possible
+//nolint:gocyclo,staticcheck // refactor is possible
 func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Status", func(ctx context.Context) task.Result {
 		needUpdate := state.IsStatusChanged()

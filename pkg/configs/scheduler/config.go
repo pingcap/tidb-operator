@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
+// Config is the configuration for the scheduler.
 // TODO: reduce duplicated code
 type Config struct {
 	Name                string   `toml:"name"`
@@ -72,7 +73,7 @@ func (c *Config) Validate() error {
 	if c.AdvertiseListenAddr != "" {
 		fields = append(fields, "advertise-listen-addr")
 	}
-	if len(c.BackendEndpoints) != 0 {
+	if c.BackendEndpoints != "" {
 		fields = append(fields, "backend-endpoints")
 	}
 

@@ -30,7 +30,7 @@ var (
 	defaultTiProxyClientTimeout = 5 * time.Second
 )
 
-// IiDBControlInterface is the interface that knows how to manage and get client for TiProxy.
+// TiProxyControlInterface is the interface that knows how to manage and get client for TiProxy.
 type TiProxyControlInterface interface {
 	// GetTiProxyPodClient provides TiProxyClient of a TiProxy pod.
 	GetTiProxyPodClient(ctx context.Context, cli client.Client,

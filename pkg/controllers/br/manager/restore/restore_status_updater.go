@@ -58,7 +58,7 @@ type realRestoreConditionUpdater struct {
 	recorder record.EventRecorder
 }
 
-// returns a RestoreConditionUpdaterInterface that updates the Status of a Restore,
+// NewRealRestoreConditionUpdater returns a RestoreConditionUpdaterInterface that updates the Status of a Restore,
 func NewRealRestoreConditionUpdater(
 	cli client.Client,
 	recorder record.EventRecorder) RestoreConditionUpdaterInterface {

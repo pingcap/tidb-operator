@@ -70,6 +70,7 @@ func NewBackupCommand() *cobra.Command {
 	return cmd
 }
 
+//nolint:gocritic
 func runBackup(backupOpts backup.Options, kubecfg string) error {
 	var (
 		kubeconfig *rest.Config

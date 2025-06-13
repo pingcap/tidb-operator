@@ -182,9 +182,11 @@ func (bo *Options) backupCommandTemplate(backup *v1alpha1.Backup, specificArgs [
 	args := make([]string, 0)
 	args = append(args, fmt.Sprintf("--pd=%s", bo.PDAddress))
 	if bo.TLSCluster {
-		args = append(args, fmt.Sprintf("--ca=%s", path.Join(corev1alpha1.DirPathClusterClientTLS, corev1.ServiceAccountRootCAKey)))
-		args = append(args, fmt.Sprintf("--cert=%s", path.Join(corev1alpha1.DirPathClusterClientTLS, corev1.TLSCertKey)))
-		args = append(args, fmt.Sprintf("--key=%s", path.Join(corev1alpha1.DirPathClusterClientTLS, corev1.TLSPrivateKeyKey)))
+		args = append(args,
+			fmt.Sprintf("--ca=%s", path.Join(corev1alpha1.DirPathClusterClientTLS, corev1.ServiceAccountRootCAKey)),
+			fmt.Sprintf("--cert=%s", path.Join(corev1alpha1.DirPathClusterClientTLS, corev1.TLSCertKey)),
+			fmt.Sprintf("--key=%s", path.Join(corev1alpha1.DirPathClusterClientTLS, corev1.TLSPrivateKeyKey)),
+		)
 	}
 
 	if skipBackupArgs {
@@ -198,6 +200,7 @@ func (bo *Options) backupCommandTemplate(backup *v1alpha1.Backup, specificArgs [
 	}
 	args = append(args, dataArgs...)
 
+	//nolint:gocritic
 	fullArgs := append(specificArgs, args...)
 	return fullArgs, nil
 }

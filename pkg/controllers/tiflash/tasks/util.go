@@ -33,7 +33,7 @@ func PersistentVolumeClaimName(podName, volName string) string {
 	return fmt.Sprintf("%s-%s", volName, podName)
 }
 
-// Real spec.volumes[*].name of pod
+// VolumeName returns the real spec.volumes[*].name of pod
 // TODO(liubo02): extract to namer pkg
 func VolumeName(volName string) string {
 	return meta.VolNamePrefix + volName

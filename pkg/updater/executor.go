@@ -28,6 +28,7 @@ type Actor interface {
 	Cleanup(ctx context.Context) error
 }
 
+// Executor is an executor that updates the instances.
 // TODO: return instance list after Do
 type Executor interface {
 	Do(ctx context.Context) (bool, error)

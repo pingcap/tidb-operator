@@ -271,6 +271,7 @@ func TestStorageBackendBasic(t *testing.T) {
 		azblobPatches := gomonkey.ApplyFunc(newAzblobStorage, func(conf *azblobConfig) (*blob.Bucket, error) {
 			return nil, nil
 		})
+		//nolint: gocritic // no need
 		defer azblobPatches.Reset()
 		localPatches := gomonkey.ApplyFunc(newLocalStorage, func(conf *localConfig) (*blob.Bucket, error) {
 			return nil, nil
@@ -421,6 +422,7 @@ func TestStorageBackendBatchDeleteObjects(t *testing.T) {
 			g.Expect(concurrency).Should(gomega.Equal(tcase.expectedConcurrency))
 			return expectedResult
 		})
+		//nolint: gocritic // no need
 		defer s3patch.Reset()
 		patch := gomonkey.ApplyFunc(BatchDeleteObjectsConcurrently, func(ctx context.Context, bucket *blob.Bucket, objs []*blob.ListObject, concurrency int) *BatchDeleteObjectsResult {
 			if tcase.useBatchDeleteObjectsOfS3 {
@@ -429,6 +431,7 @@ func TestStorageBackendBatchDeleteObjects(t *testing.T) {
 			g.Expect(concurrency).Should(gomega.Equal(tcase.expectedConcurrency))
 			return expectedResult
 		})
+		//nolint: gocritic // no need
 		defer patch.Reset()
 
 		result := tcase.backend.BatchDeleteObjects(context.TODO(), nil, tcase.opt)

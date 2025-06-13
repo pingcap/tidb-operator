@@ -22,7 +22,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-	"unsafe"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -68,11 +67,11 @@ func generateS3CertEnvVar(s3 *brv1alpha1.S3StorageProvider, useKMS bool) ([]core
 		}
 	case brv1alpha1.S3StorageProviderTypeAWS:
 		// TODO: Check the storage class, if it is not a legal storage class, use the default storage class instead
-		if len(s3.StorageClass) == 0 {
+		if s3.StorageClass == "" {
 			// The optional storage class reference https://rclone.org/s3
 			s3.StorageClass = "STANDARD_IA"
 		}
-		if len(s3.Acl) == 0 {
+		if s3.Acl == "" {
 			// The optional acl reference https://rclone.org/s3/
 			s3.Acl = "private"
 		}
@@ -138,7 +137,7 @@ func generateS3CertEnvVar(s3 *brv1alpha1.S3StorageProvider, useKMS bool) ([]core
 
 // generateGcsCertEnvVar generate the env info in order to access google cloud storage
 func generateGcsCertEnvVar(gcs *brv1alpha1.GcsStorageProvider) ([]corev1.EnvVar, string, error) {
-	if len(gcs.ProjectId) == 0 {
+	if gcs.ProjectId == "" {
 		return nil, "ProjectIdIsEmpty", fmt.Errorf("the project id is not set")
 	}
 	envVars := []corev1.EnvVar{
@@ -165,27 +164,28 @@ func generateGcsCertEnvVar(gcs *brv1alpha1.GcsStorageProvider) ([]corev1.EnvVar,
 	}
 	if gcs.SecretName != "" {
 		// NOTE: it may not be used actually, just keep the compatibility of tidb operator v1
-		envVars = append(envVars, corev1.EnvVar{
-			Name: "GCS_SERVICE_ACCOUNT_JSON_KEY",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: gcs.SecretName},
-					Key:                  constants.GcsCredentialsKey,
+		envVars = append(envVars,
+			corev1.EnvVar{
+				Name: "GCS_SERVICE_ACCOUNT_JSON_KEY",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: gcs.SecretName},
+						Key:                  constants.GcsCredentialsKey,
+					},
 				},
 			},
-		})
-		// mount credentials to /gcs and specify the default application credentials env
-		envVars = append(envVars, corev1.EnvVar{
-			Name:  "GOOGLE_APPLICATION_CREDENTIALS",
-			Value: filepath.Join(constants.GcsCredentialsMountPath, constants.GcsCredentialsKey),
-		})
+			// mount credentials to /gcs and specify the default application credentials env
+			corev1.EnvVar{
+				Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+				Value: filepath.Join(constants.GcsCredentialsMountPath, constants.GcsCredentialsKey),
+			})
 	}
 	return envVars, "", nil
 }
 
 // generateAzblobCertEnvVar generate the env info in order to access azure blob storage
 func generateAzblobCertEnvVar(azblob *brv1alpha1.AzblobStorageProvider, secret *corev1.Secret, useSasToken bool) ([]corev1.EnvVar, string, error) {
-	if len(azblob.AccessTier) == 0 {
+	if azblob.AccessTier == "" {
 		azblob.AccessTier = "Cool"
 	}
 	envVars := []corev1.EnvVar{
@@ -412,29 +412,27 @@ func GenerateTidbPasswordEnv(ctx context.Context, ns, tcName, tidbSecretName str
 }
 
 // GetBackupBucketName return the bucket name for remote storage
-func GetBackupBucketName(backup *brv1alpha1.Backup) (string, string, error) {
+func GetBackupBucketName(backup *brv1alpha1.Backup) (bucket, reason string, err error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	storageType := GetStorageType(backup.Spec.StorageProvider)
-	var bucketName string
 
 	switch storageType {
 	case brv1alpha1.BackupStorageTypeS3:
-		bucketName = backup.Spec.S3.Bucket
+		bucket = backup.Spec.S3.Bucket
 	case brv1alpha1.BackupStorageTypeGcs:
-		bucketName = backup.Spec.Gcs.Bucket
+		bucket = backup.Spec.Gcs.Bucket
 	default:
-		return bucketName, ReasonUnsupportedStorageType, fmt.Errorf("backup %s/%s unsupported storage type %s", ns, name, storageType)
+		return bucket, ReasonUnsupportedStorageType, fmt.Errorf("backup %s/%s unsupported storage type %s", ns, name, storageType)
 	}
-	return bucketName, "", nil
+	return bucket, "", nil
 }
 
 // GetBackupPrefixName return the prefix for remote storage
-func GetBackupPrefixName(backup *brv1alpha1.Backup) (string, string, error) {
+func GetBackupPrefixName(backup *brv1alpha1.Backup) (prefix, reason string, err error) {
 	ns := backup.GetNamespace()
 	name := backup.GetName()
 	storageType := GetStorageType(backup.Spec.StorageProvider)
-	var prefix string
 
 	switch storageType {
 	case brv1alpha1.BackupStorageTypeS3:
@@ -466,9 +464,8 @@ func GetStorageType(provider brv1alpha1.StorageProvider) brv1alpha1.BackupStorag
 }
 
 // GetBackupDataPath return the full path of backup data
-func GetBackupDataPath(provider brv1alpha1.StorageProvider) (string, string, error) {
+func GetBackupDataPath(provider brv1alpha1.StorageProvider) (backupPath, reason string, err error) {
 	storageType := GetStorageType(provider)
-	var backupPath string
 
 	switch storageType {
 	case brv1alpha1.BackupStorageTypeS3:
@@ -486,8 +483,8 @@ func GetBackupDataPath(provider brv1alpha1.StorageProvider) (string, string, err
 	return fmt.Sprintf("%s://%s", string(storageType), backupPath), "", nil
 }
 
-// nolint: gocyclo
 // ValidateBackup validates backup sepc
+// nolint:gocyclo
 func ValidateBackup(backup *brv1alpha1.Backup, tikvVersion string, cluster *corev1alpha1.Cluster) error {
 	ns := backup.Namespace
 	name := backup.Name
@@ -561,8 +558,8 @@ func ValidateBackup(backup *brv1alpha1.Backup, tikvVersion string, cluster *core
 	return nil
 }
 
-// nolint: gocyclo
 // ValidateRestore checks whether a restore spec is valid.
+// nolint:gocyclo
 func ValidateRestore(restore *brv1alpha1.Restore, tikvVersion string) error {
 	ns := restore.Namespace
 	name := restore.Name
@@ -666,8 +663,7 @@ func validateLocal(ns, name string, local *brv1alpha1.LocalStorageProvider) erro
 }
 
 // ParseImage returns the image name and the tag from the input image string
-func ParseImage(image string) (string, string) {
-	var name, tag string
+func ParseImage(image string) (name, tag string) {
 	colonIdx := strings.LastIndexByte(image, ':')
 	if colonIdx >= 0 {
 		name = image[:colonIdx]
@@ -678,44 +674,31 @@ func ParseImage(image string) (string, string) {
 	return name, tag
 }
 
-func BytesToString(b []byte) string {
-	return *(*string)(unsafe.Pointer(&b))
-}
-
-func StringToBytes(s string) []byte {
-	return *(*[]byte)(unsafe.Pointer(
-		&struct {
-			string
-			Cap int
-		}{s, len(s)},
-	))
-}
-
-// GetStorageRestorePath generate the path of a specific storage from Restore
+// GetStoragePath generate the path of a specific storage from Restore
 func GetStoragePath(privoder brv1alpha1.StorageProvider) (string, error) {
-	var url, bucket, prefix string
+	var urlStr, bucket, prefix string
 	st := GetStorageType(privoder)
 	switch st {
 	case brv1alpha1.BackupStorageTypeS3:
 		prefix = privoder.S3.Prefix
 		bucket = privoder.S3.Bucket
-		url = fmt.Sprintf("s3://%s", path.Join(bucket, prefix))
-		return url, nil
+		urlStr = fmt.Sprintf("s3://%s", path.Join(bucket, prefix))
+		return urlStr, nil
 	case brv1alpha1.BackupStorageTypeGcs:
 		prefix = privoder.Gcs.Prefix
 		bucket = privoder.Gcs.Bucket
-		url = fmt.Sprintf("gcs://%s/", path.Join(bucket, prefix))
-		return url, nil
+		urlStr = fmt.Sprintf("gcs://%s/", path.Join(bucket, prefix))
+		return urlStr, nil
 	case brv1alpha1.BackupStorageTypeAzblob:
 		prefix = privoder.Azblob.Prefix
 		bucket = privoder.Azblob.Container
-		url = fmt.Sprintf("azure://%s/", path.Join(bucket, prefix))
-		return url, nil
+		urlStr = fmt.Sprintf("azure://%s/", path.Join(bucket, prefix))
+		return urlStr, nil
 	case brv1alpha1.BackupStorageTypeLocal:
 		prefix = privoder.Local.Prefix
 		mountPath := privoder.Local.VolumeMount.MountPath
-		url = fmt.Sprintf("local://%s", path.Join(mountPath, prefix))
-		return url, nil
+		urlStr = fmt.Sprintf("local://%s", path.Join(mountPath, prefix))
+		return urlStr, nil
 	default:
 		return "", fmt.Errorf("storage %s not supported yet", st)
 	}
@@ -732,7 +715,7 @@ func GetOptions(provider brv1alpha1.StorageProvider) []string {
 	}
 }
 
-// updateBRProgress updates progress for backup/restore.
+// UpdateBRProgress updates progress for backup/restore.
 func UpdateBRProgress(progresses []brv1alpha1.Progress, step *string, progress *int, updateTime *metav1.Time) ([]brv1alpha1.Progress, bool) {
 	var oldProgress *brv1alpha1.Progress
 	for i, p := range progresses {

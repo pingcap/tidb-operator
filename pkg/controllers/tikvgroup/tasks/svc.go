@@ -30,6 +30,8 @@ import (
 )
 
 // TODO: extract svc to a common task
+//
+//nolint:staticcheck
 func TaskService(state common.TiKVGroupState, c client.Client) task.Task {
 	return task.NameTaskFunc("Service", func(ctx context.Context) task.Result {
 		kvg := state.TiKVGroup()

@@ -393,8 +393,7 @@ func (bc *backupCleaner) makeStopLogBackupJob(ctx context.Context, backup *v1alp
 		args = append(args, fmt.Sprintf("--tikvVersion=%s", tikvVersion))
 	}
 
-	args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeLog))
-	args = append(args, fmt.Sprintf("--subcommand=%s", v1alpha1.LogStopCommand))
+	args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.BackupModeLog), fmt.Sprintf("--subcommand=%s", v1alpha1.LogStopCommand))
 
 	jobLabels := util.CombineStringMap(metav1alpha1.NewBackup().Instance(backup.GetInstanceName()).BackupJob().Backup(name), backup.Labels)
 	podLabels := jobLabels
@@ -556,6 +555,7 @@ func (bc *backupCleaner) ensureBackupJobFinished(ctx context.Context, backup *v1
 		}
 
 		logger.Info("backup job is running, cleaner will delete it and wait it done", "namespace", ns, "backup", name, "job", jobName)
+		//nolint:gocritic
 		if err := bc.cli.Delete(ctx, job, rtClient.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 			errs = append(errs, err)
 		}

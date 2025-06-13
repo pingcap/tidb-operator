@@ -62,9 +62,11 @@ func (ro *Options) restoreData(
 	args := make([]string, 0)
 	args = append(args, fmt.Sprintf("--pd=%s", ro.PDAddress))
 	if ro.TLSCluster {
-		args = append(args, fmt.Sprintf("--ca=%s", path.Join(corev1alpha1.DirPathClusterClientTLS, corev1.ServiceAccountRootCAKey)))
-		args = append(args, fmt.Sprintf("--cert=%s", path.Join(corev1alpha1.DirPathClusterClientTLS, corev1.TLSCertKey)))
-		args = append(args, fmt.Sprintf("--key=%s", path.Join(corev1alpha1.DirPathClusterClientTLS, corev1.TLSPrivateKeyKey)))
+		args = append(args,
+			fmt.Sprintf("--ca=%s", path.Join(corev1alpha1.DirPathClusterClientTLS, corev1.ServiceAccountRootCAKey)),
+			fmt.Sprintf("--cert=%s", path.Join(corev1alpha1.DirPathClusterClientTLS, corev1.TLSCertKey)),
+			fmt.Sprintf("--key=%s", path.Join(corev1alpha1.DirPathClusterClientTLS, corev1.TLSPrivateKeyKey)),
+		)
 	}
 	// `options` in spec are put to the last because we want them to have higher priority than generated arguments
 	dataArgs, err := constructBROptions(restore)
@@ -89,6 +91,7 @@ func (ro *Options) restoreData(
 	useProgressFile := false
 
 	// gen args PiTR and volume-snapshot.
+	//nolint:gocritic
 	switch ro.Mode {
 	case string(v1alpha1.RestoreModePiTR):
 		// init pitr restore args

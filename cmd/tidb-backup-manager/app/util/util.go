@@ -62,6 +62,11 @@ var (
 	// }
 )
 
+const (
+	// DefaultDirectoryPermission is the default permission for directories
+	DefaultDirectoryPermission = 0750
+)
+
 func validCmdFlagFunc(flag *pflag.Flag) {
 	if flag.Value.String() != "" {
 		return
@@ -89,7 +94,7 @@ func EnsureDirectoryExist(dirName string) error {
 	src, err := os.Stat(dirName)
 
 	if os.IsNotExist(err) {
-		errDir := os.MkdirAll(dirName, os.ModePerm)
+		errDir := os.MkdirAll(dirName, DefaultDirectoryPermission)
 		if errDir != nil {
 			return fmt.Errorf("create dir %s failed. err: %w", dirName, err)
 		}
@@ -143,8 +148,8 @@ func IsFileExist(file string) bool {
 }
 
 // IsDirExist return true if path exist and is a dir, other cases return false
-func IsDirExist(path string) bool {
-	fi, err := os.Stat(path)
+func IsDirExist(p string) bool {
+	fi, err := os.Stat(p)
 	if err != nil || !fi.IsDir() {
 		return false
 	}
@@ -373,7 +378,7 @@ func GetBRMetaData(ctx context.Context, provider v1alpha1.StorageProvider) (*kvb
 	if err != nil {
 		return nil, err
 	}
-	defer s.Close()
+	defer s.Close() //nolint:errcheck
 
 	var metaData []byte
 	// use exponential backoff, every retry duration is duration * factor ^ (used_step - 1)
@@ -474,7 +479,7 @@ func GetContextForTerminationSignals(op string) (context.Context, context.Cancel
 	return ctx, cancel
 }
 
-// GetSliceExcludeString get a slice of strings that excludes the specified substring
+// GetSliceExcludeOneString get a slice of strings that excludes the specified substring
 func GetSliceExcludeOneString(strs []string, str string) []string {
 	for i := range strs {
 		if strings.Contains(strs[i], str) {

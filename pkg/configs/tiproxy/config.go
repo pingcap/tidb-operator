@@ -68,6 +68,8 @@ type Config struct {
 }
 
 // Ref: https://github.com/pingcap/tidb-operator/blob/f13aaaa40cfd9f1b7c068922e9391a48d21a6528/pkg/manager/member/tiproxy_member_manager.go#L704
+//
+//nolint:staticcheck
 func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) error {
 	if err := c.Validate(); err != nil {
 		return err

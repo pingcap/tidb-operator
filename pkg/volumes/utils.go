@@ -257,7 +257,7 @@ func handleVolumeModification(
 	vol *ActualVolume,
 	expectPVC *corev1.PersistentVolumeClaim,
 	logger logr.Logger,
-) (needWait bool, skipUpdate bool, err error) {
+) (needWait, skipUpdate bool, err error) {
 	if !vm.ShouldModify(ctx, vol) {
 		logger.Info("volume's attributes are not changed", "volume", vol.String())
 		return false, false, nil

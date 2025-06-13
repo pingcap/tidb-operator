@@ -106,6 +106,7 @@ func SplitPrimaryKey(key string) (ns, cluster string) {
 	return keys[0], keys[1]
 }
 
+// CacheKeys returns the keys of the PDGroup.
 // If any keys are changed, client will be renewed
 // The first key is primary key to get client from manager
 func CacheKeys(pdg *v1alpha1.PDGroup) ([]string, error) {

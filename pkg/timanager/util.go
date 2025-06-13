@@ -31,6 +31,7 @@ type Object[T any] interface {
 	DeepCopyInto(*T)
 }
 
+// List is a list of objects.
 // NOTE: it's only for test now
 type List[T any, PT Object[T]] struct {
 	metav1.TypeMeta
