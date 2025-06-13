@@ -350,7 +350,9 @@ func (fpc *FakePDControl) SetPDClient(namespace Namespace, tcName string, pdclie
 	fpc.defaultPDControl.pdClients[genClientKey("http", namespace, tcName, "")] = pdclient
 }
 
-func (fpc *FakePDControl) SetPDClientForKey(key string, pdclient PDClient) {
+func (fpc *FakePDControl) SetPDClientForKey(namespace Namespace, tcName, key string, pdclient PDClient) {
+	genKey := genClientKey("http", namespace, tcName, "")
+	key = fmt.Sprintf("%s.%s", genKey, key)
 	fpc.defaultPDControl.pdClients[key] = pdclient
 }
 
