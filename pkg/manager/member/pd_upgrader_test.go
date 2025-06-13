@@ -96,13 +96,13 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 		})
 
 		for _, member := range tc.Status.PD.Members {
-			pdClientM := controller.NewFakePDClientForMember(pdControl, &member)
+			pdClientM := controller.NewFakePDClientForMember(pdControl, tc, &member)
 			pdClientM.AddReaction(pdapi.GetReadyActionType, func(action *pdapi.Action) (interface{}, error) {
 				return true, nil
 			})
 		}
 		for _, member := range tc.Status.PD.PeerMembers {
-			pdClientM := controller.NewFakePDClientForMember(pdControl, &member)
+			pdClientM := controller.NewFakePDClientForMember(pdControl, tc, &member)
 			pdClientM.AddReaction(pdapi.GetReadyActionType, func(action *pdapi.Action) (interface{}, error) {
 				return true, nil
 			})

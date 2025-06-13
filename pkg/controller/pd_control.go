@@ -122,12 +122,12 @@ func NewFakePDClient(pdControl *pdapi.FakePDControl, tc *v1alpha1.TidbCluster) *
 }
 
 // NewFakePDClientForMember creates a fake pdclient that is set as the pd client for a specific PD member.
-func NewFakePDClientForMember(pdControl *pdapi.FakePDControl, member *v1alpha1.PDMember) *pdapi.FakePDClient {
+func NewFakePDClientForMember(pdControl *pdapi.FakePDControl, tc *v1alpha1.TidbCluster, member *v1alpha1.PDMember) *pdapi.FakePDClient {
 	if member == nil {
 		return nil
 	}
 	pdClient := pdapi.NewFakePDClient()
-	pdControl.SetPDClientForKey(member.Name, pdClient)
+	pdControl.SetPDClientForKey(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), member.Name, pdClient)
 	return pdClient
 }
 
