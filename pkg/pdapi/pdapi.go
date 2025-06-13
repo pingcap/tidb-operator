@@ -94,6 +94,11 @@ type PDClient interface {
 	GetAutoscalingPlans(strategy Strategy) ([]Plan, error)
 	// GetRecoveringMark return the pd recovering mark
 	GetRecoveringMark() (bool, error)
+
+	// GetReady checks if a specific PD member is ready.
+	// NOTE: in order to call this method, a PDClient for a specific PD member (`GetPDClientForMember`) is required.
+	GetReady() (bool, error)
+
 	// GetMSMembers returns all PDMS members service-addr from cluster by specific microservice
 	GetMSMembers(service string) ([]string, error)
 	// GetMSPrimary returns the primary PDMS member service-addr from cluster by specific microservice
@@ -116,6 +121,9 @@ var (
 	evictLeaderSchedulerConfigPrefix = "pd/api/v1/scheduler-config/evict-leader-scheduler/list"
 	autoscalingPrefix                = "autoscaling"
 	recoveringMarkPrefix             = "pd/api/v1/admin/cluster/markers/snapshot-recovering"
+
+	readyPrefix = "pd/api/v2/ready"
+
 	// microservice
 	MicroservicePrefix = "pd/api/v2/ms"
 )
@@ -793,6 +801,31 @@ func (c *pdClient) GetAutoscalingPlans(strategy Strategy) ([]Plan, error) {
 		return nil, err
 	}
 	return plans, nil
+}
+
+func (c *pdClient) GetReady() (bool, error) {
+	apiURL := fmt.Sprintf("%s/%s", c.url, readyPrefix)
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return false, err
+	}
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer httputil.DeferClose(res.Body)
+
+	if res.StatusCode == http.StatusNotFound {
+		// this ready API is added from v8.5.2, so we return true if the status code is 404 here
+		klog.Info("ready API is not found, assuming PD is ready")
+		return true, nil
+	}
+
+	if res.StatusCode != http.StatusOK {
+		err2 := httputil.ReadErrorBody(res.Body)
+		return false, fmt.Errorf("failed %v to get ready status: %v", res.StatusCode, err2)
+	}
+	return true, nil
 }
 
 func getLeaderEvictSchedulerInfo(storeID uint64) *schedulerInfo {

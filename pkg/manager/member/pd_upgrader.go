@@ -123,6 +123,10 @@ func (u *pdUpgrader) gracefulUpgrade(tc *v1alpha1.TidbCluster, oldSet *apps.Stat
 			}
 			if member, exist := tc.Status.PD.Members[PdName(tc.Name, i, tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s)]; !exist || !member.Health {
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd upgraded pod: [%s] is not health", ns, tcName, podName)
+			} else if ready, err := u.isPDMemberReady(tc, &member); err != nil {
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd member: [%s] is not ready, error: %v", ns, tcName, podName, err)
+			} else if !ready {
+				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s pd member: [%s] is not ready", ns, tcName, podName)
 			}
 			continue
 		}
@@ -178,6 +182,23 @@ func (u *pdUpgrader) upgradePDPod(tc *v1alpha1.TidbCluster, ordinal int32, newSe
 
 	mngerutils.SetUpgradePartition(newSet, ordinal)
 	return nil
+}
+
+func (u *pdUpgrader) isPDMemberReady(tc *v1alpha1.TidbCluster, member *v1alpha1.PDMember) (bool, error) {
+	if member == nil {
+		return false, fmt.Errorf("pd upgrader: member is nil")
+	}
+
+	pdClient := controller.GetPDClientForMember(u.deps.PDControl, tc, member)
+	if pdClient == nil {
+		return false, fmt.Errorf("pd upgrader: failed to get pd client for member %s", member.Name)
+	}
+
+	ready, err := pdClient.GetReady()
+	if err != nil {
+		return false, fmt.Errorf("pd upgrader: failed to check if pd member %s is ready: %v", member.Name, err)
+	}
+	return ready, nil
 }
 
 func (u *pdUpgrader) transferPDLeaderTo(tc *v1alpha1.TidbCluster, targetName string) error {

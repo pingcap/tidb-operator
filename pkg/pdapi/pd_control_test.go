@@ -135,7 +135,7 @@ func TestPDControl(t *testing.T) {
 				tlsEnable: true,
 				expectConfig: func(pdClient *clientConfig, etcdClient *clientConfig) {
 					g.Expect(pdClient.clientURL).To(Equal("http://test.cluster"))
-					g.Expect(pdClient.clientKey).To(Equal("test.cluster"))
+					g.Expect(pdClient.clientKey).To(Equal("https.target-cluster.target-namespace.cluster.local.test.cluster"))
 
 					g.Expect(etcdClient.clientURL).To(Equal("http://test.cluster"))
 					g.Expect(etcdClient.clientKey).To(Equal("test.cluster"))

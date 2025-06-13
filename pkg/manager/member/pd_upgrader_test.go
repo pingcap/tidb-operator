@@ -95,6 +95,19 @@ func TestPDUpgraderUpgrade(t *testing.T) {
 			return healthInfo, nil
 		})
 
+		for _, member := range tc.Status.PD.Members {
+			pdClientM := controller.NewFakePDClientForMember(pdControl, tc, &member)
+			pdClientM.AddReaction(pdapi.GetReadyActionType, func(action *pdapi.Action) (interface{}, error) {
+				return true, nil
+			})
+		}
+		for _, member := range tc.Status.PD.PeerMembers {
+			pdClientM := controller.NewFakePDClientForMember(pdControl, tc, &member)
+			pdClientM.AddReaction(pdapi.GetReadyActionType, func(action *pdapi.Action) (interface{}, error) {
+				return true, nil
+			})
+		}
+
 		err := upgrader.Upgrade(tc, oldSet, newSet)
 		test.errExpectFn(g, err)
 		test.expectFn(g, tc, newSet)

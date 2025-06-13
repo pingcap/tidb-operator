@@ -123,8 +123,13 @@ func (c *clientConfig) completeForPDClient(namespace Namespace, tcName, serviceN
 	if c.clientURL == "" {
 		c.clientURL = genClientUrl(namespace, tcName, scheme, c.clusterDomain, serviceName, c.headlessSvc)
 	}
+	genKey := genClientKey(scheme, namespace, tcName, c.clusterDomain)
 	if c.clientKey == "" {
-		c.clientKey = genClientKey(scheme, namespace, tcName, c.clusterDomain)
+		c.clientKey = genKey
+	} else {
+		// we often pass the PD member name as the clientKey now,
+		// but this is NOT unique, so we need to add the genKey to make it unique
+		c.clientKey = fmt.Sprintf("%s.%s", genKey, c.clientKey)
 	}
 }
 
@@ -343,6 +348,12 @@ func NewFakePDControl(secretLister corelisterv1.SecretLister) *FakePDControl {
 
 func (fpc *FakePDControl) SetPDClient(namespace Namespace, tcName string, pdclient PDClient) {
 	fpc.defaultPDControl.pdClients[genClientKey("http", namespace, tcName, "")] = pdclient
+}
+
+func (fpc *FakePDControl) SetPDClientForKey(namespace Namespace, tcName, key string, pdclient PDClient) {
+	genKey := genClientKey("http", namespace, tcName, "")
+	key = fmt.Sprintf("%s.%s", genKey, key)
+	fpc.defaultPDControl.pdClients[key] = pdclient
 }
 
 func (fpc *FakePDControl) SetPDClientWithClusterDomain(namespace Namespace, tcName string, tcClusterDomain string, pdclient PDClient) {

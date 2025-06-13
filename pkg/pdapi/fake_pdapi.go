@@ -46,6 +46,7 @@ const (
 	TransferPDLeaderActionType                  ActionType = "TransferPDLeader"
 	GetAutoscalingPlansActionType               ActionType = "GetAutoscalingPlans"
 	GetRecoveringMarkActionType                 ActionType = "GetRecoveringMark"
+	GetReadyActionType                          ActionType = "GetReady"
 	PDMSTransferPrimaryActionType               ActionType = "PDMSTransferPrimary"
 )
 
@@ -301,6 +302,15 @@ func (c *FakePDClient) GetRecoveringMark() (bool, error) {
 	}
 
 	return true, nil
+}
+
+func (c *FakePDClient) GetReady() (bool, error) {
+	action := &Action{}
+	result, err := c.fakeAPI(GetReadyActionType, action)
+	if err != nil {
+		return false, err
+	}
+	return result.(bool), nil
 }
 
 // FakePDMSClient implements a fake version of PDMSClient.
