@@ -24,7 +24,7 @@ import (
 )
 
 // This interface defines a scheduler to choose the next topology
-type Scheduler interface {
+type Scheduling interface {
 	// Add adds an scheduled instance.
 	// All scheduled instances should be added before calling Next()
 	Add(name string, topo v1alpha1.Topology)
@@ -36,8 +36,8 @@ type Scheduler interface {
 	NextDel() []string
 }
 
-func New(st []v1alpha1.ScheduleTopology) (Scheduler, error) {
-	s := &topologyScheduler{
+func New(st []v1alpha1.ScheduleTopology) (Scheduling, error) {
+	s := &topologyScheduling{
 		e:           NewEncoder(),
 		hashToIndex: map[string]int{},
 		nameToIndex: map[string]int{},
@@ -78,7 +78,7 @@ type topoInfo struct {
 	weight int32
 }
 
-type topologyScheduler struct {
+type topologyScheduling struct {
 	e    Encoder
 	info []topoInfo
 	// topo hash to topo index
@@ -90,7 +90,7 @@ type topologyScheduler struct {
 	totalCount  int
 }
 
-func (s *topologyScheduler) Add(name string, t v1alpha1.Topology) {
+func (s *topologyScheduling) Add(name string, t v1alpha1.Topology) {
 	if _, ok := s.nameToIndex[name]; ok {
 		s.Del(name)
 	}
@@ -108,7 +108,7 @@ func (s *topologyScheduler) Add(name string, t v1alpha1.Topology) {
 	s.nameToIndex[name] = index
 }
 
-func (s *topologyScheduler) Del(name string) {
+func (s *topologyScheduling) Del(name string) {
 	index, ok := s.nameToIndex[name]
 	if !ok {
 		// cannot found this name, just return
@@ -123,7 +123,7 @@ func (s *topologyScheduler) Del(name string) {
 	}
 }
 
-func (s *topologyScheduler) NextAdd() []v1alpha1.Topology {
+func (s *topologyScheduling) NextAdd() []v1alpha1.Topology {
 	// only unknown topo
 	if len(s.info) == 1 {
 		return nil
@@ -157,7 +157,7 @@ func (s *topologyScheduler) NextAdd() []v1alpha1.Topology {
 	return topos
 }
 
-func (s *topologyScheduler) NextDel() []string {
+func (s *topologyScheduling) NextDel() []string {
 	unknown := s.info[len(s.info)-1]
 	if unknown.names.Len() != 0 {
 		return sets.List(unknown.names)

@@ -4,16 +4,16 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.17.2
-  name: schedulers.core.pingcap.com
+  name: schedulings.core.pingcap.com
 spec:
   group: core.pingcap.com
   names:
     categories:
     - instance
-    kind: Scheduler
-    listKind: SchedulerList
-    plural: schedulers
-    singular: scheduler
+    kind: Scheduling
+    listKind: SchedulingList
+    plural: schedulings
+    singular: scheduling
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -32,7 +32,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Scheduler defines a Scheduler instance
+        description: Scheduling defines a Scheduling instance
         properties:
           apiVersion:
             description: |-
@@ -52,7 +52,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: SchedulerSpec describes the common attributes of a Scheduler
+            description: SchedulingSpec describes the common attributes of a Scheduling
               instance
             properties:
               cluster:
@@ -69,8 +69,8 @@ spec:
                 type: object
               config:
                 description: |-
-                  Config defines config file of Scheduler
-                  See https://docs.pingcap.com/tidb/stable/Scheduler-configuration-file/
+                  Config defines config file of Scheduling
+                  See https://docs.pingcap.com/tidb/stable/Scheduling-configuration-file/
                 type: string
               features:
                 description: Features are enabled feature
@@ -94,7 +94,7 @@ spec:
               overlay:
                 description: |-
                   Overlay defines a k8s native resource template patch
-                  All resources(pod, pvcs, ...) managed by Scheduler can be overlayed by this field
+                  All resources(pod, pvcs, ...) managed by Scheduling can be overlayed by this field
                 properties:
                   pod:
                     properties:
@@ -8388,13 +8388,13 @@ spec:
                     x-kubernetes-int-or-string: true
                 type: object
               server:
-                description: Server defines server config for Scheduler
+                description: Server defines server config for Scheduling
                 properties:
                   ports:
-                    description: Ports defines all ports listened by Scheduler
+                    description: Ports defines all ports listened by Scheduling
                     properties:
                       client:
-                        description: Client defines port for Scheduler's api service
+                        description: Client defines port for Scheduling's api service
                         properties:
                           port:
                             format: int32
@@ -8406,14 +8406,14 @@ spec:
                 type: object
               subdomain:
                 description: |-
-                  Subdomain means the subdomain of the exported Scheduler dns.
-                  A same Scheduler cluster will use a same subdomain
+                  Subdomain means the subdomain of the exported Scheduling dns.
+                  A same Scheduling cluster will use a same subdomain
                 type: string
               topology:
                 additionalProperties:
                   type: string
                 description: |-
-                  Topology defines the topology domain of this Scheduler instance
+                  Topology defines the topology domain of this Scheduling instance
                   It will be translated into a node affinity config
                   Topology cannot be changed
                 minProperties: 1
@@ -8436,7 +8436,7 @@ spec:
               version:
                 type: string
               volumes:
-                description: Volumes defines persistent volumes of Scheduler
+                description: Volumes defines persistent volumes of Scheduling
                 items:
                   description: |-
                     Volume defines a persistent volume, it will be mounted at a specified root path

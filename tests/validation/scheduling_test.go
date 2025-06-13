@@ -22,23 +22,23 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
-func TestScheduler(t *testing.T) {
+func TestScheduling(t *testing.T) {
 	cases := append(
-		transferSchedulerCases(t, Topology(), "spec", "topology"),
-		transferSchedulerCases(t, ClusterReference(), "spec", "cluster")...,
+		transferSchedulingCases(t, Topology(), "spec", "topology"),
+		transferSchedulingCases(t, ClusterReference(), "spec", "cluster")...,
 	)
 	cases = append(cases,
-		transferSchedulerCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
+		transferSchedulingCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
 
-	Validate(t, "crd/core.pingcap.com_schedulers.yaml", cases)
+	Validate(t, "crd/core.pingcap.com_schedulings.yaml", cases)
 }
 
-func basicScheduler() map[string]any {
+func basicScheduling() map[string]any {
 	data := []byte(`
 apiVersion: core.pingcap.com/v1alpha1
-kind: Scheduler
+kind: Scheduling
 metadata:
-  name: scheduler
+  name: scheduling
 spec:
   cluster:
     name: test
@@ -53,11 +53,11 @@ spec:
 	return obj
 }
 
-func transferSchedulerCases(t *testing.T, cases []Case, fields ...string) []Case {
+func transferSchedulingCases(t *testing.T, cases []Case, fields ...string) []Case {
 	for i := range cases {
 		c := &cases[i]
 
-		current := basicScheduler()
+		current := basicScheduling()
 		if c.current == nil {
 			unstructured.RemoveNestedField(current, fields...)
 		} else {
@@ -71,7 +71,7 @@ func transferSchedulerCases(t *testing.T, cases []Case, fields ...string) []Case
 			continue
 		}
 
-		old := basicScheduler()
+		old := basicScheduling()
 		if c.old == nil {
 			unstructured.RemoveNestedField(old, fields...)
 		} else {

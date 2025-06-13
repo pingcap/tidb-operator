@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package scheduler
+package scheduling
 
 import (
 	"fmt"
@@ -43,7 +43,7 @@ type Security struct {
 	KeyPath string `toml:"key-path"`
 }
 
-func (c *Config) Overlay(cluster *v1alpha1.Cluster, s *v1alpha1.Scheduler) error {
+func (c *Config) Overlay(cluster *v1alpha1.Cluster, s *v1alpha1.Scheduling) error {
 	if err := c.Validate(); err != nil {
 		return err
 	}
@@ -51,9 +51,9 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, s *v1alpha1.Scheduler) error
 	scheme := "http"
 	if coreutil.IsTLSClusterEnabled(cluster) {
 		scheme = "https"
-		c.Security.CACertPath = path.Join(v1alpha1.DirPathClusterTLSScheduler, corev1.ServiceAccountRootCAKey)
-		c.Security.CertPath = path.Join(v1alpha1.DirPathClusterTLSScheduler, corev1.TLSCertKey)
-		c.Security.KeyPath = path.Join(v1alpha1.DirPathClusterTLSScheduler, corev1.TLSPrivateKeyKey)
+		c.Security.CACertPath = path.Join(v1alpha1.DirPathClusterTLSScheduling, corev1.ServiceAccountRootCAKey)
+		c.Security.CertPath = path.Join(v1alpha1.DirPathClusterTLSScheduling, corev1.TLSCertKey)
+		c.Security.KeyPath = path.Join(v1alpha1.DirPathClusterTLSScheduling, corev1.TLSPrivateKeyKey)
 	}
 
 	c.ListenAddr = getClientURLs(s, scheme)
@@ -93,14 +93,14 @@ func (c *Config) Validate() error {
 	return fmt.Errorf("%v: %w", fields, v1alpha1.ErrFieldIsManagedByOperator)
 }
 
-func getClientURLs(s *v1alpha1.Scheduler, scheme string) string {
-	return fmt.Sprintf("%s://[::]:%d", scheme, coreutil.SchedulerClientPort(s))
+func getClientURLs(s *v1alpha1.Scheduling, scheme string) string {
+	return fmt.Sprintf("%s://[::]:%d", scheme, coreutil.SchedulingClientPort(s))
 }
 
-func getAdvertiseClientURLs(s *v1alpha1.Scheduler, scheme string) string {
+func getAdvertiseClientURLs(s *v1alpha1.Scheduling, scheme string) string {
 	ns := s.Namespace
 	if ns == "" {
 		ns = corev1.NamespaceDefault
 	}
-	return fmt.Sprintf("%s://%s.%s.%s:%d", scheme, coreutil.PodName[scope.Scheduler](s), s.Spec.Subdomain, ns, coreutil.SchedulerClientPort(s))
+	return fmt.Sprintf("%s://%s.%s.%s:%d", scheme, coreutil.PodName[scope.Scheduling](s), s.Spec.Subdomain, ns, coreutil.SchedulingClientPort(s))
 }

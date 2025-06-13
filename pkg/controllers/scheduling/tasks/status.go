@@ -36,7 +36,7 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		obj := state.Object()
 		pod := state.Pod()
 		// ready condition is updated in previous task
-		ready := coreutil.IsReady[scope.Scheduler](obj)
+		ready := coreutil.IsReady[scope.Scheduling](obj)
 
 		needUpdate = compare.SetIfChanged(&obj.Status.ObservedGeneration, obj.Generation) || needUpdate
 		needUpdate = compare.SetIfChanged(&obj.Status.UpdateRevision, obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
@@ -56,7 +56,7 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		}
 
 		if !ready {
-			return task.Wait().With("scheduler may not be ready, wait")
+			return task.Wait().With("scheduling may not be ready, wait")
 		}
 
 		return task.Complete().With("status is synced")

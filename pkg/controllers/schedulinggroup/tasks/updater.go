@@ -38,13 +38,13 @@ const (
 	defaultUpdateWaitTime = time.Second * 30
 )
 
-// TaskUpdater is a task to scale or update Scheduler when spec of SchedulerGroup is changed.
+// TaskUpdater is a task to scale or update Scheduling when spec of SchedulingGroup is changed.
 func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		obj := state.Object()
 
-		checker := action.NewUpgradeChecker[scope.SchedulerGroup](c, state.Cluster(), logger)
+		checker := action.NewUpgradeChecker[scope.SchedulingGroup](c, state.Cluster(), logger)
 
 		if needVersionUpgrade(obj) && !checker.CanUpgrade(ctx, obj) {
 			// TODO(liubo02): change to Wait
@@ -69,7 +69,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
-		wait, err := updater.New[runtime.SchedulerTuple]().
+		wait, err := updater.New[runtime.SchedulingTuple]().
 			WithInstances(is...).
 			WithDesired(int(state.Group().Replicas())).
 			WithClient(c).
@@ -77,7 +77,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			WithMaxSurge(0).
 			WithMaxUnavailable(1).
 			WithRevision(updateRevision).
-			WithNewFactory(SchedulerNewer(obj, updateRevision)).
+			WithNewFactory(SchedulingNewer(obj, updateRevision)).
 			WithAddHooks(topoPolicy).
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
@@ -96,7 +96,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func needVersionUpgrade(sg *v1alpha1.SchedulerGroup) bool {
+func needVersionUpgrade(sg *v1alpha1.SchedulingGroup) bool {
 	return sg.Spec.Template.Spec.Version != sg.Status.Version && sg.Status.Version != ""
 }
 
@@ -104,29 +104,29 @@ const (
 	suffixLen = 6
 )
 
-func SchedulerNewer(sg *v1alpha1.SchedulerGroup, rev string) updater.NewFactory[*runtime.Scheduler] {
-	return updater.NewFunc[*runtime.Scheduler](func() *runtime.Scheduler {
+func SchedulingNewer(sg *v1alpha1.SchedulingGroup, rev string) updater.NewFactory[*runtime.Scheduling] {
+	return updater.NewFunc[*runtime.Scheduling](func() *runtime.Scheduling {
 		name := fmt.Sprintf("%s-%s", sg.Name, random.Random(suffixLen))
 		spec := sg.Spec.Template.Spec.DeepCopy()
 
-		scheduler := &v1alpha1.Scheduler{
+		scheduling := &v1alpha1.Scheduling{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace:   sg.Namespace,
 				Name:        name,
-				Labels:      coreutil.InstanceLabels[scope.SchedulerGroup](sg, rev),
-				Annotations: coreutil.InstanceAnnotations[scope.SchedulerGroup](sg),
+				Labels:      coreutil.InstanceLabels[scope.SchedulingGroup](sg, rev),
+				Annotations: coreutil.InstanceAnnotations[scope.SchedulingGroup](sg),
 				OwnerReferences: []metav1.OwnerReference{
-					*metav1.NewControllerRef(sg, v1alpha1.SchemeGroupVersion.WithKind("SchedulerGroup")),
+					*metav1.NewControllerRef(sg, v1alpha1.SchemeGroupVersion.WithKind("SchedulingGroup")),
 				},
 			},
-			Spec: v1alpha1.SchedulerSpec{
-				Cluster:               sg.Spec.Cluster,
-				Features:              sg.Spec.Features,
-				Subdomain:             HeadlessServiceName(sg.Name), // same as headless service
-				SchedulerTemplateSpec: *spec,
+			Spec: v1alpha1.SchedulingSpec{
+				Cluster:                sg.Spec.Cluster,
+				Features:               sg.Spec.Features,
+				Subdomain:              HeadlessServiceName(sg.Name), // same as headless service
+				SchedulingTemplateSpec: *spec,
 			},
 		}
 
-		return runtime.FromScheduler(scheduler)
+		return runtime.FromScheduling(scheduling)
 	})
 }

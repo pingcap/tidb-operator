@@ -18,16 +18,16 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 )
 
-func SchedulerClientPort(s *v1alpha1.Scheduler) int32 {
+func SchedulingClientPort(s *v1alpha1.Scheduling) int32 {
 	if s.Spec.Server.Ports.Client != nil {
 		return s.Spec.Server.Ports.Client.Port
 	}
-	return v1alpha1.DefaultSchedulerPortClient
+	return v1alpha1.DefaultSchedulingPortClient
 }
 
-func SchedulerGroupClientPort(sg *v1alpha1.SchedulerGroup) int32 {
+func SchedulingGroupClientPort(sg *v1alpha1.SchedulingGroup) int32 {
 	if sg.Spec.Template.Spec.Server.Ports.Client != nil {
 		return sg.Spec.Template.Spec.Server.Ports.Client.Port
 	}
-	return v1alpha1.DefaultSchedulerPortClient
+	return v1alpha1.DefaultSchedulingPortClient
 }

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package scheduler
+package scheduling
 
 import (
 	"context"
@@ -26,7 +26,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/controllers/scheduler/tasks"
+	"github.com/pingcap/tidb-operator/pkg/controllers/scheduling/tasks"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -42,12 +42,12 @@ type Reconciler struct {
 
 func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, vm volumes.ModifierFactory) error {
 	r := &Reconciler{
-		Logger:                mgr.GetLogger().WithName("Scheduler"),
+		Logger:                mgr.GetLogger().WithName("Scheduling"),
 		Client:                c,
 		PDClientManager:       pdcm,
 		VolumeModifierFactory: vm,
 	}
-	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.Scheduler{}).
+	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.Scheduling{}).
 		Owns(&corev1.Pod{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&corev1.PersistentVolumeClaim{}).
@@ -57,7 +57,7 @@ func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, vm vo
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := r.Logger.WithValues("scheduler", req.NamespacedName)
+	logger := r.Logger.WithValues("scheduling", req.NamespacedName)
 	reporter := task.NewTableTaskReporter()
 
 	startTime := time.Now()

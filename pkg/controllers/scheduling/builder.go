@@ -12,24 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package scheduler
+package scheduling
 
 import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
-	"github.com/pingcap/tidb-operator/pkg/controllers/scheduler/tasks"
+	"github.com/pingcap/tidb-operator/pkg/controllers/scheduling/tasks"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
 func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.TaskReporter) task.TaskRunner {
 	runner := task.NewTaskRunner(reporter,
-		// get scheduler
-		common.TaskContextObject[scope.Scheduler](state, r.Client),
+		// get scheduling
+		common.TaskContextObject[scope.Scheduling](state, r.Client),
 		// if it's gone just return
-		task.IfBreak(common.CondObjectHasBeenDeleted[scope.Scheduler](state)),
+		task.IfBreak(common.CondObjectHasBeenDeleted[scope.Scheduling](state)),
 
 		// get cluster
-		common.TaskContextCluster[scope.Scheduler](state, r.Client),
+		common.TaskContextCluster[scope.Scheduling](state, r.Client),
 		// return if cluster's status is not updated
 		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
 		// if it's paused just return
@@ -37,31 +37,31 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// get info from pd
 		// tasks.TaskContextInfoFromPD(state, r.PDClientManager),
-		task.IfBreak(common.CondObjectIsDeleting[scope.Scheduler](state),
+		task.IfBreak(common.CondObjectIsDeleting[scope.Scheduling](state),
 			tasks.TaskFinalizerDel(state, r.Client),
-			common.TaskInstanceConditionSynced[scope.Scheduler](state),
-			common.TaskInstanceConditionReady[scope.Scheduler](state),
-			common.TaskStatusPersister[scope.Scheduler](state, r.Client),
+			common.TaskInstanceConditionSynced[scope.Scheduling](state),
+			common.TaskInstanceConditionReady[scope.Scheduling](state),
+			common.TaskStatusPersister[scope.Scheduling](state, r.Client),
 		),
-		common.TaskFinalizerAdd[scope.Scheduler](state, r.Client),
+		common.TaskFinalizerAdd[scope.Scheduling](state, r.Client),
 
 		// get pod
-		common.TaskContextPod[scope.Scheduler](state, r.Client),
+		common.TaskContextPod[scope.Scheduling](state, r.Client),
 
 		task.IfBreak(
 			common.CondClusterIsSuspending(state),
 			common.TaskSuspendPod(state, r.Client),
-			common.TaskInstanceConditionSuspended[scope.Scheduler](state),
-			common.TaskInstanceConditionSynced[scope.Scheduler](state),
-			common.TaskInstanceConditionReady[scope.Scheduler](state),
-			common.TaskStatusPersister[scope.Scheduler](state, r.Client),
+			common.TaskInstanceConditionSuspended[scope.Scheduling](state),
+			common.TaskInstanceConditionSynced[scope.Scheduling](state),
+			common.TaskInstanceConditionReady[scope.Scheduling](state),
+			common.TaskStatusPersister[scope.Scheduling](state, r.Client),
 		),
 
 		tasks.TaskConfigMap(state, r.Client),
 		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifierFactory),
 		tasks.TaskPod(state, r.Client),
-		common.TaskInstanceConditionSynced[scope.Scheduler](state),
-		common.TaskInstanceConditionReady[scope.Scheduler](state),
+		common.TaskInstanceConditionSynced[scope.Scheduling](state),
+		common.TaskInstanceConditionReady[scope.Scheduling](state),
 		tasks.TaskStatus(state, r.Client),
 	)
 

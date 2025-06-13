@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package schedulergroup
+package schedulinggroup
 
 import (
 	"context"
@@ -33,7 +33,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/controllers/schedulergroup/tasks"
+	"github.com/pingcap/tidb-operator/pkg/controllers/schedulinggroup/tasks"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -45,12 +45,12 @@ type Reconciler struct {
 
 func Setup(mgr manager.Manager, c client.Client) error {
 	r := &Reconciler{
-		Logger: mgr.GetLogger().WithName("SchedulerGroup"),
+		Logger: mgr.GetLogger().WithName("SchedulingGroup"),
 		Client: c,
 	}
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.SchedulerGroup{}).
-		Owns(&v1alpha1.Scheduler{}).
+		For(&v1alpha1.SchedulingGroup{}).
+		Owns(&v1alpha1.Scheduling{}).
 		// Only care about the generation change (i.e. spec update)
 		Watches(&v1alpha1.Cluster{}, r.ClusterEventHandler(), builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		WithOptions(controller.Options{RateLimiter: k8s.RateLimiter}).
@@ -64,11 +64,11 @@ func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Obje
 		) {
 			cluster := event.ObjectNew.(*v1alpha1.Cluster)
 
-			var list v1alpha1.SchedulerGroupList
+			var list v1alpha1.SchedulingGroupList
 			if err := r.Client.List(ctx, &list, client.InNamespace(cluster.Namespace),
 				client.MatchingFields{"spec.cluster.name": cluster.Name}); err != nil {
 				if !errors.IsNotFound(err) {
-					r.Logger.Error(err, "cannot list all scheduler groups", "ns", cluster.Namespace, "cluster", cluster.Name)
+					r.Logger.Error(err, "cannot list all scheduling groups", "ns", cluster.Namespace, "cluster", cluster.Name)
 				}
 				return
 			}
@@ -87,7 +87,7 @@ func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Obje
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := r.Logger.WithValues("schedulergroup", req.NamespacedName)
+	logger := r.Logger.WithValues("schedulinggroup", req.NamespacedName)
 	reporter := task.NewTableTaskReporter()
 
 	startTime := time.Now()

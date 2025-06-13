@@ -47,18 +47,18 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 		pod := state.Pod()
 		if pod == nil {
 			if err := c.Apply(ctx, expected); err != nil {
-				return task.Fail().With("can't create pod of scheduler: %v", err)
+				return task.Fail().With("can't create pod of scheduling: %v", err)
 			}
 			state.SetPod(expected)
 			return task.Complete().With("pod is synced")
 		}
 
-		if !reloadable.CheckSchedulerPod(obj, pod) {
+		if !reloadable.CheckSchedulingPod(obj, pod) {
 			// TODO: transfer leader ?
 			logger.Info("will delete the pod to recreate", "name", pod.Name, "namespace", pod.Namespace, "UID", pod.UID)
 
 			if err := c.Delete(ctx, pod); err != nil {
-				return task.Fail().With("can't delete pod of scheduler: %v", err)
+				return task.Fail().With("can't delete pod of scheduling: %v", err)
 			}
 
 			state.DeletePod(pod)
@@ -68,7 +68,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 
 		logger.Info("will update the pod in place")
 		if err := c.Apply(ctx, expected); err != nil {
-			return task.Fail().With("can't apply pod of scheduler: %v", err)
+			return task.Fail().With("can't apply pod of scheduling: %v", err)
 		}
 		state.SetPod(expected)
 
@@ -76,14 +76,14 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func newPod(cluster *v1alpha1.Cluster, scheduler *v1alpha1.Scheduler) *corev1.Pod {
+func newPod(cluster *v1alpha1.Cluster, scheduling *v1alpha1.Scheduling) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: coreutil.PodName[scope.Scheduler](scheduler),
+						Name: coreutil.PodName[scope.Scheduling](scheduling),
 					},
 				},
 			},
@@ -93,18 +93,18 @@ func newPod(cluster *v1alpha1.Cluster, scheduler *v1alpha1.Scheduler) *corev1.Po
 	mounts := []corev1.VolumeMount{
 		{
 			Name:      v1alpha1.VolumeNameConfig,
-			MountPath: v1alpha1.DirPathConfigScheduler,
+			MountPath: v1alpha1.DirPathConfigScheduling,
 		},
 	}
 
-	for i := range scheduler.Spec.Volumes {
-		vol := &scheduler.Spec.Volumes[i]
+	for i := range scheduling.Spec.Volumes {
+		vol := &scheduling.Spec.Volumes[i]
 		name := VolumeName(vol.Name)
 		vols = append(vols, corev1.Volume{
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: PersistentVolumeClaimName(coreutil.PodName[scope.Scheduler](scheduler), vol.Name),
+					ClaimName: PersistentVolumeClaimName(coreutil.PodName[scope.Scheduling](scheduling), vol.Name),
 				},
 			},
 		})
@@ -119,61 +119,61 @@ func newPod(cluster *v1alpha1.Cluster, scheduler *v1alpha1.Scheduler) *corev1.Po
 			Name: v1alpha1.VolumeNameClusterTLS,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: coreutil.TLSClusterSecretName[scope.Scheduler](scheduler),
+					SecretName: coreutil.TLSClusterSecretName[scope.Scheduling](scheduling),
 				},
 			},
 		})
 		mounts = append(mounts, corev1.VolumeMount{
 			Name:      v1alpha1.VolumeNameClusterTLS,
-			MountPath: v1alpha1.DirPathClusterTLSScheduler,
+			MountPath: v1alpha1.DirPathClusterTLSScheduling,
 			ReadOnly:  true,
 		})
 	}
 
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   scheduler.Namespace,
-			Name:        coreutil.PodName[scope.Scheduler](scheduler),
-			Labels:      coreutil.PodLabels[scope.Scheduler](scheduler),
-			Annotations: maputil.Merge(k8s.AnnoProm(coreutil.SchedulerClientPort(scheduler), metricsPath)),
+			Namespace:   scheduling.Namespace,
+			Name:        coreutil.PodName[scope.Scheduling](scheduling),
+			Labels:      coreutil.PodLabels[scope.Scheduling](scheduling),
+			Annotations: maputil.Merge(k8s.AnnoProm(coreutil.SchedulingClientPort(scheduling), metricsPath)),
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(scheduler, v1alpha1.SchemeGroupVersion.WithKind("Scheduler")),
+				*metav1.NewControllerRef(scheduling, v1alpha1.SchemeGroupVersion.WithKind("Scheduling")),
 			},
 		},
 		Spec: corev1.PodSpec{
-			Hostname:     coreutil.PodName[scope.Scheduler](scheduler),
-			Subdomain:    scheduler.Spec.Subdomain,
-			NodeSelector: scheduler.Spec.Topology,
+			Hostname:     coreutil.PodName[scope.Scheduling](scheduling),
+			Subdomain:    scheduling.Spec.Subdomain,
+			NodeSelector: scheduling.Spec.Topology,
 			Containers: []corev1.Container{
 				{
-					Name:            v1alpha1.ContainerNameScheduler,
-					Image:           image.Scheduler.Image(scheduler.Spec.Image, scheduler.Spec.Version),
+					Name:            v1alpha1.ContainerNameScheduling,
+					Image:           image.Scheduling.Image(scheduling.Spec.Image, scheduling.Spec.Version),
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Command: []string{
 						"/pd-server",
 						"services",
 						"scheduling",
 						"--config",
-						filepath.Join(v1alpha1.DirPathConfigScheduler, v1alpha1.FileNameConfig),
+						filepath.Join(v1alpha1.DirPathConfigScheduling, v1alpha1.FileNameConfig),
 					},
 					Ports: []corev1.ContainerPort{
 						{
-							Name:          v1alpha1.SchedulerPortNameClient,
-							ContainerPort: coreutil.SchedulerClientPort(scheduler),
+							Name:          v1alpha1.SchedulingPortNameClient,
+							ContainerPort: coreutil.SchedulingClientPort(scheduling),
 						},
 					},
 					VolumeMounts: mounts,
-					Resources:    k8s.GetResourceRequirements(scheduler.Spec.Resources),
+					Resources:    k8s.GetResourceRequirements(scheduling.Spec.Resources),
 				},
 			},
 			Volumes: vols,
 		},
 	}
 
-	if scheduler.Spec.Overlay != nil {
-		overlay.OverlayPod(pod, scheduler.Spec.Overlay.Pod)
+	if scheduling.Spec.Overlay != nil {
+		overlay.OverlayPod(pod, scheduling.Spec.Overlay.Pod)
 	}
 
-	reloadable.MustEncodeLastSchedulerTemplate(scheduler, pod)
+	reloadable.MustEncodeLastSchedulingTemplate(scheduling, pod)
 	return pod
 }

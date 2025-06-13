@@ -25,9 +25,9 @@ import (
 type state struct {
 	key types.NamespacedName
 
-	cluster    *v1alpha1.Cluster
-	sg         *v1alpha1.SchedulerGroup
-	schedulers []*v1alpha1.Scheduler
+	cluster     *v1alpha1.Cluster
+	sg          *v1alpha1.SchedulingGroup
+	schedulings []*v1alpha1.Scheduling
 
 	updateRevision  string
 	currentRevision string
@@ -37,22 +37,22 @@ type state struct {
 }
 
 type State interface {
-	common.ContextObjectNewer[*v1alpha1.SchedulerGroup]
-	common.ContextClusterNewer[*v1alpha1.SchedulerGroup]
-	common.ContextSliceNewer[*v1alpha1.SchedulerGroup, *v1alpha1.Scheduler]
-	common.ObjectState[*v1alpha1.SchedulerGroup]
+	common.ContextObjectNewer[*v1alpha1.SchedulingGroup]
+	common.ContextClusterNewer[*v1alpha1.SchedulingGroup]
+	common.ContextSliceNewer[*v1alpha1.SchedulingGroup, *v1alpha1.Scheduling]
+	common.ObjectState[*v1alpha1.SchedulingGroup]
 
-	common.RevisionStateInitializer[*runtime.SchedulerGroup]
+	common.RevisionStateInitializer[*runtime.SchedulingGroup]
 
 	common.ClusterState
-	common.InstanceSliceState[*runtime.Scheduler]
-	common.SliceState[*v1alpha1.Scheduler]
+	common.InstanceSliceState[*runtime.Scheduling]
+	common.SliceState[*v1alpha1.Scheduling]
 	common.RevisionState
 
-	common.GroupState[*runtime.SchedulerGroup]
+	common.GroupState[*runtime.SchedulingGroup]
 
 	common.StatusUpdater
-	common.StatusPersister[*v1alpha1.SchedulerGroup]
+	common.StatusPersister[*v1alpha1.SchedulingGroup]
 }
 
 func NewState(key types.NamespacedName) State {
@@ -66,40 +66,40 @@ func (s *state) Key() types.NamespacedName {
 	return s.key
 }
 
-func (s *state) Object() *v1alpha1.SchedulerGroup {
+func (s *state) Object() *v1alpha1.SchedulingGroup {
 	return s.sg
 }
 
-func (s *state) SetObject(sg *v1alpha1.SchedulerGroup) {
+func (s *state) SetObject(sg *v1alpha1.SchedulingGroup) {
 	s.sg = sg
 }
 
-func (s *state) SchedulerGroup() *v1alpha1.SchedulerGroup { // Added SchedulerGroup() method
+func (s *state) SchedulingGroup() *v1alpha1.SchedulingGroup {
 	return s.sg
 }
 
-func (s *state) Group() *runtime.SchedulerGroup {
-	return runtime.FromSchedulerGroup(s.sg)
+func (s *state) Group() *runtime.SchedulingGroup {
+	return runtime.FromSchedulingGroup(s.sg)
 }
 
 func (s *state) Cluster() *v1alpha1.Cluster {
 	return s.cluster
 }
 
-func (s *state) SchedulerSlice() []*v1alpha1.Scheduler {
-	return s.schedulers
+func (s *state) SchedulingSlice() []*v1alpha1.Scheduling {
+	return s.schedulings
 }
 
-func (s *state) Slice() []*runtime.Scheduler {
-	return runtime.FromSchedulerSlice(s.schedulers)
+func (s *state) Slice() []*runtime.Scheduling {
+	return runtime.FromSchedulingSlice(s.schedulings)
 }
 
-func (s *state) InstanceSlice() []*v1alpha1.Scheduler {
-	return s.schedulers
+func (s *state) InstanceSlice() []*v1alpha1.Scheduling {
+	return s.schedulings
 }
 
-func (s *state) SetInstanceSlice(schedulers []*v1alpha1.Scheduler) {
-	s.schedulers = schedulers
+func (s *state) SetInstanceSlice(schedulings []*v1alpha1.Scheduling) {
+	s.schedulings = schedulings
 }
 
 func (s *state) SetCluster(cluster *v1alpha1.Cluster) {
@@ -114,8 +114,8 @@ func (s *state) SetStatusChanged() {
 	s.statusChanged = true
 }
 
-func (s *state) RevisionInitializer() common.RevisionInitializer[*runtime.SchedulerGroup] {
-	return common.NewRevision[*runtime.SchedulerGroup](
+func (s *state) RevisionInitializer() common.RevisionInitializer[*runtime.SchedulingGroup] {
+	return common.NewRevision[*runtime.SchedulingGroup](
 		common.RevisionSetterFunc(func(update, current string, collisionCount int32) {
 			s.updateRevision = update
 			s.currentRevision = current
@@ -127,7 +127,7 @@ func (s *state) RevisionInitializer() common.RevisionInitializer[*runtime.Schedu
 		WithCollisionCount(common.Lazy[*int32](func() *int32 {
 			return s.sg.Status.CollisionCount
 		})).
-		WithParent(common.Lazy[*runtime.SchedulerGroup](func() *runtime.SchedulerGroup {
+		WithParent(common.Lazy[*runtime.SchedulingGroup](func() *runtime.SchedulingGroup {
 			return s.Group()
 		})).
 		WithLabels(s.Labels()).
@@ -142,7 +142,7 @@ func (s *state) Labels() common.LabelsOption {
 	return common.Lazy[map[string]string](func() map[string]string {
 		return map[string]string{
 			v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-			v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentScheduler,
+			v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentScheduling,
 			v1alpha1.LabelKeyCluster:   s.cluster.Name,
 			v1alpha1.LabelKeyGroup:     s.sg.Name,
 		}

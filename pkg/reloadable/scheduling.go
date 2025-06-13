@@ -25,45 +25,45 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/features"
 )
 
-// CheckScheduler returns whether changes are reloadable. No change also means reloadable.
+// CheckScheduling returns whether changes are reloadable. No change also means reloadable.
 // We assume that only when the instance template is changed, the pod spec will change.
 // Instance copies the template spec from group directly,
 // so we can use the template of instance directly as the last template.
 // This function is used in the group controller.
-func CheckScheduler(group *v1alpha1.SchedulerGroup, instance *v1alpha1.Scheduler) bool {
+func CheckScheduling(group *v1alpha1.SchedulingGroup, instance *v1alpha1.Scheduling) bool {
 	groupTmpl := &group.Spec.Template
-	instanceTmpl := templateFromScheduler(instance)
+	instanceTmpl := templateFromScheduling(instance)
 
-	return equalSchedulerTemplate(groupTmpl, instanceTmpl) &&
-		features.Reloadable(meta.ComponentScheduler, group.Spec.Features, instance.Spec.Features)
+	return equalSchedulingTemplate(groupTmpl, instanceTmpl) &&
+		features.Reloadable(meta.ComponentScheduling, group.Spec.Features, instance.Spec.Features)
 }
 
-// CheckSchedulerPod returns whether changes are reloadable. No change also means reloadable.
+// CheckSchedulingPod returns whether changes are reloadable. No change also means reloadable.
 // Pod records the last template in annotation.
 // We use a same way to check whether changes are reloadable.
 // This function is used in the instance controller.
-func CheckSchedulerPod(instance *v1alpha1.Scheduler, pod *corev1.Pod) bool {
+func CheckSchedulingPod(instance *v1alpha1.Scheduling, pod *corev1.Pod) bool {
 	lastInstanceTemplate := pod.Annotations[v1alpha1.AnnoKeyLastInstanceTemplate]
 	lastFeatures := pod.Annotations[v1alpha1.AnnoKeyFeatures]
 
-	tmpl := &v1alpha1.SchedulerTemplate{}
+	tmpl := &v1alpha1.SchedulingTemplate{}
 	if err := json.Unmarshal([]byte(lastInstanceTemplate), tmpl); err != nil {
 		// last template is not found or unexpectedly changed
 		return true
 	}
 
-	instanceTmpl := templateFromScheduler(instance)
+	instanceTmpl := templateFromScheduling(instance)
 
-	return equalSchedulerTemplate(instanceTmpl, tmpl) &&
-		features.Reloadable(meta.ComponentScheduler, instance.Spec.Features, decodeFeatures(lastFeatures))
+	return equalSchedulingTemplate(instanceTmpl, tmpl) &&
+		features.Reloadable(meta.ComponentScheduling, instance.Spec.Features, decodeFeatures(lastFeatures))
 }
 
-func EncodeLastSchedulerTemplate(instance *v1alpha1.Scheduler, pod *corev1.Pod) error {
+func EncodeLastSchedulingTemplate(instance *v1alpha1.Scheduling, pod *corev1.Pod) error {
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
 	}
 
-	instanceTmpl := templateFromScheduler(instance)
+	instanceTmpl := templateFromScheduling(instance)
 
 	data, err := json.Marshal(instanceTmpl)
 	if err != nil {
@@ -75,26 +75,26 @@ func EncodeLastSchedulerTemplate(instance *v1alpha1.Scheduler, pod *corev1.Pod) 
 	return nil
 }
 
-func MustEncodeLastSchedulerTemplate(instance *v1alpha1.Scheduler, pod *corev1.Pod) {
-	if err := EncodeLastSchedulerTemplate(instance, pod); err != nil {
-		panic("cannot encode scheduler template: " + err.Error())
+func MustEncodeLastSchedulingTemplate(instance *v1alpha1.Scheduling, pod *corev1.Pod) {
+	if err := EncodeLastSchedulingTemplate(instance, pod); err != nil {
+		panic("cannot encode scheduling template: " + err.Error())
 	}
 }
 
 // TODO: ignore inherited labels and annotations
-func templateFromScheduler(scheduler *v1alpha1.Scheduler) *v1alpha1.SchedulerTemplate {
-	return &v1alpha1.SchedulerTemplate{
+func templateFromScheduling(scheduling *v1alpha1.Scheduling) *v1alpha1.SchedulingTemplate {
+	return &v1alpha1.SchedulingTemplate{
 		ObjectMeta: v1alpha1.ObjectMeta{
-			Labels:      scheduler.Labels,
-			Annotations: scheduler.Annotations,
+			Labels:      scheduling.Labels,
+			Annotations: scheduling.Annotations,
 		},
-		Spec: scheduler.Spec.SchedulerTemplateSpec,
+		Spec: scheduling.Spec.SchedulingTemplateSpec,
 	}
 }
 
-// convertSchedulerTemplate will ignore some fields
+// convertSchedulingTemplate will ignore some fields
 // TODO: set default for some empty fields
-func convertSchedulerTemplate(tmpl *v1alpha1.SchedulerTemplate) *v1alpha1.SchedulerTemplate {
+func convertSchedulingTemplate(tmpl *v1alpha1.SchedulingTemplate) *v1alpha1.SchedulingTemplate {
 	newTmpl := tmpl.DeepCopy()
 
 	newTmpl.Labels = convertLabels(newTmpl.Labels)
@@ -105,9 +105,9 @@ func convertSchedulerTemplate(tmpl *v1alpha1.SchedulerTemplate) *v1alpha1.Schedu
 	return newTmpl
 }
 
-func equalSchedulerTemplate(p, c *v1alpha1.SchedulerTemplate) bool {
-	p = convertSchedulerTemplate(p)
-	c = convertSchedulerTemplate(c)
+func equalSchedulingTemplate(p, c *v1alpha1.SchedulingTemplate) bool {
+	p = convertSchedulingTemplate(p)
+	c = convertSchedulingTemplate(c)
 	// not equal only when current strategy is Restart and config is changed
 	switch c.Spec.UpdateStrategy.Config {
 	case v1alpha1.ConfigUpdateStrategyRestart:

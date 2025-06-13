@@ -28,7 +28,7 @@ import (
 
 func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
-		wait, err := EnsureSubResourcesDeleted(ctx, c, state.Object()) // state.Object() will be *v1alpha1.Scheduler
+		wait, err := EnsureSubResourcesDeleted(ctx, c, state.Object()) // state.Object() will be *v1alpha1.Scheduling
 		if err != nil {
 			return task.Fail().With("cannot delete subresources: %v", err)
 		}
@@ -45,16 +45,16 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func EnsureSubResourcesDeleted(ctx context.Context, c client.Client, scheduler *v1alpha1.Scheduler) (wait bool, _ error) {
-	wait1, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromScheduler(scheduler), &corev1.PodList{})
+func EnsureSubResourcesDeleted(ctx context.Context, c client.Client, scheduling *v1alpha1.Scheduling) (wait bool, _ error) {
+	wait1, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromScheduling(scheduling), &corev1.PodList{})
 	if err != nil {
 		return false, err
 	}
-	wait2, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromScheduler(scheduler), &corev1.ConfigMapList{})
+	wait2, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromScheduling(scheduling), &corev1.ConfigMapList{})
 	if err != nil {
 		return false, err
 	}
-	wait3, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromScheduler(scheduler), &corev1.PersistentVolumeClaimList{})
+	wait3, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromScheduling(scheduling), &corev1.PersistentVolumeClaimList{})
 	if err != nil {
 		return false, err
 	}

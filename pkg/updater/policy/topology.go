@@ -24,8 +24,8 @@ import (
 )
 
 type topologyPolicy[R runtime.Instance] struct {
-	all     topology.Scheduler
-	updated topology.Scheduler
+	all     topology.Scheduling
+	updated topology.Scheduling
 
 	rev string
 }
