@@ -15,8 +15,9 @@
 package v1alpha1
 
 import (
-	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 const (
@@ -169,8 +170,10 @@ type TiProxyServer struct {
 	// Labels defines the server labels of the TiProxy.
 	// TiDB Operator will ignore `labels` in TiProxy's config file and use this field instead.
 	// Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+	//  - host
+	//  - region
 	//  - zone
-	// +kubebuilder:validation:XValidation:rule="!('zone' in self)",message="labels cannot contain 'zone', it's managed by TiDB Operator"
+	// +kubebuilder:validation:XValidation:rule="!('host' in self) && !('region' in self) && !('zone' in self)",message="labels cannot contain 'host', 'region', or 'zone' keys"
 	Labels map[string]string `json:"labels,omitempty"`
 }
 

@@ -22,7 +22,6 @@ import (
 
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/tiproxyapi/v1"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -38,7 +37,6 @@ type ReconcileContext struct {
 	State
 
 	TiProxyClient tiproxyapi.TiProxyClient
-	PDClient      pdapi.PDClient
 }
 
 func TaskContextInfoFromPDAndTiProxy(state *ReconcileContext, c client.Client, cm pdm.PDClientManager) task.Task {
@@ -69,9 +67,9 @@ func TaskContextInfoFromPDAndTiProxy(state *ReconcileContext, c client.Client, c
 
 		pdc, ok := cm.Get(pdm.PrimaryKey(ck.Namespace, ck.Name))
 		if !ok {
-			return task.Complete().With("pd client is not registered")
+			return task.Fail().With("pd client is not registered")
 		}
-		state.PDClient = pdc.Underlay()
+		state.SetPDClient(pdc.Underlay())
 
 		return task.Complete().With("get info from tiproxy")
 	})

@@ -41,6 +41,7 @@ type state struct {
 	healthy bool
 
 	stateutil.IFeatureGates
+	stateutil.IPDClient
 }
 
 type State interface {
@@ -61,7 +62,10 @@ type State interface {
 	common.HealthyState
 	common.HealthyStateUpdater
 
+	common.ServerLabelsState
+
 	stateutil.IFeatureGates
+	stateutil.IPDClient
 }
 
 func NewState(key types.NamespacedName) State {
@@ -134,4 +138,8 @@ func (s *state) IsHealthy() bool {
 
 func (s *state) SetHealthy() {
 	s.healthy = true
+}
+
+func (s *state) GetServerLabels() map[string]string {
+	return s.tiproxy.Spec.Server.Labels
 }

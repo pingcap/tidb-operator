@@ -20,6 +20,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
@@ -233,4 +234,34 @@ func newFakeObjectState[
 	return &fakeObjectState[F]{
 		obj: f,
 	}
+}
+
+type fakeServerLabelsState struct {
+	healthy      bool
+	pod          *corev1.Pod
+	serverLabels map[string]string
+	pdClient     pdapi.PDClient
+}
+
+func (s *fakeServerLabelsState) GetServerLabels() map[string]string {
+	return s.serverLabels
+}
+func (s *fakeServerLabelsState) IsHealthy() bool {
+	return s.healthy
+}
+
+func (s *fakeServerLabelsState) Pod() *corev1.Pod {
+	return s.pod
+}
+
+func (s *fakeServerLabelsState) IsPodTerminating() bool {
+	return s.pod != nil && s.pod.DeletionTimestamp != nil
+}
+
+func (s *fakeServerLabelsState) GetPDClient() pdapi.PDClient {
+	return s.pdClient
+}
+
+func (s *fakeServerLabelsState) SetPDClient(pdClient pdapi.PDClient) {
+	s.pdClient = pdClient
 }
