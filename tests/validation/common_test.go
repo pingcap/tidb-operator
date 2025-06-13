@@ -368,3 +368,41 @@ func FeatureGates() []Case {
 
 	return cases
 }
+
+func ServerLabels() []Case {
+	errMsg := "spec.server.labels: Invalid value: \"object\": labels cannot contain 'host', 'region', or 'zone' keys"
+
+	return []Case{
+		{
+			desc:     "set host label",
+			isCreate: true,
+			current: map[string]any{
+				"host": "foo",
+			},
+			wantErrs: []string{errMsg},
+		},
+		{
+			desc:     "set region label",
+			isCreate: true,
+			current: map[string]any{
+				"region": "foo",
+			},
+			wantErrs: []string{errMsg},
+		},
+		{
+			desc:     "set zone label",
+			isCreate: true,
+			current: map[string]any{
+				"zone": "foo",
+			},
+			wantErrs: []string{errMsg},
+		},
+		{
+			desc:     "set custom label",
+			isCreate: true,
+			current: map[string]any{
+				"foo": "bar",
+			},
+		},
+	}
+}

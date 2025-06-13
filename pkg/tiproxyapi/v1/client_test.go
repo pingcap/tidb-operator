@@ -43,17 +43,71 @@ func TestTiProxyClient_IsHealthy(t *testing.T) {
 }
 
 func TestTiProxyClient_SetLabels(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/api/admin/config/", r.URL.Path)
-		assert.Equal(t, http.MethodPut, r.Method)
-		body, err := io.ReadAll(r.Body)
-		assert.NoError(t, err)
-		assert.Equal(t, `labels = {region = "us-west-1"}`, string(body))
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
+	tests := []struct {
+		name           string
+		labels         map[string]string
+		expectedBody   string
+		serverResponse int
+		expectError    bool
+	}{
+		{
+			name:   "single label",
+			labels: map[string]string{"region": "us-west-1"},
+			expectedBody: `[labels]
+  region = "us-west-1"
+`,
+			serverResponse: http.StatusOK,
+			expectError:    false,
+		},
+		{
+			name:   "multiple labels",
+			labels: map[string]string{"region": "us-west-1", "env": "prod", "version": "v1.0.0"},
+			expectedBody: `[labels]
+  env = "prod"
+  region = "us-west-1"
+  version = "v1.0.0"
+`,
+			serverResponse: http.StatusOK,
+			expectError:    false,
+		},
+		{
+			name:   "empty labels",
+			labels: map[string]string{},
+			expectedBody: `[labels]
+`,
+			serverResponse: http.StatusOK,
+			expectError:    false,
+		},
+		{
+			name:   "server error",
+			labels: map[string]string{"region": "us-west-1"},
+			expectedBody: `[labels]
+  region = "us-west-1"
+`,
+			serverResponse: http.StatusInternalServerError,
+			expectError:    true,
+		},
+	}
 
-	client := NewTiProxyClient(server.URL, 5*time.Second, nil)
-	err := client.SetLabels(context.Background(), map[string]string{"region": "us-west-1"})
-	require.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "/api/admin/config/", r.URL.Path)
+				assert.Equal(t, http.MethodPut, r.Method)
+				body, err := io.ReadAll(r.Body)
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedBody, string(body))
+				w.WriteHeader(tt.serverResponse)
+			}))
+			defer server.Close()
+
+			client := NewTiProxyClient(server.URL, 5*time.Second, nil)
+			err := client.SetLabels(context.Background(), tt.labels)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
