@@ -23,6 +23,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/BurntSushi/toml"
+
 	httputil "github.com/pingcap/tidb-operator/pkg/utils/http"
 )
 
@@ -76,19 +78,16 @@ func (c *tiproxyClient) IsHealthy(ctx context.Context) (bool, error) {
 }
 
 func (c *tiproxyClient) SetLabels(ctx context.Context, labels map[string]string) error {
-	var buf bytes.Buffer
-	buf.WriteString("labels = {")
-	first := true
-	for k, v := range labels {
-		if !first {
-			buf.WriteString(", ")
-		}
-		buf.WriteString(fmt.Sprintf("%s = \"%s\"", k, v))
-		first = false
+	type labelConfig struct {
+		Labels map[string]string `toml:"labels"`
 	}
-	buf.WriteString("}")
+	cfg := labelConfig{Labels: labels}
+	var buffer bytes.Buffer
+	if err := toml.NewEncoder(&buffer).Encode(cfg); err != nil {
+		return fmt.Errorf("encode labels to toml failed, error: %w", err)
+	}
 
 	apiURL := fmt.Sprintf("%s/%s", c.url, configPath)
-	_, err := httputil.PutBodyOK(ctx, c.httpClient, apiURL, &buf)
+	_, err := httputil.PutBodyOK(ctx, c.httpClient, apiURL, &buffer)
 	return err
 }

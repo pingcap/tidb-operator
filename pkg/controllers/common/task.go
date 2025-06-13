@@ -29,9 +29,21 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apicall"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	stateutil "github.com/pingcap/tidb-operator/pkg/state"
+	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
+	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+)
+
+var (
+	// topologyZoneLabels defines the node labels that can be used as DC label name.
+	topologyZoneLabels = []string{"zone", corev1.LabelTopologyZone}
+
+	// dcLabel defines the DC label name.
+	dcLabel = "zone"
 )
 
 func taskContextResourceSlice[T any, PT Object[T]](
@@ -225,4 +237,104 @@ func TaskContextPod[
 		state.SetPod(pod)
 		return task.Complete().With("pod is set")
 	})
+}
+
+type ServerLabelsUpdater[T client.Object] interface {
+	PodState
+	HealthyState
+	ServerLabelsState
+	stateutil.IPDClient
+}
+
+func TaskServerLabels[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](state ServerLabelsUpdater[F], c client.Client, setLabelsFunc func(context.Context, map[string]string) error) task.Task {
+	return task.NameTaskFunc("ServerLabels", func(ctx context.Context) task.Result {
+		if setLabelsFunc == nil {
+			return task.Fail().With("setLabelsFunc is nil")
+		}
+
+		if !state.IsHealthy() || state.Pod() == nil || state.IsPodTerminating() {
+			return task.Complete().With("skip sync server labels as the instance is not healthy")
+		}
+
+		pod := state.Pod()
+		if pod == nil {
+			return task.Complete().With("pod is nil")
+		}
+
+		// TODO: too many API calls to PD?
+		pdCfg, err := getPDConfig(ctx, state.GetPDClient())
+		if err != nil {
+			return task.Fail().With(err.Error())
+		}
+
+		nodeLabels, err := getNodeLabels(ctx, c, pod, pdCfg.Replication.LocationLabels)
+		if err != nil {
+			return task.Fail().With(err.Error())
+		}
+
+		serverLabels := maputil.Merge(state.GetServerLabels(), nodeLabels)
+		if len(serverLabels) == 0 {
+			return task.Complete().With("no server labels to sync")
+		}
+
+		if zoneLabel := findZoneLabel(pdCfg); zoneLabel != "" {
+			serverLabels[dcLabel] = serverLabels[zoneLabel]
+		}
+
+		// TODO: is there any way to avoid unnecessary update?
+		if err := setLabelsFunc(ctx, serverLabels); err != nil {
+			return task.Fail().With("failed to set server labels %v: %s", serverLabels, err)
+		}
+
+		return task.Complete().With("server labels synced")
+	})
+}
+
+// getNodeLabels retrieves node labels for the given pod
+func getNodeLabels(ctx context.Context, c client.Client, pod *corev1.Pod, locationLabels []string) (map[string]string, error) {
+	nodeName := pod.Spec.NodeName
+	if nodeName == "" {
+		return nil, fmt.Errorf("pod %s/%s has not been scheduled", pod.Namespace, pod.Name)
+	}
+
+	var node corev1.Node
+	if err := c.Get(ctx, client.ObjectKey{Name: nodeName}, &node); err != nil {
+		return nil, fmt.Errorf("failed to get node %s: %w", nodeName, err)
+	}
+
+	return k8s.GetNodeLabelsForKeys(&node, locationLabels), nil
+}
+
+// getPDConfig retrieves PD configuration
+func getPDConfig(ctx context.Context, pdClient pdapi.PDClient) (*pdapi.PDConfigFromAPI, error) {
+	if pdClient == nil {
+		return nil, fmt.Errorf("pdClient is nil")
+	}
+
+	pdCfg, err := pdClient.GetConfig(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pd config: %w", err)
+	}
+
+	if pdCfg == nil || pdCfg.Replication == nil {
+		return nil, fmt.Errorf("invalid pd config: replication config is nil")
+	}
+
+	return pdCfg, nil
+}
+
+// findZoneLabel finds the zone label from PD config
+func findZoneLabel(pdCfg *pdapi.PDConfigFromAPI) string {
+	for _, zl := range topologyZoneLabels {
+		for _, ll := range pdCfg.Replication.LocationLabels {
+			if ll == zl {
+				return zl
+			}
+		}
+	}
+	return ""
 }

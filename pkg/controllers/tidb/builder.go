@@ -15,6 +15,8 @@
 package tidb
 
 import (
+	"context"
+
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tidb/tasks"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
@@ -60,7 +62,9 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskConfigMap(state, r.Client),
 		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifierFactory),
 		tasks.TaskPod(state, r.Client),
-		tasks.TaskServerLabels(state, r.Client),
+		common.TaskServerLabels[scope.TiDB](state, r.Client, func(ctx context.Context, labels map[string]string) error {
+			return state.TiDBClient.SetServerLabels(ctx, labels)
+		}),
 		common.TaskInstanceConditionSynced[scope.TiDB](state),
 		common.TaskInstanceConditionReady[scope.TiDB](state),
 		tasks.TaskStatus(state, r.Client),

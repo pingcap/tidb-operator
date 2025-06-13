@@ -26,7 +26,7 @@ func TestTiProxy(t *testing.T) {
 	cases := []Case{}
 	cases = append(cases, transferTiProxyCases(t, Topology(), "spec", "topology")...)
 	cases = append(cases, transferTiProxyCases(t, ClusterReference(), "spec", "cluster")...)
-	cases = append(cases, transferTiProxyCases(t, tiproxyServerLabels(), "spec", "server", "labels")...)
+	cases = append(cases, transferTiProxyCases(t, ServerLabels(), "spec", "server", "labels")...)
 
 	Validate(t, "crd/core.pingcap.com_tiproxies.yaml", cases)
 }
@@ -80,26 +80,4 @@ func transferTiProxyCases(t *testing.T, cases []Case, fields ...string) []Case {
 	}
 
 	return cases
-}
-
-func tiproxyServerLabels() []Case {
-	errMsg := "spec.server.labels: Invalid value: \"object\": labels cannot contain 'zone', it's managed by TiDB Operator"
-
-	return []Case{
-		{
-			desc:     "set zone label",
-			isCreate: true,
-			current: map[string]any{
-				"zone": "foo",
-			},
-			wantErrs: []string{errMsg},
-		},
-		{
-			desc:     "set custom label",
-			isCreate: true,
-			current: map[string]any{
-				"foo": "bar",
-			},
-		},
-	}
 }

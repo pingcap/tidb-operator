@@ -247,3 +247,7 @@ type HealthyState interface {
 type HealthyStateUpdater interface {
 	SetHealthy()
 }
+
+type ServerLabelsState interface {
+	GetServerLabels() map[string]string
+}
