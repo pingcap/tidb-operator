@@ -228,8 +228,7 @@ func (rm *restoreManager) makeRestoreJob(ctx context.Context, restore *v1alpha1.
 
 	switch restore.Spec.Mode {
 	case v1alpha1.RestoreModePiTR:
-		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.RestoreModePiTR))
-		args = append(args, fmt.Sprintf("--pitrRestoredTs=%s", restore.Spec.PitrRestoredTs))
+		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.RestoreModePiTR), fmt.Sprintf("--pitrRestoredTs=%s", restore.Spec.PitrRestoredTs))
 	default:
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.RestoreModeSnapshot))
 	}

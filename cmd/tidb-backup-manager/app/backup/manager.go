@@ -24,16 +24,14 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/dustin/go-humanize"
 	"github.com/pingcap/errors"
-
-	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	"github.com/pingcap/tidb-operator/cmd/tidb-backup-manager/app/clean"
-	"github.com/pingcap/tidb-operator/cmd/tidb-backup-manager/app/util"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
+	"github.com/pingcap/tidb-operator/cmd/tidb-backup-manager/app/clean"
+	"github.com/pingcap/tidb-operator/cmd/tidb-backup-manager/app/util"
 	backupMgr "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/backup"
 )
 
@@ -52,7 +50,7 @@ type Manager struct {
 func NewManager(
 	cli client.Client,
 	statusUpdater backupMgr.BackupConditionUpdaterInterface,
-	backupOpts Options,
+	backupOpts Options, //nolint:gocritic
 ) *Manager {
 	return &Manager{
 		cli,
@@ -190,6 +188,7 @@ func (bm *Manager) performBackup(ctx context.Context, backup *v1alpha1.Backup) e
 
 	var updateStatus *backupMgr.BackupUpdateStatus
 	completeCondition := v1alpha1.BackupComplete
+	//nolint:gocritic
 	switch bm.Mode {
 	default:
 		backupMeta, err := util.GetBRMetaData(ctx, backup.Spec.StorageProvider)

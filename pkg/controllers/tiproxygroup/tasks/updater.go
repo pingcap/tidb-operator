@@ -53,6 +53,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 
 		var topos []v1alpha1.ScheduleTopology
 		for _, p := range proxyg.Spec.SchedulePolicies {
+			//nolint:gocritic // may add more types in the future
 			switch p.Type {
 			case v1alpha1.SchedulePolicyTypeEvenlySpread:
 				topos = p.EvenlySpread.Topologies
@@ -109,7 +110,7 @@ const (
 	suffixLen = 6
 )
 
-func precheckInstances(proxyg *v1alpha1.TiProxyGroup, proxies []*v1alpha1.TiProxy, updateRevision string) (needUpdate bool, needRestart bool) {
+func precheckInstances(proxyg *v1alpha1.TiProxyGroup, proxies []*v1alpha1.TiProxy, updateRevision string) (needUpdate, needRestart bool) {
 	if len(proxies) != int(coreutil.Replicas[scope.TiProxyGroup](proxyg)) {
 		needUpdate = true
 	}

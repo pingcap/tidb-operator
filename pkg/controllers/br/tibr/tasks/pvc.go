@@ -21,10 +21,10 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/pkg/client"
 	t "github.com/pingcap/tidb-operator/pkg/utils/task/v3"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func condPVCDeclared(rtx *ReconcileContext) t.Condition {
@@ -48,12 +48,13 @@ func taskPatchPVCWithOwnerReferences(rtx *ReconcileContext) t.Task {
 			return t.Retry(2 * time.Second).With("Not all PVCs created yet, retrying...")
 		}
 		// check if owner references existed, patch owner references if not exist
-		for _, it := range pvcs.Items {
+		for i := range pvcs.Items {
+			it := &pvcs.Items[i]
 			if it.GetOwnerReferences() == nil || len(it.GetOwnerReferences()) == 0 {
 				it.SetOwnerReferences([]v1.OwnerReference{
 					*v1.NewControllerRef(rtx.StatefulSet(), appsv1.SchemeGroupVersion.WithKind("StatefulSet")),
 				})
-				err = rtx.Client().Update(ctx, &it)
+				err = rtx.Client().Update(ctx, it)
 				if err != nil {
 					return t.Fail().With("failed to patch PVC %s with owner references: %s", it.Name, err.Error())
 				}

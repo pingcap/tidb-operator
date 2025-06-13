@@ -43,7 +43,7 @@ var (
 	splitRegionCount int
 )
 
-//nolint:mnd // default values
+//nolint:mnd,errcheck
 func main() {
 	flag.StringVar(&action, "action", "ping", "ping, workload, import")
 	flag.StringVar(&host, "host", "", "host")

@@ -7,13 +7,12 @@ linters:
     - copyloopvar
     - gocheckcompilerdirectives
     - goconst
-    # - gochecknoinits
-    # - gocritic // TODO(ideascf): recover it
+    - gocritic
     - gocyclo
     - godox
     - mnd
     - goprintffuncname
-    # - gosec // TODO: uncomment this
+    - gosec
     - govet
     - ineffassign
     # - lll  # TODO(ideascf): recover it
@@ -24,13 +23,12 @@ linters:
     - revive
     # - stylecheck # TODO(ideascf): recover it
     - staticcheck
-    # - testifylint  // TODO: uncomment this
+    - testifylint
     - unconvert
     # - unparam  # TODO(ideascf): recover it
     - unused
     - whitespace
-  disable:
-    - errcheck # TODO: remove this
+    - errcheck
   exclusions:
     rules:
       - path: (.+)_test\.go
@@ -45,6 +43,16 @@ linters:
       - "tests/e2e/.*"
       - "third_party/.*"
   settings:
+    gosec:
+      excludes:
+        - G204 # Audit use of command execution
+        - G304 # File path provided as taint input
+    staticcheck:
+      checks:
+        - all
+        - "-SA1019" # TODO: remove this
+        - "-ST1003" # TODO: remove this
+        - "-ST1000"
     dupl:
       threshold: 100
     funlen:
@@ -112,9 +120,6 @@ linters:
         # - name: indent-error-flow
         # - name: unused-parameter
         # - name: unused-receiver
-    staticcheck:
-      dot-import-whitelist:
-        - "github.com/onsi/ginkgo/v2"
-        - "github.com/onsi/gomega"
+
 run:
   timeout: 15m

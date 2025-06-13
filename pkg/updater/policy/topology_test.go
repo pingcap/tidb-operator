@@ -204,7 +204,7 @@ func TestTopologyPolicy(t *testing.T) {
 	}
 }
 
-func fakePD(name string, rev string, zone string) *v1alpha1.PD {
+func fakePD(name, rev, zone string) *v1alpha1.PD {
 	pd := fake.FakeObj(name, fake.Label[v1alpha1.PD](v1alpha1.LabelKeyInstanceRevisionHash, rev))
 	if zone != "" {
 		pd.Spec.Topology = v1alpha1.Topology{

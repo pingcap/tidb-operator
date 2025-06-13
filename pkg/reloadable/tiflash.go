@@ -113,11 +113,9 @@ func equalTiFlashTemplate(p, c *v1alpha1.TiFlashTemplate) bool {
 	p = convertTiFlashTemplate(p)
 	c = convertTiFlashTemplate(c)
 	// not equal only when current strategy is Restart and config is changed
-	switch c.Spec.UpdateStrategy.Config {
-	case v1alpha1.ConfigUpdateStrategyRestart:
-		if p.Spec.Config != c.Spec.Config || p.Spec.ProxyConfig != c.Spec.ProxyConfig {
-			return false
-		}
+	if c.Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart &&
+		(p.Spec.Config != c.Spec.Config || p.Spec.ProxyConfig != c.Spec.ProxyConfig) {
+		return false
 	}
 
 	// ignore these fields

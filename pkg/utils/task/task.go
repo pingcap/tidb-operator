@@ -179,6 +179,7 @@ type taskRunner[T any] struct {
 	tasks    []Task[T]
 }
 
+// NewTaskRunner creates a TaskRunner with the given reporter and tasks.
 // There are five status of tasks
 // - Complete: means this task is complete and all is expected
 // - Failed: means an err occurred

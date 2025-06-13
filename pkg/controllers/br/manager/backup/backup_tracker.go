@@ -226,7 +226,7 @@ func (bt *backupTracker) doRefreshLogBackupCheckpointTs(ctx context.Context, bac
 		logger.Error(err, "get log backup pd etcd client error", "namespace", ns, "backup", name)
 		return
 	}
-	defer etcdCli.Close()
+	defer etcdCli.Close() //nolint:errcheck
 
 	key := path.Join(streamKeyPrefix, taskCheckpointPath, name)
 	logger.Info("log backup checkpointTS key", "namespace", ns, "backup", name, "key", key)

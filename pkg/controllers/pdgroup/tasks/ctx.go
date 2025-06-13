@@ -34,6 +34,7 @@ type ReconcileContext struct {
 	IsBootstrapped bool
 }
 
+// Member is a member of the PD.
 // TODO: move to pdapi
 type Member struct {
 	ID   string

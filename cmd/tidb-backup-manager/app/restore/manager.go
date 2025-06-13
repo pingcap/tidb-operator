@@ -25,7 +25,6 @@ import (
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/klog/v2"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
@@ -43,7 +42,7 @@ type Manager struct {
 func NewManager(
 	cli client.Client,
 	statusUpdater restoreMgr.RestoreConditionUpdaterInterface,
-	restoreOpts Options,
+	restoreOpts Options, //nolint:gocritic
 ) *Manager {
 	return &Manager{
 		cli,
@@ -118,6 +117,7 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 		restoreType v1alpha1.RestoreConditionType
 		allFinished bool
 	)
+	//nolint:gocritic
 	switch rm.Mode {
 	default:
 		ts, err := util.GetCommitTsFromBRMetaData(ctx, restore.Spec.StorageProvider)

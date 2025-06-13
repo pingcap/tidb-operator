@@ -648,6 +648,7 @@ func waitOldBackupJobDone(ctx context.Context, ns, name, backupJobName string, b
 	}
 	if finished {
 		logger.Info("backup job has complete or failed, will delete job", "namespace", ns, "backup", name, "job", backupJobName)
+		//nolint:gocritic
 		if err := bm.cli.Delete(ctx, oldJob, rtClient.PropagationPolicy(metav1.DeletePropagationForeground)); client.IgnoreNotFound(err) != nil {
 			return fmt.Errorf("backup %s/%s delete job %s failed, err: %w", ns, name, backupJobName, err)
 		}

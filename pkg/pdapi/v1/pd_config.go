@@ -84,7 +84,7 @@ type PDReplicationConfig struct {
 	EnablePlacementRules *bool `toml:"enable-placement-rules" json:"enable-placement-rules,string,omitempty"`
 }
 
-// ScheduleConfig is the schedule configuration.
+// PDScheduleConfig is the schedule configuration.
 // +k8s:openapi-gen=true
 type PDScheduleConfig struct {
 	// If the snapshot count of one store is greater than this value,
@@ -220,6 +220,7 @@ type PDSchedulerConfig struct {
 	Disable *bool `toml:"disable,omitempty" json:"disable,omitempty"`
 }
 
+// FileLogConfig is the configuration for file log.
 // +k8s:openapi-gen=true
 type FileLogConfig struct {
 	// Log filename, leave empty to disable file log.
