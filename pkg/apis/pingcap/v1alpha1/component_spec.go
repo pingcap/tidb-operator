@@ -456,7 +456,14 @@ func (a *componentAccessorImpl) TopologySpreadConstraints() []corev1.TopologySpr
 			componentLabelVal = v
 		}
 		l[label.ComponentLabelKey] = componentLabelVal
-		instanceLabelVal := a.name
+
+		// DM Discovery component has a special naming convention: "-dm" suffix is added to the instance label
+		var instanceLabelVal string
+		if a.component == DMDiscoveryMemberType {
+			instanceLabelVal = a.name + "-dm"
+		} else {
+			instanceLabelVal = a.name
+		}
 		if v, ok := tsc.MatchLabels[label.InstanceLabelKey]; ok {
 			instanceLabelVal = v
 		}
