@@ -17,8 +17,8 @@ package maputil
 import "maps"
 
 // Merge merges all maps to a new one.
-func Merge[K comparable, V any](maps ...map[K]V) map[K]V {
-	return MergeTo(nil, maps...)
+func Merge[K comparable, V any](ms ...map[K]V) map[K]V {
+	return MergeTo(nil, ms...)
 }
 
 // MergeTo merges all maps to the original one.

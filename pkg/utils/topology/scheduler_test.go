@@ -376,7 +376,7 @@ func TestSchedulerAdd(t *testing.T) {
 				if c.expectedNextAdds != nil {
 					nextAdds, ok := c.expectedNextAdds[i]
 					if ok {
-						assert.Equal(tt, len(nextAdds), len(topos))
+						assert.Len(tt, topos, len(nextAdds))
 						for i, topo := range nextAdds {
 							assert.Equal(tt, topos[i], c.st[topo].Topology)
 						}

@@ -49,7 +49,7 @@ func NewScopeGenerator(outputFilename, kind, targetPackage string) generator.Gen
 // Filter method.
 func (g *scopeGenerator) Filter(_ *generator.Context, t *types.Type) bool {
 	name := GroupToInstanceName(t)
-	return strings.ToLower(name) == g.kind
+	return strings.EqualFold(name, g.kind)
 }
 
 func (g *scopeGenerator) Namers(*generator.Context) namer.NameSystems {

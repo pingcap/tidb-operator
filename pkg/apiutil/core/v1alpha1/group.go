@@ -52,6 +52,8 @@ func Replicas[
 }
 
 // TODO: simplify it by a condition
+//
+//nolint:staticcheck
 func IsGroupHealthyAndUpToDate[
 	S scope.Group[F, T],
 	F client.Object,

@@ -80,13 +80,11 @@ func (bm *Manager) performCleanBackup(ctx context.Context, backup *v1alpha1.Back
 
 	var errs []error
 	var err error
-	{
-		if backup.Spec.BR != nil {
-			err = bm.CleanBRRemoteBackupData(ctx, backup)
-		} else {
-			opts := util.GetOptions(backup.Spec.StorageProvider)
-			err = bm.cleanRemoteBackupData(ctx, backup.Status.BackupPath, opts)
-		}
+	if backup.Spec.BR != nil {
+		err = bm.CleanBRRemoteBackupData(ctx, backup)
+	} else {
+		opts := util.GetOptions(backup.Spec.StorageProvider)
+		err = bm.cleanRemoteBackupData(ctx, backup.Status.BackupPath, opts)
 	}
 
 	if err != nil {

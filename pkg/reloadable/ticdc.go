@@ -114,11 +114,8 @@ func equalTiCDCTemplate(p, c *v1alpha1.TiCDCTemplate) bool {
 	p = convertTiCDCTemplate(p)
 	c = convertTiCDCTemplate(c)
 	// not equal only when current strategy is Restart and config is changed
-	switch c.Spec.UpdateStrategy.Config {
-	case v1alpha1.ConfigUpdateStrategyRestart:
-		if p.Spec.Config != c.Spec.Config {
-			return false
-		}
+	if c.Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart && p.Spec.Config != c.Spec.Config {
+		return false
 	}
 
 	// ignore these fields

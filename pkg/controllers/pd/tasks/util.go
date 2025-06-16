@@ -51,7 +51,7 @@ func LongestHealthPeer(pd *v1alpha1.PD, peers []*v1alpha1.PD) string {
 	return p
 }
 
-// Real spec.volumes[*].name of pod
+// VolumeName returns the real spec.volumes[*].name of pod
 // TODO(liubo02): extract to namer pkg
 func VolumeName(volName string) string {
 	return metav1alpha1.VolNamePrefix + volName

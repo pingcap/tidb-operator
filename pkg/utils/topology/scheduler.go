@@ -23,7 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 )
 
-// This interface defines a scheduler to choose the next topology
+// Scheduler defines a scheduler to choose the next topology
 type Scheduler interface {
 	// Add adds an scheduled instance.
 	// All scheduled instances should be added before calling Next()

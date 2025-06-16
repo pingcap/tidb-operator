@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//nolint:gosec
 package main
 
 import (
@@ -152,6 +153,7 @@ func handleJSONSchemaProps(props *apiextensionsv1.JSONSchemaProps, retainKeys []
 		case props.XMapType == nil || *props.XMapType == "granular":
 			// remove required for granular map
 			props.Required = intersection(props.Required, retainKeys)
+			//nolint:gocritic
 			for key, val := range props.Properties {
 				handleJSONSchemaProps(&val, nil)
 				props.Properties[key] = val
@@ -162,7 +164,6 @@ func handleJSONSchemaProps(props *apiextensionsv1.JSONSchemaProps, retainKeys []
 	case "array":
 		switch {
 		case props.XListType == nil:
-			// panic("unknown list type for array: " + props.Description)
 			return
 		case *props.XListType == "atomic":
 			return

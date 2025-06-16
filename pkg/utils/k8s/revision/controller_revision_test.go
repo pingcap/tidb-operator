@@ -184,7 +184,7 @@ func TestTruncateHistory(t *testing.T) {
 
 			remainingRevisions, err := cli.ListControllerRevisions(ctx, nil, labels.Everything())
 			require.NoError(t, err)
-			assert.Equal(t, len(tt.expected), len(remainingRevisions))
+			assert.Len(t, remainingRevisions, len(tt.expected))
 			m := make(map[string]struct{}, len(remainingRevisions))
 			for _, r := range remainingRevisions {
 				m[r.Name] = struct{}{}

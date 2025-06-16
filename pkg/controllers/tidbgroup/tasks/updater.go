@@ -117,7 +117,7 @@ const (
 	suffixLen = 6
 )
 
-func precheckInstances(dbg *v1alpha1.TiDBGroup, dbs []*v1alpha1.TiDB, updateRevision string) (needUpdate bool, needRestart bool) {
+func precheckInstances(dbg *v1alpha1.TiDBGroup, dbs []*v1alpha1.TiDB, updateRevision string) (needUpdate, needRestart bool) {
 	if len(dbs) != int(coreutil.Replicas[scope.TiDBGroup](dbg)) {
 		needUpdate = true
 	}
