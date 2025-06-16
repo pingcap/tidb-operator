@@ -15,8 +15,9 @@
 package v1alpha1
 
 import (
-	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 const (
@@ -111,6 +112,7 @@ type SchedulerTemplate struct {
 
 // SchedulerTemplateSpec can only be specified in SchedulerGroup
 // TODO: It's name may need to be changed to distinguish from PodTemplateSpec
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || self.overlay.volumeClaims.all(vc, self.volumes.exists(v, v.name == vc.name))",message="overlay volumeClaims names must exist in volumes"
 type SchedulerTemplateSpec struct {
 	Version string `json:"version"`
 
@@ -171,6 +173,7 @@ type SchedulerSpec struct {
 
 	// Subdomain means the subdomain of the exported Scheduler dns.
 	// A same Scheduler cluster will use a same subdomain
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="subdomain is immutable"
 	Subdomain string `json:"subdomain"`
 
 	// SchedulerTemplateSpec embedded some fields managed by SchedulerGroup

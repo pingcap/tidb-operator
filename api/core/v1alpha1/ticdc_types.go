@@ -15,8 +15,9 @@
 package v1alpha1
 
 import (
-	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 const (
@@ -114,6 +115,7 @@ type TiCDCTemplate struct {
 }
 
 // TiCDCTemplateSpec can only be specified in TiCDCGroup
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || self.overlay.volumeClaims.all(vc, self.volumes.exists(v, v.name == vc.name))",message="overlay volumeClaims names must exist in volumes"
 type TiCDCTemplateSpec struct {
 	Version string `json:"version"`
 	// Image is TiCDC's image
@@ -177,6 +179,7 @@ type TiCDCSpec struct {
 
 	// Subdomain means the subdomain of the exported TiCDC DNS.
 	// A same TiCDC cluster will use a same subdomain
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="subdomain is immutable"
 	Subdomain string `json:"subdomain"`
 
 	// TiCDCTemplateSpec embedded some fields managed by TiCDCGroup

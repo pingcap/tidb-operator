@@ -8253,6 +8253,9 @@ spec:
                   Subdomain means the subdomain of the exported tikv dns.
                   A same tikv group will use a same subdomain
                 type: string
+                x-kubernetes-validations:
+                - message: subdomain is immutable
+                  rule: self == oldSelf
               topology:
                 additionalProperties:
                   type: string
@@ -8319,6 +8322,9 @@ spec:
                       description: Storage defines the request size of this volume
                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                       x-kubernetes-int-or-string: true
+                      x-kubernetes-validations:
+                      - message: storage can only be increased
+                        rule: quantity(self).compareTo(quantity(oldSelf)) >= 0
                     storageClassName:
                       description: |-
                         StorageClassName means the storage class the volume used.
@@ -8353,6 +8359,9 @@ spec:
               message: topology can only be set when creating
               rule: (!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology)
                 && has(self.topology))
+            - message: overlay volumeClaims names must exist in volumes
+              rule: '!has(self.overlay) || !has(self.overlay.volumeClaims) || self.overlay.volumeClaims.all(vc,
+                self.volumes.exists(v, v.name == vc.name))'
           status:
             properties:
               collisionCount:

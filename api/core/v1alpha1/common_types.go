@@ -229,6 +229,7 @@ type Volume struct {
 	Mounts []VolumeMount `json:"mounts"`
 
 	// Storage defines the request size of this volume
+	// +kubebuilder:validation:XValidation:rule="quantity(self).compareTo(quantity(oldSelf)) >= 0",message="storage can only be increased"
 	Storage resource.Quantity `json:"storage"`
 
 	// StorageClassName means the storage class the volume used.

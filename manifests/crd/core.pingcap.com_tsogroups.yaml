@@ -8749,6 +8749,10 @@ spec:
                                 volume
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
+                              x-kubernetes-validations:
+                              - message: storage can only be increased
+                                rule: quantity(self).compareTo(quantity(oldSelf))
+                                  >= 0
                             storageClassName:
                               description: |-
                                 StorageClassName means the storage class the volume used.
@@ -8775,6 +8779,11 @@ spec:
                     required:
                     - version
                     type: object
+                    x-kubernetes-validations:
+                    - message: overlay volumeClaims names must exist in volumes
+                      rule: '!has(self.overlay) || !has(self.overlay.volumeClaims)
+                        || self.overlay.volumeClaims.all(vc, self.volumes.exists(v,
+                        v.name == vc.name))'
                 required:
                 - spec
                 type: object

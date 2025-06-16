@@ -150,10 +150,18 @@ spec:
                              Same for other components.
                     type: boolean
                 type: object
+                x-kubernetes-validations:
+                - message: field .tlsCluster.enabled is immutable
+                  rule: oldSelf == null || self.enabled == oldSelf.enabled
               upgradePolicy:
                 description: UpgradePolicy defines the upgrade policy for the cluster.
                 type: string
             type: object
+            x-kubernetes-validations:
+            - message: bootstrapSQL can only be set at creation, can be unset, but
+                cannot be changed to a different value
+              rule: oldSelf == null || !has(self.bootstrapSQL) || (has(oldSelf.bootstrapSQL)
+                && self.bootstrapSQL.name == oldSelf.bootstrapSQL.name)
           status:
             properties:
               components:

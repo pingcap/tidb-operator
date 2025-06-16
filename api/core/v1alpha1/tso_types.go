@@ -15,8 +15,9 @@
 package v1alpha1
 
 import (
-	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 const (
@@ -111,6 +112,7 @@ type TSOTemplate struct {
 
 // TSOTemplateSpec can only be specified in TSOGroup
 // TODO: It's name may need to be changed to distinguish from PodTemplateSpec
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || self.overlay.volumeClaims.all(vc, self.volumes.exists(v, v.name == vc.name))",message="overlay volumeClaims names must exist in volumes"
 type TSOTemplateSpec struct {
 	Version string `json:"version"`
 
@@ -171,6 +173,7 @@ type TSOSpec struct {
 
 	// Subdomain means the subdomain of the exported tso dns.
 	// A same tso cluster will use a same subdomain
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="subdomain is immutable"
 	Subdomain string `json:"subdomain"`
 
 	// TSOTemplateSpec embedded some fields managed by TSOGroup

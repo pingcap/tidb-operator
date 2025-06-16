@@ -22,27 +22,33 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
-func TestTiProxy(t *testing.T) {
+func TestTiKV(t *testing.T) {
 	cases := []Case{}
-	cases = append(cases, transferTiProxyCases(t, Topology(), "spec", "topology")...)
-	cases = append(cases, transferTiProxyCases(t, ClusterReference(), "spec", "cluster")...)
-	cases = append(cases, transferTiProxyCases(t, ServerLabels(), "spec", "server", "labels")...)
-	cases = append(cases, transferTiProxyCases(t, OverlayVolumeClaims(), "spec")...)
+	cases = append(cases, transferTiKVCases(t, Topology(), "spec", "topology")...)
+	cases = append(cases, transferTiKVCases(t, ClusterReference(), "spec", "cluster")...)
+	cases = append(cases, transferTiKVCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
+	cases = append(cases, transferTiKVCases(t, VolumeStorage(), "spec", "volumes")...)
+	cases = append(cases, transferTiKVCases(t, OverlayVolumeClaims(), "spec")...)
 
-	Validate(t, "crd/core.pingcap.com_tiproxies.yaml", cases)
+	Validate(t, "crd/core.pingcap.com_tikvs.yaml", cases)
 }
 
-func basicTiProxy() map[string]any {
+func basicTiKV() map[string]any {
 	data := []byte(`
 apiVersion: core.pingcap.com/v1alpha1
-kind: TiProxy
+kind: TiKV
 metadata:
-  name: tiproxy
+  name: tikv
 spec:
   cluster:
     name: test
   subdomain: test
   version: v8.1.0
+  volumes:
+  - name: data
+    mounts:
+    - type: data
+    storage: 20Gi
 `)
 	obj := map[string]any{}
 	if err := yaml.Unmarshal(data, &obj); err != nil {
@@ -52,11 +58,11 @@ spec:
 	return obj
 }
 
-func transferTiProxyCases(t *testing.T, cases []Case, fields ...string) []Case {
+func transferTiKVCases(t *testing.T, cases []Case, fields ...string) []Case {
 	for i := range cases {
 		c := &cases[i]
 
-		current := basicTiProxy()
+		current := basicTiKV()
 		if c.current == nil {
 			unstructured.RemoveNestedField(current, fields...)
 		} else {
@@ -70,7 +76,7 @@ func transferTiProxyCases(t *testing.T, cases []Case, fields ...string) []Case {
 			continue
 		}
 
-		old := basicTiProxy()
+		old := basicTiKV()
 		if c.old == nil {
 			unstructured.RemoveNestedField(old, fields...)
 		} else {

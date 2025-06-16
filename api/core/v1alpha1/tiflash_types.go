@@ -15,8 +15,9 @@
 package v1alpha1
 
 import (
-	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 const (
@@ -123,6 +124,7 @@ type TiFlashTemplate struct {
 	Spec       TiFlashTemplateSpec `json:"spec"`
 }
 
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || self.overlay.volumeClaims.all(vc, self.volumes.exists(v, v.name == vc.name))",message="overlay volumeClaims names must exist in volumes"
 type TiFlashTemplateSpec struct {
 	Version string `json:"version"`
 	// Image is tiflash's image
@@ -196,6 +198,7 @@ type TiFlashSpec struct {
 	Topology Topology `json:"topology,omitempty"`
 	// Subdomain means the subdomain of the exported TiFlash dns.
 	// A same TiFlash group will use a same subdomain
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="subdomain is immutable"
 	Subdomain string `json:"subdomain"`
 
 	// TiFlashTemplateSpec embedded some fields managed by TiFlashGroup

@@ -15,8 +15,9 @@
 package v1alpha1
 
 import (
-	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 const (
@@ -140,6 +141,7 @@ type TiKVTemplate struct {
 
 // TiKVTemplateSpec can only be specified in TiKVGroup
 // TODO: It's name may need to be changed to distinguish from PodTemplateSpec
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || self.overlay.volumeClaims.all(vc, self.volumes.exists(v, v.name == vc.name))",message="overlay volumeClaims names must exist in volumes"
 type TiKVTemplateSpec struct {
 	Version string `json:"version"`
 	// Image is tikv's image
@@ -201,6 +203,7 @@ type TiKVSpec struct {
 	Topology Topology `json:"topology,omitempty"`
 	// Subdomain means the subdomain of the exported tikv dns.
 	// A same tikv group will use a same subdomain
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="subdomain is immutable"
 	Subdomain string `json:"subdomain"`
 
 	// TiKVTemplateSpec embedded some fields managed by TiKVGroup

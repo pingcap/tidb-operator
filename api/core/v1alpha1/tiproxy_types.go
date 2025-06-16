@@ -121,6 +121,7 @@ type TiProxyTemplate struct {
 }
 
 // TiProxyTemplateSpec can only be specified in TiProxyGroup.
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || self.overlay.volumeClaims.all(vc, self.volumes.exists(v, v.name == vc.name))",message="overlay volumeClaims names must exist in volumes"
 type TiProxyTemplateSpec struct {
 	Version string `json:"version"`
 	// Image is TiProxy's image
@@ -237,6 +238,7 @@ type TiProxySpec struct {
 
 	// Subdomain means the subdomain of the exported tiproxy dns.
 	// A same tiproxy cluster will use a same subdomain
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="subdomain is immutable"
 	Subdomain string `json:"subdomain"`
 
 	// TiProxyTemplateSpec embeded some fields managed by TiProxyGroup.

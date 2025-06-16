@@ -52,6 +52,7 @@ type Cluster struct {
 	Status ClusterStatus `json:"status,omitempty"`
 }
 
+// +kubebuilder:validation:XValidation:rule="oldSelf == null || !has(self.bootstrapSQL) || (has(oldSelf.bootstrapSQL) && self.bootstrapSQL.name == oldSelf.bootstrapSQL.name)",message="bootstrapSQL can only be set at creation, can be unset, but cannot be changed to a different value"
 type ClusterSpec struct {
 	// SuspendAction defines the suspend actions for the cluster.
 	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
@@ -91,6 +92,7 @@ type SuspendAction struct {
 
 // TLSCluster is used to enable mutual TLS connection between TiDB cluster components.
 // https://docs.pingcap.com/tidb/stable/enable-tls-between-components
+// +kubebuilder:validation:XValidation:rule="oldSelf == null || self.enabled == oldSelf.enabled",message="field .tlsCluster.enabled is immutable"
 type TLSCluster struct {
 	// Enable mutual TLS connection between TiDB cluster components.
 	// Once enabled, the mutual authentication applies to all components,

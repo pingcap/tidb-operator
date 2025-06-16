@@ -406,3 +406,309 @@ func ServerLabels() []Case {
 		},
 	}
 }
+
+func VolumeStorage() []Case {
+	errMsg := `spec.volumes[0].storage: Invalid value: "": storage can only be increased`
+
+	createVolumeWithValue := func(storage string) []any {
+		return []any{
+			map[string]any{
+				"name":    "data",
+				"mounts":  []any{map[string]any{"type": "data"}},
+				"storage": storage,
+			},
+		}
+	}
+
+	cases := []Case{
+		{
+			desc:    "increase storage",
+			old:     createVolumeWithValue("50Gi"),
+			current: createVolumeWithValue("100Gi"),
+		},
+		{
+			desc:     "decrease storage",
+			old:      createVolumeWithValue("100Gi"),
+			current:  createVolumeWithValue("50Gi"),
+			wantErrs: []string{errMsg},
+		},
+		{
+			desc:    "increase storage with different unit (Mi to Gi)",
+			old:     createVolumeWithValue("500Mi"),
+			current: createVolumeWithValue("1Gi"),
+		},
+		{
+			desc:     "decrease storage with different unit (Gi to Mi)",
+			old:      createVolumeWithValue("1Gi"),
+			current:  createVolumeWithValue("500Mi"),
+			wantErrs: []string{errMsg},
+		},
+		{
+			desc:    "same storage with different unit (Gi and Mi)",
+			old:     createVolumeWithValue("1Gi"),
+			current: createVolumeWithValue("1024Mi"),
+		},
+		{
+			desc:    "same storage with different unit (G and M)",
+			old:     createVolumeWithValue("1G"),
+			current: createVolumeWithValue("1000M"),
+		},
+		{
+			desc:    "increase storage with different unit (G to Gi)",
+			old:     createVolumeWithValue("1G"),
+			current: createVolumeWithValue("1Gi"),
+		},
+		{
+			desc:     "decrease storage with different unit (Gi to G)",
+			old:      createVolumeWithValue("1Gi"),
+			current:  createVolumeWithValue("1G"),
+			wantErrs: []string{errMsg},
+		},
+	}
+
+	return cases
+}
+
+func OverlayVolumeClaims() []Case {
+	errMsg := `spec: Invalid value: "object": overlay volumeClaims names must exist in volumes`
+
+	baseSpec := map[string]any{
+		"cluster": map[string]any{
+			"name": "test",
+		},
+		"subdomain": "test",
+		"version":   "v8.1.0",
+	}
+
+	cases := []Case{
+		{
+			desc:     "no overlay is ok",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{
+					map[string]any{
+						"name":    "data",
+						"mounts":  []any{map[string]any{"type": "data"}},
+						"storage": "20Gi",
+					},
+				}
+				return spec
+			}(),
+		},
+		{
+			desc:     "overlay without volumeClaims is ok",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{
+					map[string]any{
+						"name":    "data",
+						"mounts":  []any{map[string]any{"type": "data"}},
+						"storage": "20Gi",
+					},
+				}
+				spec["overlay"] = map[string]any{
+					"pod": map[string]any{
+						"metadata": map[string]any{
+							"labels": map[string]any{
+								"test": "value",
+							},
+						},
+					},
+				}
+				return spec
+			}(),
+		},
+		{
+			desc:     "overlay volumeClaims with matching volume name is ok",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{
+					map[string]any{
+						"name":    "data",
+						"mounts":  []any{map[string]any{"type": "data"}},
+						"storage": "20Gi",
+					},
+				}
+				spec["overlay"] = map[string]any{
+					"volumeClaims": []any{
+						map[string]any{
+							"name": "data",
+							"volumeClaim": map[string]any{
+								"metadata": map[string]any{
+									"labels": map[string]any{
+										"test": "value",
+									},
+								},
+							},
+						},
+					},
+				}
+				return spec
+			}(),
+		},
+		{
+			desc:     "overlay volumeClaims with multiple matching volume names is ok",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{
+					map[string]any{
+						"name":    "data",
+						"mounts":  []any{map[string]any{"type": "data"}},
+						"storage": "20Gi",
+					},
+					map[string]any{
+						"name":    "log",
+						"mounts":  []any{map[string]any{"type": "log"}},
+						"storage": "10Gi",
+					},
+				}
+				spec["overlay"] = map[string]any{
+					"volumeClaims": []any{
+						map[string]any{
+							"name": "data",
+							"volumeClaim": map[string]any{
+								"metadata": map[string]any{
+									"labels": map[string]any{
+										"test": "value",
+									},
+								},
+							},
+						},
+						map[string]any{
+							"name": "log",
+							"volumeClaim": map[string]any{
+								"metadata": map[string]any{
+									"labels": map[string]any{
+										"test": "value",
+									},
+								},
+							},
+						},
+					},
+				}
+				return spec
+			}(),
+		},
+		{
+			desc:     "overlay volumeClaims with non-matching volume name fails",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{
+					map[string]any{
+						"name":    "data",
+						"mounts":  []any{map[string]any{"type": "data"}},
+						"storage": "20Gi",
+					},
+				}
+				spec["overlay"] = map[string]any{
+					"volumeClaims": []any{
+						map[string]any{
+							"name": "log",
+							"volumeClaim": map[string]any{
+								"metadata": map[string]any{
+									"labels": map[string]any{
+										"test": "value",
+									},
+								},
+							},
+						},
+					},
+				}
+				return spec
+			}(),
+			wantErrs: []string{errMsg},
+		},
+		{
+			desc:     "overlay volumeClaims with mixed matching and non-matching volume names fails",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{
+					map[string]any{
+						"name":    "data",
+						"mounts":  []any{map[string]any{"type": "data"}},
+						"storage": "20Gi",
+					},
+				}
+				spec["overlay"] = map[string]any{
+					"volumeClaims": []any{
+						map[string]any{
+							"name": "data",
+							"volumeClaim": map[string]any{
+								"metadata": map[string]any{
+									"labels": map[string]any{
+										"test": "value",
+									},
+								},
+							},
+						},
+						map[string]any{
+							"name": "nonexistent",
+							"volumeClaim": map[string]any{
+								"metadata": map[string]any{
+									"labels": map[string]any{
+										"test": "value",
+									},
+								},
+							},
+						},
+					},
+				}
+				return spec
+			}(),
+			wantErrs: []string{errMsg},
+		},
+		{
+			desc:     "empty volumes with overlay volumeClaims fails",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{}
+				spec["overlay"] = map[string]any{
+					"volumeClaims": []any{
+						map[string]any{
+							"name": "data",
+							"volumeClaim": map[string]any{
+								"metadata": map[string]any{
+									"labels": map[string]any{
+										"test": "value",
+									},
+								},
+							},
+						},
+					},
+				}
+				return spec
+			}(),
+			wantErrs: []string{errMsg},
+		},
+	}
+
+	return cases
+}

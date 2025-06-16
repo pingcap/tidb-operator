@@ -15,9 +15,10 @@
 package v1alpha1
 
 import (
-	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 const (
@@ -138,6 +139,7 @@ type TiDBTemplate struct {
 }
 
 // TiDBTemplateSpec can only be specified in TiDBGroup.
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || self.overlay.volumeClaims.all(vc, self.volumes.exists(v, v.name == vc.name))",message="overlay volumeClaims names must exist in volumes"
 type TiDBTemplateSpec struct {
 	Version string `json:"version"`
 	// Image is tidb's image
@@ -273,6 +275,7 @@ type TiDBTLS struct {
 	//      The name of this Secret must be: <groupName>-tidb-client-secret.
 	//        kubectl create secret generic <groupName>-tidb-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
 	//   4. Set Enabled to `true`.
+	// +kubebuilder:validation:XValidation:rule="oldSelf == null || self.enabled == oldSelf.enabled",message="field .mysql.enabled is immutable"
 	MySQL *TLS `json:"mysql,omitempty"`
 
 	// TODO(csuzhangxc): usage of the following fields
@@ -310,8 +313,9 @@ type TiDBSpec struct {
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="topology is immutable"
 	Topology Topology `json:"topology,omitempty"`
 
-	// Subdomain means the subdomain of the exported pd dns.
-	// A same pd cluster will use a same subdomain
+	// Subdomain means the subdomain of the exported TiDB dns.
+	// A same TiDB cluster will use a same subdomain
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="subdomain is immutable"
 	Subdomain string `json:"subdomain"`
 
 	// TiDBTemplateSpec embeded some fields managed by TiDBGroup.

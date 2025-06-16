@@ -111,6 +111,7 @@ type PD struct {
 }
 
 // PDGroupSpec describes the common attributes of a PDGroup
+// +kubebuilder:validation:XValidation:rule="self.bootstrapped || (self.replicas == oldSelf.replicas)",message="replicas cannot be changed when bootstrapped is false"
 type PDGroupSpec struct {
 	Cluster ClusterReference `json:"cluster"`
 
@@ -124,6 +125,7 @@ type PDGroupSpec struct {
 	// In other words, this PD group will just join an existing cluster.
 	// Normally, this field is automatically changed by operator.
 	// If it's true, it cannot be set to false for security
+	// +kubebuilder:validation:XValidation:rule="!oldSelf || self",message="bootstrapped cannot be changed from true to false"
 	Bootstrapped bool `json:"bootstrapped,omitempty"`
 
 	// +listType=map
@@ -141,6 +143,7 @@ type PDTemplate struct {
 // PDTemplateSpec can only be specified in PDGroup
 // TODO: It's name may need to be changed to distinguish from PodTemplateSpec
 // +kubebuilder:validation:XValidation:rule="(!has(oldSelf.mode) && !has(self.mode)) || (has(oldSelf.mode) && has(self.mode))",fieldPath=".mode",message="pd mode can only be set when creating now"
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || self.overlay.volumeClaims.all(vc, self.volumes.exists(v, v.name == vc.name))",message="overlay volumeClaims names must exist in volumes"
 type PDTemplateSpec struct {
 	Version string `json:"version"`
 	// Image is pd's image
@@ -211,6 +214,7 @@ type PDSpec struct {
 
 	// Subdomain means the subdomain of the exported pd dns.
 	// A same pd cluster will use a same subdomain
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="subdomain is immutable"
 	Subdomain string `json:"subdomain"`
 
 	// PDTemplateSpec embedded some fields managed by PDGroup

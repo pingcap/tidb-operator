@@ -24,8 +24,9 @@ import (
 
 func TestCluster(t *testing.T) {
 	var cases []Case
-	cases = append(cases,
-		transferClusterCases(t, FeatureGates(), "spec", "featureGates")...)
+	cases = append(cases, transferClusterCases(t, FeatureGates(), "spec", "featureGates")...)
+	cases = append(cases, transferClusterCases(t, bootstrapSQL(), "spec", "bootstrapSQL")...)
+	cases = append(cases, transferClusterCases(t, tlsCluster(), "spec", "tlsCluster")...)
 
 	Validate(t, "crd/core.pingcap.com_clusters.yaml", cases)
 }
@@ -75,4 +76,88 @@ func transferClusterCases(t *testing.T, cases []Case, fields ...string) []Case {
 	}
 
 	return cases
+}
+
+func tlsCluster() []Case {
+	errMsg := `spec.tlsCluster: Invalid value: "object": field .tlsCluster.enabled is immutable`
+	return []Case{
+		{
+			desc:     "set enabled to true when creating",
+			isCreate: true,
+			current:  map[string]any{"enabled": true},
+		},
+		{
+			desc:     "set enabled to false when creating",
+			isCreate: true,
+			current:  map[string]any{"enabled": false},
+		},
+		{
+			desc:     "try to update enabled from false to true",
+			old:      map[string]any{"enabled": false},
+			current:  map[string]any{"enabled": true},
+			wantErrs: []string{errMsg},
+		},
+		{
+			desc:     "try to update enabled from true to false",
+			old:      map[string]any{"enabled": true},
+			current:  map[string]any{"enabled": false},
+			wantErrs: []string{errMsg},
+		},
+		{
+			desc:    "enabled is not changed",
+			old:     map[string]any{"enabled": true},
+			current: map[string]any{"enabled": true},
+		},
+	}
+}
+
+func bootstrapSQL() []Case {
+	errMsg := `spec: Invalid value: "object": bootstrapSQL can only be set at creation, can be unset, but cannot be changed to a different value`
+	return []Case{
+		{
+			desc:    "no change",
+			old:     map[string]any{"name": "bootstrap-sql"},
+			current: map[string]any{"name": "bootstrap-sql"},
+		},
+		{
+			desc:     "set bootstrapSQL",
+			isCreate: true,
+			current:  map[string]any{"name": "bootstrap-sql"},
+		},
+		{
+			desc:     "unset bootstrapSQL",
+			isCreate: true,
+			current:  nil,
+		},
+		{
+			desc: "bootstrapSQL is always unset",
+		},
+		{
+			desc:     "try to change bootstrapSQL",
+			old:      map[string]any{"name": "bootstrap-sql-old"},
+			current:  map[string]any{"name": "bootstrap-sql-new"},
+			wantErrs: []string{errMsg},
+		},
+		{
+			desc:    "try to set bootstrapSQL to nil",
+			old:     map[string]any{"name": "bootstrap-sql-old"},
+			current: nil,
+		},
+		{
+			desc:    "update with both nil",
+			old:     nil,
+			current: nil,
+		},
+		{
+			desc:     "update from nil to non-nil",
+			old:      nil,
+			current:  map[string]any{"name": "bootstrap-sql"},
+			wantErrs: []string{errMsg},
+		},
+		{
+			desc:    "update from non-nil to nil",
+			old:     map[string]any{"name": "bootstrap-sql"},
+			current: nil,
+		},
+	}
 }
