@@ -16,8 +16,8 @@ package cmd
 
 import (
 	"context"
-
 	// registry mysql drive
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -63,6 +63,7 @@ func NewRestoreCommand() *cobra.Command {
 	return cmd
 }
 
+//nolint:gocritic
 func runRestore(restoreOpts restore.Options, kubecfg string) error {
 	var (
 		kubeconfig *rest.Config

@@ -46,6 +46,8 @@ func NamePrefixAndSuffix[
 
 // TODO(liubo02): rename to more reasonable one
 // TODO(liubo02): move to namer
+//
+//nolint:staticcheck
 func PodName[
 	S scope.Instance[F, T],
 	F client.Object,
@@ -56,6 +58,8 @@ func PodName[
 }
 
 // TODO(liubo02): move to namer
+//
+//nolint:staticcheck
 func TLSClusterSecretName[
 	S scope.Instance[F, T],
 	F client.Object,

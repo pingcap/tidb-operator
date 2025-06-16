@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
+// nolint:staticcheck
 // TODO: extract svc to a common task
 func TaskService(state common.ObjectState[*v1alpha1.SchedulerGroup], c client.Client) task.Task {
 	return task.NameTaskFunc("Service", func(ctx context.Context) task.Result {

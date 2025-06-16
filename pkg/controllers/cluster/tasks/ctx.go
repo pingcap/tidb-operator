@@ -65,7 +65,7 @@ func (*TaskContext) Name() string {
 
 // TODO: refactor to use task v3
 //
-//nolint:gocyclo // refactor later
+//nolint:gocyclo,staticcheck // refactor later
 func (t *TaskContext) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	rtx := ctx.Self()
 

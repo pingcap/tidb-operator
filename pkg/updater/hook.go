@@ -16,11 +16,13 @@ package updater
 
 import "github.com/pingcap/tidb-operator/pkg/runtime"
 
+// UpdateHook a hook executes when update an instance.
 // e.g. for some write once fields(name, topology, etc.)
 type UpdateHook[R runtime.Instance] interface {
 	Update(update, outdated R) R
 }
 
+// AddHook a hook executes when add an instance.
 // e.g. for topology scheduling
 type AddHook[R runtime.Instance] interface {
 	Add(update R) R
@@ -48,7 +50,7 @@ func (f DelHookFunc[PT]) Delete(name string) {
 	f(name)
 }
 
-// Do not change name when update obj
+// KeepName does not change name when update obj
 func KeepName[R runtime.Instance]() UpdateHook[R] {
 	return UpdateHookFunc[R](func(update, outdated R) R {
 		update.SetName(outdated.GetName())
@@ -56,7 +58,7 @@ func KeepName[R runtime.Instance]() UpdateHook[R] {
 	})
 }
 
-// Do not change topology when update obj
+// KeepTopology does not change topology when update obj
 func KeepTopology[R runtime.Instance]() UpdateHook[R] {
 	return UpdateHookFunc[R](func(update, outdated R) R {
 		update.SetTopology(outdated.GetTopology())

@@ -20,6 +20,7 @@ import (
 
 var kubecfg string
 
+//nolint:gocritic
 func NewBackupMgrCommand() *cobra.Command {
 	cmds := &cobra.Command{
 		Use:   "tidb-backup-manager",

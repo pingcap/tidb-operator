@@ -62,7 +62,7 @@ func (bo *Options) CleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 	if err != nil {
 		return err
 	}
-	defer backend.Close()
+	defer backend.Close() //nolint:errcheck
 
 	round := 0
 	return util.RetryOnError(ctx, opt.RetryCount, 0, util.RetriableOnAnyError, func() error {

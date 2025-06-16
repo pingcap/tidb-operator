@@ -30,7 +30,7 @@ var (
 	defaultTiDBStatusPort    = 10080
 )
 
-// IiDBControlInterface is the interface that knows how to manage and get client for TiDB.
+// TiDBControlInterface is the interface that knows how to manage and get client for TiDB.
 type TiDBControlInterface interface {
 	// GetTiDBPodClient provides TiDBClient of a TiDB pod.
 	GetTiDBPodClient(ctx context.Context, cli client.Client,

@@ -45,7 +45,7 @@ func TaskFinalizerAdd[
 	})
 }
 
-// DEPRECATED: prefer TaskFinalizerAdd, remove it
+// Deprecated: prefer TaskFinalizerAdd, remove it
 func TaskGroupFinalizerAdd[
 	GT runtime.GroupTuple[OG, RG],
 	OG client.Object,
@@ -60,7 +60,7 @@ func TaskGroupFinalizerAdd[
 	})
 }
 
-// DEPRECATED: prefer TaskFinalizerAdd, remove it
+// Deprecated: prefer TaskFinalizerAdd, remove it
 func TaskInstanceFinalizerAdd[
 	IT runtime.InstanceTuple[OI, RI],
 	OI client.Object,
