@@ -112,7 +112,7 @@ type SchedulerTemplate struct {
 
 // SchedulerTemplateSpec can only be specified in SchedulerGroup
 // TODO: It's name may need to be changed to distinguish from PodTemplateSpec
-// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || self.overlay.volumeClaims.all(vc, self.volumes.exists(v, v.name == vc.name))",message="overlay volumeClaims names must exist in volumes"
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes) && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in volumes"
 type SchedulerTemplateSpec struct {
 	Version string `json:"version"`
 
@@ -135,6 +135,7 @@ type SchedulerTemplateSpec struct {
 	// Volumes defines persistent volumes of Scheduler
 	// +listType=map
 	// +listMapKey=name
+	// +kubebuilder:validation:MaxItems=256
 	Volumes []Volume `json:"volumes,omitempty"`
 
 	// Overlay defines a k8s native resource template patch

@@ -115,7 +115,7 @@ type TiCDCTemplate struct {
 }
 
 // TiCDCTemplateSpec can only be specified in TiCDCGroup
-// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || self.overlay.volumeClaims.all(vc, self.volumes.exists(v, v.name == vc.name))",message="overlay volumeClaims names must exist in volumes"
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes) && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in volumes"
 type TiCDCTemplateSpec struct {
 	Version string `json:"version"`
 	// Image is TiCDC's image
@@ -133,6 +133,7 @@ type TiCDCTemplateSpec struct {
 	// If you want to use ephemeral storage or mount sink TLS certs, you can use "overlay" instead.
 	// +listType=map
 	// +listMapKey=name
+	// +kubebuilder:validation:MaxItems=256
 	Volumes []Volume `json:"volumes,omitempty"`
 	// Overlay defines a k8s native resource template patch
 	// All resources(pod, pvcs, ...) managed by TiCDC can be overlayed by this field

@@ -124,7 +124,7 @@ type TiFlashTemplate struct {
 	Spec       TiFlashTemplateSpec `json:"spec"`
 }
 
-// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || self.overlay.volumeClaims.all(vc, self.volumes.exists(v, v.name == vc.name))",message="overlay volumeClaims names must exist in volumes"
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes) && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in volumes"
 type TiFlashTemplateSpec struct {
 	Version string `json:"version"`
 	// Image is tiflash's image
@@ -147,6 +147,7 @@ type TiFlashTemplateSpec struct {
 	// Volumes defines data volume of TiFlash
 	// +listType=map
 	// +listMapKey=name
+	// +kubebuilder:validation:MaxItems=256
 	Volumes []Volume `json:"volumes"`
 
 	// LogTailer defines the sidercar log tailer config of TiFlash.

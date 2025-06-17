@@ -121,7 +121,7 @@ type TiProxyTemplate struct {
 }
 
 // TiProxyTemplateSpec can only be specified in TiProxyGroup.
-// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || self.overlay.volumeClaims.all(vc, self.volumes.exists(v, v.name == vc.name))",message="overlay volumeClaims names must exist in volumes"
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes) && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in volumes"
 type TiProxyTemplateSpec struct {
 	Version string `json:"version"`
 	// Image is TiProxy's image
@@ -142,6 +142,7 @@ type TiProxyTemplateSpec struct {
 	// Volumes defines data volume of TiProxy, it is optional.
 	// +listType=map
 	// +listMapKey=name
+	// +kubebuilder:validation:MaxItems=256
 	Volumes []Volume `json:"volumes,omitempty"`
 
 	// PreStop defines the preStop config for the TiProxy container.

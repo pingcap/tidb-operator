@@ -143,7 +143,7 @@ type PDTemplate struct {
 // PDTemplateSpec can only be specified in PDGroup
 // TODO: It's name may need to be changed to distinguish from PodTemplateSpec
 // +kubebuilder:validation:XValidation:rule="(!has(oldSelf.mode) && !has(self.mode)) || (has(oldSelf.mode) && has(self.mode))",fieldPath=".mode",message="pd mode can only be set when creating now"
-// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || self.overlay.volumeClaims.all(vc, self.volumes.exists(v, v.name == vc.name))",message="overlay volumeClaims names must exist in volumes"
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes) && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in volumes"
 type PDTemplateSpec struct {
 	Version string `json:"version"`
 	// Image is pd's image
@@ -164,9 +164,10 @@ type PDTemplateSpec struct {
 	// Volumes defines persistent volumes of PD
 	// +listType=map
 	// +listMapKey=name
+	// +kubebuilder:validation:MaxItems=256
 	Volumes []Volume `json:"volumes"`
 	// Overlay defines a k8s native resource template patch
-	// All resources(pod, pvcs, ...) managed by PD can be overlayed by this field
+	// All resources(pod, pvcs, ...) managed by PD can be overlaid by this field
 	Overlay *Overlay `json:"overlay,omitempty"`
 }
 

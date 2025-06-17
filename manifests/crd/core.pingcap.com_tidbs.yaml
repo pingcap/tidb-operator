@@ -118,6 +118,7 @@ spec:
                               (scope and select) objects. May match selectors of replication controllers
                               and services.
                               More info: http://kubernetes.io/docs/user-guide/labels
+                            maxProperties: 512
                             type: object
                           name:
                             description: |-
@@ -7968,6 +7969,7 @@ spec:
                                     (scope and select) objects. May match selectors of replication controllers
                                     and services.
                                     More info: http://kubernetes.io/docs/user-guide/labels
+                                  maxProperties: 512
                                   type: object
                                 name:
                                   description: |-
@@ -8188,6 +8190,7 @@ spec:
                       - name
                       - volumeClaim
                       type: object
+                    maxItems: 256
                     type: array
                     x-kubernetes-list-map-keys:
                     - name
@@ -8438,9 +8441,6 @@ spec:
                       description: Storage defines the request size of this volume
                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                       x-kubernetes-int-or-string: true
-                      x-kubernetes-validations:
-                      - message: storage can only be increased
-                        rule: quantity(self).compareTo(quantity(oldSelf)) >= 0
                     storageClassName:
                       description: |-
                         StorageClassName means the storage class the volume used.
@@ -8460,6 +8460,7 @@ spec:
                   - name
                   - storage
                   type: object
+                maxItems: 256
                 type: array
                 x-kubernetes-list-map-keys:
                 - name
@@ -8475,8 +8476,9 @@ spec:
               rule: (!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology)
                 && has(self.topology))
             - message: overlay volumeClaims names must exist in volumes
-              rule: '!has(self.overlay) || !has(self.overlay.volumeClaims) || self.overlay.volumeClaims.all(vc,
-                self.volumes.exists(v, v.name == vc.name))'
+              rule: '!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes)
+                && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v,
+                v.name)))'
           status:
             properties:
               collisionCount:

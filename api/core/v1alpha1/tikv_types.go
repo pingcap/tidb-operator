@@ -141,7 +141,7 @@ type TiKVTemplate struct {
 
 // TiKVTemplateSpec can only be specified in TiKVGroup
 // TODO: It's name may need to be changed to distinguish from PodTemplateSpec
-// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || self.overlay.volumeClaims.all(vc, self.volumes.exists(v, v.name == vc.name))",message="overlay volumeClaims names must exist in volumes"
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes) && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in volumes"
 type TiKVTemplateSpec struct {
 	Version string `json:"version"`
 	// Image is tikv's image
@@ -158,6 +158,7 @@ type TiKVTemplateSpec struct {
 	// Volumes defines data volume of TiKV
 	// +listType=map
 	// +listMapKey=name
+	// +kubebuilder:validation:MaxItems=256
 	Volumes []Volume `json:"volumes"`
 
 	// PreStop defines preStop config

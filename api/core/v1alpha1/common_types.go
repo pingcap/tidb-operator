@@ -164,6 +164,7 @@ type ObjectMeta struct {
 	// and services.
 	// More info: http://kubernetes.io/docs/user-guide/labels
 	// +optional
+	// +kubebuilder:validation:MaxProperties=512
 	Labels map[string]string `json:"labels,omitempty"`
 
 	// Annotations is an unstructured key value map stored with a resource that may be
@@ -195,6 +196,7 @@ type Overlay struct {
 	Pod *PodOverlay `json:"pod,omitempty"`
 	// +listType=map
 	// +listMapKey=name
+	// +kubebuilder:validation:MaxItems=256
 	PersistentVolumeClaims []NamedPersistentVolumeClaimOverlay `json:"volumeClaims,omitempty"`
 }
 
@@ -229,7 +231,6 @@ type Volume struct {
 	Mounts []VolumeMount `json:"mounts"`
 
 	// Storage defines the request size of this volume
-	// +kubebuilder:validation:XValidation:rule="quantity(self).compareTo(quantity(oldSelf)) >= 0",message="storage can only be increased"
 	Storage resource.Quantity `json:"storage"`
 
 	// StorageClassName means the storage class the volume used.

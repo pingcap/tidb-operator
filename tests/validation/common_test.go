@@ -407,68 +407,6 @@ func ServerLabels() []Case {
 	}
 }
 
-func VolumeStorage() []Case {
-	errMsg := `spec.volumes[0].storage: Invalid value: "": storage can only be increased`
-
-	createVolumeWithValue := func(storage string) []any {
-		return []any{
-			map[string]any{
-				"name":    "data",
-				"mounts":  []any{map[string]any{"type": "data"}},
-				"storage": storage,
-			},
-		}
-	}
-
-	cases := []Case{
-		{
-			desc:    "increase storage",
-			old:     createVolumeWithValue("50Gi"),
-			current: createVolumeWithValue("100Gi"),
-		},
-		{
-			desc:     "decrease storage",
-			old:      createVolumeWithValue("100Gi"),
-			current:  createVolumeWithValue("50Gi"),
-			wantErrs: []string{errMsg},
-		},
-		{
-			desc:    "increase storage with different unit (Mi to Gi)",
-			old:     createVolumeWithValue("500Mi"),
-			current: createVolumeWithValue("1Gi"),
-		},
-		{
-			desc:     "decrease storage with different unit (Gi to Mi)",
-			old:      createVolumeWithValue("1Gi"),
-			current:  createVolumeWithValue("500Mi"),
-			wantErrs: []string{errMsg},
-		},
-		{
-			desc:    "same storage with different unit (Gi and Mi)",
-			old:     createVolumeWithValue("1Gi"),
-			current: createVolumeWithValue("1024Mi"),
-		},
-		{
-			desc:    "same storage with different unit (G and M)",
-			old:     createVolumeWithValue("1G"),
-			current: createVolumeWithValue("1000M"),
-		},
-		{
-			desc:    "increase storage with different unit (G to Gi)",
-			old:     createVolumeWithValue("1G"),
-			current: createVolumeWithValue("1Gi"),
-		},
-		{
-			desc:     "decrease storage with different unit (Gi to G)",
-			old:      createVolumeWithValue("1Gi"),
-			current:  createVolumeWithValue("1G"),
-			wantErrs: []string{errMsg},
-		},
-	}
-
-	return cases
-}
-
 func OverlayVolumeClaims() []Case {
 	errMsg := `spec: Invalid value: "object": overlay volumeClaims names must exist in volumes`
 
