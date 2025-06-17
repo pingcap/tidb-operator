@@ -28,7 +28,7 @@ func TestTiProxy(t *testing.T) {
 	cases = append(cases, transferTiProxyCases(t, ClusterReference(), "spec", "cluster")...)
 	cases = append(cases, transferTiProxyCases(t, ServerLabels(), "spec", "server", "labels")...)
 	cases = append(cases, transferTiProxyCases(t, OverlayVolumeClaims(), "spec")...)
-
+	cases = append(cases, transferTiProxyCases(t, Version(), "spec", "version")...)
 	Validate(t, "crd/core.pingcap.com_tiproxies.yaml", cases)
 }
 

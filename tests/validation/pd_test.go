@@ -30,7 +30,7 @@ func TestPD(t *testing.T) {
 	cases = append(cases, transferPDCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
 	cases = append(cases, transferPDCases(t, OverlayVolumeClaims(), "spec")...)
 	cases = append(cases, transferPDCases(t, DataVolumeRequired(), "spec")...)
-
+	cases = append(cases, transferPDCases(t, Version(), "spec", "version")...)
 	Validate(t, "crd/core.pingcap.com_pds.yaml", cases)
 }
 

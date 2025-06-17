@@ -8528,6 +8528,10 @@ spec:
                     type: string
                 type: object
               version:
+                description: |-
+                  Version must be a semantic version.
+                  It can has a v prefix or not.
+                pattern: ^(v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$
                 type: string
               volumes:
                 description: Volumes defines data volume of TiProxy, it is optional.

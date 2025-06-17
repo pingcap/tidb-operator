@@ -287,6 +287,7 @@ type ScheduleTopology struct {
 	Topology Topology `json:"topology"`
 	// Weight defines how many pods will be scheduled to this topo
 	// default is 1
+	// +kubebuilder:validation:Minimum=1
 	Weight *int32 `json:"weight,omitempty"`
 }
 
