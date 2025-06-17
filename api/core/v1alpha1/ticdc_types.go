@@ -100,7 +100,9 @@ type TiCDCGroupSpec struct {
 	Cluster ClusterReference `json:"cluster"`
 	// Features are enabled feature
 	Features []meta.Feature `json:"features,omitempty"`
-	Replicas *int32         `json:"replicas"`
+
+	// +kubebuilder:validation:Minimum=0
+	Replicas *int32 `json:"replicas"`
 
 	// +listType=map
 	// +listMapKey=type

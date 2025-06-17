@@ -22,23 +22,23 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
-func TestTiKV(t *testing.T) {
+func TestTiFlash(t *testing.T) {
 	cases := []Case{}
-	cases = append(cases, transferTiKVCases(t, Topology(), "spec", "topology")...)
-	cases = append(cases, transferTiKVCases(t, ClusterReference(), "spec", "cluster")...)
-	cases = append(cases, transferTiKVCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
-	cases = append(cases, transferTiKVCases(t, OverlayVolumeClaims(), "spec")...)
-	cases = append(cases, transferTiKVCases(t, DataVolumeRequired(), "spec")...)
+	cases = append(cases, transferTiFlashCases(t, Topology(), "spec", "topology")...)
+	cases = append(cases, transferTiFlashCases(t, ClusterReference(), "spec", "cluster")...)
+	cases = append(cases, transferTiFlashCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
+	cases = append(cases, transferTiFlashCases(t, OverlayVolumeClaims(), "spec")...)
+	cases = append(cases, transferTiFlashCases(t, DataVolumeRequired(), "spec")...)
 
-	Validate(t, "crd/core.pingcap.com_tikvs.yaml", cases)
+	Validate(t, "crd/core.pingcap.com_tiflashes.yaml", cases)
 }
 
-func basicTiKV() map[string]any {
+func basicTiFlash() map[string]any {
 	data := []byte(`
 apiVersion: core.pingcap.com/v1alpha1
-kind: TiKV
+kind: TiFlash
 metadata:
-  name: tikv
+  name: tiflash
 spec:
   cluster:
     name: test
@@ -58,11 +58,11 @@ spec:
 	return obj
 }
 
-func transferTiKVCases(t *testing.T, cases []Case, fields ...string) []Case {
+func transferTiFlashCases(t *testing.T, cases []Case, fields ...string) []Case {
 	for i := range cases {
 		c := &cases[i]
 
-		current := basicTiKV()
+		current := basicTiFlash()
 		if c.current == nil {
 			unstructured.RemoveNestedField(current, fields...)
 		} else {
@@ -76,7 +76,7 @@ func transferTiKVCases(t *testing.T, cases []Case, fields ...string) []Case {
 			continue
 		}
 
-		old := basicTiKV()
+		old := basicTiFlash()
 		if c.old == nil {
 			unstructured.RemoveNestedField(old, fields...)
 		} else {

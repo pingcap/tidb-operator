@@ -118,6 +118,7 @@ type PDGroupSpec struct {
 	// Features are enabled feature
 	Features []meta.Feature `json:"features,omitempty"`
 
+	// +kubebuilder:validation:Minimum=0
 	Replicas *int32 `json:"replicas"`
 
 	// Bootstrapped means that pd cluster has been bootstrapped,
@@ -144,6 +145,7 @@ type PDTemplate struct {
 // TODO: It's name may need to be changed to distinguish from PodTemplateSpec
 // +kubebuilder:validation:XValidation:rule="(!has(oldSelf.mode) && !has(self.mode)) || (has(oldSelf.mode) && has(self.mode))",fieldPath=".mode",message="pd mode can only be set when creating now"
 // +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes) && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in volumes"
+// +kubebuilder:validation:XValidation:rule="has(self.volumes) && ('data' in self.volumes.map(v, v.name))",message="data volume must be configured"
 type PDTemplateSpec struct {
 	Version string `json:"version"`
 	// Image is pd's image

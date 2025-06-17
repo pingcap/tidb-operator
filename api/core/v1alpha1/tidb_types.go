@@ -121,6 +121,7 @@ type TiDBGroupSpec struct {
 	// Features are enabled feature
 	Features []meta.Feature `json:"features,omitempty"`
 
+	// +kubebuilder:validation:Minimum=0
 	Replicas *int32 `json:"replicas"`
 
 	// Service defines some fields used to override the default service.

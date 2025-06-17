@@ -111,7 +111,8 @@ type TiFlashGroupSpec struct {
 	Cluster ClusterReference `json:"cluster"`
 	// Features are enabled feature
 	Features []meta.Feature `json:"features,omitempty"`
-	Replicas *int32         `json:"replicas"`
+	// +kubebuilder:validation:Minimum=0
+	Replicas *int32 `json:"replicas"`
 
 	// +listType=map
 	// +listMapKey=type
@@ -125,6 +126,7 @@ type TiFlashTemplate struct {
 }
 
 // +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes) && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in volumes"
+// +kubebuilder:validation:XValidation:rule="has(self.volumes) && ('data' in self.volumes.map(v, v.name))",message="data volume must be configured"
 type TiFlashTemplateSpec struct {
 	Version string `json:"version"`
 	// Image is tiflash's image

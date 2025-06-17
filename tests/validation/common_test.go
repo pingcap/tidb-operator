@@ -16,6 +16,10 @@ package validation
 
 import "fmt"
 
+const (
+	requireDataVolumeErrMsg = `spec: Invalid value: "object": data volume must be configured`
+)
+
 func NameIsDNSSubdoamin(failMsgFmt string) []Case {
 	var cases []Case
 	goodValues := []string{
@@ -644,7 +648,126 @@ func OverlayVolumeClaims() []Case {
 				}
 				return spec
 			}(),
-			wantErrs: []string{errMsg},
+			wantErrs: []string{errMsg, requireDataVolumeErrMsg},
+		},
+	}
+
+	return cases
+}
+
+func DataVolumeRequired() []Case {
+	baseSpec := map[string]any{
+		"cluster": map[string]any{
+			"name": "test",
+		},
+		"subdomain": "test",
+		"version":   "v8.1.0",
+	}
+
+	cases := []Case{
+		{
+			desc:     "data volume is configured correctly",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{
+					map[string]any{
+						"name":    "data",
+						"mounts":  []any{map[string]any{"type": "data"}},
+						"storage": "20Gi",
+					},
+				}
+				return spec
+			}(),
+		},
+		{
+			desc:     "data volume with other volumes is ok",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{
+					map[string]any{
+						"name":    "data",
+						"mounts":  []any{map[string]any{"type": "data"}},
+						"storage": "20Gi",
+					},
+					map[string]any{
+						"name":    "log",
+						"mounts":  []any{map[string]any{"type": "log"}},
+						"storage": "10Gi",
+					},
+				}
+				return spec
+			}(),
+		},
+		{
+			desc:     "missing volumes field fails",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				return spec
+			}(),
+			wantErrs: []string{"spec.volumes: Required value"},
+		},
+		{
+			desc:     "empty volumes array fails",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{}
+				return spec
+			}(),
+			wantErrs: []string{requireDataVolumeErrMsg},
+		},
+		{
+			desc:     "volumes without data volume fails",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{
+					map[string]any{
+						"name":    "log",
+						"mounts":  []any{map[string]any{"type": "log"}},
+						"storage": "10Gi",
+					},
+				}
+				return spec
+			}(),
+			wantErrs: []string{requireDataVolumeErrMsg},
+		},
+		{
+			desc:     "volumes with differently named volume fails",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{
+					map[string]any{
+						"name":    "storage",
+						"mounts":  []any{map[string]any{"type": "data"}},
+						"storage": "20Gi",
+					},
+				}
+				return spec
+			}(),
+			wantErrs: []string{requireDataVolumeErrMsg},
 		},
 	}
 

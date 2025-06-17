@@ -8369,6 +8369,8 @@ spec:
               rule: '!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes)
                 && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v,
                 v.name)))'
+            - message: data volume must be configured
+              rule: has(self.volumes) && ('data' in self.volumes.map(v, v.name))
           status:
             properties:
               collisionCount:
