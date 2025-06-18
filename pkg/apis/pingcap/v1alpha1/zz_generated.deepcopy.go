@@ -5123,6 +5123,11 @@ func (in *S3StorageProvider) DeepCopyInto(out *S3StorageProvider) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.ForcePathStyle != nil {
+		in, out := &in.ForcePathStyle, &out.ForcePathStyle
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
