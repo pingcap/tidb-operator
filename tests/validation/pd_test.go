@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -31,15 +32,15 @@ func TestPD(t *testing.T) {
 	cases = append(cases, transferPDCases(t, OverlayVolumeClaims(true), "spec")...)
 	cases = append(cases, transferPDCases(t, DataVolumeRequired(), "spec")...)
 	cases = append(cases, transferPDCases(t, Version(), "spec", "version")...)
-	cases = append(cases, transferPDCases(t, NameLength(), "metadata", "name")...)
+	cases = append(cases, transferPDCases(t, NameLength(instanceNameLengthLimit), "metadata", "name")...)
 	Validate(t, "crd/core.pingcap.com_pds.yaml", cases)
 }
 
 func TestPDGroup(t *testing.T) {
 	var cases []Case
 	cases = append(cases, transferPDGroupCases(t, bootstrapped(), "spec", "bootstrapped")...)
-	cases = append(cases, transferPDGroupReplicasCases(t, replicasWithBootstrapped())...)
-	cases = append(cases, transferPDGroupCases(t, NameLength(), "metadata", "name")...)
+	cases = append(cases, transferPDGroupCases(t, replicasWithBootstrapped(t), "spec")...)
+	cases = append(cases, transferPDGroupCases(t, NameLength(groupNameLengthLimit), "metadata", "name")...)
 	Validate(t, "crd/core.pingcap.com_pdgroups.yaml", cases)
 }
 
@@ -82,68 +83,97 @@ func bootstrapped() []Case {
 	return cases
 }
 
-func replicasWithBootstrapped() []Case {
+func replicasWithBootstrapped(t *testing.T) []Case {
 	errMsg := `spec: Invalid value: "object": replicas cannot be changed when bootstrapped is false`
+
+	basicSpec, ok, err := unstructured.NestedMap(basicPDGroup(), "spec")
+	require.True(t, ok)
+	require.NoError(t, err)
+
+	mustCloneSpec := func() map[string]any {
+		return runtime.DeepCopyJSON(basicSpec)
+	}
+
 	cases := []Case{
 		{
 			desc:     "set replicas to 1 when create",
 			isCreate: true,
-			current: map[string]any{
-				"bootstrapped": false,
-				"replicas":     int64(1),
-			},
+			current: func() map[string]any {
+				spec := mustCloneSpec()
+				spec["bootstrapped"] = false
+				spec["replicas"] = int64(1)
+				return spec
+			}(),
 		},
 		{
 			desc:     "set replicas to 3 when create",
 			isCreate: true,
-			current: map[string]any{
-				"bootstrapped": true,
-				"replicas":     int64(3),
-			},
+			current: func() map[string]any {
+				spec := mustCloneSpec()
+				spec["bootstrapped"] = true
+				spec["replicas"] = int64(3)
+				return spec
+			}(),
 		},
 		{
 			desc: "not change replicas when bootstrapped is false",
-			old: map[string]any{
-				"bootstrapped": false,
-				"replicas":     int64(1),
-			},
-			current: map[string]any{
-				"bootstrapped": false,
-				"replicas":     int64(1),
-			},
+			old: func() map[string]any {
+				spec := mustCloneSpec()
+				spec["bootstrapped"] = false
+				spec["replicas"] = int64(1)
+				return spec
+			}(),
+			current: func() map[string]any {
+				spec := mustCloneSpec()
+				spec["bootstrapped"] = false
+				spec["replicas"] = int64(1)
+				return spec
+			}(),
 		},
 		{
 			desc: "change replicas when bootstrapped is true",
-			old: map[string]any{
-				"bootstrapped": true,
-				"replicas":     int64(1),
-			},
-			current: map[string]any{
-				"bootstrapped": true,
-				"replicas":     int64(3),
-			},
+			old: func() map[string]any {
+				spec := mustCloneSpec()
+				spec["bootstrapped"] = true
+				spec["replicas"] = int64(1)
+				return spec
+			}(),
+			current: func() map[string]any {
+				spec := mustCloneSpec()
+				spec["bootstrapped"] = true
+				spec["replicas"] = int64(3)
+				return spec
+			}(),
 		},
 		{
 			desc: "change replicas from false to true bootstrapped",
-			old: map[string]any{
-				"bootstrapped": false,
-				"replicas":     int64(1),
-			},
-			current: map[string]any{
-				"bootstrapped": true,
-				"replicas":     int64(3),
-			},
+			old: func() map[string]any {
+				spec := mustCloneSpec()
+				spec["bootstrapped"] = false
+				spec["replicas"] = int64(1)
+				return spec
+			}(),
+			current: func() map[string]any {
+				spec := mustCloneSpec()
+				spec["bootstrapped"] = true
+				spec["replicas"] = int64(3)
+				return spec
+			}(),
 		},
 		{
 			desc: "cannot change replicas when bootstrapped is false",
-			old: map[string]any{
-				"bootstrapped": false,
-				"replicas":     int64(1),
-			},
-			current: map[string]any{
-				"bootstrapped": false,
-				"replicas":     int64(3),
-			},
+			old: func() map[string]any {
+				spec := mustCloneSpec()
+				spec["bootstrapped"] = false
+				spec["replicas"] = int64(1)
+				return spec
+			}(),
+			current: func() map[string]any {
+				spec := mustCloneSpec()
+				spec["bootstrapped"] = false
+				spec["replicas"] = int64(3)
+				return spec
+			}(),
 			wantErrs: []string{errMsg},
 		},
 	}
@@ -321,45 +351,6 @@ func transferPDCases(t *testing.T, cases []Case, fields ...string) []Case {
 			unstructured.RemoveNestedField(old, fields...)
 		} else {
 			require.NoError(t, unstructured.SetNestedField(old, c.old, fields...))
-		}
-
-		c.old = old
-	}
-
-	return cases
-}
-
-func transferPDGroupReplicasCases(t *testing.T, cases []Case) []Case {
-	for i := range cases {
-		c := &cases[i]
-
-		current := basicPDGroup()
-		if c.current != nil {
-			spec := c.current.(map[string]any)
-			if bootstrapped, ok := spec["bootstrapped"]; ok {
-				require.NoError(t, unstructured.SetNestedField(current, bootstrapped, "spec", "bootstrapped"))
-			}
-			if replicas, ok := spec["replicas"]; ok {
-				require.NoError(t, unstructured.SetNestedField(current, replicas, "spec", "replicas"))
-			}
-		}
-
-		c.current = current
-
-		if c.isCreate {
-			c.old = nil
-			continue
-		}
-
-		old := basicPDGroup()
-		if c.old != nil {
-			spec := c.old.(map[string]any)
-			if bootstrapped, ok := spec["bootstrapped"]; ok {
-				require.NoError(t, unstructured.SetNestedField(old, bootstrapped, "spec", "bootstrapped"))
-			}
-			if replicas, ok := spec["replicas"]; ok {
-				require.NoError(t, unstructured.SetNestedField(old, replicas, "spec", "replicas"))
-			}
 		}
 
 		c.old = old

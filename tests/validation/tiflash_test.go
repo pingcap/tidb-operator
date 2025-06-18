@@ -30,7 +30,7 @@ func TestTiFlash(t *testing.T) {
 	cases = append(cases, transferTiFlashCases(t, OverlayVolumeClaims(true), "spec")...)
 	cases = append(cases, transferTiFlashCases(t, DataVolumeRequired(), "spec")...)
 	cases = append(cases, transferTiFlashCases(t, Version(), "spec", "version")...)
-	cases = append(cases, transferTiFlashCases(t, NameLength(), "metadata", "name")...)
+	cases = append(cases, transferTiFlashCases(t, NameLength(instanceNameLengthLimit), "metadata", "name")...)
 	Validate(t, "crd/core.pingcap.com_tiflashes.yaml", cases)
 }
 

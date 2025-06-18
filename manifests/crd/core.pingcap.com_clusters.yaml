@@ -150,9 +150,6 @@ spec:
                              Same for other components.
                     type: boolean
                 type: object
-                x-kubernetes-validations:
-                - message: field .tlsCluster.enabled is immutable
-                  rule: oldSelf == null || self.enabled == oldSelf.enabled
               upgradePolicy:
                 description: UpgradePolicy defines the upgrade policy for the cluster.
                 type: string
@@ -162,6 +159,9 @@ spec:
                 cannot be changed to a different value
               rule: oldSelf == null || !has(self.bootstrapSQL) || (has(oldSelf.bootstrapSQL)
                 && self.bootstrapSQL.name == oldSelf.bootstrapSQL.name)
+            - message: tlsCluster is immutable
+              rule: oldSelf == null || (has(oldSelf.tlsCluster) == has(self.tlsCluster))
+                && (!has(self.tlsCluster) || self.tlsCluster.enabled == oldSelf.tlsCluster.enabled)
           status:
             properties:
               components:
@@ -297,8 +297,8 @@ spec:
             type: object
         type: object
         x-kubernetes-validations:
-        - message: name must not exceed 30 characters
-          rule: size(self.metadata.name) <= 30
+        - message: name must not exceed 37 characters
+          rule: size(self.metadata.name) <= 37
     served: true
     storage: true
     subresources:

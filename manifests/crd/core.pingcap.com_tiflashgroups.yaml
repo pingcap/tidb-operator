@@ -8800,6 +8800,9 @@ spec:
             - updatedReplicas
             type: object
         type: object
+        x-kubernetes-validations:
+        - message: name must not exceed 30 characters
+          rule: size(self.metadata.name) <= 30
     selectableFields:
     - jsonPath: .spec.cluster.name
     served: true

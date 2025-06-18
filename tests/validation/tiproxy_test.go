@@ -29,7 +29,7 @@ func TestTiProxy(t *testing.T) {
 	cases = append(cases, transferTiProxyCases(t, ServerLabels(), "spec", "server", "labels")...)
 	cases = append(cases, transferTiProxyCases(t, OverlayVolumeClaims(false), "spec")...)
 	cases = append(cases, transferTiProxyCases(t, Version(), "spec", "version")...)
-	cases = append(cases, transferTiProxyCases(t, NameLength(), "metadata", "name")...)
+	cases = append(cases, transferTiProxyCases(t, NameLength(instanceNameLengthLimit), "metadata", "name")...)
 	Validate(t, "crd/core.pingcap.com_tiproxies.yaml", cases)
 }
 

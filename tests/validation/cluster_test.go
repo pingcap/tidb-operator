@@ -27,6 +27,7 @@ func TestCluster(t *testing.T) {
 	cases = append(cases, transferClusterCases(t, FeatureGates(), "spec", "featureGates")...)
 	cases = append(cases, transferClusterCases(t, bootstrapSQL(), "spec", "bootstrapSQL")...)
 	cases = append(cases, transferClusterCases(t, tlsCluster(), "spec", "tlsCluster")...)
+	cases = append(cases, transferClusterCases(t, NameLength(instanceNameLengthLimit), "metadata", "name")...)
 
 	Validate(t, "crd/core.pingcap.com_clusters.yaml", cases)
 }
@@ -79,7 +80,7 @@ func transferClusterCases(t *testing.T, cases []Case, fields ...string) []Case {
 }
 
 func tlsCluster() []Case {
-	errMsg := `spec.tlsCluster: Invalid value: "object": field .tlsCluster.enabled is immutable`
+	errMsg := `spec: Invalid value: "object": tlsCluster is immutable`
 	return []Case{
 		{
 			desc:     "set enabled to true when creating",
@@ -98,10 +99,37 @@ func tlsCluster() []Case {
 			wantErrs: []string{errMsg},
 		},
 		{
+			desc:    "from false to false",
+			old:     map[string]any{"enabled": false},
+			current: map[string]any{"enabled": false},
+		},
+		{
+			desc:    "from true to true",
+			old:     map[string]any{"enabled": true},
+			current: map[string]any{"enabled": true},
+		},
+		{
+			desc:     "try to update enabled from nil to true",
+			old:      nil,
+			current:  map[string]any{"enabled": true},
+			wantErrs: []string{errMsg},
+		},
+		{
 			desc:     "try to update enabled from true to false",
 			old:      map[string]any{"enabled": true},
 			current:  map[string]any{"enabled": false},
 			wantErrs: []string{errMsg},
+		},
+		{
+			desc:     "try to update enabled from true to nil",
+			old:      map[string]any{"enabled": true},
+			current:  nil,
+			wantErrs: []string{errMsg},
+		},
+		{
+			desc:    "from nil to nil",
+			old:     nil,
+			current: nil,
 		},
 		{
 			desc:    "enabled is not changed",

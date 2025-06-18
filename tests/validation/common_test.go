@@ -21,6 +21,9 @@ import (
 
 const (
 	requireDataVolumeErrMsg = `spec: Invalid value: "object": data volume must be configured`
+
+	groupNameLengthLimit    = 30
+	instanceNameLengthLimit = 37
 )
 
 func NameIsDNSSubdoamin(failMsgFmt string) []Case {
@@ -904,24 +907,19 @@ func Version() []Case {
 	return cases
 }
 
-func NameLength() []Case {
+func NameLength(limit int) []Case {
 	cases := []Case{
 		{
-			desc:     "name is valid",
+			desc:     fmt.Sprintf("name length is %d", limit),
 			isCreate: true,
-			current:  "test",
-		},
-		{
-			desc:     "name length is 30",
-			isCreate: true,
-			current:  strings.Repeat("a", 30),
+			current:  strings.Repeat("a", limit),
 		},
 		{
 			desc:     "name is too long",
 			isCreate: true,
-			current:  strings.Repeat("a", 31),
+			current:  strings.Repeat("a", limit+1),
 			wantErrs: []string{
-				"<nil>: Invalid value: \"object\": name must not exceed 30 characters",
+				fmt.Sprintf("<nil>: Invalid value: \"object\": name must not exceed %d characters", limit),
 			},
 		},
 	}
