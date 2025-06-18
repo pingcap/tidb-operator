@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -263,4 +264,143 @@ func newFakeTiProxyMemberManager() (*tiproxyMemberManager, *fakeIndexers) {
 		node:   fakeDeps.KubeInformerFactory.Core().V1().Nodes().Informer().GetIndexer(),
 	}
 	return tmm, indexers
+}
+
+func TestTiProxyMemberManagerHandleIfTiProxyScaledToZero(t *testing.T) {
+
+	type testcase struct {
+		name         string
+		tc           *v1alpha1.TidbCluster
+		sts          *apps.StatefulSet
+		expectAbort  bool
+		expectErr    bool
+		expectStatus v1alpha1.TiProxyStatus
+	}
+
+	tests := []testcase{
+		{
+			name: "tiproxy is not scaled to zero",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "db",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{
+						Replicas: 1,
+					},
+				},
+			},
+			expectAbort: false,
+			expectErr:   false,
+		},
+		{
+			name: "tiproxy scaled to zero and sts not found",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "db",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{
+						Replicas: 0,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					TiProxy: v1alpha1.TiProxyStatus{
+						StatefulSet: &apps.StatefulSetStatus{},
+					},
+				},
+			},
+			expectAbort:  true,
+			expectErr:    false,
+			expectStatus: v1alpha1.TiProxyStatus{},
+		},
+		{
+			name: "tiproxy scaled to zero, sts replicas not zero",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "db",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{
+						Replicas: 0,
+					},
+				},
+			},
+			sts: &apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      controller.TiProxyMemberName("db"),
+					Namespace: "ns",
+				},
+				Status: apps.StatefulSetStatus{
+					Replicas: 1,
+				},
+			},
+			expectAbort: false,
+			expectErr:   false,
+		},
+		{
+			name: "tiproxy scaled to zero, delete sts success",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "db",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{
+						Replicas: 0,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					TiProxy: v1alpha1.TiProxyStatus{
+						StatefulSet: &apps.StatefulSetStatus{},
+					},
+				},
+			},
+			sts: &apps.StatefulSet{
+				Status: apps.StatefulSetStatus{
+					Replicas: 0,
+				},
+			},
+			expectAbort:  true,
+			expectErr:    false,
+			expectStatus: v1alpha1.TiProxyStatus{},
+		},
+	}
+
+	for i := range tests {
+		t.Run(tests[i].name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+
+			test := tests[i]
+			tmm, indexers := newFakeTiProxyMemberManager()
+
+			// setup test case
+			if test.sts != nil {
+				sts := test.sts.DeepCopy()
+				sts.Name = controller.TiProxyMemberName(test.tc.Name)
+				sts.Namespace = test.tc.Namespace
+				err := indexers.set.Add(sts)
+				g.Expect(err).NotTo(HaveOccurred())
+			}
+
+			err := indexers.tc.Add(test.tc)
+			g.Expect(err).NotTo(HaveOccurred())
+			// execute test
+			abort, err := tmm.handleIfTiProxyScaledToZero(test.tc)
+
+			// verify results
+			if test.expectErr {
+				g.Expect(err).To(HaveOccurred())
+			} else {
+				g.Expect(err).NotTo(HaveOccurred())
+			}
+			g.Expect(abort).To(Equal(test.expectAbort))
+			if test.expectStatus.StatefulSet == nil {
+				g.Expect(test.tc.Status.TiProxy).To(Equal(test.expectStatus))
+			}
+		})
+	}
 }
