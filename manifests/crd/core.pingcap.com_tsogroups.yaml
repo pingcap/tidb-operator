@@ -49,7 +49,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: TSOGroup defines a group of similar TSO instances
+        description: TSOGroup defines a group of similar TSO instances.
         properties:
           apiVersion:
             description: |-
@@ -69,7 +69,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: TSOGroupSpec describes the common attributes of a TSOGroup
+            description: TSOGroupSpec describes the common attributes of a TSOGroup.
             properties:
               cluster:
                 description: |-
@@ -8919,6 +8919,9 @@ spec:
             - updatedReplicas
             type: object
         type: object
+        x-kubernetes-validations:
+        - message: name must not exceed 30 characters
+          rule: size(self.metadata.name) <= 30
     selectableFields:
     - jsonPath: .spec.cluster.name
     served: true

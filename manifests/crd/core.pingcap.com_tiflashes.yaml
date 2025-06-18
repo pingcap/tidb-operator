@@ -38,7 +38,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: TiFlash defines a TiFlash instance
+        description: TiFlash defines a TiFlash instance.
         properties:
           apiVersion:
             description: |-
@@ -8501,6 +8501,9 @@ spec:
                 type: string
             type: object
         type: object
+        x-kubernetes-validations:
+        - message: name must not exceed 30 characters
+          rule: size(self.metadata.name) <= 30
     selectableFields:
     - jsonPath: .spec.cluster.name
     served: true

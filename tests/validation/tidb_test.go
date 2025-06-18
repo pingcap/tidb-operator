@@ -29,8 +29,9 @@ func TestTiDB(t *testing.T) {
 	cases = append(cases, transferTiDBCases(t, ServerLabels(), "spec", "server", "labels")...)
 	cases = append(cases, transferTiDBCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
 	cases = append(cases, transferTiDBCases(t, mysqlTLS(), "spec", "security", "tls", "mysql")...)
-	cases = append(cases, transferTiDBCases(t, OverlayVolumeClaims(), "spec")...)
+	cases = append(cases, transferTiDBCases(t, OverlayVolumeClaims(false), "spec")...)
 	cases = append(cases, transferTiDBCases(t, Version(), "spec", "version")...)
+	cases = append(cases, transferTiDBCases(t, NameLength(), "metadata", "name")...)
 	Validate(t, "crd/core.pingcap.com_tidbs.yaml", cases)
 }
 

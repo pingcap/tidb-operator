@@ -27,9 +27,10 @@ func TestTiKV(t *testing.T) {
 	cases = append(cases, transferTiKVCases(t, Topology(), "spec", "topology")...)
 	cases = append(cases, transferTiKVCases(t, ClusterReference(), "spec", "cluster")...)
 	cases = append(cases, transferTiKVCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
-	cases = append(cases, transferTiKVCases(t, OverlayVolumeClaims(), "spec")...)
+	cases = append(cases, transferTiKVCases(t, OverlayVolumeClaims(true), "spec")...)
 	cases = append(cases, transferTiKVCases(t, DataVolumeRequired(), "spec")...)
 	cases = append(cases, transferTiKVCases(t, Version(), "spec", "version")...)
+	cases = append(cases, transferTiKVCases(t, NameLength(), "metadata", "name")...)
 	Validate(t, "crd/core.pingcap.com_tikvs.yaml", cases)
 }
 

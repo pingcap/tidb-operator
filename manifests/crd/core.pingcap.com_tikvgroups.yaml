@@ -49,7 +49,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: TiKVGroup defines a group of similar TiKV instances
+        description: TiKVGroup defines a group of similar TiKV instances.
         properties:
           apiVersion:
             description: |-
@@ -8762,6 +8762,9 @@ spec:
             - updatedReplicas
             type: object
         type: object
+        x-kubernetes-validations:
+        - message: name must not exceed 30 characters
+          rule: size(self.metadata.name) <= 30
     selectableFields:
     - jsonPath: .spec.cluster.name
     served: true

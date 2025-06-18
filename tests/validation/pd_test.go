@@ -28,9 +28,10 @@ func TestPD(t *testing.T) {
 	cases = append(cases, transferPDCases(t, ClusterReference(), "spec", "cluster")...)
 	cases = append(cases, transferPDCases(t, PDMode(), "spec", "mode")...)
 	cases = append(cases, transferPDCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
-	cases = append(cases, transferPDCases(t, OverlayVolumeClaims(), "spec")...)
+	cases = append(cases, transferPDCases(t, OverlayVolumeClaims(true), "spec")...)
 	cases = append(cases, transferPDCases(t, DataVolumeRequired(), "spec")...)
 	cases = append(cases, transferPDCases(t, Version(), "spec", "version")...)
+	cases = append(cases, transferPDCases(t, NameLength(), "metadata", "name")...)
 	Validate(t, "crd/core.pingcap.com_pds.yaml", cases)
 }
 
@@ -38,7 +39,7 @@ func TestPDGroup(t *testing.T) {
 	var cases []Case
 	cases = append(cases, transferPDGroupCases(t, bootstrapped(), "spec", "bootstrapped")...)
 	cases = append(cases, transferPDGroupReplicasCases(t, replicasWithBootstrapped())...)
-
+	cases = append(cases, transferPDGroupCases(t, NameLength(), "metadata", "name")...)
 	Validate(t, "crd/core.pingcap.com_pdgroups.yaml", cases)
 }
 

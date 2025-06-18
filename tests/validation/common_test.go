@@ -14,7 +14,10 @@
 
 package validation
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 const (
 	requireDataVolumeErrMsg = `spec: Invalid value: "object": data volume must be configured`
@@ -411,7 +414,7 @@ func ServerLabels() []Case {
 	}
 }
 
-func OverlayVolumeClaims() []Case {
+func OverlayVolumeClaims(requireDataVolume bool) []Case {
 	errMsg := `spec: Invalid value: "object": overlay volumeClaims names must exist in volumes`
 
 	baseSpec := map[string]any{
@@ -420,6 +423,13 @@ func OverlayVolumeClaims() []Case {
 		},
 		"subdomain": "test",
 		"version":   "v8.1.0",
+	}
+
+	wantErrsFunc := func(requireDataVolume bool) []string {
+		if requireDataVolume {
+			return []string{errMsg, requireDataVolumeErrMsg}
+		}
+		return []string{errMsg}
 	}
 
 	cases := []Case{
@@ -648,7 +658,7 @@ func OverlayVolumeClaims() []Case {
 				}
 				return spec
 			}(),
-			wantErrs: []string{errMsg, requireDataVolumeErrMsg},
+			wantErrs: wantErrsFunc(requireDataVolume),
 		},
 	}
 
@@ -889,6 +899,31 @@ func Version() []Case {
 				fmt.Sprintf(`spec.version: Invalid value: "%s": spec.version in body should match '^(v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'`, version),
 			},
 		})
+	}
+
+	return cases
+}
+
+func NameLength() []Case {
+	cases := []Case{
+		{
+			desc:     "name is valid",
+			isCreate: true,
+			current:  "test",
+		},
+		{
+			desc:     "name length is 30",
+			isCreate: true,
+			current:  strings.Repeat("a", 30),
+		},
+		{
+			desc:     "name is too long",
+			isCreate: true,
+			current:  strings.Repeat("a", 31),
+			wantErrs: []string{
+				"<nil>: Invalid value: \"object\": name must not exceed 30 characters",
+			},
+		},
 	}
 
 	return cases

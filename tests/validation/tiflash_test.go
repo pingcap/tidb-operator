@@ -27,9 +27,10 @@ func TestTiFlash(t *testing.T) {
 	cases = append(cases, transferTiFlashCases(t, Topology(), "spec", "topology")...)
 	cases = append(cases, transferTiFlashCases(t, ClusterReference(), "spec", "cluster")...)
 	cases = append(cases, transferTiFlashCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
-	cases = append(cases, transferTiFlashCases(t, OverlayVolumeClaims(), "spec")...)
+	cases = append(cases, transferTiFlashCases(t, OverlayVolumeClaims(true), "spec")...)
 	cases = append(cases, transferTiFlashCases(t, DataVolumeRequired(), "spec")...)
 	cases = append(cases, transferTiFlashCases(t, Version(), "spec", "version")...)
+	cases = append(cases, transferTiFlashCases(t, NameLength(), "metadata", "name")...)
 	Validate(t, "crd/core.pingcap.com_tiflashes.yaml", cases)
 }
 

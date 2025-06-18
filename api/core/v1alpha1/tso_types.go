@@ -52,7 +52,8 @@ type TSOGroupList struct {
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
-// TSOGroup defines a group of similar TSO instances
+// TSOGroup defines a group of similar TSO instances.
+// +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 30",message="name must not exceed 30 characters"
 type TSOGroup struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -82,7 +83,8 @@ type TSOList struct {
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
-// TSO defines a TSO instance
+// TSO defines a TSO instance.
+// +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 30",message="name must not exceed 30 characters"
 type TSO struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -91,7 +93,7 @@ type TSO struct {
 	Status TSOStatus `json:"status,omitempty"`
 }
 
-// TSOGroupSpec describes the common attributes of a TSOGroup
+// TSOGroupSpec describes the common attributes of a TSOGroup.
 type TSOGroupSpec struct {
 	Cluster ClusterReference `json:"cluster"`
 	// Features are enabled feature
