@@ -105,6 +105,13 @@ func (m *tiproxyMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
+	// handle tiproxy scaled to zero
+	if abort, err := m.handleIfTiProxyScaledToZero(tc); err != nil {
+		return err
+	} else if abort {
+		return nil
+	}
+
 	if err := m.syncProxyService(tc, false); err != nil {
 		return err
 	}
@@ -113,6 +120,45 @@ func (m *tiproxyMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	}
 
 	return m.syncStatefulSet(tc)
+}
+
+// scaleInToZero is used to scale in tiproxy to zero, it will delete the sts and reset the tiproxy status.
+// Note: the corresponding k8s services, configmaps will remain unchanged.
+func (s *tiproxyMemberManager) handleIfTiProxyScaledToZero(tc *v1alpha1.TidbCluster) (abort bool, _ error) {
+	if tc.Spec.TiProxy.Replicas != 0 {
+		// skip if tiproxy is not scaled to zero
+		return false, nil
+	}
+
+	sts, err := s.deps.StatefulSetLister.StatefulSets(tc.Namespace).Get(controller.TiProxyMemberName(tc.Name))
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// reset tiproxy status
+			tc.Status.TiProxy = v1alpha1.TiProxyStatus{}
+
+			// tiproxy sts is already deleted, abort remaining sync of tiproxy
+			return true, nil
+		}
+		return false, fmt.Errorf("scaleInToZero: failed to get sts %s for cluster %s/%s, error: %s", sts.Name, tc.Namespace, tc.Name, err)
+	}
+
+	if sts.Status.Replicas != 0 {
+		// wait for tiproxy sts to be scaled to zero
+		klog.Infof("wait for tiproxy sts %s/%s to be scaled to zero", sts.Namespace, sts.Name)
+		return false, nil
+	}
+
+	// reset tiproxy status
+	tc.Status.TiProxy = v1alpha1.TiProxyStatus{}
+	klog.Infof("try to delete sts as scaling in tiproxy statefulset %s/%s to zero", tc.Namespace, tc.Name)
+	foreground := metav1.DeletePropagationForeground
+	opts := metav1.DeleteOptions{
+		PropagationPolicy: &foreground,
+	}
+	if err := s.deps.StatefulSetControl.DeleteStatefulSet(tc, sts, opts); err != nil && !errors.IsNotFound(err) {
+		return false, fmt.Errorf("failed to delete sts %s for cluster %s/%s, error: %s", sts.Name, tc.Namespace, tc.Name, err)
+	}
+	return true, nil
 }
 
 func (m *tiproxyMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {

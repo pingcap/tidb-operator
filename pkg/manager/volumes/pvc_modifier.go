@@ -70,6 +70,11 @@ func (p *pvcModifier) Sync(tc *v1alpha1.TidbCluster) error {
 			// not need storage
 			continue
 		}
+		// skip if tiproxy is already scaled to zero
+		if comp.MemberType() == v1alpha1.TiProxyMemberType && tc.TiProxyStsDesiredReplicas() == 0 {
+			continue
+		}
+
 		ctx, err := p.utils.BuildContextForTC(tc, comp)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("build ctx used by modifier for %s/%s:%s failed: %w", tc.Namespace, tc.Name, comp.MemberType(), err))
