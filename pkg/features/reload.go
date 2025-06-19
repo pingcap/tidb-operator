@@ -24,8 +24,8 @@ import (
 // This variable records whether a component will be restarted when enabling/disabling a feature
 // TODO: maybe moved to meta pkg
 var unreloadable = map[meta.Feature][]meta.Component{
-	meta.FeatureModification:  {},
-	meta.VolumeAttributeClass: {},
+	meta.FeatureModification:   {},
+	meta.VolumeAttributesClass: {},
 	meta.DisablePDDefaultReadinessProbe: {
 		meta.ComponentPD,
 	},

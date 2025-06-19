@@ -225,7 +225,7 @@ type modifierFactory struct {
 }
 
 func (f *modifierFactory) New(fg features.Gates) Modifier {
-	if fg.Enabled(v1alpha1.VolumeAttributeClass) {
+	if fg.Enabled(v1alpha1.VolumeAttributesClass) {
 		if f.native == nil {
 			f.native = NewNativeModifier(f.cli, f.logger)
 		}
