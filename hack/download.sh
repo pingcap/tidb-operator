@@ -35,7 +35,7 @@ function download() {
         ;;
     *)
         echo "unknown download type: $type"
-        exit -1
+        exit 1
         ;;
     esac
 }

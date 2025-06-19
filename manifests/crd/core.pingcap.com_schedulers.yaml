@@ -120,6 +120,7 @@ spec:
                               (scope and select) objects. May match selectors of replication controllers
                               and services.
                               More info: http://kubernetes.io/docs/user-guide/labels
+                            maxProperties: 512
                             type: object
                           name:
                             description: |-
@@ -8142,6 +8143,7 @@ spec:
                                     (scope and select) objects. May match selectors of replication controllers
                                     and services.
                                     More info: http://kubernetes.io/docs/user-guide/labels
+                                  maxProperties: 512
                                   type: object
                                 name:
                                   description: |-
@@ -8362,6 +8364,7 @@ spec:
                       - name
                       - volumeClaim
                       type: object
+                    maxItems: 256
                     type: array
                     x-kubernetes-list-map-keys:
                     - name
@@ -8409,6 +8412,9 @@ spec:
                   Subdomain means the subdomain of the exported Scheduler dns.
                   A same Scheduler cluster will use a same subdomain
                 type: string
+                x-kubernetes-validations:
+                - message: subdomain is immutable
+                  rule: self == oldSelf
               topology:
                 additionalProperties:
                   type: string
@@ -8434,6 +8440,10 @@ spec:
                     type: string
                 type: object
               version:
+                description: |-
+                  Version must be a semantic version.
+                  It can has a v prefix or not.
+                pattern: ^(v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$
                 type: string
               volumes:
                 description: Volumes defines persistent volumes of Scheduler
@@ -8494,6 +8504,7 @@ spec:
                   - name
                   - storage
                   type: object
+                maxItems: 256
                 type: array
                 x-kubernetes-list-map-keys:
                 - name
@@ -8508,6 +8519,10 @@ spec:
               message: topology can only be set when creating
               rule: (!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology)
                 && has(self.topology))
+            - message: overlay volumeClaims names must exist in volumes
+              rule: '!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes)
+                && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v,
+                v.name)))'
           status:
             properties:
               collisionCount:
@@ -8593,6 +8608,9 @@ spec:
                 type: string
             type: object
         type: object
+        x-kubernetes-validations:
+        - message: name must not exceed 37 characters
+          rule: size(self.metadata.name) <= 37
     selectableFields:
     - jsonPath: .spec.cluster.name
     served: true

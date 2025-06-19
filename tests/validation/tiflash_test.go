@@ -22,29 +22,34 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
-func TestScheduler(t *testing.T) {
-	cases := append(
-		transferSchedulerCases(t, Topology(), "spec", "topology"),
-		transferSchedulerCases(t, ClusterReference(), "spec", "cluster")...,
-	)
-	cases = append(cases, transferSchedulerCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
-	cases = append(cases, transferSchedulerCases(t, OverlayVolumeClaims(false), "spec")...)
-	cases = append(cases, transferSchedulerCases(t, Version(), "spec", "version")...)
-	cases = append(cases, transferSchedulerCases(t, NameLength(instanceNameLengthLimit), "metadata", "name")...)
-	Validate(t, "crd/core.pingcap.com_schedulers.yaml", cases)
+func TestTiFlash(t *testing.T) {
+	cases := []Case{}
+	cases = append(cases, transferTiFlashCases(t, Topology(), "spec", "topology")...)
+	cases = append(cases, transferTiFlashCases(t, ClusterReference(), "spec", "cluster")...)
+	cases = append(cases, transferTiFlashCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
+	cases = append(cases, transferTiFlashCases(t, OverlayVolumeClaims(true), "spec")...)
+	cases = append(cases, transferTiFlashCases(t, DataVolumeRequired(), "spec")...)
+	cases = append(cases, transferTiFlashCases(t, Version(), "spec", "version")...)
+	cases = append(cases, transferTiFlashCases(t, NameLength(instanceNameLengthLimit), "metadata", "name")...)
+	Validate(t, "crd/core.pingcap.com_tiflashes.yaml", cases)
 }
 
-func basicScheduler() map[string]any {
+func basicTiFlash() map[string]any {
 	data := []byte(`
 apiVersion: core.pingcap.com/v1alpha1
-kind: Scheduler
+kind: TiFlash
 metadata:
-  name: scheduler
+  name: tiflash
 spec:
   cluster:
     name: test
   subdomain: test
   version: v8.1.0
+  volumes:
+  - name: data
+    mounts:
+    - type: data
+    storage: 20Gi
 `)
 	obj := map[string]any{}
 	if err := yaml.Unmarshal(data, &obj); err != nil {
@@ -54,11 +59,11 @@ spec:
 	return obj
 }
 
-func transferSchedulerCases(t *testing.T, cases []Case, fields ...string) []Case {
+func transferTiFlashCases(t *testing.T, cases []Case, fields ...string) []Case {
 	for i := range cases {
 		c := &cases[i]
 
-		current := basicScheduler()
+		current := basicTiFlash()
 		if c.current == nil {
 			unstructured.RemoveNestedField(current, fields...)
 		} else {
@@ -72,7 +77,7 @@ func transferSchedulerCases(t *testing.T, cases []Case, fields ...string) []Case
 			continue
 		}
 
-		old := basicScheduler()
+		old := basicTiFlash()
 		if c.old == nil {
 			unstructured.RemoveNestedField(old, fields...)
 		} else {

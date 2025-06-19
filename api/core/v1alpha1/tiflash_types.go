@@ -15,8 +15,9 @@
 package v1alpha1
 
 import (
-	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 const (
@@ -66,6 +67,7 @@ type TiFlashGroupList struct {
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // TiFlashGroup defines a group of similar TiFlash instances
+// +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 30",message="name must not exceed 30 characters"
 type TiFlashGroup struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -77,7 +79,7 @@ type TiFlashGroup struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 
-// TiFlashList defines a list of TiFlash instances
+// TiFlashList defines a list of TiFlash instances.
 type TiFlashList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -97,7 +99,8 @@ type TiFlashList struct {
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
-// TiFlash defines a TiFlash instance
+// TiFlash defines a TiFlash instance.
+// +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 37",message="name must not exceed 37 characters"
 type TiFlash struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -110,7 +113,8 @@ type TiFlashGroupSpec struct {
 	Cluster ClusterReference `json:"cluster"`
 	// Features are enabled feature
 	Features []meta.Feature `json:"features,omitempty"`
-	Replicas *int32         `json:"replicas"`
+	// +kubebuilder:validation:Minimum=0
+	Replicas *int32 `json:"replicas"`
 
 	// +listType=map
 	// +listMapKey=type
@@ -123,7 +127,12 @@ type TiFlashTemplate struct {
 	Spec       TiFlashTemplateSpec `json:"spec"`
 }
 
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes) && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in volumes"
+// +kubebuilder:validation:XValidation:rule="has(self.volumes) && ('data' in self.volumes.map(v, v.name))",message="data volume must be configured"
 type TiFlashTemplateSpec struct {
+	// Version must be a semantic version.
+	// It can has a v prefix or not.
+	// +kubebuilder:validation:Pattern=`^(v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
 	Version string `json:"version"`
 	// Image is tiflash's image
 	// If tag is omitted, version will be used as the image tag.
@@ -145,6 +154,7 @@ type TiFlashTemplateSpec struct {
 	// Volumes defines data volume of TiFlash
 	// +listType=map
 	// +listMapKey=name
+	// +kubebuilder:validation:MaxItems=256
 	Volumes []Volume `json:"volumes"`
 
 	// LogTailer defines the sidercar log tailer config of TiFlash.
@@ -196,6 +206,7 @@ type TiFlashSpec struct {
 	Topology Topology `json:"topology,omitempty"`
 	// Subdomain means the subdomain of the exported TiFlash dns.
 	// A same TiFlash group will use a same subdomain
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="subdomain is immutable"
 	Subdomain string `json:"subdomain"`
 
 	// TiFlashTemplateSpec embedded some fields managed by TiFlashGroup

@@ -38,7 +38,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
-	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -94,11 +93,10 @@ func LoadClientRawConfig() (clientcmdapi.Config, error) {
 // nolint: goconst // just for test
 var _ = Describe("TiDB Cluster", func() {
 	var (
-		clientSet   kubernetes.Interface
-		k8sClient   client.Client
-		restConfig  *rest.Config
-		fw          k8s.PortForwarder
-		yamlApplier *k8s.YAMLApplier
+		clientSet  kubernetes.Interface
+		k8sClient  client.Client
+		restConfig *rest.Config
+		fw         k8s.PortForwarder
 
 		ns  *corev1.Namespace
 		tc  *v1alpha1.Cluster
@@ -115,11 +113,10 @@ var _ = Describe("TiDB Cluster", func() {
 		clientSet, k8sClient, restConfig = initK8sClient()
 		_ = restConfig
 
-		dynamicClient := dynamic.NewForConfigOrDie(restConfig)
 		cachedDiscovery := cacheddiscovery.NewMemCacheClient(clientSet.Discovery())
 		restmapper := restmapper.NewDeferredDiscoveryRESTMapper(cachedDiscovery)
 		restmapper.Reset()
-		yamlApplier = k8s.NewYAMLApplier(dynamicClient, restmapper)
+
 		ns = data.NewNamespace()
 		tc = data.NewCluster(ns.Name, "tc")
 
@@ -1291,118 +1288,6 @@ var _ = Describe("TiDB Cluster", func() {
 					}
 				}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
 			})
-		})
-	})
-
-	Context("TLS", func() {
-		It("should enable TLS for MySQL Client and between TiDB components", func() {
-			By("Installing the certificates")
-			Expect(InstallTiDBIssuer(ctx, yamlApplier, ns.Name, tc.Name)).To(Succeed())
-			Expect(InstallTiDBCertificates(ctx, yamlApplier, ns.Name, tc.Name, "dbg")).To(Succeed())
-			Expect(InstallTiDBComponentsCertificates(ctx, yamlApplier, ns.Name, tc.Name, "pdg", "kvg", "dbg", "flashg", "cdcg")).To(Succeed())
-
-			By("Enabling TLS for TiDB components")
-			var tcGet v1alpha1.Cluster
-			Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: tc.Namespace, Name: tc.Name}, &tcGet)).To(Succeed())
-			tcGet.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
-			Expect(k8sClient.Update(ctx, &tcGet)).To(Succeed())
-
-			By("Creating the components with TLS client enabled")
-			pdg := data.NewPDGroup(ns.Name, "pdg", tc.Name, ptr.To(int32(1)), func(_ *v1alpha1.PDGroup) {})
-			kvg := data.NewTiKVGroup(ns.Name, "kvg", tc.Name, ptr.To(int32(1)), func(_ *v1alpha1.TiKVGroup) {})
-			dbg := data.NewTiDBGroup(ns.Name, "dbg", tc.Name, ptr.To(int32(1)), func(group *v1alpha1.TiDBGroup) {
-				group.Spec.Template.Spec.Security = &v1alpha1.TiDBSecurity{
-					TLS: &v1alpha1.TiDBTLS{
-						MySQL: &v1alpha1.TLS{
-							Enabled: true,
-						},
-					},
-				}
-			})
-			flashg := data.NewTiFlashGroup(ns.Name, "flashg", tc.Name, ptr.To(int32(1)), nil)
-			cdcg := data.NewTiCDCGroup(ns.Name, "cdcg", tc.Name, ptr.To(int32(1)), nil)
-			Expect(k8sClient.Create(ctx, pdg)).To(Succeed())
-			Expect(k8sClient.Create(ctx, kvg)).To(Succeed())
-			Expect(k8sClient.Create(ctx, dbg)).To(Succeed())
-			Expect(k8sClient.Create(ctx, flashg)).To(Succeed())
-			Expect(k8sClient.Create(ctx, cdcg)).To(Succeed())
-
-			By("Checking the status of the cluster and the connection to the TiDB service")
-			Eventually(func(g Gomega) {
-				tcGet, ready := utiltidb.IsClusterReady(k8sClient, tc.Name, tc.Namespace)
-				g.Expect(ready).To(BeTrue())
-				g.Expect(len(tcGet.Status.PD)).NotTo(BeZero())
-				for _, compStatus := range tcGet.Status.Components {
-					switch compStatus.Kind {
-					case v1alpha1.ComponentKindPD, v1alpha1.ComponentKindTiKV, v1alpha1.ComponentKindTiDB,
-						v1alpha1.ComponentKindTiFlash, v1alpha1.ComponentKindTiCDC:
-						g.Expect(compStatus.Replicas).To(Equal(int32(1)))
-					default:
-						g.Expect(compStatus.Replicas).To(BeZero())
-					}
-				}
-
-				checkComponent := func(groupName, componentName string, expectedReplicas *int32) {
-					listOptions := metav1.ListOptions{
-						LabelSelector: fmt.Sprintf("%s=%s,%s=%s",
-							v1alpha1.LabelKeyCluster, tc.Name, v1alpha1.LabelKeyGroup, groupName),
-					}
-					podList, err := clientSet.CoreV1().Pods(tc.Namespace).List(ctx, listOptions)
-					g.Expect(err).To(BeNil())
-					g.Expect(len(podList.Items)).To(Equal(int(*expectedReplicas)))
-					for _, pod := range podList.Items {
-						g.Expect(pod.Status.Phase).To(Equal(corev1.PodRunning))
-
-						// check for mTLS
-						g.Expect(pod.Spec.Volumes).To(ContainElement(corev1.Volume{
-							Name: v1alpha1.VolumeNameClusterTLS,
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{
-									// TODO(liubo02): extract to a namer pkg
-									SecretName:  groupName + "-" + componentName + "-cluster-secret",
-									DefaultMode: ptr.To(int32(420)),
-								},
-							},
-						}))
-						g.Expect(pod.Spec.Containers[0].VolumeMounts).To(ContainElement(corev1.VolumeMount{
-							Name:      v1alpha1.VolumeNameClusterTLS,
-							MountPath: fmt.Sprintf("/var/lib/%s-tls", componentName),
-							ReadOnly:  true,
-						}))
-
-						switch componentName {
-						case v1alpha1.LabelValComponentTiDB:
-							// check for TiDB server & mysql client TLS
-							g.Expect(pod.Spec.Volumes).To(ContainElement(corev1.Volume{
-								Name: v1alpha1.VolumeNameMySQLTLS,
-								VolumeSource: corev1.VolumeSource{
-									Secret: &corev1.SecretVolumeSource{
-										// TODO(liubo02): extract to a namer pkg
-										SecretName:  dbg.Name + "-tidb-server-secret",
-										DefaultMode: ptr.To(int32(420)),
-									},
-								},
-							}))
-							g.Expect(pod.Spec.Containers[0].VolumeMounts).To(ContainElement(corev1.VolumeMount{
-								Name:      v1alpha1.VolumeNameMySQLTLS,
-								MountPath: v1alpha1.DirPathMySQLTLS,
-								ReadOnly:  true,
-							}))
-						}
-					}
-				}
-				checkComponent(pdg.Name, v1alpha1.LabelValComponentPD, pdg.Spec.Replicas)
-				checkComponent(kvg.Name, v1alpha1.LabelValComponentTiKV, kvg.Spec.Replicas)
-				checkComponent(dbg.Name, v1alpha1.LabelValComponentTiDB, dbg.Spec.Replicas)
-				checkComponent(flashg.Name, v1alpha1.LabelValComponentTiFlash, flashg.Spec.Replicas)
-				checkComponent(cdcg.Name, v1alpha1.LabelValComponentTiCDC, cdcg.Spec.Replicas)
-
-				// TODO(liubo02): extract to a common namer pkg
-				g.Expect(utiltidb.IsTiDBConnectable(ctx, k8sClient, fw,
-					tc.Namespace, tc.Name, dbg.Name, "root", "", dbg.Name+"-tidb-client-secret")).To(Succeed())
-			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
-
-			// TODO: version upgrade test
 		})
 	})
 

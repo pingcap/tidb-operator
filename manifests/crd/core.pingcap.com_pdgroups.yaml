@@ -49,7 +49,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: PDGroup defines a group of similar PD instances
+        description: PDGroup defines a group of similar PD instances.
         properties:
           apiVersion:
             description: |-
@@ -79,6 +79,9 @@ spec:
                   Normally, this field is automatically changed by operator.
                   If it's true, it cannot be set to false for security
                 type: boolean
+                x-kubernetes-validations:
+                - message: bootstrapped cannot be changed from true to false
+                  rule: '!oldSelf || self'
               cluster:
                 description: |-
                   ClusterReference is a reference to cluster
@@ -108,6 +111,7 @@ spec:
                 type: array
               replicas:
                 format: int32
+                minimum: 0
                 type: integer
               schedulePolicies:
                 items:
@@ -132,6 +136,7 @@ spec:
                                   Weight defines how many pods will be scheduled to this topo
                                   default is 1
                                 format: int32
+                                minimum: 1
                                 type: integer
                             required:
                             - topology
@@ -173,6 +178,7 @@ spec:
                           (scope and select) objects. May match selectors of replication controllers
                           and services.
                           More info: http://kubernetes.io/docs/user-guide/labels
+                        maxProperties: 512
                         type: object
                       name:
                         description: |-
@@ -207,7 +213,7 @@ spec:
                       overlay:
                         description: |-
                           Overlay defines a k8s native resource template patch
-                          All resources(pod, pvcs, ...) managed by PD can be overlayed by this field
+                          All resources(pod, pvcs, ...) managed by PD can be overlaid by this field
                         properties:
                           pod:
                             properties:
@@ -233,6 +239,7 @@ spec:
                                       (scope and select) objects. May match selectors of replication controllers
                                       and services.
                                       More info: http://kubernetes.io/docs/user-guide/labels
+                                    maxProperties: 512
                                     type: object
                                   name:
                                     description: |-
@@ -8273,6 +8280,7 @@ spec:
                                             (scope and select) objects. May match selectors of replication controllers
                                             and services.
                                             More info: http://kubernetes.io/docs/user-guide/labels
+                                          maxProperties: 512
                                           type: object
                                         name:
                                           description: |-
@@ -8494,6 +8502,7 @@ spec:
                               - name
                               - volumeClaim
                               type: object
+                            maxItems: 256
                             type: array
                             x-kubernetes-list-map-keys:
                             - name
@@ -8558,6 +8567,10 @@ spec:
                             type: string
                         type: object
                       version:
+                        description: |-
+                          Version must be a semantic version.
+                          It can has a v prefix or not.
+                        pattern: ^(v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$
                         type: string
                       volumes:
                         description: Volumes defines persistent volumes of PD
@@ -8619,6 +8632,7 @@ spec:
                           - name
                           - storage
                           type: object
+                        maxItems: 256
                         type: array
                         x-kubernetes-list-map-keys:
                         - name
@@ -8632,6 +8646,12 @@ spec:
                       message: pd mode can only be set when creating now
                       rule: (!has(oldSelf.mode) && !has(self.mode)) || (has(oldSelf.mode)
                         && has(self.mode))
+                    - message: overlay volumeClaims names must exist in volumes
+                      rule: '!has(self.overlay) || !has(self.overlay.volumeClaims)
+                        || (has(self.volumes) && self.overlay.volumeClaims.all(vc,
+                        vc.name in self.volumes.map(v, v.name)))'
+                    - message: data volume must be configured
+                      rule: has(self.volumes) && ('data' in self.volumes.map(v, v.name))
                 required:
                 - spec
                 type: object
@@ -8640,6 +8660,9 @@ spec:
             - replicas
             - template
             type: object
+            x-kubernetes-validations:
+            - message: replicas cannot be changed when bootstrapped is false
+              rule: self.bootstrapped || (self.replicas == oldSelf.replicas)
           status:
             properties:
               collisionCount:
@@ -8760,6 +8783,9 @@ spec:
             - updatedReplicas
             type: object
         type: object
+        x-kubernetes-validations:
+        - message: name must not exceed 30 characters
+          rule: size(self.metadata.name) <= 30
     selectableFields:
     - jsonPath: .spec.cluster.name
     served: true

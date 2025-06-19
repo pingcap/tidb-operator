@@ -164,6 +164,7 @@ type ObjectMeta struct {
 	// and services.
 	// More info: http://kubernetes.io/docs/user-guide/labels
 	// +optional
+	// +kubebuilder:validation:MaxProperties=512
 	Labels map[string]string `json:"labels,omitempty"`
 
 	// Annotations is an unstructured key value map stored with a resource that may be
@@ -195,6 +196,7 @@ type Overlay struct {
 	Pod *PodOverlay `json:"pod,omitempty"`
 	// +listType=map
 	// +listMapKey=name
+	// +kubebuilder:validation:MaxItems=256
 	PersistentVolumeClaims []NamedPersistentVolumeClaimOverlay `json:"volumeClaims,omitempty"`
 }
 
@@ -285,6 +287,7 @@ type ScheduleTopology struct {
 	Topology Topology `json:"topology"`
 	// Weight defines how many pods will be scheduled to this topo
 	// default is 1
+	// +kubebuilder:validation:Minimum=1
 	Weight *int32 `json:"weight,omitempty"`
 }
 

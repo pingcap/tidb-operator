@@ -70,7 +70,8 @@ type PDGroupList struct {
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
-// PDGroup defines a group of similar PD instances
+// PDGroup defines a group of similar PD instances.
+// +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 30",message="name must not exceed 30 characters"
 type PDGroup struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -101,7 +102,8 @@ type PDList struct {
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
-// PD defines a PD instance
+// PD defines a PD instance.
+// +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 37",message="name must not exceed 37 characters"
 type PD struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -111,12 +113,14 @@ type PD struct {
 }
 
 // PDGroupSpec describes the common attributes of a PDGroup
+// +kubebuilder:validation:XValidation:rule="self.bootstrapped || (self.replicas == oldSelf.replicas)",message="replicas cannot be changed when bootstrapped is false"
 type PDGroupSpec struct {
 	Cluster ClusterReference `json:"cluster"`
 
 	// Features are enabled feature
 	Features []meta.Feature `json:"features,omitempty"`
 
+	// +kubebuilder:validation:Minimum=0
 	Replicas *int32 `json:"replicas"`
 
 	// Bootstrapped means that pd cluster has been bootstrapped,
@@ -124,6 +128,7 @@ type PDGroupSpec struct {
 	// In other words, this PD group will just join an existing cluster.
 	// Normally, this field is automatically changed by operator.
 	// If it's true, it cannot be set to false for security
+	// +kubebuilder:validation:XValidation:rule="!oldSelf || self",message="bootstrapped cannot be changed from true to false"
 	Bootstrapped bool `json:"bootstrapped,omitempty"`
 
 	// +listType=map
@@ -141,7 +146,12 @@ type PDTemplate struct {
 // PDTemplateSpec can only be specified in PDGroup
 // TODO: It's name may need to be changed to distinguish from PodTemplateSpec
 // +kubebuilder:validation:XValidation:rule="(!has(oldSelf.mode) && !has(self.mode)) || (has(oldSelf.mode) && has(self.mode))",fieldPath=".mode",message="pd mode can only be set when creating now"
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes) && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in volumes"
+// +kubebuilder:validation:XValidation:rule="has(self.volumes) && ('data' in self.volumes.map(v, v.name))",message="data volume must be configured"
 type PDTemplateSpec struct {
+	// Version must be a semantic version.
+	// It can has a v prefix or not.
+	// +kubebuilder:validation:Pattern=`^(v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
 	Version string `json:"version"`
 	// Image is pd's image
 	// If tag is omitted, version will be used as the image tag.
@@ -161,9 +171,10 @@ type PDTemplateSpec struct {
 	// Volumes defines persistent volumes of PD
 	// +listType=map
 	// +listMapKey=name
+	// +kubebuilder:validation:MaxItems=256
 	Volumes []Volume `json:"volumes"`
 	// Overlay defines a k8s native resource template patch
-	// All resources(pod, pvcs, ...) managed by PD can be overlayed by this field
+	// All resources(pod, pvcs, ...) managed by PD can be overlaid by this field
 	Overlay *Overlay `json:"overlay,omitempty"`
 }
 
@@ -211,6 +222,7 @@ type PDSpec struct {
 
 	// Subdomain means the subdomain of the exported pd dns.
 	// A same pd cluster will use a same subdomain
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="subdomain is immutable"
 	Subdomain string `json:"subdomain"`
 
 	// PDTemplateSpec embedded some fields managed by PDGroup

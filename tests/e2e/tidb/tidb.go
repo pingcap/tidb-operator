@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,7 +30,9 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
+	"github.com/pingcap/tidb-operator/tests/e2e/utils/cert"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/jwt"
+	utiltidb "github.com/pingcap/tidb-operator/tests/e2e/utils/tidb"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
@@ -58,7 +61,7 @@ var _ = ginkgo.Describe("TiDB", label.TiDB, func() {
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
 
-			workload.MustPing(ctx, data.DefaultTiDBServiceName, "root", "pingcap")
+			workload.MustPing(ctx, data.DefaultTiDBServiceName, "root", "pingcap", "")
 		})
 	})
 
@@ -95,7 +98,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
 
-			workload.MustPing(ctx, data.DefaultTiDBServiceName, sub, token)
+			workload.MustPing(ctx, data.DefaultTiDBServiceName, sub, token, "")
 		})
 	})
 
@@ -293,6 +296,93 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			f.WaitForTiDBGroupReady(ctx, dbg)
 			cancel()
 			<-ch
+		})
+	})
+
+	ginkgo.Context("TLS", label.P0, label.FeatureTLS, func() {
+		f.SetupCluster(data.WithClusterTLS())
+		workload := f.SetupWorkload()
+
+		ginkgo.It("should enable TLS for MySQL Client and between TiDB components", func(ctx context.Context) {
+			ns := f.Namespace.Name
+			tcName := f.Cluster.Name
+			ginkgo.By("Installing the certificates")
+			f.Must(cert.InstallTiDBIssuer(ctx, f.Client, ns, tcName))
+			f.Must(cert.InstallTiDBCertificates(ctx, f.Client, ns, tcName, "dbg"))
+			f.Must(cert.InstallTiDBComponentsCertificates(ctx, f.Client, ns, tcName, "pdg", "kvg", "dbg", "fg", "cg"))
+
+			ginkgo.By("Creating the components with TLS client enabled")
+			pdg := f.MustCreatePD(ctx)
+			kvg := f.MustCreateTiKV(ctx)
+			dbg := f.MustCreateTiDB(ctx, data.WithTLS())
+			flashg := f.MustCreateTiFlash(ctx)
+			cdcg := f.MustCreateTiCDC(ctx)
+			f.WaitForPDGroupReady(ctx, pdg)
+			f.WaitForTiKVGroupReady(ctx, kvg)
+			f.WaitForTiDBGroupReady(ctx, dbg)
+			f.WaitForTiFlashGroupReady(ctx, flashg)
+			f.WaitForTiCDCGroupReady(ctx, cdcg)
+
+			ginkgo.By("Checking the status of the cluster and the connection to the TiDB service")
+			checkComponent := func(groupName, componentName string, expectedReplicas *int32) {
+				podList := &corev1.PodList{}
+				f.Must(f.Client.List(ctx, podList, client.InNamespace(ns), client.MatchingLabels(map[string]string{
+					v1alpha1.LabelKeyCluster: tcName,
+					v1alpha1.LabelKeyGroup:   groupName,
+				})))
+				gomega.Expect(len(podList.Items)).To(gomega.Equal(int(*expectedReplicas)))
+				for _, pod := range podList.Items {
+					gomega.Expect(pod.Status.Phase).To(gomega.Equal(corev1.PodRunning))
+
+					// check for mTLS
+					gomega.Expect(pod.Spec.Volumes).To(gomega.ContainElement(corev1.Volume{
+						Name: v1alpha1.VolumeNameClusterTLS,
+						VolumeSource: corev1.VolumeSource{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName:  groupName + "-" + componentName + "-cluster-secret",
+								DefaultMode: ptr.To[int32](420),
+							},
+						},
+					}))
+					gomega.Expect(pod.Spec.Containers[0].VolumeMounts).To(gomega.ContainElement(corev1.VolumeMount{
+						Name:      v1alpha1.VolumeNameClusterTLS,
+						MountPath: fmt.Sprintf("/var/lib/%s-tls", componentName),
+						ReadOnly:  true,
+					}))
+
+					switch componentName {
+					case v1alpha1.LabelValComponentTiDB:
+						// check for TiDB server & mysql client TLS
+						gomega.Expect(pod.Spec.Volumes).To(gomega.ContainElement(corev1.Volume{
+							Name: v1alpha1.VolumeNameMySQLTLS,
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName:  dbg.Name + "-tidb-server-secret",
+									DefaultMode: ptr.To[int32](420),
+								},
+							},
+						}))
+						gomega.Expect(pod.Spec.Containers[0].VolumeMounts).To(gomega.ContainElement(corev1.VolumeMount{
+							Name:      v1alpha1.VolumeNameMySQLTLS,
+							MountPath: v1alpha1.DirPathMySQLTLS,
+							ReadOnly:  true,
+						}))
+					}
+				}
+			}
+
+			gomega.Eventually(func(g gomega.Gomega) {
+				_, ready := utiltidb.IsClusterReady(f.Client, tcName, ns)
+				g.Expect(ready).To(gomega.BeTrue())
+
+				checkComponent(pdg.Name, v1alpha1.LabelValComponentPD, pdg.Spec.Replicas)
+				checkComponent(kvg.Name, v1alpha1.LabelValComponentTiKV, kvg.Spec.Replicas)
+				checkComponent(dbg.Name, v1alpha1.LabelValComponentTiDB, dbg.Spec.Replicas)
+				checkComponent(flashg.Name, v1alpha1.LabelValComponentTiFlash, flashg.Spec.Replicas)
+				checkComponent(cdcg.Name, v1alpha1.LabelValComponentTiCDC, cdcg.Spec.Replicas)
+			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
+
+			workload.MustPing(ctx, data.DefaultTiDBServiceName, "root", "", dbg.Name+"-tidb-client-secret")
 		})
 	})
 })
