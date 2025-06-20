@@ -8569,6 +8569,13 @@ func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCall
 							},
 						},
 					},
+					"forcePathStyle": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ForcePathStyle for the backup and restore to connect s3 with path style(true) or virtual host(false).",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"provider"},
 			},
