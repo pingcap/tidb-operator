@@ -691,6 +691,13 @@ func makeS3Config(s3 *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Config {
 	if conf.provider == "alibaba" || conf.provider == "netease" {
 		conf.forcePathStyle = false
 	}
+
+	if s3.ForcePathStyle != nil {
+		// override forcePathStyle anyway
+		conf.forcePathStyle = *s3.ForcePathStyle
+		klog.Infof("override s3 forcePathStyle to %t", conf.forcePathStyle)
+	}
+
 	if fakeRegion && conf.region == "" {
 		conf.region = "us-east-1"
 	}

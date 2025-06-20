@@ -15619,6 +15619,17 @@ string
 <p>Options Rclone options for backup and restore with dumpling and lightning.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>forcePathStyle</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>ForcePathStyle for the backup and restore to connect s3 with path style(true) or virtual host(false).</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="s3storageprovidertype">S3StorageProviderType</h3>
