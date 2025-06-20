@@ -86,6 +86,11 @@ func (p *pvcReplacer) UpdateStatus(tc *v1alpha1.TidbCluster) error {
 			status = false
 			klog.Warningf("%s for cluster %s/%s need volume replace, but has too few replicas, so refusing to replace.", comp.MemberType(), tc.GetNamespace(), tc.GetName())
 		}
+		if comp.MemberType() == v1alpha1.PDMemberType && !tc.PDAllMembersReady() {
+			// Wait for update status until all PD are ready, to avoid creating zombie pd members due to race with scale-down.
+			klog.Infof("Do not update VolReplaceInProgress status to %t for %s/%s/%s as not all PD members are ready", status, tc.GetNamespace(), tc.GetName(), comp.MemberType())
+			continue
+		}
 		if status != comp.GetVolReplaceInProgress() {
 			klog.Infof("changing VolReplaceInProgress status to %t for %s/%s/%s", status, tc.GetNamespace(), tc.GetName(), comp.MemberType())
 		}
