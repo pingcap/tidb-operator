@@ -66,6 +66,10 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, in *v1alpha1.TSO) error {
 func (c *Config) Validate() error {
 	fields := []string{}
 
+	if c.Name != "" {
+		fields = append(fields, "name")
+	}
+
 	if c.ListenAddr != "" {
 		fields = append(fields, "listen-addr")
 	}
