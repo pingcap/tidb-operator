@@ -907,7 +907,7 @@ outer:
 }
 
 // buildTiProxyReadinessProbeHandler builds the readiness probe handler for TiProxy.
-// For compatibility, it doesn't provide any probe handler if `Type` or `InitialDelaySeconds` is not set.
+// For compatibility, it doesn't provide any probe handler if `readinessProbe` or `readinessProbe.type` is not set.
 func buildTiProxyReadinessProbeHandler(tc *v1alpha1.TidbCluster) *corev1.ProbeHandler {
 	if tc.Spec.TiProxy.ReadinessProbe == nil {
 		return nil
