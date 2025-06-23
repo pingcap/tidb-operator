@@ -41,7 +41,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 	f.Setup()
 
 	ginkgo.Context("Scale and Update", label.P0, func() {
-		ginkgo.FIt("scale out and in", label.Scale, func(ctx context.Context) {
+		ginkgo.It("scale out and in", label.Scale, func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx)
 			dbg := f.MustCreateTiDB(ctx)
