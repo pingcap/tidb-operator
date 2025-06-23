@@ -29,6 +29,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/onsi/gomega"
+	"github.com/stretchr/testify/require"
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/driver"
 
@@ -628,4 +629,31 @@ func objects(size int) []*blob.ListObject {
 		})
 	}
 	return objs
+}
+
+func TestS3ForcePathStyle(t *testing.T) {
+	provider := v1alpha1.StorageProvider{
+		S3: &v1alpha1.S3StorageProvider{
+			Provider:       v1alpha1.S3StorageProviderTypeAWS,
+			Bucket:         "s3-bucket",
+			ForcePathStyle: nil,
+		},
+	}
+
+	backend, err := NewStorageBackend(provider, &StorageCredential{})
+	require.NoError(t, err)
+	// compatible behaviour: aws always use virtual host by default
+	require.True(t, backend.s3.forcePathStyle)
+
+	EnablePathStyle := true
+	provider.S3.ForcePathStyle = &EnablePathStyle
+	backend, err = NewStorageBackend(provider, &StorageCredential{})
+	require.NoError(t, err)
+	require.True(t, backend.s3.forcePathStyle)
+
+	EnablePathStyle = false
+	provider.S3.ForcePathStyle = &EnablePathStyle
+	backend, err = NewStorageBackend(provider, &StorageCredential{})
+	require.NoError(t, err)
+	require.False(t, backend.s3.forcePathStyle)
 }
