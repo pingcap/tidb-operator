@@ -89,17 +89,17 @@ func TestClientManager(t *testing.T) {
 			cm := NewManagerBuilder[client.Object, int, int]().
 				WithNewUnderlayClientFunc(func(client.Object) (int, error) {
 					// add count for each time the underlay client is newed
-					count += 1
+					count++
 					return count, nil
 				}).
 				WithCacheKeysFunc(func(obj client.Object) ([]string, error) {
 					return []string{obj.GetName(), obj.GetNamespace(), string(obj.GetUID())}, nil
 				}).
-				WithNewClientFunc(func(key string, underlay int, _ SharedInformerFactory[int]) int {
+				WithNewClientFunc(func(obj client.Object, underlay int, _ SharedInformerFactory[int]) int {
 					// check underlay client is newed by NewUnderlayClientFunc
 					assert.Equal(tt, count, underlay)
 					// key is equal with the primary key returned by cache keys
-					assert.Equal(tt, c.obj.GetName(), key)
+					assert.Equal(tt, c.obj, obj)
 					return count
 				}).
 				Build()
@@ -255,7 +255,7 @@ func TestClientManagerSource(t *testing.T) {
 				WithCacheKeysFunc(func(obj client.Object) ([]string, error) {
 					return []string{obj.GetName()}, nil
 				}).
-				WithNewClientFunc(func(_ string, _ int, _ SharedInformerFactory[int]) int {
+				WithNewClientFunc(func(_ client.Object, _ int, _ SharedInformerFactory[int]) int {
 					return 0
 				}).
 				WithNewPollerFunc(&pdv1.Store{}, func(name string, logger logr.Logger, _ int) Poller {
@@ -279,7 +279,7 @@ func TestClientManagerSource(t *testing.T) {
 
 					createEvents = append(createEvents, event)
 
-					total += 1
+					total++
 					if total == len(c.expectedCreateEvents)+len(c.expectedUpdateEvents)+len(c.expectedDeleteEvents) {
 						close(done)
 					}
@@ -294,7 +294,7 @@ func TestClientManagerSource(t *testing.T) {
 
 					updateEvents = append(updateEvents, event)
 
-					total += 1
+					total++
 					if total == len(c.expectedCreateEvents)+len(c.expectedUpdateEvents)+len(c.expectedDeleteEvents) {
 						close(done)
 					}
@@ -305,7 +305,7 @@ func TestClientManagerSource(t *testing.T) {
 
 					deleteEvents = append(deleteEvents, event)
 
-					total += 1
+					total++
 					if total == len(c.expectedCreateEvents)+len(c.expectedUpdateEvents)+len(c.expectedDeleteEvents) {
 						close(done)
 					}

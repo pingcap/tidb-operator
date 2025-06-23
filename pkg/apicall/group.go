@@ -55,7 +55,7 @@ func ListInstances[
 	return objs, nil
 }
 
-// ListInstances returns peers of an instance in a same cluster
+// ListPeerInstances returns peers of an instance in a same cluster
 // NOTE:
 // - All peers in the same cluster will be returned
 // - Input instance will also be returned

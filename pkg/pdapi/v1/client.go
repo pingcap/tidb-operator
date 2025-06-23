@@ -231,7 +231,7 @@ func (c *pdClient) getMSMembers(ctx context.Context, service string) ([]ServiceR
 		return nil, err
 	}
 	var members []ServiceRegistryEntry
-	if err = json.Unmarshal(body, &members); err != nil {
+	if err := json.Unmarshal(body, &members); err != nil {
 		return nil, err
 	}
 
@@ -520,7 +520,7 @@ func (c *pdClient) GetEvictLeaderScheduler(ctx context.Context, storeID string) 
 // - https://github.com/pingcap/pd/issues/2550
 func (c *pdClient) filterLeaderEvictScheduler(ctx context.Context, evictLeaderSchedulers []string) ([]string, error) {
 	if len(evictLeaderSchedulers) == 1 && evictLeaderSchedulers[0] == evictSchedulerLeader {
-		var schedulerIds []string
+		var schedulerIDs []string
 		// If there is only one evcit scehduler entry without store ID postfix.
 		// We should get the store IDs via scheduler config API and append them
 		// to provide consistent results.
@@ -529,10 +529,10 @@ func (c *pdClient) filterLeaderEvictScheduler(ctx context.Context, evictLeaderSc
 			return nil, err
 		}
 		for k := range c.StoreIDWithRanges {
-			schedulerIds = append(schedulerIds, fmt.Sprintf("%s-%v", evictSchedulerLeader, k))
+			schedulerIDs = append(schedulerIDs, fmt.Sprintf("%s-%v", evictSchedulerLeader, k))
 		}
 
-		return schedulerIds, nil
+		return schedulerIDs, nil
 	}
 
 	return evictLeaderSchedulers, nil
@@ -587,6 +587,7 @@ func (c *pdClient) TransferPDLeader(ctx context.Context, memberName string) erro
 	if err != nil {
 		return err
 	}
+	//nolint:bodyclose // has been handled
 	res, err := c.httpClient.Do(req)
 	if err != nil {
 		return err

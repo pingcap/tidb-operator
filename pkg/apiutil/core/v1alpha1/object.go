@@ -97,7 +97,7 @@ func Features[
 	return obj.Features()
 }
 
-// This function returns a ready peer who is ready with longest time
+// LongestReadyPeer returns a ready peer who is ready with the longest time
 func LongestReadyPeer[
 	S scope.Object[F, T],
 	F client.Object,
