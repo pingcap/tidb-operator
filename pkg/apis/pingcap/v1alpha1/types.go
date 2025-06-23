@@ -2018,6 +2018,8 @@ type S3StorageProvider struct {
 	SSE string `json:"sse,omitempty"`
 	// Options Rclone options for backup and restore with dumpling and lightning.
 	Options []string `json:"options,omitempty"`
+	// ForcePathStyle for the backup and restore to connect s3 with path style(true) or virtual host(false).
+	ForcePathStyle *bool `json:"forcePathStyle,omitempty"`
 }
 
 // +k8s:openapi-gen=true

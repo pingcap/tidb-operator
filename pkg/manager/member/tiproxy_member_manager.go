@@ -532,6 +532,13 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 		Env:          util.AppendEnv(envs, baseTiProxySpec.Env()),
 		EnvFrom:      baseTiProxySpec.EnvFrom(),
 	}
+	if probeHander := buildTiProxyReadinessProbeHandler(tc); probeHander != nil {
+		tiproxyContainer.ReadinessProbe = &corev1.Probe{
+			ProbeHandler:        *probeHander,
+			InitialDelaySeconds: pointer.Int32Deref(tc.Spec.TiProxy.ReadinessProbe.InitialDelaySeconds, 10),
+			PeriodSeconds:       pointer.Int32Deref(tc.Spec.TiProxy.ReadinessProbe.PeriodSeconds, 10),
+		}
+	}
 
 	podSpec := baseTiProxySpec.BuildPodSpec()
 
@@ -897,6 +904,65 @@ outer:
 	}
 
 	return setCount, nil
+}
+
+// buildTiProxyReadinessProbeHandler builds the readiness probe handler for TiProxy.
+// For compatibility, it doesn't provide any probe handler if `readinessProbe` or `readinessProbe.type` is not set.
+func buildTiProxyReadinessProbeHandler(tc *v1alpha1.TidbCluster) *corev1.ProbeHandler {
+	if tc.Spec.TiProxy.ReadinessProbe == nil {
+		return nil
+	}
+	tp := tc.Spec.TiProxy.ReadinessProbe.Type
+	if tp == nil {
+		return nil
+	}
+
+	switch *tp {
+	case v1alpha1.CommandProbeType:
+		command := buildTiProxyProbeCommand(tc)
+		return &corev1.ProbeHandler{
+			Exec: &corev1.ExecAction{
+				Command: command,
+			},
+		}
+	case v1alpha1.TCPProbeType:
+		return &corev1.ProbeHandler{
+			TCPSocket: &corev1.TCPSocketAction{
+				Port: intstr.FromInt(int(v1alpha1.DefaultTiProxyServerPort)),
+			},
+		}
+	}
+
+	return nil
+}
+
+func buildTiProxyProbeCommand(tc *v1alpha1.TidbCluster) (command []string) {
+	const (
+		host    = "127.0.0.1"
+		apiPath = "/api/debug/health"
+	)
+
+	readinessURL := fmt.Sprintf("%s://%s:%d%s", tc.Scheme(), host, v1alpha1.DefaultTiProxyStatusPort, apiPath)
+	command = append(command, "curl")
+	command = append(command, readinessURL)
+
+	// Fail silently (no output at all) on server errors
+	// without this if the server return 500, the exist code will be 0
+	// and probe is success.
+	command = append(command, "--fail")
+	// follow 301 or 302 redirect
+	command = append(command, "--location")
+
+	if tc.IsTLSClusterEnabled() {
+		// The following code is compatible with cert layout both `legacy` and `v1`.
+		cacert := path.Join(util.ClusterClientTLSPath, tlsSecretRootCAKey)
+		cert := path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey)
+		key := path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey)
+		command = append(command, "--cacert", cacert)
+		command = append(command, "--cert", cert)
+		command = append(command, "--key", key)
+	}
+	return
 }
 
 type FakeTiProxyMemberManager struct {
