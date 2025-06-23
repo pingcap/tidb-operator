@@ -24,7 +24,6 @@ import (
 	reflect "reflect"
 
 	metapb "github.com/pingcap/kvproto/pkg/metapb"
-	pdpb "github.com/pingcap/kvproto/pkg/pdpb"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -78,20 +77,6 @@ func (m *MockPDClient) DeleteMember(ctx context.Context, name string) error {
 func (mr *MockPDClientMockRecorder) DeleteMember(ctx, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMember", reflect.TypeOf((*MockPDClient)(nil).DeleteMember), ctx, name)
-}
-
-// DeleteMemberByID mocks base method.
-func (m *MockPDClient) DeleteMemberByID(ctx context.Context, memberID uint64) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteMemberByID", ctx, memberID)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DeleteMemberByID indicates an expected call of DeleteMemberByID.
-func (mr *MockPDClientMockRecorder) DeleteMemberByID(ctx, memberID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMemberByID", reflect.TypeOf((*MockPDClient)(nil).DeleteMemberByID), ctx, memberID)
 }
 
 // DeleteStore mocks base method.
@@ -167,21 +152,6 @@ func (mr *MockPDClientMockRecorder) GetEvictLeaderScheduler(ctx, storeID any) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEvictLeaderScheduler", reflect.TypeOf((*MockPDClient)(nil).GetEvictLeaderScheduler), ctx, storeID)
 }
 
-// GetEvictLeaderSchedulers mocks base method.
-func (m *MockPDClient) GetEvictLeaderSchedulers(ctx context.Context) ([]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetEvictLeaderSchedulers", ctx)
-	ret0, _ := ret[0].([]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetEvictLeaderSchedulers indicates an expected call of GetEvictLeaderSchedulers.
-func (mr *MockPDClientMockRecorder) GetEvictLeaderSchedulers(ctx any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEvictLeaderSchedulers", reflect.TypeOf((*MockPDClient)(nil).GetEvictLeaderSchedulers), ctx)
-}
-
 // GetHealth mocks base method.
 func (m *MockPDClient) GetHealth(ctx context.Context) (*HealthInfo, error) {
 	m.ctrl.T.Helper()
@@ -195,21 +165,6 @@ func (m *MockPDClient) GetHealth(ctx context.Context) (*HealthInfo, error) {
 func (mr *MockPDClientMockRecorder) GetHealth(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHealth", reflect.TypeOf((*MockPDClient)(nil).GetHealth), ctx)
-}
-
-// GetMSMembers mocks base method.
-func (m *MockPDClient) GetMSMembers(ctx context.Context, service string) ([]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMSMembers", ctx, service)
-	ret0, _ := ret[0].([]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetMSMembers indicates an expected call of GetMSMembers.
-func (mr *MockPDClientMockRecorder) GetMSMembers(ctx, service any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMSMembers", reflect.TypeOf((*MockPDClient)(nil).GetMSMembers), ctx, service)
 }
 
 // GetMembers mocks base method.
@@ -242,21 +197,6 @@ func (mr *MockPDClientMockRecorder) GetPDEtcdClient() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPDEtcdClient", reflect.TypeOf((*MockPDClient)(nil).GetPDEtcdClient))
 }
 
-// GetPDLeader mocks base method.
-func (m *MockPDClient) GetPDLeader(ctx context.Context) (*pdpb.Member, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPDLeader", ctx)
-	ret0, _ := ret[0].(*pdpb.Member)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetPDLeader indicates an expected call of GetPDLeader.
-func (mr *MockPDClientMockRecorder) GetPDLeader(ctx any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPDLeader", reflect.TypeOf((*MockPDClient)(nil).GetPDLeader), ctx)
-}
-
 // GetStore mocks base method.
 func (m *MockPDClient) GetStore(ctx context.Context, storeID string) (*StoreInfo, error) {
 	m.ctrl.T.Helper()
@@ -287,6 +227,36 @@ func (mr *MockPDClientMockRecorder) GetStores(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStores", reflect.TypeOf((*MockPDClient)(nil).GetStores), ctx)
 }
 
+// GetTSOLeader mocks base method.
+func (m *MockPDClient) GetTSOLeader(ctx context.Context) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTSOLeader", ctx)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTSOLeader indicates an expected call of GetTSOLeader.
+func (mr *MockPDClientMockRecorder) GetTSOLeader(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTSOLeader", reflect.TypeOf((*MockPDClient)(nil).GetTSOLeader), ctx)
+}
+
+// GetTSOMembers mocks base method.
+func (m *MockPDClient) GetTSOMembers(ctx context.Context) ([]ServiceRegistryEntry, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTSOMembers", ctx)
+	ret0, _ := ret[0].([]ServiceRegistryEntry)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTSOMembers indicates an expected call of GetTSOMembers.
+func (mr *MockPDClientMockRecorder) GetTSOMembers(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTSOMembers", reflect.TypeOf((*MockPDClient)(nil).GetTSOMembers), ctx)
+}
+
 // SetStoreLabels mocks base method.
 func (m *MockPDClient) SetStoreLabels(ctx context.Context, storeID uint64, labels map[string]string) (bool, error) {
 	m.ctrl.T.Helper()
@@ -314,18 +284,4 @@ func (m *MockPDClient) TransferPDLeader(ctx context.Context, name string) error 
 func (mr *MockPDClientMockRecorder) TransferPDLeader(ctx, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TransferPDLeader", reflect.TypeOf((*MockPDClient)(nil).TransferPDLeader), ctx, name)
-}
-
-// UpdateReplicationConfig mocks base method.
-func (m *MockPDClient) UpdateReplicationConfig(ctx context.Context, config PDReplicationConfig) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateReplicationConfig", ctx, config)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateReplicationConfig indicates an expected call of UpdateReplicationConfig.
-func (mr *MockPDClientMockRecorder) UpdateReplicationConfig(ctx, config any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateReplicationConfig", reflect.TypeOf((*MockPDClient)(nil).UpdateReplicationConfig), ctx, config)
 }

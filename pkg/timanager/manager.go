@@ -45,7 +45,7 @@ type NewUnderlayClientFunc[Object client.Object, UnderlayClient any] func(obj Ob
 
 // NewClientFunc is the func to new an external client with the cache layer, for example, timanager.PDClient
 type NewClientFunc[Object client.Object, UnderlayClient, Client any] func(
-	string, UnderlayClient, SharedInformerFactory[UnderlayClient]) Client
+	Object, UnderlayClient, SharedInformerFactory[UnderlayClient]) Client
 
 type CacheKeysFunc[Object client.Object] func(obj Object) ([]string, error)
 
@@ -90,25 +90,29 @@ func (b *builder[Object, UnderlayClient, Client]) WithLogger(logger logr.Logger)
 }
 
 func (b *builder[Object, UnderlayClient, Client]) WithCacheKeysFunc(
-	f CacheKeysFunc[Object]) ManagerBuilder[Object, UnderlayClient, Client] {
+	f CacheKeysFunc[Object],
+) ManagerBuilder[Object, UnderlayClient, Client] {
 	b.cacheKeysFunc = f
 	return b
 }
 
 func (b *builder[Object, UnderlayClient, Client]) WithNewUnderlayClientFunc(
-	f NewUnderlayClientFunc[Object, UnderlayClient]) ManagerBuilder[Object, UnderlayClient, Client] {
+	f NewUnderlayClientFunc[Object, UnderlayClient],
+) ManagerBuilder[Object, UnderlayClient, Client] {
 	b.newUnderlayClientFunc = f
 	return b
 }
 
 func (b *builder[Object, UnderlayClient, Client]) WithNewClientFunc(
-	f NewClientFunc[Object, UnderlayClient, Client]) ManagerBuilder[Object, UnderlayClient, Client] {
+	f NewClientFunc[Object, UnderlayClient, Client],
+) ManagerBuilder[Object, UnderlayClient, Client] {
 	b.newClientFunc = f
 	return b
 }
 
 func (b *builder[Object, UnderlayClient, Client]) WithNewPollerFunc(
-	obj runtime.Object, f NewPollerFunc[UnderlayClient]) ManagerBuilder[Object, UnderlayClient, Client] {
+	obj runtime.Object, f NewPollerFunc[UnderlayClient],
+) ManagerBuilder[Object, UnderlayClient, Client] {
 	b.exampleObjs = append(b.exampleObjs, obj)
 	t := reflect.TypeOf(obj)
 	b.newPollerFuncMap[t] = f
@@ -183,7 +187,7 @@ func (m *clientManager[Object, UnderlayClient, Client]) Register(obj Object) err
 	for _, obj := range m.exampleObjs {
 		f.InformerFor(obj)
 	}
-	c := m.newClientFunc(keys[0], underlay, f)
+	c := m.newClientFunc(obj, underlay, f)
 
 	cacheObj = NewCache[Client, UnderlayClient](keys, c, f)
 	m.cs.Store(keys[0], cacheObj)
@@ -303,7 +307,8 @@ func (s *eventSource) HasSynced(key string) bool {
 // See "sigs.k8s.io/controller-runtime/pkg/internal/source.NewEventHandler"
 func NewResourceEventHandler[O client.Object, R comparable](
 	ctx context.Context, h handler.TypedEventHandler[O, R],
-	q workqueue.TypedRateLimitingInterface[R]) cache.ResourceEventHandler {
+	q workqueue.TypedRateLimitingInterface[R],
+) cache.ResourceEventHandler {
 	logger := logr.FromContextOrDiscard(ctx)
 
 	return cache.ResourceEventHandlerDetailedFuncs{

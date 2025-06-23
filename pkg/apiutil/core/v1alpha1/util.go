@@ -12,27 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tasks
+package coreutil
 
-import (
-	"fmt"
+func hostToURL(host string, isTLS bool) string {
+	scheme := "http"
+	if isTLS {
+		scheme = "https"
+	}
 
-	"github.com/pingcap/tidb-operator/pkg/runtime"
-	"github.com/pingcap/tidb-operator/pkg/updater"
-)
-
-func HeadlessServiceName(groupName string) string {
-	return fmt.Sprintf("%s-tso-peer", groupName)
-}
-
-func NotLeaderPolicy() updater.PreferPolicy[*runtime.TSO] {
-	return updater.PreferPolicyFunc[*runtime.TSO](func(tsos []*runtime.TSO) []*runtime.TSO {
-		var notLeader []*runtime.TSO
-		for _, tso := range tsos {
-			if !tso.Status.IsDefaultPrimary {
-				notLeader = append(notLeader, tso)
-			}
-		}
-		return notLeader
-	})
+	return scheme + "://" + host
 }

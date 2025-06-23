@@ -8580,6 +8580,10 @@ spec:
                 description: CurrentRevision is the revision of the Controller that
                   created the resource.
                 type: string
+              isDefaultPrimary:
+                description: If true, this tso instance is the primary of the default
+                  keyspace group
+                type: boolean
               observedGeneration:
                 description: |-
                   ObservedGeneration is the most recent generation observed by the controller.
@@ -8590,6 +8594,8 @@ spec:
                 description: UpdateRevision is the revision of the Controller that
                   should modify the resource.
                 type: string
+            required:
+            - isDefaultPrimary
             type: object
         type: object
     selectableFields:

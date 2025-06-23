@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -46,6 +47,24 @@ type Namespace string
 // PDWriter defines write api call of pd
 // TODO: move all Get api call to PDClient
 type PDWriter interface {
+	// SetStoreLabels sets the labels for a store.
+	SetStoreLabels(ctx context.Context, storeID uint64, labels map[string]string) (bool, error)
+	// DeleteStore deletes a TiKV/TiFlash store from the cluster.
+	DeleteStore(ctx context.Context, storeID string) error
+	// DeleteMember deletes a PD member from the cluster.
+	DeleteMember(ctx context.Context, name string) error
+
+	// BeginEvictLeader initiates leader eviction for a store.
+	BeginEvictLeader(ctx context.Context, storeID string) error
+	// EndEvictLeader removes the leader eviction scheduler for a store.
+	EndEvictLeader(ctx context.Context, storeID string) error
+
+	// TransferPDLeader transfers PD leader to specified member.
+	TransferPDLeader(ctx context.Context, name string) error
+}
+
+// PDClient provides PD server's APIs used by TiDB Operator.
+type PDClient interface {
 	// GetHealth returns the health of PD's members.
 	GetHealth(ctx context.Context) (*HealthInfo, error)
 	// GetConfig returns PD's config.
@@ -54,54 +73,46 @@ type PDWriter interface {
 	GetCluster(ctx context.Context) (*metapb.Cluster, error)
 	// GetMembers returns all PD members of the cluster.
 	GetMembers(ctx context.Context) (*MembersInfo, error)
-	// GetMSMembers returns all PD members service-addr from cluster by specific Micro Service.
-	GetMSMembers(ctx context.Context, service string) ([]string, error)
-	// SetStoreLabels sets the labels for a store.
-	SetStoreLabels(ctx context.Context, storeID uint64, labels map[string]string) (bool, error)
-	// DeleteStore deletes a TiKV/TiFlash store from the cluster.
-	DeleteStore(ctx context.Context, storeID string) error
-	// DeleteMember deletes a PD member from the cluster.
-	DeleteMember(ctx context.Context, name string) error
-	// DeleteMemberByID deletes a PD member from the cluster
-	DeleteMemberByID(ctx context.Context, memberID uint64) error
-	// UpdateReplicationConfig updates the replication config.
-	UpdateReplicationConfig(ctx context.Context, config PDReplicationConfig) error
-
-	// BeginEvictLeader initiates leader eviction for a store.
-	BeginEvictLeader(ctx context.Context, storeID string) error
-	// EndEvictLeader removes the leader eviction scheduler for a store.
-	EndEvictLeader(ctx context.Context, storeID string) error
-	// GetEvictLeaderSchedulers gets schedulers of leader eviction.
-	GetEvictLeaderSchedulers(ctx context.Context) ([]string, error)
-	// GetEvictLeaderScheduler gets leader eviction schedulers for stores.
-	GetEvictLeaderScheduler(ctx context.Context, storeID string) (string, error)
-
-	// GetPDLeader returns the PD leader.
-	GetPDLeader(ctx context.Context) (*pdpb.Member, error)
-	// TransferPDLeader transfers PD leader to specified member.
-	TransferPDLeader(ctx context.Context, name string) error
-
-	GetPDEtcdClient() (PDEtcdClient, error)
-}
-
-// PDClient provides PD server's APIs used by TiDB Operator.
-type PDClient interface {
 	// GetStores lists all TiKV/TiFlash stores of the cluster.
 	GetStores(ctx context.Context) (*StoresInfo, error)
 	// GetTombStoneStores lists all tombstone stores of the cluster.
 	// GetTombStoneStores() (*StoresInfo, error)
 	// GetStore gets a TiKV/TiFlash store for a specific store id of the cluster.
 	GetStore(ctx context.Context, storeID string) (*StoreInfo, error)
+	// GetEvictLeaderScheduler gets leader eviction schedulers for stores.
+	GetEvictLeaderScheduler(ctx context.Context, storeID string) (string, error)
+
+	GetPDEtcdClient() (PDEtcdClient, error)
+
+	GetTSOLeader(ctx context.Context) (string, error)
+
+	// GetTSOMembers returns all PD members service-addr from cluster by specific Micro Service.
+	GetTSOMembers(ctx context.Context) ([]ServiceRegistryEntry, error)
+
 	PDWriter
+
+	// NOTE: not used
+	//
+	// GetEvictLeaderSchedulers gets schedulers of leader eviction.
+	// GetEvictLeaderSchedulers(ctx context.Context) ([]string, error)
+	//
+	// GetPDLeader returns the PD leader.
+	// GetPDLeader(ctx context.Context) (*pdpb.Member, error)
+	//
+	// UpdateReplicationConfig updates the replication config.
+	// UpdateReplicationConfig(ctx context.Context, config PDReplicationConfig) error
+	//
+	// DeleteMemberByID deletes a PD member from the cluster
+	// DeleteMemberByID(ctx context.Context, memberID uint64) error
 }
 
-var (
+const (
 	healthPrefix    = "pd/api/v1/health"
 	configPrefix    = "pd/api/v1/config"
 	clusterIDPrefix = "pd/api/v1/cluster"
 
 	membersPrefix      = "pd/api/v1/members"
-	MicroServicePrefix = "pd/api/v2/ms"
+	microServicePrefix = "pd/api/v2/ms"
 
 	storesPrefix = "pd/api/v1/stores"
 	storePrefix  = "pd/api/v1/store"
@@ -112,7 +123,10 @@ var (
 	pdLeaderPrefix                   = "pd/api/v1/leader"
 	pdLeaderTransferPrefix           = "pd/api/v1/leader/transfer"
 	evictLeaderSchedulerConfigPrefix = "pd/api/v1/scheduler-config/evict-leader-scheduler/list"
+
 	// Micro Service
+	// leader endpoint
+	tsoLeaderPrefix = microServicePrefix + "/primary/tso"
 )
 
 // pdClient is the default implementation of PDClient.
@@ -210,22 +224,22 @@ func (c *pdClient) GetMembers(ctx context.Context) (*MembersInfo, error) {
 	return members, nil
 }
 
-func (c *pdClient) GetMSMembers(ctx context.Context, service string) ([]string, error) {
-	apiURL := fmt.Sprintf("%s/%s/members/%s", c.url, MicroServicePrefix, service)
+func (c *pdClient) getMSMembers(ctx context.Context, service string) ([]ServiceRegistryEntry, error) {
+	apiURL := fmt.Sprintf("%s/%s/members/%s", c.url, microServicePrefix, service)
 	body, err := httputil.GetBodyOK(ctx, c.httpClient, apiURL)
 	if err != nil {
 		return nil, err
 	}
 	var members []ServiceRegistryEntry
-	err = json.Unmarshal(body, &members)
-	if err != nil {
+	if err = json.Unmarshal(body, &members); err != nil {
 		return nil, err
 	}
-	var addrs []string
-	for _, member := range members {
-		addrs = append(addrs, member.ServiceAddr)
-	}
-	return addrs, nil
+
+	return members, nil
+}
+
+func (c *pdClient) GetTSOMembers(ctx context.Context) ([]ServiceRegistryEntry, error) {
+	return c.getMSMembers(ctx, "tso")
 }
 
 func (c *pdClient) GetStores(ctx context.Context) (*StoresInfo, error) {
@@ -412,10 +426,11 @@ func (c *pdClient) BeginEvictLeader(ctx context.Context, storeID string) error {
 	if err2 != nil {
 		return err2
 	}
-	for _, s := range evictLeaderSchedulers {
-		if s == getLeaderEvictSchedulerStr(storeID) {
-			return nil
-		}
+
+	storeIDStr := getLeaderEvictSchedulerStr(storeID)
+
+	if slices.Contains(evictLeaderSchedulers, storeIDStr) {
+		return nil
 	}
 
 	return fmt.Errorf("failed to begin evict leader of store:[%s], error: %w", storeID, err)
@@ -452,10 +467,8 @@ func (c *pdClient) EndEvictLeader(ctx context.Context, storeID string) error {
 	if err != nil {
 		return err
 	}
-	for _, s := range evictLeaderSchedulers {
-		if s == sName {
-			return fmt.Errorf("end leader evict scheduler failed, the store:[%s]'s leader evict scheduler is still exist", storeID)
-		}
+	if slices.Contains(evictLeaderSchedulers, sName) {
+		return fmt.Errorf("end leader evict scheduler failed, the store:[%s]'s leader evict scheduler is still exist", storeID)
 	}
 
 	return nil
@@ -574,7 +587,6 @@ func (c *pdClient) TransferPDLeader(ctx context.Context, memberName string) erro
 	if err != nil {
 		return err
 	}
-	//nolint:bodyclose // has been handled
 	res, err := c.httpClient.Do(req)
 	if err != nil {
 		return err
@@ -585,4 +597,18 @@ func (c *pdClient) TransferPDLeader(ctx context.Context, memberName string) erro
 	}
 	err2 := httputil.ReadErrorBody(res.Body)
 	return fmt.Errorf("failed %v to transfer pd leader to %s, error: %w", res.StatusCode, memberName, err2)
+}
+
+func (c *pdClient) GetTSOLeader(ctx context.Context) (string, error) {
+	apiURL := fmt.Sprintf("%s/%s", c.url, tsoLeaderPrefix)
+	body, err := httputil.GetBodyOK(ctx, c.httpClient, apiURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to get tso leader, error: %w", err)
+	}
+	var primary string
+	if err := json.Unmarshal(body, &primary); err != nil {
+		return "", fmt.Errorf("failed to get tso leader, cannot unmarshal response: %w", err)
+	}
+
+	return primary, nil
 }

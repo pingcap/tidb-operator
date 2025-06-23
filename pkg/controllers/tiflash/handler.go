@@ -28,14 +28,15 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	tiflashconfig "github.com/pingcap/tidb-operator/pkg/configs/tiflash"
+	"github.com/pingcap/tidb-operator/pkg/timanager"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
-	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 )
 
 func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Object, reconcile.Request] {
 	return handler.TypedFuncs[client.Object, reconcile.Request]{
 		UpdateFunc: func(ctx context.Context, event event.TypedUpdateEvent[client.Object],
-			queue workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
+		) {
 			oldObj := event.ObjectOld.(*v1alpha1.Cluster)
 			newObj := event.ObjectNew.(*v1alpha1.Cluster)
 
@@ -77,7 +78,8 @@ func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Obje
 func (r *Reconciler) StoreEventHandler() handler.TypedEventHandler[client.Object, reconcile.Request] {
 	return handler.TypedFuncs[client.Object, reconcile.Request]{
 		CreateFunc: func(ctx context.Context, event event.TypedCreateEvent[client.Object],
-			queue workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
+		) {
 			s := event.Object.(*pdv1.Store)
 			req, err := r.getRequestOfTiFlashStore(ctx, s)
 			if err != nil {
@@ -87,7 +89,8 @@ func (r *Reconciler) StoreEventHandler() handler.TypedEventHandler[client.Object
 		},
 
 		UpdateFunc: func(ctx context.Context, event event.TypedUpdateEvent[client.Object],
-			queue workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
+		) {
 			s := event.ObjectNew.(*pdv1.Store)
 			req, err := r.getRequestOfTiFlashStore(ctx, s)
 			if err != nil {
@@ -97,7 +100,8 @@ func (r *Reconciler) StoreEventHandler() handler.TypedEventHandler[client.Object
 		},
 
 		DeleteFunc: func(ctx context.Context, event event.TypedDeleteEvent[client.Object],
-			queue workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
+		) {
 			s := event.Object.(*pdv1.Store)
 			req, err := r.getRequestOfTiFlashStore(ctx, s)
 			if err != nil {
@@ -113,7 +117,7 @@ func (r *Reconciler) getRequestOfTiFlashStore(ctx context.Context, s *pdv1.Store
 		return reconcile.Request{}, fmt.Errorf("store is not tiflash, engine: %s", s.Engine())
 	}
 
-	ns, cluster := pdm.SplitPrimaryKey(s.Namespace)
+	ns, cluster := timanager.SplitPrimaryKey(s.Namespace)
 	var tiflashList v1alpha1.TiFlashList
 	if err := r.Client.List(ctx, &tiflashList, client.MatchingLabels{
 		v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,

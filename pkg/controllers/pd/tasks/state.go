@@ -45,8 +45,6 @@ type state struct {
 }
 
 type State interface {
-	common.PDSliceStateInitializer
-
 	common.PDState
 	common.ClusterState
 	common.PDSliceState
@@ -58,6 +56,7 @@ type State interface {
 
 	common.ContextClusterNewer[*v1alpha1.PD]
 	common.ContextObjectNewer[*v1alpha1.PD]
+	common.ContextSliceNewer[*v1alpha1.PD, *v1alpha1.PD]
 
 	common.StatusUpdater
 	common.StatusPersister[*v1alpha1.PD]
@@ -137,17 +136,8 @@ func (s *state) PDSlice() []*v1alpha1.PD {
 	return s.pds
 }
 
-func (s *state) PDSliceInitializer() common.PDSliceInitializer {
-	return common.NewResourceSlice(func(pds []*v1alpha1.PD) { s.pds = pds }).
-		WithNamespace(common.Namespace(s.key.Namespace)).
-		WithLabels(common.LabelsFunc(func() map[string]string {
-			return map[string]string{
-				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
-				v1alpha1.LabelKeyCluster:   s.cluster.Name,
-			}
-		})).
-		Initializer()
+func (s *state) SetInstanceSlice(pds []*v1alpha1.PD) {
+	s.pds = pds
 }
 
 func (s *state) IsHealthy() bool {

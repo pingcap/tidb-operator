@@ -22,7 +22,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
 type Config struct {
@@ -42,21 +41,23 @@ type Security struct {
 	KeyPath string `toml:"key-path"`
 }
 
-func (c *Config) Overlay(cluster *v1alpha1.Cluster, tso *v1alpha1.TSO) error {
+func (c *Config) Overlay(cluster *v1alpha1.Cluster, in *v1alpha1.TSO) error {
 	if err := c.Validate(); err != nil {
 		return err
 	}
 
+	isTLS := coreutil.IsTLSClusterEnabled(cluster)
 	scheme := "http"
-	if coreutil.IsTLSClusterEnabled(cluster) {
+	if isTLS {
 		scheme = "https"
 		c.Security.CACertPath = path.Join(v1alpha1.DirPathClusterTLSTSO, corev1.ServiceAccountRootCAKey)
 		c.Security.CertPath = path.Join(v1alpha1.DirPathClusterTLSTSO, corev1.TLSCertKey)
 		c.Security.KeyPath = path.Join(v1alpha1.DirPathClusterTLSTSO, corev1.TLSPrivateKeyKey)
 	}
 
-	c.ListenAddr = getClientURLs(tso, scheme)
-	c.AdvertiseListenAddr = getAdvertiseClientURLs(tso, scheme)
+	c.Name = in.Name
+	c.ListenAddr = getClientURLs(in, scheme)
+	c.AdvertiseListenAddr = coreutil.TSOAdvertiseClientURLsWithScheme(in, isTLS)
 	c.BackendEndpoints = cluster.Status.PD
 
 	return nil
@@ -94,12 +95,4 @@ func (c *Config) Validate() error {
 
 func getClientURLs(tso *v1alpha1.TSO, scheme string) string {
 	return fmt.Sprintf("%s://[::]:%d", scheme, coreutil.TSOClientPort(tso))
-}
-
-func getAdvertiseClientURLs(tso *v1alpha1.TSO, scheme string) string {
-	ns := tso.Namespace
-	if ns == "" {
-		ns = corev1.NamespaceDefault
-	}
-	return fmt.Sprintf("%s://%s.%s.%s:%d", scheme, coreutil.PodName[scope.TSO](tso), tso.Spec.Subdomain, ns, coreutil.TSOClientPort(tso))
 }

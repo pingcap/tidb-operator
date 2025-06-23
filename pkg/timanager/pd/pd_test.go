@@ -16,11 +16,10 @@ package pd
 
 import (
 	"context"
-	"testing"
-	"time"
-
 	"net/http"
 	"net/http/httptest"
+	"testing"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
@@ -354,12 +353,12 @@ func TestPDClientManager(t *testing.T) {
 	defer cancel()
 
 	// not registered yet
-	_, ok := pcm.Get(PrimaryKey(pdg.GetNamespace(), pdg.GetName()))
+	_, ok := pcm.Get(timanager.PrimaryKey(pdg.GetNamespace(), pdg.GetName()))
 	assert.False(t, ok)
 
 	// register
 	require.NoError(t, pcm.Register(pdg))
-	pdc, ok := pcm.Get(PrimaryKey(pdg.GetNamespace(), pdg.GetName()))
+	pdc, ok := pcm.Get(timanager.PrimaryKey(pdg.GetNamespace(), pdg.GetName()))
 	assert.True(t, ok)
 	// wait for the cache to be synced
 	for i := 0; i < 10; i++ {
@@ -376,7 +375,7 @@ func TestPDClientManager(t *testing.T) {
 	assert.NotNil(t, m1)
 	assert.Equal(t, "1428427862495950874", m1.ID)
 	assert.False(t, m1.IsLeader)
-	ns, clusterName := SplitPrimaryKey(m1.Namespace) // also test SplitPrimaryKey
+	ns, clusterName := timanager.SplitPrimaryKey(m1.Namespace) // also test SplitPrimaryKey
 	assert.Equal(t, "ns1", ns)
 	assert.Equal(t, "basic", clusterName)
 	m2, err := pdc.Members().Get("basic-53pe89")

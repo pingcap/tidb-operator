@@ -14,6 +14,22 @@
 
 package tasks
 
+import (
+	"context"
+
+	tsom "github.com/pingcap/tidb-operator/pkg/timanager/tso"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+)
+
 type ReconcileContext struct {
 	State
+}
+
+func TaskContextTSOClient(state *ReconcileContext, m tsom.TSOClientManager) task.Task {
+	return task.NameTaskFunc("ContextTSOClient", func(_ context.Context) task.Result {
+		if err := m.Register(state.Object()); err != nil {
+			return task.Fail().With("cannot register tso client: %v", err)
+		}
+		return task.Complete().With("tso client is registered")
+	})
 }

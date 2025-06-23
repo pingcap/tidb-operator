@@ -17,7 +17,6 @@ package pd
 import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/controllers/pd/tasks"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -27,7 +26,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// get pd
 		common.TaskContextObject[scope.PD](state, r.Client),
 		// if it's gone just return
-		task.IfBreak(common.CondInstanceHasBeenDeleted(state)),
+		task.IfBreak(common.CondObjectHasBeenDeleted[scope.PD](state)),
 
 		// get cluster
 		common.TaskContextCluster[scope.PD](state, r.Client),
@@ -36,14 +35,14 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// get info from pd
 		tasks.TaskContextInfoFromPD(state, r.PDClientManager),
-		task.IfBreak(common.CondInstanceIsDeleting(state),
+		task.IfBreak(common.CondObjectIsDeleting[scope.PD](state),
 			tasks.TaskFinalizerDel(state, r.Client),
 			// TODO(liubo02): if the finalizer has been removed, no need to update status
 			common.TaskInstanceConditionSynced[scope.PD](state),
 			common.TaskInstanceConditionReady[scope.PD](state),
 			common.TaskStatusPersister[scope.PD](state, r.Client),
 		),
-		common.TaskInstanceFinalizerAdd[runtime.PDTuple](state, r.Client),
+		common.TaskFinalizerAdd[scope.PD](state, r.Client),
 
 		// get pod
 		common.TaskContextPod[scope.PD](state, r.Client),
@@ -57,7 +56,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskStatusPersister[scope.PD](state, r.Client),
 		),
 
-		common.TaskContextPDSlice(state, r.Client),
+		common.TaskContextPeerSlice[scope.PD](state, r.Client),
 		tasks.TaskConfigMap(state, r.Client),
 		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifierFactory),
 		tasks.TaskPod(state, r.Client),
