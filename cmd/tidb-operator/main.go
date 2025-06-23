@@ -432,6 +432,12 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 		&v1alpha1.TiFlash{}: {
 			Label: labels.Everything(),
 		},
+		&v1alpha1.TiProxyGroup{}: {
+			Label: labels.Everything(),
+		},
+		&v1alpha1.TiProxy{}: {
+			Label: labels.Everything(),
+		},
 		&v1alpha1.TiCDCGroup{}: {
 			Label: labels.Everything(),
 		},

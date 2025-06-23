@@ -33,6 +33,8 @@ GINKGO=$OUTPUT_DIR/bin/ginkgo
 GENERATEJWT=$OUTPUT_DIR/bin/generate_jwt
 
 CI=${CI:-""}
+OLD_VERSION_BRANCH=${OLD_VERSION_BRANCH:-"feature/v2"}
+OLD_OPERATOR_IMAGE_TAG=${OLD_OPERATOR_IMAGE_TAG:-""}
 
 function e2e::ensure_kubectl() {
     if ! command -v $KUBECTL &>/dev/null; then
@@ -88,6 +90,106 @@ function e2e::uninstall_operator() {
     $KUBECTL -n $V_DEPLOY_NAMESPACE wait --for=delete --timeout=5m deployment/tidb-operator
 }
 
+function e2e::delete_crds() {
+    echo "deleting operator crds"
+    if ! $KUBECTL get crd -o name | grep "pingcap.com" | xargs -r $KUBECTL delete; then
+        echo "No CRDs found to delete, continuing..."
+    fi
+}
+
+function e2e::ensure_old_version_repo() {
+    local sanitized_branch_name
+    sanitized_branch_name=$(echo "${OLD_VERSION_BRANCH}" | tr '/' '-')
+    local old_version_dir="${OUTPUT_DIR}/old-version-repo/${sanitized_branch_name}"
+
+    if [[ -d "${old_version_dir}/.git" ]]; then
+        echo "Old version repo already exists in ${old_version_dir}, updating..." >&2
+        if ! (cd "${old_version_dir}" && git fetch origin && git reset --hard "origin/${OLD_VERSION_BRANCH}" >/dev/null 2>&1); then
+            echo "Failed to update old version repo, re-cloning..." >&2
+            rm -rf "${old_version_dir}"
+        else
+            (cd "${old_version_dir}" && git checkout "${OLD_VERSION_BRANCH}" >/dev/null 2>&1 && git pull >/dev/null 2>&1)
+        fi
+    fi
+
+    if [[ ! -d "${old_version_dir}/.git" ]]; then
+        echo "Cloning old version from branch ${OLD_VERSION_BRANCH} into ${old_version_dir}" >&2
+        rm -rf "${old_version_dir}"
+        local repo_url="https://github.com/pingcap/tidb-operator.git"
+        if ! git clone --branch "${OLD_VERSION_BRANCH}" --depth 1 "${repo_url}" "${old_version_dir}"; then
+            echo "Failed to clone branch ${OLD_VERSION_BRANCH}" >&2
+            exit 1
+        fi
+    fi
+    echo "${old_version_dir}"
+}
+
+function e2e::get_old_operator_image_tag() {
+    local old_version_dir
+    old_version_dir=$(e2e::ensure_old_version_repo)
+
+    local commit_hash
+    commit_hash=$(cd "${old_version_dir}" && git rev-parse HEAD)
+    local short_commit_hash
+    short_commit_hash=${commit_hash:0:7}
+
+    echo "Fetching tags for commit ${short_commit_hash} from gcr.io/pingcap-public/dbaas/tidb-operator..." >&2
+
+    local image_tag
+    # Using curl to avoid dependency on gcloud and authentication.
+    # We filter for tags that contain the short commit hash but do not contain an underscore (to exclude arch-specific tags).
+    image_tag=$(curl -s "https://gcr.io/v2/pingcap-public/dbaas/tidb-operator/tags/list" |
+        grep -o '"[^"]*g'${short_commit_hash}'[^"]*"' |
+        grep -v '_' |
+        sed 's/"//g' |
+        head -n 1)
+
+    if [[ -z "$image_tag" ]]; then
+        echo "Could not find a suitable image tag for commit ${short_commit_hash}" >&2
+        echo "Debugging info: Listing all tags containing the commit hash..." >&2
+        curl -s "https://gcr.io/v2/pingcap-public/dbaas/tidb-operator/tags/list" |
+            grep -o '"[^"]*g'${short_commit_hash}'[^"]*"' |
+            sed 's/"//g' |
+            head -n 10 >&2
+        exit 1
+    fi
+
+    echo "$image_tag"
+}
+
+function e2e::install_old_version() {
+    if [[ -z "$OLD_OPERATOR_IMAGE_TAG" ]]; then
+        echo "OLD_OPERATOR_IMAGE_TAG is not set, trying to determine it automatically."
+        OLD_OPERATOR_IMAGE_TAG=$(e2e::get_old_operator_image_tag)
+        echo "Determined OLD_OPERATOR_IMAGE_TAG: ${OLD_OPERATOR_IMAGE_TAG}"
+    fi
+    local old_operator_image="gcr.io/pingcap-public/dbaas/tidb-operator:${OLD_OPERATOR_IMAGE_TAG}"
+
+    echo "Preparing manifests for old version from branch ${OLD_VERSION_BRANCH}"
+    local old_version_dir
+    old_version_dir=$(e2e::ensure_old_version_repo)
+
+    echo "Deploying old version of CRDs"
+    e2e::delete_crds
+    local old_crd_path="${old_version_dir}/manifests/crd"
+    if ! $KUBECTL apply --server-side=true -f "${old_crd_path}"; then
+        echo "Failed to apply old CRDs"
+        exit 1
+    fi
+
+    echo "Deploying old version of operator by setting image"
+    if ! $KUBECTL -n $V_DEPLOY_NAMESPACE set image deployment/tidb-operator "tidb-operator=${old_operator_image}"; then
+        echo "Failed to set old operator image"
+        exit 1
+    fi
+
+    echo "Waiting for old operator to be ready"
+    if ! $KUBECTL -n $V_DEPLOY_NAMESPACE wait --for=condition=Available --timeout=5m deployment/tidb-operator; then
+        echo "Timed out waiting for old operator to be ready"
+        exit 1
+    fi
+}
+
 function e2e::reload_testing_workload() {
     image::build testing-workload --push
 }
@@ -109,16 +211,31 @@ function e2e::install_generate_jwt() {
 }
 
 function e2e::run() {
+    local skip_packages="github.com/pingcap/tidb-operator/tests/e2e/upgrade"
     if [[ "$CI" == "true" ]]; then
         echo "running e2e tests in CI mode with options: $*"
-        $GINKGO -v -r --timeout=2h --randomize-all --randomize-suites --fail-on-empty --keep-going --race --trace --flake-attempts=2 "$*" "$ROOT/tests/e2e/..."
+        $GINKGO -v -r --skip-package="$skip_packages" --timeout=2h --randomize-all --randomize-suites --fail-on-empty --keep-going --race --trace --flake-attempts=2 "$*" "$ROOT/tests/e2e/..."
+        
+        # To avoid the case affect other cases, run upgrade e2e separately.
+        echo "running upgrade e2e tests"
+        e2e::run_upgrade
     else
         echo "running e2e tests locally..."
-        $GINKGO -r -v "$@" "$ROOT/tests/e2e/..."
+        $GINKGO -r -v --skip-package="$skip_packages" "$@" "$ROOT/tests/e2e/..."
     fi
 }
 
+function e2e::run_upgrade() {
+    e2e::install_old_version
+    $GINKGO -v -r --tags=upgrade_e2e --timeout=1h --randomize-all --randomize-suites --fail-on-empty --race --trace "$ROOT/tests/e2e/upgrade"
+}
+
 function e2e::prepare() {
+    if [[ -z "$OLD_OPERATOR_IMAGE_TAG" ]]; then
+        echo "OLD_OPERATOR_IMAGE_TAG is not set, trying to determine it automatically."
+        OLD_OPERATOR_IMAGE_TAG=$(e2e::get_old_operator_image_tag)
+        echo "Determined OLD_OPERATOR_IMAGE_TAG: ${OLD_OPERATOR_IMAGE_TAG}"
+    fi
     e2e::install_ginkgo
     e2e::install_generate_jwt
     e2e::ensure_kubectl
@@ -150,8 +267,11 @@ function e2e::e2e() {
     local ginkgo_opts=()
     local prepare=0
     local run=0
+    local run_upgrade=0
     local reinstall_operator=0
     local reinstall_backup_manager=0
+    local reload_testing_workload=0
+
     while [[ $# -gt 0 ]]; do
         case $1 in
         --prepare)
@@ -174,8 +294,12 @@ function e2e::e2e() {
             run=1
             shift
             ;;
+        run-upgrade)
+            run_upgrade=1
+            shift
+            ;;
         *)
-            if [[ $run -eq 1 ]]; then
+            if [[ $run -eq 1 || $run_upgrade -eq 1 ]]; then
                 ginkgo_opts+=("${1}")
             else
                 echo "Unknown option $1"
@@ -195,7 +319,10 @@ function e2e::e2e() {
     elif [[ $reload_testing_workload -eq 1 ]]; then
         e2e::reload_testing_workload
     fi
+
     if [[ $run -eq 1 ]]; then
         e2e::run "${ginkgo_opts[@]}"
+    elif [[ $run_upgrade -eq 1 ]]; then
+        e2e::run_upgrade "${ginkgo_opts[@]}"
     fi
 }

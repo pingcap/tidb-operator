@@ -153,9 +153,13 @@ e2e/prepare: bin/kind release
 e2e/run:
 	$(ROOT)/hack/e2e.sh run $(GINKGO_OPTS)
 
+.PHONY: e2e/run-upgrade
+e2e/run-upgrade:
+	$(ROOT)/hack/e2e.sh run-upgrade $(GINKGO_OPTS)
+
 .PHONY: e2e
 e2e: bin/kind release
-	$(ROOT)/hack/e2e.sh --prepare run $(GINKGO_OPTS)
+	$(ROOT)/hack/e2e.sh --prepare run run-upgrade $(GINKGO_OPTS)
 
 .PHONY: e2e/reinstall-operator
 e2e/reinstall-operator:
