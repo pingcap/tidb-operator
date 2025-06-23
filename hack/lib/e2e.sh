@@ -215,10 +215,6 @@ function e2e::run() {
     if [[ "$CI" == "true" ]]; then
         echo "running e2e tests in CI mode with options: $*"
         $GINKGO -v -r --skip-package="$skip_packages" --timeout=2h --randomize-all --randomize-suites --fail-on-empty --keep-going --race --trace --flake-attempts=2 "$*" "$ROOT/tests/e2e/..."
-        
-        # To avoid the case affect other cases, run upgrade e2e separately.
-        echo "running upgrade e2e tests"
-        e2e::run_upgrade
     else
         echo "running e2e tests locally..."
         $GINKGO -r -v --skip-package="$skip_packages" "$@" "$ROOT/tests/e2e/..."

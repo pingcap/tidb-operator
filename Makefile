@@ -145,6 +145,14 @@ unit:
 .PHONY: check
 check: lint unit verify
 
+.PHONY: install-githooks
+install-githooks:
+	@echo "Installing git hooks..."
+	@mkdir -p .git/hooks
+	@ln -sf ../../hack/githooks/pre-push .git/hooks/pre-push
+	@echo "pre-push hook installed successfully."
+	@echo "You can run 'make check' manually to check your code before push."
+
 .PHONY: e2e/prepare
 e2e/prepare: bin/kind release
 	$(ROOT)/hack/e2e.sh --prepare
