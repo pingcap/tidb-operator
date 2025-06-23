@@ -834,6 +834,8 @@ spec:
                               type: string
                             endpoint:
                               type: string
+                            forcePathStyle:
+                              type: boolean
                             options:
                               items:
                                 type: string
