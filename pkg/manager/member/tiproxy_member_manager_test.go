@@ -27,7 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 func TestTiProxyMemberManagerSetLabels(t *testing.T) {
@@ -442,7 +442,7 @@ func TestBuildTiProxyReadinessProbeHandler(t *testing.T) {
 					TiProxy: &v1alpha1.TiProxySpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ReadinessProbe: &v1alpha1.Probe{
-								Type: pointer.StringPtr(string(v1alpha1.CommandProbeType)),
+								Type: ptr.To(string(v1alpha1.CommandProbeType)),
 							},
 						},
 					},
@@ -466,7 +466,7 @@ func TestBuildTiProxyReadinessProbeHandler(t *testing.T) {
 					TiProxy: &v1alpha1.TiProxySpec{
 						ComponentSpec: v1alpha1.ComponentSpec{
 							ReadinessProbe: &v1alpha1.Probe{
-								Type: pointer.StringPtr(string(v1alpha1.TCPProbeType)),
+								Type: ptr.To(string(v1alpha1.TCPProbeType)),
 							},
 						},
 					},
