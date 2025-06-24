@@ -54,7 +54,7 @@ type UpdateTestCase struct {
 	UpdateStorageFunc func(obj client.Object, storage string) error
 }
 
-var _ = ginkgo.FDescribe("ValidatingAdmissionPolicy", label.P0, func() {
+var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 	f := framework.New()
 	f.Setup(framework.WithSkipClusterCreation())
 
