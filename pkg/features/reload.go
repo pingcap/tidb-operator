@@ -17,8 +17,9 @@ package features
 import (
 	"slices"
 
-	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"k8s.io/apimachinery/pkg/util/sets"
+
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 // This variable records whether a component will be restarted when enabling/disabling a feature

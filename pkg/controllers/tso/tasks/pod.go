@@ -113,7 +113,7 @@ func preDeleteCheck(
 		return false, nil
 	}
 
-	if isLeader{
+	if isLeader {
 		peer := coreutil.LongestReadyPeer[scope.TSO](tso, peers)
 		if peer == nil {
 			return false, fmt.Errorf("no healthy transferee available")

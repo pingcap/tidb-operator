@@ -32,9 +32,9 @@ type ReconcileContext struct {
 	PDClient  pdm.PDClient
 	TSOClient tsom.TSOClient
 
-	CacheSynced bool
+	CacheSynced       bool
 	TSOMemberNotFound bool
-	IsLeader bool
+	IsLeader          bool
 }
 
 func TaskContextClient(state *ReconcileContext, cm pdm.PDClientManager, tsocm tsom.TSOClientManager) task.Task {
