@@ -275,11 +275,13 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return fmt.Errorf("restore %s/%s get job %s failed, err: %v", ns, name, restoreJobName, err)
 	}
 
-	// Note: perhaps better to reschedule here and wait the cluster config applied.
-	// But for now BR will also modify this configuration. This configuration map was
-	// modified for making sure they won't be lost after a TiKV restart.
-	if err := rm.pitrEnable(tc); err != nil {
-		return fmt.Errorf("restore %s/%s enable pitr failed, err: %v", ns, name, err)
+	if restore.Spec.Mode == v1alpha1.RestoreModePiTR {
+		// Note: perhaps better to reschedule here and wait the cluster config applied.
+		// But for now BR will also modify this configuration. This configuration map was
+		// modified for making sure they won't be lost after a TiKV restart.
+		if err := rm.pitrEnable(tc); err != nil {
+			return fmt.Errorf("restore %s/%s enable pitr failed, err: %v", ns, name, err)
+		}
 	}
 
 	var (
