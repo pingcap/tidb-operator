@@ -255,7 +255,8 @@ func TestClientManagerSource(t *testing.T) {
 				WithCacheKeysFunc(func(obj client.Object) ([]string, error) {
 					return []string{obj.GetName()}, nil
 				}).
-				WithNewClientFunc(func(_ client.Object, _ int, _ SharedInformerFactory[int]) int {
+				WithNewClientFunc(func(_ client.Object, _ int, f SharedInformerFactory[int]) int {
+					f.InformerFor(&pdv1.Store{})
 					return 0
 				}).
 				WithNewPollerFunc(&pdv1.Store{}, func(name string, logger logr.Logger, _ int) Poller {
