@@ -151,7 +151,12 @@ func (m *jobLifecycleManager) isK8sJobFailed(ctx context.Context, cli client.Cli
 	return false, "", "", nil
 }
 
-func (m *jobLifecycleManager) retryWithBackoffPolicy(ctx context.Context, c client.Client, job runtime.RetriableJob, reason, originalReason string) error {
+func (m *jobLifecycleManager) retryWithBackoffPolicy(
+	ctx context.Context,
+	c client.Client,
+	job runtime.RetriableJob,
+	reason, originalReason string,
+) error {
 	var (
 		ns   = job.Object().GetNamespace()
 		name = job.Object().GetName()
@@ -164,7 +169,10 @@ func (m *jobLifecycleManager) retryWithBackoffPolicy(ctx context.Context, c clie
 	if ok && !lastRetryRecord.IsTriggered() {
 		if !m.isTimeToRetry(lastRetryRecord, now) {
 			klog.Infof("backup %s/%s is not the time to retry, expected retry time is %s, now is %s", ns, name, lastRetryRecord.ExpectedRetryAt, now)
-			return RequeueErrorf(lastRetryRecord.ExpectedRetryAt.Sub(now)+time.Second, "retry backup %s/%s after %s", ns, name, now.Sub(lastRetryRecord.ExpectedRetryAt.Time))
+			return RequeueErrorf(
+				lastRetryRecord.ExpectedRetryAt.Sub(now)+time.Second,
+				"retry backup %s/%s after %s",
+				ns, name, now.Sub(lastRetryRecord.ExpectedRetryAt.Time))
 		}
 		return m.doRetryLogic(ctx, c, job, now)
 	}
@@ -178,7 +186,13 @@ func (m *jobLifecycleManager) retryWithBackoffPolicy(ctx context.Context, c clie
 }
 
 // createNextRetry is used to create the next retry record. The real retry will happen at `ExpectedRetryAt`.
-func (m *jobLifecycleManager) createNextRetry(ctx context.Context, c client.Client, job runtime.RetriableJob, reason, originalReason string, now time.Time) error {
+func (m *jobLifecycleManager) createNextRetry(
+	ctx context.Context,
+	c client.Client,
+	job runtime.RetriableJob,
+	reason, originalReason string,
+	now time.Time,
+) error {
 	j := job.Object()
 	ns := j.GetNamespace()
 	name := j.GetName()

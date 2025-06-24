@@ -174,7 +174,13 @@ func (bo *Options) doTruncateLogBackup(ctx context.Context, backup *v1alpha1.Bac
 }
 
 // logBackupCommandTemplate is the template to generate br args.
-func (bo *Options) backupCommandTemplate(backup *v1alpha1.Backup, specificArgs []string, skipBackupArgs bool) ([]string, error) {
+//
+//nolint:unparam // `skipBackupArgs` always receives false
+func (bo *Options) backupCommandTemplate(
+	backup *v1alpha1.Backup,
+	specificArgs []string,
+	skipBackupArgs bool,
+) ([]string, error) {
 	if len(specificArgs) == 0 {
 		return nil, fmt.Errorf("backup command is invalid, Args: %v", specificArgs)
 	}
@@ -211,7 +217,11 @@ func (bo *Options) brCommandRun(ctx context.Context, fullArgs []string) error {
 }
 
 // brCommandRun run br binary to do backup work with log callback.
-func (bo *Options) brCommandRunWithLogCallback(ctx context.Context, fullArgs []string, logCallback func(line string)) error {
+func (bo *Options) brCommandRunWithLogCallback(
+	_ context.Context,
+	fullArgs []string,
+	logCallback func(line string),
+) error {
 	if len(fullArgs) == 0 {
 		return fmt.Errorf("command is invalid, fullArgs: %v", fullArgs)
 	}

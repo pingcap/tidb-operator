@@ -49,7 +49,8 @@ type BackupTracker interface {
 // the main processes of log backup track:
 // a. tracker init will try to find all log backup and add them to the map which key is namespack and cluster.
 // b. log backup start will add it to the map
-// c. if add log backup to the map successfully, it will start a go routine which has a loop to track log backup's checkpoint ts and will stop when log backup complete.
+// c. if add log backup to the map successfully, it will start a go routine which has a loop
+// to track log backup's checkpoint ts and will stop when log backup complete.
 // d. by the way, add or delete the map has a mutex.
 type backupTracker struct {
 	cli           client.Client
@@ -100,7 +101,10 @@ func (bt *backupTracker) initTrackLogBackupsProgress() {
 		if backup.Spec.Mode == v1alpha1.BackupModeLog {
 			err = bt.StartTrackLogBackupProgress(ctx, &backup)
 			if err != nil {
-				logger.Error(err, "start track log backup error, will skip and track when log backup start", "namespace", backup.Namespace, "backup", backup.Name)
+				logger.Error(err,
+					"start track log backup error, will skip and track when log backup start",
+					"namespace", backup.Namespace,
+					"backup", backup.Name)
 			}
 		}
 	}
@@ -127,7 +131,12 @@ func (bt *backupTracker) StartTrackLogBackupProgress(ctx context.Context, backup
 	_, err := bt.getLogBackupTC(ctx, backup)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			logger.Info("log backup cluster not found, will skip", "namespace", ns, "backup", name, "clusterNamespace", backup.Spec.BR.ClusterNamespace, "cluster", backup.Spec.BR.Cluster)
+			logger.Info(
+				"log backup cluster not found, will skip",
+				"namespace", ns,
+				"backup", name,
+				"clusterNamespace", backup.Spec.BR.ClusterNamespace,
+				"cluster", backup.Spec.BR.Cluster)
 			return nil
 		}
 		return err
@@ -161,14 +170,21 @@ func (bt *backupTracker) getLogBackupTC(ctx context.Context, backup *v1alpha1.Ba
 	err = retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
 		err = bt.cli.Get(ctx, types.NamespacedName{Namespace: clusterNamespace, Name: backup.Spec.BR.Cluster}, cluster)
 		if err != nil {
-			logger.Error(err, "get log backup tidbcluster failed and will retry", "namespace", ns, "backup", name, "clusterNamespace", clusterNamespace, "cluster", backup.Spec.BR.Cluster)
+			logger.Error(err,
+				"get log backup tidbcluster failed and will retry",
+				"namespace", ns,
+				"backup", name,
+				"clusterNamespace", clusterNamespace,
+				"cluster", backup.Spec.BR.Cluster)
 			return err
 		}
 		return nil
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("get log backup %s/%s tidbcluster %s/%s failed, err is %w", ns, name, clusterNamespace, backup.Spec.BR.Cluster, err)
+		return nil, fmt.Errorf(
+			"get log backup %s/%s tidbcluster %s/%s failed, err is %w",
+			ns, name, clusterNamespace, backup.Spec.BR.Cluster, err)
 	}
 	return cluster, nil
 }

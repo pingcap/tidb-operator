@@ -184,7 +184,11 @@ func generateGcsCertEnvVar(gcs *brv1alpha1.GcsStorageProvider) ([]corev1.EnvVar,
 }
 
 // generateAzblobCertEnvVar generate the env info in order to access azure blob storage
-func generateAzblobCertEnvVar(azblob *brv1alpha1.AzblobStorageProvider, secret *corev1.Secret, useSasToken bool) ([]corev1.EnvVar, string, error) {
+func generateAzblobCertEnvVar(
+	azblob *brv1alpha1.AzblobStorageProvider,
+	secret *corev1.Secret,
+	useSasToken bool,
+) ([]corev1.EnvVar, string, error) {
 	if azblob.AccessTier == "" {
 		azblob.AccessTier = "Cool"
 	}
@@ -254,7 +258,13 @@ func generateAzblobCertEnvVar(azblob *brv1alpha1.AzblobStorageProvider, secret *
 
 // GenerateStorageCertEnv generate the env info in order to access backend backup storage
 // nolint: gocyclo
-func GenerateStorageCertEnv(ctx context.Context, ns string, useKMS bool, provider brv1alpha1.StorageProvider, cli client.Client) ([]corev1.EnvVar, string, error) {
+func GenerateStorageCertEnv(
+	ctx context.Context,
+	ns string,
+	useKMS bool,
+	provider brv1alpha1.StorageProvider,
+	cli client.Client,
+) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
 	var reason string
 	var err error
@@ -334,7 +344,11 @@ func GenerateStorageCertEnv(ctx context.Context, ns string, useKMS bool, provide
 	return certEnv, reason, nil
 }
 
-func GenerateStorageVolumesAndMounts(ctx context.Context, ns string, provider brv1alpha1.StorageProvider) ([]corev1.Volume, []corev1.VolumeMount, error) {
+func GenerateStorageVolumesAndMounts(
+	ctx context.Context,
+	ns string,
+	provider brv1alpha1.StorageProvider,
+) ([]corev1.Volume, []corev1.VolumeMount, error) {
 	var vols []corev1.Volume
 	var mounts []corev1.VolumeMount
 	storageType := GetStorageType(provider)
@@ -379,7 +393,12 @@ func getPasswordKey(useKMS bool) string {
 }
 
 // GenerateTidbPasswordEnv generate the password EnvVar
-func GenerateTidbPasswordEnv(ctx context.Context, ns, tcName, tidbSecretName string, useKMS bool, cli client.Client) ([]corev1.EnvVar, string, error) {
+func GenerateTidbPasswordEnv(
+	ctx context.Context,
+	ns, tcName, tidbSecretName string,
+	useKMS bool,
+	cli client.Client,
+) ([]corev1.EnvVar, string, error) {
 	var certEnv []corev1.EnvVar
 	var passwordKey string
 	secret := &corev1.Secret{}
@@ -545,13 +564,17 @@ func ValidateBackup(backup *brv1alpha1.Backup, tikvVersion string, cluster *core
 		if backup.Spec.BackoffRetryPolicy.MinRetryDuration != "" {
 			_, err := time.ParseDuration(backup.Spec.BackoffRetryPolicy.MinRetryDuration)
 			if err != nil {
-				return fmt.Errorf("fail to parse minRetryDuration %s of backup %s/%s, %w", backup.Spec.BackoffRetryPolicy.MinRetryDuration, backup.Namespace, backup.Name, err)
+				return fmt.Errorf(
+					"fail to parse minRetryDuration %s of backup %s/%s, %w",
+					backup.Spec.BackoffRetryPolicy.MinRetryDuration, backup.Namespace, backup.Name, err)
 			}
 		}
 		if backup.Spec.BackoffRetryPolicy.RetryTimeout != "" {
 			_, err := time.ParseDuration(backup.Spec.BackoffRetryPolicy.RetryTimeout)
 			if err != nil {
-				return fmt.Errorf("fail to parse retryTimeout %s of backup %s/%s, %w", backup.Spec.BackoffRetryPolicy.RetryTimeout, backup.Namespace, backup.Name, err)
+				return fmt.Errorf(
+					"fail to parse retryTimeout %s of backup %s/%s, %w",
+					backup.Spec.BackoffRetryPolicy.RetryTimeout, backup.Namespace, backup.Name, err)
 			}
 		}
 	}
@@ -716,7 +739,12 @@ func GetOptions(provider brv1alpha1.StorageProvider) []string {
 }
 
 // UpdateBRProgress updates progress for backup/restore.
-func UpdateBRProgress(progresses []brv1alpha1.Progress, step *string, progress *int, updateTime *metav1.Time) ([]brv1alpha1.Progress, bool) {
+func UpdateBRProgress(
+	progresses []brv1alpha1.Progress,
+	step *string,
+	progress *int,
+	updateTime *metav1.Time,
+) ([]brv1alpha1.Progress, bool) {
 	var oldProgress *brv1alpha1.Progress
 	for i, p := range progresses {
 		if p.Step == *step {

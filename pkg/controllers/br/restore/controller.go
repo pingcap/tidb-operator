@@ -138,7 +138,12 @@ func (r *Reconciler) JobEventHandler() handler.TypedEventHandler[client.Object, 
 	}
 }
 
-func (r *Reconciler) resolveRestoreFromJob(ctx context.Context, namespace string, job *batchv1.Job, queue workqueue.TypedRateLimitingInterface[reconcile.Request]) error {
+func (r *Reconciler) resolveRestoreFromJob(
+	ctx context.Context,
+	namespace string,
+	job *batchv1.Job,
+	queue workqueue.TypedRateLimitingInterface[reconcile.Request],
+) error {
 	logger := log.FromContext(ctx)
 	logger.Info("job event handler", "namespace", job.Namespace, "job", job.Name)
 

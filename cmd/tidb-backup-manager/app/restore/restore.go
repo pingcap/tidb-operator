@@ -260,7 +260,12 @@ func constructBROptions(restore *v1alpha1.Restore) ([]string, error) {
 }
 
 // updateProgressAccordingToBrLog update restore progress according to the br log.
-func (ro *Options) updateProgressAccordingToBrLog(ctx context.Context, line string, restore *v1alpha1.Restore, statusUpdater restoreMgr.RestoreConditionUpdaterInterface) {
+func (ro *Options) updateProgressAccordingToBrLog(
+	ctx context.Context,
+	line string,
+	restore *v1alpha1.Restore,
+	statusUpdater restoreMgr.RestoreConditionUpdaterInterface,
+) {
 	step, progress := backupUtil.ParseRestoreProgress(line)
 	if step != "" {
 		fvalue, progressUpdateErr := strconv.ParseFloat(progress, 64)

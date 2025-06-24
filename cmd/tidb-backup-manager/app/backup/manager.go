@@ -91,7 +91,9 @@ func (bm *Manager) ProcessBackup() error {
 
 	// we treat snapshot backup as restarted if its status is not scheduled when backup pod just start to run
 	// we will clean backup data before run br command
-	if backup.Spec.Mode == v1alpha1.BackupModeSnapshot && (backup.Status.Phase != v1alpha1.BackupScheduled || v1alpha1.IsBackupRestart(backup)) {
+	if backup.Spec.Mode == v1alpha1.BackupModeSnapshot &&
+		(backup.Status.Phase != v1alpha1.BackupScheduled ||
+			v1alpha1.IsBackupRestart(backup)) {
 		klog.Infof("snapshot backup %s was restarted, status is %s", bm, backup.Status.Phase)
 		uerr := bm.StatusUpdater.Update(ctx, backup, &v1alpha1.BackupCondition{
 			Condition: metav1.Condition{
