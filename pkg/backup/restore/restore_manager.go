@@ -36,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 )
@@ -43,6 +44,8 @@ import (
 const (
 	TiKVConfigEncryptionMethod      = "security.encryption.data-encryption-method"
 	TiKVConfigEncryptionMasterKeyId = "security.encryption.master-key.key-id"
+
+	TiKVConfigGCThreshold = "gc.ratio-threshold"
 )
 
 type restoreManager struct {
@@ -64,6 +67,80 @@ func (rm *restoreManager) Sync(restore *v1alpha1.Restore) error {
 
 func (rm *restoreManager) UpdateCondition(restore *v1alpha1.Restore, condition *v1alpha1.RestoreCondition) error {
 	return rm.statusUpdater.Update(restore, condition, nil)
+}
+
+func (rm *restoreManager) pitrEnable(tc *v1alpha1.TidbCluster) error {
+	if !tc.Status.TiKV.PiTRStatus.IsInactive() {
+		return nil
+	}
+	s := v1alpha1.ConfigUpdateStrategyInPlace
+	tc.Spec.TiKV.ConfigUpdateStrategy = &s
+	tc.Status.TiKV.PiTRStatus.NoTask = false
+	originalCfg := new(v1alpha1.PiTROverriddenConfig)
+	if tc.Spec.TiKV.Config == nil || tc.Spec.TiKV.Config.MP == nil {
+		tc.Spec.TiKV.Config = v1alpha1.NewTiKVConfig()
+	}
+	val := tc.Spec.TiKV.Config.Get(TiKVConfigGCThreshold)
+	if val != nil {
+		v := val.MustFloat()
+		originalCfg.GCRatioThreshold = &v
+	}
+	tc.Status.TiKV.PiTRStatus.OriginConfigMap = originalCfg
+	tc.Spec.TiKV.Config.Set(TiKVConfigGCThreshold, -1.0)
+	_, err := rm.deps.TiDBClusterControl.Update(tc)
+	return err
+}
+
+func (rm *restoreManager) pitrDisable(tc *v1alpha1.TidbCluster) error {
+	if tc.Status.TiKV.PiTRStatus.IsInactive() {
+		return nil
+	}
+	threshold := tc.Status.TiKV.PiTRStatus.OriginConfigMap.GCRatioThreshold
+	if threshold != nil {
+		tc.Spec.TiKV.Config.Set(TiKVConfigGCThreshold, threshold)
+	} else {
+		tc.Spec.TiKV.Config.Del(TiKVConfigGCThreshold)
+	}
+	tc.Status.TiKV.PiTRStatus = &v1alpha1.PiTRStatus{}
+	_, err := rm.deps.TiDBClusterControl.Update(tc)
+	return err
+}
+
+func (rm *restoreManager) maybePiTRDisable(tc *v1alpha1.TidbCluster, namespace string) error {
+	restores, err := rm.deps.RestoreLister.Restores(namespace).List(labels.Everything())
+	if err != nil {
+		return err
+	}
+	if pitrTasksAreDone(restores) {
+		klog.V(2).InfoS("All pitr tasks are done, will disable pitr mode", "namespace", namespace, "tidbcluster", tc.Name)
+		return rm.pitrDisable(tc)
+	}
+	return nil
+}
+
+func pitrTasksAreDone(restores []*v1alpha1.Restore) bool {
+	for _, restore := range restores {
+		if !pitrTaskIsDone(restore) {
+			return false
+		}
+	}
+	return true
+}
+
+func pitrTaskIsDone(restore *v1alpha1.Restore) bool {
+	if v1alpha1.IsRestoreComplete(restore) {
+		return true
+	}
+	if idx, cond := v1alpha1.GetRestoreCondition(&restore.Status, v1alpha1.RestoreFailed); idx != -1 {
+		if time.Since(cond.LastTransitionTime.Time) > 4*time.Hour {
+			klog.V(2).InfoS("A restore task failed long ago. Won't keep restore mode with it",
+				"time", cond.LastTransitionTime,
+				"restore", restore.Name,
+				"ns", restore.Namespace)
+			return true
+		}
+	}
+	return false
 }
 
 func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
@@ -98,6 +175,10 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 
 		tikvImage := tc.TiKVImage()
 		err = backuputil.ValidateRestore(restore, tikvImage, tc.Spec.AcrossK8s)
+	}
+
+	if pErr := rm.maybePiTRDisable(tc, restore.Namespace); pErr != nil {
+		klog.ErrorS(pErr, "Failed to disable PiTR for restore", "restore", restore.Name, "ns", restore.Namespace)
 	}
 
 	if err != nil {
@@ -192,6 +273,13 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return nil
 	} else if !errors.IsNotFound(err) {
 		return fmt.Errorf("restore %s/%s get job %s failed, err: %v", ns, name, restoreJobName, err)
+	}
+
+	// Note: perhaps better to reschedule here and wait the cluster config applied.
+	// But for now BR will also modify this configuration. This configuration map was
+	// modified for making sure they won't be lost after a TiKV restart.
+	if err := rm.pitrEnable(tc); err != nil {
+		return fmt.Errorf("restore %s/%s enable pitr failed, err: %v", ns, name, err)
 	}
 
 	var (
