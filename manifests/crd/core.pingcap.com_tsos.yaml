@@ -8581,8 +8581,8 @@ spec:
                   created the resource.
                 type: string
               isDefaultPrimary:
-                description: If true, this tso instance is the primary of the default
-                  keyspace group
+                description: IsDefaultPrimary indicates whether this TSO instance
+                  is the primary for the default keyspace group.
                 type: boolean
               observedGeneration:
                 description: |-
