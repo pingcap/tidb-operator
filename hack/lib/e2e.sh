@@ -35,6 +35,8 @@ GENERATEJWT=$OUTPUT_DIR/bin/generate_jwt
 CI=${CI:-""}
 OLD_VERSION_BRANCH=${OLD_VERSION_BRANCH:-"feature/v2"}
 OLD_OPERATOR_IMAGE_TAG=${OLD_OPERATOR_IMAGE_TAG:-""}
+# Comma-separated list of packages to exclude from e2e tests
+E2E_EXCLUDED_PACKAGES=${E2E_EXCLUDED_PACKAGES:-"upgrade"}
 
 function e2e::ensure_kubectl() {
     if ! command -v $KUBECTL &>/dev/null; then
@@ -211,13 +213,48 @@ function e2e::install_generate_jwt() {
 }
 
 function e2e::run() {
-    local skip_packages="github.com/pingcap/tidb-operator/tests/e2e/upgrade"
+    # Dynamically discover test packages, excluding specified packages to avoid compilation failures
+    IFS=',' read -ra excluded_packages <<< "${E2E_EXCLUDED_PACKAGES}"
+    local test_packages=()
+    local excluded_packages_found=()
+    
+    # Find all directories containing *_test.go files
+    while IFS= read -r -d '' test_dir; do
+        local relative_path="${test_dir#$ROOT/tests/e2e/}"
+        local should_exclude=false
+        
+        # Check if this directory should be excluded
+        for excluded in "${excluded_packages[@]}"; do
+            if [[ "$relative_path" == "$excluded" || "$relative_path" == "$excluded/"* ]]; then
+                should_exclude=true
+                excluded_packages_found+=("$relative_path")
+                break
+            fi
+        done
+        
+        if [[ "$should_exclude" == false ]]; then
+            test_packages+=("$test_dir")
+        fi
+    done < <(find "$ROOT/tests/e2e" -name "*_test.go" -exec dirname {} \; | sort -u | tr '\n' '\0')
+    
+    if [[ ${#excluded_packages_found[@]} -gt 0 ]]; then
+        echo "Excluded packages: ${excluded_packages_found[*]}"
+    fi
+    
+    if [[ ${#test_packages[@]} -eq 0 ]]; then
+        echo "No test packages found!"
+        exit 1
+    fi
+    
+    echo "Running tests in packages: ${test_packages[*]}"
+    
+    # Use individual package paths instead of recursive mode to avoid scanning excluded packages
     if [[ "$CI" == "true" ]]; then
         echo "running e2e tests in CI mode with options: $*"
-        $GINKGO -v -r --skip-package="$skip_packages" --timeout=2h --randomize-all --randomize-suites --fail-on-empty --keep-going --race --trace --flake-attempts=2 "$*" "$ROOT/tests/e2e/..."
+        $GINKGO -v --timeout=2h --randomize-all --randomize-suites --fail-on-empty --keep-going --race --trace --flake-attempts=2 "$*" "${test_packages[@]}"
     else
         echo "running e2e tests locally..."
-        $GINKGO -r -v --skip-package="$skip_packages" "$@" "$ROOT/tests/e2e/..."
+        $GINKGO -v "$@" "${test_packages[@]}"
     fi
 }
 

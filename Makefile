@@ -157,6 +157,11 @@ install-githooks:
 e2e/prepare: bin/kind release
 	$(ROOT)/hack/e2e.sh --prepare
 
+# e2e/run: Run e2e tests (excluding packages specified in E2E_EXCLUDED_PACKAGES)
+# Default excludes 'upgrade' package which requires special build tags
+# Usage: make e2e/run
+# To exclude additional packages: E2E_EXCLUDED_PACKAGES="upgrade,some-other-package" make e2e/run
+# To run all packages: E2E_EXCLUDED_PACKAGES="" make e2e/run
 .PHONY: e2e/run
 e2e/run:
 	$(ROOT)/hack/e2e.sh run $(GINKGO_OPTS)
