@@ -74,8 +74,6 @@ type builder[Object client.Object, UnderlayClient, Client any] struct {
 	cacheKeysFunc         CacheKeysFunc[Object]
 
 	newPollerFuncMap map[reflect.Type]NewPollerFunc[UnderlayClient]
-
-	exampleObjs []runtime.Object
 }
 
 func NewManagerBuilder[Object client.Object, UnderlayClient, Client any]() ManagerBuilder[Object, UnderlayClient, Client] {
@@ -113,7 +111,6 @@ func (b *builder[Object, UnderlayClient, Client]) WithNewClientFunc(
 func (b *builder[Object, UnderlayClient, Client]) WithNewPollerFunc(
 	obj runtime.Object, f NewPollerFunc[UnderlayClient],
 ) ManagerBuilder[Object, UnderlayClient, Client] {
-	b.exampleObjs = append(b.exampleObjs, obj)
 	t := reflect.TypeOf(obj)
 	b.newPollerFuncMap[t] = f
 
@@ -134,7 +131,6 @@ func (b *builder[Object, UnderlayClient, Client]) Build() Manager[Object, Client
 		cacheKeysFunc:         b.cacheKeysFunc,
 		newPollerFuncMap:      b.newPollerFuncMap,
 		sources:               map[reflect.Type][]EventSource{},
-		exampleObjs:           b.exampleObjs,
 	}
 }
 
@@ -150,8 +146,6 @@ type clientManager[Object client.Object, UnderlayClient, Client any] struct {
 
 	newPollerFuncMap map[reflect.Type]NewPollerFunc[UnderlayClient]
 	sources          map[reflect.Type][]EventSource
-
-	exampleObjs []runtime.Object
 
 	ctx     context.Context
 	started bool
@@ -184,25 +178,24 @@ func (m *clientManager[Object, UnderlayClient, Client]) Register(obj Object) err
 	}
 
 	f := NewSharedInformerFactory(keys[0], m.logger, m.scheme, underlay, m.newPollerFuncMap, time.Hour)
-	for _, obj := range m.exampleObjs {
-		f.InformerFor(obj)
-	}
 	c := m.newClientFunc(obj, underlay, f)
 
 	cacheObj = NewCache[Client, UnderlayClient](keys, c, f)
 	m.cs.Store(keys[0], cacheObj)
 	go func() {
 		cacheObj.Start(m.ctx)
-		cacheObj.InformerFactory().WaitForCacheSync(m.ctx.Done())
-		for _, obj := range m.exampleObjs {
-			informer := f.InformerFor(obj)
-			t := reflect.TypeOf(obj)
+		f.WaitForCacheSync(m.ctx.Done())
+		if err := f.ForEach(func(t reflect.Type, informer cache.SharedIndexInformer) error {
 			ss := m.sources[t]
 			for _, s := range ss {
 				if err := s.For(keys[0], informer); err != nil {
-					m.logger.Error(err, "cannot add event handler into informer")
+					return fmt.Errorf("cannot add event handler for %v:%v: %w", keys[0], t, err)
 				}
 			}
+
+			return nil
+		}); err != nil {
+			m.logger.Error(err, "failed to add event handler")
 		}
 	}()
 	return nil

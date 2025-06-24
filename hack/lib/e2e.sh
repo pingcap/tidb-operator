@@ -152,6 +152,7 @@ function e2e::e2e() {
     local run=0
     local reinstall_operator=0
     local reinstall_backup_manager=0
+    local reload_testing_workload=0
     while [[ $# -gt 0 ]]; do
         case $1 in
         --prepare)
