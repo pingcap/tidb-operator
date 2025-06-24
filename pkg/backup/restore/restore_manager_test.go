@@ -31,6 +31,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/pointer"
 )
 
@@ -165,6 +166,52 @@ func genValidBRRestores() []*v1alpha1.Restore {
 		}
 		r.Namespace = "ns"
 		r.Name = fmt.Sprintf("restore_name_%d", i)
+		rs = append(rs, r)
+	}
+
+	return rs
+}
+
+func genValidPiTRRestores() []*v1alpha1.Restore {
+	var rs []*v1alpha1.Restore
+	for i, sp := range testutils.GenValidStorageProviders() {
+		r := &v1alpha1.Restore{
+			Spec: v1alpha1.RestoreSpec{
+				To: &v1alpha1.TiDBAccessConfig{
+					Host:       "localhost",
+					SecretName: fmt.Sprintf("pitr_secret_%d", i),
+				},
+				StorageSize:       "1G",
+				StorageProvider:   sp,
+				Type:              v1alpha1.BackupTypeFull,
+				Mode:              v1alpha1.RestoreModePiTR,
+				PitrRestoredTs:    "443123456789",
+				LogRestoreStartTs: "443123456780",
+				BR: &v1alpha1.BRConfig{
+					ClusterNamespace: "ns",
+					Cluster:          fmt.Sprintf("tidb_%d", i),
+					DB:               "dbName",
+				},
+				Env: []corev1.EnvVar{
+					{
+						Name:  fmt.Sprintf("pitr_env_name_%d", i),
+						Value: fmt.Sprintf("pitr_env_value_%d", i),
+					},
+					// existing env name will be overwritten for pitr restore
+					{
+						Name:  "BR_LOG_TO_TERM",
+						Value: "value",
+					},
+					// existing env name will be overwritten for cleaner
+					{
+						Name:  "S3_PROVIDER",
+						Value: "value",
+					},
+				},
+			},
+		}
+		r.Namespace = "ns"
+		r.Name = fmt.Sprintf("pitr_restore_name_%d", i)
 		rs = append(rs, r)
 	}
 
@@ -1018,4 +1065,202 @@ func TestGenerateWarmUpArgs(t *testing.T) {
 			require.Equal(t, tc.expected, args)
 		})
 	}
+}
+
+func TestPiTRRestore(t *testing.T) {
+	g := NewGomegaWithT(t)
+	helper := newHelper(t)
+	defer helper.Close()
+	deps := helper.Deps
+
+	for i, restore := range genValidPiTRRestores() {
+		helper.createRestore(restore)
+		helper.CreateSecret(restore)
+		helper.CreateTC(restore.Spec.BR.ClusterNamespace, restore.Spec.BR.Cluster, false, false)
+
+		// Initialize PiTRStatus for the TiKV to avoid nil pointer dereference
+		tc, err := deps.TiDBClusterLister.TidbClusters(restore.Spec.BR.ClusterNamespace).Get(restore.Spec.BR.Cluster)
+		g.Expect(err).Should(BeNil())
+		if tc.Status.TiKV.PiTRStatus == nil {
+			tc.Status.TiKV.PiTRStatus = &v1alpha1.PiTRStatus{NoTask: true}
+		}
+		_, err = deps.TiDBClusterControl.Update(tc)
+		g.Expect(err).Should(BeNil())
+
+		m := NewRestoreManager(deps)
+		err = m.Sync(restore)
+		g.Expect(err).Should(BeNil())
+		helper.hasCondition(restore.Namespace, restore.Name, v1alpha1.RestoreScheduled, "")
+		job, err := helper.Deps.KubeClientset.BatchV1().Jobs(restore.Namespace).Get(context.TODO(), restore.GetRestoreJobName(), metav1.GetOptions{})
+		g.Expect(err).Should(BeNil())
+
+		tc2, err := deps.TiDBClusterLister.TidbClusters(restore.Spec.BR.ClusterNamespace).Get(restore.Spec.BR.Cluster)
+		g.Expect(err).Should(BeNil())
+		st := tc2.Status.TiKV.PiTRStatus
+		g.Expect(st.IsInactive()).To(BeFalse())
+		g.Expect(tc2.Spec.TiKV.Config.Get("gc.ratio-threshold").MustFloat()).To(Equal(-1.0))
+
+		// check pod env are set correctly for PiTR restore
+		env1 := corev1.EnvVar{
+			Name:  fmt.Sprintf("pitr_env_name_%d", i),
+			Value: fmt.Sprintf("pitr_env_value_%d", i),
+		}
+		env2Yes := corev1.EnvVar{
+			Name:  "BR_LOG_TO_TERM",
+			Value: "value",
+		}
+		env2No := corev1.EnvVar{
+			Name:  "BR_LOG_TO_TERM",
+			Value: string(rune(1)),
+		}
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env1))
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env2Yes))
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(gomega.ContainElement(env2No))
+
+		// check PiTR specific args are set correctly
+		args := job.Spec.Template.Spec.Containers[0].Args
+		g.Expect(args).To(gomega.ContainElement("--mode=pitr"))
+		g.Expect(args).To(gomega.ContainElement("--pitrRestoredTs=443123456789"))
+
+		// Complete the restore
+		err = m.UpdateCondition(restore, &v1alpha1.RestoreCondition{
+			Type:   v1alpha1.RestoreComplete,
+			Status: corev1.ConditionTrue,
+		})
+		g.Expect(err).Should(BeNil())
+
+		for range 3 {
+			rs, err := helper.Deps.RestoreLister.Restores(restore.Namespace).List(labels.Everything())
+			g.Expect(err).Should(BeNil())
+			for _, r := range rs {
+				if !v1alpha1.IsRestoreComplete(r) {
+					continue
+				}
+			}
+			time.Sleep(100 * time.Microsecond)
+		}
+		err = m.Sync(restore)
+		g.Expect(err).Should(BeNil())
+
+		tc2, err = deps.TiDBClusterLister.TidbClusters(restore.Spec.BR.ClusterNamespace).Get(restore.Spec.BR.Cluster)
+		g.Expect(err).Should(BeNil())
+		st = tc2.Status.TiKV.PiTRStatus
+		g.Expect(st.IsInactive()).To(BeTrue())
+		g.Expect(tc2.Spec.TiKV.Config.Get("gc.ratio-threshold")).To(BeNil())
+	}
+}
+
+func TestPiTRHelperFunctions(t *testing.T) {
+	g := NewGomegaWithT(t)
+	helper := newHelper(t)
+	defer helper.Close()
+	deps := helper.Deps
+
+	// Create a test TiDB cluster with PiTR status
+	tc := &v1alpha1.TidbCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-tc",
+			Namespace: "ns",
+		},
+		Spec: v1alpha1.TidbClusterSpec{
+			TiKV: &v1alpha1.TiKVSpec{
+				Config: &v1alpha1.TiKVConfigWraper{},
+			},
+		},
+		Status: v1alpha1.TidbClusterStatus{
+			TiKV: v1alpha1.TiKVStatus{
+				PiTRStatus: &v1alpha1.PiTRStatus{
+					NoTask: true,
+				},
+			},
+		},
+	}
+
+	// Initialize TiKV config if nil
+	tc.Spec.TiKV.Config = v1alpha1.NewTiKVConfig()
+	tc.Spec.TiKV.Config.Set("gc.ratio-threshold", 1.2)
+	helper.CreateTC("ns", "test-tc", false, false)
+	m := NewRestoreManager(deps).(*restoreManager)
+
+	// Test pitrEnable
+	err := m.pitrEnable(tc)
+	g.Expect(err).Should(BeNil())
+	g.Expect(tc.Status.TiKV.PiTRStatus.NoTask).Should(BeFalse())
+	g.Expect(tc.Status.TiKV.PiTRStatus.OriginConfigMap).ShouldNot(BeNil())
+	g.Expect(*tc.Status.TiKV.PiTRStatus.OriginConfigMap.GCRatioThreshold).Should(Equal(1.2))
+
+	// Test pitrDisable
+	err = m.pitrDisable(tc)
+	g.Expect(err).Should(BeNil())
+	g.Expect(tc.Status.TiKV.PiTRStatus.IsInactive()).Should(BeTrue())
+
+	// Test pitrTasksAreDone with no restores
+	done := pitrTasksAreDone([]*v1alpha1.Restore{})
+	g.Expect(done).Should(BeTrue())
+
+	// Test pitrTasksAreDone with completed restore
+	completedRestore := &v1alpha1.Restore{
+		Status: v1alpha1.RestoreStatus{
+			Conditions: []v1alpha1.RestoreCondition{
+				{
+					Type:   v1alpha1.RestoreComplete,
+					Status: corev1.ConditionTrue,
+				},
+			},
+		},
+	}
+	done = pitrTasksAreDone([]*v1alpha1.Restore{completedRestore})
+	g.Expect(done).Should(BeTrue())
+
+	// Test pitrTasksAreDone with running restore
+	runningRestore := &v1alpha1.Restore{
+		Status: v1alpha1.RestoreStatus{
+			Conditions: []v1alpha1.RestoreCondition{
+				{
+					Type:   v1alpha1.RestoreRunning,
+					Status: corev1.ConditionTrue,
+				},
+			},
+		},
+	}
+	done = pitrTasksAreDone([]*v1alpha1.Restore{runningRestore})
+	g.Expect(done).Should(BeFalse())
+
+	// Test pitrTaskIsDone with failed restore that's old enough
+	failedRestore := &v1alpha1.Restore{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "failed-restore",
+			Namespace: "ns",
+		},
+		Status: v1alpha1.RestoreStatus{
+			Conditions: []v1alpha1.RestoreCondition{
+				{
+					Type:               v1alpha1.RestoreFailed,
+					Status:             corev1.ConditionTrue,
+					LastTransitionTime: metav1.Time{Time: time.Now().Add(-5 * time.Hour)},
+				},
+			},
+		},
+	}
+	done = pitrTaskIsDone(failedRestore)
+	g.Expect(done).Should(BeTrue())
+
+	// Test pitrTaskIsDone with recently failed restore
+	recentFailedRestore := &v1alpha1.Restore{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "recent-failed-restore",
+			Namespace: "ns",
+		},
+		Status: v1alpha1.RestoreStatus{
+			Conditions: []v1alpha1.RestoreCondition{
+				{
+					Type:               v1alpha1.RestoreFailed,
+					Status:             corev1.ConditionTrue,
+					LastTransitionTime: metav1.Time{Time: time.Now().Add(-1 * time.Hour)},
+				},
+			},
+		},
+	}
+	done = pitrTaskIsDone(recentFailedRestore)
+	g.Expect(done).Should(BeFalse())
 }

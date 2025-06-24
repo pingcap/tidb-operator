@@ -51013,6 +51013,17 @@ spec:
                     type: object
                   phase:
                     type: string
+                  pitrStatus:
+                    properties:
+                      noTask:
+                        type: boolean
+                      originConfigMap:
+                        nullable: true
+                        properties:
+                          gcRatioThreshold:
+                            type: number
+                        type: object
+                    type: object
                   statefulSet:
                     properties:
                       availableReplicas:
