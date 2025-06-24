@@ -170,6 +170,7 @@ e2e/run:
 e2e/run-upgrade:
 	$(ROOT)/hack/e2e.sh run-upgrade $(GINKGO_OPTS)
 
+# e2e: Run full e2e test suite including both regular and upgrade tests
 .PHONY: e2e
 e2e: bin/kind release
 	$(ROOT)/hack/e2e.sh --prepare run run-upgrade $(GINKGO_OPTS)

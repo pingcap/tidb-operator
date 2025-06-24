@@ -34,7 +34,6 @@ GENERATEJWT=$OUTPUT_DIR/bin/generate_jwt
 
 CI=${CI:-""}
 OLD_VERSION_BRANCH=${OLD_VERSION_BRANCH:-"feature/v2"}
-OLD_OPERATOR_IMAGE_TAG=${OLD_OPERATOR_IMAGE_TAG:-""}
 # Comma-separated list of packages to exclude from e2e tests
 E2E_EXCLUDED_PACKAGES=${E2E_EXCLUDED_PACKAGES:-"upgrade"}
 
@@ -126,52 +125,62 @@ function e2e::ensure_old_version_repo() {
     echo "${old_version_dir}"
 }
 
-function e2e::get_old_operator_image_tag() {
-    local old_version_dir
-    old_version_dir=$(e2e::ensure_old_version_repo)
-
-    local commit_hash
-    commit_hash=$(cd "${old_version_dir}" && git rev-parse HEAD)
-    local short_commit_hash
-    short_commit_hash=${commit_hash:0:7}
-
-    echo "Fetching tags for commit ${short_commit_hash} from gcr.io/pingcap-public/dbaas/tidb-operator..." >&2
-
-    local image_tag
-    # Using curl to avoid dependency on gcloud and authentication.
-    # We filter for tags that contain the short commit hash but do not contain an underscore (to exclude arch-specific tags).
-    image_tag=$(curl -s "https://gcr.io/v2/pingcap-public/dbaas/tidb-operator/tags/list" |
-        grep -o '"[^"]*g'${short_commit_hash}'[^"]*"' |
-        grep -v '_' |
-        sed 's/"//g' |
-        head -n 1)
-
-    if [[ -z "$image_tag" ]]; then
-        echo "Could not find a suitable image tag for commit ${short_commit_hash}" >&2
-        echo "Debugging info: Listing all tags containing the commit hash..." >&2
-        curl -s "https://gcr.io/v2/pingcap-public/dbaas/tidb-operator/tags/list" |
-            grep -o '"[^"]*g'${short_commit_hash}'[^"]*"' |
-            sed 's/"//g' |
-            head -n 10 >&2
-        exit 1
-    fi
-
-    echo "$image_tag"
-}
-
 function e2e::install_old_version() {
-    if [[ -z "$OLD_OPERATOR_IMAGE_TAG" ]]; then
-        echo "OLD_OPERATOR_IMAGE_TAG is not set, trying to determine it automatically."
-        OLD_OPERATOR_IMAGE_TAG=$(e2e::get_old_operator_image_tag)
-        echo "Determined OLD_OPERATOR_IMAGE_TAG: ${OLD_OPERATOR_IMAGE_TAG}"
-    fi
-    local old_operator_image="gcr.io/pingcap-public/dbaas/tidb-operator:${OLD_OPERATOR_IMAGE_TAG}"
+    echo "Preparing old version from branch ${OLD_VERSION_BRANCH}"
 
-    echo "Preparing manifests for old version from branch ${OLD_VERSION_BRANCH}"
+    # Ensure the old version repository is checked-out locally
     local old_version_dir
     old_version_dir=$(e2e::ensure_old_version_repo)
 
-    echo "Deploying old version of CRDs"
+    # Build the operator image from the old version source
+    echo "Building old version operator image from ${old_version_dir}"
+    local commit_hash
+    commit_hash=$(cd "${old_version_dir}" && git rev-parse --short HEAD)
+    local old_operator_image="${V_IMG_PROJECT}/tidb-operator:old-${commit_hash}"
+
+    # Prepare build/cache directories (re-use paths from hack/lib/image.sh)
+    mkdir -p ${IMAGE_DIR}
+    mkdir -p ${CACHE_DIR}
+    local image_tar="${IMAGE_DIR}/tidb-operator-${commit_hash}.tar"
+
+    # If the OCI archive already exists, reuse it to skip rebuild
+    if [[ -f "${image_tar}" ]]; then
+        echo "Found cached image archive ${image_tar}, skipping build."
+    else
+        # Check if the image with this tag already exists locally
+        if docker image inspect "${old_operator_image}" > /dev/null 2>&1; then
+            echo "Image ${old_operator_image} already exists locally, exporting to archive..."
+            docker save -o "${image_tar}" "${old_operator_image}"
+        else
+            echo "Building image ${old_operator_image}"
+            # Honour platform settings if provided
+            local build_args=""
+            if [[ -n "${V_PLATFORMS}" ]]; then
+                build_args="--platform ${V_PLATFORMS}"
+            fi
+
+            # Ensure a usable buildx builder
+            if ! docker buildx ls | grep "*" | grep -q "docker-container"; then
+                echo "'docker-container' builder not found, creating it..."
+                docker buildx create --use
+            fi
+
+            docker buildx build \
+                --target tidb-operator \
+                -o type=oci,dest="${image_tar}" \
+                -t "${old_operator_image}" \
+                --cache-from=type=local,src=${CACHE_DIR} \
+                --cache-to=type=local,dest=${CACHE_DIR} \
+                ${build_args} \
+                -f "${old_version_dir}/image/Dockerfile" "${old_version_dir}"
+        fi
+    fi
+
+    echo "Loading old operator image into kind cluster"
+    $KIND load image-archive "${image_tar}" --name "${V_KIND_CLUSTER}"
+
+    # Apply CRDs from the old version
+    echo "Deploying old version CRDs"
     e2e::delete_crds
     local old_crd_path="${old_version_dir}/manifests/crd"
     if ! $KUBECTL apply --server-side=true -f "${old_crd_path}"; then
@@ -179,7 +188,8 @@ function e2e::install_old_version() {
         exit 1
     fi
 
-    echo "Deploying old version of operator by setting image"
+    # Patch the operator deployment to use the just-built image
+    echo "Updating operator deployment to old version image"
     if ! $KUBECTL -n $V_DEPLOY_NAMESPACE set image deployment/tidb-operator "tidb-operator=${old_operator_image}"; then
         echo "Failed to set old operator image"
         exit 1
@@ -264,11 +274,6 @@ function e2e::run_upgrade() {
 }
 
 function e2e::prepare() {
-    if [[ -z "$OLD_OPERATOR_IMAGE_TAG" ]]; then
-        echo "OLD_OPERATOR_IMAGE_TAG is not set, trying to determine it automatically."
-        OLD_OPERATOR_IMAGE_TAG=$(e2e::get_old_operator_image_tag)
-        echo "Determined OLD_OPERATOR_IMAGE_TAG: ${OLD_OPERATOR_IMAGE_TAG}"
-    fi
     e2e::install_ginkgo
     e2e::install_generate_jwt
     e2e::ensure_kubectl
@@ -355,7 +360,8 @@ function e2e::e2e() {
 
     if [[ $run -eq 1 ]]; then
         e2e::run "${ginkgo_opts[@]}"
-    elif [[ $run_upgrade -eq 1 ]]; then
+    fi
+    if [[ $run_upgrade -eq 1 ]]; then
         e2e::run_upgrade "${ginkgo_opts[@]}"
     fi
 }
