@@ -240,7 +240,7 @@ func FeatureGates() []Case {
 			isCreate: true,
 			current: []any{
 				map[string]any{
-					"name": "VolumeAttributeClass",
+					"name": "VolumeAttributesClass",
 				},
 			},
 		},
@@ -248,12 +248,12 @@ func FeatureGates() []Case {
 			desc: "update without any update",
 			old: []any{
 				map[string]any{
-					"name": "VolumeAttributeClass",
+					"name": "VolumeAttributesClass",
 				},
 			},
 			current: []any{
 				map[string]any{
-					"name": "VolumeAttributeClass",
+					"name": "VolumeAttributesClass",
 				},
 			},
 		},
@@ -262,7 +262,7 @@ func FeatureGates() []Case {
 			isCreate: true,
 			current: []any{
 				map[string]any{
-					"name": "VolumeAttributeClass",
+					"name": "VolumeAttributesClass",
 				},
 				map[string]any{
 					"name": "FeatureModification",
@@ -273,7 +273,7 @@ func FeatureGates() []Case {
 			desc: "can update feature gates if FeatureModification is enabled",
 			old: []any{
 				map[string]any{
-					"name": "VolumeAttributeClass",
+					"name": "VolumeAttributesClass",
 				},
 				map[string]any{
 					"name": "FeatureModification",
@@ -292,7 +292,7 @@ func FeatureGates() []Case {
 			desc: "FeatureModification remains enabled, other features removed",
 			old: []any{
 				map[string]any{
-					"name": "VolumeAttributeClass",
+					"name": "VolumeAttributesClass",
 				},
 				map[string]any{
 					"name": "FeatureModification",
@@ -313,7 +313,7 @@ func FeatureGates() []Case {
 			},
 			current: []any{
 				map[string]any{
-					"name": "VolumeAttributeClass",
+					"name": "VolumeAttributesClass",
 				},
 				map[string]any{
 					"name": "FeatureModification",
@@ -324,7 +324,7 @@ func FeatureGates() []Case {
 			desc: "cannot update FeatureGates if FeatureModification is not enabled",
 			old: []any{
 				map[string]any{
-					"name": "VolumeAttributeClass",
+					"name": "VolumeAttributesClass",
 				},
 			},
 			current: []any{
@@ -340,7 +340,7 @@ func FeatureGates() []Case {
 			desc: "can only enable FeatureModification if FeatureModification is not enabled",
 			old: []any{
 				map[string]any{
-					"name": "VolumeAttributeClass",
+					"name": "VolumeAttributesClass",
 				},
 			},
 			current: []any{
@@ -359,7 +359,7 @@ func FeatureGates() []Case {
 			desc: "cannot disable FeatureModification",
 			old: []any{
 				map[string]any{
-					"name": "VolumeAttributeClass",
+					"name": "VolumeAttributesClass",
 				},
 				map[string]any{
 					"name": "FeatureModification",
@@ -367,7 +367,7 @@ func FeatureGates() []Case {
 			},
 			current: []any{
 				map[string]any{
-					"name": "VolumeAttributeClass",
+					"name": "VolumeAttributesClass",
 				},
 			},
 			wantErrs: []string{
