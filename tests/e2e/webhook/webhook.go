@@ -266,9 +266,9 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 					return data.NewTiFlashGroup(ns, func(group *runtime.TiFlashGroup) {
 						group.Spec.Template.Spec.Volumes = []v1alpha1.Volume{
 							{
-								Name:    "log",
+								Name:    "data",
 								Storage: resource.MustParse(storage),
-								Mounts:  []v1alpha1.VolumeMount{{Type: "log"}},
+								Mounts:  []v1alpha1.VolumeMount{{Type: "data"}},
 							},
 						}
 					}), nil

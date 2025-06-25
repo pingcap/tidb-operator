@@ -33,7 +33,8 @@ func NewTiProxyGroup(ns string, patches ...GroupPatch[*runtime.TiProxyGroup]) *v
 			Replicas: ptr.To[int32](1),
 			Template: v1alpha1.TiProxyTemplate{
 				Spec: v1alpha1.TiProxyTemplateSpec{
-					Image: ptr.To(defaultImageRegistry + "tiproxy:main"),
+					Image:   ptr.To(defaultImageRegistry + "tiproxy"),
+					Version: defaultTiProxyVersion,
 				},
 			},
 		},
