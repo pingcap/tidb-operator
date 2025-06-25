@@ -13386,7 +13386,7 @@ bool
 </em>
 </td>
 <td>
-<p>NoTask indicates that there is no log restore task in progress.</p>
+<p>Active indicates that there is a log restore task in progress.</p>
 </td>
 </tr>
 <tr>
