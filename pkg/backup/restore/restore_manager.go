@@ -139,8 +139,8 @@ func pitrTaskIsDone(restore *v1alpha1.Restore) bool {
 		return true
 	}
 	if idx, cond := v1alpha1.GetRestoreCondition(&restore.Status, v1alpha1.RestoreFailed); idx != -1 {
-		if time.Since(cond.LastTransitionTime.Time) > 4*time.Hour {
-			klog.V(2).InfoS("A restore task failed long ago. Won't keep restore mode with it",
+		if time.Since(cond.LastTransitionTime.Time) > 48*time.Hour {
+			klog.V(2).InfoS("A restore task failed long ago. Won't keep restore mode for it",
 				"time", cond.LastTransitionTime,
 				"restore", restore.Name,
 				"ns", restore.Namespace)
