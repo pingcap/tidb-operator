@@ -22,6 +22,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
@@ -64,7 +65,13 @@ func runCmd(cmd string) (string, error) {
 		return "", fmt.Errorf("failed to get absolute path of project root: %w", err)
 	}
 
-	fullCmd := fmt.Sprintf("cd %s && %s", absProjectRoot, cmd)
+	finalCmd := cmd
+	if strings.HasPrefix(cmd, "kubectl") {
+		kubectlPath := filepath.Join(absProjectRoot, "_output", "bin", "kubectl")
+		finalCmd = strings.Replace(cmd, "kubectl", kubectlPath, 1)
+	}
+
+	fullCmd := fmt.Sprintf("cd %s && %s", absProjectRoot, finalCmd)
 	output, err := exec.Command("bash", "-c", fullCmd).CombinedOutput()
 	if err != nil {
 		return string(output), fmt.Errorf("failed to run command: %s, output: %s, error: %w", fullCmd, string(output), err)
