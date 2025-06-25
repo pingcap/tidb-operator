@@ -8314,11 +8314,7 @@ func (in *TiKVStatus) DeepCopyInto(out *TiKVStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.PiTRStatus != nil {
-		in, out := &in.PiTRStatus, &out.PiTRStatus
-		*out = new(PiTRStatus)
-		(*in).DeepCopyInto(*out)
-	}
+	in.PiTRStatus.DeepCopyInto(&out.PiTRStatus)
 	return
 }
 
