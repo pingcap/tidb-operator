@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/timanager"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/task"
 )
@@ -248,7 +249,7 @@ func (t *TaskStatus) syncClusterID(ctx context.Context, rtx *ReconcileContext) b
 		return false
 	}
 
-	pdClient, ok := t.PDClientManager.Get(pdm.PrimaryKey(rtx.Cluster.Namespace, rtx.Cluster.Name))
+	pdClient, ok := t.PDClientManager.Get(timanager.PrimaryKey(rtx.Cluster.Namespace, rtx.Cluster.Name))
 	if !ok {
 		t.Logger.Info("pd client is not registered")
 		return false // wait for next sync

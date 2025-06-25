@@ -19,6 +19,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 
+	"github.com/pingcap/tidb-operator/pkg/timanager"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -39,7 +40,7 @@ type ReconcileContext struct {
 func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task.Task {
 	return task.NameTaskFunc("ContextInfoFromPD", func(_ context.Context) task.Result {
 		ck := state.Cluster()
-		pc, ok := cm.Get(pdm.PrimaryKey(ck.Namespace, ck.Name))
+		pc, ok := cm.Get(timanager.PrimaryKey(ck.Namespace, ck.Name))
 		if !ok {
 			return task.Wait().With("pd client has not been registered yet")
 		}

@@ -32,6 +32,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/timanager"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 )
 
@@ -166,7 +167,6 @@ func (bt *backupTracker) getLogBackupTC(ctx context.Context, backup *v1alpha1.Ba
 		}
 		return nil
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("get log backup %s/%s tidbcluster %s/%s failed, err is %w", ns, name, clusterNamespace, backup.Spec.BR.Cluster, err)
 	}
@@ -215,7 +215,7 @@ func (bt *backupTracker) doRefreshLogBackupCheckpointTs(ctx context.Context, bac
 	logger := log.FromContext(ctx)
 	ns := backup.Namespace
 	name := backup.Name
-	pc, ok := bt.pdcm.Get(pdm.PrimaryKey(backup.Namespace, backup.Spec.BR.Cluster))
+	pc, ok := bt.pdcm.Get(timanager.PrimaryKey(backup.Namespace, backup.Spec.BR.Cluster))
 	if !ok {
 		logger.Error(nil, "get log backup pd client error", "namespace", ns, "backup", name)
 		return

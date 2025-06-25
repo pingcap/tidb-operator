@@ -244,7 +244,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			assert.False(tt, done, c.desc)
 
 			ck := c.state.Cluster()
-			_, ok := m.Get(pdm.PrimaryKey(ck.Namespace, ck.Name))
+			_, ok := m.Get(timanager.PrimaryKey(ck.Namespace, ck.Name))
 			assert.Equal(tt, c.isDeregistered, !ok, c.desc)
 
 			// no need to check update result
@@ -264,7 +264,7 @@ func NewFakePDClientManager() pdm.PDClientManager {
 		WithNewUnderlayClientFunc(func(*v1alpha1.PDGroup) (pdapi.PDClient, error) {
 			return nil, nil
 		}).
-		WithNewClientFunc(func(string, pdapi.PDClient, timanager.SharedInformerFactory[pdapi.PDClient]) pdm.PDClient {
+		WithNewClientFunc(func(*v1alpha1.PDGroup, pdapi.PDClient, timanager.SharedInformerFactory[pdapi.PDClient]) pdm.PDClient {
 			return nil
 		}).
 		WithCacheKeysFunc(pdm.CacheKeys).
