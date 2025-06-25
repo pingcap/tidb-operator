@@ -61,15 +61,16 @@ type StorageCredential struct {
 }
 
 type s3Config struct {
-	region         string
-	endpoint       string
-	bucket         string
-	prefix         string
-	provider       string
-	sse            string
-	acl            string
-	storageClass   string
-	forcePathStyle bool
+	region                 string
+	endpoint               string
+	bucket                 string
+	prefix                 string
+	provider               string
+	sse                    string
+	acl                    string
+	storageClass           string
+	forcePathStyle         bool
+	forcePathStyleOverride bool
 }
 
 type gcsConfig struct {
@@ -411,6 +412,11 @@ func newS3StorageOptionForFlag(conf *s3Config, flag string) []string {
 		s3options = append(s3options, fmt.Sprintf("--%s=%s", flag, path))
 		return s3options
 	}
+	if conf.forcePathStyleOverride {
+		// Explicitly encode force-path-style into URL if user requests override.
+		// This ensures compatibility with all versions of BR.
+		path += fmt.Sprintf("?force-path-style=%t", conf.forcePathStyle)
+	}
 	s3options = append(s3options, fmt.Sprintf("--storage=%s", path))
 
 	if conf.region != "" {
@@ -431,6 +437,7 @@ func newS3StorageOptionForFlag(conf *s3Config, flag string) []string {
 	if conf.storageClass != "" {
 		s3options = append(s3options, fmt.Sprintf("--s3.storage-class=%s", conf.storageClass))
 	}
+
 	return s3options
 }
 
@@ -447,7 +454,11 @@ func newS3Storage(conf *s3Config, cred *StorageCredential) (*blob.Bucket, error)
 	if conf.region != "" {
 		awsConfig.WithRegion(conf.region)
 	}
-	if conf.endpoint != "" {
+	if conf.endpoint != "" && conf.provider != "aws" {
+		// ⚠️ Do NOT set a global endpoint in the AWS config.
+		// Setting a global endpoint will break AssumeRoleWithWebIdentity,
+		// as it overrides the STS endpoint and causes authentication to fail.
+		// See: https://github.com/aws/aws-sdk-go/issues/3972
 		awsConfig.WithEndpoint(conf.endpoint)
 	}
 
@@ -463,7 +474,13 @@ func newS3Storage(conf *s3Config, cred *StorageCredential) (*blob.Bucket, error)
 	if err != nil {
 		return nil, err
 	}
-
+	if conf.endpoint != "" && conf.provider == "aws" {
+		// Workaround: override AWS endpoint after resolveCredentials.
+		// go-cloud uses AWS SDK v2 internally, but if we're using SDK v1,
+		// this is the only known way to inject a custom endpoint.
+		e := &conf.endpoint
+		ses.Config.Endpoint = e
+	}
 	// Create a *blob.Bucket.
 	bkt, err := s3blob.OpenBucket(context.Background(), ses, conf.bucket, nil)
 	if err != nil {
@@ -695,6 +712,7 @@ func makeS3Config(s3 *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Config {
 	if s3.ForcePathStyle != nil {
 		// override forcePathStyle anyway
 		conf.forcePathStyle = *s3.ForcePathStyle
+		conf.forcePathStyleOverride = true
 		klog.Infof("override s3 forcePathStyle to %t", conf.forcePathStyle)
 	}
 
