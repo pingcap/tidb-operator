@@ -73,22 +73,18 @@ func (rm *restoreManager) pitrEnable(tc *v1alpha1.TidbCluster) error {
 	if tc.Status.TiKV.PiTRStatus.Active {
 		return nil
 	}
-
+	s := v1alpha1.ConfigUpdateStrategyInPlace
+	tc.Spec.TiKV.ConfigUpdateStrategy = &s
 	tc.Status.TiKV.PiTRStatus.Active = true
+	originalCfg := new(v1alpha1.PiTROverriddenConfig)
 	if tc.Spec.TiKV.Config == nil || tc.Spec.TiKV.Config.MP == nil {
 		tc.Spec.TiKV.Config = v1alpha1.NewTiKVConfig()
 	}
-
-	originalCfg := new(v1alpha1.PiTROverriddenConfig)
 	val := tc.Spec.TiKV.Config.Get(TiKVConfigGCThreshold)
 	if val != nil {
 		v := val.MustFloat()
 		originalCfg.GCRatioThreshold = &v
 	}
-	originalCfg.TiKVConfigUpdateStrategy = tc.Spec.TiKV.ConfigUpdateStrategy
-
-	s := v1alpha1.ConfigUpdateStrategyInPlace
-	tc.Spec.TiKV.ConfigUpdateStrategy = &s
 	tc.Status.TiKV.PiTRStatus.OriginConfigMap = originalCfg
 	tc.Spec.TiKV.Config.Set(TiKVConfigGCThreshold, -1.0)
 	_, err := rm.deps.TiDBClusterControl.Update(tc)
@@ -105,9 +101,6 @@ func (rm *restoreManager) pitrDisable(tc *v1alpha1.TidbCluster) error {
 	} else {
 		tc.Spec.TiKV.Config.Del(TiKVConfigGCThreshold)
 	}
-	updateStrategy := tc.Status.TiKV.PiTRStatus.OriginConfigMap.TiKVConfigUpdateStrategy
-	tc.Spec.TiKV.ConfigUpdateStrategy = updateStrategy
-
 	tc.Status.TiKV.PiTRStatus = v1alpha1.PiTRStatus{}
 	_, err := rm.deps.TiDBClusterControl.Update(tc)
 	return err

@@ -5805,7 +5805,6 @@ string
 (<em>Appears on:</em>
 <a href="#componentspec">ComponentSpec</a>, 
 <a href="#dmclusterspec">DMClusterSpec</a>, 
-<a href="#pitroverriddenconfig">PiTROverriddenConfig</a>, 
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
@@ -12406,7 +12405,7 @@ Optional: Defaults to 256</p>
 <a href="#pitrstatus">PiTRStatus</a>)
 </p>
 <p>
-<p>PiTROverriddenConfig contains the configurations that are overridden by PiTR.</p>
+<p>PiTROverriddenConfig contains the configurations that are overriden by PiTR.</p>
 </p>
 <table>
 <thead>
@@ -12421,18 +12420,6 @@ Optional: Defaults to 256</p>
 <code>gcRatioThreshold</code></br>
 <em>
 float64
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>updateStrategy</code></br>
-<em>
-<a href="#configupdatestrategy">
-ConfigUpdateStrategy
-</a>
 </em>
 </td>
 <td>
@@ -12478,7 +12465,7 @@ PiTROverriddenConfig
 </td>
 <td>
 <em>(Optional)</em>
-<p>OriginConfigMap contains the original value of the configurations overridden by PiTR.</p>
+<p>OriginConfigMap contains the original value of the configurations overriden by PiTR.</p>
 </td>
 </tr>
 </tbody>
