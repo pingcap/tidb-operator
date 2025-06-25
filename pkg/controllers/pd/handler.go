@@ -27,8 +27,8 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/timanager"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
-	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 )
 
 func (r *Reconciler) EventLogger() predicate.Funcs {
@@ -98,7 +98,7 @@ func (r *Reconciler) MemberEventHandler() handler.TypedEventHandler[client.Objec
 			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
 		) {
 			m := event.Object.(*pdv1.Member)
-			ns, cluster := pdm.SplitPrimaryKey(m.Namespace)
+			ns, cluster := timanager.SplitPrimaryKey(m.Namespace)
 
 			r.Logger.Info("add member", "namespace", ns, "cluster", cluster, "name", m.Name, "health", m.Health, "invalid", m.Invalid)
 
@@ -114,7 +114,7 @@ func (r *Reconciler) MemberEventHandler() handler.TypedEventHandler[client.Objec
 			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
 		) {
 			m := event.ObjectNew.(*pdv1.Member)
-			ns, cluster := pdm.SplitPrimaryKey(m.Namespace)
+			ns, cluster := timanager.SplitPrimaryKey(m.Namespace)
 
 			r.Logger.Info("update member", "namespace", ns, "cluster", cluster, "name", m.Name, "health", m.Health, "invalid", m.Invalid)
 
@@ -129,7 +129,7 @@ func (r *Reconciler) MemberEventHandler() handler.TypedEventHandler[client.Objec
 			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
 		) {
 			m := event.Object.(*pdv1.Member)
-			ns, cluster := pdm.SplitPrimaryKey(m.Namespace)
+			ns, cluster := timanager.SplitPrimaryKey(m.Namespace)
 
 			r.Logger.Info("delete member", "namespace", ns, "cluster", cluster, "name", m.Name)
 

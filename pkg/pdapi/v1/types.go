@@ -47,6 +47,7 @@ type MembersInfo struct {
 
 // ServiceRegistryEntry is the registry entry of PD Micro Service.
 type ServiceRegistryEntry struct {
+	Name           string `json:"name"`
 	ServiceAddr    string `json:"service-addr"`
 	Version        string `json:"version"`
 	GitHash        string `json:"git-hash"`

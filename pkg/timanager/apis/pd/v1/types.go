@@ -130,3 +130,36 @@ type Member struct {
 	IsEtcdLeader bool `json:"is_etcd_leader"`
 	Health       bool `json:"health"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
+
+// TSOMemberList is the list of tso members
+type TSOMemberList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+
+	Items []TSOMember `json:"items"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
+
+// TSOMember is the object of tso member
+type TSOMember struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	// Invalid means svc is unavailable and info is untrusted
+	Invalid bool `json:"invalid,omitempty"`
+
+	ServiceAddr string `json:"service_addr"`
+	Version     string `json:"version,omitempty"`
+	// GitHash             string `json:"git_hash,omitempty"`
+	// DeployPath          string `json:"deploy_path,omitempty"`
+	StartTimestamp int64 `json:"start_timestamp,omitempty"`
+
+	IsLeader bool `json:"is_leader"`
+	// TODO(liubo02): support health probe
+	// Health   bool `json:"health"`
+}

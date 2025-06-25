@@ -23,6 +23,7 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/tidbapi/v1"
+	"github.com/pingcap/tidb-operator/pkg/timanager"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	tlsutil "github.com/pingcap/tidb-operator/pkg/utils/tls"
@@ -65,7 +66,7 @@ func TaskContextInfoFromPDAndTiDB(state *ReconcileContext, c client.Client, cm p
 			state.SetHealthy()
 		}
 
-		pdc, ok := cm.Get(pdm.PrimaryKey(ck.Namespace, ck.Name))
+		pdc, ok := cm.Get(timanager.PrimaryKey(ck.Namespace, ck.Name))
 		if !ok {
 			return task.Fail().With("pd client is not registered")
 		}

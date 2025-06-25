@@ -126,7 +126,7 @@ func newFakePDClientManager(t *testing.T, acts ...action) pdm.PDClientManager {
 		WithNewUnderlayClientFunc(func(*v1alpha1.PDGroup) (pdapi.PDClient, error) {
 			return nil, nil
 		}).
-		WithNewClientFunc(func(string, pdapi.PDClient, timanager.SharedInformerFactory[pdapi.PDClient]) pdm.PDClient {
+		WithNewClientFunc(func(*v1alpha1.PDGroup, pdapi.PDClient, timanager.SharedInformerFactory[pdapi.PDClient]) pdm.PDClient {
 			return NewFakePDClient(t, acts...)
 		}).
 		WithCacheKeysFunc(pdm.CacheKeys).

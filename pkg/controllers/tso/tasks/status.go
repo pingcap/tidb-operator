@@ -41,6 +41,11 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		needUpdate = compare.SetIfChanged(&obj.Status.ObservedGeneration, obj.Generation) || needUpdate
 		needUpdate = compare.SetIfChanged(&obj.Status.UpdateRevision, obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 
+		// update this status only when cache is synced
+		if state.CacheSynced {
+			needUpdate = compare.SetIfChanged(&obj.Status.IsDefaultPrimary, state.IsLeader) || needUpdate
+		}
+
 		if ready {
 			needUpdate = compare.SetIfChanged(&obj.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 		}
