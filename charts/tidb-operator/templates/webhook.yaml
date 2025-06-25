@@ -67,7 +67,7 @@ spec:
     messageExpression: "'Volume storage must be greater than 0 for all volumes'"
     reason: Invalid
   # Validate that storage values can only increase during UPDATE operations
-  - expression: "request.operation != 'UPDATE' || !has(object.spec.template.spec.volumes) || !has(oldObject.spec.template.spec.volumes) || object.spec.template.spec.volumes.all(newVol, oldObject.spec.template.spec.volumes.filter(oldVol, oldVol.name == newVol.name).all(oldVol, quantity(oldVol.storage).compareTo(quantity(newVol.storage)) <= 0))"
+  - expression: "request.operation != 'UPDATE' || !has(object.spec.template) || !has(object.spec.template.spec) || !has(object.spec.template.spec.volumes) || !has(oldObject.spec.template) || !has(oldObject.spec.template.spec) || !has(oldObject.spec.template.spec.volumes) || object.spec.template.spec.volumes.all(newVol, oldObject.spec.template.spec.volumes.filter(oldVol, oldVol.name == newVol.name).all(oldVol, quantity(oldVol.storage).compareTo(quantity(newVol.storage)) <= 0))"
     messageExpression: "'Volume storage can only be increased, not decreased. One or more volumes have smaller storage than before'"
     reason: Invalid
 ---
