@@ -44,6 +44,7 @@ type ClusterList struct {
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // Cluster defines a TiDB cluster
+// +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 37",message="name must not exceed 37 characters"
 type Cluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -52,6 +53,8 @@ type Cluster struct {
 	Status ClusterStatus `json:"status,omitempty"`
 }
 
+// +kubebuilder:validation:XValidation:rule="oldSelf == null || !has(self.bootstrapSQL) || (has(oldSelf.bootstrapSQL) && self.bootstrapSQL.name == oldSelf.bootstrapSQL.name)",message="bootstrapSQL can only be set at creation, can be unset, but cannot be changed to a different value"
+// +kubebuilder:validation:XValidation:rule="oldSelf == null || (has(oldSelf.tlsCluster) == has(self.tlsCluster)) && (!has(self.tlsCluster) || self.tlsCluster.enabled == oldSelf.tlsCluster.enabled)",message="tlsCluster is immutable"
 type ClusterSpec struct {
 	// SuspendAction defines the suspend actions for the cluster.
 	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`

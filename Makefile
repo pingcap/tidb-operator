@@ -184,7 +184,7 @@ logs/operator:
 
 CONTROLLER_GEN = $(BIN_DIR)/controller-gen
 bin/controller-gen:
-	$(ROOT)/hack/download.sh go_install $(CONTROLLER_GEN) sigs.k8s.io/controller-tools/cmd/controller-gen v0.17.2
+	$(ROOT)/hack/download.sh go_install $(CONTROLLER_GEN) sigs.k8s.io/controller-tools/cmd/controller-gen v0.17.2 "--version | awk '{print \$$2}'"
 
 DEEPCOPY_GEN = $(BIN_DIR)/deepcopy-gen
 bin/deepcopy-gen:
@@ -226,7 +226,7 @@ bin/license-eye:
 .PHONY: bin/ginkgo
 GINKGO = $(BIN_DIR)/ginkgo
 bin/ginkgo:
-	$(ROOT)/hack/download.sh go_install $(GINKGO) github.com/onsi/ginkgo/v2/ginkgo
+	$(ROOT)/hack/download.sh go_install $(GINKGO) github.com/onsi/ginkgo/v2/ginkgo@v2.23.3 2.23.3 "version | awk '{print \$$3}'"
 
 .PHONY: bin/mdtoc
 MDTOC = $(BIN_DIR)/mdtoc
