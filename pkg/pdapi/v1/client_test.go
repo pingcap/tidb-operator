@@ -624,7 +624,7 @@ func TestPDClient_DeleteMemberByID(t *testing.T) {
 	defer server.Close()
 
 	client := NewPDClient(server.URL, time.Second, nil)
-	err := client.DeleteMemberByID(context.Background(), 1428427862495950874)
+	err := client.(*pdClient).DeleteMemberByID(context.Background(), 1428427862495950874)
 	require.NoError(t, err)
 }
 
@@ -648,7 +648,7 @@ func TestPDConfig_UpdateReplicationConfig(t *testing.T) {
 		MaxReplicas:    ptr.To[uint64](3),
 		LocationLabels: []string{"zone", "rack"},
 	}
-	err := client.UpdateReplicationConfig(context.Background(), replicationConfig)
+	err := client.(*pdClient).UpdateReplicationConfig(context.Background(), replicationConfig)
 	require.NoError(t, err)
 }
 
@@ -888,7 +888,7 @@ func TestPDClient_GetPDLeader(t *testing.T) {
 	defer server.Close()
 
 	client := NewPDClient(server.URL, time.Second, nil)
-	leader, err := client.GetPDLeader(context.Background())
+	leader, err := client.(*pdClient).GetPDLeader(context.Background())
 	require.NoError(t, err)
 	assert.NotNil(t, leader)
 	assert.Equal(t, "basic-53pe89", leader.Name)

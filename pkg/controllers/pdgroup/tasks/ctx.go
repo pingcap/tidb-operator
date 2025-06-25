@@ -21,6 +21,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/pingcap/tidb-operator/pkg/timanager"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -50,7 +51,7 @@ func TaskContextPDClient(state *ReconcileContext, m pdm.PDClientManager) task.Ta
 			}
 		}
 		ck := state.Cluster()
-		pc, ok := m.Get(pdm.PrimaryKey(ck.Namespace, ck.Name))
+		pc, ok := m.Get(timanager.PrimaryKey(ck.Namespace, ck.Name))
 		if !ok {
 			return task.Complete().With("context without pd client is completed, pd cannot be visited")
 		}

@@ -125,7 +125,7 @@ func TestState(t *testing.T) {
 			res, done := task.RunTask(ctx, task.Block(
 				common.TaskContextObject[scope.PD](s, fc),
 				common.TaskContextCluster[scope.PD](s, fc),
-				common.TaskContextPDSlice(s, fc),
+				common.TaskContextPeerSlice[scope.PD](s, fc),
 				common.TaskContextPod[scope.PD](s, fc),
 			))
 			assert.Equal(tt, task.SComplete, res.Status(), c.desc)

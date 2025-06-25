@@ -95,6 +95,20 @@ func (mr *MockPDClientMockRecorder) Stores() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stores", reflect.TypeOf((*MockPDClient)(nil).Stores))
 }
 
+// TSOMembers mocks base method.
+func (m *MockPDClient) TSOMembers() timanager.RefreshableCacheLister[v1.TSOMember, *v1.TSOMember] {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TSOMembers")
+	ret0, _ := ret[0].(timanager.RefreshableCacheLister[v1.TSOMember, *v1.TSOMember])
+	return ret0
+}
+
+// TSOMembers indicates an expected call of TSOMembers.
+func (mr *MockPDClientMockRecorder) TSOMembers() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TSOMembers", reflect.TypeOf((*MockPDClient)(nil).TSOMembers))
+}
+
 // Underlay mocks base method.
 func (m *MockPDClient) Underlay() pdapi.PDClient {
 	m.ctrl.T.Helper()

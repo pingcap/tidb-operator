@@ -34,19 +34,22 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tsogroup/tasks"
+	tsom "github.com/pingcap/tidb-operator/pkg/timanager/tso"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
 type Reconciler struct {
-	Logger logr.Logger
-	Client client.Client
+	Logger           logr.Logger
+	Client           client.Client
+	TSOClientManager tsom.TSOClientManager
 }
 
-func Setup(mgr manager.Manager, c client.Client) error {
+func Setup(mgr manager.Manager, c client.Client, tsocm tsom.TSOClientManager) error {
 	r := &Reconciler{
-		Logger: mgr.GetLogger().WithName("TSOGroup"),
-		Client: c,
+		Logger:           mgr.GetLogger().WithName("TSOGroup"),
+		Client:           c,
+		TSOClientManager: tsocm,
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.TSOGroup{}).

@@ -18,7 +18,6 @@ package pd
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -42,6 +41,7 @@ type PDClient interface {
 	HasSynced() bool
 	Stores() StoreCache
 	Members() MemberCache
+	TSOMembers() TSOMemberCache
 	// TODO: only returns write interface
 	Underlay() pdapi.PDClient
 }
@@ -49,8 +49,9 @@ type PDClient interface {
 type pdClient struct {
 	underlay pdapi.PDClient
 
-	stores  StoreCache
-	members MemberCache
+	stores     StoreCache
+	members    MemberCache
+	tsoMembers TSOMemberCache
 
 	hasSynced []func() bool
 }
@@ -61,6 +62,10 @@ func (c *pdClient) Stores() StoreCache {
 
 func (c *pdClient) Members() MemberCache {
 	return c.members
+}
+
+func (c *pdClient) TSOMembers() TSOMemberCache {
+	return c.tsoMembers
 }
 
 func (c *pdClient) Underlay() pdapi.PDClient {
@@ -77,13 +82,16 @@ func (c *pdClient) HasSynced() bool {
 	return true
 }
 
-func NewClient(key string, underlay pdapi.PDClient, informerFactory timanager.SharedInformerFactory[pdapi.PDClient]) PDClient {
+func NewClient(pdg *v1alpha1.PDGroup, underlay pdapi.PDClient, informerFactory timanager.SharedInformerFactory[pdapi.PDClient]) PDClient {
 	storeInformer := informerFactory.InformerFor(&pdv1.Store{})
 	memberInformer := informerFactory.InformerFor(&pdv1.Member{})
+
+	key := timanager.PrimaryKey(pdg.Namespace, pdg.Spec.Cluster.Name)
+
 	stores := NewStoreCache(key, informerFactory)
 	members := NewMemberCache(key, informerFactory)
 
-	return &pdClient{
+	pdc := &pdClient{
 		underlay: underlay,
 		stores:   stores,
 		members:  members,
@@ -92,18 +100,14 @@ func NewClient(key string, underlay pdapi.PDClient, informerFactory timanager.Sh
 			memberInformer.HasSynced,
 		},
 	}
-}
-
-func PrimaryKey(ns, cluster string) string {
-	return ns + ":" + cluster
-}
-
-func SplitPrimaryKey(key string) (ns, cluster string) {
-	keys := strings.SplitN(key, ":", 2)
-	if len(keys) < 2 {
-		return keys[0], ""
+	if pdg.Spec.Template.Spec.Mode == v1alpha1.PDModeMS {
+		tsoMemberInformer := informerFactory.InformerFor(&pdv1.TSOMember{})
+		tsoMembers := NewTSOMemberCache(key, informerFactory)
+		pdc.tsoMembers = tsoMembers
+		pdc.hasSynced = append(pdc.hasSynced, tsoMemberInformer.HasSynced)
 	}
-	return keys[0], keys[1]
+
+	return pdc
 }
 
 // CacheKeys returns the keys of the PDGroup.
@@ -113,9 +117,13 @@ func CacheKeys(pdg *v1alpha1.PDGroup) ([]string, error) {
 	var keys []string
 
 	keys = append(keys,
-		PrimaryKey(pdg.Namespace, pdg.Spec.Cluster.Name), // cluster name as primary key
+		// cluster name as primary key
+		timanager.PrimaryKey(pdg.Namespace, pdg.Spec.Cluster.Name),
 		pdg.Name,
-		string(pdg.GetUID()))
+		string(pdg.GetUID()),
+		// if mode is changed, renew client
+		string(pdg.Spec.Template.Spec.Mode),
+	)
 	// TODO: support reload tls config
 
 	return keys, nil
@@ -159,6 +167,7 @@ func NewPDClientManager(logger logr.Logger, c client.Client) PDClientManager {
 		WithCacheKeysFunc(CacheKeys).
 		WithNewPollerFunc(&pdv1.Store{}, NewStorePoller).
 		WithNewPollerFunc(&pdv1.Member{}, NewMemberPoller).
+		WithNewPollerFunc(&pdv1.TSOMember{}, NewTSOMemberPoller).
 		Build()
 
 	return m

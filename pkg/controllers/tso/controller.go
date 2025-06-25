@@ -27,7 +27,9 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tso/tasks"
+	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
+	tsom "github.com/pingcap/tidb-operator/pkg/timanager/tso"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/volumes"
@@ -37,21 +39,29 @@ type Reconciler struct {
 	Logger                logr.Logger
 	Client                client.Client
 	PDClientManager       pdm.PDClientManager
+	TSOClientManager      tsom.TSOClientManager
 	VolumeModifierFactory volumes.ModifierFactory
 }
 
-func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, vm volumes.ModifierFactory) error {
+func Setup(
+	mgr manager.Manager,
+	c client.Client,
+	pdcm pdm.PDClientManager,
+	tsocm tsom.TSOClientManager,
+	vm volumes.ModifierFactory,
+) error {
 	r := &Reconciler{
 		Logger:                mgr.GetLogger().WithName("TSO"),
 		Client:                c,
 		PDClientManager:       pdcm,
+		TSOClientManager:      tsocm,
 		VolumeModifierFactory: vm,
 	}
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.TSO{}).
 		Owns(&corev1.Pod{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&corev1.PersistentVolumeClaim{}).
-		// WatchesRawSource(pdcm.Source(&pdv1.Member{}, r.MemberEventHandler())).
+		WatchesRawSource(pdcm.Source(&pdv1.TSOMember{}, r.TSOMemberEventHandler())).
 		WithOptions(controller.Options{RateLimiter: k8s.RateLimiter}).
 		Complete(r)
 }

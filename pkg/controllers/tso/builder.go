@@ -37,7 +37,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// get info from pd
 		// tasks.TaskContextInfoFromPD(state, r.PDClientManager),
-		task.IfBreak(common.CondInstanceIsDeleting(state),
+		task.IfBreak(common.CondObjectIsDeleting[scope.TSO](state),
 			tasks.TaskFinalizerDel(state, r.Client),
 			// TODO(liubo02): if the finalizer has been removed, no need to update status
 			common.TaskInstanceConditionSynced[scope.TSO](state),
@@ -57,6 +57,11 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskInstanceConditionReady[scope.TSO](state),
 			common.TaskStatusPersister[scope.TSO](state, r.Client),
 		),
+
+		// get peers
+		common.TaskContextPeerSlice[scope.TSO](state, r.Client),
+		// init client
+		tasks.TaskContextClient(state, r.PDClientManager, r.TSOClientManager),
 
 		tasks.TaskConfigMap(state, r.Client),
 		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifierFactory),

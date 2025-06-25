@@ -15,6 +15,8 @@
 package coreutil
 
 import (
+	"time"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -93,4 +95,34 @@ func Features[
 ](f F) []metav1alpha1.Feature {
 	obj := scope.From[S](f)
 	return obj.Features()
+}
+
+// LongestReadyPeer returns a ready peer who is ready for the longest time.
+func LongestReadyPeer[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](in F, peers []F) F {
+	var choosed F
+	var lastTime *time.Time
+	for _, peer := range peers {
+		if peer.GetName() == in.GetName() {
+			continue
+		}
+		cond := meta.FindStatusCondition(StatusConditions[S](peer), v1alpha1.CondReady)
+		if cond == nil || cond.Status != metav1.ConditionTrue {
+			continue
+		}
+		if lastTime == nil {
+			lastTime = &cond.LastTransitionTime.Time
+			choosed = peer
+			continue
+		}
+		if cond.LastTransitionTime.Time.Before(*lastTime) {
+			lastTime = &cond.LastTransitionTime.Time
+			choosed = peer
+		}
+	}
+
+	return choosed
 }

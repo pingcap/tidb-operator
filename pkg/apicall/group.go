@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
+// ListInstances returns instances managed by a specified group
 func ListInstances[
 	GS scope.GroupInstance[GF, GT, IS],
 	IS scope.List[IL, I],
@@ -36,6 +37,7 @@ func ListInstances[
 ](ctx context.Context, c client.Client, g GF) ([]I, error) {
 	l := scope.NewList[IS]()
 	if err := c.List(ctx, l, client.InNamespace(g.GetNamespace()), client.MatchingLabels{
+		v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
 		v1alpha1.LabelKeyCluster:   coreutil.Cluster[GS](g),
 		v1alpha1.LabelKeyGroup:     g.GetName(),
 		v1alpha1.LabelKeyComponent: scope.Component[GS](),
@@ -47,6 +49,35 @@ func ListInstances[
 
 	// always sort instances
 	slices.SortFunc(objs, func(a, b I) int {
+		return cmp.Compare(a.GetName(), b.GetName())
+	})
+
+	return objs, nil
+}
+
+// ListPeerInstances returns peers of an instance in a same cluster
+// NOTE:
+// - All peers in the same cluster will be returned
+// - Input instance will also be returned
+func ListPeerInstances[
+	S scope.InstanceList[F, T, L],
+	F client.Object,
+	T runtime.Instance,
+	L client.ObjectList,
+](ctx context.Context, c client.Client, in F) ([]F, error) {
+	l := scope.NewList[S]()
+	if err := c.List(ctx, l, client.InNamespace(in.GetNamespace()), client.MatchingLabels{
+		v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+		v1alpha1.LabelKeyCluster:   coreutil.Cluster[S](in),
+		v1alpha1.LabelKeyComponent: scope.Component[S](),
+	}); err != nil {
+		return nil, err
+	}
+
+	objs := scope.GetItems[S](l)
+
+	// always sort instances
+	slices.SortFunc(objs, func(a, b F) int {
 		return cmp.Compare(a.GetName(), b.GetName())
 	})
 

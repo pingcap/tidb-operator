@@ -82,7 +82,11 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
+				NotLeaderPolicy(),
 				topoPolicy,
+			).
+			WithUpdatePreferPolicy(
+				NotLeaderPolicy(),
 			).
 			Build().
 			Do(ctx)

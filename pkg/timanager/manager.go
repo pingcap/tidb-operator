@@ -45,7 +45,7 @@ type NewUnderlayClientFunc[Object client.Object, UnderlayClient any] func(obj Ob
 
 // NewClientFunc is the func to new an external client with the cache layer, for example, timanager.PDClient
 type NewClientFunc[Object client.Object, UnderlayClient, Client any] func(
-	string, UnderlayClient, SharedInformerFactory[UnderlayClient]) Client
+	Object, UnderlayClient, SharedInformerFactory[UnderlayClient]) Client
 
 type CacheKeysFunc[Object client.Object] func(obj Object) ([]string, error)
 
@@ -74,8 +74,6 @@ type builder[Object client.Object, UnderlayClient, Client any] struct {
 	cacheKeysFunc         CacheKeysFunc[Object]
 
 	newPollerFuncMap map[reflect.Type]NewPollerFunc[UnderlayClient]
-
-	exampleObjs []runtime.Object
 }
 
 func NewManagerBuilder[Object client.Object, UnderlayClient, Client any]() ManagerBuilder[Object, UnderlayClient, Client] {
@@ -90,26 +88,29 @@ func (b *builder[Object, UnderlayClient, Client]) WithLogger(logger logr.Logger)
 }
 
 func (b *builder[Object, UnderlayClient, Client]) WithCacheKeysFunc(
-	f CacheKeysFunc[Object]) ManagerBuilder[Object, UnderlayClient, Client] {
+	f CacheKeysFunc[Object],
+) ManagerBuilder[Object, UnderlayClient, Client] {
 	b.cacheKeysFunc = f
 	return b
 }
 
 func (b *builder[Object, UnderlayClient, Client]) WithNewUnderlayClientFunc(
-	f NewUnderlayClientFunc[Object, UnderlayClient]) ManagerBuilder[Object, UnderlayClient, Client] {
+	f NewUnderlayClientFunc[Object, UnderlayClient],
+) ManagerBuilder[Object, UnderlayClient, Client] {
 	b.newUnderlayClientFunc = f
 	return b
 }
 
 func (b *builder[Object, UnderlayClient, Client]) WithNewClientFunc(
-	f NewClientFunc[Object, UnderlayClient, Client]) ManagerBuilder[Object, UnderlayClient, Client] {
+	f NewClientFunc[Object, UnderlayClient, Client],
+) ManagerBuilder[Object, UnderlayClient, Client] {
 	b.newClientFunc = f
 	return b
 }
 
 func (b *builder[Object, UnderlayClient, Client]) WithNewPollerFunc(
-	obj runtime.Object, f NewPollerFunc[UnderlayClient]) ManagerBuilder[Object, UnderlayClient, Client] {
-	b.exampleObjs = append(b.exampleObjs, obj)
+	obj runtime.Object, f NewPollerFunc[UnderlayClient],
+) ManagerBuilder[Object, UnderlayClient, Client] {
 	t := reflect.TypeOf(obj)
 	b.newPollerFuncMap[t] = f
 
@@ -130,7 +131,6 @@ func (b *builder[Object, UnderlayClient, Client]) Build() Manager[Object, Client
 		cacheKeysFunc:         b.cacheKeysFunc,
 		newPollerFuncMap:      b.newPollerFuncMap,
 		sources:               map[reflect.Type][]EventSource{},
-		exampleObjs:           b.exampleObjs,
 	}
 }
 
@@ -146,8 +146,6 @@ type clientManager[Object client.Object, UnderlayClient, Client any] struct {
 
 	newPollerFuncMap map[reflect.Type]NewPollerFunc[UnderlayClient]
 	sources          map[reflect.Type][]EventSource
-
-	exampleObjs []runtime.Object
 
 	ctx     context.Context
 	started bool
@@ -180,25 +178,24 @@ func (m *clientManager[Object, UnderlayClient, Client]) Register(obj Object) err
 	}
 
 	f := NewSharedInformerFactory(keys[0], m.logger, m.scheme, underlay, m.newPollerFuncMap, time.Hour)
-	for _, obj := range m.exampleObjs {
-		f.InformerFor(obj)
-	}
-	c := m.newClientFunc(keys[0], underlay, f)
+	c := m.newClientFunc(obj, underlay, f)
 
 	cacheObj = NewCache[Client, UnderlayClient](keys, c, f)
 	m.cs.Store(keys[0], cacheObj)
 	go func() {
 		cacheObj.Start(m.ctx)
-		cacheObj.InformerFactory().WaitForCacheSync(m.ctx.Done())
-		for _, obj := range m.exampleObjs {
-			informer := f.InformerFor(obj)
-			t := reflect.TypeOf(obj)
+		f.WaitForCacheSync(m.ctx.Done())
+		if err := f.ForEach(func(t reflect.Type, informer cache.SharedIndexInformer) error {
 			ss := m.sources[t]
 			for _, s := range ss {
 				if err := s.For(keys[0], informer); err != nil {
-					m.logger.Error(err, "cannot add event handler into informer")
+					return fmt.Errorf("cannot add event handler for %v:%v: %w", keys[0], t, err)
 				}
 			}
+
+			return nil
+		}); err != nil {
+			m.logger.Error(err, "failed to add event handler")
 		}
 	}()
 	return nil
@@ -303,7 +300,8 @@ func (s *eventSource) HasSynced(key string) bool {
 // See "sigs.k8s.io/controller-runtime/pkg/internal/source.NewEventHandler"
 func NewResourceEventHandler[O client.Object, R comparable](
 	ctx context.Context, h handler.TypedEventHandler[O, R],
-	q workqueue.TypedRateLimitingInterface[R]) cache.ResourceEventHandler {
+	q workqueue.TypedRateLimitingInterface[R],
+) cache.ResourceEventHandler {
 	logger := logr.FromContextOrDiscard(ctx)
 
 	return cache.ResourceEventHandlerDetailedFuncs{
