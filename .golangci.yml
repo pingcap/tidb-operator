@@ -1,4 +1,14 @@
 version: "2"
+formatters:
+  enable:
+  - goimports
+  settings:
+    goimports:
+      # A list of prefixes, which, if set, checks import paths
+      # with the given prefixes are grouped after 3rd-party packages.
+      # Default: []
+      local-prefixes:
+        - github.com/pingcap/tidb-operator
 linters:
   enable:
     - bodyclose

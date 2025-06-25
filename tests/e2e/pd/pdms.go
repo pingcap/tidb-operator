@@ -25,15 +25,27 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
 )
 
+const PDMSVersion = "v8.3.0"
+
 var _ = ginkgo.Describe("PD", label.PD, label.FeaturePDMS, func() {
 	f := framework.New()
 	f.Setup()
 
 	ginkgo.Context("PDMS Basic", label.P0, func() {
 		ginkgo.It("support create PD, TSO, and scheduler with 1 replica", func(ctx context.Context) {
-			pdg := f.MustCreatePD(ctx, data.WithMSMode(), data.WithReplicas[*runtime.PDGroup](1))
-			tg := f.MustCreateTSO(ctx, data.WithReplicas[*runtime.TSOGroup](1))
-			sg := f.MustCreateScheduler(ctx, data.WithReplicas[*runtime.SchedulerGroup](1))
+			pdg := f.MustCreatePD(ctx,
+				data.WithGroupVersion[*runtime.PDGroup](PDMSVersion),
+				data.WithMSMode(),
+				data.WithReplicas[*runtime.PDGroup](1),
+			)
+			tg := f.MustCreateTSO(ctx,
+				data.WithGroupVersion[*runtime.TSOGroup](PDMSVersion),
+				data.WithReplicas[*runtime.TSOGroup](1),
+			)
+			sg := f.MustCreateScheduler(ctx,
+				data.WithGroupVersion[*runtime.SchedulerGroup](PDMSVersion),
+				data.WithReplicas[*runtime.SchedulerGroup](1),
+			)
 
 			f.WaitForPDGroupReady(ctx, pdg)
 			f.WaitForTSOGroupReady(ctx, tg)
@@ -41,9 +53,19 @@ var _ = ginkgo.Describe("PD", label.PD, label.FeaturePDMS, func() {
 		})
 
 		ginkgo.It("support create 3 PD instances, 2 TSO instances, and 2 Scheduler instances", func(ctx context.Context) {
-			pdg := f.MustCreatePD(ctx, data.WithMSMode(), data.WithReplicas[*runtime.PDGroup](3))
-			tg := f.MustCreateTSO(ctx, data.WithReplicas[*runtime.TSOGroup](2))
-			sg := f.MustCreateScheduler(ctx, data.WithReplicas[*runtime.SchedulerGroup](2))
+			pdg := f.MustCreatePD(ctx,
+				data.WithGroupVersion[*runtime.PDGroup](PDMSVersion),
+				data.WithMSMode(),
+				data.WithReplicas[*runtime.PDGroup](3),
+			)
+			tg := f.MustCreateTSO(ctx,
+				data.WithGroupVersion[*runtime.TSOGroup](PDMSVersion),
+				data.WithReplicas[*runtime.TSOGroup](2),
+			)
+			sg := f.MustCreateScheduler(ctx,
+				data.WithGroupVersion[*runtime.SchedulerGroup](PDMSVersion),
+				data.WithReplicas[*runtime.SchedulerGroup](2),
+			)
 
 			f.WaitForPDGroupReady(ctx, pdg)
 			f.WaitForTSOGroupReady(ctx, tg)

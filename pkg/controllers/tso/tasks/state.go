@@ -31,6 +31,7 @@ type state struct {
 	cluster *v1alpha1.Cluster
 	tso     *v1alpha1.TSO
 	pod     *corev1.Pod
+	tsos    []*v1alpha1.TSO
 
 	// Pod cannot be updated when call DELETE API, so we have to set this field to indicate
 	// the underlay pod has been deleting
@@ -43,6 +44,7 @@ type state struct {
 type State interface {
 	common.ContextObjectNewer[*v1alpha1.TSO]
 	common.ContextClusterNewer[*v1alpha1.TSO]
+	common.ContextSliceNewer[*v1alpha1.TSO, *v1alpha1.TSO]
 
 	common.ClusterState
 
@@ -50,6 +52,7 @@ type State interface {
 	common.PodStateUpdater
 
 	common.InstanceState[*runtime.TSO]
+	common.SliceState[*v1alpha1.TSO]
 
 	common.StatusUpdater
 	common.StatusPersister[*v1alpha1.TSO]
@@ -92,6 +95,14 @@ func (s *state) IsPodTerminating() bool {
 
 func (s *state) Instance() *runtime.TSO {
 	return runtime.FromTSO(s.tso)
+}
+
+func (s *state) SetInstanceSlice(tsos []*v1alpha1.TSO) {
+	s.tsos = tsos
+}
+
+func (s *state) InstanceSlice() []*v1alpha1.TSO {
+	return s.tsos
 }
 
 func (s *state) SetPod(pod *corev1.Pod) {

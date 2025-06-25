@@ -37,6 +37,10 @@ type SharedInformerFactory[UnderlayClient any] interface {
 	Shutdown()
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 	InformerFor(obj runtime.Object) cache.SharedIndexInformer
+
+	// call function for each registered informer
+	ForEach(func(t reflect.Type, informer cache.SharedIndexInformer) error) error
+
 	// Refresh will poll once immediately
 	Refresh(obj runtime.Object)
 }
@@ -173,6 +177,19 @@ func (f *factory[UnderlayClient]) InformerFor(obj runtime.Object) cache.SharedIn
 	f.informers[informerType] = informer
 
 	return informer
+}
+
+func (f *factory[UnderlayClient]) ForEach(forEach func(t reflect.Type, informer cache.SharedIndexInformer) error) error {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	for t, informer := range f.informers {
+		if err := forEach(t, informer); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (f *factory[UnderlayClient]) Refresh(obj runtime.Object) {

@@ -189,4 +189,7 @@ type TSOSpec struct {
 
 type TSOStatus struct {
 	CommonStatus `json:",inline"`
+
+	// IsDefaultPrimary indicates whether this TSO instance is the primary for the default keyspace group.
+	IsDefaultPrimary bool `json:"isDefaultPrimary"`
 }

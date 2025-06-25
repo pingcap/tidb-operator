@@ -63,6 +63,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
+	tsom "github.com/pingcap/tidb-operator/pkg/timanager/tso"
 	"github.com/pingcap/tidb-operator/pkg/utils/kubefeat"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/pkg/volumes"
@@ -166,14 +167,15 @@ func setup(ctx context.Context, mgr ctrl.Manager) error {
 
 	logger := mgr.GetLogger()
 
-	logger.Info("setup pd client manager")
+	logger.Info("setup client manager")
 	pdcm := pdm.NewPDClientManager(mgr.GetLogger(), c)
+	tsocm := tsom.NewTSOClientManager(mgr.GetLogger(), c)
 
 	logger.Info("setup volume modifier")
 	vm := volumes.NewModifierFactory(mgr.GetLogger().WithName("VolumeModifier"), c)
 
 	setupLog.Info("setup controllers")
-	if err := setupControllers(mgr, c, pdcm, vm); err != nil {
+	if err := setupControllers(mgr, c, pdcm, tsocm, vm); err != nil {
 		setupLog.Error(err, "unable to setup controllers")
 		os.Exit(1)
 	}
@@ -182,8 +184,9 @@ func setup(ctx context.Context, mgr ctrl.Manager) error {
 		os.Exit(1)
 	}
 
-	logger.Info("start pd client manager")
+	logger.Info("start client manager")
 	pdcm.Start(ctx)
+	tsocm.Start(ctx)
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		return fmt.Errorf("unable to set up health check: %w", err)
@@ -265,7 +268,13 @@ type controllerSetup struct {
 	setupFunc func() error
 }
 
-func setupControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientManager, vm volumes.ModifierFactory) error {
+func setupControllers(
+	mgr ctrl.Manager,
+	c client.Client,
+	pdcm pdm.PDClientManager,
+	tsocm tsom.TSOClientManager,
+	vm volumes.ModifierFactory,
+) error {
 	setups := []controllerSetup{
 		{
 			name: "Cluster",
@@ -336,13 +345,13 @@ func setupControllers(mgr ctrl.Manager, c client.Client, pdcm pdm.PDClientManage
 		{
 			name: "TSOGroup",
 			setupFunc: func() error {
-				return tsogroup.Setup(mgr, c)
+				return tsogroup.Setup(mgr, c, tsocm)
 			},
 		},
 		{
 			name: "TSO",
 			setupFunc: func() error {
-				return tso.Setup(mgr, c, pdcm, vm)
+				return tso.Setup(mgr, c, pdcm, tsocm, vm)
 			},
 		},
 		{
