@@ -14,7 +14,17 @@
 
 package validation
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
+
+const (
+	requireDataVolumeErrMsg = `spec: Invalid value: "object": data volume must be configured`
+
+	groupNameLengthLimit    = 30
+	instanceNameLengthLimit = 37
+)
 
 func NameIsDNSSubdoamin(failMsgFmt string) []Case {
 	var cases []Case
@@ -405,4 +415,514 @@ func ServerLabels() []Case {
 			},
 		},
 	}
+}
+
+func OverlayVolumeClaims(requireDataVolume bool) []Case {
+	errMsg := `spec: Invalid value: "object": overlay volumeClaims names must exist in volumes`
+
+	baseSpec := map[string]any{
+		"cluster": map[string]any{
+			"name": "test",
+		},
+		"subdomain": "test",
+		"version":   "v8.1.0",
+	}
+
+	wantErrsFunc := func(requireDataVolume bool) []string {
+		if requireDataVolume {
+			return []string{errMsg, requireDataVolumeErrMsg}
+		}
+		return []string{errMsg}
+	}
+
+	cases := []Case{
+		{
+			desc:     "no overlay is ok",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{
+					map[string]any{
+						"name":    "data",
+						"mounts":  []any{map[string]any{"type": "data"}},
+						"storage": "20Gi",
+					},
+				}
+				return spec
+			}(),
+		},
+		{
+			desc:     "overlay without volumeClaims is ok",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{
+					map[string]any{
+						"name":    "data",
+						"mounts":  []any{map[string]any{"type": "data"}},
+						"storage": "20Gi",
+					},
+				}
+				spec["overlay"] = map[string]any{
+					"pod": map[string]any{
+						"metadata": map[string]any{
+							"labels": map[string]any{
+								"test": "value",
+							},
+						},
+					},
+				}
+				return spec
+			}(),
+		},
+		{
+			desc:     "overlay volumeClaims with matching volume name is ok",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{
+					map[string]any{
+						"name":    "data",
+						"mounts":  []any{map[string]any{"type": "data"}},
+						"storage": "20Gi",
+					},
+				}
+				spec["overlay"] = map[string]any{
+					"volumeClaims": []any{
+						map[string]any{
+							"name": "data",
+							"volumeClaim": map[string]any{
+								"metadata": map[string]any{
+									"labels": map[string]any{
+										"test": "value",
+									},
+								},
+							},
+						},
+					},
+				}
+				return spec
+			}(),
+		},
+		{
+			desc:     "overlay volumeClaims with multiple matching volume names is ok",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{
+					map[string]any{
+						"name":    "data",
+						"mounts":  []any{map[string]any{"type": "data"}},
+						"storage": "20Gi",
+					},
+					map[string]any{
+						"name":    "log",
+						"mounts":  []any{map[string]any{"type": "log"}},
+						"storage": "10Gi",
+					},
+				}
+				spec["overlay"] = map[string]any{
+					"volumeClaims": []any{
+						map[string]any{
+							"name": "data",
+							"volumeClaim": map[string]any{
+								"metadata": map[string]any{
+									"labels": map[string]any{
+										"test": "value",
+									},
+								},
+							},
+						},
+						map[string]any{
+							"name": "log",
+							"volumeClaim": map[string]any{
+								"metadata": map[string]any{
+									"labels": map[string]any{
+										"test": "value",
+									},
+								},
+							},
+						},
+					},
+				}
+				return spec
+			}(),
+		},
+		{
+			desc:     "overlay volumeClaims with non-matching volume name fails",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{
+					map[string]any{
+						"name":    "data",
+						"mounts":  []any{map[string]any{"type": "data"}},
+						"storage": "20Gi",
+					},
+				}
+				spec["overlay"] = map[string]any{
+					"volumeClaims": []any{
+						map[string]any{
+							"name": "log",
+							"volumeClaim": map[string]any{
+								"metadata": map[string]any{
+									"labels": map[string]any{
+										"test": "value",
+									},
+								},
+							},
+						},
+					},
+				}
+				return spec
+			}(),
+			wantErrs: []string{errMsg},
+		},
+		{
+			desc:     "overlay volumeClaims with mixed matching and non-matching volume names fails",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{
+					map[string]any{
+						"name":    "data",
+						"mounts":  []any{map[string]any{"type": "data"}},
+						"storage": "20Gi",
+					},
+				}
+				spec["overlay"] = map[string]any{
+					"volumeClaims": []any{
+						map[string]any{
+							"name": "data",
+							"volumeClaim": map[string]any{
+								"metadata": map[string]any{
+									"labels": map[string]any{
+										"test": "value",
+									},
+								},
+							},
+						},
+						map[string]any{
+							"name": "nonexistent",
+							"volumeClaim": map[string]any{
+								"metadata": map[string]any{
+									"labels": map[string]any{
+										"test": "value",
+									},
+								},
+							},
+						},
+					},
+				}
+				return spec
+			}(),
+			wantErrs: []string{errMsg},
+		},
+		{
+			desc:     "empty volumes with overlay volumeClaims fails",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{}
+				spec["overlay"] = map[string]any{
+					"volumeClaims": []any{
+						map[string]any{
+							"name": "data",
+							"volumeClaim": map[string]any{
+								"metadata": map[string]any{
+									"labels": map[string]any{
+										"test": "value",
+									},
+								},
+							},
+						},
+					},
+				}
+				return spec
+			}(),
+			wantErrs: wantErrsFunc(requireDataVolume),
+		},
+	}
+
+	return cases
+}
+
+func DataVolumeRequired() []Case {
+	baseSpec := map[string]any{
+		"cluster": map[string]any{
+			"name": "test",
+		},
+		"subdomain": "test",
+		"version":   "v8.1.0",
+	}
+
+	cases := []Case{
+		{
+			desc:     "data volume is configured correctly",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{
+					map[string]any{
+						"name":    "data",
+						"mounts":  []any{map[string]any{"type": "data"}},
+						"storage": "20Gi",
+					},
+				}
+				return spec
+			}(),
+		},
+		{
+			desc:     "data volume with other volumes is ok",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{
+					map[string]any{
+						"name":    "data",
+						"mounts":  []any{map[string]any{"type": "data"}},
+						"storage": "20Gi",
+					},
+					map[string]any{
+						"name":    "log",
+						"mounts":  []any{map[string]any{"type": "log"}},
+						"storage": "10Gi",
+					},
+				}
+				return spec
+			}(),
+		},
+		{
+			desc:     "missing volumes field fails",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				return spec
+			}(),
+			wantErrs: []string{"spec.volumes: Required value"},
+		},
+		{
+			desc:     "empty volumes array fails",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{}
+				return spec
+			}(),
+			wantErrs: []string{requireDataVolumeErrMsg},
+		},
+		{
+			desc:     "volumes without data volume fails",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{
+					map[string]any{
+						"name":    "log",
+						"mounts":  []any{map[string]any{"type": "log"}},
+						"storage": "10Gi",
+					},
+				}
+				return spec
+			}(),
+			wantErrs: []string{requireDataVolumeErrMsg},
+		},
+		{
+			desc:     "volumes with differently named volume fails",
+			isCreate: true,
+			current: func() map[string]any {
+				spec := make(map[string]any)
+				for k, v := range baseSpec {
+					spec[k] = v
+				}
+				spec["volumes"] = []any{
+					map[string]any{
+						"name":    "storage",
+						"mounts":  []any{map[string]any{"type": "data"}},
+						"storage": "20Gi",
+					},
+				}
+				return spec
+			}(),
+			wantErrs: []string{requireDataVolumeErrMsg},
+		},
+	}
+
+	return cases
+}
+
+func Version() []Case {
+	// Valid semantic versions
+	validVersions := []string{
+		"0.0.4",
+		"1.2.3",
+		"10.20.30",
+		"1.1.2-prerelease+meta",
+		"1.1.2+meta",
+		"1.1.2+meta-valid",
+		"1.0.0-alpha",
+		"1.0.0-beta",
+		"1.0.0-alpha.beta",
+		"1.0.0-alpha.beta.1",
+		"1.0.0-alpha.1",
+		"1.0.0-alpha0.valid",
+		"1.0.0-alpha.0valid",
+		"1.0.0-alpha-a.b-c-somethinglong+build.1-aef.1-its-okay",
+		"1.0.0-rc.1+build.1",
+		"2.0.0-rc.1+build.123",
+		"1.2.3-beta",
+		"10.2.3-DEV-SNAPSHOT",
+		"1.2.3-SNAPSHOT-123",
+		"1.0.0",
+		"2.0.0",
+		"1.1.7",
+		"2.0.0+build.1848",
+		"2.0.1-alpha.1227",
+		"1.0.0-alpha+beta",
+		"1.2.3----RC-SNAPSHOT.12.9.1--.12+788",
+		"1.2.3----R-S.12.9.1--.12+meta",
+		"1.2.3----RC-SNAPSHOT.12.9.1--.12",
+		"1.0.0+0.build.1-rc.10000aaa-kk-0.1",
+		"99999999999999999999999.999999999999999999.99999999999999999",
+		"1.0.0-0A.is.legal",
+		// Versions with v prefix
+		"v0.0.4",
+		"v1.2.3",
+		"v10.20.30",
+		"v1.1.2-prerelease+meta",
+		"v1.0.0-alpha",
+		"v2.0.0+build.1848",
+		"v8.1.0",
+	}
+
+	// Invalid semantic versions
+	invalidVersions := []string{
+		"1",
+		"1.2",
+		"1.2.3-0123",
+		"1.2.3-0123.0123",
+		"1.1.2+.123",
+		"+invalid",
+		"-invalid",
+		"-invalid+invalid",
+		"-invalid.01",
+		"alpha",
+		"alpha.beta",
+		"alpha.beta.1",
+		"alpha.1",
+		"alpha+beta",
+		"alpha_beta",
+		"alpha.",
+		"alpha..",
+		"beta",
+		"1.0.0-alpha_beta",
+		"-alpha.",
+		"1.0.0-alpha..",
+		"1.0.0-alpha..1",
+		"1.0.0-alpha...1",
+		"1.0.0-alpha....1",
+		"1.0.0-alpha.....1",
+		"1.0.0-alpha......1",
+		"1.0.0-alpha.......1",
+		"01.1.1",
+		"1.01.1",
+		"1.1.01",
+		"1.2",
+		"1.2.3.DEV",
+		"1.2-SNAPSHOT",
+		"1.2.31.2.3----RC-SNAPSHOT.12.09.1--..12+788",
+		"1.2-RC-SNAPSHOT",
+		"-1.0.3-gamma+b7718",
+		"+justmeta",
+		"9.8.7+meta+meta",
+		"9.8.7-whatever+meta+meta",
+		"99999999999999999999999.999999999999999999.99999999999999999----RC-SNAPSHOT.12.09.1--------------------------------..12",
+		"",
+		"  ",
+		"vv1.2.3",
+		"1.2.3v",
+		"1.2.3-",
+		"1.2.3+",
+	}
+
+	var cases []Case
+
+	// Add test cases for valid versions
+	for _, version := range validVersions {
+		cases = append(cases, Case{
+			desc:     fmt.Sprintf("version '%s' is valid semantic version", version),
+			isCreate: true,
+			current:  version,
+		})
+	}
+
+	// Add test cases for invalid versions
+	for _, version := range invalidVersions {
+		cases = append(cases, Case{
+			desc:     fmt.Sprintf("version '%s' is invalid semantic version", version),
+			isCreate: true,
+			current:  version,
+			wantErrs: []string{
+				fmt.Sprintf(`spec.version: Invalid value: "%s": spec.version in body should match '^(v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'`, version),
+			},
+		})
+	}
+
+	return cases
+}
+
+func NameLength(limit int) []Case {
+	cases := []Case{
+		{
+			desc:     fmt.Sprintf("name length is %d", limit),
+			isCreate: true,
+			current:  strings.Repeat("a", limit),
+		},
+		{
+			desc:     "name is too long",
+			isCreate: true,
+			current:  strings.Repeat("a", limit+1),
+			wantErrs: []string{
+				fmt.Sprintf("<nil>: Invalid value: \"object\": name must not exceed %d characters", limit),
+			},
+		},
+	}
+
+	return cases
 }

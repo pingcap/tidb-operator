@@ -28,7 +28,10 @@ func TestTiDB(t *testing.T) {
 	cases = append(cases, transferTiDBCases(t, ClusterReference(), "spec", "cluster")...)
 	cases = append(cases, transferTiDBCases(t, ServerLabels(), "spec", "server", "labels")...)
 	cases = append(cases, transferTiDBCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
-
+	cases = append(cases, transferTiDBCases(t, mysqlTLS(), "spec", "security", "tls", "mysql")...)
+	cases = append(cases, transferTiDBCases(t, OverlayVolumeClaims(false), "spec")...)
+	cases = append(cases, transferTiDBCases(t, Version(), "spec", "version")...)
+	cases = append(cases, transferTiDBCases(t, NameLength(instanceNameLengthLimit), "metadata", "name")...)
 	Validate(t, "crd/core.pingcap.com_tidbs.yaml", cases)
 }
 
@@ -81,4 +84,37 @@ func transferTiDBCases(t *testing.T, cases []Case, fields ...string) []Case {
 	}
 
 	return cases
+}
+
+func mysqlTLS() []Case {
+	errMsg := `spec.security.tls.mysql: Invalid value: "object": field .mysql.enabled is immutable`
+	return []Case{
+		{
+			desc:     "set enabled to true when creating",
+			isCreate: true,
+			current:  map[string]any{"enabled": true},
+		},
+		{
+			desc:     "set enabled to false when creating",
+			isCreate: true,
+			current:  map[string]any{"enabled": false},
+		},
+		{
+			desc:     "try to update enabled from false to true",
+			old:      map[string]any{"enabled": false},
+			current:  map[string]any{"enabled": true},
+			wantErrs: []string{errMsg},
+		},
+		{
+			desc:     "try to update enabled from true to false",
+			old:      map[string]any{"enabled": true},
+			current:  map[string]any{"enabled": false},
+			wantErrs: []string{errMsg},
+		},
+		{
+			desc:    "enabled is not changed",
+			old:     map[string]any{"enabled": true},
+			current: map[string]any{"enabled": true},
+		},
+	}
 }

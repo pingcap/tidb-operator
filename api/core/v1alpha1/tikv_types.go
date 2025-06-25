@@ -79,7 +79,8 @@ type TiKVGroupList struct {
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
-// TiKVGroup defines a group of similar TiKV instances
+// TiKVGroup defines a group of similar TiKV instances.
+// +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 30",message="name must not exceed 30 characters"
 type TiKVGroup struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -111,7 +112,8 @@ type TiKVList struct {
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
-// TiKV defines a TiKV instance
+// TiKV defines a TiKV instance.
+// +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 37",message="name must not exceed 37 characters"
 type TiKV struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -125,7 +127,8 @@ type TiKVGroupSpec struct {
 	Cluster ClusterReference `json:"cluster"`
 	// Features are enabled feature
 	Features []meta.Feature `json:"features,omitempty"`
-	Replicas *int32         `json:"replicas"`
+	// +kubebuilder:validation:Minimum=0
+	Replicas *int32 `json:"replicas"`
 
 	// +listType=map
 	// +listMapKey=type
@@ -141,7 +144,12 @@ type TiKVTemplate struct {
 
 // TiKVTemplateSpec can only be specified in TiKVGroup
 // TODO: It's name may need to be changed to distinguish from PodTemplateSpec
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes) && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in volumes"
+// +kubebuilder:validation:XValidation:rule="has(self.volumes) && ('data' in self.volumes.map(v, v.name))",message="data volume must be configured"
 type TiKVTemplateSpec struct {
+	// Version must be a semantic version.
+	// It can has a v prefix or not.
+	// +kubebuilder:validation:Pattern=`^(v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
 	Version string `json:"version"`
 	// Image is tikv's image
 	// If tag is omitted, version will be used as the image tag.
@@ -157,6 +165,7 @@ type TiKVTemplateSpec struct {
 	// Volumes defines data volume of TiKV
 	// +listType=map
 	// +listMapKey=name
+	// +kubebuilder:validation:MaxItems=256
 	Volumes []Volume `json:"volumes"`
 
 	// PreStop defines preStop config
@@ -202,6 +211,7 @@ type TiKVSpec struct {
 	Topology Topology `json:"topology,omitempty"`
 	// Subdomain means the subdomain of the exported tikv dns.
 	// A same tikv group will use a same subdomain
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="subdomain is immutable"
 	Subdomain string `json:"subdomain"`
 
 	// TiKVTemplateSpec embedded some fields managed by TiKVGroup
