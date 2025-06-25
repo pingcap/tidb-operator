@@ -310,6 +310,10 @@ func TestBRRestore(t *testing.T) {
 		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env1))
 		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env2Yes))
 		g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(gomega.ContainElement(env2No))
+
+		tc2, err := deps.TiDBClusterLister.TidbClusters(restore.Spec.BR.ClusterNamespace).Get(restore.Spec.BR.Cluster)
+		g.Expect(err).Should(BeNil())
+		g.Expect(tc2.Status.TiKV.PiTRStatus.Active).To(BeFalse())
 	}
 }
 
@@ -1081,9 +1085,7 @@ func TestPiTRRestore(t *testing.T) {
 		// Initialize PiTRStatus for the TiKV to avoid nil pointer dereference
 		tc, err := deps.TiDBClusterLister.TidbClusters(restore.Spec.BR.ClusterNamespace).Get(restore.Spec.BR.Cluster)
 		g.Expect(err).Should(BeNil())
-		if tc.Status.TiKV.PiTRStatus == nil {
-			tc.Status.TiKV.PiTRStatus = &v1alpha1.PiTRStatus{NoTask: true}
-		}
+		tc.Status.TiKV.PiTRStatus = v1alpha1.PiTRStatus{}
 		_, err = deps.TiDBClusterControl.Update(tc)
 		g.Expect(err).Should(BeNil())
 
@@ -1097,7 +1099,7 @@ func TestPiTRRestore(t *testing.T) {
 		tc2, err := deps.TiDBClusterLister.TidbClusters(restore.Spec.BR.ClusterNamespace).Get(restore.Spec.BR.Cluster)
 		g.Expect(err).Should(BeNil())
 		st := tc2.Status.TiKV.PiTRStatus
-		g.Expect(st.IsInactive()).To(BeFalse())
+		g.Expect(st.Active).To(BeTrue())
 		g.Expect(tc2.Spec.TiKV.Config.Get("gc.ratio-threshold").MustFloat()).To(Equal(-1.0))
 
 		// check pod env are set correctly for PiTR restore
@@ -1145,7 +1147,7 @@ func TestPiTRRestore(t *testing.T) {
 		tc2, err = deps.TiDBClusterLister.TidbClusters(restore.Spec.BR.ClusterNamespace).Get(restore.Spec.BR.Cluster)
 		g.Expect(err).Should(BeNil())
 		st = tc2.Status.TiKV.PiTRStatus
-		g.Expect(st.IsInactive()).To(BeTrue())
+		g.Expect(st.Active).To(BeFalse())
 		g.Expect(tc2.Spec.TiKV.Config.Get("gc.ratio-threshold")).To(BeNil())
 	}
 }
@@ -1169,9 +1171,7 @@ func TestPiTRHelperFunctions(t *testing.T) {
 		},
 		Status: v1alpha1.TidbClusterStatus{
 			TiKV: v1alpha1.TiKVStatus{
-				PiTRStatus: &v1alpha1.PiTRStatus{
-					NoTask: true,
-				},
+				PiTRStatus: v1alpha1.PiTRStatus{},
 			},
 		},
 	}
@@ -1185,14 +1185,14 @@ func TestPiTRHelperFunctions(t *testing.T) {
 	// Test pitrEnable
 	err := m.pitrEnable(tc)
 	g.Expect(err).Should(BeNil())
-	g.Expect(tc.Status.TiKV.PiTRStatus.NoTask).Should(BeFalse())
+	g.Expect(tc.Status.TiKV.PiTRStatus.Active).Should(BeTrue())
 	g.Expect(tc.Status.TiKV.PiTRStatus.OriginConfigMap).ShouldNot(BeNil())
 	g.Expect(*tc.Status.TiKV.PiTRStatus.OriginConfigMap.GCRatioThreshold).Should(Equal(1.2))
 
 	// Test pitrDisable
 	err = m.pitrDisable(tc)
 	g.Expect(err).Should(BeNil())
-	g.Expect(tc.Status.TiKV.PiTRStatus.IsInactive()).Should(BeTrue())
+	g.Expect(tc.Status.TiKV.PiTRStatus.Active).Should(BeFalse())
 
 	// Test pitrTasksAreDone with no restores
 	done := pitrTasksAreDone([]*v1alpha1.Restore{})
