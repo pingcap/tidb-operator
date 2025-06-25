@@ -1717,15 +1717,16 @@ type TiKVStatus struct {
 type PiTRStatus struct {
 	// Active indicates that there is a log restore task in progress.
 	Active bool `json:"noTask,omitempty"`
-	// OriginConfigMap contains the original value of the configurations overriden by PiTR.
+	// OriginConfigMap contains the original value of the configurations overridden by PiTR.
 	// +optional
 	// +nullable
 	OriginConfigMap *PiTROverriddenConfig `json:"originConfigMap,omitempty"`
 }
 
-// PiTROverriddenConfig contains the configurations that are overriden by PiTR.
+// PiTROverriddenConfig contains the configurations that are overridden by PiTR.
 type PiTROverriddenConfig struct {
-	GCRatioThreshold *float64 `json:"gcRatioThreshold,omitempty"`
+	GCRatioThreshold         *float64              `json:"gcRatioThreshold,omitempty"`
+	TiKVConfigUpdateStrategy *ConfigUpdateStrategy `json:"updateStrategy,omitempty"`
 }
 
 // TiFlashStatus is TiFlash status

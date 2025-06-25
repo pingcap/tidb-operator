@@ -51014,6 +51014,8 @@ spec:
                         properties:
                           gcRatioThreshold:
                             type: number
+                          updateStrategy:
+                            type: string
                         type: object
                     type: object
                   statefulSet:
