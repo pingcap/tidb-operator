@@ -92,10 +92,87 @@ function e2e::uninstall_operator() {
 }
 
 function e2e::delete_crds() {
-    echo "deleting operator crds"
-    if ! $KUBECTL get crd -o name | grep "pingcap.com" | xargs -r $KUBECTL delete; then
-        echo "No CRDs found to delete, continuing..."
+    echo "deleting operator crds and dependent CRs"
+
+    # Safety check: ensure this only runs on kind clusters
+    local current_context
+    current_context=$($KUBECTL config current-context)
+    if [[ ! "$current_context" =~ ^kind- ]]; then
+        echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" >&2
+        echo "!!! DANGER: Current kubectl context is NOT a kind cluster.  !!!" >&2
+        echo "!!! Context: ${current_context}                               !!!" >&2
+        echo "!!! Aborting CRD deletion to prevent accidental data loss.    !!!" >&2
+        echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" >&2
+        exit 1
     fi
+    
+    # Get all CRD names managed by the operator
+    local crd_names
+    crd_names=$($KUBECTL get crd -o name | grep "pingcap.com" | sed 's|customresourcedefinition.apiextensions.k8s.io/||')
+    if [[ -z "$crd_names" ]]; then
+        echo "No PingCAP CRDs found to delete."
+        return
+    fi
+    
+    # For each CRD, delete all its custom resources (CRs)
+    for crd in $crd_names; do
+        local resource
+        resource=$(echo "$crd" | cut -d. -f1)
+        echo "Deleting all objects of type: $resource"
+        if ! $KUBECTL delete "$resource" --all --all-namespaces --wait=false >/dev/null 2>&1; then
+            echo "No resources of type $resource found, or failed to initiate deletion."
+        fi
+    done
+
+    # Now, wait for all CRs to be fully terminated
+    echo "Waiting for all CRs to be deleted..."
+    for crd in $crd_names; do
+        local resource
+        resource=$(echo "$crd" | cut -d. -f1)
+        for i in {1..60}; do # Wait for up to 2 minutes
+            local count
+            count=$($KUBECTL get "$resource" --all-namespaces -o name --ignore-not-found=true 2>/dev/null | wc -l | tr -d ' ')
+            if [[ "$count" -eq 0 ]]; then
+                echo "All resources of type $resource are deleted."
+                break
+            fi
+            echo "Waiting for $count resources of type $resource to be deleted..."
+            sleep 2
+            if [[ $i -eq 60 ]]; then
+                echo "Timeout waiting for $resource to be deleted. Forcing removal of finalizers..."
+                local crs_to_patch
+                crs_to_patch=$($KUBECTL get "$resource" --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace}{" "}{.metadata.name}{"\n"}{end}' 2>/dev/null)
+                if [[ -n "$crs_to_patch" ]]; then
+                    echo "$crs_to_patch" | while read -r ns name; do
+                        echo "Removing finalizers from $resource/$name in namespace $ns"
+                        $KUBECTL patch "$resource" "$name" -n "$ns" --type=merge -p '{"metadata":{"finalizers":[]}}' > /dev/null
+                    done
+                fi
+                sleep 5 # Give it a moment after patching
+            fi
+        done
+    done
+
+    # Finally, delete the CRDs themselves
+    echo "Deleting operator CRDs..."
+    if ! echo "$crd_names" | xargs -r -n 1 -I {} $KUBECTL delete crd {}; then
+        echo "Failed to delete some CRDs, but continuing..."
+    fi
+
+    # Wait for CRDs to be deleted
+    echo "Waiting for all CRDs to be deleted..."
+    for crd in $crd_names; do
+        for i in {1..30}; do
+            if ! $KUBECTL get crd "$crd" >/dev/null 2>&1; then
+                echo "CRD $crd has been deleted."
+                break
+            fi
+            sleep 1
+             if [[ $i -eq 30 ]]; then
+                echo "Timeout waiting for CRD $crd to be deleted."
+            fi
+        done
+    done
 }
 
 function e2e::ensure_old_version_repo() {
