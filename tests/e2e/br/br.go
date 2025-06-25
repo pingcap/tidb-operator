@@ -27,13 +27,12 @@ import (
 	"syscall"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/util/wait"
-
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -177,6 +176,16 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		ns := f.Namespace.Name
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
+
+		ginkgo.DeferCleanup(func() {
+			ginkgo.By("Clean up backup and restore resources")
+			if err := deleteBackup(f, backupName); err != nil {
+				fmt.Printf("failed to delete backup %s: %v", backupName, err)
+			}
+			if err := deleteRestore(f, restoreName); err != nil {
+				fmt.Printf("failed to delete restore %s: %v", restoreName, err)
+			}
+		})
 
 		{
 			ginkgo.By("Create TiDB cluster for backup")
@@ -1540,6 +1549,25 @@ func deleteBackup(f *brframework.Framework, name string) error {
 	}
 
 	if err := brframework.WaitForBackupDeleted(f.Client, ns, name, 15*time.Minute); err != nil {
+		return err
+	}
+	return nil
+}
+
+func deleteRestore(f *brframework.Framework, name string) error {
+	ctx := context.TODO()
+	ns := f.Namespace.Name
+	restore := &v1alpha1.Restore{}
+	restore.Namespace = ns
+	restore.Name = name
+	if err := f.Client.Delete(ctx, restore); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	if err := brframework.WaitForRestoreDeleted(f.Client, ns, name, 15*time.Minute); err != nil {
 		return err
 	}
 	return nil
