@@ -1086,6 +1086,10 @@ func TestPiTRRestore(t *testing.T) {
 		tc, err := deps.TiDBClusterLister.TidbClusters(restore.Spec.BR.ClusterNamespace).Get(restore.Spec.BR.Cluster)
 		g.Expect(err).Should(BeNil())
 		tc.Status.TiKV.PiTRStatus = v1alpha1.PiTRStatus{}
+
+		// Set initial TiKV config update strategy to test that it's preserved
+		originalStrategy := v1alpha1.ConfigUpdateStrategyRollingUpdate
+		tc.Spec.TiKV.ConfigUpdateStrategy = &originalStrategy
 		_, err = deps.TiDBClusterControl.Update(tc)
 		g.Expect(err).Should(BeNil())
 
@@ -1101,6 +1105,14 @@ func TestPiTRRestore(t *testing.T) {
 		st := tc2.Status.TiKV.PiTRStatus
 		g.Expect(st.Active).To(BeTrue())
 		g.Expect(tc2.Spec.TiKV.Config.Get("gc.ratio-threshold").MustFloat()).To(Equal(-1.0))
+
+		// Test that the ConfigUpdateStrategy is changed to InPlace during PiTR
+		g.Expect(*tc2.Spec.TiKV.ConfigUpdateStrategy).To(Equal(v1alpha1.ConfigUpdateStrategyInPlace))
+
+		// Test that the original ConfigUpdateStrategy is stored in OriginConfigMap
+		g.Expect(st.OriginConfigMap).ToNot(BeNil())
+		g.Expect(st.OriginConfigMap.TiKVConfigUpdateStrategy).ToNot(BeNil())
+		g.Expect(*st.OriginConfigMap.TiKVConfigUpdateStrategy).To(Equal(originalStrategy))
 
 		// check pod env are set correctly for PiTR restore
 		env1 := corev1.EnvVar{
@@ -1149,6 +1161,10 @@ func TestPiTRRestore(t *testing.T) {
 		st = tc2.Status.TiKV.PiTRStatus
 		g.Expect(st.Active).To(BeFalse())
 		g.Expect(tc2.Spec.TiKV.Config.Get("gc.ratio-threshold")).To(BeNil())
+
+		// Test that the original ConfigUpdateStrategy is restored after PiTR completion
+		g.Expect(tc2.Spec.TiKV.ConfigUpdateStrategy).ToNot(BeNil())
+		g.Expect(*tc2.Spec.TiKV.ConfigUpdateStrategy).To(Equal(originalStrategy))
 	}
 }
 
@@ -1179,6 +1195,11 @@ func TestPiTRHelperFunctions(t *testing.T) {
 	// Initialize TiKV config if nil
 	tc.Spec.TiKV.Config = v1alpha1.NewTiKVConfig()
 	tc.Spec.TiKV.Config.Set("gc.ratio-threshold", 1.2)
+
+	// Set initial config update strategy to test preservation
+	originalStrategy := v1alpha1.ConfigUpdateStrategyRollingUpdate
+	tc.Spec.TiKV.ConfigUpdateStrategy = &originalStrategy
+
 	helper.CreateTC("ns", "test-tc", false, false)
 	m := NewRestoreManager(deps).(*restoreManager)
 
@@ -1189,10 +1210,22 @@ func TestPiTRHelperFunctions(t *testing.T) {
 	g.Expect(tc.Status.TiKV.PiTRStatus.OriginConfigMap).ShouldNot(BeNil())
 	g.Expect(*tc.Status.TiKV.PiTRStatus.OriginConfigMap.GCRatioThreshold).Should(Equal(1.2))
 
+	// Test that the original config update strategy is stored
+	g.Expect(tc.Status.TiKV.PiTRStatus.OriginConfigMap.TiKVConfigUpdateStrategy).ShouldNot(BeNil())
+	g.Expect(*tc.Status.TiKV.PiTRStatus.OriginConfigMap.TiKVConfigUpdateStrategy).Should(Equal(originalStrategy))
+
+	// Test that the config update strategy is changed to InPlace during PiTR
+	g.Expect(tc.Spec.TiKV.ConfigUpdateStrategy).ShouldNot(BeNil())
+	g.Expect(*tc.Spec.TiKV.ConfigUpdateStrategy).Should(Equal(v1alpha1.ConfigUpdateStrategyInPlace))
+
 	// Test pitrDisable
 	err = m.pitrDisable(tc)
 	g.Expect(err).Should(BeNil())
 	g.Expect(tc.Status.TiKV.PiTRStatus.Active).Should(BeFalse())
+
+	// Test that the original config update strategy is restored
+	g.Expect(tc.Spec.TiKV.ConfigUpdateStrategy).ShouldNot(BeNil())
+	g.Expect(*tc.Spec.TiKV.ConfigUpdateStrategy).Should(Equal(originalStrategy))
 
 	// Test pitrTasksAreDone with no restores
 	done := pitrTasksAreDone([]*v1alpha1.Restore{})
@@ -1263,4 +1296,37 @@ func TestPiTRHelperFunctions(t *testing.T) {
 	}
 	done = pitrTaskIsDone(recentFailedRestore)
 	g.Expect(done).Should(BeFalse())
+
+	// Test pitrEnable/pitrDisable with nil config update strategy
+	tc2 := &v1alpha1.TidbCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-tc-2",
+			Namespace: "ns",
+		},
+		Spec: v1alpha1.TidbClusterSpec{
+			TiKV: &v1alpha1.TiKVSpec{
+				Config: v1alpha1.NewTiKVConfig(),
+				// ConfigUpdateStrategy is nil
+			},
+		},
+		Status: v1alpha1.TidbClusterStatus{
+			TiKV: v1alpha1.TiKVStatus{
+				PiTRStatus: v1alpha1.PiTRStatus{},
+			},
+		},
+	}
+	tc2.Spec.TiKV.Config.Set("gc.ratio-threshold", 2.5)
+
+	// Test pitrEnable with nil ConfigUpdateStrategy
+	err = m.pitrEnable(tc2)
+	g.Expect(err).Should(BeNil())
+	g.Expect(tc2.Status.TiKV.PiTRStatus.Active).Should(BeTrue())
+	g.Expect(tc2.Status.TiKV.PiTRStatus.OriginConfigMap.TiKVConfigUpdateStrategy).Should(BeNil())
+	g.Expect(*tc2.Spec.TiKV.ConfigUpdateStrategy).Should(Equal(v1alpha1.ConfigUpdateStrategyInPlace))
+
+	// Test pitrDisable with originally nil ConfigUpdateStrategy
+	err = m.pitrDisable(tc2)
+	g.Expect(err).Should(BeNil())
+	g.Expect(tc2.Status.TiKV.PiTRStatus.Active).Should(BeFalse())
+	g.Expect(tc2.Spec.TiKV.ConfigUpdateStrategy).Should(BeNil()) // Should be restored to nil
 }

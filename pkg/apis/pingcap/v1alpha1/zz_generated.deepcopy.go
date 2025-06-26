@@ -4199,6 +4199,11 @@ func (in *PreparedPlanCache) DeepCopyInto(out *PreparedPlanCache) {
 		*out = new(float64)
 		**out = **in
 	}
+	if in.TiKVConfigUpdateStrategy != nil {
+		in, out := &in.TiKVConfigUpdateStrategy, &out.TiKVConfigUpdateStrategy
+		*out = new(ConfigUpdateStrategy)
+		**out = **in
+	}
 	return
 }
 
