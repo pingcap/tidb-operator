@@ -26559,7 +26559,7 @@ spec:
                     type: string
                   pitrStatus:
                     properties:
-                      noTask:
+                      activate:
                         type: boolean
                       originConfigMap:
                         nullable: true

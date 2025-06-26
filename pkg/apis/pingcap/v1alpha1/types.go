@@ -1732,7 +1732,7 @@ type TiKVStatus struct {
 // PitrStatus is the current state of pitr.
 type PiTRStatus struct {
 	// Active indicates that there is a log restore task in progress.
-	Active bool `json:"noTask,omitempty"`
+	Active bool `json:"activate,omitempty"`
 	// OriginConfigMap contains the original value of the configurations overridden by PiTR.
 	// +optional
 	// +nullable
