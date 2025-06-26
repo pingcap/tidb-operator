@@ -38340,9 +38340,9 @@ spec:
                         properties:
                           gcRatioThreshold:
                             type: number
-                          updateStrategy:
-                            type: string
                         type: object
+                      updateStrategy:
+                        type: string
                     type: object
                   statefulSet:
                     properties:

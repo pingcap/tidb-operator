@@ -4111,6 +4111,11 @@ func (in *PiTRStatus) DeepCopyInto(out *PiTRStatus) {
 		*out = new(PiTROverriddenConfig)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.TiKVConfigUpdateStrategy != nil {
+		in, out := &in.TiKVConfigUpdateStrategy, &out.TiKVConfigUpdateStrategy
+		*out = new(ConfigUpdateStrategy)
+		**out = **in
+	}
 	return
 }
 

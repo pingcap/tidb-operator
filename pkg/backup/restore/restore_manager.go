@@ -85,7 +85,7 @@ func (rm *restoreManager) pitrEnable(tc *v1alpha1.TidbCluster) error {
 		v := val.MustFloat()
 		originalCfg.GCRatioThreshold = &v
 	}
-	originalCfg.TiKVConfigUpdateStrategy = tc.Spec.TiKV.ConfigUpdateStrategy
+	tc.Status.TiKV.PiTRStatus.TiKVConfigUpdateStrategy = tc.Spec.TiKV.ConfigUpdateStrategy
 
 	s := v1alpha1.ConfigUpdateStrategyInPlace
 	tc.Spec.TiKV.ConfigUpdateStrategy = &s
@@ -96,21 +96,82 @@ func (rm *restoreManager) pitrEnable(tc *v1alpha1.TidbCluster) error {
 }
 
 func (rm *restoreManager) pitrDisable(tc *v1alpha1.TidbCluster) error {
-	if !tc.Status.TiKV.PiTRStatus.Active {
-		return nil
+	if tc.Status.TiKV.PiTRStatus.OriginConfigMap != nil {
+		threshold := tc.Status.TiKV.PiTRStatus.OriginConfigMap.GCRatioThreshold
+		if threshold != nil {
+			tc.Spec.TiKV.Config.Set(TiKVConfigGCThreshold, threshold)
+		} else {
+			tc.Spec.TiKV.Config.Del(TiKVConfigGCThreshold)
+		}
+		tc.Status.TiKV.PiTRStatus.OriginConfigMap = nil
+		_, err := rm.deps.TiDBClusterControl.Update(tc)
+		return err
 	}
-	threshold := tc.Status.TiKV.PiTRStatus.OriginConfigMap.GCRatioThreshold
-	if threshold != nil {
-		tc.Spec.TiKV.Config.Set(TiKVConfigGCThreshold, threshold)
-	} else {
-		tc.Spec.TiKV.Config.Del(TiKVConfigGCThreshold)
-	}
-	updateStrategy := tc.Status.TiKV.PiTRStatus.OriginConfigMap.TiKVConfigUpdateStrategy
-	tc.Spec.TiKV.ConfigUpdateStrategy = updateStrategy
 
-	tc.Status.TiKV.PiTRStatus = v1alpha1.PiTRStatus{}
-	_, err := rm.deps.TiDBClusterControl.Update(tc)
-	return err
+	if tc.Status.TiKV.PiTRStatus.Active {
+		cfgMap, err := rm.configMapOfTiKV(tc)
+		if err != nil {
+			return fmt.Errorf("failed to get configmap of tikv for tidbcluster %s/%s, err: %v", tc.Namespace, tc.Name, err)
+		}
+		tikvConfigMap := tc.Spec.TiKV.Config
+
+		if cfgMap.Get(TiKVConfigGCThreshold) != tikvConfigMap.Get(TiKVConfigGCThreshold) {
+			return nil
+		}
+
+		tc.Spec.TiKV.ConfigUpdateStrategy = tc.Status.TiKV.PiTRStatus.TiKVConfigUpdateStrategy
+
+		tc.Status.TiKV.PiTRStatus.Active = false
+		tc.Status.TiKV.PiTRStatus.TiKVConfigUpdateStrategy = nil
+		_, err = rm.deps.TiDBClusterControl.Update(tc)
+		return err
+	}
+
+	return nil
+}
+
+func (rm *restoreManager) configMapOfTiKV(tc *v1alpha1.TidbCluster) (*v1alpha1.TiKVConfigWraper, error) {
+	labelSet := labels.Set{
+		label.ComponentLabelKey: label.TiKVLabelVal,
+		label.InstanceLabelKey:  tc.Name,
+		label.ManagedByLabelKey: label.TiDBOperator,
+	}
+	sts, err := rm.deps.StatefulSetLister.StatefulSets(tc.Namespace).List(labels.SelectorFromSet(labelSet))
+	if err != nil {
+		return nil, err
+	}
+	if len(sts) == 0 {
+		return nil, fmt.Errorf("cannot find statefulset for tidbcluster %s/%s with label set %s",
+			tc.Namespace, tc.Name, labelSet)
+	}
+	var cfgMapName string
+	for _, volumn := range sts[0].Spec.Template.Spec.Volumes {
+		name := volumn.Name
+		if strings.HasPrefix(name, controller.TiKVMemberName(tc.Name)) {
+			cfgMapName = volumn.ConfigMap.Name
+			break
+		}
+	}
+	if len(cfgMapName) == 0 {
+		return nil, fmt.Errorf("cannot find volume in the statefulset %s/%s for tidbcluster %s/%s",
+			sts[0].Namespace, sts[0].Name, tc.Namespace, tc.Name)
+	}
+	cfgMap, err := rm.deps.ConfigMapLister.ConfigMaps(tc.Namespace).Get(cfgMapName)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil, fmt.Errorf("cannot find configmap %s for tidbcluster %s/%s", cfgMapName, tc.Namespace, tc.Name)
+		}
+		return nil, err
+	}
+	// wrap the tikv config with tikv cfg wrapper
+	wrapper := &v1alpha1.TiKVConfigWraper{}
+	err = wrapper.UnmarshalTOML([]byte(cfgMap.Data["config-file"]))
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal tikv config in configmap %s for tidbcluster %s/%s, err: %v",
+			cfgMapName, tc.Namespace, tc.Name, err)
+	}
+
+	return wrapper, nil
 }
 
 func (rm *restoreManager) maybePiTRDisable(tc *v1alpha1.TidbCluster, namespace string) error {

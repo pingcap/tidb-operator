@@ -1145,6 +1145,11 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			cleaned, err = f.Storage.IsDataCleaned(ctx, ns, fullBackup.Spec.S3.Prefix) // now we only use s3
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+
+			ginkgo.By("Check if the TiKVs' config update strategy in this cluster was reset")
+			cluster, err := f.ExtClient.PingcapV1alpha1().TidbClusters(f.Namespace.Name).Get(ctx, backupClusterName, metav1.GetOptions{})
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cluster.Spec.TiKV.ConfigUpdateStrategy, nil)
 		})
 	})
 })
