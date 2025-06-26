@@ -6402,7 +6402,7 @@ string
 (<em>Appears on:</em>
 <a href="#componentspec">ComponentSpec</a>, 
 <a href="#dmclusterspec">DMClusterSpec</a>, 
-<a href="#pitroverriddenconfig">PiTROverriddenConfig</a>, 
+<a href="#pitrstatus">PiTRStatus</a>, 
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
@@ -13361,18 +13361,6 @@ float64
 <td>
 </td>
 </tr>
-<tr>
-<td>
-<code>updateStrategy</code></br>
-<em>
-<a href="#configupdatestrategy">
-ConfigUpdateStrategy
-</a>
-</em>
-</td>
-<td>
-</td>
-</tr>
 </tbody>
 </table>
 <h3 id="pitrstatus">PiTRStatus</h3>
@@ -13414,6 +13402,19 @@ PiTROverriddenConfig
 <td>
 <em>(Optional)</em>
 <p>OriginConfigMap contains the original value of the configurations overridden by PiTR.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>updateStrategy</code></br>
+<em>
+<a href="#configupdatestrategy">
+ConfigUpdateStrategy
+</a>
+</em>
+</td>
+<td>
+<p>The origin tikv config update strategy.</p>
 </td>
 </tr>
 </tbody>

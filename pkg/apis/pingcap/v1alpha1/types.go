@@ -1721,12 +1721,13 @@ type PiTRStatus struct {
 	// +optional
 	// +nullable
 	OriginConfigMap *PiTROverriddenConfig `json:"originConfigMap,omitempty"`
+	// The origin tikv config update strategy.
+	TiKVConfigUpdateStrategy *ConfigUpdateStrategy `json:"updateStrategy,omitempty"`
 }
 
 // PiTROverriddenConfig contains the configurations that are overridden by PiTR.
 type PiTROverriddenConfig struct {
-	GCRatioThreshold         *float64              `json:"gcRatioThreshold,omitempty"`
-	TiKVConfigUpdateStrategy *ConfigUpdateStrategy `json:"updateStrategy,omitempty"`
+	GCRatioThreshold *float64 `json:"gcRatioThreshold,omitempty"`
 }
 
 // TiFlashStatus is TiFlash status
