@@ -1147,7 +1147,7 @@ func TestPiTRRestore(t *testing.T) {
 		tc2, err = deps.TiDBClusterLister.TidbClusters(restore.Spec.BR.ClusterNamespace).Get(restore.Spec.BR.Cluster)
 		g.Expect(err).Should(BeNil())
 		st = tc2.Status.TiKV.PiTRStatus
-		g.Expect(st.Active).To(BeFalse())
+		g.Expect(st.OriginConfigMap).To(BeNil())
 		g.Expect(tc2.Spec.TiKV.Config.Get("gc.ratio-threshold")).To(BeNil())
 	}
 }
@@ -1192,7 +1192,7 @@ func TestPiTRHelperFunctions(t *testing.T) {
 	// Test pitrDisable
 	err = m.pitrDisable(tc)
 	g.Expect(err).Should(BeNil())
-	g.Expect(tc.Status.TiKV.PiTRStatus.Active).Should(BeFalse())
+	g.Expect(tc.Status.TiKV.PiTRStatus.OriginConfigMap).Should(BeNil())
 
 	// Test pitrTasksAreDone with no restores
 	done := pitrTasksAreDone([]*v1alpha1.Restore{})
@@ -1237,7 +1237,7 @@ func TestPiTRHelperFunctions(t *testing.T) {
 				{
 					Type:               v1alpha1.RestoreFailed,
 					Status:             corev1.ConditionTrue,
-					LastTransitionTime: metav1.Time{Time: time.Now().Add(-5 * time.Hour)},
+					LastTransitionTime: metav1.Time{Time: time.Now().Add(-50 * time.Hour)},
 				},
 			},
 		},
