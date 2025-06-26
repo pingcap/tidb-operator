@@ -97,6 +97,8 @@ func (rm *restoreManager) pitrEnable(tc *v1alpha1.TidbCluster) error {
 
 func (rm *restoreManager) pitrDisable(tc *v1alpha1.TidbCluster) error {
 	if tc.Status.TiKV.PiTRStatus.OriginConfigMap != nil {
+		klog.InfoS("restore-manager pitr disable, restore tikv config from origin configmap",
+			"tidbcluster", klog.KObj(tc), "originConfigMap", tc.Status.TiKV.PiTRStatus.OriginConfigMap)
 		threshold := tc.Status.TiKV.PiTRStatus.OriginConfigMap.GCRatioThreshold
 		if threshold != nil {
 			tc.Spec.TiKV.Config.Set(TiKVConfigGCThreshold, threshold)
@@ -109,6 +111,8 @@ func (rm *restoreManager) pitrDisable(tc *v1alpha1.TidbCluster) error {
 	}
 
 	if tc.Status.TiKV.PiTRStatus.Active {
+		klog.InfoS("restore-manager pitr disable, restore tikv config from current configmap",
+			"tidbcluster", klog.KObj(tc), "currentConfigUpdateStrategy", tc.Spec.TiKV.ConfigUpdateStrategy)
 		cfgMap, err := rm.configMapOfTiKV(tc)
 		if err != nil {
 			return fmt.Errorf("failed to get configmap of tikv for tidbcluster %s/%s, err: %v", tc.Namespace, tc.Name, err)
