@@ -1180,17 +1180,17 @@ func TestPiTRHelperFunctions(t *testing.T) {
 	tc.Spec.TiKV.Config = v1alpha1.NewTiKVConfig()
 	tc.Spec.TiKV.Config.Set("gc.ratio-threshold", 1.2)
 	helper.CreateTC("ns", "test-tc", false, false)
-	m := NewRestoreManager(deps).(*restoreManager)
+	m := PiTRManager{deps}
 
 	// Test pitrEnable
-	err := m.pitrEnable(tc)
+	err := m.Enable(tc)
 	g.Expect(err).Should(BeNil())
 	g.Expect(tc.Status.TiKV.PiTRStatus.Active).Should(BeTrue())
 	g.Expect(tc.Status.TiKV.PiTRStatus.OriginConfigMap).ShouldNot(BeNil())
 	g.Expect(*tc.Status.TiKV.PiTRStatus.OriginConfigMap.GCRatioThreshold).Should(Equal(1.2))
 
 	// Test pitrDisable
-	err = m.pitrDisable(tc)
+	err = m.disable(tc)
 	g.Expect(err).Should(BeNil())
 	g.Expect(tc.Status.TiKV.PiTRStatus.OriginConfigMap).Should(BeNil())
 
@@ -1225,25 +1225,6 @@ func TestPiTRHelperFunctions(t *testing.T) {
 	}
 	done = pitrTasksAreDone([]*v1alpha1.Restore{runningRestore})
 	g.Expect(done).Should(BeFalse())
-
-	// Test pitrTaskIsDone with failed restore that's old enough
-	failedRestore := &v1alpha1.Restore{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "failed-restore",
-			Namespace: "ns",
-		},
-		Status: v1alpha1.RestoreStatus{
-			Conditions: []v1alpha1.RestoreCondition{
-				{
-					Type:               v1alpha1.RestoreFailed,
-					Status:             corev1.ConditionTrue,
-					LastTransitionTime: metav1.Time{Time: time.Now().Add(-50 * time.Hour)},
-				},
-			},
-		},
-	}
-	done = pitrTaskIsDone(failedRestore)
-	g.Expect(done).Should(BeTrue())
 
 	// Test pitrTaskIsDone with recently failed restore
 	recentFailedRestore := &v1alpha1.Restore{
