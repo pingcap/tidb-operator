@@ -28,6 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1182,19 +1183,149 @@ func TestPiTRHelperFunctions(t *testing.T) {
 	tc.Spec.TiKV.Config = v1alpha1.NewTiKVConfig()
 	tc.Spec.TiKV.Config.Set("gc.ratio-threshold", 1.2)
 	helper.CreateTC("ns", "test-tc", false, false)
+
+	tikvSts := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-tc-tikv",
+			Namespace: "ns",
+			Labels: map[string]string{
+				"app.kubernetes.io/name":       "tidb-cluster",
+				"app.kubernetes.io/managed-by": "tidb-operator",
+				"app.kubernetes.io/instance":   "test-tc",
+				"app.kubernetes.io/component":  "tikv",
+			},
+		},
+		Spec: appsv1.StatefulSetSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Volumes: []corev1.Volume{
+						{
+							Name: "config",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "test-tc-tikv-00000",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	_, err := deps.KubeClientset.AppsV1().StatefulSets("ns").Create(context.TODO(), tikvSts, metav1.CreateOptions{})
+	g.Expect(err).Should(BeNil())
+
+	g.Eventually(func() error {
+		_, err := deps.StatefulSetLister.StatefulSets("ns").Get("test-tc-tikv")
+		return err
+	}, time.Second*10).Should(BeNil())
+
+	// Create TiKV StatefulSet and ConfigMap for testing config map operations
+	tikvCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-tc-tikv-00000",
+			Namespace: "ns",
+			Labels: map[string]string{
+				"app.kubernetes.io/name":       "tidb-cluster",
+				"app.kubernetes.io/managed-by": "tidb-operator",
+				"app.kubernetes.io/instance":   "test-tc",
+				"app.kubernetes.io/component":  "tikv",
+			},
+		},
+		Data: map[string]string{
+			"config-file": `[gc]
+ratio-threshold = 1.2
+
+[server]
+grpc-keepalive-timeout = "30s"
+`,
+			"startup-script": "#!/bin/bash\necho 'starting tikv'",
+		},
+	}
+	_, err = deps.KubeClientset.CoreV1().ConfigMaps("ns").Create(context.TODO(), tikvCM, metav1.CreateOptions{})
+	g.Expect(err).Should(BeNil())
+
+	// Ensure objects are available in listers
+	g.Eventually(func() error {
+		_, err := deps.ConfigMapLister.ConfigMaps("ns").Get("test-tc-tikv-00000")
+		return err
+	}, time.Second*10).Should(BeNil())
+
 	m := PiTRManager{deps}
 
+	// Test configMapOfTiKV - should successfully retrieve and parse TiKV config map
+	tikvConfig, err := m.configMapOfTiKV(tc)
+	g.Expect(err).Should(BeNil())
+	g.Expect(tikvConfig).ShouldNot(BeNil())
+	g.Expect(tikvConfig.Get("gc.ratio-threshold").MustFloat()).Should(Equal(1.2))
+
 	// Test pitrEnable
-	err := m.Enable(tc)
+	err = m.Enable(tc)
 	g.Expect(err).Should(BeNil())
 	g.Expect(tc.Status.TiKV.PiTRStatus.Active).Should(BeTrue())
 	g.Expect(tc.Status.TiKV.PiTRStatus.OriginConfigMap).ShouldNot(BeNil())
 	g.Expect(*tc.Status.TiKV.PiTRStatus.OriginConfigMap.GCRatioThreshold).Should(Equal(1.2))
+	// Verify that GC threshold is set to -1.0 for PiTR
+	g.Expect(tc.Spec.TiKV.Config.Get("gc.ratio-threshold").MustFloat()).Should(Equal(-1.0))
 
-	// Test pitrDisable
+	// Test configMapOfTiKV after Enable - config should reflect the PiTR setting
+	// Update the ConfigMap to simulate the new config being applied
+	updatedTiKVCM := tikvCM.DeepCopy()
+	updatedTiKVCM.Data["config-file"] = `[gc]
+ratio-threshold = -1.0
+
+[server]
+grpc-keepalive-timeout = "30s"
+`
+	_, err = deps.KubeClientset.CoreV1().ConfigMaps("ns").Update(context.TODO(), updatedTiKVCM, metav1.UpdateOptions{})
+	g.Expect(err).Should(BeNil())
+
+	// Test pitrDisable - should attempt to disable but fail due to origin config map being present
 	err = m.disable(tc)
 	g.Expect(err).Should(Not(BeNil()))
 	g.Expect(tc.Status.TiKV.PiTRStatus.OriginConfigMap).Should(BeNil())
+
+	// Test disable with active PiTR but no origin config map (config map sync scenario)
+	tc.Status.TiKV.PiTRStatus.Active = true
+	tc.Status.TiKV.PiTRStatus.OriginConfigMap = nil
+	tc.Spec.TiKV.Config.Set("gc.ratio-threshold", -1.0)
+
+	err = m.disable(tc)
+	g.Expect(err).Should(Not(BeNil())) // Should return error asking to wait for configmap update
+
+	// Test MaybeDisable with no restores
+	tc.Status.TiKV.PiTRStatus.Active = true
+	err = m.MaybeDisable(tc)
+	g.Expect(err).Should(Not(BeNil())) // Should try to disable
+
+	// Test MaybeDisable with running restores
+	runningRestore := &v1alpha1.Restore{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-restore",
+			Namespace: "ns",
+		},
+		Spec: v1alpha1.RestoreSpec{
+			BR: &v1alpha1.BRConfig{
+				Cluster:          "test-tc",
+				ClusterNamespace: "ns",
+			},
+		},
+		Status: v1alpha1.RestoreStatus{
+			Conditions: []v1alpha1.RestoreCondition{
+				{
+					Type:   v1alpha1.RestoreRunning,
+					Status: corev1.ConditionTrue,
+				},
+			},
+		},
+	}
+	helper.CreateRestore(runningRestore)
+
+	err = m.MaybeDisable(tc)
+	g.Expect(err).Should(BeNil()) // Should not disable with running restores
 
 	// Test pitrTasksAreDone with no restores
 	done := pitrTasksAreDone([]*v1alpha1.Restore{})
@@ -1215,16 +1346,6 @@ func TestPiTRHelperFunctions(t *testing.T) {
 	g.Expect(done).Should(BeTrue())
 
 	// Test pitrTasksAreDone with running restore
-	runningRestore := &v1alpha1.Restore{
-		Status: v1alpha1.RestoreStatus{
-			Conditions: []v1alpha1.RestoreCondition{
-				{
-					Type:   v1alpha1.RestoreRunning,
-					Status: corev1.ConditionTrue,
-				},
-			},
-		},
-	}
 	done = pitrTasksAreDone([]*v1alpha1.Restore{runningRestore})
 	g.Expect(done).Should(BeFalse())
 
