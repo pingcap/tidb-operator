@@ -53,7 +53,7 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 			// TODO: Complete task and retrigger reconciliation by polling PD
 			return task.Retry(removingWaitInterval).With("wait until the store is removed")
 
-		case state.GetStoreState() == v1alpha1.StoreStateRemoved || state.StoreID == "":
+		case state.GetStoreState() == v1alpha1.StoreStateRemoved || state.StoreNotExists:
 			wait, err := EnsureSubResourcesDeleted(ctx, c, state.TiKV())
 			if err != nil {
 				return task.Fail().With("cannot delete subresources: %w", err)
