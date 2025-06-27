@@ -51015,14 +51015,14 @@ spec:
                     type: string
                   pitrStatus:
                     properties:
-                      activate:
-                        type: boolean
                       originConfigMap:
                         nullable: true
                         properties:
                           gcRatioThreshold:
                             type: number
                         type: object
+                      state:
+                        type: string
                       updateStrategy:
                         type: string
                     type: object

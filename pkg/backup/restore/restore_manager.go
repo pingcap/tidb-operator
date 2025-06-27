@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"slices"
 	"strconv"
@@ -26,6 +27,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/backup"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/backup/snapshotter"
@@ -82,51 +84,81 @@ func NewPiTRManager(deps *controller.Dependencies) *PiTRManager {
 }
 
 func (rm *PiTRManager) Enable(tc *v1alpha1.TidbCluster) error {
-	if tc.Status.TiKV.PiTRStatus.State == v1alpha1.PiTRStateRunning {
-		tikvConfigMap := tc.Spec.TiKV.Config
-		cfgMap, err := rm.configMapOfTiKV(tc)
+	if tc.Status.TiKV.PiTRStatus.State == v1alpha1.PiTRStateInactive {
+		tc.Status.TiKV.PiTRStatus.State = v1alpha1.PiTRStateWaitingForConfig
+		if tc.Spec.TiKV.Config == nil || tc.Spec.TiKV.Config.MP == nil {
+			tc.Spec.TiKV.Config = v1alpha1.NewTiKVConfig()
+		}
+
+		originalCfg := new(v1alpha1.PiTROverriddenConfig)
+		val := tc.Spec.TiKV.Config.Get(TiKVConfigGCThreshold)
+		if val != nil {
+			v := val.MustFloat()
+			originalCfg.GCRatioThreshold = &v
+		}
+		tc.Status.TiKV.PiTRStatus.TiKVConfigUpdateStrategy = tc.Spec.TiKV.ConfigUpdateStrategy
+
+		s := v1alpha1.ConfigUpdateStrategyInPlace
+		tc.Spec.TiKV.ConfigUpdateStrategy = &s
+		tc.Status.TiKV.PiTRStatus.OriginConfigMap = originalCfg
+		tc.Spec.TiKV.Config.Set(TiKVConfigGCThreshold, -1.0)
+		_, err := rm.deps.TiDBClusterControl.Update(tc)
 		if err != nil {
 			return err
 		}
-		if cfgMap.Get(TiKVConfigGCThreshold) != tikvConfigMap.Get(TiKVConfigGCThreshold) {
-			return controller.RequeueErrorf("config reset, waiting for configmap updated, keep polling")
+		return controller.RequeueErrorf("config reset, waiting for configmap updated")
+	}
+
+	if tc.Status.TiKV.PiTRStatus.State == v1alpha1.PiTRStateWaitingForConfig {
+		return rm.ensureConfigMapReconileDone(tc)
+	}
+
+	return nil
+}
+
+func (rm *PiTRManager) ensureConfigMapReconileDone(tc *v1alpha1.TidbCluster) error {
+	tikvConfigMap := tc.Spec.TiKV.Config
+	cfgMap, err := rm.configMapOfTiKV(tc)
+	if err != nil {
+		return err
+	}
+
+	// When parsing TOML, it treats -1 as int64...
+	floatValueEquals := func(v1, v2 *config.Value) bool {
+		if v1 == nil || v2 == nil {
+			return v1 == v2
 		}
 
-		return nil
-	}
+		rv1 := reflect.ValueOf(v1.Interface())
+		rv2 := reflect.ValueOf(v2.Interface())
 
-	tc.Status.TiKV.PiTRStatus.State = v1alpha1.PiTRStateRunning
-	if tc.Spec.TiKV.Config == nil || tc.Spec.TiKV.Config.MP == nil {
-		tc.Spec.TiKV.Config = v1alpha1.NewTiKVConfig()
-	}
+		float64T := reflect.TypeFor[float64]()
+		if !rv1.CanConvert(float64T) || !rv2.CanConvert(float64T) {
+			klog.InfoS("config value is not float, cannot compare", "rv1", rv1, "rv2", rv2)
+			return false
+		}
 
-	originalCfg := new(v1alpha1.PiTROverriddenConfig)
-	val := tc.Spec.TiKV.Config.Get(TiKVConfigGCThreshold)
-	if val != nil {
-		v := val.MustFloat()
-		originalCfg.GCRatioThreshold = &v
+		return rv1.Convert(float64T).Float() == rv2.Convert(float64T).Float()
 	}
-	tc.Status.TiKV.PiTRStatus.TiKVConfigUpdateStrategy = tc.Spec.TiKV.ConfigUpdateStrategy
-
-	s := v1alpha1.ConfigUpdateStrategyInPlace
-	tc.Spec.TiKV.ConfigUpdateStrategy = &s
-	tc.Status.TiKV.PiTRStatus.OriginConfigMap = originalCfg
-	tc.Spec.TiKV.Config.Set(TiKVConfigGCThreshold, -1.0)
-	_, err := rm.deps.TiDBClusterControl.Update(tc)
-	return err
+	if !floatValueEquals(cfgMap.Get(TiKVConfigGCThreshold), tikvConfigMap.Get(TiKVConfigGCThreshold)) {
+		return controller.RequeueErrorf("config reset, waiting for configmap updated(ours = %v, theirs = %v), keep polling",
+			tikvConfigMap.Get(TiKVConfigGCThreshold).Interface(), cfgMap.Get(TiKVConfigGCThreshold).Interface())
+	}
+	return nil
 }
 
 func (rm *PiTRManager) disable(tc *v1alpha1.TidbCluster) error {
-	if tc.Status.TiKV.PiTRStatus.OriginConfigMap != nil {
+	if tc.Status.TiKV.PiTRStatus.State == v1alpha1.PiTRStateRunning {
 		klog.InfoS("restore-manager pitr disable, restore tikv config from origin configmap",
 			"tidbcluster", klog.KObj(tc), "originConfigMap", tc.Status.TiKV.PiTRStatus.OriginConfigMap)
 		threshold := tc.Status.TiKV.PiTRStatus.OriginConfigMap.GCRatioThreshold
 		if threshold != nil {
-			tc.Spec.TiKV.Config.Set(TiKVConfigGCThreshold, threshold)
+			tc.Spec.TiKV.Config.Set(TiKVConfigGCThreshold, *threshold)
 		} else {
 			tc.Spec.TiKV.Config.Del(TiKVConfigGCThreshold)
 		}
 		tc.Status.TiKV.PiTRStatus.OriginConfigMap = nil
+		tc.Status.TiKV.PiTRStatus.State = v1alpha1.PiTRStateWaitingForConfig
 		_, err := rm.deps.TiDBClusterControl.Update(tc)
 		if err != nil {
 			return err
@@ -135,24 +167,17 @@ func (rm *PiTRManager) disable(tc *v1alpha1.TidbCluster) error {
 		return controller.RequeueErrorf("config reset, waiting for configmap updated")
 	}
 
-	if tc.Status.TiKV.PiTRStatus.State == v1alpha1.PiTRStateRunning {
+	if tc.Status.TiKV.PiTRStatus.State == v1alpha1.PiTRStateWaitingForConfig {
 		klog.InfoS("restore-manager pitr disable, restore tikv config from current configmap",
 			"tidbcluster", klog.KObj(tc), "currentConfigUpdateStrategy", tc.Spec.TiKV.ConfigUpdateStrategy)
-		cfgMap, err := rm.configMapOfTiKV(tc)
-		if err != nil {
-			return fmt.Errorf("failed to get configmap of tikv for tidbcluster %s/%s, err: %v", tc.Namespace, tc.Name, err)
-		}
-		tikvConfigMap := tc.Spec.TiKV.Config
-
-		if cfgMap.Get(TiKVConfigGCThreshold) != tikvConfigMap.Get(TiKVConfigGCThreshold) {
-			return controller.RequeueErrorf("config reset, waiting for configmap updated, keep polling")
+		if err := rm.ensureConfigMapReconileDone(tc); err != nil {
+			return err
 		}
 
 		tc.Spec.TiKV.ConfigUpdateStrategy = tc.Status.TiKV.PiTRStatus.TiKVConfigUpdateStrategy
-
 		tc.Status.TiKV.PiTRStatus.State = v1alpha1.PiTRStateInactive
 		tc.Status.TiKV.PiTRStatus.TiKVConfigUpdateStrategy = nil
-		_, err = rm.deps.TiDBClusterControl.Update(tc)
+		_, err := rm.deps.TiDBClusterControl.Update(tc)
 		return err
 	}
 
@@ -382,6 +407,9 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		// But for now BR will also modify this configuration. This configuration map was
 		// modified for making sure they won't be lost after a TiKV restart.
 		if err := pm.Enable(tc); err != nil {
+			if controller.IsRequeueError(err) {
+				return err
+			}
 			return fmt.Errorf("restore %s/%s enable pitr failed, err: %v", ns, name, err)
 		}
 	}
