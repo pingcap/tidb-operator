@@ -603,7 +603,8 @@ func (bc *backupCleaner) isLogStopJobFinished(ctx context.Context, backup *v1alp
 		}
 		return true, nil
 	} else if errors.IsNotFound(err) {
-		logger.Info("log backup stopping-task not found, log backup may has failed before cleaning", "namespace", ns, "backup", name, "job", stopLogJob)
+		logger.Info("log backup stopping-task not found, log backup may has failed before cleaning",
+			"namespace", ns, "backup", name, "job", stopLogJob)
 		return true, nil
 	}
 	return false, err

@@ -75,7 +75,11 @@ func (bo *Options) CleanBRRemoteBackupData(ctx context.Context, backup *v1alpha1
 	})
 }
 
-func (bo *Options) cleanBRRemoteBackupDataOnce(ctx context.Context, backend *bkutil.StorageBackend, opt v1alpha1.CleanOption, round int) error {
+func (bo *Options) cleanBRRemoteBackupDataOnce(ctx context.Context,
+	backend *bkutil.StorageBackend,
+	opt v1alpha1.CleanOption,
+	round int,
+) error {
 	klog.Infof("For backup %s clean %d, start to clean backup with opt: %+v", bo, round, opt)
 
 	iter := backend.ListPage(nil)
