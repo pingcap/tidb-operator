@@ -325,7 +325,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 			expectedStatus: task.SFail,
 		},
 		{
-			desc: "cluster is not deleting, store id is empty, no subresources, has finalizer",
+			desc: "cluster is not deleting, store does not exist, no subresources, has finalizer",
 			state: &ReconcileContext{
 				State: &state{
 					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
@@ -336,6 +336,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 						return obj
 					}),
 				},
+				StoreNotExists: true,
 			},
 
 			expectedStatus: task.SComplete,

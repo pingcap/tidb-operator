@@ -35,6 +35,8 @@ type ReconcileContext struct {
 	Store       *pdv1.Store
 	StoreID     string
 	StoreLabels []*metapb.StoreLabel
+
+	StoreNotExists bool
 }
 
 func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task.Task {
@@ -55,6 +57,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 			if !errors.IsNotFound(err) {
 				return task.Fail().With("failed to get store info: %w", err)
 			}
+			state.StoreNotExists = true
 			return task.Complete().With("store does not exist")
 		}
 
