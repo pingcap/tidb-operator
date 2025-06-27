@@ -90,6 +90,11 @@ func (p *pvcReplacer) UpdateStatus(tc *v1alpha1.TidbCluster) error {
 			status = false
 			klog.Warningf("%s for cluster %s/%s need volume replace, but has too few replicas, so refusing to replace.", comp.MemberType(), tc.GetNamespace(), tc.GetName())
 		}
+		if comp.MemberType() == v1alpha1.PDMemberType && !tc.PDAllMembersReady() {
+			// Wait for update status until all PD are ready, to avoid creating zombie pd members due to race with scale-down.
+			klog.Infof("Do not update VolReplaceInProgress status to %t for %s/%s/%s as not all PD members are ready", status, tc.GetNamespace(), tc.GetName(), comp.MemberType())
+			continue
+		}
 		if status != comp.GetVolReplaceInProgress() {
 			klog.Infof("changing VolReplaceInProgress status to %t for %s/%s/%s", status, tc.GetNamespace(), tc.GetName(), comp.MemberType())
 		}
@@ -163,25 +168,11 @@ func isVolumeReplacing(pod *corev1.Pod) bool {
 	return exist
 }
 
-func (p *pvcReplacer) startVolumeReplace(ctx *componentVolumeContext, pod *corev1.Pod) error {
+func (p *pvcReplacer) startVolumeReplace(pod *corev1.Pod) error {
 	pod = pod.DeepCopy()
 
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
-	}
-
-	// try to evict leader
-	isEvicted := isLeaderEvictedOrTimeout(ctx.tc, pod)
-	if !isEvicted {
-		if ensureTiKVLeaderEvictionCondition(ctx.tc, metav1.ConditionTrue) {
-			// return to sync tc
-			return fmt.Errorf("try to evict leader for tidbcluster %s/%s", ctx.tc.Namespace, ctx.tc.Name)
-		}
-		// evict leader
-		if err := p.evictLeader(ctx.tc, pod); err != nil {
-			return err
-		}
-		return fmt.Errorf("wait for leader eviction of %s/%s completed", pod.Namespace, pod.Name)
 	}
 
 	pod.Annotations[v1alpha1.ReplaceVolumeAnnKey] = v1alpha1.ReplaceVolumeValueTrue
@@ -207,29 +198,11 @@ func (p *pvcReplacer) tryToReplacePVC(ctx *componentVolumeContext) error {
 		if podSynced {
 			continue
 		}
-		if err := p.startVolumeReplace(ctx, pod); err != nil {
+		if err := p.startVolumeReplace(pod); err != nil {
 			return err
 		}
 		return fmt.Errorf("started volume replace for pod %s, waiting", pod.Name)
 	}
-	return nil
-}
-
-func (p *pvcReplacer) evictLeader(tc *v1alpha1.TidbCluster, pod *corev1.Pod) error {
-	if isLeaderEvicting(pod) {
-		return nil
-	}
-	pod = pod.DeepCopy()
-
-	if pod.Annotations == nil {
-		pod.Annotations = map[string]string{}
-	}
-
-	pod.Annotations[v1alpha1.EvictLeaderAnnKey] = v1alpha1.EvictLeaderValueDeletePod
-	if _, err := p.deps.KubeClientset.CoreV1().Pods(pod.Namespace).Update(context.TODO(), pod, metav1.UpdateOptions{}); err != nil {
-		return fmt.Errorf("add leader eviction annotation to pod %s/%s failed: %s", pod.Namespace, pod.Name, err)
-	}
-
 	return nil
 }
 

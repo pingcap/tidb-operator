@@ -5240,6 +5240,13 @@ func schema_pkg_apis_pingcap_v1alpha1_NGMonitoringSpec(ref common.ReferenceCallb
 							},
 						},
 					},
+					"retentionPeriod": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Retention period to store ng monitoring data",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"config": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Config is the configuration of ng monitoring",
@@ -8562,6 +8569,13 @@ func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCall
 							},
 						},
 					},
+					"forcePathStyle": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ForcePathStyle for the backup and restore to connect s3 with path style(true) or virtual host(false).",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"provider"},
 			},
@@ -10475,6 +10489,22 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							Description: "Arguments is the extra command line arguments for TiDB server.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"serverLabels": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ServerLabels defines the server labels of the TiDB server. Using both this field and config file to manage the labels is an undefined behavior. Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:\n - region, topology.kubernetes.io/region\n - zone, topology.kubernetes.io/zone\n - host",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: "",
@@ -14184,6 +14214,22 @@ func schema_pkg_apis_pingcap_v1alpha1_TiProxySpec(ref common.ReferenceCallback) 
 							Description: "The storageClassName of the persistent volume for TiProxy data storage. Defaults to Kubernetes default storage class.",
 							Type:        []string{"string"},
 							Format:      "",
+						},
+					},
+					"serverLabels": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ServerLabels defines the server labels of the TiProxy. Using both this field and config file to manage the labels is an undefined behavior. Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:\n - region, topology.kubernetes.io/region\n - zone, topology.kubernetes.io/zone\n - host",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
 						},
 					},
 				},

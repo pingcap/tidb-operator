@@ -10407,6 +10407,17 @@ Defaults to Kubernetes default storage class.</p>
 </tr>
 <tr>
 <td>
+<code>retentionPeriod</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Retention period to store ng monitoring data</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>config</code></br>
 <em>
 github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
@@ -15608,6 +15619,17 @@ string
 <p>Options Rclone options for backup and restore with dumpling and lightning.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>forcePathStyle</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>ForcePathStyle for the backup and restore to connect s3 with path style(true) or virtual host(false).</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="s3storageprovidertype">S3StorageProviderType</h3>
@@ -18484,6 +18506,22 @@ The probe binary in the image should be placed under the root directory, i.e., <
 <td>
 <em>(Optional)</em>
 <p>Arguments is the extra command line arguments for TiDB server.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serverLabels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>ServerLabels defines the server labels of the TiDB server.
+Using both this field and config file to manage the labels is an undefined behavior.
+Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+- region, topology.kubernetes.io/region
+- zone, topology.kubernetes.io/zone
+- host</p>
 </td>
 </tr>
 </tbody>
@@ -24222,6 +24260,22 @@ string
 <em>(Optional)</em>
 <p>The storageClassName of the persistent volume for TiProxy data storage.
 Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serverLabels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>ServerLabels defines the server labels of the TiProxy.
+Using both this field and config file to manage the labels is an undefined behavior.
+Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+- region, topology.kubernetes.io/region
+- zone, topology.kubernetes.io/zone
+- host</p>
 </td>
 </tr>
 </tbody>

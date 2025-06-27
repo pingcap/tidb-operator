@@ -2250,6 +2250,8 @@ spec:
                         type: string
                       endpoint:
                         type: string
+                      forcePathStyle:
+                        type: boolean
                       options:
                         items:
                           type: string
@@ -4445,6 +4447,8 @@ spec:
                         type: string
                       endpoint:
                         type: string
+                      forcePathStyle:
+                        type: boolean
                       options:
                         items:
                           type: string
@@ -7440,6 +7444,8 @@ spec:
                         type: string
                       endpoint:
                         type: string
+                      forcePathStyle:
+                        type: boolean
                       options:
                         items:
                           type: string
@@ -7519,6 +7525,8 @@ spec:
                     type: string
                   endpoint:
                     type: string
+                  forcePathStyle:
+                    type: boolean
                   options:
                     items:
                       type: string
@@ -9841,6 +9849,8 @@ spec:
                     type: string
                   endpoint:
                     type: string
+                  forcePathStyle:
+                    type: boolean
                   options:
                     items:
                       type: string
@@ -12184,6 +12194,8 @@ spec:
                     type: string
                   endpoint:
                     type: string
+                  forcePathStyle:
+                    type: boolean
                   options:
                     items:
                       type: string
@@ -24164,6 +24176,8 @@ spec:
                         type: string
                       endpoint:
                         type: string
+                      forcePathStyle:
+                        type: boolean
                       options:
                         items:
                           type: string
@@ -24296,6 +24310,8 @@ spec:
                     type: string
                   endpoint:
                     type: string
+                  forcePathStyle:
+                    type: boolean
                   options:
                     items:
                       type: string
@@ -41303,6 +41319,10 @@ spec:
                     type: string
                   separateSlowLog:
                     type: boolean
+                  serverLabels:
+                    additionalProperties:
+                      type: string
+                    type: object
                   service:
                     properties:
                       additionalPorts:
@@ -49633,6 +49653,10 @@ spec:
                     type: object
                   schedulerName:
                     type: string
+                  serverLabels:
+                    additionalProperties:
+                      type: string
+                    type: object
                   serviceAccount:
                     type: string
                   sslEnableTiDB:
@@ -61906,6 +61930,8 @@ spec:
                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                       x-kubernetes-int-or-string: true
                     type: object
+                  retentionPeriod:
+                    type: string
                   schedulerName:
                     type: string
                   statefulSetUpdateStrategy:

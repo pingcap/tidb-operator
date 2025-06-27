@@ -23,7 +23,10 @@ spec:
     replicas: 4
     requests:
       storage: "100Gi"
-    config: {}
+    config: |
+      [log.file]
+        max-days = 30
+        max-backups = 30
   tidb:
     baseImage: pingcap/tidb
     maxFailoverCount: 0

@@ -23,8 +23,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
+	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 )
 
 func TestTiProxyMemberManagerSetLabels(t *testing.T) {
@@ -263,4 +266,304 @@ func newFakeTiProxyMemberManager() (*tiproxyMemberManager, *fakeIndexers) {
 		node:   fakeDeps.KubeInformerFactory.Core().V1().Nodes().Informer().GetIndexer(),
 	}
 	return tmm, indexers
+}
+
+func TestTiProxyMemberManagerHandleIfTiProxyScaledToZero(t *testing.T) {
+
+	type testcase struct {
+		name         string
+		tc           *v1alpha1.TidbCluster
+		sts          *apps.StatefulSet
+		expectAbort  bool
+		expectErr    bool
+		expectStatus v1alpha1.TiProxyStatus
+	}
+
+	tests := []testcase{
+		{
+			name: "tiproxy is not scaled to zero",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "db",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{
+						Replicas: 1,
+					},
+				},
+			},
+			expectAbort: false,
+			expectErr:   false,
+		},
+		{
+			name: "tiproxy scaled to zero and sts not found",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "db",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{
+						Replicas: 0,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					TiProxy: v1alpha1.TiProxyStatus{
+						StatefulSet: &apps.StatefulSetStatus{},
+					},
+				},
+			},
+			expectAbort:  true,
+			expectErr:    false,
+			expectStatus: v1alpha1.TiProxyStatus{},
+		},
+		{
+			name: "tiproxy scaled to zero, sts replicas not zero",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "db",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{
+						Replicas: 0,
+					},
+				},
+			},
+			sts: &apps.StatefulSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      controller.TiProxyMemberName("db"),
+					Namespace: "ns",
+				},
+				Status: apps.StatefulSetStatus{
+					Replicas: 1,
+				},
+			},
+			expectAbort: false,
+			expectErr:   false,
+		},
+		{
+			name: "tiproxy scaled to zero, delete sts success",
+			tc: &v1alpha1.TidbCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "db",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{
+						Replicas: 0,
+					},
+				},
+				Status: v1alpha1.TidbClusterStatus{
+					TiProxy: v1alpha1.TiProxyStatus{
+						StatefulSet: &apps.StatefulSetStatus{},
+					},
+				},
+			},
+			sts: &apps.StatefulSet{
+				Status: apps.StatefulSetStatus{
+					Replicas: 0,
+				},
+			},
+			expectAbort:  true,
+			expectErr:    false,
+			expectStatus: v1alpha1.TiProxyStatus{},
+		},
+	}
+
+	for i := range tests {
+		t.Run(tests[i].name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+
+			test := tests[i]
+			tmm, indexers := newFakeTiProxyMemberManager()
+
+			// setup test case
+			if test.sts != nil {
+				sts := test.sts.DeepCopy()
+				sts.Name = controller.TiProxyMemberName(test.tc.Name)
+				sts.Namespace = test.tc.Namespace
+				err := indexers.set.Add(sts)
+				g.Expect(err).NotTo(HaveOccurred())
+			}
+
+			err := indexers.tc.Add(test.tc)
+			g.Expect(err).NotTo(HaveOccurred())
+			// execute test
+			abort, err := tmm.handleIfTiProxyScaledToZero(test.tc)
+
+			// verify results
+			if test.expectErr {
+				g.Expect(err).To(HaveOccurred())
+			} else {
+				g.Expect(err).NotTo(HaveOccurred())
+			}
+			g.Expect(abort).To(Equal(test.expectAbort))
+			if test.expectStatus.StatefulSet == nil {
+				g.Expect(test.tc.Status.TiProxy).To(Equal(test.expectStatus))
+			}
+		})
+	}
+}
+
+func TestBuildTiProxyReadinessProbeHandler(t *testing.T) {
+	tests := []struct {
+		name     string
+		tc       *v1alpha1.TidbCluster
+		expected *corev1.ProbeHandler
+	}{
+		{
+			name: "nil readiness probe",
+			tc: &v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{},
+				},
+			},
+			expected: nil,
+		},
+		{
+			name: "nil probe type",
+			tc: &v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ReadinessProbe: &v1alpha1.Probe{},
+						},
+					},
+				},
+			},
+			expected: nil,
+		},
+		{
+			name: "command probe type",
+			tc: &v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ReadinessProbe: &v1alpha1.Probe{
+								Type: ptr.To(string(v1alpha1.CommandProbeType)),
+							},
+						},
+					},
+				},
+			},
+			expected: &corev1.ProbeHandler{
+				Exec: &corev1.ExecAction{
+					Command: []string{
+						"curl",
+						"http://127.0.0.1:3080/api/debug/health",
+						"--fail",
+						"--location",
+					},
+				},
+			},
+		},
+		{
+			name: "TCP probe type",
+			tc: &v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							ReadinessProbe: &v1alpha1.Probe{
+								Type: ptr.To(string(v1alpha1.TCPProbeType)),
+							},
+						},
+					},
+				},
+			},
+			expected: &corev1.ProbeHandler{
+				TCPSocket: &corev1.TCPSocketAction{
+					Port: intstr.FromInt(int(v1alpha1.DefaultTiProxyServerPort)),
+				},
+			},
+		},
+	}
+
+	for i := range tests {
+		t.Run(tests[i].name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			result := buildTiProxyReadinessProbeHandler(tests[i].tc)
+			g.Expect(result).To(Equal(tests[i].expected))
+		})
+	}
+}
+
+func TestBuildTiProxyProbeCommand(t *testing.T) {
+	tests := []struct {
+		name     string
+		tc       *v1alpha1.TidbCluster
+		expected []string
+	}{
+		{
+			name: "non-TLS cluster",
+			tc: &v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{},
+				},
+			},
+			expected: []string{
+				"curl",
+				"http://127.0.0.1:3080/api/debug/health",
+				"--fail",
+				"--location",
+			},
+		},
+		{
+			name: "TLS cluster enabled",
+			tc: &v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{},
+					TLSCluster: &v1alpha1.TLSCluster{
+						Enabled: true,
+					},
+				},
+			},
+			expected: []string{
+				"curl",
+				"https://127.0.0.1:3080/api/debug/health",
+				"--fail",
+				"--location",
+				"--cacert",
+				"/var/lib/cluster-client-tls/ca.crt",
+				"--cert",
+				"/var/lib/cluster-client-tls/tls.crt",
+				"--key",
+				"/var/lib/cluster-client-tls/tls.key",
+			},
+		},
+		{
+			name: "TLS cluster enabled with tiproxy cert layout 'v1', is same as ''",
+			tc: &v1alpha1.TidbCluster{
+				Spec: v1alpha1.TidbClusterSpec{
+					TiProxy: &v1alpha1.TiProxySpec{
+						CertLayout: "v1",
+					},
+					TLSCluster: &v1alpha1.TLSCluster{
+						Enabled: true,
+					},
+				},
+			},
+			expected: []string{
+				"curl",
+				"https://127.0.0.1:3080/api/debug/health",
+				"--fail",
+				"--location",
+				"--cacert",
+				"/var/lib/cluster-client-tls/ca.crt",
+				"--cert",
+				"/var/lib/cluster-client-tls/tls.crt",
+				"--key",
+				"/var/lib/cluster-client-tls/tls.key",
+			},
+		},
+	}
+
+	for i := range tests {
+		t.Run(tests[i].name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			result := buildTiProxyProbeCommand(tests[i].tc)
+			g.Expect(result).To(Equal(tests[i].expected))
+		})
+	}
 }

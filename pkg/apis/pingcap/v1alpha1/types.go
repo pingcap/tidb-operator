@@ -968,6 +968,14 @@ type TiProxySpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// ServerLabels defines the server labels of the TiProxy.
+	// Using both this field and config file to manage the labels is an undefined behavior.
+	// Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+	//  - region, topology.kubernetes.io/region
+	//  - zone, topology.kubernetes.io/zone
+	//  - host
+	ServerLabels map[string]string `json:"serverLabels,omitempty"`
 }
 
 // LogTailerSpec represents an optional log tailer sidecar container
@@ -1106,6 +1114,14 @@ type TiDBSpec struct {
 	// Arguments is the extra command line arguments for TiDB server.
 	// +optional
 	Arguments []string `json:"arguments,omitempty"`
+
+	// ServerLabels defines the server labels of the TiDB server.
+	// Using both this field and config file to manage the labels is an undefined behavior.
+	// Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+	//  - region, topology.kubernetes.io/region
+	//  - zone, topology.kubernetes.io/zone
+	//  - host
+	ServerLabels map[string]string `json:"serverLabels,omitempty"`
 }
 
 type CustomizedProbe struct {
@@ -2002,6 +2018,8 @@ type S3StorageProvider struct {
 	SSE string `json:"sse,omitempty"`
 	// Options Rclone options for backup and restore with dumpling and lightning.
 	Options []string `json:"options,omitempty"`
+	// ForcePathStyle for the backup and restore to connect s3 with path style(true) or virtual host(false).
+	ForcePathStyle *bool `json:"forcePathStyle,omitempty"`
 }
 
 // +k8s:openapi-gen=true
