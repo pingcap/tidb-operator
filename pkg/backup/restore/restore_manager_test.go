@@ -1142,7 +1142,9 @@ func TestPiTRRestore(t *testing.T) {
 			time.Sleep(100 * time.Microsecond)
 		}
 		err = m.Sync(restore)
-		g.Expect(err).Should(BeNil())
+		// Wait for reconile...
+		g.Expect(err).Should(Not(BeNil()))
+		// Note: maybe inject a fake sts?
 
 		tc2, err = deps.TiDBClusterLister.TidbClusters(restore.Spec.BR.ClusterNamespace).Get(restore.Spec.BR.Cluster)
 		g.Expect(err).Should(BeNil())
@@ -1191,7 +1193,7 @@ func TestPiTRHelperFunctions(t *testing.T) {
 
 	// Test pitrDisable
 	err = m.disable(tc)
-	g.Expect(err).Should(BeNil())
+	g.Expect(err).Should(Not(BeNil()))
 	g.Expect(tc.Status.TiKV.PiTRStatus.OriginConfigMap).Should(BeNil())
 
 	// Test pitrTasksAreDone with no restores

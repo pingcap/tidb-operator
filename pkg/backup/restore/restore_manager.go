@@ -190,6 +190,10 @@ func (rm *PiTRManager) configMapOfTiKV(tc *v1alpha1.TidbCluster) (*v1alpha1.TiKV
 }
 
 func (rm *PiTRManager) MaybeDisable(tc *v1alpha1.TidbCluster) error {
+	if tc == nil {
+		klog.InfoS("Skip disabling PiTR mode because the cluster is nil")
+		return nil
+	}
 	// Note: this isn't effective...
 	// But the target cluster isn't an label hence we don't have a better way yet.
 	restores, err := rm.deps.RestoreLister.List(labels.Everything())
@@ -223,7 +227,7 @@ func pitrTaskIsDone(restore *v1alpha1.Restore) bool {
 		return true
 	}
 	if idx, cond := v1alpha1.GetRestoreCondition(&restore.Status, v1alpha1.RestoreFailed); idx != -1 {
-		klog.InfoS("there is a failed restore hence GC of TiKV will be blocked for retry. to resume GC, delete this restore",
+		klog.InfoS("There is a failed restore hence GC of TiKV will be blocked for retrying PiTR. To resume GC, delete this restore.",
 			"restore", klog.KObj(restore), "cond", cond)
 	}
 	return false
