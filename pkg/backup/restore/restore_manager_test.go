@@ -1109,13 +1109,10 @@ func TestPiTRRestore(t *testing.T) {
 
 		// Simulate the configmap being updated by the operator, set state to Running
 		helper.updateConfigMapRatioThreshold(restore.Spec.BR.ClusterNamespace, restore.Spec.BR.Cluster, -1.0)
-		tc2.Status.TiKV.PiTRStatus.State = v1alpha1.PiTRStateRunning
-		_, err = deps.TiDBClusterControl.Update(tc2)
-		g.Expect(err).Should(BeNil())
-
-		// Second sync should succeed now
 		err = m.Sync(restore)
 		g.Expect(err).Should(BeNil())
+		g.Expect(tc2.Status.TiKV.PiTRStatus.State).To(Equal(v1alpha1.PiTRStateRunning))
+		// Second sync should succeed now
 		helper.hasCondition(restore.Namespace, restore.Name, v1alpha1.RestoreScheduled, "")
 		job, err := helper.Deps.KubeClientset.BatchV1().Jobs(restore.Namespace).Get(context.TODO(), restore.GetRestoreJobName(), metav1.GetOptions{})
 		g.Expect(err).Should(BeNil())
@@ -1238,10 +1235,7 @@ func TestPiTRHelperFunctions(t *testing.T) {
 
 	err = m.Enable(tc)
 	g.Expect(err).Should(BeNil())
-	g.Expect(tc.Status.TiKV.PiTRStatus.State).Should(Equal(v1alpha1.PiTRStateWaitingForConfig))
-
-	// Set state to Running for further testing
-	tc.Status.TiKV.PiTRStatus.State = v1alpha1.PiTRStateRunning
+	g.Expect(tc.Status.TiKV.PiTRStatus.State).Should(Equal(v1alpha1.PiTRStateRunning))
 
 	// Test pitrDisable - should set state to WaitingForConfig and return requeue error
 	err = m.disable(tc)
