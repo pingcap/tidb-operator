@@ -19,11 +19,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
-
-	"github.com/go-logr/logr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
@@ -209,12 +208,10 @@ func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, storeID string) *cor
 			NodeSelector:                  tikv.Spec.Topology,
 			InitContainers: []corev1.Container{
 				{
-					// TODO: support hot reload checker
-					// NOTE: now sidecar cannot be restarted because of this https://github.com/kubernetes/kubernetes/pull/126525.
 					Name:            v1alpha1.ContainerNamePrestopChecker,
 					Image:           image.PrestopChecker.Image(preStopImage),
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					// RestartPolicy:   ptr.To(corev1.ContainerRestartPolicyAlways),
+					RestartPolicy:   ptr.To(corev1.ContainerRestartPolicyAlways),
 					Command: []string{
 						"/bin/sh",
 						"-c",

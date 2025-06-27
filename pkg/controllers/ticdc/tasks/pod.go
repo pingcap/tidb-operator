@@ -191,12 +191,10 @@ func newPod(cluster *v1alpha1.Cluster, ticdc *v1alpha1.TiCDC) *corev1.Pod {
 			NodeSelector:                  ticdc.Spec.Topology,
 			InitContainers: []corev1.Container{
 				{
-					// TODO: support hot reload checker
-					// NOTE: now sidecar cannot be restarted because of this https://github.com/kubernetes/kubernetes/pull/126525.
 					Name:            v1alpha1.ContainerNamePrestopChecker,
 					Image:           image.PrestopChecker.Image(preStopImage),
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					// RestartPolicy:   ptr.To(corev1.ContainerRestartPolicyAlways),
+					RestartPolicy:   ptr.To(corev1.ContainerRestartPolicyAlways),
 					Command: []string{
 						"/bin/sh",
 						"-c",
