@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -30,6 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/backup/snapshotter"
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -69,7 +71,17 @@ func (rm *restoreManager) UpdateCondition(restore *v1alpha1.Restore, condition *
 	return rm.statusUpdater.Update(restore, condition, nil)
 }
 
-func (rm *restoreManager) pitrEnable(tc *v1alpha1.TidbCluster) error {
+type PiTRManager struct {
+	deps *controller.Dependencies
+}
+
+func NewPiTRManager(deps *controller.Dependencies) *PiTRManager {
+	return &PiTRManager{
+		deps: deps,
+	}
+}
+
+func (rm *PiTRManager) Enable(tc *v1alpha1.TidbCluster) error {
 	if tc.Status.TiKV.PiTRStatus.Active {
 		return nil
 	}
@@ -95,7 +107,7 @@ func (rm *restoreManager) pitrEnable(tc *v1alpha1.TidbCluster) error {
 	return err
 }
 
-func (rm *restoreManager) pitrDisable(tc *v1alpha1.TidbCluster) error {
+func (rm *PiTRManager) disable(tc *v1alpha1.TidbCluster) error {
 	if tc.Status.TiKV.PiTRStatus.OriginConfigMap != nil {
 		klog.InfoS("restore-manager pitr disable, restore tikv config from origin configmap",
 			"tidbcluster", klog.KObj(tc), "originConfigMap", tc.Status.TiKV.PiTRStatus.OriginConfigMap)
@@ -107,7 +119,11 @@ func (rm *restoreManager) pitrDisable(tc *v1alpha1.TidbCluster) error {
 		}
 		tc.Status.TiKV.PiTRStatus.OriginConfigMap = nil
 		_, err := rm.deps.TiDBClusterControl.Update(tc)
-		return err
+		if err != nil {
+			return err
+		}
+
+		return controller.RequeueErrorf("config reset, waiting for configmap updated")
 	}
 
 	if tc.Status.TiKV.PiTRStatus.Active {
@@ -120,7 +136,7 @@ func (rm *restoreManager) pitrDisable(tc *v1alpha1.TidbCluster) error {
 		tikvConfigMap := tc.Spec.TiKV.Config
 
 		if cfgMap.Get(TiKVConfigGCThreshold) != tikvConfigMap.Get(TiKVConfigGCThreshold) {
-			return nil
+			return controller.RequeueErrorf("config reset, waiting for configmap updated, keep polling")
 		}
 
 		tc.Spec.TiKV.ConfigUpdateStrategy = tc.Status.TiKV.PiTRStatus.TiKVConfigUpdateStrategy
@@ -134,7 +150,7 @@ func (rm *restoreManager) pitrDisable(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
 
-func (rm *restoreManager) configMapOfTiKV(tc *v1alpha1.TidbCluster) (*v1alpha1.TiKVConfigWraper, error) {
+func (rm *PiTRManager) configMapOfTiKV(tc *v1alpha1.TidbCluster) (*v1alpha1.TiKVConfigWraper, error) {
 	labelSet := labels.Set{
 		label.ComponentLabelKey: label.TiKVLabelVal,
 		label.InstanceLabelKey:  tc.Name,
@@ -148,14 +164,9 @@ func (rm *restoreManager) configMapOfTiKV(tc *v1alpha1.TidbCluster) (*v1alpha1.T
 		return nil, fmt.Errorf("cannot find statefulset for tidbcluster %s/%s with label set %s",
 			tc.Namespace, tc.Name, labelSet)
 	}
-	var cfgMapName string
-	for _, volumn := range sts[0].Spec.Template.Spec.Volumes {
-		name := volumn.Name
-		if strings.HasPrefix(name, controller.TiKVMemberName(tc.Name)) {
-			cfgMapName = volumn.ConfigMap.Name
-			break
-		}
-	}
+	cfgMapName := utils.FindConfigMapVolume(&sts[0].Spec.Template.Spec, func(s string) bool {
+		return strings.HasPrefix(s, controller.TiKVMemberName(tc.Name))
+	})
 	if len(cfgMapName) == 0 {
 		return nil, fmt.Errorf("cannot find volume in the statefulset %s/%s for tidbcluster %s/%s",
 			sts[0].Namespace, sts[0].Name, tc.Namespace, tc.Name)
@@ -178,14 +189,22 @@ func (rm *restoreManager) configMapOfTiKV(tc *v1alpha1.TidbCluster) (*v1alpha1.T
 	return wrapper, nil
 }
 
-func (rm *restoreManager) maybePiTRDisable(tc *v1alpha1.TidbCluster, namespace string) error {
-	restores, err := rm.deps.RestoreLister.Restores(namespace).List(labels.Everything())
+func (rm *PiTRManager) MaybeDisable(tc *v1alpha1.TidbCluster) error {
+	// Note: this isn't effective...
+	// But the target cluster isn't an label hence we don't have a better way yet.
+	restores, err := rm.deps.RestoreLister.List(labels.Everything())
 	if err != nil {
 		return err
 	}
+	restores = slices.DeleteFunc(restores, func(r *v1alpha1.Restore) bool {
+		belongsToThisCluster := r.Spec.BR != nil &&
+			r.Spec.BR.Cluster == tc.Name &&
+			r.Spec.BR.ClusterNamespace == tc.Namespace
+		return !belongsToThisCluster
+	})
 	if pitrTasksAreDone(restores) {
-		klog.V(2).InfoS("All pitr tasks are done, will disable pitr mode", "namespace", namespace, "tidbcluster", tc.Name)
-		return rm.pitrDisable(tc)
+		klog.V(2).InfoS("All pitr tasks are done, will disable pitr mode", "cluster", klog.KObj(tc))
+		return rm.disable(tc)
 	}
 	return nil
 }
@@ -204,13 +223,8 @@ func pitrTaskIsDone(restore *v1alpha1.Restore) bool {
 		return true
 	}
 	if idx, cond := v1alpha1.GetRestoreCondition(&restore.Status, v1alpha1.RestoreFailed); idx != -1 {
-		if time.Since(cond.LastTransitionTime.Time) > 48*time.Hour {
-			klog.V(2).InfoS("A restore task failed long ago. Won't keep restore mode for it",
-				"time", cond.LastTransitionTime,
-				"restore", restore.Name,
-				"ns", restore.Namespace)
-			return true
-		}
+		klog.InfoS("there is a failed restore hence GC of TiKV will be blocked for retry. to resume GC, delete this restore",
+			"restore", klog.KObj(restore), "cond", cond)
 	}
 	return false
 }
@@ -218,6 +232,7 @@ func pitrTaskIsDone(restore *v1alpha1.Restore) bool {
 func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 	ns := restore.GetNamespace()
 	name := restore.GetName()
+	pm := PiTRManager{deps: rm.deps}
 
 	var (
 		err              error
@@ -249,8 +264,9 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		err = backuputil.ValidateRestore(restore, tikvImage, tc.Spec.AcrossK8s)
 	}
 
-	if pErr := rm.maybePiTRDisable(tc, restore.Namespace); pErr != nil {
-		klog.ErrorS(pErr, "Failed to disable PiTR for restore", "restore", restore.Name, "ns", restore.Namespace)
+	if pErr := pm.MaybeDisable(tc); pErr != nil {
+		klog.InfoS("Failed to disable PiTR for restore yet", "restore", restore.Name, "ns", restore.Namespace, "err", pErr)
+		return pErr
 	}
 
 	if err != nil {
@@ -351,7 +367,7 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		// Note: perhaps better to reschedule here and wait the cluster config applied.
 		// But for now BR will also modify this configuration. This configuration map was
 		// modified for making sure they won't be lost after a TiKV restart.
-		if err := rm.pitrEnable(tc); err != nil {
+		if err := pm.Enable(tc); err != nil {
 			return fmt.Errorf("restore %s/%s enable pitr failed, err: %v", ns, name, err)
 		}
 	}
