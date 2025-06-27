@@ -40,4 +40,46 @@ spec:
       matchLabels:
         pingcap.com/managed-by: tidb-operator
         pingcap.com/component: tikv
+---
+# This policy validates volume storage requirements for TiDB Operator managed resources.
+# It ensures that:
+# 1. Storage values must be greater than 0
+# 2. Storage values can only increase, never decrease (for UPDATE operations)
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: "volume-storage.policy.pingcap.com"
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: webhook
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups: ["core.pingcap.com"]
+      apiVersions: ["v1alpha1"]
+      operations: ["CREATE", "UPDATE"]
+      resources: ["*"]
+  validations:
+  # Validate that all volume storage values are greater than 0 for CREATE and UPDATE operations
+  - expression: "!has(object.spec.template) || !has(object.spec.template.spec) || !has(object.spec.template.spec.volumes) || object.spec.template.spec.volumes.all(vol, quantity(vol.storage).compareTo(quantity('0')) > 0)"
+    messageExpression: "'Volume storage must be greater than 0 for all volumes'"
+    reason: Invalid
+  # Validate that storage values can only increase during UPDATE operations
+  - expression: "request.operation != 'UPDATE' || !has(object.spec.template) || !has(object.spec.template.spec) || !has(object.spec.template.spec.volumes) || !has(oldObject.spec.template) || !has(oldObject.spec.template.spec) || !has(oldObject.spec.template.spec.volumes) || object.spec.template.spec.volumes.all(newVol, oldObject.spec.template.spec.volumes.filter(oldVol, oldVol.name == newVol.name).all(oldVol, quantity(oldVol.storage).compareTo(quantity(newVol.storage)) <= 0))"
+    messageExpression: "'Volume storage can only be increased, not decreased. One or more volumes have smaller storage than before'"
+    reason: Invalid
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: "volume-storage.policy.pingcap.com"
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: webhook
+spec:
+  policyName: "volume-storage.policy.pingcap.com"
+  validationActions: [Deny]
 {{- end }}
