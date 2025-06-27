@@ -16,6 +16,7 @@ package restore
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"strings"
 	"testing"
@@ -1091,6 +1092,9 @@ func TestPiTRRestore(t *testing.T) {
 		_, err = deps.TiDBClusterControl.Update(tc)
 		g.Expect(err).Should(BeNil())
 
+		// Create TiKV StatefulSet and ConfigMap for PiTR testing
+		helper.createTiKVStatefulSetAndConfigMap(restore.Spec.BR.ClusterNamespace, restore.Spec.BR.Cluster)
+
 		m := NewRestoreManager(deps)
 
 		// First sync should return RequeueError as it transitions to WaitingForConfig state
@@ -1104,6 +1108,7 @@ func TestPiTRRestore(t *testing.T) {
 		g.Expect(tc2.Spec.TiKV.Config.Get("gc.ratio-threshold").MustFloat()).To(Equal(-1.0))
 
 		// Simulate the configmap being updated by the operator, set state to Running
+		helper.updateConfigMapRatioThreshold(restore.Spec.BR.ClusterNamespace, restore.Spec.BR.Cluster, -1.0)
 		tc2.Status.TiKV.PiTRStatus.State = v1alpha1.PiTRStateRunning
 		_, err = deps.TiDBClusterControl.Update(tc2)
 		g.Expect(err).Should(BeNil())
@@ -1161,14 +1166,19 @@ func TestPiTRRestore(t *testing.T) {
 		}
 		err = m.Sync(restore)
 		// Wait for reconile...
-		g.Expect(err).Should(Not(BeNil()))
-		// Note: maybe inject a fake sts?
-
+		g.Expect(err).Should(MatchError(ContainSubstring("config reset, waiting for configmap updated")))
+		// Verify the state is now WaitingForConfig again
 		tc2, err = deps.TiDBClusterLister.TidbClusters(restore.Spec.BR.ClusterNamespace).Get(restore.Spec.BR.Cluster)
 		g.Expect(err).Should(BeNil())
-		st = tc2.Status.TiKV.PiTRStatus
-		g.Expect(st.OriginConfigMap).To(BeNil())
-		g.Expect(tc2.Spec.TiKV.Config.Get("gc.ratio-threshold")).To(BeNil())
+		g.Expect(tc2.Status.TiKV.PiTRStatus.State).To(Equal(v1alpha1.PiTRStateWaitingForConfig))
+
+		// Verify the original configmap is stored
+		helper.updateConfigMapRatioThreshold(restore.Spec.BR.ClusterNamespace, restore.Spec.BR.Cluster, math.NaN())
+		err = m.Sync(restore)
+		g.Expect(err).Should(BeNil())
+		tc2, err = deps.TiDBClusterLister.TidbClusters(restore.Spec.BR.ClusterNamespace).Get(restore.Spec.BR.Cluster)
+		g.Expect(err).Should(BeNil())
+		g.Expect(tc2.Status.TiKV.PiTRStatus.State).To(Equal(v1alpha1.PiTRStateInactive))
 	}
 }
 
@@ -1201,75 +1211,8 @@ func TestPiTRHelperFunctions(t *testing.T) {
 	tc.Spec.TiKV.Config.Set("gc.ratio-threshold", 1.2)
 	helper.CreateTC("ns", "test-tc", false, false)
 
-	tikvSts := &appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-tc-tikv",
-			Namespace: "ns",
-			Labels: map[string]string{
-				"app.kubernetes.io/name":       "tidb-cluster",
-				"app.kubernetes.io/managed-by": "tidb-operator",
-				"app.kubernetes.io/instance":   "test-tc",
-				"app.kubernetes.io/component":  "tikv",
-			},
-		},
-		Spec: appsv1.StatefulSetSpec{
-			Template: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					Volumes: []corev1.Volume{
-						{
-							Name: "config",
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "test-tc-tikv-00000",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	_, err := deps.KubeClientset.AppsV1().StatefulSets("ns").Create(context.TODO(), tikvSts, metav1.CreateOptions{})
-	g.Expect(err).Should(BeNil())
-
-	g.Eventually(func() error {
-		_, err := deps.StatefulSetLister.StatefulSets("ns").Get("test-tc-tikv")
-		return err
-	}, time.Second*10).Should(BeNil())
-
-	// Create TiKV StatefulSet and ConfigMap for testing config map operations
-	tikvCM := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-tc-tikv-00000",
-			Namespace: "ns",
-			Labels: map[string]string{
-				"app.kubernetes.io/name":       "tidb-cluster",
-				"app.kubernetes.io/managed-by": "tidb-operator",
-				"app.kubernetes.io/instance":   "test-tc",
-				"app.kubernetes.io/component":  "tikv",
-			},
-		},
-		Data: map[string]string{
-			"config-file": `[gc]
-ratio-threshold = 1.2
-
-[server]
-grpc-keepalive-timeout = "30s"
-`,
-			"startup-script": "#!/bin/bash\necho 'starting tikv'",
-		},
-	}
-	_, err = deps.KubeClientset.CoreV1().ConfigMaps("ns").Create(context.TODO(), tikvCM, metav1.CreateOptions{})
-	g.Expect(err).Should(BeNil())
-
-	// Ensure objects are available in listers
-	g.Eventually(func() error {
-		_, err := deps.ConfigMapLister.ConfigMaps("ns").Get("test-tc-tikv-00000")
-		return err
-	}, time.Second*10).Should(BeNil())
+	// Create TiKV StatefulSet and ConfigMap for PiTR testing
+	helper.createTiKVStatefulSetAndConfigMap("ns", "test-tc")
 
 	m := PiTRManager{deps}
 
@@ -1290,38 +1233,8 @@ grpc-keepalive-timeout = "30s"
 
 	// Test configMapOfTiKV after Enable - config should reflect the PiTR setting
 	// Update the ConfigMap to simulate the new config being applied
-	updateConfigMap := func(value float64) {
-		g.Eventually(func() error {
-			tikvCM, err := deps.KubeClientset.CoreV1().ConfigMaps("ns").Get(context.TODO(), "test-tc-tikv-00000", metav1.GetOptions{})
-			if err != nil {
-				return err
-			}
-			updatedTiKVCM := tikvCM.DeepCopy()
-			updatedTiKVCM.Data["config-file"] = fmt.Sprintf(`[gc]
-ratio-threshold = %g
-
-[server]
-grpc-keepalive-timeout = "30s"
-`, value)
-			_, err = deps.KubeClientset.CoreV1().ConfigMaps("ns").Update(context.TODO(), updatedTiKVCM, metav1.UpdateOptions{})
-			if err != nil {
-				return err
-			}
-
-			// Verify the config was properly updated in the configmap
-			cm, err := deps.ConfigMapLister.ConfigMaps("ns").Get("test-tc-tikv-00000")
-			if err != nil {
-				return err
-			}
-			if !strings.Contains(cm.Data["config-file"], fmt.Sprintf("ratio-threshold = %g", value)) {
-				return fmt.Errorf("configmap not updated yet")
-			}
-			return nil
-		}, time.Second*10).Should(BeNil())
-	}
-
 	// Update the ConfigMap to set ratio-threshold to -1.0 for PiTR
-	updateConfigMap(-1.0)
+	helper.updateConfigMapRatioThreshold("ns", "test-tc", -1.0)
 
 	err = m.Enable(tc)
 	g.Expect(err).Should(BeNil())
@@ -1338,16 +1251,9 @@ grpc-keepalive-timeout = "30s"
 
 	// Test disable with state WaitingForConfig and original configmap applied
 	// First restore the original config in the configmap
-	originalTiKVCM := tikvCM.DeepCopy()
-	_, err = deps.KubeClientset.CoreV1().ConfigMaps("ns").Update(context.TODO(), originalTiKVCM, metav1.UpdateOptions{})
-	g.Expect(err).Should(BeNil())
+	helper.updateConfigMapRatioThreshold("ns", "test-tc", 1.2)
 
 	// Test disable when in WaitingForConfig state - should complete disable successfully
-	err = m.disable(tc)
-	g.Expect(err).Should(MatchError(ContainSubstring("config reset, waiting for configmap updated")))
-	g.Expect(tc.Status.TiKV.PiTRStatus.State).Should(Equal(v1alpha1.PiTRStateWaitingForConfig))
-
-	updateConfigMap(1.2)
 	err = m.disable(tc)
 	g.Expect(err).Should(BeNil())
 	g.Expect(tc.Status.TiKV.PiTRStatus.State).Should(Equal(v1alpha1.PiTRStateInactive))
@@ -1426,4 +1332,128 @@ grpc-keepalive-timeout = "30s"
 	}
 	done = pitrTaskIsDone(recentFailedRestore)
 	g.Expect(done).Should(BeFalse())
+}
+
+// createTiKVStatefulSetAndConfigMap creates TiKV StatefulSet and ConfigMap for PiTR testing
+func (h *helper) createTiKVStatefulSetAndConfigMap(namespace, clusterName string) {
+	h.T.Helper()
+	g := NewGomegaWithT(h.T)
+	deps := h.Deps
+
+	// Create TiKV StatefulSet
+	tikvSts := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-tikv", clusterName),
+			Namespace: namespace,
+			Labels: map[string]string{
+				"app.kubernetes.io/name":       "tidb-cluster",
+				"app.kubernetes.io/managed-by": "tidb-operator",
+				"app.kubernetes.io/instance":   clusterName,
+				"app.kubernetes.io/component":  "tikv",
+			},
+		},
+		Spec: appsv1.StatefulSetSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Volumes: []corev1.Volume{
+						{
+							Name: "config",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: fmt.Sprintf("%s-tikv-00000", clusterName),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	_, err := deps.KubeClientset.AppsV1().StatefulSets(namespace).Create(context.TODO(), tikvSts, metav1.CreateOptions{})
+	g.Expect(err).Should(BeNil())
+
+	// Wait for StatefulSet to be available in lister
+	g.Eventually(func() error {
+		_, err := deps.StatefulSetLister.StatefulSets(namespace).Get(fmt.Sprintf("%s-tikv", clusterName))
+		return err
+	}, time.Second*10).Should(BeNil())
+
+	// Create TiKV ConfigMap
+	tikvCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-tikv-00000", clusterName),
+			Namespace: namespace,
+			Labels: map[string]string{
+				"app.kubernetes.io/name":       "tidb-cluster",
+				"app.kubernetes.io/managed-by": "tidb-operator",
+				"app.kubernetes.io/instance":   clusterName,
+				"app.kubernetes.io/component":  "tikv",
+			},
+		},
+		Data: map[string]string{
+			"config-file": `[gc]
+ratio-threshold = 1.2
+
+[server]
+grpc-keepalive-timeout = "30s"
+`,
+			"startup-script": "#!/bin/bash\necho 'starting tikv'",
+		},
+	}
+	_, err = deps.KubeClientset.CoreV1().ConfigMaps(namespace).Create(context.TODO(), tikvCM, metav1.CreateOptions{})
+	g.Expect(err).Should(BeNil())
+
+	// Wait for ConfigMap to be available in lister
+	g.Eventually(func() error {
+		_, err := deps.ConfigMapLister.ConfigMaps(namespace).Get(fmt.Sprintf("%s-tikv-00000", clusterName))
+		return err
+	}, time.Second*10).Should(BeNil())
+}
+
+// updateConfigMapRatioThreshold updates the gc.ratio-threshold in TiKV ConfigMap
+//
+// If value is NaN, will set this to empty.
+func (h *helper) updateConfigMapRatioThreshold(namespace, clusterName string, value float64) {
+	h.T.Helper()
+	g := NewGomegaWithT(h.T)
+	deps := h.Deps
+
+	gcCfg := ""
+	if !math.IsNaN(value) {
+		gcCfg = fmt.Sprintf("ratio-threshold = %g", value)
+	}
+	g.Eventually(func() error {
+		tikvCM, err := deps.KubeClientset.CoreV1().ConfigMaps(namespace).Get(context.TODO(), fmt.Sprintf("%s-tikv-00000", clusterName), metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		updatedTiKVCM := tikvCM.DeepCopy()
+		updatedTiKVCM.Data["config-file"] = fmt.Sprintf(`[gc]
+%s
+
+[server]
+grpc-keepalive-timeout = "30s"
+`, gcCfg)
+		_, err = deps.KubeClientset.CoreV1().ConfigMaps(namespace).Update(context.TODO(), updatedTiKVCM, metav1.UpdateOptions{})
+		if err != nil {
+			return err
+		}
+
+		// Verify the config was properly updated in the configmap
+		cm, err := deps.ConfigMapLister.ConfigMaps(namespace).Get(fmt.Sprintf("%s-tikv-00000", clusterName))
+		if err != nil {
+			return err
+		}
+		if math.IsNaN(value) {
+			if strings.Contains(cm.Data["config-file"], "ratio-threshold") {
+				return fmt.Errorf("configmap should not contain ratio-threshold when value is NaN")
+			}
+		} else if !strings.Contains(cm.Data["config-file"], fmt.Sprintf("ratio-threshold = %g", value)) {
+			return fmt.Errorf("configmap not updated yet")
+		}
+		return nil
+	}, time.Second*10).Should(BeNil())
 }
