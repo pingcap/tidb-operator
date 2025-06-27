@@ -110,7 +110,15 @@ func (rm *PiTRManager) Enable(tc *v1alpha1.TidbCluster) error {
 	}
 
 	if tc.Status.TiKV.PiTRStatus.State == v1alpha1.PiTRStateWaitingForConfig {
-		return rm.ensureConfigMapReconileDone(tc)
+		if err := rm.ensureConfigMapReconileDone(tc); err != nil {
+			return err
+		}
+		tc.Status.TiKV.PiTRStatus.State = v1alpha1.PiTRStateRunning
+		_, err := rm.deps.TiDBClusterControl.Update(tc)
+		if err != nil {
+			return err
+		}
+
 	}
 
 	return nil
