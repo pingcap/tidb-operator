@@ -314,7 +314,7 @@ func TestBRRestore(t *testing.T) {
 
 		tc2, err := deps.TiDBClusterLister.TidbClusters(restore.Spec.BR.ClusterNamespace).Get(restore.Spec.BR.Cluster)
 		g.Expect(err).Should(BeNil())
-		g.Expect(tc2.Status.TiKV.PiTRStatus.Active).To(BeFalse())
+		g.Expect(tc2.Status.TiKV.PiTRStatus.State).To(Equal(v1alpha1.PiTRStateInactive))
 	}
 }
 
@@ -1100,7 +1100,7 @@ func TestPiTRRestore(t *testing.T) {
 		tc2, err := deps.TiDBClusterLister.TidbClusters(restore.Spec.BR.ClusterNamespace).Get(restore.Spec.BR.Cluster)
 		g.Expect(err).Should(BeNil())
 		st := tc2.Status.TiKV.PiTRStatus
-		g.Expect(st.Active).To(BeTrue())
+		g.Expect(st.State).To(Equal(v1alpha1.PiTRStateRunning))
 		g.Expect(tc2.Spec.TiKV.Config.Get("gc.ratio-threshold").MustFloat()).To(Equal(-1.0))
 
 		// check pod env are set correctly for PiTR restore
@@ -1265,7 +1265,7 @@ grpc-keepalive-timeout = "30s"
 	// Test pitrEnable
 	err = m.Enable(tc)
 	g.Expect(err).Should(BeNil())
-	g.Expect(tc.Status.TiKV.PiTRStatus.Active).Should(BeTrue())
+	g.Expect(tc.Status.TiKV.PiTRStatus.State).Should(Equal(v1alpha1.PiTRStateRunning))
 	g.Expect(tc.Status.TiKV.PiTRStatus.OriginConfigMap).ShouldNot(BeNil())
 	g.Expect(*tc.Status.TiKV.PiTRStatus.OriginConfigMap.GCRatioThreshold).Should(Equal(1.2))
 	// Verify that GC threshold is set to -1.0 for PiTR
@@ -1289,7 +1289,7 @@ grpc-keepalive-timeout = "30s"
 	g.Expect(tc.Status.TiKV.PiTRStatus.OriginConfigMap).Should(BeNil())
 
 	// Test disable with active PiTR but no origin config map (config map sync scenario)
-	tc.Status.TiKV.PiTRStatus.Active = true
+	tc.Status.TiKV.PiTRStatus.State = v1alpha1.PiTRStateRunning
 	tc.Status.TiKV.PiTRStatus.OriginConfigMap = nil
 	tc.Spec.TiKV.Config.Set("gc.ratio-threshold", -1.0)
 
@@ -1297,7 +1297,7 @@ grpc-keepalive-timeout = "30s"
 	g.Expect(err).Should(Not(BeNil())) // Should return error asking to wait for configmap update
 
 	// Test MaybeDisable with no restores
-	tc.Status.TiKV.PiTRStatus.Active = true
+	tc.Status.TiKV.PiTRStatus.State = v1alpha1.PiTRStateRunning
 	err = m.MaybeDisable(tc)
 	g.Expect(err).Should(Not(BeNil())) // Should try to disable
 

@@ -1729,16 +1729,23 @@ type TiKVStatus struct {
 	PiTRStatus PiTRStatus `json:"pitrStatus,omitempty"`
 }
 
+type PiTRStateName string
+
+const (
+	PiTRStateInactive         PiTRStateName = "" /* Default to `Inactive` */
+	PiTRStateWaitingForConfig PiTRStateName = "waiting_for_config_map_update"
+	PiTRStateRunning          PiTRStateName = "running"
+)
+
 // PitrStatus is the current state of pitr.
 type PiTRStatus struct {
-	// Active indicates that there is a log restore task in progress.
-	Active bool `json:"activate,omitempty"`
 	// OriginConfigMap contains the original value of the configurations overridden by PiTR.
 	// +optional
 	// +nullable
 	OriginConfigMap *PiTROverriddenConfig `json:"originConfigMap,omitempty"`
 	// The origin tikv config update strategy.
 	TiKVConfigUpdateStrategy *ConfigUpdateStrategy `json:"updateStrategy,omitempty"`
+	State                    PiTRStateName         `json:"state,omitempty"`
 }
 
 // PiTROverriddenConfig contains the configurations that are overridden by PiTR.

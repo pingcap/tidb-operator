@@ -82,11 +82,20 @@ func NewPiTRManager(deps *controller.Dependencies) *PiTRManager {
 }
 
 func (rm *PiTRManager) Enable(tc *v1alpha1.TidbCluster) error {
-	if tc.Status.TiKV.PiTRStatus.Active {
+	if tc.Status.TiKV.PiTRStatus.State == v1alpha1.PiTRStateRunning {
+		tikvConfigMap := tc.Spec.TiKV.Config
+		cfgMap, err := rm.configMapOfTiKV(tc)
+		if err != nil {
+			return err
+		}
+		if cfgMap.Get(TiKVConfigGCThreshold) != tikvConfigMap.Get(TiKVConfigGCThreshold) {
+			return controller.RequeueErrorf("config reset, waiting for configmap updated, keep polling")
+		}
+
 		return nil
 	}
 
-	tc.Status.TiKV.PiTRStatus.Active = true
+	tc.Status.TiKV.PiTRStatus.State = v1alpha1.PiTRStateRunning
 	if tc.Spec.TiKV.Config == nil || tc.Spec.TiKV.Config.MP == nil {
 		tc.Spec.TiKV.Config = v1alpha1.NewTiKVConfig()
 	}
@@ -126,7 +135,7 @@ func (rm *PiTRManager) disable(tc *v1alpha1.TidbCluster) error {
 		return controller.RequeueErrorf("config reset, waiting for configmap updated")
 	}
 
-	if tc.Status.TiKV.PiTRStatus.Active {
+	if tc.Status.TiKV.PiTRStatus.State == v1alpha1.PiTRStateRunning {
 		klog.InfoS("restore-manager pitr disable, restore tikv config from current configmap",
 			"tidbcluster", klog.KObj(tc), "currentConfigUpdateStrategy", tc.Spec.TiKV.ConfigUpdateStrategy)
 		cfgMap, err := rm.configMapOfTiKV(tc)
@@ -141,7 +150,7 @@ func (rm *PiTRManager) disable(tc *v1alpha1.TidbCluster) error {
 
 		tc.Spec.TiKV.ConfigUpdateStrategy = tc.Status.TiKV.PiTRStatus.TiKVConfigUpdateStrategy
 
-		tc.Status.TiKV.PiTRStatus.Active = false
+		tc.Status.TiKV.PiTRStatus.State = v1alpha1.PiTRStateInactive
 		tc.Status.TiKV.PiTRStatus.TiKVConfigUpdateStrategy = nil
 		_, err = rm.deps.TiDBClusterControl.Update(tc)
 		return err
