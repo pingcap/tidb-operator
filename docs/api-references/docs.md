@@ -12428,6 +12428,13 @@ float64
 </tr>
 </tbody>
 </table>
+<h3 id="pitrstatename">PiTRStateName</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#pitrstatus">PiTRStatus</a>)
+</p>
+<p>
+</p>
 <h3 id="pitrstatus">PiTRStatus</h3>
 <p>
 (<em>Appears on:</em>
@@ -12444,17 +12451,6 @@ float64
 </tr>
 </thead>
 <tbody>
-<tr>
-<td>
-<code>activate</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<p>Active indicates that there is a log restore task in progress.</p>
-</td>
-</tr>
 <tr>
 <td>
 <code>originConfigMap</code></br>
@@ -12480,6 +12476,18 @@ ConfigUpdateStrategy
 </td>
 <td>
 <p>The origin tikv config update strategy.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>state</code></br>
+<em>
+<a href="#pitrstatename">
+PiTRStateName
+</a>
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
