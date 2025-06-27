@@ -6,8 +6,7 @@ spec:
   baseImage: pingcap/tidb-dashboard
   version: latest
 
-  ## tidb cluster to be monitored
-  ## ** now only support monitoring one tidb cluster **
+  ## tidb cluster(s) to be monitored
   clusters:
     - name: basic
 
