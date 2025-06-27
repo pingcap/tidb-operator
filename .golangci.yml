@@ -25,17 +25,16 @@ linters:
     - gosec
     - govet
     - ineffassign
-    # - lll  # TODO(ideascf): recover it
+    - lll  # TODO(ideascf): recover it
     - misspell
     - nakedret
     - noctx
     # - nolintlint # TODO(ideascf): recover it
     - revive
-    # - stylecheck # TODO(ideascf): recover it
     - staticcheck
     - testifylint
     - unconvert
-    # - unparam  # TODO(ideascf): recover it
+    - unparam
     - unused
     - whitespace
     - errcheck
@@ -60,9 +59,9 @@ linters:
     staticcheck:
       checks:
         - all
-        - "-SA1019" # TODO: remove this
-        - "-ST1003" # TODO: remove this
-        - "-ST1000"
+        - "-SA1019" # TODO: remove this # Using a deprecated function, variable, constant or field
+        - "-ST1003" # Need to rename many variables, like `bucketAcl` to `bucketACL`, `projectId` to `projectID`, etc.
+        - "-ST1000" # Incorrect or missing package comment
     dupl:
       threshold: 100
     funlen:

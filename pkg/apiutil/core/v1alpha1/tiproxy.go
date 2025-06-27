@@ -71,9 +71,15 @@ func TiProxyTiDBTLSSecretName(tiproxy *v1alpha1.TiProxy) string {
 
 // IsTiProxyMySQLTLSEnabled returns whether the TLS between TiProxy server and MySQL client is enabled.
 func IsTiProxyMySQLTLSEnabled(tiproxy *v1alpha1.TiProxy) bool {
-	return tiproxy.Spec.Security != nil && tiproxy.Spec.Security.TLS != nil && tiproxy.Spec.Security.TLS.MySQL != nil && tiproxy.Spec.Security.TLS.MySQL.Enabled
+	return tiproxy.Spec.Security != nil &&
+		tiproxy.Spec.Security.TLS != nil &&
+		tiproxy.Spec.Security.TLS.MySQL != nil &&
+		tiproxy.Spec.Security.TLS.MySQL.Enabled
 }
 
 func IsTiProxyTiDBTLSEnabled(tiproxy *v1alpha1.TiProxy) bool {
-	return tiproxy.Spec.Security != nil && tiproxy.Spec.Security.TLS != nil && tiproxy.Spec.Security.TLS.Backend != nil && tiproxy.Spec.Security.TLS.Backend.Enabled
+	return tiproxy.Spec.Security != nil &&
+		tiproxy.Spec.Security.TLS != nil &&
+		tiproxy.Spec.Security.TLS.Backend != nil &&
+		tiproxy.Spec.Security.TLS.Backend.Enabled
 }

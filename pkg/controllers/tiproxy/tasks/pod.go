@@ -242,7 +242,10 @@ func newPod(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) *corev1.Pod {
 						},
 					},
 					ReadinessProbe: &corev1.Probe{
-						ProbeHandler:        buildTiProxyReadinessProbeHandler(cluster, tiproxy, coreutil.TiProxyClientPort(tiproxy), coreutil.TiProxyAPIPort(tiproxy)),
+						ProbeHandler: buildTiProxyReadinessProbeHandler(
+							cluster, tiproxy,
+							coreutil.TiProxyClientPort(tiproxy),
+							coreutil.TiProxyAPIPort(tiproxy)),
 						InitialDelaySeconds: defaultReadinessProbeInitialDelaySeconds,
 					},
 				},
@@ -261,7 +264,11 @@ func newPod(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) *corev1.Pod {
 }
 
 // TODO(liubo02): extract to namer pkg
-func buildTiProxyReadinessProbeHandler(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy, clientPort, statusPort int32) corev1.ProbeHandler {
+func buildTiProxyReadinessProbeHandler(
+	cluster *v1alpha1.Cluster,
+	tiproxy *v1alpha1.TiProxy,
+	clientPort, statusPort int32,
+) corev1.ProbeHandler {
 	probeType := v1alpha1.CommandProbeType // default to http probe
 	if tiproxy.Spec.Probes.Readiness != nil && tiproxy.Spec.Probes.Readiness.Type != nil {
 		probeType = *tiproxy.Spec.Probes.Readiness.Type
