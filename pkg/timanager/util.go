@@ -16,6 +16,7 @@ package timanager
 
 import (
 	"context"
+	"strings"
 	"sync"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -184,4 +185,16 @@ func (c *cached[Client, UnderlayClient]) Stop() {
 
 	c.cancel()
 	c.f.Shutdown()
+}
+
+func PrimaryKey(ns, cluster string) string {
+	return ns + ":" + cluster
+}
+
+func SplitPrimaryKey(key string) (ns, cluster string) {
+	keys := strings.SplitN(key, ":", 2)
+	if len(keys) < 2 {
+		return keys[0], ""
+	}
+	return keys[0], keys[1]
 }

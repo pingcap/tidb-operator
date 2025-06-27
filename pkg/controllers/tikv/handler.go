@@ -28,8 +28,8 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/timanager"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
-	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 )
 
 func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Object, reconcile.Request] {
@@ -117,7 +117,7 @@ func (r *Reconciler) getRequestOfTiKVStore(ctx context.Context, s *pdv1.Store) (
 		return reconcile.Request{}, fmt.Errorf("store is not tikv")
 	}
 
-	ns, cluster := pdm.SplitPrimaryKey(s.Namespace)
+	ns, cluster := timanager.SplitPrimaryKey(s.Namespace)
 	var kvl v1alpha1.TiKVList
 	if err := r.Client.List(ctx, &kvl, client.MatchingLabels{
 		v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,

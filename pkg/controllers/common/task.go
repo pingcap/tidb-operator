@@ -171,6 +171,7 @@ type ContextSliceNewer[
 	SetInstanceSlice(f []IF)
 }
 
+// TaskContextSlice init instance slice in state by the group
 func TaskContextSlice[
 	S scope.GroupInstance[GF, GT, IS],
 	IS scope.List[IL, I],
@@ -188,6 +189,25 @@ func TaskContextSlice[
 
 		state.SetInstanceSlice(objs)
 		return task.Complete().With("instance slice is set")
+	})
+}
+
+// TaskContextPeerSlice init peer instance slice in state by the instance
+func TaskContextPeerSlice[
+	S scope.InstanceList[F, T, L],
+	F client.Object,
+	T runtime.Instance,
+	L client.ObjectList,
+](state ContextSliceNewer[F, F], c client.Client) task.Task {
+	return task.NameTaskFunc("ContextPeerSlice", func(ctx context.Context) task.Result {
+		in := state.Object()
+		objs, err := apicall.ListPeerInstances[S](ctx, c, in)
+		if err != nil {
+			return task.Fail().With("cannot get peer instance slice: %v", err)
+		}
+
+		state.SetInstanceSlice(objs)
+		return task.Complete().With("peer instance slice is set")
 	})
 }
 

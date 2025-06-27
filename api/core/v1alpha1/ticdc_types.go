@@ -15,8 +15,9 @@
 package v1alpha1
 
 import (
-	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 const (
@@ -55,7 +56,8 @@ type TiCDCGroupList struct {
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
-// TiCDCGroup defines a group of similar TiCDC instances
+// TiCDCGroup defines a group of similar TiCDC instances.
+// +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 30",message="name must not exceed 30 characters"
 type TiCDCGroup struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -86,6 +88,7 @@ type TiCDCList struct {
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // TiCDC defines a TiCDC instance
+// +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 37",message="name must not exceed 37 characters"
 type TiCDC struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -99,7 +102,9 @@ type TiCDCGroupSpec struct {
 	Cluster ClusterReference `json:"cluster"`
 	// Features are enabled feature
 	Features []meta.Feature `json:"features,omitempty"`
-	Replicas *int32         `json:"replicas"`
+
+	// +kubebuilder:validation:Minimum=0
+	Replicas *int32 `json:"replicas"`
 
 	// +listType=map
 	// +listMapKey=type
@@ -114,7 +119,11 @@ type TiCDCTemplate struct {
 }
 
 // TiCDCTemplateSpec can only be specified in TiCDCGroup
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes) && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in volumes"
 type TiCDCTemplateSpec struct {
+	// Version must be a semantic version.
+	// It can has a v prefix or not.
+	// +kubebuilder:validation:Pattern=`^(v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
 	Version string `json:"version"`
 	// Image is TiCDC's image
 	// If tag is omitted, version will be used as the image tag.
@@ -131,6 +140,7 @@ type TiCDCTemplateSpec struct {
 	// If you want to use ephemeral storage or mount sink TLS certs, you can use "overlay" instead.
 	// +listType=map
 	// +listMapKey=name
+	// +kubebuilder:validation:MaxItems=256
 	Volumes []Volume `json:"volumes,omitempty"`
 	// Overlay defines a k8s native resource template patch
 	// All resources(pod, pvcs, ...) managed by TiCDC can be overlayed by this field
@@ -177,6 +187,7 @@ type TiCDCSpec struct {
 
 	// Subdomain means the subdomain of the exported TiCDC DNS.
 	// A same TiCDC cluster will use a same subdomain
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="subdomain is immutable"
 	Subdomain string `json:"subdomain"`
 
 	// TiCDCTemplateSpec embedded some fields managed by TiCDCGroup

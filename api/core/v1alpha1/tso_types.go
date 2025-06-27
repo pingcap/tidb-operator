@@ -15,8 +15,9 @@
 package v1alpha1
 
 import (
-	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 const (
@@ -51,7 +52,8 @@ type TSOGroupList struct {
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
-// TSOGroup defines a group of similar TSO instances
+// TSOGroup defines a group of similar TSO instances.
+// +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 30",message="name must not exceed 30 characters"
 type TSOGroup struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -81,7 +83,8 @@ type TSOList struct {
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
-// TSO defines a TSO instance
+// TSO defines a TSO instance.
+// +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 37",message="name must not exceed 37 characters"
 type TSO struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -90,12 +93,13 @@ type TSO struct {
 	Status TSOStatus `json:"status,omitempty"`
 }
 
-// TSOGroupSpec describes the common attributes of a TSOGroup
+// TSOGroupSpec describes the common attributes of a TSOGroup.
 type TSOGroupSpec struct {
 	Cluster ClusterReference `json:"cluster"`
 	// Features are enabled feature
 	Features []meta.Feature `json:"features,omitempty"`
-	Replicas *int32         `json:"replicas"`
+	// +kubebuilder:validation:Minimum=0
+	Replicas *int32 `json:"replicas"`
 
 	// +listType=map
 	// +listMapKey=type
@@ -111,7 +115,11 @@ type TSOTemplate struct {
 
 // TSOTemplateSpec can only be specified in TSOGroup
 // TODO: It's name may need to be changed to distinguish from PodTemplateSpec
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes) && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in volumes"
 type TSOTemplateSpec struct {
+	// Version must be a semantic version.
+	// It can has a v prefix or not.
+	// +kubebuilder:validation:Pattern=`^(v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
 	Version string `json:"version"`
 
 	// Image is pd's image
@@ -133,6 +141,7 @@ type TSOTemplateSpec struct {
 	// Volumes defines persistent volumes of TSO
 	// +listType=map
 	// +listMapKey=name
+	// +kubebuilder:validation:MaxItems=256
 	Volumes []Volume `json:"volumes,omitempty"`
 
 	// Overlay defines a k8s native resource template patch
@@ -171,6 +180,7 @@ type TSOSpec struct {
 
 	// Subdomain means the subdomain of the exported tso dns.
 	// A same tso cluster will use a same subdomain
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="subdomain is immutable"
 	Subdomain string `json:"subdomain"`
 
 	// TSOTemplateSpec embedded some fields managed by TSOGroup
@@ -179,4 +189,7 @@ type TSOSpec struct {
 
 type TSOStatus struct {
 	CommonStatus `json:",inline"`
+
+	// IsDefaultPrimary indicates whether this TSO instance is the primary for the default keyspace group.
+	IsDefaultPrimary bool `json:"isDefaultPrimary"`
 }

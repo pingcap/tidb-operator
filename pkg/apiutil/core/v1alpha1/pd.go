@@ -14,7 +14,11 @@
 
 package coreutil
 
-import "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+import (
+	"fmt"
+
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+)
 
 func PDGroupClientPort(pdg *v1alpha1.PDGroup) int32 {
 	if pdg.Spec.Template.Spec.Server.Ports.Client != nil {
@@ -42,4 +46,14 @@ func PDPeerPort(pd *v1alpha1.PD) int32 {
 		return pd.Spec.Server.Ports.Peer.Port
 	}
 	return v1alpha1.DefaultPDPortPeer
+}
+
+func PDServiceHost(pdg *v1alpha1.PDGroup) string {
+	host := fmt.Sprintf("%s-pd.%s:%d", pdg.Name, pdg.Namespace, PDGroupClientPort(pdg))
+
+	return host
+}
+
+func PDServiceURL(pdg *v1alpha1.PDGroup, isTLS bool) string {
+	return hostToURL(PDServiceHost(pdg), isTLS)
 }

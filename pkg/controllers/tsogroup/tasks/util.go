@@ -16,8 +16,23 @@ package tasks
 
 import (
 	"fmt"
+
+	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/updater"
 )
 
 func HeadlessServiceName(groupName string) string {
 	return fmt.Sprintf("%s-tso-peer", groupName)
+}
+
+func NotLeaderPolicy() updater.PreferPolicy[*runtime.TSO] {
+	return updater.PreferPolicyFunc[*runtime.TSO](func(tsos []*runtime.TSO) []*runtime.TSO {
+		var notLeader []*runtime.TSO
+		for _, tso := range tsos {
+			if !tso.Status.IsDefaultPrimary {
+				notLeader = append(notLeader, tso)
+			}
+		}
+		return notLeader
+	})
 }

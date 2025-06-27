@@ -15,9 +15,10 @@
 package v1alpha1
 
 import (
-	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 const (
@@ -75,6 +76,7 @@ type TiDBGroupList struct {
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // TiDBGroup defines a group of similar TiDB instances.
+// +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 30",message="name must not exceed 30 characters"
 type TiDBGroup struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -105,6 +107,7 @@ type TiDBList struct {
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // TiDB defines a TiDB instance.
+// +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 37",message="name must not exceed 37 characters"
 type TiDB struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -120,6 +123,7 @@ type TiDBGroupSpec struct {
 	// Features are enabled feature
 	Features []meta.Feature `json:"features,omitempty"`
 
+	// +kubebuilder:validation:Minimum=0
 	Replicas *int32 `json:"replicas"`
 
 	// Service defines some fields used to override the default service.
@@ -138,7 +142,11 @@ type TiDBTemplate struct {
 }
 
 // TiDBTemplateSpec can only be specified in TiDBGroup.
+// +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes) && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in volumes"
 type TiDBTemplateSpec struct {
+	// Version must be a semantic version.
+	// It can has a v prefix or not.
+	// +kubebuilder:validation:Pattern=`^(v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
 	Version string `json:"version"`
 	// Image is tidb's image
 	// If tag is omitted, version will be used as the image tag.
@@ -158,6 +166,7 @@ type TiDBTemplateSpec struct {
 	// Volumes defines data volume of TiDB, it is optional.
 	// +listType=map
 	// +listMapKey=name
+	// +kubebuilder:validation:MaxItems=256
 	Volumes []Volume `json:"volumes,omitempty"`
 
 	// SlowLog defines the separate slow log configuration for TiDB.
@@ -273,6 +282,7 @@ type TiDBTLS struct {
 	//      The name of this Secret must be: <groupName>-tidb-client-secret.
 	//        kubectl create secret generic <groupName>-tidb-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
 	//   4. Set Enabled to `true`.
+	// +kubebuilder:validation:XValidation:rule="oldSelf == null || self.enabled == oldSelf.enabled",message="field .mysql.enabled is immutable"
 	MySQL *TLS `json:"mysql,omitempty"`
 
 	// TODO(csuzhangxc): usage of the following fields
@@ -310,8 +320,9 @@ type TiDBSpec struct {
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="topology is immutable"
 	Topology Topology `json:"topology,omitempty"`
 
-	// Subdomain means the subdomain of the exported pd dns.
-	// A same pd cluster will use a same subdomain
+	// Subdomain means the subdomain of the exported TiDB dns.
+	// A same TiDB cluster will use a same subdomain
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="subdomain is immutable"
 	Subdomain string `json:"subdomain"`
 
 	// TiDBTemplateSpec embeded some fields managed by TiDBGroup.

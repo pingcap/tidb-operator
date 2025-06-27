@@ -23,6 +23,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/timanager"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -76,7 +77,7 @@ func TaskFinalizerDel(state State, c client.Client, m pdm.PDClientManager) task.
 			return task.Fail().With("failed to ensure finalizer has been removed: %w", err)
 		}
 
-		m.Deregister(pdm.PrimaryKey(state.Cluster().Namespace, state.Cluster().Name))
+		m.Deregister(timanager.PrimaryKey(state.Cluster().Namespace, state.Cluster().Name))
 
 		return task.Complete().With("finalizer has been removed")
 	})

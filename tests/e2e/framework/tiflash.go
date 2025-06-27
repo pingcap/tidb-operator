@@ -21,6 +21,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
@@ -29,4 +30,11 @@ func (f *Framework) WaitForTiFlashGroupReady(ctx context.Context, fg *v1alpha1.T
 	ginkgo.By("wait for tiflash group ready")
 	f.Must(waiter.WaitForTiFlashesHealthy(ctx, f.Client, fg, waiter.LongTaskTimeout))
 	f.Must(waiter.WaitForPodsReady(ctx, f.Client, runtime.FromTiFlashGroup(fg), waiter.LongTaskTimeout))
+}
+
+func (f *Framework) MustCreateTiFlash(ctx context.Context, ps ...data.GroupPatch[*runtime.TiFlashGroup]) *v1alpha1.TiFlashGroup {
+	fg := data.NewTiFlashGroup(f.Namespace.Name, ps...)
+	ginkgo.By("Creating a tiflash group")
+	f.Must(f.Client.Create(ctx, fg))
+	return fg
 }

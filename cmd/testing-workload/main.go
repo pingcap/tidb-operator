@@ -15,12 +15,15 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 )
 
 var (
@@ -41,6 +44,15 @@ var (
 	totalRows        int
 	importTable      string
 	splitRegionCount int
+
+	// Flags for TLS support
+	enableTLS          bool
+	tlsCertFile        string
+	tlsKeyFile         string
+	tlsCAFile          string
+	tlsMountPath       string
+	tlsFromEnv         bool
+	insecureSkipVerify bool
 )
 
 //nolint:mnd,errcheck
@@ -62,6 +74,15 @@ func main() {
 	flag.StringVar(&importTable, "import-table", "t1", "table name for import action")
 	flag.IntVar(&splitRegionCount, "split-region-count", 0, "number of regions to split for import action")
 
+	// Flags for TLS support
+	flag.BoolVar(&enableTLS, "enable-tls", false, "enable TLS connection")
+	flag.StringVar(&tlsCertFile, "tls-cert", "", "path to TLS certificate file")
+	flag.StringVar(&tlsKeyFile, "tls-key", "", "path to TLS private key file")
+	flag.StringVar(&tlsCAFile, "tls-ca", "", "path to TLS CA certificate file")
+	flag.StringVar(&tlsMountPath, "tls-mount-path", "", "path to mounted TLS certificates directory (for Kubernetes secrets)")
+	flag.BoolVar(&tlsFromEnv, "tls-from-env", false, "load TLS certificates from environment variables")
+	flag.BoolVar(&insecureSkipVerify, "tls-insecure-skip-verify", false, "skip TLS certificate verification")
+
 	flag.Parse()
 
 	// enable "cleartext client side plugin" for `tidb_auth_token`.
@@ -69,6 +90,15 @@ func main() {
 	params := []string{
 		"charset=utf8mb4",
 		"allowCleartextPasswords=true",
+	}
+
+	// Setup TLS if enabled
+	if enableTLS {
+		tlsConfigName, err := setupTLSConfig()
+		if err != nil {
+			panic(fmt.Errorf("failed to setup TLS config: %w", err))
+		}
+		params = append(params, fmt.Sprintf("tls=%s", tlsConfigName))
 	}
 
 	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@(%s:4000)/test?%s", user, password, host, strings.Join(params, "&")))
@@ -102,4 +132,63 @@ func main() {
 	}
 
 	fmt.Println("workload is done")
+}
+
+// setupTLSConfig configures TLS for the MySQL connection
+func setupTLSConfig() (string, error) {
+	var tlsConfig *tls.Config
+	var err error
+
+	// Priority: mount path > environment variables > individual files
+	if tlsMountPath != "" {
+		fmt.Printf("Loading TLS config from mount path: %s\n", tlsMountPath)
+		tlsConfig, err = TLSConfigFromMount(tlsMountPath, insecureSkipVerify)
+		if err != nil {
+			return "", fmt.Errorf("failed to load TLS config from mount path: %w", err)
+		}
+	} else if tlsFromEnv {
+		fmt.Println("Loading TLS config from environment variables")
+		tlsConfig, err = TLSConfigFromEnv(insecureSkipVerify)
+		if err != nil {
+			return "", fmt.Errorf("failed to load TLS config from environment: %w", err)
+		}
+	} else {
+		// Fallback to individual file paths
+		fmt.Println("Loading TLS config from individual file paths")
+		tlsConfig = &tls.Config{
+			InsecureSkipVerify: insecureSkipVerify, //nolint:gosec // user controllable via flag
+		}
+
+		// Load CA certificate if provided
+		if tlsCAFile != "" {
+			caCert, err := os.ReadFile(tlsCAFile)
+			if err != nil {
+				return "", fmt.Errorf("failed to read CA file %s: %w", tlsCAFile, err)
+			}
+
+			caCertPool := x509.NewCertPool()
+			if !caCertPool.AppendCertsFromPEM(caCert) {
+				return "", fmt.Errorf("failed to append CA certs from %s", tlsCAFile)
+			}
+			tlsConfig.RootCAs = caCertPool
+		}
+
+		// Load client certificate and key if provided
+		if tlsCertFile != "" && tlsKeyFile != "" {
+			cert, err := tls.LoadX509KeyPair(tlsCertFile, tlsKeyFile)
+			if err != nil {
+				return "", fmt.Errorf("failed to load client certificate from %s and %s: %w", tlsCertFile, tlsKeyFile, err)
+			}
+			tlsConfig.Certificates = []tls.Certificate{cert}
+		}
+	}
+
+	// Register TLS config with MySQL driver
+	tlsConfigName := "tidb-testing-workload"
+	if err := mysql.RegisterTLSConfig(tlsConfigName, tlsConfig); err != nil {
+		return "", fmt.Errorf("failed to register TLS config: %w", err)
+	}
+
+	fmt.Printf("TLS config registered successfully with name: %s\n", tlsConfigName)
+	return tlsConfigName, nil
 }
