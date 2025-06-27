@@ -179,8 +179,9 @@ func (rm *PiTRManager) configMapOfTiKV(tc *v1alpha1.TidbCluster) (*v1alpha1.TiKV
 		return nil, err
 	}
 	// wrap the tikv config with tikv cfg wrapper
-	wrapper := &v1alpha1.TiKVConfigWraper{}
-	err = wrapper.UnmarshalTOML([]byte(cfgMap.Data["config-file"]))
+	wrapper := v1alpha1.NewTiKVConfig()
+	data := []byte(cfgMap.Data["config-file"])
+	err = wrapper.UnmarshalTOML(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal tikv config in configmap %s for tidbcluster %s/%s, err: %v",
 			cfgMapName, tc.Namespace, tc.Name, err)
