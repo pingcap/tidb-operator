@@ -20,57 +20,74 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	yamlutil "k8s.io/apimachinery/pkg/util/yaml"
 	kyaml "sigs.k8s.io/yaml"
 )
 
-var (
-	groupCRDs = []string{
-		"core.pingcap.com_pdgroups.yaml",
-		"core.pingcap.com_tikvgroups.yaml",
-		"core.pingcap.com_tidbgroups.yaml",
-		"core.pingcap.com_tiflashgroups.yaml",
-		"core.pingcap.com_ticdcgroups.yaml",
-	}
-	instanceCRDs = []string{
-		"core.pingcap.com_pds.yaml",
-		"core.pingcap.com_tikvs.yaml",
-		"core.pingcap.com_tidbs.yaml",
-		"core.pingcap.com_tiflashes.yaml",
-		"core.pingcap.com_ticdcs.yaml",
-	}
-)
-
 func main() {
 	var dir string
 	flag.StringVar(&dir, "dir", "manifests/crd", "dir of crds")
 	flag.Parse()
-	for _, crdPath := range groupCRDs {
-		path := filepath.Join(dir, crdPath)
+
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		panic(fmt.Errorf("failed to read dir %s: %w", dir, err))
+	}
+
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		fileName := file.Name()
+		if !strings.HasSuffix(fileName, ".yaml") {
+			continue
+		}
+
+		path := filepath.Join(dir, fileName)
 		crd, err := loadCRD(path)
 		if err != nil {
 			panic(err)
 		}
 
-		removeUselessRequired(crd, "spec", "template", "spec", "overlay", "pod")
-		if err := saveCRD(path, crd); err != nil {
-			panic(err)
+		if len(crd.Spec.Versions) == 0 {
+			continue
 		}
-	}
-	for _, crdPath := range instanceCRDs {
-		path := filepath.Join(dir, crdPath)
-		crd, err := loadCRD(path)
-		if err != nil {
-			panic(err)
+		schema := crd.Spec.Versions[0].Schema.OpenAPIV3Schema
+
+		if checkPathExists(schema, "spec", "template", "spec", "overlay") {
+			// It's a group CRD, which has an overlay in spec.template.spec.overlay
+			removeUselessRequired(crd, "spec", "template", "spec", "overlay", "pod")
+		} else if checkPathExists(schema, "spec", "overlay") {
+			// It's an instance CRD, which has an overlay in spec.overlay
+			removeUselessRequired(crd, "spec", "overlay", "pod")
+		} else {
+			continue
 		}
 
-		removeUselessRequired(crd, "spec", "overlay", "pod")
 		if err := saveCRD(path, crd); err != nil {
 			panic(err)
 		}
 	}
+}
+
+// checkPathExists checks if a path of keys exists in the schema's properties.
+func checkPathExists(schema *apiextensionsv1.JSONSchemaProps, keys ...string) bool {
+	current := schema
+	for _, key := range keys {
+		if current == nil {
+			return false
+		}
+		child, ok := current.Properties[key]
+		if !ok {
+			return false
+		}
+		current = &child
+	}
+	return true
 }
 
 func saveCRD(path string, crd *apiextensionsv1.CustomResourceDefinition) error {
@@ -132,6 +149,8 @@ func handleVersion(version *apiextensionsv1.CustomResourceDefinitionVersion, key
 
 func handleSelectedJSONSchemaProps(props *apiextensionsv1.JSONSchemaProps, keys ...string) {
 	if len(keys) == 0 {
+		// When the target path is reached, call handleJSONSchemaProps to remove the required fields.
+		// `nil` is passed for retainKeys, which means no keys should be retained (i.e., all are removed).
 		handleJSONSchemaProps(props, nil)
 		return
 	}
@@ -139,26 +158,35 @@ func handleSelectedJSONSchemaProps(props *apiextensionsv1.JSONSchemaProps, keys 
 	key := keys[0]
 	child, ok := props.Properties[key]
 	if !ok {
+		// This case should ideally not be reached if the CRD structure is as expected.
 		fmt.Println("cannot find keys: ", keys)
 		panic("no props")
 	}
+	// Recurse into the next level of the schema.
 	handleSelectedJSONSchemaProps(&child, keys[1:]...)
 	props.Properties[key] = child
 }
 
+// handleJSONSchemaProps recursively removes the `required` constraint from an object property.
+// It works by replacing the `Required` slice with the intersection of itself and `retainKeys`.
+// When `retainKeys` is nil or empty, the intersection is always an empty slice, effectively
+// clearing all `required` constraints.
 func handleJSONSchemaProps(props *apiextensionsv1.JSONSchemaProps, retainKeys []string) {
 	switch props.Type {
 	case "object":
 		switch {
 		case props.XMapType == nil || *props.XMapType == "granular":
-			// remove required for granular map
+			// For granular maps, remove the `required` fields.
+			// The call to intersection with a `nil` retainKeys will clear the list.
 			props.Required = intersection(props.Required, retainKeys)
+			// Recursively process all child properties to ensure nested objects are also handled.
 			//nolint:gocritic
 			for key, val := range props.Properties {
 				handleJSONSchemaProps(&val, nil)
 				props.Properties[key] = val
 			}
 		case *props.XMapType == "atomic":
+			// Do not modify atomic maps.
 			return
 		}
 	case "array":
@@ -170,11 +198,13 @@ func handleJSONSchemaProps(props *apiextensionsv1.JSONSchemaProps, retainKeys []
 		case *props.XListType == "set":
 			return
 		case *props.XListType == "map":
+			// For map-type lists, process the schema of the list items.
 			handleJSONSchemaPropsOrArray(props.Items, props.XListMapKeys)
 		}
 	}
 }
 
+// handleJSONSchemaPropsOrArray handles schemas that can be a single schema or an array of schemas.
 func handleJSONSchemaPropsOrArray(props *apiextensionsv1.JSONSchemaPropsOrArray, retainKeys []string) {
 	if props.Schema != nil {
 		handleJSONSchemaProps(props.Schema, retainKeys)
@@ -185,6 +215,9 @@ func handleJSONSchemaPropsOrArray(props *apiextensionsv1.JSONSchemaPropsOrArray,
 	}
 }
 
+// intersection returns a new slice containing only the elements that exist in both input slices.
+// If slice `b` is nil or empty, it will always return an empty slice.
+// This is the mechanism used to clear the `required` fields from a schema property.
 func intersection(a, b []string) []string {
 	var ret []string
 	for _, key := range a {
