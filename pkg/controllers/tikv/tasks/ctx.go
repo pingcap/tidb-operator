@@ -31,13 +31,9 @@ type ReconcileContext struct {
 
 	PDClient pdm.PDClient
 
-	StoreNotExists bool
-	StoreID        string
 	LeaderEvicting bool
 
 	Store *pdv1.Store
-
-	IsPDAvailable bool
 }
 
 func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task.Task {
@@ -45,25 +41,23 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		ck := state.Cluster()
 		c, ok := cm.Get(timanager.PrimaryKey(ck.Namespace, ck.Name))
 		if !ok {
-			return task.Complete().With("pd client is not registered")
+			return task.Fail().With("pd client is not registered")
 		}
 		state.PDClient = c
 
 		if !c.HasSynced() {
-			return task.Complete().With("store info is not synced, just wait for next sync")
+			return task.Fail().With("store info is not synced, just wait for next sync")
 		}
-		state.IsPDAvailable = true
 
 		s, err := c.Stores().Get(coreutil.TiKVAdvertiseClientURLs(state.TiKV()))
 		if err != nil {
 			if !errors.IsNotFound(err) {
 				return task.Fail().With("failed to get store info: %w", err)
 			}
-			state.StoreNotExists = true
 			return task.Complete().With("store does not exist")
 		}
 
-		state.Store, state.StoreID = s, s.ID
+		state.Store = s
 		state.SetStoreState(string(s.NodeState))
 		state.SetLeaderCount(s.LeaderCount)
 		state.SetRegionCount(s.RegionCount)
@@ -73,7 +67,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		if coreutil.ShouldSuspendCompute(state.Cluster()) {
 			return task.Complete().With("cluster is suspending")
 		}
-		scheduler, err := state.PDClient.Underlay().GetEvictLeaderScheduler(ctx, state.StoreID)
+		scheduler, err := state.PDClient.Underlay().GetEvictLeaderScheduler(ctx, state.Store.ID)
 		if err != nil {
 			return task.Fail().With("pd is unexpectedly crashed: %w", err)
 		}

@@ -32,6 +32,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/overlay"
 	"github.com/pingcap/tidb-operator/pkg/reloadable"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -67,7 +68,7 @@ func TaskSuspendPod(state *ReconcileContext, c client.Client) task.Task {
 func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
-		expected := newPod(state.Cluster(), state.TiKV(), state.StoreID)
+		expected := newPod(state.Cluster(), state.TiKV(), state.Store)
 		pod := state.Pod()
 		if pod == nil {
 			if err := c.Apply(ctx, expected); err != nil {
@@ -112,7 +113,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, storeID string) *corev1.Pod {
+func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, store *pdv1.Store) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -187,11 +188,6 @@ func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, storeID string) *cor
 			Name:      coreutil.PodName[scope.TiKV](tikv),
 			Labels: maputil.Merge(
 				coreutil.PodLabels[scope.TiKV](tikv),
-				// legacy labels in v1
-				map[string]string{
-					v1alpha1.LabelKeyClusterID: cluster.Status.ID,
-					v1alpha1.LabelKeyStoreID:   storeID,
-				},
 				// TODO: remove it
 				k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiKV),
 			),
@@ -266,6 +262,14 @@ func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, storeID string) *cor
 			},
 			Volumes: vols,
 		},
+	}
+
+	// legacy labels in v1
+	if cluster.Status.ID != "" {
+		pod.Labels[v1alpha1.LabelKeyClusterID] = cluster.Status.ID
+	}
+	if store != nil && store.ID != "" {
+		pod.Labels[v1alpha1.LabelKeyStoreID] = store.ID
 	}
 
 	if tikv.Spec.Overlay != nil {

@@ -20,7 +20,6 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
-	"github.com/pingcap/kvproto/pkg/metapb"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/pkg/client"
@@ -60,31 +59,19 @@ func TaskStoreLabels(state *ReconcileContext, c client.Client) task.Task {
 			return task.Complete().With("no store labels from node %s to sync", nodeName)
 		}
 
-		if !storeLabelsEqualNodeLabels(state.StoreLabels, storeLabels) {
-			storeID, err := strconv.ParseUint(state.StoreID, 10, 64)
+		if !reflect.DeepEqual(state.Store.Labels, storeLabels) {
+			storeID, err := strconv.ParseUint(state.Store.ID, 10, 64)
 			if err != nil {
-				return task.Fail().With("failed to parse store id %s: %s", state.StoreID, err)
+				return task.Fail().With("failed to parse store id %s: %s", state.Store.ID, err)
 			}
 			set, err := state.PDClient.Underlay().SetStoreLabels(ctx, storeID, storeLabels)
 			if err != nil {
 				return task.Fail().With("failed to set store labels: %s", err)
 			} else if set {
-				logger.Info("store labels synced", "storeID", state.StoreID, "storeLabels", storeLabels)
+				logger.Info("store labels synced", "storeID", state.Store.ID, "storeLabels", storeLabels)
 			}
 		}
 
 		return task.Complete().With("store labels synced")
 	})
-}
-
-func storeLabelsEqualNodeLabels(storeLabels []*metapb.StoreLabel, nodeLabels map[string]string) bool {
-	ls := map[string]string{}
-	for _, label := range storeLabels {
-		key := label.GetKey()
-		if _, ok := nodeLabels[key]; ok {
-			val := label.GetValue()
-			ls[key] = val
-		}
-	}
-	return reflect.DeepEqual(ls, nodeLabels)
 }
