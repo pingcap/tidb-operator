@@ -26557,6 +26557,19 @@ spec:
                     type: object
                   phase:
                     type: string
+                  pitrStatus:
+                    properties:
+                      originConfigMap:
+                        nullable: true
+                        properties:
+                          gcRatioThreshold:
+                            type: number
+                        type: object
+                      state:
+                        type: string
+                      updateStrategy:
+                        type: string
+                    type: object
                   statefulSet:
                     properties:
                       availableReplicas:
