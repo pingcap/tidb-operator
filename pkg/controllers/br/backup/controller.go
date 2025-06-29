@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/google/uuid"
 	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,18 +47,20 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-type Config tasks.Config
-type Reconciler struct {
-	Logger        logr.Logger
-	Client        client.Client
-	PDCM          pdm.PDClientManager
-	EventRecorder record.EventRecorder
+type (
+	Config     tasks.Config
+	Reconciler struct {
+		Logger        logr.Logger
+		Client        client.Client
+		PDCM          pdm.PDClientManager
+		EventRecorder record.EventRecorder
 
-	Config        Config
-	BackupManager backupMgr.BackupManager
-	BackupCleaner backupMgr.BackupCleaner
-	StatusUpdater backupMgr.BackupConditionUpdaterInterface
-}
+		Config        Config
+		BackupManager backupMgr.BackupManager
+		BackupCleaner backupMgr.BackupCleaner
+		StatusUpdater backupMgr.BackupConditionUpdaterInterface
+	}
+)
 
 func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, conf Config) error {
 	eventRecorder := mgr.GetEventRecorderFor("backup")
@@ -82,8 +85,8 @@ func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, conf 
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).WithValues("backup", req.NamespacedName)
-	reporter := task.NewTableTaskReporter()
+	logger := logr.FromContextOrDiscard(ctx)
+	reporter := task.NewTableTaskReporter(uuid.NewString())
 
 	startTime := time.Now()
 	logger.Info("start reconcile")
@@ -129,14 +132,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 func (r *Reconciler) JobEventHandler() handler.TypedEventHandler[client.Object, reconcile.Request] {
 	return handler.TypedFuncs[client.Object, reconcile.Request]{
 		UpdateFunc: func(ctx context.Context, event event.TypedUpdateEvent[client.Object],
-			queue workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
+		) {
 			newObj := event.ObjectNew.(*batchv1.Job)
 			if err := r.resolveBackupFromJob(ctx, newObj.Namespace, newObj, queue); err != nil {
 				r.Logger.Error(err, "failed to resolve backup from job", "namespace", newObj.Namespace, "job", newObj.Name)
 			}
 		},
 		DeleteFunc: func(ctx context.Context, event event.TypedDeleteEvent[client.Object],
-			queue workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
+		) {
 			job := event.Object.(*batchv1.Job)
 			if err := r.resolveBackupFromJob(ctx, job.Namespace, job, queue); err != nil {
 				r.Logger.Error(err, "failed to resolve backup from job", "namespace", job.Namespace, "job", job.Name)

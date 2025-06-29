@@ -113,10 +113,10 @@ func TestTaskReporter(t *testing.T) {
 			desc: "no result",
 			rs:   nil,
 			expectedSummary: `
-+------+--------+---------+
-| NAME | STATUS | MESSAGE |
-+------+--------+---------+
-+------+--------+---------+
++----+------+--------+---------+
+| ID | NAME | STATUS | MESSAGE |
++----+------+--------+---------+
++----+------+--------+---------+
 `,
 		},
 		{
@@ -125,11 +125,11 @@ func TestTaskReporter(t *testing.T) {
 				Complete().With("success"),
 			},
 			expectedSummary: `
-+------+----------+---------+
-| NAME |  STATUS  | MESSAGE |
-+------+----------+---------+
-|      | Complete | success |
-+------+----------+---------+
++------+------+----------+---------+
+|  ID  | NAME |  STATUS  | MESSAGE |
++------+------+----------+---------+
+| test |      | Complete | success |
++------+------+----------+---------+
 `,
 		},
 		{
@@ -138,11 +138,11 @@ func TestTaskReporter(t *testing.T) {
 				nameResult("aaa", Complete().With("success")),
 			},
 			expectedSummary: `
-+------+----------+---------+
-| NAME |  STATUS  | MESSAGE |
-+------+----------+---------+
-| aaa  | Complete | success |
-+------+----------+---------+
++------+------+----------+---------+
+|  ID  | NAME |  STATUS  | MESSAGE |
++------+------+----------+---------+
+| test | aaa  | Complete | success |
++------+------+----------+---------+
 `,
 		},
 		{
@@ -155,13 +155,13 @@ func TestTaskReporter(t *testing.T) {
 				),
 			},
 			expectedSummary: `
-+------+----------+---------+
-| NAME |  STATUS  | MESSAGE |
-+------+----------+---------+
-| aaa  | Complete | success |
-| bbb  | Complete | success |
-| ccc  | Complete | success |
-+------+----------+---------+
++------+------+----------+---------+
+|  ID  | NAME |  STATUS  | MESSAGE |
++------+------+----------+---------+
+| test | aaa  | Complete | success |
+| test | bbb  | Complete | success |
+| test | ccc  | Complete | success |
++------+------+----------+---------+
 `,
 		},
 	}
@@ -171,7 +171,7 @@ func TestTaskReporter(t *testing.T) {
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
-			reporter := NewTableTaskReporter()
+			reporter := NewTableTaskReporter("test")
 			for _, r := range c.rs {
 				reporter.AddResult(r)
 			}
