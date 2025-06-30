@@ -84,6 +84,7 @@ type TaskReporter interface {
 type tableReporter struct {
 	table   *tablewriter.Table
 	builder *strings.Builder
+	id      string
 }
 
 type dummyReporter struct{}
@@ -98,14 +99,15 @@ const (
 	tableColWidth = 80
 )
 
-func NewTableTaskReporter() TaskReporter {
+func NewTableTaskReporter(id string) TaskReporter {
 	builder := strings.Builder{}
 	table := tablewriter.NewWriter(&builder)
 	table.SetColWidth(tableColWidth)
-	table.SetHeader([]string{"Name", "Status", "Message"})
+	table.SetHeader([]string{"ID", "Name", "Status", "Message"})
 	return &tableReporter{
 		table:   table,
 		builder: &builder,
+		id:      id,
 	}
 }
 
@@ -116,9 +118,9 @@ func (t *tableReporter) AddResult(r Result) {
 			t.AddResult(rr)
 		}
 	case NamedResult:
-		t.table.Append([]string{underlying.name(), r.Status().String(), r.Message()})
+		t.table.Append([]string{t.id, underlying.name(), r.Status().String(), r.Message()})
 	default:
-		t.table.Append([]string{"", r.Status().String(), r.Message()})
+		t.table.Append([]string{t.id, "", r.Status().String(), r.Message()})
 	}
 }
 

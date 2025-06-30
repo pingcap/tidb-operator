@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/google/uuid"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -62,8 +63,8 @@ func Setup(mgr manager.Manager, c client.Client) error {
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := r.Logger.WithValues("tibr", req.NamespacedName)
-	reporter := task.NewTableTaskReporter()
+	logger := logr.FromContextOrDiscard(ctx)
+	reporter := task.NewTableTaskReporter(uuid.NewString())
 
 	startTime := time.Now()
 	logger.Info("start reconcile")
