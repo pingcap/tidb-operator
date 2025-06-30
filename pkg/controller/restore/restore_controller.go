@@ -266,7 +266,7 @@ func (c *Controller) updateRestore(cur interface{}) {
 	c.enqueueRestore(newRestore)
 }
 
-// <clusterObj>:<restoreObj>
+// restore key formats the string `<clusterObj>:<restoreObj>`.
 func restoreKey(r *v1alpha1.Restore) string {
 	if r.Spec.BR != nil {
 		clusterNs := r.Spec.BR.ClusterNamespace
