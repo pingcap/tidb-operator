@@ -6,8 +6,8 @@ toolchain go1.22.3
 
 require (
 	github.com/onsi/gomega v1.36.2
-	k8s.io/api v0.31.0
-	k8s.io/apimachinery v0.31.0
+	k8s.io/api v0.33.2
+	k8s.io/apimachinery v0.33.2
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/utils v0.0.0-20240921022957-49e7df575cb6
 )
