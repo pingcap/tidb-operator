@@ -85,6 +85,8 @@ func NewPiTRManager(deps *controller.Dependencies) *PiTRManager {
 
 func (rm *PiTRManager) Enable(tc *v1alpha1.TidbCluster) error {
 	if tc.Status.TiKV.PiTRStatus.State == v1alpha1.PiTRStateInactive {
+		klog.InfoS("restore-manager pitr enable, reset tikv config",
+			"tidbcluster", klog.KObj(tc))
 		tc.Status.TiKV.PiTRStatus.State = v1alpha1.PiTRStateWaitingForConfig
 		if tc.Spec.TiKV.Config == nil || tc.Spec.TiKV.Config.MP == nil {
 			tc.Spec.TiKV.Config = v1alpha1.NewTiKVConfig()
@@ -110,6 +112,7 @@ func (rm *PiTRManager) Enable(tc *v1alpha1.TidbCluster) error {
 	}
 
 	if tc.Status.TiKV.PiTRStatus.State == v1alpha1.PiTRStateWaitingForConfig {
+		klog.InfoS("restore-manager pitr enable, ensure tikv config is reconciled", "tidbcluster", klog.KObj(tc))
 		if err := rm.ensureConfigMapReconileDone(tc); err != nil {
 			return err
 		}
@@ -118,7 +121,6 @@ func (rm *PiTRManager) Enable(tc *v1alpha1.TidbCluster) error {
 		if err != nil {
 			return err
 		}
-
 	}
 
 	return nil
@@ -250,7 +252,7 @@ func (rm *PiTRManager) MaybeDisable(tc *v1alpha1.TidbCluster) error {
 		return !belongsToThisCluster
 	})
 	if pitrTasksAreDone(restores) {
-		klog.V(2).InfoS("All pitr tasks are done, will disable pitr mode", "cluster", klog.KObj(tc))
+		klog.InfoS("All pitr tasks are done, will disable pitr mode", "cluster", klog.KObj(tc))
 		return rm.disable(tc)
 	}
 	return nil
@@ -259,6 +261,7 @@ func (rm *PiTRManager) MaybeDisable(tc *v1alpha1.TidbCluster) error {
 func pitrTasksAreDone(restores []*v1alpha1.Restore) bool {
 	for _, restore := range restores {
 		if !pitrTaskIsDone(restore) {
+			klog.InfoS("Restore task is not done, will not disable pitr mode", "restore", klog.KObj(restore))
 			return false
 		}
 	}
