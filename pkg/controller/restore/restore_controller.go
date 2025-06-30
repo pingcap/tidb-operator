@@ -191,6 +191,12 @@ func (c *Controller) updateRestore(cur interface{}) {
 			}
 		}
 
+		if newRestore.Spec.Mode == v1alpha1.RestoreModePiTR {
+			klog.InfoS("pitr restore is Complete, queuing it for set cluster status back.", klog.KObj(newRestore))
+			c.enqueueRestore(newRestore)
+			return
+		}
+
 		klog.V(4).Infof("restore %s/%s is Complete, skipping.", ns, name)
 		return
 	}
