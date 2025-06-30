@@ -39,6 +39,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/onsi/ginkgo"
+	"github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -1164,7 +1165,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			ginkgo.By("Check if the TiKVs' config update strategy in this cluster was reset")
 			cluster, err := f.ExtClient.PingcapV1alpha1().TidbClusters(f.Namespace.Name).Get(ctx, backupClusterName, metav1.GetOptions{})
 			framework.ExpectNoError(err)
-			framework.ExpectEqual(cluster.Spec.TiKV.ConfigUpdateStrategy, nil)
+			gomega.Expect(cluster.Spec.TiKV.ConfigUpdateStrategy).To(gomega.BeNil())
 		})
 	})
 
