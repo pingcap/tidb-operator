@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -36,7 +37,7 @@ func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm vo
 	return task.NameTaskFunc("PVC", func(ctx context.Context) task.Result {
 		cluster := state.Cluster()
 		tikv := state.TiKV()
-		pvcs := newPVCs(cluster, tikv, state.StoreID)
+		pvcs := newPVCs(cluster, tikv, state.Store)
 		if wait, err := volumes.SyncPVCs(ctx, c, pvcs, vm.New(state.FeatureGates()), logger); err != nil {
 			return task.Fail().With("failed to sync pvcs: %w", err)
 		} else if wait {
@@ -47,23 +48,19 @@ func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm vo
 	})
 }
 
-func newPVCs(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, storeID string) []*corev1.PersistentVolumeClaim {
+func newPVCs(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, store *pdv1.Store) []*corev1.PersistentVolumeClaim {
 	pvcs := make([]*corev1.PersistentVolumeClaim, 0, len(tikv.Spec.Volumes))
 	nameToIndex := map[string]int{}
 	for i := range tikv.Spec.Volumes {
 		vol := tikv.Spec.Volumes[i]
 		nameToIndex[vol.Name] = i
-		pvcs = append(pvcs, &corev1.PersistentVolumeClaim{
+
+		pvc := &corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      PersistentVolumeClaimName(coreutil.PodName[scope.TiKV](tikv), vol.Name),
 				Namespace: tikv.Namespace,
 				Labels: maputil.Merge(
 					coreutil.PersistentVolumeClaimLabels[scope.TiKV](tikv, vol.Name),
-					// legacy labels in v1
-					map[string]string{
-						v1alpha1.LabelKeyStoreID:   storeID,
-						v1alpha1.LabelKeyClusterID: cluster.Status.ID,
-					},
 					// TODO: remove it
 					k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiKV),
 				),
@@ -83,7 +80,16 @@ func newPVCs(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, storeID string) []*
 				StorageClassName:          vol.StorageClassName,
 				VolumeAttributesClassName: vol.VolumeAttributesClassName,
 			},
-		})
+		}
+
+		// legacy labels in v1
+		if cluster.Status.ID != "" {
+			pvc.Labels[v1alpha1.LabelKeyClusterID] = cluster.Status.ID
+		}
+		if store != nil && store.ID != "" {
+			pvc.Labels[v1alpha1.LabelKeyStoreID] = store.ID
+		}
+		pvcs = append(pvcs, pvc)
 	}
 
 	if tikv.Spec.Overlay != nil {

@@ -53,7 +53,7 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 			// TODO: Complete task and retrigger reconciliation by polling PD
 			return task.Retry(removingWaitInterval).With("wait until the store is removed")
 
-		case state.GetStoreState() == v1alpha1.StoreStateRemoved || state.StoreNotExists:
+		case state.GetStoreState() == v1alpha1.StoreStateRemoved || state.Store == nil:
 			wait, err := EnsureSubResourcesDeleted(ctx, c, state.TiFlash())
 			if err != nil {
 				return task.Fail().With("cannot delete sub resources: %w", err)
@@ -69,8 +69,8 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 			}
 		default:
 			// get store info successfully and the store still exists
-			if err := state.PDClient.Underlay().DeleteStore(ctx, state.StoreID); err != nil {
-				return task.Fail().With("cannot delete store %s: %v", state.StoreID, err)
+			if err := state.PDClient.Underlay().DeleteStore(ctx, state.Store.ID); err != nil {
+				return task.Fail().With("cannot delete store %s: %v", state.Store.ID, err)
 			}
 
 			return task.Retry(removingWaitInterval).With("the store is removing")
