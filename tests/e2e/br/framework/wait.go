@@ -93,6 +93,23 @@ func WaitForBackupDeleted(c client.Client, ns, name string, timeout time.Duratio
 	return nil
 }
 
+// WaitForRestoreDeleted will poll and wait until timeout or restore is really deleted
+func WaitForRestoreDeleted(c client.Client, ns, name string, timeout time.Duration) error {
+	if err := wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {
+		if err := c.Get(ctx, client.ObjectKey{Namespace: ns, Name: name}, &v1alpha1.Restore{}); err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			// check error is retriable
+			return false, err
+		}
+		return false, nil
+	}); err != nil {
+		return fmt.Errorf("can't wait for restore deleted: %v", err)
+	}
+	return nil
+}
+
 // WaitForBackupComplete will poll and wait until timeout or backup complete condition is true
 func WaitForBackupComplete(c client.Client, ns, name string, timeout time.Duration) error {
 	if err := wait.PollUntilContextTimeout(context.TODO(), poll, timeout, true, func(ctx context.Context) (bool, error) {

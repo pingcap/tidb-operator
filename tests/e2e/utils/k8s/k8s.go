@@ -133,9 +133,13 @@ func GetPodUIDMap(ctx context.Context, clientSet kubernetes.Interface, namespace
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pod list: %w", err)
 	}
+	return GetPodUIDMapFromPodList(ctx, podList), nil
+}
+
+func GetPodUIDMapFromPodList(ctx context.Context, podList *corev1.PodList) map[string]string {
 	podMap := make(map[string]string, len(podList.Items))
 	for _, pod := range podList.Items {
 		podMap[pod.Name] = string(pod.GetUID())
 	}
-	return podMap, nil
+	return podMap
 }

@@ -177,6 +177,16 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
+		ginkgo.DeferCleanup(func() {
+			ginkgo.By("Clean up backup and restore resources")
+			if err := deleteBackup(f, backupName); err != nil {
+				fmt.Printf("failed to delete backup %s: %v", backupName, err)
+			}
+			if err := deleteRestore(f, restoreName); err != nil {
+				fmt.Printf("failed to delete restore %s: %v", restoreName, err)
+			}
+		})
+
 		{
 			ginkgo.By("Create TiDB cluster for backup")
 			err := createTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
@@ -1539,6 +1549,25 @@ func deleteBackup(f *brframework.Framework, name string) error {
 	}
 
 	if err := brframework.WaitForBackupDeleted(f.Client, ns, name, 15*time.Minute); err != nil {
+		return err
+	}
+	return nil
+}
+
+func deleteRestore(f *brframework.Framework, name string) error {
+	ctx := context.TODO()
+	ns := f.Namespace.Name
+	restore := &v1alpha1.Restore{}
+	restore.Namespace = ns
+	restore.Name = name
+	if err := f.Client.Delete(ctx, restore); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	if err := brframework.WaitForRestoreDeleted(f.Client, ns, name, 15*time.Minute); err != nil {
 		return err
 	}
 	return nil
