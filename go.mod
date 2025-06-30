@@ -22,7 +22,7 @@ require (
 	github.com/go-logr/logr v1.4.2
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/gogo/protobuf v1.3.2
-	github.com/google/gnostic-models v0.6.8
+	github.com/google/gnostic-models v0.7.0
 	github.com/google/go-cmp v0.6.0
 	github.com/minio/minio-go/v6 v6.0.57
 	github.com/mitchellh/mapstructure v1.5.0
@@ -52,18 +52,24 @@ require (
 	k8s.io/client-go v0.31.0
 	k8s.io/code-generator v0.31.0
 	k8s.io/component-base v0.31.0
-	k8s.io/gengo/v2 v2.0.0-20240228010128-51d4e06bde70
+	k8s.io/gengo/v2 v2.0.0-20240826214909-a7b603a56eb7
 	k8s.io/klog/v2 v2.130.1
-	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340
+	k8s.io/kube-openapi v0.0.0-20250628140032-d90c4fd18f59
 	k8s.io/kubectl v0.31.0
 	k8s.io/utils v0.0.0-20240921022957-49e7df575cb6
 	sigs.k8s.io/controller-runtime v0.19.0-beta.0
 	sigs.k8s.io/controller-tools v0.16.1
-	sigs.k8s.io/structured-merge-diff/v4 v4.4.1
+	sigs.k8s.io/structured-merge-diff/v4 v4.6.0
 	sigs.k8s.io/yaml v1.4.0
 )
 
 require github.com/BurntSushi/toml v1.5.0
+
+require (
+	go.yaml.in/yaml/v2 v2.4.2 // indirect
+	go.yaml.in/yaml/v3 v3.0.3 // indirect
+	sigs.k8s.io/randfill v1.0.0 // indirect
+)
 
 require (
 	cel.dev/expr v0.19.0 // indirect
@@ -125,9 +131,9 @@ require (
 	github.com/go-errors/errors v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-logr/zapr v1.3.0 // indirect
-	github.com/go-openapi/jsonpointer v0.20.2 // indirect
+	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.20.4 // indirect
-	github.com/go-openapi/swag v0.22.9 // indirect
+	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
