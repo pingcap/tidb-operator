@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/google/uuid"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
@@ -87,8 +88,8 @@ func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Obje
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := r.Logger.WithValues("tiproxygroup", req.NamespacedName)
-	reporter := task.NewTableTaskReporter()
+	logger := logr.FromContextOrDiscard(ctx)
+	reporter := task.NewTableTaskReporter(uuid.NewString())
 
 	startTime := time.Now()
 	logger.Info("start reconcile")

@@ -79,7 +79,7 @@ func enqueueForGroupFunc[
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := r.Logger.WithValues("cluster", req.NamespacedName)
+	logger := logr.FromContextOrDiscard(ctx)
 	reporter := task.NewTableTaskReporter()
 
 	startTime := time.Now()
