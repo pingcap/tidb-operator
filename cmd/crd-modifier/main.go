@@ -48,26 +48,37 @@ func main() {
 		}
 
 		path := filepath.Join(dir, fileName)
+		fmt.Printf("Processing CRD file: %s\n", fileName)
+
 		crd, err := loadCRD(path)
 		if err != nil {
 			panic(err)
 		}
 
 		if len(crd.Spec.Versions) == 0 {
+			fmt.Printf("  Skipping %s: no versions defined\n", fileName)
 			continue
 		}
 		schema := crd.Spec.Versions[0].Schema.OpenAPIV3Schema
 
 		if checkPathExists(schema, "spec", "template", "spec", "overlay") {
 			// It's a group CRD, which has an overlay in spec.template.spec.overlay
+			fmt.Printf("  Detected as group CRD, processing overlay at spec.template.spec.overlay.pod\n")
 			removeUselessRequired(crd, "spec", "template", "spec", "overlay", "pod")
-		} else if checkPathExists(schema, "spec", "overlay") {
+		} else if checkPathExists(schema, "spec", "overlay", "pod") {
 			// It's an instance CRD, which has an overlay in spec.overlay
+			fmt.Printf("  Detected as instance CRD, processing overlay at spec.overlay.pod\n")
 			removeUselessRequired(crd, "spec", "overlay", "pod")
+		} else if checkPathExists(schema, "spec", "overlay", "pods") {
+			// It's a special CRD like TiBRGC, which has overlays in spec.overlay.pods[].overlay
+			fmt.Printf("  Detected as special CRD (e.g., TiBRGC), processing overlay at spec.overlay.pods[].overlay.pod\n")
+			removeUselessRequiredForTiBRGC(crd)
 		} else {
+			fmt.Printf("  Skipping %s: no overlay field found\n", fileName)
 			continue
 		}
 
+		fmt.Printf("  Saving modified CRD: %s\n", fileName)
 		if err := saveCRD(path, crd); err != nil {
 			panic(err)
 		}
@@ -88,6 +99,38 @@ func checkPathExists(schema *apiextensionsv1.JSONSchemaProps, keys ...string) bo
 		current = &child
 	}
 	return true
+}
+
+// removeUselessRequiredForTiBRGC handles special CRDs like TiBRGC that have overlays in spec.overlay.pods[].overlay
+func removeUselessRequiredForTiBRGC(crd *apiextensionsv1.CustomResourceDefinition) {
+	for i := range crd.Spec.Versions {
+		v := &crd.Spec.Versions[i]
+		schema := v.Schema.OpenAPIV3Schema
+
+		// Navigate to spec.overlay.pods
+		if checkPathExists(schema, "spec", "overlay", "pods") {
+			// Get the pods array schema
+			spec := schema.Properties["spec"]
+			overlay := spec.Properties["overlay"]
+			pods := overlay.Properties["pods"]
+
+			// For array items, we need to check the items schema
+			if pods.Items != nil && pods.Items.Schema != nil {
+				itemSchema := pods.Items.Schema
+				// Check if the item has an overlay property
+				if overlayProp, ok := itemSchema.Properties["overlay"]; ok {
+					// Process the overlay.pod path
+					handleJSONSchemaProps(&overlayProp, nil)
+					itemSchema.Properties["overlay"] = overlayProp
+				}
+			}
+
+			// Update the schema back
+			overlay.Properties["pods"] = pods
+			spec.Properties["overlay"] = overlay
+			schema.Properties["spec"] = spec
+		}
+	}
 }
 
 func saveCRD(path string, crd *apiextensionsv1.CustomResourceDefinition) error {
@@ -158,9 +201,10 @@ func handleSelectedJSONSchemaProps(props *apiextensionsv1.JSONSchemaProps, keys 
 	key := keys[0]
 	child, ok := props.Properties[key]
 	if !ok {
-		// This case should ideally not be reached if the CRD structure is as expected.
-		fmt.Println("cannot find keys: ", keys)
-		panic("no props")
+		// If the path doesn't exist in the schema, it means this CRD doesn't have the expected structure.
+		// This is not an error - just skip processing this path silently.
+		fmt.Printf("Path %v not found in schema, skipping...\n", keys)
+		return
 	}
 	// Recurse into the next level of the schema.
 	handleSelectedJSONSchemaProps(&child, keys[1:]...)
