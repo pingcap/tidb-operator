@@ -1206,6 +1206,7 @@ func TestPiTRHelperFunctions(t *testing.T) {
 	// Initialize TiKV config if nil
 	tc.Spec.TiKV.Config = v1alpha1.NewTiKVConfig()
 	tc.Spec.TiKV.Config.Set("gc.ratio-threshold", 1.2)
+	tc.Spec.TiKV.Config.Set("server.grpc-keepalive-timeout", "30s")
 	helper.CreateTC("ns", "test-tc", false, false)
 
 	// Create TiKV StatefulSet and ConfigMap for PiTR testing
@@ -1242,6 +1243,7 @@ func TestPiTRHelperFunctions(t *testing.T) {
 	g.Expect(err).Should(MatchError(ContainSubstring("config reset, waiting for configmap updated")))
 	g.Expect(tc.Status.TiKV.PiTRStatus.State).Should(Equal(v1alpha1.PiTRStateWaitingForConfig))
 	g.Expect(tc.Status.TiKV.PiTRStatus.OriginConfigMap).Should(BeNil())
+	g.Expect(tc.Spec.TiKV.Config.Get("server.grpc-keepalive-timeout").MustString()).Should(Equal("30s"))
 
 	// Test disable with state WaitingForConfig and original configmap applied
 	// First restore the original config in the configmap
