@@ -233,7 +233,9 @@ func (rm *restoreManager) makeRestoreJob(ctx context.Context, restore *v1alpha1.
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.RestoreModeSnapshot))
 	}
 
-	jobLabels := util.CombineStringMap(metav1alpha1.NewRestore().Instance(restore.GetInstanceName()).RestoreJob().Restore(name), restore.Labels)
+	jobLabels := util.CombineStringMap(
+		metav1alpha1.NewRestore().Instance(restore.GetInstanceName()).RestoreJob().Restore(name),
+		restore.Labels)
 	podLabels := jobLabels
 	jobAnnotations := restore.Annotations
 	podAnnotations := jobAnnotations

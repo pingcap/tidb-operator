@@ -68,7 +68,12 @@ func NewRealRestoreConditionUpdater(
 	}
 }
 
-func (u *realRestoreConditionUpdater) Update(ctx context.Context, restore *v1alpha1.Restore, condition *metav1.Condition, newStatus *RestoreUpdateStatus) error {
+func (u *realRestoreConditionUpdater) Update(
+	ctx context.Context,
+	restore *v1alpha1.Restore,
+	condition *metav1.Condition,
+	newStatus *RestoreUpdateStatus,
+) error {
 	logger := log.FromContext(ctx)
 	// reason is required so that we do set if it's empty
 	if condition != nil {

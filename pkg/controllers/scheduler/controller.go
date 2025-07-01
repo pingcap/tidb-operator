@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/google/uuid"
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -57,8 +58,8 @@ func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, vm vo
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := r.Logger.WithValues("scheduler", req.NamespacedName)
-	reporter := task.NewTableTaskReporter()
+	logger := logr.FromContextOrDiscard(ctx)
+	reporter := task.NewTableTaskReporter(uuid.NewString())
 
 	startTime := time.Now()
 	logger.Info("start reconcile")
