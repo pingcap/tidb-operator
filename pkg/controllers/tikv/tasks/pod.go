@@ -216,7 +216,7 @@ func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, storeID string) *cor
 						"/bin/sh",
 						"-c",
 						"cp /prestop-checker " + v1alpha1.DirPathPrestop + "/;",
-						// + "sleep infinity",
+						"sleep infinity",
 					},
 					VolumeMounts: []corev1.VolumeMount{
 						{
