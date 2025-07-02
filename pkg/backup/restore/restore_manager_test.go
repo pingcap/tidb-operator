@@ -312,10 +312,6 @@ func TestBRRestore(t *testing.T) {
 		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env1))
 		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env2Yes))
 		g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(gomega.ContainElement(env2No))
-
-		tc2, err := deps.TiDBClusterLister.TidbClusters(restore.Spec.BR.ClusterNamespace).Get(restore.Spec.BR.Cluster)
-		g.Expect(err).Should(BeNil())
-		g.Expect(tc2.Status.TiKV.PiTRStatus.State).To(Equal(v1alpha1.PiTRStateInactive))
 	}
 }
 
@@ -1087,7 +1083,6 @@ func TestPiTRRestore(t *testing.T) {
 		// Initialize PiTRStatus for the TiKV to avoid nil pointer dereference
 		tc, err := deps.TiDBClusterLister.TidbClusters(restore.Spec.BR.ClusterNamespace).Get(restore.Spec.BR.Cluster)
 		g.Expect(err).Should(BeNil())
-		tc.Status.TiKV.PiTRStatus = v1alpha1.PiTRStatus{}
 		_, err = deps.TiDBClusterControl.Update(tc)
 		g.Expect(err).Should(BeNil())
 
