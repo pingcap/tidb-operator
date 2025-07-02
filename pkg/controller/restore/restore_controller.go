@@ -15,7 +15,6 @@ package restore
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	perrors "github.com/pingcap/errors"
@@ -118,16 +117,6 @@ func (c *Controller) processNextWorkItem() bool {
 	return true
 }
 
-func (c *Controller) maybePiTRDisable(key parsedRestoreKey) error {
-	pm := restore.NewPiTRManager(c.deps)
-	tc, err := c.deps.TiDBClusterLister.TidbClusters(key.targetClusterNamespace).Get(key.targetClusterName)
-	if err != nil {
-		klog.ErrorS(err, "Failed to get TidbCluster for a deleted restore", "key", key)
-		return err
-	}
-	return pm.MaybeDisable(tc)
-}
-
 // sync syncs the given restore.
 func (c *Controller) sync(key string) (err error) {
 	startTime := time.Now()
@@ -147,17 +136,13 @@ func (c *Controller) sync(key string) (err error) {
 		klog.V(4).Infof("Finished syncing Restore %q (%v)", key, duration)
 	}()
 
-	parsed, err := parseRestoreKey(key)
+	ns, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		return err
 	}
-	ns, name := parsed.restoreNamespace, parsed.restoreName
 	restore, err := c.deps.RestoreLister.Restores(ns).Get(name)
 	if errors.IsNotFound(err) {
 		klog.Infof("Restore has been deleted %v", key)
-		if parsed.IsBR() {
-			return c.maybePiTRDisable(parsed)
-		}
 		return nil
 	}
 	if err != nil {
@@ -189,12 +174,6 @@ func (c *Controller) updateRestore(cur interface{}) {
 				c.enqueueRestore(newRestore)
 				return
 			}
-		}
-
-		if newRestore.Spec.Mode == v1alpha1.RestoreModePiTR {
-			klog.InfoS("pitr restore is Complete, queuing it for set cluster status back.", klog.KObj(newRestore))
-			c.enqueueRestore(newRestore)
-			return
 		}
 
 		klog.V(4).Infof("restore %s/%s is Complete, skipping.", ns, name)
@@ -272,73 +251,13 @@ func (c *Controller) updateRestore(cur interface{}) {
 	c.enqueueRestore(newRestore)
 }
 
-// restore key formats the string `<clusterObj>:<restoreObj>`.
-func restoreKey(r *v1alpha1.Restore) string {
-	if r.Spec.BR != nil {
-		clusterNs := r.Spec.BR.ClusterNamespace
-		if len(clusterNs) == 0 {
-			clusterNs = r.Namespace
-		}
-		return fmt.Sprintf("%s/%s:%s/%s", clusterNs, r.Spec.BR.Cluster, r.Namespace, r.Name)
-	}
-	// Or use default cache key
-	return cache.MetaObjectToName(&r.ObjectMeta).String()
-}
-
-type parsedRestoreKey struct {
-	targetClusterNamespace string
-	targetClusterName      string
-	restoreNamespace       string
-	restoreName            string
-}
-
-func (k parsedRestoreKey) String() string {
-	return fmt.Sprintf("%s/%s:%s/%s",
-		k.targetClusterNamespace, k.targetClusterName, k.restoreNamespace, k.restoreName)
-}
-
-func (k parsedRestoreKey) IsBR() bool {
-	return k.targetClusterNamespace != "" && k.targetClusterName != ""
-}
-
-func parseRestoreKey(s string) (parsedRestoreKey, error) {
-	parts := strings.Split(s, ":")
-	if len(parts) != 2 {
-		// This could be a default cache key when r.Spec.BR is nil
-		// In this case, just parse the namespace and name from the single string
-		namespaceName := strings.Split(s, "/")
-		if len(namespaceName) != 2 {
-			return parsedRestoreKey{}, fmt.Errorf("invalid restore key format: %s", s)
-		}
-		return parsedRestoreKey{
-			restoreNamespace: namespaceName[0],
-			restoreName:      namespaceName[1],
-		}, nil
-	}
-
-	clusterParts := strings.Split(parts[0], "/")
-	restoreParts := strings.Split(parts[1], "/")
-
-	if len(clusterParts) != 2 || len(restoreParts) != 2 {
-		return parsedRestoreKey{}, fmt.Errorf("invalid restore key format: %s", s)
-	}
-
-	return parsedRestoreKey{
-		targetClusterNamespace: clusterParts[0],
-		targetClusterName:      clusterParts[1],
-		restoreNamespace:       restoreParts[0],
-		restoreName:            restoreParts[1],
-	}, nil
-}
-
 // enqueueRestore enqueues the given restore in the work queue.
-func (c *Controller) enqueueRestore(obj any) {
-	r, ok := obj.(*v1alpha1.Restore)
-	if !ok {
-		utilruntime.HandleError(fmt.Errorf("cound't get key for object %+v: its type is %T", obj, obj))
+func (c *Controller) enqueueRestore(obj interface{}) {
+	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("cound't get key for object %+v: %v", obj, err))
 		return
 	}
-	key := restoreKey(r)
 	c.queue.Add(key)
 }
 

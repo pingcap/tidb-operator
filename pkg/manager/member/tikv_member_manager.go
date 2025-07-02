@@ -16,6 +16,7 @@ package member
 import (
 	"context"
 	"fmt"
+	"math"
 	"path"
 	"reflect"
 	"regexp"
@@ -39,6 +40,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -317,7 +319,15 @@ func (m *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *app
 		}
 	}
 
-	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BaseTiKVSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	updateStrategy := tc.BaseTiKVSpec().ConfigUpdateStrategy()
+	klog.InfoS("PiTR Status was modified, the configuration will be applied `InPlace`.", "cluster", klog.KObj(tc))
+
+	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, updateStrategy, inUseName, newCm)
+	if err != nil {
+		return nil, err
+	}
+
+	err = m.applyPiTRConfigOverride(tc, newCm)
 	if err != nil {
 		return nil, err
 	}
@@ -1109,4 +1119,87 @@ func (m *FakeTiKVMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		tc.Status.ClusterID = string(uuid.NewUUID())
 	}
 	return nil
+}
+
+// applyPiTRConfigOverride checks for active PiTR restores and overrides gc.ratio-threshold if found
+func (m *tikvMemberManager) applyPiTRConfigOverride(tc *v1alpha1.TidbCluster, newCm *corev1.ConfigMap) error {
+	// Check for active PiTR restores
+	restores, err := m.deps.RestoreLister.List(labels.Everything())
+	if err != nil {
+		return err
+	}
+
+	// Filter restores that belong to this cluster and are PiTR mode
+	hasActivePiTRRestore := false
+	for _, restore := range restores {
+		if restore.Spec.BR != nil &&
+			restore.Spec.BR.Cluster == tc.Name &&
+			restore.Spec.BR.ClusterNamespace == tc.Namespace &&
+			restore.Spec.Mode == v1alpha1.RestoreModePiTR &&
+			!isRestoreDone(restore) {
+			hasActivePiTRRestore = true
+			klog.InfoS("Found active PiTR restore, will override gc.ratio-threshold",
+				"restore", klog.KObj(restore), "tidbcluster", klog.KObj(tc))
+			break
+		}
+	}
+
+	// If there's an active PiTR restore, override the gc.ratio-threshold in the config map
+	if hasActivePiTRRestore {
+		return m.overrideGCRatioThresholdInConfigMap(newCm, -1.0)
+	}
+
+	return nil
+}
+
+// overrideGCRatioThresholdInConfigMap modifies the config map data to set gc.ratio-threshold
+// if value is `math.NaN`, unset this config term.
+func (m *tikvMemberManager) overrideGCRatioThresholdInConfigMap(cm *corev1.ConfigMap, value float64) error {
+	if cm.Data == nil {
+		cm.Data = make(map[string]string)
+	}
+
+	configContent := cm.Data["config-file"]
+
+	// Parse existing config to preserve other settings
+	wrapper := v1alpha1.NewTiKVConfig()
+	if configContent != "" {
+		if err := wrapper.UnmarshalTOML([]byte(configContent)); err != nil {
+			return fmt.Errorf("failed to unmarshal existing TiKV config: %v", err)
+		}
+	}
+
+	// Override gc.ratio-threshold
+	if math.IsNaN(value) {
+		wrapper.Del("gc.ratio-threshold")
+	} else {
+		wrapper.Set("gc.ratio-threshold", value)
+	}
+
+	// Marshal back to TOML
+	data, err := wrapper.MarshalTOML()
+	if err != nil {
+		return fmt.Errorf("failed to marshal TiKV config with PiTR override: %v", err)
+	}
+
+	newConf := string(data)
+	if cm.Data["config-file"] != newConf {
+		klog.InfoS("Applied PiTR config override, save it in place", "gc.ratio-threshold", value, "cm", klog.KObj(cm))
+		cm.Data["config-file"] = newConf
+		return nil
+	}
+
+	return nil
+}
+
+// isRestoreDone checks if a restore is completed or failed
+func isRestoreDone(restore *v1alpha1.Restore) bool {
+	if v1alpha1.IsRestoreComplete(restore) {
+		return true
+	}
+	if idx, _ := v1alpha1.GetRestoreCondition(&restore.Status, v1alpha1.RestoreFailed); idx != -1 {
+		klog.InfoS("Restore is failed, keep config map unchanged for retry.", "restore", klog.KObj(restore))
+		return false
+	}
+	return false
 }

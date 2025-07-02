@@ -1708,33 +1708,6 @@ type TiKVStatus struct {
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 	// Indicates that a Volume replace using VolumeReplacing feature is in progress.
 	VolReplaceInProgress bool `json:"volReplaceInProgress,omitempty"`
-	// PiTRStatus is the status of running point-in-time restore.
-	// Cluster during point-in-time restore will be optimizated to do batch jobs.
-	PiTRStatus PiTRStatus `json:"pitrStatus,omitempty"`
-}
-
-type PiTRStateName string
-
-const (
-	PiTRStateInactive         PiTRStateName = "" /* Default to `Inactive` */
-	PiTRStateWaitingForConfig PiTRStateName = "waiting_for_config_map_update"
-	PiTRStateRunning          PiTRStateName = "running"
-)
-
-// PitrStatus is the current state of pitr.
-type PiTRStatus struct {
-	// OriginConfigMap contains the original value of the configurations overridden by PiTR.
-	// +optional
-	// +nullable
-	OriginConfigMap *PiTROverriddenConfig `json:"originConfigMap,omitempty"`
-	// The origin tikv config update strategy.
-	TiKVConfigUpdateStrategy *ConfigUpdateStrategy `json:"updateStrategy,omitempty"`
-	State                    PiTRStateName         `json:"state,omitempty"`
-}
-
-// PiTROverriddenConfig contains the configurations that are overridden by PiTR.
-type PiTROverriddenConfig struct {
-	GCRatioThreshold *float64 `json:"gcRatioThreshold,omitempty"`
 }
 
 // TiFlashStatus is TiFlash status

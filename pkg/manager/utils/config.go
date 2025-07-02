@@ -14,14 +14,13 @@
 package utils
 
 import (
-	"fmt"
-
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/klog/v2"
 )
 
 func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
@@ -123,6 +122,10 @@ func confirmNameByData(existing, desired *corev1.ConfigMap, dataEqual bool) {
 		desired.Name = existing.Name
 	}
 	if !dataEqual && existing.Name == desired.Name {
-		desired.Name = fmt.Sprintf("%s-new", desired.Name)
+		// When restoring, there will be a overlay configuration directly applied to configmap.
+		// when removing it, the content of configmap may be different with spec. but
+		// we don't want to rolling restart in this scenario -- keep the name unchanged.
+		klog.InfoS("the hash of spec(desired) matches hash of config map, but their contents are different. restoring the config map.",
+			"config_map", klog.KObj(existing))
 	}
 }
