@@ -913,3 +913,81 @@ func TestPDClient_TransferPDLeader(t *testing.T) {
 	err := client.TransferPDLeader(context.Background(), "basic-7axwci")
 	require.NoError(t, err)
 }
+
+func TestPDClient_GetReady(t *testing.T) {
+	tests := []struct {
+		name        string
+		statusCode  int
+		expectReady bool
+		expectErr   bool
+		serverErr   bool
+	}{
+		{
+			name:        "PD is ready (200 OK)",
+			statusCode:  http.StatusOK,
+			expectReady: true,
+			expectErr:   false,
+			serverErr:   false,
+		},
+		{
+			name:        "Ready API not found (404 Not Found)",
+			statusCode:  http.StatusNotFound,
+			expectReady: true,
+			expectErr:   false,
+			serverErr:   false,
+		},
+		{
+			name:        "PD not ready (500 Internal Server Error)",
+			statusCode:  http.StatusInternalServerError,
+			expectReady: false,
+			expectErr:   false,
+			serverErr:   false,
+		},
+		{
+			name:        "Other error status code (400 Bad Request)",
+			statusCode:  http.StatusBadRequest,
+			expectReady: false,
+			expectErr:   true,
+			serverErr:   false,
+		},
+		{
+			name:        "HTTP client error",
+			serverErr:   true,
+			expectReady: false,
+			expectErr:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.serverErr {
+				client := NewPDClient("invalid-url", time.Second, nil)
+				ready, err := client.GetReady(context.Background())
+				assert.Equal(t, tt.expectReady, ready)
+				assert.Error(t, err)
+				return
+			}
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "/pd/api/v2/ready", r.URL.Path)
+				w.WriteHeader(tt.statusCode)
+				if tt.expectErr && tt.statusCode != http.StatusNotFound && tt.statusCode != http.StatusInternalServerError {
+					// Simulate error body for unexpected status codes
+					_, err := w.Write([]byte("error body"))
+					assert.NoError(t, err)
+				}
+			}))
+			defer server.Close()
+
+			client := NewPDClient(server.URL, time.Second, nil)
+			ready, err := client.GetReady(context.Background())
+
+			assert.Equal(t, tt.expectReady, ready)
+			if tt.expectErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

@@ -197,6 +197,21 @@ func (mr *MockPDClientMockRecorder) GetPDEtcdClient() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPDEtcdClient", reflect.TypeOf((*MockPDClient)(nil).GetPDEtcdClient))
 }
 
+// GetReady mocks base method.
+func (m *MockPDClient) GetReady(ctx context.Context) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetReady", ctx)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetReady indicates an expected call of GetReady.
+func (mr *MockPDClientMockRecorder) GetReady(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReady", reflect.TypeOf((*MockPDClient)(nil).GetReady), ctx)
+}
+
 // GetStore mocks base method.
 func (m *MockPDClient) GetStore(ctx context.Context, storeID string) (*StoreInfo, error) {
 	m.ctrl.T.Helper()
