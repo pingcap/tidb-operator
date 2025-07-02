@@ -767,7 +767,9 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	switch restore.Spec.Mode {
 	case v1alpha1.RestoreModePiTR:
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.RestoreModePiTR))
-		args = append(args, fmt.Sprintf("--pitrRestoredTs=%s", restore.Spec.PitrRestoredTs))
+		if restore.Spec.PitrRestoredTs != "" {
+			args = append(args, fmt.Sprintf("--pitrRestoredTs=%s", restore.Spec.PitrRestoredTs))
+		}
 	case v1alpha1.RestoreModeVolumeSnapshot:
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.RestoreModeVolumeSnapshot))
 		if !v1alpha1.IsRestoreVolumeComplete(restore) {
@@ -920,7 +922,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			},
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: pointer.Int32Ptr(0),
+			BackoffLimit: &restore.Spec.BackoffLimit,
 			Template:     *podSpec,
 		},
 	}

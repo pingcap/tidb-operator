@@ -1112,7 +1112,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			err = createRestoreAndWaitForComplete(f, restoreName, backupClusterName, typ, logBackupName, func(restore *v1alpha1.Restore) {
 				restore.Spec.Mode = v1alpha1.RestoreModePiTR
 				restore.Spec.PitrFullBackupStorageProvider.S3 = fullBackup.Spec.S3
-				restore.Spec.PitrRestoredTs = currentTS
 			})
 			framework.ExpectNoError(err)
 

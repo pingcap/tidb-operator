@@ -2511,6 +2511,7 @@ type RestoreSpec struct {
 	// +kubebuilder:default=snapshot
 	Mode RestoreMode `json:"restoreMode,omitempty"`
 	// PitrRestoredTs is the pitr restored ts.
+	// +optional
 	PitrRestoredTs string `json:"pitrRestoredTs,omitempty"`
 	// LogRestoreStartTs is the start timestamp which log restore from.
 	// +optional
@@ -2585,6 +2586,8 @@ type RestoreSpec struct {
 	// TolerateSingleTiKVOutage indicates whether to tolerate a single failure of a store without data loss
 	// +kubebuilder:default=false
 	TolerateSingleTiKVOutage bool `json:"tolerateSingleTiKVOutage,omitempty"`
+	// +kubebuilder:default=0
+	BackoffLimit int32 `json:"backoffLimit,omitempty"`
 }
 
 // FederalVolumeRestorePhase represents a phase to execute in federal volume restore
