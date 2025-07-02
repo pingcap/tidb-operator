@@ -103,7 +103,12 @@ type backupManager struct {
 }
 
 // NewBackupManager return backupManager
-func NewBackupManager(cli client.Client, pdcm pdm.PDClientManager, statusUpdater BackupConditionUpdaterInterface, backupManagerImage string) BackupManager {
+func NewBackupManager(
+	cli client.Client,
+	pdcm pdm.PDClientManager,
+	statusUpdater BackupConditionUpdaterInterface,
+	backupManagerImage string,
+) BackupManager {
 	return &backupManager{
 		cli:                cli,
 		backupTracker:      NewBackupTracker(cli, pdcm, statusUpdater),
@@ -122,7 +127,12 @@ func (bm *backupManager) Sync(ctx context.Context, backup *v1alpha1.Backup) erro
 }
 
 // UpdateStatus updates the status for a Backup, include condition and status info.
-func (bm *backupManager) UpdateStatus(ctx context.Context, backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) error {
+func (bm *backupManager) UpdateStatus(
+	ctx context.Context,
+	backup *v1alpha1.Backup,
+	condition *v1alpha1.BackupCondition,
+	newStatus *BackupUpdateStatus,
+) error {
 	return bm.statusUpdater.Update(ctx, backup, condition, newStatus)
 }
 
@@ -279,8 +289,14 @@ func (bm *backupManager) waitPreTaskDone(ctx context.Context, backup *v1alpha1.B
 	// check whether backup should wait and requeue
 	if shouldLogBackupCommandRequeue(backup) {
 		logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
-		logger.Info("log backup should wait log backup start complete, will requeue", "namespace", ns, "backup", name, "command", logBackupSubcommand)
-		return common.RequeueErrorf(task.DefaultRequeueAfter, "log backup %s/%s command %s should wait log backup start complete", ns, name, logBackupSubcommand)
+		logger.Info("log backup should wait log backup start complete, will requeue",
+			"namespace", ns,
+			"backup", name,
+			"command", logBackupSubcommand)
+		return common.RequeueErrorf(
+			task.DefaultRequeueAfter,
+			"log backup %s/%s command %s should wait log backup start complete",
+			ns, name, logBackupSubcommand)
 	}
 
 	// log backup should wait old job done
@@ -612,7 +628,10 @@ func (bm *backupManager) skipLogBackupSync(ctx context.Context, backup *v1alpha1
 				Status: metav1.ConditionTrue,
 			},
 		}, updateStatus)
-		logger.Info("log backup subcommand is already done, will skip sync", "namespace", backup.Namespace, "backup", backup.Name, "command", command)
+		logger.Info("log backup subcommand is already done, will skip sync",
+			"namespace", backup.Namespace,
+			"backup", backup.Name,
+			"command", command)
 		return true, err
 	}
 
@@ -634,7 +653,13 @@ func shouldLogBackupCommandRequeue(backup *v1alpha1.Backup) bool {
 }
 
 // waitOldBackupJobDone wait old backup job done
-func waitOldBackupJobDone(ctx context.Context, ns, name, backupJobName string, bm *backupManager, _ *v1alpha1.Backup, oldJob *batchv1.Job) error {
+func waitOldBackupJobDone(
+	ctx context.Context,
+	ns, name, backupJobName string,
+	bm *backupManager,
+	_ *v1alpha1.Backup,
+	oldJob *batchv1.Job,
+) error {
 	logger := log.FromContext(ctx)
 	if oldJob.DeletionTimestamp != nil {
 		return common.RequeueErrorf(task.DefaultRequeueAfter, "backup %s/%s job %s is being deleted", ns, name, backupJobName)
@@ -676,7 +701,12 @@ func (m *FakeBackupManager) Sync(_ context.Context, _ *v1alpha1.Backup) error {
 }
 
 // UpdateStatus updates the status for a Backup, include condition and status info.
-func (m *FakeBackupManager) UpdateStatus(_ context.Context, _ *v1alpha1.Backup, _ *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) error {
+func (m *FakeBackupManager) UpdateStatus(
+	_ context.Context,
+	_ *v1alpha1.Backup,
+	_ *v1alpha1.BackupCondition,
+	newStatus *BackupUpdateStatus,
+) error {
 	return nil
 }
 

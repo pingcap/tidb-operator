@@ -144,7 +144,12 @@ func (p *applier) ApplyWithResult(ctx context.Context, obj client.Object) (Apply
 	return ApplyResultCreated, nil
 }
 
-func (p *applier) Extract(current *unstructured.Unstructured, fieldManager string, gvk schema.GroupVersionKind, subresource string) (map[string]any, error) {
+func (p *applier) Extract(
+	current *unstructured.Unstructured,
+	fieldManager string,
+	gvk schema.GroupVersionKind,
+	subresource string,
+) (map[string]any, error) {
 	tpd := p.parser.Type(gvk)
 	if tpd == nil {
 		return nil, fmt.Errorf("can't find specified type: %s", gvk)

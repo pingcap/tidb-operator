@@ -51,7 +51,12 @@ func NewRealBackupConditionUpdater(
 	}
 }
 
-func (u *realBackupConditionUpdater) Update(ctx context.Context, backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, newStatus *BackupUpdateStatus) error {
+func (u *realBackupConditionUpdater) Update(
+	ctx context.Context,
+	backup *v1alpha1.Backup,
+	condition *v1alpha1.BackupCondition,
+	newStatus *BackupUpdateStatus,
+) error {
 	logger := log.FromContext(ctx)
 	// reason is required so that we do set if it's empty
 	if condition != nil {
@@ -60,7 +65,11 @@ func (u *realBackupConditionUpdater) Update(ctx context.Context, backup *v1alpha
 		}
 	}
 
-	logger.Info("Update backup status", "namespace", backup.GetNamespace(), "backup", backup.GetName(), "condition", condition, "newStatus", newStatus)
+	logger.Info("Update backup status",
+		"namespace", backup.GetNamespace(),
+		"backup", backup.GetName(),
+		"condition", condition,
+		"newStatus", newStatus)
 
 	ns := backup.GetNamespace()
 	backupName := backup.GetName()
@@ -466,12 +475,14 @@ func updateBackoffRetryStatus(status *v1alpha1.BackupStatus, newStatus *BackupUp
 		isUpdate = true
 	}
 
-	if newStatus.ExpectedRetryAt != nil && (currentRecord.ExpectedRetryAt == nil || *newStatus.ExpectedRetryAt != *currentRecord.ExpectedRetryAt) {
+	if newStatus.ExpectedRetryAt != nil && (currentRecord.ExpectedRetryAt == nil ||
+		*newStatus.ExpectedRetryAt != *currentRecord.ExpectedRetryAt) {
 		currentRecord.ExpectedRetryAt = newStatus.ExpectedRetryAt
 		isUpdate = true
 	}
 
-	if newStatus.RealRetryAt != nil && (currentRecord.RealRetryAt == nil || *newStatus.RealRetryAt != *currentRecord.RealRetryAt) {
+	if newStatus.RealRetryAt != nil && (currentRecord.RealRetryAt == nil ||
+		*newStatus.RealRetryAt != *currentRecord.RealRetryAt) {
 		currentRecord.RealRetryAt = newStatus.RealRetryAt
 		isUpdate = true
 	}

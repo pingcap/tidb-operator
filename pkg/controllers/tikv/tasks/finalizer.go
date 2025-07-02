@@ -53,7 +53,7 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 			// TODO: Complete task and retrigger reconciliation by polling PD
 			return task.Retry(removingWaitInterval).With("wait until the store is removed")
 
-		case state.GetStoreState() == v1alpha1.StoreStateRemoved || state.StoreID == "":
+		case state.GetStoreState() == v1alpha1.StoreStateRemoved || state.StoreNotExists:
 			wait, err := EnsureSubResourcesDeleted(ctx, c, state.TiKV())
 			if err != nil {
 				return task.Fail().With("cannot delete subresources: %w", err)
@@ -80,7 +80,9 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 }
 
 func EnsureSubResourcesDeleted(ctx context.Context, c client.Client, tikv *v1alpha1.TiKV) (wait bool, _ error) {
-	wait1, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromTiKV(tikv), &corev1.PodList{}, client.GracePeriodSeconds(defaultGracePeriod))
+	wait1, err := k8s.DeleteInstanceSubresource(
+		ctx, c, runtime.FromTiKV(tikv),
+		&corev1.PodList{}, client.GracePeriodSeconds(defaultGracePeriod))
 	if err != nil {
 		return false, err
 	}

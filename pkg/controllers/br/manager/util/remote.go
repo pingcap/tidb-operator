@@ -248,7 +248,13 @@ func (b *StorageBackend) BatchDeleteObjects(
 }
 
 // BatchDeleteObjectsOfS3 delete objects by batch delete api
-func BatchDeleteObjectsOfS3(ctx context.Context, s3cli s3iface.S3API, objs []*blob.ListObject, bucket, prefix string, concurrency int) *BatchDeleteObjectsResult {
+func BatchDeleteObjectsOfS3(
+	ctx context.Context,
+	s3cli s3iface.S3API,
+	objs []*blob.ListObject,
+	bucket, prefix string,
+	concurrency int,
+) *BatchDeleteObjectsResult {
 	mu := &sync.Mutex{}
 	result := &BatchDeleteObjectsResult{}
 	batchSize := 1000
@@ -309,7 +315,12 @@ func BatchDeleteObjectsOfS3(ctx context.Context, s3cli s3iface.S3API, objs []*bl
 }
 
 // BatchDeleteObjectsConcurrently delete objects by multiple goroutine concurrently
-func BatchDeleteObjectsConcurrently(ctx context.Context, bucket *blob.Bucket, objs []*blob.ListObject, concurrency int) *BatchDeleteObjectsResult {
+func BatchDeleteObjectsConcurrently(
+	ctx context.Context,
+	bucket *blob.Bucket,
+	objs []*blob.ListObject,
+	concurrency int,
+) *BatchDeleteObjectsResult {
 	mu := &sync.Mutex{}
 	result := &BatchDeleteObjectsResult{}
 
@@ -334,7 +345,12 @@ func BatchDeleteObjectsConcurrently(ctx context.Context, bucket *blob.Bucket, ob
 	return result
 }
 
-func GetStorageCredential(ctx context.Context, ns string, provider v1alpha1.StorageProvider, secretLister corelisterv1.SecretLister) *StorageCredential {
+func GetStorageCredential(
+	ctx context.Context,
+	ns string,
+	provider v1alpha1.StorageProvider,
+	secretLister corelisterv1.SecretLister,
+) *StorageCredential {
 	logger := log.FromContext(ctx)
 	var err error
 	var secret *corev1.Secret
@@ -698,7 +714,7 @@ func makeS3Config(s3Provider *v1alpha1.S3StorageProvider, fakeRegion bool) *s3Co
 }
 
 // makeGcsConfig constructs gcsConfig parameters
-func makeGcsConfig(gcs *v1alpha1.GcsStorageProvider, fakeRegion bool) *gcsConfig {
+func makeGcsConfig(gcs *v1alpha1.GcsStorageProvider, _ bool) *gcsConfig {
 	conf := gcsConfig{}
 
 	p := strings.Trim(gcs.Bucket, "/") + "/" + strings.Trim(gcs.Prefix, "/")

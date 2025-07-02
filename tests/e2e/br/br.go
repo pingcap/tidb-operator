@@ -879,7 +879,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		ginkgo.It("kill backup pod and exceed maxRetryTimes", func() {
 			// ginkgo.Skip("unstable case, after restart: there may be some backup files in the path already, please specify a correct backup directory")
 
-			backupClusterName := "kill-backup-pod-exceed-times-test"
+			backupClusterName := "kill-backup-pod-test"
 			backupVersion := utilimage.TiDBLatest
 			enableTLS := false
 			skipCA := false
@@ -963,7 +963,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		ginkgo.It("kill backup pod and exceed retryTimeout", func() {
 			// ginkgo.Skip("unstable case, after restart: there may be some backup files in the path already, please specify a correct backup directory")
 
-			backupClusterName := "kill-backup-pod-exceed-timeout-test"
+			backupClusterName := "kill-backup-pod-test"
 			backupVersion := utilimage.TiDBLatest
 			enableTLS := false
 			skipCA := false

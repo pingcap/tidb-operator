@@ -58,13 +58,19 @@ func (*defaultTiProxyControl) GetTiProxyPodClient(ctx context.Context, cli clien
 		scheme = "https"
 		tlsConfig, err = tlsutil.GetTLSConfigFromSecret(ctx, cli, namespace, coreutil.TLSClusterClientSecretName(tcName))
 		if err != nil {
-			return NewTiProxyClient(TiProxyPodClientURL(namespace, tcName, podName, clusterDomain, scheme), defaultTiProxyClientTimeout, tlsConfig),
+			return NewTiProxyClient(
+					TiProxyPodClientURL(namespace, tcName, podName, clusterDomain, scheme),
+					defaultTiProxyClientTimeout, tlsConfig),
 				fmt.Errorf("unable to get tls config for TiProxy cluster %q, tiproxy client may not work: %w", tcName, err)
 		}
-		return NewTiProxyClient(TiProxyPodClientURL(namespace, tcName, podName, clusterDomain, scheme), defaultTiProxyClientTimeout, tlsConfig), nil
+		return NewTiProxyClient(
+			TiProxyPodClientURL(namespace, tcName, podName, clusterDomain, scheme),
+			defaultTiProxyClientTimeout, tlsConfig), nil
 	}
 
-	return NewTiProxyClient(TiProxyPodClientURL(namespace, tcName, podName, clusterDomain, scheme), defaultTiProxyClientTimeout, tlsConfig), nil
+	return NewTiProxyClient(
+		TiProxyPodClientURL(namespace, tcName, podName, clusterDomain, scheme),
+		defaultTiProxyClientTimeout, tlsConfig), nil
 }
 
 // TiProxyPodClientURL builds the URL of a tiproxy pod client.

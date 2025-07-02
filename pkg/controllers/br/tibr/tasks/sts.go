@@ -180,7 +180,8 @@ func assembleServerContainer(rtx *ReconcileContext) corev1.Container {
 		Command:      cmd,
 		VolumeMounts: volumeMounts,
 		// Notice: only set resources for api-server container, auto-backup container will use default resources
-		// since auto-backup container uses not much resource and logic in auto-backup container will be merged into api-server container in the future
+		// since auto-backup container uses not much resource and logic in auto-backup container will be merged into
+		// api-server container in the future
 		Resources: k8s.GetResourceRequirements(rtx.TiBR().Spec.Resources),
 	}
 }

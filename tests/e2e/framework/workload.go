@@ -19,13 +19,12 @@ import (
 	"context"
 	"io"
 
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
-
-	"github.com/onsi/ginkgo/v2"
-	"github.com/onsi/gomega"
 
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
@@ -50,7 +49,7 @@ func (f *Framework) SetupWorkload() *Workload {
 	return w
 }
 
-func (w *Workload) MustPing(ctx context.Context, host, user, password string) {
+func (w *Workload) MustPing(ctx context.Context, host, user, password, tlsSecretName string) {
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      workloadJobName,
@@ -84,6 +83,26 @@ func (w *Workload) MustPing(ctx context.Context, host, user, password string) {
 			},
 			BackoffLimit: ptr.To[int32](0),
 		},
+	}
+
+	if tlsSecretName != "" {
+		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
+			Name: "tls-certs",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: tlsSecretName,
+				},
+			},
+		})
+		job.Spec.Template.Spec.Containers[0].VolumeMounts = append(job.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+			Name:      "tls-certs",
+			MountPath: "/var/lib/tidb-tls",
+			ReadOnly:  true,
+		})
+		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args,
+			"--enable-tls",
+			"--tls-mount-path", "/var/lib/tidb-tls",
+		)
 	}
 
 	ginkgo.By("Creating ping job")

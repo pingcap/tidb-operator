@@ -31,7 +31,7 @@ type ReconcileContext struct {
 
 	PDClient pdm.PDClient
 
-	StoreExists    bool
+	StoreNotExists bool
 	StoreID        string
 	LeaderEvicting bool
 
@@ -59,6 +59,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 			if !errors.IsNotFound(err) {
 				return task.Fail().With("failed to get store info: %w", err)
 			}
+			state.StoreNotExists = true
 			return task.Complete().With("store does not exist")
 		}
 

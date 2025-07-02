@@ -135,6 +135,7 @@ spec:
                               (scope and select) objects. May match selectors of replication controllers
                               and services.
                               More info: http://kubernetes.io/docs/user-guide/labels
+                            maxProperties: 512
                             type: object
                           name:
                             description: |-
@@ -8157,6 +8158,7 @@ spec:
                                     (scope and select) objects. May match selectors of replication controllers
                                     and services.
                                     More info: http://kubernetes.io/docs/user-guide/labels
+                                  maxProperties: 512
                                   type: object
                                 name:
                                   description: |-
@@ -8377,6 +8379,7 @@ spec:
                       - name
                       - volumeClaim
                       type: object
+                    maxItems: 256
                     type: array
                     x-kubernetes-list-map-keys:
                     - name

@@ -100,6 +100,7 @@ spec:
                 type: array
               replicas:
                 format: int32
+                minimum: 0
                 type: integer
               schedulePolicies:
                 items:
@@ -124,6 +125,7 @@ spec:
                                   Weight defines how many pods will be scheduled to this topo
                                   default is 1
                                 format: int32
+                                minimum: 1
                                 type: integer
                             required:
                             - topology
@@ -189,6 +191,7 @@ spec:
                           (scope and select) objects. May match selectors of replication controllers
                           and services.
                           More info: http://kubernetes.io/docs/user-guide/labels
+                        maxProperties: 512
                         type: object
                       name:
                         description: |-
@@ -241,6 +244,7 @@ spec:
                                       (scope and select) objects. May match selectors of replication controllers
                                       and services.
                                       More info: http://kubernetes.io/docs/user-guide/labels
+                                    maxProperties: 512
                                     type: object
                                   name:
                                     description: |-
@@ -8281,6 +8285,7 @@ spec:
                                             (scope and select) objects. May match selectors of replication controllers
                                             and services.
                                             More info: http://kubernetes.io/docs/user-guide/labels
+                                          maxProperties: 512
                                           type: object
                                         name:
                                           description: |-
@@ -8502,6 +8507,7 @@ spec:
                               - name
                               - volumeClaim
                               type: object
+                            maxItems: 256
                             type: array
                             x-kubernetes-list-map-keys:
                             - name
@@ -8605,6 +8611,9 @@ spec:
                                   enabled:
                                     type: boolean
                                 type: object
+                                x-kubernetes-validations:
+                                - message: field .mysql.enabled is immutable
+                                  rule: oldSelf == null || self.enabled == oldSelf.enabled
                             type: object
                         type: object
                       server:
@@ -8690,6 +8699,10 @@ spec:
                             type: string
                         type: object
                       version:
+                        description: |-
+                          Version must be a semantic version.
+                          It can has a v prefix or not.
+                        pattern: ^(v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$
                         type: string
                       volumes:
                         description: Volumes defines data volume of TiDB, it is optional.
@@ -8751,6 +8764,7 @@ spec:
                           - name
                           - storage
                           type: object
+                        maxItems: 256
                         type: array
                         x-kubernetes-list-map-keys:
                         - name
@@ -8758,6 +8772,11 @@ spec:
                     required:
                     - version
                     type: object
+                    x-kubernetes-validations:
+                    - message: overlay volumeClaims names must exist in volumes
+                      rule: '!has(self.overlay) || !has(self.overlay.volumeClaims)
+                        || (has(self.volumes) && self.overlay.volumeClaims.all(vc,
+                        vc.name in self.volumes.map(v, v.name)))'
                 required:
                 - spec
                 type: object
@@ -8886,6 +8905,9 @@ spec:
             - updatedReplicas
             type: object
         type: object
+        x-kubernetes-validations:
+        - message: name must not exceed 30 characters
+          rule: size(self.metadata.name) <= 30
     selectableFields:
     - jsonPath: .spec.cluster.name
     served: true
