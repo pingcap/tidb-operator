@@ -286,7 +286,8 @@ func TestConfirmNameByData(t *testing.T) {
 			},
 			afterConfirm: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "cm-12345-new",
+					// See the comment of `confirmNameByData`.
+					Name: "cm-12345",
 				},
 				Data: map[string]string{
 					"config-file": "a = \"c\"",

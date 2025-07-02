@@ -5805,7 +5805,6 @@ string
 (<em>Appears on:</em>
 <a href="#componentspec">ComponentSpec</a>, 
 <a href="#dmclusterspec">DMClusterSpec</a>, 
-<a href="#pitrstatus">PiTRStatus</a>, 
 <a href="#tidbclusterspec">TidbClusterSpec</a>)
 </p>
 <p>
@@ -12396,98 +12395,6 @@ uint
 <em>(Optional)</em>
 <p>The max count of retry for a single statement in a pessimistic transaction.
 Optional: Defaults to 256</p>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="pitroverriddenconfig">PiTROverriddenConfig</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#pitrstatus">PiTRStatus</a>)
-</p>
-<p>
-<p>PiTROverriddenConfig contains the configurations that are overridden by PiTR.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>gcRatioThreshold</code></br>
-<em>
-float64
-</em>
-</td>
-<td>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="pitrstatename">PiTRStateName</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#pitrstatus">PiTRStatus</a>)
-</p>
-<p>
-</p>
-<h3 id="pitrstatus">PiTRStatus</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#tikvstatus">TiKVStatus</a>)
-</p>
-<p>
-<p>PitrStatus is the current state of pitr.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>originConfigMap</code></br>
-<em>
-<a href="#pitroverriddenconfig">
-PiTROverriddenConfig
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>OriginConfigMap contains the original value of the configurations overridden by PiTR.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>updateStrategy</code></br>
-<em>
-<a href="#configupdatestrategy">
-ConfigUpdateStrategy
-</a>
-</em>
-</td>
-<td>
-<p>The origin tikv config update strategy.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>state</code></br>
-<em>
-<a href="#pitrstatename">
-PiTRStateName
-</a>
-</em>
-</td>
-<td>
 </td>
 </tr>
 </tbody>
@@ -22505,20 +22412,6 @@ bool
 </td>
 <td>
 <p>Indicates that a Volume replace using VolumeReplacing feature is in progress.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>pitrStatus</code></br>
-<em>
-<a href="#pitrstatus">
-PiTRStatus
-</a>
-</em>
-</td>
-<td>
-<p>PiTRStatus is the status of running point-in-time restore.
-Cluster during point-in-time restore will be optimizated to do batch jobs.</p>
 </td>
 </tr>
 </tbody>

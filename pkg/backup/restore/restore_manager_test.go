@@ -35,7 +35,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/pointer"
-	"k8s.io/utils/ptr"
 )
 
 type helper struct {
@@ -1101,26 +1100,14 @@ func TestPiTRRestore(t *testing.T) {
 		err = m.Sync(restore)
 		g.Expect(err).Should(MatchError(ContainSubstring("config reset, waiting for configmap updated")))
 
-		// Verify the state is now WaitingForConfig
-		tc2, err := deps.TiDBClusterLister.TidbClusters(restore.Spec.BR.ClusterNamespace).Get(restore.Spec.BR.Cluster)
-		g.Expect(err).Should(BeNil())
-		g.Expect(tc2.Status.TiKV.PiTRStatus.State).To(Equal(v1alpha1.PiTRStateWaitingForConfig))
-		g.Expect(tc2.Spec.TiKV.Config.Get("gc.ratio-threshold").MustFloat()).To(Equal(-1.0))
-
 		// Simulate the configmap being updated by the operator, set state to Running
 		helper.updateConfigMapRatioThreshold(restore.Spec.BR.ClusterNamespace, restore.Spec.BR.Cluster, -1.0)
 		err = m.Sync(restore)
 		g.Expect(err).Should(BeNil())
-		g.Expect(tc2.Status.TiKV.PiTRStatus.State).To(Equal(v1alpha1.PiTRStateRunning))
 		// Second sync should succeed now
 		helper.hasCondition(restore.Namespace, restore.Name, v1alpha1.RestoreScheduled, "")
 		job, err := helper.Deps.KubeClientset.BatchV1().Jobs(restore.Namespace).Get(context.TODO(), restore.GetRestoreJobName(), metav1.GetOptions{})
 		g.Expect(err).Should(BeNil())
-
-		tc3, err := deps.TiDBClusterLister.TidbClusters(restore.Spec.BR.ClusterNamespace).Get(restore.Spec.BR.Cluster)
-		g.Expect(err).Should(BeNil())
-		st := tc3.Status.TiKV.PiTRStatus
-		g.Expect(st.State).To(Equal(v1alpha1.PiTRStateRunning))
 
 		// check pod env are set correctly for PiTR restore
 		env1 := corev1.EnvVar{
@@ -1162,172 +1149,9 @@ func TestPiTRRestore(t *testing.T) {
 			time.Sleep(100 * time.Microsecond)
 		}
 		err = m.Sync(restore)
-		// Wait for reconile...
-		g.Expect(err).Should(MatchError(ContainSubstring("config reset, waiting for configmap updated")))
-		// Verify the state is now WaitingForConfig again
-		tc2, err = deps.TiDBClusterLister.TidbClusters(restore.Spec.BR.ClusterNamespace).Get(restore.Spec.BR.Cluster)
+		// the original configmap will be reset asyncrhonously
 		g.Expect(err).Should(BeNil())
-		g.Expect(tc2.Status.TiKV.PiTRStatus.State).To(Equal(v1alpha1.PiTRStateWaitingForConfig))
-
-		// Verify the original configmap is stored
-		helper.updateConfigMapRatioThreshold(restore.Spec.BR.ClusterNamespace, restore.Spec.BR.Cluster, math.NaN())
-		err = m.Sync(restore)
-		g.Expect(err).Should(BeNil())
-		tc2, err = deps.TiDBClusterLister.TidbClusters(restore.Spec.BR.ClusterNamespace).Get(restore.Spec.BR.Cluster)
-		g.Expect(err).Should(BeNil())
-		g.Expect(tc2.Status.TiKV.PiTRStatus.State).To(Equal(v1alpha1.PiTRStateInactive))
 	}
-}
-
-func TestPiTRHelperFunctions(t *testing.T) {
-	g := NewGomegaWithT(t)
-	helper := newHelper(t)
-	defer helper.Close()
-	deps := helper.Deps
-
-	// Create a test TiDB cluster with PiTR status
-	tc := &v1alpha1.TidbCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-tc",
-			Namespace: "ns",
-		},
-		Spec: v1alpha1.TidbClusterSpec{
-			TiKV: &v1alpha1.TiKVSpec{
-				Config: &v1alpha1.TiKVConfigWraper{},
-			},
-		},
-		Status: v1alpha1.TidbClusterStatus{
-			TiKV: v1alpha1.TiKVStatus{
-				PiTRStatus: v1alpha1.PiTRStatus{},
-			},
-		},
-	}
-
-	// Initialize TiKV config if nil
-	tc.Spec.TiKV.Config = v1alpha1.NewTiKVConfig()
-	tc.Spec.TiKV.Config.Set("gc.ratio-threshold", 1.2)
-	tc.Spec.TiKV.Config.Set("server.grpc-keepalive-timeout", "30s")
-	helper.CreateTC("ns", "test-tc", false, false)
-
-	// Create TiKV StatefulSet and ConfigMap for PiTR testing
-	helper.createTiKVStatefulSetAndConfigMap("ns", "test-tc")
-
-	m := PiTRManager{deps}
-
-	// Test configMapOfTiKV - should successfully retrieve and parse TiKV config map
-	tikvConfig, err := m.configMapOfTiKV(tc)
-	g.Expect(err).Should(BeNil())
-	g.Expect(tikvConfig).ShouldNot(BeNil())
-	g.Expect(tikvConfig.Get("gc.ratio-threshold").MustFloat()).Should(Equal(1.2))
-
-	// Test pitrEnable - first call should transition to WaitingForConfig state
-	err = m.Enable(tc)
-	g.Expect(err).Should(MatchError(ContainSubstring("config reset, waiting for configmap updated")))
-	g.Expect(tc.Status.TiKV.PiTRStatus.State).Should(Equal(v1alpha1.PiTRStateWaitingForConfig))
-	g.Expect(tc.Status.TiKV.PiTRStatus.OriginConfigMap).ShouldNot(BeNil())
-	g.Expect(*tc.Status.TiKV.PiTRStatus.OriginConfigMap.GCRatioThreshold).Should(Equal(1.2))
-	// Verify that GC threshold is set to -1.0 for PiTR
-	g.Expect(tc.Spec.TiKV.Config.Get("gc.ratio-threshold").MustFloat()).Should(Equal(-1.0))
-
-	// Test configMapOfTiKV after Enable - config should reflect the PiTR setting
-	// Update the ConfigMap to simulate the new config being applied
-	// Update the ConfigMap to set ratio-threshold to -1.0 for PiTR
-	helper.updateConfigMapRatioThreshold("ns", "test-tc", -1.0)
-
-	err = m.Enable(tc)
-	g.Expect(err).Should(BeNil())
-	g.Expect(tc.Status.TiKV.PiTRStatus.State).Should(Equal(v1alpha1.PiTRStateRunning))
-
-	// Test pitrDisable - should set state to WaitingForConfig and return requeue error
-	err = m.disable(tc)
-	g.Expect(err).Should(MatchError(ContainSubstring("config reset, waiting for configmap updated")))
-	g.Expect(tc.Status.TiKV.PiTRStatus.State).Should(Equal(v1alpha1.PiTRStateWaitingForConfig))
-	g.Expect(tc.Status.TiKV.PiTRStatus.OriginConfigMap).Should(BeNil())
-	g.Expect(tc.Spec.TiKV.Config.Get("server.grpc-keepalive-timeout").MustString()).Should(Equal("30s"))
-
-	// Test disable with state WaitingForConfig and original configmap applied
-	// First restore the original config in the configmap
-	helper.updateConfigMapRatioThreshold("ns", "test-tc", 1.2)
-
-	// Test disable when in WaitingForConfig state - should complete disable successfully
-	err = m.disable(tc)
-	g.Expect(err).Should(BeNil())
-	g.Expect(tc.Status.TiKV.PiTRStatus.State).Should(Equal(v1alpha1.PiTRStateInactive))
-
-	// Test MaybeDisable with no restores
-	tc.Status.TiKV.PiTRStatus.State = v1alpha1.PiTRStateRunning
-	tc.Status.TiKV.PiTRStatus.OriginConfigMap = &v1alpha1.PiTROverriddenConfig{
-		GCRatioThreshold: ptr.To(1.2),
-	}
-	err = m.MaybeDisable(tc)
-	g.Expect(err).Should(MatchError(ContainSubstring("config reset, waiting for configmap updated"))) // Should try to disable
-
-	// Test MaybeDisable with running restores
-	runningRestore := &v1alpha1.Restore{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-restore",
-			Namespace: "ns",
-		},
-		Spec: v1alpha1.RestoreSpec{
-			BR: &v1alpha1.BRConfig{
-				Cluster:          "test-tc",
-				ClusterNamespace: "ns",
-			},
-		},
-		Status: v1alpha1.RestoreStatus{
-			Conditions: []v1alpha1.RestoreCondition{
-				{
-					Type:   v1alpha1.RestoreRunning,
-					Status: corev1.ConditionTrue,
-				},
-			},
-		},
-	}
-	helper.CreateRestore(runningRestore)
-
-	err = m.MaybeDisable(tc)
-	g.Expect(err).Should(BeNil()) // Should not disable with running restores
-
-	// Test pitrTasksAreDone with no restores
-	done := pitrTasksAreDone([]*v1alpha1.Restore{})
-	g.Expect(done).Should(BeTrue())
-
-	// Test pitrTasksAreDone with completed restore
-	completedRestore := &v1alpha1.Restore{
-		Status: v1alpha1.RestoreStatus{
-			Conditions: []v1alpha1.RestoreCondition{
-				{
-					Type:   v1alpha1.RestoreComplete,
-					Status: corev1.ConditionTrue,
-				},
-			},
-		},
-	}
-	done = pitrTasksAreDone([]*v1alpha1.Restore{completedRestore})
-	g.Expect(done).Should(BeTrue())
-
-	// Test pitrTasksAreDone with running restore
-	done = pitrTasksAreDone([]*v1alpha1.Restore{runningRestore})
-	g.Expect(done).Should(BeFalse())
-
-	// Test pitrTaskIsDone with recently failed restore
-	recentFailedRestore := &v1alpha1.Restore{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "recent-failed-restore",
-			Namespace: "ns",
-		},
-		Status: v1alpha1.RestoreStatus{
-			Conditions: []v1alpha1.RestoreCondition{
-				{
-					Type:               v1alpha1.RestoreFailed,
-					Status:             corev1.ConditionTrue,
-					LastTransitionTime: metav1.Time{Time: time.Now().Add(-1 * time.Hour)},
-				},
-			},
-		},
-	}
-	done = pitrTaskIsDone(recentFailedRestore)
-	g.Expect(done).Should(BeFalse())
 }
 
 // createTiKVStatefulSetAndConfigMap creates TiKV StatefulSet and ConfigMap for PiTR testing
