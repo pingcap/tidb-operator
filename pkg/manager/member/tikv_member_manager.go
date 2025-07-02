@@ -16,7 +16,6 @@ package member
 import (
 	"context"
 	"fmt"
-	"math"
 	"path"
 	"reflect"
 	"regexp"
@@ -1153,7 +1152,6 @@ func (m *tikvMemberManager) applyPiTRConfigOverride(tc *v1alpha1.TidbCluster, ne
 }
 
 // overrideGCRatioThresholdInConfigMap modifies the config map data to set gc.ratio-threshold
-// if value is `math.NaN`, unset this config term.
 func (m *tikvMemberManager) overrideGCRatioThresholdInConfigMap(cm *corev1.ConfigMap, value float64) error {
 	if cm.Data == nil {
 		cm.Data = make(map[string]string)
@@ -1170,11 +1168,7 @@ func (m *tikvMemberManager) overrideGCRatioThresholdInConfigMap(cm *corev1.Confi
 	}
 
 	// Override gc.ratio-threshold
-	if math.IsNaN(value) {
-		wrapper.Del("gc.ratio-threshold")
-	} else {
-		wrapper.Set("gc.ratio-threshold", value)
-	}
+	wrapper.Set("gc.ratio-threshold", value)
 
 	// Marshal back to TOML
 	data, err := wrapper.MarshalTOML()
