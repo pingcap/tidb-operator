@@ -20,14 +20,14 @@ kubectl create namespace tidb-admin
 2. Install CRDs for TiDB Operator
 
 ```
-kubectl create -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.6.1/manifests/crd.yaml
+kubectl create -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.6.2/manifests/crd.yaml
 ```
 
 3. Install TiDB Operator via Helm
 
 ```
 helm repo add pingcap https://charts.pingcap.org/
-helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.6.1
+helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.6.2
 ```
 
 4. Deploy TiDB Cluster and Monitoring Service
@@ -54,14 +54,14 @@ kubectl create namespace tidb-admin
 3. Install CRDs for TiDB Operator
 
 ```
-kubectl create -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.6.1/manifests/crd.yaml
+kubectl create -f https://raw.githubusercontent.com/pingcap/tidb-operator/v1.6.2/manifests/crd.yaml
 ```
 
 4. Install TiDB Operator via Helm
 
 ```
 helm repo add pingcap https://charts.pingcap.org/
-helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.6.1
+helm install --namespace tidb-admin tidb-operator pingcap/tidb-operator --version v1.6.2
 ```
 
 5. Deploy TiDB Cluster and Monitoring Service
