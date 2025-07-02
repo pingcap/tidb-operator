@@ -192,6 +192,7 @@ func newPod(cluster *v1alpha1.Cluster, ticdc *v1alpha1.TiCDC) *corev1.Pod {
 			InitContainers: []corev1.Container{
 				{
 					// TODO: support hot reload checker
+					// NOTE: before k8s 1.32, sidecar cannot be restarted because of this https://github.com/kubernetes/kubernetes/pull/126525.
 					Name:            v1alpha1.ContainerNamePrestopChecker,
 					Image:           image.PrestopChecker.Image(preStopImage),
 					ImagePullPolicy: corev1.PullIfNotPresent,
