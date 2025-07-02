@@ -125,7 +125,8 @@ func confirmNameByData(existing, desired *corev1.ConfigMap, dataEqual bool) {
 		// When restoring, there will be a overlay configuration directly applied to configmap.
 		// when removing it, the content of configmap may be different with spec. but
 		// we don't want to rolling restart in this scenario -- keep the name unchanged.
-		klog.InfoS("the hash of spec(desired) matches hash of config map, but their contents are different. restoring the config map.",
+		klog.InfoS("the hash of spec(desired) matches hash of config map (hash conflicition or overlay configuration removal?), but their contents are different."+
+			"This modification won't trigger rolling-restart. If you did applied some change, you may restart to apply them.",
 			"config_map", klog.KObj(existing))
 	}
 }
