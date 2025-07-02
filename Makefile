@@ -145,17 +145,35 @@ unit:
 .PHONY: check
 check: lint unit verify
 
+.PHONY: install-githooks
+install-githooks:
+	@echo "Installing git hooks..."
+	@mkdir -p .git/hooks
+	@ln -sf ../../hack/githooks/pre-push .git/hooks/pre-push
+	@echo "pre-push hook installed successfully."
+	@echo "You can run 'make check' manually to check your code before push."
+
 .PHONY: e2e/prepare
 e2e/prepare: bin/kind release
 	$(ROOT)/hack/e2e.sh --prepare
 
+# e2e/run: Run e2e tests (excluding packages specified in E2E_EXCLUDED_PACKAGES)
+# Default excludes 'upgrade' package which requires special build tags
+# Usage: make e2e/run
+# To exclude additional packages: E2E_EXCLUDED_PACKAGES="upgrade,some-other-package" make e2e/run
+# To run all packages: E2E_EXCLUDED_PACKAGES="" make e2e/run
 .PHONY: e2e/run
 e2e/run:
 	$(ROOT)/hack/e2e.sh run $(GINKGO_OPTS)
 
+.PHONY: e2e/run-upgrade
+e2e/run-upgrade:
+	$(ROOT)/hack/e2e.sh run-upgrade $(GINKGO_OPTS)
+
+# e2e: Run full e2e test suite including both regular and upgrade tests
 .PHONY: e2e
 e2e: bin/kind release
-	$(ROOT)/hack/e2e.sh --prepare run $(GINKGO_OPTS)
+	$(ROOT)/hack/e2e.sh --prepare run run-upgrade $(GINKGO_OPTS)
 
 .PHONY: e2e/reinstall-operator
 e2e/reinstall-operator:
