@@ -191,15 +191,16 @@ func newPod(cluster *v1alpha1.Cluster, ticdc *v1alpha1.TiCDC) *corev1.Pod {
 			NodeSelector:                  ticdc.Spec.Topology,
 			InitContainers: []corev1.Container{
 				{
+					// TODO: support hot reload checker
 					Name:            v1alpha1.ContainerNamePrestopChecker,
 					Image:           image.PrestopChecker.Image(preStopImage),
 					ImagePullPolicy: corev1.PullIfNotPresent,
-					RestartPolicy:   ptr.To(corev1.ContainerRestartPolicyAlways),
+					// RestartPolicy:   ptr.To(corev1.ContainerRestartPolicyAlways),
 					Command: []string{
 						"/bin/sh",
 						"-c",
 						"cp /prestop-checker " + v1alpha1.DirPathPrestop + "/;",
-						"sleep infinity",
+						// "sleep infinity",
 					},
 					VolumeMounts: []corev1.VolumeMount{
 						{
