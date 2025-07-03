@@ -45,23 +45,6 @@ func (f *fakeState[T]) Key() types.NamespacedName {
 	}
 }
 
-type fakeSliceState[T any] struct {
-	ns     string
-	labels map[string]string
-	objs   []*T
-}
-
-func (f *fakeSliceState[T]) Slice() []*T {
-	return f.objs
-}
-
-func (f *fakeSliceState[T]) Initializer() ResourceSliceInitializer[T] {
-	return NewResourceSlice(func(objs []*T) { f.objs = objs }).
-		WithNamespace(Namespace(f.ns)).
-		WithLabels(Labels(f.labels)).
-		Initializer()
-}
-
 type fakeClusterState struct {
 	s *fakeState[v1alpha1.Cluster]
 }
@@ -80,18 +63,6 @@ func (f *fakePodState) Pod() *corev1.Pod {
 
 func (f *fakePodState) IsPodTerminating() bool {
 	return false
-}
-
-type fakePDSliceState struct {
-	s *fakeSliceState[v1alpha1.PD]
-}
-
-func (f *fakePDSliceState) PDSlice() []*v1alpha1.PD {
-	return f.s.Slice()
-}
-
-func (f *fakePDSliceState) PDSliceInitializer() PDSliceInitializer {
-	return f.s.Initializer()
 }
 
 type fakeGroupState[RG runtime.Group] struct {
@@ -246,6 +217,7 @@ type fakeServerLabelsState struct {
 func (s *fakeServerLabelsState) GetServerLabels() map[string]string {
 	return s.serverLabels
 }
+
 func (s *fakeServerLabelsState) IsHealthy() bool {
 	return s.healthy
 }
