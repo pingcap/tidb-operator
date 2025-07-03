@@ -42,6 +42,10 @@ func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 	// old == spec.old + overlay == spec.new + overlay, which sounds if spec.old == spec.new
 	//        |                |    |       \  |     +---------\
 	//        +----old.data----+    +new.data+ +old.data-overlay+
+	//
+	// Glitch: if user changes the overlaid configuration during the overlay exists, that modification might be ignored.
+	// (i.e. the compartion results "equal") perhaps also save the last user spec in the future if this glitch matters.
+	// (should consider how to upgrade.)
 	applyOverlay := func(old, new *corev1.ConfigMap, key string) ([]byte, bool, error) {
 		if overlay, ok := old.Data[fmt.Sprintf("%s-overlay", key)]; ok {
 			cfg := v1alpha1.NewTiKVConfig()
