@@ -44,10 +44,9 @@ func NamePrefixAndSuffix[
 	return name[:index], name[index+1:]
 }
 
+// PodName returns the default managed pod name of an instance
 // TODO(liubo02): rename to more reasonable one
 // TODO(liubo02): move to namer
-//
-//nolint:staticcheck
 func PodName[
 	S scope.Instance[F, T],
 	F client.Object,
@@ -57,9 +56,8 @@ func PodName[
 	return prefix + "-" + scope.Component[S]() + "-" + suffix
 }
 
+// TLSClusterSecretName returns the default cluster secret name of an instance
 // TODO(liubo02): move to namer
-//
-//nolint:staticcheck
 func TLSClusterSecretName[
 	S scope.Instance[F, T],
 	F client.Object,

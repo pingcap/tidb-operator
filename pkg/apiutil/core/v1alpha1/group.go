@@ -27,14 +27,6 @@ import (
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 )
 
-func Version[
-	S scope.Group[F, T],
-	F client.Object,
-	T runtime.Group,
-](f F) string {
-	return scope.From[S](f).Version()
-}
-
 func StatusVersion[
 	S scope.Group[F, T],
 	F client.Object,
@@ -51,9 +43,8 @@ func Replicas[
 	return scope.From[S](f).Replicas()
 }
 
+// IsGroupHealthyAndUpToDate is defined to check whether all replicas of the group are healthy and up to date
 // TODO: simplify it by a condition
-//
-//nolint:staticcheck
 func IsGroupHealthyAndUpToDate[
 	S scope.Group[F, T],
 	F client.Object,
