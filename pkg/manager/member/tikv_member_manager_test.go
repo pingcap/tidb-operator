@@ -2758,7 +2758,6 @@ func mustTiKVConfig(x interface{}) *v1alpha1.TiKVConfigWraper {
 }
 
 func TestTiKVMemberManagerApplyPiTRConfigOverride(t *testing.T) {
-	g := NewGomegaWithT(t)
 	type testcase struct {
 		name           string
 		restores       []*v1alpha1.Restore
@@ -2769,7 +2768,7 @@ func TestTiKVMemberManagerApplyPiTRConfigOverride(t *testing.T) {
 
 	testFn := func(test *testcase, t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
-
+			g := NewGomegaWithT(t)
 			tkmm, _, _, _, _, _ := newFakeTiKVMemberManager(test.tc)
 
 			// Add restores to the fake restore lister

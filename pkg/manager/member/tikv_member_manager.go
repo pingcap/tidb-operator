@@ -1154,16 +1154,6 @@ func (m *tikvMemberManager) overrideGCRatioThresholdInConfigMap(cm *corev1.Confi
 		cm.Data = make(map[string]string)
 	}
 
-	configContent := cm.Data["config-file"]
-
-	// Parse existing config to preserve other settings
-	wrapper := v1alpha1.NewTiKVConfig()
-	if configContent != "" {
-		if err := wrapper.UnmarshalTOML([]byte(configContent)); err != nil {
-			return fmt.Errorf("failed to unmarshal existing TiKV config: %v", err)
-		}
-	}
-
 	return applyOverlay(cm, "gc.ratio-threshold", value)
 }
 
@@ -1172,29 +1162,33 @@ func applyOverlay(cm *corev1.ConfigMap, key string, value any) error {
 	// Perhaps batch it when there goes many overlays.
 	// For now only one overlay will be applied so this can be fine.
 
-	wrapper := v1alpha1.NewTiKVConfig()
-	wrapper.Set("gc.ratio-threshold", value)
+	overlayWrapper := v1alpha1.NewTiKVConfig()
+	overlayWrapper.Set("gc.ratio-threshold", value)
 	configOverlayContent := cm.Data["config-file-overlay"]
 	if configOverlayContent != "" {
-		if err := wrapper.UnmarshalTOML([]byte(configOverlayContent)); err != nil {
+		if err := overlayWrapper.UnmarshalTOML([]byte(configOverlayContent)); err != nil {
 			return fmt.Errorf("failed to unmarshal TiKV config: %v", err)
 		}
 	}
-	wrapper.Set(key, value)
+	overlayWrapper.Set(key, value)
 
-	overlayContent, err := wrapper.MarshalTOML()
+	overlayContent, err := overlayWrapper.MarshalTOML()
 	if err != nil {
 		return fmt.Errorf("failed to marshal TiKV config: %v", err)
 	}
 	cm.Data["config-file-overlay"] = string(overlayContent)
 
 	configContent := cm.Data["config-file"]
+	configFileWrapper := v1alpha1.NewTiKVConfig()
 	if configContent != "" {
-		if err := wrapper.UnmarshalTOML([]byte(configContent)); err != nil {
+		if err := configFileWrapper.UnmarshalTOML([]byte(configContent)); err != nil {
 			return fmt.Errorf("failed to unmarshal existing TiKV config: %v", err)
 		}
+		if err := configFileWrapper.Merge(overlayWrapper.GenericConfig); err != nil {
+			return fmt.Errorf("failed to merge overlay into existing TiKV config: %v", err)
+		}
 	}
-	overlayAppliedConfigContent, err := wrapper.MarshalTOML()
+	overlayAppliedConfigContent, err := configFileWrapper.MarshalTOML()
 	if err != nil {
 		return fmt.Errorf("failed to marshal TiKV config: %v", err)
 	}
