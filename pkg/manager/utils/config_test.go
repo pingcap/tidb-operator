@@ -14,6 +14,7 @@
 package utils
 
 import (
+	"fmt"
 	"testing"
 
 	. "github.com/onsi/gomega"
@@ -22,7 +23,6 @@ import (
 )
 
 func TestUpdateConfigMap(t *testing.T) {
-	g := NewGomegaWithT(t)
 	type testcase struct {
 		name       string
 		old        *corev1.ConfigMap
@@ -33,39 +33,47 @@ func TestUpdateConfigMap(t *testing.T) {
 	}
 
 	testFn := func(test *testcase, t *testing.T) {
-		t.Log(test.name)
+		t.Run(test.name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
 
-		origOld := test.old.DeepCopy()
-		origNew := test.new.DeepCopy()
-		equal, err := updateConfigMap(test.old, test.new)
+			origOld := test.old.DeepCopy()
+			origNew := test.new.DeepCopy()
+			equal, err := updateConfigMap(test.old, test.new)
 
-		if test.err != nil {
-			g.Expect(err).To(Equal(test.err))
-			return
-		}
-		g.Expect(err).NotTo(HaveOccurred())
-		g.Expect(equal).To(Equal(test.equal))
+			if test.err != nil {
+				g.Expect(err).To(Equal(test.err))
+				return
+			}
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(equal).To(Equal(test.equal))
 
-		// different keys are updated in new
-		if len(test.new.Data) > 0 {
-			for _, k := range test.updateKeys {
-				// only keys in both old and new are updated
+			// different keys are updated in new
+			if len(test.new.Data) > 0 {
+				for _, k := range test.updateKeys {
+					// only keys in both old and new are updated
+					_, ok := origOld.Data[k]
+					if !ok {
+						continue
+					}
+					// Skip validation if there's an overlay applied for this key
+					// because overlay handling prevents the old data from being copied to new
+					overlayKey := fmt.Sprintf("%s-overlay", k)
+					if _, hasOverlay := origOld.Data[overlayKey]; hasOverlay {
+						continue
+					}
+					g.Expect(test.new.Data[k]).To(Equal(origOld.Data[k]))
+				}
+			}
+
+			// other keys should not be modified
+			for k, v := range origNew.Data {
 				_, ok := origOld.Data[k]
-				if !ok {
+				if ok {
 					continue
 				}
-				g.Expect(test.new.Data[k]).To(Equal(origOld.Data[k]))
+				g.Expect(test.new.Data[k]).To(Equal(v))
 			}
-		}
-
-		// other keys should not be modified
-		for k, v := range origNew.Data {
-			_, ok := origOld.Data[k]
-			if ok {
-				continue
-			}
-			g.Expect(test.new.Data[k]).To(Equal(v))
-		}
+		})
 	}
 
 	tests := []testcase{
@@ -212,6 +220,69 @@ func TestUpdateConfigMap(t *testing.T) {
 			},
 			equal: false,
 		},
+		{
+			name: "config with overlay applied should be equal when overlay matches",
+			old: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "old",
+				},
+				Data: map[string]string{
+					"config-file":         "[gc]\nratio-threshold = 1.1",
+					"config-file-overlay": "[gc]\nratio-threshold = 1.1",
+				},
+			},
+			new: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "new",
+				},
+				Data: map[string]string{
+					"config-file": "[gc]\nratio-threshold = 1.0",
+				},
+			},
+			equal: true,
+		},
+		{
+			name: "config with overlay applied should not be equal when overlay differs",
+			old: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "old",
+				},
+				Data: map[string]string{
+					"config-file":         "[gc]\nratio-threshold = 1.1",
+					"config-file-overlay": "[gc]\nratio-threshold = 1.1",
+				},
+			},
+			new: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "new",
+				},
+				Data: map[string]string{
+					"config-file": "[gc]\na=10",
+				},
+			},
+			equal: false,
+		},
+		{
+			name: "config with overlay applied independent fields",
+			old: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "old",
+				},
+				Data: map[string]string{
+					"config-file":         "[gc]\nratio-threshold = 1.1",
+					"config-file-overlay": "[gc]\nratio-threshold = 1.1",
+				},
+			},
+			new: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "new",
+				},
+				Data: map[string]string{
+					"config-file": "[my-great-config-scope]\nmy-great-config-value=10",
+				},
+			},
+			equal: false,
+		},
 	}
 
 	for i := range tests {
@@ -286,8 +357,8 @@ func TestConfirmNameByData(t *testing.T) {
 			},
 			afterConfirm: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					// See the comment of `confirmNameByData`.
-					Name: "cm-12345",
+					// When data is not equal and names are the same, append "-new" to name
+					Name: "cm-12345-new",
 				},
 				Data: map[string]string{
 					"config-file": "a = \"c\"",
