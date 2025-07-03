@@ -156,6 +156,14 @@ func (in *TiProxy) Features() []metav1alpha1.Feature {
 	return in.Spec.Features
 }
 
+func (in *TiProxy) SetVersion(version string) {
+	in.Spec.Version = version
+}
+
+func (in *TiProxy) Version() string {
+	return in.Spec.Version
+}
+
 type (
 	TiProxyGroup v1alpha1.TiProxyGroup
 )

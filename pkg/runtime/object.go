@@ -35,6 +35,9 @@ type Object interface {
 	SetObservedGeneration(int64)
 	ObservedGeneration() int64
 
+	SetVersion(versions string)
+	Version() string
+
 	Features() []metav1alpha1.Feature
 }
 

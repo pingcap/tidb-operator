@@ -15,6 +15,7 @@
 package runtime
 
 import (
+	"slices"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,7 +23,6 @@ import (
 
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/utils/datacontainer"
 )
 
 // Job is the interface for a job. for example, backup, restore, etc.
@@ -100,7 +100,7 @@ func (b *Backup) NeedRemoveFinalizer() bool {
 }
 
 func isBackupDeletionCandidate(backup *brv1alpha1.Backup) bool {
-	return backup.DeletionTimestamp != nil && datacontainer.ContainsString(backup.Finalizers, metav1alpha1.Finalizer, nil)
+	return backup.DeletionTimestamp != nil && slices.Contains(backup.Finalizers, metav1alpha1.Finalizer)
 }
 
 // TODO(ideascf): move this to pkg/utils/k8s
@@ -166,7 +166,7 @@ func (b *Backup) ObservedGeneration() int64 {
 	return 0
 }
 
-func (b *Backup) SetObservedGeneration(g int64) {
+func (b *Backup) SetObservedGeneration(int64) {
 	// dummy function
 }
 
@@ -176,6 +176,15 @@ func (b *Backup) Object() client.Object {
 
 func (b *Backup) Features() []metav1alpha1.Feature {
 	return nil
+}
+
+func (b *Backup) Version() string {
+	// dummy function
+	return ""
+}
+
+func (b *Backup) SetVersion(string) {
+	// dummy function
 }
 
 type (
@@ -236,7 +245,7 @@ func (r *Restore) ObservedGeneration() int64 {
 	return 0
 }
 
-func (r *Restore) SetObservedGeneration(g int64) {
+func (r *Restore) SetObservedGeneration(int64) {
 	// dummy function
 }
 
@@ -246,6 +255,15 @@ func (r *Restore) Object() client.Object {
 
 func (r *Restore) Features() []metav1alpha1.Feature {
 	return nil
+}
+
+func (r *Restore) Version() string {
+	// dummy function
+	return ""
+}
+
+func (r *Restore) SetVersion(string) {
+	// dummy function
 }
 
 func FromRestore(r *brv1alpha1.Restore) *Restore {

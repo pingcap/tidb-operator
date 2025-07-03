@@ -212,6 +212,14 @@ func (in *$.|pub$) PodOverlay() *v1alpha1.PodOverlay {
 func (in *$.|pub$) Features() []metav1alpha1.Feature {
 	return in.Spec.Features
 }
+
+func (in *$.|pub$) SetVersion(version string) {
+	in.Spec.Version = version
+}
+
+func (in *$.|pub$) Version() string {
+	return in.Spec.Version
+}
 `, t)
 
 	return sw.Error()
