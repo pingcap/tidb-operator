@@ -39,7 +39,7 @@ func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 	// when comparing `old` and `new`, as the overlay configuration isn't expected to be compared,
 	// it will be applied to `new` becore for comparing, so we have the equality:
 	//
-	// old == spec.old + overlay == spec.new + overlay, which sounds iff spec.old == spec.new
+	// old == spec.old + overlay == spec.new + overlay, which sounds if spec.old == spec.new
 	//        |                |    |       \  |     +---------\
 	//        +----old.data----+    +new.data+ +old.data-overlay+
 	applyOverlay := func(old, new *corev1.ConfigMap, key string) ([]byte, bool, error) {
