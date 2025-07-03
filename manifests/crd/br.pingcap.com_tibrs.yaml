@@ -1417,8 +1417,6 @@ spec:
                                                 Scheme to use for connecting to the host.
                                                 Defaults to HTTP.
                                               type: string
-                                          required:
-                                          - port
                                           type: object
                                         sleep:
                                           description: Sleep represents the duration
@@ -1430,8 +1428,6 @@ spec:
                                                 seconds to sleep.
                                               format: int64
                                               type: integer
-                                          required:
-                                          - seconds
                                           type: object
                                         tcpSocket:
                                           description: |-
@@ -1452,8 +1448,6 @@ spec:
                                                 Number must be in the range 1 to 65535.
                                                 Name must be an IANA_SVC_NAME.
                                               x-kubernetes-int-or-string: true
-                                          required:
-                                          - port
                                           type: object
                                       type: object
                                     preStop:
@@ -1535,8 +1529,6 @@ spec:
                                                 Scheme to use for connecting to the host.
                                                 Defaults to HTTP.
                                               type: string
-                                          required:
-                                          - port
                                           type: object
                                         sleep:
                                           description: Sleep represents the duration
@@ -1548,8 +1540,6 @@ spec:
                                                 seconds to sleep.
                                               format: int64
                                               type: integer
-                                          required:
-                                          - seconds
                                           type: object
                                         tcpSocket:
                                           description: |-
@@ -1570,8 +1560,6 @@ spec:
                                                 Number must be in the range 1 to 65535.
                                                 Name must be an IANA_SVC_NAME.
                                               x-kubernetes-int-or-string: true
-                                          required:
-                                          - port
                                           type: object
                                       type: object
                                   type: object
@@ -1620,8 +1608,6 @@ spec:
 
                                             If this is not specified, the default behavior is defined by gRPC.
                                           type: string
-                                      required:
-                                      - port
                                       type: object
                                     httpGet:
                                       description: HTTPGet specifies the http request
@@ -1671,8 +1657,6 @@ spec:
                                             Scheme to use for connecting to the host.
                                             Defaults to HTTP.
                                           type: string
-                                      required:
-                                      - port
                                       type: object
                                     initialDelaySeconds:
                                       description: |-
@@ -1709,8 +1693,6 @@ spec:
                                             Number must be in the range 1 to 65535.
                                             Name must be an IANA_SVC_NAME.
                                           x-kubernetes-int-or-string: true
-                                      required:
-                                      - port
                                       type: object
                                     terminationGracePeriodSeconds:
                                       description: |-
@@ -1836,8 +1818,6 @@ spec:
 
                                             If this is not specified, the default behavior is defined by gRPC.
                                           type: string
-                                      required:
-                                      - port
                                       type: object
                                     httpGet:
                                       description: HTTPGet specifies the http request
@@ -1887,8 +1867,6 @@ spec:
                                             Scheme to use for connecting to the host.
                                             Defaults to HTTP.
                                           type: string
-                                      required:
-                                      - port
                                       type: object
                                     initialDelaySeconds:
                                       description: |-
@@ -1925,8 +1903,6 @@ spec:
                                             Number must be in the range 1 to 65535.
                                             Name must be an IANA_SVC_NAME.
                                           x-kubernetes-int-or-string: true
-                                      required:
-                                      - port
                                       type: object
                                     terminationGracePeriodSeconds:
                                       description: |-
@@ -2090,8 +2066,6 @@ spec:
                                               RuntimeDefault - the container runtime's default profile.
                                               Unconfined - no AppArmor enforcement.
                                           type: string
-                                      required:
-                                      - type
                                       type: object
                                     capabilities:
                                       description: |-
@@ -2212,8 +2186,6 @@ spec:
                                             RuntimeDefault - the container runtime default profile should be used.
                                             Unconfined - no profile should be applied.
                                           type: string
-                                      required:
-                                      - type
                                       type: object
                                     windowsOptions:
                                       description: |-
@@ -2296,8 +2268,6 @@ spec:
 
                                             If this is not specified, the default behavior is defined by gRPC.
                                           type: string
-                                      required:
-                                      - port
                                       type: object
                                     httpGet:
                                       description: HTTPGet specifies the http request
@@ -2347,8 +2317,6 @@ spec:
                                             Scheme to use for connecting to the host.
                                             Defaults to HTTP.
                                           type: string
-                                      required:
-                                      - port
                                       type: object
                                     initialDelaySeconds:
                                       description: |-
@@ -2385,8 +2353,6 @@ spec:
                                             Number must be in the range 1 to 65535.
                                             Name must be an IANA_SVC_NAME.
                                           x-kubernetes-int-or-string: true
-                                      required:
-                                      - port
                                       type: object
                                     terminationGracePeriodSeconds:
                                       description: |-
@@ -2469,7 +2435,6 @@ spec:
                                         type: string
                                     required:
                                     - devicePath
-                                    - name
                                     type: object
                                   type: array
                                   x-kubernetes-list-map-keys:
@@ -2539,7 +2504,6 @@ spec:
                                         type: string
                                     required:
                                     - mountPath
-                                    - name
                                     type: object
                                   type: array
                                   x-kubernetes-list-map-keys:
@@ -2938,8 +2902,6 @@ spec:
                                                 Scheme to use for connecting to the host.
                                                 Defaults to HTTP.
                                               type: string
-                                          required:
-                                          - port
                                           type: object
                                         sleep:
                                           description: Sleep represents the duration
@@ -2951,8 +2913,6 @@ spec:
                                                 seconds to sleep.
                                               format: int64
                                               type: integer
-                                          required:
-                                          - seconds
                                           type: object
                                         tcpSocket:
                                           description: |-
@@ -2973,8 +2933,6 @@ spec:
                                                 Number must be in the range 1 to 65535.
                                                 Name must be an IANA_SVC_NAME.
                                               x-kubernetes-int-or-string: true
-                                          required:
-                                          - port
                                           type: object
                                       type: object
                                     preStop:
@@ -3056,8 +3014,6 @@ spec:
                                                 Scheme to use for connecting to the host.
                                                 Defaults to HTTP.
                                               type: string
-                                          required:
-                                          - port
                                           type: object
                                         sleep:
                                           description: Sleep represents the duration
@@ -3069,8 +3025,6 @@ spec:
                                                 seconds to sleep.
                                               format: int64
                                               type: integer
-                                          required:
-                                          - seconds
                                           type: object
                                         tcpSocket:
                                           description: |-
@@ -3091,8 +3045,6 @@ spec:
                                                 Number must be in the range 1 to 65535.
                                                 Name must be an IANA_SVC_NAME.
                                               x-kubernetes-int-or-string: true
-                                          required:
-                                          - port
                                           type: object
                                       type: object
                                   type: object
@@ -3138,8 +3090,6 @@ spec:
 
                                             If this is not specified, the default behavior is defined by gRPC.
                                           type: string
-                                      required:
-                                      - port
                                       type: object
                                     httpGet:
                                       description: HTTPGet specifies the http request
@@ -3189,8 +3139,6 @@ spec:
                                             Scheme to use for connecting to the host.
                                             Defaults to HTTP.
                                           type: string
-                                      required:
-                                      - port
                                       type: object
                                     initialDelaySeconds:
                                       description: |-
@@ -3227,8 +3175,6 @@ spec:
                                             Number must be in the range 1 to 65535.
                                             Name must be an IANA_SVC_NAME.
                                           x-kubernetes-int-or-string: true
-                                      required:
-                                      - port
                                       type: object
                                     terminationGracePeriodSeconds:
                                       description: |-
@@ -3344,8 +3290,6 @@ spec:
 
                                             If this is not specified, the default behavior is defined by gRPC.
                                           type: string
-                                      required:
-                                      - port
                                       type: object
                                     httpGet:
                                       description: HTTPGet specifies the http request
@@ -3395,8 +3339,6 @@ spec:
                                             Scheme to use for connecting to the host.
                                             Defaults to HTTP.
                                           type: string
-                                      required:
-                                      - port
                                       type: object
                                     initialDelaySeconds:
                                       description: |-
@@ -3433,8 +3375,6 @@ spec:
                                             Number must be in the range 1 to 65535.
                                             Name must be an IANA_SVC_NAME.
                                           x-kubernetes-int-or-string: true
-                                      required:
-                                      - port
                                       type: object
                                     terminationGracePeriodSeconds:
                                       description: |-
@@ -3585,8 +3525,6 @@ spec:
                                               RuntimeDefault - the container runtime's default profile.
                                               Unconfined - no AppArmor enforcement.
                                           type: string
-                                      required:
-                                      - type
                                       type: object
                                     capabilities:
                                       description: |-
@@ -3707,8 +3645,6 @@ spec:
                                             RuntimeDefault - the container runtime default profile should be used.
                                             Unconfined - no profile should be applied.
                                           type: string
-                                      required:
-                                      - type
                                       type: object
                                     windowsOptions:
                                       description: |-
@@ -3785,8 +3721,6 @@ spec:
 
                                             If this is not specified, the default behavior is defined by gRPC.
                                           type: string
-                                      required:
-                                      - port
                                       type: object
                                     httpGet:
                                       description: HTTPGet specifies the http request
@@ -3836,8 +3770,6 @@ spec:
                                             Scheme to use for connecting to the host.
                                             Defaults to HTTP.
                                           type: string
-                                      required:
-                                      - port
                                       type: object
                                     initialDelaySeconds:
                                       description: |-
@@ -3874,8 +3806,6 @@ spec:
                                             Number must be in the range 1 to 65535.
                                             Name must be an IANA_SVC_NAME.
                                           x-kubernetes-int-or-string: true
-                                      required:
-                                      - port
                                       type: object
                                     terminationGracePeriodSeconds:
                                       description: |-
@@ -3967,7 +3897,6 @@ spec:
                                         type: string
                                     required:
                                     - devicePath
-                                    - name
                                     type: object
                                   type: array
                                   x-kubernetes-list-map-keys:
@@ -4037,7 +3966,6 @@ spec:
                                         type: string
                                     required:
                                     - mountPath
-                                    - name
                                     type: object
                                   type: array
                                   x-kubernetes-list-map-keys:
@@ -4466,8 +4394,6 @@ spec:
                                                 Scheme to use for connecting to the host.
                                                 Defaults to HTTP.
                                               type: string
-                                          required:
-                                          - port
                                           type: object
                                         sleep:
                                           description: Sleep represents the duration
@@ -4479,8 +4405,6 @@ spec:
                                                 seconds to sleep.
                                               format: int64
                                               type: integer
-                                          required:
-                                          - seconds
                                           type: object
                                         tcpSocket:
                                           description: |-
@@ -4501,8 +4425,6 @@ spec:
                                                 Number must be in the range 1 to 65535.
                                                 Name must be an IANA_SVC_NAME.
                                               x-kubernetes-int-or-string: true
-                                          required:
-                                          - port
                                           type: object
                                       type: object
                                     preStop:
@@ -4584,8 +4506,6 @@ spec:
                                                 Scheme to use for connecting to the host.
                                                 Defaults to HTTP.
                                               type: string
-                                          required:
-                                          - port
                                           type: object
                                         sleep:
                                           description: Sleep represents the duration
@@ -4597,8 +4517,6 @@ spec:
                                                 seconds to sleep.
                                               format: int64
                                               type: integer
-                                          required:
-                                          - seconds
                                           type: object
                                         tcpSocket:
                                           description: |-
@@ -4619,8 +4537,6 @@ spec:
                                                 Number must be in the range 1 to 65535.
                                                 Name must be an IANA_SVC_NAME.
                                               x-kubernetes-int-or-string: true
-                                          required:
-                                          - port
                                           type: object
                                       type: object
                                   type: object
@@ -4669,8 +4585,6 @@ spec:
 
                                             If this is not specified, the default behavior is defined by gRPC.
                                           type: string
-                                      required:
-                                      - port
                                       type: object
                                     httpGet:
                                       description: HTTPGet specifies the http request
@@ -4720,8 +4634,6 @@ spec:
                                             Scheme to use for connecting to the host.
                                             Defaults to HTTP.
                                           type: string
-                                      required:
-                                      - port
                                       type: object
                                     initialDelaySeconds:
                                       description: |-
@@ -4758,8 +4670,6 @@ spec:
                                             Number must be in the range 1 to 65535.
                                             Name must be an IANA_SVC_NAME.
                                           x-kubernetes-int-or-string: true
-                                      required:
-                                      - port
                                       type: object
                                     terminationGracePeriodSeconds:
                                       description: |-
@@ -4885,8 +4795,6 @@ spec:
 
                                             If this is not specified, the default behavior is defined by gRPC.
                                           type: string
-                                      required:
-                                      - port
                                       type: object
                                     httpGet:
                                       description: HTTPGet specifies the http request
@@ -4936,8 +4844,6 @@ spec:
                                             Scheme to use for connecting to the host.
                                             Defaults to HTTP.
                                           type: string
-                                      required:
-                                      - port
                                       type: object
                                     initialDelaySeconds:
                                       description: |-
@@ -4974,8 +4880,6 @@ spec:
                                             Number must be in the range 1 to 65535.
                                             Name must be an IANA_SVC_NAME.
                                           x-kubernetes-int-or-string: true
-                                      required:
-                                      - port
                                       type: object
                                     terminationGracePeriodSeconds:
                                       description: |-
@@ -5139,8 +5043,6 @@ spec:
                                               RuntimeDefault - the container runtime's default profile.
                                               Unconfined - no AppArmor enforcement.
                                           type: string
-                                      required:
-                                      - type
                                       type: object
                                     capabilities:
                                       description: |-
@@ -5261,8 +5163,6 @@ spec:
                                             RuntimeDefault - the container runtime default profile should be used.
                                             Unconfined - no profile should be applied.
                                           type: string
-                                      required:
-                                      - type
                                       type: object
                                     windowsOptions:
                                       description: |-
@@ -5345,8 +5245,6 @@ spec:
 
                                             If this is not specified, the default behavior is defined by gRPC.
                                           type: string
-                                      required:
-                                      - port
                                       type: object
                                     httpGet:
                                       description: HTTPGet specifies the http request
@@ -5396,8 +5294,6 @@ spec:
                                             Scheme to use for connecting to the host.
                                             Defaults to HTTP.
                                           type: string
-                                      required:
-                                      - port
                                       type: object
                                     initialDelaySeconds:
                                       description: |-
@@ -5434,8 +5330,6 @@ spec:
                                             Number must be in the range 1 to 65535.
                                             Name must be an IANA_SVC_NAME.
                                           x-kubernetes-int-or-string: true
-                                      required:
-                                      - port
                                       type: object
                                     terminationGracePeriodSeconds:
                                       description: |-
@@ -5518,7 +5412,6 @@ spec:
                                         type: string
                                     required:
                                     - devicePath
-                                    - name
                                     type: object
                                   type: array
                                   x-kubernetes-list-map-keys:
@@ -5588,7 +5481,6 @@ spec:
                                         type: string
                                     required:
                                     - mountPath
-                                    - name
                                     type: object
                                   type: array
                                   x-kubernetes-list-map-keys:
@@ -5666,8 +5558,6 @@ spec:
                                   https://github.com/opencontainers/runtime-spec/blob/master/config.md#platform-specific-configuration
                                   Clients should expect to handle additional values and treat unrecognized values in this field as os: null
                                 type: string
-                            required:
-                            - name
                             type: object
                           overhead:
                             additionalProperties:
@@ -5854,8 +5744,6 @@ spec:
                                         RuntimeDefault - the container runtime's default profile.
                                         Unconfined - no AppArmor enforcement.
                                     type: string
-                                required:
-                                - type
                                 type: object
                               fsGroup:
                                 description: |-
@@ -5957,8 +5845,6 @@ spec:
                                       RuntimeDefault - the container runtime default profile should be used.
                                       Unconfined - no profile should be applied.
                                     type: string
-                                required:
-                                - type
                                 type: object
                               supplementalGroups:
                                 description: |-
@@ -6296,7 +6182,6 @@ spec:
                                     It's a required field.
                                   type: string
                               required:
-                              - maxSkew
                               - topologyKey
                               - whenUnsatisfiable
                               type: object
@@ -6344,8 +6229,6 @@ spec:
                                         volumeID is unique ID of the persistent disk resource in AWS (Amazon EBS volume).
                                         More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
                                       type: string
-                                  required:
-                                  - volumeID
                                   type: object
                                 azureDisk:
                                   description: azureDisk represents an Azure Data
@@ -6383,9 +6266,6 @@ spec:
                                         readOnly Defaults to false (read/write). ReadOnly here will force
                                         the ReadOnly setting in VolumeMounts.
                                       type: boolean
-                                  required:
-                                  - diskName
-                                  - diskURI
                                   type: object
                                 azureFile:
                                   description: azureFile represents an Azure File
@@ -6405,9 +6285,6 @@ spec:
                                     shareName:
                                       description: shareName is the azure share Name
                                       type: string
-                                  required:
-                                  - secretName
-                                  - shareName
                                   type: object
                                 cephfs:
                                   description: cephFS represents a Ceph FS mount on
@@ -6458,8 +6335,6 @@ spec:
                                         user is optional: User is the rados user name, default is admin
                                         More info: https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it
                                       type: string
-                                  required:
-                                  - monitors
                                   type: object
                                 cinder:
                                   description: |-
@@ -6500,8 +6375,6 @@ spec:
                                         volumeID used to identify the volume in cinder.
                                         More info: https://examples.k8s.io/mysql-cinder-pd/README.md
                                       type: string
-                                  required:
-                                  - volumeID
                                   type: object
                                 configMap:
                                   description: configMap represents a configMap that
@@ -6619,8 +6492,6 @@ spec:
                                         volumeAttributes stores driver-specific properties that are passed to the CSI
                                         driver. Consult your driver's documentation for supported values.
                                       type: object
-                                  required:
-                                  - driver
                                   type: object
                                 downwardAPI:
                                   description: downwardAPI represents downward API
@@ -6905,9 +6776,6 @@ spec:
                                                     Note that when a namespace is specified, a gateway.networking.k8s.io/ReferenceGrant object is required in the referent namespace to allow that namespace's owner to accept the reference. See the ReferenceGrant documentation for details.
                                                     (Alpha) This field requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
                                                   type: string
-                                              required:
-                                              - kind
-                                              - name
                                               type: object
                                             resources:
                                               description: |-
@@ -7022,8 +6890,6 @@ spec:
                                                 backing this claim.
                                               type: string
                                           type: object
-                                      required:
-                                      - spec
                                       type: object
                                   type: object
                                 fc:
@@ -7108,8 +6974,6 @@ spec:
                                           type: string
                                       type: object
                                       x-kubernetes-map-type: atomic
-                                  required:
-                                  - driver
                                   type: object
                                 flocker:
                                   description: flocker represents a Flocker volume
@@ -7160,8 +7024,6 @@ spec:
                                         Defaults to false.
                                         More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
                                       type: boolean
-                                  required:
-                                  - pdName
                                   type: object
                                 gitRepo:
                                   description: |-
@@ -7184,8 +7046,6 @@ spec:
                                       description: revision is the commit hash for
                                         the specified revision.
                                       type: string
-                                  required:
-                                  - repository
                                   type: object
                                 glusterfs:
                                   description: |-
@@ -7208,9 +7068,6 @@ spec:
                                         Defaults to false.
                                         More info: https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod
                                       type: boolean
-                                  required:
-                                  - endpoints
-                                  - path
                                   type: object
                                 hostPath:
                                   description: |-
@@ -7232,8 +7089,6 @@ spec:
                                         Defaults to ""
                                         More info: https://kubernetes.io/docs/concepts/storage/volumes#hostpath
                                       type: string
-                                  required:
-                                  - path
                                   type: object
                                 image:
                                   description: |-
@@ -7345,10 +7200,6 @@ spec:
                                         targetPortal is iSCSI Target Portal. The Portal is either an IP or ip_addr:port if the port
                                         is other than default (typically TCP ports 860 and 3260).
                                       type: string
-                                  required:
-                                  - iqn
-                                  - lun
-                                  - targetPortal
                                   type: object
                                 name:
                                   description: |-
@@ -7377,9 +7228,6 @@ spec:
                                         server is the hostname or IP address of the NFS server.
                                         More info: https://kubernetes.io/docs/concepts/storage/volumes#nfs
                                       type: string
-                                  required:
-                                  - path
-                                  - server
                                   type: object
                                 persistentVolumeClaim:
                                   description: |-
@@ -7397,8 +7245,6 @@ spec:
                                         readOnly Will force the ReadOnly setting in VolumeMounts.
                                         Default false.
                                       type: boolean
-                                  required:
-                                  - claimName
                                   type: object
                                 photonPersistentDisk:
                                   description: photonPersistentDisk represents a PhotonController
@@ -7415,8 +7261,6 @@ spec:
                                       description: pdID is the ID that identifies
                                         Photon Controller persistent disk
                                       type: string
-                                  required:
-                                  - pdID
                                   type: object
                                 portworxVolume:
                                   description: portworxVolume represents a portworx
@@ -7437,8 +7281,6 @@ spec:
                                       description: volumeID uniquely identifies a
                                         Portworx volume
                                       type: string
-                                  required:
-                                  - volumeID
                                   type: object
                                 projected:
                                   description: projected items for all in one resources
@@ -7833,9 +7675,6 @@ spec:
                                       description: volume is a string that references
                                         an already created Quobyte volume by name.
                                       type: string
-                                  required:
-                                  - registry
-                                  - volume
                                   type: object
                                 rbd:
                                   description: |-
@@ -7907,9 +7746,6 @@ spec:
                                         Default is admin.
                                         More info: https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it
                                       type: string
-                                  required:
-                                  - image
-                                  - monitors
                                   type: object
                                 scaleIO:
                                   description: scaleIO represents a ScaleIO persistent
@@ -7976,10 +7812,6 @@ spec:
                                         volumeName is the name of a volume already created in the ScaleIO system
                                         that is associated with this volume source.
                                       type: string
-                                  required:
-                                  - gateway
-                                  - secretRef
-                                  - system
                                   type: object
                                 secret:
                                   description: |-
@@ -8115,8 +7947,6 @@ spec:
                                       description: volumePath is the path that identifies
                                         vSphere volume vmdk
                                       type: string
-                                  required:
-                                  - volumePath
                                   type: object
                               required:
                               - name
@@ -8125,8 +7955,6 @@ spec:
                             x-kubernetes-list-map-keys:
                             - name
                             x-kubernetes-list-type: map
-                        required:
-                        - containers
                         type: object
                     type: object
                   volumeClaims:
