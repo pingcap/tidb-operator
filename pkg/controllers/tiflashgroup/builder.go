@@ -27,7 +27,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// get tiflashgroup
 		common.TaskContextObject[scope.TiFlashGroup](state, r.Client),
 		// if it's gone just return
-		task.IfBreak(common.CondGroupHasBeenDeleted(state)),
+		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiFlashGroup](state)),
 
 		// get cluster
 		common.TaskContextCluster[scope.TiFlashGroup](state, r.Client),
@@ -35,16 +35,16 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(common.CondClusterIsPaused(state)),
 
 		// get all tiflashes
-		common.TaskContextTiFlashSlice(state, r.Client),
+		common.TaskContextSlice[scope.TiFlashGroup](state, r.Client),
 
-		task.IfBreak(common.CondGroupIsDeleting(state),
+		task.IfBreak(common.CondObjectIsDeleting[scope.TiFlashGroup](state),
 			common.TaskGroupFinalizerDel[scope.TiFlashGroup](state, r.Client),
 			common.TaskGroupConditionReady[scope.TiFlashGroup](state),
 			common.TaskGroupConditionSynced[scope.TiFlashGroup](state),
 			common.TaskStatusRevisionAndReplicas[scope.TiFlashGroup](state),
 			common.TaskStatusPersister[scope.TiFlashGroup](state, r.Client),
 		),
-		common.TaskGroupFinalizerAdd[runtime.TiFlashGroupTuple](state, r.Client),
+		common.TaskFinalizerAdd[scope.TiFlashGroup](state, r.Client),
 
 		task.IfBreak(
 			common.CondClusterIsSuspending(state),

@@ -27,7 +27,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// get pdgroup
 		common.TaskContextObject[scope.PDGroup](state, r.Client),
 		// if it's gone just return
-		task.IfBreak(common.CondGroupHasBeenDeleted(state)),
+		task.IfBreak(common.CondObjectHasBeenDeleted[scope.PDGroup](state)),
 
 		// get cluster
 		common.TaskContextCluster[scope.PDGroup](state, r.Client),
@@ -35,16 +35,16 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(common.CondClusterIsPaused(state)),
 
 		// get all pds
-		common.TaskContextPDSlice(state, r.Client),
+		common.TaskContextSlice[scope.PDGroup](state, r.Client),
 
-		task.IfBreak(common.CondGroupIsDeleting(state),
+		task.IfBreak(common.CondObjectIsDeleting[scope.PDGroup](state),
 			tasks.TaskFinalizerDel(state, r.Client, r.PDClientManager),
 			common.TaskGroupConditionReady[scope.PDGroup](state),
 			common.TaskGroupConditionSynced[scope.PDGroup](state),
 			common.TaskStatusRevisionAndReplicas[scope.PDGroup](state),
 			common.TaskStatusPersister[scope.PDGroup](state, r.Client),
 		),
-		common.TaskGroupFinalizerAdd[runtime.PDGroupTuple](state, r.Client),
+		common.TaskFinalizerAdd[scope.PDGroup](state, r.Client),
 
 		common.TaskRevision[runtime.PDGroupTuple](state, r.Client),
 

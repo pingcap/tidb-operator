@@ -27,7 +27,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// get TiCDCGroup
 		common.TaskContextObject[scope.TiCDCGroup](state, r.Client),
 		// if it's gone just return
-		task.IfBreak(common.CondGroupHasBeenDeleted(state)),
+		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiCDCGroup](state)),
 
 		// get cluster
 		common.TaskContextCluster[scope.TiCDCGroup](state, r.Client),
@@ -35,16 +35,16 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(common.CondClusterIsPaused(state)),
 
 		// get all TiCDCs
-		common.TaskContextTiCDCSlice(state, r.Client),
+		common.TaskContextSlice[scope.TiCDCGroup](state, r.Client),
 
-		task.IfBreak(common.CondGroupIsDeleting(state),
+		task.IfBreak(common.CondObjectIsDeleting[scope.TiCDCGroup](state),
 			common.TaskGroupFinalizerDel[scope.TiCDCGroup](state, r.Client),
 			common.TaskGroupConditionReady[scope.TiCDCGroup](state),
 			common.TaskGroupConditionSynced[scope.TiCDCGroup](state),
 			common.TaskStatusRevisionAndReplicas[scope.TiCDCGroup](state),
 			common.TaskStatusPersister[scope.TiCDCGroup](state, r.Client),
 		),
-		common.TaskGroupFinalizerAdd[runtime.TiCDCGroupTuple](state, r.Client),
+		common.TaskFinalizerAdd[scope.TiCDCGroup](state, r.Client),
 
 		common.TaskRevision[runtime.TiCDCGroupTuple](state, r.Client),
 

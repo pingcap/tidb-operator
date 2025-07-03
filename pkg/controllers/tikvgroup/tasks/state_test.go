@@ -96,7 +96,7 @@ func TestState(t *testing.T) {
 			res, done := task.RunTask(ctx, task.Block(
 				common.TaskContextObject[scope.TiKVGroup](s, fc),
 				common.TaskContextCluster[scope.TiKVGroup](s, fc),
-				common.TaskContextTiKVSlice(s, fc),
+				common.TaskContextSlice[scope.TiKVGroup](s, fc),
 			))
 			assert.Equal(tt, task.SComplete, res.Status(), c.desc)
 			assert.False(tt, done, c.desc)

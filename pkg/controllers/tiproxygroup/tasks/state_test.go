@@ -99,7 +99,7 @@ func TestState(t *testing.T) {
 			res, done := task.RunTask(ctx, task.Block(
 				common.TaskContextObject[scope.TiProxyGroup](s, fc),
 				common.TaskContextCluster[scope.TiProxyGroup](s, fc),
-				common.TaskContextTiProxySlice(s, fc),
+				common.TaskContextSlice[scope.TiProxyGroup](s, fc),
 				common.TaskRevision[runtime.TiProxyGroupTuple](s, fc),
 			))
 			assert.Equal(tt, task.SComplete, res.Status(), c.desc)

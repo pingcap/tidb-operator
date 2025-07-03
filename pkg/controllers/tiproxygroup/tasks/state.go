@@ -49,6 +49,7 @@ type State interface {
 
 	common.ContextClusterNewer[*v1alpha1.TiProxyGroup]
 	common.ContextObjectNewer[*v1alpha1.TiProxyGroup]
+	common.ContextSliceNewer[*v1alpha1.TiProxyGroup, *v1alpha1.TiProxy]
 
 	common.InstanceSliceState[*runtime.TiProxy]
 	common.SliceState[*v1alpha1.TiProxy]
@@ -98,6 +99,10 @@ func (s *state) Slice() []*runtime.TiProxy {
 
 func (s *state) InstanceSlice() []*v1alpha1.TiProxy {
 	return s.proxies
+}
+
+func (s *state) SetInstanceSlice(ps []*v1alpha1.TiProxy) {
+	s.proxies = ps
 }
 
 func (s *state) SetCluster(cluster *v1alpha1.Cluster) {

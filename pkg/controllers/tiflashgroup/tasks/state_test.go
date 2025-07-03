@@ -99,7 +99,7 @@ func TestState(t *testing.T) {
 			res, done := task.RunTask(ctx, task.Block(
 				common.TaskContextObject[scope.TiFlashGroup](s, fc),
 				common.TaskContextCluster[scope.TiFlashGroup](s, fc),
-				common.TaskContextTiFlashSlice(s, fc),
+				common.TaskContextSlice[scope.TiFlashGroup](s, fc),
 				common.TaskRevision[runtime.TiFlashGroupTuple](s, fc),
 			))
 			assert.Equal(tt, task.SComplete.String(), res.Status().String(), c.desc)
