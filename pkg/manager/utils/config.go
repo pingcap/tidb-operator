@@ -28,7 +28,20 @@ func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 	dataEqual := true
 
 	// When doing point-in-time-restoring or something, we will put an "overlay" over the tikv configuration.
-	// This should also be applied to the new one. (usually from spec)
+	// Invariants:
+	// `old` -> contains two fields "xxx" and "xxx-overlay", where:
+	// "xxx"         => contains the config derived from spec UNIONs the overlay, this config will be used by the component.
+	// "xxx-overlay" => contains the overlay, this should be applied to `new`.
+	// '             *> this field will be added by other components after the compare finishes.
+	// '             *> the "overlay" part won't join the compare.
+	// `new` -> contains "xxx" only, which is derived from the spec.
+	//
+	// when comparing `old` and `new`, as the overlay configuration isn't expected to be compared,
+	// it will be applied to `new` becore for comparing, so we have the equality:
+	//
+	// old == spec.old + overlay == spec.new + overlay, which sounds iff spec.old == spec.new
+	//        |                |    |       \  |     +---------\
+	//        +----old.data----+    +new.data+ +old.data-overlay+
 	applyOverlay := func(old, new *corev1.ConfigMap, key string) ([]byte, bool, error) {
 		if overlay, ok := old.Data[fmt.Sprintf("%s-overlay", key)]; ok {
 			cfg := v1alpha1.NewTiKVConfig()
