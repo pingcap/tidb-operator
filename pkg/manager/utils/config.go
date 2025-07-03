@@ -42,7 +42,9 @@ func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 			if err := cfgOverlay.UnmarshalTOML([]byte(overlay)); err != nil {
 				return nil, false, err
 			}
-			cfg.Merge(cfgOverlay.GenericConfig)
+			if err := cfg.Merge(cfgOverlay.GenericConfig); err != nil {
+				return nil, false, err
+			}
 			applied, err := cfg.MarshalTOML()
 			return applied, true, err
 		}
