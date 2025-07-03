@@ -37,7 +37,7 @@ func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 	// `new` -> contains "xxx" only, which is derived from the spec.
 	//
 	// when comparing `old` and `new`, as the overlay configuration isn't expected to be compared,
-	// it will be applied to `new` becore for comparing, so we have the equality:
+	// it will be applied to `new` before for comparing, so we have the equality:
 	//
 	// old == spec.old + overlay == spec.new + overlay, which sounds if spec.old == spec.new
 	//        |                |    |       \  |     +---------\
