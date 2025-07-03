@@ -156,6 +156,14 @@ func (in *TiFlash) Features() []metav1alpha1.Feature {
 	return in.Spec.Features
 }
 
+func (in *TiFlash) SetVersion(version string) {
+	in.Spec.Version = version
+}
+
+func (in *TiFlash) Version() string {
+	return in.Spec.Version
+}
+
 type (
 	TiFlashGroup v1alpha1.TiFlashGroup
 )

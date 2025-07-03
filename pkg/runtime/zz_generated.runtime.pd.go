@@ -156,6 +156,14 @@ func (in *PD) Features() []metav1alpha1.Feature {
 	return in.Spec.Features
 }
 
+func (in *PD) SetVersion(version string) {
+	in.Spec.Version = version
+}
+
+func (in *PD) Version() string {
+	return in.Spec.Version
+}
+
 type (
 	PDGroup v1alpha1.PDGroup
 )

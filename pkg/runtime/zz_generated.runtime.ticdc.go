@@ -156,6 +156,14 @@ func (in *TiCDC) Features() []metav1alpha1.Feature {
 	return in.Spec.Features
 }
 
+func (in *TiCDC) SetVersion(version string) {
+	in.Spec.Version = version
+}
+
+func (in *TiCDC) Version() string {
+	return in.Spec.Version
+}
+
 type (
 	TiCDCGroup v1alpha1.TiCDCGroup
 )

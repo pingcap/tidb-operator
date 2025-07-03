@@ -156,6 +156,14 @@ func (in *Scheduler) Features() []metav1alpha1.Feature {
 	return in.Spec.Features
 }
 
+func (in *Scheduler) SetVersion(version string) {
+	in.Spec.Version = version
+}
+
+func (in *Scheduler) Version() string {
+	return in.Spec.Version
+}
+
 type (
 	SchedulerGroup v1alpha1.SchedulerGroup
 )

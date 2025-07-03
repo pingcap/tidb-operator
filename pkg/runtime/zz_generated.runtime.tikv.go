@@ -156,6 +156,14 @@ func (in *TiKV) Features() []metav1alpha1.Feature {
 	return in.Spec.Features
 }
 
+func (in *TiKV) SetVersion(version string) {
+	in.Spec.Version = version
+}
+
+func (in *TiKV) Version() string {
+	return in.Spec.Version
+}
+
 type (
 	TiKVGroup v1alpha1.TiKVGroup
 )
