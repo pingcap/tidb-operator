@@ -914,7 +914,7 @@ func TestPDClient_TransferPDLeader(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestPDClient_GetReady(t *testing.T) {
+func TestPDClient_GetMemberReady(t *testing.T) {
 	tests := []struct {
 		name        string
 		statusCode  int
@@ -962,7 +962,7 @@ func TestPDClient_GetReady(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.serverErr {
 				client := NewPDClient("invalid-url", time.Second, nil)
-				ready, err := client.GetReady(context.Background())
+				ready, err := client.GetMemberReady(context.Background(), "invalid-url")
 				assert.Equal(t, tt.expectReady, ready)
 				assert.Error(t, err)
 				return
@@ -980,7 +980,7 @@ func TestPDClient_GetReady(t *testing.T) {
 			defer server.Close()
 
 			client := NewPDClient(server.URL, time.Second, nil)
-			ready, err := client.GetReady(context.Background())
+			ready, err := client.GetMemberReady(context.Background(), server.URL)
 
 			assert.Equal(t, tt.expectReady, ready)
 			if tt.expectErr {

@@ -19,6 +19,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
+	pdcfg "github.com/pingcap/tidb-operator/pkg/configs/pd"
 	"github.com/pingcap/tidb-operator/pkg/timanager"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -38,7 +41,7 @@ type ReconcileContext struct {
 }
 
 func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task.Task {
-	return task.NameTaskFunc("ContextInfoFromPD", func(_ context.Context) task.Result {
+	return task.NameTaskFunc("ContextInfoFromPD", func(ctx context.Context) task.Result {
 		ck := state.Cluster()
 		pc, ok := cm.Get(timanager.PrimaryKey(ck.Namespace, ck.Name))
 		if !ok {
@@ -53,7 +56,8 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 
 		state.Initialized = true
 
-		m, err := pc.Members().Get(state.PD().Name)
+		pd := state.PD()
+		m, err := pc.Members().Get(pd.Name)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return task.Complete().With("context without member info is completed, pd is not initialized")
@@ -65,13 +69,18 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		state.MemberID = m.ID
 		state.IsLeader = m.IsLeader
 
+		ready, err := state.PDClient.Underlay().GetMemberReady(ctx, getPDURL(ck, pd))
+		if err != nil {
+			return task.Fail().With("cannot get member ready: %w", err)
+		}
+
 		// set available and trust health info only when member info is valid
-		if !m.Invalid && m.Health {
+		if !m.Invalid && m.Health && ready {
 			state.SetHealthy()
 			return task.Complete().With("pd is ready")
 		}
 
-		return task.Wait().With("pd is unready, invalid: %v, health: %v", m.Invalid, m.Health)
+		return task.Wait().With("pd is unready, invalid: %v, health: %v, ready: %v", m.Invalid, m.Health, ready)
 	})
 }
 
@@ -80,4 +89,12 @@ func CondPDClientIsNotRegisterred(state *ReconcileContext) task.Condition {
 		// TODO: do not use HasSynced twice, it may return different results
 		return state.PDClient == nil || !state.PDClient.HasSynced()
 	})
+}
+
+func getPDURL(cluster *v1alpha1.Cluster, pd *v1alpha1.PD) string {
+	scheme := "http"
+	if coreutil.IsTLSClusterEnabled(cluster) {
+		scheme = "https"
+	}
+	return pdcfg.GetAdvertiseClientURLs(pd, scheme)
 }

@@ -66,9 +66,9 @@ type PDWriter interface {
 
 // PDClient provides PD server's APIs used by TiDB Operator.
 type PDClient interface {
-	// GetReady returns if a PD member is ready to serve.
-	// NOTE: in order to call this method, a PDClient for a specific PD member is required.
-	GetReady(ctx context.Context) (bool, error)
+	// GetMemberReady returns if a PD member is ready to serve.
+	// In order to call this method, the PD member's URL is required.
+	GetMemberReady(ctx context.Context, url string) (bool, error)
 	// GetHealth returns the health of PD's members.
 	GetHealth(ctx context.Context) (*HealthInfo, error)
 	// GetConfig returns PD's config.
@@ -620,8 +620,8 @@ func (c *pdClient) GetTSOLeader(ctx context.Context) (string, error) {
 	return primary, nil
 }
 
-func (c *pdClient) GetReady(ctx context.Context) (bool, error) {
-	apiURL := fmt.Sprintf("%s/%s", c.url, pdReadyPrefix)
+func (c *pdClient) GetMemberReady(ctx context.Context, url string) (bool, error) {
+	apiURL := fmt.Sprintf("%s/%s", url, pdReadyPrefix)
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		return false, fmt.Errorf("failed to new a request: %w", err)
