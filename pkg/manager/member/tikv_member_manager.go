@@ -318,10 +318,7 @@ func (m *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *app
 		}
 	}
 
-	updateStrategy := tc.BaseTiKVSpec().ConfigUpdateStrategy()
-	klog.InfoS("PiTR Status was modified, the configuration will be applied `InPlace`.", "cluster", klog.KObj(tc))
-
-	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, updateStrategy, inUseName, newCm)
+	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BaseTiKVSpec().ConfigUpdateStrategy(), inUseName, newCm)
 	if err != nil {
 		return nil, err
 	}
@@ -1137,7 +1134,7 @@ func (m *tikvMemberManager) applyPiTRConfigOverride(tc *v1alpha1.TidbCluster, ne
 			restore.Spec.Mode == v1alpha1.RestoreModePiTR &&
 			!isRestoreDone(restore) {
 			hasActivePiTRRestore = true
-			klog.InfoS("Found active PiTR restore, will override gc.ratio-threshold",
+			klog.V(2).InfoS("Found active PiTR restore, will override gc.ratio-threshold",
 				"restore", klog.KObj(restore), "tidbcluster", klog.KObj(tc))
 			break
 		}
@@ -1167,22 +1164,41 @@ func (m *tikvMemberManager) overrideGCRatioThresholdInConfigMap(cm *corev1.Confi
 		}
 	}
 
-	// Override gc.ratio-threshold
+	return applyOverlay(cm, "gc.ratio-threshold", value)
+}
+
+func applyOverlay(cm *corev1.ConfigMap, key string, value any) error {
+	// NOTE: parse and marshal each time applying overlay isn't effective.
+	// Perhaps batch it when there goes many overlays.
+	// For now only one overlay will be applied so this can be fine.
+
+	wrapper := v1alpha1.NewTiKVConfig()
 	wrapper.Set("gc.ratio-threshold", value)
+	configOverlayContent := cm.Data["config-file-overlay"]
+	if configOverlayContent != "" {
+		if err := wrapper.UnmarshalTOML([]byte(configOverlayContent)); err != nil {
+			return fmt.Errorf("failed to unmarshal TiKV config: %v", err)
+		}
+	}
+	wrapper.Set(key, value)
 
-	// Marshal back to TOML
-	data, err := wrapper.MarshalTOML()
+	overlayContent, err := wrapper.MarshalTOML()
 	if err != nil {
-		return fmt.Errorf("failed to marshal TiKV config with PiTR override: %v", err)
+		return fmt.Errorf("failed to marshal TiKV config: %v", err)
 	}
+	cm.Data["config-file-overlay"] = string(overlayContent)
 
-	newConf := string(data)
-	if cm.Data["config-file"] != newConf {
-		klog.InfoS("Applied PiTR config override, save it in place", "gc.ratio-threshold", value, "cm", klog.KObj(cm))
-		cm.Data["config-file"] = newConf
-		return nil
+	configContent := cm.Data["config-file"]
+	if configContent != "" {
+		if err := wrapper.UnmarshalTOML([]byte(configContent)); err != nil {
+			return fmt.Errorf("failed to unmarshal existing TiKV config: %v", err)
+		}
 	}
-
+	overlayAppliedConfigContent, err := wrapper.MarshalTOML()
+	if err != nil {
+		return fmt.Errorf("failed to marshal TiKV config: %v", err)
+	}
+	cm.Data["config-file"] = string(overlayAppliedConfigContent)
 	return nil
 }
 
@@ -1192,7 +1208,7 @@ func isRestoreDone(restore *v1alpha1.Restore) bool {
 		return true
 	}
 	if idx, _ := v1alpha1.GetRestoreCondition(&restore.Status, v1alpha1.RestoreFailed); idx != -1 {
-		klog.InfoS("Restore is failed, keep config map unchanged for retry.", "restore", klog.KObj(restore))
+		klog.V(2).InfoS("Restore is failed, keep config map unchanged for retry.", "restore", klog.KObj(restore))
 		return false
 	}
 	return false

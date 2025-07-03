@@ -14,17 +14,40 @@
 package utils
 
 import (
+	"fmt"
+
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/toml"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/klog/v2"
 )
 
 func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 	dataEqual := true
+
+	// When doing point-in-time-restoring or something, we will put an "overlay" over the tikv configuration.
+	// This should also be applied to the new one. (usually from spec)
+	applyOverlay := func(old, new *corev1.ConfigMap, key string) ([]byte, bool, error) {
+		if overlay, ok := old.Data[fmt.Sprintf("%s-overlay", key)]; ok {
+			cfg := v1alpha1.NewTiKVConfig()
+			if err := cfg.UnmarshalTOML([]byte(new.Data[key])); err != nil {
+				return nil, false, err
+			}
+
+			// We should parse and merge.
+			// directly call `cfg.UnmarshalTOML` will override the `gc` scope in the origin test.
+			cfgOverlay := v1alpha1.NewTiKVConfig()
+			if err := cfgOverlay.UnmarshalTOML([]byte(overlay)); err != nil {
+				return nil, false, err
+			}
+			cfg.Merge(cfgOverlay.GenericConfig)
+			applied, err := cfg.MarshalTOML()
+			return applied, true, err
+		}
+		return []byte(new.Data[key]), false, nil
+	}
 
 	// check config
 	tomlField := []string{
@@ -35,7 +58,7 @@ func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 	}
 	for _, k := range tomlField {
 		oldData, oldOK := old.Data[k]
-		newData, newOK := new.Data[k]
+		_, newOK := new.Data[k]
 
 		if oldOK != newOK {
 			dataEqual = false
@@ -45,13 +68,22 @@ func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 			continue
 		}
 
-		equal, err := toml.Equal([]byte(oldData), []byte(newData))
+		appliedNewData, overlayApplied, err := applyOverlay(old, new, k)
 		if err != nil {
-			return false, perrors.Annotatef(err, "compare %s/%s %s and %s failed", old.Namespace, old.Name, oldData, newData)
+			return false, err
+		}
+
+		equal, err := toml.Equal(appliedNewData, []byte(oldData))
+		if err != nil {
+			return false, perrors.Annotatef(err, "compare %s/%s %s and %s failed", old.Namespace, old.Name, oldData, string(appliedNewData))
 		}
 
 		if equal {
-			new.Data[k] = oldData
+			// If there is an overlay, don't put the applied part to the new data.
+			// They should be added by the caller soon.
+			if !overlayApplied {
+				new.Data[k] = oldData
+			}
 		} else {
 			dataEqual = false
 		}
@@ -122,11 +154,6 @@ func confirmNameByData(existing, desired *corev1.ConfigMap, dataEqual bool) {
 		desired.Name = existing.Name
 	}
 	if !dataEqual && existing.Name == desired.Name {
-		// When restoring, there will be a overlay configuration directly applied to configmap.
-		// when removing it, the content of configmap may be different with spec. but
-		// we don't want to rolling restart in this scenario -- keep the name unchanged.
-		klog.InfoS("the hash of spec(desired) matches hash of config map (hash conflicition or overlay configuration removal?), but their contents are different."+
-			"This modification won't trigger rolling-restart. If you did applied some change, you may restart to apply them.",
-			"config_map", klog.KObj(existing))
+		desired.Name = fmt.Sprintf("%s-new", desired.Name)
 	}
 }
