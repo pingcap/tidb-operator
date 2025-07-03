@@ -156,6 +156,14 @@ func (in *TSO) Features() []metav1alpha1.Feature {
 	return in.Spec.Features
 }
 
+func (in *TSO) SetVersion(version string) {
+	in.Spec.Version = version
+}
+
+func (in *TSO) Version() string {
+	return in.Spec.Version
+}
+
 type (
 	TSOGroup v1alpha1.TSOGroup
 )

@@ -156,6 +156,14 @@ func (in *TiDB) Features() []metav1alpha1.Feature {
 	return in.Spec.Features
 }
 
+func (in *TiDB) SetVersion(version string) {
+	in.Spec.Version = version
+}
+
+func (in *TiDB) Version() string {
+	return in.Spec.Version
+}
+
 type (
 	TiDBGroup v1alpha1.TiDBGroup
 )

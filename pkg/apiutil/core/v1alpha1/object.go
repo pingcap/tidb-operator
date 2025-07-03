@@ -126,3 +126,11 @@ func LongestReadyPeer[
 
 	return choosed
 }
+
+func Version[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](in F) string {
+	return scope.From[S](in).Version()
+}
