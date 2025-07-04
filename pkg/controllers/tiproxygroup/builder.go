@@ -27,7 +27,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// get tiproxygroup
 		common.TaskContextObject[scope.TiProxyGroup](state, r.Client),
 		// if it's gone just return
-		task.IfBreak(common.CondGroupHasBeenDeleted(state)),
+		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiProxyGroup](state)),
 
 		// get cluster
 		common.TaskContextCluster[scope.TiProxyGroup](state, r.Client),
@@ -35,16 +35,16 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(common.CondClusterIsPaused(state)),
 
 		// get all tiproxies
-		common.TaskContextTiProxySlice(state, r.Client),
+		common.TaskContextSlice[scope.TiProxyGroup](state, r.Client),
 
-		task.IfBreak(common.CondGroupIsDeleting(state),
+		task.IfBreak(common.CondObjectIsDeleting[scope.TiProxyGroup](state),
 			common.TaskGroupFinalizerDel[scope.TiProxyGroup](state, r.Client),
 			common.TaskGroupConditionReady[scope.TiProxyGroup](state),
 			common.TaskGroupConditionSynced[scope.TiProxyGroup](state),
 			common.TaskStatusRevisionAndReplicas[scope.TiProxyGroup](state),
 			common.TaskStatusPersister[scope.TiProxyGroup](state, r.Client),
 		),
-		common.TaskGroupFinalizerAdd[runtime.TiProxyGroupTuple](state, r.Client),
+		common.TaskFinalizerAdd[scope.TiProxyGroup](state, r.Client),
 
 		common.TaskRevision[runtime.TiProxyGroupTuple](state, r.Client),
 

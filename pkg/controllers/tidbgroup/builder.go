@@ -27,7 +27,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// get tidbgroup
 		common.TaskContextObject[scope.TiDBGroup](state, r.Client),
 		// if it's gone just return
-		task.IfBreak(common.CondGroupHasBeenDeleted(state)),
+		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiDBGroup](state)),
 
 		// get cluster
 		common.TaskContextCluster[scope.TiDBGroup](state, r.Client),
@@ -35,16 +35,16 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(common.CondClusterIsPaused(state)),
 
 		// get all tidbs
-		common.TaskContextTiDBSlice(state, r.Client),
+		common.TaskContextSlice[scope.TiDBGroup](state, r.Client),
 
-		task.IfBreak(common.CondGroupIsDeleting(state),
+		task.IfBreak(common.CondObjectIsDeleting[scope.TiDBGroup](state),
 			common.TaskGroupFinalizerDel[scope.TiDBGroup](state, r.Client),
 			common.TaskGroupConditionReady[scope.TiDBGroup](state),
 			common.TaskGroupConditionSynced[scope.TiDBGroup](state),
 			common.TaskStatusRevisionAndReplicas[scope.TiDBGroup](state),
 			common.TaskStatusPersister[scope.TiDBGroup](state, r.Client),
 		),
-		common.TaskGroupFinalizerAdd[runtime.TiDBGroupTuple](state, r.Client),
+		common.TaskFinalizerAdd[scope.TiDBGroup](state, r.Client),
 
 		common.TaskRevision[runtime.TiDBGroupTuple](state, r.Client),
 

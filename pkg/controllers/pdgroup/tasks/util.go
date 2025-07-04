@@ -21,10 +21,9 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/updater"
 )
 
+// HeadlessServiceName is the name of the headless svc
 // TODO(liubo02): fix length issue
 // TODO(liubo02): extract into common utils
-//
-//nolint:staticcheck
 func HeadlessServiceName(groupName string) string {
 	return fmt.Sprintf("%s-pd-peer", groupName)
 }
