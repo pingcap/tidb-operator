@@ -15,15 +15,12 @@
 package common
 
 import (
-	"cmp"
 	"context"
 	"fmt"
 	"slices"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
-	kuberuntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -45,75 +42,6 @@ var (
 	// dcLabel defines the DC label name.
 	dcLabel = "zone"
 )
-
-func taskContextResourceSlice[T any, PT Object[T]](
-	name string,
-	w ResourceSliceInitializer[T],
-	l client.ObjectList,
-	c client.Client,
-) task.Task {
-	return task.NameTaskFunc("Context"+name, func(ctx context.Context) task.Result {
-		ns := w.Namespace()
-		labels := w.Labels()
-
-		if err := c.List(ctx, l, client.InNamespace(ns), client.MatchingLabels(labels)); err != nil {
-			return task.Fail().With("cannot list objs: %v", err)
-		}
-
-		objs := make([]*T, 0, meta.LenList(l))
-		if err := meta.EachListItem(l, func(item kuberuntime.Object) error {
-			obj, ok := item.(PT)
-			if !ok {
-				// unreachable
-				return fmt.Errorf("cannot convert item")
-			}
-			objs = append(objs, obj)
-			return nil
-		}); err != nil {
-			// unreachable
-			return task.Fail().With("cannot extract list objs: %v", err)
-		}
-
-		slices.SortFunc(objs, func(a, b *T) int {
-			var pa, pb PT = a, b
-			return cmp.Compare(pa.GetName(), pb.GetName())
-		})
-
-		w.Set(objs)
-
-		return task.Complete().With("peers is set")
-	})
-}
-
-func TaskContextPDSlice(state PDSliceStateInitializer, c client.Client) task.Task {
-	w := state.PDSliceInitializer()
-	return taskContextResourceSlice("PDSlice", w, &v1alpha1.PDList{}, c)
-}
-
-func TaskContextTiKVSlice(state TiKVSliceStateInitializer, c client.Client) task.Task {
-	w := state.TiKVSliceInitializer()
-	return taskContextResourceSlice("TiKVSlice", w, &v1alpha1.TiKVList{}, c)
-}
-
-func TaskContextTiDBSlice(state TiDBSliceStateInitializer, c client.Client) task.Task {
-	w := state.TiDBSliceInitializer()
-	return taskContextResourceSlice("TiDBSlice", w, &v1alpha1.TiDBList{}, c)
-}
-
-func TaskContextTiFlashSlice(state TiFlashSliceStateInitializer, c client.Client) task.Task {
-	w := state.TiFlashSliceInitializer()
-	return taskContextResourceSlice("TiFlashSlice", w, &v1alpha1.TiFlashList{}, c)
-}
-
-func TaskContextTiCDCSlice(state TiCDCSliceStateInitializer, c client.Client) task.Task {
-	w := state.TiCDCSliceInitializer()
-	return taskContextResourceSlice("TiCDCSlice", w, &v1alpha1.TiCDCList{}, c)
-}
-
-func TaskContextTiProxySlice(state TiProxySliceStateInitializer, c client.Client) task.Task {
-	w := state.TiProxySliceInitializer()
-	return taskContextResourceSlice("TiProxySlice", w, &v1alpha1.TiProxyList{}, c)
-}
 
 func TaskSuspendPod(state PodState, c client.Client) task.Task {
 	return task.NameTaskFunc("SuspendPod", func(ctx context.Context) task.Result {
@@ -348,12 +276,10 @@ func getPDConfig(ctx context.Context, pdClient pdapi.PDClient) (*pdapi.PDConfigF
 }
 
 // findZoneLabel finds the zone label from PD config
-func findZoneLabel(pdCfg *pdapi.PDConfigFromAPI) string {
+func findZoneLabel(cfg *pdapi.PDConfigFromAPI) string {
 	for _, zl := range topologyZoneLabels {
-		for _, ll := range pdCfg.Replication.LocationLabels {
-			if ll == zl {
-				return zl
-			}
+		if slices.Contains(cfg.Replication.LocationLabels, zl) {
+			return zl
 		}
 	}
 	return ""

@@ -49,6 +49,7 @@ type State interface {
 
 	common.ContextClusterNewer[*v1alpha1.TiFlashGroup]
 	common.ContextObjectNewer[*v1alpha1.TiFlashGroup]
+	common.ContextSliceNewer[*v1alpha1.TiFlashGroup, *v1alpha1.TiFlash]
 
 	common.InstanceSliceState[*runtime.TiFlash]
 	common.SliceState[*v1alpha1.TiFlash]
@@ -98,6 +99,10 @@ func (s *state) Slice() []*runtime.TiFlash {
 
 func (s *state) InstanceSlice() []*v1alpha1.TiFlash {
 	return s.fs
+}
+
+func (s *state) SetInstanceSlice(fs []*v1alpha1.TiFlash) {
+	s.fs = fs
 }
 
 func (s *state) SetCluster(cluster *v1alpha1.Cluster) {

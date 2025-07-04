@@ -27,7 +27,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// get tikvgroup
 		common.TaskContextObject[scope.TiKVGroup](state, r.Client),
 		// if it's gone just return
-		task.IfBreak(common.CondGroupHasBeenDeleted(state)),
+		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiKVGroup](state)),
 
 		// get cluster
 		common.TaskContextCluster[scope.TiKVGroup](state, r.Client),
@@ -35,16 +35,16 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(common.CondClusterIsPaused(state)),
 
 		// get all tikvs
-		common.TaskContextTiKVSlice(state, r.Client),
+		common.TaskContextSlice[scope.TiKVGroup](state, r.Client),
 
-		task.IfBreak(common.CondGroupIsDeleting(state),
+		task.IfBreak(common.CondObjectIsDeleting[scope.TiKVGroup](state),
 			common.TaskGroupFinalizerDel[scope.TiKVGroup](state, r.Client),
 			common.TaskGroupConditionReady[scope.TiKVGroup](state),
 			common.TaskGroupConditionSynced[scope.TiKVGroup](state),
 			common.TaskStatusRevisionAndReplicas[scope.TiKVGroup](state),
 			common.TaskStatusPersister[scope.TiKVGroup](state, r.Client),
 		),
-		common.TaskGroupFinalizerAdd[runtime.TiKVGroupTuple](state, r.Client),
+		common.TaskFinalizerAdd[scope.TiKVGroup](state, r.Client),
 
 		task.IfBreak(
 			common.CondClusterIsSuspending(state),
