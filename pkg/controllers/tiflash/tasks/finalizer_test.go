@@ -390,6 +390,315 @@ func TestTaskFinalizerDel(t *testing.T) {
 				return obj
 			}),
 		},
+		// Test cases for cluster deletion with Pod scenarios
+		{
+			desc: "cluster is deleting, has pod with finalizer, no sub resources",
+			state: &ReconcileContext{
+				State: &state{
+					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+						obj.SetDeletionTimestamp(&now)
+						return obj
+					}),
+					pod: fake.FakeObj("pod-0", func(obj *corev1.Pod) *corev1.Pod {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+				},
+			},
+
+			expectedStatus: task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+				obj.Finalizers = []string{}
+				return obj
+			}),
+		},
+		{
+			desc: "cluster is deleting, has pod with finalizer, failed to remove pod finalizer",
+			state: &ReconcileContext{
+				State: &state{
+					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+						obj.SetDeletionTimestamp(&now)
+						return obj
+					}),
+					pod: fake.FakeObj("pod-0", func(obj *corev1.Pod) *corev1.Pod {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+				},
+			},
+			unexpectedErr: true,
+
+			expectedStatus: task.SFail,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				return obj
+			}),
+		},
+		{
+			desc: "cluster is deleting, has pod with finalizer and sub resources",
+			state: &ReconcileContext{
+				State: &state{
+					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+						obj.SetDeletionTimestamp(&now)
+						return obj
+					}),
+					pod: fake.FakeObj("pod-0", func(obj *corev1.Pod) *corev1.Pod {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+				},
+			},
+			subresources: fakeSubresources("ConfigMap"),
+
+			expectedStatus: task.SRetry,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				return obj
+			}),
+		},
+		// Test cases for store removed/not exists with Pod scenarios
+		{
+			desc: "cluster is not deleting, store is removed, has pod with finalizer",
+			state: &ReconcileContext{
+				State: &state{
+					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+						return obj
+					}),
+					pod: fake.FakeObj("pod-0", func(obj *corev1.Pod) *corev1.Pod {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+					storeState: v1alpha1.StoreStateRemoved,
+				},
+			},
+
+			expectedStatus: task.SRetry,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				return obj
+			}),
+		},
+		{
+			desc: "cluster is not deleting, store is removed, has pod with finalizer, failed to remove pod finalizer",
+			state: &ReconcileContext{
+				State: &state{
+					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+						return obj
+					}),
+					pod: fake.FakeObj("pod-0", func(obj *corev1.Pod) *corev1.Pod {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+					storeState: v1alpha1.StoreStateRemoved,
+				},
+			},
+			unexpectedErr: true,
+
+			expectedStatus: task.SFail,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				return obj
+			}),
+		},
+		{
+			desc: "cluster is not deleting, store does not exist, has pod with finalizer",
+			state: &ReconcileContext{
+				State: &state{
+					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+						return obj
+					}),
+					pod: fake.FakeObj("pod-0", func(obj *corev1.Pod) *corev1.Pod {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+				},
+				StoreNotExists: true,
+			},
+
+			expectedStatus: task.SRetry,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				return obj
+			}),
+		},
+		{
+			desc: "cluster is not deleting, store does not exist, has pod with finalizer, failed to remove pod finalizer",
+			state: &ReconcileContext{
+				State: &state{
+					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+						return obj
+					}),
+					pod: fake.FakeObj("pod-0", func(obj *corev1.Pod) *corev1.Pod {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+				},
+				StoreNotExists: true,
+			},
+			unexpectedErr: true,
+
+			expectedStatus: task.SFail,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				return obj
+			}),
+		},
+		// Additional edge cases for pods without finalizers
+		{
+			desc: "cluster is deleting, has pod without finalizer, no sub resources",
+			state: &ReconcileContext{
+				State: &state{
+					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+						obj.SetDeletionTimestamp(&now)
+						return obj
+					}),
+					pod: fake.FakeObj("pod-0", func(obj *corev1.Pod) *corev1.Pod {
+						// Pod has no finalizer
+						return obj
+					}),
+				},
+			},
+
+			expectedStatus: task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+				obj.Finalizers = []string{}
+				return obj
+			}),
+		},
+		{
+			desc: "cluster is not deleting, store is removed, has pod without finalizer",
+			state: &ReconcileContext{
+				State: &state{
+					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+						return obj
+					}),
+					pod: fake.FakeObj("pod-0", func(obj *corev1.Pod) *corev1.Pod {
+						// Pod has no finalizer
+						return obj
+					}),
+					storeState: v1alpha1.StoreStateRemoved,
+				},
+			},
+
+			expectedStatus: task.SRetry,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				return obj
+			}),
+		},
+		{
+			desc: "cluster is not deleting, store does not exist, has pod without finalizer",
+			state: &ReconcileContext{
+				State: &state{
+					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+						return obj
+					}),
+					pod: fake.FakeObj("pod-0", func(obj *corev1.Pod) *corev1.Pod {
+						// Pod has no finalizer
+						return obj
+					}),
+				},
+				StoreNotExists: true,
+			},
+
+			expectedStatus: task.SRetry,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				return obj
+			}),
+		},
+		{
+			desc: "cluster is not deleting, store is removed, has pod and subresources with finalizers",
+			state: &ReconcileContext{
+				State: &state{
+					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+						return obj
+					}),
+					pod: fake.FakeObj("pod-0", func(obj *corev1.Pod) *corev1.Pod {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+					storeState: v1alpha1.StoreStateRemoved,
+				},
+			},
+			subresources: fakeSubresources("ConfigMap"),
+
+			expectedStatus: task.SRetry,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				return obj
+			}),
+		},
+		{
+			desc: "cluster is not deleting, store does not exist, has pod and subresources with finalizers",
+			state: &ReconcileContext{
+				State: &state{
+					tiflash: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+						return obj
+					}),
+					pod: fake.FakeObj("pod-0", func(obj *corev1.Pod) *corev1.Pod {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+				},
+				StoreNotExists: true,
+			},
+			subresources: fakeSubresources("ConfigMap"),
+
+			expectedStatus: task.SRetry,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				return obj
+			}),
+		},
 	}
 
 	for i := range cases {
@@ -399,6 +708,11 @@ func TestTaskFinalizerDel(t *testing.T) {
 
 			objs := []client.Object{
 				c.state.TiFlash(),
+			}
+
+			// Add pod if it exists in the state
+			if pod := c.state.Pod(); pod != nil {
+				objs = append(objs, pod)
 			}
 
 			objs = append(objs, c.subresources...)

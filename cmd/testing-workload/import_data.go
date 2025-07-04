@@ -90,9 +90,15 @@ func ImportData(config ImportDataConfig) error {
 	fmt.Printf("Successfully inserted %d rows into table '%s'.\n", config.TotalRows, config.TableName)
 
 	if config.SplitRegionCount > 0 {
+		// Validate table name before using it in SQL to prevent injection
+		if !isValidTableName(config.TableName) {
+			return fmt.Errorf("invalid table name for split operation: %s", config.TableName)
+		}
 		// Splitting table into desired number of regions.
-		splitTableSQL := "SPLIT TABLE " + config.TableName + " BETWEEN (0) AND (?) REGIONS ?"
-		if _, err := config.DB.Exec(splitTableSQL, config.TotalRows, config.SplitRegionCount); err != nil {
+		// Note: SPLIT TABLE statement doesn't support parameterized queries for any values
+		splitTableSQL := fmt.Sprintf("SPLIT TABLE %s BETWEEN (0) AND (%d) REGIONS %d",
+			config.TableName, config.TotalRows, config.SplitRegionCount)
+		if _, err := config.DB.Exec(splitTableSQL); err != nil {
 			return fmt.Errorf("failed to split table '%s' to %d regions: %w", config.TableName, config.SplitRegionCount, err)
 		}
 		fmt.Printf("Table '%s' split into %d regions.\n", config.TableName, config.SplitRegionCount)
