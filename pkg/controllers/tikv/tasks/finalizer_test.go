@@ -31,6 +31,7 @@ import (
 	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
+	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -336,7 +337,6 @@ func TestTaskFinalizerDel(t *testing.T) {
 						return obj
 					}),
 				},
-				StoreNotExists: true,
 			},
 
 			expectedStatus: task.SComplete,
@@ -357,7 +357,9 @@ func TestTaskFinalizerDel(t *testing.T) {
 						return obj
 					}),
 				},
-				StoreID: "xxx",
+				Store: &pdv1.Store{
+					ID: "xxx",
+				},
 			},
 			needDelStore: true,
 
@@ -379,7 +381,9 @@ func TestTaskFinalizerDel(t *testing.T) {
 						return obj
 					}),
 				},
-				StoreID: "xxx",
+				Store: &pdv1.Store{
+					ID: "xxx",
+				},
 			},
 			needDelStore:          true,
 			unexpectedDelStoreErr: true,
@@ -419,7 +423,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 				if c.unexpectedDelStoreErr {
 					retErr = fmt.Errorf("fake err")
 				}
-				acts = append(acts, deleteStore(ctx, c.state.StoreID, retErr))
+				acts = append(acts, deleteStore(ctx, c.state.Store.ID, retErr))
 			}
 
 			pdc := NewFakePDClient(tt, acts...)
