@@ -469,6 +469,8 @@ func NewSimpleClientDependencies() *Dependencies {
 
 	// TODO make all controller use real controller with simple client.
 	deps.BackupControl = NewRealBackupControl(deps.Clientset, deps.Recorder)
+	deps.StatefulSetControl = NewRealStatefuSetControl(deps.KubeClientset, deps.StatefulSetLister, deps.Recorder)
+	deps.ConfigMapControl = NewRealConfigMapControl(deps.KubeClientset, deps.Recorder)
 	deps.JobControl = NewRealJobControl(deps.KubeClientset, deps.Recorder)
 	return deps
 }
