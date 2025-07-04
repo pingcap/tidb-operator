@@ -1198,12 +1198,8 @@ func applyOverlay(cm *corev1.ConfigMap, key string, value any) error {
 
 // isRestoreDone checks if a restore is completed or failed
 func isRestoreDone(restore *v1alpha1.Restore) bool {
-	if v1alpha1.IsRestoreComplete(restore) {
+	if v1alpha1.IsRestoreComplete(restore) || v1alpha1.IsRestoreFailed(restore) {
 		return true
-	}
-	if idx, _ := v1alpha1.GetRestoreCondition(&restore.Status, v1alpha1.RestoreFailed); idx != -1 {
-		klog.V(2).InfoS("Restore is failed, keep config map unchanged for retry.", "restore", klog.KObj(restore))
-		return false
 	}
 	return false
 }

@@ -2897,6 +2897,36 @@ batch-keys = 512`,
 			tc:             tc,
 		},
 		{
+			name: "failed PiTR restore",
+			restores: []*v1alpha1.Restore{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "failed-pitr-restore",
+						Namespace: tc.Namespace,
+					},
+					Spec: v1alpha1.RestoreSpec{
+						BR: &v1alpha1.BRConfig{
+							Cluster:          tc.Name,
+							ClusterNamespace: tc.Namespace,
+						},
+						Mode: v1alpha1.RestoreModePiTR,
+					},
+					Status: v1alpha1.RestoreStatus{
+						Phase: v1alpha1.RestoreFailed,
+						Conditions: []v1alpha1.RestoreCondition{
+							{
+								Type:   v1alpha1.RestoreFailed,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				},
+			},
+			expectOverride: false,
+			expectError:    false,
+			tc:             tc,
+		},
+		{
 			name: "PiTR restore for different cluster",
 			restores: []*v1alpha1.Restore{
 				{
