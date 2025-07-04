@@ -24,6 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	tiflashcfg "github.com/pingcap/tidb-operator/pkg/configs/tiflash"
@@ -56,6 +57,9 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 
 		if !reloadable.CheckTiFlashPod(state.TiFlash(), pod) {
 			logger.Info("will recreate the pod")
+			if err := k8s.RemoveFinalizer(ctx, c, pod); err != nil {
+				return task.Fail().With("cannot remove finalizer: %w", err)
+			}
 			if err := c.Delete(ctx, pod); err != nil {
 				return task.Fail().With("can't delete pod of tiflash: %w", err)
 			}
@@ -155,6 +159,7 @@ func newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, storeID string
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(tiflash, v1alpha1.SchemeGroupVersion.WithKind("TiFlash")),
 			},
+			Finalizers: []string{metav1alpha1.Finalizer},
 		},
 		Spec: corev1.PodSpec{
 			Hostname:     coreutil.PodName[scope.TiFlash](tiflash),

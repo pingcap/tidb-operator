@@ -25,6 +25,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/image"
@@ -87,6 +88,9 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 
 		if !reloadable.CheckTiKVPod(state.TiKV(), pod) {
 			logger.Info("will recreate the pod")
+			if err := k8s.RemoveFinalizer(ctx, c, pod); err != nil {
+				return task.Fail().With("cannot remove finalizer: %w", err)
+			}
 			regionCount := 0
 			if state.Store != nil {
 				regionCount = state.Store.RegionCount
@@ -195,6 +199,7 @@ func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, storeID string) *cor
 				k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiKV),
 			),
 			Annotations: maputil.Merge(k8s.AnnoProm(coreutil.TiKVStatusPort(tikv), metricsPath)),
+			Finalizers:  []string{metav1alpha1.Finalizer},
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(tikv, v1alpha1.SchemeGroupVersion.WithKind("TiKV")),
 			},

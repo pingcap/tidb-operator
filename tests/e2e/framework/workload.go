@@ -17,6 +17,7 @@ package framework
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/onsi/ginkgo/v2"
@@ -106,6 +107,70 @@ func (w *Workload) MustPing(ctx context.Context, host, user, password, tlsSecret
 	}
 
 	ginkgo.By("Creating ping job")
+	w.f.Must(w.f.Client.Create(ctx, job))
+	w.job = job
+
+	w.f.Must(waiter.WaitForJobComplete(ctx, w.f.Client, job, waiter.ShortTaskTimeout))
+}
+
+func (w *Workload) MustImportData(ctx context.Context, host, user, password, tlsSecretName string, regionCount int) {
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      workloadJobName,
+			Namespace: w.f.Namespace.Name,
+		},
+		Spec: batchv1.JobSpec{
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": workloadJobName,
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "testing-workload",
+							Image: "pingcap/testing-workload:latest",
+							Args: []string{
+								"--action", "import",
+								"--host", host,
+								"--user", user,
+								"--password", password,
+								"--duration", "8",
+								"--max-connections", "30",
+								"--split-region-count", fmt.Sprintf("%d", regionCount),
+							},
+							ImagePullPolicy: corev1.PullIfNotPresent,
+						},
+					},
+					RestartPolicy: corev1.RestartPolicyNever,
+				},
+			},
+			BackoffLimit: ptr.To[int32](0),
+		},
+	}
+
+	if tlsSecretName != "" {
+		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
+			Name: "tls-certs",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: tlsSecretName,
+				},
+			},
+		})
+		job.Spec.Template.Spec.Containers[0].VolumeMounts = append(job.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+			Name:      "tls-certs",
+			MountPath: "/var/lib/tidb-tls",
+			ReadOnly:  true,
+		})
+		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args,
+			"--enable-tls",
+			"--tls-mount-path", "/var/lib/tidb-tls",
+		)
+	}
+
+	ginkgo.By("Creating import job")
 	w.f.Must(w.f.Client.Create(ctx, job))
 	w.job = job
 

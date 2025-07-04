@@ -390,6 +390,162 @@ func TestTaskFinalizerDel(t *testing.T) {
 				return obj
 			}),
 		},
+
+		// New test cases for Pod finalizer removal logic
+		{
+			desc: "cluster is deleting, has pod with finalizer",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+						obj.SetDeletionTimestamp(&now)
+						return obj
+					}),
+					pod: fake.FakeObj("aaa-tikv-0", func(obj *corev1.Pod) *corev1.Pod {
+						obj.Labels = map[string]string{
+							v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+							v1alpha1.LabelKeyInstance:  "aaa",
+							v1alpha1.LabelKeyCluster:   "",
+							v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
+						}
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+				},
+			},
+			subresources: fakeSubresources("PodWithFinalizer"),
+
+			expectedStatus: task.SRetry,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				return obj
+			}),
+		},
+		{
+			desc: "cluster is deleting, has pod with finalizer, failed to remove pod finalizer",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+						obj.SetDeletionTimestamp(&now)
+						return obj
+					}),
+					pod: fake.FakeObj("aaa-tikv-0", func(obj *corev1.Pod) *corev1.Pod {
+						obj.Labels = map[string]string{
+							v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+							v1alpha1.LabelKeyInstance:  "aaa",
+							v1alpha1.LabelKeyCluster:   "",
+							v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
+						}
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+				},
+			},
+			subresources:  fakeSubresources("PodWithFinalizer"),
+			unexpectedErr: true,
+
+			expectedStatus: task.SFail,
+		},
+		{
+			desc: "cluster is not deleting, store is removed, has pod with finalizer",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+						return obj
+					}),
+					storeState: v1alpha1.StoreStateRemoved,
+					pod: fake.FakeObj("aaa-tikv-0", func(obj *corev1.Pod) *corev1.Pod {
+						obj.Labels = map[string]string{
+							v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+							v1alpha1.LabelKeyInstance:  "aaa",
+							v1alpha1.LabelKeyCluster:   "",
+							v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
+						}
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+				},
+			},
+			subresources: fakeSubresources("PodWithFinalizer"),
+
+			expectedStatus: task.SRetry,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				return obj
+			}),
+		},
+		{
+			desc: "cluster is not deleting, store is removed, has pod with finalizer, failed to remove pod finalizer",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+						return obj
+					}),
+					storeState: v1alpha1.StoreStateRemoved,
+					pod: fake.FakeObj("aaa-tikv-0", func(obj *corev1.Pod) *corev1.Pod {
+						obj.Labels = map[string]string{
+							v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+							v1alpha1.LabelKeyInstance:  "aaa",
+							v1alpha1.LabelKeyCluster:   "",
+							v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
+						}
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+				},
+			},
+			subresources:  fakeSubresources("PodWithFinalizer"),
+			unexpectedErr: true,
+
+			expectedStatus: task.SFail,
+		},
+		{
+			desc: "cluster is not deleting, store does not exist, has pod with finalizer",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+						return obj
+					}),
+					pod: fake.FakeObj("aaa-tikv-0", func(obj *corev1.Pod) *corev1.Pod {
+						obj.Labels = map[string]string{
+							v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+							v1alpha1.LabelKeyInstance:  "aaa",
+							v1alpha1.LabelKeyCluster:   "",
+							v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
+						}
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+				},
+				StoreNotExists: true,
+			},
+			subresources: fakeSubresources("PodWithFinalizer"),
+
+			expectedStatus: task.SRetry,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				return obj
+			}),
+		},
 	}
 
 	for i := range cases {
@@ -399,6 +555,10 @@ func TestTaskFinalizerDel(t *testing.T) {
 
 			objs := []client.Object{
 				c.state.TiKV(),
+			}
+
+			if c.state.Pod() != nil {
+				objs = append(objs, c.state.Pod())
 			}
 
 			objs = append(objs, c.subresources...)
@@ -474,6 +634,17 @@ func fakeSubresources(types ...string) []client.Object {
 					v1alpha1.LabelKeyCluster:   "",
 					v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
 				}
+				return obj
+			})
+		case "PodWithFinalizer":
+			obj = fake.FakeObj(strconv.Itoa(i), func(obj *corev1.Pod) *corev1.Pod {
+				obj.Labels = map[string]string{
+					v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+					v1alpha1.LabelKeyInstance:  "aaa",
+					v1alpha1.LabelKeyCluster:   "",
+					v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
+				}
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 				return obj
 			})
 		case "ConfigMap":
