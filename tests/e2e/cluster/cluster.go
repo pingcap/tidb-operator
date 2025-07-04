@@ -1209,7 +1209,7 @@ var _ = Describe("TiDB Cluster", func() {
 				Expect(kvgGet.Status.Version).To(Equal(oldVersion))
 				v, err := semver.NewVersion(oldVersion)
 				Expect(err).To(BeNil())
-				newVersion := "v" + v.IncMinor().String()
+				newVersion := "v" + v.IncPatch().String()
 
 				By(fmt.Sprintf("Updating the version of the tikv group from %s to %s", oldVersion, newVersion))
 				kvgGet.Spec.Template.Spec.Version = newVersion

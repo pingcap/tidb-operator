@@ -20,6 +20,7 @@ import (
 	"path"
 	"path/filepath"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,6 +30,7 @@ import (
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/compatibility"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/image"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
@@ -247,8 +249,12 @@ func newPod(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, g features.Gates, cluste
 	if !g.Enabled(metav1alpha1.DisablePDDefaultReadinessProbe) {
 		pod.Spec.Containers[0].ReadinessProbe = buildPDReadinessProbe(coreutil.PDClientPort(pd))
 	}
+
 	if g.Enabled(metav1alpha1.UsePDReadyAPI) {
-		pod.Spec.Containers[0].ReadinessProbe = buildPDReadinessProbeWithReadyAPI(cluster, coreutil.PDClientPort(pd))
+		version, err := semver.NewVersion(pd.Spec.Version)
+		if err == nil && compatibility.Check(version, compatibility.PDReadyAPI) {
+			pod.Spec.Containers[0].ReadinessProbe = buildPDReadinessProbeWithReadyAPI(cluster, coreutil.PDClientPort(pd))
+		}
 	}
 
 	if pd.Spec.Overlay != nil {

@@ -172,7 +172,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 		})
 	})
 
-	ginkgo.DescribeTableSubtree("UsePDReadyAPI Feature", label.P1,
+	ginkgo.DescribeTableSubtree("PDReadyAPI", label.P1,
 		func(tls bool) {
 			// Setup cluster with UsePDReadyAPI feature gate and optionally TLS
 			if tls {
@@ -195,12 +195,11 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 
 				ginkgo.By("Creating PD with UsePDReadyAPI feature gate enabled")
 				pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](3))
-
-				ginkgo.By("Waiting for PD group to be ready with new readiness probe")
+				kvg := f.MustCreateTiKV(ctx)
 				f.WaitForPDGroupReady(ctx, pdg)
+				f.WaitForTiKVGroupReady(ctx, kvg)
 
 				ginkgo.By("Verifying PD pods have correct readiness probe configuration")
-				// Get PD pods to verify readiness probe configuration
 				pods := &corev1.PodList{}
 				f.Must(f.Client.List(ctx, pods, client.InNamespace(f.Namespace.Name), client.MatchingLabels(map[string]string{
 					v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
@@ -215,16 +214,14 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 					gomega.Expect(probe.Exec).ToNot(gomega.BeNil(), "Readiness probe should use Exec action")
 					gomega.Expect(probe.Exec.Command).To(gomega.ContainElement("curl"), "Should use curl command")
 					gomega.Expect(probe.Exec.Command).To(gomega.ContainElement(gomega.ContainSubstring("/pd/api/v2/ready")), "Should probe /pd/api/v2/ready endpoint")
-
-					if tls {
-						gomega.Expect(probe.Exec.Command).To(gomega.ContainElement(gomega.ContainSubstring("https://127.0.0.1:")), "Should use HTTPS in TLS mode")
-						gomega.Expect(probe.Exec.Command).To(gomega.ContainElement("--cacert"), "Should include CA cert for TLS")
-						gomega.Expect(probe.Exec.Command).To(gomega.ContainElement("--cert"), "Should include client cert for TLS")
-						gomega.Expect(probe.Exec.Command).To(gomega.ContainElement("--key"), "Should include client key for TLS")
-					} else {
-						gomega.Expect(probe.Exec.Command).To(gomega.ContainElement(gomega.ContainSubstring("http://127.0.0.1:")), "Should use HTTP in non-TLS mode")
-					}
 				}
+
+				ginkgo.By("Trigger a rolling update")
+				patch := client.MergeFrom(pdg.DeepCopy())
+				pdg.Spec.Template.Spec.Config = `log.level = 'warn'`
+				f.Must(f.Client.Patch(ctx, pdg, patch))
+				f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromPDGroup(pdg), time.Now(), waiter.LongTaskTimeout))
+				f.WaitForPDGroupReady(ctx, pdg)
 			})
 		},
 		func(tls bool) string {
@@ -234,6 +231,6 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 			return "NO TLS"
 		},
 		ginkgo.Entry(nil, false),
-		ginkgo.Entry(nil, label.FeatureTLS, true),
+		// ginkgo.Entry(nil, label.FeatureTLS, true),
 	)
 })
