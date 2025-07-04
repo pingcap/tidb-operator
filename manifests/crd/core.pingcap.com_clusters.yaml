@@ -89,6 +89,7 @@ spec:
                       - FeatureModification
                       - VolumeAttributesClass
                       - DisablePDDefaultReadinessProbe
+                      - UsePDReadyAPI
                       type: string
                   required:
                   - name
@@ -267,6 +268,7 @@ spec:
                       - FeatureModification
                       - VolumeAttributesClass
                       - DisablePDDefaultReadinessProbe
+                      - UsePDReadyAPI
                       type: string
                     stage:
                       type: string

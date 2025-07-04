@@ -27,7 +27,7 @@ const (
 	imageRegistry = "gcr.io/pingcap-public/dbaas/"
 	helperImage   = "gcr.io/pingcap-public/dbaas/busybox:1.36.0"
 
-	version = "v8.1.0"
+	version = "v8.5.1"
 	GiB     = 1024 * 1024 * 1024
 )
 

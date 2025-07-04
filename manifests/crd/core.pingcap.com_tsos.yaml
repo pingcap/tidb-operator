@@ -82,6 +82,7 @@ spec:
                   - FeatureModification
                   - VolumeAttributesClass
                   - DisablePDDefaultReadinessProbe
+                  - UsePDReadyAPI
                   type: string
                 type: array
               image:

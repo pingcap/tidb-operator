@@ -35,7 +35,7 @@ const (
 	defaultSchedulerGroupName = "sg"
 	defaultTiProxyGroupName   = "pg"
 
-	defaultVersion        = "v8.1.0"
+	defaultVersion        = "v8.5.2"
 	defaultTiProxyVersion = "v1.3.0"
 
 	defaultImageRegistry = "gcr.io/pingcap-public/dbaas/"

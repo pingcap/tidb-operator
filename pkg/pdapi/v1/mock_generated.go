@@ -167,6 +167,21 @@ func (mr *MockPDClientMockRecorder) GetHealth(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetHealth", reflect.TypeOf((*MockPDClient)(nil).GetHealth), ctx)
 }
 
+// GetMemberReady mocks base method.
+func (m *MockPDClient) GetMemberReady(ctx context.Context, url string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMemberReady", ctx, url)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMemberReady indicates an expected call of GetMemberReady.
+func (mr *MockPDClientMockRecorder) GetMemberReady(ctx, url any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMemberReady", reflect.TypeOf((*MockPDClient)(nil).GetMemberReady), ctx, url)
+}
+
 // GetMembers mocks base method.
 func (m *MockPDClient) GetMembers(ctx context.Context) (*MembersInfo, error) {
 	m.ctrl.T.Helper()

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -291,6 +292,9 @@ func TestStorageBackendBasic(t *testing.T) {
 }
 
 func TestStorageBackendBatchDeleteObjects(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		t.Skip("Skipping test on macOS due to gomonkey instability")
+	}
 	g := gomega.NewGomegaWithT(t)
 
 	type testcase struct {

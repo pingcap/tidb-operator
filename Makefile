@@ -52,36 +52,36 @@ deploy: release
 
 .PHONY: codegen
 codegen: bin/deepcopy-gen bin/register-gen bin/overlay-gen
-	$(REGISTER_GEN) \
+	cd $(ROOT)/api && GOWORK=off $(REGISTER_GEN) \
 		--output-file=zz_generated.register.go \
 		--go-header-file=$(BOILERPLATE_FILE) \
-		$(API_PATH)/...
+		github.com/pingcap/tidb-operator/api/v2/...
 
-	$(DEEPCOPY_GEN) \
+	cd $(ROOT)/api && GOWORK=off $(DEEPCOPY_GEN) \
 		--output-file=zz_generated.deepcopy.go \
 		--go-header-file=$(BOILERPLATE_FILE) \
-		$(API_PATH)/...
+		github.com/pingcap/tidb-operator/api/v2/...
 
-	$(REGISTER_GEN) \
+	GOWORK=off $(REGISTER_GEN) \
 		--output-file=zz_generated.register.go \
 		--go-header-file=$(BOILERPLATE_FILE) \
-		$(PD_API_PATH)/...
+		./pkg/timanager/apis/pd/...
 
-	$(DEEPCOPY_GEN) \
+	GOWORK=off $(DEEPCOPY_GEN) \
 		--output-file=zz_generated.deepcopy.go \
 		--go-header-file=$(BOILERPLATE_FILE) \
-		$(PD_API_PATH)/...
+		./pkg/timanager/apis/pd/...
 
 .PHONY: overlaygen
 overlaygen: bin/overlay-gen
-	$(OVERLAY_GEN) \
+	GOWORK=off $(OVERLAY_GEN) \
 		--output-dir=$(OVERLAY_PKG_DIR) \
 		--go-header-file=$(BOILERPLATE_FILE) \
 		k8s.io/api/core/v1
 
 .PHONY: runtimegen
 runtimegen: bin/runtime-gen
-	$(RUNTIME_GEN) \
+	GOWORK=off $(RUNTIME_GEN) \
 		--output-dir=$(RUNTIME_PKG_DIR) \
 		--go-header-file=$(BOILERPLATE_FILE) \
 		github.com/pingcap/tidb-operator/api/v2/core/v1alpha1
@@ -98,6 +98,9 @@ doc: bin/mdtoc
 crd: bin/controller-gen build/crd-modifier
 	$(CONTROLLER_GEN) crd:generateEmbeddedObjectMeta=true output:crd:artifacts:config=$(ROOT)/manifests/crd paths=$(API_PATH)/...
 	$(BIN_DIR)/crd-modifier -dir $(ROOT)/manifests/crd
+
+build/crd-modifier:
+	cd $(ROOT) && GOWORK=off go build -o $(BIN_DIR)/crd-modifier ./cmd/crd-modifier
 
 
 .PHONY: tidy
@@ -218,11 +221,11 @@ bin/mockgen:
 
 OVERLAY_GEN = $(BIN_DIR)/overlay-gen
 bin/overlay-gen:
-	$(ROOT)/hack/build.sh overlay-gen
+	GOWORK=off go build -o $(OVERLAY_GEN) ./cmd/overlay-gen
 
 RUNTIME_GEN = $(BIN_DIR)/runtime-gen
 bin/runtime-gen:
-	$(ROOT)/hack/build.sh runtime-gen
+	GOWORK=off go build -o $(RUNTIME_GEN) ./cmd/runtime-gen
 
 
 .PHONY: bin/golangci-lint
