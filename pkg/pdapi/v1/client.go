@@ -622,10 +622,11 @@ func (c *pdClient) GetTSOLeader(ctx context.Context) (string, error) {
 
 func (c *pdClient) GetMemberReady(ctx context.Context, url string) (bool, error) {
 	apiURL := fmt.Sprintf("%s/%s", url, pdReadyPrefix)
-	req, err := http.NewRequest("GET", apiURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, http.NoBody)
 	if err != nil {
 		return false, fmt.Errorf("failed to new a request: %w", err)
 	}
+	//nolint:bodyclose // has been handled
 	res, err := c.httpClient.Do(req)
 	if err != nil {
 		return false, fmt.Errorf("failed to send a http request: %w", err)
