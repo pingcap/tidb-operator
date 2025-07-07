@@ -126,9 +126,6 @@ type TiDBGroupSpec struct {
 	// +kubebuilder:validation:Minimum=0
 	Replicas *int32 `json:"replicas"`
 
-	// Service defines some fields used to override the default service.
-	Service *TiDBService `json:"service,omitempty"`
-
 	// +listType=map
 	// +listMapKey=type
 	SchedulePolicies []SchedulePolicy `json:"schedulePolicies,omitempty"`
@@ -243,28 +240,6 @@ type TiDBSlowLog struct {
 
 	// ResourceRequirements defines the resource requirements for the slow log sidecar.
 	Resources ResourceRequirements `json:"resources,omitempty"`
-}
-
-// TiDBService defines some fields used to override the default service.
-type TiDBService struct {
-	// type determines how the Service is exposed. Defaults to ClusterIP. Valid
-	// options are ExternalName, ClusterIP, NodePort, and LoadBalancer.
-	// "ClusterIP" allocates a cluster-internal IP address for load-balancing
-	// to endpoints. Endpoints are determined by the selector or if that is not
-	// specified, by manual construction of an Endpoints object or
-	// EndpointSlice objects. If clusterIP is "None", no virtual IP is
-	// allocated and the endpoints are published as a set of endpoints rather
-	// than a virtual IP.
-	// "NodePort" builds on ClusterIP and allocates a port on every node which
-	// routes to the same endpoints as the clusterIP.
-	// "LoadBalancer" builds on NodePort and creates an external load-balancer
-	// (if supported in the current cloud) which routes to the same endpoints
-	// as the clusterIP.
-	// "ExternalName" aliases this service to the specified externalName.
-	// Several other fields do not apply to ExternalName services.
-	// More info: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
-	// +optional
-	Type corev1.ServiceType `json:"type,omitempty"`
 }
 
 type TiDBTLS struct {
