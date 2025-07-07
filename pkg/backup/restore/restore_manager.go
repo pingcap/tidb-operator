@@ -859,20 +859,17 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 	// set env vars specified in backup.Spec.Env
 	envVars = util.AppendOverwriteEnv(envVars, restore.Spec.Env)
 
-	args := []string{}
-	prune := restore.Spec.Prune
-	if prune != "" {
-		if prune == v1alpha1.PruneTypeAfterFailed {
-			args = append(args, "abort")
-		} else if prune == v1alpha1.PruneTypeAfterFailed && restore.Status.Phase == v1alpha1.RestoreFailed {
-			args = append(args, "abort")
-		}
-	}
-
-	args = append(args, "restore",
+	args := []string{
+		"restore",
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--restoreName=%s", name),
-	)
+	}
+	
+	prune := restore.Spec.Prune
+	if prune == v1alpha1.PruneTypeAlreadyFailed ||
+	(prune == v1alpha1.PruneTypeAfterFailed && restore.Status.Phase == v1alpha1.RestoreFailed) {
+		args = append(args, "--abort=true")
+	}
 
 	tikvImage := tc.TiKVImage()
 	_, tikvVersion := backuputil.ParseImage(tikvImage)

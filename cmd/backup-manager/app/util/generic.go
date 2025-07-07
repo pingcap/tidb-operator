@@ -47,6 +47,7 @@ type GenericOptions struct {
 	CommitTS       string
 	TruncateUntil  string
 	PitrRestoredTs string
+	Abort 	   bool
 	Initialize     bool
 }
 

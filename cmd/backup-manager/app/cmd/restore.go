@@ -43,6 +43,7 @@ func NewRestoreCommand() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().BoolVar(&ro.Abort, "abort", false, "Whether to abort the restore process")
 	cmd.Flags().StringVar(&ro.Namespace, "namespace", "", "Restore CR's namespace")
 	cmd.Flags().StringVar(&ro.ResourceName, "restoreName", "", "Restore CRD object name")
 	cmd.Flags().StringVar(&ro.TiKVVersion, "tikvVersion", util.DefaultVersion, "TiKV version")

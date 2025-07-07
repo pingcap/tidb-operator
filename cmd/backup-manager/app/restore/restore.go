@@ -123,10 +123,11 @@ func (ro *Options) restoreData(
 		useProgressFile = true
 	}
 
-	fullArgs := []string{
-		"restore",
-		restoreType,
+	fullArgs := []string{}
+	if ro.Abort {
+		fullArgs = append(fullArgs, "abort")
 	}
+	fullArgs = append(fullArgs, "restore", restoreType)
 	fullArgs = append(fullArgs, args...)
 	klog.Infof("Running br command with args: %v", fullArgs)
 	bin := path.Join(util.BRBinPath, "br")
