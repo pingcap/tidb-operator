@@ -29,4 +29,5 @@ header:
     - '**/OWNERS'
     - OWNERS_ALIASES
     - .cursorignore
+    - .claude/**
   comment: on-failure

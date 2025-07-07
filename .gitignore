@@ -6,3 +6,4 @@ coverage.txt
 .cursorignore
 .DS_Store
 CLAUDE.md
+.claude/

@@ -67,6 +67,7 @@ func constructPodSpec(p Policy) []Case[v1.PodSpec] {
 	cs36 := constructPointerBool(NoLimit)
 	cs37 := constructMapSlicePodSchedulingGate(NoLimit)
 	cs38 := constructMapSlicePodResourceClaim(NoLimit)
+	cs39 := constructPointerResourceRequirements(NoLimit)
 	maxCount := max(
 		len(cs0),
 		len(cs1),
@@ -107,6 +108,7 @@ func constructPodSpec(p Policy) []Case[v1.PodSpec] {
 		len(cs36),
 		len(cs37),
 		len(cs38),
+		len(cs39),
 	)
 	k0 := 0
 	k1 := 0
@@ -147,6 +149,7 @@ func constructPodSpec(p Policy) []Case[v1.PodSpec] {
 	k36 := 0
 	k37 := 0
 	k38 := 0
+	k39 := 0
 	for i := range maxCount {
 		nc := Case[v1.PodSpec]{}
 		if i/len(cs0) > k0 {
@@ -461,6 +464,14 @@ func constructPodSpec(p Policy) []Case[v1.PodSpec] {
 		nc.expected.ResourceClaims = c38.expected
 		nc.dst.ResourceClaims = c38.dst
 		nc.src.ResourceClaims = c38.src
+		if i/len(cs39) > k39 {
+			cs39 = constructPointerResourceRequirements(NoLimit)
+			k39 += 1
+		}
+		c39 := &cs39[i%len(cs39)]
+		nc.expected.Resources = c39.expected
+		nc.dst.Resources = c39.dst
+		nc.src.Resources = c39.src
 		cases = append(cases, nc)
 	}
 	return cases
@@ -7937,6 +7948,7 @@ func constructPodSecurityContext(p Policy) []Case[v1.PodSecurityContext] {
 	cs9 := constructPointerPodFSGroupChangePolicy(NoLimit)
 	cs10 := constructPointerSeccompProfile(NoLimit)
 	cs11 := constructPointerAppArmorProfile(NoLimit)
+	cs12 := constructPointerPodSELinuxChangePolicy(NoLimit)
 	maxCount := max(
 		len(cs0),
 		len(cs1),
@@ -7950,6 +7962,7 @@ func constructPodSecurityContext(p Policy) []Case[v1.PodSecurityContext] {
 		len(cs9),
 		len(cs10),
 		len(cs11),
+		len(cs12),
 	)
 	k0 := 0
 	k1 := 0
@@ -7963,6 +7976,7 @@ func constructPodSecurityContext(p Policy) []Case[v1.PodSecurityContext] {
 	k9 := 0
 	k10 := 0
 	k11 := 0
+	k12 := 0
 	for i := range maxCount {
 		nc := Case[v1.PodSecurityContext]{}
 		if i/len(cs0) > k0 {
@@ -8061,6 +8075,14 @@ func constructPodSecurityContext(p Policy) []Case[v1.PodSecurityContext] {
 		nc.expected.AppArmorProfile = c11.expected
 		nc.dst.AppArmorProfile = c11.dst
 		nc.src.AppArmorProfile = c11.src
+		if i/len(cs12) > k12 {
+			cs12 = constructPointerPodSELinuxChangePolicy(NoLimit)
+			k12 += 1
+		}
+		c12 := &cs12[i%len(cs12)]
+		nc.expected.SELinuxChangePolicy = c12.expected
+		nc.dst.SELinuxChangePolicy = c12.dst
+		nc.src.SELinuxChangePolicy = c12.src
 		cases = append(cases, nc)
 	}
 	return cases
@@ -8205,6 +8227,36 @@ func constructPodFSGroupChangePolicy(p Policy) []Case[v1.PodFSGroupChangePolicy]
 			expected: v1.PodFSGroupChangePolicy(c.expected),
 			dst:      v1.PodFSGroupChangePolicy(c.dst),
 			src:      v1.PodFSGroupChangePolicy(c.src),
+		})
+	}
+	return cases
+}
+func constructPointerPodSELinuxChangePolicy(p Policy) []Case[*v1.PodSELinuxChangePolicy] {
+	cases := []Case[*v1.PodSELinuxChangePolicy]{
+		{
+			expected: nil,
+			dst:      nil,
+			src:      nil,
+		},
+	}
+	cs := constructPodSELinuxChangePolicy(p)
+	for _, c := range cs {
+		cases = append(cases, Case[*v1.PodSELinuxChangePolicy]{
+			expected: &c.expected,
+			dst:      &c.dst,
+			src:      &c.src,
+		})
+	}
+	return cases
+}
+func constructPodSELinuxChangePolicy(p Policy) []Case[v1.PodSELinuxChangePolicy] {
+	cases := []Case[v1.PodSELinuxChangePolicy]{}
+	cs := constructString(p)
+	for _, c := range cs {
+		cases = append(cases, Case[v1.PodSELinuxChangePolicy]{
+			expected: v1.PodSELinuxChangePolicy(c.expected),
+			dst:      v1.PodSELinuxChangePolicy(c.dst),
+			src:      v1.PodSELinuxChangePolicy(c.src),
 		})
 	}
 	return cases
@@ -9759,6 +9811,24 @@ func constructPodResourceClaimIgnore_name(p Policy) []Case[v1.PodResourceClaim] 
 		nc.dst.ResourceClaimTemplateName = c2.dst
 		nc.src.ResourceClaimTemplateName = c2.src
 		cases = append(cases, nc)
+	}
+	return cases
+}
+func constructPointerResourceRequirements(p Policy) []Case[*v1.ResourceRequirements] {
+	cases := []Case[*v1.ResourceRequirements]{
+		{
+			expected: nil,
+			dst:      nil,
+			src:      nil,
+		},
+	}
+	cs := constructResourceRequirements(p)
+	for _, c := range cs {
+		cases = append(cases, Case[*v1.ResourceRequirements]{
+			expected: &c.expected,
+			dst:      &c.dst,
+			src:      &c.src,
+		})
 	}
 	return cases
 }
