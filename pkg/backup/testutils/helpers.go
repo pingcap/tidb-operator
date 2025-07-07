@@ -40,8 +40,10 @@ func NewHelper(t *testing.T) *Helper {
 	stop := make(chan struct{})
 	deps.InformerFactory.Start(stop)
 	deps.KubeInformerFactory.Start(stop)
+	deps.LabelFilterKubeInformerFactory.Start(stop)
 	deps.InformerFactory.WaitForCacheSync(stop)
 	deps.KubeInformerFactory.WaitForCacheSync(stop)
+	deps.LabelFilterKubeInformerFactory.WaitForCacheSync(stop)
 
 	return &Helper{
 		stop: stop,
