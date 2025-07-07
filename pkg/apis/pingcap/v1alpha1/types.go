@@ -2719,6 +2719,14 @@ const (
 	RestoreRetryFailed RestoreConditionType = "RetryFailed"
 	// RestoreInvalid means invalid restore CR.
 	RestoreInvalid RestoreConditionType = "Invalid"
+	// RestorePruneScheduled means the prune job is scheduled after restore failed
+	RestorePruneScheduled RestoreConditionType = "PruneScheduled"
+	// RestorePruneRunning means the prune job is running after restore failed
+	RestorePruneRunning RestoreConditionType = "PruneRunning"
+	// RestorePruneComplete means the prune job has successfully completed after restore failed
+	RestorePruneComplete RestoreConditionType = "PruneComplete"
+	// RestorePruneFailed means the prune job has failed after restore failed
+	RestorePruneFailed RestoreConditionType = "PruneFailed"
 )
 
 // RestoreCondition describes the observed state of a Restore at a certain point.

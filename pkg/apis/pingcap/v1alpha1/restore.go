@@ -166,3 +166,32 @@ func IsRestoreDataComplete(restore *Restore) bool {
 	_, condition := GetRestoreCondition(&restore.Status, RestoreDataComplete)
 	return condition != nil && condition.Status == corev1.ConditionTrue
 }
+
+// IsRestorePruneScheduled returns true if a Restore prune job is scheduled
+func IsRestorePruneScheduled(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, RestorePruneScheduled)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsRestorePruneRunning returns true if a Restore prune job is running
+func IsRestorePruneRunning(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, RestorePruneRunning)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsRestorePruneComplete returns true if a Restore prune job has successfully completed
+func IsRestorePruneComplete(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, RestorePruneComplete)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// IsRestorePruneFailed returns true if a Restore prune job has failed
+func IsRestorePruneFailed(restore *Restore) bool {
+	_, condition := GetRestoreCondition(&restore.Status, RestorePruneFailed)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
+// GetPruneJobName return the prune job name
+func (rs *Restore) GetPruneJobName() string {
+	return fmt.Sprintf("restore-prune-%s", rs.GetName())
+}

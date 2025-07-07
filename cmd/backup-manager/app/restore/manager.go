@@ -153,10 +153,20 @@ func (rm *Manager) ProcessRestore() error {
 func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore, db *sql.DB) error {
 	started := time.Now()
 
-	err := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-		Type:   v1alpha1.RestoreRunning,
-		Status: corev1.ConditionTrue,
-	}, nil)
+	var runningCondition *v1alpha1.RestoreCondition
+	if v1alpha1.IsRestorePruneScheduled(restore) {
+		runningCondition = &v1alpha1.RestoreCondition{
+			Type:   v1alpha1.RestorePruneRunning,
+			Status: corev1.ConditionTrue,
+		}
+	} else {
+		runningCondition = &v1alpha1.RestoreCondition{
+			Type:   v1alpha1.RestoreRunning,
+			Status: corev1.ConditionTrue,
+		}
+	}
+
+	err := rm.StatusUpdater.Update(restore, runningCondition, nil)
 	if err != nil {
 		return err
 	}
@@ -294,33 +304,40 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 		restoreType v1alpha1.RestoreConditionType
 		allFinished bool
 	)
-	switch rm.Mode {
-	case string(v1alpha1.RestoreModeVolumeSnapshot):
-		// In volume snapshot mode, commitTS and size have been updated according to the
-		// br command output, so we don't need to update them here.
-		if rm.Prepare {
-			restoreType = v1alpha1.RestoreVolumeComplete
-		} else {
-			restoreType = v1alpha1.RestoreDataComplete
-		}
-	default:
-		ts, err := util.GetCommitTsFromBRMetaData(ctx, restore.Spec.StorageProvider)
-		if err != nil {
-			errs = append(errs, err)
-			klog.Errorf("get cluster %s commitTs failed, err: %s", rm, err)
-			uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-				Type:    v1alpha1.RestoreFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  "GetCommitTsFailed",
-				Message: err.Error(),
-			}, nil)
-			errs = append(errs, uerr)
-			return errorutils.NewAggregate(errs)
-		}
-		restoreType = v1alpha1.RestoreComplete
-		tsStr := strconv.FormatUint(ts, 10)
-		commitTS = &tsStr
+	
+	// if is a prune task (PruneRunning state), set to PruneComplete directly
+	if v1alpha1.IsRestorePruneRunning(restore) {
+		restoreType = v1alpha1.RestorePruneComplete
 		allFinished = true
+	} else {
+		switch rm.Mode {
+		case string(v1alpha1.RestoreModeVolumeSnapshot):
+			// In volume snapshot mode, commitTS and size have been updated according to the
+			// br command output, so we don't need to update them here.
+			if rm.Prepare {
+				restoreType = v1alpha1.RestoreVolumeComplete
+			} else {
+				restoreType = v1alpha1.RestoreDataComplete
+			}
+		default:
+			ts, err := util.GetCommitTsFromBRMetaData(ctx, restore.Spec.StorageProvider)
+			if err != nil {
+				errs = append(errs, err)
+				klog.Errorf("get cluster %s commitTs failed, err: %s", rm, err)
+				uerr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+					Type:    v1alpha1.RestoreFailed,
+					Status:  corev1.ConditionTrue,
+					Reason:  "GetCommitTsFailed",
+					Message: err.Error(),
+				}, nil)
+				errs = append(errs, uerr)
+				return errorutils.NewAggregate(errs)
+			}
+			restoreType = v1alpha1.RestoreComplete
+			tsStr := strconv.FormatUint(ts, 10)
+			commitTS = &tsStr
+			allFinished = true
+		}
 	}
 
 	updateStatus := &controller.RestoreUpdateStatus{
