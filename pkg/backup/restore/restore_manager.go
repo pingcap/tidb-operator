@@ -864,10 +864,10 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--restoreName=%s", name),
 	}
-	
+
 	prune := restore.Spec.Prune
 	if prune == v1alpha1.PruneTypeAlreadyFailed ||
-	(prune == v1alpha1.PruneTypeAfterFailed && restore.Status.Phase == v1alpha1.RestoreFailed) {
+		(prune == v1alpha1.PruneTypeAfterFailed && restore.Status.Phase == v1alpha1.RestoreFailed) {
 		args = append(args, "--abort=true")
 	}
 
