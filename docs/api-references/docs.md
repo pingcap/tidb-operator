@@ -1403,6 +1403,20 @@ string
 </tr>
 <tr>
 <td>
+<code>prune</code></br>
+<em>
+<a href="#prunetype">
+PruneType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Prune is the prune type for restore, it is optional and can only have two valid values: afterFailed/alreadyFailed</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>logRestoreStartTs</code></br>
 <em>
 string
@@ -14137,6 +14151,14 @@ uint
 </tr>
 </tbody>
 </table>
+<h3 id="prunetype">PruneType</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#restorespec">RestoreSpec</a>)
+</p>
+<p>
+<p>PruneType represents the prune type for restore.</p>
+</p>
 <h3 id="pumpnodestatus">PumpNodeStatus</h3>
 <p>
 (<em>Appears on:</em>
@@ -15033,6 +15055,20 @@ string
 <td>
 <em>(Optional)</em>
 <p>PitrRestoredTs is the pitr restored ts.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>prune</code></br>
+<em>
+<a href="#prunetype">
+PruneType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Prune is the prune type for restore, it is optional and can only have two valid values: afterFailed/alreadyFailed</p>
 </td>
 </tr>
 <tr>

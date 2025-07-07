@@ -2676,6 +2676,17 @@ const (
 	RestoreModeVolumeSnapshot RestoreMode = "volume-snapshot"
 )
 
+// PruneType represents the prune type for restore.
+// +k8s:openapi-gen=true
+type PruneType string
+
+const (
+	// PruneTypeAfterFailed represents prune after failed.
+	PruneTypeAfterFailed PruneType = "afterFailed"
+	// PruneTypeAlreadyFailed represents prune already failed.
+	PruneTypeAlreadyFailed PruneType = "alreadyFailed"
+)
+
 // RestoreConditionType represents a valid condition of a Restore.
 type RestoreConditionType string
 
@@ -2754,6 +2765,10 @@ type RestoreSpec struct {
 	// PitrRestoredTs is the pitr restored ts.
 	// +optional
 	PitrRestoredTs string `json:"pitrRestoredTs,omitempty"`
+	// Prune is the prune type for restore, it is optional and can only have two valid values: afterFailed/alreadyFailed
+	// +optional
+	// +kubebuilder:validation:Enum:=afterFailed;alreadyFailed
+	Prune PruneType `json:"prune,omitempty"`
 	// LogRestoreStartTs is the start timestamp which log restore from.
 	// +optional
 	LogRestoreStartTs string `json:"logRestoreStartTs,omitempty"`
