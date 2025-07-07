@@ -215,6 +215,11 @@ func overlayPodSpec(dst, src *v1.PodSpec) {
 	} else if dst.ResourceClaims == nil {
 		dst.ResourceClaims = src.ResourceClaims
 	}
+	if dst.Resources != nil && src.Resources != nil {
+		overlayResourceRequirements(dst.Resources, src.Resources)
+	} else if dst.Resources == nil {
+		dst.Resources = src.Resources
+	}
 }
 func overlayMapListSliceVolume(dst, src *[]v1.Volume) {
 	m := map[string]int{}
@@ -2078,6 +2083,11 @@ func overlayPodSecurityContext(dst, src *v1.PodSecurityContext) {
 	} else if dst.AppArmorProfile == nil {
 		dst.AppArmorProfile = src.AppArmorProfile
 	}
+	if dst.SELinuxChangePolicy != nil && src.SELinuxChangePolicy != nil {
+		overlayPodSELinuxChangePolicy(dst.SELinuxChangePolicy, src.SELinuxChangePolicy)
+	} else if dst.SELinuxChangePolicy == nil {
+		dst.SELinuxChangePolicy = src.SELinuxChangePolicy
+	}
 }
 func overlayAtomicListSliceInt64(dst, src *[]int64) {
 	if len(*src) == 0 {
@@ -2099,6 +2109,13 @@ func overlayAtomicListSliceSysctl(dst, src *[]v1.Sysctl) {
 	*dst = *src
 }
 func overlayPodFSGroupChangePolicy(dst, src *v1.PodFSGroupChangePolicy) {
+	ndst := (*string)(dst)
+	nsrc := (*string)(src)
+	if *nsrc != "" {
+		*ndst = *nsrc
+	}
+}
+func overlayPodSELinuxChangePolicy(dst, src *v1.PodSELinuxChangePolicy) {
 	ndst := (*string)(dst)
 	nsrc := (*string)(src)
 	if *nsrc != "" {

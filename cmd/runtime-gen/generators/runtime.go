@@ -61,6 +61,8 @@ func (g *runtimeGenerator) Namers(*generator.Context) namer.NameSystems {
 
 func (g *runtimeGenerator) Imports(_ *generator.Context) (imports []string) {
 	importLines := []string{
+		`"unsafe"`,
+
 		`"k8s.io/apimachinery/pkg/api/meta"`,
 		`"k8s.io/apimachinery/pkg/runtime"`,
 		`metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"`,
