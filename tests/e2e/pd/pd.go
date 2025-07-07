@@ -41,11 +41,13 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 	ginkgo.Context("Basic", label.P0, func() {
 		ginkgo.It("support create PD with 1 replica", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](1))
+			_ = f.MustCreateTiKV(ctx)
 			f.WaitForPDGroupReady(ctx, pdg)
 		})
 
 		ginkgo.It("support create PD with 3 replica", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](3))
+			_ = f.MustCreateTiKV(ctx)
 			f.WaitForPDGroupReady(ctx, pdg)
 		})
 	})
@@ -53,6 +55,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 	ginkgo.Context("Scale and Update", label.P0, func() {
 		ginkgo.It("support scale PD from 1 to 3", label.Scale, func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](1))
+			_ = f.MustCreateTiKV(ctx)
 			f.WaitForPDGroupReady(ctx, pdg)
 
 			patch := client.MergeFrom(pdg.DeepCopy())
@@ -65,6 +68,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 
 		ginkgo.It("support scale PD from 3 to 1", label.Scale, func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](3))
+			_ = f.MustCreateTiKV(ctx)
 			f.WaitForPDGroupReady(ctx, pdg)
 
 			patch := client.MergeFrom(pdg.DeepCopy())
@@ -77,6 +81,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 
 		ginkgo.It("support scale PD from 3 to 5", label.Scale, func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](3))
+			_ = f.MustCreateTiKV(ctx)
 			f.WaitForPDGroupReady(ctx, pdg)
 
 			patch := client.MergeFrom(pdg.DeepCopy())
@@ -89,6 +94,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 
 		ginkgo.It("support scale PD from 5 to 3", label.Scale, func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](5))
+			_ = f.MustCreateTiKV(ctx)
 			f.WaitForPDGroupReady(ctx, pdg)
 
 			patch := client.MergeFrom(pdg.DeepCopy())
@@ -101,6 +107,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 
 		ginkgo.It("support rolling update PD by change config file", label.Update, func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](3))
+			_ = f.MustCreateTiKV(ctx)
 			f.WaitForPDGroupReady(ctx, pdg)
 
 			patch := client.MergeFrom(pdg.DeepCopy())
@@ -125,6 +132,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 
 		ginkgo.It("support scale PD from 5 to 3 and rolling update at same time", label.Scale, label.Update, func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](5))
+			_ = f.MustCreateTiKV(ctx)
 			f.WaitForPDGroupReady(ctx, pdg)
 
 			patch := client.MergeFrom(pdg.DeepCopy())
@@ -152,6 +160,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 	ginkgo.Context("Suspend", label.P0, label.Suspend, func() {
 		ginkgo.It("support suspend and resume PD", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](3))
+			_ = f.MustCreateTiKV(ctx)
 			f.WaitForPDGroupReadyAndNotSuspended(ctx, pdg)
 
 			patch := client.MergeFrom(f.Cluster.DeepCopy())
@@ -231,6 +240,6 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 			return "NO TLS"
 		},
 		ginkgo.Entry(nil, false),
-		// ginkgo.Entry(nil, label.FeatureTLS, true),
+		ginkgo.Entry(nil, label.FeatureTLS, true),
 	)
 })
