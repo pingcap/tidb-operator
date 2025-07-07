@@ -2,8 +2,6 @@ module github.com/pingcap/tidb-operator/api/v2
 
 go 1.23.0
 
-toolchain go1.24.4
-
 require (
 	github.com/onsi/gomega v1.36.2
 	k8s.io/api v0.32.6
