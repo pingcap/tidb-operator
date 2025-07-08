@@ -409,7 +409,7 @@ func (rm *Manager) performAbort(ctx context.Context) error {
 
 	// Check for version compatibility issue where old br doesn't have `abort` command
 	// and just prints help with exit code 0.
-	if strings.Contains(string(output), "Usage:") || strings.Contains(string(output), "unknown command") {
+	if strings.Contains(string(output), "Usage:") || strings.Contains(string(output), "--help") {
 		msg := "br abort command not found, please check if the br version is compatible"
 		klog.Error(msg)
 		rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
