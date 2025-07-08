@@ -20,6 +20,7 @@ import (
 	"os/exec"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
@@ -387,9 +388,15 @@ func (rm *Manager) performAbort(ctx context.Context) error {
 	bin := path.Join(util.BRBinPath, "br")
 	cmd := exec.CommandContext(ctx, bin, args...)
 	output, err := cmd.CombinedOutput()
+
+	// Log the output from the br command
+	if len(output) > 0 {
+		klog.Infof("br abort restore command output:\n%s", string(output))
+	}
+
 	if err != nil {
-		klog.Errorf("br abort restore command failed: %v, output: %s", err, string(output))
-		
+		klog.Errorf("br abort restore command failed: %v", err)
+
 		// Update status to PruneFailed
 		rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 			Type:    v1alpha1.RestorePruneFailed,
@@ -398,6 +405,20 @@ func (rm *Manager) performAbort(ctx context.Context) error {
 			Message: fmt.Sprintf("BR abort command failed: %v", err),
 		}, nil)
 		return err
+	}
+
+	// Check for version compatibility issue where old br doesn't have `abort` command
+	// and just prints help with exit code 0.
+	if strings.Contains(string(output), "Usage:") || strings.Contains(string(output), "unknown command") {
+		msg := "br abort command not found, please check if the br version is compatible"
+		klog.Error(msg)
+		rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestorePruneFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "CommandNotFound",
+			Message: msg,
+		}, nil)
+		return fmt.Errorf(msg)
 	}
 
 	klog.Infof("br abort restore command completed successfully")
@@ -413,10 +434,18 @@ func (rm *Manager) performAbort(ctx context.Context) error {
 
 // constructBRAbortArgs constructs arguments for br abort restore command
 func (rm *Manager) constructBRAbortArgs(restore *v1alpha1.Restore) ([]string, error) {
+	var restoreType string
+	if restore.Spec.Type == "" {
+		restoreType = string(v1alpha1.BackupTypeFull)
+	} else {
+		restoreType = string(restore.Spec.Type)
+	}
+
 	// Start with abort restore command
 	args := []string{
 		"abort",
 		"restore",
+		restoreType,
 	}
 
 	// Add PD endpoints (based on original restore logic)
