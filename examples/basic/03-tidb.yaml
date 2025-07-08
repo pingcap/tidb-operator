@@ -10,8 +10,6 @@ spec:
   cluster:
     name: basic
   replicas: 2
-  service:
-    type: ClusterIP
   template:
     metadata:
       annotations:
