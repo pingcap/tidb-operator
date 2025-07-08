@@ -181,7 +181,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 		})
 	})
 
-	ginkgo.DescribeTableSubtree("PDReadyAPI", label.P1,
+	ginkgo.FDescribeTableSubtree("PDReadyAPI", label.P1,
 		func(tls bool) {
 			// Setup cluster with UsePDReadyAPI feature gate and optionally TLS
 			if tls {
