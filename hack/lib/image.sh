@@ -27,6 +27,9 @@ IMAGE_DIR=$OUTPUT_DIR/image
 CACHE_DIR=$OUTPUT_DIR/cache
 KIND=$OUTPUT_DIR/bin/kind
 
+declare -A NEED_PREFIX
+NEED_PREFIX["prestop-checker"]=1
+
 function image::build() {
     local targets=()
     local with_push=0
@@ -65,11 +68,17 @@ function image::build() {
       docker buildx create --use
     fi
 
+
     for target in ${targets[@]}; do
+        local image=${target}
+        if [[ -n "${NEED_PREFIX[$target]+x}" ]]; then
+            image=tidb-operator-${image}
+        fi
+        echo "build image ${image}"
         docker buildx build \
             --target $target \
             -o type=oci,dest=$IMAGE_DIR/${target}.tar \
-            -t ${V_IMG_PROJECT}/${target}:latest \
+            -t ${V_IMG_PROJECT}/${image}:latest \
             --cache-from=type=local,src=$CACHE_DIR \
             --cache-to=type=local,dest=$CACHE_DIR \
             $args \
