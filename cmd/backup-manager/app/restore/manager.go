@@ -383,7 +383,7 @@ func (rm *Manager) performAbort(ctx context.Context) error {
 		return err
 	}
 	klog.Infof("Running br abort restore command with args: %v", args)
-	
+
 	// Execute br abort restore command
 	bin := path.Join(util.BRBinPath, "br")
 	cmd := exec.CommandContext(ctx, bin, args...)

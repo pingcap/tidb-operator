@@ -2923,7 +2923,6 @@ spec:
               prune:
                 enum:
                 - afterFailed
-                - alreadyFailed
                 type: string
               resources:
                 properties:

@@ -234,7 +234,7 @@ func (c *Controller) updateRestore(cur interface{}) {
 	}
 	if jobFailed {
 		klog.Errorf("restore %s/%s job failed: %s", ns, name, reason)
-		
+
 		if newRestore.Spec.Prune == v1alpha1.PruneTypeAfterFailed {
 			err = c.control.UpdateCondition(newRestore, &v1alpha1.RestoreCondition{
 				Type:    v1alpha1.RestorePruneScheduled,
@@ -250,7 +250,7 @@ func (c *Controller) updateRestore(cur interface{}) {
 				Message: reason,
 			})
 		}
-		
+
 		if err != nil {
 			klog.Errorf("Fail to update the condition of restore %s/%s, %v", ns, name, err)
 		}
