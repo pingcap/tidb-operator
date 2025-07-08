@@ -918,34 +918,103 @@ func TestPDClient_GetMemberReady(t *testing.T) {
 	tests := []struct {
 		name        string
 		statusCode  int
+		version     string
 		expectReady bool
 		expectErr   bool
 		serverErr   bool
 	}{
 		{
-			name:        "PD is ready (200 OK)",
+			name:        "PD is ready (200 OK) with v9.0.0",
 			statusCode:  http.StatusOK,
+			version:     "v9.0.0",
 			expectReady: true,
 			expectErr:   false,
 			serverErr:   false,
 		},
 		{
-			name:        "Ready API not found (404 Not Found)",
+			name:        "PD is ready (200 OK) with v8.5.2",
+			statusCode:  http.StatusOK,
+			version:     "v8.5.2",
+			expectReady: true,
+			expectErr:   false,
+			serverErr:   false,
+		},
+		{
+			name:        "Ready API not found (404) with v9.0.0 - PD not ready",
 			statusCode:  http.StatusNotFound,
-			expectReady: true,
-			expectErr:   false,
-			serverErr:   false,
-		},
-		{
-			name:        "PD not ready (500 Internal Server Error)",
-			statusCode:  http.StatusInternalServerError,
+			version:     "v9.0.0",
 			expectReady: false,
 			expectErr:   false,
 			serverErr:   false,
 		},
 		{
-			name:        "Other error status code (400 Bad Request)",
+			name:        "Ready API not found (404) with v8.5.2 - PD not ready",
+			statusCode:  http.StatusNotFound,
+			version:     "v8.5.2",
+			expectReady: false,
+			expectErr:   false,
+			serverErr:   false,
+		},
+		{
+			name:        "Ready API not found (404) with v8.5.1 - assume ready (legacy)",
+			statusCode:  http.StatusNotFound,
+			version:     "v8.5.1",
+			expectReady: true,
+			expectErr:   false,
+			serverErr:   false,
+		},
+		{
+			name:        "Ready API not found (404) with v8.4.0 - assume ready (legacy)",
+			statusCode:  http.StatusNotFound,
+			version:     "v8.4.0",
+			expectReady: true,
+			expectErr:   false,
+			serverErr:   false,
+		},
+		{
+			name:        "Ready API not found (404) with v7.5.0 - assume ready (legacy)",
+			statusCode:  http.StatusNotFound,
+			version:     "v7.5.0",
+			expectReady: true,
+			expectErr:   false,
+			serverErr:   false,
+		},
+		{
+			name:        "PD not ready (500 Internal Server Error) with v9.0.0",
+			statusCode:  http.StatusInternalServerError,
+			version:     "v9.0.0",
+			expectReady: false,
+			expectErr:   false,
+			serverErr:   false,
+		},
+		{
+			name:        "PD not ready (500 Internal Server Error) with v8.5.2",
+			statusCode:  http.StatusInternalServerError,
+			version:     "v8.5.2",
+			expectReady: false,
+			expectErr:   false,
+			serverErr:   false,
+		},
+		{
+			name:        "Other error status code (400 Bad Request) with v9.0.0",
 			statusCode:  http.StatusBadRequest,
+			version:     "v9.0.0",
+			expectReady: false,
+			expectErr:   true,
+			serverErr:   false,
+		},
+		{
+			name:        "Other error status code (403 Forbidden) with v8.5.2",
+			statusCode:  http.StatusForbidden,
+			version:     "v8.5.2",
+			expectReady: false,
+			expectErr:   true,
+			serverErr:   false,
+		},
+		{
+			name:        "Other error status code (503 Service Unavailable) with v9.0.0",
+			statusCode:  http.StatusServiceUnavailable,
+			version:     "v9.0.0",
 			expectReady: false,
 			expectErr:   true,
 			serverErr:   false,
@@ -953,8 +1022,49 @@ func TestPDClient_GetMemberReady(t *testing.T) {
 		{
 			name:        "HTTP client error",
 			serverErr:   true,
+			version:     "v9.0.0",
 			expectReady: false,
 			expectErr:   true,
+		},
+		{
+			name:        "Invalid version format",
+			statusCode:  http.StatusNotFound,
+			version:     "invalid-version",
+			expectReady: false,
+			expectErr:   true,
+			serverErr:   false,
+		},
+		{
+			name:        "Empty version with 404",
+			statusCode:  http.StatusNotFound,
+			version:     "",
+			expectReady: false,
+			expectErr:   true,
+			serverErr:   false,
+		},
+		{
+			name:        "Boundary version v8.5.2 with 404 - PD not ready",
+			statusCode:  http.StatusNotFound,
+			version:     "v8.5.2",
+			expectReady: false,
+			expectErr:   false,
+			serverErr:   false,
+		},
+		{
+			name:        "Version without v prefix with 404 - PD not ready",
+			statusCode:  http.StatusNotFound,
+			version:     "8.5.2",
+			expectReady: false,
+			expectErr:   false,
+			serverErr:   false,
+		},
+		{
+			name:        "Malformed version format with 404",
+			statusCode:  http.StatusNotFound,
+			version:     "not-a-version",
+			expectReady: false,
+			expectErr:   true,
+			serverErr:   false,
 		},
 	}
 
@@ -962,7 +1072,7 @@ func TestPDClient_GetMemberReady(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.serverErr {
 				client := NewPDClient("invalid-url", time.Second, nil)
-				ready, err := client.GetMemberReady(context.Background(), "invalid-url")
+				ready, err := client.GetMemberReady(context.Background(), "invalid-url", tt.version)
 				assert.Equal(t, tt.expectReady, ready)
 				assert.Error(t, err)
 				return
@@ -980,7 +1090,7 @@ func TestPDClient_GetMemberReady(t *testing.T) {
 			defer server.Close()
 
 			client := NewPDClient(server.URL, time.Second, nil)
-			ready, err := client.GetMemberReady(context.Background(), server.URL)
+			ready, err := client.GetMemberReady(context.Background(), server.URL, tt.version)
 
 			assert.Equal(t, tt.expectReady, ready)
 			if tt.expectErr {

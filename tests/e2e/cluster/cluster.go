@@ -1294,13 +1294,22 @@ var _ = Describe("TiDB Cluster", func() {
 	Context("TiDB Feature", func() {
 		It("should set store labels for TiKV and TiFlash, set server lables for TiDB", func() {
 			By("Creating the components with location labels")
+			// v8.5.1 has a bug that we can not query the tidb server labels with `SELECT IP,LABELS FROM INFORMATION_SCHEMA.TIDB_SERVERS_INFO`
+			// so we use v8.5.2 here.
 			pdg := data.NewPDGroup(ns.Name, "pdg", tc.Name, ptr.To(int32(1)), func(group *v1alpha1.PDGroup) {
+				group.Spec.Template.Spec.Version = "v8.5.2"
 				group.Spec.Template.Spec.Config = `[replication]
 location-labels = ["region", "zone", "host"]`
 			})
-			kvg := data.NewTiKVGroup(ns.Name, "kvg", tc.Name, ptr.To(int32(1)), nil)
-			dbg := data.NewTiDBGroup(ns.Name, "dbg", tc.Name, ptr.To(int32(1)), nil)
-			flashg := data.NewTiFlashGroup(ns.Name, "flashg", tc.Name, ptr.To(int32(1)), nil)
+			kvg := data.NewTiKVGroup(ns.Name, "kvg", tc.Name, ptr.To(int32(1)), func(group *v1alpha1.TiKVGroup) {
+				group.Spec.Template.Spec.Version = "v8.5.2"
+			})
+			dbg := data.NewTiDBGroup(ns.Name, "dbg", tc.Name, ptr.To(int32(1)), func(group *v1alpha1.TiDBGroup) {
+				group.Spec.Template.Spec.Version = "v8.5.2"
+			})
+			flashg := data.NewTiFlashGroup(ns.Name, "flashg", tc.Name, ptr.To(int32(1)), func(group *v1alpha1.TiFlashGroup) {
+				group.Spec.Template.Spec.Version = "v8.5.2"
+			})
 			Expect(k8sClient.Create(ctx, pdg)).To(Succeed())
 			Expect(k8sClient.Create(ctx, kvg)).To(Succeed())
 			Expect(k8sClient.Create(ctx, dbg)).To(Succeed())

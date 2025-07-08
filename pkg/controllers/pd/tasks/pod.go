@@ -251,8 +251,8 @@ func newPod(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, g features.Gates, cluste
 	}
 
 	if g.Enabled(metav1alpha1.UsePDReadyAPI) {
-		version, err := semver.NewVersion(pd.Spec.Version)
-		if err == nil && compatibility.Check(version, compatibility.PDReadyAPI) {
+		version := semver.MustParse(pd.Spec.Version)
+		if compatibility.Check(version, compatibility.PDReadyAPI) {
 			pod.Spec.Containers[0].ReadinessProbe = buildPDReadinessProbeWithReadyAPI(cluster, coreutil.PDClientPort(pd))
 		}
 	}

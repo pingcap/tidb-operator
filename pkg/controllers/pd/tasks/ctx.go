@@ -71,7 +71,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		state.IsLeader = m.IsLeader
 
 		logger := logr.FromContextOrDiscard(ctx)
-		ready, err := state.PDClient.Underlay().GetMemberReady(ctx, getPDURL(ck, pd))
+		ready, err := state.PDClient.Underlay().GetMemberReady(ctx, getPDURL(ck, pd), pd.Spec.Version)
 		if err != nil {
 			// Do not return error here, because the pd pod may not be created yet.
 			logger.Error(err, "failed to get member ready")
