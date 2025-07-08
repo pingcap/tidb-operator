@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -418,7 +419,7 @@ func (rm *Manager) performAbort(ctx context.Context) error {
 			Reason:  "CommandNotFound",
 			Message: msg,
 		}, nil)
-		return fmt.Errorf(msg)
+		return errors.New(msg)
 	}
 
 	klog.Infof("br abort restore command completed successfully")
