@@ -181,7 +181,9 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 		})
 	})
 
-	ginkgo.FDescribeTableSubtree("PDReadyAPI", label.P1,
+	// NOTE: this case is failed in e2e env because of the cgroup v2.
+	// Enable it if env is fixed.
+	ginkgo.PDescribeTableSubtree("PDReadyAPI", label.P1,
 		func(tls bool) {
 			// Setup cluster with UsePDReadyAPI feature gate and optionally TLS
 			if tls {

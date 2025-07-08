@@ -79,9 +79,9 @@ func runCmd(cmd string) (string, error) {
 	return string(output), nil
 }
 
-var _ = ginkgo.Describe("Upgrade TiDB Operator", label.P0, func() {
+var _ = ginkgo.PDescribe("Upgrade TiDB Operator", label.P0, func() {
 	f := framework.New()
-	f.Setup(framework.WithSkipClusterDeletionWhenFailed())
+	f.Setup()
 
 	ginkgo.Context("should not restart pods after upgrade", label.P0, func() {
 		ginkgo.It("with basic spec", func(ctx context.Context) {

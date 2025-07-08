@@ -59,11 +59,11 @@ readonly V_KIND_CLUSTER=${V_KIND_CLUSTER:-"tidb-operator"}
 # V_DEPLOY_NAMESPACE defines namespace of deploy, the default value is tidb-admin
 readonly V_DEPLOY_NAMESPACE=${V_DEPLOY_NAMESPACE:-"tidb-admin"}
 
-# V_TIDB_CLUSTER_VERSION defines version of TiDB cluster, the default value is v8.2.0
+# V_TIDB_CLUSTER_VERSION defines version of TiDB cluster, the default value is v8.5.2
 readonly V_TIDB_CLUSTER_VERSION=${V_TIDB_CLUSTER_VERSION:-"v8.5.2"}
 
-# V_TIDB_CLUSTER_VERSION_PREV defines a older version of TiDB cluster, the default value is v8.1.0
-readonly V_TIDB_CLUSTER_VERSION_PREV=${V_TIDB_CLUSTER_VERSION_PREV:-"v8.5.1"}
+# V_TIDB_CLUSTER_VERSION_PREV defines a older version of TiDB cluster, the default value is v8.5.0
+readonly V_TIDB_CLUSTER_VERSION_PREV=${V_TIDB_CLUSTER_VERSION_PREV:-"v8.5.0"}
 
 # V_KUBE_VERSION defines default test version of kubernetes
 readonly V_KUBE_VERSION=${V_KUBE_VERSION:-"v1.31.0"}
