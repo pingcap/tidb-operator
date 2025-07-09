@@ -25,7 +25,7 @@ import (
 
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
-	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	backuputil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	bkconstants "github.com/pingcap/tidb-operator/pkg/backup/constants"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
