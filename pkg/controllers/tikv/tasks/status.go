@@ -46,8 +46,10 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		ready := coreutil.IsReady[scope.TiKV](tikv)
 
 		needUpdate = syncSuspendCond(tikv) || needUpdate
-		needUpdate = syncLeadersEvictedCond(tikv, state.Store, state.LeaderEvicting, state.IsPDAvailable) || needUpdate
-		needUpdate = compare.SetIfChanged(&tikv.Status.ID, state.StoreID) || needUpdate
+		needUpdate = syncLeadersEvictedCond(tikv, state.Store, state.LeaderEvicting) || needUpdate
+		if state.Store != nil {
+			needUpdate = compare.SetIfChanged(&tikv.Status.ID, state.Store.ID) || needUpdate
+		}
 		needUpdate = compare.SetIfChanged(&tikv.Status.State, state.GetStoreState()) || needUpdate
 
 		needUpdate = compare.SetIfChanged(&tikv.Status.ObservedGeneration, tikv.Generation) || needUpdate
@@ -95,7 +97,9 @@ func TaskStoreStatus(state *ReconcileContext) task.Task {
 	return task.NameTaskFunc("StoreStatus", func(ctx context.Context) task.Result {
 		needUpdate := state.IsStatusChanged()
 		tikv := state.TiKV()
-		needUpdate = compare.SetIfChanged(&tikv.Status.ID, state.StoreID) || needUpdate
+		if state.Store != nil {
+			needUpdate = compare.SetIfChanged(&tikv.Status.ID, state.Store.ID) || needUpdate
+		}
 		needUpdate = compare.SetIfChanged(&tikv.Status.State, state.GetStoreState()) || needUpdate
 		if needUpdate {
 			state.SetStatusChanged()
@@ -107,23 +111,19 @@ func TaskStoreStatus(state *ReconcileContext) task.Task {
 }
 
 // Status of this condition can only transfer as the below
-func syncLeadersEvictedCond(tikv *v1alpha1.TiKV, store *pdv1.Store, isEvicting, isPDAvail bool) bool {
+func syncLeadersEvictedCond(tikv *v1alpha1.TiKV, store *pdv1.Store, isEvicting bool) bool {
 	status := metav1.ConditionFalse
 	reason := "NotEvicted"
 	msg := "leaders are not all evicted"
 	switch {
-	case isPDAvail && store == nil:
+	case store == nil:
 		status = metav1.ConditionTrue
 		reason = "StoreIsRemoved"
 		msg = "store does not exist"
-	case isPDAvail && isEvicting && store.LeaderCount == 0:
+	case isEvicting && store.LeaderCount == 0:
 		status = metav1.ConditionTrue
 		reason = "Evicted"
 		msg = "all leaders are evicted"
-	case !isPDAvail:
-		status = metav1.ConditionUnknown
-		reason = "Unknown"
-		msg = "cannot get leaders info from pd"
 	}
 
 	return meta.SetStatusCondition(&tikv.Status.Conditions, metav1.Condition{

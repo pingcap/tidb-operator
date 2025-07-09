@@ -64,9 +64,9 @@ func TestTaskStatus(t *testing.T) {
 					}),
 					storeState: v1alpha1.StoreStateServing,
 				},
-				IsPDAvailable: true,
-				Store:         &pdv1.Store{},
-				StoreID:       fakeTiKVName,
+				Store: &pdv1.Store{
+					ID: fakeTiKVName,
+				},
 			},
 
 			expectedStatus: task.SWait,
@@ -132,9 +132,9 @@ func TestTaskStatus(t *testing.T) {
 					}),
 					storeState: v1alpha1.StoreStateServing,
 				},
-				IsPDAvailable: true,
-				Store:         &pdv1.Store{},
-				StoreID:       fakeTiKVName,
+				Store: &pdv1.Store{
+					ID: fakeTiKVName,
+				},
 			},
 
 			expectedStatus: task.SComplete,
@@ -199,9 +199,9 @@ func TestTaskStatus(t *testing.T) {
 					}),
 					isPodTerminating: true,
 				},
-				IsPDAvailable: true,
-				Store:         &pdv1.Store{},
-				StoreID:       fakeTiKVName,
+				Store: &pdv1.Store{
+					ID: fakeTiKVName,
+				},
 			},
 
 			expectedStatus: task.SRetry,
@@ -266,10 +266,10 @@ func TestTaskStatus(t *testing.T) {
 					}),
 					storeState: v1alpha1.StoreStateServing,
 				},
-				IsPDAvailable:  true,
 				LeaderEvicting: true,
-				Store:          &pdv1.Store{},
-				StoreID:        fakeTiKVName,
+				Store: &pdv1.Store{
+					ID: fakeTiKVName,
+				},
 			},
 
 			expectedStatus: task.SWait,
@@ -303,64 +303,6 @@ func TestTaskStatus(t *testing.T) {
 						ObservedGeneration: 3,
 						Reason:             "Evicted",
 						Message:            "all leaders are evicted",
-					},
-				}
-
-				return obj
-			}),
-		},
-		{
-			desc: "pd is avail and no store",
-			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj(fakeTiKVName, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Generation = 3
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyInstanceRevisionHash: newRevision,
-						}
-						return obj
-					}),
-					pod: fake.FakeObj("aaa-tikv-xxx", func(obj *corev1.Pod) *corev1.Pod {
-						obj.SetDeletionTimestamp(&now)
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyInstanceRevisionHash: oldRevision,
-						}
-						obj.Status.Phase = corev1.PodRunning
-						obj.Status.Conditions = append(obj.Status.Conditions, corev1.PodCondition{
-							Type:   corev1.PodReady,
-							Status: corev1.ConditionTrue,
-						})
-						return obj
-					}),
-				},
-				IsPDAvailable: true,
-				StoreID:       fakeTiKVName,
-			},
-
-			expectedStatus: task.SWait,
-			expectedObj: fake.FakeObj(fakeTiKVName, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Generation = 3
-				obj.Labels = map[string]string{
-					v1alpha1.LabelKeyInstanceRevisionHash: newRevision,
-				}
-
-				obj.Status.ObservedGeneration = 3
-				obj.Status.ID = fakeTiKVName
-				obj.Status.UpdateRevision = newRevision
-				obj.Status.Conditions = []metav1.Condition{
-					{
-						Type:               v1alpha1.CondSuspended,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             v1alpha1.ReasonUnsuspended,
-						Message:            "instance is not suspended",
-					},
-					{
-						Type:               v1alpha1.TiKVCondLeadersEvicted,
-						Status:             metav1.ConditionTrue,
-						ObservedGeneration: 3,
-						Reason:             "StoreIsRemoved",
-						Message:            "store does not exist",
 					},
 				}
 

@@ -43,7 +43,9 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		pod := state.Pod()
 		ready := coreutil.IsReady[scope.TiFlash](tiflash)
 		needUpdate = syncSuspendCond(tiflash) || needUpdate
-		needUpdate = compare.SetIfChanged(&tiflash.Status.ID, state.StoreID) || needUpdate
+		if state.Store != nil {
+			needUpdate = compare.SetIfChanged(&tiflash.Status.ID, state.Store.ID) || needUpdate
+		}
 		needUpdate = compare.SetIfChanged(&tiflash.Status.State, state.GetStoreState()) || needUpdate
 
 		needUpdate = compare.SetIfChanged(&tiflash.Status.ObservedGeneration, tiflash.Generation) || needUpdate
@@ -76,7 +78,9 @@ func TaskStoreStatus(state *ReconcileContext) task.Task {
 	return task.NameTaskFunc("StoreStatus", func(ctx context.Context) task.Result {
 		needUpdate := state.IsStatusChanged()
 		tiflash := state.TiFlash()
-		needUpdate = compare.SetIfChanged(&tiflash.Status.ID, state.StoreID) || needUpdate
+		if state.Store != nil {
+			needUpdate = compare.SetIfChanged(&tiflash.Status.ID, state.Store.ID) || needUpdate
+		}
 		needUpdate = compare.SetIfChanged(&tiflash.Status.State, state.GetStoreState()) || needUpdate
 		if needUpdate {
 			state.SetStatusChanged()
