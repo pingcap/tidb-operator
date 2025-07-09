@@ -71,3 +71,15 @@ func WithClusterName(name string) ClusterPatch {
 		obj.Name = name
 	}
 }
+
+func WithFeatureGates(featureGates ...metav1alpha1.Feature) ClusterPatch {
+	return func(c *v1alpha1.Cluster) {
+		// Clear existing feature gates and add new ones
+		c.Spec.FeatureGates = nil
+		for _, fg := range featureGates {
+			c.Spec.FeatureGates = append(c.Spec.FeatureGates, metav1alpha1.FeatureGate{
+				Name: fg,
+			})
+		}
+	}
+}

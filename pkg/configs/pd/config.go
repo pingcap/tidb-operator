@@ -75,7 +75,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, peers []*v1
 
 	c.Name = pd.Name
 	c.ClientUrls = getClientURLs(pd, scheme)
-	c.AdvertiseClientUrls = getAdvertiseClientURLs(pd, scheme)
+	c.AdvertiseClientUrls = GetAdvertiseClientURLs(pd, scheme)
 	c.PeerUrls = getPeerURLs(pd, scheme)
 	c.AdvertisePeerUrls = getAdvertisePeerURLs(pd, scheme)
 
@@ -170,7 +170,7 @@ func getClientURLs(pd *v1alpha1.PD, scheme string) string {
 	return fmt.Sprintf("%s://[::]:%d", scheme, coreutil.PDClientPort(pd))
 }
 
-func getAdvertiseClientURLs(pd *v1alpha1.PD, scheme string) string {
+func GetAdvertiseClientURLs(pd *v1alpha1.PD, scheme string) string {
 	ns := pd.Namespace
 	if ns == "" {
 		ns = corev1.NamespaceDefault
