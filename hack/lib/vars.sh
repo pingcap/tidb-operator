@@ -72,6 +72,19 @@ readonly V_KUBE_VERSION=${V_KUBE_VERSION:-"v1.31.0"}
 readonly V_RELEASE=${V_RELEASE:-"latest"}
 
 
+# ---
+# BINARY path
+# ---
+
+# V_BIN defines the default bin dir of a cmd
+readonly V_BIN=${V_BIN:-"${ROOT}/_output/bin"}
+
+# V_KIND defines the path of kind cmd
+readonly V_KIND=${V_KIND:-"${V_BIN}/kind"}
+
+# V_KUBECTL defines the path of kubectl cmd
+readonly V_KUBECTL=${V_KUBECTL:-"${V_BIN}/kubectl"}
+
 # marker function
 function vars::loaded() {
   return 0
