@@ -9,7 +9,7 @@ metadata:
 spec:
   cluster:
     name: schedule
-  version: v8.1.0
+  version: v8.5.2
   replicas: 3
   # All PD instances in the group will evenly spread in differnet zones
   schedulePolicies:
