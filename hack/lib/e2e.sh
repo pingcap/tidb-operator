@@ -27,7 +27,6 @@ source $ROOT/hack/lib/kind.sh
 source $ROOT/hack/lib/image.sh
 
 OUTPUT_DIR=$ROOT/_output
-KIND=$OUTPUT_DIR/bin/kind
 KUBECTL=$OUTPUT_DIR/bin/kubectl
 GINKGO=$OUTPUT_DIR/bin/ginkgo
 GENERATEJWT=$OUTPUT_DIR/bin/generate_jwt
@@ -105,7 +104,7 @@ function e2e::delete_crds() {
         echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" >&2
         exit 1
     fi
-    
+
     # Get all CRD names managed by the operator
     local crd_names
     crd_names=$($KUBECTL get crd -o name | grep "pingcap.com" | sed 's|customresourcedefinition.apiextensions.k8s.io/||')
@@ -113,7 +112,7 @@ function e2e::delete_crds() {
         echo "No PingCAP CRDs found to delete."
         return
     fi
-    
+
     # For each CRD, delete all its custom resources (CRs)
     for crd in $crd_names; do
         local resource
@@ -209,10 +208,17 @@ function e2e::install_old_version() {
     local old_version_dir
     old_version_dir=$(e2e::ensure_old_version_repo)
 
+    pushd $old_version_dir
+
     # Build the operator image from the old version source
     echo "Building old version operator image from ${old_version_dir}"
     local commit_hash
-    commit_hash=$(cd "${old_version_dir}" && git rev-parse --short HEAD)
+    commit_hash=$(git rev-parse --short HEAD)
+
+    # TODO(liubo02): del it, reuse kind
+    make bin/kind
+    make V_KIND=${V_KIND} push/prestop-checker
+
     local old_operator_image="${V_IMG_PROJECT}/tidb-operator:old-${commit_hash}"
 
     # Prepare build/cache directories (re-use paths from hack/lib/image.sh)
@@ -254,7 +260,7 @@ function e2e::install_old_version() {
     fi
 
     echo "Loading old operator image into kind cluster"
-    $KIND load image-archive "${image_tar}" --name "${V_KIND_CLUSTER}"
+    $V_KIND load image-archive "${image_tar}" --name "${V_KIND_CLUSTER}"
 
     # Apply CRDs from the old version
     echo "Deploying old version CRDs"
@@ -304,12 +310,12 @@ function e2e::run() {
     IFS=',' read -ra excluded_packages <<< "${E2E_EXCLUDED_PACKAGES}"
     local test_packages=()
     local excluded_packages_found=()
-    
+
     # Find all directories containing *_test.go files
     while IFS= read -r -d '' test_dir; do
         local relative_path="${test_dir#$ROOT/tests/e2e/}"
         local should_exclude=false
-        
+
         # Check if this directory should be excluded
         for excluded in "${excluded_packages[@]}"; do
             if [[ "$relative_path" == "$excluded" || "$relative_path" == "$excluded/"* ]]; then
@@ -318,23 +324,23 @@ function e2e::run() {
                 break
             fi
         done
-        
+
         if [[ "$should_exclude" == false ]]; then
             test_packages+=("$test_dir")
         fi
     done < <(find "$ROOT/tests/e2e" -name "*_test.go" -exec dirname {} \; | sort -u | tr '\n' '\0')
-    
+
     if [[ ${#excluded_packages_found[@]} -gt 0 ]]; then
         echo "Excluded packages: ${excluded_packages_found[*]}"
     fi
-    
+
     if [[ ${#test_packages[@]} -eq 0 ]]; then
         echo "No test packages found!"
         exit 1
     fi
-    
+
     echo "Running tests in packages: ${test_packages[*]}"
-    
+
     # Use individual package paths instead of recursive mode to avoid scanning excluded packages
     if [[ "$CI" == "true" ]]; then
         echo "running e2e tests in CI mode with options: $*"
