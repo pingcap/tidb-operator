@@ -34,7 +34,7 @@ const (
 	TiProxy   Untagged = "pingcap/tiproxy"
 
 	// TODO: use versioned image
-	PrestopChecker Tagged = "pingcap/prestop-checker:latest"
+	PrestopChecker Tagged = "pingcap/tidb-operator-prestop-checker:latest"
 	Helper         Tagged = "busybox:1.37.0"
 )
 
