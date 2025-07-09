@@ -2683,8 +2683,6 @@ type PruneType string
 const (
 	// PruneTypeAfterFailed represents prune after failed.
 	PruneTypeAfterFailed PruneType = "afterFailed"
-	// PruneTypeAlreadyFailed represents prune already failed.
-	PruneTypeAlreadyFailed PruneType = "alreadyFailed"
 )
 
 // RestoreConditionType represents a valid condition of a Restore.

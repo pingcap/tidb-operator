@@ -205,7 +205,7 @@ func (c *Controller) updateRestore(cur interface{}) {
 
 	if v1alpha1.IsRestoreFailed(newRestore) {
 		// If prune is enabled and not yet complete, schedule a prune job
-		if newRestore.Spec.Prune == v1alpha1.PruneTypeAfterFailed && !v1alpha1.IsRestorePruneComplete(newRestore) {
+		if newRestore.Spec.Mode != v1alpha1.RestoreModeVolumeSnapshot && newRestore.Spec.Prune == v1alpha1.PruneTypeAfterFailed && !v1alpha1.IsRestorePruneComplete(newRestore) {
 			if !v1alpha1.IsRestorePruneScheduled(newRestore) {
 				klog.Infof("restore %s/%s failed with prune enabled, setting PruneScheduled state", ns, name)
 				err := c.control.UpdateCondition(newRestore, &v1alpha1.RestoreCondition{
@@ -235,21 +235,12 @@ func (c *Controller) updateRestore(cur interface{}) {
 	if jobFailed {
 		klog.Errorf("restore %s/%s job failed: %s", ns, name, reason)
 
-		if newRestore.Spec.Prune == v1alpha1.PruneTypeAfterFailed {
-			err = c.control.UpdateCondition(newRestore, &v1alpha1.RestoreCondition{
-				Type:    v1alpha1.RestorePruneScheduled,
-				Status:  corev1.ConditionTrue,
-				Reason:  "RestoreFailedPruneScheduled",
-				Message: fmt.Sprintf("Restore failed: %s. Prune job will be scheduled.", reason),
-			})
-		} else {
-			err = c.control.UpdateCondition(newRestore, &v1alpha1.RestoreCondition{
-				Type:    v1alpha1.RestoreFailed,
-				Status:  corev1.ConditionTrue,
-				Reason:  "AlreadyFailed",
-				Message: reason,
-			})
-		}
+		err = c.control.UpdateCondition(newRestore, &v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestoreFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "AlreadyFailed",
+			Message: reason,
+		})
 
 		if err != nil {
 			klog.Errorf("Fail to update the condition of restore %s/%s, %v", ns, name, err)

@@ -75,12 +75,12 @@ func (rm *Manager) setOptions(restore *v1alpha1.Restore) {
 		rm.Options.User = v1alpha1.DefaultTidbUser
 	}
 
-	rm.Options.Password = backupUtil.GetOptionValueFromEnv(bkconstants.TidbPasswordKey, bkconstants.BackupManagerEnvVarPrefix)
+	rm.Options.Password = backuputil.GetOptionValueFromEnv(bkconstants.TidbPasswordKey, bkconstants.BackupManagerEnvVarPrefix)
 }
 
 // ProcessRestore used to process the restore logic
 func (rm *Manager) ProcessRestore() error {
-	ctx, cancel := backupUtil.GetContextForTerminationSignals(rm.ResourceName)
+	ctx, cancel := backuputil.GetContextForTerminationSignals(rm.ResourceName)
 	defer cancel()
 
 	// Check if this is an abort/cleanup operation
@@ -314,7 +314,7 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 			restoreType = v1alpha1.RestoreDataComplete
 		}
 	default:
-		ts, err := backupUtil.GetCommitTsFromBRMetaData(ctx, restore.Spec.StorageProvider)
+		ts, err := backuputil.GetCommitTsFromBRMetaData(ctx, restore.Spec.StorageProvider)
 		if err != nil {
 			errs = append(errs, err)
 			klog.Errorf("get cluster %s commitTs failed, err: %s", rm, err)
@@ -464,7 +464,7 @@ func (rm *Manager) constructBRAbortArgs(restore *v1alpha1.Restore) ([]string, er
 	}
 
 	// Add storage configuration using the same method as normal restore
-	dataArgs, err := backupUtil.ConstructBRGlobalOptionsForRestore(restore)
+	dataArgs, err := backuputil.ConstructBRGlobalOptionsForRestore(restore)
 	if err != nil {
 		return nil, err
 	}
