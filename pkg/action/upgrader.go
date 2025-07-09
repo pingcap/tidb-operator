@@ -64,9 +64,22 @@ func (defaultPolicy[S, F, T]) ArePreconditionsMet(ctx context.Context, cli clien
 	cluster := coreutil.Cluster[S](group)
 	version := coreutil.Version[S](group)
 
+	// First check if the current component itself is ready for upgrade
+	upgraded, err := isUpgraded[S]([]F{group}, version)
+	if err != nil {
+		return false, fmt.Errorf("cannot check current component upgrade status: %w", err)
+	}
+	if !upgraded {
+		return false, nil
+	}
+
 	var comps []string
 	switch scope.Component[S]() {
-	case v1alpha1.LabelValComponentTiProxy, v1alpha1.LabelValComponentPD, v1alpha1.LabelValComponentTiCDC:
+	case v1alpha1.LabelValComponentTiProxy, v1alpha1.LabelValComponentTiCDC:
+	case v1alpha1.LabelValComponentPD:
+		comps = append(comps,
+			v1alpha1.LabelValComponentTiCDC,
+		)
 	case v1alpha1.LabelValComponentTSO, v1alpha1.LabelValComponentScheduler:
 		comps = append(comps,
 			v1alpha1.LabelValComponentPD,
@@ -116,6 +129,8 @@ func checkComponentsUpgraded(ctx context.Context, c client.Client, ns, cluster, 
 			upgraded, err = checkOneComponentUpgraded[scope.TiDBGroup](ctx, c, ns, cluster, version)
 		case v1alpha1.LabelValComponentTiFlash:
 			upgraded, err = checkOneComponentUpgraded[scope.TiFlashGroup](ctx, c, ns, cluster, version)
+		case v1alpha1.LabelValComponentTiCDC:
+			upgraded, err = checkOneComponentUpgraded[scope.TiCDCGroup](ctx, c, ns, cluster, version)
 		default:
 			return false, fmt.Errorf("unknown component: %s", comp)
 		}
