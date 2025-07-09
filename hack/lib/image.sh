@@ -25,7 +25,6 @@ source $ROOT/hack/lib/vars.sh
 OUTPUT_DIR=$ROOT/_output
 IMAGE_DIR=$OUTPUT_DIR/image
 CACHE_DIR=$OUTPUT_DIR/cache
-KIND=$OUTPUT_DIR/bin/kind
 
 declare -A NEED_PREFIX
 NEED_PREFIX["prestop-checker"]=1
@@ -78,7 +77,7 @@ function image::build() {
         docker buildx build \
             --target $target \
             -o type=oci,dest=$IMAGE_DIR/${target}.tar \
-            -t ${V_IMG_PROJECT}/${image}:latest \
+            -t ${V_IMG_PROJECT}/${image}:${V_RELEASE} \
             --cache-from=type=local,src=$CACHE_DIR \
             --cache-to=type=local,dest=$CACHE_DIR \
             $args \
@@ -90,7 +89,7 @@ function image::build() {
         for target in ${targets[@]}; do
             if [[ $with_push -eq 1 ]]; then
                 echo "load ${target} image into kind cluster"
-                $KIND load image-archive $IMAGE_DIR/${target}.tar --name ${V_KIND_CLUSTER}
+                $V_KIND load image-archive $IMAGE_DIR/${target}.tar --name ${V_KIND_CLUSTER}
             fi
         done
         ;;
@@ -108,7 +107,7 @@ function image:prepare() {
     for component in pd tikv tidb tiflash; do
         for version in "$V_TIDB_CLUSTER_VERSION" "$V_TIDB_CLUSTER_VERSION_PREV"; do
             docker pull gcr.io/pingcap-public/dbaas/$component:"$version" -q && \
-            $KIND load docker-image gcr.io/pingcap-public/dbaas/$component:"$version" --name ${V_KIND_CLUSTER}
+            $V_KIND load docker-image gcr.io/pingcap-public/dbaas/$component:"$version" --name ${V_KIND_CLUSTER}
         done
     done
 }
