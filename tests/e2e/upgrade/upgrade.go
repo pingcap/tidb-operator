@@ -79,7 +79,7 @@ func runCmd(cmd string) (string, error) {
 	return string(output), nil
 }
 
-var _ = ginkgo.PDescribe("Upgrade TiDB Operator", label.P0, func() {
+var _ = ginkgo.Describe("Upgrade TiDB Operator", label.P0, func() {
 	f := framework.New()
 	f.Setup()
 
