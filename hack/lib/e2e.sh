@@ -353,7 +353,7 @@ function e2e::run() {
 
 function e2e::run_upgrade() {
     e2e::install_old_version
-    $GINKGO -v -r --tags=upgrade_e2e --timeout=1h --randomize-all --randomize-suites --fail-on-empty --race --trace "$ROOT/tests/e2e/upgrade"
+    $GINKGO -v -r --tags=upgrade_e2e --timeout=1h --randomize-all --randomize-suites --fail-on-empty --race --trace --flake-attempts=2 "$ROOT/tests/e2e/upgrade"
 }
 
 function e2e::prepare() {

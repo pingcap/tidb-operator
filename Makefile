@@ -239,7 +239,7 @@ bin/kind:
 .PHONY: bin/license-eye
 LICENSE_EYE = $(BIN_DIR)/license-eye
 bin/license-eye:
-	if [ ! -f $(LICENSE_EYE) ]; then $(ROOT)/hack/download.sh go_install $(LICENSE_EYE) github.com/apache/skywalking-eyes/cmd/license-eye v0.6.0; fi
+	if [ ! -f $(LICENSE_EYE) ]; then $(ROOT)/hack/download.sh go_install $(LICENSE_EYE) github.com/apache/skywalking-eyes/cmd/license-eye 049742de2276515409e3109ca2a91934053e080d; fi
 
 .PHONY: bin/ginkgo
 GINKGO = $(BIN_DIR)/ginkgo

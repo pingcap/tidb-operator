@@ -29,9 +29,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
 
+	"github.com/pingcap/tidb-operator/pkg/compatibility"
 	httputil "github.com/pingcap/tidb-operator/pkg/utils/http"
 )
 
@@ -65,6 +67,9 @@ type PDWriter interface {
 
 // PDClient provides PD server's APIs used by TiDB Operator.
 type PDClient interface {
+	// GetMemberReady returns if a PD member is ready to serve.
+	// In order to call this method, the PD member's URL is required.
+	GetMemberReady(ctx context.Context, url, version string) (bool, error)
 	// GetHealth returns the health of PD's members.
 	GetHealth(ctx context.Context) (*HealthInfo, error)
 	// GetConfig returns PD's config.
@@ -123,6 +128,8 @@ const (
 	pdLeaderPrefix                   = "pd/api/v1/leader"
 	pdLeaderTransferPrefix           = "pd/api/v1/leader/transfer"
 	evictLeaderSchedulerConfigPrefix = "pd/api/v1/scheduler-config/evict-leader-scheduler/list"
+
+	pdReadyPrefix = "pd/api/v2/ready"
 
 	// Micro Service
 	// leader endpoint
@@ -612,4 +619,39 @@ func (c *pdClient) GetTSOLeader(ctx context.Context) (string, error) {
 	}
 
 	return primary, nil
+}
+
+func (c *pdClient) GetMemberReady(ctx context.Context, url, version string) (bool, error) {
+	apiURL := fmt.Sprintf("%s/%s", url, pdReadyPrefix)
+	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, http.NoBody)
+	if err != nil {
+		return false, fmt.Errorf("failed to new a request: %w", err)
+	}
+	//nolint:bodyclose // has been handled
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("failed to send a http request: %w", err)
+	}
+	defer httputil.DeferClose(res.Body)
+
+	switch res.StatusCode {
+	case http.StatusOK:
+		return true, nil
+	case http.StatusNotFound:
+		v, err := semver.NewVersion(version)
+		if err != nil {
+			return false, fmt.Errorf("failed to parse version %s: %w", version, err)
+		}
+		if !compatibility.Check(v, compatibility.PDReadyAPI) {
+			// If the version is lower than v8.5.2, we assume PD is ready
+			return true, nil
+		}
+		return false, nil
+	case http.StatusInternalServerError:
+		// If the status code is 500, it means regions are not loaded yet,
+		// according to https://github.com/tikv/pd/pull/8749.
+		return false, nil
+	default:
+		return false, fmt.Errorf("failed to get ready status: %w, status code: %d", httputil.ReadErrorBody(res.Body), res.StatusCode)
+	}
 }

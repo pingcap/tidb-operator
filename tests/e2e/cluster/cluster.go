@@ -25,7 +25,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Masterminds/semver/v3"
 	_ "github.com/go-sql-driver/mysql"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -1185,9 +1184,15 @@ var _ = Describe("TiDB Cluster", func() {
 	Context("Version Upgrade", func() {
 		When("use the default policy", func() {
 			It("should wait for pd upgrade to complete before upgrading tikv", func() {
-				pdg := data.NewPDGroup(ns.Name, "pdg", tc.Name, ptr.To(int32(3)), nil)
-				kvg := data.NewTiKVGroup(ns.Name, "kvg", tc.Name, ptr.To(int32(3)), nil)
-				dbg := data.NewTiDBGroup(ns.Name, "dbg", tc.Name, ptr.To(int32(1)), nil)
+				pdg := data.NewPDGroup(ns.Name, "pdg", tc.Name, ptr.To(int32(3)), func(group *v1alpha1.PDGroup) {
+					group.Spec.Template.Spec.Version = "v8.5.0"
+				})
+				kvg := data.NewTiKVGroup(ns.Name, "kvg", tc.Name, ptr.To(int32(3)), func(group *v1alpha1.TiKVGroup) {
+					group.Spec.Template.Spec.Version = "v8.5.0"
+				})
+				dbg := data.NewTiDBGroup(ns.Name, "dbg", tc.Name, ptr.To(int32(1)), func(group *v1alpha1.TiDBGroup) {
+					group.Spec.Template.Spec.Version = "v8.5.0"
+				})
 				Expect(k8sClient.Create(ctx, pdg)).To(Succeed())
 				Expect(k8sClient.Create(ctx, kvg)).To(Succeed())
 				Expect(k8sClient.Create(ctx, dbg)).To(Succeed())
@@ -1207,9 +1212,7 @@ var _ = Describe("TiDB Cluster", func() {
 				oldVersion := kvgGet.Spec.Template.Spec.Version
 				Expect(oldVersion).NotTo(BeEmpty())
 				Expect(kvgGet.Status.Version).To(Equal(oldVersion))
-				v, err := semver.NewVersion(oldVersion)
-				Expect(err).To(BeNil())
-				newVersion := "v" + v.IncMinor().String()
+				newVersion := data.Version
 
 				By(fmt.Sprintf("Updating the version of the tikv group from %s to %s", oldVersion, newVersion))
 				kvgGet.Spec.Template.Spec.Version = newVersion
@@ -1294,13 +1297,22 @@ var _ = Describe("TiDB Cluster", func() {
 	Context("TiDB Feature", func() {
 		It("should set store labels for TiKV and TiFlash, set server lables for TiDB", func() {
 			By("Creating the components with location labels")
+			// v8.5.1 has a bug that we can not query the tidb server labels with `SELECT IP,LABELS FROM INFORMATION_SCHEMA.TIDB_SERVERS_INFO`
+			// so we use v8.5.2 here.
 			pdg := data.NewPDGroup(ns.Name, "pdg", tc.Name, ptr.To(int32(1)), func(group *v1alpha1.PDGroup) {
+				group.Spec.Template.Spec.Version = "v8.5.2"
 				group.Spec.Template.Spec.Config = `[replication]
 location-labels = ["region", "zone", "host"]`
 			})
-			kvg := data.NewTiKVGroup(ns.Name, "kvg", tc.Name, ptr.To(int32(1)), nil)
-			dbg := data.NewTiDBGroup(ns.Name, "dbg", tc.Name, ptr.To(int32(1)), nil)
-			flashg := data.NewTiFlashGroup(ns.Name, "flashg", tc.Name, ptr.To(int32(1)), nil)
+			kvg := data.NewTiKVGroup(ns.Name, "kvg", tc.Name, ptr.To(int32(1)), func(group *v1alpha1.TiKVGroup) {
+				group.Spec.Template.Spec.Version = "v8.5.2"
+			})
+			dbg := data.NewTiDBGroup(ns.Name, "dbg", tc.Name, ptr.To(int32(1)), func(group *v1alpha1.TiDBGroup) {
+				group.Spec.Template.Spec.Version = "v8.5.2"
+			})
+			flashg := data.NewTiFlashGroup(ns.Name, "flashg", tc.Name, ptr.To(int32(1)), func(group *v1alpha1.TiFlashGroup) {
+				group.Spec.Template.Spec.Version = "v8.5.2"
+			})
 			Expect(k8sClient.Create(ctx, pdg)).To(Succeed())
 			Expect(k8sClient.Create(ctx, kvg)).To(Succeed())
 			Expect(k8sClient.Create(ctx, dbg)).To(Succeed())
