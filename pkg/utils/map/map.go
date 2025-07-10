@@ -14,7 +14,10 @@
 
 package maputil
 
-import "maps"
+import (
+	"maps"
+	"sync"
+)
 
 // Merge merges all maps to a new one.
 func Merge[K comparable, V any](ms ...map[K]V) map[K]V {
@@ -58,4 +61,49 @@ func Select[K comparable, V any](originalMap map[K]V, keys ...K) map[K]V {
 	}
 
 	return ret
+}
+
+// Map is a wrapper of sync.Map to avoid type assertion in the outer function
+type Map[K comparable, V any] struct {
+	sync.Map
+}
+
+func (m *Map[K, V]) Load(k K) (_ V, _ bool) {
+	val, ok := m.Map.Load(k)
+	if !ok {
+		return
+	}
+	return val.(V), true
+}
+
+func (m *Map[K, V]) Store(k K, v V) {
+	m.Map.Store(k, v)
+}
+
+func (m *Map[K, V]) Delete(k K) {
+	m.Map.Delete(k)
+}
+
+func (m *Map[K, V]) Range(f func(K, V) bool) {
+	m.Map.Range(func(key, val any) bool {
+		k := key.(K)
+		v := val.(V)
+		return f(k, v)
+	})
+}
+
+func (m *Map[K, V]) LoadAndDelete(k K) (_ V, _ bool) {
+	val, ok := m.Map.LoadAndDelete(k)
+	if !ok {
+		return
+	}
+	return val.(V), true
+}
+
+func (m *Map[K, V]) Swap(k K, v V) (_ V, _ bool) {
+	val, ok := m.Map.Swap(k, v)
+	if !ok {
+		return
+	}
+	return val.(V), true
 }

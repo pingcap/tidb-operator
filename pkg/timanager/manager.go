@@ -31,6 +31,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/client"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
+	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 )
 
 const (
@@ -142,7 +143,7 @@ type clientManager[Object client.Object, UnderlayClient, Client any] struct {
 	newClientFunc         NewClientFunc[Object, UnderlayClient, Client]
 	cacheKeysFunc         CacheKeysFunc[Object]
 
-	cs Map[string, Cache[Client, UnderlayClient]]
+	cs maputil.Map[string, Cache[Client, UnderlayClient]]
 
 	newPollerFuncMap map[reflect.Type]NewPollerFunc[UnderlayClient]
 	sources          map[reflect.Type][]EventSource
@@ -266,7 +267,7 @@ type eventSource struct {
 	ctx context.Context
 	rh  cache.ResourceEventHandler
 
-	synced Map[string, cache.InformerSynced]
+	synced maputil.Map[string, cache.InformerSynced]
 }
 
 func (s *eventSource) Start(ctx context.Context, queue workqueue.TypedRateLimitingInterface[reconcile.Request]) error {

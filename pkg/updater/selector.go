@@ -80,32 +80,33 @@ func NewSelector[R runtime.Instance](ps ...PreferPolicy[R]) Selector[R] {
 }
 
 func (s *selector[R]) Choose(allowed []R) string {
-	scores := make(map[string]uint32, len(allowed))
-	for _, in := range allowed {
-		scores[in.GetName()] = 1
+	nameToIndex := make(map[string]int, len(allowed))
+	scores := make([]uint32, len(allowed))
+	for index, in := range allowed {
+		nameToIndex[in.GetName()] = index
+		scores[index] = 1
 	}
 	for _, p := range s.ps {
 		preferred := p.Prefer(allowed)
 		for _, ins := range preferred {
-			score, ok := scores[ins.GetName()]
+			index, ok := nameToIndex[ins.GetName()]
 			if !ok {
-				score = 0
+				panic("prefer should always return items from allowed")
 			}
-			score += uint32(p.Score())
-			scores[ins.GetName()] = score
+			scores[index] += uint32(p.Score())
 		}
 	}
 
-	choosed := ""
+	var choosed int
 	maximum := uint32(0)
-	for name, score := range scores {
+	for index, score := range scores {
 		if score > maximum {
-			choosed = name
+			choosed = index
 			maximum = score
 		}
 	}
 
-	return choosed
+	return allowed[choosed].GetName()
 }
 
 func PreferUnavailable[R runtime.Instance]() PreferPolicy[R] {

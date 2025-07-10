@@ -37,17 +37,20 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/tiproxygroup/tasks"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 )
 
 type Reconciler struct {
-	Logger logr.Logger
-	Client client.Client
+	Logger  logr.Logger
+	Client  client.Client
+	Tracker tracker.Tracker[*v1alpha1.TiProxyGroup, *v1alpha1.TiProxy]
 }
 
 func Setup(mgr manager.Manager, c client.Client) error {
 	r := &Reconciler{
-		Logger: mgr.GetLogger().WithName("TiProxyGroup"),
-		Client: c,
+		Logger:  mgr.GetLogger().WithName("TiProxyGroup"),
+		Client:  c,
+		Tracker: tracker.New[*v1alpha1.TiProxyGroup, *v1alpha1.TiProxy](),
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.TiProxyGroup{}).

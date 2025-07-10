@@ -16,7 +16,6 @@ package tasks
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -30,8 +29,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
 	"github.com/pingcap/tidb-operator/pkg/updater/policy"
-	"github.com/pingcap/tidb-operator/pkg/utils/random"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 )
 
 const (
@@ -39,7 +38,7 @@ const (
 )
 
 // TaskUpdater is a task to scale or update PD when spec of TiKVGroup is changed.
-func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
+func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.TiKVGroup, *v1alpha1.TiKV]) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		kvg := state.TiKVGroup()
@@ -70,6 +69,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
+		allocator := t.Track(kvg, state.InstanceSlice()...)
 		wait, err := updater.New[runtime.TiKVTuple]().
 			WithInstances(kvs...).
 			WithDesired(int(state.Group().Replicas())).
@@ -78,7 +78,10 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			WithMaxUnavailable(1).
 			WithRevision(updateRevision).
 			WithNewFactory(TiKVNewer(kvg, updateRevision)).
-			WithAddHooks(topoPolicy).
+			WithAddHooks(
+				updater.AllocateName[*runtime.TiKV](allocator),
+				topoPolicy,
+			).
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
@@ -100,20 +103,14 @@ func needVersionUpgrade(kvg *v1alpha1.TiKVGroup) bool {
 	return kvg.Spec.Template.Spec.Version != kvg.Status.Version && kvg.Status.Version != ""
 }
 
-const (
-	suffixLen = 6
-)
-
 func TiKVNewer(kvg *v1alpha1.TiKVGroup, rev string) updater.NewFactory[*runtime.TiKV] {
 	return updater.NewFunc[*runtime.TiKV](func() *runtime.TiKV {
-		name := fmt.Sprintf("%s-%s", kvg.Name, random.Random(suffixLen))
-
 		spec := kvg.Spec.Template.Spec.DeepCopy()
 
 		tikv := &v1alpha1.TiKV{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace:   kvg.Namespace,
-				Name:        name,
+				Namespace: kvg.Namespace,
+				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.TiKVGroup](kvg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.TiKVGroup](kvg),
 				OwnerReferences: []metav1.OwnerReference{
