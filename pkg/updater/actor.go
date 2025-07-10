@@ -21,6 +21,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/go-logr/logr"
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
@@ -77,11 +78,14 @@ func (act *actor[T, O, R]) chooseToScaleIn(s []R) (string, error) {
 }
 
 func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
+	logger := logr.FromContextOrDiscard(ctx)
 	obj := act.f.New()
 
 	for _, hook := range act.addHooks {
 		obj = hook.Add(obj)
 	}
+
+	logger.Info("act scale out", "namespace", obj.GetNamespace(), "name", obj.GetName())
 
 	if err := act.c.Apply(ctx, act.converter.To(obj)); err != nil {
 		return err
@@ -93,10 +97,14 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
 }
 
 func (act *actor[T, O, R]) ScaleInUpdate(ctx context.Context) (bool, error) {
+	logger := logr.FromContextOrDiscard(ctx)
 	name, err := act.chooseToScaleIn(act.update.List())
 	if err != nil {
 		return false, err
 	}
+
+	logger.Info("act scale in update", "choosed", name)
+
 	obj := act.update.Del(name)
 
 	isUnavailable := !obj.IsReady() || !obj.IsUpToDate()
@@ -117,10 +125,14 @@ func (act *actor[T, O, R]) ScaleInOutdated(ctx context.Context) (bool, error) {
 }
 
 func (act *actor[T, O, R]) scaleInOutdated(ctx context.Context, deferDel bool) (bool, error) {
+	logger := logr.FromContextOrDiscard(ctx)
 	name, err := act.chooseToScaleIn(act.outdated.List())
 	if err != nil {
 		return false, err
 	}
+
+	logger.Info("act scale in outdated", "choosed", name, "defer", deferDel)
+
 	obj := act.outdated.Del(name)
 	isUnavailable := !obj.IsReady() || !obj.IsUpToDate()
 	if deferDel {
@@ -175,6 +187,7 @@ func (act *actor[T, O, R]) deferDelete(ctx context.Context, obj R) error {
 }
 
 func (act *actor[T, O, R]) Update(ctx context.Context) error {
+	logger := logr.FromContextOrDiscard(ctx)
 	if act.noInPlaceUpdate {
 		if _, err := act.scaleInOutdated(ctx, false); err != nil {
 			return err
@@ -190,6 +203,9 @@ func (act *actor[T, O, R]) Update(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	logger.Info("act update", "choosed", name)
+
 	outdated := act.outdated.Del(name)
 
 	update := act.f.New()
