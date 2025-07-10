@@ -30,6 +30,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 )
 
 const (
@@ -267,7 +268,8 @@ func TestTaskUpdater(t *testing.T) {
 				fc.WithError("patch", "tikvs", errors.NewInternalError(fmt.Errorf("fake internal err")))
 			}
 
-			res, done := task.RunTask(ctx, TaskUpdater(c.state, fc))
+			tr := tracker.New[*v1alpha1.TiKVGroup, *v1alpha1.TiKV]()
+			res, done := task.RunTask(ctx, TaskUpdater(c.state, fc, tr))
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
 

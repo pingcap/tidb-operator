@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -77,11 +78,14 @@ func (act *actor[T, O, R]) chooseToScaleIn(s []R) (string, error) {
 }
 
 func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
+	logger := logr.FromContextOrDiscard(ctx)
 	obj := act.f.New()
 
 	for _, hook := range act.addHooks {
 		obj = hook.Add(obj)
 	}
+
+	logger.Info("act scale out", "namespace", obj.GetNamespace(), "name", obj.GetName())
 
 	if err := act.c.Apply(ctx, act.converter.To(obj)); err != nil {
 		return err
@@ -93,13 +97,17 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
 }
 
 func (act *actor[T, O, R]) ScaleInUpdate(ctx context.Context) (bool, error) {
+	logger := logr.FromContextOrDiscard(ctx)
 	name, err := act.chooseToScaleIn(act.update.List())
 	if err != nil {
 		return false, err
 	}
+
 	obj := act.update.Del(name)
 
 	isUnavailable := !obj.IsReady() || !obj.IsUpToDate()
+
+	logger.Info("act scale in update", "choosed", name, "isUnavailable", isUnavailable, "remain", act.update.Len())
 
 	if err := act.c.Delete(ctx, act.converter.To(obj)); err != nil {
 		return false, err
@@ -117,12 +125,18 @@ func (act *actor[T, O, R]) ScaleInOutdated(ctx context.Context) (bool, error) {
 }
 
 func (act *actor[T, O, R]) scaleInOutdated(ctx context.Context, deferDel bool) (bool, error) {
+	logger := logr.FromContextOrDiscard(ctx)
 	name, err := act.chooseToScaleIn(act.outdated.List())
 	if err != nil {
 		return false, err
 	}
+
 	obj := act.outdated.Del(name)
 	isUnavailable := !obj.IsReady() || !obj.IsUpToDate()
+
+	logger.Info("act scale in outdated",
+		"choosed", name, "defer", deferDel, "isUnavailable", isUnavailable, "remain", act.outdated.Len())
+
 	if deferDel {
 		if err := act.deferDelete(ctx, obj); err != nil {
 			return false, err
@@ -162,7 +176,7 @@ func (act *actor[T, O, R]) deferDelete(ctx context.Context, obj R) error {
 
 	data, err := json.Marshal(&p)
 	if err != nil {
-		return fmt.Errorf("invaid patch: %w", err)
+		return fmt.Errorf("invalid patch: %w", err)
 	}
 
 	if err := act.c.Patch(ctx, o, client.RawPatch(types.MergePatchType, data)); err != nil {
@@ -175,6 +189,7 @@ func (act *actor[T, O, R]) deferDelete(ctx context.Context, obj R) error {
 }
 
 func (act *actor[T, O, R]) Update(ctx context.Context) error {
+	logger := logr.FromContextOrDiscard(ctx)
 	if act.noInPlaceUpdate {
 		if _, err := act.scaleInOutdated(ctx, false); err != nil {
 			return err
@@ -190,12 +205,15 @@ func (act *actor[T, O, R]) Update(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	outdated := act.outdated.Del(name)
 
 	update := act.f.New()
 	for _, hook := range act.updateHooks {
 		update = hook.Update(update, outdated)
 	}
+
+	logger.Info("act update", "choosed", name, "remain", act.outdated.Len())
 
 	if err := act.c.Apply(ctx, act.converter.To(update)); err != nil {
 		return err

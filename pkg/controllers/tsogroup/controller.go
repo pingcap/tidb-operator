@@ -38,12 +38,14 @@ import (
 	tsom "github.com/pingcap/tidb-operator/pkg/timanager/tso"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 )
 
 type Reconciler struct {
 	Logger           logr.Logger
 	Client           client.Client
 	TSOClientManager tsom.TSOClientManager
+	Tracker          tracker.Tracker[*v1alpha1.TSOGroup, *v1alpha1.TSO]
 }
 
 func Setup(mgr manager.Manager, c client.Client, tsocm tsom.TSOClientManager) error {
@@ -51,6 +53,7 @@ func Setup(mgr manager.Manager, c client.Client, tsocm tsom.TSOClientManager) er
 		Logger:           mgr.GetLogger().WithName("TSOGroup"),
 		Client:           c,
 		TSOClientManager: tsocm,
+		Tracker:          tracker.New[*v1alpha1.TSOGroup, *v1alpha1.TSO](),
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.TSOGroup{}).

@@ -28,6 +28,7 @@ source $ROOT/hack/lib/image.sh
 
 OUTPUT_DIR=$ROOT/_output
 KUBECTL=$OUTPUT_DIR/bin/kubectl
+HELM=$OUTPUT_DIR/bin/helm
 GINKGO=$OUTPUT_DIR/bin/ginkgo
 GENERATEJWT=$OUTPUT_DIR/bin/generate_jwt
 
@@ -69,25 +70,13 @@ function e2e::install_crds() {
 }
 
 function e2e::install_operator() {
-    echo "installing operator..."
-    $KUBECTL -n $V_DEPLOY_NAMESPACE apply --server-side=true -f $OUTPUT_DIR/manifests/tidb-operator.yaml
-
-    echo "waiting for operator to be ready..."
-    $KUBECTL -n $V_DEPLOY_NAMESPACE wait --for=condition=Available --timeout=5m deployment/tidb-operator
+    echo "installing operator for test..."
+    $HELM -n $V_DEPLOY_NAMESPACE upgrade --create-namespace -i --wait --atomic --set "operator.extraArgs={--watch-delay-duration=2s}"  tidb-operator $OUTPUT_DIR/manifests/tidb-operator-v0.0.0.tgz
 }
 
 function e2e::uninstall_operator() {
-    echo "checking if operator is installed..."
-    if ! $KUBECTL -n $V_DEPLOY_NAMESPACE get deployment tidb-operator &>/dev/null; then
-        echo "operator not found, skipping uninstall..."
-        return
-    fi
-
     echo "uninstalling operator..."
-    $KUBECTL -n $V_DEPLOY_NAMESPACE delete -f $OUTPUT_DIR/manifests/tidb-operator.yaml
-
-    echo "waiting for operator to be deleted..."
-    $KUBECTL -n $V_DEPLOY_NAMESPACE wait --for=delete --timeout=5m deployment/tidb-operator
+    $HELM -n $V_DEPLOY_NAMESPACE uninstall --wait tidb-operator
 }
 
 function e2e::delete_crds() {
@@ -292,7 +281,7 @@ function e2e::reload_testing_workload() {
 function e2e::install_ginkgo() {
     if ! command -v $GINKGO &>/dev/null; then
         echo "ginkgo not found, installing..."
-        $ROOT/hack/download.sh go_install $GINKGO github.com/onsi/ginkgo/v2/ginkgo
+        make bin/ginkgo
     fi
 }
 
@@ -368,7 +357,7 @@ function e2e::prepare() {
 
     # build the operator image and load it into the kind cluster
     image::build prestop-checker tidb-operator testing-workload tidb-backup-manager --push
-    e2e::uninstall_operator
+    # e2e::uninstall_operator
     e2e::install_operator
 
     image:prepare
