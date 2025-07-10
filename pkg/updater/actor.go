@@ -103,11 +103,11 @@ func (act *actor[T, O, R]) ScaleInUpdate(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	logger.Info("act scale in update", "choosed", name)
-
 	obj := act.update.Del(name)
 
 	isUnavailable := !obj.IsReady() || !obj.IsUpToDate()
+
+	logger.Info("act scale in update", "choosed", name, "isUnavailable", isUnavailable, "remain", act.update.Len())
 
 	if err := act.c.Delete(ctx, act.converter.To(obj)); err != nil {
 		return false, err
@@ -131,10 +131,12 @@ func (act *actor[T, O, R]) scaleInOutdated(ctx context.Context, deferDel bool) (
 		return false, err
 	}
 
-	logger.Info("act scale in outdated", "choosed", name, "defer", deferDel)
-
 	obj := act.outdated.Del(name)
 	isUnavailable := !obj.IsReady() || !obj.IsUpToDate()
+
+	logger.Info("act scale in outdated",
+		"choosed", name, "defer", deferDel, "isUnavailable", isUnavailable, "remain", act.outdated.Len())
+
 	if deferDel {
 		if err := act.deferDelete(ctx, obj); err != nil {
 			return false, err
@@ -204,14 +206,14 @@ func (act *actor[T, O, R]) Update(ctx context.Context) error {
 		return err
 	}
 
-	logger.Info("act update", "choosed", name)
-
 	outdated := act.outdated.Del(name)
 
 	update := act.f.New()
 	for _, hook := range act.updateHooks {
 		update = hook.Update(update, outdated)
 	}
+
+	logger.Info("act update", "choosed", name, "remain", act.outdated.Len())
 
 	if err := act.c.Apply(ctx, act.converter.To(update)); err != nil {
 		return err
