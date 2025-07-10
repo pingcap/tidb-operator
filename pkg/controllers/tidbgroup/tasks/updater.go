@@ -16,7 +16,6 @@ package tasks
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -31,8 +30,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
 	"github.com/pingcap/tidb-operator/pkg/updater/policy"
-	"github.com/pingcap/tidb-operator/pkg/utils/random"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 )
 
 const (
@@ -40,7 +39,7 @@ const (
 )
 
 // TaskUpdater is a task to scale or update TiDB when spec of TiDBGroup is changed.
-func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
+func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.TiDBGroup, *v1alpha1.TiDB]) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		dbg := state.TiDBGroup()
@@ -82,6 +81,8 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			noUpdate = true
 		}
 
+		allocator := t.Track(dbg, state.InstanceSlice()...)
+
 		wait, err := updater.New[runtime.TiDBTuple]().
 			WithInstances(dbs...).
 			WithDesired(int(state.Group().Replicas())).
@@ -90,7 +91,10 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			WithMaxUnavailable(maxUnavailable).
 			WithRevision(updateRevision).
 			WithNewFactory(TiDBNewer(dbg, updateRevision)).
-			WithAddHooks(topoPolicy).
+			WithAddHooks(
+				updater.AllocateName[*runtime.TiDB](allocator),
+				topoPolicy,
+			).
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
@@ -113,10 +117,6 @@ func needVersionUpgrade(dbg *v1alpha1.TiDBGroup) bool {
 	return dbg.Spec.Template.Spec.Version != dbg.Status.Version && dbg.Status.Version != ""
 }
 
-const (
-	suffixLen = 6
-)
-
 func precheckInstances(dbg *v1alpha1.TiDBGroup, dbs []*v1alpha1.TiDB, updateRevision string) (needUpdate, needRestart bool) {
 	if len(dbs) != int(coreutil.Replicas[scope.TiDBGroup](dbg)) {
 		needUpdate = true
@@ -137,13 +137,12 @@ func precheckInstances(dbg *v1alpha1.TiDBGroup, dbs []*v1alpha1.TiDB, updateRevi
 
 func TiDBNewer(dbg *v1alpha1.TiDBGroup, rev string) updater.NewFactory[*runtime.TiDB] {
 	return updater.NewFunc[*runtime.TiDB](func() *runtime.TiDB {
-		name := fmt.Sprintf("%s-%s", dbg.Name, random.Random(suffixLen))
 		spec := dbg.Spec.Template.Spec.DeepCopy()
 
 		tidb := &v1alpha1.TiDB{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace:   dbg.Namespace,
-				Name:        name,
+				Namespace: dbg.Namespace,
+				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.TiDBGroup](dbg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.TiDBGroup](dbg),
 				OwnerReferences: []metav1.OwnerReference{
