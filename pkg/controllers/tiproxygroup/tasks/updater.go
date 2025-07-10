@@ -16,7 +16,6 @@ package tasks
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -31,8 +30,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
 	"github.com/pingcap/tidb-operator/pkg/updater/policy"
-	"github.com/pingcap/tidb-operator/pkg/utils/random"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 )
 
 const (
@@ -40,7 +39,7 @@ const (
 )
 
 // TaskUpdater is a task to scale or update TiProxy when spec of TiProxyGroup is changed.
-func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
+func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.TiProxyGroup, *v1alpha1.TiProxy]) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		proxyg := state.TiProxyGroup()
@@ -78,6 +77,8 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			maxSurge, maxUnavailable = 1, 0
 		}
 
+		allocator := t.Track(proxyg, state.InstanceSlice()...)
+
 		wait, err := updater.New[runtime.TiProxyTuple]().
 			WithInstances(proxies...).
 			WithDesired(int(state.Group().Replicas())).
@@ -86,7 +87,10 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			WithMaxUnavailable(maxUnavailable).
 			WithRevision(updateRevision).
 			WithNewFactory(TiProxyNewer(proxyg, updateRevision)).
-			WithAddHooks(topoPolicy).
+			WithAddHooks(
+				updater.AllocateName[*runtime.TiProxy](allocator),
+				topoPolicy,
+			).
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(topoPolicy).
@@ -105,10 +109,6 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 func needVersionUpgrade(proxyg *v1alpha1.TiProxyGroup) bool {
 	return proxyg.Spec.Template.Spec.Version != proxyg.Status.Version && proxyg.Status.Version != ""
 }
-
-const (
-	suffixLen = 6
-)
 
 func precheckInstances(proxyg *v1alpha1.TiProxyGroup, proxies []*v1alpha1.TiProxy, updateRevision string) (needUpdate, needRestart bool) {
 	if len(proxies) != int(coreutil.Replicas[scope.TiProxyGroup](proxyg)) {
@@ -130,13 +130,12 @@ func precheckInstances(proxyg *v1alpha1.TiProxyGroup, proxies []*v1alpha1.TiProx
 
 func TiProxyNewer(proxyg *v1alpha1.TiProxyGroup, rev string) updater.NewFactory[*runtime.TiProxy] {
 	return updater.NewFunc[*runtime.TiProxy](func() *runtime.TiProxy {
-		name := fmt.Sprintf("%s-%s", proxyg.Name, random.Random(suffixLen))
 		spec := proxyg.Spec.Template.Spec.DeepCopy()
 
 		proxy := &v1alpha1.TiProxy{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace:   proxyg.Namespace,
-				Name:        name,
+				Namespace: proxyg.Namespace,
+				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.TiProxyGroup](proxyg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.TiProxyGroup](proxyg),
 				OwnerReferences: []metav1.OwnerReference{

@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/onsi/ginkgo/v2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
@@ -27,6 +28,14 @@ import (
 func (f *Framework) WaitForTSOGroupReady(ctx context.Context, tg *v1alpha1.TSOGroup) {
 	// TODO: maybe wait for cluster ready
 	ginkgo.By("wait for tso group ready")
+	f.Must(waiter.WaitForObjectCondition[runtime.TSOGroupTuple](
+		ctx,
+		f.Client,
+		tg,
+		v1alpha1.CondReady,
+		metav1.ConditionTrue,
+		waiter.LongTaskTimeout,
+	))
 	f.Must(waiter.WaitForTSOsHealthy(ctx, f.Client, tg, waiter.LongTaskTimeout))
 	f.Must(waiter.WaitForPodsReady(ctx, f.Client, runtime.FromTSOGroup(tg), waiter.LongTaskTimeout))
 }

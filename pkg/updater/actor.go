@@ -162,7 +162,7 @@ func (act *actor[T, O, R]) deferDelete(ctx context.Context, obj R) error {
 
 	data, err := json.Marshal(&p)
 	if err != nil {
-		return fmt.Errorf("invaid patch: %w", err)
+		return fmt.Errorf("invalid patch: %w", err)
 	}
 
 	if err := act.c.Patch(ctx, o, client.RawPatch(types.MergePatchType, data)); err != nil {

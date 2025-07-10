@@ -58,7 +58,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskContextPDClient(state, r.PDClientManager),
 		tasks.TaskBoot(state, r.Client),
 		tasks.TaskService(state, r.Client),
-		tasks.TaskUpdater(state, r.Client),
+		tasks.TaskUpdater(state, r.Client, r.Tracker),
 		common.TaskGroupStatusSelector[scope.PDGroup](state),
 		common.TaskGroupConditionSuspended[scope.PDGroup](state),
 		common.TaskGroupConditionReady[scope.PDGroup](state),
