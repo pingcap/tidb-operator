@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/onsi/ginkgo/v2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
@@ -28,17 +29,25 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
-func (f *Framework) WaitForTiProxyGroupReady(ctx context.Context, dbg *v1alpha1.TiProxyGroup) {
+func (f *Framework) WaitForTiProxyGroupReady(ctx context.Context, pg *v1alpha1.TiProxyGroup) {
 	ginkgo.By("wait for tiproxy group ready")
-	f.Must(waiter.WaitForTiProxysHealthy(ctx, f.Client, dbg, waiter.LongTaskTimeout))
-	f.Must(waiter.WaitForPodsReady(ctx, f.Client, runtime.FromTiProxyGroup(dbg), waiter.LongTaskTimeout))
+	f.Must(waiter.WaitForObjectCondition[runtime.TiProxyGroupTuple](
+		ctx,
+		f.Client,
+		pg,
+		v1alpha1.CondReady,
+		metav1.ConditionTrue,
+		waiter.LongTaskTimeout,
+	))
+	f.Must(waiter.WaitForTiProxysHealthy(ctx, f.Client, pg, waiter.LongTaskTimeout))
+	f.Must(waiter.WaitForPodsReady(ctx, f.Client, runtime.FromTiProxyGroup(pg), waiter.LongTaskTimeout))
 }
 
-func (f *Framework) MustEvenlySpreadTiProxy(ctx context.Context, dbg *v1alpha1.TiProxyGroup) {
+func (f *Framework) MustEvenlySpreadTiProxy(ctx context.Context, pg *v1alpha1.TiProxyGroup) {
 	list := v1alpha1.TiProxyList{}
-	f.Must(f.Client.List(ctx, &list, client.InNamespace(dbg.GetNamespace()), client.MatchingLabels{
-		v1alpha1.LabelKeyCluster:   dbg.Spec.Cluster.Name,
-		v1alpha1.LabelKeyGroup:     dbg.GetName(),
+	f.Must(f.Client.List(ctx, &list, client.InNamespace(pg.GetNamespace()), client.MatchingLabels{
+		v1alpha1.LabelKeyCluster:   pg.Spec.Cluster.Name,
+		v1alpha1.LabelKeyGroup:     pg.GetName(),
 		v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiProxy,
 	}))
 
@@ -46,7 +55,7 @@ func (f *Framework) MustEvenlySpreadTiProxy(ctx context.Context, dbg *v1alpha1.T
 	topo := map[string]int{}
 
 	var st []v1alpha1.ScheduleTopology
-	for _, p := range dbg.Spec.SchedulePolicies {
+	for _, p := range pg.Spec.SchedulePolicies {
 		switch p.Type {
 		case v1alpha1.SchedulePolicyTypeEvenlySpread:
 			st = p.EvenlySpread.Topologies

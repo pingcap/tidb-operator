@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/onsi/ginkgo/v2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
@@ -28,6 +29,14 @@ import (
 func (f *Framework) WaitForTiFlashGroupReady(ctx context.Context, fg *v1alpha1.TiFlashGroup) {
 	// TODO: maybe wait for cluster ready
 	ginkgo.By("wait for tiflash group ready")
+	f.Must(waiter.WaitForObjectCondition[runtime.TiFlashGroupTuple](
+		ctx,
+		f.Client,
+		fg,
+		v1alpha1.CondReady,
+		metav1.ConditionTrue,
+		waiter.LongTaskTimeout,
+	))
 	f.Must(waiter.WaitForTiFlashesHealthy(ctx, f.Client, fg, waiter.LongTaskTimeout))
 	f.Must(waiter.WaitForPodsReady(ctx, f.Client, runtime.FromTiFlashGroup(fg), waiter.LongTaskTimeout))
 }

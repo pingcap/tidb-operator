@@ -14,7 +14,10 @@
 
 package updater
 
-import "github.com/pingcap/tidb-operator/pkg/runtime"
+import (
+	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
+)
 
 // UpdateHook a hook executes when update an instance.
 // e.g. for some write once fields(name, topology, etc.)
@@ -62,6 +65,24 @@ func KeepName[R runtime.Instance]() UpdateHook[R] {
 func KeepTopology[R runtime.Instance]() UpdateHook[R] {
 	return UpdateHookFunc[R](func(update, outdated R) R {
 		update.SetTopology(outdated.GetTopology())
+		return update
+	})
+}
+
+// AllocateName will set name for new instance
+// If a new name is allocated, it will be recorded until it is observed.
+// This hook is defined to avoid dirty read(no read-after-write consistency) when scale out.
+// For example, when a new item is created but not observed in next reconciliation,
+// updater will create a new one again with a new name.
+// It means an unexpected item may be created.
+// This hook can ensure that updater will try to create the item again if it is not observed
+func AllocateName[R runtime.Instance](allocator tracker.Allocator) AddHook[R] {
+	count := 0
+	return AddHookFunc[R](func(update R) R {
+		name := allocator.Allocate(count)
+		count++
+		update.SetName(name)
+
 		return update
 	})
 }

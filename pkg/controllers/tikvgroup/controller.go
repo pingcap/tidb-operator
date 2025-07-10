@@ -37,17 +37,20 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/tikvgroup/tasks"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 )
 
 type Reconciler struct {
-	Logger logr.Logger
-	Client client.Client
+	Logger  logr.Logger
+	Client  client.Client
+	Tracker tracker.Tracker[*v1alpha1.TiKVGroup, *v1alpha1.TiKV]
 }
 
 func Setup(mgr manager.Manager, c client.Client) error {
 	r := &Reconciler{
-		Logger: mgr.GetLogger().WithName("TiKVGroup"),
-		Client: c,
+		Logger:  mgr.GetLogger().WithName("TiKVGroup"),
+		Client:  c,
+		Tracker: tracker.New[*v1alpha1.TiKVGroup, *v1alpha1.TiKV](),
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.TiKVGroup{}).

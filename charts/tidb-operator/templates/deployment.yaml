@@ -45,7 +45,7 @@ spec:
         - /tidb-operator
         args:
           - --backup-manager-image={{ template "image" (tuple .Values.backupManager.image $.Chart.AppVersion) }}
-        {{- if .Values.operator.extraArgs }}
+        {{- if .Values.operator.extraArgs -}}
         {{ toYaml .Values.operator.extraArgs | nindent 10 }}
         {{- end }}
         image: "{{ template "image" (tuple .Values.operator.image $.Chart.AppVersion) }}"

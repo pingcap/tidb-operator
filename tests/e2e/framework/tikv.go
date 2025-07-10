@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/onsi/ginkgo/v2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
@@ -41,6 +42,14 @@ func (f *Framework) MustCreateTiKV(ctx context.Context, ps ...data.GroupPatch[*r
 func (f *Framework) WaitForTiKVGroupReady(ctx context.Context, kvg *v1alpha1.TiKVGroup) {
 	// TODO: maybe wait for cluster ready
 	ginkgo.By("wait for tikv group ready")
+	f.Must(waiter.WaitForObjectCondition[runtime.TiKVGroupTuple](
+		ctx,
+		f.Client,
+		kvg,
+		v1alpha1.CondReady,
+		metav1.ConditionTrue,
+		waiter.LongTaskTimeout,
+	))
 	f.Must(waiter.WaitForTiKVsHealthy(ctx, f.Client, kvg, waiter.LongTaskTimeout))
 	f.Must(waiter.WaitForPodsReady(ctx, f.Client, runtime.FromTiKVGroup(kvg), waiter.LongTaskTimeout))
 }

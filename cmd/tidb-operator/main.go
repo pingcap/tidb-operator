@@ -19,6 +19,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
@@ -64,6 +65,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	tsom "github.com/pingcap/tidb-operator/pkg/timanager/tso"
+	"github.com/pingcap/tidb-operator/pkg/utils/informertest"
 	"github.com/pingcap/tidb-operator/pkg/utils/kubefeat"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/pkg/volumes"
@@ -82,6 +84,7 @@ func main() {
 	var enableLeaderElection bool
 	var probeAddr string
 	var maxConcurrentReconciles int
+	var watchDelayDuration time.Duration
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.StringVar(&brConf.backupManagerImage, "backup-manager-image", "", "The image of backup-manager.")
@@ -90,6 +93,10 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 	//nolint:mnd // easy to understand
 	flag.IntVar(&maxConcurrentReconciles, "max-concurrent-reconciles", 4, "Max concurrent reconciles")
+	flag.DurationVar(&watchDelayDuration, "watch-delay-duration", time.Duration(0),
+		"A duration for e2e test, it's useful to avoid bugs because of "+
+			"kube clients's read-after-write inconsistency(always read from cache).")
+
 	opts := zap.Options{
 		Development:     false,
 		StacktraceLevel: zapcore.PanicLevel, // stacktrace on panic only
@@ -124,6 +131,19 @@ func main() {
 	kubeconfig.UserAgent = client.DefaultFieldManager
 	kubefeat.MustInitFeatureGates(kubeconfig)
 
+	cacheOpt := cache.Options{
+		// Disable label selector for our own CRs
+		// These CRs don't need to be filtered
+		ByObject: BuildCacheByObject(),
+		DefaultLabelSelector: labels.SelectorFromSet(labels.Set{
+			v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+		}),
+	}
+
+	if watchDelayDuration != 0 {
+		cacheOpt.NewInformer = informertest.NewDelayedInformerFunc(watchDelayDuration)
+	}
+
 	mgr, err := ctrl.NewManager(kubeconfig, ctrl.Options{
 		Scheme:                 scheme.Scheme,
 		Metrics:                metricsserver.Options{BindAddress: metricsAddr},
@@ -131,14 +151,7 @@ func main() {
 		Controller: runtimeConfig.Controller{
 			MaxConcurrentReconciles: maxConcurrentReconciles,
 		},
-		Cache: cache.Options{
-			// Disable label selector for our own CRs
-			// These CRs don't need to be filtered
-			ByObject: BuildCacheByObject(),
-			DefaultLabelSelector: labels.SelectorFromSet(labels.Set{
-				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-			}),
-		},
+		Cache: cacheOpt,
 		NewClient: func(cfg *rest.Config, opts ctrlcli.Options) (ctrlcli.Client, error) {
 			return client.New(cfg, opts)
 		},
@@ -204,59 +217,67 @@ func setup(ctx context.Context, mgr ctrl.Manager) error {
 }
 
 func addIndexer(ctx context.Context, mgr ctrl.Manager) error {
-	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.PDGroup{}, "spec.cluster.name", func(obj client.Object) []string {
-		pdGroup := obj.(*v1alpha1.PDGroup)
-		return []string{pdGroup.Spec.Cluster.Name}
-	}); err != nil {
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.PDGroup{}, "spec.cluster.name",
+		func(obj client.Object) []string {
+			pdGroup := obj.(*v1alpha1.PDGroup)
+			return []string{pdGroup.Spec.Cluster.Name}
+		}); err != nil {
 		return err
 	}
 
-	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.TiKVGroup{}, "spec.cluster.name", func(obj client.Object) []string {
-		tikvGroup := obj.(*v1alpha1.TiKVGroup)
-		return []string{tikvGroup.Spec.Cluster.Name}
-	}); err != nil {
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.TiKVGroup{}, "spec.cluster.name",
+		func(obj client.Object) []string {
+			tikvGroup := obj.(*v1alpha1.TiKVGroup)
+			return []string{tikvGroup.Spec.Cluster.Name}
+		}); err != nil {
 		return err
 	}
 
-	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.TiDBGroup{}, "spec.cluster.name", func(obj client.Object) []string {
-		tidbGroup := obj.(*v1alpha1.TiDBGroup)
-		return []string{tidbGroup.Spec.Cluster.Name}
-	}); err != nil {
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.TiDBGroup{}, "spec.cluster.name",
+		func(obj client.Object) []string {
+			tidbGroup := obj.(*v1alpha1.TiDBGroup)
+			return []string{tidbGroup.Spec.Cluster.Name}
+		}); err != nil {
 		return err
 	}
 
-	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.TiFlashGroup{}, "spec.cluster.name", func(obj client.Object) []string {
-		tiflashGroup := obj.(*v1alpha1.TiFlashGroup)
-		return []string{tiflashGroup.Spec.Cluster.Name}
-	}); err != nil {
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.TiFlashGroup{}, "spec.cluster.name",
+		func(obj client.Object) []string {
+			tiflashGroup := obj.(*v1alpha1.TiFlashGroup)
+			return []string{tiflashGroup.Spec.Cluster.Name}
+		}); err != nil {
 		return err
 	}
 
-	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.TiCDCGroup{}, "spec.cluster.name", func(obj client.Object) []string {
-		ticdcGroup := obj.(*v1alpha1.TiCDCGroup)
-		return []string{ticdcGroup.Spec.Cluster.Name}
-	}); err != nil {
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.TiCDCGroup{}, "spec.cluster.name",
+		func(obj client.Object) []string {
+			ticdcGroup := obj.(*v1alpha1.TiCDCGroup)
+			return []string{ticdcGroup.Spec.Cluster.Name}
+		}); err != nil {
 		return err
 	}
 
-	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.TSOGroup{}, "spec.cluster.name", func(obj client.Object) []string {
-		tg := obj.(*v1alpha1.TSOGroup)
-		return []string{tg.Spec.Cluster.Name}
-	}); err != nil {
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.TSOGroup{}, "spec.cluster.name",
+		func(obj client.Object) []string {
+			tg := obj.(*v1alpha1.TSOGroup)
+			return []string{tg.Spec.Cluster.Name}
+		}); err != nil {
 		return err
 	}
 
-	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.SchedulerGroup{}, "spec.cluster.name", func(obj client.Object) []string {
-		sg := obj.(*v1alpha1.SchedulerGroup)
-		return []string{sg.Spec.Cluster.Name}
-	}); err != nil {
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.SchedulerGroup{}, "spec.cluster.name",
+		func(obj client.Object) []string {
+			sg := obj.(*v1alpha1.SchedulerGroup)
+			return []string{sg.Spec.Cluster.Name}
+		}); err != nil {
 		return err
 	}
 
-	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.TiProxyGroup{}, "spec.cluster.name", func(obj client.Object) []string {
-		pg := obj.(*v1alpha1.TiProxyGroup)
-		return []string{pg.Spec.Cluster.Name}
-	}); err != nil {
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.TiProxyGroup{}, "spec.cluster.name",
+		func(obj client.Object) []string {
+			pg := obj.(*v1alpha1.TiProxyGroup)
+			return []string{pg.Spec.Cluster.Name}
+		}); err != nil {
 		return err
 	}
 

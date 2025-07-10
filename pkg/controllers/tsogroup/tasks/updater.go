@@ -16,7 +16,6 @@ package tasks
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -30,8 +29,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
 	"github.com/pingcap/tidb-operator/pkg/updater/policy"
-	"github.com/pingcap/tidb-operator/pkg/utils/random"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 )
 
 const (
@@ -39,7 +38,7 @@ const (
 )
 
 // TaskUpdater is a task to scale or update TSO when spec of TSOGroup is changed.
-func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
+func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.TSOGroup, *v1alpha1.TSO]) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		obj := state.Object()
@@ -69,6 +68,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
+		allocator := t.Track(obj, state.InstanceSlice()...)
 		wait, err := updater.New[runtime.TSOTuple]().
 			WithInstances(is...).
 			WithDesired(int(state.Group().Replicas())).
@@ -78,7 +78,10 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			WithMaxUnavailable(1).
 			WithRevision(updateRevision).
 			WithNewFactory(TSONewer(obj, updateRevision)).
-			WithAddHooks(topoPolicy).
+			WithAddHooks(
+				updater.AllocateName[*runtime.TSO](allocator),
+				topoPolicy,
+			).
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
@@ -104,19 +107,14 @@ func needVersionUpgrade(tg *v1alpha1.TSOGroup) bool {
 	return tg.Spec.Template.Spec.Version != tg.Status.Version && tg.Status.Version != ""
 }
 
-const (
-	suffixLen = 6
-)
-
 func TSONewer(tg *v1alpha1.TSOGroup, rev string) updater.NewFactory[*runtime.TSO] {
 	return updater.NewFunc[*runtime.TSO](func() *runtime.TSO {
-		name := fmt.Sprintf("%s-%s", tg.Name, random.Random(suffixLen))
 		spec := tg.Spec.Template.Spec.DeepCopy()
 
 		tso := &v1alpha1.TSO{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace:   tg.Namespace,
-				Name:        name,
+				Namespace: tg.Namespace,
+				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.TSOGroup](tg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.TSOGroup](tg),
 				OwnerReferences: []metav1.OwnerReference{
