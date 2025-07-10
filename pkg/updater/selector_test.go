@@ -17,12 +17,13 @@ package updater
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestSelector(t *testing.T) {
