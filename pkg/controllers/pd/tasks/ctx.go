@@ -70,8 +70,8 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		state.IsLeader = m.IsLeader
 
 		ready, err := state.PDClient.Underlay().GetMemberReady(ctx, getPDURL(ck, pd), pd.Spec.Version)
-		if err != nil {
-			return task.Retry(task.DefaultRequeueAfter).With("failed to get member ready: %w", err)
+		if err != nil || !ready {
+			return task.Retry(task.DefaultRequeueAfter).With("failed to get member ready (err: %w) or pd is not ready", err)
 		}
 
 		// set available and trust health info only when member info is valid
@@ -80,8 +80,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 			return task.Complete().With("pd is ready")
 		}
 
-		// If not ready, we should retry
-		return task.Retry(task.DefaultRequeueAfter).With("pd is unready, invalid: %v, health: %v, ready: %v", m.Invalid, m.Health, ready)
+		return task.Wait().With("pd is unready, invalid: %v, health: %v, ready: %v", m.Invalid, m.Health, ready)
 	})
 }
 
