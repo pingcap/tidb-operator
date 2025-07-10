@@ -16,8 +16,8 @@ package tasks
 
 import (
 	"context"
+	"time"
 
-	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -70,11 +70,9 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		state.MemberID = m.ID
 		state.IsLeader = m.IsLeader
 
-		logger := logr.FromContextOrDiscard(ctx)
 		ready, err := state.PDClient.Underlay().GetMemberReady(ctx, getPDURL(ck, pd), pd.Spec.Version)
 		if err != nil {
-			// Do not return error here, because the pd pod may not be created yet.
-			logger.Error(err, "failed to get member ready")
+			return task.Retry(5*time.Second).With("failed to get member ready: %w", err)
 		}
 
 		// set available and trust health info only when member info is valid
