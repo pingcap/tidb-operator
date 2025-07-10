@@ -103,11 +103,11 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 	})
 
 	ginkgo.Context("Scale and Update", label.P0, func() {
-		ginkgo.It("support scale TiDB form 3 to 5", label.Scale, func(ctx context.Context) {
+		ginkgo.It("support scale TiDB from 1 to 4", label.Scale, func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx)
 			dbg := f.MustCreateTiDB(ctx,
-				data.WithReplicas[*runtime.TiDBGroup](3),
+				data.WithReplicas[*runtime.TiDBGroup](1),
 			)
 
 			ginkgo.By("Wait for Cluster Ready")
@@ -116,14 +116,14 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			f.WaitForTiDBGroupReady(ctx, dbg)
 
 			patch := client.MergeFrom(dbg.DeepCopy())
-			dbg.Spec.Replicas = ptr.To[int32](5)
+			dbg.Spec.Replicas = ptr.To[int32](4)
 
 			ginkgo.By("Change replica of the TiDBGroup")
 			f.Must(f.Client.Patch(ctx, dbg, patch))
 			f.WaitForTiDBGroupReady(ctx, dbg)
 		})
 
-		ginkgo.It("support scale TiDB form 5 to 3", label.Scale, func(ctx context.Context) {
+		ginkgo.It("support scale TiDB from 5 to 3", label.Scale, func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx)
 			dbg := f.MustCreateTiDB(ctx,
@@ -263,7 +263,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			}),
 		)
 
-		ginkgo.It("support scale TiDB form 5 to 3 and rolling update at same time", label.Scale, label.Update, func(ctx context.Context) {
+		ginkgo.It("support scale TiDB from 5 to 3 and rolling update at same time", label.Scale, label.Update, func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx)
 			dbg := f.MustCreateTiDB(ctx,
