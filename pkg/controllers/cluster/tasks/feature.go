@@ -145,7 +145,7 @@ func patchFeatures[
 	}
 	data, err := json.Marshal(&p)
 	if err != nil {
-		return fmt.Errorf("invaid patch: %w", err)
+		return fmt.Errorf("invalid patch: %w", err)
 	}
 
 	if err := c.Patch(ctx, obj, client.RawPatch(types.MergePatchType, data)); err != nil {

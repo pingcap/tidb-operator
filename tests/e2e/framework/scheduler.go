@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/onsi/ginkgo/v2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
@@ -27,6 +28,14 @@ import (
 func (f *Framework) WaitForSchedulerGroupReady(ctx context.Context, sg *v1alpha1.SchedulerGroup) {
 	// TODO: maybe wait for cluster ready
 	ginkgo.By("wait for scheduler group ready")
+	f.Must(waiter.WaitForObjectCondition[runtime.SchedulerGroupTuple](
+		ctx,
+		f.Client,
+		sg,
+		v1alpha1.CondReady,
+		metav1.ConditionTrue,
+		waiter.LongTaskTimeout,
+	))
 	f.Must(waiter.WaitForSchedulersHealthy(ctx, f.Client, sg, waiter.LongTaskTimeout))
 	f.Must(waiter.WaitForPodsReady(ctx, f.Client, runtime.FromSchedulerGroup(sg), waiter.LongTaskTimeout))
 }

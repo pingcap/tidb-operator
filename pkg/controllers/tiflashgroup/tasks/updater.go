@@ -16,7 +16,6 @@ package tasks
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -30,8 +29,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
 	"github.com/pingcap/tidb-operator/pkg/updater/policy"
-	"github.com/pingcap/tidb-operator/pkg/utils/random"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 )
 
 const (
@@ -39,7 +38,7 @@ const (
 )
 
 // TaskUpdater is a task to scale or update PD when spec of TiFlashGroup is changed.
-func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
+func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.TiFlashGroup, *v1alpha1.TiFlash]) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		fg := state.TiFlashGroup()
@@ -69,6 +68,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
+		allocator := t.Track(fg, state.InstanceSlice()...)
 		wait, err := updater.New[runtime.TiFlashTuple]().
 			WithInstances(fs...).
 			WithDesired(int(state.Group().Replicas())).
@@ -77,7 +77,10 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			WithMaxUnavailable(1).
 			WithRevision(updateRevision).
 			WithNewFactory(TiFlashNewer(fg, updateRevision)).
-			WithAddHooks(topoPolicy).
+			WithAddHooks(
+				updater.AllocateName[*runtime.TiFlash](allocator),
+				topoPolicy,
+			).
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
@@ -99,19 +102,14 @@ func needVersionUpgrade(fg *v1alpha1.TiFlashGroup) bool {
 	return fg.Spec.Template.Spec.Version != fg.Status.Version && fg.Status.Version != ""
 }
 
-const (
-	suffixLen = 6
-)
-
 func TiFlashNewer(fg *v1alpha1.TiFlashGroup, rev string) updater.NewFactory[*runtime.TiFlash] {
 	return updater.NewFunc[*runtime.TiFlash](func() *runtime.TiFlash {
-		name := fmt.Sprintf("%s-%s", fg.Name, random.Random(suffixLen))
 		spec := fg.Spec.Template.Spec.DeepCopy()
 
 		tiflash := &v1alpha1.TiFlash{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace:   fg.Namespace,
-				Name:        name,
+				Namespace: fg.Namespace,
+				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.TiFlashGroup](fg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.TiFlashGroup](fg),
 				OwnerReferences: []metav1.OwnerReference{

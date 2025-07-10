@@ -244,7 +244,7 @@ bin/license-eye:
 .PHONY: bin/ginkgo
 GINKGO = $(BIN_DIR)/ginkgo
 bin/ginkgo:
-	$(ROOT)/hack/download.sh go_install $(GINKGO) github.com/onsi/ginkgo/v2/ginkgo@v2.23.3 2.23.3 "version | awk '{print \$$3}'"
+	$(ROOT)/hack/download.sh go_install $(GINKGO) github.com/onsi/ginkgo/v2/ginkgo v2.23.3 "version | awk '{print \"v\"\$$3}'"
 
 .PHONY: bin/mdtoc
 MDTOC = $(BIN_DIR)/mdtoc
