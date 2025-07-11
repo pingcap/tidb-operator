@@ -65,6 +65,12 @@ func NewRestoreManager(deps *controller.Dependencies) backup.RestoreManager {
 }
 
 func (rm *restoreManager) Sync(restore *v1alpha1.Restore) error {
+	// Route prune jobs to dedicated handler
+	if v1alpha1.IsRestorePruneScheduled(restore) || v1alpha1.IsRestorePruneRunning(restore) {
+		return rm.syncPruneJob(restore)
+	}
+
+	// Handle normal restore jobs
 	return rm.syncRestoreJob(restore)
 }
 
@@ -363,6 +369,53 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		}, nil)
 	}
 	return nil
+}
+
+// syncPruneJob handles the lifecycle of prune jobs for failed restores
+func (rm *restoreManager) syncPruneJob(restore *v1alpha1.Restore) error {
+	ns := restore.GetNamespace()
+
+	// Generate prune job name with suffix to distinguish from original restore job
+	pruneJobName := restore.GetRestoreJobName() + "-prune"
+
+	// Check if the prune job already exists
+	_, err := rm.deps.JobLister.Jobs(ns).Get(pruneJobName)
+	if err == nil {
+		klog.Infof("prune job %s/%s has been created, skip", ns, pruneJobName)
+		return nil
+	} else if !errors.IsNotFound(err) {
+		return fmt.Errorf("get prune job %s/%s failed, err: %v", ns, pruneJobName, err)
+	}
+
+	// Job doesn't exist, create it
+	pruneJob, reason, err := rm.makePruneJob(restore)
+	if err != nil {
+		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestorePruneFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  reason,
+			Message: err.Error(),
+		}, nil)
+		return err
+	}
+
+	if err := rm.deps.JobControl.CreateJob(restore, pruneJob); err != nil {
+		errMsg := fmt.Errorf("create prune job %s/%s failed, err: %v", ns, pruneJobName, err)
+		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestorePruneFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "CreateJobFailed",
+			Message: errMsg.Error(),
+		}, nil)
+		return errMsg
+	}
+
+	klog.Infof("create prune job %s/%s successfully", ns, pruneJobName)
+	return nil
+}
+
+func (rm *restoreManager) makePruneJob(restore *v1alpha1.Restore) (*batchv1.Job, string, error) {
+	return rm.makeRestoreJobWithMode(restore, true)
 }
 
 // read cluster meta from external storage since k8s size limitation on annotation/configMap
@@ -824,6 +877,10 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 }
 
 func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Job, string, error) {
+	return rm.makeRestoreJobWithMode(restore, false)
+}
+
+func (rm *restoreManager) makeRestoreJobWithMode(restore *v1alpha1.Restore, isPruneJob bool) (*batchv1.Job, string, error) {
 	ns := restore.GetNamespace()
 	name := restore.GetName()
 	restoreNamespace := ns
@@ -848,7 +905,11 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 
 	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, restore.Spec.UseKMS, restore.Spec.StorageProvider, rm.deps.SecretLister)
 	if err != nil {
-		return nil, reason, fmt.Errorf("restore %s/%s, %v", ns, name, err)
+		jobType := "restore"
+		if isPruneJob {
+			jobType = "prune"
+		}
+		return nil, reason, fmt.Errorf("%s %s/%s, %v", jobType, ns, name, err)
 	}
 
 	envVars = append(envVars, storageEnv...)
@@ -864,6 +925,12 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		fmt.Sprintf("--namespace=%s", ns),
 		fmt.Sprintf("--restoreName=%s", name),
 	}
+
+	// Add abort flag for prune job
+	if isPruneJob {
+		args = append(args, "--abort=true")
+	}
+
 	tikvImage := tc.TiKVImage()
 	_, tikvVersion := backuputil.ParseImage(tikvImage)
 	if tikvVersion != "" {
@@ -898,6 +965,8 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 
 	volumeMounts := []corev1.VolumeMount{}
 	volumes := []corev1.Volume{}
+
+	// TLS configuration
 	if tc.IsTLSClusterEnabled() {
 		args = append(args, "--cluster-tls=true")
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
@@ -950,17 +1019,20 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		},
 	})
 
-	if len(restore.Spec.AdditionalVolumes) > 0 {
-		volumes = append(volumes, restore.Spec.AdditionalVolumes...)
-	}
-	if len(restore.Spec.AdditionalVolumeMounts) > 0 {
-		volumeMounts = append(volumeMounts, restore.Spec.AdditionalVolumeMounts...)
-	}
+	// Additional volumes - skip for prune job to simplify setup
+	if !isPruneJob {
+		if len(restore.Spec.AdditionalVolumes) > 0 {
+			volumes = append(volumes, restore.Spec.AdditionalVolumes...)
+		}
+		if len(restore.Spec.AdditionalVolumeMounts) > 0 {
+			volumeMounts = append(volumeMounts, restore.Spec.AdditionalVolumeMounts...)
+		}
 
-	// mount volumes if specified
-	if restore.Spec.Local != nil {
-		volumes = append(volumes, restore.Spec.Local.Volume)
-		volumeMounts = append(volumeMounts, restore.Spec.Local.VolumeMount)
+		// mount volumes if specified
+		if restore.Spec.Local != nil {
+			volumes = append(volumes, restore.Spec.Local.Volume)
+			volumeMounts = append(volumeMounts, restore.Spec.Local.VolumeMount)
+		}
 	}
 
 	serviceAccount := constants.DefaultServiceAccountName
@@ -976,6 +1048,12 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		}
 
 		brImage = toolImage
+	}
+
+	// Container name differs between restore and prune jobs
+	containerName := label.RestoreJobLabelVal
+	if isPruneJob {
+		containerName = containerName + "prune-manager"
 	}
 
 	podSpec := &corev1.PodTemplateSpec{
@@ -999,7 +1077,7 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 			},
 			Containers: []corev1.Container{
 				{
-					Name:            label.RestoreJobLabelVal,
+					Name:            containerName,
 					Image:           rm.deps.CLIConfig.TiDBBackupManagerImage,
 					Args:            args,
 					ImagePullPolicy: corev1.PullIfNotPresent,
@@ -1017,9 +1095,16 @@ func (rm *restoreManager) makeRestoreJob(restore *v1alpha1.Restore) (*batchv1.Jo
 		},
 	}
 
+	// Job name differs between restore and prune jobs
+	jobName := restore.GetRestoreJobName()
+	if isPruneJob {
+		jobName = restore.GetRestoreJobName() + "-prune"
+	}
+	podSpec.Spec.TerminationGracePeriodSeconds = pointer.Int64Ptr(10)
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        restore.GetRestoreJobName(),
+			Name:        jobName,
 			Namespace:   ns,
 			Labels:      jobLabels,
 			Annotations: jobAnnotations,
