@@ -2660,6 +2660,15 @@ const (
 	RestoreModeVolumeSnapshot RestoreMode = "volume-snapshot"
 )
 
+// PruneType represents the prune type for restore.
+// +k8s:openapi-gen=true
+type PruneType string
+
+const (
+	// PruneTypeAfterFailed represents prune after failed.
+	PruneTypeAfterFailed PruneType = "afterFailed"
+)
+
 // RestoreConditionType represents a valid condition of a Restore.
 type RestoreConditionType string
 
@@ -2692,6 +2701,14 @@ const (
 	RestoreRetryFailed RestoreConditionType = "RetryFailed"
 	// RestoreInvalid means invalid restore CR.
 	RestoreInvalid RestoreConditionType = "Invalid"
+	// RestorePruneScheduled means a prune job has been scheduled after restore failure.
+	RestorePruneScheduled RestoreConditionType = "PruneScheduled"
+	// RestorePruneRunning means the prune job is currently running.
+	RestorePruneRunning RestoreConditionType = "PruneRunning"
+	// RestorePruneComplete means the prune job has successfully completed.
+	RestorePruneComplete RestoreConditionType = "PruneComplete"
+	// RestorePruneFailed means the prune job has failed.
+	RestorePruneFailed RestoreConditionType = "PruneFailed"
 )
 
 // RestoreCondition describes the observed state of a Restore at a certain point.
@@ -2738,6 +2755,10 @@ type RestoreSpec struct {
 	// PitrRestoredTs is the pitr restored ts.
 	// +optional
 	PitrRestoredTs string `json:"pitrRestoredTs,omitempty"`
+	// Prune is the prune type for restore, it is optional and can only have two valid values: afterFailed/alreadyFailed
+	// +optional
+	// +kubebuilder:validation:Enum:=afterFailed
+	Prune PruneType `json:"prune,omitempty"`
 	// LogRestoreStartTs is the start timestamp which log restore from.
 	// +optional
 	LogRestoreStartTs string `json:"logRestoreStartTs,omitempty"`

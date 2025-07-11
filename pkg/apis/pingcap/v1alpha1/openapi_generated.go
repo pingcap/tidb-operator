@@ -8248,6 +8248,13 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"prune": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Prune is the prune type for restore, it is optional and can only have two valid values: afterFailed/alreadyFailed",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"logRestoreStartTs": {
 						SchemaProps: spec.SchemaProps{
 							Description: "LogRestoreStartTs is the start timestamp which log restore from.",
