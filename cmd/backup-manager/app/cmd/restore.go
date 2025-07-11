@@ -54,6 +54,7 @@ func NewRestoreCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&ro.Prepare, "prepare", false, "Whether to prepare for restore")
 	cmd.Flags().StringVar(&ro.TargetAZ, "target-az", "", "For volume-snapshot restore, which az the volume snapshots restore to")
 	cmd.Flags().BoolVar(&ro.UseFSR, "use-fsr", false, "EBS snapshot restore use FSR for TiKV data volumes or not")
+	cmd.Flags().BoolVar(&ro.Abort, "abort", false, "Whether to abort/cleanup a failed restore operation")
 	return cmd
 }
 
