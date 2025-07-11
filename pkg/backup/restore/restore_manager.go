@@ -381,14 +381,8 @@ func (rm *restoreManager) syncPruneJob(restore *v1alpha1.Restore) error {
 	// Check if the prune job already exists
 	_, err := rm.deps.JobLister.Jobs(ns).Get(pruneJobName)
 	if err == nil {
-		errJobExist := fmt.Errorf("prune job %s/%s already exists", ns, pruneJobName)
-		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-			Type:    v1alpha1.RestorePruneFailed,
-			Status:  corev1.ConditionTrue,
-			Reason:  "PruneJobAlreadyExists",
-			Message: errJobExist.Error(),
-		}, nil)
-		return errJobExist
+		klog.Infof("prune job %s/%s has been created, skip", ns, pruneJobName)
+		return nil
 	} else if !errors.IsNotFound(err) {
 		return fmt.Errorf("get prune job %s/%s failed, err: %v", ns, pruneJobName, err)
 	}
