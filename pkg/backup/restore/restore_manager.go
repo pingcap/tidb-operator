@@ -1120,14 +1120,12 @@ func (rm *restoreManager) makeRestoreJobWithMode(restore *v1alpha1.Restore, isPr
 		},
 	}
 
-
 	// Job name differs between restore and prune jobs
 	jobName := restore.GetRestoreJobName()
 	if isPruneJob {
 		jobName = restore.GetRestoreJobName() + "-prune"
 	}
 	podSpec.Spec.TerminationGracePeriodSeconds = pointer.Int64Ptr(10)
-
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
