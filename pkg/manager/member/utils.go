@@ -162,7 +162,7 @@ func PdName(tcName string, ordinal int32, namespace string, clusterDomain string
 // See the start script of PDMS in pkg/manager/member/startscript/v2.renderPDMSStartScript
 func PDMSName(tcName string, ordinal int32, namespace, clusterDomain string, acrossK8s bool, component string) string {
 	if len(clusterDomain) > 0 {
-		return fmt.Sprintf("%s.%s-%s-peer.%s.svc.%s", PDMSPodName(tcName, ordinal, component), component, tcName, namespace, clusterDomain)
+		return fmt.Sprintf("%s.%s-%s-peer.%s.svc.%s", PDMSPodName(tcName, ordinal, component), tcName, component, namespace, clusterDomain)
 	}
 
 	// clusterDomain is not set

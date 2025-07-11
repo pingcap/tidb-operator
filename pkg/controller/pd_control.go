@@ -133,7 +133,7 @@ func NewFakePDClientForMember(pdControl *pdapi.FakePDControl, tc *v1alpha1.TidbC
 
 // NewFakePDMSClient creates a fake pdmsclient that is set as the pdms client
 func NewFakePDMSClient(pdControl *pdapi.FakePDControl, tc *v1alpha1.TidbCluster, curService string) *pdapi.FakePDMSClient {
-	pdmsClient := pdapi.NewFakePDMSClient()
+	pdmsClient := pdapi.NewFakePDMSClient(tc.Spec.ClusterDomain)
 	if tc.Spec.Cluster != nil {
 		pdControl.SetPDMSClientWithClusterDomain(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, curService, pdmsClient)
 	}
