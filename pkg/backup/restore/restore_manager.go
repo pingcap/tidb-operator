@@ -379,31 +379,16 @@ func (rm *restoreManager) syncPruneJob(restore *v1alpha1.Restore) error {
 	pruneJobName := restore.GetRestoreJobName() + "-prune"
 
 	// Check if the prune job already exists
-	job, err := rm.deps.JobLister.Jobs(ns).Get(pruneJobName)
+	_, err := rm.deps.JobLister.Jobs(ns).Get(pruneJobName)
 	if err == nil {
-		// Job exists, check its status
-		for _, condition := range job.Status.Conditions {
-			if condition.Type == batchv1.JobComplete && condition.Status == corev1.ConditionTrue {
-				// Prune job completed successfully
-				return rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-					Type:    v1alpha1.RestorePruneComplete,
-					Status:  corev1.ConditionTrue,
-					Reason:  "PruneJobComplete",
-					Message: "Cleanup job completed successfully",
-				}, nil)
-			} else if condition.Type == batchv1.JobFailed && condition.Status == corev1.ConditionTrue {
-				// Prune job failed
-				return rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
-					Type:    v1alpha1.RestorePruneFailed,
-					Status:  corev1.ConditionTrue,
-					Reason:  "PruneJobFailed",
-					Message: fmt.Sprintf("Cleanup job failed: %s", condition.Reason),
-				}, nil)
-			}
-		}
-		// Job is still running, nothing to do
-		klog.Infof("prune job %s/%s is still running", ns, pruneJobName)
-		return nil
+		errJobExist := fmt.Errorf("prune job %s/%s already exists", ns, pruneJobName)
+		rm.statusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestorePruneFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "PruneJobAlreadyExists",
+			Message: errJobExist.Error(),
+		}, nil)
+		return errJobExist
 	} else if !errors.IsNotFound(err) {
 		return fmt.Errorf("get prune job %s/%s failed, err: %v", ns, pruneJobName, err)
 	}
@@ -980,10 +965,6 @@ func (rm *restoreManager) makeRestoreJobWithMode(restore *v1alpha1.Restore, isPr
 	}
 
 	jobLabels := util.CombineStringMap(label.NewRestore().Instance(restore.GetInstanceName()).RestoreJob().Restore(name), restore.Labels)
-	// Add component label for prune job
-	if isPruneJob {
-		jobLabels["app.kubernetes.io/component"] = "prune"
-	}
 	podLabels := jobLabels
 	jobAnnotations := restore.Annotations
 	podAnnotations := jobAnnotations
