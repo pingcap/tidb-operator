@@ -19,7 +19,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tiproxy/tasks"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -29,7 +28,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// get tiproxy
 		common.TaskContextObject[scope.TiProxy](state, r.Client),
 		// if it's deleted just return
-		task.IfBreak(common.CondInstanceHasBeenDeleted(state)),
+		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiProxy](state)),
 
 		// get cluster info, FinalizerDel will use it
 		common.TaskContextCluster[scope.TiProxy](state, r.Client),
@@ -38,14 +37,14 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// check whether it's paused
 		task.IfBreak(common.CondClusterIsPaused(state)),
 
-		task.IfBreak(common.CondInstanceIsDeleting(state),
+		task.IfBreak(common.CondObjectIsDeleting[scope.TiProxy](state),
 			tasks.TaskFinalizerDel(state, r.Client),
 			// TODO(liubo02): if the finalizer has been removed, no need to update status
 			common.TaskInstanceConditionSynced[scope.TiProxy](state),
 			common.TaskInstanceConditionReady[scope.TiProxy](state),
 			common.TaskStatusPersister[scope.TiProxy](state, r.Client),
 		),
-		common.TaskInstanceFinalizerAdd[runtime.TiProxyTuple](state, r.Client),
+		common.TaskFinalizerAdd[scope.TiProxy](state, r.Client),
 
 		// get pod and check whether the cluster is suspending
 		common.TaskContextPod[scope.TiProxy](state, r.Client),
