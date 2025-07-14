@@ -31,7 +31,7 @@ type ImportDataConfig struct {
 
 // ImportData creates a table and inserts a specified number of rows in batches.
 //
-//nolint:gosec // Only used for testing.
+//nolint:gosec, gocyclo // Only used for testing.
 func ImportData(config ImportDataConfig) error {
 	if config.DB == nil {
 		return fmt.Errorf("database connection is nil")
