@@ -87,6 +87,9 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 
 		if !reloadable.CheckTiKVPod(state.TiKV(), pod) {
 			logger.Info("will recreate the pod")
+			if err := k8s.RemoveFinalizer(ctx, c, pod); err != nil {
+				return task.Fail().With("cannot remove finalizer: %w", err)
+			}
 			regionCount := 0
 			if state.Store != nil {
 				regionCount = state.Store.RegionCount
@@ -108,6 +111,29 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 		state.SetPod(expected)
 
 		return task.Complete().With("pod is synced")
+	})
+}
+
+func TaskCreatePod(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("CreatePod", func(ctx context.Context) task.Result {
+		pod := state.Pod()
+		if pod != nil {
+			// If pod exists but is terminating, wait for it to be fully deleted
+			if state.IsPodTerminating() {
+				return task.Wait().With("pod is terminating, waiting for deletion")
+			}
+			return task.Complete().With("pod already exists")
+		}
+
+		// If we have a terminating pod state but no pod object,
+		// it means the pod was deleted, we can proceed to create a new one
+		expected := newPod(state.Cluster(), state.TiKV(), state.StoreID)
+		if err := c.Apply(ctx, expected); err != nil {
+			return task.Fail().With("can't create pod of tikv: %w", err)
+		}
+
+		state.SetPod(expected)
+		return task.Complete().With("pod is created")
 	})
 }
 
