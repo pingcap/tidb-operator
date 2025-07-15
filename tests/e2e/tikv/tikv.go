@@ -24,10 +24,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
@@ -98,7 +96,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 	ginkgo.Context("Race Condition Scenarios", label.P1, func() {
 		workload := f.SetupWorkload()
 
-		ginkgo.It("should handle pod deletion during graceful store removal", func(ctx context.Context) {
+		ginkgo.It("should recreate pod when deleted during graceful store removal", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](4))
 			dbg := f.MustCreateTiDB(ctx)
@@ -109,13 +107,6 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 			// Make sure each TiKV store has enough leaders and regions,
 			// otherwise the scale-in operation will be too fast.
 			workload.MustImportData(ctx, data.DefaultTiDBServiceName, "root", "", "", 500)
-
-			tikvs, err := apicall.ListInstances[scope.TiKVGroup](ctx, f.Client, kvg)
-			f.Must(err)
-			gomega.Expect(tikvs).To(gomega.HaveLen(4))
-			for _, tikv := range tikvs {
-				verifyFinalizersOnTiKVAndPod(ctx, f, tikv)
-			}
 
 			ginkgo.By("Initiating scale in from 4 to 3 replicas")
 			patch := client.MergeFrom(kvg.DeepCopy())
@@ -141,36 +132,33 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 			}, 2*time.Minute, 3*time.Second).Should(gomega.BeTrue(),
 				"Should find a TiKV instance with deletion timestamp during scale in")
 
+			ginkgo.By("Recording original pod information")
+			originalPod := getPodForTiKV(ctx, f, targetTiKV)
+			originalPodUID := originalPod.UID
+
 			ginkgo.By("Simulating manual pod deletion during graceful shutdown")
 			// This simulates the race condition where user manually deletes the pod
 			// while the operator is trying to gracefully remove the store from PD
-			pod := getPodForTiKV(ctx, f, targetTiKV)
-			f.Must(f.Client.Delete(ctx, pod, client.GracePeriodSeconds(0)))
+			f.Must(f.Client.Delete(ctx, originalPod, client.GracePeriodSeconds(0)))
 
-			ginkgo.By("Verifying pod enters Terminating state")
+			ginkgo.By("Verifying operator recreates the pod during store removal")
+			// The operator should recreate the pod to ensure graceful store removal can complete
 			gomega.Eventually(func() bool {
-				updatedPod := &corev1.Pod{}
+				newPod := &corev1.Pod{}
 				err := f.Client.Get(ctx, client.ObjectKey{
-					Namespace: pod.Namespace,
-					Name:      pod.Name,
-				}, updatedPod)
+					Namespace: targetTiKV.Namespace,
+					Name:      originalPod.Name,
+				}, newPod)
 				if err != nil {
 					return false
 				}
-				return !updatedPod.DeletionTimestamp.IsZero()
-			}, 30*time.Second, 2*time.Second).Should(gomega.BeTrue())
+				// Verify this is a new pod (different UID)
+				return newPod.UID != originalPodUID
+			}, 3*time.Minute, 5*time.Second).Should(gomega.BeTrue(),
+				"Operator should recreate pod with different UID during store removal")
 
-			ginkgo.By("Verifying TiKV instance cleanup completes without getting stuck")
-			waitForTiKVInstanceCleanup(ctx, f, targetTiKV, 5*time.Minute)
-
-			ginkgo.By("Verifying pod is eventually cleaned up")
-			gomega.Eventually(func() error {
-				return f.Client.Get(ctx, client.ObjectKey{
-					Namespace: pod.Namespace,
-					Name:      pod.Name,
-				}, &corev1.Pod{})
-			}, 5*time.Minute, 10*time.Second).ShouldNot(gomega.Succeed(),
-				"Pod should be deleted after finalizer is removed")
+			ginkgo.By("Verifying TiKV instance eventually completes removal")
+			waitForTiKVInstanceCleanup(ctx, f, targetTiKV, 8*time.Minute)
 
 			ginkgo.By("Verifying TiKVGroup reaches desired state")
 			f.WaitForTiKVGroupReady(ctx, kvg)
@@ -183,17 +171,6 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 		})
 	})
 })
-
-// verifyFinalizersOnTiKVAndPod verifies that both TiKV instance and its pod have finalizers
-func verifyFinalizersOnTiKVAndPod(ctx context.Context, f *framework.Framework, tikv *v1alpha1.TiKV) {
-	ginkgo.By(fmt.Sprintf("Verifying finalizer presence on TiKV instance %s", tikv.Name))
-	gomega.Expect(tikv.Finalizers).To(gomega.ContainElement(metav1alpha1.Finalizer))
-
-	ginkgo.By("Verifying finalizer presence on pod")
-	pod := getPodForTiKV(ctx, f, tikv)
-	gomega.Expect(controllerutil.ContainsFinalizer(pod, metav1alpha1.Finalizer)).To(gomega.BeTrue(),
-		"Pod should have pod finalizer for protection")
-}
 
 // getPodForTiKV gets the pod for a TiKV instance.
 func getPodForTiKV(ctx context.Context, f *framework.Framework, tikv *v1alpha1.TiKV) *corev1.Pod {

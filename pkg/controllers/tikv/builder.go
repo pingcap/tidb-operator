@@ -15,6 +15,7 @@
 package tikv
 
 import (
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tikv/tasks"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
@@ -38,16 +39,15 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// get info from pd
 		tasks.TaskContextInfoFromPD(state, r.PDClientManager),
-		common.TaskContextPod[scope.TiKV](state, r.Client),
-		task.IfBreak(common.CondObjectIsDeleting[scope.TiKV](state),
-			tasks.TaskFinalizerDel(state, r.Client),
-			// TODO(liubo02): if the finalizer has been removed, no need to update status
-			common.TaskInstanceConditionSynced[scope.TiKV](state),
-			common.TaskInstanceConditionReady[scope.TiKV](state),
-			tasks.TaskStoreStatus(state),
-			common.TaskStatusPersister[scope.TiKV](state, r.Client),
+
+		task.IfBreak(canDeleteAllResources(state), tasks.TaskFinalizerDel(state, r.Client)),
+		task.If(common.CondObjectIsDeleting[scope.TiKV](state),
+			tasks.TaskOfflineStore(state, r.Client),
 		),
+
 		common.TaskFinalizerAdd[scope.TiKV](state, r.Client),
+		// get pod and check whether the cluster is suspending
+		common.TaskContextPod[scope.TiKV](state, r.Client),
 
 		// check whether the cluster is suspending
 		task.IfBreak(common.CondClusterIsSuspending(state),
@@ -72,4 +72,12 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 	)
 
 	return runner
+}
+
+// canDeleteAllResources checks if the resources can be deleted.
+func canDeleteAllResources(state *tasks.ReconcileContext) task.Condition {
+	return task.CondFunc(func() bool {
+		return !state.Cluster().GetDeletionTimestamp().IsZero() ||
+			(!state.Object().GetDeletionTimestamp().IsZero() && (state.GetStoreState() == v1alpha1.StoreStateRemoved || state.StoreNotExists))
+	})
 }

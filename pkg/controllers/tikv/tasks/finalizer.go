@@ -16,7 +16,6 @@ package tasks
 
 import (
 	"context"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -28,77 +27,25 @@ import (
 )
 
 const (
-	removingWaitInterval = 10 * time.Second
 	// for deleted store, we'll set grace period to the default
 	defaultGracePeriod = 30
 )
 
 func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
-		switch {
-		case !state.Cluster().GetDeletionTimestamp().IsZero():
-			return handleClusterDeletion(ctx, c, state)
-
-		case state.GetStoreState() == v1alpha1.StoreStateRemoving:
-			return task.Retry(removingWaitInterval).With("wait until the store is removed")
-
-		case state.GetStoreState() == v1alpha1.StoreStateRemoved || state.StoreNotExists:
-			return handleStoreRemovedOrNotExists(ctx, c, state)
-
-		default:
-			return handleStoreExists(ctx, state)
+		wait, err := EnsureSubResourcesDeleted(ctx, c, state.TiKV())
+		if err != nil {
+			return task.Fail().With("cannot delete subresources: %w", err)
 		}
+		if wait {
+			return task.Retry(task.DefaultRequeueAfter).With("wait all subresources deleted")
+		}
+
+		if err := k8s.RemoveFinalizer(ctx, c, state.TiKV()); err != nil {
+			return task.Fail().With("cannot remove finalizer: %w", err)
+		}
+		return task.Complete().With("finalizer is removed")
 	})
-}
-
-func handleClusterDeletion(ctx context.Context, c client.Client, state *ReconcileContext) task.Result {
-	if pod := state.Pod(); pod != nil {
-		if err := k8s.RemoveFinalizer(ctx, c, pod); err != nil {
-			return task.Fail().With("cannot remove finalizer: %w", err)
-		}
-	}
-
-	wait, err := EnsureSubResourcesDeleted(ctx, c, state.TiKV())
-	if err != nil {
-		return task.Fail().With("cannot delete subresources: %w", err)
-	}
-	if wait {
-		return task.Retry(task.DefaultRequeueAfter).With("wait all subresources deleted")
-	}
-
-	if err := k8s.RemoveFinalizer(ctx, c, state.TiKV()); err != nil {
-		return task.Fail().With("cannot remove finalizer: %w", err)
-	}
-	return task.Complete().With("finalizer is removed")
-}
-
-func handleStoreRemovedOrNotExists(ctx context.Context, c client.Client, state *ReconcileContext) task.Result {
-	if pod := state.Pod(); pod != nil {
-		if err := k8s.RemoveFinalizer(ctx, c, pod); err != nil {
-			return task.Fail().With("cannot remove finalizer: %w", err)
-		}
-		return task.Retry(task.DefaultRequeueAfter).With("pod finalizer removed, wait for pod to be deleted")
-	}
-
-	wait, err := EnsureSubResourcesDeleted(ctx, c, state.TiKV())
-	if err != nil {
-		return task.Fail().With("cannot delete subresources: %w", err)
-	}
-	if wait {
-		return task.Retry(task.DefaultRequeueAfter).With("wait all subresources deleted")
-	}
-
-	if err := k8s.RemoveFinalizer(ctx, c, state.TiKV()); err != nil {
-		return task.Fail().With("cannot remove finalizer: %w", err)
-	}
-	return task.Complete().With("finalizer is removed")
-}
-
-func handleStoreExists(ctx context.Context, state *ReconcileContext) task.Result {
-	if err := state.PDClient.Underlay().DeleteStore(ctx, state.StoreID); err != nil {
-		return task.Fail().With("cannot delete store %s: %v", state.StoreID, err)
-	}
-	return task.Retry(removingWaitInterval).With("the store is removing")
 }
 
 func EnsureSubResourcesDeleted(ctx context.Context, c client.Client, tikv *v1alpha1.TiKV) (wait bool, _ error) {
