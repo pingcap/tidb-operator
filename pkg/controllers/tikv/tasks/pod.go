@@ -25,7 +25,6 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/image"
@@ -115,6 +114,29 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
+func TaskCreatePod(state *ReconcileContext, c client.Client) task.Task {
+	return task.NameTaskFunc("CreatePod", func(ctx context.Context) task.Result {
+		pod := state.Pod()
+		if pod != nil {
+			// If pod exists but is terminating, wait for it to be fully deleted
+			if state.IsPodTerminating() {
+				return task.Wait().With("pod is terminating, waiting for deletion")
+			}
+			return task.Complete().With("pod already exists")
+		}
+
+		// If we have a terminating pod state but no pod object,
+		// it means the pod was deleted, we can proceed to create a new one
+		expected := newPod(state.Cluster(), state.TiKV(), state.StoreID)
+		if err := c.Apply(ctx, expected); err != nil {
+			return task.Fail().With("can't create pod of tikv: %w", err)
+		}
+
+		state.SetPod(expected)
+		return task.Complete().With("pod is created")
+	})
+}
+
 func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, storeID string) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
@@ -199,7 +221,6 @@ func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, storeID string) *cor
 				k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentTiKV),
 			),
 			Annotations: maputil.Merge(k8s.AnnoProm(coreutil.TiKVStatusPort(tikv), metricsPath)),
-			Finalizers:  []string{metav1alpha1.Finalizer},
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(tikv, v1alpha1.SchemeGroupVersion.WithKind("TiKV")),
 			},

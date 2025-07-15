@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,54 +30,95 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
-	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
 func TestTaskFinalizerDel(t *testing.T) {
-	now := metav1.Now()
 	cases := []struct {
-		desc                  string
-		state                 *ReconcileContext
-		subresources          []client.Object
-		needDelStore          bool
-		unexpectedDelStoreErr bool
-		unexpectedErr         bool
+		desc          string
+		state         *ReconcileContext
+		subresources  []client.Object
+		unexpectedErr bool
 
 		expectedStatus task.Status
 		expectedObj    *v1alpha1.TiKV
 	}{
 		{
-			desc: "cluster is deleting, no sub resources, no finalizer",
+			desc: "no sub resources, no finalizer",
 			state: &ReconcileContext{
 				State: &state{
-					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						return obj
-					}),
-					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
-						obj.SetDeletionTimestamp(&now)
+					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						return obj
 					}),
 				},
 			},
 
 			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 				return obj
 			}),
 		},
 		{
-			desc: "cluster is deleting, has sub resources, has finalizer",
+			desc: "has sub resources (pods), should wait for deletion",
 			state: &ReconcileContext{
 				State: &state{
-					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
-					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
-						obj.SetDeletionTimestamp(&now)
+				},
+			},
+			subresources: fakeSubresources("Pod"),
+
+			expectedStatus: task.SRetry,
+			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				return obj
+			}),
+		},
+		{
+			desc: "has sub resources (configmaps), should wait for deletion",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+				},
+			},
+			subresources: fakeSubresources("ConfigMap"),
+
+			expectedStatus: task.SRetry,
+			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				return obj
+			}),
+		},
+		{
+			desc: "has sub resources (pvcs), should wait for deletion",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+				},
+			},
+			subresources: fakeSubresources("PersistentVolumeClaim"),
+
+			expectedStatus: task.SRetry,
+			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				return obj
+			}),
+		},
+		{
+			desc: "has multiple sub resources, should wait for deletion",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 				},
@@ -85,464 +126,173 @@ func TestTaskFinalizerDel(t *testing.T) {
 			subresources: fakeSubresources("Pod", "ConfigMap", "PersistentVolumeClaim"),
 
 			expectedStatus: task.SRetry,
-			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 				return obj
 			}),
 		},
 		{
-			desc: "cluster is deleting, has sub resources, has finalizer, failed to del subresources(pod)",
+			desc: "failed to delete subresources (pods)",
 			state: &ReconcileContext{
 				State: &state{
-					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
-					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
-						obj.SetDeletionTimestamp(&now)
-						return obj
-					}),
-				},
-			},
-			subresources: fakeSubresources("Pod"),
-
-			unexpectedErr: true,
-
-			expectedStatus: task.SFail,
-			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
-		},
-		{
-			desc: "cluster is deleting, has sub resources, has finalizer, failed to del subresources(cm)",
-			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
-						obj.SetDeletionTimestamp(&now)
-						return obj
-					}),
-				},
-			},
-			subresources: fakeSubresources("ConfigMap"),
-
-			unexpectedErr: true,
-
-			expectedStatus: task.SFail,
-			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
-		},
-		{
-			desc: "cluster is deleting, has sub resources, has finalizer, failed to del subresources(pvc)",
-			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
-						obj.SetDeletionTimestamp(&now)
-						return obj
-					}),
-				},
-			},
-			subresources: fakeSubresources("PersistentVolumeClaim"),
-
-			unexpectedErr: true,
-
-			expectedStatus: task.SFail,
-			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
-		},
-		{
-			desc: "cluster is deleting, no sub resources, has finalizer",
-			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
-						obj.SetDeletionTimestamp(&now)
-						return obj
-					}),
-				},
-			},
-
-			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = []string{}
-				return obj
-			}),
-		},
-		{
-			desc: "cluster is deleting, no sub resources, has finalizer, failed to remove finalizer",
-			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
-						obj.SetDeletionTimestamp(&now)
-						return obj
-					}),
-				},
-			},
-			unexpectedErr: true,
-
-			expectedStatus: task.SFail,
-			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				return obj
-			}),
-		},
-		{
-			desc: "cluster is not deleting, store is removing",
-			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
-						return obj
-					}),
-					storeState: v1alpha1.StoreStateRemoving,
-				},
-			},
-
-			expectedStatus: task.SRetry,
-			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
-		},
-		{
-			desc: "cluster is not deleting, store is removed, no subresources, no finalizer",
-			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						return obj
-					}),
-					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
-						return obj
-					}),
-					storeState: v1alpha1.StoreStateRemoved,
-				},
-			},
-
-			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				return obj
-			}),
-		},
-		{
-			desc: "cluster is not deleting, store is removed, no subresources, has finalizer",
-			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
-						return obj
-					}),
-					storeState: v1alpha1.StoreStateRemoved,
-				},
-			},
-
-			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = []string{}
-				return obj
-			}),
-		},
-		{
-			desc: "cluster is not deleting, store is removed, no subresources, has finalizer, failed to remove finalizer",
-			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
-						return obj
-					}),
-					storeState: v1alpha1.StoreStateRemoved,
-				},
-			},
-			unexpectedErr: true,
-
-			expectedStatus: task.SFail,
-		},
-		{
-			desc: "cluster is not deleting, store is removed, has subresources",
-			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
-						return obj
-					}),
-					storeState: v1alpha1.StoreStateRemoved,
-				},
-			},
-			subresources: fakeSubresources("Pod"),
-
-			expectedStatus: task.SRetry,
-			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
-		},
-		{
-			desc: "cluster is not deleting, store is removed, has subresources, failed to del subresources",
-			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
-						return obj
-					}),
-					storeState: v1alpha1.StoreStateRemoved,
 				},
 			},
 			subresources:  fakeSubresources("Pod"),
 			unexpectedErr: true,
 
 			expectedStatus: task.SFail,
+			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				return obj
+			}),
 		},
 		{
-			desc: "cluster is not deleting, store does not exist, no subresources, has finalizer",
+			desc: "failed to delete subresources (configmaps)",
 			state: &ReconcileContext{
 				State: &state{
-					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
-					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+				},
+			},
+			subresources:  fakeSubresources("ConfigMap"),
+			unexpectedErr: true,
+
+			expectedStatus: task.SFail,
+			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				return obj
+			}),
+		},
+		{
+			desc: "failed to delete subresources (pvcs)",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 				},
-				StoreNotExists: true,
+			},
+			subresources:  fakeSubresources("PersistentVolumeClaim"),
+			unexpectedErr: true,
+
+			expectedStatus: task.SFail,
+			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				return obj
+			}),
+		},
+		{
+			desc: "no sub resources, has finalizer, should remove finalizer",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+				},
 			},
 
 			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 				obj.Finalizers = []string{}
 				return obj
 			}),
 		},
 		{
-			desc: "cluster is not deleting, store exists",
+			desc: "no sub resources, has finalizer, failed to remove finalizer",
 			state: &ReconcileContext{
 				State: &state{
-					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
-						return obj
-					}),
-				},
-				StoreID: "xxx",
-			},
-			needDelStore: true,
-
-			expectedStatus: task.SRetry,
-			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
-		},
-		{
-			desc: "cluster is not deleting, store exists, failed to del store",
-			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
-						return obj
-					}),
-				},
-				StoreID: "xxx",
-			},
-			needDelStore:          true,
-			unexpectedDelStoreErr: true,
-
-			expectedStatus: task.SFail,
-			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
-		},
-
-		// New test cases for Pod finalizer removal logic
-		{
-			desc: "cluster is deleting, has pod with finalizer",
-			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
-						obj.SetDeletionTimestamp(&now)
-						return obj
-					}),
-					pod: fake.FakeObj("aaa-tikv-0", func(obj *corev1.Pod) *corev1.Pod {
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-							v1alpha1.LabelKeyInstance:  "aaa",
-							v1alpha1.LabelKeyCluster:   "",
-							v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
-						}
+					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 				},
 			},
-			subresources: fakeSubresources("PodWithFinalizer"),
-
-			expectedStatus: task.SRetry,
-			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
-		},
-		{
-			desc: "cluster is deleting, has pod with finalizer, failed to remove pod finalizer",
-			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
-						obj.SetDeletionTimestamp(&now)
-						return obj
-					}),
-					pod: fake.FakeObj("aaa-tikv-0", func(obj *corev1.Pod) *corev1.Pod {
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-							v1alpha1.LabelKeyInstance:  "aaa",
-							v1alpha1.LabelKeyCluster:   "",
-							v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
-						}
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
-			},
-			subresources:  fakeSubresources("PodWithFinalizer"),
 			unexpectedErr: true,
 
 			expectedStatus: task.SFail,
-		},
-		{
-			desc: "cluster is not deleting, store is removed, has pod with finalizer",
-			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
-						return obj
-					}),
-					storeState: v1alpha1.StoreStateRemoved,
-					pod: fake.FakeObj("aaa-tikv-0", func(obj *corev1.Pod) *corev1.Pod {
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-							v1alpha1.LabelKeyInstance:  "aaa",
-							v1alpha1.LabelKeyCluster:   "",
-							v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
-						}
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
-			},
-			subresources: fakeSubresources("PodWithFinalizer"),
-
-			expectedStatus: task.SRetry,
-			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 				return obj
 			}),
 		},
 		{
-			desc: "cluster is not deleting, store is removed, has pod with finalizer, failed to remove pod finalizer",
+			desc: "has pods with deletion timestamp, should wait",
 			state: &ReconcileContext{
 				State: &state{
-					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
-						return obj
-					}),
-					storeState: v1alpha1.StoreStateRemoved,
-					pod: fake.FakeObj("aaa-tikv-0", func(obj *corev1.Pod) *corev1.Pod {
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-							v1alpha1.LabelKeyInstance:  "aaa",
-							v1alpha1.LabelKeyCluster:   "",
-							v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
-						}
+					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
 						return obj
 					}),
 				},
 			},
-			subresources:  fakeSubresources("PodWithFinalizer"),
-			unexpectedErr: true,
-
-			expectedStatus: task.SFail,
-		},
-		{
-			desc: "cluster is not deleting, store does not exist, has pod with finalizer",
-			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
-						return obj
-					}),
-					pod: fake.FakeObj("aaa-tikv-0", func(obj *corev1.Pod) *corev1.Pod {
-						obj.Labels = map[string]string{
-							v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-							v1alpha1.LabelKeyInstance:  "aaa",
-							v1alpha1.LabelKeyCluster:   "",
-							v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
-						}
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
-				StoreNotExists: true,
-			},
-			subresources: fakeSubresources("PodWithFinalizer"),
+			subresources: fakeSubresources("PodDeleting"),
 
 			expectedStatus: task.SRetry,
-			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				return obj
+			}),
+		},
+		{
+			desc: "has mixed sub resources with some deleting",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+						return obj
+					}),
+				},
+			},
+			subresources: append(
+				fakeSubresources("Pod"),
+				fakeSubresources("PodDeleting")...,
+			),
+
+			expectedStatus: task.SRetry,
+			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				return obj
+			}),
+		},
+		{
+			desc: "empty tikv with multiple finalizers",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Finalizers = []string{meta.Finalizer, "other.finalizer.com/test", "another.finalizer.com/test"}
+						return obj
+					}),
+				},
+			},
+
+			expectedStatus: task.SComplete,
+			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+				obj.Finalizers = []string{"other.finalizer.com/test", "another.finalizer.com/test"}
+				return obj
+			}),
+		},
+		{
+			desc: "tikv with only other finalizers",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Finalizers = []string{"other.finalizer.com/test", "another.finalizer.com/test"}
+						return obj
+					}),
+				},
+			},
+
+			expectedStatus: task.SComplete,
+			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+				obj.Finalizers = []string{"other.finalizer.com/test", "another.finalizer.com/test"}
 				return obj
 			}),
 		},
@@ -557,10 +307,6 @@ func TestTaskFinalizerDel(t *testing.T) {
 				c.state.TiKV(),
 			}
 
-			if c.state.Pod() != nil {
-				objs = append(objs, c.state.Pod())
-			}
-
 			objs = append(objs, c.subresources...)
 
 			fc := client.NewFakeClient(objs...)
@@ -573,51 +319,19 @@ func TestTaskFinalizerDel(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			var acts []action
-			if c.needDelStore {
-				var retErr error
-				if c.unexpectedDelStoreErr {
-					retErr = fmt.Errorf("fake err")
-				}
-				acts = append(acts, deleteStore(ctx, c.state.StoreID, retErr))
-			}
-
-			pdc := NewFakePDClient(tt, acts...)
-			c.state.PDClient = pdc
-
 			res, done := task.RunTask(ctx, TaskFinalizerDel(c.state, fc))
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
 
 			// no need to check update result
-			if c.unexpectedErr || c.unexpectedDelStoreErr {
+			if c.unexpectedErr {
 				return
 			}
 
-			pd := &v1alpha1.TiKV{}
-			require.NoError(tt, fc.Get(ctx, client.ObjectKey{Name: "aaa"}, pd), c.desc)
-			assert.Equal(tt, c.expectedObj, pd, c.desc)
+			tikv := &v1alpha1.TiKV{}
+			require.NoError(tt, fc.Get(ctx, client.ObjectKey{Name: "test-tikv"}, tikv), c.desc)
+			assert.Equal(tt, c.expectedObj, tikv, c.desc)
 		})
-	}
-}
-
-func NewFakePDClient(t *testing.T, acts ...action) pdm.PDClient {
-	ctrl := gomock.NewController(t)
-	pdc := pdm.NewMockPDClient(ctrl)
-	for _, act := range acts {
-		act(ctrl, pdc)
-	}
-
-	return pdc
-}
-
-type action func(ctrl *gomock.Controller, pdc *pdm.MockPDClient)
-
-func deleteStore(ctx context.Context, name string, err error) action {
-	return func(ctrl *gomock.Controller, pdc *pdm.MockPDClient) {
-		underlay := pdapi.NewMockPDClient(ctrl)
-		pdc.EXPECT().Underlay().Return(underlay)
-		underlay.EXPECT().DeleteStore(ctx, name).Return(err)
 	}
 }
 
@@ -627,41 +341,42 @@ func fakeSubresources(types ...string) []client.Object {
 		var obj client.Object
 		switch t {
 		case "Pod":
-			obj = fake.FakeObj(strconv.Itoa(i), func(obj *corev1.Pod) *corev1.Pod {
+			obj = fake.FakeObj("pod-"+strconv.Itoa(i), func(obj *corev1.Pod) *corev1.Pod {
 				obj.Labels = map[string]string{
 					v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-					v1alpha1.LabelKeyInstance:  "aaa",
+					v1alpha1.LabelKeyInstance:  "test-tikv",
 					v1alpha1.LabelKeyCluster:   "",
 					v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
 				}
 				return obj
 			})
-		case "PodWithFinalizer":
-			obj = fake.FakeObj(strconv.Itoa(i), func(obj *corev1.Pod) *corev1.Pod {
+		case "PodDeleting":
+			obj = fake.FakeObj("pod-deleting-"+strconv.Itoa(i), func(obj *corev1.Pod) *corev1.Pod {
 				obj.Labels = map[string]string{
 					v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-					v1alpha1.LabelKeyInstance:  "aaa",
+					v1alpha1.LabelKeyInstance:  "test-tikv",
 					v1alpha1.LabelKeyCluster:   "",
 					v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
 				}
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
+				now := metav1.NewTime(time.Now())
+				obj.SetDeletionTimestamp(&now)
 				return obj
 			})
 		case "ConfigMap":
-			obj = fake.FakeObj(strconv.Itoa(i), func(obj *corev1.ConfigMap) *corev1.ConfigMap {
+			obj = fake.FakeObj("cm-"+strconv.Itoa(i), func(obj *corev1.ConfigMap) *corev1.ConfigMap {
 				obj.Labels = map[string]string{
 					v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-					v1alpha1.LabelKeyInstance:  "aaa",
+					v1alpha1.LabelKeyInstance:  "test-tikv",
 					v1alpha1.LabelKeyCluster:   "",
 					v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
 				}
 				return obj
 			})
 		case "PersistentVolumeClaim":
-			obj = fake.FakeObj(strconv.Itoa(i), func(obj *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
+			obj = fake.FakeObj("pvc-"+strconv.Itoa(i), func(obj *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
 				obj.Labels = map[string]string{
 					v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-					v1alpha1.LabelKeyInstance:  "aaa",
+					v1alpha1.LabelKeyInstance:  "test-tikv",
 					v1alpha1.LabelKeyCluster:   "",
 					v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
 				}
