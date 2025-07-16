@@ -43,7 +43,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		task.IfBreak(canDeleteAllResources(state), tasks.TaskFinalizerDel(state, r.Client)),
 		task.If(common.CondObjectIsDeleting[scope.TiFlash](state),
-			tasks.TaskOfflineStore(state, r.Client),
+			tasks.TaskOfflineStore(state),
 		),
 
 		common.TaskFinalizerAdd[scope.TiFlash](state, r.Client),
