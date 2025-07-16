@@ -374,16 +374,28 @@ func (bm *backupScheduleManager) getLogBackupCheckpoint(bs *v1alpha1.BackupSched
 	if err != nil {
 		return nil, err
 	}
+
 	if bs.Status.LogBackupStartTs == nil {
-		if commitTs, err := config.ParseTSStringToGoTime(existedLog.Status.CommitTs); err != nil && !commitTs.IsZero() {
-			klog.Warningf("backup schedule %s/%s, log backup %s start ts not set, using commit ts %s as start ts", ns, bsName, logBackupName, commitTs)
-			bs.Status.LogBackupStartTs = &metav1.Time{Time: commitTs}
-		} else {
-			now := time.Now()
-			bs.Status.LogBackupStartTs = &metav1.Time{Time: now}
-			klog.Errorf("backup schedule %s/%s, log backup %s start ts not set, maybe upgraded from older version. It would be set to %s.", ns, bsName, logBackupName, now)
+		startTime := time.Now()
+		errMsg := "" 
+		commitTs, err := config.ParseTSStringToGoTime(existedLog.Status.CommitTs)
+		switch {
+		case err != nil :
+			errMsg = fmt.Sprintf("commit ts parse error: %v", err)
+		case commitTs.IsZero():
+			errMsg = "commit ts is zero"
+		default: 
+			startTime = commitTs
+			klog.Warningf("backup schedule %s/%s, log backup %s start ts not set, using commit ts %s",
+				ns, bsName, logBackupName, commitTs)
 		}
+		if errMsg != "" {
+			klog.Errorf("backup schedule %s/%s, log backup %s start ts not set: %s. Using current time %s",
+				ns, bsName, logBackupName, errMsg, startTime)
+		}
+		bs.Status.LogBackupStartTs = &metav1.Time{Time: startTime}
 	}
+
 	if checkpoint.Before(bs.Status.LogBackupStartTs.Time) {
 		return nil, nil
 	}
