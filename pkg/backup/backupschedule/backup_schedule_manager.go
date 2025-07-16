@@ -375,9 +375,14 @@ func (bm *backupScheduleManager) getLogBackupCheckpoint(bs *v1alpha1.BackupSched
 		return nil, err
 	}
 	if bs.Status.LogBackupStartTs == nil {
-		now := time.Now()
-		bs.Status.LogBackupStartTs = &metav1.Time{Time: now}
-		klog.Warningf("backup schedule %s/%s, log backup %s start ts not set, maybe upgraded from older version. It would be set to %s.", ns, bsName, logBackupName, now)
+		if commitTs, err := config.ParseTSStringToGoTime(existedLog.Status.CommitTs); err != nil && !commitTs.IsZero() {
+			klog.Warningf("backup schedule %s/%s, log backup %s start ts not set, using commit ts %s as start ts", ns, bsName, logBackupName, commitTs)
+			bs.Status.LogBackupStartTs = &metav1.Time{Time: commitTs}
+		} else {
+			now := time.Now()
+			bs.Status.LogBackupStartTs = &metav1.Time{Time: now}
+			klog.Errorf("backup schedule %s/%s, log backup %s start ts not set, maybe upgraded from older version. It would be set to %s.", ns, bsName, logBackupName, now)
+		}
 	}
 	if checkpoint.Before(bs.Status.LogBackupStartTs.Time) {
 		return nil, nil
