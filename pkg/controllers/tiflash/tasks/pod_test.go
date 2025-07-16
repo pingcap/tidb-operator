@@ -292,7 +292,7 @@ func TestTaskPod(t *testing.T) {
 			assert.Equal(tt, c.expectedPodIsTerminating, c.state.IsPodTerminating(), c.desc)
 
 			if c.expectUpdatedPod {
-				expectedPod := newPod(c.state.Cluster(), c.state.TiFlash(), "")
+				expectedPod := newPod(c.state.Cluster(), c.state.TiFlash(), nil)
 				actual := c.state.Pod().DeepCopy()
 				actual.Kind = ""
 				actual.APIVersion = ""
@@ -304,5 +304,5 @@ func TestTaskPod(t *testing.T) {
 }
 
 func fakePod(c *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash) *corev1.Pod {
-	return newPod(c, tiflash, "")
+	return newPod(c, tiflash, nil)
 }

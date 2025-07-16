@@ -60,15 +60,15 @@ func TaskStoreLabels(state *ReconcileContext, c client.Client) task.Task {
 		}
 
 		if !reflect.DeepEqual(state.Store.Labels, storeLabels) {
-			storeID, err := strconv.ParseUint(state.StoreID, 10, 64)
+			storeID, err := strconv.ParseUint(state.Store.ID, 10, 64)
 			if err != nil {
-				return task.Fail().With("failed to parse store id %s: %s", state.StoreID, err)
+				return task.Fail().With("failed to parse store id %s: %s", state.Store.ID, err)
 			}
 			set, err := state.PDClient.Underlay().SetStoreLabels(ctx, storeID, storeLabels)
 			if err != nil {
 				return task.Fail().With("failed to set store labels: %s", err)
 			} else if set {
-				logger.Info("store labels synced", "storeID", state.StoreID, "storeLabels", storeLabels)
+				logger.Info("store labels synced", "storeID", state.Store.ID, "storeLabels", storeLabels)
 			}
 		}
 

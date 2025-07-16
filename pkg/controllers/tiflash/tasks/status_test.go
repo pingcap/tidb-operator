@@ -64,8 +64,9 @@ func TestTaskStatus(t *testing.T) {
 					}),
 					storeState: v1alpha1.StoreStateServing,
 				},
-				Store:   &pdv1.Store{},
-				StoreID: fakeTiFlashName,
+				Store: &pdv1.Store{
+					ID: fakeTiFlashName,
+				},
 			},
 
 			expectedStatus: task.SWait,
@@ -124,8 +125,9 @@ func TestTaskStatus(t *testing.T) {
 					}),
 					storeState: v1alpha1.StoreStateServing,
 				},
-				Store:   &pdv1.Store{},
-				StoreID: fakeTiFlashName,
+				Store: &pdv1.Store{
+					ID: fakeTiFlashName,
+				},
 			},
 
 			expectedStatus: task.SComplete,
@@ -183,8 +185,9 @@ func TestTaskStatus(t *testing.T) {
 					}),
 					isPodTerminating: true,
 				},
-				Store:   &pdv1.Store{},
-				StoreID: fakeTiFlashName,
+				Store: &pdv1.Store{
+					ID: fakeTiFlashName,
+				},
 			},
 
 			expectedStatus: task.SRetry,
