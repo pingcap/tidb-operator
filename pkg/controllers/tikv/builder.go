@@ -38,7 +38,9 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(common.CondClusterIsPaused(state)),
 
 		// get info from pd
-		tasks.TaskContextInfoFromPD(state, r.PDClientManager),
+		task.IfNot(common.CondClusterIsDeleting(state),
+			tasks.TaskContextInfoFromPD(state, r.PDClientManager),
+		),
 
 		task.IfBreak(canDeleteAllResources(state), tasks.TaskFinalizerDel(state, r.Client)),
 		task.If(common.CondObjectIsDeleting[scope.TiKV](state),
