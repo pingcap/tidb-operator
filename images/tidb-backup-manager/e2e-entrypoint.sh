@@ -99,7 +99,7 @@ case "$1" in
         exec $BACKUP_BIN $E2E_ARGS compact "$@"
         ;;
     *)
-        echo "Usage: $0 {backup|restore|clean}"
+        echo "Usage: $0 {backup|restore|clean|compact}"
         echo "Now runs your command."
         echo "$@"
 
