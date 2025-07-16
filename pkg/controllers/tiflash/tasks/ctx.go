@@ -33,10 +33,7 @@ type ReconcileContext struct {
 	PDClient pdm.PDClient
 
 	Store       *pdv1.Store
-	StoreID     string
 	StoreLabels []*metapb.StoreLabel
-
-	StoreNotExists bool
 }
 
 func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task.Task {
@@ -44,12 +41,12 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		ck := state.Cluster()
 		c, ok := cm.Get(timanager.PrimaryKey(ck.Namespace, ck.Name))
 		if !ok {
-			return task.Complete().With("pd client is not registered")
+			return task.Fail().With("pd client is not registered")
 		}
 		state.PDClient = c
 
 		if !c.HasSynced() {
-			return task.Complete().With("store info is not synced, just wait for next sync")
+			return task.Fail().With("store info is not synced, just wait for next sync")
 		}
 
 		s, err := c.Stores().Get(tiflashconfig.GetServiceAddr(state.TiFlash()))
@@ -57,11 +54,10 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 			if !errors.IsNotFound(err) {
 				return task.Fail().With("failed to get store info: %w", err)
 			}
-			state.StoreNotExists = true
 			return task.Complete().With("store does not exist")
 		}
 
-		state.Store, state.StoreID = s, s.ID
+		state.Store = s
 		state.SetStoreState(string(s.NodeState))
 		state.SetRegionCount(s.RegionCount)
 		state.SetStoreBusy(s.IsBusy)

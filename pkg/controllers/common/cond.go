@@ -33,6 +33,12 @@ func CondClusterIsPaused(ctx ClusterState) task.Condition {
 	})
 }
 
+func CondClusterIsDeleting(ctx ClusterState) task.Condition {
+	return task.CondFunc(func() bool {
+		return !ctx.Cluster().DeletionTimestamp.IsZero()
+	})
+}
+
 func CondClusterPDAddrIsNotRegistered(ctx ClusterState) task.Condition {
 	return task.CondFunc(func() bool {
 		return ctx.Cluster().Status.PD == ""
