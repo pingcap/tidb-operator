@@ -16,7 +16,6 @@ package tasks
 
 import (
 	"context"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -27,53 +26,24 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-const (
-	removingWaitInterval = 10 * time.Second
-)
-
 func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
-		switch {
-		case !state.Cluster().GetDeletionTimestamp().IsZero():
-			wait, err := EnsureSubResourcesDeleted(ctx, c, state.TiFlash())
-			if err != nil {
-				return task.Fail().With("cannot delete sub resources: %w", err)
-			}
+		tiflash := state.TiFlash()
+		if tiflash == nil {
+			return task.Fail().With("tiflash is nil")
+		}
 
-			if wait {
-				return task.Retry(task.DefaultRequeueAfter).With("wait all subresources deleted")
-			}
+		wait, err := EnsureSubResourcesDeleted(ctx, c, tiflash)
+		if err != nil {
+			return task.Fail().With("cannot delete sub resources: %w", err)
+		}
 
-			// whole cluster is deleting
-			if err := k8s.RemoveFinalizer(ctx, c, state.TiFlash()); err != nil {
-				return task.Fail().With("cannot remove finalizer: %w", err)
-			}
+		if wait {
+			return task.Retry(task.DefaultRequeueAfter).With("wait all subresources deleted")
+		}
 
-		case state.GetStoreState() == v1alpha1.StoreStateRemoving:
-			// TODO: Complete task and retrigger reconciliation by polling PD
-			return task.Retry(removingWaitInterval).With("wait until the store is removed")
-
-		case state.GetStoreState() == v1alpha1.StoreStateRemoved || state.StoreNotExists:
-			wait, err := EnsureSubResourcesDeleted(ctx, c, state.TiFlash())
-			if err != nil {
-				return task.Fail().With("cannot delete sub resources: %w", err)
-			}
-
-			if wait {
-				return task.Retry(task.DefaultRequeueAfter).With("wait all subresources deleted")
-			}
-			// Store ID is empty may because of tiflash is not initialized
-			// TODO: check whether tiflash is initialized
-			if err := k8s.RemoveFinalizer(ctx, c, state.TiFlash()); err != nil {
-				return task.Fail().With("cannot remove finalizer: %w", err)
-			}
-		default:
-			// get store info successfully and the store still exists
-			if err := state.PDClient.Underlay().DeleteStore(ctx, state.StoreID); err != nil {
-				return task.Fail().With("cannot delete store %s: %v", state.StoreID, err)
-			}
-
-			return task.Retry(removingWaitInterval).With("the store is removing")
+		if err := k8s.RemoveFinalizer(ctx, c, tiflash); err != nil {
+			return task.Fail().With("cannot remove finalizer: %w", err)
 		}
 		return task.Complete().With("finalizer is removed")
 	})
