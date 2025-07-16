@@ -38,11 +38,13 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(common.CondClusterIsPaused(state)),
 
 		// get info from pd
-		tasks.TaskContextInfoFromPD(state, r.PDClientManager),
+		task.IfNot(common.CondClusterIsDeleting(state),
+			tasks.TaskContextInfoFromPD(state, r.PDClientManager),
+		),
 
 		task.IfBreak(canDeleteAllResources(state), tasks.TaskFinalizerDel(state, r.Client)),
 		task.If(common.CondObjectIsDeleting[scope.TiKV](state),
-			tasks.TaskOfflineStore(state, r.Client),
+			tasks.TaskOfflineStore(state),
 		),
 
 		common.TaskFinalizerAdd[scope.TiKV](state, r.Client),
@@ -78,6 +80,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 func canDeleteAllResources(state *tasks.ReconcileContext) task.Condition {
 	return task.CondFunc(func() bool {
 		return !state.Cluster().GetDeletionTimestamp().IsZero() ||
-			(!state.Object().GetDeletionTimestamp().IsZero() && (state.GetStoreState() == v1alpha1.StoreStateRemoved || state.StoreNotExists))
+			(!state.Object().GetDeletionTimestamp().IsZero() &&
+				(state.GetStoreState() == v1alpha1.StoreStateRemoved || state.Store == nil))
 	})
 }

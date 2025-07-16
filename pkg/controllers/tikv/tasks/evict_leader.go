@@ -27,14 +27,14 @@ func TaskEvictLeader(state *ReconcileContext) task.Task {
 			return task.Complete().With("store has been deleted or not created")
 		case state.IsPodTerminating():
 			if !state.LeaderEvicting {
-				if err := state.PDClient.Underlay().BeginEvictLeader(ctx, state.StoreID); err != nil {
+				if err := state.PDClient.Underlay().BeginEvictLeader(ctx, state.Store.ID); err != nil {
 					return task.Fail().With("cannot add evict leader scheduler: %v", err)
 				}
 			}
 			return task.Complete().With("ensure evict leader scheduler exists")
 		default:
 			if state.LeaderEvicting {
-				if err := state.PDClient.Underlay().EndEvictLeader(ctx, state.StoreID); err != nil {
+				if err := state.PDClient.Underlay().EndEvictLeader(ctx, state.Store.ID); err != nil {
 					return task.Fail().With("cannot remove evict leader scheduler: %v", err)
 				}
 			}
