@@ -72,14 +72,10 @@ func (bm *backupScheduleManager) createCompact(bs *v1alpha1.BackupSchedule, chec
 	}
 
 	var startTs, endTs time.Time
-	switch {
-	case bs.Status.LogBackupStartTs == nil:
+	if bs.Status.LogBackupStartTs == nil {
 		return fmt.Errorf("Compact failed: %s/%s, please start a log backup before compact it", bs.GetNamespace(), bs.GetName())
-	case bs.Status.LastCompactProgress == nil:
-		startTs = bs.Status.LogBackupStartTs.Time
-	default:
-		startTs = bs.Status.LastCompactProgress.Time
 	}
+	startTs = bs.Status.LogBackupStartTs.Time
 
 	if !startTs.Before(*checkpoint) {
 		klog.Infof("backupSchedule %s/%s compact: startTs %v is after checkpoint %v, skip compact", bs.GetNamespace(), bs.GetName(), startTs, checkpoint)
@@ -377,6 +373,11 @@ func (bm *backupScheduleManager) getLogBackupCheckpoint(bs *v1alpha1.BackupSched
 	checkpoint, err := config.ParseTSStringToGoTime(existedLog.Status.LogCheckpointTs)
 	if err != nil {
 		return nil, err
+	}
+	if bs.Status.LogBackupStartTs == nil {
+		now := time.Now()
+		bs.Status.LogBackupStartTs = &metav1.Time{Time: now}
+		klog.Warningf("backup schedule %s/%s, log backup %s start ts not set, maybe upgraded from older version. It would be set to %s.", ns, bsName, logBackupName, now)
 	}
 	if checkpoint.Before(bs.Status.LogBackupStartTs.Time) {
 		return nil, nil
