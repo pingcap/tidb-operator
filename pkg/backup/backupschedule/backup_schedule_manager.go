@@ -377,14 +377,14 @@ func (bm *backupScheduleManager) getLogBackupCheckpoint(bs *v1alpha1.BackupSched
 
 	if bs.Status.LogBackupStartTs == nil {
 		startTime := time.Now()
-		errMsg := "" 
+		errMsg := ""
 		commitTs, err := config.ParseTSStringToGoTime(existedLog.Status.CommitTs)
 		switch {
-		case err != nil :
+		case err != nil:
 			errMsg = fmt.Sprintf("commit ts parse error: %v", err)
 		case commitTs.IsZero():
 			errMsg = "commit ts is zero"
-		default: 
+		default:
 			startTime = commitTs
 			klog.Warningf("backup schedule %s/%s, log backup %s start ts not set, using commit ts %s",
 				ns, bsName, logBackupName, commitTs)
