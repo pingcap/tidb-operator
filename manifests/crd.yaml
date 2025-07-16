@@ -24268,6 +24268,10 @@ spec:
                 type: object
               priorityClassName:
                 type: string
+              prune:
+                enum:
+                - afterFailed
+                type: string
               resources:
                 properties:
                   claims:

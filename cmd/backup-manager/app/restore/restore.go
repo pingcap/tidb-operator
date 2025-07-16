@@ -46,6 +46,8 @@ type Options struct {
 	TargetAZ string
 	// UseFSR to indicate if use FSR for TiKV data volumes during EBS snapshot restore
 	UseFSR bool
+	// Abort indicates whether to abort/cleanup a failed restore operation
+	Abort bool
 }
 
 func (ro *Options) restoreData(
