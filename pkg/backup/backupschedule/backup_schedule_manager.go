@@ -142,7 +142,7 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) (err error) {
 
 	// compact
 	defer func() {
-		if bs.Spec.LogBackupTemplate == nil || bs.Spec.CompactBackupTemplate == nil {
+		if bs.Spec.LogBackupTemplate == nil || bs.Spec.CompactBackupTemplate == nil || bs.Status.LogBackupStartTs == nil || checkpoint == nil {
 			return
 		}
 		if err := bm.canPerformNextCompact(bs); err != nil {
