@@ -215,6 +215,13 @@ func (bo *Options) doTruncateLogBackup(ctx context.Context, backup *v1alpha1.Bac
 		"log",
 		"truncate",
 	}
+	
+	// Check for clean-up-compactions annotation
+	// Default behavior: add --clean-up-compactions unless explicitly set to false
+	if value, exists := backup.Annotations["backup.pingcap.com/clean-up-compactions"]; !exists || value != "false" {
+		specificArgs = append(specificArgs, "--clean-up-compactions")
+	}
+	
 	if bo.TruncateUntil != "" && bo.TruncateUntil != "0" {
 		specificArgs = append(specificArgs, fmt.Sprintf("--until=%s", bo.TruncateUntil))
 	} else {
