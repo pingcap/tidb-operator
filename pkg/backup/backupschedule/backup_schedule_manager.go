@@ -385,6 +385,9 @@ func (bm *backupScheduleManager) getLogBackupCheckpoint(bs *v1alpha1.BackupSched
 		return nil, nil
 	}
 
+	// If LogBackupStartTs is nil, it means the log backup is created in a older version (before V1.6.3)
+	// It's real commit ts maybe very old and hard to catch up, so we set LogBackupStartTs to checkpoint.
+	// The LogBackupStartTs will be used to determine the start time of compact.
 	if bs.Status.LogBackupStartTs == nil {
 		bs.Status.LogBackupStartTs = &metav1.Time{Time: checkpoint}
 	}
