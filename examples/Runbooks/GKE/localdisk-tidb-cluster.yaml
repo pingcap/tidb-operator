@@ -7,10 +7,10 @@ spec:
   timezone: UTC
   configUpdateStrategy: RollingUpdate
   pvReclaimPolicy: Retain
-  enableDynamicConfiguration: true
   schedulerName: default-scheduler
   topologySpreadConstraints:
   - topologyKey: topology.kubernetes.io/zone
+  enableDynamicConfiguration: true
   helper:
     image: alpine:3.16.0
   pd:
@@ -18,7 +18,7 @@ spec:
     maxFailoverCount: 0
     replicas: 3
     requests:
-      storage: "10Gi"
+      storage: "5Gi"
     config: |
       [dashboard]
         internal-proxy = true
@@ -47,13 +47,8 @@ spec:
     maxFailoverCount: 0
     replicas: 3
     requests:
-      storage: "100Gi"
-    annotations:
-      tidb.pingcap.com/sysctl-init: "true"
-    podSecurityContext:
-      sysctls:
-      - name: net.core.somaxconn
-        value: "32768"
+      storage: "5Gi"
+    storageClassName: local-storage
     config: {}
     nodeSelector:
       dedicated: tikv
@@ -76,9 +71,15 @@ spec:
     baseImage: pingcap/tidb
     maxFailoverCount: 0
     replicas: 2
+    requests:
+      storage: "5Gi"
     service:
       annotations:
-        cloud.google.com/load-balancer-type: "Internal"
+        service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: 'true'
+        service.beta.kubernetes.io/aws-load-balancer-type: nlb
+        service.beta.kubernetes.io/aws-load-balancer-scheme: internal
+        service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+        service.beta.kubernetes.io/aws-load-balancer-target-node-labels: dedicated=tidb
       exposeStatus: true
       externalTrafficPolicy: Local
       type: LoadBalancer
