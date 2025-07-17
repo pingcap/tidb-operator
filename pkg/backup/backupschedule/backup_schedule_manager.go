@@ -59,10 +59,10 @@ func (bm *backupScheduleManager) doCompact(bs *v1alpha1.BackupSchedule, startTim
 }
 
 func calEndTs(startTs time.Time, span time.Duration, checkpoint time.Time) time.Time {
-	if checkpoint.Sub(startTs) < 3*span {
+	if checkpoint.Sub(startTs) < 10*span {
 		return checkpoint
 	} else {
-		return startTs.Add(3 * span)
+		return startTs.Add(10 * span)
 	}
 }
 
@@ -380,24 +380,7 @@ func (bm *backupScheduleManager) getLogBackupCheckpoint(bs *v1alpha1.BackupSched
 	}
 
 	if bs.Status.LogBackupStartTs == nil {
-		startTime := time.Now()
-		errMsg := ""
-		commitTs, err := config.ParseTSStringToGoTime(existedLog.Status.CommitTs)
-		switch {
-		case err != nil:
-			errMsg = fmt.Sprintf("commit ts parse error: %v", err)
-		case commitTs.IsZero():
-			errMsg = "commit ts is zero"
-		default:
-			startTime = commitTs
-			klog.Warningf("backup schedule %s/%s, log backup %s start ts not set, using commit ts %s",
-				ns, bsName, logBackupName, commitTs)
-		}
-		if errMsg != "" {
-			klog.Errorf("backup schedule %s/%s, log backup %s start ts not set: %s. Using current time %s",
-				ns, bsName, logBackupName, errMsg, startTime)
-		}
-		bs.Status.LogBackupStartTs = &metav1.Time{Time: startTime}
+		bs.Status.LogBackupStartTs = &metav1.Time{Time: checkpoint}
 	}
 
 	if checkpoint.Before(bs.Status.LogBackupStartTs.Time) {
