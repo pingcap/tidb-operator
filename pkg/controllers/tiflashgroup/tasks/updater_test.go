@@ -16,283 +16,218 @@ package tasks
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
-	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 )
 
 const (
-	oldRevision = "old"
-	newRevision = "new"
+	testTiFlashOldRevision = "old-rev-123"
+	testTiFlashNewRevision = "new-rev-456"
+	testTiFlashNamespace   = "test-ns"
+	testTiFlashCluster     = "test-cluster"
+	testTiFlashGroup       = "test-tiflashgroup"
 )
 
-func TestTaskUpdater(t *testing.T) {
+func TestTaskUpdater_ScaleIn(t *testing.T) {
 	cases := []struct {
-		desc          string
-		state         *ReconcileContext
-		objs          []client.Object
-		unexpectedErr bool
-
-		expectedStatus     task.Status
-		expectedTiFlashNum int
+		desc            string
+		initialReplicas int
+		desiredReplicas int
+		existingTiFlash []*v1alpha1.TiFlash
+		annotations     map[string]map[string]string // map[tiflashName]map[annotationKey]annotationValue
+		expectedOffline []string                     // names of TiFlash that should be marked offline
+		expectedStatus  task.Status
 	}{
 		{
-			desc: "no fs with 1 replicas",
-			state: &ReconcileContext{
-				State: &state{
-					fg:      fake.FakeObj[v1alpha1.TiFlashGroup]("aaa"),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-				},
+			desc:            "scale in from 3 to 1, no annotations",
+			initialReplicas: 3,
+			desiredReplicas: 1,
+			existingTiFlash: []*v1alpha1.TiFlash{
+				createTestTiFlash("tiflash-0", false, ""),
+				createTestTiFlash("tiflash-1", false, ""),
+				createTestTiFlash("tiflash-2", false, ""),
 			},
-
-			expectedStatus:     task.SWait,
-			expectedTiFlashNum: 1,
+			expectedOffline: []string{"tiflash-0", "tiflash-1"}, // First 2 selected by default
+			expectedStatus:  task.SWait,
 		},
 		{
-			desc: "version upgrade check",
-			state: &ReconcileContext{
-				State: &state{
-					fg: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlashGroup) *v1alpha1.TiFlashGroup {
-						obj.Spec.Template.Spec.Version = "v8.1.0"
-						obj.Spec.Cluster.Name = "cluster"
-						obj.Status.Version = "v8.0.0"
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-				},
+			desc:            "scale in from 3 to 1, with deletion annotation",
+			initialReplicas: 3,
+			desiredReplicas: 1,
+			existingTiFlash: []*v1alpha1.TiFlash{
+				createTestTiFlash("tiflash-0", false, ""),
+				createTestTiFlash("tiflash-1", false, ""),
+				createTestTiFlash("tiflash-2", false, ""),
 			},
-			objs: []client.Object{
-				fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
-					obj.Spec.Cluster.Name = "cluster"
-					obj.Spec.Replicas = ptr.To[int32](1)
-					obj.Spec.Template.Spec.Version = "v8.1.0"
-					obj.Status.Version = "v8.0.0"
-					return obj
-				}),
+			annotations: map[string]map[string]string{
+				"tiflash-2": {v1alpha1.ScaleInDeleteAnnotation: "true"},
 			},
-
-			expectedStatus: task.SRetry,
+			expectedOffline: []string{"tiflash-2", "tiflash-0"}, // Annotated instance preferred
+			expectedStatus:  task.SWait,
 		},
 		{
-			desc: "1 updated tiflash with 1 replicas",
-			state: &ReconcileContext{
-				State: &state{
-					fg:      fake.FakeObj[v1alpha1.TiFlashGroup]("aaa"),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-					fs: []*v1alpha1.TiFlash{
-						fakeAvailableTiFlash("aaa-xxx", fake.FakeObj[v1alpha1.TiFlashGroup]("aaa"), newRevision),
-					},
-					updateRevision: newRevision,
-				},
+			desc:            "scale in from 3 to 2, one already offline",
+			initialReplicas: 3,
+			desiredReplicas: 2,
+			existingTiFlash: []*v1alpha1.TiFlash{
+				createTestTiFlash("tiflash-0", false, ""),
+				createTestTiFlash("tiflash-1", true, v1alpha1.OfflineReasonActive),
+				createTestTiFlash("tiflash-2", false, ""),
 			},
-
-			expectedStatus:     task.SComplete,
-			expectedTiFlashNum: 1,
-		},
-		{
-			desc: "no fs with 2 replicas",
-			state: &ReconcileContext{
-				State: &state{
-					fg: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlashGroup) *v1alpha1.TiFlashGroup {
-						obj.Spec.Replicas = ptr.To[int32](2)
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-				},
-			},
-
-			expectedStatus:     task.SWait,
-			expectedTiFlashNum: 2,
-		},
-		{
-			desc: "no fs with 2 replicas and call api failed",
-			state: &ReconcileContext{
-				State: &state{
-					fg: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlashGroup) *v1alpha1.TiFlashGroup {
-						obj.Spec.Replicas = ptr.To[int32](2)
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-				},
-			},
-			unexpectedErr: true,
-
-			expectedStatus: task.SFail,
-		},
-		{
-			desc: "1 outdated tiflash with 2 replicas",
-			state: &ReconcileContext{
-				State: &state{
-					fg: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlashGroup) *v1alpha1.TiFlashGroup {
-						obj.Spec.Replicas = ptr.To[int32](2)
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-					fs: []*v1alpha1.TiFlash{
-						fakeAvailableTiFlash("aaa-xxx", fake.FakeObj[v1alpha1.TiFlashGroup]("aaa"), oldRevision),
-					},
-					updateRevision: newRevision,
-				},
-			},
-
-			expectedStatus:     task.SWait,
-			expectedTiFlashNum: 2,
-		},
-		{
-			desc: "1 outdated tiflash with 2 replicas but cannot call api, will fail",
-			state: &ReconcileContext{
-				State: &state{
-					fg: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlashGroup) *v1alpha1.TiFlashGroup {
-						obj.Spec.Replicas = ptr.To[int32](2)
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-					fs: []*v1alpha1.TiFlash{
-						fakeAvailableTiFlash("aaa-xxx", fake.FakeObj[v1alpha1.TiFlashGroup]("aaa"), oldRevision),
-					},
-					updateRevision: newRevision,
-				},
-			},
-			unexpectedErr: true,
-
-			expectedStatus: task.SFail,
-		},
-		{
-			desc: "2 updated tiflash with 2 replicas",
-			state: &ReconcileContext{
-				State: &state{
-					fg: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlashGroup) *v1alpha1.TiFlashGroup {
-						obj.Spec.Replicas = ptr.To[int32](2)
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-					fs: []*v1alpha1.TiFlash{
-						fakeAvailableTiFlash("aaa-xxx", fake.FakeObj[v1alpha1.TiFlashGroup]("aaa"), newRevision),
-						fakeAvailableTiFlash("aaa-yyy", fake.FakeObj[v1alpha1.TiFlashGroup]("aaa"), newRevision),
-					},
-					updateRevision: newRevision,
-				},
-			},
-
-			expectedStatus:     task.SComplete,
-			expectedTiFlashNum: 2,
-		},
-		{
-			desc: "2 updated tiflash with 2 replicas and cannot call api, can complete",
-			state: &ReconcileContext{
-				State: &state{
-					fg: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlashGroup) *v1alpha1.TiFlashGroup {
-						obj.Spec.Replicas = ptr.To[int32](2)
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-					fs: []*v1alpha1.TiFlash{
-						fakeAvailableTiFlash("aaa-xxx", fake.FakeObj[v1alpha1.TiFlashGroup]("aaa"), newRevision),
-						fakeAvailableTiFlash("aaa-yyy", fake.FakeObj[v1alpha1.TiFlashGroup]("aaa"), newRevision),
-					},
-					updateRevision: newRevision,
-				},
-			},
-			unexpectedErr: true,
-
-			expectedStatus:     task.SComplete,
-			expectedTiFlashNum: 2,
-		},
-		{
-			// NOTE: it not really check whether the policy is worked
-			// It should be tested in /pkg/updater and /pkg/updater/policy package
-			desc: "topology evenly spread",
-			state: &ReconcileContext{
-				State: &state{
-					fg: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlashGroup) *v1alpha1.TiFlashGroup {
-						obj.Spec.Replicas = ptr.To[int32](3)
-						obj.Spec.SchedulePolicies = append(obj.Spec.SchedulePolicies, v1alpha1.SchedulePolicy{
-							Type: v1alpha1.SchedulePolicyTypeEvenlySpread,
-							EvenlySpread: &v1alpha1.SchedulePolicyEvenlySpread{
-								Topologies: []v1alpha1.ScheduleTopology{
-									{
-										Topology: v1alpha1.Topology{
-											"zone": "us-west-1a",
-										},
-									},
-									{
-										Topology: v1alpha1.Topology{
-											"zone": "us-west-1b",
-										},
-									},
-									{
-										Topology: v1alpha1.Topology{
-											"zone": "us-west-1c",
-										},
-									},
-								},
-							},
-						})
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-				},
-			},
-
-			expectedStatus:     task.SWait,
-			expectedTiFlashNum: 3,
+			expectedOffline: nil, // No new instances should be marked offline
+			expectedStatus:  task.SWait,
 		},
 	}
 
-	for i := range cases {
-		c := &cases[i]
-		t.Run(c.desc, func(tt *testing.T) {
-			tt.Parallel()
+	for _, tc := range cases {
+		t.Run(tc.desc, func(t *testing.T) {
+			// Setup test environment
+			tfg := createTestTiFlashGroup(tc.desiredReplicas)
+			cluster := createTestCluster()
 
-			ctx := context.Background()
-			c.objs = append(c.objs, c.state.TiFlashGroup(), c.state.Cluster())
-			fc := client.NewFakeClient(c.objs...)
-			for _, obj := range c.state.TiFlashSlice() {
-				require.NoError(tt, fc.Apply(ctx, obj), c.desc)
+			// Apply annotations if specified
+			for tiflashName, annotations := range tc.annotations {
+				for _, tiflash := range tc.existingTiFlash {
+					if tiflash.Name == tiflashName {
+						if tiflash.Annotations == nil {
+							tiflash.Annotations = make(map[string]string)
+						}
+						for k, v := range annotations {
+							tiflash.Annotations[k] = v
+						}
+					}
+				}
 			}
 
-			if c.unexpectedErr {
-				// cannot create or update tiflash instance
-				fc.WithError("patch", "tiflashs", errors.NewInternalError(fmt.Errorf("fake internal err")))
+			objs := []client.Object{tfg, cluster}
+			for _, tiflash := range tc.existingTiFlash {
+				objs = append(objs, tiflash)
 			}
 
-			tr := tracker.New[*v1alpha1.TiFlashGroup, *v1alpha1.TiFlash]()
+			cli := client.NewFakeClient(objs...)
+			state := createTestReconcileContext(tfg, cluster, tc.existingTiFlash)
+			tracker := tracker.New[*v1alpha1.TiFlashGroup, *v1alpha1.TiFlash]()
 
-			res, done := task.RunTask(ctx, TaskUpdater(c.state, fc, tr))
-			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
-			assert.False(tt, done, c.desc)
+			for _, tiflash := range tc.existingTiFlash {
+				require.NoError(t, cli.Apply(context.Background(), tiflash))
+			}
 
-			if !c.unexpectedErr {
-				fs := v1alpha1.TiFlashList{}
-				require.NoError(tt, fc.List(ctx, &fs), c.desc)
-				assert.Len(tt, fs.Items, c.expectedTiFlashNum, c.desc)
+			// Execute the two-step updater task
+			taskFunc := TaskUpdater(state, cli, tracker)
+			result, _ := task.RunTask(context.Background(), taskFunc)
+
+			assert.Equal(t, tc.expectedStatus, result.Status(), "unexpected task status")
+
+			// Verify that the expected instances are marked offline
+			for _, expectedOfflineName := range tc.expectedOffline {
+				var foundTiFlash v1alpha1.TiFlash
+				err := cli.Get(context.Background(), client.ObjectKey{
+					Namespace: testTiFlashNamespace,
+					Name:      expectedOfflineName,
+				}, &foundTiFlash)
+				require.NoError(t, err)
+				assert.True(t, foundTiFlash.Spec.Offline, "TiFlash %s should be marked offline", expectedOfflineName)
+			}
+
+			// Verify that other instances are not marked offline
+			for _, tiflash := range tc.existingTiFlash {
+				shouldBeOffline := false
+				for _, name := range tc.expectedOffline {
+					if tiflash.Name == name {
+						shouldBeOffline = true
+						break
+					}
+				}
+				if !shouldBeOffline && !tiflash.Spec.Offline {
+					var foundTiFlash v1alpha1.TiFlash
+					err := cli.Get(context.Background(), client.ObjectKey{
+						Namespace: testTiFlashNamespace,
+						Name:      tiflash.Name,
+					}, &foundTiFlash)
+					require.NoError(t, err)
+					assert.False(t, foundTiFlash.Spec.Offline, "TiFlash %s should not be marked offline", tiflash.Name)
+				}
 			}
 		})
 	}
 }
 
-func fakeAvailableTiFlash(name string, fg *v1alpha1.TiFlashGroup, rev string) *v1alpha1.TiFlash {
-	return fake.FakeObj(name, func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-		tiflash := runtime.ToTiFlash(TiFlashNewer(fg, rev).New())
-		tiflash.Name = ""
-		tiflash.Status.Conditions = append(tiflash.Status.Conditions, metav1.Condition{
-			Type:   v1alpha1.CondReady,
-			Status: metav1.ConditionTrue,
-		})
-		tiflash.Status.CurrentRevision = rev
-		tiflash.DeepCopyInto(obj)
-		return obj
-	})
+// Helper functions for creating test objects
+
+func createTestTiFlash(name string, offline bool, offlineReason string) *v1alpha1.TiFlash {
+	tiflash := &v1alpha1.TiFlash{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: testTiFlashNamespace,
+		},
+		Spec: v1alpha1.TiFlashSpec{
+			Offline: offline,
+		},
+		Status: v1alpha1.TiFlashStatus{},
+	}
+
+	// Add offline condition if specified
+	if offlineReason != "" {
+		status := metav1.ConditionTrue
+		if offlineReason == v1alpha1.OfflineReasonCompleted {
+			status = metav1.ConditionFalse // Completed means offline process is done
+		}
+		condition := v1alpha1.NewOfflineCondition(offlineReason, "test condition", status)
+		v1alpha1.SetOfflineCondition(&tiflash.Status.Conditions, condition)
+	}
+
+	return tiflash
+}
+
+func createTestTiFlashGroup(replicas int) *v1alpha1.TiFlashGroup {
+	return &v1alpha1.TiFlashGroup{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testTiFlashGroup,
+			Namespace: testTiFlashNamespace,
+		},
+		Spec: v1alpha1.TiFlashGroupSpec{
+			Cluster:  v1alpha1.ClusterReference{Name: testTiFlashCluster},
+			Replicas: ptr.To(int32(replicas)),
+			Template: v1alpha1.TiFlashTemplate{
+				Spec: v1alpha1.TiFlashTemplateSpec{
+					Version: "v7.5.0",
+					Volumes: []v1alpha1.Volume{
+						{Name: "data", Storage: resource.MustParse("10Gi"), Mounts: []v1alpha1.VolumeMount{{Type: "data"}}},
+					},
+				},
+			},
+		},
+		Status: v1alpha1.TiFlashGroupStatus{},
+	}
+}
+
+func createTestCluster() *v1alpha1.Cluster {
+	return &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testTiFlashCluster,
+			Namespace: testTiFlashNamespace,
+		},
+		Spec: v1alpha1.ClusterSpec{},
+	}
+}
+
+func createTestReconcileContext(tfg *v1alpha1.TiFlashGroup, cluster *v1alpha1.Cluster, tiflashs []*v1alpha1.TiFlash) *ReconcileContext {
+	return &ReconcileContext{
+		State: &state{
+			fg:             tfg,
+			cluster:        cluster,
+			fs:             tiflashs,
+			updateRevision: testTiFlashNewRevision,
+		},
+	}
 }

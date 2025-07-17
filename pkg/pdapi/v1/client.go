@@ -53,6 +53,8 @@ type PDWriter interface {
 	SetStoreLabels(ctx context.Context, storeID uint64, labels map[string]string) (bool, error)
 	// DeleteStore deletes a TiKV/TiFlash store from the cluster.
 	DeleteStore(ctx context.Context, storeID string) error
+	// CancelDeleteStore cancels the deletion of a TiKV/TiFlash store, returning it to online state.
+	CancelDeleteStore(ctx context.Context, storeID string) error
 	// DeleteMember deletes a PD member from the cluster.
 	DeleteMember(ctx context.Context, name string) error
 
@@ -328,6 +330,46 @@ func (c *pdClient) DeleteStore(ctx context.Context, storeID string) error {
 	}
 
 	return fmt.Errorf("failed to delete store %s: %v", storeID, string(body))
+}
+
+// CancelDeleteStore cancels the deletion of a TiKV/TiFlash store, returning it to online state.
+// This method sends a PUT request to the PD API to cancel the store deletion process.
+func (c *pdClient) CancelDeleteStore(ctx context.Context, storeID string) error {
+	// Create the request body to set the store state to "Up"
+	requestData := map[string]interface{}{
+		"state": 0, // 0 means "Up" state in PD API
+	}
+
+	data, err := json.Marshal(requestData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request data: %w", err)
+	}
+
+	apiURL := fmt.Sprintf("%s/%s/%s/state", c.url, storePrefix, storeID)
+	req, err := http.NewRequestWithContext(ctx, "PUT", apiURL, bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	//nolint:bodyclose // has been handled
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer httputil.DeferClose(res.Body)
+
+	// Cancel store deletion should return http.StatusOK
+	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
+		return nil
+	}
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+
+	return fmt.Errorf("failed to cancel store deletion for %s: %v", storeID, string(body))
 }
 
 func (c *pdClient) DeleteMember(ctx context.Context, name string) error {

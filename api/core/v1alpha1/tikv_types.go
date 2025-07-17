@@ -214,6 +214,12 @@ type TiKVSpec struct {
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="subdomain is immutable"
 	Subdomain string `json:"subdomain"`
 
+	// Offline marks the store as offline in PD to begin data migration.
+	// When true, the store will be marked as offline in PD.
+	// When false, the store will be marked as online in PD (if possible).
+	// +optional
+	Offline bool `json:"offline,omitempty"`
+
 	// TiKVTemplateSpec embedded some fields managed by TiKVGroup
 	TiKVTemplateSpec `json:",inline"`
 }

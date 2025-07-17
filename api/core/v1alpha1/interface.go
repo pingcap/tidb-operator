@@ -12,19 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tasks
+package v1alpha1
 
 import (
-	"context"
-
-	"github.com/pingcap/tidb-operator/pkg/controllers/common"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// TaskOfflineStore handles the two-step store deletion process based on spec.offline field.
-// This implements the state machine for offline operations: Pending -> Active -> Completed/Failed/Canceled.
-func TaskOfflineStore(state *ReconcileContext) task.Task {
-	return task.NameTaskFunc("OfflineTiKVStore", func(ctx context.Context) task.Result {
-		return common.TaskOfflineStoreStateMachine(ctx, state, state.TiKV(), "tikv")
-	})
+// Store represents a TiKV or TiFlash store.
+type Store interface {
+	client.Object
+
+	IsOffline() bool
+	GetOfflineCondition() *metav1.Condition
+	SetOfflineCondition(metav1.Condition)
 }

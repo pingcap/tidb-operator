@@ -60,6 +60,29 @@ const (
 	ReasonPodNotDeleted  = "PodNotDeleted"
 )
 
+const (
+	// StoreOfflineConditionType represents the condition of the store offline process.
+	StoreOfflineConditionType = "Offlining"
+)
+
+const (
+	// OfflineReasonPending means the offline operation is requested but not yet started.
+	OfflineReasonPending = "Pending"
+	// OfflineReasonActive means the store is being offlined.
+	OfflineReasonActive = "Active"
+	// OfflineReasonCompleted means the store has been successfully offlined and removed from PD.
+	OfflineReasonCompleted = "Completed"
+	// OfflineReasonFailed means the offline operation failed.
+	OfflineReasonFailed = "Failed"
+	// OfflineReasonCancelled means the offline operation was cancelled.
+	OfflineReasonCancelled = "Cancelled"
+)
+
+const (
+	// ScaleInDeleteAnnotation is used to mark instances for deletion during scale-in operations.
+	ScaleInDeleteAnnotation = "scale-in.pingcap.com/delete"
+)
+
 // TODO(liubo02): move to meta
 const (
 	// KeyPrefix defines key prefix of well known labels and annotations
@@ -97,6 +120,49 @@ const (
 	// This label will be added to the PVCs created by the tidb operator.
 	LabelKeyVolumeName = KeyPrefix + "volume-name"
 )
+
+// Helper functions for offline condition management
+func NewOfflineCondition(reason, message string, status metav1.ConditionStatus) metav1.Condition {
+	return metav1.Condition{
+		Type:               StoreOfflineConditionType,
+		Status:             status,
+		Reason:             reason,
+		Message:            message,
+		LastTransitionTime: metav1.Now(),
+	}
+}
+
+func SetOfflineCondition(conditions *[]metav1.Condition, condition metav1.Condition) {
+	if conditions == nil {
+		return
+	}
+	
+	// Find existing condition
+	for i := range *conditions {
+		if (*conditions)[i].Type == StoreOfflineConditionType {
+			// Update existing condition
+			(*conditions)[i] = condition
+			return
+		}
+	}
+	
+	// Add new condition
+	*conditions = append(*conditions, condition)
+}
+
+func GetOfflineCondition(conditions []metav1.Condition) *metav1.Condition {
+	for i := range conditions {
+		if conditions[i].Type == StoreOfflineConditionType {
+			return &conditions[i]
+		}
+	}
+	return nil
+}
+
+func IsOfflineConditionTrue(conditions []metav1.Condition) bool {
+	condition := GetOfflineCondition(conditions)
+	return condition != nil && condition.Status == metav1.ConditionTrue
+}
 
 const (
 	// Label value for meta.LabelKeyComponent

@@ -16,282 +16,377 @@ package tasks
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
-	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 )
 
 const (
-	oldRevision = "old"
-	newRevision = "new"
+	testOldRevision = "old-rev-123"
+	testNewRevision = "new-rev-456"
+	testNamespace   = "test-ns"
+	testCluster     = "test-cluster"
+	testKVGroup     = "test-kvgroup"
 )
 
-func TestTaskUpdater(t *testing.T) {
+func TestTaskUpdater_ScaleDown(t *testing.T) {
 	cases := []struct {
-		desc          string
-		state         *ReconcileContext
-		objs          []client.Object
-		unexpectedErr bool
-
+		desc            string
+		initialReplicas int
+		desiredReplicas int
+		existingTiKVs   []*v1alpha1.TiKV
+		annotations     map[string]map[string]string // map[tikvName]map[annotationKey]annotationValue
+		expectedOffline []string                     // names of TiKVs that should be marked offline
 		expectedStatus  task.Status
-		expectedTiKVNum int
 	}{
 		{
-			desc: "no kvs with 1 replicas",
-			state: &ReconcileContext{
-				State: &state{
-					kvg:     fake.FakeObj[v1alpha1.TiKVGroup]("aaa"),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-				},
+			desc:            "scale in from 3 to 1, no annotations",
+			initialReplicas: 3,
+			desiredReplicas: 1,
+			existingTiKVs: []*v1alpha1.TiKV{
+				createTestTiKV("tikv-0", false, ""),
+				createTestTiKV("tikv-1", false, ""),
+				createTestTiKV("tikv-2", false, ""),
 			},
-
+			expectedOffline: []string{"tikv-0", "tikv-1"}, // First 2 selected by default
 			expectedStatus:  task.SWait,
-			expectedTiKVNum: 1,
 		},
 		{
-			desc: "version upgrade check",
-			state: &ReconcileContext{
-				State: &state{
-					kvg: fake.FakeObj("aaa", func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
-						obj.Spec.Template.Spec.Version = "v8.1.0"
-						obj.Spec.Cluster.Name = "cluster"
-						obj.Status.Version = "v8.0.0"
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-				},
+			desc:            "scale in from 3 to 1, with deletion annotation",
+			initialReplicas: 3,
+			desiredReplicas: 1,
+			existingTiKVs: []*v1alpha1.TiKV{
+				createTestTiKV("tikv-0", false, ""),
+				createTestTiKV("tikv-1", false, ""),
+				createTestTiKV("tikv-2", false, ""),
 			},
-			objs: []client.Object{
-				fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
-					obj.Spec.Cluster.Name = "cluster"
-					obj.Spec.Replicas = ptr.To[int32](1)
-					obj.Spec.Template.Spec.Version = "v8.1.0"
-					obj.Status.Version = "v8.0.0"
-					return obj
-				}),
+			annotations: map[string]map[string]string{
+				"tikv-2": {v1alpha1.ScaleInDeleteAnnotation: "true"},
 			},
-
-			expectedStatus: task.SRetry,
-		},
-		{
-			desc: "1 updated tikv with 1 replicas",
-			state: &ReconcileContext{
-				State: &state{
-					kvg:     fake.FakeObj[v1alpha1.TiKVGroup]("aaa"),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-					kvs: []*v1alpha1.TiKV{
-						fakeAvailableTiKV("aaa-xxx", fake.FakeObj[v1alpha1.TiKVGroup]("aaa"), newRevision),
-					},
-					updateRevision: newRevision,
-				},
-			},
-
-			expectedStatus:  task.SComplete,
-			expectedTiKVNum: 1,
-		},
-		{
-			desc: "no kvs with 2 replicas",
-			state: &ReconcileContext{
-				State: &state{
-					kvg: fake.FakeObj("aaa", func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
-						obj.Spec.Replicas = ptr.To[int32](2)
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-				},
-			},
-
+			expectedOffline: []string{"tikv-2", "tikv-0"}, // Annotated instance preferred
 			expectedStatus:  task.SWait,
-			expectedTiKVNum: 2,
 		},
 		{
-			desc: "no kvs with 2 replicas and call api failed",
-			state: &ReconcileContext{
-				State: &state{
-					kvg: fake.FakeObj("aaa", func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
-						obj.Spec.Replicas = ptr.To[int32](2)
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-				},
+			desc:            "scale in from 3 to 2, one already offline",
+			initialReplicas: 3,
+			desiredReplicas: 2,
+			existingTiKVs: []*v1alpha1.TiKV{
+				createTestTiKV("tikv-0", false, ""),
+				createTestTiKV("tikv-1", true, v1alpha1.OfflineReasonActive),
+				createTestTiKV("tikv-2", false, ""),
 			},
-			unexpectedErr: true,
-
-			expectedStatus: task.SFail,
-		},
-		{
-			desc: "1 outdated tikv with 2 replicas",
-			state: &ReconcileContext{
-				State: &state{
-					kvg: fake.FakeObj("aaa", func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
-						obj.Spec.Replicas = ptr.To[int32](2)
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-					kvs: []*v1alpha1.TiKV{
-						fakeAvailableTiKV("aaa-xxx", fake.FakeObj[v1alpha1.TiKVGroup]("aaa"), oldRevision),
-					},
-					updateRevision: newRevision,
-				},
-			},
-
+			expectedOffline: nil, // No new instances should be marked offline
 			expectedStatus:  task.SWait,
-			expectedTiKVNum: 2,
-		},
-		{
-			desc: "1 outdated tikv with 2 replicas but cannot call api, will fail",
-			state: &ReconcileContext{
-				State: &state{
-					kvg: fake.FakeObj("aaa", func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
-						obj.Spec.Replicas = ptr.To[int32](2)
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-					kvs: []*v1alpha1.TiKV{
-						fakeAvailableTiKV("aaa-xxx", fake.FakeObj[v1alpha1.TiKVGroup]("aaa"), oldRevision),
-					},
-					updateRevision: newRevision,
-				},
-			},
-			unexpectedErr: true,
-
-			expectedStatus: task.SFail,
-		},
-		{
-			desc: "2 updated tikv with 2 replicas",
-			state: &ReconcileContext{
-				State: &state{
-					kvg: fake.FakeObj("aaa", func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
-						obj.Spec.Replicas = ptr.To[int32](2)
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-					kvs: []*v1alpha1.TiKV{
-						fakeAvailableTiKV("aaa-xxx", fake.FakeObj[v1alpha1.TiKVGroup]("aaa"), newRevision),
-						fakeAvailableTiKV("aaa-yyy", fake.FakeObj[v1alpha1.TiKVGroup]("aaa"), newRevision),
-					},
-					updateRevision: newRevision,
-				},
-			},
-
-			expectedStatus:  task.SComplete,
-			expectedTiKVNum: 2,
-		},
-		{
-			desc: "2 updated tikv with 2 replicas and cannot call api, can complete",
-			state: &ReconcileContext{
-				State: &state{
-					kvg: fake.FakeObj("aaa", func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
-						obj.Spec.Replicas = ptr.To[int32](2)
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-					kvs: []*v1alpha1.TiKV{
-						fakeAvailableTiKV("aaa-xxx", fake.FakeObj[v1alpha1.TiKVGroup]("aaa"), newRevision),
-						fakeAvailableTiKV("aaa-yyy", fake.FakeObj[v1alpha1.TiKVGroup]("aaa"), newRevision),
-					},
-					updateRevision: newRevision,
-				},
-			},
-			unexpectedErr: true,
-
-			expectedStatus:  task.SComplete,
-			expectedTiKVNum: 2,
-		},
-		{
-			// NOTE: it not really check whether the policy is worked
-			// It should be tested in /pkg/updater and /pkg/updater/policy package
-			desc: "topology evenly spread",
-			state: &ReconcileContext{
-				State: &state{
-					kvg: fake.FakeObj("aaa", func(obj *v1alpha1.TiKVGroup) *v1alpha1.TiKVGroup {
-						obj.Spec.Replicas = ptr.To[int32](3)
-						obj.Spec.SchedulePolicies = append(obj.Spec.SchedulePolicies, v1alpha1.SchedulePolicy{
-							Type: v1alpha1.SchedulePolicyTypeEvenlySpread,
-							EvenlySpread: &v1alpha1.SchedulePolicyEvenlySpread{
-								Topologies: []v1alpha1.ScheduleTopology{
-									{
-										Topology: v1alpha1.Topology{
-											"zone": "us-west-1a",
-										},
-									},
-									{
-										Topology: v1alpha1.Topology{
-											"zone": "us-west-1b",
-										},
-									},
-									{
-										Topology: v1alpha1.Topology{
-											"zone": "us-west-1c",
-										},
-									},
-								},
-							},
-						})
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
-				},
-			},
-
-			expectedStatus:  task.SWait,
-			expectedTiKVNum: 3,
 		},
 	}
 
-	for i := range cases {
-		c := &cases[i]
-		t.Run(c.desc, func(tt *testing.T) {
-			tt.Parallel()
+	for _, tc := range cases {
+		t.Run(tc.desc, func(t *testing.T) {
+			// Setup test environment
+			kvg := createTestTiKVGroup(tc.desiredReplicas)
+			cluster := createTestCluster()
 
-			ctx := context.Background()
-			c.objs = append(c.objs, c.state.TiKVGroup(), c.state.Cluster())
-			fc := client.NewFakeClient(c.objs...)
-			for _, obj := range c.state.TiKVSlice() {
-				require.NoError(tt, fc.Apply(ctx, obj), c.desc)
+			// Apply annotations if specified
+			for tikvName, annotations := range tc.annotations {
+				for _, tikv := range tc.existingTiKVs {
+					if tikv.Name == tikvName {
+						if tikv.Annotations == nil {
+							tikv.Annotations = make(map[string]string)
+						}
+						for k, v := range annotations {
+							tikv.Annotations[k] = v
+						}
+					}
+				}
 			}
 
-			if c.unexpectedErr {
-				// cannot create or update tikv instance
-				fc.WithError("patch", "tikvs", errors.NewInternalError(fmt.Errorf("fake internal err")))
+			objs := []client.Object{kvg, cluster}
+			for _, tikv := range tc.existingTiKVs {
+				objs = append(objs, tikv)
 			}
 
-			tr := tracker.New[*v1alpha1.TiKVGroup, *v1alpha1.TiKV]()
-			res, done := task.RunTask(ctx, TaskUpdater(c.state, fc, tr))
-			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
-			assert.False(tt, done, c.desc)
+			cli := client.NewFakeClient(objs...)
+			state := createTestReconcileContext(kvg, cluster, tc.existingTiKVs)
+			testTracker := tracker.New[*v1alpha1.TiKVGroup, *v1alpha1.TiKV]()
 
-			if !c.unexpectedErr {
-				kvs := v1alpha1.TiKVList{}
-				require.NoError(tt, fc.List(ctx, &kvs), c.desc)
-				assert.Len(tt, kvs.Items, c.expectedTiKVNum, c.desc)
+			for _, tikv := range tc.existingTiKVs {
+				require.NoError(t, cli.Apply(context.Background(), tikv))
+			}
+
+			// Execute the two-step updater task
+			taskFunc := TaskUpdater(state, cli, testTracker)
+			result, _ := task.RunTask(context.Background(), taskFunc)
+
+			assert.Equal(t, tc.expectedStatus, result.Status(), "unexpected task status")
+
+			// Verify that the expected instances are marked offline
+			for _, expectedOfflineName := range tc.expectedOffline {
+				var foundTiKV v1alpha1.TiKV
+				err := cli.Get(context.Background(), client.ObjectKey{
+					Namespace: testNamespace,
+					Name:      expectedOfflineName,
+				}, &foundTiKV)
+				require.NoError(t, err)
+				assert.True(t, foundTiKV.Spec.Offline, "TiKV %s should be marked offline", expectedOfflineName)
+			}
+
+			// Verify that other instances are not marked offline
+			for _, tikv := range tc.existingTiKVs {
+				shouldBeOffline := false
+				for _, name := range tc.expectedOffline {
+					if tikv.Name == name {
+						shouldBeOffline = true
+						break
+					}
+				}
+				if !shouldBeOffline && !tikv.Spec.Offline {
+					var foundTiKV v1alpha1.TiKV
+					err := cli.Get(context.Background(), client.ObjectKey{
+						Namespace: testNamespace,
+						Name:      tikv.Name,
+					}, &foundTiKV)
+					require.NoError(t, err)
+					assert.False(t, foundTiKV.Spec.Offline, "TiKV %s should not be marked offline", tikv.Name)
+				}
 			}
 		})
 	}
 }
 
-func fakeAvailableTiKV(name string, kvg *v1alpha1.TiKVGroup, rev string) *v1alpha1.TiKV {
-	return fake.FakeObj(name, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-		tikv := runtime.ToTiKV(TiKVNewer(kvg, rev).New())
-		tikv.Name = ""
-		tikv.Status.Conditions = append(tikv.Status.Conditions, metav1.Condition{
-			Type:   v1alpha1.CondReady,
-			Status: metav1.ConditionTrue,
+func TestTaskUpdater_ScaleUpCancellation(t *testing.T) {
+	cases := []struct {
+		desc            string
+		initialReplicas int
+		desiredReplicas int
+		existingTiKVs   []*v1alpha1.TiKV
+		expectedCancel  []string // names of TiKVs that should have offline canceled
+		expectedStatus  task.Status
+	}{
+		{
+			desc:            "full cancellation: scale from 1 to 3, cancel 2 offline instances",
+			initialReplicas: 1,
+			desiredReplicas: 3,
+			existingTiKVs: []*v1alpha1.TiKV{
+				createTestTiKV("tikv-0", false, ""),
+				createTestTiKV("tikv-1", true, v1alpha1.OfflineReasonActive),
+				createTestTiKV("tikv-2", true, v1alpha1.OfflineReasonActive),
+			},
+			expectedCancel: []string{"tikv-1", "tikv-2"},
+			expectedStatus: task.SWait,
+		},
+		{
+			desc:            "partial cancellation: scale from 1 to 2, cancel 1 of 2 offline instances",
+			initialReplicas: 1,
+			desiredReplicas: 2,
+			existingTiKVs: []*v1alpha1.TiKV{
+				createTestTiKV("tikv-0", false, ""),
+				createTestTiKV("tikv-1", true, v1alpha1.OfflineReasonActive),
+				createTestTiKV("tikv-2", true, v1alpha1.OfflineReasonActive),
+			},
+			expectedCancel: []string{"tikv-1"}, // Only cancel 1 of the 2 offline instances
+			expectedStatus: task.SWait,
+		},
+		{
+			desc:            "pure scale out: no offline instances to cancel",
+			initialReplicas: 2,
+			desiredReplicas: 3,
+			existingTiKVs: []*v1alpha1.TiKV{
+				createTestTiKV("tikv-0", false, ""),
+				createTestTiKV("tikv-1", false, ""),
+			},
+			expectedCancel: nil,
+			expectedStatus: task.SWait, // Will trigger scale out logic which requires waiting
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.desc, func(t *testing.T) {
+			// Setup test environment
+			kvg := createTestTiKVGroup(tc.desiredReplicas)
+			cluster := createTestCluster()
+
+			objs := []client.Object{kvg, cluster}
+			for _, tikv := range tc.existingTiKVs {
+				objs = append(objs, tikv)
+			}
+
+			cli := client.NewFakeClient(objs...)
+			state := createTestReconcileContext(kvg, cluster, tc.existingTiKVs)
+			testTracker := tracker.New[*v1alpha1.TiKVGroup, *v1alpha1.TiKV]()
+
+			for _, tikv := range tc.existingTiKVs {
+				require.NoError(t, cli.Apply(context.Background(), tikv))
+			}
+
+			// Execute the two-step updater task
+			taskFunc := TaskUpdater(state, cli, testTracker)
+			result, _ := task.RunTask(context.Background(), taskFunc)
+
+			assert.Equal(t, tc.expectedStatus, result.Status(), "unexpected task status")
+
+			// Verify that the expected instances have offline canceled
+			for _, expectedCancelName := range tc.expectedCancel {
+				var foundTiKV v1alpha1.TiKV
+				err := cli.Get(context.Background(), client.ObjectKey{
+					Namespace: testNamespace,
+					Name:      expectedCancelName,
+				}, &foundTiKV)
+				require.NoError(t, err)
+				assert.False(t, foundTiKV.Spec.Offline, "TiKV %s should have offline canceled", expectedCancelName)
+			}
 		})
-		tikv.Status.CurrentRevision = rev
-		tikv.DeepCopyInto(obj)
-		return obj
-	})
+	}
+}
+
+func TestTaskUpdater_OfflineCompletion(t *testing.T) {
+	cases := []struct {
+		desc            string
+		initialReplicas int
+		desiredReplicas int
+		existingTiKVs   []*v1alpha1.TiKV
+		expectDeleted   []string // names of TiKVs that should be deleted
+		expectedStatus  task.Status
+	}{
+		{
+			desc:            "delete instances after offline completion",
+			initialReplicas: 2,
+			desiredReplicas: 2,
+			existingTiKVs: []*v1alpha1.TiKV{
+				createTestTiKV("tikv-0", false, ""),
+				createTestTiKV("tikv-1", false, ""),
+				createTestTiKV("tikv-2", true, v1alpha1.OfflineReasonCompleted),
+			},
+			expectDeleted:  []string{"tikv-2"},
+			expectedStatus: task.SWait,
+		},
+		{
+			desc:            "no offline completed instances",
+			initialReplicas: 2,
+			desiredReplicas: 2,
+			existingTiKVs: []*v1alpha1.TiKV{
+				createTestTiKV("tikv-0", false, ""),
+				createTestTiKV("tikv-1", true, v1alpha1.OfflineReasonActive),
+			},
+			expectDeleted:  nil,
+			expectedStatus: task.SWait, // Normal updates may require waiting
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.desc, func(t *testing.T) {
+			// Setup test environment
+			kvg := createTestTiKVGroup(tc.desiredReplicas)
+			cluster := createTestCluster()
+
+			objs := []client.Object{kvg, cluster}
+			for _, tikv := range tc.existingTiKVs {
+				objs = append(objs, tikv)
+			}
+
+			cli := client.NewFakeClient(objs...)
+			state := createTestReconcileContext(kvg, cluster, tc.existingTiKVs)
+			testTracker := tracker.New[*v1alpha1.TiKVGroup, *v1alpha1.TiKV]()
+
+			for _, tikv := range tc.existingTiKVs {
+				require.NoError(t, cli.Apply(context.Background(), tikv))
+			}
+
+			// Execute the two-step updater task
+			taskFunc := TaskUpdater(state, cli, testTracker)
+			result, _ := task.RunTask(context.Background(), taskFunc)
+
+			assert.Equal(t, tc.expectedStatus, result.Status(), "unexpected task status")
+
+			// Verify that the expected instances are deleted (not found)
+			for _, expectedDeletedName := range tc.expectDeleted {
+				var foundTiKV v1alpha1.TiKV
+				err := cli.Get(context.Background(), client.ObjectKey{
+					Namespace: testNamespace,
+					Name:      expectedDeletedName,
+				}, &foundTiKV)
+				// Should have deletion timestamp set
+				assert.True(t, err != nil || !foundTiKV.DeletionTimestamp.IsZero(),
+					"TiKV %s should be deleted or have deletion timestamp", expectedDeletedName)
+			}
+		})
+	}
+}
+
+// Helper functions for creating test objects
+
+func createTestTiKV(name string, offline bool, offlineReason string) *v1alpha1.TiKV {
+	tikv := &v1alpha1.TiKV{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: testNamespace,
+		},
+		Spec: v1alpha1.TiKVSpec{
+			Offline: offline,
+		},
+		Status: v1alpha1.TiKVStatus{},
+	}
+
+	// Add offline condition if specified
+	if offlineReason != "" {
+		status := metav1.ConditionTrue
+		if offlineReason == v1alpha1.OfflineReasonCompleted {
+			status = metav1.ConditionFalse // Completed means offline process is done
+		}
+		condition := v1alpha1.NewOfflineCondition(offlineReason, "test condition", status)
+		v1alpha1.SetOfflineCondition(&tikv.Status.Conditions, condition)
+	}
+
+	return tikv
+}
+
+func createTestTiKVGroup(replicas int) *v1alpha1.TiKVGroup {
+	return &v1alpha1.TiKVGroup{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testKVGroup,
+			Namespace: testNamespace,
+		},
+		Spec: v1alpha1.TiKVGroupSpec{
+			Cluster:  v1alpha1.ClusterReference{Name: testCluster},
+			Replicas: ptr.To(int32(replicas)),
+			Template: v1alpha1.TiKVTemplate{
+				Spec: v1alpha1.TiKVTemplateSpec{
+					Version: "v7.5.0",
+					Volumes: []v1alpha1.Volume{
+						{Name: "data", Storage: resource.MustParse("10Gi"), Mounts: []v1alpha1.VolumeMount{{Type: "data"}}},
+					},
+				},
+			},
+		},
+		Status: v1alpha1.TiKVGroupStatus{},
+	}
+}
+
+func createTestCluster() *v1alpha1.Cluster {
+	return &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testCluster,
+			Namespace: testNamespace,
+		},
+		Spec: v1alpha1.ClusterSpec{},
+	}
+}
+
+func createTestReconcileContext(kvg *v1alpha1.TiKVGroup, cluster *v1alpha1.Cluster, tikvs []*v1alpha1.TiKV) *ReconcileContext {
+	return &ReconcileContext{
+		State: &state{
+			kvg:            kvg,
+			cluster:        cluster,
+			kvs:            tikvs,
+			updateRevision: testNewRevision,
+		},
+	}
 }

@@ -41,6 +41,9 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			tasks.TaskContextInfoFromPD(state, r.PDClientManager),
 		),
 
+		// handle offline state machine for two-step store deletion
+		tasks.TaskOfflineStore(state),
+
 		task.IfBreak(canDeleteAllResources(state), tasks.TaskFinalizerDel(state, r.Client)),
 		task.If(common.CondObjectIsDeleting[scope.TiFlash](state),
 			tasks.TaskOfflineStore(state),
@@ -73,9 +76,31 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 }
 
 // canDeleteAllResources checks if the resources can be deleted.
+// For the two-step store deletion process, we require offline completion before deletion.
 func canDeleteAllResources(state *tasks.ReconcileContext) task.Condition {
 	return task.CondFunc(func() bool {
-		return !state.Cluster().GetDeletionTimestamp().IsZero() ||
-			(!state.Object().GetDeletionTimestamp().IsZero() && (state.GetStoreState() == v1alpha1.StoreStateRemoved || state.Store == nil))
+		// Always allow deletion if cluster is being deleted
+		if !state.Cluster().GetDeletionTimestamp().IsZero() {
+			return true
+		}
+
+		// For instance deletion, check if offline operation is completed
+		if !state.Object().GetDeletionTimestamp().IsZero() {
+			// Legacy path: store is removed or doesn't exist
+			if state.GetStoreState() == v1alpha1.StoreStateRemoved || state.Store == nil {
+				return true
+			}
+
+			// New path: check if offline operation is completed
+			tiflash := state.TiFlash()
+			if tiflash != nil && tiflash.Spec.Offline {
+				condition := v1alpha1.GetOfflineCondition(tiflash.Status.Conditions)
+				if condition != nil && condition.Reason == v1alpha1.OfflineReasonCompleted {
+					return true
+				}
+			}
+		}
+
+		return false
 	})
 }
