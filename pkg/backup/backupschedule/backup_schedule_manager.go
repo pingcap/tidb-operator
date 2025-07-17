@@ -146,7 +146,7 @@ func (bm *backupScheduleManager) Sync(bs *v1alpha1.BackupSchedule) (err error) {
 
 	// compact
 	defer func() {
-		if bs.Spec.LogBackupTemplate == nil || bs.Spec.CompactBackupTemplate == nil {
+		if bs.Spec.LogBackupTemplate == nil || bs.Spec.CompactBackupTemplate == nil || bs.Status.LogBackupStartTs == nil || checkpoint == nil {
 			return
 		}
 		if err := bm.canPerformNextCompact(bs); err != nil {
@@ -274,6 +274,9 @@ func (bm *backupScheduleManager) canPerformNextBackup(bs *v1alpha1.BackupSchedul
 // It returns a controller.RequeueError if the backup is still running,
 // otherwise it updates the LastCompactProgress or returns any encountered error.
 func (bm *backupScheduleManager) canPerformNextCompact(bs *v1alpha1.BackupSchedule) error {
+	if bs.Spec.CompactBackupTemplate == nil || bs.Status.LogBackupStartTs == nil {
+		return fmt.Errorf("backup schedule %s/%s: compact backup is not enabled", bs.GetNamespace(), bs.GetName())
+	}
 	if bs.Status.LastCompact == "" {
 		return nil
 	}
@@ -378,6 +381,17 @@ func (bm *backupScheduleManager) getLogBackupCheckpoint(bs *v1alpha1.BackupSched
 	if err != nil {
 		return nil, err
 	}
+	if checkpoint.IsZero() {
+		return nil, nil
+	}
+
+	// If LogBackupStartTs is nil, it means the log backup is created in a older version (before V1.6.3)
+	// It's real commit ts maybe very old and hard to catch up, so we set LogBackupStartTs to checkpoint.
+	// The LogBackupStartTs will be used to determine the start time of compact.
+	if bs.Status.LogBackupStartTs == nil {
+		bs.Status.LogBackupStartTs = &metav1.Time{Time: checkpoint}
+	}
+
 	if checkpoint.Before(bs.Status.LogBackupStartTs.Time) {
 		return nil, nil
 	}
