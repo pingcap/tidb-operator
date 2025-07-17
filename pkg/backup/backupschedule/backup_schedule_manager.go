@@ -59,10 +59,10 @@ func (bm *backupScheduleManager) doCompact(bs *v1alpha1.BackupSchedule, startTim
 }
 
 func calEndTs(startTs time.Time, span time.Duration, checkpoint time.Time) time.Time {
-	if checkpoint.Sub(startTs) < 10*span {
+	if checkpoint.Sub(startTs) < 3*span {
 		return checkpoint
 	} else {
-		return startTs.Add(10 * span)
+		return startTs.Add(3 * span)
 	}
 }
 
