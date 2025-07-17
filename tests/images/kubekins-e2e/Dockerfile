@@ -1,11 +1,11 @@
-FROM debian:buster-slim
+FROM debian:bookworm-slim
 
 ARG GO_VERSION=1.23.4
 
 # common util tools
 RUN apt-get update && \
     apt-get install -y build-essential ca-certificates curl git openssl default-mysql-client unzip wget && \
-    apt-get install -y python && \
+    apt-get install -y python3 && \
     apt-get autoremove -y && \
     apt-get clean -y
 
