@@ -274,6 +274,9 @@ func (bm *backupScheduleManager) canPerformNextBackup(bs *v1alpha1.BackupSchedul
 // It returns a controller.RequeueError if the backup is still running,
 // otherwise it updates the LastCompactProgress or returns any encountered error.
 func (bm *backupScheduleManager) canPerformNextCompact(bs *v1alpha1.BackupSchedule) error {
+	if bs.Spec.CompactBackupTemplate == nil || bs.Status.LogBackupStartTs == nil {
+		return fmt.Errorf("backup schedule %s/%s: compact backup is not enabled", bs.GetNamespace(), bs.GetName())
+	}
 	if bs.Status.LastCompact == "" {
 		return nil
 	}
@@ -377,6 +380,9 @@ func (bm *backupScheduleManager) getLogBackupCheckpoint(bs *v1alpha1.BackupSched
 	checkpoint, err := config.ParseTSStringToGoTime(existedLog.Status.LogCheckpointTs)
 	if err != nil {
 		return nil, err
+	}
+	if checkpoint.IsZero() {
+		return nil, nil
 	}
 
 	if bs.Status.LogBackupStartTs == nil {
