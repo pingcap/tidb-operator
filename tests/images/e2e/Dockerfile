@@ -1,4 +1,4 @@
-FROM debian:buster-slim
+FROM debian:bookworm-slim
 
 ENV KUBECTL_VERSION=v1.28.5
 ENV HELM_VERSION=v3.11.0
