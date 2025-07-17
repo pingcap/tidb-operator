@@ -72,10 +72,14 @@ func (bm *backupScheduleManager) createCompact(bs *v1alpha1.BackupSchedule, chec
 	}
 
 	var startTs, endTs time.Time
-	if bs.Status.LogBackupStartTs == nil {
+	switch {
+	case bs.Status.LogBackupStartTs == nil:
 		return fmt.Errorf("Compact failed: %s/%s, please start a log backup before compact it", bs.GetNamespace(), bs.GetName())
+	case bs.Status.LastCompactProgress == nil:
+		startTs = bs.Status.LogBackupStartTs.Time
+	default:
+		startTs = bs.Status.LastCompactProgress.Time
 	}
-	startTs = bs.Status.LogBackupStartTs.Time
 
 	if !startTs.Before(*checkpoint) {
 		klog.Infof("backupSchedule %s/%s compact: startTs %v is after checkpoint %v, skip compact", bs.GetNamespace(), bs.GetName(), startTs, checkpoint)
