@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -26,6 +27,22 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
+
+func GetPodIfExists[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](ctx context.Context, c client.Client, obj F) (*corev1.Pod, error) {
+	pod, err := GetPod[S](ctx, c, obj)
+	if err != nil {
+		return nil, err
+	}
+	if pod == nil {
+		return nil, fmt.Errorf("not found")
+	}
+
+	return pod, nil
+}
 
 func GetPod[
 	S scope.Instance[F, T],
@@ -42,7 +59,7 @@ func GetPod[
 	}
 
 	if len(pl.Items) == 0 {
-		return nil, nil
+		return nil, errors.NewNotFound(corev1.Resource("pods"), "")
 	}
 
 	if len(pl.Items) != 1 {

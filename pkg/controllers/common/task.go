@@ -176,10 +176,10 @@ func TaskContextPod[
 	return task.NameTaskFunc("ContextPod", func(ctx context.Context) task.Result {
 		pod, err := apicall.GetPod[S](ctx, c, state.Object())
 		if err != nil {
+			if errors.IsNotFound(err) {
+				return task.Complete().With("pod doesn't exist")
+			}
 			return task.Fail().With("cannot get pod: %v", err)
-		}
-		if pod == nil {
-			return task.Complete().With("pod doesn't exist")
 		}
 
 		state.SetPod(pod)

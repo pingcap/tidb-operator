@@ -17,14 +17,13 @@ package framework
 import (
 	"context"
 
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/onsi/ginkgo/v2"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
@@ -44,7 +43,7 @@ func (f *Framework) WaitForPDGroupReady(ctx context.Context, pdg *v1alpha1.PDGro
 }
 
 func (f *Framework) WaitForPDGroupSuspended(ctx context.Context, pdg *v1alpha1.PDGroup) {
-	f.Must(waiter.WaitForListDeleted(ctx, f.Client, &corev1.PodList{}, waiter.LongTaskTimeout, client.InNamespace(f.Cluster.Namespace)))
+	f.Must(waiter.WaitForInstanceListDeleted[scope.PDGroup](ctx, f.Client, pdg))
 	f.Must(waiter.WaitForObjectCondition[runtime.PDGroupTuple](
 		ctx,
 		f.Client,

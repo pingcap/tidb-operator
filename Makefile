@@ -175,17 +175,10 @@ e2e/run-upgrade:
 e2e: bin/kind release
 	$(ROOT)/hack/e2e.sh --prepare run run-upgrade $(GINKGO_OPTS)
 
-.PHONY: e2e/reinstall-operator
-e2e/reinstall-operator:
-	$(ROOT)/hack/e2e.sh --reinstall-operator
-
-.PHONY: e2e/reinstall-backup-manager
-e2e/reinstall-backup-manager:
-	$(ROOT)/hack/e2e.sh --reinstall-backup-manager
-
-.PHONY: e2e/reload-testing-workload
-e2e/reload-testing-workload:
-	$(ROOT)/hack/e2e.sh --reload-testing-workload
+.PHONY: e2e/deploy
+e2e/deploy: release
+	$(KUBECTL) apply --server-side=true -f $(OUTPUT_DIR)/manifests/tidb-operator.crds.yaml
+	$(KUBECTL) apply --server-side=true -f $(OUTPUT_DIR)/manifests/tidb-operator-e2e.yaml
 
 .PHONY: kube
 kube: bin/kind
