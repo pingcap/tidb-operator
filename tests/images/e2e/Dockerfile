@@ -8,7 +8,7 @@ ARG TARGETARCH
 # python is required by gcloud
 RUN apt-get update && \
     apt-get install -y ca-certificates curl git openssl default-mysql-client unzip && \
-    apt-get install -y python && \
+    apt-get install -y python3 && \
     apt-get autoremove -y && \
     apt-get clean -y
 
