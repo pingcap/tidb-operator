@@ -228,3 +228,17 @@ type TiKVStatus struct {
 	CommonStatus `json:",inline"`
 	StoreStatus  `json:",inline"`
 }
+
+var _ Store = &TiKV{}
+
+func (s *TiKV) IsOffline() bool {
+	return s.Spec.Offline
+}
+
+func (s *TiKV) GetOfflineCondition() *metav1.Condition {
+	return GetOfflineCondition(s.Status.Conditions)
+}
+
+func (s *TiKV) SetOfflineCondition(condition metav1.Condition) {
+	SetOfflineCondition(&s.Status.Conditions, condition)
+}

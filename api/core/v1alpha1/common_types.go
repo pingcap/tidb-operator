@@ -136,7 +136,7 @@ func SetOfflineCondition(conditions *[]metav1.Condition, condition metav1.Condit
 	if conditions == nil {
 		return
 	}
-	
+
 	// Find existing condition
 	for i := range *conditions {
 		if (*conditions)[i].Type == StoreOfflineConditionType {
@@ -145,7 +145,7 @@ func SetOfflineCondition(conditions *[]metav1.Condition, condition metav1.Condit
 			return
 		}
 	}
-	
+
 	// Add new condition
 	*conditions = append(*conditions, condition)
 }
@@ -157,11 +157,6 @@ func GetOfflineCondition(conditions []metav1.Condition) *metav1.Condition {
 		}
 	}
 	return nil
-}
-
-func IsOfflineConditionTrue(conditions []metav1.Condition) bool {
-	condition := GetOfflineCondition(conditions)
-	return condition != nil && condition.Status == metav1.ConditionTrue
 }
 
 const (

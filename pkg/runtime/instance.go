@@ -15,6 +15,7 @@
 package runtime
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -51,4 +52,20 @@ type InstanceSet interface {
 
 type InstanceTuple[PT client.Object, PU Instance] interface {
 	Tuple[PT, PU]
+}
+
+// Store represents a TiKV or TiFlash store.
+type Store interface {
+	client.Object
+
+	IsOffline() bool
+	SetOffline(bool)
+	GetOfflineCondition() *metav1.Condition
+	SetOfflineCondition(metav1.Condition)
+}
+
+// StoreInstance represents an instance that is both a Store and Instance.
+type StoreInstance interface {
+	Instance
+	Store
 }

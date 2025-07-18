@@ -42,6 +42,7 @@ type mockStore struct {
 
 func (m *mockStore) GetName() string                        { return m.name }
 func (m *mockStore) IsOffline() bool                        { return m.offline }
+func (m *mockStore) SetOffline(offline bool)                { m.offline = offline }
 func (m *mockStore) GetOfflineCondition() *metav1.Condition { return m.condition }
 func (m *mockStore) SetOfflineCondition(c metav1.Condition) { m.condition = &c }
 func (m *mockStore) GetAnnotations() map[string]string      { return m.annotations }
