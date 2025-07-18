@@ -339,7 +339,8 @@ function e2e::prepare() {
 
     image:prepare
 
-    make e2e/deploy
+    # TODO(liubo02): use a lib script
+    make KUBECTL=${KUBECTL} e2e/deploy
 }
 
 function e2e::e2e() {

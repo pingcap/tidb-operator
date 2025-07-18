@@ -114,7 +114,7 @@ func TaskStoreStatus(state *ReconcileContext) task.Task {
 func syncLeadersEvictedCond(tikv *v1alpha1.TiKV, store *pdv1.Store, isEvicting bool) bool {
 	status := metav1.ConditionFalse
 	reason := v1alpha1.ReasonNotEvicted
-	msg := "leaders are not evicted"
+	msg := "leaders are not all evicted"
 	switch {
 	case store == nil:
 		status = metav1.ConditionTrue
