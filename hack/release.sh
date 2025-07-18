@@ -49,7 +49,15 @@ fi
 
 echo "Generate tidb-operator.yaml"
 cat $BOILERPLATE > $OPERATOR
+cat $BOILERPLATE > $E2E_OPERATOR
 cat << EOF >> $OPERATOR
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tidb-admin
+EOF
+cat << EOF >> $E2E_OPERATOR
 ---
 apiVersion: v1
 kind: Namespace
