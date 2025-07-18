@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
+	"github.com/pingcap/kvproto/pkg/pdpb"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -2845,6 +2846,132 @@ func TestPDMemberManagerSyncPDStsWhenPdNotJoinCluster(t *testing.T) {
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 				g.Expect(tc.Status.PD.UnjoinedMembers).To(BeEmpty())
 				g.Expect(len(tc.Status.PD.Members)).To(Equal(3))
+			},
+		},
+	}
+	for i := range tests {
+		t.Logf("begin: %s", tests[i].name)
+		testFn(&tests[i], t)
+		t.Logf("end: %s", tests[i].name)
+	}
+}
+
+func TestPDMemberManagerSyncPDPeerUrlsSts(t *testing.T) {
+	g := NewGomegaWithT(t)
+	type testcase struct {
+		name         string
+		modify       func(cluster *v1alpha1.TidbCluster)
+		pdHealth     *pdapi.HealthInfo
+		err          bool
+		membersInfo  *pdapi.MembersInfo
+		expectSchema string
+	}
+
+	testFn := func(test *testcase, t *testing.T) {
+		tc := newTidbClusterForPD()
+		ns := tc.Namespace
+		tcName := tc.Name
+
+		pmm, _, _ := newFakePDMemberManager()
+		pmm.deps.PDControl = pdapi.NewFakePDControl(pmm.deps.KubeInformerFactory.Core().V1().Secrets().Lister(), true)
+		fakePDControl := pmm.deps.PDControl.(*pdapi.FakePDControl)
+		pdClient := controller.NewFakePDClient(fakePDControl, tc)
+		etcdClient := controller.NewFakeEtcdClient(fakePDControl, tc)
+
+		pdClient.AddReaction(pdapi.GetHealthActionType, func(action *pdapi.Action) (interface{}, error) {
+			return test.pdHealth, nil
+		})
+		pdClient.AddReaction(pdapi.GetClusterActionType, func(action *pdapi.Action) (interface{}, error) {
+			return &metapb.Cluster{Id: uint64(1)}, nil
+		})
+		pdClient.AddReaction(pdapi.GetMembersActionType, func(action *pdapi.Action) (interface{}, error) {
+			return test.membersInfo, nil
+		})
+		etcdClient.AddReaction(pdapi.EtcdUpdateMemberActionType, func(action *pdapi.Action) (interface{}, error) {
+			return test.expectSchema, nil
+		})
+
+		err := pmm.Sync(tc)
+		g.Expect(controller.IsRequeueError(err)).To(BeTrue())
+
+		_, err = pmm.deps.ServiceLister.Services(ns).Get(controller.PDMemberName(tcName))
+		g.Expect(err).NotTo(HaveOccurred())
+		_, err = pmm.deps.ServiceLister.Services(ns).Get(controller.PDPeerMemberName(tcName))
+		g.Expect(err).NotTo(HaveOccurred())
+		_, err = pmm.deps.StatefulSetLister.StatefulSets(ns).Get(controller.PDMemberName(tcName))
+		g.Expect(err).NotTo(HaveOccurred())
+
+		test.modify(tc)
+		err = pmm.syncPDStatefulSetForTidbCluster(tc)
+		if test.err {
+			g.Expect(err).To(HaveOccurred())
+		} else {
+			g.Expect(err).NotTo(HaveOccurred())
+		}
+	}
+	tests := []testcase{
+		{
+			name:         "upgrade from non-tls to tls",
+			expectSchema: "https://",
+			modify: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec = v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:v8.1.0",
+						},
+					},
+					TiDB: &v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: true,
+						},
+					},
+					TiKV:       &v1alpha1.TiKVSpec{},
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
+				}
+			},
+			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+				{Name: "pd0", MemberID: 1, ClientUrls: []string{"http://pd0:2379"}, Health: true},
+			}},
+			membersInfo: &pdapi.MembersInfo{
+				Members: []*pdpb.Member{
+					{
+						Name:     "pd0",
+						MemberId: 1,
+						PeerUrls: []string{"http://pd0:2380"},
+					},
+				},
+			},
+		},
+		{
+			name:         "upgrade from tls to non-tls",
+			expectSchema: "http://",
+			modify: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec = v1alpha1.TidbClusterSpec{
+					PD: &v1alpha1.PDSpec{
+						ComponentSpec: v1alpha1.ComponentSpec{
+							Image: "pingcap/pd:v8.1.0",
+						},
+					},
+					TiDB: &v1alpha1.TiDBSpec{
+						TLSClient: &v1alpha1.TiDBTLSClient{
+							Enabled: false,
+						},
+					},
+					TiKV:       &v1alpha1.TiKVSpec{},
+					TLSCluster: &v1alpha1.TLSCluster{Enabled: false},
+				}
+			},
+			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
+				{Name: "pd0", MemberID: 1, ClientUrls: []string{"https://pd0:2379"}, Health: true},
+			}},
+			membersInfo: &pdapi.MembersInfo{
+				Members: []*pdpb.Member{
+					{
+						Name:     "pd0",
+						MemberId: 1,
+						PeerUrls: []string{"https://pd0:2380"},
+					},
+				},
 			},
 		},
 	}
