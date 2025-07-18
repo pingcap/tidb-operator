@@ -63,7 +63,10 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		state.SetRegionCount(s.RegionCount)
 		state.SetStoreBusy(s.IsBusy)
 
-		// TODO: cache evict leader scheduler info
+		// TODO: cache evict leader scheduler info, then we don't need to check suspend here
+		if coreutil.ShouldSuspendCompute(state.Cluster()) {
+			return task.Complete().With("cluster is suspending")
+		}
 		scheduler, err := state.PDClient.Underlay().GetEvictLeaderScheduler(ctx, state.Store.ID)
 		if err != nil {
 			return task.Fail().With("pd is unexpectedly crashed: %v", err)
