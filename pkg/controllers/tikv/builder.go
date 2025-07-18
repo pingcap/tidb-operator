@@ -37,12 +37,20 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// check whether it's paused
 		task.IfBreak(common.CondClusterIsPaused(state)),
 
-		// get info from pd
-		task.IfNot(common.CondClusterIsDeleting(state),
-			tasks.TaskContextInfoFromPD(state, r.PDClientManager),
+		// if the cluster is deleting, del all subresources and remove the finalizer directly
+		task.IfBreak(common.CondClusterIsDeleting(state),
+			tasks.TaskFinalizerDel(state, r.Client),
 		),
 
-		task.IfBreak(canDeleteAllResources(state), tasks.TaskFinalizerDel(state, r.Client)),
+		// get info from pd
+		tasks.TaskContextInfoFromPD(state, r.PDClientManager),
+
+		// if instance is deleting and store is removed
+		task.IfBreak(ObjectIsDeletingAndStoreIsRemoved(state),
+			tasks.TaskEndEvictLeader(state),
+			tasks.TaskFinalizerDel(state, r.Client),
+		),
+		// if instance is deleting and store is not removed
 		task.If(common.CondObjectIsDeleting[scope.TiKV](state),
 			tasks.TaskOfflineStore(state),
 		),
@@ -52,6 +60,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskContextPod[scope.TiKV](state, r.Client),
 
 		// check whether the cluster is suspending
+		// if cluster is suspending, we cannot handle any tikv deletion
 		task.IfBreak(common.CondClusterIsSuspending(state),
 			// NOTE: suspend tikv pod should delete with grace peroid
 			// TODO(liubo02): combine with the common one
@@ -76,11 +85,9 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 	return runner
 }
 
-// canDeleteAllResources checks if the resources can be deleted.
-func canDeleteAllResources(state *tasks.ReconcileContext) task.Condition {
+func ObjectIsDeletingAndStoreIsRemoved(state *tasks.ReconcileContext) task.Condition {
 	return task.CondFunc(func() bool {
-		return !state.Cluster().GetDeletionTimestamp().IsZero() ||
-			(!state.Object().GetDeletionTimestamp().IsZero() &&
-				(state.GetStoreState() == v1alpha1.StoreStateRemoved || state.Store == nil))
+		return !state.Object().GetDeletionTimestamp().IsZero() &&
+			(state.GetStoreState() == v1alpha1.StoreStateRemoved || state.Store == nil)
 	})
 }

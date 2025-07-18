@@ -35,6 +35,7 @@ var (
 	Update  = ginkgo.Label("op:Update")
 	Scale   = ginkgo.Label("op:Scale")
 	Suspend = ginkgo.Label("op:Suspend")
+	Delete  = ginkgo.Label("op:Delete")
 
 	// Env
 	MultipleAZ = ginkgo.Label("env:MultipleAZ")

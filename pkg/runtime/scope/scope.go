@@ -87,6 +87,11 @@ type InstanceList[
 	List[L, F]
 }
 
+type ClientObject[T any] interface {
+	client.Object
+	*T
+}
+
 type Scheme interface {
 	Component() string
 }
