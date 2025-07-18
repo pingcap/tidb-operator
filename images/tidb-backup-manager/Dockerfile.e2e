@@ -14,7 +14,6 @@ RUN wget -nv https://github.com/realestate-com-au/shush/releases/download/${SHUS
     && mv shush_linux_${TARGETARCH} /usr/local/bin/shush \
     && chmod 755 /usr/local/bin/shush
 
-ARG TIDB_VERSION=v8.5.2
 COPY --from=pingcap/tidb-lightning:v8.5.2 /tidb-lightning /tidb-lightning-ctl /
 COPY --from=pingcap/dumpling:v8.5.2 /dumpling /
 
