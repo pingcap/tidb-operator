@@ -23,7 +23,7 @@ fi
 
 # parameters
 OPERATOR_OLD="v1.6.1"
-OPERATOR_NEW="v1.6.2"
+OPERATOR_NEW="v1.6.3"
 TIDB_OLD="v8.5.0"
 TIDB_NEW="v8.5.2"
 
