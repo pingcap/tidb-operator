@@ -307,6 +307,7 @@ func newTidbClusterForPDMSUpgrader() *v1alpha1.TidbCluster {
 					StorageClassName: pointer.StringPtr("my-storage-class"),
 				},
 			},
+			ClusterDomain: "cluster.local",
 		},
 		Status: v1alpha1.TidbClusterStatus{
 			PDMS: map[string]*v1alpha1.PDMSStatus{
