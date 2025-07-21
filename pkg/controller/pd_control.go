@@ -151,3 +151,11 @@ func NewFakePDClientWithAddress(pdControl *pdapi.FakePDControl, peerURL string) 
 	pdControl.SetPDClientWithAddress(peerURL, pdClient)
 	return pdClient
 }
+
+// NewFakeEtcdClient creates a fake etcdClient that is set as the etcd client
+func NewFakeEtcdClient(pdControl *pdapi.FakePDControl, tc *v1alpha1.TidbCluster) *pdapi.FakeEtcdClient {
+	etcdClient := pdapi.NewFakeEtcdClient()
+	pdControl.SetEtcdClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), etcdClient)
+
+	return etcdClient
+}
