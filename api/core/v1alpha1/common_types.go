@@ -78,11 +78,6 @@ const (
 	OfflineReasonCancelled = "Cancelled"
 )
 
-const (
-	// ScaleInDeleteAnnotation is used to mark instances for deletion during scale-in operations.
-	ScaleInDeleteAnnotation = "scale-in.pingcap.com/delete"
-)
-
 // TODO(liubo02): move to meta
 const (
 	// KeyPrefix defines key prefix of well known labels and annotations
@@ -196,6 +191,9 @@ const (
 
 	// Features is recorded to check whether the pod should be restarted because of changes of features
 	AnnoKeyFeatures = AnnoKeyPrefix + "features"
+
+	// AnnoKeyOfflineStore is used to mark instances to offline during scale-in operations.
+	AnnoKeyOfflineStore = AnnoKeyPrefix + "offline-store"
 )
 
 // ConfigUpdateStrategy represents the strategy to update configuration.

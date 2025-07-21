@@ -224,6 +224,28 @@ func (in *$.|pub$) Version() string {
 }
 `, t)
 
+	// Generate Store interface methods for TiKV and TiFlash
+	if strings.EqualFold(t.Name.Name, "TiKV") || strings.EqualFold(t.Name.Name, "TiFlash") {
+		sw.Do(`
+// Store interface implementation
+func (in *$.|pub$) IsOffline() bool {
+	return in.Spec.Offline
+}
+
+func (in *$.|pub$) SetOffline(offline bool) {
+	in.Spec.Offline = offline
+}
+
+func (in *$.|pub$) GetOfflineCondition() *metav1.Condition {
+	return v1alpha1.GetOfflineCondition(in.Status.Conditions)
+}
+
+func (in *$.|pub$) SetOfflineCondition(condition metav1.Condition) {
+	v1alpha1.SetOfflineCondition(&in.Status.Conditions, condition)
+}
+`, t)
+	}
+
 	return sw.Error()
 }
 

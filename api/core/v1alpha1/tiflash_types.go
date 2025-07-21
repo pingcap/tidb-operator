@@ -223,17 +223,3 @@ type TiFlashStatus struct {
 	CommonStatus `json:",inline"`
 	StoreStatus  `json:",inline"`
 }
-
-var _ Store = &TiFlash{}
-
-func (s *TiFlash) IsOffline() bool {
-	return s.Spec.Offline
-}
-
-func (s *TiFlash) GetOfflineCondition() *metav1.Condition {
-	return GetOfflineCondition(s.Status.Conditions)
-}
-
-func (s *TiFlash) SetOfflineCondition(condition metav1.Condition) {
-	SetOfflineCondition(&s.Status.Conditions, condition)
-}

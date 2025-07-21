@@ -121,8 +121,9 @@ const (
 	membersPrefix      = "pd/api/v1/members"
 	microServicePrefix = "pd/api/v2/ms"
 
-	storesPrefix = "pd/api/v1/stores"
-	storePrefix  = "pd/api/v1/store"
+	storesPrefix       = "pd/api/v1/stores"
+	storePrefix        = "pd/api/v1/store"
+	storeUpStatePrefix = "pd/api/v1/store/%v/state?state=Up"
 
 	pdReplicationPrefix = "pd/api/v1/config/replicate"
 
@@ -256,7 +257,7 @@ func (c *pdClient) GetStores(ctx context.Context) (*StoresInfo, error) {
 	if err != nil {
 		if strings.HasSuffix(err.Error(), tiKVNotBootstrapped+"\n") {
 			//nolint:govet // expected
-			err = TiKVNotBootstrappedErrorf(err.Error())
+			err = TiKVNotBootstrappedErrorf("%s", err.Error())
 		}
 		return nil, err
 	}
@@ -333,24 +334,13 @@ func (c *pdClient) DeleteStore(ctx context.Context, storeID string) error {
 }
 
 // CancelDeleteStore cancels the deletion of a TiKV/TiFlash store, returning it to online state.
-// This method sends a PUT request to the PD API to cancel the store deletion process.
+// Refer: https://github.com/tikv/pd/blob/7a5b221cf66ec469727f8c174493f9132c0b9d8f/tools/pd-ctl/pdctl/command/store_command.go#L388
 func (c *pdClient) CancelDeleteStore(ctx context.Context, storeID string) error {
-	// Create the request body to set the store state to "Up"
-	requestData := map[string]interface{}{
-		"state": 0, // 0 means "Up" state in PD API
-	}
-
-	data, err := json.Marshal(requestData)
-	if err != nil {
-		return fmt.Errorf("failed to marshal request data: %w", err)
-	}
-
-	apiURL := fmt.Sprintf("%s/%s/%s/state", c.url, storePrefix, storeID)
-	req, err := http.NewRequestWithContext(ctx, "PUT", apiURL, bytes.NewBuffer(data))
+	apiURL := fmt.Sprintf("%s/%s", c.url, fmt.Sprintf(storeUpStatePrefix, storeID))
+	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, http.NoBody)
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Content-Type", "application/json")
 
 	//nolint:bodyclose // has been handled
 	res, err := c.httpClient.Do(req)

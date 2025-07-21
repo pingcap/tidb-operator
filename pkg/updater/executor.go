@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:generate ${GOBIN}/mockgen -write_command_comment=false -copyright_file ${BOILERPLATE_FILE} -destination executor_mock_generated.go -package=updater ${GO_MODULE}/pkg/updater Executor
 package updater
 
 import (
