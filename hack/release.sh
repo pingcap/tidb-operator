@@ -25,6 +25,7 @@ OUTPUT=$ROOT/_output/manifests
 HELM=$ROOT/_output/bin/helm
 CRDS=$OUTPUT/tidb-operator.crds.yaml
 OPERATOR=$OUTPUT/tidb-operator.yaml
+E2E_OPERATOR=$OUTPUT/tidb-operator-e2e.yaml
 BOILERPLATE=$ROOT/hack/boilerplate/boilerplate.yaml.txt
 
 mkdir -p $OUTPUT
@@ -48,6 +49,7 @@ fi
 
 echo "Generate tidb-operator.yaml"
 cat $BOILERPLATE > $OPERATOR
+cat $BOILERPLATE > $E2E_OPERATOR
 cat << EOF >> $OPERATOR
 ---
 apiVersion: v1
@@ -55,7 +57,19 @@ kind: Namespace
 metadata:
   name: tidb-admin
 EOF
+cat << EOF >> $E2E_OPERATOR
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tidb-admin
+EOF
 
+${HELM} template tidb-operator ${OUTPUT}/tidb-operator-${RELEASE_VERSION}.tgz \
+    --kube-version ${V_KUBE_VERSION} \
+    --set "operator.extraArgs={--watch-delay-duration=2s}" \
+    -n ${V_DEPLOY_NAMESPACE} \
+    >> $E2E_OPERATOR
 
 ${HELM} template tidb-operator ${OUTPUT}/tidb-operator-${RELEASE_VERSION}.tgz \
     --kube-version ${V_KUBE_VERSION} \
