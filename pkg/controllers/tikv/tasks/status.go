@@ -113,16 +113,16 @@ func TaskStoreStatus(state *ReconcileContext) task.Task {
 // Status of this condition can only transfer as the below
 func syncLeadersEvictedCond(tikv *v1alpha1.TiKV, store *pdv1.Store, isEvicting bool) bool {
 	status := metav1.ConditionFalse
-	reason := "NotEvicted"
+	reason := v1alpha1.ReasonNotEvicted
 	msg := "leaders are not all evicted"
 	switch {
 	case store == nil:
 		status = metav1.ConditionTrue
-		reason = "StoreIsRemoved"
+		reason = v1alpha1.ReasonStoreIsRemoved
 		msg = "store does not exist"
 	case isEvicting && store.LeaderCount == 0:
 		status = metav1.ConditionTrue
-		reason = "Evicted"
+		reason = v1alpha1.ReasonEvicted
 		msg = "all leaders are evicted"
 	}
 
