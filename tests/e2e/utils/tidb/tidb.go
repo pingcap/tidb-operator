@@ -178,36 +178,84 @@ func IsClusterReady(cli client.Client, name, ns string) (*v1alpha1.Cluster, bool
 	return nil, false
 }
 
-func AreAllInstancesReady(cli client.Client, pdg *v1alpha1.PDGroup, kvg []*v1alpha1.TiKVGroup,
+func checkReady(conds []metav1.Condition) error {
+	cond := meta.FindStatusCondition(conds, v1alpha1.CondReady)
+	if cond == nil {
+		return fmt.Errorf("cond is not initialized")
+	}
+	if cond.Status != metav1.ConditionTrue {
+		return fmt.Errorf("cond is not true, status: %v, reason: %v, message: %v, lastTransitionTime: %s", cond.Status, cond.Reason, cond.Message, cond.LastTransitionTime)
+	}
+	return nil
+}
+
+func AreAllGroupAndInstancesReady(cli client.Client, pdg *v1alpha1.PDGroup, kvg []*v1alpha1.TiKVGroup,
 	dbg []*v1alpha1.TiDBGroup, flashg []*v1alpha1.TiFlashGroup, ticdcg []*v1alpha1.TiCDCGroup,
 ) error {
-	if err := AreAllPDHealthy(cli, pdg); err != nil {
+	if err := AreAllPDHealthy(cli, pdg, true); err != nil {
 		return err
 	}
 	for _, kv := range kvg {
-		if err := AreAllTiKVHealthy(cli, kv); err != nil {
+		if err := AreAllTiKVHealthy(cli, kv, true); err != nil {
 			return err
 		}
 	}
 	for _, db := range dbg {
-		if err := AreAllTiDBHealthy(cli, db); err != nil {
+		if err := AreAllTiDBHealthy(cli, db, true); err != nil {
 			return err
 		}
 	}
 	for _, flash := range flashg {
-		if err := AreAllTiFlashHealthy(cli, flash); err != nil {
+		if err := AreAllTiFlashHealthy(cli, flash, true); err != nil {
 			return err
 		}
 	}
 	for _, ticdc := range ticdcg {
-		if err := AreAllTiCDCHealthy(cli, ticdc); err != nil {
+		if err := AreAllTiCDCHealthy(cli, ticdc, true); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func AreAllPDHealthy(cli client.Client, pdg *v1alpha1.PDGroup) error {
+func AreAllInstancesReady(cli client.Client, pdg *v1alpha1.PDGroup, kvg []*v1alpha1.TiKVGroup,
+	dbg []*v1alpha1.TiDBGroup, flashg []*v1alpha1.TiFlashGroup, ticdcg []*v1alpha1.TiCDCGroup,
+) error {
+	if err := AreAllPDHealthy(cli, pdg, false); err != nil {
+		return err
+	}
+	for _, kv := range kvg {
+		if err := AreAllTiKVHealthy(cli, kv, false); err != nil {
+			return err
+		}
+	}
+	for _, db := range dbg {
+		if err := AreAllTiDBHealthy(cli, db, false); err != nil {
+			return err
+		}
+	}
+	for _, flash := range flashg {
+		if err := AreAllTiFlashHealthy(cli, flash, false); err != nil {
+			return err
+		}
+	}
+	for _, ticdc := range ticdcg {
+		if err := AreAllTiCDCHealthy(cli, ticdc, false); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func AreAllPDHealthy(cli client.Client, pdg *v1alpha1.PDGroup, checkGroup bool) error {
+	if checkGroup {
+		if err := cli.Get(context.TODO(), client.ObjectKeyFromObject(pdg), pdg); err != nil {
+			return err
+		}
+		if err := checkReady(pdg.Status.Conditions); err != nil {
+			return fmt.Errorf("pd group %s/%s is not ready: %w", pdg.Namespace, pdg.Name, err)
+		}
+	}
 	var pdList v1alpha1.PDList
 	if err := cli.List(context.TODO(), &pdList, client.InNamespace(pdg.Namespace), client.MatchingLabels{
 		v1alpha1.LabelKeyGroup:     pdg.Name,
@@ -249,7 +297,16 @@ func AreAllPDHealthy(cli client.Client, pdg *v1alpha1.PDGroup) error {
 	return nil
 }
 
-func AreAllTiKVHealthy(cli client.Client, kvg *v1alpha1.TiKVGroup) error {
+func AreAllTiKVHealthy(cli client.Client, kvg *v1alpha1.TiKVGroup, checkGroup bool) error {
+	if checkGroup {
+		if err := cli.Get(context.TODO(), client.ObjectKeyFromObject(kvg), kvg); err != nil {
+			return err
+		}
+		if err := checkReady(kvg.Status.Conditions); err != nil {
+			return fmt.Errorf("tikv group %s/%s is not ready: %w", kvg.Namespace, kvg.Name, err)
+		}
+
+	}
 	var tikvList v1alpha1.TiKVList
 	if err := cli.List(context.TODO(), &tikvList, client.InNamespace(kvg.Namespace), client.MatchingLabels{
 		v1alpha1.LabelKeyGroup:     kvg.Name,
@@ -288,7 +345,16 @@ func AreAllTiKVHealthy(cli client.Client, kvg *v1alpha1.TiKVGroup) error {
 	return nil
 }
 
-func AreAllTiDBHealthy(cli client.Client, dbg *v1alpha1.TiDBGroup) error {
+func AreAllTiDBHealthy(cli client.Client, dbg *v1alpha1.TiDBGroup, checkGroup bool) error {
+	if checkGroup {
+		if err := cli.Get(context.TODO(), client.ObjectKeyFromObject(dbg), dbg); err != nil {
+			return err
+		}
+		if err := checkReady(dbg.Status.Conditions); err != nil {
+			return fmt.Errorf("tidb group %s/%s is not ready: %w", dbg.Namespace, dbg.Name, err)
+		}
+
+	}
 	var tidbList v1alpha1.TiDBList
 	if err := cli.List(context.TODO(), &tidbList, client.InNamespace(dbg.Namespace), client.MatchingLabels{
 		v1alpha1.LabelKeyGroup:     dbg.Name,
@@ -327,7 +393,15 @@ func AreAllTiDBHealthy(cli client.Client, dbg *v1alpha1.TiDBGroup) error {
 	return nil
 }
 
-func AreAllTiFlashHealthy(cli client.Client, flashg *v1alpha1.TiFlashGroup) error {
+func AreAllTiFlashHealthy(cli client.Client, flashg *v1alpha1.TiFlashGroup, checkGroup bool) error {
+	if checkGroup {
+		if err := cli.Get(context.TODO(), client.ObjectKeyFromObject(flashg), flashg); err != nil {
+			return err
+		}
+		if err := checkReady(flashg.Status.Conditions); err != nil {
+			return fmt.Errorf("tiflash group %s/%s is not ready: %w", flashg.Namespace, flashg.Name, err)
+		}
+	}
 	var tiflashList v1alpha1.TiFlashList
 	if err := cli.List(context.TODO(), &tiflashList, client.InNamespace(flashg.Namespace), client.MatchingLabels{
 		v1alpha1.LabelKeyGroup:     flashg.Name,
@@ -368,7 +442,16 @@ func AreAllTiFlashHealthy(cli client.Client, flashg *v1alpha1.TiFlashGroup) erro
 	return nil
 }
 
-func AreAllTiCDCHealthy(cli client.Client, ticdcg *v1alpha1.TiCDCGroup) error {
+func AreAllTiCDCHealthy(cli client.Client, ticdcg *v1alpha1.TiCDCGroup, checkGroup bool) error {
+	if checkGroup {
+		if err := cli.Get(context.TODO(), client.ObjectKeyFromObject(ticdcg), ticdcg); err != nil {
+			return err
+		}
+		if err := checkReady(ticdcg.Status.Conditions); err != nil {
+			return fmt.Errorf("ticdc group %s/%s is not ready: %w", ticdcg.Namespace, ticdcg.Name, err)
+		}
+
+	}
 	var ticdcList v1alpha1.TiCDCList
 	if err := cli.List(context.TODO(), &ticdcList, client.InNamespace(ticdcg.Namespace), client.MatchingLabels{
 		v1alpha1.LabelKeyGroup:     ticdcg.Name,

@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/meta"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 )
@@ -42,4 +44,30 @@ func WaitForTiKVsHealthy(ctx context.Context, c client.Client, kvg *v1alpha1.TiK
 		v1alpha1.LabelKeyGroup:     kvg.Name,
 		v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
 	})
+}
+
+func EvictLeaderBeforeStoreIsRemoving(deleting int) func(kv *v1alpha1.TiKV) (bool, error) {
+	done := map[string]struct{}{}
+	return func(kv *v1alpha1.TiKV) (bool, error) {
+		if kv.Status.State == v1alpha1.StoreStateRemoving || kv.Status.State == v1alpha1.StoreStateRemoved {
+			delTime := kv.GetDeletionTimestamp()
+			if delTime.Add(time.Minute * 5).Before(time.Now()) {
+				// timeout
+				done[kv.GetName()] = struct{}{}
+				if len(done) == deleting {
+					return true, nil
+				}
+			}
+			if meta.IsStatusConditionTrue(kv.Status.Conditions, v1alpha1.TiKVCondLeadersEvicted) {
+				// leaders are evicted
+				done[kv.GetName()] = struct{}{}
+				if len(done) == deleting {
+					return true, nil
+				}
+			}
+			return false, fmt.Errorf("store state is %v but leaders are not all evicted or timeout", kv.Status.State)
+		}
+
+		return false, nil
+	}
 }
