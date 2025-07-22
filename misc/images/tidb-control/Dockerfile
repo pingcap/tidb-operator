@@ -1,12 +1,8 @@
 FROM bash:5.2.37
-RUN wget -q http://download.pingcap.org/tidb-latest-linux-amd64.tar.gz \
-        && tar xzf tidb-latest-linux-amd64.tar.gz \
-        && mv tidb-*-linux-amd64/bin/pd-ctl \
-              tidb-*-linux-amd64/bin/tidb-ctl \
-              /usr/local/bin/ \
-        && rm -rf tidb-latest-linux-amd64.tar.gz tidb-*-linux-amd64
 
-ADD banner /etc/banner
-ADD profile  /etc/profile
+ARG TIDB_VERSION=v8.5.2
+RUN OS=linux; ARCH=$([ "$(arch)" = "x86_64" ] && echo amd64 || echo arm64); \
+      wget -O- https://tiup-mirrors.pingcap.com/ctl-${TIDB_VERSION}-${OS}-${ARCH}.tar.gz | tar -C /usr/local/bin -xzvf - pd-ctl tidb-ctl
+ADD banner profile /etc/
 
 CMD ["/usr/local/bin/bash", "-l"]
