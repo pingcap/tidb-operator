@@ -90,8 +90,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 		// Create scale-in selector with preference policies
 		scaleInSelector := updater.NewSelector(
 			updater.PreferAnnotatedForDeletion[*runtime.TiFlash](), // Prioritize annotated instances
-			updater.PreferNotOfflining[*runtime.TiFlash](),         // Avoid instances already being offlined
-			updater.PreferHealthyForScaleIn[*runtime.TiFlash](),    // Prefer healthy instances for stable data migration
+			updater.PreferNotOffline[*runtime.TiFlash](),           // Avoid instances already being offlined
 			topoPolicy, // Respect topology constraints
 		)
 

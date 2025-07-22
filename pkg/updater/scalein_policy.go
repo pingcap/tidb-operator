@@ -19,11 +19,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
-// PreferAnnotatedForDeletion returns a policy that prefers instances marked with scale-in deletion annotation.
+// PreferAnnotatedForDeletion returns a policy that prefers instances marked with offline store annotation.
 // This enables users to specify which instances should be selected for deletion during scale-in operations.
-func PreferAnnotatedForDeletion[R runtime.Instance]() PreferPolicy[R] {
-	return PreferPolicyFunc[R](func(instances []R) []R {
-		var annotated []R
+func PreferAnnotatedForDeletion[SI runtime.StoreInstance]() PreferPolicy[SI] {
+	return PreferPolicyFunc[SI](func(instances []SI) []SI {
+		var annotated []SI
 		for _, instance := range instances {
 			annotations := instance.GetAnnotations()
 			if annotations != nil {
@@ -36,43 +36,17 @@ func PreferAnnotatedForDeletion[R runtime.Instance]() PreferPolicy[R] {
 	})
 }
 
-// PreferNotOfflining returns a policy that prefers instances that are not currently in offline process.
+// PreferNotOffline returns a policy that prefers instances that are not currently in offline process.
 // This prevents selecting instances that are already being offlined for a different scale-in operation.
-func PreferNotOfflining[R runtime.Instance]() PreferPolicy[R] {
-	return PreferPolicyFunc[R](func(instances []R) []R {
-		var notOfflining []R
+func PreferNotOffline[SI runtime.StoreInstance]() PreferPolicy[SI] {
+	return PreferPolicyFunc[SI](func(instances []SI) []SI {
+		var notOffline []SI
 		for _, instance := range instances {
-			// Check if the instance has spec.offline set to true
-			// We need to cast to the specific runtime type to access the Spec field
-			switch inst := any(instance).(type) {
-			case *runtime.TiKV:
-				if !inst.Spec.Offline {
-					notOfflining = append(notOfflining, instance)
-				}
-			case *runtime.TiFlash:
-				if !inst.Spec.Offline {
-					notOfflining = append(notOfflining, instance)
-				}
-			default:
-				// For other types, include them as they don't support offline operations
-				notOfflining = append(notOfflining, instance)
+			// Check if the instance has `spec.offline` set to true
+			if !instance.IsOffline() {
+				notOffline = append(notOffline, instance)
 			}
 		}
-		return notOfflining
-	})
-}
-
-// PreferHealthyForScaleIn returns a policy that prefers healthy instances for scale-in.
-// This ensures that unhealthy instances are kept to maintain cluster stability.
-func PreferHealthyForScaleIn[R runtime.Instance]() PreferPolicy[R] {
-	return PreferPolicyFunc[R](func(instances []R) []R {
-		var healthy []R
-		for _, instance := range instances {
-			// Consider instance healthy if it's both ready and up-to-date
-			if instance.IsReady() && instance.IsUpToDate() {
-				healthy = append(healthy, instance)
-			}
-		}
-		return healthy
+		return notOffline
 	})
 }

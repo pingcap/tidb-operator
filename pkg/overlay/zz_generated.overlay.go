@@ -1658,11 +1658,6 @@ func overlayLifecycle(dst, src *v1.Lifecycle) {
 	} else if dst.PreStop == nil {
 		dst.PreStop = src.PreStop
 	}
-	if dst.StopSignal != nil && src.StopSignal != nil {
-		overlaySignal(dst.StopSignal, src.StopSignal)
-	} else if dst.StopSignal == nil {
-		dst.StopSignal = src.StopSignal
-	}
 }
 func overlayLifecycleHandler(dst, src *v1.LifecycleHandler) {
 	if dst.Exec != nil && src.Exec != nil {
@@ -1689,13 +1684,6 @@ func overlayLifecycleHandler(dst, src *v1.LifecycleHandler) {
 func overlaySleepAction(dst, src *v1.SleepAction) {
 	if src.Seconds != 0 {
 		dst.Seconds = src.Seconds
-	}
-}
-func overlaySignal(dst, src *v1.Signal) {
-	ndst := (*string)(dst)
-	nsrc := (*string)(src)
-	if *nsrc != "" {
-		*ndst = *nsrc
 	}
 }
 func overlayTerminationMessagePolicy(dst, src *v1.TerminationMessagePolicy) {

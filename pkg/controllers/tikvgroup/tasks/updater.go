@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
@@ -68,6 +67,11 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 		}
 
 		allocator := t.Track(kvg, state.InstanceSlice()...)
+
+		// Create the scale-in lifecycle manager for TiKV store operations
+		// This enables cancel scale-in functionality through the enhanced updater framework
+		scaleInLifecycle := updater.NewStoreLifecycle[*runtime.TiKV](c)
+
 		builder := updater.New[runtime.TiKVTuple]().
 			WithInstances(kvs...).
 			WithDesired(int(state.Group().Replicas())).
@@ -83,19 +87,30 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
-				topoPolicy,
+				// Enhanced scale-in selection policies for cancel scale support
+				updater.PreferAnnotatedForDeletion[*runtime.TiKV](), // Prioritize user-annotated instances
+				updater.PreferNotOffline[*runtime.TiKV](),           // Avoid instances already being offlined
+				topoPolicy, // Respect topology constraints
 			).
+			// Enable cancel scale-in functionality through ScaleInLifecycle
+			WithScaleInLifecycle(scaleInLifecycle).
 			Build()
 
-		// Create scale-in selector with preference policies
-		scaleInSelector := updater.NewSelector(
-			updater.PreferAnnotatedForDeletion[*runtime.TiKV](), // Prioritize annotated instances
-			updater.PreferNotOfflining[*runtime.TiKV](),         // Avoid instances already being offlined
-			updater.PreferHealthyForScaleIn[*runtime.TiKV](),    // Prefer healthy instances for stable data migration
-			topoPolicy, // Respect topology constraints
-		)
+		// The enhanced executor now supports cancel scale-in operations automatically
+		// When desired replicas increase during a scale-down, it will:
+		// 1. Detect the cancellation intent
+		// 2. Use the ScaleInLifecycle to cancel offline operations
+		// 3. Rescue instances from offline back to online state
+		// 4. Create additional instances if still needed
+		wait, err := builder.Do(ctx)
+		if err != nil {
+			return task.Fail().With("failed to execute TiKV group operations: %v", err)
+		}
+		if wait {
+			return task.Wait().With("waiting for TiKV group operations to complete")
+		}
 
-		return common.TaskStoreGroupUpdater[scope.TiKVGroup, *v1alpha1.TiKVGroup, *runtime.TiKVGroup, *runtime.TiKV](ctx, kvg, kvs, c, builder, scaleInSelector)
+		return task.Complete().With("TiKV group operations completed successfully")
 	})
 }
 

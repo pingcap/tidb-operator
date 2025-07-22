@@ -26,6 +26,9 @@ spec:
     - jsonPath: .status.state
       name: StoreState
       type: string
+    - jsonPath: .spec.offline
+      name: Offline
+      type: boolean
     - jsonPath: .status.conditions[?(@.type=="Synced")].status
       name: Synced
       type: string
@@ -8516,6 +8519,7 @@ spec:
                 x-kubernetes-list-type: map
             required:
             - cluster
+            - offline
             - subdomain
             - version
             - volumes

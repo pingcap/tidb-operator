@@ -22,9 +22,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/go-logr/logr"
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
@@ -101,8 +101,8 @@ func handleOfflineOperation(
 	case v1alpha1.OfflineReasonFailed:
 		return handleFailedState(ctx, state, store)
 	case v1alpha1.OfflineReasonCancelled:
-		// This case is reached if spec.offline is set to true for an store
-		// that was previously cancelled. It restarts the offline process.
+		// This case is reached if spec.offline is set to true for a store
+		// that was previously canceled. It restarts the offline process.
 		return transitionToPending(ctx, state, store)
 	default:
 		return task.Fail().With("unknown offline condition reason: %s", condition.Reason)
@@ -198,7 +198,9 @@ func handlePendingState(
 		"Store offline operation is active, data migration is in progress",
 		metav1.ConditionTrue,
 	))
-	state.SetStoreState(v1alpha1.StoreStateRemoving)
+	// Note: We don't set store state to Removing here. Instead, we honor the store state
+	// from PD, which will automatically transition from Serving -> Removing -> Removed
+	// after calling DeleteStore API. This avoids state conflicts between operator and PD.
 	return task.Retry(RemovingWaitInterval).With("store offline operation is active")
 }
 

@@ -30,6 +30,7 @@ const (
 	actionScaleInUpdate
 	actionScaleInOutdated
 	actionCleanup
+	actionCancelScaleIn
 )
 
 type FakeActor struct {
@@ -770,6 +771,23 @@ func TestExecutor(t *testing.T) {
 				actionUpdate,
 			},
 			expectedWait: true,
+		},
+		{
+			// This test case reproduces the bug where multiple instances get marked offline
+			// when scaling from 4 to 3 replicas. Expected: only 1 ScaleInUpdate call
+			// Actual (before fix): multiple ScaleInUpdate calls due to offline instances
+			// still being counted in 'actual' calculation
+			desc:           "BUG REPRODUCTION: scale-in 4 to 3 should mark only 1 instance offline",
+			update:         4,
+			outdated:       0,
+			desired:        3,
+			maxSurge:       0,
+			maxUnavailable: 1,
+			expectedActions: []action{
+				actionScaleInUpdate, // Should only happen once, but bug causes multiple calls
+				actionCleanup,
+			},
+			expectedWait: false,
 		},
 	}
 

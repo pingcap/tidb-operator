@@ -6781,15 +6781,12 @@ func constructLifecycle(p Policy) []Case[v1.Lifecycle] {
 	cases := []Case[v1.Lifecycle]{}
 	cs0 := constructPointerLifecycleHandler(NoLimit)
 	cs1 := constructPointerLifecycleHandler(NoLimit)
-	cs2 := constructPointerSignal(NoLimit)
 	maxCount := max(
 		len(cs0),
 		len(cs1),
-		len(cs2),
 	)
 	k0 := 0
 	k1 := 0
-	k2 := 0
 	for i := range maxCount {
 		nc := Case[v1.Lifecycle]{}
 		if i/len(cs0) > k0 {
@@ -6808,14 +6805,6 @@ func constructLifecycle(p Policy) []Case[v1.Lifecycle] {
 		nc.expected.PreStop = c1.expected
 		nc.dst.PreStop = c1.dst
 		nc.src.PreStop = c1.src
-		if i/len(cs2) > k2 {
-			cs2 = constructPointerSignal(NoLimit)
-			k2 += 1
-		}
-		c2 := &cs2[i%len(cs2)]
-		nc.expected.StopSignal = c2.expected
-		nc.dst.StopSignal = c2.dst
-		nc.src.StopSignal = c2.src
 		cases = append(cases, nc)
 	}
 	return cases
@@ -6928,36 +6917,6 @@ func constructSleepAction(p Policy) []Case[v1.SleepAction] {
 		nc.dst.Seconds = c0.dst
 		nc.src.Seconds = c0.src
 		cases = append(cases, nc)
-	}
-	return cases
-}
-func constructPointerSignal(p Policy) []Case[*v1.Signal] {
-	cases := []Case[*v1.Signal]{
-		{
-			expected: nil,
-			dst:      nil,
-			src:      nil,
-		},
-	}
-	cs := constructSignal(p)
-	for _, c := range cs {
-		cases = append(cases, Case[*v1.Signal]{
-			expected: &c.expected,
-			dst:      &c.dst,
-			src:      &c.src,
-		})
-	}
-	return cases
-}
-func constructSignal(p Policy) []Case[v1.Signal] {
-	cases := []Case[v1.Signal]{}
-	cs := constructString(p)
-	for _, c := range cs {
-		cases = append(cases, Case[v1.Signal]{
-			expected: v1.Signal(c.expected),
-			dst:      v1.Signal(c.dst),
-			src:      v1.Signal(c.src),
-		})
 	}
 	return cases
 }
