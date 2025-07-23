@@ -166,17 +166,22 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 
 			nctx, cancel := context.WithCancel(ctx)
 			ch := make(chan struct{})
+			synced := make(chan struct{})
 			go func() {
 				defer close(ch)
 				defer ginkgo.GinkgoRecover()
 				f.Must(waiter.WatchUntilInstanceList[scope.TiKVGroup](
 					nctx,
 					f.Client,
-					kvg,
+					kvg.DeepCopy(),
 					waiter.EvictLeaderBeforeStoreIsRemoving(1),
-					waiter.LongTaskTimeout),
-				)
+					waiter.LongTaskTimeout,
+					synced,
+				))
 			}()
+			// wait until cache is synced
+			<-synced
+
 			ginkgo.By("Initiating scale in from 4 to 3 replicas")
 			patch := client.MergeFrom(kvg.DeepCopy())
 			kvg.Spec.Replicas = ptr.To[int32](3)
