@@ -21,7 +21,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -43,8 +45,11 @@ func TaskBoot(state *ReconcileContext, c client.Client) task.Task {
 			if _, ok := pd.Annotations[v1alpha1.AnnoKeyInitialClusterNum]; !ok {
 				continue
 			}
+			if !coreutil.IsReady[scope.PD](pd) {
+				return task.Wait().With("wait until pd %s is ready", pd.Name)
+			}
 			if err := delBootAnnotation(ctx, c, pd); err != nil {
-				return task.Fail().With("cannot del boot annotation after pd is available: %v", err)
+				return task.Fail().With("cannot del boot annotation after pd %s is available: %v", pd.Name, err)
 			}
 		}
 
