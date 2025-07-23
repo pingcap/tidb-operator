@@ -21,6 +21,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
 
 	"github.com/pingcap/tidb-operator/pkg/apicall"
@@ -137,10 +138,16 @@ func WatchUntilInstanceList[
 	g GF,
 	cond func(item PI) (bool, error),
 	timeout time.Duration,
+	synced chan struct{},
 ) error {
 	lw := apicall.NewInstanceListerWatcher[GS](ctx, c, g)
 	var obj PI = new(I)
-	if _, err := watchtools.UntilWithSync(ctx, lw, obj, nil, func(event watch.Event) (bool, error) {
+	if _, err := watchtools.UntilWithSync(ctx, lw, obj, func(store cache.Store) (bool, error) {
+		if synced != nil {
+			close(synced)
+		}
+		return false, nil
+	}, func(event watch.Event) (bool, error) {
 		instance, ok := event.Object.(PI)
 		if !ok {
 			// ignore events without instance
