@@ -16,9 +16,16 @@ package tasks
 
 import (
 	"context"
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"time"
 
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+)
+
+const (
+	defaultLeaderEvictTimeout = 5 * time.Minute
+	jitter                    = 10 * time.Second
 )
 
 // TaskOfflineStore handles the two-step store deletion process based on spec.offline field.
@@ -26,5 +33,33 @@ import (
 func TaskOfflineStore(state *ReconcileContext) task.Task {
 	return task.NameTaskFunc("OfflineTiKVStore", func(ctx context.Context) task.Result {
 		return common.TaskOfflineStoreStateMachine(ctx, state, state.Instance(), "tikv")
+	})
+}
+
+func TaskOfflineStore2(state *ReconcileContext) task.Task {
+	return task.NameTaskFunc("OfflineStore", func(ctx context.Context) task.Result {
+		if state.GetStoreState() == v1alpha1.StoreStateRemoving {
+			return task.Wait().With("the store is removing")
+		}
+
+		var reason string
+		delTime := state.Object().GetDeletionTimestamp()
+		switch {
+		// leaders evicted
+		case state.LeaderEvicting && state.GetLeaderCount() == 0:
+			reason = "leaders have been all evicted"
+		case !delTime.IsZero() && delTime.Add(defaultLeaderEvictTimeout).Before(time.Now()):
+			reason = "leader eviction timeout"
+		}
+
+		if reason != "" {
+			if err := state.PDClient.Underlay().DeleteStore(ctx, state.Store.ID); err != nil {
+				return task.Fail().With("cannot delete store %s: %w", state.Store.ID, err)
+			}
+			state.SetStoreState(v1alpha1.StoreStateRemoving)
+			return task.Wait().With("%s, try to removing the store", reason)
+		}
+
+		return task.Retry(defaultLeaderEvictTimeout + jitter).With("waiting for leaders evicted or timeout")
 	})
 }

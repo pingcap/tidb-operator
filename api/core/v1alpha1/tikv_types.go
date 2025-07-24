@@ -36,7 +36,15 @@ const (
 )
 
 const (
+	// LeadersEvicted means all leaders are evicted
+	//
+	// condition
 	TiKVCondLeadersEvicted = "LeadersEvicted"
+	// reason
+	ReasonNotEvicted     = "NotEvicted"
+	ReasonEvicting       = "Evicting"
+	ReasonEvicted        = "Evicted"
+	ReasonStoreIsRemoved = "StoreIsRemoved"
 )
 
 const (

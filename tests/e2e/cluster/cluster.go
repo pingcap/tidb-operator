@@ -643,7 +643,7 @@ var _ = Describe("TiDB Cluster", func() {
 
 			podNameToUID := make(map[string]types.UID, 2)
 			Eventually(func(g Gomega) {
-				g.Expect(utiltidb.AreAllTiDBHealthy(k8sClient, &dbgGet)).To(Succeed())
+				g.Expect(utiltidb.AreAllTiDBHealthy(k8sClient, &dbgGet, false)).To(Succeed())
 				podList, err = clientSet.CoreV1().Pods(tc.Namespace).List(ctx, listOpts)
 				g.Expect(err).To(BeNil())
 				g.Expect(len(podList.Items)).To(Equal(2))
@@ -661,7 +661,7 @@ var _ = Describe("TiDB Cluster", func() {
 			Expect(k8sClient.Update(ctx, &dbgGet)).To(Succeed())
 
 			Eventually(func(g Gomega) {
-				g.Expect(utiltidb.AreAllTiDBHealthy(k8sClient, &dbgGet)).To(Succeed())
+				g.Expect(utiltidb.AreAllTiDBHealthy(k8sClient, &dbgGet, false)).To(Succeed())
 				podList, err = clientSet.CoreV1().Pods(tc.Namespace).List(ctx, listOpts)
 				g.Expect(err).To(BeNil())
 				g.Expect(len(podList.Items)).To(Equal(1))
@@ -1332,7 +1332,7 @@ location-labels = ["region", "zone", "host"]`
 					}
 				}
 
-				g.Expect(utiltidb.AreAllInstancesReady(k8sClient, pdg,
+				g.Expect(utiltidb.AreAllGroupAndInstancesReady(k8sClient, pdg,
 					[]*v1alpha1.TiKVGroup{kvg}, []*v1alpha1.TiDBGroup{dbg}, []*v1alpha1.TiFlashGroup{flashg}, nil)).To(Succeed())
 				g.Expect(utiltidb.IsTiDBConnectable(ctx, k8sClient, fw,
 					tc.Namespace, tc.Name, dbg.Name, "root", "", "")).To(Succeed())

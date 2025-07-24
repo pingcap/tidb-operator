@@ -87,12 +87,18 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		}
 		scheduler, err := state.PDClient.Underlay().GetEvictLeaderScheduler(ctx, state.Store.ID)
 		if err != nil {
-			return task.Fail().With("pd is unexpectedly crashed: %w", err)
+			return task.Fail().With("pd is unexpectedly crashed: %v", err)
 		}
 		if scheduler != "" {
 			state.LeaderEvicting = true
 		}
 
-		return task.Complete().With("get store info")
+		return task.Complete().With("get store info, state: %s, leader count: %v, region count: %v, busy: %v, leader evicting: %v",
+			state.GetStoreState(),
+			state.GetLeaderCount(),
+			state.GetRegionCount(),
+			state.IsStoreBusy(),
+			state.LeaderEvicting,
+		)
 	})
 }

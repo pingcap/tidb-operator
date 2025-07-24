@@ -19,6 +19,12 @@ import (
 	"context"
 	"slices"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	kuberuntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/tools/cache"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
@@ -82,4 +88,48 @@ func ListPeerInstances[
 	})
 
 	return objs, nil
+}
+
+// NewInstanceListerWatcher returns a cache.ListerWatcher for a group
+func NewInstanceListerWatcher[
+	GS scope.GroupInstance[GF, GT, IS],
+	IS scope.List[IL, I],
+	GF client.Object,
+	GT runtime.Group,
+	IL client.ObjectList,
+	I client.Object,
+](ctx context.Context, c client.Client, g GF) cache.ListerWatcher {
+	lw := &cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (kuberuntime.Object, error) {
+			list := scope.NewList[IS]()
+			if err := c.List(ctx, list, &client.ListOptions{
+				Namespace: g.GetNamespace(),
+				LabelSelector: labels.SelectorFromSet(labels.Set{
+					v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+					v1alpha1.LabelKeyCluster:   coreutil.Cluster[GS](g),
+					v1alpha1.LabelKeyGroup:     g.GetName(),
+					v1alpha1.LabelKeyComponent: scope.Component[GS](),
+				}),
+				Raw: &options,
+			}); err != nil {
+				return nil, err
+			}
+			return list, nil
+		},
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			list := scope.NewList[IS]()
+			return c.Watch(ctx, list, &client.ListOptions{
+				Namespace: g.GetNamespace(),
+				LabelSelector: labels.SelectorFromSet(labels.Set{
+					v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+					v1alpha1.LabelKeyCluster:   coreutil.Cluster[GS](g),
+					v1alpha1.LabelKeyGroup:     g.GetName(),
+					v1alpha1.LabelKeyComponent: scope.Component[GS](),
+				}),
+				Raw: &options,
+			})
+		},
+	}
+
+	return lw
 }
