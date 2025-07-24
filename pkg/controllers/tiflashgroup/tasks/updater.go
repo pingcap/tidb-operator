@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
@@ -67,6 +66,10 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
+		// Create the scale-in lifecycle manager for TiKV store operations
+		// This enables cancel scale-in functionality through the enhanced updater framework
+		scaleInLifecycle := updater.NewStoreLifecycle[*runtime.TiFlash](c)
+
 		allocator := t.Track(fg, state.InstanceSlice()...)
 		builder := updater.New[runtime.TiFlashTuple]().
 			WithInstances(fs...).
@@ -83,18 +86,23 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
-				topoPolicy,
+				// Enhanced scale-in selection policies for cancel scale support
+				updater.PreferAnnotatedForDeletion[*runtime.TiFlash](), // Prioritize user-annotated instances
+				updater.PreferNotOffline[*runtime.TiFlash](),           // Avoid instances already being offlined
+				topoPolicy, // Respect topology constraints
 			).
+			// Enable cancel scale-in functionality through ScaleInLifecycle
+			WithScaleInLifecycle(scaleInLifecycle).
 			Build()
 
-		// Create scale-in selector with preference policies
-		scaleInSelector := updater.NewSelector(
-			updater.PreferAnnotatedForDeletion[*runtime.TiFlash](), // Prioritize annotated instances
-			updater.PreferNotOffline[*runtime.TiFlash](),           // Avoid instances already being offlined
-			topoPolicy, // Respect topology constraints
-		)
-
-		return common.TaskStoreGroupUpdater[scope.TiFlashGroup, *v1alpha1.TiFlashGroup, *runtime.TiFlashGroup, *runtime.TiFlash](ctx, fg, fs, c, builder, scaleInSelector)
+		wait, err := builder.Do(ctx)
+		if err != nil {
+			return task.Fail().With("cannot update instances: %w", err)
+		}
+		if wait {
+			return task.Wait().With("wait for all instances ready")
+		}
+		return task.Complete().With("all instances are synced")
 	})
 }
 
@@ -121,8 +129,7 @@ func TiFlashNewer(fg *v1alpha1.TiFlashGroup, rev string) updater.NewFactory[*run
 				Features:            fg.Spec.Features,
 				Subdomain:           HeadlessServiceName(fg.Name),
 				TiFlashTemplateSpec: *spec,
-				// New instances start with offline = false (online)
-				Offline: false,
+				Offline:             false,
 			},
 		}
 

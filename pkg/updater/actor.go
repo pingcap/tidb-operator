@@ -340,6 +340,46 @@ func (act *cancelableActor[T, O, R]) CanCancel() bool {
 	return act.lifecycle != nil
 }
 
+// CleanupCompletedOffline finds and deletes any instances that have completed the offline
+// process but are still present. This is crucial for handling race conditions during
+// scale-in cancellation where an instance might complete offline before it can be canceled.
+// It returns the number of instances cleaned up.
+func (act *cancelableActor[T, O, R]) CleanupCompletedOffline(ctx context.Context) (int, error) {
+	logger := logr.FromContextOrDiscard(ctx)
+	cleaned := 0
+
+	// Check both update and outdated lists for completed offline instances
+	allInstances := append(act.update.List(), act.outdated.List()...)
+
+	for _, instance := range allInstances {
+		if act.lifecycle.IsOfflineCompleted(instance) {
+			logger.Info("cleaning up completed offline instance", "instance", instance.GetName())
+
+			if err := act.c.Delete(ctx, act.converter.To(instance)); err != nil {
+				// Log the error but continue trying to clean up others
+				logger.Error(err, "failed to clean up completed offline instance", "instance", instance.GetName())
+				continue
+			}
+
+			// Remove from internal state
+			act.update.Del(instance.GetName())
+			act.outdated.Del(instance.GetName())
+
+			for _, hook := range act.delHooks {
+				hook.Delete(instance.GetName())
+			}
+
+			cleaned++
+		}
+	}
+
+	if cleaned > 0 {
+		logger.Info("cleaned up completed offline instances", "count", cleaned)
+	}
+
+	return cleaned, nil
+}
+
 // ScaleInUpdate overrides the basic actor's ScaleInUpdate to use the two-phase deletion process.
 // It first calls lifecycle.BeginScaleIn() to initiate the offline process for store instances.
 func (act *cancelableActor[T, O, R]) ScaleInUpdate(ctx context.Context) (bool, error) {

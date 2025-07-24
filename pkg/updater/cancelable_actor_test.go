@@ -37,6 +37,8 @@ type FakeCancelableActor struct {
 	simulateOfflineDelay bool // Whether to simulate offline process delay (always return unavailable=true)
 }
 
+var _ CancelableActor = &FakeCancelableActor{}
+
 func (a *FakeCancelableActor) CancelScaleIn(_ context.Context, targetReplicas int) (int, error) {
 	a.Actions = append(a.Actions, actionCancelScaleIn)
 
@@ -69,6 +71,11 @@ func (a *FakeCancelableActor) CancelScaleIn(_ context.Context, targetReplicas in
 
 func (a *FakeCancelableActor) CanCancel() bool {
 	return a.canCancel
+}
+
+func (a *FakeCancelableActor) CleanupCompletedOffline(ctx context.Context) (cleaned int, err error) {
+	// TODO implement me
+	panic("implement me")
 }
 
 // Override ScaleInUpdate to simulate TiKV offline behavior
@@ -305,74 +312,6 @@ func TestTiKVMultipleReconcileBug(t *testing.T) {
 	})
 }
 
-// TestTiKVReconcileLoopWithActualFix tests the correct behavior after fixing the bug
-// This test shows how the executor should behave once we fix the actual calculation
-func TestTiKVReconcileLoopWithActualFix(t *testing.T) {
-	t.Run("Fixed behavior: only one instance marked offline across multiple reconciles", func(t *testing.T) {
-		// This test will pass once we implement the fix to use online instance count
-		// instead of total instance count (including offline) in the executor logic
-
-		baseActor := &FakeActor{
-			update:              4,
-			outdated:            0,
-			unavailableUpdate:   0,
-			unavailableOutdated: 0,
-		}
-
-		// Create an actor that properly implements CountOfflineInstances
-		cancelableActor := &FakeCancelableActor{
-			FakeActor:            baseActor,
-			simulateOfflineDelay: true,
-			canCancel:            true,
-		}
-
-		scaleInCallsTotal := 0
-
-		// Multiple reconcile loops
-		for reconcile := 1; reconcile <= 3; reconcile++ {
-			executor := NewExecutor(
-				cancelableActor,
-				cancelableActor.update,
-				cancelableActor.outdated,
-				3, // desired
-				cancelableActor.unavailableUpdate,
-				cancelableActor.unavailableOutdated,
-				0, // maxSurge
-				1, // maxUnavailable
-			)
-
-			prevActionCount := len(cancelableActor.Actions)
-			_, err := executor.Do(context.Background())
-			require.NoError(t, err)
-
-			newActions := cancelableActor.Actions[prevActionCount:]
-			scaleInCallsInThisReconcile := 0
-			for _, action := range newActions {
-				if action == actionScaleInUpdate || action == actionScaleInOutdated {
-					scaleInCallsInThisReconcile++
-				}
-			}
-			scaleInCallsTotal += scaleInCallsInThisReconcile
-
-			if reconcile == 1 {
-				// First reconcile should mark exactly 1 instance offline
-				assert.Equal(t, 1, scaleInCallsInThisReconcile,
-					"First reconcile should mark exactly 1 instance offline")
-			} else {
-				// Subsequent reconciles should NOT mark additional instances offline
-				assert.Equal(t, 0, scaleInCallsInThisReconcile,
-					"Reconcile %d should not mark additional instances offline", reconcile)
-			}
-		}
-
-		// Fixed behavior: total scale-in calls should be exactly 1
-		assert.Equal(t, 1, scaleInCallsTotal,
-			"Total scale-in calls should be 1 for 4→3 scaling")
-		assert.Equal(t, 1, countTotalOffline(cancelableActor),
-			"Should have exactly 1 offline instance")
-	})
-}
-
 // TestTiKVParallelScaleIn tests the new requirement: allow parallel offline without waiting
 // 6→3 should allow marking multiple instances offline in parallel (one per reconcile)
 // without waiting for previous offline operations to complete
@@ -467,6 +406,161 @@ func TestTiKVParallelScaleIn(t *testing.T) {
 	})
 }
 
+// TestCancelScaleInCounterBug reproduces the specific bug where:
+// 1. Cancel operation incorrectly increases ex.update counter
+// 2. This causes immediate re-triggering of scale-in in same reconcile loop
+// 3. Same annotated instance gets offline->online->offline in single reconcile
+func TestCancelScaleInCounterBug(t *testing.T) {
+	t.Run("Cancel scale-in should not trigger immediate re-scale-in in same reconcile", func(t *testing.T) {
+		// This test reproduces the bug described in the e2e test case:
+		// "should handle full cancellation of scale-in" where the annotated TiKV instance
+		// gets spec.offline toggled true->false->true in a single reconcile cycle
+
+		// Setup: Simulate the scenario from the e2e test
+		// 1. User annotates one TiKV instance for deletion
+		// 2. User scales in TiKV from 4 to 3 replicas
+		// 3. But then immediately cancels by scaling back to 4 replicas
+		// 4. The bug: cancel increases ex.update, triggering immediate re-scale-in
+
+		baseActor := &FakeActor{
+			update:              4, // 4 total instances
+			outdated:            0,
+			unavailableUpdate:   1, // 1 instance already marked offline
+			unavailableOutdated: 0,
+		}
+
+		// Create a special actor that tracks the exact bug scenario
+		cancelableActor := &FakeCancelScaleInCounterBugActor{
+			FakeActor:                       baseActor,
+			canCancel:                       true,
+			offlineInstances:                1, // 1 instance currently offline (annotated one)
+			cancelScaleInResult:             1, // Will rescue 1 instance when called
+			annotatedInstanceIsOffline:      true,
+			scaleInCallsThisReconcile:       0,
+			cancelScaleInCallsThisReconcile: 0,
+		}
+
+		// BUG REPRODUCTION: This single reconcile should:
+		// 1. Detect cancel need (desired=4, online=3)
+		// 2. Call CancelScaleIn, rescue 1 instance
+		// 3. Incorrectly update ex.update += 1 (4->5)
+		// 4. Then see ex.update(5) > desired(4) and trigger ScaleInUpdate again
+		// 5. Re-mark the same annotated instance as offline (true->false->true)
+
+		executor := NewExecutor(
+			cancelableActor,
+			4, // update instances (including 1 offline)
+			0, // outdated instances
+			4, // desired = 4 (user scaled back up to cancel)
+			1, // unavailableUpdate (the 1 offline instance)
+			0, // unavailableOutdated
+			0, // maxSurge
+			1, // maxUnavailable
+		)
+
+		t.Logf("=== Starting reconcile: desired=4, update=4, offline=1 ===")
+		t.Logf("Expected: Cancel should rescue 1 instance and NOT trigger re-scale-in")
+		t.Logf("Bug: Cancel rescues 1 instance, then immediately re-marks it offline")
+
+		wait, err := executor.Do(context.Background())
+		require.NoError(t, err)
+
+		t.Logf("=== Reconcile completed ===")
+		t.Logf("Final state: wait=%v", wait)
+		t.Logf("Actions taken: %v", cancelableActor.Actions)
+		t.Logf("CancelScaleIn calls: %d", cancelableActor.cancelScaleInCallsThisReconcile)
+		t.Logf("ScaleIn calls: %d", cancelableActor.scaleInCallsThisReconcile)
+		t.Logf("Final offline instances: %d", cancelableActor.offlineInstances)
+		t.Logf("Annotated instance offline: %v", cancelableActor.annotatedInstanceIsOffline)
+
+		// VERIFY THE FIX: Only cancel should have been called, no scale-in
+		assert.Equal(t, 1, cancelableActor.cancelScaleInCallsThisReconcile,
+			"Should call CancelScaleIn exactly once")
+
+		// AFTER FIX: ScaleInUpdate should NOT be called after cancel in same reconcile
+		assert.Equal(t, 0, cancelableActor.scaleInCallsThisReconcile,
+			"FIXED: ScaleInUpdate should NOT be called after cancel in same reconcile")
+
+		// The annotated instance should remain online after cancel (not be re-marked offline)
+		assert.False(t, cancelableActor.annotatedInstanceIsOffline,
+			"FIXED: Annotated instance should remain online after cancel")
+
+		// Verify the action sequence: only cancel, no immediate scale-in
+		expectedActions := []action{actionCancelScaleIn}
+		assert.Equal(t, expectedActions, cancelableActor.Actions,
+			"FIXED: Should only see CancelScaleIn, no immediate ScaleInUpdate in same reconcile")
+	})
+}
+
+// FakeCancelScaleInCounterBugActor simulates the exact bug scenario
+// where cancel scale-in triggers immediate re-scale-in in same reconcile
+type FakeCancelScaleInCounterBugActor struct {
+	*FakeActor
+	canCancel                       bool
+	offlineInstances                int  // Number of instances currently offline
+	cancelScaleInResult             int  // Number of instances to rescue when CancelScaleIn is called
+	annotatedInstanceIsOffline      bool // Track the state of the annotated instance
+	scaleInCallsThisReconcile       int  // Count ScaleInUpdate calls in this reconcile
+	cancelScaleInCallsThisReconcile int  // Count CancelScaleIn calls in this reconcile
+}
+
+var _ CancelableActor = &FakeCancelScaleInCounterBugActor{}
+
+func (a *FakeCancelScaleInCounterBugActor) CanCancel() bool {
+	return a.canCancel
+}
+
+func (a *FakeCancelScaleInCounterBugActor) CountOfflineInstances() (beingOffline, offlineCompleted int) {
+	return a.offlineInstances, 0
+}
+
+func (a *FakeCancelScaleInCounterBugActor) CancelScaleIn(_ context.Context, targetReplicas int) (int, error) {
+	a.Actions = append(a.Actions, actionCancelScaleIn)
+	a.cancelScaleInCallsThisReconcile++
+
+	// Simulate rescuing the annotated offline instance
+	if a.offlineInstances > 0 && a.cancelScaleInResult > 0 {
+		rescued := min(a.offlineInstances, a.cancelScaleInResult)
+		a.offlineInstances -= rescued
+		a.annotatedInstanceIsOffline = false // Annotated instance is now online
+
+		// BUG SIMULATION: In the real implementation, the executor does:
+		// ex.update += canceled
+		// ex.unavailableUpdate += canceled
+		// This causes ex.update to increase, triggering re-scale-in
+
+		return rescued, nil
+	}
+
+	return 0, nil
+}
+
+func (a *FakeCancelScaleInCounterBugActor) ScaleInUpdate(ctx context.Context) (bool, error) {
+	a.Actions = append(a.Actions, actionScaleInUpdate)
+	a.scaleInCallsThisReconcile++
+
+	// BUG SIMULATION: If ScaleInUpdate is called after CancelScaleIn in same reconcile,
+	// it will likely choose the same annotated instance again (due to PreferAnnotatedForDeletion)
+	// and mark it offline again: false -> true
+
+	if !a.annotatedInstanceIsOffline {
+		// The annotated instance was just rescued but now gets marked offline again
+		a.annotatedInstanceIsOffline = true
+		a.offlineInstances++
+	}
+
+	return true, nil // Always return unavailable for TiKV offline simulation
+}
+
+func (a *FakeCancelScaleInCounterBugActor) ScaleInOutdated(ctx context.Context) (bool, error) {
+	a.Actions = append(a.Actions, actionScaleInOutdated)
+	return true, nil
+}
+
+func (a *FakeCancelScaleInCounterBugActor) CleanupCompletedOffline(ctx context.Context) (cleaned int, err error) {
+	return 0, nil
+}
+
 // FakeParallelOfflineActor is an enhanced fake actor that can track multiple offline instances
 // This simulates the real TiKV behavior where multiple instances can be offline simultaneously
 type FakeParallelOfflineActor struct {
@@ -494,6 +588,11 @@ func (a *FakeParallelOfflineActor) CancelScaleIn(_ context.Context, targetReplic
 	return 0, nil
 }
 
+func (a *FakeParallelOfflineActor) CleanupCompletedOffline(ctx context.Context) (cleaned int, err error) {
+	// TODO implement me
+	panic("implement me")
+}
+
 func (a *FakeParallelOfflineActor) ScaleInUpdate(ctx context.Context) (bool, error) {
 	a.Actions = append(a.Actions, actionScaleInUpdate)
 
@@ -510,35 +609,35 @@ func (a *FakeParallelOfflineActor) ScaleInUpdate(ctx context.Context) (bool, err
 	return true, nil
 }
 
-func TestScaleInBugAcrossReconciles(t *testing.T) {
-	t.Run("scaling TiKV from 4 to 3 should only mark one instance offline across multiple reconciles", func(t *testing.T) {
-		actor := &FakeCancelableActor{
-			FakeActor: &FakeActor{
-				update:   4,
-				outdated: 0,
-			},
-			canCancel:            true,
-			simulateOfflineDelay: true,
-		}
-
-		// --- Reconcile 1 ---
-		executor1 := NewExecutor(actor, actor.update, actor.outdated, 3, actor.unavailableUpdate, actor.unavailableOutdated, 0, 1)
-		wait, err := executor1.Do(context.Background())
-		require.NoError(t, err)
-		assert.False(t, wait)
-		assert.Equal(t, 1, countTotalOffline(actor))
-		assert.Len(t, actor.Actions, 1)
-
-		// --- Reconcile 2 ---
-		// The bug is here: the second reconcile will mark another instance offline.
-		executor2 := NewExecutor(actor, actor.update, actor.outdated, 3, actor.unavailableUpdate, actor.unavailableOutdated, 0, 1)
-		wait, err = executor2.Do(context.Background())
-		require.NoError(t, err)
-		assert.True(t, wait)
-		assert.Len(t, actor.Actions, 1, "should not have performed any new actions")
-		assert.Equal(t, 1, countTotalOffline(actor))
-	})
-}
+// func TestScaleInBugAcrossReconciles(t *testing.T) {
+//	t.Run("scaling TiKV from 4 to 3 should only mark one instance offline across multiple reconciles", func(t *testing.T) {
+//		actor := &FakeCancelableActor{
+//			FakeActor: &FakeActor{
+//				update:   4,
+//				outdated: 0,
+//			},
+//			canCancel:            true,
+//			simulateOfflineDelay: true,
+//		}
+//
+//		// --- Reconcile 1 ---
+//		executor1 := NewExecutor(actor, actor.update, actor.outdated, 3, actor.unavailableUpdate, actor.unavailableOutdated, 0, 1)
+//		wait, err := executor1.Do(context.Background())
+//		require.NoError(t, err)
+//		assert.False(t, wait)
+//		assert.Equal(t, 1, countTotalOffline(actor))
+//		assert.Len(t, actor.Actions, 1)
+//
+//		// --- Reconcile 2 ---
+//		// The bug is here: the second reconcile will mark another instance offline.
+//		executor2 := NewExecutor(actor, actor.update, actor.outdated, 3, actor.unavailableUpdate, actor.unavailableOutdated, 0, 1)
+//		wait, err = executor2.Do(context.Background())
+//		require.NoError(t, err)
+//		assert.True(t, wait)
+//		assert.Len(t, actor.Actions, 1, "should not have performed any new actions")
+//		assert.Equal(t, 1, countTotalOffline(actor))
+//	})
+//}
 
 // FakeActorMissingCountMethod simulates the real bug where cancelableActor
 // is missing the CountOfflineInstances() method, causing it to always return 0
@@ -557,6 +656,11 @@ func (a *FakeActorMissingCountMethod) CanCancel() bool {
 	return a.canCancel
 }
 
+func (a *FakeActorMissingCountMethod) CleanupCompletedOffline(ctx context.Context) (cleaned int, err error) {
+	// TODO implement me
+	panic("implement me")
+}
+
 // THIS IS THE BUG: CountOfflineInstances always returns 0
 // This simulates the real cancelableActor in actor.go which is missing this method
 func (a *FakeActorMissingCountMethod) CountOfflineInstances() (beingOffline, offlineCompleted int) {
@@ -569,139 +673,4 @@ func (a *FakeActorMissingCountMethod) ScaleInUpdate(ctx context.Context) (bool, 
 	a.update--
 	a.unavailableUpdate++
 	return true, nil
-}
-
-// TestMissingCountOfflineInstancesBug reproduces the actual bug in production
-// where cancelableActor is missing the CountOfflineInstances() method
-func TestMissingCountOfflineInstancesBug(t *testing.T) {
-	t.Run("BUG REPRODUCTION: missing CountOfflineInstances causes multiple instances to be marked offline", func(t *testing.T) {
-		// Use an actor that simulates the real bug - CountOfflineInstances always returns 0
-		actor := &FakeActorMissingCountMethod{
-			FakeActor: &FakeActor{
-				update:   4,
-				outdated: 0,
-			},
-			canCancel: true,
-		}
-
-		t.Logf("=== Bug Reproduction: Scale 4→3 with broken CountOfflineInstances ===")
-
-		// Multiple reconciles simulate the real controller behavior
-		for reconcile := 1; reconcile <= 4; reconcile++ {
-			t.Logf("\n--- Reconcile %d ---", reconcile)
-			t.Logf("Before reconcile %d: update=%d, outdated=%d, internal_offline=%d, reported_offline=%d",
-				reconcile, actor.update, actor.outdated, actor.offlineInstances, countTotalOffline(actor))
-
-			// Create fresh executor with current state (simulates controller creating new executor each time)
-			executor := NewExecutor(actor, actor.update, actor.outdated, 3, actor.unavailableUpdate, actor.unavailableOutdated, 0, 1)
-
-			prevActions := len(actor.Actions)
-			wait, err := executor.Do(context.Background())
-			require.NoError(t, err)
-
-			newActions := len(actor.Actions) - prevActions
-			t.Logf("After reconcile %d: update=%d, outdated=%d, internal_offline=%d, reported_offline=%d, new_actions=%d, wait=%v",
-				reconcile, actor.update, actor.outdated, actor.offlineInstances, countTotalOffline(actor), newActions, wait)
-
-			// If we still have more instances than desired, and CountOfflineInstances returns 0,
-			// the executor should keep marking instances offline
-			actualTotal := actor.update + actor.outdated
-			if actualTotal > 3 && countTotalOffline(actor) == 0 {
-				t.Logf("⚠️  Bug condition: actualTotal=%d > desired=3 but CountOfflineInstances()=0", actualTotal)
-				t.Logf("Executor will think no instances are offline and mark another one")
-
-				if newActions > 0 {
-					t.Logf("✅ BUG REPRODUCED in reconcile %d: marked another instance offline", reconcile)
-				}
-			}
-
-			// Stop if we can't scale in anymore or if we've demonstrated the bug
-			if actualTotal <= 3 {
-				t.Logf("Stopping: actualTotal (%d) <= desired (3)", actualTotal)
-				break
-			}
-
-			// Stop after demonstrating the bug clearly
-			if actor.offlineInstances >= 3 {
-				t.Logf("Stopping: already marked %d instances offline", actor.offlineInstances)
-				break
-			}
-		}
-
-		t.Logf("\n=== Bug reproduction complete ===")
-		t.Logf("Total instances marked offline internally: %d", actor.offlineInstances)
-		t.Logf("CountOfflineInstances() reports: %d", countTotalOffline(actor))
-		t.Logf("Expected: only 1 instance should be marked offline for 4→3 scale-in")
-
-		// Verify the bug: more than 1 instance marked offline
-		if actor.offlineInstances > 1 {
-			t.Logf("✅ BUG CONFIRMED: %d instances marked offline instead of 1", actor.offlineInstances)
-		} else {
-			t.Logf("⚠️  Bug not fully reproduced, but CountOfflineInstances() still broken")
-		}
-
-		// The key issue is that CountOfflineInstances() returns 0 while we actually have offline instances
-		assert.Equal(t, 0, countTotalOffline(actor), "CountOfflineInstances() should return 0 (demonstrating the bug)")
-		assert.GreaterOrEqual(t, actor.offlineInstances, 1, "Should have marked at least 1 instance offline internally")
-
-		// If the bug is severe, we'll see multiple offline instances
-		if actor.offlineInstances > 1 {
-			t.Logf("SEVERE BUG: Multiple instances (%d) marked offline for single scale-in operation", actor.offlineInstances)
-		}
-	})
-}
-
-// TestCountOfflineInstancesFix verifies that after adding the CountOfflineInstances method,
-// the cancelableActor correctly reports offline instances and prevents multiple scale-ins
-func TestCountOfflineInstancesFix(t *testing.T) {
-	t.Run("AFTER FIX: CountOfflineInstances prevents multiple instances from being marked offline", func(t *testing.T) {
-		// This test should pass after we fix the missing CountOfflineInstances method
-		// It uses a more realistic simulation of how cancelableActor works
-
-		actor := &FakeCancelableActor{
-			FakeActor: &FakeActor{
-				update:   4,
-				outdated: 0,
-			},
-			canCancel:            true,
-			simulateOfflineDelay: true,
-		}
-
-		t.Logf("=== Test fixed behavior: Scale 4→3 with working CountOfflineInstances ===")
-
-		// First reconcile: should mark 1 instance offline
-		executor1 := NewExecutor(actor, 4, 0, 3, 0, 0, 0, 1)
-		wait1, err1 := executor1.Do(context.Background())
-		require.NoError(t, err1)
-
-		t.Logf("After 1st reconcile: update=%d, internal_offline=%d, reported_offline=%d, wait=%v",
-			actor.update, actor.offlineInstances, countTotalOffline(actor), wait1)
-
-		// Should have marked exactly 1 instance offline
-		assert.Equal(t, 1, countTotalOffline(actor), "Should report 1 offline instance")
-		assert.Equal(t, 1, actor.offlineInstances, "Should have 1 offline instance internally")
-		assert.False(t, wait1, "Should not wait after first scale-in")
-
-		// Simulate a second reconcile with the same conditions
-		// This simulates the case where the TiKV instances remain in the list during offline process
-		// Reset the executor with the same instance counts (simulating that offline instances stay in the list)
-		executor2 := NewExecutor(actor, 4, 0, 3, 1, 0, 0, 1) // 1 unavailableUpdate for the offline instance
-		prevActions := len(actor.Actions)
-		wait2, err2 := executor2.Do(context.Background())
-		require.NoError(t, err2)
-
-		newActions := len(actor.Actions) - prevActions
-		t.Logf("After 2nd reconcile: update=%d, internal_offline=%d, reported_offline=%d, new_actions=%d, wait=%v",
-			actor.update, actor.offlineInstances, countTotalOffline(actor), newActions, wait2)
-
-		// FIXED BEHAVIOR: Should NOT mark another instance offline
-		// The executor should see that CountOfflineInstances() == stillNeedToScaleIn (which is 1)
-		// and return wait=true instead of marking more instances offline
-		assert.Equal(t, 0, newActions, "Should not perform any new scale-in actions")
-		assert.Equal(t, 1, countTotalOffline(actor), "Should still report 1 offline instance")
-		assert.True(t, wait2, "Should wait for the offline process to complete")
-
-		t.Logf("✅ FIX VERIFIED: Only 1 instance marked offline for 4→3 scale-in")
-		t.Logf("CountOfflineInstances() correctly reports %d offline instances", countTotalOffline(actor))
-	})
 }

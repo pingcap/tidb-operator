@@ -8519,7 +8519,6 @@ spec:
                 x-kubernetes-list-type: map
             required:
             - cluster
-            - offline
             - subdomain
             - version
             - volumes

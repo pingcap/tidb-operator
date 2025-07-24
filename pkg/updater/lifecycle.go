@@ -17,8 +17,10 @@ package updater
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
@@ -80,11 +82,19 @@ func toClientObject[SI runtime.StoreInstance](instance SI) client.Object {
 }
 
 func (s *storeLifecycle[SI]) BeginScaleIn(ctx context.Context, instance SI) error {
-	instance.SetOffline(true)
-	return s.cli.Update(ctx, toClientObject(instance))
+	if instance.IsOffline() {
+		return nil
+	}
+	obj := toClientObject(instance)
+	patchData := []byte(`[{"op": "replace", "path": "/spec/offline", "value": true}]`)
+	return s.cli.Patch(ctx, obj, client.RawPatch(types.JSONPatchType, patchData))
 }
 
 func (s *storeLifecycle[SI]) CancelScaleIn(ctx context.Context, instance SI) error {
-	instance.SetOffline(false)
-	return s.cli.Update(ctx, toClientObject(instance))
+	if !instance.IsOffline() {
+		return nil
+	}
+	obj := toClientObject(instance)
+	patchData := []byte(`[{"op": "replace", "path": "/spec/offline", "value": false}]`)
+	return s.cli.Patch(ctx, obj, client.RawPatch(types.JSONPatchType, patchData))
 }

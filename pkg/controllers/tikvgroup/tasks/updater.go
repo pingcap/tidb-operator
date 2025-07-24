@@ -96,21 +96,14 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithScaleInLifecycle(scaleInLifecycle).
 			Build()
 
-		// The enhanced executor now supports cancel scale-in operations automatically
-		// When desired replicas increase during a scale-down, it will:
-		// 1. Detect the cancellation intent
-		// 2. Use the ScaleInLifecycle to cancel offline operations
-		// 3. Rescue instances from offline back to online state
-		// 4. Create additional instances if still needed
 		wait, err := builder.Do(ctx)
 		if err != nil {
-			return task.Fail().With("failed to execute TiKV group operations: %v", err)
+			return task.Fail().With("cannot update instances: %w", err)
 		}
 		if wait {
-			return task.Wait().With("waiting for TiKV group operations to complete")
+			return task.Wait().With("wait for all instances ready")
 		}
-
-		return task.Complete().With("TiKV group operations completed successfully")
+		return task.Complete().With("all instances are synced")
 	})
 }
 
@@ -137,8 +130,7 @@ func TiKVNewer(kvg *v1alpha1.TiKVGroup, rev string) updater.NewFactory[*runtime.
 				Features:         kvg.Spec.Features,
 				Subdomain:        HeadlessServiceName(kvg.Name),
 				TiKVTemplateSpec: *spec,
-				// New instances start with offline = false (online)
-				Offline: false,
+				Offline:          false,
 			},
 		}
 

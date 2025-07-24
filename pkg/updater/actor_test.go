@@ -602,7 +602,7 @@ func TestCancelableActorScaleInNotFound(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error or panic when no instances available")
 		}
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.False(t, wait)
 	}()
 }

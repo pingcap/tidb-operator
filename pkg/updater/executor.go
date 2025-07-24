@@ -64,6 +64,12 @@ type CancelableActor interface {
 	// - offlineCompleted: instances that have completed offline and are no longer in the cluster
 	// This provides all the information executor needs for scaling decisions.
 	CountOfflineInstances() (beingOffline, offlineCompleted int)
+
+	// CleanupCompletedOffline finds and deletes any instances that have completed the offline
+	// process but are still present. This is crucial for handling race conditions during
+	// scale-in cancellation where an instance might complete offline before it can be canceled.
+	// It returns the number of instances cleaned up.
+	CleanupCompletedOffline(ctx context.Context) (cleaned int, err error)
 }
 
 // Executor is an executor that updates the instances.
@@ -126,6 +132,8 @@ func (ex *executor) countOnlineInstances() int {
 //nolint:gocyclo // refactor if possible
 func (ex *executor) Do(ctx context.Context) (bool, error) {
 	logger := logr.FromContextOrDiscard(ctx).WithName("Updater")
+
+reconcile: // Label to allow restarting the entire reconciliation
 	logger.Info("begin to update",
 		"update", ex.update, "outdated", ex.outdated, "desired", ex.desired,
 		"unavailableUpdate", ex.unavailableUpdate, "unavailableOutdated", ex.unavailableOutdated,
@@ -133,8 +141,20 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 	// Track whether we've already attempted cancel in this execution
 	cancelAttempted := false
 
+	// Helper function to check if cancellation might be needed
+	// This is needed because even when ex.update == ex.desired, we might still
+	// need to cancel ongoing offline operations if desired count increased
+	needCancelCheck := func() bool {
+		if cancelableActor, ok := ex.act.(CancelableActor); ok && cancelableActor.CanCancel() {
+			beingOffline, _ := cancelableActor.CountOfflineInstances()
+			return beingOffline > 0 && ex.desired > ex.countOnlineInstances()
+		}
+		return false
+	}
+
 	// Main reconciliation loop - handles both normal scaling and cancel operations
-	for ex.update != ex.desired || ex.outdated != 0 {
+	// Extended condition to also run when there are offline instances that might need rescue
+	for ex.update != ex.desired || ex.outdated != 0 || needCancelCheck() {
 		// Calculate actual instances considering offline state for TiKV/TiFlash
 		// For regular actors, this equals ex.update + ex.outdated
 		// For CancelableActor (TiKV/TiFlash), this excludes offline instances
@@ -152,7 +172,9 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 		// Check for cancel scale-in scenario first (when onlineActual < desired)
 		// This handles cases where user increases replicas during an ongoing scale-down
 		// Only attempt cancel once per execution
-		if onlineActual < ex.desired && !cancelAttempted {
+		// Extended condition to also trigger cancellation when there are offline instances
+		// that need to be rescued even when ex.update == ex.desired
+		if (onlineActual < ex.desired || needCancelCheck()) && !cancelAttempted {
 			if cancelableActor, ok := ex.act.(CancelableActor); ok && cancelableActor.CanCancel() {
 				logger.Info("cancel scale in",
 					"onlineActual", onlineActual, "desired", ex.desired)
@@ -166,13 +188,17 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 				if canceled > 0 {
 					logger.Info("cancel scale in success", "canceled", canceled)
 					// Successfully rescued some instances
-					// Update our counters to reflect rescued instances
-					// (they become part of update count as they're now online and updated)
-					ex.update += canceled
-					ex.unavailableUpdate += canceled // They may need time to become available
-
-					// Continue the loop to re-evaluate the situation
-					continue
+					// DO NOT update internal counters here - this was the bug!
+					// The next reconcile cycle will read the actual state from Kubernetes
+					// and re-evaluate based on real instance states.
+					//
+					// BUG FIX: Previously this code did:
+					// ex.update += canceled
+					// ex.unavailableUpdate += canceled
+					// This caused ex.update to increase, triggering immediate re-scale-in
+					// in the same reconcile loop, marking the same instance offline again.
+					// Return immediately to allow next reconcile to see the updated state
+					return false, nil
 				}
 			}
 
@@ -331,6 +357,22 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 					"available", available, "minimum", minimum)
 				return true, nil
 			}
+		}
+	}
+
+	// After the main loop, perform a final check for any zombie instances left over from race conditions.
+	if cancelableActor, ok := ex.act.(CancelableActor); ok && cancelableActor.CanCancel() {
+		cleaned, err := cancelableActor.CleanupCompletedOffline(ctx)
+		if err != nil {
+			return false, fmt.Errorf("failed to clean up completed offline instances: %w", err)
+		}
+		if cleaned > 0 {
+			logger.Info("restarting reconciliation after cleaning up completed offline instances", "cleanedCount", cleaned)
+			// State has changed significantly, restart the entire reconciliation process.
+			ex.update -= cleaned
+			// The cleaned instances might have been unavailable.
+			// We let the next full reconciliation loop recalculate this accurately.
+			goto reconcile
 		}
 	}
 
