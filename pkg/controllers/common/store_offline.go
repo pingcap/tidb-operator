@@ -39,13 +39,29 @@ const (
 	// MaxRetryCount is the maximum number of retry attempts for failed operations.
 	MaxRetryCount = 3
 	// AnnotationKeyOfflineRetryCount is the annotation key for tracking retry attempts.
-	AnnotationKeyOfflineRetryCount = "pingcap.com/offline-retry-count"
+	AnnotationKeyOfflineRetryCount = v1alpha1.AnnoKeyPrefix + "offline-retry-count"
 )
+
+type StoreOfflineHook interface {
+	BeforeDeleteStore(ctx context.Context) (wait bool, err error)
+	AfterCancelDeleteStore(ctx context.Context) (wait bool, err error)
+}
+
+type DummyStoreOfflineHook struct{}
+
+var _ StoreOfflineHook = &DummyStoreOfflineHook{}
+
+func (DummyStoreOfflineHook) BeforeDeleteStore(_ context.Context) (wait bool, err error) {
+	return false, nil
+}
+
+func (DummyStoreOfflineHook) AfterCancelDeleteStore(_ context.Context) (wait bool, err error) {
+	return false, nil
+}
 
 // StoreOfflineReconcileContext defines the interface for reconcile context with store offline capabilities.
 type StoreOfflineReconcileContext interface {
 	StoreState
-	StoreStateUpdater
 	StatusUpdater
 
 	// GetStoreID returns the store ID for PD operations
@@ -63,6 +79,7 @@ func TaskOfflineStoreStateMachine(
 	state StoreOfflineReconcileContext,
 	store runtime.Store,
 	storeTypeName string,
+	hook StoreOfflineHook,
 ) task.Result {
 	if store == nil {
 		return task.Fail().With("%s store store is nil", storeTypeName)
@@ -71,11 +88,11 @@ func TaskOfflineStoreStateMachine(
 	// Check if offline operation is requested
 	if !store.IsOffline() {
 		// If offline is false, check if we need to cancel an ongoing operation
-		return handleOfflineCancellation(ctx, state, store)
+		return handleOfflineCancellation(ctx, state, store, hook)
 	}
 
 	// Handle offline operation based on current condition state
-	return handleOfflineOperation(ctx, state, store)
+	return handleOfflineOperation(ctx, state, store, hook)
 }
 
 // handleOfflineOperation manages the offline operation state machine.
@@ -83,6 +100,7 @@ func handleOfflineOperation(
 	ctx context.Context,
 	state StoreOfflineReconcileContext,
 	store runtime.Store,
+	hook StoreOfflineHook,
 ) task.Result {
 	condition := store.GetOfflineCondition()
 
@@ -93,7 +111,7 @@ func handleOfflineOperation(
 
 	switch condition.Reason {
 	case v1alpha1.OfflineReasonPending:
-		return handlePendingState(ctx, state, store)
+		return handlePendingState(ctx, state, store, hook)
 	case v1alpha1.OfflineReasonActive:
 		return handleActiveState(ctx, state, store)
 	case v1alpha1.OfflineReasonCompleted:
@@ -114,6 +132,7 @@ func handleOfflineCancellation(
 	ctx context.Context,
 	state StoreOfflineReconcileContext,
 	store runtime.Store,
+	hook StoreOfflineHook,
 ) task.Result {
 	condition := store.GetOfflineCondition()
 	// If no offline condition exists, nothing to cancel
@@ -130,7 +149,7 @@ func handleOfflineCancellation(
 		return task.Complete().With("offline operation already canceled")
 	case v1alpha1.OfflineReasonPending, v1alpha1.OfflineReasonActive, v1alpha1.OfflineReasonFailed:
 		// Cancel the operation
-		return cancelOfflineOperation(ctx, state, store)
+		return cancelOfflineOperation(ctx, state, store, hook)
 	default:
 		return task.Fail().With("unknown offline condition reason: %s", condition.Reason)
 	}
@@ -157,6 +176,7 @@ func handlePendingState(
 	ctx context.Context,
 	state StoreOfflineReconcileContext,
 	store runtime.Store,
+	hook StoreOfflineHook,
 ) task.Result {
 	logger := logr.FromContextOrDiscard(ctx).WithValues("instance", store.GetName())
 	if state.GetStoreNotExists() {
@@ -177,6 +197,14 @@ func handlePendingState(
 	storeID := state.GetStoreID()
 	if storeID == "" {
 		return task.Fail().With("store ID is empty")
+	}
+
+	wait, err := hook.BeforeDeleteStore(ctx)
+	if err != nil {
+		return task.Fail().With("failed to execute the hook before delete store: %v", err)
+	}
+	if wait {
+		return task.Retry(RemovingWaitInterval).With("wait for the hook")
 	}
 
 	logger.Info("Calling PD DeleteStore API", "storeID", storeID)
@@ -211,20 +239,8 @@ func handleActiveState(
 	store runtime.Store,
 ) task.Result {
 	logger := logr.FromContextOrDiscard(ctx).WithValues("instance", store.GetName())
-	if state.GetStoreNotExists() {
-		// Store has been removed, mark as completed
+	if state.GetStoreNotExists() || state.GetStoreState() == v1alpha1.StoreStateRemoved {
 		logger.Info("Store has been removed from PD, completing offline operation")
-		updateOfflineCondition(state, store, v1alpha1.NewOfflineCondition(
-			v1alpha1.OfflineReasonCompleted,
-			"Store has been successfully removed from PD",
-			metav1.ConditionTrue,
-		))
-		return task.Complete().With("store offline operation completed")
-	}
-
-	// Check if store is in "Removed" state
-	if state.GetStoreState() == v1alpha1.StoreStateRemoved {
-		logger.Info("Store is Removed, completing offline operation")
 		updateOfflineCondition(state, store, v1alpha1.NewOfflineCondition(
 			v1alpha1.OfflineReasonCompleted,
 			"Store state is Removed, offline operation completed",
@@ -232,8 +248,6 @@ func handleActiveState(
 		))
 		return task.Complete().With("store offline operation completed")
 	}
-
-	// Continue monitoring
 	return task.Retry(RemovingWaitInterval).With("waiting for store to be removed, current state: %s", state.GetStoreState())
 }
 
@@ -285,6 +299,7 @@ func cancelOfflineOperation(
 	ctx context.Context,
 	state StoreOfflineReconcileContext,
 	store runtime.Store,
+	hook StoreOfflineHook,
 ) task.Result {
 	logger := logr.FromContextOrDiscard(ctx).WithValues("instance", store.GetName())
 	if state.GetPDClient() == nil {
@@ -309,6 +324,14 @@ func cancelOfflineOperation(
 				metav1.ConditionTrue,
 			))
 			return task.Fail().With(errMsg)
+		}
+
+		wait, err := hook.AfterCancelDeleteStore(ctx)
+		if err != nil {
+			return task.Fail().With("failed to execute the hook after cancel delete store")
+		}
+		if wait {
+			return task.Retry(RemovingWaitInterval).With("wait for the hook")
 		}
 	}
 

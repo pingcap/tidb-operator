@@ -34,8 +34,7 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 			return task.Fail().With("tiflash is nil")
 		}
 		cond := meta.FindStatusCondition(tiflash.Status.Conditions, v1alpha1.StoreOfflineConditionType)
-		if state.Cluster().GetDeletionTimestamp().IsZero() &&
-			(!tiflash.Spec.Offline || cond == nil || cond.Reason != v1alpha1.OfflineReasonCompleted) {
+		if !tiflash.Spec.Offline || cond == nil || cond.Reason != v1alpha1.OfflineReasonCompleted {
 			return task.Wait().With("wait for offline complete to delete resources, condition: %v", cond)
 		}
 

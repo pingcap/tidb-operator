@@ -54,6 +54,7 @@ type PDWriter interface {
 	// DeleteStore deletes a TiKV/TiFlash store from the cluster.
 	DeleteStore(ctx context.Context, storeID string) error
 	// CancelDeleteStore cancels the deletion of a TiKV/TiFlash store, returning it to online state.
+	// If the store is already online, it will return nil.
 	CancelDeleteStore(ctx context.Context, storeID string) error
 	// DeleteMember deletes a PD member from the cluster.
 	DeleteMember(ctx context.Context, name string) error

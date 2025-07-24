@@ -85,7 +85,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 func ObjectIsDeletingAndStoreIsRemoved(state *tasks.ReconcileContext) task.Condition {
 	return task.CondFunc(func() bool {
-		return !state.Object().GetDeletionTimestamp().IsZero() &&
+		return !state.TiKV().GetDeletionTimestamp().IsZero() &&
 			(state.GetStoreState() == v1alpha1.StoreStateRemoved || state.Store == nil)
 	})
 }

@@ -125,10 +125,6 @@ func (b *contextBuilder) initMock(ctrl *gomock.Controller) {
 	b.ctx.EXPECT().IsStoreUp().Return(true).AnyTimes()
 	b.ctx.EXPECT().IsStoreBusy().Return(false).AnyTimes()
 	b.ctx.EXPECT().SetStatusChanged().AnyTimes()
-	b.ctx.EXPECT().SetLeaderCount(gomock.Any()).AnyTimes()
-	b.ctx.EXPECT().SetRegionCount(gomock.Any()).AnyTimes()
-	b.ctx.EXPECT().SetStoreBusy(gomock.Any()).AnyTimes()
-	b.ctx.EXPECT().SetStoreState(gomock.Any()).AnyTimes()
 
 	// Always set up GetStoreState to return the stored state or empty string
 	b.ctx.EXPECT().GetStoreState().Return(b.storeState).AnyTimes()
@@ -185,7 +181,7 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 			context = tt.contextBuilder.Build()
 		}
 
-		result := TaskOfflineStoreStateMachine(ctx, context, tt.instance, "mock")
+		result := TaskOfflineStoreStateMachine(ctx, context, tt.instance, "mock", &DummyStoreOfflineHook{})
 
 		// Default assertions
 		require.Equal(t, tt.expectedResult.Status(), result.Status(), "Status mismatch")
@@ -472,7 +468,7 @@ func TestTaskOfflineStoreStateMachine_NilStore(t *testing.T) {
 	ctx := context.Background()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	result := TaskOfflineStoreStateMachine(ctx, NewMockStoreOfflineReconcileContext(ctrl), nil, "mock")
+	result := TaskOfflineStoreStateMachine(ctx, NewMockStoreOfflineReconcileContext(ctrl), nil, "mock", &DummyStoreOfflineHook{})
 	require.Equal(t, task.SFail, result.Status())
 	require.Contains(t, result.Message(), "store is nil")
 }

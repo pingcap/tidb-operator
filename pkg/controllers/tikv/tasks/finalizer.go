@@ -36,8 +36,7 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
 		tikv := state.TiKV()
 		cond := meta.FindStatusCondition(tikv.Status.Conditions, v1alpha1.StoreOfflineConditionType)
-		if state.Cluster().GetDeletionTimestamp().IsZero() &&
-			(!tikv.Spec.Offline || cond == nil || cond.Reason != v1alpha1.OfflineReasonCompleted) {
+		if !tikv.Spec.Offline || cond == nil || cond.Reason != v1alpha1.OfflineReasonCompleted {
 			return task.Wait().With("wait for offline complete to delete resources, condition: %v", cond)
 		}
 

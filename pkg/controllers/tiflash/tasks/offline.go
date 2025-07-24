@@ -25,6 +25,6 @@ import (
 // This implements the state machine for offline operations: Pending -> Active -> Completed/Failed/Canceled.
 func TaskOfflineStore(state *ReconcileContext) task.Task {
 	return task.NameTaskFunc("OfflineTiFlashStore", func(ctx context.Context) task.Result {
-		return common.TaskOfflineStoreStateMachine(ctx, state, state.Instance(), "tiflash")
+		return common.TaskOfflineStoreStateMachine(ctx, state, state.Instance(), "tiflash", &common.DummyStoreOfflineHook{})
 	})
 }
