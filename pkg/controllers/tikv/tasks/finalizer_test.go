@@ -34,6 +34,46 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
+type tikvOption func(*v1alpha1.TiKV)
+
+func withFinalizers(finalizers ...string) tikvOption {
+	return func(tikv *v1alpha1.TiKV) {
+		// if the slice is nil (which happens when called with no args),
+		// assign an empty slice to avoid nil vs empty slice issues in tests.
+		if finalizers == nil {
+			tikv.Finalizers = []string{}
+			return
+		}
+		tikv.Finalizers = finalizers
+	}
+}
+
+func withOfflineSpec() tikvOption {
+	return func(tikv *v1alpha1.TiKV) {
+		tikv.Spec.Offline = true
+	}
+}
+
+func withOfflineCondition(reason string) tikvOption {
+	return func(tikv *v1alpha1.TiKV) {
+		tikv.Status.Conditions = []metav1.Condition{
+			{
+				Type:   v1alpha1.StoreOfflineConditionType,
+				Reason: reason,
+			},
+		}
+	}
+}
+
+func newFakeTiKV(opts ...tikvOption) *v1alpha1.TiKV {
+	return fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+		for _, opt := range opts {
+			opt(obj)
+		}
+		return obj
+	})
+}
+
 func TestTaskFinalizerDel(t *testing.T) {
 	cases := []struct {
 		desc          string
@@ -45,256 +85,156 @@ func TestTaskFinalizerDel(t *testing.T) {
 		expectedObj    *v1alpha1.TiKV
 	}{
 		{
+			desc: "tikv.Spec.Offline is false, should wait",
+			state: &ReconcileContext{
+				State: &state{tikv: newFakeTiKV(withFinalizers(meta.Finalizer))},
+			},
+			expectedStatus: task.SWait,
+			expectedObj:    newFakeTiKV(withFinalizers(meta.Finalizer)),
+		},
+		{
+			desc: "StoreOfflineConditionType condition is missing, should wait",
+			state: &ReconcileContext{
+				State: &state{tikv: newFakeTiKV(withOfflineSpec(), withFinalizers(meta.Finalizer))},
+			},
+			expectedStatus: task.SWait,
+			expectedObj:    newFakeTiKV(withOfflineSpec(), withFinalizers(meta.Finalizer)),
+		},
+		{
+			desc: "StoreOfflineConditionType status is not Completed, should wait",
+			state: &ReconcileContext{
+				State: &state{tikv: newFakeTiKV(withOfflineSpec(), withFinalizers(meta.Finalizer), withOfflineCondition(v1alpha1.OfflineReasonActive))},
+			},
+			expectedStatus: task.SWait,
+			expectedObj:    newFakeTiKV(withOfflineSpec(), withFinalizers(meta.Finalizer), withOfflineCondition(v1alpha1.OfflineReasonActive)),
+		},
+		{
 			desc: "no sub resources, no finalizer",
 			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						return obj
-					}),
-				},
+				State: &state{tikv: newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted))},
 			},
-
 			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				return obj
-			}),
+			expectedObj:    newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted)),
 		},
 		{
 			desc: "has sub resources (pods), should wait for deletion",
 			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tikv: newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
-			subresources: fakeSubresources("Pod"),
-
+			subresources:   fakeSubresources("Pod"),
 			expectedStatus: task.SRetry,
-			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
+			expectedObj:    newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer)),
 		},
 		{
 			desc: "has sub resources (configmaps), should wait for deletion",
 			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tikv: newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
-			subresources: fakeSubresources("ConfigMap"),
-
+			subresources:   fakeSubresources("ConfigMap"),
 			expectedStatus: task.SRetry,
-			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
+			expectedObj:    newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer)),
 		},
 		{
 			desc: "has sub resources (pvcs), should wait for deletion",
 			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tikv: newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
-			subresources: fakeSubresources("PersistentVolumeClaim"),
-
+			subresources:   fakeSubresources("PersistentVolumeClaim"),
 			expectedStatus: task.SRetry,
-			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
+			expectedObj:    newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer)),
 		},
 		{
 			desc: "has multiple sub resources, should wait for deletion",
 			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tikv: newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
-			subresources: fakeSubresources("Pod", "ConfigMap", "PersistentVolumeClaim"),
-
+			subresources:   fakeSubresources("Pod", "ConfigMap", "PersistentVolumeClaim"),
 			expectedStatus: task.SRetry,
-			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
+			expectedObj:    newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer)),
 		},
 		{
 			desc: "failed to delete subresources (pods)",
 			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tikv: newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
-			subresources:  fakeSubresources("Pod"),
-			unexpectedErr: true,
-
+			subresources:   fakeSubresources("Pod"),
+			unexpectedErr:  true,
 			expectedStatus: task.SFail,
-			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
+			expectedObj:    newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer)),
 		},
 		{
 			desc: "failed to delete subresources (configmaps)",
 			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tikv: newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
-			subresources:  fakeSubresources("ConfigMap"),
-			unexpectedErr: true,
-
+			subresources:   fakeSubresources("ConfigMap"),
+			unexpectedErr:  true,
 			expectedStatus: task.SFail,
-			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
+			expectedObj:    newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer)),
 		},
 		{
 			desc: "failed to delete subresources (pvcs)",
 			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tikv: newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
-			subresources:  fakeSubresources("PersistentVolumeClaim"),
-			unexpectedErr: true,
-
+			subresources:   fakeSubresources("PersistentVolumeClaim"),
+			unexpectedErr:  true,
 			expectedStatus: task.SFail,
-			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
+			expectedObj:    newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer)),
 		},
 		{
 			desc: "no sub resources, has finalizer, should remove finalizer",
 			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tikv: newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
-
 			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = []string{}
-				return obj
-			}),
+			expectedObj:    newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers()),
 		},
 		{
 			desc: "no sub resources, has finalizer, failed to remove finalizer",
 			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tikv: newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
-			unexpectedErr: true,
-
+			unexpectedErr:  true,
 			expectedStatus: task.SFail,
-			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
+			expectedObj:    newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer)),
 		},
 		{
 			desc: "has pods with deletion timestamp, should wait",
 			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tikv: newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
-			subresources: fakeSubresources("PodDeleting"),
-
+			subresources:   fakeSubresources("PodDeleting"),
 			expectedStatus: task.SRetry,
-			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
+			expectedObj:    newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer)),
 		},
 		{
 			desc: "has mixed sub resources with some deleting",
 			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tikv: newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
 			subresources: append(
 				fakeSubresources("Pod"),
 				fakeSubresources("PodDeleting")...,
 			),
-
 			expectedStatus: task.SRetry,
-			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
+			expectedObj:    newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer)),
 		},
 		{
 			desc: "empty tikv with multiple finalizers",
 			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = []string{meta.Finalizer, "other.finalizer.com/test", "another.finalizer.com/test"}
-						return obj
-					}),
-				},
+				State: &state{tikv: newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer, "other.finalizer.com/test", "another.finalizer.com/test"))},
 			},
-
 			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = []string{"other.finalizer.com/test", "another.finalizer.com/test"}
-				return obj
-			}),
+			expectedObj:    newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers("other.finalizer.com/test", "another.finalizer.com/test")),
 		},
 		{
 			desc: "tikv with only other finalizers",
 			state: &ReconcileContext{
-				State: &state{
-					tikv: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-						obj.Finalizers = []string{"other.finalizer.com/test", "another.finalizer.com/test"}
-						return obj
-					}),
-				},
+				State: &state{tikv: newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers("other.finalizer.com/test", "another.finalizer.com/test"))},
 			},
-
 			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("test-tikv", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-				obj.Finalizers = []string{"other.finalizer.com/test", "another.finalizer.com/test"}
-				return obj
-			}),
+			expectedObj:    newFakeTiKV(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers("other.finalizer.com/test", "another.finalizer.com/test")),
 		},
 	}
 

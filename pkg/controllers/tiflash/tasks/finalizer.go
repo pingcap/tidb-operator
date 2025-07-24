@@ -18,6 +18,7 @@ import (
 	"context"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
@@ -31,6 +32,11 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 		tiflash := state.TiFlash()
 		if tiflash == nil {
 			return task.Fail().With("tiflash is nil")
+		}
+		cond := meta.FindStatusCondition(tiflash.Status.Conditions, v1alpha1.StoreOfflineConditionType)
+		if state.Cluster().GetDeletionTimestamp().IsZero() &&
+			(!tiflash.Spec.Offline || cond == nil || cond.Reason != v1alpha1.OfflineReasonCompleted) {
+			return task.Wait().With("wait for offline complete to delete resources, condition: %v", cond)
 		}
 
 		wait, err := EnsureSubResourcesDeleted(ctx, c, tiflash)

@@ -297,7 +297,8 @@ func cancelOfflineOperation(
 	}
 
 	// Only cancel if store exists and is in removing state
-	if !state.GetStoreNotExists() && state.GetStoreState() == v1alpha1.StoreStateRemoving {
+	if !state.GetStoreNotExists() &&
+		(state.GetStoreState() == v1alpha1.StoreStateServing || state.GetStoreState() == v1alpha1.StoreStateRemoving) {
 		logger.Info("Calling PD CancelDeleteStore API", "storeID", storeID)
 		if err := state.GetPDClient().Underlay().CancelDeleteStore(ctx, storeID); err != nil {
 			// If cancellation fails, update the condition message and retry.

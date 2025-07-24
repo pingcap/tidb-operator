@@ -34,8 +34,46 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
+type tiflashOption func(*v1alpha1.TiFlash)
+
+func withFinalizers(finalizers ...string) tiflashOption {
+	return func(tiflash *v1alpha1.TiFlash) {
+		if finalizers == nil {
+			tiflash.Finalizers = []string{}
+			return
+		}
+		tiflash.Finalizers = finalizers
+	}
+}
+
+func withOfflineSpec() tiflashOption {
+	return func(tiflash *v1alpha1.TiFlash) {
+		tiflash.Spec.Offline = true
+	}
+}
+
+func withOfflineCondition(reason string) tiflashOption {
+	return func(tiflash *v1alpha1.TiFlash) {
+		tiflash.Status.Conditions = []metav1.Condition{
+			{
+				Type:   v1alpha1.StoreOfflineConditionType,
+				Reason: reason,
+			},
+		}
+	}
+}
+
+func newFakeTiFlash(opts ...tiflashOption) *v1alpha1.TiFlash {
+	return fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+		for _, opt := range opts {
+			opt(obj)
+		}
+		return obj
+	})
+}
+
 func TestTaskFinalizerDel(t *testing.T) {
-	type testCase struct {
+	cases := []struct {
 		desc          string
 		state         *ReconcileContext
 		subresources  []client.Object
@@ -43,240 +81,158 @@ func TestTaskFinalizerDel(t *testing.T) {
 
 		expectedStatus task.Status
 		expectedObj    *v1alpha1.TiFlash
-	}
-
-	cases := []testCase{
-		// Original TaskFinalizerDel test cases
+	}{
+		{
+			desc: "tiflash.Spec.Offline is false, should wait",
+			state: &ReconcileContext{
+				State: &state{tiflash: newFakeTiFlash(withFinalizers(meta.Finalizer))},
+			},
+			expectedStatus: task.SWait,
+			expectedObj:    newFakeTiFlash(withFinalizers(meta.Finalizer)),
+		},
+		{
+			desc: "StoreOfflineConditionType condition is missing, should wait",
+			state: &ReconcileContext{
+				State: &state{tiflash: newFakeTiFlash(withOfflineSpec(), withFinalizers(meta.Finalizer))},
+			},
+			expectedStatus: task.SWait,
+			expectedObj:    newFakeTiFlash(withOfflineSpec(), withFinalizers(meta.Finalizer)),
+		},
+		{
+			desc: "StoreOfflineConditionType status is not Completed, should wait",
+			state: &ReconcileContext{
+				State: &state{tiflash: newFakeTiFlash(withOfflineSpec(), withFinalizers(meta.Finalizer), withOfflineCondition(v1alpha1.OfflineReasonActive))},
+			},
+			expectedStatus: task.SWait,
+			expectedObj:    newFakeTiFlash(withOfflineSpec(), withFinalizers(meta.Finalizer), withOfflineCondition(v1alpha1.OfflineReasonActive)),
+		},
 		{
 			desc: "no sub resources, no finalizer",
 			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						return obj
-					}),
-				},
+				State: &state{tiflash: newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted))},
 			},
 			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				return obj
-			}),
+			expectedObj:    newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted)),
 		},
 		{
 			desc: "has sub resources (pods), should wait for deletion",
 			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tiflash: newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
 			subresources:   fakeSubresources("Pod"),
 			expectedStatus: task.SRetry,
-			expectedObj: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
+			expectedObj:    newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer)),
 		},
 		{
 			desc: "has sub resources (configmaps), should wait for deletion",
 			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tiflash: newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
 			subresources:   fakeSubresources("ConfigMap"),
 			expectedStatus: task.SRetry,
-			expectedObj: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
+			expectedObj:    newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer)),
 		},
 		{
 			desc: "has sub resources (pvcs), should wait for deletion",
 			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tiflash: newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
 			subresources:   fakeSubresources("PersistentVolumeClaim"),
 			expectedStatus: task.SRetry,
-			expectedObj: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
+			expectedObj:    newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer)),
 		},
 		{
 			desc: "has multiple sub resources, should wait for deletion",
 			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tiflash: newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
 			subresources:   fakeSubresources("Pod", "ConfigMap", "PersistentVolumeClaim"),
 			expectedStatus: task.SRetry,
-			expectedObj: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
+			expectedObj:    newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer)),
 		},
 		{
 			desc: "failed to delete subresources (pods)",
 			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tiflash: newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
 			subresources:   fakeSubresources("Pod"),
 			unexpectedErr:  true,
 			expectedStatus: task.SFail,
-			expectedObj: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
+			expectedObj:    newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer)),
 		},
 		{
 			desc: "failed to delete subresources (configmaps)",
 			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tiflash: newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
 			subresources:   fakeSubresources("ConfigMap"),
 			unexpectedErr:  true,
 			expectedStatus: task.SFail,
-			expectedObj: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
+			expectedObj:    newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer)),
 		},
 		{
 			desc: "failed to delete subresources (pvcs)",
 			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tiflash: newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
 			subresources:   fakeSubresources("PersistentVolumeClaim"),
 			unexpectedErr:  true,
 			expectedStatus: task.SFail,
-			expectedObj: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
+			expectedObj:    newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer)),
 		},
 		{
 			desc: "no sub resources, has finalizer, should remove finalizer",
 			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tiflash: newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
 			expectedStatus: task.SComplete,
-			expectedObj: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				obj.Finalizers = []string{}
-				return obj
-			}),
+			expectedObj:    newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers()),
 		},
 		{
 			desc: "no sub resources, has finalizer, failed to remove finalizer",
 			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tiflash: newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
 			unexpectedErr:  true,
 			expectedStatus: task.SFail,
-			expectedObj: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
+			expectedObj:    newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer)),
 		},
 		{
 			desc: "has pods with deletion timestamp, should wait",
 			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tiflash: newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
 			subresources:   fakeSubresources("PodDeleting"),
 			expectedStatus: task.SRetry,
-			expectedObj: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
+			expectedObj:    newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer)),
 		},
 		{
 			desc: "has mixed sub resources with some deleting",
 			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-						return obj
-					}),
-				},
+				State: &state{tiflash: newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer))},
 			},
 			subresources: append(
 				fakeSubresources("Pod"),
 				fakeSubresources("PodDeleting")...,
 			),
 			expectedStatus: task.SRetry,
-			expectedObj: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				obj.Finalizers = append(obj.Finalizers, meta.Finalizer)
-				return obj
-			}),
+			expectedObj:    newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer)),
 		},
-		// Edge cases
 		{
 			desc: "empty tiflash with multiple finalizers",
 			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = []string{meta.Finalizer, "other.finalizer.com/test", "another.finalizer.com/test"}
-						return obj
-					}),
-				},
+				State: &state{tiflash: newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers(meta.Finalizer, "other.finalizer.com/test", "another.finalizer.com/test"))},
 			},
 			expectedStatus: task.SComplete,
+			expectedObj:    newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers("other.finalizer.com/test", "another.finalizer.com/test")),
 		},
 		{
 			desc: "tiflash with only other finalizers",
 			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("test-tiflash", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Finalizers = []string{"other.finalizer.com/test", "another.finalizer.com/test"}
-						return obj
-					}),
-				},
+				State: &state{tiflash: newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers("other.finalizer.com/test", "another.finalizer.com/test"))},
 			},
 			expectedStatus: task.SComplete,
+			expectedObj:    newFakeTiFlash(withOfflineSpec(), withOfflineCondition(v1alpha1.OfflineReasonCompleted), withFinalizers("other.finalizer.com/test", "another.finalizer.com/test")),
 		},
 	}
 
@@ -285,10 +241,10 @@ func TestTaskFinalizerDel(t *testing.T) {
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
-			var objs []client.Object
-			if c.state.TiFlash() != nil {
-				objs = append(objs, c.state.TiFlash())
+			objs := []client.Object{
+				c.state.TiFlash(),
 			}
+
 			objs = append(objs, c.subresources...)
 
 			fc := client.NewFakeClient(objs...)
@@ -296,7 +252,7 @@ func TestTaskFinalizerDel(t *testing.T) {
 				// cannot remove finalizer
 				fc.WithError("update", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
 				// cannot delete sub resources
-				fc.WithError("delete", "*", errors.NewInternalError(fmt.Errorf("fake delete error")))
+				fc.WithError("delete", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
 			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -305,17 +261,14 @@ func TestTaskFinalizerDel(t *testing.T) {
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
 
-			// no need to check update result if there's an unexpected error
+			// no need to check update result
 			if c.unexpectedErr {
 				return
 			}
 
-			// For edge cases without expectedObj, skip the object check
-			if c.expectedObj != nil {
-				tiflash := &v1alpha1.TiFlash{}
-				require.NoError(tt, fc.Get(ctx, client.ObjectKey{Name: "test-tiflash"}, tiflash), c.desc)
-				assert.Equal(tt, c.expectedObj, tiflash, c.desc)
-			}
+			tiflash := &v1alpha1.TiFlash{}
+			require.NoError(tt, fc.Get(ctx, client.ObjectKey{Name: "test-tiflash"}, tiflash), c.desc)
+			assert.Equal(tt, c.expectedObj, tiflash, c.desc)
 		})
 	}
 }
@@ -326,7 +279,7 @@ func fakeSubresources(types ...string) []client.Object {
 		var obj client.Object
 		switch t {
 		case "Pod":
-			obj = fake.FakeObj(strconv.Itoa(i), func(obj *corev1.Pod) *corev1.Pod {
+			obj = fake.FakeObj("pod-"+strconv.Itoa(i), func(obj *corev1.Pod) *corev1.Pod {
 				obj.Labels = map[string]string{
 					v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
 					v1alpha1.LabelKeyInstance:  "test-tiflash",
@@ -348,7 +301,7 @@ func fakeSubresources(types ...string) []client.Object {
 				return obj
 			})
 		case "ConfigMap":
-			obj = fake.FakeObj(strconv.Itoa(i), func(obj *corev1.ConfigMap) *corev1.ConfigMap {
+			obj = fake.FakeObj("cm-"+strconv.Itoa(i), func(obj *corev1.ConfigMap) *corev1.ConfigMap {
 				obj.Labels = map[string]string{
 					v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
 					v1alpha1.LabelKeyInstance:  "test-tiflash",
@@ -358,7 +311,7 @@ func fakeSubresources(types ...string) []client.Object {
 				return obj
 			})
 		case "PersistentVolumeClaim":
-			obj = fake.FakeObj(strconv.Itoa(i), func(obj *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
+			obj = fake.FakeObj("pvc-"+strconv.Itoa(i), func(obj *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
 				obj.Labels = map[string]string{
 					v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
 					v1alpha1.LabelKeyInstance:  "test-tiflash",

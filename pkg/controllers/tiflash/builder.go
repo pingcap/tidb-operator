@@ -15,7 +15,6 @@
 package tiflash
 
 import (
-	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tiflash/tasks"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
@@ -44,9 +43,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// handle offline state machine for two-step store deletion
 		tasks.TaskOfflineStore(state),
 
-		task.IfBreak(canDeleteAllResources(state), tasks.TaskFinalizerDel(state, r.Client)),
-		task.If(common.CondObjectIsDeleting[scope.TiFlash](state),
-			tasks.TaskOfflineStore(state),
+		task.IfBreak(common.CondObjectIsDeleting[scope.TiFlash](state),
+			tasks.TaskFinalizerDel(state, r.Client),
 		),
 
 		common.TaskFinalizerAdd[scope.TiFlash](state, r.Client),
@@ -73,34 +71,4 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 	)
 
 	return runner
-}
-
-// canDeleteAllResources checks if the resources can be deleted.
-// For the two-step store deletion process, we require offline completion before deletion.
-func canDeleteAllResources(state *tasks.ReconcileContext) task.Condition {
-	return task.CondFunc(func() bool {
-		// Always allow deletion if cluster is being deleted
-		if !state.Cluster().GetDeletionTimestamp().IsZero() {
-			return true
-		}
-
-		// For instance deletion, check if offline operation is completed
-		if !state.Object().GetDeletionTimestamp().IsZero() {
-			// Legacy path: store is removed or doesn't exist
-			if state.GetStoreState() == v1alpha1.StoreStateRemoved || state.Store == nil {
-				return true
-			}
-
-			// New path: check if offline operation is completed
-			tiflash := state.TiFlash()
-			if tiflash != nil && tiflash.Spec.Offline {
-				condition := v1alpha1.GetOfflineCondition(tiflash.Status.Conditions)
-				if condition != nil && condition.Reason == v1alpha1.OfflineReasonCompleted {
-					return true
-				}
-			}
-		}
-
-		return false
-	})
 }

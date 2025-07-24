@@ -44,7 +44,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// handle offline state machine for two-step store deletion
 		tasks.TaskOfflineStore(state),
 
-		task.If(common.CondObjectIsDeleting[scope.TiKV](state),
+		task.IfBreak(common.CondObjectIsDeleting[scope.TiKV](state),
 			tasks.TaskFinalizerDel(state, r.Client),
 		),
 

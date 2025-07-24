@@ -18,6 +18,7 @@ import (
 	"context"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
@@ -33,6 +34,13 @@ const (
 
 func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
+		tikv := state.TiKV()
+		cond := meta.FindStatusCondition(tikv.Status.Conditions, v1alpha1.StoreOfflineConditionType)
+		if state.Cluster().GetDeletionTimestamp().IsZero() &&
+			(!tikv.Spec.Offline || cond == nil || cond.Reason != v1alpha1.OfflineReasonCompleted) {
+			return task.Wait().With("wait for offline complete to delete resources, condition: %v", cond)
+		}
+
 		wait, err := EnsureSubResourcesDeleted(ctx, c, state.TiKV())
 		if err != nil {
 			return task.Fail().With("cannot delete subresources: %w", err)

@@ -439,8 +439,11 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 				skipMockClientInit: true,
 			},
 			{
-				name:              "Cancel operation: store not in removing state",
-				instance:          newStore().Offline(false).WithCondition(v1alpha1.OfflineReasonActive, metav1.ConditionTrue).Build(),
+				name:     "Cancel operation: store not in removing state",
+				instance: newStore().Offline(false).WithCondition(v1alpha1.OfflineReasonActive, metav1.ConditionTrue).Build(),
+				setupMock: func(mockUnderlay *pdapi.MockPDClient) {
+					mockUnderlay.EXPECT().CancelDeleteStore(gomock.Any(), "1").Return(nil)
+				},
 				contextBuilder:    newContext("1").WithState(v1alpha1.StoreStateServing),
 				expectedResult:    task.Complete().With("offline operation canceled"),
 				expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.OfflineReasonCancelled},
