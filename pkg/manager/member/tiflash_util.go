@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util/cmpver"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -49,8 +50,10 @@ func buildTiFlashSidecarContainers(tc *v1alpha1.TidbCluster) ([]corev1.Container
 	pullPolicy := tc.HelperImagePullPolicy()
 	var containers []corev1.Container
 	var resource corev1.ResourceRequirements
+	var useSidecar bool
 	if spec.LogTailer != nil {
 		resource = controller.ContainerResource(spec.LogTailer.ResourceRequirements)
+		useSidecar = spec.LogTailer.UseSidecar
 	}
 	if config == nil {
 		config = v1alpha1.NewTiFlashConfig()
@@ -61,44 +64,28 @@ func buildTiFlashSidecarContainers(tc *v1alpha1.TidbCluster) ([]corev1.Container
 	if err != nil {
 		return nil, err
 	}
-	containers = append(containers, buildSidecarContainer("serverlog", path, image, pullPolicy, resource))
+	containers = append(containers, buildSidecarContainer("serverlog", path, image, pullPolicy, resource, useSidecar))
 	path, err = config.Common.Get("logger.errorlog").AsString()
 	if err != nil {
 		return nil, err
 	}
-	containers = append(containers, buildSidecarContainer("errorlog", path, image, pullPolicy, resource))
+	containers = append(containers, buildSidecarContainer("errorlog", path, image, pullPolicy, resource, useSidecar))
 	path, err = config.Common.Get("flash.flash_cluster.log").AsString()
 	if err != nil {
 		return nil, err
 	}
-	containers = append(containers, buildSidecarContainer("clusterlog", path, image, pullPolicy, resource))
+	containers = append(containers, buildSidecarContainer("clusterlog", path, image, pullPolicy, resource, useSidecar))
 	return containers, nil
 }
 
 func buildSidecarContainer(name, path, image string,
 	pullPolicy corev1.PullPolicy,
-	resource corev1.ResourceRequirements) corev1.Container {
-	splitPath := strings.Split(path, string(os.PathSeparator))
-	// The log path should be at least /dir/base.log
-	if len(splitPath) >= 3 {
-		serverLogVolumeName := splitPath[1]
-		serverLogMountDir := "/" + serverLogVolumeName
-		return corev1.Container{
-			Name:            name,
-			Image:           image,
-			ImagePullPolicy: pullPolicy,
-			Resources:       resource,
-			VolumeMounts: []corev1.VolumeMount{
-				{Name: serverLogVolumeName, MountPath: serverLogMountDir},
-			},
-			Command: []string{
-				"sh",
-				"-c",
-				fmt.Sprintf("touch %s; tail -n0 -F %s;", path, path),
-			},
-		}
-	}
-	return corev1.Container{
+	resource corev1.ResourceRequirements,
+	// If true we use native sidecar feature
+	// See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
+	useSidecar bool,
+) corev1.Container {
+	c := corev1.Container{
 		Name:            name,
 		Image:           image,
 		ImagePullPolicy: pullPolicy,
@@ -109,6 +96,26 @@ func buildSidecarContainer(name, path, image string,
 			fmt.Sprintf("touch %s; tail -n0 -F %s;", path, path),
 		},
 	}
+	splitPath := strings.Split(path, string(os.PathSeparator))
+	// The log path should be at least /dir/base.log
+	if len(splitPath) >= 3 {
+		serverLogVolumeName := splitPath[1]
+		serverLogMountDir := "/" + serverLogVolumeName
+		c.VolumeMounts = []corev1.VolumeMount{
+			{Name: serverLogVolumeName, MountPath: serverLogMountDir},
+		}
+	}
+
+	if useSidecar {
+		c.RestartPolicy = ptr.To(corev1.ContainerRestartPolicyAlways)
+		// NOTE: tail cannot hanle sig TERM when it's PID is 1
+		c.Command = []string{
+			"sh",
+			"-c",
+			fmt.Sprintf(`trap "exit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, path, path),
+		}
+	}
+	return c
 }
 
 func GetTiFlashConfig(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper {
@@ -339,7 +346,8 @@ func setTiFlashLogConfigDefault(config *v1alpha1.TiFlashConfigWraper) {
 
 // setTiFlashConfigDefault sets default configs for TiFlash
 func setTiFlashConfigDefault(config *v1alpha1.TiFlashConfigWraper, ref *v1alpha1.TidbClusterRef,
-	clusterName, ns, clusterDomain, listenHost string, noLocalPD bool, noLocalTiDB bool, acrossK8s bool) {
+	clusterName, ns, clusterDomain, listenHost string, noLocalPD bool, noLocalTiDB bool, acrossK8s bool,
+) {
 	if config.Common == nil {
 		config.Common = v1alpha1.NewTiFlashCommonConfig()
 	}

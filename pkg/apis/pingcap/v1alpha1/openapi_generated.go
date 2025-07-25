@@ -4195,6 +4195,13 @@ func schema_pkg_apis_pingcap_v1alpha1_LogTailerSpec(ref common.ReferenceCallback
 							},
 						},
 					},
+					"useSidecar": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If true, we use native sidecar feature to tail log See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
@@ -9988,6 +9995,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSlowLogTailerSpec(ref common.Reference
 									},
 								},
 							},
+						},
+					},
+					"useSidecar": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If true, we use native sidecar feature to tail log See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 				},

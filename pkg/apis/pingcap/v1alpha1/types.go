@@ -982,6 +982,11 @@ type TiProxySpec struct {
 // +k8s:openapi-gen=true
 type LogTailerSpec struct {
 	corev1.ResourceRequirements `json:",inline"`
+
+	// If true, we use native sidecar feature to tail log
+	// See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
+	// +optional
+	UseSidecar bool `json:"useSidecar,omitempty"`
 }
 
 // InitContainerSpec contains basic spec about a init container
@@ -1252,6 +1257,11 @@ type TiDBSlowLogTailerSpec struct {
 	// Use `spec.helper.imagePullPolicy` instead
 	// +k8s:openapi-gen=false
 	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+
+	// If true, we use native sidecar feature to tail log
+	// See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
+	// +optional
+	UseSidecar bool `json:"useSidecar,omitempty"`
 }
 
 // ComponentSpec is the base spec of each component, the fields should always accessed by the Basic<Component>Spec() method to respect the cluster-level properties
@@ -1636,9 +1646,7 @@ type TiDBFailureMember struct {
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 
-var (
-	EvictLeaderAnnKeys = []string{EvictLeaderAnnKey, EvictLeaderAnnKeyForResize}
-)
+var EvictLeaderAnnKeys = []string{EvictLeaderAnnKey, EvictLeaderAnnKeyForResize}
 
 const (
 	// EvictLeaderAnnKey is the annotation key to evict leader used by user.

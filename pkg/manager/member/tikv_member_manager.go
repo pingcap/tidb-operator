@@ -45,6 +45,7 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -192,7 +193,6 @@ func (m *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluster, 
 		newSvc,
 		oldSvc,
 		true)
-
 	if err != nil {
 		return err
 	}
@@ -390,7 +390,8 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	dataVolumeName := string(v1alpha1.GetStorageVolumeName("", v1alpha1.TiKVMemberType))
 	tikvDataVol := corev1.VolumeMount{
 		Name:      dataVolumeName,
-		MountPath: constants.TiKVDataVolumeMountPath}
+		MountPath: constants.TiKVDataVolumeMountPath,
+	}
 	volMounts := []corev1.VolumeMount{
 		annoMount,
 		tikvDataVol,
@@ -411,21 +412,25 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	vols := []corev1.Volume{
 		annoVolume,
-		{Name: "config", VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: tikvConfigMap,
+		{
+			Name: "config", VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: tikvConfigMap,
+					},
+					Items: []corev1.KeyToPath{{Key: "config-file", Path: "tikv.toml"}},
 				},
-				Items: []corev1.KeyToPath{{Key: "config-file", Path: "tikv.toml"}},
-			}},
+			},
 		},
-		{Name: "startup-script", VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: tikvConfigMap,
+		{
+			Name: "startup-script", VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: tikvConfigMap,
+					},
+					Items: []corev1.KeyToPath{{Key: "startup-script", Path: "tikv_start_script.sh"}},
 				},
-				Items: []corev1.KeyToPath{{Key: "startup-script", Path: "tikv_start_script.sh"}},
-			}},
+			},
 		},
 	}
 	if tc.IsTLSClusterEnabled() {
@@ -592,19 +597,30 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			}
 			raftLogFilePath = path.Join(raftLogVolumeMount.MountPath, raftdbLogFile)
 		}
+		logTailer := tc.Spec.TiKV.GetLogTailerSpec()
 		// mount a shared volume and tail the Raft log to STDOUT using a sidecar.
-		containers = append(containers, corev1.Container{
+		c := corev1.Container{
 			Name:            v1alpha1.ContainerRaftLogTailer.String(),
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
-			Resources:       controller.ContainerResource(tc.Spec.TiKV.GetLogTailerSpec().ResourceRequirements),
+			Resources:       controller.ContainerResource(logTailer.ResourceRequirements),
 			VolumeMounts:    []corev1.VolumeMount{raftLogVolumeMount},
 			Command: []string{
 				"sh",
 				"-c",
 				fmt.Sprintf("touch %s; tail -n0 -F %s;", raftLogFilePath, raftLogFilePath),
 			},
-		})
+		}
+		if logTailer.UseSidecar {
+			c.RestartPolicy = ptr.To(corev1.ContainerRestartPolicyAlways)
+			// NOTE: tail cannot hanle sig TERM when it's PID is 1
+			c.Command = []string{
+				"sh",
+				"-c",
+				fmt.Sprintf(`trap "exit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, raftLogFilePath, raftLogFilePath),
+			}
+		}
+		containers = append(containers, c)
 	}
 
 	env := []corev1.EnvVar{

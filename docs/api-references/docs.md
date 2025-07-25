@@ -9415,6 +9415,19 @@ Kubernetes core/v1.ResourceRequirements
 </p>
 </td>
 </tr>
+<tr>
+<td>
+<code>useSidecar</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>If true, we use native sidecar feature to tail log
+See <a href="https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/">https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/</a></p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="masterconfig">MasterConfig</h3>
@@ -18211,6 +18224,19 @@ Kubernetes core/v1.PullPolicy
 <td>
 <p>(Deprecated) ImagePullPolicy of the component. Override the cluster-level imagePullPolicy if present
 Use <code>spec.helper.imagePullPolicy</code> instead</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>useSidecar</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>If true, we use native sidecar feature to tail log
+See <a href="https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/">https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/</a></p>
 </td>
 </tr>
 </tbody>
