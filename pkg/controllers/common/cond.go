@@ -33,37 +33,15 @@ func CondClusterIsPaused(ctx ClusterState) task.Condition {
 	})
 }
 
+func CondClusterIsDeleting(ctx ClusterState) task.Condition {
+	return task.CondFunc(func() bool {
+		return !ctx.Cluster().DeletionTimestamp.IsZero()
+	})
+}
+
 func CondClusterPDAddrIsNotRegistered(ctx ClusterState) task.Condition {
 	return task.CondFunc(func() bool {
 		return ctx.Cluster().Status.PD == ""
-	})
-}
-
-// Deprecated: prefer CondObjectIsDeleting
-func CondGroupIsDeleting[G runtime.Group](state GroupState[G]) task.Condition {
-	return task.CondFunc(func() bool {
-		return !state.Group().GetDeletionTimestamp().IsZero()
-	})
-}
-
-// Deprecated: prefer CondObjectHasBeenDeleted
-func CondGroupHasBeenDeleted[RG runtime.GroupT[G], G runtime.GroupSet](state GroupState[RG]) task.Condition {
-	return task.CondFunc(func() bool {
-		return state.Group() == nil
-	})
-}
-
-// Deprecated: prefer CondObjectIsDeleting
-func CondInstanceIsDeleting[I runtime.Instance](state InstanceState[I]) task.Condition {
-	return task.CondFunc(func() bool {
-		return !state.Instance().GetDeletionTimestamp().IsZero()
-	})
-}
-
-// Deprecated: prefer CondObjectHasBeenDeleted
-func CondInstanceHasBeenDeleted[RI runtime.InstanceT[I], I runtime.InstanceSet](state InstanceState[RI]) task.Condition {
-	return task.CondFunc(func() bool {
-		return state.Instance() == nil
 	})
 }
 

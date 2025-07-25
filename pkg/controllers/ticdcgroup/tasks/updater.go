@@ -16,7 +16,6 @@ package tasks
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -30,8 +29,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
 	"github.com/pingcap/tidb-operator/pkg/updater/policy"
-	"github.com/pingcap/tidb-operator/pkg/utils/random"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 )
 
 const (
@@ -39,7 +38,7 @@ const (
 )
 
 // TaskUpdater is a task to scale or update TiCDC when spec of TiCDCGroup is changed.
-func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
+func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.TiCDCGroup, *v1alpha1.TiCDC]) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		cdcg := state.TiCDCGroup()
@@ -69,6 +68,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
+		allocator := t.Track(cdcg, state.InstanceSlice()...)
 		// TODO: get the real time owner info from TiCDC and prefer non-owner when scaling in or updating
 		wait, err := updater.New[runtime.TiCDCTuple]().
 			WithInstances(cdcs...).
@@ -78,7 +78,10 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			WithMaxUnavailable(1).
 			WithRevision(updateRevision).
 			WithNewFactory(TiCDCNewer(cdcg, updateRevision)).
-			WithAddHooks(topoPolicy).
+			WithAddHooks(
+				updater.AllocateName[*runtime.TiCDC](allocator),
+				topoPolicy,
+			).
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
@@ -100,19 +103,14 @@ func needVersionUpgrade(cdcg *v1alpha1.TiCDCGroup) bool {
 	return cdcg.Spec.Template.Spec.Version != cdcg.Status.Version && cdcg.Status.Version != ""
 }
 
-const (
-	suffixLen = 6
-)
-
 func TiCDCNewer(cdcg *v1alpha1.TiCDCGroup, rev string) updater.NewFactory[*runtime.TiCDC] {
 	return updater.NewFunc[*runtime.TiCDC](func() *runtime.TiCDC {
-		name := fmt.Sprintf("%s-%s", cdcg.Name, random.Random(suffixLen))
 		spec := cdcg.Spec.Template.Spec.DeepCopy()
 
 		ticdc := &v1alpha1.TiCDC{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace:   cdcg.Namespace,
-				Name:        name,
+				Namespace: cdcg.Namespace,
+				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.TiCDCGroup](cdcg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.TiCDCGroup](cdcg),
 				OwnerReferences: []metav1.OwnerReference{

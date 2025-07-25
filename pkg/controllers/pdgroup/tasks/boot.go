@@ -15,8 +15,15 @@ package tasks
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
+	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -33,6 +40,55 @@ func TaskBoot(state *ReconcileContext, c client.Client) task.Task {
 			}
 		}
 
+		pds := state.InstanceSlice()
+		for _, pd := range pds {
+			if _, ok := pd.Annotations[v1alpha1.AnnoKeyInitialClusterNum]; !ok {
+				continue
+			}
+			if !coreutil.IsReady[scope.PD](pd) {
+				return task.Wait().With("wait until pd %s is ready", pd.Name)
+			}
+			if err := delBootAnnotation(ctx, c, pd); err != nil {
+				return task.Fail().With("cannot del boot annotation after pd %s is available: %v", pd.Name, err)
+			}
+		}
+
 		return task.Complete().With("pd cluster is bootstrapped")
 	})
+}
+
+type Patch struct {
+	Metadata Metadata `json:"metadata"`
+}
+
+type Metadata struct {
+	ResourceVersion string             `json:"resourceVersion"`
+	Annotations     map[string]*string `json:"annotations"`
+}
+
+// We have to del boot annotation after PD is bootstrapped.
+// If a PD instance has boot annotation, it will try to generate a bootstrap configmap to init a cluster.
+// If the boot annotation is not removed, PD controller cannot sync cm and will keep to check
+// whether initial number of pd instances are as expected.
+// Removing this annotation for a bootstrapped PD cluster is safe
+// because the bootstrap config fields are only worked when bootstrapping.
+func delBootAnnotation(ctx context.Context, c client.Client, pd *v1alpha1.PD) error {
+	p := Patch{
+		Metadata: Metadata{
+			ResourceVersion: pd.GetResourceVersion(),
+			Annotations: map[string]*string{
+				v1alpha1.AnnoKeyInitialClusterNum: nil,
+			},
+		},
+	}
+	data, err := json.Marshal(&p)
+	if err != nil {
+		return fmt.Errorf("invalid patch: %w", err)
+	}
+
+	if err := c.Patch(ctx, pd, client.RawPatch(types.MergePatchType, data)); err != nil {
+		return fmt.Errorf("cannot del boot annotation for %s/%s: %w", pd.GetNamespace(), pd.GetName(), err)
+	}
+
+	return nil
 }

@@ -37,17 +37,20 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/tiflashgroup/tasks"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 )
 
 type Reconciler struct {
-	Logger logr.Logger
-	Client client.Client
+	Logger  logr.Logger
+	Client  client.Client
+	Tracker tracker.Tracker[*v1alpha1.TiFlashGroup, *v1alpha1.TiFlash]
 }
 
 func Setup(mgr manager.Manager, c client.Client) error {
 	r := &Reconciler{
-		Logger: mgr.GetLogger().WithName("TiFlashGroup"),
-		Client: c,
+		Logger:  mgr.GetLogger().WithName("TiFlashGroup"),
+		Client:  c,
+		Tracker: tracker.New[*v1alpha1.TiFlashGroup, *v1alpha1.TiFlash](),
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.TiFlashGroup{}).

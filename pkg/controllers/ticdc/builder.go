@@ -17,7 +17,6 @@ package ticdc
 import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/controllers/ticdc/tasks"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -27,7 +26,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// get TiCDC
 		common.TaskContextObject[scope.TiCDC](state, r.Client),
 		// if it's deleted just return
-		task.IfBreak(common.CondInstanceHasBeenDeleted(state)),
+		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiCDC](state)),
 
 		// get cluster info, FinalizerDel will use it
 		common.TaskContextCluster[scope.TiCDC](state, r.Client),
@@ -36,14 +35,14 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// check whether it's paused
 		task.IfBreak(common.CondClusterIsPaused(state)),
 
-		task.IfBreak(common.CondInstanceIsDeleting(state),
+		task.IfBreak(common.CondObjectIsDeleting[scope.TiCDC](state),
 			tasks.TaskFinalizerDel(state, r.Client),
 			// TODO(liubo02): if the finalizer has been removed, no need to update status
 			common.TaskInstanceConditionSynced[scope.TiCDC](state),
 			common.TaskInstanceConditionReady[scope.TiCDC](state),
 			common.TaskStatusPersister[scope.TiCDC](state, r.Client),
 		),
-		common.TaskInstanceFinalizerAdd[runtime.TiCDCTuple](state, r.Client),
+		common.TaskFinalizerAdd[scope.TiCDC](state, r.Client),
 
 		// get pod and check whether the cluster is suspending
 		common.TaskContextPod[scope.TiCDC](state, r.Client),

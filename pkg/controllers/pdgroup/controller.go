@@ -38,12 +38,15 @@ import (
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 )
 
 type Reconciler struct {
 	Logger          logr.Logger
 	Client          client.Client
 	PDClientManager pdm.PDClientManager
+
+	Tracker tracker.Tracker[*v1alpha1.PDGroup, *v1alpha1.PD]
 }
 
 func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager) error {
@@ -51,6 +54,7 @@ func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager) error
 		Logger:          mgr.GetLogger().WithName("PDGroup"),
 		Client:          c,
 		PDClientManager: pdcm,
+		Tracker:         tracker.New[*v1alpha1.PDGroup, *v1alpha1.PD](),
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.PDGroup{}).

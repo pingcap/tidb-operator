@@ -17,8 +17,10 @@ package tasks
 import (
 	"context"
 	"fmt"
+	"path"
 	"path/filepath"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,6 +30,7 @@ import (
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/compatibility"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/image"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
@@ -247,6 +250,13 @@ func newPod(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, g features.Gates, cluste
 		pod.Spec.Containers[0].ReadinessProbe = buildPDReadinessProbe(coreutil.PDClientPort(pd))
 	}
 
+	if g.Enabled(metav1alpha1.UsePDReadyAPI) {
+		version := semver.MustParse(pd.Spec.Version)
+		if compatibility.Check(version, compatibility.PDReadyAPI) {
+			pod.Spec.Containers[0].ReadinessProbe = buildPDReadinessProbeWithReadyAPI(cluster, coreutil.PDClientPort(pd))
+		}
+	}
+
 	if pd.Spec.Overlay != nil {
 		overlay.OverlayPod(pod, pd.Spec.Overlay.Pod)
 	}
@@ -263,5 +273,42 @@ func buildPDReadinessProbe(port int32) *corev1.Probe {
 			},
 		},
 		InitialDelaySeconds: defaultReadinessProbeInitialDelaySeconds,
+	}
+}
+
+func buildPDReadinessProbeWithReadyAPI(cluster *v1alpha1.Cluster, port int32) *corev1.Probe {
+	tlsClusterEnabled := coreutil.IsTLSClusterEnabled(cluster)
+
+	scheme := "http"
+	if tlsClusterEnabled {
+		scheme = "https"
+	}
+
+	readinessURL := fmt.Sprintf("%s://127.0.0.1:%d/pd/api/v2/ready", scheme, port)
+	var command []string
+	command = append(command, "curl", readinessURL,
+		// Fail silently (no output at all) on server errors
+		// without this if the server return 500, the exist code will be 0
+		// and probe is success.
+		"--fail",
+		// Silent mode, only print error
+		"-sS",
+		// follow 301 or 302 redirect
+		"--location")
+
+	if tlsClusterEnabled {
+		cacert := path.Join(v1alpha1.DirPathClusterTLSPD, corev1.ServiceAccountRootCAKey)
+		cert := path.Join(v1alpha1.DirPathClusterTLSPD, corev1.TLSCertKey)
+		key := path.Join(v1alpha1.DirPathClusterTLSPD, corev1.TLSPrivateKeyKey)
+		command = append(command, "--cacert", cacert, "--cert", cert, "--key", key)
+	}
+
+	return &corev1.Probe{
+		InitialDelaySeconds: defaultReadinessProbeInitialDelaySeconds,
+		ProbeHandler: corev1.ProbeHandler{
+			Exec: &corev1.ExecAction{
+				Command: command,
+			},
+		},
 	}
 }

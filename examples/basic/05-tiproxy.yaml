@@ -1,0 +1,21 @@
+apiVersion: core.pingcap.com/v1alpha1
+kind: TiProxyGroup
+metadata:
+  name: tiproxy
+  labels:
+    pingcap.com/group: tiproxy
+    pingcap.com/component: tiproxy
+    pingcap.com/cluster: basic
+spec:
+  cluster:
+    name: basic
+  replicas: 3
+  template:
+    metadata:
+      annotations:
+        author: pingcap
+    spec:
+      version: v1.3.1
+      resources:
+        cpu: "1"
+        memory: 2Gi

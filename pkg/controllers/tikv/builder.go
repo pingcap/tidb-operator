@@ -15,9 +15,9 @@
 package tikv
 
 import (
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tikv/tasks"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -27,7 +27,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// get tikv
 		common.TaskContextObject[scope.TiKV](state, r.Client),
 		// if it's deleted just return
-		task.IfBreak(common.CondInstanceHasBeenDeleted(state)),
+		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiKV](state)),
 
 		// get cluster info, FinalizerDel will use it
 		common.TaskContextCluster[scope.TiKV](state, r.Client),
@@ -37,21 +37,30 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// check whether it's paused
 		task.IfBreak(common.CondClusterIsPaused(state)),
 
+		// if the cluster is deleting, del all subresources and remove the finalizer directly
+		task.IfBreak(common.CondClusterIsDeleting(state),
+			tasks.TaskFinalizerDel(state, r.Client),
+		),
+
 		// get info from pd
 		tasks.TaskContextInfoFromPD(state, r.PDClientManager),
 
-		task.IfBreak(common.CondInstanceIsDeleting(state),
+		// if instance is deleting and store is removed
+		task.IfBreak(ObjectIsDeletingAndStoreIsRemoved(state),
+			tasks.TaskEndEvictLeader(state),
 			tasks.TaskFinalizerDel(state, r.Client),
-			// TODO(liubo02): if the finalizer has been removed, no need to update status
-			common.TaskInstanceConditionSynced[scope.TiKV](state),
-			common.TaskInstanceConditionReady[scope.TiKV](state),
-			tasks.TaskStoreStatus(state),
-			common.TaskStatusPersister[scope.TiKV](state, r.Client),
 		),
-		common.TaskInstanceFinalizerAdd[runtime.TiKVTuple](state, r.Client),
+		// if instance is deleting and store is not removed
+		task.If(common.CondObjectIsDeleting[scope.TiKV](state),
+			tasks.TaskOfflineStore(state),
+		),
 
+		common.TaskFinalizerAdd[scope.TiKV](state, r.Client),
 		// get pod and check whether the cluster is suspending
 		common.TaskContextPod[scope.TiKV](state, r.Client),
+
+		// check whether the cluster is suspending
+		// if cluster is suspending, we cannot handle any tikv deletion
 		task.IfBreak(common.CondClusterIsSuspending(state),
 			// NOTE: suspend tikv pod should delete with grace peroid
 			// TODO(liubo02): combine with the common one
@@ -74,4 +83,11 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 	)
 
 	return runner
+}
+
+func ObjectIsDeletingAndStoreIsRemoved(state *tasks.ReconcileContext) task.Condition {
+	return task.CondFunc(func() bool {
+		return !state.Object().GetDeletionTimestamp().IsZero() &&
+			(state.GetStoreState() == v1alpha1.StoreStateRemoved || state.Store == nil)
+	})
 }

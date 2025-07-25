@@ -16,7 +16,6 @@ package tasks
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -32,8 +31,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/updater"
 	"github.com/pingcap/tidb-operator/pkg/updater/policy"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
-	"github.com/pingcap/tidb-operator/pkg/utils/random"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 )
 
 const (
@@ -41,7 +40,7 @@ const (
 )
 
 // TaskUpdater is a task to scale or update PD when spec of PDGroup is changed.
-func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
+func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.PDGroup, *v1alpha1.PD]) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		pdg := state.PDGroup()
@@ -71,6 +70,8 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
+		allocator := t.Track(pdg, state.InstanceSlice()...)
+
 		wait, err := updater.New[runtime.PDTuple]().
 			WithInstances(pds...).
 			WithDesired(int(state.Group().Replicas())).
@@ -79,7 +80,10 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			WithMaxUnavailable(1).
 			WithRevision(updateRevision).
 			WithNewFactory(PDNewer(pdg, updateRevision)).
-			WithAddHooks(topoPolicy).
+			WithAddHooks(
+				updater.AllocateName[*runtime.PD](allocator),
+				topoPolicy,
+			).
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
@@ -105,13 +109,8 @@ func needVersionUpgrade(pdg *v1alpha1.PDGroup) bool {
 	return pdg.Spec.Template.Spec.Version != pdg.Status.Version && pdg.Status.Version != ""
 }
 
-const (
-	suffixLen = 6
-)
-
 func PDNewer(pdg *v1alpha1.PDGroup, rev string) updater.NewFactory[*runtime.PD] {
 	return updater.NewFunc[*runtime.PD](func() *runtime.PD {
-		name := fmt.Sprintf("%s-%s", pdg.Name, random.Random(suffixLen))
 		spec := pdg.Spec.Template.Spec.DeepCopy()
 
 		var bootAnno map[string]string
@@ -128,8 +127,8 @@ func PDNewer(pdg *v1alpha1.PDGroup, rev string) updater.NewFactory[*runtime.PD] 
 
 		peer := &v1alpha1.PD{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace:   pdg.Namespace,
-				Name:        name,
+				Namespace: pdg.Namespace,
+				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.PDGroup](pdg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.PDGroup](pdg),
 				OwnerReferences: []metav1.OwnerReference{

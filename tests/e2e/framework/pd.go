@@ -31,6 +31,14 @@ import (
 func (f *Framework) WaitForPDGroupReady(ctx context.Context, pdg *v1alpha1.PDGroup) {
 	// TODO: maybe wait for cluster ready
 	ginkgo.By("wait for pd group ready")
+	f.Must(waiter.WaitForObjectCondition[runtime.PDGroupTuple](
+		ctx,
+		f.Client,
+		pdg,
+		v1alpha1.CondReady,
+		metav1.ConditionTrue,
+		waiter.LongTaskTimeout,
+	))
 	f.Must(waiter.WaitForPDsHealthy(ctx, f.Client, pdg, waiter.LongTaskTimeout))
 	f.Must(waiter.WaitForPodsReady(ctx, f.Client, runtime.FromPDGroup(pdg), waiter.LongTaskTimeout))
 }

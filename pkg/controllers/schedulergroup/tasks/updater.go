@@ -16,7 +16,6 @@ package tasks
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -30,8 +29,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
 	"github.com/pingcap/tidb-operator/pkg/updater/policy"
-	"github.com/pingcap/tidb-operator/pkg/utils/random"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 )
 
 const (
@@ -39,7 +38,7 @@ const (
 )
 
 // TaskUpdater is a task to scale or update Scheduler when spec of SchedulerGroup is changed.
-func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
+func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.SchedulerGroup, *v1alpha1.Scheduler]) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		obj := state.Object()
@@ -69,6 +68,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
+		allocator := t.Track(obj, state.InstanceSlice()...)
 		wait, err := updater.New[runtime.SchedulerTuple]().
 			WithInstances(is...).
 			WithDesired(int(state.Group().Replicas())).
@@ -78,7 +78,10 @@ func TaskUpdater(state *ReconcileContext, c client.Client) task.Task {
 			WithMaxUnavailable(1).
 			WithRevision(updateRevision).
 			WithNewFactory(SchedulerNewer(obj, updateRevision)).
-			WithAddHooks(topoPolicy).
+			WithAddHooks(
+				updater.AllocateName[*runtime.Scheduler](allocator),
+				topoPolicy,
+			).
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
@@ -100,19 +103,14 @@ func needVersionUpgrade(sg *v1alpha1.SchedulerGroup) bool {
 	return sg.Spec.Template.Spec.Version != sg.Status.Version && sg.Status.Version != ""
 }
 
-const (
-	suffixLen = 6
-)
-
 func SchedulerNewer(sg *v1alpha1.SchedulerGroup, rev string) updater.NewFactory[*runtime.Scheduler] {
 	return updater.NewFunc[*runtime.Scheduler](func() *runtime.Scheduler {
-		name := fmt.Sprintf("%s-%s", sg.Name, random.Random(suffixLen))
 		spec := sg.Spec.Template.Spec.DeepCopy()
 
 		scheduler := &v1alpha1.Scheduler{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace:   sg.Namespace,
-				Name:        name,
+				Namespace: sg.Namespace,
+				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.SchedulerGroup](sg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.SchedulerGroup](sg),
 				OwnerReferences: []metav1.OwnerReference{

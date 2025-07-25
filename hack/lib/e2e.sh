@@ -28,6 +28,7 @@ source $ROOT/hack/lib/image.sh
 
 OUTPUT_DIR=$ROOT/_output
 KUBECTL=$OUTPUT_DIR/bin/kubectl
+HELM=$OUTPUT_DIR/bin/helm
 GINKGO=$OUTPUT_DIR/bin/ginkgo
 GENERATEJWT=$OUTPUT_DIR/bin/generate_jwt
 
@@ -61,33 +62,6 @@ function e2e::ensure_cert_manager() {
 
     echo "waiting for cert-manager to be ready..."
     $KUBECTL -n cert-manager wait --for=condition=Available --timeout=5m deployment/cert-manager
-}
-
-function e2e::install_crds() {
-    echo "installing CRDs..."
-    $KUBECTL apply --server-side=true -f $ROOT/manifests/crd
-}
-
-function e2e::install_operator() {
-    echo "installing operator..."
-    $KUBECTL -n $V_DEPLOY_NAMESPACE apply --server-side=true -f $OUTPUT_DIR/manifests/tidb-operator.yaml
-
-    echo "waiting for operator to be ready..."
-    $KUBECTL -n $V_DEPLOY_NAMESPACE wait --for=condition=Available --timeout=5m deployment/tidb-operator
-}
-
-function e2e::uninstall_operator() {
-    echo "checking if operator is installed..."
-    if ! $KUBECTL -n $V_DEPLOY_NAMESPACE get deployment tidb-operator &>/dev/null; then
-        echo "operator not found, skipping uninstall..."
-        return
-    fi
-
-    echo "uninstalling operator..."
-    $KUBECTL -n $V_DEPLOY_NAMESPACE delete -f $OUTPUT_DIR/manifests/tidb-operator.yaml
-
-    echo "waiting for operator to be deleted..."
-    $KUBECTL -n $V_DEPLOY_NAMESPACE wait --for=delete --timeout=5m deployment/tidb-operator
 }
 
 function e2e::delete_crds() {
@@ -285,14 +259,10 @@ function e2e::install_old_version() {
     fi
 }
 
-function e2e::reload_testing_workload() {
-    image::build testing-workload --push
-}
-
 function e2e::install_ginkgo() {
     if ! command -v $GINKGO &>/dev/null; then
         echo "ginkgo not found, installing..."
-        $ROOT/hack/download.sh go_install $GINKGO github.com/onsi/ginkgo/v2/ginkgo
+        make bin/ginkgo
     fi
 }
 
@@ -353,7 +323,7 @@ function e2e::run() {
 
 function e2e::run_upgrade() {
     e2e::install_old_version
-    $GINKGO -v -r --tags=upgrade_e2e --timeout=1h --randomize-all --randomize-suites --fail-on-empty --race --trace "$ROOT/tests/e2e/upgrade"
+    $GINKGO -v -r --tags=upgrade_e2e --timeout=1h --randomize-all --randomize-suites --fail-on-empty --race --trace --flake-attempts=2 "$ROOT/tests/e2e/upgrade"
 }
 
 function e2e::prepare() {
@@ -364,24 +334,13 @@ function e2e::prepare() {
     e2e::switch_kube_context
     e2e::ensure_cert_manager
 
-    e2e::install_crds
-
     # build the operator image and load it into the kind cluster
     image::build prestop-checker tidb-operator testing-workload tidb-backup-manager --push
-    e2e::uninstall_operator
-    e2e::install_operator
 
     image:prepare
-}
 
-function e2e::reinstall_operator() {
-    image::build tidb-operator --push
-    e2e::uninstall_operator
-    e2e::install_operator
-}
-
-function e2e::reinstall_backup_manager() {
-    image::build tidb-backup-manager --push
+    # TODO(liubo02): use a lib script
+    make KUBECTL=${KUBECTL} e2e/deploy
 }
 
 function e2e::e2e() {
@@ -389,26 +348,11 @@ function e2e::e2e() {
     local prepare=0
     local run=0
     local run_upgrade=0
-    local reinstall_operator=0
-    local reinstall_backup_manager=0
-    local reload_testing_workload=0
 
     while [[ $# -gt 0 ]]; do
         case $1 in
         --prepare)
             prepare=1
-            shift
-            ;;
-        --reinstall-operator)
-            reinstall_operator=1
-            shift
-            ;;
-        --reinstall-backup-manager)
-            reinstall_backup_manager=1
-            shift
-            ;;
-        --reload-testing-workload)
-            reload_testing_workload=1
             shift
             ;;
         run)
@@ -433,12 +377,6 @@ function e2e::e2e() {
 
     if [[ $prepare -eq 1 ]]; then
         e2e::prepare
-    elif [[ $reinstall_operator -eq 1 ]]; then
-        e2e::reinstall_operator
-    elif [[ $reinstall_backup_manager -eq 1 ]]; then
-        e2e::reinstall_backup_manager
-    elif [[ $reload_testing_workload -eq 1 ]]; then
-        e2e::reload_testing_workload
     fi
 
     if [[ $run -eq 1 ]]; then

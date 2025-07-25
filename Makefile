@@ -175,17 +175,10 @@ e2e/run-upgrade:
 e2e: bin/kind release
 	$(ROOT)/hack/e2e.sh --prepare run run-upgrade $(GINKGO_OPTS)
 
-.PHONY: e2e/reinstall-operator
-e2e/reinstall-operator:
-	$(ROOT)/hack/e2e.sh --reinstall-operator
-
-.PHONY: e2e/reinstall-backup-manager
-e2e/reinstall-backup-manager:
-	$(ROOT)/hack/e2e.sh --reinstall-backup-manager
-
-.PHONY: e2e/reload-testing-workload
-e2e/reload-testing-workload:
-	$(ROOT)/hack/e2e.sh --reload-testing-workload
+.PHONY: e2e/deploy
+e2e/deploy: release
+	$(KUBECTL) apply --server-side=true -f $(OUTPUT_DIR)/manifests/tidb-operator.crds.yaml
+	$(KUBECTL) apply --server-side=true -f $(OUTPUT_DIR)/manifests/tidb-operator-e2e.yaml
 
 .PHONY: kube
 kube: bin/kind
@@ -239,12 +232,12 @@ bin/kind:
 .PHONY: bin/license-eye
 LICENSE_EYE = $(BIN_DIR)/license-eye
 bin/license-eye:
-	if [ ! -f $(LICENSE_EYE) ]; then $(ROOT)/hack/download.sh go_install $(LICENSE_EYE) github.com/apache/skywalking-eyes/cmd/license-eye v0.6.0; fi
+	if [ ! -f $(LICENSE_EYE) ]; then $(ROOT)/hack/download.sh go_install $(LICENSE_EYE) github.com/apache/skywalking-eyes/cmd/license-eye 049742de2276515409e3109ca2a91934053e080d; fi
 
 .PHONY: bin/ginkgo
 GINKGO = $(BIN_DIR)/ginkgo
 bin/ginkgo:
-	$(ROOT)/hack/download.sh go_install $(GINKGO) github.com/onsi/ginkgo/v2/ginkgo@v2.23.3 2.23.3 "version | awk '{print \$$3}'"
+	$(ROOT)/hack/download.sh go_install $(GINKGO) github.com/onsi/ginkgo/v2/ginkgo v2.23.3 "version | awk '{print \"v\"\$$3}'"
 
 .PHONY: bin/mdtoc
 MDTOC = $(BIN_DIR)/mdtoc

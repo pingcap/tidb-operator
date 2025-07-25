@@ -27,7 +27,7 @@ const (
 	imageRegistry = "gcr.io/pingcap-public/dbaas/"
 	helperImage   = "gcr.io/pingcap-public/dbaas/busybox:1.36.0"
 
-	version = "v8.1.0"
+	Version = "v8.5.2"
 	GiB     = 1024 * 1024 * 1024
 )
 
@@ -63,7 +63,7 @@ func NewPDGroup(namespace, name, clusterName string, replicas *int32, apply func
 			Replicas: replicas,
 			Template: v1alpha1.PDTemplate{
 				Spec: v1alpha1.PDTemplateSpec{
-					Version: version,
+					Version: Version,
 					Image:   ptr.To(imageRegistry + "pd"),
 					Volumes: []v1alpha1.Volume{
 						{
@@ -98,7 +98,7 @@ func NewTiKVGroup(namespace, name, clusterName string, replicas *int32, apply fu
 			Replicas: replicas,
 			Template: v1alpha1.TiKVTemplate{
 				Spec: v1alpha1.TiKVTemplateSpec{
-					Version: version,
+					Version: Version,
 					Image:   ptr.To(imageRegistry + "tikv"),
 					Volumes: []v1alpha1.Volume{
 						{
@@ -133,7 +133,7 @@ func NewTiDBGroup(namespace, name, clusterName string, replicas *int32, apply fu
 			Replicas: replicas,
 			Template: v1alpha1.TiDBTemplate{
 				Spec: v1alpha1.TiDBTemplateSpec{
-					Version: version,
+					Version: Version,
 					Image:   ptr.To(imageRegistry + "tidb"),
 					SlowLog: &v1alpha1.TiDBSlowLog{
 						Image: ptr.To(helperImage),
@@ -166,7 +166,7 @@ func NewTiFlashGroup(namespace, name, clusterName string, replicas *int32,
 			Replicas: replicas,
 			Template: v1alpha1.TiFlashTemplate{
 				Spec: v1alpha1.TiFlashTemplateSpec{
-					Version: version,
+					Version: Version,
 					Image:   ptr.To(imageRegistry + "tiflash"),
 					Volumes: []v1alpha1.Volume{
 						{
@@ -206,7 +206,7 @@ func NewTiCDCGroup(namespace, name, clusterName string, replicas *int32,
 			Replicas: replicas,
 			Template: v1alpha1.TiCDCTemplate{
 				Spec: v1alpha1.TiCDCTemplateSpec{
-					Version: version,
+					Version: Version,
 					Image:   ptr.To(imageRegistry + "ticdc"),
 				},
 			},
