@@ -35,6 +35,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
+	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
 var _ = ginkgo.Describe("Two-Step Store Deletion", label.TiKV, label.P0, func() {
@@ -132,7 +133,7 @@ replica-schedule-limit = 16
 			}
 		})
 
-		ginkgo.PIt("should handle partial cancellation of scale-in", func(ctx context.Context) {
+		ginkgo.It("should handle partial cancellation of scale-in", func(ctx context.Context) {
 			// Slow down the speed of data migration for testing
 			pdg := f.MustCreatePD(ctx, func(pdg *runtime.PDGroup) {
 				pdg.Spec.Template.Spec.Config = `[schedule]
@@ -237,6 +238,6 @@ func waitForTiKVOfflineCondition(ctx context.Context, f *framework.Framework, kv
 // waitForTiKVInstancesDeleted waits for a list of TiKV instances to be completely removed.
 func waitForTiKVInstancesDeleted(ctx context.Context, f *framework.Framework, kvs []*v1alpha1.TiKV, timeout time.Duration) {
 	for _, kv := range kvs {
-		waitForTiKVInstanceCleanup(ctx, f, kv, timeout)
+		f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, kv, timeout))
 	}
 }

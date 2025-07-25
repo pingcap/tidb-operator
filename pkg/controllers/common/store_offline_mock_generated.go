@@ -162,30 +162,6 @@ func (mr *MockStoreOfflineReconcileContextMockRecorder) IsStoreUp() *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsStoreUp", reflect.TypeOf((*MockStoreOfflineReconcileContext)(nil).IsStoreUp))
 }
 
-// SetLeaderCount mocks base method.
-func (m *MockStoreOfflineReconcileContext) SetLeaderCount(arg0 int) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetLeaderCount", arg0)
-}
-
-// SetLeaderCount indicates an expected call of SetLeaderCount.
-func (mr *MockStoreOfflineReconcileContextMockRecorder) SetLeaderCount(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLeaderCount", reflect.TypeOf((*MockStoreOfflineReconcileContext)(nil).SetLeaderCount), arg0)
-}
-
-// SetRegionCount mocks base method.
-func (m *MockStoreOfflineReconcileContext) SetRegionCount(arg0 int) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetRegionCount", arg0)
-}
-
-// SetRegionCount indicates an expected call of SetRegionCount.
-func (mr *MockStoreOfflineReconcileContextMockRecorder) SetRegionCount(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRegionCount", reflect.TypeOf((*MockStoreOfflineReconcileContext)(nil).SetRegionCount), arg0)
-}
-
 // SetStatusChanged mocks base method.
 func (m *MockStoreOfflineReconcileContext) SetStatusChanged() {
 	m.ctrl.T.Helper()
@@ -196,28 +172,4 @@ func (m *MockStoreOfflineReconcileContext) SetStatusChanged() {
 func (mr *MockStoreOfflineReconcileContextMockRecorder) SetStatusChanged() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusChanged", reflect.TypeOf((*MockStoreOfflineReconcileContext)(nil).SetStatusChanged))
-}
-
-// SetStoreBusy mocks base method.
-func (m *MockStoreOfflineReconcileContext) SetStoreBusy(arg0 bool) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetStoreBusy", arg0)
-}
-
-// SetStoreBusy indicates an expected call of SetStoreBusy.
-func (mr *MockStoreOfflineReconcileContextMockRecorder) SetStoreBusy(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStoreBusy", reflect.TypeOf((*MockStoreOfflineReconcileContext)(nil).SetStoreBusy), arg0)
-}
-
-// SetStoreState mocks base method.
-func (m *MockStoreOfflineReconcileContext) SetStoreState(arg0 string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetStoreState", arg0)
-}
-
-// SetStoreState indicates an expected call of SetStoreState.
-func (mr *MockStoreOfflineReconcileContextMockRecorder) SetStoreState(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStoreState", reflect.TypeOf((*MockStoreOfflineReconcileContext)(nil).SetStoreState), arg0)
 }
