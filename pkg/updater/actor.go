@@ -352,25 +352,26 @@ func (act *cancelableActor[T, O, R]) CleanupCompletedOffline(ctx context.Context
 	allInstances := append(act.update.List(), act.outdated.List()...)
 
 	for _, instance := range allInstances {
-		if act.lifecycle.IsOfflineCompleted(instance) {
-			logger.Info("cleaning up completed offline instance", "instance", instance.GetName())
-
-			if err := act.c.Delete(ctx, act.converter.To(instance)); err != nil {
-				// Log the error but continue trying to clean up others
-				logger.Error(err, "failed to clean up completed offline instance", "instance", instance.GetName())
-				continue
-			}
-
-			// Remove from internal state
-			act.update.Del(instance.GetName())
-			act.outdated.Del(instance.GetName())
-
-			for _, hook := range act.delHooks {
-				hook.Delete(instance.GetName())
-			}
-
-			cleaned++
+		if !act.lifecycle.IsOfflineCompleted(instance) {
+			continue
 		}
+		logger.Info("cleaning up completed offline instance", "instance", instance.GetName())
+
+		if err := act.c.Delete(ctx, act.converter.To(instance)); err != nil {
+			// Log the error but continue trying to clean up others
+			logger.Error(err, "failed to clean up completed offline instance", "instance", instance.GetName())
+			continue
+		}
+
+		// Remove from internal state
+		act.update.Del(instance.GetName())
+		act.outdated.Del(instance.GetName())
+
+		for _, hook := range act.delHooks {
+			hook.Delete(instance.GetName())
+		}
+
+		cleaned++
 	}
 
 	if cleaned > 0 {
@@ -387,24 +388,25 @@ func (act *cancelableActor[T, O, R]) ScaleInUpdate(ctx context.Context) (bool, e
 
 	// Prioritize deleting instances that have already completed the offline process.
 	for _, instance := range act.update.List() {
-		if act.lifecycle.IsOfflineCompleted(instance) {
-			logger.Info("finalizing scale-in for completed offline instance", "instance", instance.GetName())
-
-			isUnavailable := !instance.IsReady() || !instance.IsUpToDate()
-
-			if err := act.c.Delete(ctx, act.converter.To(instance)); err != nil {
-				return false, fmt.Errorf("failed to delete the completed offline instance %s: %w", instance.GetName(), err)
-			}
-
-			// Only remove from state after successful finalization
-			act.update.Del(instance.GetName())
-
-			for _, hook := range act.delHooks {
-				hook.Delete(instance.GetName())
-			}
-
-			return isUnavailable, nil
+		if !act.lifecycle.IsOfflineCompleted(instance) {
+			continue
 		}
+		logger.Info("finalizing scale-in for completed offline instance", "instance", instance.GetName())
+
+		isUnavailable := !instance.IsReady() || !instance.IsUpToDate()
+
+		if err := act.c.Delete(ctx, act.converter.To(instance)); err != nil {
+			return false, fmt.Errorf("failed to delete the completed offline instance %s: %w", instance.GetName(), err)
+		}
+
+		// Only remove from state after successful finalization
+		act.update.Del(instance.GetName())
+
+		for _, hook := range act.delHooks {
+			hook.Delete(instance.GetName())
+		}
+
+		return isUnavailable, nil
 	}
 
 	name, err := act.chooseToScaleIn(act.update.List())
@@ -476,30 +478,31 @@ func (act *cancelableActor[T, O, R]) scaleInOutdatedWithLifecycle(ctx context.Co
 
 	// Prioritize deleting instances that have already completed the offline process.
 	for _, instance := range act.outdated.List() {
-		if act.lifecycle.IsOfflineCompleted(instance) {
-			logger.Info("finalizing scale-in for completed offline outdated instance", "instance", instance.GetName())
-
-			isUnavailable := !instance.IsReady() || !instance.IsUpToDate()
-
-			if deferDel {
-				if err := act.deferDelete(ctx, instance); err != nil {
-					return false, err
-				}
-			} else {
-				if err := act.c.Delete(ctx, act.converter.To(instance)); err != nil {
-					return false, fmt.Errorf("failed to delete the completed offline instance %s: %w", instance.GetName(), err)
-				}
-			}
-
-			// Only remove from state after successful finalization or defer delete
-			act.outdated.Del(instance.GetName())
-
-			for _, hook := range act.delHooks {
-				hook.Delete(instance.GetName())
-			}
-
-			return isUnavailable, nil
+		if !act.lifecycle.IsOfflineCompleted(instance) {
+			continue
 		}
+		logger.Info("finalizing scale-in for completed offline outdated instance", "instance", instance.GetName())
+
+		isUnavailable := !instance.IsReady() || !instance.IsUpToDate()
+
+		if deferDel {
+			if err := act.deferDelete(ctx, instance); err != nil {
+				return false, err
+			}
+		} else {
+			if err := act.c.Delete(ctx, act.converter.To(instance)); err != nil {
+				return false, fmt.Errorf("failed to delete the completed offline instance %s: %w", instance.GetName(), err)
+			}
+		}
+
+		// Only remove from state after successful finalization or defer delete
+		act.outdated.Del(instance.GetName())
+
+		for _, hook := range act.delHooks {
+			hook.Delete(instance.GetName())
+		}
+
+		return isUnavailable, nil
 	}
 
 	name, err := act.chooseToScaleIn(act.outdated.List())

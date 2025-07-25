@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate ${GOBIN}/mockgen -write_command_comment=false -copyright_file ${BOILERPLATE_FILE} -destination instance_mock_generated.go -package=runtime ${GO_MODULE}/pkg/runtime Instance,StoreInstance
+//go:generate ${GOBIN}/mockgen -write_command_comment=false -copyright_file ${BOILERPLATE_FILE} -destination instance_mock_generated.go -package=runtime ${GO_MODULE}/pkg/runtime Instance,Store,StoreInstance
 package runtime
 
 import (
@@ -62,7 +62,7 @@ type Store interface {
 	IsOffline() bool
 	SetOffline(bool)
 	GetOfflineCondition() *metav1.Condition
-	SetOfflineCondition(metav1.Condition)
+	SetOfflineCondition(*metav1.Condition)
 }
 
 // StoreInstance represents an instance that is both a Store and Instance.

@@ -357,7 +357,7 @@ func cancelOfflineOperation(
 func updateOfflineCondition(
 	state StoreOfflineReconcileContext,
 	store runtime.Store,
-	condition metav1.Condition,
+	condition *metav1.Condition,
 ) {
 	store.SetOfflineCondition(condition)
 	state.SetStatusChanged()

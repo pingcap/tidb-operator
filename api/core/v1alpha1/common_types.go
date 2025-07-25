@@ -116,9 +116,8 @@ const (
 	LabelKeyVolumeName = KeyPrefix + "volume-name"
 )
 
-// Helper functions for offline condition management
-func NewOfflineCondition(reason, message string, status metav1.ConditionStatus) metav1.Condition {
-	return metav1.Condition{
+func NewOfflineCondition(reason, message string, status metav1.ConditionStatus) *metav1.Condition {
+	return &metav1.Condition{
 		Type:               StoreOfflineConditionType,
 		Status:             status,
 		Reason:             reason,
@@ -127,7 +126,7 @@ func NewOfflineCondition(reason, message string, status metav1.ConditionStatus) 
 	}
 }
 
-func SetOfflineCondition(conditions *[]metav1.Condition, condition metav1.Condition) {
+func SetOfflineCondition(conditions *[]metav1.Condition, condition *metav1.Condition) {
 	if conditions == nil {
 		return
 	}
@@ -136,13 +135,13 @@ func SetOfflineCondition(conditions *[]metav1.Condition, condition metav1.Condit
 	for i := range *conditions {
 		if (*conditions)[i].Type == StoreOfflineConditionType {
 			// Update existing condition
-			(*conditions)[i] = condition
+			(*conditions)[i] = *condition
 			return
 		}
 	}
 
 	// Add new condition
-	*conditions = append(*conditions, condition)
+	*conditions = append(*conditions, *condition)
 }
 
 func GetOfflineCondition(conditions []metav1.Condition) *metav1.Condition {

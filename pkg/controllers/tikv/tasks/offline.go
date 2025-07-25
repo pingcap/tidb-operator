@@ -60,6 +60,7 @@ func (h *evictLeaderHook) BeforeDeleteStore(ctx context.Context) (wait bool, err
 	// leaders evicted
 	case h.LeaderEvicting && leaderCnt == 0:
 		reason = "leaders have been all evicted"
+	//nolint:godox
 	// FIXME: leader eviction is triggered by `spec.offline: true`, so there will be no deletion timestamp
 	case !delTime.IsZero() && delTime.Add(defaultLeaderEvictTimeout).Before(time.Now()):
 		reason = "leader eviction timeout"
