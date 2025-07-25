@@ -953,8 +953,10 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				"-c",
 				fmt.Sprintf(`trap "exit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, slowLogFileEnvVal, slowLogFileEnvVal),
 			}
+			initContainers = append(initContainers, c)
+		} else {
+			containers = append(containers, c)
 		}
-		containers = append(containers, c)
 	}
 
 	envs := []corev1.EnvVar{
