@@ -140,23 +140,33 @@ func newPod(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) *corev1.Pod {
 	}
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
-		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.VolumeNameClusterTLS,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: coreutil.TLSClusterSecretName[scope.TiProxy](tiproxy),
+		vols = append(vols,
+			corev1.Volume{
+				Name: v1alpha1.VolumeNameClusterTLS,
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: coreutil.TLSClusterSecretName[scope.TiProxy](tiproxy),
+					},
 				},
 			},
-		})
-		mounts = append(mounts, corev1.VolumeMount{
-			Name:      v1alpha1.VolumeNameClusterTLS,
-			MountPath: v1alpha1.DirPathClusterTLSTiProxy,
-			ReadOnly:  true,
-		}, corev1.VolumeMount{
-			Name:      v1alpha1.VolumeNameTiProxyHTTPTLS,
-			MountPath: v1alpha1.DirPathTiProxyHTTPTLS,
-			ReadOnly:  true,
-		})
+			corev1.Volume{
+				Name: v1alpha1.VolumeNameTiProxyHTTPTLS,
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: coreutil.TLSClusterSecretName[scope.TiProxy](tiproxy),
+					},
+				},
+			})
+		mounts = append(mounts,
+			corev1.VolumeMount{
+				Name:      v1alpha1.VolumeNameClusterTLS,
+				MountPath: v1alpha1.DirPathClusterTLSTiProxy,
+				ReadOnly:  true,
+			}, corev1.VolumeMount{
+				Name:      v1alpha1.VolumeNameTiProxyHTTPTLS,
+				MountPath: v1alpha1.DirPathTiProxyHTTPTLS,
+				ReadOnly:  true,
+			})
 	}
 
 	if coreutil.IsTiProxyTiDBTLSEnabled(tiproxy) {
