@@ -35,6 +35,18 @@ type Builder[R runtime.Instance] interface {
 	WithUpdatePreferPolicy(ps ...PreferPolicy[R]) Builder[R]
 	// NoInPlaceUpdate if true, actor will use Scale in and Scale out to replace Update operation
 	WithNoInPaceUpdate(noUpdate bool) Builder[R]
+
+	// WithScaleInLifecycle configures the builder to create a CancelableActor with scale-in lifecycle management.
+	// This is optional and only needed for components that support cancel scale-in operations (like TiKV/TiFlash).
+	//
+	// When configured:
+	//   - The builder will create a CancelableActor instead of a basic Actor
+	//   - The resulting executor will support cancel scale-in operations
+	//   - Components can rescue instances from offline state back to online state
+	//
+	// Components not calling this method will continue to work exactly as before with basic Actor functionality.
+	WithScaleInLifecycle(lifecycle ScaleInLifecycle[R]) Builder[R]
+
 	Build() Executor
 }
 
@@ -57,6 +69,9 @@ type builder[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct 
 
 	scaleInPreferPolicies []PreferPolicy[R]
 	updatePreferPolicies  []PreferPolicy[R]
+
+	// scaleInLifecycle is optional and when set, creates a CancelableActor instead of basic Actor
+	scaleInLifecycle ScaleInLifecycle[R]
 }
 
 func (b *builder[T, O, R]) Build() Executor {
@@ -64,7 +79,9 @@ func (b *builder[T, O, R]) Build() Executor {
 
 	updatePolicies := b.updatePreferPolicies
 	updatePolicies = append(updatePolicies, PreferUnavailable[R]())
-	actor := &actor[T, O, R]{
+
+	// Create basic actor first
+	basicActor := &actor[T, O, R]{
 		c: b.c,
 		f: b.f,
 
@@ -81,7 +98,21 @@ func (b *builder[T, O, R]) Build() Executor {
 		scaleInSelector: NewSelector(b.scaleInPreferPolicies...),
 		updateSelector:  NewSelector(updatePolicies...),
 	}
-	return NewExecutor(actor, len(update), len(outdated), b.desired,
+
+	// Create appropriate actor based on whether ScaleInLifecycle is configured
+	var actorInterface Actor
+	if b.scaleInLifecycle != nil {
+		// Create cancelable actor when lifecycle is configured
+		actorInterface = &cancelableActor[T, O, R]{
+			actor:     basicActor,
+			lifecycle: b.scaleInLifecycle,
+		}
+	} else {
+		// Use basic actor when no lifecycle is configured (existing behavior)
+		actorInterface = basicActor
+	}
+
+	return NewExecutor(actorInterface, len(update), len(outdated), b.desired,
 		countUnavailable(update), countUnavailable(outdated), b.maxSurge, b.maxUnavailable)
 }
 
@@ -152,6 +183,20 @@ func (b *builder[T, O, R]) WithUpdatePreferPolicy(ps ...PreferPolicy[R]) Builder
 // NoInPlaceUpdate if true, actor will use Scale in and Scale out to replace Update operation
 func (b *builder[T, O, R]) WithNoInPaceUpdate(noUpdate bool) Builder[R] {
 	b.noInPlaceUpdate = noUpdate
+	return b
+}
+
+// WithScaleInLifecycle configures the builder to create a CancelableActor with scale-in lifecycle management.
+// This method is optional and only needed for components that support cancel scale-in operations.
+//
+// When a ScaleInLifecycle is configured:
+//   - The builder will create a cancelableActor that implements CancelableActor interface
+//   - The resulting executor will support detecting and handling cancel scale-in scenarios
+//   - The lifecycle manager will be used for canceling offline operations on instances
+//
+// If this method is not called, the builder creates a basic Actor with existing behavior.
+func (b *builder[T, O, R]) WithScaleInLifecycle(lifecycle ScaleInLifecycle[R]) Builder[R] {
+	b.scaleInLifecycle = lifecycle
 	return b
 }
 

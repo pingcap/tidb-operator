@@ -95,6 +95,7 @@ type TiFlashList struct {
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="StoreID",type=string,JSONPath=`.status.id`
 // +kubebuilder:printcolumn:name="StoreState",type=string,JSONPath=`.status.state`
+// +kubebuilder:printcolumn:name="Offline",type=boolean,JSONPath=`.spec.offline`
 // +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
@@ -208,6 +209,12 @@ type TiFlashSpec struct {
 	// A same TiFlash group will use a same subdomain
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="subdomain is immutable"
 	Subdomain string `json:"subdomain"`
+
+	// Offline marks the store as offline in PD to begin data migration.
+	// When true, the store will be marked as offline in PD.
+	// When false, the store will be marked as online in PD (if possible).
+	// +optional
+	Offline bool `json:"offline,omitempty"`
 
 	// TiFlashTemplateSpec embedded some fields managed by TiFlashGroup
 	TiFlashTemplateSpec `json:",inline"`

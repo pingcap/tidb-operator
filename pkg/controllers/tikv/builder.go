@@ -44,15 +44,13 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// get info from pd
 		tasks.TaskContextInfoFromPD(state, r.PDClientManager),
+		// handle offline state machine for two-step store deletion
+		tasks.TaskOfflineStore(state),
 
 		// if instance is deleting and store is removed
 		task.IfBreak(ObjectIsDeletingAndStoreIsRemoved(state),
 			tasks.TaskEndEvictLeader(state),
 			tasks.TaskFinalizerDel(state, r.Client),
-		),
-		// if instance is deleting and store is not removed
-		task.If(common.CondObjectIsDeleting[scope.TiKV](state),
-			tasks.TaskOfflineStore(state),
 		),
 
 		common.TaskFinalizerAdd[scope.TiKV](state, r.Client),
@@ -62,7 +60,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// check whether the cluster is suspending
 		// if cluster is suspending, we cannot handle any tikv deletion
 		task.IfBreak(common.CondClusterIsSuspending(state),
-			// NOTE: suspend tikv pod should delete with grace peroid
+			// NOTE: suspend tikv pod should delete with grace period
 			// TODO(liubo02): combine with the common one
 			tasks.TaskSuspendPod(state, r.Client),
 			common.TaskInstanceConditionSuspended[scope.TiKV](state),
@@ -87,7 +85,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 func ObjectIsDeletingAndStoreIsRemoved(state *tasks.ReconcileContext) task.Condition {
 	return task.CondFunc(func() bool {
-		return !state.Object().GetDeletionTimestamp().IsZero() &&
+		return !state.TiKV().GetDeletionTimestamp().IsZero() &&
 			(state.GetStoreState() == v1alpha1.StoreStateRemoved || state.Store == nil)
 	})
 }
