@@ -37,6 +37,35 @@ type GenericConfig struct {
 var _ stdjson.Marshaler = &GenericConfig{}
 var _ stdjson.Unmarshaler = &GenericConfig{}
 
+// Merge merges the content in `other` to `c`.
+//
+// When conflicting:
+// Map values will be merged.
+// Other values will be overwritten by `other`'s.
+func (c *GenericConfig) Merge(other *GenericConfig) error {
+	for k, v := range other.Inner() {
+		myVal, ok := c.Inner()[k]
+		if !ok {
+			c.Inner()[k] = v
+			continue
+		}
+
+		myValR, iAmMap := strKeyMap(myVal).(map[string]any)
+		otherValR, otherIsMap := strKeyMap(v).(map[string]any)
+
+		if iAmMap && otherIsMap {
+			cfg := GenericConfig{MP: myValR}
+			if err := cfg.Merge(&GenericConfig{MP: otherValR}); err != nil {
+				return err
+			}
+		} else {
+			c.Inner()[k] = v
+		}
+	}
+
+	return nil
+}
+
 func (c *GenericConfig) MarshalTOML() ([]byte, error) {
 	if c == nil {
 		return nil, nil

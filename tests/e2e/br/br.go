@@ -38,6 +38,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 
 	"github.com/onsi/ginkgo"
+	"github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -1145,6 +1146,11 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			cleaned, err = f.Storage.IsDataCleaned(ctx, ns, fullBackup.Spec.S3.Prefix) // now we only use s3
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+
+			ginkgo.By("Check if the TiKVs' config update strategy in this cluster was reset")
+			cluster, err := f.ExtClient.PingcapV1alpha1().TidbClusters(f.Namespace.Name).Get(ctx, backupClusterName, metav1.GetOptions{})
+			framework.ExpectNoError(err)
+			gomega.Expect(cluster.Spec.TiKV.ConfigUpdateStrategy).To(gomega.BeNil())
 		})
 	})
 })

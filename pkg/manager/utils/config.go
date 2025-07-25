@@ -27,6 +27,47 @@ import (
 func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 	dataEqual := true
 
+	// When doing point-in-time-restoring or something, we will put an "overlay" over the tikv configuration.
+	// Invariants:
+	// `old` -> contains two fields "xxx" and "xxx-overlay", where:
+	// "xxx"         => contains the config derived from spec UNIONs the overlay, this config will be used by the component.
+	// "xxx-overlay" => contains the overlay, this should be applied to `new`.
+	// '             *> this field will be added by other components after the compare finishes.
+	// '             *> the "overlay" part won't join the compare.
+	// `new` -> contains "xxx" only, which is derived from the spec.
+	//
+	// when comparing `old` and `new`, as the overlay configuration isn't expected to be compared,
+	// it will be applied to `new` before for comparing, so we have the equality:
+	//
+	// old == spec.old + overlay == spec.new + overlay, which sounds if spec.old == spec.new
+	//        |                |    |       \  |     +---------\
+	//        +----old.data----+    +new.data+ +old.data-overlay+
+	//
+	// Glitch: if user changes the overlaid configuration during the overlay exists, that modification might be ignored.
+	// (i.e. the compartion results "equal") perhaps also save the last user spec in the future if this glitch matters.
+	// (should consider how to upgrade.)
+	applyOverlay := func(old, new *corev1.ConfigMap, key string) ([]byte, bool, error) {
+		if overlay, ok := old.Data[fmt.Sprintf("%s-overlay", key)]; ok {
+			cfg := v1alpha1.NewTiKVConfig()
+			if err := cfg.UnmarshalTOML([]byte(new.Data[key])); err != nil {
+				return nil, false, err
+			}
+
+			// We should parse and merge.
+			// directly call `cfg.UnmarshalTOML` will override the `gc` scope in the origin test.
+			cfgOverlay := v1alpha1.NewTiKVConfig()
+			if err := cfgOverlay.UnmarshalTOML([]byte(overlay)); err != nil {
+				return nil, false, err
+			}
+			if err := cfg.Merge(cfgOverlay.GenericConfig); err != nil {
+				return nil, false, err
+			}
+			applied, err := cfg.MarshalTOML()
+			return applied, true, err
+		}
+		return []byte(new.Data[key]), false, nil
+	}
+
 	// check config
 	tomlField := []string{
 		"config-file",       // pd,dm,tikv,tidb,ng-monitoring
@@ -36,7 +77,7 @@ func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 	}
 	for _, k := range tomlField {
 		oldData, oldOK := old.Data[k]
-		newData, newOK := new.Data[k]
+		_, newOK := new.Data[k]
 
 		if oldOK != newOK {
 			dataEqual = false
@@ -46,13 +87,22 @@ func updateConfigMap(old, new *corev1.ConfigMap) (bool, error) {
 			continue
 		}
 
-		equal, err := toml.Equal([]byte(oldData), []byte(newData))
+		appliedNewData, overlayApplied, err := applyOverlay(old, new, k)
 		if err != nil {
-			return false, perrors.Annotatef(err, "compare %s/%s %s and %s failed", old.Namespace, old.Name, oldData, newData)
+			return false, err
+		}
+
+		equal, err := toml.Equal(appliedNewData, []byte(oldData))
+		if err != nil {
+			return false, perrors.Annotatef(err, "compare %s/%s %s and %s failed", old.Namespace, old.Name, oldData, string(appliedNewData))
 		}
 
 		if equal {
-			new.Data[k] = oldData
+			// If there is an overlay, don't put the applied part to the new data.
+			// They should be added by the caller soon.
+			if !overlayApplied {
+				new.Data[k] = oldData
+			}
 		} else {
 			dataEqual = false
 		}

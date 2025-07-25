@@ -16,6 +16,7 @@ package restore
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"strings"
 	"testing"
@@ -28,9 +29,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/pointer"
 )
 
@@ -165,6 +168,52 @@ func genValidBRRestores() []*v1alpha1.Restore {
 		}
 		r.Namespace = "ns"
 		r.Name = fmt.Sprintf("restore_name_%d", i)
+		rs = append(rs, r)
+	}
+
+	return rs
+}
+
+func genValidPiTRRestores() []*v1alpha1.Restore {
+	var rs []*v1alpha1.Restore
+	for i, sp := range testutils.GenValidStorageProviders() {
+		r := &v1alpha1.Restore{
+			Spec: v1alpha1.RestoreSpec{
+				To: &v1alpha1.TiDBAccessConfig{
+					Host:       "localhost",
+					SecretName: fmt.Sprintf("pitr_secret_%d", i),
+				},
+				StorageSize:       "1G",
+				StorageProvider:   sp,
+				Type:              v1alpha1.BackupTypeFull,
+				Mode:              v1alpha1.RestoreModePiTR,
+				PitrRestoredTs:    "443123456789",
+				LogRestoreStartTs: "443123456780",
+				BR: &v1alpha1.BRConfig{
+					ClusterNamespace: "ns",
+					Cluster:          fmt.Sprintf("tidb_%d", i),
+					DB:               "dbName",
+				},
+				Env: []corev1.EnvVar{
+					{
+						Name:  fmt.Sprintf("pitr_env_name_%d", i),
+						Value: fmt.Sprintf("pitr_env_value_%d", i),
+					},
+					// existing env name will be overwritten for pitr restore
+					{
+						Name:  "BR_LOG_TO_TERM",
+						Value: "value",
+					},
+					// existing env name will be overwritten for cleaner
+					{
+						Name:  "S3_PROVIDER",
+						Value: "value",
+					},
+				},
+			},
+		}
+		r.Namespace = "ns"
+		r.Name = fmt.Sprintf("pitr_restore_name_%d", i)
 		rs = append(rs, r)
 	}
 
@@ -1018,4 +1067,208 @@ func TestGenerateWarmUpArgs(t *testing.T) {
 			require.Equal(t, tc.expected, args)
 		})
 	}
+}
+
+func TestPiTRRestore(t *testing.T) {
+	g := NewGomegaWithT(t)
+	helper := newHelper(t)
+	defer helper.Close()
+	deps := helper.Deps
+
+	for i, restore := range genValidPiTRRestores() {
+		helper.createRestore(restore)
+		helper.CreateSecret(restore)
+		helper.CreateTC(restore.Spec.BR.ClusterNamespace, restore.Spec.BR.Cluster, false, false)
+
+		// Initialize PiTRStatus for the TiKV to avoid nil pointer dereference
+		tc, err := deps.TiDBClusterLister.TidbClusters(restore.Spec.BR.ClusterNamespace).Get(restore.Spec.BR.Cluster)
+		g.Expect(err).Should(BeNil())
+		_, err = deps.TiDBClusterControl.Update(tc)
+		g.Expect(err).Should(BeNil())
+
+		// Create TiKV StatefulSet and ConfigMap for PiTR testing
+		helper.createTiKVStatefulSetAndConfigMap(restore.Spec.BR.ClusterNamespace, restore.Spec.BR.Cluster)
+
+		m := NewRestoreManager(deps)
+
+		// First sync should return RequeueError as it transitions to WaitingForConfig state
+		err = m.Sync(restore)
+		g.Expect(err).Should(MatchError(ContainSubstring("config reset, waiting for configmap updated")))
+
+		// Simulate the configmap being updated by the operator, set state to Running
+		helper.updateConfigMapRatioThreshold(restore.Spec.BR.ClusterNamespace, restore.Spec.BR.Cluster, -1.0)
+		err = m.Sync(restore)
+		g.Expect(err).Should(BeNil())
+		// Second sync should succeed now
+		helper.hasCondition(restore.Namespace, restore.Name, v1alpha1.RestoreScheduled, "")
+		job, err := helper.Deps.KubeClientset.BatchV1().Jobs(restore.Namespace).Get(context.TODO(), restore.GetRestoreJobName(), metav1.GetOptions{})
+		g.Expect(err).Should(BeNil())
+
+		// check pod env are set correctly for PiTR restore
+		env1 := corev1.EnvVar{
+			Name:  fmt.Sprintf("pitr_env_name_%d", i),
+			Value: fmt.Sprintf("pitr_env_value_%d", i),
+		}
+		env2Yes := corev1.EnvVar{
+			Name:  "BR_LOG_TO_TERM",
+			Value: "value",
+		}
+		env2No := corev1.EnvVar{
+			Name:  "BR_LOG_TO_TERM",
+			Value: string(rune(1)),
+		}
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env1))
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env2Yes))
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(gomega.ContainElement(env2No))
+
+		// check PiTR specific args are set correctly
+		args := job.Spec.Template.Spec.Containers[0].Args
+		g.Expect(args).To(gomega.ContainElement("--mode=pitr"))
+		g.Expect(args).To(gomega.ContainElement("--pitrRestoredTs=443123456789"))
+
+		// Complete the restore
+		err = m.UpdateCondition(restore, &v1alpha1.RestoreCondition{
+			Type:   v1alpha1.RestoreComplete,
+			Status: corev1.ConditionTrue,
+		})
+		g.Expect(err).Should(BeNil())
+
+		for i := 0; i < 3; i += 1 {
+			rs, err := helper.Deps.RestoreLister.Restores(restore.Namespace).List(labels.Everything())
+			g.Expect(err).Should(BeNil())
+			for _, r := range rs {
+				if !v1alpha1.IsRestoreComplete(r) {
+					continue
+				}
+			}
+			time.Sleep(100 * time.Microsecond)
+		}
+		err = m.Sync(restore)
+		// the original configmap will be reset asyncrhonously
+		g.Expect(err).Should(BeNil())
+	}
+}
+
+// createTiKVStatefulSetAndConfigMap creates TiKV StatefulSet and ConfigMap for PiTR testing
+func (h *helper) createTiKVStatefulSetAndConfigMap(namespace, clusterName string) {
+	h.T.Helper()
+	g := NewGomegaWithT(h.T)
+	deps := h.Deps
+
+	// Create TiKV StatefulSet
+	tikvSts := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-tikv", clusterName),
+			Namespace: namespace,
+			Labels: map[string]string{
+				"app.kubernetes.io/name":       "tidb-cluster",
+				"app.kubernetes.io/managed-by": "tidb-operator",
+				"app.kubernetes.io/instance":   clusterName,
+				"app.kubernetes.io/component":  "tikv",
+			},
+		},
+		Spec: appsv1.StatefulSetSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Volumes: []corev1.Volume{
+						{
+							Name: "config",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: fmt.Sprintf("%s-tikv-00000", clusterName),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	_, err := deps.KubeClientset.AppsV1().StatefulSets(namespace).Create(context.TODO(), tikvSts, metav1.CreateOptions{})
+	g.Expect(err).Should(BeNil())
+
+	// Wait for StatefulSet to be available in lister
+	g.Eventually(func() error {
+		_, err := deps.StatefulSetLister.StatefulSets(namespace).Get(fmt.Sprintf("%s-tikv", clusterName))
+		return err
+	}, time.Second*10).Should(BeNil())
+
+	// Create TiKV ConfigMap
+	tikvCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-tikv-00000", clusterName),
+			Namespace: namespace,
+			Labels: map[string]string{
+				"app.kubernetes.io/name":       "tidb-cluster",
+				"app.kubernetes.io/managed-by": "tidb-operator",
+				"app.kubernetes.io/instance":   clusterName,
+				"app.kubernetes.io/component":  "tikv",
+			},
+		},
+		Data: map[string]string{
+			"config-file": `[gc]
+ratio-threshold = 1.2
+
+[server]
+grpc-keepalive-timeout = "30s"
+`,
+			"startup-script": "#!/bin/bash\necho 'starting tikv'",
+		},
+	}
+	_, err = deps.KubeClientset.CoreV1().ConfigMaps(namespace).Create(context.TODO(), tikvCM, metav1.CreateOptions{})
+	g.Expect(err).Should(BeNil())
+
+	// Wait for ConfigMap to be available in lister
+	g.Eventually(func() error {
+		_, err := deps.ConfigMapLister.ConfigMaps(namespace).Get(fmt.Sprintf("%s-tikv-00000", clusterName))
+		return err
+	}, time.Second*10).Should(BeNil())
+}
+
+// updateConfigMapRatioThreshold updates the gc.ratio-threshold in TiKV ConfigMap
+//
+// If value is NaN, will set this to empty.
+func (h *helper) updateConfigMapRatioThreshold(namespace, clusterName string, value float64) {
+	h.T.Helper()
+	g := NewGomegaWithT(h.T)
+	deps := h.Deps
+
+	gcCfg := ""
+	if !math.IsNaN(value) {
+		gcCfg = fmt.Sprintf("ratio-threshold = %g", value)
+	}
+	g.Eventually(func() error {
+		tikvCM, err := deps.KubeClientset.CoreV1().ConfigMaps(namespace).Get(context.TODO(), fmt.Sprintf("%s-tikv-00000", clusterName), metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		updatedTiKVCM := tikvCM.DeepCopy()
+		updatedTiKVCM.Data["config-file"] = fmt.Sprintf(`[gc]
+%s
+
+[server]
+grpc-keepalive-timeout = "30s"
+`, gcCfg)
+		_, err = deps.KubeClientset.CoreV1().ConfigMaps(namespace).Update(context.TODO(), updatedTiKVCM, metav1.UpdateOptions{})
+		if err != nil {
+			return err
+		}
+
+		// Verify the config was properly updated in the configmap
+		cm, err := deps.ConfigMapLister.ConfigMaps(namespace).Get(fmt.Sprintf("%s-tikv-00000", clusterName))
+		if err != nil {
+			return err
+		}
+		if math.IsNaN(value) {
+			if strings.Contains(cm.Data["config-file"], "ratio-threshold") {
+				return fmt.Errorf("configmap should not contain ratio-threshold when value is NaN")
+			}
+		} else if !strings.Contains(cm.Data["config-file"], fmt.Sprintf("ratio-threshold = %g", value)) {
+			return fmt.Errorf("configmap not updated yet")
+		}
+		return nil
+	}, time.Second*10).Should(BeNil())
 }
