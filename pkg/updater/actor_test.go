@@ -28,6 +28,222 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 )
 
+// TestAction represents actions that can be performed by fake actors
+type TestAction int
+
+const (
+	TestActionScaleOut TestAction = iota
+	TestActionUpdate
+	TestActionScaleInUpdate
+	TestActionScaleInOutdated
+	TestActionCleanup
+	TestActionCancelScaleIn
+)
+
+func (a TestAction) String() string {
+	switch a {
+	case TestActionScaleOut:
+		return "ScaleOut"
+	case TestActionUpdate:
+		return "Update"
+	case TestActionScaleInUpdate:
+		return "ScaleInUpdate"
+	case TestActionScaleInOutdated:
+		return "ScaleInOutdated"
+	case TestActionCleanup:
+		return "Cleanup"
+	case TestActionCancelScaleIn:
+		return "CancelScaleIn"
+	default:
+		return fmt.Sprintf("Unknown(%d)", int(a))
+	}
+}
+
+// UnifiedFakeActor is a comprehensive fake actor that can be configured for different test scenarios
+type UnifiedFakeActor struct {
+	// State tracking
+	Actions             []TestAction
+	update              int
+	outdated            int
+	unavailableUpdate   int
+	unavailableOutdated int
+
+	// Behavior configuration
+	preferAvailable     bool
+	errorOnAction       map[TestAction]error
+	returnUnavailableOn map[TestAction]bool
+	conditionalErrors   map[TestAction]conditionalError
+	actionCallCounts    map[TestAction]int
+}
+
+// conditionalError represents an error that should be returned on a specific call
+type conditionalError struct {
+	callNumber int // Which call number should trigger the error (1-based)
+	error      error
+}
+
+var _ Actor = &UnifiedFakeActor{}
+
+func NewUnifiedFakeActor() *UnifiedFakeActor {
+	return &UnifiedFakeActor{
+		Actions:             []TestAction{},
+		errorOnAction:       make(map[TestAction]error),
+		returnUnavailableOn: make(map[TestAction]bool),
+		conditionalErrors:   make(map[TestAction]conditionalError),
+		actionCallCounts:    make(map[TestAction]int),
+	}
+}
+
+func (a *UnifiedFakeActor) SetState(update, outdated, unavailableUpdate, unavailableOutdated int) {
+	a.update = update
+	a.outdated = outdated
+	a.unavailableUpdate = unavailableUpdate
+	a.unavailableOutdated = unavailableOutdated
+}
+
+// GetActions provides backward compatibility access to actions
+func (a *UnifiedFakeActor) GetActions() []TestAction {
+	return a.Actions
+}
+
+func (a *UnifiedFakeActor) SetError(action TestAction, err error) {
+	a.errorOnAction[action] = err
+}
+
+func (a *UnifiedFakeActor) SetConditionalError(action TestAction, callNumber int, err error) {
+	a.conditionalErrors[action] = conditionalError{
+		callNumber: callNumber,
+		error:      err,
+	}
+}
+
+// checkForError checks if an error should be returned for this action call
+func (a *UnifiedFakeActor) checkForError(action TestAction) error {
+	// Increment call count for this action
+	a.actionCallCounts[action]++
+
+	// Check for conditional error first
+	if condErr, exists := a.conditionalErrors[action]; exists {
+		if a.actionCallCounts[action] == condErr.callNumber {
+			return condErr.error
+		}
+	}
+
+	// Check for permanent error
+	if err, exists := a.errorOnAction[action]; exists {
+		return err
+	}
+
+	return nil
+}
+
+func (a *UnifiedFakeActor) SetReturnUnavailable(action TestAction, unavailable bool) {
+	a.returnUnavailableOn[action] = unavailable
+}
+
+func (a *UnifiedFakeActor) ScaleOut(_ context.Context) error {
+	a.Actions = append(a.Actions, TestActionScaleOut)
+	if err := a.checkForError(TestActionScaleOut); err != nil {
+		return err
+	}
+	a.update++
+	a.unavailableUpdate++
+	return nil
+}
+
+func (a *UnifiedFakeActor) Update(_ context.Context) error {
+	a.Actions = append(a.Actions, TestActionUpdate)
+	if err := a.checkForError(TestActionUpdate); err != nil {
+		return err
+	}
+	// Convert an outdated instance to update
+	if a.unavailableOutdated > 0 {
+		a.unavailableOutdated--
+		a.unavailableUpdate++
+	}
+	a.outdated--
+	a.update++
+	return nil
+}
+
+func (a *UnifiedFakeActor) ScaleInUpdate(_ context.Context) (bool, error) {
+	a.Actions = append(a.Actions, TestActionScaleInUpdate)
+	if err := a.checkForError(TestActionScaleInUpdate); err != nil {
+		return false, err
+	}
+
+	a.update--
+	if a.preferAvailable || a.unavailableUpdate == 0 {
+		return a.returnUnavailableOn[TestActionScaleInUpdate], nil
+	}
+
+	a.unavailableUpdate--
+	return true, nil
+}
+
+func (a *UnifiedFakeActor) ScaleInOutdated(_ context.Context) (bool, error) {
+	a.Actions = append(a.Actions, TestActionScaleInOutdated)
+	if err := a.checkForError(TestActionScaleInOutdated); err != nil {
+		return false, err
+	}
+
+	a.outdated--
+	if a.preferAvailable || a.unavailableOutdated == 0 {
+		return a.returnUnavailableOn[TestActionScaleInOutdated], nil
+	}
+
+	a.unavailableOutdated--
+	return true, nil
+}
+
+func (a *UnifiedFakeActor) Cleanup(_ context.Context) error {
+	a.Actions = append(a.Actions, TestActionCleanup)
+	if err := a.checkForError(TestActionCleanup); err != nil {
+		return err
+	}
+	return nil
+}
+
+// FakeLifecycle is a test implementation of ScaleInLifecycle
+type FakeLifecycle[R runtime.Instance] struct {
+	isOfflineInstances  map[string]bool
+	offlineCompleted    map[string]bool
+	beginScaleInCalled  bool
+	cancelScaleInCalled bool
+	shouldError         bool
+}
+
+func (f *FakeLifecycle[R]) IsOffline(instance R) bool {
+	name := instance.GetName()
+	// If offline is completed, IsOffline should return false (matches real StoreLifecycle behavior)
+	if f.offlineCompleted[name] {
+		return false
+	}
+	return f.isOfflineInstances[name]
+}
+
+func (f *FakeLifecycle[R]) IsOfflineCompleted(instance R) bool {
+	return f.offlineCompleted[instance.GetName()]
+}
+
+func (f *FakeLifecycle[R]) BeginScaleIn(_ context.Context, instance R) error {
+	f.beginScaleInCalled = true
+	if f.shouldError {
+		return assert.AnError
+	}
+	f.isOfflineInstances[instance.GetName()] = true
+	return nil
+}
+
+func (f *FakeLifecycle[R]) CancelScaleIn(_ context.Context, instance R) error {
+	f.cancelScaleInCalled = true
+	if f.shouldError {
+		return assert.AnError
+	}
+	f.isOfflineInstances[instance.GetName()] = false
+	return nil
+}
+
 // TestCancelableActorCancelScaleIn tests the CancelScaleIn method directly
 func TestCancelableActorCancelScaleIn(t *testing.T) {
 	cases := []struct {
