@@ -90,6 +90,14 @@ func (rm *PiTRManager) Enable(tc *v1alpha1.TidbCluster) error {
 	return nil
 }
 
+func typeForFloat64() reflect.Type {
+	var v float64
+	if t := reflect.TypeOf(v); t != nil {
+		return t
+	}
+	return reflect.TypeOf((*float64)(nil)).Elem()
+}
+
 func (rm *PiTRManager) ensureConfigMapReconcileDone(tc *v1alpha1.TidbCluster) error {
 	cfgMap, err := rm.configMapOfTiKV(tc)
 	if err != nil {
@@ -104,7 +112,7 @@ func (rm *PiTRManager) ensureConfigMapReconcileDone(tc *v1alpha1.TidbCluster) er
 
 		rv1 := reflect.ValueOf(v1.Interface())
 
-		float64T := reflect.TypeFor[float64]()
+		float64T := typeForFloat64()
 		if !rv1.CanConvert(float64T) {
 			klog.InfoS("config value is not float, cannot compare", "rv1", rv1, "rv2", target)
 			return false

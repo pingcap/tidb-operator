@@ -1133,7 +1133,7 @@ func TestPiTRRestore(t *testing.T) {
 		})
 		g.Expect(err).Should(BeNil())
 
-		for range 3 {
+		for i := 0; i < 3; i += 1 {
 			rs, err := helper.Deps.RestoreLister.Restores(restore.Namespace).List(labels.Everything())
 			g.Expect(err).Should(BeNil())
 			for _, r := range rs {
