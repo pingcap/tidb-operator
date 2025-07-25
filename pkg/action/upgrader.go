@@ -64,15 +64,6 @@ func (defaultPolicy[S, F, T]) ArePreconditionsMet(ctx context.Context, cli clien
 	cluster := coreutil.Cluster[S](group)
 	version := coreutil.Version[S](group)
 
-	// First check if the current component itself is ready for upgrade
-	upgraded, err := isUpgraded[S]([]F{group}, version)
-	if err != nil {
-		return false, fmt.Errorf("cannot check current component upgrade status: %w", err)
-	}
-	if !upgraded {
-		return false, nil
-	}
-
 	var comps []string
 	switch scope.Component[S]() {
 	case v1alpha1.LabelValComponentTiProxy, v1alpha1.LabelValComponentTiCDC:
