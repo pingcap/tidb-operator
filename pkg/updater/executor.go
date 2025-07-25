@@ -27,7 +27,7 @@ type Actor interface {
 	ScaleInUpdate(ctx context.Context) (unavailable bool, _ error)
 	ScaleInOutdated(ctx context.Context) (unavailable bool, _ error)
 
-	// delete all instances marked as defer deletion
+	// Cleanup deletes all instances marked as defer deletion
 	Cleanup(ctx context.Context) error
 }
 
@@ -88,6 +88,10 @@ type executor struct {
 	maxUnavailable      int
 
 	act Actor
+
+	// Cache the CancelableActor to avoid repeated type assertions
+	cancelableActor CancelableActor
+	isCancelable    bool
 }
 
 func NewExecutor(
@@ -100,7 +104,7 @@ func NewExecutor(
 	maxSurge,
 	maxUnavailable int,
 ) Executor {
-	return &executor{
+	exec := &executor{
 		update:              update,
 		outdated:            outdated,
 		desired:             desired,
@@ -110,6 +114,12 @@ func NewExecutor(
 		maxUnavailable:      maxUnavailable,
 		act:                 act,
 	}
+
+	if cancelableActor, ok := act.(CancelableActor); ok && cancelableActor.CanCancel() {
+		exec.cancelableActor = cancelableActor
+		exec.isCancelable = true
+	}
+	return exec
 }
 
 // countOnlineInstances calculates the actual number of online instances,
@@ -118,13 +128,29 @@ func (ex *executor) countOnlineInstances() int {
 	total := ex.update + ex.outdated
 
 	// If the actor supports counting offline instances, subtract them
-	if cancelableActor, ok := ex.act.(CancelableActor); ok && cancelableActor.CanCancel() {
-		beingOffline, offlineCompleted := cancelableActor.CountOfflineInstances()
-		return total - beingOffline - offlineCompleted
-	}
+	beingOffline, offlineCompleted := ex.getOfflineCounts()
+	return total - beingOffline - offlineCompleted
+}
 
-	// For regular actors, all instances are considered online
-	return total
+// getCancelableActor returns the cached CancelableActor if available, nil otherwise
+// This avoids repeated type assertions in hot path
+func (ex *executor) getCancelableActor() (CancelableActor, bool) {
+	return ex.cancelableActor, ex.isCancelable
+}
+
+// shouldReturnEarlyForCancelable checks if we should return early for cancelable actors
+// after processing one instance to enable parallel offline operations
+func (ex *executor) shouldReturnEarlyForCancelable() bool {
+	return ex.isCancelable
+}
+
+// getOfflineCounts returns the counts of offline instances for cancelable actors
+// Returns (0, 0) for regular actors
+func (ex *executor) getOfflineCounts() (beingOffline, offlineCompleted int) {
+	if ex.isCancelable {
+		return ex.cancelableActor.CountOfflineInstances()
+	}
+	return 0, 0
 }
 
 // TODO: add scale in/out rate limit
@@ -145,11 +171,8 @@ reconcile: // Label to allow restarting the entire reconciliation
 	// This is needed because even when ex.update == ex.desired, we might still
 	// need to cancel ongoing offline operations if desired count increased
 	needCancelCheck := func() bool {
-		if cancelableActor, ok := ex.act.(CancelableActor); ok && cancelableActor.CanCancel() {
-			beingOffline, _ := cancelableActor.CountOfflineInstances()
-			return beingOffline > 0 && ex.desired > ex.countOnlineInstances()
-		}
-		return false
+		beingOffline, _ := ex.getOfflineCounts()
+		return beingOffline > 0 && ex.desired > ex.countOnlineInstances()
 	}
 
 	// Main reconciliation loop - handles both normal scaling and cancel operations
@@ -175,7 +198,7 @@ reconcile: // Label to allow restarting the entire reconciliation
 		// Extended condition to also trigger cancellation when there are offline instances
 		// that need to be rescued even when ex.update == ex.desired
 		if (onlineActual < ex.desired || needCancelCheck()) && !cancelAttempted {
-			if cancelableActor, ok := ex.act.(CancelableActor); ok && cancelableActor.CanCancel() {
+			if cancelableActor, ok := ex.getCancelableActor(); ok {
 				logger.Info("cancel scale in",
 					"onlineActual", onlineActual, "desired", ex.desired)
 				// Attempt to rescue offline instances before creating new ones
@@ -187,17 +210,6 @@ reconcile: // Label to allow restarting the entire reconciliation
 
 				if canceled > 0 {
 					logger.Info("cancel scale in success", "canceled", canceled)
-					// Successfully rescued some instances
-					// DO NOT update internal counters here - this was the bug!
-					// The next reconcile cycle will read the actual state from Kubernetes
-					// and re-evaluate based on real instance states.
-					//
-					// BUG FIX: Previously this code did:
-					// ex.update += canceled
-					// ex.unavailableUpdate += canceled
-					// This caused ex.update to increase, triggering immediate re-scale-in
-					// in the same reconcile loop, marking the same instance offline again.
-					// Return immediately to allow next reconcile to see the updated state
 					return false, nil
 				}
 			}
@@ -275,9 +287,8 @@ reconcile: // Label to allow restarting the entire reconciliation
 		case actual > maximum:
 			// For TiKV/TiFlash: check if we're already offlining enough instances
 			// Allow parallel offline: continue marking instances offline until we have enough
-			if cancelableActor, ok := ex.act.(CancelableActor); ok && cancelableActor.CanCancel() {
-				beingOffline, offlineCompleted := cancelableActor.CountOfflineInstances()
-
+			beingOffline, offlineCompleted := ex.getOfflineCounts()
+			if beingOffline > 0 || offlineCompleted > 0 {
 				// Calculate current effective instances (what's actually still in the cluster)
 				currentEffectiveInstances := (ex.update + ex.outdated) - offlineCompleted
 
@@ -323,7 +334,7 @@ reconcile: // Label to allow restarting the entire reconciliation
 
 				// For CancelableActor (TiKV/TiFlash): return immediately after processing one instance
 				// This ensures we process only one instance per reconcile, enabling parallel offline
-				if _, ok := ex.act.(CancelableActor); ok {
+				if ex.shouldReturnEarlyForCancelable() {
 					logger.Info("return because of cancelable actor")
 					return false, nil
 				}
@@ -346,7 +357,7 @@ reconcile: // Label to allow restarting the entire reconciliation
 				}
 
 				// For CancelableActor (TiKV/TiFlash): return immediately after processing one instance
-				if _, ok := ex.act.(CancelableActor); ok {
+				if ex.shouldReturnEarlyForCancelable() {
 					logger.Info("return because of cancelable actor")
 					return false, nil
 				}
@@ -361,7 +372,7 @@ reconcile: // Label to allow restarting the entire reconciliation
 	}
 
 	// After the main loop, perform a final check for any zombie instances left over from race conditions.
-	if cancelableActor, ok := ex.act.(CancelableActor); ok && cancelableActor.CanCancel() {
+	if cancelableActor, ok := ex.getCancelableActor(); ok {
 		cleaned, err := cancelableActor.CleanupCompletedOffline(ctx)
 		if err != nil {
 			return false, fmt.Errorf("failed to clean up completed offline instances: %w", err)
