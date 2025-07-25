@@ -984,7 +984,10 @@ type LogTailerSpec struct {
 	corev1.ResourceRequirements `json:",inline"`
 
 	// If true, we use native sidecar feature to tail log
+	// It requires enable feature gate "SidecarContainers"
+	// This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33
 	// See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
+	// and https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/
 	// +optional
 	UseSidecar bool `json:"useSidecar,omitempty"`
 }
@@ -1259,7 +1262,10 @@ type TiDBSlowLogTailerSpec struct {
 	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 
 	// If true, we use native sidecar feature to tail log
+	// It requires enable feature gate "SidecarContainers"
+	// This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33
 	// See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
+	// and https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/
 	// +optional
 	UseSidecar bool `json:"useSidecar,omitempty"`
 }

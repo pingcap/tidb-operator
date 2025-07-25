@@ -4197,7 +4197,7 @@ func schema_pkg_apis_pingcap_v1alpha1_LogTailerSpec(ref common.ReferenceCallback
 					},
 					"useSidecar": {
 						SchemaProps: spec.SchemaProps{
-							Description: "If true, we use native sidecar feature to tail log See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/",
+							Description: "If true, we use native sidecar feature to tail log It requires enable feature gate \"SidecarContainers\" This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33 See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/ and https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -9999,7 +9999,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSlowLogTailerSpec(ref common.Reference
 					},
 					"useSidecar": {
 						SchemaProps: spec.SchemaProps{
-							Description: "If true, we use native sidecar feature to tail log See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/",
+							Description: "If true, we use native sidecar feature to tail log It requires enable feature gate \"SidecarContainers\" This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33 See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/ and https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
