@@ -9415,6 +9415,22 @@ Kubernetes core/v1.ResourceRequirements
 </p>
 </td>
 </tr>
+<tr>
+<td>
+<code>useSidecar</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>If true, we use native sidecar feature to tail log
+It requires enable feature gate &ldquo;SidecarContainers&rdquo;
+This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33
+See <a href="https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/">https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/</a>
+and <a href="https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/">https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/</a></p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="masterconfig">MasterConfig</h3>
@@ -18211,6 +18227,22 @@ Kubernetes core/v1.PullPolicy
 <td>
 <p>(Deprecated) ImagePullPolicy of the component. Override the cluster-level imagePullPolicy if present
 Use <code>spec.helper.imagePullPolicy</code> instead</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>useSidecar</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>If true, we use native sidecar feature to tail log
+It requires enable feature gate &ldquo;SidecarContainers&rdquo;
+This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33
+See <a href="https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/">https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/</a>
+and <a href="https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/">https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/</a></p>
 </td>
 </tr>
 </tbody>
