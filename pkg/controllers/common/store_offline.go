@@ -44,6 +44,7 @@ const (
 
 type StoreOfflineHook interface {
 	BeforeDeleteStore(ctx context.Context) (wait bool, err error)
+	AfterStoreIsDeleted(ctx context.Context) (wait bool, err error)
 	AfterCancelDeleteStore(ctx context.Context) (wait bool, err error)
 }
 
@@ -52,6 +53,10 @@ type DummyStoreOfflineHook struct{}
 var _ StoreOfflineHook = &DummyStoreOfflineHook{}
 
 func (DummyStoreOfflineHook) BeforeDeleteStore(_ context.Context) (wait bool, err error) {
+	return false, nil
+}
+
+func (DummyStoreOfflineHook) AfterStoreIsDeleted(_ context.Context) (wait bool, err error) {
 	return false, nil
 }
 
@@ -113,7 +118,7 @@ func handleOfflineOperation(
 	case v1alpha1.OfflineReasonPending:
 		return handlePendingState(ctx, state, store, hook)
 	case v1alpha1.OfflineReasonActive:
-		return handleActiveState(ctx, state, store)
+		return handleActiveState(ctx, state, store, hook)
 	case v1alpha1.OfflineReasonCompleted:
 		return task.Complete().With("store offline operation is completed")
 	case v1alpha1.OfflineReasonFailed:
@@ -204,7 +209,7 @@ func handlePendingState(
 		return task.Fail().With("failed to execute the hook before delete store: %v", err)
 	}
 	if wait {
-		return task.Retry(RemovingWaitInterval).With("wait for the hook")
+		return task.Retry(RemovingWaitInterval).With("wait for the hook BeforeDeleteStore")
 	}
 
 	logger.Info("Calling PD DeleteStore API", "storeID", storeID)
@@ -237,9 +242,18 @@ func handleActiveState(
 	ctx context.Context,
 	state StoreOfflineReconcileContext,
 	store runtime.Store,
+	hook StoreOfflineHook,
 ) task.Result {
 	logger := logr.FromContextOrDiscard(ctx).WithValues("instance", store.GetName())
 	if state.GetStoreNotExists() || state.GetStoreState() == v1alpha1.StoreStateRemoved {
+		wait, err := hook.AfterStoreIsDeleted(ctx)
+		if err != nil {
+			return task.Fail().With("failed to execute the hook after store is deleted: %v", err)
+		}
+		if wait {
+			return task.Retry(RemovingWaitInterval).With("wait for the hook AfterStoreIsDeleted")
+		}
+
 		logger.Info("Store has been removed from PD, completing offline operation")
 		updateOfflineCondition(state, store, v1alpha1.NewOfflineCondition(
 			v1alpha1.OfflineReasonCompleted,
@@ -331,7 +345,7 @@ func cancelOfflineOperation(
 			return task.Fail().With("failed to execute the hook after cancel delete store")
 		}
 		if wait {
-			return task.Retry(RemovingWaitInterval).With("wait for the hook")
+			return task.Retry(RemovingWaitInterval).With("wait for the hook AfterCancelDeleteStore")
 		}
 	}
 

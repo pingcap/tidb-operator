@@ -18,7 +18,6 @@ import (
 	"context"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
@@ -27,16 +26,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
+// TaskFinalizerDel deletes sub-resources and remove the finalizer from the instance CR.
+// TODO: extract a common task for tikv and tiflash
 func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
 		tiflash := state.TiFlash()
-		if tiflash == nil {
-			return task.Fail().With("tiflash is nil")
-		}
-		cond := meta.FindStatusCondition(tiflash.Status.Conditions, v1alpha1.StoreOfflineConditionType)
-		if !tiflash.Spec.Offline || cond == nil || cond.Reason != v1alpha1.OfflineReasonCompleted {
-			return task.Wait().With("wait for offline complete to delete resources, condition: %v", cond)
-		}
 
 		wait, err := EnsureSubResourcesDeleted(ctx, c, tiflash)
 		if err != nil {

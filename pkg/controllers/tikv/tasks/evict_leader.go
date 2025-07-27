@@ -42,18 +42,3 @@ func TaskEvictLeader(state *ReconcileContext) task.Task {
 		}
 	})
 }
-
-// TaskEndEvictLeader only be called when object is deleting and store has been removed
-func TaskEndEvictLeader(state *ReconcileContext) task.Task {
-	return task.NameTaskFunc("EndEvictLeader", func(ctx context.Context) task.Result {
-		if state.Store == nil {
-			return task.Complete().With("store has been deleted or not created, skip end leader eviction")
-		}
-		if state.LeaderEvicting {
-			if err := state.PDClient.Underlay().EndEvictLeader(ctx, state.Store.ID); err != nil {
-				return task.Fail().With("cannot remove evict leader scheduler: %v", err)
-			}
-		}
-		return task.Complete().With("ensure evict leader scheduler doesn't exist")
-	})
-}

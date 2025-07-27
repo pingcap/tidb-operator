@@ -22,6 +22,7 @@ import (
 	"github.com/go-logr/logr"
 
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
+	"github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -74,9 +75,17 @@ func (h *evictLeaderHook) BeforeDeleteStore(ctx context.Context) (wait bool, err
 	return true, nil
 }
 
+func (h *evictLeaderHook) AfterStoreIsDeleted(ctx context.Context) (wait bool, err error) {
+	return endEvictLeader(ctx, h.PDClient, h.LeaderEvicting, h.Store.ID)
+}
+
 func (h *evictLeaderHook) AfterCancelDeleteStore(ctx context.Context) (wait bool, err error) {
-	if h.LeaderEvicting {
-		if err = h.PDClient.Underlay().EndEvictLeader(ctx, h.Store.ID); err != nil {
+	return endEvictLeader(ctx, h.PDClient, h.LeaderEvicting, h.Store.ID)
+}
+
+func endEvictLeader(ctx context.Context, pdClient pd.PDClient, leaderEvicting bool, storeID string) (wait bool, err error) {
+	if leaderEvicting {
+		if err = pdClient.Underlay().EndEvictLeader(ctx, storeID); err != nil {
 			return true, fmt.Errorf("failed to end evict leader")
 		}
 	}
