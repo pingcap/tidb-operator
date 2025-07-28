@@ -30,6 +30,7 @@ import (
 	_ "github.com/pingcap/tidb-operator/tests/e2e/ticdc"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tidb"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/tikv"
+	_ "github.com/pingcap/tidb-operator/tests/e2e/tiproxy"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/webhook"
 )
 

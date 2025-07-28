@@ -221,7 +221,7 @@ func newPod(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) *corev1.Pod {
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Command: []string{
 						"/bin/tiproxy",
-						"-conf",
+						"--config",
 						filepath.Join(v1alpha1.DirPathConfigTiProxy, v1alpha1.FileNameConfig),
 					},
 					Ports: []corev1.ContainerPort{
