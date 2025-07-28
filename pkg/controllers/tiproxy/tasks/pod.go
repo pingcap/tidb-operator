@@ -279,9 +279,14 @@ func buildTiProxyReadinessProbeHandler(
 	tiproxy *v1alpha1.TiProxy,
 	clientPort, statusPort int32,
 ) corev1.ProbeHandler {
-	probeType := v1alpha1.CommandProbeType // default to http probe
+	probeType := v1alpha1.TCPProbeType // default to http probe
 	if tiproxy.Spec.Probes.Readiness != nil && tiproxy.Spec.Probes.Readiness.Type != nil {
 		probeType = *tiproxy.Spec.Probes.Readiness.Type
+	}
+
+	// If TLS is enabled, we can only use command probe type
+	if coreutil.IsTLSClusterEnabled(cluster) {
+		probeType = v1alpha1.CommandProbeType
 	}
 
 	if probeType == v1alpha1.CommandProbeType {
@@ -306,14 +311,14 @@ func buildTiProxyProbeCommand(cluster *v1alpha1.Cluster, statusPort int32) (comm
 	if tlsClusterEnabled {
 		scheme = "https"
 	}
-	host := "127.0.0.1"
-
-	readinessURL := fmt.Sprintf("%s://%s:%d/api/admin/status", scheme, host, statusPort)
+	readinessURL := fmt.Sprintf("%s://127.0.0.1:%d/api/debug/health", scheme, statusPort)
 	command = append(command, "curl", readinessURL,
 		// Fail silently (no output at all) on server errors
 		// without this if the server return 500, the exist code will be 0
 		// and probe is success.
 		"--fail",
+		// Silent mode, only print error
+		"-sS",
 		// follow 301 or 302 redirect
 		"--location")
 
