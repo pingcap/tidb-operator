@@ -73,6 +73,7 @@ func NewState(key types.NamespacedName) State {
 		key: key,
 	}
 	s.IFeatureGates = stateutil.NewFeatureGates[scope.TiProxy](s)
+	s.IPDClient = stateutil.NewPDClientState()
 	return s
 }
 
