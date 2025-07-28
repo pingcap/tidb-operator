@@ -17,10 +17,13 @@ package tasks
 import (
 	"context"
 
+	"github.com/Masterminds/semver/v3"
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/compatibility"
 	pdcfg "github.com/pingcap/tidb-operator/pkg/configs/pd"
 	"github.com/pingcap/tidb-operator/pkg/timanager"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
@@ -69,9 +72,18 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		state.MemberID = m.ID
 		state.IsLeader = m.IsLeader
 
-		ready, err := state.PDClient.Underlay().GetMemberReady(ctx, getPDURL(ck, pd), pd.Spec.Version)
-		if err != nil || !ready {
-			return task.Retry(task.DefaultRequeueAfter).With("failed to get member ready (err: %w) or pd is not ready", err)
+		var ready = true // default to true for backward compatibility
+
+		// Only call GetMemberReady if the feature gate is enabled and version supports it
+		if state.FeatureGates().Enabled(metav1alpha1.UsePDReadyAPI) {
+			version := semver.MustParse(pd.Spec.Version)
+			if compatibility.Check(version, compatibility.PDReadyAPI) {
+				var err error
+				ready, err = state.PDClient.Underlay().GetMemberReady(ctx, getPDURL(ck, pd), pd.Spec.Version)
+				if err != nil || !ready {
+					return task.Retry(task.DefaultRequeueAfter).With("failed to get member ready (err: %w) or pd is not ready", err)
+				}
+			}
 		}
 
 		// set available and trust health info only when member info is valid
