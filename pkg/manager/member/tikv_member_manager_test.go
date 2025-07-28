@@ -31,7 +31,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1515,9 +1514,10 @@ func TestTiKVMemberManagerSyncTidbClusterStatus(t *testing.T) {
 								Id:      330,
 								Address: fmt.Sprintf("%s-tiflash-1.%s-tiflash-peer.%s.svc:20160", "test", "test", "default"),
 							},
+							StateName: "Up",
 						},
 						Status: &pdapi.StoreStatus{
-							LastHeartbeatTS: time.Time{},
+							LastHeartbeatTS: time.Now(),
 						},
 					},
 				},
@@ -1774,7 +1774,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
-			testSts: testHostNetwork(t, true, v1.DNSClusterFirstWithHostNet),
+			testSts: testHostNetwork(t, true, corev1.DNSClusterFirstWithHostNet),
 		},
 		{
 			name: "tikv network is not host when pd is host",
@@ -1994,7 +1994,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 			testSts: func(sts *apps.StatefulSet) {
 				g := NewGomegaWithT(t)
 				q, _ := resource.ParseQuantity("2Gi")
-				g.Expect(sts.Spec.VolumeClaimTemplates).To(Equal([]v1.PersistentVolumeClaim{
+				g.Expect(sts.Spec.VolumeClaimTemplates).To(Equal([]corev1.PersistentVolumeClaim{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: v1alpha1.TiKVMemberType.String(),
@@ -2059,7 +2059,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 			testSts: func(sts *apps.StatefulSet) {
 				g := NewGomegaWithT(t)
 				q, _ := resource.ParseQuantity("1Gi")
-				g.Expect(sts.Spec.VolumeClaimTemplates).To(Equal([]v1.PersistentVolumeClaim{
+				g.Expect(sts.Spec.VolumeClaimTemplates).To(Equal([]corev1.PersistentVolumeClaim{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: v1alpha1.TiKVMemberType.String(),
@@ -2718,8 +2718,10 @@ func TestTiKVBackupConfig(t *testing.T) {
 func newTidbClusterForTiKV() *v1alpha1.TidbCluster {
 	return &v1alpha1.TidbCluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: corev1.NamespaceDefault,
+			Name:        "test",
+			Namespace:   corev1.NamespaceDefault,
+			Labels:      map[string]string{},
+			Annotations: map[string]string{},
 		},
 		Spec: v1alpha1.TidbClusterSpec{
 			TiKV: &v1alpha1.TiKVSpec{
@@ -2753,4 +2755,274 @@ func mustTiKVConfig(x interface{}) *v1alpha1.TiKVConfigWraper {
 	c.UnmarshalTOML(data)
 
 	return c
+}
+
+func TestTiKVMemberManagerApplyPiTRConfigOverride(t *testing.T) {
+	type testcase struct {
+		name           string
+		restores       []*v1alpha1.Restore
+		expectOverride bool
+		expectError    bool
+		tc             *v1alpha1.TidbCluster
+	}
+
+	testFn := func(test *testcase, t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+			tkmm, _, _, _, _, _ := newFakeTiKVMemberManager(test.tc)
+
+			// Add restores to the fake restore lister
+			for _, restore := range test.restores {
+				err := tkmm.deps.InformerFactory.Pingcap().V1alpha1().Restores().Informer().GetIndexer().Add(restore)
+				g.Expect(err).NotTo(HaveOccurred())
+			}
+
+			// Create a ConfigMap to test the override
+			cm := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-tikv-config",
+					Namespace: test.tc.Namespace,
+				},
+				Data: map[string]string{
+					"config-file": `[gc]
+batch-keys = 512`,
+				},
+			}
+
+			err := tkmm.applyPiTRConfigOverride(test.tc, cm)
+
+			if test.expectError {
+				g.Expect(err).To(HaveOccurred())
+				return
+			}
+
+			g.Expect(err).NotTo(HaveOccurred())
+
+			if test.expectOverride {
+				// Verify that gc.ratio-threshold is set to -1.0
+				g.Expect(cm.Data["config-file"]).To(ContainSubstring("ratio-threshold = -1"))
+			} else {
+				// Verify that gc.ratio-threshold is not set or modified
+				g.Expect(cm.Data["config-file"]).NotTo(ContainSubstring("ratio-threshold"))
+			}
+		})
+	}
+
+	tc := newTidbClusterForTiKV()
+
+	tests := []testcase{
+		{
+			name:           "no restores",
+			restores:       []*v1alpha1.Restore{},
+			expectOverride: false,
+			expectError:    false,
+			tc:             tc,
+		},
+		{
+			name: "non-PiTR restore",
+			restores: []*v1alpha1.Restore{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "non-pitr-restore",
+						Namespace: tc.Namespace,
+					},
+					Spec: v1alpha1.RestoreSpec{
+						BR: &v1alpha1.BRConfig{
+							Cluster:          tc.Name,
+							ClusterNamespace: tc.Namespace,
+						},
+						Mode: v1alpha1.RestoreModeSnapshot,
+					},
+					Status: v1alpha1.RestoreStatus{
+						Phase: v1alpha1.RestoreRunning,
+					},
+				},
+			},
+			expectOverride: false,
+			expectError:    false,
+			tc:             tc,
+		},
+		{
+			name: "active PiTR restore for same cluster",
+			restores: []*v1alpha1.Restore{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pitr-restore",
+						Namespace: tc.Namespace,
+					},
+					Spec: v1alpha1.RestoreSpec{
+						BR: &v1alpha1.BRConfig{
+							Cluster:          tc.Name,
+							ClusterNamespace: tc.Namespace,
+						},
+						Mode: v1alpha1.RestoreModePiTR,
+					},
+					Status: v1alpha1.RestoreStatus{
+						Phase: v1alpha1.RestoreRunning,
+					},
+				},
+			},
+			expectOverride: true,
+			expectError:    false,
+			tc:             tc,
+		},
+		{
+			name: "completed PiTR restore",
+			restores: []*v1alpha1.Restore{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "completed-pitr-restore",
+						Namespace: tc.Namespace,
+					},
+					Spec: v1alpha1.RestoreSpec{
+						BR: &v1alpha1.BRConfig{
+							Cluster:          tc.Name,
+							ClusterNamespace: tc.Namespace,
+						},
+						Mode: v1alpha1.RestoreModePiTR,
+					},
+					Status: v1alpha1.RestoreStatus{
+						Phase: v1alpha1.RestoreComplete,
+						Conditions: []v1alpha1.RestoreCondition{
+							{
+								Type:   v1alpha1.RestoreComplete,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				},
+			},
+			expectOverride: false,
+			expectError:    false,
+			tc:             tc,
+		},
+		{
+			name: "failed PiTR restore",
+			restores: []*v1alpha1.Restore{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "failed-pitr-restore",
+						Namespace: tc.Namespace,
+					},
+					Spec: v1alpha1.RestoreSpec{
+						BR: &v1alpha1.BRConfig{
+							Cluster:          tc.Name,
+							ClusterNamespace: tc.Namespace,
+						},
+						Mode: v1alpha1.RestoreModePiTR,
+					},
+					Status: v1alpha1.RestoreStatus{
+						Phase: v1alpha1.RestoreFailed,
+						Conditions: []v1alpha1.RestoreCondition{
+							{
+								Type:   v1alpha1.RestoreFailed,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				},
+			},
+			expectOverride: false,
+			expectError:    false,
+			tc:             tc,
+		},
+		{
+			name: "PiTR restore for different cluster",
+			restores: []*v1alpha1.Restore{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "other-cluster-pitr-restore",
+						Namespace: tc.Namespace,
+					},
+					Spec: v1alpha1.RestoreSpec{
+						BR: &v1alpha1.BRConfig{
+							Cluster:          "other-cluster",
+							ClusterNamespace: tc.Namespace,
+						},
+						Mode: v1alpha1.RestoreModePiTR,
+					},
+					Status: v1alpha1.RestoreStatus{
+						Phase: v1alpha1.RestoreRunning,
+					},
+				},
+			},
+			expectOverride: false,
+			expectError:    false,
+			tc:             tc,
+		},
+		{
+			name: "PiTR restore for different namespace",
+			restores: []*v1alpha1.Restore{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "other-ns-pitr-restore",
+						Namespace: tc.Namespace,
+					},
+					Spec: v1alpha1.RestoreSpec{
+						BR: &v1alpha1.BRConfig{
+							Cluster:          tc.Name,
+							ClusterNamespace: "other-namespace",
+						},
+						Mode: v1alpha1.RestoreModePiTR,
+					},
+					Status: v1alpha1.RestoreStatus{
+						Phase: v1alpha1.RestoreRunning,
+					},
+				},
+			},
+			expectOverride: false,
+			expectError:    false,
+			tc:             tc,
+		},
+		{
+			name: "multiple PiTR restores with one active",
+			restores: []*v1alpha1.Restore{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "completed-pitr-restore",
+						Namespace: tc.Namespace,
+					},
+					Spec: v1alpha1.RestoreSpec{
+						BR: &v1alpha1.BRConfig{
+							Cluster:          tc.Name,
+							ClusterNamespace: tc.Namespace,
+						},
+						Mode: v1alpha1.RestoreModePiTR,
+					},
+					Status: v1alpha1.RestoreStatus{
+						Phase: v1alpha1.RestoreComplete,
+						Conditions: []v1alpha1.RestoreCondition{
+							{
+								Type:   v1alpha1.RestoreComplete,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "active-pitr-restore",
+						Namespace: tc.Namespace,
+					},
+					Spec: v1alpha1.RestoreSpec{
+						BR: &v1alpha1.BRConfig{
+							Cluster:          tc.Name,
+							ClusterNamespace: tc.Namespace,
+						},
+						Mode: v1alpha1.RestoreModePiTR,
+					},
+					Status: v1alpha1.RestoreStatus{
+						Phase: v1alpha1.RestoreRunning,
+					},
+				},
+			},
+			expectOverride: true,
+			expectError:    false,
+			tc:             tc,
+		},
+	}
+
+	for i := range tests {
+		testFn(&tests[i], t)
+	}
 }
