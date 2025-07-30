@@ -52,7 +52,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 					cn := f.Cluster.Name
 					f.Must(cert.InstallTiDBIssuer(ctx, f.Client, ns, cn))
 					f.Must(cert.InstallTiDBCertificates(ctx, f.Client, ns, cn, "dbg"))
-					f.Must(cert.InstallTiDBComponentsCertificates(ctx, f.Client, ns, cn, "pdg", "kvg", "dbg", "flashg", "cdcg"))
+					f.Must(cert.InstallTiDBComponentsCertificates(ctx, f.Client, ns, cn, "pdg", "kvg", "dbg", "flashg", "cdcg", "pg"))
 				}
 				pdg := f.MustCreatePD(ctx)
 				kvg := f.MustCreateTiKV(ctx,
@@ -104,7 +104,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 			f.WaitForTiDBGroupReady(ctx, dbg)
 			// Make sure each TiKV store has enough leaders and regions,
 			// otherwise the scale-in operation will be too fast.
-			workload.MustImportData(ctx, data.DefaultTiDBServiceName, "root", "", "", 500)
+			workload.MustImportData(ctx, data.DefaultTiDBServiceName, data.DefaultTiDBServicePort, "root", "", "", 500)
 
 			ginkgo.By("Initiating scale in from 4 to 3 replicas")
 			patch := client.MergeFrom(kvg.DeepCopy())
@@ -162,7 +162,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 
 			// Make sure each TiKV store has enough leaders and regions,
 			// otherwise the scale-in operation will be too fast.
-			workload.MustImportData(ctx, data.DefaultTiDBServiceName, "root", "", "", 500)
+			workload.MustImportData(ctx, data.DefaultTiDBServiceName, data.DefaultTiDBServicePort, "root", "", "", 500)
 
 			nctx, cancel := context.WithCancel(ctx)
 			ch := make(chan struct{})
