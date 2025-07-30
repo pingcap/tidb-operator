@@ -45,6 +45,125 @@ push: $(addprefix push/,$(ALL_CMD))
 push/%:
 	$(ROOT)/hack/image.sh $* --push
 
+# Development build targets for faster iteration
+.PHONY: dev-image
+dev-image: $(addprefix dev-image/,$(ALL_CMD))
+
+# Test target to debug
+.PHONY: test-dev
+test-dev:
+	@echo "Test dev target running"
+	$(ROOT)/hack/image.sh tidb-operator --dockerfile=Dockerfile.dev --dockerignore=.dockerignore.dev
+
+# Force rebuild development images (always execute, ignore file timestamps)
+.PHONY: dev-image-tidb-operator dev-image-prestop-checker dev-image-testing-workload dev-image-tidb-backup-manager
+dev-image-tidb-operator:
+	@echo "Building dev image for tidb-operator..."
+	@$(MAKE) dev-prepare-output
+	@if [ ! -f "_output/bin/tidb-operator" ]; then \
+		echo "Binary _output/bin/tidb-operator not found, building..."; \
+		$(ROOT)/hack/build.sh tidb-operator; \
+	fi
+	$(ROOT)/hack/image.sh tidb-operator --dockerfile=Dockerfile.dev --dockerignore=.dockerignore.dev
+
+dev-image-prestop-checker:
+	@echo "Building dev image for prestop-checker..."
+	@$(MAKE) dev-prepare-output
+	@if [ ! -f "_output/bin/prestop-checker" ]; then \
+		echo "Binary _output/bin/prestop-checker not found, building..."; \
+		$(ROOT)/hack/build.sh prestop-checker; \
+	fi
+	$(ROOT)/hack/image.sh prestop-checker --dockerfile=Dockerfile.dev --dockerignore=.dockerignore.dev
+
+# Keep the pattern rule for backwards compatibility but make it work
+.PHONY: dev-image/tidb-operator dev-image/prestop-checker dev-image/testing-workload dev-image/tidb-backup-manager
+dev-image/tidb-operator: dev-image-tidb-operator
+dev-image/prestop-checker: dev-image-prestop-checker
+dev-image/testing-workload: dev-image-testing-workload  
+dev-image/tidb-backup-manager: dev-image-tidb-backup-manager
+
+dev-image-testing-workload:
+	@echo "Building dev image for testing-workload..."
+	@$(MAKE) dev-prepare-output
+	@if [ ! -f "_output/bin/testing-workload" ]; then \
+		echo "Binary _output/bin/testing-workload not found, building..."; \
+		$(ROOT)/hack/build.sh testing-workload; \
+	fi
+	$(ROOT)/hack/image.sh testing-workload --dockerfile=Dockerfile.dev --dockerignore=.dockerignore.dev
+
+dev-image-tidb-backup-manager:
+	@echo "Building dev image for tidb-backup-manager..."
+	@$(MAKE) dev-prepare-output
+	@if [ ! -f "_output/bin/tidb-backup-manager" ]; then \
+		echo "Binary _output/bin/tidb-backup-manager not found, building..."; \
+		$(ROOT)/hack/build.sh tidb-backup-manager; \
+	fi
+	$(ROOT)/hack/image.sh tidb-backup-manager --dockerfile=Dockerfile.dev --dockerignore=.dockerignore.dev
+
+.PHONY: dev-push
+dev-push: $(addprefix dev-push/,$(ALL_CMD))
+
+# Force rebuild and push development images 
+.PHONY: dev-push-tidb-operator dev-push-prestop-checker dev-push-testing-workload dev-push-tidb-backup-manager
+dev-push-tidb-operator:
+	@echo "Building and pushing dev image for tidb-operator..."
+	@$(MAKE) dev-prepare-output
+	@if [ ! -f "_output/bin/tidb-operator" ]; then \
+		echo "Binary _output/bin/tidb-operator not found, building..."; \
+		$(ROOT)/hack/build.sh tidb-operator; \
+	fi
+	$(ROOT)/hack/image.sh tidb-operator --dockerfile=Dockerfile.dev --dockerignore=.dockerignore.dev --push
+
+dev-push-prestop-checker:
+	@echo "Building and pushing dev image for prestop-checker..."
+	@$(MAKE) dev-prepare-output
+	@if [ ! -f "_output/bin/prestop-checker" ]; then \
+		echo "Binary _output/bin/prestop-checker not found, building..."; \
+		$(ROOT)/hack/build.sh prestop-checker; \
+	fi
+	$(ROOT)/hack/image.sh prestop-checker --dockerfile=Dockerfile.dev --dockerignore=.dockerignore.dev --push
+
+dev-push-testing-workload:
+	@echo "Building and pushing dev image for testing-workload..."
+	@$(MAKE) dev-prepare-output
+	@if [ ! -f "_output/bin/testing-workload" ]; then \
+		echo "Binary _output/bin/testing-workload not found, building..."; \
+		$(ROOT)/hack/build.sh testing-workload; \
+	fi
+	$(ROOT)/hack/image.sh testing-workload --dockerfile=Dockerfile.dev --dockerignore=.dockerignore.dev --push
+
+dev-push-tidb-backup-manager:
+	@echo "Building and pushing dev image for tidb-backup-manager..."
+	@$(MAKE) dev-prepare-output
+	@if [ ! -f "_output/bin/tidb-backup-manager" ]; then \
+		echo "Binary _output/bin/tidb-backup-manager not found, building..."; \
+		$(ROOT)/hack/build.sh tidb-backup-manager; \
+	fi
+	$(ROOT)/hack/image.sh tidb-backup-manager --dockerfile=Dockerfile.dev --dockerignore=.dockerignore.dev --push
+
+# Keep the pattern rule for backwards compatibility but make it work
+.PHONY: dev-push/tidb-operator dev-push/prestop-checker dev-push/testing-workload dev-push/tidb-backup-manager
+dev-push/tidb-operator: dev-push-tidb-operator
+dev-push/prestop-checker: dev-push-prestop-checker
+dev-push/testing-workload: dev-push-testing-workload  
+dev-push/tidb-backup-manager: dev-push-tidb-backup-manager
+
+# Ensure _output directory is a real directory with binaries, not a symlink
+.PHONY: dev-prepare-output
+dev-prepare-output:
+	@if [ -L "_output" ]; then \
+		echo "Converting _output symlink to real directory for Docker build..."; \
+		rm _output; \
+		mkdir -p _output; \
+		cp -r ../tidb-operator/_output/* _output/; \
+	elif [ ! -d "_output" ]; then \
+		echo "Creating _output directory..."; \
+		mkdir -p _output; \
+		if [ -d "../tidb-operator/_output" ]; then \
+			cp -r ../tidb-operator/_output/* _output/; \
+		fi; \
+	fi
+
 .PHONY: deploy
 deploy: release
 	$(KUBECTL) apply --server-side=true -f $(OUTPUT_DIR)/manifests/tidb-operator.crds.yaml
