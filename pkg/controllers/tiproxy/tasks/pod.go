@@ -140,23 +140,33 @@ func newPod(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) *corev1.Pod {
 	}
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
-		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.VolumeNameClusterTLS,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: coreutil.TLSClusterSecretName[scope.TiProxy](tiproxy),
+		vols = append(vols,
+			corev1.Volume{
+				Name: v1alpha1.VolumeNameClusterTLS,
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: coreutil.TLSClusterSecretName[scope.TiProxy](tiproxy),
+					},
 				},
 			},
-		})
-		mounts = append(mounts, corev1.VolumeMount{
-			Name:      v1alpha1.VolumeNameClusterTLS,
-			MountPath: v1alpha1.DirPathClusterTLSTiProxy,
-			ReadOnly:  true,
-		}, corev1.VolumeMount{
-			Name:      v1alpha1.VolumeNameTiProxyHTTPTLS,
-			MountPath: v1alpha1.DirPathTiProxyHTTPTLS,
-			ReadOnly:  true,
-		})
+			corev1.Volume{
+				Name: v1alpha1.VolumeNameTiProxyHTTPTLS,
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: coreutil.TLSClusterSecretName[scope.TiProxy](tiproxy),
+					},
+				},
+			})
+		mounts = append(mounts,
+			corev1.VolumeMount{
+				Name:      v1alpha1.VolumeNameClusterTLS,
+				MountPath: v1alpha1.DirPathClusterTLSTiProxy,
+				ReadOnly:  true,
+			}, corev1.VolumeMount{
+				Name:      v1alpha1.VolumeNameTiProxyHTTPTLS,
+				MountPath: v1alpha1.DirPathTiProxyHTTPTLS,
+				ReadOnly:  true,
+			})
 	}
 
 	if coreutil.IsTiProxyTiDBTLSEnabled(tiproxy) {
@@ -211,7 +221,7 @@ func newPod(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) *corev1.Pod {
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Command: []string{
 						"/bin/tiproxy",
-						"-conf",
+						"--config",
 						filepath.Join(v1alpha1.DirPathConfigTiProxy, v1alpha1.FileNameConfig),
 					},
 					Ports: []corev1.ContainerPort{
@@ -274,6 +284,11 @@ func buildTiProxyReadinessProbeHandler(
 		probeType = *tiproxy.Spec.Probes.Readiness.Type
 	}
 
+	// If TLS is enabled, we can only use command probe type
+	if coreutil.IsTLSClusterEnabled(cluster) {
+		probeType = v1alpha1.CommandProbeType
+	}
+
 	if probeType == v1alpha1.CommandProbeType {
 		return corev1.ProbeHandler{
 			Exec: &corev1.ExecAction{
@@ -296,14 +311,14 @@ func buildTiProxyProbeCommand(cluster *v1alpha1.Cluster, statusPort int32) (comm
 	if tlsClusterEnabled {
 		scheme = "https"
 	}
-	host := "127.0.0.1"
-
-	readinessURL := fmt.Sprintf("%s://%s:%d/api/admin/status", scheme, host, statusPort)
+	readinessURL := fmt.Sprintf("%s://127.0.0.1:%d/api/debug/health", scheme, statusPort)
 	command = append(command, "curl", readinessURL,
 		// Fail silently (no output at all) on server errors
 		// without this if the server return 500, the exist code will be 0
 		// and probe is success.
 		"--fail",
+		// Silent mode, only print error
+		"-sS",
 		// follow 301 or 302 redirect
 		"--location")
 
