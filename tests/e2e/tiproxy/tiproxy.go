@@ -41,7 +41,7 @@ const (
 
 var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 	f := framework.New()
-	f.Setup(framework.WithSkipClusterDeletionWhenFailed())
+	f.Setup()
 
 	ginkgo.Context("Scale and Update", label.P0, func() {
 		ginkgo.It("scale out and in TiProxy", label.Scale, func(ctx context.Context) {
