@@ -23,11 +23,8 @@ spec:
     - jsonPath: .spec.gcStrategy.type
       name: Strategy
       type: string
-    - jsonPath: .status.conditions[?(@.type=="Synced")].status
-      name: Synced
-      type: string
-    - jsonPath: .status.conditions[?(@.type=="Ready")].status
-      name: Ready
+    - jsonPath: .status.phase
+      name: Phase
       type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
@@ -80,10 +77,101 @@ spec:
                           - to-t2-storage
                           - to-t3-storage
                           type: string
+                        options:
+                          description: Options defines extra options for the strategy
+                          items:
+                            type: string
+                          type: array
+                        resources:
+                          description: Resources defines resource requirements to
+                            run the strategy
+                          properties:
+                            cpu:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            memory:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                          type: object
+                        schedule:
+                          description: Schedule is the schedule of the strategy in
+                            Cron format, see https://en.wikipedia.org/wiki/Cron.
+                          type: string
                         timeThresholdDays:
                           format: int32
                           minimum: 1
                           type: integer
+                        volumes:
+                          description: Volumes defines persistence data volume for
+                            the strategy if needed
+                          items:
+                            description: |-
+                              Volume defines a persistent volume, it will be mounted at a specified root path
+                              A volume can be mounted for multiple different usages.
+                              For example, a volume can be mounted for both data and raft log.
+                            properties:
+                              mounts:
+                                description: |-
+                                  Mounts defines mount infos of this volume
+                                  NOTE(liubo02): it cannot be a list map because the key is "type" or "mountPath" which is not supported
+                                items:
+                                  properties:
+                                    mountPath:
+                                      description: Mount path of volume, if it's not
+                                        set, use the default path of this type.
+                                      type: string
+                                    subPath:
+                                      description: SubPath is the path of the volume's
+                                        root path.
+                                      type: string
+                                    type:
+                                      description: Type is a type of the volume mount.
+                                      type: string
+                                  required:
+                                  - type
+                                  type: object
+                                type: array
+                                x-kubernetes-list-type: atomic
+                              name:
+                                description: Name is volume name.
+                                type: string
+                              storage:
+                                anyOf:
+                                - type: integer
+                                - type: string
+                                description: Storage defines the request size of this
+                                  volume
+                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                x-kubernetes-int-or-string: true
+                              storageClassName:
+                                description: |-
+                                  StorageClassName means the storage class the volume used.
+                                  You can modify volumes' attributes by changing the StorageClass
+                                  when VolumeAttributesClass is not available.
+                                  Note that only newly created PV will use the new StorageClass.
+                                type: string
+                              volumeAttributesClassName:
+                                description: |-
+                                  VolumeAttributesClassName means the VolumeAttributesClass the volume used.
+                                  You can modify volumes' attributes by changing it.
+                                  This feature is introduced since K8s 1.29 as alpha feature and disabled by default.
+                                  It's only available when the feature is enabled.
+                                type: string
+                            required:
+                            - mounts
+                            - name
+                            - storage
+                            type: object
+                          type: array
+                          x-kubernetes-list-map-keys:
+                          - name
+                          x-kubernetes-list-type: map
                       required:
                       - name
                       - timeThresholdDays
@@ -8574,86 +8662,7 @@ spec:
           status:
             description: TiBRGCStatus defines the observed state of TiBRGC.
             properties:
-              collisionCount:
-                description: |-
-                  CollisionCount is the count of hash collisions. The controller
-                  uses this field as a collision avoidance mechanism when it needs to create the name for the
-                  newest ControllerRevision.
-                format: int32
-                type: integer
-              conditions:
-                description: Conditions contain details of the current state.
-                items:
-                  description: Condition contains details for one aspect of the current
-                    state of this API Resource.
-                  properties:
-                    lastTransitionTime:
-                      description: |-
-                        lastTransitionTime is the last time the condition transitioned from one status to another.
-                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
-                      format: date-time
-                      type: string
-                    message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
-                      maxLength: 32768
-                      type: string
-                    observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
-                      format: int64
-                      minimum: 0
-                      type: integer
-                    reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
-                      maxLength: 1024
-                      minLength: 1
-                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
-                      type: string
-                    status:
-                      description: status of the condition, one of True, False, Unknown.
-                      enum:
-                      - "True"
-                      - "False"
-                      - Unknown
-                      type: string
-                    type:
-                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
-                      maxLength: 316
-                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
-                      type: string
-                  required:
-                  - lastTransitionTime
-                  - message
-                  - reason
-                  - status
-                  - type
-                  type: object
-                type: array
-                x-kubernetes-list-map-keys:
-                - type
-                x-kubernetes-list-type: map
-              currentRevision:
-                description: CurrentRevision is the revision of the Controller that
-                  created the resource.
-                type: string
-              observedGeneration:
-                description: |-
-                  ObservedGeneration is the most recent generation observed by the controller.
-                  It's used to determine whether the controller has reconciled the latest spec.
-                format: int64
-                type: integer
-              updateRevision:
-                description: UpdateRevision is the revision of the Controller that
-                  should modify the resource.
+              phase:
                 type: string
             type: object
         type: object
