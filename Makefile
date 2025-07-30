@@ -45,6 +45,65 @@ push: $(addprefix push/,$(ALL_CMD))
 push/%:
 	$(ROOT)/hack/image.sh $* --push
 
+# Development build targets for faster iteration
+.PHONY: dev-image
+dev-image: $(addprefix dev-image/,$(ALL_CMD))
+
+# Force rebuild development images (always execute, ignore file timestamps)
+define dev-image-template
+.PHONY: dev-image-$(1)
+dev-image-$(1):
+	@echo "Building dev image for $(1)..."
+	@$(MAKE) dev-prepare-output
+	@if [ ! -f "$(BIN_DIR)/$(1)" ]; then \
+		echo "Binary $(BIN_DIR)/$(1) not found, building..."; \
+		$(ROOT)/hack/build.sh $(1); \
+	fi
+	$(ROOT)/hack/image.sh $(1) --dockerfile=Dockerfile.dev --dockerignore=.dockerignore.dev
+
+.PHONY: dev-image/$(1)
+dev-image/$(1): dev-image-$(1)
+endef
+
+$(foreach cmd,$(ALL_CMD),$(eval $(call dev-image-template,$(cmd))))
+
+.PHONY: dev-push
+dev-push: $(addprefix dev-push/,$(ALL_CMD))
+
+# Force rebuild and push development images 
+define dev-push-template
+.PHONY: dev-push-$(1)
+dev-push-$(1):
+	@echo "Building and pushing dev image for $(1)..."
+	@$(MAKE) dev-prepare-output
+	@if [ ! -f "$(BIN_DIR)/$(1)" ]; then \
+		echo "Binary $(BIN_DIR)/$(1) not found, building..."; \
+		$(ROOT)/hack/build.sh $(1); \
+	fi
+	$(ROOT)/hack/image.sh $(1) --dockerfile=Dockerfile.dev --dockerignore=.dockerignore.dev --push
+
+.PHONY: dev-push/$(1)
+dev-push/$(1): dev-push-$(1)
+endef
+
+$(foreach cmd,$(ALL_CMD),$(eval $(call dev-push-template,$(cmd))))
+
+# Ensure _output directory is a real directory with binaries, not a symlink
+.PHONY: dev-prepare-output
+dev-prepare-output:
+	@if [ -L "$(OUTPUT_DIR)" ]; then \
+		REAL_PATH=$$(readlink "$(OUTPUT_DIR)"); \
+		echo "Converting $(OUTPUT_DIR) symlink to real directory for Docker build..."; \
+		rm "$(OUTPUT_DIR)"; \
+		mkdir -p "$(OUTPUT_DIR)"; \
+		if [ -d "$$REAL_PATH" ]; then \
+			cp -r "$$REAL_PATH"/* "$(OUTPUT_DIR)"/; \
+		fi; \
+	elif [ ! -d "$(OUTPUT_DIR)" ]; then \
+		echo "Creating $(OUTPUT_DIR) directory..."; \
+		mkdir -p "$(OUTPUT_DIR)"; \
+	fi
+
 .PHONY: deploy
 deploy: release
 	$(KUBECTL) apply --server-side=true -f $(OUTPUT_DIR)/manifests/tidb-operator.crds.yaml

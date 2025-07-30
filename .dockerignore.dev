@@ -1,0 +1,4 @@
+# Development .dockerignore - includes _output for pre-compiled binaries  
+# Only exclude what we don't need
+manifests
+examples
