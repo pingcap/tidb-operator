@@ -80,6 +80,7 @@ function image::build() {
             -t ${V_IMG_PROJECT}/${image}:${V_RELEASE} \
             --cache-from=type=local,src=$CACHE_DIR \
             --cache-to=type=local,dest=$CACHE_DIR \
+            --build-arg=TARGET="${target}" \
             $args \
             -f $ROOT/image/Dockerfile $ROOT
     done
