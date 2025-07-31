@@ -42,11 +42,20 @@ type ReconcileContext struct {
 
 func TaskContextInfoFromPDAndTiProxy(state *ReconcileContext, c client.Client, cm pdm.PDClientManager) task.Task {
 	return task.NameTaskFunc("ContextInfoFromPDAndTiProxy", func(ctx context.Context) task.Result {
+		ck := state.Cluster()
+		pdc, ok := cm.Get(timanager.PrimaryKey(ck.Namespace, ck.Name))
+		if !ok {
+			return task.Fail().With("pd client is not registered")
+		}
+		if !pdc.HasSynced() {
+			return task.Fail().With("store info is not synced, just wait for next sync")
+		}
+		state.SetPDClient(pdc.Underlay())
+
 		var (
 			scheme    = "http"
 			tlsConfig *tls.Config
 		)
-		ck := state.Cluster()
 		if coreutil.IsTLSClusterEnabled(ck) {
 			scheme = "https"
 			var err error
@@ -65,13 +74,6 @@ func TaskContextInfoFromPDAndTiProxy(state *ReconcileContext, c client.Client, c
 		if healthy {
 			state.SetHealthy()
 		}
-
-		pdc, ok := cm.Get(timanager.PrimaryKey(ck.Namespace, ck.Name))
-		if !ok {
-			return task.Fail().With("pd client is not registered")
-		}
-		state.SetPDClient(pdc.Underlay())
-
-		return task.Complete().With("get info from tiproxy")
+		return task.Complete().With("get info from pd and tiproxy")
 	})
 }
