@@ -17,8 +17,6 @@ package tikv
 import (
 	"context"
 	"fmt"
-	"math/rand/v2"
-	"sort"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
@@ -251,24 +249,12 @@ replica-schedule-limit = 16
 			f.WaitForTiDBGroupReady(ctx, dbg)
 			workload.MustImportData(ctx, data.DefaultTiDBServiceName, "root", "", "", 500)
 
-			ginkgo.By("Annotating one TiKV instance for deletion")
-			allKVs, err := apicall.ListInstances[scope.TiKVGroup](ctx, f.Client, kvg)
-			f.Must(err)
-			sort.Slice(allKVs, func(i, j int) bool { return allKVs[i].Name < allKVs[j].Name })
-			annotatedKV := allKVs[rand.IntN(len(allKVs))]
-			patch := client.MergeFrom(annotatedKV.DeepCopy())
-			metav1.SetMetaDataAnnotation(&annotatedKV.ObjectMeta, v1alpha1.AnnoKeyOfflineStore, "true")
-			f.Must(f.Client.Patch(ctx, annotatedKV, patch))
-
 			ginkgo.By("Scaling in TiKV from 4 to 3 replica")
-			patch = client.MergeFrom(kvg.DeepCopy())
+			patch := client.MergeFrom(kvg.DeepCopy())
 			kvg.Spec.Replicas = ptr.To[int32](3)
 			f.Must(f.Client.Patch(ctx, kvg, patch))
-
-			ginkgo.By("Verifying the annotated TiKV instances are marked for offline")
 			offliningKVs := findOffliningTiKVs(ctx, f, kvg, 1)
 			gomega.Expect(offliningKVs).To(gomega.HaveLen(1))
-			gomega.Expect(offliningKVs[0].Name).To(gomega.Equal(annotatedKV.Name))
 
 			ginkgo.By("Cancelling scale-in by scaling back to 4 replicas")
 			patch = client.MergeFrom(kvg.DeepCopy())
@@ -276,7 +262,7 @@ replica-schedule-limit = 16
 			f.Must(f.Client.Patch(ctx, kvg, patch))
 
 			ginkgo.By("Verifying offline operations are cancelled")
-			waitForTiKVOfflineCondition(ctx, f, annotatedKV, v1alpha1.OfflineReasonCancelled, 5*time.Minute, false)
+			waitForTiKVOfflineCondition(ctx, f, offliningKVs[0], v1alpha1.OfflineReasonCancelled, 5*time.Minute, false)
 
 			ginkgo.By("Verifying TiKVGroup stabilizes at 4 replicas")
 			f.WaitForTiKVGroupReady(ctx, kvg)

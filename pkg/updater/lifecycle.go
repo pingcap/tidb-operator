@@ -60,7 +60,7 @@ func (s *storeLifecycle[SI]) IsOffline(instance SI) bool {
 }
 
 func (s *storeLifecycle[SI]) IsOfflineCompleted(instance SI) bool {
-	cond := instance.GetOfflineCondition()
+	cond := runtime.GetOfflineCondition(instance)
 	return instance.IsOffline() && cond != nil && cond.Reason == v1alpha1.OfflineReasonCompleted
 }
 
@@ -75,9 +75,8 @@ func toClientObject[SI runtime.StoreInstance](instance SI) client.Object {
 	case *runtime.TiFlash:
 		return v.To()
 	default:
-		// This should not happen with properly generated runtime types,
-		// but fallback to the instance itself since StoreInstance extends client.Object
-		return instance
+		// This should not happen with properly generated runtime types
+		panic("should not happen")
 	}
 }
 

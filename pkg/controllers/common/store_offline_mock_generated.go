@@ -106,20 +106,6 @@ func (mr *MockStoreOfflineReconcileContextMockRecorder) GetStoreID() *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStoreID", reflect.TypeOf((*MockStoreOfflineReconcileContext)(nil).GetStoreID))
 }
 
-// GetStoreNotExists mocks base method.
-func (m *MockStoreOfflineReconcileContext) GetStoreNotExists() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetStoreNotExists")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// GetStoreNotExists indicates an expected call of GetStoreNotExists.
-func (mr *MockStoreOfflineReconcileContextMockRecorder) GetStoreNotExists() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStoreNotExists", reflect.TypeOf((*MockStoreOfflineReconcileContext)(nil).GetStoreNotExists))
-}
-
 // GetStoreState mocks base method.
 func (m *MockStoreOfflineReconcileContext) GetStoreState() string {
 	m.ctrl.T.Helper()
@@ -172,4 +158,18 @@ func (m *MockStoreOfflineReconcileContext) SetStatusChanged() {
 func (mr *MockStoreOfflineReconcileContextMockRecorder) SetStatusChanged() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusChanged", reflect.TypeOf((*MockStoreOfflineReconcileContext)(nil).SetStatusChanged))
+}
+
+// StoreNotExists mocks base method.
+func (m *MockStoreOfflineReconcileContext) StoreNotExists() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StoreNotExists")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// StoreNotExists indicates an expected call of StoreNotExists.
+func (mr *MockStoreOfflineReconcileContextMockRecorder) StoreNotExists() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StoreNotExists", reflect.TypeOf((*MockStoreOfflineReconcileContext)(nil).StoreNotExists))
 }

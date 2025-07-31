@@ -44,8 +44,8 @@ func (r *ReconcileContext) GetStoreID() string {
 	return r.Store.ID
 }
 
-// GetStoreNotExists returns true if the store does not exist in PD
-func (r *ReconcileContext) GetStoreNotExists() bool {
+// StoreNotExists returns true if the store does not exist in PD
+func (r *ReconcileContext) StoreNotExists() bool {
 	return r.Store == nil
 }
 

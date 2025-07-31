@@ -173,14 +173,6 @@ func (in *TiFlash) SetOffline(offline bool) {
 	in.Spec.Offline = offline
 }
 
-func (in *TiFlash) GetOfflineCondition() *metav1.Condition {
-	return v1alpha1.GetOfflineCondition(in.Status.Conditions)
-}
-
-func (in *TiFlash) SetOfflineCondition(condition *metav1.Condition) {
-	v1alpha1.SetOfflineCondition(&in.Status.Conditions, condition)
-}
-
 type (
 	TiFlashGroup v1alpha1.TiFlashGroup
 )

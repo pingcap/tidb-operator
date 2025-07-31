@@ -86,12 +86,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			).
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
-			WithScaleInPreferPolicy(
-				// Enhanced scale-in selection policies for cancel scale support
-				updater.PreferAnnotatedForDeletion[*runtime.TiKV](), // Prioritize user-annotated instances
-				updater.PreferNotOffline[*runtime.TiKV](),           // Avoid instances already being offlined
-				topoPolicy, // Respect topology constraints
-			).
+			WithScaleInPreferPolicy(topoPolicy).
 			// Enable cancel scale-in functionality through ScaleInLifecycle
 			WithScaleInLifecycle(scaleInLifecycle).
 			Build()

@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate ${GOBIN}/mockgen -write_command_comment=false -copyright_file ${BOILERPLATE_FILE} -destination instance_mock_generated.go -package=runtime ${GO_MODULE}/pkg/runtime Instance,Store,StoreInstance
+//go:generate ${GOBIN}/mockgen -write_command_comment=false -copyright_file ${BOILERPLATE_FILE} -destination instance_mock_generated.go -package=runtime ${GO_MODULE}/pkg/runtime Instance,StoreInstance
 package runtime
 
 import (
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -55,18 +56,36 @@ type InstanceTuple[PT client.Object, PU Instance] interface {
 	Tuple[PT, PU]
 }
 
-// Store represents a TiKV or TiFlash store.
-type Store interface {
-	client.Object
+// StoreInstance represents an instance that is both a Store and Instance, like TiKV and TiFlash.
+type StoreInstance interface {
+	Instance
 
 	IsOffline() bool
 	SetOffline(bool)
-	GetOfflineCondition() *metav1.Condition
-	SetOfflineCondition(*metav1.Condition)
 }
 
-// StoreInstance represents an instance that is both a Store and Instance.
-type StoreInstance interface {
-	Instance
-	Store
+func SetOfflineCondition(s StoreInstance, condition *metav1.Condition) {
+	if condition == nil {
+		return
+	}
+
+	conditions := s.Conditions()
+
+	// Find existing condition
+	updated := false
+	for i := range conditions {
+		if conditions[i].Type == v1alpha1.StoreOfflineConditionType {
+			conditions[i] = *condition
+			updated = true
+		}
+	}
+
+	if !updated {
+		conditions = append(conditions, *condition)
+	}
+	s.SetConditions(conditions)
+}
+
+func GetOfflineCondition(s StoreInstance) *metav1.Condition {
+	return meta.FindStatusCondition(s.Conditions(), v1alpha1.StoreOfflineConditionType)
 }

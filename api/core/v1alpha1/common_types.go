@@ -116,43 +116,6 @@ const (
 	LabelKeyVolumeName = KeyPrefix + "volume-name"
 )
 
-func NewOfflineCondition(reason, message string, status metav1.ConditionStatus) *metav1.Condition {
-	return &metav1.Condition{
-		Type:               StoreOfflineConditionType,
-		Status:             status,
-		Reason:             reason,
-		Message:            message,
-		LastTransitionTime: metav1.Now(),
-	}
-}
-
-func SetOfflineCondition(conditions *[]metav1.Condition, condition *metav1.Condition) {
-	if conditions == nil {
-		return
-	}
-
-	// Find existing condition
-	for i := range *conditions {
-		if (*conditions)[i].Type == StoreOfflineConditionType {
-			// Update existing condition
-			(*conditions)[i] = *condition
-			return
-		}
-	}
-
-	// Add new condition
-	*conditions = append(*conditions, *condition)
-}
-
-func GetOfflineCondition(conditions []metav1.Condition) *metav1.Condition {
-	for i := range conditions {
-		if conditions[i].Type == StoreOfflineConditionType {
-			return &conditions[i]
-		}
-	}
-	return nil
-}
-
 const (
 	// Label value for meta.LabelKeyComponent
 	LabelValComponentPD        = string(meta.ComponentPD)
@@ -190,9 +153,6 @@ const (
 
 	// Features is recorded to check whether the pod should be restarted because of changes of features
 	AnnoKeyFeatures = AnnoKeyPrefix + "features"
-
-	// AnnoKeyOfflineStore is used to mark instances to offline during scale-in operations.
-	AnnoKeyOfflineStore = AnnoKeyPrefix + "offline-store"
 )
 
 // ConfigUpdateStrategy represents the strategy to update configuration.

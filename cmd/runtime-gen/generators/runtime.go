@@ -235,14 +235,6 @@ func (in *$.|pub$) IsOffline() bool {
 func (in *$.|pub$) SetOffline(offline bool) {
 	in.Spec.Offline = offline
 }
-
-func (in *$.|pub$) GetOfflineCondition() *metav1.Condition {
-	return v1alpha1.GetOfflineCondition(in.Status.Conditions)
-}
-
-func (in *$.|pub$) SetOfflineCondition(condition *metav1.Condition) {
-	v1alpha1.SetOfflineCondition(&in.Status.Conditions, condition)
-}
 `, t)
 	}
 

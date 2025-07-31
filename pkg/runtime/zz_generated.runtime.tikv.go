@@ -173,14 +173,6 @@ func (in *TiKV) SetOffline(offline bool) {
 	in.Spec.Offline = offline
 }
 
-func (in *TiKV) GetOfflineCondition() *metav1.Condition {
-	return v1alpha1.GetOfflineCondition(in.Status.Conditions)
-}
-
-func (in *TiKV) SetOfflineCondition(condition *metav1.Condition) {
-	v1alpha1.SetOfflineCondition(&in.Status.Conditions, condition)
-}
-
 type (
 	TiKVGroup v1alpha1.TiKVGroup
 )
