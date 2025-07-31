@@ -31,9 +31,12 @@ const (
 	defaultGracePeriod = 30
 )
 
+// TaskFinalizerDel deletes sub-resources and remove the finalizer from the instance CR.
+// TODO: extract a common task for tikv and tiflash
 func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
-		wait, err := EnsureSubResourcesDeleted(ctx, c, state.TiKV())
+		tikv := state.TiKV()
+		wait, err := EnsureSubResourcesDeleted(ctx, c, tikv)
 		if err != nil {
 			return task.Fail().With("cannot delete subresources: %w", err)
 		}
@@ -41,7 +44,7 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 			return task.Retry(task.DefaultRequeueAfter).With("wait all subresources deleted")
 		}
 
-		if err := k8s.RemoveFinalizer(ctx, c, state.TiKV()); err != nil {
+		if err := k8s.RemoveFinalizer(ctx, c, tikv); err != nil {
 			return task.Fail().With("cannot remove finalizer: %w", err)
 		}
 		return task.Complete().With("finalizer is removed")

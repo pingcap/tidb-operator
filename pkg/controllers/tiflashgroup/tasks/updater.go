@@ -37,16 +37,14 @@ const (
 	defaultUpdateWaitTime = time.Second * 30
 )
 
-// TaskUpdater is a task to scale or update PD when spec of TiFlashGroup is changed.
+// TaskUpdater is a task to scale or update TiFlash instances when spec of TiFlashGroup is changed.
 func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.TiFlashGroup, *v1alpha1.TiFlash]) task.Task {
-	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
+	return task.NameTaskFunc("TiFlashGroupUpdater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		fg := state.TiFlashGroup()
 
 		checker := action.NewUpgradeChecker[scope.TiFlashGroup](c, state.Cluster(), logger)
-
 		if needVersionUpgrade(fg) && !checker.CanUpgrade(ctx, fg) {
-			// TODO(liubo02): change to Wait
 			return task.Retry(defaultUpdateWaitTime).With("wait until preconditions of upgrading is met")
 		}
 
@@ -61,15 +59,19 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 		}
 
 		updateRevision, _, _ := state.Revision()
-
 		fs := state.Slice()
+
 		topoPolicy, err := policy.NewTopologyPolicy(topos, updateRevision, fs...)
 		if err != nil {
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
+		// Create the scale-in lifecycle manager for TiKV store operations
+		// This enables cancel scale-in functionality through the enhanced updater framework
+		scaleInLifecycle := updater.NewStoreLifecycle[*runtime.TiFlash](c)
+
 		allocator := t.Track(fg, state.InstanceSlice()...)
-		wait, err := updater.New[runtime.TiFlashTuple]().
+		builder := updater.New[runtime.TiFlashTuple]().
 			WithInstances(fs...).
 			WithDesired(int(state.Group().Replicas())).
 			WithClient(c).
@@ -84,10 +86,16 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
-				topoPolicy,
+				// Enhanced scale-in selection policies for cancel scale support
+				updater.PreferAnnotatedForDeletion[*runtime.TiFlash](), // Prioritize user-annotated instances
+				updater.PreferNotOffline[*runtime.TiFlash](),           // Avoid instances already being offlined
+				topoPolicy, // Respect topology constraints
 			).
-			Build().
-			Do(ctx)
+			// Enable cancel scale-in functionality through ScaleInLifecycle
+			WithScaleInLifecycle(scaleInLifecycle).
+			Build()
+
+		wait, err := builder.Do(ctx)
 		if err != nil {
 			return task.Fail().With("cannot update instances: %w", err)
 		}
@@ -121,6 +129,7 @@ func TiFlashNewer(fg *v1alpha1.TiFlashGroup, rev string) updater.NewFactory[*run
 				Features:            fg.Spec.Features,
 				Subdomain:           HeadlessServiceName(fg.Name),
 				TiFlashTemplateSpec: *spec,
+				Offline:             false,
 			},
 		}
 

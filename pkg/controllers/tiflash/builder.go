@@ -15,7 +15,6 @@
 package tiflash
 
 import (
-	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tiflash/tasks"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
@@ -41,9 +40,11 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			tasks.TaskContextInfoFromPD(state, r.PDClientManager),
 		),
 
-		task.IfBreak(canDeleteAllResources(state), tasks.TaskFinalizerDel(state, r.Client)),
-		task.If(common.CondObjectIsDeleting[scope.TiFlash](state),
-			tasks.TaskOfflineStore(state),
+		// handle offline state machine for two-step store deletion
+		tasks.TaskOfflineStore(state),
+
+		task.IfBreak(common.CondObjectIsDeleting[scope.TiFlash](state),
+			tasks.TaskFinalizerDel(state, r.Client),
 		),
 
 		common.TaskFinalizerAdd[scope.TiFlash](state, r.Client),
@@ -70,12 +71,4 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 	)
 
 	return runner
-}
-
-// canDeleteAllResources checks if the resources can be deleted.
-func canDeleteAllResources(state *tasks.ReconcileContext) task.Condition {
-	return task.CondFunc(func() bool {
-		return !state.Cluster().GetDeletionTimestamp().IsZero() ||
-			(!state.Object().GetDeletionTimestamp().IsZero() && (state.GetStoreState() == v1alpha1.StoreStateRemoved || state.Store == nil))
-	})
 }

@@ -37,16 +37,14 @@ const (
 	defaultUpdateWaitTime = time.Second * 30
 )
 
-// TaskUpdater is a task to scale or update PD when spec of TiKVGroup is changed.
+// TaskUpdater is a task to scale or update TiKV instances when spec of TiKVGroup is changed.
 func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.TiKVGroup, *v1alpha1.TiKV]) task.Task {
-	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
+	return task.NameTaskFunc("TiKVGroupUpdater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		kvg := state.TiKVGroup()
 
 		checker := action.NewUpgradeChecker[scope.TiKVGroup](c, state.Cluster(), logger)
-
 		if needVersionUpgrade(kvg) && !checker.CanUpgrade(ctx, kvg) {
-			// TODO(liubo02): change to Wait
 			return task.Retry(defaultUpdateWaitTime).With("wait until preconditions of upgrading is met")
 		}
 
@@ -61,7 +59,6 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 		}
 
 		updateRevision, _, _ := state.Revision()
-
 		kvs := state.Slice()
 
 		topoPolicy, err := policy.NewTopologyPolicy(topos, updateRevision, kvs...)
@@ -70,7 +67,12 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 		}
 
 		allocator := t.Track(kvg, state.InstanceSlice()...)
-		wait, err := updater.New[runtime.TiKVTuple]().
+
+		// Create the scale-in lifecycle manager for TiKV store operations
+		// This enables cancel scale-in functionality through the enhanced updater framework
+		scaleInLifecycle := updater.NewStoreLifecycle[*runtime.TiKV](c)
+
+		builder := updater.New[runtime.TiKVTuple]().
 			WithInstances(kvs...).
 			WithDesired(int(state.Group().Replicas())).
 			WithClient(c).
@@ -85,10 +87,16 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
-				topoPolicy,
+				// Enhanced scale-in selection policies for cancel scale support
+				updater.PreferAnnotatedForDeletion[*runtime.TiKV](), // Prioritize user-annotated instances
+				updater.PreferNotOffline[*runtime.TiKV](),           // Avoid instances already being offlined
+				topoPolicy, // Respect topology constraints
 			).
-			Build().
-			Do(ctx)
+			// Enable cancel scale-in functionality through ScaleInLifecycle
+			WithScaleInLifecycle(scaleInLifecycle).
+			Build()
+
+		wait, err := builder.Do(ctx)
 		if err != nil {
 			return task.Fail().With("cannot update instances: %w", err)
 		}
@@ -122,6 +130,7 @@ func TiKVNewer(kvg *v1alpha1.TiKVGroup, rev string) updater.NewFactory[*runtime.
 				Features:         kvg.Spec.Features,
 				Subdomain:        HeadlessServiceName(kvg.Name),
 				TiKVTemplateSpec: *spec,
+				Offline:          false,
 			},
 		}
 

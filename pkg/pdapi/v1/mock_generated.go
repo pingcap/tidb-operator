@@ -65,6 +65,20 @@ func (mr *MockPDClientMockRecorder) BeginEvictLeader(ctx, storeID any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeginEvictLeader", reflect.TypeOf((*MockPDClient)(nil).BeginEvictLeader), ctx, storeID)
 }
 
+// CancelDeleteStore mocks base method.
+func (m *MockPDClient) CancelDeleteStore(ctx context.Context, storeID string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CancelDeleteStore", ctx, storeID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CancelDeleteStore indicates an expected call of CancelDeleteStore.
+func (mr *MockPDClientMockRecorder) CancelDeleteStore(ctx, storeID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelDeleteStore", reflect.TypeOf((*MockPDClient)(nil).CancelDeleteStore), ctx, storeID)
+}
+
 // DeleteMember mocks base method.
 func (m *MockPDClient) DeleteMember(ctx context.Context, name string) error {
 	m.ctrl.T.Helper()
