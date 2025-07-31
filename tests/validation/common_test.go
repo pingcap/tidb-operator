@@ -22,8 +22,9 @@ import (
 const (
 	requireDataVolumeErrMsg = `spec: Invalid value: "object": data volume must be configured`
 
-	groupNameLengthLimit    = 30
-	instanceNameLengthLimit = 37
+	groupNameLengthLimit    = 40
+	instanceNameLengthLimit = 47
+	clusterNameLengthLimit  = 37
 )
 
 func NameIsDNSSubdoamin(failMsgFmt string) []Case {
