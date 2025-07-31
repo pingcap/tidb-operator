@@ -1,3 +1,17 @@
+// Copyright 2024 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package tiflash
 
 import (
@@ -22,7 +36,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
-var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
+var _ = ginkgo.Describe("TiFlash", label.TiFlash, func() {
 	f := framework.New()
 	f.Setup()
 
@@ -31,7 +45,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 
 		ginkgo.It("should complete the full scale-in flow", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx)
-			kvg := f.MustCreateTiKV(ctx)
+			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](3))
 			fg := f.MustCreateTiFlash(ctx, data.WithReplicas[*runtime.TiFlashGroup](2))
 			dbg := f.MustCreateTiDB(ctx)
 

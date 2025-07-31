@@ -33,7 +33,8 @@ func TaskEvictLeader(state *ReconcileContext) task.Task {
 			}
 			return task.Complete().With("ensure evict leader scheduler exists")
 		default:
-			if state.LeaderEvicting {
+			tikv := state.TiKV()
+			if state.LeaderEvicting && !tikv.Spec.Offline {
 				if err := state.PDClient.Underlay().EndEvictLeader(ctx, state.Store.ID); err != nil {
 					return task.Fail().With("cannot remove evict leader scheduler: %v", err)
 				}

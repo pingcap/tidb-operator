@@ -117,9 +117,9 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 			f.Must(f.Client.Patch(ctx, kvg, patch))
 
 			ginkgo.By("Finding the TiKV instance that is being scaled in")
-
-			var targetTiKV *v1alpha1.TiKV
-			f.Must(waiter.WaitForOneInstanceDeleting[scope.TiKVGroup](ctx, f.Client, kvg, &targetTiKV))
+			offliningKVs := findOffliningTiKVs(ctx, f, kvg, 1)
+			gomega.Expect(offliningKVs).To(gomega.HaveLen(1), "Expected 1 TiKV instances to be marked for offline")
+			targetTiKV := offliningKVs[0]
 
 			ginkgo.By("Recording original pod information")
 			originalPod, err := apicall.GetPod[scope.TiKV](ctx, f.Client, targetTiKV)

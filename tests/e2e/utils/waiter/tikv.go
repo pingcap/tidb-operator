@@ -50,14 +50,6 @@ func EvictLeaderBeforeStoreIsRemoving(deleting int) func(kv *v1alpha1.TiKV) (boo
 	done := map[string]struct{}{}
 	return func(kv *v1alpha1.TiKV) (bool, error) {
 		if kv.Status.State == v1alpha1.StoreStateRemoving || kv.Status.State == v1alpha1.StoreStateRemoved {
-			delTime := kv.GetDeletionTimestamp()
-			if delTime.Add(time.Minute * 5).Before(time.Now()) {
-				// timeout
-				done[kv.GetName()] = struct{}{}
-				if len(done) == deleting {
-					return true, nil
-				}
-			}
 			if meta.IsStatusConditionTrue(kv.Status.Conditions, v1alpha1.TiKVCondLeadersEvicted) {
 				// leaders are evicted
 				done[kv.GetName()] = struct{}{}
@@ -67,7 +59,6 @@ func EvictLeaderBeforeStoreIsRemoving(deleting int) func(kv *v1alpha1.TiKV) (boo
 			}
 			return false, fmt.Errorf("store state is %v but leaders are not all evicted or timeout", kv.Status.State)
 		}
-
 		return false, nil
 	}
 }
