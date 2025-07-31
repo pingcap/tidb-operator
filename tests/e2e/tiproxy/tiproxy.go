@@ -230,22 +230,25 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 		})
 	})
 
+	// NOTE: this case is failed in e2e env.
+	// Enable it if env is fixed.
 	ginkgo.PContext("TLS", label.P0, label.FeatureTLS, func() {
 		f.SetupCluster(data.WithClusterTLS())
 		workload := f.SetupWorkload()
 
-		ginkgo.It("should enable TLS between MySQL Client and TiProxy", func(ctx context.Context) {
+		ginkgo.It("use different sql cert from TiDB Server", func(ctx context.Context) {
 			ns := f.Namespace.Name
 			tcName := f.Cluster.Name
 			ginkgo.By("Installing the certificates")
 			f.Must(cert.InstallTiDBIssuer(ctx, f.Client, ns, tcName))
 			f.Must(cert.InstallTiDBCertificates(ctx, f.Client, ns, tcName, "dbg"))
-			f.Must(cert.InstallTiDBComponentsCertificates(ctx, f.Client, ns, tcName, "pdg", "kvg", "dbg", "fg", "cg"))
+			f.Must(cert.InstallTiProxyCertificates(ctx, f.Client, ns, tcName, "pg"))
+			f.Must(cert.InstallTiDBComponentsCertificates(ctx, f.Client, ns, tcName, "pdg", "kvg", "dbg", "fg", "cg", "pg"))
 
 			ginkgo.By("Creating the components with TLS client enabled")
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx)
-			dbg := f.MustCreateTiDB(ctx)
+			dbg := f.MustCreateTiDB(ctx, data.WithTLS())
 			pg := f.MustCreateTiProxy(ctx, data.WithTLSForTiProxy())
 
 			f.WaitForPDGroupReady(ctx, pdg)
@@ -282,12 +285,12 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 
 					switch componentName {
 					case v1alpha1.LabelValComponentTiProxy:
-						// check for TiDB server & mysql client TLS
+						// check for TiProxy & mysql client TLS
 						gomega.Expect(pod.Spec.Volumes).To(gomega.ContainElement(corev1.Volume{
 							Name: v1alpha1.VolumeNameTiProxyMySQLTLS,
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
-									SecretName:  dbg.Name + "-tiproxy-server-secret",
+									SecretName:  pg.Name + "-tiproxy-server-secret",
 									DefaultMode: ptr.To[int32](420),
 								},
 							},
@@ -308,10 +311,10 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 				checkComponent(pdg.Name, v1alpha1.LabelValComponentPD, pdg.Spec.Replicas)
 				checkComponent(kvg.Name, v1alpha1.LabelValComponentTiKV, kvg.Spec.Replicas)
 				checkComponent(dbg.Name, v1alpha1.LabelValComponentTiDB, dbg.Spec.Replicas)
-				checkComponent(dbg.Name, v1alpha1.LabelValComponentTiProxy, pg.Spec.Replicas)
+				checkComponent(pg.Name, v1alpha1.LabelValComponentTiProxy, pg.Spec.Replicas)
 			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
 
-			workload.MustPing(ctx, data.DefaultTiProxyServiceName, "root", "", pg.Name+"-tiproxy-client-secret")
+			workload.MustImportData(ctx, data.DefaultTiProxyServiceName, data.DefaultTiProxyServicePort, "root", "", pg.Name+"-tiproxy-client-secret", 100)
 		})
 	})
 

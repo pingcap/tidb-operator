@@ -18,10 +18,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"html/template"
-
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/yaml"
+	"html/template"
 )
 
 var tidbIssuerTmpl = `
@@ -60,10 +59,10 @@ var tidbCertificatesTmpl = `
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: {{ .TiDBGroupName}}-tidb-server-secret
+  name: {{ .TiDBGroupName }}-tidb-server-secret
   namespace: {{ .Namespace }}
 spec:
-  secretName: {{ .TiDBGroupName}}-tidb-server-secret
+  secretName: {{ .TiDBGroupName }}-tidb-server-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
   subject:
@@ -73,12 +72,12 @@ spec:
   usages:
     - server auth
   dnsNames:
-    - "{{ .TiDBGroupName}}-tidb"
-    - "{{ .TiDBGroupName}}-tidb.{{ .Namespace }}"
-    - "{{ .TiDBGroupName}}-tidb.{{ .Namespace }}.svc"
-    - "*.{{ .TiDBGroupName}}-tidb"
-    - "*.{{ .TiDBGroupName}}-tidb.{{ .Namespace }}"
-    - "*.{{ .TiDBGroupName}}-tidb.{{ .Namespace }}.svc"
+    - "{{ .TiDBGroupName }}-tidb"
+    - "{{ .TiDBGroupName }}-tidb.{{ .Namespace }}"
+    - "{{ .TiDBGroupName }}-tidb.{{ .Namespace }}.svc"
+    - "*.{{ .TiDBGroupName }}-tidb"
+    - "*.{{ .TiDBGroupName }}-tidb.{{ .Namespace }}"
+    - "*.{{ .TiDBGroupName }}-tidb.{{ .Namespace }}.svc"
   ipAddresses:
     - 127.0.0.1
     - ::1
@@ -90,16 +89,68 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: {{ .TiDBGroupName}}-tidb-client-secret
+  name: {{ .TiDBGroupName }}-tidb-client-secret
   namespace: {{ .Namespace }}
 spec:
-  secretName: {{ .TiDBGroupName}}-tidb-client-secret
+  secretName: {{ .TiDBGroupName }}-tidb-client-secret
   duration: 8760h # 365d
   renewBefore: 360h # 15d
   subject:
     organizations:
       - PingCAP
   commonName: "TiDB Client"
+  usages:
+    - client auth
+  issuerRef:
+    name: {{ .ClusterName }}-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+`
+
+var tiproxyCertificatesTmpl = `
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .TiProxyGroupName }}-tiproxy-server-secret
+  namespace: {{ .Namespace }}
+spec:
+  secretName: {{ .TiProxyGroupName }}-tiproxy-server-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+      - PingCAP
+  commonName: "TiProxy Server"
+  usages:
+    - server auth
+  dnsNames:
+    - "{{ .TiProxyGroupName }}-tiproxy"
+    - "{{ .TiProxyGroupName }}-tiproxy.{{ .Namespace }}"
+    - "{{ .TiProxyGroupName }}-tiproxy.{{ .Namespace }}.svc"
+    - "*.{{ .TiProxyGroupName }}-tiproxy"
+    - "*.{{ .TiProxyGroupName }}-tiproxy.{{ .Namespace }}"
+    - "*.{{ .TiProxyGroupName }}-tiproxy.{{ .Namespace }}.svc"
+  ipAddresses:
+    - 127.0.0.1
+    - ::1
+  issuerRef:
+    name: {{ .ClusterName }}-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .TiProxyGroupName }}-tiproxy-client-secret
+  namespace: {{ .Namespace }}
+spec:
+  secretName: {{ .TiProxyGroupName }}-tiproxy-client-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+      - PingCAP
+  commonName: "TiProxy Client"
   usages:
     - client auth
   issuerRef:
@@ -279,6 +330,37 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
+  name: {{ .TiProxyGroupName }}-tiproxy-cluster-secret
+  namespace: {{ .Namespace }}
+spec:
+  secretName: {{ .TiProxyGroupName }}-tiproxy-cluster-secret
+  duration: 8760h # 365d
+  renewBefore: 360h # 15d
+  subject:
+    organizations:
+      - PingCAP
+  commonName: "TiDB"
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+  - "{{ .TiProxyGroupName }}-tiproxy-peer"
+  - "{{ .TiProxyGroupName }}-tiproxy-peer.{{ .Namespace }}"
+  - "{{ .TiProxyGroupName }}-tiproxy-peer.{{ .Namespace }}.svc"
+  - "*.{{ .TiProxyGroupName }}-tiproxy-peer"
+  - "*.{{ .TiProxyGroupName }}-tiproxy-peer.{{ .Namespace }}"
+  - "*.{{ .TiProxyGroupName }}-tiproxy-peer.{{ .Namespace }}.svc"
+  ipAddresses:
+  - 127.0.0.1
+  - ::1
+  issuerRef:
+    name: {{ .ClusterName }}-tidb-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
   name: {{ .ClusterName }}-cluster-client-secret
   namespace: {{ .Namespace }}
 spec:
@@ -305,6 +387,7 @@ type tcTmplMeta struct {
 	TiDBGroupName    string
 	TiFlashGroupName string
 	TiCDCGroupName   string
+	TiProxyGroupName string
 }
 
 func InstallTiDBIssuer(ctx context.Context, c client.Client, ns, clusterName string) error {
@@ -317,13 +400,21 @@ func InstallTiDBCertificates(ctx context.Context, c client.Client, ns, clusterNa
 	})
 }
 
+// TODO: refact to reduce duplicated code
+func InstallTiProxyCertificates(ctx context.Context, c client.Client, ns, clusterName, tiproxyGroupName string) error {
+	return installCert(ctx, c, tiproxyCertificatesTmpl, tcTmplMeta{
+		Namespace: ns, ClusterName: clusterName, TiProxyGroupName: tiproxyGroupName,
+	})
+}
+
 func InstallTiDBComponentsCertificates(ctx context.Context, c client.Client, ns, clusterName string,
-	pdGroupName, tikvGroupName, tidbGroupName, tiFlashGroupName, tiCDCGroupName string,
+	pdGroupName, tikvGroupName, tidbGroupName, tiFlashGroupName, tiCDCGroupName, tiProxyGroupName string,
 ) error {
 	return installCert(ctx, c, tidbComponentsCertificatesTmpl, tcTmplMeta{
 		Namespace: ns, ClusterName: clusterName,
 		PDGroupName: pdGroupName, TiKVGroupName: tikvGroupName,
-		TiDBGroupName: tidbGroupName, TiFlashGroupName: tiFlashGroupName, TiCDCGroupName: tiCDCGroupName,
+		TiDBGroupName: tidbGroupName, TiFlashGroupName: tiFlashGroupName,
+		TiCDCGroupName: tiCDCGroupName, TiProxyGroupName: tiProxyGroupName,
 	})
 }
 

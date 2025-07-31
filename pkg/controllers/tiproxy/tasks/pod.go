@@ -279,7 +279,7 @@ func buildTiProxyReadinessProbeHandler(
 	tiproxy *v1alpha1.TiProxy,
 	clientPort, statusPort int32,
 ) corev1.ProbeHandler {
-	probeType := v1alpha1.TCPProbeType // default to http probe
+	probeType := v1alpha1.CommandProbeType // default to command probe
 	if tiproxy.Spec.Probes.Readiness != nil && tiproxy.Spec.Probes.Readiness.Type != nil {
 		probeType = *tiproxy.Spec.Probes.Readiness.Type
 	}
