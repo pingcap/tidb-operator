@@ -201,7 +201,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 					ns := f.Namespace.Name
 					clusterName := f.Cluster.Name
 					f.Must(cert.InstallTiDBIssuer(ctx, f.Client, ns, clusterName))
-					f.Must(cert.InstallTiDBComponentsCertificates(ctx, f.Client, ns, clusterName, "pdg", "kvg", "dbg", "fg", "cg"))
+					f.Must(cert.InstallTiDBComponentsCertificates(ctx, f.Client, ns, clusterName, "pdg", "kvg", "dbg", "fg", "cg", "pg"))
 				}
 
 				ginkgo.By("Creating PD with UsePDReadyAPI feature gate enabled")

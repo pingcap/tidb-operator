@@ -29,6 +29,7 @@ import (
 var (
 	action   string
 	host     string
+	port     string
 	user     string
 	password string
 
@@ -59,6 +60,7 @@ var (
 func main() {
 	flag.StringVar(&action, "action", "ping", "ping, workload, import")
 	flag.StringVar(&host, "host", "", "host")
+	flag.StringVar(&port, "port", "4000", "port")
 	flag.StringVar(&user, "user", "root", "db user")
 	flag.StringVar(&password, "password", "", "db password")
 
@@ -101,7 +103,7 @@ func main() {
 		params = append(params, fmt.Sprintf("tls=%s", tlsConfigName))
 	}
 
-	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@(%s:4000)/test?%s", user, password, host, strings.Join(params, "&")))
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@(%s:%s)/test?%s", user, password, host, port, strings.Join(params, "&")))
 	if err != nil {
 		panic(err)
 	}
