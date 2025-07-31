@@ -48,7 +48,7 @@ func TaskEndEvictLeader(state *ReconcileContext) task.Task {
 	return task.NameTaskFunc("EndEvictLeader", func(ctx context.Context) task.Result {
 		msg := "ensure evict leader scheduler doesn't exist"
 		if storeID := state.TiKV().Status.ID; storeID != "" {
-			if err := state.PDClient.Underlay().EndEvictLeader(ctx, state.Store.ID); err != nil {
+			if err := state.PDClient.Underlay().EndEvictLeader(ctx, storeID); err != nil {
 				return task.Fail().With("cannot remove evict leader scheduler: %v", err)
 			}
 		} else {
