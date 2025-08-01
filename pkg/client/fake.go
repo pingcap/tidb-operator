@@ -535,6 +535,22 @@ func objToSelectableFields(obj runtime.Object) fields.Fields {
 		return fields.Set{
 			"spec.cluster.name": t.Spec.Cluster.Name,
 		}
+	case *v1alpha1.TiCDCGroup:
+		return fields.Set{
+			"spec.cluster.name": t.Spec.Cluster.Name,
+		}
+	case *v1alpha1.TiProxyGroup:
+		return fields.Set{
+			"spec.cluster.name": t.Spec.Cluster.Name,
+		}
+	case *v1alpha1.TSOGroup:
+		return fields.Set{
+			"spec.cluster.name": t.Spec.Cluster.Name,
+		}
+	case *v1alpha1.SchedulerGroup:
+		return fields.Set{
+			"spec.cluster.name": t.Spec.Cluster.Name,
+		}
 	}
 
 	return nil

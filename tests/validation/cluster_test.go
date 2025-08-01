@@ -27,7 +27,7 @@ func TestCluster(t *testing.T) {
 	cases = append(cases, transferClusterCases(t, FeatureGates(), "spec", "featureGates")...)
 	cases = append(cases, transferClusterCases(t, bootstrapSQL(), "spec", "bootstrapSQL")...)
 	cases = append(cases, transferClusterCases(t, tlsCluster(), "spec", "tlsCluster")...)
-	cases = append(cases, transferClusterCases(t, NameLength(instanceNameLengthLimit), "metadata", "name")...)
+	cases = append(cases, transferClusterCases(t, NameLength(clusterNameLengthLimit), "metadata", "name")...)
 
 	Validate(t, "crd/core.pingcap.com_clusters.yaml", cases)
 }

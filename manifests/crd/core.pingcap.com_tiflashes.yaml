@@ -8617,8 +8617,8 @@ spec:
             type: object
         type: object
         x-kubernetes-validations:
-        - message: name must not exceed 37 characters
-          rule: size(self.metadata.name) <= 37
+        - message: name must not exceed 47 characters
+          rule: size(self.metadata.name) <= 47
     selectableFields:
     - jsonPath: .spec.cluster.name
     served: true

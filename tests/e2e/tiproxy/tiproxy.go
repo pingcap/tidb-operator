@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,6 +30,8 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
+	"github.com/pingcap/tidb-operator/tests/e2e/utils/cert"
+	utiltidb "github.com/pingcap/tidb-operator/tests/e2e/utils/tidb"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
@@ -41,7 +44,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 	f.Setup()
 
 	ginkgo.Context("Scale and Update", label.P0, func() {
-		ginkgo.It("scale out and in", label.Scale, func(ctx context.Context) {
+		ginkgo.It("scale out and in TiProxy", label.Scale, func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx)
 			dbg := f.MustCreateTiDB(ctx)
@@ -172,7 +175,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 				f.Must(err)
 				f.True(changeTime.After(*newMaxTime))
 			},
-			ginkgo.Entry("change config file with hot reload policy", func(g *v1alpha1.TiProxyGroup) { g.Spec.Template.Spec.Config = changedConfig }, data.WithHotReloadPolicy()),
+			ginkgo.Entry("change config file with hot reload policy", func(g *v1alpha1.TiProxyGroup) { g.Spec.Template.Spec.Config = changedConfig }, data.WithHotReloadPolicyForTiProxy()),
 			ginkgo.Entry("change pod annotations and labels", func(g *v1alpha1.TiProxyGroup) {
 				g.Spec.Template.Spec.Overlay = &v1alpha1.Overlay{
 					Pod: &v1alpha1.PodOverlay{
@@ -224,6 +227,94 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			f.WaitForTiProxyGroupReady(ctx, proxyg)
 			cancel()
 			<-ch
+		})
+	})
+
+	// NOTE: this case is failed in e2e env.
+	// Enable it if env is fixed.
+	ginkgo.PContext("TLS", label.P0, label.FeatureTLS, func() {
+		f.SetupCluster(data.WithClusterTLS())
+		workload := f.SetupWorkload()
+
+		ginkgo.It("use different sql cert from TiDB Server", func(ctx context.Context) {
+			ns := f.Namespace.Name
+			tcName := f.Cluster.Name
+			ginkgo.By("Installing the certificates")
+			f.Must(cert.InstallTiDBIssuer(ctx, f.Client, ns, tcName))
+			f.Must(cert.InstallTiDBCertificates(ctx, f.Client, ns, tcName, "dbg"))
+			f.Must(cert.InstallTiProxyCertificates(ctx, f.Client, ns, tcName, "pg"))
+			f.Must(cert.InstallTiDBComponentsCertificates(ctx, f.Client, ns, tcName, "pdg", "kvg", "dbg", "fg", "cg", "pg"))
+
+			ginkgo.By("Creating the components with TLS client enabled")
+			pdg := f.MustCreatePD(ctx)
+			kvg := f.MustCreateTiKV(ctx)
+			dbg := f.MustCreateTiDB(ctx, data.WithTLS())
+			pg := f.MustCreateTiProxy(ctx, data.WithTLSForTiProxy())
+
+			f.WaitForPDGroupReady(ctx, pdg)
+			f.WaitForTiKVGroupReady(ctx, kvg)
+			f.WaitForTiDBGroupReady(ctx, dbg)
+			f.WaitForTiProxyGroupReady(ctx, pg)
+
+			ginkgo.By("Checking the status of the cluster and the connection to the TiProxy service")
+			checkComponent := func(groupName, componentName string, expectedReplicas *int32) {
+				podList := &corev1.PodList{}
+				f.Must(f.Client.List(ctx, podList, client.InNamespace(ns), client.MatchingLabels(map[string]string{
+					v1alpha1.LabelKeyCluster: tcName,
+					v1alpha1.LabelKeyGroup:   groupName,
+				})))
+				gomega.Expect(len(podList.Items)).To(gomega.Equal(int(*expectedReplicas)))
+				for _, pod := range podList.Items {
+					gomega.Expect(pod.Status.Phase).To(gomega.Equal(corev1.PodRunning))
+
+					// check for mTLS
+					gomega.Expect(pod.Spec.Volumes).To(gomega.ContainElement(corev1.Volume{
+						Name: v1alpha1.VolumeNameClusterTLS,
+						VolumeSource: corev1.VolumeSource{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName:  groupName + "-" + componentName + "-cluster-secret",
+								DefaultMode: ptr.To[int32](420),
+							},
+						},
+					}))
+					gomega.Expect(pod.Spec.Containers[0].VolumeMounts).To(gomega.ContainElement(corev1.VolumeMount{
+						Name:      v1alpha1.VolumeNameClusterTLS,
+						MountPath: fmt.Sprintf("/var/lib/%s-tls", componentName),
+						ReadOnly:  true,
+					}))
+
+					switch componentName {
+					case v1alpha1.LabelValComponentTiProxy:
+						// check for TiProxy & mysql client TLS
+						gomega.Expect(pod.Spec.Volumes).To(gomega.ContainElement(corev1.Volume{
+							Name: v1alpha1.VolumeNameTiProxyMySQLTLS,
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName:  pg.Name + "-tiproxy-server-secret",
+									DefaultMode: ptr.To[int32](420),
+								},
+							},
+						}))
+						gomega.Expect(pod.Spec.Containers[0].VolumeMounts).To(gomega.ContainElement(corev1.VolumeMount{
+							Name:      v1alpha1.VolumeNameTiProxyMySQLTLS,
+							MountPath: v1alpha1.DirPathTiProxyMySQLTLS,
+							ReadOnly:  true,
+						}))
+					}
+				}
+			}
+
+			gomega.Eventually(func(g gomega.Gomega) {
+				_, ready := utiltidb.IsClusterReady(f.Client, tcName, ns)
+				g.Expect(ready).To(gomega.BeTrue())
+
+				checkComponent(pdg.Name, v1alpha1.LabelValComponentPD, pdg.Spec.Replicas)
+				checkComponent(kvg.Name, v1alpha1.LabelValComponentTiKV, kvg.Spec.Replicas)
+				checkComponent(dbg.Name, v1alpha1.LabelValComponentTiDB, dbg.Spec.Replicas)
+				checkComponent(pg.Name, v1alpha1.LabelValComponentTiProxy, pg.Spec.Replicas)
+			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
+
+			workload.MustImportData(ctx, data.DefaultTiProxyServiceName, data.DefaultTiProxyServicePort, "root", "", pg.Name+"-tiproxy-client-secret", 100)
 		})
 	})
 

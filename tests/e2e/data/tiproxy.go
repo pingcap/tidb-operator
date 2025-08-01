@@ -35,6 +35,13 @@ func NewTiProxyGroup(ns string, patches ...GroupPatch[*runtime.TiProxyGroup]) *v
 				Spec: v1alpha1.TiProxyTemplateSpec{
 					Image:   ptr.To(defaultImageRegistry + "tiproxy"),
 					Version: defaultTiProxyVersion,
+					Probes: v1alpha1.TiProxyProbes{
+						Readiness: &v1alpha1.TiProxyProb{
+							// Currently the e2e env does not support command probe.
+							// Remove this after the env is fixed.
+							Type: ptr.To(v1alpha1.TCPProbeType),
+						},
+					},
 				},
 			},
 		},
@@ -45,4 +52,24 @@ func NewTiProxyGroup(ns string, patches ...GroupPatch[*runtime.TiProxyGroup]) *v
 	}
 
 	return runtime.ToTiProxyGroup(proxyg)
+}
+
+func WithTLSForTiProxy() GroupPatch[*runtime.TiProxyGroup] {
+	return func(obj *runtime.TiProxyGroup) {
+		if obj.Spec.Template.Spec.Security == nil {
+			obj.Spec.Template.Spec.Security = &v1alpha1.TiProxySecurity{}
+		}
+
+		obj.Spec.Template.Spec.Security.TLS = &v1alpha1.TiProxyTLS{
+			MySQL: &v1alpha1.TLS{
+				Enabled: true,
+			},
+		}
+	}
+}
+
+func WithHotReloadPolicyForTiProxy() GroupPatch[*runtime.TiProxyGroup] {
+	return func(obj *runtime.TiProxyGroup) {
+		obj.Spec.Template.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyHotReload
+	}
 }
