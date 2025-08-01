@@ -76,15 +76,15 @@ func (h *evictLeaderHook) BeforeDeleteStore(ctx context.Context) (wait bool, err
 }
 
 func (h *evictLeaderHook) AfterStoreIsDeleted(ctx context.Context) (wait bool, err error) {
-	return endEvictLeader(ctx, h.PDClient, h.LeaderEvicting, h.Store.ID)
+	return endEvictLeader(ctx, h.PDClient, h.LeaderEvicting, h.TiKV().Status.ID)
 }
 
 func (h *evictLeaderHook) AfterCancelDeleteStore(ctx context.Context) (wait bool, err error) {
-	return endEvictLeader(ctx, h.PDClient, h.LeaderEvicting, h.Store.ID)
+	return endEvictLeader(ctx, h.PDClient, h.LeaderEvicting, h.TiKV().Status.ID)
 }
 
 func endEvictLeader(ctx context.Context, pdClient pd.PDClient, leaderEvicting bool, storeID string) (wait bool, err error) {
-	if leaderEvicting {
+	if leaderEvicting && storeID != "" {
 		if err = pdClient.Underlay().EndEvictLeader(ctx, storeID); err != nil {
 			return true, fmt.Errorf("failed to end evict leader")
 		}

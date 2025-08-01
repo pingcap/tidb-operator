@@ -16,8 +16,12 @@
 package runtime
 
 import (
+	"context"
+	"fmt"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -88,4 +92,39 @@ func SetOfflineCondition(s StoreInstance, condition *metav1.Condition) {
 
 func GetOfflineCondition(s StoreInstance) *metav1.Condition {
 	return meta.FindStatusCondition(s.Conditions(), v1alpha1.StoreOfflineConditionType)
+}
+
+func IsOfflineCompleted(s StoreInstance) bool {
+	cond := GetOfflineCondition(s)
+	return s.IsOffline() && cond != nil && cond.Reason == v1alpha1.OfflineReasonCompleted
+}
+
+// Instance2Store converts an Instance to StoreInstance if it implements the StoreInstance interface.
+func Instance2Store(instance Instance) (StoreInstance, bool) {
+	storeInstance, ok := instance.(StoreInstance)
+	return storeInstance, ok
+}
+
+// toClientObject converts a runtime StoreInstance to a client.Object for Kubernetes operations.
+// This handles the type conversion from runtime types (*runtime.TiKV, *runtime.TiFlash)
+// to their corresponding v1alpha1 types (*v1alpha1.TiKV, *v1alpha1.TiFlash).
+func toClientObject(store StoreInstance) client.Object {
+	switch v := any(store).(type) {
+	case *TiKV:
+		return v.To()
+	case *TiFlash:
+		return v.To()
+	default:
+		panic("this should not happen")
+	}
+}
+
+func SetOffline(ctx context.Context, cli client.Client, store StoreInstance, offline bool) error {
+	if offline == store.IsOffline() {
+		return nil
+	}
+
+	obj := toClientObject(store)
+	patchData := []byte(fmt.Sprintf(`[{"op": "replace", "path": "/spec/offline", "value": %v}]`, offline))
+	return cli.Patch(ctx, obj, client.RawPatch(types.JSONPatchType, patchData))
 }

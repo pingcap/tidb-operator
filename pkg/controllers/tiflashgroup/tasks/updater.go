@@ -66,12 +66,9 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
-		// Create the scale-in lifecycle manager for TiKV store operations
-		// This enables cancel scale-in functionality through the enhanced updater framework
-		scaleInLifecycle := updater.NewStoreLifecycle[*runtime.TiFlash](c)
-
 		allocator := t.Track(fg, state.InstanceSlice()...)
-		builder := updater.New[runtime.TiFlashTuple]().
+
+		builder := updater.New[runtime.TiFlashTuple, *v1alpha1.TiFlash, *runtime.TiFlash]().
 			WithInstances(fs...).
 			WithDesired(int(state.Group().Replicas())).
 			WithClient(c).
@@ -86,8 +83,8 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(topoPolicy).
-			// Enable cancel scale-in functionality through ScaleInLifecycle
-			WithScaleInLifecycle(scaleInLifecycle).
+			// Enable type-safe TwoStep deletion for graceful TiFlash store offline
+			WithTwoStepDeletion(true).
 			Build()
 
 		wait, err := builder.Do(ctx)

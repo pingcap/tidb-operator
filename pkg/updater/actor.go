@@ -46,10 +46,14 @@ type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 
 	converter T
 
+	rev string // current revision for comparison
+
 	update   State[R]
 	outdated State[R]
 	// deleted set records all instances that are marked by defer delete annotation
-	deleted State[R]
+	deleted   State[R]
+	offlining State[R]
+	offlined  State[R]
 
 	addHooks    []AddHook[R]
 	updateHooks []UpdateHook[R]
@@ -57,8 +61,14 @@ type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 
 	scaleInSelector Selector[R]
 	updateSelector  Selector[R]
+
+	// Simplified two-step deletion support using StoreManager interface
+	enableTwoStep bool
 }
 
+// chooseToUpdate selects an outdated instance for update operation.
+// Uses the updateSelector to determine which instance should be updated next.
+// Returns the name of the selected instance or an error if no instance can be updated.
 func (act *actor[T, O, R]) chooseToUpdate(s []R) (string, error) {
 	name := act.updateSelector.Choose(s)
 	if name == "" {
@@ -68,6 +78,9 @@ func (act *actor[T, O, R]) chooseToUpdate(s []R) (string, error) {
 	return name, nil
 }
 
+// chooseToScaleIn selects an instance for scale-in operation.
+// Uses the scaleInSelector to determine which instance should be scaled in next.
+// Returns the name of the selected instance or an error if no instance can be scaled in.
 func (act *actor[T, O, R]) chooseToScaleIn(s []R) (string, error) {
 	name := act.scaleInSelector.Choose(s)
 	if name == "" {
@@ -77,10 +90,21 @@ func (act *actor[T, O, R]) chooseToScaleIn(s []R) (string, error) {
 	return name, nil
 }
 
-func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
-	logger := logr.FromContextOrDiscard(ctx)
-	obj := act.f.New()
+// ScaleOut creates a new instance and adds it to the update collection.
+// This is used for cluster scaling out and during recreate updates when
+// new instances need to be created before removing outdated ones.
+// Returns true if a new instance was created.
+func (act *actor[T, O, R]) ScaleOut(ctx context.Context) (bool, error) {
+	logger := logr.FromContextOrDiscard(ctx).WithName("Updater")
 
+	if act.enableTwoStep && act.offlining.Len() > 0 {
+		// TODO: could implement more sophisticated selection logic)
+		logger.Info("try to cancel a offlining instance")
+		err := act.cancelOneOfflining(ctx, act.offlining.List()[0])
+		return false, err // false indicates no new instance was created
+	}
+
+	obj := act.f.New()
 	for _, hook := range act.addHooks {
 		obj = hook.Add(obj)
 	}
@@ -88,47 +112,140 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
 	logger.Info("act scale out", "namespace", obj.GetNamespace(), "name", obj.GetName())
 
 	if err := act.c.Apply(ctx, act.converter.To(obj)); err != nil {
-		return err
+		return false, err
 	}
 
 	act.update.Add(obj)
 
+	return true, nil // true indicates a new instance was created
+}
+
+// cancelOneOfflining cancels offline operation for one offlining instance and moves it back to update state
+func (act *actor[T, O, R]) cancelOneOfflining(ctx context.Context, instance R) error {
+	logger := logr.FromContextOrDiscard(ctx).WithName("Updater").WithValues("instance", instance.GetName())
+
+	// Check if instance is a StoreInstance and use StoreManager to cancel offline
+	if store, ok := runtime.Instance2Store(instance); ok {
+		if err := runtime.SetOffline(ctx, act.c, store, false); err != nil {
+			return fmt.Errorf("failed to cancel store offline: %w", err)
+		}
+		// Move instance from offlining back to update state
+		act.offlining.Del(instance.GetName())
+		act.update.Add(instance)
+		logger.Info("instance offline operation canceled and restored to update state")
+	}
+
 	return nil
 }
 
-func (act *actor[T, O, R]) ScaleInUpdate(ctx context.Context) (bool, error) {
+// ScaleInUpdate scales in an updated instance (already running the latest version).
+// This is used for cluster scaling down when the total number of instances exceeds the desired count.
+// It operates on the "update" state collection which contains instances with the current revision.
+// Returns whether the scaled-in instance was unavailable, and any error encountered.
+func (act *actor[T, O, R]) ScaleInUpdate(ctx context.Context) (operated, unavailable bool, err error) {
+	if act.enableTwoStep {
+		return act.scaleInWithTwoStep(ctx, act.update)
+	}
+	return act.scaleInDirect(ctx, act.update)
+}
+
+func (act *actor[T, O, R]) scaleInDirect(ctx context.Context, state State[R]) (operated, unavailable bool, err error) {
 	logger := logr.FromContextOrDiscard(ctx)
-	name, err := act.chooseToScaleIn(act.update.List())
+	name, err := act.chooseToScaleIn(state.List())
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 
-	obj := act.update.Del(name)
-
+	obj := state.Del(name)
 	isUnavailable := !obj.IsReady() || !obj.IsUpToDate()
 
-	logger.Info("act scale in update", "choosed", name, "isUnavailable", isUnavailable, "remain", act.update.Len())
+	logger.Info("act scale in direct", "choosed", name, "isUnavailable", isUnavailable, "remain", state.Len())
 
 	if err := act.c.Delete(ctx, act.converter.To(obj)); err != nil {
-		return false, err
+		return false, false, err
 	}
 
 	for _, hook := range act.delHooks {
 		hook.Delete(obj.GetName())
 	}
 
-	return isUnavailable, nil
+	return true, isUnavailable, nil
 }
 
-func (act *actor[T, O, R]) ScaleInOutdated(ctx context.Context) (bool, error) {
+func (act *actor[T, O, R]) scaleInWithTwoStep(ctx context.Context, state State[R]) (operated, unavailable bool, err error) {
+	logger := logr.FromContextOrDiscard(ctx).WithName("Updater")
+
+	var (
+		hasOnlineStore bool
+		onlineStore    runtime.StoreInstance
+	)
+
+	for _, instance := range state.List() {
+		store, ok := runtime.Instance2Store(instance)
+		if !ok {
+			continue
+		}
+		name := instance.GetName()
+		if store.IsOffline() {
+			if runtime.IsOfflineCompleted(store) {
+				obj := state.Del(name)
+				logger.Info("delete the instance that completes offline", "chose", name, "remain", state.Len())
+				if err = act.c.Delete(ctx, act.converter.To(obj)); err != nil {
+					return false, false, fmt.Errorf("failed to delete the instance %s: %w", name, err)
+				}
+				for _, hook := range act.delHooks {
+					hook.Delete(name)
+				}
+				return true, true, nil
+			} else {
+				logger.Info("wait because the instance is still being offlined", "instance", name)
+				return false, false, nil
+			}
+		} else {
+			hasOnlineStore = true
+			onlineStore = store
+			break
+		}
+	}
+
+	if hasOnlineStore {
+		name := onlineStore.GetName()
+		logger.Info("offline the instance", "instance", name)
+		if err = runtime.SetOffline(ctx, act.c, onlineStore, true); err != nil {
+			return false, false, fmt.Errorf("failed to set the instance %s to offline: %w", name, err)
+		}
+
+		obj := state.Del(name)
+		act.offlining.Add(obj)
+		return true, true, nil
+	} else {
+		logger.Info("no online instances to offline")
+	}
+
+	return false, false, nil
+}
+
+// ScaleInOutdated scales in an outdated instance (running an old version).
+// This is used during rolling updates to clean up old instances after new ones are ready.
+// It operates on the "outdated" state collection which contains instances with older revisions.
+// Uses deferred deletion by default to ensure data safety during rolling updates.
+// Returns whether the scaled-in instance was unavailable, and any error encountered.
+func (act *actor[T, O, R]) ScaleInOutdated(ctx context.Context) (operated, unavailable bool, err error) {
+	if act.enableTwoStep {
+		return act.scaleInWithTwoStep(ctx, act.outdated)
+	}
 	return act.scaleInOutdated(ctx, true)
 }
 
-func (act *actor[T, O, R]) scaleInOutdated(ctx context.Context, deferDel bool) (bool, error) {
+// scaleInOutdated scales in an outdated instance with configurable deletion strategy.
+// deferDel=true: marks instance with defer-delete annotation for safe removal during rolling updates
+// deferDel=false: deletes instance immediately (used in recreate update mode)
+// Returns whether the scaled-in instance was unavailable, and any error encountered.
+func (act *actor[T, O, R]) scaleInOutdated(ctx context.Context, deferDel bool) (operated, unavailable bool, err error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	name, err := act.chooseToScaleIn(act.outdated.List())
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 
 	obj := act.outdated.Del(name)
@@ -139,11 +256,11 @@ func (act *actor[T, O, R]) scaleInOutdated(ctx context.Context, deferDel bool) (
 
 	if deferDel {
 		if err := act.deferDelete(ctx, obj); err != nil {
-			return false, err
+			return false, false, err
 		}
 	} else {
 		if err := act.c.Delete(ctx, act.converter.To(obj)); err != nil {
-			return false, err
+			return false, false, err
 		}
 	}
 
@@ -151,7 +268,7 @@ func (act *actor[T, O, R]) scaleInOutdated(ctx context.Context, deferDel bool) (
 		hook.Delete(obj.GetName())
 	}
 
-	return isUnavailable, nil
+	return true, isUnavailable, nil
 }
 
 type Patch struct {
@@ -163,6 +280,10 @@ type Metadata struct {
 	Annotations     map[string]string `json:"annotations"`
 }
 
+// deferDelete marks an instance with defer-delete annotation instead of immediately deleting it.
+// This is a safety mechanism used during rolling updates to prevent data loss and ensure
+// cluster stability. The marked instance will be moved to the "deleted" state collection
+// and will be actually deleted later by the Cleanup() method after the new instance is ready.
 func (act *actor[T, O, R]) deferDelete(ctx context.Context, obj R) error {
 	o := act.converter.To(obj)
 	p := Patch{
@@ -188,13 +309,22 @@ func (act *actor[T, O, R]) deferDelete(ctx context.Context, obj R) error {
 	return nil
 }
 
+// Update performs instance update using either in-place or recreate strategy.
+//
+// In-place update strategy (default):
+// - Selects an outdated instance and updates it to the current revision
+// - Preserves instance name and topology through update hooks
+//
+// Recreate update strategy (noInPlaceUpdate=true):
+// - Scales in an outdated instance (immediate deletion)
+// - Scales out a new instance to replace it
 func (act *actor[T, O, R]) Update(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 	if act.noInPlaceUpdate {
-		if _, err := act.scaleInOutdated(ctx, false); err != nil {
+		if _, _, err := act.scaleInOutdated(ctx, false); err != nil {
 			return err
 		}
-		if err := act.ScaleOut(ctx); err != nil {
+		if _, err := act.ScaleOut(ctx); err != nil {
 			return err
 		}
 
@@ -224,6 +354,10 @@ func (act *actor[T, O, R]) Update(ctx context.Context) error {
 	return nil
 }
 
+// Cleanup deletes all instances that were marked with defer-delete annotation.
+// This is called after rolling updates are complete to remove the old instances
+// that were safely marked for deletion. It ensures data safety by only removing
+// instances after the new instances are fully operational.
 func (act *actor[T, O, R]) Cleanup(ctx context.Context) error {
 	for _, item := range act.deleted.List() {
 		if err := act.c.Delete(ctx, act.converter.To(item)); err != nil {

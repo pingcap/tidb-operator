@@ -77,3 +77,27 @@ func TestBuilder(t *testing.T) {
 		})
 	}
 }
+
+func TestBuilderTwoStep(t *testing.T) {
+	t.Run("TwoStepDeletion", func(t *testing.T) {
+		builder := New[runtime.TiKVTuple, *v1alpha1.TiKV, *runtime.TiKV]().
+			WithTwoStepDeletion(true).
+			WithDesired(3).
+			WithMaxSurge(0).
+			WithMaxUnavailable(1)
+
+		// Should not panic and should compile
+		assert.NotNil(t, builder)
+	})
+
+	t.Run("RegularBuilder", func(t *testing.T) {
+		// Test that regular builder still works without TwoStep
+		builder := New[runtime.TiKVTuple, *v1alpha1.TiKV, *runtime.TiKV]().
+			WithDesired(3).
+			WithMaxSurge(0).
+			WithMaxUnavailable(1)
+
+		// Should not panic and should compile
+		assert.NotNil(t, builder)
+	})
+}

@@ -43,31 +43,31 @@ type FakeActor struct {
 	preferAvailable bool
 }
 
-func (a *FakeActor) ScaleOut(_ context.Context) error {
+func (a *FakeActor) ScaleOut(_ context.Context) (bool, error) {
 	a.Actions = append(a.Actions, actionScaleOut)
-	return nil
+	return true, nil // FakeActor always creates new instances
 }
 
-func (a *FakeActor) ScaleInOutdated(_ context.Context) (bool, error) {
+func (a *FakeActor) ScaleInOutdated(_ context.Context) (operated, unavailable bool, err error) {
 	a.Actions = append(a.Actions, actionScaleInOutdated)
 	a.outdated -= 1
 	if a.preferAvailable || a.unavailableOutdated == 0 {
-		return false, nil
+		return true, false, nil
 	}
 
 	a.unavailableOutdated -= 1
-	return true, nil
+	return true, true, nil
 }
 
-func (a *FakeActor) ScaleInUpdate(_ context.Context) (bool, error) {
+func (a *FakeActor) ScaleInUpdate(_ context.Context) (operated, unavailable bool, err error) {
 	a.Actions = append(a.Actions, actionScaleInUpdate)
 	a.update -= 1
 	if a.preferAvailable || a.unavailableUpdate == 0 {
-		return false, nil
+		return true, false, nil
 	}
 
 	a.unavailableUpdate -= 1
-	return true, nil
+	return true, true, nil
 }
 
 func (a *FakeActor) Update(_ context.Context) error {
@@ -784,7 +784,7 @@ func TestExecutor(t *testing.T) {
 				unavailableUpdate:   c.unavailableUpdate,
 				unavailableOutdated: c.unavailableOutdated,
 			}
-			e := NewExecutor(act, c.update, c.outdated, c.desired, c.unavailableUpdate, c.unavailableOutdated, c.maxSurge, c.maxUnavailable)
+			e := NewExecutor(act, c.update, c.outdated, 0, 0, c.desired, c.unavailableUpdate, c.unavailableOutdated, c.maxSurge, c.maxUnavailable)
 			wait, err := e.Do(context.TODO())
 			require.NoError(tt, err)
 			assert.Equal(tt, c.expectedWait, wait, c.desc)

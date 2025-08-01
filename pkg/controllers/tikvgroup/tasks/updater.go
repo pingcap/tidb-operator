@@ -68,11 +68,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 
 		allocator := t.Track(kvg, state.InstanceSlice()...)
 
-		// Create the scale-in lifecycle manager for TiKV store operations
-		// This enables cancel scale-in functionality through the enhanced updater framework
-		scaleInLifecycle := updater.NewStoreLifecycle[*runtime.TiKV](c)
-
-		builder := updater.New[runtime.TiKVTuple]().
+		builder := updater.New[runtime.TiKVTuple, *v1alpha1.TiKV, *runtime.TiKV]().
 			WithInstances(kvs...).
 			WithDesired(int(state.Group().Replicas())).
 			WithClient(c).
@@ -87,8 +83,8 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(topoPolicy).
-			// Enable cancel scale-in functionality through ScaleInLifecycle
-			WithScaleInLifecycle(scaleInLifecycle).
+			// Enable type-safe TwoStep deletion for graceful TiKV store offline
+			WithTwoStepDeletion(true).
 			Build()
 
 		wait, err := builder.Do(ctx)
