@@ -194,12 +194,12 @@ func choosePDMSToTransferFromMembers(tc *v1alpha1.TidbCluster, newSet *apps.Stat
 	// just using pods index for now. TODO: add healthy checker for pdms.
 	// find the maximum ordinal which is larger than ordinal
 	if len(list) > int(ordinal)+1 {
-		targetName = PDMSPodName(tcName, list[len(list)-1], controller.PDMSTrimName(newSet.Name))
+		targetName = PDMSName(tcName, list[len(list)-1], tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s, controller.PDMSTrimName(newSet.Name))
 	}
 
 	if targetName == "" && ordinal != 0 {
 		// find the minimum ordinal which is less than ordinal
-		targetName = PDMSPodName(tcName, list[0], controller.PDMSTrimName(newSet.Name))
+		targetName = PDMSName(tcName, list[0], tc.Namespace, tc.Spec.ClusterDomain, tc.Spec.AcrossK8s, controller.PDMSTrimName(newSet.Name))
 	}
 
 	klog.Infof("Tidbcluster: [%s/%s]' pdms upgrader: choose pdms to transfer primary from members, targetName: %s", ns, tcName, targetName)
