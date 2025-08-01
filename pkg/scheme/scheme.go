@@ -15,6 +15,7 @@
 package scheme
 
 import (
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	storagev1beta1 "k8s.io/api/storage/v1beta1"
@@ -47,6 +48,7 @@ func GroupVersions() []schema.GroupVersion {
 		corev1.SchemeGroupVersion,
 		storagev1.SchemeGroupVersion,
 		v1alpha1.SchemeGroupVersion,
+		batchv1.SchemeGroupVersion,
 	}
 	if kubefeat.Stage(kubefeat.VolumeAttributesClass).Enabled(kubefeat.BETA) {
 		gvs = append(gvs, storagev1beta1.SchemeGroupVersion)

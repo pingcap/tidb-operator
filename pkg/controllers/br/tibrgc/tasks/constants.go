@@ -12,17 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v1alpha1
+package tasks
+
+import corev1 "k8s.io/api/core/v1"
 
 const (
-	// DirPathBRBin is the directory path of br binary
-	DirPathBRBin = "/var/lib/br-bin"
+	ClusterNameField = "spec.cluster.name"
+
+	ComponentName    = "tibrgc"
+	SecretAccessMode = int32(420)
+	TLSVolumeName    = "tibrgc-tls"
+	TLSMountPath     = "/var/lib/tibrgc-tls"
+
+	T2DefaultBackoffLimit = int32(16)
+	T3DefaultBackoffLimit = int32(32)
 )
 
-const (
-	// Label value for meta.LabelKeyComponent
-	LabelValComponentBackup  = "backup"
-	LabelValComponentRestore = "restore"
-	LabelValComponentTiBR    = "tibr"
-	LabelValComponentTiBRGC  = "tibrgc"
+var (
+	TLSCmdArgs = []string{
+		"--cacert",
+		TLSMountPath + "/ca.crt",
+		"--cert",
+		TLSMountPath + "/tls.crt",
+		"--key",
+		TLSMountPath + "/tls.key",
+	}
+	tlsVolumeMount = corev1.VolumeMount{
+		Name: TLSVolumeName, MountPath: TLSMountPath,
+	}
 )
