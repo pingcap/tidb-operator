@@ -24268,6 +24268,10 @@ spec:
                 type: object
               priorityClassName:
                 type: string
+              prune:
+                enum:
+                - afterFailed
+                type: string
               resources:
                 properties:
                   claims:
@@ -41422,6 +41426,8 @@ spec:
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
                         type: object
+                      useSidecar:
+                        type: boolean
                     type: object
                   slowLogVolumeName:
                     type: string
@@ -44077,6 +44083,8 @@ spec:
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
                         type: object
+                      useSidecar:
+                        type: boolean
                     type: object
                   maxFailoverCount:
                     format: int32
@@ -46833,6 +46841,8 @@ spec:
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
                         type: object
+                      useSidecar:
+                        type: boolean
                     type: object
                   maxFailoverCount:
                     format: int32

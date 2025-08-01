@@ -17,16 +17,20 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os/exec"
+	"path"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
-	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	backuputil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	bkconstants "github.com/pingcap/tidb-operator/pkg/backup/constants"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	pkgutil "github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
@@ -71,13 +75,19 @@ func (rm *Manager) setOptions(restore *v1alpha1.Restore) {
 		rm.Options.User = v1alpha1.DefaultTidbUser
 	}
 
-	rm.Options.Password = util.GetOptionValueFromEnv(bkconstants.TidbPasswordKey, bkconstants.BackupManagerEnvVarPrefix)
+	rm.Options.Password = backuputil.GetOptionValueFromEnv(bkconstants.TidbPasswordKey, bkconstants.BackupManagerEnvVarPrefix)
 }
 
 // ProcessRestore used to process the restore logic
 func (rm *Manager) ProcessRestore() error {
-	ctx, cancel := util.GetContextForTerminationSignals(rm.ResourceName)
+	ctx, cancel := backuputil.GetContextForTerminationSignals(rm.ResourceName)
 	defer cancel()
+
+	// Check if this is an abort/cleanup operation
+	if rm.Abort {
+		klog.Infof("Starting abort/cleanup operation for restore %s/%s", rm.Namespace, rm.ResourceName)
+		return rm.performAbort(ctx)
+	}
 
 	var errs []error
 	restore, err := rm.restoreLister.Restores(rm.Namespace).Get(rm.ResourceName)
@@ -122,7 +132,7 @@ func (rm *Manager) ProcessRestore() error {
 			return false, err
 		}
 
-		db, err = pkgutil.OpenDB(ctx, dsn)
+		db, err = util.OpenDB(ctx, dsn)
 		if err != nil {
 			klog.Warningf("can't connect to tidb cluster %s, err: %s", rm, err)
 			if ctx.Err() != nil {
@@ -304,7 +314,7 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 			restoreType = v1alpha1.RestoreDataComplete
 		}
 	default:
-		ts, err := util.GetCommitTsFromBRMetaData(ctx, restore.Spec.StorageProvider)
+		ts, err := backuputil.GetCommitTsFromBRMetaData(ctx, restore.Spec.StorageProvider)
 		if err != nil {
 			errs = append(errs, err)
 			klog.Errorf("get cluster %s commitTs failed, err: %s", rm, err)
@@ -332,8 +342,133 @@ func (rm *Manager) performRestore(ctx context.Context, restore *v1alpha1.Restore
 	if allFinished {
 		updateStatus.TimeCompleted = &metav1.Time{Time: time.Now()}
 	}
+
 	return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
 		Type:   restoreType,
 		Status: corev1.ConditionTrue,
 	}, updateStatus)
+}
+
+// performAbort executes br abort restore command to cleanup failed restore
+func (rm *Manager) performAbort(ctx context.Context) error {
+	restore, err := rm.restoreLister.Restores(rm.Namespace).Get(rm.ResourceName)
+	if err != nil {
+		klog.Errorf("can't find restore %s/%s CRD object, err: %v", rm.Namespace, rm.ResourceName, err)
+		return err
+	}
+
+	// Update status to PruneRunning
+	updateErr := rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		Type:    v1alpha1.RestorePruneRunning,
+		Status:  corev1.ConditionTrue,
+		Reason:  "PruneJobStarted",
+		Message: "Starting cleanup of failed restore",
+	}, nil)
+	if updateErr != nil {
+		klog.Errorf("failed to update restore %s/%s status to PruneRunning: %v", rm.Namespace, rm.ResourceName, updateErr)
+		// Continue with abort operation even if status update fails
+	}
+
+	// Construct br abort restore command
+	args, err := rm.constructBRAbortArgs(restore)
+	if err != nil {
+		klog.Errorf("failed to construct br abort arguments: %v", err)
+
+		// Update status to PruneFailed
+		rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestorePruneFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "ConstructArgsFailed",
+			Message: fmt.Sprintf("Failed to construct br abort arguments: %v", err),
+		}, nil)
+		return err
+	}
+	klog.Infof("Running br abort restore command with args: %v", args)
+
+	// Execute br abort restore command
+	bin := path.Join(util.BRBinPath, "br")
+	cmd := exec.CommandContext(ctx, bin, args...)
+	output, err := cmd.CombinedOutput()
+
+	// Log the output from the br command
+	if len(output) > 0 {
+		klog.Infof("br abort restore command output:\n%s", string(output))
+	}
+
+	if err != nil {
+		klog.Errorf("br abort restore command failed: %v", err)
+
+		// Update status to PruneFailed
+		rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestorePruneFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "BRAbortFailed",
+			Message: fmt.Sprintf("BR abort command failed: %v", err),
+		}, nil)
+		return err
+	}
+
+	// Check for version compatibility issue where old br doesn't have `abort` command
+	// and just prints help with exit code 0.
+	if strings.Contains(string(output), "Usage:") || strings.Contains(string(output), "--help") {
+		msg := "br abort command not found, please check if the br version is compatible"
+		klog.Error(msg)
+		rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestorePruneFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "CommandNotFound",
+			Message: msg,
+		}, nil)
+		return errors.New(msg)
+	}
+
+	klog.Infof("br abort restore command completed successfully")
+
+	// Update status to PruneComplete
+	return rm.StatusUpdater.Update(restore, &v1alpha1.RestoreCondition{
+		Type:    v1alpha1.RestorePruneComplete,
+		Status:  corev1.ConditionTrue,
+		Reason:  "PruneJobComplete",
+		Message: "Cleanup of failed restore completed successfully",
+	}, nil)
+}
+
+// constructBRAbortArgs constructs arguments for br abort restore command
+func (rm *Manager) constructBRAbortArgs(restore *v1alpha1.Restore) ([]string, error) {
+	var restoreType string
+	if restore.Spec.Type == "" {
+		restoreType = string(v1alpha1.BackupTypeFull)
+	} else {
+		restoreType = string(restore.Spec.Type)
+	}
+
+	// Start with abort restore command
+	args := []string{
+		"abort",
+		"restore",
+		restoreType,
+	}
+
+	// Add PD endpoints (based on original restore logic)
+	clusterNamespace := restore.Spec.BR.ClusterNamespace
+	if restore.Spec.BR.ClusterNamespace == "" {
+		clusterNamespace = restore.Namespace
+	}
+	args = append(args, fmt.Sprintf("--pd=%s-pd.%s:%d", restore.Spec.BR.Cluster, clusterNamespace, v1alpha1.DefaultPDClientPort))
+
+	// Add TLS configuration if needed
+	if rm.TLSCluster {
+		args = append(args, fmt.Sprintf("--ca=%s", path.Join(util.ClusterClientTLSPath, corev1.ServiceAccountRootCAKey)))
+		args = append(args, fmt.Sprintf("--cert=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey)))
+		args = append(args, fmt.Sprintf("--key=%s", path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey)))
+	}
+
+	// Add storage configuration using the same method as normal restore
+	dataArgs, err := backuputil.ConstructBRGlobalOptionsForRestore(restore)
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, dataArgs...)
+
+	return args, nil
 }
