@@ -325,10 +325,10 @@ function e2e::run() {
     # Use individual package paths instead of recursive mode to avoid scanning excluded packages
     if [[ "$CI" == "true" ]]; then
         echo "running e2e tests in CI mode with options: $*"
-        $GINKGO -v --timeout=2h --randomize-all --randomize-suites --fail-on-empty --keep-going --race --trace --flake-attempts=2 "$*" "${test_packages[@]}"
+        $GINKGO -v --timeout=2h --randomize-all --randomize-suites --fail-on-empty --keep-going --trace "$*" "${test_packages[@]}"
     else
         echo "running e2e tests locally..."
-        $GINKGO -v "$@" "${test_packages[@]}"
+        $GINKGO -v --race "$@" "${test_packages[@]}"
     fi
 }
 
