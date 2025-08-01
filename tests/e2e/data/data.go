@@ -45,7 +45,9 @@ const (
 const (
 	// TODO(liubo02): extract to namer
 	DefaultTiDBServiceName    = defaultTiDBGroupName + "-tidb"
+	DefaultTiDBServicePort    = "4000"
 	DefaultTiProxyServiceName = defaultTiProxyGroupName + "-tiproxy"
+	DefaultTiProxyServicePort = "6000"
 )
 
 func WithReplicas[G runtime.Group](replicas int32) GroupPatch[G] {

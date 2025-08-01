@@ -61,7 +61,7 @@ var _ = ginkgo.Describe("TiDB", label.TiDB, func() {
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
 
-			workload.MustPing(ctx, data.DefaultTiDBServiceName, "root", "pingcap", "")
+			workload.MustPing(ctx, data.DefaultTiDBServiceName, data.DefaultTiDBServicePort, "root", "pingcap", "")
 		})
 	})
 
@@ -98,7 +98,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
 
-			workload.MustPing(ctx, data.DefaultTiDBServiceName, sub, token, "")
+			workload.MustPing(ctx, data.DefaultTiDBServiceName, data.DefaultTiDBServicePort, sub, token, "")
 		})
 	})
 
@@ -309,7 +309,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			ginkgo.By("Installing the certificates")
 			f.Must(cert.InstallTiDBIssuer(ctx, f.Client, ns, tcName))
 			f.Must(cert.InstallTiDBCertificates(ctx, f.Client, ns, tcName, "dbg"))
-			f.Must(cert.InstallTiDBComponentsCertificates(ctx, f.Client, ns, tcName, "pdg", "kvg", "dbg", "fg", "cg"))
+			f.Must(cert.InstallTiDBComponentsCertificates(ctx, f.Client, ns, tcName, "pdg", "kvg", "dbg", "fg", "cg", "pg"))
 
 			ginkgo.By("Creating the components with TLS client enabled")
 			pdg := f.MustCreatePD(ctx)
@@ -382,7 +382,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 				checkComponent(cdcg.Name, v1alpha1.LabelValComponentTiCDC, cdcg.Spec.Replicas)
 			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
 
-			workload.MustPing(ctx, data.DefaultTiDBServiceName, "root", "", dbg.Name+"-tidb-client-secret")
+			workload.MustPing(ctx, data.DefaultTiDBServiceName, data.DefaultTiDBServicePort, "root", "", dbg.Name+"-tidb-client-secret")
 		})
 	})
 })

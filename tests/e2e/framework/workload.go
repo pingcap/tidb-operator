@@ -50,7 +50,7 @@ func (f *Framework) SetupWorkload() *Workload {
 	return w
 }
 
-func (w *Workload) MustPing(ctx context.Context, host, user, password, tlsSecretName string) {
+func (w *Workload) MustPing(ctx context.Context, host, port, user, password, tlsSecretName string) {
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      workloadJobName,
@@ -71,6 +71,7 @@ func (w *Workload) MustPing(ctx context.Context, host, user, password, tlsSecret
 							Args: []string{
 								"--action", "ping",
 								"--host", host,
+								"--port", port,
 								"--user", user,
 								"--password", password,
 								"--duration", "8",
@@ -113,7 +114,7 @@ func (w *Workload) MustPing(ctx context.Context, host, user, password, tlsSecret
 	w.f.Must(waiter.WaitForJobComplete(ctx, w.f.Client, job, waiter.ShortTaskTimeout))
 }
 
-func (w *Workload) MustImportData(ctx context.Context, host, user, password, tlsSecretName string, regionCount int) {
+func (w *Workload) MustImportData(ctx context.Context, host, port, user, password, tlsSecretName string, regionCount int) {
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      workloadJobName,
@@ -134,6 +135,7 @@ func (w *Workload) MustImportData(ctx context.Context, host, user, password, tls
 							Args: []string{
 								"--action", "import",
 								"--host", host,
+								"--port", port,
 								"--user", user,
 								"--password", password,
 								"--duration", "8",
