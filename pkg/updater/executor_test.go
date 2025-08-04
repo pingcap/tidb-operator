@@ -22,16 +22,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type action int
-
-const (
-	actionScaleOut action = iota
-	actionUpdate
-	actionScaleInUpdate
-	actionScaleInOutdated
-	actionCleanup
-)
-
 type FakeActor struct {
 	Actions []action
 
@@ -43,31 +33,31 @@ type FakeActor struct {
 	preferAvailable bool
 }
 
-func (a *FakeActor) ScaleOut(_ context.Context) (bool, error) {
+func (a *FakeActor) ScaleOut(_ context.Context) (_ action, _ error) {
 	a.Actions = append(a.Actions, actionScaleOut)
-	return true, nil // FakeActor always creates new instances
+	return actionScaleOut, nil // FakeActor always creates new instances
 }
 
-func (a *FakeActor) ScaleInOutdated(_ context.Context) (operated, unavailable bool, err error) {
+func (a *FakeActor) ScaleInOutdated(_ context.Context) (_ action, unavailable bool, err error) {
 	a.Actions = append(a.Actions, actionScaleInOutdated)
 	a.outdated -= 1
 	if a.preferAvailable || a.unavailableOutdated == 0 {
-		return true, false, nil
+		return actionScaleInOutdated, false, nil
 	}
 
 	a.unavailableOutdated -= 1
-	return true, true, nil
+	return actionScaleInOutdated, true, nil
 }
 
-func (a *FakeActor) ScaleInUpdate(_ context.Context) (operated, unavailable bool, err error) {
+func (a *FakeActor) ScaleInUpdate(_ context.Context) (_ action, unavailable bool, err error) {
 	a.Actions = append(a.Actions, actionScaleInUpdate)
 	a.update -= 1
 	if a.preferAvailable || a.unavailableUpdate == 0 {
-		return true, false, nil
+		return actionScaleInUpdate, false, nil
 	}
 
 	a.unavailableUpdate -= 1
-	return true, true, nil
+	return actionScaleInUpdate, true, nil
 }
 
 func (a *FakeActor) Update(_ context.Context) error {
@@ -773,8 +763,7 @@ func TestExecutor(t *testing.T) {
 		},
 	}
 
-	for i := range cases {
-		c := &cases[i]
+	for _, c := range cases {
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 

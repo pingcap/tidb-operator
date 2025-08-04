@@ -20,11 +20,26 @@ import (
 	"github.com/go-logr/logr"
 )
 
+// action represents an action performed by Actor.
+type action int
+
+const (
+	actionNone action = iota
+	actionScaleOut
+	actionScaleInUpdate
+	actionScaleInOutdated
+	actionUpdate
+	actionSetOffline
+	actionCancelOffline
+	actionDeleteOffline
+	actionCleanup
+)
+
 type Actor interface {
-	ScaleOut(ctx context.Context) (created bool, _ error)
+	ScaleOut(ctx context.Context) (action, error)
 	Update(ctx context.Context) error
-	ScaleInUpdate(ctx context.Context) (operated bool, unavailable bool, _ error)
-	ScaleInOutdated(ctx context.Context) (operated bool, unavailable bool, _ error)
+	ScaleInUpdate(ctx context.Context) (_ action, unavailable bool, _ error)
+	ScaleInOutdated(ctx context.Context) (_ action, unavailable bool, _ error)
 
 	// Cleanup deletes all instances marked as defer deletion
 	Cleanup(ctx context.Context) error
@@ -39,8 +54,8 @@ type Executor interface {
 type executor struct {
 	update              int
 	outdated            int
-	offlining           int
-	offlined            int
+	beingOffline        int
+	offlineCompleted    int
 	desired             int
 	unavailableUpdate   int
 	unavailableOutdated int
@@ -54,8 +69,8 @@ func NewExecutor(
 	act Actor,
 	update,
 	outdated,
-	offlining,
-	offlined,
+	beingOffline,
+	offlineCompleted,
 	desired,
 	unavailableUpdate,
 	unavailableOutdated,
@@ -65,8 +80,8 @@ func NewExecutor(
 	return &executor{
 		update:              update,
 		outdated:            outdated,
-		offlining:           offlining,
-		offlined:            offlined,
+		beingOffline:        beingOffline,
+		offlineCompleted:    offlineCompleted,
 		desired:             desired,
 		unavailableUpdate:   unavailableUpdate,
 		unavailableOutdated: unavailableOutdated,
@@ -83,36 +98,37 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 	logger := logr.FromContextOrDiscard(ctx).WithName("Updater")
 
 	logger.Info("before the loop", "update", ex.update, "outdated", ex.outdated,
-		"desired", ex.desired, "offlining", ex.offlining, "offlined", ex.offlined)
-	for ex.update != ex.desired || ex.outdated != 0 || ex.offlining != 0 {
+		"desired", ex.desired, "offlining", ex.beingOffline, "offlined", ex.offlineCompleted)
+	for ex.update != ex.desired || ex.outdated != 0 || ex.beingOffline != 0 || ex.offlineCompleted != 0 {
 		actual := ex.update + ex.outdated
-		onlineActual := actual - ex.offlining
 		available := actual - ex.unavailableUpdate - ex.unavailableOutdated
 		maximum := ex.desired + min(ex.maxSurge, ex.outdated)
 		minimum := ex.desired - ex.maxUnavailable
 		logger.Info("loop",
-			"update", ex.update, "outdated", ex.outdated, "onlineActual", onlineActual, "desired", ex.desired,
+			"update", ex.update, "outdated", ex.outdated, "desired", ex.desired,
+			"offlining", ex.beingOffline, "offlined", ex.offlineCompleted,
 			"unavailableUpdate", ex.unavailableUpdate, "unavailableOutdated", ex.unavailableOutdated,
 			"actual", actual, "available", available, "maximum", maximum, "minimum", minimum)
 		switch {
-		case actual < maximum || onlineActual < maximum:
+		case actual < maximum:
 			logger.Info("scale out")
-			created, err := ex.act.ScaleOut(ctx)
+			act, err := ex.act.ScaleOut(ctx)
 			if err != nil {
 				return false, err
 			}
-			if created {
+			switch act {
+			case actionScaleOut:
 				ex.update += 1
 				ex.unavailableUpdate += 1
-			} else if ex.offlining > 0 {
+			case actionCancelOffline:
 				// ScaleOut canceled an offlining operation instead of creating new instance
 				// The offlining instance was already counted in update, just reduce offlining count
-				ex.offlining -= 1
+				ex.beingOffline -= 1
 			}
 
-		case actual == maximum:
+		case actual == maximum && ex.beingOffline == 0 && ex.offlineCompleted == 0:
 			if ex.update < ex.desired {
-				// update will always prefer unavailable one so available will not changed if there are
+				// update will always prefer unavailable one so available will not be changed if there are
 				// unavailable and outdated instances
 				if ex.unavailableOutdated > 0 {
 					logger.Info("update unavailable outdated")
@@ -154,15 +170,15 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 				}
 
 				logger.Info("scale in outdated")
-				operated, unavailable, err := ex.act.ScaleInOutdated(ctx)
+				act, unavailable, err := ex.act.ScaleInOutdated(ctx)
 				if err != nil {
 					return false, err
 				}
-				if !operated {
+				if act == actionNone {
 					// No operation performed, wait for next reconcile
 					return true, nil
 				}
-				// scale in may not choose an unavailable outdated so just descrease the outdated
+				// scale in may not choose an unavailable outdated so just decrease the outdated
 				// and assume we always choose an available outdated.
 				// And then wait if next available is less than minimum
 				if unavailable {
@@ -172,48 +188,62 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 					ex.outdated -= 1
 				}
 			}
-		case actual > maximum:
+		case actual > maximum || ex.beingOffline > 0 || ex.offlineCompleted > 0:
 			// Scale in op may choose an available instance.
 			// Assume we always choose an unavailable one, we will scale once and wait until next reconcile
 			checkAvail := false
 			if ex.update > ex.desired {
 				logger.Info("scale in update")
-				operated, unavailable, err := ex.act.ScaleInUpdate(ctx)
+				act, unavailable, err := ex.act.ScaleInUpdate(ctx)
 				if err != nil {
 					return false, err
 				}
-				if !operated {
+				if act == actionNone {
 					// No operation performed, wait for next reconcile
 					return true, nil
 				}
 				if unavailable {
 					ex.update -= 1
 					ex.unavailableUpdate -= 1
+					if act == actionDeleteOffline {
+						ex.offlineCompleted -= 1
+					}
 				} else {
-					ex.update -= 1
-					available -= 1
-					checkAvail = true
+					if act != actionSetOffline {
+						ex.update -= 1
+						available -= 1
+						checkAvail = true
+					} else {
+						ex.beingOffline++
+					}
 				}
 			} else {
 				// ex.update + ex.outdated > ex.desired + min(ex.maxSurge, ex.outdated) and ex.update <= ex.desired
 				// => ex.outdated > min(ex.maxSurge, ex.outdated)
 				// => ex.outdated > 0
 				logger.Info("scale in outdated")
-				operated, unavailable, err := ex.act.ScaleInOutdated(ctx)
+				act, unavailable, err := ex.act.ScaleInOutdated(ctx)
 				if err != nil {
 					return false, err
 				}
-				if !operated {
+				if act == actionNone {
 					// No operation performed, wait for next reconcile
 					return true, nil
 				}
 				if unavailable {
 					ex.outdated -= 1
 					ex.unavailableOutdated -= 1
+					if act == actionDeleteOffline {
+						ex.offlineCompleted -= 1
+					}
 				} else {
-					ex.outdated -= 1
-					available -= 1
-					checkAvail = true
+					if act != actionSetOffline {
+						ex.outdated -= 1
+						available -= 1
+						checkAvail = true
+					} else {
+						ex.beingOffline++
+					}
 				}
 			}
 			// Wait if available is less than minimum

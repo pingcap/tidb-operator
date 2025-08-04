@@ -22,158 +22,120 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// MockAction represents actions performed by MockActor
-type MockAction int
-
-const (
-	MockActionScaleOut MockAction = iota
-	MockActionUpdate
-	MockActionScaleInUpdate
-	MockActionScaleInOutdated
-	MockActionCleanup
-	MockActionCancelOfflining
-	MockActionSetOffline
-	MockActionDeleteOfflined
-)
-
 // MockActor implements the Actor interface for testing
 // It provides configurable behavior without reimplementing business logic
 type MockActor struct {
-	Actions []MockAction
+	Actions []action
 
-	// Configuration
-	enableTwoStep bool
-
-	// Behavior flags
-	scaleOutReturnsCreated  bool
-	scaleOutReturnsError    bool
-	updateReturnsError      bool
-	scaleInUpdateOperated   bool
-	scaleInUpdateError      bool
-	scaleInOutdatedOperated bool
-	scaleInOutdatedError    bool
-	cleanupReturnsError     bool
-
-	// Two-step behavior simulation
-	hasOffliningInstance   bool
-	hasOfflinedInstance    bool
-	scaleInShouldWait      bool
+	scaleOutReturnsError   bool
+	updateReturnsError     bool
+	scaleInUpdateError     bool
+	scaleInOutdatedError   bool
+	cleanupReturnsError    bool
 	cancelOffliningSuccess bool
 
-	// Call counts
-	scaleOutCount        int
-	updateCount          int
-	scaleInUpdateCount   int
-	scaleInOutdatedCount int
-	cleanupCount         int
+	online           int
+	beingOffline     int
+	offlineCompleted int
 }
 
-func (m *MockActor) ScaleOut(_ context.Context) (bool, error) {
+func (m *MockActor) ScaleOut(_ context.Context) (act action, err error) {
+	act = actionNone
+	defer func() {
+		m.Actions = append(m.Actions, act)
+	}()
 	if m.scaleOutReturnsError {
-		return false, assert.AnError
+		return act, assert.AnError
 	}
 
-	m.Actions = append(m.Actions, MockActionScaleOut)
-	m.scaleOutCount++
-
-	// Simulate two-step behavior: cancel offlining instead of creating new instance
-	if m.enableTwoStep && m.hasOffliningInstance && m.cancelOffliningSuccess {
-		// Replace the last action with cancel offlining
-		m.Actions[len(m.Actions)-1] = MockActionCancelOfflining
-		m.hasOffliningInstance = false
-		return false, nil // false indicates no new instance was created
+	if m.beingOffline > 0 && m.cancelOffliningSuccess {
+		act = actionCancelOffline
+		m.beingOffline--
+		return act, nil
+	} else {
+		act = actionScaleOut
 	}
 
-	return m.scaleOutReturnsCreated, nil
+	return act, nil
 }
 
 func (m *MockActor) Update(_ context.Context) error {
 	if m.updateReturnsError {
 		return assert.AnError
 	}
-
-	m.Actions = append(m.Actions, MockActionUpdate)
-	m.updateCount++
+	m.Actions = append(m.Actions, actionUpdate)
 	return nil
 }
 
-func (m *MockActor) ScaleInUpdate(_ context.Context) (operated, unavailable bool, err error) {
+func (m *MockActor) ScaleInUpdate(_ context.Context) (act action, unavailable bool, err error) {
+	act = actionNone
+	defer func() {
+		m.Actions = append(m.Actions, act)
+	}()
 	if m.scaleInUpdateError {
-		return false, false, assert.AnError
+		return act, false, assert.AnError
 	}
 
-	m.Actions = append(m.Actions, MockActionScaleInUpdate)
-	m.scaleInUpdateCount++
-
-	if m.enableTwoStep {
-		// Simulate two-step deletion behavior
-		if m.hasOfflinedInstance {
-			m.Actions[len(m.Actions)-1] = MockActionDeleteOfflined
-			m.hasOfflinedInstance = false
-			return true, true, nil // Delete offlined instance
-		}
-		if m.hasOffliningInstance {
-			// Wait for offlining to complete
-			return false, false, nil
-		}
-		if m.scaleInShouldWait {
-			// Start offline process
-			m.Actions[len(m.Actions)-1] = MockActionSetOffline
-			m.hasOffliningInstance = true
-			return true, true, nil // Was unavailable
-		}
+	if m.offlineCompleted > 0 {
+		m.offlineCompleted--
+		return actionDeleteOffline, true, nil
+	}
+	if m.beingOffline > 0 {
+		return act, false, nil
+	}
+	if m.online > 0 {
+		act = actionSetOffline
+		m.beingOffline++
+		m.online--
+		return act, false, nil
 	}
 
-	return m.scaleInUpdateOperated, true, nil
+	return act, false, nil
 }
 
-func (m *MockActor) ScaleInOutdated(_ context.Context) (operated, unavailable bool, err error) {
+func (m *MockActor) ScaleInOutdated(_ context.Context) (act action, unavailable bool, err error) {
+	act = actionNone
+	defer func() {
+		m.Actions = append(m.Actions, act)
+	}()
 	if m.scaleInOutdatedError {
-		return false, false, assert.AnError
+		return actionNone, false, assert.AnError
 	}
 
-	m.Actions = append(m.Actions, MockActionScaleInOutdated)
-	m.scaleInOutdatedCount++
-
-	if m.enableTwoStep {
-		// Simulate two-step deletion behavior
-		if m.hasOfflinedInstance {
-			m.Actions[len(m.Actions)-1] = MockActionDeleteOfflined
-			m.hasOfflinedInstance = false
-			return true, true, nil // Delete offlined instance
-		}
-		if m.hasOffliningInstance {
-			// Wait for offlining to complete
-			return false, false, nil
-		}
-		if m.scaleInShouldWait {
-			// Start offline process
-			m.Actions[len(m.Actions)-1] = MockActionSetOffline
-			m.hasOffliningInstance = true
-			return true, true, nil // Was unavailable
-		}
+	if m.offlineCompleted > 0 {
+		act = actionDeleteOffline
+		m.offlineCompleted--
+		return act, true, nil
+	}
+	if m.beingOffline > 0 {
+		return act, false, nil
+	}
+	if m.online > 0 {
+		act = actionSetOffline
+		m.beingOffline++
+		m.online--
+		return act, false, nil
 	}
 
-	return m.scaleInOutdatedOperated, true, nil
+	return act, false, nil
 }
 
 func (m *MockActor) Cleanup(_ context.Context) error {
 	if m.cleanupReturnsError {
 		return assert.AnError
 	}
-
-	m.Actions = append(m.Actions, MockActionCleanup)
-	m.cleanupCount++
+	m.Actions = append(m.Actions, actionCleanup)
 	return nil
 }
 
 func TestExecutorWithMock(t *testing.T) {
-	cases := []struct {
-		desc                string
+	tests := []struct {
+		name                string
 		update              int
 		outdated            int
-		offlining           int
-		offlined            int
+		online              int
+		beingOffline        int
+		offlineCompleted    int
 		desired             int
 		unavailableUpdate   int
 		unavailableOutdated int
@@ -181,10 +143,6 @@ func TestExecutorWithMock(t *testing.T) {
 		maxUnavailable      int
 
 		// Mock configuration
-		enableTwoStep          bool
-		hasOffliningInstance   bool
-		hasOfflinedInstance    bool
-		scaleInShouldWait      bool
 		cancelOffliningSuccess bool
 
 		// Mock error simulation
@@ -194,191 +152,153 @@ func TestExecutorWithMock(t *testing.T) {
 		scaleInOutdatedError bool
 		cleanupReturnsError  bool
 
-		expectedActions []MockAction
+		expectedActions []action
 		expectedWait    bool
 		expectedError   bool
 	}{
-		// Basic two-step behavior
 		{
-			desc:              "two-step enabled uses set offline instead of direct scale in",
-			enableTwoStep:     true,
-			update:            4,
-			outdated:          0,
-			desired:           3,
-			maxSurge:          0,
-			maxUnavailable:    1,
-			scaleInShouldWait: true,
-			expectedActions: []MockAction{
-				MockActionSetOffline, // Start offline process
-				MockActionCleanup,    // Cleanup after operation
-			},
-			expectedWait: false,
-		},
-		{
-			desc:                   "two-step scale out cancels offlining instance",
-			enableTwoStep:          true,
-			update:                 2,
-			outdated:               0,
-			offlining:              1,
-			desired:                3,
-			maxSurge:               1,
-			maxUnavailable:         1,
-			hasOffliningInstance:   true,
-			cancelOffliningSuccess: true,
-			expectedActions: []MockAction{
-				MockActionCancelOfflining, // Cancel offlining instead of creating new instance
-				MockActionScaleOut,        // Still need to scale out to reach desired
+			name:    "when scale in, set it offline first",
+			update:  3,
+			desired: 1,
+			online:  3,
+			expectedActions: []action{
+				actionSetOffline,
+				actionNone,
 			},
 			expectedWait: true,
 		},
 		{
-			desc:                "two-step deletes offlined instance",
-			enableTwoStep:       true,
-			update:              4,
-			outdated:            0,
-			offlined:            1,
+			name:              "when scale in, wait for offline complete",
+			update:            3,
+			unavailableUpdate: 1,
+			beingOffline:      1,
+			desired:           1,
+			online:            2,
+			expectedActions: []action{
+				actionNone,
+			},
+			expectedWait: true,
+		},
+		{
+			name:              "when offline complete, delete it",
+			update:            3,
+			unavailableUpdate: 1,
+			beingOffline:      0,
+			offlineCompleted:  1,
+			online:            2,
+			desired:           1,
+			expectedActions: []action{
+				actionDeleteOffline,
+				actionSetOffline,
+				actionNone,
+			},
+			expectedWait: true,
+		},
+		{
+			name:              "scale in to 0",
+			update:            3,
+			unavailableUpdate: 3,
+			beingOffline:      3,
+			desired:           0,
+			expectedActions: []action{
+				actionNone,
+			},
+			expectedWait: true,
+		},
+		{
+			name:         "rolling update with 0 maxSurge and 1 maxUnavailable",
+			update:       0,
+			outdated:     3,
+			beingOffline: 0,
+			desired:      3,
+			expectedActions: []action{
+				actionUpdate,
+			},
+			expectedWait: true,
+		},
+		{
+			name:         "scale in and rolling update at same time with 0 maxSurge and 1 maxUnavailable(0)",
+			update:       0,
+			outdated:     5,
+			online:       5,
+			beingOffline: 0,
+			desired:      3,
+			expectedActions: []action{
+				actionSetOffline,
+				actionNone,
+			},
+			expectedWait: true,
+		},
+		{
+			name:                "scale in and rolling update at same time with 0 maxSurge and 1 maxUnavailable(1)",
+			update:              0,
+			outdated:            5,
+			unavailableOutdated: 1,
+			online:              4,
+			offlineCompleted:    1,
 			desired:             3,
-			maxSurge:            0,
-			maxUnavailable:      1,
-			hasOfflinedInstance: true,
-			expectedActions: []MockAction{
-				MockActionDeleteOfflined, // Delete already offlined instance
-				MockActionCleanup,        // Complete the operation
-			},
-			expectedWait: false,
-		},
-		{
-			desc:                 "two-step waits for offlining to complete",
-			enableTwoStep:        true,
-			update:               4,
-			outdated:             0,
-			offlining:            1,
-			desired:              3,
-			maxSurge:             0,
-			maxUnavailable:       1,
-			hasOffliningInstance: true,
-			expectedActions: []MockAction{
-				MockActionScaleInUpdate, // Try to scale in but wait
-			},
-			expectedWait: true,
-		},
-		// Rolling update scenarios
-		{
-			desc:           "rolling update with two-step enabled",
-			enableTwoStep:  true,
-			update:         1,
-			outdated:       2,
-			desired:        3,
-			maxSurge:       1,
-			maxUnavailable: 1,
-			expectedActions: []MockAction{
-				MockActionScaleOut,
-				MockActionUpdate,
+			expectedActions: []action{
+				actionDeleteOffline,
+				actionSetOffline,
+				actionNone,
 			},
 			expectedWait: true,
 		},
 		{
-			desc:           "regular mode without two-step",
-			enableTwoStep:  false,
-			update:         4,
-			outdated:       0,
-			desired:        3,
-			maxSurge:       0,
-			maxUnavailable: 1,
-			expectedActions: []MockAction{
-				MockActionScaleInUpdate,
-				MockActionCleanup,
-			},
-			expectedWait: false,
-		},
-		// Error scenarios
-		{
-			desc:                 "two-step scale out fails",
-			enableTwoStep:        true,
-			update:               1,
-			outdated:             2,
-			desired:              3,
-			maxSurge:             1,
-			maxUnavailable:       1,
-			scaleOutReturnsError: true,
-			expectedActions:      nil,
-			expectedError:        true,
-		},
-		{
-			desc:               "two-step scale in fails",
-			enableTwoStep:      true,
-			update:             4,
-			outdated:           0,
-			desired:            3,
-			maxSurge:           0,
-			maxUnavailable:     1,
-			scaleInUpdateError: true,
-			expectedActions:    nil,
-			expectedError:      true,
-		},
-		// Edge cases
-		{
-			desc:           "no operation needed",
-			enableTwoStep:  true,
+			name:           "no operation needed",
 			update:         3,
 			outdated:       0,
 			desired:        3,
 			maxSurge:       1,
 			maxUnavailable: 1,
-			expectedActions: []MockAction{
-				MockActionCleanup,
+			expectedActions: []action{
+				actionCleanup,
 			},
 			expectedWait: false,
 		},
 		{
-			desc:              "all instances unavailable",
-			enableTwoStep:     true,
+			name:              "all instances unavailable",
 			update:            3,
-			outdated:          0,
+			online:            3,
 			desired:           2,
 			unavailableUpdate: 3,
 			maxSurge:          0,
 			maxUnavailable:    1,
-			scaleInShouldWait: true,
-			expectedActions:   []MockAction{MockActionSetOffline},
-			expectedWait:      true,
+			expectedActions: []action{
+				actionSetOffline,
+				actionNone,
+			},
+			expectedWait: true,
 		},
 	}
 
-	for i := range cases {
-		c := &cases[i]
-		t.Run(c.desc, func(tt *testing.T) {
-			tt.Parallel()
-
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			act := &MockActor{
-				enableTwoStep:           c.enableTwoStep,
-				hasOffliningInstance:    c.hasOffliningInstance,
-				hasOfflinedInstance:     c.hasOfflinedInstance,
-				scaleInShouldWait:       c.scaleInShouldWait,
-				cancelOffliningSuccess:  c.cancelOffliningSuccess,
-				scaleOutReturnsCreated:  true, // Default behavior
-				scaleInUpdateOperated:   true,
-				scaleInOutdatedOperated: true,
-				scaleOutReturnsError:    c.scaleOutReturnsError,
-				updateReturnsError:      c.updateReturnsError,
-				scaleInUpdateError:      c.scaleInUpdateError,
-				scaleInOutdatedError:    c.scaleInOutdatedError,
-				cleanupReturnsError:     c.cleanupReturnsError,
+				beingOffline:           tt.beingOffline,
+				offlineCompleted:       tt.offlineCompleted,
+				online:                 tt.online,
+				cancelOffliningSuccess: tt.cancelOffliningSuccess,
+				scaleOutReturnsError:   tt.scaleOutReturnsError,
+				updateReturnsError:     tt.updateReturnsError,
+				scaleInUpdateError:     tt.scaleInUpdateError,
+				scaleInOutdatedError:   tt.scaleInOutdatedError,
+				cleanupReturnsError:    tt.cleanupReturnsError,
 			}
 
-			e := NewExecutor(act, c.update, c.outdated, c.offlining, c.offlined, c.desired,
-				c.unavailableUpdate, c.unavailableOutdated, c.maxSurge, c.maxUnavailable)
+			e := NewExecutor(act, tt.update, tt.outdated, tt.beingOffline, tt.offlineCompleted, tt.desired,
+				tt.unavailableUpdate, tt.unavailableOutdated, 0, 1)
 
 			wait, err := e.Do(context.TODO())
 
-			if c.expectedError {
-				require.Error(tt, err, "expected error but got none")
+			if tt.expectedError {
+				require.Error(t, err, "expected error but got none")
 			} else {
-				require.NoError(tt, err, "unexpected error: %v", err)
-				assert.Equal(tt, c.expectedWait, wait, "wait result mismatch")
+				require.NoError(t, err, "unexpected error: %v", err)
+				assert.Equal(t, tt.expectedWait, wait, "wait result mismatch")
 			}
 
-			assert.Equal(tt, c.expectedActions, act.Actions, "actions mismatch")
+			assert.Equal(t, tt.expectedActions, act.Actions, "actions mismatch")
 		})
 	}
 }
