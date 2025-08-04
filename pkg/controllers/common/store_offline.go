@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -87,7 +86,7 @@ func TaskOfflineStoreStateMachine(
 	hook StoreOfflineHook,
 ) task.Result {
 	if store == nil {
-		return task.Fail().With("%s store store is nil", storeTypeName)
+		return task.Fail().With("%s store is nil", storeTypeName)
 	}
 
 	// Check if offline operation is requested
@@ -139,6 +138,9 @@ func handleOfflineCancellation(
 	store runtime.StoreInstance,
 	hook StoreOfflineHook,
 ) task.Result {
+	if state.StoreNotExists() {
+		return handleActiveState(ctx, state, store, hook)
+	}
 	condition := runtime.GetOfflineCondition(store)
 	// If no offline condition exists, nothing to cancel
 	if condition == nil {
@@ -321,7 +323,7 @@ func cancelOfflineOperation(
 	}
 
 	storeID := state.GetStoreID()
-	if strings.TrimSpace(storeID) == "" {
+	if storeID == "" {
 		return task.Fail().With("store ID is empty")
 	}
 
