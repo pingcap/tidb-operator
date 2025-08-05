@@ -62,7 +62,7 @@ type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 	scaleInSelector Selector[R]
 	updateSelector  Selector[R]
 
-	enableTwoStepDeletion bool
+	enableTwoStepsDeletion bool
 }
 
 // chooseToUpdate selects an outdated instance for update operation.
@@ -92,13 +92,10 @@ func (act *actor[T, O, R]) chooseToScaleIn(s []R) (string, error) {
 func (act *actor[T, O, R]) ScaleOut(ctx context.Context) (_ action, err error) {
 	logger := logr.FromContextOrDiscard(ctx).WithName("Updater")
 
-	if act.enableTwoStepDeletion && act.beingOffline.Len() > 0 {
+	if act.enableTwoStepsDeletion && act.beingOffline.Len() > 0 {
 		// TODO: could implement more sophisticated selection logic)
 		logger.Info("try to cancel a offlining instance")
-		if err := act.cancelOneOfflining(ctx, act.beingOffline.List()[0]); err != nil {
-			return actionNone, err
-		}
-		return actionCancelOffline, nil
+		return act.cancelOneOfflining(ctx, act.beingOffline.List()[0])
 	}
 
 	obj := act.f.New()
@@ -118,30 +115,30 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) (_ action, err error) {
 }
 
 // cancelOneOfflining cancels offline operation for one beingOffline instance and moves it back to update state
-func (act *actor[T, O, R]) cancelOneOfflining(ctx context.Context, instance R) error {
+func (act *actor[T, O, R]) cancelOneOfflining(ctx context.Context, instance R) (_ action, err error) {
 	logger := logr.FromContextOrDiscard(ctx).WithName("Updater").WithValues("instance", instance.GetName())
 
 	// Check if instance is a StoreInstance and use StoreManager to cancel offline
 	if store, ok := runtime.Instance2Store(instance); ok {
 		if err := runtime.SetOffline(ctx, act.c, store, false); err != nil {
-			return fmt.Errorf("failed to cancel store offline: %w", err)
+			return actionNone, fmt.Errorf("failed to cancel store offline: %w", err)
 		}
 		// Move instance from offlining back to update state
 		act.beingOffline.Del(instance.GetName())
 		act.update.Add(instance)
 		logger.Info("instance offline operation canceled and restored to update state")
+		return actionCancelOffline, nil
 	}
 
-	return nil
+	return actionNone, nil
 }
 
 // ScaleInUpdate scales in an updated instance (already running the latest version).
 // This is used for cluster scaling down when the total number of instances exceeds the desired count.
 // It operates on the "update" state collection which contains instances with the current revision.
-// Returns whether the scaled-in instance was unavailable, and any error encountered.
 func (act *actor[T, O, R]) ScaleInUpdate(ctx context.Context) (_ action, unavailable bool, err error) {
-	if act.enableTwoStepDeletion {
-		return act.scaleInWithTwoStep(ctx, act.update)
+	if act.enableTwoStepsDeletion {
+		return act.scaleInWithTwoSteps(ctx, act.update)
 	}
 	return act.scaleInDirect(ctx, act.update)
 }
@@ -169,7 +166,7 @@ func (act *actor[T, O, R]) scaleInDirect(ctx context.Context, state State[R]) (_
 	return actionScaleInUpdate, isUnavailable, nil
 }
 
-func (act *actor[T, O, R]) scaleInWithTwoStep(ctx context.Context, state State[R]) (_ action, unavailable bool, err error) {
+func (act *actor[T, O, R]) scaleInWithTwoSteps(ctx context.Context, state State[R]) (_ action, unavailable bool, err error) {
 	logger := logr.FromContextOrDiscard(ctx).WithName("Updater")
 
 	if act.offlineCompleted.Len() > 0 {
@@ -218,8 +215,8 @@ func (act *actor[T, O, R]) scaleInWithTwoStep(ctx context.Context, state State[R
 // It operates on the "outdated" state collection which contains instances with older revisions.
 // Uses deferred deletion by default to ensure data safety during rolling updates.
 func (act *actor[T, O, R]) ScaleInOutdated(ctx context.Context) (_ action, unavailable bool, err error) {
-	if act.enableTwoStepDeletion {
-		return act.scaleInWithTwoStep(ctx, act.outdated)
+	if act.enableTwoStepsDeletion {
+		return act.scaleInWithTwoSteps(ctx, act.outdated)
 	}
 	return act.scaleInOutdated(ctx, true)
 }

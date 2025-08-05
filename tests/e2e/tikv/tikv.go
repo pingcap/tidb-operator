@@ -39,7 +39,7 @@ import (
 
 var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 	f := framework.New()
-	f.Setup()
+	f.Setup(framework.WithSkipClusterDeletionWhenFailed())
 
 	ginkgo.DescribeTableSubtree("Leader Eviction", label.P1,
 		func(tls bool) {
@@ -237,8 +237,8 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 			// Slow down the speed of data migration for testing
 			pdg := f.MustCreatePD(ctx, func(pdg *runtime.PDGroup) {
 				pdg.Spec.Template.Spec.Config = `[schedule]
-region-schedule-limit = 32
-replica-schedule-limit = 16
+region-schedule-limit = 16
+replica-schedule-limit = 8
 `
 			})
 			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](4))
@@ -263,6 +263,14 @@ replica-schedule-limit = 16
 
 			ginkgo.By("Verifying offline operations are cancelled")
 			waitForTiKVOfflineCondition(ctx, f, offliningKVs[0], v1alpha1.OfflineReasonCancelled, 5*time.Minute, false)
+
+			ginkgo.By("check if it's evicting leaders")
+			tikvGet := &v1alpha1.TiKV{}
+			gomega.Expect(f.Client.Get(ctx, client.ObjectKeyFromObject(offliningKVs[0]), tikvGet)).To(gomega.Succeed())
+			cond := meta.FindStatusCondition(tikvGet.Status.Conditions, v1alpha1.TiKVCondLeadersEvicted)
+			gomega.Expect(cond).NotTo(gomega.BeNil(), "LeadersEvicted condition should exist")
+			gomega.Expect(cond.Status).Should(gomega.Equal(metav1.ConditionFalse))
+			time.Sleep(10 * time.Second)
 
 			ginkgo.By("Verifying TiKVGroup stabilizes at 4 replicas")
 			f.WaitForTiKVGroupReady(ctx, kvg)

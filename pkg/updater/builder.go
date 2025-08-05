@@ -89,7 +89,7 @@ func (b *builder[T, O, R]) Build() Executor {
 		updateSelector:  NewSelector(updatePolicies...),
 
 		// Two-step deletion support using type-safe StoreManager interface
-		enableTwoStepDeletion: b.enableTwoStepDeletion,
+		enableTwoStepsDeletion: b.enableTwoStepDeletion,
 	}
 	return NewExecutor(actor, len(update), len(outdated), len(beingOffline), len(offlineCompleted), b.desired,
 		countUnavailable(update), countUnavailable(outdated), b.maxSurge, b.maxUnavailable)

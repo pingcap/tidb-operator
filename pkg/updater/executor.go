@@ -101,16 +101,17 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 		"desired", ex.desired, "offlining", ex.beingOffline, "offlined", ex.offlineCompleted)
 	for ex.update != ex.desired || ex.outdated != 0 || ex.beingOffline != 0 || ex.offlineCompleted != 0 {
 		actual := ex.update + ex.outdated
+		onlineActual := actual - ex.beingOffline - ex.offlineCompleted
 		available := actual - ex.unavailableUpdate - ex.unavailableOutdated
 		maximum := ex.desired + min(ex.maxSurge, ex.outdated)
 		minimum := ex.desired - ex.maxUnavailable
 		logger.Info("loop",
 			"update", ex.update, "outdated", ex.outdated, "desired", ex.desired,
-			"offlining", ex.beingOffline, "offlined", ex.offlineCompleted,
+			"offlining", ex.beingOffline, "offlined", ex.offlineCompleted, "onlineActual", onlineActual,
 			"unavailableUpdate", ex.unavailableUpdate, "unavailableOutdated", ex.unavailableOutdated,
 			"actual", actual, "available", available, "maximum", maximum, "minimum", minimum)
 		switch {
-		case actual < maximum:
+		case actual < maximum || onlineActual < maximum:
 			logger.Info("scale out")
 			act, err := ex.act.ScaleOut(ctx)
 			if err != nil {
@@ -124,6 +125,7 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 				// ScaleOut canceled an offlining operation instead of creating new instance
 				// The offlining instance was already counted in update, just reduce offlining count
 				ex.beingOffline -= 1
+				ex.unavailableUpdate -= 1
 			}
 
 		case actual == maximum && ex.beingOffline == 0 && ex.offlineCompleted == 0:

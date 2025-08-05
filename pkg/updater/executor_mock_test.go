@@ -27,12 +27,13 @@ import (
 type MockActor struct {
 	Actions []action
 
-	scaleOutReturnsError   bool
-	updateReturnsError     bool
-	scaleInUpdateError     bool
-	scaleInOutdatedError   bool
-	cleanupReturnsError    bool
-	cancelOffliningSuccess bool
+	scaleOutReturnsError     bool
+	updateReturnsError       bool
+	scaleInUpdateError       bool
+	scaleInOutdatedError     bool
+	cleanupReturnsError      bool
+	scaleInWithTwoStepsError bool
+	cancelOffliningSuccess   bool
 
 	online           int
 	beingOffline     int
@@ -47,15 +48,14 @@ func (m *MockActor) ScaleOut(_ context.Context) (act action, err error) {
 	if m.scaleOutReturnsError {
 		return act, assert.AnError
 	}
-
 	if m.beingOffline > 0 && m.cancelOffliningSuccess {
 		act = actionCancelOffline
 		m.beingOffline--
+		m.online++
 		return act, nil
 	} else {
 		act = actionScaleOut
 	}
-
 	return act, nil
 }
 
@@ -67,15 +67,12 @@ func (m *MockActor) Update(_ context.Context) error {
 	return nil
 }
 
-func (m *MockActor) ScaleInUpdate(_ context.Context) (act action, unavailable bool, err error) {
-	act = actionNone
-	defer func() {
-		m.Actions = append(m.Actions, act)
-	}()
-	if m.scaleInUpdateError {
+func (m *MockActor) scaleInWithTwoSteps(_ context.Context) (act action, unavailable bool, _ error) {
+	if m.scaleInWithTwoStepsError {
 		return act, false, assert.AnError
 	}
 
+	act = actionNone
 	if m.offlineCompleted > 0 {
 		m.offlineCompleted--
 		return actionDeleteOffline, true, nil
@@ -93,7 +90,18 @@ func (m *MockActor) ScaleInUpdate(_ context.Context) (act action, unavailable bo
 	return act, false, nil
 }
 
-func (m *MockActor) ScaleInOutdated(_ context.Context) (act action, unavailable bool, err error) {
+func (m *MockActor) ScaleInUpdate(ctx context.Context) (act action, unavailable bool, err error) {
+	act = actionNone
+	defer func() {
+		m.Actions = append(m.Actions, act)
+	}()
+	if m.scaleInUpdateError {
+		return act, false, assert.AnError
+	}
+	return m.scaleInWithTwoSteps(ctx)
+}
+
+func (m *MockActor) ScaleInOutdated(ctx context.Context) (act action, unavailable bool, err error) {
 	act = actionNone
 	defer func() {
 		m.Actions = append(m.Actions, act)
@@ -101,23 +109,7 @@ func (m *MockActor) ScaleInOutdated(_ context.Context) (act action, unavailable 
 	if m.scaleInOutdatedError {
 		return actionNone, false, assert.AnError
 	}
-
-	if m.offlineCompleted > 0 {
-		act = actionDeleteOffline
-		m.offlineCompleted--
-		return act, true, nil
-	}
-	if m.beingOffline > 0 {
-		return act, false, nil
-	}
-	if m.online > 0 {
-		act = actionSetOffline
-		m.beingOffline++
-		m.online--
-		return act, false, nil
-	}
-
-	return act, false, nil
+	return m.scaleInWithTwoSteps(ctx)
 }
 
 func (m *MockActor) Cleanup(_ context.Context) error {
@@ -269,6 +261,63 @@ func TestExecutorWithMock(t *testing.T) {
 				actionNone,
 			},
 			expectedWait: true,
+		},
+		{
+			name:                   "when scale in from 3 to 1, cancel it by increasing the replicas to 3",
+			desired:                3,
+			update:                 3, // when offlining, it's still update
+			unavailableUpdate:      2,
+			beingOffline:           2,
+			cancelOffliningSuccess: true,
+			expectedActions: []action{
+				actionCancelOffline,
+				actionCancelOffline,
+				actionCleanup,
+			},
+			expectedWait: false,
+		},
+		{
+			name:                   "when scale in from 3 to 1, cancel it, one is being offline and the other is offline completed",
+			desired:                3,
+			update:                 3, // when offlining, it's still update
+			unavailableUpdate:      2,
+			beingOffline:           1,
+			offlineCompleted:       1,
+			cancelOffliningSuccess: true,
+			expectedActions: []action{
+				actionCancelOffline,
+				actionScaleOut,
+				actionDeleteOffline,
+			},
+			expectedWait: true,
+		},
+		{
+			name:                   "when scale in from 3 to 1, cancel it partially by increasing the replicas to 2(1)",
+			desired:                2,
+			update:                 3, // when offlining, it's still update
+			unavailableUpdate:      2,
+			beingOffline:           2,
+			cancelOffliningSuccess: true,
+			expectedActions: []action{
+				actionCancelOffline,
+				actionNone,
+			},
+			expectedWait: true,
+		},
+		{
+			name:                   "when scale in from 3 to 1, cancel it partially by increasing the replicas to 2(2)",
+			desired:                2,
+			update:                 3, // when offlining, it's still update
+			unavailableUpdate:      2,
+			beingOffline:           1,
+			offlineCompleted:       1,
+			cancelOffliningSuccess: true,
+			expectedActions: []action{
+				actionCancelOffline,
+				actionDeleteOffline,
+				actionCleanup,
+			},
+			expectedWait: false,
 		},
 	}
 
