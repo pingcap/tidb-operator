@@ -61,4 +61,9 @@ const (
 	// It requires PD v8.5.2 or later.
 	UsePDReadyAPI      Feature      = "UsePDReadyAPI"
 	UsePDReadyAPIStage FeatureStage = FeatureStageAlpha
+
+	// AlwaysSetTiProxyRelatedConfig means tidb operator will always set some tiproxy related configs for tidb,
+	// regardless of whether tiproxy is enabled.
+	AlwaysSetTiProxyRelatedConfig      Feature      = "AlwaysSetTiProxyRelatedConfig"
+	AlwaysSetTiProxyRelatedConfigStage FeatureStage = FeatureStageAlpha
 )
