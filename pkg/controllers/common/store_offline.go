@@ -138,14 +138,6 @@ func handleOfflineCancellation(
 	store runtime.StoreInstance,
 	hook StoreOfflineHook,
 ) task.Result {
-	if state.StoreNotExists() {
-		updateOfflineCondition(state, store, newOfflineCondition(
-			v1alpha1.OfflineReasonCompleted,
-			"Store does not exist, offline operation completed",
-			metav1.ConditionTrue,
-		))
-		return task.Complete().With("store does not exist, offline operation completed")
-	}
 	condition := runtime.GetOfflineCondition(store)
 	// If no offline condition exists, nothing to cancel
 	if condition == nil {
@@ -325,6 +317,15 @@ func cancelOfflineOperation(
 	logger := logr.FromContextOrDiscard(ctx).WithValues("instance", store.GetName())
 	if state.GetPDClient() == nil {
 		return task.Fail().With("pd client is not registered")
+	}
+
+	if state.StoreNotExists() {
+		updateOfflineCondition(state, store, newOfflineCondition(
+			v1alpha1.OfflineReasonCompleted,
+			"Store does not exist, offline operation completed",
+			metav1.ConditionTrue,
+		))
+		return task.Complete().With("store does not exist, offline operation completed")
 	}
 
 	storeID := state.GetStoreID()

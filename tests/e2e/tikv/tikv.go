@@ -39,7 +39,7 @@ import (
 
 var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 	f := framework.New()
-	f.Setup(framework.WithSkipClusterDeletionWhenFailed())
+	f.Setup()
 
 	ginkgo.DescribeTableSubtree("Leader Eviction", label.P1,
 		func(tls bool) {
