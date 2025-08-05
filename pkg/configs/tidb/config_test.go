@@ -23,6 +23,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/features"
 )
 
 func TestValidate(t *testing.T) {
@@ -110,7 +112,7 @@ func TestOverlay(t *testing.T) {
 	}
 
 	cfg := &Config{}
-	err := cfg.Overlay(cluster, tidb)
+	err := cfg.Overlay(cluster, tidb, features.NewFromFeatures(nil))
 	require.NoError(t, err)
 	assert.Equal(t, "tikv", cfg.Store)
 	assert.Equal(t, "basic-tidb-0.basic-tidb-peer.ns1.svc", cfg.AdvertiseAddress)
@@ -139,7 +141,14 @@ func TestOverlay(t *testing.T) {
 		},
 	}
 	cfg2 := &Config{}
-	err = cfg2.Overlay(cluster, tidb2)
+	err = cfg2.Overlay(cluster, tidb2, features.NewFromFeatures(nil))
 	require.NoError(t, err)
 	assert.Equal(t, "/var/log/tidb/slowlog", cfg2.Log.SlowQueryFile)
+
+	// `session-token-signing-key` and `session-token-signing-cert` should be set when the feature is enabled.
+	cfg3 := Config{}
+	err = cfg3.Overlay(cluster, tidb, features.NewFromFeatures([]metav1alpha1.Feature{metav1alpha1.AlwaysSetTiProxyRelatedConfig}))
+	require.NoError(t, err)
+	assert.Equal(t, cfg.Security.ClusterSSLCert, cfg3.Security.SessionTokenSigningCert)
+	assert.Equal(t, cfg.Security.ClusterSSLKey, cfg3.Security.SessionTokenSigningKey)
 }
