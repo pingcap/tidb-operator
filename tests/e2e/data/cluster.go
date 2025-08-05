@@ -83,3 +83,21 @@ func WithFeatureGates(featureGates ...metav1alpha1.Feature) ClusterPatch {
 		}
 	}
 }
+
+func WithClusterTLSAndTiProxyConfig() ClusterPatch {
+	return func(obj *v1alpha1.Cluster) {
+		obj.Spec.TLSCluster = &v1alpha1.TLSCluster{
+			Enabled: true,
+		}
+		// Add AlwaysSetTiProxyRelatedConfig feature gate
+		obj.Spec.FeatureGates = append(obj.Spec.FeatureGates, metav1alpha1.FeatureGate{
+			Name: metav1alpha1.AlwaysSetTiProxyRelatedConfig,
+		})
+		// Set SessionTokenSigningCert to use cluster TLS secret
+		obj.Spec.Security = &v1alpha1.ClusterSecurity{
+			SessionTokenSigningCert: corev1.LocalObjectReference{
+				Name: "dbg-tidb-cluster-secret", // Default TiDB cluster secret name
+			},
+		}
+	}
+}
