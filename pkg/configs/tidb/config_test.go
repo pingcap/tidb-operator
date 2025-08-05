@@ -127,6 +127,8 @@ func TestOverlay(t *testing.T) {
 	assert.Equal(t, "/var/lib/tidb-auth-token/tidb_auth_token_jwks.json", cfg.Security.AuthTokenJwks)
 	assert.Equal(t, "/var/log/tidb/slowlog", cfg.Log.SlowQueryFile)
 	assert.Equal(t, "/etc/tidb-bootstrap/bootstrap.sql", cfg.InitializeSQLFile)
+	assert.Empty(t, cfg.Security.SessionTokenSigningCert)
+	assert.Empty(t, cfg.Security.SessionTokenSigningKey)
 
 	// store slowlog in PVC
 	tidb2 := tidb.DeepCopy()
@@ -149,6 +151,6 @@ func TestOverlay(t *testing.T) {
 	cfg3 := Config{}
 	err = cfg3.Overlay(cluster, tidb, features.NewFromFeatures([]metav1alpha1.Feature{metav1alpha1.AlwaysSetTiProxyRelatedConfig}))
 	require.NoError(t, err)
-	assert.Equal(t, cfg.Security.ClusterSSLCert, cfg3.Security.SessionTokenSigningCert)
-	assert.Equal(t, cfg.Security.ClusterSSLKey, cfg3.Security.SessionTokenSigningKey)
+	assert.Equal(t, "/var/lib/tidb-session-token-signing-tls/tls.crt", cfg3.Security.SessionTokenSigningCert)
+	assert.Equal(t, "/var/lib/tidb-session-token-signing-tls/tls.key", cfg3.Security.SessionTokenSigningKey)
 }
