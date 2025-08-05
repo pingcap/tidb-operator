@@ -90,6 +90,7 @@ spec:
                       - VolumeAttributesClass
                       - DisablePDDefaultReadinessProbe
                       - UsePDReadyAPI
+                      - AlwaysSetTiProxyRelatedConfig
                       type: string
                   required:
                   - name
@@ -118,6 +119,29 @@ spec:
                 format: int32
                 minimum: 0
                 type: integer
+              security:
+                properties:
+                  sessionTokenSigningCert:
+                    description: |-
+                      SessionTokenSigningCert is the name of the K8s secret, where stores certificates for signing the TiDB session token.
+                      You can generate certificates and create a secret by: kubectl create secret generic <secret-name> --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key>
+                      To use TiProxy, you must set this field.
+                      See: https://docs.pingcap.com/tidb/stable/tidb-configuration-file/#session-token-signing-cert-new-in-v640
+                    properties:
+                      name:
+                        default: ""
+                        description: |-
+                          Name of the referent.
+                          This field is effectively required, but due to backwards compatibility is
+                          allowed to be empty. Instances of this type with an empty value here are
+                          almost certainly wrong.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                    type: object
+                    x-kubernetes-map-type: atomic
+                required:
+                - sessionTokenSigningCert
+                type: object
               suspendAction:
                 description: SuspendAction defines the suspend actions for the cluster.
                 properties:
@@ -269,6 +293,7 @@ spec:
                       - VolumeAttributesClass
                       - DisablePDDefaultReadinessProbe
                       - UsePDReadyAPI
+                      - AlwaysSetTiProxyRelatedConfig
                       type: string
                     stage:
                       type: string
