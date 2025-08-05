@@ -69,3 +69,10 @@ func AuthTokenJWKSSecretName(db *v1alpha1.TiDB) string {
 func IsSeparateSlowLogEnabled(db *v1alpha1.TiDB) bool {
 	return db.Spec.SlowLog != nil
 }
+
+func SessionTokenSigningCertSecretName(cluster *v1alpha1.Cluster) string {
+	if cluster.Spec.Security != nil {
+		return cluster.Spec.Security.SessionTokenSigningCert.Name
+	}
+	return ""
+}

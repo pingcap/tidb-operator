@@ -91,11 +91,11 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, fg feat
 		c.Security.ClusterSSLCA = path.Join(v1alpha1.DirPathClusterTLSTiDB, corev1.ServiceAccountRootCAKey)
 		c.Security.ClusterSSLCert = path.Join(v1alpha1.DirPathClusterTLSTiDB, corev1.TLSCertKey)
 		c.Security.ClusterSSLKey = path.Join(v1alpha1.DirPathClusterTLSTiDB, corev1.TLSPrivateKeyKey)
+	}
 
-		if fg.Enabled(metav1alpha1.AlwaysSetTiProxyRelatedConfig) {
-			c.Security.SessionTokenSigningKey = path.Join(v1alpha1.DirPathClusterTLSTiDB, corev1.TLSPrivateKeyKey)
-			c.Security.SessionTokenSigningCert = path.Join(v1alpha1.DirPathClusterTLSTiDB, corev1.TLSCertKey)
-		}
+	if fg.Enabled(metav1alpha1.AlwaysSetTiProxyRelatedConfig) {
+		c.Security.SessionTokenSigningKey = path.Join(v1alpha1.DirPathTiDBSessionTokenSigningTLS, corev1.TLSPrivateKeyKey)
+		c.Security.SessionTokenSigningCert = path.Join(v1alpha1.DirPathTiDBSessionTokenSigningTLS, corev1.TLSCertKey)
 	}
 
 	c.Log.SlowQueryFile = getSlowQueryFile(tidb)
