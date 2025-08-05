@@ -556,6 +556,39 @@ func TestPDClient_DeleteStore(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestPDClient_CancelDeleteStore(t *testing.T) {
+	tests := []struct {
+		name       string
+		statusCode int
+		expectErr  bool
+	}{
+		{"success", http.StatusOK, false},
+		{"not found", http.StatusNotFound, false},
+		{"error", http.StatusBadRequest, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "/pd/api/v1/store/1/state?state=Up", r.URL.RequestURI())
+				assert.Equal(t, http.MethodPost, r.Method)
+				w.WriteHeader(tt.statusCode)
+				_, err := w.Write([]byte(`{}`))
+				assert.NoError(t, err)
+			}))
+			defer server.Close()
+
+			client := NewPDClient(server.URL, time.Second, nil)
+			err := client.CancelDeleteStore(context.Background(), "1")
+			if tt.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestPDClient_DeleteMember(t *testing.T) {
 	// in DeleteMember, we call GetMembers first to get the member id
 	// so we need to mock GetMembers response
@@ -614,7 +647,7 @@ func TestPDClient_DeleteMemberByID(t *testing.T) {
 			w.Header().Set("Content-Type", "application/json")
 			_, err := w.Write([]byte(getMembersJSONStr))
 			assert.NoError(t, err)
-		case "/pd/api/v1/member/1428427862495950874":
+		case "/pd/api/v1/members/id/1428427862495950874":
 			assert.Equal(t, http.MethodDelete, r.Method)
 			w.Header().Set("Content-Type", "application/json")
 			_, err := w.Write([]byte(`{}`))

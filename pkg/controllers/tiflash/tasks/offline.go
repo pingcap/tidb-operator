@@ -16,30 +16,17 @@ package tasks
 
 import (
 	"context"
-	"time"
 
-	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-const (
-	// removingWaitInterval is the interval to wait for store removal.
-	removingWaitInterval = 10 * time.Second
-)
-
+// TaskOfflineStore handles the two-step store deletion process based on spec.offline field.
+// This implements the state machine for offline operations: Pending -> Active -> Completed/Failed/Canceled.
 func TaskOfflineStore(state *ReconcileContext) task.Task {
-	return task.NameTaskFunc("OfflineStore", func(ctx context.Context) task.Result {
-		if state.Store == nil {
-			return task.Complete().With("store is not exists, no need to offline")
-		}
-
-		if state.PDClient == nil {
-			return task.Fail().With("pd client is not registered")
-		}
-		if err := state.PDClient.Underlay().DeleteStore(ctx, state.Store.ID); err != nil {
-			return task.Fail().With("cannot delete store %s: %w", state.Store.ID, err)
-		}
-		state.SetStoreState(v1alpha1.StoreStateRemoving)
-		return task.Retry(removingWaitInterval).With("the store is removing")
+	return task.NameTaskFunc("OfflineTiFlashStore", func(ctx context.Context) task.Result {
+		tiflash := state.Instance()
+		tiflash.Spec.Offline = true
+		return common.TaskOfflineStoreStateMachine(ctx, state, tiflash, "tiflash", &common.DummyStoreOfflineHook{})
 	})
 }

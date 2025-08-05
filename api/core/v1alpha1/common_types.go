@@ -60,6 +60,24 @@ const (
 	ReasonPodNotDeleted  = "PodNotDeleted"
 )
 
+const (
+	// StoreOfflineConditionType represents the condition of the store offline process.
+	StoreOfflineConditionType = "Offlining"
+)
+
+const (
+	// OfflineReasonPending means the offline operation is requested but not yet started.
+	OfflineReasonPending = "Pending"
+	// OfflineReasonActive means the store is being offlined.
+	OfflineReasonActive = "Active"
+	// OfflineReasonCompleted means the store has been successfully offlined and removed from PD.
+	OfflineReasonCompleted = "Completed"
+	// OfflineReasonFailed means the offline operation failed.
+	OfflineReasonFailed = "Failed"
+	// OfflineReasonCancelled means the offline operation was cancelled.
+	OfflineReasonCancelled = "Cancelled"
+)
+
 // TODO(liubo02): move to meta
 const (
 	// KeyPrefix defines key prefix of well known labels and annotations
@@ -324,6 +342,19 @@ type CommonStatus struct {
 	CollisionCount *int32 `json:"collisionCount,omitempty"`
 }
 
+// OfflineRetryStatus tracks the retry information for store offline operations.
+type OfflineRetryStatus struct {
+	// Count is the current retry count for the offline operation.
+	Count int `json:"count,omitempty"`
+
+	// FirstFailureTime records when the first failure occurred.
+	// This helps in determining the total time spent retrying.
+	FirstFailureTime *metav1.Time `json:"firstFailureTime,omitempty"`
+
+	// LastRetryTime records when the last retry attempt was made.
+	LastRetryTime *metav1.Time `json:"lastRetryTime,omitempty"`
+}
+
 // StoreStatus defines the common status fields for all stores.
 type StoreStatus struct {
 	// ID is the store id.
@@ -331,6 +362,9 @@ type StoreStatus struct {
 
 	// State is the store state.
 	State string `json:"state,omitempty"`
+
+	// OfflineRetry tracks retry information for offline operations.
+	OfflineRetry *OfflineRetryStatus `json:"offlineRetry,omitempty"`
 }
 
 // GroupStatus defines the common status fields for all component groups.

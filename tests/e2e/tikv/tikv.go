@@ -95,7 +95,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 		workload := f.SetupWorkload()
 
 		ginkgo.It("should recreate pod when deleted during graceful store removal", func(ctx context.Context) {
-			pdg := f.MustCreatePD(ctx)
+			pdg := f.MustCreatePD(ctx, data.WithSlowDataMigration())
 			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](4))
 			dbg := f.MustCreateTiDB(ctx)
 
@@ -103,8 +103,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
 			// Make sure each TiKV store has enough leaders and regions,
-			// otherwise the scale-in operation will be too fast.
-			workload.MustImportData(ctx, data.DefaultTiDBServiceName, data.DefaultTiDBServicePort, "root", "", "", 500)
+			workload.MustImportData(ctx, data.DefaultTiDBServiceName, data.DefaultTiDBServicePort, "root", "", "", 200)
 
 			ginkgo.By("Initiating scale in from 4 to 3 replicas")
 			patch := client.MergeFrom(kvg.DeepCopy())

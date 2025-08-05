@@ -93,23 +93,6 @@ func syncSuspendCond(tikv *v1alpha1.TiKV) bool {
 	})
 }
 
-func TaskStoreStatus(state *ReconcileContext) task.Task {
-	return task.NameTaskFunc("StoreStatus", func(ctx context.Context) task.Result {
-		needUpdate := state.IsStatusChanged()
-		tikv := state.TiKV()
-		if state.Store != nil {
-			needUpdate = compare.SetIfChanged(&tikv.Status.ID, state.Store.ID) || needUpdate
-		}
-		needUpdate = compare.SetIfChanged(&tikv.Status.State, state.GetStoreState()) || needUpdate
-		if needUpdate {
-			state.SetStatusChanged()
-			return task.Complete().With("store state is changed")
-		}
-
-		return task.Complete().With("store state is not changed")
-	})
-}
-
 // Status of this condition can only transfer as the below
 func syncLeadersEvictedCond(tikv *v1alpha1.TiKV, store *pdv1.Store, isEvicting bool) bool {
 	status := metav1.ConditionFalse

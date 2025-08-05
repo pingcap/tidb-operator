@@ -164,6 +164,15 @@ func (in *TiFlash) Version() string {
 	return in.Spec.Version
 }
 
+// Store interface implementation
+func (in *TiFlash) IsOffline() bool {
+	return in.Spec.Offline
+}
+
+func (in *TiFlash) SetOffline(offline bool) {
+	in.Spec.Offline = offline
+}
+
 type (
 	TiFlashGroup v1alpha1.TiFlashGroup
 )

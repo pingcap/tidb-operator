@@ -26,6 +26,9 @@ spec:
     - jsonPath: .status.state
       name: StoreState
       type: string
+    - jsonPath: .spec.offline
+      name: Offline
+      type: boolean
     - jsonPath: .status.conditions[?(@.type=="Synced")].status
       name: Synced
       type: string
@@ -94,6 +97,12 @@ spec:
                   If tag is omitted, version will be used as the image tag.
                   Default is pingcap/tikv
                 type: string
+              offline:
+                description: |-
+                  Offline marks the store as offline in PD to begin data migration.
+                  When true, the store will be marked as offline in PD.
+                  When false, the store will be marked as online in PD (if possible).
+                type: boolean
               overlay:
                 description: |-
                   Overlay defines a k8s native resource template patch
@@ -8567,6 +8576,25 @@ spec:
                   It's used to determine whether the controller has reconciled the latest spec.
                 format: int64
                 type: integer
+              offlineRetry:
+                description: OfflineRetry tracks retry information for offline operations.
+                properties:
+                  count:
+                    description: Count is the current retry count for the offline
+                      operation.
+                    type: integer
+                  firstFailureTime:
+                    description: |-
+                      FirstFailureTime records when the first failure occurred.
+                      This helps in determining the total time spent retrying.
+                    format: date-time
+                    type: string
+                  lastRetryTime:
+                    description: LastRetryTime records when the last retry attempt
+                      was made.
+                    format: date-time
+                    type: string
+                type: object
               state:
                 description: State is the store state.
                 type: string
