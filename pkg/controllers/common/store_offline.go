@@ -139,7 +139,12 @@ func handleOfflineCancellation(
 	hook StoreOfflineHook,
 ) task.Result {
 	if state.StoreNotExists() {
-		return handleActiveState(ctx, state, store, hook)
+		updateOfflineCondition(state, store, newOfflineCondition(
+			v1alpha1.OfflineReasonCompleted,
+			"Store does not exist, offline operation completed",
+			metav1.ConditionTrue,
+		))
+		return task.Complete().With("store does not exist, offline operation completed")
 	}
 	condition := runtime.GetOfflineCondition(store)
 	// If no offline condition exists, nothing to cancel

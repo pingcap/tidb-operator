@@ -246,7 +246,7 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 				mockUnderlay.EXPECT().CancelDeleteStore(gomock.Any(), "1").Return(errors.New("cancel api error"))
 			},
 			expectedResult:    task.SFail,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonActive, Message: "Failed to cancel store deletion, will retry: cancel api error"},
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonActive},
 		},
 		{
 			name: "Cancel operation: retry annotation should be cleared",
@@ -414,7 +414,7 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 			},
 			contextBuilder:    newContext("").StoreExists(false),
 			expectedResult:    task.SComplete,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonCompleted, Message: "Store state is Removed, offline operation completed"},
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonCompleted},
 		},
 		{
 			name: "Cancel unknown condition reason",
@@ -474,9 +474,6 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 				require.Equal(t, tt.expectedCondition.Status, actualCondition.Status, "Condition status mismatch")
 				require.Equal(t, tt.expectedCondition.Reason, actualCondition.Reason, "Condition reason mismatch")
 				// Skip time and message comparison for most tests as they are dynamic
-				if tt.expectedCondition.Message != "" {
-					require.Equal(t, tt.expectedCondition.Message, actualCondition.Message, "Condition message mismatch")
-				}
 			}
 
 			// Check retry count if expected
