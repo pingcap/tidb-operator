@@ -2082,6 +2082,8 @@ type AzblobStorageProvider struct {
 	SasToken string `json:"sasToken,omitempty"`
 	// Prefix of the data path.
 	Prefix string `json:"prefix,omitempty"`
+	// Endpoint of azblob compatible storage service
+	Endpoint string `json:"endpoint,omitempty"`
 }
 
 // BackupType represents the backup type.

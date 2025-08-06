@@ -499,6 +499,13 @@ func schema_pkg_apis_pingcap_v1alpha1_AzblobStorageProvider(ref common.Reference
 							Format:      "",
 						},
 					},
+					"endpoint": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Endpoint of azblob compatible storage service",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},

@@ -3295,6 +3295,17 @@ string
 <p>Prefix of the data path.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>endpoint</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Endpoint of azblob compatible storage service</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="brconfig">BRConfig</h3>
