@@ -50,6 +50,8 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 			return task.Wait().With("store info is not synced, just wait for next sync")
 		}
 
+		state.PDSynced = true
+
 		s, err := c.Stores().Get(coreutil.TiKVAdvertiseClientURLs(state.TiKV()))
 		if err != nil {
 			if !errors.IsNotFound(err) {
@@ -58,7 +60,6 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 			return task.Complete().With("store does not exist")
 		}
 
-		state.PDSynced = true
 		state.Store = s
 		state.SetStoreState(string(s.NodeState))
 		state.SetLeaderCount(s.LeaderCount)
