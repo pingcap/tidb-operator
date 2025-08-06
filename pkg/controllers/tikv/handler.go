@@ -72,6 +72,33 @@ func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Obje
 				})
 			}
 		},
+		DeleteFunc: func(ctx context.Context, event event.TypedDeleteEvent[client.Object],
+			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
+		) {
+			obj := event.Object.(*v1alpha1.Cluster)
+
+			r.Logger.Info("enqueue all tikvs because of the cluster is deleting", "ns", obj.Namespace, "cluster", obj.Name)
+
+			var kvl v1alpha1.TiKVList
+			if err := r.Client.List(ctx, &kvl, client.MatchingLabels{
+				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+				v1alpha1.LabelKeyCluster:   obj.Name,
+				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKV,
+			}, client.InNamespace(obj.Namespace)); err != nil {
+				r.Logger.Error(err, "cannot list all tikv instances", "ns", obj.Namespace, "cluster", obj.Name)
+				return
+			}
+
+			for i := range kvl.Items {
+				tikv := &kvl.Items[i]
+				queue.Add(reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      tikv.Name,
+						Namespace: tikv.Namespace,
+					},
+				})
+			}
+		},
 	}
 }
 
