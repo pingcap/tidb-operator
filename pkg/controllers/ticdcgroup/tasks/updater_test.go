@@ -73,17 +73,8 @@ func TestTaskUpdater(t *testing.T) {
 					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
 				},
 			},
-			objs: []client.Object{
-				fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
-					obj.Spec.Replicas = ptr.To[int32](1)
-					obj.Spec.Cluster.Name = "cluster"
-					obj.Spec.Template.Spec.Version = "v8.1.0"
-					obj.Status.Version = "v8.0.0"
-					return obj
-				}),
-			},
-
-			expectedStatus: task.SRetry,
+			expectedTiCDCNum: 1,
+			expectedStatus:   task.SWait,
 		},
 		{
 			desc: "1 updated ticdc with 1 replicas",
