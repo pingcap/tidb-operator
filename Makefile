@@ -38,55 +38,32 @@ build/%:
 .PHONY: image
 image: $(addprefix image/,$(ALL_CMD))
 image/%:
+ifeq ($(DEV_MODE),true)
+	@echo "Building dev image for $*..."
+	@$(MAKE) dev-prepare-output
+	@if [ ! -f "$(BIN_DIR)/$*" ]; then \
+		echo "Binary $(BIN_DIR)/$* not found, building..."; \
+		$(ROOT)/hack/build.sh $*; \
+	fi
+	$(ROOT)/hack/image.sh $* --dockerfile=Dockerfile.dev --dockerignore=.dockerignore.dev
+else
 	$(ROOT)/hack/image.sh $*
+endif
 
 .PHONY: push
 push: $(addprefix push/,$(ALL_CMD))
 push/%:
+ifeq ($(DEV_MODE),true)
+	@echo "Building and pushing dev image for $*..."
+	@$(MAKE) dev-prepare-output
+	@if [ ! -f "$(BIN_DIR)/$*" ]; then \
+		echo "Binary $(BIN_DIR)/$* not found, building..."; \
+		$(ROOT)/hack/build.sh $*; \
+	fi
+	$(ROOT)/hack/image.sh $* --dockerfile=Dockerfile.dev --dockerignore=.dockerignore.dev --push
+else
 	$(ROOT)/hack/image.sh $* --push
-
-# Development build targets for faster iteration
-.PHONY: dev-image
-dev-image: $(addprefix dev-image/,$(ALL_CMD))
-
-# Force rebuild development images (always execute, ignore file timestamps)
-define dev-image-template
-.PHONY: dev-image-$(1)
-dev-image-$(1):
-	@echo "Building dev image for $(1)..."
-	@$(MAKE) dev-prepare-output
-	@if [ ! -f "$(BIN_DIR)/$(1)" ]; then \
-		echo "Binary $(BIN_DIR)/$(1) not found, building..."; \
-		$(ROOT)/hack/build.sh $(1); \
-	fi
-	$(ROOT)/hack/image.sh $(1) --dockerfile=Dockerfile.dev --dockerignore=.dockerignore.dev
-
-.PHONY: dev-image/$(1)
-dev-image/$(1): dev-image-$(1)
-endef
-
-$(foreach cmd,$(ALL_CMD),$(eval $(call dev-image-template,$(cmd))))
-
-.PHONY: dev-push
-dev-push: $(addprefix dev-push/,$(ALL_CMD))
-
-# Force rebuild and push development images 
-define dev-push-template
-.PHONY: dev-push-$(1)
-dev-push-$(1):
-	@echo "Building and pushing dev image for $(1)..."
-	@$(MAKE) dev-prepare-output
-	@if [ ! -f "$(BIN_DIR)/$(1)" ]; then \
-		echo "Binary $(BIN_DIR)/$(1) not found, building..."; \
-		$(ROOT)/hack/build.sh $(1); \
-	fi
-	$(ROOT)/hack/image.sh $(1) --dockerfile=Dockerfile.dev --dockerignore=.dockerignore.dev --push
-
-.PHONY: dev-push/$(1)
-dev-push/$(1): dev-push-$(1)
-endef
-
-$(foreach cmd,$(ALL_CMD),$(eval $(call dev-push-template,$(cmd))))
+endif
 
 # Ensure _output directory is a real directory with binaries, not a symlink
 .PHONY: dev-prepare-output
