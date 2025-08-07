@@ -50,11 +50,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			tasks.TaskEndEvictLeader(state),
 			tasks.TaskFinalizerDel(state, r.Client),
 		),
-		// if instance is deleting and store is not removed
-		task.If(common.CondObjectIsDeleting[scope.TiKV](state),
-			tasks.TaskOfflineStore(state),
-		),
 
+		tasks.TaskOfflineStore(state),
 		common.TaskFinalizerAdd[scope.TiKV](state, r.Client),
 		// get pod and check whether the cluster is suspending
 		common.TaskContextPod[scope.TiKV](state, r.Client),
@@ -87,7 +84,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 func ObjectIsDeletingAndStoreIsRemoved(state *tasks.ReconcileContext) task.Condition {
 	return task.CondFunc(func() bool {
-		return !state.Object().GetDeletionTimestamp().IsZero() &&
+		return !state.Object().GetDeletionTimestamp().IsZero() && state.PDSynced &&
 			(state.GetStoreState() == v1alpha1.StoreStateRemoved || state.Store == nil)
 	})
 }
