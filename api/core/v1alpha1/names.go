@@ -44,6 +44,8 @@ const (
 	VolumeNameTiProxyHTTPTLS = meta.NamePrefix + "tiproxy-http-tls"
 	// VolumeNameTiProxyTiDBTLS is the volume name for the TLS secret used by TLS communication between TiProxy and TiDB server.
 	VolumeNameTiProxyTiDBTLS = meta.NamePrefix + "tiproxy-tidb-tls"
+
+	VolumeNameTiDBSessionTokenSigningTLS = meta.NamePrefix + "session-token-signing-tls"
 )
 
 // All container names
@@ -116,6 +118,8 @@ const (
 	DirPathTiProxyHTTPTLS = "/var/lib/tiproxy-http-tls"
 	// DirPathTiProxyTiDBTLS is the dir path of tls file for tiproxy and tidb
 	DirPathTiProxyTiDBTLS = "/var/lib/tiproxy-tidb-tls"
+
+	DirPathTiDBSessionTokenSigningTLS = "/var/lib/tidb-session-token-signing-tls"
 )
 
 // All file names

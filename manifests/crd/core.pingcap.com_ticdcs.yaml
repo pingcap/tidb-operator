@@ -81,6 +81,7 @@ spec:
                   - VolumeAttributesClass
                   - DisablePDDefaultReadinessProbe
                   - UsePDReadyAPI
+                  - AlwaysSetTiProxyRelatedConfig
                   type: string
                 type: array
               image:

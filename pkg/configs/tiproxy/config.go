@@ -52,7 +52,7 @@ type Security struct {
 	ClusterTLS TLSConfig `toml:"cluster-tls,omitempty"`
 	// SQLTLS is used to access TiDB SQL port.
 	SQLTLS TLSConfig `toml:"sql-tls,omitempty"`
-	// RequireBackendTLS determines whether requires TLS between TiProxy and TiDB servers.
+	// RequireBackendTLS determines whether it requires TLS between TiProxy and TiDB servers.
 	// If the TiDB server does not support TLS, clients will report an error when connecting to TiProxy.
 	RequireBackendTLS bool `toml:"require-backend-tls,omitempty"`
 }
@@ -73,10 +73,10 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) e
 		return err
 	}
 
-	c.Proxy.Address = fmt.Sprintf("0.0.0.0:%d", coreutil.TiProxyClientPort(tiproxy))
+	c.Proxy.Address = fmt.Sprintf("[::]:%d", coreutil.TiProxyClientPort(tiproxy))
 	c.Proxy.AdvertiseAddress = getAdvertiseAddress(tiproxy)
 	c.Proxy.PDAddress = stringutil.RemoveHTTPPrefix(cluster.Status.PD)
-	c.API.Address = fmt.Sprintf("0.0.0.0:%d", coreutil.TiProxyAPIPort(tiproxy))
+	c.API.Address = fmt.Sprintf("[::]:%d", coreutil.TiProxyAPIPort(tiproxy))
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
 		c.Security.ClusterTLS.CA = path.Join(v1alpha1.DirPathClusterTLSTiProxy, corev1.ServiceAccountRootCAKey)

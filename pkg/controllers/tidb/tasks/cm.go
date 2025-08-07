@@ -36,7 +36,7 @@ func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 		if err := decoder.Decode([]byte(state.TiDB().Spec.Config), &cfg); err != nil {
 			return task.Fail().With("tidb config cannot be decoded: %w", err)
 		}
-		if err := cfg.Overlay(state.Cluster(), state.TiDB()); err != nil {
+		if err := cfg.Overlay(state.Cluster(), state.TiDB(), state.FeatureGates()); err != nil {
 			return task.Fail().With("cannot generate tidb config: %w", err)
 		}
 

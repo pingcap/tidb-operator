@@ -18,7 +18,7 @@ package v1alpha1
 // NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
 // NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
 //
-// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI
+// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;AlwaysSetTiProxyRelatedConfig
 // +enum
 type Feature string
 
@@ -61,4 +61,9 @@ const (
 	// It requires PD v8.5.2 or later.
 	UsePDReadyAPI      Feature      = "UsePDReadyAPI"
 	UsePDReadyAPIStage FeatureStage = FeatureStageAlpha
+
+	// AlwaysSetTiProxyRelatedConfig means tidb operator will always set some tiproxy related configs for tidb,
+	// regardless of whether tiproxy is enabled.
+	AlwaysSetTiProxyRelatedConfig      Feature      = "AlwaysSetTiProxyRelatedConfig"
+	AlwaysSetTiProxyRelatedConfigStage FeatureStage = FeatureStageAlpha
 )

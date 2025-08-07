@@ -17,6 +17,7 @@ package tidb
 import (
 	"context"
 	"fmt"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
@@ -300,7 +301,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 	})
 
 	ginkgo.Context("TLS", label.P0, label.FeatureTLS, func() {
-		f.SetupCluster(data.WithClusterTLS())
+		f.SetupCluster(data.WithClusterTLS(), data.WithFeatureGates(metav1alpha1.FeatureModification))
 		workload := f.SetupWorkload()
 
 		ginkgo.It("should enable TLS for MySQL Client and between TiDB components", func(ctx context.Context) {
@@ -383,6 +384,90 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
 
 			workload.MustPing(ctx, data.DefaultTiDBServiceName, data.DefaultTiDBServicePort, "root", "", dbg.Name+"-tidb-client-secret")
+		})
+
+		ginkgo.It("should mount session token signing cert when AlwaysSetTiProxyRelatedConfig is enabled", func(ctx context.Context) {
+			ns := f.Namespace.Name
+			tcName := f.Cluster.Name
+			ginkgo.By("Installing the certificates")
+			f.Must(cert.InstallTiDBIssuer(ctx, f.Client, ns, tcName))
+			f.Must(cert.InstallTiDBCertificates(ctx, f.Client, ns, tcName, "dbg"))
+			f.Must(cert.InstallTiDBComponentsCertificates(ctx, f.Client, ns, tcName, "pdg", "kvg", "dbg", "fg", "cg", "pg"))
+
+			ginkgo.By("Creating cluster with TLS and AlwaysSetTiProxyRelatedConfig feature gate")
+			cluster := f.Cluster.DeepCopy()
+			data.WithClusterTLSAndTiProxyConfig()(cluster)
+			f.Must(f.Client.Update(ctx, cluster))
+
+			ginkgo.By("Creating the components with TLS client enabled")
+			pdg := f.MustCreatePD(ctx)
+			kvg := f.MustCreateTiKV(ctx)
+			dbg := f.MustCreateTiDB(ctx, data.WithTLS())
+			f.WaitForPDGroupReady(ctx, pdg)
+			f.WaitForTiKVGroupReady(ctx, kvg)
+			f.WaitForTiDBGroupReady(ctx, dbg)
+
+			ginkgo.By("Checking TiDB pods have session token signing cert volume mounted")
+			podList := &corev1.PodList{}
+			f.Must(f.Client.List(ctx, podList, client.InNamespace(ns), client.MatchingLabels(map[string]string{
+				v1alpha1.LabelKeyCluster: tcName,
+				v1alpha1.LabelKeyGroup:   dbg.Name,
+			})))
+
+			gomega.Expect(len(podList.Items)).To(gomega.BeNumerically(">", 0))
+			for _, pod := range podList.Items {
+				gomega.Expect(pod.Status.Phase).To(gomega.Equal(corev1.PodRunning))
+
+				// Check for session token signing cert volume
+				var volumeFound bool
+				var foundSecretName string
+				for _, vol := range pod.Spec.Volumes {
+					if vol.Name == v1alpha1.VolumeNameTiDBSessionTokenSigningTLS {
+						volumeFound = true
+						if vol.VolumeSource.Secret != nil {
+							foundSecretName = vol.VolumeSource.Secret.SecretName
+						}
+						break
+					}
+				}
+				gomega.Expect(volumeFound).To(gomega.BeTrue(), "Expected to find session token signing cert volume")
+				gomega.Expect(foundSecretName).To(gomega.Equal("dbg-tidb-cluster-secret"), "Expected volume to reference correct secret")
+
+				// Check for session token signing cert volume mount
+				var mountFound bool
+				var foundMountPath string
+				for _, mount := range pod.Spec.Containers[0].VolumeMounts {
+					if mount.Name == v1alpha1.VolumeNameTiDBSessionTokenSigningTLS {
+						mountFound = true
+						foundMountPath = mount.MountPath
+						break
+					}
+				}
+				gomega.Expect(mountFound).To(gomega.BeTrue(), "Expected to find session token signing cert volume mount")
+				gomega.Expect(foundMountPath).To(gomega.Equal(v1alpha1.DirPathTiDBSessionTokenSigningTLS), "Expected volume mount path to be correct")
+			}
+
+			ginkgo.By("Checking TiDB ConfigMap contains session token signing configuration")
+			configMapList := &corev1.ConfigMapList{}
+			f.Must(f.Client.List(ctx, configMapList, client.InNamespace(ns), client.MatchingLabels(map[string]string{
+				v1alpha1.LabelKeyCluster: tcName,
+				v1alpha1.LabelKeyGroup:   dbg.Name,
+			})))
+
+			gomega.Expect(len(configMapList.Items)).To(gomega.BeNumerically(">", 0))
+			for _, configMap := range configMapList.Items {
+				if configMap.Data == nil {
+					continue
+				}
+				configContent, exists := configMap.Data["config.toml"]
+				if !exists {
+					continue
+				}
+
+				// Check that session token signing configurations are present in the TiDB config
+				gomega.Expect(configContent).To(gomega.ContainSubstring("session-token-signing-key = '/var/lib/tidb-session-token-signing-tls/tls.key'"))
+				gomega.Expect(configContent).To(gomega.ContainSubstring("session-token-signing-cert = '/var/lib/tidb-session-token-signing-tls/tls.crt'"))
+			}
 		})
 	})
 })
