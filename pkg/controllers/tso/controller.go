@@ -62,6 +62,7 @@ func Setup(
 		Owns(&corev1.Pod{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&corev1.PersistentVolumeClaim{}).
+		Watches(&v1alpha1.Cluster{}, r.ClusterEventHandler()).
 		WatchesRawSource(pdcm.Source(&pdv1.TSOMember{}, r.TSOMemberEventHandler())).
 		WithOptions(controller.Options{RateLimiter: k8s.RateLimiter}).
 		Complete(r)

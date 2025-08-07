@@ -31,7 +31,7 @@ import (
 func TaskStoreLabels(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("StoreLabels", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
-		if !state.IsStoreUp() || state.IsPodTerminating() || state.Pod() == nil {
+		if !state.PDSynced || !state.IsStoreUp() || state.IsPodTerminating() || state.Pod() == nil {
 			return task.Complete().With("skip sync store labels as the store is not serving")
 		}
 

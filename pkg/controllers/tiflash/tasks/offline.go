@@ -29,13 +29,16 @@ const (
 
 func TaskOfflineStore(state *ReconcileContext) task.Task {
 	return task.NameTaskFunc("OfflineStore", func(ctx context.Context) task.Result {
-		if state.Store == nil {
-			return task.Complete().With("store is not exists, no need to offline")
+		if !state.PDSynced {
+			return task.Wait().With("pd is not synced")
+		}
+		if state.Object().GetDeletionTimestamp().IsZero() {
+			return task.Complete().With("tikv is not deleting, no need to offline the store")
+		}
+		if !state.IsStoreUp() {
+			return task.Wait().With("store has been %s, no need to offline it", state.GetStoreState())
 		}
 
-		if state.PDClient == nil {
-			return task.Fail().With("pd client is not registered")
-		}
 		if err := state.PDClient.Underlay().DeleteStore(ctx, state.Store.ID); err != nil {
 			return task.Fail().With("cannot delete store %s: %w", state.Store.ID, err)
 		}
