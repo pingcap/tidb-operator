@@ -164,6 +164,15 @@ func (in *TiKV) Version() string {
 	return in.Spec.Version
 }
 
+// Store interface implementation
+func (in *TiKV) IsOffline() bool {
+	return in.Spec.Offline
+}
+
+func (in *TiKV) SetOffline(offline bool) {
+	in.Spec.Offline = offline
+}
+
 type (
 	TiKVGroup v1alpha1.TiKVGroup
 )
