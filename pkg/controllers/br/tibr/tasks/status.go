@@ -29,41 +29,9 @@ import (
 func TaskUpdateStatusIfNeeded(rtx *ReconcileContext) t.Task {
 	return t.NameTaskFunc("UpdateStatusIfNeeded", func(ctx context.Context) t.Result {
 		var conditions = &rtx.TiBR().Status.Conditions
-		readyStatusNeedUpdate := false
-		syncedStatusNeedUpdate := false
-
 		notReadyReasons := evaluateSyncedStatus(rtx)
-		if len(notReadyReasons) > 0 {
-			readyStatusNeedUpdate = meta.SetStatusCondition(conditions, metav1.Condition{
-				Type:    v1alpha1br.TiBRCondReady,
-				Status:  metav1.ConditionFalse,
-				Reason:  v1alpha1br.TiBRReasonNotReady,
-				Message: strings.Join(notReadyReasons, "; "),
-			})
-		} else {
-			readyStatusNeedUpdate = meta.SetStatusCondition(conditions, metav1.Condition{
-				Type:   v1alpha1br.TiBRCondReady,
-				Status: metav1.ConditionTrue,
-				Reason: v1alpha1br.TiBRReasonReady,
-			})
-		}
-
-		if len(rtx.unSyncedReasons) > 0 {
-			syncedStatusNeedUpdate = meta.SetStatusCondition(conditions, metav1.Condition{
-				Type:    v1alpha1br.TiBRCondSynced,
-				Status:  metav1.ConditionFalse,
-				Reason:  v1alpha1br.TiBRReasonUnSynced,
-				Message: strings.Join(rtx.unSyncedReasons, "; "),
-			})
-		} else {
-			syncedStatusNeedUpdate = meta.SetStatusCondition(conditions, metav1.Condition{
-				Type:   v1alpha1br.TiBRCondSynced,
-				Status: metav1.ConditionTrue,
-				Reason: v1alpha1br.TiBRReasonSynced,
-			})
-		}
-
-		if readyStatusNeedUpdate || syncedStatusNeedUpdate {
+		updated := doUpdateConditions(conditions, notReadyReasons, rtx.unSyncedReasons)
+		if updated {
 			if err := rtx.Client().Status().Update(ctx, rtx.TiBR()); err != nil {
 				return t.Fail().With("failed to update status: %s", err.Error())
 			} else {
