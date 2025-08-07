@@ -151,7 +151,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 		})
 
 		ginkgo.It("Evict leaders before deleting tikv", label.P1, label.Delete, func(ctx context.Context) {
-			pdg := f.MustCreatePD(ctx)
+			pdg := f.MustCreatePD(ctx, data.WithSlowDataMigration())
 			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](4))
 			dbg := f.MustCreateTiDB(ctx)
 
@@ -161,7 +161,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 
 			// Make sure each TiKV store has enough leaders and regions,
 			// otherwise the scale-in operation will be too fast.
-			workload.MustImportData(ctx, data.DefaultTiDBServiceName, data.DefaultTiDBServicePort, "root", "", "", 500)
+			workload.MustImportData(ctx, data.DefaultTiDBServiceName, data.DefaultTiDBServicePort, "root", "", "", 200)
 
 			nctx, cancel := context.WithCancel(ctx)
 			ch := make(chan struct{})
