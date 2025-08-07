@@ -27,6 +27,7 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -617,7 +618,32 @@ func newAzblobStorageUsingAAD(conf *azblobConfig, cred *azblobAADCred, azureOpti
 	ccc := auth.NewClientCredentialsConfig(cred.clientID, cred.clientSecret, cred.tenantID)
 
 	// Set the target resource to the Azure storage.
-	ccc.Resource = "https://storage.azure.com/"
+	if len(conf.endpoint) > 0 {
+		endpoint := strings.ToLower(conf.endpoint)
+
+		switch {
+		case strings.Contains(endpoint, "chinacloudapi.cn"):
+			ccc.AADEndpoint = azure.ChinaCloud.ActiveDirectoryEndpoint
+			ccc.Resource = azure.ChinaCloud.ResourceManagerEndpoint
+
+		case strings.Contains(endpoint, "usgovcloudapi.net"):
+			ccc.AADEndpoint = azure.USGovernmentCloud.ActiveDirectoryEndpoint
+			ccc.Resource = azure.USGovernmentCloud.ResourceManagerEndpoint
+
+		case strings.Contains(endpoint, "cloudapi.de"):
+			ccc.AADEndpoint = azure.GermanCloud.ActiveDirectoryEndpoint
+			ccc.Resource = azure.GermanCloud.ResourceManagerEndpoint
+
+		default:
+			// Unrecognized but user provided a custom endpoint.
+			ccc.AADEndpoint = azure.PublicCloud.ActiveDirectoryEndpoint
+			ccc.Resource = azure.PublicCloud.ResourceManagerEndpoint
+		}
+	} else {
+		// make it compatible with old behavior
+		ccc.Resource = "https://storage.azure.com/"
+	}
+
 	token, err := ccc.ServicePrincipalToken()
 	if err != nil {
 		return nil, err
