@@ -30,8 +30,7 @@ import (
 // +kubebuilder:selectablefield:JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Strategy",type=string,JSONPath=`.spec.gcStrategy.type`
-// +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
-// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+// +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // TiBRGC is the Schema for the tibrgc API. It allows users to set backup gc strategy and configure resources fo gc workloads.
@@ -55,8 +54,15 @@ type TiBRGCSpec struct {
 
 // TiBRGCStatus defines the observed state of TiBRGC.
 type TiBRGCStatus struct {
-	v1alpha1.CommonStatus `json:",inline"`
+	Phase TiBRGCPhase `json:"phase,omitempty"`
 }
+
+type TiBRGCPhase string
+
+const (
+	TiBRGCPhaseRunning   TiBRGCPhase = "Running"
+	TiBRGCPhaseSuspended TiBRGCPhase = "Suspended"
+)
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
@@ -94,6 +100,16 @@ type TieredStorageStrategy struct {
 	Name TieredStorageStrategyName `json:"name"`
 	// +kubebuilder:validation:Minimum=1
 	TimeThresholdDays uint32 `json:"timeThresholdDays"`
+	// Schedule is the schedule of the strategy in Cron format, see https://en.wikipedia.org/wiki/Cron.
+	Schedule string `json:"schedule,omitempty"`
+	// Resources defines resource requirements to run the strategy
+	Resources v1alpha1.ResourceRequirements `json:"resources,omitempty"`
+	// Volumes defines persistence data volume for the strategy if needed
+	// +listType=map
+	// +listMapKey=name
+	Volumes []v1alpha1.Volume `json:"volumes,omitempty"`
+	// Options defines extra options for the strategy
+	Options []string `json:"options,omitempty"`
 }
 
 type TiBRGCOverlay struct {

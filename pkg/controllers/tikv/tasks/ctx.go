@@ -33,7 +33,8 @@ type ReconcileContext struct {
 
 	LeaderEvicting bool
 
-	Store *pdv1.Store
+	Store    *pdv1.Store
+	PDSynced bool
 }
 
 // GetStoreID returns the store ID for PD operations
@@ -59,18 +60,20 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		ck := state.Cluster()
 		c, ok := cm.Get(timanager.PrimaryKey(ck.Namespace, ck.Name))
 		if !ok {
-			return task.Fail().With("pd client is not registered")
+			return task.Wait().With("pd client is not registered")
 		}
 		state.PDClient = c
 
 		if !c.HasSynced() {
-			return task.Fail().With("store info is not synced, just wait for next sync")
+			return task.Wait().With("store info is not synced, just wait for next sync")
 		}
+
+		state.PDSynced = true
 
 		s, err := c.Stores().Get(coreutil.TiKVAdvertiseClientURLs(state.TiKV()))
 		if err != nil {
 			if !errors.IsNotFound(err) {
-				return task.Fail().With("failed to get store info: %w", err)
+				return task.Fail().With("failed to get store info: %v", err)
 			}
 			return task.Complete().With("store does not exist")
 		}

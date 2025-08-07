@@ -72,6 +72,33 @@ func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Obje
 				})
 			}
 		},
+		DeleteFunc: func(ctx context.Context, event event.TypedDeleteEvent[client.Object],
+			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
+		) {
+			obj := event.Object.(*v1alpha1.Cluster)
+
+			r.Logger.Info("enqueue all tiflash instances because of the cluster is deleting", "ns", obj.Namespace, "cluster", obj.Name)
+
+			var fl v1alpha1.TiFlashList
+			if err := r.Client.List(ctx, &fl, client.MatchingLabels{
+				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+				v1alpha1.LabelKeyCluster:   obj.Name,
+				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiFlash,
+			}, client.InNamespace(obj.Namespace)); err != nil {
+				r.Logger.Error(err, "cannot list all tiflash instances", "ns", obj.Namespace, "cluster", obj.Name)
+				return
+			}
+
+			for i := range fl.Items {
+				f := &fl.Items[i]
+				queue.Add(reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      f.Name,
+						Namespace: f.Namespace,
+					},
+				})
+			}
+		},
 	}
 }
 

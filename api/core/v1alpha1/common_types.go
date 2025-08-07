@@ -95,6 +95,8 @@ const (
 	LabelKeyGroup = KeyPrefix + "group"
 	// LabelKeyInstance means the instance of the resource
 	LabelKeyInstance = KeyPrefix + "instance"
+	// LabelKeyName means the name of the resource
+	LabelKeyName = KeyPrefix + "name"
 
 	// LabelKeyPodSpecHash is the hash of the pod spec.
 	LabelKeyPodSpecHash = KeyPrefix + "pod-spec-hash"

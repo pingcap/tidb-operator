@@ -34,7 +34,13 @@ const (
 // This implements the state machine for offline operations: Pending -> Active -> Completed/Failed/Canceled.
 func TaskOfflineStore(state *ReconcileContext) task.Task {
 	return task.NameTaskFunc("OfflineTiKVStore", func(ctx context.Context) task.Result {
+		if !state.PDSynced {
+			return task.Wait().With("pd is not synced")
+		}
 		tikv := state.Instance()
+		if tikv.GetDeletionTimestamp().IsZero() {
+			return task.Complete().With("tikv is not deleting, no need to offline the store")
+		}
 		tikv.Spec.Offline = true
 		return common.TaskOfflineStoreStateMachine(ctx, state, tikv, "tikv", &evictLeaderHook{state})
 	})
@@ -63,8 +69,6 @@ func (h *evictLeaderHook) BeforeDeleteStore(ctx context.Context) (wait bool, err
 	// leaders evicted
 	case h.LeaderEvicting && leaderCnt == 0:
 		reason = "leaders have been all evicted"
-	//nolint:godox
-	// FIXME: leader eviction is triggered by `spec.offline: true`, so there will be no deletion timestamp
 	case !delTime.IsZero() && delTime.Add(defaultLeaderEvictTimeout).Before(time.Now()):
 		reason = "leader eviction timeout"
 	}
