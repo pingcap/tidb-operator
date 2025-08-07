@@ -29,10 +29,15 @@ const (
 
 func TaskOfflineStore(state *ReconcileContext) task.Task {
 	return task.NameTaskFunc("OfflineStore", func(ctx context.Context) task.Result {
-		if state.GetStoreState() == v1alpha1.StoreStateRemoving {
-			return task.Wait().With("the store is removing")
+		if !state.PDSynced {
+			return task.Wait().With("pd is not synced")
 		}
-
+		if state.Object().GetDeletionTimestamp().IsZero() {
+			return task.Complete().With("tikv is not deleting, no need to offline the store")
+		}
+		if !state.IsStoreUp() {
+			return task.Wait().With("store has been %s, no need to offline it", state.GetStoreState())
+		}
 		var reason string
 		delTime := state.Object().GetDeletionTimestamp()
 		switch {

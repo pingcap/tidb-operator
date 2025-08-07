@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tso
+package scheduler
 
 import (
 	"context"
@@ -26,8 +26,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/timanager"
-	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 )
 
 func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Object, reconcile.Request] {
@@ -48,22 +46,22 @@ func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Obje
 				return
 			}
 
-			var tl v1alpha1.TSOList
-			if err := r.Client.List(ctx, &tl, client.MatchingLabels{
+			var sl v1alpha1.SchedulerList
+			if err := r.Client.List(ctx, &sl, client.MatchingLabels{
 				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
 				v1alpha1.LabelKeyCluster:   newObj.Name,
-				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTSO,
+				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentScheduler,
 			}, client.InNamespace(newObj.Namespace)); err != nil {
-				r.Logger.Error(err, "cannot list all tso instances", "ns", newObj.Namespace, "cluster", newObj.Name)
+				r.Logger.Error(err, "cannot list all scheduler instances", "ns", newObj.Namespace, "cluster", newObj.Name)
 				return
 			}
 
-			for i := range tl.Items {
-				tso := &tl.Items[i]
+			for i := range sl.Items {
+				scheduler := &sl.Items[i]
 				queue.Add(reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name:      tso.Name,
-						Namespace: tso.Namespace,
+						Name:      scheduler.Name,
+						Namespace: scheduler.Namespace,
 					},
 				})
 			}
@@ -73,78 +71,27 @@ func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Obje
 		) {
 			obj := event.Object.(*v1alpha1.Cluster)
 
-			r.Logger.Info("enqueue all tso instances because of the cluster is deleting", "ns", obj.Namespace, "cluster", obj.Name)
+			r.Logger.Info("enqueue all scheduler instances because of the cluster is deleting", "ns", obj.Namespace, "cluster", obj.Name)
 
-			var tl v1alpha1.TSOList
-			if err := r.Client.List(ctx, &tl, client.MatchingLabels{
+			var sl v1alpha1.SchedulerList
+			if err := r.Client.List(ctx, &sl, client.MatchingLabels{
 				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
 				v1alpha1.LabelKeyCluster:   obj.Name,
-				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTSO,
+				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentScheduler,
 			}, client.InNamespace(obj.Namespace)); err != nil {
-				r.Logger.Error(err, "cannot list all tso instances", "ns", obj.Namespace, "cluster", obj.Name)
+				r.Logger.Error(err, "cannot list all scheduler instances", "ns", obj.Namespace, "cluster", obj.Name)
 				return
 			}
 
-			for i := range tl.Items {
-				tso := &tl.Items[i]
+			for i := range sl.Items {
+				scheduler := &sl.Items[i]
 				queue.Add(reconcile.Request{
 					NamespacedName: types.NamespacedName{
-						Name:      tso.Name,
-						Namespace: tso.Namespace,
+						Name:      scheduler.Name,
+						Namespace: scheduler.Namespace,
 					},
 				})
 			}
-		},
-	}
-}
-
-func (r *Reconciler) TSOMemberEventHandler() handler.TypedEventHandler[client.Object, reconcile.Request] {
-	return handler.TypedFuncs[client.Object, reconcile.Request]{
-		CreateFunc: func(ctx context.Context, event event.TypedCreateEvent[client.Object],
-			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
-		) {
-			m := event.Object.(*pdv1.TSOMember)
-			ns, cluster := timanager.SplitPrimaryKey(m.Namespace)
-
-			r.Logger.Info("add tso member", "namespace", ns, "cluster", cluster, "name", m.Name, "invalid", m.Invalid)
-
-			queue.Add(reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Namespace: ns,
-					Name:      m.Name,
-				},
-			})
-		},
-
-		UpdateFunc: func(ctx context.Context, event event.TypedUpdateEvent[client.Object],
-			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
-		) {
-			m := event.ObjectNew.(*pdv1.TSOMember)
-			ns, cluster := timanager.SplitPrimaryKey(m.Namespace)
-
-			r.Logger.Info("update tso member", "namespace", ns, "cluster", cluster, "name", m.Name, "invalid", m.Invalid)
-
-			queue.Add(reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Namespace: ns,
-					Name:      m.Name,
-				},
-			})
-		},
-		DeleteFunc: func(ctx context.Context, event event.TypedDeleteEvent[client.Object],
-			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
-		) {
-			m := event.Object.(*pdv1.TSOMember)
-			ns, cluster := timanager.SplitPrimaryKey(m.Namespace)
-
-			r.Logger.Info("delete tso member", "namespace", ns, "cluster", cluster, "name", m.Name)
-
-			queue.Add(reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Namespace: ns,
-					Name:      m.Name,
-				},
-			})
 		},
 	}
 }
