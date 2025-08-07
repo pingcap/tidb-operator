@@ -30,6 +30,9 @@ var unreloadable = map[meta.Feature][]meta.Component{
 	meta.DisablePDDefaultReadinessProbe: {
 		meta.ComponentPD,
 	},
+	meta.UsePDReadyAPI: {
+		meta.ComponentPD,
+	},
 }
 
 func Reloadable(c meta.Component, update, current []meta.Feature) bool {
