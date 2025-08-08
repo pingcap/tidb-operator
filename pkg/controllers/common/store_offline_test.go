@@ -42,7 +42,6 @@ func createMockStoreInstance(ctrl *gomock.Controller, offline bool, condition []
 	mockStore := runtime.NewMockStoreInstance(ctrl)
 	mockStore.EXPECT().GetName().Return("test").AnyTimes()
 	mockStore.EXPECT().IsOffline().Return(offline).AnyTimes()
-	mockStore.EXPECT().SetOffline(gomock.Any()).AnyTimes()
 
 	// Create mutable state for conditions
 	currentConditions := condition

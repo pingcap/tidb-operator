@@ -164,6 +164,11 @@ func (in *TSO) Version() string {
 	return in.Spec.Version
 }
 
+func (in *TSO) CanCancelDelete() bool {
+	// Non-store instances cannot cancel deletion once marked
+	return false
+}
+
 type (
 	TSOGroup v1alpha1.TSOGroup
 )

@@ -227,13 +227,20 @@ func (in *$.|pub$) Version() string {
 	// Generate Store interface methods for TiKV and TiFlash
 	if strings.EqualFold(t.Name.Name, "TiKV") || strings.EqualFold(t.Name.Name, "TiFlash") {
 		sw.Do(`
-// Store interface implementation
 func (in *$.|pub$) IsOffline() bool {
 	return in.Spec.Offline
 }
 
-func (in *$.|pub$) SetOffline(offline bool) {
-	in.Spec.Offline = offline
+func (in *$.|pub$) CanCancelDelete() bool {
+	return true
+}
+`, t)
+	} else {
+		// For non-store instances (PD, TiDB, TiCDC, etc.)
+		sw.Do(`
+func (in *$.|pub$) CanCancelDelete() bool {
+	// Non-store instances cannot cancel deletion once marked
+	return false
 }
 `, t)
 	}

@@ -164,6 +164,11 @@ func (in *TiDB) Version() string {
 	return in.Spec.Version
 }
 
+func (in *TiDB) CanCancelDelete() bool {
+	// Non-store instances cannot cancel deletion once marked
+	return false
+}
+
 type (
 	TiDBGroup v1alpha1.TiDBGroup
 )

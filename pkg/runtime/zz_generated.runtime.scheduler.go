@@ -164,6 +164,11 @@ func (in *Scheduler) Version() string {
 	return in.Spec.Version
 }
 
+func (in *Scheduler) CanCancelDelete() bool {
+	// Non-store instances cannot cancel deletion once marked
+	return false
+}
+
 type (
 	SchedulerGroup v1alpha1.SchedulerGroup
 )

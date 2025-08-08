@@ -164,6 +164,11 @@ func (in *TiProxy) Version() string {
 	return in.Spec.Version
 }
 
+func (in *TiProxy) CanCancelDelete() bool {
+	// Non-store instances cannot cancel deletion once marked
+	return false
+}
+
 type (
 	TiProxyGroup v1alpha1.TiProxyGroup
 )

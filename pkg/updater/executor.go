@@ -33,6 +33,7 @@ const (
 	actionCancelOffline
 	actionDeleteOffline
 	actionCleanup
+	actionScaleIn
 )
 
 type Actor interface {
@@ -43,6 +44,9 @@ type Actor interface {
 
 	// Cleanup deletes all instances marked as defer deletion
 	Cleanup(ctx context.Context) error
+	// RecordedActions returns all actions recorded by the actor.
+	// This is used for testing purposes to verify that the actor performed expected actions.
+	RecordedActions() []action
 }
 
 // Executor is an executor that updates the instances.
@@ -70,7 +74,6 @@ func NewExecutor(
 	update,
 	outdated,
 	beingOffline,
-	offlineCompleted,
 	desired,
 	unavailableUpdate,
 	unavailableOutdated,
@@ -81,7 +84,6 @@ func NewExecutor(
 		update:              update,
 		outdated:            outdated,
 		beingOffline:        beingOffline,
-		offlineCompleted:    offlineCompleted,
 		desired:             desired,
 		unavailableUpdate:   unavailableUpdate,
 		unavailableOutdated: unavailableOutdated,
@@ -98,37 +100,28 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 	logger := logr.FromContextOrDiscard(ctx).WithName("Updater")
 
 	logger.Info("before the loop", "update", ex.update, "outdated", ex.outdated,
-		"desired", ex.desired, "offlining", ex.beingOffline, "offlined", ex.offlineCompleted)
-	for ex.update != ex.desired || ex.outdated != 0 || ex.beingOffline != 0 || ex.offlineCompleted != 0 {
+		"desired", ex.desired, "offlining", ex.beingOffline)
+
+	for ex.update != ex.desired || ex.outdated != 0 {
 		actual := ex.update + ex.outdated
-		onlineActual := actual - ex.beingOffline - ex.offlineCompleted
 		available := actual - ex.unavailableUpdate - ex.unavailableOutdated
 		maximum := ex.desired + min(ex.maxSurge, ex.outdated)
 		minimum := ex.desired - ex.maxUnavailable
 		logger.Info("loop",
 			"update", ex.update, "outdated", ex.outdated, "desired", ex.desired,
-			"offlining", ex.beingOffline, "offlined", ex.offlineCompleted, "onlineActual", onlineActual,
-			"unavailableUpdate", ex.unavailableUpdate, "unavailableOutdated", ex.unavailableOutdated,
+			"offlining", ex.beingOffline, "unavailableUpdate", ex.unavailableUpdate, "unavailableOutdated", ex.unavailableOutdated,
 			"actual", actual, "available", available, "maximum", maximum, "minimum", minimum)
 		switch {
-		case actual < maximum || onlineActual < maximum:
+		case actual < maximum:
 			logger.Info("scale out")
-			act, err := ex.act.ScaleOut(ctx)
+			_, err := ex.act.ScaleOut(ctx)
 			if err != nil {
 				return false, err
 			}
-			switch act {
-			case actionScaleOut:
-				ex.update += 1
-				ex.unavailableUpdate += 1
-			case actionCancelOffline:
-				// ScaleOut canceled an offlining operation instead of creating new instance
-				// The offlining instance was already counted in update, just reduce offlining count
-				ex.beingOffline -= 1
-				ex.unavailableUpdate -= 1
-			}
+			ex.update += 1
+			ex.unavailableUpdate += 1
 
-		case actual == maximum && ex.beingOffline == 0 && ex.offlineCompleted == 0:
+		case actual == maximum:
 			if ex.update < ex.desired {
 				// update will always prefer unavailable one so available will not be changed if there are
 				// unavailable and outdated instances
@@ -190,7 +183,7 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 					ex.outdated -= 1
 				}
 			}
-		case actual > maximum || ex.beingOffline > 0 || ex.offlineCompleted > 0:
+		case actual > maximum:
 			// Scale in op may choose an available instance.
 			// Assume we always choose an unavailable one, we will scale once and wait until next reconcile
 			checkAvail := false
@@ -200,24 +193,21 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 				if err != nil {
 					return false, err
 				}
-				if act == actionNone {
+				switch act {
+				case actionNone:
 					// No operation performed, wait for next reconcile
 					return true, nil
+				case actionSetOffline:
+					ex.beingOffline++
 				}
+
 				if unavailable {
 					ex.update -= 1
 					ex.unavailableUpdate -= 1
-					if act == actionDeleteOffline {
-						ex.offlineCompleted -= 1
-					}
 				} else {
-					if act != actionSetOffline {
-						ex.update -= 1
-						available -= 1
-						checkAvail = true
-					} else {
-						ex.beingOffline++
-					}
+					available -= 1
+					checkAvail = true
+					ex.update -= 1
 				}
 			} else {
 				// ex.update + ex.outdated > ex.desired + min(ex.maxSurge, ex.outdated) and ex.update <= ex.desired
@@ -268,5 +258,6 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	return false, nil
+	// If there are instances being offline, we need to wait until they are all completed.
+	return ex.beingOffline > 0, nil
 }

@@ -35,7 +35,6 @@ type Builder[R runtime.Instance] interface {
 	WithUpdatePreferPolicy(ps ...PreferPolicy[R]) Builder[R]
 	// NoInPlaceUpdate if true, actor will use Scale in and Scale out to replace Update operation
 	WithNoInPaceUpdate(noUpdate bool) Builder[R]
-	WithTwoStepDeletion(enabled bool) Builder[R]
 	Build() Executor
 }
 
@@ -63,7 +62,7 @@ type builder[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct 
 }
 
 func (b *builder[T, O, R]) Build() Executor {
-	update, outdated, beingOffline, offlineCompleted, deleted := split(b.instances, b.rev)
+	update, outdated, beingOffline, deleted := split(b.instances, b.rev)
 
 	updatePolicies := b.updatePreferPolicies
 	updatePolicies = append(updatePolicies, PreferUnavailable[R]())
@@ -75,11 +74,10 @@ func (b *builder[T, O, R]) Build() Executor {
 
 		rev: b.rev,
 
-		update:           NewState(update),
-		outdated:         NewState(outdated),
-		beingOffline:     NewState(beingOffline),
-		offlineCompleted: NewState(offlineCompleted),
-		deleted:          NewState(deleted),
+		update:       NewState(update),
+		outdated:     NewState(outdated),
+		beingOffline: NewState(beingOffline),
+		deleted:      NewState(deleted),
 
 		addHooks:    b.addHooks,
 		updateHooks: append(b.updateHooks, KeepName[R](), KeepTopology[R]()),
@@ -87,21 +85,13 @@ func (b *builder[T, O, R]) Build() Executor {
 
 		scaleInSelector: NewSelector(b.scaleInPreferPolicies...),
 		updateSelector:  NewSelector(updatePolicies...),
-
-		// Two-step deletion support using type-safe StoreManager interface
-		enableTwoStepsDeletion: b.enableTwoStepDeletion,
 	}
-	return NewExecutor(actor, len(update), len(outdated), len(beingOffline), len(offlineCompleted), b.desired,
+	return NewExecutor(actor, len(update), len(outdated), len(beingOffline), b.desired,
 		countUnavailable(update), countUnavailable(outdated), b.maxSurge, b.maxUnavailable)
 }
 
 func New[T runtime.Tuple[O, R], O client.Object, R runtime.Instance]() Builder[R] {
 	return &builder[T, O, R]{}
-}
-
-func (b *builder[T, O, R]) WithTwoStepDeletion(enabled bool) Builder[R] {
-	b.enableTwoStepDeletion = enabled
-	return b
 }
 
 func (b *builder[T, O, R]) WithInstances(instances ...R) Builder[R] {
@@ -171,7 +161,7 @@ func (b *builder[T, O, R]) WithNoInPaceUpdate(noUpdate bool) Builder[R] {
 }
 
 // split splits instances into different states.
-func split[R runtime.Instance](all []R, rev string) (update, outdated, beingOffline, offlineCompleted, deleted []R) {
+func split[R runtime.Instance](all []R, rev string) (update, outdated, beingOffline, deleted []R) {
 	for _, instance := range all {
 		// if instance is deleting, just ignore it
 		// TODO(liubo02): make sure it's ok for PD
@@ -179,12 +169,17 @@ func split[R runtime.Instance](all []R, rev string) (update, outdated, beingOffl
 			continue
 		}
 
-		if storeInstance, ok := any(instance).(runtime.StoreInstance); ok && storeInstance.IsOffline() {
+		if storeInstance, ok := any(instance).(runtime.StoreInstance); ok {
 			offlineCond := runtime.GetOfflineCondition(storeInstance)
 			if offlineCond != nil && offlineCond.Reason == v1alpha1.OfflineReasonCompleted {
-				offlineCompleted = append(offlineCompleted, instance)
-			} else {
+				// In some cases, there might be an instance whose `spec.offline` is false,
+				// but has completed offline condition.
+				// We should consider it as offline completed.
+				deleted = append(deleted, instance)
+				continue
+			} else if storeInstance.IsOffline() {
 				beingOffline = append(beingOffline, instance)
+				continue
 			}
 		}
 
@@ -198,7 +193,7 @@ func split[R runtime.Instance](all []R, rev string) (update, outdated, beingOffl
 		}
 	}
 
-	return update, outdated, beingOffline, offlineCompleted, deleted
+	return update, outdated, beingOffline, deleted
 }
 
 func countUnavailable[R runtime.Instance](all []R) int {

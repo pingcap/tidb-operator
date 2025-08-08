@@ -44,6 +44,11 @@ type Instance interface {
 	SetCurrentRevision(rev string)
 
 	PodOverlay() *v1alpha1.PodOverlay
+
+	// CanCancelDelete indicates whether the deletion can be cancelled.
+	// For TiKV and TiFlash, it returns true because they will offline first and then delete.
+	// For other instances, it returns false because they will be deleted directly.
+	CanCancelDelete() bool
 }
 
 type InstanceT[T InstanceSet] interface {
@@ -65,7 +70,6 @@ type StoreInstance interface {
 	Instance
 
 	IsOffline() bool
-	SetOffline(bool)
 }
 
 func SetOfflineCondition(s StoreInstance, condition *metav1.Condition) {
@@ -99,6 +103,10 @@ func IsOfflineCompleted(s StoreInstance) bool {
 	return s.IsOffline() && cond != nil && cond.Reason == v1alpha1.OfflineReasonCompleted
 }
 
+func IsBeingOffline(s StoreInstance) bool {
+	return s.IsOffline() && !IsOfflineCompleted(s)
+}
+
 // Instance2Store converts an Instance to StoreInstance if it implements the StoreInstance interface.
 func Instance2Store(instance Instance) (StoreInstance, bool) {
 	storeInstance, ok := instance.(StoreInstance)
@@ -119,7 +127,11 @@ func toClientObject(store StoreInstance) client.Object {
 	}
 }
 
-func SetOffline(ctx context.Context, cli client.Client, store StoreInstance, offline bool) error {
+func SetOffline(ctx context.Context, cli client.Client, instance Instance, offline bool) error {
+	store, ok := instance.(StoreInstance)
+	if !ok {
+		return fmt.Errorf("instance %T does not implement StoreInstance interface", instance)
+	}
 	if offline == store.IsOffline() {
 		return nil
 	}

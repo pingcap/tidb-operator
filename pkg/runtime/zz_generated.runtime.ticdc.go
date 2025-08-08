@@ -164,6 +164,11 @@ func (in *TiCDC) Version() string {
 	return in.Spec.Version
 }
 
+func (in *TiCDC) CanCancelDelete() bool {
+	// Non-store instances cannot cancel deletion once marked
+	return false
+}
+
 type (
 	TiCDCGroup v1alpha1.TiCDCGroup
 )

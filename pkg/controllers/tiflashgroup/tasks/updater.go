@@ -83,8 +83,6 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(topoPolicy).
-			// Enable type-safe TwoStep deletion for graceful TiFlash store offline
-			WithTwoStepDeletion(true).
 			Build()
 
 		wait, err := builder.Do(ctx)

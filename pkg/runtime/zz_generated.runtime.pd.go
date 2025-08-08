@@ -164,6 +164,11 @@ func (in *PD) Version() string {
 	return in.Spec.Version
 }
 
+func (in *PD) CanCancelDelete() bool {
+	// Non-store instances cannot cancel deletion once marked
+	return false
+}
+
 type (
 	PDGroup v1alpha1.PDGroup
 )
