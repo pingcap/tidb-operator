@@ -17,9 +17,12 @@ package updater
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
@@ -100,4 +103,307 @@ func TestBuilderTwoStep(t *testing.T) {
 		// Should not panic and should compile
 		assert.NotNil(t, builder)
 	})
+}
+
+func TestSplit(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	tests := []struct {
+		name             string
+		instances        []runtime.Instance
+		revision         string
+		expectedUpdate   int
+		expectedOutdated int
+		expectedOffline  int
+		expectedDeleted  int
+	}{
+		// basic scenario tests
+		{
+			name:             "empty input",
+			instances:        []runtime.Instance{},
+			revision:         "v1",
+			expectedUpdate:   0,
+			expectedOutdated: 0,
+			expectedOffline:  0,
+			expectedDeleted:  0,
+		},
+		// standard instance classification tests
+		{
+			name: "standard classification - update",
+			instances: []runtime.Instance{
+				func() runtime.Instance {
+					mock := runtime.NewMockInstance(ctrl)
+					mock.EXPECT().GetDeletionTimestamp().Return(&metav1.Time{})
+					mock.EXPECT().GetUpdateRevision().Return("v1")
+					return mock
+				}(),
+			},
+			revision:         "v1",
+			expectedUpdate:   1,
+			expectedOutdated: 0,
+			expectedOffline:  0,
+			expectedDeleted:  0,
+		},
+		{
+			name: "standard classification - outdated",
+			instances: []runtime.Instance{
+				func() runtime.Instance {
+					mock := runtime.NewMockInstance(ctrl)
+					mock.EXPECT().GetDeletionTimestamp().Return(&metav1.Time{})
+					mock.EXPECT().GetUpdateRevision().Return("v0")
+					mock.EXPECT().GetAnnotations().Return(map[string]string{})
+					return mock
+				}(),
+			},
+			revision:         "v1",
+			expectedUpdate:   0,
+			expectedOutdated: 1,
+			expectedOffline:  0,
+			expectedDeleted:  0,
+		},
+		{
+			name: "standard classification - defer delete",
+			instances: []runtime.Instance{
+				func() runtime.Instance {
+					mock := runtime.NewMockInstance(ctrl)
+					mock.EXPECT().GetDeletionTimestamp().Return(&metav1.Time{})
+					mock.EXPECT().GetUpdateRevision().Return("v0")
+					mock.EXPECT().GetAnnotations().Return(map[string]string{
+						v1alpha1.AnnoKeyDeferDelete: "true",
+					})
+					return mock
+				}(),
+			},
+			revision:         "v1",
+			expectedUpdate:   0,
+			expectedOutdated: 0,
+			expectedOffline:  0,
+			expectedDeleted:  1,
+		},
+		// deletion status tests
+		{
+			name: "being deleted instance should be skipped",
+			instances: []runtime.Instance{
+				func() runtime.Instance {
+					mock := runtime.NewMockInstance(ctrl)
+					now := metav1.NewTime(time.Now())
+					mock.EXPECT().GetDeletionTimestamp().Return(&now)
+					return mock
+				}(),
+			},
+			revision:         "v1",
+			expectedUpdate:   0,
+			expectedOutdated: 0,
+			expectedOffline:  0,
+			expectedDeleted:  0,
+		},
+
+		// StoreInstance specific tests
+		{
+			name: "store instance - offline completed",
+			instances: []runtime.Instance{
+				func() runtime.Instance {
+					mock := runtime.NewMockStoreInstance(ctrl)
+					mock.EXPECT().GetDeletionTimestamp().Return(&metav1.Time{})
+					mock.EXPECT().Conditions().Return([]metav1.Condition{
+						{
+							Type:   v1alpha1.StoreOfflineConditionType,
+							Reason: v1alpha1.OfflineReasonCompleted,
+						},
+					})
+					return mock
+				}(),
+			},
+			revision:         "v1",
+			expectedUpdate:   0,
+			expectedOutdated: 0,
+			expectedOffline:  0,
+			expectedDeleted:  1,
+		},
+		{
+			name: "store instance - being offline",
+			instances: []runtime.Instance{
+				func() runtime.Instance {
+					mock := runtime.NewMockStoreInstance(ctrl)
+					mock.EXPECT().GetDeletionTimestamp().Return(&metav1.Time{})
+					mock.EXPECT().Conditions().Return([]metav1.Condition{})
+					mock.EXPECT().IsOffline().Return(true)
+					return mock
+				}(),
+			},
+			revision:         "v1",
+			expectedUpdate:   0,
+			expectedOutdated: 0,
+			expectedOffline:  1,
+			expectedDeleted:  0,
+		},
+		{
+			name: "store instance - normal update classification",
+			instances: []runtime.Instance{
+				func() runtime.Instance {
+					mock := runtime.NewMockStoreInstance(ctrl)
+					mock.EXPECT().GetDeletionTimestamp().Return(&metav1.Time{})
+					mock.EXPECT().Conditions().Return([]metav1.Condition{})
+					mock.EXPECT().IsOffline().Return(false)
+					mock.EXPECT().GetUpdateRevision().Return("v1")
+					return mock
+				}(),
+			},
+			revision:         "v1",
+			expectedUpdate:   1,
+			expectedOutdated: 0,
+			expectedOffline:  0,
+			expectedDeleted:  0,
+		},
+
+		{
+			name: "store instance - normal outdated classification",
+			instances: []runtime.Instance{
+				func() runtime.Instance {
+					mock := runtime.NewMockStoreInstance(ctrl)
+					mock.EXPECT().GetDeletionTimestamp().Return(&metav1.Time{})
+					mock.EXPECT().Conditions().Return([]metav1.Condition{})
+					mock.EXPECT().IsOffline().Return(false)
+					mock.EXPECT().GetUpdateRevision().Return("v0")
+					mock.EXPECT().GetAnnotations().Return(map[string]string{})
+					return mock
+				}(),
+			},
+			revision:         "v1",
+			expectedUpdate:   0,
+			expectedOutdated: 1,
+			expectedOffline:  0,
+			expectedDeleted:  0,
+		},
+
+		{
+			name: "store instance - normal defer delete classification",
+			instances: []runtime.Instance{
+				func() runtime.Instance {
+					mock := runtime.NewMockStoreInstance(ctrl)
+					mock.EXPECT().GetDeletionTimestamp().Return(&metav1.Time{})
+					mock.EXPECT().Conditions().Return([]metav1.Condition{})
+					mock.EXPECT().IsOffline().Return(false)
+					mock.EXPECT().GetUpdateRevision().Return("v0")
+					mock.EXPECT().GetAnnotations().Return(map[string]string{
+						v1alpha1.AnnoKeyDeferDelete: "true",
+					})
+					return mock
+				}(),
+			},
+			revision:         "v1",
+			expectedUpdate:   0,
+			expectedOutdated: 0,
+			expectedOffline:  0,
+			expectedDeleted:  1,
+		},
+		// more edge case tests
+		{
+			name: "store instance - offline condition exists but not completed",
+			instances: []runtime.Instance{
+				func() runtime.Instance {
+					mock := runtime.NewMockStoreInstance(ctrl)
+					mock.EXPECT().GetDeletionTimestamp().Return(&metav1.Time{})
+					mock.EXPECT().Conditions().Return([]metav1.Condition{
+						{
+							Type:   v1alpha1.StoreOfflineConditionType,
+							Reason: v1alpha1.OfflineReasonFailed, // not Completed
+						},
+					})
+					mock.EXPECT().IsOffline().Return(true)
+					return mock
+				}(),
+			},
+			revision:         "v1",
+			expectedUpdate:   0,
+			expectedOutdated: 0,
+			expectedOffline:  1,
+			expectedDeleted:  0,
+		},
+		{
+			name: "store instance - offline completed with spec.offline=false",
+			instances: []runtime.Instance{
+				func() runtime.Instance {
+					mock := runtime.NewMockStoreInstance(ctrl)
+					mock.EXPECT().GetDeletionTimestamp().Return(&metav1.Time{})
+					mock.EXPECT().Conditions().Return([]metav1.Condition{
+						{
+							Type:   v1alpha1.StoreOfflineConditionType,
+							Reason: v1alpha1.OfflineReasonCompleted,
+						},
+					})
+					// Note: this tests the case mentioned in comment - spec.offline=false but has completed condition
+					return mock
+				}(),
+			},
+			revision:         "v1",
+			expectedUpdate:   0,
+			expectedOutdated: 0,
+			expectedOffline:  0,
+			expectedDeleted:  1,
+		},
+		// mixed scenario tests
+		{
+			name: "mixed instances",
+			instances: []runtime.Instance{
+				// Update instance
+				func() runtime.Instance {
+					mock := runtime.NewMockInstance(ctrl)
+					mock.EXPECT().GetDeletionTimestamp().Return(&metav1.Time{})
+					mock.EXPECT().GetUpdateRevision().Return("v1")
+					return mock
+				}(),
+				// Outdated instance
+				func() runtime.Instance {
+					mock := runtime.NewMockInstance(ctrl)
+					mock.EXPECT().GetDeletionTimestamp().Return(&metav1.Time{})
+					mock.EXPECT().GetUpdateRevision().Return("v0")
+					mock.EXPECT().GetAnnotations().Return(map[string]string{})
+					return mock
+				}(),
+				// Being offline store instance
+				func() runtime.Instance {
+					mock := runtime.NewMockStoreInstance(ctrl)
+					mock.EXPECT().GetDeletionTimestamp().Return(&metav1.Time{})
+					mock.EXPECT().Conditions().Return([]metav1.Condition{})
+					mock.EXPECT().IsOffline().Return(true)
+					return mock
+				}(),
+				// Defer delete instance
+				func() runtime.Instance {
+					mock := runtime.NewMockInstance(ctrl)
+					mock.EXPECT().GetDeletionTimestamp().Return(&metav1.Time{})
+					mock.EXPECT().GetUpdateRevision().Return("v0")
+					mock.EXPECT().GetAnnotations().Return(map[string]string{
+						v1alpha1.AnnoKeyDeferDelete: "true",
+					})
+					return mock
+				}(),
+				// Being deleted instance (should be skipped)
+				func() runtime.Instance {
+					mock := runtime.NewMockInstance(ctrl)
+					now := metav1.NewTime(time.Now())
+					mock.EXPECT().GetDeletionTimestamp().Return(&now)
+					return mock
+				}(),
+			},
+			revision:         "v1",
+			expectedUpdate:   1,
+			expectedOutdated: 1,
+			expectedOffline:  1,
+			expectedDeleted:  1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			update, outdated, beingOffline, deleted := split(tt.instances, tt.revision)
+
+			assert.Equal(t, tt.expectedUpdate, len(update), "update count mismatch")
+			assert.Equal(t, tt.expectedOutdated, len(outdated), "outdated count mismatch")
+			assert.Equal(t, tt.expectedOffline, len(beingOffline), "beingOffline count mismatch")
+			assert.Equal(t, tt.expectedDeleted, len(deleted), "deleted count mismatch")
+		})
+	}
 }

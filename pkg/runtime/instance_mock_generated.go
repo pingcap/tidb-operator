@@ -53,6 +53,20 @@ func (m *MockInstance) EXPECT() *MockInstanceMockRecorder {
 	return m.recorder
 }
 
+// CanCancelDelete mocks base method.
+func (m *MockInstance) CanCancelDelete() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CanCancelDelete")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// CanCancelDelete indicates an expected call of CanCancelDelete.
+func (mr *MockInstanceMockRecorder) CanCancelDelete() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CanCancelDelete", reflect.TypeOf((*MockInstance)(nil).CanCancelDelete))
+}
+
 // Cluster mocks base method.
 func (m *MockInstance) Cluster() string {
 	m.ctrl.T.Helper()
@@ -707,6 +721,20 @@ func (m *MockStoreInstance) EXPECT() *MockStoreInstanceMockRecorder {
 	return m.recorder
 }
 
+// CanCancelDelete mocks base method.
+func (m *MockStoreInstance) CanCancelDelete() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CanCancelDelete")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// CanCancelDelete indicates an expected call of CanCancelDelete.
+func (mr *MockStoreInstanceMockRecorder) CanCancelDelete() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CanCancelDelete", reflect.TypeOf((*MockStoreInstance)(nil).CanCancelDelete))
+}
+
 // Cluster mocks base method.
 func (m *MockStoreInstance) Cluster() string {
 	m.ctrl.T.Helper()
@@ -1263,18 +1291,6 @@ func (m *MockStoreInstance) SetObservedGeneration(arg0 int64) {
 func (mr *MockStoreInstanceMockRecorder) SetObservedGeneration(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetObservedGeneration", reflect.TypeOf((*MockStoreInstance)(nil).SetObservedGeneration), arg0)
-}
-
-// SetOffline mocks base method.
-func (m *MockStoreInstance) SetOffline(arg0 bool) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetOffline", arg0)
-}
-
-// SetOffline indicates an expected call of SetOffline.
-func (mr *MockStoreInstanceMockRecorder) SetOffline(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetOffline", reflect.TypeOf((*MockStoreInstance)(nil).SetOffline), arg0)
 }
 
 // SetOwnerReferences mocks base method.

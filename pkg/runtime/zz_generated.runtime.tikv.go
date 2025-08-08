@@ -173,6 +173,36 @@ func (in *TiKV) SetOffline(offline bool) {
 	in.Spec.Offline = offline
 }
 
+// Two-step deletion methods for StoreInstance
+func (in *TiKV) IsOfflineCompleted() bool {
+	return IsOfflineCompleted(in)
+}
+
+func (in *TiKV) IsBeingOffline() bool {
+	return IsBeingOffline(in)
+}
+
+// Deletion methods for Store instances (TiKV/TiFlash)
+func (in *TiKV) IsDeleting() bool {
+	return in.Spec.Offline || !in.GetDeletionTimestamp().IsZero()
+}
+
+func (in *TiKV) CanCancelDelete() bool {
+	return true
+}
+
+func (in *TiKV) CancelDelete() error {
+	// This is a stub - actual implementation will be in actor
+	panic("CancelDelete should be implemented in actor")
+}
+
+func (in *TiKV) Delete() error {
+	// This is a stub - actual implementation will be in actor
+	panic("Delete should be implemented in actor")
+}
+
+var _ StoreInstance = &TiKV{}
+
 type (
 	TiKVGroup v1alpha1.TiKVGroup
 )

@@ -164,6 +164,26 @@ func (in *PD) Version() string {
 	return in.Spec.Version
 }
 
+// Deletion methods for non-Store instances
+func (in *PD) IsDeleting() bool {
+	return !in.GetDeletionTimestamp().IsZero()
+}
+
+func (in *PD) CanCancelDelete() bool {
+	// Non-store instances cannot cancel deletion once marked
+	return false
+}
+
+func (in *PD) CancelDelete() error {
+	// This is a stub - actual implementation will be in actor
+	panic("CancelDelete should be implemented in actor")
+}
+
+func (in *PD) Delete() error {
+	// This is a stub - actual implementation will be in actor
+	panic("Delete should be implemented in actor")
+}
+
 type (
 	PDGroup v1alpha1.PDGroup
 )

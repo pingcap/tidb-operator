@@ -164,6 +164,26 @@ func (in *TiDB) Version() string {
 	return in.Spec.Version
 }
 
+// Deletion methods for non-Store instances
+func (in *TiDB) IsDeleting() bool {
+	return !in.GetDeletionTimestamp().IsZero()
+}
+
+func (in *TiDB) CanCancelDelete() bool {
+	// Non-store instances cannot cancel deletion once marked
+	return false
+}
+
+func (in *TiDB) CancelDelete() error {
+	// This is a stub - actual implementation will be in actor
+	panic("CancelDelete should be implemented in actor")
+}
+
+func (in *TiDB) Delete() error {
+	// This is a stub - actual implementation will be in actor
+	panic("Delete should be implemented in actor")
+}
+
 type (
 	TiDBGroup v1alpha1.TiDBGroup
 )

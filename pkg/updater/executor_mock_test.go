@@ -120,6 +120,10 @@ func (m *MockActor) Cleanup(_ context.Context) error {
 	return nil
 }
 
+func (m *MockActor) RecordedActions() []action {
+	return m.Actions
+}
+
 func TestExecutorWithMock(t *testing.T) {
 	tests := []struct {
 		name                string
@@ -335,7 +339,7 @@ func TestExecutorWithMock(t *testing.T) {
 				cleanupReturnsError:    tt.cleanupReturnsError,
 			}
 
-			e := NewExecutor(act, tt.update, tt.outdated, tt.beingOffline, tt.offlineCompleted, tt.desired,
+			e := NewExecutor(act, tt.update, tt.outdated, tt.beingOffline, tt.desired,
 				tt.unavailableUpdate, tt.unavailableOutdated, 0, 1)
 
 			wait, err := e.Do(context.TODO())

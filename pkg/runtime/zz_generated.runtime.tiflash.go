@@ -173,6 +173,36 @@ func (in *TiFlash) SetOffline(offline bool) {
 	in.Spec.Offline = offline
 }
 
+// Two-step deletion methods for StoreInstance
+func (in *TiFlash) IsOfflineCompleted() bool {
+	return IsOfflineCompleted(in)
+}
+
+func (in *TiFlash) IsBeingOffline() bool {
+	return IsBeingOffline(in)
+}
+
+// Deletion methods for Store instances (TiKV/TiFlash)
+func (in *TiFlash) IsDeleting() bool {
+	return in.Spec.Offline || !in.GetDeletionTimestamp().IsZero()
+}
+
+func (in *TiFlash) CanCancelDelete() bool {
+	return true
+}
+
+func (in *TiFlash) CancelDelete() error {
+	// This is a stub - actual implementation will be in actor
+	panic("CancelDelete should be implemented in actor")
+}
+
+func (in *TiFlash) Delete() error {
+	// This is a stub - actual implementation will be in actor
+	panic("Delete should be implemented in actor")
+}
+
+var _ StoreInstance = &TiFlash{}
+
 type (
 	TiFlashGroup v1alpha1.TiFlashGroup
 )

@@ -235,6 +235,59 @@ func (in *$.|pub$) IsOffline() bool {
 func (in *$.|pub$) SetOffline(offline bool) {
 	in.Spec.Offline = offline
 }
+
+// Two-step deletion methods for StoreInstance
+func (in *$.|pub$) IsOfflineCompleted() bool {
+	return IsOfflineCompleted(in)
+}
+
+func (in *$.|pub$) IsBeingOffline() bool {
+	return IsBeingOffline(in)
+}
+
+// Deletion methods for Store instances (TiKV/TiFlash)
+func (in *$.|pub$) IsDeleting() bool {
+	return in.Spec.Offline || !in.GetDeletionTimestamp().IsZero()
+}
+
+func (in *$.|pub$) CanCancelDelete() bool {
+	return true
+}
+
+func (in *$.|pub$) CancelDelete() error {
+	// This is a stub - actual implementation will be in actor
+	panic("CancelDelete should be implemented in actor")
+}
+
+func (in *$.|pub$) Delete() error {
+	// This is a stub - actual implementation will be in actor
+	panic("Delete should be implemented in actor")
+}
+
+var _ StoreInstance = &$.|pub${}
+`, t)
+	} else {
+		// For non-store instances (PD, TiDB, TiCDC, etc.)
+		sw.Do(`
+// Deletion methods for non-Store instances
+func (in *$.|pub$) IsDeleting() bool {
+	return !in.GetDeletionTimestamp().IsZero()
+}
+
+func (in *$.|pub$) CanCancelDelete() bool {
+	// Non-store instances cannot cancel deletion once marked
+	return false
+}
+
+func (in *$.|pub$) CancelDelete() error {
+	// This is a stub - actual implementation will be in actor
+	panic("CancelDelete should be implemented in actor")
+}
+
+func (in *$.|pub$) Delete() error {
+	// This is a stub - actual implementation will be in actor
+	panic("Delete should be implemented in actor")
+}
 `, t)
 	}
 

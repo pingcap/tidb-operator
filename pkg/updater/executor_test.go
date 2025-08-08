@@ -70,6 +70,10 @@ func (a *FakeActor) Cleanup(_ context.Context) error {
 	return nil
 }
 
+func (a *FakeActor) RecordedActions() []action {
+	return a.Actions
+}
+
 func TestExecutor(t *testing.T) {
 	cases := []struct {
 		desc                string
@@ -773,7 +777,7 @@ func TestExecutor(t *testing.T) {
 				unavailableUpdate:   c.unavailableUpdate,
 				unavailableOutdated: c.unavailableOutdated,
 			}
-			e := NewExecutor(act, c.update, c.outdated, 0, 0, c.desired, c.unavailableUpdate, c.unavailableOutdated, c.maxSurge, c.maxUnavailable)
+			e := NewExecutor(act, c.update, c.outdated, 0, c.desired, c.unavailableUpdate, c.unavailableOutdated, c.maxSurge, c.maxUnavailable)
 			wait, err := e.Do(context.TODO())
 			require.NoError(tt, err)
 			assert.Equal(tt, c.expectedWait, wait, c.desc)
