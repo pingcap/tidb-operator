@@ -457,6 +457,7 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 					Env:             envVars,
 					VolumeMounts:    volumeMounts,
 					ImagePullPolicy: corev1.PullIfNotPresent,
+					Resources:       compact.Spec.ResourceRequirements,
 				},
 			},
 			RestartPolicy:     corev1.RestartPolicyOnFailure,
