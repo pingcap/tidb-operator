@@ -982,6 +982,14 @@ type TiProxySpec struct {
 // +k8s:openapi-gen=true
 type LogTailerSpec struct {
 	corev1.ResourceRequirements `json:",inline"`
+
+	// If true, we use native sidecar feature to tail log
+	// It requires enable feature gate "SidecarContainers"
+	// This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33
+	// See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
+	// and https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/
+	// +optional
+	UseSidecar bool `json:"useSidecar,omitempty"`
 }
 
 // InitContainerSpec contains basic spec about a init container
@@ -1252,6 +1260,14 @@ type TiDBSlowLogTailerSpec struct {
 	// Use `spec.helper.imagePullPolicy` instead
 	// +k8s:openapi-gen=false
 	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+
+	// If true, we use native sidecar feature to tail log
+	// It requires enable feature gate "SidecarContainers"
+	// This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33
+	// See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
+	// and https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/
+	// +optional
+	UseSidecar bool `json:"useSidecar,omitempty"`
 }
 
 // ComponentSpec is the base spec of each component, the fields should always accessed by the Basic<Component>Spec() method to respect the cluster-level properties
@@ -1636,9 +1652,7 @@ type TiDBFailureMember struct {
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 
-var (
-	EvictLeaderAnnKeys = []string{EvictLeaderAnnKey, EvictLeaderAnnKeyForResize}
-)
+var EvictLeaderAnnKeys = []string{EvictLeaderAnnKey, EvictLeaderAnnKeyForResize}
 
 const (
 	// EvictLeaderAnnKey is the annotation key to evict leader used by user.
@@ -2676,6 +2690,15 @@ const (
 	RestoreModeVolumeSnapshot RestoreMode = "volume-snapshot"
 )
 
+// PruneType represents the prune type for restore.
+// +k8s:openapi-gen=true
+type PruneType string
+
+const (
+	// PruneTypeAfterFailed represents prune after failed.
+	PruneTypeAfterFailed PruneType = "afterFailed"
+)
+
 // RestoreConditionType represents a valid condition of a Restore.
 type RestoreConditionType string
 
@@ -2708,6 +2731,14 @@ const (
 	RestoreRetryFailed RestoreConditionType = "RetryFailed"
 	// RestoreInvalid means invalid restore CR.
 	RestoreInvalid RestoreConditionType = "Invalid"
+	// RestorePruneScheduled means a prune job has been scheduled after restore failure.
+	RestorePruneScheduled RestoreConditionType = "PruneScheduled"
+	// RestorePruneRunning means the prune job is currently running.
+	RestorePruneRunning RestoreConditionType = "PruneRunning"
+	// RestorePruneComplete means the prune job has successfully completed.
+	RestorePruneComplete RestoreConditionType = "PruneComplete"
+	// RestorePruneFailed means the prune job has failed.
+	RestorePruneFailed RestoreConditionType = "PruneFailed"
 )
 
 // RestoreCondition describes the observed state of a Restore at a certain point.
@@ -2754,6 +2785,10 @@ type RestoreSpec struct {
 	// PitrRestoredTs is the pitr restored ts.
 	// +optional
 	PitrRestoredTs string `json:"pitrRestoredTs,omitempty"`
+	// Prune is the prune type for restore, it is optional and can only have two valid values: afterFailed/alreadyFailed
+	// +optional
+	// +kubebuilder:validation:Enum:=afterFailed
+	Prune PruneType `json:"prune,omitempty"`
 	// LogRestoreStartTs is the start timestamp which log restore from.
 	// +optional
 	LogRestoreStartTs string `json:"logRestoreStartTs,omitempty"`
