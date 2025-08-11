@@ -15,6 +15,7 @@ package pdapi
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
@@ -316,10 +317,11 @@ func (c *FakePDClient) GetReady() (bool, error) {
 // FakePDMSClient implements a fake version of PDMSClient.
 type FakePDMSClient struct {
 	reactions map[ActionType]Reaction
+	domain    string
 }
 
-func NewFakePDMSClient() *FakePDMSClient {
-	return &FakePDMSClient{reactions: map[ActionType]Reaction{}}
+func NewFakePDMSClient(domain string) *FakePDMSClient {
+	return &FakePDMSClient{reactions: map[ActionType]Reaction{}, domain: domain}
 }
 
 func (c *FakePDMSClient) AddReaction(actionType ActionType, reaction Reaction) {
@@ -346,6 +348,9 @@ func (c *FakePDMSClient) GetHealth() error {
 
 func (c *FakePDMSClient) TransferPrimary(newPrimary string) error {
 	action := &Action{Name: newPrimary}
+	if len(c.domain) > 0 && !strings.Contains(newPrimary, c.domain) {
+		return fmt.Errorf("new primary %s does not contain domain %s", newPrimary, c.domain)
+	}
 	_, err := c.fakeAPI(PDMSTransferPrimaryActionType, action)
 	return err
 }
