@@ -27,6 +27,7 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -91,6 +92,7 @@ type azblobConfig struct {
 	accessTier     string
 	secretName     string
 	prefix         string
+	endpoint       string
 }
 
 type localConfig struct {
@@ -548,22 +550,42 @@ func newAzblobStorage(conf *azblobConfig) (*blob.Bucket, error) {
 	// Azure Storage Account Shared Access Signature Token
 	sasToken := conf.sasToken
 
+	azureOptions := &azureblob.Options{}
+
+	if len(conf.endpoint) > 0 {
+		// override endpoint
+		// e.g. https://myaccount.blob.core.windows.net
+		parts := strings.SplitN(conf.endpoint, "://", 2)
+		protocol := "https"
+		domain := ""
+
+		if len(parts) == 2 {
+			protocol = parts[0]
+			domain = parts[1]
+		} else {
+			domain = parts[0]
+		}
+
+		azureOptions.Protocol = azureblob.Protocol(protocol)
+		azureOptions.StorageDomain = azureblob.StorageDomain(domain)
+	}
+
 	var bucket *blob.Bucket
 	var err error
 	if len(sasToken) != 0 {
-		bucket, err = newAzblobStorageUsingSasToken(conf, account, sasToken)
+		bucket, err = newAzblobStorageUsingSasToken(conf, account, sasToken, azureOptions)
 	} else if len(clientID) != 0 && len(clientSecret) != 0 && len(tenantID) != 0 {
 		bucket, err = newAzblobStorageUsingAAD(conf, &azblobAADCred{
 			account:      account,
 			clientID:     clientID,
 			clientSecret: clientSecret,
 			tenantID:     tenantID,
-		})
+		}, azureOptions)
 	} else if len(accountKey) != 0 {
 		bucket, err = newAzblobStorageUsingSharedKey(conf, &azblobSharedKeyCred{
 			account:   account,
 			sharedKey: accountKey,
-		})
+		}, azureOptions)
 	} else {
 		return nil, errors.New("Missing necessary key(s) for credentials")
 	}
@@ -574,19 +596,21 @@ func newAzblobStorage(conf *azblobConfig) (*blob.Bucket, error) {
 	return blob.PrefixedBucket(bucket, strings.Trim(conf.prefix, "/")+"/"), nil
 }
 
-func newAzblobStorageUsingSasToken(conf *azblobConfig, account, token string) (*blob.Bucket, error) {
+func newAzblobStorageUsingSasToken(conf *azblobConfig, account, token string, azureOptions *azureblob.Options) (*blob.Bucket, error) {
 	// Azure Storage Account.
 	accountName := azureblob.AccountName(account)
 	sasToken := azureblob.SASToken(token)
+	azureOptions.SASToken = sasToken
+
 	cred := azblob.NewAnonymousCredential()
 	pipeline := azureblob.NewPipeline(cred, azblob.PipelineOptions{})
 	// Create a *blob.Bucket.
 	ctx := context.Background()
-	return azureblob.OpenBucket(ctx, pipeline, accountName, conf.container, &azureblob.Options{SASToken: sasToken})
+	return azureblob.OpenBucket(ctx, pipeline, accountName, conf.container, azureOptions)
 }
 
 // newAzblobStorageUsingAAD initialize a new azblob storage using AAD credentials
-func newAzblobStorageUsingAAD(conf *azblobConfig, cred *azblobAADCred) (*blob.Bucket, error) {
+func newAzblobStorageUsingAAD(conf *azblobConfig, cred *azblobAADCred, azureOptions *azureblob.Options) (*blob.Bucket, error) {
 	// Azure Storage Account.
 	accountName := azureblob.AccountName(cred.account)
 
@@ -594,7 +618,32 @@ func newAzblobStorageUsingAAD(conf *azblobConfig, cred *azblobAADCred) (*blob.Bu
 	ccc := auth.NewClientCredentialsConfig(cred.clientID, cred.clientSecret, cred.tenantID)
 
 	// Set the target resource to the Azure storage.
-	ccc.Resource = "https://storage.azure.com/"
+	if len(conf.endpoint) > 0 {
+		endpoint := strings.ToLower(conf.endpoint)
+
+		switch {
+		case strings.Contains(endpoint, "chinacloudapi.cn"):
+			ccc.AADEndpoint = azure.ChinaCloud.ActiveDirectoryEndpoint
+			ccc.Resource = azure.ChinaCloud.ResourceManagerEndpoint
+
+		case strings.Contains(endpoint, "usgovcloudapi.net"):
+			ccc.AADEndpoint = azure.USGovernmentCloud.ActiveDirectoryEndpoint
+			ccc.Resource = azure.USGovernmentCloud.ResourceManagerEndpoint
+
+		case strings.Contains(endpoint, "cloudapi.de"):
+			ccc.AADEndpoint = azure.GermanCloud.ActiveDirectoryEndpoint
+			ccc.Resource = azure.GermanCloud.ResourceManagerEndpoint
+
+		default:
+			// Unrecognized but user provided a custom endpoint.
+			ccc.AADEndpoint = azure.PublicCloud.ActiveDirectoryEndpoint
+			ccc.Resource = azure.PublicCloud.ResourceManagerEndpoint
+		}
+	} else {
+		// make it compatible with old behavior
+		ccc.Resource = "https://storage.azure.com/"
+	}
+
 	token, err := ccc.ServicePrincipalToken()
 	if err != nil {
 		return nil, err
@@ -613,11 +662,11 @@ func newAzblobStorageUsingAAD(conf *azblobConfig, cred *azblobAADCred) (*blob.Bu
 
 	// Create a *blob.Bucket.
 	ctx := context.Background()
-	return azureblob.OpenBucket(ctx, pipeline, accountName, conf.container, new(azureblob.Options))
+	return azureblob.OpenBucket(ctx, pipeline, accountName, conf.container, azureOptions)
 }
 
 // newAzblobStorageUsingSharedKey initialize a new azblob storage using shared key credentials
-func newAzblobStorageUsingSharedKey(conf *azblobConfig, cred *azblobSharedKeyCred) (*blob.Bucket, error) {
+func newAzblobStorageUsingSharedKey(conf *azblobConfig, cred *azblobSharedKeyCred, azureOptions *azureblob.Options) (*blob.Bucket, error) {
 	ctx := context.Background()
 
 	// Azure Storage Account and Access Key.
@@ -629,13 +678,14 @@ func newAzblobStorageUsingSharedKey(conf *azblobConfig, cred *azblobSharedKeyCre
 	if err != nil {
 		return nil, err
 	}
+	azureOptions.Credential = credential
 
 	// Create a Pipeline, using whatever PipelineOptions you need.
 	pipeline := azureblob.NewPipeline(credential, azblob.PipelineOptions{})
 
 	// Create a *blob.Bucket.
 	// The credential Option is required if you're going to use blob.SignedURL.
-	return azureblob.OpenBucket(ctx, pipeline, accountName, conf.container, &azureblob.Options{Credential: credential})
+	return azureblob.OpenBucket(ctx, pipeline, accountName, conf.container, azureOptions)
 }
 
 // newGcsStorageOption constructs the arg for --flag option and the remote path for br
@@ -681,6 +731,9 @@ func newAzblobStorageOptionForFlag(conf *azblobConfig, flag string) []string {
 
 	if conf.accessTier != "" {
 		azblobOptions = append(azblobOptions, fmt.Sprintf("--azblob.access-tier=%s", conf.accessTier))
+	}
+	if len(conf.endpoint) > 0 {
+		azblobOptions = append(azblobOptions, fmt.Sprintf("--azblob.endpoint=%s", conf.endpoint))
 	}
 	return azblobOptions
 }
@@ -755,6 +808,7 @@ func makeAzblobConfig(azblob *v1alpha1.AzblobStorageProvider) *azblobConfig {
 	conf.accessTier = azblob.AccessTier
 	conf.secretName = azblob.SecretName
 	conf.prefix = fields[1]
+	conf.endpoint = azblob.Endpoint
 
 	return &conf
 }

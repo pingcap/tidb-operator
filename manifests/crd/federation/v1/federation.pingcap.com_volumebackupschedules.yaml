@@ -806,6 +806,8 @@ spec:
                             type: string
                           container:
                             type: string
+                          endpoint:
+                            type: string
                           path:
                             type: string
                           prefix:
