@@ -23,6 +23,7 @@ import (
 
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	storagev1beta1 "k8s.io/api/storage/v1beta1"
@@ -44,6 +45,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/backup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/restore"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/tibr"
+	"github.com/pingcap/tidb-operator/pkg/controllers/br/tibrgc"
 	"github.com/pingcap/tidb-operator/pkg/controllers/cluster"
 	"github.com/pingcap/tidb-operator/pkg/controllers/pd"
 	"github.com/pingcap/tidb-operator/pkg/controllers/pdgroup"
@@ -416,6 +418,12 @@ func setupControllers(
 			},
 		},
 		{
+			name: "TiBRGC",
+			setupFunc: func() error {
+				return tibrgc.Setup(mgr, c)
+			},
+		},
+		{
 			name: "ReplicationWorkerGroup",
 			setupFunc: func() error {
 				return replicationworkergroup.Setup(mgr, c)
@@ -555,6 +563,15 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 			Label: managedByOperator,
 		},
 		// TiBR objects end
+
+		// TiBRGC objects start
+		&brv1alpha1.TiBRGC{}: {
+			Label: labels.Everything(),
+		},
+		&batchv1.CronJob{}: {
+			Label: managedByOperator,
+		},
+		// TiBRGC objects end
 	}
 	if kubefeat.Stage(kubefeat.VolumeAttributesClass).Enabled(kubefeat.BETA) {
 		byObj[&storagev1beta1.VolumeAttributesClass{}] = cache.ByObject{

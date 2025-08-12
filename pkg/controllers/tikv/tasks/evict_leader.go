@@ -23,6 +23,8 @@ import (
 func TaskEvictLeader(state *ReconcileContext) task.Task {
 	return task.NameTaskFunc("EvictLeader", func(ctx context.Context) task.Result {
 		switch {
+		case !state.PDSynced:
+			return task.Wait().With("pd is unsynced")
 		case state.Store == nil:
 			return task.Complete().With("store has been deleted or not created")
 		case !state.Object().GetDeletionTimestamp().IsZero() || state.IsPodTerminating():
