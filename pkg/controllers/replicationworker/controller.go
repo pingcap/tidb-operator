@@ -65,7 +65,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	defer func() {
 		dur := time.Since(startTime)
 		logger.Info("end reconcile", "duration", dur)
-		logger.Info("summay: \n" + reporter.Summary())
+		logger.Info("summary: \n" + reporter.Summary())
 	}()
 
 	rtx := &tasks.ReconcileContext{

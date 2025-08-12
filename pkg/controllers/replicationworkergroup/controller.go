@@ -48,7 +48,7 @@ type Reconciler struct {
 
 func Setup(mgr manager.Manager, c client.Client) error {
 	r := &Reconciler{
-		Logger:  mgr.GetLogger().WithName("SchedulerGroup"),
+		Logger:  mgr.GetLogger().WithName("ReplicationWorkerGroup"),
 		Client:  c,
 		Tracker: tracker.New[*v1alpha1.ReplicationWorkerGroup, *v1alpha1.ReplicationWorker](),
 	}

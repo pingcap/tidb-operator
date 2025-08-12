@@ -62,7 +62,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 
 		logger.Info("will update the pod in place")
 		if err := c.Apply(ctx, expected); err != nil {
-			return task.Fail().With("can't apply pod of Re: %v", err)
+			return task.Fail().With("can't apply pod of ReplicationWorker: %v", err)
 		}
 		state.SetPod(expected)
 

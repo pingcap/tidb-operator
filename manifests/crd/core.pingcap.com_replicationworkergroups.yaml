@@ -195,9 +195,8 @@ spec:
                         type: string
                       image:
                         description: |-
-                          Image is pd's image
+                          Image is ReplicationWorker's image.
                           If tag is omitted, version will be used as the image tag.
-                          Default is pingcap/pd
                         type: string
                       overlay:
                         description: |-
@@ -8625,7 +8624,7 @@ spec:
                           ports:
                             description: Ports defines all ports listened by ReplicationWorker
                             properties:
-                              client:
+                              grpc:
                                 description: Port defines a listen port
                                 properties:
                                   port:

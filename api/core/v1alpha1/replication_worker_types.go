@@ -128,9 +128,8 @@ type ReplicationWorkerTemplateSpec struct {
 	// +kubebuilder:validation:Pattern=`^(v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
 	Version string `json:"version"`
 
-	// Image is pd's image
+	// Image is ReplicationWorker's image.
 	// If tag is omitted, version will be used as the image tag.
-	// Default is pingcap/pd
 	Image *string `json:"image,omitempty"`
 
 	// Server defines server config for ReplicationWorker
@@ -161,7 +160,7 @@ type ReplicationWorkerServer struct {
 }
 
 type ReplicationWorkerPorts struct {
-	GRPC *Port `json:"client,omitempty"`
+	GRPC *Port `json:"grpc,omitempty"`
 }
 
 type ReplicationWorkerGroupStatus struct {

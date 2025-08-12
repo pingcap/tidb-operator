@@ -64,7 +64,7 @@ func EncodeLastReplicationWorkerTemplate(instance *v1alpha1.ReplicationWorker, p
 
 func MustEncodeLastReplicationWorkerTemplate(instance *v1alpha1.ReplicationWorker, pod *corev1.Pod) {
 	if err := EncodeLastReplicationWorkerTemplate(instance, pod); err != nil {
-		panic("cannot encode scheduler template: " + err.Error())
+		panic("cannot encode ReplicationWorker template: " + err.Error())
 	}
 }
 
