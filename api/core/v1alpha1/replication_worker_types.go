@@ -15,67 +15,34 @@
 package v1alpha1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
-	// VolumeMountTypeTiKVData is the main data dir for the tikv
-	// The default sub path of this type is ""
-	VolumeMountTypeTiKVData VolumeMountType = "data"
+	ReplicationWorkerPortNameGRPC    = "grpc"
+	DefaultReplicationWorkerPortGRPC = 19160
 
-	VolumeMountTiKVDataDefaultPath = "/var/lib/tikv"
-)
-
-const (
-	TiKVPortNameClient    = "client"
-	TiKVPortNameStatus    = "status"
-	DefaultTiKVPortClient = 20160
-	DefaultTiKVPortStatus = 20180
-)
-
-const (
-	// LeadersEvicted means all leaders are evicted
-	//
-	// condition
-	TiKVCondLeadersEvicted = "LeadersEvicted"
-	// reason
-	ReasonNotEvicted     = "NotEvicted"
-	ReasonEvicting       = "Evicting"
-	ReasonEvicted        = "Evicted"
-	ReasonStoreIsRemoved = "StoreIsRemoved"
-)
-
-const (
-	// store state for both TiKV and TiFlash stores
-
-	// StoreStatePreparing means there are no regions on this store.
-	// In this state, the store is ready to serve.
-	StoreStatePreparing = "Preparing"
-	// StoreStateServing means the number of regions reaches a certain proportion.
-	// In this state, the store is ready to serve.
-	StoreStateServing  = "Serving"
-	StoreStateRemoving = "Removing"
-	StoreStateRemoved  = "Removed"
+	VolumeMountTypeReplicationWorkerData        VolumeMountType = "data"
+	VolumeMountReplicationWorkerDataDefaultPath                 = "/var/lib/replication-worker"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 
-// TiKVGroupList defines a list of TiKV groups
-type TiKVGroupList struct {
+// ReplicationWorkerGroupList defines a list of ReplicationWorker groups
+type ReplicationWorkerGroupList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	Items []TiKVGroup `json:"items"`
+	Items []ReplicationWorkerGroup `json:"items"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:subresource:scale:specpath=.spec.replicas,statuspath=.status.replicas,selectorpath=.status.selector
-// +kubebuilder:resource:categories=group,shortName=kvg
+// +kubebuilder:resource:categories=group,shortName=rwg
 // +kubebuilder:selectablefield:JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Desired",type=string,JSONPath=`.spec.replicas`
@@ -87,25 +54,25 @@ type TiKVGroupList struct {
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
-// TiKVGroup defines a group of similar TiKV instances.
-// +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 40",message="name must not exceed 40 characters"
-type TiKVGroup struct {
+// ReplicationWorkerGroup defines a group of similar ReplicationWorker instances
+// +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 30",message="name must not exceed 30 characters"
+type ReplicationWorkerGroup struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   TiKVGroupSpec   `json:"spec,omitempty"`
-	Status TiKVGroupStatus `json:"status,omitempty"`
+	Spec   ReplicationWorkerGroupSpec   `json:"spec,omitempty"`
+	Status ReplicationWorkerGroupStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 
-// TiKVList defines a list of TiKV instances
-type TiKVList struct {
+// ReplicationWorkerList defines a list of ReplicationWorker instances
+type ReplicationWorkerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	Items []TiKV `json:"items"`
+	Items []ReplicationWorker `json:"items"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -114,27 +81,28 @@ type TiKVList struct {
 // +kubebuilder:resource:categories=instance
 // +kubebuilder:selectablefield:JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
-// +kubebuilder:printcolumn:name="StoreID",type=string,JSONPath=`.status.id`
-// +kubebuilder:printcolumn:name="StoreState",type=string,JSONPath=`.status.state`
 // +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
-// TiKV defines a TiKV instance.
-// +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 47",message="name must not exceed 47 characters"
-type TiKV struct {
+// ReplicationWorker defines a ReplicationWorker instance
+// +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 37",message="name must not exceed 37 characters"
+type ReplicationWorker struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   TiKVSpec   `json:"spec,omitempty"`
-	Status TiKVStatus `json:"status,omitempty"`
+	Spec   ReplicationWorkerSpec   `json:"spec,omitempty"`
+	Status ReplicationWorkerStatus `json:"status,omitempty"`
 }
 
-// TiKVGroupSpec describes the common attributes of a TiKVGroup
-type TiKVGroupSpec struct {
+// ReplicationWorkerGroupSpec describes the common attributes of a ReplicationWorkerGroup
+type ReplicationWorkerGroupSpec struct {
 	Cluster ClusterReference `json:"cluster"`
 	// Features are enabled feature
 	Features []meta.Feature `json:"features,omitempty"`
+
+	// Currently, ReplicationWorkerGroup only supports one replicas.
+	// +kubebuilder:validation:Maximum=1
 	// +kubebuilder:validation:Minimum=0
 	Replicas *int32 `json:"replicas"`
 
@@ -142,91 +110,88 @@ type TiKVGroupSpec struct {
 	// +listMapKey=type
 	SchedulePolicies []SchedulePolicy `json:"schedulePolicies,omitempty"`
 
-	Template TiKVTemplate `json:"template"`
+	Template ReplicationWorkerTemplate `json:"template"`
 }
 
-type TiKVTemplate struct {
+type ReplicationWorkerTemplate struct {
 	ObjectMeta `json:"metadata,omitempty"`
-	Spec       TiKVTemplateSpec `json:"spec"`
+	Spec       ReplicationWorkerTemplateSpec `json:"spec"`
 }
 
-// TiKVTemplateSpec can only be specified in TiKVGroup
+// ReplicationWorkerTemplateSpec can only be specified in ReplicationWorkerGroup
 // TODO: It's name may need to be changed to distinguish from PodTemplateSpec
 // +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes) && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in volumes"
 // +kubebuilder:validation:XValidation:rule="has(self.volumes) && ('data' in self.volumes.map(v, v.name))",message="data volume must be configured"
-type TiKVTemplateSpec struct {
+type ReplicationWorkerTemplateSpec struct {
 	// Version must be a semantic version.
 	// It can have a v prefix or not.
 	// +kubebuilder:validation:Pattern=`^(v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
 	Version string `json:"version"`
-	// Image is tikv's image
+
+	// Image is pd's image
 	// If tag is omitted, version will be used as the image tag.
-	// Default is pingcap/tikv
+	// Default is pingcap/pd
 	Image *string `json:"image,omitempty"`
-	// Server defines the server config of TiKV
-	Server TiKVServer `json:"server,omitempty"`
-	// Resources defines resource required by TiKV
+
+	// Server defines server config for ReplicationWorker
+	Server ReplicationWorkerServer `json:"server,omitempty"`
+
 	Resources ResourceRequirements `json:"resources,omitempty"`
-	// Config defines config file of TiKV
-	Config         ConfigFile     `json:"config,omitempty"`
+
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
-	// Volumes defines data volume of TiKV
+
+	// Config defines config file of ReplicationWorker
+	// See https://docs.pingcap.com/tidb/stable/ReplicationWorker-configuration-file/
+	Config ConfigFile `json:"config,omitempty"`
+
+	// Volumes defines persistent volumes of ReplicationWorker
 	// +listType=map
 	// +listMapKey=name
 	// +kubebuilder:validation:MaxItems=256
 	Volumes []Volume `json:"volumes"`
 
-	// PreStop defines preStop config
-	PreStop *TiKVPreStop `json:"preStop,omitempty"`
 	// Overlay defines a k8s native resource template patch
-	// All resources(pod, pvcs, ...) managed by TiKV can be overlayed by this field
+	// All resources(pod, pvcs, ...) managed by ReplicationWorker can be overlayed by this field
 	Overlay *Overlay `json:"overlay,omitempty"`
 }
 
-type TiKVPreStop struct {
-	// Image of pre stop checker
-	// Default is pingcap/prestop-checker:latest
-	Image *string `json:"image,omitempty"`
+type ReplicationWorkerServer struct {
+	// Ports defines all ports listened by ReplicationWorker
+	Ports ReplicationWorkerPorts `json:"ports,omitempty"`
 }
 
-type TiKVServer struct {
-	// Ports defines all ports listened by tikv
-	Ports TiKVPorts `json:"ports,omitempty"`
+type ReplicationWorkerPorts struct {
+	GRPC *Port `json:"client,omitempty"`
 }
 
-type TiKVPorts struct {
-	// Client defines port for tikv's api service
-	Client *Port `json:"client,omitempty"`
-	// Status defines port for tikv status api
-	Status *Port `json:"peer,omitempty"`
-}
-
-type TiKVGroupStatus struct {
+type ReplicationWorkerGroupStatus struct {
 	CommonStatus `json:",inline"`
 	GroupStatus  `json:",inline"`
 }
 
+// ReplicationWorkerSpec describes the common attributes of a ReplicationWorker instance
 // +kubebuilder:validation:XValidation:rule="(!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology) && has(self.topology))",fieldPath=".topology",message="topology can only be set when creating"
-type TiKVSpec struct {
+type ReplicationWorkerSpec struct {
 	// Cluster is a reference of tidb cluster
 	Cluster ClusterReference `json:"cluster"`
 	// Features are enabled feature
 	Features []meta.Feature `json:"features,omitempty"`
-	// Topology defines the topology domain of this pd instance
+
+	// Topology defines the topology domain of this ReplicationWorker instance
 	// It will be translated into a node affinity config
 	// Topology cannot be changed
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="topology is immutable"
 	Topology Topology `json:"topology,omitempty"`
-	// Subdomain means the subdomain of the exported tikv dns.
-	// A same tikv group will use a same subdomain
+
+	// Subdomain means the subdomain of the exported ReplicationWorker dns.
+	// A same ReplicationWorker cluster will use a same subdomain
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="subdomain is immutable"
 	Subdomain string `json:"subdomain"`
 
-	// TiKVTemplateSpec embedded some fields managed by TiKVGroup
-	TiKVTemplateSpec `json:",inline"`
+	// ReplicationWorkerTemplateSpec embedded some fields managed by ReplicationWorkerGroup
+	ReplicationWorkerTemplateSpec `json:",inline"`
 }
 
-type TiKVStatus struct {
+type ReplicationWorkerStatus struct {
 	CommonStatus `json:",inline"`
-	StoreStatus  `json:",inline"`
 }

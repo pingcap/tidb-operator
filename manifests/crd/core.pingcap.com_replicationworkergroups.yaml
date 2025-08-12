@@ -4,18 +4,18 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.17.2
-  name: tikvgroups.core.pingcap.com
+  name: replicationworkergroups.core.pingcap.com
 spec:
   group: core.pingcap.com
   names:
     categories:
     - group
-    kind: TiKVGroup
-    listKind: TiKVGroupList
-    plural: tikvgroups
+    kind: ReplicationWorkerGroup
+    listKind: ReplicationWorkerGroupList
+    plural: replicationworkergroups
     shortNames:
-    - kvg
-    singular: tikvgroup
+    - rwg
+    singular: replicationworkergroup
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -49,7 +49,8 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: TiKVGroup defines a group of similar TiKV instances.
+        description: ReplicationWorkerGroup defines a group of similar ReplicationWorker
+          instances
         properties:
           apiVersion:
             description: |-
@@ -69,7 +70,8 @@ spec:
           metadata:
             type: object
           spec:
-            description: TiKVGroupSpec describes the common attributes of a TiKVGroup
+            description: ReplicationWorkerGroupSpec describes the common attributes
+              of a ReplicationWorkerGroup
             properties:
               cluster:
                 description: |-
@@ -100,7 +102,9 @@ spec:
                   type: string
                 type: array
               replicas:
+                description: Currently, ReplicationWorkerGroup only supports one replicas.
                 format: int32
+                maximum: 1
                 minimum: 0
                 type: integer
               schedulePolicies:
@@ -181,21 +185,24 @@ spec:
                         type: string
                     type: object
                   spec:
-                    description: TiKVTemplateSpec can only be specified in TiKVGroup
+                    description: ReplicationWorkerTemplateSpec can only be specified
+                      in ReplicationWorkerGroup
                     properties:
                       config:
-                        description: Config defines config file of TiKV
+                        description: |-
+                          Config defines config file of ReplicationWorker
+                          See https://docs.pingcap.com/tidb/stable/ReplicationWorker-configuration-file/
                         type: string
                       image:
                         description: |-
-                          Image is tikv's image
+                          Image is pd's image
                           If tag is omitted, version will be used as the image tag.
-                          Default is pingcap/tikv
+                          Default is pingcap/pd
                         type: string
                       overlay:
                         description: |-
                           Overlay defines a k8s native resource template patch
-                          All resources(pod, pvcs, ...) managed by TiKV can be overlayed by this field
+                          All resources(pod, pvcs, ...) managed by ReplicationWorker can be overlayed by this field
                         properties:
                           pod:
                             properties:
@@ -8592,17 +8599,12 @@ spec:
                             - name
                             x-kubernetes-list-type: map
                         type: object
-                      preStop:
-                        description: PreStop defines preStop config
-                        properties:
-                          image:
-                            description: |-
-                              Image of pre stop checker
-                              Default is pingcap/prestop-checker:latest
-                            type: string
-                        type: object
                       resources:
-                        description: Resources defines resource required by TiKV
+                        description: |-
+                          ResourceRequirements describes the compute resource requirements.
+                          It's simplified from corev1.ResourceRequirements to fit the most common use cases.
+                          This field will be translated to requests=limits for all resources.
+                          If users need to specify more advanced resource requirements, just try to use overlay to override it
                         properties:
                           cpu:
                             anyOf:
@@ -8618,22 +8620,13 @@ spec:
                             x-kubernetes-int-or-string: true
                         type: object
                       server:
-                        description: Server defines the server config of TiKV
+                        description: Server defines server config for ReplicationWorker
                         properties:
                           ports:
-                            description: Ports defines all ports listened by tikv
+                            description: Ports defines all ports listened by ReplicationWorker
                             properties:
                               client:
-                                description: Client defines port for tikv's api service
-                                properties:
-                                  port:
-                                    format: int32
-                                    type: integer
-                                required:
-                                - port
-                                type: object
-                              peer:
-                                description: Status defines port for tikv status api
+                                description: Port defines a listen port
                                 properties:
                                   port:
                                     format: int32
@@ -8662,7 +8655,7 @@ spec:
                         pattern: ^(v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$
                         type: string
                       volumes:
-                        description: Volumes defines data volume of TiKV
+                        description: Volumes defines persistent volumes of ReplicationWorker
                         items:
                           description: |-
                             Volume defines a persistent volume, it will be mounted at a specified root path
@@ -8866,8 +8859,8 @@ spec:
             type: object
         type: object
         x-kubernetes-validations:
-        - message: name must not exceed 40 characters
-          rule: size(self.metadata.name) <= 40
+        - message: name must not exceed 30 characters
+          rule: size(self.metadata.name) <= 30
     selectableFields:
     - jsonPath: .spec.cluster.name
     served: true
