@@ -30,13 +30,13 @@ func TestReplicationWorker(t *testing.T) {
 	cases = append(cases, transferReplicationWorkerCases(t, OverlayVolumeClaims(true), "spec")...)
 	cases = append(cases, transferReplicationWorkerCases(t, DataVolumeRequired(), "spec")...)
 	cases = append(cases, transferReplicationWorkerCases(t, Version(), "spec", "version")...)
-	cases = append(cases, transferReplicationWorkerCases(t, NameLength(37), "metadata", "name")...)
+	cases = append(cases, transferReplicationWorkerCases(t, NameLength(instanceNameLengthLimit), "metadata", "name")...)
 	Validate(t, "crd/core.pingcap.com_replicationworkers.yaml", cases)
 }
 
 func TestReplicationWorkerGroup(t *testing.T) {
 	var cases []Case
-	cases = append(cases, transferReplicationWorkerGroupCases(t, NameLength(30), "metadata", "name")...)
+	cases = append(cases, transferReplicationWorkerGroupCases(t, NameLength(groupNameLengthLimit), "metadata", "name")...)
 	Validate(t, "crd/core.pingcap.com_replicationworkergroups.yaml", cases)
 }
 

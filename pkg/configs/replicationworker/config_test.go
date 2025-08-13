@@ -98,7 +98,7 @@ func TestOverlay(t *testing.T) {
 	err := cfg.Overlay(cluster, rw)
 	require.NoError(t, err)
 	assert.Equal(t, "[::]:19160", cfg.Server.GRPCAddr)
-	assert.Equal(t, "basic-replication-worker-0.basic-rw-peer.ns1:19160", cfg.Server.AdvertiseAddr)
+	assert.Equal(t, "basic-repl-worker-0.basic-rw-peer.ns1:19160", cfg.Server.AdvertiseAddr)
 	assert.Equal(t, fixedMergedStoreID, cfg.Server.MergedEngine.MergedStoreID)
 	assert.Equal(t, "/custom/path/to/data", cfg.DataDir)
 	assert.Equal(t, "/var/lib/tikv-tls/ca.crt", cfg.Security.CAPath)

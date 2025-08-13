@@ -42,5 +42,5 @@ const (
 	ComponentTSO               Component = "tso"
 	ComponentScheduler         Component = "scheduler"
 	ComponentTiProxy           Component = "tiproxy"
-	ComponentReplicationWorker Component = "replication-worker"
+	ComponentReplicationWorker Component = "repl-worker"
 )
