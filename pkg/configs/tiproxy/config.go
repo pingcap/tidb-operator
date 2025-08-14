@@ -52,9 +52,6 @@ type Security struct {
 	ClusterTLS TLSConfig `toml:"cluster-tls,omitempty"`
 	// SQLTLS is used to access TiDB SQL port.
 	SQLTLS TLSConfig `toml:"sql-tls,omitempty"`
-	// RequireBackendTLS determines whether it requires TLS between TiProxy and TiDB servers.
-	// If the TiDB server does not support TLS, clients will report an error when connecting to TiProxy.
-	RequireBackendTLS bool `toml:"require-backend-tls,omitempty"`
 }
 
 // Config is a subset config of TiProxy.
@@ -101,7 +98,6 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) e
 	}
 
 	if coreutil.IsTiProxyBackendTLSEnabled(tiproxy) {
-		c.Security.RequireBackendTLS = true
 		if coreutil.IsTiProxyBackendMutualTLSEnabled(tiproxy) {
 			c.Security.SQLTLS.Cert = path.Join(v1alpha1.DirPathTiProxyTiDBTLS, corev1.TLSCertKey)
 			c.Security.SQLTLS.Key = path.Join(v1alpha1.DirPathTiProxyTiDBTLS, corev1.TLSPrivateKeyKey)
