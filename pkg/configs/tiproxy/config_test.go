@@ -40,12 +40,12 @@ func TestValidate(t *testing.T) {
 			name: "invalid config with managed fields",
 			config: &Config{
 				Proxy: Proxy{
-					Address:          "0.0.0.0:4000",
+					Address:          "[::]:4000",
 					AdvertiseAddress: "tiproxy-0.tiproxy-peer.default.svc",
 					PDAddress:        "pd:2379",
 				},
 				API: API{
-					Address: "0.0.0.0:3080",
+					Address: "[::]:3080",
 				},
 				Security: Security{
 					ServerSQLTLS: TLSConfig{
@@ -109,12 +109,12 @@ func TestOverlay(t *testing.T) {
 			},
 			want: &Config{
 				Proxy: Proxy{
-					Address:          "0.0.0.0:6000",
+					Address:          "[::]:6000",
 					AdvertiseAddress: "db-tiproxy-foo.db-tiproxy-peer.ns1.svc",
 					PDAddress:        "db-pd.ns1:2379",
 				},
 				API: API{
-					Address: "0.0.0.0:3080",
+					Address: "[::]:3080",
 				},
 			},
 			wantErr: false,
@@ -142,12 +142,12 @@ func TestOverlay(t *testing.T) {
 			},
 			want: &Config{
 				Proxy: Proxy{
-					Address:          "0.0.0.0:6000",
+					Address:          "[::]:6000",
 					AdvertiseAddress: "db-tiproxy-foo.tiproxy-peer.ns1.svc",
 					PDAddress:        "db-pd.ns1:2379",
 				},
 				API: API{
-					Address: "0.0.0.0:3080",
+					Address: "[::]:3080",
 				},
 				Security: Security{
 					ClusterTLS: TLSConfig{
@@ -192,12 +192,12 @@ func TestOverlay(t *testing.T) {
 			},
 			want: &Config{
 				Proxy: Proxy{
-					Address:          "0.0.0.0:6000",
+					Address:          "[::]:6000",
 					AdvertiseAddress: "db-tiproxy-foo.tiproxy-peer.ns1.svc",
 					PDAddress:        "db-pd.ns1:2379",
 				},
 				API: API{
-					Address: "0.0.0.0:3080",
+					Address: "[::]:3080",
 				},
 				Security: Security{
 					ServerSQLTLS: TLSConfig{
@@ -236,12 +236,12 @@ func TestOverlay(t *testing.T) {
 			},
 			want: &Config{
 				Proxy: Proxy{
-					Address:          "0.0.0.0:6000",
+					Address:          "[::]:6000",
 					AdvertiseAddress: "db-tiproxy-foo.tiproxy-peer.ns1.svc",
 					PDAddress:        "db-pd.ns1:2379",
 				},
 				API: API{
-					Address: "0.0.0.0:3080",
+					Address: "[::]:3080",
 				},
 				Security: Security{
 					SQLTLS: TLSConfig{
