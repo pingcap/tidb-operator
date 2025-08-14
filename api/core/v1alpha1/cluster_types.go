@@ -85,6 +85,8 @@ type ClusterSpec struct {
 	// +listType=map
 	// +listMapKey=name
 	FeatureGates []meta.FeatureGate `json:"featureGates,omitempty"`
+
+	Security *ClusterSecurity `json:"security,omitempty"`
 }
 
 type SuspendAction struct {
@@ -114,6 +116,14 @@ type TLSCluster struct {
 	//        Same for other components.
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
+}
+
+type ClusterSecurity struct {
+	// SessionTokenSigningCertKeyPair is the name of the K8s secret, where stores certificates for signing the TiDB session token,
+	// which is used by TiProxy for session migration.
+	// You can generate certificates and create a secret by: kubectl create secret generic <secret-name> --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key>
+	// Note: this field will only be used when the feature gate `SessionTokenSigning` is enabled.
+	SessionTokenSigningCertKeyPair *corev1.LocalObjectReference `json:"sessionTokenSigningCertKeyPair,omitempty"`
 }
 
 type UpgradePolicy string
