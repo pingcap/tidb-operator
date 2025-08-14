@@ -149,7 +149,7 @@ func TestOverlay(t *testing.T) {
 
 	// `session-token-signing-key` and `session-token-signing-cert` should be set when the feature is enabled.
 	cfg3 := Config{}
-	err = cfg3.Overlay(cluster, tidb, features.NewFromFeatures([]metav1alpha1.Feature{metav1alpha1.AlwaysSetTiProxyRelatedConfig}))
+	err = cfg3.Overlay(cluster, tidb, features.NewFromFeatures([]metav1alpha1.Feature{metav1alpha1.SessionTokenSigning}))
 	require.NoError(t, err)
 	assert.Equal(t, "/var/lib/tidb-session-token-signing-tls/tls.crt", cfg3.Security.SessionTokenSigningCert)
 	assert.Equal(t, "/var/lib/tidb-session-token-signing-tls/tls.key", cfg3.Security.SessionTokenSigningKey)

@@ -119,11 +119,11 @@ type TLSCluster struct {
 }
 
 type ClusterSecurity struct {
-	// SessionTokenSigningCert is the name of the K8s secret, where stores certificates for signing the TiDB session token.
+	// SessionTokenSigningCertKeyPair is the name of the K8s secret, where stores certificates for signing the TiDB session token,
+	// which is used by TiProxy for session migration.
 	// You can generate certificates and create a secret by: kubectl create secret generic <secret-name> --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key>
-	// To use TiProxy, you must set this field.
-	// See: https://docs.pingcap.com/tidb/stable/tidb-configuration-file/#session-token-signing-cert-new-in-v640
-	SessionTokenSigningCert corev1.LocalObjectReference `json:"sessionTokenSigningCert"`
+	// Note: this field will only be used when the feature gate `SessionTokenSigning` is enabled.
+	SessionTokenSigningCertKeyPair *corev1.LocalObjectReference `json:"sessionTokenSigningCertKeyPair,omitempty"`
 }
 
 type UpgradePolicy string

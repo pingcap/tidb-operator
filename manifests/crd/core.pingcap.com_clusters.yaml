@@ -90,7 +90,7 @@ spec:
                       - VolumeAttributesClass
                       - DisablePDDefaultReadinessProbe
                       - UsePDReadyAPI
-                      - AlwaysSetTiProxyRelatedConfig
+                      - SessionTokenSigning
                       type: string
                   required:
                   - name
@@ -121,12 +121,12 @@ spec:
                 type: integer
               security:
                 properties:
-                  sessionTokenSigningCert:
+                  sessionTokenSigningCertKeyPair:
                     description: |-
-                      SessionTokenSigningCert is the name of the K8s secret, where stores certificates for signing the TiDB session token.
+                      SessionTokenSigningCertKeyPair is the name of the K8s secret, where stores certificates for signing the TiDB session token,
+                      which is used by TiProxy for session migration.
                       You can generate certificates and create a secret by: kubectl create secret generic <secret-name> --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key>
-                      To use TiProxy, you must set this field.
-                      See: https://docs.pingcap.com/tidb/stable/tidb-configuration-file/#session-token-signing-cert-new-in-v640
+                      Note: this field will only be used when the feature gate `SessionTokenSigning` is enabled.
                     properties:
                       name:
                         default: ""
@@ -139,8 +139,6 @@ spec:
                         type: string
                     type: object
                     x-kubernetes-map-type: atomic
-                required:
-                - sessionTokenSigningCert
                 type: object
               suspendAction:
                 description: SuspendAction defines the suspend actions for the cluster.
@@ -293,7 +291,7 @@ spec:
                       - VolumeAttributesClass
                       - DisablePDDefaultReadinessProbe
                       - UsePDReadyAPI
-                      - AlwaysSetTiProxyRelatedConfig
+                      - SessionTokenSigning
                       type: string
                     stage:
                       type: string
