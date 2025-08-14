@@ -209,12 +209,12 @@ func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, g features.Gates) *c
 		})
 	}
 
-	if g.Enabled(metav1alpha1.AlwaysSetTiProxyRelatedConfig) {
+	if g.Enabled(metav1alpha1.SessionTokenSigning) {
 		vols = append(vols, corev1.Volume{
 			Name: v1alpha1.VolumeNameTiDBSessionTokenSigningTLS,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: coreutil.SessionTokenSigningCertSecretName(cluster),
+					SecretName: coreutil.SessionTokenSigningCertSecretName(cluster, tidb),
 				},
 			},
 		})

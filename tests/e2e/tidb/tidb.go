@@ -17,7 +17,6 @@ package tidb
 import (
 	"context"
 	"fmt"
-	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
@@ -27,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
@@ -386,7 +386,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			workload.MustPing(ctx, data.DefaultTiDBServiceName, data.DefaultTiDBServicePort, "root", "", dbg.Name+"-tidb-client-secret")
 		})
 
-		ginkgo.It("should mount session token signing cert when AlwaysSetTiProxyRelatedConfig is enabled", func(ctx context.Context) {
+		ginkgo.It("should mount session token signing cert when SessionTokenSigning is enabled", func(ctx context.Context) {
 			ns := f.Namespace.Name
 			tcName := f.Cluster.Name
 			ginkgo.By("Installing the certificates")
@@ -394,7 +394,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			f.Must(cert.InstallTiDBCertificates(ctx, f.Client, ns, tcName, "dbg"))
 			f.Must(cert.InstallTiDBComponentsCertificates(ctx, f.Client, ns, tcName, "pdg", "kvg", "dbg", "fg", "cg", "pg"))
 
-			ginkgo.By("Creating cluster with TLS and AlwaysSetTiProxyRelatedConfig feature gate")
+			ginkgo.By("Creating cluster with TLS and SessionTokenSigning feature gate")
 			cluster := f.Cluster.DeepCopy()
 			data.WithClusterTLSAndTiProxyConfig()(cluster)
 			f.Must(f.Client.Update(ctx, cluster))

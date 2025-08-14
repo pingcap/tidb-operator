@@ -97,7 +97,7 @@ spec:
                   - VolumeAttributesClass
                   - DisablePDDefaultReadinessProbe
                   - UsePDReadyAPI
-                  - AlwaysSetTiProxyRelatedConfig
+                  - SessionTokenSigning
                   type: string
                 type: array
               replicas:

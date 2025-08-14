@@ -93,7 +93,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, fg feat
 		c.Security.ClusterSSLKey = path.Join(v1alpha1.DirPathClusterTLSTiDB, corev1.TLSPrivateKeyKey)
 	}
 
-	if fg.Enabled(metav1alpha1.AlwaysSetTiProxyRelatedConfig) {
+	if fg.Enabled(metav1alpha1.SessionTokenSigning) {
 		c.Security.SessionTokenSigningKey = path.Join(v1alpha1.DirPathTiDBSessionTokenSigningTLS, corev1.TLSPrivateKeyKey)
 		c.Security.SessionTokenSigningCert = path.Join(v1alpha1.DirPathTiDBSessionTokenSigningTLS, corev1.TLSCertKey)
 	}
