@@ -18,7 +18,7 @@ package v1alpha1
 // NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
 // NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
 //
-// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI
+// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning
 // +enum
 type Feature string
 
@@ -61,4 +61,16 @@ const (
 	// It requires PD v8.5.2 or later.
 	UsePDReadyAPI      Feature      = "UsePDReadyAPI"
 	UsePDReadyAPIStage FeatureStage = FeatureStageAlpha
+
+	// SessionTokenSigning means tidb operator will always set the two tiproxy related configs for tidb:
+	// - `session-token-signing-cert`
+	// - `session-token-signing-key`
+	// Regardless of whether tiproxy is enabled.
+	// You must enable this feature if you are using tiproxy.
+	// See: https://docs.pingcap.com/tidb/stable/tidb-configuration-file/#session-token-signing-cert-new-in-v640
+	// By default, tidb operator will use the cluster TLS cert as the session token signing cert and key.
+	// If different TiDBGroups use different cluster TLS certs, or you want to use custom TLS certs for session token signing,
+	// you can specify it via `cluster.spec.security.sessionTokenSigningCertKeyPair`, with this feature enabled.
+	SessionTokenSigning      Feature      = "SessionTokenSigning"
+	SessionTokenSigningStage FeatureStage = FeatureStageAlpha
 )

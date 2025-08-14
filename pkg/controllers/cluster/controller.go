@@ -54,6 +54,7 @@ func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager) error
 		Watches(&v1alpha1.TiDBGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.TiDBGroup]())).
 		Watches(&v1alpha1.TiFlashGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.TiFlashGroup]())).
 		Watches(&v1alpha1.TiCDCGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.TiCDCGroup]())).
+		Watches(&v1alpha1.TiProxyGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.TiProxyGroup]())).
 		WithOptions(controller.Options{RateLimiter: k8s.RateLimiter}).
 		Complete(r)
 }
@@ -63,19 +64,17 @@ func enqueueForGroupFunc[
 	F client.Object,
 	T runtime.Group,
 ]() handler.MapFunc {
-	return handler.MapFunc(
-		func(_ context.Context, obj client.Object) []reconcile.Request {
-			t := obj.(F)
-			return []reconcile.Request{
-				{
-					NamespacedName: client.ObjectKey{
-						Namespace: obj.GetNamespace(),
-						Name:      coreutil.Cluster[S](t),
-					},
+	return func(_ context.Context, obj client.Object) []reconcile.Request {
+		t := obj.(F)
+		return []reconcile.Request{
+			{
+				NamespacedName: client.ObjectKey{
+					Namespace: obj.GetNamespace(),
+					Name:      coreutil.Cluster[S](t),
 				},
-			}
-		},
-	)
+			},
+		}
+	}
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {

@@ -89,6 +89,7 @@ spec:
                   - VolumeAttributesClass
                   - DisablePDDefaultReadinessProbe
                   - UsePDReadyAPI
+                  - SessionTokenSigning
                   type: string
                 type: array
               image:
