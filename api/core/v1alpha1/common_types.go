@@ -344,19 +344,6 @@ type CommonStatus struct {
 	CollisionCount *int32 `json:"collisionCount,omitempty"`
 }
 
-// OfflineRetryStatus tracks the retry information for store offline operations.
-type OfflineRetryStatus struct {
-	// Count is the current retry count for the offline operation.
-	Count int `json:"count,omitempty"`
-
-	// FirstFailureTime records when the first failure occurred.
-	// This helps in determining the total time spent retrying.
-	FirstFailureTime *metav1.Time `json:"firstFailureTime,omitempty"`
-
-	// LastRetryTime records when the last retry attempt was made.
-	LastRetryTime *metav1.Time `json:"lastRetryTime,omitempty"`
-}
-
 // StoreStatus defines the common status fields for all stores.
 type StoreStatus struct {
 	// ID is the store id.
@@ -364,9 +351,6 @@ type StoreStatus struct {
 
 	// State is the store state.
 	State string `json:"state,omitempty"`
-
-	// OfflineRetry tracks retry information for offline operations.
-	OfflineRetry *OfflineRetryStatus `json:"offlineRetry,omitempty"`
 }
 
 // GroupStatus defines the common status fields for all component groups.

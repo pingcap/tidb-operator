@@ -18,7 +18,6 @@ package common
 import (
 	"context"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -35,10 +34,6 @@ const (
 	RemovingWaitInterval = 10 * time.Second
 	// PendingWaitInterval is the interval to wait before starting offline operation.
 	PendingWaitInterval = 2 * time.Second
-	// MaxRetryCount is the maximum number of retry attempts for failed operations.
-	MaxRetryCount = 3
-	// BaseRetryInterval is the base interval for retry attempts.
-	BaseRetryInterval = 10 * time.Second
 )
 
 type StoreOfflineHook interface {
@@ -186,8 +181,6 @@ func handlePendingState(
 	if state.StoreNotExists() {
 		// Store doesn't exist, mark as completed
 		logger.Info("Store does not exist, completing offline operation")
-		// Reset retry count when operation completes
-		resetRetryCount(state, store)
 		updateOfflineCondition(state, store, newOfflineCondition(
 			v1alpha1.OfflineReasonCompleted,
 			"Store does not exist, offline operation completed",
@@ -215,9 +208,7 @@ func handlePendingState(
 
 	logger.Info("Calling PD DeleteStore API", "storeID", storeID)
 	if err := state.GetPDClient().Underlay().DeleteStore(ctx, storeID); err != nil {
-		// Increment retry count when PD API fails
-		incrementRetryCount(state, store)
-		// Transition to Failed state for retry
+		// Transition to Failed state and record error in condition message
 		updateOfflineCondition(state, store, newOfflineCondition(
 			v1alpha1.OfflineReasonFailed,
 			fmt.Sprintf("Failed to call PD DeleteStore API: %v", err),
@@ -226,9 +217,6 @@ func handlePendingState(
 		// Return a retryable error to re-trigger the failed state handling
 		return task.Retry(RemovingWaitInterval).With("failed to call PD DeleteStore API, will retry")
 	}
-
-	// Reset retry count on successful PD API call
-	resetRetryCount(state, store)
 
 	// Transition to Active state
 	logger.Info("Store offline operation transitioned to Active state")
@@ -261,8 +249,6 @@ func handleActiveState(
 		}
 
 		logger.Info("Store has been removed from PD, completing offline operation")
-		// Reset retry count on successful completion
-		resetRetryCount(state, store)
 		updateOfflineCondition(state, store, newOfflineCondition(
 			v1alpha1.OfflineReasonCompleted,
 			"Store state is Removed, offline operation completed",
@@ -273,7 +259,7 @@ func handleActiveState(
 	return task.Retry(RemovingWaitInterval).With("waiting for store to be removed, current state: %s", state.GetStoreState())
 }
 
-// handleFailedState processes the Failed state and implements retry logic.
+// handleFailedState processes the Failed state and directly retries.
 func handleFailedState(
 	ctx context.Context,
 	state StoreOfflineReconcileContext,
@@ -281,128 +267,9 @@ func handleFailedState(
 ) task.Result {
 	logger := logr.FromContextOrDiscard(ctx).WithValues("instance", store.GetName())
 
-	// Get current retry count from status
-	retryCount := getRetryCount(store)
-
-	if !shouldRetry(store) {
-		errMsg := fmt.Sprintf("offline operation failed after %d retries", MaxRetryCount)
-		logger.Info("offline operation failed permanently", "error", errMsg, "retryCount", retryCount, "maxRetryCount", MaxRetryCount)
-		condition := runtime.GetOfflineCondition(store)
-		if condition != nil && condition.Message != errMsg {
-			updateOfflineCondition(state, store, newOfflineCondition(
-				v1alpha1.OfflineReasonFailed,
-				errMsg,
-				metav1.ConditionTrue,
-			))
-		}
-		return task.Fail().With(errMsg)
-	}
-
-	// Calculate retry interval with exponential backoff
-	retryInterval := calculateRetryInterval(retryCount)
-	logger.Info("Store offline operation retrying", "attempt", retryCount+1, "maxAttempts", MaxRetryCount, "retryInterval", retryInterval)
-
-	// Retry by transitioning back to Pending
-	return transitionToPendingWithRetry(ctx, state, store, retryInterval)
-}
-
-// getRetryCount gets the current retry count from the store status.
-func getRetryCount(store runtime.StoreInstance) int {
-	// Use type assertion to get the actual store status
-	switch v := any(store).(type) {
-	case *runtime.TiKV:
-		if v.Status.OfflineRetry != nil {
-			return v.Status.OfflineRetry.Count
-		}
-	case *runtime.TiFlash:
-		if v.Status.OfflineRetry != nil {
-			return v.Status.OfflineRetry.Count
-		}
-	}
-	return 0
-}
-
-// incrementRetryCount increments the retry count in the store status.
-func incrementRetryCount(state StoreOfflineReconcileContext, store runtime.StoreInstance) {
-	now := metav1.Now()
-
-	// Use type assertion to update the actual store status
-	switch v := any(store).(type) {
-	case *runtime.TiKV:
-		if v.Status.OfflineRetry == nil {
-			v.Status.OfflineRetry = &v1alpha1.OfflineRetryStatus{
-				Count:            1,
-				FirstFailureTime: &now,
-				LastRetryTime:    &now,
-			}
-		} else {
-			v.Status.OfflineRetry.Count++
-			v.Status.OfflineRetry.LastRetryTime = &now
-			if v.Status.OfflineRetry.FirstFailureTime == nil {
-				v.Status.OfflineRetry.FirstFailureTime = &now
-			}
-		}
-		state.SetStatusChanged()
-	case *runtime.TiFlash:
-		if v.Status.OfflineRetry == nil {
-			v.Status.OfflineRetry = &v1alpha1.OfflineRetryStatus{
-				Count:            1,
-				FirstFailureTime: &now,
-				LastRetryTime:    &now,
-			}
-		} else {
-			v.Status.OfflineRetry.Count++
-			v.Status.OfflineRetry.LastRetryTime = &now
-			if v.Status.OfflineRetry.FirstFailureTime == nil {
-				v.Status.OfflineRetry.FirstFailureTime = &now
-			}
-		}
-		state.SetStatusChanged()
-	}
-}
-
-// resetRetryCount resets the retry count in the store status.
-func resetRetryCount(state StoreOfflineReconcileContext, store runtime.StoreInstance) {
-	// Use type assertion to reset the actual store status
-	switch v := any(store).(type) {
-	case *runtime.TiKV:
-		v.Status.OfflineRetry = nil
-		state.SetStatusChanged()
-	case *runtime.TiFlash:
-		v.Status.OfflineRetry = nil
-		state.SetStatusChanged()
-	}
-}
-
-// shouldRetry determines whether the operation should retry based on retry count.
-func shouldRetry(store runtime.StoreInstance) bool {
-	return getRetryCount(store) < MaxRetryCount
-}
-
-// calculateRetryInterval calculates the retry interval with exponential backoff
-func calculateRetryInterval(retryCount int) time.Duration {
-	if retryCount <= 0 {
-		return BaseRetryInterval
-	}
-	// Exponential backoff: 10s, 30s, 90s, etc.
-	return BaseRetryInterval * time.Duration(math.Pow(3, float64(retryCount-1)))
-}
-
-// transitionToPendingWithRetry sets the offline condition to Pending state with a custom retry interval
-func transitionToPendingWithRetry(
-	ctx context.Context,
-	state StoreOfflineReconcileContext,
-	store runtime.StoreInstance,
-	retryInterval time.Duration,
-) task.Result {
-	logger := logr.FromContextOrDiscard(ctx).WithValues("instance", store.GetName())
-	logger.Info("offline operation transitioned to Pending state", "retryInterval", retryInterval)
-	updateOfflineCondition(state, store, newOfflineCondition(
-		v1alpha1.OfflineReasonPending,
-		"Store offline operation is requested and pending",
-		metav1.ConditionTrue,
-	))
-	return task.Retry(retryInterval).With("offline operation is pending")
+	// Directly retry by transitioning back to Pending
+	logger.Info("Store offline operation retrying from failed state")
+	return transitionToPending(ctx, state, store)
 }
 
 // cancelOfflineOperation cancels an ongoing offline operation.
@@ -418,8 +285,6 @@ func cancelOfflineOperation(
 	}
 
 	if state.StoreNotExists() {
-		// Reset retry count when operation completes
-		resetRetryCount(state, store)
 		updateOfflineCondition(state, store, newOfflineCondition(
 			v1alpha1.OfflineReasonCompleted,
 			"Store does not exist, offline operation completed",
