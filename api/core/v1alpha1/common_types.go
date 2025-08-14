@@ -62,12 +62,12 @@ const (
 
 const (
 	// StoreOfflineConditionType represents the condition of the store offline process.
-	StoreOfflineConditionType = "Offlining"
+	StoreOfflineConditionType = "Offlined"
 )
 
 const (
-	// OfflineReasonActive means the store is being offlined.
-	OfflineReasonActive = "Active"
+	// OfflineReasonProcessing means the store is being offlined.
+	OfflineReasonProcessing = "Processing"
 	// OfflineReasonCompleted means the store has been successfully offlined and removed from PD.
 	OfflineReasonCompleted = "Completed"
 	// OfflineReasonFailed means the offline operation failed.

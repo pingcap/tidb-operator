@@ -70,7 +70,7 @@ type StoreOfflineReconcileContext interface {
 }
 
 // TaskOfflineStoreStateMachine handles the two-step store deletion process based on spec.offline field.
-// This implements the state machine for offline operations: Active -> Completed/Failed/Canceled.
+// This implements the state machine for offline operations: Processing -> Completed/Failed/Canceled.
 func TaskOfflineStoreStateMachine(
 	ctx context.Context,
 	state StoreOfflineReconcileContext,
@@ -107,8 +107,8 @@ func handleOfflineOperation(
 	}
 
 	switch condition.Reason {
-	case v1alpha1.OfflineReasonActive:
-		return handleActiveState(ctx, state, store, hook)
+	case v1alpha1.OfflineReasonProcessing:
+		return handleProcessingState(ctx, state, store, hook)
 	case v1alpha1.OfflineReasonCompleted:
 		return task.Complete().With("store offline operation is completed")
 	case v1alpha1.OfflineReasonFailed:
@@ -142,7 +142,7 @@ func handleOfflineCancellation(
 	case v1alpha1.OfflineReasonCancelled:
 		// Already canceled
 		return task.Complete().With("offline operation already canceled")
-	case v1alpha1.OfflineReasonActive, v1alpha1.OfflineReasonFailed:
+	case v1alpha1.OfflineReasonProcessing, v1alpha1.OfflineReasonFailed:
 		// Cancel the operation
 		return cancelOfflineOperation(ctx, state, store, hook)
 	default:
@@ -161,7 +161,7 @@ func startOfflineOperation(
 	if state.StoreNotExists() {
 		// Store doesn't exist, mark as completed
 		logger.Info("Store does not exist, completing offline operation")
-		updateOfflineCondition(state, store, newOfflineCondition(
+		updateOfflinedCondition(state, store, newOfflinedCondition(
 			v1alpha1.OfflineReasonCompleted,
 			"Store does not exist, offline operation completed",
 			metav1.ConditionTrue,
@@ -170,39 +170,39 @@ func startOfflineOperation(
 	}
 
 	if state.GetPDClient() == nil {
-		updateOfflineCondition(state, store, newOfflineCondition(
+		updateOfflinedCondition(state, store, newOfflinedCondition(
 			v1alpha1.OfflineReasonFailed,
 			"PD client is not registered",
-			metav1.ConditionTrue,
+			metav1.ConditionFalse,
 		))
 		return task.Retry(RemovingWaitInterval).With("pd client is not registered")
 	}
 
 	storeID := state.GetStoreID()
 	if storeID == "" {
-		updateOfflineCondition(state, store, newOfflineCondition(
+		updateOfflinedCondition(state, store, newOfflinedCondition(
 			v1alpha1.OfflineReasonFailed,
 			"Store ID is empty",
-			metav1.ConditionTrue,
+			metav1.ConditionFalse,
 		))
 		return task.Retry(RemovingWaitInterval).With("store ID is empty")
 	}
 
 	wait, err := hook.BeforeDeleteStore(ctx)
 	if err != nil {
-		updateOfflineCondition(state, store, newOfflineCondition(
+		updateOfflinedCondition(state, store, newOfflinedCondition(
 			v1alpha1.OfflineReasonFailed,
 			fmt.Sprintf("Failed to execute the hook before delete store: %v", err),
-			metav1.ConditionTrue,
+			metav1.ConditionFalse,
 		))
 		return task.Retry(RemovingWaitInterval).With("failed to execute the hook before delete store: %v", err)
 	}
 	if wait {
-		// Set to Active state while waiting for the hook
-		updateOfflineCondition(state, store, newOfflineCondition(
-			v1alpha1.OfflineReasonActive,
+		// Set to Processing state while waiting for the hook
+		updateOfflinedCondition(state, store, newOfflinedCondition(
+			v1alpha1.OfflineReasonProcessing,
 			"Waiting for BeforeDeleteStore hook to complete",
-			metav1.ConditionTrue,
+			metav1.ConditionFalse,
 		))
 		return task.Retry(RemovingWaitInterval).With("wait for the hook BeforeDeleteStore")
 	}
@@ -210,30 +210,29 @@ func startOfflineOperation(
 	logger.Info("Calling PD DeleteStore API", "storeID", storeID)
 	if err := state.GetPDClient().Underlay().DeleteStore(ctx, storeID); err != nil {
 		// Transition to Failed state and record error in condition message
-		updateOfflineCondition(state, store, newOfflineCondition(
+		updateOfflinedCondition(state, store, newOfflinedCondition(
 			v1alpha1.OfflineReasonFailed,
 			fmt.Sprintf("Failed to call PD DeleteStore API: %v", err),
-			metav1.ConditionTrue,
+			metav1.ConditionFalse,
 		))
 		// Return a retryable error to re-trigger the failed state handling
 		return task.Retry(RemovingWaitInterval).With("failed to call PD DeleteStore API, will retry")
 	}
 
-	// Transition to Active state
-	logger.Info("Store offline operation transitioned to Active state")
-	updateOfflineCondition(state, store, newOfflineCondition(
-		v1alpha1.OfflineReasonActive,
-		"Store offline operation is active, data migration is in progress",
-		metav1.ConditionTrue,
+	// Transition to Processing state
+	logger.Info("Store offline operation transitioned to Processing state")
+	updateOfflinedCondition(state, store, newOfflinedCondition(
+		v1alpha1.OfflineReasonProcessing,
+		"Store offline operation is Processing, data migration is in progress",
+		metav1.ConditionFalse,
 	))
 	// Note: We don't set store state to Removing here. Instead, we honor the store state
 	// from PD, which will automatically transition from Serving -> Removing -> Removed
 	// after calling DeleteStore API. This avoids state conflicts between operator and PD.
-	return task.Retry(RemovingWaitInterval).With("store offline operation is active")
+	return task.Retry(RemovingWaitInterval).With("store offline operation is processing")
 }
 
-// handleActiveState processes the Active state and monitors store removal progress.
-func handleActiveState(
+func handleProcessingState(
 	ctx context.Context,
 	state StoreOfflineReconcileContext,
 	store runtime.StoreInstance,
@@ -250,7 +249,7 @@ func handleActiveState(
 		}
 
 		logger.Info("Store has been removed from PD, completing offline operation")
-		updateOfflineCondition(state, store, newOfflineCondition(
+		updateOfflinedCondition(state, store, newOfflinedCondition(
 			v1alpha1.OfflineReasonCompleted,
 			"Store state is Removed, offline operation completed",
 			metav1.ConditionTrue,
@@ -287,7 +286,7 @@ func cancelOfflineOperation(
 	}
 
 	if state.StoreNotExists() {
-		updateOfflineCondition(state, store, newOfflineCondition(
+		updateOfflinedCondition(state, store, newOfflinedCondition(
 			v1alpha1.OfflineReasonCompleted,
 			"Store does not exist, offline operation completed",
 			metav1.ConditionTrue,
@@ -307,10 +306,15 @@ func cancelOfflineOperation(
 		if err := state.GetPDClient().Underlay().CancelDeleteStore(ctx, storeID); err != nil {
 			// If cancellation fails, update the condition message and retry.
 			errMsg := fmt.Sprintf("Failed to cancel store deletion, will retry: %v", err)
-			updateOfflineCondition(state, store, newOfflineCondition(
-				runtime.GetOfflineCondition(store).Reason, // Keep the current reason (e.g., Active)
+			reason := runtime.GetOfflineCondition(store).Reason
+			status := metav1.ConditionFalse
+			if reason == v1alpha1.OfflineReasonCompleted {
+				status = metav1.ConditionTrue
+			}
+			updateOfflinedCondition(state, store, newOfflinedCondition(
+				reason,
 				errMsg,
-				metav1.ConditionTrue,
+				status,
 			))
 			return task.Fail().With(errMsg)
 		}
@@ -326,7 +330,7 @@ func cancelOfflineOperation(
 
 	// Update condition to canceled
 	logger.Info("Store offline operation canceled")
-	updateOfflineCondition(state, store, newOfflineCondition(
+	updateOfflinedCondition(state, store, newOfflinedCondition(
 		v1alpha1.OfflineReasonCancelled,
 		"Store offline operation has been canceled",
 		metav1.ConditionFalse,
@@ -335,8 +339,7 @@ func cancelOfflineOperation(
 	return task.Complete().With("offline operation canceled")
 }
 
-// updateOfflineCondition updates the offline condition in the store status.
-func updateOfflineCondition(
+func updateOfflinedCondition(
 	state StoreOfflineReconcileContext,
 	store runtime.StoreInstance,
 	condition *metav1.Condition,
@@ -345,7 +348,7 @@ func updateOfflineCondition(
 	state.SetStatusChanged()
 }
 
-func newOfflineCondition(reason, message string, status metav1.ConditionStatus) *metav1.Condition {
+func newOfflinedCondition(reason, message string, status metav1.ConditionStatus) *metav1.Condition {
 	return &metav1.Condition{
 		Type:               v1alpha1.StoreOfflineConditionType,
 		Status:             status,
