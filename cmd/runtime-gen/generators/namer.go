@@ -51,8 +51,7 @@ func GroupToTLSTypeName(t *types.Type) string {
 }
 
 func GroupToInternalTLSTypeName(t *types.Type) string {
-	switch t.Name.Name {
-	case "TiProxyGroup":
+	if t.Name.Name == "TiProxyGroup" {
 		return "InternalClientTLS"
 	}
 

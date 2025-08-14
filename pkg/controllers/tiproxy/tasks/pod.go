@@ -159,7 +159,6 @@ func newPod(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) *corev1.Pod {
 				MountPath: v1alpha1.DirPathTiProxyTiDBTLS,
 				ReadOnly:  true,
 			})
-
 		}
 	}
 

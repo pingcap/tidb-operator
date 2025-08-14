@@ -53,8 +53,9 @@ func GetClientTLSConfig[
 	}
 
 	return &tls.Config{
-		RootCAs:            rootCAs,
-		ClientCAs:          rootCAs,
+		RootCAs:   rootCAs,
+		ClientCAs: rootCAs,
+		// nolint: gosec // user specified
 		InsecureSkipVerify: skipVerify,
 		Certificates:       []tls.Certificate{*certKeyPair},
 	}, nil

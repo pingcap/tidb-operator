@@ -33,7 +33,7 @@ func IsTLSClusterEnabled(c *v1alpha1.Cluster) bool {
 
 // LegacyTLSClusterClientSecretName returns the mTLS secret name for the cluster client.
 // NOTE: now BR still use this secret to visit the cluster
-// DEPRECATED: use coreutil.ClientCASecretName and coreutil.CLientCertKeyPairSecretName
+// Deprecated: use coreutil.ClientCASecretName and coreutil.CLientCertKeyPairSecretName
 func LegacyTLSClusterClientSecretName(clusterName string) string {
 	return fmt.Sprintf("%s-cluster-client-secret", clusterName)
 }

@@ -101,7 +101,6 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) e
 		if coreutil.IsTiProxyBackendMutualTLSEnabled(tiproxy) {
 			c.Security.SQLTLS.Cert = path.Join(v1alpha1.DirPathTiProxyTiDBTLS, corev1.TLSCertKey)
 			c.Security.SQLTLS.Key = path.Join(v1alpha1.DirPathTiProxyTiDBTLS, corev1.TLSPrivateKeyKey)
-
 		}
 		if !coreutil.IsTiProxyBackendInsecureSkipTLSVerify(tiproxy) {
 			c.Security.SQLTLS.CA = path.Join(v1alpha1.DirPathTiProxyTiDBTLS, corev1.ServiceAccountRootCAKey)

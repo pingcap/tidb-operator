@@ -58,8 +58,8 @@ func TiDBMySQLTLS(db *v1alpha1.TiDB) *v1alpha1.TLS {
 	return nil
 }
 
-// TiDBMySQLCertKeyPairSecretName returns the secret name used in
-// TiDB server for the TLS between TiDB server and MySQL client.
+// TiDBMySQLCertKeyPairSecretName returns the secret name used in TiDB server
+// for the TLS between TiDB server and MySQL client.
 func TiDBMySQLCertKeyPairSecretName(db *v1alpha1.TiDB) string {
 	tls := TiDBMySQLTLS(db)
 	if tls != nil && tls.CertKeyPair != nil {
