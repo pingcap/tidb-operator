@@ -66,8 +66,6 @@ const (
 )
 
 const (
-	// OfflineReasonPending means the offline operation is requested but not yet started.
-	OfflineReasonPending = "Pending"
 	// OfflineReasonActive means the store is being offlined.
 	OfflineReasonActive = "Active"
 	// OfflineReasonCompleted means the store has been successfully offlined and removed from PD.
