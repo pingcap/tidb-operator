@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -28,6 +29,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/tests/e2e/framework/workload"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
@@ -38,7 +40,7 @@ const (
 type Workload struct {
 	f *Framework
 
-	job *batchv1.Job
+	jobs []*batchv1.Job
 }
 
 func (f *Framework) SetupWorkload() *Workload {
@@ -50,17 +52,22 @@ func (f *Framework) SetupWorkload() *Workload {
 	return w
 }
 
-func (w *Workload) MustPing(ctx context.Context, host, port, user, password, tlsSecretName string) {
+func (w *Workload) MustPing(ctx context.Context, host string, opts ...workload.Option) {
+	o := workload.DefaultOptions()
+	for _, opt := range opts {
+		opt.With(o)
+	}
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      workloadJobName,
-			Namespace: w.f.Namespace.Name,
+			GenerateName: workloadJobName,
+			Namespace:    w.f.Namespace.Name,
 		},
 		Spec: batchv1.JobSpec{
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app": workloadJobName,
+						"app": "ping",
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -71,9 +78,9 @@ func (w *Workload) MustPing(ctx context.Context, host, port, user, password, tls
 							Args: []string{
 								"--action", "ping",
 								"--host", host,
-								"--port", port,
-								"--user", user,
-								"--password", password,
+								"--port", strconv.Itoa(o.Port),
+								"--user", o.User,
+								"--password", o.Password,
 								"--duration", "8",
 								"--max-connections", "30",
 							},
@@ -87,44 +94,31 @@ func (w *Workload) MustPing(ctx context.Context, host, port, user, password, tls
 		},
 	}
 
-	if tlsSecretName != "" {
-		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
-			Name: "tls-certs",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: tlsSecretName,
-				},
-			},
-		})
-		job.Spec.Template.Spec.Containers[0].VolumeMounts = append(job.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
-			Name:      "tls-certs",
-			MountPath: "/var/lib/tidb-tls",
-			ReadOnly:  true,
-		})
-		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args,
-			"--enable-tls",
-			"--tls-mount-path", "/var/lib/tidb-tls",
-		)
-	}
+	job = workload.ConfigJobWithTLS(job, o)
 
 	ginkgo.By("Creating ping job")
 	w.f.Must(w.f.Client.Create(ctx, job))
-	w.job = job
+	w.jobs = append(w.jobs, job)
 
 	w.f.Must(waiter.WaitForJobComplete(ctx, w.f.Client, job, waiter.ShortTaskTimeout))
 }
 
-func (w *Workload) MustImportData(ctx context.Context, host, port, user, password, tlsSecretName string, regionCount int) {
+func (w *Workload) MustImportData(ctx context.Context, host string, opts ...workload.Option) {
+	o := workload.DefaultOptions()
+	for _, opt := range opts {
+		opt.With(o)
+	}
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      workloadJobName,
-			Namespace: w.f.Namespace.Name,
+			GenerateName: workloadJobName,
+			Namespace:    w.f.Namespace.Name,
 		},
 		Spec: batchv1.JobSpec{
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app": workloadJobName,
+						"app": "import",
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -135,12 +129,12 @@ func (w *Workload) MustImportData(ctx context.Context, host, port, user, passwor
 							Args: []string{
 								"--action", "import",
 								"--host", host,
-								"--port", port,
-								"--user", user,
-								"--password", password,
+								"--port", strconv.Itoa(o.Port),
+								"--user", o.User,
+								"--password", o.Password,
 								"--duration", "8",
 								"--max-connections", "30",
-								"--split-region-count", fmt.Sprintf("%d", regionCount),
+								"--split-region-count", fmt.Sprintf("%d", o.RegionCount),
 							},
 							ImagePullPolicy: corev1.PullIfNotPresent,
 						},
@@ -152,54 +146,39 @@ func (w *Workload) MustImportData(ctx context.Context, host, port, user, passwor
 		},
 	}
 
-	if tlsSecretName != "" {
-		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, corev1.Volume{
-			Name: "tls-certs",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: tlsSecretName,
-				},
-			},
-		})
-		job.Spec.Template.Spec.Containers[0].VolumeMounts = append(job.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
-			Name:      "tls-certs",
-			MountPath: "/var/lib/tidb-tls",
-			ReadOnly:  true,
-		})
-		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args,
-			"--enable-tls",
-			"--tls-mount-path", "/var/lib/tidb-tls",
-		)
-	}
+	job = workload.ConfigJobWithTLS(job, o)
 
 	ginkgo.By("Creating import job")
 	w.f.Must(w.f.Client.Create(ctx, job))
-	w.job = job
+	w.jobs = append(w.jobs, job)
 
 	w.f.Must(waiter.WaitForJobComplete(ctx, w.f.Client, job, waiter.ShortTaskTimeout))
 }
 
 func (w *Workload) DeferPrintLogs() {
 	ginkgo.JustAfterEach(func(ctx context.Context) {
-		if ginkgo.CurrentSpecReport().Failed() && w.job != nil {
-			podList := corev1.PodList{}
-			ginkgo.By("Try to get the workload pod")
-			w.f.Must(w.f.Client.List(ctx, &podList, client.InNamespace(w.f.Namespace.Name), client.MatchingLabels{
-				"app": w.job.Name,
-			}))
-			gomega.Expect(len(podList.Items)).To(gomega.Equal(1))
+		if ginkgo.CurrentSpecReport().Failed() {
+			for _, job := range w.jobs {
+				podList := corev1.PodList{}
+				ginkgo.By("Try to get the workload pod: " + job.Name)
+				w.f.Must(w.f.Client.List(ctx, &podList, client.InNamespace(w.f.Namespace.Name), client.MatchingLabels{
+					"app": job.Name,
+				}))
+				gomega.Expect(len(podList.Items)).To(gomega.Equal(1))
 
-			pod := &podList.Items[0]
-			logs, err := logPod(ctx, w.f.podLogClient, pod, false)
-			gomega.Expect(err).To(gomega.Succeed())
-			defer logs.Close()
+				pod := &podList.Items[0]
+				logs, err := logPod(ctx, w.f.podLogClient, pod, false)
+				gomega.Expect(err).To(gomega.Succeed())
+				defer logs.Close()
 
-			buf := bytes.Buffer{}
-			_, err = io.Copy(&buf, logs)
-			gomega.Expect(err).To(gomega.Succeed())
+				buf := bytes.Buffer{}
+				_, err = io.Copy(&buf, logs)
+				gomega.Expect(err).To(gomega.Succeed())
 
-			// TODO(liubo02): add color for logs
-			ginkgo.AddReportEntry("WorkloadLogs", buf.String())
+				// TODO(liubo02): add color for logs
+				ginkgo.AddReportEntry("WorkloadLogs:"+job.Name, buf.String())
+
+			}
 		}
 	})
 }

@@ -82,24 +82,36 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) e
 		c.Security.ClusterTLS.CA = path.Join(v1alpha1.DirPathClusterTLSTiProxy, corev1.ServiceAccountRootCAKey)
 		c.Security.ClusterTLS.Cert = path.Join(v1alpha1.DirPathClusterTLSTiProxy, corev1.TLSCertKey)
 		c.Security.ClusterTLS.Key = path.Join(v1alpha1.DirPathClusterTLSTiProxy, corev1.TLSPrivateKeyKey)
+	}
 
-		// Use the same cert as cluster TLS to simplify the cert management.
-		c.Security.ServerHTTPTLS.CA = path.Join(v1alpha1.DirPathClusterTLSTiProxy, corev1.ServiceAccountRootCAKey)
-		c.Security.ServerHTTPTLS.Cert = path.Join(v1alpha1.DirPathClusterTLSTiProxy, corev1.TLSCertKey)
-		c.Security.ServerHTTPTLS.Key = path.Join(v1alpha1.DirPathClusterTLSTiProxy, corev1.TLSPrivateKeyKey)
-		c.Security.ServerHTTPTLS.SkipCA = true
+	if coreutil.IsTiProxyHTTPServerTLSEnabled(cluster, tiproxy) {
+		c.Security.ServerHTTPTLS.Cert = path.Join(v1alpha1.DirPathTiProxyHTTPTLS, corev1.TLSCertKey)
+		c.Security.ServerHTTPTLS.Key = path.Join(v1alpha1.DirPathTiProxyHTTPTLS, corev1.TLSPrivateKeyKey)
+		if !coreutil.IsTiProxyHTTPServerNoClientCert(tiproxy) {
+			c.Security.ServerHTTPTLS.CA = path.Join(v1alpha1.DirPathTiProxyHTTPTLS, corev1.ServiceAccountRootCAKey)
+		}
 	}
 
 	if coreutil.IsTiProxyMySQLTLSEnabled(tiproxy) {
-		c.Security.ServerSQLTLS.CA = path.Join(v1alpha1.DirPathTiProxyMySQLTLS, corev1.ServiceAccountRootCAKey)
 		c.Security.ServerSQLTLS.Cert = path.Join(v1alpha1.DirPathTiProxyMySQLTLS, corev1.TLSCertKey)
 		c.Security.ServerSQLTLS.Key = path.Join(v1alpha1.DirPathTiProxyMySQLTLS, corev1.TLSPrivateKeyKey)
+		if !coreutil.IsTiProxyMySQLNoClientCert(tiproxy) {
+			c.Security.ServerSQLTLS.CA = path.Join(v1alpha1.DirPathTiProxyMySQLTLS, corev1.ServiceAccountRootCAKey)
+		}
 	}
 
-	if coreutil.IsTiProxyTiDBTLSEnabled(tiproxy) {
-		c.Security.SQLTLS.CA = path.Join(v1alpha1.DirPathTiProxyTiDBTLS, corev1.ServiceAccountRootCAKey)
-		c.Security.SQLTLS.Cert = path.Join(v1alpha1.DirPathTiProxyTiDBTLS, corev1.TLSCertKey)
-		c.Security.SQLTLS.Key = path.Join(v1alpha1.DirPathTiProxyTiDBTLS, corev1.TLSPrivateKeyKey)
+	if coreutil.IsTiProxyBackendTLSEnabled(tiproxy) {
+		c.Security.RequireBackendTLS = true
+		if coreutil.IsTiProxyBackendMutualTLSEnabled(tiproxy) {
+			c.Security.SQLTLS.Cert = path.Join(v1alpha1.DirPathTiProxyTiDBTLS, corev1.TLSCertKey)
+			c.Security.SQLTLS.Key = path.Join(v1alpha1.DirPathTiProxyTiDBTLS, corev1.TLSPrivateKeyKey)
+
+		}
+		if !coreutil.IsTiProxyBackendInsecureSkipTLSVerify(tiproxy) {
+			c.Security.SQLTLS.CA = path.Join(v1alpha1.DirPathTiProxyTiDBTLS, corev1.ServiceAccountRootCAKey)
+		} else {
+			c.Security.SQLTLS.SkipCA = true
+		}
 	}
 
 	return nil
