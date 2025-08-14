@@ -61,7 +61,6 @@ type StoreInstance interface {
 	Instance
 
 	IsOffline() bool
-	SetOffline(bool)
 }
 
 func SetOfflineCondition(s StoreInstance, condition *metav1.Condition) {
@@ -74,7 +73,7 @@ func SetOfflineCondition(s StoreInstance, condition *metav1.Condition) {
 	// Find existing condition
 	updated := false
 	for i := range conditions {
-		if conditions[i].Type == v1alpha1.StoreOfflineConditionType {
+		if conditions[i].Type == v1alpha1.StoreOfflinedConditionType {
 			conditions[i] = *condition
 			updated = true
 		}
@@ -87,5 +86,5 @@ func SetOfflineCondition(s StoreInstance, condition *metav1.Condition) {
 }
 
 func GetOfflineCondition(s StoreInstance) *metav1.Condition {
-	return meta.FindStatusCondition(s.Conditions(), v1alpha1.StoreOfflineConditionType)
+	return meta.FindStatusCondition(s.Conditions(), v1alpha1.StoreOfflinedConditionType)
 }

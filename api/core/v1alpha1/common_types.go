@@ -61,19 +61,19 @@ const (
 )
 
 const (
-	// StoreOfflineConditionType represents the condition of the store offline process.
-	StoreOfflineConditionType = "Offlined"
+	// StoreOfflinedConditionType represents if the store complete the offline.
+	StoreOfflinedConditionType = "Offlined"
 )
 
 const (
-	// OfflineReasonProcessing means the store is being offlined.
-	OfflineReasonProcessing = "Processing"
-	// OfflineReasonCompleted means the store has been successfully offlined and removed from PD.
-	OfflineReasonCompleted = "Completed"
-	// OfflineReasonFailed means the offline operation failed.
-	OfflineReasonFailed = "Failed"
-	// OfflineReasonCancelled means the offline operation was cancelled.
-	OfflineReasonCancelled = "Cancelled"
+	// ReasonOfflineProcessing means the store is being offlined.
+	ReasonOfflineProcessing = "Processing"
+	// ReasonOfflineCompleted means the store has been successfully offlined and removed from PD.
+	ReasonOfflineCompleted = "Completed"
+	// ReasonOfflineFailed means the offline operation failed.
+	ReasonOfflineFailed = "Failed"
+	// ReasonOfflineCancelled means the offline operation was cancelled.
+	ReasonOfflineCancelled = "Cancelled"
 )
 
 // TODO(liubo02): move to meta

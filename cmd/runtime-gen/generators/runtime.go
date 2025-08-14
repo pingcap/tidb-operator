@@ -231,10 +231,6 @@ func (in *$.|pub$) Version() string {
 func (in *$.|pub$) IsOffline() bool {
 	return in.Spec.Offline
 }
-
-func (in *$.|pub$) SetOffline(offline bool) {
-	in.Spec.Offline = offline
-}
 `, t)
 	}
 

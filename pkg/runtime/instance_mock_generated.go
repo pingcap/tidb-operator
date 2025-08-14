@@ -611,18 +611,6 @@ func (mr *MockStoreInstanceMockRecorder) SetObservedGeneration(arg0 any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetObservedGeneration", reflect.TypeOf((*MockStoreInstance)(nil).SetObservedGeneration), arg0)
 }
 
-// SetOffline mocks base method.
-func (m *MockStoreInstance) SetOffline(arg0 bool) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetOffline", arg0)
-}
-
-// SetOffline indicates an expected call of SetOffline.
-func (mr *MockStoreInstanceMockRecorder) SetOffline(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetOffline", reflect.TypeOf((*MockStoreInstance)(nil).SetOffline), arg0)
-}
-
 // SetOwnerReferences mocks base method.
 func (m *MockStoreInstance) SetOwnerReferences(arg0 []v1.OwnerReference) {
 	m.ctrl.T.Helper()

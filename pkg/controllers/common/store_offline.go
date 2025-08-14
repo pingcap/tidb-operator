@@ -107,13 +107,13 @@ func handleOfflineOperation(
 	}
 
 	switch condition.Reason {
-	case v1alpha1.OfflineReasonProcessing:
+	case v1alpha1.ReasonOfflineProcessing:
 		return handleProcessingState(ctx, state, store, hook)
-	case v1alpha1.OfflineReasonCompleted:
+	case v1alpha1.ReasonOfflineCompleted:
 		return task.Complete().With("store offline operation is completed")
-	case v1alpha1.OfflineReasonFailed:
+	case v1alpha1.ReasonOfflineFailed:
 		return handleFailedState(ctx, state, store, hook)
-	case v1alpha1.OfflineReasonCancelled:
+	case v1alpha1.ReasonOfflineCancelled:
 		// This case is reached if spec.offline is set to true for a store
 		// that was previously canceled. It restarts the offline process.
 		return startOfflineOperation(ctx, state, store, hook)
@@ -136,13 +136,13 @@ func handleOfflineCancellation(
 	}
 
 	switch condition.Reason {
-	case v1alpha1.OfflineReasonCompleted:
+	case v1alpha1.ReasonOfflineCompleted:
 		// Cannot cancel completed operations
 		return task.Complete().With("cannot cancel completed offline operation")
-	case v1alpha1.OfflineReasonCancelled:
+	case v1alpha1.ReasonOfflineCancelled:
 		// Already canceled
 		return task.Complete().With("offline operation already canceled")
-	case v1alpha1.OfflineReasonProcessing, v1alpha1.OfflineReasonFailed:
+	case v1alpha1.ReasonOfflineProcessing, v1alpha1.ReasonOfflineFailed:
 		// Cancel the operation
 		return cancelOfflineOperation(ctx, state, store, hook)
 	default:
@@ -162,7 +162,7 @@ func startOfflineOperation(
 		// Store doesn't exist, mark as completed
 		logger.Info("Store does not exist, completing offline operation")
 		updateOfflinedCondition(state, store, newOfflinedCondition(
-			v1alpha1.OfflineReasonCompleted,
+			v1alpha1.ReasonOfflineCompleted,
 			"Store does not exist, offline operation completed",
 			metav1.ConditionTrue,
 		))
@@ -171,7 +171,7 @@ func startOfflineOperation(
 
 	if state.GetPDClient() == nil {
 		updateOfflinedCondition(state, store, newOfflinedCondition(
-			v1alpha1.OfflineReasonFailed,
+			v1alpha1.ReasonOfflineFailed,
 			"PD client is not registered",
 			metav1.ConditionFalse,
 		))
@@ -181,7 +181,7 @@ func startOfflineOperation(
 	storeID := state.GetStoreID()
 	if storeID == "" {
 		updateOfflinedCondition(state, store, newOfflinedCondition(
-			v1alpha1.OfflineReasonFailed,
+			v1alpha1.ReasonOfflineFailed,
 			"Store ID is empty",
 			metav1.ConditionFalse,
 		))
@@ -191,7 +191,7 @@ func startOfflineOperation(
 	wait, err := hook.BeforeDeleteStore(ctx)
 	if err != nil {
 		updateOfflinedCondition(state, store, newOfflinedCondition(
-			v1alpha1.OfflineReasonFailed,
+			v1alpha1.ReasonOfflineFailed,
 			fmt.Sprintf("Failed to execute the hook before delete store: %v", err),
 			metav1.ConditionFalse,
 		))
@@ -200,7 +200,7 @@ func startOfflineOperation(
 	if wait {
 		// Set to Processing state while waiting for the hook
 		updateOfflinedCondition(state, store, newOfflinedCondition(
-			v1alpha1.OfflineReasonProcessing,
+			v1alpha1.ReasonOfflineProcessing,
 			"Waiting for BeforeDeleteStore hook to complete",
 			metav1.ConditionFalse,
 		))
@@ -211,7 +211,7 @@ func startOfflineOperation(
 	if err := state.GetPDClient().Underlay().DeleteStore(ctx, storeID); err != nil {
 		// Transition to Failed state and record error in condition message
 		updateOfflinedCondition(state, store, newOfflinedCondition(
-			v1alpha1.OfflineReasonFailed,
+			v1alpha1.ReasonOfflineFailed,
 			fmt.Sprintf("Failed to call PD DeleteStore API: %v", err),
 			metav1.ConditionFalse,
 		))
@@ -222,7 +222,7 @@ func startOfflineOperation(
 	// Transition to Processing state
 	logger.Info("Store offline operation transitioned to Processing state")
 	updateOfflinedCondition(state, store, newOfflinedCondition(
-		v1alpha1.OfflineReasonProcessing,
+		v1alpha1.ReasonOfflineProcessing,
 		"Store offline operation is Processing, data migration is in progress",
 		metav1.ConditionFalse,
 	))
@@ -250,7 +250,7 @@ func handleProcessingState(
 
 		logger.Info("Store has been removed from PD, completing offline operation")
 		updateOfflinedCondition(state, store, newOfflinedCondition(
-			v1alpha1.OfflineReasonCompleted,
+			v1alpha1.ReasonOfflineCompleted,
 			"Store state is Removed, offline operation completed",
 			metav1.ConditionTrue,
 		))
@@ -287,7 +287,7 @@ func cancelOfflineOperation(
 
 	if state.StoreNotExists() {
 		updateOfflinedCondition(state, store, newOfflinedCondition(
-			v1alpha1.OfflineReasonCompleted,
+			v1alpha1.ReasonOfflineCompleted,
 			"Store does not exist, offline operation completed",
 			metav1.ConditionTrue,
 		))
@@ -308,9 +308,6 @@ func cancelOfflineOperation(
 			errMsg := fmt.Sprintf("Failed to cancel store deletion, will retry: %v", err)
 			reason := runtime.GetOfflineCondition(store).Reason
 			status := metav1.ConditionFalse
-			if reason == v1alpha1.OfflineReasonCompleted {
-				status = metav1.ConditionTrue
-			}
 			updateOfflinedCondition(state, store, newOfflinedCondition(
 				reason,
 				errMsg,
@@ -331,7 +328,7 @@ func cancelOfflineOperation(
 	// Update condition to canceled
 	logger.Info("Store offline operation canceled")
 	updateOfflinedCondition(state, store, newOfflinedCondition(
-		v1alpha1.OfflineReasonCancelled,
+		v1alpha1.ReasonOfflineCancelled,
 		"Store offline operation has been canceled",
 		metav1.ConditionFalse,
 	))
@@ -350,7 +347,7 @@ func updateOfflinedCondition(
 
 func newOfflinedCondition(reason, message string, status metav1.ConditionStatus) *metav1.Condition {
 	return &metav1.Condition{
-		Type:               v1alpha1.StoreOfflineConditionType,
+		Type:               v1alpha1.StoreOfflinedConditionType,
 		Status:             status,
 		Reason:             reason,
 		Message:            message,
