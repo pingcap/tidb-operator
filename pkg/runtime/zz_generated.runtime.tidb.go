@@ -164,6 +164,10 @@ func (in *TiDB) Version() string {
 	return in.Spec.Version
 }
 
+func (in *TiDB) IsOffline() bool {
+	return false
+}
+
 type (
 	TiDBGroup v1alpha1.TiDBGroup
 )

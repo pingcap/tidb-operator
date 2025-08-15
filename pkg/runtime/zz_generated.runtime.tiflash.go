@@ -164,6 +164,10 @@ func (in *TiFlash) Version() string {
 	return in.Spec.Version
 }
 
+func (in *TiFlash) IsOffline() bool {
+	return in.Spec.Offline
+}
+
 type (
 	TiFlashGroup v1alpha1.TiFlashGroup
 )

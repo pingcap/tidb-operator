@@ -164,6 +164,10 @@ func (in *Scheduler) Version() string {
 	return in.Spec.Version
 }
 
+func (in *Scheduler) IsOffline() bool {
+	return false
+}
+
 type (
 	SchedulerGroup v1alpha1.SchedulerGroup
 )

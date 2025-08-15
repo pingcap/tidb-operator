@@ -164,6 +164,10 @@ func (in *TiKV) Version() string {
 	return in.Spec.Version
 }
 
+func (in *TiKV) IsOffline() bool {
+	return in.Spec.Offline
+}
+
 type (
 	TiKVGroup v1alpha1.TiKVGroup
 )

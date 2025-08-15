@@ -164,6 +164,10 @@ func (in *PD) Version() string {
 	return in.Spec.Version
 }
 
+func (in *PD) IsOffline() bool {
+	return false
+}
+
 type (
 	PDGroup v1alpha1.PDGroup
 )

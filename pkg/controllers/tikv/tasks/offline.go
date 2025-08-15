@@ -18,7 +18,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -32,14 +32,13 @@ func TaskOfflineStore(state *ReconcileContext) task.Task {
 		if !state.PDSynced {
 			return task.Wait().With("pd is not synced")
 		}
-		if state.Object().GetDeletionTimestamp().IsZero() {
+		tikv := state.Instance()
+		if tikv.GetDeletionTimestamp().IsZero() {
 			return task.Complete().With("tikv is not deleting, no need to offline the store")
 		}
-		if !state.IsStoreUp() {
-			return task.Wait().With("store has been %s, no need to offline it", state.GetStoreState())
-		}
+
 		var reason string
-		delTime := state.Object().GetDeletionTimestamp()
+		delTime := tikv.GetDeletionTimestamp()
 		switch {
 		// leaders evicted
 		case state.LeaderEvicting && state.GetLeaderCount() == 0:
@@ -48,14 +47,12 @@ func TaskOfflineStore(state *ReconcileContext) task.Task {
 			reason = "leader eviction timeout"
 		}
 
-		if reason != "" {
-			if err := state.PDClient.Underlay().DeleteStore(ctx, state.Store.ID); err != nil {
-				return task.Fail().With("cannot delete store %s: %w", state.Store.ID, err)
-			}
-			state.SetStoreState(v1alpha1.StoreStateRemoving)
-			return task.Wait().With("%s, try to removing the store", reason)
+		if reason == "" {
+			return task.Retry(defaultLeaderEvictTimeout+jitter).
+				With("waiting for leaders evicted or timeout, current leader count: %d", state.GetLeaderCount())
 		}
 
-		return task.Retry(defaultLeaderEvictTimeout + jitter).With("waiting for leaders evicted or timeout")
+		tikv.Spec.Offline = true
+		return common.TaskOfflineStoreStateMachine(ctx, state, tikv)
 	})
 }

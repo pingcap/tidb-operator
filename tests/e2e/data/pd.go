@@ -59,3 +59,13 @@ func WithMSMode() GroupPatch[*runtime.PDGroup] {
 		obj.Spec.Template.Spec.Mode = v1alpha1.PDModeMS
 	}
 }
+
+func WithSlowDataMigration() GroupPatch[*runtime.PDGroup] {
+	return func(obj *runtime.PDGroup) {
+		obj.Spec.Template.Spec.Config = `[schedule]
+region-schedule-limit = 16
+leader-schedule-limit = 8
+replica-schedule-limit = 8
+`
+	}
+}

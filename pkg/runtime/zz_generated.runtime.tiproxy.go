@@ -164,6 +164,10 @@ func (in *TiProxy) Version() string {
 	return in.Spec.Version
 }
 
+func (in *TiProxy) IsOffline() bool {
+	return false
+}
+
 type (
 	TiProxyGroup v1alpha1.TiProxyGroup
 )

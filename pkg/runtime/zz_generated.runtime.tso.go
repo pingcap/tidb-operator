@@ -164,6 +164,10 @@ func (in *TSO) Version() string {
 	return in.Spec.Version
 }
 
+func (in *TSO) IsOffline() bool {
+	return false
+}
+
 type (
 	TSOGroup v1alpha1.TSOGroup
 )

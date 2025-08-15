@@ -224,6 +224,21 @@ func (in *$.|pub$) Version() string {
 }
 `, t)
 
+	// Generate Store interface methods for TiKV and TiFlash
+	if strings.EqualFold(t.Name.Name, "TiKV") || strings.EqualFold(t.Name.Name, "TiFlash") {
+		sw.Do(`
+func (in *$.|pub$) IsOffline() bool {
+	return in.Spec.Offline
+}
+`, t)
+	} else {
+		sw.Do(`
+func (in *$.|pub$) IsOffline() bool {
+	return false
+}
+`, t)
+	}
+
 	return sw.Error()
 }
 

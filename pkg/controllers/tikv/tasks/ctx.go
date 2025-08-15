@@ -37,6 +37,24 @@ type ReconcileContext struct {
 	PDSynced bool
 }
 
+// GetStoreID returns the store ID for PD operations
+func (r *ReconcileContext) GetStoreID() string {
+	if r.Store == nil {
+		return ""
+	}
+	return r.Store.ID
+}
+
+// StoreNotExists returns true if the store does not exist in PD
+func (r *ReconcileContext) StoreNotExists() bool {
+	return r.Store == nil
+}
+
+// GetPDClient returns the PD client for API operations
+func (r *ReconcileContext) GetPDClient() pdm.PDClient {
+	return r.PDClient
+}
+
 func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task.Task {
 	return task.NameTaskFunc("ContextInfoFromPD", func(ctx context.Context) task.Result {
 		ck := state.Cluster()
