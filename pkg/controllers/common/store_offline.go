@@ -198,12 +198,6 @@ func startOfflineOperation(
 		return task.Retry(RemovingWaitInterval).With("failed to execute the hook before delete store: %v", err)
 	}
 	if wait {
-		// Set to Processing state while waiting for the hook
-		updateOfflinedCondition(state, store, newOfflinedCondition(
-			v1alpha1.ReasonOfflineProcessing,
-			"Waiting for BeforeDeleteStore hook to complete",
-			metav1.ConditionFalse,
-		))
 		return task.Retry(RemovingWaitInterval).With("wait for the hook BeforeDeleteStore")
 	}
 
@@ -341,6 +335,7 @@ func updateOfflinedCondition(
 	store runtime.StoreInstance,
 	condition *metav1.Condition,
 ) {
+	condition.ObservedGeneration = store.GetGeneration()
 	runtime.SetOfflineCondition(store, condition)
 	state.SetStatusChanged()
 }

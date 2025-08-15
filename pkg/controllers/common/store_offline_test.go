@@ -40,6 +40,7 @@ func conditionsFromSingle(condition *metav1.Condition) []metav1.Condition {
 func createMockStoreInstance(ctrl *gomock.Controller, offline bool, condition []metav1.Condition, annotations map[string]string) *runtime.MockStoreInstance {
 	mockStore := runtime.NewMockStoreInstance(ctrl)
 	mockStore.EXPECT().GetName().Return("test").AnyTimes()
+	mockStore.EXPECT().GetGeneration().AnyTimes()
 	mockStore.EXPECT().IsOffline().Return(offline).AnyTimes()
 
 	// Create mutable state for conditions
