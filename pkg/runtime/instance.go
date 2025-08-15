@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate ${GOBIN}/mockgen -write_command_comment=false -copyright_file ${BOILERPLATE_FILE} -destination instance_mock_generated.go -package=runtime ${GO_MODULE}/pkg/runtime StoreInstance
+//go:generate ${GOBIN}/mockgen -write_command_comment=false -copyright_file ${BOILERPLATE_FILE} -destination instance_mock_generated.go -package=runtime ${GO_MODULE}/pkg/runtime Instance
 package runtime
 
 import (
@@ -35,6 +35,7 @@ type Instance interface {
 	// NOTE: It does not mean the instance is updated to the newest revision
 	// TODO: may be change a more meaningful name?
 	IsUpToDate() bool
+	IsOffline() bool
 
 	CurrentRevision() string
 	SetCurrentRevision(rev string)
@@ -56,14 +57,7 @@ type InstanceTuple[PT client.Object, PU Instance] interface {
 	Tuple[PT, PU]
 }
 
-// StoreInstance represents an instance that is both a Store and Instance, like TiKV and TiFlash.
-type StoreInstance interface {
-	Instance
-
-	IsOffline() bool
-}
-
-func SetOfflineCondition(s StoreInstance, condition *metav1.Condition) {
+func SetOfflineCondition(s Instance, condition *metav1.Condition) {
 	if condition == nil {
 		return
 	}
@@ -85,6 +79,6 @@ func SetOfflineCondition(s StoreInstance, condition *metav1.Condition) {
 	s.SetConditions(conditions)
 }
 
-func GetOfflineCondition(s StoreInstance) *metav1.Condition {
+func GetOfflineCondition(s Instance) *metav1.Condition {
 	return meta.FindStatusCondition(s.Conditions(), v1alpha1.StoreOfflinedConditionType)
 }

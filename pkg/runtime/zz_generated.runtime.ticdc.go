@@ -164,6 +164,10 @@ func (in *TiCDC) Version() string {
 	return in.Spec.Version
 }
 
+func (in *TiCDC) IsOffline() bool {
+	return false
+}
+
 type (
 	TiCDCGroup v1alpha1.TiCDCGroup
 )

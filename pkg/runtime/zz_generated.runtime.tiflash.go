@@ -164,7 +164,6 @@ func (in *TiFlash) Version() string {
 	return in.Spec.Version
 }
 
-// Store interface implementation
 func (in *TiFlash) IsOffline() bool {
 	return in.Spec.Offline
 }

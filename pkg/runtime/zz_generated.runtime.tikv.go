@@ -164,7 +164,6 @@ func (in *TiKV) Version() string {
 	return in.Spec.Version
 }
 
-// Store interface implementation
 func (in *TiKV) IsOffline() bool {
 	return in.Spec.Offline
 }
