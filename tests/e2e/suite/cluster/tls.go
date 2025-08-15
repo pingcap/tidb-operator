@@ -60,9 +60,10 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 		cg := f.MustCreateTiCDC(ctx,
 			data.WithClusterTLS[*runtime.TiCDCGroup](ca, "ticdc-internal"),
 		)
-		pg := f.MustCreateTiProxy(ctx,
-			data.WithClusterTLS[*runtime.TiProxyGroup](ca, "tiproxy-internal"),
-		)
+		// TODO: Ignore tiproxy until e2e env is fixed
+		// pg := f.MustCreateTiProxy(ctx,
+		// 	data.WithClusterTLS[*runtime.TiProxyGroup](ca, "tiproxy-internal"),
+		// )
 
 		cm.Install(ctx, ns, cluster)
 
@@ -73,7 +74,7 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 		f.WaitForTiDBGroupReady(ctx, dbg)
 		f.WaitForTiFlashGroupReady(ctx, fg)
 		f.WaitForTiCDCGroupReady(ctx, cg)
-		f.WaitForTiProxyGroupReady(ctx, pg)
+		// f.WaitForTiProxyGroupReady(ctx, pg)
 
 		workload.MustPing(ctx, data.DefaultTiDBServiceName)
 		workload.MustPing(ctx, data.DefaultTiProxyServiceName, wopt.Port(data.DefaultTiProxyServicePort))
