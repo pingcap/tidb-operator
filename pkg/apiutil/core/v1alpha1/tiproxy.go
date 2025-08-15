@@ -72,7 +72,8 @@ func TiProxyMySQLTLS(db *v1alpha1.TiProxy) *v1alpha1.TLS {
 	return nil
 }
 
-// TiProxyMySQLCertKeyPairSecretName returns the secret name used in TiProxy server for the TLS between TiProxy server and MySQL client.
+// TiProxyMySQLCertKeyPairSecretName returns the secret name used
+// in TiProxy server for the TLS between TiProxy server and MySQL client.
 func TiProxyMySQLCertKeyPairSecretName(tiproxy *v1alpha1.TiProxy) string {
 	tls := TiProxyMySQLTLS(tiproxy)
 	if tls != nil && tls.CertKeyPair != nil {
@@ -302,6 +303,11 @@ func TiProxyBackendTLSVolume(tiproxy *v1alpha1.TiProxy) *corev1.Volume {
 	tls := TiProxyBackendTLS(tiproxy)
 	certKeyPair := TiProxyBackendCertKeyPairSecretName(tiproxy)
 	ca := TiProxyBackendCASecretName(tiproxy)
+
+	// client tls is disabled
+	if tls == nil {
+		return nil
+	}
 
 	// not mutual and skip tls verification
 	if !tls.Mutual && tls.InsecureSkipTLSVerify {

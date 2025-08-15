@@ -161,8 +161,12 @@ func (w *Workload) DeferPrintLogs() {
 			for _, job := range w.jobs {
 				podList := corev1.PodList{}
 				ginkgo.By("Try to get the workload pod: " + job.Name)
-				w.f.Must(w.f.Client.List(ctx, &podList, client.InNamespace(w.f.Namespace.Name), client.MatchingLabels{
-					"app": job.Name,
+
+				s, err := metav1.LabelSelectorAsSelector(job.Spec.Selector)
+				w.f.Must(err)
+
+				w.f.Must(w.f.Client.List(ctx, &podList, client.InNamespace(w.f.Namespace.Name), client.MatchingLabelsSelector{
+					Selector: s,
 				}))
 				gomega.Expect(len(podList.Items)).To(gomega.Equal(1))
 

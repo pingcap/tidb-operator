@@ -93,7 +93,7 @@ metadata:
 spec:
   sources:
   - secret:
-      name: "{{ .Namespace}}-{{ .CAIssuer }}"
+      name: "{{ .Namespace }}-{{ .CAIssuer }}"
       key: "tls.crt"
   target:
     secret:
@@ -222,7 +222,7 @@ func registerInternalCertsForComponents[
 			return err
 		}
 		if clientCA != clientCertKeyPair {
-			cs, err := newInternalCA(ns, ca, cluster)
+			cs, err := newInternalCA(ns, clientCA, cluster)
 			if err != nil {
 				return err
 			}

@@ -84,6 +84,11 @@ func TiDBMySQLTLSVolume(db *v1alpha1.TiDB) *corev1.Volume {
 	tls := TiDBMySQLTLS(db)
 	certKeyPair := TiDBMySQLCertKeyPairSecretName(db)
 
+	// tls is disabled
+	if tls == nil {
+		return nil
+	}
+
 	if tls.ClientAuth == v1alpha1.ClientAuthTypeNoClientCert {
 		return &corev1.Volume{
 			Name: v1alpha1.VolumeNameMySQLTLS,
