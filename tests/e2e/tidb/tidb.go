@@ -30,6 +30,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
+	wopt "github.com/pingcap/tidb-operator/tests/e2e/framework/workload"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/cert"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/jwt"
@@ -62,7 +63,7 @@ var _ = ginkgo.Describe("TiDB", label.TiDB, func() {
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
 
-			workload.MustPing(ctx, data.DefaultTiDBServiceName, data.DefaultTiDBServicePort, "root", "pingcap", "")
+			workload.MustPing(ctx, data.DefaultTiDBServiceName, wopt.User("root", "pingcap"))
 		})
 	})
 
@@ -99,7 +100,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
 
-			workload.MustPing(ctx, data.DefaultTiDBServiceName, data.DefaultTiDBServicePort, sub, token, "")
+			workload.MustPing(ctx, data.DefaultTiDBServiceName, wopt.User(sub, token))
 		})
 	})
 
@@ -301,7 +302,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 	})
 
 	ginkgo.Context("TLS", label.P0, label.FeatureTLS, func() {
-		f.SetupCluster(data.WithClusterTLS(), data.WithFeatureGates(metav1alpha1.FeatureModification))
+		f.SetupCluster(data.WithClusterTLSEnabled(), data.WithFeatureGates(metav1alpha1.FeatureModification))
 		workload := f.SetupWorkload()
 
 		ginkgo.It("should enable TLS for MySQL Client and between TiDB components", func(ctx context.Context) {
@@ -383,7 +384,8 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 				checkComponent(cdcg.Name, v1alpha1.LabelValComponentTiCDC, cdcg.Spec.Replicas)
 			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
 
-			workload.MustPing(ctx, data.DefaultTiDBServiceName, data.DefaultTiDBServicePort, "root", "", dbg.Name+"-tidb-client-secret")
+			sec := dbg.Name + "-tidb-client-secret"
+			workload.MustPing(ctx, data.DefaultTiDBServiceName, wopt.TLS(sec, sec))
 		})
 
 		ginkgo.It("should mount session token signing cert when SessionTokenSigning is enabled", func(ctx context.Context) {
@@ -424,8 +426,8 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 				for _, vol := range pod.Spec.Volumes {
 					if vol.Name == v1alpha1.VolumeNameTiDBSessionTokenSigningTLS {
 						volumeFound = true
-						if vol.VolumeSource.Secret != nil {
-							foundSecretName = vol.VolumeSource.Secret.SecretName
+						if vol.Secret != nil {
+							foundSecretName = vol.Secret.SecretName
 						}
 						break
 					}

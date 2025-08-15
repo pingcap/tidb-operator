@@ -39,6 +39,15 @@ type Object interface {
 	Version() string
 
 	Features() []metav1alpha1.Feature
+
+	// tls secret name for the tidb operator to visit internal components
+	ClientCertKeyPairSecretName() string
+	ClientCASecretName() string
+	ClientInsecureSkipTLSVerify() bool
+
+	// tls secret name for internal communication between components
+	ClusterCertKeyPairSecretName() string
+	ClusterCASecretName() string
 }
 
 type ObjectT[T ObjectSet] interface {

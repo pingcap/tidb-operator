@@ -416,7 +416,7 @@ func (bc *backupCleaner) makeStopLogBackupJob(ctx context.Context, backup *v1alp
 			Name: corev1alpha1.VolumeNameClusterTLS,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: coreutil.TLSClusterClientSecretName(backup.Spec.BR.Cluster),
+					SecretName: coreutil.LegacyTLSClusterClientSecretName(backup.Spec.BR.Cluster),
 				},
 			},
 		})

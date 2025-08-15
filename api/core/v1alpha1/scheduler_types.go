@@ -139,6 +139,9 @@ type SchedulerTemplateSpec struct {
 	// See https://docs.pingcap.com/tidb/stable/Scheduler-configuration-file/
 	Config ConfigFile `json:"config,omitempty"`
 
+	// Security defines security config
+	Security *Security `json:"security,omitempty"`
+
 	// Volumes defines persistent volumes of Scheduler
 	// +listType=map
 	// +listMapKey=name

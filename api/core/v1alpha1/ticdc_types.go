@@ -136,6 +136,9 @@ type TiCDCTemplateSpec struct {
 	// Config defines config file of TiCDC
 	Config ConfigFile `json:"config,omitempty"`
 
+	// Security defines security config
+	Security *Security `json:"security,omitempty"`
+
 	// Volumes defines persistent volumes of TiCDC, it is optional.
 	// If you want to use ephemeral storage or mount sink TLS certs, you can use "overlay" instead.
 	// +listType=map

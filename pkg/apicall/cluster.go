@@ -67,3 +67,28 @@ func GetCluster[
 
 	return cluster, nil
 }
+
+func ListClusterInstances[
+	S scope.InstanceList[F, T, L],
+	F client.Object,
+	T runtime.Instance,
+	L client.ObjectList,
+](ctx context.Context, c client.Client, ns, cluster string) ([]F, error) {
+	l := scope.NewList[S]()
+	if err := c.List(ctx, l, client.InNamespace(ns), client.MatchingLabels{
+		v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+		v1alpha1.LabelKeyCluster:   cluster,
+		v1alpha1.LabelKeyComponent: scope.Component[S](),
+	}); err != nil {
+		return nil, err
+	}
+
+	objs := scope.GetItems[S](l)
+
+	// always sort instances
+	slices.SortFunc(objs, func(a, b F) int {
+		return cmp.Compare(a.GetName(), b.GetName())
+	})
+
+	return objs, nil
+}

@@ -51,17 +51,26 @@ function e2e::switch_kube_context() {
 }
 
 function e2e::ensure_cert_manager() {
-    echo "checking if cert-manager is installed..."
-    if $KUBECTL -n cert-manager get deployment cert-manager &>/dev/null; then
-        echo "cert-manager already installed, skipping..."
-        return
-    fi
-
     echo "installing cert-manager..."
-    $KUBECTL apply --server-side=true -f https://github.com/cert-manager/cert-manager/releases/download/v1.15.2/cert-manager.yaml
+    $HELM upgrade \
+        cert-manager oci://quay.io/jetstack/charts/cert-manager \
+        -i \
+        --version v1.18.2 \
+        --namespace cert-manager \
+        --create-namespace \
+        --set crds.enabled=true
+}
 
-    echo "waiting for cert-manager to be ready..."
-    $KUBECTL -n cert-manager wait --for=condition=Available --timeout=5m deployment/cert-manager
+function e2e::ensure_trust_manager() {
+    echo "installing trust-manager..."
+    $HELM upgrade \
+        trust-manager oci://quay.io/jetstack/charts/trust-manager \
+        -i \
+        --version v0.18.0 \
+        --namespace cert-manager \
+        --create-namespace \
+        --set secretTargets.enabled=true \
+        --set secretTargets.authorizedSecretsAll=true
 }
 
 function e2e::delete_crds() {
@@ -333,6 +342,7 @@ function e2e::prepare() {
     kind::ensure_cluster
     e2e::switch_kube_context
     e2e::ensure_cert_manager
+    e2e::ensure_trust_manager
 
     # build the operator image and load it into the kind cluster
     image::build prestop-checker tidb-operator testing-workload tidb-backup-manager --push

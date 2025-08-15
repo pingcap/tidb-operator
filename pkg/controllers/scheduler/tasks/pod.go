@@ -115,14 +115,7 @@ func newPod(cluster *v1alpha1.Cluster, scheduler *v1alpha1.Scheduler) *corev1.Po
 	}
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
-		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.VolumeNameClusterTLS,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: coreutil.TLSClusterSecretName[scope.Scheduler](scheduler),
-				},
-			},
-		})
+		vols = append(vols, *coreutil.ClusterTLSVolume[scope.Scheduler](scheduler))
 		mounts = append(mounts, corev1.VolumeMount{
 			Name:      v1alpha1.VolumeNameClusterTLS,
 			MountPath: v1alpha1.DirPathClusterTLSScheduler,

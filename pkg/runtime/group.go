@@ -36,6 +36,8 @@ type Group interface {
 
 	TemplateLabels() map[string]string
 	TemplateAnnotations() map[string]string
+
+	SetTemplateClusterTLS(ca, certKeyPair string)
 }
 
 type GroupT[T GroupSet] interface {

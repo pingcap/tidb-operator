@@ -15,6 +15,8 @@
 package coreutil
 
 import (
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
@@ -47,15 +49,114 @@ func TiDBStatusPort(db *v1alpha1.TiDB) int32 {
 	return v1alpha1.DefaultTiDBPortStatus
 }
 
-// MySQLTLSSecretName returns the secret name used in TiDB server for the TLS between TiDB server and MySQL client.
-func MySQLTLSSecretName(db *v1alpha1.TiDB) string {
+func TiDBMySQLTLS(db *v1alpha1.TiDB) *v1alpha1.TLS {
+	sec := db.Spec.Security
+	if sec != nil && sec.TLS != nil && sec.TLS.MySQL != nil {
+		return sec.TLS.MySQL
+	}
+
+	return nil
+}
+
+// TiDBMySQLCertKeyPairSecretName returns the secret name used in TiDB server
+// for the TLS between TiDB server and MySQL client.
+func TiDBMySQLCertKeyPairSecretName(db *v1alpha1.TiDB) string {
+	tls := TiDBMySQLTLS(db)
+	if tls != nil && tls.CertKeyPair != nil {
+		return tls.CertKeyPair.Name
+	}
 	prefix, _ := NamePrefixAndSuffix(db)
 	return prefix + "-tidb-server-secret"
 }
 
-// IsMySQLTLSEnabled returns whether the TLS between TiDB server and MySQL client is enabled.
-func IsMySQLTLSEnabled(db *v1alpha1.TiDB) bool {
-	return db.Spec.Security != nil && db.Spec.Security.TLS != nil && db.Spec.Security.TLS.MySQL != nil && db.Spec.Security.TLS.MySQL.Enabled
+// TiDBMySQLCASecretName returns the secret name for TiDB server
+// to authenticate MySQL client.
+func TiDBMySQLCASecretName(db *v1alpha1.TiDB) string {
+	tls := TiDBMySQLTLS(db)
+	if tls != nil && tls.CA != nil {
+		return tls.CA.Name
+	}
+	prefix, _ := NamePrefixAndSuffix(db)
+	return prefix + "-tidb-server-secret"
+}
+
+func TiDBMySQLTLSVolume(db *v1alpha1.TiDB) *corev1.Volume {
+	tls := TiDBMySQLTLS(db)
+	certKeyPair := TiDBMySQLCertKeyPairSecretName(db)
+
+	// tls is disabled
+	if tls == nil {
+		return nil
+	}
+
+	if tls.ClientAuth == v1alpha1.ClientAuthTypeNoClientCert {
+		return &corev1.Volume{
+			Name: v1alpha1.VolumeNameMySQLTLS,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: certKeyPair,
+				},
+			},
+		}
+	}
+
+	ca := TiDBMySQLCASecretName(db)
+
+	if ca == certKeyPair {
+		return &corev1.Volume{
+			Name: v1alpha1.VolumeNameMySQLTLS,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: ca,
+				},
+			},
+		}
+	}
+
+	return &corev1.Volume{
+		Name: v1alpha1.VolumeNameMySQLTLS,
+		VolumeSource: corev1.VolumeSource{
+			Projected: &corev1.ProjectedVolumeSource{
+				Sources: []corev1.VolumeProjection{
+					{
+						Secret: &corev1.SecretProjection{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: ca,
+							},
+						},
+					},
+					{
+						Secret: &corev1.SecretProjection{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: certKeyPair,
+							},
+							Items: []corev1.KeyToPath{
+								{
+									Key:  corev1.TLSCertKey,
+									Path: corev1.TLSCertKey,
+								},
+								{
+									Key:  corev1.TLSPrivateKeyKey,
+									Path: corev1.TLSPrivateKeyKey,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// IsTiDBMySQLTLSEnabled returns whether the TLS between TiDB server and MySQL client is enabled.
+func IsTiDBMySQLTLSEnabled(db *v1alpha1.TiDB) bool {
+	tls := TiDBMySQLTLS(db)
+	return tls != nil && tls.Enabled
+}
+
+func IsTiDBMySQLTLSNoClientCert(db *v1alpha1.TiDB) bool {
+	tls := TiDBMySQLTLS(db)
+	return tls != nil && tls.ClientAuth == v1alpha1.ClientAuthTypeNoClientCert
 }
 
 func IsTokenBasedAuthEnabled(db *v1alpha1.TiDB) bool {
@@ -81,7 +182,7 @@ func SessionTokenSigningCertSecretName(cluster *v1alpha1.Cluster, db *v1alpha1.T
 		return cluster.Spec.Security.SessionTokenSigningCertKeyPair.Name
 	}
 	if IsTLSClusterEnabled(cluster) {
-		return TLSClusterSecretName[scope.TiDB](db)
+		return ClusterCertKeyPairSecretName[scope.TiDB](db)
 	}
 	return ""
 }

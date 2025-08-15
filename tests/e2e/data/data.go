@@ -45,9 +45,8 @@ const (
 const (
 	// TODO(liubo02): extract to namer
 	DefaultTiDBServiceName    = defaultTiDBGroupName + "-tidb"
-	DefaultTiDBServicePort    = "4000"
 	DefaultTiProxyServiceName = defaultTiProxyGroupName + "-tiproxy"
-	DefaultTiProxyServicePort = "6000"
+	DefaultTiProxyServicePort = 6000
 )
 
 func WithReplicas[G runtime.Group](replicas int32) GroupPatch[G] {
@@ -71,5 +70,11 @@ func WithGroupVersion[G runtime.Group](version string) GroupPatch[G] {
 func WithGroupCluster[G runtime.Group](cluster string) GroupPatch[G] {
 	return func(obj G) {
 		obj.SetCluster(cluster)
+	}
+}
+
+func WithClusterTLS[G runtime.Group](ca, certKeyPair string) GroupPatch[G] {
+	return func(obj G) {
+		obj.SetTemplateClusterTLS(ca, certKeyPair)
 	}
 }

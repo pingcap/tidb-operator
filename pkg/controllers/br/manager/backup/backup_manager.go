@@ -471,7 +471,7 @@ func (bm *backupManager) makeBRBackupJob(ctx context.Context, backup *v1alpha1.B
 			Name: corev1alpha1.VolumeNameClusterClientTLS,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: coreutil.TLSClusterClientSecretName(backup.Spec.BR.Cluster),
+					SecretName: coreutil.LegacyTLSClusterClientSecretName(backup.Spec.BR.Cluster),
 				},
 			},
 		})

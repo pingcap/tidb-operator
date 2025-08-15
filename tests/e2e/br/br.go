@@ -337,7 +337,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			f.Must(err)
 			ExpectEqual(cleaned, true, "storage should be cleaned")
 		})
-
 	})
 
 	ginkgo.Context("Log Backup Test", func() {
@@ -776,7 +775,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Start backup and wait to running")
 			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, func(backup *v1alpha1.Backup) {
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
+				backup.Spec.Env = []v1.EnvVar{{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
 			})
 			f.Must(err)
 
@@ -839,7 +838,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, func(backup *v1alpha1.Backup) {
 				backup.Spec.BackoffRetryPolicy.MinRetryDuration = "2s" // retry after 2s
 
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime + "," + e2eTestFlagPanic}}
+				backup.Spec.Env = []v1.EnvVar{{Name: e2eBackupEnv, Value: e2eExtendBackupTime + "," + e2eTestFlagPanic}}
 			})
 			f.Must(err)
 
@@ -849,7 +848,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("update backup evn, remove simulate panic")
 			backup, err = updateBackup(f, backup.Name, func(backup *v1alpha1.Backup) {
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: "a", Value: "b"}}
+				backup.Spec.Env = []v1.EnvVar{{Name: "a", Value: "b"}}
 			})
 			f.Must(err)
 
@@ -908,7 +907,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 					MaxRetryTimes:    2,
 					RetryTimeout:     "30m",
 				}
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime + "," + e2eTestFlagPanic}}
+				backup.Spec.Env = []v1.EnvVar{{Name: e2eBackupEnv, Value: e2eExtendBackupTime + "," + e2eTestFlagPanic}}
 			})
 			f.Must(err)
 
@@ -993,7 +992,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 					RetryTimeout:     "1m",
 				}
 				// panic every 30s
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime + "," + e2eTestFlagPanic}}
+				backup.Spec.Env = []v1.EnvVar{{Name: e2eBackupEnv, Value: e2eExtendBackupTime + "," + e2eTestFlagPanic}}
 			})
 			f.Must(err)
 
@@ -1288,7 +1287,7 @@ func createTidbCluster(f *brframework.Framework, name string, version string, en
 			getGroupName(name, "cdcg"),
 		)).To(gomega.Succeed())
 
-		clusterPatches = append(clusterPatches, data.WithClusterTLS())
+		clusterPatches = append(clusterPatches, data.WithClusterTLSEnabled())
 	}
 	cluster := f.MustCreateCluster(ctx, clusterPatches...)
 	_ = f.MustCreatePD(ctx,
@@ -1336,7 +1335,7 @@ func createLogBackupEnabledTidbCluster(f *brframework.Framework, name string, ve
 			getGroupName(name, "cdcg"),
 		)).To(gomega.Succeed())
 
-		clusterPatches = append(clusterPatches, data.WithClusterTLS())
+		clusterPatches = append(clusterPatches, data.WithClusterTLSEnabled())
 	}
 	cluster := f.MustCreateCluster(ctx, clusterPatches...)
 	_ = f.MustCreatePD(ctx,

@@ -134,3 +134,35 @@ func Version[
 ](in F) string {
 	return scope.From[S](in).Version()
 }
+
+func ClusterCertKeyPairSecretName[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F) string {
+	return scope.From[S](f).ClusterCertKeyPairSecretName()
+}
+
+func ClusterCASecretName[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F) string {
+	return scope.From[S](f).ClusterCASecretName()
+}
+
+func ClientCertKeyPairSecretName[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F) string {
+	return scope.From[S](f).ClientCertKeyPairSecretName()
+}
+
+func ClientCASecretName[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F) string {
+	return scope.From[S](f).ClientCASecretName()
+}

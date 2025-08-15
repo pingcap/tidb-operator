@@ -15,7 +15,7 @@
 package coreutil
 
 import (
-	"strings"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
@@ -36,12 +36,7 @@ func NamePrefixAndSuffix[
 	F client.Object,
 ](f F) (prefix, suffix string) {
 	name := f.GetName()
-	index := strings.LastIndexByte(name, '-')
-	// TODO(liubo02): validate name to avoid '-' is not found
-	if index == -1 {
-		panic("cannot get name prefix")
-	}
-	return name[:index], name[index+1:]
+	return runtime.NamePrefixAndSuffix(name)
 }
 
 // PodName returns the default managed pod name of an instance
@@ -56,15 +51,67 @@ func PodName[
 	return prefix + "-" + scope.Component[S]() + "-" + suffix
 }
 
-// TLSClusterSecretName returns the default cluster secret name of an instance
-// TODO(liubo02): move to namer
-func TLSClusterSecretName[
+func Subdomain[
 	S scope.Instance[F, T],
 	F client.Object,
 	T runtime.Instance,
 ](f F) string {
-	prefix, _ := NamePrefixAndSuffix(f)
-	return prefix + "-" + scope.Component[S]() + "-cluster-secret"
+	return scope.From[S](f).Subdomain()
+}
+
+func ClusterTLSVolume[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](f F) *corev1.Volume {
+	certKeyPair := ClusterCertKeyPairSecretName[S](f)
+	ca := ClusterCASecretName[S](f)
+
+	if ca == certKeyPair {
+		return &corev1.Volume{
+			Name: v1alpha1.VolumeNameClusterTLS,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: ca,
+				},
+			},
+		}
+	}
+
+	return &corev1.Volume{
+		Name: v1alpha1.VolumeNameClusterTLS,
+		VolumeSource: corev1.VolumeSource{
+			Projected: &corev1.ProjectedVolumeSource{
+				Sources: []corev1.VolumeProjection{
+					{
+						Secret: &corev1.SecretProjection{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: ca,
+							},
+						},
+					},
+					{
+						Secret: &corev1.SecretProjection{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: certKeyPair,
+							},
+							// avoid mounting injected ca.crt
+							Items: []corev1.KeyToPath{
+								{
+									Key:  corev1.TLSCertKey,
+									Path: corev1.TLSCertKey,
+								},
+								{
+									Key:  corev1.TLSPrivateKeyKey,
+									Path: corev1.TLSPrivateKeyKey,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 }
 
 func UpdateRevision[

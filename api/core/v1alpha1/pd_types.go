@@ -166,8 +166,13 @@ type PDTemplateSpec struct {
 	Server         PDServer             `json:"server,omitempty"`
 	Resources      ResourceRequirements `json:"resources,omitempty"`
 	UpdateStrategy UpdateStrategy       `json:"updateStrategy,omitempty"`
+
 	// Config defines config file of PD
 	Config ConfigFile `json:"config,omitempty"`
+
+	// Security defines security config
+	Security *Security `json:"security,omitempty"`
+
 	// Volumes defines persistent volumes of PD
 	// +listType=map
 	// +listMapKey=name

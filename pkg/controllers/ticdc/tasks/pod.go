@@ -146,14 +146,7 @@ func newPod(cluster *v1alpha1.Cluster, ticdc *v1alpha1.TiCDC) *corev1.Pod {
 	}
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
-		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.VolumeNameClusterTLS,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: coreutil.TLSClusterSecretName[scope.TiCDC](ticdc),
-				},
-			},
-		})
+		vols = append(vols, *coreutil.ClusterTLSVolume[scope.TiCDC](ticdc))
 		mounts = append(mounts, corev1.VolumeMount{
 			Name:      v1alpha1.VolumeNameClusterTLS,
 			MountPath: v1alpha1.DirPathClusterTLSTiCDC,

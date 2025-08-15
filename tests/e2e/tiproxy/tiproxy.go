@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
+	wopt "github.com/pingcap/tidb-operator/tests/e2e/framework/workload"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/cert"
 	utiltidb "github.com/pingcap/tidb-operator/tests/e2e/utils/tidb"
@@ -233,7 +234,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 	// NOTE: this case is failed in e2e env.
 	// Enable it if env is fixed.
 	ginkgo.PContext("TLS", label.P0, label.FeatureTLS, func() {
-		f.SetupCluster(data.WithClusterTLS())
+		f.SetupCluster(data.WithClusterTLSEnabled())
 		workload := f.SetupWorkload()
 
 		ginkgo.It("use different sql cert from TiDB Server", func(ctx context.Context) {
@@ -314,7 +315,8 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 				checkComponent(pg.Name, v1alpha1.LabelValComponentTiProxy, pg.Spec.Replicas)
 			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
 
-			workload.MustImportData(ctx, data.DefaultTiProxyServiceName, data.DefaultTiProxyServicePort, "root", "", pg.Name+"-tiproxy-client-secret", 100)
+			sec := pg.Name + "-tiproxy-client-secret"
+			workload.MustImportData(ctx, data.DefaultTiProxyServiceName, wopt.Port(data.DefaultTiProxyServicePort), wopt.TLS(sec, sec), wopt.RegionCount(100))
 		})
 	})
 

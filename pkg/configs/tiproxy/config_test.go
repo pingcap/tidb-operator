@@ -156,10 +156,9 @@ func TestOverlay(t *testing.T) {
 						Key:  "/var/lib/tiproxy-tls/tls.key",
 					},
 					ServerHTTPTLS: TLSConfig{
-						CA:     "/var/lib/tiproxy-tls/ca.crt",
-						Cert:   "/var/lib/tiproxy-tls/tls.crt",
-						Key:    "/var/lib/tiproxy-tls/tls.key",
-						SkipCA: true,
+						CA:   "/var/lib/tiproxy-http-tls/ca.crt",
+						Cert: "/var/lib/tiproxy-http-tls/tls.crt",
+						Key:  "/var/lib/tiproxy-http-tls/tls.key",
 					},
 				},
 			},
@@ -226,8 +225,9 @@ func TestOverlay(t *testing.T) {
 					TiProxyTemplateSpec: v1alpha1.TiProxyTemplateSpec{
 						Security: &v1alpha1.TiProxySecurity{
 							TLS: &v1alpha1.TiProxyTLS{
-								Backend: &v1alpha1.TLS{
+								Backend: &v1alpha1.ClientTLS{
 									Enabled: true,
+									Mutual:  true,
 								},
 							},
 						},

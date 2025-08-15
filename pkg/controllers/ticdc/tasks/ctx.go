@@ -19,11 +19,12 @@ import (
 	"crypto/tls"
 	"fmt"
 
+	"github.com/pingcap/tidb-operator/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/ticdcapi/v1"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
-	tlsutil "github.com/pingcap/tidb-operator/pkg/utils/tls"
 )
 
 type ReconcileContext struct {
@@ -41,8 +42,7 @@ func TaskContextInfoFromTiCDC(state *ReconcileContext, c client.Client) task.Tas
 		ck := state.Cluster()
 		if coreutil.IsTLSClusterEnabled(ck) {
 			var err error
-			tlsConfig, err = tlsutil.GetTLSConfigFromSecret(ctx, c,
-				ck.Namespace, coreutil.TLSClusterClientSecretName(ck.Name))
+			tlsConfig, err = apicall.GetClientTLSConfig[scope.TiCDC](ctx, c, state.Object())
 			if err != nil {
 				return task.Fail().With("cannot get tls config from secret: %w", err)
 			}

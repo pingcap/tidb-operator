@@ -137,15 +137,8 @@ func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, g features.Gates) *c
 		}
 	}
 
-	if coreutil.IsMySQLTLSEnabled(tidb) {
-		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.VolumeNameMySQLTLS,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: coreutil.MySQLTLSSecretName(tidb),
-				},
-			},
-		})
+	if coreutil.IsTiDBMySQLTLSEnabled(tidb) {
+		vols = append(vols, *coreutil.TiDBMySQLTLSVolume(tidb))
 		mounts = append(mounts, corev1.VolumeMount{
 			Name:      v1alpha1.VolumeNameMySQLTLS,
 			MountPath: v1alpha1.DirPathMySQLTLS,
@@ -154,14 +147,8 @@ func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, g features.Gates) *c
 	}
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
-		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.VolumeNameClusterTLS,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: coreutil.TLSClusterSecretName[scope.TiDB](tidb),
-				},
-			},
-		})
+		vols = append(vols, *coreutil.ClusterTLSVolume[scope.TiDB](tidb))
+
 		mounts = append(mounts, corev1.VolumeMount{
 			Name:      v1alpha1.VolumeNameClusterTLS,
 			MountPath: v1alpha1.DirPathClusterTLSTiDB,

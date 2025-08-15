@@ -29,3 +29,31 @@ func (f NameFunc) Name(t *types.Type) string {
 func GroupToInstanceName(t *types.Type) string {
 	return strings.TrimSuffix(t.Name.Name, "Group")
 }
+
+func GroupToSecurityTypeName(t *types.Type) string {
+	name := strings.TrimSuffix(t.Name.Name, "Group")
+	switch name {
+	case "TiDB", "TiProxy":
+		return name + "Security"
+	}
+
+	return "Security"
+}
+
+func GroupToTLSTypeName(t *types.Type) string {
+	name := strings.TrimSuffix(t.Name.Name, "Group")
+	switch name {
+	case "TiDB", "TiProxy":
+		return name + "TLS"
+	}
+
+	return "ComponentTLS"
+}
+
+func GroupToInternalTLSTypeName(t *types.Type) string {
+	if t.Name.Name == "TiProxyGroup" {
+		return "InternalClientTLS"
+	}
+
+	return "InternalTLS"
+}

@@ -187,6 +187,31 @@ func (b *Backup) SetVersion(string) {
 	// dummy function
 }
 
+func (b *Backup) ClusterCASecretName() string {
+	// dummy function
+	return ""
+}
+
+func (b *Backup) ClusterCertKeyPairSecretName() string {
+	// dummy function
+	return ""
+}
+
+func (b *Backup) ClientCASecretName() string {
+	// dummy function
+	return ""
+}
+
+func (b *Backup) ClientCertKeyPairSecretName() string {
+	// dummy function
+	return ""
+}
+
+func (b *Backup) ClientInsecureSkipTLSVerify() bool {
+	// dummy function
+	return false
+}
+
 type (
 	Restore brv1alpha1.Restore
 )
@@ -264,6 +289,31 @@ func (r *Restore) Version() string {
 
 func (r *Restore) SetVersion(string) {
 	// dummy function
+}
+
+func (r *Restore) ClusterCASecretName() string {
+	// dummy function
+	return ""
+}
+
+func (r *Restore) ClusterCertKeyPairSecretName() string {
+	// dummy function
+	return ""
+}
+
+func (r *Restore) ClientCASecretName() string {
+	// dummy function
+	return ""
+}
+
+func (r *Restore) ClientCertKeyPairSecretName() string {
+	// dummy function
+	return ""
+}
+
+func (r *Restore) ClientInsecureSkipTLSVerify() bool {
+	// dummy function
+	return false
 }
 
 func FromRestore(r *brv1alpha1.Restore) *Restore {
