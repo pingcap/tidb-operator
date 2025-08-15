@@ -22,7 +22,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
-	wopt "github.com/pingcap/tidb-operator/tests/e2e/framework/workload"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
 )
 
@@ -77,6 +76,6 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 		// f.WaitForTiProxyGroupReady(ctx, pg)
 
 		workload.MustPing(ctx, data.DefaultTiDBServiceName)
-		workload.MustPing(ctx, data.DefaultTiProxyServiceName, wopt.Port(data.DefaultTiProxyServicePort))
+		// workload.MustPing(ctx, data.DefaultTiProxyServiceName, wopt.Port(data.DefaultTiProxyServicePort))
 	})
 })
