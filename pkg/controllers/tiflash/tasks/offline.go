@@ -33,6 +33,6 @@ func TaskOfflineStore(state *ReconcileContext) task.Task {
 			return task.Complete().With("tiflash is not deleting, no need to offline the store")
 		}
 		tiflash.Spec.Offline = true
-		return common.TaskOfflineStoreStateMachine(ctx, state, tiflash, "tiflash", &common.DummyStoreOfflineHook{})
+		return common.TaskOfflineStoreStateMachine(ctx, state, tiflash)
 	})
 }
