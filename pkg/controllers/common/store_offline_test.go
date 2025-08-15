@@ -248,6 +248,58 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 			expectedResult:    task.SRetry,
 			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineFailed},
 		},
+		// State recovery from PD when condition is lost
+		{
+			name: "State recovery: PD shows Serving, condition lost, should start fresh",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
+				return createMockStoreInstance(ctrl, true, nil, nil)
+			},
+			contextBuilder: newContext("1").WithState(v1alpha1.StoreStateServing),
+			setupMock: func(mockUnderlay *pdapi.MockPDClient) {
+				mockUnderlay.EXPECT().DeleteStore(gomock.Any(), "1").Return(nil)
+			},
+			expectedResult:    task.SRetry,
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineProcessing},
+		},
+		{
+			name: "State recovery: PD shows Removing, condition lost, should recover as Processing",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
+				return createMockStoreInstance(ctrl, true, nil, nil)
+			},
+			contextBuilder:    newContext("1").WithState(v1alpha1.StoreStateRemoving),
+			expectedResult:    task.SRetry,
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineProcessing},
+		},
+		{
+			name: "State recovery: PD shows Removed, condition lost, should recover as Completed",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
+				return createMockStoreInstance(ctrl, true, nil, nil)
+			},
+			contextBuilder:    newContext("1").WithState(v1alpha1.StoreStateRemoved),
+			expectedResult:    task.SComplete,
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.ReasonOfflineCompleted},
+		},
+		{
+			name: "State recovery: Store not exists, condition lost, should recover as Completed",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
+				return createMockStoreInstance(ctrl, true, nil, nil)
+			},
+			contextBuilder:    newContext("1").StoreExists(false),
+			expectedResult:    task.SComplete,
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.ReasonOfflineCompleted},
+		},
+		{
+			name: "State recovery: PD shows unknown state, condition lost, should start fresh",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
+				return createMockStoreInstance(ctrl, true, nil, nil)
+			},
+			contextBuilder: newContext("1").WithState("UnknownState"),
+			setupMock: func(mockUnderlay *pdapi.MockPDClient) {
+				mockUnderlay.EXPECT().DeleteStore(gomock.Any(), "1").Return(nil)
+			},
+			expectedResult:    task.SRetry,
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineProcessing},
+		},
 		// Edge cases
 		{
 			name: "Nil PD client in cancel state",
@@ -278,12 +330,41 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionTrue, Reason: "UnknownReason"},
 		},
 		{
-			name: "Cancel when no condition exists",
+			name: "Cancel when no condition exists: store not removing",
 			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
 				return createMockStoreInstance(ctrl, false, nil, nil)
 			},
-			contextBuilder: newContext(""),
-			expectedResult: task.SComplete,
+			contextBuilder: newContext("1").WithState(v1alpha1.StoreStateServing),
+			setupMock: func(mockUnderlay *pdapi.MockPDClient) {
+				// Should still call CancelDeleteStore for Serving state
+				mockUnderlay.EXPECT().CancelDeleteStore(gomock.Any(), "1").Return(nil)
+			},
+			expectedResult:    task.SComplete,
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineCancelled},
+		},
+		{
+			name: "Cancel when no condition exists: store is removing",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
+				return createMockStoreInstance(ctrl, false, nil, nil)
+			},
+			contextBuilder: newContext("1").WithState(v1alpha1.StoreStateRemoving),
+			setupMock: func(mockUnderlay *pdapi.MockPDClient) {
+				mockUnderlay.EXPECT().CancelDeleteStore(gomock.Any(), "1").Return(nil)
+			},
+			expectedResult:    task.SComplete,
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineCancelled},
+		},
+		{
+			name: "Cancel when no condition exists: cancel API fails but no original condition to preserve",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
+				return createMockStoreInstance(ctrl, false, nil, nil)
+			},
+			contextBuilder: newContext("1").WithState(v1alpha1.StoreStateRemoving),
+			setupMock: func(mockUnderlay *pdapi.MockPDClient) {
+				mockUnderlay.EXPECT().CancelDeleteStore(gomock.Any(), "1").Return(errors.New("cancel failed"))
+			},
+			expectedResult:    task.SFail,
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineProcessing},
 		},
 		{
 			name: "Cancel when already completed",
