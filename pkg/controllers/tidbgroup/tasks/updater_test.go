@@ -260,7 +260,8 @@ func TestTaskUpdater(t *testing.T) {
 			c.objs = append(c.objs, c.state.TiDBGroup(), c.state.Cluster())
 			fc := client.NewFakeClient(c.objs...)
 			for _, obj := range c.state.TiDBSlice() {
-				require.NoError(tt, fc.Apply(ctx, obj), c.desc)
+				require.NoError(tt, fc.Apply(ctx, obj.DeepCopy()), c.desc)
+				require.NoError(tt, fc.Status().Update(ctx, obj.DeepCopy()), c.desc)
 			}
 
 			if c.unexpectedErr {

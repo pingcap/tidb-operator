@@ -43,6 +43,10 @@ func convertToUnstructured(gvk schema.GroupVersionKind, obj client.Object) (*uns
 	m["apiVersion"] = gvk.GroupVersion().String()
 	m["kind"] = gvk.Kind
 
+	// Ignore status because we only apply spec
+	// Empty status may also marshal to a object with data
+	delete(m, "status")
+
 	return &unstructured.Unstructured{
 		Object: m,
 	}, nil
