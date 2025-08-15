@@ -21,7 +21,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	stringutil "github.com/pingcap/tidb-operator/pkg/utils/string"
 )
@@ -57,13 +59,18 @@ type Security struct {
 
 	// tidb_auth_token
 	AuthTokenJwks string `toml:"auth-token-jwks"`
+
+	// If tiproxy is enabled, need to set these configs.
+	// https://docs.pingcap.com/tidb/stable/tidb-configuration-file/#session-token-signing-cert-new-in-v640
+	SessionTokenSigningKey  string `toml:"session-token-signing-key"`
+	SessionTokenSigningCert string `toml:"session-token-signing-cert"`
 }
 
 type Log struct {
 	SlowQueryFile string `toml:"slow-query-file"`
 }
 
-func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) error {
+func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, fg features.Gates) error {
 	if err := c.Validate(coreutil.IsSeparateSlowLogEnabled(tidb)); err != nil {
 		return err
 	}
@@ -84,6 +91,11 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) error {
 		c.Security.ClusterSSLCA = path.Join(v1alpha1.DirPathClusterTLSTiDB, corev1.ServiceAccountRootCAKey)
 		c.Security.ClusterSSLCert = path.Join(v1alpha1.DirPathClusterTLSTiDB, corev1.TLSCertKey)
 		c.Security.ClusterSSLKey = path.Join(v1alpha1.DirPathClusterTLSTiDB, corev1.TLSPrivateKeyKey)
+	}
+
+	if fg.Enabled(metav1alpha1.SessionTokenSigning) {
+		c.Security.SessionTokenSigningKey = path.Join(v1alpha1.DirPathTiDBSessionTokenSigningTLS, corev1.TLSPrivateKeyKey)
+		c.Security.SessionTokenSigningCert = path.Join(v1alpha1.DirPathTiDBSessionTokenSigningTLS, corev1.TLSCertKey)
 	}
 
 	c.Log.SlowQueryFile = getSlowQueryFile(tidb)

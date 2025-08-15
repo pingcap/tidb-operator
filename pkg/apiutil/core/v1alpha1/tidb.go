@@ -14,7 +14,10 @@
 
 package coreutil
 
-import "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+import (
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+)
 
 func TiDBGroupClientPort(dbg *v1alpha1.TiDBGroup) int32 {
 	if dbg.Spec.Template.Spec.Server.Ports.Client != nil {
@@ -68,4 +71,17 @@ func AuthTokenJWKSSecretName(db *v1alpha1.TiDB) string {
 
 func IsSeparateSlowLogEnabled(db *v1alpha1.TiDB) bool {
 	return db.Spec.SlowLog != nil
+}
+
+// SessionTokenSigningCertSecretName returns the secret name used in TiDB server for the session token signing cert.
+// If the session token signing cert is not specified, it will return the TLS cluster secret name if TLS is enabled.
+// If TLS is not enabled, it will return an empty string.
+func SessionTokenSigningCertSecretName(cluster *v1alpha1.Cluster, db *v1alpha1.TiDB) string {
+	if cluster.Spec.Security != nil && cluster.Spec.Security.SessionTokenSigningCertKeyPair != nil {
+		return cluster.Spec.Security.SessionTokenSigningCertKeyPair.Name
+	}
+	if IsTLSClusterEnabled(cluster) {
+		return TLSClusterSecretName[scope.TiDB](db)
+	}
+	return ""
 }

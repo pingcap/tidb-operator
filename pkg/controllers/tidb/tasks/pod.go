@@ -27,8 +27,10 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/image"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
 	"github.com/pingcap/tidb-operator/pkg/reloadable"
@@ -59,7 +61,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 
-		expected := newPod(state.Cluster(), state.TiDB())
+		expected := newPod(state.Cluster(), state.TiDB(), state.FeatureGates())
 		pod := state.Pod()
 		if pod == nil {
 			if err := c.Apply(ctx, expected); err != nil {
@@ -91,7 +93,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) *corev1.Pod {
+func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, g features.Gates) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -203,6 +205,22 @@ func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) *corev1.Pod {
 		mounts = append(mounts, corev1.VolumeMount{
 			Name:      v1alpha1.VolumeNameTiDBAuthToken,
 			MountPath: v1alpha1.DirPathTiDBAuthToken,
+			ReadOnly:  true,
+		})
+	}
+
+	if g.Enabled(metav1alpha1.SessionTokenSigning) {
+		vols = append(vols, corev1.Volume{
+			Name: v1alpha1.VolumeNameTiDBSessionTokenSigningTLS,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: coreutil.SessionTokenSigningCertSecretName(cluster, tidb),
+				},
+			},
+		})
+		mounts = append(mounts, corev1.VolumeMount{
+			Name:      v1alpha1.VolumeNameTiDBSessionTokenSigningTLS,
+			MountPath: v1alpha1.DirPathTiDBSessionTokenSigningTLS,
 			ReadOnly:  true,
 		})
 	}

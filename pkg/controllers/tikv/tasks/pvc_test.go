@@ -150,7 +150,7 @@ func TestTaskPVC(t *testing.T) {
 			vm := volumes.NewMockModifier(ctrl)
 			vf := volumes.NewMockModifierFactory(ctrl)
 			vf.EXPECT().New(c.state.FeatureGates()).Return(vm)
-			expectedPVCs := newPVCs(c.state.Cluster(), c.state.TiKV(), nil)
+			expectedPVCs := newPVCs(c.state.Cluster(), c.state.TiKV(), nil, c.state.FeatureGates())
 			for _, expected := range expectedPVCs {
 				for _, current := range c.pvcs {
 					if current.Name == expected.Name {

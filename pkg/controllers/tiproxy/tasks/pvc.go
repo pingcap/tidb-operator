@@ -22,8 +22,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
@@ -36,7 +38,7 @@ func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm vo
 	return task.NameTaskFunc("PVC", func(ctx context.Context) task.Result {
 		cluster := state.Cluster()
 		obj := state.Object()
-		pvcs := newPVCs(cluster, obj)
+		pvcs := newPVCs(cluster, obj, state.FeatureGates())
 		if wait, err := volumes.SyncPVCs(ctx, c, pvcs, vm.New(state.FeatureGates()), logger); err != nil {
 			return task.Fail().With("failed to sync pvcs: %w", err)
 		} else if wait {
@@ -47,7 +49,7 @@ func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm vo
 	})
 }
 
-func newPVCs(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiProxy) []*corev1.PersistentVolumeClaim {
+func newPVCs(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiProxy, fg features.Gates) []*corev1.PersistentVolumeClaim {
 	pvcs := make([]*corev1.PersistentVolumeClaim, 0, len(tidb.Spec.Volumes))
 	nameToIndex := map[string]int{}
 	for i := range tidb.Spec.Volumes {
@@ -79,10 +81,14 @@ func newPVCs(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiProxy) []*corev1.Persis
 						corev1.ResourceStorage: vol.Storage,
 					},
 				},
-				StorageClassName:          vol.StorageClassName,
-				VolumeAttributesClassName: vol.VolumeAttributesClassName,
+				StorageClassName: vol.StorageClassName,
 			},
 		})
+
+		// Only set VolumeAttributesClassName when the feature gate is enabled
+		if fg.Enabled(meta.VolumeAttributesClass) {
+			pvcs[len(pvcs)-1].Spec.VolumeAttributesClassName = vol.VolumeAttributesClassName
+		}
 	}
 
 	if tidb.Spec.Overlay != nil {

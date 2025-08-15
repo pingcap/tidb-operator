@@ -90,6 +90,7 @@ spec:
                       - VolumeAttributesClass
                       - DisablePDDefaultReadinessProbe
                       - UsePDReadyAPI
+                      - SessionTokenSigning
                       type: string
                   required:
                   - name
@@ -118,6 +119,27 @@ spec:
                 format: int32
                 minimum: 0
                 type: integer
+              security:
+                properties:
+                  sessionTokenSigningCertKeyPair:
+                    description: |-
+                      SessionTokenSigningCertKeyPair is the name of the K8s secret, where stores certificates for signing the TiDB session token,
+                      which is used by TiProxy for session migration.
+                      You can generate certificates and create a secret by: kubectl create secret generic <secret-name> --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key>
+                      Note: this field will only be used when the feature gate `SessionTokenSigning` is enabled.
+                    properties:
+                      name:
+                        default: ""
+                        description: |-
+                          Name of the referent.
+                          This field is effectively required, but due to backwards compatibility is
+                          allowed to be empty. Instances of this type with an empty value here are
+                          almost certainly wrong.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        type: string
+                    type: object
+                    x-kubernetes-map-type: atomic
+                type: object
               suspendAction:
                 description: SuspendAction defines the suspend actions for the cluster.
                 properties:
@@ -270,6 +292,7 @@ spec:
                       - VolumeAttributesClass
                       - DisablePDDefaultReadinessProbe
                       - UsePDReadyAPI
+                      - SessionTokenSigning
                       type: string
                     stage:
                       type: string

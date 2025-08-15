@@ -27,6 +27,8 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	stateutil "github.com/pingcap/tidb-operator/pkg/state"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -154,6 +156,8 @@ func TestTaskConfigMap(t *testing.T) {
 				fc.WithError("patch", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
 			}
 
+			s := c.state.State.(*state)
+			s.IFeatureGates = stateutil.NewFeatureGates[scope.TiDB](s)
 			res, done := task.RunTask(ctx, TaskConfigMap(c.state, fc))
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), res.Message())
 			assert.False(tt, done, c.desc)
