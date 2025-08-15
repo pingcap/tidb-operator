@@ -32,6 +32,8 @@ const (
 	// Scheduler also use pd image
 	Scheduler Untagged = "pingcap/pd"
 	TiProxy   Untagged = "pingcap/tiproxy"
+	// ReplicationWorker also use tikv image
+	ReplicationWorker Untagged = "pingcap/tikv"
 
 	// TODO: use versioned image
 	PrestopChecker Tagged = "pingcap/tidb-operator-prestop-checker:latest"
