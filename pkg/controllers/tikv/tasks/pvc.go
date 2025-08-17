@@ -22,8 +22,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
@@ -37,7 +39,7 @@ func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm vo
 	return task.NameTaskFunc("PVC", func(ctx context.Context) task.Result {
 		cluster := state.Cluster()
 		tikv := state.TiKV()
-		pvcs := newPVCs(cluster, tikv, state.Store)
+		pvcs := newPVCs(cluster, tikv, state.Store, state.FeatureGates())
 		if wait, err := volumes.SyncPVCs(ctx, c, pvcs, vm.New(state.FeatureGates()), logger); err != nil {
 			return task.Fail().With("failed to sync pvcs: %w", err)
 		} else if wait {
@@ -48,7 +50,7 @@ func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm vo
 	})
 }
 
-func newPVCs(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, store *pdv1.Store) []*corev1.PersistentVolumeClaim {
+func newPVCs(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, store *pdv1.Store, fg features.Gates) []*corev1.PersistentVolumeClaim {
 	pvcs := make([]*corev1.PersistentVolumeClaim, 0, len(tikv.Spec.Volumes))
 	nameToIndex := map[string]int{}
 	for i := range tikv.Spec.Volumes {
@@ -77,9 +79,13 @@ func newPVCs(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, store *pdv1.Store) 
 						corev1.ResourceStorage: vol.Storage,
 					},
 				},
-				StorageClassName:          vol.StorageClassName,
-				VolumeAttributesClassName: vol.VolumeAttributesClassName,
+				StorageClassName: vol.StorageClassName,
 			},
+		}
+
+		// Only set VolumeAttributesClassName when the feature gate is enabled
+		if fg.Enabled(meta.VolumeAttributesClass) {
+			pvc.Spec.VolumeAttributesClassName = vol.VolumeAttributesClassName
 		}
 
 		// legacy labels in v1

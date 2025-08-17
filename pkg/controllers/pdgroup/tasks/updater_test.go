@@ -233,7 +233,8 @@ func TestTaskUpdater(t *testing.T) {
 			ctx := context.Background()
 			fc := client.NewFakeClient(c.state.PDGroup(), c.state.Cluster())
 			for _, obj := range c.state.PDSlice() {
-				require.NoError(tt, fc.Apply(ctx, obj), c.desc)
+				require.NoError(tt, fc.Apply(ctx, obj.DeepCopy()), c.desc)
+				require.NoError(tt, fc.Status().Update(ctx, obj.DeepCopy()), c.desc)
 			}
 
 			if c.unexpectedErr {

@@ -140,7 +140,8 @@ func TestTaskPVC(t *testing.T) {
 			objs = append(objs, c.state.TiFlash())
 			fc := client.NewFakeClient(objs...)
 			for _, obj := range c.pvcs {
-				require.NoError(tt, fc.Apply(ctx, obj), c.desc)
+				require.NoError(tt, fc.Apply(ctx, obj.DeepCopy()), c.desc)
+				require.NoError(tt, fc.Status().Update(ctx, obj.DeepCopy()), c.desc)
 			}
 			s := c.state.State.(*state)
 			s.IFeatureGates = stateutil.NewFeatureGates[scope.TiFlash](s)
@@ -149,7 +150,7 @@ func TestTaskPVC(t *testing.T) {
 			vm := volumes.NewMockModifier(ctrl)
 			vf := volumes.NewMockModifierFactory(ctrl)
 			vf.EXPECT().New(c.state.FeatureGates()).Return(vm)
-			expectedPVCs := newPVCs(c.state.Cluster(), c.state.TiFlash(), nil)
+			expectedPVCs := newPVCs(c.state.Cluster(), c.state.TiFlash(), nil, c.state.FeatureGates())
 			for _, expected := range expectedPVCs {
 				for _, current := range c.pvcs {
 					if current.Name == expected.Name {
