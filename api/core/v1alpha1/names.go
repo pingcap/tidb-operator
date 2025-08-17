@@ -60,7 +60,7 @@ const (
 	ContainerNameTSO               = "tso"
 	ContainerNameScheduler         = "scheduler"
 	ContainerNameTiProxy           = "tiproxy"
-	ContainerNameReplicationWorker = "replication-worker"
+	ContainerNameReplicationWorker = "repl-worker"
 
 	// An init container to copy pre stop checker cmd to main container
 	ContainerNamePrestopChecker = meta.NamePrefix + "prestop-checker"
