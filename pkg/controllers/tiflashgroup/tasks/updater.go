@@ -22,9 +22,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
@@ -76,7 +78,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithMaxSurge(0).
 			WithMaxUnavailable(1).
 			WithRevision(updateRevision).
-			WithNewFactory(TiFlashNewer(fg, updateRevision)).
+			WithNewFactory(TiFlashNewer(fg, updateRevision, state.FeatureGates())).
 			WithAddHooks(
 				updater.AllocateName[*runtime.TiFlash](allocator),
 				topoPolicy,
@@ -102,7 +104,7 @@ func needVersionUpgrade(fg *v1alpha1.TiFlashGroup) bool {
 	return fg.Spec.Template.Spec.Version != fg.Status.Version && fg.Status.Version != ""
 }
 
-func TiFlashNewer(fg *v1alpha1.TiFlashGroup, rev string) updater.NewFactory[*runtime.TiFlash] {
+func TiFlashNewer(fg *v1alpha1.TiFlashGroup, rev string, g features.Gates) updater.NewFactory[*runtime.TiFlash] {
 	return updater.NewFunc[*runtime.TiFlash](func() *runtime.TiFlash {
 		spec := fg.Spec.Template.Spec.DeepCopy()
 
@@ -122,6 +124,9 @@ func TiFlashNewer(fg *v1alpha1.TiFlashGroup, rev string) updater.NewFactory[*run
 				Subdomain:           HeadlessServiceName(fg.Name),
 				TiFlashTemplateSpec: *spec,
 			},
+		}
+		if g.Enabled(metav1alpha1.ClusterSubdomain) {
+			tiflash.Spec.Subdomain = coreutil.ClusterSubdomain(fg.Spec.Cluster.Name)
 		}
 
 		return runtime.FromTiFlash(tiflash)

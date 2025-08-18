@@ -22,9 +22,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/reloadable"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
@@ -86,7 +88,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithMaxSurge(maxSurge).
 			WithMaxUnavailable(maxUnavailable).
 			WithRevision(updateRevision).
-			WithNewFactory(TiProxyNewer(proxyg, updateRevision)).
+			WithNewFactory(TiProxyNewer(proxyg, updateRevision, state.FeatureGates())).
 			WithAddHooks(
 				updater.AllocateName[*runtime.TiProxy](allocator),
 				topoPolicy,
@@ -128,7 +130,7 @@ func precheckInstances(proxyg *v1alpha1.TiProxyGroup, proxies []*v1alpha1.TiProx
 	return needUpdate, needRestart
 }
 
-func TiProxyNewer(proxyg *v1alpha1.TiProxyGroup, rev string) updater.NewFactory[*runtime.TiProxy] {
+func TiProxyNewer(proxyg *v1alpha1.TiProxyGroup, rev string, fg features.Gates) updater.NewFactory[*runtime.TiProxy] {
 	return updater.NewFunc[*runtime.TiProxy](func() *runtime.TiProxy {
 		spec := proxyg.Spec.Template.Spec.DeepCopy()
 
@@ -148,6 +150,10 @@ func TiProxyNewer(proxyg *v1alpha1.TiProxyGroup, rev string) updater.NewFactory[
 				Subdomain:           HeadlessServiceName(proxyg.Name), // same as headless service
 				TiProxyTemplateSpec: *spec,
 			},
+		}
+
+		if fg.Enabled(metav1alpha1.ClusterSubdomain) {
+			proxy.Spec.Subdomain = coreutil.ClusterSubdomain(proxyg.Spec.Cluster.Name)
 		}
 
 		return runtime.FromTiProxy(proxy)

@@ -22,9 +22,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
@@ -77,7 +79,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithMaxSurge(0).
 			WithMaxUnavailable(1).
 			WithRevision(updateRevision).
-			WithNewFactory(TiCDCNewer(cdcg, updateRevision)).
+			WithNewFactory(TiCDCNewer(cdcg, updateRevision, state.FeatureGates())).
 			WithAddHooks(
 				updater.AllocateName[*runtime.TiCDC](allocator),
 				topoPolicy,
@@ -103,7 +105,7 @@ func needVersionUpgrade(cdcg *v1alpha1.TiCDCGroup) bool {
 	return cdcg.Spec.Template.Spec.Version != cdcg.Status.Version && cdcg.Status.Version != ""
 }
 
-func TiCDCNewer(cdcg *v1alpha1.TiCDCGroup, rev string) updater.NewFactory[*runtime.TiCDC] {
+func TiCDCNewer(cdcg *v1alpha1.TiCDCGroup, rev string, fg features.Gates) updater.NewFactory[*runtime.TiCDC] {
 	return updater.NewFunc[*runtime.TiCDC](func() *runtime.TiCDC {
 		spec := cdcg.Spec.Template.Spec.DeepCopy()
 
@@ -123,6 +125,9 @@ func TiCDCNewer(cdcg *v1alpha1.TiCDCGroup, rev string) updater.NewFactory[*runti
 				Subdomain:         HeadlessServiceName(cdcg.Name), // same as headless service
 				TiCDCTemplateSpec: *spec,
 			},
+		}
+		if fg.Enabled(metav1alpha1.ClusterSubdomain) {
+			ticdc.Spec.Subdomain = coreutil.ClusterSubdomain(cdcg.Spec.Cluster.Name)
 		}
 
 		return runtime.FromTiCDC(ticdc)

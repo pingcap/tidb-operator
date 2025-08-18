@@ -22,9 +22,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
@@ -77,7 +79,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithMaxSurge(0).
 			WithMaxUnavailable(1).
 			WithRevision(updateRevision).
-			WithNewFactory(TSONewer(obj, updateRevision)).
+			WithNewFactory(TSONewer(obj, updateRevision, state.FeatureGates())).
 			WithAddHooks(
 				updater.AllocateName[*runtime.TSO](allocator),
 				topoPolicy,
@@ -107,7 +109,7 @@ func needVersionUpgrade(tg *v1alpha1.TSOGroup) bool {
 	return tg.Spec.Template.Spec.Version != tg.Status.Version && tg.Status.Version != ""
 }
 
-func TSONewer(tg *v1alpha1.TSOGroup, rev string) updater.NewFactory[*runtime.TSO] {
+func TSONewer(tg *v1alpha1.TSOGroup, rev string, fg features.Gates) updater.NewFactory[*runtime.TSO] {
 	return updater.NewFunc[*runtime.TSO](func() *runtime.TSO {
 		spec := tg.Spec.Template.Spec.DeepCopy()
 
@@ -127,6 +129,9 @@ func TSONewer(tg *v1alpha1.TSOGroup, rev string) updater.NewFactory[*runtime.TSO
 				Subdomain:       HeadlessServiceName(tg.Name), // same as headless service
 				TSOTemplateSpec: *spec,
 			},
+		}
+		if fg.Enabled(metav1alpha1.ClusterSubdomain) {
+			tso.Spec.Subdomain = coreutil.ClusterSubdomain(tg.Spec.Cluster.Name)
 		}
 
 		return runtime.FromTSO(tso)

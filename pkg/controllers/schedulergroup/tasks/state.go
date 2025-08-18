@@ -20,6 +20,8 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	stateutil "github.com/pingcap/tidb-operator/pkg/state"
 )
 
 type state struct {
@@ -34,6 +36,7 @@ type state struct {
 	collisionCount  int32
 
 	statusChanged bool
+	stateutil.IFeatureGates
 }
 
 type State interface {
@@ -53,12 +56,15 @@ type State interface {
 
 	common.StatusUpdater
 	common.StatusPersister[*v1alpha1.SchedulerGroup]
+
+	stateutil.IFeatureGates
 }
 
 func NewState(key types.NamespacedName) State {
 	s := &state{
 		key: key,
 	}
+	s.IFeatureGates = stateutil.NewFeatureGates[scope.SchedulerGroup](s)
 	return s
 }
 
