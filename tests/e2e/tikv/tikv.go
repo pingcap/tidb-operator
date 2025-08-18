@@ -41,7 +41,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 	ginkgo.DescribeTableSubtree("Leader Eviction", label.P1,
 		func(tls bool) {
 			if tls {
-				f.SetupCluster(data.WithClusterTLS())
+				f.SetupCluster(data.WithClusterTLSEnabled())
 			}
 
 			// NOTE(liubo02): this case is failed in e2e env because of the cgroup v2.
@@ -104,7 +104,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 			f.WaitForTiDBGroupReady(ctx, dbg)
 			// Make sure each TiKV store has enough leaders and regions,
 			// otherwise the scale-in operation will be too fast.
-			workload.MustImportData(ctx, data.DefaultTiDBServiceName, data.DefaultTiDBServicePort, "root", "", "", 500)
+			workload.MustImportData(ctx, data.DefaultTiDBServiceName)
 
 			ginkgo.By("Initiating scale in from 4 to 3 replicas")
 			patch := client.MergeFrom(kvg.DeepCopy())
@@ -162,7 +162,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 
 			// Make sure each TiKV store has enough leaders and regions,
 			// otherwise the scale-in operation will be too fast.
-			workload.MustImportData(ctx, data.DefaultTiDBServiceName, data.DefaultTiDBServicePort, "root", "", "", 500)
+			workload.MustImportData(ctx, data.DefaultTiDBServiceName)
 
 			nctx, cancel := context.WithCancel(ctx)
 			ch := make(chan struct{})

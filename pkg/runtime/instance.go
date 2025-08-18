@@ -15,6 +15,8 @@
 package runtime
 
 import (
+	"strings"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -37,6 +39,8 @@ type Instance interface {
 	SetCurrentRevision(rev string)
 
 	PodOverlay() *v1alpha1.PodOverlay
+
+	Subdomain() string
 }
 
 type InstanceT[T InstanceSet] interface {
@@ -51,4 +55,13 @@ type InstanceSet interface {
 
 type InstanceTuple[PT client.Object, PU Instance] interface {
 	Tuple[PT, PU]
+}
+
+func NamePrefixAndSuffix(name string) (prefix, suffix string) {
+	index := strings.LastIndexByte(name, '-')
+	// TODO(liubo02): validate name to avoid '-' is not found
+	if index == -1 {
+		panic("cannot get name prefix")
+	}
+	return name[:index], name[index+1:]
 }
