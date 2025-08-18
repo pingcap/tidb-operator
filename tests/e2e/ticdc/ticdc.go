@@ -38,7 +38,7 @@ var _ = ginkgo.Describe("TiCDC", label.TiCDC, func() {
 	ginkgo.PDescribeTableSubtree("Leader Eviction", label.P1,
 		func(enableTLS bool) {
 			if enableTLS {
-				f.SetupCluster(data.WithClusterTLS())
+				f.SetupCluster(data.WithClusterTLSEnabled())
 			}
 
 			ginkgo.It("leader evicted when delete ticdc pod directly", func(ctx context.Context) {

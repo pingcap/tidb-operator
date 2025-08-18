@@ -8615,6 +8615,58 @@ spec:
                             pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                             x-kubernetes-int-or-string: true
                         type: object
+                      security:
+                        description: Security defines security config
+                        properties:
+                          tls:
+                            description: TLS defines the tls configs of components
+                            properties:
+                              client:
+                                description: Client defines the client tls for the
+                                  tidb operator to visit the group
+                                properties:
+                                  ca:
+                                    description: CA defines the ref of the secret
+                                      which contains ca.crt
+                                    properties:
+                                      name:
+                                        type: string
+                                    type: object
+                                  certKeyPair:
+                                    description: CertKeyPair defines the ref of the
+                                      secret which contains tls.crt and tls.key
+                                    properties:
+                                      name:
+                                        type: string
+                                    type: object
+                                  insecureSkipTLSVerify:
+                                    description: |-
+                                      If true, we will skip CA verification, it means CA can be omitted
+                                      Defaults to false
+                                    type: boolean
+                                type: object
+                              cluster:
+                                description: |-
+                                  InternalTLS defines a tls config between components. This config of all components
+                                  can only be enabled or disabled at the same time.
+                                properties:
+                                  ca:
+                                    description: CA defines the ref of the secret
+                                      which contains ca.crt
+                                    properties:
+                                      name:
+                                        type: string
+                                    type: object
+                                  certKeyPair:
+                                    description: CertKeyPair defines the ref of the
+                                      secret which contains tls.crt and tls.key
+                                    properties:
+                                      name:
+                                        type: string
+                                    type: object
+                                type: object
+                            type: object
+                        type: object
                       server:
                         description: Server defines server config for TSO
                         properties:

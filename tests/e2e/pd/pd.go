@@ -188,7 +188,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 			// Setup cluster with UsePDReadyAPI feature gate and optionally TLS
 			if tls {
 				f.SetupCluster(
-					data.WithClusterTLS(),
+					data.WithClusterTLSEnabled(),
 					data.WithFeatureGates(metav1alpha1.UsePDReadyAPI),
 				)
 			} else {
