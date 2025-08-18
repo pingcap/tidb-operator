@@ -135,7 +135,7 @@ func TestConvertOverlay(t *testing.T) {
 			},
 		},
 		{
-			desc: "keep main contianer image",
+			desc: "keep main container image",
 			in: &v1alpha1.Overlay{
 				Pod: &v1alpha1.PodOverlay{
 					Spec: &corev1.PodSpec{
