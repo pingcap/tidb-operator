@@ -23,12 +23,13 @@ import (
 	"github.com/go-logr/logr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/timanager"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
-	tlsutil "github.com/pingcap/tidb-operator/pkg/utils/tls"
 )
 
 const (
@@ -143,8 +144,7 @@ var NewUnderlayClientFunc = func(c client.Client) timanager.NewUnderlayClientFun
 		host := fmt.Sprintf("%s-pd.%s:%d", pdg.Name, pdg.Namespace, coreutil.PDGroupClientPort(pdg))
 
 		if coreutil.IsTLSClusterEnabled(&cluster) {
-			tlsConfig, err := tlsutil.GetTLSConfigFromSecret(ctx, c,
-				cluster.Namespace, coreutil.TLSClusterClientSecretName(cluster.Name))
+			tlsConfig, err := apicall.GetClientTLSConfig[scope.PDGroup](ctx, c, pdg)
 			if err != nil {
 				return nil, fmt.Errorf("cannot get tls config from secret: %w", err)
 			}

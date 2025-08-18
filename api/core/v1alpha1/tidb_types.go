@@ -188,8 +188,7 @@ type TiDBPreStop struct {
 }
 
 type TiDBSecurity struct {
-	// Whether enable the TLS connection between the TiDB server and MySQL client.
-	// TODO(liubo02): rename the TiDBTLSClient struct,
+	// TLS defines the tls configs of TiDB
 	TLS *TiDBTLS `json:"tls,omitempty"`
 
 	// Whether enable `tidb_auth_token` authentication method.
@@ -260,16 +259,8 @@ type TiDBTLS struct {
 	// +kubebuilder:validation:XValidation:rule="oldSelf == null || self.enabled == oldSelf.enabled",message="field .mysql.enabled is immutable"
 	MySQL *TLS `json:"mysql,omitempty"`
 
-	// TODO(csuzhangxc): usage of the following fields
-	// TODO(liubo02): uncomment them after it's worked
-
-	// DisableClientAuthn will skip client's certificate validation from the TiDB server.
-	// Optional: defaults to false
-	// DisableClientAuthn bool `json:"disableClientAuthn,omitempty"`
-
-	// SkipInternalClientCA will skip TiDB server's certificate validation for internal components like Initializer, Dashboard, etc.
-	// Optional: defaults to false
-	// SkipInternalClientCA bool `json:"skipInternalClientCA,omitempty"`
+	// ComponentTLS is tls config to access internal components
+	ComponentTLS `json:",inline"`
 }
 
 type TiDBAuthToken struct {

@@ -164,6 +164,52 @@ func (in *TiDB) Version() string {
 	return in.Spec.Version
 }
 
+func (in *TiDB) Subdomain() string {
+	return in.Spec.Subdomain
+}
+
+func (in *TiDB) ClusterCertKeyPairSecretName() string {
+	sec := in.Spec.Security
+	if sec != nil && sec.TLS != nil && sec.TLS.Cluster != nil && sec.TLS.Cluster.CertKeyPair != nil {
+		return sec.TLS.Cluster.CertKeyPair.Name
+	}
+	prefix, _ := NamePrefixAndSuffix(in.GetName())
+	return prefix + "-" + in.Component() + "-cluster-secret"
+}
+
+func (in *TiDB) ClusterCASecretName() string {
+	sec := in.Spec.Security
+	if sec != nil && sec.TLS != nil && sec.TLS.Cluster != nil && sec.TLS.Cluster.CA != nil {
+		return sec.TLS.Cluster.CA.Name
+	}
+	prefix, _ := NamePrefixAndSuffix(in.GetName())
+	return prefix + "-" + in.Component() + "-cluster-secret"
+}
+
+func (in *TiDB) ClientCertKeyPairSecretName() string {
+	sec := in.Spec.Security
+	if sec != nil && sec.TLS != nil && sec.TLS.Client != nil && sec.TLS.Client.CertKeyPair != nil {
+		return sec.TLS.Client.CertKeyPair.Name
+	}
+	return in.Cluster() + "-cluster-client-secret"
+}
+
+func (in *TiDB) ClientCASecretName() string {
+	sec := in.Spec.Security
+	if sec != nil && sec.TLS != nil && sec.TLS.Client != nil && sec.TLS.Client.CA != nil {
+		return sec.TLS.Client.CA.Name
+	}
+	return in.Cluster() + "-cluster-client-secret"
+}
+
+func (in *TiDB) ClientInsecureSkipTLSVerify() bool {
+	sec := in.Spec.Security
+	if sec != nil && sec.TLS != nil && sec.TLS.Client != nil && sec.TLS.Client.CA != nil {
+		return sec.TLS.Client.InsecureSkipTLSVerify
+	}
+	return false
+}
+
 func (in *TiDB) IsOffline() bool {
 	return false
 }
@@ -317,4 +363,67 @@ func (g *TiDBGroup) TemplateAnnotations() map[string]string {
 
 func (g *TiDBGroup) Features() []metav1alpha1.Feature {
 	return g.Spec.Features
+}
+
+func (g *TiDBGroup) SetTemplateClusterTLS(ca, certKeyPair string) {
+	if g.Spec.Template.Spec.Security == nil {
+		g.Spec.Template.Spec.Security = &v1alpha1.TiDBSecurity{}
+	}
+	sec := g.Spec.Template.Spec.Security
+	if sec.TLS == nil {
+		sec.TLS = &v1alpha1.TiDBTLS{}
+	}
+	sec.TLS.Cluster = &v1alpha1.InternalTLS{}
+	if ca != "" {
+		sec.TLS.Cluster.CA = &v1alpha1.CAReference{
+			Name: ca,
+		}
+	}
+	if certKeyPair != "" {
+		sec.TLS.Cluster.CertKeyPair = &v1alpha1.CertKeyPairReference{
+			Name: certKeyPair,
+		}
+	}
+}
+
+func (g *TiDBGroup) ClusterCertKeyPairSecretName() string {
+	defaultName := g.Name + "-" + g.Component() + "-cluster-secret"
+	sec := g.Spec.Template.Spec.Security
+	if sec != nil && sec.TLS != nil && sec.TLS.Cluster != nil && sec.TLS.Cluster.CertKeyPair != nil {
+		return sec.TLS.Cluster.CertKeyPair.Name
+	}
+	return defaultName
+}
+
+func (g *TiDBGroup) ClusterCASecretName() string {
+	defaultName := g.Name + "-" + g.Component() + "-cluster-secret"
+	sec := g.Spec.Template.Spec.Security
+	if sec != nil && sec.TLS != nil && sec.TLS.Cluster != nil && sec.TLS.Cluster.CA != nil {
+		return sec.TLS.Cluster.CA.Name
+	}
+	return defaultName
+}
+
+func (g *TiDBGroup) ClientCertKeyPairSecretName() string {
+	sec := g.Spec.Template.Spec.Security
+	if sec != nil && sec.TLS != nil && sec.TLS.Client != nil && sec.TLS.Client.CertKeyPair != nil {
+		return sec.TLS.Client.CertKeyPair.Name
+	}
+	return g.Cluster() + "-cluster-client-secret"
+}
+
+func (g *TiDBGroup) ClientCASecretName() string {
+	sec := g.Spec.Template.Spec.Security
+	if sec != nil && sec.TLS != nil && sec.TLS.Client != nil && sec.TLS.Client.CA != nil {
+		return sec.TLS.Client.CA.Name
+	}
+	return g.Cluster() + "-cluster-client-secret"
+}
+
+func (g *TiDBGroup) ClientInsecureSkipTLSVerify() bool {
+	sec := g.Spec.Template.Spec.Security
+	if sec != nil && sec.TLS != nil && sec.TLS.Client != nil && sec.TLS.Client.CA != nil {
+		return sec.TLS.Client.InsecureSkipTLSVerify
+	}
+	return false
 }

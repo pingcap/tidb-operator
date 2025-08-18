@@ -53,6 +53,48 @@ func (m *MockInstance) EXPECT() *MockInstanceMockRecorder {
 	return m.recorder
 }
 
+// ClientCASecretName mocks base method.
+func (m *MockInstance) ClientCASecretName() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientCASecretName")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// ClientCASecretName indicates an expected call of ClientCASecretName.
+func (mr *MockInstanceMockRecorder) ClientCASecretName() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientCASecretName", reflect.TypeOf((*MockInstance)(nil).ClientCASecretName))
+}
+
+// ClientCertKeyPairSecretName mocks base method.
+func (m *MockInstance) ClientCertKeyPairSecretName() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientCertKeyPairSecretName")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// ClientCertKeyPairSecretName indicates an expected call of ClientCertKeyPairSecretName.
+func (mr *MockInstanceMockRecorder) ClientCertKeyPairSecretName() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientCertKeyPairSecretName", reflect.TypeOf((*MockInstance)(nil).ClientCertKeyPairSecretName))
+}
+
+// ClientInsecureSkipTLSVerify mocks base method.
+func (m *MockInstance) ClientInsecureSkipTLSVerify() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientInsecureSkipTLSVerify")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// ClientInsecureSkipTLSVerify indicates an expected call of ClientInsecureSkipTLSVerify.
+func (mr *MockInstanceMockRecorder) ClientInsecureSkipTLSVerify() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientInsecureSkipTLSVerify", reflect.TypeOf((*MockInstance)(nil).ClientInsecureSkipTLSVerify))
+}
+
 // Cluster mocks base method.
 func (m *MockInstance) Cluster() string {
 	m.ctrl.T.Helper()
@@ -65,6 +107,34 @@ func (m *MockInstance) Cluster() string {
 func (mr *MockInstanceMockRecorder) Cluster() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cluster", reflect.TypeOf((*MockInstance)(nil).Cluster))
+}
+
+// ClusterCASecretName mocks base method.
+func (m *MockInstance) ClusterCASecretName() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClusterCASecretName")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// ClusterCASecretName indicates an expected call of ClusterCASecretName.
+func (mr *MockInstanceMockRecorder) ClusterCASecretName() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClusterCASecretName", reflect.TypeOf((*MockInstance)(nil).ClusterCASecretName))
+}
+
+// ClusterCertKeyPairSecretName mocks base method.
+func (m *MockInstance) ClusterCertKeyPairSecretName() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClusterCertKeyPairSecretName")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// ClusterCertKeyPairSecretName indicates an expected call of ClusterCertKeyPairSecretName.
+func (mr *MockInstanceMockRecorder) ClusterCertKeyPairSecretName() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClusterCertKeyPairSecretName", reflect.TypeOf((*MockInstance)(nil).ClusterCertKeyPairSecretName))
 }
 
 // Component mocks base method.
@@ -681,6 +751,20 @@ func (m *MockInstance) SetVersion(versions string) {
 func (mr *MockInstanceMockRecorder) SetVersion(versions any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetVersion", reflect.TypeOf((*MockInstance)(nil).SetVersion), versions)
+}
+
+// Subdomain mocks base method.
+func (m *MockInstance) Subdomain() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Subdomain")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// Subdomain indicates an expected call of Subdomain.
+func (mr *MockInstanceMockRecorder) Subdomain() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Subdomain", reflect.TypeOf((*MockInstance)(nil).Subdomain))
 }
 
 // Version mocks base method.

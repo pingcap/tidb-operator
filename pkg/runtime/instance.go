@@ -16,6 +16,8 @@
 package runtime
 
 import (
+	"strings"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -41,6 +43,8 @@ type Instance interface {
 	SetCurrentRevision(rev string)
 
 	PodOverlay() *v1alpha1.PodOverlay
+
+	Subdomain() string
 }
 
 type InstanceT[T InstanceSet] interface {
@@ -87,4 +91,13 @@ func RemoveOfflineCondition(s Instance) {
 	conditions := s.Conditions()
 	meta.RemoveStatusCondition(&conditions, v1alpha1.StoreOfflinedConditionType)
 	s.SetConditions(conditions)
+}
+
+func NamePrefixAndSuffix(name string) (prefix, suffix string) {
+	index := strings.LastIndexByte(name, '-')
+	// TODO(liubo02): validate name to avoid '-' is not found
+	if index == -1 {
+		panic("cannot get name prefix")
+	}
+	return name[:index], name[index+1:]
 }

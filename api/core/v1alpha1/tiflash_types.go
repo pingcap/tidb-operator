@@ -152,6 +152,9 @@ type TiFlashTemplateSpec struct {
 	// ProxyConfig defines config file of TiFlash proxy
 	ProxyConfig ConfigFile `json:"proxyConfig,omitempty"`
 
+	// Security defines security config
+	Security *Security `json:"security,omitempty"`
+
 	// Volumes defines data volume of TiFlash
 	// +listType=map
 	// +listMapKey=name
