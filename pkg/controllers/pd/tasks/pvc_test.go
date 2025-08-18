@@ -140,7 +140,8 @@ func TestTaskPVC(t *testing.T) {
 			objs = append(objs, c.state.PD())
 			fc := client.NewFakeClient(objs...)
 			for _, obj := range c.pvcs {
-				require.NoError(tt, fc.Apply(ctx, obj), c.desc)
+				require.NoError(tt, fc.Apply(ctx, obj.DeepCopy()), c.desc)
+				require.NoError(tt, fc.Status().Update(ctx, obj.DeepCopy()), c.desc)
 			}
 
 			s := c.state.State.(*state)
