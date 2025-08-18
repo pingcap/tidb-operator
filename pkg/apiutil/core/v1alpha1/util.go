@@ -14,6 +14,8 @@
 
 package coreutil
 
+import "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+
 func hostToURL(host string, isTLS bool) string {
 	scheme := "http"
 	if isTLS {
@@ -21,4 +23,25 @@ func hostToURL(host string, isTLS bool) string {
 	}
 
 	return scheme + "://" + host
+}
+
+var allMainContainers = map[string]struct{}{
+	v1alpha1.ContainerNamePD:        {},
+	v1alpha1.ContainerNameTiKV:      {},
+	v1alpha1.ContainerNameTiDB:      {},
+	v1alpha1.ContainerNameTiFlash:   {},
+	v1alpha1.ContainerNameTiCDC:     {},
+	v1alpha1.ContainerNameTSO:       {},
+	v1alpha1.ContainerNameScheduler: {},
+	v1alpha1.ContainerNameTiProxy:   {},
+}
+
+// IsMainContainer checks whether the container is a main container
+// Main container means the main component container of an instance
+func IsMainContainer(name string) bool {
+	if _, ok := allMainContainers[name]; ok {
+		return true
+	}
+
+	return false
 }
