@@ -80,11 +80,12 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, fg feat
 	c.Host = "::"
 	c.Path = stringutil.RemoveHTTPPrefix(cluster.Status.PD)
 
-	if coreutil.IsMySQLTLSEnabled(tidb) {
-		// TODO(csuzhangxc): disable Client Authn
-		c.Security.SSLCA = path.Join(v1alpha1.DirPathMySQLTLS, corev1.ServiceAccountRootCAKey)
+	if coreutil.IsTiDBMySQLTLSEnabled(tidb) {
 		c.Security.SSLCert = path.Join(v1alpha1.DirPathMySQLTLS, corev1.TLSCertKey)
 		c.Security.SSLKey = path.Join(v1alpha1.DirPathMySQLTLS, corev1.TLSPrivateKeyKey)
+		if !coreutil.IsTiDBMySQLTLSNoClientCert(tidb) {
+			c.Security.SSLCA = path.Join(v1alpha1.DirPathMySQLTLS, corev1.ServiceAccountRootCAKey)
+		}
 	}
 
 	if coreutil.IsTLSClusterEnabled(cluster) {

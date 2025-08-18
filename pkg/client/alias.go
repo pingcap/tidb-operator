@@ -31,11 +31,12 @@ type (
 )
 
 type (
-	MatchingLabels = client.MatchingLabels
-	MatchingFields = client.MatchingFields
-	InNamespace    = client.InNamespace
-	ListOptions    = client.ListOptions
-	DeleteOptions  = client.DeleteOptions
+	MatchingLabels         = client.MatchingLabels
+	MatchingLabelsSelector = client.MatchingLabelsSelector
+	MatchingFields         = client.MatchingFields
+	InNamespace            = client.InNamespace
+	ListOptions            = client.ListOptions
+	DeleteOptions          = client.DeleteOptions
 )
 
 type PropagationPolicy = client.PropagationPolicy

@@ -145,6 +145,7 @@ type TiProxyTemplateSpec struct {
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 
 	Security *TiProxySecurity `json:"security,omitempty"`
+
 	// Volumes defines data volume of TiProxy, it is optional.
 	// +listType=map
 	// +listMapKey=name
@@ -223,7 +224,20 @@ type TiProxyTLS struct {
 
 	// Backend defines the TLS configuration for connections between TiProxy and TiDB servers.
 	// To enable this feature, the corresponding TiDB server must be configured with TLS enabled.
-	Backend *TLS `json:"backend,omitempty"`
+	Backend *ClientTLS `json:"backend,omitempty"`
+
+	// Cluster defines the tls config to visit other components in the cluster
+	Cluster *InternalClientTLS `json:"cluster,omitempty"`
+
+	// Server defines the TLS config for http server of the tiproxy
+	// If this field is not specified, the operator will use cluster tls config to config http server by default.
+	// The tls secret references also default to cluster tls secrets.
+	// It can be disabled by set Enabled to false.
+	// NOTE: if server tls is disabled, the Client will also be disabled.
+	Server *TLS `json:"server,omitempty"`
+
+	// Client defines the client tls for the tidb operator to visit the tiproxy group
+	Client *InternalClientTLS `json:"client,omitempty"`
 }
 
 type TiProxyGroupStatus struct {
@@ -231,6 +245,7 @@ type TiProxyGroupStatus struct {
 	GroupStatus  `json:",inline"`
 }
 
+// TiProxySpec defines the spec of tiproxy
 // +kubebuilder:validation:XValidation:rule="(!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology) && has(self.topology))",fieldPath=".topology",message="topology can only be set when creating"
 type TiProxySpec struct {
 	Cluster ClusterReference `json:"cluster"`
