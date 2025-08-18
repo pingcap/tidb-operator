@@ -153,10 +153,6 @@ func handleOfflineOperation(
 		return task.Complete().With("store offline operation is completed")
 	case v1alpha1.ReasonOfflineFailed:
 		return handleFailedState(ctx, state, store)
-	case v1alpha1.ReasonOfflineCancelled:
-		// This case is reached if spec.offline is set to true for a store
-		// that was previously canceled. It restarts the offline process.
-		return startOfflineOperation(ctx, state, store)
 	default:
 		return task.Fail().With("unknown offline condition reason: %s", condition.Reason)
 	}
@@ -178,9 +174,6 @@ func handleOfflineCancellation(
 	case v1alpha1.ReasonOfflineCompleted:
 		// Cannot cancel completed operations
 		return task.Complete().With("cannot cancel completed offline operation")
-	case v1alpha1.ReasonOfflineCancelled:
-		// Already canceled
-		return task.Complete().With("offline operation already canceled")
 	case v1alpha1.ReasonOfflineProcessing, v1alpha1.ReasonOfflineFailed:
 		// Cancel the operation
 		return cancelOfflineOperation(ctx, state, store)
@@ -332,13 +325,10 @@ func cancelOfflineOperation(
 		}
 	}
 
-	// Update condition to canceled
+	// Remove offline condition to indicate store is back online
 	logger.Info("Store offline operation canceled")
-	updateOfflinedCondition(state, store, newOfflinedCondition(
-		v1alpha1.ReasonOfflineCancelled,
-		"Store offline operation has been canceled",
-		metav1.ConditionFalse,
-	))
+	runtime.RemoveOfflineCondition(store)
+	state.SetStatusChanged()
 
 	return task.Complete().With("offline operation canceled")
 }

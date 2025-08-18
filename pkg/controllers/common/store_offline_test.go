@@ -216,7 +216,7 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 				mockUnderlay.EXPECT().CancelDeleteStore(gomock.Any(), "3").Return(nil)
 			},
 			expectedResult:    task.SComplete,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineCancelled},
+			expectedCondition: nil, // condition should be removed after cancellation
 		},
 		{
 			name: "Cancel operation: PD API fails",
@@ -237,12 +237,12 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 			},
 			contextBuilder:    newContext("1"),
 			expectedResult:    task.SComplete,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineCancelled},
+			expectedCondition: nil, // condition should be removed after cancellation
 		},
 		{
-			name: "Restart a canceled operation with empty store ID",
+			name: "Restart offline operation with empty store ID after cancellation",
 			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
-				return createMockInstance(ctrl, true, conditionsFromSingle(newOfflinedCondition(v1alpha1.ReasonOfflineCancelled, "", metav1.ConditionFalse)), nil)
+				return createMockInstance(ctrl, true, nil, nil) // no condition after cancellation
 			},
 			contextBuilder:    newContext(""),
 			expectedResult:    task.SRetry,
@@ -340,7 +340,7 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 				mockUnderlay.EXPECT().CancelDeleteStore(gomock.Any(), "1").Return(nil)
 			},
 			expectedResult:    task.SComplete,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineCancelled},
+			expectedCondition: nil, // condition should be removed after cancellation
 		},
 		{
 			name: "Cancel when no condition exists: store is removing",
@@ -352,7 +352,7 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 				mockUnderlay.EXPECT().CancelDeleteStore(gomock.Any(), "1").Return(nil)
 			},
 			expectedResult:    task.SComplete,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineCancelled},
+			expectedCondition: nil, // condition should be removed after cancellation
 		},
 		{
 			name: "Cancel when no condition exists: cancel API fails but no original condition to preserve",
@@ -376,15 +376,6 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.ReasonOfflineCompleted},
 		},
 		{
-			name: "Cancel when already canceled",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
-				return createMockInstance(ctrl, false, conditionsFromSingle(newOfflinedCondition(v1alpha1.ReasonOfflineCancelled, "", metav1.ConditionFalse)), nil)
-			},
-			contextBuilder:    newContext(""),
-			expectedResult:    task.SComplete,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineCancelled},
-		},
-		{
 			name: "Failed state with empty store ID remains failed",
 			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
 				return createMockInstance(ctrl, true, conditionsFromSingle(newOfflinedCondition(v1alpha1.ReasonOfflineFailed, "", metav1.ConditionFalse)), nil)
@@ -401,7 +392,7 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 			},
 			contextBuilder:    newContext("1"),
 			expectedResult:    task.SComplete,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineCancelled},
+			expectedCondition: nil, // condition should be removed after cancellation
 			assertFunc: func(t *testing.T, instance *runtime.MockInstance) {
 				require.Contains(t, instance.GetAnnotations(), "other", "Other annotations should remain")
 				require.Equal(t, "value", instance.GetAnnotations()["other"], "Other annotation value should be preserved")
@@ -437,7 +428,7 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 			},
 			contextBuilder:    newContext("1").WithState(v1alpha1.StoreStateServing),
 			expectedResult:    task.SComplete,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineCancelled},
+			expectedCondition: nil, // condition should be removed after cancellation
 		},
 		{
 			name: "Cancel operation: store doesn't exist",

@@ -82,3 +82,9 @@ func SetOfflineCondition(s Instance, condition *metav1.Condition) {
 func GetOfflineCondition(s Instance) *metav1.Condition {
 	return meta.FindStatusCondition(s.Conditions(), v1alpha1.StoreOfflinedConditionType)
 }
+
+func RemoveOfflineCondition(s Instance) {
+	conditions := s.Conditions()
+	meta.RemoveStatusCondition(&conditions, v1alpha1.StoreOfflinedConditionType)
+	s.SetConditions(conditions)
+}

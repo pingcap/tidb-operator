@@ -72,8 +72,6 @@ const (
 	ReasonOfflineCompleted = "Completed"
 	// ReasonOfflineFailed means the offline operation failed.
 	ReasonOfflineFailed = "Failed"
-	// ReasonOfflineCancelled means the offline operation was cancelled.
-	ReasonOfflineCancelled = "Cancelled"
 )
 
 // TODO(liubo02): move to meta
