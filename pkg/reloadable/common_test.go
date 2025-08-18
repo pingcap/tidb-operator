@@ -97,6 +97,126 @@ func TestConvertOverlay(t *testing.T) {
 				},
 			},
 		},
+		{
+			desc: "ignore container image",
+			in: &v1alpha1.Overlay{
+				Pod: &v1alpha1.PodOverlay{
+					Spec: &corev1.PodSpec{
+						InitContainers: []corev1.Container{
+							{
+								Name:  "bbb",
+								Image: "yyy",
+							},
+						},
+						Containers: []corev1.Container{
+							{
+								Name:  "aaa",
+								Image: "yyy",
+							},
+						},
+					},
+				},
+			},
+			out: &v1alpha1.Overlay{
+				Pod: &v1alpha1.PodOverlay{
+					Spec: &corev1.PodSpec{
+						InitContainers: []corev1.Container{
+							{
+								Name: "bbb",
+							},
+						},
+						Containers: []corev1.Container{
+							{
+								Name: "aaa",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc: "keep main contianer image",
+			in: &v1alpha1.Overlay{
+				Pod: &v1alpha1.PodOverlay{
+					Spec: &corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Name:  "pd",
+								Image: "yyy",
+							},
+							{
+								Name:  "tikv",
+								Image: "yyy",
+							},
+							{
+								Name:  "tiflash",
+								Image: "yyy",
+							},
+							{
+								Name:  "ticdc",
+								Image: "yyy",
+							},
+							{
+								Name:  "tso",
+								Image: "yyy",
+							},
+							{
+								Name:  "scheduler",
+								Image: "yyy",
+							},
+							{
+								Name:  "tiproxy",
+								Image: "yyy",
+							},
+							{
+								Name:  "tidb",
+								Image: "yyy",
+							},
+						},
+					},
+				},
+			},
+			out: &v1alpha1.Overlay{
+				Pod: &v1alpha1.PodOverlay{
+					Spec: &corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Name:  "pd",
+								Image: "yyy",
+							},
+							{
+								Name:  "tikv",
+								Image: "yyy",
+							},
+							{
+								Name:  "tiflash",
+								Image: "yyy",
+							},
+							{
+								Name:  "ticdc",
+								Image: "yyy",
+							},
+							{
+								Name:  "tso",
+								Image: "yyy",
+							},
+							{
+								Name:  "scheduler",
+								Image: "yyy",
+							},
+							{
+								Name:  "tiproxy",
+								Image: "yyy",
+							},
+							{
+								Name:  "tidb",
+								Image: "yyy",
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for i := range cases {
