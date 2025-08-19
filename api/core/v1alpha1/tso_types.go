@@ -132,11 +132,13 @@ type TSOTemplateSpec struct {
 
 	Resources ResourceRequirements `json:"resources,omitempty"`
 
-	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
-
 	// Config defines config file of TSO
 	// See https://docs.pingcap.com/tidb/stable/tso-configuration-file/
-	Config ConfigFile `json:"config,omitempty"`
+	Config         ConfigFile     `json:"config,omitempty"`
+	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
+
+	// Security defines security config
+	Security *Security `json:"security,omitempty"`
 
 	// Volumes defines persistent volumes of TSO
 	// +listType=map

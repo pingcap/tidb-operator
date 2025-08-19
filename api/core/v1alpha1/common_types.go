@@ -368,9 +368,132 @@ type UpdateStrategy struct {
 	Config ConfigUpdateStrategy `json:"config,omitempty"`
 }
 
-// TLS defines a common tls config for all components
-// Now it only support enable or disable.
-// TODO(liubo02): add more tls configs
-type TLS struct {
-	Enabled bool `json:"enabled,omitempty"`
+// There are three types of tls configs
+// - TLS: tls config for a server, it can be enabled or disabled, and can disable mtls
+// - ClientTLS: tls config for a client, it can skip tls verification
+// - InternalTLS: tls config for internal components. It's for both clients and servers, and enabled or disabled at the same time
+type (
+	// TLS defines the tls config of a server which can be disabled or enabled
+	// 1. No TLS: Enabled=false(CA and CertKeyPair are not needed)
+	// 2. No mTLS: Enabled=true,ClientAuth=NoCientCert(CA is not needed)
+	// 3. mTLS: Enabled=true,ClientAuth=VerifyClientCertIfNeed(Both are needed)
+	TLS struct {
+		// Enabled means whether enable tls
+		Enabled bool `json:"enabled"`
+
+		// Defaults to VerifyClientCertIfNeed
+		// +optional
+		ClientAuth ClientAuthType `json:"clientAuth,omitempty"`
+
+		// TLSSecret defines secret references for tls config
+		TLSSecret `json:",inline"`
+	}
+
+	// ClientTLS defines tls config for clients
+	// 1. No TLS: Enabled=false(CA and CertKeyPair are not needed)
+	// 2. No mTLS: Enabled=true,Mutual=false(CA is needed)
+	// 3. No mTLS and skip CA: Enabled=true,Mutual=false,InsecureSkipTLSVerify=true(CA and CertKeyPair are not needed)
+	// 4. mTLS: Enabled=true,Mutual=true(Both are needed)
+	// 5. mTLS and skip CA: Enabled=true,Mutual=true,InsecureSkipTLSVerify=true(CertKeyPair is needed)
+	ClientTLS struct {
+		// Enabled means whether enable tls
+		Enabled bool `json:"enabled"`
+
+		// Defaults to true
+		// +kubebuilder:default=true
+		// +optional
+		Mutual bool `json:"mutual,omitempty"`
+
+		// If true, we will skip CA verification, it means CA can be omitted
+		// Defaults to false
+		// +optional
+		InsecureSkipTLSVerify bool `json:"insecureSkipTLSVerify,omitempty"`
+
+		// TLSSecret defines secret references for tls config
+		TLSSecret `json:",inline"`
+	}
+
+	// InternalTLS defines a tls config between components. This config of all components
+	// can only be enabled or disabled at the same time.
+	InternalTLS struct {
+		// TLSSecret defines the secret references.
+		// Now we have to ensure all CAs are same because all internal
+		// components use a same CA to authenticate all servers. (e.g. TiDB uses a same CA to visit PD and TiKV)
+		TLSSecret `json:",inline"`
+	}
+
+	// InternalClientTLS defines the tls config for the tidb operator to visit components. Components may want to authenticate all clients
+	// by verifying their CN.
+	// NOTE: This secret have to be read by the tidb operator, it may be optimized in the future to avoid reading all secrets
+	// NOTE: Client cert rotation is not supported.
+	InternalClientTLS struct {
+		// If true, we will skip CA verification, it means CA can be omitted
+		// Defaults to false
+		// +optional
+		InsecureSkipTLSVerify bool `json:"insecureSkipTLSVerify,omitempty"`
+		// TLSSecret defines the secret references.
+		// Now we have to ensure all client CAs(except tiproxy) are same because now all internal tls certs are for both client auth and server auth.
+		// NOTE: if CN verification is specified in the config file, users should ensure that CN of this CertKeyPair is verfied.
+		TLSSecret `json:",inline"`
+	}
+)
+
+// ClientAuthType defines the auth type of the server.
+// Now only two types are supported to check whether CA is needed.
+// NOTE: A new type "RequireAndVerifyClientCert" may be introduced in the future to force mTLS.
+// NOTE: It's not same as https://pkg.go.dev/crypto/tls#ClientAuthType
+type ClientAuthType string
+
+const (
+	// NoCientCert means the server doesn't enable mtls. The CA can be omitted.
+	ClientAuthTypeNoClientCert ClientAuthType = "NoClientCert"
+	// VerifyClientCertIfNeed means the server needs CA to verify client certs.
+	// However, the server may not verify client certs. It depends on the config of the server.
+	// For example, TiDBs may not verify cert even if client auth type is VerifyClientCertIfNeed.
+	ClientAuthTypeVerifyClientCertIfNeed ClientAuthType = "VerifyClientCertIfNeed"
+)
+
+// TLSSecret defines the secret references.
+// CA and CertKeyPair should be allowed to be stored in different secrets
+// so that we can use cert-manager(trust-manager) to rotate CAs.
+// For compatibility, we keep the default behavior:
+// - For Internal TLS: defaults to <groupName>-<componentName>-cluster-secret
+// - For Internal Client TLS, defaults to <clusterName>-cluster-client-secret:
+// - For TiDB MySQL TLS: defaults to <groupName>-tidb-server-secret
+// - For TiProxy MySQL TLS: defaults to <groupName>-tiproxy-server-secret
+// - For TiProxy backend TLS: defaults to <groupName>-tiproxy-tidb-secret
+type TLSSecret struct {
+	// CA defines the ref of the secret which contains ca.crt
+	// +optional
+	CA *CAReference `json:"ca,omitempty"`
+	// CertKeyPair defines the ref of the secret which contains tls.crt and tls.key
+	// +optional
+	CertKeyPair *CertKeyPairReference `json:"certKeyPair,omitempty"`
+}
+
+// CAReference defines the reference to CA
+// It may support secret and configmap, but now only secret is supported
+type CAReference struct {
+	// +optional
+	Name string `json:"name,omitempty"`
+}
+
+// CertKeyPairReference defines the secret reference to CertKeyPair
+type CertKeyPairReference struct {
+	// +optional
+	Name string `json:"name,omitempty"`
+}
+
+// Security defines the security config of a component
+type Security struct {
+	// TLS defines the tls configs of components
+	TLS *ComponentTLS `json:"tls,omitempty"`
+}
+
+// ComponentTLS defines the tls config of a component
+type ComponentTLS struct {
+	Cluster *InternalTLS `json:"cluster,omitempty"`
+
+	// Client defines the client tls for the tidb operator to visit the group
+	Client *InternalClientTLS `json:"client,omitempty"`
 }
