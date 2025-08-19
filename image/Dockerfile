@@ -25,7 +25,7 @@ RUN --mount=type=cache,target=/go/pkg/mod/ \
     --mount=type=cache,target=/go/cache \
     V_PLATFORMS=$TARGETPLATFORM ./hack/build.sh $TARGET
 
-FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2@sha256:bad61921146f7ab59c777add4b37121b1405557605f9d43baebecb7e48f79779 AS tidb-operator
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sha256:af691c27330cb8e018add3dd16e5403dcd881b23eae815920ddb2c6ae87cbd9b AS tidb-operator
 
 ARG TARGETPLATFORM
 
@@ -37,7 +37,7 @@ USER 65532:65532
 
 ENTRYPOINT ["/tidb-operator"]
 
-FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2@sha256:bad61921146f7ab59c777add4b37121b1405557605f9d43baebecb7e48f79779 AS prestop-checker
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sha256:af691c27330cb8e018add3dd16e5403dcd881b23eae815920ddb2c6ae87cbd9b AS prestop-checker
 
 ARG TARGETPLATFORM
 
@@ -49,7 +49,7 @@ USER 65532:65532
 
 ENTRYPOINT ["/prestop-checker"]
 
-FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2@sha256:bad61921146f7ab59c777add4b37121b1405557605f9d43baebecb7e48f79779 AS testing-workload
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sha256:af691c27330cb8e018add3dd16e5403dcd881b23eae815920ddb2c6ae87cbd9b AS testing-workload
 
 ARG TARGETPLATFORM
 
@@ -62,7 +62,7 @@ USER 65532:65532
 ENTRYPOINT ["/testing-workload"]
 
 
-FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2@sha256:bad61921146f7ab59c777add4b37121b1405557605f9d43baebecb7e48f79779 AS tidb-backup-manager
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sha256:af691c27330cb8e018add3dd16e5403dcd881b23eae815920ddb2c6ae87cbd9b AS tidb-backup-manager
 
 ARG TARGETPLATFORM
 
