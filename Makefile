@@ -122,8 +122,12 @@ generate: $(ALL_GEN) license
 verify/license: bin/license-eye
 	$(LICENSE_EYE) -c .github/licenserc.yaml header check
 
+.PHONY: verify/feature-gates
+verify/feature-gates:
+	cd $(ROOT) && go run cmd/verify-feature-gates/main.go
+
 .PHONY: verify
-verify: $(addprefix verify/,$(ALL_GEN)) verify/license
+verify: $(addprefix verify/,$(ALL_GEN)) verify/license verify/feature-gates
 verify/%:
 	$(ROOT)/hack/verify.sh make $*
 
