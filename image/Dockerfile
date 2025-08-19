@@ -24,7 +24,11 @@ RUN --mount=type=cache,target=/go/pkg/mod/ \
     --mount=type=cache,target=/go/cache \
     V_PLATFORMS=$TARGETPLATFORM ./hack/build.sh
 
+<<<<<<< HEAD
 FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS tidb-operator
+=======
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sha256:af691c27330cb8e018add3dd16e5403dcd881b23eae815920ddb2c6ae87cbd9b AS tidb-operator
+>>>>>>> f07839687 (chore(deps): update ghcr.io/pingcap-qe/bases/pingcap-base docker tag to v1.10.0 (feature/v2) (#6377))
 
 ARG TARGETPLATFORM
 
@@ -36,7 +40,11 @@ USER 65532:65532
 
 ENTRYPOINT ["/tidb-operator"]
 
+<<<<<<< HEAD
 FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS prestop-checker
+=======
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sha256:af691c27330cb8e018add3dd16e5403dcd881b23eae815920ddb2c6ae87cbd9b AS prestop-checker
+>>>>>>> f07839687 (chore(deps): update ghcr.io/pingcap-qe/bases/pingcap-base docker tag to v1.10.0 (feature/v2) (#6377))
 
 ARG TARGETPLATFORM
 
@@ -48,7 +56,11 @@ USER 65532:65532
 
 ENTRYPOINT ["/prestop-checker"]
 
+<<<<<<< HEAD
 FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS testing-workload
+=======
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sha256:af691c27330cb8e018add3dd16e5403dcd881b23eae815920ddb2c6ae87cbd9b AS testing-workload
+>>>>>>> f07839687 (chore(deps): update ghcr.io/pingcap-qe/bases/pingcap-base docker tag to v1.10.0 (feature/v2) (#6377))
 
 ARG TARGETPLATFORM
 
@@ -61,7 +73,11 @@ USER 65532:65532
 ENTRYPOINT ["/testing-workload"]
 
 
+<<<<<<< HEAD
 FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS tidb-backup-manager
+=======
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sha256:af691c27330cb8e018add3dd16e5403dcd881b23eae815920ddb2c6ae87cbd9b AS tidb-backup-manager
+>>>>>>> f07839687 (chore(deps): update ghcr.io/pingcap-qe/bases/pingcap-base docker tag to v1.10.0 (feature/v2) (#6377))
 
 ARG TARGETPLATFORM
 
