@@ -1,4 +1,4 @@
-FROM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2
+FROM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0
 ARG TARGETARCH
 ARG RCLONE_VERSION=v1.68.2
 ARG SHUSH_VERSION=v1.5.5
