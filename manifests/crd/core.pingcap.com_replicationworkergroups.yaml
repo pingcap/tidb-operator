@@ -100,6 +100,7 @@ spec:
                   - DisablePDDefaultReadinessProbe
                   - UsePDReadyAPI
                   - SessionTokenSigning
+                  - ClusterSubdomain
                   type: string
                 type: array
               replicas:
