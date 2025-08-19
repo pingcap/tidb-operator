@@ -210,6 +210,10 @@ func (in *TiDB) ClientInsecureSkipTLSVerify() bool {
 	return false
 }
 
+func (in *TiDB) IsOffline() bool {
+	return false
+}
+
 type (
 	TiDBGroup v1alpha1.TiDBGroup
 )

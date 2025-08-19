@@ -210,6 +210,10 @@ func (in *TiCDC) ClientInsecureSkipTLSVerify() bool {
 	return false
 }
 
+func (in *TiCDC) IsOffline() bool {
+	return false
+}
+
 type (
 	TiCDCGroup v1alpha1.TiCDCGroup
 )

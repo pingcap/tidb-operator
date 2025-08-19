@@ -210,6 +210,10 @@ func (in *PD) ClientInsecureSkipTLSVerify() bool {
 	return false
 }
 
+func (in *PD) IsOffline() bool {
+	return false
+}
+
 type (
 	PDGroup v1alpha1.PDGroup
 )
