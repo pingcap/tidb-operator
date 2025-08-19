@@ -23,6 +23,10 @@ import (
 )
 
 // This variable records whether a component will be restarted when enabling/disabling a feature
+// IMPORTANT: Every Feature constant defined in api/meta/v1alpha1/feature.go MUST have
+// a corresponding entry in this map. Use an empty slice {} if the feature doesn't require
+// any component restarts, or specify the affected components if it does.
+// The CI enforces this consistency with 'make verify/feature-gates'.
 // TODO: maybe moved to meta pkg
 var unreloadable = map[meta.Feature][]meta.Component{
 	meta.FeatureModification:   {},
@@ -32,6 +36,9 @@ var unreloadable = map[meta.Feature][]meta.Component{
 	},
 	meta.UsePDReadyAPI: {
 		meta.ComponentPD,
+	},
+	meta.SessionTokenSigning: {
+		meta.ComponentTiDB,
 	},
 }
 
