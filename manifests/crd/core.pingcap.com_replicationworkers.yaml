@@ -4,31 +4,22 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.17.2
-  name: tikvs.core.pingcap.com
+  name: replicationworkers.core.pingcap.com
 spec:
   group: core.pingcap.com
   names:
     categories:
     - instance
-    kind: TiKV
-    listKind: TiKVList
-    plural: tikvs
-    singular: tikv
+    kind: ReplicationWorker
+    listKind: ReplicationWorkerList
+    plural: replicationworkers
+    singular: replicationworker
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
     - jsonPath: .spec.cluster.name
       name: Cluster
       type: string
-    - jsonPath: .status.id
-      name: StoreID
-      type: string
-    - jsonPath: .status.state
-      name: StoreState
-      type: string
-    - jsonPath: .spec.offline
-      name: Offline
-      type: boolean
     - jsonPath: .status.conditions[?(@.type=="Synced")].status
       name: Synced
       type: string
@@ -41,7 +32,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: TiKV defines a TiKV instance.
+        description: ReplicationWorker defines a ReplicationWorker instance
         properties:
           apiVersion:
             description: |-
@@ -61,6 +52,8 @@ spec:
           metadata:
             type: object
           spec:
+            description: ReplicationWorkerSpec describes the common attributes of
+              a ReplicationWorker instance
             properties:
               cluster:
                 description: Cluster is a reference of tidb cluster
@@ -75,7 +68,9 @@ spec:
                 - name
                 type: object
               config:
-                description: Config defines config file of TiKV
+                description: |-
+                  Config defines config file of ReplicationWorker
+                  See https://docs.pingcap.com/tidb/stable/ReplicationWorker-configuration-file/
                 type: string
               features:
                 description: Features are enabled feature
@@ -94,20 +89,13 @@ spec:
                 type: array
               image:
                 description: |-
-                  Image is tikv's image
+                  Image is ReplicationWorker's image.
                   If tag is omitted, version will be used as the image tag.
-                  Default is pingcap/tikv
                 type: string
-              offline:
-                description: |-
-                  Offline marks the store as offline in PD to begin data migration.
-                  When true, the store will be marked as offline in PD.
-                  When false, the store will be marked as online in PD (if possible).
-                type: boolean
               overlay:
                 description: |-
                   Overlay defines a k8s native resource template patch
-                  All resources(pod, pvcs, ...) managed by TiKV can be overlayed by this field
+                  All resources(pod, pvcs, ...) managed by ReplicationWorker can be overlayed by this field
                 properties:
                   pod:
                     properties:
@@ -8325,17 +8313,12 @@ spec:
                     - name
                     x-kubernetes-list-type: map
                 type: object
-              preStop:
-                description: PreStop defines preStop config
-                properties:
-                  image:
-                    description: |-
-                      Image of pre stop checker
-                      Default is pingcap/prestop-checker:latest
-                    type: string
-                type: object
               resources:
-                description: Resources defines resource required by TiKV
+                description: |-
+                  ResourceRequirements describes the compute resource requirements.
+                  It's simplified from corev1.ResourceRequirements to fit the most common use cases.
+                  This field will be translated to requests=limits for all resources.
+                  If users need to specify more advanced resource requirements, just try to use overlay to override it
                 properties:
                   cpu:
                     anyOf:
@@ -8403,22 +8386,13 @@ spec:
                     type: object
                 type: object
               server:
-                description: Server defines the server config of TiKV
+                description: Server defines server config for ReplicationWorker
                 properties:
                   ports:
-                    description: Ports defines all ports listened by tikv
+                    description: Ports defines all ports listened by ReplicationWorker
                     properties:
-                      client:
-                        description: Client defines port for tikv's api service
-                        properties:
-                          port:
-                            format: int32
-                            type: integer
-                        required:
-                        - port
-                        type: object
-                      peer:
-                        description: Status defines port for tikv status api
+                      grpc:
+                        description: Port defines a listen port
                         properties:
                           port:
                             format: int32
@@ -8430,8 +8404,8 @@ spec:
                 type: object
               subdomain:
                 description: |-
-                  Subdomain means the subdomain of the exported tikv dns.
-                  A same tikv group will use a same subdomain
+                  Subdomain means the subdomain of the exported ReplicationWorker dns.
+                  A same ReplicationWorker cluster will use a same subdomain
                 type: string
                 x-kubernetes-validations:
                 - message: subdomain is immutable
@@ -8440,7 +8414,7 @@ spec:
                 additionalProperties:
                   type: string
                 description: |-
-                  Topology defines the topology domain of this pd instance
+                  Topology defines the topology domain of this ReplicationWorker instance
                   It will be translated into a node affinity config
                   Topology cannot be changed
                 minProperties: 1
@@ -8467,7 +8441,7 @@ spec:
                 pattern: ^(v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$
                 type: string
               volumes:
-                description: Volumes defines data volume of TiKV
+                description: Volumes defines persistent volumes of ReplicationWorker
                 items:
                   description: |-
                     Volume defines a persistent volume, it will be mounted at a specified root path
@@ -8620,18 +8594,12 @@ spec:
                 description: CurrentRevision is the revision of the Controller that
                   created the resource.
                 type: string
-              id:
-                description: ID is the store id.
-                type: string
               observedGeneration:
                 description: |-
                   ObservedGeneration is the most recent generation observed by the controller.
                   It's used to determine whether the controller has reconciled the latest spec.
                 format: int64
                 type: integer
-              state:
-                description: State is the store state.
-                type: string
               updateRevision:
                 description: UpdateRevision is the revision of the Controller that
                   should modify the resource.
