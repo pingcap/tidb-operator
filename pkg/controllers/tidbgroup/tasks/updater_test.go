@@ -27,6 +27,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -285,7 +286,7 @@ func TestTaskUpdater(t *testing.T) {
 
 func fakeAvailableTiDB(name string, dbg *v1alpha1.TiDBGroup, rev string) *v1alpha1.TiDB {
 	return fake.FakeObj(name, func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
-		tidb := runtime.ToTiDB(TiDBNewer(dbg, rev).New())
+		tidb := runtime.ToTiDB(TiDBNewer(dbg, rev, features.NewFromFeatures(nil)).New())
 		tidb.Name = ""
 		tidb.Status.Conditions = append(tidb.Status.Conditions, metav1.Condition{
 			Type:   v1alpha1.CondReady,

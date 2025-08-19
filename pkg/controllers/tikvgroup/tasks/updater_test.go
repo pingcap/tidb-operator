@@ -27,6 +27,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -285,7 +286,7 @@ func TestTaskUpdater(t *testing.T) {
 
 func fakeAvailableTiKV(name string, kvg *v1alpha1.TiKVGroup, rev string) *v1alpha1.TiKV {
 	return fake.FakeObj(name, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-		tikv := runtime.ToTiKV(TiKVNewer(kvg, rev).New())
+		tikv := runtime.ToTiKV(TiKVNewer(kvg, rev, features.NewFromFeatures(nil)).New())
 		tikv.Name = ""
 		tikv.Status.Conditions = append(tikv.Status.Conditions, metav1.Condition{
 			Type:   v1alpha1.CondReady,

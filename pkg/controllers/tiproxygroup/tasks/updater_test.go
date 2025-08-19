@@ -27,6 +27,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -260,7 +261,7 @@ func TestTaskUpdater(t *testing.T) {
 
 func fakeAvailableTiProxy(name string, proxyg *v1alpha1.TiProxyGroup, rev string) *v1alpha1.TiProxy {
 	return fake.FakeObj(name, func(obj *v1alpha1.TiProxy) *v1alpha1.TiProxy {
-		tiproxy := runtime.ToTiProxy(TiProxyNewer(proxyg, rev).New())
+		tiproxy := runtime.ToTiProxy(TiProxyNewer(proxyg, rev, features.NewFromFeatures(nil)).New())
 		tiproxy.Name = ""
 		tiproxy.Status.Conditions = append(tiproxy.Status.Conditions, metav1.Condition{
 			Type:   v1alpha1.CondReady,

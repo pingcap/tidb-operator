@@ -27,6 +27,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -258,7 +259,7 @@ func TestTaskUpdater(t *testing.T) {
 
 func fakeAvailablePD(name string, pdg *v1alpha1.PDGroup, rev string) *v1alpha1.PD {
 	return fake.FakeObj(name, func(obj *v1alpha1.PD) *v1alpha1.PD {
-		pd := runtime.ToPD(PDNewer(pdg, rev).New())
+		pd := runtime.ToPD(PDNewer(pdg, rev, features.NewFromFeatures(nil)).New())
 		pd.Name = ""
 		pd.Status.Conditions = append(pd.Status.Conditions, metav1.Condition{
 			Type:   v1alpha1.CondReady,
