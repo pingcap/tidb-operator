@@ -1,7 +1,8 @@
 # syntax=docker.io/docker/dockerfile:1.8.1@sha256:e87caa74dcb7d46cd820352bfea12591f3dba3ddc4285e19c7dcd13359f7cefd
-FROM --platform=$BUILDPLATFORM gcr.io/pingcap-public/third-party/baseimage/golang:1.23 AS builder
+FROM --platform=$BUILDPLATFORM gcr.io/pingcap-public/third-party/baseimage/golang:1.23@sha256:080fb3462a60d926829ddcf0626acf0533eeeee934fea6c160d85565281ddc0a AS builder
 
 ARG TARGETPLATFORM
+ARG TARGET
 
 WORKDIR /
 
@@ -22,9 +23,9 @@ COPY . .
 
 RUN --mount=type=cache,target=/go/pkg/mod/ \
     --mount=type=cache,target=/go/cache \
-    V_PLATFORMS=$TARGETPLATFORM ./hack/build.sh
+    V_PLATFORMS=$TARGETPLATFORM ./hack/build.sh $TARGET
 
-FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS tidb-operator
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2@sha256:bad61921146f7ab59c777add4b37121b1405557605f9d43baebecb7e48f79779 AS tidb-operator
 
 ARG TARGETPLATFORM
 
@@ -36,7 +37,7 @@ USER 65532:65532
 
 ENTRYPOINT ["/tidb-operator"]
 
-FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS prestop-checker
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2@sha256:bad61921146f7ab59c777add4b37121b1405557605f9d43baebecb7e48f79779 AS prestop-checker
 
 ARG TARGETPLATFORM
 
@@ -48,7 +49,7 @@ USER 65532:65532
 
 ENTRYPOINT ["/prestop-checker"]
 
-FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS testing-workload
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2@sha256:bad61921146f7ab59c777add4b37121b1405557605f9d43baebecb7e48f79779 AS testing-workload
 
 ARG TARGETPLATFORM
 
@@ -61,7 +62,7 @@ USER 65532:65532
 ENTRYPOINT ["/testing-workload"]
 
 
-FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS tidb-backup-manager
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2@sha256:bad61921146f7ab59c777add4b37121b1405557605f9d43baebecb7e48f79779 AS tidb-backup-manager
 
 ARG TARGETPLATFORM
 
