@@ -210,6 +210,10 @@ func (in *TiKV) ClientInsecureSkipTLSVerify() bool {
 	return false
 }
 
+func (in *TiKV) IsOffline() bool {
+	return in.Spec.Offline
+}
+
 type (
 	TiKVGroup v1alpha1.TiKVGroup
 )

@@ -210,6 +210,10 @@ func (in *TiProxy) ClientInsecureSkipTLSVerify() bool {
 	return false
 }
 
+func (in *TiProxy) IsOffline() bool {
+	return false
+}
+
 type (
 	TiProxyGroup v1alpha1.TiProxyGroup
 )

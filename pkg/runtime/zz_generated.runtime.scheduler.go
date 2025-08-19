@@ -210,6 +210,10 @@ func (in *Scheduler) ClientInsecureSkipTLSVerify() bool {
 	return false
 }
 
+func (in *Scheduler) IsOffline() bool {
+	return false
+}
+
 type (
 	SchedulerGroup v1alpha1.SchedulerGroup
 )
