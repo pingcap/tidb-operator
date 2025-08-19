@@ -17,7 +17,6 @@ package common
 import (
 	"context"
 	"errors"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -38,9 +37,10 @@ func conditionsFromSingle(condition *metav1.Condition) []metav1.Condition {
 	return []metav1.Condition{*condition}
 }
 
-func createMockStoreInstance(ctrl *gomock.Controller, offline bool, condition []metav1.Condition, annotations map[string]string) *runtime.MockStoreInstance {
-	mockStore := runtime.NewMockStoreInstance(ctrl)
+func createMockInstance(ctrl *gomock.Controller, offline bool, condition []metav1.Condition, annotations map[string]string) *runtime.MockInstance {
+	mockStore := runtime.NewMockInstance(ctrl)
 	mockStore.EXPECT().GetName().Return("test").AnyTimes()
+	mockStore.EXPECT().GetGeneration().AnyTimes()
 	mockStore.EXPECT().IsOffline().Return(offline).AnyTimes()
 
 	// Create mutable state for conditions
@@ -122,307 +122,331 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 	ctx := context.Background()
 	tests := []struct {
 		name               string
-		instanceBuilder    func(ctrl *gomock.Controller) *runtime.MockStoreInstance
+		instanceBuilder    func(ctrl *gomock.Controller) *runtime.MockInstance
 		contextBuilder     *contextBuilder
 		setupMock          func(mockUnderlay *pdapi.MockPDClient)
 		expectedResult     task.Status
 		expectedCondition  *metav1.Condition
-		expectedRetryCount string
-		assertFunc         func(t *testing.T, instance *runtime.MockStoreInstance)
+		assertFunc         func(t *testing.T, instance *runtime.MockInstance)
 		skipMockClientInit bool // Flag to explicitly skip mock client initialization
 	}{
 		// Happy path
 		{
-			name: "Start offline operation: no condition exists",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, true, nil, nil)
-			},
-			contextBuilder:    newContext(""),
-			expectedResult:    task.SRetry,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonPending},
-		},
-		{
-			name: "Pending state: transition to Active",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, true, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonPending, "", metav1.ConditionTrue)), nil)
+			name: "Start offline operation: no condition exists, successful transition to Processing",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, true, nil, nil)
 			},
 			contextBuilder: newContext("1"),
 			setupMock: func(mockUnderlay *pdapi.MockPDClient) {
 				mockUnderlay.EXPECT().DeleteStore(gomock.Any(), "1").Return(nil)
 			},
 			expectedResult:    task.SRetry,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonActive},
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineProcessing},
 		},
 		{
-			name: "Active state: store still removing",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, true, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonActive, "", metav1.ConditionTrue)), nil)
+			name: "Start offline operation: empty store ID causes failure",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, true, nil, nil)
+			},
+			contextBuilder:    newContext(""),
+			expectedResult:    task.SRetry,
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineFailed},
+		},
+		{
+			name: "Processing state: store still removing",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, true, conditionsFromSingle(newOfflinedCondition(v1alpha1.ReasonOfflineProcessing, "", metav1.ConditionFalse)), nil)
 			},
 			contextBuilder:    newContext("1").WithState(v1alpha1.StoreStateRemoving),
 			expectedResult:    task.SRetry,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonActive},
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineProcessing},
 		},
 		{
-			name: "Active state: store removed, transition to Completed",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, true, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonActive, "", metav1.ConditionTrue)), nil)
+			name: "Processing state: store removed, transition to Completed",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, true, conditionsFromSingle(newOfflinedCondition(v1alpha1.ReasonOfflineProcessing, "", metav1.ConditionFalse)), nil)
 			},
 			contextBuilder:    newContext("1").WithState(v1alpha1.StoreStateRemoved),
 			expectedResult:    task.SComplete,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonCompleted},
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.ReasonOfflineCompleted},
 		},
 		{
 			name: "Completed state should return complete",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, true, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonCompleted, "", metav1.ConditionTrue)), nil)
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, true, conditionsFromSingle(newOfflinedCondition(v1alpha1.ReasonOfflineCompleted, "", metav1.ConditionTrue)), nil)
 			},
 			contextBuilder:    newContext(""),
 			expectedResult:    task.SComplete,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonCompleted},
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.ReasonOfflineCompleted},
 		},
 		// Failure and retry
 		{
-			name: "Pending state: PD API call fails, transition to Failed",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, true, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonPending, "", metav1.ConditionTrue)), nil)
+			name: "Failed state: retry operation with valid store ID",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				// Create a failed condition, retry should succeed with valid store ID
+				condition := newOfflinedCondition(v1alpha1.ReasonOfflineFailed, "Failed to call PD DeleteStore API", metav1.ConditionFalse)
+				return createMockInstance(ctrl, true, conditionsFromSingle(condition), nil)
 			},
-			contextBuilder: newContext("2"),
+			contextBuilder: newContext("1"),
 			setupMock: func(mockUnderlay *pdapi.MockPDClient) {
-				mockUnderlay.EXPECT().DeleteStore(gomock.Any(), "2").Return(errors.New("transient pd api error"))
+				mockUnderlay.EXPECT().DeleteStore(gomock.Any(), "1").Return(nil)
 			},
 			expectedResult:    task.SRetry,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonFailed},
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineProcessing},
 		},
 		{
-			name: "Pending state: empty store ID",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, true, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonPending, "", metav1.ConditionTrue)), nil)
+			name: "Failed state: retry with empty store ID remains failed",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				// With empty store ID, retry should remain in Failed state
+				condition := newOfflinedCondition(v1alpha1.ReasonOfflineFailed, "Failed to call PD DeleteStore API", metav1.ConditionFalse)
+				return createMockInstance(ctrl, true, conditionsFromSingle(condition), nil)
 			},
 			contextBuilder:    newContext(""),
-			expectedResult:    task.SFail,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonPending},
-		},
-		{
-			name: "Failed state: retry operation",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, true, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonFailed, "", metav1.ConditionTrue)), map[string]string{AnnotationKeyOfflineRetryCount: "1"})
-			},
-			contextBuilder:     newContext(""),
-			expectedResult:     task.SRetry,
-			expectedCondition:  &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonPending},
-			expectedRetryCount: "2",
-		},
-		{
-			name: "Failed state: max retries reached",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, true, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonFailed, "", metav1.ConditionTrue)), map[string]string{AnnotationKeyOfflineRetryCount: strconv.Itoa(MaxRetryCount)})
-			},
-			contextBuilder:     newContext(""),
-			expectedResult:     task.SFail,
-			expectedCondition:  &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonFailed},
-			expectedRetryCount: "",
+			expectedResult:    task.SRetry,
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineFailed},
 		},
 		// Cancellation
 		{
-			name: "Cancel operation: in Active state",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, false, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonActive, "", metav1.ConditionTrue)), nil)
+			name: "Cancel operation: in Processing state",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, false, conditionsFromSingle(newOfflinedCondition(v1alpha1.ReasonOfflineProcessing, "", metav1.ConditionFalse)), nil)
 			},
 			contextBuilder: newContext("3").WithState(v1alpha1.StoreStateRemoving),
 			setupMock: func(mockUnderlay *pdapi.MockPDClient) {
 				mockUnderlay.EXPECT().CancelDeleteStore(gomock.Any(), "3").Return(nil)
 			},
 			expectedResult:    task.SComplete,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.OfflineReasonCancelled},
+			expectedCondition: nil, // condition should be removed after cancellation
 		},
 		{
 			name: "Cancel operation: PD API fails",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, false, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonActive, "", metav1.ConditionTrue)), nil)
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, false, conditionsFromSingle(newOfflinedCondition(v1alpha1.ReasonOfflineProcessing, "", metav1.ConditionFalse)), nil)
 			},
 			contextBuilder: newContext("1").WithState(v1alpha1.StoreStateRemoving),
 			setupMock: func(mockUnderlay *pdapi.MockPDClient) {
 				mockUnderlay.EXPECT().CancelDeleteStore(gomock.Any(), "1").Return(errors.New("cancel api error"))
 			},
 			expectedResult:    task.SFail,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonActive},
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineProcessing},
 		},
 		{
-			name: "Cancel operation: retry annotation should be cleared",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, false, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonFailed, "", metav1.ConditionTrue)), map[string]string{AnnotationKeyOfflineRetryCount: "2"})
-			},
-			contextBuilder:     newContext("1"),
-			expectedResult:     task.SComplete,
-			expectedCondition:  &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.OfflineReasonCancelled},
-			expectedRetryCount: "",
-		},
-		{
-			name: "Restart a canceled operation",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, true, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonCancelled, "", metav1.ConditionFalse)), nil)
-			},
-			contextBuilder:    newContext(""),
-			expectedResult:    task.SRetry,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonPending},
-		},
-		// Edge cases
-		{
-			name: "Nil PD client in pending state",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, true, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonPending, "", metav1.ConditionTrue)), nil)
-			},
-			contextBuilder:     newContext("1").WithPDClient(nil),
-			expectedResult:     task.SFail,
-			expectedCondition:  &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonPending},
-			skipMockClientInit: true,
-		},
-		{
-			name: "Nil PD client in cancel state",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, false, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonActive, "", metav1.ConditionTrue)), nil)
-			},
-			contextBuilder:     newContext("1").WithState(v1alpha1.StoreStateRemoving).WithPDClient(nil),
-			expectedResult:     task.SFail,
-			expectedCondition:  &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonActive},
-			skipMockClientInit: true,
-		},
-		{
-			name: "Store doesn't exist in pending state",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, true, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonPending, "", metav1.ConditionTrue)), nil)
-			},
-			contextBuilder:    newContext("").StoreExists(false),
-			expectedResult:    task.SComplete,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonCompleted},
-		},
-		{
-			name: "Store doesn't exist in active state",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, true, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonActive, "", metav1.ConditionTrue)), nil)
-			},
-			contextBuilder:    newContext("").StoreExists(false),
-			expectedResult:    task.SComplete,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonCompleted},
-		},
-		{
-			name: "Unknown condition reason",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, true, conditionsFromSingle(newOfflineCondition("UnknownReason", "", metav1.ConditionTrue)), nil)
-			},
-			contextBuilder:    newContext(""),
-			expectedResult:    task.SFail,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: "UnknownReason"},
-		},
-		{
-			name: "Cancel when no condition exists",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, false, nil, nil)
-			},
-			contextBuilder: newContext(""),
-			expectedResult: task.SComplete,
-		},
-		{
-			name: "Cancel when already completed",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, false, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonCompleted, "", metav1.ConditionTrue)), nil)
-			},
-			contextBuilder:    newContext(""),
-			expectedResult:    task.SComplete,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonCompleted},
-		},
-		{
-			name: "Cancel when already canceled",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, false, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonCancelled, "", metav1.ConditionFalse)), nil)
-			},
-			contextBuilder:    newContext(""),
-			expectedResult:    task.SComplete,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.OfflineReasonCancelled},
-		},
-		{
-			name: "Failed state with nil annotations",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				// Use the helper function for consistency
-				return createMockStoreInstance(ctrl, true, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonFailed, "", metav1.ConditionTrue)), nil)
-			},
-			contextBuilder:     newContext(""),
-			expectedResult:     task.SRetry,
-			expectedCondition:  &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonPending},
-			expectedRetryCount: "1",
-		},
-		{
-			name: "Failed state with invalid retry count annotation",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, true, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonFailed, "", metav1.ConditionTrue)), map[string]string{AnnotationKeyOfflineRetryCount: "invalid"})
-			},
-			contextBuilder:     newContext(""),
-			expectedResult:     task.SRetry,
-			expectedCondition:  &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonPending},
-			expectedRetryCount: "1",
-		},
-		{
-			name: "Cancel operation clears retry annotation but keeps others",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, false, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonFailed, "", metav1.ConditionTrue)), map[string]string{AnnotationKeyOfflineRetryCount: "2", "other": "value"})
+			name: "Cancel operation: retry should be cleared",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, false, conditionsFromSingle(newOfflinedCondition(v1alpha1.ReasonOfflineFailed, "", metav1.ConditionFalse)), nil)
 			},
 			contextBuilder:    newContext("1"),
 			expectedResult:    task.SComplete,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.OfflineReasonCancelled},
-			assertFunc: func(t *testing.T, instance *runtime.MockStoreInstance) {
+			expectedCondition: nil, // condition should be removed after cancellation
+		},
+		{
+			name: "Restart offline operation with empty store ID after cancellation",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, true, nil, nil) // no condition after cancellation
+			},
+			contextBuilder:    newContext(""),
+			expectedResult:    task.SRetry,
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineFailed},
+		},
+		// State recovery from PD when condition is lost
+		{
+			name: "State recovery: PD shows Serving, condition lost, should start fresh",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, true, nil, nil)
+			},
+			contextBuilder: newContext("1").WithState(v1alpha1.StoreStateServing),
+			setupMock: func(mockUnderlay *pdapi.MockPDClient) {
+				mockUnderlay.EXPECT().DeleteStore(gomock.Any(), "1").Return(nil)
+			},
+			expectedResult:    task.SRetry,
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineProcessing},
+		},
+		{
+			name: "State recovery: PD shows Removing, condition lost, should recover as Processing",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, true, nil, nil)
+			},
+			contextBuilder:    newContext("1").WithState(v1alpha1.StoreStateRemoving),
+			expectedResult:    task.SRetry,
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineProcessing},
+		},
+		{
+			name: "State recovery: PD shows Removed, condition lost, should recover as Completed",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, true, nil, nil)
+			},
+			contextBuilder:    newContext("1").WithState(v1alpha1.StoreStateRemoved),
+			expectedResult:    task.SComplete,
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.ReasonOfflineCompleted},
+		},
+		{
+			name: "State recovery: Store not exists, condition lost, should recover as Completed",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, true, nil, nil)
+			},
+			contextBuilder:    newContext("1").StoreExists(false),
+			expectedResult:    task.SComplete,
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.ReasonOfflineCompleted},
+		},
+		{
+			name: "State recovery: PD shows unknown state, condition lost, should start fresh",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, true, nil, nil)
+			},
+			contextBuilder: newContext("1").WithState("UnknownState"),
+			setupMock: func(mockUnderlay *pdapi.MockPDClient) {
+				mockUnderlay.EXPECT().DeleteStore(gomock.Any(), "1").Return(nil)
+			},
+			expectedResult:    task.SRetry,
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineProcessing},
+		},
+		// Edge cases
+		{
+			name: "Nil PD client in cancel state",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, false, conditionsFromSingle(newOfflinedCondition(v1alpha1.ReasonOfflineProcessing, "", metav1.ConditionFalse)), nil)
+			},
+			contextBuilder:     newContext("1").WithState(v1alpha1.StoreStateRemoving).WithPDClient(nil),
+			expectedResult:     task.SFail,
+			expectedCondition:  &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineProcessing},
+			skipMockClientInit: true,
+		},
+		{
+			name: "Store doesn't exist in Processing state",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, true, conditionsFromSingle(newOfflinedCondition(v1alpha1.ReasonOfflineProcessing, "", metav1.ConditionFalse)), nil)
+			},
+			contextBuilder:    newContext("").StoreExists(false),
+			expectedResult:    task.SComplete,
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.ReasonOfflineCompleted},
+		},
+		{
+			name: "Unknown condition reason",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, true, conditionsFromSingle(newOfflinedCondition("UnknownReason", "", metav1.ConditionTrue)), nil)
+			},
+			contextBuilder:    newContext(""),
+			expectedResult:    task.SFail,
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionTrue, Reason: "UnknownReason"},
+		},
+		{
+			name: "Cancel when no condition exists: store not removing",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, false, nil, nil)
+			},
+			contextBuilder: newContext("1").WithState(v1alpha1.StoreStateServing),
+			setupMock: func(mockUnderlay *pdapi.MockPDClient) {
+				// Should still call CancelDeleteStore for Serving state
+				mockUnderlay.EXPECT().CancelDeleteStore(gomock.Any(), "1").Return(nil)
+			},
+			expectedResult:    task.SComplete,
+			expectedCondition: nil, // condition should be removed after cancellation
+		},
+		{
+			name: "Cancel when no condition exists: store is removing",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, false, nil, nil)
+			},
+			contextBuilder: newContext("1").WithState(v1alpha1.StoreStateRemoving),
+			setupMock: func(mockUnderlay *pdapi.MockPDClient) {
+				mockUnderlay.EXPECT().CancelDeleteStore(gomock.Any(), "1").Return(nil)
+			},
+			expectedResult:    task.SComplete,
+			expectedCondition: nil, // condition should be removed after cancellation
+		},
+		{
+			name: "Cancel when no condition exists: cancel API fails but no original condition to preserve",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, false, nil, nil)
+			},
+			contextBuilder: newContext("1").WithState(v1alpha1.StoreStateRemoving),
+			setupMock: func(mockUnderlay *pdapi.MockPDClient) {
+				mockUnderlay.EXPECT().CancelDeleteStore(gomock.Any(), "1").Return(errors.New("cancel failed"))
+			},
+			expectedResult:    task.SFail,
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineProcessing},
+		},
+		{
+			name: "Cancel when already completed",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, false, conditionsFromSingle(newOfflinedCondition(v1alpha1.ReasonOfflineCompleted, "", metav1.ConditionTrue)), nil)
+			},
+			contextBuilder:    newContext(""),
+			expectedResult:    task.SComplete,
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.ReasonOfflineCompleted},
+		},
+		{
+			name: "Failed state with empty store ID remains failed",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, true, conditionsFromSingle(newOfflinedCondition(v1alpha1.ReasonOfflineFailed, "", metav1.ConditionFalse)), nil)
+			},
+			contextBuilder:    newContext(""),
+			expectedResult:    task.SRetry,
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineFailed},
+		},
+		// Remove invalid retry count test as we no longer use annotations
+		{
+			name: "Cancel operation: clears retry but keeps other annotations",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, false, conditionsFromSingle(newOfflinedCondition(v1alpha1.ReasonOfflineFailed, "", metav1.ConditionFalse)), map[string]string{"other": "value"})
+			},
+			contextBuilder:    newContext("1"),
+			expectedResult:    task.SComplete,
+			expectedCondition: nil, // condition should be removed after cancellation
+			assertFunc: func(t *testing.T, instance *runtime.MockInstance) {
 				require.Contains(t, instance.GetAnnotations(), "other", "Other annotations should remain")
 				require.Equal(t, "value", instance.GetAnnotations()["other"], "Other annotation value should be preserved")
 			},
 		},
 		{
 			name: "Cancel operation: empty store ID",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, false, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonActive, "", metav1.ConditionTrue)), nil)
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, false, conditionsFromSingle(newOfflinedCondition(v1alpha1.ReasonOfflineProcessing, "", metav1.ConditionFalse)), nil)
 			},
 			contextBuilder:     newContext("").WithState(v1alpha1.StoreStateRemoving),
 			expectedResult:     task.SFail,
-			expectedCondition:  &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonActive},
+			expectedCondition:  &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineProcessing},
 			skipMockClientInit: true,
 		},
 		{
 			name: "Cancel operation: whitespace store ID",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, false, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonActive, "", metav1.ConditionTrue)), nil)
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, false, conditionsFromSingle(newOfflinedCondition(v1alpha1.ReasonOfflineProcessing, "", metav1.ConditionFalse)), nil)
 			},
 			contextBuilder:     newContext("   ").WithState(v1alpha1.StoreStateRemoving),
 			expectedResult:     task.SFail,
-			expectedCondition:  &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonActive},
+			expectedCondition:  &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineProcessing},
 			skipMockClientInit: true,
 		},
 		{
 			name: "Cancel operation: store not in removing state",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, false, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonActive, "", metav1.ConditionTrue)), nil)
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, false, conditionsFromSingle(newOfflinedCondition(v1alpha1.ReasonOfflineProcessing, "", metav1.ConditionFalse)), nil)
 			},
 			setupMock: func(mockUnderlay *pdapi.MockPDClient) {
 				mockUnderlay.EXPECT().CancelDeleteStore(gomock.Any(), "1").Return(nil)
 			},
 			contextBuilder:    newContext("1").WithState(v1alpha1.StoreStateServing),
 			expectedResult:    task.SComplete,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.OfflineReasonCancelled},
+			expectedCondition: nil, // condition should be removed after cancellation
 		},
 		{
 			name: "Cancel operation: store doesn't exist",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, false, conditionsFromSingle(newOfflineCondition(v1alpha1.OfflineReasonActive, "", metav1.ConditionTrue)), nil)
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, false, conditionsFromSingle(newOfflinedCondition(v1alpha1.ReasonOfflineProcessing, "", metav1.ConditionFalse)), nil)
 			},
 			contextBuilder:    newContext("").StoreExists(false),
 			expectedResult:    task.SComplete,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.OfflineReasonCompleted},
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.ReasonOfflineCompleted},
 		},
 		{
 			name: "Cancel unknown condition reason",
-			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockStoreInstance {
-				return createMockStoreInstance(ctrl, false, conditionsFromSingle(newOfflineCondition("UnknownReason", "", metav1.ConditionTrue)), nil)
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, false, conditionsFromSingle(newOfflinedCondition("UnknownReason", "", metav1.ConditionTrue)), nil)
 			},
 			contextBuilder:    newContext(""),
 			expectedResult:    task.SFail,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflineConditionType, Status: metav1.ConditionTrue, Reason: "UnknownReason"},
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionTrue, Reason: "UnknownReason"},
 		},
 	}
 
@@ -459,7 +483,7 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 				state = tt.contextBuilder.Build()
 			}
 
-			result := TaskOfflineStoreStateMachine(ctx, state, instance, "mock", &DummyStoreOfflineHook{})
+			result := TaskOfflineStoreStateMachine(ctx, state, instance)
 
 			// Default assertions
 			require.Equal(t, tt.expectedResult.String(), result.Status().String(), "Status mismatch")
@@ -473,27 +497,6 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 				require.Equal(t, tt.expectedCondition.Status, actualCondition.Status, "Condition status mismatch")
 				require.Equal(t, tt.expectedCondition.Reason, actualCondition.Reason, "Condition reason mismatch")
 				// Skip time and message comparison for most tests as they are dynamic
-			}
-
-			// Check retry count if expected
-			if tt.expectedRetryCount != "" {
-				annotations := instance.GetAnnotations()
-				if annotations == nil {
-					require.Fail(t, "Expected retry count annotation but no annotations found")
-				} else {
-					actualRetryCount := annotations[AnnotationKeyOfflineRetryCount]
-					require.Equal(t, tt.expectedRetryCount, actualRetryCount, "Retry count mismatch")
-				}
-			}
-
-			// Special handling for tests that explicitly expect retry count to be cleared (empty string)
-			if tt.name == "Cancel operation: retry annotation should be cleared" ||
-				tt.name == "Failed state: max retries reached" {
-				annotations := instance.GetAnnotations()
-				if annotations != nil {
-					_, exists := annotations[AnnotationKeyOfflineRetryCount]
-					require.False(t, exists, "Expected retry count annotation to be cleared")
-				}
 			}
 
 			if tt.assertFunc != nil {

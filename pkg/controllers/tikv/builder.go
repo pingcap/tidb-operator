@@ -15,6 +15,7 @@
 package tikv
 
 import (
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tikv/tasks"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
@@ -32,25 +33,25 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskContextCluster[scope.TiKV](state, r.Client),
 		// return if cluster's status is not updated
 		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
+
 		// check whether it's paused
 		task.IfBreak(common.CondClusterIsPaused(state)),
+
 		// if the cluster is deleting, del all subresources and remove the finalizer directly
 		task.IfBreak(common.CondClusterIsDeleting(state),
 			tasks.TaskFinalizerDel(state, r.Client),
 		),
 
 		// get info from pd
-		task.IfNot(common.CondClusterIsDeleting(state),
-			tasks.TaskContextInfoFromPD(state, r.PDClientManager),
-		),
+		tasks.TaskContextInfoFromPD(state, r.PDClientManager),
 
-		// handle offline state machine for two-step store deletion
-		tasks.TaskOfflineStore(state),
-
-		task.IfBreak(common.CondObjectIsDeleting[scope.TiKV](state),
+		// if instance is deleting and store is removed
+		task.IfBreak(ObjectIsDeletingAndStoreIsRemoved(state),
+			tasks.TaskEndEvictLeader(state),
 			tasks.TaskFinalizerDel(state, r.Client),
 		),
 
+		tasks.TaskOfflineStore(state),
 		common.TaskFinalizerAdd[scope.TiKV](state, r.Client),
 		// get pod and check whether the cluster is suspending
 		common.TaskContextPod[scope.TiKV](state, r.Client),
@@ -58,7 +59,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// check whether the cluster is suspending
 		// if cluster is suspending, we cannot handle any tikv deletion
 		task.IfBreak(common.CondClusterIsSuspending(state),
-			// NOTE: suspend tikv pod should delete with grace period
+			// NOTE: suspend tikv pod should delete with grace peroid
 			// TODO(liubo02): combine with the common one
 			tasks.TaskSuspendPod(state, r.Client),
 			common.TaskInstanceConditionSuspended[scope.TiKV](state),
@@ -79,4 +80,11 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 	)
 
 	return runner
+}
+
+func ObjectIsDeletingAndStoreIsRemoved(state *tasks.ReconcileContext) task.Condition {
+	return task.CondFunc(func() bool {
+		return !state.Object().GetDeletionTimestamp().IsZero() && state.PDSynced &&
+			(state.GetStoreState() == v1alpha1.StoreStateRemoved || state.Store == nil)
+	})
 }

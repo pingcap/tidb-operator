@@ -52,6 +52,7 @@ func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, vm vo
 		Owns(&corev1.Pod{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&corev1.PersistentVolumeClaim{}).
+		Watches(&v1alpha1.Cluster{}, r.ClusterEventHandler()).
 		// WatchesRawSource(pdcm.Source(&pdv1.Member{}, r.MemberEventHandler())).
 		WithOptions(controller.Options{RateLimiter: k8s.RateLimiter}).
 		Complete(r)

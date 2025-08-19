@@ -73,17 +73,8 @@ func TestTaskUpdater(t *testing.T) {
 					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
 				},
 			},
-			objs: []client.Object{
-				fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
-					obj.Spec.Replicas = ptr.To[int32](1)
-					obj.Spec.Cluster.Name = "cluster"
-					obj.Spec.Template.Spec.Version = "v8.1.0"
-					obj.Status.Version = "v8.0.0"
-					return obj
-				}),
-			},
-
-			expectedStatus: task.SRetry,
+			expectedTiCDCNum: 1,
+			expectedStatus:   task.SWait,
 		},
 		{
 			desc: "1 updated ticdc with 1 replicas",
@@ -260,7 +251,8 @@ func TestTaskUpdater(t *testing.T) {
 			c.objs = append(c.objs, c.state.TiCDCGroup(), c.state.Cluster())
 			fc := client.NewFakeClient(c.objs...)
 			for _, obj := range c.state.TiCDCSlice() {
-				require.NoError(tt, fc.Apply(ctx, obj), c.desc)
+				require.NoError(tt, fc.Apply(ctx, obj.DeepCopy()), c.desc)
+				require.NoError(tt, fc.Status().Update(ctx, obj.DeepCopy()), c.desc)
 			}
 
 			if c.unexpectedErr {

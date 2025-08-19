@@ -39,6 +39,8 @@ type Group interface {
 
 	TemplateLabels() map[string]string
 	TemplateAnnotations() map[string]string
+
+	SetTemplateClusterTLS(ca, certKeyPair string)
 }
 
 type GroupT[T GroupSet] interface {
@@ -48,7 +50,7 @@ type GroupT[T GroupSet] interface {
 }
 
 type GroupSet interface {
-	PDGroup | TiDBGroup | TiKVGroup | TiFlashGroup | TiCDCGroup | TiProxyGroup
+	PDGroup | TiDBGroup | TiKVGroup | TiFlashGroup | TiCDCGroup | TiProxyGroup | TSOGroup | SchedulerGroup
 }
 
 type GroupTuple[PT client.Object, PU Group] interface {

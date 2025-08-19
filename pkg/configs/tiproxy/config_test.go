@@ -40,12 +40,12 @@ func TestValidate(t *testing.T) {
 			name: "invalid config with managed fields",
 			config: &Config{
 				Proxy: Proxy{
-					Address:          "0.0.0.0:4000",
+					Address:          "[::]:4000",
 					AdvertiseAddress: "tiproxy-0.tiproxy-peer.default.svc",
 					PDAddress:        "pd:2379",
 				},
 				API: API{
-					Address: "0.0.0.0:3080",
+					Address: "[::]:3080",
 				},
 				Security: Security{
 					ServerSQLTLS: TLSConfig{
@@ -109,12 +109,12 @@ func TestOverlay(t *testing.T) {
 			},
 			want: &Config{
 				Proxy: Proxy{
-					Address:          "0.0.0.0:6000",
+					Address:          "[::]:6000",
 					AdvertiseAddress: "db-tiproxy-foo.db-tiproxy-peer.ns1.svc",
 					PDAddress:        "db-pd.ns1:2379",
 				},
 				API: API{
-					Address: "0.0.0.0:3080",
+					Address: "[::]:3080",
 				},
 			},
 			wantErr: false,
@@ -142,12 +142,12 @@ func TestOverlay(t *testing.T) {
 			},
 			want: &Config{
 				Proxy: Proxy{
-					Address:          "0.0.0.0:6000",
+					Address:          "[::]:6000",
 					AdvertiseAddress: "db-tiproxy-foo.tiproxy-peer.ns1.svc",
 					PDAddress:        "db-pd.ns1:2379",
 				},
 				API: API{
-					Address: "0.0.0.0:3080",
+					Address: "[::]:3080",
 				},
 				Security: Security{
 					ClusterTLS: TLSConfig{
@@ -156,10 +156,9 @@ func TestOverlay(t *testing.T) {
 						Key:  "/var/lib/tiproxy-tls/tls.key",
 					},
 					ServerHTTPTLS: TLSConfig{
-						CA:     "/var/lib/tiproxy-tls/ca.crt",
-						Cert:   "/var/lib/tiproxy-tls/tls.crt",
-						Key:    "/var/lib/tiproxy-tls/tls.key",
-						SkipCA: true,
+						CA:   "/var/lib/tiproxy-http-tls/ca.crt",
+						Cert: "/var/lib/tiproxy-http-tls/tls.crt",
+						Key:  "/var/lib/tiproxy-http-tls/tls.key",
 					},
 				},
 			},
@@ -192,12 +191,12 @@ func TestOverlay(t *testing.T) {
 			},
 			want: &Config{
 				Proxy: Proxy{
-					Address:          "0.0.0.0:6000",
+					Address:          "[::]:6000",
 					AdvertiseAddress: "db-tiproxy-foo.tiproxy-peer.ns1.svc",
 					PDAddress:        "db-pd.ns1:2379",
 				},
 				API: API{
-					Address: "0.0.0.0:3080",
+					Address: "[::]:3080",
 				},
 				Security: Security{
 					ServerSQLTLS: TLSConfig{
@@ -226,8 +225,9 @@ func TestOverlay(t *testing.T) {
 					TiProxyTemplateSpec: v1alpha1.TiProxyTemplateSpec{
 						Security: &v1alpha1.TiProxySecurity{
 							TLS: &v1alpha1.TiProxyTLS{
-								Backend: &v1alpha1.TLS{
+								Backend: &v1alpha1.ClientTLS{
 									Enabled: true,
+									Mutual:  true,
 								},
 							},
 						},
@@ -236,12 +236,12 @@ func TestOverlay(t *testing.T) {
 			},
 			want: &Config{
 				Proxy: Proxy{
-					Address:          "0.0.0.0:6000",
+					Address:          "[::]:6000",
 					AdvertiseAddress: "db-tiproxy-foo.tiproxy-peer.ns1.svc",
 					PDAddress:        "db-pd.ns1:2379",
 				},
 				API: API{
-					Address: "0.0.0.0:3080",
+					Address: "[::]:3080",
 				},
 				Security: Security{
 					SQLTLS: TLSConfig{

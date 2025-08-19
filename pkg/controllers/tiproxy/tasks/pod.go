@@ -124,14 +124,7 @@ func newPod(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) *corev1.Pod {
 	}
 
 	if coreutil.IsTiProxyMySQLTLSEnabled(tiproxy) {
-		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.VolumeNameTiProxyMySQLTLS,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: coreutil.TiProxyMySQLTLSSecretName(tiproxy),
-				},
-			},
-		})
+		vols = append(vols, *coreutil.TiProxyMySQLTLSVolume(tiproxy))
 		mounts = append(mounts, corev1.VolumeMount{
 			Name:      v1alpha1.VolumeNameTiProxyMySQLTLS,
 			MountPath: v1alpha1.DirPathTiProxyMySQLTLS,
@@ -140,49 +133,33 @@ func newPod(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) *corev1.Pod {
 	}
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
-		vols = append(vols,
-			corev1.Volume{
-				Name: v1alpha1.VolumeNameClusterTLS,
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: coreutil.TLSClusterSecretName[scope.TiProxy](tiproxy),
-					},
-				},
-			},
-			corev1.Volume{
-				Name: v1alpha1.VolumeNameTiProxyHTTPTLS,
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: coreutil.TLSClusterSecretName[scope.TiProxy](tiproxy),
-					},
-				},
-			})
-		mounts = append(mounts,
-			corev1.VolumeMount{
-				Name:      v1alpha1.VolumeNameClusterTLS,
-				MountPath: v1alpha1.DirPathClusterTLSTiProxy,
-				ReadOnly:  true,
-			}, corev1.VolumeMount{
-				Name:      v1alpha1.VolumeNameTiProxyHTTPTLS,
-				MountPath: v1alpha1.DirPathTiProxyHTTPTLS,
-				ReadOnly:  true,
-			})
-	}
-
-	if coreutil.IsTiProxyTiDBTLSEnabled(tiproxy) {
-		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.VolumeNameTiProxyTiDBTLS,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: coreutil.TiProxyTiDBTLSSecretName(tiproxy),
-				},
-			},
-		})
+		vols = append(vols, *coreutil.ClusterTLSVolume[scope.TiProxy](tiproxy))
 		mounts = append(mounts, corev1.VolumeMount{
-			Name:      v1alpha1.VolumeNameTiProxyTiDBTLS,
-			MountPath: v1alpha1.DirPathTiProxyTiDBTLS,
+			Name:      v1alpha1.VolumeNameClusterTLS,
+			MountPath: v1alpha1.DirPathClusterTLSTiProxy,
 			ReadOnly:  true,
 		})
+	}
+
+	if coreutil.IsTiProxyHTTPServerTLSEnabled(cluster, tiproxy) {
+		vols = append(vols, *coreutil.TiProxyHTTPServerTLSVolume(tiproxy))
+		mounts = append(mounts, corev1.VolumeMount{
+			Name:      v1alpha1.VolumeNameTiProxyHTTPTLS,
+			MountPath: v1alpha1.DirPathTiProxyHTTPTLS,
+			ReadOnly:  true,
+		})
+	}
+
+	if coreutil.IsTiProxyBackendTLSEnabled(tiproxy) {
+		vol := coreutil.TiProxyBackendTLSVolume(tiproxy)
+		if vol != nil {
+			vols = append(vols, *vol)
+			mounts = append(mounts, corev1.VolumeMount{
+				Name:      v1alpha1.VolumeNameTiProxyTiDBTLS,
+				MountPath: v1alpha1.DirPathTiProxyTiDBTLS,
+				ReadOnly:  true,
+			})
+		}
 	}
 
 	sleepSeconds := defaultPreStopSleepSeconds
@@ -279,20 +256,20 @@ func buildTiProxyReadinessProbeHandler(
 	tiproxy *v1alpha1.TiProxy,
 	clientPort, statusPort int32,
 ) corev1.ProbeHandler {
-	probeType := v1alpha1.TCPProbeType // default to http probe
+	probeType := v1alpha1.CommandProbeType // default to command probe
 	if tiproxy.Spec.Probes.Readiness != nil && tiproxy.Spec.Probes.Readiness.Type != nil {
 		probeType = *tiproxy.Spec.Probes.Readiness.Type
 	}
 
 	// If TLS is enabled, we can only use command probe type
-	if coreutil.IsTLSClusterEnabled(cluster) {
+	if coreutil.IsTiProxyHTTPServerTLSEnabled(cluster, tiproxy) {
 		probeType = v1alpha1.CommandProbeType
 	}
 
 	if probeType == v1alpha1.CommandProbeType {
 		return corev1.ProbeHandler{
 			Exec: &corev1.ExecAction{
-				Command: buildTiProxyProbeCommand(cluster, statusPort),
+				Command: buildTiProxyProbeCommand(cluster, tiproxy, statusPort),
 			},
 		}
 	}
@@ -304,11 +281,11 @@ func buildTiProxyReadinessProbeHandler(
 	}
 }
 
-func buildTiProxyProbeCommand(cluster *v1alpha1.Cluster, statusPort int32) (command []string) {
-	tlsClusterEnabled := coreutil.IsTLSClusterEnabled(cluster)
+func buildTiProxyProbeCommand(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy, statusPort int32) (command []string) {
+	tlsEnabled := coreutil.IsTiProxyHTTPServerTLSEnabled(cluster, tiproxy)
 
 	scheme := "http"
-	if tlsClusterEnabled {
+	if tlsEnabled {
 		scheme = "https"
 	}
 	readinessURL := fmt.Sprintf("%s://127.0.0.1:%d/api/debug/health", scheme, statusPort)
@@ -322,11 +299,14 @@ func buildTiProxyProbeCommand(cluster *v1alpha1.Cluster, statusPort int32) (comm
 		// follow 301 or 302 redirect
 		"--location")
 
-	if tlsClusterEnabled {
-		cacert := path.Join(v1alpha1.DirPathClusterTLSTiProxy, corev1.ServiceAccountRootCAKey)
-		cert := path.Join(v1alpha1.DirPathClusterTLSTiProxy, corev1.TLSCertKey)
-		key := path.Join(v1alpha1.DirPathClusterTLSTiProxy, corev1.TLSPrivateKeyKey)
-		command = append(command, "--cacert", cacert, "--cert", cert, "--key", key)
+	if tlsEnabled {
+		cacert := path.Join(v1alpha1.DirPathTiProxyHTTPTLS, corev1.ServiceAccountRootCAKey)
+		command = append(command, "--cacert", cacert)
+		if !coreutil.IsTiProxyHTTPServerNoClientCert(tiproxy) {
+			cert := path.Join(v1alpha1.DirPathTiProxyHTTPTLS, corev1.TLSCertKey)
+			key := path.Join(v1alpha1.DirPathTiProxyHTTPTLS, corev1.TLSPrivateKeyKey)
+			command = append(command, "--cert", cert, "--key", key)
+		}
 	}
 	return
 }

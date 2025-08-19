@@ -82,6 +82,7 @@ spec:
                   - VolumeAttributesClass
                   - DisablePDDefaultReadinessProbe
                   - UsePDReadyAPI
+                  - SessionTokenSigning
                   type: string
                 type: array
               image:
@@ -8385,9 +8386,52 @@ spec:
                     - jwks
                     type: object
                   tls:
-                    description: Whether enable the TLS connection between the TiDB
-                      server and MySQL client.
+                    description: TLS defines the tls configs of TiDB
                     properties:
+                      client:
+                        description: Client defines the client tls for the tidb operator
+                          to visit the group
+                        properties:
+                          ca:
+                            description: CA defines the ref of the secret which contains
+                              ca.crt
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                          certKeyPair:
+                            description: CertKeyPair defines the ref of the secret
+                              which contains tls.crt and tls.key
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                          insecureSkipTLSVerify:
+                            description: |-
+                              If true, we will skip CA verification, it means CA can be omitted
+                              Defaults to false
+                            type: boolean
+                        type: object
+                      cluster:
+                        description: |-
+                          InternalTLS defines a tls config between components. This config of all components
+                          can only be enabled or disabled at the same time.
+                        properties:
+                          ca:
+                            description: CA defines the ref of the secret which contains
+                              ca.crt
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                          certKeyPair:
+                            description: CertKeyPair defines the ref of the secret
+                              which contains tls.crt and tls.key
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                        type: object
                       mysql:
                         description: |-
                           When enabled, TiDB will accept TLS encrypted connections from MySQL clients.
@@ -8405,8 +8449,28 @@ spec:
                                  kubectl create secret generic <groupName>-tidb-client-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
                             4. Set Enabled to `true`.
                         properties:
+                          ca:
+                            description: CA defines the ref of the secret which contains
+                              ca.crt
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                          certKeyPair:
+                            description: CertKeyPair defines the ref of the secret
+                              which contains tls.crt and tls.key
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                          clientAuth:
+                            description: Defaults to VerifyClientCertIfNeed
+                            type: string
                           enabled:
+                            description: Enabled means whether enable tls
                             type: boolean
+                        required:
+                        - enabled
                         type: object
                         x-kubernetes-validations:
                         - message: field .mysql.enabled is immutable

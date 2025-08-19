@@ -16,78 +16,43 @@ package tasks
 
 import (
 	"context"
-	"fmt"
 	"time"
 
-	"github.com/go-logr/logr"
-
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
-	"github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
 const (
 	defaultLeaderEvictTimeout = 5 * time.Minute
+	jitter                    = 10 * time.Second
 )
 
-// TaskOfflineStore handles the two-step store deletion process based on spec.offline field.
-// This implements the state machine for offline operations: Pending -> Active -> Completed/Failed/Canceled.
 func TaskOfflineStore(state *ReconcileContext) task.Task {
-	return task.NameTaskFunc("OfflineTiKVStore", func(ctx context.Context) task.Result {
-		return common.TaskOfflineStoreStateMachine(ctx, state, state.Instance(), "tikv", &evictLeaderHook{state})
+	return task.NameTaskFunc("OfflineStore", func(ctx context.Context) task.Result {
+		if !state.PDSynced {
+			return task.Wait().With("pd is not synced")
+		}
+		tikv := state.Instance()
+		if tikv.GetDeletionTimestamp().IsZero() {
+			return task.Complete().With("tikv is not deleting, no need to offline the store")
+		}
+
+		var reason string
+		delTime := tikv.GetDeletionTimestamp()
+		switch {
+		// leaders evicted
+		case state.LeaderEvicting && state.GetLeaderCount() == 0:
+			reason = "leaders have been all evicted"
+		case !delTime.IsZero() && delTime.Add(defaultLeaderEvictTimeout).Before(time.Now()):
+			reason = "leader eviction timeout"
+		}
+
+		if reason == "" {
+			return task.Retry(defaultLeaderEvictTimeout+jitter).
+				With("waiting for leaders evicted or timeout, current leader count: %d", state.GetLeaderCount())
+		}
+
+		tikv.Spec.Offline = true
+		return common.TaskOfflineStoreStateMachine(ctx, state, tikv)
 	})
-}
-
-type evictLeaderHook struct {
-	*ReconcileContext
-}
-
-var _ common.StoreOfflineHook = &evictLeaderHook{}
-
-func (h *evictLeaderHook) BeforeDeleteStore(ctx context.Context) (wait bool, err error) {
-	logger := logr.FromContextOrDiscard(ctx).WithName("EvictLeaderHook")
-
-	if !h.LeaderEvicting {
-		logger.Info("evict leader before deletion")
-		if err = h.PDClient.Underlay().BeginEvictLeader(ctx, h.Store.ID); err != nil {
-			logger.Error(err, "failed to evict leader")
-		}
-		return true, err
-	}
-
-	var reason string
-	delTime, leaderCnt := h.TiKV().GetDeletionTimestamp(), h.GetLeaderCount()
-	switch {
-	// leaders evicted
-	case h.LeaderEvicting && leaderCnt == 0:
-		reason = "leaders have been all evicted"
-	//nolint:godox
-	// FIXME: leader eviction is triggered by `spec.offline: true`, so there will be no deletion timestamp
-	case !delTime.IsZero() && delTime.Add(defaultLeaderEvictTimeout).Before(time.Now()):
-		reason = "leader eviction timeout"
-	}
-	if reason != "" {
-		logger.Info("can delete store", "reason", reason)
-		return false, nil
-	}
-
-	logger.Info("wait for evicting leader", "leaders", leaderCnt)
-	return true, nil
-}
-
-func (h *evictLeaderHook) AfterStoreIsDeleted(ctx context.Context) (wait bool, err error) {
-	return endEvictLeader(ctx, h.PDClient, h.LeaderEvicting, h.TiKV().Status.ID)
-}
-
-func (h *evictLeaderHook) AfterCancelDeleteStore(ctx context.Context) (wait bool, err error) {
-	return endEvictLeader(ctx, h.PDClient, h.LeaderEvicting, h.TiKV().Status.ID)
-}
-
-func endEvictLeader(ctx context.Context, pdClient pd.PDClient, leaderEvicting bool, storeID string) (wait bool, err error) {
-	if leaderEvicting && storeID != "" {
-		if err = pdClient.Underlay().EndEvictLeader(ctx, storeID); err != nil {
-			return true, fmt.Errorf("failed to end evict leader")
-		}
-	}
-	return false, nil
 }

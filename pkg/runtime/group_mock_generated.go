@@ -52,6 +52,48 @@ func (m *MockGroup) EXPECT() *MockGroupMockRecorder {
 	return m.recorder
 }
 
+// ClientCASecretName mocks base method.
+func (m *MockGroup) ClientCASecretName() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientCASecretName")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// ClientCASecretName indicates an expected call of ClientCASecretName.
+func (mr *MockGroupMockRecorder) ClientCASecretName() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientCASecretName", reflect.TypeOf((*MockGroup)(nil).ClientCASecretName))
+}
+
+// ClientCertKeyPairSecretName mocks base method.
+func (m *MockGroup) ClientCertKeyPairSecretName() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientCertKeyPairSecretName")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// ClientCertKeyPairSecretName indicates an expected call of ClientCertKeyPairSecretName.
+func (mr *MockGroupMockRecorder) ClientCertKeyPairSecretName() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientCertKeyPairSecretName", reflect.TypeOf((*MockGroup)(nil).ClientCertKeyPairSecretName))
+}
+
+// ClientInsecureSkipTLSVerify mocks base method.
+func (m *MockGroup) ClientInsecureSkipTLSVerify() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientInsecureSkipTLSVerify")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// ClientInsecureSkipTLSVerify indicates an expected call of ClientInsecureSkipTLSVerify.
+func (mr *MockGroupMockRecorder) ClientInsecureSkipTLSVerify() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientInsecureSkipTLSVerify", reflect.TypeOf((*MockGroup)(nil).ClientInsecureSkipTLSVerify))
+}
+
 // Cluster mocks base method.
 func (m *MockGroup) Cluster() string {
 	m.ctrl.T.Helper()
@@ -64,6 +106,34 @@ func (m *MockGroup) Cluster() string {
 func (mr *MockGroupMockRecorder) Cluster() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cluster", reflect.TypeOf((*MockGroup)(nil).Cluster))
+}
+
+// ClusterCASecretName mocks base method.
+func (m *MockGroup) ClusterCASecretName() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClusterCASecretName")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// ClusterCASecretName indicates an expected call of ClusterCASecretName.
+func (mr *MockGroupMockRecorder) ClusterCASecretName() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClusterCASecretName", reflect.TypeOf((*MockGroup)(nil).ClusterCASecretName))
+}
+
+// ClusterCertKeyPairSecretName mocks base method.
+func (m *MockGroup) ClusterCertKeyPairSecretName() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClusterCertKeyPairSecretName")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// ClusterCertKeyPairSecretName indicates an expected call of ClusterCertKeyPairSecretName.
+func (mr *MockGroupMockRecorder) ClusterCertKeyPairSecretName() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClusterCertKeyPairSecretName", reflect.TypeOf((*MockGroup)(nil).ClusterCertKeyPairSecretName))
 }
 
 // Component mocks base method.
@@ -608,6 +678,18 @@ func (m *MockGroup) SetStatusVersion(version string) {
 func (mr *MockGroupMockRecorder) SetStatusVersion(version any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStatusVersion", reflect.TypeOf((*MockGroup)(nil).SetStatusVersion), version)
+}
+
+// SetTemplateClusterTLS mocks base method.
+func (m *MockGroup) SetTemplateClusterTLS(ca, certKeyPair string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetTemplateClusterTLS", ca, certKeyPair)
+}
+
+// SetTemplateClusterTLS indicates an expected call of SetTemplateClusterTLS.
+func (mr *MockGroupMockRecorder) SetTemplateClusterTLS(ca, certKeyPair any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTemplateClusterTLS", reflect.TypeOf((*MockGroup)(nil).SetTemplateClusterTLS), ca, certKeyPair)
 }
 
 // SetUID mocks base method.

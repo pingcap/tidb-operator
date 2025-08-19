@@ -34,6 +34,8 @@ type ReconcileContext struct {
 
 	Store       *pdv1.Store
 	StoreLabels []*metapb.StoreLabel
+
+	PDSynced bool
 }
 
 // GetStoreID returns the store ID for PD operations
@@ -66,6 +68,8 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		if !c.HasSynced() {
 			return task.Fail().With("store info is not synced, just wait for next sync")
 		}
+
+		state.PDSynced = true
 
 		s, err := c.Stores().Get(tiflashconfig.GetServiceAddr(state.TiFlash()))
 		if err != nil {

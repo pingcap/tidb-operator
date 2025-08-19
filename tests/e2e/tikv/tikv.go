@@ -44,7 +44,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 	ginkgo.DescribeTableSubtree("Leader Eviction", label.P1,
 		func(tls bool) {
 			if tls {
-				f.SetupCluster(data.WithClusterTLS())
+				f.SetupCluster(data.WithClusterTLSEnabled())
 			}
 
 			// NOTE(liubo02): this case is failed in e2e env because of the cgroup v2.
@@ -55,7 +55,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 					cn := f.Cluster.Name
 					f.Must(cert.InstallTiDBIssuer(ctx, f.Client, ns, cn))
 					f.Must(cert.InstallTiDBCertificates(ctx, f.Client, ns, cn, "dbg"))
-					f.Must(cert.InstallTiDBComponentsCertificates(ctx, f.Client, ns, cn, "pdg", "kvg", "dbg", "flashg", "cdcg"))
+					f.Must(cert.InstallTiDBComponentsCertificates(ctx, f.Client, ns, cn, "pdg", "kvg", "dbg", "flashg", "cdcg", "pg"))
 				}
 				pdg := f.MustCreatePD(ctx)
 				kvg := f.MustCreateTiKV(ctx,
@@ -98,7 +98,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 		workload := f.SetupWorkload()
 
 		ginkgo.It("should recreate pod when deleted during graceful store removal", func(ctx context.Context) {
-			pdg := f.MustCreatePD(ctx)
+			pdg := f.MustCreatePD(ctx, data.WithSlowDataMigration())
 			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](4))
 			dbg := f.MustCreateTiDB(ctx)
 
@@ -107,7 +107,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 			f.WaitForTiDBGroupReady(ctx, dbg)
 			// Make sure each TiKV store has enough leaders and regions,
 			// otherwise the scale-in operation will be too fast.
-			workload.MustImportData(ctx, data.DefaultTiDBServiceName, "root", "", "", 500)
+			workload.MustImportData(ctx, data.DefaultTiDBServiceName)
 
 			ginkgo.By("Initiating scale in from 4 to 3 replicas")
 			patch := client.MergeFrom(kvg.DeepCopy())
@@ -155,7 +155,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 		})
 
 		ginkgo.It("Evict leaders before deleting tikv", label.P1, label.Delete, func(ctx context.Context) {
-			pdg := f.MustCreatePD(ctx)
+			pdg := f.MustCreatePD(ctx, data.WithSlowDataMigration())
 			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](4))
 			dbg := f.MustCreateTiDB(ctx)
 
@@ -165,7 +165,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 
 			// Make sure each TiKV store has enough leaders and regions,
 			// otherwise the scale-in operation will be too fast.
-			workload.MustImportData(ctx, data.DefaultTiDBServiceName, "root", "", "", 500)
+			workload.MustImportData(ctx, data.DefaultTiDBServiceName)
 
 			nctx, cancel := context.WithCancel(ctx)
 			ch := make(chan struct{})

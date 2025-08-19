@@ -52,6 +52,7 @@ spec:
           metadata:
             type: object
           spec:
+            description: TiProxySpec defines the spec of tiproxy
             properties:
               cluster:
                 description: |-
@@ -82,6 +83,7 @@ spec:
                   - VolumeAttributesClass
                   - DisablePDDefaultReadinessProbe
                   - UsePDReadyAPI
+                  - SessionTokenSigning
                   type: string
                 type: array
               image:
@@ -8366,7 +8368,81 @@ spec:
                           Backend defines the TLS configuration for connections between TiProxy and TiDB servers.
                           To enable this feature, the corresponding TiDB server must be configured with TLS enabled.
                         properties:
+                          ca:
+                            description: CA defines the ref of the secret which contains
+                              ca.crt
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                          certKeyPair:
+                            description: CertKeyPair defines the ref of the secret
+                              which contains tls.crt and tls.key
+                            properties:
+                              name:
+                                type: string
+                            type: object
                           enabled:
+                            description: Enabled means whether enable tls
+                            type: boolean
+                          insecureSkipTLSVerify:
+                            description: |-
+                              If true, we will skip CA verification, it means CA can be omitted
+                              Defaults to false
+                            type: boolean
+                          mutual:
+                            default: true
+                            description: Defaults to true
+                            type: boolean
+                        required:
+                        - enabled
+                        type: object
+                      client:
+                        description: Client defines the client tls for the tidb operator
+                          to visit the tiproxy group
+                        properties:
+                          ca:
+                            description: CA defines the ref of the secret which contains
+                              ca.crt
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                          certKeyPair:
+                            description: CertKeyPair defines the ref of the secret
+                              which contains tls.crt and tls.key
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                          insecureSkipTLSVerify:
+                            description: |-
+                              If true, we will skip CA verification, it means CA can be omitted
+                              Defaults to false
+                            type: boolean
+                        type: object
+                      cluster:
+                        description: Cluster defines the tls config to visit other
+                          components in the cluster
+                        properties:
+                          ca:
+                            description: CA defines the ref of the secret which contains
+                              ca.crt
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                          certKeyPair:
+                            description: CertKeyPair defines the ref of the secret
+                              which contains tls.crt and tls.key
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                          insecureSkipTLSVerify:
+                            description: |-
+                              If true, we will skip CA verification, it means CA can be omitted
+                              Defaults to false
                             type: boolean
                         type: object
                       mysql:
@@ -8383,8 +8459,59 @@ spec:
                                  kubectl create secret generic <groupName>-tiproxy-server-secret --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key> --from-file=ca.crt=<path/to/ca.crt>
                             3. Set Enabled to `true`.
                         properties:
+                          ca:
+                            description: CA defines the ref of the secret which contains
+                              ca.crt
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                          certKeyPair:
+                            description: CertKeyPair defines the ref of the secret
+                              which contains tls.crt and tls.key
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                          clientAuth:
+                            description: Defaults to VerifyClientCertIfNeed
+                            type: string
                           enabled:
+                            description: Enabled means whether enable tls
                             type: boolean
+                        required:
+                        - enabled
+                        type: object
+                      server:
+                        description: |-
+                          Server defines the TLS config for http server of the tiproxy
+                          If this field is not specified, the operator will use cluster tls config to config http server by default.
+                          The tls secret references also default to cluster tls secrets.
+                          It can be disabled by set Enabled to false.
+                          NOTE: if server tls is disabled, the Client will also be disabled.
+                        properties:
+                          ca:
+                            description: CA defines the ref of the secret which contains
+                              ca.crt
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                          certKeyPair:
+                            description: CertKeyPair defines the ref of the secret
+                              which contains tls.crt and tls.key
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                          clientAuth:
+                            description: Defaults to VerifyClientCertIfNeed
+                            type: string
+                          enabled:
+                            description: Enabled means whether enable tls
+                            type: boolean
+                        required:
+                        - enabled
                         type: object
                     type: object
                 type: object

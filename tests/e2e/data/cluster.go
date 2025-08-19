@@ -58,7 +58,7 @@ func WithBootstrapSQL() ClusterPatch {
 	}
 }
 
-func WithClusterTLS() ClusterPatch {
+func WithClusterTLSEnabled() ClusterPatch {
 	return func(obj *v1alpha1.Cluster) {
 		obj.Spec.TLSCluster = &v1alpha1.TLSCluster{
 			Enabled: true,
@@ -80,6 +80,24 @@ func WithFeatureGates(featureGates ...metav1alpha1.Feature) ClusterPatch {
 			c.Spec.FeatureGates = append(c.Spec.FeatureGates, metav1alpha1.FeatureGate{
 				Name: fg,
 			})
+		}
+	}
+}
+
+func WithClusterTLSAndTiProxyConfig() ClusterPatch {
+	return func(obj *v1alpha1.Cluster) {
+		obj.Spec.TLSCluster = &v1alpha1.TLSCluster{
+			Enabled: true,
+		}
+		// Add SessionTokenSigning feature gate
+		obj.Spec.FeatureGates = append(obj.Spec.FeatureGates, metav1alpha1.FeatureGate{
+			Name: metav1alpha1.SessionTokenSigning,
+		})
+		// SessionTokenSigning to use cluster TLS secret
+		obj.Spec.Security = &v1alpha1.ClusterSecurity{
+			SessionTokenSigningCertKeyPair: &corev1.LocalObjectReference{
+				Name: "dbg-tidb-cluster-secret", // Default TiDB cluster secret name
+			},
 		}
 	}
 }

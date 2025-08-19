@@ -38,7 +38,7 @@ var _ = ginkgo.Describe("TiCDC", label.TiCDC, func() {
 	ginkgo.PDescribeTableSubtree("Leader Eviction", label.P1,
 		func(enableTLS bool) {
 			if enableTLS {
-				f.SetupCluster(data.WithClusterTLS())
+				f.SetupCluster(data.WithClusterTLSEnabled())
 			}
 
 			ginkgo.It("leader evicted when delete ticdc pod directly", func(ctx context.Context) {
@@ -47,7 +47,7 @@ var _ = ginkgo.Describe("TiCDC", label.TiCDC, func() {
 					cn := f.Cluster.Name
 					f.Must(cert.InstallTiDBIssuer(ctx, f.Client, ns, cn))
 					f.Must(cert.InstallTiDBCertificates(ctx, f.Client, ns, cn, "dbg"))
-					f.Must(cert.InstallTiDBComponentsCertificates(ctx, f.Client, ns, cn, "pdg", "kvg", "dbg", "fg", "cg"))
+					f.Must(cert.InstallTiDBComponentsCertificates(ctx, f.Client, ns, cn, "pdg", "kvg", "dbg", "fg", "cg", "pg"))
 				}
 				pdg := f.MustCreatePD(ctx)
 				kvg := f.MustCreateTiKV(ctx)

@@ -24,4 +24,5 @@ const (
 	LabelValComponentBackup  = "backup"
 	LabelValComponentRestore = "restore"
 	LabelValComponentTiBR    = "tibr"
+	LabelValComponentTiBRGC  = "tibrgc"
 )

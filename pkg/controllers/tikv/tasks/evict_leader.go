@@ -23,9 +23,11 @@ import (
 func TaskEvictLeader(state *ReconcileContext) task.Task {
 	return task.NameTaskFunc("EvictLeader", func(ctx context.Context) task.Result {
 		switch {
+		case !state.PDSynced:
+			return task.Wait().With("pd is unsynced")
 		case state.Store == nil:
 			return task.Complete().With("store has been deleted or not created")
-		case state.IsPodTerminating():
+		case !state.Object().GetDeletionTimestamp().IsZero() || state.IsPodTerminating():
 			if !state.LeaderEvicting {
 				if err := state.PDClient.Underlay().BeginEvictLeader(ctx, state.Store.ID); err != nil {
 					return task.Fail().With("cannot add evict leader scheduler: %v", err)
@@ -33,13 +35,27 @@ func TaskEvictLeader(state *ReconcileContext) task.Task {
 			}
 			return task.Complete().With("ensure evict leader scheduler exists")
 		default:
-			tikv := state.TiKV()
-			if state.LeaderEvicting && !tikv.Spec.Offline {
+			if state.LeaderEvicting {
 				if err := state.PDClient.Underlay().EndEvictLeader(ctx, state.Store.ID); err != nil {
 					return task.Fail().With("cannot remove evict leader scheduler: %v", err)
 				}
 			}
 			return task.Complete().With("ensure evict leader scheduler doesn't exist")
 		}
+	})
+}
+
+// TaskEndEvictLeader only be called when object is deleting and store has been removed
+func TaskEndEvictLeader(state *ReconcileContext) task.Task {
+	return task.NameTaskFunc("EndEvictLeader", func(ctx context.Context) task.Result {
+		msg := "ensure evict leader scheduler doesn't exist"
+		if storeID := state.TiKV().Status.ID; storeID != "" {
+			if err := state.PDClient.Underlay().EndEvictLeader(ctx, storeID); err != nil {
+				return task.Fail().With("cannot remove evict leader scheduler: %v", err)
+			}
+		} else {
+			msg = "can not get the store id"
+		}
+		return task.Complete().With(msg)
 	})
 }

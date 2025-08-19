@@ -71,23 +71,7 @@ func ListPeerInstances[
 	T runtime.Instance,
 	L client.ObjectList,
 ](ctx context.Context, c client.Client, in F) ([]F, error) {
-	l := scope.NewList[S]()
-	if err := c.List(ctx, l, client.InNamespace(in.GetNamespace()), client.MatchingLabels{
-		v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
-		v1alpha1.LabelKeyCluster:   coreutil.Cluster[S](in),
-		v1alpha1.LabelKeyComponent: scope.Component[S](),
-	}); err != nil {
-		return nil, err
-	}
-
-	objs := scope.GetItems[S](l)
-
-	// always sort instances
-	slices.SortFunc(objs, func(a, b F) int {
-		return cmp.Compare(a.GetName(), b.GetName())
-	})
-
-	return objs, nil
+	return ListClusterInstances[S](ctx, c, in.GetNamespace(), coreutil.Cluster[S](in))
 }
 
 // NewInstanceListerWatcher returns a cache.ListerWatcher for a group

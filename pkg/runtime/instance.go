@@ -12,16 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate ${GOBIN}/mockgen -write_command_comment=false -copyright_file ${BOILERPLATE_FILE} -destination instance_mock_generated.go -package=runtime ${GO_MODULE}/pkg/runtime Instance,StoreInstance
+//go:generate ${GOBIN}/mockgen -write_command_comment=false -copyright_file ${BOILERPLATE_FILE} -destination instance_mock_generated.go -package=runtime ${GO_MODULE}/pkg/runtime Instance
 package runtime
 
 import (
-	"context"
-	"fmt"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -39,16 +37,18 @@ type Instance interface {
 	// NOTE: It does not mean the instance is updated to the newest revision
 	// TODO: may be change a more meaningful name?
 	IsUpToDate() bool
+	IsOffline() bool
 
 	CurrentRevision() string
 	SetCurrentRevision(rev string)
 
 	PodOverlay() *v1alpha1.PodOverlay
 
-	// CanCancelDelete indicates whether the deletion can be cancelled.
-	// For TiKV and TiFlash, it returns true because they will offline first and then delete.
-	// For other instances, it returns false because they will be deleted directly.
-	CanCancelDelete() bool
+	Subdomain() string
+
+	// IsStore indicates whether the instance is a store.
+	// For TiKV and TiFlash, it returns true, otherwise it returns false.
+	IsStore() bool
 }
 
 type InstanceT[T InstanceSet] interface {
@@ -58,21 +58,14 @@ type InstanceT[T InstanceSet] interface {
 }
 
 type InstanceSet interface {
-	PD | TiDB | TiKV | TiFlash | TiCDC | TiProxy
+	PD | TiDB | TiKV | TiFlash | TiCDC | TiProxy | TSO | Scheduler
 }
 
 type InstanceTuple[PT client.Object, PU Instance] interface {
 	Tuple[PT, PU]
 }
 
-// StoreInstance represents an instance that is both a Store and Instance, like TiKV and TiFlash.
-type StoreInstance interface {
-	Instance
-
-	IsOffline() bool
-}
-
-func SetOfflineCondition(s StoreInstance, condition *metav1.Condition) {
+func SetOfflineCondition(s Instance, condition *metav1.Condition) {
 	if condition == nil {
 		return
 	}
@@ -82,7 +75,7 @@ func SetOfflineCondition(s StoreInstance, condition *metav1.Condition) {
 	// Find existing condition
 	updated := false
 	for i := range conditions {
-		if conditions[i].Type == v1alpha1.StoreOfflineConditionType {
+		if conditions[i].Type == v1alpha1.StoreOfflinedConditionType {
 			conditions[i] = *condition
 			updated = true
 		}
@@ -94,49 +87,21 @@ func SetOfflineCondition(s StoreInstance, condition *metav1.Condition) {
 	s.SetConditions(conditions)
 }
 
-func GetOfflineCondition(s StoreInstance) *metav1.Condition {
-	return meta.FindStatusCondition(s.Conditions(), v1alpha1.StoreOfflineConditionType)
+func GetOfflineCondition(s Instance) *metav1.Condition {
+	return meta.FindStatusCondition(s.Conditions(), v1alpha1.StoreOfflinedConditionType)
 }
 
-func IsOfflineCompleted(s StoreInstance) bool {
-	cond := GetOfflineCondition(s)
-	return s.IsOffline() && cond != nil && cond.Reason == v1alpha1.OfflineReasonCompleted
+func RemoveOfflineCondition(s Instance) {
+	conditions := s.Conditions()
+	meta.RemoveStatusCondition(&conditions, v1alpha1.StoreOfflinedConditionType)
+	s.SetConditions(conditions)
 }
 
-func IsBeingOffline(s StoreInstance) bool {
-	return s.IsOffline() && !IsOfflineCompleted(s)
-}
-
-// Instance2Store converts an Instance to StoreInstance if it implements the StoreInstance interface.
-func Instance2Store(instance Instance) (StoreInstance, bool) {
-	storeInstance, ok := instance.(StoreInstance)
-	return storeInstance, ok
-}
-
-// toClientObject converts a runtime StoreInstance to a client.Object for Kubernetes operations.
-// This handles the type conversion from runtime types (*runtime.TiKV, *runtime.TiFlash)
-// to their corresponding v1alpha1 types (*v1alpha1.TiKV, *v1alpha1.TiFlash).
-func toClientObject(store StoreInstance) client.Object {
-	switch v := any(store).(type) {
-	case *TiKV:
-		return v.To()
-	case *TiFlash:
-		return v.To()
-	default:
-		panic("this should not happen")
+func NamePrefixAndSuffix(name string) (prefix, suffix string) {
+	index := strings.LastIndexByte(name, '-')
+	// TODO(liubo02): validate name to avoid '-' is not found
+	if index == -1 {
+		panic("cannot get name prefix")
 	}
-}
-
-func SetOffline(ctx context.Context, cli client.Client, instance Instance, offline bool) error {
-	store, ok := instance.(StoreInstance)
-	if !ok {
-		return fmt.Errorf("instance %T does not implement StoreInstance interface", instance)
-	}
-	if offline == store.IsOffline() {
-		return nil
-	}
-
-	obj := toClientObject(store)
-	patchData := []byte(fmt.Sprintf(`[{"op": "replace", "path": "/spec/offline", "value": %v}]`, offline))
-	return cli.Patch(ctx, obj, client.RawPatch(types.JSONPatchType, patchData))
+	return name[:index], name[index+1:]
 }

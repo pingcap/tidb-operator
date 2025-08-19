@@ -123,8 +123,8 @@ func (act *actor[T, O, R]) cancelOneOfflining(ctx context.Context, instance R) (
 	logger := logr.FromContextOrDiscard(ctx).WithName("Updater").WithValues("instance", instance.GetName())
 
 	// Check if instance is a StoreInstance and use StoreManager to cancel offline
-	if store, ok := runtime.Instance2Store(instance); ok {
-		if err := runtime.SetOffline(ctx, act.c, store, false); err != nil {
+	if instance.IsStore() {
+		if err := act.setOffline(ctx, instance, false); err != nil {
 			return actionNone, fmt.Errorf("failed to cancel store offline: %w", err)
 		}
 		// Move instance from offlining back to update state
@@ -170,7 +170,7 @@ func (act *actor[T, O, R]) scaleIn(ctx context.Context, state State[R], deferDel
 
 	logger.Info("act scale in outdated", "chose", name, "isUnavailable", isUnavailable, "remain", state.Len())
 
-	if obj.CanCancelDelete() || deferDelete {
+	if obj.IsStore() || deferDelete {
 		if err := act.deferDelete(ctx, obj); err != nil {
 			return actionNone, false, err
 		}
@@ -203,8 +203,8 @@ type Metadata struct {
 // cluster stability. The marked instance will be moved to the "deleted" state collection
 // and will be actually deleted later by the Cleanup() method after the new instance is ready.
 func (act *actor[T, O, R]) deferDelete(ctx context.Context, obj R) error {
-	if obj.CanCancelDelete() {
-		if err := runtime.SetOffline(ctx, act.c, obj, true); err != nil {
+	if obj.IsStore() {
+		if err := act.setOffline(ctx, obj, true); err != nil {
 			return fmt.Errorf("failed to offline the store %s: %w", obj.GetName(), err)
 		}
 		act.beingOffline.Add(obj)
@@ -303,4 +303,19 @@ func (act *actor[T, O, R]) Cleanup(ctx context.Context) error {
 
 func (act *actor[T, O, R]) RecordedActions() []action {
 	return act.actions
+}
+
+func (act *actor[T, O, R]) setOffline(
+	ctx context.Context,
+	instance R,
+	offline bool,
+) error {
+	if !instance.IsStore() {
+		return fmt.Errorf("instance %T is not a store", instance)
+	}
+	if offline == instance.IsOffline() {
+		return nil
+	}
+	patchData := []byte(fmt.Sprintf(`[{"op": "replace", "path": "/spec/offline", "value": %v}]`, offline))
+	return act.c.Patch(ctx, act.converter.To(instance), client.RawPatch(types.JSONPatchType, patchData))
 }

@@ -171,6 +171,10 @@ type TiKVTemplateSpec struct {
 	// Config defines config file of TiKV
 	Config         ConfigFile     `json:"config,omitempty"`
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
+
+	// Security defines security config
+	Security *Security `json:"security,omitempty"`
+
 	// Volumes defines data volume of TiKV
 	// +listType=map
 	// +listMapKey=name

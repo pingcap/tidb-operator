@@ -169,15 +169,15 @@ func split[R runtime.Instance](all []R, rev string) (update, outdated, beingOffl
 			continue
 		}
 
-		if storeInstance, ok := any(instance).(runtime.StoreInstance); ok {
-			offlineCond := runtime.GetOfflineCondition(storeInstance)
-			if offlineCond != nil && offlineCond.Reason == v1alpha1.OfflineReasonCompleted {
+		if instance.IsStore() {
+			offlineCond := runtime.GetOfflineCondition(instance)
+			if offlineCond != nil && offlineCond.Reason == v1alpha1.ReasonOfflineCompleted {
 				// In some cases, there might be an instance whose `spec.offline` is false,
 				// but has completed offline condition.
 				// We should consider it as offline completed.
 				deleted = append(deleted, instance)
 				continue
-			} else if storeInstance.IsOffline() {
+			} else if instance.IsOffline() {
 				beingOffline = append(beingOffline, instance)
 				continue
 			}
