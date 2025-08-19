@@ -210,6 +210,10 @@ func (in *TiFlash) ClientInsecureSkipTLSVerify() bool {
 	return false
 }
 
+func (in *TiFlash) IsOffline() bool {
+	return in.Spec.Offline
+}
+
 type (
 	TiFlashGroup v1alpha1.TiFlashGroup
 )

@@ -26,12 +26,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
+// TaskFinalizerDel deletes sub-resources and remove the finalizer from the instance CR.
+// TODO: extract a common task for tikv and tiflash
 func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
 		tiflash := state.TiFlash()
-		if tiflash == nil {
-			return task.Fail().With("tiflash is nil")
-		}
 
 		wait, err := EnsureSubResourcesDeleted(ctx, c, tiflash)
 		if err != nil {

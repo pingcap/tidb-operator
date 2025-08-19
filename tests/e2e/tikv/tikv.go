@@ -95,7 +95,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 		workload := f.SetupWorkload()
 
 		ginkgo.It("should recreate pod when deleted during graceful store removal", func(ctx context.Context) {
-			pdg := f.MustCreatePD(ctx)
+			pdg := f.MustCreatePD(ctx, data.WithSlowDataMigration())
 			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](4))
 			dbg := f.MustCreateTiDB(ctx)
 
@@ -152,7 +152,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 		})
 
 		ginkgo.It("Evict leaders before deleting tikv", label.P1, label.Delete, func(ctx context.Context) {
-			pdg := f.MustCreatePD(ctx)
+			pdg := f.MustCreatePD(ctx, data.WithSlowDataMigration())
 			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](4))
 			dbg := f.MustCreateTiDB(ctx)
 
