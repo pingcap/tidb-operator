@@ -132,6 +132,9 @@ type ReplicationWorkerTemplateSpec struct {
 	// If tag is omitted, version will be used as the image tag.
 	Image *string `json:"image,omitempty"`
 
+	// Security defines security config
+	Security *Security `json:"security,omitempty"`
+
 	// Server defines server config for ReplicationWorker
 	Server ReplicationWorkerServer `json:"server,omitempty"`
 

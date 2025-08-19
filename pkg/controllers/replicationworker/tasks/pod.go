@@ -109,14 +109,7 @@ func newPod(cluster *v1alpha1.Cluster, rw *v1alpha1.ReplicationWorker) *corev1.P
 	}
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
-		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.VolumeNameClusterTLS,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: coreutil.TLSClusterSecretName[scope.ReplicationWorker](rw),
-				},
-			},
-		})
+		vols = append(vols, *coreutil.ClusterTLSVolume[scope.ReplicationWorker](rw))
 		mounts = append(mounts, corev1.VolumeMount{
 			Name:      v1alpha1.VolumeNameClusterTLS,
 			MountPath: v1alpha1.DirPathClusterTLSTiKV,

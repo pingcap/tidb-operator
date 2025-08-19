@@ -1117,6 +1117,11 @@ func (in *ReplicationWorkerTemplateSpec) DeepCopyInto(out *ReplicationWorkerTemp
 		*out = new(string)
 		**out = **in
 	}
+	if in.Security != nil {
+		in, out := &in.Security, &out.Security
+		*out = new(Security)
+		(*in).DeepCopyInto(*out)
+	}
 	in.Server.DeepCopyInto(&out.Server)
 	in.Resources.DeepCopyInto(&out.Resources)
 	out.UpdateStrategy = in.UpdateStrategy
