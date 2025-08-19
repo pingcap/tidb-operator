@@ -29,6 +29,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	stateutil "github.com/pingcap/tidb-operator/pkg/state"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
@@ -230,6 +232,9 @@ func TestTaskUpdater(t *testing.T) {
 		c := &cases[i]
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
+
+			s := c.state.State.(*state)
+			s.IFeatureGates = stateutil.NewFeatureGates[scope.PDGroup](s)
 
 			ctx := context.Background()
 			fc := client.NewFakeClient(c.state.PDGroup(), c.state.Cluster())
