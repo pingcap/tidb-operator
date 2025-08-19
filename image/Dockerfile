@@ -1,7 +1,8 @@
 # syntax=docker.io/docker/dockerfile:1.8.1@sha256:e87caa74dcb7d46cd820352bfea12591f3dba3ddc4285e19c7dcd13359f7cefd
-FROM --platform=$BUILDPLATFORM gcr.io/pingcap-public/third-party/baseimage/golang:1.23 AS builder
+FROM --platform=$BUILDPLATFORM gcr.io/pingcap-public/third-party/baseimage/golang:1.23@sha256:080fb3462a60d926829ddcf0626acf0533eeeee934fea6c160d85565281ddc0a AS builder
 
 ARG TARGETPLATFORM
+ARG TARGET
 
 WORKDIR /
 
@@ -22,13 +23,10 @@ COPY . .
 
 RUN --mount=type=cache,target=/go/pkg/mod/ \
     --mount=type=cache,target=/go/cache \
-    V_PLATFORMS=$TARGETPLATFORM ./hack/build.sh
+    V_PLATFORMS=$TARGETPLATFORM ./hack/build.sh $TARGET
 
-<<<<<<< HEAD
-FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS tidb-operator
-=======
+
 FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sha256:af691c27330cb8e018add3dd16e5403dcd881b23eae815920ddb2c6ae87cbd9b AS tidb-operator
->>>>>>> f07839687 (chore(deps): update ghcr.io/pingcap-qe/bases/pingcap-base docker tag to v1.10.0 (feature/v2) (#6377))
 
 ARG TARGETPLATFORM
 
@@ -40,11 +38,7 @@ USER 65532:65532
 
 ENTRYPOINT ["/tidb-operator"]
 
-<<<<<<< HEAD
-FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS prestop-checker
-=======
 FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sha256:af691c27330cb8e018add3dd16e5403dcd881b23eae815920ddb2c6ae87cbd9b AS prestop-checker
->>>>>>> f07839687 (chore(deps): update ghcr.io/pingcap-qe/bases/pingcap-base docker tag to v1.10.0 (feature/v2) (#6377))
 
 ARG TARGETPLATFORM
 
@@ -56,11 +50,7 @@ USER 65532:65532
 
 ENTRYPOINT ["/prestop-checker"]
 
-<<<<<<< HEAD
-FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS testing-workload
-=======
 FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sha256:af691c27330cb8e018add3dd16e5403dcd881b23eae815920ddb2c6ae87cbd9b AS testing-workload
->>>>>>> f07839687 (chore(deps): update ghcr.io/pingcap-qe/bases/pingcap-base docker tag to v1.10.0 (feature/v2) (#6377))
 
 ARG TARGETPLATFORM
 
@@ -72,12 +62,7 @@ USER 65532:65532
 
 ENTRYPOINT ["/testing-workload"]
 
-
-<<<<<<< HEAD
-FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS tidb-backup-manager
-=======
 FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sha256:af691c27330cb8e018add3dd16e5403dcd881b23eae815920ddb2c6ae87cbd9b AS tidb-backup-manager
->>>>>>> f07839687 (chore(deps): update ghcr.io/pingcap-qe/bases/pingcap-base docker tag to v1.10.0 (feature/v2) (#6377))
 
 ARG TARGETPLATFORM
 
