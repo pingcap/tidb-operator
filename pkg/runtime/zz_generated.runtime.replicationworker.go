@@ -210,6 +210,10 @@ func (in *ReplicationWorker) ClientInsecureSkipTLSVerify() bool {
 	return false
 }
 
+func (in *ReplicationWorker) IsOffline() bool {
+	return false
+}
+
 type (
 	ReplicationWorkerGroup v1alpha1.ReplicationWorkerGroup
 )

@@ -60,6 +60,20 @@ const (
 	ReasonPodNotDeleted  = "PodNotDeleted"
 )
 
+const (
+	// StoreOfflinedConditionType represents if the store complete the offline.
+	StoreOfflinedConditionType = "Offlined"
+)
+
+const (
+	// ReasonOfflineProcessing means the store is being offlined.
+	ReasonOfflineProcessing = "Processing"
+	// ReasonOfflineCompleted means the store has been successfully offlined and removed from PD.
+	ReasonOfflineCompleted = "Completed"
+	// ReasonOfflineFailed means the offline operation failed.
+	ReasonOfflineFailed = "Failed"
+)
+
 // TODO(liubo02): move to meta
 const (
 	// KeyPrefix defines key prefix of well known labels and annotations

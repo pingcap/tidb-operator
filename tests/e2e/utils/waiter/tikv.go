@@ -49,23 +49,50 @@ func WaitForTiKVsHealthy(ctx context.Context, c client.Client, kvg *v1alpha1.TiK
 func EvictLeaderBeforeStoreIsRemoving(deleting int) func(kv *v1alpha1.TiKV) (bool, error) {
 	done := map[string]struct{}{}
 	return func(kv *v1alpha1.TiKV) (bool, error) {
-		if kv.Status.State == v1alpha1.StoreStateRemoving || kv.Status.State == v1alpha1.StoreStateRemoved {
+		// Check if the TiKV is being deleted (has deletion timestamp)
+		if !kv.GetDeletionTimestamp().IsZero() {
+			// TiKV is being deleted, check if leaders are evicted
+			if meta.IsStatusConditionTrue(kv.Status.Conditions, v1alpha1.TiKVCondLeadersEvicted) {
+				// Leaders are evicted
+				done[kv.GetName()] = struct{}{}
+				if len(done) == deleting {
+					return true, nil
+				}
+			}
+
+			// Check timeout for deletion process
 			delTime := kv.GetDeletionTimestamp()
 			if delTime.Add(time.Minute * 5).Before(time.Now()) {
-				// timeout
+				// Timeout, consider it as done
 				done[kv.GetName()] = struct{}{}
 				if len(done) == deleting {
 					return true, nil
 				}
 			}
+
+			// TiKV is being deleted but leaders are not evicted yet - continue waiting
+			return false, nil
+		}
+
+		// Check if the store is in removing state
+		if kv.Status.State == v1alpha1.StoreStateRemoving || kv.Status.State == v1alpha1.StoreStateRemoved {
 			if meta.IsStatusConditionTrue(kv.Status.Conditions, v1alpha1.TiKVCondLeadersEvicted) {
-				// leaders are evicted
+				// Leaders are evicted
 				done[kv.GetName()] = struct{}{}
 				if len(done) == deleting {
 					return true, nil
 				}
 			}
-			return false, fmt.Errorf("store state is %v but leaders are not all evicted or timeout", kv.Status.State)
+
+			// Check if store is removed (no need to wait for leader eviction)
+			if kv.Status.State == v1alpha1.StoreStateRemoved {
+				done[kv.GetName()] = struct{}{}
+				if len(done) == deleting {
+					return true, nil
+				}
+			}
+
+			return false, fmt.Errorf("store state is %v but leaders are not all evicted", kv.Status.State)
 		}
 
 		return false, nil
