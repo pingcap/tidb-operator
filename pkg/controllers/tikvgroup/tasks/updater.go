@@ -44,7 +44,9 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 		kvg := state.TiKVGroup()
 
 		checker := action.NewUpgradeChecker[scope.TiKVGroup](c, state.Cluster(), logger)
+
 		if needVersionUpgrade(kvg) && !checker.CanUpgrade(ctx, kvg) {
+			// TODO(liubo02): change to Wait
 			return task.Retry(defaultUpdateWaitTime).With("wait until preconditions of upgrading is met")
 		}
 
@@ -59,6 +61,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 		}
 
 		updateRevision, _, _ := state.Revision()
+
 		kvs := state.Slice()
 
 		topoPolicy, err := policy.NewTopologyPolicy(topos, updateRevision, kvs...)
@@ -67,8 +70,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 		}
 
 		allocator := t.Track(kvg, state.InstanceSlice()...)
-
-		builder := updater.New[runtime.TiKVTuple, *v1alpha1.TiKV, *runtime.TiKV]().
+		wait, err := updater.New[runtime.TiKVTuple]().
 			WithInstances(kvs...).
 			WithDesired(int(state.Group().Replicas())).
 			WithClient(c).
@@ -82,10 +84,11 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			).
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
-			WithScaleInPreferPolicy(topoPolicy).
-			Build()
-
-		wait, err := builder.Do(ctx)
+			WithScaleInPreferPolicy(
+				topoPolicy,
+			).
+			Build().
+			Do(ctx)
 		if err != nil {
 			return task.Fail().With("cannot update instances: %w", err)
 		}

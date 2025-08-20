@@ -44,7 +44,9 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 		fg := state.TiFlashGroup()
 
 		checker := action.NewUpgradeChecker[scope.TiFlashGroup](c, state.Cluster(), logger)
+
 		if needVersionUpgrade(fg) && !checker.CanUpgrade(ctx, fg) {
+			// TODO(liubo02): change to Wait
 			return task.Retry(defaultUpdateWaitTime).With("wait until preconditions of upgrading is met")
 		}
 
@@ -59,16 +61,15 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 		}
 
 		updateRevision, _, _ := state.Revision()
-		fs := state.Slice()
 
+		fs := state.Slice()
 		topoPolicy, err := policy.NewTopologyPolicy(topos, updateRevision, fs...)
 		if err != nil {
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
 		allocator := t.Track(fg, state.InstanceSlice()...)
-
-		builder := updater.New[runtime.TiFlashTuple, *v1alpha1.TiFlash, *runtime.TiFlash]().
+		wait, err := updater.New[runtime.TiFlashTuple]().
 			WithInstances(fs...).
 			WithDesired(int(state.Group().Replicas())).
 			WithClient(c).
@@ -82,10 +83,11 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			).
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
-			WithScaleInPreferPolicy(topoPolicy).
-			Build()
-
-		wait, err := builder.Do(ctx)
+			WithScaleInPreferPolicy(
+				topoPolicy,
+			).
+			Build().
+			Do(ctx)
 		if err != nil {
 			return task.Fail().With("cannot update instances: %w", err)
 		}
