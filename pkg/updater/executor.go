@@ -203,9 +203,9 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 					ex.update -= 1
 					ex.unavailableUpdate -= 1
 				} else {
+					ex.update -= 1
 					available -= 1
 					checkAvail = true
-					ex.update -= 1
 				}
 			} else {
 				// ex.update + ex.outdated > ex.desired + min(ex.maxSurge, ex.outdated) and ex.update <= ex.desired

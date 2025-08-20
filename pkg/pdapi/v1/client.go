@@ -258,7 +258,7 @@ func (c *pdClient) GetStores(ctx context.Context) (*StoresInfo, error) {
 	if err != nil {
 		if strings.HasSuffix(err.Error(), tiKVNotBootstrapped+"\n") {
 			//nolint:govet // expected
-			err = TiKVNotBootstrappedErrorf("%s", err.Error())
+			err = TiKVNotBootstrappedErrorf(err.Error())
 		}
 		return nil, err
 	}

@@ -97,8 +97,8 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) (a action, err error) {
 	logger := logr.FromContextOrDiscard(ctx).WithName("Updater")
 
 	if act.beingOffline.Len() > 0 {
-		// TODO: could implement more sophisticated selection logic)
-		logger.Info("try to cancel a offlining instance")
+		// TODO: could implement more sophisticated selection logic
+		logger.Info("try to cancel an offlining instance")
 		return act.cancelOneOfflining(ctx, act.beingOffline.List()[0])
 	}
 

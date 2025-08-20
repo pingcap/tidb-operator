@@ -87,6 +87,7 @@ func convertAnnotations(ls map[string]string) map[string]string {
 	delete(ls, v1alpha1.AnnoKeyDeferDelete)
 	// ignore boot annotation of pd
 	delete(ls, v1alpha1.AnnoKeyInitialClusterNum)
+
 	return ls
 }
 
