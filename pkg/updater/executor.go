@@ -31,7 +31,6 @@ const (
 	actionUpdate
 	actionSetOffline
 	actionCancelOffline
-	actionDeleteOffline
 	actionCleanup
 	actionScaleIn
 )
@@ -59,7 +58,6 @@ type executor struct {
 	update              int
 	outdated            int
 	beingOffline        int
-	offlineCompleted    int
 	desired             int
 	unavailableUpdate   int
 	unavailableOutdated int
@@ -225,9 +223,6 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 				if unavailable {
 					ex.outdated -= 1
 					ex.unavailableOutdated -= 1
-					if act == actionDeleteOffline {
-						ex.offlineCompleted -= 1
-					}
 				} else {
 					if act != actionSetOffline {
 						ex.outdated -= 1

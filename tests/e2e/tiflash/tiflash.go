@@ -53,7 +53,7 @@ var _ = ginkgo.Describe("TiFlash", label.TiFlash, func() {
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiFlashGroupReady(ctx, fg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
-			workload.MustImportData(ctx, data.DefaultTiDBServiceName, "root", "", "", 500)
+			workload.MustImportData(ctx, data.DefaultTiDBServiceName)
 
 			ginkgo.By("Scaling in TiFlash from 2 to 1 replica")
 			patch := client.MergeFrom(fg.DeepCopy())
@@ -67,7 +67,7 @@ var _ = ginkgo.Describe("TiFlash", label.TiFlash, func() {
 			gomega.Expect(offlineTiFlash.GetDeletionTimestamp().IsZero()).To(gomega.BeTrue(), "should not delete the tiflash instance when it's going offline")
 
 			ginkgo.By("Waiting for offline operations to complete")
-			waitForTiFlashOfflineCondition(ctx, f, offlineTiFlash, v1alpha1.OfflineReasonCompleted, 5*time.Minute, true)
+			waitForTiFlashOfflineCondition(ctx, f, offlineTiFlash, v1alpha1.ReasonOfflineCompleted, 5*time.Minute, true)
 
 			ginkgo.By("Verifying offlined TiFlash instance is deleted")
 			waitForTiFlashInstancesDeleted(ctx, f, offliningFlashes, 5*time.Minute)
@@ -106,7 +106,7 @@ func waitForTiFlashOfflineCondition(ctx context.Context, f *framework.Framework,
 		instance := &v1alpha1.TiFlash{}
 		g.Expect(f.Client.Get(ctx, client.ObjectKeyFromObject(flash), instance)).To(gomega.Succeed())
 
-		cond := meta.FindStatusCondition(instance.Status.Conditions, v1alpha1.StoreOfflineConditionType)
+		cond := meta.FindStatusCondition(instance.Status.Conditions, v1alpha1.StoreOfflinedConditionType)
 		g.Expect(cond).NotTo(gomega.BeNil(), "StoreOffline condition should exist")
 		if status {
 			g.Expect(cond.Status).To(gomega.Equal(metav1.ConditionTrue))

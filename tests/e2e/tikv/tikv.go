@@ -207,7 +207,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 			f.WaitForPDGroupReady(ctx, pdg)
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
-			workload.MustImportData(ctx, data.DefaultTiDBServiceName, "root", "", "", 500)
+			workload.MustImportData(ctx, data.DefaultTiDBServiceName)
 
 			ginkgo.By("Scaling in TiKV from 4 to 3 replica")
 			patch := client.MergeFrom(kvg.DeepCopy())
@@ -221,7 +221,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 			gomega.Expect(offlineTiKV.GetDeletionTimestamp().IsZero()).To(gomega.BeTrue(), "should not delete the tikv instance when it's going offline")
 
 			ginkgo.By("Waiting for offline operations to complete")
-			waitForTiKVOfflineCondition(ctx, f, offlineTiKV, v1alpha1.OfflineReasonCompleted, 5*time.Minute, true)
+			waitForTiKVOfflineCondition(ctx, f, offlineTiKV, v1alpha1.ReasonOfflineCompleted, 5*time.Minute, true)
 
 			ginkgo.By("Verifying offlined TiKV instances are deleted")
 			waitForTiKVInstancesDeleted(ctx, f, offliningKVs, 5*time.Minute)
@@ -247,7 +247,7 @@ replica-schedule-limit = 8
 			f.WaitForPDGroupReady(ctx, pdg)
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
-			workload.MustImportData(ctx, data.DefaultTiDBServiceName, "root", "", "", 500)
+			workload.MustImportData(ctx, data.DefaultTiDBServiceName)
 
 			ginkgo.By("Scaling in TiKV from 4 to 3 replica")
 			patch := client.MergeFrom(kvg.DeepCopy())
@@ -262,7 +262,13 @@ replica-schedule-limit = 8
 			f.Must(f.Client.Patch(ctx, kvg, patch))
 
 			ginkgo.By("Verifying offline operations are cancelled")
-			waitForTiKVOfflineCondition(ctx, f, offliningKVs[0], v1alpha1.OfflineReasonCancelled, 5*time.Minute, false)
+			// When offline operation is cancelled, the TiKV instance should no longer be marked for offline
+			gomega.Eventually(func(g gomega.Gomega) {
+				instance := &v1alpha1.TiKV{}
+				g.Expect(f.Client.Get(ctx, client.ObjectKeyFromObject(offliningKVs[0]), instance)).To(gomega.Succeed())
+				g.Expect(instance.Spec.Offline).To(gomega.BeFalse(), "TiKV instance should not be marked for offline after cancellation")
+				g.Expect(meta.FindStatusCondition(instance.Status.Conditions, v1alpha1.StoreOfflinedConditionType)).To(gomega.BeNil(), "StoreOffline condition should not exist")
+			}, 3*time.Minute, 10*time.Second).Should(gomega.Succeed())
 
 			ginkgo.By("check if it's evicting leaders")
 			tikvGet := &v1alpha1.TiKV{}
@@ -296,7 +302,7 @@ replica-schedule-limit = 16
 			f.WaitForPDGroupReady(ctx, pdg)
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
-			workload.MustImportData(ctx, data.DefaultTiDBServiceName, "root", "", "", 500)
+			workload.MustImportData(ctx, data.DefaultTiDBServiceName)
 
 			ginkgo.By("Scaling in TiKV from 5 to 3 replicas")
 			patch := client.MergeFrom(kvg.DeepCopy())
@@ -331,10 +337,16 @@ replica-schedule-limit = 16
 			}, 5*time.Minute, 5*time.Second).Should(gomega.Succeed())
 
 			ginkgo.By("Verifying the cancelled instance status is updated")
-			waitForTiKVOfflineCondition(ctx, f, cancelledKVs[0], v1alpha1.OfflineReasonCancelled, 3*time.Minute, false)
+			// When offline operation is cancelled, the TiKV instance should no longer be marked for offline
+			gomega.Eventually(func(g gomega.Gomega) {
+				instance := &v1alpha1.TiKV{}
+				g.Expect(f.Client.Get(ctx, client.ObjectKeyFromObject(cancelledKVs[0]), instance)).To(gomega.Succeed())
+				g.Expect(instance.Spec.Offline).To(gomega.BeFalse(), "Cancelled TiKV instance should not be marked for offline")
+				g.Expect(meta.FindStatusCondition(instance.Status.Conditions, v1alpha1.StoreOfflinedConditionType)).To(gomega.BeNil(), "StoreOffline condition should not exist")
+			}, 3*time.Minute, 10*time.Second).Should(gomega.Succeed())
 
 			ginkgo.By("Waiting for the remaining offline operations to complete")
-			waitForTiKVOfflineCondition(ctx, f, remainingOffliningKVs[0], v1alpha1.OfflineReasonCompleted, 5*time.Minute, true)
+			waitForTiKVOfflineCondition(ctx, f, remainingOffliningKVs[0], v1alpha1.ReasonOfflineCompleted, 5*time.Minute, true)
 
 			ginkgo.By("Verifying offlined TiKV instances are deleted")
 			waitForTiKVInstancesDeleted(ctx, f, remainingOffliningKVs, 5*time.Minute)
@@ -373,7 +385,7 @@ func waitForTiKVOfflineCondition(ctx context.Context, f *framework.Framework, kv
 		instance := &v1alpha1.TiKV{}
 		g.Expect(f.Client.Get(ctx, client.ObjectKeyFromObject(kv), instance)).To(gomega.Succeed())
 
-		cond := meta.FindStatusCondition(instance.Status.Conditions, v1alpha1.StoreOfflineConditionType)
+		cond := meta.FindStatusCondition(instance.Status.Conditions, v1alpha1.StoreOfflinedConditionType)
 		g.Expect(cond).NotTo(gomega.BeNil(), "StoreOffline condition should exist")
 		if status {
 			g.Expect(cond.Status).To(gomega.Equal(metav1.ConditionTrue))

@@ -81,29 +81,6 @@ func TestBuilder(t *testing.T) {
 	}
 }
 
-func TestBuilderTwoStep(t *testing.T) {
-	t.Run("TwoStepDeletion", func(t *testing.T) {
-		builder := New[runtime.TiKVTuple, *v1alpha1.TiKV, *runtime.TiKV]().
-			WithDesired(3).
-			WithMaxSurge(0).
-			WithMaxUnavailable(1)
-
-		// Should not panic and should compile
-		assert.NotNil(t, builder)
-	})
-
-	t.Run("RegularBuilder", func(t *testing.T) {
-		// Test that regular builder still works without TwoStep
-		builder := New[runtime.TiKVTuple, *v1alpha1.TiKV, *runtime.TiKV]().
-			WithDesired(3).
-			WithMaxSurge(0).
-			WithMaxUnavailable(1)
-
-		// Should not panic and should compile
-		assert.NotNil(t, builder)
-	})
-}
-
 func TestSplit(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -509,10 +486,10 @@ func TestSplit(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			update, outdated, beingOffline, deleted := split(tt.instances, tt.revision)
 
-			assert.Equal(t, tt.expectedUpdate, len(update), "update count mismatch")
-			assert.Equal(t, tt.expectedOutdated, len(outdated), "outdated count mismatch")
-			assert.Equal(t, tt.expectedOffline, len(beingOffline), "beingOffline count mismatch")
-			assert.Equal(t, tt.expectedDeleted, len(deleted), "deleted count mismatch")
+			assert.Len(t, update, tt.expectedUpdate, "update count mismatch")
+			assert.Len(t, outdated, tt.expectedOutdated, "outdated count mismatch")
+			assert.Len(t, beingOffline, tt.expectedOffline, "beingOffline count mismatch")
+			assert.Len(t, deleted, tt.expectedDeleted, "deleted count mismatch")
 		})
 	}
 }

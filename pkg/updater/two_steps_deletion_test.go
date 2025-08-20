@@ -50,11 +50,12 @@ func newMockPreferPolicy(items []*runtime.TiKV) PreferPolicy[*runtime.TiKV] {
 // assertTiKVState verifies the expected TiKV count and offline status
 func assertTiKVState(t *testing.T, cli client.Client, expectedTotal, expectedOffline int) {
 	var tikvs v1alpha1.TiKVList
-	assert.Nil(t, cli.List(context.TODO(), &tikvs), "failed to list TiKVs")
+	require.NoError(t, cli.List(context.TODO(), &tikvs), "failed to list TiKVs")
 	assert.Len(t, tikvs.Items, expectedTotal, "expected %d TiKVs", expectedTotal)
 
 	offlineCount := 0
-	for _, tikv := range tikvs.Items {
+	for i := range tikvs.Items {
+		tikv := &tikvs.Items[i]
 		if tikv.Spec.Offline {
 			offlineCount++
 		}
@@ -75,6 +76,7 @@ func buildObjects(tikvs ...*runtime.TiKV) []client.Object {
 
 type patch func(tikv *runtime.TiKV)
 
+// nolint: unparam
 func buildTestTiKV(nameIndex string, gen int64, ready bool, apply ...patch) *runtime.TiKV {
 	rev := strconv.FormatInt(gen, 10)
 	tikv := &runtime.TiKV{
@@ -107,9 +109,9 @@ func buildTestTiKV(nameIndex string, gen int64, ready bool, apply ...patch) *run
 	return tikv
 }
 
-func offline(offline bool) func(tikv *runtime.TiKV) {
+func offline() func(tikv *runtime.TiKV) {
 	return func(tikv *runtime.TiKV) {
-		tikv.Spec.Offline = offline
+		tikv.Spec.Offline = true
 	}
 }
 
@@ -166,8 +168,8 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 		{
 			name: "when scale in tikv from 3 to 1, wait for offline complete",
 			setupStates: func() (update, outdated, beingOffline, deleted []*runtime.TiKV, objs []client.Object) {
-				t1 := buildTestTiKV("1", 1, false, offline(true))
-				t2 := buildTestTiKV("2", 1, false, offline(true))
+				t1 := buildTestTiKV("1", 1, false, offline())
+				t2 := buildTestTiKV("2", 1, false, offline())
 				t3 := buildTestTiKV("3", 1, true)
 				update = []*runtime.TiKV{t3}
 				beingOffline = []*runtime.TiKV{t1, t2}
@@ -185,9 +187,9 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 			name: "one completes offline, the other is still being offline",
 			setupStates: func() (update, outdated, beingOffline, deleted []*runtime.TiKV, objs []client.Object) {
 				// Being offline
-				t1 := buildTestTiKV("1", 1, false, offline(true))
+				t1 := buildTestTiKV("1", 1, false, offline())
 				// Complete offline
-				t2 := buildTestTiKV("2", 1, false, offline(true))
+				t2 := buildTestTiKV("2", 1, false, offline())
 				t3 := buildTestTiKV("3", 1, true)
 				update = []*runtime.TiKV{t3}
 				beingOffline = []*runtime.TiKV{t1}
@@ -204,7 +206,7 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 		{
 			name: "both complete offline, one is deleted",
 			setupStates: func() (update, outdated, beingOffline, deleted []*runtime.TiKV, objs []client.Object) {
-				t1 := buildTestTiKV("1", 1, false, offline(true))
+				t1 := buildTestTiKV("1", 1, false, offline())
 				t3 := buildTestTiKV("3", 1, true)
 				update = []*runtime.TiKV{t3}
 				deleted = []*runtime.TiKV{t1}
@@ -235,8 +237,8 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 		{
 			name: "scale in from 3 to 1, cancel it by increasing desired to 3",
 			setupStates: func() (update, outdated, beingOffline, deleted []*runtime.TiKV, objs []client.Object) {
-				t1 := buildTestTiKV("1", 1, false, offline(true))
-				t2 := buildTestTiKV("2", 1, false, offline(true))
+				t1 := buildTestTiKV("1", 1, false, offline())
+				t2 := buildTestTiKV("2", 1, false, offline())
 				t3 := buildTestTiKV("3", 1, true)
 				update = []*runtime.TiKV{t3}
 				beingOffline = []*runtime.TiKV{t1, t2}
@@ -256,7 +258,7 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 			name: "cancel scale in from 3 to 1, one is canceled successfully, the other is offline completed",
 			setupStates: func() (update, outdated, beingOffline, deleted []*runtime.TiKV, objs []client.Object) {
 				t1 := buildTestTiKV("1", 1, false)
-				t2 := buildTestTiKV("2", 1, false, offline(true))
+				t2 := buildTestTiKV("2", 1, false, offline())
 				t3 := buildTestTiKV("3", 1, true)
 				update = []*runtime.TiKV{t1, t3}
 				deleted = []*runtime.TiKV{t2}
@@ -275,8 +277,8 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 		{
 			name: "scale in from 3 to 1, cancel partially it by increasing desired to 2",
 			setupStates: func() (update, outdated, beingOffline, deleted []*runtime.TiKV, objs []client.Object) {
-				t1 := buildTestTiKV("1", 1, false, offline(true))
-				t2 := buildTestTiKV("2", 1, false, offline(true))
+				t1 := buildTestTiKV("1", 1, false, offline())
+				t2 := buildTestTiKV("2", 1, false, offline())
 				t3 := buildTestTiKV("3", 1, true)
 				update = []*runtime.TiKV{t3}
 				beingOffline = []*runtime.TiKV{t1, t2}
@@ -295,7 +297,7 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 			name: "scale in from 3 to 1, cancel partially it by increasing desired to 2 (2)",
 			setupStates: func() (update, outdated, beingOffline, deleted []*runtime.TiKV, objs []client.Object) {
 				t1 := buildTestTiKV("1", 1, false)
-				t2 := buildTestTiKV("2", 1, false, offline(true))
+				t2 := buildTestTiKV("2", 1, false, offline())
 				t3 := buildTestTiKV("3", 1, true)
 				update = []*runtime.TiKV{t1, t3}
 				deleted = []*runtime.TiKV{t2}
