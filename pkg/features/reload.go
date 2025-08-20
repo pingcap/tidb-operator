@@ -40,6 +40,17 @@ var unreloadable = map[meta.Feature][]meta.Component{
 	meta.SessionTokenSigning: {
 		meta.ComponentTiDB,
 	},
+	meta.ClusterSubdomain: {
+		meta.ComponentPD,
+		meta.ComponentTiDB,
+		meta.ComponentTiKV,
+		meta.ComponentTiFlash,
+		meta.ComponentTiCDC,
+		meta.ComponentTSO,
+		meta.ComponentScheduler,
+		meta.ComponentTiProxy,
+		meta.ComponentReplicationWorker,
+	},
 }
 
 func Reloadable(c meta.Component, update, current []meta.Feature) bool {
