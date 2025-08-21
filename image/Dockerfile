@@ -29,11 +29,11 @@ FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sh
 
 ARG TARGETPLATFORM
 
+USER pingcap:pingcap
+
 WORKDIR /
 
-COPY --from=builder ./_output/$TARGETPLATFORM/bin/tidb-operator tidb-operator
-
-USER 65532:65532
+COPY --chown=pingcap:pingcap --from=builder ./_output/$TARGETPLATFORM/bin/tidb-operator tidb-operator
 
 ENTRYPOINT ["/tidb-operator"]
 
@@ -41,11 +41,11 @@ FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sh
 
 ARG TARGETPLATFORM
 
+USER pingcap:pingcap
+
 WORKDIR /
 
-COPY --from=builder ./_output/$TARGETPLATFORM/bin/prestop-checker prestop-checker
-
-USER 65532:65532
+COPY --chown=pingcap:pingcap --from=builder ./_output/$TARGETPLATFORM/bin/prestop-checker prestop-checker
 
 ENTRYPOINT ["/prestop-checker"]
 
@@ -53,11 +53,12 @@ FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sh
 
 ARG TARGETPLATFORM
 
+USER pingcap:pingcap
+
 WORKDIR /
 
-COPY --from=builder ./_output/$TARGETPLATFORM/bin/testing-workload testing-workload
+COPY --chown=pingcap:pingcap --from=builder ./_output/$TARGETPLATFORM/bin/testing-workload testing-workload
 
-USER 65532:65532
 
 ENTRYPOINT ["/testing-workload"]
 
@@ -66,10 +67,10 @@ FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sh
 
 ARG TARGETPLATFORM
 
+USER pingcap:pingcap
+
 WORKDIR /
 
-COPY --from=builder ./_output/$TARGETPLATFORM/bin/tidb-backup-manager tidb-backup-manager
-
-USER 65532:65532
+COPY --chown=pingcap:pingcap --from=builder ./_output/$TARGETPLATFORM/bin/tidb-backup-manager tidb-backup-manager
 
 ENTRYPOINT ["/tidb-backup-manager"]
