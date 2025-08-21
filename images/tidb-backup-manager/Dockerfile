@@ -15,7 +15,7 @@ RUN wget -nv https://github.com/realestate-com-au/shush/releases/download/${SHUS
     && chmod 755 /usr/local/bin/shush
 
 COPY --from=pingcap/tidb-lightning:v8.5.2 /tidb-lightning /tidb-lightning-ctl /
-COPY --from=pingcap/dumpling:v8.5.2 /dumpling /dumpling
+COPY --from=pingcap/dumpling:v8.5.3 /dumpling /dumpling
 
 COPY bin/${TARGETARCH}/tidb-backup-manager /tidb-backup-manager
 COPY entrypoint.sh /entrypoint.sh
