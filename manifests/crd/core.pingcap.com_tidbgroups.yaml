@@ -147,6 +147,7 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               template:
+                description: Template is the instance template
                 properties:
                   metadata:
                     description: |-
@@ -194,6 +195,22 @@ spec:
                           If tag is omitted, version will be used as the image tag.
                           Default is pingcap/tidb
                         type: string
+                      keyspace:
+                        description: |-
+                          Keyspace defines the keyspace of a TiDB instance
+                          Keyspace can only be set when mode is changed from StandBy to Normal
+                          If mode is Normal, it cannot be changed again
+                        type: string
+                      mode:
+                        default: Normal
+                        description: Mode defines the mode of a TiDB instance
+                        enum:
+                        - Normal
+                        - StandBy
+                        type: string
+                        x-kubernetes-validations:
+                        - message: mode can only be set from StandBy to Normal once
+                          rule: self != 'StandBy' || oldSelf == 'StandBy'
                       overlay:
                         description: |-
                           Overlay defines a k8s native resource template patch.
@@ -8643,6 +8660,7 @@ spec:
                             x-kubernetes-int-or-string: true
                         type: object
                       security:
+                        description: Security defines security configs of TiDB
                         properties:
                           authToken:
                             description: |-
@@ -8831,6 +8849,8 @@ spec:
                             type: object
                         type: object
                       updateStrategy:
+                        description: UpdateStrategy defines strategy when some fields
+                          are updated
                         properties:
                           config:
                             default: Restart
@@ -8921,6 +8941,13 @@ spec:
                       rule: '!has(self.overlay) || !has(self.overlay.volumeClaims)
                         || (has(self.volumes) && self.overlay.volumeClaims.all(vc,
                         vc.name in self.volumes.map(v, v.name)))'
+                    - message: keyspace can only be set once when mode is changed
+                        from StandBy to Normal
+                      rule: oldSelf.?mode.orValue('Normal') == 'StandBy' || (self.?mode.orValue('Normal')
+                        == 'Normal' && oldSelf.?keyspace.orValue('') == self.?keyspace.orValue(''))
+                    - message: keyspace cannot be set if mode is StandBy
+                      rule: self.?mode.orValue('Normal') == 'Normal' || self.?keyspace.orValue('')
+                        == ''
                 required:
                 - spec
                 type: object

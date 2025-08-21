@@ -130,6 +130,7 @@ type TiDBGroupSpec struct {
 	// +listMapKey=type
 	SchedulePolicies []SchedulePolicy `json:"schedulePolicies,omitempty"`
 
+	// Template is the instance template
 	Template TiDBTemplate `json:"template"`
 }
 
@@ -140,31 +141,52 @@ type TiDBTemplate struct {
 
 // TiDBTemplateSpec can only be specified in TiDBGroup.
 // +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes) && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in volumes"
+// +kubebuilder:validation:XValidation:rule="oldSelf.?mode.orValue('Normal') == 'StandBy' || (self.?mode.orValue('Normal') == 'Normal' && oldSelf.?keyspace.orValue('') == self.?keyspace.orValue(''))",message="keyspace can only be set once when mode is changed from StandBy to Normal"
+// +kubebuilder:validation:XValidation:rule="self.?mode.orValue('Normal') == 'Normal' || self.?keyspace.orValue('') == ''",message="keyspace cannot be set if mode is StandBy"
 type TiDBTemplateSpec struct {
 	// Version must be a semantic version.
 	// It can has a v prefix or not.
 	// +kubebuilder:validation:Pattern=`^(v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
 	Version string `json:"version"`
+
 	// Image is tidb's image
 	// If tag is omitted, version will be used as the image tag.
 	// Default is pingcap/tidb
 	Image *string `json:"image,omitempty"`
+
 	// Server defines the server configuration of TiDB.
 	Server TiDBServer `json:"server,omitempty"`
+
 	// Probes defines probes for TiDB.
 	Probes TiDBProbes `json:"probes,omitempty"`
+
 	// Resources defines resource required by TiDB.
 	Resources ResourceRequirements `json:"resources,omitempty"`
+
 	// Config defines config file of TiDB.
-	Config         ConfigFile     `json:"config,omitempty"`
+	Config ConfigFile `json:"config,omitempty"`
+
+	// UpdateStrategy defines strategy when some fields are updated
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 
+	// Security defines security configs of TiDB
 	Security *TiDBSecurity `json:"security,omitempty"`
+
 	// Volumes defines data volume of TiDB, it is optional.
 	// +listType=map
 	// +listMapKey=name
 	// +kubebuilder:validation:MaxItems=256
 	Volumes []Volume `json:"volumes,omitempty"`
+
+	// Keyspace defines the keyspace of a TiDB instance
+	// Keyspace can only be set when mode is changed from StandBy to Normal
+	// If mode is Normal, it cannot be changed again
+	Keyspace string `json:"keyspace,omitempty"`
+
+	// Mode defines the mode of a TiDB instance
+	// +kubebuilder:default="Normal"
+	// +kubebuilder:validation:XValidation:rule="self != 'StandBy' || oldSelf == 'StandBy'",message="mode can only be set from StandBy to Normal once"
+	Mode TiDBMode `json:"mode,omitempty"`
 
 	// SlowLog defines the separate slow log configuration for TiDB.
 	// When enabled, a sidecar container will be created to output the slow log to its stdout.
@@ -273,6 +295,7 @@ type TiDBGroupStatus struct {
 	GroupStatus  `json:",inline"`
 }
 
+// TiDBSpec is the spec of a TiDB instance
 // +kubebuilder:validation:XValidation:rule="(!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology) && has(self.topology))",fieldPath=".topology",message="topology can only be set when creating"
 type TiDBSpec struct {
 	Cluster ClusterReference `json:"cluster"`
@@ -291,9 +314,20 @@ type TiDBSpec struct {
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="subdomain is immutable"
 	Subdomain string `json:"subdomain"`
 
-	// TiDBTemplateSpec embeded some fields managed by TiDBGroup.
+	// TiDBTemplateSpec embedded some fields managed by TiDBGroup.
 	TiDBTemplateSpec `json:",inline"`
 }
+
+// TiDBMode defines the mode of a TiDB instance
+// +kubebuilder:validation:Enum=Normal;StandBy
+type TiDBMode string
+
+const (
+	// TiDBModeNormal means the tidb is in the default normal mode
+	TiDBModeNormal TiDBMode = "Normal"
+	// TiDBModeStandBy means the tidb is waiting for activating
+	TiDBModeStandBy TiDBMode = "StandBy"
+)
 
 type TiDBStatus struct {
 	CommonStatus `json:",inline"`

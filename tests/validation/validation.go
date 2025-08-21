@@ -27,6 +27,7 @@ import (
 	"k8s.io/apiextensions-apiserver/pkg/apiserver/schema/cel"
 	"k8s.io/apiextensions-apiserver/pkg/apiserver/schema/cel/model"
 	"k8s.io/apiextensions-apiserver/pkg/apiserver/validation"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	celconfig "k8s.io/apiserver/pkg/apis/cel"
@@ -34,6 +35,7 @@ import (
 )
 
 type Case struct {
+	mode         PatchMode
 	desc         string
 	isCreate     bool
 	current, old any
@@ -130,4 +132,48 @@ func structuralSchemaFromCRD(t *testing.T, crdPath, version string) *schema.Stru
 	require.FailNowf(t, "failed to find crd %s version %s", crdPath, version)
 
 	return nil
+}
+
+type PatchMode string
+
+const (
+	PatchModeSet   PatchMode = "set"
+	PatchModeMerge PatchMode = "merge"
+)
+
+func Patch(t *testing.T, mode PatchMode, basic map[string]any, patch any, fields ...string) map[string]any {
+	switch mode {
+	case "", PatchModeSet:
+		return patchBySet(t, basic, patch, fields...)
+	case PatchModeMerge:
+		return patchByMerge(t, basic, patch, fields...)
+	}
+
+	return basic
+}
+
+func patchBySet(t *testing.T, basic map[string]any, patch any, fields ...string) map[string]any {
+	if patch == nil {
+		unstructured.RemoveNestedField(basic, fields...)
+	} else {
+		require.NoError(t, unstructured.SetNestedField(basic, patch, fields...))
+	}
+
+	return basic
+}
+
+func patchByMerge(t *testing.T, basic map[string]any, patch any, fields ...string) map[string]any {
+	if patch == nil {
+		return basic
+	}
+
+	obj, ok := patch.(map[string]any)
+	require.True(t, ok, "can only merge object")
+
+	for k, v := range obj {
+		keys := append(fields, k)
+		require.NoError(t, unstructured.SetNestedField(basic, v, keys...))
+	}
+
+	return basic
 }

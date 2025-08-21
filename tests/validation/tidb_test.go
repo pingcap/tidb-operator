@@ -17,8 +17,6 @@ package validation
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -32,6 +30,7 @@ func TestTiDB(t *testing.T) {
 	cases = append(cases, transferTiDBCases(t, OverlayVolumeClaims(false), "spec")...)
 	cases = append(cases, transferTiDBCases(t, Version(), "spec", "version")...)
 	cases = append(cases, transferTiDBCases(t, NameLength(instanceNameLengthLimit), "metadata", "name")...)
+	cases = append(cases, transferTiDBCases(t, keyspace(), "spec")...)
 	Validate(t, "crd/core.pingcap.com_tidbs.yaml", cases)
 }
 
@@ -60,13 +59,7 @@ func transferTiDBCases(t *testing.T, cases []Case, fields ...string) []Case {
 		c := &cases[i]
 
 		current := basicTiDB()
-		if c.current == nil {
-			unstructured.RemoveNestedField(current, fields...)
-		} else {
-			require.NoError(t, unstructured.SetNestedField(current, c.current, fields...))
-		}
-
-		c.current = current
+		c.current = Patch(t, c.mode, current, c.current, fields...)
 
 		if c.isCreate {
 			c.old = nil
@@ -74,13 +67,7 @@ func transferTiDBCases(t *testing.T, cases []Case, fields ...string) []Case {
 		}
 
 		old := basicTiDB()
-		if c.old == nil {
-			unstructured.RemoveNestedField(old, fields...)
-		} else {
-			require.NoError(t, unstructured.SetNestedField(old, c.old, fields...))
-		}
-
-		c.old = old
+		c.old = Patch(t, c.mode, old, c.old, fields...)
 	}
 
 	return cases
@@ -115,6 +102,132 @@ func mysqlTLS() []Case {
 			desc:    "enabled is not changed",
 			old:     map[string]any{"enabled": true},
 			current: map[string]any{"enabled": true},
+		},
+	}
+}
+
+func keyspace() []Case {
+	err0 := `spec: Invalid value: "object": keyspace can only be set once when mode is changed from StandBy to Normal`
+	err1 := `spec: Invalid value: "object": keyspace cannot be set if mode is StandBy`
+	err2 := `spec.mode: Invalid value: "string": mode can only be set from StandBy to Normal once`
+	return []Case{
+		{
+			desc:     "no keyspace and no mode",
+			isCreate: true,
+			mode:     PatchModeMerge,
+		},
+		{
+			desc: "update: no keyspace and no mode",
+			mode: PatchModeMerge,
+		},
+		{
+			desc:     "mode is Normal and no keyspace",
+			isCreate: true,
+			current:  map[string]any{"mode": "Normal"},
+			mode:     PatchModeMerge,
+		},
+		{
+			desc:    "update: mode is Normal and no keyspace",
+			old:     map[string]any{"mode": "Normal"},
+			current: map[string]any{"mode": "Normal"},
+			mode:    PatchModeMerge,
+		},
+		{
+			desc:     "mode is Normal and keyspace is empty",
+			isCreate: true,
+			current:  map[string]any{"mode": "Normal", "keyspace": ""},
+			mode:     PatchModeMerge,
+		},
+		{
+			desc:    "update: mode is Normal and keyspace is empty",
+			old:     map[string]any{"mode": "Normal", "keyspace": ""},
+			current: map[string]any{"mode": "Normal", "keyspace": ""},
+			mode:    PatchModeMerge,
+		},
+		{
+			desc:     "mode is Normal and keyspace is set",
+			isCreate: true,
+			current:  map[string]any{"mode": "Normal", "keyspace": "xxx"},
+			mode:     PatchModeMerge,
+		},
+		{
+			desc:    "update: mode is Normal and keyspace is set",
+			old:     map[string]any{"mode": "Normal", "keyspace": "xxx"},
+			current: map[string]any{"mode": "Normal", "keyspace": "xxx"},
+			mode:    PatchModeMerge,
+		},
+		{
+			desc:    "update: mode is Normal and try to change keyspace",
+			old:     map[string]any{"mode": "Normal", "keyspace": "xxx"},
+			current: map[string]any{"mode": "Normal", "keyspace": "yyy"},
+			mode:    PatchModeMerge,
+			wantErrs: []string{
+				err0,
+			},
+		},
+		{
+			desc:    "update: mode is Normal and try to unset keyspace",
+			old:     map[string]any{"mode": "Normal", "keyspace": "xxx"},
+			current: map[string]any{"mode": "Normal"},
+			mode:    PatchModeMerge,
+			wantErrs: []string{
+				err0,
+			},
+		},
+		{
+			desc:     "mode is StandBy and no keyspace",
+			isCreate: true,
+			current:  map[string]any{"mode": "StandBy"},
+			mode:     PatchModeMerge,
+		},
+		{
+			desc:    "update: mode is StandBy and no keyspace",
+			old:     map[string]any{"mode": "StandBy"},
+			current: map[string]any{"mode": "StandBy"},
+			mode:    PatchModeMerge,
+		},
+		{
+			desc:     "mode is StandBy and keyspace is empty",
+			isCreate: true,
+			current:  map[string]any{"mode": "StandBy", "keyspace": ""},
+			mode:     PatchModeMerge,
+		},
+		{
+			desc:    "update: mode is StandBy and keyspace is empty",
+			old:     map[string]any{"mode": "StandBy", "keyspace": ""},
+			current: map[string]any{"mode": "StandBy", "keyspace": ""},
+			mode:    PatchModeMerge,
+		},
+		{
+			desc:     "mode is StandBy and keyspace is set",
+			isCreate: true,
+			current:  map[string]any{"mode": "StandBy", "keyspace": "xxx"},
+			mode:     PatchModeMerge,
+			wantErrs: []string{
+				err1,
+			},
+		},
+		{
+			desc:    "update: mode is Standby and try to activate keyspace",
+			old:     map[string]any{"mode": "StandBy"},
+			current: map[string]any{"mode": "Normal", "keyspace": "yyy"},
+			mode:    PatchModeMerge,
+		},
+		{
+			desc:    "update: mode is Standby and try to activate keyspace from empty",
+			old:     map[string]any{"mode": "StandBy", "keyspace": ""},
+			current: map[string]any{"mode": "Normal", "keyspace": "yyy"},
+			mode:    PatchModeMerge,
+		},
+		{
+			desc:    "update: mode is Normal and try to change to StandBy back",
+			old:     map[string]any{"mode": "Normal", "keyspace": "xxx"},
+			current: map[string]any{"mode": "StandBy"},
+			mode:    PatchModeMerge,
+			wantErrs: []string{
+				err0,
+				err2,
+			},
 		},
 	}
 }
