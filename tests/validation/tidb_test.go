@@ -208,6 +208,15 @@ func keyspace() []Case {
 			},
 		},
 		{
+			desc:    "update: mode is StandBy and try to set keyspace directly",
+			old:     map[string]any{"mode": "StandBy"},
+			current: map[string]any{"mode": "StandBy", "keyspace": "xxx"},
+			mode:    PatchModeMerge,
+			wantErrs: []string{
+				err1,
+			},
+		},
+		{
 			desc:    "update: mode is Standby and try to activate keyspace",
 			old:     map[string]any{"mode": "StandBy"},
 			current: map[string]any{"mode": "Normal", "keyspace": "yyy"},
