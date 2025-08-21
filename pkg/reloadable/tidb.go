@@ -103,6 +103,10 @@ func convertTiDBTemplate(tmpl *v1alpha1.TiDBTemplate) *v1alpha1.TiDBTemplate {
 		newTmpl.Spec.SlowLog.Image = nil
 	}
 
+	if newTmpl.Spec.Mode != v1alpha1.TiDBModeStandBy {
+		newTmpl.Spec.Mode = v1alpha1.TiDBModeNormal
+	}
+
 	// server labels can be updated dynamically
 	newTmpl.Spec.Server.Labels = nil
 
