@@ -49,6 +49,31 @@ func TiDBStatusPort(db *v1alpha1.TiDB) int32 {
 	return v1alpha1.DefaultTiDBPortStatus
 }
 
+func TiDBGroupMySQLTLS(dbg *v1alpha1.TiDBGroup) *v1alpha1.TLS {
+	sec := dbg.Spec.Template.Spec.Security
+	if sec != nil && sec.TLS != nil && sec.TLS.MySQL != nil {
+		return sec.TLS.MySQL
+	}
+
+	return nil
+}
+
+func TiDBGroupMySQLCertKeyPairSecretName(dbg *v1alpha1.TiDBGroup) string {
+	tls := TiDBGroupMySQLTLS(dbg)
+	if tls != nil && tls.CertKeyPair != nil {
+		return tls.CertKeyPair.Name
+	}
+	return dbg.GetName() + "-tidb-server-secret"
+}
+
+func TiDBGroupMySQLCASecretName(dbg *v1alpha1.TiDBGroup) string {
+	tls := TiDBGroupMySQLTLS(dbg)
+	if tls != nil && tls.CA != nil {
+		return tls.CA.Name
+	}
+	return dbg.GetName() + "-tidb-server-secret"
+}
+
 func TiDBMySQLTLS(db *v1alpha1.TiDB) *v1alpha1.TLS {
 	sec := db.Spec.Security
 	if sec != nil && sec.TLS != nil && sec.TLS.MySQL != nil {

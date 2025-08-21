@@ -91,6 +91,7 @@ spec:
                       - DisablePDDefaultReadinessProbe
                       - UsePDReadyAPI
                       - SessionTokenSigning
+                      - ClusterSubdomain
                       type: string
                   required:
                   - name
@@ -293,6 +294,7 @@ spec:
                       - DisablePDDefaultReadinessProbe
                       - UsePDReadyAPI
                       - SessionTokenSigning
+                      - ClusterSubdomain
                       type: string
                     stage:
                       type: string

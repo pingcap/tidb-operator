@@ -19,63 +19,73 @@ import (
 
 	"github.com/onsi/ginkgo/v2"
 
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
+	wopt "github.com/pingcap/tidb-operator/tests/e2e/framework/workload"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
+	"github.com/pingcap/tidb-operator/tests/e2e/utils/cert"
 )
 
 var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 	f := framework.New()
 	f.Setup()
-	f.SetupCluster(data.WithClusterTLSEnabled())
-	workload := f.SetupWorkload()
-	cm := f.SetupCertManager()
 
-	ginkgo.It("should enable internal TLS with same ca secret", func(ctx context.Context) {
-		ns := f.Namespace.Name
-		cluster := f.Cluster.Name
+	f.DescribeFeatureTable(func(fs ...metav1alpha1.Feature) {
+		f.SetupCluster(data.WithClusterTLSEnabled(), data.WithFeatureGates(fs...))
+		workload := f.SetupWorkload()
+		cm := f.SetupCertManager()
+		ginkgo.It("should enable internal TLS with same ca secret", func(ctx context.Context) {
+			ns := f.Namespace.Name
+			cluster := f.Cluster.Name
 
-		ca := f.Cluster.Name + "-ca"
-		pdg := f.MustCreatePD(ctx,
-			data.WithMSMode(),
-			data.WithClusterTLS[*runtime.PDGroup](ca, "pd-internal"),
-		)
-		tg := f.MustCreateTSO(ctx,
-			data.WithClusterTLS[*runtime.TSOGroup](ca, "tso-internal"),
-		)
-		sg := f.MustCreateScheduler(ctx,
-			data.WithClusterTLS[*runtime.SchedulerGroup](ca, "scheduler-internal"),
-		)
-		kvg := f.MustCreateTiKV(ctx,
-			data.WithClusterTLS[*runtime.TiKVGroup](ca, "tikv-internal"),
-		)
-		dbg := f.MustCreateTiDB(ctx,
-			data.WithClusterTLS[*runtime.TiDBGroup](ca, "tidb-internal"),
-		)
-		fg := f.MustCreateTiFlash(ctx,
-			data.WithClusterTLS[*runtime.TiFlashGroup](ca, "tiflash-internal"),
-		)
-		cg := f.MustCreateTiCDC(ctx,
-			data.WithClusterTLS[*runtime.TiCDCGroup](ca, "ticdc-internal"),
-		)
-		// TODO: Ignore tiproxy until e2e env is fixed
-		// pg := f.MustCreateTiProxy(ctx,
-		// 	data.WithClusterTLS[*runtime.TiProxyGroup](ca, "tiproxy-internal"),
-		// )
+			ca := "cluster-ca"
+			mysqlClientCA, mysqlServerCertKeyPair := "mysql-ca", "mysql-tls"
+			pdg := f.MustCreatePD(ctx,
+				data.WithMSMode(),
+				data.WithClusterTLS[*runtime.PDGroup](ca, "pd-internal"),
+			)
+			tg := f.MustCreateTSO(ctx,
+				data.WithClusterTLS[*runtime.TSOGroup](ca, "tso-internal"),
+			)
+			sg := f.MustCreateScheduler(ctx,
+				data.WithClusterTLS[*runtime.SchedulerGroup](ca, "scheduler-internal"),
+			)
+			kvg := f.MustCreateTiKV(ctx,
+				data.WithClusterTLS[*runtime.TiKVGroup](ca, "tikv-internal"),
+			)
+			dbg := f.MustCreateTiDB(ctx,
+				data.WithClusterTLS[*runtime.TiDBGroup](ca, "tidb-internal"),
+				data.WithMySQLTLS(mysqlClientCA, mysqlServerCertKeyPair),
+			)
+			fg := f.MustCreateTiFlash(ctx,
+				data.WithClusterTLS[*runtime.TiFlashGroup](ca, "tiflash-internal"),
+			)
+			cg := f.MustCreateTiCDC(ctx,
+				data.WithClusterTLS[*runtime.TiCDCGroup](ca, "ticdc-internal"),
+			)
+			// TODO: Ignore tiproxy until e2e env is fixed
+			// pg := f.MustCreateTiProxy(ctx,
+			// 	data.WithClusterTLS[*runtime.TiProxyGroup](ca, "tiproxy-internal"),
+			// )
 
-		cm.Install(ctx, ns, cluster)
+			cm.Install(ctx, ns, cluster)
 
-		f.WaitForPDGroupReady(ctx, pdg)
-		f.WaitForTSOGroupReady(ctx, tg)
-		f.WaitForSchedulerGroupReady(ctx, sg)
-		f.WaitForTiKVGroupReady(ctx, kvg)
-		f.WaitForTiDBGroupReady(ctx, dbg)
-		f.WaitForTiFlashGroupReady(ctx, fg)
-		f.WaitForTiCDCGroupReady(ctx, cg)
-		// f.WaitForTiProxyGroupReady(ctx, pg)
+			f.WaitForPDGroupReady(ctx, pdg)
+			f.WaitForTSOGroupReady(ctx, tg)
+			f.WaitForSchedulerGroupReady(ctx, sg)
+			f.WaitForTiKVGroupReady(ctx, kvg)
+			f.WaitForTiDBGroupReady(ctx, dbg)
+			f.WaitForTiFlashGroupReady(ctx, fg)
+			f.WaitForTiCDCGroupReady(ctx, cg)
+			// f.WaitForTiProxyGroupReady(ctx, pg)
 
-		workload.MustPing(ctx, data.DefaultTiDBServiceName)
-		// workload.MustPing(ctx, data.DefaultTiProxyServiceName, wopt.Port(data.DefaultTiProxyServicePort))
-	})
+			workload.MustPing(ctx, data.DefaultTiDBServiceName, wopt.TLS(cert.MySQLClient(mysqlClientCA, mysqlServerCertKeyPair)))
+			// workload.MustPing(ctx, data.DefaultTiProxyServiceName, wopt.Port(data.DefaultTiProxyServicePort))
+		})
+	},
+		nil,
+		[]metav1alpha1.Feature{metav1alpha1.ClusterSubdomain},
+	)
 })

@@ -22,9 +22,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
@@ -77,7 +79,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithMaxSurge(0).
 			WithMaxUnavailable(1).
 			WithRevision(updateRevision).
-			WithNewFactory(TiKVNewer(kvg, updateRevision)).
+			WithNewFactory(TiKVNewer(kvg, updateRevision, state.FeatureGates())).
 			WithAddHooks(
 				updater.AllocateName[*runtime.TiKV](allocator),
 				topoPolicy,
@@ -103,7 +105,7 @@ func needVersionUpgrade(kvg *v1alpha1.TiKVGroup) bool {
 	return kvg.Spec.Template.Spec.Version != kvg.Status.Version && kvg.Status.Version != ""
 }
 
-func TiKVNewer(kvg *v1alpha1.TiKVGroup, rev string) updater.NewFactory[*runtime.TiKV] {
+func TiKVNewer(kvg *v1alpha1.TiKVGroup, rev string, fg features.Gates) updater.NewFactory[*runtime.TiKV] {
 	return updater.NewFunc[*runtime.TiKV](func() *runtime.TiKV {
 		spec := kvg.Spec.Template.Spec.DeepCopy()
 
@@ -123,6 +125,9 @@ func TiKVNewer(kvg *v1alpha1.TiKVGroup, rev string) updater.NewFactory[*runtime.
 				Subdomain:        HeadlessServiceName(kvg.Name),
 				TiKVTemplateSpec: *spec,
 			},
+		}
+		if fg.Enabled(metav1alpha1.ClusterSubdomain) {
+			tikv.Spec.Subdomain = coreutil.ClusterSubdomain(kvg.Spec.Cluster.Name)
 		}
 
 		return runtime.FromTiKV(tikv)

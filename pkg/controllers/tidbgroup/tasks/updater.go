@@ -22,9 +22,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/reloadable"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
@@ -90,7 +92,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithMaxSurge(maxSurge).
 			WithMaxUnavailable(maxUnavailable).
 			WithRevision(updateRevision).
-			WithNewFactory(TiDBNewer(dbg, updateRevision)).
+			WithNewFactory(TiDBNewer(dbg, updateRevision, state.FeatureGates())).
 			WithAddHooks(
 				updater.AllocateName[*runtime.TiDB](allocator),
 				topoPolicy,
@@ -135,7 +137,7 @@ func precheckInstances(dbg *v1alpha1.TiDBGroup, dbs []*v1alpha1.TiDB, updateRevi
 	return needUpdate, needRestart
 }
 
-func TiDBNewer(dbg *v1alpha1.TiDBGroup, rev string) updater.NewFactory[*runtime.TiDB] {
+func TiDBNewer(dbg *v1alpha1.TiDBGroup, rev string, fg features.Gates) updater.NewFactory[*runtime.TiDB] {
 	return updater.NewFunc[*runtime.TiDB](func() *runtime.TiDB {
 		spec := dbg.Spec.Template.Spec.DeepCopy()
 
@@ -155,6 +157,10 @@ func TiDBNewer(dbg *v1alpha1.TiDBGroup, rev string) updater.NewFactory[*runtime.
 				Subdomain:        HeadlessServiceName(dbg.Name), // same as headless service
 				TiDBTemplateSpec: *spec,
 			},
+		}
+
+		if fg.Enabled(metav1alpha1.ClusterSubdomain) {
+			tidb.Spec.Subdomain = coreutil.ClusterSubdomain(dbg.Spec.Cluster.Name)
 		}
 
 		return runtime.FromTiDB(tidb)
