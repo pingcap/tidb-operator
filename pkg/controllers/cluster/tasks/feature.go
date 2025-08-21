@@ -52,10 +52,7 @@ func (*TaskFeatureGates) Name() string {
 func (t *TaskFeatureGates) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	rtx := ctx.Self()
 
-	fs := make([]metav1alpha1.Feature, 0, len(rtx.Cluster.Spec.FeatureGates))
-	for _, f := range rtx.Cluster.Spec.FeatureGates {
-		fs = append(fs, f.Name)
-	}
+	fs := coreutil.EnabledFeatures(rtx.Cluster)
 
 	if rtx.PDGroup != nil {
 		if err := patchFeatures[scope.PDGroup](ctx, t.Client, rtx.PDGroup, fs); err != nil {

@@ -50,3 +50,9 @@ func EnabledFeatures(c *v1alpha1.Cluster) []metav1alpha1.Feature {
 
 	return fs
 }
+
+// ClusterSubdomain returns the subdomain for all components of the cluster
+func ClusterSubdomain(clusterName string) string {
+	// add a suffix to avoid svc name conflict
+	return clusterName + "-cluster"
+}

@@ -17,6 +17,7 @@ package framework
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -25,9 +26,11 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
+	"github.com/pingcap/tidb-operator/tests/e2e/label"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
@@ -223,4 +226,34 @@ func (*Framework) Must(err error) {
 
 func (*Framework) True(b bool, opts ...any) {
 	gomega.ExpectWithOffset(1, b).To(gomega.BeTrue(), opts...)
+}
+
+// DescribeFeatureTable generates a case with different features
+func (*Framework) DescribeFeatureTable(f func(fs ...metav1alpha1.Feature), fss ...[]metav1alpha1.Feature) {
+	var entries []ginkgo.TableEntry
+	for _, fs := range fss {
+		var args []any
+		args = append(args, label.Features(fs...))
+		for _, f := range fs {
+			args = append(args, f)
+		}
+		entries = append(entries, ginkgo.Entry(nil, args...))
+	}
+	var args []any
+	args = append(args, f)
+	args = append(args,
+		func(fs ...metav1alpha1.Feature) string {
+			sb := strings.Builder{}
+			for _, f := range fs {
+				sb.WriteString("[")
+				sb.WriteString(string(f))
+				sb.WriteString("]")
+			}
+			return sb.String()
+		},
+	)
+	for _, entry := range entries {
+		args = append(args, entry)
+	}
+	ginkgo.DescribeTableSubtree("FeatureTable", args...)
 }
