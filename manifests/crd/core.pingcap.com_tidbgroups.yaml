@@ -8968,7 +8968,7 @@ spec:
                         vc.name in self.volumes.map(v, v.name)))'
                     - message: keyspace cannot be set if mode is StandBy
                       rule: '!has(self.mode) || self.mode == ''Normal'' || !has(self.keyspace)
-                        || self.keyspace == '''''
+                        || self.keyspace.size() == 0'
                     - message: keyspace can only be set once when mode is changed
                         from StandBy to Normal
                       rule: (has(oldSelf.mode) && oldSelf.mode == 'StandBy') ||  ((!has(oldSelf.keyspace)
