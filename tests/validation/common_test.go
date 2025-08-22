@@ -788,6 +788,79 @@ func DataVolumeRequired() []Case {
 	return cases
 }
 
+func VolumeAttributesClassNameValidation() []Case {
+	errMsg := "spec.volumes[0]: Invalid value: \"object\": VolumeAttributesClassName cannot be changed from non-nil to nil"
+
+	// Create base spec with volume structure
+	createBaseSpec := func() map[string]any {
+		return map[string]any{
+			"cluster": map[string]any{
+				"name": "test",
+			},
+			"subdomain": "test",
+			"version":   "v8.1.0",
+			"volumes": []any{
+				map[string]any{
+					"name":    "data",
+					"mounts":  []any{map[string]any{"type": "data"}},
+					"storage": "20Gi",
+				},
+			},
+		}
+	}
+
+	// Helper to clone spec and modify volumeAttributesClassName
+	createSpecWithVAC := func(vacValue *string) map[string]any {
+		spec := createBaseSpec()
+		if volumes, ok := spec["volumes"].([]any); ok && len(volumes) > 0 {
+			if volume, ok := volumes[0].(map[string]any); ok {
+				if vacValue != nil {
+					volume["volumeAttributesClassName"] = *vacValue
+				}
+				// If vacValue is nil, field is not set (omitted)
+			}
+		}
+		return spec
+	}
+
+	testClass := "test-class"
+	oldClass := "old-class"
+	newClass := "new-class"
+
+	cases := []Case{
+		{
+			desc:     "create with nil volumeAttributesClassName is ok",
+			isCreate: true,
+			current:  createSpecWithVAC(nil), // nil means field is not set
+		},
+		{
+			desc:     "create with volumeAttributesClassName is ok",
+			isCreate: true,
+			current:  createSpecWithVAC(&testClass),
+		},
+		{
+			desc:     "update from nil to non-nil volumeAttributesClassName is ok",
+			isCreate: false,
+			old:      createSpecWithVAC(nil),
+			current:  createSpecWithVAC(&testClass),
+		},
+		{
+			desc:     "update from non-nil to different non-nil volumeAttributesClassName is ok",
+			isCreate: false,
+			old:      createSpecWithVAC(&oldClass),
+			current:  createSpecWithVAC(&newClass),
+		},
+		{
+			desc:     "update from non-nil to nil volumeAttributesClassName should fail",
+			isCreate: false,
+			old:      createSpecWithVAC(&testClass),
+			current:  createSpecWithVAC(nil), // Remove field by not setting it
+			wantErrs: []string{errMsg},
+		},
+	}
+	return cases
+}
+
 func Version() []Case {
 	// Valid semantic versions
 	validVersions := []string{

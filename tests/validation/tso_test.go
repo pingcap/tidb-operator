@@ -29,6 +29,7 @@ func TestTSO(t *testing.T) {
 	)
 	cases = append(cases, transferTSOCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
 	cases = append(cases, transferTSOCases(t, OverlayVolumeClaims(false), "spec")...)
+	cases = append(cases, transferTSOCases(t, VolumeAttributesClassNameValidation(), "spec")...)
 	cases = append(cases, transferTSOCases(t, Version(), "spec", "version")...)
 	cases = append(cases, transferTSOCases(t, NameLength(instanceNameLengthLimit), "metadata", "name")...)
 	Validate(t, "crd/core.pingcap.com_tsos.yaml", cases)
