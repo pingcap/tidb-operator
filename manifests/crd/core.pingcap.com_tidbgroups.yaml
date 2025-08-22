@@ -8665,7 +8665,7 @@ spec:
                           authToken:
                             description: |-
                               Whether enable `tidb_auth_token` authentication method.
-                              To enable this feature, a K8s secret named `<groupName>-tidb-auth-token-jwks-secret` must be created to store the JWKs.
+                              To enable this feature, a secret named `<groupName>-tidb-auth-token-jwks-secret` must be created to store the JWKs.
                               ref: https://docs.pingcap.com/tidb/stable/security-compatibility-with-mysql#tidb_auth_token
                               Defaults to false.
                             properties:
@@ -8685,6 +8685,31 @@ spec:
                                 x-kubernetes-map-type: atomic
                             required:
                             - jwks
+                            type: object
+                          sem:
+                            description: |-
+                              SEM defines the security enhancement mode config of TiDB
+                              If this field is set, security.enable-sem = true will be set automatically
+                              Users still can disable sem in config file explicitly
+                            properties:
+                              config:
+                                description: |-
+                                  Config defines the configmap reference of the sem config
+                                  By default, we use the 'sem.json' as the file key of configmap
+                                properties:
+                                  name:
+                                    default: ""
+                                    description: |-
+                                      Name of the referent.
+                                      This field is effectively required, but due to backwards compatibility is
+                                      allowed to be empty. Instances of this type with an empty value here are
+                                      almost certainly wrong.
+                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                    type: string
+                                type: object
+                                x-kubernetes-map-type: atomic
+                            required:
+                            - config
                             type: object
                           tls:
                             description: TLS defines the tls configs of TiDB

@@ -214,10 +214,21 @@ type TiDBSecurity struct {
 	TLS *TiDBTLS `json:"tls,omitempty"`
 
 	// Whether enable `tidb_auth_token` authentication method.
-	// To enable this feature, a K8s secret named `<groupName>-tidb-auth-token-jwks-secret` must be created to store the JWKs.
+	// To enable this feature, a secret named `<groupName>-tidb-auth-token-jwks-secret` must be created to store the JWKs.
 	// ref: https://docs.pingcap.com/tidb/stable/security-compatibility-with-mysql#tidb_auth_token
 	// Defaults to false.
 	AuthToken *TiDBAuthToken `json:"authToken,omitempty"`
+
+	// SEM defines the security enhancement mode config of TiDB
+	// If this field is set, security.enable-sem = true will be set automatically
+	// Users still can disable sem in config file explicitly
+	SEM *SEM `json:"sem,omitempty"`
+}
+
+type SEM struct {
+	// Config defines the configmap reference of the sem config
+	// By default, we use the 'sem.json' as the file key of configmap
+	Config corev1.LocalObjectReference `json:"config"`
 }
 
 type TiDBServer struct {
