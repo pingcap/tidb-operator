@@ -96,12 +96,6 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) (a action, err error) {
 	}()
 	logger := logr.FromContextOrDiscard(ctx).WithName("Updater")
 
-	if act.beingOffline.Len() > 0 {
-		// TODO: could implement more sophisticated selection logic
-		logger.Info("try to cancel an offlining instance")
-		return act.cancelOneOfflining(ctx, act.beingOffline.List()[0])
-	}
-
 	obj := act.f.New()
 	for _, hook := range act.addHooks {
 		obj = hook.Add(obj)
@@ -116,25 +110,6 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) (a action, err error) {
 	act.update.Add(obj)
 
 	return actionScaleOut, nil // true indicates a new instance was created
-}
-
-// cancelOneOfflining cancels offline operation for one beingOffline instance and moves it back to update state
-func (act *actor[T, O, R]) cancelOneOfflining(ctx context.Context, instance R) (_ action, err error) {
-	logger := logr.FromContextOrDiscard(ctx).WithName("Updater").WithValues("instance", instance.GetName())
-
-	// Check if instance is a StoreInstance and use StoreManager to cancel offline
-	if instance.IsStore() {
-		if err := act.setOffline(ctx, instance, false); err != nil {
-			return actionNone, fmt.Errorf("failed to cancel store offline: %w", err)
-		}
-		// Move instance from offlining back to update state
-		act.beingOffline.Del(instance.GetName())
-		act.update.Add(instance)
-		logger.Info("try to cancel an offlining instance")
-		return actionCancelOffline, nil
-	}
-
-	return actionNone, nil
 }
 
 // ScaleInUpdate scales in an updated instance (already running the latest version).

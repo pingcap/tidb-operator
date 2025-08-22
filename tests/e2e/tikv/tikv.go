@@ -130,16 +130,19 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 			f.Must(f.Client.Delete(ctx, originalPod, client.GracePeriodSeconds(0)))
 
 			ginkgo.By("Verifying operator recreates the pod during store removal")
-			// The operator should recreate the pod to ensure graceful store removal can complete
-			gomega.Eventually(func() bool {
+
+			gomega.Eventually(func(g gomega.Gomega) {
+				// The operator should recreate the pod to ensure graceful store removal can complete
 				newPod, err := apicall.GetPod[scope.TiKV](ctx, f.Client, targetTiKV)
-				if err != nil {
-					return false
-				}
+				g.Expect(err).To(gomega.BeNil())
 				// Verify this is a new pod (different UID)
-				return newPod.UID != originalPodUID
-			}, 3*time.Minute, 5*time.Second).Should(gomega.BeTrue(),
-				"Operator should recreate pod with different UID during store removal")
+				g.Expect(newPod.UID).ShouldNot(gomega.Equal(originalPodUID))
+
+				// Verify leaders are evicted
+				var tikv v1alpha1.TiKV
+				g.Expect(f.Client.Get(ctx, client.ObjectKeyFromObject(targetTiKV), &tikv)).To(gomega.Succeed())
+				g.Expect(meta.IsStatusConditionTrue(tikv.Status.Conditions, v1alpha1.TiKVCondLeadersEvicted)).To(gomega.BeTrue())
+			}, 3*time.Minute, 5*time.Second)
 
 			ginkgo.By("Verifying TiKV instance eventually completes removal")
 			f.Must(waiter.WaitForObjectDeleted(ctx, f.Client, targetTiKV, waiter.LongTaskTimeout))
@@ -233,7 +236,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 			gomega.Expect(finalTiKVs).To(gomega.HaveLen(3), "Should have 3 TiKV instance after scale in")
 		})
 
-		ginkgo.It("should handle full cancellation of scale-in", func(ctx context.Context) {
+		ginkgo.PIt("should handle full cancellation of scale-in", func(ctx context.Context) {
 			// Slow down the speed of data migration for testing
 			pdg := f.MustCreatePD(ctx, func(pdg *runtime.PDGroup) {
 				pdg.Spec.Template.Spec.Config = `[schedule]
@@ -288,7 +291,7 @@ replica-schedule-limit = 8
 			}
 		})
 
-		ginkgo.It("should handle partial cancellation of scale-in", func(ctx context.Context) {
+		ginkgo.PIt("should handle partial cancellation of scale-in", func(ctx context.Context) {
 			// Slow down the speed of data migration for testing
 			pdg := f.MustCreatePD(ctx, func(pdg *runtime.PDGroup) {
 				pdg.Spec.Template.Spec.Config = `[schedule]
