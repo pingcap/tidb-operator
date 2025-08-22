@@ -52,6 +52,7 @@ spec:
           metadata:
             type: object
           spec:
+            description: TiDBSpec is the spec of a TiDB instance
             properties:
               cluster:
                 description: |-
@@ -83,6 +84,7 @@ spec:
                   - DisablePDDefaultReadinessProbe
                   - UsePDReadyAPI
                   - SessionTokenSigning
+                  - ClusterSubdomain
                   type: string
                 type: array
               image:
@@ -91,6 +93,22 @@ spec:
                   If tag is omitted, version will be used as the image tag.
                   Default is pingcap/tidb
                 type: string
+              keyspace:
+                description: |-
+                  Keyspace defines the keyspace of a TiDB instance
+                  Keyspace can only be set when mode is changed from StandBy to Normal
+                  If mode is Normal, it cannot be changed again
+                type: string
+              mode:
+                default: Normal
+                description: Mode defines the mode of a TiDB instance
+                enum:
+                - Normal
+                - StandBy
+                type: string
+                x-kubernetes-validations:
+                - message: mode can only be set from StandBy to Normal once
+                  rule: self != 'StandBy' || oldSelf == 'StandBy'
               overlay:
                 description: |-
                   Overlay defines a k8s native resource template patch.
@@ -8360,6 +8378,7 @@ spec:
                     x-kubernetes-int-or-string: true
                 type: object
               security:
+                description: Security defines security configs of TiDB
                 properties:
                   authToken:
                     description: |-
@@ -8567,6 +8586,8 @@ spec:
                 - message: topology is immutable
                   rule: self == oldSelf
               updateStrategy:
+                description: UpdateStrategy defines strategy when some fields are
+                  updated
                 properties:
                   config:
                     default: Restart
@@ -8662,6 +8683,14 @@ spec:
               rule: '!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes)
                 && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v,
                 v.name)))'
+            - message: keyspace cannot be set if mode is StandBy
+              rule: '!has(self.mode) || self.mode == ''Normal'' || !has(self.keyspace)
+                || self.keyspace == '''''
+            - message: keyspace can only be set once when mode is changed from StandBy
+                to Normal
+              rule: (has(oldSelf.mode) && oldSelf.mode == 'StandBy') ||  ((!has(oldSelf.keyspace)
+                && !has(self.keyspace)) || (has(oldSelf.keyspace) && has(self.keyspace)
+                && oldSelf.keyspace == self.keyspace))
           status:
             properties:
               collisionCount:

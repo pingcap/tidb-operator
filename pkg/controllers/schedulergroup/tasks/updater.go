@@ -22,9 +22,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
@@ -77,7 +79,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithMaxSurge(0).
 			WithMaxUnavailable(1).
 			WithRevision(updateRevision).
-			WithNewFactory(SchedulerNewer(obj, updateRevision)).
+			WithNewFactory(SchedulerNewer(obj, updateRevision, state.FeatureGates())).
 			WithAddHooks(
 				updater.AllocateName[*runtime.Scheduler](allocator),
 				topoPolicy,
@@ -103,7 +105,7 @@ func needVersionUpgrade(sg *v1alpha1.SchedulerGroup) bool {
 	return sg.Spec.Template.Spec.Version != sg.Status.Version && sg.Status.Version != ""
 }
 
-func SchedulerNewer(sg *v1alpha1.SchedulerGroup, rev string) updater.NewFactory[*runtime.Scheduler] {
+func SchedulerNewer(sg *v1alpha1.SchedulerGroup, rev string, fg features.Gates) updater.NewFactory[*runtime.Scheduler] {
 	return updater.NewFunc[*runtime.Scheduler](func() *runtime.Scheduler {
 		spec := sg.Spec.Template.Spec.DeepCopy()
 
@@ -123,6 +125,9 @@ func SchedulerNewer(sg *v1alpha1.SchedulerGroup, rev string) updater.NewFactory[
 				Subdomain:             HeadlessServiceName(sg.Name), // same as headless service
 				SchedulerTemplateSpec: *spec,
 			},
+		}
+		if fg.Enabled(metav1alpha1.ClusterSubdomain) {
+			scheduler.Spec.Subdomain = coreutil.ClusterSubdomain(sg.Spec.Cluster.Name)
 		}
 
 		return runtime.FromScheduler(scheduler)

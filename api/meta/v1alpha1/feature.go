@@ -18,7 +18,7 @@ package v1alpha1
 // NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
 // NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
 //
-// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning
+// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning;ClusterSubdomain
 // +enum
 type Feature string
 
@@ -73,4 +73,8 @@ const (
 	// you can specify it via `cluster.spec.security.sessionTokenSigningCertKeyPair`, with this feature enabled.
 	SessionTokenSigning      Feature      = "SessionTokenSigning"
 	SessionTokenSigningStage FeatureStage = FeatureStageAlpha
+
+	// If this feature is enabled, all instances will use a same headless svc as their subdomain
+	ClusterSubdomain      Feature      = "ClusterSubdomain"
+	ClusterSubdomainStage FeatureStage = FeatureStageAlpha
 )

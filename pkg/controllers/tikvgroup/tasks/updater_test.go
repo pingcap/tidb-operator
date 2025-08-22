@@ -27,7 +27,10 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	stateutil "github.com/pingcap/tidb-operator/pkg/state"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
@@ -256,6 +259,9 @@ func TestTaskUpdater(t *testing.T) {
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
+			s := c.state.State.(*state)
+			s.IFeatureGates = stateutil.NewFeatureGates[scope.TiKVGroup](s)
+
 			ctx := context.Background()
 			c.objs = append(c.objs, c.state.TiKVGroup(), c.state.Cluster())
 			fc := client.NewFakeClient(c.objs...)
@@ -285,7 +291,7 @@ func TestTaskUpdater(t *testing.T) {
 
 func fakeAvailableTiKV(name string, kvg *v1alpha1.TiKVGroup, rev string) *v1alpha1.TiKV {
 	return fake.FakeObj(name, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-		tikv := runtime.ToTiKV(TiKVNewer(kvg, rev).New())
+		tikv := runtime.ToTiKV(TiKVNewer(kvg, rev, features.NewFromFeatures(nil)).New())
 		tikv.Name = ""
 		tikv.Status.Conditions = append(tikv.Status.Conditions, metav1.Condition{
 			Type:   v1alpha1.CondReady,

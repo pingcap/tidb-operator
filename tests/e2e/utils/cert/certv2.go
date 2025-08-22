@@ -22,17 +22,24 @@ import (
 	"reflect"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	"github.com/pingcap/errors"
-
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/yaml"
 )
+
+// MySQLClient returns ca and certKeyPair for a mysql client
+// The input is ca and certKeyPair of the MySQL server
+func MySQLClient(clientCA, serverCertKeyPair string) (string, string) {
+	return clientCA + "-server", serverCertKeyPair + "-client"
+}
 
 // Factory is used to create all certs of a cluster
 type Factory interface {
@@ -126,15 +133,21 @@ spec:
     - server auth
     {{ if .ClientAuth }}- client auth{{ end }}
   dnsNames:
-  - "{{ .Subdomain }}-{{ .ComponentName }}"
-  - "{{ .Subdomain }}-{{ .ComponentName }}.{{ .Namespace }}"
-  - "{{ .Subdomain }}-{{ .ComponentName }}.{{ .Namespace }}.svc"
-  - "{{ .Subdomain }}-{{ .ComponentName }}-peer"
-  - "{{ .Subdomain }}-{{ .ComponentName }}-peer.{{ .Namespace }}"
-  - "{{ .Subdomain }}-{{ .ComponentName }}-peer.{{ .Namespace }}.svc"
-  - "*.{{ .Subdomain }}-{{ .ComponentName }}-peer"
-  - "*.{{ .Subdomain }}-{{ .ComponentName }}-peer.{{ .Namespace }}"
-  - "*.{{ .Subdomain }}-{{ .ComponentName }}-peer.{{ .Namespace }}.svc"
+  - "{{ .GroupName }}-{{ .ComponentName }}"
+  - "{{ .GroupName }}-{{ .ComponentName }}.{{ .Namespace }}"
+  - "{{ .GroupName }}-{{ .ComponentName }}.{{ .Namespace }}.svc"
+  - "{{ .GroupName }}-{{ .ComponentName }}-peer"
+  - "{{ .GroupName }}-{{ .ComponentName }}-peer.{{ .Namespace }}"
+  - "{{ .GroupName }}-{{ .ComponentName }}-peer.{{ .Namespace }}.svc"
+  {{- if .ClusterSubdomain }}
+  - "*.{{ .ClusterName }}-cluster"
+  - "*.{{ .ClusterName }}-cluster.{{ .Namespace }}"
+  - "*.{{ .ClusterName }}-cluster.{{ .Namespace }}.svc"
+  {{- else }}
+  - "*.{{ .GroupName }}-{{ .ComponentName }}-peer"
+  - "*.{{ .GroupName }}-{{ .ComponentName }}-peer.{{ .Namespace }}"
+  - "*.{{ .GroupName }}-{{ .ComponentName }}-peer.{{ .Namespace }}.svc"
+  {{- end }}
   ipAddresses:
   - 127.0.0.1
   - ::1
@@ -145,13 +158,15 @@ spec:
 `
 
 type certKeyPairData struct {
-	Namespace     string
-	CAIssuer      string
-	CN            string
-	Cert          string
-	Subdomain     string
-	ComponentName string
-	ClientAuth    bool
+	Namespace        string
+	CAIssuer         string
+	CN               string
+	Cert             string
+	GroupName        string
+	ComponentName    string
+	ClusterName      string
+	ClientAuth       bool
+	ClusterSubdomain bool
 }
 
 var clientCertKeyPairTmpl = `
@@ -183,20 +198,21 @@ type clientCertKeyPairData struct {
 	Cert      string
 }
 
-func registerInternalCertsForComponents[
-	S scope.GroupList[F, T, L],
-	F client.Object,
-	T runtime.Group,
-	L client.ObjectList,
-](ctx context.Context, f *factory, ns, cluster string) error {
-	gs, err := apicall.ListGroups[S](ctx, f.c, ns, cluster)
+func registerTiDBMySQLCerts(ctx context.Context, f *factory, ns, cluster string) error {
+	c, err := apicall.GetClusterByKey(ctx, f.c, ns, cluster)
+	if err != nil {
+		return err
+	}
+	fg := features.NewFromFeatures(coreutil.EnabledFeatures(c))
+
+	gs, err := apicall.ListGroups[scope.TiDBGroup](ctx, f.c, ns, cluster)
 	if err != nil {
 		return err
 	}
 	for _, g := range gs {
-		ca := coreutil.ClusterCASecretName[S](g)
-		certKeyPair := coreutil.ClusterCertKeyPairSecretName[S](g)
-		s, err := newInternalCertKeyPair(ns, certKeyPair, cluster, g.GetName(), scope.Component[S]())
+		ca := coreutil.TiDBGroupMySQLCASecretName(g)
+		certKeyPair := coreutil.TiDBGroupMySQLCertKeyPairSecretName(g)
+		s, err := newCertKeyPair(typeTiDBMySQLServer, ns, certKeyPair, cluster, g.GetName(), scope.Component[scope.TiDBGroup](), false, fg.Enabled(metav1alpha1.ClusterSubdomain))
 		if err != nil {
 			return err
 		}
@@ -204,17 +220,16 @@ func registerInternalCertsForComponents[
 			return err
 		}
 		if ca != certKeyPair {
-			s, err := newInternalCA(ns, ca, cluster)
+			as, err := newCA(typeTiDBMySQLClient, ns, ca, cluster)
 			if err != nil {
 				return err
 			}
-			if err := f.RegisterSecret(s); err != nil {
+			if err := f.RegisterSecret(as); err != nil {
 				return err
 			}
 		}
-		clientCA := coreutil.ClientCASecretName[S](g)
-		clientCertKeyPair := coreutil.ClientCertKeyPairSecretName[S](g)
-		cs, err := newInternalClientCertKeyPair(ns, clientCertKeyPair, cluster)
+		clientCA, clientCertKeyPair := MySQLClient(ca, certKeyPair)
+		cs, err := newClientCertKeyPair(typeTiDBMySQLClient, ns, clientCertKeyPair, cluster)
 		if err != nil {
 			return err
 		}
@@ -222,11 +237,69 @@ func registerInternalCertsForComponents[
 			return err
 		}
 		if clientCA != clientCertKeyPair {
-			cs, err := newInternalCA(ns, clientCA, cluster)
+			cas, err := newCA(typeTiDBMySQLServer, ns, clientCA, cluster)
 			if err != nil {
 				return err
 			}
-			if err := f.RegisterSecret(cs); err != nil {
+			if err := f.RegisterSecret(cas); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func registerCertsForComponents[
+	S scope.GroupList[F, T, L],
+	F client.Object,
+	T runtime.Group,
+	L client.ObjectList,
+](ctx context.Context, f *factory, ns, cluster string) error {
+	c, err := apicall.GetClusterByKey(ctx, f.c, ns, cluster)
+	if err != nil {
+		return err
+	}
+	fg := features.NewFromFeatures(coreutil.EnabledFeatures(c))
+
+	gs, err := apicall.ListGroups[S](ctx, f.c, ns, cluster)
+	if err != nil {
+		return err
+	}
+	for _, g := range gs {
+		ca := coreutil.ClusterCASecretName[S](g)
+		certKeyPair := coreutil.ClusterCertKeyPairSecretName[S](g)
+		s, err := newCertKeyPair(typeCluster, ns, certKeyPair, cluster, g.GetName(), scope.Component[S](), true, fg.Enabled(metav1alpha1.ClusterSubdomain))
+		if err != nil {
+			return err
+		}
+		if err := f.RegisterSecret(s); err != nil {
+			return err
+		}
+		if ca != certKeyPair {
+			as, err := newCA(typeCluster, ns, ca, cluster)
+			if err != nil {
+				return err
+			}
+			if err := f.RegisterSecret(as); err != nil {
+				return err
+			}
+		}
+		clientCA := coreutil.ClientCASecretName[S](g)
+		clientCertKeyPair := coreutil.ClientCertKeyPairSecretName[S](g)
+		cs, err := newClientCertKeyPair(typeCluster, ns, clientCertKeyPair, cluster)
+		if err != nil {
+			return err
+		}
+		if err := f.RegisterSecret(cs); err != nil {
+			return err
+		}
+		if clientCA != clientCertKeyPair {
+			acs, err := newCA(typeCluster, ns, clientCA, cluster)
+			if err != nil {
+				return err
+			}
+			if err := f.RegisterSecret(acs); err != nil {
 				return err
 			}
 		}
@@ -240,16 +313,20 @@ type factory struct {
 	c       client.Client
 }
 
-func (f *factory) registerInternalCerts(ctx context.Context, ns, cluster string) error {
+func (f *factory) registerCerts(ctx context.Context, ns, cluster string) error {
+	if err := f.registerCAIssuer(ns, cluster); err != nil {
+		return err
+	}
 	fs := []func(ctx context.Context, f *factory, ns, cluster string) error{
-		registerInternalCertsForComponents[scope.PDGroup],
-		registerInternalCertsForComponents[scope.TSOGroup],
-		registerInternalCertsForComponents[scope.SchedulerGroup],
-		registerInternalCertsForComponents[scope.TiDBGroup],
-		registerInternalCertsForComponents[scope.TiKVGroup],
-		registerInternalCertsForComponents[scope.TiFlashGroup],
-		registerInternalCertsForComponents[scope.TiCDCGroup],
-		registerInternalCertsForComponents[scope.TiProxyGroup],
+		registerCertsForComponents[scope.PDGroup],
+		registerCertsForComponents[scope.TSOGroup],
+		registerCertsForComponents[scope.SchedulerGroup],
+		registerCertsForComponents[scope.TiDBGroup],
+		registerCertsForComponents[scope.TiKVGroup],
+		registerCertsForComponents[scope.TiFlashGroup],
+		registerCertsForComponents[scope.TiCDCGroup],
+		registerCertsForComponents[scope.TiProxyGroup],
+		registerTiDBMySQLCerts,
 	}
 
 	for _, fn := range fs {
@@ -280,16 +357,7 @@ func (f *factory) Install(ctx context.Context, ns, cluster string) error {
 		}
 	}
 
-	// create ca issuer
-	s, err := newInternalTLSCAIssuer(ns, cluster)
-	if err != nil {
-		return err
-	}
-	if err := f.RegisterSecret(s); err != nil {
-		return err
-	}
-
-	if err := f.registerInternalCerts(ctx, ns, cluster); err != nil {
+	if err := f.registerCerts(ctx, ns, cluster); err != nil {
 		return err
 	}
 
@@ -328,18 +396,47 @@ func (f *factory) RegisterSecret(s *Secret) error {
 	return fmt.Errorf("secret is conflict: %v, %v", s.Keys, found.Keys)
 }
 
+func (f *factory) registerCAIssuer(ns, cluster string) error {
+	allTypes := []string{
+		typeCluster,
+		typeTiDBMySQLServer,
+		typeTiDBMySQLClient,
+	}
+	for _, typ := range allTypes {
+		s, err := newCAIssuer(typ, ns, cluster)
+		if err != nil {
+			return err
+		}
+		if err := f.RegisterSecret(s); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 type Secret struct {
 	Name string
 	Keys []string
 	Objs []*unstructured.Unstructured
 }
 
+const (
+	typeCluster         = "cluster"
+	typeTiDBMySQLServer = "tidb-mysql"
+	typeTiDBMySQLClient = "tidb-mysql-client"
+)
+
 func (c *Secret) Equal(ac *Secret) bool {
 	return reflect.DeepEqual(c.Keys, ac.Keys)
 }
 
-func newInternalTLSCAIssuer(ns, cluster string) (*Secret, error) {
-	name := cluster + managedSuffix
+func newCAIssuerName(cluster, typ string) string {
+	return cluster + "-" + typ + managedSuffix
+}
+
+func newCAIssuer(typ, ns, cluster string) (*Secret, error) {
+	name := newCAIssuerName(cluster, typ)
 	objs, err := newCertObjs(caIssuerTmpl, &caIssuerData{
 		Namespace: ns,
 		CAIssuer:  name,
@@ -361,18 +458,20 @@ func newInternalTLSCAIssuer(ns, cluster string) (*Secret, error) {
 
 const managedSuffix = "-managed"
 
-func newInternalCertKeyPair(ns, certKeyPair, cluster, subdomain, component string) (*Secret, error) {
+func newCertKeyPair(typ, ns, certKeyPair, cluster, groupName, component string, clientAuth bool, enableClusterSubdomain bool) (*Secret, error) {
 	if strings.HasSuffix(certKeyPair, managedSuffix) {
 		return nil, fmt.Errorf("secret with '%s' suffix is used", managedSuffix)
 	}
 	objs, err := newCertObjs(certKeyPairTmpl, &certKeyPairData{
-		Namespace:     ns,
-		CAIssuer:      cluster + managedSuffix,
-		Cert:          certKeyPair,
-		Subdomain:     subdomain,
-		ComponentName: component,
-		ClientAuth:    true,
-		CN:            "PingCAP",
+		Namespace:        ns,
+		CAIssuer:         newCAIssuerName(cluster, typ),
+		Cert:             certKeyPair,
+		ClusterName:      cluster,
+		GroupName:        groupName,
+		ComponentName:    component,
+		ClientAuth:       clientAuth,
+		CN:               "PingCAP",
+		ClusterSubdomain: enableClusterSubdomain,
 	})
 	if err != nil {
 		return nil, err
@@ -383,20 +482,20 @@ func newInternalCertKeyPair(ns, certKeyPair, cluster, subdomain, component strin
 		Keys: []string{
 			certKeyPair,
 			"internalCertKeyPair",
-			subdomain,
+			groupName,
 			component,
 		},
 		Objs: objs,
 	}, nil
 }
 
-func newInternalCA(ns, ca, cluster string) (*Secret, error) {
+func newCA(typ, ns, ca, cluster string) (*Secret, error) {
 	if strings.HasSuffix(ca, managedSuffix) {
 		return nil, fmt.Errorf("secret with '%s' suffix is used", managedSuffix)
 	}
 	objs, err := newCertObjs(caTmpl, &caData{
 		Namespace: ns,
-		CAIssuer:  cluster + managedSuffix,
+		CAIssuer:  newCAIssuerName(cluster, typ),
 		CA:        ca,
 	})
 	if err != nil {
@@ -407,19 +506,19 @@ func newInternalCA(ns, ca, cluster string) (*Secret, error) {
 		Name: ca,
 		Keys: []string{
 			ca,
-			"internalCA",
+			"ca",
 		},
 		Objs: objs,
 	}, nil
 }
 
-func newInternalClientCertKeyPair(ns, certKeyPair, cluster string) (*Secret, error) {
+func newClientCertKeyPair(typ, ns, certKeyPair, cluster string) (*Secret, error) {
 	if strings.HasSuffix(certKeyPair, managedSuffix) {
 		return nil, fmt.Errorf("secret with '%s' suffix is used", managedSuffix)
 	}
 	objs, err := newCertObjs(clientCertKeyPairTmpl, &clientCertKeyPairData{
 		Namespace: ns,
-		CAIssuer:  cluster + managedSuffix,
+		CAIssuer:  newCAIssuerName(cluster, typ),
 		Cert:      certKeyPair,
 		CN:        "PingCAP",
 	})

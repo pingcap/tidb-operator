@@ -55,11 +55,15 @@ func GetCluster[
 	F client.Object,
 	T runtime.Object,
 ](ctx context.Context, c client.Client, obj F) (*v1alpha1.Cluster, error) {
+	return GetClusterByKey(ctx, c, obj.GetNamespace(), coreutil.Cluster[S](obj))
+}
+
+func GetClusterByKey(ctx context.Context, c client.Client, ns, name string) (*v1alpha1.Cluster, error) {
 	cluster := &v1alpha1.Cluster{}
 
 	key := types.NamespacedName{
-		Namespace: obj.GetNamespace(),
-		Name:      coreutil.Cluster[S](obj),
+		Namespace: ns,
+		Name:      name,
 	}
 	if err := c.Get(ctx, key, cluster); err != nil {
 		return nil, err

@@ -23,9 +23,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
@@ -79,7 +81,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithMaxSurge(0).
 			WithMaxUnavailable(1).
 			WithRevision(updateRevision).
-			WithNewFactory(PDNewer(pdg, updateRevision)).
+			WithNewFactory(PDNewer(pdg, updateRevision, state.FeatureGates())).
 			WithAddHooks(
 				updater.AllocateName[*runtime.PD](allocator),
 				topoPolicy,
@@ -109,7 +111,7 @@ func needVersionUpgrade(pdg *v1alpha1.PDGroup) bool {
 	return pdg.Spec.Template.Spec.Version != pdg.Status.Version && pdg.Status.Version != ""
 }
 
-func PDNewer(pdg *v1alpha1.PDGroup, rev string) updater.NewFactory[*runtime.PD] {
+func PDNewer(pdg *v1alpha1.PDGroup, rev string, fg features.Gates) updater.NewFactory[*runtime.PD] {
 	return updater.NewFunc[*runtime.PD](func() *runtime.PD {
 		spec := pdg.Spec.Template.Spec.DeepCopy()
 
@@ -141,6 +143,9 @@ func PDNewer(pdg *v1alpha1.PDGroup, rev string) updater.NewFactory[*runtime.PD] 
 				Subdomain:      HeadlessServiceName(pdg.Name),
 				PDTemplateSpec: *spec,
 			},
+		}
+		if fg.Enabled(metav1alpha1.ClusterSubdomain) {
+			peer.Spec.Subdomain = coreutil.ClusterSubdomain(pdg.Spec.Cluster.Name)
 		}
 
 		peer.Annotations = maputil.MergeTo(peer.Annotations, bootAnno)

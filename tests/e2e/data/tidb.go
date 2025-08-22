@@ -83,6 +83,28 @@ func WithTLS() GroupPatch[*runtime.TiDBGroup] {
 	}
 }
 
+func WithMySQLTLS(ca, certKeyPair string) GroupPatch[*runtime.TiDBGroup] {
+	return func(obj *runtime.TiDBGroup) {
+		if obj.Spec.Template.Spec.Security == nil {
+			obj.Spec.Template.Spec.Security = &v1alpha1.TiDBSecurity{}
+		}
+
+		obj.Spec.Template.Spec.Security.TLS = &v1alpha1.TiDBTLS{
+			MySQL: &v1alpha1.TLS{
+				Enabled: true,
+				TLSSecret: v1alpha1.TLSSecret{
+					CA: &v1alpha1.CAReference{
+						Name: ca,
+					},
+					CertKeyPair: &v1alpha1.CertKeyPairReference{
+						Name: certKeyPair,
+					},
+				},
+			},
+		}
+	}
+}
+
 func WithHotReloadPolicy() GroupPatch[*runtime.TiDBGroup] {
 	return func(obj *runtime.TiDBGroup) {
 		obj.Spec.Template.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyHotReload

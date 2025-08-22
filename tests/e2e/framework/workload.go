@@ -168,6 +168,7 @@ func (w *Workload) DeferPrintLogs() {
 				w.f.Must(w.f.Client.List(ctx, &podList, client.InNamespace(w.f.Namespace.Name), client.MatchingLabelsSelector{
 					Selector: s,
 				}))
+
 				gomega.Expect(len(podList.Items)).To(gomega.Equal(1))
 
 				pod := &podList.Items[0]
