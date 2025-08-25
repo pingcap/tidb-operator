@@ -141,7 +141,7 @@ type TiDBTemplate struct {
 
 // TiDBTemplateSpec can only be specified in TiDBGroup.
 // +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes) && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in volumes"
-// +kubebuilder:validation:XValidation:rule="!has(self.mode) || self.mode == 'Normal' || !has(self.keyspace) || self.keyspace == ''",message="keyspace cannot be set if mode is StandBy"
+// +kubebuilder:validation:XValidation:rule="!has(self.mode) || self.mode == 'Normal' || !has(self.keyspace) || self.keyspace.size() == 0",message="keyspace cannot be set if mode is StandBy"
 // +kubebuilder:validation:XValidation:rule="(has(oldSelf.mode) && oldSelf.mode == 'StandBy') ||  ((!has(oldSelf.keyspace) && !has(self.keyspace)) || (has(oldSelf.keyspace) && has(self.keyspace) && oldSelf.keyspace == self.keyspace))",message="keyspace can only be set once when mode is changed from StandBy to Normal"
 type TiDBTemplateSpec struct {
 	// Version must be a semantic version.
@@ -214,10 +214,21 @@ type TiDBSecurity struct {
 	TLS *TiDBTLS `json:"tls,omitempty"`
 
 	// Whether enable `tidb_auth_token` authentication method.
-	// To enable this feature, a K8s secret named `<groupName>-tidb-auth-token-jwks-secret` must be created to store the JWKs.
+	// To enable this feature, a secret named `<groupName>-tidb-auth-token-jwks-secret` must be created to store the JWKs.
 	// ref: https://docs.pingcap.com/tidb/stable/security-compatibility-with-mysql#tidb_auth_token
 	// Defaults to false.
 	AuthToken *TiDBAuthToken `json:"authToken,omitempty"`
+
+	// SEM defines the security enhancement mode config of TiDB
+	// If this field is set, security.enable-sem = true will be set automatically
+	// Users still can disable sem in config file explicitly
+	SEM *SEM `json:"sem,omitempty"`
+}
+
+type SEM struct {
+	// Config defines the configmap reference of the sem config
+	// By default, we use the 'sem.json' as the file key of configmap
+	Config corev1.LocalObjectReference `json:"config"`
 }
 
 type TiDBServer struct {

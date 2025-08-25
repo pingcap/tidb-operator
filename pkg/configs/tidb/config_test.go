@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
@@ -45,6 +46,8 @@ func TestValidate(t *testing.T) {
 			ClusterSSLCert: "/path/to/cluster-cert",
 			ClusterSSLKey:  "/path/to/cluster-key",
 			AuthTokenJwks:  "/path/to/auth-token-jwks",
+			SEMConfig:      "/xxx",
+			EnableSEM:      ptr.To(true),
 		},
 		Log: Log{
 			SlowQueryFile: "/path/to/slow-query-file",
@@ -66,9 +69,11 @@ func TestValidate(t *testing.T) {
 	assert.Contains(t, err.Error(), "security.cluster-ssl-cert")
 	assert.Contains(t, err.Error(), "security.cluster-ssl-key")
 	assert.Contains(t, err.Error(), "security.auth-token-jwks")
+	assert.Contains(t, err.Error(), "security.sem-config")
 	assert.Contains(t, err.Error(), "log.slow-query-file")
 	assert.Contains(t, err.Error(), "initialize-sql-file")
 	assert.Contains(t, err.Error(), "labels")
+	assert.NotContains(t, err.Error(), "security.enable-sem")
 }
 
 func TestOverlay(t *testing.T) {
@@ -101,6 +106,11 @@ func TestOverlay(t *testing.T) {
 							Name: "auth-token-jwks",
 						},
 					},
+					SEM: &v1alpha1.SEM{
+						Config: corev1.LocalObjectReference{
+							Name: "sem-config",
+						},
+					},
 					TLS: &v1alpha1.TiDBTLS{
 						MySQL: &v1alpha1.TLS{
 							Enabled: true,
@@ -125,6 +135,8 @@ func TestOverlay(t *testing.T) {
 	assert.Equal(t, "/var/lib/tidb-tls/tls.crt", cfg.Security.ClusterSSLCert)
 	assert.Equal(t, "/var/lib/tidb-tls/tls.key", cfg.Security.ClusterSSLKey)
 	assert.Equal(t, "/var/lib/tidb-auth-token/tidb_auth_token_jwks.json", cfg.Security.AuthTokenJwks)
+	assert.Equal(t, "/etc/sem/sem.json", cfg.Security.SEMConfig)
+	assert.True(t, *cfg.Security.EnableSEM)
 	assert.Equal(t, "/var/log/tidb/slowlog", cfg.Log.SlowQueryFile)
 	assert.Equal(t, "/etc/tidb-bootstrap/bootstrap.sql", cfg.InitializeSQLFile)
 	assert.Empty(t, cfg.Security.SessionTokenSigningCert)
@@ -153,4 +165,14 @@ func TestOverlay(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "/var/lib/tidb-session-token-signing-tls/tls.crt", cfg3.Security.SessionTokenSigningCert)
 	assert.Equal(t, "/var/lib/tidb-session-token-signing-tls/tls.key", cfg3.Security.SessionTokenSigningKey)
+
+	// ensure sem can be disabled in config file
+	cfg4 := &Config{
+		Security: Security{
+			EnableSEM: ptr.To(false),
+		},
+	}
+	err = cfg4.Overlay(cluster, tidb, features.NewFromFeatures(nil))
+	require.NoError(t, err)
+	assert.False(t, *cfg4.Security.EnableSEM)
 }

@@ -19,6 +19,7 @@ import (
 	"path"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
@@ -64,6 +65,9 @@ type Security struct {
 	// https://docs.pingcap.com/tidb/stable/tidb-configuration-file/#session-token-signing-cert-new-in-v640
 	SessionTokenSigningKey  string `toml:"session-token-signing-key"`
 	SessionTokenSigningCert string `toml:"session-token-signing-cert"`
+
+	SEMConfig string `toml:"sem-config,omitempty"`
+	EnableSEM *bool  `toml:"enable-sem,omitempty"`
 }
 
 type Log struct {
@@ -109,6 +113,14 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, fg feat
 		c.Security.AuthTokenJwks = path.Join(v1alpha1.DirPathTiDBAuthToken, v1alpha1.FileNameTiDBAuthTokenJWKS)
 	}
 
+	if coreutil.IsSEMEnabled(tidb) {
+		c.Security.SEMConfig = path.Join(v1alpha1.DirPathSEMConfig, v1alpha1.FileNameSEMConfig)
+		// set enable sem if it's not set by users
+		if c.Security.EnableSEM == nil {
+			c.Security.EnableSEM = ptr.To(true)
+		}
+	}
+
 	return nil
 }
 
@@ -149,6 +161,9 @@ func (c *Config) Validate(separateSlowLog bool) error {
 	}
 	if c.Security.AuthTokenJwks != "" {
 		fields = append(fields, "security.auth-token-jwks")
+	}
+	if c.Security.SEMConfig != "" {
+		fields = append(fields, "security.sem-config")
 	}
 
 	if separateSlowLog && c.Log.SlowQueryFile != "" {

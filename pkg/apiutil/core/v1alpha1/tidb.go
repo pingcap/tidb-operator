@@ -195,6 +195,17 @@ func AuthTokenJWKSSecretName(db *v1alpha1.TiDB) string {
 	return ""
 }
 
+func IsSEMEnabled(db *v1alpha1.TiDB) bool {
+	return db.Spec.Security != nil && db.Spec.Security.SEM != nil
+}
+
+func SEMConfigMapName(db *v1alpha1.TiDB) string {
+	if IsSEMEnabled(db) {
+		return db.Spec.Security.SEM.Config.Name
+	}
+	return ""
+}
+
 func IsSeparateSlowLogEnabled(db *v1alpha1.TiDB) bool {
 	return db.Spec.SlowLog != nil
 }
