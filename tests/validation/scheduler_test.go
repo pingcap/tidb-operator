@@ -17,8 +17,6 @@ package validation
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -29,7 +27,7 @@ func TestScheduler(t *testing.T) {
 	)
 	cases = append(cases, transferSchedulerCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
 	cases = append(cases, transferSchedulerCases(t, OverlayVolumeClaims(false), "spec")...)
-	cases = append(cases, transferSchedulerCases(t, VolumeAttributesClassNameValidation(), "spec")...)
+	cases = append(cases, transferSchedulerCases(t, VolumeAttributesClassNameValidation(), "spec", "volumes")...)
 	cases = append(cases, transferSchedulerCases(t, Version(), "spec", "version")...)
 	cases = append(cases, transferSchedulerCases(t, NameLength(instanceNameLengthLimit), "metadata", "name")...)
 	Validate(t, "crd/core.pingcap.com_schedulers.yaml", cases)
@@ -60,13 +58,7 @@ func transferSchedulerCases(t *testing.T, cases []Case, fields ...string) []Case
 		c := &cases[i]
 
 		current := basicScheduler()
-		if c.current == nil {
-			unstructured.RemoveNestedField(current, fields...)
-		} else {
-			require.NoError(t, unstructured.SetNestedField(current, c.current, fields...))
-		}
-
-		c.current = current
+		c.current = Patch(t, c.mode, current, c.current, fields...)
 
 		if c.isCreate {
 			c.old = nil
@@ -74,13 +66,7 @@ func transferSchedulerCases(t *testing.T, cases []Case, fields ...string) []Case
 		}
 
 		old := basicScheduler()
-		if c.old == nil {
-			unstructured.RemoveNestedField(old, fields...)
-		} else {
-			require.NoError(t, unstructured.SetNestedField(old, c.old, fields...))
-		}
-
-		c.old = old
+		c.old = Patch(t, c.mode, old, c.old, fields...)
 	}
 
 	return cases

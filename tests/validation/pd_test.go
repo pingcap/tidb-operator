@@ -31,7 +31,7 @@ func TestPD(t *testing.T) {
 	cases = append(cases, transferPDCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
 	cases = append(cases, transferPDCases(t, OverlayVolumeClaims(true), "spec")...)
 	cases = append(cases, transferPDCases(t, DataVolumeRequired(), "spec")...)
-	cases = append(cases, transferPDCases(t, VolumeAttributesClassNameValidation(), "spec")...)
+	cases = append(cases, transferPDCases(t, VolumeAttributesClassNameValidation(), "spec", "volumes")...)
 	cases = append(cases, transferPDCases(t, Version(), "spec", "version")...)
 	cases = append(cases, transferPDCases(t, NameLength(instanceNameLengthLimit), "metadata", "name")...)
 	Validate(t, "crd/core.pingcap.com_pds.yaml", cases)
@@ -303,13 +303,7 @@ func transferPDGroupCases(t *testing.T, cases []Case, fields ...string) []Case {
 		c := &cases[i]
 
 		current := basicPDGroup()
-		if c.current == nil {
-			unstructured.RemoveNestedField(current, fields...)
-		} else {
-			require.NoError(t, unstructured.SetNestedField(current, c.current, fields...))
-		}
-
-		c.current = current
+		c.current = Patch(t, c.mode, current, c.current, fields...)
 
 		if c.isCreate {
 			c.old = nil
@@ -317,13 +311,7 @@ func transferPDGroupCases(t *testing.T, cases []Case, fields ...string) []Case {
 		}
 
 		old := basicPDGroup()
-		if c.old == nil {
-			unstructured.RemoveNestedField(old, fields...)
-		} else {
-			require.NoError(t, unstructured.SetNestedField(old, c.old, fields...))
-		}
-
-		c.old = old
+		c.old = Patch(t, c.mode, old, c.old, fields...)
 	}
 
 	return cases
@@ -334,13 +322,7 @@ func transferPDCases(t *testing.T, cases []Case, fields ...string) []Case {
 		c := &cases[i]
 
 		current := basicPD()
-		if c.current == nil {
-			unstructured.RemoveNestedField(current, fields...)
-		} else {
-			require.NoError(t, unstructured.SetNestedField(current, c.current, fields...))
-		}
-
-		c.current = current
+		c.current = Patch(t, c.mode, current, c.current, fields...)
 
 		if c.isCreate {
 			c.old = nil
@@ -348,13 +330,7 @@ func transferPDCases(t *testing.T, cases []Case, fields ...string) []Case {
 		}
 
 		old := basicPD()
-		if c.old == nil {
-			unstructured.RemoveNestedField(old, fields...)
-		} else {
-			require.NoError(t, unstructured.SetNestedField(old, c.old, fields...))
-		}
-
-		c.old = old
+		c.old = Patch(t, c.mode, old, c.old, fields...)
 	}
 
 	return cases
