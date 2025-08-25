@@ -168,6 +168,10 @@ spec:
                             - name
                             - storage
                             type: object
+                            x-kubernetes-validations:
+                            - message: VolumeAttributesClassName cannot be changed
+                                from non-nil to nil
+                              rule: '!has(oldSelf.volumeAttributesClassName) || has(self.volumeAttributesClassName)'
                           type: array
                           x-kubernetes-list-map-keys:
                           - name

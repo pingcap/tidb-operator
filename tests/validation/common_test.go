@@ -788,6 +788,96 @@ func DataVolumeRequired() []Case {
 	return cases
 }
 
+func VolumeAttributesClassNameValidation() []Case {
+	errMsg := "spec.volumes[0]: Invalid value: \"object\": VolumeAttributesClassName cannot be changed from non-nil to nil"
+
+	cases := []Case{
+		{
+			desc:     "create with nil volumeAttributesClassName is ok",
+			isCreate: true,
+			current: []any{
+				map[string]any{
+					"name":    "data",
+					"mounts":  []any{map[string]any{"type": "data"}},
+					"storage": "20Gi",
+				},
+			},
+		},
+		{
+			desc:     "create with volumeAttributesClassName is ok",
+			isCreate: true,
+			current: []any{
+				map[string]any{
+					"name":                      "data",
+					"mounts":                    []any{map[string]any{"type": "data"}},
+					"storage":                   "20Gi",
+					"volumeAttributesClassName": "test-class",
+				},
+			},
+		},
+		{
+			desc:     "update from nil to non-nil volumeAttributesClassName is ok",
+			isCreate: false,
+			old: []any{
+				map[string]any{
+					"name":    "data",
+					"mounts":  []any{map[string]any{"type": "data"}},
+					"storage": "20Gi",
+				},
+			},
+			current: []any{
+				map[string]any{
+					"name":                      "data",
+					"mounts":                    []any{map[string]any{"type": "data"}},
+					"storage":                   "20Gi",
+					"volumeAttributesClassName": "test-class",
+				},
+			},
+		},
+		{
+			desc:     "update from non-nil to different non-nil volumeAttributesClassName is ok",
+			isCreate: false,
+			old: []any{
+				map[string]any{
+					"name":                      "data",
+					"mounts":                    []any{map[string]any{"type": "data"}},
+					"storage":                   "20Gi",
+					"volumeAttributesClassName": "old-class",
+				},
+			},
+			current: []any{
+				map[string]any{
+					"name":                      "data",
+					"mounts":                    []any{map[string]any{"type": "data"}},
+					"storage":                   "20Gi",
+					"volumeAttributesClassName": "new-class",
+				},
+			},
+		},
+		{
+			desc:     "update from non-nil to nil volumeAttributesClassName should fail",
+			isCreate: false,
+			old: []any{
+				map[string]any{
+					"name":                      "data",
+					"mounts":                    []any{map[string]any{"type": "data"}},
+					"storage":                   "20Gi",
+					"volumeAttributesClassName": "test-class",
+				},
+			},
+			current: []any{
+				map[string]any{
+					"name":    "data",
+					"mounts":  []any{map[string]any{"type": "data"}},
+					"storage": "20Gi",
+				},
+			},
+			wantErrs: []string{errMsg},
+		},
+	}
+	return cases
+}
+
 func Version() []Case {
 	// Valid semantic versions
 	validVersions := []string{
