@@ -146,18 +146,19 @@ You can see logs of operator by following commands
 make logs/operator
 ```
 
-And if you have some changes but just want to update operator, you can
+And if you have some changes but just want to update operator, you can use the fast development build system:
 
 ```sh
-make push && make reload/operator
+make DEV_MODE=true push/tidb-operator && make reload/operator
 ```
+
+**Development Build System**: The `DEV_MODE=true` option enables optimized builds for rapid iteration during development. It skips Go module downloads and compilation by using pre-compiled local binaries, reducing build time from minutes to ~2 seconds.
 
 You can also deploy and re-deploy manifests by
 
 ```sh
 make deploy
 ```
-
 
 ### Step 5: Keep your branch in sync
 
