@@ -279,10 +279,18 @@ func (in *$.|pub$) ClientInsecureSkipTLSVerify() bool {
 func (in *$.|pub$) IsOffline() bool {
 	return in.Spec.Offline
 }
+
+func (in *$.|pub$) IsStore() bool {
+	return true
+}
 `, t)
 	} else {
 		sw.Do(`
 func (in *$.|pub$) IsOffline() bool {
+	return false
+}
+
+func (in *$.|pub$) IsStore() bool {
 	return false
 }
 `, t)

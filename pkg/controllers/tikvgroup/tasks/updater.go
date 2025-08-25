@@ -39,9 +39,9 @@ const (
 	defaultUpdateWaitTime = time.Second * 30
 )
 
-// TaskUpdater is a task to scale or update PD when spec of TiKVGroup is changed.
+// TaskUpdater is a task to scale or update TiKV instances when spec of TiKVGroup is changed.
 func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.TiKVGroup, *v1alpha1.TiKV]) task.Task {
-	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
+	return task.NameTaskFunc("TiKVGroupUpdater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		kvg := state.TiKVGroup()
 
@@ -124,6 +124,7 @@ func TiKVNewer(kvg *v1alpha1.TiKVGroup, rev string, fg features.Gates) updater.N
 				Features:         kvg.Spec.Features,
 				Subdomain:        HeadlessServiceName(kvg.Name),
 				TiKVTemplateSpec: *spec,
+				Offline:          false,
 			},
 		}
 		if fg.Enabled(metav1alpha1.ClusterSubdomain) {

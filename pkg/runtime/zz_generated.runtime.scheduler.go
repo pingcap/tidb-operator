@@ -214,6 +214,10 @@ func (in *Scheduler) IsOffline() bool {
 	return false
 }
 
+func (in *Scheduler) IsStore() bool {
+	return false
+}
+
 type (
 	SchedulerGroup v1alpha1.SchedulerGroup
 )

@@ -114,7 +114,7 @@ gengo: bin/mockgen
 license: bin/license-eye
 	$(LICENSE_EYE) -c .github/licenserc.yaml header fix
 
-ALL_GEN = tidy codegen crd gengo overlaygen runtimegen doc
+ALL_GEN = tidy codegen crd runtimegen gengo overlaygen doc
 .PHONY: generate
 generate: $(ALL_GEN) license
 

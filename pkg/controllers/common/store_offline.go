@@ -287,12 +287,23 @@ func cancelOfflineOperation(
 	}
 
 	if state.StoreNotExists() {
-		updateOfflinedCondition(state, store, newOfflinedCondition(
-			v1alpha1.ReasonOfflineCompleted,
-			"Store does not exist, offline operation completed",
-			metav1.ConditionTrue,
-		))
-		return task.Complete().With("store does not exist, offline operation completed")
+		// For new instances that haven't registered with PD yet,
+		// we should NOT mark them as offline completed.
+		// Only mark as completed if there was a previous offline condition.
+		condition := runtime.GetOfflineCondition(store)
+		if condition != nil {
+			// There was a previous offline operation, mark as completed
+			updateOfflinedCondition(state, store, newOfflinedCondition(
+				v1alpha1.ReasonOfflineCompleted,
+				"Store does not exist, offline operation completed",
+				metav1.ConditionTrue,
+			))
+			return task.Complete().With("store does not exist, offline operation completed")
+		}
+		// No previous condition and store doesn't exist - likely a new instance
+		// Just return without setting any condition
+		logger.Info("Store does not exist in PD and no previous offline condition, likely a new instance")
+		return task.Complete().With("store does not exist in PD, no action needed")
 	}
 
 	storeID := state.GetStoreID()

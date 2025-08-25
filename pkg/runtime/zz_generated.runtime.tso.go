@@ -214,6 +214,10 @@ func (in *TSO) IsOffline() bool {
 	return false
 }
 
+func (in *TSO) IsStore() bool {
+	return false
+}
+
 type (
 	TSOGroup v1alpha1.TSOGroup
 )

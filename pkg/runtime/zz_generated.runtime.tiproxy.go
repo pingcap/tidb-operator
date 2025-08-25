@@ -214,6 +214,10 @@ func (in *TiProxy) IsOffline() bool {
 	return false
 }
 
+func (in *TiProxy) IsStore() bool {
+	return false
+}
+
 type (
 	TiProxyGroup v1alpha1.TiProxyGroup
 )

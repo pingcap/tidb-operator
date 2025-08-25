@@ -448,6 +448,31 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 			expectedResult:    task.SFail,
 			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionTrue, Reason: "UnknownReason"},
 		},
+		// Cases from TestCancelOfflineOperationWithNewInstance
+		{
+			name: "new instance without PD registration should not get offline condition",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, false, nil, nil)
+			},
+			contextBuilder:    newContext("").StoreExists(false),
+			expectedCondition: nil,
+		},
+		{
+			name: "instance with previous offline condition and no PD registration should be marked completed",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, false, conditionsFromSingle(newOfflinedCondition(v1alpha1.ReasonOfflineProcessing, "Previous offline operation", metav1.ConditionFalse)), nil)
+			},
+			contextBuilder:    newContext("").StoreExists(false),
+			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.ReasonOfflineCompleted},
+		},
+		{
+			name: "instance with PD registration should proceed normally",
+			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
+				return createMockInstance(ctrl, false, nil, nil)
+			},
+			contextBuilder:    newContext("store-123"),
+			expectedCondition: nil,
+		},
 	}
 
 	for _, tt := range tests {

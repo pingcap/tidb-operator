@@ -45,6 +45,10 @@ type Instance interface {
 	PodOverlay() *v1alpha1.PodOverlay
 
 	Subdomain() string
+
+	// IsStore indicates whether the instance is a store.
+	// For TiKV and TiFlash, it returns true, otherwise it returns false.
+	IsStore() bool
 }
 
 type InstanceT[T InstanceSet] interface {
