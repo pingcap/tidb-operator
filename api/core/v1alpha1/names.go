@@ -29,6 +29,8 @@ const (
 	// VolumeNameTiDBSlowLogDefault defines default volume name of tidb slowlog
 	// Users may claim another volume for tidb slowlog and the default one will be removed
 	VolumeNameTiDBSlowLogDefault = meta.NamePrefix + "slowlog"
+	// VolumeNameSEM is the volume name for tidb sem config
+	VolumeNameSEM = meta.NamePrefix + "sem"
 
 	// TLS
 	//
@@ -99,6 +101,8 @@ const (
 	DirPathTiDBAuthToken = "/var/lib/tidb-auth-token" // #nosec
 	// Default dir path of tidb slowlog
 	DirPathTiDBSlowLogDefault = "/var/log/tidb"
+	// Dir path of sem config
+	DirPathSEMConfig = "/etc/sem"
 
 	// TLS
 	//
@@ -137,6 +141,8 @@ const (
 	FileNameTiDBAuthTokenJWKS = "tidb_auth_token_jwks.json" // #nosec
 	// FileNameTiDBSlowLog defines default file name of tidb slowlog
 	FileNameTiDBSlowLog = "slowlog"
+	// FileNameSEMConfig defines default file name of tidb sem config
+	FileNameSEMConfig = "sem.json"
 )
 
 // All config map keys
