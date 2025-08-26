@@ -95,19 +95,17 @@ func NewExecutor(
 func (ex *executor) Do(ctx context.Context) (bool, error) {
 	logger := logr.FromContextOrDiscard(ctx).WithName("Updater")
 
-	logger.Info("before the loop", "update", ex.update, "outdated", ex.outdated, "desired", ex.desired)
+	logger.Info("before the loop", "update", ex.update, "outdated", ex.outdated, "desired", ex.desired,
+		"unavailableUpdate", ex.unavailableUpdate, "unavailableOutdated", ex.unavailableOutdated)
 
 	for ex.update != ex.desired || ex.outdated != 0 {
 		actual := ex.update + ex.outdated
 		available := actual - ex.unavailableUpdate - ex.unavailableOutdated
 		maximum := ex.desired + min(ex.maxSurge, ex.outdated)
 		minimum := ex.desired - ex.maxUnavailable
-		logger.Info("loop", "update", ex.update, "outdated", ex.outdated, "desired", ex.desired,
-			"unavailableUpdate", ex.unavailableUpdate, "unavailableOutdated", ex.unavailableOutdated,
-			"actual", actual, "available", available, "maximum", maximum, "minimum", minimum)
+		logger.Info("loop", "actual", actual, "available", available, "maximum", maximum, "minimum", minimum)
 		switch {
 		case actual < maximum:
-			logger.Info("scale out")
 			if err := ex.act.ScaleOut(ctx); err != nil {
 				return false, err
 			}
@@ -157,7 +155,6 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 					return true, nil
 				}
 
-				logger.Info("scale in outdated")
 				unavailable, err := ex.act.ScaleInOutdated(ctx)
 				if err != nil {
 					return false, err
@@ -177,7 +174,6 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 			// Assume we always choose an unavailable one, we will scale once and wait until next reconcile
 			checkAvail := false
 			if ex.update > ex.desired {
-				logger.Info("scale in update")
 				unavailable, err := ex.act.ScaleInUpdate(ctx)
 				if err != nil {
 					return false, err
@@ -194,7 +190,6 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 				// ex.update + ex.outdated > ex.desired + min(ex.maxSurge, ex.outdated) and ex.update <= ex.desired
 				// => ex.outdated > min(ex.maxSurge, ex.outdated)
 				// => ex.outdated > 0
-				logger.Info("scale in outdated")
 				unavailable, err := ex.act.ScaleInOutdated(ctx)
 				if err != nil {
 					return false, err
