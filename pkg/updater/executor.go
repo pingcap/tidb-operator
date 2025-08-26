@@ -58,7 +58,6 @@ type Executor interface {
 type executor struct {
 	update              int
 	outdated            int
-	beingOffline        int
 	desired             int
 	unavailableUpdate   int
 	unavailableOutdated int
@@ -72,7 +71,6 @@ func NewExecutor(
 	act Actor,
 	update,
 	outdated,
-	beingOffline,
 	desired,
 	unavailableUpdate,
 	unavailableOutdated,
@@ -82,7 +80,6 @@ func NewExecutor(
 	return &executor{
 		update:              update,
 		outdated:            outdated,
-		beingOffline:        beingOffline,
 		desired:             desired,
 		unavailableUpdate:   unavailableUpdate,
 		unavailableOutdated: unavailableOutdated,
@@ -98,17 +95,15 @@ func NewExecutor(
 func (ex *executor) Do(ctx context.Context) (bool, error) {
 	logger := logr.FromContextOrDiscard(ctx).WithName("Updater")
 
-	logger.Info("before the loop", "update", ex.update, "outdated", ex.outdated,
-		"desired", ex.desired, "offlining", ex.beingOffline)
+	logger.Info("before the loop", "update", ex.update, "outdated", ex.outdated, "desired", ex.desired)
 
 	for ex.update != ex.desired || ex.outdated != 0 {
 		actual := ex.update + ex.outdated
 		available := actual - ex.unavailableUpdate - ex.unavailableOutdated
 		maximum := ex.desired + min(ex.maxSurge, ex.outdated)
 		minimum := ex.desired - ex.maxUnavailable
-		logger.Info("loop",
-			"update", ex.update, "outdated", ex.outdated, "desired", ex.desired,
-			"offlining", ex.beingOffline, "unavailableUpdate", ex.unavailableUpdate, "unavailableOutdated", ex.unavailableOutdated,
+		logger.Info("loop", "update", ex.update, "outdated", ex.outdated, "desired", ex.desired,
+			"unavailableUpdate", ex.unavailableUpdate, "unavailableOutdated", ex.unavailableOutdated,
 			"actual", actual, "available", available, "maximum", maximum, "minimum", minimum)
 		switch {
 		case actual < maximum:
@@ -184,18 +179,10 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 			checkAvail := false
 			if ex.update > ex.desired {
 				logger.Info("scale in update")
-				act, unavailable, err := ex.act.ScaleInUpdate(ctx)
+				_, unavailable, err := ex.act.ScaleInUpdate(ctx)
 				if err != nil {
 					return false, err
 				}
-				switch act {
-				case actionNone:
-					// No operation performed, wait for next reconcile
-					return true, nil
-				case actionSetOffline:
-					ex.beingOffline++
-				}
-
 				if unavailable {
 					ex.update -= 1
 					ex.unavailableUpdate -= 1
@@ -209,25 +196,17 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 				// => ex.outdated > min(ex.maxSurge, ex.outdated)
 				// => ex.outdated > 0
 				logger.Info("scale in outdated")
-				act, unavailable, err := ex.act.ScaleInOutdated(ctx)
+				_, unavailable, err := ex.act.ScaleInOutdated(ctx)
 				if err != nil {
 					return false, err
-				}
-				if act == actionNone {
-					// No operation performed, wait for next reconcile
-					return true, nil
 				}
 				if unavailable {
 					ex.outdated -= 1
 					ex.unavailableOutdated -= 1
 				} else {
-					if act != actionSetOffline {
-						ex.outdated -= 1
-						available -= 1
-						checkAvail = true
-					} else {
-						ex.beingOffline++
-					}
+					ex.outdated -= 1
+					available -= 1
+					checkAvail = true
 				}
 			}
 			// Wait if available is less than minimum
@@ -250,6 +229,5 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	// If there are instances being offline, we need to wait until they are all completed.
-	return ex.beingOffline > 0, nil
+	return false, nil
 }

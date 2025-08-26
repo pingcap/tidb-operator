@@ -181,7 +181,6 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 			expectedActions: []action{},
 			expectedTotal:   3,
 			expectedOffline: 2,
-			expectedWait:    true,
 		},
 		{
 			name: "one completes offline, the other is still being offline",
@@ -201,7 +200,6 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 			expectedActions: []action{actionCleanup},
 			expectedTotal:   2,
 			expectedOffline: 1,
-			expectedWait:    true,
 		},
 		{
 			name: "both complete offline, one is deleted",
@@ -249,7 +247,7 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 				scaleInSelector: NewSelector(newMockPreferPolicy(update)),
 				actions:         make([]action, 0),
 			}
-			e := NewExecutor(act, len(update), len(outdated), len(beingOffline), tt.desired,
+			e := NewExecutor(act, len(update), len(outdated), tt.desired,
 				tt.unavailableUpdate, tt.unavailableOutdated, tt.maxSurge, tt.maxUnavailable)
 
 			wait, err := e.Do(context.TODO())

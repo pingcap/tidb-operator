@@ -84,7 +84,7 @@ func (b *builder[T, O, R]) Build() Executor {
 		scaleInSelector: NewSelector(b.scaleInPreferPolicies...),
 		updateSelector:  NewSelector(updatePolicies...),
 	}
-	return NewExecutor(actor, len(update), len(outdated), len(beingOffline), b.desired,
+	return NewExecutor(actor, len(update), len(outdated), b.desired,
 		countUnavailable(update), countUnavailable(outdated), b.maxSurge, b.maxUnavailable)
 }
 
