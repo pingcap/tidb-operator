@@ -51,7 +51,6 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			tasks.TaskFinalizerDel(state, r.Client),
 		),
 
-		tasks.TaskOfflineStore(state),
 		common.TaskFinalizerAdd[scope.TiKV](state, r.Client),
 		// get pod and check whether the cluster is suspending
 		common.TaskContextPod[scope.TiKV](state, r.Client),
@@ -69,6 +68,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		),
 
 		// normal process
+		tasks.TaskOfflineStore(state),
 		tasks.TaskConfigMap(state, r.Client),
 		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifierFactory),
 		tasks.TaskPod(state, r.Client),

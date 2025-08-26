@@ -33,6 +33,7 @@ const (
 	actionCancelOffline
 	actionCleanup
 	actionScaleIn
+	actionDeferDelete
 )
 
 type Actor interface {
@@ -163,13 +164,9 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 				}
 
 				logger.Info("scale in outdated")
-				act, unavailable, err := ex.act.ScaleInOutdated(ctx)
+				_, unavailable, err := ex.act.ScaleInOutdated(ctx)
 				if err != nil {
 					return false, err
-				}
-				if act == actionNone {
-					// No operation performed, wait for next reconcile
-					return true, nil
 				}
 				// scale in may not choose an unavailable outdated so just decrease the outdated
 				// and assume we always choose an available outdated.

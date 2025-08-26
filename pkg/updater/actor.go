@@ -149,7 +149,11 @@ func (act *actor[T, O, R]) scaleIn(ctx context.Context, state State[R], deferDel
 		if err := act.deferDelete(ctx, obj); err != nil {
 			return actionNone, false, err
 		}
-		a = actionSetOffline
+		if obj.IsStore() {
+			a = actionSetOffline
+		} else {
+			a = actionDeferDelete
+		}
 	} else {
 		if err := act.c.Delete(ctx, act.converter.To(obj)); err != nil {
 			return actionNone, false, err
