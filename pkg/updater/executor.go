@@ -37,10 +37,10 @@ const (
 )
 
 type Actor interface {
-	ScaleOut(ctx context.Context) (action, error)
+	ScaleOut(ctx context.Context) error
 	Update(ctx context.Context) error
-	ScaleInUpdate(ctx context.Context) (_ action, unavailable bool, _ error)
-	ScaleInOutdated(ctx context.Context) (_ action, unavailable bool, _ error)
+	ScaleInUpdate(ctx context.Context) (unavailable bool, _ error)
+	ScaleInOutdated(ctx context.Context) (unavailable bool, _ error)
 
 	// Cleanup deletes all instances marked as defer deletion
 	Cleanup(ctx context.Context) error
@@ -108,8 +108,7 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 		switch {
 		case actual < maximum:
 			logger.Info("scale out")
-			_, err := ex.act.ScaleOut(ctx)
-			if err != nil {
+			if err := ex.act.ScaleOut(ctx); err != nil {
 				return false, err
 			}
 			ex.update += 1
@@ -159,7 +158,7 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 				}
 
 				logger.Info("scale in outdated")
-				_, unavailable, err := ex.act.ScaleInOutdated(ctx)
+				unavailable, err := ex.act.ScaleInOutdated(ctx)
 				if err != nil {
 					return false, err
 				}
@@ -179,7 +178,7 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 			checkAvail := false
 			if ex.update > ex.desired {
 				logger.Info("scale in update")
-				_, unavailable, err := ex.act.ScaleInUpdate(ctx)
+				unavailable, err := ex.act.ScaleInUpdate(ctx)
 				if err != nil {
 					return false, err
 				}
@@ -196,7 +195,7 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 				// => ex.outdated > min(ex.maxSurge, ex.outdated)
 				// => ex.outdated > 0
 				logger.Info("scale in outdated")
-				_, unavailable, err := ex.act.ScaleInOutdated(ctx)
+				unavailable, err := ex.act.ScaleInOutdated(ctx)
 				if err != nil {
 					return false, err
 				}

@@ -88,12 +88,7 @@ func (act *actor[T, O, R]) chooseToScaleIn(s []R) (string, error) {
 	return name, nil
 }
 
-func (act *actor[T, O, R]) ScaleOut(ctx context.Context) (a action, err error) {
-	defer func() {
-		if err == nil {
-			act.actions = append(act.actions, a)
-		}
-	}()
+func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx).WithName("Updater")
 
 	obj := act.f.New()
@@ -104,27 +99,30 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) (a action, err error) {
 	logger.Info("act scale out", "namespace", obj.GetNamespace(), "name", obj.GetName())
 
 	if err := act.c.Apply(ctx, act.converter.To(obj)); err != nil {
-		return actionNone, err
+		return err
 	}
 
 	act.update.Add(obj)
+	act.actions = append(act.actions, actionScaleOut)
 
-	return actionScaleOut, nil // true indicates a new instance was created
+	return nil
 }
 
 // ScaleInUpdate scales in an updated instance (already running the latest version).
 // This is used for cluster scaling down when the total number of instances exceeds the desired count.
 // It operates on the "update" state collection which contains instances with the current revision.
-func (act *actor[T, O, R]) ScaleInUpdate(ctx context.Context) (_ action, unavailable bool, err error) {
-	return act.scaleIn(ctx, act.update, false)
+func (act *actor[T, O, R]) ScaleInUpdate(ctx context.Context) (unavailable bool, err error) {
+	_, unavailable, err = act.scaleIn(ctx, act.update, false)
+	return unavailable, err
 }
 
 // ScaleInOutdated scales in an outdated instance (running an old version).
 // This is used during rolling updates to clean up old instances after new ones are ready.
 // It operates on the "outdated" state collection which contains instances with older revisions.
 // Uses deferred deletion by default to ensure data safety during rolling updates.
-func (act *actor[T, O, R]) ScaleInOutdated(ctx context.Context) (action, bool, error) {
-	return act.scaleIn(ctx, act.outdated, true)
+func (act *actor[T, O, R]) ScaleInOutdated(ctx context.Context) (bool, error) {
+	_, unavailable, err := act.scaleIn(ctx, act.outdated, true)
+	return unavailable, err
 }
 
 func (act *actor[T, O, R]) scaleIn(ctx context.Context, state State[R], deferDelete bool) (a action, unavailable bool, err error) {
@@ -229,7 +227,7 @@ func (act *actor[T, O, R]) Update(ctx context.Context) error {
 		if _, _, err := act.scaleIn(ctx, act.outdated, false); err != nil {
 			return err
 		}
-		if _, err := act.ScaleOut(ctx); err != nil {
+		if err := act.ScaleOut(ctx); err != nil {
 			return err
 		}
 

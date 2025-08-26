@@ -33,31 +33,31 @@ type FakeActor struct {
 	preferAvailable bool
 }
 
-func (a *FakeActor) ScaleOut(_ context.Context) (_ action, _ error) {
+func (a *FakeActor) ScaleOut(_ context.Context) error {
 	a.Actions = append(a.Actions, actionScaleOut)
-	return actionScaleOut, nil // FakeActor always creates new instances
+	return nil
 }
 
-func (a *FakeActor) ScaleInOutdated(_ context.Context) (_ action, unavailable bool, err error) {
+func (a *FakeActor) ScaleInOutdated(_ context.Context) (unavailable bool, err error) {
 	a.Actions = append(a.Actions, actionScaleInOutdated)
 	a.outdated -= 1
 	if a.preferAvailable || a.unavailableOutdated == 0 {
-		return actionScaleInOutdated, false, nil
+		return false, nil
 	}
 
 	a.unavailableOutdated -= 1
-	return actionScaleInOutdated, true, nil
+	return true, nil
 }
 
-func (a *FakeActor) ScaleInUpdate(_ context.Context) (_ action, unavailable bool, err error) {
+func (a *FakeActor) ScaleInUpdate(_ context.Context) (unavailable bool, err error) {
 	a.Actions = append(a.Actions, actionScaleInUpdate)
 	a.update -= 1
 	if a.preferAvailable || a.unavailableUpdate == 0 {
-		return actionScaleInUpdate, false, nil
+		return false, nil
 	}
 
 	a.unavailableUpdate -= 1
-	return actionScaleInUpdate, true, nil
+	return true, nil
 }
 
 func (a *FakeActor) Update(_ context.Context) error {
