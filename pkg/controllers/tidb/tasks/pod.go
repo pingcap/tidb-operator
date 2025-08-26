@@ -196,6 +196,22 @@ func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, g features.Gates) *c
 		})
 	}
 
+	if coreutil.IsSEMEnabled(tidb) {
+		vols = append(vols, corev1.Volume{
+			Name: v1alpha1.VolumeNameSEM,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: coreutil.SEMConfigMapName(tidb),
+				},
+			},
+		})
+		mounts = append(mounts, corev1.VolumeMount{
+			Name:      v1alpha1.VolumeNameSEM,
+			MountPath: v1alpha1.DirPathSEMConfig,
+			ReadOnly:  true,
+		})
+	}
+
 	if g.Enabled(metav1alpha1.SessionTokenSigning) {
 		vols = append(vols, corev1.Volume{
 			Name: v1alpha1.VolumeNameTiDBSessionTokenSigningTLS,
