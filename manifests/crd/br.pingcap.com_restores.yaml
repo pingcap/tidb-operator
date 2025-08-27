@@ -2886,6 +2886,10 @@ spec:
                       Otherwise retrieve the storage account from secret
                     type: string
                 type: object
+              backoffLimit:
+                default: 0
+                format: int32
+                type: integer
               backupType:
                 description: Type is the backup type for tidb cluster and only used
                   when Mode = snapshot, such as full, db, table.
