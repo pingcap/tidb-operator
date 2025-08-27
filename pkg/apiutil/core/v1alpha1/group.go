@@ -71,7 +71,7 @@ func SetStatusVersion[
 ](f F) bool {
 	obj := scope.From[S](f)
 	v := obj.StatusVersion()
-	if compare.SetIfChanged(&v, obj.Version()) {
+	if compare.SetIfNotEmptyAndChanged(&v, obj.Version()) {
 		obj.SetStatusVersion(v)
 		return true
 	}
@@ -86,10 +86,10 @@ func SetStatusReplicas[
 ](f F, newReplicas, newReady, newUpdate, newCurrent int32) bool {
 	obj := scope.From[S](f)
 	replicas, ready, update, current := obj.StatusReplicas()
-	changed := compare.SetIfChanged(&replicas, newReplicas)
-	changed = compare.SetIfChanged(&ready, newReady) || changed
-	changed = compare.SetIfChanged(&update, newUpdate) || changed
-	changed = compare.SetIfChanged(&current, newCurrent) || changed
+	changed := compare.SetIfNotEmptyAndChanged(&replicas, newReplicas)
+	changed = compare.SetIfNotEmptyAndChanged(&ready, newReady) || changed
+	changed = compare.SetIfNotEmptyAndChanged(&update, newUpdate) || changed
+	changed = compare.SetIfNotEmptyAndChanged(&current, newCurrent) || changed
 	if changed {
 		obj.SetStatusReplicas(replicas, ready, update, current)
 		return changed
@@ -105,9 +105,9 @@ func SetStatusRevision[
 ](f F, newUpdate, newCurrent string, newCollisionCount int32) bool {
 	obj := scope.From[S](f)
 	update, current, collisionCount := obj.StatusRevision()
-	changed := compare.SetIfChanged(&update, newUpdate)
-	changed = compare.SetIfChanged(&current, newCurrent) || changed
-	changed = compare.NewAndSetIfChanged(&collisionCount, newCollisionCount) || changed
+	changed := compare.SetIfNotEmptyAndChanged(&update, newUpdate)
+	changed = compare.SetIfNotEmptyAndChanged(&current, newCurrent) || changed
+	changed = compare.NewAndSetIfNotEmptyAndChanged(&collisionCount, newCollisionCount) || changed
 	if changed {
 		obj.SetStatusRevision(update, current, collisionCount)
 		return changed
@@ -151,7 +151,7 @@ func SetStatusSelector[
 
 	l := obj.StatusSelector()
 
-	changed := compare.SetIfChanged(&l, labels.Set{
+	changed := compare.SetIfNotEmptyAndChanged(&l, labels.Set{
 		v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
 		v1alpha1.LabelKeyComponent: obj.Component(),
 		v1alpha1.LabelKeyCluster:   obj.Cluster(),

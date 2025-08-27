@@ -46,14 +46,12 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		needUpdate = syncInitializedCond(pd, state.Initialized) || needUpdate
 		needUpdate = syncSuspendCond(pd) || needUpdate
 
-		if state.MemberID != "" {
-			needUpdate = compare.SetIfChanged(&pd.Status.ID, state.MemberID) || needUpdate
-		}
+		needUpdate = compare.SetIfNotEmptyAndChanged(&pd.Status.ID, state.MemberID) || needUpdate
 		needUpdate = compare.SetIfChanged(&pd.Status.IsLeader, state.IsLeader) || needUpdate
-		needUpdate = compare.SetIfChanged(&pd.Status.ObservedGeneration, pd.Generation) || needUpdate
-		needUpdate = compare.SetIfChanged(&pd.Status.UpdateRevision, pd.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+		needUpdate = compare.SetIfNotEmptyAndChanged(&pd.Status.ObservedGeneration, pd.Generation) || needUpdate
+		needUpdate = compare.SetIfNotEmptyAndChanged(&pd.Status.UpdateRevision, pd.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 		if ready {
-			needUpdate = compare.SetIfChanged(&pd.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+			needUpdate = compare.SetIfNotEmptyAndChanged(&pd.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 		}
 
 		if needUpdate {
