@@ -33,6 +33,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskContextCluster[scope.TiKVGroup](state, r.Client),
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),
+		common.TaskCheckFeatureGates[scope.TiKVGroup](state, r.Client),
 
 		// get all tikvs
 		common.TaskContextSlice[scope.TiKVGroup](state, r.Client),
