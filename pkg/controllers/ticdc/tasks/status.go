@@ -50,10 +50,16 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		needUpdate = compare.SetIfNotEmptyAndChanged(&ticdc.Status.ID, state.MemberID) || needUpdate
 		needUpdate = compare.SetIfChanged(&ticdc.Status.IsOwner, state.IsOwner) || needUpdate
 		needUpdate = compare.SetIfNotEmptyAndChanged(&ticdc.Status.ObservedGeneration, ticdc.Generation) || needUpdate
-		needUpdate = compare.SetIfNotEmptyAndChanged(&ticdc.Status.UpdateRevision, ticdc.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+		needUpdate = compare.SetIfNotEmptyAndChanged(
+			&ticdc.Status.UpdateRevision,
+			ticdc.Labels[v1alpha1.LabelKeyInstanceRevisionHash],
+		) || needUpdate
 
 		if ready {
-			needUpdate = compare.SetIfNotEmptyAndChanged(&ticdc.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+			needUpdate = compare.SetIfNotEmptyAndChanged(
+				&ticdc.Status.CurrentRevision,
+				pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash],
+			) || needUpdate
 		}
 
 		if needUpdate {
