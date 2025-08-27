@@ -384,7 +384,6 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 			expectedResult:    task.SRetry,
 			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionFalse, Reason: v1alpha1.ReasonOfflineFailed},
 		},
-		// Remove invalid retry count test as we no longer use annotations
 		{
 			name: "Cancel operation: clears retry but keeps other annotations",
 			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
@@ -448,7 +447,6 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 			expectedResult:    task.SFail,
 			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionTrue, Reason: "UnknownReason"},
 		},
-		// Cases from TestCancelOfflineOperationWithNewInstance
 		{
 			name: "new instance without PD registration should not get offline condition",
 			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
@@ -458,7 +456,7 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 			expectedCondition: nil,
 		},
 		{
-			name: "instance with previous offline condition and no PD registration should be marked completed",
+			name: "instance with previous offline condition and no PD registration",
 			instanceBuilder: func(ctrl *gomock.Controller) *runtime.MockInstance {
 				return createMockInstance(ctrl, false, conditionsFromSingle(newOfflinedCondition(v1alpha1.ReasonOfflineProcessing, "Previous offline operation", metav1.ConditionFalse)), nil)
 			},

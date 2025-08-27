@@ -46,8 +46,6 @@ type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 
 	converter T
 
-	rev string // current revision for comparison
-
 	update   State[R]
 	outdated State[R]
 	// deleted set records all instances that are marked by defer delete annotation

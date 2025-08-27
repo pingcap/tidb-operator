@@ -16,6 +16,7 @@ package updater
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -91,7 +92,6 @@ func TestSplit(t *testing.T) {
 		revision         string
 		expectedUpdate   int
 		expectedOutdated int
-		expectedOffline  int
 		expectedDeleted  int
 	}{
 		{
@@ -100,7 +100,6 @@ func TestSplit(t *testing.T) {
 			revision:         "v1",
 			expectedUpdate:   0,
 			expectedOutdated: 0,
-			expectedOffline:  0,
 			expectedDeleted:  0,
 		},
 		{
@@ -109,7 +108,8 @@ func TestSplit(t *testing.T) {
 				func() runtime.Instance {
 					mock := runtime.NewMockInstance(ctrl)
 					mock.EXPECT().GetDeletionTimestamp().Return(nil)
-					mock.EXPECT().IsStore().Return(false)
+					mock.EXPECT().GetAnnotations().Return(map[string]string{})
+					mock.EXPECT().Conditions().Return([]metav1.Condition{})
 					mock.EXPECT().GetUpdateRevision().Return("v1")
 					return mock
 				}(),
@@ -117,7 +117,6 @@ func TestSplit(t *testing.T) {
 			revision:         "v1",
 			expectedUpdate:   1,
 			expectedOutdated: 0,
-			expectedOffline:  0,
 			expectedDeleted:  0,
 		},
 		{
@@ -126,16 +125,15 @@ func TestSplit(t *testing.T) {
 				func() runtime.Instance {
 					mock := runtime.NewMockInstance(ctrl)
 					mock.EXPECT().GetDeletionTimestamp().Return(nil)
-					mock.EXPECT().IsStore().Return(false)
-					mock.EXPECT().GetUpdateRevision().Return("v0")
 					mock.EXPECT().GetAnnotations().Return(map[string]string{})
+					mock.EXPECT().Conditions().Return([]metav1.Condition{})
+					mock.EXPECT().GetUpdateRevision().Return("v0")
 					return mock
 				}(),
 			},
 			revision:         "v1",
 			expectedUpdate:   0,
 			expectedOutdated: 1,
-			expectedOffline:  0,
 			expectedDeleted:  0,
 		},
 		{
@@ -144,8 +142,6 @@ func TestSplit(t *testing.T) {
 				func() runtime.Instance {
 					mock := runtime.NewMockInstance(ctrl)
 					mock.EXPECT().GetDeletionTimestamp().Return(nil)
-					mock.EXPECT().IsStore().Return(false)
-					mock.EXPECT().GetUpdateRevision().Return("v0")
 					mock.EXPECT().GetAnnotations().Return(map[string]string{
 						v1alpha1.AnnoKeyDeferDelete: "true",
 					})
@@ -155,7 +151,6 @@ func TestSplit(t *testing.T) {
 			revision:         "v1",
 			expectedUpdate:   0,
 			expectedOutdated: 0,
-			expectedOffline:  0,
 			expectedDeleted:  1,
 		},
 		{
@@ -171,21 +166,19 @@ func TestSplit(t *testing.T) {
 			revision:         "v1",
 			expectedUpdate:   0,
 			expectedOutdated: 0,
-			expectedOffline:  0,
 			expectedDeleted:  0,
 		},
-		// StoreInstance specific tests
 		{
-			name: "store instance - offline completed",
+			name: "offline completed",
 			instances: []runtime.Instance{
 				func() runtime.Instance {
 					mock := runtime.NewMockInstance(ctrl)
 					mock.EXPECT().GetDeletionTimestamp().Return(nil)
-					mock.EXPECT().IsStore().Return(true)
+					mock.EXPECT().GetAnnotations().Return(map[string]string{})
 					mock.EXPECT().Conditions().Return([]metav1.Condition{
 						{
 							Type:   v1alpha1.StoreOfflinedConditionType,
-							Reason: v1alpha1.ReasonOfflineCompleted,
+							Status: metav1.ConditionTrue, // This is what meta.IsStatusConditionTrue checks
 						},
 					})
 					return mock
@@ -194,86 +187,6 @@ func TestSplit(t *testing.T) {
 			revision:         "v1",
 			expectedUpdate:   0,
 			expectedOutdated: 0,
-			expectedOffline:  0,
-			expectedDeleted:  1,
-		},
-		{
-			name: "store instance - being offline",
-			instances: []runtime.Instance{
-				func() runtime.Instance {
-					mock := runtime.NewMockInstance(ctrl)
-					mock.EXPECT().GetDeletionTimestamp().Return(nil)
-					mock.EXPECT().IsStore().Return(true)
-					mock.EXPECT().Conditions().Return([]metav1.Condition{})
-					mock.EXPECT().IsOffline().Return(true)
-					return mock
-				}(),
-			},
-			revision:         "v1",
-			expectedUpdate:   0,
-			expectedOutdated: 0,
-			expectedOffline:  1,
-			expectedDeleted:  0,
-		},
-		{
-			name: "store instance - normal online classification",
-			instances: []runtime.Instance{
-				func() runtime.Instance {
-					mock := runtime.NewMockInstance(ctrl)
-					mock.EXPECT().GetDeletionTimestamp().Return(nil)
-					mock.EXPECT().IsStore().Return(true)
-					mock.EXPECT().Conditions().Return([]metav1.Condition{})
-					mock.EXPECT().IsOffline().Return(false)
-					mock.EXPECT().GetUpdateRevision().Return("v1")
-					return mock
-				}(),
-			},
-			revision:         "v1",
-			expectedUpdate:   1,
-			expectedOutdated: 0,
-			expectedOffline:  0,
-			expectedDeleted:  0,
-		},
-		{
-			name: "store instance - online outdated (not classified as outdated)",
-			instances: []runtime.Instance{
-				func() runtime.Instance {
-					mock := runtime.NewMockInstance(ctrl)
-					mock.EXPECT().GetDeletionTimestamp().Return(nil)
-					mock.EXPECT().IsStore().Return(true)
-					mock.EXPECT().Conditions().Return([]metav1.Condition{})
-					mock.EXPECT().IsOffline().Return(false)
-					mock.EXPECT().GetUpdateRevision().Return("v0")
-					mock.EXPECT().GetAnnotations().Return(map[string]string{})
-					return mock
-				}(),
-			},
-			revision:         "v1",
-			expectedUpdate:   0,
-			expectedOutdated: 1,
-			expectedOffline:  0,
-			expectedDeleted:  0,
-		},
-		{
-			name: "store instance - online with defer delete annotation (not classified)",
-			instances: []runtime.Instance{
-				func() runtime.Instance {
-					mock := runtime.NewMockInstance(ctrl)
-					mock.EXPECT().GetDeletionTimestamp().Return(nil)
-					mock.EXPECT().IsStore().Return(true)
-					mock.EXPECT().Conditions().Return([]metav1.Condition{})
-					mock.EXPECT().IsOffline().Return(false)
-					mock.EXPECT().GetUpdateRevision().Return("v0")
-					mock.EXPECT().GetAnnotations().Return(map[string]string{
-						v1alpha1.AnnoKeyDeferDelete: "true",
-					})
-					return mock
-				}(),
-			},
-			revision:         "v1",
-			expectedUpdate:   0,
-			expectedOutdated: 0,
-			expectedOffline:  0,
 			expectedDeleted:  1,
 		},
 		// more edge case tests
@@ -283,7 +196,8 @@ func TestSplit(t *testing.T) {
 				func() runtime.Instance {
 					mock := runtime.NewMockInstance(ctrl)
 					mock.EXPECT().GetDeletionTimestamp().Return(nil)
-					mock.EXPECT().IsStore().Return(false)
+					mock.EXPECT().GetAnnotations().Return(map[string]string{})
+					mock.EXPECT().Conditions().Return([]metav1.Condition{})
 					mock.EXPECT().GetUpdateRevision().Return("")
 					return mock
 				}(),
@@ -291,7 +205,6 @@ func TestSplit(t *testing.T) {
 			revision:         "",
 			expectedUpdate:   1,
 			expectedOutdated: 0,
-			expectedOffline:  0,
 			expectedDeleted:  0,
 		},
 		{
@@ -300,26 +213,23 @@ func TestSplit(t *testing.T) {
 				func() runtime.Instance {
 					mock := runtime.NewMockInstance(ctrl)
 					mock.EXPECT().GetDeletionTimestamp().Return(nil)
-					mock.EXPECT().IsStore().Return(false)
-					mock.EXPECT().GetUpdateRevision().Return("v0")
 					mock.EXPECT().GetAnnotations().Return(nil)
+					mock.EXPECT().Conditions().Return([]metav1.Condition{})
+					mock.EXPECT().GetUpdateRevision().Return("v0")
 					return mock
 				}(),
 			},
 			revision:         "v1",
 			expectedUpdate:   0,
 			expectedOutdated: 1,
-			expectedOffline:  0,
 			expectedDeleted:  0,
 		},
 		{
-			name: "defer delete annotation with non-true value",
+			name: "defer delete annotation exists (value irrelevant)",
 			instances: []runtime.Instance{
 				func() runtime.Instance {
 					mock := runtime.NewMockInstance(ctrl)
 					mock.EXPECT().GetDeletionTimestamp().Return(nil)
-					mock.EXPECT().IsStore().Return(false)
-					mock.EXPECT().GetUpdateRevision().Return("v0")
 					mock.EXPECT().GetAnnotations().Return(map[string]string{
 						v1alpha1.AnnoKeyDeferDelete: "false",
 					})
@@ -329,7 +239,6 @@ func TestSplit(t *testing.T) {
 			revision:         "v1",
 			expectedUpdate:   0,
 			expectedOutdated: 0,
-			expectedOffline:  0,
 			expectedDeleted:  1,
 		},
 		{
@@ -338,7 +247,8 @@ func TestSplit(t *testing.T) {
 				func() runtime.Instance {
 					mock := runtime.NewMockInstance(ctrl)
 					mock.EXPECT().GetDeletionTimestamp().Return(&metav1.Time{})
-					mock.EXPECT().IsStore().Return(false)
+					mock.EXPECT().GetAnnotations().Return(map[string]string{})
+					mock.EXPECT().Conditions().Return([]metav1.Condition{})
 					mock.EXPECT().GetUpdateRevision().Return("v1")
 					return mock
 				}(),
@@ -346,16 +256,15 @@ func TestSplit(t *testing.T) {
 			revision:         "v1",
 			expectedUpdate:   1,
 			expectedOutdated: 0,
-			expectedOffline:  0,
 			expectedDeleted:  0,
 		},
 		{
-			name: "store instance with multiple conditions",
+			name: "multiple conditions",
 			instances: []runtime.Instance{
 				func() runtime.Instance {
 					mock := runtime.NewMockInstance(ctrl)
 					mock.EXPECT().GetDeletionTimestamp().Return(nil)
-					mock.EXPECT().IsStore().Return(true)
+					mock.EXPECT().GetAnnotations().Return(map[string]string{})
 					mock.EXPECT().Conditions().Return([]metav1.Condition{
 						{
 							Type:   "SomeOtherCondition",
@@ -363,7 +272,7 @@ func TestSplit(t *testing.T) {
 						},
 						{
 							Type:   v1alpha1.StoreOfflinedConditionType,
-							Reason: v1alpha1.ReasonOfflineCompleted,
+							Status: metav1.ConditionTrue,
 						},
 						{
 							Type:   "AnotherCondition",
@@ -376,54 +285,29 @@ func TestSplit(t *testing.T) {
 			revision:         "v1",
 			expectedUpdate:   0,
 			expectedOutdated: 0,
-			expectedOffline:  0,
 			expectedDeleted:  1,
 		},
 		{
-			name: "store instance - offline condition exists but not completed",
+			name: "offline condition exists but not true",
 			instances: []runtime.Instance{
 				func() runtime.Instance {
 					mock := runtime.NewMockInstance(ctrl)
 					mock.EXPECT().GetDeletionTimestamp().Return(nil)
-					mock.EXPECT().IsStore().Return(true)
+					mock.EXPECT().GetAnnotations().Return(map[string]string{})
 					mock.EXPECT().Conditions().Return([]metav1.Condition{
 						{
 							Type:   v1alpha1.StoreOfflinedConditionType,
-							Reason: v1alpha1.ReasonOfflineFailed, // not Completed
+							Status: metav1.ConditionFalse, // not True
 						},
 					})
-					mock.EXPECT().IsOffline().Return(true)
+					mock.EXPECT().GetUpdateRevision().Return("v1")
 					return mock
 				}(),
 			},
 			revision:         "v1",
-			expectedUpdate:   0,
+			expectedUpdate:   1,
 			expectedOutdated: 0,
-			expectedOffline:  1,
 			expectedDeleted:  0,
-		},
-		{
-			name: "store instance - offline completed with spec.offline=false",
-			instances: []runtime.Instance{
-				func() runtime.Instance {
-					mock := runtime.NewMockInstance(ctrl)
-					mock.EXPECT().GetDeletionTimestamp().Return(nil)
-					mock.EXPECT().IsStore().Return(true)
-					mock.EXPECT().Conditions().Return([]metav1.Condition{
-						{
-							Type:   v1alpha1.StoreOfflinedConditionType,
-							Reason: v1alpha1.ReasonOfflineCompleted,
-						},
-					})
-					// Note: this tests the case mentioned in comment - spec.offline=false but has completed condition
-					return mock
-				}(),
-			},
-			revision:         "v1",
-			expectedUpdate:   0,
-			expectedOutdated: 0,
-			expectedOffline:  0,
-			expectedDeleted:  1,
 		},
 		// mixed scenario tests
 		{
@@ -433,7 +317,8 @@ func TestSplit(t *testing.T) {
 				func() runtime.Instance {
 					mock := runtime.NewMockInstance(ctrl)
 					mock.EXPECT().GetDeletionTimestamp().Return(nil)
-					mock.EXPECT().IsStore().Return(false)
+					mock.EXPECT().GetAnnotations().Return(map[string]string{})
+					mock.EXPECT().Conditions().Return([]metav1.Condition{})
 					mock.EXPECT().GetUpdateRevision().Return("v1")
 					return mock
 				}(),
@@ -441,26 +326,15 @@ func TestSplit(t *testing.T) {
 				func() runtime.Instance {
 					mock := runtime.NewMockInstance(ctrl)
 					mock.EXPECT().GetDeletionTimestamp().Return(nil)
-					mock.EXPECT().IsStore().Return(false)
-					mock.EXPECT().GetUpdateRevision().Return("v0")
 					mock.EXPECT().GetAnnotations().Return(map[string]string{})
-					return mock
-				}(),
-				// Being offline store instance
-				func() runtime.Instance {
-					mock := runtime.NewMockInstance(ctrl)
-					mock.EXPECT().GetDeletionTimestamp().Return(nil)
-					mock.EXPECT().IsStore().Return(true)
 					mock.EXPECT().Conditions().Return([]metav1.Condition{})
-					mock.EXPECT().IsOffline().Return(true)
+					mock.EXPECT().GetUpdateRevision().Return("v0")
 					return mock
 				}(),
 				// Defer delete instance
 				func() runtime.Instance {
 					mock := runtime.NewMockInstance(ctrl)
 					mock.EXPECT().GetDeletionTimestamp().Return(nil)
-					mock.EXPECT().IsStore().Return(false)
-					mock.EXPECT().GetUpdateRevision().Return("v0")
 					mock.EXPECT().GetAnnotations().Return(map[string]string{
 						v1alpha1.AnnoKeyDeferDelete: "true",
 					})
@@ -477,18 +351,117 @@ func TestSplit(t *testing.T) {
 			revision:         "v1",
 			expectedUpdate:   1,
 			expectedOutdated: 1,
-			expectedOffline:  1,
+			expectedDeleted:  1,
+		},
+		// Additional edge cases
+		{
+			name: "offline condition with empty reason",
+			instances: []runtime.Instance{
+				func() runtime.Instance {
+					mock := runtime.NewMockInstance(ctrl)
+					mock.EXPECT().GetDeletionTimestamp().Return(nil)
+					mock.EXPECT().GetAnnotations().Return(map[string]string{})
+					mock.EXPECT().Conditions().Return([]metav1.Condition{
+						{
+							Type:   v1alpha1.StoreOfflinedConditionType,
+							Status: metav1.ConditionFalse, // not True, so should not be deleted
+							Reason: "",                    // empty reason
+						},
+					})
+					mock.EXPECT().GetUpdateRevision().Return("v1")
+					return mock
+				}(),
+			},
+			revision:         "v1",
+			expectedUpdate:   1,
+			expectedOutdated: 0,
+			expectedDeleted:  0,
+		},
+		{
+			name: "offline condition with different status values",
+			instances: []runtime.Instance{
+				func() runtime.Instance {
+					mock := runtime.NewMockInstance(ctrl)
+					mock.EXPECT().GetDeletionTimestamp().Return(nil)
+					mock.EXPECT().GetAnnotations().Return(map[string]string{})
+					mock.EXPECT().Conditions().Return([]metav1.Condition{
+						{
+							Type:   v1alpha1.StoreOfflinedConditionType,
+							Status: metav1.ConditionFalse,
+							Reason: "SomeOtherReason",
+						},
+					})
+					mock.EXPECT().GetUpdateRevision().Return("v1")
+					return mock
+				}(),
+			},
+			revision:         "v1",
+			expectedUpdate:   1,
+			expectedOutdated: 0,
+			expectedDeleted:  0,
+		},
+		{
+			name: "revision with special characters",
+			instances: []runtime.Instance{
+				func() runtime.Instance {
+					mock := runtime.NewMockInstance(ctrl)
+					mock.EXPECT().GetDeletionTimestamp().Return(nil)
+					mock.EXPECT().GetAnnotations().Return(map[string]string{})
+					mock.EXPECT().Conditions().Return([]metav1.Condition{})
+					mock.EXPECT().GetUpdateRevision().Return("v1-beta.1+sha.abc123")
+					return mock
+				}(),
+			},
+			revision:         "v1-beta.1+sha.abc123",
+			expectedUpdate:   1,
+			expectedOutdated: 0,
+			expectedDeleted:  0,
+		},
+		{
+			name: "very long revision string",
+			instances: []runtime.Instance{
+				func() runtime.Instance {
+					mock := runtime.NewMockInstance(ctrl)
+					mock.EXPECT().GetDeletionTimestamp().Return(nil)
+					mock.EXPECT().GetAnnotations().Return(map[string]string{})
+					mock.EXPECT().Conditions().Return([]metav1.Condition{})
+					longRev := "v1-" + strings.Repeat("a", 200)
+					mock.EXPECT().GetUpdateRevision().Return(longRev)
+					return mock
+				}(),
+			},
+			revision:         "v1-" + strings.Repeat("a", 200),
+			expectedUpdate:   1,
+			expectedOutdated: 0,
+			expectedDeleted:  0,
+		},
+		{
+			name: "multiple annotations including defer delete",
+			instances: []runtime.Instance{
+				func() runtime.Instance {
+					mock := runtime.NewMockInstance(ctrl)
+					mock.EXPECT().GetDeletionTimestamp().Return(nil)
+					mock.EXPECT().GetAnnotations().Return(map[string]string{
+						"some-other-annotation":     "value",
+						v1alpha1.AnnoKeyDeferDelete: "", // empty value still triggers deletion
+						"another-annotation":        "value2",
+					})
+					return mock
+				}(),
+			},
+			revision:         "v1",
+			expectedUpdate:   0,
+			expectedOutdated: 0,
 			expectedDeleted:  1,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			update, outdated, beingOffline, deleted := split(tt.instances, tt.revision)
+			update, outdated, deleted := split(tt.instances, tt.revision)
 
 			assert.Len(t, update, tt.expectedUpdate, "update count mismatch")
 			assert.Len(t, outdated, tt.expectedOutdated, "outdated count mismatch")
-			assert.Len(t, beingOffline, tt.expectedOffline, "beingOffline count mismatch")
 			assert.Len(t, deleted, tt.expectedDeleted, "deleted count mismatch")
 		})
 	}

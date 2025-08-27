@@ -15,6 +15,8 @@
 package updater
 
 import (
+	"k8s.io/apimachinery/pkg/api/meta"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
@@ -60,7 +62,7 @@ type builder[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct 
 }
 
 func (b *builder[T, O, R]) Build() Executor {
-	update, outdated, beingOffline, deleted := split(b.instances, b.rev)
+	update, outdated, deleted := split(b.instances, b.rev)
 
 	updatePolicies := b.updatePreferPolicies
 	updatePolicies = append(updatePolicies, PreferUnavailable[R]())
@@ -70,12 +72,9 @@ func (b *builder[T, O, R]) Build() Executor {
 
 		noInPlaceUpdate: b.noInPlaceUpdate,
 
-		rev: b.rev,
-
-		update:       NewState(update),
-		outdated:     NewState(outdated),
-		beingOffline: NewState(beingOffline),
-		deleted:      NewState(deleted),
+		update:   NewState(update),
+		outdated: NewState(outdated),
+		deleted:  NewState(deleted),
 
 		addHooks:    b.addHooks,
 		updateHooks: append(b.updateHooks, KeepName[R](), KeepTopology[R]()),
@@ -158,8 +157,7 @@ func (b *builder[T, O, R]) WithNoInPaceUpdate(noUpdate bool) Builder[R] {
 	return b
 }
 
-// split splits instances into different states.
-func split[R runtime.Instance](all []R, rev string) (update, outdated, beingOffline, deleted []R) {
+func split[R runtime.Instance](all []R, rev string) (update, outdated, deleted []R) {
 	for _, instance := range all {
 		// if instance is deleting, just ignore it
 		// TODO(liubo02): make sure it's ok for PD
@@ -167,31 +165,19 @@ func split[R runtime.Instance](all []R, rev string) (update, outdated, beingOffl
 			continue
 		}
 
-		if instance.IsStore() {
-			offlineCond := runtime.GetOfflineCondition(instance)
-			if offlineCond != nil && offlineCond.Reason == v1alpha1.ReasonOfflineCompleted {
-				// In some cases, there might be an instance whose `spec.offline` is false,
-				// but has completed offline condition.
-				// We should consider it as offline completed.
-				deleted = append(deleted, instance)
-				continue
-			} else if instance.IsOffline() {
-				beingOffline = append(beingOffline, instance)
-				continue
-			}
+		if _, ok := instance.GetAnnotations()[v1alpha1.AnnoKeyDeferDelete]; ok ||
+			meta.IsStatusConditionTrue(instance.Conditions(), v1alpha1.StoreOfflinedConditionType) {
+			deleted = append(deleted, instance)
+			continue
 		}
-
-		// Standard split logic
 		if instance.GetUpdateRevision() == rev {
 			update = append(update, instance)
-		} else if _, ok := instance.GetAnnotations()[v1alpha1.AnnoKeyDeferDelete]; ok {
-			deleted = append(deleted, instance)
 		} else {
 			outdated = append(outdated, instance)
 		}
 	}
 
-	return update, outdated, beingOffline, deleted
+	return update, outdated, deleted
 }
 
 func countUnavailable[R runtime.Instance](all []R) int {
