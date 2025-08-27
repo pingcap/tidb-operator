@@ -91,10 +91,11 @@ func GetOfflineCondition(s Instance) *metav1.Condition {
 	return meta.FindStatusCondition(s.Conditions(), v1alpha1.StoreOfflinedConditionType)
 }
 
-func RemoveOfflineCondition(s Instance) {
+func RemoveOfflineCondition(s Instance) bool {
 	conditions := s.Conditions()
-	meta.RemoveStatusCondition(&conditions, v1alpha1.StoreOfflinedConditionType)
+	removed := meta.RemoveStatusCondition(&conditions, v1alpha1.StoreOfflinedConditionType)
 	s.SetConditions(conditions)
+	return removed
 }
 
 func NamePrefixAndSuffix(name string) (prefix, suffix string) {

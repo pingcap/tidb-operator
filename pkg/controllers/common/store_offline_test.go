@@ -437,7 +437,7 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 			},
 			contextBuilder:    newContext("").StoreExists(false),
 			expectedResult:    task.SComplete,
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.ReasonOfflineCompleted},
+			expectedCondition: nil,
 		},
 		{
 			name: "Cancel unknown condition reason",
@@ -463,7 +463,7 @@ func TestTaskOfflineStoreStateMachine(t *testing.T) {
 				return createMockInstance(ctrl, false, conditionsFromSingle(newOfflinedCondition(v1alpha1.ReasonOfflineProcessing, "Previous offline operation", metav1.ConditionFalse)), nil)
 			},
 			contextBuilder:    newContext("").StoreExists(false),
-			expectedCondition: &metav1.Condition{Type: v1alpha1.StoreOfflinedConditionType, Status: metav1.ConditionTrue, Reason: v1alpha1.ReasonOfflineCompleted},
+			expectedCondition: nil,
 		},
 		{
 			name: "instance with PD registration should proceed normally",
