@@ -162,10 +162,13 @@ func split[R runtime.Instance](all []R, rev string) (update, outdated, deleted [
 		if !instance.GetDeletionTimestamp().IsZero() {
 			continue
 		}
+		if _, ok := instance.GetAnnotations()[v1alpha1.AnnoKeyDeferDelete]; ok {
+			deleted = append(deleted, instance)
+			continue
+		}
+
 		if instance.GetUpdateRevision() == rev {
 			update = append(update, instance)
-		} else if _, ok := instance.GetAnnotations()[v1alpha1.AnnoKeyDeferDelete]; ok {
-			deleted = append(deleted, instance)
 		} else {
 			outdated = append(outdated, instance)
 		}
