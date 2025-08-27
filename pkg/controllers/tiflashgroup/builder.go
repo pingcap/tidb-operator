@@ -33,6 +33,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskContextCluster[scope.TiFlashGroup](state, r.Client),
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),
+		common.TaskCheckFeatureGates[scope.TiFlashGroup](state, r.Client),
 
 		// get all tiflashes
 		common.TaskContextSlice[scope.TiFlashGroup](state, r.Client),
