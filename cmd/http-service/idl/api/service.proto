@@ -240,7 +240,7 @@ message Prometheus {
 
   string version = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "The version of the Prometheus. Only official versions are supported now.",
-    example: "\"v2.27.1\""
+    example: "\"v3.5.0\""
   }];
   Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the Prometheus."}];
   map<string, string> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
@@ -679,7 +679,7 @@ message PrometheusStatus {
 
   string version = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {
     description: "The version of the Prometheus component.",
-    example: "\"v2.27.1\""
+    example: "\"v3.5.0\""
   }];
   Resource resource = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The resource of the Prometheus component."}];
   map<string, string> config = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "The command options config of the Prometheus. ref https://prometheus.io/docs/prometheus/latest/command-line/prometheus/"}];

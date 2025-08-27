@@ -41,7 +41,7 @@ const (
 	TiDBV7x5x3 = "v7.5.3"
 
 	PrometheusImage               = "prom/prometheus"
-	PrometheusVersion             = "v2.27.1"
+	PrometheusVersion             = "v3.5.0"
 	TiDBMonitorReloaderImage      = "pingcap/tidb-monitor-reloader"
 	TiDBMonitorReloaderVersion    = "v1.0.1"
 	TiDBMonitorInitializerImage   = "pingcap/tidb-monitor-initializer"
@@ -49,7 +49,7 @@ const (
 	GrafanaImage                  = "grafana/grafana"
 	GrafanaVersion                = "7.5.11"
 	ThanosImage                   = "thanosio/thanos"
-	ThanosVersion                 = "v0.17.2"
+	ThanosVersion                 = "v0.39.2"
 	DMV2Prev                      = TiDBLatestPrev
 	DMV2                          = TiDBLatest
 	TiDBNGMonitoringLatest        = TiDBLatest

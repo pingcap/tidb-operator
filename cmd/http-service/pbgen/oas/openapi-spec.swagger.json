@@ -1094,7 +1094,7 @@
       "properties": {
         "version": {
           "type": "string",
-          "example": "v2.27.1",
+          "example": "v3.5.0",
           "description": "The version of the Prometheus. Only official versions are supported now."
         },
         "resource": {

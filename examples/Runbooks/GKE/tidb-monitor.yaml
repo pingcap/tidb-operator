@@ -43,7 +43,7 @@ spec:
     service:
       portName: http-prometheus
       type: NodePort
-    version: v2.27.1
+    version: v3.5.0
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     imagePullPolicy: IfNotPresent
@@ -53,6 +53,6 @@ spec:
     version: v1.0.1
   prometheusReloader:
     baseImage: quay.io/prometheus-operator/prometheus-config-reloader
-    version: v0.49.0
+    version: v0.85.0
   storage: 10Gi
   storageClassName: gp2

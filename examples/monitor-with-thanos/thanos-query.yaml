@@ -5,7 +5,7 @@ metadata:
     app.kubernetes.io/component: query-layer
     app.kubernetes.io/instance: thanos-query
     app.kubernetes.io/name: thanos-query
-    app.kubernetes.io/version: v0.17.2
+    app.kubernetes.io/version: v0.39.2
   name: thanos-query
 spec:
   replicas: 1
@@ -20,7 +20,7 @@ spec:
         app.kubernetes.io/component: query-layer
         app.kubernetes.io/instance: thanos-query
         app.kubernetes.io/name: thanos-query
-        app.kubernetes.io/version: v0.17.2
+        app.kubernetes.io/version: v0.39.2
     spec:
       containers:
         - args:
@@ -40,7 +40,7 @@ spec:
                 "sampler_type": "ratelimiting"
                 "service_name": "thanos-query"
               "type": "JAEGER"
-          image: quay.io/thanos/thanos:v0.17.2
+          image: quay.io/thanos/thanos:v0.39.2
           livenessProbe:
             failureThreshold: 4
             httpGet:
@@ -73,7 +73,7 @@ metadata:
     app.kubernetes.io/component: query-layer
     app.kubernetes.io/instance: thanos-query
     app.kubernetes.io/name: thanos-query
-    app.kubernetes.io/version: v0.17.2
+    app.kubernetes.io/version: v0.39.2
   name: thanos-query
 spec:
   ports:

@@ -49,7 +49,7 @@
       "port":4000
    },
    "prometheus":{
-      "version":"v2.27.1",
+      "version":"v3.5.0",
       "resource":{
          "cpu":2,
          "memory":4

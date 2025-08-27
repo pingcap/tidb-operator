@@ -7,7 +7,7 @@ spec:
   - name: demo
   prometheus:
     baseImage: prom/prometheus
-    version: v2.27.1
+    version: v3.5.0
     #limits:
     #  cpu: 8000m
     #  memory: 8Gi
@@ -71,7 +71,7 @@ spec:
   prometheusReloader:
     baseImage: quay.io/prometheus-operator/prometheus-config-reloader
     ImagePullPolicy: IfNotPresent
-    version: v0.49.0
+    version: v0.85.0
     #limits:
     #  cpu: 50m
     #  memory: 64Mi

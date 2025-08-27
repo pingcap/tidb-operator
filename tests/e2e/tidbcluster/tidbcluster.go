@@ -563,7 +563,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			tm.Spec.PrometheusReloader = &v1alpha1.PrometheusReloaderSpec{
 				MonitorContainer: v1alpha1.MonitorContainer{
 					BaseImage: "quay.io/prometheus-operator/prometheus-config-reloader",
-					Version:   "v0.49.0",
+					Version:   "v0.85.0",
 				},
 			}
 			return nil

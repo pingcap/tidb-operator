@@ -10,7 +10,7 @@ spec:
       ruleConfigRef:
         name: external-config
     baseImage: prom/prometheus
-    version: v2.27.1
+    version: v3.5.0
   grafana:
     baseImage: grafana/grafana
     version: 7.5.11
@@ -22,5 +22,5 @@ spec:
     version: v1.0.1
   prometheusReloader:
     baseImage: quay.io/prometheus-operator/prometheus-config-reloader
-    version: v0.49.0
+    version: v0.85.0
   imagePullPolicy: IfNotPresent
