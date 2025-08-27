@@ -38,8 +38,8 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		// ready condition is updated in previous task
 		ready := coreutil.IsReady[scope.TSO](obj)
 
-		needUpdate = compare.SetIfChanged(&obj.Status.ObservedGeneration, obj.Generation) || needUpdate
-		needUpdate = compare.SetIfChanged(&obj.Status.UpdateRevision, obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+		needUpdate = compare.SetIfNotEmptyAndChanged(&obj.Status.ObservedGeneration, obj.Generation) || needUpdate
+		needUpdate = compare.SetIfNotEmptyAndChanged(&obj.Status.UpdateRevision, obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 
 		// update this status only when cache is synced
 		if state.CacheSynced {
@@ -47,7 +47,7 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		}
 
 		if ready {
-			needUpdate = compare.SetIfChanged(&obj.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+			needUpdate = compare.SetIfNotEmptyAndChanged(&obj.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 		}
 
 		if needUpdate {

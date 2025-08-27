@@ -65,6 +65,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		state.SetLeaderCount(s.LeaderCount)
 		state.SetRegionCount(s.RegionCount)
 		state.SetStoreBusy(s.IsBusy)
+		state.SetHealthy()
 
 		// TODO: cache evict leader scheduler info, then we don't need to check suspend here
 		if coreutil.ShouldSuspendCompute(state.Cluster()) {

@@ -47,11 +47,11 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 
 		needUpdate = syncSuspendCond(tiproxy) || needUpdate
 
-		needUpdate = compare.SetIfChanged(&tiproxy.Status.ObservedGeneration, tiproxy.Generation) || needUpdate
-		needUpdate = compare.SetIfChanged(&tiproxy.Status.UpdateRevision, tiproxy.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+		needUpdate = compare.SetIfNotEmptyAndChanged(&tiproxy.Status.ObservedGeneration, tiproxy.Generation) || needUpdate
+		needUpdate = compare.SetIfNotEmptyAndChanged(&tiproxy.Status.UpdateRevision, tiproxy.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 
 		if ready {
-			needUpdate = compare.SetIfChanged(&tiproxy.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+			needUpdate = compare.SetIfNotEmptyAndChanged(&tiproxy.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 		}
 
 		if needUpdate {

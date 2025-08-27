@@ -181,7 +181,7 @@ func countUnavailable[R runtime.Instance](all []R) int {
 	unavailable := 0
 	for _, instance := range all {
 		if !instance.IsReady() || !instance.IsUpToDate() {
-			unavailable += 1
+			unavailable++
 		}
 	}
 

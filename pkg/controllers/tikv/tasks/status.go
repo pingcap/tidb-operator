@@ -46,17 +46,24 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		ready := coreutil.IsReady[scope.TiKV](tikv)
 
 		needUpdate = syncSuspendCond(tikv) || needUpdate
-		needUpdate = syncLeadersEvictedCond(tikv, state.Store, state.LeaderEvicting) || needUpdate
-		if state.Store != nil {
-			needUpdate = compare.SetIfChanged(&tikv.Status.ID, state.Store.ID) || needUpdate
+		if state.PDSynced {
+			needUpdate = syncLeadersEvictedCond(tikv, state.Store, state.LeaderEvicting) || needUpdate
 		}
-		needUpdate = compare.SetIfChanged(&tikv.Status.State, state.GetStoreState()) || needUpdate
-
-		needUpdate = compare.SetIfChanged(&tikv.Status.ObservedGeneration, tikv.Generation) || needUpdate
-		needUpdate = compare.SetIfChanged(&tikv.Status.UpdateRevision, tikv.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+		if state.Store != nil {
+			needUpdate = compare.SetIfNotEmptyAndChanged(&tikv.Status.ID, state.Store.ID) || needUpdate
+		}
+		needUpdate = compare.SetIfNotEmptyAndChanged(&tikv.Status.State, state.GetStoreState()) || needUpdate
+		needUpdate = compare.SetIfNotEmptyAndChanged(&tikv.Status.ObservedGeneration, tikv.Generation) || needUpdate
+		needUpdate = compare.SetIfNotEmptyAndChanged(
+			&tikv.Status.UpdateRevision,
+			tikv.Labels[v1alpha1.LabelKeyInstanceRevisionHash],
+		) || needUpdate
 
 		if ready {
-			needUpdate = compare.SetIfChanged(&tikv.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+			needUpdate = compare.SetIfNotEmptyAndChanged(
+				&tikv.Status.CurrentRevision,
+				pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash],
+			) || needUpdate
 		}
 
 		if needUpdate {

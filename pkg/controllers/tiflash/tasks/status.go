@@ -44,15 +44,15 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		ready := coreutil.IsReady[scope.TiFlash](tiflash)
 		needUpdate = syncSuspendCond(tiflash) || needUpdate
 		if state.Store != nil {
-			needUpdate = compare.SetIfChanged(&tiflash.Status.ID, state.Store.ID) || needUpdate
+			needUpdate = compare.SetIfNotEmptyAndChanged(&tiflash.Status.ID, state.Store.ID) || needUpdate
 		}
-		needUpdate = compare.SetIfChanged(&tiflash.Status.State, state.GetStoreState()) || needUpdate
+		needUpdate = compare.SetIfNotEmptyAndChanged(&tiflash.Status.State, state.GetStoreState()) || needUpdate
 
-		needUpdate = compare.SetIfChanged(&tiflash.Status.ObservedGeneration, tiflash.Generation) || needUpdate
-		needUpdate = compare.SetIfChanged(&tiflash.Status.UpdateRevision, tiflash.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+		needUpdate = compare.SetIfNotEmptyAndChanged(&tiflash.Status.ObservedGeneration, tiflash.Generation) || needUpdate
+		needUpdate = compare.SetIfNotEmptyAndChanged(&tiflash.Status.UpdateRevision, tiflash.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 
 		if ready {
-			needUpdate = compare.SetIfChanged(&tiflash.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+			needUpdate = compare.SetIfNotEmptyAndChanged(&tiflash.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
 		}
 
 		if needUpdate {
