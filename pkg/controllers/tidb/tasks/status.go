@@ -48,10 +48,16 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		needUpdate = syncSuspendCond(tidb) || needUpdate
 
 		needUpdate = compare.SetIfNotEmptyAndChanged(&tidb.Status.ObservedGeneration, tidb.Generation) || needUpdate
-		needUpdate = compare.SetIfNotEmptyAndChanged(&tidb.Status.UpdateRevision, tidb.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+		needUpdate = compare.SetIfNotEmptyAndChanged(
+			&tidb.Status.UpdateRevision,
+			tidb.Labels[v1alpha1.LabelKeyInstanceRevisionHash],
+		) || needUpdate
 
 		if ready {
-			needUpdate = compare.SetIfNotEmptyAndChanged(&tidb.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+			needUpdate = compare.SetIfNotEmptyAndChanged(
+				&tidb.Status.CurrentRevision,
+				pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash],
+			) || needUpdate
 		}
 
 		if needUpdate {

@@ -49,10 +49,16 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		needUpdate = compare.SetIfNotEmptyAndChanged(&tiflash.Status.State, state.GetStoreState()) || needUpdate
 
 		needUpdate = compare.SetIfNotEmptyAndChanged(&tiflash.Status.ObservedGeneration, tiflash.Generation) || needUpdate
-		needUpdate = compare.SetIfNotEmptyAndChanged(&tiflash.Status.UpdateRevision, tiflash.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+		needUpdate = compare.SetIfNotEmptyAndChanged(
+			&tiflash.Status.UpdateRevision,
+			tiflash.Labels[v1alpha1.LabelKeyInstanceRevisionHash],
+		) || needUpdate
 
 		if ready {
-			needUpdate = compare.SetIfNotEmptyAndChanged(&tiflash.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+			needUpdate = compare.SetIfNotEmptyAndChanged(
+				&tiflash.Status.CurrentRevision,
+				pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash],
+			) || needUpdate
 		}
 
 		if needUpdate {
