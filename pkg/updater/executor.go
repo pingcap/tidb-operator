@@ -16,6 +16,8 @@ package updater
 
 import (
 	"context"
+
+	"github.com/go-logr/logr"
 )
 
 type Actor interface {
@@ -72,6 +74,17 @@ func NewExecutor(
 //
 //nolint:gocyclo // refactor if possible
 func (ex *executor) Do(ctx context.Context) (bool, error) {
+	logger := logr.FromContextOrDiscard(ctx)
+	logger.Info("updater execute",
+		"update", ex.update,
+		"outdated", ex.outdated,
+		"desired", ex.desired,
+		"unavailableUpdate", ex.unavailableUpdate,
+		"unavailableOutdated", ex.unavailableOutdated,
+		"maxSurge", ex.maxSurge,
+		"maxUnavailable", ex.maxUnavailable,
+	)
+
 	for ex.update != ex.desired || ex.outdated != 0 {
 		actual := ex.update + ex.outdated
 		available := actual - ex.unavailableUpdate - ex.unavailableOutdated
