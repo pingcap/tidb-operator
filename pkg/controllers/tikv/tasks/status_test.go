@@ -67,6 +67,7 @@ func TestTaskStatus(t *testing.T) {
 				Store: &pdv1.Store{
 					ID: fakeTiKVName,
 				},
+				PDSynced: true,
 			},
 
 			expectedStatus: task.SWait,
@@ -135,6 +136,7 @@ func TestTaskStatus(t *testing.T) {
 				Store: &pdv1.Store{
 					ID: fakeTiKVName,
 				},
+				PDSynced: true,
 			},
 
 			expectedStatus: task.SComplete,
@@ -202,6 +204,7 @@ func TestTaskStatus(t *testing.T) {
 				Store: &pdv1.Store{
 					ID: fakeTiKVName,
 				},
+				PDSynced: true,
 			},
 
 			expectedStatus: task.SRetry,
@@ -270,6 +273,7 @@ func TestTaskStatus(t *testing.T) {
 				Store: &pdv1.Store{
 					ID: fakeTiKVName,
 				},
+				PDSynced: true,
 			},
 
 			expectedStatus: task.SWait,
@@ -333,6 +337,7 @@ func TestTaskStatus(t *testing.T) {
 						return obj
 					}),
 				},
+				PDSynced: true,
 			},
 			unexpectedErr: true,
 

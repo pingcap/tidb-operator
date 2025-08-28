@@ -25,7 +25,16 @@ func SetIfChanged[T comparable](dst *T, src T) bool {
 	return false
 }
 
-// NewAndSetIfChanged initializes a nil pointer destination and sets its value if different from source.
+// SetIfNotEmptyAndChanged sets the destination pointer to the source value if they are different and src is not empty.
+// Returns true if the value was changed, false otherwise.
+func SetIfNotEmptyAndChanged[T comparable](dst *T, src T) bool {
+	if src == *new(T) {
+		return false
+	}
+	return SetIfChanged(dst, src)
+}
+
+// NewAndSetIfNotEmptyAndChanged initializes a nil pointer destination and sets its value if different from source.
 // Parameters:
 //   - dst: A double pointer to the destination value that may be nil
 //   - src: The source value to compare against and potentially set
@@ -36,7 +45,7 @@ func SetIfChanged[T comparable](dst *T, src T) bool {
 //
 // This function handles the case where the destination pointer is nil by creating a new instance.
 // If the destination is nil, it creates a new instance and sets it to the source value.
-func NewAndSetIfChanged[T comparable](dst **T, src T) bool {
+func NewAndSetIfNotEmptyAndChanged[T comparable](dst **T, src T) bool {
 	if *dst == nil {
 		zero := new(T)
 		if *zero == src {
