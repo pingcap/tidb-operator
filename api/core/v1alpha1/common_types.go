@@ -238,6 +238,7 @@ type ConfigFile string
 // Volume defines a persistent volume, it will be mounted at a specified root path
 // A volume can be mounted for multiple different usages.
 // For example, a volume can be mounted for both data and raft log.
+// +kubebuilder:validation:XValidation:rule="!has(oldSelf.volumeAttributesClassName) || has(self.volumeAttributesClassName)",message="VolumeAttributesClassName cannot be changed from non-nil to nil"
 type Volume struct {
 	// Name is volume name.
 	Name string `json:"name"`

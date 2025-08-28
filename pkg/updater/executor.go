@@ -93,17 +93,22 @@ func NewExecutor(
 //
 //nolint:gocyclo // refactor if possible
 func (ex *executor) Do(ctx context.Context) (bool, error) {
-	logger := logr.FromContextOrDiscard(ctx).WithName("Updater")
-
-	logger.Info("before the loop", "update", ex.update, "outdated", ex.outdated, "desired", ex.desired,
-		"unavailableUpdate", ex.unavailableUpdate, "unavailableOutdated", ex.unavailableOutdated)
+	logger := logr.FromContextOrDiscard(ctx)
+	logger.Info("updater execute",
+		"update", ex.update,
+		"outdated", ex.outdated,
+		"desired", ex.desired,
+		"unavailableUpdate", ex.unavailableUpdate,
+		"unavailableOutdated", ex.unavailableOutdated,
+		"maxSurge", ex.maxSurge,
+		"maxUnavailable", ex.maxUnavailable,
+	)
 
 	for ex.update != ex.desired || ex.outdated != 0 {
 		actual := ex.update + ex.outdated
 		available := actual - ex.unavailableUpdate - ex.unavailableOutdated
 		maximum := ex.desired + min(ex.maxSurge, ex.outdated)
 		minimum := ex.desired - ex.maxUnavailable
-		logger.Info("loop", "actual", actual, "available", available, "maximum", maximum, "minimum", minimum)
 		switch {
 		case actual < maximum:
 			if err := ex.act.ScaleOut(ctx); err != nil {

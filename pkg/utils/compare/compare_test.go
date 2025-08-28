@@ -16,7 +16,51 @@ package compare
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"k8s.io/utils/ptr"
 )
+
+func TestSetIfNotEmptyAndChanged(t *testing.T) {
+	cases := []struct {
+		desc            string
+		dst             *string
+		src             string
+		expectedDst     string
+		expectedChanged bool
+	}{
+		{
+			desc:            "empty",
+			dst:             ptr.To("xxx"),
+			src:             "",
+			expectedDst:     "xxx",
+			expectedChanged: false,
+		},
+		{
+			desc:            "same",
+			dst:             ptr.To("xxx"),
+			src:             "xxx",
+			expectedDst:     "xxx",
+			expectedChanged: false,
+		},
+		{
+			desc:            "changed",
+			dst:             ptr.To("xxx"),
+			src:             "yyy",
+			expectedDst:     "yyy",
+			expectedChanged: true,
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			changed := SetIfNotEmptyAndChanged(c.dst, c.src)
+			assert.Equal(tt, c.expectedChanged, changed, c.desc)
+			assert.Equal(tt, c.expectedDst, *c.dst, c.desc)
+		})
+	}
+}
 
 func TestSetIfChanged(t *testing.T) {
 	t.Run("string tests", func(t *testing.T) {
@@ -120,7 +164,7 @@ func TestSetIfChanged(t *testing.T) {
 	})
 }
 
-func TestNewAndSetIfChanged(t *testing.T) {
+func TestNewAndSetIfNotEmptyAndChanged(t *testing.T) {
 	t.Run("int tests", func(t *testing.T) {
 		var (
 			nilInt *int
@@ -175,7 +219,7 @@ func TestNewAndSetIfChanged(t *testing.T) {
 					dst = &val
 				}
 
-				actual := NewAndSetIfChanged(&dst, tt.src)
+				actual := NewAndSetIfNotEmptyAndChanged(&dst, tt.src)
 				if actual != tt.expected {
 					t.Errorf("NewAndSetIfChanged() = %v, want %v", actual, tt.expected)
 				}
@@ -242,7 +286,7 @@ func TestNewAndSetIfChanged(t *testing.T) {
 					dst = &val
 				}
 
-				actual := NewAndSetIfChanged(&dst, tt.src)
+				actual := NewAndSetIfNotEmptyAndChanged(&dst, tt.src)
 				if actual != tt.expected {
 					t.Errorf("NewAndSetIfChanged() = %v, want %v", actual, tt.expected)
 				}

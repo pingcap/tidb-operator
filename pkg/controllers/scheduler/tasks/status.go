@@ -39,10 +39,16 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		ready := coreutil.IsReady[scope.Scheduler](obj)
 
 		needUpdate = compare.SetIfChanged(&obj.Status.ObservedGeneration, obj.Generation) || needUpdate
-		needUpdate = compare.SetIfChanged(&obj.Status.UpdateRevision, obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+		needUpdate = compare.SetIfNotEmptyAndChanged(
+			&obj.Status.UpdateRevision,
+			obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash],
+		) || needUpdate
 
 		if ready {
-			needUpdate = compare.SetIfChanged(&obj.Status.CurrentRevision, pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash]) || needUpdate
+			needUpdate = compare.SetIfNotEmptyAndChanged(
+				&obj.Status.CurrentRevision,
+				pod.Labels[v1alpha1.LabelKeyInstanceRevisionHash],
+			) || needUpdate
 		}
 
 		if needUpdate {

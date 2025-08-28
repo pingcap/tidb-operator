@@ -143,6 +143,7 @@ func (s *state) IsStoreUp() bool {
 	return s.storeState == v1alpha1.StoreStatePreparing || s.storeState == v1alpha1.StoreStateServing
 }
 
+// TODO: fix tiflash healthy probe
 func (s *state) IsHealthy() bool {
 	return s.IsStoreUp()
 }
