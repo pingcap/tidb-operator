@@ -567,14 +567,21 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 		return nil, fmt.Errorf("render start-script for tc %s/%s failed: %v", tc.Namespace, tc.Name, err)
 	}
 
+	// Get SecurityContext with backward compatibility support
+	securityContext := baseTiFlashSpec.SecurityContext()
+	if securityContext == nil {
+		// For backward compatibility, use the Privileged field if SecurityContext is not set
+		securityContext = &corev1.SecurityContext{
+			Privileged: tc.TiFlashContainerPrivilege(),
+		}
+	}
+
 	tiflashContainer := corev1.Container{
 		Name:            v1alpha1.TiFlashMemberType.String(),
 		Image:           tc.TiFlashImage(),
 		ImagePullPolicy: baseTiFlashSpec.ImagePullPolicy(),
 		Command:         []string{"/bin/sh", "-c", startScript},
-		SecurityContext: &corev1.SecurityContext{
-			Privileged: tc.TiFlashContainerPrivilege(),
-		},
+		SecurityContext: securityContext,
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "tiflash",

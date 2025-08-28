@@ -527,10 +527,11 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 				Protocol:      corev1.ProtocolTCP,
 			},
 		},
-		VolumeMounts: volMounts,
-		Resources:    controller.ContainerResource(tc.Spec.TiProxy.ResourceRequirements),
-		Env:          util.AppendEnv(envs, baseTiProxySpec.Env()),
-		EnvFrom:      baseTiProxySpec.EnvFrom(),
+		VolumeMounts:    volMounts,
+		Resources:       controller.ContainerResource(tc.Spec.TiProxy.ResourceRequirements),
+		SecurityContext: baseTiProxySpec.SecurityContext(),
+		Env:             util.AppendEnv(envs, baseTiProxySpec.Env()),
+		EnvFrom:         baseTiProxySpec.EnvFrom(),
 	}
 	if probeHander := buildTiProxyReadinessProbeHandler(tc); probeHander != nil {
 		tiproxyContainer.ReadinessProbe = &corev1.Probe{
