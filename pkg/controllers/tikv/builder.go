@@ -75,7 +75,10 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskStoreLabels(state, r.Client),
 		tasks.TaskEvictLeader(state),
 		common.TaskInstanceConditionSynced[scope.TiKV](state),
-		common.TaskInstanceConditionReady[scope.TiKV](state),
+		// only set ready if pd is synced
+		task.If(PDIsSynced(state),
+			common.TaskInstanceConditionReady[scope.TiKV](state),
+		),
 		tasks.TaskStatus(state, r.Client),
 	)
 
@@ -86,5 +89,11 @@ func ObjectIsDeletingAndStoreIsRemoved(state *tasks.ReconcileContext) task.Condi
 	return task.CondFunc(func() bool {
 		return !state.Object().GetDeletionTimestamp().IsZero() && state.PDSynced &&
 			(state.GetStoreState() == v1alpha1.StoreStateRemoved || state.Store == nil)
+	})
+}
+
+func PDIsSynced(state *tasks.ReconcileContext) task.Condition {
+	return task.CondFunc(func() bool {
+		return state.PDSynced
 	})
 }

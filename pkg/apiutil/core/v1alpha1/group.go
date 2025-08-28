@@ -71,7 +71,7 @@ func SetStatusVersion[
 ](f F) bool {
 	obj := scope.From[S](f)
 	v := obj.StatusVersion()
-	if compare.SetIfChanged(&v, obj.Version()) {
+	if compare.SetIfNotEmptyAndChanged(&v, obj.Version()) {
 		obj.SetStatusVersion(v)
 		return true
 	}
@@ -105,9 +105,9 @@ func SetStatusRevision[
 ](f F, newUpdate, newCurrent string, newCollisionCount int32) bool {
 	obj := scope.From[S](f)
 	update, current, collisionCount := obj.StatusRevision()
-	changed := compare.SetIfChanged(&update, newUpdate)
-	changed = compare.SetIfChanged(&current, newCurrent) || changed
-	changed = compare.NewAndSetIfChanged(&collisionCount, newCollisionCount) || changed
+	changed := compare.SetIfNotEmptyAndChanged(&update, newUpdate)
+	changed = compare.SetIfNotEmptyAndChanged(&current, newCurrent) || changed
+	changed = compare.NewAndSetIfNotEmptyAndChanged(&collisionCount, newCollisionCount) || changed
 	if changed {
 		obj.SetStatusRevision(update, current, collisionCount)
 		return changed
@@ -151,7 +151,7 @@ func SetStatusSelector[
 
 	l := obj.StatusSelector()
 
-	changed := compare.SetIfChanged(&l, labels.Set{
+	changed := compare.SetIfNotEmptyAndChanged(&l, labels.Set{
 		v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
 		v1alpha1.LabelKeyComponent: obj.Component(),
 		v1alpha1.LabelKeyCluster:   obj.Cluster(),
