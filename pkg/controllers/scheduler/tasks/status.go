@@ -38,7 +38,7 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		// ready condition is updated in previous task
 		ready := coreutil.IsReady[scope.Scheduler](obj)
 
-		needUpdate = compare.SetIfNotEmptyAndChanged(&obj.Status.ObservedGeneration, obj.Generation) || needUpdate
+		needUpdate = compare.SetIfChanged(&obj.Status.ObservedGeneration, obj.Generation) || needUpdate
 		needUpdate = compare.SetIfNotEmptyAndChanged(
 			&obj.Status.UpdateRevision,
 			obj.Labels[v1alpha1.LabelKeyInstanceRevisionHash],

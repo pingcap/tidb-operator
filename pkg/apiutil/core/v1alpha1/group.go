@@ -86,10 +86,10 @@ func SetStatusReplicas[
 ](f F, newReplicas, newReady, newUpdate, newCurrent int32) bool {
 	obj := scope.From[S](f)
 	replicas, ready, update, current := obj.StatusReplicas()
-	changed := compare.SetIfNotEmptyAndChanged(&replicas, newReplicas)
-	changed = compare.SetIfNotEmptyAndChanged(&ready, newReady) || changed
-	changed = compare.SetIfNotEmptyAndChanged(&update, newUpdate) || changed
-	changed = compare.SetIfNotEmptyAndChanged(&current, newCurrent) || changed
+	changed := compare.SetIfChanged(&replicas, newReplicas)
+	changed = compare.SetIfChanged(&ready, newReady) || changed
+	changed = compare.SetIfChanged(&update, newUpdate) || changed
+	changed = compare.SetIfChanged(&current, newCurrent) || changed
 	if changed {
 		obj.SetStatusReplicas(replicas, ready, update, current)
 		return changed
