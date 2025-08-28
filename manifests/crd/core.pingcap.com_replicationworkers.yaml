@@ -4,16 +4,16 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.17.2
-  name: tsos.core.pingcap.com
+  name: replicationworkers.core.pingcap.com
 spec:
   group: core.pingcap.com
   names:
     categories:
     - instance
-    kind: TSO
-    listKind: TSOList
-    plural: tsos
-    singular: tso
+    kind: ReplicationWorker
+    listKind: ReplicationWorkerList
+    plural: replicationworkers
+    singular: replicationworker
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -32,7 +32,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: TSO defines a TSO instance.
+        description: ReplicationWorker defines a ReplicationWorker instance
         properties:
           apiVersion:
             description: |-
@@ -52,7 +52,8 @@ spec:
           metadata:
             type: object
           spec:
-            description: TSOSpec describes the common attributes of a TSO instance
+            description: ReplicationWorkerSpec describes the common attributes of
+              a ReplicationWorker instance
             properties:
               cluster:
                 description: Cluster is a reference of tidb cluster
@@ -68,8 +69,8 @@ spec:
                 type: object
               config:
                 description: |-
-                  Config defines config file of TSO
-                  See https://docs.pingcap.com/tidb/stable/tso-configuration-file/
+                  Config defines config file of ReplicationWorker
+                  See https://docs.pingcap.com/tidb/stable/ReplicationWorker-configuration-file/
                 type: string
               features:
                 description: Features are enabled feature
@@ -84,18 +85,18 @@ spec:
                   - DisablePDDefaultReadinessProbe
                   - UsePDReadyAPI
                   - SessionTokenSigning
+                  - ClusterSubdomain
                   type: string
                 type: array
               image:
                 description: |-
-                  Image is pd's image
+                  Image is ReplicationWorker's image.
                   If tag is omitted, version will be used as the image tag.
-                  Default is pingcap/pd
                 type: string
               overlay:
                 description: |-
                   Overlay defines a k8s native resource template patch
-                  All resources(pod, pvcs, ...) managed by TSO can be overlayed by this field
+                  All resources(pod, pvcs, ...) managed by ReplicationWorker can be overlayed by this field
                 properties:
                   pod:
                     properties:
@@ -8333,14 +8334,66 @@ spec:
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                 type: object
-              server:
-                description: Server defines server config for TSO
+              security:
+                description: Security defines security config
                 properties:
-                  ports:
-                    description: Ports defines all ports listened by tso
+                  tls:
+                    description: TLS defines the tls configs of components
                     properties:
                       client:
-                        description: Client defines port for tso's api service
+                        description: Client defines the client tls for the tidb operator
+                          to visit the group
+                        properties:
+                          ca:
+                            description: CA defines the ref of the secret which contains
+                              ca.crt
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                          certKeyPair:
+                            description: CertKeyPair defines the ref of the secret
+                              which contains tls.crt and tls.key
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                          insecureSkipTLSVerify:
+                            description: |-
+                              If true, we will skip CA verification, it means CA can be omitted
+                              Defaults to false
+                            type: boolean
+                        type: object
+                      cluster:
+                        description: |-
+                          InternalTLS defines a tls config between components. This config of all components
+                          can only be enabled or disabled at the same time.
+                        properties:
+                          ca:
+                            description: CA defines the ref of the secret which contains
+                              ca.crt
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                          certKeyPair:
+                            description: CertKeyPair defines the ref of the secret
+                              which contains tls.crt and tls.key
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                        type: object
+                    type: object
+                type: object
+              server:
+                description: Server defines server config for ReplicationWorker
+                properties:
+                  ports:
+                    description: Ports defines all ports listened by ReplicationWorker
+                    properties:
+                      grpc:
+                        description: Port defines a listen port
                         properties:
                           port:
                             format: int32
@@ -8352,8 +8405,8 @@ spec:
                 type: object
               subdomain:
                 description: |-
-                  Subdomain means the subdomain of the exported tso dns.
-                  A same tso cluster will use a same subdomain
+                  Subdomain means the subdomain of the exported ReplicationWorker dns.
+                  A same ReplicationWorker cluster will use a same subdomain
                 type: string
                 x-kubernetes-validations:
                 - message: subdomain is immutable
@@ -8362,7 +8415,7 @@ spec:
                 additionalProperties:
                   type: string
                 description: |-
-                  Topology defines the topology domain of this tso instance
+                  Topology defines the topology domain of this ReplicationWorker instance
                   It will be translated into a node affinity config
                   Topology cannot be changed
                 minProperties: 1
@@ -8385,11 +8438,11 @@ spec:
               version:
                 description: |-
                   Version must be a semantic version.
-                  It can has a v prefix or not.
+                  It can have a v prefix or not.
                 pattern: ^(v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$
                 type: string
               volumes:
-                description: Volumes defines persistent volumes of TSO
+                description: Volumes defines persistent volumes of ReplicationWorker
                 items:
                   description: |-
                     Volume defines a persistent volume, it will be mounted at a specified root path
@@ -8460,6 +8513,7 @@ spec:
             - cluster
             - subdomain
             - version
+            - volumes
             type: object
             x-kubernetes-validations:
             - fieldPath: .topology
@@ -8470,6 +8524,8 @@ spec:
               rule: '!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes)
                 && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v,
                 v.name)))'
+            - message: data volume must be configured
+              rule: has(self.volumes) && ('data' in self.volumes.map(v, v.name))
           status:
             properties:
               collisionCount:
@@ -8543,10 +8599,6 @@ spec:
                 description: CurrentRevision is the revision of the Controller that
                   created the resource.
                 type: string
-              isDefaultPrimary:
-                description: IsDefaultPrimary indicates whether this TSO instance
-                  is the primary for the default keyspace group.
-                type: boolean
               observedGeneration:
                 description: |-
                   ObservedGeneration is the most recent generation observed by the controller.
@@ -8557,8 +8609,6 @@ spec:
                 description: UpdateRevision is the revision of the Controller that
                   should modify the resource.
                 type: string
-            required:
-            - isDefaultPrimary
             type: object
         type: object
         x-kubernetes-validations:

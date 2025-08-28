@@ -84,6 +84,78 @@ spec:
                           format: int32
                           minimum: 1
                           type: integer
+<<<<<<< HEAD
+=======
+                        volumes:
+                          description: Volumes defines persistence data volume for
+                            the strategy if needed
+                          items:
+                            description: |-
+                              Volume defines a persistent volume, it will be mounted at a specified root path
+                              A volume can be mounted for multiple different usages.
+                              For example, a volume can be mounted for both data and raft log.
+                            properties:
+                              mounts:
+                                description: |-
+                                  Mounts defines mount infos of this volume
+                                  NOTE(liubo02): it cannot be a list map because the key is "type" or "mountPath" which is not supported
+                                items:
+                                  properties:
+                                    mountPath:
+                                      description: Mount path of volume, if it's not
+                                        set, use the default path of this type.
+                                      type: string
+                                    subPath:
+                                      description: SubPath is the path of the volume's
+                                        root path.
+                                      type: string
+                                    type:
+                                      description: Type is a type of the volume mount.
+                                      type: string
+                                  required:
+                                  - type
+                                  type: object
+                                type: array
+                                x-kubernetes-list-type: atomic
+                              name:
+                                description: Name is volume name.
+                                type: string
+                              storage:
+                                anyOf:
+                                - type: integer
+                                - type: string
+                                description: Storage defines the request size of this
+                                  volume
+                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                x-kubernetes-int-or-string: true
+                              storageClassName:
+                                description: |-
+                                  StorageClassName means the storage class the volume used.
+                                  You can modify volumes' attributes by changing the StorageClass
+                                  when VolumeAttributesClass is not available.
+                                  Note that only newly created PV will use the new StorageClass.
+                                type: string
+                              volumeAttributesClassName:
+                                description: |-
+                                  VolumeAttributesClassName means the VolumeAttributesClass the volume used.
+                                  You can modify volumes' attributes by changing it.
+                                  This feature is introduced since K8s 1.29 as alpha feature and disabled by default.
+                                  It's only available when the feature is enabled.
+                                type: string
+                            required:
+                            - mounts
+                            - name
+                            - storage
+                            type: object
+                            x-kubernetes-validations:
+                            - message: VolumeAttributesClassName cannot be changed
+                                from non-nil to nil
+                              rule: '!has(oldSelf.volumeAttributesClassName) || has(self.volumeAttributesClassName)'
+                          type: array
+                          x-kubernetes-list-map-keys:
+                          - name
+                          x-kubernetes-list-type: map
+>>>>>>> 411c0a4b2 (Feat: add VolumeAttributesClassName validation rule (#6390))
                       required:
                       - name
                       - timeThresholdDays
