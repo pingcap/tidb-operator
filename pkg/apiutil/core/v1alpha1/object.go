@@ -52,7 +52,7 @@ func SetStatusObservedGeneration[
 ](f F) bool {
 	t := scope.From[S](f)
 	gen := t.ObservedGeneration()
-	if compare.SetIfNotEmptyAndChanged(&gen, t.GetGeneration()) {
+	if compare.SetIfChanged(&gen, t.GetGeneration()) {
 		t.SetObservedGeneration(gen)
 		return true
 	}

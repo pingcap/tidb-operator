@@ -53,7 +53,7 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 			needUpdate = compare.SetIfNotEmptyAndChanged(&tikv.Status.ID, state.Store.ID) || needUpdate
 		}
 		needUpdate = compare.SetIfNotEmptyAndChanged(&tikv.Status.State, state.GetStoreState()) || needUpdate
-		needUpdate = compare.SetIfNotEmptyAndChanged(&tikv.Status.ObservedGeneration, tikv.Generation) || needUpdate
+		needUpdate = compare.SetIfChanged(&tikv.Status.ObservedGeneration, tikv.Generation) || needUpdate
 		needUpdate = compare.SetIfNotEmptyAndChanged(
 			&tikv.Status.UpdateRevision,
 			tikv.Labels[v1alpha1.LabelKeyInstanceRevisionHash],
