@@ -93,8 +93,10 @@ func TestTiDBClient_Activate(t *testing.T) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		body, err := io.ReadAll(r.Body)
 		assert.NoError(t, err)
-		assert.Equal(t, string(body), `{"keyspace_name":"xxx","max_idle_seconds":0,"run_auto_analyze":true,"tidb_enable_ddl":true}
-`)
+		assert.JSONEq(t,
+			`{"keyspace_name":"xxx","max_idle_seconds":0,"run_auto_analyze":true,"tidb_enable_ddl":true}`,
+			string(body),
+		)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
