@@ -16,6 +16,7 @@ package tasks
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -23,12 +24,16 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	stateutil "github.com/pingcap/tidb-operator/pkg/state"
+	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
 
 const (
 	// minRegionCountForLeaderCountCheck is the minimum region count for leader count check.
 	// If the region count is less than this value, we will not check the leader count.
 	minRegionCountForLeaderCountCheck = 100
+
+	// Now we have to wait an arbitrary duration to ensure that is_busy has been reported to the PD
+	minReadySeconds = 15
 )
 
 type state struct {
@@ -47,6 +52,8 @@ type state struct {
 	leaderCount   int
 	regionCount   int
 	storeBusy     bool
+
+	healthy bool
 
 	stateutil.IFeatureGates
 }
@@ -70,6 +77,7 @@ type State interface {
 	common.StoreStateUpdater
 
 	common.HealthyState
+	common.HealthyStateUpdater
 
 	stateutil.IFeatureGates
 }
@@ -167,9 +175,13 @@ func (s *state) IsStoreUp() bool {
 }
 
 func (s *state) IsHealthy() bool {
+	return s.healthy && statefulset.IsPodAvailable(s.pod, minReadySeconds, metav1.Now())
+}
+
+func (s *state) SetHealthy() {
 	// We should also check if the leader count is enough.
 	// Especially when rolling restart tikv, we need to ensure the leader count of restarted tikv is enough.
-	return s.IsStoreUp() && !s.IsStoreBusy() && isLeaderCountEnough(s.GetLeaderCount(), s.GetRegionCount())
+	s.healthy = !s.IsStoreBusy() && isLeaderCountEnough(s.GetLeaderCount(), s.GetRegionCount())
 }
 
 func (s *state) IsStoreBusy() bool {
