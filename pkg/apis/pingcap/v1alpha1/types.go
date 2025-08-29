@@ -996,6 +996,11 @@ type LogTailerSpec struct {
 	// and https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/
 	// +optional
 	UseSidecar bool `json:"useSidecar,omitempty"`
+
+	// SecurityContext defines the security options the log tailer container should be run with.
+	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+	// +optional
+	SecurityContext *corev1.SecurityContext `json:"securityContext,omitempty"`
 }
 
 // InitContainerSpec contains basic spec about a init container
@@ -1003,6 +1008,11 @@ type LogTailerSpec struct {
 // +k8s:openapi-gen=true
 type InitContainerSpec struct {
 	corev1.ResourceRequirements `json:",inline"`
+
+	// SecurityContext defines the security options the init container should be run with.
+	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+	// +optional
+	SecurityContext *corev1.SecurityContext `json:"securityContext,omitempty"`
 }
 
 // StorageClaim contains details of TiFlash storages
@@ -1274,6 +1284,11 @@ type TiDBSlowLogTailerSpec struct {
 	// and https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/
 	// +optional
 	UseSidecar bool `json:"useSidecar,omitempty"`
+
+	// SecurityContext defines the security options the slowlog tailer container should be run with.
+	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+	// +optional
+	SecurityContext *corev1.SecurityContext `json:"securityContext,omitempty"`
 }
 
 // ComponentSpec is the base spec of each component, the fields should always accessed by the Basic<Component>Spec() method to respect the cluster-level properties
