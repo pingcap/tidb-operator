@@ -109,7 +109,7 @@ func convertTiFlashTemplate(tmpl *v1alpha1.TiFlashTemplate) *v1alpha1.TiFlashTem
 	return newTmpl
 }
 
-func equalTiFlashTemplate(p, c *v1alpha1.TiFlashTemplate) bool {
+func equalTiFlashTemplate(c, p *v1alpha1.TiFlashTemplate) bool {
 	p = convertTiFlashTemplate(p)
 	c = convertTiFlashTemplate(c)
 	// not equal only when current strategy is Restart and config is changed
