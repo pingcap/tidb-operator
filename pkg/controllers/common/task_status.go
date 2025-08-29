@@ -303,11 +303,10 @@ func TaskGroupConditionReady[
 		var needUpdate bool
 
 		replicas, readyReplicas := calcReadyReplicas[IS](state.InstanceSlice())
-		if readyReplicas == replicas && replicas != 0 {
-			needUpdate = coreutil.SetStatusCondition[S](
-				g,
-				*coreutil.Ready(),
-			) || needUpdate
+		specReplicas := coreutil.Replicas[S](g)
+
+		if readyReplicas == replicas && replicas == specReplicas {
+			needUpdate = coreutil.SetStatusCondition[S](g, *coreutil.Ready()) || needUpdate
 		} else {
 			// TODO(liubo02): more info when unready
 			needUpdate = coreutil.SetStatusCondition[S](
