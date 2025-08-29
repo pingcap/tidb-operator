@@ -110,7 +110,7 @@ func convertTiCDCTemplate(tmpl *v1alpha1.TiCDCTemplate) *v1alpha1.TiCDCTemplate 
 	return newTmpl
 }
 
-func equalTiCDCTemplate(p, c *v1alpha1.TiCDCTemplate) bool {
+func equalTiCDCTemplate(c, p *v1alpha1.TiCDCTemplate) bool {
 	p = convertTiCDCTemplate(p)
 	c = convertTiCDCTemplate(c)
 	// not equal only when current strategy is Restart and config is changed

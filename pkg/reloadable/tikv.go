@@ -109,7 +109,7 @@ func convertTiKVTemplate(tmpl *v1alpha1.TiKVTemplate) *v1alpha1.TiKVTemplate {
 	return newTmpl
 }
 
-func equalTiKVTemplate(p, c *v1alpha1.TiKVTemplate) bool {
+func equalTiKVTemplate(c, p *v1alpha1.TiKVTemplate) bool {
 	p = convertTiKVTemplate(p)
 	c = convertTiKVTemplate(c)
 	// not equal only when current strategy is Restart and config is changed

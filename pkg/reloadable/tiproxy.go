@@ -108,7 +108,7 @@ func convertTiProxyTemplate(tmpl *v1alpha1.TiProxyTemplate) *v1alpha1.TiProxyTem
 	return newTmpl
 }
 
-func equalTiProxyTemplate(p, c *v1alpha1.TiProxyTemplate) bool {
+func equalTiProxyTemplate(c, p *v1alpha1.TiProxyTemplate) bool {
 	p = convertTiProxyTemplate(p)
 	c = convertTiProxyTemplate(c)
 	// not equal only when current strategy is Restart and config is changed

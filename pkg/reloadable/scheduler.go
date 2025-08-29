@@ -105,7 +105,7 @@ func convertSchedulerTemplate(tmpl *v1alpha1.SchedulerTemplate) *v1alpha1.Schedu
 	return newTmpl
 }
 
-func equalSchedulerTemplate(p, c *v1alpha1.SchedulerTemplate) bool {
+func equalSchedulerTemplate(c, p *v1alpha1.SchedulerTemplate) bool {
 	p = convertSchedulerTemplate(p)
 	c = convertSchedulerTemplate(c)
 	// not equal only when current strategy is Restart and config is changed
