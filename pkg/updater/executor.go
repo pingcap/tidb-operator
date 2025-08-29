@@ -20,21 +20,7 @@ import (
 	"github.com/go-logr/logr"
 )
 
-// action represents an action performed by Actor.
-type action int
-
-const (
-	actionNone action = iota
-	actionScaleOut
-	actionScaleInUpdate
-	actionScaleInOutdated
-	actionUpdate
-	actionSetOffline
-	actionCancelOffline
-	actionCleanup
-	actionScaleIn
-	actionDeferDelete
-)
+const verbose = 10
 
 type Actor interface {
 	ScaleOut(ctx context.Context) error
@@ -44,9 +30,6 @@ type Actor interface {
 
 	// Cleanup deletes all instances marked as defer deletion
 	Cleanup(ctx context.Context) error
-	// RecordedActions returns all actions recorded by the actor.
-	// This is used for testing purposes to verify that the actor performed expected actions.
-	RecordedActions() []action
 }
 
 // Executor is an executor that updates the instances.
@@ -122,7 +105,7 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 				// update will always prefer unavailable one so available will not be changed if there are
 				// unavailable and outdated instances
 				if ex.unavailableOutdated > 0 {
-					logger.Info("update unavailable outdated")
+					logger.V(verbose).Info("update unavailable outdated")
 					if err := ex.act.Update(ctx); err != nil {
 						return false, err
 					}
@@ -138,7 +121,7 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 						return true, nil
 					}
 
-					logger.Info("update available outdated")
+					logger.V(verbose).Info("update available outdated")
 					if err := ex.act.Update(ctx); err != nil {
 						return false, err
 					}

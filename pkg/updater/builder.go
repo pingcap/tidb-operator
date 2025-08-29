@@ -62,7 +62,7 @@ type builder[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct 
 }
 
 func (b *builder[T, O, R]) Build() Executor {
-	update, outdated, deleted := split(b.instances, b.rev)
+	update, outdated, beingOffline, deleted := split(b.instances, b.rev)
 
 	updatePolicies := b.updatePreferPolicies
 	updatePolicies = append(updatePolicies, PreferUnavailable[R]())
@@ -72,9 +72,10 @@ func (b *builder[T, O, R]) Build() Executor {
 
 		noInPlaceUpdate: b.noInPlaceUpdate,
 
-		update:   NewState(update),
-		outdated: NewState(outdated),
-		deleted:  NewState(deleted),
+		update:       NewState(update),
+		outdated:     NewState(outdated),
+		beingOffline: NewState(beingOffline),
+		deleted:      NewState(deleted),
 
 		addHooks:    b.addHooks,
 		updateHooks: append(b.updateHooks, KeepName[R](), KeepTopology[R]()),
@@ -157,7 +158,7 @@ func (b *builder[T, O, R]) WithNoInPaceUpdate(noUpdate bool) Builder[R] {
 	return b
 }
 
-func split[R runtime.Instance](all []R, rev string) (update, outdated, deleted []R) {
+func split[R runtime.Instance](all []R, rev string) (update, outdated, beingOffline, deleted []R) {
 	for _, instance := range all {
 		// if instance is deleting, just ignore it
 		// TODO(liubo02): make sure it's ok for PD
@@ -170,6 +171,10 @@ func split[R runtime.Instance](all []R, rev string) (update, outdated, deleted [
 			deleted = append(deleted, instance)
 			continue
 		}
+		if instance.IsOffline() {
+			beingOffline = append(beingOffline, instance)
+			continue
+		}
 		if instance.GetUpdateRevision() == rev {
 			update = append(update, instance)
 		} else {
@@ -177,7 +182,7 @@ func split[R runtime.Instance](all []R, rev string) (update, outdated, deleted [
 		}
 	}
 
-	return update, outdated, deleted
+	return update, outdated, beingOffline, deleted
 }
 
 func countUnavailable[R runtime.Instance](all []R) int {

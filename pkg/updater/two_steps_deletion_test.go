@@ -133,10 +133,8 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 		scaleInPreferPolicies []PreferPolicy[*runtime.TiKV]
 
 		desired             int
-		maxSurge            int
 		unavailableUpdate   int
 		unavailableOutdated int
-		maxUnavailable      int
 
 		expectedActions []action
 		expectedWait    bool
@@ -163,7 +161,7 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 			},
 			expectedTotal:   3,
 			expectedOffline: 2,
-			expectedWait:    true,
+			expectedWait:    false,
 		},
 		{
 			name: "when scale in tikv from 3 to 1, wait for offline complete",
@@ -197,7 +195,7 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 				return
 			},
 			desired:         1,
-			expectedActions: []action{actionCleanup},
+			expectedActions: []action{actionDelete},
 			expectedTotal:   2,
 			expectedOffline: 1,
 		},
@@ -212,7 +210,7 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 				return
 			},
 			desired:         1,
-			expectedActions: []action{actionCleanup},
+			expectedActions: []action{actionDelete},
 			expectedTotal:   1,
 			expectedOffline: 0,
 			expectedWait:    false,
@@ -231,6 +229,45 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 			expectedOffline: 0,
 			expectedWait:    false,
 		},
+		{
+			name: "scale in when all instances unavailable",
+			setupStates: func() (update, outdated, beingOffline, deleted []*runtime.TiKV, objs []client.Object) {
+				u1 := buildTestTiKV("u1", 2, false) // Unavailable updated instance
+				u2 := buildTestTiKV("u2", 2, false)
+				u3 := buildTestTiKV("u3", 2, false)
+				update = []*runtime.TiKV{u1, u2, u3}
+				objs = buildObjects(u1, u2, u3)
+				return
+			},
+			desired:           2,
+			unavailableUpdate: 3,
+			expectedActions:   []action{actionSetOffline},
+			expectedOffline:   1,
+			expectedTotal:     3,
+			expectedWait:      true,
+		},
+		// Scale in and update scenarios
+		{
+			name: "scale in and rolling update tikv at same time (0)",
+			setupStates: func() (update, outdated, beingOffline, deleted []*runtime.TiKV, objs []client.Object) {
+				outdated = []*runtime.TiKV{
+					buildTestTiKV("1", 1, true),
+					buildTestTiKV("2", 1, true),
+					buildTestTiKV("3", 1, true),
+				}
+				objs = buildObjects(outdated...)
+				return
+			},
+			desired: 1,
+			expectedActions: []action{
+				actionDeferDelete,
+				actionDeferDelete,
+				actionUpdate,
+			},
+			expectedTotal:   3,
+			expectedOffline: 0,
+			expectedWait:    true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -245,10 +282,12 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 				beingOffline:    NewState(beingOffline),
 				deleted:         NewState(deleted),
 				scaleInSelector: NewSelector(newMockPreferPolicy(update)),
+				updateSelector:  NewSelector(newMockPreferPolicy(outdated)),
+				updateHooks:     []UpdateHook[*runtime.TiKV]{KeepName[*runtime.TiKV]()},
 				actions:         make([]action, 0),
 			}
 			e := NewExecutor(act, len(update), len(outdated), tt.desired,
-				tt.unavailableUpdate, tt.unavailableOutdated, tt.maxSurge, tt.maxUnavailable)
+				tt.unavailableUpdate, tt.unavailableOutdated, 0, 1)
 
 			wait, err := e.Do(context.TODO())
 			if tt.expectedError {
