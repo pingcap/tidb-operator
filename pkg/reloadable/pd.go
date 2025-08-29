@@ -105,7 +105,7 @@ func convertPDTemplate(tmpl *v1alpha1.PDTemplate) *v1alpha1.PDTemplate {
 	return newTmpl
 }
 
-func equalPDTemplate(p, c *v1alpha1.PDTemplate) bool {
+func equalPDTemplate(c, p *v1alpha1.PDTemplate) bool {
 	p = convertPDTemplate(p)
 	c = convertPDTemplate(c)
 	// not equal only when current strategy is Restart and config is changed

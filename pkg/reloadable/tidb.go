@@ -112,7 +112,7 @@ func convertTiDBTemplate(tmpl *v1alpha1.TiDBTemplate) *v1alpha1.TiDBTemplate {
 	return newTmpl
 }
 
-func equalTiDBTemplate(p, c *v1alpha1.TiDBTemplate) bool {
+func equalTiDBTemplate(c, p *v1alpha1.TiDBTemplate) bool {
 	p = convertTiDBTemplate(p)
 	c = convertTiDBTemplate(c)
 	// not equal only when current strategy is Restart and config is changed
