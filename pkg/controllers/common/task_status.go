@@ -305,13 +305,8 @@ func TaskGroupConditionReady[
 		replicas, readyReplicas := calcReadyReplicas[IS](state.InstanceSlice())
 		specReplicas := coreutil.Replicas[S](g)
 
-		// Ready if: desired replicas matches actual replicas and all actual replicas are ready
-		// Special case: when desired is 0, we only need actual replicas to be 0 (readyReplicas check is redundant)
-		if (specReplicas == 0 && replicas == 0) || (specReplicas > 0 && readyReplicas == replicas && replicas == specReplicas) {
-			needUpdate = coreutil.SetStatusCondition[S](
-				g,
-				*coreutil.Ready(),
-			) || needUpdate
+		if readyReplicas == replicas && replicas == specReplicas {
+			needUpdate = coreutil.SetStatusCondition[S](g, *coreutil.Ready()) || needUpdate
 		} else {
 			// TODO(liubo02): more info when unready
 			needUpdate = coreutil.SetStatusCondition[S](
