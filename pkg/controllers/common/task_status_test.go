@@ -935,7 +935,7 @@ func TestTaskGroupConditionReady(t *testing.T) {
 		expectedObj           *v1alpha1.PDGroup
 	}{
 		{
-			desc: "no instances",
+			desc: "no instances and spec replicas is 1 (default)",
 			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				return obj
 			}),
@@ -943,6 +943,68 @@ func TestTaskGroupConditionReady(t *testing.T) {
 			expectedStatusChanged: true,
 			expectedStatus:        task.SComplete,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unready(v1alpha1.ReasonNotAllInstancesReady),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "no instances and spec replicas is 0 - should be ready",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Replicas = ptr.To[int32](0)
+				return obj
+			}),
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Replicas = ptr.To[int32](0)
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Ready(),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "no instances and spec replicas is 0 - already ready, not changed",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Replicas = ptr.To[int32](0)
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Ready(),
+				}
+				return obj
+			}),
+
+			expectedStatusChanged: false,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Replicas = ptr.To[int32](0)
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Ready(),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "has 1 instance but spec replicas is 0 - should be unready",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Replicas = ptr.To[int32](0)
+				return obj
+			}),
+			instances: []*v1alpha1.PD{
+				fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.Conditions = []metav1.Condition{
+						*coreutil.Ready(),
+					}
+					return obj
+				}),
+			},
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Replicas = ptr.To[int32](0)
 				obj.Status.Conditions = []metav1.Condition{
 					*coreutil.Unready(v1alpha1.ReasonNotAllInstancesReady),
 				}
@@ -966,8 +1028,9 @@ func TestTaskGroupConditionReady(t *testing.T) {
 			}),
 		},
 		{
-			desc: "all instances are ready",
+			desc: "all instances are ready and spec matches",
 			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Replicas = ptr.To[int32](2)
 				return obj
 			}),
 			instances: []*v1alpha1.PD{
@@ -988,6 +1051,7 @@ func TestTaskGroupConditionReady(t *testing.T) {
 			expectedStatusChanged: true,
 			expectedStatus:        task.SComplete,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Replicas = ptr.To[int32](2)
 				obj.Status.Conditions = []metav1.Condition{
 					*coreutil.Ready(),
 				}
@@ -997,6 +1061,7 @@ func TestTaskGroupConditionReady(t *testing.T) {
 		{
 			desc: "one instance is not ready",
 			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Replicas = ptr.To[int32](2)
 				return obj
 			}),
 			instances: []*v1alpha1.PD{
@@ -1014,6 +1079,38 @@ func TestTaskGroupConditionReady(t *testing.T) {
 			expectedStatusChanged: true,
 			expectedStatus:        task.SComplete,
 			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Replicas = ptr.To[int32](2)
+				obj.Status.Conditions = []metav1.Condition{
+					*coreutil.Unready(v1alpha1.ReasonNotAllInstancesReady),
+				}
+				return obj
+			}),
+		},
+		{
+			desc: "all instances ready but count mismatch - expected 3 got 2",
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Replicas = ptr.To[int32](3)
+				return obj
+			}),
+			instances: []*v1alpha1.PD{
+				fake.FakeObj("aaa", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.Conditions = []metav1.Condition{
+						*coreutil.Ready(),
+					}
+					return obj
+				}),
+				fake.FakeObj("bbb", func(obj *v1alpha1.PD) *v1alpha1.PD {
+					obj.Status.Conditions = []metav1.Condition{
+						*coreutil.Ready(),
+					}
+					return obj
+				}),
+			},
+
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj: fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+				obj.Spec.Replicas = ptr.To[int32](3)
 				obj.Status.Conditions = []metav1.Condition{
 					*coreutil.Unready(v1alpha1.ReasonNotAllInstancesReady),
 				}
