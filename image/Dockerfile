@@ -29,7 +29,11 @@ FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sh
 
 ARG TARGETPLATFORM
 
-USER pingcap:pingcap
+# Use numeric UID:GID instead of username for Kubernetes compatibility.
+# Base image defines: PINGCAP_UID=1000, PINGCAP_GID=2000 (pingcap:pingcap)
+# Kubernetes runAsNonRoot requires numeric user to verify non-root execution.
+# Reference: https://github.com/PingCAP-QE/artifacts/blob/main/dockerfiles/bases/pingcap-base/Dockerfile
+USER 1000:2000
 
 WORKDIR /
 
@@ -41,7 +45,7 @@ FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sh
 
 ARG TARGETPLATFORM
 
-USER pingcap:pingcap
+USER 1000:2000
 
 WORKDIR /
 
@@ -53,7 +57,7 @@ FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sh
 
 ARG TARGETPLATFORM
 
-USER pingcap:pingcap
+USER 1000:2000
 
 WORKDIR /
 
@@ -67,7 +71,7 @@ FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sh
 
 ARG TARGETPLATFORM
 
-USER pingcap:pingcap
+USER 1000:2000
 
 WORKDIR /
 
