@@ -116,7 +116,7 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 				} else {
 					// DON'T decrease available if available is less than minimum
 					if available <= minimum {
-						logger.Info("wait because available is less than minimum",
+						logger.Info("wait for update: available instances below minimum threshold",
 							"available", available, "minimum", minimum)
 						return true, nil
 					}
@@ -138,7 +138,7 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 				// => ex.update == ex.desired
 				// => ex.outdated != 0 (ex.update != ex.desired || ex.outdated != 0 in for loop condition)
 				if available <= minimum {
-					logger.Info("wait because available is less than minimum",
+					logger.Info("wait for scale in outdated: available instances below minimum threshold",
 						"available", available, "minimum", minimum)
 					return true, nil
 				}
@@ -193,7 +193,7 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 			}
 			// Wait if available is less than minimum
 			if checkAvail && available <= minimum {
-				logger.Info("wait because available is less than minimum",
+				logger.Info("wait after scale in outdated: available instances below minimum threshold",
 					"available", available, "minimum", minimum)
 				return true, nil
 			}

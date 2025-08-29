@@ -64,7 +64,9 @@ type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 	update   State[R]
 	outdated State[R]
 	// deleted set records all instances that are marked by defer delete annotation
-	deleted      State[R]
+	deleted State[R]
+	// beingOffline set records all instances that are in the process of going offline.
+	// It will be used for cancel offline.
 	beingOffline State[R]
 
 	addHooks    []AddHook[R]
@@ -135,7 +137,7 @@ func (act *actor[T, O, R]) ScaleInUpdate(ctx context.Context) (bool, error) {
 
 	isUnavailable := !obj.IsReady() || !obj.IsUpToDate()
 
-	logger.Info("act scale in update", "chose", name, "isUnavailable", isUnavailable, "remain", act.update.Len())
+	logger.Info("act scale in update", "selected", name, "isUnavailable", isUnavailable, "remain", act.update.Len())
 
 	a, err := act.deleteInstance(ctx, obj)
 	if err != nil {
@@ -173,7 +175,7 @@ func (act *actor[T, O, R]) scaleInOutdated(ctx context.Context, deferDel bool) (
 	isUnavailable := !obj.IsReady() || !obj.IsUpToDate()
 
 	logger.Info("act scale in outdated",
-		"chose", name, "defer", deferDel, "isUnavailable", isUnavailable, "remain", act.outdated.Len())
+		"selected", name, "defer", deferDel, "isUnavailable", isUnavailable, "remain", act.outdated.Len())
 
 	if deferDel {
 		if err := act.deferDelete(ctx, obj); err != nil {
@@ -270,7 +272,7 @@ func (act *actor[T, O, R]) Update(ctx context.Context) error {
 		update = hook.Update(update, outdated)
 	}
 
-	logger.Info("act update", "chose", name, "remain", act.outdated.Len())
+	logger.Info("act update", "selected", name, "remain", act.outdated.Len())
 
 	if err := act.c.Apply(ctx, act.converter.To(update)); err != nil {
 		return err
