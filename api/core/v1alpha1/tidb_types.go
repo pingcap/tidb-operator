@@ -141,8 +141,6 @@ type TiDBTemplate struct {
 
 // TiDBTemplateSpec can only be specified in TiDBGroup.
 // +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes) && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in volumes"
-// +kubebuilder:validation:XValidation:rule="!has(self.mode) || self.mode == 'Normal' || !has(self.keyspace) || self.keyspace.size() == 0",message="keyspace cannot be set if mode is StandBy"
-// +kubebuilder:validation:XValidation:rule="(has(oldSelf.mode) && oldSelf.mode == 'StandBy') ||  ((!has(oldSelf.keyspace) && !has(self.keyspace)) || (has(oldSelf.keyspace) && has(self.keyspace) && oldSelf.keyspace == self.keyspace))",message="keyspace can only be set once when mode is changed from StandBy to Normal"
 type TiDBTemplateSpec struct {
 	// Version must be a semantic version.
 	// It can has a v prefix or not.
@@ -178,14 +176,14 @@ type TiDBTemplateSpec struct {
 	// +kubebuilder:validation:MaxItems=256
 	Volumes []Volume `json:"volumes,omitempty"`
 
-	// Keyspace defines the keyspace of a TiDB instance
+	// Keyspace defines the keyspace name of a TiDB instance
 	// Keyspace can only be set when mode is changed from StandBy to Normal
 	// If mode is Normal, it cannot be changed again
+	// For classic tidb, keyspace name is not supported and should not be set
 	Keyspace string `json:"keyspace,omitempty"`
 
 	// Mode defines the mode of a TiDB instance
 	// +kubebuilder:default="Normal"
-	// +kubebuilder:validation:XValidation:rule="self != 'StandBy' || oldSelf == 'StandBy'",message="mode can only be set from StandBy to Normal once"
 	Mode TiDBMode `json:"mode,omitempty"`
 
 	// SlowLog defines the separate slow log configuration for TiDB.
@@ -326,6 +324,9 @@ type TiDBSpec struct {
 	Subdomain string `json:"subdomain"`
 
 	// TiDBTemplateSpec embedded some fields managed by TiDBGroup.
+	// +kubebuilder:validation:XValidation:rule="!has(self.mode) || self.mode == 'Normal' || !has(self.keyspace) || self.keyspace.size() == 0",message="keyspace cannot be set if mode is StandBy"
+	// +kubebuilder:validation:XValidation:rule="(has(oldSelf.mode) && oldSelf.mode == 'StandBy') ||  ((!has(oldSelf.keyspace) && !has(self.keyspace)) || (has(oldSelf.keyspace) && has(self.keyspace) && oldSelf.keyspace == self.keyspace))",message="keyspace can only be set once when mode is changed from StandBy to Normal"
+	// +kubebuilder:validation:XValidation:rule="!has(self.mode) || self.mode != 'StandBy' || oldSelf.mode == 'StandBy'",message="mode can only be set from StandBy to Normal once"
 	TiDBTemplateSpec `json:",inline"`
 }
 

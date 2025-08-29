@@ -28,9 +28,11 @@ import (
 )
 
 const (
-	statusPath = "status"
-	infoPath   = "info"
-	labelsPath = "labels"
+	statusPath           = "status"
+	infoPath             = "info"
+	labelsPath           = "labels"
+	tidbPoolActivatePath = "tidb-pool/activate"
+	tidbPoolStatusPath   = "tidb-pool/status"
 )
 
 // TiDBClient provides TiDB server's APIs used by TiDB Operator.
@@ -41,6 +43,11 @@ type TiDBClient interface {
 	GetInfo(ctx context.Context) (*ServerInfo, error)
 	// SetServerLabels sets the labels of this TiDB server.
 	SetServerLabels(ctx context.Context, labels map[string]string) error
+
+	// GetPoolStatus get the tidb pool status(standby or activated) of the tidb
+	GetPoolStatus(ctx context.Context) (*PoolStatus, error)
+	// Activate sets the keyspace of a standby TiDB instance.
+	Activate(ctx context.Context, keyspace string) error
 }
 
 // tidbClient is the default implementation of TiDBClient.
@@ -104,4 +111,41 @@ func (c *tidbClient) SetServerLabels(ctx context.Context, labels map[string]stri
 	apiURL := fmt.Sprintf("%s/%s", c.url, labelsPath)
 	_, err := httputil.PostBodyOK(ctx, c.httpClient, apiURL, buffer)
 	return err
+}
+
+func (c *tidbClient) Activate(ctx context.Context, keyspace string) error {
+	buffer := bytes.NewBuffer(nil)
+	if err := json.NewEncoder(buffer).Encode(&ActivateRequest{
+		KeyspaceName:   keyspace,
+		RunAutoAnalyze: true,
+		TiDBEnableDDL:  true,
+	}); err != nil {
+		return fmt.Errorf("encode request to json failed, error: %w", err)
+	}
+
+	apiURL := fmt.Sprintf("%s/%s", c.url, tidbPoolActivatePath)
+	_, err := httputil.PostBodyOK(ctx, c.httpClient, apiURL, buffer)
+	return err
+}
+
+func (c *tidbClient) GetPoolStatus(ctx context.Context) (*PoolStatus, error) {
+	apiURL := fmt.Sprintf("%s/%s", c.url, tidbPoolStatusPath)
+	body, err := httputil.GetBodyOK(ctx, c.httpClient, apiURL)
+	if err != nil {
+		if httputil.IsNotFound(err) {
+			// If not found, state is activated and keyspace is unknown
+			// This api is only available for the tidb started in the standby mode
+			return &PoolStatus{
+				State: PoolStateActivated,
+			}, nil
+		}
+		return nil, err
+	}
+
+	status := PoolStatus{}
+	err = json.Unmarshal(body, &status)
+	if err != nil {
+		return nil, err
+	}
+	return &status, nil
 }

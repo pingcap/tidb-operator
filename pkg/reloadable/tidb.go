@@ -103,7 +103,7 @@ func convertTiDBTemplate(tmpl *v1alpha1.TiDBTemplate) *v1alpha1.TiDBTemplate {
 		newTmpl.Spec.SlowLog.Image = nil
 	}
 
-	if newTmpl.Spec.Mode != v1alpha1.TiDBModeStandBy {
+	if newTmpl.Spec.Mode == "" {
 		newTmpl.Spec.Mode = v1alpha1.TiDBModeNormal
 	}
 
@@ -116,12 +116,20 @@ func convertTiDBTemplate(tmpl *v1alpha1.TiDBTemplate) *v1alpha1.TiDBTemplate {
 	return newTmpl
 }
 
-func equalTiDBTemplate(p, c *v1alpha1.TiDBTemplate) bool {
+func equalTiDBTemplate(c, p *v1alpha1.TiDBTemplate) bool {
 	p = convertTiDBTemplate(p)
 	c = convertTiDBTemplate(c)
 	// not equal only when current strategy is Restart and config is changed
 	if c.Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart && p.Spec.Config != c.Spec.Config {
 		return false
+	}
+
+	// 1. standby->normal, ignore keyspace changes
+	if p.Spec.Mode == v1alpha1.TiDBModeStandBy && c.Spec.Mode == v1alpha1.TiDBModeNormal {
+		p.Spec.Mode = ""
+		c.Spec.Mode = ""
+		p.Spec.Keyspace = ""
+		c.Spec.Keyspace = ""
 	}
 
 	// ignore these fields

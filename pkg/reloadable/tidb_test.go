@@ -31,6 +31,110 @@ func TestCheckTiDB(t *testing.T) {
 		reloadable bool
 	}{
 		{
+			desc: "config is changed and policy is from restart to hot reload",
+			dbg: &v1alpha1.TiDBGroup{
+				Spec: v1alpha1.TiDBGroupSpec{
+					Template: v1alpha1.TiDBTemplate{
+						Spec: v1alpha1.TiDBTemplateSpec{
+							Config: v1alpha1.ConfigFile("xxx"),
+							UpdateStrategy: v1alpha1.UpdateStrategy{
+								Config: v1alpha1.ConfigUpdateStrategyHotReload,
+							},
+						},
+					},
+				},
+			},
+			db: &v1alpha1.TiDB{
+				Spec: v1alpha1.TiDBSpec{
+					TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{
+						Config: v1alpha1.ConfigFile("yyy"),
+						UpdateStrategy: v1alpha1.UpdateStrategy{
+							Config: v1alpha1.ConfigUpdateStrategyRestart,
+						},
+					},
+				},
+			},
+			reloadable: true,
+		},
+		{
+			desc: "config is changed and policy is from hot reload to restart",
+			dbg: &v1alpha1.TiDBGroup{
+				Spec: v1alpha1.TiDBGroupSpec{
+					Template: v1alpha1.TiDBTemplate{
+						Spec: v1alpha1.TiDBTemplateSpec{
+							Config: v1alpha1.ConfigFile("xxx"),
+							UpdateStrategy: v1alpha1.UpdateStrategy{
+								Config: v1alpha1.ConfigUpdateStrategyRestart,
+							},
+						},
+					},
+				},
+			},
+			db: &v1alpha1.TiDB{
+				Spec: v1alpha1.TiDBSpec{
+					TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{
+						Config: v1alpha1.ConfigFile("yyy"),
+						UpdateStrategy: v1alpha1.UpdateStrategy{
+							Config: v1alpha1.ConfigUpdateStrategyHotReload,
+						},
+					},
+				},
+			},
+			reloadable: false,
+		},
+		{
+			desc: "config is changed and policy is restart",
+			dbg: &v1alpha1.TiDBGroup{
+				Spec: v1alpha1.TiDBGroupSpec{
+					Template: v1alpha1.TiDBTemplate{
+						Spec: v1alpha1.TiDBTemplateSpec{
+							Config: v1alpha1.ConfigFile("xxx"),
+							UpdateStrategy: v1alpha1.UpdateStrategy{
+								Config: v1alpha1.ConfigUpdateStrategyRestart,
+							},
+						},
+					},
+				},
+			},
+			db: &v1alpha1.TiDB{
+				Spec: v1alpha1.TiDBSpec{
+					TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{
+						Config: v1alpha1.ConfigFile("yyy"),
+						UpdateStrategy: v1alpha1.UpdateStrategy{
+							Config: v1alpha1.ConfigUpdateStrategyRestart,
+						},
+					},
+				},
+			},
+			reloadable: false,
+		},
+		{
+			desc: "config is changed and policy is hot reload",
+			dbg: &v1alpha1.TiDBGroup{
+				Spec: v1alpha1.TiDBGroupSpec{
+					Template: v1alpha1.TiDBTemplate{
+						Spec: v1alpha1.TiDBTemplateSpec{
+							Config: v1alpha1.ConfigFile("xxx"),
+							UpdateStrategy: v1alpha1.UpdateStrategy{
+								Config: v1alpha1.ConfigUpdateStrategyHotReload,
+							},
+						},
+					},
+				},
+			},
+			db: &v1alpha1.TiDB{
+				Spec: v1alpha1.TiDBSpec{
+					TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{
+						Config: v1alpha1.ConfigFile("yyy"),
+						UpdateStrategy: v1alpha1.UpdateStrategy{
+							Config: v1alpha1.ConfigUpdateStrategyHotReload,
+						},
+					},
+				},
+			},
+			reloadable: true,
+		},
+		{
 			desc: "add pod labels overlay",
 			dbg: &v1alpha1.TiDBGroup{
 				Spec: v1alpha1.TiDBGroupSpec{
@@ -122,6 +226,64 @@ func TestCheckTiDB(t *testing.T) {
 				},
 			},
 			reloadable: true,
+		},
+		{
+			desc: "standby to normal is reloadable",
+			dbg: &v1alpha1.TiDBGroup{
+				Spec: v1alpha1.TiDBGroupSpec{
+					Template: v1alpha1.TiDBTemplate{
+						Spec: v1alpha1.TiDBTemplateSpec{
+							Mode: v1alpha1.TiDBModeNormal,
+						},
+					},
+				},
+			},
+			db: &v1alpha1.TiDB{
+				Spec: v1alpha1.TiDBSpec{
+					TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{
+						Mode: v1alpha1.TiDBModeStandBy,
+					},
+				},
+			},
+			reloadable: true,
+		},
+		{
+			desc: "standby to '' is reloadable",
+			dbg: &v1alpha1.TiDBGroup{
+				Spec: v1alpha1.TiDBGroupSpec{
+					Template: v1alpha1.TiDBTemplate{
+						Spec: v1alpha1.TiDBTemplateSpec{},
+					},
+				},
+			},
+			db: &v1alpha1.TiDB{
+				Spec: v1alpha1.TiDBSpec{
+					TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{
+						Mode: v1alpha1.TiDBModeStandBy,
+					},
+				},
+			},
+			reloadable: true,
+		},
+		{
+			desc: "normal to standby is not reloadable",
+			dbg: &v1alpha1.TiDBGroup{
+				Spec: v1alpha1.TiDBGroupSpec{
+					Template: v1alpha1.TiDBTemplate{
+						Spec: v1alpha1.TiDBTemplateSpec{
+							Mode: v1alpha1.TiDBModeStandBy,
+						},
+					},
+				},
+			},
+			db: &v1alpha1.TiDB{
+				Spec: v1alpha1.TiDBSpec{
+					TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{
+						Mode: v1alpha1.TiDBModeNormal,
+					},
+				},
+			},
+			reloadable: false,
 		},
 	}
 
