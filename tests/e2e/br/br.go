@@ -803,7 +803,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Start backup and wait to running")
 			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
+				backup.Spec.Env = []v1.EnvVar{{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
 			})
 			framework.ExpectNoError(err)
 
@@ -865,7 +865,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Start backup and wait to running")
 			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTimeAndPanic}}
+				backup.Spec.Env = []v1.EnvVar{{Name: e2eBackupEnv, Value: e2eExtendBackupTimeAndPanic}}
 			})
 			framework.ExpectNoError(err)
 
@@ -875,7 +875,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("update backup evn, remove simulate panic")
 			backup, err = updateBackup(f, backup.Name, func(backup *v1alpha1.Backup) {
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
+				backup.Spec.Env = []v1.EnvVar{{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
 			})
 			framework.ExpectNoError(err)
 
@@ -935,7 +935,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 					MaxRetryTimes:    2,
 					RetryTimeout:     "30m",
 				}
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTimeAndPanic}}
+				backup.Spec.Env = []v1.EnvVar{{Name: e2eBackupEnv, Value: e2eExtendBackupTimeAndPanic}}
 			})
 			framework.ExpectNoError(err)
 
@@ -1016,7 +1016,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 					MaxRetryTimes:    2,
 					RetryTimeout:     "2m",
 				}
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTimeAndPanic}}
+				backup.Spec.Env = []v1.EnvVar{{Name: e2eBackupEnv, Value: e2eExtendBackupTimeAndPanic}}
 			})
 			framework.ExpectNoError(err)
 

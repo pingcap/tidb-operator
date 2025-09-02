@@ -596,7 +596,7 @@ func TestSyncWithInvalidMinCompactStartTs(t *testing.T) {
 
 	err = m.Sync(bs)
 	g.Expect(err).Should(BeNil())
-	
+
 	// Should not create compact backup due to invalid MinCompactStartTs
 	_, err = deps.CompactBackupLister.CompactBackups(bs.Namespace).Get(bs.Status.LastCompact)
 	g.Expect(errors.IsNotFound(err)).Should(BeTrue())
