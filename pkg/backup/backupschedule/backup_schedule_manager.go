@@ -91,6 +91,19 @@ func (bm *backupScheduleManager) createCompact(bs *v1alpha1.BackupSchedule, chec
 		return fmt.Errorf("failed to parse compact interval: %w", err)
 	}
 
+	// Check and adjust startTs based on MinCompactStartTs if specified
+	if bs.Spec.MinCompactStartTs != nil && *bs.Spec.MinCompactStartTs != "" {
+		minStartTime, err := config.ParseTSStringToGoTime(*bs.Spec.MinCompactStartTs)
+		if err != nil {
+			return fmt.Errorf("failed to parse MinCompactStartTs %s: %w", *bs.Spec.MinCompactStartTs, err)
+		}
+		if startTs.Before(minStartTime) {
+			klog.Infof("backupSchedule %s/%s adjusting startTs from %v to minCompactStartTs %v",
+				bs.GetNamespace(), bs.GetName(), startTs, minStartTime)
+			startTs = minStartTime
+		}
+	}
+
 	endTs = calEndTs(startTs, span, *checkpoint)
 	klog.Infof("backupSchedule %s/%s expected startTs is %v, endTs is %v", bs.GetNamespace(), bs.GetName(), startTs, endTs)
 

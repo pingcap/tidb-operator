@@ -2575,6 +2575,11 @@ type BackupScheduleSpec struct {
 	// CompactBackupTemplate is the specification of the compact backup structure to get scheduled.
 	// +optional
 	CompactBackupTemplate *CompactSpec `json:"compactBackupTemplate"`
+	// MinCompactStartTs specifies the minimum start timestamp for compact backup.
+	// If the calculated start ts is less than this value, it will be adjusted to this value.
+	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
+	// +optional
+	MinCompactStartTs *string `json:"minCompactStartTs,omitempty"`
 	// The storageClassName of the persistent volume for Backup data storage if not storage class name set in BackupSpec.
 	// Defaults to Kubernetes default storage class.
 	// +optional

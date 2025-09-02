@@ -483,6 +483,164 @@ func TestSyncWithCompactRoutineCompact(t *testing.T) {
 	g.Expect(errors.IsNotFound(err)).Should(BeTrue())
 }
 
+func TestSyncWithMinCompactStartTs(t *testing.T) {
+	g := NewGomegaWithT(t)
+	helper := newHelper(t)
+	defer helper.close()
+	deps := helper.deps
+	m := NewBackupScheduleManager(deps).(*backupScheduleManager)
+	var err error
+	bs := &v1alpha1.BackupSchedule{}
+	bs.Namespace = "ns"
+	bs.Name = "bsname"
+	bs.Spec.Schedule = "0 0 * * *"
+	bs.Spec.CompactInterval = pointer.StringPtr("30m")
+	bs.Spec.MaxReservedTime = pointer.StringPtr("71h")
+
+	now := time.Now()
+	// Set MinCompactStartTs to be later than LogBackupStartTs
+	minStartTime := now.Add(-30 * time.Minute)
+	bs.Spec.MinCompactStartTs = pointer.StringPtr(minStartTime.Format(v1alpha1.BackupTimestampFormat))
+	bs.Spec.CompactBackupTemplate = &v1alpha1.CompactSpec{Concurrency: 4}
+	bs.Spec.LogBackupTemplate = &v1alpha1.BackupSpec{Mode: v1alpha1.BackupModeLog}
+
+	logBackup := buildLogBackup(bs, now.Add(-1*time.Hour))
+	logBackup.Status.CommitTs = getTSOStr(now.Add(-1 * time.Hour).Unix())
+	logBackup.Status.LogCheckpointTs = getTSOStr(now.Unix())
+	helper.createBackup(logBackup)
+	bs.Status.LogBackup = &logBackup.Name
+	// Set LogBackupStartTs to be earlier than MinCompactStartTs to trigger adjustment
+	bs.Status.LogBackupStartTs = &metav1.Time{Time: now.Add(-1 * time.Hour)}
+
+	// Set a fixed time function to ensure consistent behavior
+	fixedNow := now
+	m.now = func() time.Time { return fixedNow }
+
+	err = m.Sync(bs)
+	g.Expect(err).Should(BeNil())
+
+	lastCompact, err := deps.CompactBackupLister.CompactBackups(bs.Namespace).Get(bs.Status.LastCompact)
+	g.Expect(err).Should(BeNil())
+	g.Expect(lastCompact.Spec.StartTs).Should(Equal(minStartTime.UTC().Format(v1alpha1.BackupTimestampFormat)))
+}
+
+func TestSyncWithMinCompactStartTsNoAdjustment(t *testing.T) {
+	g := NewGomegaWithT(t)
+	helper := newHelper(t)
+	defer helper.close()
+	deps := helper.deps
+	m := NewBackupScheduleManager(deps).(*backupScheduleManager)
+	var err error
+	bs := &v1alpha1.BackupSchedule{}
+	bs.Namespace = "ns"
+	bs.Name = "bsname"
+	bs.Spec.Schedule = "0 0 * * *"
+	bs.Spec.CompactInterval = pointer.StringPtr("30m")
+	bs.Spec.MaxReservedTime = pointer.StringPtr("71h")
+
+	now := time.Now()
+	minStartTime := now.Add(-2 * time.Hour)
+	bs.Spec.MinCompactStartTs = pointer.StringPtr(minStartTime.UTC().Format(v1alpha1.BackupTimestampFormat))
+	bs.Spec.CompactBackupTemplate = &v1alpha1.CompactSpec{Concurrency: 4}
+	bs.Spec.LogBackupTemplate = &v1alpha1.BackupSpec{Mode: v1alpha1.BackupModeLog}
+
+	logBackup := buildLogBackup(bs, now.Add(-1*time.Hour))
+	logBackup.Status.CommitTs = getTSOStr(now.Add(-1 * time.Hour).Unix())
+	logBackup.Status.LogCheckpointTs = getTSOStr(now.Unix())
+	helper.createBackup(logBackup)
+	bs.Status.LogBackup = &logBackup.Name
+	bs.Status.LogBackupStartTs = &metav1.Time{Time: now.Add(-1 * time.Hour)}
+
+	// Set a fixed time function to ensure consistent behavior
+	fixedNow := now
+	m.now = func() time.Time { return fixedNow }
+
+	err = m.Sync(bs)
+	g.Expect(err).Should(BeNil())
+
+	lastCompact, err := deps.CompactBackupLister.CompactBackups(bs.Namespace).Get(bs.Status.LastCompact)
+	g.Expect(err).Should(BeNil())
+	expectedStartTs := bs.Status.LogBackupStartTs.Time.UTC().Format(v1alpha1.BackupTimestampFormat)
+	g.Expect(lastCompact.Spec.StartTs).Should(Equal(expectedStartTs))
+}
+
+func TestSyncWithInvalidMinCompactStartTs(t *testing.T) {
+	g := NewGomegaWithT(t)
+	helper := newHelper(t)
+	defer helper.close()
+	deps := helper.deps
+	m := NewBackupScheduleManager(deps).(*backupScheduleManager)
+	var err error
+	bs := &v1alpha1.BackupSchedule{}
+	bs.Namespace = "ns"
+	bs.Name = "bsname"
+	bs.Spec.Schedule = "0 0 * * *"
+	bs.Spec.CompactInterval = pointer.StringPtr("30m")
+	bs.Spec.MaxReservedTime = pointer.StringPtr("71h")
+
+	now := time.Now()
+	bs.Spec.MinCompactStartTs = pointer.StringPtr("invalid-timestamp")
+	bs.Spec.CompactBackupTemplate = &v1alpha1.CompactSpec{Concurrency: 4}
+	bs.Spec.LogBackupTemplate = &v1alpha1.BackupSpec{Mode: v1alpha1.BackupModeLog}
+
+	logBackup := buildLogBackup(bs, now.Add(-1*time.Hour))
+	logBackup.Status.CommitTs = getTSOStr(now.Add(-1 * time.Hour).Unix())
+	logBackup.Status.LogCheckpointTs = getTSOStr(now.Unix())
+	helper.createBackup(logBackup)
+	bs.Status.LogBackup = &logBackup.Name
+	bs.Status.LogBackupStartTs = &metav1.Time{Time: now.Add(-1 * time.Hour)}
+
+	// Set a fixed time function to ensure consistent behavior
+	fixedNow := now
+	m.now = func() time.Time { return fixedNow }
+
+	err = m.Sync(bs)
+	g.Expect(err).Should(BeNil())
+	
+	// Should not create compact backup due to invalid MinCompactStartTs
+	_, err = deps.CompactBackupLister.CompactBackups(bs.Namespace).Get(bs.Status.LastCompact)
+	g.Expect(errors.IsNotFound(err)).Should(BeTrue())
+}
+
+func TestSyncWithEmptyMinCompactStartTs(t *testing.T) {
+	g := NewGomegaWithT(t)
+	helper := newHelper(t)
+	defer helper.close()
+	deps := helper.deps
+	m := NewBackupScheduleManager(deps).(*backupScheduleManager)
+	var err error
+	bs := &v1alpha1.BackupSchedule{}
+	bs.Namespace = "ns"
+	bs.Name = "bsname"
+	bs.Spec.Schedule = "0 0 * * *"
+	bs.Spec.CompactInterval = pointer.StringPtr("30m")
+	bs.Spec.MaxReservedTime = pointer.StringPtr("71h")
+
+	now := time.Now()
+	bs.Spec.MinCompactStartTs = pointer.StringPtr("")
+	bs.Spec.CompactBackupTemplate = &v1alpha1.CompactSpec{Concurrency: 4}
+	bs.Spec.LogBackupTemplate = &v1alpha1.BackupSpec{Mode: v1alpha1.BackupModeLog}
+
+	logBackup := buildLogBackup(bs, now.Add(-1*time.Hour))
+	logBackup.Status.CommitTs = getTSOStr(now.Add(-1 * time.Hour).Unix())
+	logBackup.Status.LogCheckpointTs = getTSOStr(now.Unix())
+	helper.createBackup(logBackup)
+	bs.Status.LogBackup = &logBackup.Name
+	bs.Status.LogBackupStartTs = &metav1.Time{Time: now.Add(-1 * time.Hour)}
+
+	// Set a fixed time function to ensure consistent behavior
+	fixedNow := now
+	m.now = func() time.Time { return fixedNow }
+
+	err = m.Sync(bs)
+	g.Expect(err).Should(BeNil())
+
+	lastCompact, err := deps.CompactBackupLister.CompactBackups(bs.Namespace).Get(bs.Status.LastCompact)
+	g.Expect(err).Should(BeNil())
+	expectedStartTs := bs.Status.LogBackupStartTs.Time.UTC().Format(v1alpha1.BackupTimestampFormat)
+	g.Expect(lastCompact.Spec.StartTs).Should(Equal(expectedStartTs))
+}
+
 func TestCalculateExpiredBackupsWithLogBackup(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type testCase struct {
