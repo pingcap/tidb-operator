@@ -701,6 +701,20 @@ CompactSpec
 </tr>
 <tr>
 <td>
+<code>minCompactStartTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MinCompactStartTs specifies the minimum start timestamp for compact backup.
+If the calculated start ts is less than this value, it will be adjusted to this value.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>storageClassName</code></br>
 <em>
 string
@@ -3841,6 +3855,20 @@ CompactSpec
 <td>
 <em>(Optional)</em>
 <p>CompactBackupTemplate is the specification of the compact backup structure to get scheduled.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>minCompactStartTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MinCompactStartTs specifies the minimum start timestamp for compact backup.
+If the calculated start ts is less than this value, it will be adjusted to this value.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
 </td>
 </tr>
 <tr>
