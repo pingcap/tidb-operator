@@ -1222,7 +1222,7 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 					"sed -e '5s/[()]//g' -e 's/SHARD//g'  -e 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g;s/$()/'$(SHARD)'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention.time=2h --web.external-url=https://www.example.com/prometheus/",
 				},
 				Ports: []corev1.ContainerPort{
-					corev1.ContainerPort{
+					{
 						Name:          "prometheus",
 						ContainerPort: 9090,
 						Protocol:      "TCP",
@@ -1245,7 +1245,7 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 						Name:  "SHARD",
 						Value: "0",
 					},
-					corev1.EnvVar{
+					{
 						Name:  "TZ",
 						Value: "UTC",
 					},
@@ -1268,17 +1268,17 @@ func TestGetMonitorPrometheusContainer(t *testing.T) {
 						MountPath: "/etc/prometheus/config_out",
 						ReadOnly:  false,
 					},
-					corev1.VolumeMount{
+					{
 						Name:      "prometheus-config",
 						ReadOnly:  true,
 						MountPath: "/etc/prometheus/config",
 					},
-					corev1.VolumeMount{
+					{
 						Name:      v1alpha1.TidbMonitorMemberType.String(),
 						ReadOnly:  false,
 						MountPath: "/data",
 					},
-					corev1.VolumeMount{
+					{
 						Name:      "prometheus-rules",
 						ReadOnly:  false,
 						MountPath: "/prometheus-rules",
@@ -1361,18 +1361,18 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 				Name:  "grafana",
 				Image: "hub.pingcap.net:latest",
 				Ports: []corev1.ContainerPort{
-					corev1.ContainerPort{
+					{
 						Name:          "grafana",
 						ContainerPort: 3000,
 						Protocol:      "TCP",
 					},
 				},
 				Env: []corev1.EnvVar{
-					corev1.EnvVar{
+					{
 						Name:  "GF_PATHS_DATA",
 						Value: "/data/grafana",
 					},
-					corev1.EnvVar{
+					{
 						Name: "GF_SECURITY_ADMIN_PASSWORD",
 						ValueFrom: &corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
@@ -1383,7 +1383,7 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 							},
 						},
 					},
-					corev1.EnvVar{
+					{
 						Name: "GF_SECURITY_ADMIN_USER",
 						ValueFrom: &corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
@@ -1394,26 +1394,26 @@ func TestGetMonitorGrafanaContainer(t *testing.T) {
 							},
 						},
 					},
-					corev1.EnvVar{Name: "TZ", Value: "UTC"},
+					{Name: "TZ", Value: "UTC"},
 				},
 				Resources: corev1.ResourceRequirements{},
 				VolumeMounts: []corev1.VolumeMount{
-					corev1.VolumeMount{
+					{
 						Name:      v1alpha1.TidbMonitorMemberType.String(),
 						ReadOnly:  false,
 						MountPath: "/data",
 					},
-					corev1.VolumeMount{
+					{
 						Name:      "datasource",
 						ReadOnly:  false,
 						MountPath: "/etc/grafana/provisioning/datasources",
 					},
-					corev1.VolumeMount{
+					{
 						Name:      "dashboards-provisioning",
 						ReadOnly:  false,
 						MountPath: "/etc/grafana/provisioning/dashboards",
 					},
-					corev1.VolumeMount{
+					{
 						Name:      "grafana-dashboard",
 						MountPath: "/grafana-dashboard-definitions/tidb",
 					},
