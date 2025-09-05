@@ -20,10 +20,9 @@
 package scope
 
 import (
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type (
