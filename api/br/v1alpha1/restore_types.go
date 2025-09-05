@@ -130,8 +130,8 @@ type RestoreSpec struct {
 	StorageProvider `json:",inline"`
 	// BR is the configs for BR.
 	BR *BRConfig `json:"br,omitempty"`
-
 	// PitrRestoredTs is the pitr restored ts.
+	// +optional
 	PitrRestoredTs string `json:"pitrRestoredTs,omitempty"`
 	// LogRestoreStartTs is the start timestamp which log restore from.
 	// +optional
@@ -184,6 +184,8 @@ type RestoreSpec struct {
 	// TolerateSingleTiKVOutage indicates whether to tolerate a single failure of a store without data loss
 	// +kubebuilder:default=false
 	TolerateSingleTiKVOutage bool `json:"tolerateSingleTiKVOutage,omitempty"`
+	// +kubebuilder:default=0
+	BackoffLimit int32 `json:"backoffLimit,omitempty"`
 }
 
 // RestoreStatus represents the current status of a tidb cluster restore.
