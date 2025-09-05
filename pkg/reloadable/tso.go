@@ -105,7 +105,7 @@ func convertTSOTemplate(tmpl *v1alpha1.TSOTemplate) *v1alpha1.TSOTemplate {
 	return newTmpl
 }
 
-func equalTSOTemplate(p, c *v1alpha1.TSOTemplate) bool {
+func equalTSOTemplate(c, p *v1alpha1.TSOTemplate) bool {
 	p = convertTSOTemplate(p)
 	c = convertTSOTemplate(c)
 	// not equal only when current strategy is Restart and config is changed

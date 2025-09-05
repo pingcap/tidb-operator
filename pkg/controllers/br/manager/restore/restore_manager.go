@@ -24,7 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -228,7 +227,10 @@ func (rm *restoreManager) makeRestoreJob(ctx context.Context, restore *v1alpha1.
 
 	switch restore.Spec.Mode {
 	case v1alpha1.RestoreModePiTR:
-		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.RestoreModePiTR), fmt.Sprintf("--pitrRestoredTs=%s", restore.Spec.PitrRestoredTs))
+		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.RestoreModePiTR))
+		if restore.Spec.PitrRestoredTs != "" {
+			args = append(args, fmt.Sprintf("--pitrRestoredTs=%s", restore.Spec.PitrRestoredTs))
+		}
 	default:
 		args = append(args, fmt.Sprintf("--mode=%s", v1alpha1.RestoreModeSnapshot))
 	}
@@ -355,7 +357,7 @@ func (rm *restoreManager) makeRestoreJob(ctx context.Context, restore *v1alpha1.
 			},
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: ptr.To(int32(0)),
+			BackoffLimit: &restore.Spec.BackoffLimit,
 			Template:     *podSpec,
 		},
 	}
