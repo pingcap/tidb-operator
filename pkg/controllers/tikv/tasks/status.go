@@ -18,6 +18,7 @@ import (
 	"context"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -28,6 +29,7 @@ import (
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	"github.com/pingcap/tidb-operator/pkg/utils/compare"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
 
 const (
@@ -70,6 +72,12 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 			if err := c.Status().Update(ctx, tikv); err != nil {
 				return task.Fail().With("cannot update status: %w", err)
 			}
+		}
+
+		// pod available cannot be watched so that we have to retry immediately
+		retry, waitTime := waitTimeForAvailable(pod)
+		if !ready && retry {
+			return task.Retry(waitTime).With("pod is not ready more than 15s, retry")
 		}
 
 		if state.IsPodTerminating() {
@@ -140,4 +148,20 @@ func syncLeadersEvictedCond(tikv *v1alpha1.TiKV, store *pdv1.Store, isEvicting b
 		Reason:             reason,
 		Message:            msg,
 	})
+}
+
+func waitTimeForAvailable(pod *corev1.Pod) (bool, time.Duration) {
+	cond := statefulset.GetPodReadyCondition(&pod.Status)
+	if cond.Status != corev1.ConditionTrue {
+		return false, 0
+	}
+	d := time.Since(cond.LastTransitionTime.Time)
+	if d > minReadySeconds+minReadySecondsJitter {
+		return false, 0
+	}
+	if d > minReadySeconds {
+		return true, 0
+	}
+
+	return true, minReadySeconds - d
 }
