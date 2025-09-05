@@ -20,6 +20,8 @@
 package scope
 
 import (
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
@@ -38,6 +40,10 @@ func (TiDB) To(t *runtime.TiDB) *v1alpha1.TiDB {
 
 func (TiDB) Component() string {
 	return v1alpha1.LabelValComponentTiDB
+}
+
+func (TiDB) GVK() schema.GroupVersionKind {
+	return v1alpha1.SchemeGroupVersion.WithKind("TiDB")
 }
 
 func (TiDB) NewList() *v1alpha1.TiDBList {
@@ -64,6 +70,10 @@ func (TiDBGroup) To(t *runtime.TiDBGroup) *v1alpha1.TiDBGroup {
 
 func (TiDBGroup) Component() string {
 	return v1alpha1.LabelValComponentTiDB
+}
+
+func (TiDBGroup) GVK() schema.GroupVersionKind {
+	return v1alpha1.SchemeGroupVersion.WithKind("TiDBGroup")
 }
 
 func (TiDBGroup) NewList() *v1alpha1.TiDBGroupList {
