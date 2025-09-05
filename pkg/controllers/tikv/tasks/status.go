@@ -151,7 +151,13 @@ func syncLeadersEvictedCond(tikv *v1alpha1.TiKV, store *pdv1.Store, isEvicting b
 }
 
 func waitTimeForAvailable(pod *corev1.Pod) (bool, time.Duration) {
+	if pod == nil {
+		return false, 0
+	}
 	cond := statefulset.GetPodReadyCondition(&pod.Status)
+	if cond == nil {
+		return false, 0
+	}
 	if cond.Status != corev1.ConditionTrue {
 		return false, 0
 	}
