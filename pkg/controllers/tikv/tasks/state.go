@@ -33,7 +33,8 @@ const (
 	minRegionCountForLeaderCountCheck = 100
 
 	// Now we have to wait an arbitrary duration to ensure that is_busy has been reported to the PD
-	minReadySeconds = 15
+	minReadySeconds       = 15
+	minReadySecondsJitter = 3
 )
 
 type state struct {
