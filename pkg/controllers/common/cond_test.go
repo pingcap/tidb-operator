@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 )
@@ -191,6 +192,110 @@ func TestCondClusterPDAddrIsNotRegistered(t *testing.T) {
 
 			s := &fakeClusterState{s: c.state}
 			cond := CondClusterPDAddrIsNotRegistered(s)
+			assert.Equal(tt, c.expectedCond, cond.Satisfy(), c.desc)
+		})
+	}
+}
+
+func TestCondFeatureGatesIsNotSynced(t *testing.T) {
+	type state struct {
+		ClusterStateFunc
+		ObjectStateFunc[*v1alpha1.PDGroup]
+	}
+
+	cases := []struct {
+		desc         string
+		state        *state
+		expectedCond bool
+	}{
+		{
+			desc: "synced, cond is false",
+			state: &state{
+				ClusterStateFunc: func() *v1alpha1.Cluster {
+					return &v1alpha1.Cluster{
+						Spec: v1alpha1.ClusterSpec{
+							FeatureGates: []metav1alpha1.FeatureGate{
+								{
+									Name: "xxx",
+								},
+							},
+						},
+					}
+				},
+				ObjectStateFunc: func() *v1alpha1.PDGroup {
+					return &v1alpha1.PDGroup{
+						Spec: v1alpha1.PDGroupSpec{
+							Features: []metav1alpha1.Feature{
+								"xxx",
+							},
+						},
+					}
+				},
+			},
+			expectedCond: false,
+		},
+		{
+			desc: "not synced, cond is true",
+			state: &state{
+				ClusterStateFunc: func() *v1alpha1.Cluster {
+					return &v1alpha1.Cluster{
+						Spec: v1alpha1.ClusterSpec{
+							FeatureGates: []metav1alpha1.FeatureGate{
+								{
+									Name: "xxx",
+								},
+							},
+						},
+					}
+				},
+				ObjectStateFunc: func() *v1alpha1.PDGroup {
+					return &v1alpha1.PDGroup{
+						Spec: v1alpha1.PDGroupSpec{
+							Features: []metav1alpha1.Feature{},
+						},
+					}
+				},
+			},
+			expectedCond: true,
+		},
+		{
+			desc: "unordered, cond is true",
+			state: &state{
+				ClusterStateFunc: func() *v1alpha1.Cluster {
+					return &v1alpha1.Cluster{
+						Spec: v1alpha1.ClusterSpec{
+							FeatureGates: []metav1alpha1.FeatureGate{
+								{
+									Name: "xxx",
+								},
+								{
+									Name: "yyy",
+								},
+							},
+						},
+					}
+				},
+				ObjectStateFunc: func() *v1alpha1.PDGroup {
+					return &v1alpha1.PDGroup{
+						Spec: v1alpha1.PDGroupSpec{
+							Features: []metav1alpha1.Feature{
+								"yyy",
+								"xxx",
+							},
+						},
+					}
+				},
+			},
+			expectedCond: true,
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			cond := CondFeatureGatesIsNotSynced[scope.PDGroup](c.state)
 			assert.Equal(tt, c.expectedCond, cond.Satisfy(), c.desc)
 		})
 	}
