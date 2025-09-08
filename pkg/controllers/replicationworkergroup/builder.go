@@ -31,7 +31,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskContextCluster[scope.ReplicationWorkerGroup](state, r.Client),
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),
-		common.TaskCheckFeatureGates[scope.ReplicationWorkerGroup](state, r.Client),
+		task.IfBreak(common.CondFeatureGatesIsNotSynced[scope.ReplicationWorkerGroup](state)),
 
 		// get all schedulers
 		common.TaskContextSlice[scope.ReplicationWorkerGroup](state, r.Client),
