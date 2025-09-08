@@ -343,6 +343,80 @@ func TestTaskStatus(t *testing.T) {
 
 			expectedStatus: task.SFail,
 		},
+		{
+			desc: "wait if pod is ready but not available",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj(fakeTiKVName, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Generation = 3
+						obj.Labels = map[string]string{
+							v1alpha1.LabelKeyInstanceRevisionHash: newRevision,
+						}
+						obj.Status.Conditions = []metav1.Condition{
+							{
+								Type:               v1alpha1.CondReady,
+								Status:             metav1.ConditionFalse,
+								ObservedGeneration: 3,
+							},
+						}
+						return obj
+					}),
+					pod: fake.FakeObj("aaa-tikv-xxx", func(obj *corev1.Pod) *corev1.Pod {
+						obj.Labels = map[string]string{
+							v1alpha1.LabelKeyInstanceRevisionHash: newRevision,
+						}
+						obj.Status.Phase = corev1.PodRunning
+						obj.Status.Conditions = append(obj.Status.Conditions, corev1.PodCondition{
+							Type:               corev1.PodReady,
+							Status:             corev1.ConditionTrue,
+							LastTransitionTime: metav1.Now(),
+						})
+						return obj
+					}),
+					storeState: v1alpha1.StoreStateServing,
+				},
+				Store: &pdv1.Store{
+					ID: fakeTiKVName,
+				},
+				PDSynced: true,
+			},
+
+			expectedStatus: task.SWait,
+			expectedObj: fake.FakeObj(fakeTiKVName, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+				obj.Generation = 3
+				obj.Labels = map[string]string{
+					v1alpha1.LabelKeyInstanceRevisionHash: newRevision,
+				}
+
+				obj.Status.ObservedGeneration = 3
+				obj.Status.ID = fakeTiKVName
+				obj.Status.State = v1alpha1.StoreStateServing
+				obj.Status.UpdateRevision = newRevision
+				obj.Status.Conditions = []metav1.Condition{
+					{
+						Type:               v1alpha1.CondReady,
+						Status:             metav1.ConditionFalse,
+						ObservedGeneration: 3,
+					},
+					{
+						Type:               v1alpha1.CondSuspended,
+						Status:             metav1.ConditionFalse,
+						ObservedGeneration: 3,
+						Reason:             v1alpha1.ReasonUnsuspended,
+						Message:            "instance is not suspended",
+					},
+					{
+						Type:               v1alpha1.TiKVCondLeadersEvicted,
+						Status:             metav1.ConditionFalse,
+						ObservedGeneration: 3,
+						Reason:             "NotEvicted",
+						Message:            "leaders are not all evicted",
+					},
+				}
+
+				return obj
+			}),
+		},
 	}
 
 	for i := range cases {

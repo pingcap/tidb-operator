@@ -849,6 +849,37 @@ func TestExecutor(t *testing.T) {
 			},
 			expectedWait: true,
 		},
+		{
+			desc:                "outdated is unavailable",
+			update:              1,
+			outdated:            1,
+			desired:             1,
+			unavailableUpdate:   0,
+			unavailableOutdated: 1,
+			maxSurge:            1,
+			maxUnavailable:      0,
+			expectedActions: []action{
+				actionScaleInOutdated,
+				actionCleanup,
+			},
+			expectedWait: false,
+		},
+		{
+			desc:                "2 outdated are both unavailable",
+			update:              2,
+			outdated:            2,
+			desired:             2,
+			unavailableUpdate:   0,
+			unavailableOutdated: 2,
+			maxSurge:            1,
+			maxUnavailable:      0,
+			expectedActions: []action{
+				actionScaleInOutdated,
+				actionScaleInOutdated,
+				actionCleanup,
+			},
+			expectedWait: false,
+		},
 	}
 
 	for i := range cases {

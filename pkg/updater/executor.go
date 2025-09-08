@@ -131,7 +131,8 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 				// => ex.update + ex.outdated >= ex.desired + ex.outdated
 				// => ex.update == ex.desired
 				// => ex.outdated != 0 (ex.update != ex.desired || ex.outdated != 0 in for loop condition)
-				if available <= minimum {
+				if available <= minimum && ex.unavailableUpdate > 0 {
+					// not all available are update
 					return true, nil
 				}
 
