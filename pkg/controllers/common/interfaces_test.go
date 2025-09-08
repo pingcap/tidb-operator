@@ -237,3 +237,15 @@ func (s *fakeServerLabelsState) GetPDClient() pdapi.PDClient {
 func (s *fakeServerLabelsState) SetPDClient(pdClient pdapi.PDClient) {
 	s.pdClient = pdClient
 }
+
+type ClusterStateFunc func() *v1alpha1.Cluster
+
+func (f ClusterStateFunc) Cluster() *v1alpha1.Cluster {
+	return f()
+}
+
+type ObjectStateFunc[T client.Object] func() T
+
+func (f ObjectStateFunc[T]) Object() T {
+	return f()
+}

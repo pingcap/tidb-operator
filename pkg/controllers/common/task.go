@@ -188,29 +188,6 @@ func TaskContextPod[
 	})
 }
 
-type ContextFeatureGates[
-	F client.Object,
-] interface {
-	ObjectState[F]
-	ClusterState
-}
-
-// TaskCheckFeatureGates is defined to ensure features are synced before all actions
-func TaskCheckFeatureGates[
-	S scope.Group[F, T],
-	F client.Object,
-	T runtime.Group,
-](state ContextFeatureGates[F], c client.Client) task.Task {
-	return task.NameTaskFunc("CheckFeatureGates", func(ctx context.Context) task.Result {
-		obj := state.Object()
-		cluster := state.Cluster()
-		if !slices.Equal(coreutil.Features[S](obj), coreutil.EnabledFeatures(cluster)) {
-			return task.Wait().With("waiting until features are synced from cluster")
-		}
-		return task.Complete().With("features are synced")
-	})
-}
-
 type ServerLabelsUpdater[T client.Object] interface {
 	PodState
 	HealthyState
