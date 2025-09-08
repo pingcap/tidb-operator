@@ -852,6 +852,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CompactSpec"),
 						},
 					},
+					"minCompactStartTs": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MinCompactStartTs specifies the minimum start timestamp for compact backup. If the calculated start ts is less than this value, it will be adjusted to this value. Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The storageClassName of the persistent volume for Backup data storage if not storage class name set in BackupSpec. Defaults to Kubernetes default storage class.",
