@@ -43,12 +43,14 @@ func TestAssembleSts(t *testing.T) {
 	sidecar := corev1.Container{Name: "sidecar", Image: "busybox"}
 
 	testCases := []struct {
-		name                  string
-		volumes               []v1alpha1.Volume
-		overlay               *v1alpha1.Overlay
-		expectPVCCount        int
-		expectContainerNames  []string
-		expectContainersImage map[string]string
+		name                   string
+		volumes                []v1alpha1.Volume
+		overlay                *v1alpha1.Overlay
+		expectPVCCount         int
+		expectContainerNames   []string
+		expectContainersImage  map[string]string
+		expectExtraLabels      map[string]string
+		expectExtraAnnotations map[string]string
 	}{
 		{
 			name:                 "With Volumes definition",
@@ -62,7 +64,7 @@ func TestAssembleSts(t *testing.T) {
 			},
 		},
 		{
-			name:    "With Pod overlay",
+			name:    "With Pod spec overlay",
 			volumes: nil,
 			overlay: &v1alpha1.Overlay{
 				Pod: &v1alpha1.PodOverlay{
@@ -80,7 +82,7 @@ func TestAssembleSts(t *testing.T) {
 			},
 		},
 		{
-			name:    "With both Pod overlay and Volumes definition",
+			name:    "With both Pod spec overlay and Volumes definition",
 			volumes: []v1alpha1.Volume{volume},
 			overlay: &v1alpha1.Overlay{
 				Pod: &v1alpha1.PodOverlay{
@@ -98,7 +100,7 @@ func TestAssembleSts(t *testing.T) {
 			},
 		},
 		{
-			name:                 "Without Pod overlay and Volumes definition",
+			name:                 "Without Pod spec overlay and Volumes definition",
 			volumes:              nil,
 			overlay:              nil,
 			expectPVCCount:       0,
@@ -106,6 +108,30 @@ func TestAssembleSts(t *testing.T) {
 			expectContainersImage: map[string]string{
 				v1alpha1br.ContainerAPIServer:  "default",
 				v1alpha1br.ContainerAutoBackup: "default",
+			},
+		},
+		{
+			name:    "With labels and annotations overlay",
+			volumes: nil,
+			overlay: &v1alpha1.Overlay{
+				Pod: &v1alpha1.PodOverlay{
+					ObjectMeta: v1alpha1.ObjectMeta{
+						Labels:      map[string]string{"labels": "labels"},
+						Annotations: map[string]string{"annotations": "annotations"},
+					},
+				},
+			},
+			expectPVCCount:       0,
+			expectContainerNames: []string{v1alpha1br.ContainerAPIServer, v1alpha1br.ContainerAutoBackup},
+			expectContainersImage: map[string]string{
+				v1alpha1br.ContainerAPIServer:  "default",
+				v1alpha1br.ContainerAutoBackup: "default",
+			},
+			expectExtraLabels: map[string]string{
+				"labels": "labels",
+			},
+			expectExtraAnnotations: map[string]string{
+				"annotations": "annotations",
 			},
 		},
 	}
@@ -149,9 +175,15 @@ func TestAssembleSts(t *testing.T) {
 			assert.Equal(t, "demo-tibr-headless", sts.Spec.ServiceName)
 			assert.Equal(t, []metav1.OwnerReference{*metav1.NewControllerRef(rtx.TiBR(), v1alpha1br.SchemeGroupVersion.WithKind("TiBR"))}, sts.OwnerReferences)
 			// labels
+			labels := TiBRSubResourceLabels(tibr)
+			for k, v := range tc.expectExtraLabels {
+				labels[k] = v
+			}
 			assert.Equal(t, TiBRSubResourceLabels(tibr), sts.Labels)
-			assert.Equal(t, TiBRSubResourceLabels(tibr), sts.Spec.Selector.MatchLabels)
-			assert.Equal(t, TiBRSubResourceLabels(tibr), sts.Spec.Template.Labels)
+			assert.Equal(t, labels, sts.Spec.Selector.MatchLabels)
+			assert.Equal(t, labels, sts.Spec.Template.Labels)
+			// annotations
+			assert.Equal(t, tc.expectExtraAnnotations, sts.Spec.Template.Annotations)
 
 			assert.Len(t, sts.Spec.VolumeClaimTemplates, tc.expectPVCCount)
 
