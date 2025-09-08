@@ -143,11 +143,11 @@ func TestTiDBClient_GetPoolStatus(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(tt, "/tidb-pool/status", r.URL.Path)
 				assert.Equal(tt, http.MethodGet, r.Method)
+				w.WriteHeader(c.status)
 				if c.body != "" {
 					_, err := w.Write([]byte(c.body))
 					assert.NoError(tt, err)
 				}
-				w.WriteHeader(c.status)
 			}))
 			defer server.Close()
 
