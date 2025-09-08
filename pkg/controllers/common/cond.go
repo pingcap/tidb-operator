@@ -15,7 +15,10 @@
 package common
 
 import (
+	"slices"
+
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -64,5 +67,25 @@ func CondObjectIsDeleting[
 ](state ObjectState[F]) task.Condition {
 	return task.CondFunc(func() bool {
 		return !state.Object().GetDeletionTimestamp().IsZero()
+	})
+}
+
+type ContextFeatureGates[
+	F client.Object,
+] interface {
+	ObjectState[F]
+	ClusterState
+}
+
+// CondFeatureGatesIsNotSynced is defined to ensure features are synced before all actions
+func CondFeatureGatesIsNotSynced[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](state ContextFeatureGates[F]) task.Condition {
+	return task.CondFunc(func() bool {
+		obj := state.Object()
+		cluster := state.Cluster()
+		return !slices.Equal(coreutil.Features[S](obj), coreutil.EnabledFeatures(cluster))
 	})
 }

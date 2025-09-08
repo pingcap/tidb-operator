@@ -48,18 +48,22 @@ func taskCreateStatefulSet(rtx *ReconcileContext) t.Task {
 
 func assembleSts(rtx *ReconcileContext) *appsv1.StatefulSet {
 	tibr := rtx.TiBR()
-	labels := TiBRSubResourceLabels(rtx.TiBR())
 
-	podSpec := assemblePodSpec(rtx)
+	pod := &corev1.Pod{
+		ObjectMeta: v1.ObjectMeta{
+			Labels: TiBRSubResourceLabels(rtx.TiBR()),
+		},
+		Spec: *assemblePodSpec(rtx),
+	}
 	if tibr.Spec.Overlay != nil && tibr.Spec.Overlay.Pod != nil {
-		overlay.OverlayPodSpec(podSpec, tibr.Spec.Overlay.Pod.Spec)
+		overlay.OverlayPod(pod, tibr.Spec.Overlay.Pod)
 	}
 
 	sts := &appsv1.StatefulSet{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      StatefulSetName(tibr),
 			Namespace: rtx.NamespacedName().Namespace,
-			Labels:    labels,
+			Labels:    TiBRSubResourceLabels(rtx.TiBR()),
 			OwnerReferences: []v1.OwnerReference{
 				*v1.NewControllerRef(rtx.TiBR(), v1alphabr.SchemeGroupVersion.WithKind("TiBR")),
 			},
@@ -69,13 +73,14 @@ func assembleSts(rtx *ReconcileContext) *appsv1.StatefulSet {
 			ServiceName: HeadlessSvcName(tibr),
 			Replicas:    ptr.To(StatefulSetReplica),
 			Selector: &v1.LabelSelector{
-				MatchLabels: labels,
+				MatchLabels: pod.Labels,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: v1.ObjectMeta{
-					Labels: labels,
+					Labels:      pod.Labels,
+					Annotations: pod.Annotations,
 				},
-				Spec: *podSpec,
+				Spec: pod.Spec,
 			},
 		},
 	}
