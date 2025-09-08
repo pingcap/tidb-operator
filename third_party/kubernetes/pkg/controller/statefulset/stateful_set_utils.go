@@ -48,7 +48,7 @@ func IsPodAvailable(pod *v1.Pod, minReadySeconds int32, now metav1.Time) bool {
 		return false
 	}
 
-	c := GetPodReadyCondition(pod.Status)
+	c := GetPodReadyCondition(&pod.Status)
 	minReadySecondsDuration := time.Duration(minReadySeconds) * time.Second
 	if minReadySeconds == 0 || (!c.LastTransitionTime.IsZero() && c.LastTransitionTime.Add(minReadySecondsDuration).Before(now.Time)) {
 		return true
@@ -58,14 +58,14 @@ func IsPodAvailable(pod *v1.Pod, minReadySeconds int32, now metav1.Time) bool {
 
 // IsPodReady returns true if a pod is ready; false otherwise.
 func IsPodReady(pod *v1.Pod) bool {
-	condition := GetPodReadyCondition(pod.Status)
+	condition := GetPodReadyCondition(&pod.Status)
 	return condition != nil && condition.Status == v1.ConditionTrue
 }
 
 // GetPodReadyCondition extracts the pod ready condition from the given status and returns that.
 // Returns nil if the condition is not present.
-func GetPodReadyCondition(status v1.PodStatus) *v1.PodCondition {
-	_, condition := GetPodCondition(&status, v1.PodReady)
+func GetPodReadyCondition(status *v1.PodStatus) *v1.PodCondition {
+	_, condition := GetPodCondition(status, v1.PodReady)
 	return condition
 }
 

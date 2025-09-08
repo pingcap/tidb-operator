@@ -241,8 +241,7 @@ func (p *poller[T, PT, L]) generateEvents(ctx context.Context, prevState, curSta
 func (p *poller[T, PT, L]) sendEvent(ctx context.Context, e *watch.Event) {
 	select {
 	case p.resultCh <- *e:
-		//nolint:mnd // refactor to use a constant if necessary
-		p.logger.V(4).Info("send event", "type", e.Type, "object", e.Object)
+		p.logger.Info("poller send event", "type", e.Type, "object", e.Object)
 	case <-ctx.Done():
 	}
 }
