@@ -301,7 +301,7 @@ func TestCreateOrUpdateClusterRoleBinding(t *testing.T) {
 			Namespace: "default",
 		},
 		Subjects: []rbacv1.Subject{
-			rbacv1.Subject{
+			{
 				Kind: "*",
 				Name: "update",
 			},
@@ -377,7 +377,7 @@ func TestCreateOrUpdateClusterRole(t *testing.T) {
 			Namespace: "default",
 		},
 		Rules: []rbacv1.PolicyRule{
-			rbacv1.PolicyRule{
+			{
 				Verbs: []string{"create", "patch"},
 			},
 		},
