@@ -61,6 +61,7 @@ func (g *scopeGenerator) Namers(*generator.Context) namer.NameSystems {
 
 func (g *scopeGenerator) Imports(_ *generator.Context) (imports []string) {
 	importLines := []string{
+		`"k8s.io/apimachinery/pkg/runtime/schema"`,
 		`"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"`,
 		`"github.com/pingcap/tidb-operator/pkg/runtime"`,
 	}
@@ -98,6 +99,10 @@ func ($.|pub$) Component() string {
 	return v1alpha1.LabelValComponent$.|pub$
 }
 
+func ($.|pub$) GVK() schema.GroupVersionKind {
+	return v1alpha1.SchemeGroupVersion.WithKind("$.|pub$")
+}
+
 func ($.|pub$) NewList() *v1alpha1.$.|pub$List {
 	return &v1alpha1.$.|pub$List{}
 }
@@ -130,6 +135,10 @@ func ($.|pub$) To(t *runtime.$.|pub$) *v1alpha1.$.|pub$ {
 
 func ($.|pub$) Component() string {
 	return v1alpha1.LabelValComponent$.|instance$
+}
+
+func ($.|pub$) GVK() schema.GroupVersionKind {
+	return v1alpha1.SchemeGroupVersion.WithKind("$.|pub$")
 }
 
 func ($.|pub$) NewList() *v1alpha1.$.|pub$List {

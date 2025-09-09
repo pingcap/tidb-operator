@@ -16,6 +16,7 @@ package coreutil
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
@@ -172,4 +173,17 @@ func PersistentVolumeClaimLabels[
 	return maputil.MergeTo(instanceSubresourceLabels[S](f), map[string]string{
 		v1alpha1.LabelKeyVolumeName: volName,
 	})
+}
+
+func OwnerGroup[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](f F) *metav1.OwnerReference {
+	owner := metav1.GetControllerOfNoCopy(f)
+	gvk := scope.GVK[S]()
+	if owner.APIVersion != gvk.GroupVersion().String() || owner.Kind != gvk.Kind+"Group" {
+		return nil
+	}
+	return owner
 }
