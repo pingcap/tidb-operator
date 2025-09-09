@@ -22,6 +22,7 @@ package scope
 import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type (
@@ -38,6 +39,10 @@ func (ReplicationWorker) To(t *runtime.ReplicationWorker) *v1alpha1.ReplicationW
 
 func (ReplicationWorker) Component() string {
 	return v1alpha1.LabelValComponentReplicationWorker
+}
+
+func (ReplicationWorker) GVK() schema.GroupVersionKind {
+	return v1alpha1.SchemeGroupVersion.WithKind("ReplicationWorker")
 }
 
 func (ReplicationWorker) NewList() *v1alpha1.ReplicationWorkerList {
@@ -64,6 +69,10 @@ func (ReplicationWorkerGroup) To(t *runtime.ReplicationWorkerGroup) *v1alpha1.Re
 
 func (ReplicationWorkerGroup) Component() string {
 	return v1alpha1.LabelValComponentReplicationWorker
+}
+
+func (ReplicationWorkerGroup) GVK() schema.GroupVersionKind {
+	return v1alpha1.SchemeGroupVersion.WithKind("ReplicationWorkerGroup")
 }
 
 func (ReplicationWorkerGroup) NewList() *v1alpha1.ReplicationWorkerGroupList {
