@@ -1132,6 +1132,12 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 		return false, fmt.Errorf("%s check log backup key exist failed, err: %v", logPrefix, err)
 	}
 	if !exist {
+		// Special handling for Stop command - key not existing after stop is expected
+		if backup.Spec.LogSubcommand == v1alpha1.LogStopCommand {
+			return true, nil
+		}
+		
+		// For other commands, key not found is an error
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: backup.Spec.LogSubcommand,
 			Type:    v1alpha1.BackupFailed,
