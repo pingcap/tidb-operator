@@ -22,6 +22,7 @@ package scope
 import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type (
@@ -38,6 +39,10 @@ func (Scheduler) To(t *runtime.Scheduler) *v1alpha1.Scheduler {
 
 func (Scheduler) Component() string {
 	return v1alpha1.LabelValComponentScheduler
+}
+
+func (Scheduler) GVK() schema.GroupVersionKind {
+	return v1alpha1.SchemeGroupVersion.WithKind("Scheduler")
 }
 
 func (Scheduler) NewList() *v1alpha1.SchedulerList {
@@ -64,6 +69,10 @@ func (SchedulerGroup) To(t *runtime.SchedulerGroup) *v1alpha1.SchedulerGroup {
 
 func (SchedulerGroup) Component() string {
 	return v1alpha1.LabelValComponentScheduler
+}
+
+func (SchedulerGroup) GVK() schema.GroupVersionKind {
+	return v1alpha1.SchemeGroupVersion.WithKind("SchedulerGroup")
 }
 
 func (SchedulerGroup) NewList() *v1alpha1.SchedulerGroupList {
