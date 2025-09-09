@@ -128,13 +128,13 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		return err
 	}
 
-	// skip backup
-	skip := false
-	if skip, err = bm.skipBackupSync(backup); err != nil {
+	// canSkip backup
+	canSkip := false
+	if canSkip, err = bm.skipBackupSync(backup); err != nil {
 		klog.Errorf("backup %s/%s skip error %v.", ns, name, err)
 		return err
 	}
-	if skip {
+	if canSkip {
 		klog.Infof("backup %s/%s is already done and skip sync.", ns, name)
 		return nil
 	}
@@ -384,9 +384,15 @@ func (bm *backupManager) checkVolumeBackupSnapshotsCreated(b *v1alpha1.Backup) e
 func (bm *backupManager) skipBackupSync(backup *v1alpha1.Backup) (bool, error) {
 	switch backup.Spec.Mode {
 	case v1alpha1.BackupModeLog:
-		if skip, err := bm.skipLogBackupSync(backup); err != nil || !skip {
-			return skip, errors.Trace(err)
+		canSkip, err := bm.skipLogBackupSync(backup)
+		if err != nil {
+			return false, errors.Trace(err)
 		}
+		if !canSkip {
+			// The log backup command needs to be executed, don't skip
+			return false, nil
+		}
+		// The log backup command can be skipped, but we still need to sync kernel status
 		return bm.SyncLogKernelStatus(backup)
 	case v1alpha1.BackupModeVolumeSnapshot:
 		return bm.skipVolumeSnapshotBackupSync(backup)
@@ -1140,16 +1146,24 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 	if err != nil {
 		return false, err
 	}
-	if kernelState := determineKernelState(pauseStatus.IsPaused); kernelState != backup.Spec.LogSubcommand {
-		if kernelState == v1alpha1.LogStartCommand {
-			kernelState = v1alpha1.LogResumeCommand
-		}
+	
+	kernelState := getLogBackupKernelState(pauseStatus.IsPaused)
+	expectedCommand := backup.Spec.LogSubcommand
+	
+	// Check if the expected command is consistent with kernel state
+	if !isCommandConsistentWithKernelState(expectedCommand, kernelState) {
+		// State is inconsistent, update to reflect actual kernel state
+		actualCommand := getCommandForKernelState(kernelState)
+
+		klog.Infof("%s expected command %s is inconsistent with kernel state %s, syncing to %s",
+			logPrefix, expectedCommand, kernelState, actualCommand)
+		
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Command: kernelState,
+			Command: actualCommand,
 			Type:    v1alpha1.BackupComplete,
 			Status:  corev1.ConditionTrue,
 			Reason:  "LogBackupKernelSync",
-			Message: pauseStatus.Message,
+			Message: fmt.Sprintf("Synced with kernel state: %s. %s", kernelState, pauseStatus.Message),
 		}, updateStatus)
 	}
 
@@ -1173,14 +1187,14 @@ func (bm *backupManager) checkLogKeyExist(etcdCli pdapi.PDEtcdClient, ns, name s
 	checkLogExist := func() error {
 		kvs, err := bm.queryEtcdKey(etcdCli, logKey, false)
 		if err != nil {
-			return fmt.Errorf("Backup %s/%s query etcd key %s failed: %v", ns, name, logKey, err)
+			return fmt.Errorf("backup %s/%s query etcd key %s failed: %v", ns, name, logKey, err)
 		}
 
 		exists = (len(kvs) > 0)
 		return nil
 	}
 	if err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, checkLogExist); err != nil {
-		return false, fmt.Errorf("Backup %s/%s query etcd key %s failed: %v", ns, name, logKey, err)
+		return false, fmt.Errorf("backup %s/%s query etcd key %s failed: %v", ns, name, logKey, err)
 	}
 	return exists, nil
 }
@@ -1246,11 +1260,48 @@ func (bm *backupManager) handlePauseV2(rawData []byte, ns, name string) (PauseSt
 	return status, nil
 }
 
-func determineKernelState(paused bool) v1alpha1.LogSubCommandType {
+// LogBackupKernelState represents the actual state of log backup in the kernel (etcd)
+type LogBackupKernelState string
+
+const (
+	// LogBackupKernelRunning means the log backup is running
+	LogBackupKernelRunning LogBackupKernelState = "running"
+	// LogBackupKernelPaused means the log backup is paused
+	LogBackupKernelPaused LogBackupKernelState = "paused"
+)
+
+// getLogBackupKernelState returns the kernel state based on pause status
+func getLogBackupKernelState(paused bool) LogBackupKernelState {
 	if paused {
-		return v1alpha1.LogPauseCommand
+		return LogBackupKernelPaused
 	}
-	return v1alpha1.LogStartCommand
+	return LogBackupKernelRunning
+}
+
+// isCommandConsistentWithKernelState checks if the command is consistent with kernel state
+func isCommandConsistentWithKernelState(command v1alpha1.LogSubCommandType, kernelState LogBackupKernelState) bool {
+	switch kernelState {
+	case LogBackupKernelRunning:
+		// Running state is consistent with Start or Resume commands
+		return command == v1alpha1.LogStartCommand || command == v1alpha1.LogResumeCommand
+	case LogBackupKernelPaused:
+		// Paused state is consistent with Pause command
+		return command == v1alpha1.LogPauseCommand
+	default:
+		return false
+	}
+}
+
+// getCommandForKernelState returns the appropriate command for a kernel state
+func getCommandForKernelState(kernelState LogBackupKernelState) v1alpha1.LogSubCommandType {
+	switch kernelState {
+	case LogBackupKernelPaused:
+		return v1alpha1.LogPauseCommand
+	case LogBackupKernelRunning:
+		return v1alpha1.LogResumeCommand
+	default:
+		return v1alpha1.LogUnknownCommand
+	}
 }
 
 // skipLogBackupSync skips log backup, returns true if it can be skipped.
