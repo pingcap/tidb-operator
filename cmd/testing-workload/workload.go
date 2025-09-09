@@ -35,8 +35,14 @@ func Workload(db *sql.DB) error {
 
 	db.SetMaxIdleConns(maxConnections)
 	db.SetMaxOpenConns(maxConnections)
-	db.Exec("set global max_execution_time = 1000")
-	db.Exec("set global tidb_backoff_weight = 1")
+	// Set these variable to avoid too long retry time in testing.
+	// Downtime may be short but default timeout is too long.
+	if _, err := db.Exec("set global max_execution_time = 1000"); err != nil {
+		return fmt.Errorf("set max_execute_time failed: %w", err)
+	}
+	if _, err := db.Exec("set global tidb_backoff_weight = 1"); err != nil {
+		return fmt.Errorf("set max_execute_time failed: %w", err)
+	}
 
 	table := "test.e2e_test"
 	str := fmt.Sprintf("create table if not exists %s(id int primary key auto_increment, v int);", table)
@@ -61,7 +67,9 @@ func Workload(db *sql.DB) error {
 					err := executeSimpleTransaction(db, id, table, index)
 					totalCount.Add(1)
 					if err != nil {
-						fmt.Printf("[%d-%s] failed to execute simple transaction(long: %v): %v\n", id, time.Now().String(), id%3 == 0, err)
+						fmt.Printf("[%d-%s] failed to execute simple transaction(long: %v): %v\n",
+							id, time.Now().String(), id%3 == 0, err,
+						)
 						failCount.Add(1)
 					}
 					time.Sleep(time.Duration(sleepInterval) * time.Millisecond)
@@ -103,7 +111,9 @@ func executeSimpleTransaction(db *sql.DB, id int, table string, index int) error
 		_ = tx.Rollback()
 		return fmt.Errorf("failed to query: %w", err)
 	}
-	rows.Close()
+	if err := rows.Close(); err != nil {
+		return fmt.Errorf("failed to close query result: %w", err)
+	}
 
 	// Simulate a different operation by updating the value
 	if _, err = tx.Exec(fmt.Sprintf("update %s set v = ? where id = ?;", table), index*2, id); err != nil {
