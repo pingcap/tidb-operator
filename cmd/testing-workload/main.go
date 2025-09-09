@@ -36,7 +36,7 @@ var (
 	// Flags for workload action
 	durationInMinutes int
 	maxConnections    int
-	sleepIntervalSec  int
+	sleepInterval     int
 	longTxnSleepSec   int
 	maxLifeTimeSec    int
 
@@ -66,7 +66,7 @@ func main() {
 
 	flag.IntVar(&durationInMinutes, "duration", 10, "duration in minutes")
 	flag.IntVar(&maxConnections, "max-connections", 30, "max connections")
-	flag.IntVar(&sleepIntervalSec, "sleep-interval", 1, "sleep interval in seconds")
+	flag.IntVar(&sleepInterval, "sleep-interval", 100, "sleep interval in milliseconds")
 	flag.IntVar(&longTxnSleepSec, "long-txn-sleep", 10, "how many seconds to sleep to simulate a long transaction")
 	flag.IntVar(&maxLifeTimeSec, "max-lifetime", 60, "max lifetime in seconds")
 
@@ -92,6 +92,7 @@ func main() {
 	params := []string{
 		"charset=utf8mb4",
 		"allowCleartextPasswords=true",
+		"timeout=5s",
 	}
 
 	// Setup TLS if enabled
