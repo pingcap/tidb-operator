@@ -137,9 +137,10 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 				// => ex.update + ex.outdated >= ex.desired + ex.outdated
 				// => ex.update == ex.desired
 				// => ex.outdated != 0 (ex.update != ex.desired || ex.outdated != 0 in for loop condition)
-				if available <= minimum {
-					logger.Info("wait for scale in outdated: available instances below minimum threshold",
-						"available", available, "minimum", minimum)
+				if available <= minimum && ex.unavailableUpdate > 0 {
+					// not all available are update
+					logger.Info("wait before scale in outdated, not all available are update",
+						"available", available, "minimum", minimum, "unavailableUpdate", ex.unavailableUpdate)
 					return true, nil
 				}
 
