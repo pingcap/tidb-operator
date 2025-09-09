@@ -17,6 +17,7 @@
 package scope
 
 import (
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/pkg/runtime"
@@ -94,6 +95,7 @@ type ClientObject[T any] interface {
 
 type Scheme interface {
 	Component() string
+	GVK() schema.GroupVersionKind
 }
 
 func From[
@@ -108,6 +110,11 @@ func From[
 func Component[S Scheme]() string {
 	var s S
 	return s.Component()
+}
+
+func GVK[S Scheme]() schema.GroupVersionKind {
+	var s S
+	return s.GVK()
 }
 
 func NewList[
