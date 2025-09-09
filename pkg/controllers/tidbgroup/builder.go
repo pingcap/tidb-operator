@@ -33,7 +33,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskContextCluster[scope.TiDBGroup](state, r.Client),
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),
-		common.TaskCheckFeatureGates[scope.TiDBGroup](state, r.Client),
+		task.IfBreak(common.CondFeatureGatesIsNotSynced[scope.TiDBGroup](state)),
 
 		// get all tidbs
 		common.TaskContextSlice[scope.TiDBGroup](state, r.Client),
