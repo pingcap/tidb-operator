@@ -236,6 +236,12 @@ try {
                             checkout changelog: false, poll: false, scm: [
                                     $class: 'GitSCM',
                                     branches: [[name: "${GIT_REF}"]],
+                                    extensions: [
+                                        [$class: 'CloneOption', 
+                                         depth: 1,
+                                         noTags: true,
+                                         shallow: true]
+                                    ],
                                     userRemoteConfigs: [[
                                             refspec: '+refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/origin/pull/*',
                                             url: "${params.GIT_URL}",
@@ -248,6 +254,12 @@ try {
                                 checkout changelog: false, poll: false, scm: [
                                         $class: 'GitSCM',
                                         branches: [[name: "${GIT_REF}"]],
+                                        extensions: [
+                                            [$class: 'CloneOption', 
+                                             depth: 1,
+                                             noTags: true,
+                                             shallow: true]
+                                        ],
                                         userRemoteConfigs: [[
                                                 refspec: '+refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/origin/pull/*',
                                                 url: "${params.GIT_URL}",
