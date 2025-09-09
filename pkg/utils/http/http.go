@@ -77,8 +77,7 @@ func DoBodyOK(ctx context.Context, httpClient *http.Client, apiURL, method strin
 		return nil, err
 	}
 	if res.StatusCode >= http.StatusBadRequest {
-		errMsg := fmt.Errorf("error response %v URL %s, body response: %s", res.StatusCode, apiURL, string(body))
-		return nil, errMsg
+		return nil, Errorf(res.StatusCode, "error response to %s: %s", apiURL, string(body))
 	}
-	return body, err
+	return body, nil
 }
