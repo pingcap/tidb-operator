@@ -22,6 +22,7 @@ package scope
 import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type (
@@ -38,6 +39,10 @@ func (TiFlash) To(t *runtime.TiFlash) *v1alpha1.TiFlash {
 
 func (TiFlash) Component() string {
 	return v1alpha1.LabelValComponentTiFlash
+}
+
+func (TiFlash) GVK() schema.GroupVersionKind {
+	return v1alpha1.SchemeGroupVersion.WithKind("TiFlash")
 }
 
 func (TiFlash) NewList() *v1alpha1.TiFlashList {
@@ -64,6 +69,10 @@ func (TiFlashGroup) To(t *runtime.TiFlashGroup) *v1alpha1.TiFlashGroup {
 
 func (TiFlashGroup) Component() string {
 	return v1alpha1.LabelValComponentTiFlash
+}
+
+func (TiFlashGroup) GVK() schema.GroupVersionKind {
+	return v1alpha1.SchemeGroupVersion.WithKind("TiFlashGroup")
 }
 
 func (TiFlashGroup) NewList() *v1alpha1.TiFlashGroupList {
