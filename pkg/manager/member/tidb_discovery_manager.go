@@ -225,7 +225,7 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 		},
 	}
 	envs = util.AppendEnv(envs, baseSpec.Env())
-	volMounts := []corev1.VolumeMount{}
+	var volMounts []corev1.VolumeMount
 	volMounts = append(volMounts, baseSpec.AdditionalVolumeMounts()...)
 	discoveryContainer := corev1.Container{
 		Name:      "discovery",
@@ -238,6 +238,7 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 		Env:             envs,
 		EnvFrom:         baseSpec.EnvFrom(),
 		VolumeMounts:    volMounts,
+		SecurityContext: baseSpec.SecurityContext(),
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "discovery",

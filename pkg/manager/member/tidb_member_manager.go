@@ -1062,6 +1062,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			Command:         []string{"/bin/sh", "-c"},
 			Args:            []string{fmt.Sprintf("cp /%s %s/%s; echo '%s copy finished'", p.BinaryName, customizedStartupProbePath, p.BinaryName, p.BinaryName)},
 			VolumeMounts:    []corev1.VolumeMount{probeVolMount},
+			SecurityContext: baseTiDBSpec.SecurityContext(),
 		})
 
 		c.StartupProbe = &corev1.Probe{
