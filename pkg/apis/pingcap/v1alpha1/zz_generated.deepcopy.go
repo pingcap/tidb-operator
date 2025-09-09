@@ -311,6 +311,11 @@ func (in *BackupScheduleSpec) DeepCopyInto(out *BackupScheduleSpec) {
 		*out = new(CompactSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.MinCompactStartTs != nil {
+		in, out := &in.MinCompactStartTs, &out.MinCompactStartTs
+		*out = new(string)
+		**out = **in
+	}
 	if in.StorageClassName != nil {
 		in, out := &in.StorageClassName, &out.StorageClassName
 		*out = new(string)

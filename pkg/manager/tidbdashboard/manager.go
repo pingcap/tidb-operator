@@ -264,7 +264,7 @@ func generateTiDBDashboardStatefulSet(td *v1alpha1.TidbDashboard, tc *v1alpha1.T
 		},
 		VolumeMounts:    volumeMounts,
 		Resources:       controller.ContainerResource(td.Spec.ResourceRequirements),
-		SecurityContext: td.Spec.SecurityContext,
+		SecurityContext: spec.SecurityContext(),
 	})
 
 	var baseVolumes []corev1.Volume

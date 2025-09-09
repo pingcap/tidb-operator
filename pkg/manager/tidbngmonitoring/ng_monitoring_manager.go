@@ -281,7 +281,7 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, tc *v1alph
 		},
 		VolumeMounts:    nmVolumeMounts,
 		Resources:       controller.ContainerResource(tngm.Spec.NGMonitoring.ResourceRequirements),
-		SecurityContext: tngm.Spec.SecurityContext,
+		SecurityContext: spec.SecurityContext(),
 		Env: []corev1.EnvVar{
 			{
 				Name:  "HEADLESS_SERVICE_NAME",
