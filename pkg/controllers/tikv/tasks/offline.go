@@ -18,6 +18,11 @@ import (
 	"context"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
+
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -32,27 +37,35 @@ func TaskOfflineStore(state *ReconcileContext) task.Task {
 		if !state.PDSynced {
 			return task.Wait().With("pd is not synced")
 		}
-		tikv := state.Instance()
-		if tikv.GetDeletionTimestamp().IsZero() {
-			return task.Complete().With("tikv is not deleting, no need to offline the store")
-		}
 
-		var reason string
-		delTime := tikv.GetDeletionTimestamp()
-		switch {
-		// leaders evicted
-		case state.LeaderEvicting && state.GetLeaderCount() == 0:
-			reason = "leaders have been all evicted"
-		case !delTime.IsZero() && delTime.Add(defaultLeaderEvictTimeout).Before(time.Now()):
-			reason = "leader eviction timeout"
-		}
+		// If the store is nil, it means the store has been deleted or not created yet.
+		// No need to check if leaders are evicted.
+		if state.Store != nil {
+			tikv := state.TiKV()
+			var reason string
+			beginTime := getBeginEvictLeaderTime(tikv)
+			switch {
+			case state.LeaderEvicting && state.GetLeaderCount() == 0:
+				reason = "leaders have been all evicted"
+			case beginTime != nil && beginTime.Add(defaultLeaderEvictTimeout).Before(time.Now()):
+				reason = "leader eviction timeout"
+			}
 
-		if reason == "" {
-			return task.Retry(defaultLeaderEvictTimeout+jitter).
-				With("waiting for leaders evicted or timeout, current leader count: %d", state.GetLeaderCount())
+			if reason == "" {
+				return task.Retry(defaultLeaderEvictTimeout+jitter).
+					With("waiting for leaders evicted or timeout, current leader count: %d", state.GetLeaderCount())
+			}
 		}
-
-		tikv.Spec.Offline = true
-		return common.TaskOfflineStoreStateMachine(ctx, state, tikv)
+		return common.TaskOfflineStoreStateMachine(ctx, state, state.Instance())
 	})
+}
+
+// getBeginEvictLeaderTime returns the time when the leader eviction started.
+// If the condition is not found or the status is not False, it returns nil.
+func getBeginEvictLeaderTime(tikv *v1alpha1.TiKV) *time.Time {
+	cond := meta.FindStatusCondition(tikv.Status.Conditions, v1alpha1.TiKVCondLeadersEvicted)
+	if cond != nil && cond.Status == metav1.ConditionFalse {
+		return ptr.To(cond.LastTransitionTime.Time)
+	}
+	return nil
 }

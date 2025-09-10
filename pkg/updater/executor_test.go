@@ -22,16 +22,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type action int
-
-const (
-	actionScaleOut action = iota
-	actionUpdate
-	actionScaleInUpdate
-	actionScaleInOutdated
-	actionCleanup
-)
-
 type FakeActor struct {
 	Actions []action
 
@@ -48,7 +38,7 @@ func (a *FakeActor) ScaleOut(_ context.Context) error {
 	return nil
 }
 
-func (a *FakeActor) ScaleInOutdated(_ context.Context) (bool, error) {
+func (a *FakeActor) ScaleInOutdated(_ context.Context) (unavailable bool, err error) {
 	a.Actions = append(a.Actions, actionScaleInOutdated)
 	a.outdated -= 1
 	if a.preferAvailable || a.unavailableOutdated == 0 {
@@ -59,7 +49,7 @@ func (a *FakeActor) ScaleInOutdated(_ context.Context) (bool, error) {
 	return true, nil
 }
 
-func (a *FakeActor) ScaleInUpdate(_ context.Context) (bool, error) {
+func (a *FakeActor) ScaleInUpdate(_ context.Context) (unavailable bool, err error) {
 	a.Actions = append(a.Actions, actionScaleInUpdate)
 	a.update -= 1
 	if a.preferAvailable || a.unavailableUpdate == 0 {
@@ -76,8 +66,12 @@ func (a *FakeActor) Update(_ context.Context) error {
 }
 
 func (a *FakeActor) Cleanup(_ context.Context) error {
-	a.Actions = append(a.Actions, actionCleanup)
+	a.Actions = append(a.Actions, actionDelete)
 	return nil
+}
+
+func (a *FakeActor) RecordedActions() []action {
+	return a.Actions
 }
 
 func TestExecutor(t *testing.T) {
@@ -104,7 +98,7 @@ func TestExecutor(t *testing.T) {
 			maxSurge:       1,
 			maxUnavailable: 1,
 			expectedActions: []action{
-				actionCleanup,
+				actionDelete,
 			},
 		},
 		{
@@ -146,7 +140,7 @@ func TestExecutor(t *testing.T) {
 				actionScaleInUpdate,
 				actionScaleInUpdate,
 				actionScaleInUpdate,
-				actionCleanup,
+				actionDelete,
 			},
 		},
 		{
@@ -230,7 +224,7 @@ func TestExecutor(t *testing.T) {
 			maxUnavailable: 0,
 			expectedActions: []action{
 				actionScaleInOutdated,
-				actionCleanup,
+				actionDelete,
 			},
 		},
 		{
@@ -322,7 +316,7 @@ func TestExecutor(t *testing.T) {
 			maxUnavailable: 0,
 			expectedActions: []action{
 				actionScaleInOutdated,
-				actionCleanup,
+				actionDelete,
 			},
 		},
 		{
@@ -421,7 +415,7 @@ func TestExecutor(t *testing.T) {
 			maxUnavailable: 0,
 			expectedActions: []action{
 				actionScaleInOutdated,
-				actionCleanup,
+				actionDelete,
 			},
 		},
 		{
@@ -460,7 +454,7 @@ func TestExecutor(t *testing.T) {
 			maxUnavailable: 1,
 			expectedActions: []action{
 				actionScaleInOutdated,
-				actionCleanup,
+				actionDelete,
 			},
 		},
 		{
@@ -547,7 +541,7 @@ func TestExecutor(t *testing.T) {
 			maxUnavailable: 0,
 			expectedActions: []action{
 				actionScaleInOutdated,
-				actionCleanup,
+				actionDelete,
 			},
 		},
 		{
@@ -860,7 +854,7 @@ func TestExecutor(t *testing.T) {
 			maxUnavailable:      0,
 			expectedActions: []action{
 				actionScaleInOutdated,
-				actionCleanup,
+				actionDelete,
 			},
 			expectedWait: false,
 		},
@@ -876,14 +870,13 @@ func TestExecutor(t *testing.T) {
 			expectedActions: []action{
 				actionScaleInOutdated,
 				actionScaleInOutdated,
-				actionCleanup,
+				actionDelete,
 			},
 			expectedWait: false,
 		},
 	}
 
-	for i := range cases {
-		c := &cases[i]
+	for _, c := range cases {
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 

@@ -28,11 +28,6 @@ func TaskOfflineStore(state *ReconcileContext) task.Task {
 		if !state.PDSynced {
 			return task.Wait().With("pd is not synced")
 		}
-		tiflash := state.Instance()
-		if tiflash.GetDeletionTimestamp().IsZero() {
-			return task.Complete().With("tiflash is not deleting, no need to offline the store")
-		}
-		tiflash.Spec.Offline = true
-		return common.TaskOfflineStoreStateMachine(ctx, state, tiflash)
+		return common.TaskOfflineStoreStateMachine(ctx, state, state.Instance())
 	})
 }
