@@ -26,11 +26,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/adoption"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tidb/tasks"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 	"github.com/pingcap/tidb-operator/pkg/volumes"
 )
 
@@ -39,14 +41,25 @@ type Reconciler struct {
 	Client                client.Client
 	PDClientManager       pdm.PDClientManager
 	VolumeModifierFactory volumes.ModifierFactory
+	Tracker               tracker.Tracker
+	AdoptManager          adoption.Manager
 }
 
-func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, vm volumes.ModifierFactory) error {
+func Setup(
+	mgr manager.Manager,
+	c client.Client,
+	pdcm pdm.PDClientManager,
+	vm volumes.ModifierFactory,
+	t tracker.Tracker,
+	am adoption.Manager,
+) error {
 	r := &Reconciler{
 		Logger:                mgr.GetLogger().WithName("TiDB"),
 		Client:                c,
 		PDClientManager:       pdcm,
 		VolumeModifierFactory: vm,
+		AdoptManager:          am,
+		Tracker:               t,
 	}
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.TiDB{}).
 		Owns(&corev1.Pod{}).

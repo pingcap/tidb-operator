@@ -31,6 +31,7 @@ import (
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 	"github.com/pingcap/tidb-operator/pkg/volumes"
 )
 
@@ -39,14 +40,16 @@ type Reconciler struct {
 	Client                client.Client
 	PDClientManager       pdm.PDClientManager
 	VolumeModifierFactory volumes.ModifierFactory
+	Tracker               tracker.Tracker
 }
 
-func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, vm volumes.ModifierFactory) error {
+func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, vm volumes.ModifierFactory, t tracker.Tracker) error {
 	r := &Reconciler{
 		Logger:                mgr.GetLogger().WithName("TiProxy"),
 		Client:                c,
 		PDClientManager:       pdcm,
 		VolumeModifierFactory: vm,
+		Tracker:               t,
 	}
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.TiProxy{}).
 		Owns(&corev1.Pod{}).

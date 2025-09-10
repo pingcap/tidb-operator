@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 )
 
 type (
@@ -164,6 +165,10 @@ func (in *TSO) Version() string {
 	return in.Spec.Version
 }
 
+func (in *TSO) SetImage(image string) {
+	in.Spec.Image = ptr.To(image)
+}
+
 func (in *TSO) Subdomain() string {
 	return in.Spec.Subdomain
 }
@@ -285,6 +290,10 @@ func (g *TSOGroup) SetVersion(version string) {
 
 func (g *TSOGroup) Version() string {
 	return g.Spec.Template.Spec.Version
+}
+
+func (g *TSOGroup) SetImage(image string) {
+	g.Spec.Template.Spec.Image = ptr.To(image)
 }
 
 func (g *TSOGroup) SetCluster(cluster string) {

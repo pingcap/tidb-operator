@@ -57,7 +57,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		common.TaskRevision[runtime.TiKVGroupTuple](state, r.Client),
 		tasks.TaskService(state, r.Client),
-		tasks.TaskUpdater(state, r.Client, r.Tracker),
+		tasks.TaskUpdater(state, r.Client, r.AllocateFactory),
 		common.TaskGroupStatusSelector[scope.TiKVGroup](state),
 		common.TaskGroupConditionSuspended[scope.TiKVGroup](state),
 		common.TaskGroupConditionReady[scope.TiKVGroup](state),

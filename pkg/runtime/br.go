@@ -187,6 +187,10 @@ func (b *Backup) SetVersion(string) {
 	// dummy function
 }
 
+func (b *Backup) SetImage(string) {
+	// dummy function
+}
+
 func (b *Backup) ClusterCASecretName() string {
 	// dummy function
 	return ""
@@ -288,6 +292,10 @@ func (r *Restore) Version() string {
 }
 
 func (r *Restore) SetVersion(string) {
+	// dummy function
+}
+
+func (r *Restore) SetImage(string) {
 	// dummy function
 }
 
