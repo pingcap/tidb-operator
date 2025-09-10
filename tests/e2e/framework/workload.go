@@ -155,6 +155,59 @@ func (w *Workload) MustImportData(ctx context.Context, host string, opts ...work
 	w.f.Must(waiter.WaitForJobComplete(ctx, w.f.Client, job, waiter.ShortTaskTimeout))
 }
 
+func (w *Workload) MustRunWorkload(ctx context.Context, host string, opts ...workload.Option) {
+	o := workload.DefaultOptions()
+	for _, opt := range opts {
+		opt.With(o)
+	}
+
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: workloadJobName,
+			Namespace:    w.f.Namespace.Name,
+		},
+		Spec: batchv1.JobSpec{
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": "workload",
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "testing-workload",
+							Image: "pingcap/testing-workload:latest",
+							Args: []string{
+								"--action", "workload",
+								"--host", host,
+								"--port", strconv.Itoa(o.Port),
+								"--user", o.User,
+								"--password", o.Password,
+								// an arbitrary timeout
+								// NOTE: maybe changed to use a http api to stop
+								"--duration", "5",
+								"--max-connections", "30",
+							},
+							ImagePullPolicy: corev1.PullIfNotPresent,
+						},
+					},
+					RestartPolicy: corev1.RestartPolicyNever,
+				},
+			},
+			BackoffLimit: ptr.To[int32](0),
+		},
+	}
+
+	job = workload.ConfigJobWithTLS(job, o)
+
+	ginkgo.By("Creating workload job")
+	w.f.Must(w.f.Client.Create(ctx, job))
+	w.jobs = append(w.jobs, job)
+
+	w.f.Must(waiter.WaitForJobComplete(ctx, w.f.Client, job, waiter.LongTaskTimeout))
+}
+
 func (w *Workload) DeferPrintLogs() {
 	ginkgo.JustAfterEach(func(ctx context.Context) {
 		if ginkgo.CurrentSpecReport().Failed() {

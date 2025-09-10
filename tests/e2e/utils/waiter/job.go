@@ -25,16 +25,16 @@ import (
 )
 
 func WaitForJobComplete(ctx context.Context, c client.Client, job *batchv1.Job, timeout time.Duration) error {
-	return WaitForObject(ctx, c, job, func() error {
+	return WaitForObjectV2(ctx, c, job, func() (bool, error) {
 		for _, cond := range job.Status.Conditions {
 			switch cond.Type {
 			case batchv1.JobComplete:
-				return nil
+				return true, nil
 			case batchv1.JobFailed:
-				return fmt.Errorf("job is failed: %v", cond.Message)
+				return true, fmt.Errorf("job is failed: %v", cond.Message)
 			}
 		}
 
-		return fmt.Errorf("job status is unknown")
+		return false, fmt.Errorf("job status is unknown")
 	}, timeout)
 }

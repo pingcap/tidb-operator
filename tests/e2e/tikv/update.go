@@ -1,0 +1,72 @@
+// Copyright 2024 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package tikv
+
+import (
+	"context"
+	"sync"
+	"time"
+
+	"github.com/onsi/ginkgo/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/tests/e2e/data"
+	"github.com/pingcap/tidb-operator/tests/e2e/framework"
+	"github.com/pingcap/tidb-operator/tests/e2e/label"
+	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
+)
+
+var _ = ginkgo.Describe("TiKV rolling update", label.TiKV, func() {
+	f := framework.New()
+	f.Setup()
+	ginkgo.Context("Rolling update", label.P0, label.Update, func() {
+		workload := f.SetupWorkload()
+		ginkgo.It("No error when rolling update tikv", func(ctx context.Context) {
+			pdg := f.MustCreatePD(ctx)
+			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](3))
+			dbg := f.MustCreateTiDB(ctx)
+
+			f.WaitForPDGroupReady(ctx, pdg)
+			f.WaitForTiKVGroupReady(ctx, kvg)
+			f.WaitForTiDBGroupReady(ctx, dbg)
+
+			patch := client.MergeFrom(kvg.DeepCopy())
+			kvg.Spec.Template.Spec.Config = `log.level = 'warn'`
+
+			nctx, cancel := context.WithCancel(ctx)
+			wg := sync.WaitGroup{}
+			wg.Add(2)
+			go func() {
+				defer wg.Done()
+				defer ginkgo.GinkgoRecover()
+				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiKVGroup(kvg), 3, 0, waiter.LongTaskTimeout))
+			}()
+			go func() {
+				defer wg.Done()
+				defer ginkgo.GinkgoRecover()
+				workload.MustRunWorkload(ctx, data.DefaultTiDBServiceName)
+			}()
+
+			changeTime := time.Now()
+			ginkgo.By("Change config of the TiKVGroup")
+			f.Must(f.Client.Patch(ctx, kvg, patch))
+			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiKVGroup(kvg), changeTime, waiter.LongTaskTimeout))
+			f.WaitForTiKVGroupReady(ctx, kvg)
+			cancel()
+			wg.Wait()
+		})
+	})
+})
