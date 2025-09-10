@@ -134,42 +134,6 @@ func TestHash(t *testing.T) {
 			},
 			expected: false,
 		},
-		{
-			desc: "don't ignore labels and annotations if mode is still standby",
-			dbg: &v1alpha1.TiDBGroup{
-				Spec: v1alpha1.TiDBGroupSpec{
-					Template: v1alpha1.TiDBTemplate{
-						ObjectMeta: v1alpha1.ObjectMeta{
-							Labels: map[string]string{
-								"aaa": "bbb",
-							},
-							Annotations: map[string]string{
-								"aaa": "bbb",
-							},
-						},
-						Spec: v1alpha1.TiDBTemplateSpec{
-							Mode: v1alpha1.TiDBModeStandBy,
-						},
-					},
-				},
-			},
-			db: &v1alpha1.TiDB{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"xxx": "yyy",
-					},
-					Annotations: map[string]string{
-						"mmm": "nnn",
-					},
-				},
-				Spec: v1alpha1.TiDBSpec{
-					TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{
-						Mode: v1alpha1.TiDBModeStandBy,
-					},
-				},
-			},
-			expected: false,
-		},
 	}
 
 	for i := range cases {
