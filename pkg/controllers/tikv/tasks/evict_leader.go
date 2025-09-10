@@ -27,7 +27,7 @@ func TaskEvictLeader(state *ReconcileContext) task.Task {
 			return task.Wait().With("pd is unsynced")
 		case state.Store == nil:
 			return task.Complete().With("store has been deleted or not created")
-		case !state.Object().GetDeletionTimestamp().IsZero() || state.IsPodTerminating():
+		case state.Instance().IsOffline() || state.IsPodTerminating():
 			if !state.LeaderEvicting {
 				if err := state.PDClient.Underlay().BeginEvictLeader(ctx, state.Store.ID); err != nil {
 					return task.Fail().With("cannot add evict leader scheduler: %v", err)
