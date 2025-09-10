@@ -71,6 +71,44 @@ func WaitForObject(
 	return nil
 }
 
+func WaitForObjectV2(
+	ctx context.Context,
+	c client.Client,
+	obj client.Object,
+	cond func() (stop bool, _ error),
+	timeout time.Duration,
+) error {
+	var lastErr error
+	if err := wait.PollUntilContextTimeout(ctx, Poll, timeout, true, func(ctx context.Context) (bool, error) {
+		key := client.ObjectKeyFromObject(obj)
+		if err := c.Get(ctx, key, obj); err != nil {
+			if apierrors.IsNotFound(err) {
+				return false, nil
+			}
+
+			return false, fmt.Errorf("can't get obj %s: %w", key, err)
+		}
+
+		stop, err := cond()
+		if err != nil {
+			if stop {
+				return false, err
+			}
+			lastErr = err
+		}
+
+		return stop, nil
+	}); err != nil {
+		if wait.Interrupted(err) {
+			return fmt.Errorf("wait for object %T(%v) condition timeout: %w", obj, client.ObjectKeyFromObject(obj), lastErr)
+		}
+
+		return fmt.Errorf("can't wait for object %T(%v) condition, error : %w", obj, client.ObjectKeyFromObject(obj), err)
+	}
+
+	return nil
+}
+
 func WaitForObjectDeleted(
 	ctx context.Context,
 	c client.Client,
