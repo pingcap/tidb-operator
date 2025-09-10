@@ -12,29 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package waiter
+package httputil
 
 import (
-	"context"
 	"fmt"
-	"time"
+	"net/http"
+	"testing"
 
-	batchv1 "k8s.io/api/batch/v1"
-
-	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/stretchr/testify/assert"
 )
 
-func WaitForJobComplete(ctx context.Context, c client.Client, job *batchv1.Job, timeout time.Duration) error {
-	return WaitForObjectV2(ctx, c, job, func() (bool, error) {
-		for _, cond := range job.Status.Conditions {
-			switch cond.Type {
-			case batchv1.JobComplete:
-				return true, nil
-			case batchv1.JobFailed:
-				return true, fmt.Errorf("job is failed: %v", cond.Message)
-			}
-		}
+func TestErrorf(t *testing.T) {
+	err := Errorf(http.StatusNotFound, "err: %v", "xxx")
 
-		return false, fmt.Errorf("job status is unknown")
-	}, timeout)
+	assert.EqualError(t, err, "status: 404, message: err: xxx")
+}
+
+func TestIsNotFound(t *testing.T) {
+	err := Errorf(http.StatusNotFound, "not found")
+	assert.True(t, IsNotFound(err))
+	err2 := Errorf(http.StatusBadRequest, "bad request")
+	assert.False(t, IsNotFound(err2))
+	err3 := fmt.Errorf("response: %w", err)
+	assert.True(t, IsNotFound(err3))
 }

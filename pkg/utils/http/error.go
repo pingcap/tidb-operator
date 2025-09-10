@@ -12,29 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package waiter
+package httputil
 
 import (
-	"context"
+	"errors"
 	"fmt"
-	"time"
-
-	batchv1 "k8s.io/api/batch/v1"
-
-	"github.com/pingcap/tidb-operator/pkg/client"
+	"net/http"
 )
 
-func WaitForJobComplete(ctx context.Context, c client.Client, job *batchv1.Job, timeout time.Duration) error {
-	return WaitForObjectV2(ctx, c, job, func() (bool, error) {
-		for _, cond := range job.Status.Conditions {
-			switch cond.Type {
-			case batchv1.JobComplete:
-				return true, nil
-			case batchv1.JobFailed:
-				return true, fmt.Errorf("job is failed: %v", cond.Message)
-			}
-		}
+type Error struct {
+	Status  int
+	Message string
+}
 
-		return false, fmt.Errorf("job status is unknown")
-	}, timeout)
+func (e Error) Error() string {
+	return fmt.Sprintf("status: %d, message: %s", e.Status, e.Message)
+}
+
+func Errorf(status int, format string, args ...any) error {
+	return Error{
+		Status:  status,
+		Message: fmt.Sprintf(format, args...),
+	}
+}
+
+func IsNotFound(err error) bool {
+	e := &Error{}
+	if !errors.As(err, e) {
+		return false
+	}
+
+	return e.Status == http.StatusNotFound
 }

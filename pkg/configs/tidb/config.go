@@ -45,6 +45,9 @@ type Config struct {
 	InitializeSQLFile          string            `toml:"initialize-sql-file"`
 	GracefulWaitBeforeShutdown int               `toml:"graceful-wait-before-shutdown"`
 	ServerLabels               map[string]string `toml:"labels"`
+
+	KeyspaceName string   `toml:"keyspace-name,omitempty"`
+	StandBy      *StandBy `toml:"standby,omitempty"`
 }
 
 type Security struct {
@@ -72,6 +75,11 @@ type Security struct {
 
 type Log struct {
 	SlowQueryFile string `toml:"slow-query-file"`
+}
+
+type StandBy struct {
+	// StandByMode indicates whether to enable the standby mode.
+	StandByMode *bool `toml:"standby-mode,omitempty"`
 }
 
 func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, fg features.Gates) error {
@@ -119,6 +127,17 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, fg feat
 		if c.Security.EnableSEM == nil {
 			c.Security.EnableSEM = ptr.To(true)
 		}
+	}
+
+	c.KeyspaceName = tidb.Spec.Keyspace
+
+	if tidb.Spec.Mode == v1alpha1.TiDBModeStandBy {
+		if c.StandBy == nil {
+			c.StandBy = &StandBy{}
+		}
+		c.StandBy.StandByMode = ptr.To(true)
+		// do not set keyspace in the standby mode
+		c.KeyspaceName = ""
 	}
 
 	return nil
@@ -176,6 +195,14 @@ func (c *Config) Validate(separateSlowLog bool) error {
 
 	if len(c.ServerLabels) > 0 {
 		fields = append(fields, "labels")
+	}
+
+	if c.KeyspaceName != "" {
+		fields = append(fields, "keyspace")
+	}
+
+	if c.StandBy != nil && c.StandBy.StandByMode != nil {
+		fields = append(fields, "standby.standby-mode")
 	}
 
 	if len(fields) == 0 {

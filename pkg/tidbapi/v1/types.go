@@ -19,3 +19,27 @@ package tidbapi
 type ServerInfo struct {
 	IsOwner bool `json:"is_owner"`
 }
+
+type ActivateRequest struct {
+	KeyspaceName   string `json:"keyspace_name"`
+	MaxIdleSeconds uint   `json:"max_idle_seconds"`
+
+	// analyze table
+	RunAutoAnalyze bool `json:"run_auto_analyze"`
+
+	// DDL
+	TiDBEnableDDL bool `json:"tidb_enable_ddl"`
+}
+
+type PoolStatus struct {
+	State PoolState `json:"state"`
+	// unused
+	// KeyspaceName string    `json:"keyspace_name"`
+}
+
+type PoolState string
+
+const (
+	PoolStateActivated PoolState = "activated"
+	PoolStateStandBy   PoolState = "standby"
+)

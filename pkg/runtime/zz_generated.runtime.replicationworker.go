@@ -214,6 +214,10 @@ func (in *ReplicationWorker) IsOffline() bool {
 	return false
 }
 
+func (in *ReplicationWorker) IsStore() bool {
+	return false
+}
+
 type (
 	ReplicationWorkerGroup v1alpha1.ReplicationWorkerGroup
 )

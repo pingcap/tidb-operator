@@ -109,7 +109,7 @@ func mysqlTLS() []Case {
 func keyspace() []Case {
 	err0 := `spec: Invalid value: "object": keyspace can only be set once when mode is changed from StandBy to Normal`
 	err1 := `spec: Invalid value: "object": keyspace cannot be set if mode is StandBy`
-	err2 := `spec.mode: Invalid value: "string": mode can only be set from StandBy to Normal once`
+	err2 := `spec: Invalid value: "object": mode can only be set from StandBy to Normal once`
 	return []Case{
 		{
 			desc:     "no keyspace and no mode",

@@ -39,9 +39,9 @@ const (
 	defaultUpdateWaitTime = time.Second * 30
 )
 
-// TaskUpdater is a task to scale or update PD when spec of TiFlashGroup is changed.
+// TaskUpdater is a task to scale or update TiFlash instances when spec of TiFlashGroup is changed.
 func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.TiFlashGroup, *v1alpha1.TiFlash]) task.Task {
-	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
+	return task.NameTaskFunc("TiFlashGroupUpdater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		fg := state.TiFlashGroup()
 
@@ -123,6 +123,7 @@ func TiFlashNewer(fg *v1alpha1.TiFlashGroup, rev string, g features.Gates) updat
 				Features:            fg.Spec.Features,
 				Subdomain:           HeadlessServiceName(fg.Name),
 				TiFlashTemplateSpec: *spec,
+				Offline:             false,
 			},
 		}
 		if g.Enabled(metav1alpha1.ClusterSubdomain) {
