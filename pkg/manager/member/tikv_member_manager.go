@@ -1175,9 +1175,10 @@ func applyOverlay(cm *corev1.ConfigMap, key string, value any) error {
 		if err := configFileWrapper.UnmarshalTOML([]byte(configContent)); err != nil {
 			return fmt.Errorf("failed to unmarshal existing TiKV config: %v", err)
 		}
-		if err := configFileWrapper.Merge(overlayWrapper.GenericConfig); err != nil {
-			return fmt.Errorf("failed to merge overlay into existing TiKV config: %v", err)
-		}
+	}
+	// Always merge overlay config, regardless of whether config-file is empty
+	if err := configFileWrapper.Merge(overlayWrapper.GenericConfig); err != nil {
+		return fmt.Errorf("failed to merge overlay into existing TiKV config: %v", err)
 	}
 	overlayAppliedConfigContent, err := configFileWrapper.MarshalTOML()
 	if err != nil {
