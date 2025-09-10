@@ -459,6 +459,20 @@ func (mr *MockInstanceMockRecorder) IsReady() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsReady", reflect.TypeOf((*MockInstance)(nil).IsReady))
 }
 
+// IsStore mocks base method.
+func (m *MockInstance) IsStore() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsStore")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsStore indicates an expected call of IsStore.
+func (mr *MockInstanceMockRecorder) IsStore() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsStore", reflect.TypeOf((*MockInstance)(nil).IsStore))
+}
+
 // IsUpToDate mocks base method.
 func (m *MockInstance) IsUpToDate() bool {
 	m.ctrl.T.Helper()
