@@ -80,6 +80,7 @@ func MustEncodeLastTiDBTemplate(instance *v1alpha1.TiDB, pod *corev1.Pod) {
 	}
 }
 
+// TemplateFromTiDB gets tidb template from tidb instance
 // TODO: ignore inherited labels and annotations
 func TemplateFromTiDB(db *v1alpha1.TiDB) *v1alpha1.TiDBTemplate {
 	return &v1alpha1.TiDBTemplate{
