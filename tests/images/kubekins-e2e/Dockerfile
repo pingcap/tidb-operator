@@ -1,6 +1,6 @@
-FROM debian:bookworm-slim
+FROM debian:12.12-slim
 
-ARG GO_VERSION=1.23.4
+ARG GO_VERSION=1.23.12
 
 # common util tools
 RUN apt-get update && \
@@ -21,16 +21,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     gnupg2 \
-    software-properties-common \
-    lsb-release && \
+    software-properties-common && \
     rm -rf /var/lib/apt/lists/*
 
 # Add the Docker apt-repository
-RUN curl -fsSL https://download.docker.com/linux/$(. /etc/os-release; echo "$ID")/gpg \
-    | apt-key add - && \
-    add-apt-repository \
-    "deb [arch=amd64] https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") \
-    $(lsb_release -cs) stable"
+RUN install -m 0755 -d /etc/apt/keyrings
+RUN curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+RUN chmod a+r /etc/apt/keyrings/docker.asc
+RUN echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  tee /etc/apt/sources.list.d/docker.list > /dev/null
 
 # Install Docker
 # TODO: the `sed` is a bit of a hack, look into alternatives.
@@ -39,8 +40,7 @@ RUN curl -fsSL https://download.docker.com/linux/$(. /etc/os-release; echo "$ID"
 # Trying to remount these makes for a very noisy error block in the beginning of
 # the pod logs, so we just comment out the call to it... :shrug:
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends docker-ce=5:20.10.* && \
-    apt-get install docker-buildx-plugin -y && \
+    apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin && \
     rm -rf /var/lib/apt/lists/* && \
     sed -i 's/cgroupfs_mount$/#cgroupfs_mount\n/' /etc/init.d/docker \
     && update-alternatives --set iptables /usr/sbin/iptables-legacy \
@@ -66,10 +66,10 @@ RUN echo "DOCKER_OPTS=\"\${DOCKER_OPTS} --registry-mirror=${DOCKER_REGISTRY_MIRR
 # BEGIN: Install GO
 #
 
-ENV GOPATH /go
-ENV PATH /usr/local/go/bin:$PATH
+ENV GOPATH=/go
+ENV PATH=/usr/local/go/bin:$PATH
 RUN mkdir -p /go/bin
-ENV PATH $GOPATH/bin:$PATH
+ENV PATH=$GOPATH/bin:$PATH
 
 ARG GO_TARBALL="go${GO_VERSION}.linux-amd64.tar.gz"
 RUN wget -q "https://storage.googleapis.com/golang/${GO_TARBALL}" && \
