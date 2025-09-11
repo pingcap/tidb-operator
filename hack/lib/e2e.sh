@@ -55,6 +55,7 @@ function e2e::ensure_cert_manager() {
     $HELM upgrade \
         cert-manager oci://quay.io/jetstack/charts/cert-manager \
         -i \
+        --wait \
         --version v1.18.2 \
         --namespace cert-manager \
         --create-namespace \
@@ -66,6 +67,7 @@ function e2e::ensure_trust_manager() {
     $HELM upgrade \
         trust-manager oci://quay.io/jetstack/charts/trust-manager \
         -i \
+        --wait \
         --version v0.18.0 \
         --namespace cert-manager \
         --create-namespace \
