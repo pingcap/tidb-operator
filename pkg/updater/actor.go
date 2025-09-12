@@ -50,6 +50,7 @@ const (
 	actionSetOffline
 	actionDeferDelete
 	actionDelete
+	actionCancelOffline
 )
 
 type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
@@ -66,7 +67,6 @@ type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 	// deleted set records all instances that are marked by defer delete annotation
 	deleted State[R]
 	// beingOffline set records all instances that are in the process of going offline.
-	// It will be used for cancel offline.
 	beingOffline State[R]
 
 	addHooks    []AddHook[R]
@@ -103,8 +103,32 @@ func (act *actor[T, O, R]) chooseToScaleIn(s []R) (string, error) {
 	return name, nil
 }
 
+// cancelOneOfflining cancels offline operation for one beingOffline instance and moves it back to update state
+func (act *actor[T, O, R]) cancelOneOfflining(ctx context.Context, instance R) error {
+	logger := logr.FromContextOrDiscard(ctx).WithName("Updater").WithValues("instance", instance.GetName())
+
+	if err := act.setOffline(ctx, instance, false); err != nil {
+		logger.Error(err, "failed to cancel offline")
+		return err
+	}
+
+	act.beingOffline.Del(instance.GetName())
+	act.update.Add(instance)
+	return nil
+}
+
 func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
+
+	if act.beingOffline.Len() > 0 {
+		// TODO: could implement more sophisticated selection logic
+		logger.Info("try to cancel an offlining instance")
+		if err := act.cancelOneOfflining(ctx, act.beingOffline.List()[0]); err != nil {
+			return err
+		}
+		act.actions = append(act.actions, actionCancelOffline)
+		return nil
+	}
 
 	obj := act.f.New()
 	for _, hook := range act.addHooks {
@@ -202,11 +226,16 @@ func (act *actor[T, O, R]) scaleInOutdated(ctx context.Context, deferDel bool) (
 
 type Patch struct {
 	Metadata Metadata `json:"metadata"`
+	Spec     *Spec    `json:"spec,omitempty"`
 }
 
 type Metadata struct {
 	ResourceVersion string            `json:"resourceVersion"`
 	Annotations     map[string]string `json:"annotations"`
+}
+
+type Spec struct {
+	Offline bool `json:"offline"`
 }
 
 // deferDelete marks an instance with defer-delete annotation instead of immediately deleting it.
@@ -307,8 +336,7 @@ func (act *actor[T, O, R]) RecordedActions() []action {
 
 func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) (action, error) {
 	if obj.IsStore() && !obj.IsOffline() && !meta.IsStatusConditionTrue(obj.Conditions(), v1alpha1.StoreOfflinedConditionType) {
-		patchData := []byte(fmt.Sprintf(`[{"op": "replace", "path": "/spec/offline", "value": %v}]`, true))
-		if err := act.c.Patch(ctx, act.converter.To(obj), client.RawPatch(types.JSONPatchType, patchData)); err != nil {
+		if err := act.setOffline(ctx, obj, true); err != nil {
 			return actionNone, fmt.Errorf("failed to set instance %s/%s offline: %w", obj.GetNamespace(), obj.GetName(), err)
 		}
 		act.beingOffline.Add(obj)
@@ -320,4 +348,27 @@ func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) (action, e
 	}
 
 	return actionDelete, nil
+}
+
+func (act *actor[T, O, R]) setOffline(ctx context.Context, obj R, offline bool) error {
+	if obj.IsOffline() == offline {
+		// already in desired state
+		return nil
+	}
+
+	p := Patch{
+		Metadata: Metadata{
+			ResourceVersion: obj.GetResourceVersion(),
+		},
+		Spec: &Spec{
+			Offline: offline,
+		},
+	}
+
+	data, err := json.Marshal(&p)
+	if err != nil {
+		return fmt.Errorf("invalid patch: %w", err)
+	}
+
+	return act.c.Patch(ctx, act.converter.To(obj), client.RawPatch(types.MergePatchType, data))
 }

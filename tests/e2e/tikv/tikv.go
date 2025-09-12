@@ -236,7 +236,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 			gomega.Expect(finalTiKVs).To(gomega.HaveLen(3), "Should have 3 TiKV instance after scale in")
 		})
 
-		ginkgo.PIt("should handle full cancellation of scale-in", func(ctx context.Context) {
+		ginkgo.It("should handle full cancellation of scale-in", func(ctx context.Context) {
 			// Slow down the speed of data migration for testing
 			pdg := f.MustCreatePD(ctx, func(pdg *runtime.PDGroup) {
 				pdg.Spec.Template.Spec.Config = `[schedule]
@@ -291,7 +291,7 @@ replica-schedule-limit = 8
 			}
 		})
 
-		ginkgo.PIt("should handle partial cancellation of scale-in", func(ctx context.Context) {
+		ginkgo.It("should handle partial cancellation of scale-in", func(ctx context.Context) {
 			// Slow down the speed of data migration for testing
 			pdg := f.MustCreatePD(ctx, func(pdg *runtime.PDGroup) {
 				pdg.Spec.Template.Spec.Config = `[schedule]
