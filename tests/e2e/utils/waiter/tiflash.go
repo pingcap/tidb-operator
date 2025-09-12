@@ -21,6 +21,8 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func WaitForTiFlashesHealthy(ctx context.Context, c client.Client, fg *v1alpha1.TiFlashGroup, timeout time.Duration) error {
@@ -42,4 +44,16 @@ func WaitForTiFlashesHealthy(ctx context.Context, c client.Client, fg *v1alpha1.
 		v1alpha1.LabelKeyGroup:     fg.Name,
 		v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiFlash,
 	})
+}
+
+func WaitForTiFlashOfflineCompleted(expectTiFlash *v1alpha1.TiFlash) func(flash *v1alpha1.TiFlash) (bool, error) {
+	return func(flash *v1alpha1.TiFlash) (bool, error) {
+		if flash.Name != expectTiFlash.Name || flash.Namespace != expectTiFlash.Namespace || flash.UID != expectTiFlash.UID {
+			return false, nil
+		}
+		if meta.IsStatusConditionPresentAndEqual(flash.Status.Conditions, v1alpha1.StoreOfflinedConditionType, metav1.ConditionTrue) {
+			return true, nil
+		}
+		return false, nil
+	}
 }

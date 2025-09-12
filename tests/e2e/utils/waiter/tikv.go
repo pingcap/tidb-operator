@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/meta"
-
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func WaitForTiKVsHealthy(ctx context.Context, c client.Client, kvg *v1alpha1.TiKVGroup, timeout time.Duration) error {
@@ -95,6 +95,18 @@ func EvictLeaderBeforeStoreIsRemoving(deleting int) func(kv *v1alpha1.TiKV) (boo
 			return false, fmt.Errorf("store state is %v but leaders are not all evicted", kv.Status.State)
 		}
 
+		return false, nil
+	}
+}
+
+func WaitForTiKVOfflineCompleted(expectTiKV *v1alpha1.TiKV) func(kv *v1alpha1.TiKV) (bool, error) {
+	return func(kv *v1alpha1.TiKV) (bool, error) {
+		if kv.Name != expectTiKV.Name || kv.Namespace != expectTiKV.Namespace || kv.UID != expectTiKV.UID {
+			return false, nil
+		}
+		if meta.IsStatusConditionPresentAndEqual(kv.Status.Conditions, v1alpha1.StoreOfflinedConditionType, metav1.ConditionTrue) {
+			return true, nil
+		}
 		return false, nil
 	}
 }
