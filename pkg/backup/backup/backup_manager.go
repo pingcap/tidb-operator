@@ -1162,7 +1162,7 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 		// State is inconsistent, update to reflect actual kernel state
 		actualCommand := getCommandForKernelState(kernelState)
 
-		klog.Infof("%s expected command %s is inconsistent with kernel state %s, syncing to %s",
+		klog.Errorf("%s expected command %s is inconsistent with kernel state %s, syncing to %s",
 			logPrefix, expectedCommand, kernelState, actualCommand)
 		
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
