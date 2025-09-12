@@ -1110,7 +1110,7 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 
 	ns, name := backup.Namespace, backup.Name
 	logPrefix := fmt.Sprintf("log backup %s/%s", ns, name)
-	
+
 	parsedCommand := v1alpha1.ParseLogBackupSubcommand(backup)
 
 	tc, err := bm.backupTracker.GetLogBackupTC(backup)
@@ -1138,7 +1138,7 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 		if parsedCommand == v1alpha1.LogStopCommand {
 			return true, nil
 		}
-		
+
 		// For other commands, key not found is an error
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Type:    v1alpha1.BackupFailed,
@@ -1153,26 +1153,59 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 	if err != nil {
 		return false, err
 	}
-	
-	kernelState := getLogBackupKernelState(pauseStatus.IsPaused)
-	expectedCommand := parsedCommand
-	
-	// Check if the expected command is consistent with kernel state
-	if !isCommandConsistentWithKernelState(expectedCommand, kernelState) {
-		// State is inconsistent, update to reflect actual kernel state
-		actualCommand := getCommandForKernelState(kernelState)
 
-		klog.Errorf("%s expected command %s is inconsistent with kernel state %s, syncing to %s",
-			logPrefix, expectedCommand, kernelState, actualCommand)
-		
-		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Command: actualCommand,
-			Type:    v1alpha1.BackupComplete,
-			Status:  corev1.ConditionTrue,
-			Reason:  "LogBackupKernelSync",
-			Message: fmt.Sprintf("Synced with kernel state: %s. %s", kernelState, pauseStatus.Message),
-		}, updateStatus)
+	// Handle different pause scenarios
+	if pauseStatus.IsPaused {
+		if pauseStatus.Message != "" {
+			// Error-caused pause: mark as failed
+			return bm.handleErrorPause(backup, pauseStatus.Message, parsedCommand, updateStatus, logPrefix)
+		}
 	}
+	// Sync kernel state with expected command
+	return bm.syncKernelStateWithExpected(backup, pauseStatus, parsedCommand, updateStatus, logPrefix)
+}
+
+// handleErrorPause handles log backup that is paused due to error
+func (bm *backupManager) handleErrorPause(backup *v1alpha1.Backup, errorMsg string, command v1alpha1.LogSubCommandType,
+	updateStatus *controller.BackupUpdateStatus, logPrefix string) (bool, error) {
+
+	klog.Errorf("%s is paused due to error: %s", logPrefix, errorMsg)
+
+	bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Command: command,
+		Type:    v1alpha1.BackupRetryTheFailed,
+		Status:  corev1.ConditionTrue,
+		Reason:  "LogBackupErrorPaused",
+		Message: fmt.Sprintf("Log backup paused due to error: %s", errorMsg),
+	}, updateStatus)
+
+	return false, fmt.Errorf("%s paused due to error: %s", logPrefix, errorMsg)
+}
+
+// syncKernelStateWithExpected syncs the kernel state with the expected command
+func (bm *backupManager) syncKernelStateWithExpected(backup *v1alpha1.Backup, pauseStatus PauseStatus,
+	expectedCommand v1alpha1.LogSubCommandType, updateStatus *controller.BackupUpdateStatus, logPrefix string) (bool, error) {
+
+	kernelState := getLogBackupKernelState(pauseStatus.IsPaused)
+
+	// If state is already consistent, nothing to do
+	if isCommandConsistentWithKernelState(expectedCommand, kernelState) {
+		return true, nil
+	}
+
+	// State is inconsistent, sync it
+	actualCommand := getCommandForKernelState(kernelState)
+	klog.Errorf("%s expected command %s is inconsistent with kernel state %s, syncing to %s",
+		logPrefix, expectedCommand, kernelState, actualCommand)
+
+	// Determine the appropriate reason and message
+	bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+		Command: actualCommand,
+		Type:    v1alpha1.BackupComplete,
+		Status:  corev1.ConditionTrue,
+		Reason:  "LogBackupKernelSync",
+		Message: fmt.Sprintf("Synced with kernel state: %s", kernelState),
+	}, updateStatus)
 
 	return true, nil
 }
