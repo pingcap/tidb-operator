@@ -1110,6 +1110,8 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 
 	ns, name := backup.Namespace, backup.Name
 	logPrefix := fmt.Sprintf("log backup %s/%s", ns, name)
+	
+	parsedCommand := v1alpha1.ParseLogBackupSubcommand(backup)
 
 	tc, err := bm.backupTracker.GetLogBackupTC(backup)
 	if err != nil || tc == nil {
@@ -1133,13 +1135,12 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 	}
 	if !exist {
 		// Special handling for Stop command - key not existing after stop is expected
-		if backup.Spec.LogSubcommand == v1alpha1.LogStopCommand {
+		if parsedCommand == v1alpha1.LogStopCommand {
 			return true, nil
 		}
 		
 		// For other commands, key not found is an error
 		bm.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
-			Command: backup.Spec.LogSubcommand,
 			Type:    v1alpha1.BackupFailed,
 			Status:  corev1.ConditionTrue,
 			Reason:  "LogBackupKeyNotFound",
@@ -1154,7 +1155,7 @@ func (bm *backupManager) SyncLogKernelStatus(backup *v1alpha1.Backup) (bool, err
 	}
 	
 	kernelState := getLogBackupKernelState(pauseStatus.IsPaused)
-	expectedCommand := backup.Spec.LogSubcommand
+	expectedCommand := parsedCommand
 	
 	// Check if the expected command is consistent with kernel state
 	if !isCommandConsistentWithKernelState(expectedCommand, kernelState) {
