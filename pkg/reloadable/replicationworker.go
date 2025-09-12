@@ -92,7 +92,7 @@ func convertReplicationWorkerTemplate(tmpl *v1alpha1.ReplicationWorkerTemplate) 
 	return newTmpl
 }
 
-func equalReplicationWorkerTemplate(p, c *v1alpha1.ReplicationWorkerTemplate) bool {
+func equalReplicationWorkerTemplate(c, p *v1alpha1.ReplicationWorkerTemplate) bool {
 	p = convertReplicationWorkerTemplate(p)
 	c = convertReplicationWorkerTemplate(c)
 	// not equal only when current strategy is Restart and config is changed
