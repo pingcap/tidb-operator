@@ -119,8 +119,9 @@ var _ = ginkgo.Describe("Upgrade TiDB Operator", label.P0, func() {
 			ginkgo.By("Upgrading operator and CRDs")
 			_, err = runCmd("kubectl apply --server-side=true -f manifests/crd/")
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			patch := client.MergeFrom(deploy.DeepCopy())
 			deploy.Spec.Template.Spec.Containers[0].Image = newVersionOperatorImage
-			gomega.Expect(f.Client.Update(ctx, deploy)).NotTo(gomega.HaveOccurred())
+			gomega.Expect(f.Client.Patch(ctx, deploy, patch)).NotTo(gomega.HaveOccurred())
 
 			ginkgo.By("Waiting for new operator to be ready")
 			gomega.Eventually(func(g gomega.Gomega) {

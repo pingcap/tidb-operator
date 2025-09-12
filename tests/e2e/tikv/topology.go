@@ -47,7 +47,7 @@ var _ = ginkgo.Describe("Topology", label.TiKV, label.MultipleAZ, label.P0, func
 		f.MustEvenlySpreadTiKV(ctx, kvg)
 	})
 
-	ginkgo.It("support scale from 3 to 6 and rolling update at same time", label.Scale, label.Update, func(ctx context.Context) {
+	ginkgo.It("support scale from 3 to 6 and rolling update at same time", ginkgo.Serial, label.Scale, label.Update, func(ctx context.Context) {
 		ginkgo.By("Creating cluster")
 		pdg := f.MustCreatePD(ctx)
 		kvg := f.MustCreateTiKV(ctx,

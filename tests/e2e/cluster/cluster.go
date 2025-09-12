@@ -1202,7 +1202,7 @@ var _ = Describe("TiDB Cluster", func() {
 					_, ready := utiltidb.IsClusterReady(k8sClient, tc.Name, tc.Namespace)
 					g.Expect(ready).To(BeTrue())
 
-					g.Expect(utiltidb.AreAllInstancesReady(k8sClient, pdg,
+					g.Expect(utiltidb.AreAllGroupAndInstancesReady(k8sClient, pdg,
 						[]*v1alpha1.TiKVGroup{kvg}, []*v1alpha1.TiDBGroup{dbg}, []*v1alpha1.TiFlashGroup{}, nil)).To(Succeed())
 				}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
 

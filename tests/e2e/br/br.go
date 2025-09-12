@@ -43,6 +43,7 @@ import (
 	brframework "github.com/pingcap/tidb-operator/tests/e2e/br/framework"
 	"github.com/pingcap/tidb-operator/tests/e2e/cluster"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
+	"github.com/pingcap/tidb-operator/tests/e2e/label"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/db/blockwriter"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/utils/image"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/k8s"
@@ -116,7 +117,7 @@ func (t *testcase) description() string {
 	return builder.String()
 }
 
-var _ = ginkgo.Describe("Backup and Restore", func() {
+var _ = ginkgo.Describe("Backup and Restore", label.KindBR, func() {
 	f := brframework.NewFramework("br")
 	f.SetupBootstrapSQL("SET PASSWORD FOR 'root'@'%' = 'pingcap';")
 
