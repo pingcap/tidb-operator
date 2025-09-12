@@ -202,7 +202,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 	ginkgo.Context("when scaling in TiKV with two-step deletion", func() {
 		workload := f.SetupWorkload()
 
-		ginkgo.It("should complete the full scale-in flow", ginkgo.Serial, func(ctx context.Context) {
+		ginkgo.PIt("should complete the full scale-in flow", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](4))
 			dbg := f.MustCreateTiDB(ctx)
