@@ -83,7 +83,7 @@ type StandBy struct {
 }
 
 func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, fg features.Gates) error {
-	if err := c.Validate(coreutil.IsSeparateSlowLogEnabled(tidb)); err != nil {
+	if err := c.Validate(tidb); err != nil {
 		return err
 	}
 
@@ -144,7 +144,8 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, fg feat
 }
 
 //nolint:gocyclo // refactor if possible
-func (c *Config) Validate(separateSlowLog bool) error {
+func (c *Config) Validate(tidb *v1alpha1.TiDB) error {
+	separateSlowLog := coreutil.IsSeparateSlowLogEnabled(tidb)
 	var fields []string
 
 	if c.Store != "" {
@@ -197,8 +198,10 @@ func (c *Config) Validate(separateSlowLog bool) error {
 		fields = append(fields, "labels")
 	}
 
-	if c.KeyspaceName != "" {
-		fields = append(fields, "keyspace")
+	if tidb.Spec.Keyspace != "" {
+		if c.KeyspaceName != "" {
+			fields = append(fields, "keyspace")
+		}
 	}
 
 	if c.StandBy != nil && c.StandBy.StandByMode != nil {
