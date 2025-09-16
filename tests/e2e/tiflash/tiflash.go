@@ -41,7 +41,7 @@ var _ = ginkgo.Describe("TiFlash", label.TiFlash, func() {
 	ginkgo.Context("when scaling in TiFlash with two-step deletion", func() {
 		workload := f.SetupWorkload()
 
-		ginkgo.PIt("should complete the full scale-in flow", func(ctx context.Context) {
+		ginkgo.It("should complete the full scale-in flow", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](3))
 			fg := f.MustCreateTiFlash(ctx, data.WithReplicas[*runtime.TiFlashGroup](2))
