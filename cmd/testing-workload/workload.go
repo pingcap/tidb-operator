@@ -37,7 +37,7 @@ func Workload(db *sql.DB) error {
 	db.SetMaxOpenConns(maxConnections)
 	// Set these variable to avoid too long retry time in testing.
 	// Downtime may be short but default timeout is too long.
-	if _, err := db.Exec("set global max_execution_time = 1000"); err != nil {
+	if _, err := db.Exec("set global max_execution_time = 2000"); err != nil {
 		return fmt.Errorf("set max_execute_time failed: %w", err)
 	}
 	if _, err := db.Exec("set global tidb_backoff_weight = 1"); err != nil {

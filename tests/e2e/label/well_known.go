@@ -59,6 +59,7 @@ var (
 	// Kind
 	KindExample = ginkgo.Label("k:Example")
 	KindBasic   = ginkgo.Label("k:Basic")
+	KindBR      = ginkgo.Label("k:BR")
 )
 
 func Features(fs ...metav1alpha1.Feature) ginkgo.Labels {

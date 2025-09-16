@@ -50,3 +50,5 @@ type GracePeriodSeconds = client.GracePeriodSeconds
 type MergeFromOption = client.MergeFromOption
 
 var RawPatch = client.RawPatch
+
+var MergeFrom = client.MergeFrom

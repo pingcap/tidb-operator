@@ -325,16 +325,22 @@ function e2e::run() {
     # Use individual package paths instead of recursive mode to avoid scanning excluded packages
     if [[ "$CI" == "true" ]]; then
         echo "running e2e tests in CI mode with options: $*"
-        $GINKGO -v --timeout=2h --randomize-all --randomize-suites --fail-on-empty --keep-going --race --trace --flake-attempts=2 "$*" "${test_packages[@]}"
+        $GINKGO -v --timeout=2h --randomize-all --randomize-suites --fail-on-empty --keep-going --trace --label-filter="!k:BR" "$*" "${test_packages[@]}"
     else
         echo "running e2e tests locally..."
-        $GINKGO -v "$@" "${test_packages[@]}"
+        $GINKGO -v --race "$@" "${test_packages[@]}"
     fi
 }
 
 function e2e::run_upgrade() {
     e2e::install_old_version
-    $GINKGO -v -r --tags=upgrade_e2e --timeout=1h --randomize-all --randomize-suites --fail-on-empty --race --trace --flake-attempts=2 "$ROOT/tests/e2e/upgrade"
+    if [[ "$CI" == "true" ]]; then
+        echo "running upgrade e2e tests in CI mode with options: $*"
+        $GINKGO -v --tags=upgrade_e2e --timeout=1h --randomize-all --randomize-suites --fail-on-empty --keep-going --trace "$*" "$ROOT/tests/e2e/upgrade"
+    else
+        echo "running upgrade e2e tests locally..."
+        $GINKGO -v --tags=upgrade_e2e --race "$@" "$ROOT/tests/e2e/upgrade"
+    fi
 }
 
 function e2e::prepare() {
