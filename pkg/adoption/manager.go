@@ -29,10 +29,10 @@ type Manager interface {
 	// Unregister delete a tidb record directly.
 	Unregister(ns, name string)
 	// Adopt returns an adoptable tidb for a tidbgroup.
-	// Count means the adopt times in one reconciliation.
+	// Index means the adopt times in one reconciliation.
 	// Returned adoptable instance will be locked until UnlockFunc is called
 	// or locked db is deleted or activated
-	Adopt(dbg *v1alpha1.TiDBGroup, count int) (*v1alpha1.TiDB, UnlockFunc)
+	Adopt(dbg *v1alpha1.TiDBGroup, index int) (*v1alpha1.TiDB, UnlockFunc)
 }
 
 type UnlockFunc func()
@@ -47,7 +47,8 @@ type manager struct {
 	// all standby instances grouped by hash
 	standby *groups
 
-	// all locked instances grouped by owner key
+	// All locked instances grouped by owner key.
+	// Adopting instances are instances which are locked and not observed.
 	adopting *groups
 
 	l sync.Mutex
@@ -182,6 +183,10 @@ func (m *manager) register(db *v1alpha1.TiDB) {
 	}
 }
 
+// Adopt will returns an adopting instance for updater to apply.
+// 1. StandBy -> Adopting -> Applied -> Observed as Normal
+// 2. StandBy -> Adopting -> Apply Failed -> Unlock to StandBy
+// 3. standBy -> Adopting -> Applied -> Adopt again
 func (m *manager) Adopt(dbg *v1alpha1.TiDBGroup, index int) (*v1alpha1.TiDB, UnlockFunc) {
 	if dbg.Spec.Template.Spec.Mode == v1alpha1.TiDBModeStandBy {
 		return nil, DoNothing
