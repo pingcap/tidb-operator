@@ -3026,3 +3026,64 @@ batch-keys = 512`,
 		testFn(&tests[i], t)
 	}
 }
+
+func TestApplyOverlay(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	tests := []struct {
+		name              string
+		configFile        string
+		configFileOverlay string
+		key               string
+		value             interface{}
+	}{
+		{
+			name:              "empty config-file with empty overlay",
+			configFile:        "",
+			configFileOverlay: "",
+			key:               "gc.ratio-threshold",
+			value:             -1.0,
+		},
+		{
+			name:              "existing config-file with overlay",
+			configFile:        "[log]\n  level = \"info\"\n",
+			configFileOverlay: "",
+			key:               "gc.ratio-threshold",
+			value:             -1.0,
+		},
+		{
+			name:              "empty config-file with existing overlay",
+			configFile:        "",
+			configFileOverlay: "[storage.block-cache]\ncapacity = \"1GB\"\n",
+			key:               "gc.ratio-threshold",
+			value:             -1.0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cm := &corev1.ConfigMap{
+				Data: map[string]string{
+					"config-file":         tt.configFile,
+					"config-file-overlay": tt.configFileOverlay,
+				},
+			}
+
+			err := applyOverlay(cm, tt.key, tt.value)
+			g.Expect(err).NotTo(HaveOccurred())
+
+			// Check that config-file now contains the merged configuration
+			g.Expect(cm.Data["config-file"]).NotTo(BeEmpty(), "config-file should not be empty after applying overlay")
+
+			// Parse the result to verify it contains our key
+			wrapper := v1alpha1.NewTiKVConfig()
+			err = wrapper.UnmarshalTOML([]byte(cm.Data["config-file"]))
+			g.Expect(err).NotTo(HaveOccurred())
+
+			// Verify the key was set correctly
+			val := wrapper.Get(tt.key)
+			g.Expect(val).NotTo(BeNil(), "expected key %s should be present in config", tt.key)
+			g.Expect(val.Interface()).To(Equal(tt.value), "expected value for key %s", tt.key)
+		})
+	}
+}
