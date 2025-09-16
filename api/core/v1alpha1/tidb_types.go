@@ -325,8 +325,6 @@ type TiDBSpec struct {
 
 	// TiDBTemplateSpec embedded some fields managed by TiDBGroup.
 	// +kubebuilder:validation:XValidation:rule="!has(self.mode) || self.mode == 'Normal' || !has(self.keyspace) || self.keyspace.size() == 0",message="keyspace cannot be set if mode is StandBy"
-	// +kubebuilder:validation:XValidation:rule="(has(oldSelf.mode) && oldSelf.mode == 'StandBy') ||  ((!has(oldSelf.keyspace) && !has(self.keyspace)) || (has(oldSelf.keyspace) && has(self.keyspace) && oldSelf.keyspace == self.keyspace))",message="keyspace can only be set once when mode is changed from StandBy to Normal"
-	// +kubebuilder:validation:XValidation:rule="!has(self.mode) || self.mode != 'StandBy' || oldSelf.mode == 'StandBy'",message="mode can only be set from StandBy to Normal once"
 	TiDBTemplateSpec `json:",inline"`
 }
 
