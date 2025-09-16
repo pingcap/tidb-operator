@@ -8709,14 +8709,6 @@ spec:
             - message: keyspace cannot be set if mode is StandBy
               rule: '!has(self.mode) || self.mode == ''Normal'' || !has(self.keyspace)
                 || self.keyspace.size() == 0'
-            - message: keyspace can only be set once when mode is changed from StandBy
-                to Normal
-              rule: (has(oldSelf.mode) && oldSelf.mode == 'StandBy') ||  ((!has(oldSelf.keyspace)
-                && !has(self.keyspace)) || (has(oldSelf.keyspace) && has(self.keyspace)
-                && oldSelf.keyspace == self.keyspace))
-            - message: mode can only be set from StandBy to Normal once
-              rule: '!has(self.mode) || self.mode != ''StandBy'' || oldSelf.mode ==
-                ''StandBy'''
             - message: overlay volumeClaims names must exist in volumes
               rule: '!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes)
                 && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v,
