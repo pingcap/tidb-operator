@@ -67,6 +67,12 @@ func WithGroupVersion[G runtime.Group](version string) GroupPatch[G] {
 	}
 }
 
+func WithGroupImage[G runtime.Group](image string) GroupPatch[G] {
+	return func(obj G) {
+		obj.SetImage(image)
+	}
+}
+
 func WithGroupCluster[G runtime.Group](cluster string) GroupPatch[G] {
 	return func(obj G) {
 		obj.SetCluster(cluster)

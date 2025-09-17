@@ -41,6 +41,7 @@ import (
 
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/adoption"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/backup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/br/restore"
@@ -71,6 +72,7 @@ import (
 	tsom "github.com/pingcap/tidb-operator/pkg/timanager/tso"
 	"github.com/pingcap/tidb-operator/pkg/utils/informertest"
 	"github.com/pingcap/tidb-operator/pkg/utils/kubefeat"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/pkg/volumes"
 )
@@ -191,8 +193,10 @@ func setup(ctx context.Context, mgr ctrl.Manager) error {
 	logger.Info("setup volume modifier")
 	vm := volumes.NewModifierFactory(mgr.GetLogger().WithName("VolumeModifier"), c)
 
+	am := adoption.New(ctrl.Log.WithName("adoption"))
+	tf := tracker.New()
 	setupLog.Info("setup controllers")
-	if err := setupControllers(mgr, c, pdcm, tsocm, vm); err != nil {
+	if err := setupControllers(mgr, c, pdcm, tsocm, vm, tf, am); err != nil {
 		setupLog.Error(err, "unable to setup controllers")
 		os.Exit(1)
 	}
@@ -307,6 +311,8 @@ func setupControllers(
 	pdcm pdm.PDClientManager,
 	tsocm tsom.TSOClientManager,
 	vm volumes.ModifierFactory,
+	tf tracker.Factory,
+	am adoption.Manager,
 ) error {
 	setups := []controllerSetup{
 		{
@@ -318,97 +324,97 @@ func setupControllers(
 		{
 			name: "PDGroup",
 			setupFunc: func() error {
-				return pdgroup.Setup(mgr, c, pdcm)
+				return pdgroup.Setup(mgr, c, pdcm, tf.AllocateFactory("pd"))
 			},
 		},
 		{
 			name: "PD",
 			setupFunc: func() error {
-				return pd.Setup(mgr, c, pdcm, vm)
+				return pd.Setup(mgr, c, pdcm, vm, tf.Tracker("pd"))
 			},
 		},
 		{
 			name: "TiDBGroup",
 			setupFunc: func() error {
-				return tidbgroup.Setup(mgr, c)
+				return tidbgroup.Setup(mgr, c, tf.AllocateFactory("tidb"), am)
 			},
 		},
 		{
 			name: "TiDB",
 			setupFunc: func() error {
-				return tidb.Setup(mgr, c, pdcm, vm)
+				return tidb.Setup(mgr, c, pdcm, vm, tf.Tracker("tidb"), am)
 			},
 		},
 		{
 			name: "TiKVGroup",
 			setupFunc: func() error {
-				return tikvgroup.Setup(mgr, c)
+				return tikvgroup.Setup(mgr, c, tf.AllocateFactory("tikv"))
 			},
 		},
 		{
 			name: "TiKV",
 			setupFunc: func() error {
-				return tikv.Setup(mgr, c, pdcm, vm)
+				return tikv.Setup(mgr, c, pdcm, vm, tf.Tracker("tikv"))
 			},
 		},
 		{
 			name: "TiFlashGroup",
 			setupFunc: func() error {
-				return tiflashgroup.Setup(mgr, c)
+				return tiflashgroup.Setup(mgr, c, tf.AllocateFactory("tiflash"))
 			},
 		},
 		{
 			name: "TiFlash",
 			setupFunc: func() error {
-				return tiflash.Setup(mgr, c, pdcm, vm)
+				return tiflash.Setup(mgr, c, pdcm, vm, tf.Tracker("tiflash"))
 			},
 		},
 		{
 			name: "TiCDCGroup",
 			setupFunc: func() error {
-				return ticdcgroup.Setup(mgr, c)
+				return ticdcgroup.Setup(mgr, c, tf.AllocateFactory("ticdc"))
 			},
 		},
 		{
 			name: "TiCDC",
 			setupFunc: func() error {
-				return ticdc.Setup(mgr, c, vm)
+				return ticdc.Setup(mgr, c, vm, tf.Tracker("ticdc"))
 			},
 		},
 		{
 			name: "TSOGroup",
 			setupFunc: func() error {
-				return tsogroup.Setup(mgr, c, tsocm)
+				return tsogroup.Setup(mgr, c, tsocm, tf.AllocateFactory("tso"))
 			},
 		},
 		{
 			name: "TSO",
 			setupFunc: func() error {
-				return tso.Setup(mgr, c, pdcm, tsocm, vm)
+				return tso.Setup(mgr, c, pdcm, tsocm, vm, tf.Tracker("tso"))
 			},
 		},
 		{
 			name: "SchedulerGroup",
 			setupFunc: func() error {
-				return schedulergroup.Setup(mgr, c)
+				return schedulergroup.Setup(mgr, c, tf.AllocateFactory("scheduler"))
 			},
 		},
 		{
 			name: "Scheduler",
 			setupFunc: func() error {
-				return scheduler.Setup(mgr, c, pdcm, vm)
+				return scheduler.Setup(mgr, c, pdcm, vm, tf.Tracker("scheduler"))
 			},
 		},
 		{
 			name: "TiProxyGroup",
 			setupFunc: func() error {
-				return tiproxygroup.Setup(mgr, c)
+				return tiproxygroup.Setup(mgr, c, tf.AllocateFactory("tiproxy"))
 			},
 		},
 		{
 			name: "TiProxy",
 			setupFunc: func() error {
-				return tiproxy.Setup(mgr, c, pdcm, vm)
+				return tiproxy.Setup(mgr, c, pdcm, vm, tf.Tracker("tiproxy"))
 			},
 		},
 		{
@@ -426,13 +432,13 @@ func setupControllers(
 		{
 			name: "ReplicationWorkerGroup",
 			setupFunc: func() error {
-				return replicationworkergroup.Setup(mgr, c)
+				return replicationworkergroup.Setup(mgr, c, tf.AllocateFactory("replicationworker"))
 			},
 		},
 		{
 			name: "ReplicationWorker",
 			setupFunc: func() error {
-				return replicationworker.Setup(mgr, c, pdcm, vm)
+				return replicationworker.Setup(mgr, c, pdcm, vm, tf.Tracker("replicationworker"))
 			},
 		},
 	}

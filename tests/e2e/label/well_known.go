@@ -60,6 +60,7 @@ var (
 	KindExample = ginkgo.Label("k:Example")
 	KindBasic   = ginkgo.Label("k:Basic")
 	KindBR      = ginkgo.Label("k:BR")
+	KindNextGen = ginkgo.Label("k:NextGen")
 )
 
 func Features(fs ...metav1alpha1.Feature) ginkgo.Labels {

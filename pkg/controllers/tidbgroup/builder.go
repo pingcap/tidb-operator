@@ -58,7 +58,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		),
 
 		tasks.TaskService(state, r.Client),
-		tasks.TaskUpdater(state, r.Client, r.Tracker),
+		tasks.TaskUpdater(state, r.Client, r.AllocateFactory, r.AdoptManager),
 		common.TaskGroupStatusSelector[scope.TiDBGroup](state),
 		common.TaskGroupConditionSuspended[scope.TiDBGroup](state),
 		common.TaskGroupConditionReady[scope.TiDBGroup](state),

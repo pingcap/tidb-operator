@@ -38,11 +38,7 @@ const (
 )
 
 // TaskUpdater is a task to scale or update ReplicationWorker when spec of ReplicationWorkerGroup is changed.
-func TaskUpdater(
-	state *ReconcileContext,
-	c client.Client,
-	t tracker.Tracker[*v1alpha1.ReplicationWorkerGroup, *v1alpha1.ReplicationWorker],
-) task.Task {
+func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFactory) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		obj := state.Object()
@@ -71,7 +67,12 @@ func TaskUpdater(
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
-		allocator := t.Track(obj, state.InstanceSlice()...)
+		var instances []string
+		for _, in := range is {
+			instances = append(instances, in.Name)
+		}
+
+		allocator := af.New(obj.Namespace, obj.Name, instances...)
 		wait, err := updater.New[runtime.ReplicationWorkerTuple]().
 			WithInstances(is...).
 			WithDesired(int(state.Group().Replicas())).

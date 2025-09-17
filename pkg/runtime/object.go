@@ -38,6 +38,8 @@ type Object interface {
 	SetVersion(versions string)
 	Version() string
 
+	SetImage(image string)
+
 	Features() []metav1alpha1.Feature
 
 	// tls secret name for the tidb operator to visit internal components

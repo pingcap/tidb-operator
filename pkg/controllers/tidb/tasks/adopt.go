@@ -12,21 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package hasher
+package tasks
 
 import (
-	"fmt"
-	"hash/fnv"
+	"context"
 
-	"k8s.io/apimachinery/pkg/util/rand"
-
-	hashutil "github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/util/hash"
+	"github.com/pingcap/tidb-operator/pkg/adoption"
+	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-// Hash an obj by this struct
-// NOTE: It may be changed if struct's fields are added or deleted. e.g. dep is upgraded
-func Hash(obj any) string {
-	hasher := fnv.New32a()
-	hashutil.DeepHashObject(hasher, obj)
-	return rand.SafeEncodeString(fmt.Sprint(hasher.Sum32()))
+func TaskRegisterForAdoption(state *ReconcileContext, am adoption.Manager) task.Task {
+	return task.NameTaskFunc("RegisterForAdoption", func(ctx context.Context) task.Result {
+		obj := state.Object()
+		if obj == nil {
+			key := state.Key()
+			am.Unregister(key.Namespace, key.Name)
+			return task.Complete().With("unregister deleted tidb")
+		}
+		am.Register(obj)
+		return task.Complete().With("register tidb")
+	})
 }

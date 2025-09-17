@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -26,6 +27,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/adoption"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
@@ -275,8 +277,8 @@ func TestTaskUpdater(t *testing.T) {
 				fc.WithError("patch", "tidbs", errors.NewInternalError(fmt.Errorf("fake internal err")))
 			}
 
-			tr := tracker.New[*v1alpha1.TiDBGroup, *v1alpha1.TiDB]()
-			res, done := task.RunTask(ctx, TaskUpdater(c.state, fc, tr))
+			af := tracker.New().AllocateFactory("tidb")
+			res, done := task.RunTask(ctx, TaskUpdater(c.state, fc, af, adoption.New(logr.Discard())))
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
 
@@ -290,8 +292,10 @@ func TestTaskUpdater(t *testing.T) {
 }
 
 func fakeAvailableTiDB(name string, dbg *v1alpha1.TiDBGroup, rev string) *v1alpha1.TiDB {
+	f := newFactory(nil, dbg, rev, features.NewFromFeatures(nil))
+
 	return fake.FakeObj(name, func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
-		tidb := runtime.ToTiDB(TiDBNewer(dbg, rev, features.NewFromFeatures(nil)).New())
+		tidb := runtime.ToTiDB(f.New())
 		tidb.Name = ""
 		tidb.Status.Conditions = append(tidb.Status.Conditions, metav1.Condition{
 			Type:   v1alpha1.CondReady,

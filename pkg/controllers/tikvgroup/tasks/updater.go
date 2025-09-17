@@ -40,8 +40,8 @@ const (
 )
 
 // TaskUpdater is a task to scale or update TiKV instances when spec of TiKVGroup is changed.
-func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.TiKVGroup, *v1alpha1.TiKV]) task.Task {
-	return task.NameTaskFunc("TiKVGroupUpdater", func(ctx context.Context) task.Result {
+func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFactory) task.Task {
+	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		kvg := state.TiKVGroup()
 
@@ -71,7 +71,12 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
-		allocator := t.Track(kvg, state.InstanceSlice()...)
+		var instances []string
+		for _, in := range kvs {
+			instances = append(instances, in.Name)
+		}
+
+		allocator := af.New(kvg.Namespace, kvg.Name, instances...)
 		wait, err := updater.New[runtime.TiKVTuple]().
 			WithInstances(kvs...).
 			WithDesired(int(state.Group().Replicas())).

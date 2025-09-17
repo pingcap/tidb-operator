@@ -26,6 +26,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 	runner := task.NewTaskRunner(reporter,
 		// Get tiflash
 		common.TaskContextObject[scope.TiFlash](state, r.Client),
+		common.TaskTrack[scope.TiFlash](state, r.Tracker),
 		// if it's deleted just return
 		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiFlash](state)),
 

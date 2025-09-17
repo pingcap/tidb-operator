@@ -635,6 +635,18 @@ func (mr *MockInstanceMockRecorder) SetGeneration(generation any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetGeneration", reflect.TypeOf((*MockInstance)(nil).SetGeneration), generation)
 }
 
+// SetImage mocks base method.
+func (m *MockInstance) SetImage(image string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetImage", image)
+}
+
+// SetImage indicates an expected call of SetImage.
+func (mr *MockInstanceMockRecorder) SetImage(image any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetImage", reflect.TypeOf((*MockInstance)(nil).SetImage), image)
+}
+
 // SetLabels mocks base method.
 func (m *MockInstance) SetLabels(labels map[string]string) {
 	m.ctrl.T.Helper()

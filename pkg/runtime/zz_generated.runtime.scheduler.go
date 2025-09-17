@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 )
 
 type (
@@ -164,6 +165,10 @@ func (in *Scheduler) Version() string {
 	return in.Spec.Version
 }
 
+func (in *Scheduler) SetImage(image string) {
+	in.Spec.Image = ptr.To(image)
+}
+
 func (in *Scheduler) Subdomain() string {
 	return in.Spec.Subdomain
 }
@@ -285,6 +290,10 @@ func (g *SchedulerGroup) SetVersion(version string) {
 
 func (g *SchedulerGroup) Version() string {
 	return g.Spec.Template.Spec.Version
+}
+
+func (g *SchedulerGroup) SetImage(image string) {
+	g.Spec.Template.Spec.Image = ptr.To(image)
 }
 
 func (g *SchedulerGroup) SetCluster(cluster string) {
