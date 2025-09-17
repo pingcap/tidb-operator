@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/errors"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 )
@@ -26,17 +28,17 @@ import (
 func WaitForPDsHealthy(ctx context.Context, c client.Client, pdg *v1alpha1.PDGroup, timeout time.Duration) error {
 	list := v1alpha1.PDList{}
 	return WaitForList(ctx, c, &list, func() error {
+		errs := []error{}
 		if len(list.Items) != int(*pdg.Spec.Replicas) {
-			return fmt.Errorf("pd %s/%s replicas %d not equal to %d", pdg.Namespace, pdg.Name, len(list.Items), *pdg.Spec.Replicas)
+			errs = append(errs, fmt.Errorf("pd %s/%s replicas %d not equal to %d", pdg.Namespace, pdg.Name, len(list.Items), *pdg.Spec.Replicas))
 		}
 		for i := range list.Items {
 			pd := &list.Items[i]
 			if err := checkInstanceStatus(v1alpha1.LabelValComponentPD, pd.Name, pd.Namespace, pd.Generation, pd.Status.CommonStatus); err != nil {
-				return err
+				errs = append(errs, err)
 			}
 		}
-
-		return nil
+		return errors.NewAggregate(errs)
 	}, timeout, client.InNamespace(pdg.Namespace), client.MatchingLabels{
 		v1alpha1.LabelKeyCluster:   pdg.Spec.Cluster.Name,
 		v1alpha1.LabelKeyGroup:     pdg.Name,

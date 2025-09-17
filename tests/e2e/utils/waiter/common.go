@@ -22,6 +22,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -216,12 +217,38 @@ func WaitForObjectCondition[T runtime.ObjectTuple[O, U], O client.Object, U runt
 }
 
 func checkInstanceStatus(kind, name, ns string, generation int64, status v1alpha1.CommonStatus) error {
+	errs := []error{}
 	objID := fmt.Sprintf("%s %s/%s", kind, ns, name)
-	if generation != status.ObservedGeneration || !meta.IsStatusConditionPresentAndEqual(status.Conditions, v1alpha1.CondSynced, metav1.ConditionTrue) {
-		return fmt.Errorf("%s is not synced", objID)
+	if generation != status.ObservedGeneration {
+		errs = append(errs, fmt.Errorf("observedGeneration %v is not equal with generation %v", status.ObservedGeneration, generation))
 	}
-	if !meta.IsStatusConditionPresentAndEqual(status.Conditions, v1alpha1.CondReady, metav1.ConditionTrue) {
-		return fmt.Errorf("%s is not ready", objID)
+	if err := isConditionTrue(status.Conditions, v1alpha1.CondSynced, generation); err != nil {
+		errs = append(errs, err)
 	}
+	if err := isConditionTrue(status.Conditions, v1alpha1.CondReady, generation); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := errors.NewAggregate(errs); err != nil {
+		return fmt.Errorf("%s: %w", objID, err)
+	}
+
+	return nil
+}
+
+func isConditionTrue(conditions []metav1.Condition, conditionType string, generation int64) error {
+	cond := meta.FindStatusCondition(conditions, conditionType)
+	if cond == nil {
+		return fmt.Errorf("no %s condition", conditionType)
+	}
+
+	if cond.ObservedGeneration != generation {
+		return fmt.Errorf("condition %s: observedGeneration %v is not equal with generation %v", conditionType, cond.ObservedGeneration, generation)
+	}
+
+	if cond.Status != metav1.ConditionTrue {
+		return fmt.Errorf("condition %s is not True: %v", conditionType, cond)
+	}
+
 	return nil
 }
