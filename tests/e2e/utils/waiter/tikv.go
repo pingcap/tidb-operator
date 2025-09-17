@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/util/errors"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
@@ -28,17 +29,17 @@ import (
 func WaitForTiKVsHealthy(ctx context.Context, c client.Client, kvg *v1alpha1.TiKVGroup, timeout time.Duration) error {
 	list := v1alpha1.TiKVList{}
 	return WaitForList(ctx, c, &list, func() error {
+		errs := []error{}
 		if len(list.Items) != int(*kvg.Spec.Replicas) {
-			return fmt.Errorf("kv %s/%s replicas %d not equal to %d", kvg.Namespace, kvg.Name, len(list.Items), *kvg.Spec.Replicas)
+			errs = append(errs, fmt.Errorf("kv %s/%s replicas %d not equal to %d", kvg.Namespace, kvg.Name, len(list.Items), *kvg.Spec.Replicas))
 		}
 		for i := range list.Items {
 			kv := &list.Items[i]
 			if err := checkInstanceStatus(v1alpha1.LabelValComponentTiKV, kv.Name, kv.Namespace, kv.Generation, kv.Status.CommonStatus); err != nil {
-				return err
+				errs = append(errs, err)
 			}
 		}
-
-		return nil
+		return errors.NewAggregate(errs)
 	}, timeout, client.InNamespace(kvg.Namespace), client.MatchingLabels{
 		v1alpha1.LabelKeyCluster:   kvg.Spec.Cluster.Name,
 		v1alpha1.LabelKeyGroup:     kvg.Name,

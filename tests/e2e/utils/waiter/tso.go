@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/errors"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 )
@@ -26,17 +28,17 @@ import (
 func WaitForTSOsHealthy(ctx context.Context, c client.Client, tg *v1alpha1.TSOGroup, timeout time.Duration) error {
 	list := v1alpha1.TSOList{}
 	return WaitForList(ctx, c, &list, func() error {
+		errs := []error{}
 		if len(list.Items) != int(*tg.Spec.Replicas) {
-			return fmt.Errorf("tso %s/%s replicas %d not equal to %d", tg.Namespace, tg.Name, len(list.Items), *tg.Spec.Replicas)
+			errs = append(errs, fmt.Errorf("tso %s/%s replicas %d not equal to %d", tg.Namespace, tg.Name, len(list.Items), *tg.Spec.Replicas))
 		}
 		for i := range list.Items {
 			tso := &list.Items[i]
 			if err := checkInstanceStatus(v1alpha1.LabelValComponentTSO, tso.Name, tso.Namespace, tso.Generation, tso.Status.CommonStatus); err != nil {
-				return err
+				errs = append(errs, err)
 			}
 		}
-
-		return nil
+		return errors.NewAggregate(errs)
 	}, timeout, client.InNamespace(tg.Namespace), client.MatchingLabels{
 		v1alpha1.LabelKeyCluster:   tg.Spec.Cluster.Name,
 		v1alpha1.LabelKeyGroup:     tg.Name,
