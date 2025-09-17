@@ -45,15 +45,15 @@ type Reconciler struct {
 	Logger           logr.Logger
 	Client           client.Client
 	TSOClientManager tsom.TSOClientManager
-	Tracker          tracker.Tracker[*v1alpha1.TSOGroup, *v1alpha1.TSO]
+	AllocateFactory  tracker.AllocateFactory
 }
 
-func Setup(mgr manager.Manager, c client.Client, tsocm tsom.TSOClientManager) error {
+func Setup(mgr manager.Manager, c client.Client, tsocm tsom.TSOClientManager, af tracker.AllocateFactory) error {
 	r := &Reconciler{
 		Logger:           mgr.GetLogger().WithName("TSOGroup"),
 		Client:           c,
 		TSOClientManager: tsocm,
-		Tracker:          tracker.New[*v1alpha1.TSOGroup, *v1alpha1.TSO](),
+		AllocateFactory:  af,
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.TSOGroup{}).

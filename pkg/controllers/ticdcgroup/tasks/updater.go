@@ -40,7 +40,7 @@ const (
 )
 
 // TaskUpdater is a task to scale or update TiCDC when spec of TiCDCGroup is changed.
-func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.TiCDCGroup, *v1alpha1.TiCDC]) task.Task {
+func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFactory) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		cdcg := state.TiCDCGroup()
@@ -70,7 +70,12 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
-		allocator := t.Track(cdcg, state.InstanceSlice()...)
+		var instances []string
+		for _, in := range cdcs {
+			instances = append(instances, in.Name)
+		}
+
+		allocator := af.New(cdcg.Namespace, cdcg.Name, instances...)
 		// TODO: get the real time owner info from TiCDC and prefer non-owner when scaling in or updating
 		wait, err := updater.New[runtime.TiCDCTuple]().
 			WithInstances(cdcs...).

@@ -41,7 +41,7 @@ const (
 )
 
 // TaskUpdater is a task to scale or update TiProxy when spec of TiProxyGroup is changed.
-func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.TiProxyGroup, *v1alpha1.TiProxy]) task.Task {
+func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFactory) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		proxyg := state.TiProxyGroup()
@@ -79,7 +79,12 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			maxSurge, maxUnavailable = 1, 0
 		}
 
-		allocator := t.Track(proxyg, state.InstanceSlice()...)
+		var instances []string
+		for _, in := range proxies {
+			instances = append(instances, in.Name)
+		}
+
+		allocator := af.New(proxyg.Namespace, proxyg.Name, instances...)
 
 		wait, err := updater.New[runtime.TiProxyTuple]().
 			WithInstances(proxies...).

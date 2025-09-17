@@ -61,9 +61,13 @@ func NewTopologyPolicy[R runtime.Instance](ts []v1alpha1.ScheduleTopology, rev s
 }
 
 func (p *topologyPolicy[R]) Add(update R) R {
-	all := p.all.NextAdd()
-	updated := p.updated.NextAdd()
-	topo := choose(all, updated)
+	topo := update.GetTopology()
+	// topology is not set
+	if len(topo) == 0 {
+		all := p.all.NextAdd()
+		updated := p.updated.NextAdd()
+		topo = choose(all, updated)
+	}
 
 	update.SetTopology(topo)
 	p.all.Add(update.GetName(), update.GetTopology())

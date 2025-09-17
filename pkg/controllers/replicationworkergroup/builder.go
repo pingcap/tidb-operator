@@ -55,7 +55,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		common.TaskRevision[runtime.ReplicationWorkerGroupTuple](state, r.Client), // TODO: Define runtime.ReplicationWorkerGroupTuple
 		tasks.TaskService(state, r.Client),
-		tasks.TaskUpdater(state, r.Client, r.Tracker),
+		tasks.TaskUpdater(state, r.Client, r.AllocateFactory),
 		common.TaskGroupStatusSelector[scope.ReplicationWorkerGroup](state),
 		common.TaskGroupConditionSuspended[scope.ReplicationWorkerGroup](state),
 		common.TaskGroupConditionReady[scope.ReplicationWorkerGroup](state),
