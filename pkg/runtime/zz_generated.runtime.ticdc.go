@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 )
 
 type (
@@ -164,6 +165,10 @@ func (in *TiCDC) Version() string {
 	return in.Spec.Version
 }
 
+func (in *TiCDC) SetImage(image string) {
+	in.Spec.Image = ptr.To(image)
+}
+
 func (in *TiCDC) Subdomain() string {
 	return in.Spec.Subdomain
 }
@@ -285,6 +290,10 @@ func (g *TiCDCGroup) SetVersion(version string) {
 
 func (g *TiCDCGroup) Version() string {
 	return g.Spec.Template.Spec.Version
+}
+
+func (g *TiCDCGroup) SetImage(image string) {
+	g.Spec.Template.Spec.Image = ptr.To(image)
 }
 
 func (g *TiCDCGroup) SetCluster(cluster string) {

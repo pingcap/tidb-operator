@@ -174,3 +174,25 @@ func WithTiDBEvenlySpreadPolicy() GroupPatch[*runtime.TiDBGroup] {
 		})
 	}
 }
+
+func WithTiDBStandbyMode() GroupPatch[*runtime.TiDBGroup] {
+	return func(obj *runtime.TiDBGroup) {
+		obj.Spec.Template.Spec.Mode = v1alpha1.TiDBModeStandBy
+	}
+}
+
+func WithKeyspace(keyspace string) GroupPatch[*runtime.TiDBGroup] {
+	return func(obj *runtime.TiDBGroup) {
+		obj.Spec.Template.Spec.Keyspace = keyspace
+	}
+}
+
+func WithTiDBCommandProbe() GroupPatch[*runtime.TiDBGroup] {
+	return func(obj *runtime.TiDBGroup) {
+		obj.Spec.Template.Spec.Probes = v1alpha1.TiDBProbes{
+			Readiness: &v1alpha1.TiDBProb{
+				Type: ptr.To(v1alpha1.CommandProbeType),
+			},
+		}
+	}
+}

@@ -25,6 +25,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 	runner := task.NewTaskRunner(reporter,
 		// get replicationworker
 		common.TaskContextObject[scope.ReplicationWorker](state, r.Client),
+		common.TaskTrack[scope.ReplicationWorker](state, r.Tracker),
 		// if it's gone just return
 		task.IfBreak(common.CondObjectHasBeenDeleted[scope.ReplicationWorker](state)),
 

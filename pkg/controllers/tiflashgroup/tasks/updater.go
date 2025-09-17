@@ -40,8 +40,8 @@ const (
 )
 
 // TaskUpdater is a task to scale or update TiFlash instances when spec of TiFlashGroup is changed.
-func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.TiFlashGroup, *v1alpha1.TiFlash]) task.Task {
-	return task.NameTaskFunc("TiFlashGroupUpdater", func(ctx context.Context) task.Result {
+func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFactory) task.Task {
+	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		fg := state.TiFlashGroup()
 
@@ -70,7 +70,12 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
-		allocator := t.Track(fg, state.InstanceSlice()...)
+		var instances []string
+		for _, in := range fs {
+			instances = append(instances, in.Name)
+		}
+
+		allocator := af.New(fg.Namespace, fg.Name, instances...)
 		wait, err := updater.New[runtime.TiFlashTuple]().
 			WithInstances(fs...).
 			WithDesired(int(state.Group().Replicas())).

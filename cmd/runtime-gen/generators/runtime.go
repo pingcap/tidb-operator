@@ -69,6 +69,7 @@ func (g *runtimeGenerator) Imports(_ *generator.Context) (imports []string) {
 		`"k8s.io/apimachinery/pkg/api/meta"`,
 		`metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"`,
 		`"k8s.io/apimachinery/pkg/runtime"`,
+		`"k8s.io/utils/ptr"`,
 
 		`"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"`,
 		`metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"`,
@@ -226,6 +227,10 @@ func (in *$.|pub$) Version() string {
 	return in.Spec.Version
 }
 
+func (in *$.|pub$) SetImage(image string) {
+	in.Spec.Image = ptr.To(image)
+}
+
 func (in *$.|pub$) Subdomain() string {
 	return in.Spec.Subdomain
 }
@@ -370,6 +375,10 @@ func (g *$.|pub$) SetVersion(version string) {
 
 func (g *$.|pub$) Version() string {
 	return g.Spec.Template.Spec.Version
+}
+
+func (g *$.|pub$) SetImage(image string) {
+	g.Spec.Template.Spec.Image = ptr.To(image)
 }
 
 func (g *$.|pub$) SetCluster(cluster string) {

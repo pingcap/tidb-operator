@@ -81,3 +81,12 @@ func WithTiKVEvenlySpreadPolicy() GroupPatch[*runtime.TiKVGroup] {
 		})
 	}
 }
+
+func WithTiKVAPIVersionV2() GroupPatch[*runtime.TiKVGroup] {
+	return func(obj *runtime.TiKVGroup) {
+		obj.Spec.Template.Spec.Config = `[storage]
+api-version = 2
+enable-ttl = true
+`
+	}
+}

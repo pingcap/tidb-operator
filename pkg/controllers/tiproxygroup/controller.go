@@ -41,16 +41,16 @@ import (
 )
 
 type Reconciler struct {
-	Logger  logr.Logger
-	Client  client.Client
-	Tracker tracker.Tracker[*v1alpha1.TiProxyGroup, *v1alpha1.TiProxy]
+	Logger          logr.Logger
+	Client          client.Client
+	AllocateFactory tracker.AllocateFactory
 }
 
-func Setup(mgr manager.Manager, c client.Client) error {
+func Setup(mgr manager.Manager, c client.Client, af tracker.AllocateFactory) error {
 	r := &Reconciler{
-		Logger:  mgr.GetLogger().WithName("TiProxyGroup"),
-		Client:  c,
-		Tracker: tracker.New[*v1alpha1.TiProxyGroup, *v1alpha1.TiProxy](),
+		Logger:          mgr.GetLogger().WithName("TiProxyGroup"),
+		Client:          c,
+		AllocateFactory: af,
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.TiProxyGroup{}).

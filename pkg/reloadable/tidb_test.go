@@ -285,6 +285,78 @@ func TestCheckTiDB(t *testing.T) {
 			},
 			reloadable: false,
 		},
+		{
+			desc: "standby to normal and change labels and annotations is reloadable",
+			dbg: &v1alpha1.TiDBGroup{
+				Spec: v1alpha1.TiDBGroupSpec{
+					Template: v1alpha1.TiDBTemplate{
+						ObjectMeta: v1alpha1.ObjectMeta{
+							Labels: map[string]string{
+								"aaa": "bbb",
+							},
+							Annotations: map[string]string{
+								"aaa": "bbb",
+							},
+						},
+						Spec: v1alpha1.TiDBTemplateSpec{
+							Mode: v1alpha1.TiDBModeNormal,
+						},
+					},
+				},
+			},
+			db: &v1alpha1.TiDB{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"xxx": "yyy",
+					},
+					Annotations: map[string]string{
+						"xxx": "yyy",
+					},
+				},
+				Spec: v1alpha1.TiDBSpec{
+					TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{
+						Mode: v1alpha1.TiDBModeStandBy,
+					},
+				},
+			},
+			reloadable: true,
+		},
+		{
+			desc: "change labels and annotations is not reloadable",
+			dbg: &v1alpha1.TiDBGroup{
+				Spec: v1alpha1.TiDBGroupSpec{
+					Template: v1alpha1.TiDBTemplate{
+						ObjectMeta: v1alpha1.ObjectMeta{
+							Labels: map[string]string{
+								"aaa": "bbb",
+							},
+							Annotations: map[string]string{
+								"aaa": "bbb",
+							},
+						},
+						Spec: v1alpha1.TiDBTemplateSpec{
+							Mode: v1alpha1.TiDBModeNormal,
+						},
+					},
+				},
+			},
+			db: &v1alpha1.TiDB{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"xxx": "yyy",
+					},
+					Annotations: map[string]string{
+						"xxx": "yyy",
+					},
+				},
+				Spec: v1alpha1.TiDBSpec{
+					TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{
+						Mode: v1alpha1.TiDBModeNormal,
+					},
+				},
+			},
+			reloadable: false,
+		},
 	}
 
 	for i := range cases {

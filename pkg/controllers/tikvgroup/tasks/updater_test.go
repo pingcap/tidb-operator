@@ -275,8 +275,8 @@ func TestTaskUpdater(t *testing.T) {
 				fc.WithError("patch", "tikvs", errors.NewInternalError(fmt.Errorf("fake internal err")))
 			}
 
-			tr := tracker.New[*v1alpha1.TiKVGroup, *v1alpha1.TiKV]()
-			res, done := task.RunTask(ctx, TaskUpdater(c.state, fc, tr))
+			af := tracker.New().AllocateFactory("tikv")
+			res, done := task.RunTask(ctx, TaskUpdater(c.state, fc, af))
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
 

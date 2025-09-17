@@ -41,16 +41,16 @@ import (
 )
 
 type Reconciler struct {
-	Logger  logr.Logger
-	Client  client.Client
-	Tracker tracker.Tracker[*v1alpha1.ReplicationWorkerGroup, *v1alpha1.ReplicationWorker]
+	Logger          logr.Logger
+	Client          client.Client
+	AllocateFactory tracker.AllocateFactory
 }
 
-func Setup(mgr manager.Manager, c client.Client) error {
+func Setup(mgr manager.Manager, c client.Client, af tracker.AllocateFactory) error {
 	r := &Reconciler{
-		Logger:  mgr.GetLogger().WithName("ReplicationWorkerGroup"),
-		Client:  c,
-		Tracker: tracker.New[*v1alpha1.ReplicationWorkerGroup, *v1alpha1.ReplicationWorker](),
+		Logger:          mgr.GetLogger().WithName("ReplicationWorkerGroup"),
+		Client:          c,
+		AllocateFactory: af,
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.ReplicationWorkerGroup{}).

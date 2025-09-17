@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 )
 
 type (
@@ -164,6 +165,10 @@ func (in *TiFlash) Version() string {
 	return in.Spec.Version
 }
 
+func (in *TiFlash) SetImage(image string) {
+	in.Spec.Image = ptr.To(image)
+}
+
 func (in *TiFlash) Subdomain() string {
 	return in.Spec.Subdomain
 }
@@ -285,6 +290,10 @@ func (g *TiFlashGroup) SetVersion(version string) {
 
 func (g *TiFlashGroup) Version() string {
 	return g.Spec.Template.Spec.Version
+}
+
+func (g *TiFlashGroup) SetImage(image string) {
+	g.Spec.Template.Spec.Image = ptr.To(image)
 }
 
 func (g *TiFlashGroup) SetCluster(cluster string) {

@@ -26,6 +26,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 	runner := task.NewTaskRunner(reporter,
 		// get tikv
 		common.TaskContextObject[scope.TiKV](state, r.Client),
+		common.TaskTrack[scope.TiKV](state, r.Tracker),
 		// if it's deleted just return
 		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiKV](state)),
 

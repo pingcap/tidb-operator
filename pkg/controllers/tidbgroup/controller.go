@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/adoption"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tidbgroup/tasks"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
@@ -41,16 +42,18 @@ import (
 )
 
 type Reconciler struct {
-	Logger  logr.Logger
-	Client  client.Client
-	Tracker tracker.Tracker[*v1alpha1.TiDBGroup, *v1alpha1.TiDB]
+	Logger          logr.Logger
+	Client          client.Client
+	AdoptManager    adoption.Manager
+	AllocateFactory tracker.AllocateFactory
 }
 
-func Setup(mgr manager.Manager, c client.Client) error {
+func Setup(mgr manager.Manager, c client.Client, af tracker.AllocateFactory, am adoption.Manager) error {
 	r := &Reconciler{
-		Logger:  mgr.GetLogger().WithName("TiDBGroup"),
-		Client:  c,
-		Tracker: tracker.New[*v1alpha1.TiDBGroup, *v1alpha1.TiDB](),
+		Logger:          mgr.GetLogger().WithName("TiDBGroup"),
+		Client:          c,
+		AdoptManager:    am,
+		AllocateFactory: af,
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.TiDBGroup{}).

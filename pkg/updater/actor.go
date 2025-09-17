@@ -22,20 +22,43 @@ import (
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
+// NewFactory try to New a object to scale out
+// The object returned by New may be
+// - Doesn't exist, the obj will be created
+// - Exists but is not managed, the obj will be adpoted
+// The adopting obj will be locked until apply is done
+// If apply is failed, we should call unlock to release the adopting object,
+// so that it can be adopted by others.
 type NewFactory[R runtime.Instance] interface {
+	// New will generate a new object for scaling out and update.
 	New() R
+	// Adopt is only called when scaling out.
+	// UnlockFunc will be called if apply is failed.
+	// If no obj can be adopted, obj is nil and exists is false.
+	//
+	// This interface cannot ensure that R is a pointer(of course it is), so a
+	// return val 'exists' is added to check whether the obj is nil.
+	// We can add a new generic type param(runtime.InstanceSet) to ensure that R is a pointer, but it changes too much.
+	Adopt() (obj R, fn UnlockFunc, exists bool)
 }
+
+type UnlockFunc func()
 
 type NewFunc[R runtime.Instance] func() R
 
 func (f NewFunc[R]) New() R {
 	return f()
+}
+
+func (f NewFunc[R]) Adopt() (obj R, fn UnlockFunc, exists bool) {
+	return
 }
 
 // action represents an action performed by Actor.
@@ -67,6 +90,7 @@ type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 	// deleted set records all instances that are marked by defer delete annotation
 	deleted State[R]
 	// beingOffline set records all instances that are in the process of going offline.
+	// It's used for cancel offline.
 	beingOffline State[R]
 
 	addHooks    []AddHook[R]
@@ -130,7 +154,11 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
 		return nil
 	}
 
-	obj := act.f.New()
+	obj, unlock, exists := act.f.Adopt()
+	if !exists {
+		obj = act.f.New()
+	}
+
 	for _, hook := range act.addHooks {
 		obj = hook.Add(obj)
 	}
@@ -138,6 +166,9 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
 	logger.Info("act scale out", "namespace", obj.GetNamespace(), "name", obj.GetName())
 
 	if err := act.c.Apply(ctx, act.converter.To(obj)); err != nil {
+		if unlock != nil {
+			unlock()
+		}
 		return err
 	}
 
@@ -231,7 +262,7 @@ type Patch struct {
 
 type Metadata struct {
 	ResourceVersion string            `json:"resourceVersion"`
-	Annotations     map[string]string `json:"annotations"`
+	Annotations     map[string]string `json:"annotations,omitempty"`
 }
 
 type Spec struct {
@@ -297,6 +328,7 @@ func (act *actor[T, O, R]) Update(ctx context.Context) error {
 	outdated := act.outdated.Del(name)
 
 	update := act.f.New()
+
 	for _, hook := range act.updateHooks {
 		update = hook.Update(update, outdated)
 	}
@@ -343,7 +375,10 @@ func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) (action, e
 		return actionSetOffline, nil
 	}
 
-	if err := act.c.Delete(ctx, act.converter.To(obj)); err != nil {
+	if err := act.c.Delete(ctx, act.converter.To(obj), client.Preconditions{
+		UID:             ptr.To(obj.GetUID()),
+		ResourceVersion: ptr.To(obj.GetResourceVersion()),
+	}); err != nil {
 		return actionNone, err
 	}
 

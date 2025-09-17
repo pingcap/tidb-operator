@@ -12,44 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package hasher
+package adoption
 
 import (
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 )
 
-func TestHash(t *testing.T) {
-	cases := []struct {
-		desc     string
-		obj      any
-		expected string
-	}{
-		{
-			desc:     "empty",
-			obj:      nil,
-			expected: "99c9b8c64",
-		},
-		{
-			desc: "obj",
-			obj: &v1alpha1.TiDBGroup{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "xxx",
-				},
-			},
-			expected: "667fdfbcf5",
-		},
-	}
+type instance struct {
+	hash     string
+	instance *v1alpha1.TiDB
+	owner    *v1alpha1.TiDBGroup
+}
 
-	for i := range cases {
-		c := &cases[i]
-		t.Run(c.desc, func(tt *testing.T) {
-			h := Hash(c.obj)
-			assert.Equal(tt, c.expected, h)
-		})
+func (in *instance) isLocked() bool {
+	return in.owner != nil
+}
+
+func (in *instance) lock(owner *v1alpha1.TiDBGroup) {
+	in.owner = owner
+}
+
+func (in *instance) unlock() {
+	in.owner = nil
+}
+
+func (in *instance) ownerKey() string {
+	if in.owner == nil {
+		return ""
 	}
+	return client.ObjectKeyFromObject(in.owner).String()
+}
+
+func (in *instance) key() string {
+	return client.ObjectKeyFromObject(in.instance).String()
 }

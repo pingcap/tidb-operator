@@ -42,7 +42,7 @@ const (
 )
 
 // TaskUpdater is a task to scale or update PD when spec of PDGroup is changed.
-func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.PDGroup, *v1alpha1.PD]) task.Task {
+func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFactory) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		pdg := state.PDGroup()
@@ -72,7 +72,12 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
-		allocator := t.Track(pdg, state.InstanceSlice()...)
+		var instances []string
+		for _, in := range pds {
+			instances = append(instances, in.Name)
+		}
+
+		allocator := af.New(pdg.Namespace, pdg.Name, instances...)
 
 		wait, err := updater.New[runtime.PDTuple]().
 			WithInstances(pds...).

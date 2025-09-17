@@ -25,6 +25,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apicall"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
@@ -33,6 +34,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 )
 
 var (
@@ -283,4 +285,32 @@ func findZoneLabel(cfg *pdapi.PDConfigFromAPI) string {
 		}
 	}
 	return ""
+}
+
+type TrackState[F client.Object] interface {
+	Key() types.NamespacedName
+	ObjectState[F]
+}
+
+func TaskTrack[
+	S scope.Instance[F, T],
+	F Object[P],
+	T runtime.Instance,
+	P any,
+](state TrackState[F], t tracker.Tracker) task.Task {
+	return task.NameTaskFunc("Track", func(context.Context) task.Result {
+		obj := state.Object()
+		if obj == nil {
+			key := state.Key()
+			t.Untrack(key.Namespace, key.Name)
+			return task.Complete().With("untrack deleted instance")
+		}
+		var group string
+		owner := coreutil.OwnerGroup[S](obj)
+		if owner != nil {
+			group = owner.Name
+		}
+		t.Track(obj.GetNamespace(), obj.GetName(), group)
+		return task.Complete().With("track instance %s with group %v", state.Key(), group)
+	})
 }

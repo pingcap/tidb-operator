@@ -45,16 +45,15 @@ type Reconciler struct {
 	Logger          logr.Logger
 	Client          client.Client
 	PDClientManager pdm.PDClientManager
-
-	Tracker tracker.Tracker[*v1alpha1.PDGroup, *v1alpha1.PD]
+	AllocateFactory tracker.AllocateFactory
 }
 
-func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager) error {
+func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, af tracker.AllocateFactory) error {
 	r := &Reconciler{
 		Logger:          mgr.GetLogger().WithName("PDGroup"),
 		Client:          c,
 		PDClientManager: pdcm,
-		Tracker:         tracker.New[*v1alpha1.PDGroup, *v1alpha1.PD](),
+		AllocateFactory: af,
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.PDGroup{}).
