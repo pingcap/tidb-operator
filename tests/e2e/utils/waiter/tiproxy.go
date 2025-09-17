@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/errors"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 )
@@ -26,17 +28,18 @@ import (
 func WaitForTiProxysHealthy(ctx context.Context, c client.Client, proxyg *v1alpha1.TiProxyGroup, timeout time.Duration) error {
 	list := v1alpha1.TiProxyList{}
 	return WaitForList(ctx, c, &list, func() error {
+		errs := []error{}
 		if len(list.Items) != int(*proxyg.Spec.Replicas) {
-			return fmt.Errorf("db %s/%s replicas %d not equal to %d", proxyg.Namespace, proxyg.Name, len(list.Items), *proxyg.Spec.Replicas)
+			errs = append(errs, fmt.Errorf("proxy %s/%s replicas %d not equal to %d", proxyg.Namespace, proxyg.Name, len(list.Items), *proxyg.Spec.Replicas))
 		}
 		for i := range list.Items {
 			tiproxy := &list.Items[i]
 			if err := checkInstanceStatus(v1alpha1.LabelValComponentTiProxy, tiproxy.Name, tiproxy.Namespace, tiproxy.Generation, tiproxy.Status.CommonStatus); err != nil {
-				return err
+				errs = append(errs, err)
 			}
 		}
 
-		return nil
+		return errors.NewAggregate(errs)
 	}, timeout, client.InNamespace(proxyg.Namespace), client.MatchingLabels{
 		v1alpha1.LabelKeyCluster:   proxyg.Spec.Cluster.Name,
 		v1alpha1.LabelKeyGroup:     proxyg.Name,
