@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/errors"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -28,17 +30,17 @@ import (
 func WaitForTiFlashesHealthy(ctx context.Context, c client.Client, fg *v1alpha1.TiFlashGroup, timeout time.Duration) error {
 	list := v1alpha1.TiFlashList{}
 	return WaitForList(ctx, c, &list, func() error {
+		errs := []error{}
 		if len(list.Items) != int(*fg.Spec.Replicas) {
-			return fmt.Errorf("tiflash %s/%s replicas %d not equal to %d", fg.Namespace, fg.Name, len(list.Items), *fg.Spec.Replicas)
+			errs = append(errs, fmt.Errorf("tiflash %s/%s replicas %d not equal to %d", fg.Namespace, fg.Name, len(list.Items), *fg.Spec.Replicas))
 		}
 		for i := range list.Items {
 			f := &list.Items[i]
 			if err := checkInstanceStatus(v1alpha1.LabelValComponentTiFlash, f.Name, f.Namespace, f.Generation, f.Status.CommonStatus); err != nil {
-				return err
+				errs = append(errs, err)
 			}
 		}
-
-		return nil
+		return errors.NewAggregate(errs)
 	}, timeout, client.InNamespace(fg.Namespace), client.MatchingLabels{
 		v1alpha1.LabelKeyCluster:   fg.Spec.Cluster.Name,
 		v1alpha1.LabelKeyGroup:     fg.Name,

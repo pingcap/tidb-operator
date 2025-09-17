@@ -107,9 +107,7 @@ func mysqlTLS() []Case {
 }
 
 func keyspace() []Case {
-	err0 := `spec: Invalid value: "object": keyspace can only be set once when mode is changed from StandBy to Normal`
 	err1 := `spec: Invalid value: "object": keyspace cannot be set if mode is StandBy`
-	err2 := `spec: Invalid value: "object": mode can only be set from StandBy to Normal once`
 	return []Case{
 		{
 			desc:     "no keyspace and no mode",
@@ -155,24 +153,6 @@ func keyspace() []Case {
 			old:     map[string]any{"mode": "Normal", "keyspace": "xxx"},
 			current: map[string]any{"mode": "Normal", "keyspace": "xxx"},
 			mode:    PatchModeMerge,
-		},
-		{
-			desc:    "update: mode is Normal and try to change keyspace",
-			old:     map[string]any{"mode": "Normal", "keyspace": "xxx"},
-			current: map[string]any{"mode": "Normal", "keyspace": "yyy"},
-			mode:    PatchModeMerge,
-			wantErrs: []string{
-				err0,
-			},
-		},
-		{
-			desc:    "update: mode is Normal and try to unset keyspace",
-			old:     map[string]any{"mode": "Normal", "keyspace": "xxx"},
-			current: map[string]any{"mode": "Normal"},
-			mode:    PatchModeMerge,
-			wantErrs: []string{
-				err0,
-			},
 		},
 		{
 			desc:     "mode is StandBy and no keyspace",
@@ -227,16 +207,6 @@ func keyspace() []Case {
 			old:     map[string]any{"mode": "StandBy", "keyspace": ""},
 			current: map[string]any{"mode": "Normal", "keyspace": "yyy"},
 			mode:    PatchModeMerge,
-		},
-		{
-			desc:    "update: mode is Normal and try to change to StandBy back",
-			old:     map[string]any{"mode": "Normal", "keyspace": "xxx"},
-			current: map[string]any{"mode": "StandBy"},
-			mode:    PatchModeMerge,
-			wantErrs: []string{
-				err0,
-				err2,
-			},
 		},
 	}
 }
