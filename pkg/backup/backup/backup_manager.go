@@ -32,6 +32,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/pingcap/tidb-operator/pkg/util/tidbcluster"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -188,6 +189,12 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	}, updateStatus)
 }
 
+// isTidbClusterReady checks if the TidbCluster is ready for backup
+func isTidbClusterReady(tc *v1alpha1.TidbCluster) bool {
+	condition := tidbcluster.GetTidbClusterReadyCondition(tc.Status)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
 // validateBackup validates backup and returns error if backup is invalid
 func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 	ns := backup.GetNamespace()
@@ -226,6 +233,12 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 				Message: err.Error(),
 			}, nil)
 			return err
+		}
+
+		// Check if TidbCluster is ready before proceeding with backup
+		if backup.Spec.Mode != v1alpha1.BackupModeVolumeSnapshot && !isTidbClusterReady(tc) {
+			return controller.RequeueErrorf("backup %s/%s: waiting for TidbCluster %s/%s to be ready",
+				ns, name, backupNamespace, backup.Spec.BR.Cluster)
 		}
 
 		tikvImage := tc.TiKVImage()
