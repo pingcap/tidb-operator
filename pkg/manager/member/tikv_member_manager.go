@@ -39,6 +39,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -309,6 +310,11 @@ func (m *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *app
 	}
 
 	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BaseTiKVSpec().ConfigUpdateStrategy(), inUseName, newCm)
+	if err != nil {
+		return nil, err
+	}
+
+	err = m.applyPiTRConfigOverride(tc, newCm)
 	if err != nil {
 		return nil, err
 	}
@@ -1100,4 +1106,92 @@ func (m *FakeTiKVMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		tc.Status.ClusterID = string(uuid.NewUUID())
 	}
 	return nil
+}
+
+// applyPiTRConfigOverride checks for active PiTR restores and overrides gc.ratio-threshold if found
+func (m *tikvMemberManager) applyPiTRConfigOverride(tc *v1alpha1.TidbCluster, newCm *corev1.ConfigMap) error {
+	// Check for active PiTR restores
+	restores, err := m.deps.RestoreLister.List(labels.Everything())
+	if err != nil {
+		return err
+	}
+
+	// Filter restores that belong to this cluster and are PiTR mode
+	hasActivePiTRRestore := false
+	for _, restore := range restores {
+		if restore.Spec.BR != nil &&
+			restore.Spec.BR.Cluster == tc.Name &&
+			restore.Spec.BR.ClusterNamespace == tc.Namespace &&
+			restore.Spec.Mode == v1alpha1.RestoreModePiTR &&
+			!isRestoreDone(restore) {
+			hasActivePiTRRestore = true
+			klog.V(2).InfoS("Found active PiTR restore, will override gc.ratio-threshold",
+				"restore", klog.KObj(restore), "tidbcluster", klog.KObj(tc))
+			break
+		}
+	}
+
+	// If there's an active PiTR restore, override the gc.ratio-threshold in the config map
+	if hasActivePiTRRestore {
+		return m.overrideGCRatioThresholdInConfigMap(newCm, -1.0)
+	}
+
+	return nil
+}
+
+// overrideGCRatioThresholdInConfigMap modifies the config map data to set gc.ratio-threshold
+func (m *tikvMemberManager) overrideGCRatioThresholdInConfigMap(cm *corev1.ConfigMap, value float64) error {
+	if cm.Data == nil {
+		cm.Data = make(map[string]string)
+	}
+
+	return applyOverlay(cm, "gc.ratio-threshold", value)
+}
+
+func applyOverlay(cm *corev1.ConfigMap, key string, value any) error {
+	// NOTE: parse and marshal each time applying overlay isn't effective.
+	// Perhaps batch it when there goes many overlays.
+	// For now only one overlay will be applied so this can be fine.
+
+	overlayWrapper := v1alpha1.NewTiKVConfig()
+	overlayWrapper.Set("gc.ratio-threshold", value)
+	configOverlayContent := cm.Data["config-file-overlay"]
+	if configOverlayContent != "" {
+		if err := overlayWrapper.UnmarshalTOML([]byte(configOverlayContent)); err != nil {
+			return fmt.Errorf("failed to unmarshal TiKV config: %v", err)
+		}
+	}
+	overlayWrapper.Set(key, value)
+
+	overlayContent, err := overlayWrapper.MarshalTOML()
+	if err != nil {
+		return fmt.Errorf("failed to marshal TiKV config: %v", err)
+	}
+	cm.Data["config-file-overlay"] = string(overlayContent)
+
+	configContent := cm.Data["config-file"]
+	configFileWrapper := v1alpha1.NewTiKVConfig()
+	if configContent != "" {
+		if err := configFileWrapper.UnmarshalTOML([]byte(configContent)); err != nil {
+			return fmt.Errorf("failed to unmarshal existing TiKV config: %v", err)
+		}
+	}
+	// Always merge overlay config, regardless of whether config-file is empty
+	if err := configFileWrapper.Merge(overlayWrapper.GenericConfig); err != nil {
+		return fmt.Errorf("failed to merge overlay into existing TiKV config: %v", err)
+	}
+	overlayAppliedConfigContent, err := configFileWrapper.MarshalTOML()
+	if err != nil {
+		return fmt.Errorf("failed to marshal TiKV config: %v", err)
+	}
+	cm.Data["config-file"] = string(overlayAppliedConfigContent)
+	return nil
+}
+
+// isRestoreDone checks if a restore is completed or failed
+func isRestoreDone(restore *v1alpha1.Restore) bool {
+	if v1alpha1.IsRestoreComplete(restore) || v1alpha1.IsRestoreFailed(restore) {
+		return true
+	}
+	return false
 }
