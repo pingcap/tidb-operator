@@ -21,8 +21,6 @@ import (
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -43,7 +41,7 @@ var _ = ginkgo.Describe("TiFlash", label.TiFlash, func() {
 	ginkgo.Context("when scaling in TiFlash with two-step deletion", func() {
 		workload := f.SetupWorkload()
 
-		ginkgo.PIt("should complete the full scale-in flow", func(ctx context.Context) {
+		ginkgo.It("should complete the full scale-in flow", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](3))
 			fg := f.MustCreateTiFlash(ctx, data.WithReplicas[*runtime.TiFlashGroup](2))
@@ -67,10 +65,28 @@ var _ = ginkgo.Describe("TiFlash", label.TiFlash, func() {
 			gomega.Expect(offlineTiFlash.GetDeletionTimestamp().IsZero()).To(gomega.BeTrue(), "should not delete the tiflash instance when it's going offline")
 
 			ginkgo.By("Waiting for offline operations to complete")
-			waitForTiFlashOfflineCondition(ctx, f, offlineTiFlash, v1alpha1.ReasonOfflineCompleted, 5*time.Minute, true)
+			nctx, cancel := context.WithCancel(ctx)
+			ch := make(chan struct{})
+			synced := make(chan struct{})
+			go func() {
+				defer close(ch)
+				defer ginkgo.GinkgoRecover()
+				f.Must(waiter.WatchUntilInstanceList[scope.TiFlashGroup](
+					nctx,
+					f.Client,
+					fg.DeepCopy(),
+					waiter.WaitForTiFlashOfflineCompleted(offlineTiFlash),
+					waiter.LongTaskTimeout,
+					synced,
+				))
+			}()
+			// wait until cache is synced
+			<-synced
 
 			ginkgo.By("Verifying offlined TiFlash instance is deleted")
 			waitForTiFlashInstancesDeleted(ctx, f, offliningFlashes, 5*time.Minute)
+			cancel()
+			<-ch
 
 			ginkgo.By("Verifying TiFlashGroup reaches desired state of 1 replica")
 			f.WaitForTiFlashGroupReady(ctx, fg)
@@ -98,23 +114,6 @@ func findOffliningTiFlashes(ctx context.Context, f *framework.Framework, fg *v1a
 		return len(offliningFlashes) == expectedCount
 	}, 5*time.Minute, 5*time.Second).Should(gomega.BeTrue(), fmt.Sprintf("timed out waiting for %d offlining TiFlash instances", expectedCount))
 	return offliningFlashes
-}
-
-// waitForTiFlashOfflineCondition waits for a TiFlash instance's offline condition to reach a specific reason.
-func waitForTiFlashOfflineCondition(ctx context.Context, f *framework.Framework, flash *v1alpha1.TiFlash, reason string, timeout time.Duration, status bool) {
-	gomega.Eventually(func(g gomega.Gomega) {
-		instance := &v1alpha1.TiFlash{}
-		g.Expect(f.Client.Get(ctx, client.ObjectKeyFromObject(flash), instance)).To(gomega.Succeed())
-
-		cond := meta.FindStatusCondition(instance.Status.Conditions, v1alpha1.StoreOfflinedConditionType)
-		g.Expect(cond).NotTo(gomega.BeNil(), "StoreOffline condition should exist")
-		if status {
-			g.Expect(cond.Status).To(gomega.Equal(metav1.ConditionTrue))
-		} else {
-			g.Expect(cond.Status).To(gomega.Equal(metav1.ConditionFalse))
-		}
-		g.Expect(cond.Reason).To(gomega.Equal(reason), fmt.Sprintf("Expected offline condition reason to be %s, but got %s", reason, cond.Reason))
-	}, timeout, 10*time.Second).Should(gomega.Succeed(), fmt.Sprintf("TiFlash instance %s did not reach offline condition %s in time", flash.Name, reason))
 }
 
 // waitForTiFlashInstancesDeleted waits for a list of TiFlash instances to be completely removed.
