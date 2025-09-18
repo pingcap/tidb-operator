@@ -102,8 +102,12 @@ func EvictLeaderBeforeStoreIsRemoving(deleting int) func(kv *v1alpha1.TiKV) (boo
 }
 
 func WaitForTiKVOfflineCompleted(expectTiKV *v1alpha1.TiKV) func(kv *v1alpha1.TiKV) (bool, error) {
+	// Capture the identity to avoid races when the caller reuses expectTiKV for API reads.
+	ns := expectTiKV.GetNamespace()
+	name := expectTiKV.GetName()
+	uid := expectTiKV.GetUID()
 	return func(kv *v1alpha1.TiKV) (bool, error) {
-		if kv.Name != expectTiKV.Name || kv.Namespace != expectTiKV.Namespace || kv.UID != expectTiKV.UID {
+		if kv.GetName() != name || kv.GetNamespace() != ns || kv.GetUID() != uid {
 			return false, nil
 		}
 		if meta.IsStatusConditionPresentAndEqual(kv.Status.Conditions, v1alpha1.StoreOfflinedConditionType, metav1.ConditionTrue) {
