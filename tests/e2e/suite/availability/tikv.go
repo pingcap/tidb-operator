@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tikv
+package availability
 
 import (
 	"context"
@@ -29,10 +29,12 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
-var _ = ginkgo.Describe("TiKV rolling update", label.TiKV, func() {
+// We use tidb workload to test whether the tikv is always available
+// TODO(liubo02): maybe call tikv directly?
+var _ = ginkgo.Describe("TiKV Availability Test", label.TiKV, label.KindAvail, label.Update, func() {
 	f := framework.New()
 	f.Setup()
-	ginkgo.Context("Rolling update", label.P0, label.Update, func() {
+	ginkgo.Context("Default", label.P0, func() {
 		workload := f.SetupWorkload()
 		ginkgo.It("No error when rolling update tikv", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx)
