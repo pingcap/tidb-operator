@@ -73,6 +73,7 @@ const (
 	actionSetOffline
 	actionDeferDelete
 	actionDelete
+	actionCancelOffline
 )
 
 type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
@@ -89,7 +90,7 @@ type actor[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct {
 	// deleted set records all instances that are marked by defer delete annotation
 	deleted State[R]
 	// beingOffline set records all instances that are in the process of going offline.
-	// It will be used for cancel offline.
+	// It's used for cancel offline.
 	beingOffline State[R]
 
 	addHooks    []AddHook[R]
@@ -126,8 +127,33 @@ func (act *actor[T, O, R]) chooseToScaleIn(s []R) (string, error) {
 	return name, nil
 }
 
+// cancelOneOfflining cancels offline operation for one beingOffline instance and moves it back to update state
+func (act *actor[T, O, R]) cancelOneOfflining(ctx context.Context, instance R) error {
+	logger := logr.FromContextOrDiscard(ctx).WithName("Updater").WithValues("instance", instance.GetName())
+
+	if err := act.setOffline(ctx, instance, false); err != nil {
+		logger.Error(err, "failed to cancel offline")
+		return err
+	}
+
+	act.beingOffline.Del(instance.GetName())
+	act.update.Add(instance)
+	return nil
+}
+
 func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
+
+	if act.beingOffline.Len() > 0 {
+		// TODO: could implement more sophisticated selection logic
+		logger.Info("try to cancel an offlining instance")
+		if err := act.cancelOneOfflining(ctx, act.beingOffline.List()[0]); err != nil {
+			return err
+		}
+		act.actions = append(act.actions, actionCancelOffline)
+		return nil
+	}
+
 	obj, unlock, exists := act.f.Adopt()
 	if !exists {
 		obj = act.f.New()
@@ -341,10 +367,12 @@ func (act *actor[T, O, R]) RecordedActions() []action {
 }
 
 func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) (action, error) {
-	if obj.IsStore() &&
-		!obj.IsOffline() &&
-		!meta.IsStatusConditionTrue(obj.Conditions(), v1alpha1.StoreOfflinedConditionType) {
-		return act.offlineStore(ctx, obj)
+	if obj.IsStore() && !obj.IsOffline() && !meta.IsStatusConditionTrue(obj.Conditions(), v1alpha1.StoreOfflinedConditionType) {
+		if err := act.setOffline(ctx, obj, true); err != nil {
+			return actionNone, fmt.Errorf("failed to set instance %s/%s offline: %w", obj.GetNamespace(), obj.GetName(), err)
+		}
+		act.beingOffline.Add(obj)
+		return actionSetOffline, nil
 	}
 
 	if err := act.c.Delete(ctx, act.converter.To(obj), client.Preconditions{
@@ -357,25 +385,25 @@ func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) (action, e
 	return actionDelete, nil
 }
 
-func (act *actor[T, O, R]) offlineStore(ctx context.Context, obj R) (action, error) {
+func (act *actor[T, O, R]) setOffline(ctx context.Context, obj R, offline bool) error {
+	if obj.IsOffline() == offline {
+		// already in desired state
+		return nil
+	}
+
 	p := Patch{
 		Metadata: Metadata{
 			ResourceVersion: obj.GetResourceVersion(),
 		},
 		Spec: &Spec{
-			Offline: true,
+			Offline: offline,
 		},
 	}
 
 	data, err := json.Marshal(&p)
 	if err != nil {
-		return actionNone, fmt.Errorf("invalid patch: %w", err)
+		return fmt.Errorf("invalid patch: %w", err)
 	}
 
-	if err := act.c.Patch(ctx, act.converter.To(obj), client.RawPatch(types.MergePatchType, data)); err != nil {
-		return actionNone, fmt.Errorf("failed to set instance %s/%s offline: %w", obj.GetNamespace(), obj.GetName(), err)
-	}
-
-	act.beingOffline.Add(obj)
-	return actionSetOffline, nil
+	return act.c.Patch(ctx, act.converter.To(obj), client.RawPatch(types.MergePatchType, data))
 }
