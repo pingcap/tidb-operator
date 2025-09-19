@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tikv
+package availability
 
 import (
 	"context"
@@ -29,22 +29,27 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
-var _ = ginkgo.Describe("TiKV rolling update", label.TiKV, func() {
+var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label.Update, func() {
 	f := framework.New()
 	f.Setup()
-	ginkgo.Context("Rolling update", label.P0, label.Update, func() {
+	ginkgo.Context("Default", label.P0, func() {
 		workload := f.SetupWorkload()
-		ginkgo.It("No error when rolling update tikv", func(ctx context.Context) {
-			pdg := f.MustCreatePD(ctx)
-			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](3))
+		ginkgo.It("No error when rolling update pd", func(ctx context.Context) {
+			pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](3))
+			kvg := f.MustCreateTiKV(ctx)
 			dbg := f.MustCreateTiDB(ctx)
 
 			f.WaitForPDGroupReady(ctx, pdg)
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
 
-			patch := client.MergeFrom(kvg.DeepCopy())
-			kvg.Spec.Template.Spec.Config = `log.level = 'warn'`
+			// Prepare PD endpoints for region API access
+			pdEndpoints := pdg.Name + "-pd." + f.Namespace.Name + ":2379"
+
+			patch := client.MergeFrom(pdg.DeepCopy())
+			pdg.Spec.Template.Annotations = map[string]string{
+				"test": "test",
+			}
 
 			nctx, cancel := context.WithCancel(ctx)
 			wg := sync.WaitGroup{}
@@ -52,19 +57,19 @@ var _ = ginkgo.Describe("TiKV rolling update", label.TiKV, func() {
 			go func() {
 				defer wg.Done()
 				defer ginkgo.GinkgoRecover()
-				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiKVGroup(kvg), 3, 0, waiter.LongTaskTimeout))
+				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromPDGroup(pdg), 3, 0, waiter.LongTaskTimeout))
 			}()
 			go func() {
 				defer wg.Done()
 				defer ginkgo.GinkgoRecover()
-				workload.MustRunWorkload(ctx, data.DefaultTiDBServiceName)
+				workload.MustRunPDRegionAccess(ctx, pdEndpoints)
 			}()
 
 			changeTime := time.Now()
-			ginkgo.By("Change config of the TiKVGroup")
-			f.Must(f.Client.Patch(ctx, kvg, patch))
-			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiKVGroup(kvg), changeTime, waiter.LongTaskTimeout))
-			f.WaitForTiKVGroupReady(ctx, kvg)
+			ginkgo.By("Rolling udpate the PDGroup")
+			f.Must(f.Client.Patch(ctx, pdg, patch))
+			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromPDGroup(pdg), changeTime, waiter.LongTaskTimeout))
+			f.WaitForPDGroupReady(ctx, pdg)
 			cancel()
 			wg.Wait()
 		})
