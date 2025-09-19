@@ -89,6 +89,12 @@ func ClusterTLSVolume[
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: ca,
 							},
+							Items: []corev1.KeyToPath{
+								{
+									Key:  corev1.ServiceAccountRootCAKey,
+									Path: corev1.ServiceAccountRootCAKey,
+								},
+							},
 						},
 					},
 					{

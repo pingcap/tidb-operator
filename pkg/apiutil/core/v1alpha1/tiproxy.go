@@ -131,6 +131,12 @@ func TiProxyMySQLTLSVolume(tiproxy *v1alpha1.TiProxy) *corev1.Volume {
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: ca,
 							},
+							Items: []corev1.KeyToPath{
+								{
+									Key:  corev1.ServiceAccountRootCAKey,
+									Path: corev1.ServiceAccountRootCAKey,
+								},
+							},
 						},
 					},
 					{
@@ -232,6 +238,12 @@ func TiProxyHTTPServerTLSVolume(tiproxy *v1alpha1.TiProxy) *corev1.Volume {
 						Secret: &corev1.SecretProjection{
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: ca,
+							},
+							Items: []corev1.KeyToPath{
+								{
+									Key:  corev1.ServiceAccountRootCAKey,
+									Path: corev1.ServiceAccountRootCAKey,
+								},
 							},
 						},
 					},
@@ -359,6 +371,12 @@ func TiProxyBackendTLSVolume(tiproxy *v1alpha1.TiProxy) *corev1.Volume {
 						Secret: &corev1.SecretProjection{
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: ca,
+							},
+							Items: []corev1.KeyToPath{
+								{
+									Key:  corev1.ServiceAccountRootCAKey,
+									Path: corev1.ServiceAccountRootCAKey,
+								},
 							},
 						},
 					},

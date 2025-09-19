@@ -99,6 +99,12 @@ func ConfigJobWithTLS(job *batchv1.Job, o *Options) *batchv1.Job {
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: o.CA,
 								},
+								Items: []corev1.KeyToPath{
+									{
+										Key:  corev1.ServiceAccountRootCAKey,
+										Path: corev1.ServiceAccountRootCAKey,
+									},
+								},
 							},
 						},
 						{
