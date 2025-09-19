@@ -35,6 +35,7 @@ import (
 	_ "github.com/pingcap/tidb-operator/tests/e2e/webhook"
 
 	// TODO: move all tests into suite
+	_ "github.com/pingcap/tidb-operator/tests/e2e/suite/availability"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/suite/cluster"
 )
 
