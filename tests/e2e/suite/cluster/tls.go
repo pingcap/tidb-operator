@@ -40,8 +40,9 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 			ns := f.Namespace.Name
 			cluster := f.Cluster.Name
 
-			ca := "cluster-ca"
-			mysqlClientCA, mysqlServerCertKeyPair := "mysql-ca", "mysql-tls"
+			// add ns prefix of ca because the bundle is a cluster scope resource
+			ca := ns + "-cluster-ca"
+			mysqlClientCA, mysqlServerCertKeyPair := ns+"-mysql-ca", "mysql-tls"
 			pdg := f.MustCreatePD(ctx,
 				data.WithMSMode(),
 				data.WithClusterTLS[*runtime.PDGroup](ca, "pd-internal"),
