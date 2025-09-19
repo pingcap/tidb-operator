@@ -81,7 +81,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) e
 		c.Security.ClusterTLS.Key = path.Join(v1alpha1.DirPathClusterTLSTiProxy, corev1.TLSPrivateKeyKey)
 	}
 
-	if coreutil.IsTiProxyHTTPServerTLSEnabled(cluster, tiproxy) {
+	if coreutil.IsTiProxyHTTPServerTLSEnabled(tiproxy) {
 		c.Security.ServerHTTPTLS.Cert = path.Join(v1alpha1.DirPathTiProxyHTTPTLS, corev1.TLSCertKey)
 		c.Security.ServerHTTPTLS.Key = path.Join(v1alpha1.DirPathTiProxyHTTPTLS, corev1.TLSPrivateKeyKey)
 		if !coreutil.IsTiProxyHTTPServerNoClientCert(tiproxy) {

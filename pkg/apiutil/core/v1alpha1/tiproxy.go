@@ -271,10 +271,10 @@ func TiProxyHTTPServerTLSVolume(tiproxy *v1alpha1.TiProxy) *corev1.Volume {
 	}
 }
 
-func IsTiProxyHTTPServerTLSEnabled(c *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) bool {
+func IsTiProxyHTTPServerTLSEnabled(tiproxy *v1alpha1.TiProxy) bool {
 	tls := TiProxyHTTPServerTLS(tiproxy)
 	if tls == nil {
-		return IsTLSClusterEnabled(c)
+		return false
 	}
 	return tls.Enabled
 }

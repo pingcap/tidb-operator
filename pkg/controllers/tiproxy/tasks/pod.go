@@ -141,7 +141,7 @@ func newPod(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) *corev1.Pod {
 		})
 	}
 
-	if coreutil.IsTiProxyHTTPServerTLSEnabled(cluster, tiproxy) {
+	if coreutil.IsTiProxyHTTPServerTLSEnabled(tiproxy) {
 		vols = append(vols, *coreutil.TiProxyHTTPServerTLSVolume(tiproxy))
 		mounts = append(mounts, corev1.VolumeMount{
 			Name:      v1alpha1.VolumeNameTiProxyHTTPTLS,
@@ -262,7 +262,7 @@ func buildTiProxyReadinessProbeHandler(
 	}
 
 	// If TLS is enabled, we can only use command probe type
-	if coreutil.IsTiProxyHTTPServerTLSEnabled(cluster, tiproxy) {
+	if coreutil.IsTiProxyHTTPServerTLSEnabled(tiproxy) || coreutil.IsTLSClusterEnabled(cluster) {
 		probeType = v1alpha1.CommandProbeType
 	}
 
@@ -282,10 +282,11 @@ func buildTiProxyReadinessProbeHandler(
 }
 
 func buildTiProxyProbeCommand(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy, statusPort int32) (command []string) {
-	tlsEnabled := coreutil.IsTiProxyHTTPServerTLSEnabled(cluster, tiproxy)
+	tlsEnabled := coreutil.IsTiProxyHTTPServerTLSEnabled(tiproxy)
+	clusterTLSEnabled := coreutil.IsTLSClusterEnabled(cluster)
 
 	scheme := "http"
-	if tlsEnabled {
+	if tlsEnabled || clusterTLSEnabled {
 		scheme = "https"
 	}
 	readinessURL := fmt.Sprintf("%s://127.0.0.1:%d/api/debug/health", scheme, statusPort)
@@ -299,14 +300,20 @@ func buildTiProxyProbeCommand(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiPro
 		// follow 301 or 302 redirect
 		"--location")
 
-	if tlsEnabled {
-		cacert := path.Join(v1alpha1.DirPathTiProxyHTTPTLS, corev1.ServiceAccountRootCAKey)
+	if tlsEnabled || clusterTLSEnabled {
+		tlsDir := v1alpha1.DirPathClusterTLSTiProxy
+		if tlsEnabled {
+			tlsDir = v1alpha1.DirPathTiProxyHTTPTLS
+		}
+
+		cacert := path.Join(tlsDir, corev1.ServiceAccountRootCAKey)
 		command = append(command, "--cacert", cacert)
 		if !coreutil.IsTiProxyHTTPServerNoClientCert(tiproxy) {
-			cert := path.Join(v1alpha1.DirPathTiProxyHTTPTLS, corev1.TLSCertKey)
-			key := path.Join(v1alpha1.DirPathTiProxyHTTPTLS, corev1.TLSPrivateKeyKey)
+			cert := path.Join(tlsDir, corev1.TLSCertKey)
+			key := path.Join(tlsDir, corev1.TLSPrivateKeyKey)
 			command = append(command, "--cert", cert, "--key", key)
 		}
 	}
-	return
+
+	return command
 }

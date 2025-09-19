@@ -57,7 +57,7 @@ func TaskContextInfoFromPDAndTiProxy(state *ReconcileContext, c client.Client, c
 			scheme    = "http"
 			tlsConfig *tls.Config
 		)
-		if coreutil.IsTiProxyHTTPServerTLSEnabled(ck, state.Object()) {
+		if coreutil.IsTiProxyHTTPServerTLSEnabled(state.Object()) || coreutil.IsTLSClusterEnabled(ck) {
 			scheme = "https"
 			var err error
 			tlsConfig, err = apicall.GetClientTLSConfig[scope.TiProxy](ctx, c, state.Object())
