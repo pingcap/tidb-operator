@@ -28,6 +28,8 @@ type Options struct {
 	CertKeyPair string
 
 	RegionCount int
+
+	TiFlashReplicas int
 }
 
 type Option interface {
@@ -64,6 +66,12 @@ func TLS(ca, certKeyPair string) Option {
 func RegionCount(count int) Option {
 	return WithOption(func(opts *Options) {
 		opts.RegionCount = count
+	})
+}
+
+func TiFlashReplicas(replicas int) Option {
+	return WithOption(func(opts *Options) {
+		opts.TiFlashReplicas = replicas
 	})
 }
 

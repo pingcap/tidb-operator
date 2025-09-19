@@ -135,6 +135,7 @@ func (w *Workload) MustImportData(ctx context.Context, host string, opts ...work
 								"--duration", "8",
 								"--max-connections", "30",
 								"--split-region-count", fmt.Sprintf("%d", o.RegionCount),
+								"--tiflash-replicas", strconv.Itoa(o.TiFlashReplicas),
 							},
 							ImagePullPolicy: corev1.PullIfNotPresent,
 						},
@@ -155,10 +156,23 @@ func (w *Workload) MustImportData(ctx context.Context, host string, opts ...work
 	w.f.Must(waiter.WaitForJobComplete(ctx, w.f.Client, job, waiter.ShortTaskTimeout))
 }
 
-func (w *Workload) MustRunWorkload(ctx context.Context, host string, opts ...workload.Option) {
+func (w *Workload) MustRunWorkload(ctx context.Context, host string, opts ...workload.Option) (done chan struct{}) {
 	o := workload.DefaultOptions()
 	for _, opt := range opts {
 		opt.With(o)
+	}
+
+	args := []string{
+		"--action", "workload",
+		"--host", host,
+		"--port", strconv.Itoa(o.Port),
+		"--user", o.User,
+		"--password", o.Password,
+		// an arbitrary timeout
+		// NOTE: maybe changed to use a http api to stop
+		"--duration", "5",
+		"--max-connections", "30",
+		"--tiflash-replicas", strconv.Itoa(o.TiFlashReplicas),
 	}
 
 	job := &batchv1.Job{
@@ -176,19 +190,9 @@ func (w *Workload) MustRunWorkload(ctx context.Context, host string, opts ...wor
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  "testing-workload",
-							Image: "pingcap/testing-workload:latest",
-							Args: []string{
-								"--action", "workload",
-								"--host", host,
-								"--port", strconv.Itoa(o.Port),
-								"--user", o.User,
-								"--password", o.Password,
-								// an arbitrary timeout
-								// NOTE: maybe changed to use a http api to stop
-								"--duration", "5",
-								"--max-connections", "30",
-							},
+							Name:            "testing-workload",
+							Image:           "pingcap/testing-workload:latest",
+							Args:            args,
 							ImagePullPolicy: corev1.PullIfNotPresent,
 						},
 					},
@@ -205,7 +209,14 @@ func (w *Workload) MustRunWorkload(ctx context.Context, host string, opts ...wor
 	w.f.Must(w.f.Client.Create(ctx, job))
 	w.jobs = append(w.jobs, job)
 
-	w.f.Must(waiter.WaitForJobComplete(ctx, w.f.Client, job, waiter.LongTaskTimeout))
+	done = make(chan struct{})
+	go func() {
+		defer close(done)
+		defer ginkgo.GinkgoRecover()
+		w.f.Must(waiter.WaitForJobComplete(ctx, w.f.Client, job, waiter.LongTaskTimeout))
+	}()
+
+	return done
 }
 
 func (w *Workload) MustRunPDRegionAccess(ctx context.Context, pdEndpoints string, opts ...workload.Option) {

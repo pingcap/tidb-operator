@@ -34,7 +34,7 @@ func TestTiFlash_GetStoreStatus(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewTiFlashClient(server.URL, 5*time.Second, nil, false)
+	client := NewTiFlashClient(server.URL, 5*time.Second, nil)
 	status, err := client.GetStoreStatus(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, Running, status)

@@ -53,13 +53,23 @@ var (
 	FeatureHotReload    = ginkgo.Label("f:HotReload")
 	FeaturePDMS         = ginkgo.Label("f:PDMS")
 
+	// Mode
+	ModeDisaggregatedTiFlash = ginkgo.Label("m:DisaggregatedTiFlash")
+
 	// Overlay
 	OverlayEphemeralVolume = ginkgo.Label("o:EphemeralVolume")
 
 	// Kind
+	//
+	// KindExample are tests for example dir
 	KindExample = ginkgo.Label("k:Example")
-	KindBasic   = ginkgo.Label("k:Basic")
-	KindBR      = ginkgo.Label("k:BR")
+	// KindBasic are basic tests
+	KindBasic = ginkgo.Label("k:Basic")
+	// KindBR are tests for br
+	KindBR = ginkgo.Label("k:BR")
+	// KindAvail are tests to test availablity
+	KindAvail = ginkgo.Label("k:Avail")
+	// KindNextGen are tests to test next-gen
 	KindNextGen = ginkgo.Label("k:NextGen")
 	KindAvail   = ginkgo.Label("k:Avail")
 )

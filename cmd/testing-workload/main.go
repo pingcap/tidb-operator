@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
+	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
 
 var (
@@ -39,6 +40,7 @@ var (
 	sleepInterval     int
 	longTxnSleepSec   int
 	maxLifeTimeSec    int
+	tiflashReplicas   int
 
 	// Flags for import action
 	batchSize        int
@@ -72,11 +74,12 @@ func main() {
 	flag.IntVar(&sleepInterval, "sleep-interval", 100, "sleep interval in milliseconds")
 	flag.IntVar(&longTxnSleepSec, "long-txn-sleep", 10, "how many seconds to sleep to simulate a long transaction")
 	flag.IntVar(&maxLifeTimeSec, "max-lifetime", 60, "max lifetime in seconds")
+	flag.IntVar(&tiflashReplicas, "tiflash-replicas", 0, "replicas of tiflash")
 
 	// Flags for import action
 	flag.IntVar(&batchSize, "batch-size", 1000, "batch size for import action")
 	flag.IntVar(&totalRows, "total-rows", 500000, "total rows to import for import action")
-	flag.StringVar(&importTable, "import-table", "t1", "table name for import action")
+	flag.StringVar(&importTable, "import-table", "e2e_test", "table name for import action")
 	flag.IntVar(&splitRegionCount, "split-region-count", 0, "number of regions to split for import action")
 
 	// Flags for TLS support
@@ -84,7 +87,8 @@ func main() {
 	flag.StringVar(&tlsCertFile, "tls-cert", "", "path to TLS certificate file")
 	flag.StringVar(&tlsKeyFile, "tls-key", "", "path to TLS private key file")
 	flag.StringVar(&tlsCAFile, "tls-ca", "", "path to TLS CA certificate file")
-	flag.StringVar(&tlsMountPath, "tls-mount-path", "", "path to mounted TLS certificates directory (for Kubernetes secrets)")
+	flag.StringVar(&tlsMountPath, "tls-mount-path", "",
+		"path to mounted TLS certificates directory (for Kubernetes secrets)")
 	flag.BoolVar(&tlsFromEnv, "tls-from-env", false, "load TLS certificates from environment variables")
 	flag.BoolVar(&insecureSkipVerify, "tls-insecure-skip-verify", false, "skip TLS certificate verification")
 
@@ -92,6 +96,8 @@ func main() {
 	flag.StringVar(&pdEndpointsStr, "pd-endpoints", "", "comma-separated PD endpoints for pd-region action")
 
 	flag.Parse()
+
+	ctx := signals.SetupSignalHandler()
 
 	// Parse PD endpoints for pd-region action
 	if action == "pd-region" && pdEndpointsStr != "" {
@@ -124,7 +130,15 @@ func main() {
 			params = append(params, fmt.Sprintf("tls=%s", tlsConfigName))
 		}
 
-		db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@(%s:%s)/test?%s", user, password, host, port, strings.Join(params, "&")))
+		db, err := sql.Open(
+			"mysql",
+			fmt.Sprintf("%s:%s@(%s:%s)/test?%s",
+				user,
+				password,
+				host, port,
+				strings.Join(params, "&"),
+			),
+		)
 		if err != nil {
 			panic(err)
 		}
@@ -132,11 +146,11 @@ func main() {
 
 		switch action {
 		case "ping":
-			if err := Ping(db); err != nil {
+			if err := Ping(ctx, db); err != nil {
 				panic(err)
 			}
 		case "workload":
-			if err := Workload(db); err != nil {
+			if err := Workload(ctx, db); err != nil {
 				panic(err)
 			}
 		case "import":
@@ -147,7 +161,7 @@ func main() {
 				TableName:        importTable,
 				SplitRegionCount: splitRegionCount,
 			}
-			if err := ImportData(importCfg); err != nil {
+			if err := ImportData(ctx, importCfg); err != nil {
 				panic(err)
 			}
 		default:
@@ -164,19 +178,20 @@ func setupTLSConfig() (string, error) {
 	var err error
 
 	// Priority: mount path > environment variables > individual files
-	if tlsMountPath != "" {
+	switch {
+	case tlsMountPath != "":
 		fmt.Printf("Loading TLS config from mount path: %s\n", tlsMountPath)
 		tlsConfig, err = TLSConfigFromMount(tlsMountPath, insecureSkipVerify)
 		if err != nil {
 			return "", fmt.Errorf("failed to load TLS config from mount path: %w", err)
 		}
-	} else if tlsFromEnv {
+	case tlsFromEnv:
 		fmt.Println("Loading TLS config from environment variables")
 		tlsConfig, err = TLSConfigFromEnv(insecureSkipVerify)
 		if err != nil {
 			return "", fmt.Errorf("failed to load TLS config from environment: %w", err)
 		}
-	} else {
+	default:
 		// Fallback to individual file paths
 		fmt.Println("Loading TLS config from individual file paths")
 		tlsConfig = &tls.Config{

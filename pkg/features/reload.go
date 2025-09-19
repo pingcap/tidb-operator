@@ -51,6 +51,10 @@ var unreloadable = map[meta.Feature][]meta.Component{
 		meta.ComponentTiProxy,
 		meta.ComponentReplicationWorker,
 	},
+	meta.TerminableLogTailer: {
+		meta.ComponentTiDB,
+		meta.ComponentTiFlash,
+	},
 }
 
 func Reloadable(c meta.Component, update, current []meta.Feature) bool {

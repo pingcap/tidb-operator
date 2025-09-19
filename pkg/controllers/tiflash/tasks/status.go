@@ -25,6 +25,7 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/pkg/tiflashapi/v1"
 	"github.com/pingcap/tidb-operator/pkg/utils/compare"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -65,6 +66,10 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 			if err := c.Status().Update(ctx, tiflash); err != nil {
 				return task.Fail().With("cannot update status: %w", err)
 			}
+		}
+
+		if ready && state.StoreStatus != tiflashapi.Running {
+			return task.Retry(defaultTaskWaitDuration).With("pod is ready but store status is not Running, retry")
 		}
 
 		if state.IsPodTerminating() {
