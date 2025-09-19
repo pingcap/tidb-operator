@@ -139,6 +139,11 @@ const (
 	StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery = "PreferPDAddressesOverDiscovery"
 )
 
+const (
+	// AnnoKeySkipFlushLogBackup when set to a `TidbCluster`, during restarting the cluster, log backup tasks won't be flushed.
+	AnnoKeySkipFlushLogBackup = "tidb.pingcap.com/tikv-restart-without-flush-log-backup"
+)
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
