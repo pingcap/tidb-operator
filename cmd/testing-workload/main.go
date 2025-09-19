@@ -54,11 +54,14 @@ var (
 	tlsMountPath       string
 	tlsFromEnv         bool
 	insecureSkipVerify bool
+
+	// Flags for PD region API access
+	pdEndpointsStr string
 )
 
 //nolint:mnd,errcheck
 func main() {
-	flag.StringVar(&action, "action", "ping", "ping, workload, import")
+	flag.StringVar(&action, "action", "ping", "ping, workload, import, pd-region")
 	flag.StringVar(&host, "host", "", "host")
 	flag.StringVar(&port, "port", "4000", "port")
 	flag.StringVar(&user, "user", "root", "db user")
@@ -85,53 +88,71 @@ func main() {
 	flag.BoolVar(&tlsFromEnv, "tls-from-env", false, "load TLS certificates from environment variables")
 	flag.BoolVar(&insecureSkipVerify, "tls-insecure-skip-verify", false, "skip TLS certificate verification")
 
+	// Flags for PD region API access
+	flag.StringVar(&pdEndpointsStr, "pd-endpoints", "", "comma-separated PD endpoints for pd-region action")
+
 	flag.Parse()
 
-	// enable "cleartext client side plugin" for `tidb_auth_token`.
-	// ref: https://github.com/go-sql-driver/mysql?tab=readme-ov-file#allowcleartextpasswords
-	params := []string{
-		"charset=utf8mb4",
-		"allowCleartextPasswords=true",
-		"timeout=5s",
-	}
-
-	// Setup TLS if enabled
-	if enableTLS {
-		tlsConfigName, err := setupTLSConfig()
-		if err != nil {
-			panic(fmt.Errorf("failed to setup TLS config: %w", err))
+	// Parse PD endpoints for pd-region action
+	if action == "pd-region" && pdEndpointsStr != "" {
+		pdEndpoints = strings.Split(pdEndpointsStr, ",")
+		for i, endpoint := range pdEndpoints {
+			pdEndpoints[i] = strings.TrimSpace(endpoint)
 		}
-		params = append(params, fmt.Sprintf("tls=%s", tlsConfigName))
 	}
-
-	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@(%s:%s)/test?%s", user, password, host, port, strings.Join(params, "&")))
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
 
 	switch action {
-	case "ping":
-		if err := Ping(db); err != nil {
-			panic(err)
-		}
-	case "workload":
-		if err := Workload(db); err != nil {
-			panic(err)
-		}
-	case "import":
-		importCfg := ImportDataConfig{
-			DB:               db,
-			BatchSize:        batchSize,
-			TotalRows:        totalRows,
-			TableName:        importTable,
-			SplitRegionCount: splitRegionCount,
-		}
-		if err := ImportData(importCfg); err != nil {
+	case "pd-region":
+		if err := PDRegionAccess(); err != nil {
 			panic(err)
 		}
 	default:
-		panic("unknown action: " + action)
+		// enable "cleartext client side plugin" for `tidb_auth_token`.
+		// ref: https://github.com/go-sql-driver/mysql?tab=readme-ov-file#allowcleartextpasswords
+		params := []string{
+			"charset=utf8mb4",
+			"allowCleartextPasswords=true",
+			"timeout=5s",
+		}
+
+		// Setup TLS if enabled
+		if enableTLS {
+			tlsConfigName, err := setupTLSConfig()
+			if err != nil {
+				panic(fmt.Errorf("failed to setup TLS config: %w", err))
+			}
+			params = append(params, fmt.Sprintf("tls=%s", tlsConfigName))
+		}
+
+		db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@(%s:%s)/test?%s", user, password, host, port, strings.Join(params, "&")))
+		if err != nil {
+			panic(err)
+		}
+		defer db.Close()
+
+		switch action {
+		case "ping":
+			if err := Ping(db); err != nil {
+				panic(err)
+			}
+		case "workload":
+			if err := Workload(db); err != nil {
+				panic(err)
+			}
+		case "import":
+			importCfg := ImportDataConfig{
+				DB:               db,
+				BatchSize:        batchSize,
+				TotalRows:        totalRows,
+				TableName:        importTable,
+				SplitRegionCount: splitRegionCount,
+			}
+			if err := ImportData(importCfg); err != nil {
+				panic(err)
+			}
+		default:
+			panic("unknown action: " + action)
+		}
 	}
 
 	fmt.Println("workload is done")
