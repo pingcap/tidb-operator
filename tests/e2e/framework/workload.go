@@ -219,7 +219,7 @@ func (w *Workload) MustRunWorkload(ctx context.Context, host string, opts ...wor
 	return done
 }
 
-func (w *Workload) MustRunPDRegionAccess(ctx context.Context, pdEndpoints string, opts ...workload.Option) {
+func (w *Workload) MustRunPDRegionAccess(ctx context.Context, pdEndpoints string, opts ...workload.Option) (done chan struct{}) {
 	o := workload.DefaultOptions()
 	for _, opt := range opts {
 		opt.With(o)
@@ -264,7 +264,14 @@ func (w *Workload) MustRunPDRegionAccess(ctx context.Context, pdEndpoints string
 	w.f.Must(w.f.Client.Create(ctx, job))
 	w.jobs = append(w.jobs, job)
 
-	w.f.Must(waiter.WaitForJobComplete(ctx, w.f.Client, job, waiter.LongTaskTimeout))
+	done = make(chan struct{})
+	go func() {
+		defer close(done)
+		defer ginkgo.GinkgoRecover()
+		w.f.Must(waiter.WaitForJobComplete(ctx, w.f.Client, job, waiter.LongTaskTimeout))
+	}()
+
+	return done
 }
 
 func (w *Workload) DeferPrintLogs() {
