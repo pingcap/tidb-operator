@@ -71,7 +71,6 @@ var (
 	KindAvail = ginkgo.Label("k:Avail")
 	// KindNextGen are tests to test next-gen
 	KindNextGen = ginkgo.Label("k:NextGen")
-	KindAvail   = ginkgo.Label("k:Avail")
 )
 
 func Features(fs ...metav1alpha1.Feature) ginkgo.Labels {
