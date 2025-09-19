@@ -297,6 +297,18 @@ func (bt *backupTracker) doRefreshLogBackupState(backup *v1alpha1.Backup, dep *t
 	dep.mutex.Lock()
 	dep.state = state
 	dep.lastRefresh = time.Now()
+	
+	// Check if previously marked inconsistency has been resolved
+	if dep.inconsistencyDetected && dep.lastCommand != "" {
+		// Verify if current state is consistent with the recorded command
+		isConsistent := isCommandConsistentWithKernelState(dep.lastCommand, state.KernelState)
+		if isConsistent {
+			// Inconsistency has been naturally resolved, clear the flag
+			dep.inconsistencyDetected = false
+			klog.V(4).Infof("log backup %s/%s inconsistency auto-resolved during refresh", ns, name)
+		}
+	}
+	
 	dep.mutex.Unlock()
 	
 	// Only update checkpoint here, state sync will be handled by SyncLogBackupState if needed
@@ -320,12 +332,6 @@ func genLogBackupKey(ns, name string) string {
 	return fmt.Sprintf("%s.%s", ns, name)
 }
 
-// getDependency gets the trackDepends for a backup, returns nil if not found
-func (bt *backupTracker) getDependency(logkey string) *trackDepends {
-	bt.operateLock.RLock()
-	defer bt.operateLock.RUnlock()
-	return bt.logBackups[logkey]
-}
 
 // GetLogBackupState gets the cached state or queries from etcd
 func (bt *backupTracker) GetLogBackupState(backup *v1alpha1.Backup) (*LogBackupState, error) {
@@ -362,9 +368,9 @@ func (bt *backupTracker) RefreshLogBackupState(backup *v1alpha1.Backup) (*LogBac
 	name := backup.Name
 	logkey := genLogBackupKey(ns, name)
 	
-	bt.operateLock.Lock()
+	bt.operateLock.RLock()
 	dep, exist := bt.logBackups[logkey]
-	bt.operateLock.Unlock()
+	bt.operateLock.RUnlock()
 	
 	if !exist {
 		return nil, fmt.Errorf("log backup %s/%s not found in tracker", ns, name)
@@ -402,8 +408,11 @@ func (bt *backupTracker) SyncLogBackupState(backup *v1alpha1.Backup) (bool, erro
 	logkey := genLogBackupKey(ns, name)
 	
 	// Get dependency
-	dep := bt.getDependency(logkey)
-	if dep == nil {
+	bt.operateLock.RLock()
+	dep, exist := bt.logBackups[logkey]
+	bt.operateLock.RUnlock()
+	
+	if !exist {
 		return false, fmt.Errorf("log backup %s/%s not found in tracker", ns, name)
 	}
 	

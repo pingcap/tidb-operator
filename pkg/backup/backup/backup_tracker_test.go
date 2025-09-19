@@ -244,7 +244,9 @@ func TestDoubleCheckInconsistencyMechanism(t *testing.T) {
 	}
 	
 	// Check flag is set
-	dep := bt.getDependency(logkey)
+	bt.operateLock.RLock()
+	dep := bt.logBackups[logkey]
+	bt.operateLock.RUnlock()
 	if !dep.inconsistencyDetected {
 		t.Error("Expected inconsistencyDetected to be true after first detection")
 	}
@@ -322,7 +324,9 @@ func TestDoubleCheckCacheDelayResolution(t *testing.T) {
 	}
 	
 	// Check flag is cleared
-	dep := bt.getDependency(logkey)
+	bt.operateLock.RLock()
+	dep := bt.logBackups[logkey]
+	bt.operateLock.RUnlock()
 	if dep.inconsistencyDetected {
 		t.Error("Expected inconsistencyDetected to be false after resolution")
 	}
@@ -393,7 +397,9 @@ func TestDoubleCheckCommandChangeReset(t *testing.T) {
 	}
 	
 	// Check flag is set and command is recorded
-	dep := bt.getDependency(logkey)
+	bt.operateLock.RLock()
+	dep := bt.logBackups[logkey]
+	bt.operateLock.RUnlock()
 	if !dep.inconsistencyDetected {
 		t.Error("Expected inconsistencyDetected to be true")
 	}
