@@ -148,6 +148,12 @@ func TiDBMySQLTLSVolume(db *v1alpha1.TiDB) *corev1.Volume {
 							LocalObjectReference: corev1.LocalObjectReference{
 								Name: ca,
 							},
+							Items: []corev1.KeyToPath{
+								{
+									Key:  corev1.ServiceAccountRootCAKey,
+									Path: corev1.ServiceAccountRootCAKey,
+								},
+							},
 						},
 					},
 					{
