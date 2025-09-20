@@ -19,7 +19,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -138,6 +140,11 @@ func (w *Workload) MustImportData(ctx context.Context, host string, opts ...work
 								"--tiflash-replicas", strconv.Itoa(o.TiFlashReplicas),
 							},
 							ImagePullPolicy: corev1.PullIfNotPresent,
+							Ports: []corev1.ContainerPort{
+								{
+									ContainerPort: 8080,
+								},
+							},
 						},
 					},
 					RestartPolicy: corev1.RestartPolicyNever,
@@ -194,6 +201,11 @@ func (w *Workload) MustRunWorkload(ctx context.Context, host string, opts ...wor
 							Image:           "pingcap/testing-workload:latest",
 							Args:            args,
 							ImagePullPolicy: corev1.PullIfNotPresent,
+							Ports: []corev1.ContainerPort{
+								{
+									ContainerPort: 8080,
+								},
+							},
 						},
 					},
 					RestartPolicy: corev1.RestartPolicyNever,
@@ -209,11 +221,13 @@ func (w *Workload) MustRunWorkload(ctx context.Context, host string, opts ...wor
 	w.f.Must(w.f.Client.Create(ctx, job))
 	w.jobs = append(w.jobs, job)
 
+	nctx := w.StopJob(ctx, job)
+
 	done = make(chan struct{})
 	go func() {
 		defer close(done)
 		defer ginkgo.GinkgoRecover()
-		w.f.Must(waiter.WaitForJobComplete(ctx, w.f.Client, job, waiter.LongTaskTimeout))
+		w.f.Must(waiter.WaitForJobComplete(nctx, w.f.Client, job, waiter.LongTaskTimeout))
 	}()
 
 	return done
@@ -251,6 +265,11 @@ func (w *Workload) MustRunPDRegionAccess(ctx context.Context, pdEndpoints string
 								"--max-connections", "30",
 							},
 							ImagePullPolicy: corev1.PullIfNotPresent,
+							Ports: []corev1.ContainerPort{
+								{
+									ContainerPort: 8080,
+								},
+							},
 						},
 					},
 					RestartPolicy: corev1.RestartPolicyNever,
@@ -264,11 +283,13 @@ func (w *Workload) MustRunPDRegionAccess(ctx context.Context, pdEndpoints string
 	w.f.Must(w.f.Client.Create(ctx, job))
 	w.jobs = append(w.jobs, job)
 
+	nctx := w.StopJob(ctx, job)
+
 	done = make(chan struct{})
 	go func() {
 		defer close(done)
 		defer ginkgo.GinkgoRecover()
-		w.f.Must(waiter.WaitForJobComplete(ctx, w.f.Client, job, waiter.LongTaskTimeout))
+		w.f.Must(waiter.WaitForJobComplete(nctx, w.f.Client, job, waiter.LongTaskTimeout))
 	}()
 
 	return done
@@ -291,7 +312,7 @@ func (w *Workload) DeferPrintLogs() {
 				gomega.Expect(len(podList.Items)).To(gomega.Equal(1))
 
 				pod := &podList.Items[0]
-				logs, err := logPod(ctx, w.f.podLogClient, pod, false)
+				logs, err := logPod(ctx, w.f.podClient, pod, false)
 				gomega.Expect(err).To(gomega.Succeed())
 				defer logs.Close()
 
@@ -305,4 +326,70 @@ func (w *Workload) DeferPrintLogs() {
 			}
 		}
 	})
+}
+
+func (w *Workload) stopJob(ctx context.Context, job *batchv1.Job) error {
+	<-ctx.Done()
+
+	ginkgo.By("Stop workload job")
+	nctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	podList := corev1.PodList{}
+
+	s, err := metav1.LabelSelectorAsSelector(job.Spec.Selector)
+	if err != nil {
+		return err
+	}
+
+	if err := w.f.Client.List(nctx, &podList, client.InNamespace(w.f.Namespace.Name), client.MatchingLabelsSelector{
+		Selector: s,
+	}); err != nil {
+		return err
+	}
+
+	if len(podList.Items) != 1 {
+		return fmt.Errorf("not only one pod of the job")
+	}
+
+	pod := &podList.Items[0]
+
+	ports := w.f.PortForwardPod(nctx, pod, []string{":8080"})
+	port := ports[0].Local
+
+	req, err := http.NewRequestWithContext(nctx, http.MethodPost, fmt.Sprintf("http://localhost:%d/cancel", port), nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("not ok")
+	}
+
+	ginkgo.By("Stop job successfully")
+	return nil
+}
+
+// StopJob stops the job if ctx is cancelled
+// If stop failed, the returned ctx will be cancelled
+func (w *Workload) StopJob(ctx context.Context, job *batchv1.Job) context.Context {
+	nctx, cancel := context.WithCancel(context.Background())
+	jc := job.DeepCopy()
+	go func() {
+		defer ginkgo.GinkgoRecover()
+		defer cancel()
+		if err := w.stopJob(ctx, jc); err == nil {
+			// wait until the job is done
+			time.Sleep(time.Second * 30)
+		} else {
+			ginkgo.Fail("cannot stop job " + err.Error())
+		}
+	}()
+
+	return nctx
 }

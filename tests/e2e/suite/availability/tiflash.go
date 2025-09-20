@@ -65,7 +65,7 @@ var _ = ginkgo.Describe("TiFlash Availability Test", label.TiFlash, label.Update
 				defer ginkgo.GinkgoRecover()
 				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiFlashGroup(fg), 2, 0, waiter.LongTaskTimeout))
 			}()
-			done2 := workload.MustRunWorkload(ctx, data.DefaultTiDBServiceName, wopt.TiFlashReplicas(2))
+			done2 := workload.MustRunWorkload(nctx, data.DefaultTiDBServiceName, wopt.TiFlashReplicas(2))
 
 			patch := client.MergeFrom(fg.DeepCopy())
 			fg.Spec.Template.Labels = map[string]string{"test": "test"}
@@ -127,7 +127,7 @@ var _ = ginkgo.Describe("TiFlash Availability Test", label.TiFlash, label.Update
 				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiFlashGroup(fgw), 2, 0, waiter.LongTaskTimeout))
 			}()
 
-			done := workload.MustRunWorkload(ctx, data.DefaultTiDBServiceName, wopt.TiFlashReplicas(2))
+			done := workload.MustRunWorkload(nctx, data.DefaultTiDBServiceName, wopt.TiFlashReplicas(2))
 
 			patch := client.MergeFrom(fgc.DeepCopy())
 			fgc.Spec.Template.Labels = map[string]string{"test": "test"}

@@ -69,7 +69,7 @@ func Workload(ctx context.Context, db *sql.DB) error {
 				default:
 					err := executeSimpleTransaction(ctx, db, id, table, index)
 					totalCount.Add(1)
-					if err != nil && !errors.Is(err, context.DeadlineExceeded) {
+					if err != nil && !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, context.Canceled) {
 						fmt.Printf("[%d-%s] failed to execute simple transaction(long: %v): %v\n",
 							id, time.Now().String(), id%3 == 0, err,
 						)

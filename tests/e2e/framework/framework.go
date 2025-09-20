@@ -26,6 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/portforward"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
@@ -42,7 +43,8 @@ type Framework struct {
 
 	Client client.Client
 
-	podLogClient rest.Interface
+	restConfig *rest.Config
+	podClient  rest.Interface
 
 	clusterPatches []data.ClusterPatch
 }
@@ -93,14 +95,15 @@ func (f *Framework) Setup(opts ...SetupOption) {
 	// TODO: get context and config path from options
 	cfg, err := NewConfig("", "")
 	gomega.Expect(err).To(gomega.Succeed())
+	f.restConfig = cfg
 
 	c, err := newClient(cfg)
 	gomega.Expect(err).To(gomega.Succeed())
 	f.Client = c
 
-	podLogClient, err := newRESTClientForPod(cfg)
+	podClient, err := newRESTClientForPod(cfg)
 	gomega.Expect(err).To(gomega.Succeed())
-	f.podLogClient = podLogClient
+	f.podClient = podClient
 
 	ginkgo.BeforeEach(func(ctx context.Context) {
 		ns := data.NewNamespace()
@@ -266,4 +269,19 @@ func (f *Framework) MustScale(ctx context.Context, obj client.Object, replica in
 	err := f.Client.SubResource("scale").Update(ctx, obj, client.WithSubResourceBody(scale))
 
 	gomega.ExpectWithOffset(1, err).To(gomega.Succeed())
+}
+
+func (f *Framework) PortForwardPod(ctx context.Context, pod *corev1.Pod, ports []string) []portforward.ForwardedPort {
+	readyCh := make(chan struct{})
+	pf, err := newPodPortForwarder(ctx, f.restConfig, f.podClient, pod, ports, readyCh, ginkgo.GinkgoWriter)
+	f.Must(err)
+	go func() {
+		defer ginkgo.GinkgoRecover()
+		f.Must(pf.ForwardPorts())
+	}()
+	<-readyCh
+	ps, err := pf.GetPorts()
+	f.Must(err)
+
+	return ps
 }

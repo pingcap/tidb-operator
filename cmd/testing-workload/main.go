@@ -15,11 +15,13 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"database/sql"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 
@@ -98,6 +100,15 @@ func main() {
 	flag.Parse()
 
 	ctx := signals.SetupSignalHandler()
+
+	ctx, cancel := context.WithCancel(ctx)
+
+	http.HandleFunc("/cancel", CancelHandler(cancel))
+	go func() {
+		if err := http.ListenAndServe(":8080", nil); err != nil {
+			fmt.Println("stop server: ", err)
+		}
+	}()
 
 	// Parse PD endpoints for pd-region action
 	if action == "pd-region" && pdEndpointsStr != "" {
@@ -230,4 +241,12 @@ func setupTLSConfig() (string, error) {
 
 	fmt.Printf("TLS config registered successfully with name: %s\n", tlsConfigName)
 	return tlsConfigName, nil
+}
+
+func CancelHandler(cancel context.CancelFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		cancel()
+		fmt.Println("gracefully stopping workload")
+		w.WriteHeader(http.StatusOK)
+	}
 }
