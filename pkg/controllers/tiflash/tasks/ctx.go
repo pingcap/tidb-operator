@@ -61,12 +61,14 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		ck := state.Cluster()
 		c, ok := cm.Get(timanager.PrimaryKey(ck.Namespace, ck.Name))
 		if !ok {
-			return task.Wait().With("pd client is not registered")
+			// We have to retry here because the store may have been removed and cannot trigger the changes
+			return task.Retry(defaultTaskWaitDuration).With("pd client is not registered")
 		}
 		state.PDClient = c
 
 		if !c.HasSynced() {
-			return task.Wait().With("store info is not synced, just wait for next sync")
+			// We have to retry here because the store may have been removed and cannot trigger the changes
+			return task.Retry(defaultTaskWaitDuration).With("store info is not synced, just wait for next sync")
 		}
 
 		state.PDSynced = true
