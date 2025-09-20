@@ -105,7 +105,7 @@ func main() {
 func run(ctx context.Context) {
 	switch action {
 	case "pd-region":
-		if err := PDRegionAccess(); err != nil {
+		if err := PDRegionAccess(ctx); err != nil {
 			panic(err)
 		}
 	default:
