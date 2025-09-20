@@ -97,14 +97,12 @@ func main() {
 		}
 	}()
 
-	// Parse PD endpoints for pd-region action
-	if action == "pd-region" && pdEndpointsStr != "" {
-		pdEndpoints = strings.Split(pdEndpointsStr, ",")
-		for i, endpoint := range pdEndpoints {
-			pdEndpoints[i] = strings.TrimSpace(endpoint)
-		}
-	}
+	run(ctx)
 
+	fmt.Println("workload is done")
+}
+
+func run(ctx context.Context) {
 	switch action {
 	case "pd-region":
 		if err := PDRegionAccess(); err != nil {
@@ -140,7 +138,11 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		defer db.Close()
+		defer func() {
+			if err := db.Close(); err != nil {
+				panic(err)
+			}
+		}()
 
 		switch action {
 		case "ping":
@@ -166,8 +168,6 @@ func main() {
 			panic("unknown action: " + action)
 		}
 	}
-
-	fmt.Println("workload is done")
 }
 
 func parseFlag() {

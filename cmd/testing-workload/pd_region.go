@@ -65,9 +65,15 @@ func NewPDClient(pdAddrs []string) (pd.Client, error) {
 	return pdCli, nil
 }
 
-var pdEndpoints []string
-
 func PDRegionAccess() error {
+	var pdEndpoints []string
+	// Parse PD endpoints for pd-region action
+	if pdEndpointsStr != "" {
+		pdEndpoints = strings.Split(pdEndpointsStr, ",")
+		for i, endpoint := range pdEndpoints {
+			pdEndpoints[i] = strings.TrimSpace(endpoint)
+		}
+	}
 	if len(pdEndpoints) == 0 {
 		return fmt.Errorf("pd endpoints not provided")
 	}
