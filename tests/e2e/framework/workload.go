@@ -83,7 +83,6 @@ func (w *Workload) MustPing(ctx context.Context, host string, opts ...workload.O
 								"--port", strconv.Itoa(o.Port),
 								"--user", o.User,
 								"--password", o.Password,
-								"--duration", "8",
 								"--max-connections", "30",
 							},
 							ImagePullPolicy: corev1.PullIfNotPresent,
@@ -134,7 +133,6 @@ func (w *Workload) MustImportData(ctx context.Context, host string, opts ...work
 								"--port", strconv.Itoa(o.Port),
 								"--user", o.User,
 								"--password", o.Password,
-								"--duration", "8",
 								"--max-connections", "30",
 								"--split-region-count", fmt.Sprintf("%d", o.RegionCount),
 								"--tiflash-replicas", strconv.Itoa(o.TiFlashReplicas),
@@ -177,7 +175,6 @@ func (w *Workload) MustRunWorkload(ctx context.Context, host string, opts ...wor
 		"--password", o.Password,
 		// an arbitrary timeout
 		// NOTE: maybe changed to use a http api to stop
-		"--duration", "5",
 		"--max-connections", "30",
 		"--tiflash-replicas", strconv.Itoa(o.TiFlashReplicas),
 	}

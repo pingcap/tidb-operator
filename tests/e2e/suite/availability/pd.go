@@ -60,7 +60,7 @@ var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label
 				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromPDGroup(pdg), 3, 0, waiter.LongTaskTimeout))
 			}()
 
-			done := workload.MustRunPDRegionAccess(ctx, pdEndpoints)
+			done := workload.MustRunPDRegionAccess(nctx, pdEndpoints)
 
 			changeTime := time.Now()
 			ginkgo.By("Rolling udpate the PDGroup")
