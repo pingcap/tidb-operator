@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
@@ -37,12 +38,12 @@ var (
 	password string
 
 	// Flags for workload action
-	durationInMinutes int
-	maxConnections    int
-	sleepInterval     int
-	longTxnSleepSec   int
-	maxLifeTimeSec    int
-	tiflashReplicas   int
+	durationMinutes     int
+	maxConnections      int
+	sleepInterval       int
+	longTxnSleepSeconds int
+	maxLifeTimeSeconds  int
+	tiflashReplicas     int
 
 	// Flags for import action
 	batchSize        int
@@ -63,49 +64,35 @@ var (
 	pdEndpointsStr string
 )
 
-//nolint:mnd,errcheck
+const (
+	defaultReadHeaderTimeout = 3 * time.Second
+
+	defaultDurationMinutes     = 10
+	defaultMaxConnetions       = 30
+	defaultSleepInterval       = 100
+	defaultLongTxnSleepSeconds = 10
+	defaultMaxLifeTimeSeconds  = 60
+
+	defaultBatchSize = 1000
+	defaultTotalRows = 500000
+)
+
 func main() {
-	flag.StringVar(&action, "action", "ping", "ping, workload, import, pd-region")
-	flag.StringVar(&host, "host", "", "host")
-	flag.StringVar(&port, "port", "4000", "port")
-	flag.StringVar(&user, "user", "root", "db user")
-	flag.StringVar(&password, "password", "", "db password")
-
-	flag.IntVar(&durationInMinutes, "duration", 10, "duration in minutes")
-	flag.IntVar(&maxConnections, "max-connections", 30, "max connections")
-	flag.IntVar(&sleepInterval, "sleep-interval", 100, "sleep interval in milliseconds")
-	flag.IntVar(&longTxnSleepSec, "long-txn-sleep", 10, "how many seconds to sleep to simulate a long transaction")
-	flag.IntVar(&maxLifeTimeSec, "max-lifetime", 60, "max lifetime in seconds")
-	flag.IntVar(&tiflashReplicas, "tiflash-replicas", 0, "replicas of tiflash")
-
-	// Flags for import action
-	flag.IntVar(&batchSize, "batch-size", 1000, "batch size for import action")
-	flag.IntVar(&totalRows, "total-rows", 500000, "total rows to import for import action")
-	flag.StringVar(&importTable, "import-table", "e2e_test", "table name for import action")
-	flag.IntVar(&splitRegionCount, "split-region-count", 0, "number of regions to split for import action")
-
-	// Flags for TLS support
-	flag.BoolVar(&enableTLS, "enable-tls", false, "enable TLS connection")
-	flag.StringVar(&tlsCertFile, "tls-cert", "", "path to TLS certificate file")
-	flag.StringVar(&tlsKeyFile, "tls-key", "", "path to TLS private key file")
-	flag.StringVar(&tlsCAFile, "tls-ca", "", "path to TLS CA certificate file")
-	flag.StringVar(&tlsMountPath, "tls-mount-path", "",
-		"path to mounted TLS certificates directory (for Kubernetes secrets)")
-	flag.BoolVar(&tlsFromEnv, "tls-from-env", false, "load TLS certificates from environment variables")
-	flag.BoolVar(&insecureSkipVerify, "tls-insecure-skip-verify", false, "skip TLS certificate verification")
-
-	// Flags for PD region API access
-	flag.StringVar(&pdEndpointsStr, "pd-endpoints", "", "comma-separated PD endpoints for pd-region action")
-
-	flag.Parse()
+	parseFlag()
 
 	ctx := signals.SetupSignalHandler()
 
 	ctx, cancel := context.WithCancel(ctx)
 
 	http.HandleFunc("/cancel", CancelHandler(cancel))
+
+	server := &http.Server{
+		Addr:              ":8080",
+		ReadHeaderTimeout: defaultReadHeaderTimeout,
+	}
 	go func() {
-		if err := http.ListenAndServe(":8080", nil); err != nil {
+		err := server.ListenAndServe()
+		if err != nil {
 			fmt.Println("stop server: ", err)
 		}
 	}()
@@ -181,6 +168,42 @@ func main() {
 	}
 
 	fmt.Println("workload is done")
+}
+
+func parseFlag() {
+	flag.StringVar(&action, "action", "ping", "ping, workload, import, pd-region")
+	flag.StringVar(&host, "host", "", "host")
+	flag.StringVar(&port, "port", "4000", "port")
+	flag.StringVar(&user, "user", "root", "db user")
+	flag.StringVar(&password, "password", "", "db password")
+
+	flag.IntVar(&durationMinutes, "duration", defaultDurationMinutes, "duration in minutes")
+	flag.IntVar(&maxConnections, "max-connections", defaultMaxConnetions, "max connections")
+	flag.IntVar(&sleepInterval, "sleep-interval", defaultSleepInterval, "sleep interval in milliseconds")
+	flag.IntVar(&longTxnSleepSeconds, "long-txn-sleep", defaultLongTxnSleepSeconds, "how many seconds to sleep to simulate a long transaction")
+	flag.IntVar(&maxLifeTimeSeconds, "max-lifetime", defaultMaxLifeTimeSeconds, "max lifetime in seconds")
+	flag.IntVar(&tiflashReplicas, "tiflash-replicas", 0, "replicas of tiflash")
+
+	// Flags for import action
+	flag.IntVar(&batchSize, "batch-size", defaultBatchSize, "batch size for import action")
+	flag.IntVar(&totalRows, "total-rows", defaultTotalRows, "total rows to import for import action")
+	flag.StringVar(&importTable, "import-table", "e2e_test", "table name for import action")
+	flag.IntVar(&splitRegionCount, "split-region-count", 0, "number of regions to split for import action")
+
+	// Flags for TLS support
+	flag.BoolVar(&enableTLS, "enable-tls", false, "enable TLS connection")
+	flag.StringVar(&tlsCertFile, "tls-cert", "", "path to TLS certificate file")
+	flag.StringVar(&tlsKeyFile, "tls-key", "", "path to TLS private key file")
+	flag.StringVar(&tlsCAFile, "tls-ca", "", "path to TLS CA certificate file")
+	flag.StringVar(&tlsMountPath, "tls-mount-path", "",
+		"path to mounted TLS certificates directory (for Kubernetes secrets)")
+	flag.BoolVar(&tlsFromEnv, "tls-from-env", false, "load TLS certificates from environment variables")
+	flag.BoolVar(&insecureSkipVerify, "tls-insecure-skip-verify", false, "skip TLS certificate verification")
+
+	// Flags for PD region API access
+	flag.StringVar(&pdEndpointsStr, "pd-endpoints", "", "comma-separated PD endpoints for pd-region action")
+
+	flag.Parse()
 }
 
 // setupTLSConfig configures TLS for the MySQL connection

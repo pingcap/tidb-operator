@@ -75,7 +75,7 @@ func PDRegionAccess() error {
 	var totalCount, failCount atomic.Uint64
 	var wg sync.WaitGroup
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(durationInMinutes)*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(durationMinutes)*time.Minute)
 	defer cancel()
 	client, err := NewPDClient(pdEndpoints)
 	if err != nil {

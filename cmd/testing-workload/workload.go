@@ -32,7 +32,7 @@ func Workload(ctx context.Context, db *sql.DB) error {
 
 	// keep it to pass e2e
 	// TODO(liubo02): it's not reasonable for graceful shutdown test
-	db.SetConnMaxLifetime(time.Duration(maxLifeTimeSec) * time.Second)
+	db.SetConnMaxLifetime(time.Duration(maxLifeTimeSeconds) * time.Second)
 
 	db.SetMaxIdleConns(maxConnections)
 	db.SetMaxOpenConns(maxConnections)
@@ -56,7 +56,7 @@ func Workload(ctx context.Context, db *sql.DB) error {
 	var totalCount, failCount atomic.Uint64
 	var wg sync.WaitGroup
 
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(durationInMinutes)*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(durationMinutes)*time.Minute)
 	defer cancel()
 	for i := 1; i <= maxConnections; i++ {
 		wg.Add(1)
@@ -132,7 +132,7 @@ func executeSimpleTransaction(ctx context.Context, db *sql.DB, id int, table str
 
 	// Simulate a long transaction by sleeping for 10 seconds
 	if id%3 == 0 {
-		time.Sleep(time.Duration(longTxnSleepSec) * time.Second)
+		time.Sleep(time.Duration(longTxnSleepSeconds) * time.Second)
 	}
 
 	// Commit the transaction
