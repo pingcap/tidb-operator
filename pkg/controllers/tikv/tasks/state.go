@@ -16,7 +16,6 @@ package tasks
 
 import (
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -24,7 +23,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	stateutil "github.com/pingcap/tidb-operator/pkg/state"
-	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
 
 const (
@@ -176,13 +174,13 @@ func (s *state) IsStoreUp() bool {
 }
 
 func (s *state) IsHealthy() bool {
-	return s.healthy && statefulset.IsPodAvailable(s.pod, minReadySeconds, metav1.Now())
+	return s.healthy
 }
 
 func (s *state) SetHealthy() {
 	// We should also check if the leader count is enough.
 	// Especially when rolling restart tikv, we need to ensure the leader count of restarted tikv is enough.
-	s.healthy = !s.IsStoreBusy() && isLeaderCountEnough(s.GetLeaderCount(), s.GetRegionCount())
+	s.healthy = true
 }
 
 func (s *state) IsStoreBusy() bool {
@@ -201,4 +199,8 @@ func isLeaderCountEnough(leaderCount, regionCount int) bool {
 		return leaderCount > 0
 	}
 	return true
+}
+
+func IsStoreReady(s State) bool {
+	return !s.IsStoreBusy() && isLeaderCountEnough(s.GetLeaderCount(), s.GetRegionCount())
 }
