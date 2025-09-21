@@ -30,6 +30,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/tiflash/tasks"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
+	fm "github.com/pingcap/tidb-operator/pkg/timanager/tiflash"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
@@ -41,15 +42,24 @@ type Reconciler struct {
 	Client                client.Client
 	VolumeModifierFactory volumes.ModifierFactory
 	PDClientManager       pdm.PDClientManager
+	TiFlashClientManager  fm.TiFlashClientManager
 	Tracker               tracker.Tracker
 }
 
-func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, vm volumes.ModifierFactory, t tracker.Tracker) error {
+func Setup(
+	mgr manager.Manager,
+	c client.Client,
+	pdcm pdm.PDClientManager,
+	fcm fm.TiFlashClientManager,
+	vm volumes.ModifierFactory,
+	t tracker.Tracker,
+) error {
 	r := &Reconciler{
 		Logger:                mgr.GetLogger().WithName("TiFlash"),
 		Client:                c,
 		VolumeModifierFactory: vm,
 		PDClientManager:       pdcm,
+		TiFlashClientManager:  fcm,
 		Tracker:               t,
 	}
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.TiFlash{}).

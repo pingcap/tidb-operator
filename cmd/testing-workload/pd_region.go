@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -65,9 +66,15 @@ func NewPDClient(pdAddrs []string) (pd.Client, error) {
 	return pdCli, nil
 }
 
-var pdEndpoints []string
-
-func PDRegionAccess() error {
+func PDRegionAccess(ctx context.Context) error {
+	var pdEndpoints []string
+	// Parse PD endpoints for pd-region action
+	if pdEndpointsStr != "" {
+		pdEndpoints = strings.Split(pdEndpointsStr, ",")
+		for i, endpoint := range pdEndpoints {
+			pdEndpoints[i] = strings.TrimSpace(endpoint)
+		}
+	}
 	if len(pdEndpoints) == 0 {
 		return fmt.Errorf("pd endpoints not provided")
 	}
@@ -75,7 +82,7 @@ func PDRegionAccess() error {
 	var totalCount, failCount atomic.Uint64
 	var wg sync.WaitGroup
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(durationInMinutes)*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(durationMinutes)*time.Minute)
 	defer cancel()
 	client, err := NewPDClient(pdEndpoints)
 	if err != nil {
@@ -94,7 +101,7 @@ func PDRegionAccess() error {
 				default:
 					err := accessPDRegionAPI(ctx, client)
 					totalCount.Add(1)
-					if err != nil {
+					if err != nil && !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, context.Canceled) {
 						fmt.Printf("[%d-%s] failed to access PD region API: %v\n",
 							id, time.Now().String(), err,
 						)

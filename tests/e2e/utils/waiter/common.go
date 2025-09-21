@@ -31,7 +31,7 @@ import (
 )
 
 var (
-	Poll = time.Second * 2
+	Poll = time.Second * 5
 
 	ShortTaskTimeout = time.Minute * 3
 	LongTaskTimeout  = time.Minute * 10

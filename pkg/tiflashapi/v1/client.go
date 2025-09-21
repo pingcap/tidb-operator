@@ -53,14 +53,13 @@ type tiflashClient struct {
 }
 
 // NewTiFlashClient returns a new TiFlashClient.
-func NewTiFlashClient(url string, timeout time.Duration, tlsConfig *tls.Config, disableKeepalive bool) TiFlashClient {
+func NewTiFlashClient(url string, timeout time.Duration, tlsConfig *tls.Config) TiFlashClient {
 	return &tiflashClient{
 		url: url,
 		httpClient: &http.Client{
 			Timeout: timeout,
 			Transport: &http.Transport{
 				TLSClientConfig:       tlsConfig,
-				DisableKeepAlives:     disableKeepalive,
 				ResponseHeaderTimeout: 10 * time.Second,
 				TLSHandshakeTimeout:   10 * time.Second,
 				DialContext: (&net.Dialer{

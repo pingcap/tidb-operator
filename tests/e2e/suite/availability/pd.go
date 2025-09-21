@@ -53,17 +53,14 @@ var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label
 
 			nctx, cancel := context.WithCancel(ctx)
 			wg := sync.WaitGroup{}
-			wg.Add(2)
+			wg.Add(1)
 			go func() {
 				defer wg.Done()
 				defer ginkgo.GinkgoRecover()
 				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromPDGroup(pdg), 3, 0, waiter.LongTaskTimeout))
 			}()
-			go func() {
-				defer wg.Done()
-				defer ginkgo.GinkgoRecover()
-				workload.MustRunPDRegionAccess(ctx, pdEndpoints)
-			}()
+
+			done := workload.MustRunPDRegionAccess(nctx, pdEndpoints)
 
 			changeTime := time.Now()
 			ginkgo.By("Rolling udpate the PDGroup")
@@ -72,6 +69,7 @@ var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label
 			f.WaitForPDGroupReady(ctx, pdg)
 			cancel()
 			wg.Wait()
+			<-done
 		})
 	})
 })

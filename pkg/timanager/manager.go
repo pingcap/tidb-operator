@@ -50,10 +50,14 @@ type NewClientFunc[Object client.Object, UnderlayClient, Client any] func(
 
 type CacheKeysFunc[Object client.Object] func(obj Object) ([]string, error)
 
-type Manager[Object client.Object, Client any] interface {
+type ClientManager[Object client.Object, Client any] interface {
 	Register(obj Object) error
 	Deregister(key string)
 	Get(key string) (Client, bool)
+}
+
+type Manager[Object client.Object, Client any] interface {
+	ClientManager[Object, Client]
 
 	Source(obj runtime.Object, h handler.EventHandler) source.Source
 	Start(ctx context.Context)
@@ -178,27 +182,34 @@ func (m *clientManager[Object, UnderlayClient, Client]) Register(obj Object) err
 		return err
 	}
 
-	f := NewSharedInformerFactory(keys[0], m.logger, m.scheme, underlay, m.newPollerFuncMap, time.Hour)
-	c := m.newClientFunc(obj, underlay, f)
+	var f SharedInformerFactory[UnderlayClient]
+	if len(m.newPollerFuncMap) != 0 {
+		f = NewSharedInformerFactory(keys[0], m.logger, m.scheme, underlay, m.newPollerFuncMap, time.Hour)
+	}
 
+	c := m.newClientFunc(obj, underlay, f)
 	cacheObj = NewCache[Client, UnderlayClient](keys, c, f)
 	m.cs.Store(keys[0], cacheObj)
-	go func() {
-		cacheObj.Start(m.ctx)
-		f.WaitForCacheSync(m.ctx.Done())
-		if err := f.ForEach(func(t reflect.Type, informer cache.SharedIndexInformer) error {
-			ss := m.sources[t]
-			for _, s := range ss {
-				if err := s.For(keys[0], informer); err != nil {
-					return fmt.Errorf("cannot add event handler for %v:%v: %w", keys[0], t, err)
-				}
-			}
 
-			return nil
-		}); err != nil {
-			m.logger.Error(err, "failed to add event handler")
-		}
-	}()
+	if f != nil {
+		go func() {
+			cacheObj.Start(m.ctx)
+			f.WaitForCacheSync(m.ctx.Done())
+			if err := f.ForEach(func(t reflect.Type, informer cache.SharedIndexInformer) error {
+				ss := m.sources[t]
+				for _, s := range ss {
+					if err := s.For(keys[0], informer); err != nil {
+						return fmt.Errorf("cannot add event handler for %v:%v: %w", keys[0], t, err)
+					}
+				}
+
+				return nil
+			}); err != nil {
+				m.logger.Error(err, "failed to add event handler")
+			}
+		}()
+	}
+
 	return nil
 }
 

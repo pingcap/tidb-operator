@@ -92,6 +92,7 @@ spec:
                       - UsePDReadyAPI
                       - SessionTokenSigning
                       - ClusterSubdomain
+                      - TerminableLogTailer
                       type: string
                   required:
                   - name
@@ -295,6 +296,7 @@ spec:
                       - UsePDReadyAPI
                       - SessionTokenSigning
                       - ClusterSubdomain
+                      - TerminableLogTailer
                       type: string
                     stage:
                       type: string

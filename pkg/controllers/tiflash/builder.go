@@ -39,20 +39,21 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// if the cluster is deleting, del all subresources and remove the finalizer directly
 		task.IfBreak(common.CondClusterIsDeleting(state),
-			tasks.TaskFinalizerDel(state, r.Client),
+			tasks.TaskFinalizerDel(state, r.Client, r.TiFlashClientManager),
 		),
 
+		// get pod and check whether the cluster is suspending
+		common.TaskContextPod[scope.TiFlash](state, r.Client),
+
 		// get info from pd
-		tasks.TaskContextInfoFromPD(state, r.PDClientManager),
+		tasks.TaskContextInfoFromPD(state, r.PDClientManager, r.TiFlashClientManager),
 
 		// if instance is deleting and store is removed
 		task.IfBreak(ObjectIsDeletingAndStoreIsRemoved(state),
-			tasks.TaskFinalizerDel(state, r.Client),
+			tasks.TaskFinalizerDel(state, r.Client, r.TiFlashClientManager),
 		),
 
 		common.TaskFinalizerAdd[scope.TiFlash](state, r.Client),
-		// get pod and check whether the cluster is suspending
-		common.TaskContextPod[scope.TiFlash](state, r.Client),
 
 		// check whether the cluster is suspending
 		task.IfBreak(common.CondClusterIsSuspending(state),

@@ -44,6 +44,11 @@ func NewTiDBGroup(ns string, patches ...GroupPatch[*runtime.TiDBGroup]) *v1alpha
 					SlowLog: &v1alpha1.TiDBSlowLog{
 						Image: ptr.To(defaultHelperImage),
 					},
+					Probes: v1alpha1.TiDBProbes{
+						Readiness: &v1alpha1.TiDBProb{
+							Type: ptr.To(v1alpha1.CommandProbeType),
+						},
+					},
 				},
 			},
 		},
@@ -187,12 +192,9 @@ func WithKeyspace(keyspace string) GroupPatch[*runtime.TiDBGroup] {
 	}
 }
 
-func WithTiDBCommandProbe() GroupPatch[*runtime.TiDBGroup] {
+func WithTiDBNextGen() GroupPatch[*runtime.TiDBGroup] {
 	return func(obj *runtime.TiDBGroup) {
-		obj.Spec.Template.Spec.Probes = v1alpha1.TiDBProbes{
-			Readiness: &v1alpha1.TiDBProb{
-				Type: ptr.To(v1alpha1.CommandProbeType),
-			},
-		}
+		obj.Spec.Template.Spec.Version = "v9.0.0"
+		obj.Spec.Template.Spec.Image = ptr.To(defaultImageRegistry + "tidb:master-next-gen")
 	}
 }

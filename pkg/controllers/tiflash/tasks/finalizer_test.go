@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -30,6 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	fm "github.com/pingcap/tidb-operator/pkg/timanager/tiflash"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -301,7 +303,9 @@ func TestTaskFinalizerDel(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			res, done := task.RunTask(ctx, TaskFinalizerDel(c.state, fc))
+			fcm := fm.NewTiFlashClientManager(logr.Discard(), fc)
+
+			res, done := task.RunTask(ctx, TaskFinalizerDel(c.state, fc, fcm))
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
 

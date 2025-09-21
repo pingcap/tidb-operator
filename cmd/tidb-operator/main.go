@@ -69,6 +69,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
+	fm "github.com/pingcap/tidb-operator/pkg/timanager/tiflash"
 	tsom "github.com/pingcap/tidb-operator/pkg/timanager/tso"
 	"github.com/pingcap/tidb-operator/pkg/utils/informertest"
 	"github.com/pingcap/tidb-operator/pkg/utils/kubefeat"
@@ -189,6 +190,7 @@ func setup(ctx context.Context, mgr ctrl.Manager) error {
 	logger.Info("setup client manager")
 	pdcm := pdm.NewPDClientManager(mgr.GetLogger(), c)
 	tsocm := tsom.NewTSOClientManager(mgr.GetLogger(), c)
+	fcm := fm.NewTiFlashClientManager(mgr.GetLogger(), c)
 
 	logger.Info("setup volume modifier")
 	vm := volumes.NewModifierFactory(mgr.GetLogger().WithName("VolumeModifier"), c)
@@ -196,7 +198,7 @@ func setup(ctx context.Context, mgr ctrl.Manager) error {
 	am := adoption.New(ctrl.Log.WithName("adoption"))
 	tf := tracker.New()
 	setupLog.Info("setup controllers")
-	if err := setupControllers(mgr, c, pdcm, tsocm, vm, tf, am); err != nil {
+	if err := setupControllers(mgr, c, pdcm, tsocm, fcm, vm, tf, am); err != nil {
 		setupLog.Error(err, "unable to setup controllers")
 		os.Exit(1)
 	}
@@ -310,6 +312,7 @@ func setupControllers(
 	c client.Client,
 	pdcm pdm.PDClientManager,
 	tsocm tsom.TSOClientManager,
+	fcm fm.TiFlashClientManager,
 	vm volumes.ModifierFactory,
 	tf tracker.Factory,
 	am adoption.Manager,
@@ -366,7 +369,7 @@ func setupControllers(
 		{
 			name: "TiFlash",
 			setupFunc: func() error {
-				return tiflash.Setup(mgr, c, pdcm, vm, tf.Tracker("tiflash"))
+				return tiflash.Setup(mgr, c, pdcm, fcm, vm, tf.Tracker("tiflash"))
 			},
 		},
 		{

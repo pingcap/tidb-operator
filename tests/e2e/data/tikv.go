@@ -90,3 +90,14 @@ enable-ttl = true
 `
 	}
 }
+
+func WithTiKVNextGen() GroupPatch[*runtime.TiKVGroup] {
+	return func(obj *runtime.TiKVGroup) {
+		obj.Spec.Template.Spec.Version = "v9.0.0"
+		obj.Spec.Template.Spec.Image = ptr.To(defaultImageRegistry + "tikv:dedicated-next-gen")
+		obj.Spec.Template.Spec.Config = `[storage]
+api-version = 2
+enable-ttl = true
+`
+	}
+}

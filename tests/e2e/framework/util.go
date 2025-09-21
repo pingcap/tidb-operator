@@ -19,11 +19,15 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/portforward"
+	"k8s.io/client-go/transport/spdy"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
 	"github.com/onsi/ginkgo/v2"
@@ -79,6 +83,46 @@ func logPod(ctx context.Context, c rest.Interface, pod *corev1.Pod, follow bool)
 	return req.Stream(ctx)
 }
 
+func newPodPortForwarder(
+	ctx context.Context,
+	cfg *rest.Config,
+	c rest.Interface,
+	pod *corev1.Pod,
+	ports []string,
+	readyCh chan struct{},
+	w io.Writer,
+) (*portforward.PortForwarder, error) {
+	req := c.Post().
+		Resource("pods").
+		Namespace(pod.Namespace).
+		Name(pod.Name).
+		SubResource("portforward")
+
+	transport, upgrader, err := spdy.RoundTripperFor(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("create round tripper: %w", err)
+	}
+	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, "POST", req.URL())
+
+	tunnelingDialer, err := portforward.NewSPDYOverWebsocketDialer(req.URL(), cfg)
+	if err != nil {
+		return nil, err
+	}
+	// First attempt tunneling (websocket) dialer, then fallback to spdy dialer.
+	dialer = portforward.NewFallbackDialer(tunnelingDialer, dialer, func(err error) bool {
+		if httpstream.IsUpgradeFailure(err) || httpstream.IsHTTPSProxyError(err) {
+			return true
+		}
+		return false
+	})
+
+	pf, err := portforward.New(dialer, ports, ctx.Done(), readyCh, w, w)
+	if err != nil {
+		return nil, err
+	}
+	return pf, nil
+}
+
 func waitInstanceLogContains[
 	S scope.Instance[F, T],
 	F client.Object,
@@ -87,7 +131,7 @@ func waitInstanceLogContains[
 	pod, err := apicall.GetPod[S](ctx, f.Client, instance)
 	gomega.Expect(err).To(gomega.Succeed())
 
-	logs, err := logPod(ctx, f.podLogClient, pod, true)
+	logs, err := logPod(ctx, f.podClient, pod, true)
 	gomega.Expect(err).To(gomega.Succeed())
 	defer logs.Close()
 

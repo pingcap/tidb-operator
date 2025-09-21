@@ -18,7 +18,7 @@ package v1alpha1
 // NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
 // NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
 //
-// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning;ClusterSubdomain
+// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning;ClusterSubdomain;TerminableLogTailer
 // +enum
 type Feature string
 
@@ -77,4 +77,8 @@ const (
 	// If this feature is enabled, all instances will use a same headless svc as their subdomain
 	ClusterSubdomain      Feature      = "ClusterSubdomain"
 	ClusterSubdomainStage FeatureStage = FeatureStageAlpha
+
+	// If this feature is enabled, log tailer in sidecar can exit immediately after main container is exited
+	TerminableLogTailer      Feature      = "TerminableLogTailer"
+	TerminableLogTailerStage FeatureStage = FeatureStageAlpha
 )

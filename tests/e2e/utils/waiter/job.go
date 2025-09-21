@@ -35,6 +35,6 @@ func WaitForJobComplete(ctx context.Context, c client.Client, job *batchv1.Job, 
 			}
 		}
 
-		return false, fmt.Errorf("job status is unknown")
+		return false, fmt.Errorf("job is still running: %v", job.Status.Conditions)
 	}, timeout)
 }
