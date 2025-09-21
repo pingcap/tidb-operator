@@ -40,7 +40,8 @@ type ReconcileContext struct {
 
 	// IsStoreReady will be set only when pd is synced and the store is ok
 	// It may be outdated so the tikv is healthy only when the pod is also available
-	// If it's true and the pod is ready but not available, the operator will retry to avoid unexpectedly missing next reconciliation
+	// If it's true and the pod is ready but not available,
+	// the operator will retry to avoid unexpectedly missing next reconciliation
 	IsStoreReady bool
 }
 
@@ -73,7 +74,8 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		state.SetRegionCount(s.RegionCount)
 		state.SetStoreBusy(s.IsBusy)
 		state.IsStoreReady = IsStoreReady(state)
-		if state.IsStoreReady && statefulset.IsPodAvailable(state.Pod(), minReadySeconds, metav1.Now()) {
+		pod := state.Pod()
+		if state.IsStoreReady && pod != nil && statefulset.IsPodAvailable(pod, minReadySeconds, metav1.Now()) {
 			state.SetHealthy()
 		}
 

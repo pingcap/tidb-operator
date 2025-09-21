@@ -74,7 +74,7 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		}
 
 		// pod available cannot be watched so that we have to retry
-		if !ready && state.IsStoreReady && statefulset.IsPodReady(pod) {
+		if !ready && state.IsStoreReady && pod != nil && statefulset.IsPodReady(pod) {
 			return task.Retry(minReadySeconds * time.Second).With("pod is not ready more than 15s, retry")
 		}
 
