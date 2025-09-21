@@ -50,6 +50,8 @@ func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager) error
 	}
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.Cluster{}).
 		Watches(&v1alpha1.PDGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.PDGroup]())).
+		Watches(&v1alpha1.TSOGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.TSOGroup]())).
+		Watches(&v1alpha1.SchedulerGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.SchedulerGroup]())).
 		Watches(&v1alpha1.TiKVGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.TiKVGroup]())).
 		Watches(&v1alpha1.TiDBGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.TiDBGroup]())).
 		Watches(&v1alpha1.TiFlashGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.TiFlashGroup]())).
