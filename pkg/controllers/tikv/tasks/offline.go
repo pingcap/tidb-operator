@@ -40,7 +40,7 @@ func TaskOfflineStore(state *ReconcileContext) task.Task {
 
 		// If the store is nil, it means the store has been deleted or not created yet.
 		// No need to check if leaders are evicted.
-		if state.Store != nil {
+		if state.Store != nil && state.Instance().IsOffline() {
 			tikv := state.TiKV()
 			var reason string
 			beginTime := getBeginEvictLeaderTime(tikv)

@@ -15,12 +15,14 @@
 package data
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/utils/toml"
 )
 
 func NewTiFlashGroup(ns string, patches ...GroupPatch[*runtime.TiFlashGroup]) *v1alpha1.TiFlashGroup {
@@ -52,4 +54,57 @@ func NewTiFlashGroup(ns string, patches ...GroupPatch[*runtime.TiFlashGroup]) *v
 	}
 
 	return runtime.ToTiFlashGroup(flashg)
+}
+
+func WithTiFlashNextGen() GroupPatch[*runtime.TiFlashGroup] {
+	return func(obj *runtime.TiFlashGroup) {
+		obj.Spec.Template.Spec.Version = "v9.0.0"
+		obj.Spec.Template.Spec.Image = ptr.To(defaultImageRegistry + "tiflash:master-next-gen")
+		obj.Spec.Template.Spec.Config = `[storage]
+api-version = 2
+
+[flash]
+graceful_wait_shutdown_timeout = 300
+`
+		obj.Spec.Template.Spec.Overlay = &v1alpha1.Overlay{
+			Pod: &v1alpha1.PodOverlay{
+				Spec: &corev1.PodSpec{
+					TerminationGracePeriodSeconds: ptr.To[int64](300),
+				},
+			},
+		}
+	}
+}
+
+type TiFlashConfig struct {
+	Flash FlashConfig `toml:"flash"`
+}
+
+type FlashConfig struct {
+	DisaggregatedMode string `toml:"disaggregated_mode"`
+}
+
+func withTiFlashMode(mode string) GroupPatch[*runtime.TiFlashGroup] {
+	return func(obj *runtime.TiFlashGroup) {
+		c := TiFlashConfig{}
+		d, e := toml.Codec[TiFlashConfig]()
+		if err := d.Decode([]byte(obj.Spec.Template.Spec.Config), &c); err != nil {
+			panic("decode tiflash config: " + err.Error())
+		}
+
+		c.Flash.DisaggregatedMode = mode
+		data, err := e.Encode(&c)
+		if err != nil {
+			panic("encode tiflash config: " + err.Error())
+		}
+		obj.Spec.Template.Spec.Config = v1alpha1.ConfigFile(data)
+	}
+}
+
+func WithTiFlashComputeMode() GroupPatch[*runtime.TiFlashGroup] {
+	return withTiFlashMode("tiflash_compute")
+}
+
+func WithTiFlashWriteMode() GroupPatch[*runtime.TiFlashGroup] {
+	return withTiFlashMode("tiflash_write")
 }

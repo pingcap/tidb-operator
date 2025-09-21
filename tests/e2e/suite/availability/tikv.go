@@ -50,17 +50,14 @@ var _ = ginkgo.Describe("TiKV Availability Test", label.TiKV, label.KindAvail, l
 
 			nctx, cancel := context.WithCancel(ctx)
 			wg := sync.WaitGroup{}
-			wg.Add(2)
+			wg.Add(1)
 			go func() {
 				defer wg.Done()
 				defer ginkgo.GinkgoRecover()
 				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiKVGroup(kvg), 3, 0, waiter.LongTaskTimeout))
 			}()
-			go func() {
-				defer wg.Done()
-				defer ginkgo.GinkgoRecover()
-				workload.MustRunWorkload(ctx, data.DefaultTiDBServiceName)
-			}()
+
+			done := workload.MustRunWorkload(nctx, data.DefaultTiDBServiceName)
 
 			changeTime := time.Now()
 			ginkgo.By("Change config of the TiKVGroup")
@@ -69,6 +66,7 @@ var _ = ginkgo.Describe("TiKV Availability Test", label.TiKV, label.KindAvail, l
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			cancel()
 			wg.Wait()
+			<-done
 		})
 	})
 })

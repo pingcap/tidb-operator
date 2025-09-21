@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -27,17 +28,18 @@ type ImportDataConfig struct {
 	TotalRows        int
 	TableName        string
 	SplitRegionCount int
+	TiFlashReplicas  int
 }
 
 // ImportData creates a table and inserts a specified number of rows in batches.
 //
 //nolint:gosec, gocyclo // Only used for testing.
-func ImportData(config ImportDataConfig) error {
+func ImportData(ctx context.Context, config ImportDataConfig) error {
 	if config.DB == nil {
 		return fmt.Errorf("database connection is nil")
 	}
 	if config.TableName == "" {
-		config.TableName = "t1" // Default table name
+		config.TableName = "e2e_test" // Default table name
 	}
 	if config.BatchSize <= 0 {
 		config.BatchSize = 1000 // Default batch size
@@ -46,44 +48,62 @@ func ImportData(config ImportDataConfig) error {
 		config.TotalRows = 500000 // Default total rows
 	}
 
-	fmt.Printf("Starting data import: Table=%s, TotalRows=%d, BatchSize=%d\n", config.TableName, config.TotalRows, config.BatchSize)
-	if _, err := config.DB.Exec("CREATE DATABASE IF NOT EXISTS e2e_test"); err != nil {
+	fmt.Printf("Starting data import: Table=%s, TotalRows=%d, BatchSize=%d, TiFlashReplicas=%d\n",
+		config.TableName,
+		config.TotalRows,
+		config.BatchSize,
+		config.TiFlashReplicas,
+	)
+	if _, err := config.DB.ExecContext(ctx, "CREATE DATABASE IF NOT EXISTS test"); err != nil {
 		return fmt.Errorf("failed to create database: %w", err)
 	}
-	fmt.Println("Database 'e2e_test' ensured to exist.")
+	fmt.Println("Database 'test' ensured to exist.")
 
-	if _, err := config.DB.Exec("USE e2e_test"); err != nil {
-		return fmt.Errorf("failed to use database 'e2e_test': %w", err)
+	if _, err := config.DB.ExecContext(ctx, "USE test"); err != nil {
+		return fmt.Errorf("failed to use database 'test': %w", err)
 	}
-	fmt.Println("Using database 'e2e_test'.")
+	fmt.Println("Using database 'test'.")
 
-	createTableSQL := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT PRIMARY KEY AUTO_INCREMENT, v VARCHAR(1000))", config.TableName)
-	if _, err := config.DB.Exec(createTableSQL); err != nil {
+	createTableSQL := fmt.Sprintf(
+		"CREATE TABLE IF NOT EXISTS %s (id INT PRIMARY KEY AUTO_INCREMENT, v VARCHAR(1000))",
+		config.TableName,
+	)
+	if _, err := config.DB.ExecContext(ctx, createTableSQL); err != nil {
 		return fmt.Errorf("failed to create table '%s': %w", config.TableName, err)
 	}
 	fmt.Printf("Table '%s' ensured to exist.\n", config.TableName)
 
-	for i := 0; i < config.TotalRows; i += config.BatchSize {
-		end := min(i+config.BatchSize, config.TotalRows)
-		if i >= end { // Ensure we don't proceed if i has caught up to end due to small TotalRows vs BatchSize
-			break
+	if config.TiFlashReplicas != 0 {
+		if _, err := config.DB.ExecContext(ctx,
+			fmt.Sprintf("ALTER TABLE %s SET TIFLASH REPLICA %d;", config.TableName, config.TiFlashReplicas),
+		); err != nil {
+			return fmt.Errorf("enable tiflash replicas failed: %w", err)
 		}
+	}
 
-		valueStrings := make([]string, 0, end-i)
-		args := make([]any, 0, end-i)
-		for j := i; j < end; j++ {
-			valueStrings = append(valueStrings, "(?)")
-			// Using a simpler string for data generation to avoid excessive length issues if not needed.
-			// The original string was strings.Repeat("x", 900)+fmt.Sprintf("%d", j)
-			args = append(args, fmt.Sprintf("data_val_%d", j))
-		}
-		// Use parameterized query with table name validation
-		if !isValidTableName(config.TableName) {
-			return fmt.Errorf("invalid table name: %s", config.TableName)
-		}
-		query := fmt.Sprintf("INSERT INTO %s (v) VALUES %s", config.TableName, strings.Join(valueStrings, ","))
-		if _, err := config.DB.Exec(query, args...); err != nil {
-			return fmt.Errorf("failed to insert batch (rows %d to %d) into table '%s': %w", i, end-1, config.TableName, err)
+	if config.SplitRegionCount != 0 {
+		for i := 0; i < config.TotalRows; i += config.BatchSize {
+			end := min(i+config.BatchSize, config.TotalRows)
+			if i >= end { // Ensure we don't proceed if i has caught up to end due to small TotalRows vs BatchSize
+				break
+			}
+
+			valueStrings := make([]string, 0, end-i)
+			args := make([]any, 0, end-i)
+			for j := i; j < end; j++ {
+				valueStrings = append(valueStrings, "(?)")
+				// Using a simpler string for data generation to avoid excessive length issues if not needed.
+				// The original string was strings.Repeat("x", 900)+fmt.Sprintf("%d", j)
+				args = append(args, fmt.Sprintf("data_val_%d", j))
+			}
+			// Use parameterized query with table name validation
+			if !isValidTableName(config.TableName) {
+				return fmt.Errorf("invalid table name: %s", config.TableName)
+			}
+			query := fmt.Sprintf("INSERT INTO %s (v) VALUES %s", config.TableName, strings.Join(valueStrings, ","))
+			if _, err := config.DB.ExecContext(ctx, query, args...); err != nil {
+				return fmt.Errorf("failed to insert batch (rows %d to %d) into table '%s': %w", i, end-1, config.TableName, err)
+			}
 		}
 	}
 
@@ -98,7 +118,7 @@ func ImportData(config ImportDataConfig) error {
 		// Note: SPLIT TABLE statement doesn't support parameterized queries for any values
 		splitTableSQL := fmt.Sprintf("SPLIT TABLE %s BETWEEN (0) AND (%d) REGIONS %d",
 			config.TableName, config.TotalRows, config.SplitRegionCount)
-		if _, err := config.DB.Exec(splitTableSQL); err != nil {
+		if _, err := config.DB.ExecContext(ctx, splitTableSQL); err != nil {
 			return fmt.Errorf("failed to split table '%s' to %d regions: %w", config.TableName, config.SplitRegionCount, err)
 		}
 		fmt.Printf("Table '%s' split into %d regions.\n", config.TableName, config.SplitRegionCount)

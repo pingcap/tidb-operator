@@ -41,6 +41,8 @@ type state struct {
 	regionCount   int
 	storeBusy     bool
 
+	healthy bool
+
 	stateutil.IFeatureGates
 }
 
@@ -63,6 +65,7 @@ type State interface {
 	common.StoreStateUpdater
 
 	common.HealthyState
+	common.HealthyStateUpdater
 
 	stateutil.IFeatureGates
 }
@@ -145,7 +148,11 @@ func (s *state) IsStoreUp() bool {
 
 // TODO: fix tiflash healthy probe
 func (s *state) IsHealthy() bool {
-	return s.IsStoreUp()
+	return s.healthy
+}
+
+func (s *state) SetHealthy() {
+	s.healthy = true
 }
 
 func (s *state) GetLeaderCount() int {

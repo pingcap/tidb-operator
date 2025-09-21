@@ -237,7 +237,7 @@ func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, g features.Gates) *c
 			mounts = append(mounts, *mount)
 			slowLogMount = mount
 		}
-		slowLogContainer = buildSlowLogContainer(tidb, slowLogMount)
+		slowLogContainer = buildSlowLogContainer(tidb, slowLogMount, g)
 	}
 
 	sleepSeconds := defaultPreStopSleepSeconds
@@ -386,12 +386,25 @@ func defaultSlowLogVolumeAndMount() (*corev1.Volume, *corev1.VolumeMount) {
 		}
 }
 
-func buildSlowLogContainer(tidb *v1alpha1.TiDB, mount *corev1.VolumeMount) *corev1.Container {
+func buildSlowLogContainer(tidb *v1alpha1.TiDB, mount *corev1.VolumeMount, fg features.Gates) *corev1.Container {
 	slowlogFile := path.Join(mount.MountPath, v1alpha1.FileNameTiDBSlowLog)
 	img := image.Helper.Image(nil)
 
 	if tidb.Spec.SlowLog != nil {
 		img = image.Helper.Image(tidb.Spec.SlowLog.Image)
+	}
+
+	cmd := []string{
+		"sh",
+		"-c",
+	}
+
+	if fg.Enabled(metav1alpha1.TerminableLogTailer) {
+		// 1. Need to trap TERM or the sidecar container cannot be terminated
+		// 2. Need to sleep 3 to avoid losing last logs
+		cmd = append(cmd, fmt.Sprintf(`trap "sleep 3; exit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, slowlogFile, slowlogFile))
+	} else {
+		cmd = append(cmd, fmt.Sprintf("touch %s; tail -n0 -F %s;", slowlogFile, slowlogFile))
 	}
 
 	restartPolicy := corev1.ContainerRestartPolicyAlways // sidecar container in `initContainers`
@@ -400,11 +413,7 @@ func buildSlowLogContainer(tidb *v1alpha1.TiDB, mount *corev1.VolumeMount) *core
 		Image:         img,
 		RestartPolicy: &restartPolicy,
 		VolumeMounts:  []corev1.VolumeMount{*mount},
-		Command: []string{
-			"sh",
-			"-c",
-			fmt.Sprintf("touch %s; tail -n0 -F %s;", slowlogFile, slowlogFile),
-		},
+		Command:       cmd,
 	}
 	if tidb.Spec.SlowLog != nil {
 		c.Resources = k8s.GetResourceRequirements(tidb.Spec.SlowLog.Resources)

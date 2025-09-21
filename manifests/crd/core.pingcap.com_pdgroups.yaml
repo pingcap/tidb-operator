@@ -110,6 +110,7 @@ spec:
                   - UsePDReadyAPI
                   - SessionTokenSigning
                   - ClusterSubdomain
+                  - TerminableLogTailer
                   type: string
                 type: array
               replicas:

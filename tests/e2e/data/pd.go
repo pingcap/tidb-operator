@@ -69,3 +69,10 @@ replica-schedule-limit = 8
 `
 	}
 }
+
+func WithPDNextGen() GroupPatch[*runtime.PDGroup] {
+	return func(obj *runtime.PDGroup) {
+		obj.Spec.Template.Spec.Version = "v9.0.0"
+		obj.Spec.Template.Spec.Image = ptr.To(defaultImageRegistry + "pd:master-next-gen")
+	}
+}

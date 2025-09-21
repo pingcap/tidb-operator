@@ -38,7 +38,7 @@ var _ = ginkgo.Describe("StandBy", label.TiDB, label.KindNextGen, func() {
 		metav1alpha1.ClusterSubdomain,
 	))
 
-	ginkgo.PIt("Adopt", label.P1, func(ctx context.Context) {
+	ginkgo.It("Adopt", label.P1, func(ctx context.Context) {
 		pdg := f.MustCreatePD(ctx,
 			data.WithGroupImage[*runtime.PDGroup]("gcr.io/pingcap-public/dbaas/pd:master-next-gen"),
 		)
@@ -49,7 +49,6 @@ var _ = ginkgo.Describe("StandBy", label.TiDB, label.KindNextGen, func() {
 		dbg := f.MustCreateTiDB(ctx,
 			data.WithGroupName[*runtime.TiDBGroup]("system"),
 			data.WithGroupImage[*runtime.TiDBGroup]("gcr.io/pingcap-public/dbaas/tidb:master-next-gen"),
-			data.WithTiDBCommandProbe(),
 			// system keyspace
 			data.WithKeyspace("SYSTEM"),
 		)
@@ -63,7 +62,6 @@ var _ = ginkgo.Describe("StandBy", label.TiDB, label.KindNextGen, func() {
 		standby := f.MustCreateTiDB(ctx,
 			data.WithGroupName[*runtime.TiDBGroup]("standby-tidb"),
 			data.WithGroupImage[*runtime.TiDBGroup]("gcr.io/pingcap-public/dbaas/tidb:master-next-gen"),
-			data.WithTiDBCommandProbe(),
 			data.WithReplicas[*runtime.TiDBGroup](2),
 			data.WithTiDBStandbyMode(),
 		)
@@ -73,7 +71,6 @@ var _ = ginkgo.Describe("StandBy", label.TiDB, label.KindNextGen, func() {
 		another := f.MustCreateTiDB(ctx,
 			data.WithGroupName[*runtime.TiDBGroup]("user"),
 			data.WithGroupImage[*runtime.TiDBGroup]("gcr.io/pingcap-public/dbaas/tidb:master-next-gen"),
-			data.WithTiDBCommandProbe(),
 			// system keyspace
 			data.WithKeyspace("SYSTEM"),
 		)
