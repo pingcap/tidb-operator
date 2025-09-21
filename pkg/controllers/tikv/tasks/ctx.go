@@ -18,12 +18,14 @@ import (
 	"context"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/timanager"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
 
 type ReconcileContext struct {
@@ -35,6 +37,11 @@ type ReconcileContext struct {
 
 	Store    *pdv1.Store
 	PDSynced bool
+
+	// IsStoreReady will be set only when pd is synced and the store is ok
+	// It may be outdated so the tikv is healthy only when the pod is also available
+	// If it's true and the pod is ready but not available, the operator will retry to avoid unexpectedly missing next reconciliation
+	IsStoreReady bool
 }
 
 func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task.Task {
@@ -65,7 +72,10 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		state.SetLeaderCount(s.LeaderCount)
 		state.SetRegionCount(s.RegionCount)
 		state.SetStoreBusy(s.IsBusy)
-		state.SetHealthy()
+		state.IsStoreReady = IsStoreReady(state)
+		if state.IsStoreReady && statefulset.IsPodAvailable(state.Pod(), minReadySeconds, metav1.Now()) {
+			state.SetHealthy()
+		}
 
 		// TODO: cache evict leader scheduler info, then we don't need to check suspend here
 		if coreutil.ShouldSuspendCompute(state.Cluster()) {
