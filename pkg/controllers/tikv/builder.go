@@ -42,6 +42,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			tasks.TaskFinalizerDel(state, r.Client),
 		),
 
+		// get pod and check whether the cluster is suspending
+		common.TaskContextPod[scope.TiKV](state, r.Client),
 		// get info from pd
 		tasks.TaskContextInfoFromPD(state, r.PDClientManager),
 
@@ -53,8 +55,6 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		tasks.TaskOfflineStore(state),
 		common.TaskFinalizerAdd[scope.TiKV](state, r.Client),
-		// get pod and check whether the cluster is suspending
-		common.TaskContextPod[scope.TiKV](state, r.Client),
 
 		// check whether the cluster is suspending
 		// if cluster is suspending, we cannot handle any tikv deletion
