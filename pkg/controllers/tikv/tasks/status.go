@@ -18,7 +18,6 @@ import (
 	"context"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -74,10 +73,9 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 			}
 		}
 
-		// pod available cannot be watched so that we have to retry immediately
-		retry, waitTime := waitTimeForAvailable(pod)
-		if !ready && retry {
-			return task.Retry(waitTime).With("pod is not ready more than 15s, retry")
+		// pod available cannot be watched so that we have to retry
+		if !ready && state.IsStoreReady && pod != nil && statefulset.IsPodReady(pod) {
+			return task.Retry(minReadySeconds * time.Second).With("pod is not ready more than 15s, retry")
 		}
 
 		if state.IsPodTerminating() {
@@ -131,26 +129,4 @@ func syncLeadersEvictedCond(tikv *v1alpha1.TiKV, store *pdv1.Store, isEvicting b
 		Reason:             reason,
 		Message:            msg,
 	})
-}
-
-func waitTimeForAvailable(pod *corev1.Pod) (bool, time.Duration) {
-	if pod == nil {
-		return false, 0
-	}
-	cond := statefulset.GetPodReadyCondition(&pod.Status)
-	if cond == nil {
-		return false, 0
-	}
-	if cond.Status != corev1.ConditionTrue {
-		return false, 0
-	}
-	d := time.Since(cond.LastTransitionTime.Time)
-	if d > minReadySeconds+minReadySecondsJitter {
-		return false, 0
-	}
-	if d > minReadySeconds {
-		return true, 0
-	}
-
-	return true, minReadySeconds - d
 }
