@@ -181,7 +181,8 @@ e2e-examples:
 	./hack/e2e-examples.sh
 
 gocovmerge:
-	GOBIN=$(shell pwd)/bin/ $(GO) install github.com/zhouqiang-cl/gocovmerge@latest
+	mkdir -p bin
+	$(GO_BUILD) -o bin/gocovmerge ./pkg/third_party/gocovmerge
 
 fault-trigger:
 	$(GO_BUILD) -ldflags '$(LDFLAGS)' -o tests/images/fault-trigger/bin/fault-trigger tests/cmd/fault-trigger/*.go
