@@ -848,7 +848,7 @@ func TestDoubleCheckCommandChangeReset(t *testing.T) {
 
 	// Change command to resume (by setting start command but making backup appear paused)
 	backup.Spec.LogSubcommand = v1alpha1.LogStartCommand
-	backup.Status.Phase = v1alpha1.BackupRunning // This will make ParseLogBackupSubcommand return LogResumeCommand
+	backup.Status.Phase = v1alpha1.BackupPaused // This will make ParseLogBackupSubcommand return LogResumeCommand
 	// Update state to show paused (still inconsistent with resume)
 	dep.state = &LogBackupState{
 		InfoExists:    true,
