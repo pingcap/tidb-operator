@@ -31,19 +31,22 @@ const (
 )
 
 const (
+	ReasonUnknown = "Unknown"
 	// Ready means all managed resources are ready.
 	// NOTE: It does not mean all managed resources are up to date.
 	//
 	// condition
-	CondReady = "Ready"
+	CondRunning = "Running"
+	CondReady   = "Ready"
 	// reason for both
-	ReasonReady   = "Ready"
-	ReasonUnready = "Unready"
+	ReasonReady   = CondReady
+	ReasonRunning = CondRunning
 	// reason for group
 	ReasonNotAllInstancesReady = "NotAllInstancesReady"
 	// reason for instance
 	ReasonPodNotCreated      = "PodNotCreated"
 	ReasonPodNotReady        = "PodNotReady"
+	ReasonPodNotRunning      = "PodNotRunning"
 	ReasonPodTerminating     = "PodTerminating"
 	ReasonInstanceNotHealthy = "InstanceNotHealthy"
 
@@ -51,13 +54,16 @@ const (
 	// nothing need to do in controller but only status updation.
 	CondSynced = "Synced"
 	// reason for both
-	ReasonSynced   = "Synced"
-	ReasonUnsynced = "Unsynced"
+	ReasonSynced = CondSynced
 	// reason for group
 	ReasonNotAllInstancesUpToDate = "NotAllInstancesUpToDate"
 	// reason for instance
 	ReasonPodNotUpToDate = "PodNotUpToDate"
 	ReasonPodNotDeleted  = "PodNotDeleted"
+
+	// Deprecated: not used anymore
+	ReasonUnready  = "Unready"
+	ReasonUnsynced = "Unsynced"
 )
 
 const (

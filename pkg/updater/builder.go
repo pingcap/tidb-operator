@@ -65,7 +65,7 @@ func (b *builder[T, O, R]) Build() Executor {
 	update, outdated, beingOffline, deleted := split(b.instances, b.rev)
 
 	updatePolicies := b.updatePreferPolicies
-	updatePolicies = append(updatePolicies, PreferUnavailable[R]())
+	updatePolicies = append(updatePolicies, PreferNotRunning[R](), PreferUnready[R]())
 	actor := &actor[T, O, R]{
 		c: b.c,
 		f: b.f,
@@ -78,14 +78,22 @@ func (b *builder[T, O, R]) Build() Executor {
 		deleted:      NewState(deleted),
 
 		addHooks:    b.addHooks,
-		updateHooks: append(b.updateHooks, KeepName[R](), KeepTopology[R]()),
+		updateHooks: append(b.updateHooks, KeepName[R](), KeepTopology[R](), KeepResourceVersion[R]()),
 		delHooks:    b.delHooks,
 
 		scaleInSelector: NewSelector(b.scaleInPreferPolicies...),
 		updateSelector:  NewSelector(updatePolicies...),
 	}
-	return NewExecutor(actor, len(update), len(outdated), b.desired,
-		countUnavailable(update), countUnavailable(outdated), b.maxSurge, b.maxUnavailable)
+	return NewExecutor(
+		actor,
+		len(update),
+		len(outdated),
+		b.desired,
+		countUnavailableUpdate(update),
+		countUnavailableOutdated(outdated),
+		b.maxSurge,
+		b.maxUnavailable,
+	)
 }
 
 func New[T runtime.Tuple[O, R], O client.Object, R runtime.Instance]() Builder[R] {
@@ -185,10 +193,23 @@ func split[R runtime.Instance](all []R, rev string) (update, outdated, beingOffl
 	return update, outdated, beingOffline, deleted
 }
 
-func countUnavailable[R runtime.Instance](all []R) int {
+// All update but unready instance will be counted as unavailable.
+func countUnavailableUpdate[R runtime.Instance](all []R) int {
 	unavailable := 0
 	for _, instance := range all {
 		if !instance.IsReady() || !instance.IsUpToDate() {
+			unavailable++
+		}
+	}
+
+	return unavailable
+}
+
+// If an instance is outdated, it will be counted as unavailable only when it's not running
+func countUnavailableOutdated[R runtime.Instance](all []R) int {
+	unavailable := 0
+	for _, instance := range all {
+		if instance.IsNotRunning() {
 			unavailable++
 		}
 	}

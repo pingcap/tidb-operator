@@ -65,6 +65,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskInstanceConditionSuspended[scope.TiKV](state),
 			common.TaskInstanceConditionSynced[scope.TiKV](state),
 			common.TaskInstanceConditionReady[scope.TiKV](state),
+			common.TaskInstanceConditionRunning[scope.TiKV](state),
 			common.TaskStatusPersister[scope.TiKV](state, r.Client),
 		),
 
@@ -80,6 +81,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.If(PDIsSynced(state),
 			common.TaskInstanceConditionReady[scope.TiKV](state),
 		),
+		common.TaskInstanceConditionRunning[scope.TiKV](state),
 		tasks.TaskStatus(state, r.Client),
 	)
 

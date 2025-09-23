@@ -49,6 +49,41 @@ func Unsuspended() *metav1.Condition {
 	}
 }
 
+func Running() *metav1.Condition {
+	return &metav1.Condition{
+		Type:    v1alpha1.CondRunning,
+		Status:  metav1.ConditionTrue,
+		Reason:  v1alpha1.ReasonRunning,
+		Message: "pod is running",
+	}
+}
+
+func NotRunning(reason, detail string) *metav1.Condition {
+	var msg string
+	switch reason {
+	case v1alpha1.ReasonPodNotCreated:
+		msg = "pod of the instance does not exist"
+	case v1alpha1.ReasonPodNotRunning:
+		msg = "pod of the instance is not running"
+	case v1alpha1.ReasonPodTerminating:
+		msg = "pod of the instance is terminating"
+	default:
+		msg = fmt.Sprintf("not running because of unknown reason: %s", reason)
+		reason = v1alpha1.ReasonUnknown
+	}
+
+	if detail != "" {
+		msg = fmt.Sprintf("%s, detail: %s", msg, detail)
+	}
+
+	return &metav1.Condition{
+		Type:    v1alpha1.CondRunning,
+		Status:  metav1.ConditionFalse,
+		Reason:  reason,
+		Message: msg,
+	}
+}
+
 func Ready() *metav1.Condition {
 	return &metav1.Condition{
 		Type:    v1alpha1.CondReady,
@@ -73,7 +108,7 @@ func Unready(reason string) *metav1.Condition {
 		msg = "instance is not probed as healthy"
 	default:
 		msg = fmt.Sprintf("unready because of unknown reason: %s", reason)
-		reason = v1alpha1.ReasonUnready
+		reason = v1alpha1.ReasonUnknown
 	}
 
 	return &metav1.Condition{
@@ -104,7 +139,7 @@ func Unsynced(reason string) *metav1.Condition {
 		msg = "cluster is suspending or instance is deleting, pod still exists"
 	default:
 		msg = fmt.Sprintf("unsynced because of unknown reason: %s", reason)
-		reason = v1alpha1.ReasonUnsynced
+		reason = v1alpha1.ReasonUnknown
 	}
 	return &metav1.Condition{
 		Type:    v1alpha1.CondSynced,
@@ -112,4 +147,15 @@ func Unsynced(reason string) *metav1.Condition {
 		Reason:  reason,
 		Message: msg,
 	}
+}
+
+func SprintCondition(cond *metav1.Condition) string {
+	return fmt.Sprintf("%s: %v, reason: %s, message: %s, last transition time: %v, generation: %d",
+		cond.Type,
+		cond.Status,
+		cond.Reason,
+		cond.Message,
+		cond.LastTransitionTime,
+		cond.ObservedGeneration,
+	)
 }

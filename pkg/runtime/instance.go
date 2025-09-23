@@ -32,7 +32,10 @@ type Instance interface {
 	SetTopology(topo v1alpha1.Topology)
 
 	GetUpdateRevision() string
+	// IsReady means the instance is ready to serve
 	IsReady() bool
+	// IsNotRunning means the pod of this instance is not running
+	IsNotRunning() bool
 	// IsUpToDate means all resources managed by the instance is up to date
 	// NOTE: It does not mean the instance is updated to the newest revision
 	// TODO: may be change a more meaningful name?

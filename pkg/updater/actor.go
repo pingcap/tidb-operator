@@ -216,18 +216,22 @@ func (act *actor[T, O, R]) ScaleInUpdate(ctx context.Context) (bool, error) {
 // It operates on the "outdated" state collection which contains instances with older revisions.
 // Uses deferred deletion by default to ensure data safety during rolling updates.
 func (act *actor[T, O, R]) ScaleInOutdated(ctx context.Context) (bool, error) {
-	return act.scaleInOutdated(ctx, true)
+	return act.scaleInOutdated(ctx, "", true)
 }
 
-func (act *actor[T, O, R]) scaleInOutdated(ctx context.Context, deferDel bool) (bool, error) {
+func (act *actor[T, O, R]) scaleInOutdated(ctx context.Context, name string, deferDel bool) (bool, error) {
 	logger := logr.FromContextOrDiscard(ctx)
-	name, err := act.chooseToScaleIn(act.outdated.List())
-	if err != nil {
-		return false, err
+	if name == "" {
+		choosed, err := act.chooseToScaleIn(act.outdated.List())
+		if err != nil {
+			return false, err
+		}
+
+		name = choosed
 	}
 
 	obj := act.outdated.Del(name)
-	isUnavailable := !obj.IsReady() || !obj.IsUpToDate()
+	isUnavailable := obj.IsNotRunning()
 
 	logger.Info("act scale in outdated",
 		"selected", name, "defer", deferDel, "isUnavailable", isUnavailable, "remain", act.outdated.Len())
@@ -309,8 +313,13 @@ func (act *actor[T, O, R]) deferDelete(ctx context.Context, obj R) error {
 // - Scales out a new instance to replace it
 func (act *actor[T, O, R]) Update(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
+	name, err := act.chooseToUpdate(act.outdated.List())
+	if err != nil {
+		return err
+	}
+
 	if act.noInPlaceUpdate {
-		if _, err := act.scaleInOutdated(ctx, false); err != nil {
+		if _, err := act.scaleInOutdated(ctx, name, false); err != nil {
 			return err
 		}
 		if err := act.ScaleOut(ctx); err != nil {
@@ -318,11 +327,6 @@ func (act *actor[T, O, R]) Update(ctx context.Context) error {
 		}
 
 		return nil
-	}
-
-	name, err := act.chooseToUpdate(act.outdated.List())
-	if err != nil {
-		return err
 	}
 
 	outdated := act.outdated.Del(name)
