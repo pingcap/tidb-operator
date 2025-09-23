@@ -16,6 +16,7 @@ package backup
 import (
 	"encoding/binary"
 	"encoding/json"
+	"sync"
 	"testing"
 	"time"
 
@@ -28,48 +29,232 @@ import (
 func TestQueryAllLogBackupKeys(t *testing.T) {
 	bt := &backupTracker{}
 	
-	// Create mock etcd client
-	mockClient := &mockPDEtcdClient{
-		getResponse: map[string][]*pdapi.KeyValue{
-			"/tidb/br-stream/checkpoint/test-backup": {
-				{Value: encodeUint64(123456789)},
+	t.Run("all keys exist", func(t *testing.T) {
+		// Create mock etcd client
+		mockClient := &mockPDEtcdClient{
+			getResponse: map[string][]*pdapi.KeyValue{
+				"/tidb/br-stream/checkpoint/test-backup": {
+					{Value: encodeUint64(123456789)},
+				},
+				"/tidb/br-stream/info/test-backup": {
+					{Value: []byte("info")},
+				},
+				"/tidb/br-stream/pause/test-backup": {
+					{Value: []byte("")}, // V1 pause format (manual)
+				},
+				"/tidb/br-stream/last-error/test-backup": {},
 			},
-			"/tidb/br-stream/info/test-backup": {
-				{Value: []byte("info")},
+		}
+		
+		// Test batch query
+		state, err := bt.queryAllLogBackupKeys(mockClient, "test-backup")
+		if err != nil {
+			t.Fatalf("queryAllLogBackupKeys failed: %v", err)
+		}
+		
+		// Verify results
+		if state.CheckpointTS != 123456789 {
+			t.Errorf("expected CheckpointTS 123456789, got %d", state.CheckpointTS)
+		}
+		
+		if !state.InfoExists {
+			t.Error("expected InfoExists to be true")
+		}
+		
+		if !state.IsPaused {
+			t.Error("expected IsPaused to be true")
+		}
+		
+		if state.PauseReason != "manual" {
+			t.Errorf("expected PauseReason 'manual', got %s", state.PauseReason)
+		}
+		
+		if state.KernelState != LogBackupKernelPaused {
+			t.Errorf("expected KernelState paused, got %s", state.KernelState)
+		}
+	})
+	
+	t.Run("no keys exist", func(t *testing.T) {
+		// All keys return empty
+		mockClient := &mockPDEtcdClient{
+			getResponse: map[string][]*pdapi.KeyValue{
+				"/tidb/br-stream/checkpoint/test-backup": {},
+				"/tidb/br-stream/info/test-backup": {},
+				"/tidb/br-stream/pause/test-backup": {},
+				"/tidb/br-stream/last-error/test-backup": {},
 			},
-			"/tidb/br-stream/pause/test-backup": {
-				{Value: []byte("")}, // V1 pause format (manual)
+		}
+		
+		state, err := bt.queryAllLogBackupKeys(mockClient, "test-backup")
+		if err != nil {
+			t.Fatalf("queryAllLogBackupKeys failed: %v", err)
+		}
+		
+		// Verify defaults
+		if state.CheckpointTS != 0 {
+			t.Errorf("expected CheckpointTS 0, got %d", state.CheckpointTS)
+		}
+		
+		if state.InfoExists {
+			t.Error("expected InfoExists to be false")
+		}
+		
+		if state.IsPaused {
+			t.Error("expected IsPaused to be false")
+		}
+		
+		if state.PauseReason != "" {
+			t.Errorf("expected empty PauseReason, got %s", state.PauseReason)
+		}
+		
+		if state.KernelState != LogBackupKernelRunning {
+			t.Errorf("expected KernelState running, got %s", state.KernelState)
+		}
+	})
+	
+	t.Run("partial keys missing", func(t *testing.T) {
+		// Only checkpoint and info exist
+		mockClient := &mockPDEtcdClient{
+			getResponse: map[string][]*pdapi.KeyValue{
+				"/tidb/br-stream/checkpoint/test-backup": {
+					{Value: encodeUint64(999999)},
+				},
+				"/tidb/br-stream/info/test-backup": {
+					{Value: []byte("info")},
+				},
+				"/tidb/br-stream/pause/test-backup": {},
+				"/tidb/br-stream/last-error/test-backup": {},
 			},
-			"/tidb/br-stream/last-error/test-backup": {},
-		},
-	}
+		}
+		
+		state, err := bt.queryAllLogBackupKeys(mockClient, "test-backup")
+		if err != nil {
+			t.Fatalf("queryAllLogBackupKeys failed: %v", err)
+		}
+		
+		if state.CheckpointTS != 999999 {
+			t.Errorf("expected CheckpointTS 999999, got %d", state.CheckpointTS)
+		}
+		
+		if !state.InfoExists {
+			t.Error("expected InfoExists to be true")
+		}
+		
+		if state.IsPaused {
+			t.Error("expected IsPaused to be false when pause key missing")
+		}
+		
+		if state.KernelState != LogBackupKernelRunning {
+			t.Errorf("expected KernelState running when not paused, got %s", state.KernelState)
+		}
+	})
 	
-	// Test batch query
-	state, err := bt.queryAllLogBackupKeys(mockClient, "test-backup")
-	if err != nil {
-		t.Fatalf("queryAllLogBackupKeys failed: %v", err)
-	}
+	t.Run("checkpoint zero value", func(t *testing.T) {
+		mockClient := &mockPDEtcdClient{
+			getResponse: map[string][]*pdapi.KeyValue{
+				"/tidb/br-stream/checkpoint/test-backup": {
+					{Value: encodeUint64(0)},
+				},
+				"/tidb/br-stream/info/test-backup": {
+					{Value: []byte("info")},
+				},
+			},
+		}
+		
+		state, err := bt.queryAllLogBackupKeys(mockClient, "test-backup")
+		if err != nil {
+			t.Fatalf("queryAllLogBackupKeys failed: %v", err)
+		}
+		
+		if state.CheckpointTS != 0 {
+			t.Errorf("expected CheckpointTS 0, got %d", state.CheckpointTS)
+		}
+	})
 	
-	// Verify results
-	if state.CheckpointTS != 123456789 {
-		t.Errorf("expected CheckpointTS 123456789, got %d", state.CheckpointTS)
-	}
+	t.Run("checkpoint max value", func(t *testing.T) {
+		maxUint64 := uint64(^uint64(0))
+		mockClient := &mockPDEtcdClient{
+			getResponse: map[string][]*pdapi.KeyValue{
+				"/tidb/br-stream/checkpoint/test-backup": {
+					{Value: encodeUint64(maxUint64)},
+				},
+			},
+		}
+		
+		state, err := bt.queryAllLogBackupKeys(mockClient, "test-backup")
+		if err != nil {
+			t.Fatalf("queryAllLogBackupKeys failed: %v", err)
+		}
+		
+		if state.CheckpointTS != maxUint64 {
+			t.Errorf("expected CheckpointTS %d, got %d", maxUint64, state.CheckpointTS)
+		}
+	})
 	
-	if !state.InfoExists {
-		t.Error("expected InfoExists to be true")
-	}
+	t.Run("invalid checkpoint data", func(t *testing.T) {
+		mockClient := &mockPDEtcdClient{
+			getResponse: map[string][]*pdapi.KeyValue{
+				"/tidb/br-stream/checkpoint/test-backup": {
+					{Value: []byte("invalid")}, // Not 8 bytes
+				},
+			},
+		}
+		
+		state, err := bt.queryAllLogBackupKeys(mockClient, "test-backup")
+		if err != nil {
+			t.Fatalf("queryAllLogBackupKeys failed: %v", err)
+		}
+		
+		// Should handle gracefully, checkpoint stays 0
+		if state.CheckpointTS != 0 {
+			t.Errorf("expected CheckpointTS 0 for invalid data, got %d", state.CheckpointTS)
+		}
+	})
 	
-	if !state.IsPaused {
-		t.Error("expected IsPaused to be true")
-	}
-	
-	if state.PauseReason != "manual" {
-		t.Errorf("expected PauseReason 'manual', got %s", state.PauseReason)
-	}
-	
-	if state.KernelState != LogBackupKernelPaused {
-		t.Errorf("expected KernelState paused, got %s", state.KernelState)
-	}
+	t.Run("concurrent queries simulation", func(t *testing.T) {
+		// Track query order to verify concurrency
+		var queriedKeys []string
+		var mu sync.Mutex
+		
+		mockClient := &mockPDEtcdClientWithTracking{
+			getResponse: map[string][]*pdapi.KeyValue{
+				"/tidb/br-stream/checkpoint/test-backup": {
+					{Value: encodeUint64(123)},
+				},
+				"/tidb/br-stream/info/test-backup": {
+					{Value: []byte("info")},
+				},
+				"/tidb/br-stream/pause/test-backup": {},
+				"/tidb/br-stream/last-error/test-backup": {},
+			},
+			onGet: func(key string) {
+				mu.Lock()
+				queriedKeys = append(queriedKeys, key)
+				mu.Unlock()
+				// Simulate some processing time
+				time.Sleep(10 * time.Millisecond)
+			},
+		}
+		
+		state, err := bt.queryAllLogBackupKeys(mockClient, "test-backup")
+		if err != nil {
+			t.Fatalf("queryAllLogBackupKeys failed: %v", err)
+		}
+		
+		// Verify all keys were queried
+		if len(queriedKeys) != 4 {
+			t.Errorf("expected 4 queries, got %d", len(queriedKeys))
+		}
+		
+		// Verify state is correct despite concurrent queries
+		if state.CheckpointTS != 123 {
+			t.Errorf("expected CheckpointTS 123, got %d", state.CheckpointTS)
+		}
+		
+		if !state.InfoExists {
+			t.Error("expected InfoExists to be true")
+		}
+	})
 }
 
 func TestGetLogBackupKernelState(t *testing.T) {
@@ -120,7 +305,7 @@ func TestParsePauseReason(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "empty data (V1 manual)",
+			name:     "V1 manual pause (empty data)",
 			rawData:  []byte(""),
 			expected: "manual",
 		},
@@ -128,12 +313,169 @@ func TestParsePauseReason(t *testing.T) {
 			name: "V2 manual pause",
 			rawData: func() []byte {
 				pauseInfo := PauseV2Info{
-					Severity: SeverityManual,
+					Severity:         SeverityManual,
+					OperatorHostName: "test-host",
+					OperatorPID:      1234,
+					OperationTime:    time.Now(),
 				}
 				data, _ := json.Marshal(pauseInfo)
 				return data
 			}(),
 			expected: "manual",
+		},
+		{
+			name: "V2 error pause with text/plain",
+			rawData: func() []byte {
+				pauseInfo := PauseV2Info{
+					Severity:      SeverityError,
+					PayloadType:   "text/plain",
+					Payload:       []byte("Storage connection failed"),
+					OperationTime: time.Now(),
+				}
+				data, _ := json.Marshal(pauseInfo)
+				return data
+			}(),
+			expected: "Storage connection failed",
+		},
+		{
+			name: "V2 error pause with text/plain charset",
+			rawData: func() []byte {
+				pauseInfo := PauseV2Info{
+					Severity:      SeverityError,
+					PayloadType:   "text/plain; charset=utf-8",
+					Payload:       []byte("Disk full error"),
+					OperationTime: time.Now(),
+				}
+				data, _ := json.Marshal(pauseInfo)
+				return data
+			}(),
+			expected: "Disk full error",
+		},
+		{
+			name: "V2 error pause with protobuf",
+			rawData: func() []byte {
+				// Create a StreamBackupError
+				errorData := StreamBackupError{
+					HappenAt:     uint64(time.Now().Unix() * 1000),
+					ErrorCode:    "BR_001",
+					ErrorMessage: "Failed to backup: disk full",
+					StoreId:      5,
+				}
+				errorBytes, _ := json.Marshal(errorData)
+				
+				pauseInfo := PauseV2Info{
+					Severity:      SeverityError,
+					PayloadType:   "application/x-protobuf; messagetype=brpb.StreamBackupError",
+					Payload:       errorBytes,
+					OperationTime: time.Now(),
+				}
+				data, _ := json.Marshal(pauseInfo)
+				return data
+			}(),
+			expected: "Paused by error(store 5): Failed to backup: disk full",
+		},
+		{
+			name: "V2 invalid JSON",
+			rawData: []byte("{invalid json}"),
+			expected: "unknown",
+		},
+		{
+			name: "V2 error with unsupported payload type",
+			rawData: func() []byte {
+				pauseInfo := PauseV2Info{
+					Severity:      SeverityError,
+					PayloadType:   "application/xml",
+					Payload:       []byte("<error>test</error>"),
+					OperationTime: time.Now(),
+				}
+				data, _ := json.Marshal(pauseInfo)
+				return data
+			}(),
+			expected: "error",
+		},
+		{
+			name: "V2 protobuf without messagetype",
+			rawData: func() []byte {
+				pauseInfo := PauseV2Info{
+					Severity:      SeverityError,
+					PayloadType:   "application/x-protobuf",
+					Payload:       []byte("some data"),
+					OperationTime: time.Now(),
+				}
+				data, _ := json.Marshal(pauseInfo)
+				return data
+			}(),
+			expected: "error",
+		},
+		{
+			name: "V2 protobuf with wrong messagetype",
+			rawData: func() []byte {
+				pauseInfo := PauseV2Info{
+					Severity:      SeverityError,
+					PayloadType:   "application/x-protobuf; messagetype=other.Type",
+					Payload:       []byte("some data"),
+					OperationTime: time.Now(),
+				}
+				data, _ := json.Marshal(pauseInfo)
+				return data
+			}(),
+			expected: "error",
+		},
+		{
+			name: "V2 protobuf with invalid error data",
+			rawData: func() []byte {
+				pauseInfo := PauseV2Info{
+					Severity:      SeverityError,
+					PayloadType:   "application/x-protobuf; messagetype=brpb.StreamBackupError",
+					Payload:       []byte("invalid protobuf data"),
+					OperationTime: time.Now(),
+				}
+				data, _ := json.Marshal(pauseInfo)
+				return data
+			}(),
+			expected: "error",
+		},
+		{
+			name: "V2 error with empty payload",
+			rawData: func() []byte {
+				pauseInfo := PauseV2Info{
+					Severity:      SeverityError,
+					PayloadType:   "text/plain",
+					Payload:       []byte(""),
+					OperationTime: time.Now(),
+				}
+				data, _ := json.Marshal(pauseInfo)
+				return data
+			}(),
+			expected: "",
+		},
+		{
+			name: "V2 error with invalid mime type",
+			rawData: func() []byte {
+				pauseInfo := PauseV2Info{
+					Severity:      SeverityError,
+					PayloadType:   "not a valid mime type",
+					Payload:       []byte("test"),
+					OperationTime: time.Now(),
+				}
+				data, _ := json.Marshal(pauseInfo)
+				return data
+			}(),
+			expected: "error",
+		},
+		{
+			name: "V2 unknown severity",
+			rawData: func() []byte {
+				pauseInfo := PauseV2Info{
+					Severity:      "UNKNOWN",
+					PayloadType:   "text/plain",
+					Payload:       []byte("test message"),
+					OperationTime: time.Now(),
+				}
+				data, _ := json.Marshal(pauseInfo)
+				return data
+			}(),
+			expected: "test message",
 		},
 	}
 	
@@ -141,7 +483,7 @@ func TestParsePauseReason(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := bt.parsePauseReason(tt.rawData)
 			if result != tt.expected {
-				t.Errorf("expected %s, got %s", tt.expected, result)
+				t.Errorf("expected %q, got %q", tt.expected, result)
 			}
 		})
 	}
@@ -187,6 +529,45 @@ func encodeUint64(val uint64) []byte {
 	return buf
 }
 
+// mockPDEtcdClientWithTracking is a mock client that tracks Get calls
+type mockPDEtcdClientWithTracking struct {
+	getResponse map[string][]*pdapi.KeyValue
+	getError    error
+	onGet       func(key string)
+}
+
+func (m *mockPDEtcdClientWithTracking) Get(key string, recursive bool) ([]*pdapi.KeyValue, error) {
+	if m.onGet != nil {
+		m.onGet(key)
+	}
+	
+	if m.getError != nil {
+		return nil, m.getError
+	}
+	
+	if kvs, exists := m.getResponse[key]; exists {
+		return kvs, nil
+	}
+	
+	return []*pdapi.KeyValue{}, nil
+}
+
+func (m *mockPDEtcdClientWithTracking) PutKey(key, value string) error {
+	return nil
+}
+
+func (m *mockPDEtcdClientWithTracking) PutTTLKey(key, value string, ttl int64) error {
+	return nil
+}
+
+func (m *mockPDEtcdClientWithTracking) DeleteKey(key string) error {
+	return nil
+}
+
+func (m *mockPDEtcdClientWithTracking) Close() error {
+	return nil
+}
+
 func TestDoubleCheckInconsistencyMechanism(t *testing.T) {
 	bt := &backupTracker{
 		logBackups: make(map[string]*trackDepends),
@@ -203,7 +584,7 @@ func TestDoubleCheckInconsistencyMechanism(t *testing.T) {
 			LogSubcommand: v1alpha1.LogPauseCommand,
 		},
 		Status: v1alpha1.BackupStatus{
-			Phase: v1alpha1.BackupRunning, // Command completed, status updated
+			Phase: v1alpha1.BackupPaused, // Command completed, status updated
 		},
 	}
 	
@@ -343,6 +724,64 @@ func (m *mockStatusUpdater) Update(backup *v1alpha1.Backup, condition *v1alpha1.
 	return nil
 }
 
+func TestTryParseCheckpoint(t *testing.T) {
+	tests := []struct {
+		name     string
+		data     []byte
+		expected uint64
+	}{
+		{
+			name:     "valid 8-byte data",
+			data:     encodeUint64(123456789),
+			expected: 123456789,
+		},
+		{
+			name:     "zero value",
+			data:     encodeUint64(0),
+			expected: 0,
+		},
+		{
+			name:     "max uint64",
+			data:     encodeUint64(^uint64(0)),
+			expected: ^uint64(0),
+		},
+		{
+			name:     "empty data",
+			data:     []byte{},
+			expected: 0,
+		},
+		{
+			name:     "too short (7 bytes)",
+			data:     []byte{1, 2, 3, 4, 5, 6, 7},
+			expected: 0,
+		},
+		{
+			name:     "too long (9 bytes)",
+			data:     []byte{1, 2, 3, 4, 5, 6, 7, 8, 9},
+			expected: 0,
+		},
+		{
+			name:     "invalid string data",
+			data:     []byte("invalid"),
+			expected: 0,
+		},
+		{
+			name:     "nil data",
+			data:     nil,
+			expected: 0,
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tryParseCheckpoint(tt.data)
+			if result != tt.expected {
+				t.Errorf("tryParseCheckpoint(%v) = %d, want %d", tt.data, result, tt.expected)
+			}
+		})
+	}
+}
+
 func TestDoubleCheckCommandChangeReset(t *testing.T) {
 	bt := &backupTracker{
 		logBackups: make(map[string]*trackDepends),
@@ -409,7 +848,7 @@ func TestDoubleCheckCommandChangeReset(t *testing.T) {
 	
 	// Change command to resume (by setting start command but making backup appear paused)
 	backup.Spec.LogSubcommand = v1alpha1.LogStartCommand
-	backup.Status.Phase = v1alpha1.BackupPaused // This will make ParseLogBackupSubcommand return LogResumeCommand
+	backup.Status.Phase = v1alpha1.BackupRunning // This will make ParseLogBackupSubcommand return LogResumeCommand
 	// Update state to show paused (still inconsistent with resume)
 	dep.state = &LogBackupState{
 		InfoExists:    true,
