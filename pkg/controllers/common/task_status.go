@@ -105,7 +105,7 @@ func TaskInstanceConditionSuspended[
 	})
 }
 
-func isPodRunning(state PodState, comp string) (isRunning bool, reason string, msg string) {
+func isPodRunning(state PodState, comp string) (isRunning bool, reason, msg string) {
 	pod := state.Pod()
 	switch {
 	case pod == nil:
