@@ -1111,7 +1111,6 @@ func (bm *backupManager) skipSnapshotBackupSync(backup *v1alpha1.Backup) (bool, 
 	return false, nil
 }
 
-
 // skipLogBackupSync skips log backup, returns true if it can be skipped.
 func (bm *backupManager) skipLogBackupSync(backup *v1alpha1.Backup) (bool, error) {
 	if backup.Spec.Mode != v1alpha1.BackupModeLog {

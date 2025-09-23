@@ -76,7 +76,7 @@ type LogBackupState struct {
 type BackupTracker interface {
 	StartTrackLogBackupProgress(backup *v1alpha1.Backup) error
 	GetLogBackupTC(backup *v1alpha1.Backup) (*v1alpha1.TidbCluster, error)
-	
+
 	// New methods for unified state management
 	GetLogBackupState(backup *v1alpha1.Backup) (*LogBackupState, error)
 	SyncLogBackupState(backup *v1alpha1.Backup) (bool, error)
@@ -99,12 +99,12 @@ type backupTracker struct {
 // trackDepends is the tracker depends, such as tidb cluster info.
 type trackDepends struct {
 	tc                    *v1alpha1.TidbCluster
-	state                 *LogBackupState      // cached state
-	etcdClient            pdapi.PDEtcdClient   // reused etcd client
-	lastRefresh           time.Time            // last refresh timestamp
-	inconsistencyDetected bool                 // flag to track if inconsistency was detected in previous reconcile
+	state                 *LogBackupState            // cached state
+	etcdClient            pdapi.PDEtcdClient         // reused etcd client
+	lastRefresh           time.Time                  // last refresh timestamp
+	inconsistencyDetected bool                       // flag to track if inconsistency was detected in previous reconcile
 	lastCommand           v1alpha1.LogSubCommandType // last synced command to avoid cross-command interference
-	mutex                 sync.RWMutex         // protect concurrent access
+	mutex                 sync.RWMutex               // protect concurrent access
 }
 
 // NewBackupTracker returns a BackupTracker
@@ -184,7 +184,7 @@ func (bt *backupTracker) StartTrackLogBackupProgress(backup *v1alpha1.Backup) er
 func (bt *backupTracker) removeLogBackup(ns, name string) {
 	bt.operateLock.Lock()
 	defer bt.operateLock.Unlock()
-	
+
 	logkey := genLogBackupKey(ns, name)
 	if dep, exist := bt.logBackups[logkey]; exist {
 		// Close etcd client if exists
@@ -227,18 +227,18 @@ func (bt *backupTracker) GetLogBackupTC(backup *v1alpha1.Backup) (*v1alpha1.Tidb
 func (bt *backupTracker) refreshLogBackupProgress(ns, name string) {
 	ticker := time.NewTicker(refreshCheckpointTsPeriod)
 	defer ticker.Stop()
-	
+
 	logkey := genLogBackupKey(ns, name)
 
 	for range ticker.C {
 		bt.operateLock.RLock()
 		dep, exist := bt.logBackups[logkey]
 		bt.operateLock.RUnlock()
-		
+
 		if !exist {
 			return
 		}
-		
+
 		// Get Backup CR
 		backup, err := bt.deps.BackupLister.Backups(ns).Get(name)
 		if errors.IsNotFound(err) {
@@ -250,21 +250,21 @@ func (bt *backupTracker) refreshLogBackupProgress(ns, name string) {
 			klog.Infof("get log backup %s/%s error %v, will skip to the next time", ns, name, err)
 			continue
 		}
-		
+
 		// Check if should stop tracking
-		if backup.DeletionTimestamp != nil || 
-		   backup.Status.Phase == v1alpha1.BackupComplete ||
-		   backup.Status.Phase == v1alpha1.BackupStopped {
+		if backup.DeletionTimestamp != nil ||
+			backup.Status.Phase == v1alpha1.BackupComplete ||
+			backup.Status.Phase == v1alpha1.BackupStopped {
 			klog.Infof("log backup %s/%s is being deleted/complete/stopped, will remove %s from tracker", ns, name, logkey)
 			bt.removeLogBackup(ns, name)
 			return
 		}
-		
+
 		if backup.Status.Phase != v1alpha1.BackupRunning {
 			klog.Infof("log backup %s/%s is not running, will skip to the next time refresh", ns, name)
 			continue
 		}
-		
+
 		// Use the new unified refresh logic
 		bt.doRefreshLogBackupState(backup, dep)
 	}
@@ -274,7 +274,7 @@ func (bt *backupTracker) refreshLogBackupProgress(ns, name string) {
 func (bt *backupTracker) doRefreshLogBackupState(backup *v1alpha1.Backup, dep *trackDepends) {
 	ns := backup.Namespace
 	name := backup.Name
-	
+
 	// Get or create etcd client
 	if dep.etcdClient == nil {
 		etcdCli, err := bt.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(dep.tc.Namespace), dep.tc.Name,
@@ -285,19 +285,19 @@ func (bt *backupTracker) doRefreshLogBackupState(backup *v1alpha1.Backup, dep *t
 		}
 		dep.etcdClient = etcdCli
 	}
-	
+
 	// Query all keys from etcd
 	state, err := bt.queryAllLogBackupKeys(dep.etcdClient, name)
 	if err != nil {
 		klog.Errorf("refresh log backup %s/%s state failed: %v", ns, name, err)
 		return
 	}
-	
+
 	// Update cache
 	dep.mutex.Lock()
 	dep.state = state
 	dep.lastRefresh = time.Now()
-	
+
 	// Check if previously marked inconsistency has been resolved
 	if dep.inconsistencyDetected && dep.lastCommand != "" {
 		// Verify if current state is consistent with the recorded command
@@ -308,14 +308,14 @@ func (bt *backupTracker) doRefreshLogBackupState(backup *v1alpha1.Backup, dep *t
 			klog.V(4).Infof("log backup %s/%s inconsistency auto-resolved during refresh", ns, name)
 		}
 	}
-	
+
 	dep.mutex.Unlock()
-	
+
 	// Only update checkpoint here, state sync will be handled by SyncLogBackupState if needed
 	if state.CheckpointTS > 0 {
 		ckTS := strconv.FormatUint(state.CheckpointTS, 10)
 		klog.V(4).Infof("update log backup %s/%s checkpointTS %s", ns, name, ckTS)
-		
+
 		updateStatus := &controller.BackupUpdateStatus{
 			LogCheckpointTs: &ckTS,
 			TimeSynced:      &metav1.Time{Time: time.Now()},
@@ -332,21 +332,20 @@ func genLogBackupKey(ns, name string) string {
 	return fmt.Sprintf("%s.%s", ns, name)
 }
 
-
 // GetLogBackupState gets the cached state or queries from etcd
 func (bt *backupTracker) GetLogBackupState(backup *v1alpha1.Backup) (*LogBackupState, error) {
 	ns := backup.Namespace
 	name := backup.Name
 	logkey := genLogBackupKey(ns, name)
-	
+
 	bt.operateLock.RLock()
 	dep, exist := bt.logBackups[logkey]
 	bt.operateLock.RUnlock()
-	
+
 	if !exist {
 		return nil, fmt.Errorf("log backup %s/%s not found in tracker", ns, name)
 	}
-	
+
 	// Check cache validity with read lock
 	dep.mutex.RLock()
 	if dep.state != nil && time.Since(dep.lastRefresh) < refreshCheckpointTsPeriod {
@@ -357,7 +356,7 @@ func (bt *backupTracker) GetLogBackupState(backup *v1alpha1.Backup) (*LogBackupS
 		return state, nil
 	}
 	dep.mutex.RUnlock()
-	
+
 	// State is stale, need to refresh
 	return bt.RefreshLogBackupState(backup)
 }
@@ -367,15 +366,15 @@ func (bt *backupTracker) RefreshLogBackupState(backup *v1alpha1.Backup) (*LogBac
 	ns := backup.Namespace
 	name := backup.Name
 	logkey := genLogBackupKey(ns, name)
-	
+
 	bt.operateLock.RLock()
 	dep, exist := bt.logBackups[logkey]
 	bt.operateLock.RUnlock()
-	
+
 	if !exist {
 		return nil, fmt.Errorf("log backup %s/%s not found in tracker", ns, name)
 	}
-	
+
 	// Get or create etcd client
 	if dep.etcdClient == nil {
 		etcdCli, err := bt.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(dep.tc.Namespace), dep.tc.Name,
@@ -385,19 +384,19 @@ func (bt *backupTracker) RefreshLogBackupState(backup *v1alpha1.Backup) (*LogBac
 		}
 		dep.etcdClient = etcdCli
 	}
-	
+
 	// Query all keys from etcd
 	state, err := bt.queryAllLogBackupKeys(dep.etcdClient, name)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Update cache
 	dep.mutex.Lock()
 	dep.state = state
 	dep.lastRefresh = time.Now()
 	dep.mutex.Unlock()
-	
+
 	return state, nil
 }
 
@@ -406,22 +405,22 @@ func (bt *backupTracker) SyncLogBackupState(backup *v1alpha1.Backup) (bool, erro
 	ns := backup.Namespace
 	name := backup.Name
 	logkey := genLogBackupKey(ns, name)
-	
+
 	// Get dependency
 	bt.operateLock.RLock()
 	dep, exist := bt.logBackups[logkey]
 	bt.operateLock.RUnlock()
-	
+
 	if !exist {
 		return false, fmt.Errorf("log backup %s/%s not found in tracker", ns, name)
 	}
-	
+
 	// Get the current state
 	state, err := bt.GetLogBackupState(backup)
 	if err != nil {
 		return false, err
 	}
-	
+
 	// Check if info key exists
 	if !state.InfoExists {
 		command := v1alpha1.ParseLogBackupSubcommand(backup)
@@ -432,12 +431,12 @@ func (bt *backupTracker) SyncLogBackupState(backup *v1alpha1.Backup) (bool, erro
 		// For other commands, key not existing is an error
 		return false, fmt.Errorf("log backup key not found")
 	}
-	
+
 	// Handle error pause
 	if state.IsPaused && state.PauseReason != "" && state.PauseReason != "manual" {
 		command := v1alpha1.ParseLogBackupSubcommand(backup)
 		klog.Errorf("log backup %s/%s is paused due to error: %s", ns, name, state.PauseReason)
-		
+
 		bt.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 			Command: command,
 			Type:    v1alpha1.BackupRetryTheFailed,
@@ -447,41 +446,41 @@ func (bt *backupTracker) SyncLogBackupState(backup *v1alpha1.Backup) (bool, erro
 		}, &controller.BackupUpdateStatus{
 			TimeSynced: &metav1.Time{Time: time.Now()},
 		})
-		
+
 		return false, fmt.Errorf("log backup paused due to error: %s", state.PauseReason)
 	}
-	
+
 	// Check state consistency with double-check mechanism
 	expectedCommand := v1alpha1.ParseLogBackupSubcommand(backup)
 	isConsistent := isCommandConsistentWithKernelState(expectedCommand, state.KernelState)
-	
+
 	// Lock to protect inconsistencyDetected flag and command tracking
 	dep.mutex.Lock()
 	defer dep.mutex.Unlock()
-	
+
 	// Reset inconsistency flag if command changed to avoid cross-command interference
 	if dep.lastCommand != expectedCommand {
 		if dep.inconsistencyDetected {
-			klog.V(4).Infof("log backup %s/%s command changed from %s to %s, resetting inconsistency flag", 
+			klog.V(4).Infof("log backup %s/%s command changed from %s to %s, resetting inconsistency flag",
 				ns, name, dep.lastCommand, expectedCommand)
 		}
 		dep.inconsistencyDetected = false
 		dep.lastCommand = expectedCommand
 	}
-	
+
 	if !isConsistent {
 		if !dep.inconsistencyDetected {
 			// First time detecting inconsistency for this command - flag it but don't correct yet
 			dep.inconsistencyDetected = true
-			klog.V(4).Infof("log backup %s/%s inconsistency detected (expected=%s, kernel=%s), will verify next reconcile", 
+			klog.V(4).Infof("log backup %s/%s inconsistency detected (expected=%s, kernel=%s), will verify next reconcile",
 				ns, name, expectedCommand, state.KernelState)
 			return true, nil // Skip correction this time
 		} else {
 			// Second time still inconsistent for same command - confirmed real issue, need to correct
 			actualCommand := getCommandForKernelState(state.KernelState)
-			klog.Infof("log backup %s/%s persistent inconsistency confirmed, correcting from %s to %s", 
+			klog.Infof("log backup %s/%s persistent inconsistency confirmed, correcting from %s to %s",
 				ns, name, expectedCommand, actualCommand)
-			
+
 			bt.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
 				Command: actualCommand,
 				Type:    v1alpha1.BackupComplete,
@@ -491,7 +490,7 @@ func (bt *backupTracker) SyncLogBackupState(backup *v1alpha1.Backup) (bool, erro
 			}, &controller.BackupUpdateStatus{
 				TimeSynced: &metav1.Time{Time: time.Now()},
 			})
-			
+
 			dep.inconsistencyDetected = false // Clear flag after correction
 		}
 	} else {
@@ -502,10 +501,10 @@ func (bt *backupTracker) SyncLogBackupState(backup *v1alpha1.Backup) (bool, erro
 			dep.inconsistencyDetected = false
 		}
 	}
-	
+
 	// Note: Checkpoint update is handled by refreshLogBackupProgress periodically
 	// We don't update it here to avoid duplicate updates
-	
+
 	return true, nil
 }
 
@@ -514,10 +513,10 @@ func (bt *backupTracker) StopTrackLogBackupProgress(backup *v1alpha1.Backup) {
 	ns := backup.Namespace
 	name := backup.Name
 	logkey := genLogBackupKey(ns, name)
-	
+
 	bt.operateLock.Lock()
 	defer bt.operateLock.Unlock()
-	
+
 	if dep, exist := bt.logBackups[logkey]; exist {
 		// Close etcd client if exists
 		if dep.etcdClient != nil {
@@ -541,7 +540,7 @@ func (bt *backupTracker) queryAllLogBackupKeys(client pdapi.PDEtcdClient, name s
 	state := &LogBackupState{
 		LastQueryTime: time.Now(),
 	}
-	
+
 	// Define all keys to query
 	keys := map[string]string{
 		"checkpoint": path.Join(streamKeyPrefix, taskCheckpointPath, name),
@@ -549,17 +548,17 @@ func (bt *backupTracker) queryAllLogBackupKeys(client pdapi.PDEtcdClient, name s
 		"pause":      path.Join(streamKeyPrefix, taskPausePath, name),
 		"error":      path.Join(streamKeyPrefix, taskLastErrorPath, name),
 	}
-	
+
 	// Query results channel
 	type queryResult struct {
-		key   string
-		kvs   []*pdapi.KeyValue
-		err   error
+		key string
+		kvs []*pdapi.KeyValue
+		err error
 	}
-	
+
 	resultCh := make(chan queryResult, len(keys))
 	var wg sync.WaitGroup
-	
+
 	// Launch parallel queries
 	for keyType, keyPath := range keys {
 		wg.Add(1)
@@ -569,10 +568,10 @@ func (bt *backupTracker) queryAllLogBackupKeys(client pdapi.PDEtcdClient, name s
 			resultCh <- queryResult{key: kt, kvs: kvs, err: err}
 		}(keyType, keyPath)
 	}
-	
+
 	wg.Wait()
 	close(resultCh)
-	
+
 	// Process query results
 	for result := range resultCh {
 		if result.err != nil {
@@ -580,7 +579,7 @@ func (bt *backupTracker) queryAllLogBackupKeys(client pdapi.PDEtcdClient, name s
 			// Don't fail on individual key errors, continue processing
 			continue
 		}
-		
+
 		switch result.key {
 		case "checkpoint":
 			if len(result.kvs) > 0 {
@@ -600,10 +599,10 @@ func (bt *backupTracker) queryAllLogBackupKeys(client pdapi.PDEtcdClient, name s
 			}
 		}
 	}
-	
+
 	// Derive kernel state
 	state.KernelState = getLogBackupKernelState(state.IsPaused)
-	
+
 	return state, nil
 }
 
@@ -613,25 +612,25 @@ func (bt *backupTracker) parsePauseReason(rawData []byte) string {
 		// V1 pause format - manual pause
 		return "manual"
 	}
-	
+
 	// V2 pause format - parse JSON
 	pauseInfo, err := NewPauseV2Info(rawData)
 	if err != nil {
 		klog.Warningf("failed to parse pause info: %v", err)
 		return "unknown"
 	}
-	
+
 	if pauseInfo.Severity == SeverityManual {
 		return "manual"
 	}
-	
+
 	// Parse error message for error pause
 	errMsg, err := pauseInfo.ParseError()
 	if err != nil {
 		klog.Warningf("failed to parse pause error: %v", err)
 		return "error"
 	}
-	
+
 	return errMsg
 }
 
