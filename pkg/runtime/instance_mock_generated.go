@@ -431,6 +431,20 @@ func (mr *MockInstanceMockRecorder) GetUpdateRevision() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUpdateRevision", reflect.TypeOf((*MockInstance)(nil).GetUpdateRevision))
 }
 
+// IsNotRunning mocks base method.
+func (m *MockInstance) IsNotRunning() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsNotRunning")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsNotRunning indicates an expected call of IsNotRunning.
+func (mr *MockInstanceMockRecorder) IsNotRunning() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsNotRunning", reflect.TypeOf((*MockInstance)(nil).IsNotRunning))
+}
+
 // IsOffline mocks base method.
 func (m *MockInstance) IsOffline() bool {
 	m.ctrl.T.Helper()

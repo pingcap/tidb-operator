@@ -42,6 +42,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			tasks.TaskFinalizerDel(state, r.Client),
 			common.TaskInstanceConditionSynced[scope.ReplicationWorker](state),
 			common.TaskInstanceConditionReady[scope.ReplicationWorker](state),
+			common.TaskInstanceConditionRunning[scope.ReplicationWorker](state),
 			common.TaskStatusPersister[scope.ReplicationWorker](state, r.Client),
 		),
 		common.TaskFinalizerAdd[scope.ReplicationWorker](state, r.Client),
@@ -55,6 +56,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskInstanceConditionSuspended[scope.ReplicationWorker](state),
 			common.TaskInstanceConditionSynced[scope.ReplicationWorker](state),
 			common.TaskInstanceConditionReady[scope.ReplicationWorker](state),
+			common.TaskInstanceConditionRunning[scope.ReplicationWorker](state),
 			common.TaskStatusPersister[scope.ReplicationWorker](state, r.Client),
 		),
 
@@ -63,6 +65,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskPod(state, r.Client),
 		common.TaskInstanceConditionSynced[scope.ReplicationWorker](state),
 		common.TaskInstanceConditionReady[scope.ReplicationWorker](state),
+		common.TaskInstanceConditionRunning[scope.ReplicationWorker](state),
 		tasks.TaskStatus(state, r.Client),
 	)
 

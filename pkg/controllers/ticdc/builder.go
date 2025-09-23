@@ -41,6 +41,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			// TODO(liubo02): if the finalizer has been removed, no need to update status
 			common.TaskInstanceConditionSynced[scope.TiCDC](state),
 			common.TaskInstanceConditionReady[scope.TiCDC](state),
+			common.TaskInstanceConditionRunning[scope.TiCDC](state),
 			common.TaskStatusPersister[scope.TiCDC](state, r.Client),
 		),
 		common.TaskFinalizerAdd[scope.TiCDC](state, r.Client),
@@ -52,6 +53,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskInstanceConditionSuspended[scope.TiCDC](state),
 			common.TaskInstanceConditionSynced[scope.TiCDC](state),
 			common.TaskInstanceConditionReady[scope.TiCDC](state),
+			common.TaskInstanceConditionRunning[scope.TiCDC](state),
 			common.TaskStatusPersister[scope.TiCDC](state, r.Client),
 		),
 
@@ -62,6 +64,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskPod(state, r.Client),
 		common.TaskInstanceConditionSynced[scope.TiCDC](state),
 		common.TaskInstanceConditionReady[scope.TiCDC](state),
+		common.TaskInstanceConditionRunning[scope.TiCDC](state),
 		tasks.TaskStatus(state, r.Client),
 	)
 

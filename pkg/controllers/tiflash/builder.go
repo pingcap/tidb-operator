@@ -61,6 +61,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskInstanceConditionSuspended[scope.TiFlash](state),
 			common.TaskInstanceConditionSynced[scope.TiFlash](state),
 			common.TaskInstanceConditionReady[scope.TiFlash](state),
+			common.TaskInstanceConditionRunning[scope.TiFlash](state),
 			common.TaskStatusPersister[scope.TiFlash](state, r.Client),
 		),
 
@@ -75,6 +76,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.If(PDIsSynced(state),
 			common.TaskInstanceConditionReady[scope.TiFlash](state),
 		),
+		common.TaskInstanceConditionRunning[scope.TiFlash](state),
 		tasks.TaskStatus(state, r.Client),
 	)
 

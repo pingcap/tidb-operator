@@ -114,6 +114,17 @@ func (in *ReplicationWorker) IsReady() bool {
 	return cond.Status == metav1.ConditionTrue
 }
 
+func (in *ReplicationWorker) IsNotRunning() bool {
+	cond := meta.FindStatusCondition(in.Status.Conditions, v1alpha1.CondRunning)
+	if cond == nil {
+		return false
+	}
+	if cond.ObservedGeneration != in.GetGeneration() {
+		return false
+	}
+	return cond.Status == metav1.ConditionFalse
+}
+
 func (in *ReplicationWorker) IsUpToDate() bool {
 	return in.Status.ObservedGeneration == in.GetGeneration() && in.GetUpdateRevision() == in.Status.CurrentRevision
 }

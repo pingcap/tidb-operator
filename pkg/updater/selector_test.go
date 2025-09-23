@@ -46,7 +46,7 @@ func TestSelector(t *testing.T) {
 		{
 			desc: "prefer unavailable",
 			ps: []PreferPolicy[*runtime.PD]{
-				PreferUnavailable[*runtime.PD](),
+				PreferUnready[*runtime.PD](),
 			},
 			allowed: []*runtime.PD{
 				fakePD("aaa", true),
