@@ -33,7 +33,9 @@ issues:
     - path: tests
       linters:
         - gosec
-    
+    - path: pkg/third_party
+      linters:
+        - gosimple
     - linters:
         - staticcheck
       text: "SA1019:" # Rule: Using a deprecated function, variable, constant or field
