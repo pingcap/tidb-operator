@@ -528,6 +528,14 @@ func (bt *backupTracker) StopTrackLogBackupProgress(backup *v1alpha1.Backup) {
 	}
 }
 
+// tryParseCheckpoint safely parses checkpoint data, returns 0 if invalid
+func tryParseCheckpoint(data []byte) uint64 {
+	if len(data) != 8 {
+		return 0
+	}
+	return binary.BigEndian.Uint64(data)
+}
+
 // queryAllLogBackupKeys queries all log backup related keys from etcd in parallel
 func (bt *backupTracker) queryAllLogBackupKeys(client pdapi.PDEtcdClient, name string) (*LogBackupState, error) {
 	state := &LogBackupState{
@@ -576,7 +584,7 @@ func (bt *backupTracker) queryAllLogBackupKeys(client pdapi.PDEtcdClient, name s
 		switch result.key {
 		case "checkpoint":
 			if len(result.kvs) > 0 {
-				state.CheckpointTS = binary.BigEndian.Uint64(result.kvs[0].Value)
+				state.CheckpointTS = tryParseCheckpoint(result.kvs[0].Value)
 			}
 		case "info":
 			state.InfoExists = len(result.kvs) > 0
