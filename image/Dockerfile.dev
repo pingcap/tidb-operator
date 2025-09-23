@@ -1,0 +1,45 @@
+# Development Dockerfile for faster builds
+# This Dockerfile expects pre-compiled binaries from local build
+FROM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS tidb-operator
+
+WORKDIR /
+
+# Copy pre-compiled binary from local build (relative to build context root)
+COPY _output/bin/tidb-operator tidb-operator
+
+USER 65532:65532
+
+ENTRYPOINT ["/tidb-operator"]
+
+FROM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS prestop-checker
+
+WORKDIR /
+
+# Copy pre-compiled binary from local build
+COPY _output/bin/prestop-checker prestop-checker
+
+USER 65532:65532
+
+ENTRYPOINT ["/prestop-checker"]
+
+FROM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS testing-workload
+
+WORKDIR /
+
+# Copy pre-compiled binary from local build
+COPY _output/bin/testing-workload testing-workload
+
+USER 65532:65532
+
+ENTRYPOINT ["/testing-workload"]
+
+FROM ghcr.io/pingcap-qe/bases/pingcap-base:v1.9.2 AS tidb-backup-manager
+
+WORKDIR /
+
+# Copy pre-compiled binary from local build
+COPY _output/bin/tidb-backup-manager tidb-backup-manager
+
+USER 65532:65532
+
+ENTRYPOINT ["/tidb-backup-manager"]

@@ -38,12 +38,48 @@ build/%:
 .PHONY: image
 image: $(addprefix image/,$(ALL_CMD))
 image/%:
+ifeq ($(DEV_MODE),true)
+	@echo "Building dev image for $*..."
+	@$(MAKE) dev-prepare-output
+	@if [ ! -f "$(BIN_DIR)/$*" ]; then \
+		echo "Binary $(BIN_DIR)/$* not found, building..."; \
+		$(ROOT)/hack/build.sh $*; \
+	fi
+	$(ROOT)/hack/image.sh $* --dockerfile=Dockerfile.dev --dockerignore=.dockerignore.dev
+else
 	$(ROOT)/hack/image.sh $*
+endif
 
 .PHONY: push
 push: $(addprefix push/,$(ALL_CMD))
 push/%:
+ifeq ($(DEV_MODE),true)
+	@echo "Building and pushing dev image for $*..."
+	@$(MAKE) dev-prepare-output
+	@if [ ! -f "$(BIN_DIR)/$*" ]; then \
+		echo "Binary $(BIN_DIR)/$* not found, building..."; \
+		$(ROOT)/hack/build.sh $*; \
+	fi
+	$(ROOT)/hack/image.sh $* --dockerfile=Dockerfile.dev --dockerignore=.dockerignore.dev --push
+else
 	$(ROOT)/hack/image.sh $* --push
+endif
+
+# Ensure _output directory is a real directory with binaries, not a symlink
+.PHONY: dev-prepare-output
+dev-prepare-output:
+	@if [ -L "$(OUTPUT_DIR)" ]; then \
+		REAL_PATH=$$(readlink "$(OUTPUT_DIR)"); \
+		echo "Converting $(OUTPUT_DIR) symlink to real directory for Docker build..."; \
+		rm "$(OUTPUT_DIR)"; \
+		mkdir -p "$(OUTPUT_DIR)"; \
+		if [ -d "$$REAL_PATH" ]; then \
+			cp -r "$$REAL_PATH"/* "$(OUTPUT_DIR)"/; \
+		fi; \
+	elif [ ! -d "$(OUTPUT_DIR)" ]; then \
+		echo "Creating $(OUTPUT_DIR) directory..."; \
+		mkdir -p "$(OUTPUT_DIR)"; \
+	fi
 
 .PHONY: deploy
 deploy: release
