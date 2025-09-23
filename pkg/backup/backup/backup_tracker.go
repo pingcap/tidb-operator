@@ -62,7 +62,7 @@ type LogBackupState struct {
 	InfoExists   bool   // whether the info key exists in etcd
 
 	// Derived state information
-	KernelState     LogBackupKernelState       // kernel state (running/paused)
+	KernelState LogBackupKernelState // kernel state (running/paused)
 
 	// Metadata
 	LastQueryTime time.Time // last query timestamp
