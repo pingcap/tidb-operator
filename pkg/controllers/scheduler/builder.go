@@ -42,6 +42,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			tasks.TaskFinalizerDel(state, r.Client),
 			common.TaskInstanceConditionSynced[scope.Scheduler](state),
 			common.TaskInstanceConditionReady[scope.Scheduler](state),
+			common.TaskInstanceConditionRunning[scope.Scheduler](state),
 			common.TaskStatusPersister[scope.Scheduler](state, r.Client),
 		),
 		common.TaskFinalizerAdd[scope.Scheduler](state, r.Client),
@@ -55,6 +56,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskInstanceConditionSuspended[scope.Scheduler](state),
 			common.TaskInstanceConditionSynced[scope.Scheduler](state),
 			common.TaskInstanceConditionReady[scope.Scheduler](state),
+			common.TaskInstanceConditionRunning[scope.Scheduler](state),
 			common.TaskStatusPersister[scope.Scheduler](state, r.Client),
 		),
 
@@ -63,6 +65,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskPod(state, r.Client),
 		common.TaskInstanceConditionSynced[scope.Scheduler](state),
 		common.TaskInstanceConditionReady[scope.Scheduler](state),
+		common.TaskInstanceConditionRunning[scope.Scheduler](state),
 		tasks.TaskStatus(state, r.Client),
 	)
 
