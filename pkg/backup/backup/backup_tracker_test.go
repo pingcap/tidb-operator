@@ -28,7 +28,7 @@ import (
 
 func TestQueryAllLogBackupKeys(t *testing.T) {
 	bt := &backupTracker{}
-	
+
 	t.Run("all keys exist", func(t *testing.T) {
 		// Create mock etcd client
 		mockClient := &mockPDEtcdClient{
@@ -45,73 +45,73 @@ func TestQueryAllLogBackupKeys(t *testing.T) {
 				"/tidb/br-stream/last-error/test-backup": {},
 			},
 		}
-		
+
 		// Test batch query
 		state, err := bt.queryAllLogBackupKeys(mockClient, "test-backup")
 		if err != nil {
 			t.Fatalf("queryAllLogBackupKeys failed: %v", err)
 		}
-		
+
 		// Verify results
 		if state.CheckpointTS != 123456789 {
 			t.Errorf("expected CheckpointTS 123456789, got %d", state.CheckpointTS)
 		}
-		
+
 		if !state.InfoExists {
 			t.Error("expected InfoExists to be true")
 		}
-		
+
 		if !state.IsPaused {
 			t.Error("expected IsPaused to be true")
 		}
-		
+
 		if state.PauseReason != "manual" {
 			t.Errorf("expected PauseReason 'manual', got %s", state.PauseReason)
 		}
-		
+
 		if state.KernelState != LogBackupKernelPaused {
 			t.Errorf("expected KernelState paused, got %s", state.KernelState)
 		}
 	})
-	
+
 	t.Run("no keys exist", func(t *testing.T) {
 		// All keys return empty
 		mockClient := &mockPDEtcdClient{
 			getResponse: map[string][]*pdapi.KeyValue{
 				"/tidb/br-stream/checkpoint/test-backup": {},
-				"/tidb/br-stream/info/test-backup": {},
-				"/tidb/br-stream/pause/test-backup": {},
+				"/tidb/br-stream/info/test-backup":       {},
+				"/tidb/br-stream/pause/test-backup":      {},
 				"/tidb/br-stream/last-error/test-backup": {},
 			},
 		}
-		
+
 		state, err := bt.queryAllLogBackupKeys(mockClient, "test-backup")
 		if err != nil {
 			t.Fatalf("queryAllLogBackupKeys failed: %v", err)
 		}
-		
+
 		// Verify defaults
 		if state.CheckpointTS != 0 {
 			t.Errorf("expected CheckpointTS 0, got %d", state.CheckpointTS)
 		}
-		
+
 		if state.InfoExists {
 			t.Error("expected InfoExists to be false")
 		}
-		
+
 		if state.IsPaused {
 			t.Error("expected IsPaused to be false")
 		}
-		
+
 		if state.PauseReason != "" {
 			t.Errorf("expected empty PauseReason, got %s", state.PauseReason)
 		}
-		
+
 		if state.KernelState != LogBackupKernelRunning {
 			t.Errorf("expected KernelState running, got %s", state.KernelState)
 		}
 	})
-	
+
 	t.Run("partial keys missing", func(t *testing.T) {
 		// Only checkpoint and info exist
 		mockClient := &mockPDEtcdClient{
@@ -122,33 +122,33 @@ func TestQueryAllLogBackupKeys(t *testing.T) {
 				"/tidb/br-stream/info/test-backup": {
 					{Value: []byte("info")},
 				},
-				"/tidb/br-stream/pause/test-backup": {},
+				"/tidb/br-stream/pause/test-backup":      {},
 				"/tidb/br-stream/last-error/test-backup": {},
 			},
 		}
-		
+
 		state, err := bt.queryAllLogBackupKeys(mockClient, "test-backup")
 		if err != nil {
 			t.Fatalf("queryAllLogBackupKeys failed: %v", err)
 		}
-		
+
 		if state.CheckpointTS != 999999 {
 			t.Errorf("expected CheckpointTS 999999, got %d", state.CheckpointTS)
 		}
-		
+
 		if !state.InfoExists {
 			t.Error("expected InfoExists to be true")
 		}
-		
+
 		if state.IsPaused {
 			t.Error("expected IsPaused to be false when pause key missing")
 		}
-		
+
 		if state.KernelState != LogBackupKernelRunning {
 			t.Errorf("expected KernelState running when not paused, got %s", state.KernelState)
 		}
 	})
-	
+
 	t.Run("checkpoint zero value", func(t *testing.T) {
 		mockClient := &mockPDEtcdClient{
 			getResponse: map[string][]*pdapi.KeyValue{
@@ -160,17 +160,17 @@ func TestQueryAllLogBackupKeys(t *testing.T) {
 				},
 			},
 		}
-		
+
 		state, err := bt.queryAllLogBackupKeys(mockClient, "test-backup")
 		if err != nil {
 			t.Fatalf("queryAllLogBackupKeys failed: %v", err)
 		}
-		
+
 		if state.CheckpointTS != 0 {
 			t.Errorf("expected CheckpointTS 0, got %d", state.CheckpointTS)
 		}
 	})
-	
+
 	t.Run("checkpoint max value", func(t *testing.T) {
 		maxUint64 := uint64(^uint64(0))
 		mockClient := &mockPDEtcdClient{
@@ -180,17 +180,17 @@ func TestQueryAllLogBackupKeys(t *testing.T) {
 				},
 			},
 		}
-		
+
 		state, err := bt.queryAllLogBackupKeys(mockClient, "test-backup")
 		if err != nil {
 			t.Fatalf("queryAllLogBackupKeys failed: %v", err)
 		}
-		
+
 		if state.CheckpointTS != maxUint64 {
 			t.Errorf("expected CheckpointTS %d, got %d", maxUint64, state.CheckpointTS)
 		}
 	})
-	
+
 	t.Run("invalid checkpoint data", func(t *testing.T) {
 		mockClient := &mockPDEtcdClient{
 			getResponse: map[string][]*pdapi.KeyValue{
@@ -199,23 +199,23 @@ func TestQueryAllLogBackupKeys(t *testing.T) {
 				},
 			},
 		}
-		
+
 		state, err := bt.queryAllLogBackupKeys(mockClient, "test-backup")
 		if err != nil {
 			t.Fatalf("queryAllLogBackupKeys failed: %v", err)
 		}
-		
+
 		// Should handle gracefully, checkpoint stays 0
 		if state.CheckpointTS != 0 {
 			t.Errorf("expected CheckpointTS 0 for invalid data, got %d", state.CheckpointTS)
 		}
 	})
-	
+
 	t.Run("concurrent queries simulation", func(t *testing.T) {
 		// Track query order to verify concurrency
 		var queriedKeys []string
 		var mu sync.Mutex
-		
+
 		mockClient := &mockPDEtcdClientWithTracking{
 			getResponse: map[string][]*pdapi.KeyValue{
 				"/tidb/br-stream/checkpoint/test-backup": {
@@ -224,7 +224,7 @@ func TestQueryAllLogBackupKeys(t *testing.T) {
 				"/tidb/br-stream/info/test-backup": {
 					{Value: []byte("info")},
 				},
-				"/tidb/br-stream/pause/test-backup": {},
+				"/tidb/br-stream/pause/test-backup":      {},
 				"/tidb/br-stream/last-error/test-backup": {},
 			},
 			onGet: func(key string) {
@@ -235,22 +235,22 @@ func TestQueryAllLogBackupKeys(t *testing.T) {
 				time.Sleep(10 * time.Millisecond)
 			},
 		}
-		
+
 		state, err := bt.queryAllLogBackupKeys(mockClient, "test-backup")
 		if err != nil {
 			t.Fatalf("queryAllLogBackupKeys failed: %v", err)
 		}
-		
+
 		// Verify all keys were queried
 		if len(queriedKeys) != 4 {
 			t.Errorf("expected 4 queries, got %d", len(queriedKeys))
 		}
-		
+
 		// Verify state is correct despite concurrent queries
 		if state.CheckpointTS != 123 {
 			t.Errorf("expected CheckpointTS 123, got %d", state.CheckpointTS)
 		}
-		
+
 		if !state.InfoExists {
 			t.Error("expected InfoExists to be true")
 		}
@@ -265,7 +265,7 @@ func TestGetLogBackupKernelState(t *testing.T) {
 		{true, LogBackupKernelPaused},
 		{false, LogBackupKernelRunning},
 	}
-	
+
 	for _, tt := range tests {
 		result := getLogBackupKernelState(tt.paused)
 		if result != tt.expected {
@@ -286,11 +286,11 @@ func TestIsCommandConsistentWithKernelState(t *testing.T) {
 		{v1alpha1.LogStartCommand, LogBackupKernelPaused, false},
 		{v1alpha1.LogPauseCommand, LogBackupKernelRunning, false},
 	}
-	
+
 	for _, tt := range tests {
 		result := isCommandConsistentWithKernelState(tt.command, tt.kernelState)
 		if result != tt.expected {
-			t.Errorf("isCommandConsistentWithKernelState(%s, %s) = %v, want %v", 
+			t.Errorf("isCommandConsistentWithKernelState(%s, %s) = %v, want %v",
 				tt.command, tt.kernelState, result, tt.expected)
 		}
 	}
@@ -298,7 +298,7 @@ func TestIsCommandConsistentWithKernelState(t *testing.T) {
 
 func TestParsePauseReason(t *testing.T) {
 	bt := &backupTracker{}
-	
+
 	tests := []struct {
 		name     string
 		rawData  []byte
@@ -362,7 +362,7 @@ func TestParsePauseReason(t *testing.T) {
 					StoreId:      5,
 				}
 				errorBytes, _ := json.Marshal(errorData)
-				
+
 				pauseInfo := PauseV2Info{
 					Severity:      SeverityError,
 					PayloadType:   "application/x-protobuf; messagetype=brpb.StreamBackupError",
@@ -375,8 +375,8 @@ func TestParsePauseReason(t *testing.T) {
 			expected: "Paused by error(store 5): Failed to backup: disk full",
 		},
 		{
-			name: "V2 invalid JSON",
-			rawData: []byte("{invalid json}"),
+			name:     "V2 invalid JSON",
+			rawData:  []byte("{invalid json}"),
 			expected: "unknown",
 		},
 		{
@@ -478,7 +478,7 @@ func TestParsePauseReason(t *testing.T) {
 			expected: "test message",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := bt.parsePauseReason(tt.rawData)
@@ -498,11 +498,11 @@ func (m *mockPDEtcdClient) Get(key string, recursive bool) ([]*pdapi.KeyValue, e
 	if m.getError != nil {
 		return nil, m.getError
 	}
-	
+
 	if kvs, exists := m.getResponse[key]; exists {
 		return kvs, nil
 	}
-	
+
 	return []*pdapi.KeyValue{}, nil
 }
 
@@ -540,15 +540,15 @@ func (m *mockPDEtcdClientWithTracking) Get(key string, recursive bool) ([]*pdapi
 	if m.onGet != nil {
 		m.onGet(key)
 	}
-	
+
 	if m.getError != nil {
 		return nil, m.getError
 	}
-	
+
 	if kvs, exists := m.getResponse[key]; exists {
 		return kvs, nil
 	}
-	
+
 	return []*pdapi.KeyValue{}, nil
 }
 
@@ -572,7 +572,7 @@ func TestDoubleCheckInconsistencyMechanism(t *testing.T) {
 	bt := &backupTracker{
 		logBackups: make(map[string]*trackDepends),
 	}
-	
+
 	// Create a test backup
 	backup := &v1alpha1.Backup{
 		ObjectMeta: metav1.ObjectMeta{
@@ -580,28 +580,28 @@ func TestDoubleCheckInconsistencyMechanism(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: v1alpha1.BackupSpec{
-			Mode: v1alpha1.BackupModeLog,
+			Mode:          v1alpha1.BackupModeLog,
 			LogSubcommand: v1alpha1.LogPauseCommand,
 		},
 		Status: v1alpha1.BackupStatus{
 			Phase: v1alpha1.BackupPaused, // Command completed, status updated
 		},
 	}
-	
+
 	// Add dependency to tracker with pre-cached state to avoid etcd calls
 	logkey := genLogBackupKey("default", "test-backup")
 	bt.logBackups[logkey] = &trackDepends{
 		tc: &v1alpha1.TidbCluster{}, // Mock TC to avoid nil pointer
 		state: &LogBackupState{
 			InfoExists:    true,
-			IsPaused:      false,              // Kernel state is still Running (old cache)
+			IsPaused:      false, // Kernel state is still Running (old cache)
 			KernelState:   LogBackupKernelRunning,
-			LastQueryTime: time.Now(),         // Fresh cache to avoid refresh
+			LastQueryTime: time.Now(), // Fresh cache to avoid refresh
 		},
-		lastRefresh:           time.Now(),     // Set fresh refresh time
+		lastRefresh:           time.Now(), // Set fresh refresh time
 		inconsistencyDetected: false,
 	}
-	
+
 	// Mock statusUpdater that tracks calls
 	updateCalls := 0
 	mockStatusUpdater := &mockStatusUpdater{
@@ -611,7 +611,7 @@ func TestDoubleCheckInconsistencyMechanism(t *testing.T) {
 		},
 	}
 	bt.statusUpdater = mockStatusUpdater
-	
+
 	// First call - should detect inconsistency but not correct
 	canSkip, err := bt.SyncLogBackupState(backup)
 	if err != nil {
@@ -623,7 +623,7 @@ func TestDoubleCheckInconsistencyMechanism(t *testing.T) {
 	if updateCalls != 0 {
 		t.Errorf("Expected no status update on first detection, got %d calls", updateCalls)
 	}
-	
+
 	// Check flag is set
 	bt.operateLock.RLock()
 	dep := bt.logBackups[logkey]
@@ -631,7 +631,7 @@ func TestDoubleCheckInconsistencyMechanism(t *testing.T) {
 	if !dep.inconsistencyDetected {
 		t.Error("Expected inconsistencyDetected to be true after first detection")
 	}
-	
+
 	// Second call with same inconsistent state - should correct
 	canSkip, err = bt.SyncLogBackupState(backup)
 	if err != nil {
@@ -643,7 +643,7 @@ func TestDoubleCheckInconsistencyMechanism(t *testing.T) {
 	if updateCalls != 1 {
 		t.Errorf("Expected 1 status update after correction, got %d calls", updateCalls)
 	}
-	
+
 	// Check flag is cleared
 	if dep.inconsistencyDetected {
 		t.Error("Expected inconsistencyDetected to be false after correction")
@@ -654,35 +654,35 @@ func TestDoubleCheckCacheDelayResolution(t *testing.T) {
 	bt := &backupTracker{
 		logBackups: make(map[string]*trackDepends),
 	}
-	
+
 	backup := &v1alpha1.Backup{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-backup",
 			Namespace: "default",
 		},
 		Spec: v1alpha1.BackupSpec{
-			Mode: v1alpha1.BackupModeLog,
+			Mode:          v1alpha1.BackupModeLog,
 			LogSubcommand: v1alpha1.LogPauseCommand,
 		},
 		Status: v1alpha1.BackupStatus{
 			Phase: v1alpha1.BackupPaused, // Command completed, status updated
 		},
 	}
-	
+
 	// Add dependency with inconsistency flag already set
 	logkey := genLogBackupKey("default", "test-backup")
 	bt.logBackups[logkey] = &trackDepends{
 		tc: &v1alpha1.TidbCluster{}, // Mock TC to avoid nil pointer
 		state: &LogBackupState{
 			InfoExists:    true,
-			IsPaused:      true,               // Cache refreshed, now consistent
+			IsPaused:      true, // Cache refreshed, now consistent
 			KernelState:   LogBackupKernelPaused,
-			LastQueryTime: time.Now(),         // Fresh cache to avoid refresh
+			LastQueryTime: time.Now(), // Fresh cache to avoid refresh
 		},
-		lastRefresh:           time.Now(),     // Set fresh refresh time
-		inconsistencyDetected: true, // Previously detected
+		lastRefresh:           time.Now(), // Set fresh refresh time
+		inconsistencyDetected: true,       // Previously detected
 	}
-	
+
 	updateCalls := 0
 	mockStatusUpdater := &mockStatusUpdater{
 		updateFunc: func(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, status *controller.BackupUpdateStatus) error {
@@ -691,7 +691,7 @@ func TestDoubleCheckCacheDelayResolution(t *testing.T) {
 		},
 	}
 	bt.statusUpdater = mockStatusUpdater
-	
+
 	// Call with consistent state - should resolve and clear flag
 	canSkip, err := bt.SyncLogBackupState(backup)
 	if err != nil {
@@ -703,7 +703,7 @@ func TestDoubleCheckCacheDelayResolution(t *testing.T) {
 	if updateCalls != 0 {
 		t.Errorf("Expected no status update when resolving cache delay, got %d calls", updateCalls)
 	}
-	
+
 	// Check flag is cleared
 	bt.operateLock.RLock()
 	dep := bt.logBackups[logkey]
@@ -771,7 +771,7 @@ func TestTryParseCheckpoint(t *testing.T) {
 			expected: 0,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tryParseCheckpoint(tt.data)
@@ -786,7 +786,7 @@ func TestDoubleCheckCommandChangeReset(t *testing.T) {
 	bt := &backupTracker{
 		logBackups: make(map[string]*trackDepends),
 	}
-	
+
 	// Create a test backup with initial pause command
 	backup := &v1alpha1.Backup{
 		ObjectMeta: metav1.ObjectMeta{
@@ -794,11 +794,11 @@ func TestDoubleCheckCommandChangeReset(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: v1alpha1.BackupSpec{
-			Mode: v1alpha1.BackupModeLog,
+			Mode:          v1alpha1.BackupModeLog,
 			LogSubcommand: v1alpha1.LogPauseCommand,
 		},
 	}
-	
+
 	// Add dependency with cache showing running state (inconsistent with pause)
 	logkey := genLogBackupKey("default", "test-backup")
 	bt.logBackups[logkey] = &trackDepends{
@@ -809,11 +809,11 @@ func TestDoubleCheckCommandChangeReset(t *testing.T) {
 			KernelState:   LogBackupKernelRunning,
 			LastQueryTime: time.Now(),
 		},
-		lastRefresh: time.Now(),
+		lastRefresh:           time.Now(),
 		inconsistencyDetected: false,
-		lastCommand: "", // No previous command
+		lastCommand:           "", // No previous command
 	}
-	
+
 	updateCalls := 0
 	mockStatusUpdater := &mockStatusUpdater{
 		updateFunc: func(backup *v1alpha1.Backup, condition *v1alpha1.BackupCondition, status *controller.BackupUpdateStatus) error {
@@ -822,7 +822,7 @@ func TestDoubleCheckCommandChangeReset(t *testing.T) {
 		},
 	}
 	bt.statusUpdater = mockStatusUpdater
-	
+
 	// First call with pause command - should detect inconsistency
 	canSkip, err := bt.SyncLogBackupState(backup)
 	if err != nil {
@@ -834,7 +834,7 @@ func TestDoubleCheckCommandChangeReset(t *testing.T) {
 	if updateCalls != 0 {
 		t.Errorf("Expected no status update on first detection, got %d calls", updateCalls)
 	}
-	
+
 	// Check flag is set and command is recorded
 	bt.operateLock.RLock()
 	dep := bt.logBackups[logkey]
@@ -845,7 +845,7 @@ func TestDoubleCheckCommandChangeReset(t *testing.T) {
 	if dep.lastCommand != v1alpha1.LogPauseCommand {
 		t.Errorf("Expected lastCommand to be %s, got %s", v1alpha1.LogPauseCommand, dep.lastCommand)
 	}
-	
+
 	// Change command to resume (by setting start command but making backup appear paused)
 	backup.Spec.LogSubcommand = v1alpha1.LogStartCommand
 	backup.Status.Phase = v1alpha1.BackupRunning // This will make ParseLogBackupSubcommand return LogResumeCommand
@@ -857,7 +857,7 @@ func TestDoubleCheckCommandChangeReset(t *testing.T) {
 		LastQueryTime: time.Now(),
 	}
 	dep.lastRefresh = time.Now()
-	
+
 	// Second call with resume command - should reset flag due to command change
 	canSkip, err = bt.SyncLogBackupState(backup)
 	if err != nil {
@@ -869,7 +869,7 @@ func TestDoubleCheckCommandChangeReset(t *testing.T) {
 	if updateCalls != 0 {
 		t.Errorf("Expected no status update on first detection of new command, got %d calls", updateCalls)
 	}
-	
+
 	// Check that flag was reset and new command is recorded
 	if !dep.inconsistencyDetected {
 		t.Error("Expected inconsistencyDetected to be true for new command")
@@ -877,7 +877,7 @@ func TestDoubleCheckCommandChangeReset(t *testing.T) {
 	if dep.lastCommand != v1alpha1.LogResumeCommand {
 		t.Errorf("Expected lastCommand to be %s, got %s", v1alpha1.LogResumeCommand, dep.lastCommand)
 	}
-	
+
 	// Third call with same resume command - should now correct as second detection
 	canSkip, err = bt.SyncLogBackupState(backup)
 	if err != nil {
@@ -889,7 +889,7 @@ func TestDoubleCheckCommandChangeReset(t *testing.T) {
 	if updateCalls != 1 {
 		t.Errorf("Expected 1 status update after second detection of same command, got %d calls", updateCalls)
 	}
-	
+
 	// Check flag is cleared after correction
 	if dep.inconsistencyDetected {
 		t.Error("Expected inconsistencyDetected to be false after correction")
