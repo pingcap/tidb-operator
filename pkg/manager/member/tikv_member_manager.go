@@ -39,11 +39,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -191,7 +193,6 @@ func (m *tikvMemberManager) syncServiceForTidbCluster(tc *v1alpha1.TidbCluster, 
 		newSvc,
 		oldSvc,
 		true)
-
 	if err != nil {
 		return err
 	}
@@ -321,6 +322,11 @@ func (m *tikvMemberManager) syncTiKVConfigMap(tc *v1alpha1.TidbCluster, set *app
 	if err != nil {
 		return nil, err
 	}
+
+	err = m.applyPiTRConfigOverride(tc, newCm)
+	if err != nil {
+		return nil, err
+	}
 	return m.deps.TypedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 
@@ -384,7 +390,8 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	dataVolumeName := string(v1alpha1.GetStorageVolumeName("", v1alpha1.TiKVMemberType))
 	tikvDataVol := corev1.VolumeMount{
 		Name:      dataVolumeName,
-		MountPath: constants.TiKVDataVolumeMountPath}
+		MountPath: constants.TiKVDataVolumeMountPath,
+	}
 	volMounts := []corev1.VolumeMount{
 		annoMount,
 		tikvDataVol,
@@ -405,21 +412,25 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	vols := []corev1.Volume{
 		annoVolume,
-		{Name: "config", VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: tikvConfigMap,
+		{
+			Name: "config", VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: tikvConfigMap,
+					},
+					Items: []corev1.KeyToPath{{Key: "config-file", Path: "tikv.toml"}},
 				},
-				Items: []corev1.KeyToPath{{Key: "config-file", Path: "tikv.toml"}},
-			}},
+			},
 		},
-		{Name: "startup-script", VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: tikvConfigMap,
+		{
+			Name: "startup-script", VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: tikvConfigMap,
+					},
+					Items: []corev1.KeyToPath{{Key: "startup-script", Path: "tikv_start_script.sh"}},
 				},
-				Items: []corev1.KeyToPath{{Key: "startup-script", Path: "tikv_start_script.sh"}},
-			}},
+			},
 		},
 	}
 	if tc.IsTLSClusterEnabled() {
@@ -537,19 +548,32 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			}
 			rocksDBLogFilePath = path.Join(rocksDBLogVolumeMount.MountPath, logFile)
 		}
+		logTailer := tc.Spec.TiKV.GetLogTailerSpec()
 		// mount a shared volume and tail the RocksDB log to STDOUT using a sidecar.
-		containers = append(containers, corev1.Container{
+		c := corev1.Container{
 			Name:            v1alpha1.ContainerRocksDBLogTailer.String(),
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
-			Resources:       controller.ContainerResource(tc.Spec.TiKV.GetLogTailerSpec().ResourceRequirements),
+			Resources:       controller.ContainerResource(logTailer.ResourceRequirements),
 			VolumeMounts:    []corev1.VolumeMount{rocksDBLogVolumeMount},
 			Command: []string{
 				"sh",
 				"-c",
 				fmt.Sprintf("touch %s; tail -n0 -F %s;", rocksDBLogFilePath, rocksDBLogFilePath),
 			},
-		})
+		}
+		if logTailer.UseSidecar {
+			c.RestartPolicy = ptr.To(corev1.ContainerRestartPolicyAlways)
+			// NOTE: tail cannot hanle sig TERM when it's PID is 1
+			c.Command = []string{
+				"sh",
+				"-c",
+				fmt.Sprintf(`trap "exit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, rocksDBLogFilePath, rocksDBLogFilePath),
+			}
+			initContainers = append(initContainers, c)
+		} else {
+			containers = append(containers, c)
+		}
 	}
 	if tc.Spec.TiKV.ShouldSeparateRaftLog() {
 		raftdbLogFile := "raftdb.info"
@@ -586,19 +610,32 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			}
 			raftLogFilePath = path.Join(raftLogVolumeMount.MountPath, raftdbLogFile)
 		}
+		logTailer := tc.Spec.TiKV.GetLogTailerSpec()
 		// mount a shared volume and tail the Raft log to STDOUT using a sidecar.
-		containers = append(containers, corev1.Container{
+		c := corev1.Container{
 			Name:            v1alpha1.ContainerRaftLogTailer.String(),
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
-			Resources:       controller.ContainerResource(tc.Spec.TiKV.GetLogTailerSpec().ResourceRequirements),
+			Resources:       controller.ContainerResource(logTailer.ResourceRequirements),
 			VolumeMounts:    []corev1.VolumeMount{raftLogVolumeMount},
 			Command: []string{
 				"sh",
 				"-c",
 				fmt.Sprintf("touch %s; tail -n0 -F %s;", raftLogFilePath, raftLogFilePath),
 			},
-		})
+		}
+		if logTailer.UseSidecar {
+			c.RestartPolicy = ptr.To(corev1.ContainerRestartPolicyAlways)
+			// NOTE: tail cannot hanle sig TERM when it's PID is 1
+			c.Command = []string{
+				"sh",
+				"-c",
+				fmt.Sprintf(`trap "exit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, raftLogFilePath, raftLogFilePath),
+			}
+			initContainers = append(initContainers, c)
+		} else {
+			containers = append(containers, c)
+		}
 	}
 
 	env := []corev1.EnvVar{
@@ -1109,4 +1146,92 @@ func (m *FakeTiKVMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		tc.Status.ClusterID = string(uuid.NewUUID())
 	}
 	return nil
+}
+
+// applyPiTRConfigOverride checks for active PiTR restores and overrides gc.ratio-threshold if found
+func (m *tikvMemberManager) applyPiTRConfigOverride(tc *v1alpha1.TidbCluster, newCm *corev1.ConfigMap) error {
+	// Check for active PiTR restores
+	restores, err := m.deps.RestoreLister.List(labels.Everything())
+	if err != nil {
+		return err
+	}
+
+	// Filter restores that belong to this cluster and are PiTR mode
+	hasActivePiTRRestore := false
+	for _, restore := range restores {
+		if restore.Spec.BR != nil &&
+			restore.Spec.BR.Cluster == tc.Name &&
+			restore.Spec.BR.ClusterNamespace == tc.Namespace &&
+			restore.Spec.Mode == v1alpha1.RestoreModePiTR &&
+			!isRestoreDone(restore) {
+			hasActivePiTRRestore = true
+			klog.V(2).InfoS("Found active PiTR restore, will override gc.ratio-threshold",
+				"restore", klog.KObj(restore), "tidbcluster", klog.KObj(tc))
+			break
+		}
+	}
+
+	// If there's an active PiTR restore, override the gc.ratio-threshold in the config map
+	if hasActivePiTRRestore {
+		return m.overrideGCRatioThresholdInConfigMap(newCm, -1.0)
+	}
+
+	return nil
+}
+
+// overrideGCRatioThresholdInConfigMap modifies the config map data to set gc.ratio-threshold
+func (m *tikvMemberManager) overrideGCRatioThresholdInConfigMap(cm *corev1.ConfigMap, value float64) error {
+	if cm.Data == nil {
+		cm.Data = make(map[string]string)
+	}
+
+	return applyOverlay(cm, "gc.ratio-threshold", value)
+}
+
+func applyOverlay(cm *corev1.ConfigMap, key string, value any) error {
+	// NOTE: parse and marshal each time applying overlay isn't effective.
+	// Perhaps batch it when there goes many overlays.
+	// For now only one overlay will be applied so this can be fine.
+
+	overlayWrapper := v1alpha1.NewTiKVConfig()
+	overlayWrapper.Set("gc.ratio-threshold", value)
+	configOverlayContent := cm.Data["config-file-overlay"]
+	if configOverlayContent != "" {
+		if err := overlayWrapper.UnmarshalTOML([]byte(configOverlayContent)); err != nil {
+			return fmt.Errorf("failed to unmarshal TiKV config: %v", err)
+		}
+	}
+	overlayWrapper.Set(key, value)
+
+	overlayContent, err := overlayWrapper.MarshalTOML()
+	if err != nil {
+		return fmt.Errorf("failed to marshal TiKV config: %v", err)
+	}
+	cm.Data["config-file-overlay"] = string(overlayContent)
+
+	configContent := cm.Data["config-file"]
+	configFileWrapper := v1alpha1.NewTiKVConfig()
+	if configContent != "" {
+		if err := configFileWrapper.UnmarshalTOML([]byte(configContent)); err != nil {
+			return fmt.Errorf("failed to unmarshal existing TiKV config: %v", err)
+		}
+	}
+	// Always merge overlay config, regardless of whether config-file is empty
+	if err := configFileWrapper.Merge(overlayWrapper.GenericConfig); err != nil {
+		return fmt.Errorf("failed to merge overlay into existing TiKV config: %v", err)
+	}
+	overlayAppliedConfigContent, err := configFileWrapper.MarshalTOML()
+	if err != nil {
+		return fmt.Errorf("failed to marshal TiKV config: %v", err)
+	}
+	cm.Data["config-file"] = string(overlayAppliedConfigContent)
+	return nil
+}
+
+// isRestoreDone checks if a restore is completed or failed
+func isRestoreDone(restore *v1alpha1.Restore) bool {
+	if v1alpha1.IsRestoreComplete(restore) || v1alpha1.IsRestoreFailed(restore) {
+		return true
+	}
+	return false
 }

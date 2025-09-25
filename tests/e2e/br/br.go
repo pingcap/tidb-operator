@@ -39,6 +39,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/onsi/ginkgo"
+	"github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -802,7 +803,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Start backup and wait to running")
 			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
+				backup.Spec.Env = []v1.EnvVar{{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
 			})
 			framework.ExpectNoError(err)
 
@@ -864,7 +865,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Start backup and wait to running")
 			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTimeAndPanic}}
+				backup.Spec.Env = []v1.EnvVar{{Name: e2eBackupEnv, Value: e2eExtendBackupTimeAndPanic}}
 			})
 			framework.ExpectNoError(err)
 
@@ -874,7 +875,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("update backup evn, remove simulate panic")
 			backup, err = updateBackup(f, backup.Name, func(backup *v1alpha1.Backup) {
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
+				backup.Spec.Env = []v1.EnvVar{{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
 			})
 			framework.ExpectNoError(err)
 
@@ -934,7 +935,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 					MaxRetryTimes:    2,
 					RetryTimeout:     "30m",
 				}
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTimeAndPanic}}
+				backup.Spec.Env = []v1.EnvVar{{Name: e2eBackupEnv, Value: e2eExtendBackupTimeAndPanic}}
 			})
 			framework.ExpectNoError(err)
 
@@ -1015,7 +1016,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 					MaxRetryTimes:    2,
 					RetryTimeout:     "2m",
 				}
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTimeAndPanic}}
+				backup.Spec.Env = []v1.EnvVar{{Name: e2eBackupEnv, Value: e2eExtendBackupTimeAndPanic}}
 			})
 			framework.ExpectNoError(err)
 
@@ -1160,6 +1161,11 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			cleaned, err = f.Storage.IsDataCleaned(ctx, ns, fullBackup.Spec.S3.Prefix) // now we only use s3
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+
+			ginkgo.By("Check if the TiKVs' config update strategy in this cluster was reset")
+			cluster, err := f.ExtClient.PingcapV1alpha1().TidbClusters(f.Namespace.Name).Get(ctx, backupClusterName, metav1.GetOptions{})
+			framework.ExpectNoError(err)
+			gomega.Expect(cluster.Spec.TiKV.ConfigUpdateStrategy).To(gomega.BeNil())
 		})
 	})
 

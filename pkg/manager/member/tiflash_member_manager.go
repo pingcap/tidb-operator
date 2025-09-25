@@ -190,7 +190,6 @@ func (m *tiflashMemberManager) syncHeadlessService(tc *v1alpha1.TidbCluster) err
 		newSvc,
 		oldSvc,
 		false)
-
 	if err != nil {
 		return err
 	}
@@ -400,7 +399,8 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 	}
 	for k := range spec.StorageClaims {
 		volMounts = append(volMounts, corev1.VolumeMount{
-			Name: fmt.Sprintf("data%d", k), MountPath: fmt.Sprintf("/data%d", k)})
+			Name: fmt.Sprintf("data%d", k), MountPath: fmt.Sprintf("/data%d", k),
+		})
 	}
 	volMounts = append(volMounts, tc.Spec.TiFlash.AdditionalVolumeMounts...)
 
@@ -419,12 +419,14 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 
 	vols := []corev1.Volume{
 		annoVolume,
-		{Name: "config", VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: tiflashConfigMap,
+		{
+			Name: "config", VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: tiflashConfigMap,
+					},
 				},
-			}},
+			},
 		},
 	}
 
@@ -628,7 +630,14 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 	if err != nil {
 		return nil, err
 	}
-	podSpec.Containers = append([]corev1.Container{tiflashContainer}, containers...)
+
+	podSpec.Containers = append(podSpec.Containers, tiflashContainer)
+
+	if tc.Spec.TiFlash.LogTailer != nil && tc.Spec.TiFlash.LogTailer.UseSidecar {
+		podSpec.InitContainers = append(podSpec.InitContainers, containers...)
+	} else {
+		podSpec.Containers = append(podSpec.Containers, containers...)
+	}
 
 	podSpec.Containers, err = MergePatchContainers(podSpec.Containers, baseTiFlashSpec.AdditionalContainers())
 	if err != nil {

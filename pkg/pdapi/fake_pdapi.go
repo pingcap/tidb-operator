@@ -15,6 +15,7 @@ package pdapi
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
@@ -46,6 +47,7 @@ const (
 	TransferPDLeaderActionType                  ActionType = "TransferPDLeader"
 	GetAutoscalingPlansActionType               ActionType = "GetAutoscalingPlans"
 	GetRecoveringMarkActionType                 ActionType = "GetRecoveringMark"
+	GetReadyActionType                          ActionType = "GetReady"
 	PDMSTransferPrimaryActionType               ActionType = "PDMSTransferPrimary"
 )
 
@@ -303,13 +305,23 @@ func (c *FakePDClient) GetRecoveringMark() (bool, error) {
 	return true, nil
 }
 
+func (c *FakePDClient) GetReady() (bool, error) {
+	action := &Action{}
+	result, err := c.fakeAPI(GetReadyActionType, action)
+	if err != nil {
+		return false, err
+	}
+	return result.(bool), nil
+}
+
 // FakePDMSClient implements a fake version of PDMSClient.
 type FakePDMSClient struct {
 	reactions map[ActionType]Reaction
+	domain    string
 }
 
-func NewFakePDMSClient() *FakePDMSClient {
-	return &FakePDMSClient{reactions: map[ActionType]Reaction{}}
+func NewFakePDMSClient(domain string) *FakePDMSClient {
+	return &FakePDMSClient{reactions: map[ActionType]Reaction{}, domain: domain}
 }
 
 func (c *FakePDMSClient) AddReaction(actionType ActionType, reaction Reaction) {
@@ -336,6 +348,9 @@ func (c *FakePDMSClient) GetHealth() error {
 
 func (c *FakePDMSClient) TransferPrimary(newPrimary string) error {
 	action := &Action{Name: newPrimary}
+	if len(c.domain) > 0 && !strings.Contains(newPrimary, c.domain) {
+		return fmt.Errorf("new primary %s does not contain domain %s", newPrimary, c.domain)
+	}
 	_, err := c.fakeAPI(PDMSTransferPrimaryActionType, action)
 	return err
 }

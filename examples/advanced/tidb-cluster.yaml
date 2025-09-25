@@ -10,7 +10,7 @@ spec:
   #######################
 
   ## TiDB cluster version
-  version: "v8.5.0"
+  version: "v8.5.2"
 
   ## Time zone of TiDB cluster Pods
   timezone: UTC
@@ -218,7 +218,7 @@ spec:
     #############################
 
     ## The following block overwrites TiDB cluster-level configurations in `spec`
-    # version: "v8.5.0"
+    # version: "v8.5.2"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets:
     # - name: secretName
@@ -408,7 +408,7 @@ spec:
     ###############################
 
     ## The following block overwrites TiDB cluster-level configurations in `spec`
-    # version: "v8.5.0"
+    # version: "v8.5.2"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets:
     # - name: secretName
@@ -594,7 +594,9 @@ spec:
     ## tikv-server configuration
     ## Ref: https://docs.pingcap.com/tidb/stable/tikv-configuration-file
     config: |
-      log-level = "info"
+      [log.file]
+        max-days = 30
+        max-backups = 30
 
     ## The desired replicas
     replicas: 3
@@ -619,7 +621,7 @@ spec:
     ###############################
 
     ## The following block overwrites TiDB cluster-level configurations in `spec`
-    # version: "v8.5.0"
+    # version: "v8.5.2"
     # imagePullPolicy: IfNotPresent
     # imagePullSecrets:
     # - name: secretName
@@ -803,7 +805,7 @@ spec:
   ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/deploy-tidb-binlog/#deploy-pump
   # pump:
   #   baseImage: pingcap/tidb-binlog
-  #   version: "v8.5.0"
+  #   version: "v8.5.2"
   #   replicas: 1
   #   storageClassName: local-storage
   #   requests:
@@ -848,7 +850,7 @@ spec:
   ## Ref: https://docs.pingcap.com/tidb-in-kubernetes/stable/deploy-ticdc/
   # ticdc:
   #   baseImage: pingcap/ticdc
-  #   version: "v8.5.0"
+  #   version: "v8.5.2"
   #   replicas: 3
   #   storageClassName: local-storage
   #   requests:
@@ -897,7 +899,7 @@ spec:
   #   # Basic TiFlash Configuration #
   #   ###############################
   #   baseImage: pingcap/tiflash
-  #   version: "v8.5.0"
+  #   version: "v8.5.2"
   #   replicas: 1
   #   # limits:
   #   #   cpu: 2000m

@@ -73,6 +73,14 @@ func GetPDClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster) p
 	return pdClient
 }
 
+// GetPDClientForMember tries to return a PDClient for a specific PD member.
+func GetPDClientForMember(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster, member *v1alpha1.PDMember) pdapi.PDClient {
+	if member == nil {
+		return nil
+	}
+	return pdControl.GetPDClient(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), tc.IsTLSClusterEnabled(), pdapi.SpecifyClient(member.ClientURL, member.Name))
+}
+
 // GetPDMSClient tries to return an available PDMSClient
 func GetPDMSClient(pdControl pdapi.PDControlInterface, tc *v1alpha1.TidbCluster, serviceName string) pdapi.PDMSClient {
 	pdMSClient := getPDMSClientFromService(pdControl, tc, serviceName)
@@ -113,9 +121,19 @@ func NewFakePDClient(pdControl *pdapi.FakePDControl, tc *v1alpha1.TidbCluster) *
 	return pdClient
 }
 
+// NewFakePDClientForMember creates a fake pdclient that is set as the pd client for a specific PD member.
+func NewFakePDClientForMember(pdControl *pdapi.FakePDControl, tc *v1alpha1.TidbCluster, member *v1alpha1.PDMember) *pdapi.FakePDClient {
+	if member == nil {
+		return nil
+	}
+	pdClient := pdapi.NewFakePDClient()
+	pdControl.SetPDClientForKey(pdapi.Namespace(tc.GetNamespace()), tc.GetName(), member.Name, pdClient)
+	return pdClient
+}
+
 // NewFakePDMSClient creates a fake pdmsclient that is set as the pdms client
 func NewFakePDMSClient(pdControl *pdapi.FakePDControl, tc *v1alpha1.TidbCluster, curService string) *pdapi.FakePDMSClient {
-	pdmsClient := pdapi.NewFakePDMSClient()
+	pdmsClient := pdapi.NewFakePDMSClient(tc.Spec.ClusterDomain)
 	if tc.Spec.Cluster != nil {
 		pdControl.SetPDMSClientWithClusterDomain(pdapi.Namespace(tc.Spec.Cluster.Namespace), tc.Spec.Cluster.Name, tc.Spec.Cluster.ClusterDomain, curService, pdmsClient)
 	}

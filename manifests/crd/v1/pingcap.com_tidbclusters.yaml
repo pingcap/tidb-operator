@@ -16863,6 +16863,10 @@ spec:
                     type: string
                   separateSlowLog:
                     type: boolean
+                  serverLabels:
+                    additionalProperties:
+                      type: string
+                    type: object
                   service:
                     properties:
                       additionalPorts:
@@ -16962,6 +16966,8 @@ spec:
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
                         type: object
+                      useSidecar:
+                        type: boolean
                     type: object
                   slowLogVolumeName:
                     type: string
@@ -19617,6 +19623,8 @@ spec:
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
                         type: object
+                      useSidecar:
+                        type: boolean
                     type: object
                   maxFailoverCount:
                     format: int32
@@ -22373,6 +22381,8 @@ spec:
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
                         type: object
+                      useSidecar:
+                        type: boolean
                     type: object
                   maxFailoverCount:
                     format: int32
@@ -25193,6 +25203,10 @@ spec:
                     type: object
                   schedulerName:
                     type: string
+                  serverLabels:
+                    additionalProperties:
+                      type: string
+                    type: object
                   serviceAccount:
                     type: string
                   sslEnableTiDB:

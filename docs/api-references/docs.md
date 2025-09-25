@@ -701,6 +701,20 @@ CompactSpec
 </tr>
 <tr>
 <td>
+<code>minCompactStartTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MinCompactStartTs specifies the minimum start timestamp for compact backup.
+If the calculated start ts is less than this value, it will be adjusted to this value.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>storageClassName</code></br>
 <em>
 string
@@ -1399,6 +1413,20 @@ string
 <td>
 <em>(Optional)</em>
 <p>PitrRestoredTs is the pitr restored ts.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>prune</code></br>
+<em>
+<a href="#prunetype">
+PruneType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Prune is the prune type for restore, it is optional and can only have two valid values: afterFailed/alreadyFailed</p>
 </td>
 </tr>
 <tr>
@@ -2602,6 +2630,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>passwordSecret is the name of the Kubernetes secret that is used to initialize the cluster.</p>
 </td>
 </tr>
 <tr>
@@ -3827,6 +3856,20 @@ CompactSpec
 <td>
 <em>(Optional)</em>
 <p>CompactBackupTemplate is the specification of the compact backup structure to get scheduled.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>minCompactStartTs</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MinCompactStartTs specifies the minimum start timestamp for compact backup.
+If the calculated start ts is less than this value, it will be adjusted to this value.
+Format supports TSO or datetime, e.g. &lsquo;400036290571534337&rsquo;, &lsquo;2018-05-11 01:42:23&rsquo;.</p>
 </td>
 </tr>
 <tr>
@@ -9401,6 +9444,22 @@ Kubernetes core/v1.ResourceRequirements
 </p>
 </td>
 </tr>
+<tr>
+<td>
+<code>useSidecar</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>If true, we use native sidecar feature to tail log
+It requires enable feature gate &ldquo;SidecarContainers&rdquo;
+This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33
+See <a href="https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/">https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/</a>
+and <a href="https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/">https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/</a></p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="masterconfig">MasterConfig</h3>
@@ -10403,6 +10462,17 @@ Defaults to Kubernetes default storage class.</p>
 </td>
 <td>
 <p>StorageVolumes configures additional storage for NG Monitoring pods.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>retentionPeriod</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Retention period to store ng monitoring data</p>
 </td>
 </tr>
 <tr>
@@ -14126,6 +14196,14 @@ uint
 </tr>
 </tbody>
 </table>
+<h3 id="prunetype">PruneType</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#restorespec">RestoreSpec</a>)
+</p>
+<p>
+<p>PruneType represents the prune type for restore.</p>
+</p>
 <h3 id="pumpnodestatus">PumpNodeStatus</h3>
 <p>
 (<em>Appears on:</em>
@@ -15026,6 +15104,20 @@ string
 </tr>
 <tr>
 <td>
+<code>prune</code></br>
+<em>
+<a href="#prunetype">
+PruneType
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Prune is the prune type for restore, it is optional and can only have two valid values: afterFailed/alreadyFailed</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>logRestoreStartTs</code></br>
 <em>
 string
@@ -15606,6 +15698,17 @@ string
 </td>
 <td>
 <p>Options Rclone options for backup and restore with dumpling and lightning.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>forcePathStyle</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>ForcePathStyle for the backup and restore to connect s3 with path style(true) or virtual host(false).</p>
 </td>
 </tr>
 </tbody>
@@ -18155,6 +18258,22 @@ Kubernetes core/v1.PullPolicy
 Use <code>spec.helper.imagePullPolicy</code> instead</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>useSidecar</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>If true, we use native sidecar feature to tail log
+It requires enable feature gate &ldquo;SidecarContainers&rdquo;
+This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33
+See <a href="https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/">https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/</a>
+and <a href="https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/">https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/</a></p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tidbspec">TiDBSpec</h3>
@@ -18484,6 +18603,22 @@ The probe binary in the image should be placed under the root directory, i.e., <
 <td>
 <em>(Optional)</em>
 <p>Arguments is the extra command line arguments for TiDB server.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serverLabels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>ServerLabels defines the server labels of the TiDB server.
+Using both this field and config file to manage the labels is an undefined behavior.
+Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+- region, topology.kubernetes.io/region
+- zone, topology.kubernetes.io/zone
+- host</p>
 </td>
 </tr>
 </tbody>
@@ -24224,6 +24359,22 @@ string
 Defaults to Kubernetes default storage class.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>serverLabels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>ServerLabels defines the server labels of the TiProxy.
+Using both this field and config file to manage the labels is an undefined behavior.
+Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+- region, topology.kubernetes.io/region
+- zone, topology.kubernetes.io/zone
+- host</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tiproxystatus">TiProxyStatus</h3>
@@ -25878,6 +26029,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>passwordSecret is the name of the Kubernetes secret that is used to initialize the cluster.</p>
 </td>
 </tr>
 <tr>

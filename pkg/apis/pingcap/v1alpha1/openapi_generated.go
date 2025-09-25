@@ -852,6 +852,13 @@ func schema_pkg_apis_pingcap_v1alpha1_BackupScheduleSpec(ref common.ReferenceCal
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CompactSpec"),
 						},
 					},
+					"minCompactStartTs": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MinCompactStartTs specifies the minimum start timestamp for compact backup. If the calculated start ts is less than this value, it will be adjusted to this value. Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The storageClassName of the persistent volume for Backup data storage if not storage class name set in BackupSpec. Defaults to Kubernetes default storage class.",
@@ -4195,6 +4202,13 @@ func schema_pkg_apis_pingcap_v1alpha1_LogTailerSpec(ref common.ReferenceCallback
 							},
 						},
 					},
+					"useSidecar": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If true, we use native sidecar feature to tail log It requires enable feature gate \"SidecarContainers\" This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33 See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/ and https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
@@ -5238,6 +5252,13 @@ func schema_pkg_apis_pingcap_v1alpha1_NGMonitoringSpec(ref common.ReferenceCallb
 									},
 								},
 							},
+						},
+					},
+					"retentionPeriod": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Retention period to store ng monitoring data",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"config": {
@@ -8241,6 +8262,13 @@ func schema_pkg_apis_pingcap_v1alpha1_RestoreSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"prune": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Prune is the prune type for restore, it is optional and can only have two valid values: afterFailed/alreadyFailed",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"logRestoreStartTs": {
 						SchemaProps: spec.SchemaProps{
 							Description: "LogRestoreStartTs is the start timestamp which log restore from.",
@@ -8560,6 +8588,13 @@ func schema_pkg_apis_pingcap_v1alpha1_S3StorageProvider(ref common.ReferenceCall
 									},
 								},
 							},
+						},
+					},
+					"forcePathStyle": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ForcePathStyle for the backup and restore to connect s3 with path style(true) or virtual host(false).",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 				},
@@ -9969,6 +10004,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSlowLogTailerSpec(ref common.Reference
 							},
 						},
 					},
+					"useSidecar": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If true, we use native sidecar feature to tail log It requires enable feature gate \"SidecarContainers\" This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33 See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/ and https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
@@ -10475,6 +10517,22 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSpec(ref common.ReferenceCallback) com
 							Description: "Arguments is the extra command line arguments for TiDB server.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"serverLabels": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ServerLabels defines the server labels of the TiDB server. Using both this field and config file to manage the labels is an undefined behavior. Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:\n - region, topology.kubernetes.io/region\n - zone, topology.kubernetes.io/zone\n - host",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: "",
@@ -14186,6 +14244,22 @@ func schema_pkg_apis_pingcap_v1alpha1_TiProxySpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"serverLabels": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ServerLabels defines the server labels of the TiProxy. Using both this field and config file to manage the labels is an undefined behavior. Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:\n - region, topology.kubernetes.io/region\n - zone, topology.kubernetes.io/zone\n - host",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
 				},
 				Required: []string{"replicas"},
 			},
@@ -15390,8 +15464,9 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbInitializerSpec(ref common.ReferenceCa
 					},
 					"passwordSecret": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
+							Description: "passwordSecret is the name of the Kubernetes secret that is used to initialize the cluster.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"resources": {

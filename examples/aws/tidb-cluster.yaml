@@ -3,7 +3,7 @@ kind: TidbCluster
 metadata:
   name: basic
 spec:
-  version: v8.5.0
+  version: v8.5.2
   timezone: UTC
   configUpdateStrategy: RollingUpdate
   pvReclaimPolicy: Retain
@@ -48,7 +48,10 @@ spec:
     replicas: 3
     requests:
       storage: "100Gi"
-    config: {}
+    config: |
+      [log.file]
+        max-days = 30
+        max-backups = 30
     nodeSelector:
       dedicated: tikv
     tolerations:

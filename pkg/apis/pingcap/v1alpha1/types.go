@@ -968,12 +968,28 @@ type TiProxySpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// ServerLabels defines the server labels of the TiProxy.
+	// Using both this field and config file to manage the labels is an undefined behavior.
+	// Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+	//  - region, topology.kubernetes.io/region
+	//  - zone, topology.kubernetes.io/zone
+	//  - host
+	ServerLabels map[string]string `json:"serverLabels,omitempty"`
 }
 
 // LogTailerSpec represents an optional log tailer sidecar container
 // +k8s:openapi-gen=true
 type LogTailerSpec struct {
 	corev1.ResourceRequirements `json:",inline"`
+
+	// If true, we use native sidecar feature to tail log
+	// It requires enable feature gate "SidecarContainers"
+	// This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33
+	// See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
+	// and https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/
+	// +optional
+	UseSidecar bool `json:"useSidecar,omitempty"`
 }
 
 // InitContainerSpec contains basic spec about a init container
@@ -1106,6 +1122,14 @@ type TiDBSpec struct {
 	// Arguments is the extra command line arguments for TiDB server.
 	// +optional
 	Arguments []string `json:"arguments,omitempty"`
+
+	// ServerLabels defines the server labels of the TiDB server.
+	// Using both this field and config file to manage the labels is an undefined behavior.
+	// Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+	//  - region, topology.kubernetes.io/region
+	//  - zone, topology.kubernetes.io/zone
+	//  - host
+	ServerLabels map[string]string `json:"serverLabels,omitempty"`
 }
 
 type CustomizedProbe struct {
@@ -1236,6 +1260,14 @@ type TiDBSlowLogTailerSpec struct {
 	// Use `spec.helper.imagePullPolicy` instead
 	// +k8s:openapi-gen=false
 	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+
+	// If true, we use native sidecar feature to tail log
+	// It requires enable feature gate "SidecarContainers"
+	// This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33
+	// See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
+	// and https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/
+	// +optional
+	UseSidecar bool `json:"useSidecar,omitempty"`
 }
 
 // ComponentSpec is the base spec of each component, the fields should always accessed by the Basic<Component>Spec() method to respect the cluster-level properties
@@ -1620,9 +1652,7 @@ type TiDBFailureMember struct {
 	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 
-var (
-	EvictLeaderAnnKeys = []string{EvictLeaderAnnKey, EvictLeaderAnnKeyForResize}
-)
+var EvictLeaderAnnKeys = []string{EvictLeaderAnnKey, EvictLeaderAnnKeyForResize}
 
 const (
 	// EvictLeaderAnnKey is the annotation key to evict leader used by user.
@@ -2002,6 +2032,8 @@ type S3StorageProvider struct {
 	SSE string `json:"sse,omitempty"`
 	// Options Rclone options for backup and restore with dumpling and lightning.
 	Options []string `json:"options,omitempty"`
+	// ForcePathStyle for the backup and restore to connect s3 with path style(true) or virtual host(false).
+	ForcePathStyle *bool `json:"forcePathStyle,omitempty"`
 }
 
 // +k8s:openapi-gen=true
@@ -2573,6 +2605,11 @@ type BackupScheduleSpec struct {
 	// CompactBackupTemplate is the specification of the compact backup structure to get scheduled.
 	// +optional
 	CompactBackupTemplate *CompactSpec `json:"compactBackupTemplate"`
+	// MinCompactStartTs specifies the minimum start timestamp for compact backup.
+	// If the calculated start ts is less than this value, it will be adjusted to this value.
+	// Format supports TSO or datetime, e.g. '400036290571534337', '2018-05-11 01:42:23'.
+	// +optional
+	MinCompactStartTs *string `json:"minCompactStartTs,omitempty"`
 	// The storageClassName of the persistent volume for Backup data storage if not storage class name set in BackupSpec.
 	// Defaults to Kubernetes default storage class.
 	// +optional
@@ -2658,6 +2695,15 @@ const (
 	RestoreModeVolumeSnapshot RestoreMode = "volume-snapshot"
 )
 
+// PruneType represents the prune type for restore.
+// +k8s:openapi-gen=true
+type PruneType string
+
+const (
+	// PruneTypeAfterFailed represents prune after failed.
+	PruneTypeAfterFailed PruneType = "afterFailed"
+)
+
 // RestoreConditionType represents a valid condition of a Restore.
 type RestoreConditionType string
 
@@ -2690,6 +2736,14 @@ const (
 	RestoreRetryFailed RestoreConditionType = "RetryFailed"
 	// RestoreInvalid means invalid restore CR.
 	RestoreInvalid RestoreConditionType = "Invalid"
+	// RestorePruneScheduled means a prune job has been scheduled after restore failure.
+	RestorePruneScheduled RestoreConditionType = "PruneScheduled"
+	// RestorePruneRunning means the prune job is currently running.
+	RestorePruneRunning RestoreConditionType = "PruneRunning"
+	// RestorePruneComplete means the prune job has successfully completed.
+	RestorePruneComplete RestoreConditionType = "PruneComplete"
+	// RestorePruneFailed means the prune job has failed.
+	RestorePruneFailed RestoreConditionType = "PruneFailed"
 )
 
 // RestoreCondition describes the observed state of a Restore at a certain point.
@@ -2736,6 +2790,10 @@ type RestoreSpec struct {
 	// PitrRestoredTs is the pitr restored ts.
 	// +optional
 	PitrRestoredTs string `json:"pitrRestoredTs,omitempty"`
+	// Prune is the prune type for restore, it is optional and can only have two valid values: afterFailed/alreadyFailed
+	// +optional
+	// +kubebuilder:validation:Enum:=afterFailed
+	Prune PruneType `json:"prune,omitempty"`
 	// LogRestoreStartTs is the start timestamp which log restore from.
 	// +optional
 	LogRestoreStartTs string `json:"logRestoreStartTs,omitempty"`

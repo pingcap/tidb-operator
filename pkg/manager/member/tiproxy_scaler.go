@@ -76,7 +76,7 @@ func (s *tiproxyScaler) ScaleIn(meta metav1.Object, oldSet *apps.StatefulSet, ne
 	resetReplicas(newSet, oldSet)
 
 	if !tc.Status.TiProxy.Synced {
-		return fmt.Errorf("TidbCluster: %s/%s's pd status sync failed, can't scale in now", ns, tcName)
+		return fmt.Errorf("TidbCluster: %s/%s's tiproxy status sync failed, can't scale in now", ns, tcName)
 	}
 
 	klog.Infof("scaling in tiproxy statefulset %s/%s, ordinal: %d (replicas: %d, delete slots: %v)", oldSet.Namespace, oldSet.Name, ordinal, replicas, deleteSlots.List())

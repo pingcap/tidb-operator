@@ -38,6 +38,10 @@ func getNodeLabels(nodeLister corelisterv1.NodeLister, nodeName string, storeLab
 	if err != nil {
 		return nil, err
 	}
+	return getLabelsFromNode(node, storeLabels), nil
+}
+
+func getLabelsFromNode(node *corev1.Node, storeLabels []string) map[string]string {
 	labels := map[string]string{}
 	ls := node.GetLabels()
 	for _, storeLabel := range storeLabels {
@@ -55,7 +59,7 @@ func getNodeLabels(nodeLister corelisterv1.NodeLister, nodeName string, storeLab
 			}
 		}
 	}
-	return labels, nil
+	return labels
 }
 
 // IsNodeReadyConditionFalseOrUnknown returns true if a pod is not ready; false otherwise.

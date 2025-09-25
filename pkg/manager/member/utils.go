@@ -53,11 +53,9 @@ const (
 	ErrImagePull = "ErrImagePull"
 )
 
-var (
-	// The first version that moves the rocksdb info and raft info log to store and rotate as the TiKV log is v5.0.0
-	// https://github.com/tikv/tikv/pull/7358
-	tikvLessThanV500, _ = semver.NewConstraint("<v5.0.0-0")
-)
+// The first version that moves the rocksdb info and raft info log to store and rotate as the TiKV log is v5.0.0
+// https://github.com/tikv/tikv/pull/7358
+var tikvLessThanV500, _ = semver.NewConstraint("<v5.0.0-0")
 
 func annotationsMountVolume() (corev1.VolumeMount, corev1.Volume) {
 	m := corev1.VolumeMount{Name: "annotations", ReadOnly: true, MountPath: "/etc/podinfo"}
@@ -164,7 +162,7 @@ func PdName(tcName string, ordinal int32, namespace string, clusterDomain string
 // See the start script of PDMS in pkg/manager/member/startscript/v2.renderPDMSStartScript
 func PDMSName(tcName string, ordinal int32, namespace, clusterDomain string, acrossK8s bool, component string) string {
 	if len(clusterDomain) > 0 {
-		return fmt.Sprintf("%s.%s-%s-peer.%s.svc.%s", PDMSPodName(tcName, ordinal, component), component, tcName, namespace, clusterDomain)
+		return fmt.Sprintf("%s.%s-%s-peer.%s.svc.%s", PDMSPodName(tcName, ordinal, component), tcName, component, namespace, clusterDomain)
 	}
 
 	// clusterDomain is not set
@@ -457,6 +455,24 @@ func addDeferDeletingAnnoToPVC(tc *v1alpha1.TidbCluster, pvc *corev1.PersistentV
 		return err
 	}
 	klog.Infof("set PVC %s/%s annotation %q to %q successfully", tc.Namespace, pvc.Name, label.AnnPVCDeferDeleting, now)
+	return nil
+}
+
+// ensureScaleInTimeAnnoInPod set scale in time to pod annotation
+func ensureScaleInTimeAnnoInPod(tc *v1alpha1.TidbCluster, pod *corev1.Pod, podControl controller.PodControlInterface, scaleInTime string) error {
+	val, ok := pod.Annotations[label.AnnoScaleInTime]
+	if ok && val == scaleInTime {
+		return nil
+	}
+	if pod.Annotations == nil {
+		pod.Annotations = map[string]string{}
+	}
+	pod.Annotations[label.AnnoScaleInTime] = scaleInTime
+	if _, err := podControl.UpdatePod(tc, pod); err != nil {
+		klog.Errorf("failed to set pod %s/%s annotation %q to %q", tc.Namespace, pod.Name, label.AnnoScaleInTime, scaleInTime)
+		return err
+	}
+	klog.Infof("set pod %s/%s annotation %q to %q successfully", tc.Namespace, pod.Name, label.AnnoScaleInTime, scaleInTime)
 	return nil
 }
 

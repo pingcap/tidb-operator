@@ -37,6 +37,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/util/cmpver"
+	maputil "github.com/pingcap/tidb-operator/pkg/util/map"
 
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -48,6 +49,7 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	// for sql/driver
 	_ "github.com/go-sql-driver/mysql"
@@ -80,10 +82,8 @@ const (
 	customizedStartupProbePath = "/var/lib/customized-startup-probe"
 )
 
-var (
-	// node labels that can be used as tidb DC label Name
-	topologyZoneLabels = []string{"zone", "topology.kubernetes.io/zone", "failure-domain.beta.kubernetes.io/zone"}
-)
+// node labels that can be used as tidb DC label Name
+var topologyZoneLabels = []string{"zone", "topology.kubernetes.io/zone", "failure-domain.beta.kubernetes.io/zone"}
 
 type tidbMemberManager struct {
 	deps              *controller.Dependencies
@@ -330,7 +330,7 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 	// set random password
 	ns := tc.Namespace
 	tcName := tc.Name
-	//check endpoints ready
+	// check endpoints ready
 	isTiDBReady := false
 	eps, epErr := m.deps.EndpointLister.Endpoints(ns).Get(controller.TiDBMemberName(tcName))
 	if epErr != nil {
@@ -414,7 +414,6 @@ func (m *tidbMemberManager) syncInitializer(tc *v1alpha1.TidbCluster) {
 }
 
 func (m *tidbMemberManager) BuildRandomPasswordSecret(tc *v1alpha1.TidbCluster) (*corev1.Secret, string) {
-
 	s := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            controller.TiDBInitSecret(tc.Name),
@@ -539,7 +538,6 @@ func (m *tidbMemberManager) syncTiDBService(tc *v1alpha1.TidbCluster) error {
 
 // syncTiDBConfigMap syncs the configmap of tidb
 func (m *tidbMemberManager) syncTiDBConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
-
 	// For backward compatibility, only sync tidb configmap when .tidb.config is non-nil
 	if tc.Spec.TiDB.Config == nil {
 		return nil, nil
@@ -643,7 +641,6 @@ func getTiDBConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 }
 
 func getNewTiDBServiceOrNil(tc *v1alpha1.TidbCluster) *corev1.Service {
-
 	svcSpec := tc.Spec.TiDB.Service
 	if svcSpec == nil {
 		return nil
@@ -785,21 +782,25 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 
 	vols := []corev1.Volume{
 		annoVolume,
-		{Name: "config", VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: tidbConfigMap,
+		{
+			Name: "config", VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: tidbConfigMap,
+					},
+					Items: []corev1.KeyToPath{{Key: "config-file", Path: "tidb.toml"}},
 				},
-				Items: []corev1.KeyToPath{{Key: "config-file", Path: "tidb.toml"}},
-			}},
+			},
 		},
-		{Name: "startup-script", VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: tidbConfigMap,
+		{
+			Name: "startup-script", VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: tidbConfigMap,
+					},
+					Items: []corev1.KeyToPath{{Key: "startup-script", Path: "tidb_start_script.sh"}},
 				},
-				Items: []corev1.KeyToPath{{Key: "startup-script", Path: "tidb_start_script.sh"}},
-			}},
+			},
 		},
 	}
 	if pointer.BoolPtrDerefOr(tc.Spec.TiDB.TokenBasedAuthEnabled, false) {
@@ -931,18 +932,31 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			}
 			slowLogFileEnvVal = path.Join(slowQueryLogVolumeMount.MountPath, slowQueryLogVolumeName)
 		}
-		containers = append(containers, corev1.Container{
+		logTailer := tc.Spec.TiDB.GetSlowLogTailerSpec()
+		c := corev1.Container{
 			Name:            v1alpha1.ContainerSlowLogTailer.String(),
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
-			Resources:       controller.ContainerResource(tc.Spec.TiDB.GetSlowLogTailerSpec().ResourceRequirements),
+			Resources:       controller.ContainerResource(logTailer.ResourceRequirements),
 			VolumeMounts:    []corev1.VolumeMount{slowQueryLogVolumeMount},
 			Command: []string{
 				"sh",
 				"-c",
 				fmt.Sprintf("touch %s; tail -n0 -F %s;", slowLogFileEnvVal, slowLogFileEnvVal),
 			},
-		})
+		}
+		if logTailer.UseSidecar {
+			c.RestartPolicy = ptr.To(corev1.ContainerRestartPolicyAlways)
+			// NOTE: tail cannot hanle sig TERM when it's PID is 1
+			c.Command = []string{
+				"sh",
+				"-c",
+				fmt.Sprintf(`trap "exit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, slowLogFileEnvVal, slowLogFileEnvVal),
+			}
+			initContainers = append(initContainers, c)
+		} else {
+			containers = append(containers, c)
+		}
 	}
 
 	envs := []corev1.EnvVar{
@@ -1260,8 +1274,13 @@ outer:
 			return setCount, err
 		}
 
-		labels, err := getNodeLabels(m.deps.NodeLister, db.NodeName, config.Replication.LocationLabels)
-		if err != nil || len(labels) == 0 {
+		node, err := m.deps.NodeLister.Get(db.NodeName)
+		if err != nil {
+			klog.Warningf("failed to get node %s of pod %s for cluster %s/%s, error: %+v", db.NodeName, name, ns, tc.GetName(), err)
+			continue
+		}
+		labels := maputil.Merge(tc.Spec.TiDB.ServerLabels, getLabelsFromNode(node, config.Replication.LocationLabels))
+		if len(labels) == 0 {
 			klog.Warningf("node: [%s] has no node labels %v, skipping set store labels for Pod: [%s/%s]", db.NodeName, config.Replication.LocationLabels, ns, name)
 			continue
 		}
@@ -1279,9 +1298,7 @@ outer:
 	return setCount, nil
 }
 
-var (
-	podOrdinalPattern = regexp.MustCompile(`^.*-(\d+)$`)
-)
+var podOrdinalPattern = regexp.MustCompile(`^.*-(\d+)$`)
 
 // parserOrdinal extracts the ordinal from pod name
 func parserOrdinal(podName string) (int32, error) {

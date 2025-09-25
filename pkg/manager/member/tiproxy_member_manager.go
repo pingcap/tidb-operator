@@ -30,6 +30,7 @@ import (
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/pkg/util/cmpver"
+	maputil "github.com/pingcap/tidb-operator/pkg/util/map"
 
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -104,6 +105,13 @@ func (m *tiproxyMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
+	// handle tiproxy scaled to zero
+	if abort, err := m.handleIfTiProxyScaledToZero(tc); err != nil {
+		return err
+	} else if abort {
+		return nil
+	}
+
 	if err := m.syncProxyService(tc, false); err != nil {
 		return err
 	}
@@ -112,6 +120,45 @@ func (m *tiproxyMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 	}
 
 	return m.syncStatefulSet(tc)
+}
+
+// scaleInToZero is used to scale in tiproxy to zero, it will delete the sts and reset the tiproxy status.
+// Note: the corresponding k8s services, configmaps will remain unchanged.
+func (s *tiproxyMemberManager) handleIfTiProxyScaledToZero(tc *v1alpha1.TidbCluster) (abort bool, _ error) {
+	if tc.Spec.TiProxy.Replicas != 0 {
+		// skip if tiproxy is not scaled to zero
+		return false, nil
+	}
+
+	sts, err := s.deps.StatefulSetLister.StatefulSets(tc.Namespace).Get(controller.TiProxyMemberName(tc.Name))
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// reset tiproxy status
+			tc.Status.TiProxy = v1alpha1.TiProxyStatus{}
+
+			// tiproxy sts is already deleted, abort remaining sync of tiproxy
+			return true, nil
+		}
+		return false, fmt.Errorf("scaleInToZero: failed to get sts %s for cluster %s/%s, error: %s", sts.Name, tc.Namespace, tc.Name, err)
+	}
+
+	if sts.Status.Replicas != 0 {
+		// wait for tiproxy sts to be scaled to zero
+		klog.Infof("wait for tiproxy sts %s/%s to be scaled to zero", sts.Namespace, sts.Name)
+		return false, nil
+	}
+
+	// reset tiproxy status
+	tc.Status.TiProxy = v1alpha1.TiProxyStatus{}
+	klog.Infof("try to delete sts as scaling in tiproxy statefulset %s/%s to zero", tc.Namespace, tc.Name)
+	foreground := metav1.DeletePropagationForeground
+	opts := metav1.DeleteOptions{
+		PropagationPolicy: &foreground,
+	}
+	if err := s.deps.StatefulSetControl.DeleteStatefulSet(tc, sts, opts); err != nil && !errors.IsNotFound(err) {
+		return false, fmt.Errorf("failed to delete sts %s for cluster %s/%s, error: %s", sts.Name, tc.Namespace, tc.Name, err)
+	}
+	return true, nil
 }
 
 func (m *tiproxyMemberManager) syncConfigMap(tc *v1alpha1.TidbCluster, set *apps.StatefulSet) (*corev1.ConfigMap, error) {
@@ -485,6 +532,13 @@ func (m *tiproxyMemberManager) getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *c
 		Env:          util.AppendEnv(envs, baseTiProxySpec.Env()),
 		EnvFrom:      baseTiProxySpec.EnvFrom(),
 	}
+	if probeHander := buildTiProxyReadinessProbeHandler(tc); probeHander != nil {
+		tiproxyContainer.ReadinessProbe = &corev1.Probe{
+			ProbeHandler:        *probeHander,
+			InitialDelaySeconds: pointer.Int32Deref(tc.Spec.TiProxy.ReadinessProbe.InitialDelaySeconds, 10),
+			PeriodSeconds:       pointer.Int32Deref(tc.Spec.TiProxy.ReadinessProbe.PeriodSeconds, 10),
+		}
+	}
 
 	podSpec := baseTiProxySpec.BuildPodSpec()
 
@@ -828,8 +882,13 @@ outer:
 			klog.V(4).Infof("node name of pod %s in cluster %s/%s is empty", name, ns, tc.GetName())
 			continue
 		}
-		labels, err := getNodeLabels(m.deps.NodeLister, pod.Spec.NodeName, config.Replication.LocationLabels)
-		if err != nil || len(labels) == 0 {
+		node, err := m.deps.NodeLister.Get(pod.Spec.NodeName)
+		if err != nil {
+			klog.Warningf("failed to get node %s of pod %s for cluster %s/%s, error: %+v", pod.Spec.NodeName, name, ns, tc.GetName(), err)
+			continue
+		}
+		labels := maputil.Merge(tc.Spec.TiProxy.ServerLabels, getLabelsFromNode(node, config.Replication.LocationLabels))
+		if len(labels) == 0 {
 			klog.Warningf("node: [%s] has no node labels %v, skipping set labels for Pod: [%s/%s]", pod.Spec.NodeName, config.Replication.LocationLabels, ns, name)
 			continue
 		}
@@ -845,6 +904,65 @@ outer:
 	}
 
 	return setCount, nil
+}
+
+// buildTiProxyReadinessProbeHandler builds the readiness probe handler for TiProxy.
+// For compatibility, it doesn't provide any probe handler if `readinessProbe` or `readinessProbe.type` is not set.
+func buildTiProxyReadinessProbeHandler(tc *v1alpha1.TidbCluster) *corev1.ProbeHandler {
+	if tc.Spec.TiProxy.ReadinessProbe == nil {
+		return nil
+	}
+	tp := tc.Spec.TiProxy.ReadinessProbe.Type
+	if tp == nil {
+		return nil
+	}
+
+	switch *tp {
+	case v1alpha1.CommandProbeType:
+		command := buildTiProxyProbeCommand(tc)
+		return &corev1.ProbeHandler{
+			Exec: &corev1.ExecAction{
+				Command: command,
+			},
+		}
+	case v1alpha1.TCPProbeType:
+		return &corev1.ProbeHandler{
+			TCPSocket: &corev1.TCPSocketAction{
+				Port: intstr.FromInt(int(v1alpha1.DefaultTiProxyServerPort)),
+			},
+		}
+	}
+
+	return nil
+}
+
+func buildTiProxyProbeCommand(tc *v1alpha1.TidbCluster) (command []string) {
+	const (
+		host    = "127.0.0.1"
+		apiPath = "/api/debug/health"
+	)
+
+	readinessURL := fmt.Sprintf("%s://%s:%d%s", tc.Scheme(), host, v1alpha1.DefaultTiProxyStatusPort, apiPath)
+	command = append(command, "curl")
+	command = append(command, readinessURL)
+
+	// Fail silently (no output at all) on server errors
+	// without this if the server return 500, the exist code will be 0
+	// and probe is success.
+	command = append(command, "--fail")
+	// follow 301 or 302 redirect
+	command = append(command, "--location")
+
+	if tc.IsTLSClusterEnabled() {
+		// The following code is compatible with cert layout both `legacy` and `v1`.
+		cacert := path.Join(util.ClusterClientTLSPath, tlsSecretRootCAKey)
+		cert := path.Join(util.ClusterClientTLSPath, corev1.TLSCertKey)
+		key := path.Join(util.ClusterClientTLSPath, corev1.TLSPrivateKeyKey)
+		command = append(command, "--cacert", cacert)
+		command = append(command, "--cert", cert)
+		command = append(command, "--key", key)
+	}
+	return
 }
 
 type FakeTiProxyMemberManager struct {

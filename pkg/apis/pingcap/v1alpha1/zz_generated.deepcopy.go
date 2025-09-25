@@ -311,6 +311,11 @@ func (in *BackupScheduleSpec) DeepCopyInto(out *BackupScheduleSpec) {
 		*out = new(CompactSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.MinCompactStartTs != nil {
+		in, out := &in.MinCompactStartTs, &out.MinCompactStartTs
+		*out = new(string)
+		**out = **in
+	}
 	if in.StorageClassName != nil {
 		in, out := &in.StorageClassName, &out.StorageClassName
 		*out = new(string)
@@ -5123,6 +5128,11 @@ func (in *S3StorageProvider) DeepCopyInto(out *S3StorageProvider) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.ForcePathStyle != nil {
+		in, out := &in.ForcePathStyle, &out.ForcePathStyle
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
@@ -6258,6 +6268,13 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 		in, out := &in.Arguments, &out.Arguments
 		*out = make([]string, len(*in))
 		copy(*out, *in)
+	}
+	if in.ServerLabels != nil {
+		in, out := &in.ServerLabels, &out.ServerLabels
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 	return
 }
@@ -8820,6 +8837,13 @@ func (in *TiProxySpec) DeepCopyInto(out *TiProxySpec) {
 		in, out := &in.StorageClassName, &out.StorageClassName
 		*out = new(string)
 		**out = **in
+	}
+	if in.ServerLabels != nil {
+		in, out := &in.ServerLabels, &out.ServerLabels
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 	return
 }

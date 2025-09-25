@@ -54,7 +54,10 @@ spec:
       storageClassName: local-storage
   tikv:
     baseImage: pingcap/tikv
-    config: {}
+    config: |
+      [log.file]
+        max-days = 30
+        max-backups = 30
     imagePullPolicy: IfNotPresent
     maxFailoverCount: 0
     replicas: 3
@@ -62,4 +65,4 @@ spec:
       storage: 100Gi
     storageClassName: local-storage
   timezone: UTC
-  version: v8.5.0
+  version: v8.5.2
