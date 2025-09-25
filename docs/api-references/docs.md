@@ -25965,6 +25965,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>passwordSecret is the name of the Kubernetes secret that is used to initialize the cluster.</p>
 </td>
 </tr>
 <tr>
@@ -25978,7 +25979,6 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <em>(Optional)</em>
-<p>passwordSecret is the name of the Kubernetes secret that is used to initialize the cluster.</p>
 </td>
 </tr>
 <tr>
