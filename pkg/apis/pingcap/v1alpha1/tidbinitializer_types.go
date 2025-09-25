@@ -85,6 +85,7 @@ type TidbInitializerSpec struct {
 	// +optional
 	InitSqlConfigMap *string `json:"initSqlConfigMap,omitempty"`
 
+	// passwordSecret is the name of the Kubernetes secret that is used to initialize the cluster.
 	// +optional
 	PasswordSecret *string `json:"passwordSecret,omitempty"`
 
