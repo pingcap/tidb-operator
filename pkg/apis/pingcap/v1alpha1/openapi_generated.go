@@ -15464,8 +15464,9 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbInitializerSpec(ref common.ReferenceCa
 					},
 					"passwordSecret": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
+							Description: "passwordSecret is the name of the Kubernetes secret that is used to initialize the cluster.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"resources": {
