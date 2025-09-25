@@ -36,11 +36,10 @@ const (
 	defaultGRPCKeepAliveTimeout = 3 * time.Second
 	defaultPDServerTimeout      = 3 * time.Second
 
-	defaultLeaderTransferTime = 100 * time.Millisecond
+	defaultLeaderTransferTime = 200 * time.Millisecond
 )
 
 func NewPDClient(pdAddrs []string) (pd.Client, error) {
-	fmt.Println("set backoff with 3s")
 	// init pd-client
 	pdCli, err := pd.NewClient(
 		caller.Component("tidb-operator"),
@@ -142,7 +141,6 @@ func accessPDRegionAPI(ctx context.Context, client pd.Client) error {
 		if !strings.Contains(err.Error(), "not leader") {
 			break
 		}
-		// wait 100 ms
 		time.Sleep(defaultLeaderTransferTime)
 	}
 	if lastErr != nil {
