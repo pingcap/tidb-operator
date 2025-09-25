@@ -25,9 +25,9 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	"github.com/pingcap/tidb-operator/pkg/tiflashapi/v1"
 	"github.com/pingcap/tidb-operator/pkg/utils/compare"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
 
 const (
@@ -68,8 +68,10 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 			}
 		}
 
-		if ready && state.StoreStatus != tiflashapi.Running {
-			return task.Retry(defaultTaskWaitDuration).With("pod is ready but store status is not Running, retry")
+		podReady := pod != nil && statefulset.IsPodReady(pod)
+
+		if !ready && podReady {
+			return task.Retry(defaultTaskWaitDuration).With("pod is ready and store status is not Running, retry")
 		}
 
 		if state.IsPodTerminating() {
