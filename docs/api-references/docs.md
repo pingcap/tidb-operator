@@ -4590,7 +4590,8 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<p>TimeSynced is the time at which the backup was synced to kernel state.</p>
+<p>TimeSynced is the time at which the backup was synced to kernel state.
+Only applied for LogBackup.</p>
 </td>
 </tr>
 <tr>

@@ -2517,6 +2517,8 @@ type BackupStatus struct {
 	// +nullable
 	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
 	// TimeSynced is the time at which the backup was synced to kernel state.
+	// Only applied for LogBackup.
+	// +nullable
 	TimeSynced *metav1.Time `json:"timeSynced,omitempty"`
 	// TimeTaken is the time that backup takes, it is TimeCompleted - TimeStarted
 	TimeTaken string `json:"timeTaken,omitempty"`
