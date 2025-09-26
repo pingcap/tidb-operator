@@ -2486,6 +2486,10 @@ type BackupStatus struct {
 	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
 	// +nullable
 	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
+	// TimeSynced is the time at which the backup was synced to kernel state.
+	// Only applied for LogBackup.
+	// +nullable
+	TimeSynced *metav1.Time `json:"timeSynced,omitempty"`
 	// TimeTaken is the time that backup takes, it is TimeCompleted - TimeStarted
 	TimeTaken string `json:"timeTaken,omitempty"`
 	// BackupSizeReadable is the data size of the backup.
