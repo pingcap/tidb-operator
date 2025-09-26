@@ -151,7 +151,6 @@ func accessPDRegionAPI(ctx context.Context, client pd.Client) error {
 			if !strings.Contains(err2.Error(), "not leader") {
 				break
 			}
-
 		}
 		time.Sleep(defaultLeaderTransferTime)
 	}

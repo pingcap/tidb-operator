@@ -89,7 +89,7 @@ func (f *Framework) TestPDAvailability(ctx context.Context, pdg *v1alpha1.PDGrou
 	done := w.MustRunPDRegionAccess(nctx, pdEndpoints)
 
 	changeTime := time.Now()
-	ginkgo.By("Rolling udpate the PDGroup")
+	ginkgo.By("Rolling update the PDGroup")
 	f.Must(f.Client.Patch(ctx, pdg, patch))
 	f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromPDGroup(pdg), changeTime, waiter.LongTaskTimeout))
 	f.WaitForPDGroupReady(ctx, pdg)

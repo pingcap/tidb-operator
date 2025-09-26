@@ -28,7 +28,7 @@ import (
 
 var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label.Update, func() {
 	f := framework.New()
-	f.Setup(framework.WithSkipClusterDeletionWhenFailed())
+	f.Setup()
 	ginkgo.Context("Default", label.P0, func() {
 		workload := f.SetupWorkload()
 		ginkgo.It("No error when rolling update pd", func(ctx context.Context) {

@@ -65,7 +65,7 @@ func (f *Framework) TestTSOAvailability(ctx context.Context, tg *v1alpha1.TSOGro
 	done := w.MustRunPDRegionAccess(nctx, pdEndpoints)
 
 	changeTime := time.Now()
-	ginkgo.By("Rolling udpate the TSOGroup")
+	ginkgo.By("Rolling update the TSOGroup")
 	f.Must(f.Client.Patch(ctx, tg, patch))
 	f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTSOGroup(tg), changeTime, waiter.LongTaskTimeout))
 	f.WaitForTSOGroupReady(ctx, tg)
