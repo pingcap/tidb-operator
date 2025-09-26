@@ -40,6 +40,8 @@ type BackupUpdateStatus struct {
 	TimeStarted *metav1.Time
 	// TimeCompleted is the time at which the backup was completed.
 	TimeCompleted *metav1.Time
+	// TimeSynced is the time at which the backup was synced with kernel.
+	TimeSynced *metav1.Time
 	// BackupSizeReadable is the data size of the backup.
 	// the difference with BackupSize is that its format is human readable
 	BackupSizeReadable *string
@@ -154,6 +156,10 @@ func updateBackupStatus(status *v1alpha1.BackupStatus, newStatus *BackupUpdateSt
 	if newStatus.TimeCompleted != nil && status.TimeCompleted != *newStatus.TimeCompleted {
 		status.TimeCompleted = *newStatus.TimeCompleted
 		status.TimeTaken = status.TimeCompleted.Sub(status.TimeStarted.Time).Round(time.Second).String()
+		isUpdate = true
+	}
+	if newStatus.TimeSynced != nil && status.TimeSynced != newStatus.TimeSynced {
+		status.TimeSynced = newStatus.TimeSynced
 		isUpdate = true
 	}
 	if newStatus.BackupSizeReadable != nil && status.BackupSizeReadable != *newStatus.BackupSizeReadable {
