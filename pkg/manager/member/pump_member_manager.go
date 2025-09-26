@@ -461,10 +461,11 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 				Name:          "pump",
 				ContainerPort: v1alpha1.DefaultPumpPort,
 			}},
-			Resources:    controller.ContainerResource(tc.Spec.Pump.ResourceRequirements),
-			Env:          util.AppendEnv(envs, spec.Env()),
-			EnvFrom:      spec.EnvFrom(),
-			VolumeMounts: volumeMounts,
+			Resources:       controller.ContainerResource(tc.Spec.Pump.ResourceRequirements),
+			SecurityContext: spec.SecurityContext(),
+			Env:             util.AppendEnv(envs, spec.Env()),
+			EnvFrom:         spec.EnvFrom(),
+			VolumeMounts:    volumeMounts,
 			ReadinessProbe: &corev1.Probe{
 				ProbeHandler: corev1.ProbeHandler{
 					TCPSocket: &corev1.TCPSocketAction{
