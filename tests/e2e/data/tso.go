@@ -45,3 +45,10 @@ func NewTSOGroup(ns string, patches ...GroupPatch[*runtime.TSOGroup]) *v1alpha1.
 
 	return runtime.ToTSOGroup(tg)
 }
+
+func WithTSONextGen() GroupPatch[*runtime.TSOGroup] {
+	return func(obj *runtime.TSOGroup) {
+		obj.Spec.Template.Spec.Version = "v9.0.0"
+		obj.Spec.Template.Spec.Image = ptr.To(defaultImageRegistry + "pd:master-next-gen")
+	}
+}

@@ -16,11 +16,12 @@ package framework
 
 import (
 	"context"
-
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sync"
+	"time"
 
 	"github.com/onsi/ginkgo/v2"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
@@ -65,4 +66,34 @@ func (f *Framework) WaitForPDGroupReadyAndNotSuspended(ctx context.Context, pdg 
 		waiter.ShortTaskTimeout,
 	))
 	f.WaitForPDGroupReady(ctx, pdg)
+}
+
+func (f *Framework) TestPDAvailability(ctx context.Context, pdg *v1alpha1.PDGroup, w *Workload) {
+	// Prepare PD endpoints for region API access
+	pdEndpoints := pdg.Name + "-pd." + f.Namespace.Name + ":2379"
+
+	patch := client.MergeFrom(pdg.DeepCopy())
+	pdg.Spec.Template.Annotations = map[string]string{
+		"test": "test",
+	}
+
+	nctx, cancel := context.WithCancel(ctx)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer ginkgo.GinkgoRecover()
+		f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromPDGroup(pdg), int(*pdg.Spec.Replicas), 0, waiter.LongTaskTimeout))
+	}()
+
+	done := w.MustRunPDRegionAccess(nctx, pdEndpoints)
+
+	changeTime := time.Now()
+	ginkgo.By("Rolling udpate the PDGroup")
+	f.Must(f.Client.Patch(ctx, pdg, patch))
+	f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromPDGroup(pdg), changeTime, waiter.LongTaskTimeout))
+	f.WaitForPDGroupReady(ctx, pdg)
+	cancel()
+	wg.Wait()
+	<-done
 }

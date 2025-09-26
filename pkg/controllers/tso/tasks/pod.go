@@ -17,6 +17,7 @@ package tasks
 import (
 	"context"
 	"fmt"
+	"path"
 	"path/filepath"
 
 	"github.com/go-logr/logr"
@@ -24,8 +25,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/image"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
 	"github.com/pingcap/tidb-operator/pkg/reloadable"
@@ -46,7 +49,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 		ck := state.Cluster()
 		obj := state.Object()
 		logger := logr.FromContextOrDiscard(ctx)
-		expected := newPod(ck, obj)
+		expected := newPod(ck, obj, state.FeatureGates())
 		pod := state.Pod()
 		if pod == nil {
 			if err := c.Apply(ctx, expected); err != nil {
@@ -131,7 +134,7 @@ func preDeleteCheck(
 	return false, nil
 }
 
-func newPod(cluster *v1alpha1.Cluster, tso *v1alpha1.TSO) *corev1.Pod {
+func newPod(cluster *v1alpha1.Cluster, tso *v1alpha1.TSO, fg features.Gates) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -218,10 +221,50 @@ func newPod(cluster *v1alpha1.Cluster, tso *v1alpha1.TSO) *corev1.Pod {
 		},
 	}
 
+	if fg.Enabled(metav1alpha1.UseTSOReadyAPI) {
+		pod.Spec.Containers[0].ReadinessProbe = buildReadinessProbe(cluster, coreutil.TSOClientPort(tso))
+	}
+
 	if tso.Spec.Overlay != nil {
 		overlay.OverlayPod(pod, tso.Spec.Overlay.Pod)
 	}
 
 	reloadable.MustEncodeLastTSOTemplate(tso, pod)
 	return pod
+}
+
+func buildReadinessProbe(cluster *v1alpha1.Cluster, port int32) *corev1.Probe {
+	tlsClusterEnabled := coreutil.IsTLSClusterEnabled(cluster)
+
+	scheme := "http"
+	if tlsClusterEnabled {
+		scheme = "https"
+	}
+
+	readinessURL := fmt.Sprintf("%s://127.0.0.1:%d/tso/api/v1/health", scheme, port)
+	var command []string
+	command = append(command, "curl", readinessURL,
+		// Fail silently (no output at all) on server errors
+		// without this if the server return 500, the exist code will be 0
+		// and probe is success.
+		"--fail",
+		// Silent mode, only print error
+		"-sS",
+		// follow 301 or 302 redirect
+		"--location")
+
+	if tlsClusterEnabled {
+		cacert := path.Join(v1alpha1.DirPathClusterTLSPD, corev1.ServiceAccountRootCAKey)
+		cert := path.Join(v1alpha1.DirPathClusterTLSPD, corev1.TLSCertKey)
+		key := path.Join(v1alpha1.DirPathClusterTLSPD, corev1.TLSPrivateKeyKey)
+		command = append(command, "--cacert", cacert, "--cert", cert, "--key", key)
+	}
+
+	return &corev1.Probe{
+		ProbeHandler: corev1.ProbeHandler{
+			Exec: &corev1.ExecAction{
+				Command: command,
+			},
+		},
+	}
 }

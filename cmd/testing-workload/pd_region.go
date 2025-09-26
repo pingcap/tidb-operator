@@ -127,19 +127,31 @@ func accessPDRegionAPI(ctx context.Context, client pd.Client) error {
 		if lastErr != nil {
 			fmt.Println("retry because of ", lastErr)
 		}
-		_, err := client.BatchScanRegions(ctx, []router.KeyRange{
+
+		_, _, err1 := client.GetTS(ctx)
+		_, err2 := client.BatchScanRegions(ctx, []router.KeyRange{
 			{
 				StartKey: []byte(""),
 				EndKey:   []byte(""),
 			},
 		}, 1)
-		if err == nil {
+		if err1 == nil && err2 == nil {
 			return nil
 		}
-		lastErr = err
-		// only retry for not leader err
-		if !strings.Contains(err.Error(), "not leader") {
-			break
+
+		if err1 != nil {
+			lastErr = err1
+			if !strings.Contains(err1.Error(), "not leader") {
+				break
+			}
+		}
+		if err2 != nil {
+			lastErr = err2
+			// only retry for not leader err
+			if !strings.Contains(err2.Error(), "not leader") {
+				break
+			}
+
 		}
 		time.Sleep(defaultLeaderTransferTime)
 	}

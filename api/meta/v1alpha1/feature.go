@@ -18,7 +18,7 @@ package v1alpha1
 // NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
 // NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
 //
-// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning;ClusterSubdomain;TerminableLogTailer
+// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning;ClusterSubdomain;TerminableLogTailer;UseTSOReadyAPI
 // +enum
 type Feature string
 
@@ -81,4 +81,8 @@ const (
 	// If this feature is enabled, log tailer in sidecar can exit immediately after main container is exited
 	TerminableLogTailer      Feature      = "TerminableLogTailer"
 	TerminableLogTailerStage FeatureStage = FeatureStageAlpha
+
+	// UseTSOReadyAPI calls /health api to check readiness for tso pods
+	UseTSOReadyAPI      Feature      = "UseTSOReadyAPI"
+	UseTSOReadyAPIStage FeatureStage = FeatureStageAlpha
 )

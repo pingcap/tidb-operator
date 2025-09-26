@@ -16,22 +16,19 @@ package availability
 
 import (
 	"context"
-	"sync"
-	"time"
 
 	"github.com/onsi/ginkgo/v2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
-	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
 var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label.Update, func() {
 	f := framework.New()
-	f.Setup()
+	f.Setup(framework.WithSkipClusterDeletionWhenFailed())
 	ginkgo.Context("Default", label.P0, func() {
 		workload := f.SetupWorkload()
 		ginkgo.It("No error when rolling update pd", func(ctx context.Context) {
@@ -43,33 +40,60 @@ var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
 
-			// Prepare PD endpoints for region API access
-			pdEndpoints := pdg.Name + "-pd." + f.Namespace.Name + ":2379"
+			f.TestPDAvailability(ctx, pdg, workload)
+		})
+	})
 
-			patch := client.MergeFrom(pdg.DeepCopy())
-			pdg.Spec.Template.Annotations = map[string]string{
-				"test": "test",
-			}
+	ginkgo.Context("NextGen PDMS", label.KindNextGen, label.P0, label.Features(metav1alpha1.UseTSOReadyAPI), func() {
+		workload := f.SetupWorkload()
+		f.SetupCluster(data.WithFeatureGates(metav1alpha1.UseTSOReadyAPI))
+		// TODO: wait until the pr is merged
+		ginkgo.It("No error when rolling update pd in next-gen", label.KindNextGen, func(ctx context.Context) {
+			pdg := f.MustCreatePD(ctx, data.WithPDNextGen(), data.WithMSMode(), data.WithReplicas[*runtime.PDGroup](3))
+			kvg := f.MustCreateTiKV(ctx, data.WithTiKVNextGen())
+			dbg := f.MustCreateTiDB(ctx,
+				data.WithTiDBNextGen(),
+				data.WithKeyspace("SYSTEM"),
+			)
+			tg := f.MustCreateTSO(ctx,
+				data.WithTSONextGen(),
+			)
+			sg := f.MustCreateScheduler(ctx,
+				data.WithSchedulerNextGen(),
+			)
 
-			nctx, cancel := context.WithCancel(ctx)
-			wg := sync.WaitGroup{}
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				defer ginkgo.GinkgoRecover()
-				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromPDGroup(pdg), 3, 0, waiter.LongTaskTimeout))
-			}()
-
-			done := workload.MustRunPDRegionAccess(nctx, pdEndpoints)
-
-			changeTime := time.Now()
-			ginkgo.By("Rolling udpate the PDGroup")
-			f.Must(f.Client.Patch(ctx, pdg, patch))
-			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromPDGroup(pdg), changeTime, waiter.LongTaskTimeout))
 			f.WaitForPDGroupReady(ctx, pdg)
-			cancel()
-			wg.Wait()
-			<-done
+			f.WaitForTiKVGroupReady(ctx, kvg)
+			f.WaitForTiDBGroupReady(ctx, dbg)
+			f.WaitForTSOGroupReady(ctx, tg)
+			f.WaitForSchedulerGroupReady(ctx, sg)
+
+			f.TestPDAvailability(ctx, pdg, workload)
+		})
+
+		ginkgo.It("No error when rolling update tso in next-gen", label.KindNextGen, func(ctx context.Context) {
+			pdg := f.MustCreatePD(ctx, data.WithPDNextGen(), data.WithMSMode())
+			kvg := f.MustCreateTiKV(ctx, data.WithTiKVNextGen())
+			dbg := f.MustCreateTiDB(ctx,
+				data.WithTiDBNextGen(),
+				data.WithKeyspace("SYSTEM"),
+			)
+			tg := f.MustCreateTSO(ctx,
+				data.WithTSONextGen(),
+				data.WithReplicas[*runtime.TSOGroup](2),
+			)
+			sg := f.MustCreateScheduler(ctx,
+				data.WithSchedulerNextGen(),
+				data.WithReplicas[*runtime.SchedulerGroup](2),
+			)
+
+			f.WaitForPDGroupReady(ctx, pdg)
+			f.WaitForTiKVGroupReady(ctx, kvg)
+			f.WaitForTiDBGroupReady(ctx, dbg)
+			f.WaitForTSOGroupReady(ctx, tg)
+			f.WaitForSchedulerGroupReady(ctx, sg)
+
+			f.TestTSOAvailability(ctx, tg, workload)
 		})
 	})
 })
