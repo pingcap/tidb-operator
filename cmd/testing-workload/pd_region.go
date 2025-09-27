@@ -28,7 +28,9 @@ import (
 	"github.com/tikv/pd/client/opt"
 	"github.com/tikv/pd/client/pkg/caller"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -98,10 +100,14 @@ func PDRegionAccess(ctx context.Context) error {
 				case <-ctx.Done():
 					return
 				default:
-					err := accessPDRegionAPI(ctx, client)
+					err := accessPDAPI(ctx, client)
 					totalCount.Add(1)
-					if err != nil && !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, context.Canceled) {
-						fmt.Printf("[%d-%s] failed to access PD region API: %v\n",
+					if err != nil &&
+						!errors.Is(err, context.DeadlineExceeded) &&
+						!errors.Is(err, context.Canceled) &&
+						status.Code(err) != codes.Canceled &&
+						status.Code(err) != codes.DeadlineExceeded {
+						fmt.Printf("[%d-%s] failed to access PD API: %v\n",
 							id, time.Now().String(), err,
 						)
 						failCount.Add(1)
@@ -114,13 +120,13 @@ func PDRegionAccess(ctx context.Context) error {
 	wg.Wait()
 	fmt.Printf("total count: %d, fail count: %d\n", totalCount.Load(), failCount.Load())
 	if failCount.Load() > 0 {
-		return fmt.Errorf("there are failed PD region API accesses")
+		return fmt.Errorf("there are failed PD API accesses")
 	}
 
 	return nil
 }
 
-func accessPDRegionAPI(ctx context.Context, client pd.Client) error {
+func accessPDAPI(ctx context.Context, client pd.Client) error {
 	// retry once
 	var lastErr error
 	for range 2 {
@@ -155,7 +161,7 @@ func accessPDRegionAPI(ctx context.Context, client pd.Client) error {
 		time.Sleep(defaultLeaderTransferTime)
 	}
 	if lastErr != nil {
-		return fmt.Errorf("failed to scan regions from PD: %w", lastErr)
+		return lastErr
 	}
 
 	return nil
