@@ -216,6 +216,8 @@ func (w *Workload) MustRunWorkload(ctx context.Context, host string, opts ...wor
 
 	ginkgo.By("Creating workload job")
 	w.f.Must(w.f.Client.Create(ctx, job))
+	w.f.Must(waiter.WaitForJobRunning(ctx, w.f.Client, job, waiter.ShortTaskTimeout))
+
 	w.jobs = append(w.jobs, job)
 
 	nctx := w.StopJob(ctx, job)
@@ -258,7 +260,6 @@ func (w *Workload) MustRunPDRegionAccess(ctx context.Context, pdEndpoints string
 								"--pd-endpoints", pdEndpoints,
 								// an arbitrary timeout
 								// NOTE: maybe changed to use a http api to stop
-								"--duration", "5",
 								"--max-connections", "30",
 							},
 							ImagePullPolicy: corev1.PullIfNotPresent,
@@ -278,6 +279,8 @@ func (w *Workload) MustRunPDRegionAccess(ctx context.Context, pdEndpoints string
 
 	ginkgo.By("Creating PD region access job")
 	w.f.Must(w.f.Client.Create(ctx, job))
+	w.f.Must(waiter.WaitForJobRunning(ctx, w.f.Client, job, waiter.ShortTaskTimeout))
+
 	w.jobs = append(w.jobs, job)
 
 	nctx := w.StopJob(ctx, job)

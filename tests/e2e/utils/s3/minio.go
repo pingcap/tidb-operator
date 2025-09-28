@@ -21,15 +21,15 @@ import (
 	"time"
 
 	"github.com/minio/minio-go/v6"
-	"github.com/onsi/ginkgo/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/rest"
 
-	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/tests/e2e/utils/k8s"
+	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/tests/e2e/utils/portforwarder"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
@@ -37,113 +37,87 @@ const (
 	minioName  = "minio"
 	minioImage = "gcr.io/pingcap-public/third-party/minio/minio:RELEASE.2024-09-13T20-26-02Z"
 
-	minioBucket = "local" // the bucket for e2e test
 	minioSecret = "minio-secret"
 )
 
 type minioStorage struct {
-	c client.Client
-	// use portforward to visit service if e2e is not run in cluster
-	fw k8s.PortForwarder
+	cfg *rest.Config
+	c   client.Client
 }
 
-func NewMinio(c client.Client, fw k8s.PortForwarder) Interface {
+func NewMinio(cfg *rest.Config) (Interface, error) {
+	c, err := client.New(cfg, client.Options{
+		Scheme: scheme.Scheme,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("can't new client: %w", err)
+	}
 	return &minioStorage{
-		c:  c,
-		fw: fw,
+		cfg: cfg,
+		c:   c,
+	}, nil
+}
+
+func DefaultMinioOptions() *Options {
+	return &Options{
+		Bucket:    "local",
+		AccessKey: "test12345678",
+		SecretKey: "test12345678",
 	}
 }
 
-func (s *minioStorage) Init(ctx context.Context, ns, accessKey, secretKey string) error {
-	ginkgo.By("init minio s3 storage")
+func (s *minioStorage) Init(ctx context.Context, ns string, opts ...Option) error {
+	o := DefaultMinioOptions()
+	for _, opt := range opts {
+		opt.With(o)
+	}
+
 	pod := getMinioPod(ns)
-	if err := s.c.Create(context.TODO(), pod); err != nil {
+	if err := s.c.Create(ctx, pod); err != nil {
 		return err
 	}
 	svc := getMinioService(ns)
-	if err := s.c.Create(context.TODO(), svc); err != nil {
+	if err := s.c.Create(ctx, svc); err != nil {
 		return err
 	}
-	secret := getMinioSecret(ns, accessKey, secretKey)
-	if err := s.c.Create(context.TODO(), secret); err != nil {
+	secret := getMinioSecret(ns, o.AccessKey, o.SecretKey)
+	if err := s.c.Create(ctx, secret); err != nil {
 		return err
 	}
-	ginkgo.By("wait for minio s3 storage ready")
 
 	if err := waiter.WaitForPodReadyInNamespace(ctx, s.c, pod, 5*time.Minute); err != nil {
 		return err
 	}
 
-	ep, err := s.forwardPort(ctx, ns)
+	forwarded, err := portforwarder.New(s.cfg).ForwardPod(ctx, pod, ":9000")
 	if err != nil {
 		return err
+	}
+	defer forwarded.Cancel()
+
+	local, ok := forwarded.Local(9000)
+	if !ok {
+		return fmt.Errorf("cannot get local port")
 	}
 
-	mc, err := minio.New(ep, accessKey, secretKey, false)
+	ep := fmt.Sprintf("localhost:%d", local)
+	mc, err := minio.New(ep, o.AccessKey, o.SecretKey, false)
 	if err != nil {
 		return err
 	}
-	if err = mc.MakeBucket(minioBucket, ""); err != nil {
+	if err = mc.MakeBucket(o.Bucket, ""); err != nil {
 		return err
 	}
 	return nil
-}
-
-func (s *minioStorage) forwardPort(ctx context.Context, ns string) (string, error) {
-	if s.fw == nil {
-		return getDefaultAddr(ns), nil
-	}
-	host, port, _, err := k8s.ForwardOnePort(s.fw, ns, "svc/"+minioName, 9000)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%s:%d", host, port), nil
 }
 
 func getDefaultAddr(ns string) string {
 	return fmt.Sprintf("%s.%s:9000", minioName, ns)
 }
 
-func (s *minioStorage) Config(ns, prefix string) *v1alpha1.S3StorageProvider {
-	return &v1alpha1.S3StorageProvider{
-		Provider:   v1alpha1.S3StorageProviderTypeCeph,
-		Prefix:     prefix,
-		SecretName: minioSecret,
-		Bucket:     minioBucket,
-		// scheme is necessary
-		Endpoint: "http://" + getDefaultAddr(ns),
-	}
-}
-
 // clean by deleting namespace, so just return
 func (s *minioStorage) Clean(ctx context.Context, ns string) error {
 	return nil
-}
-
-func (s *minioStorage) Bucket() string {
-	return minioBucket
-}
-
-func (s *minioStorage) IsDataCleaned(ctx context.Context, ns, prefix string) (bool, error) {
-	accessKey, secretKey, err := s.accessSecret(ns)
-	if err != nil {
-		return false, err
-	}
-	ep, err := s.forwardPort(ctx, ns)
-	if err != nil {
-		return false, err
-	}
-	mc, err := minio.New(ep, accessKey, secretKey, false)
-	if err != nil {
-		return false, err
-	}
-	doneCh := make(chan struct{})
-	defer close(doneCh)
-	objs := mc.ListObjects(minioBucket, prefix, true, doneCh)
-	if len(objs) == 0 {
-		return true, nil
-	}
-	return false, nil
 }
 
 func (s *minioStorage) accessSecret(ns string) (string, string, error) {
