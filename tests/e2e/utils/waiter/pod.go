@@ -22,6 +22,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	kuberuntime "k8s.io/apimachinery/pkg/runtime"
@@ -33,6 +34,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
 
 type podInfo struct {
@@ -314,4 +316,18 @@ func MaxPodsCreateTimestamp[G runtime.Group](
 	}
 
 	return maxTime, nil
+}
+
+// WaitForPodReadyInNamespace waits the given timeout duration for the
+// specified pod to be ready and running.
+func WaitForPodReadyInNamespace(ctx context.Context, c client.Client, pod *corev1.Pod, timeout time.Duration) error {
+	return WaitForObjectV2(ctx, c, pod, func() (bool, error) {
+		switch pod.Status.Phase {
+		case v1.PodFailed, v1.PodSucceeded:
+			return true, fmt.Errorf("pod is %v", pod.Status.Phase)
+		case v1.PodRunning:
+			return statefulset.IsPodReady(pod), nil
+		}
+		return false, fmt.Errorf("pod is %v", pod.Status.Phase)
+	}, timeout)
 }
