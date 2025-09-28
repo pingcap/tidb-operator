@@ -110,5 +110,5 @@ func (f *Framework) WaitTiKVPreStopHookSuccess(ctx context.Context, kv *v1alpha1
 }
 
 func (f *Framework) RestartTiKVPod(ctx context.Context, kv *v1alpha1.TiKV) {
-	restartInstancePod[scope.TiKV](ctx, f, kv)
+	restartInstancePod[scope.TiKV](ctx, f, kv, client.GracePeriodSeconds(30))
 }
