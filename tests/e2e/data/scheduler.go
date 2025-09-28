@@ -45,3 +45,10 @@ func NewSchedulerGroup(ns string, patches ...GroupPatch[*runtime.SchedulerGroup]
 
 	return runtime.ToSchedulerGroup(sg)
 }
+
+func WithSchedulerNextGen() GroupPatch[*runtime.SchedulerGroup] {
+	return func(obj *runtime.SchedulerGroup) {
+		obj.Spec.Template.Spec.Version = "v9.0.0"
+		obj.Spec.Template.Spec.Image = ptr.To(defaultImageRegistry + "pd:master-next-gen")
+	}
+}

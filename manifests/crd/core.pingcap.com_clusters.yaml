@@ -93,6 +93,7 @@ spec:
                       - SessionTokenSigning
                       - ClusterSubdomain
                       - TerminableLogTailer
+                      - UseTSOReadyAPI
                       type: string
                   required:
                   - name
@@ -297,6 +298,7 @@ spec:
                       - SessionTokenSigning
                       - ClusterSubdomain
                       - TerminableLogTailer
+                      - UseTSOReadyAPI
                       type: string
                     stage:
                       type: string
