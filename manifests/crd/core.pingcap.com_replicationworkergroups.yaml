@@ -102,6 +102,7 @@ spec:
                   - SessionTokenSigning
                   - ClusterSubdomain
                   - TerminableLogTailer
+                  - UseTSOReadyAPI
                   type: string
                 type: array
               replicas:
