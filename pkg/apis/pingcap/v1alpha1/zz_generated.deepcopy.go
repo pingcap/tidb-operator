@@ -488,6 +488,10 @@ func (in *BackupStatus) DeepCopyInto(out *BackupStatus) {
 	*out = *in
 	in.TimeStarted.DeepCopyInto(&out.TimeStarted)
 	in.TimeCompleted.DeepCopyInto(&out.TimeCompleted)
+	if in.TimeSynced != nil {
+		in, out := &in.TimeSynced, &out.TimeSynced
+		*out = (*in).DeepCopy()
+	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
 		*out = make([]BackupCondition, len(*in))

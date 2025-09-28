@@ -4582,6 +4582,20 @@ TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/
 </tr>
 <tr>
 <td>
+<code>timeSynced</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>TimeSynced is the time at which the backup was synced to kernel state.
+Only applied for LogBackup.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>timeTaken</code></br>
 <em>
 string

@@ -168,6 +168,12 @@ func (h *Helper) CreateTC(namespace, clusterName string, acrossK8s, recoverMode 
 					ReadyReplicas: 3,
 				},
 			},
+			Conditions: []v1alpha1.TidbClusterCondition{
+				{
+					Type:   v1alpha1.TidbClusterReady,
+					Status: corev1.ConditionTrue,
+				},
+			},
 		},
 	}
 	tc.Namespace = namespace
@@ -212,6 +218,12 @@ func (h *Helper) CreateTCWithNoTiKV(namespace, clusterName string, acrossK8s, re
 			PD: v1alpha1.PDStatus{
 				Members: map[string]v1alpha1.PDMember{
 					"pd-0": {Name: "pd-0", Health: true},
+				},
+			},
+			Conditions: []v1alpha1.TidbClusterCondition{
+				{
+					Type:   v1alpha1.TidbClusterReady,
+					Status: corev1.ConditionTrue,
 				},
 			},
 		},
