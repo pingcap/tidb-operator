@@ -65,6 +65,13 @@ api-version = 2
 
 [flash]
 graceful_wait_shutdown_timeout = 300
+
+[storage.s3]
+endpoint = "http://minio:9000"
+bucket = "local"
+root = "/data"
+access_key_id = "test12345678"
+secret_access_key = "test12345678"
 `
 		obj.Spec.Template.Spec.Overlay = &v1alpha1.Overlay{
 			Pod: &v1alpha1.PodOverlay{
