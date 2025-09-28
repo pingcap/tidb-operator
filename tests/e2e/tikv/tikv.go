@@ -47,9 +47,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 				f.SetupCluster(data.WithClusterTLSEnabled())
 			}
 
-			// NOTE(liubo02): this case is failed in e2e env because of the cgroup v2.
-			// Enable it if env is fixed.
-			ginkgo.PIt("leader evicted when delete tikv pod directly", func(ctx context.Context) {
+			ginkgo.It("leader evicted when delete tikv pod directly", func(ctx context.Context) {
 				if tls {
 					ns := f.Cluster.Namespace
 					cn := f.Cluster.Name

@@ -231,9 +231,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 		})
 	})
 
-	// NOTE: this case is failed in e2e env.
-	// Enable it if env is fixed.
-	ginkgo.PContext("TLS", label.P0, label.FeatureTLS, func() {
+	ginkgo.Context("TLS", label.P0, label.FeatureTLS, func() {
 		f.SetupCluster(data.WithClusterTLSEnabled())
 		workload := f.SetupWorkload()
 
