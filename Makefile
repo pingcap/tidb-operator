@@ -23,11 +23,7 @@ OVERLAY_PKG_DIR = $(ROOT)/pkg/overlay
 RUNTIME_PKG_DIR = $(ROOT)/pkg/runtime
 BOILERPLATE_FILE = $(ROOT)/hack/boilerplate/boilerplate.go.txt
 MOCK_BOILERPLATE_FILE = $(ROOT)/hack/boilerplate/boilerplate.txt
-
-KIND_VERSION ?= v0.24.0
-
-# TODO: use kubectl in _output
-KUBECTL = kubectl -n tidb-admin --context kind-tidb-operator
+KUBE_OPT = -n tidb-admin --context kind-tidb-operator
 
 ALL_CMD = tidb-operator prestop-checker testing-workload tidb-backup-manager
 .PHONY: build
@@ -46,9 +42,9 @@ push/%:
 	$(ROOT)/hack/image.sh $* --push
 
 .PHONY: deploy
-deploy: release
-	$(KUBECTL) apply --server-side=true -f $(OUTPUT_DIR)/manifests/tidb-operator.crds.yaml
-	$(KUBECTL) apply --server-side=true -f $(OUTPUT_DIR)/manifests/tidb-operator.yaml
+deploy: bin/kubectl release
+	$(KUBECTL) $(KUBE_OPT) apply --server-side=true -f $(OUTPUT_DIR)/manifests/tidb-operator.crds.yaml
+	$(KUBECTL) $(KUBE_OPT) apply --server-side=true -f $(OUTPUT_DIR)/manifests/tidb-operator.yaml
 
 .PHONY: codegen
 codegen: bin/deepcopy-gen bin/register-gen bin/overlay-gen
@@ -180,38 +176,22 @@ e2e: bin/kind release
 	$(ROOT)/hack/e2e.sh --prepare run run-upgrade $(GINKGO_OPTS)
 
 .PHONY: e2e/deploy
-e2e/deploy: release
-	$(KUBECTL) apply --server-side=true -f $(OUTPUT_DIR)/manifests/tidb-operator.crds.yaml
-	$(KUBECTL) apply --server-side=true -f $(OUTPUT_DIR)/manifests/tidb-operator-e2e.yaml
+e2e/deploy: bin/kubectl release
+	$(KUBECTL) $(KUBE_OPT) apply --server-side=true -f $(OUTPUT_DIR)/manifests/tidb-operator.crds.yaml
+	$(KUBECTL) $(KUBE_OPT) apply --server-side=true -f $(OUTPUT_DIR)/manifests/tidb-operator-e2e.yaml
 
 .PHONY: kube
-kube: bin/kind
+kube: bin/kind bin/kubectl
 	@echo "ensure that the kubernetes env is existing"
-	$(ROOT)/hack/kind.sh
+	V_KIND=$(KIND) V_KUBECTL=$(KUBECTL) $(ROOT)/hack/kind.sh
 
 .PHONY: reload/operator
-reload/operator:
-	$(KUBECTL) delete pod `$(KUBECTL) get pods | awk '/operator/{ print $$1 }'`
+reload/operator: bin/kubectl
+	$(KUBECTL) $(KUBE_OPT) delete pod `$(KUBECTL) $(KUBE_OPT) get pods | awk '/operator/{ print $$1 }'`
 
 .PHONY: logs/operator
-logs/operator:
-	$(KUBECTL) logs -f `$(KUBECTL) get pods | awk '/operator/{ print $$1 }'`
-
-CONTROLLER_GEN = $(BIN_DIR)/controller-gen
-bin/controller-gen:
-	$(ROOT)/hack/download.sh go_install $(CONTROLLER_GEN) sigs.k8s.io/controller-tools/cmd/controller-gen v0.17.2 "--version | awk '{print \$$2}'"
-
-DEEPCOPY_GEN = $(BIN_DIR)/deepcopy-gen
-bin/deepcopy-gen:
-	$(ROOT)/hack/download.sh go_install $(DEEPCOPY_GEN) k8s.io/code-generator/cmd/deepcopy-gen
-
-REGISTER_GEN = $(BIN_DIR)/register-gen
-bin/register-gen:
-	$(ROOT)/hack/download.sh go_install $(REGISTER_GEN) k8s.io/code-generator/cmd/register-gen
-
-MOCKGEN = $(BIN_DIR)/mockgen
-bin/mockgen:
-	$(ROOT)/hack/download.sh go_install $(MOCKGEN) go.uber.org/mock/mockgen v0.5.0 "--version"
+logs/operator: bin/kubectl
+	$(KUBECTL) $(KUBE_OPT) logs -f `$(KUBECTL) $(KUBE_OPT) get pods | awk '/operator/{ print $$1 }'`
 
 OVERLAY_GEN = $(BIN_DIR)/overlay-gen
 bin/overlay-gen:
@@ -221,34 +201,16 @@ RUNTIME_GEN = $(BIN_DIR)/runtime-gen
 bin/runtime-gen:
 	$(ROOT)/hack/build.sh runtime-gen
 
+ALL_BIN = kubectl golangci-lint kind ginkgo mdtoc helm license-eye mockgen controller-gen deepcopy-gen register-gen
 
-.PHONY: bin/golangci-lint
-GOLANGCI_LINT = $(BIN_DIR)/golangci-lint
-bin/golangci-lint:
-	# DON'T track the version of this cmd by go.mod
-	$(ROOT)/hack/download.sh go_install $(GOLANGCI_LINT) github.com/golangci/golangci-lint/v2/cmd/golangci-lint v2.1.6 "version --short"
+# Generic target for allowed bin/xxx tools - automatically defines XXX variable (with hyphens converted to underscores)
+# e.g. bin/abc-def will define ABC_DEF = $(BIN_DIR)/abc-def
+define make_bin_target
+$(eval $(shell echo $(1) | tr '[:lower:]-' '[:upper:]_') = $(BIN_DIR)/$(1))
+endef
 
-.PHONY: bin/kind
-KIND = $(BIN_DIR)/kind
-bin/kind:
-	$(ROOT)/hack/download.sh go_install $(KIND) sigs.k8s.io/kind $(KIND_VERSION) "version | awk '{print \$$2}'"
+.PHONY: $(addprefix bin/,$(ALL_BIN))
+$(addprefix bin/,$(ALL_BIN)):
+	$(call make_bin_target,$(patsubst bin/%,%,$@))
+	./hack/tools.sh $($(shell echo $(patsubst bin/%,%,$@) | tr '[:lower:]-' '[:upper:]_'))
 
-.PHONY: bin/license-eye
-LICENSE_EYE = $(BIN_DIR)/license-eye
-bin/license-eye:
-	if [ ! -f $(LICENSE_EYE) ]; then $(ROOT)/hack/download.sh go_install $(LICENSE_EYE) github.com/apache/skywalking-eyes/cmd/license-eye 049742de2276515409e3109ca2a91934053e080d; fi
-
-.PHONY: bin/ginkgo
-GINKGO = $(BIN_DIR)/ginkgo
-bin/ginkgo:
-	$(ROOT)/hack/download.sh go_install $(GINKGO) github.com/onsi/ginkgo/v2/ginkgo v2.23.3 "version | awk '{print \"v\"\$$3}'"
-
-.PHONY: bin/mdtoc
-MDTOC = $(BIN_DIR)/mdtoc
-bin/mdtoc:
-	$(ROOT)/hack/download.sh go_install $(MDTOC) sigs.k8s.io/mdtoc v1.1.0
-
-.PHONY: bin/helm
-HELM = $(BIN_DIR)/helm
-bin/helm:
-	$(ROOT)/hack/download.sh go_install $(HELM) helm.sh/helm/v3/cmd/helm v3.17.3 "version --template='{{.Version}}' | xargs printf '%s.3'"
