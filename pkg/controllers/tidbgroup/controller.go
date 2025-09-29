@@ -16,6 +16,7 @@ package tidbgroup
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -102,7 +103,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	defer func() {
 		dur := time.Since(startTime)
 		logger.Info("end reconcile", "duration", dur)
-		logger.Info("summay: \n" + reporter.Summary())
+		summary := fmt.Sprintf("summary for %v\n%s", req.NamespacedName, reporter.Summary())
+		logger.Info(summary)
 	}()
 
 	rtx := &tasks.ReconcileContext{
