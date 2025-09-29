@@ -105,7 +105,7 @@ func executeSimpleTransaction(ctx context.Context, db *sql.DB, id int, table str
 		return fmt.Errorf("failed to begin txn: %w", err)
 	}
 	defer func() {
-		if err := tx.Rollback(); err != nil {
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
 			fmt.Println("cannot rollback: ", err)
 		}
 	}()
@@ -143,6 +143,9 @@ func executeSimpleTransaction(ctx context.Context, db *sql.DB, id int, table str
 
 	// Commit the transaction
 	if err = tx.Commit(); err != nil {
+		if errors.Is(err, sql.ErrTxDone) && ctx.Err() != nil {
+			return fmt.Errorf("failed to commit rollbacked txn: %w", ctx.Err())
+		}
 		return fmt.Errorf("failed to commit txn: %w", err)
 	}
 	return nil
