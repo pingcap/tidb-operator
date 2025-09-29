@@ -48,7 +48,10 @@ func Workload(ctx context.Context, db *sql.DB) error {
 	}
 
 	table := "test.e2e_test"
-	createTableSQL := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT PRIMARY KEY AUTO_INCREMENT, v VARCHAR(1000))", table)
+	createTableSQL := fmt.Sprintf(
+		"CREATE TABLE IF NOT EXISTS %s (id INT PRIMARY KEY AUTO_INCREMENT, v VARCHAR(1000))",
+		table,
+	)
 	if _, err := db.ExecContext(ctx, createTableSQL); err != nil {
 		return fmt.Errorf("failed to create table: %w", err)
 	}
@@ -102,8 +105,8 @@ func executeSimpleTransaction(ctx context.Context, db *sql.DB, id int, table str
 		return fmt.Errorf("failed to begin txn: %w", err)
 	}
 	defer func() {
-		if r := recover(); r != nil {
-			_ = tx.Rollback()
+		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+			fmt.Println("cannot rollback: ", err)
 		}
 	}()
 
@@ -111,13 +114,12 @@ func executeSimpleTransaction(ctx context.Context, db *sql.DB, id int, table str
 	//nolint:gosec // only for testing
 	str := fmt.Sprintf("replace into %s(id, v) values(?, ?);", table)
 	if _, err = tx.ExecContext(ctx, str, id, strconv.Itoa(index)); err != nil {
-		_ = tx.Rollback()
 		return fmt.Errorf("failed to exec statement: %w", err)
 	}
 
+	// This query is introduced to visit tiflash
 	rows, err := tx.QueryContext(ctx, fmt.Sprintf("select count(*) from %s;", table))
 	if err != nil {
-		_ = tx.Rollback()
 		return fmt.Errorf("failed to query: %w", err)
 	}
 	if err := rows.Close(); err != nil {
@@ -125,8 +127,12 @@ func executeSimpleTransaction(ctx context.Context, db *sql.DB, id int, table str
 	}
 
 	// Simulate a different operation by updating the value
-	if _, err = tx.ExecContext(ctx, fmt.Sprintf("update %s set v = ? where id = ?;", table), strconv.Itoa(index*2), id); err != nil {
-		_ = tx.Rollback()
+	if _, err = tx.ExecContext(
+		ctx,
+		fmt.Sprintf("update %s set v = ? where id = ?;", table),
+		strconv.Itoa(index+1),
+		id,
+	); err != nil {
 		return fmt.Errorf("failed to exec update statement: %w", err)
 	}
 
@@ -136,7 +142,10 @@ func executeSimpleTransaction(ctx context.Context, db *sql.DB, id int, table str
 	}
 
 	// Commit the transaction
-	if err = tx.Commit(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+	if err = tx.Commit(); err != nil {
+		if errors.Is(err, sql.ErrTxDone) && ctx.Err() != nil {
+			return fmt.Errorf("failed to commit rollbacked txn: %w", ctx.Err())
+		}
 		return fmt.Errorf("failed to commit txn: %w", err)
 	}
 	return nil
