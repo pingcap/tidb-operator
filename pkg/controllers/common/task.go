@@ -89,7 +89,11 @@ func TaskContextObject[
 			return task.Complete().With("obj %s does not exist", key)
 		}
 		state.SetObject(obj)
-		return task.Complete().With("object is set")
+		return task.Complete().With("object %s/%s(rv: %s) is set",
+			obj.GetNamespace(),
+			obj.GetName(),
+			obj.GetResourceVersion(),
+		)
 	})
 }
 
