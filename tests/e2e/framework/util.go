@@ -156,11 +156,11 @@ func restartInstancePod[
 	S scope.Instance[F, T],
 	F client.Object,
 	T runtime.Instance,
-](ctx context.Context, f *Framework, instance F) {
+](ctx context.Context, f *Framework, instance F, opts ...client.DeleteOption) {
 	pod, err := apicall.GetPod[S](ctx, f.Client, instance)
 	gomega.Expect(err).To(gomega.Succeed())
 
-	f.Must(f.Client.Delete(ctx, pod))
+	f.Must(f.Client.Delete(ctx, pod, opts...))
 
 	createTime := pod.CreationTimestamp
 
