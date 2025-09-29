@@ -68,10 +68,10 @@ func (mr *MockPDClientMockRecorder) HasSynced() *gomock.Call {
 }
 
 // Members mocks base method.
-func (m *MockPDClient) Members() timanager.RefreshableCacheLister[v1.Member, *v1.Member] {
+func (m *MockPDClient) Members() MemberCache {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Members")
-	ret0, _ := ret[0].(timanager.RefreshableCacheLister[v1.Member, *v1.Member])
+	ret0, _ := ret[0].(MemberCache)
 	return ret0
 }
 
@@ -82,10 +82,10 @@ func (mr *MockPDClientMockRecorder) Members() *gomock.Call {
 }
 
 // Stores mocks base method.
-func (m *MockPDClient) Stores() timanager.RefreshableCacheLister[v1.Store, *v1.Store] {
+func (m *MockPDClient) Stores() StoreCache {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Stores")
-	ret0, _ := ret[0].(timanager.RefreshableCacheLister[v1.Store, *v1.Store])
+	ret0, _ := ret[0].(StoreCache)
 	return ret0
 }
 
@@ -96,10 +96,10 @@ func (mr *MockPDClientMockRecorder) Stores() *gomock.Call {
 }
 
 // TSOMembers mocks base method.
-func (m *MockPDClient) TSOMembers() timanager.RefreshableCacheLister[v1.TSOMember, *v1.TSOMember] {
+func (m *MockPDClient) TSOMembers() TSOMemberCache {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TSOMembers")
-	ret0, _ := ret[0].(timanager.RefreshableCacheLister[v1.TSOMember, *v1.TSOMember])
+	ret0, _ := ret[0].(TSOMemberCache)
 	return ret0
 }
 
