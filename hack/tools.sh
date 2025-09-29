@@ -54,7 +54,7 @@ function license-eye() {
 function mockgen() {
     download go_install $1 \
         go.uber.org/mock/mockgen \
-        v0.5.0
+        v0.6.0
 }
 
 function controller-gen() {
