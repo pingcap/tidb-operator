@@ -59,6 +59,13 @@ function mdtoc() {
         v1.1.0
 }
 
+function helm() {
+    download go_install $1 \
+        helm.sh/helm/v3/cmd/helm \
+        v3.17.3 \
+        "version --template='{{.Version}}' | xargs printf '%s.3'"
+}
+
 function license-eye() {
     download go_install $1 \
         github.com/apache/skywalking-eyes/cmd/license-eye \
