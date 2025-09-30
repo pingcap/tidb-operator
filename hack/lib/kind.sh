@@ -79,6 +79,7 @@ EOF
         fi
         $V_KIND create cluster --name ${V_KIND_CLUSTER} --config $KIND_CFG_DIR/config.yaml ${opt}
 
+        # See https://github.com/kubernetes/kubernetes/pull/128359
         echo "patch coredns config"
         cat <<EOF | $V_KUBECTL apply -f -
 apiVersion: v1
