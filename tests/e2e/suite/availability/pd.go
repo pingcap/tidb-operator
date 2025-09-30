@@ -49,6 +49,7 @@ var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label
 		f.SetupCluster(data.WithFeatureGates(metav1alpha1.UseTSOReadyAPI))
 		// TODO: wait until the pr is merged
 		ginkgo.It("No error when rolling update pd in next-gen", label.KindNextGen, func(ctx context.Context) {
+			f.MustCreateS3(ctx)
 			pdg := f.MustCreatePD(ctx, data.WithPDNextGen(), data.WithMSMode(), data.WithReplicas[*runtime.PDGroup](3))
 			kvg := f.MustCreateTiKV(ctx, data.WithTiKVNextGen())
 			dbg := f.MustCreateTiDB(ctx,
@@ -72,6 +73,7 @@ var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label
 		})
 
 		ginkgo.It("No error when rolling update tso in next-gen", label.KindNextGen, func(ctx context.Context) {
+			f.MustCreateS3(ctx)
 			pdg := f.MustCreatePD(ctx, data.WithPDNextGen(), data.WithMSMode())
 			kvg := f.MustCreateTiKV(ctx, data.WithTiKVNextGen())
 			dbg := f.MustCreateTiDB(ctx,
