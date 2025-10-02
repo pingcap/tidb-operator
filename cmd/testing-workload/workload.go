@@ -98,6 +98,14 @@ func executeSimpleTransaction(ctx context.Context, db *sql.DB, id int, table str
 		if _, err := db.ExecContext(ctx, "set session tidb_enforce_mpp = 1;"); err != nil {
 			return fmt.Errorf("set session tidb tidb_enforce_mpp failed: %w", err)
 		}
+		// This query is introduced to visit tiflash
+		rows, err := db.QueryContext(ctx, fmt.Sprintf("select count(*) from %s;", table))
+		if err != nil {
+			return fmt.Errorf("failed to query: %w", err)
+		}
+		if err := rows.Close(); err != nil {
+			return fmt.Errorf("failed to close query result: %w", err)
+		}
 	}
 
 	tx, err := db.BeginTx(ctx, nil)
@@ -115,15 +123,6 @@ func executeSimpleTransaction(ctx context.Context, db *sql.DB, id int, table str
 	str := fmt.Sprintf("replace into %s(id, v) values(?, ?);", table)
 	if _, err = tx.ExecContext(ctx, str, id, strconv.Itoa(index)); err != nil {
 		return fmt.Errorf("failed to exec statement: %w", err)
-	}
-
-	// This query is introduced to visit tiflash
-	rows, err := tx.QueryContext(ctx, fmt.Sprintf("select count(*) from %s;", table))
-	if err != nil {
-		return fmt.Errorf("failed to query: %w", err)
-	}
-	if err := rows.Close(); err != nil {
-		return fmt.Errorf("failed to close query result: %w", err)
 	}
 
 	// Simulate a different operation by updating the value
@@ -148,5 +147,6 @@ func executeSimpleTransaction(ctx context.Context, db *sql.DB, id int, table str
 		}
 		return fmt.Errorf("failed to commit txn: %w", err)
 	}
+
 	return nil
 }

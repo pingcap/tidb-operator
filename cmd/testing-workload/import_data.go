@@ -74,6 +74,7 @@ func ImportData(ctx context.Context, config ImportDataConfig) error {
 	fmt.Printf("Table '%s' ensured to exist.\n", config.TableName)
 
 	if config.TiFlashReplicas != 0 {
+		fmt.Println("set tiflash replicas to", config.TiFlashReplicas)
 		if _, err := config.DB.ExecContext(ctx,
 			fmt.Sprintf("ALTER TABLE %s SET TIFLASH REPLICA %d;", config.TableName, config.TiFlashReplicas),
 		); err != nil {

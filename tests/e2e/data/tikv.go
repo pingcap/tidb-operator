@@ -98,6 +98,14 @@ func WithTiKVNextGen() GroupPatch[*runtime.TiKVGroup] {
 		obj.Spec.Template.Spec.Config = `[storage]
 api-version = 2
 enable-ttl = true
+
+[dfs]
+prefix = "tikv"
+s3-bucket = "local"
+s3-endpoint = "http://minio:9000"
+s3-key-id = "test12345678"
+s3-secret-key = "test12345678"
+s3-region = "local"
 `
 	}
 }
