@@ -160,6 +160,7 @@ func run(ctx context.Context) {
 				TotalRows:        totalRows,
 				TableName:        importTable,
 				SplitRegionCount: splitRegionCount,
+				TiFlashReplicas:  tiflashReplicas,
 			}
 			if err := ImportData(ctx, importCfg); err != nil {
 				panic(err)

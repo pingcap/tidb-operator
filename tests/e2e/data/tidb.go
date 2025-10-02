@@ -196,5 +196,6 @@ func WithTiDBNextGen() GroupPatch[*runtime.TiDBGroup] {
 	return func(obj *runtime.TiDBGroup) {
 		obj.Spec.Template.Spec.Version = "v9.0.0"
 		obj.Spec.Template.Spec.Image = ptr.To(defaultImageRegistry + "tidb:master-next-gen")
+		obj.Spec.Template.Spec.Config = `disaggregated-tiflash = true`
 	}
 }

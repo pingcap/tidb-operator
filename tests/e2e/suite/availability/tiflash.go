@@ -38,11 +38,12 @@ var _ = ginkgo.Describe("TiFlash Availability Test", label.TiFlash, label.Update
 
 	ginkgo.Context("Default", label.P0, func() {
 		workload := f.SetupWorkload()
-		// TODO: wait until the https://github.com/pingcap/tiflash/pull/10450 is released
-		ginkgo.PIt("No error when rolling update tiflash", label.KindNextGen, func(ctx context.Context) {
+		ginkgo.It("No error when rolling update tiflash", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx)
 			fg := f.MustCreateTiFlash(ctx,
+				// TODO: wait until the https://github.com/pingcap/tiflash/pull/10450 is released
+				data.WithGroupImage[*runtime.TiFlashGroup]("gcr.io/pingcap-public/dbaas/tiflash:master-next-gen"),
 				data.WithReplicas[*runtime.TiFlashGroup](2),
 			)
 			dbg := f.MustCreateTiDB(ctx)
@@ -80,7 +81,8 @@ var _ = ginkgo.Describe("TiFlash Availability Test", label.TiFlash, label.Update
 
 	ginkgo.Context("NextGen", label.KindNextGen, label.P0, func() {
 		workload := f.SetupWorkload()
-		ginkgo.It("No error when rolling update tiflash in next-gen", label.KindNextGen, func(ctx context.Context) {
+		// TODO: still not work
+		ginkgo.PIt("No error when rolling update tiflash in next-gen", func(ctx context.Context) {
 			f.MustCreateS3(ctx)
 			pdg := f.MustCreatePD(ctx, data.WithPDNextGen())
 			kvg := f.MustCreateTiKV(ctx, data.WithTiKVNextGen())

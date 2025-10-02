@@ -60,8 +60,20 @@ func WithTiFlashNextGen() GroupPatch[*runtime.TiFlashGroup] {
 	return func(obj *runtime.TiFlashGroup) {
 		obj.Spec.Template.Spec.Version = "v9.0.0"
 		obj.Spec.Template.Spec.Image = ptr.To(defaultImageRegistry + "tiflash:master-next-gen")
-		obj.Spec.Template.Spec.Config = `[storage]
+		obj.Spec.Template.Spec.ProxyConfig = `[storage]
 api-version = 2
+enable-ttl = true
+
+[dfs]
+prefix = "tikv"
+s3-bucket = "local"
+s3-endpoint = "http://minio:9000"
+s3-key-id = "test12345678"
+s3-secret-key = "test12345678"
+s3-region = "local"
+`
+		obj.Spec.Template.Spec.Config = `[storage]
+api_version = 2
 
 [flash]
 graceful_wait_shutdown_timeout = 300
@@ -69,7 +81,7 @@ graceful_wait_shutdown_timeout = 300
 [storage.s3]
 endpoint = "http://minio:9000"
 bucket = "local"
-root = "/data"
+root = "/tiflash"
 access_key_id = "test12345678"
 secret_access_key = "test12345678"
 `
