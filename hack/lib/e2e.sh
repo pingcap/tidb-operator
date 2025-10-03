@@ -25,6 +25,7 @@ ROOT=$(
 source $ROOT/hack/lib/vars.sh
 source $ROOT/hack/lib/kind.sh
 source $ROOT/hack/lib/image.sh
+source $ROOT/hack/lib/download.sh
 
 OUTPUT_DIR=$ROOT/_output
 KUBECTL=$OUTPUT_DIR/bin/kubectl
@@ -282,7 +283,7 @@ function e2e::install_ginkgo() {
 function e2e::install_generate_jwt() {
     if ! command -v $GENERATEJWT &>/dev/null; then
         echo "generate_jwt not found, installing..."
-        $ROOT/hack/download.sh go_install $GENERATEJWT github.com/cbcwestwolf/generate_jwt@latest
+        download go_install $GENERATEJWT github.com/cbcwestwolf/generate_jwt@latest
     fi
 }
 

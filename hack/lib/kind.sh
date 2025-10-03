@@ -26,8 +26,6 @@ ROOT=$(cd $(dirname "${BASH_SOURCE[0]}")/../..; pwd -P)
 source $ROOT/hack/lib/vars.sh
 
 OUTPUT_DIR=$ROOT/_output
-KIND=$OUTPUT_DIR/bin/kind
-KUBECTL=$OUTPUT_DIR/bin/kubectl
 KIND_CFG_DIR=$OUTPUT_DIR/kind
 
 METAL_LB_NS=metallb-system
@@ -40,7 +38,7 @@ declare -A KIND_IMAGE=(
 )
 
 function kind::ensure_cluster() {
-    if ! command -v $KIND &>/dev/null; then
+    if ! command -v $V_KIND &>/dev/null; then
         echo "kind not found, please run 'make bin/kind'"
     fi
 
@@ -68,7 +66,7 @@ nodes:
 EOF
 
 
-    if ! $KIND get clusters | grep -q ${V_KIND_CLUSTER}; then
+    if ! $V_KIND get clusters | grep -q ${V_KIND_CLUSTER}; then
         local image=${KIND_IMAGE[${V_KUBE_VERSION}]}
         echo "kind cluster ${V_KIND_CLUSTER} not found, creating"
 
@@ -79,7 +77,44 @@ EOF
         else
             echo "create cluster with image $image"
         fi
-        $KIND create cluster --name ${V_KIND_CLUSTER} --config $KIND_CFG_DIR/config.yaml ${opt}
+        $V_KIND create cluster --name ${V_KIND_CLUSTER} --config $KIND_CFG_DIR/config.yaml ${opt}
+
+        # See https://github.com/kubernetes/kubernetes/pull/128359
+        echo "patch coredns config"
+        cat <<EOF | $V_KUBECTL apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns
+  namespace: kube-system
+data:
+  Corefile: |
+    .:53 {
+        errors
+        health {
+           lameduck 5s
+        }
+        ready
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+           pods insecure
+           fallthrough in-addr.arpa ip6.arpa
+           ttl 30
+        }
+        prometheus :9153
+        forward . /etc/resolv.conf {
+           max_concurrent 1000
+        }
+        cache 30 {
+          disable success cluster.local
+          disable denial cluster.local
+        }
+        loop
+        reload
+        loadbalance
+    }
+EOF
+        echo "restart coredns"
+        $V_KUBECTL rollout restart deploy/coredns -n kube-system
     fi
 }
 
@@ -90,10 +125,10 @@ function kind::loaded() {
 
 function kind::ensure_metal_lb() {
     echo "installing MetalLB..."
-    $KUBECTL apply -f $METAL_LB_MANIFEST
+    $V_KUBECTL apply -f $METAL_LB_MANIFEST
 
     echo "waiting for MetalLB to be ready..."
-    $KUBECTL -n $METAL_LB_NS wait --for=condition=Available --timeout=5m deployment/$METAL_LB_DEPLOYMENT
+    $V_KUBECTL -n $METAL_LB_NS wait --for=condition=Available --timeout=5m deployment/$METAL_LB_DEPLOYMENT
 
     echo "getting IPv4 subnet from Kind..."
     subnet=$(docker network inspect -f '{{index .IPAM.Config 0 "Subnet"}}' $KIND_NETWORK_NAME | cut -d. -f1-2)
@@ -102,7 +137,7 @@ function kind::ensure_metal_lb() {
     fi
 
     echo "configuring address pool for MetalLB..."
-    cat <<EOF | $KUBECTL apply -f -
+    cat <<EOF | $V_KUBECTL apply -f -
 apiVersion: metallb.io/v1beta1
 kind: IPAddressPool
 metadata:

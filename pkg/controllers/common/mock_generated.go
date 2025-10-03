@@ -23,9 +23,9 @@ import (
 	reflect "reflect"
 
 	v1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	client "github.com/pingcap/tidb-operator/pkg/client"
 	gomock "go.uber.org/mock/gomock"
 	v1 "k8s.io/api/core/v1"
-	client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // MockStatusPersister is a mock of StatusPersister interface.
