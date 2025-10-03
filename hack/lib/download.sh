@@ -18,10 +18,13 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-ROOT=$(cd $(dirname "${BASH_SOURCE[0]}")/..; pwd -P)
+ROOT=$(cd $(dirname "${BASH_SOURCE[0]}")/../..; pwd -P)
+
+source $ROOT/hack/lib/vars.sh
 
 # download
 #   go_install
+#   _output/bin/golangci-lint
 #   github.com/golangci/golangci-lint/cmd/golangci-lint
 #   v1.59.1
 #   "version --format=short"
@@ -32,6 +35,9 @@ function download() {
     case $type in
     go_install)
         go_install "$@"
+        ;;
+    s_curl)
+        s_curl "$@"
         ;;
     *)
         echo "unknown download type: $type"
@@ -75,4 +81,41 @@ function go_install() {
     rm -rf $tmp_dir
 }
 
-download "$@"
+function s_curl() {
+    local output=$1
+    local path=$2
+    local version=${3:-""}
+    local cond=${4:-""}
+
+    if [[ -n $cond && -f $output ]]; then
+        local curVersion=$(eval "$output $cond")
+        if [[ $curVersion == $version ]]; then
+            echo "$output@$version has been installed"
+            return
+        else
+            echo "$output@$curVersion is out dated, try to re-install"
+        fi
+    fi
+
+    if [[ -n $version ]]; then
+        echo "Download $output with version $version"
+    else
+        echo "Download $output"
+    fi
+
+    local output_dir=$(dirname $output)
+    mkdir -p $output_dir
+
+    # Replace template variables in the URL
+    local download_url=$path
+    download_url=${download_url//VERSION/$version}
+    download_url=${download_url//OS/$V_OS}
+    download_url=${download_url//ARCH/$V_ARCH}
+
+    echo "curl $download_url"
+    # Download the file
+    curl -fsSL "$download_url" -o "$output"
+    chmod +x "$output"
+}
+
+# download "$@"
