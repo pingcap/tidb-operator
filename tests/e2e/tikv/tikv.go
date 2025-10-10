@@ -28,6 +28,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apicall"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
@@ -95,7 +96,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 	ginkgo.Context("Race Condition Scenarios", label.P1, func() {
 		workload := f.SetupWorkload()
 
-		ginkgo.It("should recreate pod when deleted during graceful store removal", func(ctx context.Context) {
+		ginkgo.It("should recreate pod when deleted during graceful store removal", label.Delete, func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx, data.WithSlowDataMigration())
 			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](4))
 			dbg := f.MustCreateTiDB(ctx)
@@ -197,7 +198,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 		})
 	})
 
-	ginkgo.Context("when scaling in TiKV with two-step deletion", func() {
+	ginkgo.Context("when scaling in TiKV with two-step deletion", label.Delete, func() {
 		workload := f.SetupWorkload()
 
 		ginkgo.It("should complete the full scale-in flow", func(ctx context.Context) {
@@ -285,7 +286,7 @@ replica-schedule-limit = 8
 			gomega.Eventually(func(g gomega.Gomega) {
 				instance := &v1alpha1.TiKV{}
 				g.Expect(f.Client.Get(ctx, client.ObjectKeyFromObject(offliningKVs[0]), instance)).To(gomega.Succeed())
-				g.Expect(instance.Spec.Offline).To(gomega.BeFalse(), "TiKV instance should not be marked for offline after cancellation")
+				g.Expect(coreutil.IsOffline[scope.TiKV](instance)).To(gomega.BeFalse(), "TiKV instance should not be marked for offline after cancellation")
 				g.Expect(meta.FindStatusCondition(instance.Status.Conditions, v1alpha1.StoreOfflinedConditionType)).To(gomega.BeNil(), "StoreOffline condition should not exist")
 			}, 3*time.Minute, 10*time.Second).Should(gomega.Succeed())
 
@@ -303,7 +304,7 @@ replica-schedule-limit = 8
 			f.Must(err)
 			gomega.Expect(finalTiKVs).To(gomega.HaveLen(4))
 			for _, kv := range finalTiKVs {
-				gomega.Expect(kv.Spec.Offline).To(gomega.BeFalse())
+				gomega.Expect(coreutil.IsOffline[scope.TiKV](kv)).To(gomega.BeFalse())
 			}
 		})
 
@@ -345,7 +346,7 @@ replica-schedule-limit = 16
 				for _, kv := range offliningKVs {
 					instance := &v1alpha1.TiKV{}
 					g.Expect(f.Client.Get(ctx, client.ObjectKeyFromObject(kv), instance)).To(gomega.Succeed())
-					if !instance.Spec.Offline {
+					if !coreutil.IsOffline[scope.TiKV](instance) {
 						cancelledKVs = append(cancelledKVs, instance)
 					} else {
 						remainingOffliningKVs = append(remainingOffliningKVs, instance)
@@ -360,7 +361,7 @@ replica-schedule-limit = 16
 			gomega.Eventually(func(g gomega.Gomega) {
 				instance := &v1alpha1.TiKV{}
 				g.Expect(f.Client.Get(ctx, client.ObjectKeyFromObject(cancelledKVs[0]), instance)).To(gomega.Succeed())
-				g.Expect(instance.Spec.Offline).To(gomega.BeFalse(), "Cancelled TiKV instance should not be marked for offline")
+				g.Expect(coreutil.IsOffline[scope.TiKV](instance)).To(gomega.BeFalse(), "Cancelled TiKV instance should not be marked for offline")
 				g.Expect(meta.FindStatusCondition(instance.Status.Conditions, v1alpha1.StoreOfflinedConditionType)).To(gomega.BeNil(), "StoreOffline condition should not exist")
 			}, 3*time.Minute, 10*time.Second).Should(gomega.Succeed())
 
@@ -407,7 +408,7 @@ func findOffliningTiKVs(ctx context.Context, f *framework.Framework, kvg *v1alph
 		}
 		offliningKVs = nil
 		for _, kv := range allKVs {
-			if kv.Spec.Offline {
+			if coreutil.IsOffline[scope.TiKV](kv) {
 				offliningKVs = append(offliningKVs, kv)
 			}
 		}

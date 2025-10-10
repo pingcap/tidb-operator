@@ -23,7 +23,9 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -38,10 +40,12 @@ func TaskOfflineStore(state *ReconcileContext) task.Task {
 			return task.Wait().With("pd is not synced")
 		}
 
+		tikv := state.Object()
+		isOffline := coreutil.IsOffline[scope.TiKV](tikv)
+
 		// If the store is nil, it means the store has been deleted or not created yet.
 		// No need to check if leaders are evicted.
-		if state.Store != nil && state.Instance().IsOffline() {
-			tikv := state.TiKV()
+		if state.Store != nil && isOffline {
 			var reason string
 			beginTime := getBeginEvictLeaderTime(tikv)
 			switch {
@@ -56,7 +60,25 @@ func TaskOfflineStore(state *ReconcileContext) task.Task {
 					With("waiting for leaders evicted or timeout, current leader count: %d", state.GetLeaderCount())
 			}
 		}
-		return common.TaskOfflineStoreStateMachine(ctx, state, state.Instance())
+
+		if err := common.TaskOfflineStore[scope.TiKV](
+			ctx,
+			state.PDClient.Underlay(),
+			tikv,
+			state.GetStoreID(),
+			state.GetStoreState(),
+		); err != nil {
+			// refresh store state
+			state.PDClient.Stores().Refresh()
+
+			if task.IsWaitError(err) {
+				return task.Wait().With("%v", err)
+			}
+
+			return task.Fail().With("%v", err)
+		}
+
+		return task.Complete().With("offline is completed or no need, spec.offline: %v", isOffline)
 	})
 }
 

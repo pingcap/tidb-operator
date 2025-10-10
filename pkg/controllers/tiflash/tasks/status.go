@@ -47,7 +47,7 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		if state.Store != nil {
 			needUpdate = compare.SetIfNotEmptyAndChanged(&tiflash.Status.ID, state.Store.ID) || needUpdate
 		}
-		needUpdate = compare.SetIfNotEmptyAndChanged(&tiflash.Status.State, state.GetStoreState()) || needUpdate
+		needUpdate = compare.SetIfNotEmptyAndChanged(&tiflash.Status.State, string(state.GetStoreState())) || needUpdate
 
 		needUpdate = compare.SetIfChanged(&tiflash.Status.ObservedGeneration, tiflash.Generation) || needUpdate
 		needUpdate = compare.SetIfNotEmptyAndChanged(
@@ -94,7 +94,7 @@ func TaskStoreStatus(state *ReconcileContext) task.Task {
 		if state.Store != nil {
 			needUpdate = compare.SetIfChanged(&tiflash.Status.ID, state.Store.ID) || needUpdate
 		}
-		needUpdate = compare.SetIfChanged(&tiflash.Status.State, state.GetStoreState()) || needUpdate
+		needUpdate = compare.SetIfChanged(&tiflash.Status.State, string(state.GetStoreState())) || needUpdate
 		if needUpdate {
 			state.SetStatusChanged()
 			return task.Complete().With("store state is changed")

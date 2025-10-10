@@ -191,6 +191,7 @@ func (f *factory) updateTiDB(tidb *v1alpha1.TiDB) *v1alpha1.TiDB {
 	spec := f.dbg.Spec.Template.Spec.DeepCopy()
 	tidb.Labels = coreutil.InstanceLabels[scope.TiDBGroup](f.dbg, f.rev)
 	tidb.Annotations = coreutil.InstanceAnnotations[scope.TiDBGroup](f.dbg)
+	tidb.Finalizers = []string{metav1alpha1.Finalizer}
 	tidb.OwnerReferences = []metav1.OwnerReference{
 		*metav1.NewControllerRef(f.dbg, v1alpha1.SchemeGroupVersion.WithKind("TiDBGroup")),
 	}

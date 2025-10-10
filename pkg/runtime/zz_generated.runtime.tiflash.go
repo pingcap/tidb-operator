@@ -227,7 +227,7 @@ func (in *TiFlash) ClientInsecureSkipTLSVerify() bool {
 }
 
 func (in *TiFlash) IsOffline() bool {
-	return in.Spec.Offline
+	return in.Spec.Offline != nil && *in.Spec.Offline
 }
 
 func (in *TiFlash) IsStore() bool {

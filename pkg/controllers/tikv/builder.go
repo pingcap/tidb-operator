@@ -15,10 +15,10 @@
 package tikv
 
 import (
-	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tikv/tasks"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -66,6 +66,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskInstanceConditionSynced[scope.TiKV](state),
 			common.TaskInstanceConditionReady[scope.TiKV](state),
 			common.TaskInstanceConditionRunning[scope.TiKV](state),
+			common.TaskInstanceConditionOffline[scope.TiKV](state),
 			common.TaskStatusPersister[scope.TiKV](state, r.Client),
 		),
 
@@ -82,6 +83,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskInstanceConditionReady[scope.TiKV](state),
 		),
 		common.TaskInstanceConditionRunning[scope.TiKV](state),
+		common.TaskInstanceConditionOffline[scope.TiKV](state),
 		tasks.TaskStatus(state, r.Client),
 	)
 
@@ -91,7 +93,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 func ObjectIsDeletingAndStoreIsRemoved(state *tasks.ReconcileContext) task.Condition {
 	return task.CondFunc(func() bool {
 		return !state.Object().GetDeletionTimestamp().IsZero() && state.PDSynced &&
-			(state.GetStoreState() == v1alpha1.StoreStateRemoved || state.Store == nil)
+			(state.GetStoreState() == pdv1.NodeStateRemoved || state.Store == nil)
 	})
 }
 

@@ -12,332 +12,152 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate ${GOBIN}/mockgen -write_command_comment=false -copyright_file ${BOILERPLATE_FILE} -destination store_offline_mock_generated.go -package=common ${GO_MODULE}/pkg/controllers/common StoreOfflineReconcileContext
 package common
 
 import (
 	"context"
 	"fmt"
-	"time"
 
-	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
-	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-const (
-	// RemovingWaitInterval is the interval to wait for store removal.
-	RemovingWaitInterval = 10 * time.Second
-)
+// TaskOfflineStore tries to delete store or cancel store deletion
+//
+// A: spec.offline
+// - A1: spec.offline == false
+// - A2: spec.offline == true
+// B: state
+// - B1: state == Preparing || state == Serving
+// - B2: state == Removing
+// - B3: state == Removed
+// 1. (A1, B1): do nothing, waiting for changes of spec.offline
+// 2. (A2, B1): call delete store api
+// 3. (A1, B2): call cancel api
+// 4. (A2, B2): do nothing, waiting for changes of state
+// 5. (A1, B3): do nothing, waiting for instance being removed
+// 6. (A2, B3): do nothing, waiting for instance being removed
+func TaskOfflineStore[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](
+	ctx context.Context,
+	c pdapi.PDClient,
+	obj F,
+	// storeID may be empty if the store is not found or info from pd is not synced
+	storeID string,
+	state pdv1.NodeState,
+) error {
+	if storeID == "" {
+		// can do nothing until store id is found
+		return fmt.Errorf("%w: store does not exists", task.ErrWait)
+	}
+	isOffline := coreutil.IsOffline[S](obj)
 
-// StoreOfflineReconcileContext defines the interface for reconcile context with store offline capabilities.
-type StoreOfflineReconcileContext interface {
-	StoreState
+	switch {
+	case isOffline && (state == pdv1.NodeStatePreparing || state == pdv1.NodeStateServing):
+		if err := c.DeleteStore(ctx, storeID); err != nil {
+			return err
+		}
+
+		return fmt.Errorf("%w: node state should be changed to Removing", task.ErrWait)
+	case isOffline && state == pdv1.NodeStateRemoving:
+		return fmt.Errorf("%w: node state should be changed to Removed", task.ErrWait)
+	case isOffline && state == pdv1.NodeStateRemoved:
+		return nil
+	case !isOffline && (state == pdv1.NodeStatePreparing || state == pdv1.NodeStateServing):
+		// do nothing
+		return nil
+	case !isOffline && state == pdv1.NodeStateRemoving:
+		if err := c.CancelDeleteStore(ctx, storeID); err != nil {
+			return err
+		}
+		return fmt.Errorf("%w: node state should be changed to Preparing or Serving", task.ErrWait)
+	case !isOffline && state == pdv1.NodeStateRemoved:
+		// store has been removed, cannot cancel the deletion
+		return nil
+	}
+
+	return fmt.Errorf("unreachable, just retry again")
+}
+
+type InstanceCondOfflineUpdater[T client.Object] interface {
 	StatusUpdater
+	StoreState
 
-	// GetStoreID returns the store ID for PD operations
-	GetStoreID() string
-	// StoreNotExists returns true if the store does not exist in PD
-	StoreNotExists() bool
-	// GetPDClient returns the PD client for API operations
-	GetPDClient() pdm.PDClient
+	Object() T
 }
 
-// TaskOfflineStoreStateMachine handles the two-step store deletion process based on spec.offline field.
-// This implements the state machine for offline operations: Processing -> Completed/Failed/Canceled.
-func TaskOfflineStoreStateMachine(
-	ctx context.Context,
-	state StoreOfflineReconcileContext,
-	store runtime.Instance,
-) task.Result {
-	if store.IsOffline() {
-		return handleOfflineOperation(ctx, state, store)
-	}
-	// If offline is false, check if we need to cancel an ongoing operation
-	return handleOfflineCancellation(ctx, state, store)
-}
+// TaskInstanceConditionOffline set offline condition of an instance
+func TaskInstanceConditionOffline[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](s InstanceCondOfflineUpdater[F]) task.Task {
+	return task.NameTaskFunc("CondOffline", func(context.Context) task.Result {
+		instance := s.Object()
+		isOffline := coreutil.IsOffline[S](instance)
+		state := s.GetStoreState()
 
-// recoverOfflineStateFromPD recovers the correct offline condition based on PD's actual store state.
-// This function is called when local condition is lost (condition == nil) to rebuild the appropriate
-// condition based on PD's authoritative state and the current spec.offline setting.
-func recoverOfflineStateFromPD(
-	ctx context.Context,
-	state StoreOfflineReconcileContext,
-	store runtime.Instance,
-) *metav1.Condition {
-	logger := logr.FromContextOrDiscard(ctx).WithValues("instance", store.GetName())
-	logger.Info("Recovering offline state from PD due to lost condition")
-
-	// Check if store exists in PD
-	if state.StoreNotExists() {
-		// Store doesn't exist, should be completed
-		logger.Info("Store does not exist in PD, recovering as completed state")
-		return newOfflinedCondition(
-			v1alpha1.ReasonOfflineCompleted,
-			"Store does not exist, offline operation completed (recovered from PD state)",
-			metav1.ConditionTrue,
-		)
-	}
-
-	// Get current store state from PD
-	pdStoreState := state.GetStoreState()
-	logger.Info("Recovering state based on PD store state", "pdState", pdStoreState)
-
-	switch pdStoreState {
-	case v1alpha1.StoreStateServing:
-		// Store is serving in PD, we should start the offline operation
-		logger.Info("Store is serving in PD, recovering as need to start offline operation")
-		return nil // Return nil to indicate we should start fresh offline operation
-
-	case v1alpha1.StoreStateRemoving:
-		// Store is being removed in PD, we should be in processing state
-		logger.Info("Store is removing in PD, recovering as processing state")
-		return newOfflinedCondition(
-			v1alpha1.ReasonOfflineProcessing,
-			"Store offline operation is processing, data migration is in progress (recovered from PD state)",
-			metav1.ConditionFalse,
-		)
-
-	case v1alpha1.StoreStateRemoved:
-		// Store has been removed in PD, operation should be completed
-		logger.Info("Store is removed in PD, recovering as completed state")
-		return newOfflinedCondition(
-			v1alpha1.ReasonOfflineCompleted,
-			"Store state is removed, offline operation completed (recovered from PD state)",
-			metav1.ConditionTrue,
-		)
-
-	default:
-		// Unknown state, start fresh to be safe
-		logger.Info("Unknown store state in PD, recovering as need to start offline operation", "unknownState", pdStoreState)
-		return nil // Return nil to indicate we should start fresh offline operation
-	}
-}
-
-// handleOfflineOperation manages the offline operation state machine.
-func handleOfflineOperation(
-	ctx context.Context,
-	state StoreOfflineReconcileContext,
-	store runtime.Instance,
-) task.Result {
-	condition := runtime.GetOfflineCondition(store)
-
-	// If no condition exists, recover state from PD first
-	if condition == nil {
-		recoveredCondition := recoverOfflineStateFromPD(ctx, state, store)
-		if recoveredCondition != nil {
-			// Update the recovered condition and continue with normal state machine
-			updateOfflinedCondition(state, store, recoveredCondition)
-			condition = recoveredCondition
-		} else {
-			// PD state indicates we should start fresh offline operation
-			return startOfflineOperation(ctx, state, store)
+		if state == "" {
+			return task.Wait().With("wait for state is synced")
 		}
-	}
 
-	switch condition.Reason {
-	case v1alpha1.ReasonOfflineProcessing:
-		return handleProcessingState(ctx, state, store)
-	case v1alpha1.ReasonOfflineCompleted:
-		return task.Complete().With("store offline operation is completed")
-	case v1alpha1.ReasonOfflineFailed:
-		return handleFailedState(ctx, state, store)
-	default:
-		return task.Fail().With("unknown offline condition reason: %s", condition.Reason)
-	}
-}
-
-// handleOfflineCancellation handles the cancellation of offline operations when offline=false.
-func handleOfflineCancellation(
-	ctx context.Context,
-	state StoreOfflineReconcileContext,
-	store runtime.Instance,
-) task.Result {
-	condition := runtime.GetOfflineCondition(store)
-	// If no offline condition exists, try to cancel anyway in case PD has ongoing operations
-	if condition == nil {
-		return cancelOfflineOperation(ctx, state, store, nil)
-	}
-
-	switch condition.Reason {
-	case v1alpha1.ReasonOfflineCompleted:
-		// Cannot cancel completed operations
-		return task.Complete().With("cannot cancel completed offline operation")
-	case v1alpha1.ReasonOfflineProcessing, v1alpha1.ReasonOfflineFailed:
-		// Cancel the operation
-		return cancelOfflineOperation(ctx, state, store, condition)
-	default:
-		return task.Fail().With("unknown offline condition reason: %s", condition.Reason)
-	}
-}
-
-// startOfflineOperation initiates the offline operation by performing checks and calling PD API.
-func startOfflineOperation(
-	ctx context.Context,
-	state StoreOfflineReconcileContext,
-	store runtime.Instance,
-) task.Result {
-	logger := logr.FromContextOrDiscard(ctx).WithValues("instance", store.GetName())
-	if state.StoreNotExists() {
-		// Store doesn't exist, mark as completed
-		logger.Info("Store does not exist, completing offline operation")
-		updateOfflinedCondition(state, store, newOfflinedCondition(
-			v1alpha1.ReasonOfflineCompleted,
-			"Store does not exist, offline operation completed",
-			metav1.ConditionTrue,
-		))
-		return task.Complete().With("store does not exist, offline operation completed")
-	}
-
-	if state.GetPDClient() == nil {
-		updateOfflinedCondition(state, store, newOfflinedCondition(
-			v1alpha1.ReasonOfflineFailed,
-			"PD client is not registered",
-			metav1.ConditionFalse,
-		))
-		return task.Retry(RemovingWaitInterval).With("pd client is not registered")
-	}
-
-	storeID := state.GetStoreID()
-	if storeID == "" {
-		updateOfflinedCondition(state, store, newOfflinedCondition(
-			v1alpha1.ReasonOfflineFailed,
-			"Store ID is empty",
-			metav1.ConditionFalse,
-		))
-		return task.Retry(RemovingWaitInterval).With("store ID is empty")
-	}
-
-	logger.Info("Calling PD DeleteStore API", "storeID", storeID)
-	if err := state.GetPDClient().Underlay().DeleteStore(ctx, storeID); err != nil {
-		// Transition to Failed state and record error in condition message
-		updateOfflinedCondition(state, store, newOfflinedCondition(
-			v1alpha1.ReasonOfflineFailed,
-			fmt.Sprintf("Failed to call PD DeleteStore API: %v", err),
-			metav1.ConditionFalse,
-		))
-		// Return a retryable error to re-trigger the failed state handling
-		return task.Retry(RemovingWaitInterval).With("failed to call PD DeleteStore API, will retry")
-	}
-
-	// Transition to Processing state
-	logger.Info("Store offline operation transitioned to Processing state")
-	updateOfflinedCondition(state, store, newOfflinedCondition(
-		v1alpha1.ReasonOfflineProcessing,
-		"Store offline operation is Processing, data migration is in progress",
-		metav1.ConditionFalse,
-	))
-	// Note: We don't set store state to Removing here. Instead, we honor the store state
-	// from PD, which will automatically transition from Serving -> Removing -> Removed
-	// after calling DeleteStore API. This avoids state conflicts between operator and PD.
-	return task.Retry(RemovingWaitInterval).With("store offline operation is processing")
-}
-
-func handleProcessingState(
-	ctx context.Context,
-	state StoreOfflineReconcileContext,
-	store runtime.Instance,
-) task.Result {
-	logger := logr.FromContextOrDiscard(ctx).WithValues("instance", store.GetName())
-	if state.StoreNotExists() || state.GetStoreState() == v1alpha1.StoreStateRemoved {
-		logger.Info("Store has been removed from PD, completing offline operation")
-		updateOfflinedCondition(state, store, newOfflinedCondition(
-			v1alpha1.ReasonOfflineCompleted,
-			"Store state is Removed, offline operation completed",
-			metav1.ConditionTrue,
-		))
-		return task.Complete().With("store offline operation completed")
-	}
-	return task.Retry(RemovingWaitInterval).With("waiting for store to be removed, current state: %s", state.GetStoreState())
-}
-
-// handleFailedState processes the Failed state and directly retries.
-func handleFailedState(
-	ctx context.Context,
-	state StoreOfflineReconcileContext,
-	store runtime.Instance,
-) task.Result {
-	logger := logr.FromContextOrDiscard(ctx).WithValues("instance", store.GetName())
-
-	// Directly retry by restarting the offline operation
-	logger.Info("Store offline operation retrying from failed state")
-	return startOfflineOperation(ctx, state, store)
-}
-
-// cancelOfflineOperation cancels an ongoing offline operation.
-func cancelOfflineOperation(
-	ctx context.Context,
-	state StoreOfflineReconcileContext,
-	store runtime.Instance,
-	condition *metav1.Condition,
-) task.Result {
-	logger := logr.FromContextOrDiscard(ctx).WithValues("instance", store.GetName())
-	if state.GetPDClient() == nil {
-		return task.Fail().With("pd client is not registered")
-	}
-
-	if state.StoreNotExists() {
-		if runtime.RemoveOfflineCondition(store) {
-			state.SetStatusChanged()
+		var needUpdate, isCompleted bool
+		var reason string
+		switch {
+		case state == pdv1.NodeStateRemoved:
+			reason = v1alpha1.ReasonOfflineCompleted
+			isCompleted = true
+		case isOffline:
+			reason = v1alpha1.ReasonOfflineProcessing
+		case !isOffline && (state == pdv1.NodeStatePreparing || state == pdv1.NodeStateServing):
+			reason = ""
+		case !isOffline && state == pdv1.NodeStateRemoving:
+			reason = v1alpha1.ReasonOfflineCanceling
 		}
-		return task.Complete().With("store does not exist in PD, no action needed")
-	}
 
-	storeID := state.GetStoreID()
-	if storeID == "" {
-		return task.Fail().With("store ID is empty")
-	}
-
-	if state.GetStoreState() == v1alpha1.StoreStateServing || state.GetStoreState() == v1alpha1.StoreStateRemoving {
-		logger.Info("Calling PD CancelDeleteStore API", "storeID", storeID)
-		if err := state.GetPDClient().Underlay().CancelDeleteStore(ctx, storeID); err != nil {
-			// If cancellation fails, update the condition message and retry.
-			errMsg := fmt.Sprintf("Failed to cancel store deletion, will retry: %v", err)
-			var reason string
-			if condition != nil {
-				reason = condition.Reason
-			} else {
-				// Default reason when condition is nil (status lost scenario)
-				reason = v1alpha1.ReasonOfflineProcessing
+		// not offline and store is up
+		if reason == "" {
+			needUpdate = coreutil.RemoveStatusCondition[S](
+				instance,
+				v1alpha1.StoreOfflinedConditionType,
+			) || needUpdate
+			if needUpdate {
+				s.SetStatusChanged()
 			}
-			status := metav1.ConditionFalse
-			updateOfflinedCondition(state, store, newOfflinedCondition(
-				reason,
-				errMsg,
-				status,
-			))
-			return task.Fail().With(errMsg)
+			return task.Complete().With("instance is not offline")
 		}
-	}
 
-	// Remove offline condition to indicate store is back online
-	logger.Info("Store offline operation canceled")
-	runtime.RemoveOfflineCondition(store)
-	state.SetStatusChanged()
+		var cond *metav1.Condition
+		if isCompleted {
+			cond = coreutil.Offlined()
+		} else {
+			cond = coreutil.NotOfflined(reason)
+		}
 
-	return task.Complete().With("offline operation canceled")
-}
+		needUpdate = coreutil.SetStatusCondition[S](
+			instance,
+			*cond,
+		) || needUpdate
 
-func updateOfflinedCondition(
-	state StoreOfflineReconcileContext,
-	store runtime.Instance,
-	condition *metav1.Condition,
-) {
-	condition.ObservedGeneration = store.GetGeneration()
-	runtime.SetOfflineCondition(store, condition)
-	state.SetStatusChanged()
-}
+		if needUpdate {
+			s.SetStatusChanged()
+		}
 
-func newOfflinedCondition(reason, message string, status metav1.ConditionStatus) *metav1.Condition {
-	return &metav1.Condition{
-		Type:               v1alpha1.StoreOfflinedConditionType,
-		Status:             status,
-		Reason:             reason,
-		Message:            message,
-		LastTransitionTime: metav1.Now(),
-	}
+		if !isCompleted {
+			return task.Wait().With("instance is processing or canceling: %s", coreutil.SprintCondition(cond))
+		}
+
+		return task.Complete().With("instance is offlined")
+	})
 }

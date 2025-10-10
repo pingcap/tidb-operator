@@ -293,7 +293,7 @@ func (in *$.|pub$) ClientInsecureSkipTLSVerify() bool {
 	if strings.EqualFold(t.Name.Name, "TiKV") || strings.EqualFold(t.Name.Name, "TiFlash") {
 		sw.Do(`
 func (in *$.|pub$) IsOffline() bool {
-	return in.Spec.Offline
+	return in.Spec.Offline != nil && *in.Spec.Offline
 }
 
 func (in *$.|pub$) IsStore() bool {

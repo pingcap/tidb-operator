@@ -70,9 +70,9 @@ const (
 	actionScaleInUpdate
 	actionScaleInOutdated
 	actionUpdate
-	actionSetOffline
+	// actionSetOffline
 	actionDeferDelete
-	actionDelete
+	actionCleanup
 	actionCancelOffline
 )
 
@@ -128,17 +128,19 @@ func (act *actor[T, O, R]) chooseToScaleIn(s []R) (string, error) {
 }
 
 // cancelOneOfflining cancels offline operation for one beingOffline instance and moves it back to update state
-func (act *actor[T, O, R]) cancelOneOfflining(ctx context.Context, instance R) error {
-	logger := logr.FromContextOrDiscard(ctx).WithName("Updater").WithValues("instance", instance.GetName())
+func (act *actor[T, O, R]) cancelOneOfflining(ctx context.Context, obj R) error {
+	logger := logr.FromContextOrDiscard(ctx)
 
-	if err := act.setOffline(ctx, instance, false); err != nil {
-		logger.Error(err, "failed to cancel offline")
-		return err
-	}
+	act.beingOffline.Del(obj.GetName())
 
-	act.beingOffline.Del(instance.GetName())
-	act.update.Add(instance)
-	return nil
+	logger.Info("act cancel offline",
+		"namespace", obj.GetNamespace(),
+		"name", obj.GetName(),
+		"remain", act.beingOffline.Len(),
+	)
+	act.actions = append(act.actions, actionCancelOffline)
+
+	return act.updateOutdated(ctx, obj)
 }
 
 func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
@@ -146,11 +148,9 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
 
 	if act.beingOffline.Len() > 0 {
 		// TODO: could implement more sophisticated selection logic
-		logger.Info("try to cancel an offlining instance")
 		if err := act.cancelOneOfflining(ctx, act.beingOffline.List()[0]); err != nil {
 			return err
 		}
-		act.actions = append(act.actions, actionCancelOffline)
 		return nil
 	}
 
@@ -164,6 +164,7 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
 	}
 
 	logger.Info("act scale out", "namespace", obj.GetNamespace(), "name", obj.GetName())
+	act.actions = append(act.actions, actionScaleOut)
 
 	if err := act.c.Apply(ctx, act.converter.To(obj)); err != nil {
 		if unlock != nil {
@@ -173,7 +174,6 @@ func (act *actor[T, O, R]) ScaleOut(ctx context.Context) error {
 	}
 
 	act.update.Add(obj)
-	act.actions = append(act.actions, actionScaleOut)
 
 	return nil
 }
@@ -192,16 +192,16 @@ func (act *actor[T, O, R]) ScaleInUpdate(ctx context.Context) (bool, error) {
 
 	isUnavailable := !obj.IsReady() || !obj.IsUpToDate()
 
-	logger.Info("act scale in update", "selected", name, "isUnavailable", isUnavailable, "remain", act.update.Len())
+	logger.Info("act scale in update",
+		"namespace", obj.GetNamespace(),
+		"selected", name,
+		"isUnavailable", isUnavailable,
+		"remain", act.update.Len(),
+	)
+	act.actions = append(act.actions, actionScaleInUpdate)
 
-	a, err := act.deleteInstance(ctx, obj)
-	if err != nil {
+	if err := act.deleteInstance(ctx, obj); err != nil {
 		return false, err
-	}
-	if a == actionDelete {
-		act.actions = append(act.actions, actionScaleInUpdate)
-	} else {
-		act.actions = append(act.actions, a)
 	}
 
 	for _, hook := range act.delHooks {
@@ -237,18 +237,14 @@ func (act *actor[T, O, R]) scaleInOutdated(ctx context.Context, name string, def
 		"selected", name, "defer", deferDel, "isUnavailable", isUnavailable, "remain", act.outdated.Len())
 
 	if deferDel {
+		act.actions = append(act.actions, actionDeferDelete)
 		if err := act.deferDelete(ctx, obj); err != nil {
 			return false, err
 		}
 	} else {
-		a, err := act.deleteInstance(ctx, obj)
-		if err != nil {
+		act.actions = append(act.actions, actionScaleInOutdated)
+		if err := act.deleteInstance(ctx, obj); err != nil {
 			return false, err
-		}
-		if a == actionDelete {
-			act.actions = append(act.actions, actionScaleInOutdated)
-		} else {
-			act.actions = append(act.actions, a)
 		}
 	}
 
@@ -265,8 +261,8 @@ type Patch struct {
 }
 
 type Metadata struct {
-	ResourceVersion string            `json:"resourceVersion"`
-	Annotations     map[string]string `json:"annotations,omitempty"`
+	ResourceVersion string             `json:"resourceVersion"`
+	Annotations     map[string]*string `json:"annotations,omitempty"`
 }
 
 type Spec struct {
@@ -282,8 +278,8 @@ func (act *actor[T, O, R]) deferDelete(ctx context.Context, obj R) error {
 	p := Patch{
 		Metadata: Metadata{
 			ResourceVersion: o.GetResourceVersion(),
-			Annotations: map[string]string{
-				v1alpha1.AnnoKeyDeferDelete: v1alpha1.AnnoValTrue,
+			Annotations: map[string]*string{
+				v1alpha1.AnnoKeyDeferDelete: ptr.To(v1alpha1.AnnoValTrue),
 			},
 		},
 	}
@@ -298,7 +294,6 @@ func (act *actor[T, O, R]) deferDelete(ctx context.Context, obj R) error {
 	}
 
 	act.deleted.Add(obj)
-	act.actions = append(act.actions, actionDeferDelete)
 	return nil
 }
 
@@ -313,6 +308,7 @@ func (act *actor[T, O, R]) deferDelete(ctx context.Context, obj R) error {
 // - Scales out a new instance to replace it
 func (act *actor[T, O, R]) Update(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
+
 	name, err := act.chooseToUpdate(act.outdated.List())
 	if err != nil {
 		return err
@@ -331,20 +327,28 @@ func (act *actor[T, O, R]) Update(ctx context.Context) error {
 
 	outdated := act.outdated.Del(name)
 
+	logger.Info("act update",
+		"namespace", outdated.GetNamespace(),
+		"name", outdated.GetName(),
+		"remain", act.outdated.Len(),
+	)
+	act.actions = append(act.actions, actionUpdate)
+
+	return act.updateOutdated(ctx, outdated)
+}
+
+func (act *actor[T, O, R]) updateOutdated(ctx context.Context, outdated R) error {
 	update := act.f.New()
 
 	for _, hook := range act.updateHooks {
 		update = hook.Update(update, outdated)
 	}
 
-	logger.Info("act update", "selected", name, "remain", act.outdated.Len())
-
 	if err := act.c.Apply(ctx, act.converter.To(update)); err != nil {
 		return err
 	}
 
 	act.update.Add(update)
-	act.actions = append(act.actions, actionUpdate)
 
 	return nil
 }
@@ -354,12 +358,13 @@ func (act *actor[T, O, R]) Update(ctx context.Context) error {
 // that were safely marked for deletion. It ensures data safety by only removing
 // instances after the new instances are fully operational.
 func (act *actor[T, O, R]) Cleanup(ctx context.Context) error {
+	logger := logr.FromContextOrDiscard(ctx)
 	for _, item := range act.deleted.List() {
-		a, err := act.deleteInstance(ctx, item)
-		if err != nil {
+		logger.Info("act cleanup", "namespace", item.GetNamespace(), "name", item.GetName())
+		act.actions = append(act.actions, actionCleanup)
+		if err := act.deleteInstance(ctx, item); err != nil {
 			return err
 		}
-		act.actions = append(act.actions, a)
 	}
 	return nil
 }
@@ -370,37 +375,39 @@ func (act *actor[T, O, R]) RecordedActions() []action {
 	return act.actions
 }
 
-func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) (action, error) {
-	if obj.IsStore() && !obj.IsOffline() && !meta.IsStatusConditionTrue(obj.Conditions(), v1alpha1.StoreOfflinedConditionType) {
-		if err := act.setOffline(ctx, obj, true); err != nil {
-			return actionNone, fmt.Errorf("failed to set instance %s/%s offline: %w", obj.GetNamespace(), obj.GetName(), err)
+func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) error {
+	if obj.IsStore() &&
+		!obj.IsOffline() &&
+		!meta.IsStatusConditionTrue(obj.Conditions(), v1alpha1.StoreOfflinedConditionType) {
+		if err := act.setOffline(ctx, obj); err != nil {
+			return fmt.Errorf("failed to set instance %s/%s offline: %w", obj.GetNamespace(), obj.GetName(), err)
 		}
 		act.beingOffline.Add(obj)
-		return actionSetOffline, nil
+		return nil
 	}
 
 	if err := act.c.Delete(ctx, act.converter.To(obj), client.Preconditions{
 		UID:             ptr.To(obj.GetUID()),
 		ResourceVersion: ptr.To(obj.GetResourceVersion()),
 	}); err != nil {
-		return actionNone, err
+		return err
 	}
 
-	return actionDelete, nil
+	return nil
 }
 
-func (act *actor[T, O, R]) setOffline(ctx context.Context, obj R, offline bool) error {
-	if obj.IsOffline() == offline {
-		// already in desired state
-		return nil
-	}
-
+func (act *actor[T, O, R]) setOffline(ctx context.Context, obj R) error {
 	p := Patch{
 		Metadata: Metadata{
 			ResourceVersion: obj.GetResourceVersion(),
+			Annotations: map[string]*string{
+				// Always delete defer deletion annotation to ensure
+				// the store deletion can be canceled.
+				v1alpha1.AnnoKeyDeferDelete: nil,
+			},
 		},
 		Spec: &Spec{
-			Offline: offline,
+			Offline: true,
 		},
 	}
 
