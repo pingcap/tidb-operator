@@ -96,7 +96,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager, fcm 
 		}
 
 		state.Store = s
-		state.SetStoreState(string(s.NodeState))
+		state.SetStoreState(s.NodeState)
 		state.SetRegionCount(s.RegionCount)
 		state.SetStoreBusy(s.IsBusy)
 

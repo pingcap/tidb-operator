@@ -20,6 +20,7 @@ import (
 
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
@@ -119,6 +120,7 @@ func TiFlashNewer(fg *v1alpha1.TiFlashGroup, rev string, g features.Gates) updat
 				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.TiFlashGroup](fg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.TiFlashGroup](fg),
+				Finalizers:  []string{metav1alpha1.Finalizer},
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(fg, v1alpha1.SchemeGroupVersion.WithKind("TiFlashGroup")),
 				},
@@ -128,7 +130,7 @@ func TiFlashNewer(fg *v1alpha1.TiFlashGroup, rev string, g features.Gates) updat
 				Features:            fg.Spec.Features,
 				Subdomain:           HeadlessServiceName(fg.Name),
 				TiFlashTemplateSpec: *spec,
-				Offline:             false,
+				Offline:             ptr.To(false),
 			},
 		}
 		if g.Enabled(metav1alpha1.ClusterSubdomain) {

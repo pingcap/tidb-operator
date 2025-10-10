@@ -15,6 +15,7 @@
 package task
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -215,4 +216,10 @@ func (r *aggregateResult) Message() string {
 	}
 
 	return sb.String()
+}
+
+var ErrWait = errors.New("wait until some changes are watched")
+
+func IsWaitError(err error) bool {
+	return errors.Is(err, ErrWait)
 }

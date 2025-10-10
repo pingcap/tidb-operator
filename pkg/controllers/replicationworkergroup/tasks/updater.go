@@ -22,6 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
@@ -116,6 +117,7 @@ func ReplicationWorkerNewer(sg *v1alpha1.ReplicationWorkerGroup, rev string) upd
 				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.ReplicationWorkerGroup](sg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.ReplicationWorkerGroup](sg),
+				Finalizers:  []string{metav1alpha1.Finalizer},
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(sg, v1alpha1.SchemeGroupVersion.WithKind("ReplicationWorkerGroup")),
 				},

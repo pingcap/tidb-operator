@@ -74,9 +74,13 @@ const (
 const (
 	// ReasonOfflineProcessing means the store is being offlined.
 	ReasonOfflineProcessing = "Processing"
+	// ReasonOfflineCancelling means the store is being offlined.
+	ReasonOfflineCancelling = "Cancelling"
 	// ReasonOfflineCompleted means the store has been successfully offlined and removed from PD.
 	ReasonOfflineCompleted = "Completed"
+
 	// ReasonOfflineFailed means the offline operation failed.
+	// Deprecated: cannot indicate its delete failure or cancel failure
 	ReasonOfflineFailed = "Failed"
 )
 

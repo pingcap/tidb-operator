@@ -227,7 +227,7 @@ func (in *TiKV) ClientInsecureSkipTLSVerify() bool {
 }
 
 func (in *TiKV) IsOffline() bool {
-	return in.Spec.Offline
+	return in.Spec.Offline != nil && *in.Spec.Offline
 }
 
 func (in *TiKV) IsStore() bool {

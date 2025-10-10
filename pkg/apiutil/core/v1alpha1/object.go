@@ -79,6 +79,24 @@ func SetStatusCondition[
 	return false
 }
 
+func RemoveStatusCondition[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F, condTypes ...string) bool {
+	obj := scope.From[S](f)
+	cur := obj.Conditions()
+	needUpdate := false
+	for _, condType := range condTypes {
+		needUpdate = meta.RemoveStatusCondition(&cur, condType) || needUpdate
+	}
+	if needUpdate {
+		obj.SetConditions(cur)
+		return true
+	}
+	return false
+}
+
 func StatusConditions[
 	S scope.Object[F, T],
 	F client.Object,

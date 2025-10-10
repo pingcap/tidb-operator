@@ -124,6 +124,7 @@ func TSONewer(tg *v1alpha1.TSOGroup, rev string, fg features.Gates) updater.NewF
 				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.TSOGroup](tg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.TSOGroup](tg),
+				Finalizers:  []string{metav1alpha1.Finalizer},
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(tg, v1alpha1.SchemeGroupVersion.WithKind("TSOGroup")),
 				},

@@ -66,7 +66,7 @@ func (a *FakeActor) Update(_ context.Context) error {
 }
 
 func (a *FakeActor) Cleanup(_ context.Context) error {
-	a.Actions = append(a.Actions, actionDelete)
+	a.Actions = append(a.Actions, actionCleanup)
 	return nil
 }
 
@@ -98,7 +98,7 @@ func TestExecutor(t *testing.T) {
 			maxSurge:       1,
 			maxUnavailable: 1,
 			expectedActions: []action{
-				actionDelete,
+				actionCleanup,
 			},
 		},
 		{
@@ -140,7 +140,7 @@ func TestExecutor(t *testing.T) {
 				actionScaleInUpdate,
 				actionScaleInUpdate,
 				actionScaleInUpdate,
-				actionDelete,
+				actionCleanup,
 			},
 		},
 		{
@@ -224,7 +224,7 @@ func TestExecutor(t *testing.T) {
 			maxUnavailable: 0,
 			expectedActions: []action{
 				actionScaleInOutdated,
-				actionDelete,
+				actionCleanup,
 			},
 		},
 		{
@@ -316,7 +316,7 @@ func TestExecutor(t *testing.T) {
 			maxUnavailable: 0,
 			expectedActions: []action{
 				actionScaleInOutdated,
-				actionDelete,
+				actionCleanup,
 			},
 		},
 		{
@@ -415,7 +415,7 @@ func TestExecutor(t *testing.T) {
 			maxUnavailable: 0,
 			expectedActions: []action{
 				actionScaleInOutdated,
-				actionDelete,
+				actionCleanup,
 			},
 		},
 		{
@@ -454,7 +454,7 @@ func TestExecutor(t *testing.T) {
 			maxUnavailable: 1,
 			expectedActions: []action{
 				actionScaleInOutdated,
-				actionDelete,
+				actionCleanup,
 			},
 		},
 		{
@@ -541,7 +541,7 @@ func TestExecutor(t *testing.T) {
 			maxUnavailable: 0,
 			expectedActions: []action{
 				actionScaleInOutdated,
-				actionDelete,
+				actionCleanup,
 			},
 		},
 		{
@@ -854,7 +854,7 @@ func TestExecutor(t *testing.T) {
 			maxUnavailable:      0,
 			expectedActions: []action{
 				actionScaleInOutdated,
-				actionDelete,
+				actionCleanup,
 			},
 			expectedWait: false,
 		},
@@ -870,7 +870,7 @@ func TestExecutor(t *testing.T) {
 			expectedActions: []action{
 				actionScaleInOutdated,
 				actionScaleInOutdated,
-				actionDelete,
+				actionCleanup,
 			},
 			expectedWait: false,
 		},

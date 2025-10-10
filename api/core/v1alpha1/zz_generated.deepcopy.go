@@ -3118,6 +3118,11 @@ func (in *TiFlashSpec) DeepCopyInto(out *TiFlashSpec) {
 			(*out)[key] = val
 		}
 	}
+	if in.Offline != nil {
+		in, out := &in.Offline, &out.Offline
+		*out = new(bool)
+		**out = **in
+	}
 	in.TiFlashTemplateSpec.DeepCopyInto(&out.TiFlashTemplateSpec)
 	return
 }
@@ -3468,6 +3473,11 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 		for key, val := range *in {
 			(*out)[key] = val
 		}
+	}
+	if in.Offline != nil {
+		in, out := &in.Offline, &out.Offline
+		*out = new(bool)
+		**out = **in
 	}
 	in.TiKVTemplateSpec.DeepCopyInto(&out.TiKVTemplateSpec)
 	return

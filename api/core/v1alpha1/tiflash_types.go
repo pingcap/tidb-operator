@@ -217,7 +217,7 @@ type TiFlashSpec struct {
 	// When true, the store will be marked as offline in PD.
 	// When false, the store will be marked as online in PD (if possible).
 	// +optional
-	Offline bool `json:"offline,omitempty"`
+	Offline *bool `json:"offline,omitempty"`
 
 	// TiFlashTemplateSpec embedded some fields managed by TiFlashGroup
 	TiFlashTemplateSpec `json:",inline"`

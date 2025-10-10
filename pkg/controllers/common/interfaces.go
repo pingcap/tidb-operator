@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 )
 
 type Object[T any] interface {
@@ -216,7 +217,7 @@ type (
 )
 
 type StoreState interface {
-	GetStoreState() string
+	GetStoreState() pdv1.NodeState
 	// IsStoreUp returns true if the store state is `Preparing` or `Serving`,
 	// which means the store is in the state of providing services.
 	IsStoreUp() bool
@@ -227,7 +228,7 @@ type StoreState interface {
 }
 
 type StoreStateUpdater interface {
-	SetStoreState(string)
+	SetStoreState(pdv1.NodeState)
 	SetLeaderCount(int)
 	SetRegionCount(int)
 	SetStoreBusy(bool)
