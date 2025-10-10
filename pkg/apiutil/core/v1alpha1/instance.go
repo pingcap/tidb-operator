@@ -193,3 +193,11 @@ func OwnerGroup[
 	}
 	return owner
 }
+
+func IsOffline[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](f F) bool {
+	return scope.From[S](f).IsOffline()
+}

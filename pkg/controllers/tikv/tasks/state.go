@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	stateutil "github.com/pingcap/tidb-operator/pkg/state"
+	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 )
 
 const (
@@ -46,7 +47,7 @@ type state struct {
 	// the underlay pod has been deleting
 	isPodTerminating bool
 
-	storeState    string
+	storeState    pdv1.NodeState
 	statusChanged bool
 	leaderCount   int
 	regionCount   int
@@ -145,7 +146,7 @@ func (s *state) SetStatusChanged() {
 	s.statusChanged = true
 }
 
-func (s *state) GetStoreState() string {
+func (s *state) GetStoreState() pdv1.NodeState {
 	return s.storeState
 }
 
@@ -157,7 +158,7 @@ func (s *state) GetRegionCount() int {
 	return s.regionCount
 }
 
-func (s *state) SetStoreState(state string) {
+func (s *state) SetStoreState(state pdv1.NodeState) {
 	s.storeState = state
 }
 

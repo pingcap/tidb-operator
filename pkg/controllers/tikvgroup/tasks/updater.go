@@ -20,6 +20,7 @@ import (
 
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
@@ -120,6 +121,7 @@ func TiKVNewer(kvg *v1alpha1.TiKVGroup, rev string, fg features.Gates) updater.N
 				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.TiKVGroup](kvg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.TiKVGroup](kvg),
+				Finalizers:  []string{metav1alpha1.Finalizer},
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(kvg, v1alpha1.SchemeGroupVersion.WithKind("TiKVGroup")),
 				},
@@ -129,7 +131,7 @@ func TiKVNewer(kvg *v1alpha1.TiKVGroup, rev string, fg features.Gates) updater.N
 				Features:         kvg.Spec.Features,
 				Subdomain:        HeadlessServiceName(kvg.Name),
 				TiKVTemplateSpec: *spec,
-				Offline:          false,
+				Offline:          ptr.To(false),
 			},
 		}
 		if fg.Enabled(metav1alpha1.ClusterSubdomain) {

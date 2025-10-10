@@ -254,11 +254,16 @@ func (c *pdClient) GetTSOMembers(ctx context.Context) ([]ServiceRegistryEntry, e
 }
 
 func (c *pdClient) GetStores(ctx context.Context) (*StoresInfo, error) {
-	storesInfo, err := c.getStores(ctx, fmt.Sprintf("%s/%s", c.url, storesPrefix))
+	storesInfo, err := c.getStores(
+		ctx,
+		fmt.Sprintf("%s/%s", c.url, storesPrefix),
+		metapb.StoreState_Up,
+		metapb.StoreState_Offline,
+		metapb.StoreState_Tombstone,
+	)
 	if err != nil {
 		if strings.HasSuffix(err.Error(), tiKVNotBootstrapped+"\n") {
-			//nolint:govet // expected
-			err = TiKVNotBootstrappedErrorf(err.Error())
+			return nil, TiKVNotBootstrappedErrorf(err.Error())
 		}
 		return nil, err
 	}
@@ -266,7 +271,7 @@ func (c *pdClient) GetStores(ctx context.Context) (*StoresInfo, error) {
 }
 
 func (c *pdClient) GetTombStoneStores(ctx context.Context) (*StoresInfo, error) {
-	return c.getStores(ctx, fmt.Sprintf("%s/%s?state=%d", c.url, storesPrefix, metapb.StoreState_Tombstone))
+	return c.getStores(ctx, fmt.Sprintf("%s/%s", c.url, storesPrefix), metapb.StoreState_Tombstone)
 }
 
 func (c *pdClient) GetStore(ctx context.Context, storeID string) (*StoreInfo, error) {
@@ -283,7 +288,14 @@ func (c *pdClient) GetStore(ctx context.Context, storeID string) (*StoreInfo, er
 	return storeInfo, nil
 }
 
-func (c *pdClient) getStores(ctx context.Context, apiURL string) (*StoresInfo, error) {
+func (c *pdClient) getStores(ctx context.Context, apiURL string, states ...metapb.StoreState) (*StoresInfo, error) {
+	if len(states) != 0 {
+		var q []string
+		for _, state := range states {
+			q = append(q, "state="+strconv.Itoa(int(state)))
+		}
+		apiURL += "?" + strings.Join(q, "&")
+	}
 	body, err := httputil.GetBodyOK(ctx, c.httpClient, apiURL)
 	if err != nil {
 		return nil, err

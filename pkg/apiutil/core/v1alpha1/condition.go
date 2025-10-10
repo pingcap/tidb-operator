@@ -159,3 +159,32 @@ func SprintCondition(cond *metav1.Condition) string {
 		cond.ObservedGeneration,
 	)
 }
+
+func Offlined() *metav1.Condition {
+	return &metav1.Condition{
+		Type:    v1alpha1.StoreOfflinedConditionType,
+		Status:  metav1.ConditionTrue,
+		Reason:  v1alpha1.ReasonOfflineCompleted,
+		Message: "store has been removed",
+	}
+}
+
+func NotOfflined(reason string) *metav1.Condition {
+	var msg string
+	switch reason {
+	case v1alpha1.ReasonOfflineProcessing:
+		msg = "store is removing"
+	case v1alpha1.ReasonOfflineCanceling:
+		msg = "store removing is canceling"
+	default:
+		msg = fmt.Sprintf("store is not offlined because of unknown reason: %s", reason)
+		reason = v1alpha1.ReasonUnknown
+	}
+
+	return &metav1.Condition{
+		Type:    v1alpha1.StoreOfflinedConditionType,
+		Status:  metav1.ConditionFalse,
+		Reason:  reason,
+		Message: msg,
+	}
+}

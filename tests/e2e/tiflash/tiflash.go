@@ -26,6 +26,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apicall"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
@@ -107,7 +108,7 @@ func findOffliningTiFlashes(ctx context.Context, f *framework.Framework, fg *v1a
 		}
 		offliningFlashes = nil
 		for _, flash := range allFlashes {
-			if flash.Spec.Offline {
+			if coreutil.IsOffline[scope.TiFlash](flash) {
 				offliningFlashes = append(offliningFlashes, flash)
 			}
 		}

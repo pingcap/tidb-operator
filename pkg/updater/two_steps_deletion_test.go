@@ -25,10 +25,13 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
 // Add this mock implementation in your test file
@@ -56,7 +59,7 @@ func assertTiKVState(t *testing.T, cli client.Client, expectedTotal, expectedOff
 	offlineCount := 0
 	for i := range tikvs.Items {
 		tikv := &tikvs.Items[i]
-		if tikv.Spec.Offline {
+		if coreutil.IsOffline[scope.TiKV](tikv) {
 			offlineCount++
 		}
 	}
@@ -111,7 +114,7 @@ func buildTestTiKV(nameIndex string, gen int64, ready bool, apply ...patch) *run
 
 func offline() func(tikv *runtime.TiKV) {
 	return func(tikv *runtime.TiKV) {
-		tikv.Spec.Offline = true
+		tikv.Spec.Offline = ptr.To(true)
 	}
 }
 
@@ -156,8 +159,8 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 			},
 			desired: 1,
 			expectedActions: []action{
-				actionSetOffline,
-				actionSetOffline,
+				actionScaleInUpdate,
+				actionScaleInUpdate,
 			},
 			expectedTotal:   3,
 			expectedOffline: 2,
@@ -195,7 +198,7 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 				return
 			},
 			desired:         1,
-			expectedActions: []action{actionDelete},
+			expectedActions: []action{actionCleanup},
 			expectedTotal:   2,
 			expectedOffline: 1,
 		},
@@ -210,7 +213,7 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 				return
 			},
 			desired:         1,
-			expectedActions: []action{actionDelete},
+			expectedActions: []action{actionCleanup},
 			expectedTotal:   1,
 			expectedOffline: 0,
 			expectedWait:    false,
@@ -241,7 +244,7 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 			},
 			desired:           2,
 			unavailableUpdate: 3,
-			expectedActions:   []action{actionSetOffline},
+			expectedActions:   []action{actionScaleInUpdate},
 			expectedOffline:   1,
 			expectedTotal:     3,
 			expectedWait:      true,
@@ -341,7 +344,7 @@ func TestExecutorForCancelableScaleIn(t *testing.T) {
 			},
 			desired: 2,
 			expectedActions: []action{
-				actionDelete,
+				actionCleanup,
 			},
 			expectedTotal:   2,
 			expectedOffline: 0,

@@ -120,6 +120,7 @@ func TiCDCNewer(cdcg *v1alpha1.TiCDCGroup, rev string, fg features.Gates) update
 				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.TiCDCGroup](cdcg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.TiCDCGroup](cdcg),
+				Finalizers:  []string{metav1alpha1.Finalizer},
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(cdcg, v1alpha1.SchemeGroupVersion.WithKind("TiCDCGroup")),
 				},

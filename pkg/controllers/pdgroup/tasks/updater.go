@@ -138,6 +138,7 @@ func PDNewer(pdg *v1alpha1.PDGroup, rev string, fg features.Gates) updater.NewFa
 				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.PDGroup](pdg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.PDGroup](pdg),
+				Finalizers:  []string{metav1alpha1.Finalizer},
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(pdg, v1alpha1.SchemeGroupVersion.WithKind("PDGroup")),
 				},

@@ -145,6 +145,7 @@ func TiProxyNewer(proxyg *v1alpha1.TiProxyGroup, rev string, fg features.Gates) 
 				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.TiProxyGroup](proxyg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.TiProxyGroup](proxyg),
+				Finalizers:  []string{metav1alpha1.Finalizer},
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(proxyg, v1alpha1.SchemeGroupVersion.WithKind("TiProxyGroup")),
 				},

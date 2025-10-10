@@ -84,7 +84,12 @@ func (p *applier) Apply(ctx context.Context, obj client.Object) error {
 	logger := logr.FromContextOrDiscard(ctx)
 	res, err := p.ApplyWithResult(ctx, obj)
 	if err == nil {
-		logger.Info("apply success", "kind", reflect.TypeOf(obj), "namespace", obj.GetNamespace(), "name", obj.GetName(), "result", res)
+		logger.Info("apply success",
+			"kind", reflect.TypeOf(obj),
+			"namespace", obj.GetNamespace(),
+			"name", obj.GetName(),
+			"result", res,
+		)
 	}
 	return err
 }
@@ -159,28 +164,45 @@ func (p *applier) Extract(
 		return nil, fmt.Errorf("error converting obj to typed: %w", err)
 	}
 
-	var fe *metav1.ManagedFieldsEntry
+	var ae, ue *metav1.ManagedFieldsEntry
 	objManagedFields := current.GetManagedFields()
 	for i := range objManagedFields {
 		mf := &objManagedFields[i]
 		if mf.Manager == fieldManager && mf.Operation == metav1.ManagedFieldsOperationApply && mf.Subresource == subresource {
-			fe = mf
+			switch mf.Operation {
+			case metav1.ManagedFieldsOperationApply:
+				ae = mf
+			case metav1.ManagedFieldsOperationUpdate:
+				ue = mf
+			}
 		}
 	}
 
-	if fe == nil {
+	if ae == nil {
 		return nil, nil
 	}
 
 	fieldset := &fieldpath.Set{}
-	if err = fieldset.FromJSON(bytes.NewReader(fe.FieldsV1.Raw)); err != nil {
-		return nil, fmt.Errorf("error marshaling FieldsV1 to JSON: %w", err)
+	if err = fieldset.FromJSON(bytes.NewReader(ae.FieldsV1.Raw)); err != nil {
+		return nil, fmt.Errorf("error marshaling apply FieldsV1 to JSON: %w", err)
+	}
+
+	if ue != nil {
+		uef := &fieldpath.Set{}
+		if err = uef.FromJSON(bytes.NewReader(ue.FieldsV1.Raw)); err != nil {
+			return nil, fmt.Errorf("error marshaling update FieldsV1 to JSON: %w", err)
+		}
+		fieldset.Union(uef)
 	}
 
 	u := typedObj.ExtractItems(fieldset.Leaves()).AsValue().Unstructured()
 	m, ok := u.(map[string]any)
 	if !ok {
-		return nil, fmt.Errorf("unable to convert managed fields for %s to unstructured, expected map, got %T", fieldManager, u)
+		return nil, fmt.Errorf(
+			"unable to convert managed fields for %s to unstructured, expected map, got %T",
+			fieldManager,
+			u,
+		)
 	}
 
 	m["apiVersion"] = gvk.GroupVersion().String()

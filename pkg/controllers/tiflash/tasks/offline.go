@@ -17,7 +17,9 @@ package tasks
 import (
 	"context"
 
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -28,6 +30,22 @@ func TaskOfflineStore(state *ReconcileContext) task.Task {
 		if !state.PDSynced {
 			return task.Wait().With("pd is not synced")
 		}
-		return common.TaskOfflineStoreStateMachine(ctx, state, state.Instance())
+		if err := common.TaskOfflineStore[scope.TiFlash](
+			ctx,
+			state.PDClient.Underlay(),
+			state.Object(),
+			state.GetStoreID(),
+			state.GetStoreState(),
+		); err != nil {
+			// refresh store state
+			state.PDClient.Stores().Refresh()
+
+			if task.IsWaitError(err) {
+				return task.Wait().With("%v", err)
+			}
+			return task.Fail().With("failed to offline or cancel offline store: %v", err)
+		}
+
+		return task.Complete().With("offline is completed or no need, spec.offline: %v", coreutil.IsOffline[scope.TiFlash](state.Object()))
 	})
 }

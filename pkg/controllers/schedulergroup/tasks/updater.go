@@ -120,6 +120,7 @@ func SchedulerNewer(sg *v1alpha1.SchedulerGroup, rev string, fg features.Gates) 
 				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.SchedulerGroup](sg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.SchedulerGroup](sg),
+				Finalizers:  []string{metav1alpha1.Finalizer},
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(sg, v1alpha1.SchemeGroupVersion.WithKind("SchedulerGroup")),
 				},
