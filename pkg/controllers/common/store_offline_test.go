@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -148,7 +149,7 @@ func TestTaskOfflineStore(t *testing.T) {
 			}
 			err := TaskOfflineStore[scope.TiKV](ctx, pc, c.obj, c.storeID, c.state)
 			if c.hasErr {
-				assert.Error(tt, err)
+				require.Error(tt, err)
 				assert.Equal(tt, c.isWaitErr, task.IsWaitError(err))
 			} else {
 				assert.NoError(tt, err)
@@ -206,7 +207,7 @@ func TestTaskInstanceConditionOffline(t *testing.T) {
 
 			expectedStatusChanged: true,
 			expectedStatus:        task.SWait,
-			expectedObj:           newFakeStore(false, coreutil.NotOfflined(v1alpha1.ReasonOfflineCancelling)),
+			expectedObj:           newFakeStore(false, coreutil.NotOfflined(v1alpha1.ReasonOfflineCanceling)),
 		},
 		{
 			desc:       "spec.offline == true, state == Removing",

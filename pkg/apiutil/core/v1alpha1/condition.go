@@ -174,8 +174,8 @@ func NotOfflined(reason string) *metav1.Condition {
 	switch reason {
 	case v1alpha1.ReasonOfflineProcessing:
 		msg = "store is removing"
-	case v1alpha1.ReasonOfflineCancelling:
-		msg = "store removing is cancelling"
+	case v1alpha1.ReasonOfflineCanceling:
+		msg = "store removing is canceling"
 	default:
 		msg = fmt.Sprintf("store is not offlined because of unknown reason: %s", reason)
 		reason = v1alpha1.ReasonUnknown

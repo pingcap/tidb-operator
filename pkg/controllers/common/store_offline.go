@@ -123,7 +123,7 @@ func TaskInstanceConditionOffline[
 		case !isOffline && (state == pdv1.NodeStatePreparing || state == pdv1.NodeStateServing):
 			reason = ""
 		case !isOffline && state == pdv1.NodeStateRemoving:
-			reason = v1alpha1.ReasonOfflineCancelling
+			reason = v1alpha1.ReasonOfflineCanceling
 		}
 
 		// not offline and store is up
@@ -155,7 +155,7 @@ func TaskInstanceConditionOffline[
 		}
 
 		if !isCompleted {
-			return task.Wait().With("instance is processing for cancelling: %s", coreutil.SprintCondition(cond))
+			return task.Wait().With("instance is processing or canceling: %s", coreutil.SprintCondition(cond))
 		}
 
 		return task.Complete().With("instance is offlined")

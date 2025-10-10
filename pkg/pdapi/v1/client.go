@@ -254,7 +254,13 @@ func (c *pdClient) GetTSOMembers(ctx context.Context) ([]ServiceRegistryEntry, e
 }
 
 func (c *pdClient) GetStores(ctx context.Context) (*StoresInfo, error) {
-	storesInfo, err := c.getStores(ctx, fmt.Sprintf("%s/%s", c.url, storesPrefix), metapb.StoreState_Up, metapb.StoreState_Offline, metapb.StoreState_Tombstone)
+	storesInfo, err := c.getStores(
+		ctx,
+		fmt.Sprintf("%s/%s", c.url, storesPrefix),
+		metapb.StoreState_Up,
+		metapb.StoreState_Offline,
+		metapb.StoreState_Tombstone,
+	)
 	if err != nil {
 		if strings.HasSuffix(err.Error(), tiKVNotBootstrapped+"\n") {
 			return nil, TiKVNotBootstrappedErrorf(err.Error())
