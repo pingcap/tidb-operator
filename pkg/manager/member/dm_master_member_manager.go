@@ -650,8 +650,9 @@ func getNewMasterSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 				Protocol:      corev1.ProtocolTCP,
 			},
 		},
-		VolumeMounts: volMounts,
-		Resources:    controller.ContainerResource(dc.Spec.Master.ResourceRequirements),
+		VolumeMounts:    volMounts,
+		Resources:       controller.ContainerResource(dc.Spec.Master.ResourceRequirements),
+		SecurityContext: baseMasterSpec.SecurityContext(),
 	}
 	env := []corev1.EnvVar{
 		{
