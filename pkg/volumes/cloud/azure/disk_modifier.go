@@ -44,7 +44,7 @@ const (
 
 	volumeIDPartsLength = 9
 
-	defaultWaitDuration = 6 * time.Hour
+	defaultWaitDuration = 15 * time.Second
 )
 
 type DiskModifier struct {
