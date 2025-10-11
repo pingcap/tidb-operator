@@ -7,7 +7,7 @@ spec:
   cleanPolicy: Delete
   backupType: full
   backupMode: volume-snapshot
-  toolImage: localhost:5000/pingcap/br:latest
+  toolImage: pingcap/br:v8.5.2
   br:
     cluster: basic
     clusterNamespace: default
