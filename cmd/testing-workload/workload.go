@@ -38,13 +38,13 @@ func Workload(ctx context.Context, db *sql.DB) error {
 	db.SetMaxOpenConns(maxConnections)
 	// Set these variable to avoid too long retry time in testing.
 	// Downtime may be short but default timeout is too long.
-	fmt.Println("try to set max_execution_time to 2000ms")
-	if _, err := db.Exec("set global max_execution_time = 2000;"); err != nil {
-		return fmt.Errorf("set max_execute_time failed: %w", err)
+	fmt.Printf("try to set max_execution_time to %dms\n", maxExecutionTime)
+	if _, err := db.Exec(fmt.Sprintf("set global max_execution_time = %d;", maxExecutionTime)); err != nil {
+		return fmt.Errorf("set max_execution_time failed: %w", err)
 	}
 	fmt.Println("try to set tidb_backoff_weight to 1")
 	if _, err := db.Exec("set global tidb_backoff_weight = 1;"); err != nil {
-		return fmt.Errorf("set max_execute_time failed: %w", err)
+		return fmt.Errorf("set tidb_backoff_weight failed: %w", err)
 	}
 
 	table := "test.e2e_test"

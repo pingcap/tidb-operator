@@ -176,6 +176,7 @@ func (w *Workload) MustRunWorkload(ctx context.Context, host string, opts ...wor
 		// an arbitrary timeout
 		// NOTE: maybe changed to use a http api to stop
 		"--max-connections", "30",
+		"--max-execution-time", strconv.Itoa(o.MaxExecutionTime),
 		"--tiflash-replicas", strconv.Itoa(o.TiFlashReplicas),
 	}
 
