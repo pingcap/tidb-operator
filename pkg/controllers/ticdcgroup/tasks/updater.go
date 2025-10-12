@@ -27,6 +27,7 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/pkg/reloadable"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
@@ -70,6 +71,18 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
+		needUpdate, needRestart := precheckInstances(cdcg, runtime.ToTiCDCSlice(cdcs), updateRevision)
+		if !needUpdate {
+			return task.Complete().With("all instances are synced")
+		}
+
+		maxSurge, maxUnavailable := 0, 1
+		noUpdate := false
+		if needRestart {
+			maxSurge, maxUnavailable = 1, 0
+			noUpdate = true
+		}
+
 		var instances []string
 		for _, in := range cdcs {
 			instances = append(instances, in.Name)
@@ -81,8 +94,8 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			WithInstances(cdcs...).
 			WithDesired(int(state.Group().Replicas())).
 			WithClient(c).
-			WithMaxSurge(0).
-			WithMaxUnavailable(1).
+			WithMaxSurge(maxSurge).
+			WithMaxUnavailable(maxUnavailable).
 			WithRevision(updateRevision).
 			WithNewFactory(TiCDCNewer(cdcg, updateRevision, state.FeatureGates())).
 			WithAddHooks(
@@ -94,6 +107,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			WithScaleInPreferPolicy(
 				topoPolicy,
 			).
+			WithNoInPaceUpdate(noUpdate).
 			Build().
 			Do(ctx)
 		if err != nil {
@@ -138,4 +152,22 @@ func TiCDCNewer(cdcg *v1alpha1.TiCDCGroup, rev string, fg features.Gates) update
 
 		return runtime.FromTiCDC(ticdc)
 	})
+}
+
+func precheckInstances(cdcg *v1alpha1.TiCDCGroup, cdcs []*v1alpha1.TiCDC, updateRevision string) (needUpdate, needRestart bool) {
+	if len(cdcs) != int(coreutil.Replicas[scope.TiCDCGroup](cdcg)) {
+		needUpdate = true
+	}
+	for _, cdc := range cdcs {
+		if coreutil.UpdateRevision[scope.TiCDC](cdc) == updateRevision {
+			continue
+		}
+
+		needUpdate = true
+		if !reloadable.CheckTiCDC(cdcg, cdc) {
+			needRestart = true
+		}
+	}
+
+	return needUpdate, needRestart
 }
