@@ -5059,7 +5059,7 @@ float64
 <a href="#backupspec">BackupSpec</a>)
 </p>
 <p>
-<p>CleanPolicyType represents the clean policy of backup data in remote storage</p>
+<p>CleanPolicyType represents the clean policy of backup data in remote storage. <code>Retain</code> (default) will under any circumstances, retain the backup data when deleting the backup CR. <code>Delete</code> will under any circumstances, delete the backup data when deleting the backup CR. <code>OnFailure</code> will delete the backup data when deleting the backup CR if the backup fails.</p>
 </p>
 <h3 id="cluster">Cluster</h3>
 <p>
