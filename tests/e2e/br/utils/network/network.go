@@ -87,14 +87,14 @@ func RestoreMinIONetworkAccess(clientset kubernetes.Interface, ns, clusterName s
 }
 
 // WaitForKernelAutoPause waits for the log backup kernel to enter paused state.
-// 
+//
 // Core Purpose:
-//   - Used in network failure tests to verify that TiDB's log backup kernel 
+//   - Used in network failure tests to verify that TiDB's log backup kernel
 //     automatically pauses when it cannot write to storage (S3/MinIO)
 //   - Polls etcd's /tidb/br-stream/pause/{backupName} key until it appears
 //   - Returns the pause reason for test verification
 //
-// Context: 
+// Context:
 //   - Called after SimulateMinIONetworkFailure() blocks storage access
 //   - Tests expect kernel to detect storage failure and auto-pause within timeout
 func WaitForKernelAutoPause(etcdClient pdapi.PDEtcdClient, backupName string, timeout time.Duration) (*types.LogBackupState, error) {

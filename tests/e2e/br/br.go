@@ -1092,7 +1092,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				enableTLS := false
 				skipCA := false
 				typ := strings.ToLower(typeBR)
-				
+
 				ns := f.Namespace.Name
 
 				ginkgo.By("Create log backup before cluster exists")
@@ -1107,7 +1107,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 				ginkgo.By("Verifying backup is in RetryTheFailed state due to missing cluster")
 				_, condition := v1alpha1.GetBackupCondition(&backup.Status, v1alpha1.BackupRetryTheFailed)
-				framework.ExpectEqual(condition != nil && condition.Status == v1.ConditionTrue, true, 
+				framework.ExpectEqual(condition != nil && condition.Status == v1.ConditionTrue, true,
 					"backup should be in RetryTheFailed state when cluster doesn't exist")
 				framework.ExpectEqual(strings.Contains(condition.Message, "failed to fetch tidbcluster"), true,
 					"RetryTheFailed reason should mention failed to fetch tidbcluster")
