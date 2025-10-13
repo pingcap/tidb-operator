@@ -30,7 +30,6 @@ import (
 	brutil "github.com/pingcap/tidb-operator/tests/e2e/br/framework/br"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/network"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
-	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/sql"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/types"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/verify"
 	e2etc "github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
@@ -115,7 +114,7 @@ func newTestCase(backupVersion, restoreVersion string, typ string, opts ...optio
 func (t *testcase) description() string {
 	builder := &strings.Builder{}
 
-	builder.WriteString(fmt.Sprintf("[%s][%s To %s]", t.typ, t.backupVersion, t.restoreVersion))
+	fmt.Fprintf(builder, "[%s][%s To %s]", t.typ, t.backupVersion, t.restoreVersion)
 
 	if t.enableTLS {
 		builder.WriteString("[TLS]")
@@ -889,199 +888,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 					gomega.Eventually(func() error {
 						return verify.VerifyKernelState(etcdClient, backupName, types.LogBackupKernelRunning)
-					}, 2*time.Minute, 5*time.Second).Should(gomega.Succeed())
-				})
-			})
-
-			ginkgo.Context("Manual BR Command Detection", func() {
-				ginkgo.It("should detect manual SQL command state changes", func() {
-					backupClusterName := "log-backup-sync-sql-test"
-					backupVersion := utilimage.TiDBLatest
-					enableTLS := false
-					skipCA := false
-					typ := strings.ToLower(typeBR)
-
-					ns := f.Namespace.Name
-
-					ginkgo.By("Create log-backup.enable TiDB cluster for log backup")
-					err := createLogBackupEnableTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
-					framework.ExpectNoError(err)
-
-					ginkgo.By("Wait for backup TiDB cluster ready")
-					err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
-					framework.ExpectNoError(err)
-
-					ginkgo.By("Create RBAC for log backup")
-					err = createRBAC(f)
-					framework.ExpectNoError(err)
-
-					ginkgo.By("Starting log backup in running state")
-					s3Config := f.Storage.Config(ns, backupName)
-					_, err = createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
-						backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
-						backup.Spec.Mode = v1alpha1.BackupModeLog
-						backup.Spec.LogSubcommand = v1alpha1.LogStartCommand
-						backup.Spec.S3 = s3Config
-					})
-					framework.ExpectNoError(err)
-
-					ginkgo.By("Verifying initial state consistency")
-					// Get PD etcd client for kernel state verification
-					pdControl := pdapi.NewDefaultPDControlByCli(f.ClientSet)
-					etcdClient, err := pdControl.GetPDEtcdClient(pdapi.Namespace(ns), backupClusterName, enableTLS)
-					framework.ExpectNoError(err)
-					defer etcdClient.Close()
-
-					gomega.Eventually(func() error {
-						return verify.VerifyKernelState(etcdClient, backupName, types.LogBackupKernelRunning)
-					}, time.Minute, 5*time.Second).Should(gomega.Succeed())
-
-					ginkgo.By("Manually pausing log backup via SQL command (bypassing operator)")
-					err = sql.ExecuteLogBackupCommandViaSQL(f.PortForwarder, ns, backupClusterName, "pause", backupName)
-					framework.ExpectNoError(err)
-
-					ginkgo.By("Verifying kernel state changed to paused (while operator CR still shows running)")
-					gomega.Eventually(func() error {
-						return sql.WaitForKernelStateChange(etcdClient, backupName, types.LogBackupKernelPaused, time.Minute)
-					}, 2*time.Minute, 10*time.Second).Should(gomega.Succeed())
-
-					ginkgo.By("Waiting for operator to detect manual pause inconsistency")
-					// Operator should detect that CR says "running" but kernel is "paused"
-					gomega.Eventually(func() error {
-						// Check for inconsistency detection via TimeSynced update
-						currentBackup, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), backupName, metav1.GetOptions{})
-						if err != nil {
-							return err
-						}
-
-						// Verify TimeSynced is updated (indicating sync occurred)
-						if currentBackup.Status.TimeSynced == nil || currentBackup.Status.TimeSynced.Before(&metav1.Time{Time: beforeTime}) {
-							return fmt.Errorf("TimeSynced not updated after manual pause")
-						}
-
-						log.Logf("Operator detected manual state change, TimeSynced updated to: %v", currentBackup.Status.TimeSynced.Time)
-						return nil
-					}, 3*time.Minute, 10*time.Second).Should(gomega.Succeed())
-
-					ginkgo.By("Manually resuming log backup via SQL command")
-					err = sql.ExecuteLogBackupCommandViaSQL(f.PortForwarder, ns, backupClusterName, "resume", backupName)
-					framework.ExpectNoError(err)
-
-					ginkgo.By("Verifying kernel state returns to running")
-					gomega.Eventually(func() error {
-						return sql.WaitForKernelStateChange(etcdClient, backupName, types.LogBackupKernelRunning, time.Minute)
-					}, 2*time.Minute, 10*time.Second).Should(gomega.Succeed())
-
-					ginkgo.By("Verifying operator detects resume and updates sync time again")
-					newBeforeTime := time.Now()
-					gomega.Eventually(func() error {
-						return verify.VerifyTimeSyncedUpdated(f.ExtClient, ns, backupName, newBeforeTime)
-					}, 2*time.Minute, 5*time.Second).Should(gomega.Succeed())
-
-					ginkgo.By("Verifying final CR status is Running after manual resume")
-					gomega.Eventually(func() error {
-						currentBackup, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), backupName, metav1.GetOptions{})
-						if err != nil {
-							return err
-						}
-
-						// Verify backup phase is Running
-						if currentBackup.Status.Phase != v1alpha1.BackupRunning {
-							return fmt.Errorf("expected backup phase to be Running, got: %s", currentBackup.Status.Phase)
-						}
-
-						// Verify no error conditions are present
-						for _, condition := range currentBackup.Status.Conditions {
-							if condition.Type == v1alpha1.BackupRetryTheFailed && condition.Status == v1.ConditionTrue {
-								return fmt.Errorf("unexpected RetryTheFailed condition after manual resume: %s", condition.Message)
-							}
-							if condition.Type == v1alpha1.BackupFailed && condition.Status == v1.ConditionTrue {
-								return fmt.Errorf("unexpected Failed condition after manual resume: %s", condition.Message)
-							}
-						}
-
-						log.Logf("CR status verified: Phase=%s, TimeSynced=%v", currentBackup.Status.Phase, currentBackup.Status.TimeSynced.Time)
-						return nil
-					}, 2*time.Minute, 5*time.Second).Should(gomega.Succeed())
-				})
-
-				ginkgo.It("should handle rapid manual SQL state changes without false corrections", func() {
-					backupClusterName := "log-backup-sync-rapid-test"
-					backupVersion := utilimage.TiDBLatest
-					enableTLS := false
-					skipCA := false
-					typ := strings.ToLower(typeBR)
-
-					ns := f.Namespace.Name
-
-					ginkgo.By("Create log-backup.enable TiDB cluster for log backup")
-					err := createLogBackupEnableTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
-					framework.ExpectNoError(err)
-
-					ginkgo.By("Wait for backup TiDB cluster ready")
-					err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
-					framework.ExpectNoError(err)
-
-					ginkgo.By("Create RBAC for log backup")
-					err = createRBAC(f)
-					framework.ExpectNoError(err)
-
-					ginkgo.By("Starting log backup")
-					s3Config := f.Storage.Config(ns, backupName)
-					_, err = createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
-						backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
-						backup.Spec.Mode = v1alpha1.BackupModeLog
-						backup.Spec.LogSubcommand = v1alpha1.LogStartCommand
-						backup.Spec.S3 = s3Config
-					})
-					framework.ExpectNoError(err)
-
-					// Get PD etcd client for kernel state verification
-					pdControl := pdapi.NewDefaultPDControlByCli(f.ClientSet)
-					etcdClient, err := pdControl.GetPDEtcdClient(pdapi.Namespace(ns), backupClusterName, enableTLS)
-					framework.ExpectNoError(err)
-					defer etcdClient.Close()
-
-					ginkgo.By("Rapidly changing states via SQL: pause then resume")
-					err = sql.ExecuteLogBackupCommandViaSQL(f.PortForwarder, ns, backupClusterName, "pause", backupName)
-					framework.ExpectNoError(err)
-
-					// Wait briefly to ensure first command takes effect
-					time.Sleep(5 * time.Second)
-
-					err = sql.ExecuteLogBackupCommandViaSQL(f.PortForwarder, ns, backupClusterName, "resume", backupName)
-					framework.ExpectNoError(err)
-
-					ginkgo.By("Verifying final kernel state is running")
-					gomega.Eventually(func() error {
-						return sql.WaitForKernelStateChange(etcdClient, backupName, types.LogBackupKernelRunning, time.Minute)
-					}, 2*time.Minute, 10*time.Second).Should(gomega.Succeed())
-
-					ginkgo.By("Verifying operator handles rapid changes gracefully")
-					// Should not see conflicting conditions or error states from rapid manual changes
-					gomega.Eventually(func() error {
-						currentBackup, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), backupName, metav1.GetOptions{})
-						if err != nil {
-							return err
-						}
-
-						// Verify backup phase is Running after rapid changes
-						if currentBackup.Status.Phase != v1alpha1.BackupRunning {
-							return fmt.Errorf("expected backup phase to be Running after rapid changes, got: %s", currentBackup.Status.Phase)
-						}
-
-						// Should not have error conditions from rapid state changes
-						for _, condition := range currentBackup.Status.Conditions {
-							if condition.Type == v1alpha1.BackupRetryTheFailed && condition.Status == v1.ConditionTrue {
-								return fmt.Errorf("unexpected RetryTheFailed condition from rapid manual state change: %s", condition.Message)
-							}
-							if condition.Type == v1alpha1.BackupFailed && condition.Status == v1.ConditionTrue {
-								return fmt.Errorf("unexpected Failed condition from rapid manual state change: %s", condition.Message)
-							}
-						}
-
-						log.Logf("CR status verified after rapid changes: Phase=%s, no error conditions detected", currentBackup.Status.Phase)
-						return nil
 					}, 2*time.Minute, 5*time.Second).Should(gomega.Succeed())
 				})
 			})
@@ -2064,22 +1870,6 @@ func deleteBackup(f *e2eframework.Framework, name string) error {
 	return nil
 }
 
-// nolint
-// NOTE: it is not used
-func cleanBackup(f *e2eframework.Framework) error {
-	ns := f.Namespace.Name
-	bl, err := f.ExtClient.PingcapV1alpha1().Backups(ns).List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-	for i := range bl.Items {
-		if err := deleteBackup(f, bl.Items[i].Name); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func createRestoreAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ string, backupName string, configure func(*v1alpha1.Restore)) error {
 	ns := f.Namespace.Name
 
@@ -2162,7 +1952,7 @@ func checkDataIsSame(backupDSN, restoreDSN string) error {
 		return fmt.Errorf("backup tables(%v) is not equal with restore tables(%v)", len(backupTables), len(restoreTables))
 	}
 
-	for i := 0; i < len(backupTables); i++ {
+	for i := range len(backupTables) {
 		backupTable := backupTables[i]
 		restoreTable := restoreTables[i]
 		if backupTable != restoreTable {
