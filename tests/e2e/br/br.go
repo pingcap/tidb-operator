@@ -772,7 +772,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		// 	k8se2e.ExpectEqual(cleaned, true, "storage should be cleaned")
 		// })
 
-
 		ginkgo.Context("Backup before Cluster Creation", func() {
 			ginkgo.It("should transition from RetryTheFailed to Running when cluster is created", func() {
 				backupClusterName := "cluster-after-backup-test"
