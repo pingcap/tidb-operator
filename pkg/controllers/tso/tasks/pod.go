@@ -254,9 +254,9 @@ func buildReadinessProbe(cluster *v1alpha1.Cluster, port int32) *corev1.Probe {
 		"--location")
 
 	if tlsClusterEnabled {
-		cacert := path.Join(v1alpha1.DirPathClusterTLSPD, corev1.ServiceAccountRootCAKey)
-		cert := path.Join(v1alpha1.DirPathClusterTLSPD, corev1.TLSCertKey)
-		key := path.Join(v1alpha1.DirPathClusterTLSPD, corev1.TLSPrivateKeyKey)
+		cacert := path.Join(v1alpha1.DirPathClusterTLSTSO, corev1.ServiceAccountRootCAKey)
+		cert := path.Join(v1alpha1.DirPathClusterTLSTSO, corev1.TLSCertKey)
+		key := path.Join(v1alpha1.DirPathClusterTLSTSO, corev1.TLSPrivateKeyKey)
 		command = append(command, "--cacert", cacert, "--cert", cert, "--key", key)
 	}
 
