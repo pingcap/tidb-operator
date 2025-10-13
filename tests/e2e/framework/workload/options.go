@@ -29,7 +29,7 @@ type Options struct {
 
 	RegionCount int
 
-	// maxExecutionTime is max_execution_time of tidb in millisecond
+	// MaxExecutionTime is max_execution_time of tidb in millisecond
 	// Default is 2000
 	MaxExecutionTime int
 

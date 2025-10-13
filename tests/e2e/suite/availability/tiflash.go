@@ -33,7 +33,7 @@ import (
 
 var _ = ginkgo.Describe("TiFlash Availability Test", label.TiFlash, label.Update, label.KindAvail, func() {
 	f := framework.New()
-	f.Setup()
+	f.Setup(framework.WithSkipClusterDeletionWhenFailed())
 	f.SetupCluster(data.WithFeatureGates(v1alpha1.TerminableLogTailer))
 
 	ginkgo.Context("Default", label.P0, func() {
