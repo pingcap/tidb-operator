@@ -49,14 +49,6 @@ func NewTiDBGroup(ns string, patches ...GroupPatch[*runtime.TiDBGroup]) *v1alpha
 							Type: ptr.To(v1alpha1.CommandProbeType),
 						},
 					},
-					Overlay: &v1alpha1.Overlay{
-						Pod: &v1alpha1.PodOverlay{
-							Spec: &corev1.PodSpec{
-								// Set default TerminationGracePeriodSeconds to 60
-								TerminationGracePeriodSeconds: ptr.To[int64](60),
-							},
-						},
-					},
 				},
 			},
 		},
@@ -211,5 +203,14 @@ func WithTiDBNextGen() GroupPatch[*runtime.TiDBGroup] {
 		obj.Spec.Template.Spec.Config = `disaggregated-tiflash = true
 graceful-wait-before-shutdown = 20
 		`
+
+		obj.Spec.Template.Spec.Overlay = &v1alpha1.Overlay{
+			Pod: &v1alpha1.PodOverlay{
+				Spec: &corev1.PodSpec{
+					// Set default TerminationGracePeriodSeconds to 60
+					TerminationGracePeriodSeconds: ptr.To[int64](60),
+				},
+			},
+		}
 	}
 }
