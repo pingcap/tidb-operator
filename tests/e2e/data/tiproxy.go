@@ -54,6 +54,7 @@ func NewTiProxyGroup(ns string, patches ...GroupPatch[*runtime.TiProxyGroup]) *v
 	return runtime.ToTiProxyGroup(proxyg)
 }
 
+// Deprecated: use WithTiProxyMySQLTLS
 func WithTLSForTiProxy() GroupPatch[*runtime.TiProxyGroup] {
 	return func(obj *runtime.TiProxyGroup) {
 		if obj.Spec.Template.Spec.Security == nil {
@@ -68,8 +69,42 @@ func WithTLSForTiProxy() GroupPatch[*runtime.TiProxyGroup] {
 	}
 }
 
+func WithTiProxyMySQLTLS(ca, certKeyPair string) GroupPatch[*runtime.TiProxyGroup] {
+	return func(obj *runtime.TiProxyGroup) {
+		if obj.Spec.Template.Spec.Security == nil {
+			obj.Spec.Template.Spec.Security = &v1alpha1.TiProxySecurity{}
+		}
+		if obj.Spec.Template.Spec.Security.TLS == nil {
+			obj.Spec.Template.Spec.Security.TLS = &v1alpha1.TiProxyTLS{}
+		}
+
+		obj.Spec.Template.Spec.Security.TLS.MySQL = &v1alpha1.TLS{
+			Enabled: true,
+		}
+		if ca != "" {
+			obj.Spec.Template.Spec.Security.TLS.MySQL.CA = &v1alpha1.CAReference{
+				Name: ca,
+			}
+		}
+		if certKeyPair != "" {
+			obj.Spec.Template.Spec.Security.TLS.MySQL.CertKeyPair = &v1alpha1.CertKeyPairReference{
+				Name: certKeyPair,
+			}
+		}
+	}
+}
+
 func WithHotReloadPolicyForTiProxy() GroupPatch[*runtime.TiProxyGroup] {
 	return func(obj *runtime.TiProxyGroup) {
 		obj.Spec.Template.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyHotReload
+	}
+}
+
+func WithTiProxyNextGen() GroupPatch[*runtime.TiProxyGroup] {
+	return func(obj *runtime.TiProxyGroup) {
+		obj.Spec.Template.Spec.Version = "v1.4.0"
+		obj.Spec.Template.Spec.Image = ptr.To(defaultImageRegistry + "tiproxy:v1.4.0-beta.1-26-g02d15d8")
+		obj.Spec.Template.Spec.Config = `[balance]
+label-name = "keyspace"`
 	}
 }

@@ -63,6 +63,36 @@ func TiProxyPeerPort(tiproxy *v1alpha1.TiProxy) int32 {
 	return v1alpha1.DefaultTiProxyPortPeer
 }
 
+func TiProxyGroupMySQLTLS(pg *v1alpha1.TiProxyGroup) *v1alpha1.TLS {
+	sec := pg.Spec.Template.Spec.Security
+	if sec != nil && sec.TLS != nil && sec.TLS.MySQL != nil {
+		return sec.TLS.MySQL
+	}
+
+	return nil
+}
+
+func TiProxyGroupMySQLCertKeyPairSecretName(pg *v1alpha1.TiProxyGroup) string {
+	tls := TiProxyGroupMySQLTLS(pg)
+	if tls != nil && tls.CertKeyPair != nil {
+		return tls.CertKeyPair.Name
+	}
+	return pg.GetName() + "-tiproxy-server-secret"
+}
+
+func TiProxyGroupMySQLCASecretName(pg *v1alpha1.TiProxyGroup) string {
+	tls := TiProxyGroupMySQLTLS(pg)
+	if tls != nil && tls.CA != nil {
+		return tls.CA.Name
+	}
+	return pg.GetName() + "-tiproxy-server-secret"
+}
+
+func IsTiProxyGroupMySQLTLSEnabled(pg *v1alpha1.TiProxyGroup) bool {
+	tls := TiProxyGroupMySQLTLS(pg)
+	return tls != nil && tls.Enabled
+}
+
 func TiProxyMySQLTLS(db *v1alpha1.TiProxy) *v1alpha1.TLS {
 	sec := db.Spec.Security
 	if sec != nil && sec.TLS != nil && sec.TLS.MySQL != nil {

@@ -198,6 +198,61 @@ type clientCertKeyPairData struct {
 	Cert      string
 }
 
+func registerTiProxyMySQLCerts(ctx context.Context, f *factory, ns, cluster string) error {
+	c, err := apicall.GetClusterByKey(ctx, f.c, ns, cluster)
+	if err != nil {
+		return err
+	}
+	fg := features.NewFromFeatures(coreutil.EnabledFeatures(c))
+
+	gs, err := apicall.ListGroups[scope.TiProxyGroup](ctx, f.c, ns, cluster)
+	if err != nil {
+		return err
+	}
+	for _, g := range gs {
+		if !coreutil.IsTiProxyGroupMySQLTLSEnabled(g) {
+			continue
+		}
+		ca := coreutil.TiProxyGroupMySQLCASecretName(g)
+		certKeyPair := coreutil.TiProxyGroupMySQLCertKeyPairSecretName(g)
+		s, err := newCertKeyPair(typeTiProxyMySQLServer, ns, certKeyPair, cluster, g.GetName(), scope.Component[scope.TiProxyGroup](), false, fg.Enabled(metav1alpha1.ClusterSubdomain))
+		if err != nil {
+			return err
+		}
+		if err := f.RegisterSecret(s); err != nil {
+			return err
+		}
+		if ca != certKeyPair {
+			as, err := newCA(typeTiProxyMySQLClient, ns, ca, cluster)
+			if err != nil {
+				return err
+			}
+			if err := f.RegisterSecret(as); err != nil {
+				return err
+			}
+		}
+		clientCA, clientCertKeyPair := MySQLClient(ca, certKeyPair)
+		cs, err := newClientCertKeyPair(typeTiProxyMySQLClient, ns, clientCertKeyPair, cluster)
+		if err != nil {
+			return err
+		}
+		if err := f.RegisterSecret(cs); err != nil {
+			return err
+		}
+		if clientCA != clientCertKeyPair {
+			cas, err := newCA(typeTiProxyMySQLServer, ns, clientCA, cluster)
+			if err != nil {
+				return err
+			}
+			if err := f.RegisterSecret(cas); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 func registerTiDBMySQLCerts(ctx context.Context, f *factory, ns, cluster string) error {
 	c, err := apicall.GetClusterByKey(ctx, f.c, ns, cluster)
 	if err != nil {
@@ -210,6 +265,9 @@ func registerTiDBMySQLCerts(ctx context.Context, f *factory, ns, cluster string)
 		return err
 	}
 	for _, g := range gs {
+		if !coreutil.IsTiDBGroupMySQLTLSEnabled(g) {
+			continue
+		}
 		ca := coreutil.TiDBGroupMySQLCASecretName(g)
 		certKeyPair := coreutil.TiDBGroupMySQLCertKeyPairSecretName(g)
 		s, err := newCertKeyPair(typeTiDBMySQLServer, ns, certKeyPair, cluster, g.GetName(), scope.Component[scope.TiDBGroup](), false, fg.Enabled(metav1alpha1.ClusterSubdomain))
@@ -327,6 +385,7 @@ func (f *factory) registerCerts(ctx context.Context, ns, cluster string) error {
 		registerCertsForComponents[scope.TiCDCGroup],
 		registerCertsForComponents[scope.TiProxyGroup],
 		registerTiDBMySQLCerts,
+		registerTiProxyMySQLCerts,
 	}
 
 	for _, fn := range fs {
@@ -397,12 +456,7 @@ func (f *factory) RegisterSecret(s *Secret) error {
 }
 
 func (f *factory) registerCAIssuer(ns, cluster string) error {
-	allTypes := []string{
-		typeCluster,
-		typeTiDBMySQLServer,
-		typeTiDBMySQLClient,
-	}
-	for _, typ := range allTypes {
+	for _, typ := range allCertTypes {
 		s, err := newCAIssuer(typ, ns, cluster)
 		if err != nil {
 			return err
@@ -422,10 +476,20 @@ type Secret struct {
 }
 
 const (
-	typeCluster         = "cluster"
-	typeTiDBMySQLServer = "tidb-mysql"
-	typeTiDBMySQLClient = "tidb-mysql-client"
+	typeCluster            = "cluster"
+	typeTiDBMySQLServer    = "tidb-mysql"
+	typeTiDBMySQLClient    = "tidb-mysql-client"
+	typeTiProxyMySQLServer = "tiproxy-mysql"
+	typeTiProxyMySQLClient = "tiproxy-mysql-client"
 )
+
+var allCertTypes = []string{
+	typeCluster,
+	typeTiDBMySQLServer,
+	typeTiDBMySQLClient,
+	typeTiProxyMySQLServer,
+	typeTiProxyMySQLClient,
+}
 
 func (c *Secret) Equal(ac *Secret) bool {
 	return reflect.DeepEqual(c.Keys, ac.Keys)

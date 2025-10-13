@@ -74,6 +74,11 @@ func TiDBGroupMySQLCASecretName(dbg *v1alpha1.TiDBGroup) string {
 	return dbg.GetName() + "-tidb-server-secret"
 }
 
+func IsTiDBGroupMySQLTLSEnabled(dbg *v1alpha1.TiDBGroup) bool {
+	tls := TiDBGroupMySQLTLS(dbg)
+	return tls != nil && tls.Enabled
+}
+
 func TiDBMySQLTLS(db *v1alpha1.TiDB) *v1alpha1.TLS {
 	sec := db.Spec.Security
 	if sec != nil && sec.TLS != nil && sec.TLS.MySQL != nil {

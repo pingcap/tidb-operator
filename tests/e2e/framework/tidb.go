@@ -18,6 +18,8 @@ import (
 	"context"
 	"math"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/onsi/ginkgo/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,6 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/topology"
+	"github.com/pingcap/tidb-operator/tests/e2e/framework/workload"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
@@ -108,4 +111,31 @@ func (f *Framework) MustEvenlySpreadTiDB(ctx context.Context, dbg *v1alpha1.TiDB
 	}
 
 	f.True(maximum-minimum <= 1)
+}
+
+func (f *Framework) TestTiDBAvailability(ctx context.Context, ep string, dbg *v1alpha1.TiDBGroup, w *Workload, opts ...workload.Option) {
+	patch := client.MergeFrom(dbg.DeepCopy())
+	dbg.Spec.Template.Annotations = map[string]string{
+		"test": "test",
+	}
+
+	nctx, cancel := context.WithCancel(ctx)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer ginkgo.GinkgoRecover()
+		f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiDBGroup(dbg), int(*dbg.Spec.Replicas), 1, waiter.LongTaskTimeout))
+	}()
+
+	done := w.MustRunWorkload(nctx, ep, opts...)
+
+	changeTime := time.Now()
+	ginkgo.By("Rolling update the TiDBGroup")
+	f.Must(f.Client.Patch(ctx, dbg, patch))
+	f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), changeTime, waiter.LongTaskTimeout))
+	f.WaitForTiDBGroupReady(ctx, dbg)
+	cancel()
+	wg.Wait()
+	<-done
 }

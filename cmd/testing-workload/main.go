@@ -182,7 +182,7 @@ func parseFlag() {
 	flag.IntVar(&maxConnections, "max-connections", defaultMaxConnetions, "max connections")
 	flag.IntVar(&sleepInterval, "sleep-interval", defaultSleepInterval, "sleep interval in milliseconds")
 	flag.IntVar(&longTxnSleepSeconds, "long-txn-sleep", defaultLongTxnSleepSeconds, "how many seconds to sleep to simulate a long transaction")
-	flag.IntVar(&maxLifeTimeSeconds, "max-lifetime", defaultMaxLifeTimeSeconds, "max lifetime in seconds")
+	flag.IntVar(&maxLifeTimeSeconds, "max-life-time", defaultMaxLifeTimeSeconds, "max lifetime in seconds")
 	flag.IntVar(&tiflashReplicas, "tiflash-replicas", 0, "replicas of tiflash")
 
 	// Flags for import action
