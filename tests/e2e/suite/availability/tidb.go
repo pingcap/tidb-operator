@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cluster
+package availability
 
 import (
 	"context"
@@ -28,64 +28,62 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/cert"
 )
 
-var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
+var _ = ginkgo.Describe("TiDB Availability Test", label.TiDB, label.KindAvail, label.Update, func() {
 	f := framework.New()
 	f.Setup()
 
-	f.DescribeFeatureTable(func(fs ...metav1alpha1.Feature) {
-		f.SetupCluster(data.WithClusterTLSEnabled(), data.WithFeatureGates(fs...))
+	ginkgo.Context("NextGen", label.KindNextGen, label.P0, func() {
+		f.SetupCluster(data.WithClusterTLSEnabled(), data.WithFeatureGates(metav1alpha1.SessionTokenSigning))
 		workload := f.SetupWorkload()
 		cm := f.SetupCertManager()
-		ginkgo.It("should enable internal TLS with same ca secret", func(ctx context.Context) {
+
+		ginkgo.It("Visit tiproxy no error when rolling update tidb in next-gen", func(ctx context.Context) {
 			ns := f.Namespace.Name
 			cluster := f.Cluster.Name
 
 			// add ns prefix of ca because the bundle is a cluster scope resource
 			ca := ns + "-cluster-ca"
-			mysqlClientCA, mysqlServerCertKeyPair := ns+"-mysql-ca", "mysql-tls"
+			mysqlClientCA := ns + "-mysql-ca"
+
+			mysqlServerCertKeyPair := "mysql-tls"
+
+			f.MustCreateS3(ctx)
 			pdg := f.MustCreatePD(ctx,
-				data.WithMSMode(),
+				data.WithPDNextGen(),
 				data.WithClusterTLS[*runtime.PDGroup](ca, "pd-internal"),
 			)
-			tg := f.MustCreateTSO(ctx,
-				data.WithClusterTLS[*runtime.TSOGroup](ca, "tso-internal"),
-			)
-			sg := f.MustCreateScheduler(ctx,
-				data.WithClusterTLS[*runtime.SchedulerGroup](ca, "scheduler-internal"),
-			)
 			kvg := f.MustCreateTiKV(ctx,
+				data.WithTiKVNextGen(),
 				data.WithClusterTLS[*runtime.TiKVGroup](ca, "tikv-internal"),
 			)
 			dbg := f.MustCreateTiDB(ctx,
+				data.WithTiDBNextGen(),
+				data.WithKeyspace("SYSTEM"),
+				data.WithReplicas[*runtime.TiDBGroup](2),
 				data.WithClusterTLS[*runtime.TiDBGroup](ca, "tidb-internal"),
-				data.WithTiDBMySQLTLS(mysqlClientCA, mysqlServerCertKeyPair),
-			)
-			fg := f.MustCreateTiFlash(ctx,
-				data.WithClusterTLS[*runtime.TiFlashGroup](ca, "tiflash-internal"),
-			)
-			cg := f.MustCreateTiCDC(ctx,
-				data.WithClusterTLS[*runtime.TiCDCGroup](ca, "ticdc-internal"),
 			)
 			pg := f.MustCreateTiProxy(ctx,
+				data.WithTiProxyNextGen(),
 				data.WithClusterTLS[*runtime.TiProxyGroup](ca, "tiproxy-internal"),
+				data.WithTiProxyMySQLTLS(mysqlClientCA, mysqlServerCertKeyPair),
 			)
 
 			cm.Install(ctx, ns, cluster)
 
 			f.WaitForPDGroupReady(ctx, pdg)
-			f.WaitForTSOGroupReady(ctx, tg)
-			f.WaitForSchedulerGroupReady(ctx, sg)
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
-			f.WaitForTiFlashGroupReady(ctx, fg)
-			f.WaitForTiCDCGroupReady(ctx, cg)
 			f.WaitForTiProxyGroupReady(ctx, pg)
 
-			workload.MustPing(ctx, data.DefaultTiDBServiceName, wopt.TLS(cert.MySQLClient(mysqlClientCA, mysqlServerCertKeyPair)))
-			workload.MustPing(ctx, data.DefaultTiProxyServiceName, wopt.Port(data.DefaultTiProxyServicePort))
+			f.TestTiDBAvailability(ctx,
+				data.DefaultTiProxyServiceName,
+				dbg,
+				workload,
+				wopt.Port(data.DefaultTiProxyServicePort),
+				// disable sql conn max life time
+				wopt.MaxLifeTime(0),
+				wopt.TLS(cert.MySQLClient(mysqlClientCA, mysqlServerCertKeyPair)),
+			)
 		})
-	},
-		nil,
-		[]metav1alpha1.Feature{metav1alpha1.ClusterSubdomain},
-	)
+	})
 })

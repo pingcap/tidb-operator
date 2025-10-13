@@ -74,6 +74,7 @@ func WithAuthToken() GroupPatch[*runtime.TiDBGroup] {
 	}
 }
 
+// Deprecated: use WithTiDBMySQLTLS
 func WithTLS() GroupPatch[*runtime.TiDBGroup] {
 	return func(obj *runtime.TiDBGroup) {
 		if obj.Spec.Template.Spec.Security == nil {
@@ -88,24 +89,27 @@ func WithTLS() GroupPatch[*runtime.TiDBGroup] {
 	}
 }
 
-func WithMySQLTLS(ca, certKeyPair string) GroupPatch[*runtime.TiDBGroup] {
+func WithTiDBMySQLTLS(ca, certKeyPair string) GroupPatch[*runtime.TiDBGroup] {
 	return func(obj *runtime.TiDBGroup) {
 		if obj.Spec.Template.Spec.Security == nil {
 			obj.Spec.Template.Spec.Security = &v1alpha1.TiDBSecurity{}
 		}
+		if obj.Spec.Template.Spec.Security.TLS == nil {
+			obj.Spec.Template.Spec.Security.TLS = &v1alpha1.TiDBTLS{}
+		}
 
-		obj.Spec.Template.Spec.Security.TLS = &v1alpha1.TiDBTLS{
-			MySQL: &v1alpha1.TLS{
-				Enabled: true,
-				TLSSecret: v1alpha1.TLSSecret{
-					CA: &v1alpha1.CAReference{
-						Name: ca,
-					},
-					CertKeyPair: &v1alpha1.CertKeyPairReference{
-						Name: certKeyPair,
-					},
-				},
-			},
+		obj.Spec.Template.Spec.Security.TLS.MySQL = &v1alpha1.TLS{
+			Enabled: true,
+		}
+		if ca != "" {
+			obj.Spec.Template.Spec.Security.TLS.MySQL.CA = &v1alpha1.CAReference{
+				Name: ca,
+			}
+		}
+		if certKeyPair != "" {
+			obj.Spec.Template.Spec.Security.TLS.MySQL.CertKeyPair = &v1alpha1.CertKeyPairReference{
+				Name: certKeyPair,
+			}
 		}
 	}
 }
@@ -196,6 +200,17 @@ func WithTiDBNextGen() GroupPatch[*runtime.TiDBGroup] {
 	return func(obj *runtime.TiDBGroup) {
 		obj.Spec.Template.Spec.Version = "v9.0.0"
 		obj.Spec.Template.Spec.Image = ptr.To(defaultImageRegistry + "tidb:master-next-gen")
-		obj.Spec.Template.Spec.Config = `disaggregated-tiflash = true`
+		obj.Spec.Template.Spec.Config = `disaggregated-tiflash = true
+graceful-wait-before-shutdown = 20
+		`
+
+		obj.Spec.Template.Spec.Overlay = &v1alpha1.Overlay{
+			Pod: &v1alpha1.PodOverlay{
+				Spec: &corev1.PodSpec{
+					// Set default TerminationGracePeriodSeconds to 60
+					TerminationGracePeriodSeconds: ptr.To[int64](60),
+				},
+			},
+		}
 	}
 }

@@ -173,10 +173,9 @@ func (w *Workload) MustRunWorkload(ctx context.Context, host string, opts ...wor
 		"--port", strconv.Itoa(o.Port),
 		"--user", o.User,
 		"--password", o.Password,
-		// an arbitrary timeout
-		// NOTE: maybe changed to use a http api to stop
 		"--max-connections", "30",
 		"--tiflash-replicas", strconv.Itoa(o.TiFlashReplicas),
+		"--max-life-time", strconv.Itoa(o.MaxLifeTime),
 	}
 
 	job := &batchv1.Job{

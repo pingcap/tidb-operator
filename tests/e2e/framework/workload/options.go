@@ -30,6 +30,10 @@ type Options struct {
 	RegionCount int
 
 	TiFlashReplicas int
+
+	// MaxLifeTime is max life time in seconds of sql connections
+	// Default is 60
+	MaxLifeTime int
 }
 
 type Option interface {
@@ -75,12 +79,19 @@ func TiFlashReplicas(replicas int) Option {
 	})
 }
 
+func MaxLifeTime(sec int) Option {
+	return WithOption(func(opts *Options) {
+		opts.MaxLifeTime = sec
+	})
+}
+
 func DefaultOptions() *Options {
 	return &Options{
 		Port: 4000,
 		User: "root",
 
 		RegionCount: 500,
+		MaxLifeTime: 60,
 	}
 }
 
