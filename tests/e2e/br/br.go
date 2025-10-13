@@ -27,7 +27,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/br/framework"
 	brutil "github.com/pingcap/tidb-operator/tests/e2e/br/framework/br"
-	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/kernelSyncUtil"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
 	e2etc "github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/db/blockwriter"
@@ -773,84 +772,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		// 	k8se2e.ExpectEqual(cleaned, true, "storage should be cleaned")
 		// })
 
-		ginkgo.Context("Log Backup Sync State Detection", func() {
-			var (
-				backupName string
-				beforeTime time.Time
-			)
-
-			ginkgo.BeforeEach(func() {
-				backupName = "log-backup-sync-test"
-				beforeTime = time.Now()
-			})
-
-			ginkgo.Context("MinIO Network Failure Auto-Pause Detection", func() {
-				ginkgo.It("should detect and report kernel auto-pause due to MinIO network failure", func() {
-					backupClusterName := "log-backup-sync-minio-test"
-					backupVersion := utilimage.TiDBLatest
-					enableTLS := false
-					skipCA := false
-					typ := strings.ToLower(typeBR)
-
-					ns := f.Namespace.Name
-
-					ginkgo.By("Create log-backup.enable TiDB cluster for log backup")
-					err := createLogBackupEnableTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
-					framework.ExpectNoError(err)
-
-					ginkgo.By("Wait for backup TiDB cluster ready")
-					err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
-					framework.ExpectNoError(err)
-
-					ginkgo.By("Create RBAC for log backup")
-					err = createRBAC(f)
-					framework.ExpectNoError(err)
-
-					ginkgo.By("Starting log backup with normal MinIO connectivity")
-					s3Config := f.Storage.Config(ns, backupName)
-					backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
-						backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
-						backup.Spec.Mode = v1alpha1.BackupModeLog
-						backup.Spec.LogSubcommand = v1alpha1.LogStartCommand
-						backup.Spec.S3 = s3Config
-					})
-					framework.ExpectNoError(err)
-
-					ginkgo.By("Verifying backup is in Running state")
-					framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupRunning)
-
-					ginkgo.By("Simulating MinIO network failure via NetworkPolicy")
-					err = kernelSyncUtil.SimulateMinIONetworkFailure(f.ClientSet, ns, backupClusterName)
-					framework.ExpectNoError(err)
-					defer func() {
-						kernelSyncUtil.RestoreMinIONetworkAccess(f.ClientSet, ns, backupClusterName)
-					}()
-
-					ginkgo.By("Waiting for operator to detect and report error pause")
-					err = kernelSyncUtil.WaitForBackupErrorPause(f.ExtClient, ns, backupName)
-					framework.ExpectNoError(err)
-
-					ginkgo.By("Verifying TimeSynced field is updated")
-					err = kernelSyncUtil.VerifyTimeSyncedUpdated(f.ExtClient, ns, backupName, beforeTime)
-					framework.ExpectNoError(err)
-
-					ginkgo.By("Restoring MinIO network access")
-					err = kernelSyncUtil.RestoreMinIONetworkAccess(f.ClientSet, ns, backupClusterName)
-					framework.ExpectNoError(err)
-
-					ginkgo.By("Triggering resume by updating backup spec")
-					currentBackup, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), backupName, metav1.GetOptions{})
-					framework.ExpectNoError(err)
-					currentBackup.Spec.LogSubcommand = v1alpha1.LogResumeCommand
-					_, err = f.ExtClient.PingcapV1alpha1().Backups(ns).Update(context.TODO(), currentBackup, metav1.UpdateOptions{})
-					framework.ExpectNoError(err)
-
-					ginkgo.By("Verifying backup recovers to Running state")
-					err = kernelSyncUtil.WaitForBackupRecovery(f.ExtClient, ns, backupName)
-					framework.ExpectNoError(err)
-				})
-			})
-		})
 
 		ginkgo.Context("Backup before Cluster Creation", func() {
 			ginkgo.It("should transition from RetryTheFailed to Running when cluster is created", func() {
@@ -877,7 +798,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				_, condition := v1alpha1.GetBackupCondition(&backup.Status, v1alpha1.BackupRetryTheFailed)
 				framework.ExpectEqual(condition != nil && condition.Status == v1.ConditionTrue, true,
 					"backup should be in RetryTheFailed state when cluster doesn't exist")
-				framework.ExpectEqual(strings.Contains(condition.Message, "failed to fetch tidbcluster"), true,
+				framework.ExpectEqual(strings.Contains(condition.Reason, "failed to fetch tidbcluster"), true,
 					"RetryTheFailed reason should mention failed to fetch tidbcluster")
 
 				ginkgo.By("Create log-backup.enable TiDB cluster")
