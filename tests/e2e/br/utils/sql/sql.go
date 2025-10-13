@@ -19,28 +19,28 @@ import (
 	"fmt"
 	"time"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/types"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/verify"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
-	_ "github.com/go-sql-driver/mysql"
 )
 
 // ExecuteLogBackupCommandViaSQL executes log backup commands via TiDB SQL (RECOMMENDED APPROACH)
 // This method bypasses the Operator and directly modifies kernel state, creating real inconsistency
 func ExecuteLogBackupCommandViaSQL(fw portforward.PortForwarder, ns, clusterName, command, taskName string) error {
 	ctx := context.Background()
-	
+
 	// Reuse existing E2E port forwarding mechanism
 	// E2E tests ensure TiDB.Replicas = 1, so we connect to the single TiDB instance
-	tidbHost, err := portforward.ForwardOnePort(ctx, fw, ns, 
+	tidbHost, err := portforward.ForwardOnePort(ctx, fw, ns,
 		GetTiDBServiceResourceName(clusterName), int(v1alpha1.DefaultTiDBServerPort))
 	if err != nil {
 		return fmt.Errorf("failed to port forward to TiDB: %v", err)
 	}
-	
+
 	// Reuse existing E2E DSN generation logic
 	dsn := GetDefaultDSN(tidbHost, "")
 	db, err := sql.Open("mysql", dsn)
@@ -48,12 +48,12 @@ func ExecuteLogBackupCommandViaSQL(fw portforward.PortForwarder, ns, clusterName
 		return fmt.Errorf("failed to connect to TiDB: %v", err)
 	}
 	defer db.Close()
-	
+
 	// Test connection
 	if err := db.Ping(); err != nil {
 		return fmt.Errorf("failed to ping TiDB: %v", err)
 	}
-	
+
 	var sqlCmd string
 	switch command {
 	case "pause":
@@ -65,13 +65,13 @@ func ExecuteLogBackupCommandViaSQL(fw portforward.PortForwarder, ns, clusterName
 	default:
 		return fmt.Errorf("unsupported command: %s", command)
 	}
-	
+
 	log.Logf("Executing manual SQL command: %s", sqlCmd)
 	_, err = db.Exec(sqlCmd)
 	if err != nil {
 		return fmt.Errorf("SQL execution failed: %v", err)
 	}
-	
+
 	log.Logf("Manual log backup command executed successfully via SQL: %s", sqlCmd)
 	return nil
 }
@@ -81,7 +81,7 @@ func GetTiDBServiceResourceName(tcName string) string {
 	return "svc/" + tcName + "-tidb"
 }
 
-// GetDefaultDSN reuses existing E2E helper function  
+// GetDefaultDSN reuses existing E2E helper function
 func GetDefaultDSN(host, dbName string) string {
 	user := "root"
 	password := ""

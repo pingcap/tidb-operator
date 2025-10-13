@@ -15,7 +15,7 @@ package backup
 
 import (
 	"context"
-	"database/sql"
+	gosql "database/sql"
 	"fmt"
 	"math/rand"
 	"path"
@@ -41,6 +41,7 @@ import (
 	utiltidbcluster "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/onsi/ginkgo"
@@ -778,14 +779,12 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 		ginkgo.Context("Log Backup Sync State Detection", func() {
 			var (
-				backupName   string
-				restoreName  string
-				beforeTime   time.Time
+				backupName string
+				beforeTime time.Time
 			)
 
 			ginkgo.BeforeEach(func() {
 				backupName = "log-backup-sync-test"
-				restoreName = "log-restore-sync-test"
 				beforeTime = time.Now()
 			})
 
@@ -953,13 +952,13 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 						if err != nil {
 							return err
 						}
-						
+
 						// Verify TimeSynced is updated (indicating sync occurred)
 						if currentBackup.Status.TimeSynced == nil || currentBackup.Status.TimeSynced.Before(&metav1.Time{Time: beforeTime}) {
 							return fmt.Errorf("TimeSynced not updated after manual pause")
 						}
-						
-						framework.Logf("Operator detected manual state change, TimeSynced updated to: %v", currentBackup.Status.TimeSynced.Time)
+
+						log.Logf("Operator detected manual state change, TimeSynced updated to: %v", currentBackup.Status.TimeSynced.Time)
 						return nil
 					}, 3*time.Minute, 10*time.Second).Should(gomega.Succeed())
 
@@ -1018,10 +1017,10 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 					ginkgo.By("Rapidly changing states via SQL: pause then resume")
 					err = sql.ExecuteLogBackupCommandViaSQL(f.PortForwarder, ns, backupClusterName, "pause", backupName)
 					framework.ExpectNoError(err)
-					
+
 					// Wait briefly to ensure first command takes effect
 					time.Sleep(5 * time.Second)
-					
+
 					err = sql.ExecuteLogBackupCommandViaSQL(f.PortForwarder, ns, backupClusterName, "resume", backupName)
 					framework.ExpectNoError(err)
 
@@ -1036,15 +1035,15 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 						if err != nil {
 							return err
 						}
-						
+
 						// Should not have error conditions from rapid state changes
 						for _, condition := range currentBackup.Status.Conditions {
 							if condition.Type == v1alpha1.BackupRetryTheFailed && condition.Status == v1.ConditionTrue {
 								return fmt.Errorf("unexpected error condition from rapid manual state change: %s", condition.Message)
 							}
 						}
-						
-						framework.Logf("No false error conditions detected after rapid manual state changes")
+
+						log.Logf("No false error conditions detected after rapid manual state changes")
 						return nil
 					}, 2*time.Minute, 5*time.Second).Should(gomega.Succeed())
 				})
@@ -1976,7 +1975,7 @@ func getDefaultDSN(host, dbName string) string {
 
 func initDatabase(host, dbName string) error {
 	dsn := getDefaultDSN(host, "")
-	db, err := sql.Open("mysql", dsn)
+	db, err := gosql.Open("mysql", dsn)
 	if err != nil {
 		return err
 	}
@@ -1988,12 +1987,12 @@ func initDatabase(host, dbName string) error {
 }
 
 func checkDataIsSame(backupDSN, restoreDSN string) error {
-	backup, err := sql.Open("mysql", backupDSN)
+	backup, err := gosql.Open("mysql", backupDSN)
 	if err != nil {
 		return err
 	}
 	defer backup.Close()
-	restore, err := sql.Open("mysql", restoreDSN)
+	restore, err := gosql.Open("mysql", restoreDSN)
 	if err != nil {
 		return err
 	}
@@ -2048,7 +2047,7 @@ func checkDataIsSame(backupDSN, restoreDSN string) error {
 	return nil
 }
 
-func getRecord(db *sql.DB, table string, x int) (string, error) {
+func getRecord(db *gosql.DB, table string, x int) (string, error) {
 	var bs string
 	row := db.QueryRow(fmt.Sprintf("SELECT 'raw_bytes' FROM %s WHERE id = %d", table, x))
 	err := row.Scan(&bs)
@@ -2058,7 +2057,7 @@ func getRecord(db *sql.DB, table string, x int) (string, error) {
 	return bs, nil
 }
 
-func getTableRecordCount(db *sql.DB, table string) (int, error) {
+func getTableRecordCount(db *gosql.DB, table string) (int, error) {
 	var cnt int
 	row := db.QueryRow(fmt.Sprintf("SELECT count(*) FROM %s", table))
 	err := row.Scan(&cnt)
@@ -2068,7 +2067,7 @@ func getTableRecordCount(db *sql.DB, table string) (int, error) {
 	return cnt, nil
 }
 
-func getTableList(db *sql.DB) ([]string, error) {
+func getTableList(db *gosql.DB) ([]string, error) {
 	tables := []string{}
 	rows, err := db.Query("SHOW TABLES;")
 	if err != nil {

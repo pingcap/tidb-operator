@@ -22,10 +22,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/types"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
-	"k8s.io/client-go/kubernetes"
 	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 // SimulateMinIONetworkFailure creates MinIO connection failure that triggers kernel auto-pause
@@ -68,7 +68,7 @@ func SimulateMinIONetworkFailure(clientset kubernetes.Interface, ns, clusterName
 			},
 		},
 	}
-	
+
 	_, err := clientset.NetworkingV1().NetworkPolicies(ns).Create(context.TODO(), blockMinIOPolicy, metav1.CreateOptions{})
 	return err
 }
@@ -81,7 +81,7 @@ func RestoreMinIONetworkAccess(clientset kubernetes.Interface, ns, clusterName s
 	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
-	
+
 	log.Logf("MinIO network access restored for cluster %s", clusterName)
 	return nil
 }
@@ -89,7 +89,7 @@ func RestoreMinIONetworkAccess(clientset kubernetes.Interface, ns, clusterName s
 // WaitForKernelAutoPause polls etcd until kernel sets pause state due to error
 func WaitForKernelAutoPause(etcdClient pdapi.PDEtcdClient, backupName string, timeout time.Duration) (*types.LogBackupState, error) {
 	startTime := time.Now()
-	
+
 	for time.Since(startTime) < timeout {
 		// Query pause key directly
 		pauseKey := fmt.Sprintf("/tidb/br-stream/pause/%s", backupName)
@@ -97,16 +97,16 @@ func WaitForKernelAutoPause(etcdClient pdapi.PDEtcdClient, backupName string, ti
 		if err != nil {
 			return nil, err
 		}
-		
+
 		if len(kvs) > 0 {
 			pauseData := kvs[0].Value
-			
+
 			// Parse pause reason
 			var pauseInfo struct {
 				Severity string `json:"severity"`
 				Payload  []byte `json:"payload"`
 			}
-			
+
 			if len(pauseData) > 0 {
 				if err := json.Unmarshal(pauseData, &pauseInfo); err == nil {
 					if pauseInfo.Severity == "ERROR" {
@@ -124,9 +124,9 @@ func WaitForKernelAutoPause(etcdClient pdapi.PDEtcdClient, backupName string, ti
 				}
 			}
 		}
-		
+
 		time.Sleep(10 * time.Second)
 	}
-	
+
 	return nil, fmt.Errorf("timeout waiting for kernel auto-pause")
 }

@@ -38,7 +38,7 @@ func VerifyOperatorDetectsInconsistency(c versioned.Interface, ns, backupName st
 		if err != nil {
 			return false, err
 		}
-		
+
 		// Look for the expected condition
 		for _, condition := range backup.Status.Conditions {
 			if condition.Type == expectedCondition && condition.Status == corev1.ConditionTrue {
@@ -46,7 +46,7 @@ func VerifyOperatorDetectsInconsistency(c versioned.Interface, ns, backupName st
 				return true, nil
 			}
 		}
-		
+
 		log.Logf("Waiting for condition %s, current conditions: %+v", expectedCondition, backup.Status.Conditions)
 		return false, nil
 	})
@@ -59,13 +59,13 @@ func VerifyKernelState(etcdClient pdapi.PDEtcdClient, backupName string, expecte
 	if err != nil {
 		return err
 	}
-	
+
 	if state.KernelState != expectedState {
-		return fmt.Errorf("expected kernel state %s, got %s (IsPaused=%v, PauseReason=%s)", 
+		return fmt.Errorf("expected kernel state %s, got %s (IsPaused=%v, PauseReason=%s)",
 			expectedState, state.KernelState, state.IsPaused, state.PauseReason)
 	}
-	
-	log.Logf("Verified kernel state: %s (IsPaused=%v, Reason=%s)", 
+
+	log.Logf("Verified kernel state: %s (IsPaused=%v, Reason=%s)",
 		state.KernelState, state.IsPaused, state.PauseReason)
 	return nil
 }
@@ -75,7 +75,7 @@ func QueryLogBackupStateFromEtcd(etcdClient pdapi.PDEtcdClient, backupName strin
 	state := &types.LogBackupState{
 		LastQueryTime: time.Now(),
 	}
-	
+
 	// Query checkpoint
 	checkpointKey := fmt.Sprintf("/tidb/br-stream/checkpoint/%s", backupName)
 	kvs, err := etcdClient.Get(checkpointKey, false)
@@ -85,7 +85,7 @@ func QueryLogBackupStateFromEtcd(etcdClient pdapi.PDEtcdClient, backupName strin
 	if len(kvs) > 0 && len(kvs[0].Value) == 8 {
 		state.CheckpointTS = binary.BigEndian.Uint64(kvs[0].Value)
 	}
-	
+
 	// Query info key
 	infoKey := fmt.Sprintf("/tidb/br-stream/info/%s", backupName)
 	kvs, err = etcdClient.Get(infoKey, false)
@@ -93,18 +93,18 @@ func QueryLogBackupStateFromEtcd(etcdClient pdapi.PDEtcdClient, backupName strin
 		return nil, fmt.Errorf("failed to query info: %v", err)
 	}
 	state.InfoExists = len(kvs) > 0
-	
+
 	// Query pause key
 	pauseKey := fmt.Sprintf("/tidb/br-stream/pause/%s", backupName)
 	kvs, err = etcdClient.Get(pauseKey, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query pause: %v", err)
 	}
-	
+
 	if len(kvs) > 0 {
 		state.IsPaused = true
 		pauseData := kvs[0].Value
-		
+
 		// Parse pause reason
 		if len(pauseData) == 0 {
 			// V1 format: empty = manual
@@ -116,7 +116,7 @@ func QueryLogBackupStateFromEtcd(etcdClient pdapi.PDEtcdClient, backupName strin
 				PayloadType string `json:"payload_type"`
 				Payload     []byte `json:"payload"`
 			}
-			
+
 			if err := json.Unmarshal(pauseData, &pauseInfo); err == nil {
 				if pauseInfo.Severity == "MANUAL" {
 					state.PauseReason = "manual"
@@ -131,7 +131,7 @@ func QueryLogBackupStateFromEtcd(etcdClient pdapi.PDEtcdClient, backupName strin
 							StoreId      uint64 `json:"store_id"`
 						}
 						if err := json.Unmarshal(pauseInfo.Payload, &errorData); err == nil {
-							state.PauseReason = fmt.Sprintf("Paused by error(store %d): %s", 
+							state.PauseReason = fmt.Sprintf("Paused by error(store %d): %s",
 								errorData.StoreId, errorData.ErrorMessage)
 						} else {
 							state.PauseReason = "error"
@@ -148,14 +148,14 @@ func QueryLogBackupStateFromEtcd(etcdClient pdapi.PDEtcdClient, backupName strin
 			}
 		}
 	}
-	
+
 	// Determine kernel state
 	if state.IsPaused {
 		state.KernelState = types.LogBackupKernelPaused
 	} else {
 		state.KernelState = types.LogBackupKernelRunning
 	}
-	
+
 	// Query error key
 	errorKey := fmt.Sprintf("/tidb/br-stream/last-error/%s", backupName)
 	kvs, err = etcdClient.Get(errorKey, false)
@@ -165,7 +165,7 @@ func QueryLogBackupStateFromEtcd(etcdClient pdapi.PDEtcdClient, backupName strin
 	if len(kvs) > 0 {
 		state.LastError = string(kvs[0].Value)
 	}
-	
+
 	return state, nil
 }
 
@@ -176,17 +176,17 @@ func VerifyTimeSyncedUpdated(c versioned.Interface, ns, backupName string, befor
 		if err != nil {
 			return false, err
 		}
-		
+
 		if backup.Status.TimeSynced == nil {
 			log.Logf("TimeSynced field is nil, waiting...")
 			return false, nil
 		}
-		
+
 		if backup.Status.TimeSynced.After(beforeTime) {
 			log.Logf("TimeSynced updated: %v (after %v)", backup.Status.TimeSynced.Time, beforeTime)
 			return true, nil
 		}
-		
+
 		log.Logf("TimeSynced not updated yet: %v (before %v)", backup.Status.TimeSynced.Time, beforeTime)
 		return false, nil
 	})
@@ -199,12 +199,12 @@ func VerifyCheckpointProgression(etcdClient pdapi.PDEtcdClient, backupName strin
 		if err != nil {
 			return false, err
 		}
-		
+
 		if state.CheckpointTS > initialCheckpoint {
 			log.Logf("Checkpoint progressed: %d -> %d", initialCheckpoint, state.CheckpointTS)
 			return true, nil
 		}
-		
+
 		log.Logf("Checkpoint not progressed yet: %d (initial: %d)", state.CheckpointTS, initialCheckpoint)
 		return false, nil
 	})
@@ -218,12 +218,12 @@ func WaitForKernelStateChange(etcdClient pdapi.PDEtcdClient, backupName string, 
 			log.Logf("Failed to query kernel state: %v", err)
 			return false, nil // Continue polling
 		}
-		
+
 		if state.KernelState == expectedState {
 			log.Logf("Kernel state changed to %s as expected", expectedState)
 			return true, nil
 		}
-		
+
 		log.Logf("Waiting for kernel state to change to %s, current: %s", expectedState, state.KernelState)
 		return false, nil
 	})
