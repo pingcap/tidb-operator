@@ -15,7 +15,7 @@ package backup
 
 import (
 	"context"
-	"database/sql"
+	gosql "database/sql"
 	"fmt"
 	"math/rand"
 	"path"
@@ -36,6 +36,7 @@ import (
 	utiltidbcluster "github.com/pingcap/tidb-operator/tests/e2e/util/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/pkg/fixture"
 	framework "github.com/pingcap/tidb-operator/tests/third_party/k8s"
+	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/onsi/ginkgo"
@@ -109,7 +110,7 @@ func newTestCase(backupVersion, restoreVersion string, typ string, opts ...optio
 func (t *testcase) description() string {
 	builder := &strings.Builder{}
 
-	builder.WriteString(fmt.Sprintf("[%s][%s To %s]", t.typ, t.backupVersion, t.restoreVersion))
+	fmt.Fprintf(builder, "[%s][%s To %s]", t.typ, t.backupVersion, t.restoreVersion)
 
 	if t.enableTLS {
 		builder.WriteString("[TLS]")
@@ -770,6 +771,77 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		// 	k8se2e.ExpectNoError(err)
 		// 	k8se2e.ExpectEqual(cleaned, true, "storage should be cleaned")
 		// })
+
+		ginkgo.Context("Backup before Cluster Creation", func() {
+			ginkgo.It("should transition from RetryTheFailed to Running when cluster is created", func() {
+				backupClusterName := "cluster-after-backup-test"
+				backupName := backupClusterName
+				backupVersion := utilimage.TiDBLatest
+				enableTLS := false
+				skipCA := false
+				typ := strings.ToLower(typeBR)
+
+				ns := f.Namespace.Name
+
+				ginkgo.By("Create log backup before cluster exists")
+				s3Config := f.Storage.Config(ns, backupName)
+				backup, err := createBackupAndWaitForRetryFailed(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+					backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+					backup.Spec.Mode = v1alpha1.BackupModeLog
+					backup.Spec.LogSubcommand = v1alpha1.LogStartCommand
+					backup.Spec.S3 = s3Config
+				})
+				framework.ExpectNoError(err)
+
+				ginkgo.By("Verifying backup is in RetryTheFailed state due to missing cluster")
+				_, condition := v1alpha1.GetBackupCondition(&backup.Status, v1alpha1.BackupRetryTheFailed)
+				framework.ExpectEqual(condition != nil && condition.Status == v1.ConditionTrue, true,
+					"backup should be in RetryTheFailed state when cluster doesn't exist")
+				framework.ExpectEqual(strings.Contains(condition.Reason, "failed to fetch tidbcluster"), true,
+					"RetryTheFailed reason should mention failed to fetch tidbcluster")
+
+				ginkgo.By("Create log-backup.enable TiDB cluster")
+				err = createLogBackupEnableTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
+				framework.ExpectNoError(err)
+
+				ginkgo.By("Wait for backup TiDB cluster ready")
+				err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+				framework.ExpectNoError(err)
+
+				ginkgo.By("Create RBAC for log backup")
+				err = createRBAC(f)
+				framework.ExpectNoError(err)
+
+				ginkgo.By("Verifying backup transitions to Running state after cluster is created")
+				gomega.Eventually(func() error {
+					currentBackup, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), backupName, metav1.GetOptions{})
+					if err != nil {
+						return err
+					}
+
+					// Check that RetryTheFailed condition is no longer True
+					_, retryCondition := v1alpha1.GetBackupCondition(&currentBackup.Status, v1alpha1.BackupRetryTheFailed)
+					if retryCondition != nil && retryCondition.Status == v1.ConditionTrue {
+						return fmt.Errorf("backup still in RetryTheFailed state: %s", retryCondition.Message)
+					}
+
+					// Check that backup is now running or completed successfully
+					if currentBackup.Status.Phase == v1alpha1.BackupRunning {
+						log.Logf("Backup successfully transitioned to Running state")
+						return nil
+					}
+
+					// Also accept Complete state for log backup
+					_, completeCondition := v1alpha1.GetBackupCondition(&currentBackup.Status, v1alpha1.BackupComplete)
+					if completeCondition != nil && completeCondition.Status == v1.ConditionTrue {
+						log.Logf("Backup successfully transitioned to Complete state")
+						return nil
+					}
+
+					return fmt.Errorf("backup not yet in Running or Complete state, current phase: %s", currentBackup.Status.Phase)
+				}, 3*time.Minute, 10*time.Second).Should(gomega.Succeed())
+			})
+		})
 	})
 
 	// the following cases may encounter errors after restarting the backup pod:
@@ -1513,6 +1585,39 @@ func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ
 	return f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{})
 }
 
+func createBackupAndWaitForRetryFailed(f *e2eframework.Framework, name, tcName, typ string, configure func(*v1alpha1.Backup)) (*v1alpha1.Backup, error) {
+	ns := f.Namespace.Name
+	// secret to visit tidb cluster
+	s := brutil.GetSecret(ns, name, "")
+	// Check if the secret already exists
+	if _, err := f.ClientSet.CoreV1().Secrets(ns).Get(context.TODO(), name, metav1.GetOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{}); err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
+	}
+
+	backupFolder := time.Now().Format(time.RFC3339)
+	cfg := f.Storage.Config(ns, backupFolder)
+	backup := brutil.GetBackup(ns, name, tcName, typ, cfg)
+
+	if configure != nil {
+		configure(backup)
+	}
+
+	if _, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Create(context.TODO(), backup, metav1.CreateOptions{}); err != nil {
+		return nil, err
+	}
+
+	if err := brutil.WaitForBackupRetryFailed(f.ExtClient, ns, name, backupCompleteTimeout); err != nil {
+		return backup, err
+	}
+	return f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{})
+}
+
 func createBackupAndWaitForRunning(f *e2eframework.Framework, name, tcName, typ string, configure func(*v1alpha1.Backup)) (*v1alpha1.Backup, error) {
 	ns := f.Namespace.Name
 	// secret to visit tidb cluster
@@ -1633,22 +1738,6 @@ func deleteBackup(f *e2eframework.Framework, name string) error {
 	return nil
 }
 
-// nolint
-// NOTE: it is not used
-func cleanBackup(f *e2eframework.Framework) error {
-	ns := f.Namespace.Name
-	bl, err := f.ExtClient.PingcapV1alpha1().Backups(ns).List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-	for i := range bl.Items {
-		if err := deleteBackup(f, bl.Items[i].Name); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func createRestoreAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ string, backupName string, configure func(*v1alpha1.Restore)) error {
 	ns := f.Namespace.Name
 
@@ -1696,7 +1785,7 @@ func getDefaultDSN(host, dbName string) string {
 
 func initDatabase(host, dbName string) error {
 	dsn := getDefaultDSN(host, "")
-	db, err := sql.Open("mysql", dsn)
+	db, err := gosql.Open("mysql", dsn)
 	if err != nil {
 		return err
 	}
@@ -1708,12 +1797,12 @@ func initDatabase(host, dbName string) error {
 }
 
 func checkDataIsSame(backupDSN, restoreDSN string) error {
-	backup, err := sql.Open("mysql", backupDSN)
+	backup, err := gosql.Open("mysql", backupDSN)
 	if err != nil {
 		return err
 	}
 	defer backup.Close()
-	restore, err := sql.Open("mysql", restoreDSN)
+	restore, err := gosql.Open("mysql", restoreDSN)
 	if err != nil {
 		return err
 	}
@@ -1731,7 +1820,7 @@ func checkDataIsSame(backupDSN, restoreDSN string) error {
 		return fmt.Errorf("backup tables(%v) is not equal with restore tables(%v)", len(backupTables), len(restoreTables))
 	}
 
-	for i := 0; i < len(backupTables); i++ {
+	for i := range len(backupTables) {
 		backupTable := backupTables[i]
 		restoreTable := restoreTables[i]
 		if backupTable != restoreTable {
@@ -1768,7 +1857,7 @@ func checkDataIsSame(backupDSN, restoreDSN string) error {
 	return nil
 }
 
-func getRecord(db *sql.DB, table string, x int) (string, error) {
+func getRecord(db *gosql.DB, table string, x int) (string, error) {
 	var bs string
 	row := db.QueryRow(fmt.Sprintf("SELECT 'raw_bytes' FROM %s WHERE id = %d", table, x))
 	err := row.Scan(&bs)
@@ -1778,7 +1867,7 @@ func getRecord(db *sql.DB, table string, x int) (string, error) {
 	return bs, nil
 }
 
-func getTableRecordCount(db *sql.DB, table string) (int, error) {
+func getTableRecordCount(db *gosql.DB, table string) (int, error) {
 	var cnt int
 	row := db.QueryRow(fmt.Sprintf("SELECT count(*) FROM %s", table))
 	err := row.Scan(&cnt)
@@ -1788,7 +1877,7 @@ func getTableRecordCount(db *sql.DB, table string) (int, error) {
 	return cnt, nil
 }
 
-func getTableList(db *sql.DB) ([]string, error) {
+func getTableList(db *gosql.DB) ([]string, error) {
 	tables := []string{}
 	rows, err := db.Query("SHOW TABLES;")
 	if err != nil {
