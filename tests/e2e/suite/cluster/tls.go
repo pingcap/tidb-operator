@@ -85,7 +85,8 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 			workload.MustPing(ctx, data.DefaultTiProxyServiceName, wopt.Port(data.DefaultTiProxyServicePort))
 		})
 	},
-		nil,
-		[]metav1alpha1.Feature{metav1alpha1.ClusterSubdomain},
+		[]metav1alpha1.Feature{},
+		[]metav1alpha1.Feature{metav1alpha1.UseTSOReadyAPI},
+		[]metav1alpha1.Feature{metav1alpha1.UseTSOReadyAPI, metav1alpha1.ClusterSubdomain},
 	)
 })
