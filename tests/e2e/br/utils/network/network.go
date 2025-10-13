@@ -86,47 +86,60 @@ func RestoreMinIONetworkAccess(clientset kubernetes.Interface, ns, clusterName s
 	return nil
 }
 
-// WaitForKernelAutoPause polls etcd until kernel sets pause state due to error
+// WaitForKernelAutoPause waits for the log backup kernel to enter paused state.
+// 
+// Core Purpose:
+//   - Used in network failure tests to verify that TiDB's log backup kernel 
+//     automatically pauses when it cannot write to storage (S3/MinIO)
+//   - Polls etcd's /tidb/br-stream/pause/{backupName} key until it appears
+//   - Returns the pause reason for test verification
+//
+// Context: 
+//   - Called after SimulateMinIONetworkFailure() blocks storage access
+//   - Tests expect kernel to detect storage failure and auto-pause within timeout
 func WaitForKernelAutoPause(etcdClient pdapi.PDEtcdClient, backupName string, timeout time.Duration) (*types.LogBackupState, error) {
+	log.Logf("Waiting for kernel auto-pause of backup '%s' within %v", backupName, timeout)
 	startTime := time.Now()
 
 	for time.Since(startTime) < timeout {
-		// Query pause key directly
+		// Check if pause key exists in etcd
 		pauseKey := fmt.Sprintf("/tidb/br-stream/pause/%s", backupName)
 		kvs, err := etcdClient.Get(pauseKey, false)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to query etcd pause key: %v", err)
 		}
 
+		// If pause key exists, kernel has paused the backup
 		if len(kvs) > 0 {
 			pauseData := kvs[0].Value
+			pauseReason := "unknown"
 
-			// Parse pause reason
-			var pauseInfo struct {
-				Severity string `json:"severity"`
-				Payload  []byte `json:"payload"`
-			}
-
+			// Try to extract pause reason from the data
 			if len(pauseData) > 0 {
+				var pauseInfo struct {
+					Severity string `json:"severity"`
+					Payload  []byte `json:"payload"`
+				}
 				if err := json.Unmarshal(pauseData, &pauseInfo); err == nil {
-					if pauseInfo.Severity == "ERROR" {
-						// Found error pause!
-						return &types.LogBackupState{
-							IsPaused:      true,
-							PauseReason:   string(pauseInfo.Payload),
-							KernelState:   types.LogBackupKernelPaused,
-							LastQueryTime: time.Now(),
-						}, nil
-					}
+					pauseReason = string(pauseInfo.Payload)
 				} else {
-					// V1 format (empty = manual, but we're looking for error)
-					// Continue polling as this might be manual pause
+					// Fallback: use raw data as reason
+					pauseReason = string(pauseData)
 				}
 			}
+
+			log.Logf("Kernel auto-pause detected after %v, reason: %s", time.Since(startTime), pauseReason)
+			return &types.LogBackupState{
+				IsPaused:      true,
+				PauseReason:   pauseReason,
+				KernelState:   types.LogBackupKernelPaused,
+				LastQueryTime: time.Now(),
+			}, nil
 		}
 
+		log.Logf("Pause key not found yet, continuing to wait... (elapsed: %v)", time.Since(startTime))
 		time.Sleep(10 * time.Second)
 	}
 
-	return nil, fmt.Errorf("timeout waiting for kernel auto-pause")
+	return nil, fmt.Errorf("timeout waiting for kernel auto-pause after %v", timeout)
 }

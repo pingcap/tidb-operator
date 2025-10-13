@@ -975,6 +975,32 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 					gomega.Eventually(func() error {
 						return verify.VerifyTimeSyncedUpdated(f.ExtClient, ns, backupName, newBeforeTime)
 					}, 2*time.Minute, 5*time.Second).Should(gomega.Succeed())
+
+					ginkgo.By("Verifying final CR status is Running after manual resume")
+					gomega.Eventually(func() error {
+						currentBackup, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), backupName, metav1.GetOptions{})
+						if err != nil {
+							return err
+						}
+
+						// Verify backup phase is Running
+						if currentBackup.Status.Phase != v1alpha1.BackupRunning {
+							return fmt.Errorf("expected backup phase to be Running, got: %s", currentBackup.Status.Phase)
+						}
+
+						// Verify no error conditions are present
+						for _, condition := range currentBackup.Status.Conditions {
+							if condition.Type == v1alpha1.BackupRetryTheFailed && condition.Status == v1.ConditionTrue {
+								return fmt.Errorf("unexpected RetryTheFailed condition after manual resume: %s", condition.Message)
+							}
+							if condition.Type == v1alpha1.BackupFailed && condition.Status == v1.ConditionTrue {
+								return fmt.Errorf("unexpected Failed condition after manual resume: %s", condition.Message)
+							}
+						}
+
+						log.Logf("CR status verified: Phase=%s, TimeSynced=%v", currentBackup.Status.Phase, currentBackup.Status.TimeSynced.Time)
+						return nil
+					}, 2*time.Minute, 5*time.Second).Should(gomega.Succeed())
 				})
 
 				ginkgo.It("should handle rapid manual SQL state changes without false corrections", func() {
@@ -1036,17 +1062,107 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 							return err
 						}
 
+						// Verify backup phase is Running after rapid changes
+						if currentBackup.Status.Phase != v1alpha1.BackupRunning {
+							return fmt.Errorf("expected backup phase to be Running after rapid changes, got: %s", currentBackup.Status.Phase)
+						}
+
 						// Should not have error conditions from rapid state changes
 						for _, condition := range currentBackup.Status.Conditions {
 							if condition.Type == v1alpha1.BackupRetryTheFailed && condition.Status == v1.ConditionTrue {
-								return fmt.Errorf("unexpected error condition from rapid manual state change: %s", condition.Message)
+								return fmt.Errorf("unexpected RetryTheFailed condition from rapid manual state change: %s", condition.Message)
+							}
+							if condition.Type == v1alpha1.BackupFailed && condition.Status == v1.ConditionTrue {
+								return fmt.Errorf("unexpected Failed condition from rapid manual state change: %s", condition.Message)
 							}
 						}
 
-						log.Logf("No false error conditions detected after rapid manual state changes")
+						log.Logf("CR status verified after rapid changes: Phase=%s, no error conditions detected", currentBackup.Status.Phase)
 						return nil
 					}, 2*time.Minute, 5*time.Second).Should(gomega.Succeed())
 				})
+			})
+		})
+
+		ginkgo.Context("Backup before Cluster Creation", func() {
+			ginkgo.It("should transition from RetryTheFailed to Running when cluster is created", func() {
+				backupClusterName := "cluster-after-backup-test"
+				backupName := backupClusterName
+				backupVersion := utilimage.TiDBLatest
+				enableTLS := false
+				skipCA := false
+				typ := strings.ToLower(typeBR)
+				
+				ns := f.Namespace.Name
+
+				ginkgo.By("Create log backup before cluster exists")
+				s3Config := f.Storage.Config(ns, backupName)
+				backup, err := createBackupAndWaitForRetryFailed(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+					backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+					backup.Spec.Mode = v1alpha1.BackupModeLog
+					backup.Spec.LogSubcommand = v1alpha1.LogStartCommand
+					backup.Spec.S3 = s3Config
+				})
+				framework.ExpectNoError(err)
+
+				ginkgo.By("Verifying backup is in RetryTheFailed state due to missing cluster")
+				_, condition := v1alpha1.GetBackupCondition(&backup.Status, v1alpha1.BackupRetryTheFailed)
+				framework.ExpectEqual(condition != nil && condition.Status == v1.ConditionTrue, true, 
+					"backup should be in RetryTheFailed state when cluster doesn't exist")
+				framework.ExpectEqual(strings.Contains(condition.Message, "failed to fetch tidbcluster"), true,
+					"RetryTheFailed reason should mention failed to fetch tidbcluster")
+
+				ginkgo.By("Create log-backup.enable TiDB cluster")
+				err = createLogBackupEnableTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
+				framework.ExpectNoError(err)
+
+				ginkgo.By("Wait for backup TiDB cluster ready")
+				err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+				framework.ExpectNoError(err)
+
+				ginkgo.By("Create RBAC for log backup")
+				err = createRBAC(f)
+				framework.ExpectNoError(err)
+
+				ginkgo.By("Verifying backup transitions to Running state after cluster is created")
+				gomega.Eventually(func() error {
+					currentBackup, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), backupName, metav1.GetOptions{})
+					if err != nil {
+						return err
+					}
+
+					// Check that RetryTheFailed condition is no longer True
+					_, retryCondition := v1alpha1.GetBackupCondition(&currentBackup.Status, v1alpha1.BackupRetryTheFailed)
+					if retryCondition != nil && retryCondition.Status == v1.ConditionTrue {
+						return fmt.Errorf("backup still in RetryTheFailed state: %s", retryCondition.Message)
+					}
+
+					// Check that backup is now running or completed successfully
+					if currentBackup.Status.Phase == v1alpha1.BackupRunning {
+						log.Logf("Backup successfully transitioned to Running state")
+						return nil
+					}
+
+					// Also accept Complete state for log backup
+					_, completeCondition := v1alpha1.GetBackupCondition(&currentBackup.Status, v1alpha1.BackupComplete)
+					if completeCondition != nil && completeCondition.Status == v1.ConditionTrue {
+						log.Logf("Backup successfully transitioned to Complete state")
+						return nil
+					}
+
+					return fmt.Errorf("backup not yet in Running or Complete state, current phase: %s", currentBackup.Status.Phase)
+				}, 3*time.Minute, 10*time.Second).Should(gomega.Succeed())
+
+				ginkgo.By("Verifying log backup is actually functional")
+				// Get PD etcd client for kernel state verification
+				pdControl := pdapi.NewDefaultPDControlByCli(f.ClientSet)
+				etcdClient, err := pdControl.GetPDEtcdClient(pdapi.Namespace(ns), backupClusterName, enableTLS)
+				framework.ExpectNoError(err)
+				defer etcdClient.Close()
+
+				gomega.Eventually(func() error {
+					return verify.VerifyKernelState(etcdClient, backupName, types.LogBackupKernelRunning)
+				}, time.Minute, 5*time.Second).Should(gomega.Succeed())
 			})
 		})
 	})
@@ -1787,6 +1903,39 @@ func createBackupAndWaitForComplete(f *e2eframework.Framework, name, tcName, typ
 	}
 
 	if err := brutil.WaitForBackupComplete(f.ExtClient, ns, name, backupCompleteTimeout); err != nil {
+		return backup, err
+	}
+	return f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{})
+}
+
+func createBackupAndWaitForRetryFailed(f *e2eframework.Framework, name, tcName, typ string, configure func(*v1alpha1.Backup)) (*v1alpha1.Backup, error) {
+	ns := f.Namespace.Name
+	// secret to visit tidb cluster
+	s := brutil.GetSecret(ns, name, "")
+	// Check if the secret already exists
+	if _, err := f.ClientSet.CoreV1().Secrets(ns).Get(context.TODO(), name, metav1.GetOptions{}); err != nil {
+		if apierrors.IsNotFound(err) {
+			if _, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{}); err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
+	}
+
+	backupFolder := time.Now().Format(time.RFC3339)
+	cfg := f.Storage.Config(ns, backupFolder)
+	backup := brutil.GetBackup(ns, name, tcName, typ, cfg)
+
+	if configure != nil {
+		configure(backup)
+	}
+
+	if _, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Create(context.TODO(), backup, metav1.CreateOptions{}); err != nil {
+		return nil, err
+	}
+
+	if err := brutil.WaitForBackupRetryFailed(f.ExtClient, ns, name, backupCompleteTimeout); err != nil {
 		return backup, err
 	}
 	return f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{})
