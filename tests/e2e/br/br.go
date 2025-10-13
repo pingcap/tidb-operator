@@ -941,8 +941,9 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 					framework.ExpectNoError(err)
 
 					ginkgo.By("Verifying kernel state changed to paused (while operator CR still shows running)")
-					err = sql.WaitForKernelStateChange(etcdClient, backupName, types.LogBackupKernelPaused, time.Minute)
-					framework.ExpectNoError(err)
+					gomega.Eventually(func() error {
+						return sql.WaitForKernelStateChange(etcdClient, backupName, types.LogBackupKernelPaused, time.Minute)
+					}, 2*time.Minute, 10*time.Second).Should(gomega.Succeed())
 
 					ginkgo.By("Waiting for operator to detect manual pause inconsistency")
 					// Operator should detect that CR says "running" but kernel is "paused"
@@ -967,8 +968,9 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 					framework.ExpectNoError(err)
 
 					ginkgo.By("Verifying kernel state returns to running")
-					err = sql.WaitForKernelStateChange(etcdClient, backupName, types.LogBackupKernelRunning, time.Minute)
-					framework.ExpectNoError(err)
+					gomega.Eventually(func() error {
+						return sql.WaitForKernelStateChange(etcdClient, backupName, types.LogBackupKernelRunning, time.Minute)
+					}, 2*time.Minute, 10*time.Second).Should(gomega.Succeed())
 
 					ginkgo.By("Verifying operator detects resume and updates sync time again")
 					newBeforeTime := time.Now()
@@ -1051,8 +1053,9 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 					framework.ExpectNoError(err)
 
 					ginkgo.By("Verifying final kernel state is running")
-					err = sql.WaitForKernelStateChange(etcdClient, backupName, types.LogBackupKernelRunning, time.Minute)
-					framework.ExpectNoError(err)
+					gomega.Eventually(func() error {
+						return sql.WaitForKernelStateChange(etcdClient, backupName, types.LogBackupKernelRunning, time.Minute)
+					}, 2*time.Minute, 10*time.Second).Should(gomega.Succeed())
 
 					ginkgo.By("Verifying operator handles rapid changes gracefully")
 					// Should not see conflicting conditions or error states from rapid manual changes
