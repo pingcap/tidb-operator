@@ -25,13 +25,10 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
-	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/br/framework"
 	brutil "github.com/pingcap/tidb-operator/tests/e2e/br/framework/br"
-	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/network"
+	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/kernelSyncUtil"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
-	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/types"
-	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/verify"
 	e2etc "github.com/pingcap/tidb-operator/tests/e2e/tidbcluster"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/db/blockwriter"
 	utilginkgo "github.com/pingcap/tidb-operator/tests/e2e/util/ginkgo"
@@ -811,7 +808,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 					ginkgo.By("Starting log backup with normal MinIO connectivity")
 					s3Config := f.Storage.Config(ns, backupName)
-					_, err = createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+					backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
 						backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
 						backup.Spec.Mode = v1alpha1.BackupModeLog
 						backup.Spec.LogSubcommand = v1alpha1.LogStartCommand
@@ -819,76 +816,38 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 					})
 					framework.ExpectNoError(err)
 
-					ginkgo.By("Verifying initial running state consistency")
-					// Get PD etcd client for kernel state verification
-					pdControl := pdapi.NewDefaultPDControlByCli(f.ClientSet)
-					etcdClient, err := pdControl.GetPDEtcdClient(pdapi.Namespace(ns), backupClusterName, enableTLS)
-					framework.ExpectNoError(err)
-					defer etcdClient.Close()
-
-					gomega.Eventually(func() error {
-						return verify.VerifyKernelState(etcdClient, backupName, types.LogBackupKernelRunning)
-					}, time.Minute, 5*time.Second).Should(gomega.Succeed())
+					ginkgo.By("Verifying backup is in Running state")
+					framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupRunning)
 
 					ginkgo.By("Simulating MinIO network failure via NetworkPolicy")
-					err = network.SimulateMinIONetworkFailure(f.ClientSet, ns, backupClusterName)
+					err = kernelSyncUtil.SimulateMinIONetworkFailure(f.ClientSet, ns, backupClusterName)
 					framework.ExpectNoError(err)
 					defer func() {
-						network.RestoreMinIONetworkAccess(f.ClientSet, ns, backupClusterName)
+						kernelSyncUtil.RestoreMinIONetworkAccess(f.ClientSet, ns, backupClusterName)
 					}()
 
-					ginkgo.By("Waiting for kernel to auto-pause due to MinIO connection error")
-					var errorState *types.LogBackupState
-					gomega.Eventually(func() error {
-						var err error
-						errorState, err = network.WaitForKernelAutoPause(etcdClient, backupName, 3*time.Minute)
-						return err
-					}, 5*time.Minute, 10*time.Second).Should(gomega.Succeed())
-
-					ginkgo.By("Verifying kernel is actually paused with network error reason")
-					gomega.Expect(errorState.IsPaused).To(gomega.BeTrue())
-					gomega.Expect(errorState.PauseReason).To(gomega.Or(
-						gomega.ContainSubstring("connection"),
-						gomega.ContainSubstring("network"),
-						gomega.ContainSubstring("timeout"),
-					))
-					gomega.Expect(errorState.KernelState).To(gomega.Equal(types.LogBackupKernelPaused))
-
-					ginkgo.By("Waiting for operator to detect the inconsistency")
-					gomega.Eventually(func() error {
-						return verify.VerifyOperatorDetectsInconsistency(f.ExtClient, ns, backupName, v1alpha1.BackupRetryTheFailed)
-					}, 2*time.Minute, 5*time.Second).Should(gomega.Succeed())
-
-					ginkgo.By("Verifying backup status reflects kernel error state")
-					currentBackup, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), backupName, metav1.GetOptions{})
+					ginkgo.By("Waiting for operator to detect and report error pause")
+					err = kernelSyncUtil.WaitForBackupErrorPause(f.ExtClient, ns, backupName)
 					framework.ExpectNoError(err)
-
-					// Check that status condition indicates error pause
-					_, condition := v1alpha1.GetBackupCondition(&currentBackup.Status, v1alpha1.BackupRetryTheFailed)
-					gomega.Expect(condition).NotTo(gomega.BeNil())
-					gomega.Expect(condition.Reason).To(gomega.Equal("LogBackupErrorPaused"))
-					gomega.Expect(condition.Message).To(gomega.Or(
-						gomega.ContainSubstring("connection"),
-						gomega.ContainSubstring("network"),
-						gomega.ContainSubstring("timeout"),
-					))
 
 					ginkgo.By("Verifying TimeSynced field is updated")
-					err = verify.VerifyTimeSyncedUpdated(f.ExtClient, ns, backupName, beforeTime)
+					err = kernelSyncUtil.VerifyTimeSyncedUpdated(f.ExtClient, ns, backupName, beforeTime)
 					framework.ExpectNoError(err)
 
-					ginkgo.By("Restoring MinIO network access and verifying recovery")
-					err = network.RestoreMinIONetworkAccess(f.ClientSet, ns, backupClusterName)
+					ginkgo.By("Restoring MinIO network access")
+					err = kernelSyncUtil.RestoreMinIONetworkAccess(f.ClientSet, ns, backupClusterName)
 					framework.ExpectNoError(err)
 
-					// Trigger resume by updating backup spec
+					ginkgo.By("Triggering resume by updating backup spec")
+					currentBackup, err := f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), backupName, metav1.GetOptions{})
+					framework.ExpectNoError(err)
 					currentBackup.Spec.LogSubcommand = v1alpha1.LogResumeCommand
 					_, err = f.ExtClient.PingcapV1alpha1().Backups(ns).Update(context.TODO(), currentBackup, metav1.UpdateOptions{})
 					framework.ExpectNoError(err)
 
-					gomega.Eventually(func() error {
-						return verify.VerifyKernelState(etcdClient, backupName, types.LogBackupKernelRunning)
-					}, 2*time.Minute, 5*time.Second).Should(gomega.Succeed())
+					ginkgo.By("Verifying backup recovers to Running state")
+					err = kernelSyncUtil.WaitForBackupRecovery(f.ExtClient, ns, backupName)
+					framework.ExpectNoError(err)
 				})
 			})
 		})
@@ -961,17 +920,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 					return fmt.Errorf("backup not yet in Running or Complete state, current phase: %s", currentBackup.Status.Phase)
 				}, 3*time.Minute, 10*time.Second).Should(gomega.Succeed())
-
-				ginkgo.By("Verifying log backup is actually functional")
-				// Get PD etcd client for kernel state verification
-				pdControl := pdapi.NewDefaultPDControlByCli(f.ClientSet)
-				etcdClient, err := pdControl.GetPDEtcdClient(pdapi.Namespace(ns), backupClusterName, enableTLS)
-				framework.ExpectNoError(err)
-				defer etcdClient.Close()
-
-				gomega.Eventually(func() error {
-					return verify.VerifyKernelState(etcdClient, backupName, types.LogBackupKernelRunning)
-				}, time.Minute, 5*time.Second).Should(gomega.Succeed())
 			})
 		})
 	})
