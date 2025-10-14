@@ -323,7 +323,7 @@ func TestCondObjectIsNotDeletingButOfflined(t *testing.T) {
 		{
 			desc: "cond is true",
 			state: newFakeObjectState(
-				fake.FakeObj("test", fake.DeleteNow[v1alpha1.TiKV](), func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+				fake.FakeObj("test", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 					obj.Status.Conditions = []metav1.Condition{
 						{
 							Type:   v1alpha1.StoreOfflinedConditionType,
