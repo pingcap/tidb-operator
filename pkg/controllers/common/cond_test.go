@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
@@ -296,6 +297,52 @@ func TestCondFeatureGatesIsNotSynced(t *testing.T) {
 			tt.Parallel()
 
 			cond := CondFeatureGatesIsNotSynced[scope.PDGroup](c.state)
+			assert.Equal(tt, c.expectedCond, cond.Satisfy(), c.desc)
+		})
+	}
+}
+
+func TestCondObjectIsNotDeletingButOfflined(t *testing.T) {
+	cases := []struct {
+		desc         string
+		state        ObjectState[*v1alpha1.TiKV]
+		expectedCond bool
+	}{
+		{
+			desc: "cond is false, not offlined",
+			state: newFakeObjectState(
+				fake.FakeObj[v1alpha1.TiKV]("test"),
+			),
+		},
+		{
+			desc: "cond is false, deleting",
+			state: newFakeObjectState(
+				fake.FakeObj("test", fake.DeleteNow[v1alpha1.TiKV]()),
+			),
+		},
+		{
+			desc: "cond is true",
+			state: newFakeObjectState(
+				fake.FakeObj("test", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+					obj.Status.Conditions = []metav1.Condition{
+						{
+							Type:   v1alpha1.StoreOfflinedConditionType,
+							Status: metav1.ConditionTrue,
+						},
+					}
+					return obj
+				}),
+			),
+			expectedCond: true,
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			cond := CondObjectIsNotDeletingButOfflined[scope.TiKV](c.state)
 			assert.Equal(tt, c.expectedCond, cond.Satisfy(), c.desc)
 		})
 	}

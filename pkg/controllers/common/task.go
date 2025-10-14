@@ -21,6 +21,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -316,5 +317,27 @@ func TaskTrack[
 		}
 		t.Track(obj.GetNamespace(), obj.GetName(), group)
 		return task.Complete().With("track instance %s with group %v", state.Key(), group)
+	})
+}
+
+func TaskDeleteOfflinedStore[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](state ObjectState[F], c client.Client) task.Task {
+	return task.NameTaskFunc("DeleteOfflinedStore", func(ctx context.Context) task.Result {
+		obj := state.Object()
+		if !obj.GetDeletionTimestamp().IsZero() {
+			return task.Complete().With("store is deleting")
+		}
+		conds := coreutil.StatusConditions[S](state.Object())
+		if !meta.IsStatusConditionTrue(conds, v1alpha1.StoreOfflinedConditionType) {
+			return task.Complete().With("store is not offlined")
+		}
+		if err := c.Delete(ctx, obj); err != nil {
+			return task.Fail().With("cannot delete store: %v", err)
+		}
+
+		return task.Wait().With("wait until store deletion is watched")
 	})
 }
