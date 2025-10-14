@@ -76,7 +76,7 @@ s3-region = "local"
 api_version = 2
 
 [flash]
-graceful_wait_shutdown_timeout = 300
+graceful_wait_shutdown_timeout = 200
 
 [storage.s3]
 endpoint = "http://minio:9000"
@@ -88,7 +88,7 @@ secret_access_key = "test12345678"
 		obj.Spec.Template.Spec.Overlay = &v1alpha1.Overlay{
 			Pod: &v1alpha1.PodOverlay{
 				Spec: &corev1.PodSpec{
-					TerminationGracePeriodSeconds: ptr.To[int64](300),
+					TerminationGracePeriodSeconds: ptr.To[int64](250),
 				},
 			},
 		}

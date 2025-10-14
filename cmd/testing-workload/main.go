@@ -44,6 +44,7 @@ var (
 	longTxnSleepSeconds int
 	maxLifeTimeSeconds  int
 	tiflashReplicas     int
+	maxExecutionTime    int
 
 	// Flags for import action
 	batchSize        int
@@ -72,6 +73,7 @@ const (
 	defaultSleepInterval       = 100
 	defaultLongTxnSleepSeconds = 10
 	defaultMaxLifeTimeSeconds  = 60
+	defaultMaxExecutionTime    = 2000
 
 	defaultBatchSize = 1000
 	defaultTotalRows = 500000
@@ -184,6 +186,7 @@ func parseFlag() {
 	flag.IntVar(&longTxnSleepSeconds, "long-txn-sleep", defaultLongTxnSleepSeconds, "how many seconds to sleep to simulate a long transaction")
 	flag.IntVar(&maxLifeTimeSeconds, "max-life-time", defaultMaxLifeTimeSeconds, "max lifetime in seconds")
 	flag.IntVar(&tiflashReplicas, "tiflash-replicas", 0, "replicas of tiflash")
+	flag.IntVar(&maxExecutionTime, "max-execution-time", defaultMaxExecutionTime, "max_execution_time of tidb")
 
 	// Flags for import action
 	flag.IntVar(&batchSize, "batch-size", defaultBatchSize, "batch size for import action")

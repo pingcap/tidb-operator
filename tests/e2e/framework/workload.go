@@ -174,6 +174,7 @@ func (w *Workload) MustRunWorkload(ctx context.Context, host string, opts ...wor
 		"--user", o.User,
 		"--password", o.Password,
 		"--max-connections", "30",
+		"--max-execution-time", strconv.Itoa(o.MaxExecutionTime),
 		"--tiflash-replicas", strconv.Itoa(o.TiFlashReplicas),
 		"--max-life-time", strconv.Itoa(o.MaxLifeTime),
 	}

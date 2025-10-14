@@ -82,7 +82,7 @@ var _ = ginkgo.Describe("TiFlash Availability Test", label.TiFlash, label.Update
 	ginkgo.Context("NextGen", label.KindNextGen, label.P0, func() {
 		workload := f.SetupWorkload()
 		// TODO: still not work
-		ginkgo.PIt("No error when rolling update tiflash in next-gen", func(ctx context.Context) {
+		ginkgo.It("No error when rolling update tiflash in next-gen", func(ctx context.Context) {
 			f.MustCreateS3(ctx)
 			pdg := f.MustCreatePD(ctx, data.WithPDNextGen())
 			kvg := f.MustCreateTiKV(ctx, data.WithTiKVNextGen())
@@ -125,7 +125,13 @@ var _ = ginkgo.Describe("TiFlash Availability Test", label.TiFlash, label.Update
 				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiFlashGroup(fgw), 2, 0, waiter.LongTaskTimeout))
 			}()
 
-			done := workload.MustRunWorkload(nctx, data.DefaultTiDBServiceName, wopt.TiFlashReplicas(2))
+			done := workload.MustRunWorkload(nctx,
+				data.DefaultTiDBServiceName,
+				wopt.TiFlashReplicas(2),
+				// Set max_execution_time to 4s for next-gen tiflash
+				// TODO: dig why 2000ms is not enough
+				wopt.MaxExecutionTime(4000),
+			)
 
 			patch := client.MergeFrom(fgc.DeepCopy())
 			fgc.Spec.Template.Labels = map[string]string{"test": "test"}

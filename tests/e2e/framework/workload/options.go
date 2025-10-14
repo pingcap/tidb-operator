@@ -29,6 +29,10 @@ type Options struct {
 
 	RegionCount int
 
+	// MaxExecutionTime is max_execution_time of tidb in millisecond
+	// Default is 2000
+	MaxExecutionTime int
+
 	TiFlashReplicas int
 
 	// MaxLifeTime is max life time in seconds of sql connections
@@ -73,6 +77,12 @@ func RegionCount(count int) Option {
 	})
 }
 
+func MaxExecutionTime(ms int) Option {
+	return WithOption(func(opts *Options) {
+		opts.MaxExecutionTime = ms
+	})
+}
+
 func TiFlashReplicas(replicas int) Option {
 	return WithOption(func(opts *Options) {
 		opts.TiFlashReplicas = replicas
@@ -89,6 +99,8 @@ func DefaultOptions() *Options {
 	return &Options{
 		Port: 4000,
 		User: "root",
+
+		MaxExecutionTime: 2000,
 
 		RegionCount: 500,
 		MaxLifeTime: 60,
