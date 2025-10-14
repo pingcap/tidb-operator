@@ -43,6 +43,11 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			tasks.TaskFinalizerDel(state, r.Client),
 		),
 
+		// if instance is deleting and store is removed
+		task.IfBreak(common.CondObjectIsNotDeletingButOfflined[scope.TiKV](state),
+			common.TaskDeleteOfflinedStore[scope.TiKV](state, r.Client),
+		),
+
 		// get pod and check whether the cluster is suspending
 		common.TaskContextPod[scope.TiKV](state, r.Client),
 		// get info from pd
