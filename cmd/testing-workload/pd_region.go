@@ -38,7 +38,7 @@ const (
 	defaultGRPCKeepAliveTimeout = 3 * time.Second
 	defaultPDServerTimeout      = 3 * time.Second
 
-	defaultLeaderTransferTime = 200 * time.Millisecond
+	defaultLeaderTransferTime = 100 * time.Millisecond
 )
 
 func NewPDClient(pdAddrs []string) (pd.Client, error) {
@@ -129,9 +129,9 @@ func PDRegionAccess(ctx context.Context) error {
 func accessPDAPI(ctx context.Context, client pd.Client) error {
 	// retry once
 	var lastErr error
-	for range 2 {
+	for range 3 {
 		if lastErr != nil {
-			fmt.Println("retry because of ", lastErr)
+			fmt.Printf("[%s] retry because of %v\n", time.Now().String(), lastErr)
 		}
 
 		_, _, err1 := client.GetTS(ctx)
@@ -146,13 +146,13 @@ func accessPDAPI(ctx context.Context, client pd.Client) error {
 		}
 
 		if err1 != nil {
-			lastErr = err1
+			lastErr = fmt.Errorf("get ts failed: %w", err1)
 			if !strings.Contains(err1.Error(), "not leader") {
 				break
 			}
 		}
 		if err2 != nil {
-			lastErr = err2
+			lastErr = fmt.Errorf("scan region failed: %w", err2)
 			// only retry for not leader err
 			if !strings.Contains(err2.Error(), "not leader") {
 				break
