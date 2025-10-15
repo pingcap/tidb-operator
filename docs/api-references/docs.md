@@ -9474,6 +9474,19 @@ See <a href="https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containe
 and <a href="https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/">https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/</a></p>
 </td>
 </tr>
+<tr>
+<td>
+<code>sleepTimeSeconds</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Tailer needs to wait to flush logs to stdout after receiving sig TERM
+Default is not sleep</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="masterconfig">MasterConfig</h3>
@@ -18286,6 +18299,19 @@ It requires enable feature gate &ldquo;SidecarContainers&rdquo;
 This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33
 See <a href="https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/">https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/</a>
 and <a href="https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/">https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sleepTimeSeconds</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Tailer needs to wait to flush logs to stdout after receiving sig TERM
+Default is not sleep</p>
 </td>
 </tr>
 </tbody>
