@@ -158,6 +158,14 @@ func PdName(tcName string, ordinal int32, namespace string, clusterDomain string
 	return PdPodName(tcName, ordinal)
 }
 
+// PdNameForMulticlusterDNS returns the PD name with multicluster DNS format (KEP-2577):
+// <clusterid>.<svc>.<ns>.svc.<clustersetzone>
+func PdNameForMulticlusterDNS(tcName string, ordinal int32, namespace string, clusterID string, clusterSetZone string) string {
+	// Format: <clusterid>.<pod-name>.<svc-name>.<namespace>.svc.<clustersetzone>
+	// For example: cluster1.basic-pd-0.basic-pd-peer.default.svc.clusterset.local
+	return fmt.Sprintf("%s.%s.%s-pd-peer.%s.svc.%s", clusterID, PdPodName(tcName, ordinal), tcName, namespace, clusterSetZone)
+}
+
 // PDMSName should match the start arg `--name` of pd-server
 // See the start script of PDMS in pkg/manager/member/startscript/v2.renderPDMSStartScript
 func PDMSName(tcName string, ordinal int32, namespace, clusterDomain string, acrossK8s bool, component string) string {
@@ -171,6 +179,13 @@ func PDMSName(tcName string, ordinal int32, namespace, clusterDomain string, acr
 	}
 
 	return PDMSPodName(tcName, ordinal, component)
+}
+
+// PDMSNameForMulticlusterDNS returns the PDMS name with multicluster DNS format (KEP-2577):
+// <clusterid>.<svc>.<ns>.svc.<clustersetzone>
+func PDMSNameForMulticlusterDNS(tcName string, ordinal int32, namespace string, clusterID string, clusterSetZone string, component string) string {
+	// Format: <clusterid>.<pod-name>.<svc-name>.<namespace>.svc.<clustersetzone>
+	return fmt.Sprintf("%s.%s.%s-%s-peer.%s.svc.%s", clusterID, PDMSPodName(tcName, ordinal, component), tcName, component, namespace, clusterSetZone)
 }
 
 // NeedForceUpgrade check if force upgrade is necessary

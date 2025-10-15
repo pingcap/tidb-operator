@@ -1,0 +1,46 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: basic
+  namespace: tidb
+spec:
+  version: v8.5.2
+  timezone: UTC
+  pvReclaimPolicy: Retain
+  enableDynamicConfiguration: true
+  configUpdateStrategy: RollingUpdate
+  discovery: {}
+  
+  # Enable multicluster DNS naming according to KEP-2577
+  # This enables DNS names in format: <clusterid>.<svc>.<ns>.svc.<clustersetzone>
+  # See https://github.com/kubernetes/enhancements/pull/2577
+  multiclusterDNS:
+    # Unique identifier for this Kubernetes cluster within the ClusterSet
+    clusterID: "cluster1"
+    # Domain name for the ClusterSet
+    clusterSetZone: "clusterset.local"
+  
+  pd:
+    baseImage: pingcap/pd
+    maxFailoverCount: 0
+    replicas: 3
+    requests:
+      storage: "20Gi"
+    config: {}
+  
+  tikv:
+    baseImage: pingcap/tikv
+    maxFailoverCount: 0
+    replicas: 3
+    requests:
+      storage: "100Gi"
+    config: {}
+  
+  tidb:
+    baseImage: pingcap/tidb
+    maxFailoverCount: 0
+    replicas: 2
+    service:
+      type: ClusterIP
+    config: {}
+

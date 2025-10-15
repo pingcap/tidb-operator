@@ -439,6 +439,27 @@ func (tc *TidbCluster) GetHelperSpec() HelperSpec {
 	return *tc.Spec.Helper
 }
 
+// UseMulticlusterDNS returns true if multicluster DNS naming is enabled
+func (tc *TidbCluster) UseMulticlusterDNS() bool {
+	return tc.Spec.MulticlusterDNS != nil && tc.Spec.MulticlusterDNS.ClusterID != "" && tc.Spec.MulticlusterDNS.ClusterSetZone != ""
+}
+
+// GetMulticlusterDNSClusterID returns the cluster ID for multicluster DNS, empty string if not configured
+func (tc *TidbCluster) GetMulticlusterDNSClusterID() string {
+	if tc.Spec.MulticlusterDNS != nil {
+		return tc.Spec.MulticlusterDNS.ClusterID
+	}
+	return ""
+}
+
+// GetMulticlusterDNSClusterSetZone returns the cluster set zone for multicluster DNS, empty string if not configured
+func (tc *TidbCluster) GetMulticlusterDNSClusterSetZone() string {
+	if tc.Spec.MulticlusterDNS != nil {
+		return tc.Spec.MulticlusterDNS.ClusterSetZone
+	}
+	return ""
+}
+
 func (mt MemberType) String() string {
 	return string(mt)
 }

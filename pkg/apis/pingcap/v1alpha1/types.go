@@ -387,6 +387,11 @@ type TidbClusterSpec struct {
 	// +optional
 	Cluster *TidbClusterRef `json:"cluster,omitempty"`
 
+	// MulticlusterDNS enables multicluster DNS naming according to KEP-2577.
+	// When enabled, DNS names will follow the format: <clusterid>.<svc>.<ns>.svc.<clustersetzone>
+	// +optional
+	MulticlusterDNS *MulticlusterDNSSpec `json:"multiclusterDNS,omitempty"`
+
 	// PDAddresses are the external PD addresses, if configured, the PDs in this TidbCluster will join to the configured PD cluster.
 	// +optional
 	PDAddresses []string `json:"pdAddresses,omitempty"`
@@ -1244,6 +1249,23 @@ type HelperSpec struct {
 	// Optional: Defaults to the cluster-level setting
 	// +optional
 	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+}
+
+// MulticlusterDNSSpec contains configuration for multicluster DNS naming (KEP-2577).
+// This enables DNS names in the format: <clusterid>.<svc>.<ns>.svc.<clustersetzone>
+// See https://github.com/kubernetes/enhancements/pull/2577
+// +k8s:openapi-gen=true
+type MulticlusterDNSSpec struct {
+	// ClusterID is the unique identifier for this Kubernetes cluster within the ClusterSet.
+	// This is used as the first label in the multicluster DNS format.
+	// Required when MulticlusterDNS is enabled.
+	ClusterID string `json:"clusterID"`
+
+	// ClusterSetZone is the domain name for the ClusterSet.
+	// This is used as the suffix in the multicluster DNS format.
+	// Examples: "clusterset.local", "mesh.example.com"
+	// Required when MulticlusterDNS is enabled.
+	ClusterSetZone string `json:"clusterSetZone"`
 }
 
 // TiDBSlowLogTailerSpec represents an optional log tailer sidecar with TiDB

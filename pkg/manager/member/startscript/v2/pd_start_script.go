@@ -63,13 +63,21 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	tcNS := tc.Namespace
 	peerServiceName := controller.PDPeerMemberName(tcName)
 
-	m.PDDomain = fmt.Sprintf("${PD_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
-	if tc.Spec.ClusterDomain != "" {
-		m.PDDomain = m.PDDomain + "." + tc.Spec.ClusterDomain
+	// Use multicluster DNS format if enabled
+	if tc.UseMulticlusterDNS() {
+		// Format: <clusterid>.<pod-name>.<svc-name>.<namespace>.svc.<clustersetzone>
+		clusterID := tc.GetMulticlusterDNSClusterID()
+		clusterSetZone := tc.GetMulticlusterDNSClusterSetZone()
+		m.PDDomain = fmt.Sprintf("%s.${PD_POD_NAME}.%s.%s.svc.%s", clusterID, peerServiceName, tcNS, clusterSetZone)
+	} else {
+		m.PDDomain = fmt.Sprintf("${PD_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
+		if tc.Spec.ClusterDomain != "" {
+			m.PDDomain = m.PDDomain + "." + tc.Spec.ClusterDomain
+		}
 	}
 
 	m.PDName = "${PD_POD_NAME}"
-	if tc.AcrossK8s() || tc.Spec.ClusterDomain != "" {
+	if tc.UseMulticlusterDNS() || tc.AcrossK8s() || tc.Spec.ClusterDomain != "" {
 		m.PDName = "${PD_DOMAIN}"
 	}
 
@@ -133,14 +141,23 @@ func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error
 	tcNS := tc.Namespace
 
 	peerServiceName := controller.PDMSPeerMemberName(tcName, name)
-	m.PDMSDomain = fmt.Sprintf("${PDMS_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
-	if tc.Spec.ClusterDomain != "" {
-		m.PDMSDomain = m.PDMSDomain + "." + tc.Spec.ClusterDomain
+
+	// Use multicluster DNS format if enabled
+	if tc.UseMulticlusterDNS() {
+		// Format: <clusterid>.<pod-name>.<svc-name>.<namespace>.svc.<clustersetzone>
+		clusterID := tc.GetMulticlusterDNSClusterID()
+		clusterSetZone := tc.GetMulticlusterDNSClusterSetZone()
+		m.PDMSDomain = fmt.Sprintf("%s.${PDMS_POD_NAME}.%s.%s.svc.%s", clusterID, peerServiceName, tcNS, clusterSetZone)
+	} else {
+		m.PDMSDomain = fmt.Sprintf("${PDMS_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
+		if tc.Spec.ClusterDomain != "" {
+			m.PDMSDomain = m.PDMSDomain + "." + tc.Spec.ClusterDomain
+		}
 	}
 
 	if check, err := pdMSSupportMicroservicesWithName.Check(tc.PDMSVersion(name)); check && err == nil {
 		m.PDMSName = "${PDMS_POD_NAME}"
-		if tc.Spec.ClusterDomain != "" {
+		if tc.UseMulticlusterDNS() || tc.Spec.ClusterDomain != "" {
 			m.PDMSName = m.PDMSDomain
 		}
 		name = fmt.Sprintf("%s --name=%s", name, m.PDMSName)

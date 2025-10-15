@@ -81,12 +81,30 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	strArr := strings.Split(advertisePeerUrl, ":")
 	hostArr := strings.Split(strArr[0], ".")
 
-	if len(hostArr) < 4 || hostArr[3] != "svc" {
+	// Support multicluster DNS format: <clusterid>.<pod-name>.<svc-name>.<namespace>.svc.<clustersetzone>
+	// Standard format: <pod-name>.<svc-name>.<namespace>.svc[.<clusterdomain>]
+	var podName, peerServiceName, ns, tcName string
+	var isMulticlusterDNS bool
+
+	if len(hostArr) >= 6 && hostArr[4] == "svc" {
+		// Multicluster DNS format: cluster1.basic-pd-0.basic-pd-peer.default.svc.clusterset.local
+		// hostArr[0] = clusterid, hostArr[1] = podName, hostArr[2] = svcName, hostArr[3] = namespace, hostArr[4] = "svc", hostArr[5+] = clustersetzone
+		podName = hostArr[1]
+		peerServiceName = hostArr[2]
+		ns = hostArr[3]
+		isMulticlusterDNS = true
+		klog.Infof("Detected multicluster DNS format: clusterID=%s, pod=%s, svc=%s, ns=%s", hostArr[0], podName, peerServiceName, ns)
+	} else if len(hostArr) >= 4 && hostArr[3] == "svc" {
+		// Standard format: basic-pd-0.basic-pd-peer.default.svc[.cluster.local]
+		podName = hostArr[0]
+		peerServiceName = hostArr[1]
+		ns = hostArr[2]
+		isMulticlusterDNS = false
+	} else {
 		return "", fmt.Errorf("advertisePeerUrl format is wrong: %s", advertisePeerUrl)
 	}
 
-	podName, peerServiceName, ns := hostArr[0], hostArr[1], hostArr[2]
-	tcName := strings.TrimSuffix(peerServiceName, "-pd-peer")
+	tcName = strings.TrimSuffix(peerServiceName, "-pd-peer")
 	podNamespace := os.Getenv("MY_POD_NAMESPACE")
 
 	if ns != podNamespace {
@@ -116,8 +134,8 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 		if len(pdAddresses) != 0 {
 			return fmt.Sprintf("--join=%s", strings.Join(pdAddresses, ",")), nil
 		}
-		// Initialize the PD cluster with the FQDN format service record if deploy across k8s or tc.Spec.ClusterDomain is set
-		if tc.AcrossK8s() || tc.Spec.ClusterDomain != "" {
+		// Initialize the PD cluster with the FQDN format service record if deploy across k8s, multicluster DNS, or tc.Spec.ClusterDomain is set
+		if tc.UseMulticlusterDNS() || tc.AcrossK8s() || tc.Spec.ClusterDomain != "" || isMulticlusterDNS {
 			return fmt.Sprintf("--initial-cluster=%s=%s://%s", strArr[0], tc.Scheme(), advertisePeerUrl), nil
 		}
 		// Initialize the PD cluster in the normal format service record.
