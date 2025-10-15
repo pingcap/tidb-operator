@@ -81,19 +81,19 @@ func (d *tidbDiscovery) Discover(advertisePeerUrl string) (string, error) {
 	strArr := strings.Split(advertisePeerUrl, ":")
 	hostArr := strings.Split(strArr[0], ".")
 
-	// Support multicluster DNS format: <clusterid>.<pod-name>.<svc-name>.<namespace>.svc.<clustersetzone>
+	// Support multicluster DNS format: <hostname>.<clustername>.<svc-name>.<namespace>.svc.<clustersetzone>
 	// Standard format: <pod-name>.<svc-name>.<namespace>.svc[.<clusterdomain>]
 	var podName, peerServiceName, ns, tcName string
 	var isMulticlusterDNS bool
 
 	if len(hostArr) >= 6 && hostArr[4] == "svc" {
-		// Multicluster DNS format: cluster1.basic-pd-0.basic-pd-peer.default.svc.clusterset.local
-		// hostArr[0] = clusterid, hostArr[1] = podName, hostArr[2] = svcName, hostArr[3] = namespace, hostArr[4] = "svc", hostArr[5+] = clustersetzone
-		podName = hostArr[1]
+		// Multicluster DNS format: basic-pd-0.cluster1.basic-pd-peer.default.svc.clusterset.local
+		// hostArr[0] = podName, hostArr[1] = clusterID, hostArr[2] = svcName, hostArr[3] = namespace, hostArr[4] = "svc", hostArr[5+] = clustersetzone
+		podName = hostArr[0]
 		peerServiceName = hostArr[2]
 		ns = hostArr[3]
 		isMulticlusterDNS = true
-		klog.Infof("Detected multicluster DNS format: clusterID=%s, pod=%s, svc=%s, ns=%s", hostArr[0], podName, peerServiceName, ns)
+		klog.Infof("Detected multicluster DNS format: clusterID=%s, pod=%s, svc=%s, ns=%s", hostArr[1], podName, peerServiceName, ns)
 	} else if len(hostArr) >= 4 && hostArr[3] == "svc" {
 		// Standard format: basic-pd-0.basic-pd-peer.default.svc[.cluster.local]
 		podName = hostArr[0]
