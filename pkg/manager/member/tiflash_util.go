@@ -112,7 +112,7 @@ func buildSidecarContainer(name, path, image string,
 		c.Command = []string{
 			"sh",
 			"-c",
-			fmt.Sprintf(`trap "exit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, path, path),
+			fmt.Sprintf(`trap "sleep 3; exit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, path, path),
 		}
 	}
 	return c

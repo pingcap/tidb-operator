@@ -568,7 +568,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			c.Command = []string{
 				"sh",
 				"-c",
-				fmt.Sprintf(`trap "exit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, rocksDBLogFilePath, rocksDBLogFilePath),
+				fmt.Sprintf(`trap "sleep 3; exit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, rocksDBLogFilePath, rocksDBLogFilePath),
 			}
 			initContainers = append(initContainers, c)
 		} else {
@@ -630,7 +630,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			c.Command = []string{
 				"sh",
 				"-c",
-				fmt.Sprintf(`trap "exit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, raftLogFilePath, raftLogFilePath),
+				fmt.Sprintf(`trap "sleep 3; exit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, raftLogFilePath, raftLogFilePath),
 			}
 			initContainers = append(initContainers, c)
 		} else {
