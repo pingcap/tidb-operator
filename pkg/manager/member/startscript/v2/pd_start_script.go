@@ -65,10 +65,11 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	// Use multicluster DNS format if enabled
 	if tc.UseMulticlusterDNS() {
-		// Format: <clusterid>.<pod-name>.<svc-name>.<namespace>.svc.<clustersetzone>
+		// Format: <hostname>.<clustername>.<svc-name>.<namespace>.svc.<clustersetzone>
+		// KEP-2577 multicluster DNS with clusterID AFTER hostname
 		clusterID := tc.GetMulticlusterDNSClusterID()
 		clusterSetZone := tc.GetMulticlusterDNSClusterSetZone()
-		m.PDDomain = fmt.Sprintf("%s.${PD_POD_NAME}.%s.%s.svc.%s", clusterID, peerServiceName, tcNS, clusterSetZone)
+		m.PDDomain = fmt.Sprintf("${PD_POD_NAME}.%s.%s.%s.svc.%s", clusterID, peerServiceName, tcNS, clusterSetZone)
 	} else {
 		m.PDDomain = fmt.Sprintf("${PD_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
 		if tc.Spec.ClusterDomain != "" {
@@ -144,10 +145,11 @@ func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error
 
 	// Use multicluster DNS format if enabled
 	if tc.UseMulticlusterDNS() {
-		// Format: <clusterid>.<pod-name>.<svc-name>.<namespace>.svc.<clustersetzone>
+		// Format: <hostname>.<clustername>.<svc-name>.<namespace>.svc.<clustersetzone>
+		// KEP-2577 multicluster DNS with clusterID AFTER hostname
 		clusterID := tc.GetMulticlusterDNSClusterID()
 		clusterSetZone := tc.GetMulticlusterDNSClusterSetZone()
-		m.PDMSDomain = fmt.Sprintf("%s.${PDMS_POD_NAME}.%s.%s.svc.%s", clusterID, peerServiceName, tcNS, clusterSetZone)
+		m.PDMSDomain = fmt.Sprintf("${PDMS_POD_NAME}.%s.%s.%s.svc.%s", clusterID, peerServiceName, tcNS, clusterSetZone)
 	} else {
 		m.PDMSDomain = fmt.Sprintf("${PDMS_POD_NAME}.%s.%s.svc", peerServiceName, tcNS)
 		if tc.Spec.ClusterDomain != "" {
