@@ -3186,6 +3186,16 @@ spec:
                 additionalProperties:
                   type: string
                 type: object
+              multiclusterDNS:
+                properties:
+                  clusterID:
+                    type: string
+                  clusterSetZone:
+                    type: string
+                required:
+                - clusterID
+                - clusterSetZone
+                type: object
               nodeSelector:
                 additionalProperties:
                   type: string
