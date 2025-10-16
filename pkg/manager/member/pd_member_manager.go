@@ -16,8 +16,8 @@ package member
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"path"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -49,9 +49,6 @@ const (
 	// pdClusterCertPath is where the cert for inter-cluster communication stored (if any)
 	pdClusterCertPath  = "/var/lib/pd-tls"
 	tidbClientCertPath = "/var/lib/tidb-client-tls"
-
-	//find a better way to manage store only managed by pd in Operator
-	pdMemberLimitPattern = `%s-pd-\d+\.%s-pd-peer\.%s\.svc%s\:\d+`
 )
 
 type pdMemberManager struct {
@@ -369,9 +366,40 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 		return err
 	}
 
-	rePDMembers, err := regexp.Compile(fmt.Sprintf(pdMemberLimitPattern, tc.Name, tc.Name, tc.Namespace, controller.FormatClusterDomainForRegex(tc.Spec.ClusterDomain)))
-	if err != nil {
-		return err
+	localSuffix := fmt.Sprintf("%s-pd-peer.%s.svc", tc.Name, tc.Namespace)
+	if tc.UseMulticlusterDNS() {
+		clusterID := tc.GetMulticlusterDNSClusterID()
+		clusterSetZone := tc.GetMulticlusterDNSClusterSetZone()
+		if clusterID != "" {
+			localSuffix = fmt.Sprintf("%s.%s", clusterID, localSuffix)
+		}
+		if clusterSetZone != "" {
+			localSuffix = fmt.Sprintf("%s.%s", localSuffix, clusterSetZone)
+		}
+	} else if tc.Spec.ClusterDomain != "" {
+		localSuffix = fmt.Sprintf("%s.%s", localSuffix, tc.Spec.ClusterDomain)
+	}
+
+	isLocalMember := func(clientURL string) bool {
+		u, err := url.Parse(clientURL)
+		if err != nil {
+			return false
+		}
+		host := u.Hostname()
+		if host == "" || localSuffix == "" {
+			return false
+		}
+		// Check that hostname ends with the expected suffix
+		if !strings.HasSuffix(host, localSuffix) {
+			return false
+		}
+		// Extract pod name (first component before the suffix)
+		// For standard: "pd-0.pd-peer.ns.svc" -> "pd-0"
+		// For multicluster: "pd-0.cluster1.pd-peer.ns.svc.zone" -> "pd-0"
+		podName := strings.TrimSuffix(host, "."+localSuffix)
+		// Verify pod name matches expected PD pod naming pattern: {tcName}-pd-{number}
+		expectedPrefix := tc.Name + "-pd-"
+		return strings.HasPrefix(podName, expectedPrefix)
 	}
 	pdStatus := map[string]v1alpha1.PDMember{}
 	peerPDStatus := map[string]v1alpha1.PDMember{}
@@ -397,7 +425,7 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 		status.LastTransitionTime = metav1.Now()
 
 		// matching `rePDMembers` means `clientURL` is a PD in current tc
-		if rePDMembers.Match([]byte(clientURL)) {
+		if isLocalMember(clientURL) {
 			oldPDMember, exist := tc.Status.PD.Members[name]
 			if exist && status.Health == oldPDMember.Health {
 				status.LastTransitionTime = oldPDMember.LastTransitionTime
@@ -517,6 +545,15 @@ func (m *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbCluster
 		SetServiceWhenPreferIPv6(pdService)
 	}
 
+	if tc.UseMulticlusterDNS() {
+		if pdService.ObjectMeta.Annotations == nil {
+			pdService.ObjectMeta.Annotations = map[string]string{}
+		}
+		if _, exists := pdService.ObjectMeta.Annotations["service.cilium.io/global"]; !exists {
+			pdService.ObjectMeta.Annotations["service.cilium.io/global"] = "true"
+		}
+	}
+
 	return pdService
 }
 
@@ -558,6 +595,15 @@ func getNewPDHeadlessServiceForTidbCluster(tc *v1alpha1.TidbCluster) *corev1.Ser
 
 	if tc.Spec.PreferIPv6 {
 		SetServiceWhenPreferIPv6(svc)
+	}
+
+	if tc.UseMulticlusterDNS() {
+		if svc.ObjectMeta.Annotations == nil {
+			svc.ObjectMeta.Annotations = map[string]string{}
+		}
+		if _, exists := svc.ObjectMeta.Annotations["service.cilium.io/global"]; !exists {
+			svc.ObjectMeta.Annotations["service.cilium.io/global"] = "true"
+		}
 	}
 
 	return svc
