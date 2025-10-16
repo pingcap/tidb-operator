@@ -26,7 +26,9 @@ import (
 )
 
 func PVCNewer() common.PVCNewer[*v1alpha1.TiFlash] {
-	return common.PVCNewerFunc[*v1alpha1.TiFlash](func(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, fg features.Gates) []*corev1.PersistentVolumeClaim {
+	return common.PVCNewerFunc[*v1alpha1.TiFlash](func(
+		cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, fg features.Gates,
+	) []*corev1.PersistentVolumeClaim {
 		pvcs := coreutil.PVCs[scope.TiFlash](
 			cluster,
 			tiflash,

@@ -33,20 +33,20 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/volumes/cloud/aws"
 )
 
-func withPVCStatus(size string, curVACName *string) fake.ChangeFunc[corev1.PersistentVolumeClaim, *corev1.PersistentVolumeClaim] {
+func withPVCStatus(size string) fake.ChangeFunc[corev1.PersistentVolumeClaim, *corev1.PersistentVolumeClaim] {
 	return func(pvc *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
 		pvc.Status.Phase = corev1.ClaimBound
 		pvc.Status.Capacity = corev1.ResourceList{}
 		pvc.Status.Capacity[corev1.ResourceStorage] = resource.MustParse(size)
-		pvc.Status.CurrentVolumeAttributesClassName = curVACName
+		pvc.Status.CurrentVolumeAttributesClassName = nil
 		return pvc
 	}
 }
 
-func withPVCSpec(scName, vacName *string, vol, size string) fake.ChangeFunc[corev1.PersistentVolumeClaim, *corev1.PersistentVolumeClaim] {
+func withPVCSpec(scName *string, vol, size string) fake.ChangeFunc[corev1.PersistentVolumeClaim, *corev1.PersistentVolumeClaim] {
 	return func(pvc *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
 		pvc.Spec.StorageClassName = scName
-		pvc.Spec.VolumeAttributesClassName = vacName
+		pvc.Spec.VolumeAttributesClassName = nil
 		pvc.Spec.VolumeName = vol
 		pvc.Spec.Resources.Requests = corev1.ResourceList{}
 		pvc.Spec.Resources.Requests[corev1.ResourceStorage] = resource.MustParse(size)
@@ -120,8 +120,8 @@ func Test_rawModifier_GetActualVolume(t *testing.T) {
 				fake.FakeObj[corev1.PersistentVolume]("pv-0"),
 				fake.FakeObj[storagev1.StorageClass]("sc-0"),
 			},
-			desired: fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-0", withPVCSpec(ptr.To("sc-0"), nil, "pv-0", "10Gi")),
-			current: fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-0", withPVCStatus("10Gi", nil), withPVCSpec(ptr.To("sc-0"), nil, "pv-0", "10Gi")),
+			desired: fake.FakeObj("pvc-0", withPVCSpec(ptr.To("sc-0"), "pv-0", "10Gi")),
+			current: fake.FakeObj("pvc-0", withPVCStatus("10Gi"), withPVCSpec(ptr.To("sc-0"), "pv-0", "10Gi")),
 			getState: func(_ string) types.VolumeModificationState {
 				return types.VolumeModificationStateFailed
 			},
@@ -174,8 +174,8 @@ func Test_rawModifier_getVolumePhase(t *testing.T) {
 					Size:             resource.MustParse("10Gi"),
 					StorageClassName: ptr.To("sc-0"),
 				},
-				PVC:          fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-0", withPVCSpec(ptr.To("sc-0"), nil, "pv-0", "10Gi"), withPVCStatus("10Gi", nil)),
-				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test")),
+				PVC:          fake.FakeObj("pvc-0", withPVCSpec(ptr.To("sc-0"), "pv-0", "10Gi"), withPVCStatus("10Gi")),
+				StorageClass: fake.FakeObj("sc-0", withProvisioner("test")),
 			},
 			volumeModifiers: map[string]cloud.VolumeModifier{
 				"test": &cloud.FakeVolumeModifier{},
@@ -190,10 +190,10 @@ func Test_rawModifier_getVolumePhase(t *testing.T) {
 				Desired: &DesiredVolume{
 					Size:             resource.MustParse("10Gi"),
 					StorageClassName: ptr.To("sc-1"),
-					StorageClass:     fake.FakeObj[storagev1.StorageClass]("sc-1", withParameters(map[string]string{"iops": "100"})),
+					StorageClass:     fake.FakeObj("sc-1", withParameters(map[string]string{"iops": "100"})),
 				},
-				PVC:          fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-0", withPVCSpec(ptr.To("sc-0"), nil, "pv-0", "10Gi"), withPVCStatus("10Gi", nil)),
-				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test")),
+				PVC:          fake.FakeObj("pvc-0", withPVCSpec(ptr.To("sc-0"), "pv-0", "10Gi"), withPVCStatus("10Gi")),
+				StorageClass: fake.FakeObj("sc-0", withProvisioner("test")),
 				PV:           fake.FakeObj[corev1.PersistentVolume]("pv-0"),
 			},
 			volumeModifiers: map[string]cloud.VolumeModifier{
@@ -210,8 +210,8 @@ func Test_rawModifier_getVolumePhase(t *testing.T) {
 					Size:             resource.MustParse("100Gi"),
 					StorageClassName: ptr.To("sc-0"),
 				},
-				PVC:          fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-0", withPVCSpec(ptr.To("sc-0"), nil, "pv-0", "10Gi"), withPVCStatus("10Gi", nil)),
-				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test"), withAllowVolumeExpansion()),
+				PVC:          fake.FakeObj("pvc-0", withPVCSpec(ptr.To("sc-0"), "pv-0", "10Gi"), withPVCStatus("10Gi")),
+				StorageClass: fake.FakeObj("sc-0", withProvisioner("test"), withAllowVolumeExpansion()),
 			},
 			volumeModifiers: map[string]cloud.VolumeModifier{
 				"test": &cloud.FakeVolumeModifier{},
@@ -227,8 +227,8 @@ func Test_rawModifier_getVolumePhase(t *testing.T) {
 					Size:             resource.MustParse("1Gi"),
 					StorageClassName: ptr.To("sc-0"),
 				},
-				PVC:          fake.FakeObj[corev1.PersistentVolumeClaim]("pvc-1", withPVCSpec(ptr.To("sc-0"), nil, "pv-1", "20Gi"), withPVCStatus("20Gi", nil)),
-				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test")),
+				PVC:          fake.FakeObj("pvc-1", withPVCSpec(ptr.To("sc-0"), "pv-1", "20Gi"), withPVCStatus("20Gi")),
+				StorageClass: fake.FakeObj("sc-0", withProvisioner("test")),
 			},
 			volumeModifiers: map[string]cloud.VolumeModifier{
 				"test": &cloud.FakeVolumeModifier{},
@@ -245,11 +245,11 @@ func Test_rawModifier_getVolumePhase(t *testing.T) {
 					StorageClassName: ptr.To("sc-0"),
 				},
 				PVC: fake.FakeObj("pvc-1",
-					withPVCSpec(ptr.To("sc-0"), nil, "pv-1", "10Gi"), withPVCStatus("10Gi", nil),
+					withPVCSpec(ptr.To("sc-0"), "pv-1", "10Gi"), withPVCStatus("10Gi"),
 					withPVCAnnotation(annoKeyPVCSpecRevision, "2"),
 					withPVCAnnotation(annoKeyPVCStatusRevision, "1"),
 				),
-				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test"), withAllowVolumeExpansion()),
+				StorageClass: fake.FakeObj("sc-0", withProvisioner("test"), withAllowVolumeExpansion()),
 			},
 			volumeModifiers: map[string]cloud.VolumeModifier{
 				"test": &cloud.FakeVolumeModifier{},
@@ -266,10 +266,10 @@ func Test_rawModifier_getVolumePhase(t *testing.T) {
 					StorageClassName: ptr.To("sc-0"),
 				},
 				PVC: fake.FakeObj("pvc-0",
-					withPVCSpec(ptr.To("sc-0"), nil, "pv-0", "10Gi"), withPVCStatus("10Gi", nil),
+					withPVCSpec(ptr.To("sc-0"), "pv-0", "10Gi"), withPVCStatus("10Gi"),
 					withPVCAnnotation(annoKeyPVCLastTransitionTimestamp, "2121-01-01T00:00:00Z"), // a future time
 				),
-				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test"), withAllowVolumeExpansion()),
+				StorageClass: fake.FakeObj("sc-0", withProvisioner("test"), withAllowVolumeExpansion()),
 			},
 			clock: time.RealClock{},
 			volumeModifiers: map[string]cloud.VolumeModifier{
@@ -287,10 +287,10 @@ func Test_rawModifier_getVolumePhase(t *testing.T) {
 					StorageClassName: ptr.To("sc-0"),
 				},
 				PVC: fake.FakeObj("pvc-0",
-					withPVCSpec(ptr.To("sc-0"), nil, "pv-0", "10Gi"), withPVCStatus("10Gi", nil),
+					withPVCSpec(ptr.To("sc-0"), "pv-0", "10Gi"), withPVCStatus("10Gi"),
 					withPVCAnnotation(annoKeyPVCLastTransitionTimestamp, "2021-01-01T00:00:00Z"), // a past time
 				),
-				StorageClass: fake.FakeObj[storagev1.StorageClass]("sc-0", withProvisioner("test"), withAllowVolumeExpansion()),
+				StorageClass: fake.FakeObj("sc-0", withProvisioner("test"), withAllowVolumeExpansion()),
 			},
 			clock: time.RealClock{},
 			volumeModifiers: map[string]cloud.VolumeModifier{
@@ -341,8 +341,8 @@ func Test_rawModifier_Modify(t *testing.T) {
 			name: "preparing, wait for fs to be resized",
 			vol: &ActualVolume{
 				PVC: fake.FakeObj("pvc-0",
-					withPVCSpec(ptr.To("sc-0"), nil, "pv-0", "10Gi"),
-					withPVCStatus("10Gi", nil),
+					withPVCSpec(ptr.To("sc-0"), "pv-0", "10Gi"),
+					withPVCStatus("10Gi"),
 				),
 				Phase: VolumePhasePreparing,
 				Desired: &DesiredVolume{
@@ -357,8 +357,8 @@ func Test_rawModifier_Modify(t *testing.T) {
 			name: "modifying, wait for fs to be resized",
 			vol: &ActualVolume{
 				PVC: fake.FakeObj("pvc-0",
-					withPVCSpec(ptr.To("sc-0"), nil, "pv-0", "10Gi"),
-					withPVCStatus("10Gi", nil),
+					withPVCSpec(ptr.To("sc-0"), "pv-0", "10Gi"),
+					withPVCStatus("10Gi"),
 				),
 				Phase: VolumePhaseModifying,
 				Desired: &DesiredVolume{
@@ -373,8 +373,8 @@ func Test_rawModifier_Modify(t *testing.T) {
 			name: "modifying, synced with desired",
 			vol: &ActualVolume{
 				PVC: fake.FakeObj("pvc-0",
-					withPVCSpec(ptr.To("sc-0"), nil, "pv-0", "20Gi"),
-					withPVCStatus("20Gi", nil),
+					withPVCSpec(ptr.To("sc-0"), "pv-0", "20Gi"),
+					withPVCStatus("20Gi"),
 				),
 				Phase: VolumePhaseModifying,
 				Desired: &DesiredVolume{

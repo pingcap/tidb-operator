@@ -26,13 +26,15 @@ import (
 )
 
 func PVCNewer() common.PVCNewer[*v1alpha1.Scheduler] {
-	return common.PVCNewerFunc[*v1alpha1.Scheduler](func(cluster *v1alpha1.Cluster, scheduler *v1alpha1.Scheduler, fg features.Gates) []*corev1.PersistentVolumeClaim {
-		pvcs := coreutil.PVCs[scope.Scheduler](
-			cluster,
-			scheduler,
-			coreutil.EnableVAC(fg.Enabled(meta.VolumeAttributesClass)),
-		)
+	return common.PVCNewerFunc[*v1alpha1.Scheduler](
+		func(cluster *v1alpha1.Cluster, scheduler *v1alpha1.Scheduler, fg features.Gates) []*corev1.PersistentVolumeClaim {
+			pvcs := coreutil.PVCs[scope.Scheduler](
+				cluster,
+				scheduler,
+				coreutil.EnableVAC(fg.Enabled(meta.VolumeAttributesClass)),
+			)
 
-		return pvcs
-	})
+			return pvcs
+		},
+	)
 }

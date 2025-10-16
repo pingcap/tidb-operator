@@ -26,7 +26,9 @@ import (
 )
 
 func PVCNewer() common.PVCNewer[*v1alpha1.TiProxy] {
-	return common.PVCNewerFunc[*v1alpha1.TiProxy](func(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy, fg features.Gates) []*corev1.PersistentVolumeClaim {
+	return common.PVCNewerFunc[*v1alpha1.TiProxy](func(
+		cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy, fg features.Gates,
+	) []*corev1.PersistentVolumeClaim {
 		pvcs := coreutil.PVCs[scope.TiProxy](
 			cluster,
 			tiproxy,
@@ -43,4 +45,3 @@ func PVCNewer() common.PVCNewer[*v1alpha1.TiProxy] {
 		return pvcs
 	})
 }
-

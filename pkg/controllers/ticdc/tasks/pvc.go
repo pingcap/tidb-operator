@@ -26,7 +26,9 @@ import (
 )
 
 func PVCNewer() common.PVCNewer[*v1alpha1.TiCDC] {
-	return common.PVCNewerFunc[*v1alpha1.TiCDC](func(cluster *v1alpha1.Cluster, ticdc *v1alpha1.TiCDC, fg features.Gates) []*corev1.PersistentVolumeClaim {
+	return common.PVCNewerFunc[*v1alpha1.TiCDC](func(
+		cluster *v1alpha1.Cluster, ticdc *v1alpha1.TiCDC, fg features.Gates,
+	) []*corev1.PersistentVolumeClaim {
 		pvcs := coreutil.PVCs[scope.TiCDC](
 			cluster,
 			ticdc,
@@ -43,4 +45,3 @@ func PVCNewer() common.PVCNewer[*v1alpha1.TiCDC] {
 		return pvcs
 	})
 }
-

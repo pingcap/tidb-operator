@@ -181,10 +181,6 @@ func isStorageClassChanged(pre, cur string) bool {
 	return false
 }
 
-func isVolumeAttributesClassChanged(actual *ActualVolume) bool {
-	return areStringsDifferent(actual.VACName, actual.Desired.VACName)
-}
-
 func areStringsDifferent(pre, cur *string) bool {
 	if pre == cur {
 		return false

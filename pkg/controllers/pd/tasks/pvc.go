@@ -26,22 +26,24 @@ import (
 )
 
 func PVCNewer() common.PVCNewer[*v1alpha1.PD] {
-	return common.PVCNewerFunc[*v1alpha1.PD](func(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, fg features.Gates) []*corev1.PersistentVolumeClaim {
-		pvcs := coreutil.PVCs[scope.PD](
-			cluster,
-			pd,
-			coreutil.EnableVAC(fg.Enabled(meta.VolumeAttributesClass)),
-			coreutil.PVCPatchFunc(func(_ *v1alpha1.Volume, pvc *corev1.PersistentVolumeClaim) {
-				// legacy labels in v1
-				if cluster.Status.ID != "" {
-					pvc.Labels[v1alpha1.LabelKeyClusterID] = cluster.Status.ID
-				}
-				if pd.Status.ID != "" {
-					pvc.Labels[v1alpha1.LabelKeyMemberID] = pd.Status.ID
-				}
-			}),
-		)
+	return common.PVCNewerFunc[*v1alpha1.PD](
+		func(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, fg features.Gates) []*corev1.PersistentVolumeClaim {
+			pvcs := coreutil.PVCs[scope.PD](
+				cluster,
+				pd,
+				coreutil.EnableVAC(fg.Enabled(meta.VolumeAttributesClass)),
+				coreutil.PVCPatchFunc(func(_ *v1alpha1.Volume, pvc *corev1.PersistentVolumeClaim) {
+					// legacy labels in v1
+					if cluster.Status.ID != "" {
+						pvc.Labels[v1alpha1.LabelKeyClusterID] = cluster.Status.ID
+					}
+					if pd.Status.ID != "" {
+						pvc.Labels[v1alpha1.LabelKeyMemberID] = pd.Status.ID
+					}
+				}),
+			)
 
-		return pvcs
-	})
+			return pvcs
+		},
+	)
 }

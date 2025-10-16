@@ -26,7 +26,9 @@ import (
 )
 
 func PVCNewer() common.PVCNewer[*v1alpha1.TiKV] {
-	return common.PVCNewerFunc[*v1alpha1.TiKV](func(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, fg features.Gates) []*corev1.PersistentVolumeClaim {
+	return common.PVCNewerFunc[*v1alpha1.TiKV](func(
+		cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, fg features.Gates,
+	) []*corev1.PersistentVolumeClaim {
 		pvcs := coreutil.PVCs[scope.TiKV](
 			cluster,
 			tikv,

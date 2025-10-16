@@ -27,7 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-// SyncPVCs gets the actual PVCs and compares them with the expected PVCs.
+// LegacySyncPVCs gets the actual PVCs and compares them with the expected PVCs.
 // If the actual PVCs are different from the expected PVCs, it will update the PVCs.
 func LegacySyncPVCs(ctx context.Context, cli client.Client,
 	expectPVCs []*corev1.PersistentVolumeClaim, vm Modifier, logger logr.Logger,
