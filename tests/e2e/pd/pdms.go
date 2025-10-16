@@ -32,7 +32,7 @@ var _ = ginkgo.Describe("PD", label.PD, label.FeaturePDMS, func() {
 	f.Setup()
 
 	ginkgo.Context("PDMS Basic", label.P0, func() {
-		ginkgo.It("support create PD, TSO, and scheduler with 1 replica", func(ctx context.Context) {
+		ginkgo.It("support create PD, TSO, and scheduling with 1 replica", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx,
 				data.WithGroupVersion[*runtime.PDGroup](PDMSVersion),
 				data.WithMSMode(),
@@ -42,17 +42,17 @@ var _ = ginkgo.Describe("PD", label.PD, label.FeaturePDMS, func() {
 				data.WithGroupVersion[*runtime.TSOGroup](PDMSVersion),
 				data.WithReplicas[*runtime.TSOGroup](1),
 			)
-			sg := f.MustCreateScheduler(ctx,
-				data.WithGroupVersion[*runtime.SchedulerGroup](PDMSVersion),
-				data.WithReplicas[*runtime.SchedulerGroup](1),
+			sg := f.MustCreateScheduling(ctx,
+				data.WithGroupVersion[*runtime.SchedulingGroup](PDMSVersion),
+				data.WithReplicas[*runtime.SchedulingGroup](1),
 			)
 
 			f.WaitForPDGroupReady(ctx, pdg)
 			f.WaitForTSOGroupReady(ctx, tg)
-			f.WaitForSchedulerGroupReady(ctx, sg)
+			f.WaitForSchedulingGroupReady(ctx, sg)
 		})
 
-		ginkgo.It("support create 3 PD instances, 2 TSO instances, and 2 Scheduler instances", func(ctx context.Context) {
+		ginkgo.It("support create 3 PD instances, 2 TSO instances, and 2 scheduling instances", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx,
 				data.WithGroupVersion[*runtime.PDGroup](PDMSVersion),
 				data.WithMSMode(),
@@ -62,14 +62,14 @@ var _ = ginkgo.Describe("PD", label.PD, label.FeaturePDMS, func() {
 				data.WithGroupVersion[*runtime.TSOGroup](PDMSVersion),
 				data.WithReplicas[*runtime.TSOGroup](2),
 			)
-			sg := f.MustCreateScheduler(ctx,
-				data.WithGroupVersion[*runtime.SchedulerGroup](PDMSVersion),
-				data.WithReplicas[*runtime.SchedulerGroup](2),
+			sg := f.MustCreateScheduling(ctx,
+				data.WithGroupVersion[*runtime.SchedulingGroup](PDMSVersion),
+				data.WithReplicas[*runtime.SchedulingGroup](2),
 			)
 
 			f.WaitForPDGroupReady(ctx, pdg)
 			f.WaitForTSOGroupReady(ctx, tg)
-			f.WaitForSchedulerGroupReady(ctx, sg)
+			f.WaitForSchedulingGroupReady(ctx, sg)
 		})
 	})
 })

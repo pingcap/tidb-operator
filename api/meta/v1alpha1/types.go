@@ -40,7 +40,9 @@ const (
 	ComponentTiFlash           Component = "tiflash"
 	ComponentTiCDC             Component = "ticdc"
 	ComponentTSO               Component = "tso"
-	ComponentScheduler         Component = "scheduler"
+	ComponentScheduling        Component = "scheduling"
 	ComponentTiProxy           Component = "tiproxy"
 	ComponentReplicationWorker Component = "repl-worker"
+	// Deprecated: use ComponentScheduling
+	ComponentScheduler Component = "scheduler"
 )

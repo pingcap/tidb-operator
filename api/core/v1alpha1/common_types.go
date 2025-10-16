@@ -132,9 +132,11 @@ const (
 	LabelValComponentTiFlash           = string(meta.ComponentTiFlash)
 	LabelValComponentTiCDC             = string(meta.ComponentTiCDC)
 	LabelValComponentTSO               = string(meta.ComponentTSO)
-	LabelValComponentScheduler         = string(meta.ComponentScheduler)
+	LabelValComponentScheduling        = string(meta.ComponentScheduling)
 	LabelValComponentTiProxy           = string(meta.ComponentTiProxy)
 	LabelValComponentReplicationWorker = string(meta.ComponentReplicationWorker)
+	// Deprecated: use LabelValComponentScheduling
+	LabelValComponentScheduler = string(meta.ComponentScheduler)
 
 	// LabelKeyClusterID is the unique identifier of the cluster.
 	// This label is used for backward compatibility with TiDB Operator v1, so it has a different prefix.

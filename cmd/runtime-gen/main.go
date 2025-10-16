@@ -119,6 +119,7 @@ func getTargets(_ *generator.Context, args *Args) []generator.Target {
 		"tiflash",
 		"ticdc",
 		"tso",
+		"scheduling",
 		"scheduler",
 		"tiproxy",
 		"replicationworker",

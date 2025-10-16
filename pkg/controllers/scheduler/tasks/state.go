@@ -29,7 +29,7 @@ type state struct {
 	key types.NamespacedName
 
 	cluster   *v1alpha1.Cluster
-	scheduler *v1alpha1.Scheduler // Renamed from tso to scheduler
+	scheduler *v1alpha1.Scheduler
 	pod       *corev1.Pod
 
 	// Pod cannot be updated when call DELETE API, so we have to set this field to indicate
@@ -60,6 +60,10 @@ type State interface {
 	stateutil.IFeatureGates
 }
 
+type ReconcileContext struct {
+	State
+}
+
 func NewState(key types.NamespacedName) State {
 	s := &state{
 		key: key,
@@ -76,7 +80,7 @@ func (s *state) Object() *v1alpha1.Scheduler {
 	return s.scheduler
 }
 
-func (s *state) Scheduler() *v1alpha1.Scheduler { // Added Scheduler() method, similar to TSO()
+func (s *state) Scheduler() *v1alpha1.Scheduler {
 	return s.scheduler
 }
 

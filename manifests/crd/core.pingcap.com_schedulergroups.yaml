@@ -14,7 +14,7 @@ spec:
     listKind: SchedulerGroupList
     plural: schedulergroups
     shortNames:
-    - sg
+    - schg
     singular: schedulergroup
   scope: Namespaced
   versions:
@@ -46,10 +46,14 @@ spec:
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
+    deprecated: true
+    deprecationWarning: This type is deprecated, use SchedulingGroup instead
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: SchedulerGroup defines a group of similar Scheduler instances
+        description: |-
+          SchedulerGroup defines a group of similar Scheduler instances
+          Deprecated: use SchedulingGroup
         properties:
           apiVersion:
             description: |-
@@ -69,7 +73,9 @@ spec:
           metadata:
             type: object
           spec:
-            description: SchedulerGroupSpec describes the common attributes of a SchedulerGroup
+            description: |-
+              SchedulerGroupSpec describes the common attributes of a SchedulerGroup
+              Deprecated: use SchedulingGroupSpec
             properties:
               cluster:
                 description: |-
@@ -149,6 +155,9 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               template:
+                description: |-
+                  SchedulerTemplate defines template of Scheduler
+                  Deprecated: use SchedulingTemplate
                 properties:
                   metadata:
                     description: |-
@@ -185,16 +194,18 @@ spec:
                         type: string
                     type: object
                   spec:
-                    description: SchedulerTemplateSpec can only be specified in SchedulerGroup
+                    description: |-
+                      SchedulerTemplateSpec can only be specified in SchedulerGroup
+                      Deprecated: use SchedulingTemplateSpec
                     properties:
                       config:
                         description: |-
                           Config defines config file of Scheduler
-                          See https://docs.pingcap.com/tidb/stable/Scheduler-configuration-file/
+                          See https://docs.pingcap.com/tidb/stable/scheduling-configuration-file/
                         type: string
                       image:
                         description: |-
-                          Image is pd's image
+                          Image is scheduler's image
                           If tag is omitted, version will be used as the image tag.
                           Default is pingcap/pd
                         type: string
@@ -8792,6 +8803,7 @@ spec:
             - template
             type: object
           status:
+            description: 'Deprecated: use SchedulingGroupStatus'
             properties:
               collisionCount:
                 description: |-

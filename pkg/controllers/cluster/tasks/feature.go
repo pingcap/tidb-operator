@@ -64,6 +64,11 @@ func (t *TaskFeatureGates) Sync(ctx task.Context[ReconcileContext]) task.Result 
 			return task.Fail().With("can't update feature gates for tso group %s/%S: %w", tg.Namespace, tg.Name, err)
 		}
 	}
+	for _, sg := range rtx.SchedulingGroups {
+		if err := patchFeatures[scope.SchedulingGroup](ctx, t.Client, sg, fs); err != nil {
+			return task.Fail().With("can't update feature gates for scheduling group %s/%S: %w", sg.Namespace, sg.Name, err)
+		}
+	}
 	for _, sg := range rtx.SchedulerGroups {
 		if err := patchFeatures[scope.SchedulerGroup](ctx, t.Client, sg, fs); err != nil {
 			return task.Fail().With("can't update feature gates for scheduler group %s/%S: %w", sg.Namespace, sg.Name, err)

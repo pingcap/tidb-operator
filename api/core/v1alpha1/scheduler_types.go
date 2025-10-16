@@ -21,7 +21,9 @@ import (
 )
 
 const (
-	SchedulerPortNameClient    = "client"
+	// Deprecated: use SchedulingPortNameClient
+	SchedulerPortNameClient = "client"
+	// Deprecated: use DefaultSchedulingPortClient
 	DefaultSchedulerPortClient = 3379
 )
 
@@ -29,6 +31,7 @@ const (
 // +kubebuilder:object:root=true
 
 // SchedulerGroupList defines a list of Scheduler groups
+// Deprecated: use SchedulingGroupList
 type SchedulerGroupList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -40,7 +43,7 @@ type SchedulerGroupList struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:subresource:scale:specpath=.spec.replicas,statuspath=.status.replicas,selectorpath=.status.selector
-// +kubebuilder:resource:categories=group,shortName=sg
+// +kubebuilder:resource:categories=group,shortName=schg
 // +kubebuilder:selectablefield:JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Desired",type=string,JSONPath=`.spec.replicas`
@@ -51,8 +54,10 @@ type SchedulerGroupList struct {
 // +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:deprecatedversion:warning="This type is deprecated, use SchedulingGroup instead"
 
 // SchedulerGroup defines a group of similar Scheduler instances
+// Deprecated: use SchedulingGroup
 // +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 40",message="name must not exceed 40 characters"
 type SchedulerGroup struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -66,6 +71,7 @@ type SchedulerGroup struct {
 // +kubebuilder:object:root=true
 
 // SchedulerList defines a list of Scheduler instances
+// Deprecated: use SchedulingList
 type SchedulerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -82,8 +88,10 @@ type SchedulerList struct {
 // +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:deprecatedversion:warning="This is deprecated, use Scheduling instead"
 
 // Scheduler defines a Scheduler instance
+// Deprecated: use Scheduling
 // +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 47",message="name must not exceed 47 characters"
 type Scheduler struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -94,6 +102,7 @@ type Scheduler struct {
 }
 
 // SchedulerGroupSpec describes the common attributes of a SchedulerGroup
+// Deprecated: use SchedulingGroupSpec
 type SchedulerGroupSpec struct {
 	Cluster ClusterReference `json:"cluster"`
 	// Features are enabled feature
@@ -109,13 +118,15 @@ type SchedulerGroupSpec struct {
 	Template SchedulerTemplate `json:"template"`
 }
 
+// SchedulerTemplate defines template of Scheduler
+// Deprecated: use SchedulingTemplate
 type SchedulerTemplate struct {
 	ObjectMeta `json:"metadata,omitempty"`
 	Spec       SchedulerTemplateSpec `json:"spec"`
 }
 
 // SchedulerTemplateSpec can only be specified in SchedulerGroup
-// TODO: It's name may need to be changed to distinguish from PodTemplateSpec
+// Deprecated: use SchedulingTemplateSpec
 // +kubebuilder:validation:XValidation:rule="!has(self.overlay) || !has(self.overlay.volumeClaims) || (has(self.volumes) && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v, v.name)))",message="overlay volumeClaims names must exist in volumes"
 type SchedulerTemplateSpec struct {
 	// Version must be a semantic version.
@@ -123,7 +134,7 @@ type SchedulerTemplateSpec struct {
 	// +kubebuilder:validation:Pattern=`^(v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`
 	Version string `json:"version"`
 
-	// Image is pd's image
+	// Image is scheduler's image
 	// If tag is omitted, version will be used as the image tag.
 	// Default is pingcap/pd
 	Image *string `json:"image,omitempty"`
@@ -136,7 +147,7 @@ type SchedulerTemplateSpec struct {
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 
 	// Config defines config file of Scheduler
-	// See https://docs.pingcap.com/tidb/stable/Scheduler-configuration-file/
+	// See https://docs.pingcap.com/tidb/stable/scheduling-configuration-file/
 	Config ConfigFile `json:"config,omitempty"`
 
 	// Security defines security config
@@ -153,22 +164,26 @@ type SchedulerTemplateSpec struct {
 	Overlay *Overlay `json:"overlay,omitempty"`
 }
 
+// Deprecated: use SchedulingServer
 type SchedulerServer struct {
 	// Ports defines all ports listened by Scheduler
 	Ports SchedulerPorts `json:"ports,omitempty"`
 }
 
+// Deprecated: use SchedulingPorts
 type SchedulerPorts struct {
 	// Client defines port for Scheduler's api service
 	Client *Port `json:"client,omitempty"`
 }
 
+// Deprecated: use SchedulingGroupStatus
 type SchedulerGroupStatus struct {
 	CommonStatus `json:",inline"`
 	GroupStatus  `json:",inline"`
 }
 
 // SchedulerSpec describes the common attributes of a Scheduler instance
+// Deprecated: use SchedulingSpec
 // +kubebuilder:validation:XValidation:rule="(!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology) && has(self.topology))",fieldPath=".topology",message="topology can only be set when creating"
 type SchedulerSpec struct {
 	// Cluster is a reference of tidb cluster
@@ -191,6 +206,7 @@ type SchedulerSpec struct {
 	SchedulerTemplateSpec `json:",inline"`
 }
 
+// Deprecated: use SchedulingStatus
 type SchedulerStatus struct {
 	CommonStatus `json:",inline"`
 }

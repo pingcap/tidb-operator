@@ -191,8 +191,8 @@ func (f *Framework) MustCreateTSO(ctx context.Context, ps ...data.GroupPatch[*ru
 	return tg
 }
 
-func (f *Framework) MustCreateScheduler(ctx context.Context, ps ...data.GroupPatch[*runtime.SchedulerGroup]) *v1alpha1.SchedulerGroup {
-	sg := data.NewSchedulerGroup(f.Namespace.Name, ps...)
+func (f *Framework) MustCreateScheduling(ctx context.Context, ps ...data.GroupPatch[*runtime.SchedulingGroup]) *v1alpha1.SchedulingGroup {
+	sg := data.NewSchedulingGroup(f.Namespace.Name, ps...)
 	ginkgo.By("Creating a scheduler group")
 	f.Must(f.Client.Create(ctx, sg))
 	return sg
