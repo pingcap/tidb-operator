@@ -157,11 +157,22 @@ func (*Scheduler) Component() string {
 	return v1alpha1.LabelValComponentScheduler
 }
 
+func (in *Scheduler) Volumes() []v1alpha1.Volume {
+	return in.Spec.Volumes
+}
+
 func (in *Scheduler) PodOverlay() *v1alpha1.PodOverlay {
 	if in.Spec.Overlay == nil {
 		return nil
 	}
 	return in.Spec.Overlay.Pod
+}
+
+func (in *Scheduler) PVCOverlay() []v1alpha1.NamedPersistentVolumeClaimOverlay {
+	if in.Spec.Overlay == nil {
+		return nil
+	}
+	return in.Spec.Overlay.PersistentVolumeClaims
 }
 
 func (in *Scheduler) Features() []metav1alpha1.Feature {

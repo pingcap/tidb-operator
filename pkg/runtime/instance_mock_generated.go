@@ -515,6 +515,20 @@ func (mr *MockInstanceMockRecorder) ObservedGeneration() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ObservedGeneration", reflect.TypeOf((*MockInstance)(nil).ObservedGeneration))
 }
 
+// PVCOverlay mocks base method.
+func (m *MockInstance) PVCOverlay() []v1alpha1.NamedPersistentVolumeClaimOverlay {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PVCOverlay")
+	ret0, _ := ret[0].([]v1alpha1.NamedPersistentVolumeClaimOverlay)
+	return ret0
+}
+
+// PVCOverlay indicates an expected call of PVCOverlay.
+func (mr *MockInstanceMockRecorder) PVCOverlay() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PVCOverlay", reflect.TypeOf((*MockInstance)(nil).PVCOverlay))
+}
+
 // PodOverlay mocks base method.
 func (m *MockInstance) PodOverlay() *v1alpha1.PodOverlay {
 	m.ctrl.T.Helper()
@@ -819,4 +833,18 @@ func (m *MockInstance) Version() string {
 func (mr *MockInstanceMockRecorder) Version() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Version", reflect.TypeOf((*MockInstance)(nil).Version))
+}
+
+// Volumes mocks base method.
+func (m *MockInstance) Volumes() []v1alpha1.Volume {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Volumes")
+	ret0, _ := ret[0].([]v1alpha1.Volume)
+	return ret0
+}
+
+// Volumes indicates an expected call of Volumes.
+func (mr *MockInstanceMockRecorder) Volumes() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Volumes", reflect.TypeOf((*MockInstance)(nil).Volumes))
 }

@@ -138,7 +138,7 @@ func TestSyncPVCs(t *testing.T) {
 			}
 
 			cli := client.NewFakeClient(tt.existingObjs...)
-			if _, err := SyncPVCs(context.TODO(), cli, tt.expectPVCs, vm, logr.Discard()); (err != nil) != tt.wantErr {
+			if _, err := LegacySyncPVCs(context.TODO(), cli, tt.expectPVCs, vm, logr.Discard()); (err != nil) != tt.wantErr {
 				t.Errorf("SyncPVCs() error = %v, wantErr %v", err, tt.wantErr)
 			}
 

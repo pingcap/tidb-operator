@@ -45,7 +45,10 @@ type Instance interface {
 	CurrentRevision() string
 	SetCurrentRevision(rev string)
 
+	Volumes() []v1alpha1.Volume
+
 	PodOverlay() *v1alpha1.PodOverlay
+	PVCOverlay() []v1alpha1.NamedPersistentVolumeClaimOverlay
 
 	Subdomain() string
 
