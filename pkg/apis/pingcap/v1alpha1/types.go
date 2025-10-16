@@ -995,6 +995,11 @@ type LogTailerSpec struct {
 	// and https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/
 	// +optional
 	UseSidecar bool `json:"useSidecar,omitempty"`
+
+	// Tailer needs to wait to flush logs to stdout after receiving sig TERM
+	// Default is not sleep
+	// +optional
+	SleepTimeSeconds *int64 `json:"sleepTimeSeconds,omitempty"`
 }
 
 // InitContainerSpec contains basic spec about a init container
@@ -1290,6 +1295,11 @@ type TiDBSlowLogTailerSpec struct {
 	// and https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/
 	// +optional
 	UseSidecar bool `json:"useSidecar,omitempty"`
+
+	// Tailer needs to wait to flush logs to stdout after receiving sig TERM
+	// Default is not sleep
+	// +optional
+	SleepTimeSeconds *int64 `json:"sleepTimeSeconds,omitempty"`
 }
 
 // ComponentSpec is the base spec of each component, the fields should always accessed by the Basic<Component>Spec() method to respect the cluster-level properties

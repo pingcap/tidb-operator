@@ -2627,6 +2627,11 @@ func (in *LogSubCommandStatus) DeepCopy() *LogSubCommandStatus {
 func (in *LogTailerSpec) DeepCopyInto(out *LogTailerSpec) {
 	*out = *in
 	in.ResourceRequirements.DeepCopyInto(&out.ResourceRequirements)
+	if in.SleepTimeSeconds != nil {
+		in, out := &in.SleepTimeSeconds, &out.SleepTimeSeconds
+		*out = new(int64)
+		**out = **in
+	}
 	return
 }
 
@@ -6186,6 +6191,11 @@ func (in *TiDBSlowLogTailerSpec) DeepCopyInto(out *TiDBSlowLogTailerSpec) {
 	if in.ImagePullPolicy != nil {
 		in, out := &in.ImagePullPolicy, &out.ImagePullPolicy
 		*out = new(v1.PullPolicy)
+		**out = **in
+	}
+	if in.SleepTimeSeconds != nil {
+		in, out := &in.SleepTimeSeconds, &out.SleepTimeSeconds
+		*out = new(int64)
 		**out = **in
 	}
 	return
