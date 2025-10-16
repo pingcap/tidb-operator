@@ -33,25 +33,6 @@ func TestScheduling(t *testing.T) {
 	Validate(t, "crd/core.pingcap.com_schedulings.yaml", cases)
 }
 
-func transferSchedulingCases(t *testing.T, cases []Case, fields ...string) []Case {
-	for i := range cases {
-		c := &cases[i]
-
-		current := basicScheduling()
-		c.current = Patch(t, c.mode, current, c.current, fields...)
-
-		if c.isCreate {
-			c.old = nil
-			continue
-		}
-
-		old := basicScheduling()
-		c.old = Patch(t, c.mode, old, c.old, fields...)
-	}
-
-	return cases
-}
-
 func basicScheduling() map[string]any {
 	data := []byte(`
 apiVersion: core.pingcap.com/v1alpha1

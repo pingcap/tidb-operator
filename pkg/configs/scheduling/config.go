@@ -103,5 +103,11 @@ func getAdvertiseClientURLs(s *v1alpha1.Scheduling, scheme string) string {
 	if ns == "" {
 		ns = corev1.NamespaceDefault
 	}
-	return fmt.Sprintf("%s://%s.%s.%s:%d", scheme, coreutil.PodName[scope.Scheduling](s), s.Spec.Subdomain, ns, coreutil.SchedulingClientPort(s))
+	return fmt.Sprintf("%s://%s.%s.%s:%d",
+		scheme,
+		coreutil.PodName[scope.Scheduling](s),
+		s.Spec.Subdomain,
+		ns,
+		coreutil.SchedulingClientPort(s),
+	)
 }
