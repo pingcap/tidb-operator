@@ -22,8 +22,8 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 fi
 
 # parameters
-OPERATOR_OLD="v1.6.1"
-OPERATOR_NEW="v1.6.3"
+OPERATOR_OLD="v1.6.3"
+OPERATOR_NEW="v1.6.4"
 TIDB_OLD="v8.5.0"
 TIDB_NEW="v8.5.2"
 
@@ -37,3 +37,4 @@ find ./charts -name "*\.yaml"| xargs $SED_BIN -i "s/$TIDB_OLD/$TIDB_NEW/g"
 $SED_BIN -i "s/$TIDB_OLD/$TIDB_NEW/g" images/tidb-backup-manager/Dockerfile
 
 find ./ -name "*\.mod" | xargs $SED_BIN -i -E "s/(github.com\/pingcap\/tidb-operator\/.+) ($OPERATOR_OLD)/\1 $OPERATOR_NEW/g"
+find ./examples -name "*\.md"| xargs $SED_BIN -i "s/$OPERATOR_OLD/$OPERATOR_NEW/g"
