@@ -1,7 +1,7 @@
 apiVersion: core.pingcap.com/v1alpha1
-kind: SchedulerGroup
+kind: SchedulingGroup
 metadata:
-  name: scheduler
+  name: scheduling
 spec:
   cluster:
     name: pdms

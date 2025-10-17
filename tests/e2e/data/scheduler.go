@@ -22,17 +22,17 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
-func NewSchedulerGroup(ns string, patches ...GroupPatch[*runtime.SchedulerGroup]) *v1alpha1.SchedulerGroup {
-	sg := &runtime.SchedulerGroup{
+func NewSchedulingGroup(ns string, patches ...GroupPatch[*runtime.SchedulingGroup]) *v1alpha1.SchedulingGroup {
+	sg := &runtime.SchedulingGroup{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,
-			Name:      defaultSchedulerGroupName,
+			Name:      defaultSchedulingGroupName,
 		},
-		Spec: v1alpha1.SchedulerGroupSpec{
+		Spec: v1alpha1.SchedulingGroupSpec{
 			Cluster:  v1alpha1.ClusterReference{Name: defaultClusterName},
 			Replicas: ptr.To[int32](1),
-			Template: v1alpha1.SchedulerTemplate{
-				Spec: v1alpha1.SchedulerTemplateSpec{
+			Template: v1alpha1.SchedulingTemplate{
+				Spec: v1alpha1.SchedulingTemplateSpec{
 					Version: defaultVersion,
 					Image:   ptr.To(defaultImageRegistry + "pd"),
 				},
@@ -43,11 +43,11 @@ func NewSchedulerGroup(ns string, patches ...GroupPatch[*runtime.SchedulerGroup]
 		p(sg)
 	}
 
-	return runtime.ToSchedulerGroup(sg)
+	return runtime.ToSchedulingGroup(sg)
 }
 
-func WithSchedulerNextGen() GroupPatch[*runtime.SchedulerGroup] {
-	return func(obj *runtime.SchedulerGroup) {
+func WithSchedulingNextGen() GroupPatch[*runtime.SchedulingGroup] {
+	return func(obj *runtime.SchedulingGroup) {
 		obj.Spec.Template.Spec.Version = "v9.0.0"
 		obj.Spec.Template.Spec.Image = ptr.To(defaultImageRegistry + "pd:master-next-gen")
 	}

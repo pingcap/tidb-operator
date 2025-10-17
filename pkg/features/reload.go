@@ -47,6 +47,7 @@ var unreloadable = map[meta.Feature][]meta.Component{
 		meta.ComponentTiFlash,
 		meta.ComponentTiCDC,
 		meta.ComponentTSO,
+		meta.ComponentScheduling,
 		meta.ComponentScheduler,
 		meta.ComponentTiProxy,
 		meta.ComponentReplicationWorker,

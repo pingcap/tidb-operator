@@ -68,7 +68,7 @@ func (defaultPolicy[S, F, T]) ArePreconditionsMet(ctx context.Context, cli clien
 	switch scope.Component[S]() {
 	case v1alpha1.LabelValComponentTiProxy, v1alpha1.LabelValComponentPD,
 		v1alpha1.LabelValComponentTiCDC, v1alpha1.LabelValComponentReplicationWorker:
-	case v1alpha1.LabelValComponentTSO, v1alpha1.LabelValComponentScheduler:
+	case v1alpha1.LabelValComponentTSO, v1alpha1.LabelValComponentScheduling, v1alpha1.LabelValComponentScheduler:
 		comps = append(comps,
 			v1alpha1.LabelValComponentPD,
 		)
@@ -77,6 +77,7 @@ func (defaultPolicy[S, F, T]) ArePreconditionsMet(ctx context.Context, cli clien
 			v1alpha1.LabelValComponentTiFlash,
 			v1alpha1.LabelValComponentPD,
 			v1alpha1.LabelValComponentTSO,
+			v1alpha1.LabelValComponentScheduling,
 			v1alpha1.LabelValComponentScheduler,
 		)
 	case v1alpha1.LabelValComponentTiDB:
@@ -85,12 +86,14 @@ func (defaultPolicy[S, F, T]) ArePreconditionsMet(ctx context.Context, cli clien
 			v1alpha1.LabelValComponentTiFlash,
 			v1alpha1.LabelValComponentPD,
 			v1alpha1.LabelValComponentTSO,
+			v1alpha1.LabelValComponentScheduling,
 			v1alpha1.LabelValComponentScheduler,
 		)
 	case v1alpha1.LabelValComponentTiFlash:
 		comps = append(comps,
 			v1alpha1.LabelValComponentPD,
 			v1alpha1.LabelValComponentTSO,
+			v1alpha1.LabelValComponentScheduling,
 			v1alpha1.LabelValComponentScheduler,
 		)
 	default:
@@ -109,6 +112,8 @@ func checkComponentsUpgraded(ctx context.Context, c client.Client, ns, cluster, 
 			upgraded, err = checkOneComponentUpgraded[scope.PDGroup](ctx, c, ns, cluster, version)
 		case v1alpha1.LabelValComponentTSO:
 			upgraded, err = checkOneComponentUpgraded[scope.TSOGroup](ctx, c, ns, cluster, version)
+		case v1alpha1.LabelValComponentScheduling:
+			upgraded, err = checkOneComponentUpgraded[scope.SchedulingGroup](ctx, c, ns, cluster, version)
 		case v1alpha1.LabelValComponentScheduler:
 			upgraded, err = checkOneComponentUpgraded[scope.SchedulerGroup](ctx, c, ns, cluster, version)
 		case v1alpha1.LabelValComponentTiKV:

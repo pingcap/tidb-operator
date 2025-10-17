@@ -50,8 +50,8 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 			tg := f.MustCreateTSO(ctx,
 				data.WithClusterTLS[*runtime.TSOGroup](ca, "tso-internal"),
 			)
-			sg := f.MustCreateScheduler(ctx,
-				data.WithClusterTLS[*runtime.SchedulerGroup](ca, "scheduler-internal"),
+			sg := f.MustCreateScheduling(ctx,
+				data.WithClusterTLS[*runtime.SchedulingGroup](ca, "scheduling-internal"),
 			)
 			kvg := f.MustCreateTiKV(ctx,
 				data.WithClusterTLS[*runtime.TiKVGroup](ca, "tikv-internal"),
@@ -74,7 +74,7 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 
 			f.WaitForPDGroupReady(ctx, pdg)
 			f.WaitForTSOGroupReady(ctx, tg)
-			f.WaitForSchedulerGroupReady(ctx, sg)
+			f.WaitForSchedulingGroupReady(ctx, sg)
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
 			f.WaitForTiFlashGroupReady(ctx, fg)

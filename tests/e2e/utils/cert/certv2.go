@@ -378,7 +378,7 @@ func (f *factory) registerCerts(ctx context.Context, ns, cluster string) error {
 	fs := []func(ctx context.Context, f *factory, ns, cluster string) error{
 		registerCertsForComponents[scope.PDGroup],
 		registerCertsForComponents[scope.TSOGroup],
-		registerCertsForComponents[scope.SchedulerGroup],
+		registerCertsForComponents[scope.SchedulingGroup],
 		registerCertsForComponents[scope.TiDBGroup],
 		registerCertsForComponents[scope.TiKVGroup],
 		registerCertsForComponents[scope.TiFlashGroup],

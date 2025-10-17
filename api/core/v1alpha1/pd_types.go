@@ -188,7 +188,7 @@ type PDMode string
 const (
 	// Normal mode of PD, all services are provided by a single component
 	PDModeNormal = ""
-	// Micro Service Mode of PD, some services(TSO,Scheduler) are separated from PD
+	// Micro Service Mode of PD, some services(TSO,Scheduling) are separated from PD
 	// See https://docs.pingcap.com/tidb/stable/pd-microservices/
 	PDModeMS = "ms"
 )

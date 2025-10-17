@@ -32,15 +32,16 @@ type ReconcileContext struct {
 
 	Key types.NamespacedName
 
-	Cluster         *v1alpha1.Cluster
-	PDGroup         *v1alpha1.PDGroup
-	TiKVGroups      []*v1alpha1.TiKVGroup
-	TiFlashGroups   []*v1alpha1.TiFlashGroup
-	TiDBGroups      []*v1alpha1.TiDBGroup
-	TiCDCGroups     []*v1alpha1.TiCDCGroup
-	TSOGroups       []*v1alpha1.TSOGroup
-	SchedulerGroups []*v1alpha1.SchedulerGroup
-	TiProxyGroups   []*v1alpha1.TiProxyGroup
+	Cluster          *v1alpha1.Cluster
+	PDGroup          *v1alpha1.PDGroup
+	TiKVGroups       []*v1alpha1.TiKVGroup
+	TiFlashGroups    []*v1alpha1.TiFlashGroup
+	TiDBGroups       []*v1alpha1.TiDBGroup
+	TiCDCGroups      []*v1alpha1.TiCDCGroup
+	TSOGroups        []*v1alpha1.TSOGroup
+	SchedulingGroups []*v1alpha1.SchedulingGroup
+	SchedulerGroups  []*v1alpha1.SchedulerGroup
+	TiProxyGroups    []*v1alpha1.TiProxyGroup
 }
 
 func (ctx *ReconcileContext) Self() *ReconcileContext {
@@ -104,13 +105,22 @@ func (t *TaskContext) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		rtx.TSOGroups = append(rtx.TSOGroups, &tgl.Items[i])
 	}
 
-	var sgl v1alpha1.SchedulerGroupList
+	var sgl v1alpha1.SchedulingGroupList
 	if err := t.Client.List(ctx, &sgl, client.InNamespace(rtx.Key.Namespace),
+		client.MatchingFields{"spec.cluster.name": rtx.Key.Name}); err != nil {
+		return task.Fail().With("can't list scheduling group: %w", err)
+	}
+	for i := range sgl.Items {
+		rtx.SchedulingGroups = append(rtx.SchedulingGroups, &sgl.Items[i])
+	}
+
+	var dsgl v1alpha1.SchedulerGroupList
+	if err := t.Client.List(ctx, &dsgl, client.InNamespace(rtx.Key.Namespace),
 		client.MatchingFields{"spec.cluster.name": rtx.Key.Name}); err != nil {
 		return task.Fail().With("can't list scheduler group: %w", err)
 	}
-	for i := range sgl.Items {
-		rtx.SchedulerGroups = append(rtx.SchedulerGroups, &sgl.Items[i])
+	for i := range dsgl.Items {
+		rtx.SchedulerGroups = append(rtx.SchedulerGroups, &dsgl.Items[i])
 	}
 
 	var tikvGroupList v1alpha1.TiKVGroupList

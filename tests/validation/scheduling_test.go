@@ -20,25 +20,25 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
-func TestScheduler(t *testing.T) {
+func TestScheduling(t *testing.T) {
 	cases := append(
-		transferSchedulerCases(t, Topology(), "spec", "topology"),
-		transferSchedulerCases(t, ClusterReference(), "spec", "cluster")...,
+		transferSchedulingCases(t, Topology(), "spec", "topology"),
+		transferSchedulingCases(t, ClusterReference(), "spec", "cluster")...,
 	)
-	cases = append(cases, transferSchedulerCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
-	cases = append(cases, transferSchedulerCases(t, OverlayVolumeClaims(false), "spec")...)
-	cases = append(cases, transferSchedulerCases(t, VolumeAttributesClassNameValidation(), "spec", "volumes")...)
-	cases = append(cases, transferSchedulerCases(t, Version(), "spec", "version")...)
-	cases = append(cases, transferSchedulerCases(t, NameLength(instanceNameLengthLimit), "metadata", "name")...)
-	Validate(t, "crd/core.pingcap.com_schedulers.yaml", cases)
+	cases = append(cases, transferSchedulingCases(t, PodOverlayLabels(), "spec", "overlay", "pod", "metadata")...)
+	cases = append(cases, transferSchedulingCases(t, OverlayVolumeClaims(false), "spec")...)
+	cases = append(cases, transferSchedulingCases(t, VolumeAttributesClassNameValidation(), "spec", "volumes")...)
+	cases = append(cases, transferSchedulingCases(t, Version(), "spec", "version")...)
+	cases = append(cases, transferSchedulingCases(t, NameLength(instanceNameLengthLimit), "metadata", "name")...)
+	Validate(t, "crd/core.pingcap.com_schedulings.yaml", cases)
 }
 
-func basicScheduler() map[string]any {
+func basicScheduling() map[string]any {
 	data := []byte(`
 apiVersion: core.pingcap.com/v1alpha1
-kind: Scheduler
+kind: Scheduling
 metadata:
-  name: scheduler
+  name: scheduling
 spec:
   cluster:
     name: test
@@ -53,11 +53,11 @@ spec:
 	return obj
 }
 
-func transferSchedulerCases(t *testing.T, cases []Case, fields ...string) []Case {
+func transferSchedulingCases(t *testing.T, cases []Case, fields ...string) []Case {
 	for i := range cases {
 		c := &cases[i]
 
-		current := basicScheduler()
+		current := basicScheduling()
 		c.current = Patch(t, c.mode, current, c.current, fields...)
 
 		if c.isCreate {
@@ -65,7 +65,7 @@ func transferSchedulerCases(t *testing.T, cases []Case, fields ...string) []Case
 			continue
 		}
 
-		old := basicScheduler()
+		old := basicScheduling()
 		c.old = Patch(t, c.mode, old, c.old, fields...)
 	}
 

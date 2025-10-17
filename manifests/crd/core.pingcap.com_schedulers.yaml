@@ -29,10 +29,14 @@ spec:
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
+    deprecated: true
+    deprecationWarning: This is deprecated, use Scheduling instead
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Scheduler defines a Scheduler instance
+        description: |-
+          Scheduler defines a Scheduler instance
+          Deprecated: use Scheduling
         properties:
           apiVersion:
             description: |-
@@ -52,8 +56,9 @@ spec:
           metadata:
             type: object
           spec:
-            description: SchedulerSpec describes the common attributes of a Scheduler
-              instance
+            description: |-
+              SchedulerSpec describes the common attributes of a Scheduler instance
+              Deprecated: use SchedulingSpec
             properties:
               cluster:
                 description: Cluster is a reference of tidb cluster
@@ -70,7 +75,7 @@ spec:
               config:
                 description: |-
                   Config defines config file of Scheduler
-                  See https://docs.pingcap.com/tidb/stable/Scheduler-configuration-file/
+                  See https://docs.pingcap.com/tidb/stable/scheduling-configuration-file/
                 type: string
               features:
                 description: Features are enabled feature
@@ -92,7 +97,7 @@ spec:
                 type: array
               image:
                 description: |-
-                  Image is pd's image
+                  Image is scheduler's image
                   If tag is omitted, version will be used as the image tag.
                   Default is pingcap/pd
                 type: string
@@ -8527,6 +8532,7 @@ spec:
                 && self.overlay.volumeClaims.all(vc, vc.name in self.volumes.map(v,
                 v.name)))'
           status:
+            description: 'Deprecated: use SchedulingStatus'
             properties:
               collisionCount:
                 description: |-
