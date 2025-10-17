@@ -143,7 +143,7 @@ func (m *manager) register(db *v1alpha1.TiDB) {
 		}
 		m.standby.add(hash, key)
 
-		m.logger.Info("register standby instance", "instance", key, "hash", hash)
+		m.logger.Info("register standby instance", "instance", key, "hash", hash, "rv", db.GetResourceVersion())
 
 		return
 	}
@@ -161,6 +161,8 @@ func (m *manager) register(db *v1alpha1.TiDB) {
 
 	item.hash = nHash
 	item.instance = db.DeepCopy()
+
+	m.logger.Info("update standby instance", "instance", key, "hash", nHash, "rv", db.GetResourceVersion())
 	// - applied and uid is not changed
 	//   - instance has been adopted and mode is changed to normal.
 	//   - just wait until the instance is synced.
@@ -200,7 +202,7 @@ func (m *manager) Adopt(dbg *v1alpha1.TiDBGroup, index int) (*v1alpha1.TiDB, Unl
 	if index < len(adopting) {
 		inKey := adopting[index]
 
-		m.logger.Info("return adopting standby instance", "group", key, "instance", inKey, "index", index)
+		m.logger.Info("return adopting standby instance", "group", key, "instance", inKey, "index", index, "rv", m.keyToInstance[inKey].instance.GetResourceVersion())
 
 		return m.keyToInstance[inKey].instance.DeepCopy(), DoNothing
 	}
@@ -217,7 +219,7 @@ func (m *manager) Adopt(dbg *v1alpha1.TiDBGroup, index int) (*v1alpha1.TiDB, Unl
 		}
 		m.lock(dbg, item)
 
-		m.logger.Info("adopting standby instance", "group", key, "instance", k, "hash", item.hash, "index", index)
+		m.logger.Info("adopting standby instance", "group", key, "instance", k, "hash", item.hash, "index", index, "rv", item.instance.GetResourceVersion())
 
 		return item.instance.DeepCopy(), m.unlockFunc(item)
 	}
