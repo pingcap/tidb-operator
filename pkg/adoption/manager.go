@@ -201,10 +201,16 @@ func (m *manager) Adopt(dbg *v1alpha1.TiDBGroup, index int) (*v1alpha1.TiDB, Unl
 	adopting := m.adopting.list(key)
 	if index < len(adopting) {
 		inKey := adopting[index]
+		// should always exist
+		item := m.keyToInstance[inKey]
 
-		m.logger.Info("return adopting standby instance", "group", key, "instance", inKey, "index", index, "rv", m.keyToInstance[inKey].instance.GetResourceVersion())
+		m.logger.Info("return adopting standby instance",
+			"group", key,
+			"instance", inKey,
+			"index", index,
+			"rv", item.instance.GetResourceVersion())
 
-		return m.keyToInstance[inKey].instance.DeepCopy(), DoNothing
+		return item.instance.DeepCopy(), DoNothing
 	}
 
 	hash := hashTiDBGroup(dbg)
@@ -219,7 +225,13 @@ func (m *manager) Adopt(dbg *v1alpha1.TiDBGroup, index int) (*v1alpha1.TiDB, Unl
 		}
 		m.lock(dbg, item)
 
-		m.logger.Info("adopting standby instance", "group", key, "instance", k, "hash", item.hash, "index", index, "rv", item.instance.GetResourceVersion())
+		m.logger.Info("adopting standby instance",
+			"group", key,
+			"instance", k,
+			"hash", item.hash,
+			"index", index,
+			"rv", item.instance.GetResourceVersion(),
+		)
 
 		return item.instance.DeepCopy(), m.unlockFunc(item)
 	}
