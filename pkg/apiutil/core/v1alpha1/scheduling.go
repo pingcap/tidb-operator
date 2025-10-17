@@ -31,4 +31,3 @@ func SchedulingGroupClientPort(sg *v1alpha1.SchedulingGroup) int32 {
 	}
 	return v1alpha1.DefaultSchedulingPortClient
 }
-

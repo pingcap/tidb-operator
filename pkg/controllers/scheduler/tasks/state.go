@@ -132,4 +132,3 @@ func (s *state) SetStatusChanged() {
 func (s *state) IsHealthy() bool {
 	return true
 }
-

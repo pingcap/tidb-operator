@@ -28,9 +28,9 @@ import (
 type state struct {
 	key types.NamespacedName
 
-	cluster   *v1alpha1.Cluster
+	cluster    *v1alpha1.Cluster
 	scheduling *v1alpha1.Scheduling // Renamed from tso to scheduling
-	pod       *corev1.Pod
+	pod        *corev1.Pod
 
 	// Pod cannot be updated when call DELETE API, so we have to set this field to indicate
 	// the underlay pod has been deleting

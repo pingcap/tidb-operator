@@ -27,8 +27,8 @@ import (
 type state struct {
 	key types.NamespacedName
 
-	cluster    *v1alpha1.Cluster
-	sg         *v1alpha1.SchedulingGroup
+	cluster     *v1alpha1.Cluster
+	sg          *v1alpha1.SchedulingGroup
 	schedulings []*v1alpha1.Scheduling
 
 	updateRevision  string
