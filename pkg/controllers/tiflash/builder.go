@@ -69,7 +69,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// normal process
 		tasks.TaskOfflineStore(state),
 		tasks.TaskConfigMap(state, r.Client),
-		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifierFactory),
+		common.TaskPVC[scope.TiFlash](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
 		tasks.TaskPod(state, r.Client),
 		tasks.TaskStoreLabels(state, r.Client),
 		common.TaskInstanceConditionSynced[scope.TiFlash](state),

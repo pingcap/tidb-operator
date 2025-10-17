@@ -157,11 +157,22 @@ func (*TiKV) Component() string {
 	return v1alpha1.LabelValComponentTiKV
 }
 
+func (in *TiKV) Volumes() []v1alpha1.Volume {
+	return in.Spec.Volumes
+}
+
 func (in *TiKV) PodOverlay() *v1alpha1.PodOverlay {
 	if in.Spec.Overlay == nil {
 		return nil
 	}
 	return in.Spec.Overlay.Pod
+}
+
+func (in *TiKV) PVCOverlay() []v1alpha1.NamedPersistentVolumeClaimOverlay {
+	if in.Spec.Overlay == nil {
+		return nil
+	}
+	return in.Spec.Overlay.PersistentVolumeClaims
 }
 
 func (in *TiKV) Features() []metav1alpha1.Feature {

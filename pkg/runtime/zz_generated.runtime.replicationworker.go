@@ -157,11 +157,22 @@ func (*ReplicationWorker) Component() string {
 	return v1alpha1.LabelValComponentReplicationWorker
 }
 
+func (in *ReplicationWorker) Volumes() []v1alpha1.Volume {
+	return in.Spec.Volumes
+}
+
 func (in *ReplicationWorker) PodOverlay() *v1alpha1.PodOverlay {
 	if in.Spec.Overlay == nil {
 		return nil
 	}
 	return in.Spec.Overlay.Pod
+}
+
+func (in *ReplicationWorker) PVCOverlay() []v1alpha1.NamedPersistentVolumeClaimOverlay {
+	if in.Spec.Overlay == nil {
+		return nil
+	}
+	return in.Spec.Overlay.PersistentVolumeClaims
 }
 
 func (in *ReplicationWorker) Features() []metav1alpha1.Feature {

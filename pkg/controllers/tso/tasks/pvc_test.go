@@ -32,46 +32,28 @@ func TestPVCNewer(t *testing.T) {
 	cases := []struct {
 		desc      string
 		c         *v1alpha1.Cluster
-		obj       *v1alpha1.TiFlash
+		obj       *v1alpha1.TSO
 		enableVAC bool
 
 		patch func(pvc *corev1.PersistentVolumeClaim)
 	}{
 		{
-			desc: "no id",
+			desc: "normal",
 			c: fake.FakeObj("aaa", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
 				return obj
 			}),
-			obj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.TSO) *v1alpha1.TSO {
 				return obj
 			}),
 
-			patch: func(_ *corev1.PersistentVolumeClaim) {
-			},
-		},
-		{
-			desc: "has id",
-			c: fake.FakeObj("aaa", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
-				obj.Status.ID = "ccc"
-				return obj
-			}),
-			obj: fake.FakeObj("aaa", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-				obj.Status.ID = "sss"
-				return obj
-			}),
-
-			patch: func(pvc *corev1.PersistentVolumeClaim) {
-				// legacy labels in v1
-				pvc.Labels[v1alpha1.LabelKeyClusterID] = "ccc"
-				pvc.Labels[v1alpha1.LabelKeyStoreID] = "sss"
-			},
+			patch: func(_ *corev1.PersistentVolumeClaim) {},
 		},
 	}
 	for i := range cases {
 		c := &cases[i]
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
-			pvcs := coreutil.PVCs[scope.TiFlash](c.c, c.obj, coreutil.WithLegacyK8sAppLabels(), coreutil.EnableVAC(c.enableVAC))
+			pvcs := coreutil.PVCs[scope.TSO](c.c, c.obj, coreutil.EnableVAC(c.enableVAC))
 
 			for _, pvc := range pvcs {
 				c.patch(pvc)

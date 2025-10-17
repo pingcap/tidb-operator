@@ -20,8 +20,10 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/overlay"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 )
 
@@ -200,4 +202,102 @@ func IsOffline[
 	T runtime.Instance,
 ](f F) bool {
 	return scope.From[S](f).IsOffline()
+}
+
+func Volumes[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](f F) []v1alpha1.Volume {
+	return scope.From[S](f).Volumes()
+}
+
+func PVCOverlay[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](f F) []v1alpha1.NamedPersistentVolumeClaimOverlay {
+	return scope.From[S](f).PVCOverlay()
+}
+
+func PVCs[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](cluster *v1alpha1.Cluster, obj F, ps ...PVCPatch) []*corev1.PersistentVolumeClaim {
+	vols := Volumes[S](obj)
+	var pvcs []*corev1.PersistentVolumeClaim
+	nameToIndex := map[string]int{}
+	for i := range vols {
+		vol := &vols[i]
+		nameToIndex[vol.Name] = i
+		pvc := &corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      persistentVolumeClaimName(PodName[S](obj), vol.Name),
+				Namespace: obj.GetNamespace(),
+				Labels:    PersistentVolumeClaimLabels[S](obj, vol.Name),
+				OwnerReferences: []metav1.OwnerReference{
+					*metav1.NewControllerRef(obj, scope.GVK[S]()),
+				},
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				AccessModes: []corev1.PersistentVolumeAccessMode{
+					corev1.ReadWriteOnce,
+				},
+				Resources: corev1.VolumeResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: vol.Storage,
+					},
+				},
+				StorageClassName: vol.StorageClassName,
+			},
+		}
+
+		for _, p := range ps {
+			p.Patch(vol, pvc)
+		}
+
+		pvcs = append(pvcs, pvc)
+	}
+
+	pvcOverlays := PVCOverlay[S](obj)
+
+	for _, o := range pvcOverlays {
+		index, ok := nameToIndex[o.Name]
+		if !ok {
+			// TODO(liubo02): it should be validated
+			panic("vol name" + o.Name + "doesn't exist")
+		}
+
+		overlay.OverlayPersistentVolumeClaim(pvcs[index], &o.PersistentVolumeClaim)
+	}
+
+	return pvcs
+}
+
+type PVCPatch interface {
+	Patch(vol *v1alpha1.Volume, pvc *corev1.PersistentVolumeClaim)
+}
+
+type PVCPatchFunc func(vol *v1alpha1.Volume, pvc *corev1.PersistentVolumeClaim)
+
+func (f PVCPatchFunc) Patch(vol *v1alpha1.Volume, pvc *corev1.PersistentVolumeClaim) {
+	f(vol, pvc)
+}
+
+func EnableVAC(enable bool) PVCPatch {
+	return PVCPatchFunc(func(vol *v1alpha1.Volume, pvc *corev1.PersistentVolumeClaim) {
+		if enable {
+			pvc.Spec.VolumeAttributesClassName = vol.VolumeAttributesClassName
+		}
+	})
+}
+
+func WithLegacyK8sAppLabels() PVCPatch {
+	return PVCPatchFunc(func(_ *v1alpha1.Volume, pvc *corev1.PersistentVolumeClaim) {
+		pvc.Labels = maputil.MergeTo(pvc.Labels, k8s.LabelsK8sApp(
+			pvc.Labels[v1alpha1.LabelKeyCluster],
+			pvc.Labels[v1alpha1.LabelKeyComponent],
+		))
+	})
 }

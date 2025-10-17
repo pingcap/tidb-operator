@@ -157,11 +157,22 @@ func (*PD) Component() string {
 	return v1alpha1.LabelValComponentPD
 }
 
+func (in *PD) Volumes() []v1alpha1.Volume {
+	return in.Spec.Volumes
+}
+
 func (in *PD) PodOverlay() *v1alpha1.PodOverlay {
 	if in.Spec.Overlay == nil {
 		return nil
 	}
 	return in.Spec.Overlay.Pod
+}
+
+func (in *PD) PVCOverlay() []v1alpha1.NamedPersistentVolumeClaimOverlay {
+	if in.Spec.Overlay == nil {
+		return nil
+	}
+	return in.Spec.Overlay.PersistentVolumeClaims
 }
 
 func (in *PD) Features() []metav1alpha1.Feature {

@@ -23,14 +23,11 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 
-	"github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/features"
 )
 
 const (
@@ -184,10 +181,6 @@ func isStorageClassChanged(pre, cur string) bool {
 	return false
 }
 
-func isVolumeAttributesClassChanged(actual *ActualVolume) bool {
-	return areStringsDifferent(actual.VACName, actual.Desired.VACName)
-}
-
 func areStringsDifferent(pre, cur *string) bool {
 	if pre == cur {
 		return false
@@ -213,24 +206,17 @@ func isVolumeExpansionSupported(sc *storagev1.StorageClass) (bool, error) {
 
 type ModifierFactory interface {
 	// new modifier for cluster
-	New(fg features.Gates) Modifier
+	New() Modifier
 }
 
 type modifierFactory struct {
 	cli    client.Client
 	logger logr.Logger
 
-	native Modifier
-	raw    Modifier
+	raw Modifier
 }
 
-func (f *modifierFactory) New(fg features.Gates) Modifier {
-	if fg.Enabled(v1alpha1.VolumeAttributesClass) {
-		if f.native == nil {
-			f.native = NewNativeModifier(f.cli, f.logger)
-		}
-		return f.native
-	}
+func (f *modifierFactory) New() Modifier {
 	if f.raw == nil {
 		f.raw = NewRawModifier(f.cli, f.logger)
 	}
@@ -288,59 +274,4 @@ func updatePVC(ctx context.Context, cli client.Client, expectPVC, actualPVC *cor
 		return fmt.Errorf("can't update PVC %s/%s: %w", expectPVC.Namespace, expectPVC.Name, err)
 	}
 	return nil
-}
-
-// SyncPVCs gets the actual PVCs and compares them with the expected PVCs.
-// If the actual PVCs are different from the expected PVCs, it will update the PVCs.
-func SyncPVCs(ctx context.Context, cli client.Client,
-	expectPVCs []*corev1.PersistentVolumeClaim, vm Modifier, logger logr.Logger,
-) (wait bool, err error) {
-	for _, expectPVC := range expectPVCs {
-		var actualPVC corev1.PersistentVolumeClaim
-		if err := cli.Get(ctx, client.ObjectKey{Namespace: expectPVC.Namespace, Name: expectPVC.Name}, &actualPVC); err != nil {
-			if !errors.IsNotFound(err) {
-				return false, fmt.Errorf("can't get PVC %s/%s: %w", expectPVC.Namespace, expectPVC.Name, err)
-			}
-
-			// Create PVC if it doesn't exist
-			if e := cli.Apply(ctx, expectPVC); e != nil {
-				return false, fmt.Errorf("can't create expectPVC %s/%s: %w", expectPVC.Namespace, expectPVC.Name, e)
-			}
-			continue
-		}
-
-		if actualPVC.Status.Phase != corev1.ClaimBound {
-			// do not try to modify the PVC if it's not bound yet
-			wait = true
-			continue
-		}
-
-		// Set default storage class name if it's not specified and the claim is bound.
-		// Otherwise, it will be considered as a change and trigger a PVC update.
-		if expectPVC.Spec.StorageClassName == nil && actualPVC.Status.Phase == corev1.ClaimBound {
-			expectPVC.Spec.StorageClassName = actualPVC.Spec.StorageClassName
-		}
-
-		vol, err := vm.GetActualVolume(ctx, expectPVC, &actualPVC)
-		if err != nil {
-			return false, fmt.Errorf("failed to get the actual volume: %w", err)
-		}
-
-		needWait, skipUpdate, err := handleVolumeModification(ctx, vm, vol, expectPVC, logger)
-		if err != nil {
-			return false, err
-		}
-		logger.Info("handle volume modification", "needWait", needWait, "skipUpdate", skipUpdate, "pvc", expectPVC.Name)
-		if needWait {
-			wait = true
-		}
-		if skipUpdate {
-			continue
-		}
-
-		if err := updatePVC(ctx, cli, expectPVC, &actualPVC); err != nil {
-			return false, err
-		}
-	}
-	return wait, nil
 }

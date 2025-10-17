@@ -157,11 +157,22 @@ func (*TiProxy) Component() string {
 	return v1alpha1.LabelValComponentTiProxy
 }
 
+func (in *TiProxy) Volumes() []v1alpha1.Volume {
+	return in.Spec.Volumes
+}
+
 func (in *TiProxy) PodOverlay() *v1alpha1.PodOverlay {
 	if in.Spec.Overlay == nil {
 		return nil
 	}
 	return in.Spec.Overlay.Pod
+}
+
+func (in *TiProxy) PVCOverlay() []v1alpha1.NamedPersistentVolumeClaimOverlay {
+	if in.Spec.Overlay == nil {
+		return nil
+	}
+	return in.Spec.Overlay.PersistentVolumeClaims
 }
 
 func (in *TiProxy) Features() []metav1alpha1.Feature {
