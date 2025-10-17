@@ -45,3 +45,9 @@ func IsMainContainer(name string) bool {
 
 	return false
 }
+
+func persistentVolumeClaimName(podName, volName string) string {
+	// ref: https://github.com/pingcap/tidb-operator/blob/v1.6.0/pkg/apis/pingcap/v1alpha1/helpers.go#L92
+	// NOTE: for v1, should use component as volName of data, e.g. pd
+	return volName + "-" + podName
+}

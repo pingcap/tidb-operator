@@ -15,76 +15,26 @@
 package tasks
 
 import (
-	"context"
-
-	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/overlay"
+	"github.com/pingcap/tidb-operator/pkg/controllers/common"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
-	"github.com/pingcap/tidb-operator/pkg/volumes"
 )
 
-func TaskPVC(state *ReconcileContext, logger logr.Logger, c client.Client, vm volumes.ModifierFactory) task.Task {
-	return task.NameTaskFunc("PVC", func(ctx context.Context) task.Result {
-		obj := state.Object()
-		pvcs := newPVCs(obj)
-		if wait, err := volumes.SyncPVCs(ctx, c, pvcs, vm.New(state.FeatureGates()), logger); err != nil {
-			return task.Fail().With("failed to sync pvcs: %v", err)
-		} else if wait {
-			return task.Wait().With("waiting for pvcs to be synced")
-		}
+func PVCNewer() common.PVCNewer[*v1alpha1.ReplicationWorker] {
+	return common.PVCNewerFunc[*v1alpha1.ReplicationWorker](
+		func(cluster *v1alpha1.Cluster, rw *v1alpha1.ReplicationWorker, fg features.Gates) []*corev1.PersistentVolumeClaim {
+			pvcs := coreutil.PVCs[scope.ReplicationWorker](
+				cluster,
+				rw,
+				coreutil.EnableVAC(fg.Enabled(meta.VolumeAttributesClass)),
+			)
 
-		return task.Complete().With("pvcs are synced")
-	})
-}
-
-func newPVCs(rw *v1alpha1.ReplicationWorker) []*corev1.PersistentVolumeClaim {
-	pvcs := make([]*corev1.PersistentVolumeClaim, 0, len(rw.Spec.Volumes))
-	nameToIndex := map[string]int{}
-	for i := range rw.Spec.Volumes {
-		vol := &rw.Spec.Volumes[i]
-		nameToIndex[vol.Name] = i
-		pvcs = append(pvcs, &corev1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      PersistentVolumeClaimName(coreutil.PodName[scope.ReplicationWorker](rw), vol.Name),
-				Namespace: rw.Namespace,
-				Labels:    coreutil.PersistentVolumeClaimLabels[scope.ReplicationWorker](rw, vol.Name),
-				OwnerReferences: []metav1.OwnerReference{
-					*metav1.NewControllerRef(rw, v1alpha1.SchemeGroupVersion.WithKind("ReplicationWorker")),
-				},
-			},
-			Spec: corev1.PersistentVolumeClaimSpec{
-				AccessModes: []corev1.PersistentVolumeAccessMode{
-					corev1.ReadWriteOnce,
-				},
-				Resources: corev1.VolumeResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceStorage: vol.Storage,
-					},
-				},
-				StorageClassName:          vol.StorageClassName,
-				VolumeAttributesClassName: vol.VolumeAttributesClassName,
-			},
-		})
-	}
-
-	if rw.Spec.Overlay != nil {
-		for _, o := range rw.Spec.Overlay.PersistentVolumeClaims {
-			index, ok := nameToIndex[o.Name]
-			if !ok {
-				// TODO(liubo02): it should be validated
-				panic("vol name" + o.Name + "doesn't exist")
-			}
-
-			overlay.OverlayPersistentVolumeClaim(pvcs[index], &o.PersistentVolumeClaim)
-		}
-	}
-
-	return pvcs
+			return pvcs
+		},
+	)
 }

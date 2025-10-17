@@ -157,11 +157,22 @@ func (*TiCDC) Component() string {
 	return v1alpha1.LabelValComponentTiCDC
 }
 
+func (in *TiCDC) Volumes() []v1alpha1.Volume {
+	return in.Spec.Volumes
+}
+
 func (in *TiCDC) PodOverlay() *v1alpha1.PodOverlay {
 	if in.Spec.Overlay == nil {
 		return nil
 	}
 	return in.Spec.Overlay.Pod
+}
+
+func (in *TiCDC) PVCOverlay() []v1alpha1.NamedPersistentVolumeClaimOverlay {
+	if in.Spec.Overlay == nil {
+		return nil
+	}
+	return in.Spec.Overlay.PersistentVolumeClaims
 }
 
 func (in *TiCDC) Features() []metav1alpha1.Feature {

@@ -219,11 +219,22 @@ func (*$.|pub$) Component() string {
 	return v1alpha1.LabelValComponent$.|pub$
 }
 
+func (in *$.|pub$) Volumes() []v1alpha1.Volume {
+	return in.Spec.Volumes
+}
+
 func (in *$.|pub$) PodOverlay() *v1alpha1.PodOverlay {
 	if in.Spec.Overlay == nil {
 		return nil
 	}
 	return in.Spec.Overlay.Pod
+}
+
+func (in *$.|pub$) PVCOverlay() []v1alpha1.NamedPersistentVolumeClaimOverlay {
+	if in.Spec.Overlay == nil {
+		return nil
+	}
+	return in.Spec.Overlay.PersistentVolumeClaims
 }
 
 func (in *$.|pub$) Features() []metav1alpha1.Feature {
