@@ -17,6 +17,7 @@ package tidb
 import (
 	"context"
 
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tidb/tasks"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
@@ -67,6 +68,10 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskPod(state, r.Client),
 		tasks.TaskActivate(state, r.Client),
 		common.TaskServerLabels[scope.TiDB](state, r.Client, func(ctx context.Context, labels map[string]string) error {
+			// standby tidb cannot set server labels
+			if state.Object().Spec.Mode == v1alpha1.TiDBModeStandBy {
+				return nil
+			}
 			return state.TiDBClient.SetServerLabels(ctx, labels)
 		}),
 		common.TaskInstanceConditionSynced[scope.TiDB](state),
