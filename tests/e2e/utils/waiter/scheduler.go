@@ -25,16 +25,16 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 )
 
-func WaitForSchedulersHealthy(ctx context.Context, c client.Client, sg *v1alpha1.SchedulerGroup, timeout time.Duration) error {
-	list := v1alpha1.SchedulerList{}
+func WaitForSchedulingsHealthy(ctx context.Context, c client.Client, sg *v1alpha1.SchedulingGroup, timeout time.Duration) error {
+	list := v1alpha1.SchedulingList{}
 	return WaitForList(ctx, c, &list, func() error {
 		errs := []error{}
 		if len(list.Items) != int(*sg.Spec.Replicas) {
-			errs = append(errs, fmt.Errorf("scheduler %s/%s replicas %d not equal to %d", sg.Namespace, sg.Name, len(list.Items), *sg.Spec.Replicas))
+			errs = append(errs, fmt.Errorf("scheduling %s/%s replicas %d not equal to %d", sg.Namespace, sg.Name, len(list.Items), *sg.Spec.Replicas))
 		}
 		for i := range list.Items {
 			s := &list.Items[i]
-			if err := checkInstanceStatus(v1alpha1.LabelValComponentScheduler, s.Name, s.Namespace, s.Generation, s.Status.CommonStatus); err != nil {
+			if err := checkInstanceStatus(v1alpha1.LabelValComponentScheduling, s.Name, s.Namespace, s.Generation, s.Status.CommonStatus); err != nil {
 				errs = append(errs, err)
 			}
 		}
@@ -42,6 +42,6 @@ func WaitForSchedulersHealthy(ctx context.Context, c client.Client, sg *v1alpha1
 	}, timeout, client.InNamespace(sg.Namespace), client.MatchingLabels{
 		v1alpha1.LabelKeyCluster:   sg.Spec.Cluster.Name,
 		v1alpha1.LabelKeyGroup:     sg.Name,
-		v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentScheduler,
+		v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentScheduling,
 	})
 }

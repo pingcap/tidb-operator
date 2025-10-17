@@ -60,9 +60,11 @@ const (
 	ContainerNameTiFlash           = "tiflash"
 	ContainerNameTiCDC             = "ticdc"
 	ContainerNameTSO               = "tso"
-	ContainerNameScheduler         = "scheduler"
+	ContainerNameScheduling        = "scheduling"
 	ContainerNameTiProxy           = "tiproxy"
 	ContainerNameReplicationWorker = "repl-worker"
+	// Deprecated: use ContainerNameScheduling
+	ContainerNameScheduler = "scheduler"
 
 	// An init container to copy pre stop checker cmd to main container
 	ContainerNamePrestopChecker = meta.NamePrefix + "prestop-checker"
@@ -89,9 +91,11 @@ const (
 	DirPathConfigTiFlash           = "/etc/tiflash"
 	DirPathConfigTiCDC             = "/etc/ticdc"
 	DirPathConfigTSO               = "/etc/tso"
-	DirPathConfigScheduler         = "/etc/scheduler"
+	DirPathConfigScheduling        = "/etc/scheduling"
 	DirPathConfigTiProxy           = "/etc/tiproxy"
 	DirPathConfigReplicationWorker = "/etc/replication-worker"
+	// Deprecated: use DirPathConfigScheduling
+	DirPathConfigScheduler = "/etc/scheduler"
 
 	// DirPathPrestop defines dir path of pre stop checker cmd
 	DirPathPrestop = "/prestop"
@@ -107,15 +111,17 @@ const (
 	// TLS
 	//
 	// Dir path of cluster tls file
-	DirPathClusterTLSPD        = "/var/lib/pd-tls"
-	DirPathClusterTLSTiKV      = "/var/lib/tikv-tls"
-	DirPathClusterTLSTiDB      = "/var/lib/tidb-tls"
-	DirPathClusterTLSTiFlash   = "/var/lib/tiflash-tls"
-	DirPathClusterClientTLS    = "/var/lib/cluster-client-tls"
-	DirPathClusterTLSTiCDC     = "/var/lib/ticdc-tls"
-	DirPathClusterTLSTSO       = "/var/lib/tso-tls"
+	DirPathClusterTLSPD         = "/var/lib/pd-tls"
+	DirPathClusterTLSTiKV       = "/var/lib/tikv-tls"
+	DirPathClusterTLSTiDB       = "/var/lib/tidb-tls"
+	DirPathClusterTLSTiFlash    = "/var/lib/tiflash-tls"
+	DirPathClusterClientTLS     = "/var/lib/cluster-client-tls"
+	DirPathClusterTLSTiCDC      = "/var/lib/ticdc-tls"
+	DirPathClusterTLSTSO        = "/var/lib/tso-tls"
+	DirPathClusterTLSScheduling = "/var/lib/scheduling-tls"
+	DirPathClusterTLSTiProxy    = "/var/lib/tiproxy-tls"
+	// Deprecated: use DirPathClusterTLSScheduling
 	DirPathClusterTLSScheduler = "/var/lib/scheduler-tls"
-	DirPathClusterTLSTiProxy   = "/var/lib/tiproxy-tls"
 
 	// DirPathMySQLTLS is the dir path of tls file for tidb and mysql client
 	DirPathMySQLTLS = "/var/lib/tidb-sql-tls"

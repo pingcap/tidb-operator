@@ -55,6 +55,7 @@ func (t *TaskFinalizer) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		len(rtx.TiFlashGroups) == 0 &&
 		len(rtx.TiCDCGroups) == 0 &&
 		len(rtx.TSOGroups) == 0 &&
+		len(rtx.SchedulingGroups) == 0 &&
 		len(rtx.SchedulerGroups) == 0 &&
 		len(rtx.TiProxyGroups) == 0 {
 		if err := k8s.RemoveFinalizer(ctx, t.Client, rtx.Cluster); err != nil {
@@ -74,6 +75,12 @@ func (t *TaskFinalizer) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		//nolint:gocritic // not a real issue, see https://github.com/go-critic/go-critic/issues/1448
 		if err := t.Client.Delete(ctx, tg); client.IgnoreNotFound(err) != nil {
 			return task.Fail().With("can't delete tso group: %w", err)
+		}
+	}
+	for _, sg := range rtx.SchedulingGroups {
+		//nolint:gocritic // not a real issue, see https://github.com/go-critic/go-critic/issues/1448
+		if err := t.Client.Delete(ctx, sg); client.IgnoreNotFound(err) != nil {
+			return task.Fail().With("can't delete scheduling group: %w", err)
 		}
 	}
 	for _, sg := range rtx.SchedulerGroups {

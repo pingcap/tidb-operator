@@ -26,14 +26,15 @@ func hostToURL(host string, isTLS bool) string {
 }
 
 var allMainContainers = map[string]struct{}{
-	v1alpha1.ContainerNamePD:        {},
-	v1alpha1.ContainerNameTiKV:      {},
-	v1alpha1.ContainerNameTiDB:      {},
-	v1alpha1.ContainerNameTiFlash:   {},
-	v1alpha1.ContainerNameTiCDC:     {},
-	v1alpha1.ContainerNameTSO:       {},
-	v1alpha1.ContainerNameScheduler: {},
-	v1alpha1.ContainerNameTiProxy:   {},
+	v1alpha1.ContainerNamePD:         {},
+	v1alpha1.ContainerNameTiKV:       {},
+	v1alpha1.ContainerNameTiDB:       {},
+	v1alpha1.ContainerNameTiFlash:    {},
+	v1alpha1.ContainerNameTiCDC:      {},
+	v1alpha1.ContainerNameTSO:        {},
+	v1alpha1.ContainerNameScheduler:  {},
+	v1alpha1.ContainerNameScheduling: {},
+	v1alpha1.ContainerNameTiProxy:    {},
 }
 
 // IsMainContainer checks whether the container is a main container

@@ -25,10 +25,10 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
-func (f *Framework) WaitForSchedulerGroupReady(ctx context.Context, sg *v1alpha1.SchedulerGroup) {
+func (f *Framework) WaitForSchedulingGroupReady(ctx context.Context, sg *v1alpha1.SchedulingGroup) {
 	// TODO: maybe wait for cluster ready
-	ginkgo.By("wait for scheduler group ready")
-	f.Must(waiter.WaitForObjectCondition[runtime.SchedulerGroupTuple](
+	ginkgo.By("wait for scheduling group ready")
+	f.Must(waiter.WaitForObjectCondition[runtime.SchedulingGroupTuple](
 		ctx,
 		f.Client,
 		sg,
@@ -36,6 +36,6 @@ func (f *Framework) WaitForSchedulerGroupReady(ctx context.Context, sg *v1alpha1
 		metav1.ConditionTrue,
 		waiter.LongTaskTimeout,
 	))
-	f.Must(waiter.WaitForSchedulersHealthy(ctx, f.Client, sg, waiter.LongTaskTimeout))
-	f.Must(waiter.WaitForPodsReady(ctx, f.Client, runtime.FromSchedulerGroup(sg), waiter.LongTaskTimeout))
+	f.Must(waiter.WaitForSchedulingsHealthy(ctx, f.Client, sg, waiter.LongTaskTimeout))
+	f.Must(waiter.WaitForPodsReady(ctx, f.Client, runtime.FromSchedulingGroup(sg), waiter.LongTaskTimeout))
 }

@@ -47,7 +47,7 @@ type GroupT[T GroupSet] interface {
 }
 
 type GroupSet interface {
-	PDGroup | TiDBGroup | TiKVGroup | TiFlashGroup | TiCDCGroup | TiProxyGroup | TSOGroup | SchedulerGroup
+	PDGroup | TiDBGroup | TiKVGroup | TiFlashGroup | TiCDCGroup | TiProxyGroup | TSOGroup | SchedulingGroup | SchedulerGroup
 }
 
 type GroupTuple[PT client.Object, PU Group] interface {

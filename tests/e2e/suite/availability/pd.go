@@ -59,15 +59,15 @@ var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label
 			tg := f.MustCreateTSO(ctx,
 				data.WithTSONextGen(),
 			)
-			sg := f.MustCreateScheduler(ctx,
-				data.WithSchedulerNextGen(),
+			sg := f.MustCreateScheduling(ctx,
+				data.WithSchedulingNextGen(),
 			)
 
 			f.WaitForPDGroupReady(ctx, pdg)
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
 			f.WaitForTSOGroupReady(ctx, tg)
-			f.WaitForSchedulerGroupReady(ctx, sg)
+			f.WaitForSchedulingGroupReady(ctx, sg)
 
 			f.TestPDAvailability(ctx, pdg, workload)
 		})
@@ -84,16 +84,16 @@ var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label
 				data.WithTSONextGen(),
 				data.WithReplicas[*runtime.TSOGroup](2),
 			)
-			sg := f.MustCreateScheduler(ctx,
-				data.WithSchedulerNextGen(),
-				data.WithReplicas[*runtime.SchedulerGroup](2),
+			sg := f.MustCreateScheduling(ctx,
+				data.WithSchedulingNextGen(),
+				data.WithReplicas[*runtime.SchedulingGroup](2),
 			)
 
 			f.WaitForPDGroupReady(ctx, pdg)
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
 			f.WaitForTSOGroupReady(ctx, tg)
-			f.WaitForSchedulerGroupReady(ctx, sg)
+			f.WaitForSchedulingGroupReady(ctx, sg)
 
 			f.TestTSOAvailability(ctx, tg, workload)
 		})

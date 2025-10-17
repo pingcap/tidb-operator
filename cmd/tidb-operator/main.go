@@ -54,6 +54,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/replicationworkergroup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/scheduler"
 	"github.com/pingcap/tidb-operator/pkg/controllers/schedulergroup"
+	"github.com/pingcap/tidb-operator/pkg/controllers/scheduling"
+	"github.com/pingcap/tidb-operator/pkg/controllers/schedulinggroup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/ticdc"
 	"github.com/pingcap/tidb-operator/pkg/controllers/ticdcgroup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tidb"
@@ -275,6 +277,14 @@ func addIndexer(ctx context.Context, mgr ctrl.Manager) error {
 		return err
 	}
 
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.SchedulingGroup{}, "spec.cluster.name",
+		func(obj client.Object) []string {
+			sg := obj.(*v1alpha1.SchedulingGroup)
+			return []string{sg.Spec.Cluster.Name}
+		}); err != nil {
+		return err
+	}
+
 	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.SchedulerGroup{}, "spec.cluster.name",
 		func(obj client.Object) []string {
 			sg := obj.(*v1alpha1.SchedulerGroup)
@@ -394,6 +404,18 @@ func setupControllers(
 			name: "TSO",
 			setupFunc: func() error {
 				return tso.Setup(mgr, c, pdcm, tsocm, vm, tf.Tracker("tso"))
+			},
+		},
+		{
+			name: "SchedulingGroup",
+			setupFunc: func() error {
+				return schedulinggroup.Setup(mgr, c, tf.AllocateFactory("scheduling"))
+			},
+		},
+		{
+			name: "Scheduling",
+			setupFunc: func() error {
+				return scheduling.Setup(mgr, c, pdcm, vm, tf.Tracker("scheduling"))
 			},
 		},
 		{
@@ -517,6 +539,12 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 			Label: labels.Everything(),
 		},
 		&v1alpha1.TSO{}: {
+			Label: labels.Everything(),
+		},
+		&v1alpha1.SchedulingGroup{}: {
+			Label: labels.Everything(),
+		},
+		&v1alpha1.Scheduling{}: {
 			Label: labels.Everything(),
 		},
 		&v1alpha1.SchedulerGroup{}: {
