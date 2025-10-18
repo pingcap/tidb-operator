@@ -180,6 +180,9 @@ func (f *factory) Adopt() (*runtime.TiDB, updater.UnlockFunc, bool) {
 			Name:            standby.Name,
 			ResourceVersion: standby.ResourceVersion,
 		},
+		Spec: v1alpha1.TiDBSpec{
+			Topology: standby.Spec.Topology,
+		},
 	}
 
 	tidb = f.updateTiDB(tidb)
@@ -189,18 +192,18 @@ func (f *factory) Adopt() (*runtime.TiDB, updater.UnlockFunc, bool) {
 
 func (f *factory) updateTiDB(tidb *v1alpha1.TiDB) *v1alpha1.TiDB {
 	spec := f.dbg.Spec.Template.Spec.DeepCopy()
+
 	tidb.Labels = coreutil.InstanceLabels[scope.TiDBGroup](f.dbg, f.rev)
 	tidb.Annotations = coreutil.InstanceAnnotations[scope.TiDBGroup](f.dbg)
 	tidb.Finalizers = []string{metav1alpha1.Finalizer}
 	tidb.OwnerReferences = []metav1.OwnerReference{
 		*metav1.NewControllerRef(f.dbg, v1alpha1.SchemeGroupVersion.WithKind("TiDBGroup")),
 	}
-	tidb.Spec = v1alpha1.TiDBSpec{
-		Cluster:          f.dbg.Spec.Cluster,
-		Features:         f.dbg.Spec.Features,
-		Subdomain:        HeadlessServiceName(f.dbg.Name), // same as headless service
-		TiDBTemplateSpec: *spec,
-	}
+
+	tidb.Spec.Cluster = f.dbg.Spec.Cluster
+	tidb.Spec.Features = f.dbg.Spec.Features
+	tidb.Spec.Subdomain = HeadlessServiceName(f.dbg.Name) // same as headless service
+	tidb.Spec.TiDBTemplateSpec = *spec
 
 	if f.fg.Enabled(metav1alpha1.ClusterSubdomain) {
 		tidb.Spec.Subdomain = coreutil.ClusterSubdomain(f.dbg.Spec.Cluster.Name)
