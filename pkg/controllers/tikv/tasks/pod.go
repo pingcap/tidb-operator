@@ -16,6 +16,8 @@ package tasks
 
 import (
 	"context"
+	"fmt"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -25,8 +27,10 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/image"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
 	"github.com/pingcap/tidb-operator/pkg/reloadable"
@@ -67,7 +71,7 @@ func TaskSuspendPod(state *ReconcileContext, c client.Client) task.Task {
 func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
-		expected := newPod(state.Cluster(), state.TiKV(), state.Store)
+		expected := newPod(state.Cluster(), state.TiKV(), state.Store, state.FeatureGates())
 		pod := state.Pod()
 		if pod == nil {
 			if err := c.Apply(ctx, expected); err != nil {
@@ -115,7 +119,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, store *pdv1.Store) *corev1.Pod {
+func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, store *pdv1.Store, g features.Gates) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -271,6 +275,10 @@ func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, store *pdv1.Store) *
 		overlay.OverlayPod(pod, tikv.Spec.Overlay.Pod)
 	}
 
+	if g.Enabled(metav1alpha1.UseTiKVReadyAPI) {
+		pod.Spec.Containers[0].ReadinessProbe = buildReadinessProbeWithReadyAPI(cluster, coreutil.TiKVStatusPort(tikv))
+	}
+
 	reloadable.MustEncodeLastTiKVTemplate(tikv, pod)
 	return pod
 }
@@ -302,4 +310,40 @@ func buildPrestopCheckScript(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV) str
 	sb.WriteString(" > /proc/1/fd/1")
 
 	return sb.String()
+}
+
+func buildReadinessProbeWithReadyAPI(cluster *v1alpha1.Cluster, port int32) *corev1.Probe {
+	tlsClusterEnabled := coreutil.IsTLSClusterEnabled(cluster)
+
+	scheme := "http"
+	if tlsClusterEnabled {
+		scheme = "https"
+	}
+
+	readinessURL := fmt.Sprintf("%s://127.0.0.1:%d/ready", scheme, port)
+	var command []string
+	command = append(command, "curl", readinessURL,
+		// Fail silently (no output at all) on server errors
+		// without this if the server return 500, the exist code will be 0
+		// and probe is success.
+		"--fail",
+		// Silent mode, only print error
+		"-sS",
+		// follow 301 or 302 redirect
+		"--location")
+
+	if tlsClusterEnabled {
+		cacert := path.Join(v1alpha1.DirPathClusterTLSTiKV, corev1.ServiceAccountRootCAKey)
+		cert := path.Join(v1alpha1.DirPathClusterTLSTiKV, corev1.TLSCertKey)
+		key := path.Join(v1alpha1.DirPathClusterTLSTiKV, corev1.TLSPrivateKeyKey)
+		command = append(command, "--cacert", cacert, "--cert", cert, "--key", key)
+	}
+
+	return &corev1.Probe{
+		ProbeHandler: corev1.ProbeHandler{
+			Exec: &corev1.ExecAction{
+				Command: command,
+			},
+		},
+	}
 }

@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/timanager"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
@@ -96,6 +97,11 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		state.IsStoreReady = IsStoreReady(state)
 		pod := state.Pod()
 		if state.IsStoreReady && pod != nil && statefulset.IsPodAvailable(pod, minReadySeconds, metav1.Now()) {
+			state.SetHealthy()
+		}
+
+		if state.FeatureGates().Enabled(metav1alpha1.UseTiKVReadyAPI) {
+			// always set it as healthy
 			state.SetHealthy()
 		}
 

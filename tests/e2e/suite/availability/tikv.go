@@ -22,19 +22,23 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
+	wopt "github.com/pingcap/tidb-operator/tests/e2e/framework/workload"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
 // We use tidb workload to test whether the tikv is always available
 // TODO(liubo02): maybe call tikv directly?
-var _ = ginkgo.Describe("TiKV Availability Test", label.TiKV, label.KindAvail, label.Update, func() {
+var _ = ginkgo.Describe("TiKV Availability Test", label.TiKV, label.KindAvail, label.Update, label.P0, func() {
 	f := framework.New()
 	f.Setup()
-	ginkgo.Context("Default", label.P0, func() {
+
+	f.DescribeFeatureTable(func(fs ...metav1alpha1.Feature) {
+		f.SetupCluster(data.WithFeatureGates(fs...))
 		workload := f.SetupWorkload()
 		ginkgo.It("No error when rolling update tikv", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx)
@@ -46,7 +50,7 @@ var _ = ginkgo.Describe("TiKV Availability Test", label.TiKV, label.KindAvail, l
 			f.WaitForTiDBGroupReady(ctx, dbg)
 
 			patch := client.MergeFrom(kvg.DeepCopy())
-			kvg.Spec.Template.Spec.Config = `log.level = 'warn'`
+			kvg.Spec.Template.Labels = map[string]string{"test": "test"}
 
 			nctx, cancel := context.WithCancel(ctx)
 			wg := sync.WaitGroup{}
@@ -57,7 +61,12 @@ var _ = ginkgo.Describe("TiKV Availability Test", label.TiKV, label.KindAvail, l
 				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiKVGroup(kvg), 3, 0, waiter.LongTaskTimeout))
 			}()
 
-			done := workload.MustRunWorkload(nctx, data.DefaultTiDBServiceName)
+			done := workload.MustRunWorkload(
+				nctx,
+				data.DefaultTiDBServiceName,
+				wopt.MaxExecutionTime(200),
+				wopt.WorkloadType(wopt.WorkloadTypeSelectCount),
+			)
 
 			changeTime := time.Now()
 			ginkgo.By("Change config of the TiKVGroup")
@@ -68,5 +77,55 @@ var _ = ginkgo.Describe("TiKV Availability Test", label.TiKV, label.KindAvail, l
 			wg.Wait()
 			<-done
 		})
-	})
+	},
+		nil,
+	)
+
+	f.DescribeFeatureTable(func(fs ...metav1alpha1.Feature) {
+		f.SetupCluster(data.WithFeatureGates(fs...))
+		workload := f.SetupWorkload()
+		ginkgo.It("No error when rolling update tikv", label.KindNextGen, func(ctx context.Context) {
+			f.MustCreateS3(ctx)
+			pdg := f.MustCreatePD(ctx, data.WithPDNextGen())
+			kvg := f.MustCreateTiKV(ctx, data.WithTiKVNextGen(), data.WithReplicas[*runtime.TiKVGroup](3))
+			dbg := f.MustCreateTiDB(ctx,
+				data.WithTiDBNextGen(),
+				data.WithKeyspace("SYSTEM"),
+			)
+
+			f.WaitForPDGroupReady(ctx, pdg)
+			f.WaitForTiKVGroupReady(ctx, kvg)
+			f.WaitForTiDBGroupReady(ctx, dbg)
+
+			patch := client.MergeFrom(kvg.DeepCopy())
+			kvg.Spec.Template.Labels = map[string]string{"test": "test"}
+
+			nctx, cancel := context.WithCancel(ctx)
+			wg := sync.WaitGroup{}
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				defer ginkgo.GinkgoRecover()
+				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiKVGroup(kvg), 3, 0, waiter.LongTaskTimeout))
+			}()
+
+			done := workload.MustRunWorkload(
+				nctx,
+				data.DefaultTiDBServiceName,
+				wopt.MaxExecutionTime(200),
+				wopt.WorkloadType(wopt.WorkloadTypeSelectCount),
+			)
+
+			changeTime := time.Now()
+			ginkgo.By("Change config of the TiKVGroup")
+			f.Must(f.Client.Patch(ctx, kvg, patch))
+			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiKVGroup(kvg), changeTime, waiter.LongTaskTimeout))
+			f.WaitForTiKVGroupReady(ctx, kvg)
+			cancel()
+			wg.Wait()
+			<-done
+		})
+	},
+		[]metav1alpha1.Feature{metav1alpha1.UseTiKVReadyAPI},
+	)
 })

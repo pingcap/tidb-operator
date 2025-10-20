@@ -58,6 +58,15 @@ func Workload(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("failed to create table: %w", err)
 	}
 
+	// init tables
+	for id := range maxConnections {
+		//nolint:gosec // only for testing
+		str := fmt.Sprintf("replace into %s(id, v) values (?, ?);", table)
+		if _, err := db.ExecContext(ctx, str, id, strconv.Itoa(id)); err != nil {
+			return fmt.Errorf("failed to exec statement: %w", err)
+		}
+	}
+
 	var totalCount, failCount atomic.Uint64
 	var wg sync.WaitGroup
 
@@ -72,11 +81,11 @@ func Workload(ctx context.Context, db *sql.DB) error {
 				case <-ctx.Done():
 					return
 				default:
-					err := executeSimpleTransaction(ctx, db, id, table, index)
+					err := runWorkload(ctx, db, id, table, index, workloadType)
 					totalCount.Add(1)
-					if err != nil && !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, context.Canceled) {
-						fmt.Printf("[%d-%s] failed to execute simple transaction(long: %v): %v\n",
-							id, time.Now().String(), id%3 == 0, err,
+					if err != nil && ctx.Err() == nil {
+						fmt.Printf("[%d-%s] failed to run workload: %v\n",
+							id, time.Now().String(), err,
 						)
 						failCount.Add(1)
 					}
@@ -94,23 +103,32 @@ func Workload(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
-// ExecuteSimpleTransaction performs a transaction to insert or update the given id in the specified table.
-func executeSimpleTransaction(ctx context.Context, db *sql.DB, id int, table string, index int) error {
-	if tiflashReplicas != 0 {
-		if _, err := db.ExecContext(ctx, "set session tidb_enforce_mpp = 1;"); err != nil {
-			return fmt.Errorf("set session tidb tidb_enforce_mpp failed: %w", err)
+func runWorkload(ctx context.Context, db *sql.DB, id int, table string, index int, typ string) error {
+	switch typ {
+	case workloadTypeTxn:
+		if err := workloadSimpleTransaction(ctx, db, id, table, index); err != nil {
+			return fmt.Errorf("failed to run txn (long: %v): %w", id%3 == 0, err)
 		}
-		// This query is introduced to visit tiflash
-		rows, err := db.QueryContext(ctx, fmt.Sprintf("select count(*) from %s;", table))
-		if err != nil {
-			return fmt.Errorf("failed to query: %w", err)
+	case workloadTypeSelectCount:
+		toTiFlash := false
+		if tiflashReplicas != 0 {
+			toTiFlash = true
 		}
-		if err := rows.Close(); err != nil {
-			return fmt.Errorf("failed to close query result: %w", err)
-		}
+		return workloadSelectCount(ctx, db, table, toTiFlash)
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	return fmt.Errorf("unknown type: %v", typ)
+}
+
+func workloadSimpleTransaction(ctx context.Context, db *sql.DB, id int, table string, index int) error {
+	timeout := time.Millisecond * time.Duration(maxExecutionTime)
+	if id%3 == 0 {
+		timeout = time.Second*time.Duration(longTxnSleepSeconds) + timeout
+	}
+	nctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	tx, err := db.BeginTx(nctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin txn: %w", err)
 	}
@@ -123,13 +141,13 @@ func executeSimpleTransaction(ctx context.Context, db *sql.DB, id int, table str
 	// Prepare SQL statement to replace or insert a record
 	//nolint:gosec // only for testing
 	str := fmt.Sprintf("replace into %s(id, v) values(?, ?);", table)
-	if _, err = tx.ExecContext(ctx, str, id, strconv.Itoa(index)); err != nil {
+	if _, err = tx.ExecContext(nctx, str, id, strconv.Itoa(index)); err != nil {
 		return fmt.Errorf("failed to exec statement: %w", err)
 	}
 
 	// Simulate a different operation by updating the value
 	if _, err = tx.ExecContext(
-		ctx,
+		nctx,
 		fmt.Sprintf("update %s set v = ? where id = ?;", table),
 		strconv.Itoa(index+1),
 		id,
@@ -144,10 +162,33 @@ func executeSimpleTransaction(ctx context.Context, db *sql.DB, id int, table str
 
 	// Commit the transaction
 	if err = tx.Commit(); err != nil {
-		if errors.Is(err, sql.ErrTxDone) && ctx.Err() != nil {
-			return fmt.Errorf("failed to commit rollbacked txn: %w", ctx.Err())
+		if errors.Is(err, sql.ErrTxDone) && nctx.Err() != nil {
+			return fmt.Errorf("failed to commit rollbacked txn: %w", nctx.Err())
 		}
 		return fmt.Errorf("failed to commit txn: %w", err)
+	}
+
+	return nil
+}
+
+func workloadSelectCount(ctx context.Context, db *sql.DB, table string, toTiFlash bool) error {
+	if toTiFlash {
+		if _, err := db.ExecContext(ctx, "set session tidb_enforce_mpp = 1;"); err != nil {
+			return fmt.Errorf("set session tidb tidb_enforce_mpp failed: %w", err)
+		}
+	}
+
+	timeout := time.Millisecond * time.Duration(maxExecutionTime)
+	nctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	// This query is introduced to visit tiflash
+	rows, err := db.QueryContext(nctx, fmt.Sprintf("select count(*) from %s;", table))
+	if err != nil {
+		return fmt.Errorf("failed to query: %w", err)
+	}
+	if err := rows.Close(); err != nil {
+		return fmt.Errorf("failed to close query result: %w", err)
 	}
 
 	return nil
