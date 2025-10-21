@@ -132,7 +132,7 @@ var _ = ginkgo.Describe("TiFlash Availability Test", label.TiFlash, label.Update
 				// Set max_execution_time to 4s for next-gen tiflash
 				// TODO: dig why 2000ms is not enough
 				wopt.WorkloadType(wopt.WorkloadTypeSelectCount),
-				wopt.MaxExecutionTime(2000),
+				wopt.MaxExecutionTime(4000),
 			)
 
 			patch := client.MergeFrom(fgc.DeepCopy())

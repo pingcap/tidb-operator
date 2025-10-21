@@ -86,7 +86,7 @@ const (
 	UseTSOReadyAPI      Feature      = "UseTSOReadyAPI"
 	UseTSOReadyAPIStage FeatureStage = FeatureStageAlpha
 
-	// UsePDReadyAPI means use TiKV's /ready API as the readiness probe.
+	// UseTiKVReadyAPI means use TiKV's /ready API as the readiness probe.
 	UseTiKVReadyAPI      Feature      = "UseTiKVReadyAPI"
 	UseTiKVReadyAPIStage FeatureStage = FeatureStageAlpha
 )
