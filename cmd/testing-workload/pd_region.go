@@ -38,7 +38,7 @@ const (
 	defaultGRPCKeepAliveTimeout = 3 * time.Second
 	defaultPDServerTimeout      = 3 * time.Second
 
-	defaultLeaderTransferTime = 100 * time.Millisecond
+	defaultLeaderTransferTime = 300 * time.Millisecond
 )
 
 func NewPDClient(pdAddrs []string) (pd.Client, error) {
@@ -129,7 +129,7 @@ func PDRegionAccess(ctx context.Context) error {
 func accessPDAPI(ctx context.Context, client pd.Client) error {
 	// retry once
 	var lastErr error
-	for range 3 {
+	for range 2 {
 		if lastErr != nil {
 			fmt.Printf("[%s] retry because of %v\n", time.Now().String(), lastErr)
 		}
