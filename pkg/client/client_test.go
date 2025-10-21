@@ -28,12 +28,13 @@ import (
 
 func TestApply(t *testing.T) {
 	cases := []struct {
-		desc     string
-		objs     []client.Object
-		obj      client.Object
-		expected client.Object
-		res      ApplyResult
-		hasErr   bool
+		desc      string
+		objs      []client.Object
+		obj       client.Object
+		expected  client.Object
+		res       ApplyResult
+		immutable []string
+		hasErr    bool
 	}{
 		{
 			desc: "apply a new obj",
@@ -62,6 +63,26 @@ func TestApply(t *testing.T) {
 			expected: fake.FakeObj("aa", fake.GVK[corev1.Pod](corev1.SchemeGroupVersion), fake.Label[corev1.Pod]("test", "test")),
 			res:      ApplyResultUnchanged,
 		},
+		{
+			desc: "apply for an existing obj with immutable fields",
+			objs: []client.Object{
+				fake.FakeObj("aa", fake.Label[corev1.Pod]("test", "test"), func(obj *corev1.Pod) *corev1.Pod {
+					obj.Spec.NodeName = "xxx"
+					return obj
+				}),
+			},
+			obj: fake.FakeObj("aa", fake.Label[corev1.Pod]("test", "test"), func(obj *corev1.Pod) *corev1.Pod {
+				// nodeName is immutable
+				obj.Spec.NodeName = "yyy"
+				return obj
+			}),
+			expected: fake.FakeObj("aa", fake.GVK[corev1.Pod](corev1.SchemeGroupVersion), fake.Label[corev1.Pod]("test", "test"), func(obj *corev1.Pod) *corev1.Pod {
+				obj.Spec.NodeName = "xxx"
+				return obj
+			}),
+			immutable: []string{"spec", "nodeName"},
+			res:       ApplyResultUnchanged,
+		},
 	}
 
 	for i := range cases {
@@ -71,10 +92,10 @@ func TestApply(t *testing.T) {
 
 			p := NewFakeClient()
 			for _, obj := range c.objs {
-				err := p.Apply(context.TODO(), obj)
+				err := p.Apply(context.TODO(), obj, Immutable(c.immutable...))
 				require.NoError(tt, err)
 			}
-			res, err := p.ApplyWithResult(context.TODO(), c.obj)
+			res, err := p.ApplyWithResult(context.TODO(), c.obj, Immutable(c.immutable...))
 			if c.hasErr {
 				assert.Error(tt, err)
 			} else {
