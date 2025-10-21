@@ -488,6 +488,10 @@ func (in *BackupStatus) DeepCopyInto(out *BackupStatus) {
 	*out = *in
 	in.TimeStarted.DeepCopyInto(&out.TimeStarted)
 	in.TimeCompleted.DeepCopyInto(&out.TimeCompleted)
+	if in.TimeSynced != nil {
+		in, out := &in.TimeSynced, &out.TimeSynced
+		*out = (*in).DeepCopy()
+	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
 		*out = make([]BackupCondition, len(*in))
@@ -2633,6 +2637,11 @@ func (in *LogSubCommandStatus) DeepCopy() *LogSubCommandStatus {
 func (in *LogTailerSpec) DeepCopyInto(out *LogTailerSpec) {
 	*out = *in
 	in.ResourceRequirements.DeepCopyInto(&out.ResourceRequirements)
+	if in.SleepTimeSeconds != nil {
+		in, out := &in.SleepTimeSeconds, &out.SleepTimeSeconds
+		*out = new(int64)
+		**out = **in
+	}
 	if in.SecurityContext != nil {
 		in, out := &in.SecurityContext, &out.SecurityContext
 		*out = new(v1.SecurityContext)
@@ -6186,6 +6195,11 @@ func (in *TiDBSlowLogTailerSpec) DeepCopyInto(out *TiDBSlowLogTailerSpec) {
 	if in.ImagePullPolicy != nil {
 		in, out := &in.ImagePullPolicy, &out.ImagePullPolicy
 		*out = new(v1.PullPolicy)
+		**out = **in
+	}
+	if in.SleepTimeSeconds != nil {
+		in, out := &in.SleepTimeSeconds, &out.SleepTimeSeconds
+		*out = new(int64)
 		**out = **in
 	}
 	if in.SecurityContext != nil {

@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: backups.pingcap.com
 spec:
   group: pingcap.com
@@ -2453,6 +2453,10 @@ spec:
                 format: date-time
                 nullable: true
                 type: string
+              timeSynced:
+                format: date-time
+                nullable: true
+                type: string
               timeTaken:
                 type: string
             type: object
@@ -2468,7 +2472,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: backupschedules.pingcap.com
 spec:
   group: pingcap.com
@@ -10061,7 +10065,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: compactbackups.pingcap.com
 spec:
   group: pingcap.com
@@ -12281,7 +12285,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: dmclusters.pingcap.com
 spec:
   group: pingcap.com
@@ -12945,6 +12949,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -13049,6 +13054,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -13234,6 +13240,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -14804,6 +14811,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -14908,6 +14916,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -15093,6 +15102,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -15708,6 +15718,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -15812,6 +15823,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -15997,6 +16009,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -17572,6 +17585,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -17676,6 +17690,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -17861,6 +17876,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -18614,6 +18630,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -18718,6 +18735,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -18903,6 +18921,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -20483,6 +20502,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -20587,6 +20607,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -20772,6 +20793,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -21536,7 +21558,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: restores.pingcap.com
 spec:
   group: pingcap.com
@@ -24648,7 +24670,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: tidbclusters.pingcap.com
 spec:
   group: pingcap.com
@@ -25339,6 +25361,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -25443,6 +25466,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -25628,6 +25652,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -27196,6 +27221,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -27300,6 +27326,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -27485,6 +27512,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -28117,6 +28145,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -28221,6 +28250,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -28406,6 +28436,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -29983,6 +30014,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -30087,6 +30119,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -30272,6 +30305,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -30919,6 +30953,7 @@ spec:
                                     format: int32
                                     type: integer
                                   service:
+                                    default: ""
                                     type: string
                                 required:
                                 - port
@@ -31023,6 +31058,7 @@ spec:
                                     format: int32
                                     type: integer
                                   service:
+                                    default: ""
                                     type: string
                                 required:
                                 - port
@@ -31208,6 +31244,7 @@ spec:
                                     format: int32
                                     type: integer
                                   service:
+                                    default: ""
                                     type: string
                                 required:
                                 - port
@@ -32781,6 +32818,7 @@ spec:
                                     format: int32
                                     type: integer
                                   service:
+                                    default: ""
                                     type: string
                                 required:
                                 - port
@@ -32885,6 +32923,7 @@ spec:
                                     format: int32
                                     type: integer
                                   service:
+                                    default: ""
                                     type: string
                                 required:
                                 - port
@@ -33070,6 +33109,7 @@ spec:
                                     format: int32
                                     type: integer
                                   service:
+                                    default: ""
                                     type: string
                                 required:
                                 - port
@@ -33777,6 +33817,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -33881,6 +33922,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -34066,6 +34108,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -35639,6 +35682,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -35743,6 +35787,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -35928,6 +35973,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -36533,6 +36579,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -36637,6 +36684,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -36822,6 +36870,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -38397,6 +38446,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -38501,6 +38551,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -38686,6 +38737,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -39274,6 +39326,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -39378,6 +39431,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -39563,6 +39617,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -41173,6 +41228,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -41277,6 +41333,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -41462,6 +41519,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -42038,6 +42096,9 @@ spec:
                                 type: string
                             type: object
                         type: object
+                      sleepTimeSeconds:
+                        format: int64
+                        type: integer
                       useSidecar:
                         type: boolean
                     type: object
@@ -42353,6 +42414,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -42457,6 +42519,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -42642,6 +42705,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -44225,6 +44289,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -44329,6 +44394,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -44514,6 +44580,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -44817,6 +44884,9 @@ spec:
                                 type: string
                             type: object
                         type: object
+                      sleepTimeSeconds:
+                        format: int64
+                        type: integer
                       useSidecar:
                         type: boolean
                     type: object
@@ -45324,6 +45394,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -45428,6 +45499,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -45613,6 +45685,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -47197,6 +47270,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -47301,6 +47375,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -47486,6 +47561,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -47697,6 +47773,9 @@ spec:
                                 type: string
                             type: object
                         type: object
+                      sleepTimeSeconds:
+                        format: int64
+                        type: integer
                       useSidecar:
                         type: boolean
                     type: object
@@ -48205,6 +48284,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -48309,6 +48389,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -48494,6 +48575,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -50069,6 +50151,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -50173,6 +50256,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -50358,6 +50442,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -52315,7 +52400,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: tidbdashboards.pingcap.com
 spec:
   group: pingcap.com
@@ -52563,6 +52648,7 @@ spec:
                               format: int32
                               type: integer
                             service:
+                              default: ""
                               type: string
                           required:
                           - port
@@ -52667,6 +52753,7 @@ spec:
                               format: int32
                               type: integer
                             service:
+                              default: ""
                               type: string
                           required:
                           - port
@@ -52852,6 +52939,7 @@ spec:
                               format: int32
                               type: integer
                             service:
+                              default: ""
                               type: string
                           required:
                           - port
@@ -54442,6 +54530,7 @@ spec:
                               format: int32
                               type: integer
                             service:
+                              default: ""
                               type: string
                           required:
                           - port
@@ -54546,6 +54635,7 @@ spec:
                               format: int32
                               type: integer
                             service:
+                              default: ""
                               type: string
                           required:
                           - port
@@ -54731,6 +54821,7 @@ spec:
                               format: int32
                               type: integer
                             service:
+                              default: ""
                               type: string
                           required:
                           - port
@@ -55194,7 +55285,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: tidbinitializers.pingcap.com
 spec:
   group: pingcap.com
@@ -55450,7 +55541,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: tidbmonitors.pingcap.com
 spec:
   group: pingcap.com
@@ -55698,6 +55789,7 @@ spec:
                               format: int32
                               type: integer
                             service:
+                              default: ""
                               type: string
                           required:
                           - port
@@ -55802,6 +55894,7 @@ spec:
                               format: int32
                               type: integer
                             service:
+                              default: ""
                               type: string
                           required:
                           - port
@@ -55987,6 +56080,7 @@ spec:
                               format: int32
                               type: integer
                             service:
+                              default: ""
                               type: string
                           required:
                           - port
@@ -58303,7 +58397,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.15.0
+    controller-gen.kubebuilder.io/version: v0.16.5
   name: tidbngmonitorings.pingcap.com
 spec:
   group: pingcap.com
@@ -58551,6 +58645,7 @@ spec:
                               format: int32
                               type: integer
                             service:
+                              default: ""
                               type: string
                           required:
                           - port
@@ -58655,6 +58750,7 @@ spec:
                               format: int32
                               type: integer
                             service:
+                              default: ""
                               type: string
                           required:
                           - port
@@ -58840,6 +58936,7 @@ spec:
                               format: int32
                               type: integer
                             service:
+                              default: ""
                               type: string
                           required:
                           - port
@@ -60413,6 +60510,7 @@ spec:
                               format: int32
                               type: integer
                             service:
+                              default: ""
                               type: string
                           required:
                           - port
@@ -60517,6 +60615,7 @@ spec:
                               format: int32
                               type: integer
                             service:
+                              default: ""
                               type: string
                           required:
                           - port
@@ -60702,6 +60801,7 @@ spec:
                               format: int32
                               type: integer
                             service:
+                              default: ""
                               type: string
                           required:
                           - port
@@ -61039,6 +61139,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -61143,6 +61244,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -61328,6 +61430,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -62901,6 +63004,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -63005,6 +63109,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port
@@ -63190,6 +63295,7 @@ spec:
                                   format: int32
                                   type: integer
                                 service:
+                                  default: ""
                                   type: string
                               required:
                               - port

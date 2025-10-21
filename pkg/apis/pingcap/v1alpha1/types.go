@@ -997,6 +997,11 @@ type LogTailerSpec struct {
 	// +optional
 	UseSidecar bool `json:"useSidecar,omitempty"`
 
+	// Tailer needs to wait to flush logs to stdout after receiving sig TERM
+	// Default is not sleep
+	// +optional
+	SleepTimeSeconds *int64 `json:"sleepTimeSeconds,omitempty"`
+
 	// SecurityContext defines the security options the log tailer container should be run with.
 	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
 	// +optional
@@ -1284,6 +1289,11 @@ type TiDBSlowLogTailerSpec struct {
 	// and https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/
 	// +optional
 	UseSidecar bool `json:"useSidecar,omitempty"`
+
+	// Tailer needs to wait to flush logs to stdout after receiving sig TERM
+	// Default is not sleep
+	// +optional
+	SleepTimeSeconds *int64 `json:"sleepTimeSeconds,omitempty"`
 
 	// SecurityContext defines the security options the slowlog tailer container should be run with.
 	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
@@ -2543,6 +2553,10 @@ type BackupStatus struct {
 	// TODO: remove nullable, https://github.com/kubernetes/kubernetes/issues/86811
 	// +nullable
 	TimeCompleted metav1.Time `json:"timeCompleted,omitempty"`
+	// TimeSynced is the time at which the backup was synced to kernel state.
+	// Only applied for LogBackup.
+	// +nullable
+	TimeSynced *metav1.Time `json:"timeSynced,omitempty"`
 	// TimeTaken is the time that backup takes, it is TimeCompleted - TimeStarted
 	TimeTaken string `json:"timeTaken,omitempty"`
 	// BackupSizeReadable is the data size of the backup.

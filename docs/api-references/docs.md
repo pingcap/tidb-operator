@@ -2630,6 +2630,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>passwordSecret is the name of the Kubernetes secret that is used to initialize the cluster.</p>
 </td>
 </tr>
 <tr>
@@ -4577,6 +4578,20 @@ Kubernetes meta/v1.Time
 <td>
 <p>TimeCompleted is the time at which the backup was completed.
 TODO: remove nullable, <a href="https://github.com/kubernetes/kubernetes/issues/86811">https://github.com/kubernetes/kubernetes/issues/86811</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeSynced</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>TimeSynced is the time at which the backup was synced to kernel state.
+Only applied for LogBackup.</p>
 </td>
 </tr>
 <tr>
@@ -9488,6 +9503,19 @@ It requires enable feature gate &ldquo;SidecarContainers&rdquo;
 This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33
 See <a href="https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/">https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/</a>
 and <a href="https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/">https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sleepTimeSeconds</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Tailer needs to wait to flush logs to stdout after receiving sig TERM
+Default is not sleep</p>
 </td>
 </tr>
 <tr>
@@ -18336,6 +18364,19 @@ and <a href="https://kubernetes.io/docs/reference/command-line-tools-reference/f
 </tr>
 <tr>
 <td>
+<code>sleepTimeSeconds</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Tailer needs to wait to flush logs to stdout after receiving sig TERM
+Default is not sleep</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>securityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#securitycontext-v1-core">
@@ -26110,6 +26151,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
+<p>passwordSecret is the name of the Kubernetes secret that is used to initialize the cluster.</p>
 </td>
 </tr>
 <tr>

@@ -4233,6 +4233,13 @@ func schema_pkg_apis_pingcap_v1alpha1_LogTailerSpec(ref common.ReferenceCallback
 							Format:      "",
 						},
 					},
+					"sleepTimeSeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Tailer needs to wait to flush logs to stdout after receiving sig TERM Default is not sleep",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
 					"securityContext": {
 						SchemaProps: spec.SchemaProps{
 							Description: "SecurityContext defines the security options the log tailer container should be run with. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/",
@@ -10083,6 +10090,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiDBSlowLogTailerSpec(ref common.Reference
 							Format:      "",
 						},
 					},
+					"sleepTimeSeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Tailer needs to wait to flush logs to stdout after receiving sig TERM Default is not sleep",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
 					"securityContext": {
 						SchemaProps: spec.SchemaProps{
 							Description: "SecurityContext defines the security options the slowlog tailer container should be run with. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/",
@@ -15572,8 +15586,9 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbInitializerSpec(ref common.ReferenceCa
 					},
 					"passwordSecret": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
+							Description: "passwordSecret is the name of the Kubernetes secret that is used to initialize the cluster.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"resources": {

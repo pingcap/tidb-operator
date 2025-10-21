@@ -564,12 +564,16 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			},
 		}
 		if logTailer.UseSidecar {
+			var sleepCmd string
+			if logTailer.SleepTimeSeconds != nil {
+				sleepCmd = fmt.Sprintf("sleep %d; ", *logTailer.SleepTimeSeconds)
+			}
 			c.RestartPolicy = ptr.To(corev1.ContainerRestartPolicyAlways)
 			// NOTE: tail cannot hanle sig TERM when it's PID is 1
 			c.Command = []string{
 				"sh",
 				"-c",
-				fmt.Sprintf(`trap "exit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, rocksDBLogFilePath, rocksDBLogFilePath),
+				fmt.Sprintf(`trap "%sexit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, sleepCmd, rocksDBLogFilePath, rocksDBLogFilePath),
 			}
 			initContainers = append(initContainers, c)
 		} else {
@@ -627,12 +631,16 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			},
 		}
 		if logTailer.UseSidecar {
+			var sleepCmd string
+			if logTailer.SleepTimeSeconds != nil {
+				sleepCmd = fmt.Sprintf("sleep %d; ", *logTailer.SleepTimeSeconds)
+			}
 			c.RestartPolicy = ptr.To(corev1.ContainerRestartPolicyAlways)
 			// NOTE: tail cannot hanle sig TERM when it's PID is 1
 			c.Command = []string{
 				"sh",
 				"-c",
-				fmt.Sprintf(`trap "exit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, raftLogFilePath, raftLogFilePath),
+				fmt.Sprintf(`trap "%sexit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, sleepCmd, raftLogFilePath, raftLogFilePath),
 			}
 			initContainers = append(initContainers, c)
 		} else {

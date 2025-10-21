@@ -358,7 +358,7 @@ func getDiscoveryMeta(obj metav1.Object, nameFunc func(string) string) (metav1.O
 		ownerRef = controller.GetOwnerRef(cluster)
 		discoveryLabel = label.New().Instance(instanceName).Discovery()
 	case *v1alpha1.DMCluster:
-		// NOTE: for DmCluster, add a `-dm` prefix for discovery to avoid name conflicts.
+		// NOTE: for DmCluster, add a `-dm` suffix for discovery to avoid name conflicts.
 		name = fmt.Sprintf("%s-dm", cluster.GetName())
 		instanceName := fmt.Sprintf("%s-dm", cluster.GetInstanceName())
 		ownerRef = controller.GetDMOwnerRef(cluster) // TODO: refactor to unify methods

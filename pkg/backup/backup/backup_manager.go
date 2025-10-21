@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup"
@@ -30,9 +31,9 @@ import (
 	backuputil "github.com/pingcap/tidb-operator/pkg/backup/util"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/util"
+	"github.com/pingcap/tidb-operator/pkg/util/tidbcluster"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -115,10 +116,6 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		}
 	}
 
-	if v1alpha1.IsBackupComplete(backup) || v1alpha1.IsBackupFailed(backup) || v1alpha1.IsBackupInvalid(backup) {
-		return nil
-	}
-
 	// validate backup
 	if err = bm.validateBackup(backup); err != nil {
 		klog.Errorf("backup %s/%s validate error %v.", ns, name, err)
@@ -130,14 +127,18 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 		return err
 	}
 
-	// skip backup
-	skip := false
-	if skip, err = bm.skipBackupSync(backup); err != nil {
+	// canSkip backup
+	canSkip := false
+	if canSkip, err = bm.skipBackupSync(backup); err != nil {
 		klog.Errorf("backup %s/%s skip error %v.", ns, name, err)
 		return err
 	}
-	if skip {
+	if canSkip {
 		klog.Infof("backup %s/%s is already done and skip sync.", ns, name)
+		return nil
+	}
+
+	if v1alpha1.IsBackupComplete(backup) || v1alpha1.IsBackupFailed(backup) || v1alpha1.IsBackupInvalid(backup) {
 		return nil
 	}
 
@@ -186,6 +187,12 @@ func (bm *backupManager) syncBackupJob(backup *v1alpha1.Backup) error {
 	}, updateStatus)
 }
 
+// isTidbClusterReady checks if the TidbCluster is ready for backup
+func isTidbClusterReady(tc *v1alpha1.TidbCluster) bool {
+	condition := tidbcluster.GetTidbClusterReadyCondition(tc.Status)
+	return condition != nil && condition.Status == corev1.ConditionTrue
+}
+
 // validateBackup validates backup and returns error if backup is invalid
 func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 	ns := backup.GetNamespace()
@@ -224,6 +231,12 @@ func (bm *backupManager) validateBackup(backup *v1alpha1.Backup) error {
 				Message: err.Error(),
 			}, nil)
 			return err
+		}
+
+		// Check if TidbCluster is ready before proceeding with backup
+		if backup.Spec.Mode != v1alpha1.BackupModeVolumeSnapshot && !isTidbClusterReady(tc) {
+			return controller.RequeueErrorf("backup %s/%s: waiting for TidbCluster %s/%s to be ready",
+				ns, name, backupNamespace, backup.Spec.BR.Cluster)
 		}
 
 		tikvImage := tc.TiKVImage()
@@ -380,11 +393,21 @@ func (bm *backupManager) checkVolumeBackupSnapshotsCreated(b *v1alpha1.Backup) e
 
 // skipBackupSync skip backup sync, if return true, backup can be skiped directly.
 func (bm *backupManager) skipBackupSync(backup *v1alpha1.Backup) (bool, error) {
-	if backup.Spec.Mode == v1alpha1.BackupModeLog {
-		return bm.skipLogBackupSync(backup)
-	} else if backup.Spec.Mode == v1alpha1.BackupModeVolumeSnapshot {
+	switch backup.Spec.Mode {
+	case v1alpha1.BackupModeLog:
+		canSkip, err := bm.skipLogBackupSync(backup)
+		if err != nil {
+			return false, errors.Trace(err)
+		}
+		if !canSkip {
+			// The log backup command needs to be executed, don't skip
+			return false, nil
+		}
+		// The log backup command can be skipped, but we still need to sync kernel status
+		return bm.backupTracker.SyncLogBackupState(backup)
+	case v1alpha1.BackupModeVolumeSnapshot:
 		return bm.skipVolumeSnapshotBackupSync(backup)
-	} else {
+	default:
 		return bm.skipSnapshotBackupSync(backup)
 	}
 }

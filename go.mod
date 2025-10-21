@@ -38,8 +38,8 @@ require (
 	github.com/pingcap/advanced-statefulset/client v1.17.1-0.20241017064830-af926cc6da0d
 	github.com/pingcap/errors v0.11.4
 	github.com/pingcap/kvproto v0.0.0-20250117122752-2b87602a94a1
-	github.com/pingcap/tidb-operator/pkg/apis v1.6.3
-	github.com/pingcap/tidb-operator/pkg/client v1.6.3
+	github.com/pingcap/tidb-operator/pkg/apis v1.6.4
+	github.com/pingcap/tidb-operator/pkg/client v1.6.4
 	github.com/pingcap/tiproxy/lib v0.0.0-20230907130944-eb5b4b9c9e79
 	github.com/prometheus/client_golang v1.17.0
 	github.com/prometheus/client_model v0.6.1
@@ -56,6 +56,7 @@ require (
 	gocloud.dev v0.18.0
 	golang.org/x/sync v0.10.0
 	golang.org/x/time v0.5.0
+	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d
 	gomodules.xyz/jsonpatch/v2 v2.4.0
 	google.golang.org/grpc v1.59.0
 	gopkg.in/yaml.v2 v2.4.0

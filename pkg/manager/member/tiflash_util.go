@@ -51,10 +51,12 @@ func buildTiFlashSidecarContainers(tc *v1alpha1.TidbCluster) ([]corev1.Container
 	var containers []corev1.Container
 	var resource corev1.ResourceRequirements
 	var useSidecar bool
+	var sleepTimeSeconds *int64
 	var securityContext *corev1.SecurityContext
 	if spec.LogTailer != nil {
 		resource = controller.ContainerResource(spec.LogTailer.ResourceRequirements)
 		useSidecar = spec.LogTailer.UseSidecar
+		sleepTimeSeconds = spec.LogTailer.SleepTimeSeconds
 		securityContext = spec.LogTailer.SecurityContext
 	}
 	if config == nil {
@@ -66,17 +68,17 @@ func buildTiFlashSidecarContainers(tc *v1alpha1.TidbCluster) ([]corev1.Container
 	if err != nil {
 		return nil, err
 	}
-	containers = append(containers, buildSidecarContainer("serverlog", path, image, pullPolicy, resource, useSidecar, securityContext))
+	containers = append(containers, buildSidecarContainer("serverlog", path, image, pullPolicy, resource, useSidecar, sleepTimeSeconds, securityContext))
 	path, err = config.Common.Get("logger.errorlog").AsString()
 	if err != nil {
 		return nil, err
 	}
-	containers = append(containers, buildSidecarContainer("errorlog", path, image, pullPolicy, resource, useSidecar, securityContext))
+	containers = append(containers, buildSidecarContainer("errorlog", path, image, pullPolicy, resource, useSidecar, sleepTimeSeconds, securityContext))
 	path, err = config.Common.Get("flash.flash_cluster.log").AsString()
 	if err != nil {
 		return nil, err
 	}
-	containers = append(containers, buildSidecarContainer("clusterlog", path, image, pullPolicy, resource, useSidecar, securityContext))
+	containers = append(containers, buildSidecarContainer("clusterlog", path, image, pullPolicy, resource, useSidecar, sleepTimeSeconds, securityContext))
 	return containers, nil
 }
 
@@ -86,6 +88,7 @@ func buildSidecarContainer(name, path, image string,
 	// If true we use native sidecar feature
 	// See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
 	useSidecar bool,
+	sleepTimeSeconds *int64,
 	securityContext *corev1.SecurityContext,
 ) corev1.Container {
 	c := corev1.Container{
@@ -111,12 +114,16 @@ func buildSidecarContainer(name, path, image string,
 	}
 
 	if useSidecar {
+		var sleepCmd string
+		if sleepTimeSeconds != nil {
+			sleepCmd = fmt.Sprintf("sleep %d; ", *sleepTimeSeconds)
+		}
 		c.RestartPolicy = ptr.To(corev1.ContainerRestartPolicyAlways)
 		// NOTE: tail cannot hanle sig TERM when it's PID is 1
 		c.Command = []string{
 			"sh",
 			"-c",
-			fmt.Sprintf(`trap "exit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, path, path),
+			fmt.Sprintf(`trap "%sexit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, sleepCmd, path, path),
 		}
 	}
 	return c
