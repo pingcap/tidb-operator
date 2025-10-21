@@ -105,7 +105,15 @@ func SyncPVCs(ctx context.Context, c client.Client, pvcs []*corev1.PersistentVol
 }
 
 func syncPVC(ctx context.Context, c client.Client, pvc *corev1.PersistentVolumeClaim) error {
-	if err := c.Apply(ctx, pvc); err != nil {
+	if err := c.Apply(
+		ctx,
+		pvc,
+		// If VAC is not enabled, we use params in SC to modify volume.
+		// So we allow SC ref being changed.
+		// If VAC is enabled, we should also not apply changed SC to PVC.
+		// Reset to SC of current PVC.
+		client.Immutable("spec", "storageClassName"),
+	); err != nil {
 		return err
 	}
 	msgs := isPVCSynced(pvc)
