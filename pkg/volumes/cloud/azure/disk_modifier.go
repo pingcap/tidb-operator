@@ -44,7 +44,14 @@ const (
 
 	volumeIDPartsLength = 9
 
-	defaultWaitDuration = 15 * time.Second
+	// defaultWaitDuration is the cooldown period for Azure Disk modification.
+	// According to Azure documentation: "Within every 24 hours, you can adjust the
+	// performance of these disks up to four times. If you just created one of these
+	// disks, for the first 24 hours you can only adjust its performance up to three times."
+	// Reference: https://learn.microsoft.com/en-us/azure/virtual-machines/disks-performance-tiers
+	// To ensure we don't exceed the limit of 4 modifications per 24 hours, we use
+	// a cooldown of 6 hours (24 hours / 4 = 6 hours).
+	defaultWaitDuration = 6 * time.Hour
 )
 
 type DiskModifier struct {

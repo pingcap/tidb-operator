@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	azruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -187,6 +188,16 @@ func TestModifyVolume(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestMinWaitDuration(t *testing.T) {
+	modifier := &DiskModifier{
+		Logger: logr.Discard(),
+	}
+	expected := 6 * time.Hour
+	if got := modifier.MinWaitDuration(); got != expected {
+		t.Errorf("MinWaitDuration() = %v, want %v", got, expected)
 	}
 }
 
