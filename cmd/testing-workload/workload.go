@@ -109,6 +109,7 @@ func runWorkload(ctx context.Context, db *sql.DB, id int, table string, index in
 		if err := workloadSimpleTransaction(ctx, db, id, table, index); err != nil {
 			return fmt.Errorf("failed to run txn (long: %v): %w", id%3 == 0, err)
 		}
+		return nil
 	case workloadTypeSelectCount:
 		toTiFlash := false
 		if tiflashReplicas != 0 {
