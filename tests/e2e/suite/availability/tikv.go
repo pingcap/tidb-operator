@@ -84,7 +84,8 @@ var _ = ginkgo.Describe("TiKV Availability Test", label.TiKV, label.KindAvail, l
 	f.DescribeFeatureTable(func(fs ...metav1alpha1.Feature) {
 		f.SetupCluster(data.WithFeatureGates(fs...))
 		workload := f.SetupWorkload()
-		ginkgo.It("No error when rolling update tikv", label.KindNextGen, func(ctx context.Context) {
+		// Run only this case
+		ginkgo.It("No error when rolling update tikv", ginkgo.Serial, label.KindNextGen, func(ctx context.Context) {
 			f.MustCreateS3(ctx)
 			pdg := f.MustCreatePD(ctx, data.WithPDNextGen())
 			kvg := f.MustCreateTiKV(ctx, data.WithTiKVNextGen(), data.WithReplicas[*runtime.TiKVGroup](3))
