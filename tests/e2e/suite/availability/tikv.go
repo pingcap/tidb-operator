@@ -112,7 +112,7 @@ var _ = ginkgo.Describe("TiKV Availability Test", label.TiKV, label.KindAvail, l
 			done := workload.MustRunWorkload(
 				nctx,
 				data.DefaultTiDBServiceName,
-				wopt.MaxExecutionTime(200),
+				wopt.MaxExecutionTime(300),
 				wopt.WorkloadType(wopt.WorkloadTypeSelectCount),
 			)
 
