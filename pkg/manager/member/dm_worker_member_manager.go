@@ -458,8 +458,9 @@ func getNewWorkerSetForDMCluster(dc *v1alpha1.DMCluster, cm *corev1.ConfigMap) (
 				Protocol:      corev1.ProtocolTCP,
 			},
 		},
-		VolumeMounts: volMounts,
-		Resources:    controller.ContainerResource(dc.Spec.Worker.ResourceRequirements),
+		VolumeMounts:    volMounts,
+		Resources:       controller.ContainerResource(dc.Spec.Worker.ResourceRequirements),
+		SecurityContext: baseWorkerSpec.SecurityContext(),
 	}
 	env := []corev1.EnvVar{
 		{

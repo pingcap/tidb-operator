@@ -62,6 +62,7 @@ type ComponentAccessor interface {
 	Annotations() map[string]string
 	Tolerations() []corev1.Toleration
 	PodSecurityContext() *corev1.PodSecurityContext
+	SecurityContext() *corev1.SecurityContext
 	SchedulerName() string
 	DnsPolicy() corev1.DNSPolicy
 	ConfigUpdateStrategy() ConfigUpdateStrategy
@@ -217,6 +218,13 @@ func (a *componentAccessorImpl) PodSecurityContext() *corev1.PodSecurityContext 
 		return a.podSecurityContext
 	}
 	return a.ComponentSpec.PodSecurityContext
+}
+
+func (a *componentAccessorImpl) SecurityContext() *corev1.SecurityContext {
+	if a.ComponentSpec == nil {
+		return nil
+	}
+	return a.ComponentSpec.SecurityContext
 }
 
 func (a *componentAccessorImpl) ImagePullPolicy() corev1.PullPolicy {
