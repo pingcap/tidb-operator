@@ -59,6 +59,9 @@ var unreloadable = map[meta.Feature][]meta.Component{
 	meta.UseTSOReadyAPI: {
 		meta.ComponentTSO,
 	},
+	meta.UseSchedulingReadyAPI: {
+		meta.ComponentScheduling,
+	},
 	meta.UseTiKVReadyAPI: {
 		meta.ComponentTiKV,
 	},
