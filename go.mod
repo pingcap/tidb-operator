@@ -250,4 +250,4 @@ replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v14.2.0+inc
 
 // workaround for github.com/advisories/GHSA-25xm-hr59-7c27
 // TODO: remove it after upgrading github.com/mholt/archiver greater than v3.5.0
-replace github.com/ulikunitz/xz => github.com/ulikunitz/xz v0.5.12
+replace github.com/ulikunitz/xz => github.com/ulikunitz/xz v0.5.15
