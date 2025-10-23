@@ -37,6 +37,7 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 		workload := f.SetupWorkload()
 		cm := f.SetupCertManager()
 		ginkgo.It("should enable internal TLS with same ca secret", func(ctx context.Context) {
+			f.MustCreateS3(ctx)
 			ns := f.Namespace.Name
 			cluster := f.Cluster.Name
 
@@ -45,28 +46,42 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 			mysqlClientCA, mysqlServerCertKeyPair := ns+"-mysql-ca", "mysql-tls"
 			pdg := f.MustCreatePD(ctx,
 				data.WithMSMode(),
+				data.WithPDNextGen(),
 				data.WithClusterTLS[*runtime.PDGroup](ca, "pd-internal"),
 			)
 			tg := f.MustCreateTSO(ctx,
+				data.WithTSONextGen(),
 				data.WithClusterTLS[*runtime.TSOGroup](ca, "tso-internal"),
 			)
 			sg := f.MustCreateScheduling(ctx,
+				data.WithSchedulingNextGen(),
 				data.WithClusterTLS[*runtime.SchedulingGroup](ca, "scheduling-internal"),
 			)
 			kvg := f.MustCreateTiKV(ctx,
+				data.WithTiKVNextGen(),
 				data.WithClusterTLS[*runtime.TiKVGroup](ca, "tikv-internal"),
 			)
 			dbg := f.MustCreateTiDB(ctx,
+				data.WithTiDBNextGen(),
+				data.WithKeyspace("SYSTEM"),
 				data.WithClusterTLS[*runtime.TiDBGroup](ca, "tidb-internal"),
 				data.WithTiDBMySQLTLS(mysqlClientCA, mysqlServerCertKeyPair),
 			)
-			fg := f.MustCreateTiFlash(ctx,
-				data.WithClusterTLS[*runtime.TiFlashGroup](ca, "tiflash-internal"),
+			fgc := f.MustCreateTiFlash(ctx,
+				data.WithTiFlashNextGen(),
+				data.WithTiFlashComputeMode(),
+				data.WithClusterTLS[*runtime.TiFlashGroup](ca, "tiflash-compute-internal"),
+			)
+			fgw := f.MustCreateTiFlash(ctx,
+				data.WithTiFlashNextGen(),
+				data.WithTiFlashWriteMode(),
+				data.WithClusterTLS[*runtime.TiFlashGroup](ca, "tiflash-write-internal"),
 			)
 			cg := f.MustCreateTiCDC(ctx,
 				data.WithClusterTLS[*runtime.TiCDCGroup](ca, "ticdc-internal"),
 			)
 			pg := f.MustCreateTiProxy(ctx,
+				data.WithTiProxyNextGen(),
 				data.WithClusterTLS[*runtime.TiProxyGroup](ca, "tiproxy-internal"),
 			)
 
@@ -77,7 +92,8 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 			f.WaitForSchedulingGroupReady(ctx, sg)
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
-			f.WaitForTiFlashGroupReady(ctx, fg)
+			f.WaitForTiFlashGroupReady(ctx, fgc)
+			f.WaitForTiFlashGroupReady(ctx, fgw)
 			f.WaitForTiCDCGroupReady(ctx, cg)
 			f.WaitForTiProxyGroupReady(ctx, pg)
 
@@ -86,7 +102,16 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 		})
 	},
 		[]metav1alpha1.Feature{},
-		[]metav1alpha1.Feature{metav1alpha1.UseTSOReadyAPI},
-		[]metav1alpha1.Feature{metav1alpha1.UseTSOReadyAPI, metav1alpha1.ClusterSubdomain},
+		[]metav1alpha1.Feature{
+			metav1alpha1.UseTSOReadyAPI,
+			metav1alpha1.UseSchedulingReadyAPI,
+			metav1alpha1.UseTiKVReadyAPI,
+		},
+		[]metav1alpha1.Feature{
+			metav1alpha1.UseTSOReadyAPI,
+			metav1alpha1.UseSchedulingReadyAPI,
+			metav1alpha1.UseTiKVReadyAPI,
+			metav1alpha1.ClusterSubdomain,
+		},
 	)
 })

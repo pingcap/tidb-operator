@@ -107,6 +107,7 @@ spec:
                   - ClusterSubdomain
                   - TerminableLogTailer
                   - UseTSOReadyAPI
+                  - UseSchedulingReadyAPI
                   - UseTiKVReadyAPI
                   type: string
                 type: array
