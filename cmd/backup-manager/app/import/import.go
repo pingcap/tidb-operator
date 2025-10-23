@@ -145,14 +145,17 @@ func unarchiveBackupData(backupFile, destDir string) (string, error) {
 	}
 	defer f.Close()
 
-	// Create tar.gz extractor (CompressedArchive with Gz compression and Tar archival)
-	format := archives.CompressedArchive{
-		Compression: archives.Gz{},
-		Archival:    archives.Tar{},
+	// First, decompress the gzip file
+	gz := archives.Gz{}
+	gzReader, err := gz.OpenReader(f)
+	if err != nil {
+		return unarchiveBackupPath, fmt.Errorf("failed to open gzip reader for %s, err: %v", backupFile, err)
 	}
+	defer gzReader.Close()
 
-	// Extract the archive
-	err = format.Extract(context.Background(), f, func(ctx context.Context, fileInfo archives.FileInfo) error {
+	// Then extract the tar archive
+	tar := archives.Tar{}
+	err = tar.Extract(context.Background(), gzReader, func(ctx context.Context, fileInfo archives.FileInfo) error {
 		targetPath := filepath.Join(destDir, fileInfo.NameInArchive)
 
 		if fileInfo.IsDir() {
