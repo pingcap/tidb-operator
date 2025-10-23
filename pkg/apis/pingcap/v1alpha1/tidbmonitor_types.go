@@ -353,6 +353,11 @@ type MonitorContainer struct {
 	Version   string `json:"version,omitempty"`
 	// +optional
 	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+
+	// SecurityContext defines the security options the monitor container should be run with.
+	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+	// +optional
+	SecurityContext *corev1.SecurityContext `json:"securityContext,omitempty"`
 }
 
 // +k8s:openapi-gen=true

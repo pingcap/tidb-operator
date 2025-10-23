@@ -342,7 +342,8 @@ func getMonitorInitContainer(monitor *v1alpha1.TidbMonitor, tc *v1alpha1.TidbClu
 				Name:      v1alpha1.TidbMonitorMemberType.String(),
 			},
 		},
-		Resources: controller.ContainerResource(monitor.Spec.Initializer.ResourceRequirements),
+		Resources:       controller.ContainerResource(monitor.Spec.Initializer.ResourceRequirements),
+		SecurityContext: monitor.Spec.Initializer.SecurityContext,
 	}
 	if tc != nil {
 		container.Env = append(container.Env, []core.EnvVar{
@@ -447,7 +448,8 @@ func getMonitorDMInitContainer(monitor *v1alpha1.TidbMonitor, dc *v1alpha1.DMClu
 				Name:      v1alpha1.TidbMonitorMemberType.String(),
 			},
 		},
-		Resources: controller.ContainerResource(monitor.Spec.DM.Initializer.ResourceRequirements),
+		Resources:       controller.ContainerResource(monitor.Spec.DM.Initializer.ResourceRequirements),
+		SecurityContext: monitor.Spec.DM.Initializer.SecurityContext,
 	}
 
 	if monitor.Spec.DM.Initializer.ImagePullPolicy != nil {
@@ -479,9 +481,10 @@ func getMonitorPrometheusContainer(monitor *v1alpha1.TidbMonitor, shard int32) c
 	}
 	commands := []string{"sed -e '5s/[()]//g' -e 's/SHARD//g'  -e 's/$NAMESPACE/'\"$NAMESPACE\"'/g;s/$POD_NAME/'\"$POD_NAME\"'/g;s/$()/'$(SHARD)'/g' /etc/prometheus/config/prometheus.yml > /etc/prometheus/config_out/prometheus.yml && /bin/prometheus --web.enable-admin-api --web.enable-lifecycle --config.file=/etc/prometheus/config_out/prometheus.yml --storage.tsdb.path=/data/prometheus --storage.tsdb.retention.time=" + retention}
 	c := core.Container{
-		Name:      "prometheus",
-		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Prometheus.BaseImage, monitor.Spec.Prometheus.Version),
-		Resources: controller.ContainerResource(monitor.Spec.Prometheus.ResourceRequirements),
+		Name:            "prometheus",
+		Image:           fmt.Sprintf("%s:%s", monitor.Spec.Prometheus.BaseImage, monitor.Spec.Prometheus.Version),
+		Resources:       controller.ContainerResource(monitor.Spec.Prometheus.ResourceRequirements),
+		SecurityContext: monitor.Spec.Prometheus.SecurityContext,
 		Command: []string{
 			"/bin/sh",
 			"-c",
@@ -626,9 +629,10 @@ func getMonitorGrafanaContainer(secret *core.Secret, monitor *v1alpha1.TidbMonit
 	}
 
 	c := core.Container{
-		Name:      "grafana",
-		Image:     fmt.Sprintf("%s:%s", monitor.Spec.Grafana.BaseImage, monitor.Spec.Grafana.Version),
-		Resources: controller.ContainerResource(monitor.Spec.Grafana.ResourceRequirements),
+		Name:            "grafana",
+		Image:           fmt.Sprintf("%s:%s", monitor.Spec.Grafana.BaseImage, monitor.Spec.Grafana.Version),
+		Resources:       controller.ContainerResource(monitor.Spec.Grafana.ResourceRequirements),
+		SecurityContext: monitor.Spec.Grafana.SecurityContext,
 		Ports: []core.ContainerPort{
 			{
 				Name:          "grafana",
@@ -744,7 +748,8 @@ func getMonitorPrometheusReloaderContainer(monitor *v1alpha1.TidbMonitor, shard 
 				Protocol:      core.ProtocolTCP,
 			},
 		},
-		Resources: controller.ContainerResource(monitor.Spec.PrometheusReloader.ResourceRequirements),
+		Resources:       controller.ContainerResource(monitor.Spec.PrometheusReloader.ResourceRequirements),
+		SecurityContext: monitor.Spec.PrometheusReloader.SecurityContext,
 		Env: []core.EnvVar{
 			{
 				Name: "POD_NAME",
@@ -819,7 +824,8 @@ func getMonitorReloaderContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 				MountPath: "/data",
 			},
 		},
-		Resources: controller.ContainerResource(monitor.Spec.Reloader.ResourceRequirements),
+		Resources:       controller.ContainerResource(monitor.Spec.Reloader.ResourceRequirements),
+		SecurityContext: monitor.Spec.Reloader.SecurityContext,
 		Env: []core.EnvVar{
 			{
 				Name:  "TZ",
@@ -1364,10 +1370,11 @@ func getThanosSidecarContainer(monitor *v1alpha1.TidbMonitor) core.Container {
 	}
 
 	container := core.Container{
-		Name:      "thanos-sidecar",
-		Image:     fmt.Sprintf("%s:%s", thanos.BaseImage, thanos.Version),
-		Resources: controller.ContainerResource(thanos.ResourceRequirements),
-		Args:      thanosArgs,
+		Name:            "thanos-sidecar",
+		Image:           fmt.Sprintf("%s:%s", thanos.BaseImage, thanos.Version),
+		Resources:       controller.ContainerResource(thanos.ResourceRequirements),
+		SecurityContext: thanos.SecurityContext,
+		Args:            thanosArgs,
 		Env: []core.EnvVar{
 			{
 				Name: "POD_IP",
