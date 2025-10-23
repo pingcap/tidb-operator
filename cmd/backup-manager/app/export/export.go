@@ -165,11 +165,13 @@ func archiveBackupData(backupDir, destFile string) error {
 	}
 	defer outFile.Close()
 
-	// Create tar.gz archiver (CompressedArchive with Gz compression and Tar archival)
-	format := archives.CompressedArchive{
-		Compression: archives.Gz{},
-		Archival:    archives.Tar{},
+	// Create gzip writer
+	gz := archives.Gz{}
+	gzWriter, err := gz.OpenWriter(outFile)
+	if err != nil {
+		return fmt.Errorf("create gzip writer failed, err: %v", err)
 	}
+	defer gzWriter.Close()
 
 	// Get files to archive
 	files, err := archives.FilesFromDisk(context.Background(), nil, map[string]string{
@@ -179,8 +181,9 @@ func archiveBackupData(backupDir, destFile string) error {
 		return fmt.Errorf("get files from %s failed, err: %v", backupDir, err)
 	}
 
-	// Create the archive
-	err = format.Archive(context.Background(), outFile, files)
+	// Create the tar archive into gzip writer
+	tar := archives.Tar{}
+	err = tar.Archive(context.Background(), gzWriter, files)
 	if err != nil {
 		return fmt.Errorf("archive backup data %s to %s failed, err: %v", backupDir, destFile, err)
 	}
