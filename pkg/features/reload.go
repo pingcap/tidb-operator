@@ -59,6 +59,9 @@ var unreloadable = map[meta.Feature][]meta.Component{
 	meta.UseTSOReadyAPI: {
 		meta.ComponentTSO,
 	},
+	meta.UseTiKVReadyAPI: {
+		meta.ComponentTiKV,
+	},
 }
 
 func Reloadable(c meta.Component, update, current []meta.Feature) bool {

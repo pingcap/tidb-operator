@@ -22,6 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
@@ -73,9 +74,12 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 			}
 		}
 
-		// pod available cannot be watched so that we have to retry
-		if !ready && state.IsStoreReady && pod != nil && statefulset.IsPodReady(pod) {
-			return task.Retry(minReadySeconds * time.Second).With("pod is not ready more than 15s, retry")
+		// If UseTiKVReadyAPI is enabled, no need to retry, just wait until pod is ready
+		if !state.FeatureGates().Enabled(metav1alpha1.UseTiKVReadyAPI) {
+			// pod available cannot be watched so that we have to retry
+			if !ready && state.IsStoreReady && pod != nil && statefulset.IsPodReady(pod) {
+				return task.Retry(minReadySeconds * time.Second).With("pod is not ready more than 15s, retry")
+			}
 		}
 
 		if state.IsPodTerminating() {

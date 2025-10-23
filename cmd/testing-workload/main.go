@@ -45,6 +45,7 @@ var (
 	maxLifeTimeSeconds  int
 	tiflashReplicas     int
 	maxExecutionTime    int
+	workloadType        string
 
 	// Flags for import action
 	batchSize        int
@@ -77,6 +78,11 @@ const (
 
 	defaultBatchSize = 1000
 	defaultTotalRows = 500000
+)
+
+const (
+	workloadTypeTxn         = "TXN"
+	workloadTypeSelectCount = "SelectCount"
 )
 
 func main() {
@@ -187,6 +193,7 @@ func parseFlag() {
 	flag.IntVar(&maxLifeTimeSeconds, "max-life-time", defaultMaxLifeTimeSeconds, "max lifetime in seconds")
 	flag.IntVar(&tiflashReplicas, "tiflash-replicas", 0, "replicas of tiflash")
 	flag.IntVar(&maxExecutionTime, "max-execution-time", defaultMaxExecutionTime, "max_execution_time of tidb")
+	flag.StringVar(&workloadType, "workload-type", workloadTypeTxn, "workload type, now only support [TXN, SelectCount]")
 
 	// Flags for import action
 	flag.IntVar(&batchSize, "batch-size", defaultBatchSize, "batch size for import action")

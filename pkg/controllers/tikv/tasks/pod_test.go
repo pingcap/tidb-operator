@@ -28,6 +28,9 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	stateutil "github.com/pingcap/tidb-operator/pkg/state"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -306,6 +309,8 @@ func TestTaskPod(t *testing.T) {
 			for _, obj := range c.objs {
 				require.NoError(tt, fc.Apply(ctx, obj), c.desc)
 			}
+			s := c.state.State.(*state)
+			s.IFeatureGates = stateutil.NewFeatureGates[scope.TiKV](s)
 
 			if c.unexpectedErr {
 				// cannot update pod
@@ -320,7 +325,7 @@ func TestTaskPod(t *testing.T) {
 			assert.Equal(tt, c.expectedPodIsTerminating, c.state.IsPodTerminating(), c.desc)
 
 			if c.expectUpdatedPod {
-				expectedPod := newPod(c.state.Cluster(), c.state.TiKV(), nil)
+				expectedPod := newPod(c.state.Cluster(), c.state.TiKV(), nil, c.state.FeatureGates())
 				actual := c.state.Pod().DeepCopy()
 				actual.Kind = ""
 				actual.APIVersion = ""
@@ -332,5 +337,5 @@ func TestTaskPod(t *testing.T) {
 }
 
 func fakePod(c *v1alpha1.Cluster, tikv *v1alpha1.TiKV) *corev1.Pod {
-	return newPod(c, tikv, nil)
+	return newPod(c, tikv, nil, features.NewFromFeatures(nil))
 }

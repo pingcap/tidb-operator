@@ -38,7 +38,18 @@ type Options struct {
 	// MaxLifeTime is max life time in seconds of sql connections
 	// Default is 60
 	MaxLifeTime int
+
+	// WorkloadType defines type of the workload
+	// Only support TXN and SelectCount now
+	WorkloadType string
 }
+
+const (
+	// run simple txn to test tidb
+	WorkloadTypeTXN = "TXN"
+	// run select(*) to test tikv and tiflash
+	WorkloadTypeSelectCount = "SelectCount"
+)
 
 type Option interface {
 	With(opts *Options)
@@ -95,6 +106,12 @@ func MaxLifeTime(sec int) Option {
 	})
 }
 
+func WorkloadType(t string) Option {
+	return WithOption(func(opts *Options) {
+		opts.WorkloadType = t
+	})
+}
+
 func DefaultOptions() *Options {
 	return &Options{
 		Port: 4000,
@@ -104,6 +121,8 @@ func DefaultOptions() *Options {
 
 		RegionCount: 500,
 		MaxLifeTime: 60,
+
+		WorkloadType: "TXN",
 	}
 }
 
