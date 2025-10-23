@@ -27,6 +27,8 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	stateutil "github.com/pingcap/tidb-operator/pkg/state"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -53,6 +55,7 @@ func TestTaskStatus(t *testing.T) {
 			desc: "not ready",
 			state: &ReconcileContext{
 				State: &state{
+					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
 					tikv: fake.FakeObj(fakeTiKVName, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						obj.Generation = 3
 						obj.Labels = map[string]string{
@@ -106,6 +109,7 @@ func TestTaskStatus(t *testing.T) {
 			desc: "is ready",
 			state: &ReconcileContext{
 				State: &state{
+					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
 					tikv: fake.FakeObj(fakeTiKVName, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						obj.Generation = 3
 						obj.Labels = map[string]string{
@@ -180,6 +184,7 @@ func TestTaskStatus(t *testing.T) {
 			desc: "pod is deleting",
 			state: &ReconcileContext{
 				State: &state{
+					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
 					tikv: fake.FakeObj(fakeTiKVName, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						obj.Generation = 3
 						obj.Labels = map[string]string{
@@ -241,6 +246,7 @@ func TestTaskStatus(t *testing.T) {
 			desc: "evicting and pd is avail",
 			state: &ReconcileContext{
 				State: &state{
+					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
 					tikv: fake.FakeObj(fakeTiKVName, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						obj.Generation = 3
 						obj.Labels = map[string]string{
@@ -317,6 +323,7 @@ func TestTaskStatus(t *testing.T) {
 			desc: "failed to update status",
 			state: &ReconcileContext{
 				State: &state{
+					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
 					tikv: fake.FakeObj(fakeTiKVName, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						obj.Generation = 3
 						obj.Labels = map[string]string{
@@ -347,6 +354,7 @@ func TestTaskStatus(t *testing.T) {
 			desc: "wait if pod is ready but not available",
 			state: &ReconcileContext{
 				State: &state{
+					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
 					tikv: fake.FakeObj(fakeTiKVName, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						obj.Generation = 3
 						obj.Labels = map[string]string{
@@ -433,6 +441,8 @@ func TestTaskStatus(t *testing.T) {
 			if c.unexpectedErr {
 				fc.WithError("*", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
 			}
+			s := c.state.State.(*state)
+			s.IFeatureGates = stateutil.NewFeatureGates[scope.TiKV](s)
 
 			ctx := context.Background()
 			res, done := task.RunTask(ctx, TaskStatus(c.state, fc))

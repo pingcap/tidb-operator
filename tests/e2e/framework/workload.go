@@ -177,6 +177,7 @@ func (w *Workload) MustRunWorkload(ctx context.Context, host string, opts ...wor
 		"--max-execution-time", strconv.Itoa(o.MaxExecutionTime),
 		"--tiflash-replicas", strconv.Itoa(o.TiFlashReplicas),
 		"--max-life-time", strconv.Itoa(o.MaxLifeTime),
+		"--workload-type", o.WorkloadType,
 	}
 
 	job := &batchv1.Job{

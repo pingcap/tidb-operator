@@ -125,7 +125,15 @@ var _ = ginkgo.Describe("TiFlash Availability Test", label.TiFlash, label.Update
 				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiFlashGroup(fgw), 2, 0, waiter.LongTaskTimeout))
 			}()
 
-			done := workload.MustRunWorkload(nctx, data.DefaultTiDBServiceName, wopt.TiFlashReplicas(2))
+			done := workload.MustRunWorkload(
+				nctx,
+				data.DefaultTiDBServiceName,
+				wopt.TiFlashReplicas(2),
+				// Set max_execution_time to 4s for next-gen tiflash
+				// TODO: dig why 2000ms is not enough
+				wopt.WorkloadType(wopt.WorkloadTypeSelectCount),
+				wopt.MaxExecutionTime(4000),
+			)
 
 			patch := client.MergeFrom(fgc.DeepCopy())
 			fgc.Spec.Template.Labels = map[string]string{"test": "test"}

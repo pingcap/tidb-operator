@@ -18,7 +18,7 @@ package v1alpha1
 // NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
 // NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
 //
-// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning;ClusterSubdomain;TerminableLogTailer;UseTSOReadyAPI
+// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning;ClusterSubdomain;TerminableLogTailer;UseTSOReadyAPI;UseTiKVReadyAPI
 // +enum
 type Feature string
 
@@ -85,4 +85,8 @@ const (
 	// UseTSOReadyAPI calls /health api to check readiness for tso pods
 	UseTSOReadyAPI      Feature      = "UseTSOReadyAPI"
 	UseTSOReadyAPIStage FeatureStage = FeatureStageAlpha
+
+	// UseTiKVReadyAPI means use TiKV's /ready API as the readiness probe.
+	UseTiKVReadyAPI      Feature      = "UseTiKVReadyAPI"
+	UseTiKVReadyAPIStage FeatureStage = FeatureStageAlpha
 )
