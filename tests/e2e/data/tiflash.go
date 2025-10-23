@@ -105,6 +105,12 @@ type FlashConfig struct {
 
 func withTiFlashMode(mode string) GroupPatch[*runtime.TiFlashGroup] {
 	return func(obj *runtime.TiFlashGroup) {
+		if mode == "tiflash_write" {
+			obj.Name = obj.Name + "-wn"
+		}
+		if mode == "tiflash_compute" {
+			obj.Name = obj.Name + "-cn"
+		}
 		c := TiFlashConfig{}
 		d, e := toml.Codec[TiFlashConfig]()
 		if err := d.Decode([]byte(obj.Spec.Template.Spec.Config), &c); err != nil {

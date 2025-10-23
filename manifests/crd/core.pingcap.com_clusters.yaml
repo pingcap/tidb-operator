@@ -94,6 +94,7 @@ spec:
                       - ClusterSubdomain
                       - TerminableLogTailer
                       - UseTSOReadyAPI
+                      - UseSchedulingReadyAPI
                       - UseTiKVReadyAPI
                       type: string
                   required:
@@ -300,6 +301,7 @@ spec:
                       - ClusterSubdomain
                       - TerminableLogTailer
                       - UseTSOReadyAPI
+                      - UseSchedulingReadyAPI
                       - UseTiKVReadyAPI
                       type: string
                     stage:

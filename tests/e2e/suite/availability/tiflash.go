@@ -87,13 +87,11 @@ var _ = ginkgo.Describe("TiFlash Availability Test", label.TiFlash, label.Update
 			pdg := f.MustCreatePD(ctx, data.WithPDNextGen())
 			kvg := f.MustCreateTiKV(ctx, data.WithTiKVNextGen())
 			fgc := f.MustCreateTiFlash(ctx,
-				data.WithGroupName[*runtime.TiFlashGroup]("fg-compute"),
 				data.WithReplicas[*runtime.TiFlashGroup](2),
 				data.WithTiFlashNextGen(),
 				data.WithTiFlashComputeMode(),
 			)
 			fgw := f.MustCreateTiFlash(ctx,
-				data.WithGroupName[*runtime.TiFlashGroup]("fg-write"),
 				data.WithReplicas[*runtime.TiFlashGroup](2),
 				data.WithTiFlashNextGen(),
 				data.WithTiFlashWriteMode(),
