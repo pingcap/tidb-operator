@@ -6499,7 +6499,7 @@ Kubernetes apps/v1.PodManagementPolicyType
 <em>(Optional)</em>
 <p>TopologySpreadConstraints describes how a group of pods ought to spread across topology
 domains. Scheduler will schedule pods in a way which abides by the constraints.
-This field is is only honored by clusters that enables the EvenPodsSpread feature.
+This field is only honored by clusters that enables the EvenPodsSpread feature.
 All topologySpreadConstraints are ANDed.</p>
 </td>
 </tr>
@@ -6515,6 +6515,22 @@ SuspendAction
 <td>
 <em>(Optional)</em>
 <p>SuspendAction defines the suspend actions for all component.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>securityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#securitycontext-v1-core">
+Kubernetes core/v1.SecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SecurityContext defines the security options the component container should be run with.
+If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
+More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">https://kubernetes.io/docs/tasks/configure-pod-container/security-context/</a></p>
 </td>
 </tr>
 <tr>
@@ -9063,6 +9079,21 @@ Kubernetes core/v1.ResourceRequirements
 </p>
 </td>
 </tr>
+<tr>
+<td>
+<code>securityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#securitycontext-v1-core">
+Kubernetes core/v1.SecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SecurityContext defines the security options the init container should be run with.
+More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">https://kubernetes.io/docs/tasks/configure-pod-container/security-context/</a></p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="initializephase">InitializePhase</h3>
@@ -9593,6 +9624,53 @@ Kubernetes core/v1.ResourceRequirements
 </p>
 </td>
 </tr>
+<<<<<<< HEAD
+=======
+<tr>
+<td>
+<code>useSidecar</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>If true, we use native sidecar feature to tail log
+It requires enable feature gate &ldquo;SidecarContainers&rdquo;
+This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33
+See <a href="https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/">https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/</a>
+and <a href="https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/">https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sleepTimeSeconds</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Tailer needs to wait to flush logs to stdout after receiving sig TERM
+Default is not sleep</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>securityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#securitycontext-v1-core">
+Kubernetes core/v1.SecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SecurityContext defines the security options the log tailer container should be run with.
+More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">https://kubernetes.io/docs/tasks/configure-pod-container/security-context/</a></p>
+</td>
+</tr>
+>>>>>>> 84cca01ae (Feat: add SecurityContext support to ComponentSpec (#6404))
 </tbody>
 </table>
 <h3 id="masterconfig">MasterConfig</h3>
@@ -10524,6 +10602,21 @@ Kubernetes core/v1.PullPolicy
 </td>
 <td>
 <em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>securityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#securitycontext-v1-core">
+Kubernetes core/v1.SecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SecurityContext defines the security options the monitor container should be run with.
+More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">https://kubernetes.io/docs/tasks/configure-pod-container/security-context/</a></p>
 </td>
 </tr>
 </tbody>
@@ -18522,6 +18615,53 @@ Kubernetes core/v1.PullPolicy
 Use <code>spec.helper.imagePullPolicy</code> instead</p>
 </td>
 </tr>
+<<<<<<< HEAD
+=======
+<tr>
+<td>
+<code>useSidecar</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>If true, we use native sidecar feature to tail log
+It requires enable feature gate &ldquo;SidecarContainers&rdquo;
+This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33
+See <a href="https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/">https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/</a>
+and <a href="https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/">https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sleepTimeSeconds</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Tailer needs to wait to flush logs to stdout after receiving sig TERM
+Default is not sleep</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>securityContext</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#securitycontext-v1-core">
+Kubernetes core/v1.SecurityContext
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SecurityContext defines the security options the slowlog tailer container should be run with.
+More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">https://kubernetes.io/docs/tasks/configure-pod-container/security-context/</a></p>
+</td>
+</tr>
+>>>>>>> 84cca01ae (Feat: add SecurityContext support to ComponentSpec (#6404))
 </tbody>
 </table>
 <h3 id="tidbspec">TiDBSpec</h3>
@@ -19305,6 +19445,9 @@ bool
 <em>(Optional)</em>
 <p>Whether create the TiFlash container in privileged mode, it is highly discouraged to enable this in
 critical environment.
+NOTE: This field is deprecated. Use SecurityContext.Privileged instead.
+For backward compatibility, when SecurityContext is not set, this field will be used.
+When SecurityContext is set, this field is ignored.
 Optional: defaults to false</p>
 </td>
 </tr>
@@ -23309,6 +23452,9 @@ bool
 <em>(Optional)</em>
 <p>Whether create the TiKV container in privileged mode, it is highly discouraged to enable this in
 critical environment.
+NOTE: This field is deprecated. Use SecurityContext.Privileged instead.
+For backward compatibility, when SecurityContext is not set, this field will be used.
+When SecurityContext is set, this field is ignored.
 Optional: defaults to false</p>
 </td>
 </tr>

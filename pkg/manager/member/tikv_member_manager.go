@@ -548,7 +548,12 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			Name:            v1alpha1.ContainerRocksDBLogTailer.String(),
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
+<<<<<<< HEAD
 			Resources:       controller.ContainerResource(tc.Spec.TiKV.GetLogTailerSpec().ResourceRequirements),
+=======
+			Resources:       controller.ContainerResource(logTailer.ResourceRequirements),
+			SecurityContext: logTailer.SecurityContext,
+>>>>>>> 84cca01ae (Feat: add SecurityContext support to ComponentSpec (#6404))
 			VolumeMounts:    []corev1.VolumeMount{rocksDBLogVolumeMount},
 			Command: []string{
 				"sh",
@@ -597,7 +602,12 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			Name:            v1alpha1.ContainerRaftLogTailer.String(),
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
+<<<<<<< HEAD
 			Resources:       controller.ContainerResource(tc.Spec.TiKV.GetLogTailerSpec().ResourceRequirements),
+=======
+			Resources:       controller.ContainerResource(logTailer.ResourceRequirements),
+			SecurityContext: logTailer.SecurityContext,
+>>>>>>> 84cca01ae (Feat: add SecurityContext support to ComponentSpec (#6404))
 			VolumeMounts:    []corev1.VolumeMount{raftLogVolumeMount},
 			Command: []string{
 				"sh",
@@ -633,14 +643,21 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			Value: tc.Spec.Timezone,
 		},
 	}
+	// Get SecurityContext with backward compatibility support
+	securityContext := baseTiKVSpec.SecurityContext()
+	if securityContext == nil {
+		// For backward compatibility, use the Privileged field if SecurityContext is not set
+		securityContext = &corev1.SecurityContext{
+			Privileged: tc.TiKVContainerPrivilege(),
+		}
+	}
+
 	tikvContainer := corev1.Container{
 		Name:            v1alpha1.TiKVMemberType.String(),
 		Image:           tc.TiKVImage(),
 		ImagePullPolicy: baseTiKVSpec.ImagePullPolicy(),
 		Command:         []string{"/bin/sh", "/usr/local/bin/tikv_start_script.sh"},
-		SecurityContext: &corev1.SecurityContext{
-			Privileged: tc.TiKVContainerPrivilege(),
-		},
+		SecurityContext: securityContext,
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "server",

@@ -49,8 +49,19 @@ func buildTiFlashSidecarContainers(tc *v1alpha1.TidbCluster) ([]corev1.Container
 	pullPolicy := tc.HelperImagePullPolicy()
 	var containers []corev1.Container
 	var resource corev1.ResourceRequirements
+<<<<<<< HEAD
 	if spec.LogTailer != nil {
 		resource = controller.ContainerResource(spec.LogTailer.ResourceRequirements)
+=======
+	var useSidecar bool
+	var sleepTimeSeconds *int64
+	var securityContext *corev1.SecurityContext
+	if spec.LogTailer != nil {
+		resource = controller.ContainerResource(spec.LogTailer.ResourceRequirements)
+		useSidecar = spec.LogTailer.UseSidecar
+		sleepTimeSeconds = spec.LogTailer.SleepTimeSeconds
+		securityContext = spec.LogTailer.SecurityContext
+>>>>>>> 84cca01ae (Feat: add SecurityContext support to ComponentSpec (#6404))
 	}
 	if config == nil {
 		config = v1alpha1.NewTiFlashConfig()
@@ -61,22 +72,35 @@ func buildTiFlashSidecarContainers(tc *v1alpha1.TidbCluster) ([]corev1.Container
 	if err != nil {
 		return nil, err
 	}
+<<<<<<< HEAD
 	containers = append(containers, buildSidecarContainer("serverlog", path, image, pullPolicy, resource))
+=======
+	containers = append(containers, buildSidecarContainer("serverlog", path, image, pullPolicy, resource, useSidecar, sleepTimeSeconds, securityContext))
+>>>>>>> 84cca01ae (Feat: add SecurityContext support to ComponentSpec (#6404))
 	path, err = config.Common.Get("logger.errorlog").AsString()
 	if err != nil {
 		return nil, err
 	}
+<<<<<<< HEAD
 	containers = append(containers, buildSidecarContainer("errorlog", path, image, pullPolicy, resource))
+=======
+	containers = append(containers, buildSidecarContainer("errorlog", path, image, pullPolicy, resource, useSidecar, sleepTimeSeconds, securityContext))
+>>>>>>> 84cca01ae (Feat: add SecurityContext support to ComponentSpec (#6404))
 	path, err = config.Common.Get("flash.flash_cluster.log").AsString()
 	if err != nil {
 		return nil, err
 	}
+<<<<<<< HEAD
 	containers = append(containers, buildSidecarContainer("clusterlog", path, image, pullPolicy, resource))
+=======
+	containers = append(containers, buildSidecarContainer("clusterlog", path, image, pullPolicy, resource, useSidecar, sleepTimeSeconds, securityContext))
+>>>>>>> 84cca01ae (Feat: add SecurityContext support to ComponentSpec (#6404))
 	return containers, nil
 }
 
 func buildSidecarContainer(name, path, image string,
 	pullPolicy corev1.PullPolicy,
+<<<<<<< HEAD
 	resource corev1.ResourceRequirements) corev1.Container {
 	splitPath := strings.Split(path, string(os.PathSeparator))
 	// The log path should be at least /dir/base.log
@@ -99,10 +123,21 @@ func buildSidecarContainer(name, path, image string,
 		}
 	}
 	return corev1.Container{
+=======
+	resource corev1.ResourceRequirements,
+	// If true we use native sidecar feature
+	// See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
+	useSidecar bool,
+	sleepTimeSeconds *int64,
+	securityContext *corev1.SecurityContext,
+) corev1.Container {
+	c := corev1.Container{
+>>>>>>> 84cca01ae (Feat: add SecurityContext support to ComponentSpec (#6404))
 		Name:            name,
 		Image:           image,
 		ImagePullPolicy: pullPolicy,
 		Resources:       resource,
+		SecurityContext: securityContext,
 		Command: []string{
 			"sh",
 			"-c",

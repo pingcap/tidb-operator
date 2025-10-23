@@ -466,10 +466,11 @@ func getNewTiCDCStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*ap
 				Protocol:      corev1.ProtocolTCP,
 			},
 		},
-		VolumeMounts: volMounts,
-		Resources:    controller.ContainerResource(tc.Spec.TiCDC.ResourceRequirements),
-		Env:          util.AppendEnv(envs, baseTiCDCSpec.Env()),
-		EnvFrom:      baseTiCDCSpec.EnvFrom(),
+		VolumeMounts:    volMounts,
+		Resources:       controller.ContainerResource(tc.Spec.TiCDC.ResourceRequirements),
+		SecurityContext: baseTiCDCSpec.SecurityContext(),
+		Env:             util.AppendEnv(envs, baseTiCDCSpec.Env()),
+		EnvFrom:         baseTiCDCSpec.EnvFrom(),
 	}
 	if cm != nil {
 		ticdcContainer.VolumeMounts = append(ticdcContainer.VolumeMounts, corev1.VolumeMount{
