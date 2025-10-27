@@ -4,11 +4,11 @@
 apiVersion: pingcap.com/v1alpha1
 kind: TidbCluster
 metadata:
-  name: basic-2
+  name: basic
 spec:
   version: v8.5.3
   timezone: UTC
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
   enableDynamicConfiguration: true
   configUpdateStrategy: RollingUpdate
   discovery: {}

@@ -1,21 +1,18 @@
----
 apiVersion: pingcap.com/v1alpha1
 kind: Restore
 metadata:
-  name: basic
+  name: demo2-restore
+  namespace: test2
 spec:
   to:
-    host: basic-2-tidb.default
+    host: 10.233.31.143
     port: 4000
     user: root
-    secretName: backup-basic-tidb-secret
+    secretName: restore-demo2-tidb-secret
   s3:
-    provider: aws
-    bucket: tidb-operator
-    prefix: basic
-    endpoint: https://02ed0fde47580929eaa7aee3f94b500e.r2.cloudflarestorage.com
-    secretName: s3-secret
-    forcePathStyle: true
-    region: APAC
-    path: s3://tidb-operator/basic/backup-2025-10-27T03:06:36Z.tgz
+    provider: ceph
+    endpoint: http://10.233.2.161
+    secretName: ceph-secret
+    path: s3://test1-demo1/backup-2019-12-11T04:32:12Z.tgz
+  storageClassName: local-storage
   storageSize: 1Gi
