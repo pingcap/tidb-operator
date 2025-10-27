@@ -16,6 +16,7 @@ package export
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
@@ -23,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mholt/archiver/v3"
+	"github.com/mholt/archives"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -147,7 +148,7 @@ func getBackupSize(ctx context.Context, backupPath string, opts []string) (int64
 }
 
 // archiveBackupData archive backup data by destFile's extension name.
-// NOTE: no context/timeout supported for `archiver.Archive`, this may cause to be KILLed when blocking.
+// NOTE: no context/timeout supported for archiving, this may cause to be KILLed when blocking.
 func archiveBackupData(backupDir, destFile string) error {
 	if exist := backupUtil.IsDirExist(backupDir); !exist {
 		return fmt.Errorf("dir %s does not exist or is not a dir", backupDir)
@@ -156,7 +157,33 @@ func archiveBackupData(backupDir, destFile string) error {
 	if err := backupUtil.EnsureDirectoryExist(destDir); err != nil {
 		return err
 	}
-	err := archiver.Archive([]string{backupDir}, destFile)
+
+	// Create output file
+	outFile, err := os.Create(destFile)
+	if err != nil {
+		return fmt.Errorf("create archive file %s failed, err: %v", destFile, err)
+	}
+	defer outFile.Close()
+
+	// Create gzip writer
+	gz := archives.Gz{}
+	gzWriter, err := gz.OpenWriter(outFile)
+	if err != nil {
+		return fmt.Errorf("create gzip writer failed, err: %v", err)
+	}
+	defer gzWriter.Close()
+
+	// Get files to archive
+	files, err := archives.FilesFromDisk(context.Background(), nil, map[string]string{
+		backupDir: filepath.Base(backupDir),
+	})
+	if err != nil {
+		return fmt.Errorf("get files from %s failed, err: %v", backupDir, err)
+	}
+
+	// Create the tar archive into gzip writer
+	tar := archives.Tar{}
+	err = tar.Archive(context.Background(), gzWriter, files)
 	if err != nil {
 		return fmt.Errorf("archive backup data %s to %s failed, err: %v", backupDir, destFile, err)
 	}
