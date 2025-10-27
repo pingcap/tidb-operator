@@ -2,19 +2,22 @@
 apiVersion: pingcap.com/v1alpha1
 kind: Backup
 metadata:
-  name: demo1-backup-s3
-  namespace: test1
+  name: basic-2
 spec:
   # cleanPolicy: OnFailure
   from:
-    host: 10.233.10.242
+    host: basic-tidb.default
     port: 4000
     user: root
-    secretName: backup-demo1-tidb-secret
+    secretName: backup-basic-tidb-secret
   s3:
-    provider: ceph
-    bucket: test1-demo1
-    endpoint: http://10.233.2.161
-    secretName: ceph-secret
-  storageClassName: local-storage
+    provider: aws
+    bucket: tidb-operator
+    prefix: basic
+    endpoint: https://02ed0fde47580929eaa7aee3f94b500e.r2.cloudflarestorage.com
+    secretName: s3-secret
+    forcePathStyle: true
+    region: APAC
+  # br:
+  #   cluster: basic
   storageSize: 1Gi
