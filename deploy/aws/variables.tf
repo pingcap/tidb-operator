@@ -80,7 +80,7 @@ variable "bastion_instance_type" {
 
 # For aws tutorials compatiablity
 variable "default_cluster_version" {
-  default = "v8.5.2"
+  default = "v8.5.3"
 }
 
 variable "default_cluster_pd_count" {
