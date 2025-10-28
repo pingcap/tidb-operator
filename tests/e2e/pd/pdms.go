@@ -19,6 +19,7 @@ import (
 
 	"github.com/onsi/ginkgo/v2"
 
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
@@ -72,4 +73,40 @@ var _ = ginkgo.Describe("PD", label.PD, label.FeaturePDMS, func() {
 			f.WaitForSchedulingGroupReady(ctx, sg)
 		})
 	})
+
+	ginkgo.Context("NextGen PDMS",
+		label.P0,
+		label.KindNextGen,
+		label.Features(
+			metav1alpha1.UsePDReadyAPIV2,
+			metav1alpha1.UseTSOReadyAPI,
+			metav1alpha1.UseSchedulingReadyAPI,
+		),
+		func() {
+			f.SetupCluster(data.WithFeatureGates(
+				metav1alpha1.UseTSOReadyAPI,
+				metav1alpha1.UsePDReadyAPIV2,
+				metav1alpha1.UseSchedulingReadyAPI,
+			))
+			ginkgo.It("support create 3 PD instances, 2 TSO instances, and 2 scheduling instances", func(ctx context.Context) {
+				f.MustCreateS3(ctx)
+				pdg := f.MustCreatePD(ctx,
+					data.WithPDNextGen(),
+					data.WithMSMode(),
+					data.WithReplicas[*runtime.PDGroup](3),
+				)
+				tg := f.MustCreateTSO(ctx,
+					data.WithTSONextGen(),
+					data.WithReplicas[*runtime.TSOGroup](2),
+				)
+				sg := f.MustCreateScheduling(ctx,
+					data.WithSchedulingNextGen(),
+					data.WithReplicas[*runtime.SchedulingGroup](2),
+				)
+
+				f.WaitForPDGroupReady(ctx, pdg)
+				f.WaitForTSOGroupReady(ctx, tg)
+				f.WaitForSchedulingGroupReady(ctx, sg)
+			})
+		})
 })
