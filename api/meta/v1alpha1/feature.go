@@ -18,7 +18,7 @@ package v1alpha1
 // NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
 // NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
 //
-// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning;ClusterSubdomain;TerminableLogTailer;UseTSOReadyAPI;UseSchedulingReadyAPI;UseTiKVReadyAPI
+// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning;ClusterSubdomain;TerminableLogTailer;UseTSOReadyAPI;UseSchedulingReadyAPI;UseTiKVReadyAPI;UsePDReadyAPIV2
 // +enum
 type Feature string
 
@@ -57,6 +57,7 @@ const (
 	DisablePDDefaultReadinessProbe      Feature      = "DisablePDDefaultReadinessProbe"
 	DisablePDDefaultReadinessProbeStage FeatureStage = FeatureStageAlpha
 
+	// Deprecated: use UsePDReadyAPIV2
 	// UsePDReadyAPI means use PD's /ready API as the readiness probe.
 	// It requires PD v8.5.2 or later.
 	UsePDReadyAPI      Feature      = "UsePDReadyAPI"
@@ -93,4 +94,8 @@ const (
 	// UseTiKVReadyAPI means use TiKV's /ready API as the readiness probe.
 	UseTiKVReadyAPI      Feature      = "UseTiKVReadyAPI"
 	UseTiKVReadyAPIStage FeatureStage = FeatureStageAlpha
+
+	// UsePDReadyAPIV2 means use PD's /readyz API as the readiness probe.
+	UsePDReadyAPIV2      Feature      = "UsePDReadyAPIV2"
+	UsePDReadyAPIV2Stage FeatureStage = FeatureStageAlpha
 )

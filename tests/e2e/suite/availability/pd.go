@@ -29,10 +29,15 @@ import (
 var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label.Update, func() {
 	f := framework.New()
 	f.Setup()
+	f.SetupCluster(data.WithFeatureGates(metav1alpha1.UsePDReadyAPIV2))
 	ginkgo.Context("Default", label.P0, func() {
 		workload := f.SetupWorkload()
-		ginkgo.It("No error when rolling update pd", func(ctx context.Context) {
-			pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](3))
+		// TODO: wait until the ready api pr is released
+		// https://github.com/tikv/pd/pull/9851
+		ginkgo.PIt("No error when rolling update pd", func(ctx context.Context) {
+			pdg := f.MustCreatePD(ctx,
+				data.WithReplicas[*runtime.PDGroup](3),
+			)
 			kvg := f.MustCreateTiKV(ctx)
 			dbg := f.MustCreateTiDB(ctx)
 
@@ -44,58 +49,69 @@ var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label
 		})
 	})
 
-	ginkgo.Context("NextGen PDMS", ginkgo.Serial, label.KindNextGen, label.P0, label.Features(metav1alpha1.UseTSOReadyAPI, metav1alpha1.UsePDReadyAPI), func() {
-		workload := f.SetupWorkload()
-		f.SetupCluster(data.WithFeatureGates(metav1alpha1.UseTSOReadyAPI, metav1alpha1.UsePDReadyAPI))
-		// TODO: wait until the pr is merged
-		ginkgo.It("No error when rolling update pd in next-gen", label.KindNextGen, func(ctx context.Context) {
-			f.MustCreateS3(ctx)
-			pdg := f.MustCreatePD(ctx, data.WithPDNextGen(), data.WithMSMode(), data.WithReplicas[*runtime.PDGroup](3))
-			kvg := f.MustCreateTiKV(ctx, data.WithTiKVNextGen())
-			dbg := f.MustCreateTiDB(ctx,
-				data.WithTiDBNextGen(),
-				data.WithKeyspace("SYSTEM"),
-			)
-			tg := f.MustCreateTSO(ctx,
-				data.WithTSONextGen(),
-			)
-			sg := f.MustCreateScheduling(ctx,
-				data.WithSchedulingNextGen(),
-			)
+	ginkgo.Context("NextGen PDMS",
+		ginkgo.Serial,
+		label.KindNextGen,
+		label.P0,
+		label.Features(
+			metav1alpha1.UsePDReadyAPIV2,
+			metav1alpha1.UseTSOReadyAPI,
+			metav1alpha1.UseSchedulingReadyAPI,
+		), func() {
+			workload := f.SetupWorkload()
+			f.SetupCluster(data.WithFeatureGates(
+				metav1alpha1.UsePDReadyAPIV2,
+				metav1alpha1.UseTSOReadyAPI,
+				metav1alpha1.UseSchedulingReadyAPI,
+			))
+			ginkgo.It("No error when rolling update pd in next-gen", func(ctx context.Context) {
+				f.MustCreateS3(ctx)
+				pdg := f.MustCreatePD(ctx, data.WithPDNextGen(), data.WithMSMode(), data.WithReplicas[*runtime.PDGroup](3))
+				kvg := f.MustCreateTiKV(ctx, data.WithTiKVNextGen())
+				dbg := f.MustCreateTiDB(ctx,
+					data.WithTiDBNextGen(),
+					data.WithKeyspace("SYSTEM"),
+				)
+				tg := f.MustCreateTSO(ctx,
+					data.WithTSONextGen(),
+				)
+				sg := f.MustCreateScheduling(ctx,
+					data.WithSchedulingNextGen(),
+				)
 
-			f.WaitForPDGroupReady(ctx, pdg)
-			f.WaitForTiKVGroupReady(ctx, kvg)
-			f.WaitForTiDBGroupReady(ctx, dbg)
-			f.WaitForTSOGroupReady(ctx, tg)
-			f.WaitForSchedulingGroupReady(ctx, sg)
+				f.WaitForPDGroupReady(ctx, pdg)
+				f.WaitForTiKVGroupReady(ctx, kvg)
+				f.WaitForTiDBGroupReady(ctx, dbg)
+				f.WaitForTSOGroupReady(ctx, tg)
+				f.WaitForSchedulingGroupReady(ctx, sg)
 
-			f.TestPDAvailability(ctx, pdg, workload)
+				f.TestPDAvailability(ctx, pdg, workload)
+			})
+
+			ginkgo.It("No error when rolling update tso in next-gen", func(ctx context.Context) {
+				f.MustCreateS3(ctx)
+				pdg := f.MustCreatePD(ctx, data.WithPDNextGen(), data.WithMSMode())
+				kvg := f.MustCreateTiKV(ctx, data.WithTiKVNextGen())
+				dbg := f.MustCreateTiDB(ctx,
+					data.WithTiDBNextGen(),
+					data.WithKeyspace("SYSTEM"),
+				)
+				tg := f.MustCreateTSO(ctx,
+					data.WithTSONextGen(),
+					data.WithReplicas[*runtime.TSOGroup](2),
+				)
+				sg := f.MustCreateScheduling(ctx,
+					data.WithSchedulingNextGen(),
+					data.WithReplicas[*runtime.SchedulingGroup](2),
+				)
+
+				f.WaitForPDGroupReady(ctx, pdg)
+				f.WaitForTiKVGroupReady(ctx, kvg)
+				f.WaitForTiDBGroupReady(ctx, dbg)
+				f.WaitForTSOGroupReady(ctx, tg)
+				f.WaitForSchedulingGroupReady(ctx, sg)
+
+				f.TestTSOAvailability(ctx, tg, workload)
+			})
 		})
-
-		ginkgo.It("No error when rolling update tso in next-gen", label.KindNextGen, func(ctx context.Context) {
-			f.MustCreateS3(ctx)
-			pdg := f.MustCreatePD(ctx, data.WithPDNextGen(), data.WithMSMode())
-			kvg := f.MustCreateTiKV(ctx, data.WithTiKVNextGen())
-			dbg := f.MustCreateTiDB(ctx,
-				data.WithTiDBNextGen(),
-				data.WithKeyspace("SYSTEM"),
-			)
-			tg := f.MustCreateTSO(ctx,
-				data.WithTSONextGen(),
-				data.WithReplicas[*runtime.TSOGroup](2),
-			)
-			sg := f.MustCreateScheduling(ctx,
-				data.WithSchedulingNextGen(),
-				data.WithReplicas[*runtime.SchedulingGroup](2),
-			)
-
-			f.WaitForPDGroupReady(ctx, pdg)
-			f.WaitForTiKVGroupReady(ctx, kvg)
-			f.WaitForTiDBGroupReady(ctx, dbg)
-			f.WaitForTSOGroupReady(ctx, tg)
-			f.WaitForSchedulingGroupReady(ctx, sg)
-
-			f.TestTSOAvailability(ctx, tg, workload)
-		})
-	})
 })

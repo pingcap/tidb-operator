@@ -96,6 +96,7 @@ spec:
                       - UseTSOReadyAPI
                       - UseSchedulingReadyAPI
                       - UseTiKVReadyAPI
+                      - UsePDReadyAPIV2
                       type: string
                   required:
                   - name
@@ -303,6 +304,7 @@ spec:
                       - UseTSOReadyAPI
                       - UseSchedulingReadyAPI
                       - UseTiKVReadyAPI
+                      - UsePDReadyAPIV2
                       type: string
                     stage:
                       type: string
