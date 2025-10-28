@@ -104,6 +104,7 @@ spec:
                   - UseSchedulingReadyAPI
                   - UseTiKVReadyAPI
                   - UsePDReadyAPIV2
+                  - UseTiFlashReadyAPI
                   type: string
                 type: array
               replicas:

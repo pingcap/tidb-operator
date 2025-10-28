@@ -87,23 +87,6 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func TaskStoreStatus(state *ReconcileContext) task.Task {
-	return task.NameTaskFunc("StoreStatus", func(ctx context.Context) task.Result {
-		needUpdate := state.IsStatusChanged()
-		tiflash := state.TiFlash()
-		if state.Store != nil {
-			needUpdate = compare.SetIfChanged(&tiflash.Status.ID, state.Store.ID) || needUpdate
-		}
-		needUpdate = compare.SetIfChanged(&tiflash.Status.State, string(state.GetStoreState())) || needUpdate
-		if needUpdate {
-			state.SetStatusChanged()
-			return task.Complete().With("store state is changed")
-		}
-
-		return task.Complete().With("store state is not changed")
-	})
-}
-
 func syncSuspendCond(tiflash *v1alpha1.TiFlash) bool {
 	// always set it as unsuspended
 	return meta.SetStatusCondition(&tiflash.Status.Conditions, metav1.Condition{

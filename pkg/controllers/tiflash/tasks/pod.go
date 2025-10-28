@@ -17,6 +17,7 @@ package tasks
 import (
 	"context"
 	"fmt"
+	"path"
 	"path/filepath"
 
 	"github.com/go-logr/logr"
@@ -216,6 +217,10 @@ func newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, store *pdv1.St
 		pod.Labels[v1alpha1.LabelKeyStoreID] = store.ID
 	}
 
+	if fg.Enabled(metav1alpha1.UseTiFlashReadyAPI) {
+		pod.Spec.Containers[0].ReadinessProbe = buildReadinessProbe(cluster, coreutil.TiFlashProxyStatusPort(tiflash))
+	}
+
 	if tiflash.Spec.Overlay != nil {
 		overlay.OverlayPod(pod, tiflash.Spec.Overlay.Pod)
 	}
@@ -264,4 +269,40 @@ func buildLogTailerContainer(
 		c.Resources = k8s.GetResourceRequirements(tiflash.Spec.LogTailer.Resources)
 	}
 	return c
+}
+
+func buildReadinessProbe(cluster *v1alpha1.Cluster, port int32) *corev1.Probe {
+	tlsClusterEnabled := coreutil.IsTLSClusterEnabled(cluster)
+
+	scheme := "http"
+	if tlsClusterEnabled {
+		scheme = "https"
+	}
+
+	readinessURL := fmt.Sprintf("%s://127.0.0.1:%d/tiflash/readyz", scheme, port)
+	var command []string
+	command = append(command, "curl", readinessURL,
+		// Fail silently (no output at all) on server errors
+		// without this if the server return 500, the exist code will be 0
+		// and probe is success.
+		"--fail",
+		// Silent mode, only print error
+		"-sS",
+		// follow 301 or 302 redirect
+		"--location")
+
+	if tlsClusterEnabled {
+		cacert := path.Join(v1alpha1.DirPathClusterTLSTiFlash, corev1.ServiceAccountRootCAKey)
+		cert := path.Join(v1alpha1.DirPathClusterTLSTiFlash, corev1.TLSCertKey)
+		key := path.Join(v1alpha1.DirPathClusterTLSTiFlash, corev1.TLSPrivateKeyKey)
+		command = append(command, "--cacert", cacert, "--cert", cert, "--key", key)
+	}
+
+	return &corev1.Probe{
+		ProbeHandler: corev1.ProbeHandler{
+			Exec: &corev1.ExecAction{
+				Command: command,
+			},
+		},
+	}
 }
