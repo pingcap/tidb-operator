@@ -27,7 +27,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/tiflashapi/v1"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
@@ -129,7 +128,6 @@ func TestTaskStatus(t *testing.T) {
 				Store: &pdv1.Store{
 					ID: fakeTiFlashName,
 				},
-				StoreStatus: tiflashapi.Running,
 			},
 
 			expectedStatus: task.SComplete,
@@ -278,7 +276,6 @@ func TestTaskStatus(t *testing.T) {
 				Store: &pdv1.Store{
 					ID: fakeTiFlashName,
 				},
-				StoreStatus: tiflashapi.Ready,
 			},
 			expectedStatus: task.SRetry,
 			expectedObj: fake.FakeObj(fakeTiFlashName, func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {

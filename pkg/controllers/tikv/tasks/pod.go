@@ -271,12 +271,12 @@ func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, store *pdv1.Store, g
 		pod.Labels[v1alpha1.LabelKeyStoreID] = store.ID
 	}
 
-	if tikv.Spec.Overlay != nil {
-		overlay.OverlayPod(pod, tikv.Spec.Overlay.Pod)
-	}
-
 	if g.Enabled(metav1alpha1.UseTiKVReadyAPI) {
 		pod.Spec.Containers[0].ReadinessProbe = buildReadinessProbeWithReadyAPI(cluster, coreutil.TiKVStatusPort(tikv))
+	}
+
+	if tikv.Spec.Overlay != nil {
+		overlay.OverlayPod(pod, tikv.Spec.Overlay.Pod)
 	}
 
 	reloadable.MustEncodeLastTiKVTemplate(tikv, pod)
