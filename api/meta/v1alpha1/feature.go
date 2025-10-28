@@ -18,7 +18,7 @@ package v1alpha1
 // NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
 // NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
 //
-// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning;ClusterSubdomain;TerminableLogTailer;UseTSOReadyAPI;UseSchedulingReadyAPI;UseTiKVReadyAPI;UsePDReadyAPIV2
+// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning;ClusterSubdomain;TerminableLogTailer;UseTSOReadyAPI;UseSchedulingReadyAPI;UseTiKVReadyAPI;UsePDReadyAPIV2;UseTiFlashReadyAPI
 // +enum
 type Feature string
 
@@ -98,4 +98,8 @@ const (
 	// UsePDReadyAPIV2 means use PD's /readyz API as the readiness probe.
 	UsePDReadyAPIV2      Feature      = "UsePDReadyAPIV2"
 	UsePDReadyAPIV2Stage FeatureStage = FeatureStageAlpha
+
+	// UseTiFlashReadyAPI means use TiFlash's /readyz API as the readiness probe.
+	UseTiFlashReadyAPI      Feature      = "UseTiFlashReadyAPI"
+	UseTiFlashReadyAPIStage FeatureStage = FeatureStageAlpha
 )

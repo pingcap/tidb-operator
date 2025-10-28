@@ -97,6 +97,7 @@ spec:
                       - UseSchedulingReadyAPI
                       - UseTiKVReadyAPI
                       - UsePDReadyAPIV2
+                      - UseTiFlashReadyAPI
                       type: string
                   required:
                   - name
@@ -305,6 +306,7 @@ spec:
                       - UseSchedulingReadyAPI
                       - UseTiKVReadyAPI
                       - UsePDReadyAPIV2
+                      - UseTiFlashReadyAPI
                       type: string
                     stage:
                       type: string

@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"k8s.io/apimachinery/pkg/api/errors"
 
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	tiflashconfig "github.com/pingcap/tidb-operator/pkg/configs/tiflash"
 	"github.com/pingcap/tidb-operator/pkg/tiflashapi/v1"
 	"github.com/pingcap/tidb-operator/pkg/timanager"
@@ -37,8 +38,6 @@ type ReconcileContext struct {
 
 	Store       *pdv1.Store
 	StoreLabels []*metapb.StoreLabel
-
-	StoreStatus tiflashapi.Status
 
 	PDSynced bool
 }
@@ -105,28 +104,31 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager, fcm 
 			state.StoreLabels = append(state.StoreLabels, &metapb.StoreLabel{Key: k, Value: v})
 		}
 
-		pod := state.Pod()
+		if state.FeatureGates().Enabled(metav1alpha1.UseTiFlashReadyAPI) {
+			state.SetHealthy()
+		} else {
+			pod := state.Pod()
 
-		var status tiflashapi.Status
-		if pod != nil && statefulset.IsPodReady(pod) {
-			s, err := fc.GetStoreStatus(ctx)
-			if err != nil {
-				return task.Fail().With("failed to get store status: %v", err)
+			var status tiflashapi.Status
+			if pod != nil && statefulset.IsPodReady(pod) {
+				s, err := fc.GetStoreStatus(ctx)
+				if err != nil {
+					return task.Fail().With("failed to get store status: %v", err)
+				}
+				status = s
+				// TODO: check IsBusy ?
+				if status == tiflashapi.Running {
+					state.SetHealthy()
+				}
 			}
-			status = s
-			// TODO: check IsBusy ?
-			if status == tiflashapi.Running {
-				state.SetHealthy()
-			}
-			state.StoreStatus = status
 		}
 
-		return task.Complete().With("get store info, state: %s, leader count: %v, region count: %v, busy: %v, status: %v",
+		return task.Complete().With("get store info, state: %s, leader count: %v, region count: %v, busy: %v, health: %v",
 			state.GetStoreState(),
 			state.GetLeaderCount(),
 			state.GetRegionCount(),
 			state.IsStoreBusy(),
-			status,
+			state.IsHealthy(),
 		)
 	})
 }
