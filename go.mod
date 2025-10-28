@@ -34,7 +34,7 @@ require (
 	github.com/ncw/directio v1.0.5
 	github.com/onsi/ginkgo v1.14.1
 	github.com/onsi/gomega v1.27.6
-	github.com/openshift/generic-admission-server v1.14.1-0.20230920151207-22a210ddee02
+	github.com/openshift/generic-admission-server 0611ea24e983
 	github.com/pingcap/advanced-statefulset/client v1.17.1-0.20241017064830-af926cc6da0d
 	github.com/pingcap/errors v0.11.4
 	github.com/pingcap/kvproto v0.0.0-20250117122752-2b87602a94a1
