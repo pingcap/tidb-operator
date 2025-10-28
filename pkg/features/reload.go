@@ -68,6 +68,9 @@ var unreloadable = map[meta.Feature][]meta.Component{
 	meta.UsePDReadyAPIV2: {
 		meta.ComponentPD,
 	},
+	meta.UseTiFlashReadyAPI: {
+		meta.ComponentTiFlash,
+	},
 }
 
 func Reloadable(c meta.Component, update, current []meta.Feature) bool {
