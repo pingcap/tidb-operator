@@ -246,8 +246,12 @@ func newPod(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, g features.Gates, cluste
 	if g.Enabled(metav1alpha1.UsePDReadyAPI) {
 		version := semver.MustParse(pd.Spec.Version)
 		if compatibility.Check(version, compatibility.PDReadyAPI) {
-			pod.Spec.Containers[0].ReadinessProbe = buildPDReadinessProbeWithReadyAPI(cluster, coreutil.PDClientPort(pd))
+			pod.Spec.Containers[0].ReadinessProbe = buildPDReadinessProbeWithReadyAPI(cluster, coreutil.PDClientPort(pd), false)
 		}
+	}
+
+	if g.Enabled(metav1alpha1.UsePDReadyAPIV2) {
+		pod.Spec.Containers[0].ReadinessProbe = buildPDReadinessProbeWithReadyAPI(cluster, coreutil.PDClientPort(pd), true)
 	}
 
 	if pd.Spec.Overlay != nil {
@@ -269,7 +273,7 @@ func buildPDReadinessProbe(port int32) *corev1.Probe {
 	}
 }
 
-func buildPDReadinessProbeWithReadyAPI(cluster *v1alpha1.Cluster, port int32) *corev1.Probe {
+func buildPDReadinessProbeWithReadyAPI(cluster *v1alpha1.Cluster, port int32, v2 bool) *corev1.Probe {
 	tlsClusterEnabled := coreutil.IsTLSClusterEnabled(cluster)
 
 	scheme := "http"
@@ -278,6 +282,9 @@ func buildPDReadinessProbeWithReadyAPI(cluster *v1alpha1.Cluster, port int32) *c
 	}
 
 	readinessURL := fmt.Sprintf("%s://127.0.0.1:%d/pd/api/v2/ready", scheme, port)
+	if v2 {
+		readinessURL = fmt.Sprintf("%s://127.0.0.1:%d/pd/api/v2/readyz", scheme, port)
+	}
 	var command []string
 	command = append(command, "curl", readinessURL,
 		// Fail silently (no output at all) on server errors

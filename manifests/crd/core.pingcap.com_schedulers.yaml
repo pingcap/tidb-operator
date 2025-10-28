@@ -95,6 +95,7 @@ spec:
                   - UseTSOReadyAPI
                   - UseSchedulingReadyAPI
                   - UseTiKVReadyAPI
+                  - UsePDReadyAPIV2
                   type: string
                 type: array
               image:

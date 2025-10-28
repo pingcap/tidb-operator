@@ -106,11 +106,13 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 			metav1alpha1.UseTSOReadyAPI,
 			metav1alpha1.UseSchedulingReadyAPI,
 			metav1alpha1.UseTiKVReadyAPI,
+			metav1alpha1.UsePDReadyAPIV2,
 		},
 		[]metav1alpha1.Feature{
 			metav1alpha1.UseTSOReadyAPI,
 			metav1alpha1.UseSchedulingReadyAPI,
 			metav1alpha1.UseTiKVReadyAPI,
+			metav1alpha1.UsePDReadyAPIV2,
 			metav1alpha1.ClusterSubdomain,
 		},
 	)

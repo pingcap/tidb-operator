@@ -29,10 +29,15 @@ import (
 var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label.Update, func() {
 	f := framework.New()
 	f.Setup()
+	f.SetupCluster(data.WithFeatureGates(metav1alpha1.UsePDReadyAPIV2))
 	ginkgo.Context("Default", label.P0, func() {
 		workload := f.SetupWorkload()
-		ginkgo.It("No error when rolling update pd", func(ctx context.Context) {
-			pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](3))
+		// TODO: wait until the ready api pr is released
+		// https://github.com/tikv/pd/pull/9851
+		ginkgo.PIt("No error when rolling update pd", func(ctx context.Context) {
+			pdg := f.MustCreatePD(ctx,
+				data.WithReplicas[*runtime.PDGroup](3),
+			)
 			kvg := f.MustCreateTiKV(ctx)
 			dbg := f.MustCreateTiDB(ctx)
 
@@ -44,10 +49,9 @@ var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label
 		})
 	})
 
-	ginkgo.Context("NextGen PDMS", ginkgo.Serial, label.KindNextGen, label.P0, label.Features(metav1alpha1.UseTSOReadyAPI, metav1alpha1.UsePDReadyAPI), func() {
+	ginkgo.Context("NextGen PDMS", ginkgo.Serial, label.KindNextGen, label.P0, label.Features(metav1alpha1.UseTSOReadyAPI, metav1alpha1.UsePDReadyAPIV2), func() {
 		workload := f.SetupWorkload()
-		f.SetupCluster(data.WithFeatureGates(metav1alpha1.UseTSOReadyAPI, metav1alpha1.UsePDReadyAPI))
-		// TODO: wait until the pr is merged
+		f.SetupCluster(data.WithFeatureGates(metav1alpha1.UseTSOReadyAPI, metav1alpha1.UsePDReadyAPIV2))
 		ginkgo.It("No error when rolling update pd in next-gen", label.KindNextGen, func(ctx context.Context) {
 			f.MustCreateS3(ctx)
 			pdg := f.MustCreatePD(ctx, data.WithPDNextGen(), data.WithMSMode(), data.WithReplicas[*runtime.PDGroup](3))
