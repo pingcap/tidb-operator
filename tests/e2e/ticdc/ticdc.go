@@ -16,12 +16,12 @@ package ticdc
 
 import (
 	"context"
-	"time"
 
 	"github.com/onsi/ginkgo/v2"
+	"k8s.io/utils/ptr"
+
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
-	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apicall"
@@ -148,13 +148,12 @@ var _ = ginkgo.Describe("TiCDC", label.TiCDC, func() {
 				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiCDCGroup(cdcg), 3, 1, waiter.LongTaskTimeout))
 			}()
 
-			maxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiCDCGroup(cdcg))
+			changeTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiCDCGroup(cdcg))
 			f.Must(err)
-			changeTime := maxTime.Add(time.Second)
 
 			ginkgo.By("Change config and replicas of the TiCDCGroup")
 			f.Must(f.Client.Patch(ctx, cdcg, patch))
-			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiCDCGroup(cdcg), changeTime, waiter.LongTaskTimeout))
+			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiCDCGroup(cdcg), *changeTime, waiter.LongTaskTimeout))
 			f.WaitForTiCDCGroupReady(ctx, cdcg)
 			cancel()
 			<-ch

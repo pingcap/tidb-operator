@@ -16,7 +16,6 @@ package tidb
 
 import (
 	"context"
-	"time"
 
 	"github.com/onsi/ginkgo/v2"
 	"k8s.io/utils/ptr"
@@ -76,13 +75,13 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 			f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiDBGroup(dbg), 3, 1, waiter.LongTaskTimeout))
 		}()
 
-		maxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
+		changeTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
 		f.Must(err)
-		changeTime := maxTime.Add(time.Second)
 
 		ginkgo.By("rolling update once")
 		f.Must(f.Client.Patch(ctx, dbg, patch))
-		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), changeTime, waiter.LongTaskTimeout))
+		f.Must(waiter.WaitForInstanceListRecreated[scope.TiDBGroup](ctx, f.Client, dbg, *changeTime, waiter.LongTaskTimeout))
+		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), *changeTime, waiter.LongTaskTimeout))
 		f.WaitForTiDBGroupReady(ctx, dbg)
 		cancel()
 		<-ch
@@ -123,13 +122,13 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 			f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiDBGroup(dbg), 2, 1, waiter.LongTaskTimeout))
 		}()
 
-		maxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
+		changeTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
 		f.Must(err)
-		changeTime := maxTime.Add(time.Second)
 
 		ginkgo.By("rolling update once")
 		f.Must(f.Client.Patch(ctx, dbg, patch))
-		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), changeTime, waiter.LongTaskTimeout))
+		f.Must(waiter.WaitForInstanceListRecreated[scope.TiDBGroup](ctx, f.Client, dbg, *changeTime, waiter.LongTaskTimeout))
+		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), *changeTime, waiter.LongTaskTimeout))
 		f.WaitForTiDBGroupReady(ctx, dbg)
 		cancel()
 		<-ch
@@ -147,13 +146,13 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 			f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiDBGroup(dbg), 2, 1, waiter.LongTaskTimeout))
 		}()
 
-		maxTime, err = waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
+		changeTime, err = waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
 		f.Must(err)
-		changeTime = maxTime.Add(time.Second)
 
 		ginkgo.By("rolling update again")
 		f.Must(f.Client.Patch(ctx, dbg, patch))
-		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), changeTime, waiter.LongTaskTimeout))
+		f.Must(waiter.WaitForInstanceListRecreated[scope.TiDBGroup](ctx, f.Client, dbg, *changeTime, waiter.LongTaskTimeout))
+		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), *changeTime, waiter.LongTaskTimeout))
 		f.WaitForTiDBGroupReady(ctx, dbg)
 		cancel()
 		<-ch

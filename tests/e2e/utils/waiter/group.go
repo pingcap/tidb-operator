@@ -68,6 +68,23 @@ func WaitForInstanceList[
 	return nil
 }
 
+func WaitForInstanceListRecreated[
+	GS scope.GroupInstance[GF, GT, IS],
+	IS scope.List[IL, I],
+	GF client.Object,
+	GT runtime.Group,
+	IL client.ObjectList,
+	I client.Object,
+](
+	ctx context.Context,
+	c client.Client,
+	g GF,
+	changeTime time.Time,
+	timeout time.Duration,
+) error {
+	return WaitForInstanceList[GS](ctx, c, g, ListIsRecreated[I](changeTime), timeout)
+}
+
 func WaitForInstanceListDeleted[
 	GS scope.GroupInstance[GF, GT, IS],
 	IS scope.List[IL, I],
@@ -105,6 +122,28 @@ func ListIsEmpty[I client.Object](items []I) error {
 	}
 
 	return fmt.Errorf("there are still %v items", len(items))
+}
+
+func ListIsRecreated[I client.Object](changeTime time.Time) func(items []I) error {
+	return func(items []I) error {
+		if len(items) == 0 {
+			return nil
+		}
+
+		var names []string
+
+		for _, item := range items {
+			if item.GetCreationTimestamp().Time.Before(changeTime) {
+				names = append(names, fmt.Sprintf("%s/%s", item.GetNamespace(), item.GetName()))
+			}
+		}
+
+		if len(names) != 0 {
+			return fmt.Errorf("%v are still not recreated after %v", names, changeTime)
+		}
+
+		return nil
+	}
 }
 
 func OneDeleting[I client.Object](target *I) func(items []I) error {

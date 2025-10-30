@@ -314,7 +314,8 @@ func MaxPodsCreateTimestamp[G runtime.Group](
 		}
 	}
 
-	return maxTime, nil
+	m := maxTime.Add(time.Second)
+	return &m, nil
 }
 
 // WaitForPodReadyInNamespace waits the given timeout duration for the
