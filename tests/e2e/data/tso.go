@@ -19,11 +19,10 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
-func NewTSOGroup(ns string, patches ...GroupPatch[*runtime.TSOGroup]) *v1alpha1.TSOGroup {
-	tg := &runtime.TSOGroup{
+func NewTSOGroup(ns string, patches ...GroupPatch[*v1alpha1.TSOGroup]) *v1alpha1.TSOGroup {
+	tg := &v1alpha1.TSOGroup{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      defaultTSOGroupName,
@@ -40,15 +39,15 @@ func NewTSOGroup(ns string, patches ...GroupPatch[*runtime.TSOGroup]) *v1alpha1.
 		},
 	}
 	for _, p := range patches {
-		p(tg)
+		p.Patch(tg)
 	}
 
-	return runtime.ToTSOGroup(tg)
+	return tg
 }
 
-func WithTSONextGen() GroupPatch[*runtime.TSOGroup] {
-	return func(obj *runtime.TSOGroup) {
+func WithTSONextGen() GroupPatch[*v1alpha1.TSOGroup] {
+	return GroupPatchFunc[*v1alpha1.TSOGroup](func(obj *v1alpha1.TSOGroup) {
 		obj.Spec.Template.Spec.Version = "v9.0.0"
 		obj.Spec.Template.Spec.Image = ptr.To(defaultImageRegistry + "pd:master-next-gen")
-	}
+	})
 }

@@ -27,7 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
-func (f *Framework) MustCreateTiCDC(ctx context.Context, ps ...data.GroupPatch[*runtime.TiCDCGroup]) *v1alpha1.TiCDCGroup {
+func (f *Framework) MustCreateTiCDC(ctx context.Context, ps ...data.GroupPatch[*v1alpha1.TiCDCGroup]) *v1alpha1.TiCDCGroup {
 	cg := data.NewTiCDCGroup(f.Namespace.Name, ps...)
 	ginkgo.By("Creating a ticdc group")
 	f.Must(f.Client.Create(ctx, cg))

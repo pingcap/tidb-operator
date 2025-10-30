@@ -28,6 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
 	wopt "github.com/pingcap/tidb-operator/tests/e2e/framework/workload"
@@ -109,7 +110,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx)
 			dbg := f.MustCreateTiDB(ctx,
-				data.WithReplicas[*runtime.TiDBGroup](1),
+				data.WithReplicas[scope.TiDBGroup](1),
 			)
 
 			ginkgo.By("Wait for Cluster Ready")
@@ -129,7 +130,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx)
 			dbg := f.MustCreateTiDB(ctx,
-				data.WithReplicas[*runtime.TiDBGroup](5),
+				data.WithReplicas[scope.TiDBGroup](5),
 			)
 
 			f.WaitForPDGroupReady(ctx, pdg)
@@ -148,12 +149,12 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			func(
 				ctx context.Context,
 				change func(*v1alpha1.TiDBGroup),
-				patches ...data.GroupPatch[*runtime.TiDBGroup],
+				patches ...data.GroupPatch[*v1alpha1.TiDBGroup],
 			) {
 				pdg := f.MustCreatePD(ctx)
 				kvg := f.MustCreateTiKV(ctx)
-				var ps []data.GroupPatch[*runtime.TiDBGroup]
-				ps = append(ps, data.WithReplicas[*runtime.TiDBGroup](3))
+				var ps []data.GroupPatch[*v1alpha1.TiDBGroup]
+				ps = append(ps, data.WithReplicas[scope.TiDBGroup](3))
 				ps = append(ps, patches...)
 				dbg := f.MustCreateTiDB(ctx,
 					ps...,
@@ -205,12 +206,12 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			func(
 				ctx context.Context,
 				change func(*v1alpha1.TiDBGroup),
-				patches ...data.GroupPatch[*runtime.TiDBGroup],
+				patches ...data.GroupPatch[*v1alpha1.TiDBGroup],
 			) {
 				pdg := f.MustCreatePD(ctx)
 				kvg := f.MustCreateTiKV(ctx)
-				var ps []data.GroupPatch[*runtime.TiDBGroup]
-				ps = append(ps, data.WithReplicas[*runtime.TiDBGroup](3))
+				var ps []data.GroupPatch[*v1alpha1.TiDBGroup]
+				ps = append(ps, data.WithReplicas[scope.TiDBGroup](3))
 				ps = append(ps, patches...)
 				dbg := f.MustCreateTiDB(ctx,
 					ps...,
@@ -269,7 +270,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx)
 			dbg := f.MustCreateTiDB(ctx,
-				data.WithReplicas[*runtime.TiDBGroup](5),
+				data.WithReplicas[scope.TiDBGroup](5),
 			)
 
 			f.WaitForPDGroupReady(ctx, pdg)

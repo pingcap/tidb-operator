@@ -41,7 +41,7 @@ func (f *Framework) WaitForTiFlashGroupReady(ctx context.Context, fg *v1alpha1.T
 	f.Must(waiter.WaitForPodsReady(ctx, f.Client, runtime.FromTiFlashGroup(fg), waiter.LongTaskTimeout))
 }
 
-func (f *Framework) MustCreateTiFlash(ctx context.Context, ps ...data.GroupPatch[*runtime.TiFlashGroup]) *v1alpha1.TiFlashGroup {
+func (f *Framework) MustCreateTiFlash(ctx context.Context, ps ...data.GroupPatch[*v1alpha1.TiFlashGroup]) *v1alpha1.TiFlashGroup {
 	fg := data.NewTiFlashGroup(f.Namespace.Name, ps...)
 	ginkgo.By("Creating a tiflash group")
 	f.Must(f.Client.Create(ctx, fg))

@@ -19,11 +19,10 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
-func NewTiProxyGroup(ns string, patches ...GroupPatch[*runtime.TiProxyGroup]) *v1alpha1.TiProxyGroup {
-	proxyg := &runtime.TiProxyGroup{
+func NewTiProxyGroup(ns string, patches ...GroupPatch[*v1alpha1.TiProxyGroup]) *v1alpha1.TiProxyGroup {
+	proxyg := &v1alpha1.TiProxyGroup{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      defaultTiProxyGroupName,
@@ -48,15 +47,15 @@ func NewTiProxyGroup(ns string, patches ...GroupPatch[*runtime.TiProxyGroup]) *v
 	}
 
 	for _, p := range patches {
-		p(proxyg)
+		p.Patch(proxyg)
 	}
 
-	return runtime.ToTiProxyGroup(proxyg)
+	return proxyg
 }
 
 // Deprecated: use WithTiProxyMySQLTLS
-func WithTLSForTiProxy() GroupPatch[*runtime.TiProxyGroup] {
-	return func(obj *runtime.TiProxyGroup) {
+func WithTLSForTiProxy() GroupPatch[*v1alpha1.TiProxyGroup] {
+	return GroupPatchFunc[*v1alpha1.TiProxyGroup](func(obj *v1alpha1.TiProxyGroup) {
 		if obj.Spec.Template.Spec.Security == nil {
 			obj.Spec.Template.Spec.Security = &v1alpha1.TiProxySecurity{}
 		}
@@ -66,11 +65,11 @@ func WithTLSForTiProxy() GroupPatch[*runtime.TiProxyGroup] {
 				Enabled: true,
 			},
 		}
-	}
+	})
 }
 
-func WithTiProxyMySQLTLS(ca, certKeyPair string) GroupPatch[*runtime.TiProxyGroup] {
-	return func(obj *runtime.TiProxyGroup) {
+func WithTiProxyMySQLTLS(ca, certKeyPair string) GroupPatch[*v1alpha1.TiProxyGroup] {
+	return GroupPatchFunc[*v1alpha1.TiProxyGroup](func(obj *v1alpha1.TiProxyGroup) {
 		if obj.Spec.Template.Spec.Security == nil {
 			obj.Spec.Template.Spec.Security = &v1alpha1.TiProxySecurity{}
 		}
@@ -91,20 +90,20 @@ func WithTiProxyMySQLTLS(ca, certKeyPair string) GroupPatch[*runtime.TiProxyGrou
 				Name: certKeyPair,
 			}
 		}
-	}
+	})
 }
 
-func WithHotReloadPolicyForTiProxy() GroupPatch[*runtime.TiProxyGroup] {
-	return func(obj *runtime.TiProxyGroup) {
+func WithHotReloadPolicyForTiProxy() GroupPatch[*v1alpha1.TiProxyGroup] {
+	return GroupPatchFunc[*v1alpha1.TiProxyGroup](func(obj *v1alpha1.TiProxyGroup) {
 		obj.Spec.Template.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyHotReload
-	}
+	})
 }
 
-func WithTiProxyNextGen() GroupPatch[*runtime.TiProxyGroup] {
-	return func(obj *runtime.TiProxyGroup) {
+func WithTiProxyNextGen() GroupPatch[*v1alpha1.TiProxyGroup] {
+	return GroupPatchFunc[*v1alpha1.TiProxyGroup](func(obj *v1alpha1.TiProxyGroup) {
 		obj.Spec.Template.Spec.Version = "v1.4.0"
 		obj.Spec.Template.Spec.Image = ptr.To(defaultImageRegistry + "tiproxy:v1.4.0-beta.1-26-g02d15d8")
 		obj.Spec.Template.Spec.Config = `[balance]
 label-name = "keyspace"`
-	}
+	})
 }

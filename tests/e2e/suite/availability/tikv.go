@@ -24,6 +24,7 @@ import (
 
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
 	wopt "github.com/pingcap/tidb-operator/tests/e2e/framework/workload"
@@ -42,7 +43,7 @@ var _ = ginkgo.Describe("TiKV Availability Test", label.TiKV, label.KindAvail, l
 		workload := f.SetupWorkload()
 		ginkgo.PIt("No error when rolling update tikv", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx)
-			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](3))
+			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[scope.TiKVGroup](3))
 			dbg := f.MustCreateTiDB(ctx)
 
 			f.WaitForPDGroupReady(ctx, pdg)
@@ -89,7 +90,7 @@ var _ = ginkgo.Describe("TiKV Availability Test", label.TiKV, label.KindAvail, l
 		ginkgo.PIt("No error when rolling update tikv", ginkgo.Serial, label.KindNextGen, func(ctx context.Context) {
 			f.MustCreateS3(ctx)
 			pdg := f.MustCreatePD(ctx, data.WithPDNextGen())
-			kvg := f.MustCreateTiKV(ctx, data.WithTiKVNextGen(), data.WithReplicas[*runtime.TiKVGroup](3))
+			kvg := f.MustCreateTiKV(ctx, data.WithTiKVNextGen(), data.WithReplicas[scope.TiKVGroup](3))
 			dbg := f.MustCreateTiDB(ctx,
 				data.WithTiDBNextGen(),
 				data.WithKeyspace("SYSTEM"),

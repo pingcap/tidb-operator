@@ -23,7 +23,6 @@ import (
 
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apicall"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
@@ -40,15 +39,15 @@ var _ = ginkgo.Describe("StandBy", label.TiDB, label.KindNextGen, func() {
 
 	ginkgo.It("Adopt", label.P1, func(ctx context.Context) {
 		pdg := f.MustCreatePD(ctx,
-			data.WithGroupImage[*runtime.PDGroup]("gcr.io/pingcap-public/dbaas/pd:master-next-gen"),
+			data.WithImage[scope.PDGroup]("gcr.io/pingcap-public/dbaas/pd:master-next-gen"),
 		)
 		kvg := f.MustCreateTiKV(ctx,
-			data.WithGroupImage[*runtime.TiKVGroup]("gcr.io/pingcap-public/dbaas/tikv:dedicated-next-gen"),
+			data.WithImage[scope.TiKVGroup]("gcr.io/pingcap-public/dbaas/tikv:dedicated-next-gen"),
 			data.WithTiKVAPIVersionV2(),
 		)
 		dbg := f.MustCreateTiDB(ctx,
-			data.WithGroupName[*runtime.TiDBGroup]("system"),
-			data.WithGroupImage[*runtime.TiDBGroup]("gcr.io/pingcap-public/dbaas/tidb:master-next-gen"),
+			data.WithName[scope.TiDBGroup]("system"),
+			data.WithImage[scope.TiDBGroup]("gcr.io/pingcap-public/dbaas/tidb:master-next-gen"),
 			// system keyspace
 			data.WithKeyspace("SYSTEM"),
 		)
@@ -60,17 +59,17 @@ var _ = ginkgo.Describe("StandBy", label.TiDB, label.KindNextGen, func() {
 		f.MustScale(ctx, dbg, 0)
 
 		standby := f.MustCreateTiDB(ctx,
-			data.WithGroupName[*runtime.TiDBGroup]("standby-tidb"),
-			data.WithGroupImage[*runtime.TiDBGroup]("gcr.io/pingcap-public/dbaas/tidb:master-next-gen"),
-			data.WithReplicas[*runtime.TiDBGroup](2),
+			data.WithName[scope.TiDBGroup]("standby-tidb"),
+			data.WithImage[scope.TiDBGroup]("gcr.io/pingcap-public/dbaas/tidb:master-next-gen"),
+			data.WithReplicas[scope.TiDBGroup](2),
 			data.WithTiDBStandbyMode(),
 		)
 
 		f.WaitForTiDBGroupReady(ctx, standby)
 
 		another := f.MustCreateTiDB(ctx,
-			data.WithGroupName[*runtime.TiDBGroup]("user"),
-			data.WithGroupImage[*runtime.TiDBGroup]("gcr.io/pingcap-public/dbaas/tidb:master-next-gen"),
+			data.WithName[scope.TiDBGroup]("user"),
+			data.WithImage[scope.TiDBGroup]("gcr.io/pingcap-public/dbaas/tidb:master-next-gen"),
 			// system keyspace
 			data.WithKeyspace("SYSTEM"),
 		)

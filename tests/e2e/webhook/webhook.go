@@ -25,7 +25,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
@@ -95,7 +94,7 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 				ShouldFail:    true,
 				ExpectedError: "Volume storage must be greater than 0",
 				CreateGroupFunc: func(ns string, storage string) (client.Object, error) {
-					return data.NewTiKVGroup(ns, func(group *runtime.TiKVGroup) {
+					return data.NewTiKVGroup(ns, data.GroupPatchFunc[*v1alpha1.TiKVGroup](func(group *v1alpha1.TiKVGroup) {
 						group.Spec.Template.Spec.Volumes = []v1alpha1.Volume{
 							{
 								Name:    "data",
@@ -103,7 +102,7 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 								Mounts:  []v1alpha1.VolumeMount{{Type: "data"}},
 							},
 						}
-					}), nil
+					})), nil
 				},
 			}),
 			ginkgo.Entry("TiDB group with negative storage", TestCase{
@@ -113,7 +112,7 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 				ShouldFail:    true,
 				ExpectedError: "Volume storage must be greater than 0",
 				CreateGroupFunc: func(ns string, storage string) (client.Object, error) {
-					return data.NewTiDBGroup(ns, func(group *runtime.TiDBGroup) {
+					return data.NewTiDBGroup(ns, data.GroupPatchFunc[*v1alpha1.TiDBGroup](func(group *v1alpha1.TiDBGroup) {
 						group.Spec.Template.Spec.Volumes = []v1alpha1.Volume{
 							{
 								Name:    "log",
@@ -121,7 +120,7 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 								Mounts:  []v1alpha1.VolumeMount{{Type: "log"}},
 							},
 						}
-					}), nil
+					})), nil
 				},
 			}),
 			ginkgo.Entry("PD group with valid positive storage", TestCase{
@@ -131,7 +130,7 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 				ShouldFail:    false,
 				ExpectedError: "",
 				CreateGroupFunc: func(ns string, storage string) (client.Object, error) {
-					return data.NewPDGroup(ns, func(group *runtime.PDGroup) {
+					return data.NewPDGroup(ns, data.GroupPatchFunc[*v1alpha1.PDGroup](func(group *v1alpha1.PDGroup) {
 						group.Spec.Template.Spec.Volumes = []v1alpha1.Volume{
 							{
 								Name:    "data",
@@ -139,7 +138,7 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 								Mounts:  []v1alpha1.VolumeMount{{Type: "data"}},
 							},
 						}
-					}), nil
+					})), nil
 				},
 			}),
 			ginkgo.Entry("TSO group with zero storage", TestCase{
@@ -149,7 +148,7 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 				ShouldFail:    true,
 				ExpectedError: "Volume storage must be greater than 0",
 				CreateGroupFunc: func(ns string, storage string) (client.Object, error) {
-					return data.NewTSOGroup(ns, func(group *runtime.TSOGroup) {
+					return data.NewTSOGroup(ns, data.GroupPatchFunc[*v1alpha1.TSOGroup](func(group *v1alpha1.TSOGroup) {
 						group.Spec.Template.Spec.Volumes = []v1alpha1.Volume{
 							{
 								Name:    "data",
@@ -157,7 +156,7 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 								Mounts:  []v1alpha1.VolumeMount{{Type: "data"}},
 							},
 						}
-					}), nil
+					})), nil
 				},
 			}),
 			ginkgo.Entry("TiProxy group with zero storage", TestCase{
@@ -167,7 +166,7 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 				ShouldFail:    true,
 				ExpectedError: "Volume storage must be greater than 0",
 				CreateGroupFunc: func(ns string, storage string) (client.Object, error) {
-					return data.NewTiProxyGroup(ns, func(group *runtime.TiProxyGroup) {
+					return data.NewTiProxyGroup(ns, data.GroupPatchFunc[*v1alpha1.TiProxyGroup](func(group *v1alpha1.TiProxyGroup) {
 						group.Spec.Template.Spec.Volumes = []v1alpha1.Volume{
 							{
 								Name:    "log",
@@ -175,7 +174,7 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 								Mounts:  []v1alpha1.VolumeMount{{Type: "log"}},
 							},
 						}
-					}), nil
+					})), nil
 				},
 			}),
 		)
@@ -239,7 +238,7 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 				ShouldFail:     true,
 				ExpectedError:  "Volume storage can only be increased, not decreased",
 				CreateGroupFunc: func(ns string, storage string) (client.Object, error) {
-					return data.NewTiKVGroup(ns, func(group *runtime.TiKVGroup) {
+					return data.NewTiKVGroup(ns, data.GroupPatchFunc[*v1alpha1.TiKVGroup](func(group *v1alpha1.TiKVGroup) {
 						group.Spec.Template.Spec.Volumes = []v1alpha1.Volume{
 							{
 								Name:    "data",
@@ -247,7 +246,7 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 								Mounts:  []v1alpha1.VolumeMount{{Type: "data"}},
 							},
 						}
-					}), nil
+					})), nil
 				},
 				UpdateStorageFunc: func(obj client.Object, storage string) error {
 					tikvGroup := obj.(*v1alpha1.TiKVGroup)
@@ -263,7 +262,7 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 				ShouldFail:     false,
 				ExpectedError:  "",
 				CreateGroupFunc: func(ns string, storage string) (client.Object, error) {
-					return data.NewTiFlashGroup(ns, func(group *runtime.TiFlashGroup) {
+					return data.NewTiFlashGroup(ns, data.GroupPatchFunc[*v1alpha1.TiFlashGroup](func(group *v1alpha1.TiFlashGroup) {
 						group.Spec.Template.Spec.Volumes = []v1alpha1.Volume{
 							{
 								Name:    "data",
@@ -271,7 +270,7 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 								Mounts:  []v1alpha1.VolumeMount{{Type: "data"}},
 							},
 						}
-					}), nil
+					})), nil
 				},
 				UpdateStorageFunc: func(obj client.Object, storage string) error {
 					tiFlashGroup := obj.(*v1alpha1.TiFlashGroup)
@@ -287,7 +286,7 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 				ShouldFail:     false,
 				ExpectedError:  "",
 				CreateGroupFunc: func(ns string, storage string) (client.Object, error) {
-					return data.NewPDGroup(ns, func(group *runtime.PDGroup) {
+					return data.NewPDGroup(ns, data.GroupPatchFunc[*v1alpha1.PDGroup](func(group *v1alpha1.PDGroup) {
 						group.Spec.Template.Spec.Volumes = []v1alpha1.Volume{
 							{
 								Name:    "data",
@@ -295,7 +294,7 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 								Mounts:  []v1alpha1.VolumeMount{{Type: "data"}},
 							},
 						}
-					}), nil
+					})), nil
 				},
 				UpdateStorageFunc: func(obj client.Object, storage string) error {
 					pdGroup := obj.(*v1alpha1.PDGroup)
@@ -308,7 +307,7 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 		ginkgo.Describe("Special scenarios", func() {
 			ginkgo.It("should validate all volumes in a group with multiple volumes", func(ctx context.Context) {
 				// Create TiKV group with multiple volumes, one invalid
-				invalidTiKVGroup := data.NewTiKVGroup(f.Namespace.Name, func(group *runtime.TiKVGroup) {
+				invalidTiKVGroup := data.NewTiKVGroup(f.Namespace.Name, data.GroupPatchFunc[*v1alpha1.TiKVGroup](func(group *v1alpha1.TiKVGroup) {
 					group.Spec.Template.Spec.Volumes = []v1alpha1.Volume{
 						{
 							Name:    "data",
@@ -321,7 +320,7 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 							Mounts:  []v1alpha1.VolumeMount{{Type: "log"}},
 						},
 					}
-				})
+				}))
 
 				ginkgo.By("Creating TiKV group with mixed valid/invalid volumes should fail")
 				err := f.Client.Create(ctx, invalidTiKVGroup)
@@ -332,7 +331,7 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 
 			ginkgo.It("should handle adding new volumes during update", func(ctx context.Context) {
 				// Create TiKV group with single volume
-				tikvGroup := data.NewTiKVGroup(f.Namespace.Name, func(group *runtime.TiKVGroup) {
+				tikvGroup := data.NewTiKVGroup(f.Namespace.Name, data.GroupPatchFunc[*v1alpha1.TiKVGroup](func(group *v1alpha1.TiKVGroup) {
 					group.Spec.Template.Spec.Volumes = []v1alpha1.Volume{
 						{
 							Name:    "data",
@@ -340,7 +339,7 @@ var _ = ginkgo.Describe("ValidatingAdmissionPolicy", label.P0, func() {
 							Mounts:  []v1alpha1.VolumeMount{{Type: "data"}},
 						},
 					}
-				})
+				}))
 
 				ginkgo.By("Creating TiKV group with single volume")
 				err := f.Client.Create(ctx, tikvGroup)

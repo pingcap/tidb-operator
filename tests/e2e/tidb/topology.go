@@ -23,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
@@ -38,7 +39,7 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 		pdg := f.MustCreatePD(ctx)
 		kvg := f.MustCreateTiKV(ctx)
 		dbg := f.MustCreateTiDB(ctx,
-			data.WithReplicas[*runtime.TiDBGroup](3),
+			data.WithReplicas[scope.TiDBGroup](3),
 			data.WithTiDBEvenlySpreadPolicy(),
 		)
 
@@ -54,7 +55,7 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 		pdg := f.MustCreatePD(ctx)
 		kvg := f.MustCreateTiKV(ctx)
 		dbg := f.MustCreateTiDB(ctx,
-			data.WithReplicas[*runtime.TiDBGroup](3),
+			data.WithReplicas[scope.TiDBGroup](3),
 			data.WithTiDBEvenlySpreadPolicy(),
 		)
 
@@ -101,7 +102,7 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 		pdg := f.MustCreatePD(ctx)
 		kvg := f.MustCreateTiKV(ctx)
 		dbg := f.MustCreateTiDB(ctx,
-			data.WithReplicas[*runtime.TiDBGroup](2),
+			data.WithReplicas[scope.TiDBGroup](2),
 			data.WithTiDBEvenlySpreadPolicy(),
 		)
 
