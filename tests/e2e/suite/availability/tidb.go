@@ -20,7 +20,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
 	wopt "github.com/pingcap/tidb-operator/tests/e2e/framework/workload"
@@ -50,21 +50,21 @@ var _ = ginkgo.Describe("TiDB Availability Test", label.TiDB, label.KindAvail, l
 			f.MustCreateS3(ctx)
 			pdg := f.MustCreatePD(ctx,
 				data.WithPDNextGen(),
-				data.WithClusterTLS[*runtime.PDGroup](ca, "pd-internal"),
+				data.WithClusterTLS[scope.PDGroup](ca, "pd-internal"),
 			)
 			kvg := f.MustCreateTiKV(ctx,
 				data.WithTiKVNextGen(),
-				data.WithClusterTLS[*runtime.TiKVGroup](ca, "tikv-internal"),
+				data.WithClusterTLS[scope.TiKVGroup](ca, "tikv-internal"),
 			)
 			dbg := f.MustCreateTiDB(ctx,
 				data.WithTiDBNextGen(),
 				data.WithKeyspace("SYSTEM"),
-				data.WithReplicas[*runtime.TiDBGroup](2),
-				data.WithClusterTLS[*runtime.TiDBGroup](ca, "tidb-internal"),
+				data.WithReplicas[scope.TiDBGroup](2),
+				data.WithClusterTLS[scope.TiDBGroup](ca, "tidb-internal"),
 			)
 			pg := f.MustCreateTiProxy(ctx,
 				data.WithTiProxyNextGen(),
-				data.WithClusterTLS[*runtime.TiProxyGroup](ca, "tiproxy-internal"),
+				data.WithClusterTLS[scope.TiProxyGroup](ca, "tiproxy-internal"),
 				data.WithTiProxyMySQLTLS(mysqlClientCA, mysqlServerCertKeyPair),
 			)
 

@@ -36,6 +36,14 @@ func Cluster[
 	return scope.From[S](f).Cluster()
 }
 
+func SetCluster[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F, cluster string) {
+	scope.From[S](f).SetCluster(cluster)
+}
+
 func IsSynced[
 	S scope.Object[F, T],
 	F client.Object,
@@ -145,12 +153,28 @@ func LongestReadyPeer[
 	return choosed
 }
 
+func SetVersion[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F, version string) {
+	scope.From[S](f).SetVersion(version)
+}
+
 func Version[
 	S scope.Object[F, T],
 	F client.Object,
 	T runtime.Object,
 ](in F) string {
 	return scope.From[S](in).Version()
+}
+
+func SetImage[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F, image string) {
+	scope.From[S](f).SetImage(image)
 }
 
 func ClusterCertKeyPairSecretName[

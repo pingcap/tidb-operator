@@ -58,7 +58,7 @@ var _ = ginkgo.Describe("TiCDC", label.TiCDC, func() {
 				pdg := f.MustCreatePD(ctx)
 				kvg := f.MustCreateTiKV(ctx)
 				cg := f.MustCreateTiCDC(ctx,
-					data.WithReplicas[*runtime.TiCDCGroup](3),
+					data.WithReplicas[scope.TiCDCGroup](3),
 				)
 
 				f.WaitForPDGroupReady(ctx, pdg)
@@ -129,7 +129,7 @@ var _ = ginkgo.Describe("TiCDC", label.TiCDC, func() {
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx)
 			dbg := f.MustCreateTiDB(ctx)
-			cdcg := f.MustCreateTiCDC(ctx, data.WithReplicas[*runtime.TiCDCGroup](3))
+			cdcg := f.MustCreateTiCDC(ctx, data.WithReplicas[scope.TiCDCGroup](3))
 
 			f.WaitForPDGroupReady(ctx, pdg)
 			f.WaitForTiKVGroupReady(ctx, kvg)

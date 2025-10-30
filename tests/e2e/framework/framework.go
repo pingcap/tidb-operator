@@ -31,7 +31,6 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
@@ -167,7 +166,7 @@ func (f *Framework) MustCreateCluster(ctx context.Context, ps ...data.ClusterPat
 	return tc
 }
 
-func (f *Framework) MustCreatePD(ctx context.Context, ps ...data.GroupPatch[*runtime.PDGroup]) *v1alpha1.PDGroup {
+func (f *Framework) MustCreatePD(ctx context.Context, ps ...data.GroupPatch[*v1alpha1.PDGroup]) *v1alpha1.PDGroup {
 	pdg := data.NewPDGroup(f.Namespace.Name, ps...)
 	ginkgo.By("Creating a pd group")
 	f.Must(f.Client.Create(ctx, pdg))
@@ -175,7 +174,7 @@ func (f *Framework) MustCreatePD(ctx context.Context, ps ...data.GroupPatch[*run
 	return pdg
 }
 
-func (f *Framework) MustCreateTiDB(ctx context.Context, ps ...data.GroupPatch[*runtime.TiDBGroup]) *v1alpha1.TiDBGroup {
+func (f *Framework) MustCreateTiDB(ctx context.Context, ps ...data.GroupPatch[*v1alpha1.TiDBGroup]) *v1alpha1.TiDBGroup {
 	dbg := data.NewTiDBGroup(f.Namespace.Name, ps...)
 	ginkgo.By("Creating a tidb group")
 	f.Must(f.Client.Create(ctx, dbg))
@@ -183,7 +182,7 @@ func (f *Framework) MustCreateTiDB(ctx context.Context, ps ...data.GroupPatch[*r
 	return dbg
 }
 
-func (f *Framework) MustCreateTSO(ctx context.Context, ps ...data.GroupPatch[*runtime.TSOGroup]) *v1alpha1.TSOGroup {
+func (f *Framework) MustCreateTSO(ctx context.Context, ps ...data.GroupPatch[*v1alpha1.TSOGroup]) *v1alpha1.TSOGroup {
 	tg := data.NewTSOGroup(f.Namespace.Name, ps...)
 	ginkgo.By("Creating a tso group")
 	f.Must(f.Client.Create(ctx, tg))
@@ -191,14 +190,14 @@ func (f *Framework) MustCreateTSO(ctx context.Context, ps ...data.GroupPatch[*ru
 	return tg
 }
 
-func (f *Framework) MustCreateScheduling(ctx context.Context, ps ...data.GroupPatch[*runtime.SchedulingGroup]) *v1alpha1.SchedulingGroup {
+func (f *Framework) MustCreateScheduling(ctx context.Context, ps ...data.GroupPatch[*v1alpha1.SchedulingGroup]) *v1alpha1.SchedulingGroup {
 	sg := data.NewSchedulingGroup(f.Namespace.Name, ps...)
 	ginkgo.By("Creating a scheduler group")
 	f.Must(f.Client.Create(ctx, sg))
 	return sg
 }
 
-func (f *Framework) MustCreateTiProxy(ctx context.Context, ps ...data.GroupPatch[*runtime.TiProxyGroup]) *v1alpha1.TiProxyGroup {
+func (f *Framework) MustCreateTiProxy(ctx context.Context, ps ...data.GroupPatch[*v1alpha1.TiProxyGroup]) *v1alpha1.TiProxyGroup {
 	tpg := data.NewTiProxyGroup(f.Namespace.Name, ps...)
 	ginkgo.By("Creating a tiproxy group")
 	f.Must(f.Client.Create(ctx, tpg))

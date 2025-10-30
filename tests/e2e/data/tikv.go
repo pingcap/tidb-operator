@@ -20,11 +20,10 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
-func NewTiKVGroup(ns string, patches ...GroupPatch[*runtime.TiKVGroup]) *v1alpha1.TiKVGroup {
-	kvg := &runtime.TiKVGroup{
+func NewTiKVGroup(ns string, patches ...GroupPatch[*v1alpha1.TiKVGroup]) *v1alpha1.TiKVGroup {
+	kvg := &v1alpha1.TiKVGroup{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      defaultTiKVGroupName,
@@ -48,15 +47,15 @@ func NewTiKVGroup(ns string, patches ...GroupPatch[*runtime.TiKVGroup]) *v1alpha
 		},
 	}
 	for _, p := range patches {
-		p(kvg)
+		p.Patch(kvg)
 	}
 
-	return runtime.ToTiKVGroup(kvg)
+	return kvg
 }
 
 // TODO: combine with WithTiDBEvenlySpreadPolicy
-func WithTiKVEvenlySpreadPolicy() GroupPatch[*runtime.TiKVGroup] {
-	return func(obj *runtime.TiKVGroup) {
+func WithTiKVEvenlySpreadPolicy() GroupPatch[*v1alpha1.TiKVGroup] {
+	return GroupPatchFunc[*v1alpha1.TiKVGroup](func(obj *v1alpha1.TiKVGroup) {
 		obj.Spec.SchedulePolicies = append(obj.Spec.SchedulePolicies, v1alpha1.SchedulePolicy{
 			Type: v1alpha1.SchedulePolicyTypeEvenlySpread,
 			EvenlySpread: &v1alpha1.SchedulePolicyEvenlySpread{
@@ -79,20 +78,20 @@ func WithTiKVEvenlySpreadPolicy() GroupPatch[*runtime.TiKVGroup] {
 				},
 			},
 		})
-	}
+	})
 }
 
-func WithTiKVAPIVersionV2() GroupPatch[*runtime.TiKVGroup] {
-	return func(obj *runtime.TiKVGroup) {
+func WithTiKVAPIVersionV2() GroupPatch[*v1alpha1.TiKVGroup] {
+	return GroupPatchFunc[*v1alpha1.TiKVGroup](func(obj *v1alpha1.TiKVGroup) {
 		obj.Spec.Template.Spec.Config = `[storage]
 api-version = 2
 enable-ttl = true
 `
-	}
+	})
 }
 
-func WithTiKVNextGen() GroupPatch[*runtime.TiKVGroup] {
-	return func(obj *runtime.TiKVGroup) {
+func WithTiKVNextGen() GroupPatch[*v1alpha1.TiKVGroup] {
+	return GroupPatchFunc[*v1alpha1.TiKVGroup](func(obj *v1alpha1.TiKVGroup) {
 		obj.Spec.Template.Spec.Version = "v9.0.0"
 		obj.Spec.Template.Spec.Image = ptr.To(defaultImageRegistry + "tikv:dedicated-next-gen")
 		obj.Spec.Template.Spec.Config = `[storage]
@@ -107,5 +106,5 @@ s3-key-id = "test12345678"
 s3-secret-key = "test12345678"
 s3-region = "local"
 `
-	}
+	})
 }

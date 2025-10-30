@@ -19,11 +19,10 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
-func NewSchedulingGroup(ns string, patches ...GroupPatch[*runtime.SchedulingGroup]) *v1alpha1.SchedulingGroup {
-	sg := &runtime.SchedulingGroup{
+func NewSchedulingGroup(ns string, patches ...GroupPatch[*v1alpha1.SchedulingGroup]) *v1alpha1.SchedulingGroup {
+	sg := &v1alpha1.SchedulingGroup{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      defaultSchedulingGroupName,
@@ -40,15 +39,15 @@ func NewSchedulingGroup(ns string, patches ...GroupPatch[*runtime.SchedulingGrou
 		},
 	}
 	for _, p := range patches {
-		p(sg)
+		p.Patch(sg)
 	}
 
-	return runtime.ToSchedulingGroup(sg)
+	return sg
 }
 
-func WithSchedulingNextGen() GroupPatch[*runtime.SchedulingGroup] {
-	return func(obj *runtime.SchedulingGroup) {
+func WithSchedulingNextGen() GroupPatch[*v1alpha1.SchedulingGroup] {
+	return GroupPatchFunc[*v1alpha1.SchedulingGroup](func(obj *v1alpha1.SchedulingGroup) {
 		obj.Spec.Template.Spec.Version = "v9.0.0"
 		obj.Spec.Template.Spec.Image = ptr.To(defaultImageRegistry + "pd:master-next-gen")
-	}
+	})
 }

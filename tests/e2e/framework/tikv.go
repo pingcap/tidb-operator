@@ -31,7 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
-func (f *Framework) MustCreateTiKV(ctx context.Context, ps ...data.GroupPatch[*runtime.TiKVGroup]) *v1alpha1.TiKVGroup {
+func (f *Framework) MustCreateTiKV(ctx context.Context, ps ...data.GroupPatch[*v1alpha1.TiKVGroup]) *v1alpha1.TiKVGroup {
 	kvg := data.NewTiKVGroup(f.Namespace.Name, ps...)
 	ginkgo.By("Creating a tikv group")
 	f.Must(f.Client.Create(ctx, kvg))

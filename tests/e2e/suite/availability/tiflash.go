@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
 	wopt "github.com/pingcap/tidb-operator/tests/e2e/framework/workload"
@@ -54,8 +55,8 @@ var _ = ginkgo.Describe("TiFlash Availability Test",
 				kvg := f.MustCreateTiKV(ctx)
 				fg := f.MustCreateTiFlash(ctx,
 					// TODO: wait until the https://github.com/pingcap/tiflash/pull/10450 is released
-					data.WithGroupImage[*runtime.TiFlashGroup]("gcr.io/pingcap-public/dbaas/tiflash:master-next-gen"),
-					data.WithReplicas[*runtime.TiFlashGroup](2),
+					data.WithImage[scope.TiFlashGroup]("gcr.io/pingcap-public/dbaas/tiflash:master-next-gen"),
+					data.WithReplicas[scope.TiFlashGroup](2),
 				)
 				dbg := f.MustCreateTiDB(ctx)
 
@@ -103,12 +104,12 @@ var _ = ginkgo.Describe("TiFlash Availability Test",
 				pdg := f.MustCreatePD(ctx, data.WithPDNextGen())
 				kvg := f.MustCreateTiKV(ctx, data.WithTiKVNextGen())
 				fgc := f.MustCreateTiFlash(ctx,
-					data.WithReplicas[*runtime.TiFlashGroup](2),
+					data.WithReplicas[scope.TiFlashGroup](2),
 					data.WithTiFlashNextGen(),
 					data.WithTiFlashComputeMode(),
 				)
 				fgw := f.MustCreateTiFlash(ctx,
-					data.WithReplicas[*runtime.TiFlashGroup](2),
+					data.WithReplicas[scope.TiFlashGroup](2),
 					data.WithTiFlashNextGen(),
 					data.WithTiFlashWriteMode(),
 				)

@@ -27,7 +27,6 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
@@ -44,8 +43,8 @@ var _ = ginkgo.Describe("TiFlash", label.TiFlash, func() {
 
 		ginkgo.It("should complete the full scale-in flow", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx)
-			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](3))
-			fg := f.MustCreateTiFlash(ctx, data.WithReplicas[*runtime.TiFlashGroup](2))
+			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[scope.TiKVGroup](3))
+			fg := f.MustCreateTiFlash(ctx, data.WithReplicas[scope.TiFlashGroup](2))
 			dbg := f.MustCreateTiDB(ctx)
 
 			f.WaitForPDGroupReady(ctx, pdg)
