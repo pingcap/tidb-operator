@@ -142,20 +142,20 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 			if err := isPodAvailable(pod, minReadySeconds, tc); err != nil {
 				if store.LeaderCountBeforeUpgrade != nil {
 					klog.Infof("tikvUpgrader.Upgrade: tikv pod %s/%s is upgraded but not available yet. leaderCountBeforeUpgrade: %d",
-						podName, ns, *store.LeaderCountBeforeUpgrade)
+						ns, podName, *store.LeaderCountBeforeUpgrade)
 				} else {
 					klog.Infof("tikvUpgrader.Upgrade: tikv pod %s/%s is upgraded but not available yet. no leaderCountBeforeUpgrade",
-						podName, ns)
+						ns, podName)
 				}
 				return err
 			}
 			if store.State != v1alpha1.TiKVStateUp {
 				if store.LeaderCountBeforeUpgrade != nil {
 					klog.Infof("tikvUpgrader.Upgrade: tikv pod %s/%s is upgraded but store state is %s. leaderCountBeforeUpgrade: %d",
-						podName, ns, store.State, *store.LeaderCountBeforeUpgrade)
+						ns, podName, store.State, *store.LeaderCountBeforeUpgrade)
 				} else {
 					klog.Infof("tikvUpgrader.Upgrade: tikv pod %s/%s is upgraded but store state is %s. no leaderCountBeforeUpgrade",
-						podName, ns, store.State)
+						ns, podName, store.State)
 				}
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
 			}
@@ -366,7 +366,7 @@ func (u *tikvUpgrader) endEvictLeaderAfterUpgrade(tc *v1alpha1.TidbCluster, pod 
 		}
 		return done, nil
 	} else {
-		klog.Warningf("%s: miss leader count before upgrade, so try to wait for a timeout before upgrading next store", logPrefix)
+		klog.Infof("%s: miss leader count before upgrade, so try to wait for a timeout before upgrading next store", logPrefix)
 		evictLeaderEndTimeStr, exist := pod.Annotations[annoKeyEvictLeaderEndTime]
 		if exist {
 			evictLeaderEndTime, err := time.Parse(time.RFC3339, evictLeaderEndTimeStr)
@@ -380,7 +380,7 @@ func (u *tikvUpgrader) endEvictLeaderAfterUpgrade(tc *v1alpha1.TidbCluster, pod 
 				return false, nil
 			}
 		}
-		klog.Infof("%s: miss evict leader end time, so ready to upgrade next store directly", logPrefix)
+		klog.Warningf("%s: miss evict leader end time, so ready to upgrade next store directly", logPrefix)
 	}
 
 	return true, nil
