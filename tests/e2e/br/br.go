@@ -39,7 +39,7 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	brframework "github.com/pingcap/tidb-operator/tests/e2e/br/framework"
 	"github.com/pingcap/tidb-operator/tests/e2e/cluster"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
@@ -1292,19 +1292,19 @@ func createTidbCluster(f *brframework.Framework, name string, version string, en
 	}
 	cluster := f.MustCreateCluster(ctx, clusterPatches...)
 	_ = f.MustCreatePD(ctx,
-		data.WithGroupName[*runtime.PDGroup](getGroupName(name, "pdg")),
-		data.WithGroupVersion[*runtime.PDGroup](version),
-		data.WithGroupCluster[*runtime.PDGroup](name),
+		data.WithName[scope.PDGroup](getGroupName(name, "pdg")),
+		data.WithVersion[scope.PDGroup](version),
+		data.WithCluster[scope.PDGroup](name),
 	)
 	_ = f.MustCreateTiKV(ctx,
-		data.WithGroupName[*runtime.TiKVGroup](getGroupName(name, "kvg")),
-		data.WithGroupVersion[*runtime.TiKVGroup](version),
-		data.WithGroupCluster[*runtime.TiKVGroup](name),
+		data.WithName[scope.TiKVGroup](getGroupName(name, "kvg")),
+		data.WithVersion[scope.TiKVGroup](version),
+		data.WithCluster[scope.TiKVGroup](name),
 	)
 	_ = f.MustCreateTiDB(ctx,
-		data.WithGroupName[*runtime.TiDBGroup](getGroupName(name, "dbg")),
-		data.WithGroupVersion[*runtime.TiDBGroup](version),
-		data.WithGroupCluster[*runtime.TiDBGroup](name),
+		data.WithName[scope.TiDBGroup](getGroupName(name, "dbg")),
+		data.WithVersion[scope.TiDBGroup](version),
+		data.WithCluster[scope.TiDBGroup](name),
 	)
 
 	ginkgo.DeferCleanup(func(ctx context.Context) {
@@ -1340,25 +1340,25 @@ func createLogBackupEnabledTidbCluster(f *brframework.Framework, name string, ve
 	}
 	cluster := f.MustCreateCluster(ctx, clusterPatches...)
 	_ = f.MustCreatePD(ctx,
-		data.WithGroupName[*runtime.PDGroup](getGroupName(name, "pdg")),
-		data.WithGroupVersion[*runtime.PDGroup](version),
-		data.WithGroupCluster[*runtime.PDGroup](name),
+		data.WithName[scope.PDGroup](getGroupName(name, "pdg")),
+		data.WithVersion[scope.PDGroup](version),
+		data.WithCluster[scope.PDGroup](name),
 	)
 
 	// create tikv group
 	kvg := data.NewTiKVGroup(f.Namespace.Name,
-		data.WithGroupName[*runtime.TiKVGroup](getGroupName(name, "kvg")),
-		data.WithGroupVersion[*runtime.TiKVGroup](version),
-		data.WithGroupCluster[*runtime.TiKVGroup](name),
+		data.WithName[scope.TiKVGroup](getGroupName(name, "kvg")),
+		data.WithVersion[scope.TiKVGroup](version),
+		data.WithCluster[scope.TiKVGroup](name),
 	)
 	kvg.Spec.Template.Spec.Config = "log-backup.enable = true"
 	ginkgo.By("Creating a tikv group")
 	f.Must(f.Client.Create(ctx, kvg))
 
 	_ = f.MustCreateTiDB(ctx,
-		data.WithGroupName[*runtime.TiDBGroup](getGroupName(name, "dbg")),
-		data.WithGroupVersion[*runtime.TiDBGroup](version),
-		data.WithGroupCluster[*runtime.TiDBGroup](name),
+		data.WithName[scope.TiDBGroup](getGroupName(name, "dbg")),
+		data.WithVersion[scope.TiDBGroup](version),
+		data.WithCluster[scope.TiDBGroup](name),
 	)
 
 	ginkgo.DeferCleanup(func(ctx context.Context) {

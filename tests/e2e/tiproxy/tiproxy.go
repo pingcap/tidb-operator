@@ -27,6 +27,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
 	wopt "github.com/pingcap/tidb-operator/tests/e2e/framework/workload"
@@ -49,7 +50,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx)
 			dbg := f.MustCreateTiDB(ctx)
-			proxyg := f.MustCreateTiProxy(ctx, data.WithReplicas[*runtime.TiProxyGroup](2))
+			proxyg := f.MustCreateTiProxy(ctx, data.WithReplicas[scope.TiProxyGroup](2))
 
 			ginkgo.By("Wait for Cluster Ready")
 			f.WaitForPDGroupReady(ctx, pdg)
@@ -76,13 +77,13 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			func(
 				ctx context.Context,
 				change func(*v1alpha1.TiProxyGroup),
-				patches ...data.GroupPatch[*runtime.TiProxyGroup],
+				patches ...data.GroupPatch[*v1alpha1.TiProxyGroup],
 			) {
 				pdg := f.MustCreatePD(ctx)
 				kvg := f.MustCreateTiKV(ctx)
 				dbg := f.MustCreateTiDB(ctx)
-				var ps []data.GroupPatch[*runtime.TiProxyGroup]
-				ps = append(ps, data.WithReplicas[*runtime.TiProxyGroup](2))
+				var ps []data.GroupPatch[*v1alpha1.TiProxyGroup]
+				ps = append(ps, data.WithReplicas[scope.TiProxyGroup](2))
 				ps = append(ps, patches...)
 				proxyg := f.MustCreateTiProxy(ctx,
 					ps...,
@@ -131,13 +132,13 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			func(
 				ctx context.Context,
 				change func(*v1alpha1.TiProxyGroup),
-				patches ...data.GroupPatch[*runtime.TiProxyGroup],
+				patches ...data.GroupPatch[*v1alpha1.TiProxyGroup],
 			) {
 				pdg := f.MustCreatePD(ctx)
 				kvg := f.MustCreateTiKV(ctx)
 				dbg := f.MustCreateTiDB(ctx)
-				var ps []data.GroupPatch[*runtime.TiProxyGroup]
-				ps = append(ps, data.WithReplicas[*runtime.TiProxyGroup](2))
+				var ps []data.GroupPatch[*v1alpha1.TiProxyGroup]
+				ps = append(ps, data.WithReplicas[scope.TiProxyGroup](2))
 				ps = append(ps, patches...)
 				proxyg := f.MustCreateTiProxy(ctx,
 					ps...,
@@ -198,7 +199,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			kvg := f.MustCreateTiKV(ctx)
 			dbg := f.MustCreateTiDB(ctx)
 			proxyg := f.MustCreateTiProxy(ctx,
-				data.WithReplicas[*runtime.TiProxyGroup](4),
+				data.WithReplicas[scope.TiProxyGroup](4),
 			)
 
 			f.WaitForPDGroupReady(ctx, pdg)

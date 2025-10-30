@@ -43,6 +43,22 @@ func Replicas[
 	return scope.From[S](f).Replicas()
 }
 
+func SetReplicas[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](f F, replicas int32) {
+	scope.From[S](f).SetReplicas(replicas)
+}
+
+func SetTemplateClusterTLS[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](f F, ca, certKeyPair string) {
+	scope.From[S](f).SetTemplateClusterTLS(ca, certKeyPair)
+}
+
 // IsGroupHealthyAndUpToDate is defined to check whether all replicas of the group are healthy and up to date
 // TODO: simplify it by a condition
 func IsGroupHealthyAndUpToDate[

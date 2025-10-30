@@ -21,12 +21,11 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/utils/toml"
 )
 
-func NewTiFlashGroup(ns string, patches ...GroupPatch[*runtime.TiFlashGroup]) *v1alpha1.TiFlashGroup {
-	flashg := &runtime.TiFlashGroup{
+func NewTiFlashGroup(ns string, patches ...GroupPatch[*v1alpha1.TiFlashGroup]) *v1alpha1.TiFlashGroup {
+	flashg := &v1alpha1.TiFlashGroup{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      defaultTiFlashGroupName,
@@ -50,14 +49,14 @@ func NewTiFlashGroup(ns string, patches ...GroupPatch[*runtime.TiFlashGroup]) *v
 		},
 	}
 	for _, p := range patches {
-		p(flashg)
+		p.Patch(flashg)
 	}
 
-	return runtime.ToTiFlashGroup(flashg)
+	return flashg
 }
 
-func WithTiFlashNextGen() GroupPatch[*runtime.TiFlashGroup] {
-	return func(obj *runtime.TiFlashGroup) {
+func WithTiFlashNextGen() GroupPatch[*v1alpha1.TiFlashGroup] {
+	return GroupPatchFunc[*v1alpha1.TiFlashGroup](func(obj *v1alpha1.TiFlashGroup) {
 		obj.Spec.Template.Spec.Version = "v9.0.0"
 		obj.Spec.Template.Spec.Image = ptr.To(defaultImageRegistry + "tiflash:master-next-gen")
 		obj.Spec.Template.Spec.ProxyConfig = `[storage]
@@ -92,7 +91,7 @@ secret_access_key = "test12345678"
 				},
 			},
 		}
-	}
+	})
 }
 
 type TiFlashConfig struct {
@@ -103,8 +102,8 @@ type FlashConfig struct {
 	DisaggregatedMode string `toml:"disaggregated_mode"`
 }
 
-func withTiFlashMode(mode string) GroupPatch[*runtime.TiFlashGroup] {
-	return func(obj *runtime.TiFlashGroup) {
+func withTiFlashMode(mode string) GroupPatch[*v1alpha1.TiFlashGroup] {
+	return GroupPatchFunc[*v1alpha1.TiFlashGroup](func(obj *v1alpha1.TiFlashGroup) {
 		if mode == "tiflash_write" {
 			obj.Name = obj.Name + "-wn"
 		}
@@ -123,13 +122,13 @@ func withTiFlashMode(mode string) GroupPatch[*runtime.TiFlashGroup] {
 			panic("encode tiflash config: " + err.Error())
 		}
 		obj.Spec.Template.Spec.Config = v1alpha1.ConfigFile(data)
-	}
+	})
 }
 
-func WithTiFlashComputeMode() GroupPatch[*runtime.TiFlashGroup] {
+func WithTiFlashComputeMode() GroupPatch[*v1alpha1.TiFlashGroup] {
 	return withTiFlashMode("tiflash_compute")
 }
 
-func WithTiFlashWriteMode() GroupPatch[*runtime.TiFlashGroup] {
+func WithTiFlashWriteMode() GroupPatch[*v1alpha1.TiFlashGroup] {
 	return withTiFlashMode("tiflash_write")
 }

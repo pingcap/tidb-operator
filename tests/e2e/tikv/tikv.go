@@ -29,7 +29,6 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
@@ -58,7 +57,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 				}
 				pdg := f.MustCreatePD(ctx)
 				kvg := f.MustCreateTiKV(ctx,
-					data.WithReplicas[*runtime.TiKVGroup](3),
+					data.WithReplicas[scope.TiKVGroup](3),
 				)
 
 				f.WaitForPDGroupReady(ctx, pdg)
@@ -98,7 +97,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 
 		ginkgo.It("should recreate pod when deleted during graceful store removal", label.Delete, func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx, data.WithSlowDataMigration())
-			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](4))
+			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[scope.TiKVGroup](4))
 			dbg := f.MustCreateTiDB(ctx)
 
 			f.WaitForPDGroupReady(ctx, pdg)
@@ -158,7 +157,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 
 		ginkgo.It("Evict leaders before deleting tikv", label.P1, label.Delete, func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx, data.WithSlowDataMigration())
-			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](4))
+			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[scope.TiKVGroup](4))
 			dbg := f.MustCreateTiDB(ctx)
 
 			f.WaitForPDGroupReady(ctx, pdg)
@@ -203,7 +202,7 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 
 		ginkgo.It("should complete the full scale-in flow", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx)
-			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](4))
+			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[scope.TiKVGroup](4))
 			dbg := f.MustCreateTiDB(ctx)
 
 			f.WaitForPDGroupReady(ctx, pdg)
@@ -255,13 +254,13 @@ var _ = ginkgo.Describe("TiKV", label.TiKV, func() {
 
 		ginkgo.It("should handle full cancellation of scale-in", func(ctx context.Context) {
 			// Slow down the speed of data migration for testing
-			pdg := f.MustCreatePD(ctx, func(pdg *runtime.PDGroup) {
+			pdg := f.MustCreatePD(ctx, data.GroupPatchFunc[*v1alpha1.PDGroup](func(pdg *v1alpha1.PDGroup) {
 				pdg.Spec.Template.Spec.Config = `[schedule]
 region-schedule-limit = 16
 replica-schedule-limit = 8
 `
-			})
-			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](4))
+			}))
+			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[scope.TiKVGroup](4))
 			dbg := f.MustCreateTiDB(ctx)
 
 			f.WaitForPDGroupReady(ctx, pdg)
@@ -310,13 +309,13 @@ replica-schedule-limit = 8
 
 		ginkgo.It("should handle partial cancellation of scale-in", func(ctx context.Context) {
 			// Slow down the speed of data migration for testing
-			pdg := f.MustCreatePD(ctx, func(pdg *runtime.PDGroup) {
+			pdg := f.MustCreatePD(ctx, data.GroupPatchFunc[*v1alpha1.PDGroup](func(pdg *v1alpha1.PDGroup) {
 				pdg.Spec.Template.Spec.Config = `[schedule]
 region-schedule-limit = 32
 replica-schedule-limit = 16
 `
-			})
-			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[*runtime.TiKVGroup](5))
+			}))
+			kvg := f.MustCreateTiKV(ctx, data.WithReplicas[scope.TiKVGroup](5))
 			dbg := f.MustCreateTiDB(ctx)
 
 			f.WaitForPDGroupReady(ctx, pdg)

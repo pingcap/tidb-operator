@@ -23,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
@@ -37,7 +38,7 @@ var _ = ginkgo.Describe("Topology", label.TiKV, label.MultipleAZ, label.P0, func
 		ginkgo.By("Creating cluster")
 		pdg := f.MustCreatePD(ctx)
 		kvg := f.MustCreateTiKV(ctx,
-			data.WithReplicas[*runtime.TiKVGroup](6),
+			data.WithReplicas[scope.TiKVGroup](6),
 			data.WithTiKVEvenlySpreadPolicy(),
 		)
 
@@ -51,7 +52,7 @@ var _ = ginkgo.Describe("Topology", label.TiKV, label.MultipleAZ, label.P0, func
 		ginkgo.By("Creating cluster")
 		pdg := f.MustCreatePD(ctx)
 		kvg := f.MustCreateTiKV(ctx,
-			data.WithReplicas[*runtime.TiKVGroup](3),
+			data.WithReplicas[scope.TiKVGroup](3),
 			data.WithTiKVEvenlySpreadPolicy(),
 		)
 

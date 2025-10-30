@@ -20,7 +20,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
@@ -36,7 +36,7 @@ var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label
 		// https://github.com/tikv/pd/pull/9851
 		ginkgo.PIt("No error when rolling update pd", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx,
-				data.WithReplicas[*runtime.PDGroup](3),
+				data.WithReplicas[scope.PDGroup](3),
 			)
 			kvg := f.MustCreateTiKV(ctx)
 			dbg := f.MustCreateTiDB(ctx)
@@ -66,7 +66,7 @@ var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label
 			))
 			ginkgo.It("No error when rolling update pd in next-gen", func(ctx context.Context) {
 				f.MustCreateS3(ctx)
-				pdg := f.MustCreatePD(ctx, data.WithPDNextGen(), data.WithMSMode(), data.WithReplicas[*runtime.PDGroup](3))
+				pdg := f.MustCreatePD(ctx, data.WithPDNextGen(), data.WithMSMode(), data.WithReplicas[scope.PDGroup](3))
 				kvg := f.MustCreateTiKV(ctx, data.WithTiKVNextGen())
 				dbg := f.MustCreateTiDB(ctx,
 					data.WithTiDBNextGen(),
@@ -98,11 +98,11 @@ var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label
 				)
 				tg := f.MustCreateTSO(ctx,
 					data.WithTSONextGen(),
-					data.WithReplicas[*runtime.TSOGroup](2),
+					data.WithReplicas[scope.TSOGroup](2),
 				)
 				sg := f.MustCreateScheduling(ctx,
 					data.WithSchedulingNextGen(),
-					data.WithReplicas[*runtime.SchedulingGroup](2),
+					data.WithReplicas[scope.SchedulingGroup](2),
 				)
 
 				f.WaitForPDGroupReady(ctx, pdg)
