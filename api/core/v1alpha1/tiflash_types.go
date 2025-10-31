@@ -30,6 +30,9 @@ const (
 	DefaultTiFlashPortProxy       = 20170
 	DefaultTiFlashPortMetrics     = 8234
 	DefaultTiFlashPortProxyStatus = 20292
+
+	// DefaultTiFlashMinReadySeconds is default min ready seconds of tiflash
+	DefaultTiFlashMinReadySeconds = 5
 )
 
 const (
@@ -120,7 +123,14 @@ type TiFlashGroupSpec struct {
 	// +listType=map
 	// +listMapKey=type
 	SchedulePolicies []SchedulePolicy `json:"schedulePolicies,omitempty"`
-	Template         TiFlashTemplate  `json:"template"`
+
+	// MinReadySeconds specifies the minimum number of seconds for which a newly created pod be ready without any of its containers crashing, for it to be considered available.
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MinReadySeconds *int64 `json:"minReadySeconds,omitempty"`
+
+	// Template defines tiflash instance template
+	Template TiFlashTemplate `json:"template"`
 }
 
 type TiFlashTemplate struct {

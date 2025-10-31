@@ -59,6 +59,14 @@ func SetTemplateClusterTLS[
 	scope.From[S](f).SetTemplateClusterTLS(ca, certKeyPair)
 }
 
+func MinReadySeconds[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](f F) int64 {
+	return scope.From[S](f).MinReadySeconds()
+}
+
 // IsGroupHealthyAndUpToDate is defined to check whether all replicas of the group are healthy and up to date
 // TODO: simplify it by a condition
 func IsGroupHealthyAndUpToDate[

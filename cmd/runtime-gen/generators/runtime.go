@@ -65,6 +65,7 @@ func (g *runtimeGenerator) Namers(*generator.Context) namer.NameSystems {
 func (g *runtimeGenerator) Imports(_ *generator.Context) (imports []string) {
 	importLines := []string{
 		`"unsafe"`,
+		`"time"`,
 
 		`"k8s.io/apimachinery/pkg/api/meta"`,
 		`metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"`,
@@ -173,6 +174,7 @@ func (in *$.|pub$) IsReady() bool {
 	if cond.ObservedGeneration != in.GetGeneration() {
 		return false
 	}
+
 	return cond.Status == metav1.ConditionTrue
 }
 
@@ -185,6 +187,28 @@ func (in *$.|pub$) IsNotRunning() bool {
 		return false
 	}
 	return cond.Status == metav1.ConditionFalse
+}
+
+func (in *$.|pub$) IsAvailable(minReadySeconds int64, now time.Time) bool {
+	cond := meta.FindStatusCondition(in.Status.Conditions, v1alpha1.CondReady)
+	if cond == nil {
+		return false
+	}
+	if cond.ObservedGeneration != in.GetGeneration() {
+		return false
+	}
+	if cond.Status != metav1.ConditionTrue {
+		return false
+	}
+	if minReadySeconds == 0 {
+		return true
+	}
+	minReadySecondsDuration := time.Duration(minReadySeconds) * time.Second
+	if !cond.LastTransitionTime.IsZero() && cond.LastTransitionTime.Add(minReadySecondsDuration).Before(now) {
+		return true
+	}
+
+	return false
 }
 
 func (in *$.|pub$) IsUpToDate() bool {
@@ -546,6 +570,13 @@ func (g *$.|pub$) ClientInsecureSkipTLSVerify() bool {
 		return sec.TLS.Client.InsecureSkipTLSVerify
 	}
 	return false
+}
+
+func (g *$.|pub$) MinReadySeconds() int64 {
+	if g.Spec.MinReadySeconds == nil {
+		return v1alpha1.Default$.|instance$MinReadySeconds
+	}
+	return *g.Spec.MinReadySeconds
 }
 `, t)
 

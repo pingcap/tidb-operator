@@ -42,6 +42,7 @@ func TestPDGroup(t *testing.T) {
 	cases = append(cases, transferPDGroupCases(t, bootstrapped(), "spec", "bootstrapped")...)
 	cases = append(cases, transferPDGroupCases(t, replicasWithBootstrapped(t), "spec")...)
 	cases = append(cases, transferPDGroupCases(t, NameLength(groupNameLengthLimit), "metadata", "name")...)
+	cases = append(cases, transferPDGroupCases(t, MinReadySeconds(), "spec", "minReadySeconds")...)
 	Validate(t, "crd/core.pingcap.com_pdgroups.yaml", cases)
 }
 
