@@ -366,7 +366,7 @@ func (u *tikvUpgrader) endEvictLeaderAfterUpgrade(tc *v1alpha1.TidbCluster, pod 
 		}
 		return done, nil
 	} else {
-		klog.Infof("%s: miss leader count before upgrade, so try to wait for a timeout before upgrading next store", logPrefix)
+		klog.Infof("%s: miss leader count before upgrade, so skip waiting leaders for transfer back", logPrefix)
 	}
 
 	return true, nil
