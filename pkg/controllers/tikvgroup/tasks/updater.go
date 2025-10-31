@@ -95,6 +95,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			WithScaleInPreferPolicy(
 				topoPolicy,
 			).
+			WithMinReadySeconds(coreutil.MinReadySeconds[scope.TiKVGroup](kvg)).
 			Build().
 			Do(ctx)
 		if err != nil {

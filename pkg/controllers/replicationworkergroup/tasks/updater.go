@@ -91,6 +91,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			WithScaleInPreferPolicy(
 				topoPolicy,
 			).
+			WithMinReadySeconds(coreutil.MinReadySeconds[scope.ReplicationWorkerGroup](obj)).
 			Build().
 			Do(ctx)
 		if err != nil {

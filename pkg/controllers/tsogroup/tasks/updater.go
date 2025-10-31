@@ -98,6 +98,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			WithUpdatePreferPolicy(
 				NotLeaderPolicy(),
 			).
+			WithMinReadySeconds(coreutil.MinReadySeconds[scope.TSOGroup](obj)).
 			Build().
 			Do(ctx)
 		if err != nil {

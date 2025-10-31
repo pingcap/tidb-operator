@@ -34,6 +34,9 @@ const (
 	TiDBPortNameStatus    = "status"
 	DefaultTiDBPortClient = 4000
 	DefaultTiDBPortStatus = 10080
+
+	// DefaultTiDBMinReadySeconds is default min ready seconds of tidb
+	DefaultTiDBMinReadySeconds = 10
 )
 
 const (
@@ -129,6 +132,9 @@ type TiDBGroupSpec struct {
 	// +listType=map
 	// +listMapKey=type
 	SchedulePolicies []SchedulePolicy `json:"schedulePolicies,omitempty"`
+
+	// MinReadySeconds specifies the minimum number of seconds for which a newly created pod be ready without any of its containers crashing, for it to be considered available.
+	MinReadySeconds *int64 `json:"minReadySeconds,omitempty"`
 
 	// Template is the instance template
 	Template TiDBTemplate `json:"template"`

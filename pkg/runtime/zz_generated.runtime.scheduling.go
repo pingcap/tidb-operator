@@ -20,6 +20,7 @@
 package runtime
 
 import (
+	"time"
 	"unsafe"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -111,6 +112,7 @@ func (in *Scheduling) IsReady() bool {
 	if cond.ObservedGeneration != in.GetGeneration() {
 		return false
 	}
+
 	return cond.Status == metav1.ConditionTrue
 }
 
@@ -123,6 +125,28 @@ func (in *Scheduling) IsNotRunning() bool {
 		return false
 	}
 	return cond.Status == metav1.ConditionFalse
+}
+
+func (in *Scheduling) IsAvailable(minReadySeconds int64, now time.Time) bool {
+	cond := meta.FindStatusCondition(in.Status.Conditions, v1alpha1.CondReady)
+	if cond == nil {
+		return false
+	}
+	if cond.ObservedGeneration != in.GetGeneration() {
+		return false
+	}
+	if cond.Status != metav1.ConditionTrue {
+		return false
+	}
+	if minReadySeconds == 0 {
+		return true
+	}
+	minReadySecondsDuration := time.Duration(minReadySeconds) * time.Second
+	if !cond.LastTransitionTime.IsZero() && cond.LastTransitionTime.Add(minReadySecondsDuration).Before(now) {
+		return true
+	}
+
+	return false
 }
 
 func (in *Scheduling) IsUpToDate() bool {
@@ -461,4 +485,11 @@ func (g *SchedulingGroup) ClientInsecureSkipTLSVerify() bool {
 		return sec.TLS.Client.InsecureSkipTLSVerify
 	}
 	return false
+}
+
+func (g *SchedulingGroup) MinReadySeconds() int64 {
+	if g.Spec.MinReadySeconds == nil {
+		return v1alpha1.DefaultSchedulingMinReadySeconds
+	}
+	return *g.Spec.MinReadySeconds
 }

@@ -23,6 +23,9 @@ import (
 const (
 	TSOPortNameClient    = "client"
 	DefaultTSOPortClient = 3379
+
+	// DefaultTSOMinReadySeconds is default min ready seconds of tso
+	DefaultTSOMinReadySeconds = 5
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -104,6 +107,9 @@ type TSOGroupSpec struct {
 	// +listType=map
 	// +listMapKey=type
 	SchedulePolicies []SchedulePolicy `json:"schedulePolicies,omitempty"`
+
+	// MinReadySeconds specifies the minimum number of seconds for which a newly created pod be ready without any of its containers crashing, for it to be considered available.
+	MinReadySeconds *int64 `json:"minReadySeconds,omitempty"`
 
 	Template TSOTemplate `json:"template"`
 }

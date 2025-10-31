@@ -109,6 +109,12 @@ spec:
                   - UseTiFlashReadyAPI
                   type: string
                 type: array
+              minReadySeconds:
+                description: MinReadySeconds specifies the minimum number of seconds
+                  for which a newly created pod be ready without any of its containers
+                  crashing, for it to be considered available.
+                format: int64
+                type: integer
               replicas:
                 description: Currently, ReplicationWorkerGroup only supports one replicas.
                 format: int32

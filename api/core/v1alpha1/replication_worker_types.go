@@ -15,16 +15,21 @@
 package v1alpha1
 
 import (
-	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 const (
 	ReplicationWorkerPortNameGRPC    = "grpc"
 	DefaultReplicationWorkerPortGRPC = 19160
 
-	VolumeMountTypeReplicationWorkerData        VolumeMountType = "data"
-	VolumeMountReplicationWorkerDataDefaultPath                 = "/var/lib/replication-worker"
+	// DefaultReplicationWorkerMinReadySeconds is default min ready seconds of replication worker
+	DefaultReplicationWorkerMinReadySeconds = 5
+
+	VolumeMountTypeReplicationWorkerData VolumeMountType = "data"
+
+	VolumeMountReplicationWorkerDataDefaultPath = "/var/lib/replication-worker"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -109,6 +114,9 @@ type ReplicationWorkerGroupSpec struct {
 	// +listType=map
 	// +listMapKey=type
 	SchedulePolicies []SchedulePolicy `json:"schedulePolicies,omitempty"`
+
+	// MinReadySeconds specifies the minimum number of seconds for which a newly created pod be ready without any of its containers crashing, for it to be considered available.
+	MinReadySeconds *int64 `json:"minReadySeconds,omitempty"`
 
 	Template ReplicationWorkerTemplate `json:"template"`
 }

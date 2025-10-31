@@ -32,6 +32,9 @@ const (
 	PDPortNamePeer      = "peer"
 	DefaultPDPortClient = 2379
 	DefaultPDPortPeer   = 2380
+
+	// DefaultPDMinReadySeconds is default min ready seconds of pd
+	DefaultPDMinReadySeconds = 5
 )
 
 const (
@@ -134,6 +137,9 @@ type PDGroupSpec struct {
 	// +listType=map
 	// +listMapKey=type
 	SchedulePolicies []SchedulePolicy `json:"schedulePolicies,omitempty"`
+
+	// MinReadySeconds specifies the minimum number of seconds for which a newly created pod be ready without any of its containers crashing, for it to be considered available.
+	MinReadySeconds *int64 `json:"minReadySeconds,omitempty"`
 
 	Template PDTemplate `json:"template"`
 }

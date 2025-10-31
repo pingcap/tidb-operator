@@ -100,6 +100,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			WithUpdatePreferPolicy(
 				NotLeaderPolicy(),
 			).
+			WithMinReadySeconds(coreutil.MinReadySeconds[scope.PDGroup](pdg)).
 			Build().
 			Do(ctx)
 		if err != nil {

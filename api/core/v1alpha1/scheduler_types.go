@@ -25,6 +25,9 @@ const (
 	SchedulerPortNameClient = "client"
 	// Deprecated: use DefaultSchedulingPortClient
 	DefaultSchedulerPortClient = 3379
+
+	// DefaultSchedulerMinReadySeconds is default min ready seconds of scheduling
+	DefaultSchedulerMinReadySeconds = DefaultSchedulingMinReadySeconds
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -114,6 +117,9 @@ type SchedulerGroupSpec struct {
 	// +listType=map
 	// +listMapKey=type
 	SchedulePolicies []SchedulePolicy `json:"schedulePolicies,omitempty"`
+
+	// MinReadySeconds specifies the minimum number of seconds for which a newly created pod be ready without any of its containers crashing, for it to be considered available.
+	MinReadySeconds *int64 `json:"minReadySeconds,omitempty"`
 
 	Template SchedulerTemplate `json:"template"`
 }

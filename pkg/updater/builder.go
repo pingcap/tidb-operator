@@ -15,6 +15,8 @@
 package updater
 
 import (
+	"time"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -37,6 +39,8 @@ type Builder[R runtime.Instance] interface {
 	WithUpdatePreferPolicy(ps ...PreferPolicy[R]) Builder[R]
 	// NoInPlaceUpdate if true, actor will use Scale in and Scale out to replace Update operation
 	WithNoInPaceUpdate(noUpdate bool) Builder[R]
+	// MinReadySeconds means instances are available only when they keep ready more than minReadySeconds
+	WithMinReadySeconds(minReadySeconds int64) Builder[R]
 	Build() Executor
 }
 
@@ -48,6 +52,7 @@ type builder[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct 
 	rev            string
 
 	noInPlaceUpdate bool
+	minReadySeconds int64
 
 	c client.Client
 
@@ -89,7 +94,7 @@ func (b *builder[T, O, R]) Build() Executor {
 		len(update),
 		len(outdated),
 		b.desired,
-		countUnavailableUpdate(update),
+		countUnavailableUpdate(update, b.minReadySeconds),
 		countUnavailableOutdated(outdated),
 		b.maxSurge,
 		b.maxUnavailable,
@@ -166,6 +171,11 @@ func (b *builder[T, O, R]) WithNoInPaceUpdate(noUpdate bool) Builder[R] {
 	return b
 }
 
+func (b *builder[T, O, R]) WithMinReadySeconds(minReadySeconds int64) Builder[R] {
+	b.minReadySeconds = minReadySeconds
+	return b
+}
+
 func split[R runtime.Instance](all []R, rev string) (update, outdated, beingOffline, deleted []R) {
 	for _, instance := range all {
 		// if instance is deleting, just ignore it
@@ -194,10 +204,11 @@ func split[R runtime.Instance](all []R, rev string) (update, outdated, beingOffl
 }
 
 // All update but unready instance will be counted as unavailable.
-func countUnavailableUpdate[R runtime.Instance](all []R) int {
+func countUnavailableUpdate[R runtime.Instance](all []R, minReadySeconds int64) int {
 	unavailable := 0
+	now := time.Now()
 	for _, instance := range all {
-		if !instance.IsReady() || !instance.IsUpToDate() {
+		if !instance.IsAvailable(minReadySeconds, now) || !instance.IsUpToDate() {
 			unavailable++
 		}
 	}

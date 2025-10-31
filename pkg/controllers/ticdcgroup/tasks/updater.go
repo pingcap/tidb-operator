@@ -108,6 +108,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 				topoPolicy,
 			).
 			WithNoInPaceUpdate(noUpdate).
+			WithMinReadySeconds(coreutil.MinReadySeconds[scope.TiCDCGroup](cdcg)).
 			Build().
 			Do(ctx)
 		if err != nil {

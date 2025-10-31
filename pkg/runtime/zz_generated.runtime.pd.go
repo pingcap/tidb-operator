@@ -20,6 +20,7 @@
 package runtime
 
 import (
+	"time"
 	"unsafe"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -111,6 +112,7 @@ func (in *PD) IsReady() bool {
 	if cond.ObservedGeneration != in.GetGeneration() {
 		return false
 	}
+
 	return cond.Status == metav1.ConditionTrue
 }
 
@@ -123,6 +125,28 @@ func (in *PD) IsNotRunning() bool {
 		return false
 	}
 	return cond.Status == metav1.ConditionFalse
+}
+
+func (in *PD) IsAvailable(minReadySeconds int64, now time.Time) bool {
+	cond := meta.FindStatusCondition(in.Status.Conditions, v1alpha1.CondReady)
+	if cond == nil {
+		return false
+	}
+	if cond.ObservedGeneration != in.GetGeneration() {
+		return false
+	}
+	if cond.Status != metav1.ConditionTrue {
+		return false
+	}
+	if minReadySeconds == 0 {
+		return true
+	}
+	minReadySecondsDuration := time.Duration(minReadySeconds) * time.Second
+	if !cond.LastTransitionTime.IsZero() && cond.LastTransitionTime.Add(minReadySecondsDuration).Before(now) {
+		return true
+	}
+
+	return false
 }
 
 func (in *PD) IsUpToDate() bool {
@@ -461,4 +485,11 @@ func (g *PDGroup) ClientInsecureSkipTLSVerify() bool {
 		return sec.TLS.Client.InsecureSkipTLSVerify
 	}
 	return false
+}
+
+func (g *PDGroup) MinReadySeconds() int64 {
+	if g.Spec.MinReadySeconds == nil {
+		return v1alpha1.DefaultPDMinReadySeconds
+	}
+	return *g.Spec.MinReadySeconds
 }

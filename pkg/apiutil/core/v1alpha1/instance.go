@@ -15,6 +15,8 @@
 package coreutil
 
 import (
+	"time"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -33,6 +35,14 @@ func IsReady[
 	T runtime.Instance,
 ](f F) bool {
 	return scope.From[S](f).IsReady()
+}
+
+func IsAvailable[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](f F, minReadySeconds int64, now time.Time) bool {
+	return scope.From[S](f).IsAvailable(minReadySeconds, now)
 }
 
 func NamePrefixAndSuffix[
