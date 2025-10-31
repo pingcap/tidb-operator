@@ -367,20 +367,6 @@ func (u *tikvUpgrader) endEvictLeaderAfterUpgrade(tc *v1alpha1.TidbCluster, pod 
 		return done, nil
 	} else {
 		klog.Infof("%s: miss leader count before upgrade, so try to wait for a timeout before upgrading next store", logPrefix)
-		evictLeaderEndTimeStr, exist := pod.Annotations[annoKeyEvictLeaderEndTime]
-		if exist {
-			evictLeaderEndTime, err := time.Parse(time.RFC3339, evictLeaderEndTimeStr)
-			if err == nil {
-				timeout := tc.TiKVWaitLeaderTransferBackTimeout()
-				if time.Now().After(evictLeaderEndTime.Add(timeout)) {
-					klog.Infof("%s: time out with threshold %v, so ready to upgrade next store", logPrefix, timeout)
-					return true, nil
-				}
-				klog.Infof("%s: still waiting before upgrading next store", logPrefix)
-				return false, nil
-			}
-		}
-		klog.Warningf("%s: miss evict leader end time, so ready to upgrade next store directly", logPrefix)
 	}
 
 	return true, nil
