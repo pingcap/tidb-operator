@@ -16,11 +16,13 @@ package member
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"path"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -30,6 +32,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
 	mngerutils "github.com/pingcap/tidb-operator/pkg/manager/utils"
 	"github.com/pingcap/tidb-operator/pkg/manager/volumes"
+	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/third_party/k8s"
 	"github.com/pingcap/tidb-operator/pkg/util"
 
@@ -387,6 +390,8 @@ func (m *pdMemberManager) syncTidbClusterStatus(tc *v1alpha1.TidbCluster, set *a
 				memberID, memberHealth.ClientUrls, memberHealth, ns, tcName)
 			continue
 		}
+		// try to sync peer urls
+		m.syncPDPeerUrls(tc, name, pdClient)
 
 		status := v1alpha1.PDMember{
 			Name:      name,
@@ -991,6 +996,70 @@ func (m *pdMemberManager) collectUnjoinedMembers(tc *v1alpha1.TidbCluster, set *
 	}
 
 	tc.Status.PD.UnjoinedMembers = unjoined
+	return nil
+}
+
+func (m *pdMemberManager) syncPDPeerUrls(tc *v1alpha1.TidbCluster, pdName string, pdCli pdapi.PDClient) error {
+	ns := tc.GetNamespace()
+	tcName := tc.GetName()
+
+	var (
+		tlsEnabled = tc.IsTLSClusterEnabled()
+		member     *pdpb.Member
+	)
+	members, err := pdCli.GetMembers()
+	if err != nil {
+		return err
+	}
+	for _, m := range members.Members {
+		if m.Name == pdName {
+			member = m
+			break
+		}
+	}
+	if member == nil {
+		return fmt.Errorf("tidbcluster: [%s/%s] failed to find member %s in pd cluster", ns, tcName, pdName)
+	}
+
+	var (
+		newPeers []string
+		needSync bool
+	)
+	for _, peerUrl := range member.PeerUrls {
+		u, err := url.Parse(peerUrl)
+		if err != nil {
+			return fmt.Errorf("tidbcluster: [%s/%s] failed to parse peer url %s, %v", ns, tcName, peerUrl, err)
+		}
+		// check if peer url need to be updated
+		if tlsEnabled != (u.Scheme == "https") {
+			needSync = true
+			if !tlsEnabled {
+				u.Scheme = "http"
+			} else {
+				u.Scheme = "https"
+			}
+			newPeers = append(newPeers, u.String())
+		} else {
+			newPeers = append(newPeers, peerUrl)
+		}
+	}
+
+	if needSync {
+		pdEtcdClient, err := m.deps.PDControl.GetPDEtcdClient(pdapi.Namespace(tc.Namespace), tc.Name,
+			tc.IsTLSClusterEnabled(), pdapi.ClusterRef(tc.Spec.ClusterDomain))
+
+		if err != nil {
+			return fmt.Errorf("tidbcluster: [%s/%s] failed to create pd etcd client, %v", ns, tcName, err)
+		}
+		defer pdEtcdClient.Close()
+		err = pdEtcdClient.UpdateMember(member.GetMemberId(), newPeers)
+		if err != nil {
+			return fmt.Errorf("tidbcluster: [%s/%s] failed to update pd member: %s peer urls, %v", ns, tcName, pdName, err)
+		}
+		klog.Infof("tidbcluster: [%s/%s] pd upgrader: sync pd member: %s peer urls successfully, from %v to %v",
+			ns, tcName, pdName, member.PeerUrls, newPeers)
+	}
+
 	return nil
 }
 
