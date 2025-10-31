@@ -140,9 +140,23 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		if revision == status.StatefulSet.UpdateRevision {
 
 			if err := isPodAvailable(pod, minReadySeconds, tc); err != nil {
+				if store.LeaderCountBeforeUpgrade != nil {
+					klog.Infof("tikvUpgrader.Upgrade: tikv pod %s/%s is upgraded but not available yet. leaderCountBeforeUpgrade: %d",
+						ns, podName, *store.LeaderCountBeforeUpgrade)
+				} else {
+					klog.Infof("tikvUpgrader.Upgrade: tikv pod %s/%s is upgraded but not available yet. no leaderCountBeforeUpgrade",
+						ns, podName)
+				}
 				return err
 			}
 			if store.State != v1alpha1.TiKVStateUp {
+				if store.LeaderCountBeforeUpgrade != nil {
+					klog.Infof("tikvUpgrader.Upgrade: tikv pod %s/%s is upgraded but store state is %s. leaderCountBeforeUpgrade: %d",
+						ns, podName, store.State, *store.LeaderCountBeforeUpgrade)
+				} else {
+					klog.Infof("tikvUpgrader.Upgrade: tikv pod %s/%s is upgraded but store state is %s. no leaderCountBeforeUpgrade",
+						ns, podName, store.State)
+				}
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
 			}
 
@@ -217,6 +231,12 @@ func (u *tikvUpgrader) evictLeaderBeforeUpgrade(tc *v1alpha1.TidbCluster, upgrad
 	_, evicting := upgradePod.Annotations[annoKeyEvictLeaderBeginTime]
 	if !evicting {
 		return false, u.beginEvictLeader(tc, storeID, upgradePod)
+	}
+
+	if store, exist := tc.Status.TiKV.Stores[strconv.Itoa(int(storeID))]; exist && store.LeaderCountBeforeUpgrade != nil {
+		klog.Infof("%s: already began evicting leader, leaderCountBeforeUpgrade: %d", logPrefix, *store.LeaderCountBeforeUpgrade)
+	} else {
+		klog.Infof("%s: already began evicting leader, no leaderCountBeforeUpgrade", logPrefix)
 	}
 
 	// wait for leader eviction to complete or timeout
