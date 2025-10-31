@@ -192,6 +192,16 @@ func TaskInstanceConditionReady[
 			reason = v1alpha1.ReasonInstanceNotHealthy
 		default:
 			isReady = true
+			podReadyCond := statefulset.GetPodReadyCondition(&pod.Status)
+			instanceReadyCond := coreutil.FindStatusCondition[S](instance, v1alpha1.CondReady)
+			// If pod is not ready and then ready again, instance controller may not capture the unready stage
+			// The updater depends on instance's ready condition to do next action
+			if podReadyCond != nil &&
+				instanceReadyCond != nil &&
+				podReadyCond.LastTransitionTime.After(instanceReadyCond.LastTransitionTime.Time) {
+				// reset ready condition to update last transition time
+				coreutil.RemoveStatusCondition[S](instance, v1alpha1.CondReady)
+			}
 		}
 
 		var cond *metav1.Condition

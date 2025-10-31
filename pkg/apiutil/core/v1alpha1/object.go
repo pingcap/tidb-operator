@@ -105,6 +105,15 @@ func RemoveStatusCondition[
 	return false
 }
 
+func FindStatusCondition[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F, condType string) *metav1.Condition {
+	obj := scope.From[S](f)
+	return meta.FindStatusCondition(obj.Conditions(), condType)
+}
+
 func StatusConditions[
 	S scope.Object[F, T],
 	F client.Object,

@@ -21,6 +21,7 @@ package runtime
 
 import (
 	reflect "reflect"
+	time "time"
 
 	v1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	v1alpha10 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
@@ -429,6 +430,20 @@ func (m *MockInstance) GetUpdateRevision() string {
 func (mr *MockInstanceMockRecorder) GetUpdateRevision() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUpdateRevision", reflect.TypeOf((*MockInstance)(nil).GetUpdateRevision))
+}
+
+// IsAvailable mocks base method.
+func (m *MockInstance) IsAvailable(minReadySeconds int64, now time.Time) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsAvailable", minReadySeconds, now)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// IsAvailable indicates an expected call of IsAvailable.
+func (mr *MockInstanceMockRecorder) IsAvailable(minReadySeconds, now any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsAvailable", reflect.TypeOf((*MockInstance)(nil).IsAvailable), minReadySeconds, now)
 }
 
 // IsNotRunning mocks base method.

@@ -41,7 +41,8 @@ func TestHash(t *testing.T) {
 					Name: "xxx",
 				},
 			},
-			expected: "667fdfbcf5",
+			// not important, feel free to change if tidb group is changed
+			expected: "58c864c88",
 		},
 	}
 

@@ -33,6 +33,9 @@ const (
 	TiKVPortNameStatus    = "status"
 	DefaultTiKVPortClient = 20160
 	DefaultTiKVPortStatus = 20180
+
+	// DefaultTiKVMinReadySeconds is default min ready seconds of tikv
+	DefaultTiKVMinReadySeconds = 5
 )
 
 const (
@@ -142,6 +145,11 @@ type TiKVGroupSpec struct {
 	// +listType=map
 	// +listMapKey=type
 	SchedulePolicies []SchedulePolicy `json:"schedulePolicies,omitempty"`
+
+	// MinReadySeconds specifies the minimum number of seconds for which a newly created pod be ready without any of its containers crashing, for it to be considered available.
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MinReadySeconds *int64 `json:"minReadySeconds,omitempty"`
 
 	Template TiKVTemplate `json:"template"`
 }

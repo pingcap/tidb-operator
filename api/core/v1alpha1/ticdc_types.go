@@ -23,6 +23,9 @@ import (
 const (
 	TiCDCPortName    = "ticdc" // main port
 	DefaultTiCDCPort = 8300
+
+	// DefaultTiCDCMinReadySeconds is default min ready seconds of ticdc
+	DefaultTiCDCMinReadySeconds = 5
 )
 
 const (
@@ -109,6 +112,11 @@ type TiCDCGroupSpec struct {
 	// +listType=map
 	// +listMapKey=type
 	SchedulePolicies []SchedulePolicy `json:"schedulePolicies,omitempty"`
+
+	// MinReadySeconds specifies the minimum number of seconds for which a newly created pod be ready without any of its containers crashing, for it to be considered available.
+	// +kubebuilder:validation:Minimum=0
+	// +optional
+	MinReadySeconds *int64 `json:"minReadySeconds,omitempty"`
 
 	Template TiCDCTemplate `json:"template"`
 }

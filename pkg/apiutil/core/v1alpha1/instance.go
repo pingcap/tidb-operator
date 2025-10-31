@@ -15,6 +15,8 @@
 package coreutil
 
 import (
+	"time"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -33,6 +35,14 @@ func IsReady[
 	T runtime.Instance,
 ](f F) bool {
 	return scope.From[S](f).IsReady()
+}
+
+func IsAvailable[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](f F, minReadySeconds int64, now time.Time) bool {
+	return scope.From[S](f).IsAvailable(minReadySeconds, now)
 }
 
 func NamePrefixAndSuffix[
@@ -194,6 +204,30 @@ func OwnerGroup[
 		return nil
 	}
 	return owner
+}
+
+// RetryIfInstancesReadyButNotAvailable returns a retry duration
+// If any instances are ready but not available, updater may do nothing and
+// cannot watch more changes of instances.
+// So always retry if any instances are ready but not available.
+func RetryIfInstancesReadyButNotAvailable[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](ins []F, minReadySeconds int64) time.Duration {
+	now := time.Now()
+	for _, in := range ins {
+		// ready but not available
+		if !IsReady[S](in) || IsAvailable[S](in, minReadySeconds, now) {
+			continue
+		}
+
+		cond := FindStatusCondition[S](in, v1alpha1.CondReady)
+		d := now.Sub(cond.LastTransitionTime.Time)
+		return d
+	}
+
+	return 0
 }
 
 func IsOffline[

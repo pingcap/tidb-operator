@@ -17,6 +17,7 @@ package runtime
 
 import (
 	"strings"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,6 +37,8 @@ type Instance interface {
 	IsReady() bool
 	// IsNotRunning means the pod of this instance is not running
 	IsNotRunning() bool
+	// IsAvailable means the instance is ready more than minReadySeconds
+	IsAvailable(minReadySeconds int64, now time.Time) bool
 	// IsUpToDate means all resources managed by the instance is up to date
 	// NOTE: It does not mean the instance is updated to the newest revision
 	// TODO: may be change a more meaningful name?

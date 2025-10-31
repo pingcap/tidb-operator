@@ -38,6 +38,8 @@ type Group interface {
 	TemplateAnnotations() map[string]string
 
 	SetTemplateClusterTLS(ca, certKeyPair string)
+
+	MinReadySeconds() int64
 }
 
 type GroupT[T GroupSet] interface {

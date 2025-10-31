@@ -285,8 +285,9 @@ func fakeAvailableTiCDC(name string, cdcg *v1alpha1.TiCDCGroup, rev string) *v1a
 		ticdc := runtime.ToTiCDC(TiCDCNewer(cdcg, rev, features.NewFromFeatures(nil)).New())
 		ticdc.Name = ""
 		ticdc.Status.Conditions = append(ticdc.Status.Conditions, metav1.Condition{
-			Type:   v1alpha1.CondReady,
-			Status: metav1.ConditionTrue,
+			Type:               v1alpha1.CondReady,
+			Status:             metav1.ConditionTrue,
+			LastTransitionTime: metav1.Unix(0, 0),
 		})
 		ticdc.Status.CurrentRevision = rev
 		ticdc.DeepCopyInto(obj)

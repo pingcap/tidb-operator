@@ -557,6 +557,11 @@ func (in *PDGroupSpec) DeepCopyInto(out *PDGroupSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.MinReadySeconds != nil {
+		in, out := &in.MinReadySeconds, &out.MinReadySeconds
+		*out = new(int64)
+		**out = **in
+	}
 	in.Template.DeepCopyInto(&out.Template)
 	return
 }
@@ -940,6 +945,11 @@ func (in *ReplicationWorkerGroupSpec) DeepCopyInto(out *ReplicationWorkerGroupSp
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.MinReadySeconds != nil {
+		in, out := &in.MinReadySeconds, &out.MinReadySeconds
+		*out = new(int64)
+		**out = **in
 	}
 	in.Template.DeepCopyInto(&out.Template)
 	return
@@ -1375,6 +1385,11 @@ func (in *SchedulerGroupSpec) DeepCopyInto(out *SchedulerGroupSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.MinReadySeconds != nil {
+		in, out := &in.MinReadySeconds, &out.MinReadySeconds
+		*out = new(int64)
+		**out = **in
+	}
 	in.Template.DeepCopyInto(&out.Template)
 	return
 }
@@ -1693,6 +1708,11 @@ func (in *SchedulingGroupSpec) DeepCopyInto(out *SchedulingGroupSpec) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.MinReadySeconds != nil {
+		in, out := &in.MinReadySeconds, &out.MinReadySeconds
+		*out = new(int64)
+		**out = **in
 	}
 	in.Template.DeepCopyInto(&out.Template)
 	return
@@ -2125,6 +2145,11 @@ func (in *TSOGroupSpec) DeepCopyInto(out *TSOGroupSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.MinReadySeconds != nil {
+		in, out := &in.MinReadySeconds, &out.MinReadySeconds
+		*out = new(int64)
+		**out = **in
+	}
 	in.Template.DeepCopyInto(&out.Template)
 	return
 }
@@ -2443,6 +2468,11 @@ func (in *TiCDCGroupSpec) DeepCopyInto(out *TiCDCGroupSpec) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.MinReadySeconds != nil {
+		in, out := &in.MinReadySeconds, &out.MinReadySeconds
+		*out = new(int64)
+		**out = **in
 	}
 	in.Template.DeepCopyInto(&out.Template)
 	return
@@ -2805,6 +2835,11 @@ func (in *TiDBGroupSpec) DeepCopyInto(out *TiDBGroupSpec) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.MinReadySeconds != nil {
+		in, out := &in.MinReadySeconds, &out.MinReadySeconds
+		*out = new(int64)
+		**out = **in
 	}
 	in.Template.DeepCopyInto(&out.Template)
 	return
@@ -3281,6 +3316,11 @@ func (in *TiFlashGroupSpec) DeepCopyInto(out *TiFlashGroupSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.MinReadySeconds != nil {
+		in, out := &in.MinReadySeconds, &out.MinReadySeconds
+		*out = new(int64)
+		**out = **in
+	}
 	in.Template.DeepCopyInto(&out.Template)
 	return
 }
@@ -3648,6 +3688,11 @@ func (in *TiKVGroupSpec) DeepCopyInto(out *TiKVGroupSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.MinReadySeconds != nil {
+		in, out := &in.MinReadySeconds, &out.MinReadySeconds
+		*out = new(int64)
+		**out = **in
+	}
 	in.Template.DeepCopyInto(&out.Template)
 	return
 }
@@ -4003,6 +4048,11 @@ func (in *TiProxyGroupSpec) DeepCopyInto(out *TiProxyGroupSpec) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.MinReadySeconds != nil {
+		in, out := &in.MinReadySeconds, &out.MinReadySeconds
+		*out = new(int64)
+		**out = **in
 	}
 	in.Template.DeepCopyInto(&out.Template)
 	return

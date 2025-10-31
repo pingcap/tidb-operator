@@ -52,6 +52,14 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			return task.Retry(defaultUpdateWaitTime).With("wait until preconditions of upgrading is met")
 		}
 
+		retryAfter := coreutil.RetryIfInstancesReadyButNotAvailable[scope.TSO](
+			state.InstanceSlice(),
+			coreutil.MinReadySeconds[scope.TSOGroup](obj),
+		)
+		if retryAfter != 0 {
+			return task.Retry(retryAfter).With("wait until no instances is ready but not available")
+		}
+
 		var topos []v1alpha1.ScheduleTopology
 		for _, p := range obj.Spec.SchedulePolicies {
 			switch p.Type {
@@ -98,6 +106,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			WithUpdatePreferPolicy(
 				NotLeaderPolicy(),
 			).
+			WithMinReadySeconds(coreutil.MinReadySeconds[scope.TSOGroup](obj)).
 			Build().
 			Do(ctx)
 		if err != nil {
