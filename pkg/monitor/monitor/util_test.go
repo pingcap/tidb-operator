@@ -1493,7 +1493,7 @@ func TestGetMonitorThanosSidecarContainer(t *testing.T) {
 					Thanos: &v1alpha1.ThanosSpec{
 						MonitorContainer: v1alpha1.MonitorContainer{
 							BaseImage: "thanosio/thanos",
-							Version:   "v0.17.2",
+							Version:   "v0.39.2",
 						},
 						ObjectStorageConfig: &corev1.SecretKeySelector{
 							Key: "objectstorage.yaml",
@@ -1506,7 +1506,7 @@ func TestGetMonitorThanosSidecarContainer(t *testing.T) {
 			},
 			expected: &corev1.Container{
 				Name:  "thanos-sidecar",
-				Image: "thanosio/thanos:v0.17.2",
+				Image: "thanosio/thanos:v0.39.2",
 				Args: []string{
 					"sidecar",
 					"--prometheus.url=http://localhost:9090/.",
@@ -1611,7 +1611,7 @@ func TestBuildExternalLabels(t *testing.T) {
 					Thanos: &v1alpha1.ThanosSpec{
 						MonitorContainer: v1alpha1.MonitorContainer{
 							BaseImage: "thanosio/thanos",
-							Version:   "v0.17.2",
+							Version:   "v0.39.2",
 						},
 					},
 				},
