@@ -298,8 +298,9 @@ func fakeAvailableTiDB(name string, dbg *v1alpha1.TiDBGroup, rev string) *v1alph
 		tidb := runtime.ToTiDB(f.New())
 		tidb.Name = ""
 		tidb.Status.Conditions = append(tidb.Status.Conditions, metav1.Condition{
-			Type:   v1alpha1.CondReady,
-			Status: metav1.ConditionTrue,
+			Type:               v1alpha1.CondReady,
+			Status:             metav1.ConditionTrue,
+			LastTransitionTime: metav1.Unix(0, 0),
 		})
 		tidb.Status.CurrentRevision = rev
 		tidb.DeepCopyInto(obj)

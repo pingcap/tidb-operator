@@ -269,8 +269,9 @@ func fakeAvailableTiProxy(name string, proxyg *v1alpha1.TiProxyGroup, rev string
 		tiproxy := runtime.ToTiProxy(TiProxyNewer(proxyg, rev, features.NewFromFeatures(nil)).New())
 		tiproxy.Name = ""
 		tiproxy.Status.Conditions = append(tiproxy.Status.Conditions, metav1.Condition{
-			Type:   v1alpha1.CondReady,
-			Status: metav1.ConditionTrue,
+			Type:               v1alpha1.CondReady,
+			Status:             metav1.ConditionTrue,
+			LastTransitionTime: metav1.Unix(0, 0),
 		})
 		tiproxy.Status.CurrentRevision = rev
 		tiproxy.DeepCopyInto(obj)
