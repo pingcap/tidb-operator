@@ -33,7 +33,7 @@ func GroupToInstanceName(t *types.Type) string {
 }
 
 // GroupToSecurityTypeName returns security type name from group type
-// TiDB and TiProxy have thier own security type
+// TiDB and TiProxy have their own security type
 // Others: Security
 // TiDB and TiProxy: TiDBSecurity, TiProxySecurity
 func GroupToSecurityTypeName(t *types.Type) string {
@@ -47,7 +47,7 @@ func GroupToSecurityTypeName(t *types.Type) string {
 }
 
 // GroupToTLSTypeName returns tls type name from group type
-// TiDB and TiProxy have thier own tls type
+// TiDB and TiProxy have their own tls type
 // Others: ComponentTLS
 // TiDB and TiProxy: TiDBTLS, TiProxyTLS
 func GroupToTLSTypeName(t *types.Type) string {

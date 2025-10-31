@@ -52,7 +52,10 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			return task.Retry(defaultUpdateWaitTime).With("wait until preconditions of upgrading is met")
 		}
 
-		retryAfter := coreutil.RetryIfInstancesReadyButNotAvailable[scope.Scheduler](state.InstanceSlice(), coreutil.MinReadySeconds[scope.SchedulerGroup](obj))
+		retryAfter := coreutil.RetryIfInstancesReadyButNotAvailable[scope.Scheduler](
+			state.InstanceSlice(),
+			coreutil.MinReadySeconds[scope.SchedulerGroup](obj),
+		)
 		if retryAfter != 0 {
 			return task.Retry(retryAfter).With("wait until no instances is ready but not available")
 		}
