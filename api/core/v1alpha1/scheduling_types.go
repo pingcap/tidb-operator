@@ -110,6 +110,8 @@ type SchedulingGroupSpec struct {
 	SchedulePolicies []SchedulePolicy `json:"schedulePolicies,omitempty"`
 
 	// MinReadySeconds specifies the minimum number of seconds for which a newly created pod be ready without any of its containers crashing, for it to be considered available.
+	// +kubebuilder:validation:Minimum=0
+	// +optional
 	MinReadySeconds *int64 `json:"minReadySeconds,omitempty"`
 
 	Template SchedulingTemplate `json:"template"`

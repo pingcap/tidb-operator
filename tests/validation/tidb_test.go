@@ -34,6 +34,14 @@ func TestTiDB(t *testing.T) {
 	Validate(t, "crd/core.pingcap.com_tidbs.yaml", cases)
 }
 
+func TestTiDBGroup(t *testing.T) {
+	var cases []Case
+	cases = append(cases, transferTiDBGroupCases(t, ClusterReference(), "spec", "cluster")...)
+	cases = append(cases, transferTiDBGroupCases(t, NameLength(groupNameLengthLimit), "metadata", "name")...)
+	cases = append(cases, transferTiDBGroupCases(t, MinReadySeconds(), "spec", "minReadySeconds")...)
+	Validate(t, "crd/core.pingcap.com_tidbgroups.yaml", cases)
+}
+
 func basicTiDB() map[string]any {
 	data := []byte(`
 apiVersion: core.pingcap.com/v1alpha1
@@ -209,4 +217,45 @@ func keyspace() []Case {
 			mode:    PatchModeMerge,
 		},
 	}
+}
+
+func basicTiDBGroup() map[string]any {
+	data := []byte(`
+apiVersion: core.pingcap.com/v1alpha1
+kind: TiDBGroup
+metadata:
+  name: tidb-group
+spec:
+  cluster:
+    name: test
+  replicas: 1
+  template:
+    spec:
+      version: v8.1.0
+`)
+	obj := map[string]any{}
+	if err := yaml.Unmarshal(data, &obj); err != nil {
+		panic(err)
+	}
+
+	return obj
+}
+
+func transferTiDBGroupCases(t *testing.T, cases []Case, fields ...string) []Case {
+	for i := range cases {
+		c := &cases[i]
+
+		current := basicTiDBGroup()
+		c.current = Patch(t, c.mode, current, c.current, fields...)
+
+		if c.isCreate {
+			c.old = nil
+			continue
+		}
+
+		old := basicTiDBGroup()
+		c.old = Patch(t, c.mode, old, c.old, fields...)
+	}
+
+	return cases
 }

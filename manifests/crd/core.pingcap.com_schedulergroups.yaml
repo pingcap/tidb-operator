@@ -118,6 +118,7 @@ spec:
                   for which a newly created pod be ready without any of its containers
                   crashing, for it to be considered available.
                 format: int64
+                minimum: 0
                 type: integer
               replicas:
                 format: int32

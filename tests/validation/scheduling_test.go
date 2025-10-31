@@ -33,6 +33,14 @@ func TestScheduling(t *testing.T) {
 	Validate(t, "crd/core.pingcap.com_schedulings.yaml", cases)
 }
 
+func TestSchedulingGroup(t *testing.T) {
+	var cases []Case
+	cases = append(cases, transferSchedulingGroupCases(t, ClusterReference(), "spec", "cluster")...)
+	cases = append(cases, transferSchedulingGroupCases(t, NameLength(groupNameLengthLimit), "metadata", "name")...)
+	cases = append(cases, transferSchedulingGroupCases(t, MinReadySeconds(), "spec", "minReadySeconds")...)
+	Validate(t, "crd/core.pingcap.com_schedulinggroups.yaml", cases)
+}
+
 func basicScheduling() map[string]any {
 	data := []byte(`
 apiVersion: core.pingcap.com/v1alpha1
@@ -66,6 +74,47 @@ func transferSchedulingCases(t *testing.T, cases []Case, fields ...string) []Cas
 		}
 
 		old := basicScheduling()
+		c.old = Patch(t, c.mode, old, c.old, fields...)
+	}
+
+	return cases
+}
+
+func basicSchedulingGroup() map[string]any {
+	data := []byte(`
+apiVersion: core.pingcap.com/v1alpha1
+kind: SchedulingGroup
+metadata:
+  name: scheduling-group
+spec:
+  cluster:
+    name: test
+  replicas: 3
+  template:
+    spec:
+      version: v8.1.0
+`)
+	obj := map[string]any{}
+	if err := yaml.Unmarshal(data, &obj); err != nil {
+		panic(err)
+	}
+
+	return obj
+}
+
+func transferSchedulingGroupCases(t *testing.T, cases []Case, fields ...string) []Case {
+	for i := range cases {
+		c := &cases[i]
+
+		current := basicSchedulingGroup()
+		c.current = Patch(t, c.mode, current, c.current, fields...)
+
+		if c.isCreate {
+			c.old = nil
+			continue
+		}
+
+		old := basicSchedulingGroup()
 		c.old = Patch(t, c.mode, old, c.old, fields...)
 	}
 

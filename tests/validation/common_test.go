@@ -1017,3 +1017,69 @@ func NameLength(limit int) []Case {
 
 	return cases
 }
+
+func MinReadySeconds() []Case {
+	cases := []Case{
+		{
+			desc:     "valid nil",
+			isCreate: true,
+			current:  nil,
+		},
+		{
+			desc:     "valid positive value",
+			isCreate: true,
+			current:  int64(10),
+		},
+		{
+			desc:     "valid zero value",
+			isCreate: true,
+			current:  int64(0),
+		},
+		{
+			desc:     "valid large value",
+			isCreate: true,
+			current:  int64(3600),
+		},
+		{
+			desc:     "negative value should fail",
+			isCreate: true,
+			current:  int64(-1),
+			wantErrs: []string{
+				"spec.minReadySeconds: Invalid value: -1: spec.minReadySeconds in body should be greater than or equal to 0",
+			},
+		},
+		{
+			desc:     "large negative value should fail",
+			isCreate: true,
+			current:  int64(-100),
+			wantErrs: []string{
+				"spec.minReadySeconds: Invalid value: -100: spec.minReadySeconds in body should be greater than or equal to 0",
+			},
+		},
+		{
+			desc:    "can update from positive to positive",
+			old:     int64(5),
+			current: int64(10),
+		},
+		{
+			desc:    "can update from zero to positive",
+			old:     int64(0),
+			current: int64(5),
+		},
+		{
+			desc:    "can update from positive to zero",
+			old:     int64(10),
+			current: int64(0),
+		},
+		{
+			desc:    "cannot update to negative value",
+			old:     int64(10),
+			current: int64(-1),
+			wantErrs: []string{
+				"spec.minReadySeconds: Invalid value: -1: spec.minReadySeconds in body should be greater than or equal to 0",
+			},
+		},
+	}
+
+	return cases
+}
