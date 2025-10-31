@@ -206,6 +206,30 @@ func OwnerGroup[
 	return owner
 }
 
+// RetryIfInstancesReadyButNotAvailable returns a retry duration
+// If any instances are ready but not available, updater may do nothing and
+// cannot watch more changes of instances.
+// So always retry if any instances are ready but not available.
+func RetryIfInstancesReadyButNotAvailable[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](ins []F, minReadySeconds int64) time.Duration {
+	now := time.Now()
+	for _, in := range ins {
+		// ready but not available
+		if !IsReady[S](in) || IsAvailable[S](in, minReadySeconds, now) {
+			continue
+		}
+
+		cond := FindStatusCondition[S](in, v1alpha1.CondReady)
+		d := now.Sub(cond.LastTransitionTime.Time)
+		return d
+	}
+
+	return 0
+}
+
 func IsOffline[
 	S scope.Instance[F, T],
 	F client.Object,
