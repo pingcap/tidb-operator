@@ -17,7 +17,6 @@ package tidb
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -175,13 +174,13 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 					f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiDBGroup(dbg), 3, 1, waiter.LongTaskTimeout))
 				}()
 
-				maxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
+				changeTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
 				f.Must(err)
-				changeTime := maxTime.Add(time.Second)
 
 				ginkgo.By("Patch TiDBGroup")
 				f.Must(f.Client.Patch(ctx, dbg, patch))
-				f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), changeTime, waiter.LongTaskTimeout))
+				f.Must(waiter.WaitForInstanceListRecreated[scope.TiDBGroup](ctx, f.Client, dbg, *changeTime, waiter.LongTaskTimeout))
+				f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), *changeTime, waiter.LongTaskTimeout))
 				f.WaitForTiDBGroupReady(ctx, dbg)
 				cancel()
 				<-ch
@@ -226,9 +225,8 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 				patch := client.MergeFrom(dbg.DeepCopy())
 				change(dbg)
 
-				maxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
+				changeTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
 				f.Must(err)
-				changeTime := maxTime.Add(time.Second)
 
 				ginkgo.By("Patch TiDBGroup")
 				f.Must(f.Client.Patch(ctx, dbg, patch))
@@ -247,7 +245,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 
 				newMaxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
 				f.Must(err)
-				f.True(changeTime.After(*newMaxTime))
+				f.True(changeTime.Equal(*newMaxTime))
 			},
 			ginkgo.Entry("change config file with hot reload policy", func(g *v1alpha1.TiDBGroup) { g.Spec.Template.Spec.Config = changedConfig }, data.WithHotReloadPolicy()),
 			ginkgo.Entry("change pod annotations and labels", func(g *v1alpha1.TiDBGroup) {
@@ -289,13 +287,13 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiDBGroup(dbg), 5, 1, waiter.LongTaskTimeout))
 			}()
 
-			maxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
+			changeTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
 			f.Must(err)
-			changeTime := maxTime.Add(time.Second)
 
 			ginkgo.By("Change config and replicas of the TiDBGroup")
 			f.Must(f.Client.Patch(ctx, dbg, patch))
-			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), changeTime, waiter.LongTaskTimeout))
+			f.Must(waiter.WaitForInstanceListRecreated[scope.TiDBGroup](ctx, f.Client, dbg, *changeTime, waiter.LongTaskTimeout))
+			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), *changeTime, waiter.LongTaskTimeout))
 			f.WaitForTiDBGroupReady(ctx, dbg)
 			cancel()
 			<-ch

@@ -16,7 +16,6 @@ package tikv
 
 import (
 	"context"
-	"time"
 
 	"github.com/onsi/ginkgo/v2"
 	"k8s.io/utils/ptr"
@@ -73,13 +72,12 @@ var _ = ginkgo.Describe("Topology", label.TiKV, label.MultipleAZ, label.P0, func
 			f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiKVGroup(kvg), 3, 0, waiter.LongTaskTimeout))
 		}()
 
-		maxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiKVGroup(kvg))
+		changeTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiKVGroup(kvg))
 		f.Must(err)
-		changeTime := maxTime.Add(time.Second)
 
 		ginkgo.By("Change config and replicas of the TiKVGroup")
 		f.Must(f.Client.Patch(ctx, kvg, patch))
-		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiKVGroup(kvg), changeTime, waiter.LongTaskTimeout))
+		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiKVGroup(kvg), *changeTime, waiter.LongTaskTimeout))
 		f.WaitForTiKVGroupReady(ctx, kvg)
 		cancel()
 		<-ch

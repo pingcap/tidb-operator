@@ -17,7 +17,6 @@ package tiproxy
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -105,13 +104,13 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 					f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiProxyGroup(proxyg), 2, 1, waiter.LongTaskTimeout))
 				}()
 
-				maxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiProxyGroup(proxyg))
+				changeTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiProxyGroup(proxyg))
 				f.Must(err)
-				changeTime := maxTime.Add(time.Second)
 
 				ginkgo.By("Patch TiProxyGroup")
 				f.Must(f.Client.Patch(ctx, proxyg, patch))
-				f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiProxyGroup(proxyg), changeTime, waiter.LongTaskTimeout))
+				f.Must(waiter.WaitForInstanceListRecreated[scope.TiProxyGroup](ctx, f.Client, proxyg, *changeTime, waiter.LongTaskTimeout))
+				f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiProxyGroup(proxyg), *changeTime, waiter.LongTaskTimeout))
 				f.WaitForTiProxyGroupReady(ctx, proxyg)
 				cancel()
 				<-ch
@@ -154,9 +153,8 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 				patch := client.MergeFrom(proxyg.DeepCopy())
 				change(proxyg)
 
-				maxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiProxyGroup(proxyg))
+				changeTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiProxyGroup(proxyg))
 				f.Must(err)
-				changeTime := maxTime.Add(time.Second)
 
 				ginkgo.By("Patch TiProxyGroup")
 				f.Must(f.Client.Patch(ctx, proxyg, patch))
@@ -175,7 +173,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 
 				newMaxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiProxyGroup(proxyg))
 				f.Must(err)
-				f.True(changeTime.After(*newMaxTime))
+				f.True(changeTime.Equal(*newMaxTime))
 			},
 			ginkgo.Entry("change config file with hot reload policy", func(g *v1alpha1.TiProxyGroup) { g.Spec.Template.Spec.Config = changedConfig }, data.WithHotReloadPolicyForTiProxy()),
 			ginkgo.Entry("change pod annotations and labels", func(g *v1alpha1.TiProxyGroup) {
@@ -219,13 +217,13 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiProxyGroup(proxyg), 4, 1, waiter.LongTaskTimeout))
 			}()
 
-			maxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiProxyGroup(proxyg))
+			changeTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiProxyGroup(proxyg))
 			f.Must(err)
-			changeTime := maxTime.Add(time.Second)
 
 			ginkgo.By("Change config and replicas of the TiProxyGroup")
 			f.Must(f.Client.Patch(ctx, proxyg, patch))
-			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiProxyGroup(proxyg), changeTime, waiter.LongTaskTimeout))
+			f.Must(waiter.WaitForInstanceListRecreated[scope.TiProxyGroup](ctx, f.Client, proxyg, *changeTime, waiter.LongTaskTimeout))
+			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiProxyGroup(proxyg), *changeTime, waiter.LongTaskTimeout))
 			f.WaitForTiProxyGroupReady(ctx, proxyg)
 			cancel()
 			<-ch

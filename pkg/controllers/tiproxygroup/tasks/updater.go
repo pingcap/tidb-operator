@@ -83,8 +83,10 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 		}
 
 		maxSurge, maxUnavailable := 0, 1
+		noUpdate := false
 		if needRestart {
 			maxSurge, maxUnavailable = 1, 0
+			noUpdate = true
 		}
 
 		var instances []string
@@ -109,6 +111,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(topoPolicy).
+			WithNoInPaceUpdate(noUpdate).
 			WithMinReadySeconds(coreutil.MinReadySeconds[scope.TiProxyGroup](proxyg)).
 			Build().
 			Do(ctx)

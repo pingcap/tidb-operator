@@ -27,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/topology"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework/workload"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
@@ -133,6 +134,7 @@ func (f *Framework) TestTiDBAvailability(ctx context.Context, ep string, dbg *v1
 	changeTime := time.Now()
 	ginkgo.By("Rolling update the TiDBGroup")
 	f.Must(f.Client.Patch(ctx, dbg, patch))
+	f.Must(waiter.WaitForInstanceListRecreated[scope.TiDBGroup](ctx, f.Client, dbg, changeTime, waiter.LongTaskTimeout))
 	f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), changeTime, waiter.LongTaskTimeout))
 	f.WaitForTiDBGroupReady(ctx, dbg)
 	cancel()
