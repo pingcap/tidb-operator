@@ -66,7 +66,7 @@ func WaitForObject(
 			return fmt.Errorf("wait for object %T(%v) condition timeout: %w", obj, client.ObjectKeyFromObject(obj), lastErr)
 		}
 
-		return fmt.Errorf("can't wait for object %T(%v) condition, error : %w", obj, client.ObjectKeyFromObject(obj), err)
+		return fmt.Errorf("can't wait for object %T(%v) condition, error: %w", obj, client.ObjectKeyFromObject(obj), err)
 	}
 
 	return nil

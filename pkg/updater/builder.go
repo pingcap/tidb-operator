@@ -71,6 +71,8 @@ func (b *builder[T, O, R]) Build() Executor {
 
 	updatePolicies := b.updatePreferPolicies
 	updatePolicies = append(updatePolicies, PreferNotRunning[R](), PreferUnready[R]())
+	scaleInPolicies := b.scaleInPreferPolicies
+	scaleInPolicies = append(scaleInPolicies, PreferNotRunning[R](), PreferUnready[R]())
 	actor := &actor[T, O, R]{
 		c: b.c,
 		f: b.f,
@@ -86,7 +88,7 @@ func (b *builder[T, O, R]) Build() Executor {
 		updateHooks: append(b.updateHooks, KeepName[R](), KeepTopology[R](), KeepResourceVersion[R]()),
 		delHooks:    b.delHooks,
 
-		scaleInSelector: NewSelector(b.scaleInPreferPolicies...),
+		scaleInSelector: NewSelector(scaleInPolicies...),
 		updateSelector:  NewSelector(updatePolicies...),
 	}
 	return NewExecutor(

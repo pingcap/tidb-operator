@@ -46,6 +46,7 @@ func TaskEvictLeader(state *ReconcileContext) task.Task {
 }
 
 // TaskEndEvictLeader only be called when object is deleting and store has been removed
+// TODO(liubo02): it's not stable because status.ID may be lost
 func TaskEndEvictLeader(state *ReconcileContext) task.Task {
 	return task.NameTaskFunc("EndEvictLeader", func(ctx context.Context) task.Result {
 		msg := "ensure evict leader scheduler doesn't exist"
