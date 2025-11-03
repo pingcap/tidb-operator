@@ -15,6 +15,7 @@
 package data
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -106,5 +107,36 @@ s3-key-id = "test12345678"
 s3-secret-key = "test12345678"
 s3-region = "local"
 `
+	})
+}
+
+func WithTiKVPodAntiAffinity() GroupPatch[*v1alpha1.TiKVGroup] {
+	return GroupPatchFunc[*v1alpha1.TiKVGroup](func(obj *v1alpha1.TiKVGroup) {
+		if obj.Spec.Template.Spec.Overlay == nil {
+			obj.Spec.Template.Spec.Overlay = &v1alpha1.Overlay{}
+		}
+		o := obj.Spec.Template.Spec.Overlay
+		if o.Pod == nil {
+			o.Pod = &v1alpha1.PodOverlay{}
+		}
+		if o.Pod.Spec == nil {
+			o.Pod.Spec = &corev1.PodSpec{}
+		}
+
+		o.Pod.Spec.Affinity = &corev1.Affinity{
+			PodAntiAffinity: &corev1.PodAntiAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+					{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"pingcap.com/component": "tikv",
+								"pingcap.com/group":     obj.GetName(),
+							},
+						},
+						TopologyKey: "kubernetes.io/hostname",
+					},
+				},
+			},
+		}
 	})
 }

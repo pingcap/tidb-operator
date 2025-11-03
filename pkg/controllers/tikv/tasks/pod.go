@@ -92,9 +92,6 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 
 		if !reloadable.CheckTiKVPod(state.TiKV(), pod) {
 			logger.Info("will recreate the pod")
-			if err := k8s.RemoveFinalizer(ctx, c, pod); err != nil {
-				return task.Fail().With("cannot remove finalizer: %w", err)
-			}
 			regionCount := 0
 			if state.Store != nil {
 				regionCount = state.Store.RegionCount

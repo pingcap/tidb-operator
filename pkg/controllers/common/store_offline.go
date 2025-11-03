@@ -57,13 +57,14 @@ func TaskOfflineStore[
 	storeID string,
 	state pdv1.NodeState,
 ) error {
-	if storeID == "" {
-		// can do nothing until store id is found
-		return fmt.Errorf("%w: store does not exists", task.ErrWait)
-	}
 	isOffline := coreutil.IsOffline[S](obj)
 
 	switch {
+	case !isOffline && storeID == "":
+		// do nothing because store does not exist
+		return nil
+	case isOffline && storeID == "":
+		return fmt.Errorf("%w: store does not exist and is offline", task.ErrWait)
 	case isOffline && (state == pdv1.NodeStatePreparing || state == pdv1.NodeStateServing):
 		if err := c.DeleteStore(ctx, storeID); err != nil {
 			return err
@@ -108,19 +109,18 @@ func TaskInstanceConditionOffline[
 		isOffline := coreutil.IsOffline[S](instance)
 		state := s.GetStoreState()
 
-		if state == "" {
-			return task.Wait().With("wait for state is synced")
-		}
-
 		var needUpdate, isCompleted bool
 		var reason string
 		switch {
+		case isOffline && state == "":
+			reason = v1alpha1.ReasonOfflineCompleted
+			isCompleted = true
 		case state == pdv1.NodeStateRemoved:
 			reason = v1alpha1.ReasonOfflineCompleted
 			isCompleted = true
 		case isOffline:
 			reason = v1alpha1.ReasonOfflineProcessing
-		case !isOffline && (state == pdv1.NodeStatePreparing || state == pdv1.NodeStateServing):
+		case !isOffline && (state == "" || state == pdv1.NodeStatePreparing || state == pdv1.NodeStateServing):
 			reason = ""
 		case !isOffline && state == pdv1.NodeStateRemoving:
 			reason = v1alpha1.ReasonOfflineCanceling
