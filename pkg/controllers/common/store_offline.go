@@ -39,12 +39,16 @@ import (
 // - B1: state == Preparing || state == Serving
 // - B2: state == Removing
 // - B3: state == Removed
+// - B4: store does not exist
 // 1. (A1, B1): do nothing, waiting for changes of spec.offline
 // 2. (A2, B1): call delete store api
 // 3. (A1, B2): call cancel api
 // 4. (A2, B2): do nothing, waiting for changes of state
 // 5. (A1, B3): do nothing, waiting for instance being removed
 // 6. (A2, B3): do nothing, waiting for instance being removed
+// 7. (A1, B4): do nothing, waiting for pod being created
+// 8. (A2, B4): do nothing, waiting for instance being removed
+// nolint:gocyclo // refactor later if necessary
 func TaskOfflineStore[
 	S scope.Instance[F, T],
 	F client.Object,
@@ -63,26 +67,33 @@ func TaskOfflineStore[
 	case !isOffline && storeID == "":
 		// do nothing because store does not exist
 		return nil
+
 	case isOffline && storeID == "":
 		return fmt.Errorf("%w: store does not exist and is offline", task.ErrWait)
+
 	case isOffline && (state == pdv1.NodeStatePreparing || state == pdv1.NodeStateServing):
 		if err := c.DeleteStore(ctx, storeID); err != nil {
 			return err
 		}
 
 		return fmt.Errorf("%w: node state should be changed to Removing", task.ErrWait)
+
 	case isOffline && state == pdv1.NodeStateRemoving:
 		return fmt.Errorf("%w: node state should be changed to Removed", task.ErrWait)
+
 	case isOffline && state == pdv1.NodeStateRemoved:
 		return nil
+
 	case !isOffline && (state == pdv1.NodeStatePreparing || state == pdv1.NodeStateServing):
 		// do nothing
 		return nil
+
 	case !isOffline && state == pdv1.NodeStateRemoving:
 		if err := c.CancelDeleteStore(ctx, storeID); err != nil {
 			return err
 		}
 		return fmt.Errorf("%w: node state should be changed to Preparing or Serving", task.ErrWait)
+
 	case !isOffline && state == pdv1.NodeStateRemoved:
 		// store has been removed, cannot cancel the deletion
 		return nil
