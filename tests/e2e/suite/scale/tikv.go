@@ -74,7 +74,7 @@ var _ = ginkgo.Describe("Scale TiKV", label.TiKV, label.MultipleAZ, label.P0, la
 		f.MustEvenlySpreadTiKV(ctx, kvg)
 	})
 
-	ginkgo.FIt("support scale in from 4 to 3 with a pending pod", func(ctx context.Context) {
+	ginkgo.It("support scale in from 4 to 3 with a pending pod", func(ctx context.Context) {
 		pdg := f.MustCreatePD(ctx)
 		kvg := f.MustCreateTiKV(ctx,
 			data.WithReplicas[scope.TiKVGroup](3),
