@@ -56,7 +56,13 @@ func TestTaskOfflineStore(t *testing.T) {
 		isWaitErr     bool
 	}{
 		{
-			desc:      "empty store id",
+			desc:   "spec.offline == false, empty store id",
+			obj:    newFakeStore(false, nil),
+			hasErr: false,
+		},
+		{
+			desc:      "spec.offline == true, empty store id",
+			obj:       newFakeStore(true, nil),
 			hasErr:    true,
 			isWaitErr: true,
 		},
@@ -169,10 +175,17 @@ func TestTaskInstanceConditionOffline(t *testing.T) {
 		expectedObj           *v1alpha1.TiKV
 	}{
 		{
-			desc:           "empty state",
+			desc:           "spec.offline == false, empty state",
 			obj:            newFakeStore(false, nil),
-			expectedStatus: task.SWait,
+			expectedStatus: task.SComplete,
 			expectedObj:    newFakeStore(false, nil),
+		},
+		{
+			desc:                  "spec.offline == true, empty state",
+			obj:                   newFakeStore(true, nil),
+			expectedStatusChanged: true,
+			expectedStatus:        task.SComplete,
+			expectedObj:           newFakeStore(true, coreutil.Offlined()),
 		},
 		{
 			desc:       "spec.offline == false, state == Preparing",

@@ -37,6 +37,7 @@ import (
 	// TODO: move all tests into suite
 	_ "github.com/pingcap/tidb-operator/tests/e2e/suite/availability"
 	_ "github.com/pingcap/tidb-operator/tests/e2e/suite/cluster"
+	_ "github.com/pingcap/tidb-operator/tests/e2e/suite/scale"
 )
 
 func TestE2E(t *testing.T) {

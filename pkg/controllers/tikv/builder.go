@@ -43,7 +43,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			tasks.TaskFinalizerDel(state, r.Client),
 		),
 
-		// if instance is deleting and store is removed
+		// if instance is not deleting but store is offlined
 		task.IfBreak(common.CondObjectIsNotDeletingButOfflined[scope.TiKV](state),
 			common.TaskDeleteOfflinedStore[scope.TiKV](state, r.Client),
 		),
@@ -86,9 +86,9 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// only set ready if pd is synced
 		task.If(PDIsSynced(state),
 			common.TaskInstanceConditionReady[scope.TiKV](state),
+			common.TaskInstanceConditionOffline[scope.TiKV](state),
 		),
 		common.TaskInstanceConditionRunning[scope.TiKV](state),
-		common.TaskInstanceConditionOffline[scope.TiKV](state),
 		tasks.TaskStatus(state, r.Client),
 	)
 

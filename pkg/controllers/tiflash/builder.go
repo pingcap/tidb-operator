@@ -76,9 +76,9 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// only set ready if pd is synced
 		task.If(PDIsSynced(state),
 			common.TaskInstanceConditionReady[scope.TiFlash](state),
+			common.TaskInstanceConditionOffline[scope.TiFlash](state),
 		),
 		common.TaskInstanceConditionRunning[scope.TiFlash](state),
-		common.TaskInstanceConditionOffline[scope.TiFlash](state),
 		tasks.TaskStatus(state, r.Client),
 	)
 
