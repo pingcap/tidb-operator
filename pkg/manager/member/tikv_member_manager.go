@@ -893,6 +893,8 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 		}
 
 		if oldStore.LeaderCountBeforeUpgrade != nil {
+			// TODO: if we are using a cached version of oldStore, the LeaderCountBeforeUpgrade maybe lost
+			// we need to find a better way to handle it
 			status.LeaderCountBeforeUpgrade = oldStore.LeaderCountBeforeUpgrade
 		}
 
