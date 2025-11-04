@@ -222,7 +222,7 @@ func (u *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, n
 func (u *tikvUpgrader) evictLeaderBeforeUpgrade(tc *v1alpha1.TidbCluster, upgradePod *corev1.Pod) (bool, error) {
 	logPrefix := fmt.Sprintf("evictLeaderBeforeUpgrade: for tikv pod %s/%s", upgradePod.Namespace, upgradePod.Name)
 
-	storeID, err := TiKVStoreIDFromStatus(tc, upgradePod.Name)
+	store, storeID, err := TiKVStoreAndIDFromStatus(tc, upgradePod.Name)
 	if err != nil {
 		return false, err
 	}
@@ -232,11 +232,10 @@ func (u *tikvUpgrader) evictLeaderBeforeUpgrade(tc *v1alpha1.TidbCluster, upgrad
 	if !evicting {
 		return false, u.beginEvictLeader(tc, storeID, upgradePod)
 	}
-
-	if store, exist := tc.Status.TiKV.Stores[strconv.Itoa(int(storeID))]; exist && store.LeaderCountBeforeUpgrade != nil {
-		klog.Infof("%s: already began evicting leader, leaderCountBeforeUpgrade: %d", logPrefix, *store.LeaderCountBeforeUpgrade)
-	} else {
-		klog.Infof("%s: already began evicting leader, no leaderCountBeforeUpgrade", logPrefix)
+	if store.LeaderCountBeforeUpgrade == nil {
+		store.LeaderCountBeforeUpgrade = pointer.Int32Ptr(int32(store.LeaderCount))
+		tc.Status.TiKV.Stores[store.ID] = store
+		klog.Warningf("%s: missing LeaderCountBeforeUpgrade, set it to %d", logPrefix, store.LeaderCount)
 	}
 
 	// wait for leader eviction to complete or timeout
