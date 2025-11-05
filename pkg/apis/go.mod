@@ -7,7 +7,7 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/gofuzz v1.2.0
-	github.com/mohae/deepcopy v0.0.0-20170603005431-491d3605edfb
+	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/onsi/gomega v1.27.6
 	github.com/pingcap/errors v0.11.4
 	github.com/pingcap/tiproxy/lib v0.0.0-20230907130944-eb5b4b9c9e79
