@@ -154,7 +154,7 @@ func RunTiKVPrestopHook(ctx context.Context, cfg *TiKVConfig) error {
 	var storeID string
 
 	//nolint:mnd // refactor to a constant if needed
-	if err := wait.PollUntilContextTimeout(ctx, time.Second, time.Second*30, true,
+	if err := wait.PollUntilContextTimeout(ctx, time.Second, time.Second*15, true,
 		func(ctx context.Context) (done bool, err error) {
 			info, err := cfg.PDClient.GetStores(ctx)
 			if err != nil {
