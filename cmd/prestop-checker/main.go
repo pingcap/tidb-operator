@@ -37,6 +37,7 @@ import (
 const (
 	defaultRequestTimout = 10 * time.Second
 	maxFailTimes         = 30
+	maxRetryTimes        = 5
 )
 
 type Options struct {
@@ -183,13 +184,19 @@ func RunTiKVPrestopHook(ctx context.Context, cfg *TiKVConfig) error {
 	fmt.Println("pre stop checking, store id:", storeID)
 
 	minCount := math.MaxInt
-	var failTimes int
+	var failTimes, retryTimes int
 	if err := wait.PollUntilContextCancel(ctx, time.Second, true, func(ctx context.Context) (done bool, err error) {
 		leaderCount, err := cfg.Client.GetLeaderCount()
 		if err != nil {
-			fmt.Printf("cannot get leader count, try again: %v\n", err)
+			fmt.Printf("cannot get leader count, try again, retryTimes %v: %v\n", retryTimes, err)
+			retryTimes += 1
+			if retryTimes > maxRetryTimes {
+				return false, fmt.Errorf("retry too many times")
+			}
 			return false, nil
 		}
+		retryTimes = 0
+
 		if leaderCount == 0 {
 			return true, nil
 		}
