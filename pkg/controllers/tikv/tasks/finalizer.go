@@ -28,7 +28,8 @@ import (
 
 const (
 	// for deleted store, we'll set grace period to the default
-	defaultGracePeriod = 30
+	// 30s for prestop hook and 30s for tikv
+	defaultGracePeriod = 60
 )
 
 // TaskFinalizerDel deletes sub-resources and remove the finalizer from the instance CR.
