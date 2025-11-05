@@ -140,9 +140,23 @@ func (u *tikvUpgrader) Upgrade(meta metav1.Object, oldSet *apps.StatefulSet, new
 		if revision == status.StatefulSet.UpdateRevision {
 
 			if err := isPodAvailable(pod, minReadySeconds, tc); err != nil {
+				if store.LeaderCountBeforeUpgrade != nil {
+					klog.Infof("tikvUpgrader.Upgrade: tikv pod %s/%s is upgraded but not available yet. leaderCountBeforeUpgrade: %d",
+						ns, podName, *store.LeaderCountBeforeUpgrade)
+				} else {
+					klog.Infof("tikvUpgrader.Upgrade: tikv pod %s/%s is upgraded but not available yet. no leaderCountBeforeUpgrade",
+						ns, podName)
+				}
 				return err
 			}
 			if store.State != v1alpha1.TiKVStateUp {
+				if store.LeaderCountBeforeUpgrade != nil {
+					klog.Infof("tikvUpgrader.Upgrade: tikv pod %s/%s is upgraded but store state is %s. leaderCountBeforeUpgrade: %d",
+						ns, podName, store.State, *store.LeaderCountBeforeUpgrade)
+				} else {
+					klog.Infof("tikvUpgrader.Upgrade: tikv pod %s/%s is upgraded but store state is %s. no leaderCountBeforeUpgrade",
+						ns, podName, store.State)
+				}
 				return controller.RequeueErrorf("tidbcluster: [%s/%s]'s upgraded tikv pod: [%s] is not all ready", ns, tcName, podName)
 			}
 
@@ -208,7 +222,7 @@ func (u *tikvUpgrader) upgradeTiKVPod(tc *v1alpha1.TidbCluster, ordinal int32, n
 func (u *tikvUpgrader) evictLeaderBeforeUpgrade(tc *v1alpha1.TidbCluster, upgradePod *corev1.Pod) (bool, error) {
 	logPrefix := fmt.Sprintf("evictLeaderBeforeUpgrade: for tikv pod %s/%s", upgradePod.Namespace, upgradePod.Name)
 
-	storeID, err := TiKVStoreIDFromStatus(tc, upgradePod.Name)
+	store, storeID, err := TiKVStoreAndIDFromStatus(tc, upgradePod.Name)
 	if err != nil {
 		return false, err
 	}
@@ -217,6 +231,11 @@ func (u *tikvUpgrader) evictLeaderBeforeUpgrade(tc *v1alpha1.TidbCluster, upgrad
 	_, evicting := upgradePod.Annotations[annoKeyEvictLeaderBeginTime]
 	if !evicting {
 		return false, u.beginEvictLeader(tc, storeID, upgradePod)
+	}
+	if store.LeaderCountBeforeUpgrade == nil {
+		store.LeaderCountBeforeUpgrade = pointer.Int32Ptr(int32(store.LeaderCount))
+		tc.Status.TiKV.Stores[store.ID] = store
+		klog.Warningf("%s: missing LeaderCountBeforeUpgrade, set it to %d", logPrefix, store.LeaderCount)
 	}
 
 	// wait for leader eviction to complete or timeout
