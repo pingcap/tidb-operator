@@ -33,10 +33,12 @@ type PDEtcdClient interface {
 	Get(key string, prefix bool) (kvs []*KeyValue, err error)
 	// PutKey will put key to the target pd etcd cluster
 	PutKey(key, value string) error
-	// PutKey will put key with ttl to the target pd etcd cluster
+	// PutTTLKey will put key with ttl to the target pd etcd cluster
 	PutTTLKey(key, value string, ttl int64) error
 	// DeleteKey will delete key from the target pd etcd cluster
 	DeleteKey(key string) error
+	// UpdateMember will update the member list of the target pd etcd cluster
+	UpdateMember(id uint64, peerAddrs []string) error
 	// Close will close the etcd connection
 	Close() error
 }
@@ -119,5 +121,17 @@ func (c *pdEtcdClient) DeleteKey(key string) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (c *pdEtcdClient) UpdateMember(id uint64, peerAddrs []string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
+	defer cancel()
+
+	_, err := c.etcdClient.MemberUpdate(ctx, id, peerAddrs)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

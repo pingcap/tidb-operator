@@ -1232,6 +1232,207 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				ginkgo.By("Check custom labels and annotations for TidbInitializer")
 				checkInitializerCustomLabelAndAnn(ti, c)
 			})
+
+			ginkgo.It(sc.name, func() {
+				tcName := "upgrade-tls"
+
+				ginkgo.By("Installing tidb CA certificate")
+				err := InstallTiDBIssuer(ns, tcName)
+				framework.ExpectNoError(err, "failed to install CA certificate")
+
+				ginkgo.By("Installing tidb server and client certificate")
+				err = InstallTiDBCertificates(ns, tcName)
+				framework.ExpectNoError(err, "failed to install tidb server and client certificate")
+
+				ginkgo.By("Installing tidbInitializer client certificate")
+				err = installTiDBInitializerCertificates(ns, tcName)
+				framework.ExpectNoError(err, "failed to install tidbInitializer client certificate")
+
+				ginkgo.By("Installing dashboard client certificate")
+				err = installPDDashboardCertificates(ns, tcName)
+				framework.ExpectNoError(err, "failed to install dashboard client certificate")
+
+				ginkgo.By("Installing tidb components certificates")
+				err = InstallTiDBComponentsCertificates(ns, tcName)
+				framework.ExpectNoError(err, "failed to install tidb components certificates")
+
+				if sc.skipCA {
+					ginkgo.By("Removing ca.crt in tidb-client-secret, dashboard and tidbInitializer client certificate")
+					err = removeCACertFromSecret(genericCli, ns, fmt.Sprintf("%s-tidb-client-secret", tcName))
+					framework.ExpectNoError(err, "failed to update tidb-client-secret with ca.crt deleted")
+					err = removeCACertFromSecret(genericCli, ns, fmt.Sprintf("%s-dashboard-tls", tcName))
+					framework.ExpectNoError(err, "failed to update dashboard-tls secret with ca.crt deleted")
+					err = removeCACertFromSecret(genericCli, ns, fmt.Sprintf("%s-initializer-tls", tcName))
+					framework.ExpectNoError(err, "failed to update initializer-tls secret with ca.crt deleted")
+				}
+
+				ginkgo.By("Creating tidb cluster without tls")
+				dashTLSName := fmt.Sprintf("%s-dashboard-tls", tcName)
+				tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatest)
+				tc.Spec.PD.Replicas = 1
+				tc.Spec.PD.TLSClientSecretName = &dashTLSName
+				tc.Spec.TiKV.Replicas = 1
+				tc.Spec.TiDB.Replicas = 1
+				tc.Spec.Pump = &v1alpha1.PumpSpec{
+					Replicas:             1,
+					BaseImage:            "pingcap/tidb-binlog",
+					ResourceRequirements: fixture.WithStorage(fixture.BurstableSmall, "1Gi"),
+					Config: tcconfig.New(map[string]interface{}{
+						"addr": fmt.Sprintf("0.0.0.0:%d", v1alpha1.DefaultPumpPort),
+						"storage": map[string]interface{}{
+							"stop-write-at-available-space": 0,
+						},
+					}),
+				}
+				err = genericCli.Create(context.TODO(), tc)
+				framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+				framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+
+				ginkgo.By("Upgrade tidb cluster with TLS disabled")
+				tc.Spec.PD.TLSClientSecretName = &dashTLSName
+				tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
+				tc.Spec.TiDB.TLSClient.SkipInternalClientCA = sc.skipCA
+				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
+
+				err = genericCli.Update(context.TODO(), tc)
+				framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+				framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+
+				ginkgo.By("Ensure configs of all components are not changed")
+				newTC, err := cli.PingcapV1alpha1().TidbClusters(tc.Namespace).Get(context.TODO(), tc.Name, metav1.GetOptions{})
+				tc.Spec.TiDB.Config.Set("log.file.max-backups", int64(3)) // add default configs that ard added by operator
+				framework.ExpectNoError(err, "failed to get TidbCluster: %s", tc.Name)
+				framework.ExpectEqual(newTC.Spec.PD.Config, tc.Spec.PD.Config, "pd config isn't equal of TidbCluster: %s", tc.Name)
+				framework.ExpectEqual(newTC.Spec.TiKV.Config, tc.Spec.TiKV.Config, "tikv config isn't equal of TidbCluster: %s", tc.Name)
+				framework.ExpectEqual(newTC.Spec.TiDB.Config, tc.Spec.TiDB.Config, "tidb config isn't equal of TidbCluster: %s", tc.Name)
+				framework.ExpectEqual(newTC.Spec.Pump.Config, tc.Spec.Pump.Config, "pump config isn't equal of TidbCluster: %s", tc.Name)
+				framework.ExpectEqual(newTC.Spec.TiCDC.Config, tc.Spec.TiCDC.Config, "ticdc config isn't equal of TidbCluster: %s", tc.Name)
+				framework.ExpectEqual(newTC.Spec.TiFlash.Config, tc.Spec.TiFlash.Config, "tiflash config isn't equal of TidbCluster: %s", tc.Name)
+
+				ginkgo.By("Ensure Dashboard use custom secret")
+				foundSecretName := false
+				pdSts, err := stsGetter.StatefulSets(ns).Get(context.TODO(), controller.PDMemberName(tcName), metav1.GetOptions{})
+				framework.ExpectNoError(err, "failed to get statefulsets for pd: %q", tc.Name)
+				for _, vol := range pdSts.Spec.Template.Spec.Volumes {
+					if vol.Name == "tidb-client-tls" {
+						foundSecretName = true
+						framework.ExpectEqual(vol.Secret.SecretName, dashTLSName)
+					}
+				}
+				framework.ExpectEqual(foundSecretName, true)
+
+				ginkgo.By("Creating tidb initializer")
+				passwd := "admin"
+				initName := fmt.Sprintf("%s-initializer", tcName)
+				initPassWDName := fmt.Sprintf("%s-initializer-passwd", tcName)
+				initTLSName := fmt.Sprintf("%s-initializer-tls", tcName)
+				initSecret := fixture.GetInitializerSecret(tc, initPassWDName, passwd)
+				_, err = c.CoreV1().Secrets(ns).Create(context.TODO(), initSecret, metav1.CreateOptions{})
+				framework.ExpectNoError(err, "failed to create secret for TidbInitializer: %v", initSecret)
+
+				ti := fixture.GetTidbInitializer(ns, tcName, initName, initPassWDName, initTLSName)
+				err = genericCli.Create(context.TODO(), ti)
+				framework.ExpectNoError(err, "failed to create TidbInitializer: %v", ti)
+
+				source := &tests.DrainerSourceConfig{
+					Namespace:      ns,
+					ClusterName:    tcName,
+					OperatorTag:    cfg.OperatorTag,
+					ClusterVersion: utilimage.TiDBLatest,
+				}
+				targetTcName := "tls-target"
+				targetTc := fixture.GetTidbCluster(ns, targetTcName, utilimage.TiDBLatest)
+				targetTc.Spec.PD.Replicas = 1
+				targetTc.Spec.TiKV.Replicas = 1
+				targetTc.Spec.TiDB.Replicas = 1
+				err = genericCli.Create(context.TODO(), targetTc)
+				framework.ExpectNoError(err, "failed to create TidbCluster: %v", targetTc)
+				err = oa.WaitForTidbClusterReady(targetTc, 30*time.Minute, 5*time.Second)
+				framework.ExpectNoError(err, "wait for TidbCluster timeout: %v", targetTc)
+
+				drainerConfig := &tests.DrainerConfig{
+					// Note: DrainerName muse be tcName
+					// oa.DeployDrainer will use DrainerName as release name to run "helm install..."
+					// in InstallTiDBCertificates, we use `tidbComponentsCertificatesTmpl` to render the certs:
+					// ...
+					// dnsNames:
+					// - "*.{{ .ClusterName }}-{{ .ClusterName }}-drainer"
+					// - "*.{{ .ClusterName }}-{{ .ClusterName }}-drainer.{{ .Namespace }}"
+					// - "*.{{ .ClusterName }}-{{ .ClusterName }}-drainer.{{ .Namespace }}.svc"
+					// ...
+					// refer to the 'drainer' part in https://docs.pingcap.com/tidb-in-kubernetes/dev/enable-tls-between-components
+					DrainerName:       tcName,
+					OperatorTag:       cfg.OperatorTag,
+					SourceClusterName: tcName,
+					Namespace:         ns,
+					DbType:            tests.DbTypeTiDB,
+					Host:              fmt.Sprintf("%s-tidb.%s.svc.cluster.local", targetTcName, ns),
+					Port:              strconv.Itoa(int(targetTc.Spec.TiDB.GetServicePort())),
+					TLSCluster:        true,
+					User:              "root",
+					Password:          "",
+				}
+
+				ginkgo.By("Deploying tidb drainer")
+				err = oa.DeployDrainer(drainerConfig, source)
+				framework.ExpectNoError(err, "failed to deploy drainer: %v", drainerConfig)
+				err = oa.CheckDrainer(drainerConfig, source)
+				framework.ExpectNoError(err, "failed to check drainer: %v", drainerConfig)
+
+				ginkgo.By("Inserting data into source db")
+				err = wait.PollImmediate(time.Second*5, time.Minute*5, insertIntoDataToSourceDB(fw, c, ns, tcName, passwd, true))
+				framework.ExpectNoError(err, "insert data into source db timeout")
+
+				ginkgo.By("Checking tidb-binlog works as expected")
+				err = wait.PollImmediate(time.Second*5, time.Minute*5, dataInClusterIsCorrect(fw, c, ns, targetTcName, "", false))
+				framework.ExpectNoError(err, "check data correct timeout")
+
+				ginkgo.By("Connecting to tidb server to verify the connection is TLS enabled")
+				err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns, tcName, passwd))
+				framework.ExpectNoError(err, "connect to TLS tidb timeout")
+
+				ginkgo.By("Scaling out tidb cluster")
+				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+					tc.Spec.PD.Replicas = 5
+					tc.Spec.TiKV.Replicas = 5
+					tc.Spec.TiDB.Replicas = 3
+					tc.Spec.Pump.Replicas++
+					tc.Spec.TiFlash.Replicas = 3
+					tc.Spec.TiCDC.Replicas = 3
+					return nil
+				})
+				framework.ExpectNoError(err, "failed to update TidbCluster: %q", tc.Name)
+				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+				framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+
+				ginkgo.By("Scaling in tidb cluster")
+				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+					tc.Spec.PD.Replicas = 3
+					tc.Spec.TiKV.Replicas = 3
+					tc.Spec.TiDB.Replicas = 2
+					tc.Spec.Pump.Replicas--
+					tc.Spec.TiFlash.Replicas = 1
+					tc.Spec.TiCDC.Replicas = 1
+					return nil
+				})
+				framework.ExpectNoError(err, "failed to update TidbCluster: %q", tc.Name)
+				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+				framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+
+				ginkgo.By("Upgrading tidb cluster")
+				err = controller.GuaranteedUpdate(genericCli, tc, func() error {
+					tc.Spec.Version = utilimage.TiDBLatest
+					return nil
+				})
+				framework.ExpectNoError(err, "failed to update TidbCluster: %q", tc.Name)
+				err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+				framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+
+				ginkgo.By("Check custom labels and annotations for TidbInitializer")
+				checkInitializerCustomLabelAndAnn(ti, c)
+			})
 		}
 
 		ginkgo.It("should enable TLS for MySQL Client and between Heterogeneous TiDB components", func() {

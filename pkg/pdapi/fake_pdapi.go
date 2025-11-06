@@ -354,3 +354,81 @@ func (c *FakePDMSClient) TransferPrimary(newPrimary string) error {
 	_, err := c.fakeAPI(PDMSTransferPrimaryActionType, action)
 	return err
 }
+
+const (
+	EtcdGetActionType          ActionType = "Get"
+	EtcdPutActionType          ActionType = "Put"
+	EtcdDeleteActionType       ActionType = "Delete"
+	EtcdUpdateMemberActionType ActionType = "UpdateMember"
+	EtcdCloseActionType        ActionType = "Close"
+)
+
+// FakeEtcdClient implements a fake version of EtcdClient.
+type FakeEtcdClient struct {
+	reactions map[ActionType]Reaction
+}
+
+func NewFakeEtcdClient() *FakeEtcdClient {
+	return &FakeEtcdClient{reactions: map[ActionType]Reaction{}}
+}
+
+func (c *FakeEtcdClient) AddReaction(actionType ActionType, reaction Reaction) {
+	c.reactions[actionType] = reaction
+}
+
+// fakeAPI is a small helper for fake API calls
+func (c *FakeEtcdClient) fakeAPI(actionType ActionType, action *Action) (interface{}, error) {
+	if reaction, ok := c.reactions[actionType]; ok {
+		result, err := reaction(action)
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	}
+	return nil, &NotFoundReaction{actionType}
+}
+
+func (c *FakeEtcdClient) Get(_ string, _ bool) (kvs []*KeyValue, err error) {
+	action := &Action{}
+	nil, err := c.fakeAPI(EtcdGetActionType, action)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (c *FakeEtcdClient) PutKey(_, _ string) error {
+	action := &Action{}
+	_, err := c.fakeAPI(EtcdPutActionType, action)
+	return err
+}
+
+func (c *FakeEtcdClient) PutTTLKey(_, _ string, _ int64) error {
+	action := &Action{}
+	_, err := c.fakeAPI(EtcdPutActionType, action)
+	return err
+}
+
+func (c *FakeEtcdClient) DeleteKey(_ string) error {
+	action := &Action{}
+	_, err := c.fakeAPI(EtcdDeleteActionType, action)
+	return err
+}
+
+func (c *FakeEtcdClient) UpdateMember(_ uint64, members []string) error {
+	action := &Action{}
+	res, err := c.fakeAPI(EtcdUpdateMemberActionType, action)
+	expectSchema := res.(string)
+	for _, member := range members {
+		if !strings.Contains(member, expectSchema) {
+			panic("schema not match")
+		}
+	}
+	return err
+}
+
+func (c *FakeEtcdClient) Close() error {
+	action := &Action{}
+	_, err := c.fakeAPI(EtcdCloseActionType, action)
+	return err
+}
