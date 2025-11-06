@@ -82,7 +82,7 @@ var _ = ginkgo.Describe("Scale PD", label.PD, label.Scale, func() {
 			ginkgo.Entry("5 to 3", 5, 3),
 		)
 
-		ginkgo.FIt("wrong image", func(ctx context.Context) {
+		ginkgo.It("wrong image", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx,
 				data.WithReplicas[scope.PDGroup](3),
 				data.WithPDFeatures(fs...),
