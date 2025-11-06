@@ -16,17 +16,15 @@ package availability
 
 import (
 	"context"
-	"sync"
-	"time"
 
 	"github.com/onsi/ginkgo/v2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
+	"github.com/pingcap/tidb-operator/tests/e2e/framework/action"
 	wopt "github.com/pingcap/tidb-operator/tests/e2e/framework/workload"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
@@ -50,34 +48,28 @@ var _ = ginkgo.Describe("TiKV Availability Test", label.TiKV, label.KindAvail, l
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
 
-			patch := client.MergeFrom(kvg.DeepCopy())
-			kvg.Spec.Template.Labels = map[string]string{"test": "test"}
-
 			nctx, cancel := context.WithCancel(ctx)
-			wg := sync.WaitGroup{}
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				defer ginkgo.GinkgoRecover()
-				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiKVGroup(kvg), 3, 0, waiter.LongTaskTimeout))
-			}()
 
-			done := workload.MustRunWorkload(
+			done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiKVGroup](nctx, f, kvg, 3)
+			defer func() { <-done }()
+
+			done2 := workload.MustRunWorkload(
 				nctx,
 				data.DefaultTiDBServiceName,
 				// TODO: 500ms is still not worked, dig why
 				wopt.MaxExecutionTime(1000),
 				wopt.WorkloadType(wopt.WorkloadTypeSelectCount),
 			)
+			defer func() { <-done2 }()
+			defer cancel()
 
-			changeTime := time.Now()
-			ginkgo.By("Change config of the TiKVGroup")
-			f.Must(f.Client.Patch(ctx, kvg, patch))
-			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiKVGroup(kvg), changeTime, waiter.LongTaskTimeout))
+			changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiKVGroup](ctx, f.Client, kvg)
+			f.Must(err)
+
+			action.MustRollingRestart[scope.TiKVGroup](ctx, f, kvg)
+
+			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiKVGroup(kvg), *changeTime, waiter.LongTaskTimeout))
 			f.WaitForTiKVGroupReady(ctx, kvg)
-			cancel()
-			wg.Wait()
-			<-done
 		})
 	},
 		nil,
@@ -100,34 +92,28 @@ var _ = ginkgo.Describe("TiKV Availability Test", label.TiKV, label.KindAvail, l
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
 
-			patch := client.MergeFrom(kvg.DeepCopy())
-			kvg.Spec.Template.Labels = map[string]string{"test": "test"}
-
 			nctx, cancel := context.WithCancel(ctx)
-			wg := sync.WaitGroup{}
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				defer ginkgo.GinkgoRecover()
-				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiKVGroup(kvg), 3, 0, waiter.LongTaskTimeout))
-			}()
 
-			done := workload.MustRunWorkload(
+			done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiKVGroup](nctx, f, kvg, 3)
+			defer func() { <-done }()
+
+			done2 := workload.MustRunWorkload(
 				nctx,
 				data.DefaultTiDBServiceName,
 				// TODO: 500ms is still not worked, dig why
 				wopt.MaxExecutionTime(1000),
 				wopt.WorkloadType(wopt.WorkloadTypeSelectCount),
 			)
+			defer func() { <-done2 }()
+			defer cancel()
 
-			changeTime := time.Now()
-			ginkgo.By("Change config of the TiKVGroup")
-			f.Must(f.Client.Patch(ctx, kvg, patch))
-			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiKVGroup(kvg), changeTime, waiter.LongTaskTimeout))
+			changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiKVGroup](ctx, f.Client, kvg)
+			f.Must(err)
+
+			action.MustRollingRestart[scope.TiKVGroup](ctx, f, kvg)
+
+			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiKVGroup(kvg), *changeTime, waiter.LongTaskTimeout))
 			f.WaitForTiKVGroupReady(ctx, kvg)
-			cancel()
-			wg.Wait()
-			<-done
 		})
 	},
 		[]metav1alpha1.Feature{metav1alpha1.UseTiKVReadyAPI},

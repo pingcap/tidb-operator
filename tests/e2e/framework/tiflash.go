@@ -22,6 +22,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
@@ -29,7 +30,7 @@ import (
 func (f *Framework) WaitForTiFlashGroupReady(ctx context.Context, fg *v1alpha1.TiFlashGroup) {
 	// TODO: maybe wait for cluster ready
 	ginkgo.By("wait for tiflash group ready")
-	f.Must(waiter.WaitForObjectCondition[runtime.TiFlashGroupTuple](
+	f.Must(waiter.WaitForObjectCondition[scope.TiFlashGroup](
 		ctx,
 		f.Client,
 		fg,

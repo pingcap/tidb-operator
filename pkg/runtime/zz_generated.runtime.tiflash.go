@@ -420,6 +420,14 @@ func (g *TiFlashGroup) TemplateAnnotations() map[string]string {
 	return g.Spec.Template.Annotations
 }
 
+func (g *TiFlashGroup) SetTemplateLabels(ls map[string]string) {
+	g.Spec.Template.Labels = ls
+}
+
+func (g *TiFlashGroup) SetTemplateAnnotations(anno map[string]string) {
+	g.Spec.Template.Annotations = anno
+}
+
 func (g *TiFlashGroup) Features() []metav1alpha1.Feature {
 	return g.Spec.Features
 }

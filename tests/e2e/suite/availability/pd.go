@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
+	"github.com/pingcap/tidb-operator/tests/e2e/framework/action"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
 )
 
@@ -45,7 +46,7 @@ var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
 
-			f.TestPDAvailability(ctx, pdg, workload)
+			action.TestPDAvailability(ctx, f, pdg, workload)
 		})
 	})
 
@@ -85,7 +86,7 @@ var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label
 				f.WaitForTSOGroupReady(ctx, tg)
 				f.WaitForSchedulingGroupReady(ctx, sg)
 
-				f.TestPDAvailability(ctx, pdg, workload)
+				action.TestPDAvailability(ctx, f, pdg, workload)
 			})
 
 			ginkgo.It("No error when rolling update tso in next-gen", func(ctx context.Context) {
@@ -111,7 +112,7 @@ var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label
 				f.WaitForTSOGroupReady(ctx, tg)
 				f.WaitForSchedulingGroupReady(ctx, sg)
 
-				f.TestTSOAvailability(ctx, tg, workload)
+				action.TestTSOAvailability(ctx, f, tg, workload)
 			})
 		})
 })

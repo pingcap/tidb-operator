@@ -188,3 +188,23 @@ func SetStatusSelector[
 
 	return changed
 }
+
+func TemplateAnnotations[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](f F) map[string]string {
+	obj := scope.From[S](f)
+
+	return obj.TemplateAnnotations()
+}
+
+func SetTemplateAnnotations[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](f F, anno map[string]string) {
+	obj := scope.From[S](f)
+
+	obj.SetTemplateAnnotations(anno)
+}

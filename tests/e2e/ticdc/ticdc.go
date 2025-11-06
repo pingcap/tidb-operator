@@ -136,27 +136,22 @@ var _ = ginkgo.Describe("TiCDC", label.TiCDC, func() {
 			f.WaitForTiDBGroupReady(ctx, dbg)
 			f.WaitForTiCDCGroupReady(ctx, cdcg)
 
-			patch := client.MergeFrom(cdcg.DeepCopy())
-			cdcg.Spec.Replicas = ptr.To[int32](2)
-			cdcg.Spec.Template.Spec.Config = changedConfig
-
 			nctx, cancel := context.WithCancel(ctx)
-			ch := make(chan struct{})
-			go func() {
-				defer close(ch)
-				defer ginkgo.GinkgoRecover()
-				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiCDCGroup(cdcg), 3, 1, waiter.LongTaskTimeout))
-			}()
+			done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiCDCGroup](nctx, f, cdcg, 2)
+			defer func() { <-done }()
+			defer cancel()
 
-			changeTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiCDCGroup(cdcg))
+			changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiCDCGroup](ctx, f.Client, cdcg)
 			f.Must(err)
 
 			ginkgo.By("Change config and replicas of the TiCDCGroup")
+			patch := client.MergeFrom(cdcg.DeepCopy())
+			cdcg.Spec.Replicas = ptr.To[int32](2)
+			cdcg.Spec.Template.Spec.Config = changedConfig
 			f.Must(f.Client.Patch(ctx, cdcg, patch))
+
 			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiCDCGroup(cdcg), *changeTime, waiter.LongTaskTimeout))
 			f.WaitForTiCDCGroupReady(ctx, cdcg)
-			cancel()
-			<-ch
 		})
 	})
 })

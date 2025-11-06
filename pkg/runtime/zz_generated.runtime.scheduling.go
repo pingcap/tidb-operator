@@ -420,6 +420,14 @@ func (g *SchedulingGroup) TemplateAnnotations() map[string]string {
 	return g.Spec.Template.Annotations
 }
 
+func (g *SchedulingGroup) SetTemplateLabels(ls map[string]string) {
+	g.Spec.Template.Labels = ls
+}
+
+func (g *SchedulingGroup) SetTemplateAnnotations(anno map[string]string) {
+	g.Spec.Template.Annotations = anno
+}
+
 func (g *SchedulingGroup) Features() []metav1alpha1.Feature {
 	return g.Spec.Features
 }

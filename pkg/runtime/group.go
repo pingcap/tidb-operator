@@ -37,6 +37,9 @@ type Group interface {
 	TemplateLabels() map[string]string
 	TemplateAnnotations() map[string]string
 
+	SetTemplateLabels(map[string]string)
+	SetTemplateAnnotations(map[string]string)
+
 	SetTemplateClusterTLS(ca, certKeyPair string)
 
 	MinReadySeconds() int64

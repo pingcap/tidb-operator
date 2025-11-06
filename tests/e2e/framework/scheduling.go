@@ -22,13 +22,14 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
 func (f *Framework) WaitForSchedulingGroupReady(ctx context.Context, sg *v1alpha1.SchedulingGroup) {
 	// TODO: maybe wait for cluster ready
 	ginkgo.By("wait for scheduling group ready")
-	f.Must(waiter.WaitForObjectCondition[runtime.SchedulingGroupTuple](
+	f.Must(waiter.WaitForObjectCondition[scope.SchedulingGroup](
 		ctx,
 		f.Client,
 		sg,

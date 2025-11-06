@@ -16,22 +16,20 @@ package framework
 
 import (
 	"context"
-	"sync"
-	"time"
 
 	"github.com/onsi/ginkgo/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
 func (f *Framework) WaitForTSOGroupReady(ctx context.Context, tg *v1alpha1.TSOGroup) {
 	// TODO: maybe wait for cluster ready
 	ginkgo.By("wait for tso group ready")
-	f.Must(waiter.WaitForObjectCondition[runtime.TSOGroupTuple](
+	f.Must(waiter.WaitForObjectCondition[scope.TSOGroup](
 		ctx,
 		f.Client,
 		tg,
@@ -41,35 +39,4 @@ func (f *Framework) WaitForTSOGroupReady(ctx context.Context, tg *v1alpha1.TSOGr
 	))
 	f.Must(waiter.WaitForTSOsHealthy(ctx, f.Client, tg, waiter.LongTaskTimeout))
 	f.Must(waiter.WaitForPodsReady(ctx, f.Client, runtime.FromTSOGroup(tg), waiter.LongTaskTimeout))
-}
-
-func (f *Framework) TestTSOAvailability(ctx context.Context, tg *v1alpha1.TSOGroup, w *Workload) {
-	f.Must(waiter.WaitForClusterPDRegistered(ctx, f.Client, f.Cluster, waiter.LongTaskTimeout))
-	// Prepare PD endpoints for region API access
-	pdEndpoints := f.Cluster.Status.PD
-
-	patch := client.MergeFrom(tg.DeepCopy())
-	tg.Spec.Template.Annotations = map[string]string{
-		"test": "test",
-	}
-
-	nctx, cancel := context.WithCancel(ctx)
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer ginkgo.GinkgoRecover()
-		f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTSOGroup(tg), int(*tg.Spec.Replicas), 0, waiter.LongTaskTimeout))
-	}()
-
-	done := w.MustRunPDRegionAccess(nctx, pdEndpoints)
-
-	changeTime := time.Now()
-	ginkgo.By("Rolling update the TSOGroup")
-	f.Must(f.Client.Patch(ctx, tg, patch))
-	f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTSOGroup(tg), changeTime, waiter.LongTaskTimeout))
-	f.WaitForTSOGroupReady(ctx, tg)
-	cancel()
-	wg.Wait()
-	<-done
 }
