@@ -11,10 +11,10 @@ spec:
   grafana:
     baseImage: grafana/grafana
     version: 7.5.11
-    UserSecret:
+    usernameSecret:
       name: basic-grafana
       key: username
-    PasswordSecret:
+    passwordSecret:
       name: basic-grafana
       key: password
   initializer:
