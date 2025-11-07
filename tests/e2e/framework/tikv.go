@@ -42,7 +42,7 @@ func (f *Framework) MustCreateTiKV(ctx context.Context, ps ...data.GroupPatch[*v
 func (f *Framework) WaitForTiKVGroupReady(ctx context.Context, kvg *v1alpha1.TiKVGroup) {
 	// TODO: maybe wait for cluster ready
 	ginkgo.By("wait for tikv group ready")
-	f.Must(waiter.WaitForObjectCondition[runtime.TiKVGroupTuple](
+	f.Must(waiter.WaitForObjectCondition[scope.TiKVGroup](
 		ctx,
 		f.Client,
 		kvg,

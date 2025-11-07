@@ -31,8 +31,10 @@ import (
 	watchtools "k8s.io/client-go/tools/watch"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
 
@@ -44,18 +46,22 @@ type podInfo struct {
 }
 
 // nolint: gocyclo // optimize later
-func WaitPodsRollingUpdateOnce[G runtime.Group](
+func WaitPodsRollingUpdateOnce[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](
 	ctx context.Context,
 	c client.Client,
-	g G,
-	from int,
+	g F,
+	to int,
 	surge int,
 	timeout time.Duration,
 ) error {
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(ctx, timeout)
 	defer cancel()
 
-	podMap, err := generatePodInfoMapByWatch(ctx, c, g)
+	podMap, err := generatePodInfoMapByWatch[S](ctx, c, g)
 	if err != nil {
 		return err
 	}
@@ -76,7 +82,7 @@ func WaitPodsRollingUpdateOnce[G runtime.Group](
 
 	var scaleOut, scaleIn, rollingUpdateTimes int
 
-	to := int(g.Replicas())
+	from := int(coreutil.Replicas[S](g))
 	delta := to - from
 
 	if delta > 0 {
@@ -135,9 +141,13 @@ func WaitPodsRollingUpdateOnce[G runtime.Group](
 	return nil
 }
 
-func generatePodInfoMapByWatch[G runtime.Group](ctx context.Context, c client.Client, g G) (map[string]podInfo, error) {
+func generatePodInfoMapByWatch[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](ctx context.Context, c client.Client, g F) (map[string]podInfo, error) {
 	podMap := map[string]podInfo{}
-	lw := newListWatch(ctx, c, g)
+	lw := newListWatch[S](ctx, c, g)
 	_, err := watchtools.UntilWithSync(ctx, lw, &corev1.Pod{}, nil, func(event watch.Event) (bool, error) {
 		pod, ok := event.Object.(*corev1.Pod)
 		if !ok {
@@ -169,16 +179,20 @@ func generatePodInfoMapByWatch[G runtime.Group](ctx context.Context, c client.Cl
 	return podMap, nil
 }
 
-func newListWatch[G runtime.Group](ctx context.Context, c client.Client, g G) cache.ListerWatcher {
+func newListWatch[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](ctx context.Context, c client.Client, g F) cache.ListerWatcher {
 	lw := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (kuberuntime.Object, error) {
 			list := &corev1.PodList{}
 			if err := c.List(ctx, list, &client.ListOptions{
 				Namespace: g.GetNamespace(),
 				LabelSelector: labels.SelectorFromSet(labels.Set{
-					v1alpha1.LabelKeyCluster:   g.Cluster(),
+					v1alpha1.LabelKeyCluster:   coreutil.Cluster[S](g),
 					v1alpha1.LabelKeyGroup:     g.GetName(),
-					v1alpha1.LabelKeyComponent: g.Component(),
+					v1alpha1.LabelKeyComponent: scope.Component[S](),
 				}),
 				Raw: &options,
 			}); err != nil {
@@ -191,9 +205,9 @@ func newListWatch[G runtime.Group](ctx context.Context, c client.Client, g G) ca
 			return c.Watch(ctx, list, &client.ListOptions{
 				Namespace: g.GetNamespace(),
 				LabelSelector: labels.SelectorFromSet(labels.Set{
-					v1alpha1.LabelKeyCluster:   g.Cluster(),
+					v1alpha1.LabelKeyCluster:   coreutil.Cluster[S](g),
 					v1alpha1.LabelKeyGroup:     g.GetName(),
-					v1alpha1.LabelKeyComponent: g.Component(),
+					v1alpha1.LabelKeyComponent: scope.Component[S](),
 				}),
 				Raw: &options,
 			})
@@ -293,16 +307,20 @@ func WaitForPodsCondition[G runtime.Group](
 	})
 }
 
-func MaxPodsCreateTimestamp[G runtime.Group](
+func MaxPodsCreateTimestamp[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](
 	ctx context.Context,
 	c client.Client,
-	g G,
+	g F,
 ) (*time.Time, error) {
 	list := corev1.PodList{}
 	if err := c.List(ctx, &list, client.InNamespace(g.GetNamespace()), client.MatchingLabels{
-		v1alpha1.LabelKeyCluster:   g.Cluster(),
+		v1alpha1.LabelKeyCluster:   coreutil.Cluster[S](g),
 		v1alpha1.LabelKeyGroup:     g.GetName(),
-		v1alpha1.LabelKeyComponent: g.Component(),
+		v1alpha1.LabelKeyComponent: scope.Component[S](),
 	}); err != nil {
 		return nil, err
 	}

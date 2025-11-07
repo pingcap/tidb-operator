@@ -17,12 +17,10 @@ package framework
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
@@ -31,6 +29,8 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
@@ -262,14 +262,6 @@ func (*Framework) DescribeFeatureTable(f func(fs ...metav1alpha1.Feature), fss .
 	ginkgo.DescribeTableSubtree("FeatureTable", args...)
 }
 
-func (f *Framework) MustScale(ctx context.Context, obj client.Object, replica int32) {
-	ginkgo.By("Scale to " + strconv.Itoa(int(replica)))
-	scale := &autoscalingv1.Scale{Spec: autoscalingv1.ScaleSpec{Replicas: replica}}
-	err := f.Client.SubResource("scale").Update(ctx, obj, client.WithSubResourceBody(scale))
-
-	gomega.ExpectWithOffset(1, err).To(gomega.Succeed())
-}
-
 func (f *Framework) PortForwardPod(ctx context.Context, pod *corev1.Pod, ports []string) []portforward.ForwardedPort {
 	readyCh := make(chan struct{})
 	pf, err := newPodPortForwarder(ctx, f.restConfig, f.podClient, pod, ports, readyCh, ginkgo.GinkgoWriter)
@@ -283,4 +275,26 @@ func (f *Framework) PortForwardPod(ctx context.Context, pod *corev1.Pod, ports [
 	f.Must(err)
 
 	return ps
+}
+
+func AsyncWaitPodsRollingUpdateOnce[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](ctx context.Context, f *Framework, obj F, to int) chan struct{} {
+	maxSurge := 0
+	comp := scope.Component[S]()
+	switch comp {
+	case "tiproxy", "tidb", "ticdc":
+		maxSurge = 1
+	}
+	ch := make(chan struct{})
+	nobj := obj.DeepCopyObject().(F)
+	go func() {
+		defer close(ch)
+		defer ginkgo.GinkgoRecover()
+		f.Must(waiter.WaitPodsRollingUpdateOnce[S](ctx, f.Client, nobj, to, maxSurge, waiter.LongTaskTimeout))
+	}()
+
+	return ch
 }

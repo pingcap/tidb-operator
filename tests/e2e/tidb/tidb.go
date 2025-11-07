@@ -163,27 +163,22 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 				f.WaitForTiKVGroupReady(ctx, kvg)
 				f.WaitForTiDBGroupReady(ctx, dbg)
 
-				patch := client.MergeFrom(dbg.DeepCopy())
-				change(dbg)
-
 				nctx, cancel := context.WithCancel(ctx)
-				ch := make(chan struct{})
-				go func() {
-					defer close(ch)
-					defer ginkgo.GinkgoRecover()
-					f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiDBGroup(dbg), 3, 1, waiter.LongTaskTimeout))
-				}()
+				done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, 3)
+				defer func() { <-done }()
+				defer cancel()
 
-				changeTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
+				changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiDBGroup](ctx, f.Client, dbg)
 				f.Must(err)
 
 				ginkgo.By("Patch TiDBGroup")
+				patch := client.MergeFrom(dbg.DeepCopy())
+				change(dbg)
 				f.Must(f.Client.Patch(ctx, dbg, patch))
+
 				f.Must(waiter.WaitForInstanceListRecreated[scope.TiDBGroup](ctx, f.Client, dbg, *changeTime, waiter.LongTaskTimeout))
 				f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), *changeTime, waiter.LongTaskTimeout))
 				f.WaitForTiDBGroupReady(ctx, dbg)
-				cancel()
-				<-ch
 			},
 			ginkgo.Entry("change config file", func(g *v1alpha1.TiDBGroup) { g.Spec.Template.Spec.Config = changedConfig }),
 			ginkgo.Entry("change overlay", func(g *v1alpha1.TiDBGroup) {
@@ -225,7 +220,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 				patch := client.MergeFrom(dbg.DeepCopy())
 				change(dbg)
 
-				changeTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
+				changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiDBGroup](ctx, f.Client, dbg)
 				f.Must(err)
 
 				ginkgo.By("Patch TiDBGroup")
@@ -243,7 +238,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 				}, waiter.LongTaskTimeout))
 				f.WaitForTiDBGroupReady(ctx, dbg)
 
-				newMaxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
+				newMaxTime, err := waiter.MaxPodsCreateTimestamp[scope.TiDBGroup](ctx, f.Client, dbg)
 				f.Must(err)
 				f.True(changeTime.Equal(*newMaxTime))
 			},
@@ -275,28 +270,23 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
 
-			patch := client.MergeFrom(dbg.DeepCopy())
-			dbg.Spec.Replicas = ptr.To[int32](3)
-			dbg.Spec.Template.Spec.Config = changedConfig
-
 			nctx, cancel := context.WithCancel(ctx)
-			ch := make(chan struct{})
-			go func() {
-				defer close(ch)
-				defer ginkgo.GinkgoRecover()
-				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiDBGroup(dbg), 5, 1, waiter.LongTaskTimeout))
-			}()
+			done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, 3)
+			defer func() { <-done }()
+			defer cancel()
 
-			changeTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
+			changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiDBGroup](ctx, f.Client, dbg)
 			f.Must(err)
 
 			ginkgo.By("Change config and replicas of the TiDBGroup")
+			patch := client.MergeFrom(dbg.DeepCopy())
+			dbg.Spec.Replicas = ptr.To[int32](3)
+			dbg.Spec.Template.Spec.Config = changedConfig
 			f.Must(f.Client.Patch(ctx, dbg, patch))
+
 			f.Must(waiter.WaitForInstanceListRecreated[scope.TiDBGroup](ctx, f.Client, dbg, *changeTime, waiter.LongTaskTimeout))
 			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), *changeTime, waiter.LongTaskTimeout))
 			f.WaitForTiDBGroupReady(ctx, dbg)
-			cancel()
-			<-ch
 		})
 	})
 

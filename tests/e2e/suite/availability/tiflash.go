@@ -16,17 +16,16 @@ package availability
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
 
 	"github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
+	"github.com/pingcap/tidb-operator/tests/e2e/framework/action"
 	wopt "github.com/pingcap/tidb-operator/tests/e2e/framework/workload"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
@@ -67,32 +66,24 @@ var _ = ginkgo.Describe("TiFlash Availability Test",
 
 				workload.MustImportData(ctx, data.DefaultTiDBServiceName, wopt.TiFlashReplicas(2), wopt.RegionCount(0))
 
-				done1 := make(chan struct{})
 				nctx, cancel := context.WithCancel(ctx)
-				go func() {
-					defer close(done1)
-					defer ginkgo.GinkgoRecover()
-					f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiFlashGroup(fg), 2, 0, waiter.LongTaskTimeout))
-				}()
+				done1 := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiFlashGroup](nctx, f, fg, 2)
+				defer func() { <-done1 }()
 				done2 := workload.MustRunWorkload(
 					nctx,
 					data.DefaultTiDBServiceName,
 					wopt.TiFlashReplicas(2),
 					wopt.WorkloadType(wopt.WorkloadTypeSelectCount),
 				)
-
-				patch := client.MergeFrom(fg.DeepCopy())
-				fg.Spec.Template.Labels = map[string]string{"test": "test"}
+				defer func() { <-done2 }()
+				defer cancel()
 
 				changeTime := time.Now()
-				ginkgo.By("Change config of the TiFlashGroup")
 
-				f.Must(f.Client.Patch(ctx, fg, patch))
+				action.MustRollingRestart[scope.TiFlashGroup](ctx, f, fg)
+
 				f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiFlashGroup(fg), changeTime, waiter.LongTaskTimeout))
 				f.WaitForTiFlashGroupReady(ctx, fg)
-				cancel()
-				<-done1
-				<-done2
 			})
 		})
 
@@ -126,19 +117,10 @@ var _ = ginkgo.Describe("TiFlash Availability Test",
 
 				workload.MustImportData(ctx, data.DefaultTiDBServiceName, wopt.TiFlashReplicas(2), wopt.RegionCount(0))
 
-				wg := sync.WaitGroup{}
 				nctx, cancel := context.WithCancel(ctx)
-				wg.Add(2)
-				go func() {
-					defer wg.Done()
-					defer ginkgo.GinkgoRecover()
-					f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiFlashGroup(fgc), 2, 0, waiter.LongTaskTimeout))
-				}()
-				go func() {
-					defer wg.Done()
-					defer ginkgo.GinkgoRecover()
-					f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiFlashGroup(fgw), 2, 0, waiter.LongTaskTimeout))
-				}()
+				done1 := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiFlashGroup](nctx, f, fgc, 2)
+				done2 := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiFlashGroup](nctx, f, fgw, 2)
+				defer func() { <-done1; <-done2 }()
 
 				done := workload.MustRunWorkload(
 					nctx,
@@ -149,30 +131,22 @@ var _ = ginkgo.Describe("TiFlash Availability Test",
 					wopt.WorkloadType(wopt.WorkloadTypeSelectCount),
 					wopt.MaxExecutionTime(4000),
 				)
-
-				patch := client.MergeFrom(fgc.DeepCopy())
-				fgc.Spec.Template.Labels = map[string]string{"test": "test"}
+				defer func() { <-done }()
+				defer cancel()
 
 				changeTime := time.Now()
-				ginkgo.By("Change config of the compute TiFlashGroup")
 
-				f.Must(f.Client.Patch(ctx, fgc, patch))
+				action.MustRollingRestart[scope.TiFlashGroup](ctx, f, fgc)
+
 				f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiFlashGroup(fgc), changeTime, waiter.LongTaskTimeout))
 				f.WaitForTiFlashGroupReady(ctx, fgc)
 
-				patch = client.MergeFrom(fgw.DeepCopy())
-				fgw.Spec.Template.Labels = map[string]string{"test": "test"}
-
 				changeTime = time.Now()
-				ginkgo.By("Change config of the write TiFlashGroup")
 
-				f.Must(f.Client.Patch(ctx, fgw, patch))
+				action.MustRollingRestart[scope.TiFlashGroup](ctx, f, fgw)
+
 				f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiFlashGroup(fgw), changeTime, waiter.LongTaskTimeout))
 				f.WaitForTiFlashGroupReady(ctx, fgw)
-
-				cancel()
-				wg.Wait()
-				<-done
 			})
 		})
 	})

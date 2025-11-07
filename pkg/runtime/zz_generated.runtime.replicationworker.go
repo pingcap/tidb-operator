@@ -420,6 +420,14 @@ func (g *ReplicationWorkerGroup) TemplateAnnotations() map[string]string {
 	return g.Spec.Template.Annotations
 }
 
+func (g *ReplicationWorkerGroup) SetTemplateLabels(ls map[string]string) {
+	g.Spec.Template.Labels = ls
+}
+
+func (g *ReplicationWorkerGroup) SetTemplateAnnotations(anno map[string]string) {
+	g.Spec.Template.Annotations = anno
+}
+
 func (g *ReplicationWorkerGroup) Features() []metav1alpha1.Feature {
 	return g.Spec.Features
 }

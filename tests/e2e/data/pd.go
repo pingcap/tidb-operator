@@ -15,11 +15,14 @@
 package data
 
 import (
+	"slices"
+
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 func NewPDGroup(ns string, patches ...GroupPatch[*v1alpha1.PDGroup]) *v1alpha1.PDGroup {
@@ -73,5 +76,18 @@ func WithPDNextGen() GroupPatch[*v1alpha1.PDGroup] {
 	return GroupPatchFunc[*v1alpha1.PDGroup](func(obj *v1alpha1.PDGroup) {
 		obj.Spec.Template.Spec.Version = "v9.0.0"
 		obj.Spec.Template.Spec.Image = ptr.To(defaultImageRegistry + "pd:master-next-gen")
+	})
+}
+
+func WithPDFeatures(fs ...metav1alpha1.Feature) GroupPatch[*v1alpha1.PDGroup] {
+	return GroupPatchFunc[*v1alpha1.PDGroup](func(obj *v1alpha1.PDGroup) {
+		// PDReadyAPIV2 is only worked for nextgen version now
+		if slices.Contains(fs, metav1alpha1.UsePDReadyAPIV2) {
+			obj.Spec.Template.Spec.Version = "v9.0.0"
+			obj.Spec.Template.Spec.Image = ptr.To(defaultImageRegistry + "pd:master-next-gen")
+		} else {
+			obj.Spec.Template.Spec.Version = defaultVersion
+			obj.Spec.Template.Spec.Image = ptr.To(defaultImageRegistry + "pd")
+		}
 	})
 }
