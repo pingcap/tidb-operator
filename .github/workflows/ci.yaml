@@ -68,7 +68,7 @@ jobs:
         job: ${{ matrix.job }}
 
     - name: Upload test coverage
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5
       with:
         flags: unittest
         working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
