@@ -62,10 +62,6 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskConfigMap(state, r.Client),
 		common.TaskPVC[scope.PD](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
 		tasks.TaskPod(state, r.Client),
-		// If pd client has not been registered yet, do not update status of the pd
-		task.IfBreak(tasks.CondPDClientIsNotRegisterred(state),
-			tasks.TaskStatusUnknown(),
-		),
 		common.TaskInstanceConditionSynced[scope.PD](state),
 		common.TaskInstanceConditionReady[scope.PD](state),
 		common.TaskInstanceConditionRunning[scope.PD](state),

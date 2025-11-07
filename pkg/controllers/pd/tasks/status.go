@@ -29,12 +29,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-func TaskStatusUnknown() task.Task {
-	return task.NameTaskFunc("StatusUnknown", func(_ context.Context) task.Result {
-		return task.Wait().With("status of the pd is unknown")
-	})
-}
-
 //nolint:gocyclo // refactor if possible
 func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Status", func(ctx context.Context) task.Result {

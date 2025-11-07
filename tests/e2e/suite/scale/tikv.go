@@ -19,13 +19,12 @@ import (
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
-	"k8s.io/utils/ptr"
 
-	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
+	"github.com/pingcap/tidb-operator/tests/e2e/framework/action"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
@@ -46,10 +45,8 @@ var _ = ginkgo.Describe("Scale TiKV", label.TiKV, label.MultipleAZ, label.P0, la
 
 		f.MustEvenlySpreadTiKV(ctx, kvg)
 
-		patch := client.MergeFrom(kvg.DeepCopy())
-		kvg.Spec.Replicas = ptr.To[int32](4)
+		action.MustScale[scope.TiKVGroup](ctx, f, kvg, 4)
 
-		f.Must(f.Client.Patch(ctx, kvg, patch))
 		f.WaitForTiKVGroupReady(ctx, kvg)
 		f.MustEvenlySpreadTiKV(ctx, kvg)
 	})
@@ -66,10 +63,8 @@ var _ = ginkgo.Describe("Scale TiKV", label.TiKV, label.MultipleAZ, label.P0, la
 
 		f.MustEvenlySpreadTiKV(ctx, kvg)
 
-		patch := client.MergeFrom(kvg.DeepCopy())
-		kvg.Spec.Replicas = ptr.To[int32](3)
+		action.MustScale[scope.TiKVGroup](ctx, f, kvg, 3)
 
-		f.Must(f.Client.Patch(ctx, kvg, patch))
 		f.WaitForTiKVGroupReady(ctx, kvg)
 		f.MustEvenlySpreadTiKV(ctx, kvg)
 	})
@@ -87,17 +82,13 @@ var _ = ginkgo.Describe("Scale TiKV", label.TiKV, label.MultipleAZ, label.P0, la
 
 		f.MustEvenlySpreadTiKV(ctx, kvg)
 
-		patch := client.MergeFrom(kvg.DeepCopy())
-		kvg.Spec.Replicas = ptr.To[int32](4)
-		f.Must(f.Client.Patch(ctx, kvg, patch))
+		action.MustScale[scope.TiKVGroup](ctx, f, kvg, 4)
 
 		// just wait a few seconds
 		time.Sleep(time.Second * 15)
 
-		patch2 := client.MergeFrom(kvg.DeepCopy())
-		kvg.Spec.Replicas = ptr.To[int32](3)
+		action.MustScale[scope.TiKVGroup](ctx, f, kvg, 3)
 
-		f.Must(f.Client.Patch(ctx, kvg, patch2))
 		f.WaitForTiKVGroupReady(ctx, kvg)
 		f.MustEvenlySpreadTiKV(ctx, kvg)
 	})
@@ -113,29 +104,18 @@ var _ = ginkgo.Describe("Scale TiKV", label.TiKV, label.MultipleAZ, label.P0, la
 		f.WaitForTiKVGroupReady(ctx, kvg)
 		f.MustEvenlySpreadTiKV(ctx, kvg)
 
-		patch := client.MergeFrom(kvg.DeepCopy())
-		kvg.Spec.Replicas = ptr.To[int32](6)
-		kvg.Spec.Template.Annotations = map[string]string{
-			"test": "test",
-		}
-
 		nctx, cancel := context.WithCancel(ctx)
-		ch := make(chan struct{})
-		go func() {
-			defer close(ch)
-			defer ginkgo.GinkgoRecover()
-			f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiKVGroup(kvg), 3, 0, waiter.LongTaskTimeout))
-		}()
+		done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiKVGroup](nctx, f, kvg, 6)
+		defer func() { <-done }()
+		defer cancel()
 
-		changeTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiKVGroup(kvg))
+		changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiKVGroup](ctx, f.Client, kvg)
 		f.Must(err)
 
-		ginkgo.By("Change config and replicas of the TiKVGroup")
-		f.Must(f.Client.Patch(ctx, kvg, patch))
+		action.MustScaleAndRollingRestart[scope.TiKVGroup](ctx, f, kvg, 6)
+
 		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiKVGroup(kvg), *changeTime, waiter.LongTaskTimeout))
 		f.WaitForTiKVGroupReady(ctx, kvg)
-		cancel()
-		<-ch
 
 		f.MustEvenlySpreadTiKV(ctx, kvg)
 	})

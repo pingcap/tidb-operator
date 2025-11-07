@@ -420,6 +420,14 @@ func (g *TSOGroup) TemplateAnnotations() map[string]string {
 	return g.Spec.Template.Annotations
 }
 
+func (g *TSOGroup) SetTemplateLabels(ls map[string]string) {
+	g.Spec.Template.Labels = ls
+}
+
+func (g *TSOGroup) SetTemplateAnnotations(anno map[string]string) {
+	g.Spec.Template.Annotations = anno
+}
+
 func (g *TSOGroup) Features() []metav1alpha1.Feature {
 	return g.Spec.Features
 }

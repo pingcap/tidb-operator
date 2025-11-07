@@ -420,6 +420,14 @@ func (g *TiKVGroup) TemplateAnnotations() map[string]string {
 	return g.Spec.Template.Annotations
 }
 
+func (g *TiKVGroup) SetTemplateLabels(ls map[string]string) {
+	g.Spec.Template.Labels = ls
+}
+
+func (g *TiKVGroup) SetTemplateAnnotations(anno map[string]string) {
+	g.Spec.Template.Annotations = anno
+}
+
 func (g *TiKVGroup) Features() []metav1alpha1.Feature {
 	return g.Spec.Features
 }

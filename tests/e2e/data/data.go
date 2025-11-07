@@ -123,3 +123,19 @@ func WithClusterTLS[
 		coreutil.SetTemplateClusterTLS[S](obj, ca, certKeyPair)
 	})
 }
+
+func WithTemplateAnnotation[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](k, v string) GroupPatch[F] {
+	return GroupPatchFunc[F](func(obj F) {
+		anno := coreutil.TemplateAnnotations[S](obj)
+		if anno == nil {
+			anno = map[string]string{}
+		}
+
+		anno[k] = v
+		coreutil.SetTemplateAnnotations[S](obj, anno)
+	})
+}

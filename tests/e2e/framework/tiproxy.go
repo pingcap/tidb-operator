@@ -25,13 +25,14 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/topology"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
 func (f *Framework) WaitForTiProxyGroupReady(ctx context.Context, pg *v1alpha1.TiProxyGroup) {
 	ginkgo.By("wait for tiproxy group ready")
-	f.Must(waiter.WaitForObjectCondition[runtime.TiProxyGroupTuple](
+	f.Must(waiter.WaitForObjectCondition[scope.TiProxyGroup](
 		ctx,
 		f.Client,
 		pg,

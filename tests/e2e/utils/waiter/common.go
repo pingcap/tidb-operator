@@ -27,7 +27,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
 var (
@@ -186,30 +188,34 @@ func WaitForListDeleted(
 	}, timeout, opts...)
 }
 
-func WaitForObjectCondition[T runtime.ObjectTuple[O, U], O client.Object, U runtime.Object](
+func WaitForObjectCondition[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](
 	ctx context.Context,
 	c client.Client,
-	obj O,
+	obj F,
 	condType string,
 	status metav1.ConditionStatus,
 	timeout time.Duration,
 ) error {
-	var t T
 	return WaitForObject(ctx, c, obj, func() error {
-		ro := t.From(obj)
-		cond := meta.FindStatusCondition(ro.Conditions(), condType)
+		cond := coreutil.FindStatusCondition[S](obj, condType)
 		if cond == nil {
 			return fmt.Errorf("obj %s/%s's condition %s is not set", obj.GetNamespace(), obj.GetName(), condType)
 		}
-		if cond.Status == status {
+		if cond.Status == status && cond.ObservedGeneration == obj.GetGeneration() {
 			return nil
 		}
-		return fmt.Errorf("obj %s/%s's condition %s has unexpected status, expected is %v, current is %v, reason: %v, message: %v",
+		return fmt.Errorf("obj %s/%s's condition %s has unexpected status, expected generation %v, status %v, current status is %v, observed generation: %v, reason: %v, message: %v",
 			obj.GetNamespace(),
 			obj.GetName(),
 			cond.Type,
+			obj.GetGeneration(),
 			status,
 			cond.Status,
+			cond.ObservedGeneration,
 			cond.Reason,
 			cond.Message,
 		)

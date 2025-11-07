@@ -38,7 +38,7 @@ func (f *Framework) MustCreateTiCDC(ctx context.Context, ps ...data.GroupPatch[*
 func (f *Framework) WaitForTiCDCGroupReady(ctx context.Context, cg *v1alpha1.TiCDCGroup) {
 	// TODO: maybe wait for cluster ready
 	ginkgo.By("wait for ticdc group ready")
-	f.Must(waiter.WaitForObjectCondition[runtime.TiCDCGroupTuple](
+	f.Must(waiter.WaitForObjectCondition[scope.TiCDCGroup](
 		ctx,
 		f.Client,
 		cg,

@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
+	"github.com/pingcap/tidb-operator/tests/e2e/framework/action"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
 )
 
@@ -56,7 +57,7 @@ var _ = ginkgo.Describe("StandBy", label.TiDB, label.KindNextGen, func() {
 		f.WaitForTiKVGroupReady(ctx, kvg)
 		f.WaitForTiDBGroupReady(ctx, dbg)
 
-		f.MustScale(ctx, dbg, 0)
+		action.MustScale[scope.TiDBGroup](ctx, f, dbg, 0)
 
 		standby := f.MustCreateTiDB(ctx,
 			data.WithName[scope.TiDBGroup]("standby-tidb"),
@@ -73,7 +74,7 @@ var _ = ginkgo.Describe("StandBy", label.TiDB, label.KindNextGen, func() {
 			// system keyspace
 			data.WithKeyspace("SYSTEM"),
 		)
-		f.MustScale(ctx, dbg, 1)
+		action.MustScale[scope.TiDBGroup](ctx, f, dbg, 1)
 
 		f.WaitForTiDBGroupReady(ctx, dbg)
 		f.WaitForTiDBGroupReady(ctx, another)
