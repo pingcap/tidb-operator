@@ -222,12 +222,12 @@ func (act *actor[T, O, R]) ScaleInOutdated(ctx context.Context) (bool, error) {
 func (act *actor[T, O, R]) scaleInOutdated(ctx context.Context, name string, deferDel bool) (bool, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	if name == "" {
-		choosed, err := act.chooseToScaleIn(act.outdated.List())
+		chosen, err := act.chooseToScaleIn(act.outdated.List())
 		if err != nil {
 			return false, err
 		}
 
-		name = choosed
+		name = chosen
 	}
 
 	obj := act.outdated.Del(name)
@@ -313,10 +313,10 @@ func (act *actor[T, O, R]) Update(ctx context.Context, unavailable bool) error {
 	if err != nil {
 		return err
 	}
-	choosed := act.outdated.Get(name)
+	chosen := act.outdated.Get(name)
 	// 1. need an unavailable outdated
-	// 2. choosed is not unavailable outdated
-	if unavailable && !choosed.IsNotRunning() {
+	// 2. the chosen one is not unavailable outdated
+	if unavailable && !chosen.IsNotRunning() {
 		if act.noInPlaceUpdate {
 			if _, err := act.scaleInOutdated(ctx, name, false); err != nil {
 				return err
@@ -328,7 +328,7 @@ func (act *actor[T, O, R]) Update(ctx context.Context, unavailable bool) error {
 			return nil
 		}
 
-		return fmt.Errorf("want to update an unavailable outdated, buut choosed %s is not", name)
+		return fmt.Errorf("want to update an unavailable outdated, but the chosen one %s is not", name)
 	}
 
 	outdated := act.outdated.Del(name)
