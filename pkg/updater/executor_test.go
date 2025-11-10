@@ -40,27 +40,27 @@ func (a *FakeActor) ScaleOut(_ context.Context) error {
 
 func (a *FakeActor) ScaleInOutdated(_ context.Context) (unavailable bool, err error) {
 	a.Actions = append(a.Actions, actionScaleInOutdated)
-	a.outdated -= 1
+	a.outdated--
 	if a.preferAvailable || a.unavailableOutdated == 0 {
 		return false, nil
 	}
 
-	a.unavailableOutdated -= 1
+	a.unavailableOutdated--
 	return true, nil
 }
 
 func (a *FakeActor) ScaleInUpdate(_ context.Context) (unavailable bool, err error) {
 	a.Actions = append(a.Actions, actionScaleInUpdate)
-	a.update -= 1
+	a.update--
 	if a.preferAvailable || a.unavailableUpdate == 0 {
 		return false, nil
 	}
 
-	a.unavailableUpdate -= 1
+	a.unavailableUpdate--
 	return true, nil
 }
 
-func (a *FakeActor) Update(_ context.Context) error {
+func (a *FakeActor) Update(_ context.Context, _ bool) error {
 	a.Actions = append(a.Actions, actionUpdate)
 	return nil
 }
@@ -68,10 +68,6 @@ func (a *FakeActor) Update(_ context.Context) error {
 func (a *FakeActor) Cleanup(_ context.Context) error {
 	a.Actions = append(a.Actions, actionCleanup)
 	return nil
-}
-
-func (a *FakeActor) RecordedActions() []action {
-	return a.Actions
 }
 
 func TestExecutor(t *testing.T) {

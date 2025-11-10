@@ -222,12 +222,12 @@ func (act *actor[T, O, R]) ScaleInOutdated(ctx context.Context) (bool, error) {
 func (act *actor[T, O, R]) scaleInOutdated(ctx context.Context, name string, deferDel bool) (bool, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	if name == "" {
-		choosed, err := act.chooseToScaleIn(act.outdated.List())
+		chosen, err := act.chooseToScaleIn(act.outdated.List())
 		if err != nil {
 			return false, err
 		}
 
-		name = choosed
+		name = chosen
 	}
 
 	obj := act.outdated.Del(name)
@@ -306,23 +306,29 @@ func (act *actor[T, O, R]) deferDelete(ctx context.Context, obj R) error {
 // Recreate update strategy (noInPlaceUpdate=true):
 // - Scales in an outdated instance (immediate deletion)
 // - Scales out a new instance to replace it
-func (act *actor[T, O, R]) Update(ctx context.Context) error {
+func (act *actor[T, O, R]) Update(ctx context.Context, unavailable bool) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
 	name, err := act.chooseToUpdate(act.outdated.List())
 	if err != nil {
 		return err
 	}
+	chosen := act.outdated.Get(name)
+	// 1. need an unavailable outdated
+	// 2. the chosen one is not unavailable outdated
+	if unavailable && !chosen.IsNotRunning() {
+		if act.noInPlaceUpdate {
+			if _, err := act.scaleInOutdated(ctx, name, false); err != nil {
+				return err
+			}
+			if err := act.ScaleOut(ctx); err != nil {
+				return err
+			}
 
-	if act.noInPlaceUpdate {
-		if _, err := act.scaleInOutdated(ctx, name, false); err != nil {
-			return err
-		}
-		if err := act.ScaleOut(ctx); err != nil {
-			return err
+			return nil
 		}
 
-		return nil
+		return fmt.Errorf("want to update an unavailable outdated, but the chosen one %s is not", name)
 	}
 
 	outdated := act.outdated.Del(name)

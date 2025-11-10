@@ -106,7 +106,6 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 				change(proxyg)
 				f.Must(f.Client.Patch(ctx, proxyg, patch))
 
-				f.Must(waiter.WaitForInstanceListRecreated[scope.TiProxyGroup](ctx, f.Client, proxyg, *changeTime, waiter.LongTaskTimeout))
 				f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiProxyGroup(proxyg), *changeTime, waiter.LongTaskTimeout))
 				f.WaitForTiProxyGroupReady(ctx, proxyg)
 			},
@@ -214,7 +213,6 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			proxyg.Spec.Template.Spec.Config = changedConfig
 			f.Must(f.Client.Patch(ctx, proxyg, patch))
 
-			f.Must(waiter.WaitForInstanceListRecreated[scope.TiProxyGroup](ctx, f.Client, proxyg, *changeTime, waiter.LongTaskTimeout))
 			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiProxyGroup(proxyg), *changeTime, waiter.LongTaskTimeout))
 			f.WaitForTiProxyGroupReady(ctx, proxyg)
 		})
