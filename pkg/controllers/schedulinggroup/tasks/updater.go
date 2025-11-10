@@ -100,7 +100,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
-				topoPolicy,
+				topoPolicy.PolicyScaleIn(),
 			).
 			WithMinReadySeconds(coreutil.MinReadySeconds[scope.SchedulingGroup](obj)).
 			Build().

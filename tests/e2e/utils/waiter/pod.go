@@ -163,10 +163,19 @@ func generatePodInfoMapByWatch[
 				creationTime: pod.CreationTimestamp,
 			}
 		}
-
-		if !pod.DeletionTimestamp.IsZero() && pod.DeletionGracePeriodSeconds != nil && *pod.DeletionGracePeriodSeconds == 0 {
-			info.deletionTime = *pod.DeletionTimestamp
+		// Use DeletionTimestamp can only get the deleting time.
+		// If the new pod is created immediately after the old one is deleted, the test is also passed
+		//
+		// NOTE: It may be fixed by https://github.com/kubernetes/kubernetes/pull/122646
+		// Keep this code to use DeletionTimestamp after the previous PR is released
+		//
+		// if !pod.DeletionTimestamp.IsZero() && pod.DeletionGracePeriodSeconds != nil && *pod.DeletionGracePeriodSeconds == 0 {
+		// 	info.deletionTime = *pod.DeletionTimestamp
+		// }
+		if event.Type == watch.Deleted {
+			info.deletionTime = metav1.Now()
 		}
+
 		podMap[string(pod.UID)] = info
 
 		return false, nil

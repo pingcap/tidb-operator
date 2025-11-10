@@ -23,9 +23,19 @@ import (
 const verbose = 10
 
 type Actor interface {
+	// ScaleOut creates a new update instance
 	ScaleOut(ctx context.Context) error
-	Update(ctx context.Context) error
+
+	// Update will update an instance CR
+	// unavailable means update must choose an unavailable instance to update
+	Update(ctx context.Context, unavailable bool) error
+
+	// ScaleInOutdated will scale in an outdated instance
+	// If unavailable is true, the chosen instance is unavailable
 	ScaleInUpdate(ctx context.Context) (unavailable bool, _ error)
+
+	// ScaleInUpdate will scale in an updated instance
+	// If unavailable is true, the chosen instance is unavailable
 	ScaleInOutdated(ctx context.Context) (unavailable bool, _ error)
 
 	// Cleanup deletes all instances marked as defer deletion
@@ -106,7 +116,7 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 				// unavailable and outdated instances
 				if ex.unavailableOutdated > 0 {
 					logger.V(verbose).Info("update unavailable outdated")
-					if err := ex.act.Update(ctx); err != nil {
+					if err := ex.act.Update(ctx, true); err != nil {
 						return false, err
 					}
 					ex.outdated -= 1
@@ -122,7 +132,7 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 					}
 
 					logger.V(verbose).Info("update available outdated")
-					if err := ex.act.Update(ctx); err != nil {
+					if err := ex.act.Update(ctx, false); err != nil {
 						return false, err
 					}
 					ex.outdated -= 1
