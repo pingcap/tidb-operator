@@ -82,6 +82,34 @@ func WithTiKVEvenlySpreadPolicy() GroupPatch[*v1alpha1.TiKVGroup] {
 	})
 }
 
+func WithTiKVEvenlySpreadPolicyOneFailureAZ() GroupPatch[*v1alpha1.TiKVGroup] {
+	return GroupPatchFunc[*v1alpha1.TiKVGroup](func(obj *v1alpha1.TiKVGroup) {
+		obj.Spec.SchedulePolicies = append(obj.Spec.SchedulePolicies, v1alpha1.SchedulePolicy{
+			Type: v1alpha1.SchedulePolicyTypeEvenlySpread,
+			EvenlySpread: &v1alpha1.SchedulePolicyEvenlySpread{
+				Topologies: []v1alpha1.ScheduleTopology{
+					{
+						Topology: v1alpha1.Topology{
+							"zone": "zone-a",
+						},
+					},
+					{
+						Topology: v1alpha1.Topology{
+							"zone": "zone-b",
+						},
+					},
+					{
+						Topology: v1alpha1.Topology{
+							// zone-d doesn't exist
+							"zone": "zone-d",
+						},
+					},
+				},
+			},
+		})
+	})
+}
+
 func WithTiKVAPIVersionV2() GroupPatch[*v1alpha1.TiKVGroup] {
 	return GroupPatchFunc[*v1alpha1.TiKVGroup](func(obj *v1alpha1.TiKVGroup) {
 		obj.Spec.Template.Spec.Config = `[storage]

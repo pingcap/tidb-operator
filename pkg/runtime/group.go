@@ -14,7 +14,11 @@
 
 package runtime
 
-import "sigs.k8s.io/controller-runtime/pkg/client"
+import (
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+)
 
 type Group interface {
 	Object
@@ -43,6 +47,8 @@ type Group interface {
 	SetTemplateClusterTLS(ca, certKeyPair string)
 
 	MinReadySeconds() int64
+
+	SchedulePolicies() []v1alpha1.SchedulePolicy
 }
 
 type GroupT[T GroupSet] interface {

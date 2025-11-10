@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
@@ -188,21 +189,20 @@ func (b *builder[T, O, R]) WithMinReadySeconds(minReadySeconds int64) Builder[R]
 
 func split[R runtime.Instance](all []R, rev string) (update, outdated, beingOffline, deleted []R) {
 	for _, instance := range all {
-		// if instance is deleting, just ignore it
-		// TODO(liubo02): make sure it's ok for PD
-		if !instance.GetDeletionTimestamp().IsZero() {
-			continue
-		}
-
+		// TODO: combine into IsDeleting
 		if _, ok := instance.GetAnnotations()[v1alpha1.AnnoKeyDeferDelete]; ok ||
 			meta.IsStatusConditionTrue(instance.Conditions(), v1alpha1.StoreOfflinedConditionType) {
 			deleted = append(deleted, instance)
-			continue
-		}
-		if instance.IsOffline() {
+		} else if instance.IsOffline() {
 			beingOffline = append(beingOffline, instance)
+		}
+
+		// if instance is deleting, just ignore it
+		// TODO(liubo02): make sure it's ok for PD
+		if coreutil.IsDeleting(instance) {
 			continue
 		}
+
 		if instance.GetUpdateRevision() == rev {
 			update = append(update, instance)
 		} else {

@@ -15,9 +15,11 @@
 package policy
 
 import (
+	"fmt"
 	"maps"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/updater"
 	"github.com/pingcap/tidb-operator/pkg/utils/topology"
@@ -53,7 +55,12 @@ func NewTopologyPolicy[R runtime.Instance](ts []v1alpha1.ScheduleTopology, rev s
 		rev:     rev,
 	}
 	for _, r := range rs {
+		// skip deleting instance, now all deleting instances are ignored in updater
+		if coreutil.IsDeleting(r) {
+			continue
+		}
 		p.all.Add(r.GetName(), r.GetTopology())
+		fmt.Println("preferred delete, add:", r.GetName(), r.GetTopology())
 		if r.GetUpdateRevision() == rev {
 			p.updated.Add(r.GetName(), r.GetTopology())
 		}
@@ -116,14 +123,19 @@ func (p *deletePreferPolicy[R]) Prefer(allowed []R) []R {
 		return nil
 	}
 	names := p.p.all.NextDel()
+
+	fmt.Println("preferred delete, next del:", names)
+
 	var preferred []R
 	for _, item := range allowed {
 		for _, name := range names {
 			if item.GetName() == name {
+				fmt.Println("preferred delete: ", name)
 				preferred = append(preferred, item)
 			}
 		}
 	}
+	fmt.Println("preferred delete done")
 
 	return preferred
 }

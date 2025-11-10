@@ -501,3 +501,7 @@ func (g *PDGroup) MinReadySeconds() int64 {
 	}
 	return *g.Spec.MinReadySeconds
 }
+
+func (g *PDGroup) SchedulePolicies() []v1alpha1.SchedulePolicy {
+	return g.Spec.SchedulePolicies
+}

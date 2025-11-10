@@ -67,6 +67,14 @@ func MinReadySeconds[
 	return scope.From[S](f).MinReadySeconds()
 }
 
+func SchedulePolicies[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](f F) []v1alpha1.SchedulePolicy {
+	return scope.From[S](f).SchedulePolicies()
+}
+
 // IsGroupHealthyAndUpToDate is defined to check whether all replicas of the group are healthy and up to date
 // TODO: simplify it by a condition
 func IsGroupHealthyAndUpToDate[

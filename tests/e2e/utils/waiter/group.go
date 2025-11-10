@@ -54,6 +54,12 @@ func WaitForInstanceList[
 			return false, fmt.Errorf("can't list instances: %w", err)
 		}
 
+		replicas := coreutil.Replicas[GS](g)
+		if len(items) != int(replicas) {
+			lastErr = fmt.Errorf("expected replicas is %v, actual is %v", replicas, len(items))
+			return false, nil
+		}
+
 		if err := cond(items); err != nil {
 			lastErr = err
 			return false, nil
