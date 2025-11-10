@@ -69,10 +69,18 @@ type builder[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct 
 func (b *builder[T, O, R]) Build() Executor {
 	update, outdated, beingOffline, deleted := split(b.instances, b.rev)
 
-	updatePolicies := b.updatePreferPolicies
-	updatePolicies = append(updatePolicies, PreferNotRunning[R](), PreferUnready[R]())
-	scaleInPolicies := b.scaleInPreferPolicies
-	scaleInPolicies = append(scaleInPolicies, PreferNotRunning[R](), PreferUnready[R]())
+	updatePolicies := []PreferPolicy[R]{
+		PreferUnready[R](),
+		PreferNotRunning[R](),
+	}
+	updatePolicies = append(updatePolicies, b.updatePreferPolicies...)
+
+	scaleInPolicies := []PreferPolicy[R]{
+		PreferUnready[R](),
+		PreferNotRunning[R](),
+	}
+	scaleInPolicies = append(scaleInPolicies, b.scaleInPreferPolicies...)
+
 	actor := &actor[T, O, R]{
 		c: b.c,
 		f: b.f,

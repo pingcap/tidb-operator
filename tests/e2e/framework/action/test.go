@@ -79,7 +79,6 @@ func TestTiDBAvailability(ctx context.Context, f *framework.Framework, ep string
 	changeTime := time.Now()
 	MustRollingRestart[scope.TiDBGroup](ctx, f, dbg)
 
-	f.Must(waiter.WaitForInstanceListRecreated[scope.TiDBGroup](ctx, f.Client, dbg, changeTime, waiter.LongTaskTimeout))
 	f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), changeTime, waiter.LongTaskTimeout))
 	f.WaitForTiDBGroupReady(ctx, dbg)
 }

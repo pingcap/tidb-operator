@@ -176,7 +176,6 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 				change(dbg)
 				f.Must(f.Client.Patch(ctx, dbg, patch))
 
-				f.Must(waiter.WaitForInstanceListRecreated[scope.TiDBGroup](ctx, f.Client, dbg, *changeTime, waiter.LongTaskTimeout))
 				f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), *changeTime, waiter.LongTaskTimeout))
 				f.WaitForTiDBGroupReady(ctx, dbg)
 			},
@@ -284,7 +283,6 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			dbg.Spec.Template.Spec.Config = changedConfig
 			f.Must(f.Client.Patch(ctx, dbg, patch))
 
-			f.Must(waiter.WaitForInstanceListRecreated[scope.TiDBGroup](ctx, f.Client, dbg, *changeTime, waiter.LongTaskTimeout))
 			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), *changeTime, waiter.LongTaskTimeout))
 			f.WaitForTiDBGroupReady(ctx, dbg)
 		})

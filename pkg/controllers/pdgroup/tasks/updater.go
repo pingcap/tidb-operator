@@ -100,7 +100,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
 				NotLeaderPolicy(),
-				topoPolicy,
+				topoPolicy.PolicyScaleIn(),
 			).
 			WithUpdatePreferPolicy(
 				NotLeaderPolicy(),

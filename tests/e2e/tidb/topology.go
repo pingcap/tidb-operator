@@ -73,7 +73,6 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 
 		action.MustRollingRestart[scope.TiDBGroup](ctx, f, dbg)
 
-		f.Must(waiter.WaitForInstanceListRecreated[scope.TiDBGroup](ctx, f.Client, dbg, *changeTime, waiter.LongTaskTimeout))
 		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), *changeTime, waiter.LongTaskTimeout))
 		f.WaitForTiDBGroupReady(ctx, dbg)
 		f.MustEvenlySpreadTiDB(ctx, dbg)
@@ -109,7 +108,6 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 
 		action.MustRollingRestart[scope.TiDBGroup](ctx, f, dbg)
 
-		f.Must(waiter.WaitForInstanceListRecreated[scope.TiDBGroup](ctx, f.Client, dbg, *changeTime, waiter.LongTaskTimeout))
 		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), *changeTime, waiter.LongTaskTimeout))
 		f.WaitForTiDBGroupReady(ctx, dbg)
 		f.MustEvenlySpreadTiDB(ctx, dbg)
@@ -127,7 +125,6 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 
 		action.MustScaleAndRollingRestart[scope.TiDBGroup](ctx, f, dbg, 3)
 
-		f.Must(waiter.WaitForInstanceListRecreated[scope.TiDBGroup](ctx, f.Client, dbg, *changeTime, waiter.LongTaskTimeout))
 		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), *changeTime, waiter.LongTaskTimeout))
 		f.WaitForTiDBGroupReady(ctx, dbg)
 		f.MustEvenlySpreadTiDB(ctx, dbg)

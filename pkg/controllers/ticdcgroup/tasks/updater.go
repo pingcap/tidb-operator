@@ -113,7 +113,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
-				topoPolicy,
+				topoPolicy.PolicyScaleIn(),
 			).
 			WithNoInPaceUpdate(noUpdate).
 			WithMinReadySeconds(coreutil.MinReadySeconds[scope.TiCDCGroup](cdcg)).

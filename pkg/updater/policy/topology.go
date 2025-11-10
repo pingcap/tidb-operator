@@ -34,7 +34,8 @@ type TopologyPolicy[R runtime.Instance] interface {
 	updater.AddHook[R]
 	updater.DelHook[R]
 	updater.UpdateHook[R]
-	updater.PreferPolicy[R]
+	PolicyScaleIn() updater.PreferPolicy[R]
+	PolicyUpdate() updater.PreferPolicy[R]
 }
 
 func NewTopologyPolicy[R runtime.Instance](ts []v1alpha1.ScheduleTopology, rev string, rs ...R) (TopologyPolicy[R], error) {
@@ -94,12 +95,28 @@ func (p *topologyPolicy[R]) Delete(name string) {
 	p.updated.Del(name)
 }
 
-func (p *topologyPolicy[R]) Prefer(allowed []R) []R {
+func (p *topologyPolicy[R]) PolicyScaleIn() updater.PreferPolicy[R] {
+	return &deletePreferPolicy[R]{
+		p: p,
+	}
+}
+
+func (p *topologyPolicy[R]) PolicyUpdate() updater.PreferPolicy[R] {
+	return &updatePreferPolicy[R]{
+		p: p,
+	}
+}
+
+type deletePreferPolicy[R runtime.Instance] struct {
+	p *topologyPolicy[R]
+}
+
+func (p *deletePreferPolicy[R]) Prefer(allowed []R) []R {
 	if len(allowed) == 0 {
 		return nil
 	}
-	names := p.all.NextDel()
-	preferred := make([]R, 0, len(allowed))
+	names := p.p.all.NextDel()
+	var preferred []R
 	for _, item := range allowed {
 		for _, name := range names {
 			if item.GetName() == name {
@@ -111,9 +128,34 @@ func (p *topologyPolicy[R]) Prefer(allowed []R) []R {
 	return preferred
 }
 
+type updatePreferPolicy[R runtime.Instance] struct {
+	p *topologyPolicy[R]
+}
+
+// Choose a prefered item to update
+// Update will not change topology spreads of "all" set.
+// However, spreads of "update" set will be changed.
+func (p *updatePreferPolicy[R]) Prefer(allowed []R) []R {
+	if len(allowed) == 0 {
+		return nil
+	}
+	topos := p.p.updated.NextAdd()
+
+	var preferred []R
+	for _, item := range allowed {
+		for _, topo := range topos {
+			if maps.Equal(topo, item.GetTopology()) {
+				preferred = append(preferred, item)
+			}
+		}
+	}
+
+	return preferred
+}
+
 // choose a preferred topology
-// - prefer all instances are well spread
-// - if no
+// - prefer "all" and "update" set are well spread, choose the intersection
+// - if no intersection, just return the first one of "all" set
 func choose(all, update []v1alpha1.Topology) v1alpha1.Topology {
 	// No topology is preferred
 	// Normally because of no topology policy is specified

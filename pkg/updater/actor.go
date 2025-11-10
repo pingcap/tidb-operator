@@ -306,23 +306,29 @@ func (act *actor[T, O, R]) deferDelete(ctx context.Context, obj R) error {
 // Recreate update strategy (noInPlaceUpdate=true):
 // - Scales in an outdated instance (immediate deletion)
 // - Scales out a new instance to replace it
-func (act *actor[T, O, R]) Update(ctx context.Context) error {
+func (act *actor[T, O, R]) Update(ctx context.Context, unavailable bool) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
 	name, err := act.chooseToUpdate(act.outdated.List())
 	if err != nil {
 		return err
 	}
+	choosed := act.outdated.Get(name)
+	// 1. need an unavailable outdated
+	// 2. choosed is not unavailable outdated
+	if unavailable && !choosed.IsNotRunning() {
+		if act.noInPlaceUpdate {
+			if _, err := act.scaleInOutdated(ctx, name, false); err != nil {
+				return err
+			}
+			if err := act.ScaleOut(ctx); err != nil {
+				return err
+			}
 
-	if act.noInPlaceUpdate {
-		if _, err := act.scaleInOutdated(ctx, name, false); err != nil {
-			return err
-		}
-		if err := act.ScaleOut(ctx); err != nil {
-			return err
+			return nil
 		}
 
-		return nil
+		return fmt.Errorf("want to update an unavailable outdated, buut choosed %s is not", name)
 	}
 
 	outdated := act.outdated.Del(name)
