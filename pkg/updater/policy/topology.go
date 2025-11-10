@@ -132,7 +132,7 @@ type updatePreferPolicy[R runtime.Instance] struct {
 	p *topologyPolicy[R]
 }
 
-// Choose a prefered item to update
+// Choose a preferred item to update
 // Update will not change topology spreads of "all" set.
 // However, spreads of "update" set will be changed.
 func (p *updatePreferPolicy[R]) Prefer(allowed []R) []R {
