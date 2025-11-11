@@ -87,6 +87,9 @@ func WaitForGroupSynced[
 	))
 }
 
+// WaitForInstanceListSynced waits until all instances being created
+// and all subresources of instances being created.
+// It's usefull to wait until all unschedulable pods being created.
 func WaitForInstanceListSynced[
 	GS scope.GroupInstance[GF, GT, IS],
 	IS scope.InstanceList[IF, IT, IL],

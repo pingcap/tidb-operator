@@ -501,3 +501,7 @@ func (g *ReplicationWorkerGroup) MinReadySeconds() int64 {
 	}
 	return *g.Spec.MinReadySeconds
 }
+
+func (g *ReplicationWorkerGroup) SchedulePolicies() []v1alpha1.SchedulePolicy {
+	return g.Spec.SchedulePolicies
+}

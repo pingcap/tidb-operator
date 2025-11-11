@@ -40,6 +40,6 @@ var _ = ginkgo.Describe("Topology", label.TiKV, label.MultipleAZ, label.P0, func
 		f.WaitForPDGroupReady(ctx, pdg)
 		f.WaitForTiKVGroupReady(ctx, kvg)
 
-		f.MustEvenlySpreadTiKV(ctx, kvg)
+		framework.MustEvenlySpread[scope.TiKVGroup](ctx, f, kvg)
 	})
 })

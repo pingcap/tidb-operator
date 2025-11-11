@@ -45,7 +45,7 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 		f.WaitForTiKVGroupReady(ctx, kvg)
 		f.WaitForTiDBGroupReady(ctx, dbg)
 
-		f.MustEvenlySpreadTiDB(ctx, dbg)
+		framework.MustEvenlySpread[scope.TiDBGroup](ctx, f, dbg)
 	})
 
 	ginkgo.It("rolling update and ensure still evenly spread", label.Update, func(ctx context.Context) {
@@ -61,7 +61,7 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 		f.WaitForTiKVGroupReady(ctx, kvg)
 		f.WaitForTiDBGroupReady(ctx, dbg)
 
-		f.MustEvenlySpreadTiDB(ctx, dbg)
+		framework.MustEvenlySpread[scope.TiDBGroup](ctx, f, dbg)
 
 		nctx, cancel := context.WithCancel(ctx)
 		done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, 3)
@@ -75,7 +75,7 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 
 		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), *changeTime, waiter.LongTaskTimeout))
 		f.WaitForTiDBGroupReady(ctx, dbg)
-		f.MustEvenlySpreadTiDB(ctx, dbg)
+		framework.MustEvenlySpread[scope.TiDBGroup](ctx, f, dbg)
 	})
 
 	// a, b -> a, c and then rolling + scale at the same time
@@ -98,7 +98,8 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 		f.WaitForPDGroupReady(ctx, pdg)
 		f.WaitForTiKVGroupReady(ctx, kvg)
 		f.WaitForTiDBGroupReady(ctx, dbg)
-		f.MustEvenlySpreadTiDB(ctx, dbg)
+
+		framework.MustEvenlySpread[scope.TiDBGroup](ctx, f, dbg)
 
 		nctx, cancel := context.WithCancel(ctx)
 		done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, 2)
@@ -110,7 +111,8 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 
 		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), *changeTime, waiter.LongTaskTimeout))
 		f.WaitForTiDBGroupReady(ctx, dbg)
-		f.MustEvenlySpreadTiDB(ctx, dbg)
+
+		framework.MustEvenlySpread[scope.TiDBGroup](ctx, f, dbg)
 
 		cancel()
 		<-done
@@ -127,6 +129,7 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 
 		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), *changeTime, waiter.LongTaskTimeout))
 		f.WaitForTiDBGroupReady(ctx, dbg)
-		f.MustEvenlySpreadTiDB(ctx, dbg)
+
+		framework.MustEvenlySpread[scope.TiDBGroup](ctx, f, dbg)
 	})
 })

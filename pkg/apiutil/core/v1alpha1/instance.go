@@ -18,6 +18,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -28,6 +29,14 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 )
+
+func Topology[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](f F) v1alpha1.Topology {
+	return scope.From[S](f).GetTopology()
+}
 
 func IsReady[
 	S scope.Instance[F, T],
@@ -334,4 +343,26 @@ func WithLegacyK8sAppLabels() PVCPatch {
 			pvc.Labels[v1alpha1.LabelKeyComponent],
 		))
 	})
+}
+
+// IsDeleting check whether an instance is deleting
+// TODO: change to use scope
+func IsDeleting(instance runtime.Instance) bool {
+	if !instance.GetDeletionTimestamp().IsZero() {
+		return true
+	}
+
+	if _, ok := instance.GetAnnotations()[v1alpha1.AnnoKeyDeferDelete]; ok {
+		return true
+	}
+
+	if instance.IsOffline() {
+		return true
+	}
+
+	if meta.IsStatusConditionTrue(instance.Conditions(), v1alpha1.StoreOfflinedConditionType) {
+		return true
+	}
+
+	return false
 }
