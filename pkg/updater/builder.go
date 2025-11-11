@@ -190,6 +190,7 @@ func split[R runtime.Instance](all []R, rev string) (update, outdated, beingOffl
 	for _, instance := range all {
 		// if instance is deleting, just ignore it
 		// TODO(liubo02): make sure it's ok for PD
+		// TODO(liubo02): combine with coreutil.IsDeleting
 		if !instance.GetDeletionTimestamp().IsZero() {
 			continue
 		}

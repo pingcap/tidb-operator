@@ -16,7 +16,6 @@ package scale
 
 import (
 	"context"
-	"time"
 
 	"github.com/onsi/ginkgo/v2"
 
@@ -43,12 +42,12 @@ var _ = ginkgo.Describe("Scale TiKV", label.TiKV, label.MultipleAZ, label.P0, la
 		f.WaitForPDGroupReady(ctx, pdg)
 		f.WaitForTiKVGroupReady(ctx, kvg)
 
-		f.MustEvenlySpreadTiKV(ctx, kvg)
+		framework.MustEvenlySpread[scope.TiKVGroup](ctx, f, kvg)
 
 		action.MustScale[scope.TiKVGroup](ctx, f, kvg, 4)
 
 		f.WaitForTiKVGroupReady(ctx, kvg)
-		f.MustEvenlySpreadTiKV(ctx, kvg)
+		framework.MustEvenlySpread[scope.TiKVGroup](ctx, f, kvg)
 	})
 
 	ginkgo.It("support scale in from 4 to 3", func(ctx context.Context) {
@@ -61,12 +60,12 @@ var _ = ginkgo.Describe("Scale TiKV", label.TiKV, label.MultipleAZ, label.P0, la
 		f.WaitForPDGroupReady(ctx, pdg)
 		f.WaitForTiKVGroupReady(ctx, kvg)
 
-		f.MustEvenlySpreadTiKV(ctx, kvg)
+		framework.MustEvenlySpread[scope.TiKVGroup](ctx, f, kvg)
 
 		action.MustScale[scope.TiKVGroup](ctx, f, kvg, 3)
 
 		f.WaitForTiKVGroupReady(ctx, kvg)
-		f.MustEvenlySpreadTiKV(ctx, kvg)
+		framework.MustEvenlySpread[scope.TiKVGroup](ctx, f, kvg)
 	})
 
 	ginkgo.It("support scale in from 4 to 3 with a pending pod", func(ctx context.Context) {
@@ -80,17 +79,16 @@ var _ = ginkgo.Describe("Scale TiKV", label.TiKV, label.MultipleAZ, label.P0, la
 		f.WaitForPDGroupReady(ctx, pdg)
 		f.WaitForTiKVGroupReady(ctx, kvg)
 
-		f.MustEvenlySpreadTiKV(ctx, kvg)
+		framework.MustEvenlySpread[scope.TiKVGroup](ctx, f, kvg)
 
 		action.MustScale[scope.TiKVGroup](ctx, f, kvg, 4)
 
-		// just wait a few seconds
-		time.Sleep(time.Second * 15)
+		framework.WaitForInstanceListSynced[scope.TiKVGroup](ctx, f, kvg)
 
 		action.MustScale[scope.TiKVGroup](ctx, f, kvg, 3)
 
 		f.WaitForTiKVGroupReady(ctx, kvg)
-		f.MustEvenlySpreadTiKV(ctx, kvg)
+		framework.MustEvenlySpread[scope.TiKVGroup](ctx, f, kvg)
 	})
 
 	ginkgo.It("support scale from 3 to 6 and rolling update at same time", ginkgo.Serial, label.Update, func(ctx context.Context) {
@@ -102,7 +100,7 @@ var _ = ginkgo.Describe("Scale TiKV", label.TiKV, label.MultipleAZ, label.P0, la
 
 		f.WaitForPDGroupReady(ctx, pdg)
 		f.WaitForTiKVGroupReady(ctx, kvg)
-		f.MustEvenlySpreadTiKV(ctx, kvg)
+		framework.MustEvenlySpread[scope.TiKVGroup](ctx, f, kvg)
 
 		nctx, cancel := context.WithCancel(ctx)
 		done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiKVGroup](nctx, f, kvg, 6)
@@ -117,6 +115,24 @@ var _ = ginkgo.Describe("Scale TiKV", label.TiKV, label.MultipleAZ, label.P0, la
 		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiKVGroup(kvg), *changeTime, waiter.LongTaskTimeout))
 		f.WaitForTiKVGroupReady(ctx, kvg)
 
-		f.MustEvenlySpreadTiKV(ctx, kvg)
+		framework.MustEvenlySpread[scope.TiKVGroup](ctx, f, kvg)
+	})
+
+	ginkgo.It("support scale in from 6 to 4 with a failure AZ", func(ctx context.Context) {
+		pdg := f.MustCreatePD(ctx)
+		kvg := f.MustCreateTiKV(ctx,
+			data.WithReplicas[scope.TiKVGroup](6),
+			data.WithTiKVEvenlySpreadPolicyOneFailureAZ(),
+		)
+
+		f.WaitForPDGroupReady(ctx, pdg)
+		framework.WaitForInstanceListSynced[scope.TiKVGroup](ctx, f, kvg)
+		framework.MustEvenlySpread[scope.TiKVGroup](ctx, f, kvg)
+
+		action.MustScale[scope.TiKVGroup](ctx, f, kvg, 4)
+
+		framework.WaitForInstanceListSynced[scope.TiKVGroup](ctx, f, kvg)
+
+		framework.MustEvenlySpread[scope.TiKVGroup](ctx, f, kvg)
 	})
 })

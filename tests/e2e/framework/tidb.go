@@ -23,6 +23,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/apicall"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
@@ -45,19 +47,23 @@ func (f *Framework) WaitForTiDBGroupReady(ctx context.Context, dbg *v1alpha1.TiD
 	f.Must(waiter.WaitForPodsReady(ctx, f.Client, runtime.FromTiDBGroup(dbg), waiter.LongTaskTimeout))
 }
 
-func (f *Framework) MustEvenlySpreadTiDB(ctx context.Context, dbg *v1alpha1.TiDBGroup) {
-	list := v1alpha1.TiDBList{}
-	f.Must(f.Client.List(ctx, &list, client.InNamespace(dbg.GetNamespace()), client.MatchingLabels{
-		v1alpha1.LabelKeyCluster:   dbg.Spec.Cluster.Name,
-		v1alpha1.LabelKeyGroup:     dbg.GetName(),
-		v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiDB,
-	}))
+func MustEvenlySpread[
+	GS scope.GroupInstance[GF, GT, IS],
+	IS scope.InstanceList[IF, IT, IL],
+	GF client.Object,
+	GT runtime.Group,
+	IF client.Object,
+	IT runtime.Instance,
+	IL client.ObjectList,
+](ctx context.Context, f *Framework, g GF) {
+	ins, err := apicall.ListInstances[GS](ctx, f.Client, g)
+	f.Must(err)
 
 	encoder := topology.NewEncoder()
 	topo := map[string]int{}
 
 	var st []v1alpha1.ScheduleTopology
-	for _, p := range dbg.Spec.SchedulePolicies {
+	for _, p := range coreutil.SchedulePolicies[GS](g) {
 		switch p.Type {
 		case v1alpha1.SchedulePolicyTypeEvenlySpread:
 			st = p.EvenlySpread.Topologies
@@ -72,20 +78,18 @@ func (f *Framework) MustEvenlySpreadTiDB(ctx context.Context, dbg *v1alpha1.TiDB
 	}
 
 	detail := strings.Builder{}
-	for i := range list.Items {
-		item := &list.Items[i]
-
-		key := encoder.Encode(item.Spec.Topology)
+	for _, in := range ins {
+		key := encoder.Encode(coreutil.Topology[IS](in))
 		val, ok := topo[key]
 
-		f.True(ok, "unknown topology %s: %v", item.Name, item.Spec.Topology)
+		f.True(ok, "unknown topology %s: %v", in.GetName(), coreutil.Topology[IS](in))
 
 		val += 1
 		topo[key] = val
 
-		detail.WriteString(item.Name)
+		detail.WriteString(in.GetName())
 		detail.WriteString(":\n")
-		for k, v := range item.Spec.Topology {
+		for k, v := range coreutil.Topology[IS](in) {
 			detail.WriteString("    ")
 			detail.WriteString(k)
 			detail.WriteString(":")

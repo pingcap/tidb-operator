@@ -501,3 +501,7 @@ func (g *TiProxyGroup) MinReadySeconds() int64 {
 	}
 	return *g.Spec.MinReadySeconds
 }
+
+func (g *TiProxyGroup) SchedulePolicies() []v1alpha1.SchedulePolicy {
+	return g.Spec.SchedulePolicies
+}
