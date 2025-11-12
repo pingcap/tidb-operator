@@ -29,6 +29,7 @@ import (
 const (
 	TSOServiceName        = "tso"
 	SchedulingServiceName = "scheduling"
+	RouterServiceName     = "router"
 )
 
 // Namespace is a newtype of a string
@@ -109,7 +110,7 @@ func (c *clientConfig) applyOptions(opts ...Option) {
 }
 
 // completeForPDClient populate and correct config for pd client
-// serviceName need to be `tso` or `scheduling`, use `pd` as default
+// serviceName need to be `tso`, `scheduling` or "router", use `pd` as default
 func (c *clientConfig) completeForPDClient(namespace Namespace, tcName, serviceName string) {
 	scheme := "http"
 	if c.tlsEnable {
@@ -259,7 +260,7 @@ func (pdc *defaultPDControl) GetPDClient(namespace Namespace, tcName string, tls
 }
 
 func checkServiceName(name string) bool {
-	return name == TSOServiceName || name == SchedulingServiceName
+	return name == TSOServiceName || name == SchedulingServiceName || name == RouterServiceName
 }
 
 func (pdc *defaultPDControl) GetPDMSClient(namespace Namespace, tcName, serviceName string, tlsEnabled bool, opts ...Option) PDMSClient {

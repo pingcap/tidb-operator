@@ -33240,6 +33240,7 @@ spec:
                       enum:
                       - tso
                       - scheduling
+                      - router
                       type: string
                     nodeSelector:
                       additionalProperties:

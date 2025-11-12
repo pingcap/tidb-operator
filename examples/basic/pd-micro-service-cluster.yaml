@@ -35,6 +35,10 @@ spec:
       baseImage: hub.pingcap.net/devbuild/pd
       version: v8.3.0-5427
       replicas: 2
+    - name: "router"
+      baseImage: hub.pingcap.net/devbuild/pd
+      version: v8.3.0-5427
+      replicas: 2
   tikv:
     baseImage: pingcap/tikv
     version: v8.5.3

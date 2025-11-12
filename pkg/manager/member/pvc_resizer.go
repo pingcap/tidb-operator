@@ -204,7 +204,7 @@ func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, status v1alpha1
 		}
 		storageVolumes = tc.Spec.PD.StorageVolumes
 	// PD microservice
-	case v1alpha1.PDMSTSOMemberType, v1alpha1.PDMSSchedulingMemberType:
+	case v1alpha1.PDMSTSOMemberType, v1alpha1.PDMSSchedulingMemberType, v1alpha1.PDMSRouterMerberType:
 		pdmsRequirement := util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.PDMSLabel(comp.String())})
 		ctx.selector = selector.Add(*pdmsRequirement)
 		for _, component := range tc.Spec.PDMS {

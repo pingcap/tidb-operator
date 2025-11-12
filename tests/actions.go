@@ -683,7 +683,7 @@ func (oa *OperatorActions) memberCheckContextForTC(tc *v1alpha1.TidbCluster, com
 		expectedImage = tc.PDImage()
 		services = []string{controller.PDMemberName(name), controller.PDPeerMemberName(name)}
 		checkComponent = oa.isPDMembersReady
-	case v1alpha1.PDMSTSOMemberType, v1alpha1.PDMSSchedulingMemberType:
+	case v1alpha1.PDMSTSOMemberType, v1alpha1.PDMSSchedulingMemberType, v1alpha1.PDMSRouterMerberType:
 		skip = true
 		if tc.Spec.PD != nil && tc.Spec.PD.Mode == "ms" {
 			curService := component.String()
@@ -1366,6 +1366,7 @@ func (oa *OperatorActions) WaitForTidbClusterReady(tc *v1alpha1.TidbCluster, tim
 		components := []v1alpha1.MemberType{
 			v1alpha1.PDMSTSOMemberType,
 			v1alpha1.PDMSSchedulingMemberType,
+			v1alpha1.PDMSRouterMerberType,
 			v1alpha1.PDMemberType,
 			v1alpha1.TiKVMemberType,
 			v1alpha1.TiDBMemberType,

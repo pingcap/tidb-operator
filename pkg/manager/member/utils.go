@@ -210,6 +210,8 @@ func getStsAnnotations(tcAnns map[string]string, component string) map[string]st
 		key = label.AnnTSODeleteSlots
 	case label.PDMSSchedulingLabelVal:
 		key = label.AnnSchedulingDeleteSlots
+	case label.PDMSRouterLabelVal:
+		key = label.AnnRouterDeleteSlots
 	case label.TiDBLabelVal:
 		key = label.AnnTiDBDeleteSlots
 	case label.TiKVLabelVal:

@@ -500,6 +500,8 @@ func getComponentLabelValue(c MemberType) string {
 		return label.PDMSTSOLabelVal
 	case PDMSSchedulingMemberType:
 		return label.PDMSSchedulingLabelVal
+	case PDMSRouterMerberType:
+		return label.PDMSRouterLabelVal
 	case TiDBMemberType:
 		return label.TiDBLabelVal
 	case TiKVMemberType:

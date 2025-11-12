@@ -74,6 +74,8 @@ const (
 	PDMSTSOMemberType MemberType = "tso"
 	// PDMSSchedulingMemberType is pd microservice scheduling member type
 	PDMSSchedulingMemberType MemberType = "scheduling"
+	// PDMSRouterMerberType is pd microservice router member type
+	PDMSRouterMerberType MemberType = "router"
 	// TiDBMemberType is tidb member type
 	TiDBMemberType MemberType = "tidb"
 	// TiKVMemberType is tikv member type
@@ -113,13 +115,15 @@ func PDMSMemberType(name string) MemberType {
 		return PDMSTSOMemberType
 	case "scheduling":
 		return PDMSSchedulingMemberType
+	case "router":
+		return PDMSRouterMerberType
 	default:
 		panic(fmt.Sprintf("unknown pd ms name %s", name))
 	}
 }
 
 func IsPDMSMemberType(name MemberType) bool {
-	return name == PDMSTSOMemberType || name == PDMSSchedulingMemberType
+	return name == PDMSTSOMemberType || name == PDMSSchedulingMemberType || name == PDMSRouterMerberType
 }
 
 // MemberPhase is the current state of member
@@ -610,7 +614,7 @@ type PDMSSpec struct {
 	corev1.ResourceRequirements `json:",inline"`
 
 	// Name of the PD microservice
-	// +kubebuilder:validation:Enum:="tso";"scheduling"
+	// +kubebuilder:validation:Enum:="tso";"scheduling";"router"
 	Name string `json:"name"`
 
 	// Specify a Service Account for pd ms

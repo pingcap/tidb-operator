@@ -55,6 +55,7 @@ func NewSelectorFactory() (*selectorFactory, error) {
 		v1alpha1.PDMemberType,
 		v1alpha1.PDMSTSOMemberType,
 		v1alpha1.PDMSSchedulingMemberType,
+		v1alpha1.PDMSRouterMerberType,
 		v1alpha1.TiProxyMemberType,
 		v1alpha1.TiDBMemberType,
 		v1alpha1.TiKVMemberType,

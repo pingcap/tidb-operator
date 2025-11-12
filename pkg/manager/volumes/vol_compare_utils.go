@@ -236,7 +236,7 @@ func (u *volCompareUtils) GetDesiredVolumes(tc *v1alpha1.TidbCluster, mt v1alpha
 		desiredVolumes = append(desiredVolumes, d)
 
 		storageVolumes = tc.Spec.PD.StorageVolumes
-	case v1alpha1.PDMSSchedulingMemberType, v1alpha1.PDMSTSOMemberType:
+	case v1alpha1.PDMSSchedulingMemberType, v1alpha1.PDMSTSOMemberType, v1alpha1.PDMSRouterMerberType:
 		for _, component := range tc.Spec.PDMS {
 			if strings.Contains(mt.String(), component.Name) {
 				defaultScName = component.StorageClassName
