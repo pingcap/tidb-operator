@@ -52,6 +52,13 @@ func TestNewSelector(t *testing.T) {
 			expected: "app.kubernetes.io/component=scheduling,app.kubernetes.io/instance=aaa,app.kubernetes.io/managed-by=tidb-operator,app.kubernetes.io/name=tidb-cluster",
 		},
 		{
+			desc:     "selector for router",
+			instance: "aaa",
+			mt:       v1alpha1.PDMSRouterMerberType,
+
+			expected: "app.kubernetes.io/component=router,app.kubernetes.io/instance=aaa,app.kubernetes.io/managed-by=tidb-operator,app.kubernetes.io/name=tidb-cluster",
+		},
+		{
 			desc:     "selector for tidb",
 			instance: "aaa",
 			mt:       v1alpha1.TiDBMemberType,

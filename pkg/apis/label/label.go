@@ -127,6 +127,8 @@ const (
 	AnnTSODeleteSlots = "tso.tidb.pingcap.com/delete-slots"
 	// AnnSchedulingDeleteSlots is annotation key of pd ms scheduling delete slots.
 	AnnSchedulingDeleteSlots = "scheduling.tidb.pingcap.com/delete-slots"
+	// AnnRouterDeleteSlots is annotation key of pd ms router delete slots.
+	AnnRouterDeleteSlots = "router.tidb.pingcap.com/delete-slots"
 	// AnnTiDBDeleteSlots is annotation key of tidb delete slots.
 	AnnTiDBDeleteSlots = "tidb.tidb.pingcap.com/delete-slots"
 	// AnnTiKVDeleteSlots is annotation key of tikv delete slots.
@@ -169,6 +171,8 @@ const (
 	PDMSTSOLabelVal string = "tso"
 	// PDMSSchedulingLabelVal is pd microservice scheduling member type
 	PDMSSchedulingLabelVal string = "scheduling"
+	// PDMSRouterLabelVal is pd microservice router member type
+	PDMSRouterLabelVal string = "router"
 	// TiDBLabelVal is TiDB label value
 	TiDBLabelVal string = "tidb"
 	// TiKVLabelVal is TiKV label value
@@ -232,6 +236,8 @@ func PDMSLabel(name string) string {
 		return PDMSTSOLabelVal
 	case "scheduling":
 		return PDMSSchedulingLabelVal
+	case "router":
+		return PDMSRouterLabelVal
 	default:
 		panic(fmt.Sprintf("unknown pd ms name %s", name))
 	}
@@ -435,6 +441,8 @@ func (l Label) PDMS(name string) Label {
 		return l.Component(PDMSTSOLabelVal)
 	case "scheduling":
 		return l.Component(PDMSSchedulingLabelVal)
+	case "router":
+		return l.Component(PDMSRouterLabelVal)
 	default:
 		panic(fmt.Sprintf("unknown pd ms name %s", name))
 	}

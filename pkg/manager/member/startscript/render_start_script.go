@@ -41,6 +41,7 @@ var (
 	pdMS = map[string]RenderMap{
 		"tso":        pdmsTSO,
 		"scheduling": pdmsScheduling,
+		"router":     pdmsRouter,
 	}
 	pdmsTSO = RenderMap{
 		v1alpha1.StartScriptV1: v2.RenderPDTSOStartScript,
@@ -49,6 +50,10 @@ var (
 	pdmsScheduling = RenderMap{
 		v1alpha1.StartScriptV1: v2.RenderPDSchedulingStartScript,
 		v1alpha1.StartScriptV2: v2.RenderPDSchedulingStartScript,
+	}
+	pdmsRouter = RenderMap{
+		v1alpha1.StartScriptV1: v2.RenderPDRouterStartScript,
+		v1alpha1.StartScriptV2: v2.RenderPDRouterStartScript,
 	}
 	tidb = RenderMap{
 		v1alpha1.StartScriptV1: v1.RenderTiDBStartScript,

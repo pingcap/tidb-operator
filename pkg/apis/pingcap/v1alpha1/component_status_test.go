@@ -57,6 +57,9 @@ func TestComponentStatus(t *testing.T) {
 			case PDMSSchedulingMemberType:
 				_, ok := status.(*PDMSStatus)
 				g.Expect(ok).To(BeTrue())
+			case PDMSRouterMerberType:
+				_, ok := status.(*PDMSStatus)
+				g.Expect(ok).To(BeTrue())
 			case TiDBMemberType:
 				_, ok := status.(*TiDBStatus)
 				g.Expect(ok).To(BeTrue())

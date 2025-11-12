@@ -122,6 +122,14 @@ func GetPodOrdinals(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) (s
 				break
 			}
 		}
+	} else if memberType == v1alpha1.PDMSRouterMerberType {
+		for _, component := range tc.Spec.PDMS {
+			if strings.Contains(memberType.String(), component.Name) {
+				replicas = component.Replicas
+				ann = label.AnnRouterDeleteSlots
+				break
+			}
+		}
 	} else if memberType == v1alpha1.TiKVMemberType {
 		ann = label.AnnTiKVDeleteSlots
 		replicas = tc.Spec.TiKV.Replicas

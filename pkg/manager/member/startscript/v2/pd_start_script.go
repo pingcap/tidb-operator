@@ -126,6 +126,10 @@ func RenderPDSchedulingStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	return renderPDMSStartScript(tc, "scheduling")
 }
 
+func RenderPDRouterStartScript(tc *v1alpha1.TidbCluster) (string, error) {
+	return renderPDMSStartScript(tc, "router")
+}
+
 // RenderPDMCSStartScript renders TSO start script from TidbCluster
 func renderPDMSStartScript(tc *v1alpha1.TidbCluster, name string) (string, error) {
 	m := &PDMSStartScriptModel{}
