@@ -15,7 +15,7 @@
 package pdapi
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -95,22 +95,9 @@ type SchedulerInfo struct {
 	StoreID uint64 `json:"store_id"`
 }
 
-// TiKVNotBootstrappedError represents that TiKV cluster is not bootstrapped yet.
-type TiKVNotBootstrappedError struct {
-	s string
-}
-
-func (e *TiKVNotBootstrappedError) Error() string {
-	return e.s
-}
-
-// TiKVNotBootstrappedErrorf returns a TiKVNotBootstrappedError.
-func TiKVNotBootstrappedErrorf(format string, a ...any) error {
-	return &TiKVNotBootstrappedError{fmt.Sprintf(format, a...)}
-}
+var ErrTiKVNotBootstrapped = errors.New("TiKV is not bootstrapped")
 
 // IsTiKVNotBootstrappedError returns whether err is a TiKVNotBootstrappedError.
 func IsTiKVNotBootstrappedError(err error) bool {
-	_, ok := err.(*TiKVNotBootstrappedError)
-	return ok
+	return errors.Is(err, ErrTiKVNotBootstrapped)
 }
