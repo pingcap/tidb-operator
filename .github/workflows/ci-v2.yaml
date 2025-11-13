@@ -62,6 +62,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: setup go
+      id: setup-go
       uses: actions/setup-go@v6
       with:
         go-version-file: ./go.work
@@ -70,7 +71,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ./_output/bin/golangci-lint
-        key: ${{ runner.os }}-golangci-lint
+        key: ${{ runner.os }}-golangci-lint-${{ steps.setup-go.outputs.go-version }}
     - name: lint
       run: |
         make lint
