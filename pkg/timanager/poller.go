@@ -25,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 
-	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
 )
 
 // Poller polls from tidb and sends watch event to channel

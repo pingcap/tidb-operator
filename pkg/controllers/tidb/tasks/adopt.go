@@ -17,8 +17,8 @@ package tasks
 import (
 	"context"
 
-	"github.com/pingcap/tidb-operator/pkg/adoption"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/v2/pkg/adoption"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 func TaskRegisterForAdoption(state *ReconcileContext, am adoption.Manager) task.Task {

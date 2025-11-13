@@ -23,11 +23,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilerr "k8s.io/apimachinery/pkg/util/errors"
 
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
-	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 func TaskFinalizerAdd[

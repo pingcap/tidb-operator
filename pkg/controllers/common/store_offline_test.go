@@ -26,12 +26,12 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
-	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
-	"github.com/pingcap/tidb-operator/pkg/utils/fake"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 func newFakeStore(offline bool, cond *metav1.Condition) *v1alpha1.TiKV {

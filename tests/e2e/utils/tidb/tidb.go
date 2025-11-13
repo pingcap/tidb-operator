@@ -30,7 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/tests/e2e/utils/k8s"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/k8s"
 )
 
 var dummyCancel = func() {}

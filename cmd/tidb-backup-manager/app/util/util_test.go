@@ -31,7 +31,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	appconstant "github.com/pingcap/tidb-operator/cmd/tidb-backup-manager/app/constants"
+	appconstant "github.com/pingcap/tidb-operator/v2/cmd/tidb-backup-manager/app/constants"
 )
 
 func TestConstructBRGlobalOptionsForBackup(t *testing.T) {

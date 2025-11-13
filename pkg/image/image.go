@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/distribution/reference"
+	"k8s.io/client-go/pkg/version"
 )
 
 const (
@@ -37,10 +38,10 @@ const (
 	// ReplicationWorker also use tikv image
 	ReplicationWorker Untagged = "pingcap/tikv"
 
-	// TODO: use versioned image
-	PrestopChecker Tagged = "pingcap/tidb-operator-prestop-checker:latest"
-	Helper         Tagged = "busybox:1.37.0"
+	Helper Tagged = "busybox:1.37.0"
 )
+
+var PrestopChecker = Tagged("pingcap/tidb-operator-prestop-checker:" + version.Get().GitVersion)
 
 // Tagged is image with image tag
 type Tagged string
@@ -57,6 +58,17 @@ func (t Tagged) Image(img *string) string {
 	}
 
 	return image
+}
+
+// String implements flag.Value
+func (t *Tagged) String() string {
+	return string(*t)
+}
+
+// Set implements flag.Value
+func (t *Tagged) Set(s string) error {
+	*t = Tagged(s)
+	return nil
 }
 
 // Image returns the image with the given tag and version

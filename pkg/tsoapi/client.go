@@ -23,7 +23,7 @@ import (
 	"net/http"
 	"time"
 
-	httputil "github.com/pingcap/tidb-operator/pkg/utils/http"
+	httputil "github.com/pingcap/tidb-operator/v2/pkg/utils/http"
 )
 
 // Primary is the type for transfer primary

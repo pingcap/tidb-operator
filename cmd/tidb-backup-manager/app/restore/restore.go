@@ -35,10 +35,10 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	backupUtil "github.com/pingcap/tidb-operator/cmd/tidb-backup-manager/app/util"
-	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/constants"
-	restoreMgr "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/restore"
-	pkgutil "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
+	backupUtil "github.com/pingcap/tidb-operator/v2/cmd/tidb-backup-manager/app/util"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/constants"
+	restoreMgr "github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/restore"
+	pkgutil "github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/util"
 )
 
 type Options struct {

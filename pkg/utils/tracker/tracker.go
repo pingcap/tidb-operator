@@ -22,8 +22,8 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
-	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
-	"github.com/pingcap/tidb-operator/pkg/utils/random"
+	maputil "github.com/pingcap/tidb-operator/v2/pkg/utils/map"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/random"
 )
 
 // Factory creates and manages Tracker and AllocateFactory instances for different kinds of resources.

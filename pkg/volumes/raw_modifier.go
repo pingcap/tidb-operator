@@ -23,11 +23,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 
-	"github.com/pingcap/tidb-operator/pkg/client"
-	timeutils "github.com/pingcap/tidb-operator/pkg/utils/time"
-	"github.com/pingcap/tidb-operator/pkg/volumes/cloud"
-	"github.com/pingcap/tidb-operator/pkg/volumes/cloud/aws"
-	"github.com/pingcap/tidb-operator/pkg/volumes/cloud/azure"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	timeutils "github.com/pingcap/tidb-operator/v2/pkg/utils/time"
+	"github.com/pingcap/tidb-operator/v2/pkg/volumes/cloud"
+	"github.com/pingcap/tidb-operator/v2/pkg/volumes/cloud/aws"
+	"github.com/pingcap/tidb-operator/v2/pkg/volumes/cloud/azure"
 )
 
 var _ Modifier = &rawModifier{}

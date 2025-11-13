@@ -15,7 +15,7 @@
 package tasks
 
 import (
-	restoreMgr "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/restore"
+	restoreMgr "github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/restore"
 )
 
 type Config struct {

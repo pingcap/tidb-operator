@@ -30,10 +30,10 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/tests/e2e/framework"
-	"github.com/pingcap/tidb-operator/tests/e2e/label"
-	"github.com/pingcap/tidb-operator/tests/e2e/utils/k8s"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/label"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/k8s"
 )
 
 const (

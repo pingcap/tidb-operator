@@ -17,7 +17,7 @@ package framework
 import (
 	"context"
 
-	"github.com/pingcap/tidb-operator/tests/e2e/utils/s3"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/s3"
 )
 
 func (f *Framework) MustCreateS3(ctx context.Context) {

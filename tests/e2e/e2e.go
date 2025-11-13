@@ -29,7 +29,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/tests/e2e/utils/k8s"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/k8s"
 )
 
 const (

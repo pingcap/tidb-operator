@@ -19,9 +19,9 @@ import (
 
 	"github.com/onsi/ginkgo/v2"
 
-	"github.com/pingcap/tidb-operator/tests/e2e/framework"
-	"github.com/pingcap/tidb-operator/tests/e2e/label"
-	"github.com/pingcap/tidb-operator/tests/e2e/utils/yaml"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/label"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/yaml"
 )
 
 var _ = ginkgo.Describe("Example", label.KindExample, label.P0, func() {

@@ -22,9 +22,9 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 func TaskStoreLabels(state *ReconcileContext, c client.Client) task.Task {

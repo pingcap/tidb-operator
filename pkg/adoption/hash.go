@@ -17,8 +17,8 @@ package adoption
 import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/reloadable"
-	"github.com/pingcap/tidb-operator/pkg/utils/hasher"
+	"github.com/pingcap/tidb-operator/v2/pkg/reloadable"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/hasher"
 )
 
 type HashableTiDB struct {

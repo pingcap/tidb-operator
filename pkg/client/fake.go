@@ -41,7 +41,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/v2/pkg/scheme"
 )
 
 type fakeParser struct{}

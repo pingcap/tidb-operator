@@ -39,8 +39,8 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	"github.com/pingcap/tidb-operator/cmd/tidb-backup-manager/app/constants"
-	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
+	"github.com/pingcap/tidb-operator/v2/cmd/tidb-backup-manager/app/constants"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/util"
 )
 
 var (

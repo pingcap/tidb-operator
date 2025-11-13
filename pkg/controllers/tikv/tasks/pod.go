@@ -28,17 +28,17 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/features"
-	"github.com/pingcap/tidb-operator/pkg/image"
-	"github.com/pingcap/tidb-operator/pkg/overlay"
-	"github.com/pingcap/tidb-operator/pkg/reloadable"
-	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
-	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
-	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/features"
+	"github.com/pingcap/tidb-operator/v2/pkg/image"
+	"github.com/pingcap/tidb-operator/v2/pkg/overlay"
+	"github.com/pingcap/tidb-operator/v2/pkg/reloadable"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
+	maputil "github.com/pingcap/tidb-operator/v2/pkg/utils/map"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 const (
