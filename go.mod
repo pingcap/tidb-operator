@@ -1,6 +1,6 @@
 module github.com/pingcap/tidb-operator
 
-go 1.23.0
+go 1.24
 
 replace github.com/pingcap/tidb-operator/api/v2 => ./api
 

@@ -1,6 +1,6 @@
 module github.com/pingcap/tidb-operator/tests/validation
 
-go 1.23.12
+go 1.23.0
 
 require (
 	github.com/stretchr/testify v1.10.0

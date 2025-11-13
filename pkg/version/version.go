@@ -18,7 +18,27 @@ import (
 	"encoding/json"
 	"fmt"
 	"runtime"
+	"runtime/debug"
 )
+
+func init() {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return
+	}
+	gitTreeState = "clean"
+	for _, setting := range info.Settings {
+		switch setting.Key {
+		case "vcs.revision":
+			gitCommit = setting.Value
+		case "vcs.time":
+			buildDate = setting.Value
+		case "vcs.modified":
+			gitTreeState = "dirty"
+		}
+	}
+	gitVersion = info.Main.Version
+}
 
 var (
 	gitVersion   = "v0.0.0-master+$Format:%h$"
