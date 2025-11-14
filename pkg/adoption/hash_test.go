@@ -21,7 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/reloadable"
+	"github.com/pingcap/tidb-operator/v2/pkg/reloadable"
 )
 
 func TestHash(t *testing.T) {

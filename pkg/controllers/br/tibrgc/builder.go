@@ -15,9 +15,9 @@
 package tibrgc
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/controllers/br/tibrgc/tasks"
-	"github.com/pingcap/tidb-operator/pkg/controllers/common"
-	t "github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/tibrgc/tasks"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
+	t "github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 func (r *Reconciler) NewRunner(rtx *tasks.ReconcileContext, reporter t.TaskReporter) t.TaskRunner {

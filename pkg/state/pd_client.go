@@ -14,7 +14,7 @@
 
 package state
 
-import "github.com/pingcap/tidb-operator/pkg/pdapi/v1"
+import "github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
 
 type IPDClient interface {
 	GetPDClient() pdapi.PDClient

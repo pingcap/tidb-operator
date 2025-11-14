@@ -21,9 +21,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/pingcap/tidb-operator/pkg/timanager"
-	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
+	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 type ReconcileContext struct {

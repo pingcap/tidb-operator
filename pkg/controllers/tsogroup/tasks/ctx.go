@@ -17,8 +17,8 @@ package tasks
 import (
 	"context"
 
-	tsom "github.com/pingcap/tidb-operator/pkg/timanager/tso"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	tsom "github.com/pingcap/tidb-operator/v2/pkg/timanager/tso"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 type ReconcileContext struct {

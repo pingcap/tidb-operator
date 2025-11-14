@@ -30,9 +30,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	"github.com/pingcap/tidb-operator/cmd/tidb-backup-manager/app/clean"
-	"github.com/pingcap/tidb-operator/cmd/tidb-backup-manager/app/util"
-	backupMgr "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/backup"
+	"github.com/pingcap/tidb-operator/v2/cmd/tidb-backup-manager/app/clean"
+	"github.com/pingcap/tidb-operator/v2/cmd/tidb-backup-manager/app/util"
+	backupMgr "github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/backup"
 )
 
 const (

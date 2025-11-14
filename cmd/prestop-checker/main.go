@@ -29,9 +29,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
-	"github.com/pingcap/tidb-operator/pkg/ticdcapi/v1"
-	"github.com/pingcap/tidb-operator/pkg/tikvapi/v1"
+	"github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
+	"github.com/pingcap/tidb-operator/v2/pkg/ticdcapi/v1"
+	"github.com/pingcap/tidb-operator/v2/pkg/tikvapi/v1"
 )
 
 const (

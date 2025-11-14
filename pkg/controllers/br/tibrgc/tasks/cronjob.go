@@ -26,8 +26,8 @@ import (
 	"k8s.io/utils/ptr"
 
 	v1alpha1br "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/overlay"
-	t "github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/v2/pkg/overlay"
+	t "github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 func taskDeleteT2CronJob(rtx *ReconcileContext) t.Task {

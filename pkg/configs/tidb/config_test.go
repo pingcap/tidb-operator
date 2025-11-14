@@ -25,7 +25,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/v2/pkg/features"
 )
 
 func TestValidate(t *testing.T) {

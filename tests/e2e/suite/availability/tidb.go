@@ -20,13 +20,13 @@ import (
 	"github.com/onsi/ginkgo/v2"
 
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	"github.com/pingcap/tidb-operator/tests/e2e/data"
-	"github.com/pingcap/tidb-operator/tests/e2e/framework"
-	"github.com/pingcap/tidb-operator/tests/e2e/framework/action"
-	wopt "github.com/pingcap/tidb-operator/tests/e2e/framework/workload"
-	"github.com/pingcap/tidb-operator/tests/e2e/label"
-	"github.com/pingcap/tidb-operator/tests/e2e/utils/cert"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/data"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework/action"
+	wopt "github.com/pingcap/tidb-operator/v2/tests/e2e/framework/workload"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/label"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/cert"
 )
 
 var _ = ginkgo.Describe("TiDB Availability Test", label.TiDB, label.KindAvail, label.Update, func() {
