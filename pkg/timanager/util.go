@@ -22,7 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
 )
 
 type Object[T any] interface {

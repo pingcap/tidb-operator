@@ -23,7 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/configs/common"
+	"github.com/pingcap/tidb-operator/v2/pkg/configs/common"
 )
 
 func TestValidate(t *testing.T) {

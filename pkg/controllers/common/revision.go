@@ -19,11 +19,11 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
-	revisionutil "github.com/pingcap/tidb-operator/pkg/utils/k8s/revision"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
-	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/history"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
+	revisionutil "github.com/pingcap/tidb-operator/v2/pkg/utils/k8s/revision"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/v2/third_party/kubernetes/pkg/controller/history"
 )
 
 type RevisionSetter interface {

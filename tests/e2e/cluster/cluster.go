@@ -47,10 +47,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/tests/e2e/config"
-	"github.com/pingcap/tidb-operator/tests/e2e/utils/data"
-	"github.com/pingcap/tidb-operator/tests/e2e/utils/k8s"
-	utiltidb "github.com/pingcap/tidb-operator/tests/e2e/utils/tidb"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/config"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/data"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/k8s"
+	utiltidb "github.com/pingcap/tidb-operator/v2/tests/e2e/utils/tidb"
 )
 
 const (

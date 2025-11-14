@@ -26,11 +26,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/utils/ptr"
 
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/utils/fake"
-	"github.com/pingcap/tidb-operator/pkg/utils/time"
-	"github.com/pingcap/tidb-operator/pkg/volumes/cloud"
-	"github.com/pingcap/tidb-operator/pkg/volumes/cloud/aws"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/time"
+	"github.com/pingcap/tidb-operator/v2/pkg/volumes/cloud"
+	"github.com/pingcap/tidb-operator/v2/pkg/volumes/cloud/aws"
 )
 
 func withPVCStatus(size string) fake.ChangeFunc[corev1.PersistentVolumeClaim, *corev1.PersistentVolumeClaim] {

@@ -33,8 +33,8 @@ import (
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
 
-	"github.com/pingcap/tidb-operator/pkg/compatibility"
-	httputil "github.com/pingcap/tidb-operator/pkg/utils/http"
+	"github.com/pingcap/tidb-operator/v2/pkg/compatibility"
+	httputil "github.com/pingcap/tidb-operator/v2/pkg/utils/http"
 )
 
 const (

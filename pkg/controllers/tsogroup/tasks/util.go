@@ -17,8 +17,8 @@ package tasks
 import (
 	"fmt"
 
-	"github.com/pingcap/tidb-operator/pkg/runtime"
-	"github.com/pingcap/tidb-operator/pkg/updater"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
+	"github.com/pingcap/tidb-operator/v2/pkg/updater"
 )
 
 func HeadlessServiceName(groupName string) string {

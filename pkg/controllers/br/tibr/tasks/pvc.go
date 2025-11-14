@@ -23,8 +23,8 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/pingcap/tidb-operator/pkg/client"
-	t "github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	t "github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 func condPVCDeclared(rtx *ReconcileContext) t.Condition {

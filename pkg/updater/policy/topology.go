@@ -19,10 +19,10 @@ import (
 	"maps"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
-	"github.com/pingcap/tidb-operator/pkg/updater"
-	"github.com/pingcap/tidb-operator/pkg/utils/topology"
+	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
+	"github.com/pingcap/tidb-operator/v2/pkg/updater"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/topology"
 )
 
 type topologyPolicy[R runtime.Instance] struct {

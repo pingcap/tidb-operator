@@ -39,9 +39,9 @@ import (
 	"sigs.k8s.io/structured-merge-diff/v4/fieldpath"
 	"sigs.k8s.io/structured-merge-diff/v4/typed"
 
-	"github.com/pingcap/tidb-operator/pkg/scheme"
-	"github.com/pingcap/tidb-operator/pkg/utils/kubefeat"
-	forkedproto "github.com/pingcap/tidb-operator/third_party/kube-openapi/pkg/util/proto"
+	"github.com/pingcap/tidb-operator/v2/pkg/scheme"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/kubefeat"
+	forkedproto "github.com/pingcap/tidb-operator/v2/third_party/kube-openapi/pkg/util/proto"
 )
 
 const (

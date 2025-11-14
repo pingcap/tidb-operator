@@ -22,7 +22,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/smithy-go"
 
-	"github.com/pingcap/tidb-operator/pkg/volumes/cloud"
+	"github.com/pingcap/tidb-operator/v2/pkg/volumes/cloud"
 )
 
 func NewFakeEBSModifier(f GetVolumeStateFunc) cloud.VolumeModifier {

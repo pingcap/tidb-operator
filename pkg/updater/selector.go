@@ -17,7 +17,7 @@ package updater
 import (
 	"fmt"
 
-	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 )
 
 const (

@@ -19,10 +19,10 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 
-	"github.com/pingcap/tidb-operator/pkg/timanager"
-	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
-	tsom "github.com/pingcap/tidb-operator/pkg/timanager/tso"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
+	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
+	tsom "github.com/pingcap/tidb-operator/v2/pkg/timanager/tso"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 type ReconcileContext struct {

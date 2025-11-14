@@ -28,7 +28,7 @@ import (
 	"k8s.io/gengo/v2/generator"
 	"k8s.io/gengo/v2/namer"
 
-	"github.com/pingcap/tidb-operator/cmd/runtime-gen/generators"
+	"github.com/pingcap/tidb-operator/v2/cmd/runtime-gen/generators"
 )
 
 func main() {
@@ -125,7 +125,7 @@ func getTargets(_ *generator.Context, args *Args) []generator.Target {
 		"replicationworker",
 	}
 
-	runtimeTargetPkg := "github.com/pingcap/tidb-operator/pkg/runtime"
+	runtimeTargetPkg := "github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	runtimePrefix := args.outputFilePrefix + ".runtime"
 	targets = append(targets, &generator.SimpleTarget{
 		PkgName:       "runtime",

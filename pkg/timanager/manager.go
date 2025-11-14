@@ -29,9 +29,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/pingcap/tidb-operator/pkg/client"
-	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
-	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
+	maputil "github.com/pingcap/tidb-operator/v2/pkg/utils/map"
 )
 
 const (

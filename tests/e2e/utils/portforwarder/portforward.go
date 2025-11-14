@@ -28,7 +28,7 @@ import (
 	"k8s.io/client-go/transport/spdy"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
-	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/v2/pkg/scheme"
 )
 
 type PortForwarder interface {

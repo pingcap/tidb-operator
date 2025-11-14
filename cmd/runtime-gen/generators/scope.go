@@ -63,7 +63,7 @@ func (g *scopeGenerator) Imports(_ *generator.Context) (imports []string) {
 	importLines := []string{
 		`"k8s.io/apimachinery/pkg/runtime/schema"`,
 		`"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"`,
-		`"github.com/pingcap/tidb-operator/pkg/runtime"`,
+		`"github.com/pingcap/tidb-operator/v2/pkg/runtime"`,
 	}
 	importLines = append(importLines, g.imports.ImportLines()...)
 

@@ -21,7 +21,7 @@ import (
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/kvproto/pkg/pdpb"
 
-	"github.com/pingcap/tidb-operator/pkg/pdapi/pd"
+	"github.com/pingcap/tidb-operator/v2/pkg/pdapi/pd"
 )
 
 // HealthInfo define PD's healthy info.

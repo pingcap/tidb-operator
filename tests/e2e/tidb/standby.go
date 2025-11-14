@@ -22,12 +22,12 @@ import (
 	"github.com/onsi/gomega"
 
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/apicall"
-	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	"github.com/pingcap/tidb-operator/tests/e2e/data"
-	"github.com/pingcap/tidb-operator/tests/e2e/framework"
-	"github.com/pingcap/tidb-operator/tests/e2e/framework/action"
-	"github.com/pingcap/tidb-operator/tests/e2e/label"
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/data"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework/action"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/label"
 )
 
 var _ = ginkgo.Describe("StandBy", label.TiDB, label.KindNextGen, func() {
