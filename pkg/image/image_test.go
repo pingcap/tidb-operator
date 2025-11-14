@@ -166,7 +166,7 @@ func TestTagged(t *testing.T) {
 		{
 			desc:     "prestop checker default",
 			m:        PrestopChecker,
-			expected: "pingcap/tidb-operator-prestop-checker:v0.0.0-master+$Format:%H$",
+			expected: "pingcap/tidb-operator-prestop-checker:latest",
 		},
 		{
 			desc:     "override prestop checker",
