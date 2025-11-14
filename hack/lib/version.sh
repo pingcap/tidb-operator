@@ -19,6 +19,9 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+# source only once
+[[ $(type -t version::loaded) == function ]] && return 0
+
 # -----------------------------------------------------------------------------
 # Version management helpers.  These functions help to set the
 # following variables:
@@ -99,4 +102,9 @@ function version::ldflags() {
 
   # The -ldflags parameter takes a single string, so join the output.
   echo "${ldflags[*]-}"
+}
+
+# marker function
+function version::loaded() {
+  return 0
 }
