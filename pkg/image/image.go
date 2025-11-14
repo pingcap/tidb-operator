@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/distribution/reference"
-	"k8s.io/client-go/pkg/version"
 )
 
 const (
@@ -41,7 +40,7 @@ const (
 	Helper Tagged = "busybox:1.37.0"
 )
 
-var PrestopChecker = Tagged("pingcap/tidb-operator-prestop-checker:" + version.Get().GitVersion)
+var PrestopChecker = Tagged("pingcap/tidb-operator-prestop-checker:latest")
 
 // Tagged is image with image tag
 type Tagged string
