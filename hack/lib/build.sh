@@ -34,7 +34,7 @@ function build::go() {
     GOOS=${os} \
     GOARCH=${arch} \
     go build -v \
-        -ldflags "$(version::ldflags)" \
+        -ldflags "${V_LDFLAGS}" \
         -o ${OUTPUT_DIR}/${os}/${arch}/bin/${target} \
         ${ROOT}/cmd/${target}/.
 }
