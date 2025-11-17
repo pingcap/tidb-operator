@@ -215,14 +215,12 @@ func registerTiProxyMySQLCerts(ctx context.Context, f *factory, ns, cluster stri
 		if err := f.RegisterSecret(s); err != nil {
 			return err
 		}
-		if ca != certKeyPair {
-			as, err := newCA(typeTiProxyMySQLClient, ns, ca, cluster)
-			if err != nil {
-				return err
-			}
-			if err := f.RegisterSecret(as); err != nil {
-				return err
-			}
+		as, err := newCA(typeTiProxyMySQLClient, ns, ca, cluster)
+		if err != nil {
+			return err
+		}
+		if err := f.RegisterSecret(as); err != nil {
+			return err
 		}
 		clientCA, clientCertKeyPair := MySQLClient(ca, certKeyPair)
 		cs, err := newClientCertKeyPair(typeTiProxyMySQLClient, ns, clientCertKeyPair, cluster)
@@ -264,7 +262,6 @@ func registerTiDBMySQLCerts(ctx context.Context, f *factory, ns, cluster string)
 		if err := f.RegisterSecret(s); err != nil {
 			return err
 		}
-		// if ca != certKeyPair {
 		as, err := newCA(typeTiDBMySQLClient, ns, ca, cluster)
 		if err != nil {
 			return err
@@ -272,7 +269,6 @@ func registerTiDBMySQLCerts(ctx context.Context, f *factory, ns, cluster string)
 		if err := f.RegisterSecret(as); err != nil {
 			return err
 		}
-		//}
 		clientCA, clientCertKeyPair := MySQLClient(ca, certKeyPair)
 		cs, err := newClientCertKeyPair(typeTiDBMySQLClient, ns, clientCertKeyPair, cluster)
 		if err != nil {

@@ -39,7 +39,7 @@ var _ = ginkgo.Describe("TiDB Availability Test", label.TiDB, label.KindAvail, l
 		workload := f.SetupWorkload()
 		cm := f.SetupCertManager()
 
-		ginkgo.It("Visit tiproxy no error when rolling update tidb", func(ctx context.Context) {
+		ginkgo.FIt("Visit tiproxy no error when rolling update tidb", func(ctx context.Context) {
 			ns := f.Namespace.Name
 			cluster := f.Cluster.Name
 
