@@ -104,7 +104,8 @@ spec:
     secret:
       key: "ca.crt"
     namespaceSelector:
-      kubernetes.io/metadata.name: {{ .Namespace }}
+      matchLabels:
+        kubernetes.io/metadata.name: {{ .Namespace }}
 `
 
 type caData struct {
@@ -263,15 +264,15 @@ func registerTiDBMySQLCerts(ctx context.Context, f *factory, ns, cluster string)
 		if err := f.RegisterSecret(s); err != nil {
 			return err
 		}
-		if ca != certKeyPair {
-			as, err := newCA(typeTiDBMySQLClient, ns, ca, cluster)
-			if err != nil {
-				return err
-			}
-			if err := f.RegisterSecret(as); err != nil {
-				return err
-			}
+		// if ca != certKeyPair {
+		as, err := newCA(typeTiDBMySQLClient, ns, ca, cluster)
+		if err != nil {
+			return err
 		}
+		if err := f.RegisterSecret(as); err != nil {
+			return err
+		}
+		//}
 		clientCA, clientCertKeyPair := MySQLClient(ca, certKeyPair)
 		cs, err := newClientCertKeyPair(typeTiDBMySQLClient, ns, clientCertKeyPair, cluster)
 		if err != nil {
@@ -522,7 +523,7 @@ func newCertKeyPair(typ, ns, certKeyPair, cluster, groupName, component string, 
 	}
 
 	return &Secret{
-		Name: certKeyPair,
+		Name: "certs:" + certKeyPair,
 		Keys: []string{
 			certKeyPair,
 			"internalCertKeyPair",
@@ -547,7 +548,7 @@ func newCA(typ, ns, ca, cluster string) (*Secret, error) {
 	}
 
 	return &Secret{
-		Name: ca,
+		Name: "ca:" + ca,
 		Keys: []string{
 			ca,
 			"ca",
@@ -571,7 +572,7 @@ func newClientCertKeyPair(typ, ns, certKeyPair, cluster string) (*Secret, error)
 	}
 
 	return &Secret{
-		Name: certKeyPair,
+		Name: "certs:" + certKeyPair,
 		Keys: []string{
 			certKeyPair,
 			"internalClientCertKeyPair",
