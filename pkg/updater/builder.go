@@ -15,6 +15,10 @@
 package updater
 
 import (
+	"time"
+
+	"k8s.io/apimachinery/pkg/api/meta"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
@@ -35,6 +39,8 @@ type Builder[R runtime.Instance] interface {
 	WithUpdatePreferPolicy(ps ...PreferPolicy[R]) Builder[R]
 	// NoInPlaceUpdate if true, actor will use Scale in and Scale out to replace Update operation
 	WithNoInPaceUpdate(noUpdate bool) Builder[R]
+	// MinReadySeconds means instances are available only when they keep ready more than minReadySeconds
+	WithMinReadySeconds(minReadySeconds int64) Builder[R]
 	Build() Executor
 }
 
@@ -46,6 +52,7 @@ type builder[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct 
 	rev            string
 
 	noInPlaceUpdate bool
+	minReadySeconds int64
 
 	c client.Client
 
@@ -60,29 +67,48 @@ type builder[T runtime.Tuple[O, R], O client.Object, R runtime.Instance] struct 
 }
 
 func (b *builder[T, O, R]) Build() Executor {
-	update, outdated, deleted := split(b.instances, b.rev)
+	update, outdated, beingOffline, deleted := split(b.instances, b.rev)
 
-	updatePolicies := b.updatePreferPolicies
-	updatePolicies = append(updatePolicies, PreferUnavailable[R]())
+	updatePolicies := []PreferPolicy[R]{
+		PreferUnready[R](),
+		PreferNotRunning[R](),
+	}
+	updatePolicies = append(updatePolicies, b.updatePreferPolicies...)
+
+	scaleInPolicies := []PreferPolicy[R]{
+		PreferUnready[R](),
+		PreferNotRunning[R](),
+	}
+	scaleInPolicies = append(scaleInPolicies, b.scaleInPreferPolicies...)
+
 	actor := &actor[T, O, R]{
 		c: b.c,
 		f: b.f,
 
 		noInPlaceUpdate: b.noInPlaceUpdate,
 
-		update:   NewState(update),
-		outdated: NewState(outdated),
-		deleted:  NewState(deleted),
+		update:       NewState(update),
+		outdated:     NewState(outdated),
+		beingOffline: NewState(beingOffline),
+		deleted:      NewState(deleted),
 
 		addHooks:    b.addHooks,
-		updateHooks: append(b.updateHooks, KeepName[R](), KeepTopology[R]()),
+		updateHooks: append(b.updateHooks, KeepName[R](), KeepTopology[R](), KeepResourceVersion[R]()),
 		delHooks:    b.delHooks,
 
-		scaleInSelector: NewSelector(b.scaleInPreferPolicies...),
+		scaleInSelector: NewSelector(scaleInPolicies...),
 		updateSelector:  NewSelector(updatePolicies...),
 	}
-	return NewExecutor(actor, len(update), len(outdated), b.desired,
-		countUnavailable(update), countUnavailable(outdated), b.maxSurge, b.maxUnavailable)
+	return NewExecutor(
+		actor,
+		len(update),
+		len(outdated),
+		b.desired,
+		countUnavailableUpdate(update, b.minReadySeconds),
+		countUnavailableOutdated(outdated),
+		b.maxSurge,
+		b.maxUnavailable,
+	)
 }
 
 func New[T runtime.Tuple[O, R], O client.Object, R runtime.Instance]() Builder[R] {
@@ -155,18 +181,29 @@ func (b *builder[T, O, R]) WithNoInPaceUpdate(noUpdate bool) Builder[R] {
 	return b
 }
 
-func split[R runtime.Instance](all []R, rev string) (update, outdated, deleted []R) {
+func (b *builder[T, O, R]) WithMinReadySeconds(minReadySeconds int64) Builder[R] {
+	b.minReadySeconds = minReadySeconds
+	return b
+}
+
+func split[R runtime.Instance](all []R, rev string) (update, outdated, beingOffline, deleted []R) {
 	for _, instance := range all {
 		// if instance is deleting, just ignore it
 		// TODO(liubo02): make sure it's ok for PD
+		// TODO(liubo02): combine with coreutil.IsDeleting
 		if !instance.GetDeletionTimestamp().IsZero() {
 			continue
 		}
-		if _, ok := instance.GetAnnotations()[v1alpha1.AnnoKeyDeferDelete]; ok {
+
+		if _, ok := instance.GetAnnotations()[v1alpha1.AnnoKeyDeferDelete]; ok ||
+			meta.IsStatusConditionTrue(instance.Conditions(), v1alpha1.StoreOfflinedConditionType) {
 			deleted = append(deleted, instance)
 			continue
 		}
-
+		if instance.IsOffline() {
+			beingOffline = append(beingOffline, instance)
+			continue
+		}
 		if instance.GetUpdateRevision() == rev {
 			update = append(update, instance)
 		} else {
@@ -174,13 +211,27 @@ func split[R runtime.Instance](all []R, rev string) (update, outdated, deleted [
 		}
 	}
 
-	return update, outdated, deleted
+	return update, outdated, beingOffline, deleted
 }
 
-func countUnavailable[R runtime.Instance](all []R) int {
+// All update but unready instance will be counted as unavailable.
+func countUnavailableUpdate[R runtime.Instance](all []R, minReadySeconds int64) int {
+	unavailable := 0
+	now := time.Now()
+	for _, instance := range all {
+		if !instance.IsAvailable(minReadySeconds, now) || !instance.IsUpToDate() {
+			unavailable++
+		}
+	}
+
+	return unavailable
+}
+
+// If an instance is outdated, it will be counted as unavailable only when it's not running
+func countUnavailableOutdated[R runtime.Instance](all []R) int {
 	unavailable := 0
 	for _, instance := range all {
-		if !instance.IsReady() || !instance.IsUpToDate() {
+		if instance.IsNotRunning() {
 			unavailable++
 		}
 	}

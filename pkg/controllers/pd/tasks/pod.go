@@ -177,14 +177,7 @@ func newPod(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, g features.Gates, cluste
 	}
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
-		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.VolumeNameClusterTLS,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: coreutil.TLSClusterSecretName[scope.PD](pd),
-				},
-			},
-		})
+		vols = append(vols, *coreutil.ClusterTLSVolume[scope.PD](pd))
 		mounts = append(mounts, corev1.VolumeMount{
 			Name:      v1alpha1.VolumeNameClusterTLS,
 			MountPath: v1alpha1.DirPathClusterTLSPD,
@@ -253,7 +246,7 @@ func newPod(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, g features.Gates, cluste
 	if g.Enabled(metav1alpha1.UsePDReadyAPI) {
 		version := semver.MustParse(pd.Spec.Version)
 		if compatibility.Check(version, compatibility.PDReadyAPI) {
-			pod.Spec.Containers[0].ReadinessProbe = buildPDReadinessProbeWithReadyAPI(cluster, coreutil.PDClientPort(pd))
+			pod.Spec.Containers[0].ReadinessProbe = buildPDReadinessProbeWithReadyAPI(cluster, coreutil.PDClientPort(pd), false)
 		}
 	}
 
@@ -276,7 +269,7 @@ func buildPDReadinessProbe(port int32) *corev1.Probe {
 	}
 }
 
-func buildPDReadinessProbeWithReadyAPI(cluster *v1alpha1.Cluster, port int32) *corev1.Probe {
+func buildPDReadinessProbeWithReadyAPI(cluster *v1alpha1.Cluster, port int32, v2 bool) *corev1.Probe {
 	tlsClusterEnabled := coreutil.IsTLSClusterEnabled(cluster)
 
 	scheme := "http"
@@ -285,6 +278,9 @@ func buildPDReadinessProbeWithReadyAPI(cluster *v1alpha1.Cluster, port int32) *c
 	}
 
 	readinessURL := fmt.Sprintf("%s://127.0.0.1:%d/pd/api/v2/ready", scheme, port)
+	if v2 {
+		readinessURL = fmt.Sprintf("%s://127.0.0.1:%d/pd/api/v2/readyz", scheme, port)
+	}
 	var command []string
 	command = append(command, "curl", readinessURL,
 		// Fail silently (no output at all) on server errors

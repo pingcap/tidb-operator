@@ -23,6 +23,9 @@ import (
 const (
 	SchedulerPortNameClient    = "client"
 	DefaultSchedulerPortClient = 3379
+
+	// DefaultSchedulerMinReadySeconds is default min ready seconds of scheduling
+	DefaultSchedulerMinReadySeconds = DefaultSchedulingMinReadySeconds
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

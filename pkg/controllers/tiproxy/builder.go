@@ -27,6 +27,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 	runner := task.NewTaskRunner(reporter,
 		// get tiproxy
 		common.TaskContextObject[scope.TiProxy](state, r.Client),
+		common.TaskTrack[scope.TiProxy](state, r.Tracker),
 		// if it's deleted just return
 		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiProxy](state)),
 
@@ -42,6 +43,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			// TODO(liubo02): if the finalizer has been removed, no need to update status
 			common.TaskInstanceConditionSynced[scope.TiProxy](state),
 			common.TaskInstanceConditionReady[scope.TiProxy](state),
+			common.TaskInstanceConditionRunning[scope.TiProxy](state),
 			common.TaskStatusPersister[scope.TiProxy](state, r.Client),
 		),
 		common.TaskFinalizerAdd[scope.TiProxy](state, r.Client),
@@ -53,19 +55,21 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskInstanceConditionSuspended[scope.TiProxy](state),
 			common.TaskInstanceConditionSynced[scope.TiProxy](state),
 			common.TaskInstanceConditionReady[scope.TiProxy](state),
+			common.TaskInstanceConditionRunning[scope.TiProxy](state),
 			common.TaskStatusPersister[scope.TiProxy](state, r.Client),
 		),
 
 		// normal process
 		tasks.TaskContextInfoFromPDAndTiProxy(state, r.Client, r.PDClientManager),
 		tasks.TaskConfigMap(state, r.Client),
-		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifierFactory),
+		common.TaskPVC[scope.TiProxy](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
 		tasks.TaskPod(state, r.Client),
 		common.TaskServerLabels[scope.TiProxy](state, r.Client, func(ctx context.Context, labels map[string]string) error {
 			return state.TiProxyClient.SetLabels(ctx, labels)
 		}),
 		common.TaskInstanceConditionSynced[scope.TiProxy](state),
 		common.TaskInstanceConditionReady[scope.TiProxy](state),
+		common.TaskInstanceConditionRunning[scope.TiProxy](state),
 		tasks.TaskStatus(state, r.Client),
 	)
 

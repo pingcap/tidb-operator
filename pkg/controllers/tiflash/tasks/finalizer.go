@@ -22,16 +22,21 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	fm "github.com/pingcap/tidb-operator/pkg/timanager/tiflash"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
-func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
+const (
+	// for deleted store, we'll set grace period to the default
+	defaultGracePeriod = 30
+)
+
+// TaskFinalizerDel deletes sub-resources and remove the finalizer from the instance CR.
+// TODO: extract a common task for tikv and tiflash
+func TaskFinalizerDel(state *ReconcileContext, c client.Client, fcm fm.TiFlashClientManager) task.Task {
 	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
 		tiflash := state.TiFlash()
-		if tiflash == nil {
-			return task.Fail().With("tiflash is nil")
-		}
 
 		wait, err := EnsureSubResourcesDeleted(ctx, c, tiflash)
 		if err != nil {
@@ -45,12 +50,19 @@ func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
 		if err := k8s.RemoveFinalizer(ctx, c, tiflash); err != nil {
 			return task.Fail().With("cannot remove finalizer: %w", err)
 		}
+		fcm.Deregister(fm.Key(tiflash))
 		return task.Complete().With("finalizer is removed")
 	})
 }
 
 func EnsureSubResourcesDeleted(ctx context.Context, c client.Client, f *v1alpha1.TiFlash) (wait bool, _ error) {
-	wait1, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromTiFlash(f), &corev1.PodList{})
+	wait1, err := k8s.DeleteInstanceSubresource(
+		ctx,
+		c,
+		runtime.FromTiFlash(f),
+		&corev1.PodList{},
+		client.GracePeriodSeconds(defaultGracePeriod),
+	)
 	if err != nil {
 		return false, err
 	}

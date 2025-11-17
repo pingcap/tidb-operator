@@ -29,7 +29,34 @@ import (
 
 func TestValidate(t *testing.T) {
 	cfgValid := &Config{}
-	err := cfgValid.Validate(true)
+	tidb := &v1alpha1.TiDB{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns1",
+			Name:      "basic-0",
+		},
+		Spec: v1alpha1.TiDBSpec{
+			Cluster: v1alpha1.ClusterReference{
+				Name: "cluster-1",
+			},
+			Subdomain: "basic-tidb-peer",
+			TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{
+				SlowLog: &v1alpha1.TiDBSlowLog{},
+				Security: &v1alpha1.TiDBSecurity{
+					AuthToken: &v1alpha1.TiDBAuthToken{
+						JWKs: corev1.LocalObjectReference{
+							Name: "auth-token-jwks",
+						},
+					},
+					TLS: &v1alpha1.TiDBTLS{
+						MySQL: &v1alpha1.TLS{
+							Enabled: true,
+						},
+					},
+				},
+			},
+		},
+	}
+	err := cfgValid.Validate(tidb)
 	require.NoError(t, err)
 
 	cfgInvalid := &Config{
@@ -53,7 +80,7 @@ func TestValidate(t *testing.T) {
 		ServerLabels:      map[string]string{"foo": "bar"},
 	}
 
-	err = cfgInvalid.Validate(true)
+	err = cfgInvalid.Validate(tidb)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "store")
 	assert.Contains(t, err.Error(), "advertise-address")

@@ -18,6 +18,10 @@ import (
 	"context"
 
 	"github.com/onsi/ginkgo/v2"
+	"k8s.io/utils/ptr"
+
+	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apicall"
@@ -29,16 +33,18 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/cert"
 )
 
+const (
+	changedConfig = `log-level = 'warn'`
+)
+
 var _ = ginkgo.Describe("TiCDC", label.TiCDC, func() {
 	f := framework.New()
 	f.Setup()
 
-	// NOTE(liubo02): this case is failed in e2e env because of the cgroup v2.
-	// Enable it if env is fixed.
-	ginkgo.PDescribeTableSubtree("Leader Eviction", label.P1,
+	ginkgo.DescribeTableSubtree("Leader Eviction", label.P1,
 		func(enableTLS bool) {
 			if enableTLS {
-				f.SetupCluster(data.WithClusterTLS())
+				f.SetupCluster(data.WithClusterTLSEnabled())
 			}
 
 			ginkgo.It("leader evicted when delete ticdc pod directly", func(ctx context.Context) {
@@ -52,7 +58,7 @@ var _ = ginkgo.Describe("TiCDC", label.TiCDC, func() {
 				pdg := f.MustCreatePD(ctx)
 				kvg := f.MustCreateTiKV(ctx)
 				cg := f.MustCreateTiCDC(ctx,
-					data.WithReplicas[*runtime.TiCDCGroup](3),
+					data.WithReplicas[scope.TiCDCGroup](3),
 				)
 
 				f.WaitForPDGroupReady(ctx, pdg)
@@ -92,4 +98,60 @@ var _ = ginkgo.Describe("TiCDC", label.TiCDC, func() {
 		ginkgo.Entry(nil, false),
 		ginkgo.Entry(nil, label.FeatureTLS, true),
 	)
+
+	ginkgo.Context("Scale and Update", label.P0, func() {
+		ginkgo.It("support scale out/in TiCDC", label.Scale, func(ctx context.Context) {
+			pdg := f.MustCreatePD(ctx)
+			kvg := f.MustCreateTiKV(ctx)
+			dbg := f.MustCreateTiDB(ctx)
+			cdcg := f.MustCreateTiCDC(ctx)
+
+			ginkgo.By("Wait for Cluster Ready")
+			f.WaitForPDGroupReady(ctx, pdg)
+			f.WaitForTiKVGroupReady(ctx, kvg)
+			f.WaitForTiDBGroupReady(ctx, dbg)
+			f.WaitForTiCDCGroupReady(ctx, cdcg)
+
+			ginkgo.By("Change replica of the TiCDCGroup to 4")
+			patch := client.MergeFrom(cdcg.DeepCopy())
+			cdcg.Spec.Replicas = ptr.To[int32](4)
+			f.Must(f.Client.Patch(ctx, cdcg, patch))
+			f.WaitForTiCDCGroupReady(ctx, cdcg)
+
+			ginkgo.By("Change replica of the TiCDCGroup to 2")
+			patch = client.MergeFrom(cdcg.DeepCopy())
+			cdcg.Spec.Replicas = ptr.To[int32](2)
+			f.Must(f.Client.Patch(ctx, cdcg, patch))
+			f.WaitForTiCDCGroupReady(ctx, cdcg)
+		})
+
+		ginkgo.It("support scale TiCDC from 3 to 2 and rolling update at same time", label.Scale, label.Update, func(ctx context.Context) {
+			pdg := f.MustCreatePD(ctx)
+			kvg := f.MustCreateTiKV(ctx)
+			dbg := f.MustCreateTiDB(ctx)
+			cdcg := f.MustCreateTiCDC(ctx, data.WithReplicas[scope.TiCDCGroup](3))
+
+			f.WaitForPDGroupReady(ctx, pdg)
+			f.WaitForTiKVGroupReady(ctx, kvg)
+			f.WaitForTiDBGroupReady(ctx, dbg)
+			f.WaitForTiCDCGroupReady(ctx, cdcg)
+
+			nctx, cancel := context.WithCancel(ctx)
+			done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiCDCGroup](nctx, f, cdcg, 2)
+			defer func() { <-done }()
+			defer cancel()
+
+			changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiCDCGroup](ctx, f.Client, cdcg)
+			f.Must(err)
+
+			ginkgo.By("Change config and replicas of the TiCDCGroup")
+			patch := client.MergeFrom(cdcg.DeepCopy())
+			cdcg.Spec.Replicas = ptr.To[int32](2)
+			cdcg.Spec.Template.Spec.Config = changedConfig
+			f.Must(f.Client.Patch(ctx, cdcg, patch))
+
+			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiCDCGroup(cdcg), *changeTime, waiter.LongTaskTimeout))
+			f.WaitForTiCDCGroupReady(ctx, cdcg)
+		})
+	})
 })

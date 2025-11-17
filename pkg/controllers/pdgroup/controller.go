@@ -16,6 +16,7 @@ package pdgroup
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -45,16 +46,15 @@ type Reconciler struct {
 	Logger          logr.Logger
 	Client          client.Client
 	PDClientManager pdm.PDClientManager
-
-	Tracker tracker.Tracker[*v1alpha1.PDGroup, *v1alpha1.PD]
+	AllocateFactory tracker.AllocateFactory
 }
 
-func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager) error {
+func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, af tracker.AllocateFactory) error {
 	r := &Reconciler{
 		Logger:          mgr.GetLogger().WithName("PDGroup"),
 		Client:          c,
 		PDClientManager: pdcm,
-		Tracker:         tracker.New[*v1alpha1.PDGroup, *v1alpha1.PD](),
+		AllocateFactory: af,
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.PDGroup{}).
@@ -103,7 +103,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	defer func() {
 		dur := time.Since(startTime)
 		logger.Info("end reconcile", "duration", dur)
-		logger.Info("summary: \n" + reporter.Summary())
+		summary := fmt.Sprintf("summary for %v\n%s", req.NamespacedName, reporter.Summary())
+		logger.Info(summary)
 	}()
 
 	rtx := &tasks.ReconcileContext{

@@ -43,6 +43,30 @@ func Replicas[
 	return scope.From[S](f).Replicas()
 }
 
+func SetReplicas[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](f F, replicas int32) {
+	scope.From[S](f).SetReplicas(replicas)
+}
+
+func MinReadySeconds[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](f F) int64 {
+	return scope.From[S](f).MinReadySeconds()
+}
+
+func SchedulePolicies[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](f F) []v1alpha1.SchedulePolicy {
+	return scope.From[S](f).SchedulePolicies()
+}
+
 // IsGroupHealthyAndUpToDate is defined to check whether all replicas of the group are healthy and up to date
 // TODO: simplify it by a condition
 func IsGroupHealthyAndUpToDate[
@@ -163,4 +187,24 @@ func SetStatusSelector[
 	}
 
 	return changed
+}
+
+func TemplateAnnotations[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](f F) map[string]string {
+	obj := scope.From[S](f)
+
+	return obj.TemplateAnnotations()
+}
+
+func SetTemplateAnnotations[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](f F, anno map[string]string) {
+	obj := scope.From[S](f)
+
+	obj.SetTemplateAnnotations(anno)
 }

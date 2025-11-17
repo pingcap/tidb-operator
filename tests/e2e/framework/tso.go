@@ -22,13 +22,14 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
 func (f *Framework) WaitForTSOGroupReady(ctx context.Context, tg *v1alpha1.TSOGroup) {
 	// TODO: maybe wait for cluster ready
 	ginkgo.By("wait for tso group ready")
-	f.Must(waiter.WaitForObjectCondition[runtime.TSOGroupTuple](
+	f.Must(waiter.WaitForObjectCondition[scope.TSOGroup](
 		ctx,
 		f.Client,
 		tg,

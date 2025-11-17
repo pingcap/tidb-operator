@@ -21,10 +21,12 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apicall"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
@@ -33,6 +35,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 )
 
 var (
@@ -87,7 +90,11 @@ func TaskContextObject[
 			return task.Complete().With("obj %s does not exist", key)
 		}
 		state.SetObject(obj)
-		return task.Complete().With("object is set")
+		return task.Complete().With("object %s/%s(rv: %s) is set",
+			obj.GetNamespace(),
+			obj.GetName(),
+			obj.GetResourceVersion(),
+		)
 	})
 }
 
@@ -283,4 +290,54 @@ func findZoneLabel(cfg *pdapi.PDConfigFromAPI) string {
 		}
 	}
 	return ""
+}
+
+type TrackState[F client.Object] interface {
+	Key() types.NamespacedName
+	ObjectState[F]
+}
+
+func TaskTrack[
+	S scope.Instance[F, T],
+	F Object[P],
+	T runtime.Instance,
+	P any,
+](state TrackState[F], t tracker.Tracker) task.Task {
+	return task.NameTaskFunc("Track", func(context.Context) task.Result {
+		obj := state.Object()
+		if obj == nil {
+			key := state.Key()
+			t.Untrack(key.Namespace, key.Name)
+			return task.Complete().With("untrack deleted instance")
+		}
+		var group string
+		owner := coreutil.OwnerGroup[S](obj)
+		if owner != nil {
+			group = owner.Name
+		}
+		t.Track(obj.GetNamespace(), obj.GetName(), group)
+		return task.Complete().With("track instance %s with group %v", state.Key(), group)
+	})
+}
+
+func TaskDeleteOfflinedStore[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](state ObjectState[F], c client.Client) task.Task {
+	return task.NameTaskFunc("DeleteOfflinedStore", func(ctx context.Context) task.Result {
+		obj := state.Object()
+		if !obj.GetDeletionTimestamp().IsZero() {
+			return task.Complete().With("store is deleting")
+		}
+		conds := coreutil.StatusConditions[S](state.Object())
+		if !meta.IsStatusConditionTrue(conds, v1alpha1.StoreOfflinedConditionType) {
+			return task.Complete().With("store is not offlined")
+		}
+		if err := c.Delete(ctx, obj); err != nil {
+			return task.Fail().With("cannot delete store: %v", err)
+		}
+
+		return task.Wait().With("wait until store deletion is watched")
+	})
 }

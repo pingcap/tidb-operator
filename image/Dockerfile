@@ -25,7 +25,6 @@ RUN --mount=type=cache,target=/go/pkg/mod/ \
     --mount=type=cache,target=/go/cache \
     V_PLATFORMS=$TARGETPLATFORM ./hack/build.sh $TARGET
 
-
 FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sha256:af691c27330cb8e018add3dd16e5403dcd881b23eae815920ddb2c6ae87cbd9b AS tidb-operator
 
 ARG TARGETPLATFORM
@@ -66,6 +65,7 @@ COPY --chown=pingcap:pingcap --from=builder ./_output/$TARGETPLATFORM/bin/testin
 
 
 ENTRYPOINT ["/testing-workload"]
+
 
 FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sha256:af691c27330cb8e018add3dd16e5403dcd881b23eae815920ddb2c6ae87cbd9b AS tidb-backup-manager
 

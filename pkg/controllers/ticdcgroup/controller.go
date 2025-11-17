@@ -16,6 +16,7 @@ package ticdcgroup
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -41,16 +42,16 @@ import (
 )
 
 type Reconciler struct {
-	Logger  logr.Logger
-	Client  client.Client
-	Tracker tracker.Tracker[*v1alpha1.TiCDCGroup, *v1alpha1.TiCDC]
+	Logger          logr.Logger
+	Client          client.Client
+	AllocateFactory tracker.AllocateFactory
 }
 
-func Setup(mgr manager.Manager, c client.Client) error {
+func Setup(mgr manager.Manager, c client.Client, af tracker.AllocateFactory) error {
 	r := &Reconciler{
-		Logger:  mgr.GetLogger().WithName("TiCDCGroup"),
-		Client:  c,
-		Tracker: tracker.New[*v1alpha1.TiCDCGroup, *v1alpha1.TiCDC](),
+		Logger:          mgr.GetLogger().WithName("TiCDCGroup"),
+		Client:          c,
+		AllocateFactory: af,
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.TiCDCGroup{}).
@@ -99,7 +100,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	defer func() {
 		dur := time.Since(startTime)
 		logger.Info("end reconcile", "duration", dur)
-		logger.Info("summary: \n" + reporter.Summary())
+		summary := fmt.Sprintf("summary for %v\n%s", req.NamespacedName, reporter.Summary())
+		logger.Info(summary)
 	}()
 
 	rtx := &tasks.ReconcileContext{

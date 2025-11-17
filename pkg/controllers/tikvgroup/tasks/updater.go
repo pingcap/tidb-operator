@@ -20,11 +20,14 @@ import (
 
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
@@ -37,8 +40,8 @@ const (
 	defaultUpdateWaitTime = time.Second * 30
 )
 
-// TaskUpdater is a task to scale or update PD when spec of TiKVGroup is changed.
-func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.TiKVGroup, *v1alpha1.TiKV]) task.Task {
+// TaskUpdater is a task to scale or update TiKV instances when spec of TiKVGroup is changed.
+func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFactory) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		kvg := state.TiKVGroup()
@@ -48,6 +51,14 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 		if needVersionUpgrade(kvg) && !checker.CanUpgrade(ctx, kvg) {
 			// TODO(liubo02): change to Wait
 			return task.Retry(defaultUpdateWaitTime).With("wait until preconditions of upgrading is met")
+		}
+
+		retryAfter := coreutil.RetryIfInstancesReadyButNotAvailable[scope.TiKV](
+			state.InstanceSlice(),
+			coreutil.MinReadySeconds[scope.TiKVGroup](kvg),
+		)
+		if retryAfter != 0 {
+			return task.Retry(retryAfter).With("wait until no instances is ready but not available")
 		}
 
 		var topos []v1alpha1.ScheduleTopology
@@ -69,7 +80,12 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
-		allocator := t.Track(kvg, state.InstanceSlice()...)
+		var instances []string
+		for _, in := range kvs {
+			instances = append(instances, in.Name)
+		}
+
+		allocator := af.New(kvg.Namespace, kvg.Name, instances...)
 		wait, err := updater.New[runtime.TiKVTuple]().
 			WithInstances(kvs...).
 			WithDesired(int(state.Group().Replicas())).
@@ -77,7 +93,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithMaxSurge(0).
 			WithMaxUnavailable(1).
 			WithRevision(updateRevision).
-			WithNewFactory(TiKVNewer(kvg, updateRevision)).
+			WithNewFactory(TiKVNewer(kvg, updateRevision, state.FeatureGates())).
 			WithAddHooks(
 				updater.AllocateName[*runtime.TiKV](allocator),
 				topoPolicy,
@@ -85,8 +101,9 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
-				topoPolicy,
+				topoPolicy.PolicyScaleIn(),
 			).
+			WithMinReadySeconds(coreutil.MinReadySeconds[scope.TiKVGroup](kvg)).
 			Build().
 			Do(ctx)
 		if err != nil {
@@ -103,7 +120,7 @@ func needVersionUpgrade(kvg *v1alpha1.TiKVGroup) bool {
 	return kvg.Spec.Template.Spec.Version != kvg.Status.Version && kvg.Status.Version != ""
 }
 
-func TiKVNewer(kvg *v1alpha1.TiKVGroup, rev string) updater.NewFactory[*runtime.TiKV] {
+func TiKVNewer(kvg *v1alpha1.TiKVGroup, rev string, _ features.Gates) updater.NewFactory[*runtime.TiKV] {
 	return updater.NewFunc[*runtime.TiKV](func() *runtime.TiKV {
 		spec := kvg.Spec.Template.Spec.DeepCopy()
 
@@ -113,6 +130,7 @@ func TiKVNewer(kvg *v1alpha1.TiKVGroup, rev string) updater.NewFactory[*runtime.
 				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.TiKVGroup](kvg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.TiKVGroup](kvg),
+				Finalizers:  []string{metav1alpha1.Finalizer},
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(kvg, v1alpha1.SchemeGroupVersion.WithKind("TiKVGroup")),
 				},
@@ -122,6 +140,7 @@ func TiKVNewer(kvg *v1alpha1.TiKVGroup, rev string) updater.NewFactory[*runtime.
 				Features:         kvg.Spec.Features,
 				Subdomain:        HeadlessServiceName(kvg.Name),
 				TiKVTemplateSpec: *spec,
+				Offline:          ptr.To(false),
 			},
 		}
 

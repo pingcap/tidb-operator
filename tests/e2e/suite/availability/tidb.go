@@ -1,0 +1,77 @@
+// Copyright 2024 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package availability
+
+import (
+	"context"
+
+	"github.com/onsi/ginkgo/v2"
+
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/tests/e2e/data"
+	"github.com/pingcap/tidb-operator/tests/e2e/framework"
+	"github.com/pingcap/tidb-operator/tests/e2e/framework/action"
+	wopt "github.com/pingcap/tidb-operator/tests/e2e/framework/workload"
+	"github.com/pingcap/tidb-operator/tests/e2e/label"
+	"github.com/pingcap/tidb-operator/tests/e2e/utils/cert"
+)
+
+var _ = ginkgo.Describe("TiDB Availability Test", label.TiDB, label.KindAvail, label.Update, func() {
+	f := framework.New()
+	f.Setup()
+
+	ginkgo.Context("Default", label.P0, func() {
+		f.SetupCluster(data.WithClusterTLSEnabled(), data.WithFeatureGates(metav1alpha1.SessionTokenSigning))
+		workload := f.SetupWorkload()
+		cm := f.SetupCertManager()
+
+		ginkgo.It("Visit tiproxy no error when rolling update tidb", func(ctx context.Context) {
+			ns := f.Namespace.Name
+			cluster := f.Cluster.Name
+
+			pdg := f.MustCreatePD(ctx)
+			kvg := f.MustCreateTiKV(ctx)
+			dbg := f.MustCreateTiDB(ctx,
+				data.WithReplicas[scope.TiDBGroup](2),
+			)
+			pg := f.MustCreateTiProxy(ctx,
+				data.WithTiProxyMySQLTLS("", ""),
+			)
+
+			cm.Install(ctx, ns, cluster)
+
+			f.WaitForPDGroupReady(ctx, pdg)
+			f.WaitForTiKVGroupReady(ctx, kvg)
+			f.WaitForTiDBGroupReady(ctx, dbg)
+			f.WaitForTiProxyGroupReady(ctx, pg)
+
+			action.TestTiDBAvailability(ctx,
+				f,
+				data.DefaultTiProxyServiceName,
+				dbg,
+				workload,
+				wopt.Port(data.DefaultTiProxyServicePort),
+				// disable sql conn max life time
+				wopt.MaxLifeTime(0),
+				wopt.TLS(cert.MySQLClient(
+					coreutil.TiProxyGroupMySQLCASecretName(pg),
+					coreutil.TiProxyGroupMySQLCertKeyPairSecretName(pg),
+				)),
+			)
+		})
+	})
+})

@@ -872,17 +872,16 @@ var _ = Describe("TiDB Cluster", func() {
 			})
 		})
 
-		It("pd/tikv/tiflash/ticdc: should perform a rolling update for config change", func() {
+		It("pd/tikv/tiflash: should perform a rolling update for config change", func() {
 			pdg := data.NewPDGroup(ns.Name, "pd", tc.Name, ptr.To(int32(3)), nil)
 			kvg := data.NewTiKVGroup(ns.Name, "tikv", tc.Name, ptr.To(int32(3)), nil)
 			dbg := data.NewTiDBGroup(ns.Name, "tidb", tc.Name, ptr.To(int32(1)), nil)
 			flashg := data.NewTiFlashGroup(ns.Name, "flash", tc.Name, ptr.To(int32(3)), nil)
-			cdcg := data.NewTiCDCGroup(ns.Name, "cdc", tc.Name, ptr.To(int32(3)), nil)
+
 			Expect(k8sClient.Create(ctx, pdg)).To(Succeed())
 			Expect(k8sClient.Create(ctx, kvg)).To(Succeed())
 			Expect(k8sClient.Create(ctx, dbg)).To(Succeed())
 			Expect(k8sClient.Create(ctx, flashg)).To(Succeed())
-			Expect(k8sClient.Create(ctx, cdcg)).To(Succeed())
 
 			By("Waiting for the cluster to be ready")
 			Eventually(func(g Gomega) {
@@ -890,10 +889,10 @@ var _ = Describe("TiDB Cluster", func() {
 				g.Expect(ready).To(BeTrue())
 				g.Expect(utiltidb.AreAllInstancesReady(k8sClient, pdg,
 					[]*v1alpha1.TiKVGroup{kvg}, []*v1alpha1.TiDBGroup{dbg},
-					[]*v1alpha1.TiFlashGroup{flashg}, []*v1alpha1.TiCDCGroup{cdcg})).To(Succeed())
+					[]*v1alpha1.TiFlashGroup{flashg}, nil)).To(Succeed())
 			}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
 
-			groupNames := []string{pdg.Name, kvg.Name, flashg.Name, cdcg.Name}
+			groupNames := []string{pdg.Name, kvg.Name, flashg.Name}
 			outerCtx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			for _, groupName := range groupNames {
@@ -972,13 +971,6 @@ var _ = Describe("TiDB Cluster", func() {
 					flashgGet.Spec.Template.Spec.Config = v1alpha1.ConfigFile(cfg)
 					updateTime = time.Now()
 					Expect(k8sClient.Update(ctx, &flashgGet)).To(Succeed())
-				case "cdc":
-					cfg = "log-level = 'debug'"
-					var cdcgGet v1alpha1.TiCDCGroup
-					Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: tc.Namespace, Name: groupName}, &cdcgGet)).To(Succeed())
-					cdcgGet.Spec.Template.Spec.Config = v1alpha1.ConfigFile(cfg)
-					updateTime = time.Now()
-					Expect(k8sClient.Update(ctx, &cdcgGet)).To(Succeed())
 				}
 
 				Eventually(func(g Gomega) {
@@ -986,7 +978,7 @@ var _ = Describe("TiDB Cluster", func() {
 					g.Expect(ready).To(BeTrue())
 					g.Expect(utiltidb.AreAllInstancesReady(k8sClient, pdg,
 						[]*v1alpha1.TiKVGroup{kvg}, []*v1alpha1.TiDBGroup{dbg},
-						[]*v1alpha1.TiFlashGroup{flashg}, []*v1alpha1.TiCDCGroup{cdcg})).To(Succeed())
+						[]*v1alpha1.TiFlashGroup{flashg}, nil)).To(Succeed())
 
 					podList, err := clientSet.CoreV1().Pods(tc.Namespace).List(ctx, listOpts)
 					g.Expect(err).To(BeNil())
@@ -1202,7 +1194,7 @@ var _ = Describe("TiDB Cluster", func() {
 					_, ready := utiltidb.IsClusterReady(k8sClient, tc.Name, tc.Namespace)
 					g.Expect(ready).To(BeTrue())
 
-					g.Expect(utiltidb.AreAllInstancesReady(k8sClient, pdg,
+					g.Expect(utiltidb.AreAllGroupAndInstancesReady(k8sClient, pdg,
 						[]*v1alpha1.TiKVGroup{kvg}, []*v1alpha1.TiDBGroup{dbg}, []*v1alpha1.TiFlashGroup{}, nil)).To(Succeed())
 				}).WithTimeout(createClusterTimeout).WithPolling(createClusterPolling).Should(Succeed())
 

@@ -15,9 +15,11 @@
 package policy
 
 import (
+	"fmt"
 	"maps"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/updater"
 	"github.com/pingcap/tidb-operator/pkg/utils/topology"
@@ -34,7 +36,8 @@ type TopologyPolicy[R runtime.Instance] interface {
 	updater.AddHook[R]
 	updater.DelHook[R]
 	updater.UpdateHook[R]
-	updater.PreferPolicy[R]
+	PolicyScaleIn() updater.PreferPolicy[R]
+	PolicyUpdate() updater.PreferPolicy[R]
 }
 
 func NewTopologyPolicy[R runtime.Instance](ts []v1alpha1.ScheduleTopology, rev string, rs ...R) (TopologyPolicy[R], error) {
@@ -52,7 +55,12 @@ func NewTopologyPolicy[R runtime.Instance](ts []v1alpha1.ScheduleTopology, rev s
 		rev:     rev,
 	}
 	for _, r := range rs {
+		// skip deleting instance, now all deleting instances are ignored in updater
+		if coreutil.IsDeleting(r) {
+			continue
+		}
 		p.all.Add(r.GetName(), r.GetTopology())
+		fmt.Println("preferred delete, add:", r.GetName(), r.GetTopology())
 		if r.GetUpdateRevision() == rev {
 			p.updated.Add(r.GetName(), r.GetTopology())
 		}
@@ -61,9 +69,13 @@ func NewTopologyPolicy[R runtime.Instance](ts []v1alpha1.ScheduleTopology, rev s
 }
 
 func (p *topologyPolicy[R]) Add(update R) R {
-	all := p.all.NextAdd()
-	updated := p.updated.NextAdd()
-	topo := choose(all, updated)
+	topo := update.GetTopology()
+	// topology is not set
+	if len(topo) == 0 {
+		all := p.all.NextAdd()
+		updated := p.updated.NextAdd()
+		topo = choose(all, updated)
+	}
 
 	update.SetTopology(topo)
 	p.all.Add(update.GetName(), update.GetTopology())
@@ -90,15 +102,61 @@ func (p *topologyPolicy[R]) Delete(name string) {
 	p.updated.Del(name)
 }
 
-func (p *topologyPolicy[R]) Prefer(allowed []R) []R {
+func (p *topologyPolicy[R]) PolicyScaleIn() updater.PreferPolicy[R] {
+	return &deletePreferPolicy[R]{
+		p: p,
+	}
+}
+
+func (p *topologyPolicy[R]) PolicyUpdate() updater.PreferPolicy[R] {
+	return &updatePreferPolicy[R]{
+		p: p,
+	}
+}
+
+type deletePreferPolicy[R runtime.Instance] struct {
+	p *topologyPolicy[R]
+}
+
+func (p *deletePreferPolicy[R]) Prefer(allowed []R) []R {
 	if len(allowed) == 0 {
 		return nil
 	}
-	names := p.all.NextDel()
-	preferred := make([]R, 0, len(allowed))
+	names := p.p.all.NextDel()
+
+	fmt.Println("preferred delete, next del:", names)
+
+	var preferred []R
 	for _, item := range allowed {
 		for _, name := range names {
 			if item.GetName() == name {
+				fmt.Println("preferred delete: ", name)
+				preferred = append(preferred, item)
+			}
+		}
+	}
+	fmt.Println("preferred delete done")
+
+	return preferred
+}
+
+type updatePreferPolicy[R runtime.Instance] struct {
+	p *topologyPolicy[R]
+}
+
+// Choose a preferred item to update
+// Update will not change topology spreads of "all" set.
+// However, spreads of "update" set will be changed.
+func (p *updatePreferPolicy[R]) Prefer(allowed []R) []R {
+	if len(allowed) == 0 {
+		return nil
+	}
+	topos := p.p.updated.NextAdd()
+
+	var preferred []R
+	for _, item := range allowed {
+		for _, topo := range topos {
+			if maps.Equal(topo, item.GetTopology()) {
 				preferred = append(preferred, item)
 			}
 		}
@@ -108,8 +166,8 @@ func (p *topologyPolicy[R]) Prefer(allowed []R) []R {
 }
 
 // choose a preferred topology
-// - prefer all instances are well spread
-// - if no
+// - prefer "all" and "update" set are well spread, choose the intersection
+// - if no intersection, just return the first one of "all" set
 func choose(all, update []v1alpha1.Topology) v1alpha1.Topology {
 	// No topology is preferred
 	// Normally because of no topology policy is specified

@@ -15,14 +15,28 @@
 package coreutil
 
 import (
-	"strings"
+	"time"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/overlay"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
 )
+
+func Topology[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](f F) v1alpha1.Topology {
+	return scope.From[S](f).GetTopology()
+}
 
 func IsReady[
 	S scope.Instance[F, T],
@@ -32,16 +46,19 @@ func IsReady[
 	return scope.From[S](f).IsReady()
 }
 
+func IsAvailable[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](f F, minReadySeconds int64, now time.Time) bool {
+	return scope.From[S](f).IsAvailable(minReadySeconds, now)
+}
+
 func NamePrefixAndSuffix[
 	F client.Object,
 ](f F) (prefix, suffix string) {
 	name := f.GetName()
-	index := strings.LastIndexByte(name, '-')
-	// TODO(liubo02): validate name to avoid '-' is not found
-	if index == -1 {
-		panic("cannot get name prefix")
-	}
-	return name[:index], name[index+1:]
+	return runtime.NamePrefixAndSuffix(name)
 }
 
 // PodName returns the default managed pod name of an instance
@@ -56,15 +73,73 @@ func PodName[
 	return prefix + "-" + scope.Component[S]() + "-" + suffix
 }
 
-// TLSClusterSecretName returns the default cluster secret name of an instance
-// TODO(liubo02): move to namer
-func TLSClusterSecretName[
+func Subdomain[
 	S scope.Instance[F, T],
 	F client.Object,
 	T runtime.Instance,
 ](f F) string {
-	prefix, _ := NamePrefixAndSuffix(f)
-	return prefix + "-" + scope.Component[S]() + "-cluster-secret"
+	return scope.From[S](f).Subdomain()
+}
+
+func ClusterTLSVolume[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](f F) *corev1.Volume {
+	certKeyPair := ClusterCertKeyPairSecretName[S](f)
+	ca := ClusterCASecretName[S](f)
+
+	if ca == certKeyPair {
+		return &corev1.Volume{
+			Name: v1alpha1.VolumeNameClusterTLS,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: ca,
+				},
+			},
+		}
+	}
+
+	return &corev1.Volume{
+		Name: v1alpha1.VolumeNameClusterTLS,
+		VolumeSource: corev1.VolumeSource{
+			Projected: &corev1.ProjectedVolumeSource{
+				Sources: []corev1.VolumeProjection{
+					{
+						Secret: &corev1.SecretProjection{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: ca,
+							},
+							Items: []corev1.KeyToPath{
+								{
+									Key:  corev1.ServiceAccountRootCAKey,
+									Path: corev1.ServiceAccountRootCAKey,
+								},
+							},
+						},
+					},
+					{
+						Secret: &corev1.SecretProjection{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: certKeyPair,
+							},
+							// avoid mounting injected ca.crt
+							Items: []corev1.KeyToPath{
+								{
+									Key:  corev1.TLSCertKey,
+									Path: corev1.TLSCertKey,
+								},
+								{
+									Key:  corev1.TLSPrivateKeyKey,
+									Path: corev1.TLSPrivateKeyKey,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 }
 
 func UpdateRevision[
@@ -125,4 +200,169 @@ func PersistentVolumeClaimLabels[
 	return maputil.MergeTo(instanceSubresourceLabels[S](f), map[string]string{
 		v1alpha1.LabelKeyVolumeName: volName,
 	})
+}
+
+func OwnerGroup[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](f F) *metav1.OwnerReference {
+	owner := metav1.GetControllerOfNoCopy(f)
+	gvk := scope.GVK[S]()
+	if owner.APIVersion != gvk.GroupVersion().String() || owner.Kind != gvk.Kind+"Group" {
+		return nil
+	}
+	return owner
+}
+
+// RetryIfInstancesReadyButNotAvailable returns a retry duration
+// If any instances are ready but not available, updater may do nothing and
+// cannot watch more changes of instances.
+// So always retry if any instances are ready but not available.
+func RetryIfInstancesReadyButNotAvailable[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](ins []F, minReadySeconds int64) time.Duration {
+	now := time.Now()
+	for _, in := range ins {
+		// ready but not available
+		if !IsReady[S](in) || IsAvailable[S](in, minReadySeconds, now) {
+			continue
+		}
+
+		cond := FindStatusCondition[S](in, v1alpha1.CondReady)
+		d := now.Sub(cond.LastTransitionTime.Time)
+		return d
+	}
+
+	return 0
+}
+
+func IsOffline[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](f F) bool {
+	return scope.From[S](f).IsOffline()
+}
+
+func Volumes[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](f F) []v1alpha1.Volume {
+	return scope.From[S](f).Volumes()
+}
+
+func PVCOverlay[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](f F) []v1alpha1.NamedPersistentVolumeClaimOverlay {
+	return scope.From[S](f).PVCOverlay()
+}
+
+func PVCs[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](cluster *v1alpha1.Cluster, obj F, ps ...PVCPatch) []*corev1.PersistentVolumeClaim {
+	vols := Volumes[S](obj)
+	var pvcs []*corev1.PersistentVolumeClaim
+	nameToIndex := map[string]int{}
+	for i := range vols {
+		vol := &vols[i]
+		nameToIndex[vol.Name] = i
+		pvc := &corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      persistentVolumeClaimName(PodName[S](obj), vol.Name),
+				Namespace: obj.GetNamespace(),
+				Labels:    PersistentVolumeClaimLabels[S](obj, vol.Name),
+				OwnerReferences: []metav1.OwnerReference{
+					*metav1.NewControllerRef(obj, scope.GVK[S]()),
+				},
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				AccessModes: []corev1.PersistentVolumeAccessMode{
+					corev1.ReadWriteOnce,
+				},
+				Resources: corev1.VolumeResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: vol.Storage,
+					},
+				},
+				StorageClassName: vol.StorageClassName,
+			},
+		}
+
+		for _, p := range ps {
+			p.Patch(vol, pvc)
+		}
+
+		pvcs = append(pvcs, pvc)
+	}
+
+	pvcOverlays := PVCOverlay[S](obj)
+
+	for _, o := range pvcOverlays {
+		index, ok := nameToIndex[o.Name]
+		if !ok {
+			// TODO(liubo02): it should be validated
+			panic("vol name" + o.Name + "doesn't exist")
+		}
+
+		overlay.OverlayPersistentVolumeClaim(pvcs[index], &o.PersistentVolumeClaim)
+	}
+
+	return pvcs
+}
+
+type PVCPatch interface {
+	Patch(vol *v1alpha1.Volume, pvc *corev1.PersistentVolumeClaim)
+}
+
+type PVCPatchFunc func(vol *v1alpha1.Volume, pvc *corev1.PersistentVolumeClaim)
+
+func (f PVCPatchFunc) Patch(vol *v1alpha1.Volume, pvc *corev1.PersistentVolumeClaim) {
+	f(vol, pvc)
+}
+
+func EnableVAC(enable bool) PVCPatch {
+	return PVCPatchFunc(func(vol *v1alpha1.Volume, pvc *corev1.PersistentVolumeClaim) {
+		if enable {
+			pvc.Spec.VolumeAttributesClassName = vol.VolumeAttributesClassName
+		}
+	})
+}
+
+func WithLegacyK8sAppLabels() PVCPatch {
+	return PVCPatchFunc(func(_ *v1alpha1.Volume, pvc *corev1.PersistentVolumeClaim) {
+		pvc.Labels = maputil.MergeTo(pvc.Labels, k8s.LabelsK8sApp(
+			pvc.Labels[v1alpha1.LabelKeyCluster],
+			pvc.Labels[v1alpha1.LabelKeyComponent],
+		))
+	})
+}
+
+// IsDeleting check whether an instance is deleting
+// TODO: change to use scope
+func IsDeleting(instance runtime.Instance) bool {
+	if !instance.GetDeletionTimestamp().IsZero() {
+		return true
+	}
+
+	if _, ok := instance.GetAnnotations()[v1alpha1.AnnoKeyDeferDelete]; ok {
+		return true
+	}
+
+	if instance.IsOffline() {
+		return true
+	}
+
+	if meta.IsStatusConditionTrue(instance.Conditions(), v1alpha1.StoreOfflinedConditionType) {
+		return true
+	}
+
+	return false
 }

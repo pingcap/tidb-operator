@@ -15,170 +15,76 @@
 package tasks
 
 import (
-	"context"
-	"fmt"
 	"testing"
 
-	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
+	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	stateutil "github.com/pingcap/tidb-operator/pkg/state"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
-	"github.com/pingcap/tidb-operator/pkg/volumes"
 )
 
-func TestTaskPVC(t *testing.T) {
+func TestPVCNewer(t *testing.T) {
 	cases := []struct {
-		desc          string
-		state         *ReconcileContext
-		pvcs          []*corev1.PersistentVolumeClaim
-		unexpectedErr bool
+		desc      string
+		c         *v1alpha1.Cluster
+		obj       *v1alpha1.TiCDC
+		enableVAC bool
 
-		expectedStatus task.Status
-		expectedPVCNum int
+		patch func(pvc *corev1.PersistentVolumeClaim)
 	}{
 		{
-			desc: "no pvc",
-			state: &ReconcileContext{
-				State: &state{
-					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					ticdc:   fake.FakeObj[v1alpha1.TiCDC]("aaa-xxx"),
-				},
-			},
-			expectedStatus: task.SComplete,
-			expectedPVCNum: 0,
-		},
-		{
-			desc: "create a data vol",
-			state: &ReconcileContext{
-				State: &state{
-					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					ticdc: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiCDC) *v1alpha1.TiCDC {
-						obj.Spec.Volumes = []v1alpha1.Volume{
-							{
-								Name:    "data",
-								Storage: resource.MustParse("10Gi"),
-							},
-						}
-						return obj
-					}),
-				},
-			},
-			expectedStatus: task.SComplete,
-			expectedPVCNum: 1,
-		},
-		{
-			desc: "has a data vol",
-			state: &ReconcileContext{
-				State: &state{
-					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					ticdc: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiCDC) *v1alpha1.TiCDC {
-						obj.Spec.Volumes = []v1alpha1.Volume{
-							{
-								Name:    "data",
-								Storage: resource.MustParse("10Gi"),
-							},
-						}
-						return obj
-					}),
-				},
-			},
-			pvcs: []*corev1.PersistentVolumeClaim{
-				fake.FakeObj("data-aaa-ticdc-xxx", func(obj *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
-					obj.Status.Phase = corev1.ClaimBound
-					return obj
-				}),
-			},
-			expectedStatus: task.SComplete,
-			expectedPVCNum: 1,
-		},
-		{
-			desc: "has a data vol, but failed to apply",
-			state: &ReconcileContext{
-				State: &state{
-					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					ticdc: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiCDC) *v1alpha1.TiCDC {
-						obj.Spec.Volumes = []v1alpha1.Volume{
-							{
-								Name:    "data",
-								Storage: resource.MustParse("10Gi"),
-							},
-						}
-						return obj
-					}),
-				},
-			},
-			pvcs: []*corev1.PersistentVolumeClaim{
-				fake.FakeObj("data-aaa-ticdc-xxx", func(obj *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
-					obj.Status.Phase = corev1.ClaimBound
-					return obj
-				}),
-			},
-			unexpectedErr: true,
+			desc: "no id",
+			c: fake.FakeObj("aaa", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+				return obj
+			}),
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.TiCDC) *v1alpha1.TiCDC {
+				return obj
+			}),
 
-			expectedStatus: task.SFail,
-			expectedPVCNum: 1,
+			patch: func(_ *corev1.PersistentVolumeClaim) {
+			},
+		},
+		{
+			desc: "has id",
+			c: fake.FakeObj("aaa", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+				obj.Status.ID = "ccc"
+				return obj
+			}),
+			obj: fake.FakeObj("aaa", func(obj *v1alpha1.TiCDC) *v1alpha1.TiCDC {
+				return obj
+			}),
+
+			patch: func(pvc *corev1.PersistentVolumeClaim) {
+				// legacy labels in v1
+				pvc.Labels[v1alpha1.LabelKeyClusterID] = "ccc"
+			},
 		},
 	}
-
 	for i := range cases {
 		c := &cases[i]
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
+			pvcs := coreutil.PVCs[scope.TiCDC](c.c, c.obj, coreutil.WithLegacyK8sAppLabels(), coreutil.EnableVAC(c.enableVAC))
 
-			ctx := context.Background()
-			var objs []client.Object
-			objs = append(objs, c.state.TiCDC())
-			fc := client.NewFakeClient(objs...)
-			for _, obj := range c.pvcs {
-				require.NoError(tt, fc.Apply(ctx, obj.DeepCopy()), c.desc)
-				require.NoError(tt, fc.Status().Update(ctx, obj.DeepCopy()), c.desc)
+			for _, pvc := range pvcs {
+				c.patch(pvc)
 			}
 
-			s := c.state.State.(*state)
-			s.IFeatureGates = stateutil.NewFeatureGates[scope.TiCDC](s)
-
-			ctrl := gomock.NewController(tt)
-			vm := volumes.NewMockModifier(ctrl)
-			vf := volumes.NewMockModifierFactory(ctrl)
-			vf.EXPECT().New(c.state.FeatureGates()).Return(vm)
-			expectedPVCs := newPVCs(c.state.Cluster(), c.state.TiCDC(), c.state.FeatureGates())
-			for _, expected := range expectedPVCs {
-				for _, current := range c.pvcs {
-					if current.Name == expected.Name {
-						vm.EXPECT().GetActualVolume(ctx, expected, current).Return(&volumes.ActualVolume{
-							Desired: &volumes.DesiredVolume{},
-							PVC:     current,
-						}, nil)
-						vm.EXPECT().ShouldModify(ctx, &volumes.ActualVolume{
-							Desired: &volumes.DesiredVolume{},
-							PVC:     current,
-						}).Return(false)
-					}
-				}
+			fg := features.NewFromFeatures(nil)
+			if c.enableVAC {
+				fg = features.NewFromFeatures([]meta.Feature{
+					meta.VolumeAttributesClass,
+				})
 			}
 
-			if c.unexpectedErr {
-				// cannot update pvc
-				fc.WithError("patch", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
-			}
+			actual := PVCNewer().NewPVCs(c.c, c.obj, fg)
 
-			res, done := task.RunTask(ctx, TaskPVC(c.state, logr.Discard(), fc, vf))
-			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), res.Message())
-			assert.False(tt, done, c.desc)
-
-			pvcs := corev1.PersistentVolumeClaimList{}
-			require.NoError(tt, fc.List(ctx, &pvcs), c.desc)
-			assert.Len(tt, pvcs.Items, c.expectedPVCNum, c.desc)
+			assert.Equal(tt, pvcs, actual)
 		})
 	}
 }

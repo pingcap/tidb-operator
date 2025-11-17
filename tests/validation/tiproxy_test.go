@@ -33,6 +33,13 @@ func TestTiProxy(t *testing.T) {
 	Validate(t, "crd/core.pingcap.com_tiproxies.yaml", cases)
 }
 
+func TestTiProxyGroup(t *testing.T) {
+	var cases []Case
+	cases = append(cases, transferTiProxyGroupCases(t, ClusterReference(), "spec", "cluster")...)
+	cases = append(cases, transferTiProxyGroupCases(t, NameLength(groupNameLengthLimit), "metadata", "name")...)
+	Validate(t, "crd/core.pingcap.com_tiproxygroups.yaml", cases)
+}
+
 func basicTiProxy() map[string]any {
 	data := []byte(`
 apiVersion: core.pingcap.com/v1alpha1
@@ -79,6 +86,47 @@ func transferTiProxyCases(t *testing.T, cases []Case, fields ...string) []Case {
 		}
 
 		c.old = old
+	}
+
+	return cases
+}
+
+func basicTiProxyGroup() map[string]any {
+	data := []byte(`
+apiVersion: core.pingcap.com/v1alpha1
+kind: TiProxyGroup
+metadata:
+  name: tiproxy-group
+spec:
+  cluster:
+    name: test
+  replicas: 2
+  template:
+    spec:
+      version: v8.1.0
+`)
+	obj := map[string]any{}
+	if err := yaml.Unmarshal(data, &obj); err != nil {
+		panic(err)
+	}
+
+	return obj
+}
+
+func transferTiProxyGroupCases(t *testing.T, cases []Case, fields ...string) []Case {
+	for i := range cases {
+		c := &cases[i]
+
+		current := basicTiProxyGroup()
+		c.current = Patch(t, c.mode, current, c.current, fields...)
+
+		if c.isCreate {
+			c.old = nil
+			continue
+		}
+
+		old := basicTiProxyGroup()
+		c.old = Patch(t, c.mode, old, c.old, fields...)
 	}
 
 	return cases

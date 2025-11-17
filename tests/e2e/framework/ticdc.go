@@ -27,7 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
-func (f *Framework) MustCreateTiCDC(ctx context.Context, ps ...data.GroupPatch[*runtime.TiCDCGroup]) *v1alpha1.TiCDCGroup {
+func (f *Framework) MustCreateTiCDC(ctx context.Context, ps ...data.GroupPatch[*v1alpha1.TiCDCGroup]) *v1alpha1.TiCDCGroup {
 	cg := data.NewTiCDCGroup(f.Namespace.Name, ps...)
 	ginkgo.By("Creating a ticdc group")
 	f.Must(f.Client.Create(ctx, cg))
@@ -38,7 +38,7 @@ func (f *Framework) MustCreateTiCDC(ctx context.Context, ps ...data.GroupPatch[*
 func (f *Framework) WaitForTiCDCGroupReady(ctx context.Context, cg *v1alpha1.TiCDCGroup) {
 	// TODO: maybe wait for cluster ready
 	ginkgo.By("wait for ticdc group ready")
-	f.Must(waiter.WaitForObjectCondition[runtime.TiCDCGroupTuple](
+	f.Must(waiter.WaitForObjectCondition[scope.TiCDCGroup](
 		ctx,
 		f.Client,
 		cg,

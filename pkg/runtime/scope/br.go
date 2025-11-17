@@ -15,6 +15,7 @@
 package scope
 
 import (
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
@@ -35,6 +36,10 @@ func (Backup) Component() string {
 	return v1alpha1.LabelValComponentBackup
 }
 
+func (Backup) GVK() schema.GroupVersionKind {
+	return v1alpha1.SchemeGroupVersion.WithKind("Backup")
+}
+
 func (Backup) NewList() client.ObjectList {
 	return &v1alpha1.BackupList{}
 }
@@ -51,6 +56,10 @@ func (Restore) To(t *runtime.Restore) *v1alpha1.Restore {
 
 func (Restore) Component() string {
 	return v1alpha1.LabelValComponentRestore
+}
+
+func (Restore) GVK() schema.GroupVersionKind {
+	return v1alpha1.SchemeGroupVersion.WithKind("Restore")
 }
 
 func (Restore) NewList() client.ObjectList {

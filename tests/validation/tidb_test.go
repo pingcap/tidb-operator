@@ -17,8 +17,6 @@ package validation
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -33,6 +31,13 @@ func TestTiDB(t *testing.T) {
 	cases = append(cases, transferTiDBCases(t, Version(), "spec", "version")...)
 	cases = append(cases, transferTiDBCases(t, NameLength(instanceNameLengthLimit), "metadata", "name")...)
 	Validate(t, "crd/core.pingcap.com_tidbs.yaml", cases)
+}
+
+func TestTiDBGroup(t *testing.T) {
+	var cases []Case
+	cases = append(cases, transferTiDBGroupCases(t, ClusterReference(), "spec", "cluster")...)
+	cases = append(cases, transferTiDBGroupCases(t, NameLength(groupNameLengthLimit), "metadata", "name")...)
+	Validate(t, "crd/core.pingcap.com_tidbgroups.yaml", cases)
 }
 
 func basicTiDB() map[string]any {
@@ -60,13 +65,7 @@ func transferTiDBCases(t *testing.T, cases []Case, fields ...string) []Case {
 		c := &cases[i]
 
 		current := basicTiDB()
-		if c.current == nil {
-			unstructured.RemoveNestedField(current, fields...)
-		} else {
-			require.NoError(t, unstructured.SetNestedField(current, c.current, fields...))
-		}
-
-		c.current = current
+		c.current = Patch(t, c.mode, current, c.current, fields...)
 
 		if c.isCreate {
 			c.old = nil
@@ -74,13 +73,7 @@ func transferTiDBCases(t *testing.T, cases []Case, fields ...string) []Case {
 		}
 
 		old := basicTiDB()
-		if c.old == nil {
-			unstructured.RemoveNestedField(old, fields...)
-		} else {
-			require.NoError(t, unstructured.SetNestedField(old, c.old, fields...))
-		}
-
-		c.old = old
+		c.old = Patch(t, c.mode, old, c.old, fields...)
 	}
 
 	return cases
@@ -117,4 +110,45 @@ func mysqlTLS() []Case {
 			current: map[string]any{"enabled": true},
 		},
 	}
+}
+
+func basicTiDBGroup() map[string]any {
+	data := []byte(`
+apiVersion: core.pingcap.com/v1alpha1
+kind: TiDBGroup
+metadata:
+  name: tidb-group
+spec:
+  cluster:
+    name: test
+  replicas: 1
+  template:
+    spec:
+      version: v8.1.0
+`)
+	obj := map[string]any{}
+	if err := yaml.Unmarshal(data, &obj); err != nil {
+		panic(err)
+	}
+
+	return obj
+}
+
+func transferTiDBGroupCases(t *testing.T, cases []Case, fields ...string) []Case {
+	for i := range cases {
+		c := &cases[i]
+
+		current := basicTiDBGroup()
+		c.current = Patch(t, c.mode, current, c.current, fields...)
+
+		if c.isCreate {
+			c.old = nil
+			continue
+		}
+
+		old := basicTiDBGroup()
+		c.old = Patch(t, c.mode, old, c.old, fields...)
+	}
+
+	return cases
 }

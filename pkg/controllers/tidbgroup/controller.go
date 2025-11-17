@@ -16,6 +16,7 @@ package tidbgroup
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -41,16 +42,16 @@ import (
 )
 
 type Reconciler struct {
-	Logger  logr.Logger
-	Client  client.Client
-	Tracker tracker.Tracker[*v1alpha1.TiDBGroup, *v1alpha1.TiDB]
+	Logger          logr.Logger
+	Client          client.Client
+	AllocateFactory tracker.AllocateFactory
 }
 
-func Setup(mgr manager.Manager, c client.Client) error {
+func Setup(mgr manager.Manager, c client.Client, af tracker.AllocateFactory) error {
 	r := &Reconciler{
-		Logger:  mgr.GetLogger().WithName("TiDBGroup"),
-		Client:  c,
-		Tracker: tracker.New[*v1alpha1.TiDBGroup, *v1alpha1.TiDB](),
+		Logger:          mgr.GetLogger().WithName("TiDBGroup"),
+		Client:          c,
+		AllocateFactory: af,
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.TiDBGroup{}).
@@ -99,7 +100,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	defer func() {
 		dur := time.Since(startTime)
 		logger.Info("end reconcile", "duration", dur)
-		logger.Info("summay: \n" + reporter.Summary())
+		summary := fmt.Sprintf("summary for %v\n%s", req.NamespacedName, reporter.Summary())
+		logger.Info(summary)
 	}()
 
 	rtx := &tasks.ReconcileContext{

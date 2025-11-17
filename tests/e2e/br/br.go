@@ -39,10 +39,11 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	brframework "github.com/pingcap/tidb-operator/tests/e2e/br/framework"
 	"github.com/pingcap/tidb-operator/tests/e2e/cluster"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
+	"github.com/pingcap/tidb-operator/tests/e2e/label"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/db/blockwriter"
 	utilimage "github.com/pingcap/tidb-operator/tests/e2e/utils/image"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/k8s"
@@ -116,7 +117,7 @@ func (t *testcase) description() string {
 	return builder.String()
 }
 
-var _ = ginkgo.Describe("Backup and Restore", func() {
+var _ = ginkgo.Describe("Backup and Restore", label.KindBR, func() {
 	f := brframework.NewFramework("br")
 	f.SetupBootstrapSQL("SET PASSWORD FOR 'root'@'%' = 'pingcap';")
 
@@ -337,7 +338,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			f.Must(err)
 			ExpectEqual(cleaned, true, "storage should be cleaned")
 		})
-
 	})
 
 	ginkgo.Context("Log Backup Test", func() {
@@ -776,7 +776,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("Start backup and wait to running")
 			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, func(backup *v1alpha1.Backup) {
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
+				backup.Spec.Env = []v1.EnvVar{{Name: e2eBackupEnv, Value: e2eExtendBackupTime}}
 			})
 			f.Must(err)
 
@@ -839,7 +839,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			backup, err := createBackupAndWaitForRunning(f, backupName, backupClusterName, func(backup *v1alpha1.Backup) {
 				backup.Spec.BackoffRetryPolicy.MinRetryDuration = "2s" // retry after 2s
 
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime + "," + e2eTestFlagPanic}}
+				backup.Spec.Env = []v1.EnvVar{{Name: e2eBackupEnv, Value: e2eExtendBackupTime + "," + e2eTestFlagPanic}}
 			})
 			f.Must(err)
 
@@ -849,7 +849,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 			ginkgo.By("update backup evn, remove simulate panic")
 			backup, err = updateBackup(f, backup.Name, func(backup *v1alpha1.Backup) {
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: "a", Value: "b"}}
+				backup.Spec.Env = []v1.EnvVar{{Name: "a", Value: "b"}}
 			})
 			f.Must(err)
 
@@ -908,7 +908,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 					MaxRetryTimes:    2,
 					RetryTimeout:     "30m",
 				}
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime + "," + e2eTestFlagPanic}}
+				backup.Spec.Env = []v1.EnvVar{{Name: e2eBackupEnv, Value: e2eExtendBackupTime + "," + e2eTestFlagPanic}}
 			})
 			f.Must(err)
 
@@ -993,7 +993,7 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 					RetryTimeout:     "1m",
 				}
 				// panic every 30s
-				backup.Spec.Env = []v1.EnvVar{v1.EnvVar{Name: e2eBackupEnv, Value: e2eExtendBackupTime + "," + e2eTestFlagPanic}}
+				backup.Spec.Env = []v1.EnvVar{{Name: e2eBackupEnv, Value: e2eExtendBackupTime + "," + e2eTestFlagPanic}}
 			})
 			f.Must(err)
 
@@ -1288,23 +1288,23 @@ func createTidbCluster(f *brframework.Framework, name string, version string, en
 			getGroupName(name, "cdcg"),
 		)).To(gomega.Succeed())
 
-		clusterPatches = append(clusterPatches, data.WithClusterTLS())
+		clusterPatches = append(clusterPatches, data.WithClusterTLSEnabled())
 	}
 	cluster := f.MustCreateCluster(ctx, clusterPatches...)
 	_ = f.MustCreatePD(ctx,
-		data.WithGroupName[*runtime.PDGroup](getGroupName(name, "pdg")),
-		data.WithGroupVersion[*runtime.PDGroup](version),
-		data.WithGroupCluster[*runtime.PDGroup](name),
+		data.WithName[scope.PDGroup](getGroupName(name, "pdg")),
+		data.WithVersion[scope.PDGroup](version),
+		data.WithCluster[scope.PDGroup](name),
 	)
 	_ = f.MustCreateTiKV(ctx,
-		data.WithGroupName[*runtime.TiKVGroup](getGroupName(name, "kvg")),
-		data.WithGroupVersion[*runtime.TiKVGroup](version),
-		data.WithGroupCluster[*runtime.TiKVGroup](name),
+		data.WithName[scope.TiKVGroup](getGroupName(name, "kvg")),
+		data.WithVersion[scope.TiKVGroup](version),
+		data.WithCluster[scope.TiKVGroup](name),
 	)
 	_ = f.MustCreateTiDB(ctx,
-		data.WithGroupName[*runtime.TiDBGroup](getGroupName(name, "dbg")),
-		data.WithGroupVersion[*runtime.TiDBGroup](version),
-		data.WithGroupCluster[*runtime.TiDBGroup](name),
+		data.WithName[scope.TiDBGroup](getGroupName(name, "dbg")),
+		data.WithVersion[scope.TiDBGroup](version),
+		data.WithCluster[scope.TiDBGroup](name),
 	)
 
 	ginkgo.DeferCleanup(func(ctx context.Context) {
@@ -1336,29 +1336,29 @@ func createLogBackupEnabledTidbCluster(f *brframework.Framework, name string, ve
 			getGroupName(name, "cdcg"),
 		)).To(gomega.Succeed())
 
-		clusterPatches = append(clusterPatches, data.WithClusterTLS())
+		clusterPatches = append(clusterPatches, data.WithClusterTLSEnabled())
 	}
 	cluster := f.MustCreateCluster(ctx, clusterPatches...)
 	_ = f.MustCreatePD(ctx,
-		data.WithGroupName[*runtime.PDGroup](getGroupName(name, "pdg")),
-		data.WithGroupVersion[*runtime.PDGroup](version),
-		data.WithGroupCluster[*runtime.PDGroup](name),
+		data.WithName[scope.PDGroup](getGroupName(name, "pdg")),
+		data.WithVersion[scope.PDGroup](version),
+		data.WithCluster[scope.PDGroup](name),
 	)
 
 	// create tikv group
 	kvg := data.NewTiKVGroup(f.Namespace.Name,
-		data.WithGroupName[*runtime.TiKVGroup](getGroupName(name, "kvg")),
-		data.WithGroupVersion[*runtime.TiKVGroup](version),
-		data.WithGroupCluster[*runtime.TiKVGroup](name),
+		data.WithName[scope.TiKVGroup](getGroupName(name, "kvg")),
+		data.WithVersion[scope.TiKVGroup](version),
+		data.WithCluster[scope.TiKVGroup](name),
 	)
 	kvg.Spec.Template.Spec.Config = "log-backup.enable = true"
 	ginkgo.By("Creating a tikv group")
 	f.Must(f.Client.Create(ctx, kvg))
 
 	_ = f.MustCreateTiDB(ctx,
-		data.WithGroupName[*runtime.TiDBGroup](getGroupName(name, "dbg")),
-		data.WithGroupVersion[*runtime.TiDBGroup](version),
-		data.WithGroupCluster[*runtime.TiDBGroup](name),
+		data.WithName[scope.TiDBGroup](getGroupName(name, "dbg")),
+		data.WithVersion[scope.TiDBGroup](version),
+		data.WithCluster[scope.TiDBGroup](name),
 	)
 
 	ginkgo.DeferCleanup(func(ctx context.Context) {

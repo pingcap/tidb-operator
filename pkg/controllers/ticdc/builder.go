@@ -25,6 +25,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 	runner := task.NewTaskRunner(reporter,
 		// get TiCDC
 		common.TaskContextObject[scope.TiCDC](state, r.Client),
+		common.TaskTrack[scope.TiCDC](state, r.Tracker),
 		// if it's deleted just return
 		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiCDC](state)),
 
@@ -40,6 +41,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			// TODO(liubo02): if the finalizer has been removed, no need to update status
 			common.TaskInstanceConditionSynced[scope.TiCDC](state),
 			common.TaskInstanceConditionReady[scope.TiCDC](state),
+			common.TaskInstanceConditionRunning[scope.TiCDC](state),
 			common.TaskStatusPersister[scope.TiCDC](state, r.Client),
 		),
 		common.TaskFinalizerAdd[scope.TiCDC](state, r.Client),
@@ -51,16 +53,18 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskInstanceConditionSuspended[scope.TiCDC](state),
 			common.TaskInstanceConditionSynced[scope.TiCDC](state),
 			common.TaskInstanceConditionReady[scope.TiCDC](state),
+			common.TaskInstanceConditionRunning[scope.TiCDC](state),
 			common.TaskStatusPersister[scope.TiCDC](state, r.Client),
 		),
 
 		// normal process
 		tasks.TaskContextInfoFromTiCDC(state, r.Client),
 		tasks.TaskConfigMap(state, r.Client),
-		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifierFactory),
+		common.TaskPVC[scope.TiCDC](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
 		tasks.TaskPod(state, r.Client),
 		common.TaskInstanceConditionSynced[scope.TiCDC](state),
 		common.TaskInstanceConditionReady[scope.TiCDC](state),
+		common.TaskInstanceConditionRunning[scope.TiCDC](state),
 		tasks.TaskStatus(state, r.Client),
 	)
 

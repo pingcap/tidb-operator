@@ -21,15 +21,14 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
 const (
 	JWKsSecretName = "jwks-secret"
 )
 
-func NewTiDBGroup(ns string, patches ...GroupPatch[*runtime.TiDBGroup]) *v1alpha1.TiDBGroup {
-	kvg := &runtime.TiDBGroup{
+func NewTiDBGroup(ns string, patches ...GroupPatch[*v1alpha1.TiDBGroup]) *v1alpha1.TiDBGroup {
+	kvg := &v1alpha1.TiDBGroup{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      defaultTiDBGroupName,
@@ -44,19 +43,24 @@ func NewTiDBGroup(ns string, patches ...GroupPatch[*runtime.TiDBGroup]) *v1alpha
 					SlowLog: &v1alpha1.TiDBSlowLog{
 						Image: ptr.To(defaultHelperImage),
 					},
+					Probes: v1alpha1.TiDBProbes{
+						Readiness: &v1alpha1.TiDBProb{
+							Type: ptr.To(v1alpha1.CommandProbeType),
+						},
+					},
 				},
 			},
 		},
 	}
 	for _, p := range patches {
-		p(kvg)
+		p.Patch(kvg)
 	}
 
-	return runtime.ToTiDBGroup(kvg)
+	return kvg
 }
 
-func WithAuthToken() GroupPatch[*runtime.TiDBGroup] {
-	return func(obj *runtime.TiDBGroup) {
+func WithAuthToken() GroupPatch[*v1alpha1.TiDBGroup] {
+	return GroupPatchFunc[*v1alpha1.TiDBGroup](func(obj *v1alpha1.TiDBGroup) {
 		if obj.Spec.Template.Spec.Security == nil {
 			obj.Spec.Template.Spec.Security = &v1alpha1.TiDBSecurity{}
 		}
@@ -66,11 +70,12 @@ func WithAuthToken() GroupPatch[*runtime.TiDBGroup] {
 				Name: JWKsSecretName,
 			},
 		}
-	}
+	})
 }
 
-func WithTLS() GroupPatch[*runtime.TiDBGroup] {
-	return func(obj *runtime.TiDBGroup) {
+// Deprecated: use WithTiDBMySQLTLS
+func WithTLS() GroupPatch[*v1alpha1.TiDBGroup] {
+	return GroupPatchFunc[*v1alpha1.TiDBGroup](func(obj *v1alpha1.TiDBGroup) {
 		if obj.Spec.Template.Spec.Security == nil {
 			obj.Spec.Template.Spec.Security = &v1alpha1.TiDBSecurity{}
 		}
@@ -80,17 +85,32 @@ func WithTLS() GroupPatch[*runtime.TiDBGroup] {
 				Enabled: true,
 			},
 		}
-	}
+	})
 }
 
-func WithHotReloadPolicy() GroupPatch[*runtime.TiDBGroup] {
-	return func(obj *runtime.TiDBGroup) {
+func WithTiDBMySQLTLS(ca, certKeyPair string) GroupPatch[*v1alpha1.TiDBGroup] {
+	return GroupPatchFunc[*v1alpha1.TiDBGroup](func(obj *v1alpha1.TiDBGroup) {
+		if obj.Spec.Template.Spec.Security == nil {
+			obj.Spec.Template.Spec.Security = &v1alpha1.TiDBSecurity{}
+		}
+		if obj.Spec.Template.Spec.Security.TLS == nil {
+			obj.Spec.Template.Spec.Security.TLS = &v1alpha1.TiDBTLS{}
+		}
+
+		obj.Spec.Template.Spec.Security.TLS.MySQL = &v1alpha1.TLS{
+			Enabled: true,
+		}
+	})
+}
+
+func WithHotReloadPolicy() GroupPatch[*v1alpha1.TiDBGroup] {
+	return GroupPatchFunc[*v1alpha1.TiDBGroup](func(obj *v1alpha1.TiDBGroup) {
 		obj.Spec.Template.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyHotReload
-	}
+	})
 }
 
-func WithEphemeralVolume() GroupPatch[*runtime.TiDBGroup] {
-	return func(obj *runtime.TiDBGroup) {
+func WithEphemeralVolume() GroupPatch[*v1alpha1.TiDBGroup] {
+	return GroupPatchFunc[*v1alpha1.TiDBGroup](func(obj *v1alpha1.TiDBGroup) {
 		if obj.Spec.Template.Spec.Overlay == nil {
 			obj.Spec.Template.Spec.Overlay = &v1alpha1.Overlay{}
 		}
@@ -122,12 +142,12 @@ func WithEphemeralVolume() GroupPatch[*runtime.TiDBGroup] {
 				},
 			},
 		})
-	}
+	})
 }
 
 // TODO: combine with WithTiKVEvenlySpreadPolicy
-func WithTiDBEvenlySpreadPolicy() GroupPatch[*runtime.TiDBGroup] {
-	return func(obj *runtime.TiDBGroup) {
+func WithTiDBEvenlySpreadPolicy() GroupPatch[*v1alpha1.TiDBGroup] {
+	return GroupPatchFunc[*v1alpha1.TiDBGroup](func(obj *v1alpha1.TiDBGroup) {
 		obj.Spec.SchedulePolicies = append(obj.Spec.SchedulePolicies, v1alpha1.SchedulePolicy{
 			Type: v1alpha1.SchedulePolicyTypeEvenlySpread,
 			EvenlySpread: &v1alpha1.SchedulePolicyEvenlySpread{
@@ -150,5 +170,5 @@ func WithTiDBEvenlySpreadPolicy() GroupPatch[*runtime.TiDBGroup] {
 				},
 			},
 		})
-	}
+	})
 }

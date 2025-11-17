@@ -27,7 +27,10 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	stateutil "github.com/pingcap/tidb-operator/pkg/state"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
@@ -231,6 +234,9 @@ func TestTaskUpdater(t *testing.T) {
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
+			s := c.state.State.(*state)
+			s.IFeatureGates = stateutil.NewFeatureGates[scope.TiProxyGroup](s)
+
 			ctx := context.Background()
 			c.objs = append(c.objs, c.state.TiProxyGroup(), c.state.Cluster())
 			fc := client.NewFakeClient(c.objs...)
@@ -244,8 +250,8 @@ func TestTaskUpdater(t *testing.T) {
 				fc.WithError("patch", "tiproxies", errors.NewInternalError(fmt.Errorf("fake internal err")))
 			}
 
-			tr := tracker.New[*v1alpha1.TiProxyGroup, *v1alpha1.TiProxy]()
-			res, done := task.RunTask(ctx, TaskUpdater(c.state, fc, tr))
+			af := tracker.New().AllocateFactory("tiproxy")
+			res, done := task.RunTask(ctx, TaskUpdater(c.state, fc, af))
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
 
@@ -260,11 +266,12 @@ func TestTaskUpdater(t *testing.T) {
 
 func fakeAvailableTiProxy(name string, proxyg *v1alpha1.TiProxyGroup, rev string) *v1alpha1.TiProxy {
 	return fake.FakeObj(name, func(obj *v1alpha1.TiProxy) *v1alpha1.TiProxy {
-		tiproxy := runtime.ToTiProxy(TiProxyNewer(proxyg, rev).New())
+		tiproxy := runtime.ToTiProxy(TiProxyNewer(proxyg, rev, features.NewFromFeatures(nil)).New())
 		tiproxy.Name = ""
 		tiproxy.Status.Conditions = append(tiproxy.Status.Conditions, metav1.Condition{
-			Type:   v1alpha1.CondReady,
-			Status: metav1.ConditionTrue,
+			Type:               v1alpha1.CondReady,
+			Status:             metav1.ConditionTrue,
+			LastTransitionTime: metav1.Unix(0, 0),
 		})
 		tiproxy.Status.CurrentRevision = rev
 		tiproxy.DeepCopyInto(obj)

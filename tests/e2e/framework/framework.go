@@ -17,17 +17,22 @@ package framework
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/portforward"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
+	"github.com/pingcap/tidb-operator/tests/e2e/label"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
@@ -37,7 +42,8 @@ type Framework struct {
 
 	Client client.Client
 
-	podLogClient rest.Interface
+	restConfig *rest.Config
+	podClient  rest.Interface
 
 	clusterPatches []data.ClusterPatch
 }
@@ -88,14 +94,15 @@ func (f *Framework) Setup(opts ...SetupOption) {
 	// TODO: get context and config path from options
 	cfg, err := NewConfig("", "")
 	gomega.Expect(err).To(gomega.Succeed())
+	f.restConfig = cfg
 
 	c, err := newClient(cfg)
 	gomega.Expect(err).To(gomega.Succeed())
 	f.Client = c
 
-	podLogClient, err := newRESTClientForPod(cfg)
+	podClient, err := newRESTClientForPod(cfg)
 	gomega.Expect(err).To(gomega.Succeed())
-	f.podLogClient = podLogClient
+	f.podClient = podClient
 
 	ginkgo.BeforeEach(func(ctx context.Context) {
 		ns := data.NewNamespace()
@@ -159,7 +166,7 @@ func (f *Framework) MustCreateCluster(ctx context.Context, ps ...data.ClusterPat
 	return tc
 }
 
-func (f *Framework) MustCreatePD(ctx context.Context, ps ...data.GroupPatch[*runtime.PDGroup]) *v1alpha1.PDGroup {
+func (f *Framework) MustCreatePD(ctx context.Context, ps ...data.GroupPatch[*v1alpha1.PDGroup]) *v1alpha1.PDGroup {
 	pdg := data.NewPDGroup(f.Namespace.Name, ps...)
 	ginkgo.By("Creating a pd group")
 	f.Must(f.Client.Create(ctx, pdg))
@@ -167,7 +174,7 @@ func (f *Framework) MustCreatePD(ctx context.Context, ps ...data.GroupPatch[*run
 	return pdg
 }
 
-func (f *Framework) MustCreateTiDB(ctx context.Context, ps ...data.GroupPatch[*runtime.TiDBGroup]) *v1alpha1.TiDBGroup {
+func (f *Framework) MustCreateTiDB(ctx context.Context, ps ...data.GroupPatch[*v1alpha1.TiDBGroup]) *v1alpha1.TiDBGroup {
 	dbg := data.NewTiDBGroup(f.Namespace.Name, ps...)
 	ginkgo.By("Creating a tidb group")
 	f.Must(f.Client.Create(ctx, dbg))
@@ -175,7 +182,7 @@ func (f *Framework) MustCreateTiDB(ctx context.Context, ps ...data.GroupPatch[*r
 	return dbg
 }
 
-func (f *Framework) MustCreateTSO(ctx context.Context, ps ...data.GroupPatch[*runtime.TSOGroup]) *v1alpha1.TSOGroup {
+func (f *Framework) MustCreateTSO(ctx context.Context, ps ...data.GroupPatch[*v1alpha1.TSOGroup]) *v1alpha1.TSOGroup {
 	tg := data.NewTSOGroup(f.Namespace.Name, ps...)
 	ginkgo.By("Creating a tso group")
 	f.Must(f.Client.Create(ctx, tg))
@@ -183,14 +190,14 @@ func (f *Framework) MustCreateTSO(ctx context.Context, ps ...data.GroupPatch[*ru
 	return tg
 }
 
-func (f *Framework) MustCreateScheduler(ctx context.Context, ps ...data.GroupPatch[*runtime.SchedulerGroup]) *v1alpha1.SchedulerGroup {
-	sg := data.NewSchedulerGroup(f.Namespace.Name, ps...)
+func (f *Framework) MustCreateScheduling(ctx context.Context, ps ...data.GroupPatch[*v1alpha1.SchedulingGroup]) *v1alpha1.SchedulingGroup {
+	sg := data.NewSchedulingGroup(f.Namespace.Name, ps...)
 	ginkgo.By("Creating a scheduler group")
 	f.Must(f.Client.Create(ctx, sg))
 	return sg
 }
 
-func (f *Framework) MustCreateTiProxy(ctx context.Context, ps ...data.GroupPatch[*runtime.TiProxyGroup]) *v1alpha1.TiProxyGroup {
+func (f *Framework) MustCreateTiProxy(ctx context.Context, ps ...data.GroupPatch[*v1alpha1.TiProxyGroup]) *v1alpha1.TiProxyGroup {
 	tpg := data.NewTiProxyGroup(f.Namespace.Name, ps...)
 	ginkgo.By("Creating a tiproxy group")
 	f.Must(f.Client.Create(ctx, tpg))
@@ -223,4 +230,71 @@ func (*Framework) Must(err error) {
 
 func (*Framework) True(b bool, opts ...any) {
 	gomega.ExpectWithOffset(1, b).To(gomega.BeTrue(), opts...)
+}
+
+// DescribeFeatureTable generates a case with different features
+func (*Framework) DescribeFeatureTable(f func(fs ...metav1alpha1.Feature), fss ...[]metav1alpha1.Feature) {
+	var entries []ginkgo.TableEntry
+	for _, fs := range fss {
+		var args []any
+		args = append(args, label.Features(fs...))
+		for _, f := range fs {
+			args = append(args, f)
+		}
+		entries = append(entries, ginkgo.Entry(nil, args...))
+	}
+	var args []any
+	args = append(args, f)
+	args = append(args,
+		func(fs ...metav1alpha1.Feature) string {
+			sb := strings.Builder{}
+			for _, f := range fs {
+				sb.WriteString("[")
+				sb.WriteString(string(f))
+				sb.WriteString("]")
+			}
+			return sb.String()
+		},
+	)
+	for _, entry := range entries {
+		args = append(args, entry)
+	}
+	ginkgo.DescribeTableSubtree("FeatureTable", args...)
+}
+
+func (f *Framework) PortForwardPod(ctx context.Context, pod *corev1.Pod, ports []string) []portforward.ForwardedPort {
+	readyCh := make(chan struct{})
+	pf, err := newPodPortForwarder(ctx, f.restConfig, f.podClient, pod, ports, readyCh, ginkgo.GinkgoWriter)
+	f.Must(err)
+	go func() {
+		defer ginkgo.GinkgoRecover()
+		f.Must(pf.ForwardPorts())
+	}()
+	<-readyCh
+	ps, err := pf.GetPorts()
+	f.Must(err)
+
+	return ps
+}
+
+func AsyncWaitPodsRollingUpdateOnce[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](ctx context.Context, f *Framework, obj F, to int) chan struct{} {
+	maxSurge := 0
+	comp := scope.Component[S]()
+	switch comp {
+	case "tiproxy", "tidb", "ticdc":
+		maxSurge = 1
+	}
+	ch := make(chan struct{})
+	nobj := obj.DeepCopyObject().(F)
+	go func() {
+		defer close(ch)
+		defer ginkgo.GinkgoRecover()
+		f.Must(waiter.WaitPodsRollingUpdateOnce[S](ctx, f.Client, nobj, to, maxSurge, waiter.LongTaskTimeout))
+	}()
+
+	return ch
 }

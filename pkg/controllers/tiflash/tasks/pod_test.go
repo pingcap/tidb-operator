@@ -23,9 +23,11 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -38,9 +40,9 @@ const (
 
 func TestTaskPod(t *testing.T) {
 	cases := []struct {
-		desc  string
-		state *ReconcileContext
-		objs  []client.Object
+		desc       string
+		setupState func() *ReconcileContext
+		objs       []client.Object
 		// if true, cannot apply pod
 		unexpectedErr bool
 
@@ -50,14 +52,16 @@ func TestTaskPod(t *testing.T) {
 	}{
 		{
 			desc: "no pod",
-			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Spec.Version = fakeVersion
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-				},
+			setupState: func() *ReconcileContext {
+				state := NewState(types.NamespacedName{Namespace: "default", Name: "aaa-xxx"})
+				tiflash := fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+					obj.Spec.Version = fakeVersion
+					return obj
+				})
+				cluster := fake.FakeObj[v1alpha1.Cluster]("aaa")
+				state.SetObject(tiflash)
+				state.SetCluster(cluster)
+				return &ReconcileContext{State: state}
 			},
 
 			expectUpdatedPod: true,
@@ -65,14 +69,16 @@ func TestTaskPod(t *testing.T) {
 		},
 		{
 			desc: "no pod, failed to apply",
-			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Spec.Version = fakeVersion
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-				},
+			setupState: func() *ReconcileContext {
+				state := NewState(types.NamespacedName{Namespace: "default", Name: "aaa-xxx"})
+				tiflash := fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+					obj.Spec.Version = fakeVersion
+					return obj
+				})
+				cluster := fake.FakeObj[v1alpha1.Cluster]("aaa")
+				state.SetObject(tiflash)
+				state.SetCluster(cluster)
+				return &ReconcileContext{State: state}
 			},
 			unexpectedErr: true,
 
@@ -80,21 +86,24 @@ func TestTaskPod(t *testing.T) {
 		},
 		{
 			desc: "version is changed",
-			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Spec.Version = fakeVersion
+			setupState: func() *ReconcileContext {
+				state := NewState(types.NamespacedName{Namespace: "default", Name: "aaa-xxx"})
+				tiflash := fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+					obj.Spec.Version = fakeVersion
+					return obj
+				})
+				cluster := fake.FakeObj[v1alpha1.Cluster]("aaa")
+				pod := fakePod(
+					fake.FakeObj[v1alpha1.Cluster]("aaa"),
+					fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+						obj.Spec.Version = fakeNewVersion
 						return obj
 					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fakePod(
-						fake.FakeObj[v1alpha1.Cluster]("aaa"),
-						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-							obj.Spec.Version = fakeNewVersion
-							return obj
-						}),
-					),
-				},
+				)
+				state.SetObject(tiflash)
+				state.SetCluster(cluster)
+				state.SetPod(pod)
+				return &ReconcileContext{State: state}
 			},
 
 			expectedPodIsTerminating: true,
@@ -102,21 +111,24 @@ func TestTaskPod(t *testing.T) {
 		},
 		{
 			desc: "version is changed, failed to delete",
-			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-						obj.Spec.Version = fakeVersion
+			setupState: func() *ReconcileContext {
+				state := NewState(types.NamespacedName{Namespace: "default", Name: "aaa-xxx"})
+				tiflash := fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+					obj.Spec.Version = fakeVersion
+					return obj
+				})
+				cluster := fake.FakeObj[v1alpha1.Cluster]("aaa")
+				pod := fakePod(
+					fake.FakeObj[v1alpha1.Cluster]("aaa"),
+					fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+						obj.Spec.Version = fakeNewVersion
 						return obj
 					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fakePod(
-						fake.FakeObj[v1alpha1.Cluster]("aaa"),
-						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-							obj.Spec.Version = fakeNewVersion
-							return obj
-						}),
-					),
-				},
+				)
+				state.SetObject(tiflash)
+				state.SetCluster(cluster)
+				state.SetPod(pod)
+				return &ReconcileContext{State: state}
 			},
 			unexpectedErr: true,
 
@@ -124,24 +136,27 @@ func TestTaskPod(t *testing.T) {
 		},
 		{
 			desc: "config changed, hot reload policy",
-			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+			setupState: func() *ReconcileContext {
+				state := NewState(types.NamespacedName{Namespace: "default", Name: "aaa-xxx"})
+				tiflash := fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+					obj.Spec.Version = fakeVersion
+					obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyHotReload
+					return obj
+				})
+				cluster := fake.FakeObj[v1alpha1.Cluster]("aaa")
+				pod := fakePod(
+					fake.FakeObj[v1alpha1.Cluster]("aaa"),
+					fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
 						obj.Spec.Version = fakeVersion
 						obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyHotReload
+						obj.Spec.Config = changedConfig
 						return obj
 					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fakePod(
-						fake.FakeObj[v1alpha1.Cluster]("aaa"),
-						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-							obj.Spec.Version = fakeVersion
-							obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyHotReload
-							obj.Spec.Config = changedConfig
-							return obj
-						}),
-					),
-				},
+				)
+				state.SetObject(tiflash)
+				state.SetCluster(cluster)
+				state.SetPod(pod)
+				return &ReconcileContext{State: state}
 			},
 
 			expectUpdatedPod: true,
@@ -149,24 +164,27 @@ func TestTaskPod(t *testing.T) {
 		},
 		{
 			desc: "config changed, restart policy",
-			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+			setupState: func() *ReconcileContext {
+				state := NewState(types.NamespacedName{Namespace: "default", Name: "aaa-xxx"})
+				tiflash := fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+					obj.Spec.Version = fakeVersion
+					obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
+					return obj
+				})
+				cluster := fake.FakeObj[v1alpha1.Cluster]("aaa")
+				pod := fakePod(
+					fake.FakeObj[v1alpha1.Cluster]("aaa"),
+					fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
 						obj.Spec.Version = fakeVersion
-						obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
+						obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyHotReload
+						obj.Spec.Config = changedConfig
 						return obj
 					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fakePod(
-						fake.FakeObj[v1alpha1.Cluster]("aaa"),
-						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-							obj.Spec.Version = fakeVersion
-							obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
-							obj.Spec.Config = changedConfig
-							return obj
-						}),
-					),
-				},
+				)
+				state.SetObject(tiflash)
+				state.SetCluster(cluster)
+				state.SetPod(pod)
+				return &ReconcileContext{State: state}
 			},
 
 			expectedPodIsTerminating: true,
@@ -174,32 +192,35 @@ func TestTaskPod(t *testing.T) {
 		},
 		{
 			desc: "pod labels changed, config not changed",
-			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+			setupState: func() *ReconcileContext {
+				state := NewState(types.NamespacedName{Namespace: "default", Name: "aaa-xxx"})
+				tiflash := fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+					obj.Spec.Version = fakeVersion
+					obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
+					return obj
+				})
+				cluster := fake.FakeObj[v1alpha1.Cluster]("aaa")
+				pod := fakePod(
+					fake.FakeObj[v1alpha1.Cluster]("aaa"),
+					fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
 						obj.Spec.Version = fakeVersion
 						obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fakePod(
-						fake.FakeObj[v1alpha1.Cluster]("aaa"),
-						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-							obj.Spec.Version = fakeVersion
-							obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
-							obj.Spec.Overlay = &v1alpha1.Overlay{
-								Pod: &v1alpha1.PodOverlay{
-									ObjectMeta: v1alpha1.ObjectMeta{
-										Labels: map[string]string{
-											"test": "test",
-										},
+						obj.Spec.Overlay = &v1alpha1.Overlay{
+							Pod: &v1alpha1.PodOverlay{
+								ObjectMeta: v1alpha1.ObjectMeta{
+									Labels: map[string]string{
+										"test": "test",
 									},
 								},
-							}
-							return obj
-						}),
-					),
-				},
+							},
+						}
+						return obj
+					}),
+				)
+				state.SetObject(tiflash)
+				state.SetCluster(cluster)
+				state.SetPod(pod)
+				return &ReconcileContext{State: state}
 			},
 
 			expectUpdatedPod: true,
@@ -207,32 +228,35 @@ func TestTaskPod(t *testing.T) {
 		},
 		{
 			desc: "pod labels changed, config not changed, apply failed",
-			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+			setupState: func() *ReconcileContext {
+				state := NewState(types.NamespacedName{Namespace: "default", Name: "aaa-xxx"})
+				tiflash := fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+					obj.Spec.Version = fakeVersion
+					obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
+					return obj
+				})
+				cluster := fake.FakeObj[v1alpha1.Cluster]("aaa")
+				pod := fakePod(
+					fake.FakeObj[v1alpha1.Cluster]("aaa"),
+					fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
 						obj.Spec.Version = fakeVersion
 						obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
-						return obj
-					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fakePod(
-						fake.FakeObj[v1alpha1.Cluster]("aaa"),
-						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-							obj.Spec.Version = fakeVersion
-							obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
-							obj.Spec.Overlay = &v1alpha1.Overlay{
-								Pod: &v1alpha1.PodOverlay{
-									ObjectMeta: v1alpha1.ObjectMeta{
-										Labels: map[string]string{
-											"test": "test",
-										},
+						obj.Spec.Overlay = &v1alpha1.Overlay{
+							Pod: &v1alpha1.PodOverlay{
+								ObjectMeta: v1alpha1.ObjectMeta{
+									Labels: map[string]string{
+										"test": "test",
 									},
 								},
-							}
-							return obj
-						}),
-					),
-				},
+							},
+						}
+						return obj
+					}),
+				)
+				state.SetObject(tiflash)
+				state.SetCluster(cluster)
+				state.SetPod(pod)
+				return &ReconcileContext{State: state}
 			},
 			unexpectedErr: true,
 
@@ -240,23 +264,26 @@ func TestTaskPod(t *testing.T) {
 		},
 		{
 			desc: "all are not changed",
-			state: &ReconcileContext{
-				State: &state{
-					tiflash: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+			setupState: func() *ReconcileContext {
+				state := NewState(types.NamespacedName{Namespace: "default", Name: "aaa-xxx"})
+				tiflash := fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+					obj.Spec.Version = fakeVersion
+					obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
+					return obj
+				})
+				cluster := fake.FakeObj[v1alpha1.Cluster]("aaa")
+				pod := fakePod(
+					fake.FakeObj[v1alpha1.Cluster]("aaa"),
+					fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
 						obj.Spec.Version = fakeVersion
 						obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
 						return obj
 					}),
-					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
-					pod: fakePod(
-						fake.FakeObj[v1alpha1.Cluster]("aaa"),
-						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
-							obj.Spec.Version = fakeVersion
-							obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
-							return obj
-						}),
-					),
-				},
+				)
+				state.SetObject(tiflash)
+				state.SetCluster(cluster)
+				state.SetPod(pod)
+				return &ReconcileContext{State: state}
 			},
 
 			expectedStatus: task.SComplete,
@@ -268,11 +295,12 @@ func TestTaskPod(t *testing.T) {
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
+			state := c.setupState()
 			ctx := context.Background()
 			var objs []client.Object
-			objs = append(objs, c.state.TiFlash(), c.state.Cluster())
-			if c.state.Pod() != nil {
-				objs = append(objs, c.state.Pod())
+			objs = append(objs, state.TiFlash(), state.Cluster())
+			if state.Pod() != nil {
+				objs = append(objs, state.Pod())
 			}
 			fc := client.NewFakeClient(objs...)
 			for _, obj := range c.objs {
@@ -285,15 +313,15 @@ func TestTaskPod(t *testing.T) {
 				fc.WithError("delete", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
 			}
 
-			res, done := task.RunTask(ctx, TaskPod(c.state, fc))
+			res, done := task.RunTask(ctx, TaskPod(state, fc))
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), res.Message())
 			assert.False(tt, done, c.desc)
 
-			assert.Equal(tt, c.expectedPodIsTerminating, c.state.IsPodTerminating(), c.desc)
+			assert.Equal(tt, c.expectedPodIsTerminating, state.IsPodTerminating(), c.desc)
 
 			if c.expectUpdatedPod {
-				expectedPod := newPod(c.state.Cluster(), c.state.TiFlash(), nil)
-				actual := c.state.Pod().DeepCopy()
+				expectedPod := newPod(state.Cluster(), state.TiFlash(), nil, state.FeatureGates())
+				actual := state.Pod().DeepCopy()
 				actual.Kind = ""
 				actual.APIVersion = ""
 				actual.ManagedFields = nil
@@ -304,5 +332,5 @@ func TestTaskPod(t *testing.T) {
 }
 
 func fakePod(c *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash) *corev1.Pod {
-	return newPod(c, tiflash, nil)
+	return newPod(c, tiflash, nil, features.NewFromFeatures(nil))
 }

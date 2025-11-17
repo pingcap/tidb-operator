@@ -20,11 +20,14 @@ import (
 
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
@@ -37,8 +40,8 @@ const (
 	defaultUpdateWaitTime = time.Second * 30
 )
 
-// TaskUpdater is a task to scale or update PD when spec of TiFlashGroup is changed.
-func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.TiFlashGroup, *v1alpha1.TiFlash]) task.Task {
+// TaskUpdater is a task to scale or update TiFlash instances when spec of TiFlashGroup is changed.
+func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFactory) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		fg := state.TiFlashGroup()
@@ -48,6 +51,14 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 		if needVersionUpgrade(fg) && !checker.CanUpgrade(ctx, fg) {
 			// TODO(liubo02): change to Wait
 			return task.Retry(defaultUpdateWaitTime).With("wait until preconditions of upgrading is met")
+		}
+
+		retryAfter := coreutil.RetryIfInstancesReadyButNotAvailable[scope.TiFlash](
+			state.InstanceSlice(),
+			coreutil.MinReadySeconds[scope.TiFlashGroup](fg),
+		)
+		if retryAfter != 0 {
+			return task.Retry(retryAfter).With("wait until no instances is ready but not available")
 		}
 
 		var topos []v1alpha1.ScheduleTopology
@@ -68,7 +79,12 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
-		allocator := t.Track(fg, state.InstanceSlice()...)
+		var instances []string
+		for _, in := range fs {
+			instances = append(instances, in.Name)
+		}
+
+		allocator := af.New(fg.Namespace, fg.Name, instances...)
 		wait, err := updater.New[runtime.TiFlashTuple]().
 			WithInstances(fs...).
 			WithDesired(int(state.Group().Replicas())).
@@ -76,7 +92,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithMaxSurge(0).
 			WithMaxUnavailable(1).
 			WithRevision(updateRevision).
-			WithNewFactory(TiFlashNewer(fg, updateRevision)).
+			WithNewFactory(TiFlashNewer(fg, updateRevision, state.FeatureGates())).
 			WithAddHooks(
 				updater.AllocateName[*runtime.TiFlash](allocator),
 				topoPolicy,
@@ -84,8 +100,9 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
-				topoPolicy,
+				topoPolicy.PolicyScaleIn(),
 			).
+			WithMinReadySeconds(coreutil.MinReadySeconds[scope.TiFlashGroup](fg)).
 			Build().
 			Do(ctx)
 		if err != nil {
@@ -102,7 +119,7 @@ func needVersionUpgrade(fg *v1alpha1.TiFlashGroup) bool {
 	return fg.Spec.Template.Spec.Version != fg.Status.Version && fg.Status.Version != ""
 }
 
-func TiFlashNewer(fg *v1alpha1.TiFlashGroup, rev string) updater.NewFactory[*runtime.TiFlash] {
+func TiFlashNewer(fg *v1alpha1.TiFlashGroup, rev string, _ features.Gates) updater.NewFactory[*runtime.TiFlash] {
 	return updater.NewFunc[*runtime.TiFlash](func() *runtime.TiFlash {
 		spec := fg.Spec.Template.Spec.DeepCopy()
 
@@ -112,6 +129,7 @@ func TiFlashNewer(fg *v1alpha1.TiFlashGroup, rev string) updater.NewFactory[*run
 				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.TiFlashGroup](fg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.TiFlashGroup](fg),
+				Finalizers:  []string{metav1alpha1.Finalizer},
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(fg, v1alpha1.SchemeGroupVersion.WithKind("TiFlashGroup")),
 				},
@@ -121,6 +139,7 @@ func TiFlashNewer(fg *v1alpha1.TiFlashGroup, rev string) updater.NewFactory[*run
 				Features:            fg.Spec.Features,
 				Subdomain:           HeadlessServiceName(fg.Name),
 				TiFlashTemplateSpec: *spec,
+				Offline:             ptr.To(false),
 			},
 		}
 

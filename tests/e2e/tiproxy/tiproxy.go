@@ -17,7 +17,6 @@ package tiproxy
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -27,8 +26,10 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
+	wopt "github.com/pingcap/tidb-operator/tests/e2e/framework/workload"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/cert"
 	utiltidb "github.com/pingcap/tidb-operator/tests/e2e/utils/tidb"
@@ -48,7 +49,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx)
 			dbg := f.MustCreateTiDB(ctx)
-			proxyg := f.MustCreateTiProxy(ctx, data.WithReplicas[*runtime.TiProxyGroup](2))
+			proxyg := f.MustCreateTiProxy(ctx, data.WithReplicas[scope.TiProxyGroup](2))
 
 			ginkgo.By("Wait for Cluster Ready")
 			f.WaitForPDGroupReady(ctx, pdg)
@@ -75,13 +76,13 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			func(
 				ctx context.Context,
 				change func(*v1alpha1.TiProxyGroup),
-				patches ...data.GroupPatch[*runtime.TiProxyGroup],
+				patches ...data.GroupPatch[*v1alpha1.TiProxyGroup],
 			) {
 				pdg := f.MustCreatePD(ctx)
 				kvg := f.MustCreateTiKV(ctx)
 				dbg := f.MustCreateTiDB(ctx)
-				var ps []data.GroupPatch[*runtime.TiProxyGroup]
-				ps = append(ps, data.WithReplicas[*runtime.TiProxyGroup](2))
+				var ps []data.GroupPatch[*v1alpha1.TiProxyGroup]
+				ps = append(ps, data.WithReplicas[scope.TiProxyGroup](2))
 				ps = append(ps, patches...)
 				proxyg := f.MustCreateTiProxy(ctx,
 					ps...,
@@ -92,27 +93,21 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 				f.WaitForTiDBGroupReady(ctx, dbg)
 				f.WaitForTiProxyGroupReady(ctx, proxyg)
 
-				patch := client.MergeFrom(proxyg.DeepCopy())
-				change(proxyg)
-
 				nctx, cancel := context.WithCancel(ctx)
-				ch := make(chan struct{})
-				go func() {
-					defer close(ch)
-					defer ginkgo.GinkgoRecover()
-					f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiProxyGroup(proxyg), 2, 1, waiter.LongTaskTimeout))
-				}()
+				done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiProxyGroup](nctx, f, proxyg, 2)
+				defer func() { <-done }()
+				defer cancel()
 
-				maxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiProxyGroup(proxyg))
+				changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiProxyGroup](ctx, f.Client, proxyg)
 				f.Must(err)
-				changeTime := maxTime.Add(time.Second)
 
 				ginkgo.By("Patch TiProxyGroup")
+				patch := client.MergeFrom(proxyg.DeepCopy())
+				change(proxyg)
 				f.Must(f.Client.Patch(ctx, proxyg, patch))
-				f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiProxyGroup(proxyg), changeTime, waiter.LongTaskTimeout))
+
+				f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiProxyGroup(proxyg), *changeTime, waiter.LongTaskTimeout))
 				f.WaitForTiProxyGroupReady(ctx, proxyg)
-				cancel()
-				<-ch
 			},
 			ginkgo.Entry("change config file", func(g *v1alpha1.TiProxyGroup) { g.Spec.Template.Spec.Config = changedConfig }),
 			ginkgo.Entry("change overlay", func(g *v1alpha1.TiProxyGroup) {
@@ -130,13 +125,13 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			func(
 				ctx context.Context,
 				change func(*v1alpha1.TiProxyGroup),
-				patches ...data.GroupPatch[*runtime.TiProxyGroup],
+				patches ...data.GroupPatch[*v1alpha1.TiProxyGroup],
 			) {
 				pdg := f.MustCreatePD(ctx)
 				kvg := f.MustCreateTiKV(ctx)
 				dbg := f.MustCreateTiDB(ctx)
-				var ps []data.GroupPatch[*runtime.TiProxyGroup]
-				ps = append(ps, data.WithReplicas[*runtime.TiProxyGroup](2))
+				var ps []data.GroupPatch[*v1alpha1.TiProxyGroup]
+				ps = append(ps, data.WithReplicas[scope.TiProxyGroup](2))
 				ps = append(ps, patches...)
 				proxyg := f.MustCreateTiProxy(ctx,
 					ps...,
@@ -152,9 +147,8 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 				patch := client.MergeFrom(proxyg.DeepCopy())
 				change(proxyg)
 
-				maxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiProxyGroup(proxyg))
+				changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiProxyGroup](ctx, f.Client, proxyg)
 				f.Must(err)
-				changeTime := maxTime.Add(time.Second)
 
 				ginkgo.By("Patch TiProxyGroup")
 				f.Must(f.Client.Patch(ctx, proxyg, patch))
@@ -171,9 +165,9 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 				}, waiter.LongTaskTimeout))
 				f.WaitForTiProxyGroupReady(ctx, proxyg)
 
-				newMaxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiProxyGroup(proxyg))
+				newMaxTime, err := waiter.MaxPodsCreateTimestamp[scope.TiProxyGroup](ctx, f.Client, proxyg)
 				f.Must(err)
-				f.True(changeTime.After(*newMaxTime))
+				f.True(changeTime.Equal(*newMaxTime))
 			},
 			ginkgo.Entry("change config file with hot reload policy", func(g *v1alpha1.TiProxyGroup) { g.Spec.Template.Spec.Config = changedConfig }, data.WithHotReloadPolicyForTiProxy()),
 			ginkgo.Entry("change pod annotations and labels", func(g *v1alpha1.TiProxyGroup) {
@@ -197,7 +191,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			kvg := f.MustCreateTiKV(ctx)
 			dbg := f.MustCreateTiDB(ctx)
 			proxyg := f.MustCreateTiProxy(ctx,
-				data.WithReplicas[*runtime.TiProxyGroup](4),
+				data.WithReplicas[scope.TiProxyGroup](4),
 			)
 
 			f.WaitForPDGroupReady(ctx, pdg)
@@ -205,35 +199,27 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			f.WaitForTiDBGroupReady(ctx, dbg)
 			f.WaitForTiProxyGroupReady(ctx, proxyg)
 
+			nctx, cancel := context.WithCancel(ctx)
+			done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiProxyGroup](nctx, f, proxyg, 2)
+			defer func() { <-done }()
+			defer cancel()
+
+			changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiProxyGroup](ctx, f.Client, proxyg)
+			f.Must(err)
+
+			ginkgo.By("Change config and replicas of the TiProxyGroup")
 			patch := client.MergeFrom(proxyg.DeepCopy())
 			proxyg.Spec.Replicas = ptr.To[int32](2)
 			proxyg.Spec.Template.Spec.Config = changedConfig
-
-			nctx, cancel := context.WithCancel(ctx)
-			ch := make(chan struct{})
-			go func() {
-				defer close(ch)
-				defer ginkgo.GinkgoRecover()
-				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiProxyGroup(proxyg), 4, 1, waiter.LongTaskTimeout))
-			}()
-
-			maxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiProxyGroup(proxyg))
-			f.Must(err)
-			changeTime := maxTime.Add(time.Second)
-
-			ginkgo.By("Change config and replicas of the TiProxyGroup")
 			f.Must(f.Client.Patch(ctx, proxyg, patch))
-			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiProxyGroup(proxyg), changeTime, waiter.LongTaskTimeout))
+
+			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiProxyGroup(proxyg), *changeTime, waiter.LongTaskTimeout))
 			f.WaitForTiProxyGroupReady(ctx, proxyg)
-			cancel()
-			<-ch
 		})
 	})
 
-	// NOTE: this case is failed in e2e env.
-	// Enable it if env is fixed.
-	ginkgo.PContext("TLS", label.P0, label.FeatureTLS, func() {
-		f.SetupCluster(data.WithClusterTLS())
+	ginkgo.Context("TLS", label.P0, label.FeatureTLS, func() {
+		f.SetupCluster(data.WithClusterTLSEnabled())
 		workload := f.SetupWorkload()
 
 		ginkgo.It("use different sql cert from TiDB Server", func(ctx context.Context) {
@@ -314,7 +300,8 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 				checkComponent(pg.Name, v1alpha1.LabelValComponentTiProxy, pg.Spec.Replicas)
 			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
 
-			workload.MustImportData(ctx, data.DefaultTiProxyServiceName, data.DefaultTiProxyServicePort, "root", "", pg.Name+"-tiproxy-client-secret", 100)
+			sec := pg.Name + "-tiproxy-client-secret"
+			workload.MustImportData(ctx, data.DefaultTiProxyServiceName, wopt.Port(data.DefaultTiProxyServicePort), wopt.TLS(sec, sec), wopt.RegionCount(100))
 		})
 	})
 

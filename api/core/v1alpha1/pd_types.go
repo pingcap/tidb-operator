@@ -32,6 +32,9 @@ const (
 	PDPortNamePeer      = "peer"
 	DefaultPDPortClient = 2379
 	DefaultPDPortPeer   = 2380
+
+	// DefaultPDMinReadySeconds is default min ready seconds of pd
+	DefaultPDMinReadySeconds = 5
 )
 
 const (

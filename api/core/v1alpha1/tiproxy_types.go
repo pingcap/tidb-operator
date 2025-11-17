@@ -28,6 +28,9 @@ const (
 	DefaultTiProxyPortClient = 6000
 	DefaultTiProxyPortAPI    = 3080
 	DefaultTiProxyPortPeer   = 3081
+
+	// DefaultTiProxyMinReadySeconds is default min ready seconds of tiproxy
+	DefaultTiProxyMinReadySeconds = 10
 )
 
 const (
@@ -223,7 +226,7 @@ type TiProxyTLS struct {
 
 	// Backend defines the TLS configuration for connections between TiProxy and TiDB servers.
 	// To enable this feature, the corresponding TiDB server must be configured with TLS enabled.
-	Backend *TLS `json:"backend,omitempty"`
+	Backend *ClientTLS `json:"backend,omitempty"`
 }
 
 type TiProxyGroupStatus struct {

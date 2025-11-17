@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate ${GOBIN}/mockgen -write_command_comment=false -copyright_file ${BOILERPLATE_FILE} -destination mock_generated.go -package=common ${GO_MODULE}/pkg/controllers/common StatusPersister,InstanceCondSuspendedUpdater,InstanceCondReadyUpdater,InstanceCondSyncedUpdater,GroupCondSuspendedUpdater,GroupCondReadyUpdater,GroupCondSyncedUpdater,GroupStatusSelectorUpdater,StatusRevisionAndReplicasUpdater
+//go:generate ${GOBIN}/mockgen -write_command_comment=false -copyright_file ${BOILERPLATE_FILE} -destination mock_generated.go -package=common ${GO_MODULE}/pkg/controllers/common StatusPersister,InstanceCondSuspendedUpdater,InstanceCondReadyUpdater,InstanceCondSyncedUpdater,InstanceCondOfflineUpdater,GroupCondSuspendedUpdater,GroupCondReadyUpdater,GroupCondSyncedUpdater,GroupStatusSelectorUpdater,StatusRevisionAndReplicasUpdater
 package common
 
 import (
@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/pkg/utils/podutil"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
@@ -104,6 +105,64 @@ func TaskInstanceConditionSuspended[
 	})
 }
 
+func isPodRunning(state PodState, comp string) (isRunning bool, reason, msg string) {
+	pod := state.Pod()
+	switch {
+	case pod == nil:
+		reason = v1alpha1.ReasonPodNotCreated
+	case state.IsPodTerminating():
+		reason = v1alpha1.ReasonPodTerminating
+	default:
+		if err := podutil.IsContainerRunning(pod, comp); err != nil {
+			return false, v1alpha1.ReasonPodNotRunning, err.Error()
+		}
+		isRunning = true
+	}
+
+	return isRunning, reason, ""
+}
+
+type InstanceCondRunningUpdater[T client.Object] interface {
+	StatusUpdater
+	PodState
+	Object() T
+}
+
+func TaskInstanceConditionRunning[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](state InstanceCondRunningUpdater[F]) task.Task {
+	return task.NameTaskFunc("CondRunning", func(context.Context) task.Result {
+		instance := state.Object()
+
+		var needUpdate bool
+		isRunning, reason, msg := isPodRunning(state, scope.Component[S]())
+
+		var cond *metav1.Condition
+		if isRunning {
+			cond = coreutil.Running()
+		} else {
+			cond = coreutil.NotRunning(reason, msg)
+		}
+
+		needUpdate = coreutil.SetStatusCondition[S](
+			instance,
+			*cond,
+		) || needUpdate
+
+		if needUpdate {
+			state.SetStatusChanged()
+		}
+
+		if !isRunning {
+			return task.Wait().With("instance is not running: %s", coreutil.SprintCondition(cond))
+		}
+
+		return task.Complete().With("instance is running")
+	})
+}
+
 type InstanceCondReadyUpdater[T client.Object] interface {
 	StatusUpdater
 	PodState
@@ -116,7 +175,7 @@ func TaskInstanceConditionReady[
 	F client.Object,
 	T runtime.Instance,
 ](state InstanceCondReadyUpdater[F]) task.Task {
-	return task.NameTaskFunc("CondReady", func(ctx context.Context) task.Result {
+	return task.NameTaskFunc("CondReady", func(context.Context) task.Result {
 		instance := state.Object()
 		pod := state.Pod()
 
@@ -133,6 +192,16 @@ func TaskInstanceConditionReady[
 			reason = v1alpha1.ReasonInstanceNotHealthy
 		default:
 			isReady = true
+			podReadyCond := statefulset.GetPodReadyCondition(&pod.Status)
+			instanceReadyCond := coreutil.FindStatusCondition[S](instance, v1alpha1.CondReady)
+			// If pod is not ready and then ready again, instance controller may not capture the unready stage
+			// The updater depends on instance's ready condition to do next action
+			if podReadyCond != nil &&
+				instanceReadyCond != nil &&
+				podReadyCond.LastTransitionTime.After(instanceReadyCond.LastTransitionTime.Time) {
+				// reset ready condition to update last transition time
+				coreutil.RemoveStatusCondition[S](instance, v1alpha1.CondReady)
+			}
 		}
 
 		var cond *metav1.Condition
@@ -152,7 +221,7 @@ func TaskInstanceConditionReady[
 		}
 
 		if !isReady {
-			return task.Wait().With("instance is unready")
+			return task.Wait().With("instance is unready: %s", coreutil.SprintCondition(cond))
 		}
 
 		return task.Complete().With("instance is ready")
@@ -171,7 +240,7 @@ func TaskInstanceConditionSynced[
 	F client.Object,
 	T runtime.Instance,
 ](state InstanceCondSyncedUpdater[F]) task.Task {
-	return task.NameTaskFunc("CondSynced", func(ctx context.Context) task.Result {
+	return task.NameTaskFunc("CondSynced", func(context.Context) task.Result {
 		instance := state.Object()
 		pod := state.Pod()
 		cluster := state.Cluster()
@@ -212,7 +281,7 @@ func TaskInstanceConditionSynced[
 		}
 
 		if !isSynced {
-			return task.Wait().With("instance is unsynced")
+			return task.Wait().With("instance is unsynced: %s", coreutil.SprintCondition(cond))
 		}
 
 		return task.Complete().With("instance is synced")
@@ -425,7 +494,11 @@ func TaskStatusRevisionAndReplicas[
 		var needUpdate bool
 
 		updateRevision, currentRevision, collisionCount := state.Revision()
-		replicas, readyReplicas, updateReplicas, currentReplicas := calcReplicas[IS](state.InstanceSlice(), updateRevision, currentRevision)
+		replicas, readyReplicas, updateReplicas, currentReplicas := calcReplicas[IS](
+			state.InstanceSlice(),
+			updateRevision,
+			currentRevision,
+		)
 
 		// all instances are updated
 		if updateReplicas == replicas && replicas == coreutil.Replicas[S](g) {

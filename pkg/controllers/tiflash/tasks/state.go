@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	stateutil "github.com/pingcap/tidb-operator/pkg/state"
+	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 )
 
 type state struct {
@@ -36,10 +37,12 @@ type state struct {
 	// the underlay pod has been deleting
 	isPodTerminating bool
 
-	storeState    string
+	storeState    pdv1.NodeState
 	statusChanged bool
 	regionCount   int
 	storeBusy     bool
+
+	healthy bool
 
 	stateutil.IFeatureGates
 }
@@ -63,6 +66,7 @@ type State interface {
 	common.StoreStateUpdater
 
 	common.HealthyState
+	common.HealthyStateUpdater
 
 	stateutil.IFeatureGates
 }
@@ -131,11 +135,11 @@ func (s *state) SetStatusChanged() {
 	s.statusChanged = true
 }
 
-func (s *state) GetStoreState() string {
+func (s *state) GetStoreState() pdv1.NodeState {
 	return s.storeState
 }
 
-func (s *state) SetStoreState(state string) {
+func (s *state) SetStoreState(state pdv1.NodeState) {
 	s.storeState = state
 }
 
@@ -145,7 +149,11 @@ func (s *state) IsStoreUp() bool {
 
 // TODO: fix tiflash healthy probe
 func (s *state) IsHealthy() bool {
-	return s.IsStoreUp()
+	return s.healthy
+}
+
+func (s *state) SetHealthy() {
+	s.healthy = true
 }
 
 func (s *state) GetLeaderCount() int {

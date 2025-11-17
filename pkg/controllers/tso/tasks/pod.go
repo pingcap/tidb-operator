@@ -26,6 +26,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/image"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
 	"github.com/pingcap/tidb-operator/pkg/reloadable"
@@ -46,7 +47,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 		ck := state.Cluster()
 		obj := state.Object()
 		logger := logr.FromContextOrDiscard(ctx)
-		expected := newPod(ck, obj)
+		expected := newPod(ck, obj, state.FeatureGates())
 		pod := state.Pod()
 		if pod == nil {
 			if err := c.Apply(ctx, expected); err != nil {
@@ -131,7 +132,7 @@ func preDeleteCheck(
 	return false, nil
 }
 
-func newPod(cluster *v1alpha1.Cluster, tso *v1alpha1.TSO) *corev1.Pod {
+func newPod(cluster *v1alpha1.Cluster, tso *v1alpha1.TSO, _ features.Gates) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -170,14 +171,7 @@ func newPod(cluster *v1alpha1.Cluster, tso *v1alpha1.TSO) *corev1.Pod {
 	}
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
-		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.VolumeNameClusterTLS,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: coreutil.TLSClusterSecretName[scope.TSO](tso),
-				},
-			},
-		})
+		vols = append(vols, *coreutil.ClusterTLSVolume[scope.TSO](tso))
 		mounts = append(mounts, corev1.VolumeMount{
 			Name:      v1alpha1.VolumeNameClusterTLS,
 			MountPath: v1alpha1.DirPathClusterTLSTSO,

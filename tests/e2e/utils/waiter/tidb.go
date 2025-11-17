@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/errors"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 )
@@ -26,17 +28,17 @@ import (
 func WaitForTiDBsHealthy(ctx context.Context, c client.Client, dbg *v1alpha1.TiDBGroup, timeout time.Duration) error {
 	list := v1alpha1.TiDBList{}
 	return WaitForList(ctx, c, &list, func() error {
+		errs := []error{}
 		if len(list.Items) != int(*dbg.Spec.Replicas) {
-			return fmt.Errorf("db %s/%s replicas %d not equal to %d", dbg.Namespace, dbg.Name, len(list.Items), *dbg.Spec.Replicas)
+			errs = append(errs, fmt.Errorf("db %s/%s replicas %d not equal to %d", dbg.Namespace, dbg.Name, len(list.Items), *dbg.Spec.Replicas))
 		}
 		for i := range list.Items {
 			db := &list.Items[i]
 			if err := checkInstanceStatus(v1alpha1.LabelValComponentTiDB, db.Name, db.Namespace, db.Generation, db.Status.CommonStatus); err != nil {
-				return err
+				errs = append(errs, err)
 			}
 		}
-
-		return nil
+		return errors.NewAggregate(errs)
 	}, timeout, client.InNamespace(dbg.Namespace), client.MatchingLabels{
 		v1alpha1.LabelKeyCluster:   dbg.Spec.Cluster.Name,
 		v1alpha1.LabelKeyGroup:     dbg.Name,

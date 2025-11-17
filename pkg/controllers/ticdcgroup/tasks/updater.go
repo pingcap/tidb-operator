@@ -22,9 +22,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
+	"github.com/pingcap/tidb-operator/pkg/reloadable"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
@@ -38,7 +41,7 @@ const (
 )
 
 // TaskUpdater is a task to scale or update TiCDC when spec of TiCDCGroup is changed.
-func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.TiCDCGroup, *v1alpha1.TiCDC]) task.Task {
+func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFactory) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		cdcg := state.TiCDCGroup()
@@ -48,6 +51,14 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 		if needVersionUpgrade(cdcg) && !checker.CanUpgrade(ctx, cdcg) {
 			// TODO(liubo02): change to Wait
 			return task.Retry(defaultUpdateWaitTime).With("wait until preconditions of upgrading is met")
+		}
+
+		retryAfter := coreutil.RetryIfInstancesReadyButNotAvailable[scope.TiCDC](
+			state.InstanceSlice(),
+			coreutil.MinReadySeconds[scope.TiCDCGroup](cdcg),
+		)
+		if retryAfter != 0 {
+			return task.Retry(retryAfter).With("wait until no instances is ready but not available")
 		}
 
 		var topos []v1alpha1.ScheduleTopology
@@ -68,16 +79,33 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
-		allocator := t.Track(cdcg, state.InstanceSlice()...)
+		needUpdate, needRestart := precheckInstances(cdcg, runtime.ToTiCDCSlice(cdcs), updateRevision)
+		if !needUpdate {
+			return task.Complete().With("all instances are synced")
+		}
+
+		maxSurge, maxUnavailable := 0, 1
+		noUpdate := false
+		if needRestart {
+			maxSurge, maxUnavailable = 1, 0
+			noUpdate = true
+		}
+
+		var instances []string
+		for _, in := range cdcs {
+			instances = append(instances, in.Name)
+		}
+
+		allocator := af.New(cdcg.Namespace, cdcg.Name, instances...)
 		// TODO: get the real time owner info from TiCDC and prefer non-owner when scaling in or updating
 		wait, err := updater.New[runtime.TiCDCTuple]().
 			WithInstances(cdcs...).
 			WithDesired(int(state.Group().Replicas())).
 			WithClient(c).
-			WithMaxSurge(0).
-			WithMaxUnavailable(1).
+			WithMaxSurge(maxSurge).
+			WithMaxUnavailable(maxUnavailable).
 			WithRevision(updateRevision).
-			WithNewFactory(TiCDCNewer(cdcg, updateRevision)).
+			WithNewFactory(TiCDCNewer(cdcg, updateRevision, state.FeatureGates())).
 			WithAddHooks(
 				updater.AllocateName[*runtime.TiCDC](allocator),
 				topoPolicy,
@@ -85,8 +113,13 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
-				topoPolicy,
+				topoPolicy.PolicyScaleIn(),
 			).
+			WithUpdatePreferPolicy(
+				topoPolicy.PolicyUpdate(),
+			).
+			WithNoInPaceUpdate(noUpdate).
+			WithMinReadySeconds(coreutil.MinReadySeconds[scope.TiCDCGroup](cdcg)).
 			Build().
 			Do(ctx)
 		if err != nil {
@@ -103,7 +136,7 @@ func needVersionUpgrade(cdcg *v1alpha1.TiCDCGroup) bool {
 	return cdcg.Spec.Template.Spec.Version != cdcg.Status.Version && cdcg.Status.Version != ""
 }
 
-func TiCDCNewer(cdcg *v1alpha1.TiCDCGroup, rev string) updater.NewFactory[*runtime.TiCDC] {
+func TiCDCNewer(cdcg *v1alpha1.TiCDCGroup, rev string, _ features.Gates) updater.NewFactory[*runtime.TiCDC] {
 	return updater.NewFunc[*runtime.TiCDC](func() *runtime.TiCDC {
 		spec := cdcg.Spec.Template.Spec.DeepCopy()
 
@@ -113,6 +146,7 @@ func TiCDCNewer(cdcg *v1alpha1.TiCDCGroup, rev string) updater.NewFactory[*runti
 				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.TiCDCGroup](cdcg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.TiCDCGroup](cdcg),
+				Finalizers:  []string{metav1alpha1.Finalizer},
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(cdcg, v1alpha1.SchemeGroupVersion.WithKind("TiCDCGroup")),
 				},
@@ -127,4 +161,22 @@ func TiCDCNewer(cdcg *v1alpha1.TiCDCGroup, rev string) updater.NewFactory[*runti
 
 		return runtime.FromTiCDC(ticdc)
 	})
+}
+
+func precheckInstances(cdcg *v1alpha1.TiCDCGroup, cdcs []*v1alpha1.TiCDC, updateRevision string) (needUpdate, needRestart bool) {
+	if len(cdcs) != int(coreutil.Replicas[scope.TiCDCGroup](cdcg)) {
+		needUpdate = true
+	}
+	for _, cdc := range cdcs {
+		if coreutil.UpdateRevision[scope.TiCDC](cdc) == updateRevision {
+			continue
+		}
+
+		needUpdate = true
+		if !reloadable.CheckTiCDC(cdcg, cdc) {
+			needRestart = true
+		}
+	}
+
+	return needUpdate, needRestart
 }

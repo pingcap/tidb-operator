@@ -27,6 +27,7 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	tiflashcfg "github.com/pingcap/tidb-operator/pkg/configs/tiflash"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/image"
 	"github.com/pingcap/tidb-operator/pkg/overlay"
 	"github.com/pingcap/tidb-operator/pkg/reloadable"
@@ -44,7 +45,7 @@ const (
 func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
-		expected := newPod(state.Cluster(), state.TiFlash(), state.Store)
+		expected := newPod(state.Cluster(), state.TiFlash(), state.Store, state.FeatureGates())
 		pod := state.Pod()
 		if pod == nil {
 			if err := c.Apply(ctx, expected); err != nil {
@@ -75,7 +76,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, store *pdv1.Store) *corev1.Pod {
+func newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, store *pdv1.Store, fg features.Gates) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -121,14 +122,7 @@ func newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, store *pdv1.St
 	}
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
-		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.VolumeNameClusterTLS,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: coreutil.TLSClusterSecretName[scope.TiFlash](tiflash),
-				},
-			},
-		})
+		vols = append(vols, *coreutil.ClusterTLSVolume[scope.TiFlash](tiflash))
 		mounts = append(mounts, corev1.VolumeMount{
 			Name:      v1alpha1.VolumeNameClusterTLS,
 			MountPath: v1alpha1.DirPathClusterTLSTiFlash,
@@ -157,8 +151,20 @@ func newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, store *pdv1.St
 			Subdomain:    tiflash.Spec.Subdomain,
 			NodeSelector: tiflash.Spec.Topology,
 			InitContainers: []corev1.Container{
-				*buildLogTailerContainer(tiflash, v1alpha1.ContainerNameTiFlashServerLog, tiflashcfg.GetServerLogPath(dataDir), dataMount),
-				*buildLogTailerContainer(tiflash, v1alpha1.ContainerNameTiFlashErrorLog, tiflashcfg.GetErrorLogPath(dataDir), dataMount),
+				*buildLogTailerContainer(
+					tiflash,
+					v1alpha1.ContainerNameTiFlashServerLog,
+					tiflashcfg.GetServerLogPath(dataDir),
+					dataMount,
+					fg,
+				),
+				*buildLogTailerContainer(
+					tiflash,
+					v1alpha1.ContainerNameTiFlashErrorLog,
+					tiflashcfg.GetErrorLogPath(dataDir),
+					dataMount,
+					fg,
+				),
 			},
 			Containers: []corev1.Container{
 				{
@@ -217,7 +223,13 @@ func newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, store *pdv1.St
 	return pod
 }
 
-func buildLogTailerContainer(tiflash *v1alpha1.TiFlash, containerName, logFile string, mount *corev1.VolumeMount) *corev1.Container {
+func buildLogTailerContainer(
+	tiflash *v1alpha1.TiFlash,
+	containerName string,
+	logFile string,
+	mount *corev1.VolumeMount,
+	_ features.Gates,
+) *corev1.Container {
 	img := image.Helper.Image(nil)
 
 	if tiflash.Spec.LogTailer != nil {
@@ -225,15 +237,18 @@ func buildLogTailerContainer(tiflash *v1alpha1.TiFlash, containerName, logFile s
 	}
 
 	restartPolicy := corev1.ContainerRestartPolicyAlways // sidecar container in `initContainers`
+	cmd := []string{
+		"sh",
+		"-c",
+	}
+
+	cmd = append(cmd, fmt.Sprintf("touch %s; tail -n0 -F %s;", logFile, logFile))
+
 	c := &corev1.Container{
 		Name:          containerName,
 		Image:         img,
 		RestartPolicy: &restartPolicy,
-		Command: []string{
-			"sh",
-			"-c",
-			fmt.Sprintf("touch %s; tail -n0 -F %s;", logFile, logFile),
-		},
+		Command:       cmd,
 	}
 	if mount != nil {
 		c.VolumeMounts = append(c.VolumeMounts, *mount)

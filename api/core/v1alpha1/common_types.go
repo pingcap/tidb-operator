@@ -31,19 +31,22 @@ const (
 )
 
 const (
+	ReasonUnknown = "Unknown"
 	// Ready means all managed resources are ready.
 	// NOTE: It does not mean all managed resources are up to date.
 	//
 	// condition
-	CondReady = "Ready"
+	CondRunning = "Running"
+	CondReady   = "Ready"
 	// reason for both
-	ReasonReady   = "Ready"
-	ReasonUnready = "Unready"
+	ReasonReady   = CondReady
+	ReasonRunning = CondRunning
 	// reason for group
 	ReasonNotAllInstancesReady = "NotAllInstancesReady"
 	// reason for instance
 	ReasonPodNotCreated      = "PodNotCreated"
 	ReasonPodNotReady        = "PodNotReady"
+	ReasonPodNotRunning      = "PodNotRunning"
 	ReasonPodTerminating     = "PodTerminating"
 	ReasonInstanceNotHealthy = "InstanceNotHealthy"
 
@@ -51,13 +54,34 @@ const (
 	// nothing need to do in controller but only status updation.
 	CondSynced = "Synced"
 	// reason for both
-	ReasonSynced   = "Synced"
-	ReasonUnsynced = "Unsynced"
+	ReasonSynced = CondSynced
 	// reason for group
 	ReasonNotAllInstancesUpToDate = "NotAllInstancesUpToDate"
 	// reason for instance
 	ReasonPodNotUpToDate = "PodNotUpToDate"
 	ReasonPodNotDeleted  = "PodNotDeleted"
+
+	// Deprecated: not used anymore
+	ReasonUnready  = "Unready"
+	ReasonUnsynced = "Unsynced"
+)
+
+const (
+	// StoreOfflinedConditionType represents if the store complete the offline.
+	StoreOfflinedConditionType = "Offlined"
+)
+
+const (
+	// ReasonOfflineProcessing means the store is being offlined.
+	ReasonOfflineProcessing = "Processing"
+	// ReasonOfflineCanceling means the store is being offlined.
+	ReasonOfflineCanceling = "Canceling"
+	// ReasonOfflineCompleted means the store has been successfully offlined and removed from PD.
+	ReasonOfflineCompleted = "Completed"
+
+	// ReasonOfflineFailed means the offline operation failed.
+	// Deprecated: cannot indicate its delete failure or cancel failure
+	ReasonOfflineFailed = "Failed"
 )
 
 // TODO(liubo02): move to meta
@@ -77,6 +101,8 @@ const (
 	LabelKeyGroup = KeyPrefix + "group"
 	// LabelKeyInstance means the instance of the resource
 	LabelKeyInstance = KeyPrefix + "instance"
+	// LabelKeyName means the name of the resource
+	LabelKeyName = KeyPrefix + "name"
 
 	// LabelKeyPodSpecHash is the hash of the pod spec.
 	LabelKeyPodSpecHash = KeyPrefix + "pod-spec-hash"
@@ -100,14 +126,16 @@ const (
 
 const (
 	// Label value for meta.LabelKeyComponent
-	LabelValComponentPD        = string(meta.ComponentPD)
-	LabelValComponentTiDB      = string(meta.ComponentTiDB)
-	LabelValComponentTiKV      = string(meta.ComponentTiKV)
-	LabelValComponentTiFlash   = string(meta.ComponentTiFlash)
-	LabelValComponentTiCDC     = string(meta.ComponentTiCDC)
-	LabelValComponentTSO       = string(meta.ComponentTSO)
+	LabelValComponentPD         = string(meta.ComponentPD)
+	LabelValComponentTiDB       = string(meta.ComponentTiDB)
+	LabelValComponentTiKV       = string(meta.ComponentTiKV)
+	LabelValComponentTiFlash    = string(meta.ComponentTiFlash)
+	LabelValComponentTiCDC      = string(meta.ComponentTiCDC)
+	LabelValComponentTSO        = string(meta.ComponentTSO)
+	LabelValComponentScheduling = string(meta.ComponentScheduling)
+	LabelValComponentTiProxy    = string(meta.ComponentTiProxy)
+	// Deprecated: use LabelValComponentScheduling
 	LabelValComponentScheduler = string(meta.ComponentScheduler)
-	LabelValComponentTiProxy   = string(meta.ComponentTiProxy)
 
 	// LabelKeyClusterID is the unique identifier of the cluster.
 	// This label is used for backward compatibility with TiDB Operator v1, so it has a different prefix.
@@ -370,5 +398,12 @@ type UpdateStrategy struct {
 // Now it only support enable or disable.
 // TODO(liubo02): add more tls configs
 type TLS struct {
+	Enabled bool `json:"enabled,omitempty"`
+}
+
+// ClientTLS defines a common tls config for clients
+// Now it only support enable or disable.
+// TODO(liubo02): add more tls configs
+type ClientTLS struct {
 	Enabled bool `json:"enabled,omitempty"`
 }

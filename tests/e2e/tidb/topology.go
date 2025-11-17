@@ -16,15 +16,14 @@ package tidb
 
 import (
 	"context"
-	"time"
 
 	"github.com/onsi/ginkgo/v2"
-	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
+	"github.com/pingcap/tidb-operator/tests/e2e/framework/action"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
@@ -38,7 +37,7 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 		pdg := f.MustCreatePD(ctx)
 		kvg := f.MustCreateTiKV(ctx)
 		dbg := f.MustCreateTiDB(ctx,
-			data.WithReplicas[*runtime.TiDBGroup](3),
+			data.WithReplicas[scope.TiDBGroup](3),
 			data.WithTiDBEvenlySpreadPolicy(),
 		)
 
@@ -46,7 +45,7 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 		f.WaitForTiKVGroupReady(ctx, kvg)
 		f.WaitForTiDBGroupReady(ctx, dbg)
 
-		f.MustEvenlySpreadTiDB(ctx, dbg)
+		framework.MustEvenlySpread[scope.TiDBGroup](ctx, f, dbg)
 	})
 
 	ginkgo.It("rolling update and ensure still evenly spread", label.Update, func(ctx context.Context) {
@@ -54,7 +53,7 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 		pdg := f.MustCreatePD(ctx)
 		kvg := f.MustCreateTiKV(ctx)
 		dbg := f.MustCreateTiDB(ctx,
-			data.WithReplicas[*runtime.TiDBGroup](3),
+			data.WithReplicas[scope.TiDBGroup](3),
 			data.WithTiDBEvenlySpreadPolicy(),
 		)
 
@@ -62,30 +61,21 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 		f.WaitForTiKVGroupReady(ctx, kvg)
 		f.WaitForTiDBGroupReady(ctx, dbg)
 
-		f.MustEvenlySpreadTiDB(ctx, dbg)
-
-		patch := client.MergeFrom(dbg.DeepCopy())
-		dbg.Spec.Template.Spec.Config = `log.level = 'warn'`
+		framework.MustEvenlySpread[scope.TiDBGroup](ctx, f, dbg)
 
 		nctx, cancel := context.WithCancel(ctx)
-		ch := make(chan struct{})
-		go func() {
-			defer close(ch)
-			defer ginkgo.GinkgoRecover()
-			f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiDBGroup(dbg), 3, 1, waiter.LongTaskTimeout))
-		}()
+		done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, 3)
+		defer func() { <-done }()
+		defer cancel()
 
-		maxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
+		changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiDBGroup](ctx, f.Client, dbg)
 		f.Must(err)
-		changeTime := maxTime.Add(time.Second)
 
-		ginkgo.By("rolling update once")
-		f.Must(f.Client.Patch(ctx, dbg, patch))
-		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), changeTime, waiter.LongTaskTimeout))
+		action.MustRollingRestart[scope.TiDBGroup](ctx, f, dbg)
+
+		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), *changeTime, waiter.LongTaskTimeout))
 		f.WaitForTiDBGroupReady(ctx, dbg)
-		cancel()
-		<-ch
-		f.MustEvenlySpreadTiDB(ctx, dbg)
+		framework.MustEvenlySpread[scope.TiDBGroup](ctx, f, dbg)
 	})
 
 	// a, b -> a, c and then rolling + scale at the same time
@@ -101,7 +91,7 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 		pdg := f.MustCreatePD(ctx)
 		kvg := f.MustCreateTiKV(ctx)
 		dbg := f.MustCreateTiDB(ctx,
-			data.WithReplicas[*runtime.TiDBGroup](2),
+			data.WithReplicas[scope.TiDBGroup](2),
 			data.WithTiDBEvenlySpreadPolicy(),
 		)
 
@@ -109,54 +99,37 @@ var _ = ginkgo.Describe("Topology", label.TiDB, label.MultipleAZ, label.P0, func
 		f.WaitForTiKVGroupReady(ctx, kvg)
 		f.WaitForTiDBGroupReady(ctx, dbg)
 
-		f.MustEvenlySpreadTiDB(ctx, dbg)
-
-		patch := client.MergeFrom(dbg.DeepCopy())
-		dbg.Spec.Template.Spec.Config = `log.level = 'warn'`
+		framework.MustEvenlySpread[scope.TiDBGroup](ctx, f, dbg)
 
 		nctx, cancel := context.WithCancel(ctx)
-		ch := make(chan struct{})
-		go func() {
-			defer close(ch)
-			defer ginkgo.GinkgoRecover()
-			f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiDBGroup(dbg), 2, 1, waiter.LongTaskTimeout))
-		}()
+		done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, 2)
 
-		maxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
+		changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiDBGroup](ctx, f.Client, dbg)
 		f.Must(err)
-		changeTime := maxTime.Add(time.Second)
 
-		ginkgo.By("rolling update once")
-		f.Must(f.Client.Patch(ctx, dbg, patch))
-		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), changeTime, waiter.LongTaskTimeout))
+		action.MustRollingRestart[scope.TiDBGroup](ctx, f, dbg)
+
+		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), *changeTime, waiter.LongTaskTimeout))
 		f.WaitForTiDBGroupReady(ctx, dbg)
-		cancel()
-		<-ch
-		f.MustEvenlySpreadTiDB(ctx, dbg)
 
-		patch = client.MergeFrom(dbg.DeepCopy())
-		dbg.Spec.Template.Spec.Config = `log.level = 'info'`
-		dbg.Spec.Replicas = ptr.To[int32](3)
+		framework.MustEvenlySpread[scope.TiDBGroup](ctx, f, dbg)
+
+		cancel()
+		<-done
 
 		nctx, cancel = context.WithCancel(ctx)
-		ch = make(chan struct{})
-		go func() {
-			defer close(ch)
-			defer ginkgo.GinkgoRecover()
-			f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiDBGroup(dbg), 2, 1, waiter.LongTaskTimeout))
-		}()
+		done = framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, 3)
+		defer func() { <-done }()
+		defer cancel()
 
-		maxTime, err = waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
+		changeTime, err = waiter.MaxPodsCreateTimestamp[scope.TiDBGroup](ctx, f.Client, dbg)
 		f.Must(err)
-		changeTime = maxTime.Add(time.Second)
 
-		ginkgo.By("rolling update again")
-		f.Must(f.Client.Patch(ctx, dbg, patch))
-		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), changeTime, waiter.LongTaskTimeout))
+		action.MustScaleAndRollingRestart[scope.TiDBGroup](ctx, f, dbg, 3)
+
+		f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), *changeTime, waiter.LongTaskTimeout))
 		f.WaitForTiDBGroupReady(ctx, dbg)
-		cancel()
-		<-ch
 
-		f.MustEvenlySpreadTiDB(ctx, dbg)
+		framework.MustEvenlySpread[scope.TiDBGroup](ctx, f, dbg)
 	})
 })

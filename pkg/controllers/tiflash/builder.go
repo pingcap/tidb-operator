@@ -15,10 +15,10 @@
 package tiflash
 
 import (
-	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tiflash/tasks"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -26,6 +26,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 	runner := task.NewTaskRunner(reporter,
 		// Get tiflash
 		common.TaskContextObject[scope.TiFlash](state, r.Client),
+		common.TaskTrack[scope.TiFlash](state, r.Tracker),
 		// if it's deleted just return
 		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiFlash](state)),
 
@@ -38,21 +39,21 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// if the cluster is deleting, del all subresources and remove the finalizer directly
 		task.IfBreak(common.CondClusterIsDeleting(state),
-			tasks.TaskFinalizerDel(state, r.Client),
+			tasks.TaskFinalizerDel(state, r.Client, r.TiFlashClientManager),
 		),
 
+		// get pod and check whether the cluster is suspending
+		common.TaskContextPod[scope.TiFlash](state, r.Client),
+
 		// get info from pd
-		tasks.TaskContextInfoFromPD(state, r.PDClientManager),
+		tasks.TaskContextInfoFromPD(state, r.PDClientManager, r.TiFlashClientManager),
 
 		// if instance is deleting and store is removed
 		task.IfBreak(ObjectIsDeletingAndStoreIsRemoved(state),
-			tasks.TaskFinalizerDel(state, r.Client),
+			tasks.TaskFinalizerDel(state, r.Client, r.TiFlashClientManager),
 		),
 
-		tasks.TaskOfflineStore(state),
 		common.TaskFinalizerAdd[scope.TiFlash](state, r.Client),
-		// get pod and check whether the cluster is suspending
-		common.TaskContextPod[scope.TiFlash](state, r.Client),
 
 		// check whether the cluster is suspending
 		task.IfBreak(common.CondClusterIsSuspending(state),
@@ -60,19 +61,24 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskInstanceConditionSuspended[scope.TiFlash](state),
 			common.TaskInstanceConditionSynced[scope.TiFlash](state),
 			common.TaskInstanceConditionReady[scope.TiFlash](state),
+			common.TaskInstanceConditionRunning[scope.TiFlash](state),
+			common.TaskInstanceConditionOffline[scope.TiFlash](state),
 			common.TaskStatusPersister[scope.TiFlash](state, r.Client),
 		),
 
 		// normal process
+		tasks.TaskOfflineStore(state),
 		tasks.TaskConfigMap(state, r.Client),
-		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifierFactory),
+		common.TaskPVC[scope.TiFlash](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
 		tasks.TaskPod(state, r.Client),
 		tasks.TaskStoreLabels(state, r.Client),
 		common.TaskInstanceConditionSynced[scope.TiFlash](state),
 		// only set ready if pd is synced
 		task.If(PDIsSynced(state),
 			common.TaskInstanceConditionReady[scope.TiFlash](state),
+			common.TaskInstanceConditionOffline[scope.TiFlash](state),
 		),
+		common.TaskInstanceConditionRunning[scope.TiFlash](state),
 		tasks.TaskStatus(state, r.Client),
 	)
 
@@ -82,7 +88,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 func ObjectIsDeletingAndStoreIsRemoved(state *tasks.ReconcileContext) task.Condition {
 	return task.CondFunc(func() bool {
 		return !state.Object().GetDeletionTimestamp().IsZero() && state.PDSynced &&
-			(state.GetStoreState() == v1alpha1.StoreStateRemoved || state.Store == nil)
+			(state.GetStoreState() == pdv1.NodeStateRemoved || state.Store == nil)
 	})
 }
 

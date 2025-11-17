@@ -20,11 +20,11 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/utils/toml"
 )
 
-func NewTiFlashGroup(ns string, patches ...GroupPatch[*runtime.TiFlashGroup]) *v1alpha1.TiFlashGroup {
-	flashg := &runtime.TiFlashGroup{
+func NewTiFlashGroup(ns string, patches ...GroupPatch[*v1alpha1.TiFlashGroup]) *v1alpha1.TiFlashGroup {
+	flashg := &v1alpha1.TiFlashGroup{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      defaultTiFlashGroupName,
@@ -48,8 +48,47 @@ func NewTiFlashGroup(ns string, patches ...GroupPatch[*runtime.TiFlashGroup]) *v
 		},
 	}
 	for _, p := range patches {
-		p(flashg)
+		p.Patch(flashg)
 	}
 
-	return runtime.ToTiFlashGroup(flashg)
+	return flashg
+}
+
+type TiFlashConfig struct {
+	Flash FlashConfig `toml:"flash"`
+}
+
+type FlashConfig struct {
+	DisaggregatedMode string `toml:"disaggregated_mode"`
+}
+
+func withTiFlashMode(mode string) GroupPatch[*v1alpha1.TiFlashGroup] {
+	return GroupPatchFunc[*v1alpha1.TiFlashGroup](func(obj *v1alpha1.TiFlashGroup) {
+		if mode == "tiflash_write" {
+			obj.Name = obj.Name + "-wn"
+		}
+		if mode == "tiflash_compute" {
+			obj.Name = obj.Name + "-cn"
+		}
+		c := TiFlashConfig{}
+		d, e := toml.Codec[TiFlashConfig]()
+		if err := d.Decode([]byte(obj.Spec.Template.Spec.Config), &c); err != nil {
+			panic("decode tiflash config: " + err.Error())
+		}
+
+		c.Flash.DisaggregatedMode = mode
+		data, err := e.Encode(&c)
+		if err != nil {
+			panic("encode tiflash config: " + err.Error())
+		}
+		obj.Spec.Template.Spec.Config = v1alpha1.ConfigFile(data)
+	})
+}
+
+func WithTiFlashComputeMode() GroupPatch[*v1alpha1.TiFlashGroup] {
+	return withTiFlashMode("tiflash_compute")
+}
+
+func WithTiFlashWriteMode() GroupPatch[*v1alpha1.TiFlashGroup] {
+	return withTiFlashMode("tiflash_write")
 }

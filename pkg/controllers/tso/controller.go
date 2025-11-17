@@ -16,6 +16,7 @@ package tso
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -33,6 +34,7 @@ import (
 	tsom "github.com/pingcap/tidb-operator/pkg/timanager/tso"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 	"github.com/pingcap/tidb-operator/pkg/volumes"
 )
 
@@ -42,6 +44,7 @@ type Reconciler struct {
 	PDClientManager       pdm.PDClientManager
 	TSOClientManager      tsom.TSOClientManager
 	VolumeModifierFactory volumes.ModifierFactory
+	Tracker               tracker.Tracker
 }
 
 func Setup(
@@ -50,6 +53,7 @@ func Setup(
 	pdcm pdm.PDClientManager,
 	tsocm tsom.TSOClientManager,
 	vm volumes.ModifierFactory,
+	t tracker.Tracker,
 ) error {
 	r := &Reconciler{
 		Logger:                mgr.GetLogger().WithName("TSO"),
@@ -57,6 +61,7 @@ func Setup(
 		PDClientManager:       pdcm,
 		TSOClientManager:      tsocm,
 		VolumeModifierFactory: vm,
+		Tracker:               t,
 	}
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.TSO{}).
 		Owns(&corev1.Pod{}).
@@ -77,7 +82,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	defer func() {
 		dur := time.Since(startTime)
 		logger.Info("end reconcile", "duration", dur)
-		logger.Info("summay: \n" + reporter.Summary())
+		summary := fmt.Sprintf("summary for %v\n%s", req.NamespacedName, reporter.Summary())
+		logger.Info(summary)
 	}()
 
 	rtx := &tasks.ReconcileContext{

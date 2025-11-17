@@ -22,15 +22,18 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
 var (
-	Poll = time.Second * 2
+	Poll = time.Second * 5
 
 	ShortTaskTimeout = time.Minute * 3
 	LongTaskTimeout  = time.Minute * 10
@@ -60,6 +63,44 @@ func WaitForObject(
 		}
 
 		return true, nil
+	}); err != nil {
+		if wait.Interrupted(err) {
+			return fmt.Errorf("wait for object %T(%v) condition timeout: %w", obj, client.ObjectKeyFromObject(obj), lastErr)
+		}
+
+		return fmt.Errorf("can't wait for object %T(%v) condition, error: %w", obj, client.ObjectKeyFromObject(obj), err)
+	}
+
+	return nil
+}
+
+func WaitForObjectV2(
+	ctx context.Context,
+	c client.Client,
+	obj client.Object,
+	cond func() (stop bool, _ error),
+	timeout time.Duration,
+) error {
+	var lastErr error
+	if err := wait.PollUntilContextTimeout(ctx, Poll, timeout, true, func(ctx context.Context) (bool, error) {
+		key := client.ObjectKeyFromObject(obj)
+		if err := c.Get(ctx, key, obj); err != nil {
+			if apierrors.IsNotFound(err) {
+				return false, nil
+			}
+
+			return false, fmt.Errorf("can't get obj %s: %w", key, err)
+		}
+
+		stop, err := cond()
+		if err != nil {
+			if stop {
+				return false, err
+			}
+			lastErr = err
+		}
+
+		return stop, nil
 	}); err != nil {
 		if wait.Interrupted(err) {
 			return fmt.Errorf("wait for object %T(%v) condition timeout: %w", obj, client.ObjectKeyFromObject(obj), lastErr)
@@ -147,30 +188,34 @@ func WaitForListDeleted(
 	}, timeout, opts...)
 }
 
-func WaitForObjectCondition[T runtime.ObjectTuple[O, U], O client.Object, U runtime.Object](
+func WaitForObjectCondition[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](
 	ctx context.Context,
 	c client.Client,
-	obj O,
+	obj F,
 	condType string,
 	status metav1.ConditionStatus,
 	timeout time.Duration,
 ) error {
-	var t T
 	return WaitForObject(ctx, c, obj, func() error {
-		ro := t.From(obj)
-		cond := meta.FindStatusCondition(ro.Conditions(), condType)
+		cond := coreutil.FindStatusCondition[S](obj, condType)
 		if cond == nil {
 			return fmt.Errorf("obj %s/%s's condition %s is not set", obj.GetNamespace(), obj.GetName(), condType)
 		}
-		if cond.Status == status {
+		if cond.Status == status && cond.ObservedGeneration == obj.GetGeneration() {
 			return nil
 		}
-		return fmt.Errorf("obj %s/%s's condition %s has unexpected status, expected is %v, current is %v, reason: %v, message: %v",
+		return fmt.Errorf("obj %s/%s's condition %s has unexpected status, expected generation %v, status %v, current status is %v, observed generation: %v, reason: %v, message: %v",
 			obj.GetNamespace(),
 			obj.GetName(),
 			cond.Type,
+			obj.GetGeneration(),
 			status,
 			cond.Status,
+			cond.ObservedGeneration,
 			cond.Reason,
 			cond.Message,
 		)
@@ -178,12 +223,38 @@ func WaitForObjectCondition[T runtime.ObjectTuple[O, U], O client.Object, U runt
 }
 
 func checkInstanceStatus(kind, name, ns string, generation int64, status v1alpha1.CommonStatus) error {
+	errs := []error{}
 	objID := fmt.Sprintf("%s %s/%s", kind, ns, name)
-	if generation != status.ObservedGeneration || !meta.IsStatusConditionPresentAndEqual(status.Conditions, v1alpha1.CondSynced, metav1.ConditionTrue) {
-		return fmt.Errorf("%s is not synced", objID)
+	if generation != status.ObservedGeneration {
+		errs = append(errs, fmt.Errorf("observedGeneration %v is not equal with generation %v", status.ObservedGeneration, generation))
 	}
-	if !meta.IsStatusConditionPresentAndEqual(status.Conditions, v1alpha1.CondReady, metav1.ConditionTrue) {
-		return fmt.Errorf("%s is not ready", objID)
+	if err := isConditionTrue(status.Conditions, v1alpha1.CondSynced, generation); err != nil {
+		errs = append(errs, err)
 	}
+	if err := isConditionTrue(status.Conditions, v1alpha1.CondReady, generation); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := errors.NewAggregate(errs); err != nil {
+		return fmt.Errorf("%s: %w", objID, err)
+	}
+
+	return nil
+}
+
+func isConditionTrue(conditions []metav1.Condition, conditionType string, generation int64) error {
+	cond := meta.FindStatusCondition(conditions, conditionType)
+	if cond == nil {
+		return fmt.Errorf("no %s condition", conditionType)
+	}
+
+	if cond.ObservedGeneration != generation {
+		return fmt.Errorf("condition %s: observedGeneration %v is not equal with generation %v", conditionType, cond.ObservedGeneration, generation)
+	}
+
+	if cond.Status != metav1.ConditionTrue {
+		return fmt.Errorf("condition %s is not True: %v", conditionType, cond)
+	}
+
 	return nil
 }

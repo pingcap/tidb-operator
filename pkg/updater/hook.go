@@ -69,6 +69,14 @@ func KeepTopology[R runtime.Instance]() UpdateHook[R] {
 	})
 }
 
+// KeepResourceVersion set resourceVersion when update obj
+func KeepResourceVersion[R runtime.Instance]() UpdateHook[R] {
+	return UpdateHookFunc[R](func(update, outdated R) R {
+		update.SetResourceVersion(outdated.GetResourceVersion())
+		return update
+	})
+}
+
 // AllocateName will set name for new instance
 // If a new name is allocated, it will be recorded until it is observed.
 // This hook is defined to avoid dirty read(no read-after-write consistency) when scale out.
@@ -79,6 +87,10 @@ func KeepTopology[R runtime.Instance]() UpdateHook[R] {
 func AllocateName[R runtime.Instance](allocator tracker.Allocator) AddHook[R] {
 	count := 0
 	return AddHookFunc[R](func(update R) R {
+		// ignore name
+		if update.GetName() != "" {
+			return update
+		}
 		name := allocator.Allocate(count)
 		count++
 		update.SetName(name)

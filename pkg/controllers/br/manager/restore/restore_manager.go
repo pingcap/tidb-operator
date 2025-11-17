@@ -258,7 +258,7 @@ func (rm *restoreManager) makeRestoreJob(ctx context.Context, restore *v1alpha1.
 			Name: corev1alpha1.VolumeNameClusterClientTLS,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: coreutil.TLSClusterClientSecretName(restore.Spec.BR.Cluster),
+					SecretName: coreutil.LegacyTLSClusterClientSecretName(restore.Spec.BR.Cluster),
 				},
 			},
 		})

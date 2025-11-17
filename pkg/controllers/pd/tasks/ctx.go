@@ -72,7 +72,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		state.MemberID = m.ID
 		state.IsLeader = m.IsLeader
 
-		var ready = true // default to true for backward compatibility
+		ready := true // default to true for backward compatibility
 
 		// Only call GetMemberReady if the feature gate is enabled and version supports it
 		if state.FeatureGates().Enabled(metav1alpha1.UsePDReadyAPI) {

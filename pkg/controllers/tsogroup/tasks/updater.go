@@ -22,9 +22,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
@@ -38,7 +40,7 @@ const (
 )
 
 // TaskUpdater is a task to scale or update TSO when spec of TSOGroup is changed.
-func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.TSOGroup, *v1alpha1.TSO]) task.Task {
+func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFactory) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		obj := state.Object()
@@ -48,6 +50,14 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 		if needVersionUpgrade(obj) && !checker.CanUpgrade(ctx, obj) {
 			// TODO(liubo02): change to Wait
 			return task.Retry(defaultUpdateWaitTime).With("wait until preconditions of upgrading is met")
+		}
+
+		retryAfter := coreutil.RetryIfInstancesReadyButNotAvailable[scope.TSO](
+			state.InstanceSlice(),
+			coreutil.MinReadySeconds[scope.TSOGroup](obj),
+		)
+		if retryAfter != 0 {
+			return task.Retry(retryAfter).With("wait until no instances is ready but not available")
 		}
 
 		var topos []v1alpha1.ScheduleTopology
@@ -68,7 +78,12 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
-		allocator := t.Track(obj, state.InstanceSlice()...)
+		var instances []string
+		for _, in := range is {
+			instances = append(instances, in.Name)
+		}
+
+		allocator := af.New(obj.Namespace, obj.Name, instances...)
 		wait, err := updater.New[runtime.TSOTuple]().
 			WithInstances(is...).
 			WithDesired(int(state.Group().Replicas())).
@@ -77,7 +92,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithMaxSurge(0).
 			WithMaxUnavailable(1).
 			WithRevision(updateRevision).
-			WithNewFactory(TSONewer(obj, updateRevision)).
+			WithNewFactory(TSONewer(obj, updateRevision, state.FeatureGates())).
 			WithAddHooks(
 				updater.AllocateName[*runtime.TSO](allocator),
 				topoPolicy,
@@ -86,11 +101,12 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
 				NotLeaderPolicy(),
-				topoPolicy,
+				topoPolicy.PolicyScaleIn(),
 			).
 			WithUpdatePreferPolicy(
 				NotLeaderPolicy(),
 			).
+			WithMinReadySeconds(coreutil.MinReadySeconds[scope.TSOGroup](obj)).
 			Build().
 			Do(ctx)
 		if err != nil {
@@ -107,7 +123,7 @@ func needVersionUpgrade(tg *v1alpha1.TSOGroup) bool {
 	return tg.Spec.Template.Spec.Version != tg.Status.Version && tg.Status.Version != ""
 }
 
-func TSONewer(tg *v1alpha1.TSOGroup, rev string) updater.NewFactory[*runtime.TSO] {
+func TSONewer(tg *v1alpha1.TSOGroup, rev string, _ features.Gates) updater.NewFactory[*runtime.TSO] {
 	return updater.NewFunc[*runtime.TSO](func() *runtime.TSO {
 		spec := tg.Spec.Template.Spec.DeepCopy()
 
@@ -117,6 +133,7 @@ func TSONewer(tg *v1alpha1.TSOGroup, rev string) updater.NewFactory[*runtime.TSO
 				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.TSOGroup](tg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.TSOGroup](tg),
+				Finalizers:  []string{metav1alpha1.Finalizer},
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(tg, v1alpha1.SchemeGroupVersion.WithKind("TSOGroup")),
 				},

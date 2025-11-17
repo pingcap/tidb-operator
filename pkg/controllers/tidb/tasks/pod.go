@@ -137,15 +137,8 @@ func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, g features.Gates) *c
 		}
 	}
 
-	if coreutil.IsMySQLTLSEnabled(tidb) {
-		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.VolumeNameMySQLTLS,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: coreutil.MySQLTLSSecretName(tidb),
-				},
-			},
-		})
+	if coreutil.IsTiDBMySQLTLSEnabled(tidb) {
+		vols = append(vols, *coreutil.TiDBMySQLTLSVolume(tidb))
 		mounts = append(mounts, corev1.VolumeMount{
 			Name:      v1alpha1.VolumeNameMySQLTLS,
 			MountPath: v1alpha1.DirPathMySQLTLS,
@@ -154,14 +147,8 @@ func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, g features.Gates) *c
 	}
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
-		vols = append(vols, corev1.Volume{
-			Name: v1alpha1.VolumeNameClusterTLS,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: coreutil.TLSClusterSecretName[scope.TiDB](tidb),
-				},
-			},
-		})
+		vols = append(vols, *coreutil.ClusterTLSVolume[scope.TiDB](tidb))
+
 		mounts = append(mounts, corev1.VolumeMount{
 			Name:      v1alpha1.VolumeNameClusterTLS,
 			MountPath: v1alpha1.DirPathClusterTLSTiDB,
@@ -234,7 +221,7 @@ func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, g features.Gates) *c
 			mounts = append(mounts, *mount)
 			slowLogMount = mount
 		}
-		slowLogContainer = buildSlowLogContainer(tidb, slowLogMount)
+		slowLogContainer = buildSlowLogContainer(tidb, slowLogMount, g)
 	}
 
 	sleepSeconds := defaultPreStopSleepSeconds
@@ -383,7 +370,7 @@ func defaultSlowLogVolumeAndMount() (*corev1.Volume, *corev1.VolumeMount) {
 		}
 }
 
-func buildSlowLogContainer(tidb *v1alpha1.TiDB, mount *corev1.VolumeMount) *corev1.Container {
+func buildSlowLogContainer(tidb *v1alpha1.TiDB, mount *corev1.VolumeMount, _ features.Gates) *corev1.Container {
 	slowlogFile := path.Join(mount.MountPath, v1alpha1.FileNameTiDBSlowLog)
 	img := image.Helper.Image(nil)
 
@@ -391,17 +378,20 @@ func buildSlowLogContainer(tidb *v1alpha1.TiDB, mount *corev1.VolumeMount) *core
 		img = image.Helper.Image(tidb.Spec.SlowLog.Image)
 	}
 
+	cmd := []string{
+		"sh",
+		"-c",
+	}
+
+	cmd = append(cmd, fmt.Sprintf("touch %s; tail -n0 -F %s;", slowlogFile, slowlogFile))
+
 	restartPolicy := corev1.ContainerRestartPolicyAlways // sidecar container in `initContainers`
 	c := &corev1.Container{
 		Name:          v1alpha1.ContainerNameTiDBSlowLog,
 		Image:         img,
 		RestartPolicy: &restartPolicy,
 		VolumeMounts:  []corev1.VolumeMount{*mount},
-		Command: []string{
-			"sh",
-			"-c",
-			fmt.Sprintf("touch %s; tail -n0 -F %s;", slowlogFile, slowlogFile),
-		},
+		Command:       cmd,
 	}
 	if tidb.Spec.SlowLog != nil {
 		c.Resources = k8s.GetResourceRequirements(tidb.Spec.SlowLog.Resources)

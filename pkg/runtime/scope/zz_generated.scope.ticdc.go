@@ -22,6 +22,7 @@ package scope
 import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type (
@@ -38,6 +39,10 @@ func (TiCDC) To(t *runtime.TiCDC) *v1alpha1.TiCDC {
 
 func (TiCDC) Component() string {
 	return v1alpha1.LabelValComponentTiCDC
+}
+
+func (TiCDC) GVK() schema.GroupVersionKind {
+	return v1alpha1.SchemeGroupVersion.WithKind("TiCDC")
 }
 
 func (TiCDC) NewList() *v1alpha1.TiCDCList {
@@ -64,6 +69,10 @@ func (TiCDCGroup) To(t *runtime.TiCDCGroup) *v1alpha1.TiCDCGroup {
 
 func (TiCDCGroup) Component() string {
 	return v1alpha1.LabelValComponentTiCDC
+}
+
+func (TiCDCGroup) GVK() schema.GroupVersionKind {
+	return v1alpha1.SchemeGroupVersion.WithKind("TiCDCGroup")
 }
 
 func (TiCDCGroup) NewList() *v1alpha1.TiCDCGroupList {

@@ -34,6 +34,9 @@ const (
 	TiDBPortNameStatus    = "status"
 	DefaultTiDBPortClient = 4000
 	DefaultTiDBPortStatus = 10080
+
+	// DefaultTiDBMinReadySeconds is default min ready seconds of tidb
+	DefaultTiDBMinReadySeconds = 10
 )
 
 const (

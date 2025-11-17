@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	stateutil "github.com/pingcap/tidb-operator/pkg/state"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
@@ -91,6 +92,8 @@ func TestState(t *testing.T) {
 			fc := client.NewFakeClient(c.objs...)
 
 			s := NewState(c.key)
+			expected := c.expected.(*state)
+			expected.IFeatureGates = stateutil.NewFeatureGates[scope.PDGroup](expected)
 
 			ctx := context.Background()
 			res, done := task.RunTask(ctx, task.Block(

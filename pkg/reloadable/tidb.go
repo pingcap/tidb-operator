@@ -32,7 +32,7 @@ import (
 // This function is used in the group controller.
 func CheckTiDB(group *v1alpha1.TiDBGroup, instance *v1alpha1.TiDB) bool {
 	groupTmpl := &group.Spec.Template
-	instanceTmpl := templateFromTiDB(instance)
+	instanceTmpl := TemplateFromTiDB(instance)
 
 	return equalTiDBTemplate(groupTmpl, instanceTmpl) &&
 		features.Reloadable(meta.ComponentTiDB, group.Spec.Features, instance.Spec.Features)
@@ -52,7 +52,7 @@ func CheckTiDBPod(instance *v1alpha1.TiDB, pod *corev1.Pod) bool {
 		return true
 	}
 
-	instanceTmpl := templateFromTiDB(instance)
+	instanceTmpl := TemplateFromTiDB(instance)
 
 	return equalTiDBTemplate(instanceTmpl, tmpl) &&
 		features.Reloadable(meta.ComponentTiDB, instance.Spec.Features, decodeFeatures(lastFeatures))
@@ -62,7 +62,7 @@ func EncodeLastTiDBTemplate(instance *v1alpha1.TiDB, pod *corev1.Pod) error {
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
 	}
-	instanceTmpl := templateFromTiDB(instance)
+	instanceTmpl := TemplateFromTiDB(instance)
 
 	data, err := json.Marshal(instanceTmpl)
 	if err != nil {
@@ -80,8 +80,9 @@ func MustEncodeLastTiDBTemplate(instance *v1alpha1.TiDB, pod *corev1.Pod) {
 	}
 }
 
+// TemplateFromTiDB gets tidb template from tidb instance
 // TODO: ignore inherited labels and annotations
-func templateFromTiDB(db *v1alpha1.TiDB) *v1alpha1.TiDBTemplate {
+func TemplateFromTiDB(db *v1alpha1.TiDB) *v1alpha1.TiDBTemplate {
 	return &v1alpha1.TiDBTemplate{
 		ObjectMeta: v1alpha1.ObjectMeta{
 			Labels:      db.Labels,
@@ -91,9 +92,9 @@ func templateFromTiDB(db *v1alpha1.TiDB) *v1alpha1.TiDBTemplate {
 	}
 }
 
-// convertTiDBTemplate will ignore some fields
+// ConvertTiDBTemplate will ignore some fields
 // TODO: set default for some empty fields
-func convertTiDBTemplate(tmpl *v1alpha1.TiDBTemplate) *v1alpha1.TiDBTemplate {
+func ConvertTiDBTemplate(tmpl *v1alpha1.TiDBTemplate) *v1alpha1.TiDBTemplate {
 	newTmpl := tmpl.DeepCopy()
 
 	newTmpl.Labels = convertLabels(newTmpl.Labels)
@@ -113,8 +114,8 @@ func convertTiDBTemplate(tmpl *v1alpha1.TiDBTemplate) *v1alpha1.TiDBTemplate {
 }
 
 func equalTiDBTemplate(c, p *v1alpha1.TiDBTemplate) bool {
-	p = convertTiDBTemplate(p)
-	c = convertTiDBTemplate(c)
+	p = ConvertTiDBTemplate(p)
+	c = ConvertTiDBTemplate(c)
 	// not equal only when current strategy is Restart and config is changed
 	if c.Spec.UpdateStrategy.Config == v1alpha1.ConfigUpdateStrategyRestart && p.Spec.Config != c.Spec.Config {
 		return false

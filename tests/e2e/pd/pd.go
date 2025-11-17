@@ -21,12 +21,12 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
@@ -40,127 +40,40 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 
 	ginkgo.Context("Basic", label.P0, func() {
 		ginkgo.It("support create PD with 1 replica", func(ctx context.Context) {
-			pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](1))
-			_ = f.MustCreateTiKV(ctx)
+			pdg := f.MustCreatePD(ctx, data.WithReplicas[scope.PDGroup](1))
 			f.WaitForPDGroupReady(ctx, pdg)
 		})
 
 		ginkgo.It("support create PD with 3 replica", func(ctx context.Context) {
-			pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](3))
-			_ = f.MustCreateTiKV(ctx)
+			pdg := f.MustCreatePD(ctx, data.WithReplicas[scope.PDGroup](3))
 			f.WaitForPDGroupReady(ctx, pdg)
 		})
 	})
 
 	ginkgo.Context("Scale and Update", label.P0, func() {
-		ginkgo.It("support scale PD from 1 to 3", label.Scale, func(ctx context.Context) {
-			pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](1))
-			_ = f.MustCreateTiKV(ctx)
-			f.WaitForPDGroupReady(ctx, pdg)
-
-			patch := client.MergeFrom(pdg.DeepCopy())
-			pdg.Spec.Replicas = ptr.To[int32](3)
-
-			ginkgo.By("Change replica of the PDGroup")
-			f.Must(f.Client.Patch(ctx, pdg, patch))
-			f.WaitForPDGroupReady(ctx, pdg)
-		})
-
-		ginkgo.It("support scale PD from 3 to 1", label.Scale, func(ctx context.Context) {
-			pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](3))
-			_ = f.MustCreateTiKV(ctx)
-			f.WaitForPDGroupReady(ctx, pdg)
-
-			patch := client.MergeFrom(pdg.DeepCopy())
-			pdg.Spec.Replicas = ptr.To[int32](1)
-
-			ginkgo.By("Change replica of the PDGroup")
-			f.Must(f.Client.Patch(ctx, pdg, patch))
-			f.WaitForPDGroupReady(ctx, pdg)
-		})
-
-		ginkgo.It("support scale PD from 3 to 5", label.Scale, func(ctx context.Context) {
-			pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](3))
-			_ = f.MustCreateTiKV(ctx)
-			f.WaitForPDGroupReady(ctx, pdg)
-
-			patch := client.MergeFrom(pdg.DeepCopy())
-			pdg.Spec.Replicas = ptr.To[int32](5)
-
-			ginkgo.By("Change replica of the PDGroup")
-			f.Must(f.Client.Patch(ctx, pdg, patch))
-			f.WaitForPDGroupReady(ctx, pdg)
-		})
-
-		ginkgo.It("support scale PD from 5 to 3", label.Scale, func(ctx context.Context) {
-			pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](5))
-			_ = f.MustCreateTiKV(ctx)
-			f.WaitForPDGroupReady(ctx, pdg)
-
-			patch := client.MergeFrom(pdg.DeepCopy())
-			pdg.Spec.Replicas = ptr.To[int32](3)
-
-			ginkgo.By("Change replica of the PDGroup")
-			f.Must(f.Client.Patch(ctx, pdg, patch))
-			f.WaitForPDGroupReady(ctx, pdg)
-		})
-
 		ginkgo.It("support rolling update PD by change config file", label.Update, func(ctx context.Context) {
-			pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](3))
-			_ = f.MustCreateTiKV(ctx)
+			pdg := f.MustCreatePD(ctx, data.WithReplicas[scope.PDGroup](3))
 			f.WaitForPDGroupReady(ctx, pdg)
-
-			patch := client.MergeFrom(pdg.DeepCopy())
-			pdg.Spec.Template.Spec.Config = `log.level = 'warn'`
 
 			nctx, cancel := context.WithCancel(ctx)
-			ch := make(chan struct{})
-			go func() {
-				defer close(ch)
-				defer ginkgo.GinkgoRecover()
-				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromPDGroup(pdg), 3, 0, waiter.LongTaskTimeout))
-			}()
+			done := framework.AsyncWaitPodsRollingUpdateOnce[scope.PDGroup](nctx, f, pdg, 3)
+			defer func() { <-done }()
+			defer cancel()
 
 			changeTime := time.Now()
 			ginkgo.By("Change config of the PDGroup")
-			f.Must(f.Client.Patch(ctx, pdg, patch))
-			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromPDGroup(pdg), changeTime, waiter.LongTaskTimeout))
-			f.WaitForPDGroupReady(ctx, pdg)
-			cancel()
-			<-ch
-		})
-
-		ginkgo.It("support scale PD from 5 to 3 and rolling update at same time", label.Scale, label.Update, func(ctx context.Context) {
-			pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](5))
-			_ = f.MustCreateTiKV(ctx)
-			f.WaitForPDGroupReady(ctx, pdg)
-
 			patch := client.MergeFrom(pdg.DeepCopy())
-			pdg.Spec.Replicas = ptr.To[int32](3)
 			pdg.Spec.Template.Spec.Config = `log.level = 'warn'`
-
-			nctx, cancel := context.WithCancel(ctx)
-			ch := make(chan struct{})
-			go func() {
-				defer close(ch)
-				defer ginkgo.GinkgoRecover()
-				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromPDGroup(pdg), 5, 0, waiter.LongTaskTimeout))
-			}()
-
-			changeTime := time.Now()
-			ginkgo.By("Change config and replicas of the PDGroup")
 			f.Must(f.Client.Patch(ctx, pdg, patch))
+
 			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromPDGroup(pdg), changeTime, waiter.LongTaskTimeout))
 			f.WaitForPDGroupReady(ctx, pdg)
-			cancel()
-			<-ch
 		})
 	})
 
 	ginkgo.Context("Suspend", label.P0, label.Suspend, func() {
 		ginkgo.It("support suspend and resume PD", func(ctx context.Context) {
-			pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](3))
-			_ = f.MustCreateTiKV(ctx)
+			pdg := f.MustCreatePD(ctx, data.WithReplicas[scope.PDGroup](3))
 			f.WaitForPDGroupReadyAndNotSuspended(ctx, pdg)
 
 			patch := client.MergeFrom(f.Cluster.DeepCopy())
@@ -188,7 +101,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 			// Setup cluster with UsePDReadyAPI feature gate and optionally TLS
 			if tls {
 				f.SetupCluster(
-					data.WithClusterTLS(),
+					data.WithClusterTLSEnabled(),
 					data.WithFeatureGates(metav1alpha1.UsePDReadyAPI),
 				)
 			} else {
@@ -205,7 +118,7 @@ var _ = ginkgo.Describe("PD", label.PD, func() {
 				}
 
 				ginkgo.By("Creating PD with UsePDReadyAPI feature gate enabled")
-				pdg := f.MustCreatePD(ctx, data.WithReplicas[*runtime.PDGroup](3))
+				pdg := f.MustCreatePD(ctx, data.WithReplicas[scope.PDGroup](3))
 				kvg := f.MustCreateTiKV(ctx)
 				f.WaitForPDGroupReady(ctx, pdg)
 				f.WaitForTiKVGroupReady(ctx, kvg)

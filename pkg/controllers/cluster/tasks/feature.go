@@ -52,10 +52,7 @@ func (*TaskFeatureGates) Name() string {
 func (t *TaskFeatureGates) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	rtx := ctx.Self()
 
-	fs := make([]metav1alpha1.Feature, 0, len(rtx.Cluster.Spec.FeatureGates))
-	for _, f := range rtx.Cluster.Spec.FeatureGates {
-		fs = append(fs, f.Name)
-	}
+	fs := coreutil.EnabledFeatures(rtx.Cluster)
 
 	if rtx.PDGroup != nil {
 		if err := patchFeatures[scope.PDGroup](ctx, t.Client, rtx.PDGroup, fs); err != nil {
@@ -65,6 +62,11 @@ func (t *TaskFeatureGates) Sync(ctx task.Context[ReconcileContext]) task.Result 
 	for _, tg := range rtx.TSOGroups {
 		if err := patchFeatures[scope.TSOGroup](ctx, t.Client, tg, fs); err != nil {
 			return task.Fail().With("can't update feature gates for tso group %s/%S: %w", tg.Namespace, tg.Name, err)
+		}
+	}
+	for _, sg := range rtx.SchedulingGroups {
+		if err := patchFeatures[scope.SchedulingGroup](ctx, t.Client, sg, fs); err != nil {
+			return task.Fail().With("can't update feature gates for scheduling group %s/%S: %w", sg.Namespace, sg.Name, err)
 		}
 	}
 	for _, sg := range rtx.SchedulerGroups {

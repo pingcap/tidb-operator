@@ -31,6 +31,110 @@ func TestCheckTiDB(t *testing.T) {
 		reloadable bool
 	}{
 		{
+			desc: "config is changed and policy is from restart to hot reload",
+			dbg: &v1alpha1.TiDBGroup{
+				Spec: v1alpha1.TiDBGroupSpec{
+					Template: v1alpha1.TiDBTemplate{
+						Spec: v1alpha1.TiDBTemplateSpec{
+							Config: v1alpha1.ConfigFile("xxx"),
+							UpdateStrategy: v1alpha1.UpdateStrategy{
+								Config: v1alpha1.ConfigUpdateStrategyHotReload,
+							},
+						},
+					},
+				},
+			},
+			db: &v1alpha1.TiDB{
+				Spec: v1alpha1.TiDBSpec{
+					TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{
+						Config: v1alpha1.ConfigFile("yyy"),
+						UpdateStrategy: v1alpha1.UpdateStrategy{
+							Config: v1alpha1.ConfigUpdateStrategyRestart,
+						},
+					},
+				},
+			},
+			reloadable: true,
+		},
+		{
+			desc: "config is changed and policy is from hot reload to restart",
+			dbg: &v1alpha1.TiDBGroup{
+				Spec: v1alpha1.TiDBGroupSpec{
+					Template: v1alpha1.TiDBTemplate{
+						Spec: v1alpha1.TiDBTemplateSpec{
+							Config: v1alpha1.ConfigFile("xxx"),
+							UpdateStrategy: v1alpha1.UpdateStrategy{
+								Config: v1alpha1.ConfigUpdateStrategyRestart,
+							},
+						},
+					},
+				},
+			},
+			db: &v1alpha1.TiDB{
+				Spec: v1alpha1.TiDBSpec{
+					TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{
+						Config: v1alpha1.ConfigFile("yyy"),
+						UpdateStrategy: v1alpha1.UpdateStrategy{
+							Config: v1alpha1.ConfigUpdateStrategyHotReload,
+						},
+					},
+				},
+			},
+			reloadable: false,
+		},
+		{
+			desc: "config is changed and policy is restart",
+			dbg: &v1alpha1.TiDBGroup{
+				Spec: v1alpha1.TiDBGroupSpec{
+					Template: v1alpha1.TiDBTemplate{
+						Spec: v1alpha1.TiDBTemplateSpec{
+							Config: v1alpha1.ConfigFile("xxx"),
+							UpdateStrategy: v1alpha1.UpdateStrategy{
+								Config: v1alpha1.ConfigUpdateStrategyRestart,
+							},
+						},
+					},
+				},
+			},
+			db: &v1alpha1.TiDB{
+				Spec: v1alpha1.TiDBSpec{
+					TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{
+						Config: v1alpha1.ConfigFile("yyy"),
+						UpdateStrategy: v1alpha1.UpdateStrategy{
+							Config: v1alpha1.ConfigUpdateStrategyRestart,
+						},
+					},
+				},
+			},
+			reloadable: false,
+		},
+		{
+			desc: "config is changed and policy is hot reload",
+			dbg: &v1alpha1.TiDBGroup{
+				Spec: v1alpha1.TiDBGroupSpec{
+					Template: v1alpha1.TiDBTemplate{
+						Spec: v1alpha1.TiDBTemplateSpec{
+							Config: v1alpha1.ConfigFile("xxx"),
+							UpdateStrategy: v1alpha1.UpdateStrategy{
+								Config: v1alpha1.ConfigUpdateStrategyHotReload,
+							},
+						},
+					},
+				},
+			},
+			db: &v1alpha1.TiDB{
+				Spec: v1alpha1.TiDBSpec{
+					TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{
+						Config: v1alpha1.ConfigFile("yyy"),
+						UpdateStrategy: v1alpha1.UpdateStrategy{
+							Config: v1alpha1.ConfigUpdateStrategyHotReload,
+						},
+					},
+				},
+			},
+			reloadable: true,
+		},
+		{
 			desc: "add pod labels overlay",
 			dbg: &v1alpha1.TiDBGroup{
 				Spec: v1alpha1.TiDBGroupSpec{
@@ -122,6 +226,38 @@ func TestCheckTiDB(t *testing.T) {
 				},
 			},
 			reloadable: true,
+		},
+		{
+			desc: "change labels and annotations is not reloadable",
+			dbg: &v1alpha1.TiDBGroup{
+				Spec: v1alpha1.TiDBGroupSpec{
+					Template: v1alpha1.TiDBTemplate{
+						ObjectMeta: v1alpha1.ObjectMeta{
+							Labels: map[string]string{
+								"aaa": "bbb",
+							},
+							Annotations: map[string]string{
+								"aaa": "bbb",
+							},
+						},
+						Spec: v1alpha1.TiDBTemplateSpec{},
+					},
+				},
+			},
+			db: &v1alpha1.TiDB{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"xxx": "yyy",
+					},
+					Annotations: map[string]string{
+						"xxx": "yyy",
+					},
+				},
+				Spec: v1alpha1.TiDBSpec{
+					TiDBTemplateSpec: v1alpha1.TiDBTemplateSpec{},
+				},
+			},
+			reloadable: false,
 		},
 	}
 

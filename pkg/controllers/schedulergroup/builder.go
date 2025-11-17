@@ -55,9 +55,9 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskStatusPersister[scope.SchedulerGroup](state, r.Client),
 		),
 
-		common.TaskRevision[runtime.SchedulerGroupTuple](state, r.Client), // TODO: Define runtime.SchedulerGroupTuple
+		common.TaskRevision[runtime.SchedulerGroupTuple](state, r.Client),
 		tasks.TaskService(state, r.Client),
-		tasks.TaskUpdater(state, r.Client, r.Tracker),
+		tasks.TaskUpdater(state, r.Client, r.AllocateFactory),
 		common.TaskGroupStatusSelector[scope.SchedulerGroup](state),
 		common.TaskGroupConditionSuspended[scope.SchedulerGroup](state),
 		common.TaskGroupConditionReady[scope.SchedulerGroup](state),

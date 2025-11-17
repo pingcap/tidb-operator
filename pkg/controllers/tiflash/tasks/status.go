@@ -27,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/compare"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
 
 const (
@@ -46,7 +47,7 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		if state.Store != nil {
 			needUpdate = compare.SetIfNotEmptyAndChanged(&tiflash.Status.ID, state.Store.ID) || needUpdate
 		}
-		needUpdate = compare.SetIfNotEmptyAndChanged(&tiflash.Status.State, state.GetStoreState()) || needUpdate
+		needUpdate = compare.SetIfNotEmptyAndChanged(&tiflash.Status.State, string(state.GetStoreState())) || needUpdate
 
 		needUpdate = compare.SetIfChanged(&tiflash.Status.ObservedGeneration, tiflash.Generation) || needUpdate
 		needUpdate = compare.SetIfNotEmptyAndChanged(
@@ -67,6 +68,12 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 			}
 		}
 
+		podReady := pod != nil && statefulset.IsPodReady(pod)
+
+		if !ready && podReady {
+			return task.Retry(defaultTaskWaitDuration).With("pod is ready and store status is not Running, retry")
+		}
+
 		if state.IsPodTerminating() {
 			return task.Retry(defaultTaskWaitDuration).With("pod may be terminating, requeue to retry")
 		}
@@ -77,23 +84,6 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		}
 
 		return task.Complete().With("status is synced")
-	})
-}
-
-func TaskStoreStatus(state *ReconcileContext) task.Task {
-	return task.NameTaskFunc("StoreStatus", func(ctx context.Context) task.Result {
-		needUpdate := state.IsStatusChanged()
-		tiflash := state.TiFlash()
-		if state.Store != nil {
-			needUpdate = compare.SetIfChanged(&tiflash.Status.ID, state.Store.ID) || needUpdate
-		}
-		needUpdate = compare.SetIfChanged(&tiflash.Status.State, state.GetStoreState()) || needUpdate
-		if needUpdate {
-			state.SetStatusChanged()
-			return task.Complete().With("store state is changed")
-		}
-
-		return task.Complete().With("store state is not changed")
 	})
 }
 

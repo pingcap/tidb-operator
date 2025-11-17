@@ -36,25 +36,54 @@ func TestSelector(t *testing.T) {
 		{
 			desc: "no policy",
 			allowed: []*runtime.PD{
-				fakePD("aaa", true),
-				fakePD("bbb", false),
-				fakePD("ccc", true),
-				fakePD("ddd", false),
+				fakePD("aaa", true, true),
+				fakePD("bbb", true, false),
+				fakePD("ccc", true, true),
+				fakePD("ddd", true, false),
 			},
 			expected: "aaa",
 		},
 		{
-			desc: "prefer unavailable",
+			desc: "prefer unready",
 			ps: []PreferPolicy[*runtime.PD]{
-				PreferUnavailable[*runtime.PD](),
+				PreferUnready[*runtime.PD](),
+				PreferNotRunning[*runtime.PD](),
 			},
 			allowed: []*runtime.PD{
-				fakePD("aaa", true),
-				fakePD("bbb", false),
-				fakePD("ccc", true),
-				fakePD("ddd", false),
+				fakePD("aaa", true, true),
+				fakePD("bbb", true, false),
+				fakePD("ccc", true, true),
+				fakePD("ddd", true, false),
 			},
 			expected: "bbb",
+		},
+		{
+			desc: "prefer not running",
+			ps: []PreferPolicy[*runtime.PD]{
+				PreferUnready[*runtime.PD](),
+				PreferNotRunning[*runtime.PD](),
+			},
+			allowed: []*runtime.PD{
+				fakePD("aaa", true, true),
+				fakePD("bbb", true, false),
+				fakePD("ccc", false, true),
+				fakePD("ddd", true, false),
+			},
+			expected: "ccc",
+		},
+		{
+			desc: "prefer unready and not running",
+			ps: []PreferPolicy[*runtime.PD]{
+				PreferUnready[*runtime.PD](),
+				PreferNotRunning[*runtime.PD](),
+			},
+			allowed: []*runtime.PD{
+				fakePD("aaa", true, true),
+				fakePD("bbb", true, false),
+				fakePD("ccc", false, true),
+				fakePD("ddd", false, false),
+			},
+			expected: "ddd",
 		},
 	}
 
@@ -70,16 +99,19 @@ func TestSelector(t *testing.T) {
 	}
 }
 
-func fakePD(name string, ready bool) *runtime.PD {
+func fakePD(name string, running, ready bool) *runtime.PD {
 	return runtime.FromPD(fake.FakeObj(name, func(obj *v1alpha1.PD) *v1alpha1.PD {
 		obj.Generation = 2
 		obj.Labels = map[string]string{
 			v1alpha1.LabelKeyInstanceRevisionHash: "test",
 		}
 		obj.Status.CurrentRevision = "test"
-		coreutil.SetStatusCondition[scope.PD](obj, *coreutil.Ready())
+		obj.Status.ObservedGeneration = obj.Generation
+		if !running {
+			coreutil.SetStatusCondition[scope.PD](obj, *coreutil.NotRunning("", ""))
+		}
 		if ready {
-			obj.Status.ObservedGeneration = obj.Generation
+			coreutil.SetStatusCondition[scope.PD](obj, *coreutil.Ready())
 		}
 		return obj
 	}))
