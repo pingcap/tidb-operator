@@ -78,7 +78,7 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 			f.WaitForTiProxyGroupReady(ctx, pg)
 
 			workload.MustPing(ctx,
-				data.DefaultTiDBServiceName,
+				ns+"-dbg-tidb",
 				wopt.TLS(cert.MySQLClient(
 					coreutil.TiDBGroupMySQLCASecretName(dbg),
 					coreutil.TiDBGroupMySQLCertKeyPairSecretName(dbg),

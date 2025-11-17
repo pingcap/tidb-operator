@@ -65,7 +65,7 @@ var _ = ginkgo.Describe("TiDB Availability Test", label.TiDB, label.KindAvail, l
 
 			action.TestTiDBAvailability(ctx,
 				f,
-				data.DefaultTiProxyServiceName,
+				ns+"-pg-tiproxy",
 				dbg,
 				workload,
 				wopt.Port(data.DefaultTiProxyServicePort),
