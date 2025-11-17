@@ -38,7 +38,7 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 		workload := f.SetupWorkload()
 		cm := f.SetupCertManager()
 
-		ginkgo.FIt("should enable internal TLS with same ca secret", func(ctx context.Context) {
+		ginkgo.It("should enable internal TLS with same ca secret", func(ctx context.Context) {
 			f.MustCreateS3(ctx)
 			ns := f.Namespace.Name
 			cluster := f.Cluster.Name
