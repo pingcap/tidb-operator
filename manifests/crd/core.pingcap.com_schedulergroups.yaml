@@ -13,8 +13,6 @@ spec:
     kind: SchedulerGroup
     listKind: SchedulerGroupList
     plural: schedulergroups
-    shortNames:
-    - sg
     singular: schedulergroup
   scope: Namespaced
   versions:
