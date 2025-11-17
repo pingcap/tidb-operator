@@ -181,6 +181,33 @@ func WaitForBackupFailed(c versioned.Interface, ns, name string, timeout time.Du
 	return nil
 }
 
+// WaitForBackupRetryFailed will poll and wait until timeout or backup RetryTheFailed condition is true
+func WaitForBackupRetryFailed(c versioned.Interface, ns, name string, timeout time.Duration) error {
+	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
+		b, err := c.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		for _, cond := range b.Status.Conditions {
+			switch cond.Type {
+			case v1alpha1.BackupRetryTheFailed:
+				if cond.Status == corev1.ConditionTrue {
+					return true, nil
+				}
+			case v1alpha1.BackupInvalid:
+				if cond.Status == corev1.ConditionTrue {
+					return false, fmt.Errorf("backup is invalid, reason: %s, message: %s", cond.Reason, cond.Message)
+				}
+			default: // do nothing
+			}
+		}
+		return false, nil
+	}); err != nil {
+		return fmt.Errorf("can't wait for backup retry failed: %v", err)
+	}
+	return nil
+}
+
 // WaitForRestoreComplete will poll and wait until timeout or restore complete condition is true
 func WaitForRestoreComplete(c versioned.Interface, ns, name string, timeout time.Duration) error {
 	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
