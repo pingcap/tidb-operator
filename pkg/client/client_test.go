@@ -23,7 +23,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/pingcap/tidb-operator/pkg/utils/fake"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 )
 
 func TestApply(t *testing.T) {

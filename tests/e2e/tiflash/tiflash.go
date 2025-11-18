@@ -25,13 +25,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/apicall"
-	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	"github.com/pingcap/tidb-operator/tests/e2e/data"
-	"github.com/pingcap/tidb-operator/tests/e2e/framework"
-	"github.com/pingcap/tidb-operator/tests/e2e/label"
-	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
+	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/data"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/label"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/waiter"
 )
 
 var _ = ginkgo.Describe("TiFlash", label.TiFlash, func() {

@@ -22,7 +22,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	t "github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	t "github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 func TaskEnsureSubResources(rtx *ReconcileContext) t.Task {

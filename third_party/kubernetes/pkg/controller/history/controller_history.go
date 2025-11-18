@@ -36,8 +36,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/util/retry"
 
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/util/hash"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/third_party/kubernetes/pkg/util/hash"
 )
 
 // HashLabel is the label used to indicate the hash value of a ControllerRevision's Data.

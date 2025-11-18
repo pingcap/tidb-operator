@@ -23,21 +23,21 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	_ "github.com/pingcap/tidb-operator/tests/e2e/br"
-	_ "github.com/pingcap/tidb-operator/tests/e2e/cluster"
-	_ "github.com/pingcap/tidb-operator/tests/e2e/example"
-	_ "github.com/pingcap/tidb-operator/tests/e2e/pd"
-	_ "github.com/pingcap/tidb-operator/tests/e2e/ticdc"
-	_ "github.com/pingcap/tidb-operator/tests/e2e/tidb"
-	_ "github.com/pingcap/tidb-operator/tests/e2e/tiflash"
-	_ "github.com/pingcap/tidb-operator/tests/e2e/tikv"
-	_ "github.com/pingcap/tidb-operator/tests/e2e/tiproxy"
-	_ "github.com/pingcap/tidb-operator/tests/e2e/webhook"
+	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/br"
+	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/cluster"
+	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/example"
+	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/pd"
+	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/ticdc"
+	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/tidb"
+	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/tiflash"
+	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/tikv"
+	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/tiproxy"
+	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/webhook"
 
 	// TODO: move all tests into suite
-	_ "github.com/pingcap/tidb-operator/tests/e2e/suite/availability"
-	_ "github.com/pingcap/tidb-operator/tests/e2e/suite/cluster"
-	_ "github.com/pingcap/tidb-operator/tests/e2e/suite/scale"
+	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/suite/availability"
+	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/suite/cluster"
+	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/suite/scale"
 )
 
 func TestE2E(t *testing.T) {

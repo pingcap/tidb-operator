@@ -15,11 +15,11 @@
 package tikv
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/controllers/common"
-	"github.com/pingcap/tidb-operator/pkg/controllers/tikv/tasks"
-	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tikv/tasks"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.TaskReporter) task.TaskRunner {

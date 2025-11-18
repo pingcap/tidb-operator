@@ -32,13 +32,13 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/constants"
-	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/util"
-	"github.com/pingcap/tidb-operator/pkg/controllers/common"
-	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/constants"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/util"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
+	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 var _ BackupManager = &backupManager{}

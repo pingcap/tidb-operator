@@ -27,15 +27,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/features"
-	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
-	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	stateutil "github.com/pingcap/tidb-operator/pkg/state"
-	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
-	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
-	"github.com/pingcap/tidb-operator/pkg/utils/fake"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/features"
+	"github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	stateutil "github.com/pingcap/tidb-operator/v2/pkg/state"
+	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
+	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 const (

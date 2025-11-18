@@ -19,8 +19,8 @@ import (
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/tests/e2e/utils/k8s"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/k8s"
 )
 
 type Interface interface {

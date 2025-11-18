@@ -19,7 +19,7 @@ import (
 
 	"github.com/onsi/ginkgo/v2"
 
-	"github.com/pingcap/tidb-operator/tests/e2e/utils/cert"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/cert"
 )
 
 type CertManager struct {

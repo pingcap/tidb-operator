@@ -30,8 +30,8 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/utils/ptr"
 
-	"github.com/pingcap/tidb-operator/pkg/utils"
-	"github.com/pingcap/tidb-operator/pkg/volumes/cloud"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils"
+	"github.com/pingcap/tidb-operator/v2/pkg/volumes/cloud"
 )
 
 var (

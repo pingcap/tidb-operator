@@ -30,9 +30,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/tests/e2e/framework/workload"
-	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework/workload"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/waiter"
 )
 
 const (

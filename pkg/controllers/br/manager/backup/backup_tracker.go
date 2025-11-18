@@ -31,9 +31,9 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/timanager"
-	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
+	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 )
 
 var (

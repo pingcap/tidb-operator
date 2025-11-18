@@ -37,14 +37,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
-	restoreMgr "github.com/pingcap/tidb-operator/pkg/controllers/br/manager/restore"
-	"github.com/pingcap/tidb-operator/pkg/controllers/br/restore/tasks"
-	"github.com/pingcap/tidb-operator/pkg/controllers/common"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
-	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
-	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	restoreMgr "github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/restore"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/restore/tasks"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
+	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 type (

@@ -17,9 +17,9 @@ package framework
 import (
 	"context"
 
-	"github.com/pingcap/tidb-operator/pkg/apicall"
-	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/waiter"
 )
 
 func (f *Framework) WaitForAllReady(ctx context.Context, cn string) {

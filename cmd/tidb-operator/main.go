@@ -41,39 +41,40 @@ import (
 
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/controllers/br/backup"
-	"github.com/pingcap/tidb-operator/pkg/controllers/br/restore"
-	"github.com/pingcap/tidb-operator/pkg/controllers/br/tibr"
-	"github.com/pingcap/tidb-operator/pkg/controllers/cluster"
-	"github.com/pingcap/tidb-operator/pkg/controllers/pd"
-	"github.com/pingcap/tidb-operator/pkg/controllers/pdgroup"
-	"github.com/pingcap/tidb-operator/pkg/controllers/scheduler"
-	"github.com/pingcap/tidb-operator/pkg/controllers/schedulergroup"
-	"github.com/pingcap/tidb-operator/pkg/controllers/scheduling"
-	"github.com/pingcap/tidb-operator/pkg/controllers/schedulinggroup"
-	"github.com/pingcap/tidb-operator/pkg/controllers/ticdc"
-	"github.com/pingcap/tidb-operator/pkg/controllers/ticdcgroup"
-	"github.com/pingcap/tidb-operator/pkg/controllers/tidb"
-	"github.com/pingcap/tidb-operator/pkg/controllers/tidbgroup"
-	"github.com/pingcap/tidb-operator/pkg/controllers/tiflash"
-	"github.com/pingcap/tidb-operator/pkg/controllers/tiflashgroup"
-	"github.com/pingcap/tidb-operator/pkg/controllers/tikv"
-	"github.com/pingcap/tidb-operator/pkg/controllers/tikvgroup"
-	"github.com/pingcap/tidb-operator/pkg/controllers/tiproxy"
-	"github.com/pingcap/tidb-operator/pkg/controllers/tiproxygroup"
-	"github.com/pingcap/tidb-operator/pkg/controllers/tso"
-	"github.com/pingcap/tidb-operator/pkg/controllers/tsogroup"
-	"github.com/pingcap/tidb-operator/pkg/metrics"
-	"github.com/pingcap/tidb-operator/pkg/scheme"
-	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
-	fm "github.com/pingcap/tidb-operator/pkg/timanager/tiflash"
-	tsom "github.com/pingcap/tidb-operator/pkg/timanager/tso"
-	"github.com/pingcap/tidb-operator/pkg/utils/informertest"
-	"github.com/pingcap/tidb-operator/pkg/utils/kubefeat"
-	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
-	"github.com/pingcap/tidb-operator/pkg/version"
-	"github.com/pingcap/tidb-operator/pkg/volumes"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/backup"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/restore"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/tibr"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/cluster"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/pd"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/pdgroup"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/scheduler"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/schedulergroup"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/scheduling"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/schedulinggroup"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/ticdc"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/ticdcgroup"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tidb"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tidbgroup"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tiflash"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tiflashgroup"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tikv"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tikvgroup"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tiproxy"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tiproxygroup"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tso"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tsogroup"
+	"github.com/pingcap/tidb-operator/v2/pkg/image"
+	"github.com/pingcap/tidb-operator/v2/pkg/metrics"
+	"github.com/pingcap/tidb-operator/v2/pkg/scheme"
+	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
+	fm "github.com/pingcap/tidb-operator/v2/pkg/timanager/tiflash"
+	tsom "github.com/pingcap/tidb-operator/v2/pkg/timanager/tso"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/informertest"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/kubefeat"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/tracker"
+	"github.com/pingcap/tidb-operator/v2/pkg/version"
+	"github.com/pingcap/tidb-operator/v2/pkg/volumes"
 )
 
 var setupLog = ctrl.Log.WithName("setup").WithValues(version.Get().KeysAndValues()...)
@@ -101,6 +102,7 @@ func main() {
 	flag.DurationVar(&watchDelayDuration, "watch-delay-duration", time.Duration(0),
 		"A duration for e2e test, it's useful to avoid bugs because of "+
 			"kube clients's read-after-write inconsistency(always read from cache).")
+	flag.Var(&image.PrestopChecker, "default-prestop-checker-image", "Default image of prestop checker.")
 
 	opts := zap.Options{
 		Development:     false,
@@ -176,7 +178,7 @@ func main() {
 
 func setup(ctx context.Context, mgr ctrl.Manager) error {
 	// client of manager should be newed by options.NewClient
-	// which actually returns tidb-operator/pkg/client.Client
+	// which actually returns tidb-operator/v2/pkg/client.Client
 	c := mgr.GetClient().(client.Client)
 
 	if err := addIndexer(ctx, mgr); err != nil {

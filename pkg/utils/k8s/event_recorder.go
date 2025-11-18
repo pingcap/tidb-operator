@@ -21,7 +21,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 
-	"github.com/pingcap/tidb-operator/pkg/scheme"
+	"github.com/pingcap/tidb-operator/v2/pkg/scheme"
 )
 
 // NewEventRecorder return the specify source's recoder

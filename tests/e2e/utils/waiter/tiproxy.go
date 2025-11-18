@@ -22,7 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/errors"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
 )
 
 func WaitForTiProxysHealthy(ctx context.Context, c client.Client, proxyg *v1alpha1.TiProxyGroup, timeout time.Duration) error {

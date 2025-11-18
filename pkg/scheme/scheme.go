@@ -27,7 +27,7 @@ import (
 
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/utils/kubefeat"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/kubefeat"
 )
 
 // Scheme is used by client to visit kubernetes API.

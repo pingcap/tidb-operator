@@ -27,9 +27,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
-	"github.com/pingcap/tidb-operator/pkg/timanager"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
+	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 )
 
 func TestPDClientManager(t *testing.T) {

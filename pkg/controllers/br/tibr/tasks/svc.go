@@ -22,7 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	v1alphabr "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
-	t "github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	t "github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 func condHeadlessSvcExist(rtx *ReconcileContext) t.Condition {

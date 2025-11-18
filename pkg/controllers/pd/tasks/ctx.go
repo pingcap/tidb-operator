@@ -22,12 +22,12 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/compatibility"
-	pdcfg "github.com/pingcap/tidb-operator/pkg/configs/pd"
-	"github.com/pingcap/tidb-operator/pkg/timanager"
-	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/compatibility"
+	pdcfg "github.com/pingcap/tidb-operator/v2/pkg/configs/pd"
+	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
+	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 type ReconcileContext struct {

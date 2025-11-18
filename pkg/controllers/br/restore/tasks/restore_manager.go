@@ -19,8 +19,8 @@ import (
 
 	"k8s.io/client-go/tools/record"
 
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 func TaskRestoreManager(state *ReconcileContext, c client.Client, recorder record.EventRecorder) task.Task {

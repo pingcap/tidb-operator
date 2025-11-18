@@ -26,10 +26,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
-	tiflashconfig "github.com/pingcap/tidb-operator/pkg/configs/tiflash"
-	"github.com/pingcap/tidb-operator/pkg/timanager"
-	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	tiflashconfig "github.com/pingcap/tidb-operator/v2/pkg/configs/tiflash"
+	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
+	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
 )
 
 func (r *Reconciler) ClusterEventHandler() handler.TypedEventHandler[client.Object, reconcile.Request] {
