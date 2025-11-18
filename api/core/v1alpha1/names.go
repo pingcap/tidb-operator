@@ -54,15 +54,14 @@ const (
 const (
 	// Main component containers of the tidb cluster
 	// These names are well known so the name prefix is not added.
-	ContainerNamePD                = "pd"
-	ContainerNameTiKV              = "tikv"
-	ContainerNameTiDB              = "tidb"
-	ContainerNameTiFlash           = "tiflash"
-	ContainerNameTiCDC             = "ticdc"
-	ContainerNameTSO               = "tso"
-	ContainerNameScheduling        = "scheduling"
-	ContainerNameTiProxy           = "tiproxy"
-	ContainerNameReplicationWorker = "repl-worker"
+	ContainerNamePD         = "pd"
+	ContainerNameTiKV       = "tikv"
+	ContainerNameTiDB       = "tidb"
+	ContainerNameTiFlash    = "tiflash"
+	ContainerNameTiCDC      = "ticdc"
+	ContainerNameTSO        = "tso"
+	ContainerNameScheduling = "scheduling"
+	ContainerNameTiProxy    = "tiproxy"
 	// Deprecated: use ContainerNameScheduling
 	ContainerNameScheduler = "scheduler"
 
@@ -85,15 +84,14 @@ const (
 // All well known dir path
 const (
 	// config dir path
-	DirPathConfigPD                = "/etc/pd"
-	DirPathConfigTiKV              = "/etc/tikv"
-	DirPathConfigTiDB              = "/etc/tidb"
-	DirPathConfigTiFlash           = "/etc/tiflash"
-	DirPathConfigTiCDC             = "/etc/ticdc"
-	DirPathConfigTSO               = "/etc/tso"
-	DirPathConfigScheduling        = "/etc/scheduling"
-	DirPathConfigTiProxy           = "/etc/tiproxy"
-	DirPathConfigReplicationWorker = "/etc/replication-worker"
+	DirPathConfigPD         = "/etc/pd"
+	DirPathConfigTiKV       = "/etc/tikv"
+	DirPathConfigTiDB       = "/etc/tidb"
+	DirPathConfigTiFlash    = "/etc/tiflash"
+	DirPathConfigTiCDC      = "/etc/ticdc"
+	DirPathConfigTSO        = "/etc/tso"
+	DirPathConfigScheduling = "/etc/scheduling"
+	DirPathConfigTiProxy    = "/etc/tiproxy"
 	// Deprecated: use DirPathConfigScheduling
 	DirPathConfigScheduler = "/etc/scheduler"
 

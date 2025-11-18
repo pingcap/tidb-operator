@@ -50,8 +50,6 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/cluster"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/pdgroup"
-	"github.com/pingcap/tidb-operator/v2/pkg/controllers/replicationworker"
-	"github.com/pingcap/tidb-operator/v2/pkg/controllers/replicationworkergroup"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/scheduler"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/schedulergroup"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/scheduling"
@@ -303,14 +301,6 @@ func addIndexer(ctx context.Context, mgr ctrl.Manager) error {
 		return err
 	}
 
-	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.ReplicationWorkerGroup{}, "spec.cluster.name",
-		func(obj client.Object) []string {
-			pg := obj.(*v1alpha1.ReplicationWorkerGroup)
-			return []string{pg.Spec.Cluster.Name}
-		}); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -456,18 +446,6 @@ func setupControllers(
 				return tibrgc.Setup(mgr, c)
 			},
 		},
-		{
-			name: "ReplicationWorkerGroup",
-			setupFunc: func() error {
-				return replicationworkergroup.Setup(mgr, c, tf.AllocateFactory("replicationworker"))
-			},
-		},
-		{
-			name: "ReplicationWorker",
-			setupFunc: func() error {
-				return replicationworker.Setup(mgr, c, pdcm, vm, tf.Tracker("replicationworker"))
-			},
-		},
 	}
 
 	for _, s := range setups {
@@ -553,12 +531,6 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 			Label: labels.Everything(),
 		},
 		&v1alpha1.Scheduler{}: {
-			Label: labels.Everything(),
-		},
-		&v1alpha1.ReplicationWorkerGroup{}: {
-			Label: labels.Everything(),
-		},
-		&v1alpha1.ReplicationWorker{}: {
 			Label: labels.Everything(),
 		},
 		&corev1.Secret{}: {
