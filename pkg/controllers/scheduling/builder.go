@@ -31,10 +31,14 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// get cluster
 		common.TaskContextCluster[scope.Scheduling](state, r.Client),
-		// return if cluster's status is not updated
-		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),
+		// if the cluster is deleting, del all subresources and remove the finalizer directly
+		task.IfBreak(common.CondClusterIsDeleting(state),
+			tasks.TaskFinalizerDel(state, r.Client),
+		),
+		// return if cluster's status is not updated
+		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
 
 		// get info from pd
 		// tasks.TaskContextInfoFromPD(state, r.PDClientManager),

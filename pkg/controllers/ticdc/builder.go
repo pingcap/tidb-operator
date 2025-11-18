@@ -31,10 +31,14 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// get cluster info, FinalizerDel will use it
 		common.TaskContextCluster[scope.TiCDC](state, r.Client),
+		// if it's paused just return
+		task.IfBreak(common.CondClusterIsPaused(state)),
+		// if the cluster is deleting, del all subresources and remove the finalizer directly
+		task.IfBreak(common.CondClusterIsDeleting(state),
+			tasks.TaskFinalizerDel(state, r.Client),
+		),
 		// return if cluster's status is not updated
 		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
-		// check whether it's paused
-		task.IfBreak(common.CondClusterIsPaused(state)),
 
 		task.IfBreak(common.CondObjectIsDeleting[scope.TiCDC](state),
 			tasks.TaskFinalizerDel(state, r.Client),
