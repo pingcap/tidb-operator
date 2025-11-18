@@ -172,3 +172,18 @@ func WithTiDBEvenlySpreadPolicy() GroupPatch[*v1alpha1.TiDBGroup] {
 		})
 	})
 }
+
+func WithTiDBGracefulWaitConfig() GroupPatch[*v1alpha1.TiDBGroup] {
+	return GroupPatchFunc[*v1alpha1.TiDBGroup](func(obj *v1alpha1.TiDBGroup) {
+		obj.Spec.Template.Spec.Config = `graceful-wait-before-shutdown = 20`
+
+		obj.Spec.Template.Spec.Overlay = &v1alpha1.Overlay{
+			Pod: &v1alpha1.PodOverlay{
+				Spec: &corev1.PodSpec{
+					// Set default TerminationGracePeriodSeconds to 60
+					TerminationGracePeriodSeconds: ptr.To[int64](60),
+				},
+			},
+		}
+	})
+}
