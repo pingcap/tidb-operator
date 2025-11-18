@@ -37,9 +37,10 @@ func TestTopologyPolicy(t *testing.T) {
 		update   *v1alpha1.PD
 		del      string
 
-		expectedAdd      *v1alpha1.PD
-		expectedUpdate   *v1alpha1.PD
-		expectedPrefered []*v1alpha1.PD
+		expectedAdd            *v1alpha1.PD
+		expectedUpdate         *v1alpha1.PD
+		expectedPrefered       []*v1alpha1.PD
+		expectedUpdatePrefered []*v1alpha1.PD
 	}{
 		{
 			desc:        "no existsing, add a new instance, will set topology",
@@ -91,6 +92,9 @@ func TestTopologyPolicy(t *testing.T) {
 			expectedPrefered: []*v1alpha1.PD{
 				fakePD("1", oldRev, "us-west-1b"),
 			},
+			expectedUpdatePrefered: []*v1alpha1.PD{
+				fakePD("2", oldRev, "us-west-1c"),
+			},
 		},
 
 		{
@@ -104,6 +108,9 @@ func TestTopologyPolicy(t *testing.T) {
 			expectedAdd: fakePD("add", newRev, "us-west-1c"),
 
 			expectedPrefered: []*v1alpha1.PD{
+				fakePD("2", oldRev, "us-west-1c"),
+			},
+			expectedUpdatePrefered: []*v1alpha1.PD{
 				fakePD("2", oldRev, "us-west-1c"),
 			},
 		},
@@ -121,6 +128,9 @@ func TestTopologyPolicy(t *testing.T) {
 			expectedPrefered: []*v1alpha1.PD{
 				fakePD("1", oldRev, "us-west-1b"),
 			},
+			expectedUpdatePrefered: []*v1alpha1.PD{
+				fakePD("1", oldRev, "us-west-1b"),
+			},
 		},
 
 		{
@@ -133,6 +143,10 @@ func TestTopologyPolicy(t *testing.T) {
 			del: "0",
 
 			expectedPrefered: []*v1alpha1.PD{
+				fakePD("1", oldRev, "us-west-1b"),
+				fakePD("2", oldRev, "us-west-1c"),
+			},
+			expectedUpdatePrefered: []*v1alpha1.PD{
 				fakePD("1", oldRev, "us-west-1b"),
 				fakePD("2", oldRev, "us-west-1c"),
 			},
@@ -198,8 +212,11 @@ func TestTopologyPolicy(t *testing.T) {
 				return cmp.Compare(a.GetName(), b.GetName())
 			})
 
-			preferred := policy.Prefer(runtime.FromPDSlice(outdated))
+			preferred := policy.PolicyScaleIn().Prefer(runtime.FromPDSlice(outdated))
 			assert.Equal(tt, c.expectedPrefered, runtime.ToPDSlice(preferred))
+
+			updatePreferred := policy.PolicyUpdate().Prefer(runtime.FromPDSlice(outdated))
+			assert.Equal(tt, c.expectedUpdatePrefered, runtime.ToPDSlice(updatePreferred))
 		})
 	}
 }

@@ -23,6 +23,9 @@ import (
 const (
 	TiCDCPortName    = "ticdc" // main port
 	DefaultTiCDCPort = 8300
+
+	// DefaultTiCDCMinReadySeconds is default min ready seconds of ticdc
+	DefaultTiCDCMinReadySeconds = 5
 )
 
 const (

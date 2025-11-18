@@ -29,9 +29,13 @@ const (
 	TiCDC   Untagged = "pingcap/ticdc"
 	// TSO also use pd image
 	TSO Untagged = "pingcap/pd"
+	// Scheduling also use pd image
+	Scheduling Untagged = "pingcap/pd"
 	// Scheduler also use pd image
 	Scheduler Untagged = "pingcap/pd"
 	TiProxy   Untagged = "pingcap/tiproxy"
+	// ReplicationWorker also use tikv image
+	ReplicationWorker Untagged = "pingcap/tikv"
 
 	// TODO: use versioned image
 	PrestopChecker Tagged = "pingcap/tidb-operator-prestop-checker:latest"

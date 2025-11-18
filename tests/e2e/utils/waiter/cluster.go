@@ -35,12 +35,25 @@ func WaitForClusterReady(ctx context.Context, c client.Client, ns, name string, 
 	}
 
 	return WaitForObject(ctx, c, &tc, func() error {
+		if tc.Status.PD == "" {
+			return fmt.Errorf("pd is not available")
+		}
 		cond := meta.FindStatusCondition(tc.Status.Conditions, v1alpha1.ClusterCondAvailable)
 		if cond == nil {
 			return fmt.Errorf("available cond is unset")
 		}
 		if cond.Status != metav1.ConditionTrue {
 			return fmt.Errorf("available cond is not true, status: %s, reason: %s, message: %s", cond.Status, cond.Reason, cond.Message)
+		}
+
+		return nil
+	}, timeout)
+}
+
+func WaitForClusterPDRegistered(ctx context.Context, c client.Client, tc *v1alpha1.Cluster, timeout time.Duration) error {
+	return WaitForObject(ctx, c, tc, func() error {
+		if tc.Status.PD == "" {
+			return fmt.Errorf("pd is not available")
 		}
 
 		return nil

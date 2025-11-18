@@ -23,9 +23,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
@@ -40,7 +42,7 @@ const (
 )
 
 // TaskUpdater is a task to scale or update PD when spec of PDGroup is changed.
-func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.PDGroup, *v1alpha1.PD]) task.Task {
+func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFactory) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		pdg := state.PDGroup()
@@ -50,6 +52,11 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 		if needVersionUpgrade(pdg) && !checker.CanUpgrade(ctx, pdg) {
 			// TODO(liubo02): change to Wait
 			return task.Retry(defaultUpdateWaitTime).With("wait until preconditions of upgrading is met")
+		}
+
+		retryAfter := coreutil.RetryIfInstancesReadyButNotAvailable[scope.PD](state.InstanceSlice(), coreutil.MinReadySeconds[scope.PDGroup](pdg))
+		if retryAfter != 0 {
+			return task.Retry(retryAfter).With("wait until no instances is ready but not available")
 		}
 
 		var topos []v1alpha1.ScheduleTopology
@@ -70,7 +77,12 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
-		allocator := t.Track(pdg, state.InstanceSlice()...)
+		var instances []string
+		for _, in := range pds {
+			instances = append(instances, in.Name)
+		}
+
+		allocator := af.New(pdg.Namespace, pdg.Name, instances...)
 
 		wait, err := updater.New[runtime.PDTuple]().
 			WithInstances(pds...).
@@ -79,7 +91,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithMaxSurge(0).
 			WithMaxUnavailable(1).
 			WithRevision(updateRevision).
-			WithNewFactory(PDNewer(pdg, updateRevision)).
+			WithNewFactory(PDNewer(pdg, updateRevision, state.FeatureGates())).
 			WithAddHooks(
 				updater.AllocateName[*runtime.PD](allocator),
 				topoPolicy,
@@ -88,11 +100,12 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
 				NotLeaderPolicy(),
-				topoPolicy,
+				topoPolicy.PolicyScaleIn(),
 			).
 			WithUpdatePreferPolicy(
 				NotLeaderPolicy(),
 			).
+			WithMinReadySeconds(coreutil.MinReadySeconds[scope.PDGroup](pdg)).
 			Build().
 			Do(ctx)
 		if err != nil {
@@ -109,7 +122,7 @@ func needVersionUpgrade(pdg *v1alpha1.PDGroup) bool {
 	return pdg.Spec.Template.Spec.Version != pdg.Status.Version && pdg.Status.Version != ""
 }
 
-func PDNewer(pdg *v1alpha1.PDGroup, rev string) updater.NewFactory[*runtime.PD] {
+func PDNewer(pdg *v1alpha1.PDGroup, rev string, _ features.Gates) updater.NewFactory[*runtime.PD] {
 	return updater.NewFunc[*runtime.PD](func() *runtime.PD {
 		spec := pdg.Spec.Template.Spec.DeepCopy()
 
@@ -131,6 +144,7 @@ func PDNewer(pdg *v1alpha1.PDGroup, rev string) updater.NewFactory[*runtime.PD] 
 				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.PDGroup](pdg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.PDGroup](pdg),
+				Finalizers:  []string{metav1alpha1.Finalizer},
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(pdg, v1alpha1.SchemeGroupVersion.WithKind("PDGroup")),
 				},

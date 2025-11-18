@@ -25,6 +25,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 	runner := task.NewTaskRunner(reporter,
 		// get scheduler
 		common.TaskContextObject[scope.Scheduler](state, r.Client),
+		common.TaskTrack[scope.Scheduler](state, r.Tracker),
 		// if it's gone just return
 		task.IfBreak(common.CondObjectHasBeenDeleted[scope.Scheduler](state)),
 
@@ -41,6 +42,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			tasks.TaskFinalizerDel(state, r.Client),
 			common.TaskInstanceConditionSynced[scope.Scheduler](state),
 			common.TaskInstanceConditionReady[scope.Scheduler](state),
+			common.TaskInstanceConditionRunning[scope.Scheduler](state),
 			common.TaskStatusPersister[scope.Scheduler](state, r.Client),
 		),
 		common.TaskFinalizerAdd[scope.Scheduler](state, r.Client),
@@ -54,14 +56,16 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskInstanceConditionSuspended[scope.Scheduler](state),
 			common.TaskInstanceConditionSynced[scope.Scheduler](state),
 			common.TaskInstanceConditionReady[scope.Scheduler](state),
+			common.TaskInstanceConditionRunning[scope.Scheduler](state),
 			common.TaskStatusPersister[scope.Scheduler](state, r.Client),
 		),
 
 		tasks.TaskConfigMap(state, r.Client),
-		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifierFactory),
+		common.TaskPVC[scope.Scheduler](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
 		tasks.TaskPod(state, r.Client),
 		common.TaskInstanceConditionSynced[scope.Scheduler](state),
 		common.TaskInstanceConditionReady[scope.Scheduler](state),
+		common.TaskInstanceConditionRunning[scope.Scheduler](state),
 		tasks.TaskStatus(state, r.Client),
 	)
 

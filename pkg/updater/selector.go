@@ -109,11 +109,23 @@ func (s *selector[R]) Choose(allowed []R) string {
 	return allowed[choosed].GetName()
 }
 
-func PreferUnavailable[R runtime.Instance]() PreferPolicy[R] {
+func PreferUnready[R runtime.Instance]() PreferPolicy[R] {
 	return PreferPolicyFunc[R](func(s []R) []R {
 		unavail := []R{}
 		for _, in := range s {
 			if !in.IsUpToDate() || !in.IsReady() {
+				unavail = append(unavail, in)
+			}
+		}
+		return unavail
+	})
+}
+
+func PreferNotRunning[R runtime.Instance]() PreferPolicy[R] {
+	return PreferPolicyFunc[R](func(s []R) []R {
+		unavail := []R{}
+		for _, in := range s {
+			if in.IsNotRunning() {
 				unavail = append(unavail, in)
 			}
 		}

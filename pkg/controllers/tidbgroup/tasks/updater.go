@@ -22,9 +22,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/reloadable"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
@@ -39,7 +41,7 @@ const (
 )
 
 // TaskUpdater is a task to scale or update TiDB when spec of TiDBGroup is changed.
-func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.TiDBGroup, *v1alpha1.TiDB]) task.Task {
+func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFactory) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		dbg := state.TiDBGroup()
@@ -49,6 +51,14 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 		if needVersionUpgrade(dbg) && !checker.CanUpgrade(ctx, dbg) {
 			// TODO(liubo02): change to Wait
 			return task.Retry(defaultUpdateWaitTime).With("wait until preconditions of upgrading is met")
+		}
+
+		retryAfter := coreutil.RetryIfInstancesReadyButNotAvailable[scope.TiDB](
+			state.InstanceSlice(),
+			coreutil.MinReadySeconds[scope.TiDBGroup](dbg),
+		)
+		if retryAfter != 0 {
+			return task.Retry(retryAfter).With("wait until no instances is ready but not available")
 		}
 
 		var topos []v1alpha1.ScheduleTopology
@@ -81,7 +91,12 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			noUpdate = true
 		}
 
-		allocator := t.Track(dbg, state.InstanceSlice()...)
+		var instances []string
+		for _, in := range dbs {
+			instances = append(instances, in.Name)
+		}
+
+		allocator := af.New(dbg.Namespace, dbg.Name, instances...)
 
 		wait, err := updater.New[runtime.TiDBTuple]().
 			WithInstances(dbs...).
@@ -90,7 +105,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithMaxSurge(maxSurge).
 			WithMaxUnavailable(maxUnavailable).
 			WithRevision(updateRevision).
-			WithNewFactory(TiDBNewer(dbg, updateRevision)).
+			WithNewFactory(newFactory(dbg, updateRevision, state.FeatureGates())).
 			WithAddHooks(
 				updater.AllocateName[*runtime.TiDB](allocator),
 				topoPolicy,
@@ -98,9 +113,13 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
-				topoPolicy,
+				topoPolicy.PolicyScaleIn(),
+			).
+			WithUpdatePreferPolicy(
+				topoPolicy.PolicyUpdate(),
 			).
 			WithNoInPaceUpdate(noUpdate).
+			WithMinReadySeconds(coreutil.MinReadySeconds[scope.TiDBGroup](dbg)).
 			Build().
 			Do(ctx)
 		if err != nil {
@@ -135,28 +154,53 @@ func precheckInstances(dbg *v1alpha1.TiDBGroup, dbs []*v1alpha1.TiDB, updateRevi
 	return needUpdate, needRestart
 }
 
-func TiDBNewer(dbg *v1alpha1.TiDBGroup, rev string) updater.NewFactory[*runtime.TiDB] {
-	return updater.NewFunc[*runtime.TiDB](func() *runtime.TiDB {
-		spec := dbg.Spec.Template.Spec.DeepCopy()
+type factory struct {
+	dbg *v1alpha1.TiDBGroup
+	rev string
+	fg  features.Gates
+}
 
-		tidb := &v1alpha1.TiDB{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: dbg.Namespace,
-				// Name will be allocated by updater.AllocateName
-				Labels:      coreutil.InstanceLabels[scope.TiDBGroup](dbg, rev),
-				Annotations: coreutil.InstanceAnnotations[scope.TiDBGroup](dbg),
-				OwnerReferences: []metav1.OwnerReference{
-					*metav1.NewControllerRef(dbg, v1alpha1.SchemeGroupVersion.WithKind("TiDBGroup")),
-				},
-			},
-			Spec: v1alpha1.TiDBSpec{
-				Cluster:          dbg.Spec.Cluster,
-				Features:         dbg.Spec.Features,
-				Subdomain:        HeadlessServiceName(dbg.Name), // same as headless service
-				TiDBTemplateSpec: *spec,
-			},
-		}
+func (f *factory) New() *runtime.TiDB {
+	dbg := f.dbg
 
-		return runtime.FromTiDB(tidb)
-	})
+	tidb := &v1alpha1.TiDB{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: dbg.Namespace,
+			// Name will be allocated by updater.AllocateName
+		},
+	}
+
+	tidb = f.updateTiDB(tidb)
+
+	return runtime.FromTiDB(tidb)
+}
+
+func (f *factory) Adopt() (*runtime.TiDB, updater.UnlockFunc, bool) {
+	return nil, nil, false
+}
+
+func (f *factory) updateTiDB(tidb *v1alpha1.TiDB) *v1alpha1.TiDB {
+	spec := f.dbg.Spec.Template.Spec.DeepCopy()
+
+	tidb.Labels = coreutil.InstanceLabels[scope.TiDBGroup](f.dbg, f.rev)
+	tidb.Annotations = coreutil.InstanceAnnotations[scope.TiDBGroup](f.dbg)
+	tidb.Finalizers = []string{metav1alpha1.Finalizer}
+	tidb.OwnerReferences = []metav1.OwnerReference{
+		*metav1.NewControllerRef(f.dbg, v1alpha1.SchemeGroupVersion.WithKind("TiDBGroup")),
+	}
+
+	tidb.Spec.Cluster = f.dbg.Spec.Cluster
+	tidb.Spec.Features = f.dbg.Spec.Features
+	tidb.Spec.Subdomain = HeadlessServiceName(f.dbg.Name) // same as headless service
+	tidb.Spec.TiDBTemplateSpec = *spec
+
+	return tidb
+}
+
+func newFactory(dbg *v1alpha1.TiDBGroup, rev string, fg features.Gates) updater.NewFactory[*runtime.TiDB] {
+	return &factory{
+		dbg: dbg,
+		rev: rev,
+		fg:  fg,
+	}
 }

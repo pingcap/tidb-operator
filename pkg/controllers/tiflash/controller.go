@@ -16,6 +16,7 @@ package tiflash
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -30,8 +31,10 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/tiflash/tasks"
 	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
+	fm "github.com/pingcap/tidb-operator/pkg/timanager/tiflash"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 	"github.com/pingcap/tidb-operator/pkg/volumes"
 )
 
@@ -40,14 +43,25 @@ type Reconciler struct {
 	Client                client.Client
 	VolumeModifierFactory volumes.ModifierFactory
 	PDClientManager       pdm.PDClientManager
+	TiFlashClientManager  fm.TiFlashClientManager
+	Tracker               tracker.Tracker
 }
 
-func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, vm volumes.ModifierFactory) error {
+func Setup(
+	mgr manager.Manager,
+	c client.Client,
+	pdcm pdm.PDClientManager,
+	fcm fm.TiFlashClientManager,
+	vm volumes.ModifierFactory,
+	t tracker.Tracker,
+) error {
 	r := &Reconciler{
 		Logger:                mgr.GetLogger().WithName("TiFlash"),
 		Client:                c,
 		VolumeModifierFactory: vm,
 		PDClientManager:       pdcm,
+		TiFlashClientManager:  fcm,
+		Tracker:               t,
 	}
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.TiFlash{}).
 		Owns(&corev1.Pod{}).
@@ -68,7 +82,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	defer func() {
 		dur := time.Since(startTime)
 		logger.Info("end reconcile", "duration", dur)
-		logger.Info("summay: \n" + reporter.Summary())
+		summary := fmt.Sprintf("summary for %v\n%s", req.NamespacedName, reporter.Summary())
+		logger.Info(summary)
 	}()
 
 	rtx := &tasks.ReconcileContext{

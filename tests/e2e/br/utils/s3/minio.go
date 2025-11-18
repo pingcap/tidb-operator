@@ -29,8 +29,8 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/tests/e2e/framework"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/k8s"
+	"github.com/pingcap/tidb-operator/tests/e2e/utils/waiter"
 )
 
 const (
@@ -70,7 +70,7 @@ func (s *minioStorage) Init(ctx context.Context, ns, accessKey, secretKey string
 	}
 	ginkgo.By("wait for minio s3 storage ready")
 
-	if err := framework.WaitTimeoutForPodReadyInNamespace(s.c, minioName, ns, 5*time.Minute); err != nil {
+	if err := waiter.WaitForPodReadyInNamespace(ctx, s.c, pod, 5*time.Minute); err != nil {
 		return err
 	}
 

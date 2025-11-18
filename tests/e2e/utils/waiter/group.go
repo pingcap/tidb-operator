@@ -19,12 +19,15 @@ import (
 	"fmt"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
 	watchtools "k8s.io/client-go/tools/watch"
 
 	"github.com/pingcap/tidb-operator/pkg/apicall"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
@@ -51,6 +54,12 @@ func WaitForInstanceList[
 			return false, fmt.Errorf("can't list instances: %w", err)
 		}
 
+		replicas := coreutil.Replicas[GS](g)
+		if len(items) != int(replicas) {
+			lastErr = fmt.Errorf("expected replicas is %v, actual is %v", replicas, len(items))
+			return false, nil
+		}
+
 		if err := cond(items); err != nil {
 			lastErr = err
 			return false, nil
@@ -68,6 +77,23 @@ func WaitForInstanceList[
 	return nil
 }
 
+func WaitForInstanceListRecreated[
+	GS scope.GroupInstance[GF, GT, IS],
+	IS scope.List[IL, I],
+	GF client.Object,
+	GT runtime.Group,
+	IL client.ObjectList,
+	I client.Object,
+](
+	ctx context.Context,
+	c client.Client,
+	g GF,
+	changeTime time.Time,
+	timeout time.Duration,
+) error {
+	return WaitForInstanceList[GS](ctx, c, g, ListIsRecreated[I](changeTime), timeout)
+}
+
 func WaitForInstanceListDeleted[
 	GS scope.GroupInstance[GF, GT, IS],
 	IS scope.List[IL, I],
@@ -79,8 +105,28 @@ func WaitForInstanceListDeleted[
 	ctx context.Context,
 	c client.Client,
 	g GF,
+	timeout time.Duration,
 ) error {
-	return WaitForInstanceList[GS](ctx, c, g, ListIsEmpty, LongTaskTimeout)
+	return WaitForInstanceList[GS](ctx, c, g, ListIsEmpty, timeout)
+}
+
+func WaitForInstanceListCondition[
+	GS scope.GroupInstance[GF, GT, IS],
+	IS scope.InstanceList[IF, IT, IL],
+	GF client.Object,
+	GT runtime.Group,
+	IF client.Object,
+	IT runtime.Instance,
+	IL client.ObjectList,
+](
+	ctx context.Context,
+	c client.Client,
+	g GF,
+	condType string,
+	status metav1.ConditionStatus,
+	timeout time.Duration,
+) error {
+	return WaitForInstanceList[GS](ctx, c, g, ListCondition[IS](condType, status), timeout)
 }
 
 func WaitForOneInstanceDeleting[
@@ -95,8 +141,9 @@ func WaitForOneInstanceDeleting[
 	c client.Client,
 	g GF,
 	target *I,
+	timeout time.Duration,
 ) error {
-	return WaitForInstanceList[GS](ctx, c, g, OneDeleting(target), ShortTaskTimeout)
+	return WaitForInstanceList[GS](ctx, c, g, OneDeleting(target), timeout)
 }
 
 func ListIsEmpty[I client.Object](items []I) error {
@@ -105,6 +152,28 @@ func ListIsEmpty[I client.Object](items []I) error {
 	}
 
 	return fmt.Errorf("there are still %v items", len(items))
+}
+
+func ListIsRecreated[I client.Object](changeTime time.Time) func(items []I) error {
+	return func(items []I) error {
+		if len(items) == 0 {
+			return nil
+		}
+
+		var names []string
+
+		for _, item := range items {
+			if item.GetCreationTimestamp().Time.Before(changeTime) {
+				names = append(names, fmt.Sprintf("%s/%s", item.GetNamespace(), item.GetName()))
+			}
+		}
+
+		if len(names) != 0 {
+			return fmt.Errorf("%v are still not recreated after %v", names, changeTime)
+		}
+
+		return nil
+	}
 }
 
 func OneDeleting[I client.Object](target *I) func(items []I) error {
@@ -120,6 +189,39 @@ func OneDeleting[I client.Object](target *I) func(items []I) error {
 		}
 		*target = deleting[0]
 		return nil
+	}
+}
+
+func ListCondition[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](condType string, status metav1.ConditionStatus) func(items []F) error {
+	return func(items []F) error {
+		var errList []error
+		for _, obj := range items {
+			cond := coreutil.FindStatusCondition[S](obj, condType)
+			if cond == nil {
+				errList = append(errList, fmt.Errorf("obj %s/%s's condition %s is not set", obj.GetNamespace(), obj.GetName(), condType))
+				continue
+			}
+			if cond.Status == status && cond.ObservedGeneration == obj.GetGeneration() {
+				continue
+			}
+			errList = append(errList, fmt.Errorf("obj %s/%s's condition %s has unexpected status, expected generation %v, status %v, current status is %v, observed generation: %v, reason: %v, message: %v",
+				obj.GetNamespace(),
+				obj.GetName(),
+				cond.Type,
+				obj.GetGeneration(),
+				status,
+				cond.Status,
+				cond.ObservedGeneration,
+				cond.Reason,
+				cond.Message,
+			))
+		}
+
+		return errors.NewAggregate(errList)
 	}
 }
 

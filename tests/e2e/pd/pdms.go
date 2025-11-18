@@ -19,7 +19,7 @@ import (
 
 	"github.com/onsi/ginkgo/v2"
 
-	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
@@ -32,44 +32,44 @@ var _ = ginkgo.Describe("PD", label.PD, label.FeaturePDMS, func() {
 	f.Setup()
 
 	ginkgo.Context("PDMS Basic", label.P0, func() {
-		ginkgo.It("support create PD, TSO, and scheduler with 1 replica", func(ctx context.Context) {
+		ginkgo.It("support create PD, TSO, and scheduling with 1 replica", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx,
-				data.WithGroupVersion[*runtime.PDGroup](PDMSVersion),
+				data.WithVersion[scope.PDGroup](PDMSVersion),
 				data.WithMSMode(),
-				data.WithReplicas[*runtime.PDGroup](1),
+				data.WithReplicas[scope.PDGroup](1),
 			)
 			tg := f.MustCreateTSO(ctx,
-				data.WithGroupVersion[*runtime.TSOGroup](PDMSVersion),
-				data.WithReplicas[*runtime.TSOGroup](1),
+				data.WithVersion[scope.TSOGroup](PDMSVersion),
+				data.WithReplicas[scope.TSOGroup](1),
 			)
-			sg := f.MustCreateScheduler(ctx,
-				data.WithGroupVersion[*runtime.SchedulerGroup](PDMSVersion),
-				data.WithReplicas[*runtime.SchedulerGroup](1),
+			sg := f.MustCreateScheduling(ctx,
+				data.WithVersion[scope.SchedulingGroup](PDMSVersion),
+				data.WithReplicas[scope.SchedulingGroup](1),
 			)
 
 			f.WaitForPDGroupReady(ctx, pdg)
 			f.WaitForTSOGroupReady(ctx, tg)
-			f.WaitForSchedulerGroupReady(ctx, sg)
+			f.WaitForSchedulingGroupReady(ctx, sg)
 		})
 
-		ginkgo.It("support create 3 PD instances, 2 TSO instances, and 2 Scheduler instances", func(ctx context.Context) {
+		ginkgo.It("support create 3 PD instances, 2 TSO instances, and 2 scheduling instances", func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx,
-				data.WithGroupVersion[*runtime.PDGroup](PDMSVersion),
+				data.WithVersion[scope.PDGroup](PDMSVersion),
 				data.WithMSMode(),
-				data.WithReplicas[*runtime.PDGroup](3),
+				data.WithReplicas[scope.PDGroup](3),
 			)
 			tg := f.MustCreateTSO(ctx,
-				data.WithGroupVersion[*runtime.TSOGroup](PDMSVersion),
-				data.WithReplicas[*runtime.TSOGroup](2),
+				data.WithVersion[scope.TSOGroup](PDMSVersion),
+				data.WithReplicas[scope.TSOGroup](2),
 			)
-			sg := f.MustCreateScheduler(ctx,
-				data.WithGroupVersion[*runtime.SchedulerGroup](PDMSVersion),
-				data.WithReplicas[*runtime.SchedulerGroup](2),
+			sg := f.MustCreateScheduling(ctx,
+				data.WithVersion[scope.SchedulingGroup](PDMSVersion),
+				data.WithReplicas[scope.SchedulingGroup](2),
 			)
 
 			f.WaitForPDGroupReady(ctx, pdg)
 			f.WaitForTSOGroupReady(ctx, tg)
-			f.WaitForSchedulerGroupReady(ctx, sg)
+			f.WaitForSchedulingGroupReady(ctx, sg)
 		})
 	})
 })

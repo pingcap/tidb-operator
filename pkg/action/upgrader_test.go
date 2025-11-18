@@ -243,7 +243,7 @@ func TestTiProxyUpgradePolicy(t *testing.T) {
 	}
 }
 
-func TestSchedulerUpgradePolicy(t *testing.T) {
+func TestSchedulingUpgradePolicy(t *testing.T) {
 	cases := []struct {
 		desc       string
 		objs       []client.Object
@@ -278,12 +278,12 @@ func TestSchedulerUpgradePolicy(t *testing.T) {
 	for i := range cases {
 		c := &cases[i]
 		t.Run(c.desc, func(tt *testing.T) {
-			testUpgradePolicy[scope.SchedulerGroup](
+			testUpgradePolicy[scope.SchedulingGroup](
 				tt,
 				c.desc,
 				c.objs,
 				c.policy,
-				fakeGroup[scope.SchedulerGroup]("test", defaultCluster, expectedVersion, previousVersion),
+				fakeGroup[scope.SchedulingGroup]("test", defaultCluster, expectedVersion, previousVersion),
 				c.canUpgrade,
 			)
 		})

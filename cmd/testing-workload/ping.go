@@ -22,8 +22,8 @@ import (
 
 const defaultTimeout = 10 * time.Second
 
-func Ping(db *sql.DB) error {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+func Ping(ctx context.Context, db *sql.DB) error {
+	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
 
 	if err := db.PingContext(ctx); err != nil {

@@ -27,7 +27,10 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	stateutil "github.com/pingcap/tidb-operator/pkg/state"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
@@ -256,6 +259,9 @@ func TestTaskUpdater(t *testing.T) {
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
+			s := c.state.State.(*state)
+			s.IFeatureGates = stateutil.NewFeatureGates[scope.TiDBGroup](s)
+
 			ctx := context.Background()
 			c.objs = append(c.objs, c.state.TiDBGroup(), c.state.Cluster())
 			fc := client.NewFakeClient(c.objs...)
@@ -269,8 +275,8 @@ func TestTaskUpdater(t *testing.T) {
 				fc.WithError("patch", "tidbs", errors.NewInternalError(fmt.Errorf("fake internal err")))
 			}
 
-			tr := tracker.New[*v1alpha1.TiDBGroup, *v1alpha1.TiDB]()
-			res, done := task.RunTask(ctx, TaskUpdater(c.state, fc, tr))
+			af := tracker.New().AllocateFactory("tidb")
+			res, done := task.RunTask(ctx, TaskUpdater(c.state, fc, af))
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
 
@@ -284,12 +290,15 @@ func TestTaskUpdater(t *testing.T) {
 }
 
 func fakeAvailableTiDB(name string, dbg *v1alpha1.TiDBGroup, rev string) *v1alpha1.TiDB {
+	f := newFactory(dbg, rev, features.NewFromFeatures(nil))
+
 	return fake.FakeObj(name, func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
-		tidb := runtime.ToTiDB(TiDBNewer(dbg, rev).New())
+		tidb := runtime.ToTiDB(f.New())
 		tidb.Name = ""
 		tidb.Status.Conditions = append(tidb.Status.Conditions, metav1.Condition{
-			Type:   v1alpha1.CondReady,
-			Status: metav1.ConditionTrue,
+			Type:               v1alpha1.CondReady,
+			Status:             metav1.ConditionTrue,
+			LastTransitionTime: metav1.Unix(0, 0),
 		})
 		tidb.Status.CurrentRevision = rev
 		tidb.DeepCopyInto(obj)

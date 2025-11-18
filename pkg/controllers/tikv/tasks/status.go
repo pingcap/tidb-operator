@@ -53,7 +53,7 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		if state.Store != nil {
 			needUpdate = compare.SetIfNotEmptyAndChanged(&tikv.Status.ID, state.Store.ID) || needUpdate
 		}
-		needUpdate = compare.SetIfNotEmptyAndChanged(&tikv.Status.State, state.GetStoreState()) || needUpdate
+		needUpdate = compare.SetIfNotEmptyAndChanged(&tikv.Status.State, string(state.GetStoreState())) || needUpdate
 		needUpdate = compare.SetIfChanged(&tikv.Status.ObservedGeneration, tikv.Generation) || needUpdate
 		needUpdate = compare.SetIfNotEmptyAndChanged(
 			&tikv.Status.UpdateRevision,
@@ -103,23 +103,6 @@ func syncSuspendCond(tikv *v1alpha1.TiKV) bool {
 		ObservedGeneration: tikv.Generation,
 		Reason:             v1alpha1.ReasonUnsuspended,
 		Message:            "instance is not suspended",
-	})
-}
-
-func TaskStoreStatus(state *ReconcileContext) task.Task {
-	return task.NameTaskFunc("StoreStatus", func(ctx context.Context) task.Result {
-		needUpdate := state.IsStatusChanged()
-		tikv := state.TiKV()
-		if state.Store != nil {
-			needUpdate = compare.SetIfChanged(&tikv.Status.ID, state.Store.ID) || needUpdate
-		}
-		needUpdate = compare.SetIfChanged(&tikv.Status.State, state.GetStoreState()) || needUpdate
-		if needUpdate {
-			state.SetStatusChanged()
-			return task.Complete().With("store state is changed")
-		}
-
-		return task.Complete().With("store state is not changed")
 	})
 }
 

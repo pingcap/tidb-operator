@@ -19,11 +19,10 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
-func NewTiCDCGroup(ns string, patches ...GroupPatch[*runtime.TiCDCGroup]) *v1alpha1.TiCDCGroup {
-	cg := &runtime.TiCDCGroup{
+func NewTiCDCGroup(ns string, patches ...GroupPatch[*v1alpha1.TiCDCGroup]) *v1alpha1.TiCDCGroup {
+	cg := &v1alpha1.TiCDCGroup{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      defaultTiCDCGroupName,
@@ -42,8 +41,8 @@ func NewTiCDCGroup(ns string, patches ...GroupPatch[*runtime.TiCDCGroup]) *v1alp
 		},
 	}
 	for _, p := range patches {
-		p(cg)
+		p.Patch(cg)
 	}
 
-	return runtime.ToTiCDCGroup(cg)
+	return cg
 }

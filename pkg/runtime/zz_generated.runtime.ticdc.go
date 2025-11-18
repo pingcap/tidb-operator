@@ -20,6 +20,7 @@
 package runtime
 
 import (
+	"time"
 	"unsafe"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -27,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 )
 
 type (
@@ -110,7 +112,41 @@ func (in *TiCDC) IsReady() bool {
 	if cond.ObservedGeneration != in.GetGeneration() {
 		return false
 	}
+
 	return cond.Status == metav1.ConditionTrue
+}
+
+func (in *TiCDC) IsNotRunning() bool {
+	cond := meta.FindStatusCondition(in.Status.Conditions, v1alpha1.CondRunning)
+	if cond == nil {
+		return false
+	}
+	if cond.ObservedGeneration != in.GetGeneration() {
+		return false
+	}
+	return cond.Status == metav1.ConditionFalse
+}
+
+func (in *TiCDC) IsAvailable(minReadySeconds int64, now time.Time) bool {
+	cond := meta.FindStatusCondition(in.Status.Conditions, v1alpha1.CondReady)
+	if cond == nil {
+		return false
+	}
+	if cond.ObservedGeneration != in.GetGeneration() {
+		return false
+	}
+	if cond.Status != metav1.ConditionTrue {
+		return false
+	}
+	if minReadySeconds == 0 {
+		return true
+	}
+	minReadySecondsDuration := time.Duration(minReadySeconds) * time.Second
+	if !cond.LastTransitionTime.IsZero() && cond.LastTransitionTime.Add(minReadySecondsDuration).Before(now) {
+		return true
+	}
+
+	return false
 }
 
 func (in *TiCDC) IsUpToDate() bool {
@@ -145,11 +181,22 @@ func (*TiCDC) Component() string {
 	return v1alpha1.LabelValComponentTiCDC
 }
 
+func (in *TiCDC) Volumes() []v1alpha1.Volume {
+	return in.Spec.Volumes
+}
+
 func (in *TiCDC) PodOverlay() *v1alpha1.PodOverlay {
 	if in.Spec.Overlay == nil {
 		return nil
 	}
 	return in.Spec.Overlay.Pod
+}
+
+func (in *TiCDC) PVCOverlay() []v1alpha1.NamedPersistentVolumeClaimOverlay {
+	if in.Spec.Overlay == nil {
+		return nil
+	}
+	return in.Spec.Overlay.PersistentVolumeClaims
 }
 
 func (in *TiCDC) Features() []metav1alpha1.Feature {
@@ -162,6 +209,44 @@ func (in *TiCDC) SetVersion(version string) {
 
 func (in *TiCDC) Version() string {
 	return in.Spec.Version
+}
+
+func (in *TiCDC) SetImage(image string) {
+	in.Spec.Image = ptr.To(image)
+}
+
+func (in *TiCDC) Subdomain() string {
+	return in.Spec.Subdomain
+}
+
+func (in *TiCDC) ClusterCertKeyPairSecretName() string {
+	prefix, _ := NamePrefixAndSuffix(in.GetName())
+	return prefix + "-" + in.Component() + "-cluster-secret"
+}
+
+func (in *TiCDC) ClusterCASecretName() string {
+	prefix, _ := NamePrefixAndSuffix(in.GetName())
+	return prefix + "-" + in.Component() + "-cluster-secret"
+}
+
+func (in *TiCDC) ClientCertKeyPairSecretName() string {
+	return in.Cluster() + "-cluster-client-secret"
+}
+
+func (in *TiCDC) ClientCASecretName() string {
+	return in.Cluster() + "-cluster-client-secret"
+}
+
+func (in *TiCDC) ClientInsecureSkipTLSVerify() bool {
+	return false
+}
+
+func (in *TiCDC) IsOffline() bool {
+	return false
+}
+
+func (in *TiCDC) IsStore() bool {
+	return false
 }
 
 type (
@@ -231,6 +316,10 @@ func (g *TiCDCGroup) SetVersion(version string) {
 
 func (g *TiCDCGroup) Version() string {
 	return g.Spec.Template.Spec.Version
+}
+
+func (g *TiCDCGroup) SetImage(image string) {
+	g.Spec.Template.Spec.Image = ptr.To(image)
 }
 
 func (g *TiCDCGroup) SetCluster(cluster string) {
@@ -311,6 +400,44 @@ func (g *TiCDCGroup) TemplateAnnotations() map[string]string {
 	return g.Spec.Template.Annotations
 }
 
+func (g *TiCDCGroup) SetTemplateLabels(ls map[string]string) {
+	g.Spec.Template.Labels = ls
+}
+
+func (g *TiCDCGroup) SetTemplateAnnotations(anno map[string]string) {
+	g.Spec.Template.Annotations = anno
+}
+
 func (g *TiCDCGroup) Features() []metav1alpha1.Feature {
 	return g.Spec.Features
+}
+
+func (g *TiCDCGroup) ClusterCertKeyPairSecretName() string {
+	defaultName := g.Name + "-" + g.Component() + "-cluster-secret"
+	return defaultName
+}
+
+func (g *TiCDCGroup) ClusterCASecretName() string {
+	defaultName := g.Name + "-" + g.Component() + "-cluster-secret"
+	return defaultName
+}
+
+func (g *TiCDCGroup) ClientCertKeyPairSecretName() string {
+	return g.Cluster() + "-cluster-client-secret"
+}
+
+func (g *TiCDCGroup) ClientCASecretName() string {
+	return g.Cluster() + "-cluster-client-secret"
+}
+
+func (g *TiCDCGroup) ClientInsecureSkipTLSVerify() bool {
+	return false
+}
+
+func (g *TiCDCGroup) MinReadySeconds() int64 {
+	return v1alpha1.DefaultTiCDCMinReadySeconds
+}
+
+func (g *TiCDCGroup) SchedulePolicies() []v1alpha1.SchedulePolicy {
+	return g.Spec.SchedulePolicies
 }

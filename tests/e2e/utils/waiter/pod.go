@@ -31,8 +31,11 @@ import (
 	watchtools "k8s.io/client-go/tools/watch"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
 )
 
 type podInfo struct {
@@ -43,18 +46,22 @@ type podInfo struct {
 }
 
 // nolint: gocyclo // optimize later
-func WaitPodsRollingUpdateOnce[G runtime.Group](
+func WaitPodsRollingUpdateOnce[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](
 	ctx context.Context,
 	c client.Client,
-	g G,
-	from int,
+	g F,
+	to int,
 	surge int,
 	timeout time.Duration,
 ) error {
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(ctx, timeout)
 	defer cancel()
 
-	podMap, err := generatePodInfoMapByWatch(ctx, c, g)
+	podMap, err := generatePodInfoMapByWatch[S](ctx, c, g)
 	if err != nil {
 		return err
 	}
@@ -75,7 +82,7 @@ func WaitPodsRollingUpdateOnce[G runtime.Group](
 
 	var scaleOut, scaleIn, rollingUpdateTimes int
 
-	to := int(g.Replicas())
+	from := int(coreutil.Replicas[S](g))
 	delta := to - from
 
 	if delta > 0 {
@@ -134,9 +141,13 @@ func WaitPodsRollingUpdateOnce[G runtime.Group](
 	return nil
 }
 
-func generatePodInfoMapByWatch[G runtime.Group](ctx context.Context, c client.Client, g G) (map[string]podInfo, error) {
+func generatePodInfoMapByWatch[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](ctx context.Context, c client.Client, g F) (map[string]podInfo, error) {
 	podMap := map[string]podInfo{}
-	lw := newListWatch(ctx, c, g)
+	lw := newListWatch[S](ctx, c, g)
 	_, err := watchtools.UntilWithSync(ctx, lw, &corev1.Pod{}, nil, func(event watch.Event) (bool, error) {
 		pod, ok := event.Object.(*corev1.Pod)
 		if !ok {
@@ -152,10 +163,19 @@ func generatePodInfoMapByWatch[G runtime.Group](ctx context.Context, c client.Cl
 				creationTime: pod.CreationTimestamp,
 			}
 		}
-
-		if !pod.DeletionTimestamp.IsZero() && pod.DeletionGracePeriodSeconds != nil && *pod.DeletionGracePeriodSeconds == 0 {
-			info.deletionTime = *pod.DeletionTimestamp
+		// Use DeletionTimestamp can only get the deleting time.
+		// If the new pod is created immediately after the old one is deleted, the test is also passed
+		//
+		// NOTE: It may be fixed by https://github.com/kubernetes/kubernetes/pull/122646
+		// Keep this code to use DeletionTimestamp after the previous PR is released
+		//
+		// if !pod.DeletionTimestamp.IsZero() && pod.DeletionGracePeriodSeconds != nil && *pod.DeletionGracePeriodSeconds == 0 {
+		// 	info.deletionTime = *pod.DeletionTimestamp
+		// }
+		if event.Type == watch.Deleted {
+			info.deletionTime = metav1.Now()
 		}
+
 		podMap[string(pod.UID)] = info
 
 		return false, nil
@@ -168,16 +188,20 @@ func generatePodInfoMapByWatch[G runtime.Group](ctx context.Context, c client.Cl
 	return podMap, nil
 }
 
-func newListWatch[G runtime.Group](ctx context.Context, c client.Client, g G) cache.ListerWatcher {
+func newListWatch[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](ctx context.Context, c client.Client, g F) cache.ListerWatcher {
 	lw := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (kuberuntime.Object, error) {
 			list := &corev1.PodList{}
 			if err := c.List(ctx, list, &client.ListOptions{
 				Namespace: g.GetNamespace(),
 				LabelSelector: labels.SelectorFromSet(labels.Set{
-					v1alpha1.LabelKeyCluster:   g.Cluster(),
+					v1alpha1.LabelKeyCluster:   coreutil.Cluster[S](g),
 					v1alpha1.LabelKeyGroup:     g.GetName(),
-					v1alpha1.LabelKeyComponent: g.Component(),
+					v1alpha1.LabelKeyComponent: scope.Component[S](),
 				}),
 				Raw: &options,
 			}); err != nil {
@@ -190,9 +214,9 @@ func newListWatch[G runtime.Group](ctx context.Context, c client.Client, g G) ca
 			return c.Watch(ctx, list, &client.ListOptions{
 				Namespace: g.GetNamespace(),
 				LabelSelector: labels.SelectorFromSet(labels.Set{
-					v1alpha1.LabelKeyCluster:   g.Cluster(),
+					v1alpha1.LabelKeyCluster:   coreutil.Cluster[S](g),
 					v1alpha1.LabelKeyGroup:     g.GetName(),
-					v1alpha1.LabelKeyComponent: g.Component(),
+					v1alpha1.LabelKeyComponent: scope.Component[S](),
 				}),
 				Raw: &options,
 			})
@@ -292,16 +316,20 @@ func WaitForPodsCondition[G runtime.Group](
 	})
 }
 
-func MaxPodsCreateTimestamp[G runtime.Group](
+func MaxPodsCreateTimestamp[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](
 	ctx context.Context,
 	c client.Client,
-	g G,
+	g F,
 ) (*time.Time, error) {
 	list := corev1.PodList{}
 	if err := c.List(ctx, &list, client.InNamespace(g.GetNamespace()), client.MatchingLabels{
-		v1alpha1.LabelKeyCluster:   g.Cluster(),
+		v1alpha1.LabelKeyCluster:   coreutil.Cluster[S](g),
 		v1alpha1.LabelKeyGroup:     g.GetName(),
-		v1alpha1.LabelKeyComponent: g.Component(),
+		v1alpha1.LabelKeyComponent: scope.Component[S](),
 	}); err != nil {
 		return nil, err
 	}
@@ -313,5 +341,20 @@ func MaxPodsCreateTimestamp[G runtime.Group](
 		}
 	}
 
-	return maxTime, nil
+	m := maxTime.Add(time.Second)
+	return &m, nil
+}
+
+// WaitForPodReadyInNamespace waits the given timeout duration for the
+// specified pod to be ready and running.
+func WaitForPodReadyInNamespace(ctx context.Context, c client.Client, pod *corev1.Pod, timeout time.Duration) error {
+	return WaitForObjectV2(ctx, c, pod, func() (bool, error) {
+		switch pod.Status.Phase {
+		case corev1.PodFailed, corev1.PodSucceeded:
+			return true, fmt.Errorf("pod is %v", pod.Status.Phase)
+		case corev1.PodRunning:
+			return statefulset.IsPodReady(pod), nil
+		}
+		return false, fmt.Errorf("pod is %v", pod.Status.Phase)
+	}, timeout)
 }

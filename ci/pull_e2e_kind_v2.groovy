@@ -32,7 +32,7 @@ metadata:
 spec:
   containers:
   - name: main
-    image: hub.pingcap.net/tidb-operator/kubekins-e2e:v9-go1.23.12
+    image: hub.pingcap.net/tidb-operator/kubekins-e2e:v9-go1.23.4
     command:
     - runner.sh
     - exec
@@ -236,6 +236,12 @@ try {
                             checkout changelog: false, poll: false, scm: [
                                     $class: 'GitSCM',
                                     branches: [[name: "${GIT_REF}"]],
+                                    extensions: [
+                                        [$class: 'CloneOption', 
+                                         depth: 1,
+                                         noTags: true,
+                                         shallow: true]
+                                    ],
                                     userRemoteConfigs: [[
                                             refspec: '+refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/origin/pull/*',
                                             url: "${params.GIT_URL}",
@@ -248,6 +254,12 @@ try {
                                 checkout changelog: false, poll: false, scm: [
                                         $class: 'GitSCM',
                                         branches: [[name: "${GIT_REF}"]],
+                                        extensions: [
+                                            [$class: 'CloneOption', 
+                                             depth: 1,
+                                             noTags: true,
+                                             shallow: true]
+                                        ],
                                         userRemoteConfigs: [[
                                                 refspec: '+refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/origin/pull/*',
                                                 url: "${params.GIT_URL}",

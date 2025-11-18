@@ -33,6 +33,13 @@ func TestTiKV(t *testing.T) {
 	Validate(t, "crd/core.pingcap.com_tikvs.yaml", cases)
 }
 
+func TestTiKVGroup(t *testing.T) {
+	var cases []Case
+	cases = append(cases, transferTiKVGroupCases(t, ClusterReference(), "spec", "cluster")...)
+	cases = append(cases, transferTiKVGroupCases(t, NameLength(groupNameLengthLimit), "metadata", "name")...)
+	Validate(t, "crd/core.pingcap.com_tikvgroups.yaml", cases)
+}
+
 func basicTiKV() map[string]any {
 	data := []byte(`
 apiVersion: core.pingcap.com/v1alpha1
@@ -71,6 +78,52 @@ func transferTiKVCases(t *testing.T, cases []Case, fields ...string) []Case {
 		}
 
 		old := basicTiKV()
+		c.old = Patch(t, c.mode, old, c.old, fields...)
+	}
+
+	return cases
+}
+
+func basicTiKVGroup() map[string]any {
+	data := []byte(`
+apiVersion: core.pingcap.com/v1alpha1
+kind: TiKVGroup
+metadata:
+  name: tikv-group
+spec:
+  cluster:
+    name: test
+  replicas: 3
+  template:
+    spec:
+      version: v8.1.0
+      volumes:
+      - name: data
+        mounts:
+        - type: data
+        storage: 20Gi
+`)
+	obj := map[string]any{}
+	if err := yaml.Unmarshal(data, &obj); err != nil {
+		panic(err)
+	}
+
+	return obj
+}
+
+func transferTiKVGroupCases(t *testing.T, cases []Case, fields ...string) []Case {
+	for i := range cases {
+		c := &cases[i]
+
+		current := basicTiKVGroup()
+		c.current = Patch(t, c.mode, current, c.current, fields...)
+
+		if c.isCreate {
+			c.old = nil
+			continue
+		}
+
+		old := basicTiKVGroup()
 		c.old = Patch(t, c.mode, old, c.old, fields...)
 	}
 

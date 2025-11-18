@@ -242,6 +242,70 @@ func TestTaskStatus(t *testing.T) {
 
 			expectedStatus: task.SFail,
 		},
+		{
+			desc: "is not running",
+			state: &ReconcileContext{
+				State: &state{
+					tiflash: fake.FakeObj(fakeTiFlashName, func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+						obj.Generation = 3
+						obj.Labels = map[string]string{
+							v1alpha1.LabelKeyInstanceRevisionHash: newRevision,
+						}
+						obj.Status.Conditions = []metav1.Condition{
+							{
+								Type:               v1alpha1.CondReady,
+								Status:             metav1.ConditionFalse,
+								ObservedGeneration: 3,
+							},
+						}
+						return obj
+					}),
+					pod: fake.FakeObj("aaa-tiflash-xxx", func(obj *corev1.Pod) *corev1.Pod {
+						obj.Labels = map[string]string{
+							v1alpha1.LabelKeyInstanceRevisionHash: oldRevision,
+						}
+						obj.Status.Phase = corev1.PodRunning
+						obj.Status.Conditions = append(obj.Status.Conditions, corev1.PodCondition{
+							Type:   corev1.PodReady,
+							Status: corev1.ConditionTrue,
+						})
+						return obj
+					}),
+					storeState: v1alpha1.StoreStateServing,
+				},
+				Store: &pdv1.Store{
+					ID: fakeTiFlashName,
+				},
+			},
+			expectedStatus: task.SRetry,
+			expectedObj: fake.FakeObj(fakeTiFlashName, func(obj *v1alpha1.TiFlash) *v1alpha1.TiFlash {
+				obj.Generation = 3
+				obj.Labels = map[string]string{
+					v1alpha1.LabelKeyInstanceRevisionHash: newRevision,
+				}
+
+				obj.Status.ObservedGeneration = 3
+				obj.Status.ID = fakeTiFlashName
+				obj.Status.State = v1alpha1.StoreStateServing
+				obj.Status.UpdateRevision = newRevision
+				obj.Status.Conditions = []metav1.Condition{
+					{
+						Type:               v1alpha1.CondReady,
+						Status:             metav1.ConditionFalse,
+						ObservedGeneration: 3,
+					},
+					{
+						Type:               v1alpha1.CondSuspended,
+						Status:             metav1.ConditionFalse,
+						ObservedGeneration: 3,
+						Reason:             v1alpha1.ReasonUnsuspended,
+						Message:            "instance is not suspended",
+					},
+				}
+
+				return obj
+			}),
+		},
 	}
 
 	for i := range cases {

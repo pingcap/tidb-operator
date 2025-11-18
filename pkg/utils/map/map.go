@@ -76,6 +76,11 @@ func (m *Map[K, V]) Load(k K) (_ V, _ bool) {
 	return val.(V), true
 }
 
+func (m *Map[K, V]) LoadOrStore(k K, v V) (_ V, _ bool) {
+	val, ok := m.Map.LoadOrStore(k, v)
+	return val.(V), ok
+}
+
 func (m *Map[K, V]) Store(k K, v V) {
 	m.Map.Store(k, v)
 }

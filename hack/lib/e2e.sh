@@ -25,6 +25,7 @@ ROOT=$(
 source $ROOT/hack/lib/vars.sh
 source $ROOT/hack/lib/kind.sh
 source $ROOT/hack/lib/image.sh
+source $ROOT/hack/lib/download.sh
 
 OUTPUT_DIR=$ROOT/_output
 KUBECTL=$OUTPUT_DIR/bin/kubectl
@@ -51,17 +52,28 @@ function e2e::switch_kube_context() {
 }
 
 function e2e::ensure_cert_manager() {
-    echo "checking if cert-manager is installed..."
-    if $KUBECTL -n cert-manager get deployment cert-manager &>/dev/null; then
-        echo "cert-manager already installed, skipping..."
-        return
-    fi
-
     echo "installing cert-manager..."
-    $KUBECTL apply --server-side=true -f https://github.com/cert-manager/cert-manager/releases/download/v1.15.2/cert-manager.yaml
+    $HELM upgrade \
+        cert-manager oci://quay.io/jetstack/charts/cert-manager \
+        -i \
+        --wait \
+        --version v1.18.2 \
+        --namespace cert-manager \
+        --create-namespace \
+        --set crds.enabled=true
+}
 
-    echo "waiting for cert-manager to be ready..."
-    $KUBECTL -n cert-manager wait --for=condition=Available --timeout=5m deployment/cert-manager
+function e2e::ensure_trust_manager() {
+    echo "installing trust-manager..."
+    $HELM upgrade \
+        trust-manager oci://quay.io/jetstack/charts/trust-manager \
+        -i \
+        --wait \
+        --version v0.18.0 \
+        --namespace cert-manager \
+        --create-namespace \
+        --set secretTargets.enabled=true \
+        --set secretTargets.authorizedSecretsAll=true
 }
 
 function e2e::delete_crds() {
@@ -271,7 +283,7 @@ function e2e::install_ginkgo() {
 function e2e::install_generate_jwt() {
     if ! command -v $GENERATEJWT &>/dev/null; then
         echo "generate_jwt not found, installing..."
-        $ROOT/hack/download.sh go_install $GENERATEJWT github.com/cbcwestwolf/generate_jwt@latest
+        download go_install $GENERATEJWT github.com/cbcwestwolf/generate_jwt@latest
     fi
 }
 
@@ -314,16 +326,22 @@ function e2e::run() {
     # Use individual package paths instead of recursive mode to avoid scanning excluded packages
     if [[ "$CI" == "true" ]]; then
         echo "running e2e tests in CI mode with options: $*"
-        $GINKGO -v --timeout=2h --randomize-all --randomize-suites --fail-on-empty --keep-going --race --trace --flake-attempts=2 "$*" "${test_packages[@]}"
+        $GINKGO -v --timeout=2h --randomize-all --randomize-suites --fail-on-empty --trace --label-filter="!k:BR" "$*" "${test_packages[@]}"
     else
         echo "running e2e tests locally..."
-        $GINKGO -v "$@" "${test_packages[@]}"
+        $GINKGO -v --race "$@" "${test_packages[@]}"
     fi
 }
 
 function e2e::run_upgrade() {
     e2e::install_old_version
-    $GINKGO -v -r --tags=upgrade_e2e --timeout=1h --randomize-all --randomize-suites --fail-on-empty --race --trace --flake-attempts=2 "$ROOT/tests/e2e/upgrade"
+    if [[ "$CI" == "true" ]]; then
+        echo "running upgrade e2e tests in CI mode with options: $*"
+        $GINKGO -v --tags=upgrade_e2e --timeout=1h --randomize-all --randomize-suites --fail-on-empty --trace "$*" "$ROOT/tests/e2e/upgrade"
+    else
+        echo "running upgrade e2e tests locally..."
+        $GINKGO -v --tags=upgrade_e2e --race "$@" "$ROOT/tests/e2e/upgrade"
+    fi
 }
 
 function e2e::prepare() {
@@ -333,6 +351,7 @@ function e2e::prepare() {
     kind::ensure_cluster
     e2e::switch_kube_context
     e2e::ensure_cert_manager
+    e2e::ensure_trust_manager
 
     # build the operator image and load it into the kind cluster
     image::build prestop-checker tidb-operator testing-workload tidb-backup-manager --push

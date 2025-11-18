@@ -127,7 +127,9 @@ func (c *cached[Client, UnderlayClient]) Start(ctx context.Context) {
 	c.cancel = cancel
 	c.started = true
 
-	c.f.Start(nctx.Done())
+	if c.f != nil {
+		c.f.Start(nctx.Done())
+	}
 }
 
 func (c *cached[Client, UnderlayClient]) Stop() {
@@ -139,14 +141,16 @@ func (c *cached[Client, UnderlayClient]) Stop() {
 	}
 
 	c.cancel()
-	c.f.Shutdown()
+	if c.f != nil {
+		c.f.Shutdown()
+	}
 }
 
-func PrimaryKey(ns, cluster string) string {
-	return ns + ":" + cluster
+func PrimaryKey(ns, name string) string {
+	return ns + ":" + name
 }
 
-func SplitPrimaryKey(key string) (ns, cluster string) {
+func SplitPrimaryKey(key string) (ns, name string) {
 	keys := strings.SplitN(key, ":", 2)
 	if len(keys) < 2 {
 		return keys[0], ""

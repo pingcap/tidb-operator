@@ -20,6 +20,7 @@
 package runtime
 
 import (
+	"time"
 	"unsafe"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -27,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 )
 
 type (
@@ -110,7 +112,41 @@ func (in *TiFlash) IsReady() bool {
 	if cond.ObservedGeneration != in.GetGeneration() {
 		return false
 	}
+
 	return cond.Status == metav1.ConditionTrue
+}
+
+func (in *TiFlash) IsNotRunning() bool {
+	cond := meta.FindStatusCondition(in.Status.Conditions, v1alpha1.CondRunning)
+	if cond == nil {
+		return false
+	}
+	if cond.ObservedGeneration != in.GetGeneration() {
+		return false
+	}
+	return cond.Status == metav1.ConditionFalse
+}
+
+func (in *TiFlash) IsAvailable(minReadySeconds int64, now time.Time) bool {
+	cond := meta.FindStatusCondition(in.Status.Conditions, v1alpha1.CondReady)
+	if cond == nil {
+		return false
+	}
+	if cond.ObservedGeneration != in.GetGeneration() {
+		return false
+	}
+	if cond.Status != metav1.ConditionTrue {
+		return false
+	}
+	if minReadySeconds == 0 {
+		return true
+	}
+	minReadySecondsDuration := time.Duration(minReadySeconds) * time.Second
+	if !cond.LastTransitionTime.IsZero() && cond.LastTransitionTime.Add(minReadySecondsDuration).Before(now) {
+		return true
+	}
+
+	return false
 }
 
 func (in *TiFlash) IsUpToDate() bool {
@@ -145,11 +181,22 @@ func (*TiFlash) Component() string {
 	return v1alpha1.LabelValComponentTiFlash
 }
 
+func (in *TiFlash) Volumes() []v1alpha1.Volume {
+	return in.Spec.Volumes
+}
+
 func (in *TiFlash) PodOverlay() *v1alpha1.PodOverlay {
 	if in.Spec.Overlay == nil {
 		return nil
 	}
 	return in.Spec.Overlay.Pod
+}
+
+func (in *TiFlash) PVCOverlay() []v1alpha1.NamedPersistentVolumeClaimOverlay {
+	if in.Spec.Overlay == nil {
+		return nil
+	}
+	return in.Spec.Overlay.PersistentVolumeClaims
 }
 
 func (in *TiFlash) Features() []metav1alpha1.Feature {
@@ -162,6 +209,44 @@ func (in *TiFlash) SetVersion(version string) {
 
 func (in *TiFlash) Version() string {
 	return in.Spec.Version
+}
+
+func (in *TiFlash) SetImage(image string) {
+	in.Spec.Image = ptr.To(image)
+}
+
+func (in *TiFlash) Subdomain() string {
+	return in.Spec.Subdomain
+}
+
+func (in *TiFlash) ClusterCertKeyPairSecretName() string {
+	prefix, _ := NamePrefixAndSuffix(in.GetName())
+	return prefix + "-" + in.Component() + "-cluster-secret"
+}
+
+func (in *TiFlash) ClusterCASecretName() string {
+	prefix, _ := NamePrefixAndSuffix(in.GetName())
+	return prefix + "-" + in.Component() + "-cluster-secret"
+}
+
+func (in *TiFlash) ClientCertKeyPairSecretName() string {
+	return in.Cluster() + "-cluster-client-secret"
+}
+
+func (in *TiFlash) ClientCASecretName() string {
+	return in.Cluster() + "-cluster-client-secret"
+}
+
+func (in *TiFlash) ClientInsecureSkipTLSVerify() bool {
+	return false
+}
+
+func (in *TiFlash) IsOffline() bool {
+	return in.Spec.Offline != nil && *in.Spec.Offline
+}
+
+func (in *TiFlash) IsStore() bool {
+	return true
 }
 
 type (
@@ -231,6 +316,10 @@ func (g *TiFlashGroup) SetVersion(version string) {
 
 func (g *TiFlashGroup) Version() string {
 	return g.Spec.Template.Spec.Version
+}
+
+func (g *TiFlashGroup) SetImage(image string) {
+	g.Spec.Template.Spec.Image = ptr.To(image)
 }
 
 func (g *TiFlashGroup) SetCluster(cluster string) {
@@ -311,6 +400,44 @@ func (g *TiFlashGroup) TemplateAnnotations() map[string]string {
 	return g.Spec.Template.Annotations
 }
 
+func (g *TiFlashGroup) SetTemplateLabels(ls map[string]string) {
+	g.Spec.Template.Labels = ls
+}
+
+func (g *TiFlashGroup) SetTemplateAnnotations(anno map[string]string) {
+	g.Spec.Template.Annotations = anno
+}
+
 func (g *TiFlashGroup) Features() []metav1alpha1.Feature {
 	return g.Spec.Features
+}
+
+func (g *TiFlashGroup) ClusterCertKeyPairSecretName() string {
+	defaultName := g.Name + "-" + g.Component() + "-cluster-secret"
+	return defaultName
+}
+
+func (g *TiFlashGroup) ClusterCASecretName() string {
+	defaultName := g.Name + "-" + g.Component() + "-cluster-secret"
+	return defaultName
+}
+
+func (g *TiFlashGroup) ClientCertKeyPairSecretName() string {
+	return g.Cluster() + "-cluster-client-secret"
+}
+
+func (g *TiFlashGroup) ClientCASecretName() string {
+	return g.Cluster() + "-cluster-client-secret"
+}
+
+func (g *TiFlashGroup) ClientInsecureSkipTLSVerify() bool {
+	return false
+}
+
+func (g *TiFlashGroup) MinReadySeconds() int64 {
+	return v1alpha1.DefaultTiFlashMinReadySeconds
+}
+
+func (g *TiFlashGroup) SchedulePolicies() []v1alpha1.SchedulePolicy {
+	return g.Spec.SchedulePolicies
 }

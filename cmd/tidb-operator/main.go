@@ -23,6 +23,7 @@ import (
 
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	storagev1beta1 "k8s.io/api/storage/v1beta1"
@@ -49,6 +50,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/pdgroup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/scheduler"
 	"github.com/pingcap/tidb-operator/pkg/controllers/schedulergroup"
+	"github.com/pingcap/tidb-operator/pkg/controllers/scheduling"
+	"github.com/pingcap/tidb-operator/pkg/controllers/schedulinggroup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/ticdc"
 	"github.com/pingcap/tidb-operator/pkg/controllers/ticdcgroup"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tidb"
@@ -64,9 +67,11 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/metrics"
 	"github.com/pingcap/tidb-operator/pkg/scheme"
 	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
+	fm "github.com/pingcap/tidb-operator/pkg/timanager/tiflash"
 	tsom "github.com/pingcap/tidb-operator/pkg/timanager/tso"
 	"github.com/pingcap/tidb-operator/pkg/utils/informertest"
 	"github.com/pingcap/tidb-operator/pkg/utils/kubefeat"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 	"github.com/pingcap/tidb-operator/pkg/version"
 	"github.com/pingcap/tidb-operator/pkg/volumes"
 )
@@ -183,12 +188,14 @@ func setup(ctx context.Context, mgr ctrl.Manager) error {
 	logger.Info("setup client manager")
 	pdcm := pdm.NewPDClientManager(mgr.GetLogger(), c)
 	tsocm := tsom.NewTSOClientManager(mgr.GetLogger(), c)
+	fcm := fm.NewTiFlashClientManager(mgr.GetLogger(), c)
 
 	logger.Info("setup volume modifier")
 	vm := volumes.NewModifierFactory(mgr.GetLogger().WithName("VolumeModifier"), c)
 
+	tf := tracker.New()
 	setupLog.Info("setup controllers")
-	if err := setupControllers(mgr, c, pdcm, tsocm, vm); err != nil {
+	if err := setupControllers(mgr, c, pdcm, tsocm, fcm, vm, tf); err != nil {
 		setupLog.Error(err, "unable to setup controllers")
 		os.Exit(1)
 	}
@@ -265,6 +272,14 @@ func addIndexer(ctx context.Context, mgr ctrl.Manager) error {
 		return err
 	}
 
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.SchedulingGroup{}, "spec.cluster.name",
+		func(obj client.Object) []string {
+			sg := obj.(*v1alpha1.SchedulingGroup)
+			return []string{sg.Spec.Cluster.Name}
+		}); err != nil {
+		return err
+	}
+
 	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.SchedulerGroup{}, "spec.cluster.name",
 		func(obj client.Object) []string {
 			sg := obj.(*v1alpha1.SchedulerGroup)
@@ -294,7 +309,9 @@ func setupControllers(
 	c client.Client,
 	pdcm pdm.PDClientManager,
 	tsocm tsom.TSOClientManager,
+	fcm fm.TiFlashClientManager,
 	vm volumes.ModifierFactory,
+	tf tracker.Factory,
 ) error {
 	setups := []controllerSetup{
 		{
@@ -306,97 +323,109 @@ func setupControllers(
 		{
 			name: "PDGroup",
 			setupFunc: func() error {
-				return pdgroup.Setup(mgr, c, pdcm)
+				return pdgroup.Setup(mgr, c, pdcm, tf.AllocateFactory("pd"))
 			},
 		},
 		{
 			name: "PD",
 			setupFunc: func() error {
-				return pd.Setup(mgr, c, pdcm, vm)
+				return pd.Setup(mgr, c, pdcm, vm, tf.Tracker("pd"))
 			},
 		},
 		{
 			name: "TiDBGroup",
 			setupFunc: func() error {
-				return tidbgroup.Setup(mgr, c)
+				return tidbgroup.Setup(mgr, c, tf.AllocateFactory("tidb"))
 			},
 		},
 		{
 			name: "TiDB",
 			setupFunc: func() error {
-				return tidb.Setup(mgr, c, pdcm, vm)
+				return tidb.Setup(mgr, c, pdcm, vm, tf.Tracker("tidb"))
 			},
 		},
 		{
 			name: "TiKVGroup",
 			setupFunc: func() error {
-				return tikvgroup.Setup(mgr, c)
+				return tikvgroup.Setup(mgr, c, tf.AllocateFactory("tikv"))
 			},
 		},
 		{
 			name: "TiKV",
 			setupFunc: func() error {
-				return tikv.Setup(mgr, c, pdcm, vm)
+				return tikv.Setup(mgr, c, pdcm, vm, tf.Tracker("tikv"))
 			},
 		},
 		{
 			name: "TiFlashGroup",
 			setupFunc: func() error {
-				return tiflashgroup.Setup(mgr, c)
+				return tiflashgroup.Setup(mgr, c, tf.AllocateFactory("tiflash"))
 			},
 		},
 		{
 			name: "TiFlash",
 			setupFunc: func() error {
-				return tiflash.Setup(mgr, c, pdcm, vm)
+				return tiflash.Setup(mgr, c, pdcm, fcm, vm, tf.Tracker("tiflash"))
 			},
 		},
 		{
 			name: "TiCDCGroup",
 			setupFunc: func() error {
-				return ticdcgroup.Setup(mgr, c)
+				return ticdcgroup.Setup(mgr, c, tf.AllocateFactory("ticdc"))
 			},
 		},
 		{
 			name: "TiCDC",
 			setupFunc: func() error {
-				return ticdc.Setup(mgr, c, vm)
+				return ticdc.Setup(mgr, c, vm, tf.Tracker("ticdc"))
 			},
 		},
 		{
 			name: "TSOGroup",
 			setupFunc: func() error {
-				return tsogroup.Setup(mgr, c, tsocm)
+				return tsogroup.Setup(mgr, c, tsocm, tf.AllocateFactory("tso"))
 			},
 		},
 		{
 			name: "TSO",
 			setupFunc: func() error {
-				return tso.Setup(mgr, c, pdcm, tsocm, vm)
+				return tso.Setup(mgr, c, pdcm, tsocm, vm, tf.Tracker("tso"))
+			},
+		},
+		{
+			name: "SchedulingGroup",
+			setupFunc: func() error {
+				return schedulinggroup.Setup(mgr, c, tf.AllocateFactory("scheduling"))
+			},
+		},
+		{
+			name: "Scheduling",
+			setupFunc: func() error {
+				return scheduling.Setup(mgr, c, pdcm, vm, tf.Tracker("scheduling"))
 			},
 		},
 		{
 			name: "SchedulerGroup",
 			setupFunc: func() error {
-				return schedulergroup.Setup(mgr, c)
+				return schedulergroup.Setup(mgr, c, tf.AllocateFactory("scheduler"))
 			},
 		},
 		{
 			name: "Scheduler",
 			setupFunc: func() error {
-				return scheduler.Setup(mgr, c, pdcm, vm)
+				return scheduler.Setup(mgr, c, pdcm, vm, tf.Tracker("scheduler"))
 			},
 		},
 		{
 			name: "TiProxyGroup",
 			setupFunc: func() error {
-				return tiproxygroup.Setup(mgr, c)
+				return tiproxygroup.Setup(mgr, c, tf.AllocateFactory("tiproxy"))
 			},
 		},
 		{
 			name: "TiProxy",
 			setupFunc: func() error {
-				return tiproxy.Setup(mgr, c, pdcm, vm)
+				return tiproxy.Setup(mgr, c, pdcm, vm, tf.Tracker("tiproxy"))
 			},
 		},
 		{
@@ -480,6 +509,12 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 		&v1alpha1.TSO{}: {
 			Label: labels.Everything(),
 		},
+		&v1alpha1.SchedulingGroup{}: {
+			Label: labels.Everything(),
+		},
+		&v1alpha1.Scheduling{}: {
+			Label: labels.Everything(),
+		},
 		&v1alpha1.SchedulerGroup{}: {
 			Label: labels.Everything(),
 		},
@@ -527,6 +562,15 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 			Label: managedByOperator,
 		},
 		// TiBR objects end
+
+		// TiBRGC objects start
+		&brv1alpha1.TiBRGC{}: {
+			Label: labels.Everything(),
+		},
+		&batchv1.CronJob{}: {
+			Label: managedByOperator,
+		},
+		// TiBRGC objects end
 	}
 	if kubefeat.Stage(kubefeat.VolumeAttributesClass).Enabled(kubefeat.BETA) {
 		byObj[&storagev1beta1.VolumeAttributesClass{}] = cache.ByObject{

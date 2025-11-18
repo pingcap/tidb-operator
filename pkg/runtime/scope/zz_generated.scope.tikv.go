@@ -22,6 +22,7 @@ package scope
 import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type (
@@ -38,6 +39,10 @@ func (TiKV) To(t *runtime.TiKV) *v1alpha1.TiKV {
 
 func (TiKV) Component() string {
 	return v1alpha1.LabelValComponentTiKV
+}
+
+func (TiKV) GVK() schema.GroupVersionKind {
+	return v1alpha1.SchemeGroupVersion.WithKind("TiKV")
 }
 
 func (TiKV) NewList() *v1alpha1.TiKVList {
@@ -64,6 +69,10 @@ func (TiKVGroup) To(t *runtime.TiKVGroup) *v1alpha1.TiKVGroup {
 
 func (TiKVGroup) Component() string {
 	return v1alpha1.LabelValComponentTiKV
+}
+
+func (TiKVGroup) GVK() schema.GroupVersionKind {
+	return v1alpha1.SchemeGroupVersion.WithKind("TiKVGroup")
 }
 
 func (TiKVGroup) NewList() *v1alpha1.TiKVGroupList {

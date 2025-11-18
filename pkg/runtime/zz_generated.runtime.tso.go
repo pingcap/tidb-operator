@@ -20,6 +20,7 @@
 package runtime
 
 import (
+	"time"
 	"unsafe"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -27,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 )
 
 type (
@@ -110,7 +112,41 @@ func (in *TSO) IsReady() bool {
 	if cond.ObservedGeneration != in.GetGeneration() {
 		return false
 	}
+
 	return cond.Status == metav1.ConditionTrue
+}
+
+func (in *TSO) IsNotRunning() bool {
+	cond := meta.FindStatusCondition(in.Status.Conditions, v1alpha1.CondRunning)
+	if cond == nil {
+		return false
+	}
+	if cond.ObservedGeneration != in.GetGeneration() {
+		return false
+	}
+	return cond.Status == metav1.ConditionFalse
+}
+
+func (in *TSO) IsAvailable(minReadySeconds int64, now time.Time) bool {
+	cond := meta.FindStatusCondition(in.Status.Conditions, v1alpha1.CondReady)
+	if cond == nil {
+		return false
+	}
+	if cond.ObservedGeneration != in.GetGeneration() {
+		return false
+	}
+	if cond.Status != metav1.ConditionTrue {
+		return false
+	}
+	if minReadySeconds == 0 {
+		return true
+	}
+	minReadySecondsDuration := time.Duration(minReadySeconds) * time.Second
+	if !cond.LastTransitionTime.IsZero() && cond.LastTransitionTime.Add(minReadySecondsDuration).Before(now) {
+		return true
+	}
+
+	return false
 }
 
 func (in *TSO) IsUpToDate() bool {
@@ -145,11 +181,22 @@ func (*TSO) Component() string {
 	return v1alpha1.LabelValComponentTSO
 }
 
+func (in *TSO) Volumes() []v1alpha1.Volume {
+	return in.Spec.Volumes
+}
+
 func (in *TSO) PodOverlay() *v1alpha1.PodOverlay {
 	if in.Spec.Overlay == nil {
 		return nil
 	}
 	return in.Spec.Overlay.Pod
+}
+
+func (in *TSO) PVCOverlay() []v1alpha1.NamedPersistentVolumeClaimOverlay {
+	if in.Spec.Overlay == nil {
+		return nil
+	}
+	return in.Spec.Overlay.PersistentVolumeClaims
 }
 
 func (in *TSO) Features() []metav1alpha1.Feature {
@@ -162,6 +209,44 @@ func (in *TSO) SetVersion(version string) {
 
 func (in *TSO) Version() string {
 	return in.Spec.Version
+}
+
+func (in *TSO) SetImage(image string) {
+	in.Spec.Image = ptr.To(image)
+}
+
+func (in *TSO) Subdomain() string {
+	return in.Spec.Subdomain
+}
+
+func (in *TSO) ClusterCertKeyPairSecretName() string {
+	prefix, _ := NamePrefixAndSuffix(in.GetName())
+	return prefix + "-" + in.Component() + "-cluster-secret"
+}
+
+func (in *TSO) ClusterCASecretName() string {
+	prefix, _ := NamePrefixAndSuffix(in.GetName())
+	return prefix + "-" + in.Component() + "-cluster-secret"
+}
+
+func (in *TSO) ClientCertKeyPairSecretName() string {
+	return in.Cluster() + "-cluster-client-secret"
+}
+
+func (in *TSO) ClientCASecretName() string {
+	return in.Cluster() + "-cluster-client-secret"
+}
+
+func (in *TSO) ClientInsecureSkipTLSVerify() bool {
+	return false
+}
+
+func (in *TSO) IsOffline() bool {
+	return false
+}
+
+func (in *TSO) IsStore() bool {
+	return false
 }
 
 type (
@@ -231,6 +316,10 @@ func (g *TSOGroup) SetVersion(version string) {
 
 func (g *TSOGroup) Version() string {
 	return g.Spec.Template.Spec.Version
+}
+
+func (g *TSOGroup) SetImage(image string) {
+	g.Spec.Template.Spec.Image = ptr.To(image)
 }
 
 func (g *TSOGroup) SetCluster(cluster string) {
@@ -311,6 +400,44 @@ func (g *TSOGroup) TemplateAnnotations() map[string]string {
 	return g.Spec.Template.Annotations
 }
 
+func (g *TSOGroup) SetTemplateLabels(ls map[string]string) {
+	g.Spec.Template.Labels = ls
+}
+
+func (g *TSOGroup) SetTemplateAnnotations(anno map[string]string) {
+	g.Spec.Template.Annotations = anno
+}
+
 func (g *TSOGroup) Features() []metav1alpha1.Feature {
 	return g.Spec.Features
+}
+
+func (g *TSOGroup) ClusterCertKeyPairSecretName() string {
+	defaultName := g.Name + "-" + g.Component() + "-cluster-secret"
+	return defaultName
+}
+
+func (g *TSOGroup) ClusterCASecretName() string {
+	defaultName := g.Name + "-" + g.Component() + "-cluster-secret"
+	return defaultName
+}
+
+func (g *TSOGroup) ClientCertKeyPairSecretName() string {
+	return g.Cluster() + "-cluster-client-secret"
+}
+
+func (g *TSOGroup) ClientCASecretName() string {
+	return g.Cluster() + "-cluster-client-secret"
+}
+
+func (g *TSOGroup) ClientInsecureSkipTLSVerify() bool {
+	return false
+}
+
+func (g *TSOGroup) MinReadySeconds() int64 {
+	return v1alpha1.DefaultTSOMinReadySeconds
+}
+
+func (g *TSOGroup) SchedulePolicies() []v1alpha1.SchedulePolicy {
+	return g.Spec.SchedulePolicies
 }

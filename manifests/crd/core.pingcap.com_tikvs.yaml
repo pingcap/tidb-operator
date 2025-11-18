@@ -26,6 +26,9 @@ spec:
     - jsonPath: .status.state
       name: StoreState
       type: string
+    - jsonPath: .spec.offline
+      name: Offline
+      type: boolean
     - jsonPath: .status.conditions[?(@.type=="Synced")].status
       name: Synced
       type: string
@@ -95,6 +98,12 @@ spec:
                   If tag is omitted, version will be used as the image tag.
                   Default is pingcap/tikv
                 type: string
+              offline:
+                description: |-
+                  Offline marks the store as offline in PD to begin data migration.
+                  When true, the store will be marked as offline in PD.
+                  When false, the store will be marked as online in PD (if possible).
+                type: boolean
               overlay:
                 description: |-
                   Overlay defines a k8s native resource template patch

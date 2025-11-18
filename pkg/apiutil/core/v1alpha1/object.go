@@ -36,6 +36,14 @@ func Cluster[
 	return scope.From[S](f).Cluster()
 }
 
+func SetCluster[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F, cluster string) {
+	scope.From[S](f).SetCluster(cluster)
+}
+
 func IsSynced[
 	S scope.Object[F, T],
 	F client.Object,
@@ -77,6 +85,33 @@ func SetStatusCondition[
 		return true
 	}
 	return false
+}
+
+func RemoveStatusCondition[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F, condTypes ...string) bool {
+	obj := scope.From[S](f)
+	cur := obj.Conditions()
+	needUpdate := false
+	for _, condType := range condTypes {
+		needUpdate = meta.RemoveStatusCondition(&cur, condType) || needUpdate
+	}
+	if needUpdate {
+		obj.SetConditions(cur)
+		return true
+	}
+	return false
+}
+
+func FindStatusCondition[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F, condType string) *metav1.Condition {
+	obj := scope.From[S](f)
+	return meta.FindStatusCondition(obj.Conditions(), condType)
 }
 
 func StatusConditions[
@@ -127,10 +162,58 @@ func LongestReadyPeer[
 	return choosed
 }
 
+func SetVersion[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F, version string) {
+	scope.From[S](f).SetVersion(version)
+}
+
 func Version[
 	S scope.Object[F, T],
 	F client.Object,
 	T runtime.Object,
 ](in F) string {
 	return scope.From[S](in).Version()
+}
+
+func SetImage[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F, image string) {
+	scope.From[S](f).SetImage(image)
+}
+
+func ClusterCertKeyPairSecretName[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F) string {
+	return scope.From[S](f).ClusterCertKeyPairSecretName()
+}
+
+func ClusterCASecretName[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F) string {
+	return scope.From[S](f).ClusterCASecretName()
+}
+
+func ClientCertKeyPairSecretName[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F) string {
+	return scope.From[S](f).ClientCertKeyPairSecretName()
+}
+
+func ClientCASecretName[
+	S scope.Object[F, T],
+	F client.Object,
+	T runtime.Object,
+](f F) string {
+	return scope.From[S](f).ClientCASecretName()
 }

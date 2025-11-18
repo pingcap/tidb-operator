@@ -15,10 +15,10 @@
 package tikv
 
 import (
-	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/pkg/controllers/tikv/tasks"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -26,6 +26,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 	runner := task.NewTaskRunner(reporter,
 		// get tikv
 		common.TaskContextObject[scope.TiKV](state, r.Client),
+		common.TaskTrack[scope.TiKV](state, r.Tracker),
 		// if it's deleted just return
 		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiKV](state)),
 
@@ -42,6 +43,11 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			tasks.TaskFinalizerDel(state, r.Client),
 		),
 
+		// if instance is not deleting but store is offlined
+		task.IfBreak(common.CondObjectIsNotDeletingButOfflined[scope.TiKV](state),
+			common.TaskDeleteOfflinedStore[scope.TiKV](state, r.Client),
+		),
+
 		// get pod and check whether the cluster is suspending
 		common.TaskContextPod[scope.TiKV](state, r.Client),
 		// get info from pd
@@ -53,7 +59,6 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			tasks.TaskFinalizerDel(state, r.Client),
 		),
 
-		tasks.TaskOfflineStore(state),
 		common.TaskFinalizerAdd[scope.TiKV](state, r.Client),
 
 		// check whether the cluster is suspending
@@ -65,12 +70,15 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskInstanceConditionSuspended[scope.TiKV](state),
 			common.TaskInstanceConditionSynced[scope.TiKV](state),
 			common.TaskInstanceConditionReady[scope.TiKV](state),
+			common.TaskInstanceConditionRunning[scope.TiKV](state),
+			common.TaskInstanceConditionOffline[scope.TiKV](state),
 			common.TaskStatusPersister[scope.TiKV](state, r.Client),
 		),
 
 		// normal process
+		tasks.TaskOfflineStore(state),
 		tasks.TaskConfigMap(state, r.Client),
-		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifierFactory),
+		common.TaskPVC[scope.TiKV](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
 		tasks.TaskPod(state, r.Client),
 		tasks.TaskStoreLabels(state, r.Client),
 		tasks.TaskEvictLeader(state),
@@ -78,7 +86,9 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// only set ready if pd is synced
 		task.If(PDIsSynced(state),
 			common.TaskInstanceConditionReady[scope.TiKV](state),
+			common.TaskInstanceConditionOffline[scope.TiKV](state),
 		),
+		common.TaskInstanceConditionRunning[scope.TiKV](state),
 		tasks.TaskStatus(state, r.Client),
 	)
 
@@ -88,7 +98,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 func ObjectIsDeletingAndStoreIsRemoved(state *tasks.ReconcileContext) task.Condition {
 	return task.CondFunc(func() bool {
 		return !state.Object().GetDeletionTimestamp().IsZero() && state.PDSynced &&
-			(state.GetStoreState() == v1alpha1.StoreStateRemoved || state.Store == nil)
+			(state.GetStoreState() == pdv1.NodeStateRemoved || state.Store == nil)
 	})
 }
 

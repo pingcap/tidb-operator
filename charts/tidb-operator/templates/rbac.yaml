@@ -37,7 +37,7 @@ rules:
     resources: ["controllerrevisions", "statefulsets"]
     verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
   - apiGroups: ["batch"]
-    resources: ["jobs"]
+    resources: ["jobs", "cronjobs"]
     verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
   - apiGroups: ["storage.k8s.io"]
     resources: ["storageclasses", "volumeattributesclasses"]

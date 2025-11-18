@@ -17,7 +17,6 @@ package tidb
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -28,8 +27,10 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/tests/e2e/framework"
+	wopt "github.com/pingcap/tidb-operator/tests/e2e/framework/workload"
 	"github.com/pingcap/tidb-operator/tests/e2e/label"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/cert"
 	"github.com/pingcap/tidb-operator/tests/e2e/utils/jwt"
@@ -62,7 +63,7 @@ var _ = ginkgo.Describe("TiDB", label.TiDB, func() {
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
 
-			workload.MustPing(ctx, data.DefaultTiDBServiceName, data.DefaultTiDBServicePort, "root", "pingcap", "")
+			workload.MustPing(ctx, data.DefaultTiDBServiceName, wopt.User("root", "pingcap"))
 		})
 	})
 
@@ -99,7 +100,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
 
-			workload.MustPing(ctx, data.DefaultTiDBServiceName, data.DefaultTiDBServicePort, sub, token, "")
+			workload.MustPing(ctx, data.DefaultTiDBServiceName, wopt.User(sub, token))
 		})
 	})
 
@@ -108,7 +109,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx)
 			dbg := f.MustCreateTiDB(ctx,
-				data.WithReplicas[*runtime.TiDBGroup](1),
+				data.WithReplicas[scope.TiDBGroup](1),
 			)
 
 			ginkgo.By("Wait for Cluster Ready")
@@ -128,7 +129,7 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx)
 			dbg := f.MustCreateTiDB(ctx,
-				data.WithReplicas[*runtime.TiDBGroup](5),
+				data.WithReplicas[scope.TiDBGroup](5),
 			)
 
 			f.WaitForPDGroupReady(ctx, pdg)
@@ -147,12 +148,12 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			func(
 				ctx context.Context,
 				change func(*v1alpha1.TiDBGroup),
-				patches ...data.GroupPatch[*runtime.TiDBGroup],
+				patches ...data.GroupPatch[*v1alpha1.TiDBGroup],
 			) {
 				pdg := f.MustCreatePD(ctx)
 				kvg := f.MustCreateTiKV(ctx)
-				var ps []data.GroupPatch[*runtime.TiDBGroup]
-				ps = append(ps, data.WithReplicas[*runtime.TiDBGroup](3))
+				var ps []data.GroupPatch[*v1alpha1.TiDBGroup]
+				ps = append(ps, data.WithReplicas[scope.TiDBGroup](3))
 				ps = append(ps, patches...)
 				dbg := f.MustCreateTiDB(ctx,
 					ps...,
@@ -162,27 +163,21 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 				f.WaitForTiKVGroupReady(ctx, kvg)
 				f.WaitForTiDBGroupReady(ctx, dbg)
 
-				patch := client.MergeFrom(dbg.DeepCopy())
-				change(dbg)
-
 				nctx, cancel := context.WithCancel(ctx)
-				ch := make(chan struct{})
-				go func() {
-					defer close(ch)
-					defer ginkgo.GinkgoRecover()
-					f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiDBGroup(dbg), 3, 1, waiter.LongTaskTimeout))
-				}()
+				done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, 3)
+				defer func() { <-done }()
+				defer cancel()
 
-				maxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
+				changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiDBGroup](ctx, f.Client, dbg)
 				f.Must(err)
-				changeTime := maxTime.Add(time.Second)
 
 				ginkgo.By("Patch TiDBGroup")
+				patch := client.MergeFrom(dbg.DeepCopy())
+				change(dbg)
 				f.Must(f.Client.Patch(ctx, dbg, patch))
-				f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), changeTime, waiter.LongTaskTimeout))
+
+				f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), *changeTime, waiter.LongTaskTimeout))
 				f.WaitForTiDBGroupReady(ctx, dbg)
-				cancel()
-				<-ch
 			},
 			ginkgo.Entry("change config file", func(g *v1alpha1.TiDBGroup) { g.Spec.Template.Spec.Config = changedConfig }),
 			ginkgo.Entry("change overlay", func(g *v1alpha1.TiDBGroup) {
@@ -204,12 +199,12 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			func(
 				ctx context.Context,
 				change func(*v1alpha1.TiDBGroup),
-				patches ...data.GroupPatch[*runtime.TiDBGroup],
+				patches ...data.GroupPatch[*v1alpha1.TiDBGroup],
 			) {
 				pdg := f.MustCreatePD(ctx)
 				kvg := f.MustCreateTiKV(ctx)
-				var ps []data.GroupPatch[*runtime.TiDBGroup]
-				ps = append(ps, data.WithReplicas[*runtime.TiDBGroup](3))
+				var ps []data.GroupPatch[*v1alpha1.TiDBGroup]
+				ps = append(ps, data.WithReplicas[scope.TiDBGroup](3))
 				ps = append(ps, patches...)
 				dbg := f.MustCreateTiDB(ctx,
 					ps...,
@@ -224,9 +219,8 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 				patch := client.MergeFrom(dbg.DeepCopy())
 				change(dbg)
 
-				maxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
+				changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiDBGroup](ctx, f.Client, dbg)
 				f.Must(err)
-				changeTime := maxTime.Add(time.Second)
 
 				ginkgo.By("Patch TiDBGroup")
 				f.Must(f.Client.Patch(ctx, dbg, patch))
@@ -243,9 +237,9 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 				}, waiter.LongTaskTimeout))
 				f.WaitForTiDBGroupReady(ctx, dbg)
 
-				newMaxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
+				newMaxTime, err := waiter.MaxPodsCreateTimestamp[scope.TiDBGroup](ctx, f.Client, dbg)
 				f.Must(err)
-				f.True(changeTime.After(*newMaxTime))
+				f.True(changeTime.Equal(*newMaxTime))
 			},
 			ginkgo.Entry("change config file with hot reload policy", func(g *v1alpha1.TiDBGroup) { g.Spec.Template.Spec.Config = changedConfig }, data.WithHotReloadPolicy()),
 			ginkgo.Entry("change pod annotations and labels", func(g *v1alpha1.TiDBGroup) {
@@ -268,40 +262,34 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 			pdg := f.MustCreatePD(ctx)
 			kvg := f.MustCreateTiKV(ctx)
 			dbg := f.MustCreateTiDB(ctx,
-				data.WithReplicas[*runtime.TiDBGroup](5),
+				data.WithReplicas[scope.TiDBGroup](5),
 			)
 
 			f.WaitForPDGroupReady(ctx, pdg)
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
 
+			nctx, cancel := context.WithCancel(ctx)
+			done := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, 3)
+			defer func() { <-done }()
+			defer cancel()
+
+			changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiDBGroup](ctx, f.Client, dbg)
+			f.Must(err)
+
+			ginkgo.By("Change config and replicas of the TiDBGroup")
 			patch := client.MergeFrom(dbg.DeepCopy())
 			dbg.Spec.Replicas = ptr.To[int32](3)
 			dbg.Spec.Template.Spec.Config = changedConfig
-
-			nctx, cancel := context.WithCancel(ctx)
-			ch := make(chan struct{})
-			go func() {
-				defer close(ch)
-				defer ginkgo.GinkgoRecover()
-				f.Must(waiter.WaitPodsRollingUpdateOnce(nctx, f.Client, runtime.FromTiDBGroup(dbg), 5, 1, waiter.LongTaskTimeout))
-			}()
-
-			maxTime, err := waiter.MaxPodsCreateTimestamp(ctx, f.Client, runtime.FromTiDBGroup(dbg))
-			f.Must(err)
-			changeTime := maxTime.Add(time.Second)
-
-			ginkgo.By("Change config and replicas of the TiDBGroup")
 			f.Must(f.Client.Patch(ctx, dbg, patch))
-			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), changeTime, waiter.LongTaskTimeout))
+
+			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiDBGroup(dbg), *changeTime, waiter.LongTaskTimeout))
 			f.WaitForTiDBGroupReady(ctx, dbg)
-			cancel()
-			<-ch
 		})
 	})
 
 	ginkgo.Context("TLS", label.P0, label.FeatureTLS, func() {
-		f.SetupCluster(data.WithClusterTLS(), data.WithFeatureGates(metav1alpha1.FeatureModification))
+		f.SetupCluster(data.WithClusterTLSEnabled(), data.WithFeatureGates(metav1alpha1.FeatureModification))
 		workload := f.SetupWorkload()
 
 		ginkgo.It("should enable TLS for MySQL Client and between TiDB components", func(ctx context.Context) {
@@ -383,7 +371,8 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 				checkComponent(cdcg.Name, v1alpha1.LabelValComponentTiCDC, cdcg.Spec.Replicas)
 			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
 
-			workload.MustPing(ctx, data.DefaultTiDBServiceName, data.DefaultTiDBServicePort, "root", "", dbg.Name+"-tidb-client-secret")
+			sec := dbg.Name + "-tidb-client-secret"
+			workload.MustPing(ctx, data.DefaultTiDBServiceName, wopt.TLS(sec, sec))
 		})
 
 		ginkgo.It("should mount session token signing cert when SessionTokenSigning is enabled", func(ctx context.Context) {
@@ -424,8 +413,8 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 				for _, vol := range pod.Spec.Volumes {
 					if vol.Name == v1alpha1.VolumeNameTiDBSessionTokenSigningTLS {
 						volumeFound = true
-						if vol.VolumeSource.Secret != nil {
-							foundSecretName = vol.VolumeSource.Secret.SecretName
+						if vol.Secret != nil {
+							foundSecretName = vol.Secret.SecretName
 						}
 						break
 					}

@@ -14,7 +14,11 @@
 
 package runtime
 
-import "sigs.k8s.io/controller-runtime/pkg/client"
+import (
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+)
 
 type Group interface {
 	Object
@@ -36,6 +40,13 @@ type Group interface {
 
 	TemplateLabels() map[string]string
 	TemplateAnnotations() map[string]string
+
+	SetTemplateLabels(map[string]string)
+	SetTemplateAnnotations(map[string]string)
+
+	MinReadySeconds() int64
+
+	SchedulePolicies() []v1alpha1.SchedulePolicy
 }
 
 type GroupT[T GroupSet] interface {
@@ -45,7 +56,7 @@ type GroupT[T GroupSet] interface {
 }
 
 type GroupSet interface {
-	PDGroup | TiDBGroup | TiKVGroup | TiFlashGroup | TiCDCGroup | TiProxyGroup | TSOGroup | SchedulerGroup
+	PDGroup | TiDBGroup | TiKVGroup | TiFlashGroup | TiCDCGroup | TiProxyGroup | TSOGroup | SchedulingGroup | SchedulerGroup
 }
 
 type GroupTuple[PT client.Object, PU Group] interface {

@@ -16,6 +16,7 @@ package ticdc
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -30,6 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/controllers/ticdc/tasks"
 	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
 	"github.com/pingcap/tidb-operator/pkg/volumes"
 )
 
@@ -37,13 +39,15 @@ type Reconciler struct {
 	Logger                logr.Logger
 	Client                client.Client
 	VolumeModifierFactory volumes.ModifierFactory
+	Tracker               tracker.Tracker
 }
 
-func Setup(mgr manager.Manager, c client.Client, vm volumes.ModifierFactory) error {
+func Setup(mgr manager.Manager, c client.Client, vm volumes.ModifierFactory, t tracker.Tracker) error {
 	r := &Reconciler{
 		Logger:                mgr.GetLogger().WithName("TiCDC"),
 		Client:                c,
 		VolumeModifierFactory: vm,
+		Tracker:               t,
 	}
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.TiCDC{}).
 		Owns(&corev1.Pod{}).
@@ -63,7 +67,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	defer func() {
 		dur := time.Since(startTime)
 		logger.Info("end reconcile", "duration", dur)
-		logger.Info("summay: \n" + reporter.Summary())
+		summary := fmt.Sprintf("summary for %v\n%s", req.NamespacedName, reporter.Summary())
+		logger.Info(summary)
 	}()
 
 	rtx := &tasks.ReconcileContext{

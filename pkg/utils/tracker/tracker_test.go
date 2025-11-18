@@ -21,7 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-func TestAllocator(t *testing.T) {
+func TestAllocate(t *testing.T) {
 	cases := []struct {
 		desc    string
 		current []string
@@ -30,6 +30,12 @@ func TestAllocator(t *testing.T) {
 		observedIndex []int
 		// unexpected observed names
 		additionalObserved []string
+
+		// first array is index tracked before AllocateFactory.New
+		// second array is index tracked after AllocateFactory.New but before allcating
+		trackedIndex [2][]int
+		// if true, names in trackedIndex are taken by other groups
+		isTaken bool
 	}{
 		{
 			desc:  "no current, no new observed",
@@ -70,34 +76,85 @@ func TestAllocator(t *testing.T) {
 			count:              10,
 			additionalObserved: []string{"test", "xxx"},
 		},
+		{
+			desc:               "some items are tracked",
+			count:              10,
+			additionalObserved: []string{"test", "xxx"},
+
+			trackedIndex: [2][]int{
+				{0, 1, 2},
+				{3, 4, 5},
+			},
+		},
+		{
+			desc:               "some items are taken by others",
+			count:              10,
+			additionalObserved: []string{"test", "xxx"},
+
+			trackedIndex: [2][]int{
+				{0, 1, 2},
+				{3, 4, 5},
+			},
+			isTaken: true,
+		},
 	}
 
 	for i := range cases {
 		c := &cases[i]
 
 		t.Run(c.desc, func(tt *testing.T) {
-			a := NewAllocator(WithRandomSuffix("hello"))
-			a.Observed(c.current...)
+			f := New()
+			af := f.AllocateFactory("xxx")
+			t := f.Tracker("xxx")
+
+			var all []string
+			for _, name := range c.current {
+				t.Track("xxx", name, "hello")
+				all = append(all, name)
+			}
+
+			a := af.New("xxx", "hello", c.current...)
 			var previous []string
 			for index := range c.count {
 				name := a.Allocate(index)
 				previous = append(previous, name)
+				all = append(all, name)
 			}
+			allocated := sets.New(previous...)
 
 			observed := []string{}
 			for _, index := range c.observedIndex {
 				// Some observed names are from allocated new names
 				if index >= len(c.current) {
 					c.count -= 1
-					observed = append(observed, previous[index-len(c.current)])
-				} else {
-					observed = append(observed, c.current[index])
 				}
+				observed = append(observed, all[index])
 			}
 			observed = append(observed, c.additionalObserved...)
-			a.Observed(observed...)
 
-			allocated := sets.New(previous...)
+			for _, index := range c.trackedIndex[0] {
+				group := "hello"
+				if c.isTaken {
+					group = "othergroup"
+					// if the instance has been taken by others,
+					// delete it from the allocated names
+					allocated.Delete(all[index])
+					c.count--
+				}
+				t.Track("xxx", all[index], group)
+			}
+
+			a = af.New("xxx", "hello", observed...)
+
+			for _, index := range c.trackedIndex[1] {
+				group := "hello"
+				if c.isTaken {
+					group = "othergroup"
+					// track will not affect allocator if it's created.
+				}
+				t.Track("xxx", all[index], group)
+			}
+
 			// Try to allocate all previous allocated names
 			for index := range c.count {
 				name := a.Allocate(index)

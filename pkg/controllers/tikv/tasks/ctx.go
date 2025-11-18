@@ -45,17 +45,37 @@ type ReconcileContext struct {
 	IsStoreReady bool
 }
 
+// GetStoreID returns the store ID for PD operations
+func (r *ReconcileContext) GetStoreID() string {
+	if r.Store == nil {
+		return ""
+	}
+	return r.Store.ID
+}
+
+// StoreNotExists returns true if the store does not exist in PD
+func (r *ReconcileContext) StoreNotExists() bool {
+	return r.Store == nil
+}
+
+// GetPDClient returns the PD client for API operations
+func (r *ReconcileContext) GetPDClient() pdm.PDClient {
+	return r.PDClient
+}
+
 func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task.Task {
 	return task.NameTaskFunc("ContextInfoFromPD", func(ctx context.Context) task.Result {
 		ck := state.Cluster()
 		c, ok := cm.Get(timanager.PrimaryKey(ck.Namespace, ck.Name))
 		if !ok {
-			return task.Wait().With("pd client is not registered")
+			// We have to retry here because the store may be removed and cannot trigger the changes
+			return task.Retry(defaultTaskWaitDuration).With("pd client is not registered")
 		}
 		state.PDClient = c
 
 		if !c.HasSynced() {
-			return task.Wait().With("store info is not synced, just wait for next sync")
+			// We have to retry here because the store may be removed and cannot trigger the changes
+			return task.Retry(defaultTaskWaitDuration).With("store info is not synced, just wait for next sync")
 		}
 
 		state.PDSynced = true
@@ -69,7 +89,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		}
 
 		state.Store = s
-		state.SetStoreState(string(s.NodeState))
+		state.SetStoreState(s.NodeState)
 		state.SetLeaderCount(s.LeaderCount)
 		state.SetRegionCount(s.RegionCount)
 		state.SetStoreBusy(s.IsBusy)

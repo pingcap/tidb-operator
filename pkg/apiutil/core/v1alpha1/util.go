@@ -26,14 +26,15 @@ func hostToURL(host string, isTLS bool) string {
 }
 
 var allMainContainers = map[string]struct{}{
-	v1alpha1.ContainerNamePD:        {},
-	v1alpha1.ContainerNameTiKV:      {},
-	v1alpha1.ContainerNameTiDB:      {},
-	v1alpha1.ContainerNameTiFlash:   {},
-	v1alpha1.ContainerNameTiCDC:     {},
-	v1alpha1.ContainerNameTSO:       {},
-	v1alpha1.ContainerNameScheduler: {},
-	v1alpha1.ContainerNameTiProxy:   {},
+	v1alpha1.ContainerNamePD:         {},
+	v1alpha1.ContainerNameTiKV:       {},
+	v1alpha1.ContainerNameTiDB:       {},
+	v1alpha1.ContainerNameTiFlash:    {},
+	v1alpha1.ContainerNameTiCDC:      {},
+	v1alpha1.ContainerNameTSO:        {},
+	v1alpha1.ContainerNameScheduler:  {},
+	v1alpha1.ContainerNameScheduling: {},
+	v1alpha1.ContainerNameTiProxy:    {},
 }
 
 // IsMainContainer checks whether the container is a main container
@@ -44,4 +45,10 @@ func IsMainContainer(name string) bool {
 	}
 
 	return false
+}
+
+func persistentVolumeClaimName(podName, volName string) string {
+	// ref: https://github.com/pingcap/tidb-operator/blob/v1.6.0/pkg/apis/pingcap/v1alpha1/helpers.go#L92
+	// NOTE: for v1, should use component as volName of data, e.g. pd
+	return volName + "-" + podName
 }

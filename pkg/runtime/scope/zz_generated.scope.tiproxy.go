@@ -22,6 +22,7 @@ package scope
 import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type (
@@ -38,6 +39,10 @@ func (TiProxy) To(t *runtime.TiProxy) *v1alpha1.TiProxy {
 
 func (TiProxy) Component() string {
 	return v1alpha1.LabelValComponentTiProxy
+}
+
+func (TiProxy) GVK() schema.GroupVersionKind {
+	return v1alpha1.SchemeGroupVersion.WithKind("TiProxy")
 }
 
 func (TiProxy) NewList() *v1alpha1.TiProxyList {
@@ -64,6 +69,10 @@ func (TiProxyGroup) To(t *runtime.TiProxyGroup) *v1alpha1.TiProxyGroup {
 
 func (TiProxyGroup) Component() string {
 	return v1alpha1.LabelValComponentTiProxy
+}
+
+func (TiProxyGroup) GVK() schema.GroupVersionKind {
+	return v1alpha1.SchemeGroupVersion.WithKind("TiProxyGroup")
 }
 
 func (TiProxyGroup) NewList() *v1alpha1.TiProxyGroupList {

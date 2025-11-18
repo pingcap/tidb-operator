@@ -15,16 +15,16 @@
 package data
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
 )
 
-func NewTiKVGroup(ns string, patches ...GroupPatch[*runtime.TiKVGroup]) *v1alpha1.TiKVGroup {
-	kvg := &runtime.TiKVGroup{
+func NewTiKVGroup(ns string, patches ...GroupPatch[*v1alpha1.TiKVGroup]) *v1alpha1.TiKVGroup {
+	kvg := &v1alpha1.TiKVGroup{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      defaultTiKVGroupName,
@@ -48,15 +48,15 @@ func NewTiKVGroup(ns string, patches ...GroupPatch[*runtime.TiKVGroup]) *v1alpha
 		},
 	}
 	for _, p := range patches {
-		p(kvg)
+		p.Patch(kvg)
 	}
 
-	return runtime.ToTiKVGroup(kvg)
+	return kvg
 }
 
 // TODO: combine with WithTiDBEvenlySpreadPolicy
-func WithTiKVEvenlySpreadPolicy() GroupPatch[*runtime.TiKVGroup] {
-	return func(obj *runtime.TiKVGroup) {
+func WithTiKVEvenlySpreadPolicy() GroupPatch[*v1alpha1.TiKVGroup] {
+	return GroupPatchFunc[*v1alpha1.TiKVGroup](func(obj *v1alpha1.TiKVGroup) {
 		obj.Spec.SchedulePolicies = append(obj.Spec.SchedulePolicies, v1alpha1.SchedulePolicy{
 			Type: v1alpha1.SchedulePolicyTypeEvenlySpread,
 			EvenlySpread: &v1alpha1.SchedulePolicyEvenlySpread{
@@ -79,5 +79,73 @@ func WithTiKVEvenlySpreadPolicy() GroupPatch[*runtime.TiKVGroup] {
 				},
 			},
 		})
-	}
+	})
+}
+
+func WithTiKVEvenlySpreadPolicyOneFailureAZ() GroupPatch[*v1alpha1.TiKVGroup] {
+	return GroupPatchFunc[*v1alpha1.TiKVGroup](func(obj *v1alpha1.TiKVGroup) {
+		obj.Spec.SchedulePolicies = append(obj.Spec.SchedulePolicies, v1alpha1.SchedulePolicy{
+			Type: v1alpha1.SchedulePolicyTypeEvenlySpread,
+			EvenlySpread: &v1alpha1.SchedulePolicyEvenlySpread{
+				Topologies: []v1alpha1.ScheduleTopology{
+					{
+						Topology: v1alpha1.Topology{
+							"zone": "zone-a",
+						},
+					},
+					{
+						Topology: v1alpha1.Topology{
+							"zone": "zone-b",
+						},
+					},
+					{
+						Topology: v1alpha1.Topology{
+							// zone-d doesn't exist
+							"zone": "zone-d",
+						},
+					},
+				},
+			},
+		})
+	})
+}
+
+func WithTiKVAPIVersionV2() GroupPatch[*v1alpha1.TiKVGroup] {
+	return GroupPatchFunc[*v1alpha1.TiKVGroup](func(obj *v1alpha1.TiKVGroup) {
+		obj.Spec.Template.Spec.Config = `[storage]
+api-version = 2
+enable-ttl = true
+`
+	})
+}
+
+func WithTiKVPodAntiAffinity() GroupPatch[*v1alpha1.TiKVGroup] {
+	return GroupPatchFunc[*v1alpha1.TiKVGroup](func(obj *v1alpha1.TiKVGroup) {
+		if obj.Spec.Template.Spec.Overlay == nil {
+			obj.Spec.Template.Spec.Overlay = &v1alpha1.Overlay{}
+		}
+		o := obj.Spec.Template.Spec.Overlay
+		if o.Pod == nil {
+			o.Pod = &v1alpha1.PodOverlay{}
+		}
+		if o.Pod.Spec == nil {
+			o.Pod.Spec = &corev1.PodSpec{}
+		}
+
+		o.Pod.Spec.Affinity = &corev1.Affinity{
+			PodAntiAffinity: &corev1.PodAntiAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+					{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"pingcap.com/component": "tikv",
+								"pingcap.com/group":     obj.GetName(),
+							},
+						},
+						TopologyKey: "kubernetes.io/hostname",
+					},
+				},
+			},
+		}
+	})
 }

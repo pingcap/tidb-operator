@@ -17,6 +17,9 @@ package common
 import (
 	"slices"
 
+	"k8s.io/apimachinery/pkg/api/meta"
+
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
@@ -87,5 +90,19 @@ func CondFeatureGatesIsNotSynced[
 		obj := state.Object()
 		cluster := state.Cluster()
 		return !slices.Equal(coreutil.Features[S](obj), coreutil.EnabledFeatures(cluster))
+	})
+}
+
+func CondObjectIsNotDeletingButOfflined[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](state ObjectState[F]) task.Condition {
+	return task.CondFunc(func() bool {
+		if !state.Object().GetDeletionTimestamp().IsZero() {
+			return false
+		}
+		conds := coreutil.StatusConditions[S](state.Object())
+		return meta.IsStatusConditionTrue(conds, v1alpha1.StoreOfflinedConditionType)
 	})
 }

@@ -25,27 +25,32 @@ type (
 )
 
 type (
-	Options      = client.Options
-	DeleteOption = client.DeleteOption
-	ListOption   = client.ListOption
+	MatchingLabels         = client.MatchingLabels
+	MatchingLabelsSelector = client.MatchingLabelsSelector
+	MatchingFields         = client.MatchingFields
+	InNamespace            = client.InNamespace
+
+	Options = client.Options
+
+	// ListOptions from client
+	ListOptions = client.ListOptions
+	ListOption  = client.ListOption
+
+	// DeleteOptions from client
+	DeleteOptions      = client.DeleteOptions
+	DeleteOption       = client.DeleteOption
+	Preconditions      = client.Preconditions
+	GracePeriodSeconds = client.GracePeriodSeconds
+	PropagationPolicy  = client.PropagationPolicy
+
+	// MergeFromOption from client
+	MergeFromOption = client.MergeFromOption
 )
 
-type (
-	MatchingLabels = client.MatchingLabels
-	MatchingFields = client.MatchingFields
-	InNamespace    = client.InNamespace
-	ListOptions    = client.ListOptions
-	DeleteOptions  = client.DeleteOptions
+var (
+	ObjectKeyFromObject = client.ObjectKeyFromObject
+	IgnoreNotFound      = client.IgnoreNotFound
+	RawPatch            = client.RawPatch
+	WithSubResourceBody = client.WithSubResourceBody
+	MergeFrom           = client.MergeFrom
 )
-
-type PropagationPolicy = client.PropagationPolicy
-
-var ObjectKeyFromObject = client.ObjectKeyFromObject
-
-var IgnoreNotFound = client.IgnoreNotFound
-
-type GracePeriodSeconds = client.GracePeriodSeconds
-
-type MergeFromOption = client.MergeFromOption
-
-var RawPatch = client.RawPatch

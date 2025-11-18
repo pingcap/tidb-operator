@@ -31,9 +31,10 @@ func IsTLSClusterEnabled(c *v1alpha1.Cluster) bool {
 	return c.Spec.TLSCluster != nil && c.Spec.TLSCluster.Enabled
 }
 
-// TLSClusterClientSecretName returns the mTLS secret name for the cluster client.
-// TODO: move it to namer pkg
-func TLSClusterClientSecretName(clusterName string) string {
+// LegacyTLSClusterClientSecretName returns the mTLS secret name for the cluster client.
+// NOTE: now BR still use this secret to visit the cluster
+// Deprecated: use coreutil.ClientCASecretName and coreutil.CLientCertKeyPairSecretName
+func LegacyTLSClusterClientSecretName(clusterName string) string {
 	return fmt.Sprintf("%s-cluster-client-secret", clusterName)
 }
 
@@ -48,4 +49,10 @@ func EnabledFeatures(c *v1alpha1.Cluster) []metav1alpha1.Feature {
 	}
 
 	return fs
+}
+
+// ClusterSubdomain returns the subdomain for all components of the cluster
+func ClusterSubdomain(clusterName string) string {
+	// add a suffix to avoid svc name conflict
+	return clusterName + "-cluster"
 }

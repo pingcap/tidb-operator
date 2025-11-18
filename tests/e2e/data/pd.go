@@ -20,11 +20,11 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
-func NewPDGroup(ns string, patches ...GroupPatch[*runtime.PDGroup]) *v1alpha1.PDGroup {
-	pdg := &runtime.PDGroup{
+func NewPDGroup(ns string, patches ...GroupPatch[*v1alpha1.PDGroup]) *v1alpha1.PDGroup {
+	pdg := &v1alpha1.PDGroup{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      defaultPDGroupName,
@@ -48,14 +48,31 @@ func NewPDGroup(ns string, patches ...GroupPatch[*runtime.PDGroup]) *v1alpha1.PD
 		},
 	}
 	for _, p := range patches {
-		p(pdg)
+		p.Patch(pdg)
 	}
 
-	return runtime.ToPDGroup(pdg)
+	return pdg
 }
 
-func WithMSMode() GroupPatch[*runtime.PDGroup] {
-	return func(obj *runtime.PDGroup) {
+func WithMSMode() GroupPatch[*v1alpha1.PDGroup] {
+	return GroupPatchFunc[*v1alpha1.PDGroup](func(obj *v1alpha1.PDGroup) {
 		obj.Spec.Template.Spec.Mode = v1alpha1.PDModeMS
-	}
+	})
+}
+
+func WithSlowDataMigration() GroupPatch[*v1alpha1.PDGroup] {
+	return GroupPatchFunc[*v1alpha1.PDGroup](func(obj *v1alpha1.PDGroup) {
+		obj.Spec.Template.Spec.Config = `[schedule]
+region-schedule-limit = 16
+leader-schedule-limit = 8
+replica-schedule-limit = 8
+`
+	})
+}
+
+func WithPDFeatures(fs ...metav1alpha1.Feature) GroupPatch[*v1alpha1.PDGroup] {
+	return GroupPatchFunc[*v1alpha1.PDGroup](func(obj *v1alpha1.PDGroup) {
+		obj.Spec.Template.Spec.Version = defaultVersion
+		obj.Spec.Template.Spec.Image = ptr.To(defaultImageRegistry + "pd")
+	})
 }

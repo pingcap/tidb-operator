@@ -27,7 +27,10 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	stateutil "github.com/pingcap/tidb-operator/pkg/state"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
@@ -230,6 +233,9 @@ func TestTaskUpdater(t *testing.T) {
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
+			s := c.state.State.(*state)
+			s.IFeatureGates = stateutil.NewFeatureGates[scope.PDGroup](s)
+
 			ctx := context.Background()
 			fc := client.NewFakeClient(c.state.PDGroup(), c.state.Cluster())
 			for _, obj := range c.state.PDSlice() {
@@ -242,8 +248,8 @@ func TestTaskUpdater(t *testing.T) {
 				fc.WithError("patch", "pds", errors.NewInternalError(fmt.Errorf("fake internal err")))
 			}
 
-			tr := tracker.New[*v1alpha1.PDGroup, *v1alpha1.PD]()
-			res, done := task.RunTask(ctx, TaskUpdater(c.state, fc, tr))
+			af := tracker.New().AllocateFactory("pd")
+			res, done := task.RunTask(ctx, TaskUpdater(c.state, fc, af))
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
 
@@ -258,11 +264,12 @@ func TestTaskUpdater(t *testing.T) {
 
 func fakeAvailablePD(name string, pdg *v1alpha1.PDGroup, rev string) *v1alpha1.PD {
 	return fake.FakeObj(name, func(obj *v1alpha1.PD) *v1alpha1.PD {
-		pd := runtime.ToPD(PDNewer(pdg, rev).New())
+		pd := runtime.ToPD(PDNewer(pdg, rev, features.NewFromFeatures(nil)).New())
 		pd.Name = ""
 		pd.Status.Conditions = append(pd.Status.Conditions, metav1.Condition{
-			Type:   v1alpha1.CondReady,
-			Status: metav1.ConditionTrue,
+			Type:               v1alpha1.CondReady,
+			Status:             metav1.ConditionTrue,
+			LastTransitionTime: metav1.Unix(0, 0),
 		})
 		pd.Status.CurrentRevision = rev
 		pd.DeepCopyInto(obj)

@@ -18,7 +18,14 @@ import (
 	"context"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/controllers/common"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 )
 
@@ -32,30 +39,55 @@ func TaskOfflineStore(state *ReconcileContext) task.Task {
 		if !state.PDSynced {
 			return task.Wait().With("pd is not synced")
 		}
-		if state.Object().GetDeletionTimestamp().IsZero() {
-			return task.Complete().With("tikv is not deleting, no need to offline the store")
-		}
-		if !state.IsStoreUp() {
-			return task.Wait().With("store has been %s, no need to offline it", state.GetStoreState())
-		}
-		var reason string
-		delTime := state.Object().GetDeletionTimestamp()
-		switch {
-		// leaders evicted
-		case state.LeaderEvicting && state.GetLeaderCount() == 0:
-			reason = "leaders have been all evicted"
-		case !delTime.IsZero() && delTime.Add(defaultLeaderEvictTimeout).Before(time.Now()):
-			reason = "leader eviction timeout"
-		}
 
-		if reason != "" {
-			if err := state.PDClient.Underlay().DeleteStore(ctx, state.Store.ID); err != nil {
-				return task.Fail().With("cannot delete store %s: %w", state.Store.ID, err)
+		tikv := state.Object()
+		isOffline := coreutil.IsOffline[scope.TiKV](tikv)
+
+		// If the store is nil, it means the store has been deleted or not created yet.
+		// No need to check if leaders are evicted.
+		if state.Store != nil && isOffline {
+			var reason string
+			beginTime := getBeginEvictLeaderTime(tikv)
+			switch {
+			case state.LeaderEvicting && state.GetLeaderCount() == 0:
+				reason = "leaders have been all evicted"
+			case beginTime != nil && beginTime.Add(defaultLeaderEvictTimeout).Before(time.Now()):
+				reason = "leader eviction timeout"
 			}
-			state.SetStoreState(v1alpha1.StoreStateRemoving)
-			return task.Wait().With("%s, try to removing the store", reason)
+
+			if reason == "" {
+				return task.Retry(defaultLeaderEvictTimeout+jitter).
+					With("waiting for leaders evicted or timeout, current leader count: %d", state.GetLeaderCount())
+			}
 		}
 
-		return task.Retry(defaultLeaderEvictTimeout + jitter).With("waiting for leaders evicted or timeout")
+		if err := common.TaskOfflineStore[scope.TiKV](
+			ctx,
+			state.PDClient.Underlay(),
+			tikv,
+			state.GetStoreID(),
+			state.GetStoreState(),
+		); err != nil {
+			// refresh store state
+			state.PDClient.Stores().Refresh()
+
+			if task.IsWaitError(err) {
+				return task.Wait().With("%v", err)
+			}
+
+			return task.Fail().With("%v", err)
+		}
+
+		return task.Complete().With("offline is completed or no need, spec.offline: %v", isOffline)
 	})
+}
+
+// getBeginEvictLeaderTime returns the time when the leader eviction started.
+// If the condition is not found or the status is not False, it returns nil.
+func getBeginEvictLeaderTime(tikv *v1alpha1.TiKV) *time.Time {
+	cond := meta.FindStatusCondition(tikv.Status.Conditions, v1alpha1.TiKVCondLeadersEvicted)
+	if cond != nil && cond.Status == metav1.ConditionFalse {
+		return ptr.To(cond.LastTransitionTime.Time)
+	}
+	return nil
 }

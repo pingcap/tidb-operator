@@ -27,6 +27,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 	runner := task.NewTaskRunner(reporter,
 		// get tidb
 		common.TaskContextObject[scope.TiDB](state, r.Client),
+		common.TaskTrack[scope.TiDB](state, r.Tracker),
 		// if it's deleted just return
 		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiDB](state)),
 
@@ -42,6 +43,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			// TODO(liubo02): if the finalizer has been removed, no need to update status
 			common.TaskInstanceConditionSynced[scope.TiDB](state),
 			common.TaskInstanceConditionReady[scope.TiDB](state),
+			common.TaskInstanceConditionRunning[scope.TiDB](state),
 			common.TaskStatusPersister[scope.TiDB](state, r.Client),
 		),
 		common.TaskFinalizerAdd[scope.TiDB](state, r.Client),
@@ -53,19 +55,21 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskInstanceConditionSuspended[scope.TiDB](state),
 			common.TaskInstanceConditionSynced[scope.TiDB](state),
 			common.TaskInstanceConditionReady[scope.TiDB](state),
+			common.TaskInstanceConditionRunning[scope.TiDB](state),
 			common.TaskStatusPersister[scope.TiDB](state, r.Client),
 		),
 
 		// normal process
 		tasks.TaskContextInfoFromPDAndTiDB(state, r.Client, r.PDClientManager),
 		tasks.TaskConfigMap(state, r.Client),
-		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifierFactory),
+		common.TaskPVC[scope.TiDB](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
 		tasks.TaskPod(state, r.Client),
 		common.TaskServerLabels[scope.TiDB](state, r.Client, func(ctx context.Context, labels map[string]string) error {
 			return state.TiDBClient.SetServerLabels(ctx, labels)
 		}),
 		common.TaskInstanceConditionSynced[scope.TiDB](state),
 		common.TaskInstanceConditionReady[scope.TiDB](state),
+		common.TaskInstanceConditionRunning[scope.TiDB](state),
 		tasks.TaskStatus(state, r.Client),
 	)
 

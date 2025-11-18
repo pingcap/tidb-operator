@@ -54,18 +54,23 @@ func (g *runtimeGenerator) Filter(_ *generator.Context, t *types.Type) bool {
 
 func (g *runtimeGenerator) Namers(*generator.Context) namer.NameSystems {
 	return namer.NameSystems{
-		"pub":      namer.NewPublicNamer(0),
-		"instance": NameFunc(GroupToInstanceName),
+		"pub":         namer.NewPublicNamer(0),
+		"instance":    NameFunc(GroupToInstanceName),
+		"security":    NameFunc(GroupToSecurityTypeName),
+		"tls":         NameFunc(GroupToTLSTypeName),
+		"internaltls": NameFunc(GroupToInternalTLSTypeName),
 	}
 }
 
 func (g *runtimeGenerator) Imports(_ *generator.Context) (imports []string) {
 	importLines := []string{
 		`"unsafe"`,
+		`"time"`,
 
 		`"k8s.io/apimachinery/pkg/api/meta"`,
-		`"k8s.io/apimachinery/pkg/runtime"`,
 		`metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"`,
+		`"k8s.io/apimachinery/pkg/runtime"`,
+		`"k8s.io/utils/ptr"`,
 
 		`"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"`,
 		`metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"`,
@@ -169,7 +174,41 @@ func (in *$.|pub$) IsReady() bool {
 	if cond.ObservedGeneration != in.GetGeneration() {
 		return false
 	}
+
 	return cond.Status == metav1.ConditionTrue
+}
+
+func (in *$.|pub$) IsNotRunning() bool {
+	cond := meta.FindStatusCondition(in.Status.Conditions, v1alpha1.CondRunning)
+	if cond == nil {
+		return false
+	}
+	if cond.ObservedGeneration != in.GetGeneration() {
+		return false
+	}
+	return cond.Status == metav1.ConditionFalse
+}
+
+func (in *$.|pub$) IsAvailable(minReadySeconds int64, now time.Time) bool {
+	cond := meta.FindStatusCondition(in.Status.Conditions, v1alpha1.CondReady)
+	if cond == nil {
+		return false
+	}
+	if cond.ObservedGeneration != in.GetGeneration() {
+		return false
+	}
+	if cond.Status != metav1.ConditionTrue {
+		return false
+	}
+	if minReadySeconds == 0 {
+		return true
+	}
+	minReadySecondsDuration := time.Duration(minReadySeconds) * time.Second
+	if !cond.LastTransitionTime.IsZero() && cond.LastTransitionTime.Add(minReadySecondsDuration).Before(now) {
+		return true
+	}
+
+	return false
 }
 
 func (in *$.|pub$) IsUpToDate() bool {
@@ -204,11 +243,22 @@ func (*$.|pub$) Component() string {
 	return v1alpha1.LabelValComponent$.|pub$
 }
 
+func (in *$.|pub$) Volumes() []v1alpha1.Volume {
+	return in.Spec.Volumes
+}
+
 func (in *$.|pub$) PodOverlay() *v1alpha1.PodOverlay {
 	if in.Spec.Overlay == nil {
 		return nil
 	}
 	return in.Spec.Overlay.Pod
+}
+
+func (in *$.|pub$) PVCOverlay() []v1alpha1.NamedPersistentVolumeClaimOverlay {
+	if in.Spec.Overlay == nil {
+		return nil
+	}
+	return in.Spec.Overlay.PersistentVolumeClaims
 }
 
 func (in *$.|pub$) Features() []metav1alpha1.Feature {
@@ -222,7 +272,60 @@ func (in *$.|pub$) SetVersion(version string) {
 func (in *$.|pub$) Version() string {
 	return in.Spec.Version
 }
+
+func (in *$.|pub$) SetImage(image string) {
+	in.Spec.Image = ptr.To(image)
+}
+
+func (in *$.|pub$) Subdomain() string {
+	return in.Spec.Subdomain
+}
+
+func (in *$.|pub$) ClusterCertKeyPairSecretName() string {
+	prefix, _ := NamePrefixAndSuffix(in.GetName())
+	return prefix + "-" + in.Component() + "-cluster-secret"
+}
+
+func (in *$.|pub$) ClusterCASecretName() string {
+	prefix, _ := NamePrefixAndSuffix(in.GetName())
+	return prefix + "-" + in.Component() + "-cluster-secret"
+}
+
+func (in *$.|pub$) ClientCertKeyPairSecretName() string {
+	return in.Cluster() + "-cluster-client-secret"
+}
+
+func (in *$.|pub$) ClientCASecretName() string {
+	return in.Cluster() + "-cluster-client-secret"
+}
+
+func (in *$.|pub$) ClientInsecureSkipTLSVerify() bool {
+	return false
+}
 `, t)
+
+	// Generate Store interface methods for TiKV and TiFlash
+	if strings.EqualFold(t.Name.Name, "TiKV") || strings.EqualFold(t.Name.Name, "TiFlash") {
+		sw.Do(`
+func (in *$.|pub$) IsOffline() bool {
+	return in.Spec.Offline != nil && *in.Spec.Offline
+}
+
+func (in *$.|pub$) IsStore() bool {
+	return true
+}
+`, t)
+	} else {
+		sw.Do(`
+func (in *$.|pub$) IsOffline() bool {
+	return false
+}
+
+func (in *$.|pub$) IsStore() bool {
+	return false
+}
+`, t)
+	}
 
 	return sw.Error()
 }
@@ -298,6 +401,10 @@ func (g *$.|pub$) SetVersion(version string) {
 
 func (g *$.|pub$) Version() string {
 	return g.Spec.Template.Spec.Version
+}
+
+func (g *$.|pub$) SetImage(image string) {
+	g.Spec.Template.Spec.Image = ptr.To(image)
 }
 
 func (g *$.|pub$) SetCluster(cluster string) {
@@ -378,8 +485,46 @@ func (g *$.|pub$) TemplateAnnotations() map[string]string {
 	return g.Spec.Template.Annotations
 }
 
+func (g *$.|pub$) SetTemplateLabels(ls map[string]string) {
+	g.Spec.Template.Labels = ls
+}
+
+func (g *$.|pub$) SetTemplateAnnotations(anno map[string]string) {
+	g.Spec.Template.Annotations = anno
+}
+
 func (g *$.|pub$) Features() []metav1alpha1.Feature {
 	return g.Spec.Features
+}
+
+func (g *$.|pub$) ClusterCertKeyPairSecretName() string {
+	defaultName := g.Name + "-" + g.Component() + "-cluster-secret"
+	return defaultName
+}
+
+func (g *$.|pub$) ClusterCASecretName() string {
+	defaultName := g.Name + "-" + g.Component() + "-cluster-secret"
+	return defaultName
+}
+
+func (g *$.|pub$) ClientCertKeyPairSecretName() string {
+	return g.Cluster() + "-cluster-client-secret"
+}
+
+func (g *$.|pub$) ClientCASecretName() string {
+	return g.Cluster() + "-cluster-client-secret"
+}
+
+func (g *$.|pub$) ClientInsecureSkipTLSVerify() bool {
+	return false
+}
+
+func (g *$.|pub$) MinReadySeconds() int64 {
+	return v1alpha1.Default$.|instance$MinReadySeconds
+}
+
+func (g *$.|pub$) SchedulePolicies() []v1alpha1.SchedulePolicy {
+	return g.Spec.SchedulePolicies
 }
 `, t)
 

@@ -22,9 +22,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/reloadable"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
@@ -39,7 +41,7 @@ const (
 )
 
 // TaskUpdater is a task to scale or update TiProxy when spec of TiProxyGroup is changed.
-func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.TiProxyGroup, *v1alpha1.TiProxy]) task.Task {
+func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFactory) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		proxyg := state.TiProxyGroup()
@@ -48,6 +50,14 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 
 		if needVersionUpgrade(proxyg) && !checker.CanUpgrade(ctx, proxyg) {
 			return task.Retry(defaultUpdateWaitTime).With("wait until preconditions of upgrading is met")
+		}
+
+		retryAfter := coreutil.RetryIfInstancesReadyButNotAvailable[scope.TiProxy](
+			state.InstanceSlice(),
+			coreutil.MinReadySeconds[scope.TiProxyGroup](proxyg),
+		)
+		if retryAfter != 0 {
+			return task.Retry(retryAfter).With("wait until no instances is ready but not available")
 		}
 
 		var topos []v1alpha1.ScheduleTopology
@@ -73,11 +83,18 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 		}
 
 		maxSurge, maxUnavailable := 0, 1
+		noUpdate := false
 		if needRestart {
 			maxSurge, maxUnavailable = 1, 0
+			noUpdate = true
 		}
 
-		allocator := t.Track(proxyg, state.InstanceSlice()...)
+		var instances []string
+		for _, in := range proxies {
+			instances = append(instances, in.Name)
+		}
+
+		allocator := af.New(proxyg.Namespace, proxyg.Name, instances...)
 
 		wait, err := updater.New[runtime.TiProxyTuple]().
 			WithInstances(proxies...).
@@ -86,14 +103,21 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithMaxSurge(maxSurge).
 			WithMaxUnavailable(maxUnavailable).
 			WithRevision(updateRevision).
-			WithNewFactory(TiProxyNewer(proxyg, updateRevision)).
+			WithNewFactory(TiProxyNewer(proxyg, updateRevision, state.FeatureGates())).
 			WithAddHooks(
 				updater.AllocateName[*runtime.TiProxy](allocator),
 				topoPolicy,
 			).
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
-			WithScaleInPreferPolicy(topoPolicy).
+			WithScaleInPreferPolicy(
+				topoPolicy.PolicyScaleIn(),
+			).
+			WithUpdatePreferPolicy(
+				topoPolicy.PolicyUpdate(),
+			).
+			WithNoInPaceUpdate(noUpdate).
+			WithMinReadySeconds(coreutil.MinReadySeconds[scope.TiProxyGroup](proxyg)).
 			Build().
 			Do(ctx)
 		if err != nil {
@@ -128,7 +152,7 @@ func precheckInstances(proxyg *v1alpha1.TiProxyGroup, proxies []*v1alpha1.TiProx
 	return needUpdate, needRestart
 }
 
-func TiProxyNewer(proxyg *v1alpha1.TiProxyGroup, rev string) updater.NewFactory[*runtime.TiProxy] {
+func TiProxyNewer(proxyg *v1alpha1.TiProxyGroup, rev string, _ features.Gates) updater.NewFactory[*runtime.TiProxy] {
 	return updater.NewFunc[*runtime.TiProxy](func() *runtime.TiProxy {
 		spec := proxyg.Spec.Template.Spec.DeepCopy()
 
@@ -138,6 +162,7 @@ func TiProxyNewer(proxyg *v1alpha1.TiProxyGroup, rev string) updater.NewFactory[
 				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.TiProxyGroup](proxyg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.TiProxyGroup](proxyg),
+				Finalizers:  []string{metav1alpha1.Finalizer},
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(proxyg, v1alpha1.SchemeGroupVersion.WithKind("TiProxyGroup")),
 				},

@@ -27,7 +27,10 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	stateutil "github.com/pingcap/tidb-operator/pkg/state"
 	"github.com/pingcap/tidb-operator/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
@@ -256,6 +259,9 @@ func TestTaskUpdater(t *testing.T) {
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
+			s := c.state.State.(*state)
+			s.IFeatureGates = stateutil.NewFeatureGates[scope.TiKVGroup](s)
+
 			ctx := context.Background()
 			c.objs = append(c.objs, c.state.TiKVGroup(), c.state.Cluster())
 			fc := client.NewFakeClient(c.objs...)
@@ -269,8 +275,8 @@ func TestTaskUpdater(t *testing.T) {
 				fc.WithError("patch", "tikvs", errors.NewInternalError(fmt.Errorf("fake internal err")))
 			}
 
-			tr := tracker.New[*v1alpha1.TiKVGroup, *v1alpha1.TiKV]()
-			res, done := task.RunTask(ctx, TaskUpdater(c.state, fc, tr))
+			af := tracker.New().AllocateFactory("tikv")
+			res, done := task.RunTask(ctx, TaskUpdater(c.state, fc, af))
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
 
@@ -285,11 +291,12 @@ func TestTaskUpdater(t *testing.T) {
 
 func fakeAvailableTiKV(name string, kvg *v1alpha1.TiKVGroup, rev string) *v1alpha1.TiKV {
 	return fake.FakeObj(name, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
-		tikv := runtime.ToTiKV(TiKVNewer(kvg, rev).New())
+		tikv := runtime.ToTiKV(TiKVNewer(kvg, rev, features.NewFromFeatures(nil)).New())
 		tikv.Name = ""
 		tikv.Status.Conditions = append(tikv.Status.Conditions, metav1.Condition{
-			Type:   v1alpha1.CondReady,
-			Status: metav1.ConditionTrue,
+			Type:               v1alpha1.CondReady,
+			Status:             metav1.ConditionTrue,
+			LastTransitionTime: metav1.Unix(0, 0),
 		})
 		tikv.Status.CurrentRevision = rev
 		tikv.DeepCopyInto(obj)

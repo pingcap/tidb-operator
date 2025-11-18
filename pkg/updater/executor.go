@@ -20,13 +20,25 @@ import (
 	"github.com/go-logr/logr"
 )
 
+const verbose = 10
+
 type Actor interface {
+	// ScaleOut creates a new update instance
 	ScaleOut(ctx context.Context) error
-	Update(ctx context.Context) error
+
+	// Update will update an instance CR
+	// unavailable means update must choose an unavailable instance to update
+	Update(ctx context.Context, unavailable bool) error
+
+	// ScaleInOutdated will scale in an outdated instance
+	// If unavailable is true, the chosen instance is unavailable
 	ScaleInUpdate(ctx context.Context) (unavailable bool, _ error)
+
+	// ScaleInUpdate will scale in an updated instance
+	// If unavailable is true, the chosen instance is unavailable
 	ScaleInOutdated(ctx context.Context) (unavailable bool, _ error)
 
-	// delete all instances marked as defer deletion
+	// Cleanup deletes all instances marked as defer deletion
 	Cleanup(ctx context.Context) error
 }
 
@@ -100,10 +112,11 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 
 		case actual == maximum:
 			if ex.update < ex.desired {
-				// update will always prefer unavailable one so available will not changed if there are
+				// update will always prefer unavailable one so available will not be changed if there are
 				// unavailable and outdated instances
 				if ex.unavailableOutdated > 0 {
-					if err := ex.act.Update(ctx); err != nil {
+					logger.V(verbose).Info("update unavailable outdated")
+					if err := ex.act.Update(ctx, true); err != nil {
 						return false, err
 					}
 					ex.outdated -= 1
@@ -113,10 +126,13 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 				} else {
 					// DON'T decrease available if available is less than minimum
 					if available <= minimum {
+						logger.Info("wait for update: available instances below minimum threshold",
+							"available", available, "minimum", minimum)
 						return true, nil
 					}
 
-					if err := ex.act.Update(ctx); err != nil {
+					logger.V(verbose).Info("update available outdated")
+					if err := ex.act.Update(ctx, false); err != nil {
 						return false, err
 					}
 					ex.outdated -= 1
@@ -133,6 +149,8 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 				// => ex.outdated != 0 (ex.update != ex.desired || ex.outdated != 0 in for loop condition)
 				if available <= minimum && ex.unavailableUpdate > 0 {
 					// not all available are update
+					logger.Info("wait before scale in outdated, not all available are update",
+						"available", available, "minimum", minimum, "unavailableUpdate", ex.unavailableUpdate)
 					return true, nil
 				}
 
@@ -140,7 +158,7 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 				if err != nil {
 					return false, err
 				}
-				// scale in may not choose an unavailable outdated so just descrease the outdated
+				// scale in may not choose an unavailable outdated so just decrease the outdated
 				// and assume we always choose an available outdated.
 				// And then wait if next available is less than minimum
 				if unavailable {
@@ -186,6 +204,8 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 			}
 			// Wait if available is less than minimum
 			if checkAvail && available <= minimum {
+				logger.Info("wait after scale in outdated: available instances below minimum threshold",
+					"available", available, "minimum", minimum)
 				return true, nil
 			}
 		}
@@ -193,6 +213,8 @@ func (ex *executor) Do(ctx context.Context) (bool, error) {
 
 	if ex.unavailableUpdate > 0 {
 		// wait until update are all available
+		logger.Info("wait because unavailable update is not zero",
+			"unavailableUpdate", ex.unavailableUpdate, "update", ex.update, "outdated", ex.outdated, "desired", ex.desired)
 		return true, nil
 	}
 

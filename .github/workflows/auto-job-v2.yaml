@@ -17,11 +17,3 @@ jobs:
         uses: actions-ecosystem/action-add-labels@v1
         with:
           labels: 'v2'
-
-      - name: Add E2E trigger comment if target branch is feature/v2
-        if: github.event.pull_request.base.ref == 'feature/v2'
-        uses: actions-ecosystem/action-create-comment@v1
-        with:
-          github_token: ${{ github.token }}
-          body: |
-            /run-pull-e2e-kind-v2

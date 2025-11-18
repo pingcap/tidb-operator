@@ -14,7 +14,11 @@
 
 package label
 
-import "github.com/onsi/ginkgo/v2"
+import (
+	"github.com/onsi/ginkgo/v2"
+
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+)
 
 var (
 	// Components
@@ -41,16 +45,37 @@ var (
 	MultipleAZ = ginkgo.Label("env:MultipleAZ")
 
 	// Feature
+	// TODO(liubo02): prefix 'f:' will be used for feature gates,
+	// rename these features labels
 	FeatureTLS          = ginkgo.Label("f:TLS")
 	FeatureAuthToken    = ginkgo.Label("f:AuthToken")
 	FeatureBootstrapSQL = ginkgo.Label("f:BootstrapSQL")
 	FeatureHotReload    = ginkgo.Label("f:HotReload")
 	FeaturePDMS         = ginkgo.Label("f:PDMS")
 
+	// Mode
+	ModeDisaggregatedTiFlash = ginkgo.Label("m:DisaggregatedTiFlash")
+
 	// Overlay
 	OverlayEphemeralVolume = ginkgo.Label("o:EphemeralVolume")
 
 	// Kind
+	//
+	// KindExample are tests for example dir
 	KindExample = ginkgo.Label("k:Example")
-	KindBasic   = ginkgo.Label("k:Basic")
+	// KindBasic are basic tests
+	KindBasic = ginkgo.Label("k:Basic")
+	// KindBR are tests for br
+	KindBR = ginkgo.Label("k:BR")
+	// KindAvail are tests to test availablity
+	KindAvail = ginkgo.Label("k:Avail")
 )
+
+func Features(fs ...metav1alpha1.Feature) ginkgo.Labels {
+	var ls []string
+	for _, f := range fs {
+		ls = append(ls, "f:"+string(f))
+	}
+
+	return ginkgo.Label(ls...)
+}

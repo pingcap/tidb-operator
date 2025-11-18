@@ -16,24 +16,39 @@ package data
 
 import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/client"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 )
 
 type (
-	ClusterPatch                func(obj *v1alpha1.Cluster)
-	GroupPatch[G runtime.Group] func(obj G)
+	ClusterPatch func(obj *v1alpha1.Cluster)
+	// GroupPatch[G runtime.Group] func(obj G)
 )
 
+type GroupPatchFunc[
+	F client.Object,
+] func(obj F)
+
+type GroupPatch[F client.Object] interface {
+	Patch(obj F)
+}
+
+func (f GroupPatchFunc[F]) Patch(obj F) {
+	f(obj)
+}
+
 const (
-	defaultClusterName        = "tc"
-	defaultPDGroupName        = "pdg"
-	defaultTiDBGroupName      = "dbg"
-	defaultTiKVGroupName      = "kvg"
-	defaultTiFlashGroupName   = "fg"
-	defaultTiCDCGroupName     = "cg"
-	defaultTSOGroupName       = "tg"
-	defaultSchedulerGroupName = "sg"
-	defaultTiProxyGroupName   = "pg"
+	defaultClusterName         = "tc"
+	defaultPDGroupName         = "pdg"
+	defaultTiDBGroupName       = "dbg"
+	defaultTiKVGroupName       = "kvg"
+	defaultTiFlashGroupName    = "fg"
+	defaultTiCDCGroupName      = "cg"
+	defaultTSOGroupName        = "tg"
+	defaultSchedulingGroupName = "sg"
+	defaultTiProxyGroupName    = "pg"
 
 	defaultVersion        = "v8.5.2"
 	defaultTiProxyVersion = "v1.3.0"
@@ -45,31 +60,72 @@ const (
 const (
 	// TODO(liubo02): extract to namer
 	DefaultTiDBServiceName    = defaultTiDBGroupName + "-tidb"
-	DefaultTiDBServicePort    = "4000"
 	DefaultTiProxyServiceName = defaultTiProxyGroupName + "-tiproxy"
-	DefaultTiProxyServicePort = "6000"
+	DefaultTiProxyServicePort = 6000
 )
 
-func WithReplicas[G runtime.Group](replicas int32) GroupPatch[G] {
-	return func(obj G) {
-		obj.SetReplicas(replicas)
-	}
+func WithReplicas[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](replicas int32) GroupPatch[F] {
+	return GroupPatchFunc[F](func(obj F) {
+		coreutil.SetReplicas[S](obj, replicas)
+	})
 }
 
-func WithGroupName[G runtime.Group](name string) GroupPatch[G] {
-	return func(obj G) {
+func WithName[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](name string) GroupPatch[F] {
+	return GroupPatchFunc[F](func(obj F) {
 		obj.SetName(name)
-	}
+	})
 }
 
-func WithGroupVersion[G runtime.Group](version string) GroupPatch[G] {
-	return func(obj G) {
-		obj.SetVersion(version)
-	}
+func WithVersion[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](version string) GroupPatch[F] {
+	return GroupPatchFunc[F](func(obj F) {
+		coreutil.SetVersion[S](obj, version)
+	})
 }
 
-func WithGroupCluster[G runtime.Group](cluster string) GroupPatch[G] {
-	return func(obj G) {
-		obj.SetCluster(cluster)
-	}
+func WithImage[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](image string) GroupPatch[F] {
+	return GroupPatchFunc[F](func(obj F) {
+		coreutil.SetImage[S](obj, image)
+	})
+}
+
+func WithCluster[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](cluster string) GroupPatch[F] {
+	return GroupPatchFunc[F](func(obj F) {
+		coreutil.SetCluster[S](obj, cluster)
+	})
+}
+
+func WithTemplateAnnotation[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](k, v string) GroupPatch[F] {
+	return GroupPatchFunc[F](func(obj F) {
+		anno := coreutil.TemplateAnnotations[S](obj)
+		if anno == nil {
+			anno = map[string]string{}
+		}
+
+		anno[k] = v
+		coreutil.SetTemplateAnnotations[S](obj, anno)
+	})
 }

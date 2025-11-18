@@ -23,6 +23,9 @@ import (
 const (
 	TSOPortNameClient    = "client"
 	DefaultTSOPortClient = 3379
+
+	// DefaultTSOMinReadySeconds is default min ready seconds of tso
+	DefaultTSOMinReadySeconds = 5
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

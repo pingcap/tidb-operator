@@ -25,6 +25,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 	runner := task.NewTaskRunner(reporter,
 		// get pd
 		common.TaskContextObject[scope.PD](state, r.Client),
+		common.TaskTrack[scope.PD](state, r.Tracker),
 		// if it's gone just return
 		task.IfBreak(common.CondObjectHasBeenDeleted[scope.PD](state)),
 
@@ -40,6 +41,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			// TODO(liubo02): if the finalizer has been removed, no need to update status
 			common.TaskInstanceConditionSynced[scope.PD](state),
 			common.TaskInstanceConditionReady[scope.PD](state),
+			common.TaskInstanceConditionRunning[scope.PD](state),
 			common.TaskStatusPersister[scope.PD](state, r.Client),
 		),
 		common.TaskFinalizerAdd[scope.PD](state, r.Client),
@@ -50,22 +52,19 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(
 			common.CondClusterIsSuspending(state),
 			common.TaskSuspendPod(state, r.Client),
-			common.TaskInstanceConditionSuspended[scope.PD](state),
-			common.TaskInstanceConditionSynced[scope.PD](state),
+			common.TaskInstanceConditionSuspended[scope.PD](state), common.TaskInstanceConditionSynced[scope.PD](state),
 			common.TaskInstanceConditionReady[scope.PD](state),
+			common.TaskInstanceConditionRunning[scope.PD](state),
 			common.TaskStatusPersister[scope.PD](state, r.Client),
 		),
 
 		common.TaskContextPeerSlice[scope.PD](state, r.Client),
 		tasks.TaskConfigMap(state, r.Client),
-		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifierFactory),
+		common.TaskPVC[scope.PD](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
 		tasks.TaskPod(state, r.Client),
-		// If pd client has not been registered yet, do not update status of the pd
-		task.IfBreak(tasks.CondPDClientIsNotRegisterred(state),
-			tasks.TaskStatusUnknown(),
-		),
 		common.TaskInstanceConditionSynced[scope.PD](state),
 		common.TaskInstanceConditionReady[scope.PD](state),
+		common.TaskInstanceConditionRunning[scope.PD](state),
 		tasks.TaskStatus(state, r.Client),
 	)
 

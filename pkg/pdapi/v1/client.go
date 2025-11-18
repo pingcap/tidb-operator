@@ -53,6 +53,9 @@ type PDWriter interface {
 	SetStoreLabels(ctx context.Context, storeID uint64, labels map[string]string) (bool, error)
 	// DeleteStore deletes a TiKV/TiFlash store from the cluster.
 	DeleteStore(ctx context.Context, storeID string) error
+	// CancelDeleteStore cancels the deletion of a TiKV/TiFlash store, returning it to online state.
+	// If the store is already online, it will return nil.
+	CancelDeleteStore(ctx context.Context, storeID string) error
 	// DeleteMember deletes a PD member from the cluster.
 	DeleteMember(ctx context.Context, name string) error
 
@@ -119,8 +122,9 @@ const (
 	membersPrefix      = "pd/api/v1/members"
 	microServicePrefix = "pd/api/v2/ms"
 
-	storesPrefix = "pd/api/v1/stores"
-	storePrefix  = "pd/api/v1/store"
+	storesPrefix       = "pd/api/v1/stores"
+	storePrefix        = "pd/api/v1/store"
+	storeUpStatePrefix = "pd/api/v1/store/%v/state?state=Up"
 
 	pdReplicationPrefix = "pd/api/v1/config/replicate"
 
@@ -250,11 +254,16 @@ func (c *pdClient) GetTSOMembers(ctx context.Context) ([]ServiceRegistryEntry, e
 }
 
 func (c *pdClient) GetStores(ctx context.Context) (*StoresInfo, error) {
-	storesInfo, err := c.getStores(ctx, fmt.Sprintf("%s/%s", c.url, storesPrefix))
+	storesInfo, err := c.getStores(
+		ctx,
+		fmt.Sprintf("%s/%s", c.url, storesPrefix),
+		metapb.StoreState_Up,
+		metapb.StoreState_Offline,
+		metapb.StoreState_Tombstone,
+	)
 	if err != nil {
 		if strings.HasSuffix(err.Error(), tiKVNotBootstrapped+"\n") {
-			//nolint:govet // expected
-			err = TiKVNotBootstrappedErrorf(err.Error())
+			return nil, TiKVNotBootstrappedErrorf(err.Error())
 		}
 		return nil, err
 	}
@@ -262,7 +271,7 @@ func (c *pdClient) GetStores(ctx context.Context) (*StoresInfo, error) {
 }
 
 func (c *pdClient) GetTombStoneStores(ctx context.Context) (*StoresInfo, error) {
-	return c.getStores(ctx, fmt.Sprintf("%s/%s?state=%d", c.url, storesPrefix, metapb.StoreState_Tombstone))
+	return c.getStores(ctx, fmt.Sprintf("%s/%s", c.url, storesPrefix), metapb.StoreState_Tombstone)
 }
 
 func (c *pdClient) GetStore(ctx context.Context, storeID string) (*StoreInfo, error) {
@@ -279,7 +288,14 @@ func (c *pdClient) GetStore(ctx context.Context, storeID string) (*StoreInfo, er
 	return storeInfo, nil
 }
 
-func (c *pdClient) getStores(ctx context.Context, apiURL string) (*StoresInfo, error) {
+func (c *pdClient) getStores(ctx context.Context, apiURL string, states ...metapb.StoreState) (*StoresInfo, error) {
+	if len(states) != 0 {
+		var q []string
+		for _, state := range states {
+			q = append(q, "state="+strconv.Itoa(int(state)))
+		}
+		apiURL += "?" + strings.Join(q, "&")
+	}
 	body, err := httputil.GetBodyOK(ctx, c.httpClient, apiURL)
 	if err != nil {
 		return nil, err
@@ -328,6 +344,35 @@ func (c *pdClient) DeleteStore(ctx context.Context, storeID string) error {
 	}
 
 	return fmt.Errorf("failed to delete store %s: %v", storeID, string(body))
+}
+
+// CancelDeleteStore cancels the deletion of a TiKV/TiFlash store, returning it to online state.
+// Refer: https://github.com/tikv/pd/blob/7a5b221cf66ec469727f8c174493f9132c0b9d8f/tools/pd-ctl/pdctl/command/store_command.go#L388
+func (c *pdClient) CancelDeleteStore(ctx context.Context, storeID string) error {
+	apiURL := fmt.Sprintf("%s/%s", c.url, fmt.Sprintf(storeUpStatePrefix, storeID))
+	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, http.NoBody)
+	if err != nil {
+		return err
+	}
+
+	//nolint:bodyclose // has been handled
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer httputil.DeferClose(res.Body)
+
+	// Cancel store deletion should return http.StatusOK
+	if res.StatusCode == http.StatusOK || res.StatusCode == http.StatusNotFound {
+		return nil
+	}
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+
+	return fmt.Errorf("failed to cancel store deletion for %s: %v", storeID, string(body))
 }
 
 func (c *pdClient) DeleteMember(ctx context.Context, name string) error {

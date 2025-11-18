@@ -25,6 +25,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 	runner := task.NewTaskRunner(reporter,
 		// get tso
 		common.TaskContextObject[scope.TSO](state, r.Client),
+		common.TaskTrack[scope.TSO](state, r.Tracker),
 		// if it's gone just return
 		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TSO](state)),
 
@@ -42,6 +43,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			// TODO(liubo02): if the finalizer has been removed, no need to update status
 			common.TaskInstanceConditionSynced[scope.TSO](state),
 			common.TaskInstanceConditionReady[scope.TSO](state),
+			common.TaskInstanceConditionRunning[scope.TSO](state),
 			common.TaskStatusPersister[scope.TSO](state, r.Client),
 		),
 		common.TaskFinalizerAdd[scope.TSO](state, r.Client),
@@ -55,6 +57,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskInstanceConditionSuspended[scope.TSO](state),
 			common.TaskInstanceConditionSynced[scope.TSO](state),
 			common.TaskInstanceConditionReady[scope.TSO](state),
+			common.TaskInstanceConditionRunning[scope.TSO](state),
 			common.TaskStatusPersister[scope.TSO](state, r.Client),
 		),
 
@@ -64,10 +67,11 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskContextClient(state, r.PDClientManager, r.TSOClientManager),
 
 		tasks.TaskConfigMap(state, r.Client),
-		tasks.TaskPVC(state, r.Logger, r.Client, r.VolumeModifierFactory),
+		common.TaskPVC[scope.TSO](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
 		tasks.TaskPod(state, r.Client),
 		common.TaskInstanceConditionSynced[scope.TSO](state),
 		common.TaskInstanceConditionReady[scope.TSO](state),
+		common.TaskInstanceConditionRunning[scope.TSO](state),
 		tasks.TaskStatus(state, r.Client),
 	)
 

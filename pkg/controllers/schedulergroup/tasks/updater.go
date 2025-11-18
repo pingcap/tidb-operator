@@ -22,9 +22,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/action"
 	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/pingcap/tidb-operator/pkg/runtime"
 	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/pkg/updater"
@@ -38,7 +40,7 @@ const (
 )
 
 // TaskUpdater is a task to scale or update Scheduler when spec of SchedulerGroup is changed.
-func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1alpha1.SchedulerGroup, *v1alpha1.Scheduler]) task.Task {
+func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFactory) task.Task {
 	return task.NameTaskFunc("Updater", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		obj := state.Object()
@@ -48,6 +50,14 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 		if needVersionUpgrade(obj) && !checker.CanUpgrade(ctx, obj) {
 			// TODO(liubo02): change to Wait
 			return task.Retry(defaultUpdateWaitTime).With("wait until preconditions of upgrading is met")
+		}
+
+		retryAfter := coreutil.RetryIfInstancesReadyButNotAvailable[scope.Scheduler](
+			state.InstanceSlice(),
+			coreutil.MinReadySeconds[scope.SchedulerGroup](obj),
+		)
+		if retryAfter != 0 {
+			return task.Retry(retryAfter).With("wait until no instances is ready but not available")
 		}
 
 		var topos []v1alpha1.ScheduleTopology
@@ -68,7 +78,12 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			return task.Fail().With("invalid topo policy, it should be validated: %w", err)
 		}
 
-		allocator := t.Track(obj, state.InstanceSlice()...)
+		var instances []string
+		for _, in := range is {
+			instances = append(instances, in.Name)
+		}
+
+		allocator := af.New(obj.Namespace, obj.Name, instances...)
 		wait, err := updater.New[runtime.SchedulerTuple]().
 			WithInstances(is...).
 			WithDesired(int(state.Group().Replicas())).
@@ -77,7 +92,7 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithMaxSurge(0).
 			WithMaxUnavailable(1).
 			WithRevision(updateRevision).
-			WithNewFactory(SchedulerNewer(obj, updateRevision)).
+			WithNewFactory(SchedulerNewer(obj, updateRevision, state.FeatureGates())).
 			WithAddHooks(
 				updater.AllocateName[*runtime.Scheduler](allocator),
 				topoPolicy,
@@ -85,8 +100,9 @@ func TaskUpdater(state *ReconcileContext, c client.Client, t tracker.Tracker[*v1
 			WithDelHooks(topoPolicy).
 			WithUpdateHooks(topoPolicy).
 			WithScaleInPreferPolicy(
-				topoPolicy,
+				topoPolicy.PolicyScaleIn(),
 			).
+			WithMinReadySeconds(coreutil.MinReadySeconds[scope.SchedulerGroup](obj)).
 			Build().
 			Do(ctx)
 		if err != nil {
@@ -103,7 +119,7 @@ func needVersionUpgrade(sg *v1alpha1.SchedulerGroup) bool {
 	return sg.Spec.Template.Spec.Version != sg.Status.Version && sg.Status.Version != ""
 }
 
-func SchedulerNewer(sg *v1alpha1.SchedulerGroup, rev string) updater.NewFactory[*runtime.Scheduler] {
+func SchedulerNewer(sg *v1alpha1.SchedulerGroup, rev string, _ features.Gates) updater.NewFactory[*runtime.Scheduler] {
 	return updater.NewFunc[*runtime.Scheduler](func() *runtime.Scheduler {
 		spec := sg.Spec.Template.Spec.DeepCopy()
 
@@ -113,6 +129,7 @@ func SchedulerNewer(sg *v1alpha1.SchedulerGroup, rev string) updater.NewFactory[
 				// Name will be allocated by updater.AllocateName
 				Labels:      coreutil.InstanceLabels[scope.SchedulerGroup](sg, rev),
 				Annotations: coreutil.InstanceAnnotations[scope.SchedulerGroup](sg),
+				Finalizers:  []string{metav1alpha1.Finalizer},
 				OwnerReferences: []metav1.OwnerReference{
 					*metav1.NewControllerRef(sg, v1alpha1.SchemeGroupVersion.WithKind("SchedulerGroup")),
 				},

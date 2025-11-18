@@ -16,6 +16,7 @@ package tidbapi
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -84,4 +85,76 @@ func TestTiDBClient_SetServerLabels(t *testing.T) {
 	client := NewTiDBClient(server.URL, 5*time.Second, nil)
 	err := client.SetServerLabels(context.Background(), map[string]string{"region": "us-west-1"})
 	require.NoError(t, err)
+}
+
+func TestTiDBClient_Activate(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/tidb-pool/activate", r.URL.Path)
+		assert.Equal(t, http.MethodPost, r.Method)
+		body, err := io.ReadAll(r.Body)
+		assert.NoError(t, err)
+		assert.JSONEq(t,
+			`{"keyspace_name":"xxx","max_idle_seconds":0,"run_auto_analyze":true,"tidb_enable_ddl":true}`,
+			string(body),
+		)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	client := NewTiDBClient(server.URL, 5*time.Second, nil)
+	err := client.Activate(context.Background(), "xxx")
+	require.NoError(t, err)
+}
+
+func TestTiDBClient_GetPoolStatus(t *testing.T) {
+	cases := []struct {
+		desc     string
+		status   int
+		body     string
+		expected PoolStatus
+	}{
+		{
+			desc:   "activated",
+			status: http.StatusOK,
+			body:   `{"state":"activated","keyspace_name":"xxx"}`,
+			expected: PoolStatus{
+				State: PoolStateActivated,
+			},
+		},
+		{
+			desc:   "standby",
+			status: http.StatusOK,
+			body:   `{"state":"standby","keyspace_name":""}`,
+			expected: PoolStatus{
+				State: PoolStateStandBy,
+			},
+		},
+		{
+			desc:   "not in standby mode or not support standby mode",
+			status: http.StatusNotFound,
+			expected: PoolStatus{
+				State: PoolStateActivated,
+			},
+		},
+	}
+	for i := range cases {
+		c := cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(tt, "/tidb-pool/status", r.URL.Path)
+				assert.Equal(tt, http.MethodGet, r.Method)
+				w.WriteHeader(c.status)
+				if c.body != "" {
+					_, err := w.Write([]byte(c.body))
+					assert.NoError(tt, err)
+				}
+			}))
+			defer server.Close()
+
+			client := NewTiDBClient(server.URL, 5*time.Second, nil)
+			s, err := client.GetPoolStatus(context.Background())
+			require.NoError(tt, err)
+			assert.Equal(tt, &c.expected, s)
+		})
+	}
 }
