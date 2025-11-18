@@ -15,8 +15,8 @@
 package updater
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/runtime"
-	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/tracker"
 )
 
 // UpdateHook a hook executes when update an instance.

@@ -27,15 +27,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/controllers/tso/tasks"
-	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
-	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
-	tsom "github.com/pingcap/tidb-operator/pkg/timanager/tso"
-	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
-	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
-	"github.com/pingcap/tidb-operator/pkg/volumes"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tso/tasks"
+	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
+	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
+	tsom "github.com/pingcap/tidb-operator/v2/pkg/timanager/tso"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/tracker"
+	"github.com/pingcap/tidb-operator/v2/pkg/volumes"
 )
 
 type Reconciler struct {

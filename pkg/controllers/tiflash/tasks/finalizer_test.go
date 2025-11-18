@@ -30,10 +30,10 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
-	fm "github.com/pingcap/tidb-operator/pkg/timanager/tiflash"
-	"github.com/pingcap/tidb-operator/pkg/utils/fake"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	fm "github.com/pingcap/tidb-operator/v2/pkg/timanager/tiflash"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 func TestTaskFinalizerDel(t *testing.T) {

@@ -18,7 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 )
 
 func TiProxyGroupClientPort(proxyg *v1alpha1.TiProxyGroup) int32 {

@@ -28,7 +28,7 @@ import (
 	"k8s.io/gengo/v2/namer"
 	"k8s.io/gengo/v2/types"
 
-	"github.com/pingcap/tidb-operator/cmd/overlay-gen/generators"
+	"github.com/pingcap/tidb-operator/v2/cmd/overlay-gen/generators"
 )
 
 func main() {
@@ -110,7 +110,7 @@ func getTargets(c *generator.Context, args *Args) []generator.Target {
 		os.Exit(1)
 	}
 
-	targetPackage := "github.com/pingcap/tidb-operator/pkg/overlay"
+	targetPackage := "github.com/pingcap/tidb-operator/v2/pkg/overlay"
 	targets := []generator.Target{}
 	for _, input := range c.Inputs {
 		slog.Info("processing", "pkg", input)

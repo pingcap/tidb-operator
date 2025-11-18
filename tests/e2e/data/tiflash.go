@@ -20,7 +20,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/utils/toml"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/toml"
 )
 
 func NewTiFlashGroup(ns string, patches ...GroupPatch[*v1alpha1.TiFlashGroup]) *v1alpha1.TiFlashGroup {

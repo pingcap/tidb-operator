@@ -20,8 +20,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
-	"github.com/pingcap/tidb-operator/pkg/utils/fake"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 )
 
 func TestHeadlessServiceName(t *testing.T) {

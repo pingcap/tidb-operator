@@ -20,11 +20,11 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
-	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	"github.com/pingcap/tidb-operator/pkg/utils/compare"
-	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/compare"
+	maputil "github.com/pingcap/tidb-operator/v2/pkg/utils/map"
 )
 
 func StatusVersion[

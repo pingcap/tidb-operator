@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
 )
 
 // EnsureFinalizer ensures the finalizer is added to the object and updates the object if necessary.

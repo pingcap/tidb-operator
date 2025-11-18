@@ -20,14 +20,14 @@ import (
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"k8s.io/apimachinery/pkg/api/errors"
 
-	tiflashconfig "github.com/pingcap/tidb-operator/pkg/configs/tiflash"
-	"github.com/pingcap/tidb-operator/pkg/tiflashapi/v1"
-	"github.com/pingcap/tidb-operator/pkg/timanager"
-	pdv1 "github.com/pingcap/tidb-operator/pkg/timanager/apis/pd/v1"
-	pdm "github.com/pingcap/tidb-operator/pkg/timanager/pd"
-	fm "github.com/pingcap/tidb-operator/pkg/timanager/tiflash"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
-	"github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/controller/statefulset"
+	tiflashconfig "github.com/pingcap/tidb-operator/v2/pkg/configs/tiflash"
+	"github.com/pingcap/tidb-operator/v2/pkg/tiflashapi/v1"
+	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
+	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
+	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
+	fm "github.com/pingcap/tidb-operator/v2/pkg/timanager/tiflash"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/v2/third_party/kubernetes/pkg/controller/statefulset"
 )
 
 type ReconcileContext struct {

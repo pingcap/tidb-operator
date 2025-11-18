@@ -15,7 +15,7 @@
 package common
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 )
 
 type Setter[T any] interface {

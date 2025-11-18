@@ -28,7 +28,7 @@ import (
 
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	corev1alpha1 "github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/constants"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/constants"
 )
 
 // Helper is for testing backup related code only

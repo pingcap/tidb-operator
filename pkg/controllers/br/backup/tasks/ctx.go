@@ -15,7 +15,7 @@
 package tasks
 
 import (
-	"github.com/pingcap/tidb-operator/pkg/controllers/br/manager/backup"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/manager/backup"
 )
 
 type Config struct {

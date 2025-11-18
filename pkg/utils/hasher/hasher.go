@@ -20,7 +20,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/rand"
 
-	hashutil "github.com/pingcap/tidb-operator/third_party/kubernetes/pkg/util/hash"
+	hashutil "github.com/pingcap/tidb-operator/v2/third_party/kubernetes/pkg/util/hash"
 )
 
 // Hash an obj by this struct

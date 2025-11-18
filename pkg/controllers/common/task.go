@@ -25,17 +25,17 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/apicall"
-	coreutil "github.com/pingcap/tidb-operator/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/client"
-	"github.com/pingcap/tidb-operator/pkg/pdapi/v1"
-	"github.com/pingcap/tidb-operator/pkg/runtime"
-	"github.com/pingcap/tidb-operator/pkg/runtime/scope"
-	stateutil "github.com/pingcap/tidb-operator/pkg/state"
-	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
-	maputil "github.com/pingcap/tidb-operator/pkg/utils/map"
-	"github.com/pingcap/tidb-operator/pkg/utils/task/v3"
-	"github.com/pingcap/tidb-operator/pkg/utils/tracker"
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
+	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	stateutil "github.com/pingcap/tidb-operator/v2/pkg/state"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
+	maputil "github.com/pingcap/tidb-operator/v2/pkg/utils/map"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/tracker"
 )
 
 var (

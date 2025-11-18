@@ -25,9 +25,9 @@ import (
 
 	v1alphabr "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/pkg/overlay"
-	"github.com/pingcap/tidb-operator/pkg/utils/k8s"
-	t "github.com/pingcap/tidb-operator/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/v2/pkg/overlay"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
+	t "github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
 func condStatefulSetExist(rtx *ReconcileContext) t.Condition {

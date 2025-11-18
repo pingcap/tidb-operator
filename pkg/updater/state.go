@@ -18,7 +18,7 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/pingcap/tidb-operator/pkg/runtime"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 )
 
 type State[R runtime.Instance] interface {

@@ -67,6 +67,14 @@ backupManager:
     # tag: vX.Y.Z
     # digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
 
+# Prestop checker image configuration
+prestopChecker:
+  image:
+    # registry: docker.io
+    repository: pingcap/tidb-operator-prestop-checker
+    # tag: vX.Y.Z
+    # digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+
 # RBAC configuration
 rbac:
   create: true
