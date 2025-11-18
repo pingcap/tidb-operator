@@ -32,8 +32,6 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// get cluster info, FinalizerDel will use it
 		common.TaskContextCluster[scope.TiKV](state, r.Client),
-		// return if cluster's status is not updated
-		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
 
 		// check whether it's paused
 		task.IfBreak(common.CondClusterIsPaused(state)),
@@ -42,6 +40,9 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(common.CondClusterIsDeleting(state),
 			tasks.TaskFinalizerDel(state, r.Client),
 		),
+
+		// return if cluster's status is not updated
+		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
 
 		// if instance is not deleting but store is offlined
 		task.IfBreak(common.CondObjectIsNotDeletingButOfflined[scope.TiKV](state),
