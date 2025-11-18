@@ -41,8 +41,7 @@ const (
 	ComponentTiCDC             Component = "ticdc"
 	ComponentTSO               Component = "tso"
 	ComponentScheduling        Component = "scheduling"
-	ComponentTiProxy           Component = "tiproxy"
-	ComponentReplicationWorker Component = "repl-worker"
+	ComponentTiProxy Component = "tiproxy"
 	// Deprecated: use ComponentScheduling
 	ComponentScheduler Component = "scheduler"
 )

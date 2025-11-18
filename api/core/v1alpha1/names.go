@@ -61,8 +61,7 @@ const (
 	ContainerNameTiCDC             = "ticdc"
 	ContainerNameTSO               = "tso"
 	ContainerNameScheduling        = "scheduling"
-	ContainerNameTiProxy           = "tiproxy"
-	ContainerNameReplicationWorker = "repl-worker"
+	ContainerNameTiProxy = "tiproxy"
 	// Deprecated: use ContainerNameScheduling
 	ContainerNameScheduler = "scheduler"
 
@@ -92,8 +91,7 @@ const (
 	DirPathConfigTiCDC             = "/etc/ticdc"
 	DirPathConfigTSO               = "/etc/tso"
 	DirPathConfigScheduling        = "/etc/scheduling"
-	DirPathConfigTiProxy           = "/etc/tiproxy"
-	DirPathConfigReplicationWorker = "/etc/replication-worker"
+	DirPathConfigTiProxy = "/etc/tiproxy"
 	// Deprecated: use DirPathConfigScheduling
 	DirPathConfigScheduler = "/etc/scheduler"
 
