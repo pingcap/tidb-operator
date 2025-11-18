@@ -23,6 +23,8 @@ set -o pipefail
 
 ROOT=$(cd $(dirname "${BASH_SOURCE[0]}")/../..; pwd -P)
 
+source $ROOT/hack/lib/version.sh
+
 # Set LC_ALL to avoid sort issue
 # See https://www.gnu.org/software/coreutils/manual/html_node/ls-invocation.html#ls-invocation
 readonly LC_ALL=C
@@ -70,6 +72,9 @@ readonly V_KUBE_VERSION=${V_KUBE_VERSION:-"v1.31.0"}
 
 # V_RELEASE defines the release version of tidb-operator
 readonly V_RELEASE=${V_RELEASE:-"latest"}
+
+# V_LDFLAGS defines the build ldflags
+readonly V_LDFLAGS=${V_LDFLAGS:-"$(version::ldflags)"}
 
 
 # ---
