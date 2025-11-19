@@ -32,10 +32,20 @@ NEED_PREFIX["prestop-checker"]=1
 function image::build() {
     local targets=()
     local with_push=0
+    local dockerfile="Dockerfile"
+    local dockerignore=""
     while [[ $# -gt 0 ]]; do
         case $1 in
         --push)
             with_push=1
+            shift
+            ;;
+        --dockerfile=*)
+            dockerfile="${1#*=}"
+            shift
+            ;;
+        --dockerignore=*)
+            dockerignore="${1#*=}"
             shift
             ;;
         -*|--*)
@@ -73,7 +83,20 @@ function image::build() {
         if [[ -n "${NEED_PREFIX[$target]+x}" ]]; then
             image=tidb-operator-${image}
         fi
-        echo "build image ${image}"
+        echo "build image ${image} using ${dockerfile}"
+        
+        # Handle custom dockerignore file
+        local dockerignore_backup=""
+        if [[ -n "$dockerignore" ]]; then
+            # Backup original .dockerignore if it exists
+            if [[ -f "$ROOT/.dockerignore" ]]; then
+                dockerignore_backup="$ROOT/.dockerignore.backup.$$"
+                mv "$ROOT/.dockerignore" "$dockerignore_backup"
+            fi
+            # Copy custom dockerignore
+            cp "$ROOT/$dockerignore" "$ROOT/.dockerignore"
+        fi
+        
         docker buildx build \
             --target $target \
             -o type=oci,dest=$IMAGE_DIR/${target}.tar \
@@ -83,7 +106,15 @@ function image::build() {
             --build-arg=TARGET="${target}" \
             --build-arg=LDFLAGS="${V_LDFLAGS}" \
             $args \
-            -f $ROOT/image/Dockerfile $ROOT
+            -f $ROOT/image/${dockerfile} $ROOT
+            
+        # Restore original .dockerignore
+        if [[ -n "$dockerignore" ]]; then
+            rm -f "$ROOT/.dockerignore"
+            if [[ -n "$dockerignore_backup" && -f "$dockerignore_backup" ]]; then
+                mv "$dockerignore_backup" "$ROOT/.dockerignore"
+            fi
+        fi
     done
 
     case $V_IMG_HUB in
