@@ -12,8 +12,8 @@ jobs:
   auto-job:
     runs-on: ubuntu-24.04
     steps:
-      - name: Add v2 label if target branch is feature/v2
-        if: github.event.pull_request.base.ref == 'feature/v2'
+      - name: Add v2 label if target branch is main or release-2.0
+        if: github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'release-2.0'
         uses: actions-ecosystem/action-add-labels@v1
         with:
           labels: 'v2'
