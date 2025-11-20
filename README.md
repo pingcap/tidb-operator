@@ -1,6 +1,6 @@
 # TiDB Operator
 
-**NOTE: The v2 is expermential now, PLEASE don't use it in production**
+**NOTE: The `main` branch is now the default branch and hosts the **v2** version of TiDB Operator. The `release-1.x` branch hosts the **v1** version.**
 
 - [**Stack Overflow**](https://stackoverflow.com/questions/tagged/tidb)
 - [**Community Slack Channel**](https://slack.tidb.io/invite?team=tidb-community&channel=sig-k8s&ref=pingcap-tidb-operator)
