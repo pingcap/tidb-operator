@@ -3,11 +3,11 @@ name: ci-v2
 on:
   push:
     branches:
-    - feature/v2
+    - main
     - release-2.0
   pull_request:
     branches:
-    - feature/v2
+    - main
     - release-2.0
 
 concurrency:
