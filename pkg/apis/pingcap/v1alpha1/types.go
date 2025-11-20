@@ -690,6 +690,9 @@ type TiKVSpec struct {
 
 	// Whether create the TiKV container in privileged mode, it is highly discouraged to enable this in
 	// critical environment.
+	// NOTE: This field is deprecated. Use SecurityContext.Privileged instead.
+	// For backward compatibility, when SecurityContext is not set, this field will be used.
+	// When SecurityContext is set, this field is ignored.
 	// Optional: defaults to false
 	// +optional
 	Privileged *bool `json:"privileged,omitempty"`
@@ -813,6 +816,9 @@ type TiFlashSpec struct {
 
 	// Whether create the TiFlash container in privileged mode, it is highly discouraged to enable this in
 	// critical environment.
+	// NOTE: This field is deprecated. Use SecurityContext.Privileged instead.
+	// For backward compatibility, when SecurityContext is not set, this field will be used.
+	// When SecurityContext is set, this field is ignored.
 	// Optional: defaults to false
 	// +optional
 	Privileged *bool `json:"privileged,omitempty"`
@@ -990,6 +996,16 @@ type LogTailerSpec struct {
 	// and https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/
 	// +optional
 	UseSidecar bool `json:"useSidecar,omitempty"`
+
+	// Tailer needs to wait to flush logs to stdout after receiving sig TERM
+	// Default is not sleep
+	// +optional
+	SleepTimeSeconds *int64 `json:"sleepTimeSeconds,omitempty"`
+
+	// SecurityContext defines the security options the log tailer container should be run with.
+	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+	// +optional
+	SecurityContext *corev1.SecurityContext `json:"securityContext,omitempty"`
 }
 
 // InitContainerSpec contains basic spec about a init container
@@ -997,6 +1013,11 @@ type LogTailerSpec struct {
 // +k8s:openapi-gen=true
 type InitContainerSpec struct {
 	corev1.ResourceRequirements `json:",inline"`
+
+	// SecurityContext defines the security options the init container should be run with.
+	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+	// +optional
+	SecurityContext *corev1.SecurityContext `json:"securityContext,omitempty"`
 }
 
 // StorageClaim contains details of TiFlash storages
@@ -1268,6 +1289,16 @@ type TiDBSlowLogTailerSpec struct {
 	// and https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/
 	// +optional
 	UseSidecar bool `json:"useSidecar,omitempty"`
+
+	// Tailer needs to wait to flush logs to stdout after receiving sig TERM
+	// Default is not sleep
+	// +optional
+	SleepTimeSeconds *int64 `json:"sleepTimeSeconds,omitempty"`
+
+	// SecurityContext defines the security options the slowlog tailer container should be run with.
+	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+	// +optional
+	SecurityContext *corev1.SecurityContext `json:"securityContext,omitempty"`
 }
 
 // ComponentSpec is the base spec of each component, the fields should always accessed by the Basic<Component>Spec() method to respect the cluster-level properties
@@ -1412,7 +1443,7 @@ type ComponentSpec struct {
 
 	// TopologySpreadConstraints describes how a group of pods ought to spread across topology
 	// domains. Scheduler will schedule pods in a way which abides by the constraints.
-	// This field is is only honored by clusters that enables the EvenPodsSpread feature.
+	// This field is only honored by clusters that enables the EvenPodsSpread feature.
 	// All topologySpreadConstraints are ANDed.
 	// +optional
 	// +listType=map
@@ -1422,6 +1453,12 @@ type ComponentSpec struct {
 	// SuspendAction defines the suspend actions for all component.
 	// +optional
 	SuspendAction *SuspendAction `json:"suspendAction,omitempty"`
+
+	// SecurityContext defines the security options the component container should be run with.
+	// If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
+	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+	// +optional
+	SecurityContext *corev1.SecurityContext `json:"securityContext,omitempty"`
 
 	// ReadinessProbe describes actions that probe the components' readiness.
 	// the default behavior is like setting type as "tcp"

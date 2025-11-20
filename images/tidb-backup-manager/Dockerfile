@@ -1,6 +1,6 @@
 FROM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0
 ARG TARGETARCH
-ARG RCLONE_VERSION=v1.68.2
+ARG RCLONE_VERSION=v1.71.2
 ARG SHUSH_VERSION=v1.5.5
 RUN dnf install -y ca-certificates bind-utils wget nc unzip && dnf clean all
 
@@ -14,8 +14,8 @@ RUN wget -nv https://github.com/realestate-com-au/shush/releases/download/${SHUS
     && mv shush_linux_${TARGETARCH} /usr/local/bin/shush \
     && chmod 755 /usr/local/bin/shush
 
-COPY --from=pingcap/tidb-lightning:v8.5.2 /tidb-lightning /tidb-lightning-ctl /
-COPY --from=pingcap/dumpling:v8.5.2 /dumpling /dumpling
+COPY --from=pingcap/tidb-lightning:v8.5.3 /tidb-lightning /tidb-lightning-ctl /
+COPY --from=pingcap/dumpling:v8.5.3 /dumpling /dumpling
 
 COPY bin/${TARGETARCH}/tidb-backup-manager /tidb-backup-manager
 COPY entrypoint.sh /entrypoint.sh

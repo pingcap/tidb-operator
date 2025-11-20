@@ -71,7 +71,7 @@ func (c *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, new
 			klog.Infof("TidbCluster: [%s/%s] updated successfully", ns, tcName)
 			return nil
 		}
-		klog.V(4).Infof("failed to update TidbCluster: [%s/%s], error: %v", ns, tcName, updateErr)
+		klog.Warningf("failed to update TidbCluster: [%s/%s], error: %v", ns, tcName, updateErr)
 
 		if updated, err := c.tcLister.TidbClusters(ns).Get(tcName); err == nil {
 			// make a copy so we don't mutate the shared cache
@@ -79,6 +79,15 @@ func (c *realTidbClusterControl) UpdateTidbCluster(tc *v1alpha1.TidbCluster, new
 			// TiKV.EvictLeader is controlled by pod leader evictor in pkg/controller/tidbcluster/pod_control.go
 			// So don't overwrite it
 			status.TiKV.EvictLeader = tc.Status.TiKV.EvictLeader
+			// Preserve LeaderCountBeforeUpgrade from the updated status
+			for storeID, store := range tc.Status.TiKV.Stores {
+				if store.LeaderCountBeforeUpgrade != nil {
+					if statusStore, exists := status.TiKV.Stores[storeID]; exists {
+						statusStore.LeaderCountBeforeUpgrade = store.LeaderCountBeforeUpgrade
+						status.TiKV.Stores[storeID] = statusStore
+					}
+				}
+			}
 			tc.Status = *status
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated TidbCluster %s/%s from lister: %v", ns, tcName, err))
@@ -106,7 +115,7 @@ func (c *realTidbClusterControl) Update(tc *v1alpha1.TidbCluster) (*v1alpha1.Tid
 			klog.Infof("TidbCluster: [%s/%s] updated successfully", ns, tcName)
 			return nil
 		}
-		klog.V(4).Infof("failed to update TidbCluster: [%s/%s], error: %v", ns, tcName, updateErr)
+		klog.Warningf("failed to update TidbCluster: [%s/%s], error: %v", ns, tcName, updateErr)
 
 		if updated, err := c.tcLister.TidbClusters(ns).Get(tcName); err == nil {
 			tc.ResourceVersion = updated.ResourceVersion

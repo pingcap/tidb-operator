@@ -17,12 +17,13 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
 
-	"github.com/mholt/archiver/v3"
+	"github.com/mholt/archives"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	backupUtil "github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -129,17 +130,60 @@ func (ro *Options) loadTidbClusterData(ctx context.Context, restorePath string, 
 }
 
 // unarchiveBackupData unarchive backup data to dest dir
-// NOTE: no context/timeout supported for `tarGz.Unarchive`, this may cause to be KILLed when blocking.
+// NOTE: no context/timeout supported for extraction, this may cause to be KILLed when blocking.
 func unarchiveBackupData(backupFile, destDir string) (string, error) {
 	var unarchiveBackupPath string
 	if err := backupUtil.EnsureDirectoryExist(destDir); err != nil {
 		return unarchiveBackupPath, err
 	}
 	backupName := strings.TrimSuffix(filepath.Base(backupFile), constants.DefaultArchiveExtention)
-	tarGz := archiver.NewTarGz()
-	// overwrite if the file already exists
-	tarGz.OverwriteExisting = true
-	err := tarGz.Unarchive(backupFile, destDir)
+
+	// Open the archive file
+	f, err := os.Open(backupFile)
+	if err != nil {
+		return unarchiveBackupPath, fmt.Errorf("failed to open backup file %s, err: %v", backupFile, err)
+	}
+	defer f.Close()
+
+	// First, decompress the gzip file
+	gz := archives.Gz{}
+	gzReader, err := gz.OpenReader(f)
+	if err != nil {
+		return unarchiveBackupPath, fmt.Errorf("failed to open gzip reader for %s, err: %v", backupFile, err)
+	}
+	defer gzReader.Close()
+
+	// Then extract the tar archive
+	tar := archives.Tar{}
+	err = tar.Extract(context.Background(), gzReader, func(ctx context.Context, fileInfo archives.FileInfo) error {
+		targetPath := filepath.Join(destDir, fileInfo.NameInArchive)
+
+		if fileInfo.IsDir() {
+			return backupUtil.EnsureDirectoryExist(targetPath)
+		}
+
+		// Create parent directory if needed
+		if err := backupUtil.EnsureDirectoryExist(filepath.Dir(targetPath)); err != nil {
+			return err
+		}
+
+		// Create and write the file
+		outFile, err := os.Create(targetPath)
+		if err != nil {
+			return err
+		}
+		defer outFile.Close()
+
+		srcFile, err := fileInfo.Open()
+		if err != nil {
+			return err
+		}
+		defer srcFile.Close()
+
+		_, err = io.Copy(outFile, srcFile)
+		return err
+	})
+
 	if err != nil {
 		return unarchiveBackupPath, fmt.Errorf("unarchive backup data %s to %s failed, err: %v", backupFile, destDir, err)
 	}

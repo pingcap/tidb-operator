@@ -1094,6 +1094,11 @@ func (in *ComponentSpec) DeepCopyInto(out *ComponentSpec) {
 		*out = new(SuspendAction)
 		**out = **in
 	}
+	if in.SecurityContext != nil {
+		in, out := &in.SecurityContext, &out.SecurityContext
+		*out = new(v1.SecurityContext)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.ReadinessProbe != nil {
 		in, out := &in.ReadinessProbe, &out.ReadinessProbe
 		*out = new(Probe)
@@ -2400,6 +2405,11 @@ func (in *IngressSpec) DeepCopy() *IngressSpec {
 func (in *InitContainerSpec) DeepCopyInto(out *InitContainerSpec) {
 	*out = *in
 	in.ResourceRequirements.DeepCopyInto(&out.ResourceRequirements)
+	if in.SecurityContext != nil {
+		in, out := &in.SecurityContext, &out.SecurityContext
+		*out = new(v1.SecurityContext)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
@@ -2627,6 +2637,16 @@ func (in *LogSubCommandStatus) DeepCopy() *LogSubCommandStatus {
 func (in *LogTailerSpec) DeepCopyInto(out *LogTailerSpec) {
 	*out = *in
 	in.ResourceRequirements.DeepCopyInto(&out.ResourceRequirements)
+	if in.SleepTimeSeconds != nil {
+		in, out := &in.SleepTimeSeconds, &out.SleepTimeSeconds
+		*out = new(int64)
+		**out = **in
+	}
+	if in.SecurityContext != nil {
+		in, out := &in.SecurityContext, &out.SecurityContext
+		*out = new(v1.SecurityContext)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
@@ -2967,6 +2987,11 @@ func (in *MonitorContainer) DeepCopyInto(out *MonitorContainer) {
 		in, out := &in.ImagePullPolicy, &out.ImagePullPolicy
 		*out = new(v1.PullPolicy)
 		**out = **in
+	}
+	if in.SecurityContext != nil {
+		in, out := &in.SecurityContext, &out.SecurityContext
+		*out = new(v1.SecurityContext)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }
@@ -6171,6 +6196,16 @@ func (in *TiDBSlowLogTailerSpec) DeepCopyInto(out *TiDBSlowLogTailerSpec) {
 		in, out := &in.ImagePullPolicy, &out.ImagePullPolicy
 		*out = new(v1.PullPolicy)
 		**out = **in
+	}
+	if in.SleepTimeSeconds != nil {
+		in, out := &in.SleepTimeSeconds, &out.SleepTimeSeconds
+		*out = new(int64)
+		**out = **in
+	}
+	if in.SecurityContext != nil {
+		in, out := &in.SecurityContext, &out.SecurityContext
+		*out = new(v1.SecurityContext)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }

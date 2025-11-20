@@ -555,6 +555,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
 			Resources:       controller.ContainerResource(logTailer.ResourceRequirements),
+			SecurityContext: logTailer.SecurityContext,
 			VolumeMounts:    []corev1.VolumeMount{rocksDBLogVolumeMount},
 			Command: []string{
 				"sh",
@@ -563,12 +564,16 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			},
 		}
 		if logTailer.UseSidecar {
+			var sleepCmd string
+			if logTailer.SleepTimeSeconds != nil {
+				sleepCmd = fmt.Sprintf("sleep %d; ", *logTailer.SleepTimeSeconds)
+			}
 			c.RestartPolicy = ptr.To(corev1.ContainerRestartPolicyAlways)
 			// NOTE: tail cannot hanle sig TERM when it's PID is 1
 			c.Command = []string{
 				"sh",
 				"-c",
-				fmt.Sprintf(`trap "exit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, rocksDBLogFilePath, rocksDBLogFilePath),
+				fmt.Sprintf(`trap "%sexit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, sleepCmd, rocksDBLogFilePath, rocksDBLogFilePath),
 			}
 			initContainers = append(initContainers, c)
 		} else {
@@ -617,6 +622,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
 			Resources:       controller.ContainerResource(logTailer.ResourceRequirements),
+			SecurityContext: logTailer.SecurityContext,
 			VolumeMounts:    []corev1.VolumeMount{raftLogVolumeMount},
 			Command: []string{
 				"sh",
@@ -625,12 +631,16 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			},
 		}
 		if logTailer.UseSidecar {
+			var sleepCmd string
+			if logTailer.SleepTimeSeconds != nil {
+				sleepCmd = fmt.Sprintf("sleep %d; ", *logTailer.SleepTimeSeconds)
+			}
 			c.RestartPolicy = ptr.To(corev1.ContainerRestartPolicyAlways)
 			// NOTE: tail cannot hanle sig TERM when it's PID is 1
 			c.Command = []string{
 				"sh",
 				"-c",
-				fmt.Sprintf(`trap "exit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, raftLogFilePath, raftLogFilePath),
+				fmt.Sprintf(`trap "%sexit 0" TERM; touch %s; tail -n0 -F %s & wait $!`, sleepCmd, raftLogFilePath, raftLogFilePath),
 			}
 			initContainers = append(initContainers, c)
 		} else {
@@ -664,14 +674,21 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			Value: tc.Spec.Timezone,
 		},
 	}
+	// Get SecurityContext with backward compatibility support
+	securityContext := baseTiKVSpec.SecurityContext()
+	if securityContext == nil {
+		// For backward compatibility, use the Privileged field if SecurityContext is not set
+		securityContext = &corev1.SecurityContext{
+			Privileged: tc.TiKVContainerPrivilege(),
+		}
+	}
+
 	tikvContainer := corev1.Container{
 		Name:            v1alpha1.TiKVMemberType.String(),
 		Image:           tc.TiKVImage(),
 		ImagePullPolicy: baseTiKVSpec.ImagePullPolicy(),
 		Command:         []string{"/bin/sh", "/usr/local/bin/tikv_start_script.sh"},
-		SecurityContext: &corev1.SecurityContext{
-			Privileged: tc.TiKVContainerPrivilege(),
-		},
+		SecurityContext: securityContext,
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "server",
@@ -924,6 +941,8 @@ func (m *tikvMemberManager) syncTiKVClusterStatus(tc *v1alpha1.TidbCluster, set 
 		}
 
 		if oldStore.LeaderCountBeforeUpgrade != nil {
+			// TODO: if we are using a cached version of oldStore, the LeaderCountBeforeUpgrade maybe lost
+			// we need to find a better way to handle it
 			status.LeaderCountBeforeUpgrade = oldStore.LeaderCountBeforeUpgrade
 		}
 

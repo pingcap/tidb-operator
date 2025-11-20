@@ -557,6 +557,20 @@ func TiKVStoreIDFromStatus(tc *v1alpha1.TidbCluster, podName string) (uint64, er
 	return storeID, nil
 }
 
+func TiKVStoreAndIDFromStatus(tc *v1alpha1.TidbCluster, podName string) (v1alpha1.TiKVStore, uint64, error) {
+	store, err := TiKVStoreFromStatus(tc, podName)
+	if err != nil {
+		return v1alpha1.TiKVStore{}, 0, err
+	}
+
+	storeID, err := strconv.ParseUint(store.ID, 10, 64)
+	if err != nil {
+		return v1alpha1.TiKVStore{}, 0, err
+	}
+
+	return store, storeID, nil
+}
+
 func TiFlashStoreIDFromStatus(tc *v1alpha1.TidbCluster, podName string) (uint64, error) {
 	store, err := TiFlashStoreFromStatus(tc, podName)
 	if err != nil {
