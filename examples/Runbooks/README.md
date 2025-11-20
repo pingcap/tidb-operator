@@ -1,1 +1,0 @@
-# pingcap-presales-us

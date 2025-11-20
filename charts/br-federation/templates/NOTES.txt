@@ -1,3 +1,0 @@
-Make sure br-federation components are running:
-
-    kubectl get pods --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}

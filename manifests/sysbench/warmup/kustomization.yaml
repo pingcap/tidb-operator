@@ -1,7 +1,0 @@
-bases:
-- ../base
-
-patchesStrategicMerge:
-- warmup.yaml
-
-nameSuffix: -warmup

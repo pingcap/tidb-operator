@@ -1,3 +1,0 @@
-log-level = "info"
-[storage]
-reserve-space = "0MB"

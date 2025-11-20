@@ -1,7 +1,0 @@
-bases:
-- ../base
-
-patchesStrategicMerge:
-- clean.yaml
-
-nameSuffix: -clean

@@ -1,6 +1,0 @@
-#cloud-config
-packages:
-- mysql
-runcmd:
-- curl -s https://packagecloud.io/install/repositories/akopytov/sysbench/script.rpm.sh | bash
-- yum -y install sysbench

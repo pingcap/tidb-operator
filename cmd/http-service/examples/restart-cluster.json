@@ -1,4 +1,0 @@
-{
-    "cluster_id": "tidb-cluster-123",
-    "component": ["pd", "tikv", "tidb"]
-}

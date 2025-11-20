@@ -1,5 +1,0 @@
-operatorImage: "xx/tidb-operator:latest"
-features:
-  - AdvancedStatefulSet=true
-advancedStatefulset:
-  create: true
