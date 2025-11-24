@@ -29,8 +29,14 @@ See [arch.md](./docs/arch/README.md)
 
 See [rfcs](./docs/rfcs)
 
-## Documentation(TODO)
+## Documentation
 
+You can see our documentation at PingCAP website for more in-depth installation and instructions for production:
+
+- [English](https://docs.pingcap.com/tidb-in-kubernetes/v2.0)
+- [简体中文](https://docs.pingcap.com/zh/tidb-in-kubernetes/v2.0)
+
+All the TiDB Operator documentation is maintained in the [docs-tidb-operator repository](https://github.com/pingcap/docs-tidb-operator).
 
 ## Contributing
 
