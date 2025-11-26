@@ -260,7 +260,7 @@ func TestClientManagerSource(t *testing.T) {
 					return 0
 				}).
 				WithNewPollerFunc(&pdv1.Store{}, func(name string, logger logr.Logger, _ int) Poller {
-					return NewPoller(name, logger, &lister, NewDeepEquality[pdv1.Store](), time.Millisecond*200)
+					return NewPoller(name, logger, &lister, NewDeepEquality[pdv1.Store](logger), time.Millisecond*200)
 				}).
 				Build()
 

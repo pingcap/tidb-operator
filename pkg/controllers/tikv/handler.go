@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -108,6 +109,10 @@ func (r *Reconciler) StoreEventHandler() handler.TypedEventHandler[client.Object
 			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
 		) {
 			s := event.Object.(*pdv1.Store)
+			if s.Engine() != pdv1.StoreEngineTiKV {
+				return
+			}
+			r.Logger.Info("add tikv store", "ns", event.Object.GetNamespace(), "name", event.Object.GetName())
 			req, err := r.getRequestOfTiKVStore(ctx, s)
 			if err != nil {
 				return
@@ -119,6 +124,14 @@ func (r *Reconciler) StoreEventHandler() handler.TypedEventHandler[client.Object
 			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
 		) {
 			s := event.ObjectNew.(*pdv1.Store)
+			if s.Engine() != pdv1.StoreEngineTiKV {
+				return
+			}
+			r.Logger.Info("update tikv store",
+				"ns", event.ObjectNew.GetNamespace(),
+				"name", event.ObjectNew.GetName(),
+				"diff", cmp.Diff(event.ObjectOld, event.ObjectNew),
+			)
 			req, err := r.getRequestOfTiKVStore(ctx, s)
 			if err != nil {
 				return
@@ -130,6 +143,10 @@ func (r *Reconciler) StoreEventHandler() handler.TypedEventHandler[client.Object
 			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
 		) {
 			s := event.Object.(*pdv1.Store)
+			if s.Engine() != pdv1.StoreEngineTiKV {
+				return
+			}
+			r.Logger.Info("delete tikv store", "ns", event.Object.GetNamespace(), "name", event.Object.GetName())
 			req, err := r.getRequestOfTiKVStore(ctx, s)
 			if err != nil {
 				return
@@ -140,10 +157,6 @@ func (r *Reconciler) StoreEventHandler() handler.TypedEventHandler[client.Object
 }
 
 func (r *Reconciler) getRequestOfTiKVStore(ctx context.Context, s *pdv1.Store) (reconcile.Request, error) {
-	if s.Engine() != pdv1.StoreEngineTiKV {
-		return reconcile.Request{}, fmt.Errorf("store is not tikv")
-	}
-
 	ns, cluster := timanager.SplitPrimaryKey(s.Namespace)
 	var kvl v1alpha1.TiKVList
 	if err := r.Client.List(ctx, &kvl, client.MatchingLabels{

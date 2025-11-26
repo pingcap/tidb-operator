@@ -18,6 +18,7 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -97,10 +98,10 @@ func (r *Reconciler) MemberEventHandler() handler.TypedEventHandler[client.Objec
 		CreateFunc: func(_ context.Context, event event.TypedCreateEvent[client.Object],
 			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
 		) {
-			m := event.Object.(*pdv1.Member)
-			ns, cluster := timanager.SplitPrimaryKey(m.Namespace)
+			r.Logger.Info("add pd member", "ns", event.Object.GetNamespace(), "name", event.Object.GetName())
 
-			r.Logger.Info("add member", "namespace", ns, "cluster", cluster, "name", m.Name, "health", m.Health, "invalid", m.Invalid)
+			m := event.Object.(*pdv1.Member)
+			ns, _ := timanager.SplitPrimaryKey(m.Namespace)
 
 			queue.Add(reconcile.Request{
 				NamespacedName: types.NamespacedName{
@@ -113,10 +114,14 @@ func (r *Reconciler) MemberEventHandler() handler.TypedEventHandler[client.Objec
 		UpdateFunc: func(_ context.Context, event event.TypedUpdateEvent[client.Object],
 			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
 		) {
-			m := event.ObjectNew.(*pdv1.Member)
-			ns, cluster := timanager.SplitPrimaryKey(m.Namespace)
+			r.Logger.Info("update pd member",
+				"ns", event.ObjectNew.GetNamespace(),
+				"name", event.ObjectNew.GetName(),
+				"diff", cmp.Diff(event.ObjectOld, event.ObjectNew),
+			)
 
-			r.Logger.Info("update member", "namespace", ns, "cluster", cluster, "name", m.Name, "health", m.Health, "invalid", m.Invalid)
+			m := event.ObjectNew.(*pdv1.Member)
+			ns, _ := timanager.SplitPrimaryKey(m.Namespace)
 
 			queue.Add(reconcile.Request{
 				NamespacedName: types.NamespacedName{
@@ -128,10 +133,10 @@ func (r *Reconciler) MemberEventHandler() handler.TypedEventHandler[client.Objec
 		DeleteFunc: func(_ context.Context, event event.TypedDeleteEvent[client.Object],
 			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
 		) {
-			m := event.Object.(*pdv1.Member)
-			ns, cluster := timanager.SplitPrimaryKey(m.Namespace)
+			r.Logger.Info("delete pd member", "ns", event.Object.GetNamespace(), "name", event.Object.GetName())
 
-			r.Logger.Info("delete member", "namespace", ns, "cluster", cluster, "name", m.Name)
+			m := event.Object.(*pdv1.Member)
+			ns, _ := timanager.SplitPrimaryKey(m.Namespace)
 
 			queue.Add(reconcile.Request{
 				NamespacedName: types.NamespacedName{

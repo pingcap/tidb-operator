@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -108,6 +109,11 @@ func (r *Reconciler) StoreEventHandler() handler.TypedEventHandler[client.Object
 			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
 		) {
 			s := event.Object.(*pdv1.Store)
+			if s.Engine() != pdv1.StoreEngineTiFlash && s.Engine() != pdv1.StoreEngineTiFlashCompute {
+				return
+			}
+			r.Logger.Info("add tiflash store", "ns", event.Object.GetNamespace(), "name", event.Object.GetName())
+
 			req, err := r.getRequestOfTiFlashStore(ctx, s)
 			if err != nil {
 				return
@@ -119,6 +125,15 @@ func (r *Reconciler) StoreEventHandler() handler.TypedEventHandler[client.Object
 			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
 		) {
 			s := event.ObjectNew.(*pdv1.Store)
+			if s.Engine() != pdv1.StoreEngineTiFlash && s.Engine() != pdv1.StoreEngineTiFlashCompute {
+				return
+			}
+			r.Logger.Info("update tiflash store",
+				"ns", event.ObjectNew.GetNamespace(),
+				"name", event.ObjectNew.GetName(),
+				"diff", cmp.Diff(event.ObjectOld, event.ObjectNew),
+			)
+
 			req, err := r.getRequestOfTiFlashStore(ctx, s)
 			if err != nil {
 				return
@@ -130,6 +145,11 @@ func (r *Reconciler) StoreEventHandler() handler.TypedEventHandler[client.Object
 			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
 		) {
 			s := event.Object.(*pdv1.Store)
+			if s.Engine() != pdv1.StoreEngineTiFlash && s.Engine() != pdv1.StoreEngineTiFlashCompute {
+				return
+			}
+			r.Logger.Info("delete tiflash store", "ns", event.Object.GetNamespace(), "name", event.Object.GetName())
+
 			req, err := r.getRequestOfTiFlashStore(ctx, s)
 			if err != nil {
 				return
@@ -140,10 +160,6 @@ func (r *Reconciler) StoreEventHandler() handler.TypedEventHandler[client.Object
 }
 
 func (r *Reconciler) getRequestOfTiFlashStore(ctx context.Context, s *pdv1.Store) (reconcile.Request, error) {
-	if s.Engine() != pdv1.StoreEngineTiFlash && s.Engine() != pdv1.StoreEngineTiFlashCompute {
-		return reconcile.Request{}, fmt.Errorf("store is not tiflash, engine: %s", s.Engine())
-	}
-
 	ns, cluster := timanager.SplitPrimaryKey(s.Namespace)
 	var tiflashList v1alpha1.TiFlashList
 	if err := r.Client.List(ctx, &tiflashList, client.MatchingLabels{

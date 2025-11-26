@@ -50,7 +50,7 @@ func NewTSOMemberPoller(name string, logger logr.Logger, c pdapi.PDClient) timan
 	lister := NewTSOMemberLister(name, c)
 
 	// TODO: change interval
-	return timanager.NewPoller(name, logger, lister, timanager.NewDeepEquality[pdv1.TSOMember](), defaultPollInterval)
+	return timanager.NewPoller(name, logger, lister, timanager.NewDeepEquality[pdv1.TSOMember](logger), defaultPollInterval)
 }
 
 type tsoMemberLister struct {

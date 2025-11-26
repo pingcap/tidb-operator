@@ -18,6 +18,7 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -104,9 +105,9 @@ func (r *Reconciler) TSOMemberEventHandler() handler.TypedEventHandler[client.Ob
 			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
 		) {
 			m := event.Object.(*pdv1.TSOMember)
-			ns, cluster := timanager.SplitPrimaryKey(m.Namespace)
+			r.Logger.Info("add tso member", "ns", event.Object.GetNamespace(), "name", event.Object.GetName())
 
-			r.Logger.Info("add tso member", "namespace", ns, "cluster", cluster, "name", m.Name, "invalid", m.Invalid)
+			ns, _ := timanager.SplitPrimaryKey(m.Namespace)
 
 			queue.Add(reconcile.Request{
 				NamespacedName: types.NamespacedName{
@@ -119,10 +120,13 @@ func (r *Reconciler) TSOMemberEventHandler() handler.TypedEventHandler[client.Ob
 		UpdateFunc: func(ctx context.Context, event event.TypedUpdateEvent[client.Object],
 			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
 		) {
+			r.Logger.Info("update tso member",
+				"ns", event.ObjectNew.GetNamespace(),
+				"name", event.ObjectNew.GetName(),
+				"diff", cmp.Diff(event.ObjectOld, event.ObjectNew),
+			)
 			m := event.ObjectNew.(*pdv1.TSOMember)
-			ns, cluster := timanager.SplitPrimaryKey(m.Namespace)
-
-			r.Logger.Info("update tso member", "namespace", ns, "cluster", cluster, "name", m.Name, "invalid", m.Invalid)
+			ns, _ := timanager.SplitPrimaryKey(m.Namespace)
 
 			queue.Add(reconcile.Request{
 				NamespacedName: types.NamespacedName{
@@ -134,10 +138,9 @@ func (r *Reconciler) TSOMemberEventHandler() handler.TypedEventHandler[client.Ob
 		DeleteFunc: func(ctx context.Context, event event.TypedDeleteEvent[client.Object],
 			queue workqueue.TypedRateLimitingInterface[reconcile.Request],
 		) {
+			r.Logger.Info("delete tso member", "ns", event.Object.GetNamespace(), "name", event.Object.GetName())
 			m := event.Object.(*pdv1.TSOMember)
-			ns, cluster := timanager.SplitPrimaryKey(m.Namespace)
-
-			r.Logger.Info("delete tso member", "namespace", ns, "cluster", cluster, "name", m.Name)
+			ns, _ := timanager.SplitPrimaryKey(m.Namespace)
 
 			queue.Add(reconcile.Request{
 				NamespacedName: types.NamespacedName{
