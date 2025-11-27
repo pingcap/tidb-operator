@@ -75,7 +75,7 @@ var _ = ginkgo.Describe("MultiPDGroup", label.Cluster, func() {
 		workload := f.SetupWorkload()
 		cm := f.SetupCertManager(o.TLS)
 
-		ginkgo.FIt("should support enable multiple pd groups", func(ctx context.Context) {
+		ginkgo.It("should support enable multiple pd groups", func(ctx context.Context) {
 			pdg := action.MustCreatePD(ctx, f, o)
 			kvg := action.MustCreateTiKV(ctx, f, o)
 			dbg := action.MustCreateTiDB(ctx, f, o)
