@@ -60,7 +60,7 @@ func WithTLSForTiProxy() GroupPatch[*v1alpha1.TiProxyGroup] {
 			obj.Spec.Template.Spec.Security = &v1alpha1.TiProxySecurity{}
 		}
 
-		obj.Spec.Template.Spec.Security.TLS = &v1alpha1.TiProxyTLS{
+		obj.Spec.Template.Spec.Security.TLS = &v1alpha1.TiProxyTLSConfig{
 			MySQL: &v1alpha1.TLS{
 				Enabled: true,
 			},
@@ -74,7 +74,7 @@ func WithTiProxyMySQLTLS(ca, certKeyPair string) GroupPatch[*v1alpha1.TiProxyGro
 			obj.Spec.Template.Spec.Security = &v1alpha1.TiProxySecurity{}
 		}
 		if obj.Spec.Template.Spec.Security.TLS == nil {
-			obj.Spec.Template.Spec.Security.TLS = &v1alpha1.TiProxyTLS{}
+			obj.Spec.Template.Spec.Security.TLS = &v1alpha1.TiProxyTLSConfig{}
 		}
 
 		obj.Spec.Template.Spec.Security.TLS.MySQL = &v1alpha1.TLS{

@@ -20,6 +20,7 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
@@ -49,13 +50,17 @@ func (t *TaskService) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	rtx := ctx.Self()
 
 	fg := features.NewFromFeatures(coreutil.EnabledFeatures(rtx.Cluster))
-	if !fg.Enabled(metav1alpha1.ClusterSubdomain) {
-		return task.Complete().With("cluster subdomain feature is not enabled, skip headless svc creation")
+	if fg.Enabled(metav1alpha1.ClusterSubdomain) {
+		headless := newHeadlessService(rtx.Cluster)
+		if err := t.Client.Apply(ctx, headless); err != nil {
+			return task.Fail().With(fmt.Sprintf("can't create headless service of cluster: %v", err))
+		}
 	}
-
-	headless := newHeadlessService(rtx.Cluster)
-	if err := t.Client.Apply(ctx, headless); err != nil {
-		return task.Fail().With(fmt.Sprintf("can't create headless service of cluster: %v", err))
+	if fg.Enabled(metav1alpha1.MultiPDGroup) {
+		pd := newPDService(rtx.Cluster)
+		if err := t.Client.Apply(ctx, pd); err != nil {
+			return task.Fail().With(fmt.Sprintf("can't create pd service of cluster: %v", err))
+		}
 	}
 
 	return task.Complete().With("service of the cluster has been applied")
@@ -84,6 +89,41 @@ func newHeadlessService(c *v1alpha1.Cluster) *corev1.Service {
 				v1alpha1.LabelKeyCluster:   c.Name,
 			},
 			PublishNotReadyAddresses: true,
+		},
+	}
+}
+
+func newPDService(c *v1alpha1.Cluster) *corev1.Service {
+	ipFamilyPolicy := corev1.IPFamilyPolicyPreferDualStack
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      coreutil.ClusterPD(c),
+			Namespace: c.Namespace,
+			Labels: map[string]string{
+				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
+				v1alpha1.LabelKeyCluster:   c.Name,
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(c, v1alpha1.SchemeGroupVersion.WithKind("Cluster")),
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Type:           corev1.ServiceTypeClusterIP,
+			IPFamilyPolicy: &ipFamilyPolicy,
+			Selector: map[string]string{
+				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
+				v1alpha1.LabelKeyCluster:   c.Name,
+			},
+			Ports: []corev1.ServicePort{
+				{
+					Name:       v1alpha1.PDPortNameClient,
+					Port:       v1alpha1.DefaultPDPortClient,
+					Protocol:   corev1.ProtocolTCP,
+					TargetPort: intstr.FromString(v1alpha1.PDPortNameClient),
+				},
+			},
 		},
 	}
 }

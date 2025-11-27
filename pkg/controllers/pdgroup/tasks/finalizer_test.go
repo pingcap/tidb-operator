@@ -15,7 +15,6 @@
 package tasks
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -48,7 +47,6 @@ func TestTaskFinalizerDel(t *testing.T) {
 		unexpectedErr bool
 
 		expectedStatus task.Status
-		isDeregistered bool
 		expectedObj    *v1alpha1.PDGroup
 	}{
 		{
@@ -60,7 +58,6 @@ func TestTaskFinalizerDel(t *testing.T) {
 				}),
 				cluster: fake.FakeObj[v1alpha1.Cluster](defaultTestClusterName),
 			},
-			isDeregistered: true,
 			expectedStatus: task.SComplete,
 			expectedObj: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				obj.Spec.Cluster.Name = defaultTestClusterName
@@ -78,7 +75,6 @@ func TestTaskFinalizerDel(t *testing.T) {
 				cluster: fake.FakeObj[v1alpha1.Cluster](defaultTestClusterName),
 			},
 
-			isDeregistered: true,
 			expectedStatus: task.SComplete,
 			expectedObj: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PDGroup](&now), func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
 				obj.Spec.Cluster.Name = defaultTestClusterName
@@ -232,20 +228,11 @@ func TestTaskFinalizerDel(t *testing.T) {
 				// cannot delete sub resources
 				fc.WithError("delete", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
 			}
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := tt.Context()
 
-			m := NewFakePDClientManager()
-			m.Start(ctx)
-			require.NoError(tt, m.Register(c.state.PDGroup()), c.desc)
-
-			res, done := task.RunTask(ctx, TaskFinalizerDel(c.state, fc, m))
+			res, done := task.RunTask(ctx, TaskFinalizerDel(c.state, fc))
 			assert.Equal(tt, c.expectedStatus, res.Status(), c.desc)
 			assert.False(tt, done, c.desc)
-
-			ck := c.state.Cluster()
-			_, ok := m.Get(timanager.PrimaryKey(ck.Namespace, ck.Name))
-			assert.Equal(tt, c.isDeregistered, !ok, c.desc)
 
 			// no need to check update result
 			if c.unexpectedErr {
@@ -259,14 +246,14 @@ func TestTaskFinalizerDel(t *testing.T) {
 	}
 }
 
-func NewFakePDClientManager() pdm.PDClientManager {
-	return timanager.NewManagerBuilder[*v1alpha1.PDGroup, pdapi.PDClient, pdm.PDClient]().
-		WithNewUnderlayClientFunc(func(*v1alpha1.PDGroup) (pdapi.PDClient, error) {
+func NewFakePDClientManager(c client.Client) pdm.PDClientManager {
+	return timanager.NewManagerBuilder[*v1alpha1.Cluster, pdapi.PDClient, pdm.PDClient]().
+		WithNewUnderlayClientFunc(func(*v1alpha1.Cluster) (pdapi.PDClient, error) {
 			return nil, nil
 		}).
-		WithNewClientFunc(func(*v1alpha1.PDGroup, pdapi.PDClient, timanager.SharedInformerFactory[pdapi.PDClient]) pdm.PDClient {
-			return nil
+		WithNewClientFunc(func(*v1alpha1.Cluster, pdapi.PDClient, timanager.SharedInformerFactory[pdapi.PDClient]) (pdm.PDClient, error) {
+			return nil, nil
 		}).
-		WithCacheKeysFunc(pdm.CacheKeys).
+		WithCacheKeysFunc(pdm.CacheKeysFunc(c)).
 		Build()
 }

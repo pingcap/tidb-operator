@@ -46,7 +46,7 @@ type NewUnderlayClientFunc[Object client.Object, UnderlayClient any] func(obj Ob
 
 // NewClientFunc is the func to new an external client with the cache layer, for example, timanager.PDClient
 type NewClientFunc[Object client.Object, UnderlayClient, Client any] func(
-	Object, UnderlayClient, SharedInformerFactory[UnderlayClient]) Client
+	Object, UnderlayClient, SharedInformerFactory[UnderlayClient]) (Client, error)
 
 type CacheKeysFunc[Object client.Object] func(obj Object) ([]string, error)
 
@@ -187,7 +187,10 @@ func (m *clientManager[Object, UnderlayClient, Client]) Register(obj Object) err
 		f = NewSharedInformerFactory(keys[0], m.logger, m.scheme, underlay, m.newPollerFuncMap, time.Hour)
 	}
 
-	c := m.newClientFunc(obj, underlay, f)
+	c, err := m.newClientFunc(obj, underlay, f)
+	if err != nil {
+		return err
+	}
 	cacheObj = NewCache[Client, UnderlayClient](keys, c, f)
 	m.cs.Store(keys[0], cacheObj)
 

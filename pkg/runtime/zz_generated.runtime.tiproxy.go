@@ -237,30 +237,6 @@ func (in *TiProxy) ClusterCASecretName() string {
 	return prefix + "-" + in.Component() + "-cluster-secret"
 }
 
-func (in *TiProxy) ClientCertKeyPairSecretName() string {
-	sec := in.Spec.Security
-	if sec != nil && sec.TLS != nil && sec.TLS.Client != nil && sec.TLS.Client.CertKeyPair != nil {
-		return sec.TLS.Client.CertKeyPair.Name
-	}
-	return in.Cluster() + "-cluster-client-secret"
-}
-
-func (in *TiProxy) ClientCASecretName() string {
-	sec := in.Spec.Security
-	if sec != nil && sec.TLS != nil && sec.TLS.Client != nil && sec.TLS.Client.CA != nil {
-		return sec.TLS.Client.CA.Name
-	}
-	return in.Cluster() + "-cluster-client-secret"
-}
-
-func (in *TiProxy) ClientInsecureSkipTLSVerify() bool {
-	sec := in.Spec.Security
-	if sec != nil && sec.TLS != nil && sec.TLS.Client != nil && sec.TLS.Client.CA != nil {
-		return sec.TLS.Client.InsecureSkipTLSVerify
-	}
-	return false
-}
-
 func (in *TiProxy) IsOffline() bool {
 	return false
 }
@@ -438,7 +414,7 @@ func (g *TiProxyGroup) SetTemplateClusterTLS(ca, certKeyPair string) {
 	}
 	sec := g.Spec.Template.Spec.Security
 	if sec.TLS == nil {
-		sec.TLS = &v1alpha1.TiProxyTLS{}
+		sec.TLS = &v1alpha1.TiProxyTLSConfig{}
 	}
 	sec.TLS.Cluster = &v1alpha1.InternalClientTLS{}
 	if ca != "" {
@@ -469,30 +445,6 @@ func (g *TiProxyGroup) ClusterCASecretName() string {
 		return sec.TLS.Cluster.CA.Name
 	}
 	return defaultName
-}
-
-func (g *TiProxyGroup) ClientCertKeyPairSecretName() string {
-	sec := g.Spec.Template.Spec.Security
-	if sec != nil && sec.TLS != nil && sec.TLS.Client != nil && sec.TLS.Client.CertKeyPair != nil {
-		return sec.TLS.Client.CertKeyPair.Name
-	}
-	return g.Cluster() + "-cluster-client-secret"
-}
-
-func (g *TiProxyGroup) ClientCASecretName() string {
-	sec := g.Spec.Template.Spec.Security
-	if sec != nil && sec.TLS != nil && sec.TLS.Client != nil && sec.TLS.Client.CA != nil {
-		return sec.TLS.Client.CA.Name
-	}
-	return g.Cluster() + "-cluster-client-secret"
-}
-
-func (g *TiProxyGroup) ClientInsecureSkipTLSVerify() bool {
-	sec := g.Spec.Template.Spec.Security
-	if sec != nil && sec.TLS != nil && sec.TLS.Client != nil && sec.TLS.Client.CA != nil {
-		return sec.TLS.Client.InsecureSkipTLSVerify
-	}
-	return false
 }
 
 func (g *TiProxyGroup) MinReadySeconds() int64 {

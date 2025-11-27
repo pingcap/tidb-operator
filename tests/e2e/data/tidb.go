@@ -80,7 +80,7 @@ func WithTLS() GroupPatch[*v1alpha1.TiDBGroup] {
 			obj.Spec.Template.Spec.Security = &v1alpha1.TiDBSecurity{}
 		}
 
-		obj.Spec.Template.Spec.Security.TLS = &v1alpha1.TiDBTLS{
+		obj.Spec.Template.Spec.Security.TLS = &v1alpha1.TiDBTLSConfig{
 			MySQL: &v1alpha1.TLS{
 				Enabled: true,
 			},
@@ -94,7 +94,7 @@ func WithTiDBMySQLTLS(ca, certKeyPair string) GroupPatch[*v1alpha1.TiDBGroup] {
 			obj.Spec.Template.Spec.Security = &v1alpha1.TiDBSecurity{}
 		}
 		if obj.Spec.Template.Spec.Security.TLS == nil {
-			obj.Spec.Template.Spec.Security.TLS = &v1alpha1.TiDBTLS{}
+			obj.Spec.Template.Spec.Security.TLS = &v1alpha1.TiDBTLSConfig{}
 		}
 
 		obj.Spec.Template.Spec.Security.TLS.MySQL = &v1alpha1.TLS{

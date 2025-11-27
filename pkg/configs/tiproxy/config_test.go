@@ -180,7 +180,7 @@ func TestOverlay(t *testing.T) {
 					Subdomain: "tiproxy-peer",
 					TiProxyTemplateSpec: v1alpha1.TiProxyTemplateSpec{
 						Security: &v1alpha1.TiProxySecurity{
-							TLS: &v1alpha1.TiProxyTLS{
+							TLS: &v1alpha1.TiProxyTLSConfig{
 								MySQL: &v1alpha1.TLS{
 									Enabled: true,
 								},
@@ -224,7 +224,7 @@ func TestOverlay(t *testing.T) {
 					Subdomain: "tiproxy-peer",
 					TiProxyTemplateSpec: v1alpha1.TiProxyTemplateSpec{
 						Security: &v1alpha1.TiProxySecurity{
-							TLS: &v1alpha1.TiProxyTLS{
+							TLS: &v1alpha1.TiProxyTLSConfig{
 								Backend: &v1alpha1.ClientTLS{
 									Enabled: true,
 									Mutual:  true,

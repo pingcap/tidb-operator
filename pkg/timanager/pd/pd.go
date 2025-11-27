@@ -17,6 +17,7 @@ package pd
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"time"
 
@@ -33,10 +34,10 @@ import (
 )
 
 const (
-	pdRequestTimeout = 10 * time.Second
+	defaultTimeout = 10 * time.Second
 )
 
-type PDClientManager = timanager.Manager[*v1alpha1.PDGroup, PDClient]
+type PDClientManager = timanager.Manager[*v1alpha1.Cluster, PDClient]
 
 type PDClient interface {
 	HasSynced() bool
@@ -83,88 +84,118 @@ func (c *pdClient) HasSynced() bool {
 	return true
 }
 
-func NewClient(pdg *v1alpha1.PDGroup, underlay pdapi.PDClient, informerFactory timanager.SharedInformerFactory[pdapi.PDClient]) PDClient {
-	storeInformer := informerFactory.InformerFor(&pdv1.Store{})
-	memberInformer := informerFactory.InformerFor(&pdv1.Member{})
+func NewClientFunc(c client.Client) timanager.NewClientFunc[*v1alpha1.Cluster, pdapi.PDClient, PDClient] {
+	return func(
+		cluster *v1alpha1.Cluster,
+		underlay pdapi.PDClient,
+		informerFactory timanager.SharedInformerFactory[pdapi.PDClient],
+	) (PDClient, error) {
+		mode, err := getPDMode(c, cluster)
+		if err != nil {
+			return nil, err
+		}
+		storeInformer := informerFactory.InformerFor(&pdv1.Store{})
+		memberInformer := informerFactory.InformerFor(&pdv1.Member{})
 
-	key := timanager.PrimaryKey(pdg.Namespace, pdg.Spec.Cluster.Name)
+		key := timanager.PrimaryKey(cluster.Namespace, cluster.Name)
 
-	stores := NewStoreCache(key, informerFactory)
-	members := NewMemberCache(key, informerFactory)
+		stores := NewStoreCache(key, informerFactory)
+		members := NewMemberCache(key, informerFactory)
 
-	pdc := &pdClient{
-		underlay: underlay,
-		stores:   stores,
-		members:  members,
-		hasSynced: []func() bool{
-			storeInformer.HasSynced,
-			memberInformer.HasSynced,
-		},
-	}
-	if pdg.Spec.Template.Spec.Mode == v1alpha1.PDModeMS {
-		tsoMemberInformer := informerFactory.InformerFor(&pdv1.TSOMember{})
-		tsoMembers := NewTSOMemberCache(key, informerFactory)
-		pdc.tsoMembers = tsoMembers
-		pdc.hasSynced = append(pdc.hasSynced, tsoMemberInformer.HasSynced)
-	}
-
-	return pdc
-}
-
-// CacheKeys returns the keys of the PDGroup.
-// If any keys are changed, client will be renewed
-// The first key is primary key to get client from manager
-func CacheKeys(pdg *v1alpha1.PDGroup) ([]string, error) {
-	var keys []string
-
-	keys = append(keys,
-		// cluster name as primary key
-		timanager.PrimaryKey(pdg.Namespace, pdg.Spec.Cluster.Name),
-		pdg.Name,
-		string(pdg.GetUID()),
-		// if mode is changed, renew client
-		string(pdg.Spec.Template.Spec.Mode),
-	)
-	// TODO: support reload tls config
-
-	return keys, nil
-}
-
-var NewUnderlayClientFunc = func(c client.Client) timanager.NewUnderlayClientFunc[*v1alpha1.PDGroup, pdapi.PDClient] {
-	return func(pdg *v1alpha1.PDGroup) (pdapi.PDClient, error) {
-		ctx := context.Background()
-		var cluster v1alpha1.Cluster
-		if err := c.Get(ctx, client.ObjectKey{
-			Name:      pdg.Spec.Cluster.Name,
-			Namespace: pdg.Namespace,
-		}, &cluster); err != nil {
-			return nil, fmt.Errorf("cannot find cluster %s: %w", pdg.Spec.Cluster.Name, err)
+		pdc := &pdClient{
+			underlay: underlay,
+			stores:   stores,
+			members:  members,
+			hasSynced: []func() bool{
+				storeInformer.HasSynced,
+				memberInformer.HasSynced,
+			},
 		}
 
-		host := fmt.Sprintf("%s-pd.%s:%d", pdg.Name, pdg.Namespace, coreutil.PDGroupClientPort(pdg))
+		if mode == v1alpha1.PDModeMS {
+			tsoMemberInformer := informerFactory.InformerFor(&pdv1.TSOMember{})
+			tsoMembers := NewTSOMemberCache(key, informerFactory)
+			pdc.tsoMembers = tsoMembers
+			pdc.hasSynced = append(pdc.hasSynced, tsoMemberInformer.HasSynced)
+		}
 
-		if coreutil.IsTLSClusterEnabled(&cluster) {
-			tlsConfig, err := apicall.GetClientTLSConfig[scope.PDGroup](ctx, c, pdg)
+		return pdc, nil
+	}
+}
+
+// CacheKeysFunc returns the keys func of the Cluster.
+// If any keys are changed, client will be renewed
+// The first key is primary key to get client from manager
+func CacheKeysFunc(c client.Client) func(cluster *v1alpha1.Cluster) ([]string, error) {
+	return func(cluster *v1alpha1.Cluster) ([]string, error) {
+		mode, err := getPDMode(c, cluster)
+		if err != nil {
+			return nil, err
+		}
+
+		var keys []string
+
+		keys = append(keys,
+			// cluster name as primary key
+			timanager.PrimaryKey(cluster.Namespace, cluster.Name),
+			// if mode is changed, renew client
+			string(mode),
+		)
+		// TODO: support reload tls config
+
+		return keys, nil
+	}
+}
+
+// If there are any PD in ms mode, use ms mode client
+func getPDMode(c client.Client, cluster *v1alpha1.Cluster) (v1alpha1.PDMode, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+	defer cancel()
+
+	mode := v1alpha1.PDModeNormal
+
+	pdgs, err := apicall.ListGroups[scope.PDGroup](ctx, c, cluster.Namespace, cluster.Name)
+	if err != nil {
+		return mode, fmt.Errorf("cannot list pd groups: %w", err)
+	}
+
+	for _, pdg := range pdgs {
+		if pdg.Spec.Template.Spec.Mode == v1alpha1.PDModeMS {
+			mode = v1alpha1.PDModeMS
+		}
+	}
+
+	return mode, nil
+}
+
+var NewUnderlayClientFunc = func(c client.Client) timanager.NewUnderlayClientFunc[*v1alpha1.Cluster, pdapi.PDClient] {
+	return func(cluster *v1alpha1.Cluster) (pdapi.PDClient, error) {
+		if cluster.Status.PD == "" {
+			return nil, fmt.Errorf("no pd addr, waiting until pd groups are created")
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+		defer cancel()
+
+		var tlsConfig *tls.Config
+		if coreutil.IsTLSClusterEnabled(cluster) {
+			cfg, err := apicall.GetClientTLSConfig(ctx, c, cluster)
 			if err != nil {
 				return nil, fmt.Errorf("cannot get tls config from secret: %w", err)
 			}
-
-			addr := "https://" + host
-			return pdapi.NewPDClient(addr, pdRequestTimeout, tlsConfig), nil
+			tlsConfig = cfg
 		}
 
-		addr := "http://" + host
-		pc := pdapi.NewPDClient(addr, pdRequestTimeout, nil)
+		pc := pdapi.NewPDClient(cluster.Status.PD, defaultTimeout, tlsConfig)
 		return pc, nil
 	}
 }
 
 func NewPDClientManager(logger logr.Logger, c client.Client) PDClientManager {
-	m := timanager.NewManagerBuilder[*v1alpha1.PDGroup, pdapi.PDClient, PDClient]().
+	m := timanager.NewManagerBuilder[*v1alpha1.Cluster, pdapi.PDClient, PDClient]().
 		WithLogger(logger).
 		WithNewUnderlayClientFunc(NewUnderlayClientFunc(c)).
-		WithNewClientFunc(NewClient).
-		WithCacheKeysFunc(CacheKeys).
+		WithNewClientFunc(NewClientFunc(c)).
+		WithCacheKeysFunc(CacheKeysFunc(c)).
 		WithNewPollerFunc(&pdv1.Store{}, NewStorePoller).
 		WithNewPollerFunc(&pdv1.Member{}, NewMemberPoller).
 		WithNewPollerFunc(&pdv1.TSOMember{}, NewTSOMemberPoller).

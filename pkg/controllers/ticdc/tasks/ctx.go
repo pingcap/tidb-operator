@@ -22,7 +22,6 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
-	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/ticdcapi/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
@@ -42,7 +41,7 @@ func TaskContextInfoFromTiCDC(state *ReconcileContext, c client.Client) task.Tas
 		ck := state.Cluster()
 		if coreutil.IsTLSClusterEnabled(ck) {
 			var err error
-			tlsConfig, err = apicall.GetClientTLSConfig[scope.TiCDC](ctx, c, state.Object())
+			tlsConfig, err = apicall.GetClientTLSConfig(ctx, c, ck)
 			if err != nil {
 				return task.Fail().With("cannot get tls config from secret: %w", err)
 			}

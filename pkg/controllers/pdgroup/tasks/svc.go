@@ -23,13 +23,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
-	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
-func TaskService(state common.PDGroupState, c client.Client) task.Task {
+func TaskService(state State, c client.Client) task.Task {
 	return task.NameTaskFunc("Service", func(ctx context.Context) task.Result {
 		pdg := state.PDGroup()
 
@@ -38,9 +38,12 @@ func TaskService(state common.PDGroupState, c client.Client) task.Task {
 			return task.Fail().With(fmt.Sprintf("can't create headless service of pd: %v", err))
 		}
 
-		svc := newInternalService(pdg)
-		if err := c.Apply(ctx, svc); err != nil {
-			return task.Fail().With(fmt.Sprintf("can't create internal service of pd: %v", err))
+		fg := state.FeatureGates()
+		if !fg.Enabled(metav1alpha1.MultiPDGroup) {
+			svc := newInternalService(pdg)
+			if err := c.Apply(ctx, svc); err != nil {
+				return task.Fail().With(fmt.Sprintf("can't create internal service of pd: %v", err))
+			}
 		}
 
 		return task.Complete().With("services of pd have been applied")

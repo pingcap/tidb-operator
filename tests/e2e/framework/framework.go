@@ -32,6 +32,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/data"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework/desc"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/label"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/waiter"
 )
@@ -166,6 +167,7 @@ func (f *Framework) MustCreateCluster(ctx context.Context, ps ...data.ClusterPat
 	return tc
 }
 
+// Deprecated: use action.MustCreatePD
 func (f *Framework) MustCreatePD(ctx context.Context, ps ...data.GroupPatch[*v1alpha1.PDGroup]) *v1alpha1.PDGroup {
 	pdg := data.NewPDGroup(f.Namespace.Name, ps...)
 	ginkgo.By("Creating a pd group")
@@ -174,6 +176,7 @@ func (f *Framework) MustCreatePD(ctx context.Context, ps ...data.GroupPatch[*v1a
 	return pdg
 }
 
+// Deprecated: use action.MustCreateTiDB
 func (f *Framework) MustCreateTiDB(ctx context.Context, ps ...data.GroupPatch[*v1alpha1.TiDBGroup]) *v1alpha1.TiDBGroup {
 	dbg := data.NewTiDBGroup(f.Namespace.Name, ps...)
 	ginkgo.By("Creating a tidb group")
@@ -182,6 +185,7 @@ func (f *Framework) MustCreateTiDB(ctx context.Context, ps ...data.GroupPatch[*v
 	return dbg
 }
 
+// Deprecated: use action.MustCreateTSO
 func (f *Framework) MustCreateTSO(ctx context.Context, ps ...data.GroupPatch[*v1alpha1.TSOGroup]) *v1alpha1.TSOGroup {
 	tg := data.NewTSOGroup(f.Namespace.Name, ps...)
 	ginkgo.By("Creating a tso group")
@@ -190,6 +194,7 @@ func (f *Framework) MustCreateTSO(ctx context.Context, ps ...data.GroupPatch[*v1
 	return tg
 }
 
+// Deprecated: use action.MustCreateScheduling
 func (f *Framework) MustCreateScheduling(ctx context.Context, ps ...data.GroupPatch[*v1alpha1.SchedulingGroup]) *v1alpha1.SchedulingGroup {
 	sg := data.NewSchedulingGroup(f.Namespace.Name, ps...)
 	ginkgo.By("Creating a scheduler group")
@@ -197,6 +202,7 @@ func (f *Framework) MustCreateScheduling(ctx context.Context, ps ...data.GroupPa
 	return sg
 }
 
+// Deprecated: use action.MustCreateTiProxy
 func (f *Framework) MustCreateTiProxy(ctx context.Context, ps ...data.GroupPatch[*v1alpha1.TiProxyGroup]) *v1alpha1.TiProxyGroup {
 	tpg := data.NewTiProxyGroup(f.Namespace.Name, ps...)
 	ginkgo.By("Creating a tiproxy group")
@@ -232,6 +238,7 @@ func (*Framework) True(b bool, opts ...any) {
 	gomega.ExpectWithOffset(1, b).To(gomega.BeTrue(), opts...)
 }
 
+// Deprecated: use f.Describe
 // DescribeFeatureTable generates a case with different features
 func (*Framework) DescribeFeatureTable(f func(fs ...metav1alpha1.Feature), fss ...[]metav1alpha1.Feature) {
 	var entries []ginkgo.TableEntry
@@ -297,4 +304,34 @@ func AsyncWaitPodsRollingUpdateOnce[
 	}()
 
 	return ch
+}
+
+func (f *Framework) Describe(fn func(o *desc.Options), optss ...[]desc.Option) {
+	var entries []ginkgo.TableEntry
+	for _, opts := range optss {
+		o := desc.DefaultOptions()
+		for _, opt := range opts {
+			opt.With(o)
+		}
+		var args []any
+		args = append(args, o.Labels())
+		args = append(args, o)
+		entries = append(entries, ginkgo.Entry(nil, args...))
+	}
+	var args []any
+	args = append(args, func(o *desc.Options) {
+		ginkgo.JustBeforeEach(func() {
+			o.Namespace = f.Namespace.Name
+		})
+		fn(o)
+	})
+	args = append(args,
+		func(o *desc.Options) string {
+			return o.String()
+		},
+	)
+	for _, entry := range entries {
+		args = append(args, entry)
+	}
+	ginkgo.DescribeTableSubtree("Describe", args...)
 }

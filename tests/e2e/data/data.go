@@ -124,6 +124,22 @@ func WithClusterTLS[
 	})
 }
 
+func WithClusterTLSSuffix[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](ca, certKeyPair string) GroupPatch[F] {
+	return GroupPatchFunc[F](func(obj F) {
+		// Add ns prefix of ca because the bundle is a cluster scope resource
+		ca = obj.GetNamespace() + "-" + ca
+		// Default generated certs in test contain group names in dnsNames,
+		// so cannot be reused by different groups
+		certKeyPair = obj.GetName() + "-" + scope.Component[S]() + "-" + certKeyPair
+
+		coreutil.SetTemplateClusterTLS[S](obj, ca, certKeyPair)
+	})
+}
+
 func WithTemplateAnnotation[
 	S scope.Group[F, T],
 	F client.Object,

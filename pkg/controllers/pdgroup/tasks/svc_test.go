@@ -26,6 +26,8 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	stateutil "github.com/pingcap/tidb-operator/v2/pkg/state"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
@@ -40,18 +42,14 @@ func TestTaskService(t *testing.T) {
 		expectedStatus task.Status
 	}{
 		{
-			desc: "no svc exists",
-			state: &state{
-				pdg: fake.FakeObj[v1alpha1.PDGroup]("aaa"),
-			},
+			desc:  "no svc exists",
+			state: fakeState(),
 
 			expectedStatus: task.SComplete,
 		},
 		{
-			desc: "headless svc has exists",
-			state: &state{
-				pdg: fake.FakeObj[v1alpha1.PDGroup]("aaa"),
-			},
+			desc:  "headless svc has exists",
+			state: fakeState(),
 			objs: []client.Object{
 				fake.FakeObj[corev1.Service]("aaa-pd-peer"),
 			},
@@ -59,10 +57,8 @@ func TestTaskService(t *testing.T) {
 			expectedStatus: task.SComplete,
 		},
 		{
-			desc: "internal svc has exists",
-			state: &state{
-				pdg: fake.FakeObj[v1alpha1.PDGroup]("aaa"),
-			},
+			desc:  "internal svc has exists",
+			state: fakeState(),
 			objs: []client.Object{
 				fake.FakeObj[corev1.Service]("aaa-pd"),
 			},
@@ -70,34 +66,28 @@ func TestTaskService(t *testing.T) {
 			expectedStatus: task.SComplete,
 		},
 		{
-			desc: "apply headless svc with unexpected err",
-			state: &state{
-				pdg: fake.FakeObj[v1alpha1.PDGroup]("aaa"),
+			desc:          "apply headless svc with unexpected err",
+			state:         fakeState(),
+			unexpectedErr: true,
+
+			expectedStatus: task.SFail,
+		},
+		{
+			desc:  "apply internal svc with unexpected err",
+			state: fakeState(),
+			objs: []client.Object{
+				newHeadlessService(fakePDGroup()),
 			},
 			unexpectedErr: true,
 
 			expectedStatus: task.SFail,
 		},
 		{
-			desc: "apply internal svc with unexpected err",
-			state: &state{
-				pdg: fake.FakeObj[v1alpha1.PDGroup]("aaa"),
-			},
+			desc:  "all svcs are updated with unexpected err",
+			state: fakeState(),
 			objs: []client.Object{
-				newHeadlessService(fake.FakeObj[v1alpha1.PDGroup]("aaa")),
-			},
-			unexpectedErr: true,
-
-			expectedStatus: task.SFail,
-		},
-		{
-			desc: "all svcs are updated with unexpected err",
-			state: &state{
-				pdg: fake.FakeObj[v1alpha1.PDGroup]("aaa"),
-			},
-			objs: []client.Object{
-				newHeadlessService(fake.FakeObj[v1alpha1.PDGroup]("aaa")),
-				newInternalService(fake.FakeObj[v1alpha1.PDGroup]("aaa")),
+				newHeadlessService(fakePDGroup()),
+				newInternalService(fakePDGroup()),
 			},
 			unexpectedErr: true,
 
@@ -111,7 +101,7 @@ func TestTaskService(t *testing.T) {
 			tt.Parallel()
 
 			ctx := context.Background()
-			fc := client.NewFakeClient(c.state.PDGroup())
+			fc := client.NewFakeClient(c.state.Cluster(), c.state.PDGroup())
 			for _, obj := range c.objs {
 				require.NoError(tt, fc.Apply(ctx, obj), c.desc)
 			}
@@ -122,7 +112,7 @@ func TestTaskService(t *testing.T) {
 			}
 
 			res, done := task.RunTask(ctx, TaskService(c.state, fc))
-			assert.Equal(tt, c.expectedStatus, res.Status(), c.desc)
+			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
 			assert.False(tt, done, c.desc)
 
 			if !c.unexpectedErr {
@@ -132,4 +122,21 @@ func TestTaskService(t *testing.T) {
 			}
 		})
 	}
+}
+
+func fakePDGroup() *v1alpha1.PDGroup {
+	return fake.FakeObj("aaa", func(obj *v1alpha1.PDGroup) *v1alpha1.PDGroup {
+		obj.Spec.Cluster.Name = "aaa"
+		return obj
+	})
+}
+
+func fakeState() State {
+	s := &state{
+		pdg:     fakePDGroup(),
+		cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
+	}
+	s.IFeatureGates = stateutil.NewFeatureGates[scope.PDGroup](s)
+
+	return s
 }

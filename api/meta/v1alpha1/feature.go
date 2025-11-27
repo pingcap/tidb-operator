@@ -18,7 +18,7 @@ package v1alpha1
 // NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
 // NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
 //
-// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning;ClusterSubdomain;TerminableLogTailer;UseTSOReadyAPI;UseSchedulingReadyAPI;UseTiKVReadyAPI;UsePDReadyAPIV2;UseTiFlashReadyAPI
+// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning;ClusterSubdomain;TerminableLogTailer;UseTSOReadyAPI;UseSchedulingReadyAPI;UseTiKVReadyAPI;UsePDReadyAPIV2;UseTiFlashReadyAPI;MultiPDGroup
 // +enum
 type Feature string
 
@@ -102,4 +102,12 @@ const (
 	// UseTiFlashReadyAPI means use TiFlash's /readyz API as the readiness probe.
 	UseTiFlashReadyAPI      Feature      = "UseTiFlashReadyAPI"
 	UseTiFlashReadyAPIStage FeatureStage = FeatureStageAlpha
+
+	// If this feature is enabled
+	// - More than one pd group can be created for one cluster.
+	// - A new PD service will be created for all PDGroups.
+	// - The default internal pd svc of the PDGroup will be not created.
+	// - Cannot customize advertised client port
+	MultiPDGroup      Feature      = "MultiPDGroup"
+	MultiPDGroupStage FeatureStage = FeatureStageAlpha
 )

@@ -93,15 +93,16 @@ func TestStatusUpdater(t *testing.T) {
 
 			ctx := FakeContext(types.NamespacedName{Name: "test"})
 			ctx.Cluster = c.cluster
-			ctx.PDGroup = c.pdGroup
+			ctx.PDGroups = []*v1alpha1.PDGroup{c.pdGroup}
 
-			m := newFakePDClientManager(tt, getCluster(ctx, &metapb.Cluster{
+			fc := client.NewFakeClient(c.cluster, c.pdGroup)
+
+			m := newFakePDClientManager(tt, fc, getCluster(ctx, &metapb.Cluster{
 				Id: c.clusterID,
 			}, nil))
 			m.Start(ctx)
-			require.NoError(tt, m.Register(ctx.PDGroup))
+			require.NoError(tt, m.Register(ctx.Cluster))
 
-			fc := client.NewFakeClient(c.cluster)
 			tk := NewTaskStatus(logr.Discard(), fc, m)
 			res := tk.Sync(ctx)
 			assert.Equal(tt, c.expected, res)
@@ -121,15 +122,15 @@ func TestStatusUpdater(t *testing.T) {
 	}
 }
 
-func newFakePDClientManager(t *testing.T, acts ...action) pdm.PDClientManager {
-	return timanager.NewManagerBuilder[*v1alpha1.PDGroup, pdapi.PDClient, pdm.PDClient]().
-		WithNewUnderlayClientFunc(func(*v1alpha1.PDGroup) (pdapi.PDClient, error) {
+func newFakePDClientManager(t *testing.T, c client.Client, acts ...action) pdm.PDClientManager {
+	return timanager.NewManagerBuilder[*v1alpha1.Cluster, pdapi.PDClient, pdm.PDClient]().
+		WithNewUnderlayClientFunc(func(*v1alpha1.Cluster) (pdapi.PDClient, error) {
 			return nil, nil
 		}).
-		WithNewClientFunc(func(*v1alpha1.PDGroup, pdapi.PDClient, timanager.SharedInformerFactory[pdapi.PDClient]) pdm.PDClient {
-			return NewFakePDClient(t, acts...)
+		WithNewClientFunc(func(*v1alpha1.Cluster, pdapi.PDClient, timanager.SharedInformerFactory[pdapi.PDClient]) (pdm.PDClient, error) {
+			return NewFakePDClient(t, acts...), nil
 		}).
-		WithCacheKeysFunc(pdm.CacheKeys).
+		WithCacheKeysFunc(pdm.CacheKeysFunc(c)).
 		Build()
 }
 

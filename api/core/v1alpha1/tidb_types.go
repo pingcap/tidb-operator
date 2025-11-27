@@ -217,7 +217,7 @@ type TiDBPreStop struct {
 
 type TiDBSecurity struct {
 	// TLS defines the tls configs of TiDB
-	TLS *TiDBTLS `json:"tls,omitempty"`
+	TLS *TiDBTLSConfig `json:"tls,omitempty"`
 
 	// Whether enable `tidb_auth_token` authentication method.
 	// To enable this feature, a secret named `<groupName>-tidb-auth-token-jwks-secret` must be created to store the JWKs.
@@ -280,7 +280,7 @@ type TiDBSlowLog struct {
 	Resources ResourceRequirements `json:"resources,omitempty"`
 }
 
-type TiDBTLS struct {
+type TiDBTLSConfig struct {
 	// When enabled, TiDB will accept TLS encrypted connections from MySQL clients.
 	// The steps to enable this feature:
 	//   1. Generate a TiDB server-side certificate and a client-side certifiacete for the TiDB cluster.
@@ -298,8 +298,8 @@ type TiDBTLS struct {
 	// +kubebuilder:validation:XValidation:rule="oldSelf == null || self.enabled == oldSelf.enabled",message="field .mysql.enabled is immutable"
 	MySQL *TLS `json:"mysql,omitempty"`
 
-	// ComponentTLS is tls config to access internal components
-	ComponentTLS `json:",inline"`
+	// ComponentTLSConfig is tls config to access internal components
+	ComponentTLSConfig `json:",inline"`
 }
 
 type TiDBAuthToken struct {

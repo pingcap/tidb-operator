@@ -108,6 +108,9 @@ level = "info"`),
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "ns1",
 				Name:      "basic-0",
+				Annotations: map[string]string{
+					v1alpha1.AnnoKeyInitialClusterNum: "3",
+				},
 			},
 			Spec: v1alpha1.PDSpec{
 				Subdomain: "basic-tikv-peer",
@@ -117,6 +120,9 @@ level = "info"`),
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "ns1",
 				Name:      "basic-1",
+				Annotations: map[string]string{
+					v1alpha1.AnnoKeyInitialClusterNum: "3",
+				},
 			},
 			Spec: v1alpha1.PDSpec{
 				Subdomain: "basic-tikv-peer",
@@ -126,6 +132,9 @@ level = "info"`),
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "ns1",
 				Name:      "basic-2",
+				Annotations: map[string]string{
+					v1alpha1.AnnoKeyInitialClusterNum: "3",
+				},
 			},
 			Spec: v1alpha1.PDSpec{
 				Subdomain: "basic-tikv-peer",

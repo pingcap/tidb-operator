@@ -237,30 +237,6 @@ func (in *Scheduling) ClusterCASecretName() string {
 	return prefix + "-" + in.Component() + "-cluster-secret"
 }
 
-func (in *Scheduling) ClientCertKeyPairSecretName() string {
-	sec := in.Spec.Security
-	if sec != nil && sec.TLS != nil && sec.TLS.Client != nil && sec.TLS.Client.CertKeyPair != nil {
-		return sec.TLS.Client.CertKeyPair.Name
-	}
-	return in.Cluster() + "-cluster-client-secret"
-}
-
-func (in *Scheduling) ClientCASecretName() string {
-	sec := in.Spec.Security
-	if sec != nil && sec.TLS != nil && sec.TLS.Client != nil && sec.TLS.Client.CA != nil {
-		return sec.TLS.Client.CA.Name
-	}
-	return in.Cluster() + "-cluster-client-secret"
-}
-
-func (in *Scheduling) ClientInsecureSkipTLSVerify() bool {
-	sec := in.Spec.Security
-	if sec != nil && sec.TLS != nil && sec.TLS.Client != nil && sec.TLS.Client.CA != nil {
-		return sec.TLS.Client.InsecureSkipTLSVerify
-	}
-	return false
-}
-
 func (in *Scheduling) IsOffline() bool {
 	return false
 }
@@ -438,7 +414,7 @@ func (g *SchedulingGroup) SetTemplateClusterTLS(ca, certKeyPair string) {
 	}
 	sec := g.Spec.Template.Spec.Security
 	if sec.TLS == nil {
-		sec.TLS = &v1alpha1.ComponentTLS{}
+		sec.TLS = &v1alpha1.ComponentTLSConfig{}
 	}
 	sec.TLS.Cluster = &v1alpha1.InternalTLS{}
 	if ca != "" {
@@ -469,30 +445,6 @@ func (g *SchedulingGroup) ClusterCASecretName() string {
 		return sec.TLS.Cluster.CA.Name
 	}
 	return defaultName
-}
-
-func (g *SchedulingGroup) ClientCertKeyPairSecretName() string {
-	sec := g.Spec.Template.Spec.Security
-	if sec != nil && sec.TLS != nil && sec.TLS.Client != nil && sec.TLS.Client.CertKeyPair != nil {
-		return sec.TLS.Client.CertKeyPair.Name
-	}
-	return g.Cluster() + "-cluster-client-secret"
-}
-
-func (g *SchedulingGroup) ClientCASecretName() string {
-	sec := g.Spec.Template.Spec.Security
-	if sec != nil && sec.TLS != nil && sec.TLS.Client != nil && sec.TLS.Client.CA != nil {
-		return sec.TLS.Client.CA.Name
-	}
-	return g.Cluster() + "-cluster-client-secret"
-}
-
-func (g *SchedulingGroup) ClientInsecureSkipTLSVerify() bool {
-	sec := g.Spec.Template.Spec.Security
-	if sec != nil && sec.TLS != nil && sec.TLS.Client != nil && sec.TLS.Client.CA != nil {
-		return sec.TLS.Client.InsecureSkipTLSVerify
-	}
-	return false
 }
 
 func (g *SchedulingGroup) MinReadySeconds() int64 {

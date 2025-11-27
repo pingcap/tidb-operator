@@ -513,13 +513,10 @@ type CertKeyPairReference struct {
 // Security defines the security config of a component
 type Security struct {
 	// TLS defines the tls configs of components
-	TLS *ComponentTLS `json:"tls,omitempty"`
+	TLS *ComponentTLSConfig `json:"tls,omitempty"`
 }
 
-// ComponentTLS defines the tls config of a component
-type ComponentTLS struct {
+// ComponentTLSConfig defines the tls config of a component
+type ComponentTLSConfig struct {
 	Cluster *InternalTLS `json:"cluster,omitempty"`
-
-	// Client defines the client tls for the tidb operator to visit the group
-	Client *InternalClientTLS `json:"client,omitempty"`
 }

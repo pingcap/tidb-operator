@@ -22,8 +22,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task"
 )
 
@@ -33,7 +35,7 @@ type ReconcileContext struct {
 	Key types.NamespacedName
 
 	Cluster          *v1alpha1.Cluster
-	PDGroup          *v1alpha1.PDGroup
+	PDGroups         []*v1alpha1.PDGroup
 	TiKVGroups       []*v1alpha1.TiKVGroup
 	TiFlashGroups    []*v1alpha1.TiFlashGroup
 	TiDBGroups       []*v1alpha1.TiDBGroup
@@ -84,89 +86,61 @@ func (t *TaskContext) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		return task.Complete().Break().With("cluster reconciliation is paused")
 	}
 
-	var pdGroupList v1alpha1.PDGroupList
-	if err := t.Client.List(ctx, &pdGroupList, client.InNamespace(rtx.Key.Namespace),
-		client.MatchingFields{"spec.cluster.name": rtx.Key.Name}); err != nil {
-		return task.Fail().With("can't list pd group: %w", err)
+	ns := rtx.Key.Namespace
+	name := rtx.Key.Name
+	pdgs, err := apicall.ListGroups[scope.PDGroup](ctx, t.Client, ns, name)
+	if err != nil {
+		return task.Fail().With("can't list pd groups: %w", err)
 	}
-	if len(pdGroupList.Items) > 1 {
-		return task.Fail().With("more than one pd group")
-	}
-	if len(pdGroupList.Items) != 0 {
-		rtx.PDGroup = &pdGroupList.Items[0]
-	}
+	rtx.PDGroups = pdgs
 
-	var tgl v1alpha1.TSOGroupList
-	if err := t.Client.List(ctx, &tgl, client.InNamespace(rtx.Key.Namespace),
-		client.MatchingFields{"spec.cluster.name": rtx.Key.Name}); err != nil {
-		return task.Fail().With("can't list tso group: %w", err)
+	tgs, err := apicall.ListGroups[scope.TSOGroup](ctx, t.Client, ns, name)
+	if err != nil {
+		return task.Fail().With("can't list tso groups: %w", err)
 	}
-	for i := range tgl.Items {
-		rtx.TSOGroups = append(rtx.TSOGroups, &tgl.Items[i])
-	}
+	rtx.TSOGroups = tgs
 
-	var sgl v1alpha1.SchedulingGroupList
-	if err := t.Client.List(ctx, &sgl, client.InNamespace(rtx.Key.Namespace),
-		client.MatchingFields{"spec.cluster.name": rtx.Key.Name}); err != nil {
-		return task.Fail().With("can't list scheduling group: %w", err)
+	sgs, err := apicall.ListGroups[scope.SchedulingGroup](ctx, t.Client, ns, name)
+	if err != nil {
+		return task.Fail().With("can't list scheduling groups: %w", err)
 	}
-	for i := range sgl.Items {
-		rtx.SchedulingGroups = append(rtx.SchedulingGroups, &sgl.Items[i])
-	}
+	rtx.SchedulingGroups = sgs
 
-	var dsgl v1alpha1.SchedulerGroupList
-	if err := t.Client.List(ctx, &dsgl, client.InNamespace(rtx.Key.Namespace),
-		client.MatchingFields{"spec.cluster.name": rtx.Key.Name}); err != nil {
-		return task.Fail().With("can't list scheduler group: %w", err)
+	lsgs, err := apicall.ListGroups[scope.SchedulerGroup](ctx, t.Client, ns, name)
+	if err != nil {
+		return task.Fail().With("can't list scheduler groups: %w", err)
 	}
-	for i := range dsgl.Items {
-		rtx.SchedulerGroups = append(rtx.SchedulerGroups, &dsgl.Items[i])
-	}
+	rtx.SchedulerGroups = lsgs
 
-	var tikvGroupList v1alpha1.TiKVGroupList
-	if err := t.Client.List(ctx, &tikvGroupList, client.InNamespace(rtx.Key.Namespace),
-		client.MatchingFields{"spec.cluster.name": rtx.Key.Name}); err != nil {
-		return task.Fail().With("can't list tikv group: %w", err)
+	kvgs, err := apicall.ListGroups[scope.TiKVGroup](ctx, t.Client, ns, name)
+	if err != nil {
+		return task.Fail().With("can't list tikv groups: %w", err)
 	}
-	for i := range tikvGroupList.Items {
-		rtx.TiKVGroups = append(rtx.TiKVGroups, &tikvGroupList.Items[i])
-	}
+	rtx.TiKVGroups = kvgs
 
-	var tiflashGroupList v1alpha1.TiFlashGroupList
-	if err := t.Client.List(ctx, &tiflashGroupList, client.InNamespace(rtx.Key.Namespace),
-		client.MatchingFields{"spec.cluster.name": rtx.Key.Name}); err != nil {
-		return task.Fail().With("can't list tiflash group: %w", err)
+	fgs, err := apicall.ListGroups[scope.TiFlashGroup](ctx, t.Client, ns, name)
+	if err != nil {
+		return task.Fail().With("can't list tiflash groups: %w", err)
 	}
-	for i := range tiflashGroupList.Items {
-		rtx.TiFlashGroups = append(rtx.TiFlashGroups, &tiflashGroupList.Items[i])
-	}
+	rtx.TiFlashGroups = fgs
 
-	var tidbGroupList v1alpha1.TiDBGroupList
-	if err := t.Client.List(ctx, &tidbGroupList, client.InNamespace(rtx.Key.Namespace),
-		client.MatchingFields{"spec.cluster.name": rtx.Key.Name}); err != nil {
-		return task.Fail().With("can't list tidb group: %w", err)
+	dbgs, err := apicall.ListGroups[scope.TiDBGroup](ctx, t.Client, ns, name)
+	if err != nil {
+		return task.Fail().With("can't list tidb groups: %w", err)
 	}
-	for i := range tidbGroupList.Items {
-		rtx.TiDBGroups = append(rtx.TiDBGroups, &tidbGroupList.Items[i])
-	}
+	rtx.TiDBGroups = dbgs
 
-	var ticdcGroupList v1alpha1.TiCDCGroupList
-	if err := t.Client.List(ctx, &ticdcGroupList, client.InNamespace(rtx.Key.Namespace),
-		client.MatchingFields{"spec.cluster.name": rtx.Key.Name}); err != nil {
-		return task.Fail().With("can't list ticdc group: %w", err)
+	cgs, err := apicall.ListGroups[scope.TiCDCGroup](ctx, t.Client, ns, name)
+	if err != nil {
+		return task.Fail().With("can't list ticdc groups: %w", err)
 	}
-	for i := range ticdcGroupList.Items {
-		rtx.TiCDCGroups = append(rtx.TiCDCGroups, &ticdcGroupList.Items[i])
-	}
+	rtx.TiCDCGroups = cgs
 
-	var tiproxyGroupList v1alpha1.TiProxyGroupList
-	if err := t.Client.List(ctx, &tiproxyGroupList, client.InNamespace(rtx.Key.Namespace),
-		client.MatchingFields{"spec.cluster.name": rtx.Key.Name}); err != nil {
-		return task.Fail().With("can't list tiproxy group: %w", err)
+	pgs, err := apicall.ListGroups[scope.TiProxyGroup](ctx, t.Client, ns, name)
+	if err != nil {
+		return task.Fail().With("can't list tiproxy groups: %w", err)
 	}
-	for i := range tiproxyGroupList.Items {
-		rtx.TiProxyGroups = append(rtx.TiProxyGroups, &tiproxyGroupList.Items[i])
-	}
+	rtx.TiProxyGroups = pgs
 
 	return task.Complete().With("new context completed")
 }

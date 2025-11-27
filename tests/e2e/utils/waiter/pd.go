@@ -45,3 +45,19 @@ func WaitForPDsHealthy(ctx context.Context, c client.Client, pdg *v1alpha1.PDGro
 		v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentPD,
 	})
 }
+
+func PDHasLeader(items []*v1alpha1.PD) error {
+	if len(items) == 0 {
+		return fmt.Errorf("no pd")
+	}
+
+	var names []string
+	for _, item := range items {
+		names = append(names, item.Name)
+		if item.Status.IsLeader {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("all pds %v are not leader", names)
+}

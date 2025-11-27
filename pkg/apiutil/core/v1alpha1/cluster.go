@@ -51,8 +51,51 @@ func EnabledFeatures(c *v1alpha1.Cluster) []metav1alpha1.Feature {
 	return fs
 }
 
+func IsFeatureEnabled(c *v1alpha1.Cluster, f metav1alpha1.Feature) bool {
+	for _, fg := range c.Spec.FeatureGates {
+		if fg.Name == f {
+			return true
+		}
+	}
+
+	return false
+}
+
 // ClusterSubdomain returns the subdomain for all components of the cluster
 func ClusterSubdomain(clusterName string) string {
 	// add a suffix to avoid svc name conflict
 	return clusterName + "-cluster"
+}
+
+// ClusterPD returns the pd service of the cluster
+func ClusterPD(c *v1alpha1.Cluster) string {
+	// add a suffix to avoid svc name conflict
+	if c.Spec.CustomizedPDServiceName != nil {
+		return *c.Spec.CustomizedPDServiceName
+	}
+	return c.Name + "-pd"
+}
+
+func ClientCertKeyPairSecretName(c *v1alpha1.Cluster) string {
+	sec := c.Spec.Security
+	if sec != nil && sec.TLS != nil && sec.TLS.Client != nil && sec.TLS.Client.CertKeyPair != nil {
+		return sec.TLS.Client.CertKeyPair.Name
+	}
+	return c.Name + "-cluster-client-secret"
+}
+
+func ClientCASecretName(c *v1alpha1.Cluster) string {
+	sec := c.Spec.Security
+	if sec != nil && sec.TLS != nil && sec.TLS.Client != nil && sec.TLS.Client.CA != nil {
+		return sec.TLS.Client.CA.Name
+	}
+	return c.Name + "-cluster-client-secret"
+}
+
+func ClientInsecureSkipTLSVerify(c *v1alpha1.Cluster) bool {
+	sec := c.Spec.Security
+	if sec != nil && sec.TLS != nil && sec.TLS.Client != nil {
+		return sec.TLS.Client.InsecureSkipTLSVerify
+	}
+	return false
 }

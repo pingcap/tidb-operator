@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
 func PDGroupClientPort(pdg *v1alpha1.PDGroup) int32 {
@@ -48,12 +49,16 @@ func PDPeerPort(pd *v1alpha1.PD) int32 {
 	return v1alpha1.DefaultPDPortPeer
 }
 
-func PDServiceHost(pdg *v1alpha1.PDGroup) string {
-	host := fmt.Sprintf("%s-pd.%s:%d", pdg.Name, pdg.Namespace, PDGroupClientPort(pdg))
+// PDServiceURL returns the service url of PD
+func PDServiceURL(c *v1alpha1.Cluster, pdg *v1alpha1.PDGroup) string {
+	svc := ClusterPD(c)
+	ns := c.Namespace
+	port := int32(v1alpha1.DefaultPDPortClient)
+	if !IsFeatureEnabled(c, metav1alpha1.MultiPDGroup) {
+		svc = pdg.Name + "-pd"
+		port = PDGroupClientPort(pdg)
+	}
+	host := fmt.Sprintf("%s.%s:%d", svc, ns, port)
 
-	return host
-}
-
-func PDServiceURL(pdg *v1alpha1.PDGroup, isTLS bool) string {
-	return hostToURL(PDServiceHost(pdg), isTLS)
+	return hostToURL(host, IsTLSClusterEnabled(c))
 }

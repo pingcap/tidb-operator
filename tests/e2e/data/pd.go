@@ -62,6 +62,12 @@ func WithMSMode() GroupPatch[*v1alpha1.PDGroup] {
 	})
 }
 
+func WithBootstrapped() GroupPatch[*v1alpha1.PDGroup] {
+	return GroupPatchFunc[*v1alpha1.PDGroup](func(obj *v1alpha1.PDGroup) {
+		obj.Spec.Bootstrapped = true
+	})
+}
+
 func WithSlowDataMigration() GroupPatch[*v1alpha1.PDGroup] {
 	return GroupPatchFunc[*v1alpha1.PDGroup](func(obj *v1alpha1.PDGroup) {
 		obj.Spec.Template.Spec.Config = `[schedule]

@@ -56,3 +56,14 @@ func NewAndSetIfNotEmptyAndChanged[T comparable](dst **T, src T) bool {
 
 	return SetIfChanged(*dst, src)
 }
+
+// SetIfDstEmpty set src to dst if dst is empty
+func SetIfDstEmpty[T comparable](dst *T, src T) bool {
+	if *dst != *new(T) {
+		return false
+	}
+	if src == *new(T) {
+		return false
+	}
+	return SetIfChanged(dst, src)
+}

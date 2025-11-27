@@ -18,6 +18,8 @@ import (
 	"github.com/go-logr/logr"
 
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
+	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task"
 )
@@ -25,12 +27,15 @@ import (
 type TaskFinalizer struct {
 	Logger logr.Logger
 	Client client.Client
+
+	PDClientManager pdm.PDClientManager
 }
 
-func NewTaskFinalizer(logger logr.Logger, c client.Client) task.Task[ReconcileContext] {
+func NewTaskFinalizer(logger logr.Logger, c client.Client, m pdm.PDClientManager) task.Task[ReconcileContext] {
 	return &TaskFinalizer{
-		Logger: logger,
-		Client: c,
+		Logger:          logger,
+		Client:          c,
+		PDClientManager: m,
 	}
 }
 
@@ -49,7 +54,9 @@ func (t *TaskFinalizer) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		return task.Complete().With("ensured finalizer")
 	}
 
-	if rtx.PDGroup == nil &&
+	t.PDClientManager.Deregister(timanager.PrimaryKey(rtx.Cluster.Namespace, rtx.Cluster.Name))
+
+	if len(rtx.PDGroups) == 0 &&
 		len(rtx.TiKVGroups) == 0 &&
 		len(rtx.TiDBGroups) == 0 &&
 		len(rtx.TiFlashGroups) == 0 &&
@@ -65,60 +72,60 @@ func (t *TaskFinalizer) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	}
 
 	// trigger the deletion of the components
-	if rtx.PDGroup != nil {
+	for _, pdg := range rtx.PDGroups {
 		//nolint:gocritic // not a real issue, see https://github.com/go-critic/go-critic/issues/1448
-		if err := t.Client.Delete(ctx, rtx.PDGroup); client.IgnoreNotFound(err) != nil {
-			return task.Fail().With("can't delete pd group: %w", err)
+		if err := t.Client.Delete(ctx, pdg); client.IgnoreNotFound(err) != nil {
+			return task.Fail().With("can't delete pd group: %v", err)
 		}
 	}
 	for _, tg := range rtx.TSOGroups {
 		//nolint:gocritic // not a real issue, see https://github.com/go-critic/go-critic/issues/1448
 		if err := t.Client.Delete(ctx, tg); client.IgnoreNotFound(err) != nil {
-			return task.Fail().With("can't delete tso group: %w", err)
+			return task.Fail().With("can't delete tso group: %v", err)
 		}
 	}
 	for _, sg := range rtx.SchedulingGroups {
 		//nolint:gocritic // not a real issue, see https://github.com/go-critic/go-critic/issues/1448
 		if err := t.Client.Delete(ctx, sg); client.IgnoreNotFound(err) != nil {
-			return task.Fail().With("can't delete scheduling group: %w", err)
+			return task.Fail().With("can't delete scheduling group: %v", err)
 		}
 	}
 	for _, sg := range rtx.SchedulerGroups {
 		//nolint:gocritic // not a real issue, see https://github.com/go-critic/go-critic/issues/1448
 		if err := t.Client.Delete(ctx, sg); client.IgnoreNotFound(err) != nil {
-			return task.Fail().With("can't delete scheduler group: %w", err)
+			return task.Fail().With("can't delete scheduler group: %v", err)
 		}
 	}
 	for _, tikvGroup := range rtx.TiKVGroups {
 		//nolint:gocritic // not a real issue, see https://github.com/go-critic/go-critic/issues/1448
 		if err := t.Client.Delete(ctx, tikvGroup); client.IgnoreNotFound(err) != nil {
-			return task.Fail().With("can't delete tikv group: %w", err)
+			return task.Fail().With("can't delete tikv group: %v", err)
 		}
 	}
 	for _, tiflashGroup := range rtx.TiFlashGroups {
 		//nolint:gocritic // not a real issue, see https://github.com/go-critic/go-critic/issues/1448
 		if err := t.Client.Delete(ctx, tiflashGroup); client.IgnoreNotFound(err) != nil {
-			return task.Fail().With("can't delete tiflash group: %w", err)
+			return task.Fail().With("can't delete tiflash group: %v", err)
 		}
 	}
 	for _, tidbGroup := range rtx.TiDBGroups {
 		//nolint:gocritic // not a real issue, see https://github.com/go-critic/go-critic/issues/1448
 		if err := t.Client.Delete(ctx, tidbGroup); client.IgnoreNotFound(err) != nil {
-			return task.Fail().With("can't delete tidb group: %w", err)
+			return task.Fail().With("can't delete tidb group: %v", err)
 		}
 	}
 
 	for _, ticdcGroup := range rtx.TiCDCGroups {
 		//nolint:gocritic // not a real issue, see https://github.com/go-critic/go-critic/issues/1448
 		if err := t.Client.Delete(ctx, ticdcGroup); client.IgnoreNotFound(err) != nil {
-			return task.Fail().With("can't delete ticdc group: %w", err)
+			return task.Fail().With("can't delete ticdc group: %v", err)
 		}
 	}
 
 	for _, pg := range rtx.TiProxyGroups {
 		//nolint:gocritic // not a real issue, see https://github.com/go-critic/go-critic/issues/1448
 		if err := t.Client.Delete(ctx, pg); client.IgnoreNotFound(err) != nil {
-			return task.Fail().With("can't delete tiproxy group: %w", err)
+			return task.Fail().With("can't delete tiproxy group: %v", err)
 		}
 	}
 

@@ -17,6 +17,7 @@ package data
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
@@ -69,6 +70,12 @@ func WithClusterTLSEnabled() ClusterPatch {
 func WithClusterName(name string) ClusterPatch {
 	return func(obj *v1alpha1.Cluster) {
 		obj.Name = name
+	}
+}
+
+func WithCustomizedPDServiceName(name string) ClusterPatch {
+	return func(obj *v1alpha1.Cluster) {
+		obj.Spec.CustomizedPDServiceName = ptr.To(name)
 	}
 }
 

@@ -28,7 +28,6 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
-	"github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 )
 
@@ -315,24 +314,13 @@ func TestPDClientManager(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// hack NewUnderlayClientFunc to replace the URL to a test server
-	originalNewUnderlayClientFunc := NewUnderlayClientFunc
-	defer func() {
-		NewUnderlayClientFunc = originalNewUnderlayClientFunc
-	}()
-	NewUnderlayClientFunc = func(c client.Client) timanager.NewUnderlayClientFunc[*v1alpha1.PDGroup, pdapi.PDClient] {
-		return func(pdg *v1alpha1.PDGroup) (pdapi.PDClient, error) {
-			_, err := originalNewUnderlayClientFunc(c)(pdg)
-			require.NoError(t, err)
-			// create a new PDClient with the test server URL
-			return pdapi.NewPDClient(server.URL, pdRequestTimeout, nil), nil
-		}
-	}
-
 	cluster := &v1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "basic",
 			Namespace: "ns1",
+		},
+		Status: v1alpha1.ClusterStatus{
+			PD: server.URL,
 		},
 	}
 	pdg := &v1alpha1.PDGroup{
@@ -357,11 +345,11 @@ func TestPDClientManager(t *testing.T) {
 	assert.False(t, ok)
 
 	// register
-	require.NoError(t, pcm.Register(pdg))
+	require.NoError(t, pcm.Register(cluster))
 	pdc, ok := pcm.Get(timanager.PrimaryKey(pdg.GetNamespace(), pdg.GetName()))
 	assert.True(t, ok)
 	// wait for the cache to be synced
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		if pdc.HasSynced() {
 			break
 		}

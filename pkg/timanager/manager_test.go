@@ -95,17 +95,16 @@ func TestClientManager(t *testing.T) {
 				WithCacheKeysFunc(func(obj client.Object) ([]string, error) {
 					return []string{obj.GetName(), obj.GetNamespace(), string(obj.GetUID())}, nil
 				}).
-				WithNewClientFunc(func(obj client.Object, underlay int, _ SharedInformerFactory[int]) int {
+				WithNewClientFunc(func(obj client.Object, underlay int, _ SharedInformerFactory[int]) (int, error) {
 					// check underlay client is newed by NewUnderlayClientFunc
 					assert.Equal(tt, count, underlay)
 					// key is equal with the primary key returned by cache keys
 					assert.Equal(tt, c.obj, obj)
-					return count
+					return count, nil
 				}).
 				Build()
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := tt.Context()
 			cm.Start(ctx)
 
 			// client is not registered
@@ -255,9 +254,9 @@ func TestClientManagerSource(t *testing.T) {
 				WithCacheKeysFunc(func(obj client.Object) ([]string, error) {
 					return []string{obj.GetName()}, nil
 				}).
-				WithNewClientFunc(func(_ client.Object, _ int, f SharedInformerFactory[int]) int {
+				WithNewClientFunc(func(_ client.Object, _ int, f SharedInformerFactory[int]) (int, error) {
 					f.InformerFor(&pdv1.Store{})
-					return 0
+					return 0, nil
 				}).
 				WithNewPollerFunc(&pdv1.Store{}, func(name string, logger logr.Logger, _ int) Poller {
 					return NewPoller(name, logger, &lister, NewDeepEquality[pdv1.Store](logger), time.Millisecond*200)

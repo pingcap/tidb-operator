@@ -22,14 +22,26 @@ import (
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/cert"
 )
 
-type CertManager struct {
+type CertManager interface {
+	Install(ctx context.Context, ns, cluster string)
+}
+
+type certManager struct {
 	f *Framework
 
 	cf cert.Factory
 }
 
-func (f *Framework) SetupCertManager() *CertManager {
-	w := &CertManager{
+type noopCertManager struct{}
+
+func (cm *noopCertManager) Install(ctx context.Context, ns, cluster string) {}
+
+func (f *Framework) SetupCertManager(tls bool) CertManager {
+	if !tls {
+		return &noopCertManager{}
+	}
+
+	w := &certManager{
 		f:  f,
 		cf: cert.NewFactory(f.Client),
 	}
@@ -40,11 +52,11 @@ func (f *Framework) SetupCertManager() *CertManager {
 
 // Install is called to install all certs of the whole cluster
 // NOTE: Install must be called after all groups have been created
-func (cm *CertManager) Install(ctx context.Context, ns, cluster string) {
+func (cm *certManager) Install(ctx context.Context, ns, cluster string) {
 	cm.f.Must(cm.cf.Install(ctx, ns, cluster))
 }
 
-func (cm *CertManager) deferCleanup() {
+func (cm *certManager) deferCleanup() {
 	ginkgo.BeforeEach(func(ctx context.Context) {
 		ginkgo.DeferCleanup(func(ctx context.Context) {
 			cm.f.Must(cm.cf.Cleanup(ctx))
