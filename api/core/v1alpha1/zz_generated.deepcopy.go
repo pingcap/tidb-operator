@@ -206,6 +206,11 @@ func (in *ClusterSpec) DeepCopyInto(out *ClusterSpec) {
 		*out = make([]metav1alpha1.FeatureGate, len(*in))
 		copy(*out, *in)
 	}
+	if in.CustomizedPDServiceName != nil {
+		in, out := &in.CustomizedPDServiceName, &out.CustomizedPDServiceName
+		*out = new(string)
+		**out = **in
+	}
 	if in.Security != nil {
 		in, out := &in.Security, &out.Security
 		*out = new(ClusterSecurity)
