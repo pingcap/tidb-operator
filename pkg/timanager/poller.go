@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 
@@ -65,6 +66,7 @@ func NewPoller[T any, PT Object[T], L client.ObjectList](
 		equality:  eq,
 		logger:    logger,
 		refreshCh: make(chan struct{}, bufSize),
+		typeName:  fmt.Sprintf("%T", new(T)),
 	}
 }
 
@@ -86,6 +88,8 @@ type poller[T any, PT Object[T], L client.ObjectList] struct {
 
 	lister   Lister[T, PT, L]
 	equality Equality[T, PT]
+
+	typeName string
 }
 
 func (p *poller[T, PT, L]) renew(ctx context.Context) context.Context {
@@ -99,6 +103,7 @@ func (p *poller[T, PT, L]) renew(ctx context.Context) context.Context {
 }
 
 func (p *poller[T, PT, L]) Sync(ctx context.Context) (runtime.Object, error) {
+	p.logger.Info("poller sync", "cluster", p.name, "kind", p.typeName)
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -154,11 +159,13 @@ func (p *poller[T, PT, L]) Run(ctx context.Context, ch chan<- watch.Event) {
 	for {
 		select {
 		case <-nctx.Done():
-			p.logger.Info("poller is stopped", "cluster", p.name, "type", new(T))
+			p.logger.Info("poller is stopped", "cluster", p.name, "kind", p.typeName)
 			return
 		case <-p.refreshCh:
+			p.logger.Info("poller refresh", "cluster", p.name, "kind", p.typeName)
 			p.poll(ctx)
 		case <-timer.C:
+			p.logger.Info("poller poll", "cluster", p.name, "kind", p.typeName)
 			p.poll(ctx)
 		}
 		timer.Reset(p.interval)
@@ -241,17 +248,31 @@ func (p *poller[T, PT, L]) generateEvents(ctx context.Context, prevState, curSta
 func (p *poller[T, PT, L]) sendEvent(ctx context.Context, e *watch.Event) {
 	select {
 	case p.resultCh <- *e:
-		p.logger.Info("poller send event", "type", e.Type, "object", e.Object)
+		p.logger.Info("poller sent event", "type", e.Type, "object", e.Object, "kind", p.typeName)
 	case <-ctx.Done():
 	}
 }
 
-type deepEquality[T any, PT Object[T]] struct{}
-
-func (*deepEquality[T, PT]) Equal(preObj, curObj PT) bool {
-	return reflect.DeepEqual(preObj, curObj)
+type deepEquality[T any, PT Object[T]] struct {
+	logger logr.Logger
 }
 
-func NewDeepEquality[T any, PT Object[T]]() Equality[T, PT] {
-	return &deepEquality[T, PT]{}
+func (e *deepEquality[T, PT]) Equal(preObj, curObj PT) bool {
+	if reflect.DeepEqual(preObj, curObj) {
+		return true
+	}
+
+	e.logger.Info("poll obj is changed",
+		"namespace", curObj.GetNamespace(),
+		"name", curObj.GetName(),
+		"diff", cmp.Diff(preObj, curObj),
+	)
+
+	return false
+}
+
+func NewDeepEquality[T any, PT Object[T]](logger logr.Logger) Equality[T, PT] {
+	return &deepEquality[T, PT]{
+		logger: logger,
+	}
 }

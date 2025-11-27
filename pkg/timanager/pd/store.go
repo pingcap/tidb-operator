@@ -49,7 +49,7 @@ func NewStorePoller(name string, logger logr.Logger, c pdapi.PDClient) timanager
 	lister := NewStoreLister(name, c)
 
 	// TODO: change interval
-	return timanager.NewPoller(name, logger, lister, timanager.NewDeepEquality[pdv1.Store](), defaultPollInterval)
+	return timanager.NewPoller(name, logger, lister, timanager.NewDeepEquality[pdv1.Store](logger), defaultPollInterval)
 }
 
 type storeLister struct {
