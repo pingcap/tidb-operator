@@ -528,13 +528,16 @@ func TestGetNewTiCDCStatefulSet(t *testing.T) {
 					Namespace: "ns",
 				},
 				Spec: v1alpha1.TidbClusterSpec{
-					TiCDC: &v1alpha1.TiCDCSpec{StorageVolumes: []v1alpha1.StorageVolume{
-						{
-							Name:        "sort-dir",
-							StorageSize: "2Gi",
-							MountPath:   "/var/lib/sort-dir",
+					TiCDC: &v1alpha1.TiCDCSpec{
+						VolumeAttributesClassName: pointer.String("gold"),
+						StorageVolumes: []v1alpha1.StorageVolume{
+							{
+								Name:        "sort-dir",
+								StorageSize: "2Gi",
+								MountPath:   "/var/lib/sort-dir",
+							},
 						},
-					}},
+					},
 				},
 			},
 			testSts: func(sts *apps.StatefulSet) {
@@ -549,11 +552,12 @@ func TestGetNewTiCDCStatefulSet(t *testing.T) {
 							AccessModes: []corev1.PersistentVolumeAccessMode{
 								corev1.ReadWriteOnce,
 							},
-							Resources: corev1.ResourceRequirements{
+							Resources: corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceStorage: q,
 								},
 							},
+							VolumeAttributesClassName: pointer.String("gold"),
 						},
 					},
 				}))

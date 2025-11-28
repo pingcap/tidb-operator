@@ -207,6 +207,18 @@ Defaults to Kubernetes default storage class.</p>
 </tr>
 <tr>
 <td>
+<code>volumeAttributesClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The VolumeAttributesClassName of the persistent volume for Backup data storage.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>storageSize</code></br>
 <em>
 string
@@ -724,6 +736,18 @@ string
 <em>(Optional)</em>
 <p>The storageClassName of the persistent volume for Backup data storage if not storage class name set in BackupSpec.
 Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeAttributesClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The VolumeAttributesClassName of the persistent volume for Backup data storage if not volumeAttributesClassName set in BackupSpec.</p>
 </td>
 </tr>
 <tr>
@@ -1522,6 +1546,18 @@ string
 <em>(Optional)</em>
 <p>The storageClassName of the persistent volume for Restore data storage.
 Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeAttributesClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The VolumeAttributesClassName of the persistent volume for Restore data storage.</p>
 </td>
 </tr>
 <tr>
@@ -3887,6 +3923,18 @@ Defaults to Kubernetes default storage class.</p>
 </tr>
 <tr>
 <td>
+<code>volumeAttributesClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The VolumeAttributesClassName of the persistent volume for Backup data storage if not volumeAttributesClassName set in BackupSpec.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>storageSize</code></br>
 <em>
 string
@@ -4199,6 +4247,18 @@ string
 <em>(Optional)</em>
 <p>The storageClassName of the persistent volume for Backup data storage.
 Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeAttributesClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The VolumeAttributesClassName of the persistent volume for Backup data storage.</p>
 </td>
 </tr>
 <tr>
@@ -10124,6 +10184,19 @@ Defaults to Kubernetes default storage class.</p>
 </tr>
 <tr>
 <td>
+<code>volumeAttributesClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The VolumeAttributesClassName of the persistent volume for dm-master data storage.
+If it is set, the change of StorageClassName will be ignored.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>storageSize</code></br>
 <em>
 string
@@ -11754,6 +11827,19 @@ Defaults to Kubernetes default storage class.</p>
 </tr>
 <tr>
 <td>
+<code>volumeAttributesClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The VolumeAttributesClassName of the persistent volume for PD microservice data storage.
+If it is set, the change of StorageClassName will be ignored.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>storageVolumes</code></br>
 <em>
 <a href="#storagevolume">
@@ -12865,6 +12951,19 @@ string
 <em>(Optional)</em>
 <p>The storageClassName of the persistent volume for PD data storage.
 Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeAttributesClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The VolumeAttributesClassName of the persistent volume for PD data storage.
+If it is set, the change of StorageClassName will be ignored.</p>
 </td>
 </tr>
 <tr>
@@ -14435,6 +14534,19 @@ Defaults to Kubernetes default storage class.</p>
 </tr>
 <tr>
 <td>
+<code>volumeAttributesClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The VolumeAttributesClassName of the persistent volume for Pump data storage.
+If it is set, the change of StorageClassName will be ignored.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>config</code></br>
 <em>
 github.com/pingcap/tidb-operator/pkg/apis/util/config.GenericConfig
@@ -15297,6 +15409,18 @@ string
 <em>(Optional)</em>
 <p>The storageClassName of the persistent volume for Restore data storage.
 Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeAttributesClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The VolumeAttributesClassName of the persistent volume for Restore data storage.</p>
 </td>
 </tr>
 <tr>
@@ -16485,6 +16609,19 @@ string
 More info: <a href="https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1">https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1</a></p>
 </td>
 </tr>
+<tr>
+<td>
+<code>volumeAttributesClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Name of the VolumeAttributesClassName required by the claim.
+If it is set, the change of StorageClassName will be ignored.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="storageprovider">StorageProvider</h3>
@@ -16573,7 +16710,9 @@ LocalStorageProvider
 Note:
 If <code>MountPath</code> is not set, volumeMount will not be generated. (You may not want to set this field when you inject volumeMount
 in somewhere else such as Mutating Admission Webhook)
-If <code>StorageClassName</code> is not set, default to the <code>spec.${component}.storageClassName</code></p>
+If <code>StorageClassName</code> is not set, default to the <code>spec.${component}.storageClassName</code>
+If <code>VolumeAttributesClassName</code> is not set, default to the <code>spec.${component}.volumeAttributesClassName</code>
+If <code>VolumeAttributesClassName</code> is set, the change of <code>StorageClassName</code> will be ignored.</p>
 </p>
 <table>
 <thead>
@@ -16616,6 +16755,16 @@ string
 <tr>
 <td>
 <code>mountPath</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeAttributesClassName</code></br>
 <em>
 string
 </em>
@@ -17267,6 +17416,19 @@ string
 <em>(Optional)</em>
 <p>The storageClassName of the persistent volume for TiCDC data storage.
 Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeAttributesClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The VolumeAttributesClassName of the persistent volume for TiCDC data storage.
+If it is set, the change of StorageClassName will be ignored.</p>
 </td>
 </tr>
 <tr>
@@ -18647,6 +18809,19 @@ string
 <em>(Optional)</em>
 <p>The storageClassName of the persistent volume for TiDB data storage.
 Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeAttributesClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The VolumeAttributesClassName of the persistent volume for TiDB data storage.
+If it is set, the change of StorageClassName will be ignored.</p>
 </td>
 </tr>
 <tr>
@@ -23281,6 +23456,19 @@ Defaults to Kubernetes default storage class.</p>
 </tr>
 <tr>
 <td>
+<code>volumeAttributesClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The VolumeAttributesClassName of the persistent volume for TiKV data storage.
+If it is set, the change of StorageClassName will be ignored.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>dataSubDir</code></br>
 <em>
 string
@@ -24479,6 +24667,19 @@ string
 <em>(Optional)</em>
 <p>The storageClassName of the persistent volume for TiProxy data storage.
 Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeAttributesClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The VolumeAttributesClassName of the persistent volume for TiProxy data storage.
+If it is set, the change of StorageClassName will be ignored.</p>
 </td>
 </tr>
 <tr>
@@ -27631,6 +27832,19 @@ string
 <em>(Optional)</em>
 <p>The storageClassName of the persistent volume for dm-worker data storage.
 Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeAttributesClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The VolumeAttributesClassName of the persistent volume for dm-worker data storage.
+If it is set, the change of StorageClassName will be ignored.</p>
 </td>
 </tr>
 <tr>
