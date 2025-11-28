@@ -368,7 +368,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 	objMeta, stsLabels := getPumpMeta(tc, controller.PumpMemberName)
 	replicas := tc.Spec.Pump.Replicas
 	storageClass := tc.Spec.Pump.StorageClassName
-	VolumeAttributesClassName := tc.Spec.Pump.VolumeAttributesClassName
+	volumeAttributesClassName := tc.Spec.Pump.VolumeAttributesClassName
 	podLabels := util.CombineStringMap(stsLabels.Labels(), spec.Labels())
 	podAnnos := util.CombineStringMap(spec.Annotations(), controller.AnnProm(v1alpha1.DefaultPumpPort, "/metrics"))
 	storageRequest, err := controller.ParseStorageRequest(tc.Spec.Pump.Requests)
@@ -487,7 +487,7 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 					corev1.ReadWriteOnce,
 				},
 				StorageClassName:          storageClass,
-				VolumeAttributesClassName: VolumeAttributesClassName,
+				VolumeAttributesClassName: volumeAttributesClassName,
 				Resources:                 storageRequest,
 			},
 		},

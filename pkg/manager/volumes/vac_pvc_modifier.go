@@ -40,6 +40,10 @@ func newVACPVCModifier(deps *controller.Dependencies) *vacPVCModifier {
 }
 
 func (m *vacPVCModifier) modifyVolumes(ctx *componentVolumeContext) error {
+	if ctx.status.GetPhase() != v1alpha1.NormalPhase {
+		return fmt.Errorf("component phase is not Normal")
+	}
+
 	if err := m.tryToRecreateSTS(ctx); err != nil {
 		return err
 	}
@@ -140,9 +144,7 @@ func (m *vacPVCModifier) isPVCModified(pvc *corev1.PersistentVolumeClaim, desire
 	if size.Cmp(desiredSize) != 0 {
 		return true
 	}
+
 	vacName := pvc.Spec.VolumeAttributesClassName
-	if ignoreNil(vacName) != ignoreNil(desiredVACName) {
-		return true
-	}
-	return false
+	return ignoreNil(vacName) != ignoreNil(desiredVACName)
 }
