@@ -1,0 +1,47 @@
+# See the OWNERS docs at https://www.kubernetes.dev/docs/guide/owners/#owners_aliases
+# The members of 'sig-community-*' are synced from memberships defined in repository: https://github.com/pingcap/community.
+aliases:
+  sig-community-reviewers:
+    - cvvz
+    - howardlau1999
+    - lichunzhu
+    - shonge
+  sig-community-approvers:
+    - AstroProfundis
+    - Benjamin2037
+    - BornChanger
+    - DanielZhangQD
+    - Ehco1996
+    - HuSharp
+    - KanShiori
+    - LinuxGit
+    - WangLe1321
+    - WizardXiao
+    - Yisaer
+    - aylei
+    - azurezyq
+    - charleszheng44
+    - cofyc
+    - csuzhangxc
+    - dragonly
+    - fengou1
+    - fgksgf
+    - gozssky
+    - gregwebs
+    - grovecai
+    - handlerww
+    - hanlins
+    - jlerche
+    - july2993
+    - liubog2008
+    - mikechengwei
+    - niubell
+    - onlymellb
+    - qiffang
+    - sdojjy
+    - shuijing198799
+    - srstack
+    - tennix
+    - weekface
+    - z2665
+    - zimulala
