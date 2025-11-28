@@ -78,13 +78,19 @@ function image::build() {
             --target $target \
             -o type=oci,dest=$IMAGE_DIR/${target}.tar \
             -t ${V_IMG_PROJECT}/${image}:${V_RELEASE} \
-            --cache-from=type=local,src=$CACHE_DIR \
-            --cache-to=type=local,dest=$CACHE_DIR \
+            --cache-from=type=local,src=${CACHE_DIR}/${image} \
+            --cache-to=type=local,mode=max,dest=${CACHE_DIR}/${image}_tmp \
             --build-arg=TARGET="${target}" \
             --build-arg=LDFLAGS="${V_LDFLAGS}" \
             $args \
             -f $ROOT/image/Dockerfile $ROOT
+
+        # Local cache cannot be cleaned automatically
+        # See https://github.com/moby/buildkit/issues/1896
+        rm -rf ${CACHE_DIR}/${image}
+        mv ${CACHE_DIR}/${image}_tmp ${CACHE_DIR}/${image}
     done
+
 
     case $V_IMG_HUB in
     kind)
