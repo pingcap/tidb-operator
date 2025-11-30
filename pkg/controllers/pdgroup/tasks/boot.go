@@ -40,13 +40,23 @@ func TaskBoot(state *ReconcileContext, c client.Client) task.Task {
 			}
 		}
 
+		var unready []string
 		pds := state.InstanceSlice()
 		for _, pd := range pds {
 			if _, ok := pd.Annotations[v1alpha1.AnnoKeyInitialClusterNum]; !ok {
 				continue
 			}
 			if !coreutil.IsReady[scope.PD](pd) {
-				return task.Wait().With("wait until pd %s is ready", pd.Name)
+				unready = append(unready, pd.Name)
+			}
+		}
+		if len(unready) > 0 {
+			return task.Wait().With("wait until pds %v are ready", unready)
+		}
+
+		for _, pd := range pds {
+			if _, ok := pd.Annotations[v1alpha1.AnnoKeyInitialClusterNum]; !ok {
+				continue
 			}
 			if err := delBootAnnotation(ctx, c, pd); err != nil {
 				return task.Fail().With("cannot del boot annotation after pd %s is available: %v", pd.Name, err)

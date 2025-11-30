@@ -44,12 +44,6 @@ type Member struct {
 
 func TaskContextPDClient(state *ReconcileContext, m pdm.PDClientManager) task.Task {
 	return task.NameTaskFunc("ContextPDClient", func(_ context.Context) task.Result {
-		if len(state.PDSlice()) > 0 {
-			// TODO: register pd client after it is ready
-			if err := m.Register(state.PDGroup()); err != nil {
-				return task.Fail().With("cannot register pd client: %v", err)
-			}
-		}
 		ck := state.Cluster()
 		pc, ok := m.Get(timanager.PrimaryKey(ck.Namespace, ck.Name))
 		if !ok {

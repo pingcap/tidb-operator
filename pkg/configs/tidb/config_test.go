@@ -53,7 +53,7 @@ func TestValidate(t *testing.T) {
 							Name: "sem-config",
 						},
 					},
-					TLS: &v1alpha1.TiDBTLS{
+					TLS: &v1alpha1.TiDBTLSConfig{
 						MySQL: &v1alpha1.TLS{
 							Enabled: true,
 						},
@@ -143,7 +143,7 @@ func TestOverlay(t *testing.T) {
 							Name: "sem-config",
 						},
 					},
-					TLS: &v1alpha1.TiDBTLS{
+					TLS: &v1alpha1.TiDBTLSConfig{
 						MySQL: &v1alpha1.TLS{
 							Enabled: true,
 						},

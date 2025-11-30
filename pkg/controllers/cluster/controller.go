@@ -103,7 +103,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	runner := task.NewTaskRunner[tasks.ReconcileContext](reporter)
 	runner.AddTasks(
 		tasks.NewTaskContext(logger, r.Client),
-		tasks.NewTaskFinalizer(logger, r.Client),
+		tasks.NewTaskFinalizer(logger, r.Client, r.PDClientManager),
 		tasks.NewTaskFeatureGates(logger, r.Client),
 		tasks.NewTaskService(logger, r.Client),
 		tasks.NewTaskStatus(logger, r.Client, r.PDClientManager),

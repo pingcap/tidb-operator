@@ -133,12 +133,18 @@ spec:
     - server auth
     {{ if .ClientAuth }}- client auth{{ end }}
   dnsNames:
-  - "{{ .GroupName }}-{{ .ComponentName }}"
-  - "{{ .GroupName }}-{{ .ComponentName }}.{{ .Namespace }}"
-  - "{{ .GroupName }}-{{ .ComponentName }}.{{ .Namespace }}.svc"
   - "{{ .GroupName }}-{{ .ComponentName }}-peer"
   - "{{ .GroupName }}-{{ .ComponentName }}-peer.{{ .Namespace }}"
   - "{{ .GroupName }}-{{ .ComponentName }}-peer.{{ .Namespace }}.svc"
+  {{- if .MultiPDGroup }}
+  - "{{ .PDService }}"
+  - "{{ .PDService }}.{{ .Namespace }}"
+  - "{{ .PDService }}.{{ .Namespace }}.svc"
+  {{- else }}
+  - "{{ .GroupName }}-{{ .ComponentName }}"
+  - "{{ .GroupName }}-{{ .ComponentName }}.{{ .Namespace }}"
+  - "{{ .GroupName }}-{{ .ComponentName }}.{{ .Namespace }}.svc"
+  {{- end }}
   {{- if .ClusterSubdomain }}
   - "*.{{ .ClusterName }}-cluster"
   - "*.{{ .ClusterName }}-cluster.{{ .Namespace }}"
@@ -167,6 +173,8 @@ type certKeyPairData struct {
 	ClusterName      string
 	ClientAuth       bool
 	ClusterSubdomain bool
+	MultiPDGroup     bool
+	PDService        string
 }
 
 var clientCertKeyPairTmpl = `
@@ -215,7 +223,7 @@ func registerTiProxyMySQLCerts(ctx context.Context, f *factory, ns, cluster stri
 		}
 		ca := coreutil.TiProxyGroupMySQLCASecretName(g)
 		certKeyPair := coreutil.TiProxyGroupMySQLCertKeyPairSecretName(g)
-		s, err := newCertKeyPair(typeTiProxyMySQLServer, ns, certKeyPair, cluster, g.GetName(), scope.Component[scope.TiProxyGroup](), false, fg.Enabled(metav1alpha1.ClusterSubdomain))
+		s, err := newCertKeyPair(typeTiProxyMySQLServer, ns, certKeyPair, cluster, g.GetName(), scope.Component[scope.TiProxyGroup](), "", false, fg.Enabled(metav1alpha1.ClusterSubdomain), false)
 		if err != nil {
 			return err
 		}
@@ -270,7 +278,7 @@ func registerTiDBMySQLCerts(ctx context.Context, f *factory, ns, cluster string)
 		}
 		ca := coreutil.TiDBGroupMySQLCASecretName(g)
 		certKeyPair := coreutil.TiDBGroupMySQLCertKeyPairSecretName(g)
-		s, err := newCertKeyPair(typeTiDBMySQLServer, ns, certKeyPair, cluster, g.GetName(), scope.Component[scope.TiDBGroup](), false, fg.Enabled(metav1alpha1.ClusterSubdomain))
+		s, err := newCertKeyPair(typeTiDBMySQLServer, ns, certKeyPair, cluster, g.GetName(), scope.Component[scope.TiDBGroup](), "", false, fg.Enabled(metav1alpha1.ClusterSubdomain), false)
 		if err != nil {
 			return err
 		}
@@ -327,7 +335,12 @@ func registerCertsForComponents[
 	for _, g := range gs {
 		ca := coreutil.ClusterCASecretName[S](g)
 		certKeyPair := coreutil.ClusterCertKeyPairSecretName[S](g)
-		s, err := newCertKeyPair(typeCluster, ns, certKeyPair, cluster, g.GetName(), scope.Component[S](), true, fg.Enabled(metav1alpha1.ClusterSubdomain))
+		s, err := newCertKeyPair(
+			typeCluster, ns, certKeyPair, cluster, g.GetName(), scope.Component[S](), coreutil.ClusterPD(c),
+			true,
+			fg.Enabled(metav1alpha1.ClusterSubdomain),
+			fg.Enabled(metav1alpha1.MultiPDGroup),
+		)
 		if err != nil {
 			return err
 		}
@@ -343,8 +356,8 @@ func registerCertsForComponents[
 				return err
 			}
 		}
-		clientCA := coreutil.ClientCASecretName[S](g)
-		clientCertKeyPair := coreutil.ClientCertKeyPairSecretName[S](g)
+		clientCA := coreutil.ClientCASecretName(c)
+		clientCertKeyPair := coreutil.ClientCertKeyPairSecretName(c)
 		cs, err := newClientCertKeyPair(typeCluster, ns, clientCertKeyPair, cluster)
 		if err != nil {
 			return err
@@ -422,8 +435,15 @@ func (f *factory) Install(ctx context.Context, ns, cluster string) error {
 
 	for _, s := range f.secrets {
 		for _, obj := range s.Objs {
-			if err := f.c.Create(ctx, obj); err != nil {
-				return err
+			if err := f.c.Get(ctx, client.ObjectKeyFromObject(obj), obj); err != nil {
+				if !errors.IsNotFound(err) {
+					return err
+				}
+				if err := f.c.Create(ctx, obj); err != nil {
+					if !errors.IsAlreadyExists(err) {
+						return err
+					}
+				}
 			}
 		}
 	}
@@ -522,7 +542,7 @@ func newCAIssuer(typ, ns, cluster string) (*Secret, error) {
 
 const managedSuffix = "-managed"
 
-func newCertKeyPair(typ, ns, certKeyPair, cluster, groupName, component string, clientAuth bool, enableClusterSubdomain bool) (*Secret, error) {
+func newCertKeyPair(typ, ns, certKeyPair, cluster, groupName, component string, pdSvc string, clientAuth bool, enableClusterSubdomain, enableMultiPDGroup bool) (*Secret, error) {
 	if strings.HasSuffix(certKeyPair, managedSuffix) {
 		return nil, fmt.Errorf("secret with '%s' suffix is used", managedSuffix)
 	}
@@ -536,6 +556,8 @@ func newCertKeyPair(typ, ns, certKeyPair, cluster, groupName, component string, 
 		ClientAuth:       clientAuth,
 		CN:               "PingCAP",
 		ClusterSubdomain: enableClusterSubdomain,
+		MultiPDGroup:     enableMultiPDGroup,
+		PDService:        pdSvc,
 	})
 	if err != nil {
 		return nil, err

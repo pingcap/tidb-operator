@@ -22,24 +22,34 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 )
 
-func GetClientTLSConfig[
+func GetClientTLSConfigByGroup[
 	S scope.Object[F, T],
 	F client.Object,
 	T runtime.Object,
 ](ctx context.Context, c client.Client, obj F) (*tls.Config, error) {
-	caName := coreutil.ClientCASecretName[S](obj)
-	certKeyPairName := coreutil.ClientCertKeyPairSecretName[S](obj)
-	skipVerify := scope.From[S](obj).ClientInsecureSkipTLSVerify()
+	cluster, err := GetCluster[S](ctx, c, obj)
+	if err != nil {
+		return nil, err
+	}
+
+	return GetClientTLSConfig(ctx, c, cluster)
+}
+
+func GetClientTLSConfig(ctx context.Context, c client.Client, cluster *v1alpha1.Cluster) (*tls.Config, error) {
+	caName := coreutil.ClientCASecretName(cluster)
+	certKeyPairName := coreutil.ClientCertKeyPairSecretName(cluster)
+	skipVerify := coreutil.ClientInsecureSkipTLSVerify(cluster)
 
 	rootCAs := x509.NewCertPool()
 	if !skipVerify {
-		ca, err := getCA(ctx, c, obj.GetNamespace(), caName)
+		ca, err := getCA(ctx, c, cluster.GetNamespace(), caName)
 		if err != nil {
 			return nil, err
 		}
@@ -47,7 +57,7 @@ func GetClientTLSConfig[
 			return nil, fmt.Errorf("failed to append ca certs")
 		}
 	}
-	certKeyPair, err := getCertKeyPair(ctx, c, obj.GetNamespace(), certKeyPairName)
+	certKeyPair, err := getCertKeyPair(ctx, c, cluster.GetNamespace(), certKeyPairName)
 	if err != nil {
 		return nil, err
 	}

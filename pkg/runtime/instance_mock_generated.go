@@ -54,48 +54,6 @@ func (m *MockInstance) EXPECT() *MockInstanceMockRecorder {
 	return m.recorder
 }
 
-// ClientCASecretName mocks base method.
-func (m *MockInstance) ClientCASecretName() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ClientCASecretName")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// ClientCASecretName indicates an expected call of ClientCASecretName.
-func (mr *MockInstanceMockRecorder) ClientCASecretName() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientCASecretName", reflect.TypeOf((*MockInstance)(nil).ClientCASecretName))
-}
-
-// ClientCertKeyPairSecretName mocks base method.
-func (m *MockInstance) ClientCertKeyPairSecretName() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ClientCertKeyPairSecretName")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// ClientCertKeyPairSecretName indicates an expected call of ClientCertKeyPairSecretName.
-func (mr *MockInstanceMockRecorder) ClientCertKeyPairSecretName() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientCertKeyPairSecretName", reflect.TypeOf((*MockInstance)(nil).ClientCertKeyPairSecretName))
-}
-
-// ClientInsecureSkipTLSVerify mocks base method.
-func (m *MockInstance) ClientInsecureSkipTLSVerify() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ClientInsecureSkipTLSVerify")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// ClientInsecureSkipTLSVerify indicates an expected call of ClientInsecureSkipTLSVerify.
-func (mr *MockInstanceMockRecorder) ClientInsecureSkipTLSVerify() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientInsecureSkipTLSVerify", reflect.TypeOf((*MockInstance)(nil).ClientInsecureSkipTLSVerify))
-}
-
 // Cluster mocks base method.
 func (m *MockInstance) Cluster() string {
 	m.ctrl.T.Helper()

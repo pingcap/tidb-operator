@@ -104,6 +104,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, peers []*v1
 		if err != nil {
 			return fmt.Errorf("cannot parse initial cluster num %v: %w", initialClusterNum, err)
 		}
+		peers = filterBootstrappingPeers(peers)
 		if num != int64(len(peers)) {
 			return fmt.Errorf("unexpected number of replicas, expected is %v, current is %v", num, len(peers))
 		}
@@ -112,6 +113,17 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, peers []*v1
 	}
 
 	return nil
+}
+
+func filterBootstrappingPeers(peers []*v1alpha1.PD) []*v1alpha1.PD {
+	var boot []*v1alpha1.PD
+	for _, peer := range peers {
+		if _, ok := peer.Annotations[v1alpha1.AnnoKeyInitialClusterNum]; ok {
+			boot = append(boot, peer)
+		}
+	}
+
+	return boot
 }
 
 func (c *Config) Validate() error {

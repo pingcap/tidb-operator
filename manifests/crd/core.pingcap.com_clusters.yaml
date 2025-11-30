@@ -77,6 +77,13 @@ spec:
                     type: string
                 type: object
                 x-kubernetes-map-type: atomic
+              customizedPDServiceName:
+                description: |-
+                  CustomizedPDServiceName is the internal pd service name which will be created by the cluster.
+                  If MultiPDGroup feature is not enabled, this field doesn't work.
+                  If MultiPDGroup feature is enabled, the default service name is ${clusterName}-pd.
+                  This field is useful to keep use legacy pd service name when enable MultiPDGroup.
+                type: string
               featureGates:
                 items:
                   properties:
@@ -98,6 +105,7 @@ spec:
                       - UseTiKVReadyAPI
                       - UsePDReadyAPIV2
                       - UseTiFlashReadyAPI
+                      - MultiPDGroup
                       type: string
                   required:
                   - name
@@ -127,6 +135,7 @@ spec:
                 minimum: 0
                 type: integer
               security:
+                description: Security defines the security config of the whole cluster
                 properties:
                   sessionTokenSigningCertKeyPair:
                     description: |-
@@ -146,6 +155,34 @@ spec:
                         type: string
                     type: object
                     x-kubernetes-map-type: atomic
+                  tls:
+                    description: TLS defines tls configs for the whole cluster
+                    properties:
+                      client:
+                        description: Client defines the client tls for the tidb operator
+                          to visit components
+                        properties:
+                          ca:
+                            description: CA defines the ref of the secret which contains
+                              ca.crt
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                          certKeyPair:
+                            description: CertKeyPair defines the ref of the secret
+                              which contains tls.crt and tls.key
+                            properties:
+                              name:
+                                type: string
+                            type: object
+                          insecureSkipTLSVerify:
+                            description: |-
+                              If true, we will skip CA verification, it means CA can be omitted
+                              Defaults to false
+                            type: boolean
+                        type: object
+                    type: object
                 type: object
               suspendAction:
                 description: SuspendAction defines the suspend actions for the cluster.
@@ -307,6 +344,7 @@ spec:
                       - UseTiKVReadyAPI
                       - UsePDReadyAPIV2
                       - UseTiFlashReadyAPI
+                      - MultiPDGroup
                       type: string
                     stage:
                       type: string

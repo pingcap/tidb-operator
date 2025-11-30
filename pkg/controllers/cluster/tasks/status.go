@@ -31,6 +31,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/compare"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task"
 )
 
@@ -61,19 +62,14 @@ func (t *TaskStatus) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		rtx.Cluster.Status.ObservedGeneration = rtx.Cluster.Generation
 		needUpdate = true
 	}
-	if rtx.PDGroup != nil {
-		// TODO: extract into a common util
-		scheme := "http"
-		if coreutil.IsTLSClusterEnabled(rtx.Cluster) {
-			scheme = "https"
-		}
-		// TODO(liubo02): extract a common util to get pd addr
-		pdAddr := fmt.Sprintf("%s://%s-pd.%s:%d", scheme, rtx.PDGroup.Name, rtx.PDGroup.Namespace, coreutil.PDGroupClientPort(rtx.PDGroup))
-		if rtx.Cluster.Status.PD != pdAddr { // TODO(csuzhangxc): verify switch between TLS and non-TLS
-			rtx.Cluster.Status.PD = pdAddr
-			needUpdate = true
-		}
+	var addr string
+	if len(rtx.PDGroups) > 0 {
+		addr = coreutil.PDServiceURL(rtx.Cluster, rtx.PDGroups[0])
 	}
+
+	// Cannot update pd to different value now
+	// It may be changed if enable/disable tls is supported
+	needUpdate = compare.SetIfDstEmpty(&rtx.Cluster.Status.PD, addr) || needUpdate
 	needUpdate = t.syncComponentStatus(rtx) || needUpdate
 	needUpdate = t.syncConditions(rtx) || needUpdate
 	needUpdate = t.syncClusterID(ctx, rtx) || needUpdate
@@ -81,6 +77,12 @@ func (t *TaskStatus) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	if needUpdate {
 		if err := t.Client.Status().Update(ctx, rtx.Cluster); err != nil {
 			return task.Fail().With(fmt.Sprintf("can't update cluster status: %v", err))
+		}
+	}
+
+	if rtx.Cluster.Status.PD != "" {
+		if err := t.PDClientManager.Register(rtx.Cluster); err != nil {
+			return task.Fail().With("cannot register pd client: %v", err)
 		}
 	}
 
@@ -95,11 +97,13 @@ func (t *TaskStatus) Sync(ctx task.Context[ReconcileContext]) task.Result {
 //nolint:gocyclo // refactor if possible
 func (*TaskStatus) syncComponentStatus(rtx *ReconcileContext) bool {
 	components := make([]v1alpha1.ComponentStatus, 0)
-	if rtx.PDGroup != nil {
+	if len(rtx.PDGroups) > 0 {
 		pd := v1alpha1.ComponentStatus{Kind: v1alpha1.ComponentKindPD}
-		if rtx.PDGroup.Spec.Replicas != nil {
-			// TODO: use real replicas
-			pd.Replicas += *rtx.PDGroup.Spec.Replicas
+		for _, pdg := range rtx.PDGroups {
+			if pdg.Spec.Replicas != nil {
+				// TODO: use real replicas
+				pd.Replicas += *pdg.Spec.Replicas
+			}
 		}
 		components = append(components, pd)
 	}
@@ -189,7 +193,7 @@ func (*TaskStatus) syncConditions(rtx *ReconcileContext) bool {
 		Reason:             v1alpha1.ClusterAvailableReason,
 		Message:            "Cluster is not available",
 	}
-	suspended := rtx.PDGroup != nil && meta.IsStatusConditionTrue(rtx.PDGroup.Status.Conditions, v1alpha1.CondSuspended)
+	suspended := true
 	for _, tidbg := range rtx.TiDBGroups {
 		if meta.IsStatusConditionTrue(tidbg.Status.Conditions, v1alpha1.TiDBGroupCondAvailable) {
 			// if any tidb group is available, the cluster is available
@@ -205,6 +209,13 @@ func (*TaskStatus) syncConditions(rtx *ReconcileContext) bool {
 	changed = meta.SetStatusCondition(&rtx.Cluster.Status.Conditions, availCond) || changed
 
 	if suspended {
+		for _, pdg := range rtx.PDGroups {
+			if !meta.IsStatusConditionTrue(pdg.Status.Conditions, v1alpha1.CondSuspended) {
+				suspended = false
+				break
+			}
+		}
+
 		for _, tikvGroup := range rtx.TiKVGroups {
 			if !meta.IsStatusConditionTrue(tikvGroup.Status.Conditions, v1alpha1.CondSuspended) {
 				suspended = false

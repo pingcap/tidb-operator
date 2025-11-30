@@ -49,15 +49,15 @@ func GroupToSecurityTypeName(t *types.Type) string {
 // GroupToTLSTypeName returns tls type name from group type
 // TiDB and TiProxy have their own tls type
 // Others: ComponentTLS
-// TiDB and TiProxy: TiDBTLS, TiProxyTLS
+// TiDB and TiProxy: TiDBTLSConfig, TiProxyTLSConfig
 func GroupToTLSTypeName(t *types.Type) string {
 	name := strings.TrimSuffix(t.Name.Name, "Group")
 	switch name {
 	case "TiDB", "TiProxy":
-		return name + "TLS"
+		return name + "TLSConfig"
 	}
 
-	return "ComponentTLS"
+	return "ComponentTLSConfig"
 }
 
 // GroupToInternalTLSTypeName returns internal tls type name from group type

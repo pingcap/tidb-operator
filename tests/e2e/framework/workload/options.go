@@ -17,6 +17,8 @@ package workload
 import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework/desc"
 )
 
 type Options struct {
@@ -109,6 +111,14 @@ func MaxLifeTime(sec int) Option {
 func WorkloadType(t string) Option {
 	return WithOption(func(opts *Options) {
 		opts.WorkloadType = t
+	})
+}
+
+func FromDescOption(o *desc.Options) Option {
+	return WithOption(func(opts *Options) {
+		if o.TLS {
+			TLS(o.TiDBMySQLClientTLS()).With(opts)
+		}
 	})
 }
 

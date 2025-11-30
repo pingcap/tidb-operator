@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
-	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/tiflashapi/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 )
@@ -37,11 +36,11 @@ const (
 )
 
 func NewClient(
-	f *v1alpha1.TiFlash,
+	_ *v1alpha1.TiFlash,
 	underlay tiflashapi.TiFlashClient,
 	_ timanager.SharedInformerFactory[tiflashapi.TiFlashClient],
-) tiflashapi.TiFlashClient {
-	return underlay
+) (tiflashapi.TiFlashClient, error) {
+	return underlay, nil
 }
 
 func Key(f *v1alpha1.TiFlash) string {
@@ -64,7 +63,7 @@ func CacheKeys(f *v1alpha1.TiFlash) ([]string, error) {
 	return keys, nil
 }
 
-var NewUnderlayClientFunc = func(c client.Client) timanager.NewUnderlayClientFunc[*v1alpha1.TiFlash, tiflashapi.TiFlashClient] {
+func NewUnderlayClientFunc(c client.Client) timanager.NewUnderlayClientFunc[*v1alpha1.TiFlash, tiflashapi.TiFlashClient] {
 	return func(f *v1alpha1.TiFlash) (tiflashapi.TiFlashClient, error) {
 		ctx := context.Background()
 		var cluster v1alpha1.Cluster
@@ -76,7 +75,7 @@ var NewUnderlayClientFunc = func(c client.Client) timanager.NewUnderlayClientFun
 		}
 
 		if coreutil.IsTLSClusterEnabled(&cluster) {
-			tlsConfig, err := apicall.GetClientTLSConfig[scope.TiFlash](ctx, c, f)
+			tlsConfig, err := apicall.GetClientTLSConfig(ctx, c, &cluster)
 			if err != nil {
 				return nil, fmt.Errorf("cannot get tls config from secret: %w", err)
 			}

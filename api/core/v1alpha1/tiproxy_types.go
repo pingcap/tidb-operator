@@ -177,7 +177,7 @@ type TiProxyPreStop struct {
 
 type TiProxySecurity struct {
 	// Whether enable the TLS connection.
-	TLS *TiProxyTLS `json:"tls,omitempty"`
+	TLS *TiProxyTLSConfig `json:"tls,omitempty"`
 }
 
 type TiProxyServer struct {
@@ -216,7 +216,7 @@ type TiProxyProb struct {
 	Type *string `json:"type,omitempty"`
 }
 
-type TiProxyTLS struct {
+type TiProxyTLSConfig struct {
 	// MySQL defines the TLS configuration for connections between TiProxy and MySQL clients.
 	// The steps to enable this feature:
 	//   1. Generate a TiProxy server-side certificate for the TiProxy cluster.
@@ -243,9 +243,6 @@ type TiProxyTLS struct {
 	// It can be disabled by set Enabled to false.
 	// NOTE: if server tls is disabled, the Client will also be disabled.
 	Server *TLS `json:"server,omitempty"`
-
-	// Client defines the client tls for the tidb operator to visit the tiproxy group
-	Client *InternalClientTLS `json:"client,omitempty"`
 }
 
 type TiProxyGroupStatus struct {

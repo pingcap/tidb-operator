@@ -36,7 +36,7 @@ var _ = ginkgo.Describe("TiDB Availability Test", label.TiDB, label.KindAvail, l
 	ginkgo.Context("NextGen", label.KindNextGen, label.P0, func() {
 		f.SetupCluster(data.WithClusterTLSEnabled(), data.WithFeatureGates(metav1alpha1.SessionTokenSigning))
 		workload := f.SetupWorkload()
-		cm := f.SetupCertManager()
+		cm := f.SetupCertManager(true)
 
 		ginkgo.It("Visit tiproxy no error when rolling update tidb in next-gen", func(ctx context.Context) {
 			ns := f.Namespace.Name

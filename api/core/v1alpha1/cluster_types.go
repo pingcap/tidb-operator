@@ -86,6 +86,13 @@ type ClusterSpec struct {
 	// +listMapKey=name
 	FeatureGates []meta.FeatureGate `json:"featureGates,omitempty"`
 
+	// CustomizedPDServiceName is the internal pd service name which will be created by the cluster.
+	// If MultiPDGroup feature is not enabled, this field doesn't work.
+	// If MultiPDGroup feature is enabled, the default service name is ${clusterName}-pd.
+	// This field is useful to keep use legacy pd service name when enable MultiPDGroup.
+	CustomizedPDServiceName *string `json:"customizedPDServiceName,omitempty"`
+
+	// Security defines the security config of the whole cluster
 	Security *ClusterSecurity `json:"security,omitempty"`
 }
 
@@ -119,7 +126,14 @@ type TLSCluster struct {
 	Enabled bool `json:"enabled,omitempty"`
 }
 
+type ClusterTLSConfig struct {
+	// Client defines the client tls for the tidb operator to visit components
+	Client *InternalClientTLS `json:"client,omitempty"`
+}
+
 type ClusterSecurity struct {
+	// TLS defines tls configs for the whole cluster
+	TLS *ClusterTLSConfig `json:"tls,omitempty"`
 	// SessionTokenSigningCertKeyPair is the name of the K8s secret, where stores certificates for signing the TiDB session token,
 	// which is used by TiProxy for session migration.
 	// You can generate certificates and create a secret by: kubectl create secret generic <secret-name> --namespace=<namespace> --from-file=tls.crt=<path/to/tls.crt> --from-file=tls.key=<path/to/tls.key>

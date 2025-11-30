@@ -66,10 +66,18 @@ func TestFinalizer(t *testing.T) {
 
 			ctx := FakeContext(types.NamespacedName{Name: "test"})
 			ctx.Cluster = c.cluster
-			ctx.PDGroup = c.pdGroup
+			if c.pdGroup != nil {
+				ctx.PDGroups = append(ctx.PDGroups, c.pdGroup)
+			}
 
-			fc := client.NewFakeClient(c.cluster)
-			tk := NewTaskFinalizer(logr.Discard(), fc)
+			var objs []client.Object
+			objs = append(objs, c.cluster)
+			if c.pdGroup != nil {
+				objs = append(objs, c.pdGroup)
+			}
+
+			fc := client.NewFakeClient(objs...)
+			tk := NewTaskFinalizer(logr.Discard(), fc, newFakePDClientManager(tt, fc))
 			res := tk.Sync(ctx)
 			assert.Equal(tt, c.expected, res)
 			assert.Equal(tt, c.hasFinalizer, controllerutil.ContainsFinalizer(c.cluster, meta.Finalizer))
