@@ -8,7 +8,7 @@ metadata:
 spec:
   version: v8.5.4
   timezone: UTC
-  pvReclaimPolicy: Delete
+  pvReclaimPolicy: Retain
   enableDynamicConfiguration: true
   configUpdateStrategy: RollingUpdate
   discovery: {}
@@ -30,9 +30,7 @@ spec:
     # cannot be transferred during upgrade, so we have
     # to configure a short timeout
     evictLeaderTimeout: 1m
-    replicas: 3
-    annotations:
-      author: cody
+    replicas: 1
     # if storageClassName is not set, the default Storage Class of the Kubernetes cluster will be used
     # storageClassName: local-storage
     requests:
