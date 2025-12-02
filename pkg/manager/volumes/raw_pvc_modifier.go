@@ -70,7 +70,7 @@ func (p *rawPVCModifier) tryToRecreateSTS(ctx *componentVolumeContext) error {
 	}
 
 	if utils.StatefulSetIsUpgrading(ctx.sts) {
-		return fmt.Errorf("component sts %s/%s is upgrading", ctx.sts.Name, ctx.sts.Namespace)
+		return fmt.Errorf("component sts %s/%s is upgrading", ctx.sts.Namespace, ctx.sts.Name)
 	}
 
 	if err := utils.DeleteStatefulSetWithOrphan(ctx, p.deps.StatefulSetControl, p.deps.TiDBClusterControl, ctx.tc, ctx.sts); err != nil {
