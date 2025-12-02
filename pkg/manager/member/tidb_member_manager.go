@@ -888,7 +888,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 	}
 
 	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
-	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.TiDB.StorageVolumes, tc.Spec.TiDB.StorageClassName, v1alpha1.TiDBMemberType)
+	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.TiDB.StorageVolumes, tc.Spec.TiDB.StorageClassName, tc.Spec.TiDB.VolumeAttributesClassName, v1alpha1.TiDBMemberType)
 	volMounts = append(volMounts, storageVolMounts...)
 	volMounts = append(volMounts, tc.Spec.TiDB.AdditionalVolumeMounts...)
 

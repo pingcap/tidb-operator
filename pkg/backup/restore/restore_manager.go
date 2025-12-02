@@ -1589,12 +1589,13 @@ func (rm *restoreManager) ensureRestorePVCExist(restore *v1alpha1.Restore) (stri
 				AccessModes: []corev1.PersistentVolumeAccessMode{
 					corev1.ReadWriteOnce,
 				},
-				Resources: corev1.ResourceRequirements{
+				Resources: corev1.VolumeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceStorage: rs,
 					},
 				},
-				StorageClassName: restore.Spec.StorageClassName,
+				StorageClassName:          restore.Spec.StorageClassName,
+				VolumeAttributesClassName: restore.Spec.VolumeAttributesClassName,
 			},
 		}
 		if err := rm.deps.GeneralPVCControl.CreatePVC(restore, pvc); err != nil {

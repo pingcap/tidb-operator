@@ -452,7 +452,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 		}
 	}
 	// handle StorageVolumes and AdditionalVolumeMounts in ComponentSpec
-	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.TiKV.StorageVolumes, tc.Spec.TiKV.StorageClassName, v1alpha1.TiKVMemberType)
+	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tc.Spec.TiKV.StorageVolumes, tc.Spec.TiKV.StorageClassName, tc.Spec.TiKV.VolumeAttributesClassName, v1alpha1.TiKVMemberType)
 	volMounts = append(volMounts, storageVolMounts...)
 
 	sysctls := "sysctl -w"
@@ -786,7 +786,7 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				Spec: podSpec,
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-				util.VolumeClaimTemplate(storageRequest, dataVolumeName, tc.Spec.TiKV.StorageClassName),
+				util.VolumeClaimTemplate(storageRequest, dataVolumeName, tc.Spec.TiKV.StorageClassName, tc.Spec.TiKV.VolumeAttributesClassName),
 			},
 			ServiceName:         headlessSvcName,
 			PodManagementPolicy: baseTiKVSpec.PodManagementPolicy(),

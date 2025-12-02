@@ -344,18 +344,18 @@ func MustNewRequirement(key string, op selection.Operator, vals []string) *label
 }
 
 // BuildStorageVolumeAndVolumeMount builds VolumeMounts and PVCs for volumes declaired in spec.storageVolumes of ComponentSpec
-func BuildStorageVolumeAndVolumeMount(storageVolumes []v1alpha1.StorageVolume, defaultStorageClassName *string, memberType v1alpha1.MemberType) ([]corev1.VolumeMount, []corev1.PersistentVolumeClaim) {
+func BuildStorageVolumeAndVolumeMount(storageVolumes []v1alpha1.StorageVolume, defaultStorageClassName, defaultVolumeAttributesClassName *string, memberType v1alpha1.MemberType) ([]corev1.VolumeMount, []corev1.PersistentVolumeClaim) {
 	var volMounts []corev1.VolumeMount
 	var volumeClaims []corev1.PersistentVolumeClaim
 	if len(storageVolumes) > 0 {
 		for _, storageVolume := range storageVolumes {
-			var tmpStorageClass *string
+			var tmpStorageClass, tmpVolumeAttributesClassName *string
 			quantity, err := resource.ParseQuantity(storageVolume.StorageSize)
 			if err != nil {
 				klog.Errorf("Cannot parse storage size %v in StorageVolumes of %v, storageVolume Name %s, error: %v", storageVolume.StorageSize, memberType, storageVolume.Name, err)
 				continue
 			}
-			storageRequest := corev1.ResourceRequirements{
+			storageRequest := corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceStorage: quantity,
 				},
@@ -365,8 +365,13 @@ func BuildStorageVolumeAndVolumeMount(storageVolumes []v1alpha1.StorageVolume, d
 			} else {
 				tmpStorageClass = defaultStorageClassName
 			}
+			if storageVolume.VolumeAttributesClassName != nil && len(*storageVolume.VolumeAttributesClassName) > 0 {
+				tmpVolumeAttributesClassName = storageVolume.VolumeAttributesClassName
+			} else {
+				tmpVolumeAttributesClassName = defaultVolumeAttributesClassName
+			}
 			pvcNameInVCT := string(v1alpha1.GetStorageVolumeName(storageVolume.Name, memberType))
-			volumeClaims = append(volumeClaims, VolumeClaimTemplate(storageRequest, pvcNameInVCT, tmpStorageClass))
+			volumeClaims = append(volumeClaims, VolumeClaimTemplate(storageRequest, pvcNameInVCT, tmpStorageClass, tmpVolumeAttributesClassName))
 			if storageVolume.MountPath != "" {
 				volMounts = append(volMounts, corev1.VolumeMount{
 					Name:      pvcNameInVCT,
@@ -378,15 +383,16 @@ func BuildStorageVolumeAndVolumeMount(storageVolumes []v1alpha1.StorageVolume, d
 	return volMounts, volumeClaims
 }
 
-func VolumeClaimTemplate(r corev1.ResourceRequirements, metaName string, storageClassName *string) corev1.PersistentVolumeClaim {
+func VolumeClaimTemplate(r corev1.VolumeResourceRequirements, metaName string, storageClassName, volumeAttributesClassName *string) corev1.PersistentVolumeClaim {
 	return corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: metaName},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{
 				corev1.ReadWriteOnce,
 			},
-			StorageClassName: storageClassName,
-			Resources:        r,
+			StorageClassName:          storageClassName,
+			VolumeAttributesClassName: volumeAttributesClassName,
+			Resources:                 r,
 		},
 	}
 }

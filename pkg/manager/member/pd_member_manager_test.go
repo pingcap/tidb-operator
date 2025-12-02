@@ -1264,7 +1264,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 			},
 			testSts: func(sts *apps.StatefulSet) {
 				g := NewGomegaWithT(t)
-				g.Expect(sts.Spec.VolumeClaimTemplates[0].Spec.Resources).To(Equal(corev1.ResourceRequirements{
+				g.Expect(sts.Spec.VolumeClaimTemplates[0].Spec.Resources).To(Equal(corev1.VolumeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceStorage: resource.MustParse("100Gi"),
 					},
@@ -1898,6 +1898,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
+						VolumeAttributesClassName: pointer.String("gold"),
 						StorageVolumes: []v1alpha1.StorageVolume{
 							{
 								Name:        "log",
@@ -1929,6 +1930,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 							AccessModes: []corev1.PersistentVolumeAccessMode{
 								corev1.ReadWriteOnce,
 							},
+							VolumeAttributesClassName: pointer.String("gold"),
 						},
 					},
 					{
@@ -1939,11 +1941,12 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 							AccessModes: []corev1.PersistentVolumeAccessMode{
 								corev1.ReadWriteOnce,
 							},
-							Resources: corev1.ResourceRequirements{
+							Resources: corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceStorage: q,
 								},
 							},
+							VolumeAttributesClassName: pointer.String("gold"),
 						},
 					},
 				}))

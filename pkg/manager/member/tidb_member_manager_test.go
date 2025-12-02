@@ -1150,12 +1150,14 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{},
-					TiDB: &v1alpha1.TiDBSpec{StorageVolumes: []v1alpha1.StorageVolume{
-						{
-							Name:        "log",
-							StorageSize: "2Gi",
-							MountPath:   "/var/lib/log",
-						}},
+					TiDB: &v1alpha1.TiDBSpec{
+						VolumeAttributesClassName: pointer.String("gold"),
+						StorageVolumes: []v1alpha1.StorageVolume{
+							{
+								Name:        "log",
+								StorageSize: "2Gi",
+								MountPath:   "/var/lib/log",
+							}},
 						Config: mustTiDBConfig(&v1alpha1.TiDBConfig{
 							Log: &v1alpha1.Log{
 								File: &v1alpha1.FileLogConfig{
@@ -1178,11 +1180,12 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 							AccessModes: []corev1.PersistentVolumeAccessMode{
 								corev1.ReadWriteOnce,
 							},
-							Resources: corev1.ResourceRequirements{
+							Resources: corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceStorage: q,
 								},
 							},
+							VolumeAttributesClassName: pointer.String("gold"),
 						},
 					},
 				}))
@@ -1203,9 +1206,10 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 					PD: &v1alpha1.PDSpec{},
 					TiDB: &v1alpha1.TiDBSpec{StorageVolumes: []v1alpha1.StorageVolume{
 						{
-							Name:        "slowlogfile",
-							StorageSize: "2Gi",
-							MountPath:   "/var/log/slowlogtest",
+							Name:                      "slowlogfile",
+							StorageSize:               "2Gi",
+							MountPath:                 "/var/log/slowlogtest",
+							VolumeAttributesClassName: pointer.String("gold"),
 						}},
 						SlowLogVolumeName: "slowlogfile",
 					},
@@ -1224,11 +1228,12 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 							AccessModes: []corev1.PersistentVolumeAccessMode{
 								corev1.ReadWriteOnce,
 							},
-							Resources: corev1.ResourceRequirements{
+							Resources: corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceStorage: q,
 								},
 							},
+							VolumeAttributesClassName: pointer.String("gold"),
 						},
 					},
 				}))

@@ -555,7 +555,7 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 	var additionalPVCs []corev1.PersistentVolumeClaim
 	// default in nil
 	if curSpec.StorageVolumes != nil {
-		storageVolMounts, addPVCs := util.BuildStorageVolumeAndVolumeMount(curSpec.StorageVolumes, curSpec.StorageClassName, v1alpha1.PDMSMemberType(curService))
+		storageVolMounts, addPVCs := util.BuildStorageVolumeAndVolumeMount(curSpec.StorageVolumes, curSpec.StorageClassName, curSpec.VolumeAttributesClassName, v1alpha1.PDMSMemberType(curService))
 		volMounts = append(volMounts, storageVolMounts...)
 		volMounts = append(volMounts, curSpec.AdditionalVolumeMounts...)
 		additionalPVCs = addPVCs

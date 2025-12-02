@@ -486,6 +486,9 @@ func buildBackup(bs *v1alpha1.BackupSchedule, timestamp time.Time) *v1alpha1.Bac
 		if backupSpec.StorageClassName == nil || *backupSpec.StorageClassName == "" {
 			backupSpec.StorageClassName = bs.Spec.StorageClassName
 		}
+		if backupSpec.VolumeAttributesClassName == nil || *backupSpec.VolumeAttributesClassName == "" {
+			backupSpec.VolumeAttributesClassName = bs.Spec.VolumeAttributesClassName
+		}
 
 		if backupSpec.StorageSize == "" {
 			if bs.Spec.StorageSize != "" {

@@ -1326,19 +1326,19 @@ func getMonitorStatefulSetSkeleton(sa *core.ServiceAccount, monitor *v1alpha1.Ti
 
 func getMonitorVolumeClaims(monitor *v1alpha1.TidbMonitor) []core.PersistentVolumeClaim {
 	if monitor.Spec.Persistent && len(monitor.Spec.Storage) > 0 {
-		var storageRequest core.ResourceRequirements
+		var storageRequest core.VolumeResourceRequirements
 		quantity, err := resource.ParseQuantity(monitor.Spec.Storage)
 		if err != nil {
 			klog.Errorf("Cannot parse storage size %v in TiDBMonitor %s/%s, error: %v", monitor.Spec.Storage, monitor.Namespace, monitor.Name, err)
 			return nil
 		}
-		storageRequest = core.ResourceRequirements{
+		storageRequest = core.VolumeResourceRequirements{
 			Requests: core.ResourceList{
 				core.ResourceStorage: quantity,
 			},
 		}
 		return []core.PersistentVolumeClaim{
-			util.VolumeClaimTemplate(storageRequest, v1alpha1.TidbMonitorMemberType.String(), monitor.Spec.StorageClassName),
+			util.VolumeClaimTemplate(storageRequest, v1alpha1.TidbMonitorMemberType.String(), monitor.Spec.StorageClassName, nil),
 		}
 	}
 	return nil

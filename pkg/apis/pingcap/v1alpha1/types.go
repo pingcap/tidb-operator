@@ -540,6 +540,11 @@ type PDSpec struct {
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
+	// The VolumeAttributesClassName of the persistent volume for PD data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
+
 	// StorageVolumes configure additional storage for PD pods.
 	// +optional
 	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
@@ -661,6 +666,11 @@ type PDMSSpec struct {
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
+	// The VolumeAttributesClassName of the persistent volume for PD microservice data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
+
 	// StorageVolumes configure additional storage for PD microservice pods.
 	// +optional
 	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
@@ -729,6 +739,11 @@ type TiKVSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// The VolumeAttributesClassName of the persistent volume for TiKV data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
 
 	// Subdirectory within the volume to store TiKV Data. By default, the data
 	// is stored in the root directory of volume which is mounted at
@@ -897,6 +912,11 @@ type TiCDCSpec struct {
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
+	// The VolumeAttributesClassName of the persistent volume for TiCDC data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
+
 	// GracefulShutdownTimeout is the timeout of gracefully shutdown a TiCDC pod.
 	// Encoded in the format of Go Duration.
 	// Defaults to 10m
@@ -975,6 +995,11 @@ type TiProxySpec struct {
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
+	// The VolumeAttributesClassName of the persistent volume for TiProxy data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
+
 	// ServerLabels defines the server labels of the TiProxy.
 	// Using both this field and config file to manage the labels is an undefined behavior.
 	// Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
@@ -1031,6 +1056,10 @@ type StorageClaim struct {
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+	// Name of the VolumeAttributesClassName required by the claim.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
 }
 
 // TiDBSpec contains details of TiDB members
@@ -1116,6 +1145,11 @@ type TiDBSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// The VolumeAttributesClassName of the persistent volume for TiDB data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
 
 	// Initializer is the init configurations of TiDB
 	//
@@ -1241,6 +1275,11 @@ type PumpSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// The VolumeAttributesClassName of the persistent volume for Pump data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
 
 	// The configuration of Pump cluster.
 	// +optional
@@ -2271,6 +2310,9 @@ type BackupSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+	// The VolumeAttributesClassName of the persistent volume for Backup data storage.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
 	// StorageSize is the request storage size for backup job
 	StorageSize string `json:"storageSize,omitempty"`
 	// BRConfig is the configs for BR
@@ -2655,6 +2697,9 @@ type BackupScheduleSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+	// The VolumeAttributesClassName of the persistent volume for Backup data storage if not volumeAttributesClassName set in BackupSpec.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
 	// StorageSize is the request storage size for backup job
 	StorageSize string `json:"storageSize,omitempty"`
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.
@@ -2858,6 +2903,9 @@ type RestoreSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+	// The VolumeAttributesClassName of the persistent volume for Restore data storage.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
 	// StorageSize is the request storage size for backup job
 	StorageSize string `json:"storageSize,omitempty"`
 	// BR is the configs for BR.
@@ -3225,6 +3273,11 @@ type MasterSpec struct {
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
 
+	// The VolumeAttributesClassName of the persistent volume for dm-master data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
+
 	// StorageSize is the request storage size for dm-master.
 	// Defaults to "10Gi".
 	// +optional
@@ -3291,6 +3344,11 @@ type WorkerSpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// The VolumeAttributesClassName of the persistent volume for dm-worker data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
 
 	// StorageSize is the request storage size for dm-worker.
 	// Defaults to "10Gi".
@@ -3436,11 +3494,14 @@ type WorkerFailureMember struct {
 // If `MountPath` is not set, volumeMount will not be generated. (You may not want to set this field when you inject volumeMount
 // in somewhere else such as Mutating Admission Webhook)
 // If `StorageClassName` is not set, default to the `spec.${component}.storageClassName`
+// If `VolumeAttributesClassName` is not set, default to the `spec.${component}.volumeAttributesClassName`
+// If `VolumeAttributesClassName` is set, the change of `StorageClassName` will be ignored.
 type StorageVolume struct {
-	Name             string  `json:"name"`
-	StorageClassName *string `json:"storageClassName,omitempty"`
-	StorageSize      string  `json:"storageSize"`
-	MountPath        string  `json:"mountPath,omitempty"`
+	Name                      string  `json:"name"`
+	StorageClassName          *string `json:"storageClassName,omitempty"`
+	StorageSize               string  `json:"storageSize"`
+	MountPath                 string  `json:"mountPath,omitempty"`
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
 }
 
 type ObservedStorageVolumeStatus struct {

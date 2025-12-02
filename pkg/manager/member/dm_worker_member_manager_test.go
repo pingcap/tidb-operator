@@ -964,18 +964,20 @@ func TestGetNewWorkerSetForDMCluster(t *testing.T) {
 								corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
 							},
 						},
-						StorageSize: "100Gi",
+						StorageSize:               "100Gi",
+						VolumeAttributesClassName: pointer.String("gold"),
 					},
 					Master: v1alpha1.MasterSpec{},
 				},
 			},
 			testSts: func(sts *appsv1.StatefulSet) {
 				g := NewGomegaWithT(t)
-				g.Expect(sts.Spec.VolumeClaimTemplates[0].Spec.Resources).To(Equal(corev1.ResourceRequirements{
+				g.Expect(sts.Spec.VolumeClaimTemplates[0].Spec.Resources).To(Equal(corev1.VolumeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceStorage: resource.MustParse("100Gi"),
 					},
 				}))
+				g.Expect(sts.Spec.VolumeClaimTemplates[0].Spec.VolumeAttributesClassName).To(Equal(pointer.String("gold")))
 				nameToContainer := MapContainers(&sts.Spec.Template.Spec)
 				masterContainer := nameToContainer[v1alpha1.DMWorkerMemberType.String()]
 				g.Expect(masterContainer.Resources).To(Equal(corev1.ResourceRequirements{

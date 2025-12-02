@@ -40,7 +40,7 @@ func newMockPVC(name, storageClass, storageRequest, capacity string) *v1.Persist
 			Name:      name,
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
-			Resources: v1.ResourceRequirements{
+			Resources: v1.VolumeResourceRequirements{
 				Requests: v1.ResourceList{
 					v1.ResourceStorage: resource.MustParse(storageRequest),
 				},
