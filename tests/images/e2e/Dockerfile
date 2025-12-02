@@ -1,6 +1,6 @@
 FROM debian:bookworm-slim
 
-ENV KUBECTL_VERSION=v1.29.14
+ENV KUBECTL_VERSION=v1.28.5
 ENV HELM_VERSION=v3.11.0
 
 ARG TARGETARCH
@@ -12,7 +12,7 @@ RUN apt-get update && \
     apt-get autoremove -y && \
     apt-get clean -y
 
-RUN curl https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/${TARGETARCH}/kubectl \
+RUN curl https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${TARGETARCH}/kubectl \
     -o /usr/local/bin/kubectl && \
     chmod +x /usr/local/bin/kubectl && \
     curl https://get.helm.sh/helm-${HELM_VERSION}-linux-${TARGETARCH}.tar.gz \
