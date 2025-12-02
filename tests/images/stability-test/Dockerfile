@@ -4,7 +4,7 @@ ENV KUBECTL_VERSION=v1.28.5
 ENV HELM_VERSION=v3.11.0
 
 RUN apk update && apk add --no-cache ca-certificates curl git openssl bash mysql-client
-RUN curl https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl \
+RUN curl https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl \
     -o /usr/local/bin/kubectl && \
     chmod +x /usr/local/bin/kubectl && \
     curl https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz \
