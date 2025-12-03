@@ -34,7 +34,7 @@ GINKGO=$OUTPUT_DIR/bin/ginkgo
 GENERATEJWT=$OUTPUT_DIR/bin/generate_jwt
 
 CI=${CI:-""}
-OLD_VERSION_BRANCH=${OLD_VERSION_BRANCH:-"feature/v2"}
+OLD_VERSION_BRANCH=${OLD_VERSION_BRANCH:-"release-2.0"}
 # Comma-separated list of packages to exclude from e2e tests
 E2E_EXCLUDED_PACKAGES=${E2E_EXCLUDED_PACKAGES:-"upgrade"}
 

@@ -1,5 +1,4 @@
-_output
-output
+_output/
 .idea/
 coverage.txt
 .vscode/

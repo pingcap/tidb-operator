@@ -48,25 +48,26 @@ deploy: bin/kubectl release
 
 .PHONY: codegen
 codegen: bin/deepcopy-gen bin/register-gen bin/overlay-gen
-	$(REGISTER_GEN) \
+	cd $(API_PATH) && $(REGISTER_GEN) \
 		--output-file=zz_generated.register.go \
 		--go-header-file=$(BOILERPLATE_FILE) \
-		$(API_PATH)/...
+		./...
 
-	$(DEEPCOPY_GEN) \
+
+	cd $(API_PATH) && $(DEEPCOPY_GEN) \
 		--output-file=zz_generated.deepcopy.go \
 		--go-header-file=$(BOILERPLATE_FILE) \
-		$(API_PATH)/...
+		./...
 
-	$(REGISTER_GEN) \
+	cd $(PD_API_PATH) && $(REGISTER_GEN) \
 		--output-file=zz_generated.register.go \
 		--go-header-file=$(BOILERPLATE_FILE) \
-		$(PD_API_PATH)/...
+		./...
 
-	$(DEEPCOPY_GEN) \
+	cd $(PD_API_PATH) && $(DEEPCOPY_GEN) \
 		--output-file=zz_generated.deepcopy.go \
 		--go-header-file=$(BOILERPLATE_FILE) \
-		$(PD_API_PATH)/...
+		./...
 
 .PHONY: overlaygen
 overlaygen: bin/overlay-gen

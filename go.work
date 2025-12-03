@@ -1,7 +1,0 @@
-go 1.23.12
-
-use (
-	.
-	./api
-	./tests/validation
-)
