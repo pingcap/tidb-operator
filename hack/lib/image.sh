@@ -81,7 +81,6 @@ function image::build() {
             --cache-from=type=local,src=${CACHE_DIR}/${image} \
             --cache-to=type=local,mode=max,dest=${CACHE_DIR}/${image}_tmp \
             --build-arg=TARGET="${target}" \
-            --build-arg=LDFLAGS="${V_LDFLAGS}" \
             $args \
             -f $ROOT/image/Dockerfile $ROOT
 
