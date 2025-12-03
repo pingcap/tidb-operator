@@ -34,7 +34,9 @@ func init() {
 		case "vcs.time":
 			buildDate = setting.Value
 		case "vcs.modified":
-			gitTreeState = "dirty"
+			if setting.Value == "true" {
+				gitTreeState = "dirty"
+			}
 		}
 	}
 	gitVersion = info.Main.Version

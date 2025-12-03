@@ -2,7 +2,11 @@ module github.com/pingcap/tidb-operator/v2
 
 go 1.24.0
 
+toolchain go1.25.4
+
 replace github.com/pingcap/tidb-operator/api/v2 => ./api
+
+require github.com/pingcap/tidb-operator/api/v2 v2.0.0-00000000000000-000000000000
 
 // All dependencies related with k8s
 // Carefully upgrade them
@@ -54,7 +58,6 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.2
 	github.com/pingcap/errors v0.11.5-0.20211224045212-9687c2b0f87c
 	github.com/pingcap/kvproto v0.0.0-20250616075548-d951fb623bb3
-	github.com/pingcap/tidb-operator/api/v2 v2.0.0-00000000000000-000000000000
 	github.com/prometheus/client_golang v1.22.0
 	github.com/prometheus/client_model v0.6.1
 	github.com/prometheus/common v0.62.0

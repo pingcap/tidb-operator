@@ -1,3 +1,9 @@
-_output
-manifests
-examples
+_output/
+.idea/
+coverage.txt
+.vscode/
+.cursorignore
+.DS_Store
+**/CLAUDE.md
+**/AGENTS.md
+.claude/
