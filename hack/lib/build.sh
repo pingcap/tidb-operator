@@ -30,6 +30,7 @@ function build::go() {
     local os=${2:-""}
     local arch=${3:-""}
 
+    echo "ldflags: ${V_LDFLAGS}"
     CGO_ENABLED=0 \
     GOOS=${os} \
     GOARCH=${arch} \

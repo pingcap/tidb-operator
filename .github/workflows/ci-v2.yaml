@@ -51,7 +51,7 @@ jobs:
     - name: setup go
       uses: actions/setup-go@v5
       with:
-        go-version-file: ./go.work
+        go-version-file: ./go.mod
         cache-dependency-path: "**/*.sum"
     - name: build
       run: |
@@ -64,7 +64,7 @@ jobs:
     - name: setup go
       uses: actions/setup-go@v5
       with:
-        go-version-file: ./go.work
+        go-version-file: ./go.mod
         cache-dependency-path: "**/*.sum"
     - name: cache golangci-lint
       uses: actions/cache@v4
@@ -82,7 +82,7 @@ jobs:
     - name: setup go
       uses: actions/setup-go@v5
       with:
-        go-version-file: ./go.work
+        go-version-file: ./go.mod
         cache-dependency-path: "**/*.sum"
     - name: unit test
       run: |
@@ -103,7 +103,7 @@ jobs:
     - name: setup go
       uses: actions/setup-go@v5
       with:
-        go-version-file: ./go.work
+        go-version-file: ./go.mod
         cache-dependency-path: "**/*.sum"
     - name: verify
       run: |
