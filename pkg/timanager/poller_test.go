@@ -66,6 +66,16 @@ func (l *FakeLister[T, PT]) UpdateItems(items []T) {
 	l.L.Items = items
 }
 
+func NewFakeLister[T any, PT Object[T]](items []T) *FakeLister[T, PT] {
+	l := &FakeLister[T, PT]{
+		L: List[T, PT]{},
+	}
+
+	l.UpdateItems(items)
+
+	return l
+}
+
 func TestPoller(t *testing.T) {
 	cases := []struct {
 		desc     string
@@ -180,7 +190,7 @@ func TestPoller(t *testing.T) {
 				},
 			}
 
-			p := NewPoller(c.desc, logr.Discard(), &lister, NewDeepEquality[corev1.Pod](), time.Millisecond*500)
+			p := NewPoller(c.desc, logr.Discard(), &lister, NewDeepEquality[corev1.Pod](logr.Discard()), time.Millisecond*500)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			list, err := p.Sync(ctx)
