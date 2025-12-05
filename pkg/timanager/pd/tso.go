@@ -20,6 +20,7 @@ import (
 	"slices"
 
 	"github.com/go-logr/logr"
+	"github.com/google/uuid"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
@@ -80,8 +81,9 @@ func (l *tsoMemberLister) List(ctx context.Context) (*pdv1.TSOMemberList, error)
 	for _, m := range info {
 		list.Items = append(list.Items, pdv1.TSOMember{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      m.Name,
-				Namespace: l.cluster,
+				Name:            m.Name,
+				Namespace:       l.cluster,
+				ResourceVersion: uuid.NewString(),
 			},
 			ServiceAddr:    m.ServiceAddr,
 			Version:        m.Version,

@@ -19,6 +19,7 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
+	"github.com/google/uuid"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
@@ -108,9 +109,10 @@ func (*storeLister) convert(cluster string, s *pdapi.StoreInfo) *pdv1.Store {
 
 	return &pdv1.Store{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:    ls,
-			Name:      s.Store.Address,
-			Namespace: cluster,
+			Labels:          ls,
+			Name:            s.Store.Address,
+			Namespace:       cluster,
+			ResourceVersion: uuid.NewString(),
 		},
 		ID: strconv.FormatUint(s.Store.Id, 10),
 		// Address:             s.Store.Address,

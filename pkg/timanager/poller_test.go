@@ -66,6 +66,16 @@ func (l *FakeLister[T, PT]) UpdateItems(items []T) {
 	l.L.Items = items
 }
 
+func NewFakeLister[T any, PT Object[T]](items []T) *FakeLister[T, PT] {
+	l := &FakeLister[T, PT]{
+		L: List[T, PT]{},
+	}
+
+	l.UpdateItems(items)
+
+	return l
+}
+
 func TestPoller(t *testing.T) {
 	cases := []struct {
 		desc     string
