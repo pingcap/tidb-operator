@@ -4,8 +4,8 @@ go 1.23.0
 
 require (
 	github.com/onsi/gomega v1.36.2
-	k8s.io/api v0.32.6
-	k8s.io/apimachinery v0.32.6
+	k8s.io/api v0.32.10
+	k8s.io/apimachinery v0.32.10
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738
 )
