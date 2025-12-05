@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/google/uuid"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
@@ -57,7 +58,7 @@ func NewMemberPoller(name string, logger logr.Logger, c pdapi.PDClient) timanage
 	lister := NewMemberLister(name, c)
 
 	// TODO: change interval
-	return timanager.NewPoller(name, logger, lister, timanager.NewDeepEquality[pdv1.Member](), defaultPollInterval)
+	return timanager.NewPoller(name, logger, lister, timanager.NewDeepEquality[pdv1.Member](logger), defaultPollInterval)
 }
 
 type memberLister struct {
@@ -88,8 +89,9 @@ func (l *memberLister) List(ctx context.Context) (*pdv1.MemberList, error) {
 	for _, m := range info.Members {
 		mm[m.MemberId] = &pdv1.Member{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      m.Name,
-				Namespace: l.cluster,
+				Name:            m.Name,
+				Namespace:       l.cluster,
+				ResourceVersion: uuid.NewString(),
 			},
 			ClusterID:      strconv.FormatUint(info.Header.ClusterId, 10),
 			ID:             strconv.FormatUint(m.MemberId, 10),

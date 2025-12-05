@@ -69,6 +69,8 @@ type ManagerBuilder[Object client.Object, UnderlayClient, Client any] interface 
 	WithNewUnderlayClientFunc(f NewUnderlayClientFunc[Object, UnderlayClient]) ManagerBuilder[Object, UnderlayClient, Client]
 	WithNewClientFunc(f NewClientFunc[Object, UnderlayClient, Client]) ManagerBuilder[Object, UnderlayClient, Client]
 	WithNewPollerFunc(obj runtime.Object, f NewPollerFunc[UnderlayClient]) ManagerBuilder[Object, UnderlayClient, Client]
+	WithResyncPeriod(time.Duration) ManagerBuilder[Object, UnderlayClient, Client]
+
 	Build() Manager[Object, Client]
 }
 
@@ -77,6 +79,7 @@ type builder[Object client.Object, UnderlayClient, Client any] struct {
 	newUnderlayClientFunc NewUnderlayClientFunc[Object, UnderlayClient]
 	newClientFunc         NewClientFunc[Object, UnderlayClient, Client]
 	cacheKeysFunc         CacheKeysFunc[Object]
+	resyncPeriod          time.Duration
 
 	newPollerFuncMap map[reflect.Type]NewPollerFunc[UnderlayClient]
 }
@@ -122,6 +125,11 @@ func (b *builder[Object, UnderlayClient, Client]) WithNewPollerFunc(
 	return b
 }
 
+func (b *builder[Object, UnderlayClient, Client]) WithResyncPeriod(d time.Duration) ManagerBuilder[Object, UnderlayClient, Client] {
+	b.resyncPeriod = d
+	return b
+}
+
 func (b *builder[Object, UnderlayClient, Client]) Build() Manager[Object, Client] {
 	s := runtime.NewScheme()
 	if err := pdv1.Install(s); err != nil {
@@ -136,6 +144,7 @@ func (b *builder[Object, UnderlayClient, Client]) Build() Manager[Object, Client
 		cacheKeysFunc:         b.cacheKeysFunc,
 		newPollerFuncMap:      b.newPollerFuncMap,
 		sources:               map[reflect.Type][]EventSource{},
+		resyncPeriod:          b.resyncPeriod,
 	}
 }
 
@@ -151,6 +160,8 @@ type clientManager[Object client.Object, UnderlayClient, Client any] struct {
 
 	newPollerFuncMap map[reflect.Type]NewPollerFunc[UnderlayClient]
 	sources          map[reflect.Type][]EventSource
+
+	resyncPeriod time.Duration
 
 	ctx     context.Context
 	started bool
@@ -184,7 +195,7 @@ func (m *clientManager[Object, UnderlayClient, Client]) Register(obj Object) err
 
 	var f SharedInformerFactory[UnderlayClient]
 	if len(m.newPollerFuncMap) != 0 {
-		f = NewSharedInformerFactory(keys[0], m.logger, m.scheme, underlay, m.newPollerFuncMap, time.Hour)
+		f = NewSharedInformerFactory(keys[0], m.logger, m.scheme, underlay, m.newPollerFuncMap, m.resyncPeriod)
 	}
 
 	c := m.newClientFunc(obj, underlay, f)

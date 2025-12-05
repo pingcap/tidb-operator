@@ -17,7 +17,6 @@ package timanager
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"sync"
 	"time"
 
@@ -244,14 +243,4 @@ func (p *poller[T, PT, L]) sendEvent(ctx context.Context, e *watch.Event) {
 		p.logger.Info("poller send event", "type", e.Type, "object", e.Object)
 	case <-ctx.Done():
 	}
-}
-
-type deepEquality[T any, PT Object[T]] struct{}
-
-func (*deepEquality[T, PT]) Equal(preObj, curObj PT) bool {
-	return reflect.DeepEqual(preObj, curObj)
-}
-
-func NewDeepEquality[T any, PT Object[T]]() Equality[T, PT] {
-	return &deepEquality[T, PT]{}
 }

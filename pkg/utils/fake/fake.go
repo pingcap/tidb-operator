@@ -133,6 +133,14 @@ func UID[T any, PT Object[T]](uid string) ChangeFunc[T, PT] {
 	}
 }
 
+func ResourceVersion[T any, PT Object[T]](rv string) ChangeFunc[T, PT] {
+	return func(obj PT) PT {
+		obj.SetResourceVersion(rv)
+
+		return obj
+	}
+}
+
 func InstanceOwner[
 	S scope.Instance[F, T],
 	O any, PO Object[O],
