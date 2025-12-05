@@ -17,7 +17,6 @@ package timanager
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"sync"
 	"time"
 
@@ -245,6 +244,7 @@ func (p *poller[T, PT, L]) sendEvent(ctx context.Context, e *watch.Event) {
 	case <-ctx.Done():
 	}
 }
+<<<<<<< HEAD
 
 type deepEquality[T any, PT Object[T]] struct{}
 
@@ -255,3 +255,5 @@ func (*deepEquality[T, PT]) Equal(preObj, curObj PT) bool {
 func NewDeepEquality[T any, PT Object[T]]() Equality[T, PT] {
 	return &deepEquality[T, PT]{}
 }
+=======
+>>>>>>> 7607c84ff (fix(timanager): fix lost event issue (#6572))
