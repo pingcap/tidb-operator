@@ -200,8 +200,10 @@ func newPod(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, g features.Gates) *c
 		vols = append(vols, corev1.Volume{
 			Name: v1alpha1.VolumeNameSEM,
 			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: coreutil.SEMConfigMapName(tidb),
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: coreutil.SEMConfigMapName(tidb),
+					},
 				},
 			},
 		})

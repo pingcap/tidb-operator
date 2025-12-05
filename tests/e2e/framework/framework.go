@@ -230,6 +230,26 @@ func (f *Framework) SetupBootstrapSQL(sql string) {
 	})
 }
 
+func (f *Framework) SetupSEMConfig(cfg string) {
+	ginkgo.BeforeEach(func(ctx context.Context) {
+		cm := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      data.SEMConfigName,
+				Namespace: f.Namespace.Name,
+			},
+			Data: map[string]string{
+				v1alpha1.FileNameSEMConfig: cfg,
+			},
+		}
+		ginkgo.By("Creating a sem configmap")
+		f.Must(f.Client.Create(ctx, cm))
+		ginkgo.DeferCleanup(func(ctx context.Context) {
+			ginkgo.By("Delete the sem configmap")
+			f.Must(f.Client.Delete(ctx, cm))
+		})
+	})
+}
+
 func (*Framework) Must(err error) {
 	gomega.ExpectWithOffset(1, err).To(gomega.Succeed())
 }
