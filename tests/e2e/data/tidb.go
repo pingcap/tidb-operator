@@ -213,3 +213,70 @@ graceful-wait-before-shutdown = 20
 		}
 	})
 }
+
+func WithSEMConfig() GroupPatch[*v1alpha1.TiDBGroup] {
+	return GroupPatchFunc[*v1alpha1.TiDBGroup](func(obj *v1alpha1.TiDBGroup) {
+		if obj.Spec.Template.Spec.Security == nil {
+			obj.Spec.Template.Spec.Security = &v1alpha1.TiDBSecurity{}
+		}
+		sec := obj.Spec.Template.Spec.Security
+		if sec.SEM == nil {
+			sec.SEM = &v1alpha1.SEM{}
+		}
+		sec.SEM.Config.Name = SEMConfigName
+	})
+}
+
+// SEMConfig returns a simple sem config for test
+func SEMConfig() string {
+	return `
+{
+    "verison": "1",
+    "tidb_version": "8.0",
+    "restricted_databases": [
+        "metrics_schema"
+    ],
+    "restricted_tables" : [
+        {
+            "schema": "mysql",
+            "name": "expr_pushdown_blacklist"
+        },
+        {
+            "schema": "mysql",
+            "name": "gc_delete_range"
+        },
+        {
+            "schema": "mysql",
+            "name": "gc_delete_range_done"
+        },
+        {
+            "schema": "mysql",
+            "name": "opt_rule_blacklist"
+        },
+        {
+            "schema": "mysql",
+            "name": "tidb"
+        },
+        {
+            "schema": "mysql",
+            "name": "global_variables"
+        },
+    ],
+    "restricted_variables" : [
+        {
+            "name": "hostname",
+            "restriction-type": "replace",
+            "readonly": true,
+            "value": "localhost"
+        },
+    ],
+    "restricted_status" : [
+       {
+           "name": "tidb_gc_leader_desc",
+           "restriction-type": "hidden"
+       }
+    ],
+    "restricted_static_privileges_col" : ["File_priv","Shutdown_priv"]
+}
+`
+}

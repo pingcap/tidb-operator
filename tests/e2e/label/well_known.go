@@ -53,6 +53,14 @@ var (
 	FeatureHotReload    = ginkgo.Label("f:HotReload")
 	FeaturePDMS         = ginkgo.Label("f:PDMS")
 
+	// Config
+	ConfigSEM          = ginkgo.Label("cfg:SEM")
+	ConfigTLS          = ginkgo.Label("cfg:TLS")
+	ConfigAuthToken    = ginkgo.Label("cfg:AuthToken")
+	ConfigBootstrapSQL = ginkgo.Label("cfg:BootstrapSQL")
+	ConfigHotReload    = ginkgo.Label("cfg:HotReload")
+	ConfigPDMS         = ginkgo.Label("cfg:PDMS")
+
 	// Mode
 	ModeDisaggregatedTiFlash = ginkgo.Label("m:DisaggregatedTiFlash")
 

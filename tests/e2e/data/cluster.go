@@ -25,6 +25,7 @@ import (
 
 const (
 	BootstrapSQLName = "bootstrap-sql"
+	SEMConfigName    = "sem-config"
 )
 
 func NewCluster(namespace string, patches ...ClusterPatch) *v1alpha1.Cluster {

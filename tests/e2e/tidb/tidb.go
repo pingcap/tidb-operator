@@ -104,6 +104,21 @@ GRANT ALL PRIVILEGES ON *.* TO '%s'@'%s';`, sub, iss, email, sub, "%")
 		})
 	})
 
+	ginkgo.Context("SEMConfig", label.P1, label.ConfigSEM, func() {
+		f.SetupSEMConfig(data.SEMConfig())
+		f.SetupCluster()
+
+		ginkgo.It("should create the TiDB cluster with sem config", func(ctx context.Context) {
+			pdg := f.MustCreatePD(ctx)
+			kvg := f.MustCreateTiKV(ctx)
+			dbg := f.MustCreateTiDB(ctx, data.WithSEMConfig())
+
+			f.WaitForPDGroupReady(ctx, pdg)
+			f.WaitForTiKVGroupReady(ctx, kvg)
+			f.WaitForTiDBGroupReady(ctx, dbg)
+		})
+	})
+
 	ginkgo.Context("Scale and Update", label.P0, func() {
 		ginkgo.It("support scale TiDB from 1 to 4", label.Scale, func(ctx context.Context) {
 			pdg := f.MustCreatePD(ctx)
