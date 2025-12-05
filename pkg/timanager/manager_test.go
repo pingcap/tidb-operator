@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	gocmp "github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -142,6 +143,9 @@ func TestClientManagerSource(t *testing.T) {
 		previous []pdv1.Store
 		updated  []pdv1.Store
 
+		resyncPeriod time.Duration
+		resyncTimes  int
+
 		expectedCreateEvents []event.TypedCreateEvent[client.Object]
 		expectedUpdateEvents []event.TypedUpdateEvent[client.Object]
 		expectedDeleteEvents []event.TypedDeleteEvent[client.Object]
@@ -149,89 +153,190 @@ func TestClientManagerSource(t *testing.T) {
 		{
 			desc: "no update",
 			previous: []pdv1.Store{
-				*fake.FakeObj[pdv1.Store]("aa"),
-				*fake.FakeObj[pdv1.Store]("bb"),
+				*fake.FakeObj("aa", fake.ResourceVersion[pdv1.Store]("aaa")),
+				*fake.FakeObj("bb", fake.ResourceVersion[pdv1.Store]("aaa")),
 			},
 			updated: []pdv1.Store{
-				*fake.FakeObj[pdv1.Store]("aa"),
-				*fake.FakeObj[pdv1.Store]("bb"),
+				*fake.FakeObj("aa", fake.ResourceVersion[pdv1.Store]("aaa")),
+				*fake.FakeObj("bb", fake.ResourceVersion[pdv1.Store]("aaa")),
 			},
 			expectedCreateEvents: []event.TypedCreateEvent[client.Object]{
 				{
-					Object: fake.FakeObj[pdv1.Store]("aa"),
+					Object: fake.FakeObj("aa", fake.ResourceVersion[pdv1.Store]("aaa")),
 				},
 				{
-					Object: fake.FakeObj[pdv1.Store]("bb"),
+					Object: fake.FakeObj("bb", fake.ResourceVersion[pdv1.Store]("aaa")),
 				},
 			},
 		},
 		{
 			desc: "add new obj",
 			previous: []pdv1.Store{
-				*fake.FakeObj[pdv1.Store]("aa"),
+				*fake.FakeObj("aa", fake.ResourceVersion[pdv1.Store]("aaa")),
 			},
 			updated: []pdv1.Store{
-				*fake.FakeObj[pdv1.Store]("aa"),
-				*fake.FakeObj[pdv1.Store]("bb"),
+				*fake.FakeObj("aa", fake.ResourceVersion[pdv1.Store]("aaa")),
+				*fake.FakeObj("bb", fake.ResourceVersion[pdv1.Store]("aaa")),
 			},
 			expectedCreateEvents: []event.TypedCreateEvent[client.Object]{
 				{
-					Object: fake.FakeObj[pdv1.Store]("aa"),
+					Object: fake.FakeObj("aa", fake.ResourceVersion[pdv1.Store]("aaa")),
 				},
 				{
-					Object: fake.FakeObj[pdv1.Store]("bb"),
+					Object: fake.FakeObj("bb", fake.ResourceVersion[pdv1.Store]("aaa")),
 				},
 			},
 		},
 		{
 			desc: "del existing obj",
 			previous: []pdv1.Store{
-				*fake.FakeObj[pdv1.Store]("aa"),
-				*fake.FakeObj[pdv1.Store]("bb"),
+				*fake.FakeObj("aa", fake.ResourceVersion[pdv1.Store]("aaa")),
+				*fake.FakeObj("bb", fake.ResourceVersion[pdv1.Store]("aaa")),
 			},
 			updated: []pdv1.Store{
-				*fake.FakeObj[pdv1.Store]("aa"),
+				*fake.FakeObj("aa", fake.ResourceVersion[pdv1.Store]("aaa")),
 			},
 			expectedCreateEvents: []event.TypedCreateEvent[client.Object]{
 				{
-					Object: fake.FakeObj[pdv1.Store]("aa"),
+					Object: fake.FakeObj("aa", fake.ResourceVersion[pdv1.Store]("aaa")),
 				},
 				{
-					Object: fake.FakeObj[pdv1.Store]("bb"),
+					Object: fake.FakeObj("bb", fake.ResourceVersion[pdv1.Store]("aaa")),
 				},
 			},
 			expectedDeleteEvents: []event.TypedDeleteEvent[client.Object]{
 				{
-					Object: fake.FakeObj[pdv1.Store]("bb"),
+					Object: fake.FakeObj("bb", fake.ResourceVersion[pdv1.Store]("aaa")),
 				},
 			},
 		},
 		{
 			desc: "update existing obj",
 			previous: []pdv1.Store{
-				*fake.FakeObj[pdv1.Store]("aa"),
-				*fake.FakeObj[pdv1.Store]("bb"),
+				*fake.FakeObj("aa", fake.ResourceVersion[pdv1.Store]("aaa")),
+				*fake.FakeObj("bb", fake.ResourceVersion[pdv1.Store]("aaa")),
 			},
 			updated: []pdv1.Store{
-				*fake.FakeObj[pdv1.Store]("aa"),
+				*fake.FakeObj("aa", fake.ResourceVersion[pdv1.Store]("aaa")),
 				*fake.FakeObj("bb", func(obj *pdv1.Store) *pdv1.Store {
 					obj.Labels = map[string]string{"test": "test"}
+					obj.ResourceVersion = "bbb"
 					return obj
 				}),
 			},
 			expectedCreateEvents: []event.TypedCreateEvent[client.Object]{
 				{
-					Object: fake.FakeObj[pdv1.Store]("aa"),
+					Object: fake.FakeObj("aa", fake.ResourceVersion[pdv1.Store]("aaa")),
 				},
 				{
-					Object: fake.FakeObj[pdv1.Store]("bb"),
+					Object: fake.FakeObj("bb", fake.ResourceVersion[pdv1.Store]("aaa")),
 				},
 			},
 			expectedUpdateEvents: []event.TypedUpdateEvent[client.Object]{
 				{
-					ObjectOld: fake.FakeObj[pdv1.Store]("bb"),
+					ObjectOld: fake.FakeObj("bb", fake.ResourceVersion[pdv1.Store]("aaa")),
 					ObjectNew: fake.FakeObj("bb", func(obj *pdv1.Store) *pdv1.Store {
 						obj.Labels = map[string]string{"test": "test"}
+						obj.ResourceVersion = "bbb"
+						return obj
+					}),
+				},
+			},
+			resyncPeriod: time.Second * 3,
+			resyncTimes:  1,
+		},
+		{
+			// Events after first resync will be lost if no rv
+			// It's unexpected.
+			desc: "update existing obj no rv [Unexpected]",
+			previous: []pdv1.Store{
+				*fake.FakeObj("aa", fake.ResourceVersion[pdv1.Store]("aaa")),
+				*fake.FakeObj("bb", fake.ResourceVersion[pdv1.Store]("aaa")),
+			},
+			updated: []pdv1.Store{
+				*fake.FakeObj("aa", fake.ResourceVersion[pdv1.Store]("aaa")),
+				*fake.FakeObj("bb", func(obj *pdv1.Store) *pdv1.Store {
+					obj.Labels = map[string]string{"test": "test"}
+					obj.ResourceVersion = "aaa"
+					return obj
+				}),
+			},
+			expectedCreateEvents: []event.TypedCreateEvent[client.Object]{
+				{
+					Object: fake.FakeObj("aa", fake.ResourceVersion[pdv1.Store]("aaa")),
+				},
+				{
+					Object: fake.FakeObj("bb", fake.ResourceVersion[pdv1.Store]("aaa")),
+				},
+			},
+			// NOTE: update event is lost
+			expectedUpdateEvents: nil,
+			resyncPeriod:         time.Second * 3,
+			resyncTimes:          1,
+		},
+		{
+			desc: "update existing obj no rv resync twice",
+			previous: []pdv1.Store{
+				*fake.FakeObj("aa", fake.ResourceVersion[pdv1.Store]("aaa")),
+				*fake.FakeObj("bb", fake.ResourceVersion[pdv1.Store]("aaa")),
+			},
+			updated: []pdv1.Store{
+				*fake.FakeObj("aa", fake.ResourceVersion[pdv1.Store]("aaa")),
+				*fake.FakeObj("bb", func(obj *pdv1.Store) *pdv1.Store {
+					obj.Labels = map[string]string{"test": "test"}
+					obj.ResourceVersion = "aaa"
+					return obj
+				}),
+			},
+			expectedCreateEvents: []event.TypedCreateEvent[client.Object]{
+				{
+					Object: fake.FakeObj("aa", fake.ResourceVersion[pdv1.Store]("aaa")),
+				},
+				{
+					Object: fake.FakeObj("bb", fake.ResourceVersion[pdv1.Store]("aaa")),
+				},
+			},
+			expectedUpdateEvents: []event.TypedUpdateEvent[client.Object]{
+				{
+					ObjectOld: fake.FakeObj("bb", fake.ResourceVersion[pdv1.Store]("aaa")),
+					ObjectNew: fake.FakeObj("bb", func(obj *pdv1.Store) *pdv1.Store {
+						obj.Labels = map[string]string{"test": "test"}
+						obj.ResourceVersion = "aaa"
+						return obj
+					}),
+				},
+			},
+			resyncPeriod: time.Second * 3,
+			resyncTimes:  2,
+		},
+		{
+			desc: "update existing obj no rv no resync",
+			previous: []pdv1.Store{
+				*fake.FakeObj("aa", fake.ResourceVersion[pdv1.Store]("aaa")),
+				*fake.FakeObj("bb", fake.ResourceVersion[pdv1.Store]("aaa")),
+			},
+			updated: []pdv1.Store{
+				*fake.FakeObj("aa", fake.ResourceVersion[pdv1.Store]("aaa")),
+				*fake.FakeObj("bb", func(obj *pdv1.Store) *pdv1.Store {
+					obj.Labels = map[string]string{"test": "test"}
+					obj.ResourceVersion = "aaa"
+					return obj
+				}),
+			},
+			expectedCreateEvents: []event.TypedCreateEvent[client.Object]{
+				{
+					Object: fake.FakeObj("aa", fake.ResourceVersion[pdv1.Store]("aaa")),
+				},
+				{
+					Object: fake.FakeObj("bb", fake.ResourceVersion[pdv1.Store]("aaa")),
+				},
+			},
+			expectedUpdateEvents: []event.TypedUpdateEvent[client.Object]{
+				{
+					ObjectOld: fake.FakeObj("bb", fake.ResourceVersion[pdv1.Store]("aaa")),
+					ObjectNew: fake.FakeObj("bb", func(obj *pdv1.Store) *pdv1.Store {
+						obj.Labels = map[string]string{"test": "test"}
+						obj.ResourceVersion = "aaa"
 						return obj
 					}),
 				},
@@ -242,11 +347,7 @@ func TestClientManagerSource(t *testing.T) {
 	for i := range cases {
 		c := &cases[i]
 		t.Run(c.desc, func(tt *testing.T) {
-			lister := FakeLister[pdv1.Store, *pdv1.Store]{
-				L: List[pdv1.Store, *pdv1.Store]{
-					Items: c.previous,
-				},
-			}
+			lister := NewFakeLister(c.previous)
 			cm := NewManagerBuilder[client.Object, int, int]().
 				WithNewUnderlayClientFunc(func(client.Object) (int, error) {
 					return 0, nil
@@ -259,11 +360,16 @@ func TestClientManagerSource(t *testing.T) {
 					return 0, nil
 				}).
 				WithNewPollerFunc(&pdv1.Store{}, func(name string, logger logr.Logger, _ int) Poller {
-					return NewPoller(name, logger, &lister, NewDeepEquality[pdv1.Store](logger), time.Millisecond*200)
+					return NewPoller(name, logger, lister, NewDeepEquality[pdv1.Store](logger), time.Millisecond*200)
 				}).
+				WithResyncPeriod(c.resyncPeriod).
 				Build()
 
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+			timeout := c.resyncPeriod * (time.Duration(c.resyncTimes + 1))
+			if c.resyncPeriod == 0 {
+				timeout = time.Second * 10
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), timeout)
 			defer cancel()
 
 			done := make(chan struct{})
@@ -286,6 +392,12 @@ func TestClientManagerSource(t *testing.T) {
 				},
 
 				UpdateFunc: func(_ context.Context, event event.TypedUpdateEvent[client.Object], _ workqueue.TypedRateLimitingInterface[reconcile.Request]) {
+					// ignore no diff
+					diff := gocmp.Diff(event.ObjectOld, event.ObjectNew)
+					if diff == "" {
+						return
+					}
+
 					_, ok1 := event.ObjectOld.(*pdv1.Store)
 					assert.True(tt, ok1)
 
@@ -324,6 +436,8 @@ func TestClientManagerSource(t *testing.T) {
 				return es.HasSynced("aa")
 			})
 			assert.True(tt, synced)
+
+			time.Sleep(c.resyncPeriod * time.Duration(c.resyncTimes))
 
 			lister.UpdateItems(c.updated)
 

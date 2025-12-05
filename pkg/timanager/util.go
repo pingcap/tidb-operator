@@ -22,6 +22,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
+	"github.com/go-logr/logr"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 )
 
@@ -156,4 +160,32 @@ func SplitPrimaryKey(key string) (ns, name string) {
 		return keys[0], ""
 	}
 	return keys[0], keys[1]
+}
+
+type deepEquality[T any, PT Object[T]] struct {
+	logger logr.Logger
+	opts   []cmp.Option
+}
+
+func (e *deepEquality[T, PT]) Equal(preObj, curObj PT) bool {
+	if cmp.Equal(preObj, curObj, e.opts...) {
+		return true
+	}
+
+	e.logger.Info("poll obj is changed",
+		"namespace", curObj.GetNamespace(),
+		"name", curObj.GetName(),
+		"diff", cmp.Diff(preObj, curObj, e.opts...),
+	)
+
+	return false
+}
+
+func NewDeepEquality[T any, PT Object[T]](logger logr.Logger) Equality[T, PT] {
+	return &deepEquality[T, PT]{
+		logger: logger,
+		opts: []cmp.Option{
+			cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion"),
+		},
+	}
 }

@@ -17,9 +17,12 @@ package timanager
 import (
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 )
 
 func TestList(t *testing.T) {
@@ -42,4 +45,105 @@ func TestList(t *testing.T) {
 	assert.Equal(t, podList.Items, list.Items)
 	cp := list.DeepCopyObject()
 	assert.Equal(t, list, cp)
+}
+
+func TestDeepEquality(t *testing.T) {
+	cases := []struct {
+		desc      string
+		prev, cur *corev1.Pod
+		expected  bool
+	}{
+		{
+			desc:     "nil",
+			expected: true,
+		},
+		{
+			desc:     "cur is not nil",
+			cur:      fake.FakeObj[corev1.Pod]("aaa"),
+			expected: false,
+		},
+		{
+			desc: "equal",
+			prev: fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
+				obj.Labels = map[string]string{"xx": "yy"}
+				obj.Spec = corev1.PodSpec{
+					HostNetwork: true,
+				}
+				return obj
+			}),
+			cur: fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
+				obj.Labels = map[string]string{"xx": "yy"}
+				obj.Spec = corev1.PodSpec{
+					HostNetwork: true,
+				}
+				return obj
+			}),
+			expected: true,
+		},
+		{
+			desc: "ignore resourceVersion",
+			prev: fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
+				obj.Labels = map[string]string{"xx": "yy"}
+				obj.Spec = corev1.PodSpec{
+					HostNetwork: true,
+				}
+				obj.ResourceVersion = "aaa"
+				return obj
+			}),
+			cur: fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
+				obj.Labels = map[string]string{"xx": "yy"}
+				obj.Spec = corev1.PodSpec{
+					HostNetwork: true,
+				}
+				obj.ResourceVersion = "bbb"
+				return obj
+			}),
+			expected: true,
+		},
+		{
+			desc: "only ignore resourceVersion, not all metadata",
+			prev: fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
+				obj.Labels = map[string]string{"xx": "yy"}
+				obj.Spec = corev1.PodSpec{
+					HostNetwork: true,
+				}
+				obj.ResourceVersion = "aaa"
+				return obj
+			}),
+			cur: fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
+				obj.Labels = map[string]string{"xx": "zz"}
+				obj.Spec = corev1.PodSpec{
+					HostNetwork: true,
+				}
+				obj.ResourceVersion = "bbb"
+				return obj
+			}),
+		},
+		{
+			desc: "only ignore resourceVersion, not spec",
+			prev: fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
+				obj.Labels = map[string]string{"xx": "zz"}
+				obj.ResourceVersion = "aaa"
+				return obj
+			}),
+			cur: fake.FakeObj("aaa", func(obj *corev1.Pod) *corev1.Pod {
+				obj.Labels = map[string]string{"xx": "zz"}
+				obj.Spec = corev1.PodSpec{
+					HostNetwork: true,
+				}
+				obj.ResourceVersion = "bbb"
+				return obj
+			}),
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			e := NewDeepEquality[corev1.Pod](logr.Discard())
+			assert.Equal(tt, c.expected, e.Equal(c.prev, c.cur))
+		})
+	}
 }

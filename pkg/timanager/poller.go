@@ -17,12 +17,10 @@ package timanager
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 
@@ -250,29 +248,5 @@ func (p *poller[T, PT, L]) sendEvent(ctx context.Context, e *watch.Event) {
 	case p.resultCh <- *e:
 		p.logger.Info("poller sent event", "type", e.Type, "object", e.Object, "kind", p.typeName)
 	case <-ctx.Done():
-	}
-}
-
-type deepEquality[T any, PT Object[T]] struct {
-	logger logr.Logger
-}
-
-func (e *deepEquality[T, PT]) Equal(preObj, curObj PT) bool {
-	if reflect.DeepEqual(preObj, curObj) {
-		return true
-	}
-
-	e.logger.Info("poll obj is changed",
-		"namespace", curObj.GetNamespace(),
-		"name", curObj.GetName(),
-		"diff", cmp.Diff(preObj, curObj),
-	)
-
-	return false
-}
-
-func NewDeepEquality[T any, PT Object[T]](logger logr.Logger) Equality[T, PT] {
-	return &deepEquality[T, PT]{
-		logger: logger,
 	}
 }
