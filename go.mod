@@ -63,7 +63,7 @@ require (
 	github.com/prometheus/common v0.62.0
 	github.com/prometheus/prom2json v1.3.3
 	github.com/spf13/cobra v1.8.1
-	github.com/spf13/pflag v1.0.5
+	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.10.0
 	github.com/tikv/pd/client v0.0.0-20250917050259-056e04c3e3a3
 	go.etcd.io/etcd/client/v3 v3.5.21
