@@ -1862,7 +1862,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 			},
 			testSts: func(sts *apps.StatefulSet) {
 				g := NewGomegaWithT(t)
-				g.Expect(sts.Spec.VolumeClaimTemplates[0].Spec.Resources).To(Equal(corev1.ResourceRequirements{
+				g.Expect(sts.Spec.VolumeClaimTemplates[0].Spec.Resources).To(Equal(corev1.VolumeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceStorage: resource.MustParse("100Gi"),
 					},
@@ -1979,6 +1979,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 					PD:   &v1alpha1.PDSpec{},
 					TiDB: &v1alpha1.TiDBSpec{},
 					TiKV: &v1alpha1.TiKVSpec{
+						VolumeAttributesClassName: pointer.String("gold"),
 						StorageVolumes: []v1alpha1.StorageVolume{
 							{
 								Name:        "wal",
@@ -2003,6 +2004,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 							AccessModes: []corev1.PersistentVolumeAccessMode{
 								corev1.ReadWriteOnce,
 							},
+							VolumeAttributesClassName: pointer.String("gold"),
 						},
 					},
 					{
@@ -2013,11 +2015,12 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 							AccessModes: []corev1.PersistentVolumeAccessMode{
 								corev1.ReadWriteOnce,
 							},
-							Resources: corev1.ResourceRequirements{
+							Resources: corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceStorage: q,
 								},
 							},
+							VolumeAttributesClassName: pointer.String("gold"),
 						},
 					},
 				}))
@@ -2049,9 +2052,10 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 								MountPath:   "/var/log/rocksdblog",
 							},
 							{
-								Name:        "raftlog",
-								StorageSize: "1Gi",
-								MountPath:   "/var/log/raftlog",
+								Name:                      "raftlog",
+								StorageSize:               "1Gi",
+								MountPath:                 "/var/log/raftlog",
+								VolumeAttributesClassName: pointer.String("gold"),
 							}},
 					},
 				},
@@ -2078,7 +2082,7 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 							AccessModes: []corev1.PersistentVolumeAccessMode{
 								corev1.ReadWriteOnce,
 							},
-							Resources: corev1.ResourceRequirements{
+							Resources: corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceStorage: q,
 								},
@@ -2093,11 +2097,12 @@ func TestGetNewTiKVSetForTidbCluster(t *testing.T) {
 							AccessModes: []corev1.PersistentVolumeAccessMode{
 								corev1.ReadWriteOnce,
 							},
-							Resources: corev1.ResourceRequirements{
+							Resources: corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceStorage: q,
 								},
 							},
+							VolumeAttributesClassName: pointer.String("gold"),
 						},
 					},
 				}))
