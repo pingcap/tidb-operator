@@ -16,7 +16,6 @@ require (
 	k8s.io/apimachinery v0.32.10
 	k8s.io/cli-runtime v0.32.10
 	k8s.io/client-go v0.32.10
-	k8s.io/code-generator v0.32.10
 	k8s.io/component-base v0.32.10
 	k8s.io/gengo/v2 v2.0.0-20250207200755-1244d31929d7
 	k8s.io/klog/v2 v2.130.1
@@ -24,7 +23,6 @@ require (
 	k8s.io/kubectl v0.32.10
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738
 	sigs.k8s.io/controller-runtime v0.20.4
-	sigs.k8s.io/controller-tools v0.16.5
 	sigs.k8s.io/structured-merge-diff/v4 v4.6.0
 	sigs.k8s.io/yaml v1.4.0
 )
@@ -79,7 +77,6 @@ require (
 	github.com/pingcap/failpoint v0.0.0-20240528011301-b51a646c7c86 // indirect
 	github.com/pingcap/log v1.1.1-0.20221110025148-ca232912c9f3 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
-	golang.org/x/tools/go/packages/packagestest v0.1.1-deprecated // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 )
 

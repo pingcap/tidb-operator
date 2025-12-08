@@ -18,12 +18,14 @@ BIN_DIR = $(OUTPUT_DIR)/bin
 API_PATH = $(ROOT)/api
 PD_API_PATH = $(ROOT)/pkg/timanager/apis/pd
 VALIDATION_TEST_PATH = $(ROOT)/tests/validation
+TOOLS_PATH = $(ROOT)/tools
 GO_MODULE := github.com/pingcap/tidb-operator/v2
 OVERLAY_PKG_DIR = $(ROOT)/pkg/overlay
 RUNTIME_PKG_DIR = $(ROOT)/pkg/runtime
 BOILERPLATE_FILE = $(ROOT)/hack/boilerplate/boilerplate.go.txt
 MOCK_BOILERPLATE_FILE = $(ROOT)/hack/boilerplate/boilerplate.txt
 KUBE_OPT = -n tidb-admin --context kind-tidb-operator
+GO_TOOL_BIN = register-gen deepcopy-gen controller-gen mockgen golangci-lint license-eye mdtoc helm kind ginkgo kubectl
 
 ALL_CMD = tidb-operator prestop-checker testing-workload tidb-backup-manager
 .PHONY: build
@@ -98,10 +100,14 @@ crd: bin/controller-gen build/crd-modifier
 
 
 .PHONY: tidy
-tidy:
+tidy: $(addprefix tidy/,$(GO_TOOL_BIN))
 	cd $(API_PATH) && go mod tidy
 	cd $(VALIDATION_TEST_PATH) && go mod tidy
 	go mod tidy
+
+.PHONY: $(addprefix tidy/,$(GO_TOOL_BIN))
+$(addprefix tidy/,$(GO_TOOL_BIN)):
+	cd $(TOOLS_PATH)/$(patsubst tidy/%,%,$@) && go mod tidy
 
 gengo: GEN_DIR ?= ./...
 gengo: bin/mockgen
@@ -202,16 +208,13 @@ RUNTIME_GEN = $(BIN_DIR)/runtime-gen
 bin/runtime-gen:
 	$(ROOT)/hack/build.sh runtime-gen
 
-ALL_BIN = kubectl golangci-lint kind ginkgo mdtoc helm license-eye mockgen controller-gen deepcopy-gen register-gen
-
 # Generic target for allowed bin/xxx tools - automatically defines XXX variable (with hyphens converted to underscores)
 # e.g. bin/abc-def will define ABC_DEF = $(BIN_DIR)/abc-def
 define make_bin_target
 $(eval $(shell echo $(1) | tr '[:lower:]-' '[:upper:]_') = $(BIN_DIR)/$(1))
 endef
 
-.PHONY: $(addprefix bin/,$(ALL_BIN))
-$(addprefix bin/,$(ALL_BIN)):
+.PHONY: $(addprefix bin/,$(GO_TOOL_BIN))
+$(addprefix bin/,$(GO_TOOL_BIN)): bin/%: tidy/%
 	$(call make_bin_target,$(patsubst bin/%,%,$@))
-	./hack/tools.sh $($(shell echo $(patsubst bin/%,%,$@) | tr '[:lower:]-' '[:upper:]_'))
-
+	./hack/tools.sh $(patsubst bin/%,%,$@)
