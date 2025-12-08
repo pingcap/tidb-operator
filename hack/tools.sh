@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# DEPRECATED
+# It's not called now. All tools are migrated to use tools feature introduced in go1.24
+# Just keep it if some other tools which are not written by go are introduced.
 
 set -o errexit
 set -o nounset
@@ -23,6 +26,10 @@ ROOT=$(cd $(dirname "${BASH_SOURCE[0]}")/..; pwd -P)
 source $ROOT/hack/lib/vars.sh
 source $ROOT/hack/lib/download.sh
 
+BIN_DIR=$ROOT/_output/bin
+mkdir -p $BIN_DIR
+
+# Just keep as example
 function kubectl() {
     download s_curl $1 \
         https://dl.k8s.io/release/VERSION/bin/OS/ARCH/kubectl \
@@ -30,73 +37,16 @@ function kubectl() {
         "version --client | awk '/Client/{print \$3}'"
 }
 
-function golangci-lint () {
-    # DON'T track the version of this cmd by go.mod
-    download go_install $1 \
-        github.com/golangci/golangci-lint/v2/cmd/golangci-lint \
-        v2.1.6 \
-        "version --short"
-}
+# Create a script to call go tool in _output/bin
+function go_tools() {
+    echo "installing ${1}"
+	cat << EOF > ${BIN_DIR}/${1}
+#!/usr/bin/env bash
+go tool -modfile ${ROOT}/tools/${1}/go.mod ${1} "\${@}"
+EOF
 
-function kind() {
-    # DON'T track the version of this cmd by go.mod
-    download go_install $1 \
-        sigs.k8s.io/kind \
-        v0.24.0 \
-        "version | awk '{print \$2}'"
-}
-
-function ginkgo() {
-    download go_install $1 \
-        github.com/onsi/ginkgo/v2/ginkgo \
-        v2.23.3 \
-        "version | awk '{print \"v\"\$3}'"
-}
-
-function mdtoc() {
-    download go_install $1 \
-        sigs.k8s.io/mdtoc \
-        v1.1.0
-}
-
-function helm() {
-    download go_install $1 \
-        helm.sh/helm/v3/cmd/helm \
-        v3.17.3 \
-        "version --template='{{.Version}}' | xargs printf '%s.3'"
-}
-
-function license-eye() {
-    download go_install $1 \
-        github.com/apache/skywalking-eyes/cmd/license-eye \
-        049742de2276515409e3109ca2a91934053e080d
-}
-
-function mockgen() {
-    download go_install $1 \
-        go.uber.org/mock/mockgen \
-        v0.6.0
-}
-
-function controller-gen() {
-    download go_install $1 \
-        sigs.k8s.io/controller-tools/cmd/controller-gen \
-        v0.17.2 \
-        "--version | awk '{print \$2}'"
-}
-
-function deepcopy-gen() {
-    # version is tracked by go.mod
-    download go_install $1 \
-        k8s.io/code-generator/cmd/deepcopy-gen
-}
-
-function register-gen() {
-    # version is tracked by go.mod
-    download go_install $1 \
-        k8s.io/code-generator/cmd/register-gen
+    chmod +x ${BIN_DIR}/${1}
 }
 
 
-tool=$(basename "$1")
-$tool $1
+go_tools $1
