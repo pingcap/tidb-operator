@@ -1629,6 +1629,7 @@ func TestGetNewTiFlashSetForTidbCluster(t *testing.T) {
 						},
 						StorageClaims: []v1alpha1.StorageClaim{
 							{
+								VolumeAttributesClassName: pointer.String("gold"),
 								Resources: corev1.ResourceRequirements{
 									Requests: corev1.ResourceList{
 										corev1.ResourceStorage: resource.MustParse("100Gi"),
@@ -1644,11 +1645,12 @@ func TestGetNewTiFlashSetForTidbCluster(t *testing.T) {
 			},
 			testSts: func(sts *apps.StatefulSet) {
 				g := NewGomegaWithT(t)
-				g.Expect(sts.Spec.VolumeClaimTemplates[0].Spec.Resources).To(Equal(corev1.ResourceRequirements{
+				g.Expect(sts.Spec.VolumeClaimTemplates[0].Spec.Resources).To(Equal(corev1.VolumeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceStorage: resource.MustParse("100Gi"),
 					},
 				}))
+				g.Expect(sts.Spec.VolumeClaimTemplates[0].Spec.VolumeAttributesClassName).To(Equal(pointer.String("gold")))
 				nameToContainer := MapContainers(&sts.Spec.Template.Spec)
 				tiflashContainer := nameToContainer[v1alpha1.TiFlashMemberType.String()]
 				g.Expect(tiflashContainer.Resources).To(Equal(corev1.ResourceRequirements{

@@ -690,8 +690,9 @@ func flashVolumeClaimTemplate(storageClaims []v1alpha1.StorageClaim) ([]corev1.P
 				AccessModes: []corev1.PersistentVolumeAccessMode{
 					corev1.ReadWriteOnce,
 				},
-				StorageClassName: storageClaims[k].StorageClassName,
-				Resources:        storageRequest,
+				StorageClassName:          storageClaims[k].StorageClassName,
+				VolumeAttributesClassName: storageClaims[k].VolumeAttributesClassName,
+				Resources:                 storageRequest,
 			},
 		})
 	}
