@@ -45,7 +45,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/evanphx/json-patch v5.6.0+incompatible
 	github.com/go-json-experiment/json v0.0.0-20250211171154-1ae217ad3535
-	github.com/go-logr/logr v1.4.2
+	github.com/go-logr/logr v1.4.3
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/google/gnostic-models v0.6.9
