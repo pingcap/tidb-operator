@@ -26,6 +26,9 @@ ROOT=$(cd $(dirname "${BASH_SOURCE[0]}")/..; pwd -P)
 source $ROOT/hack/lib/vars.sh
 source $ROOT/hack/lib/download.sh
 
+BIN_DIR=$ROOT/_output/bin
+mkdir -p $BIN_DIR
+
 # Just keep as example
 function kubectl() {
     download s_curl $1 \
@@ -37,12 +40,12 @@ function kubectl() {
 # Create a script to call go tool in _output/bin
 function go_tools() {
     echo "installing ${1}"
-	cat << EOF > ${ROOT}/_output/bin/${1}
+	cat << EOF > ${BIN_DIR}/${1}
 #!/usr/bin/env bash
 go tool -modfile ${ROOT}/tools/${1}/go.mod ${1} "\${@}"
 EOF
 
-    chmod +x ${ROOT}/_output/bin/${1}
+    chmod +x ${BIN_DIR}/${1}
 }
 
 
