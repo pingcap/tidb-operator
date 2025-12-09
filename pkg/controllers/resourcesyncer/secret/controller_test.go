@@ -223,7 +223,7 @@ func TestReconcile(t *testing.T) {
 					fake.ResourceVersion[corev1.Secret]("test"),
 					fake.Label[corev1.Secret]("test", "test"),
 					// change data to test whether update is actually skipped
-					// not really happended in real world
+					// not really happened in real world
 					secretData("fileyyy", []byte(`datayyy`)),
 				),
 			},
@@ -273,6 +273,7 @@ func TestReconcile(t *testing.T) {
 				Client:    fc,
 				Labels:    c.labels,
 				BaseDirFS: dirFs,
+				cache:     map[string]string{},
 			}
 
 			_, err := r.Reconcile(t.Context(), ctrl.Request{})
@@ -281,7 +282,7 @@ func TestReconcile(t *testing.T) {
 			}
 
 			actual := map[string]*fileData{}
-			afero.Walk(dirFs, "", func(path string, info fs.FileInfo, err error) error {
+			err = afero.Walk(dirFs, "", func(path string, info fs.FileInfo, err error) error {
 				if err != nil {
 					return err
 				}
@@ -297,13 +298,14 @@ func TestReconcile(t *testing.T) {
 					return nil
 				}
 				data, err := afero.ReadFile(dirFs, path)
-				assert.NoError(tt, err, path)
+				require.NoError(tt, err, path)
 
 				actual[path] = &fileData{
 					data: data,
 				}
 				return nil
 			})
+			require.NoError(tt, err)
 
 			assert.Equal(tt, c.expectedFiles, actual)
 		})
@@ -315,12 +317,12 @@ func setupFs(t *testing.T, files map[string]*fileData) afero.Fs {
 	for path, fileData := range files {
 		if fileData.isDir {
 			err := f.MkdirAll(path, 0o755)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		dir := filepath.Dir(path)
 		err := f.MkdirAll(dir, 0o755)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = afero.WriteFile(f, path, fileData.data, 0o644)
 		assert.NoError(t, err)
 	}

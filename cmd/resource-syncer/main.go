@@ -90,7 +90,6 @@ func main() {
 	if err := run(&cfg); err != nil {
 		setupLog.Error(err, "unable to new manager")
 		os.Exit(1)
-
 	}
 }
 
@@ -111,7 +110,7 @@ func run(cfg *Config) error {
 		return fmt.Errorf("unable to new manager: %w", err)
 	}
 
-	if err := ensureDirExists(afero.NewBasePathFs(afero.NewOsFs(), cfg.BaseDir), cfg.SecretDirName); err != nil {
+	if err := secret.EnsureDirExists(afero.NewBasePathFs(afero.NewOsFs(), cfg.BaseDir), cfg.SecretDirName); err != nil {
 		return fmt.Errorf("unable to ensure secret dir exists: %w", err)
 	}
 
@@ -130,25 +129,6 @@ func run(cfg *Config) error {
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctx); err != nil {
 		return fmt.Errorf("start manager failed: %w", err)
-	}
-
-	return nil
-}
-
-func ensureDirExists(base afero.Fs, dir string) error {
-	info, err := base.Stat(dir)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return err
-		}
-		if err := base.MkdirAll(dir, 0o755); err != nil {
-			return err
-		}
-
-		return nil
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("%s is not dir", dir)
 	}
 
 	return nil

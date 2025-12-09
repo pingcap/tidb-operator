@@ -17,6 +17,7 @@ package secret
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -42,6 +43,9 @@ const (
 
 	maxRetryTimes  = 10
 	defaultTimeout = time.Second * 30
+
+	defaultFilePerm fs.FileMode = 0o644
+	defaultDirPerm  fs.FileMode = 0o755
 )
 
 type Reconciler struct {
@@ -77,11 +81,10 @@ func Setup(
 		return fmt.Errorf("cannot add synced for readyz checker: %w", err)
 	}
 	go func() {
-		// if cache is not synced, mgr will quit, so wait infinit here
+		// if cache is not synced, mgr will quit, so wait infinite here
 		ctx := context.Background()
 		logger := mgr.GetLogger()
 		if mgr.GetCache().WaitForCacheSync(ctx) {
-
 			sl := corev1.SecretList{}
 			failed := true
 			for range maxRetryTimes {
@@ -91,7 +94,6 @@ func Setup(
 				}
 
 				nctx, cancel := context.WithTimeout(ctx, defaultTimeout)
-				defer cancel()
 
 				if err := r.Client.List(
 					nctx,
@@ -102,8 +104,10 @@ func Setup(
 					logger.Error(err, "cannot list secrets", "namepsace", r.Namespace, "labels", r.Labels)
 				} else {
 					failed = false
+					cancel()
 					break
 				}
+				cancel()
 			}
 
 			if !failed && len(sl.Items) == 0 {
@@ -191,7 +195,7 @@ func (r *Reconciler) syncSecret(ctx context.Context, s *corev1.Secret) error {
 			return err
 		}
 
-		if err := r.BaseDirFS.Mkdir(s.Name, 0o755); err != nil {
+		if err := r.BaseDirFS.Mkdir(s.Name, defaultDirPerm); err != nil {
 			return err
 		}
 
@@ -230,7 +234,12 @@ func (r *Reconciler) syncSecret(ctx context.Context, s *corev1.Secret) error {
 		return errors.NewAggregate(errs)
 	}
 
-	if err := afero.WriteFile(r.BaseDirFS, filepath.Join(s.Name, resourceVersionFile), []byte(s.ResourceVersion), 0o644); err != nil {
+	if err := afero.WriteFile(
+		r.BaseDirFS,
+		filepath.Join(s.Name, resourceVersionFile),
+		[]byte(s.ResourceVersion),
+		defaultFilePerm,
+	); err != nil {
 		return err
 	}
 
@@ -239,7 +248,7 @@ func (r *Reconciler) syncSecret(ctx context.Context, s *corev1.Secret) error {
 }
 
 func (r *Reconciler) syncSecretFile(parent, name string, data []byte) error {
-	return afero.WriteFile(r.BaseDirFS, filepath.Join(parent, name), data, 0o644)
+	return afero.WriteFile(r.BaseDirFS, filepath.Join(parent, name), data, defaultFilePerm)
 }
 
 func (r *Reconciler) isChanged(s *corev1.Secret) (bool, error) {
@@ -264,9 +273,9 @@ func (r *Reconciler) Checker() healthz.Checker {
 	}
 }
 
-func cleanupDir(ctx context.Context, fs afero.Fs, dir string, keep map[string]struct{}) error {
+func cleanupDir(ctx context.Context, base afero.Fs, dir string, keep map[string]struct{}) error {
 	logger := logr.FromContextOrDiscard(ctx)
-	entries, err := afero.ReadDir(fs, dir)
+	entries, err := afero.ReadDir(base, dir)
 	if err != nil {
 		return fmt.Errorf("failed to read dir %s: %w", dir, err)
 	}
@@ -276,9 +285,28 @@ func cleanupDir(ctx context.Context, fs afero.Fs, dir string, keep map[string]st
 			continue
 		}
 		logger.Info("clean up", "path", filepath.Join(dir, entry.Name()))
-		if err := fs.RemoveAll(filepath.Join(dir, entry.Name())); err != nil {
+		if err := base.RemoveAll(filepath.Join(dir, entry.Name())); err != nil {
 			errs = append(errs, err)
 		}
 	}
 	return errors.NewAggregate(errs)
+}
+
+func EnsureDirExists(base afero.Fs, dir string) error {
+	info, err := base.Stat(dir)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+		if err := base.MkdirAll(dir, defaultDirPerm); err != nil {
+			return err
+		}
+
+		return nil
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%s is not dir", dir)
+	}
+
+	return nil
 }
