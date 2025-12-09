@@ -28,6 +28,7 @@ CACHE_DIR=$OUTPUT_DIR/cache
 
 declare -A NEED_PREFIX
 NEED_PREFIX["prestop-checker"]=1
+NEED_PREFIX["resource-syncer"]=1
 
 function image::build() {
     local targets=()

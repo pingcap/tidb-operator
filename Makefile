@@ -27,7 +27,7 @@ MOCK_BOILERPLATE_FILE = $(ROOT)/hack/boilerplate/boilerplate.txt
 KUBE_OPT = -n tidb-admin --context kind-tidb-operator
 GO_TOOL_BIN = register-gen deepcopy-gen controller-gen mockgen golangci-lint license-eye mdtoc helm kind ginkgo kubectl
 
-ALL_CMD = tidb-operator prestop-checker testing-workload tidb-backup-manager
+ALL_CMD = tidb-operator prestop-checker testing-workload tidb-backup-manager resource-syncer
 .PHONY: build
 build: $(addprefix build/,$(ALL_CMD))
 build/%:
