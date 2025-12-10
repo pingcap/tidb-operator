@@ -88,7 +88,7 @@ func main() {
 	setupLog.Info("current config", "config", &cfg)
 
 	if err := run(&cfg); err != nil {
-		setupLog.Error(err, "unable to new manager")
+		setupLog.Error(err, "unable to run resource syncer")
 		os.Exit(1)
 	}
 }

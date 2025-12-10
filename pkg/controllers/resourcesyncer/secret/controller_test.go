@@ -267,7 +267,6 @@ func TestReconcile(t *testing.T) {
 		c := &cases[i]
 		t.Run(c.desc, func(tt *testing.T) {
 			fc := client.NewFakeClient(c.objs...)
-			afero.NewMemMapFs()
 			dirFs := setupFs(tt, c.files)
 			r := Reconciler{
 				Client:    fc,

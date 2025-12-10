@@ -54,7 +54,7 @@ type Reconciler struct {
 	Labels    map[string]string
 	BaseDirFS afero.Fs
 
-	// secret name to it's resourceVersion
+	// secret name to its resourceVersion
 	cache map[string]string
 	lock  sync.Mutex
 
@@ -81,7 +81,7 @@ func Setup(
 		return fmt.Errorf("cannot add synced for readyz checker: %w", err)
 	}
 	go func() {
-		// if cache is not synced, mgr will quit, so wait infinite here
+		// if cache is not synced, mgr will quit, so wait infinitely here
 		ctx := context.Background()
 		logger := mgr.GetLogger()
 		if mgr.GetCache().WaitForCacheSync(ctx) {
@@ -101,7 +101,7 @@ func Setup(
 					client.InNamespace(r.Namespace),
 					client.MatchingLabels(r.Labels),
 				); err != nil {
-					logger.Error(err, "cannot list secrets", "namepsace", r.Namespace, "labels", r.Labels)
+					logger.Error(err, "cannot list secrets", "namespace", r.Namespace, "labels", r.Labels)
 				} else {
 					failed = false
 					cancel()
@@ -218,7 +218,9 @@ func (r *Reconciler) syncSecret(ctx context.Context, s *corev1.Secret) error {
 	}
 
 	var errs []error
-	files := map[string]struct{}{}
+	files := map[string]struct{}{
+		resourceVersionFile: {},
+	}
 
 	for name, data := range s.Data {
 		logger.Info("sync secret file", "secret", s.Name, "resourceVersion", s.ResourceVersion, "file", name)
