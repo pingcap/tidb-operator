@@ -6,9 +6,11 @@ on:
     - main
     - release-2.0
   pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
     branches:
     - main
     - release-2.0
+
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
