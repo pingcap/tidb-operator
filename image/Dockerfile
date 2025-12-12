@@ -80,3 +80,16 @@ WORKDIR /
 COPY --chown=pingcap:pingcap --from=builder /data/_output/$TARGETPLATFORM/bin/tidb-backup-manager tidb-backup-manager
 
 ENTRYPOINT ["/tidb-backup-manager"]
+
+
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.10.0@sha256:af691c27330cb8e018add3dd16e5403dcd881b23eae815920ddb2c6ae87cbd9b AS resource-syncer
+
+ARG TARGETPLATFORM
+
+USER 1000:2000
+
+WORKDIR /
+
+COPY --chown=pingcap:pingcap --from=builder /data/_output/$TARGETPLATFORM/bin/resource-syncer resource-syncer
+
+ENTRYPOINT ["/resource-syncer"]
