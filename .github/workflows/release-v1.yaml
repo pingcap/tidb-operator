@@ -1,0 +1,84 @@
+name: Release Charts v1
+
+on:
+  push:
+    tags:
+      - "v1.*.*"
+
+jobs:
+  release-charts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: '3.14.0'
+
+      - name: Build charts
+        run: |
+          set -e
+          RELEASE_TAG="${{ github.ref_name }}"
+          CHARTS_BUILD_DIR="output/chart"
+          CHART_ITEMS="tidb-operator tidb-drainer tidb-lightning"
+          
+          mkdir -p ${CHARTS_BUILD_DIR}
+          
+          # Build charts
+          for chartItem in ${CHART_ITEMS}; do
+            
+            chartPrefixName="${chartItem}-${RELEASE_TAG}"
+            
+            # Update Chart.yaml
+            sed -i "s/^version:.*/version: ${RELEASE_TAG}/g" charts/${chartItem}/Chart.yaml
+            sed -i "s/^appVersion:.*/appVersion: ${RELEASE_TAG}/g" charts/${chartItem}/Chart.yaml
+            
+            # Update values.yaml
+            sed -i -E "s#pingcap/(tidb-operator|tidb-backup-manager):[^[:space:]]*#pingcap/\\1:${RELEASE_TAG}#g" charts/${chartItem}/values.yaml 2>/dev/null || true
+            
+            # Package chart
+            tar -zcf ${CHARTS_BUILD_DIR}/${chartPrefixName}.tgz -C charts ${chartItem}
+            sha256sum ${CHARTS_BUILD_DIR}/${chartPrefixName}.tgz > ${CHARTS_BUILD_DIR}/${chartPrefixName}.sha256
+          done
+          
+          # Handle br-federation
+          if [[ "$RELEASE_TAG" == *"br-federation"* ]] && [ -d "charts/br-federation" ]; then
+            chartItem="br-federation"
+            chartPrefixName="${chartItem}-${RELEASE_TAG}"
+            sed -i "s/^version:.*/version: ${RELEASE_TAG}/g" charts/${chartItem}/Chart.yaml
+            sed -i "s/^appVersion:.*/appVersion: ${RELEASE_TAG}/g" charts/${chartItem}/Chart.yaml
+            sed -i -E "s#pingcap/br-federation-manager:[^[:space:]]*#pingcap/br-federation-manager:${RELEASE_TAG}#g" charts/${chartItem}/values.yaml
+            tar -zcf ${CHARTS_BUILD_DIR}/${chartPrefixName}.tgz -C charts ${chartItem}
+            sha256sum ${CHARTS_BUILD_DIR}/${chartPrefixName}.tgz > ${CHARTS_BUILD_DIR}/${chartPrefixName}.sha256
+          fi
+
+      - name: Upload charts to Tencent COS
+        uses: sylingd/tencent-cos-and-cdn-action@v1
+        with:
+          secret_id: ${{ secrets.TENCENT_COS_SECRET_ID }}
+          secret_key: ${{ secrets.TENCENT_COS_SECRET_KEY }}
+          cos_bucket: ${{ secrets.TENCENT_COS_BUCKET_NAME }}
+          cos_region: ap-beijing
+          local_path: ./output/chart
+          remote_path: /
+
+      - name: Update and upload index.yaml
+        if: ${{ !contains(github.ref_name, 'latest') && !contains(github.ref_name, 'nightly') && !contains(github.ref_name, 'test') }}
+        run: |
+          set -e
+          CHARTS_BUILD_DIR="output/chart"
+          cd ${CHARTS_BUILD_DIR}
+          curl -f http://charts.pingcap.org/index.yaml -o index.yaml 2>/dev/null || true
+          helm repo index . --url https://charts.pingcap.org/ --merge index.yaml 2>/dev/null || helm repo index . --url https://charts.pingcap.org/
+
+      - name: Upload index.yaml to Tencent COS
+        if: ${{ !contains(github.ref_name, 'latest') && !contains(github.ref_name, 'nightly') && !contains(github.ref_name, 'test') }}
+        uses: sylingd/tencent-cos-and-cdn-action@v1
+        with:
+          secret_id: ${{ secrets.TENCENT_COS_SECRET_ID }}
+          secret_key: ${{ secrets.TENCENT_COS_SECRET_KEY }}
+          cos_bucket: ${{ secrets.TENCENT_COS_BUCKET_NAME }}
+          cos_region: ap-beijing
+          local_path: ./output/chart/index.yaml
+          remote_path: /
