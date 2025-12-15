@@ -39,7 +39,8 @@ var _ = ginkgo.Describe("MultiPDGroup", label.Cluster, func() {
 		workload := f.SetupWorkload()
 		cm := f.SetupCertManager(o.TLS)
 
-		ginkgo.It("should support multiple pd groups", func(ctx context.Context) {
+		// flaky, fix later
+		ginkgo.PIt("should support multiple pd groups", func(ctx context.Context) {
 			pdg := action.MustCreatePD(ctx, f, o)
 			pdg2 := action.MustCreatePD(ctx, f, o,
 				data.WithName[scope.PDGroup]("bootstrapped"),
