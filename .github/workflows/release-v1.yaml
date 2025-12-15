@@ -1,25 +1,58 @@
 name: Release Charts v1
 
 on:
-  push:
-    tags:
-      - "v1.*.*"
+  workflow_dispatch:
+    inputs:
+      git_ref:
+        description: 'Branch or commit hash'
+        required: false
+        type: string
+        default: 'master'
+      release_tag:
+        description: 'Release tag (empty means the same with GitRef)'
+        required: false
+        type: string
+        default: 'test'
+      br_federation:
+        description: 'Whether to release BR federation manager'
+        required: false
+        type: boolean
+        default: false
+      fips:
+        description: 'Whether to enable FIPS'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   release-charts:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.git_ref }}
 
       - name: Set up Helm
         uses: azure/setup-helm@v4
         with:
           version: '3.14.0'
 
+      - name: Determine release tag
+        id: release_tag
+        run: |
+          RELEASE_TAG="${{ github.event.inputs.release_tag }}"
+          if [ -z "$RELEASE_TAG" ]; then
+            RELEASE_TAG="${{ github.event.inputs.git_ref }}"
+          fi
+          if [ "${{ github.event.inputs.fips }}" == "true" ]; then
+            RELEASE_TAG="${RELEASE_TAG}-fips"
+          fi
+          echo "tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
+
       - name: Build charts
         run: |
           set -e
-          RELEASE_TAG="${{ github.ref_name }}"
+          RELEASE_TAG="${{ steps.release_tag.outputs.tag }}"
           CHARTS_BUILD_DIR="output/chart"
           CHART_ITEMS="tidb-operator tidb-drainer tidb-lightning"
           
@@ -27,6 +60,7 @@ jobs:
           
           # Build charts
           for chartItem in ${CHART_ITEMS}; do
+            [ ! -d "charts/${chartItem}" ] && continue
             
             chartPrefixName="${chartItem}-${RELEASE_TAG}"
             
@@ -43,14 +77,16 @@ jobs:
           done
           
           # Handle br-federation
-          if [[ "$RELEASE_TAG" == *"br-federation"* ]] && [ -d "charts/br-federation" ]; then
-            chartItem="br-federation"
-            chartPrefixName="${chartItem}-${RELEASE_TAG}"
-            sed -i "s/^version:.*/version: ${RELEASE_TAG}/g" charts/${chartItem}/Chart.yaml
-            sed -i "s/^appVersion:.*/appVersion: ${RELEASE_TAG}/g" charts/${chartItem}/Chart.yaml
-            sed -i -E "s#pingcap/br-federation-manager:[^[:space:]]*#pingcap/br-federation-manager:${RELEASE_TAG}#g" charts/${chartItem}/values.yaml
-            tar -zcf ${CHARTS_BUILD_DIR}/${chartPrefixName}.tgz -C charts ${chartItem}
-            sha256sum ${CHARTS_BUILD_DIR}/${chartPrefixName}.tgz > ${CHARTS_BUILD_DIR}/${chartPrefixName}.sha256
+          if [ "${{ github.event.inputs.br_federation }}" == "true" ]; then
+            if [ -d "charts/br-federation" ]; then
+              chartItem="br-federation"
+              chartPrefixName="${chartItem}-${RELEASE_TAG}"
+              sed -i "s/^version:.*/version: ${RELEASE_TAG}/g" charts/${chartItem}/Chart.yaml
+              sed -i "s/^appVersion:.*/appVersion: ${RELEASE_TAG}/g" charts/${chartItem}/Chart.yaml
+              sed -i -E "s#pingcap/br-federation-manager:[^[:space:]]*#pingcap/br-federation-manager:${RELEASE_TAG}#g" charts/${chartItem}/values.yaml
+              tar -zcf ${CHARTS_BUILD_DIR}/${chartPrefixName}.tgz -C charts ${chartItem}
+              sha256sum ${CHARTS_BUILD_DIR}/${chartPrefixName}.tgz > ${CHARTS_BUILD_DIR}/${chartPrefixName}.sha256
+            fi
           fi
 
       - name: Upload charts to Tencent COS
@@ -64,7 +100,7 @@ jobs:
           remote_path: /
 
       - name: Update and upload index.yaml
-        if: ${{ !contains(github.ref_name, 'latest') && !contains(github.ref_name, 'nightly') && !contains(github.ref_name, 'test') }}
+        if: ${{ !contains(steps.release_tag.outputs.tag, 'latest') && !contains(steps.release_tag.outputs.tag, 'nightly') && !contains(steps.release_tag.outputs.tag, 'test') }}
         run: |
           set -e
           CHARTS_BUILD_DIR="output/chart"
@@ -73,7 +109,7 @@ jobs:
           helm repo index . --url https://charts.pingcap.org/ --merge index.yaml 2>/dev/null || helm repo index . --url https://charts.pingcap.org/
 
       - name: Upload index.yaml to Tencent COS
-        if: ${{ !contains(github.ref_name, 'latest') && !contains(github.ref_name, 'nightly') && !contains(github.ref_name, 'test') }}
+        if: ${{ !contains(steps.release_tag.outputs.tag, 'latest') && !contains(steps.release_tag.outputs.tag, 'nightly') && !contains(steps.release_tag.outputs.tag, 'test') }}
         uses: sylingd/tencent-cos-and-cdn-action@v1
         with:
           secret_id: ${{ secrets.TENCENT_COS_SECRET_ID }}
