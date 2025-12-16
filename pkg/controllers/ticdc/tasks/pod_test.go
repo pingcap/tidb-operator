@@ -26,6 +26,9 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/features"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	stateutil "github.com/pingcap/tidb-operator/v2/pkg/state"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
@@ -306,6 +309,8 @@ func TestTaskPod(t *testing.T) {
 			for _, obj := range c.objs {
 				require.NoError(tt, fc.Apply(ctx, obj), c.desc)
 			}
+			s := c.state.State.(*state)
+			s.IFeatureGates = stateutil.NewFeatureGates[scope.TiCDC](s)
 
 			if c.unexpectedErr {
 				// cannot update pod
@@ -320,7 +325,7 @@ func TestTaskPod(t *testing.T) {
 			assert.Equal(tt, c.expectedPodIsTerminating, c.state.IsPodTerminating(), c.desc)
 
 			if c.expectUpdatedPod {
-				expectedPod := newPod(c.state.Cluster(), c.state.TiCDC())
+				expectedPod := newPod(c.state.Cluster(), c.state.TiCDC(), c.state.FeatureGates())
 				actual := c.state.Pod().DeepCopy()
 				actual.Kind = ""
 				actual.APIVersion = ""
@@ -332,5 +337,5 @@ func TestTaskPod(t *testing.T) {
 }
 
 func fakePod(c *v1alpha1.Cluster, ticdc *v1alpha1.TiCDC) *corev1.Pod {
-	return newPod(c, ticdc)
+	return newPod(c, ticdc, features.NewFromFeatures(nil))
 }
