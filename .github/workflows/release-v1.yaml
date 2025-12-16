@@ -89,7 +89,7 @@ jobs:
         with:
           secret_id: ${{ secrets.TENCENT_COS_ACCESS_KEY }}
           secret_key: ${{ secrets.TENCENT_COS_SECRET_KEY }}
-          cos_bucket: ${{ secrets.TENCENT_COS_BUCKET_NAME }}
+          cos_bucket: ${{ vars.TENCENT_COS_BUCKET_NAME }}
           cos_region: ap-beijing
           local_path: ./output/chart
           remote_path: /
