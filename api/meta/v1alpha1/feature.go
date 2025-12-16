@@ -18,7 +18,7 @@ package v1alpha1
 // NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
 // NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
 //
-// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning;ClusterSubdomain;TerminableLogTailer;UseTSOReadyAPI;UseSchedulingReadyAPI;UseTiKVReadyAPI;UsePDReadyAPIV2;UseTiFlashReadyAPI;MultiPDGroup
+// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning;ClusterSubdomain;TerminableLogTailer;UseTSOReadyAPI;UseSchedulingReadyAPI;UseTiKVReadyAPI;UsePDReadyAPIV2;UseTiFlashReadyAPI;MultiPDGroup;TiCDCDynamicSecretSyncer
 // +enum
 type Feature string
 
@@ -110,4 +110,8 @@ const (
 	// - Cannot customize advertised client port
 	MultiPDGroup      Feature      = "MultiPDGroup"
 	MultiPDGroupStage FeatureStage = FeatureStageAlpha
+
+	// If this feature is enabled, TiCDC pods can dynamically load secrets with specific labels into pods
+	TiCDCDynamicSecretSyncer      Feature      = "TiCDCDynamicSecretSyncer"
+	TiCDCDynamicSecretSyncerStage FeatureStage = FeatureStageAlpha
 )

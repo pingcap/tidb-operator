@@ -75,6 +75,14 @@ prestopChecker:
     # tag: vX.Y.Z
     # digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
 
+# Resource syncer image configuration
+resourceSyncer:
+  image:
+    # registry: docker.io
+    repository: pingcap/tidb-operator-resource-syncer
+    # tag: vX.Y.Z
+    # digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+
 # RBAC configuration
 rbac:
   create: true

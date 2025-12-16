@@ -46,6 +46,7 @@ spec:
         args:
           - --backup-manager-image={{ template "image" (tuple .Values.backupManager.image $.Chart.AppVersion) }}
           - --default-prestop-checker-image={{ template "image" (tuple .Values.prestopChecker.image $.Chart.AppVersion) }}
+          - --default-resource-syncer-image={{ template "image" (tuple .Values.resourceSyncer.image $.Chart.AppVersion) }}
         {{- if .Values.operator.extraArgs -}}
         {{ toYaml .Values.operator.extraArgs | nindent 10 }}
         {{- end }}

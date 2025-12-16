@@ -106,6 +106,7 @@ spec:
                       - UsePDReadyAPIV2
                       - UseTiFlashReadyAPI
                       - MultiPDGroup
+                      - TiCDCDynamicSecretSyncer
                       type: string
                   required:
                   - name
@@ -345,6 +346,7 @@ spec:
                       - UsePDReadyAPIV2
                       - UseTiFlashReadyAPI
                       - MultiPDGroup
+                      - TiCDCDynamicSecretSyncer
                       type: string
                     stage:
                       type: string

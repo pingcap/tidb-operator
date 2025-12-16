@@ -60,3 +60,7 @@ func PDPatches(o *Options, ps ...data.GroupPatch[*v1alpha1.PDGroup]) []data.Grou
 func TiKVPatches(o *Options, ps ...data.GroupPatch[*v1alpha1.TiKVGroup]) []data.GroupPatch[*v1alpha1.TiKVGroup] {
 	return GroupPatches[scope.TiKVGroup](o, ps...)
 }
+
+func TiCDCPatches(o *Options, ps ...data.GroupPatch[*v1alpha1.TiCDCGroup]) []data.GroupPatch[*v1alpha1.TiCDCGroup] {
+	return GroupPatches[scope.TiCDCGroup](o, ps...)
+}
