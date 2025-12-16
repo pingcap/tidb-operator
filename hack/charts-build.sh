@@ -19,7 +19,6 @@ set -o nounset
 set -o pipefail
 
 ROOT=$(cd $(dirname "${BASH_SOURCE[0]}")/..; pwd -P)
-source $ROOT/hack/lib/vars.sh
 
 RELEASE_TAG=${V_RELEASE:-"test"}
 CHARTS_BUILD_DIR="output/chart"

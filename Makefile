@@ -221,5 +221,5 @@ $(addprefix bin/,$(GO_TOOL_BIN)): bin/%: tidy/%
 
 
 .PHONY: charts/build
-charts/build: bin/helm
+charts/build:
 	$(ROOT)/hack/charts-build.sh
