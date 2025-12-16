@@ -1,0 +1,95 @@
+name: Release Charts v1
+
+on:
+  push:
+    tags:
+      - "v1.*.*"
+  workflow_dispatch:
+    inputs:
+      git_ref:
+        description: 'Branch or commit hash (for v1.x branch)'
+        required: true
+        type: string
+      release_tag:
+        description: 'Release tag (empty means the same with GitRef)'
+        required: false
+        type: string
+      br_federation:
+        description: 'Whether to release BR federation manager'
+        required: false
+        type: boolean
+        default: true
+      fips:
+        description: 'Whether to enable FIPS'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  release-charts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.git_ref || github.ref }}
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: '3.14.0'
+
+      - name: Determine release tag and validate
+        id: release_tag
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            RELEASE_TAG="${{ github.event.inputs.release_tag }}"
+            if [ -z "$RELEASE_TAG" ]; then
+              RELEASE_TAG="${{ github.event.inputs.git_ref }}"
+            fi
+            if [ "${{ github.event.inputs.fips }}" == "true" ]; then
+              RELEASE_TAG="${RELEASE_TAG}-fips"
+            fi
+            BR_FEDERATION="${{ github.event.inputs.br_federation }}"
+            if [ -z "$BR_FEDERATION" ]; then
+              BR_FEDERATION="true"
+            fi
+          else
+            # push tags
+            RELEASE_TAG="${{ github.ref_name }}"
+            BR_FEDERATION="true"
+          fi
+          
+          if [[ ! "$RELEASE_TAG" =~ ^v1\.[0-9]+\.[0-9]+ ]]; then
+            echo "Error: Release tag must be v1.x.x format, got: $RELEASE_TAG"
+            echo "This workflow is only for v1.x releases. Please use the correct version format."
+            exit 1
+          fi
+          
+          echo "tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
+          echo "br_federation=${BR_FEDERATION}" >> $GITHUB_OUTPUT
+
+      - name: Build charts
+        env:
+          V_RELEASE: ${{ steps.release_tag.outputs.tag }}
+          BR_FEDERATION: ${{ steps.release_tag.outputs.br_federation }}
+        run: |
+          make charts/build
+
+      - name: Update index.yaml
+        if: ${{ !contains(steps.release_tag.outputs.tag, 'latest') && !contains(steps.release_tag.outputs.tag, 'nightly') && !contains(steps.release_tag.outputs.tag, 'test') }}
+        run: |
+          set -e
+          CHARTS_BUILD_DIR="output/chart"
+          cd ${CHARTS_BUILD_DIR}
+          curl -f http://charts.pingcap.org/index.yaml -o index.yaml 2>/dev/null || true
+          helm repo index . --url https://charts.pingcap.org/ --merge index.yaml 2>/dev/null || helm repo index . --url https://charts.pingcap.org/
+
+      - name: Upload all charts and index.yaml to Tencent COS
+        uses: sylingd/tencent-cos-and-cdn-action@v1
+        with:
+          secret_id: ${{ secrets.TENCENT_COS_ACCESS_KEY }}
+          secret_key: ${{ secrets.TENCENT_COS_SECRET_KEY }}
+          cos_bucket: ${{ vars.TENCENT_COS_BUCKET_NAME }}
+          cos_region: ap-beijing
+          local_path: ./output/chart
+          remote_path: /
