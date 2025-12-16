@@ -24,7 +24,7 @@ source $ROOT/hack/lib/vars.sh
 RELEASE_TAG=${V_RELEASE:-"test"}
 CHARTS_BUILD_DIR="output/chart"
 CHART_ITEMS="tidb-operator tidb-drainer tidb-lightning"
-BR_FEDERATION=${BR_FEDERATION:-"false"}
+BR_FEDERATION=${BR_FEDERATION:-"true"}
 
 mkdir -p ${CHARTS_BUILD_DIR}
 

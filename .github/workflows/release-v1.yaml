@@ -1,23 +1,24 @@
 name: Release Charts v1
 
 on:
+  push:
+    tags:
+      - "v1.*.*"
   workflow_dispatch:
     inputs:
       git_ref:
         description: 'Branch or commit hash (for v1.x branch)'
-        required: false
+        required: true
         type: string
-        default: 'master'
       release_tag:
         description: 'Release tag (empty means the same with GitRef)'
         required: false
         type: string
-        default: 'test'
       br_federation:
         description: 'Whether to release BR federation manager'
         required: false
         type: boolean
-        default: false
+        default: true
       fips:
         description: 'Whether to enable FIPS'
         required: false
@@ -30,30 +31,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.git_ref }}
+          ref: ${{ github.event.inputs.git_ref || github.ref }}
 
       - name: Set up Helm
         uses: azure/setup-helm@v4
         with:
           version: '3.14.0'
 
-      - name: Determine release tag
+      - name: Determine release tag and validate
         id: release_tag
         run: |
-          RELEASE_TAG="${{ github.event.inputs.release_tag }}"
-          if [ -z "$RELEASE_TAG" ]; then
-            RELEASE_TAG="${{ github.event.inputs.git_ref }}"
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            RELEASE_TAG="${{ github.event.inputs.release_tag }}"
+            if [ -z "$RELEASE_TAG" ]; then
+              RELEASE_TAG="${{ github.event.inputs.git_ref }}"
+            fi
+            if [ "${{ github.event.inputs.fips }}" == "true" ]; then
+              RELEASE_TAG="${RELEASE_TAG}-fips"
+            fi
+            BR_FEDERATION="${{ github.event.inputs.br_federation }}"
+            if [ -z "$BR_FEDERATION" ]; then
+              BR_FEDERATION="true"
+            fi
+          else
+            # push tags
+            RELEASE_TAG="${{ github.ref_name }}"
+            BR_FEDERATION="true"
           fi
-          if [ "${{ github.event.inputs.fips }}" == "true" ]; then
-            RELEASE_TAG="${RELEASE_TAG}-fips"
-          fi
-
+          
           if [[ ! "$RELEASE_TAG" =~ ^v1\.[0-9]+\.[0-9]+ ]]; then
             echo "Error: Release tag must be v1.x.x format, got: $RELEASE_TAG"
+            echo "This workflow is only for v1.x releases. Please use the correct version format."
             exit 1
           fi
-
+          
           echo "tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
+          echo "br_federation=${BR_FEDERATION}" >> $GITHUB_OUTPUT
 
       - name: Build charts
         env:
