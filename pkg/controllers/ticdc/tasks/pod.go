@@ -46,6 +46,8 @@ const (
 	metricsPath = "/metrics"
 
 	defaultGracefulShutdownSeconds = 30
+
+	resourceSyncerHealthzPort = 8081
 )
 
 func TaskPod(state *ReconcileContext, c client.Client) task.Task {
@@ -365,7 +367,7 @@ func resourceSyncer(ticdc *v1alpha1.TiCDC) *corev1.Container {
 			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
 					Path:   "/healthz",
-					Port:   intstr.FromInt(8081),
+					Port:   intstr.FromInt(resourceSyncerHealthzPort),
 					Scheme: corev1.URISchemeHTTP,
 				},
 			},
