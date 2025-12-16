@@ -87,7 +87,7 @@ jobs:
       - name: Upload all charts and index.yaml to Tencent COS
         uses: sylingd/tencent-cos-and-cdn-action@v1
         with:
-          secret_id: ${{ secrets.TENCENT_COS_SECRET_ID }}
+          secret_id: ${{ secrets.TENCENT_COS_ACCESS_KEY }}
           secret_key: ${{ secrets.TENCENT_COS_SECRET_KEY }}
           cos_bucket: ${{ secrets.TENCENT_COS_BUCKET_NAME }}
           cos_region: ap-beijing
