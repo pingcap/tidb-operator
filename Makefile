@@ -218,3 +218,8 @@ endef
 $(addprefix bin/,$(GO_TOOL_BIN)): bin/%: tidy/%
 	$(call make_bin_target,$(patsubst bin/%,%,$@))
 	./hack/tools.sh $(patsubst bin/%,%,$@)
+
+
+.PHONY: charts/build
+charts/build:
+	$(ROOT)/hack/charts-build.sh
