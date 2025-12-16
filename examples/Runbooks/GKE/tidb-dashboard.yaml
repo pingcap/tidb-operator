@@ -4,7 +4,7 @@ metadata:
   name: basic
 spec:
   baseImage: pingcap/tidb-dashboard
-  version: v8.5.3
+  version: v8.5.4
 
   ## tidb cluster to be monitored
   ## ** now only support monitoring one tidb cluster **

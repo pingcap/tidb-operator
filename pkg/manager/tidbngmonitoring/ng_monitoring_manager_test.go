@@ -502,7 +502,7 @@ func TestGenerateNGMonitoringStatefulSet(t *testing.T) {
 				}
 			},
 			expectFn: func(sts *apps.StatefulSet, err error) {
-				g.Expect(sts.Spec.VolumeClaimTemplates[0].Spec.Resources).To(Equal(corev1.ResourceRequirements{
+				g.Expect(sts.Spec.VolumeClaimTemplates[0].Spec.Resources).To(Equal(corev1.VolumeResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceStorage: resource.MustParse("100Gi"),
 					},
@@ -602,7 +602,7 @@ func TestGenerateNGMonitoringStatefulSet(t *testing.T) {
 								corev1.ReadWriteOnce,
 							},
 							StorageClassName: nil,
-							Resources: corev1.ResourceRequirements{
+							Resources: corev1.VolumeResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceStorage: quantity,
 								},

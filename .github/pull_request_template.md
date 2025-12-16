@@ -1,7 +1,7 @@
 <!--
 Thank you for contributing to TiDB Operator!
 Please complete the following template before creating a PR.
-Ref: TiDB Operator [CONTRIBUTING](https://github.com/pingcap/tidb-operator/blob/master/CONTRIBUTING.md) document
+Ref: TiDB Operator [CONTRIBUTING](https://github.com/pingcap/tidb-operator/blob/release-1.x/CONTRIBUTING.md) document
 -->
 
 ### What problem does this PR solve?
@@ -53,7 +53,7 @@ For example:
 If no need to add a release note, just type `NONE` in the following `release-note` block.
 If the PR requires additional action from users to deploy the new release, start the release note with "ACTION REQUIRED: ".
 -->
-Please refer to [Release Notes Language Style Guide](https://github.com/pingcap/tidb-operator/blob/master/docs/release-note-guide.md) before writing the release note.
+Please refer to [Release Notes Language Style Guide](https://github.com/pingcap/tidb-operator/blob/release-1.x/docs/release-note-guide.md) before writing the release note.
 
 ```release-note
 

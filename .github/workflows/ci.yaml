@@ -3,12 +3,10 @@ name: ci
 on:
   pull_request:
     branches:
-    - master
-    - release-*
+    - release-1.*
   push:
     branches:
-    - master
-    - release-*
+    - release-1.*
 
 jobs:
 
