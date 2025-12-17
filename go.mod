@@ -7,17 +7,17 @@ replace github.com/pingcap/tidb-operator/api/v2 => ./api
 // All dependencies related with k8s
 // Carefully upgrade them
 require (
-	k8s.io/api v0.32.6
-	k8s.io/apiextensions-apiserver v0.32.6
-	k8s.io/apimachinery v0.32.6
-	k8s.io/cli-runtime v0.32.6
-	k8s.io/client-go v0.32.6
-	k8s.io/code-generator v0.32.6
-	k8s.io/component-base v0.32.6
+	k8s.io/api v0.34.2
+	k8s.io/apiextensions-apiserver v0.34.2
+	k8s.io/apimachinery v0.34.2
+	k8s.io/cli-runtime v0.34.2
+	k8s.io/client-go v0.34.2
+	k8s.io/code-generator v0.34.2
+	k8s.io/component-base v0.34.2
 	k8s.io/gengo/v2 v2.0.0-20250207200755-1244d31929d7
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff
-	k8s.io/kubectl v0.32.6
+	k8s.io/kubectl v0.34.2
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738
 	sigs.k8s.io/controller-runtime v0.20.4
 	sigs.k8s.io/controller-tools v0.16.1
