@@ -107,6 +107,7 @@ spec:
                   - UsePDReadyAPIV2
                   - UseTiFlashReadyAPI
                   - MultiPDGroup
+                  - TiCDCDynamicSecretSyncer
                   type: string
                 type: array
               minReadySeconds:

@@ -103,6 +103,7 @@ spec:
                   - UsePDReadyAPIV2
                   - UseTiFlashReadyAPI
                   - MultiPDGroup
+                  - TiCDCDynamicSecretSyncer
                   type: string
                 type: array
               minReadySeconds:
@@ -8677,6 +8678,26 @@ spec:
                                 required:
                                 - port
                                 type: object
+                            type: object
+                        type: object
+                      syncer:
+                        description: Syncer defines syncer config
+                        properties:
+                          image:
+                            description: |-
+                              Image of resource syncer
+                              Default is pingcap/tidb-operator-resource-syncer
+                            type: string
+                          labels:
+                            additionalProperties:
+                              type: string
+                            description: |-
+                              Additional labels to select.
+                              Only resources with these labels will be synced into pods
+                              - pingcap.com/managed-by: tidb-operator
+                              - pingcap.com/component: ticdc
+                              - pingcap.com/cluster: ${cluster}
+                              - additional labels
                             type: object
                         type: object
                       updateStrategy:

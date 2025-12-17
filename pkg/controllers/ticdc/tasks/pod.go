@@ -17,16 +17,20 @@ package tasks
 import (
 	"context"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/features"
 	"github.com/pingcap/tidb-operator/v2/pkg/image"
 	"github.com/pingcap/tidb-operator/v2/pkg/overlay"
 	"github.com/pingcap/tidb-operator/v2/pkg/reloadable"
@@ -42,13 +46,15 @@ const (
 	metricsPath = "/metrics"
 
 	defaultGracefulShutdownSeconds = 30
+
+	resourceSyncerHealthzPort = 8081
 )
 
 func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 
-		expected := newPod(state.Cluster(), state.TiCDC())
+		expected := newPod(state.Cluster(), state.TiCDC(), state.FeatureGates())
 		pod := state.Pod()
 		if pod == nil {
 			// Pod needs PD address as a parameter
@@ -95,7 +101,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func newPod(cluster *v1alpha1.Cluster, ticdc *v1alpha1.TiCDC) *corev1.Pod {
+func newPod(cluster *v1alpha1.Cluster, ticdc *v1alpha1.TiCDC, fg features.Gates) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -243,6 +249,20 @@ func newPod(cluster *v1alpha1.Cluster, ticdc *v1alpha1.TiCDC) *corev1.Pod {
 		},
 	}
 
+	if fg.Enabled(metav1alpha1.TiCDCDynamicSecretSyncer) {
+		pod.Spec.InitContainers = append(pod.Spec.InitContainers, *resourceSyncer(ticdc))
+		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+			Name: v1alpha1.VolumeNameKubeResource,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
+		pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+			Name:      v1alpha1.VolumeNameKubeResource,
+			MountPath: v1alpha1.DirPathKubeResource,
+		})
+	}
+
 	if ticdc.Spec.Overlay != nil {
 		overlay.OverlayPod(pod, ticdc.Spec.Overlay.Pod)
 	}
@@ -305,4 +325,58 @@ func buildPrestopCheckScript(cluster *v1alpha1.Cluster, ticdc *v1alpha1.TiCDC) s
 	sb.WriteString(" > /proc/1/fd/1")
 
 	return sb.String()
+}
+
+func resourceSyncer(ticdc *v1alpha1.TiCDC) *corev1.Container {
+	var resourceSyncerImage *string
+	if ticdc.Spec.Syncer != nil {
+		resourceSyncerImage = ticdc.Spec.Syncer.Image
+	}
+	labels := []string{
+		labelToString(v1alpha1.LabelKeyManagedBy, v1alpha1.LabelValManagedByOperator),
+		labelToString(v1alpha1.LabelKeyComponent, v1alpha1.LabelValComponentTiCDC),
+		labelToString(v1alpha1.LabelKeyCluster, coreutil.Cluster[scope.TiCDC](ticdc)),
+	}
+	if ticdc.Spec.Syncer != nil {
+		for k, v := range ticdc.Spec.Syncer.Labels {
+			labels = append(labels, labelToString(k, v))
+		}
+	}
+	slices.Sort(labels)
+	c := corev1.Container{
+		Name:            v1alpha1.ContainerNameResourceSyncer,
+		Image:           image.ResourceSyncer.Image(resourceSyncerImage),
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		RestartPolicy:   ptr.To(corev1.ContainerRestartPolicyAlways),
+		Command: []string{
+			"/resource-syncer",
+			"-d",
+			v1alpha1.DirPathKubeResource,
+			"-n",
+			ticdc.Namespace,
+			"-l",
+			strings.Join(labels, ","),
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      v1alpha1.VolumeNameKubeResource,
+				MountPath: v1alpha1.DirPathKubeResource,
+			},
+		},
+		StartupProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path:   "/healthz",
+					Port:   intstr.FromInt(resourceSyncerHealthzPort),
+					Scheme: corev1.URISchemeHTTP,
+				},
+			},
+		},
+	}
+
+	return &c
+}
+
+func labelToString(k, v string) string {
+	return k + "=" + v
 }

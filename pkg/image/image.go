@@ -38,7 +38,10 @@ const (
 	Helper Tagged = "busybox:1.37.0"
 )
 
-var PrestopChecker = Tagged("pingcap/tidb-operator-prestop-checker:latest")
+var (
+	PrestopChecker = Tagged("pingcap/tidb-operator-prestop-checker:latest")
+	ResourceSyncer = Tagged("pingcap/tidb-operator-resource-syncer:latest")
+)
 
 // Tagged is image with image tag
 type Tagged string

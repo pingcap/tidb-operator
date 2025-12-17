@@ -17,6 +17,7 @@ package scheme
 import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	storagev1beta1 "k8s.io/api/storage/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -46,6 +47,7 @@ func init() {
 func GroupVersions() []schema.GroupVersion {
 	gvs := []schema.GroupVersion{
 		corev1.SchemeGroupVersion,
+		rbacv1.SchemeGroupVersion,
 		storagev1.SchemeGroupVersion,
 		v1alpha1.SchemeGroupVersion,
 		batchv1.SchemeGroupVersion,

@@ -72,3 +72,19 @@ func MustCreateTiDB(
 
 	return dbg
 }
+
+func MustCreateTiCDC(
+	ctx context.Context,
+	f *framework.Framework,
+	o *desc.Options,
+	ps ...data.GroupPatch[*v1alpha1.TiCDCGroup],
+) *v1alpha1.TiCDCGroup {
+	cg := data.NewTiCDCGroup(
+		f.Namespace.Name,
+		desc.TiCDCPatches(o, ps...)...,
+	)
+	ginkgo.By("Creating a ticdc group")
+	f.Must(f.Client.Create(ctx, cg))
+
+	return cg
+}

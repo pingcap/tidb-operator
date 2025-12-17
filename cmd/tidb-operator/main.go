@@ -25,6 +25,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	storagev1beta1 "k8s.io/api/storage/v1beta1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -105,6 +106,7 @@ func main() {
 		"A duration for e2e test, it's useful to avoid bugs because of "+
 			"kube clients's read-after-write inconsistency(always read from cache).")
 	flag.Var(&image.PrestopChecker, "default-prestop-checker-image", "Default image of prestop checker.")
+	flag.Var(&image.ResourceSyncer, "default-resource-syncer-image", "Default image of resource syncer.")
 
 	opts := zap.Options{
 		Development:     false,
@@ -546,6 +548,12 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 		},
 		&storagev1.StorageClass{}: {
 			Label: labels.Everything(),
+		},
+		&rbacv1.Role{}: {
+			Label: managedByOperator,
+		},
+		&rbacv1.RoleBinding{}: {
+			Label: managedByOperator,
 		},
 
 		// BR objects start //

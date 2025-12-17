@@ -72,6 +72,9 @@ var unreloadable = map[meta.Feature][]meta.Component{
 	},
 	// NOTE: this feature cannot be changed now
 	meta.MultiPDGroup: {},
+	meta.TiCDCDynamicSecretSyncer: {
+		meta.ComponentTiCDC,
+	},
 }
 
 func Reloadable(c meta.Component, update, current []meta.Feature) bool {

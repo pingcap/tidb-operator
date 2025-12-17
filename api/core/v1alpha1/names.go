@@ -31,6 +31,8 @@ const (
 	VolumeNameTiDBSlowLogDefault = meta.NamePrefix + "slowlog"
 	// VolumeNameSEM is the volume name for tidb sem config
 	VolumeNameSEM = meta.NamePrefix + "sem"
+	// VolumeNameKubeResource defines volume name for kubernetes resource syncer
+	VolumeNameKubeResource = meta.NamePrefix + "kube-resource"
 
 	// TLS
 	//
@@ -79,6 +81,11 @@ const (
 	ContainerNameTiFlashServerLog = meta.NamePrefix + "serverlog"
 	// Container to redirect error log
 	ContainerNameTiFlashErrorLog = meta.NamePrefix + "errorlog"
+
+	// TiCDC
+	//
+	// An sidecar container to load secrets into main container
+	ContainerNameResourceSyncer = meta.NamePrefix + "resource-syncer"
 )
 
 // All well known dir path
@@ -105,6 +112,8 @@ const (
 	DirPathTiDBSlowLogDefault = "/var/log/tidb"
 	// Dir path of sem config
 	DirPathSEMConfig = "/etc/sem"
+	// Dir path for kubernetes resource
+	DirPathKubeResource = "/var/lib/kube-resource"
 
 	// TLS
 	//

@@ -21,3 +21,7 @@ import (
 func HeadlessServiceName(groupName string) string {
 	return fmt.Sprintf("%s-ticdc-peer", groupName)
 }
+
+func RBACName(groupName string) string {
+	return fmt.Sprintf("%s-ticdc", groupName)
+}

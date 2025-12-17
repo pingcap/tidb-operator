@@ -159,6 +159,23 @@ type TiCDCTemplateSpec struct {
 
 	// PreStop defines preStop config
 	PreStop *TiCDCPreStop `json:"preStop,omitempty"`
+
+	// Syncer defines syncer config
+	Syncer *TiCDCSyncer `json:"syncer,omitempty"`
+}
+
+type TiCDCSyncer struct {
+	// Image of resource syncer
+	// Default is pingcap/tidb-operator-resource-syncer
+	Image *string `json:"image,omitempty"`
+
+	// Additional labels to select.
+	// Only resources with these labels will be synced into pods
+	// - pingcap.com/managed-by: tidb-operator
+	// - pingcap.com/component: ticdc
+	// - pingcap.com/cluster: ${cluster}
+	// - additional labels
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 type TiCDCPreStop struct {
