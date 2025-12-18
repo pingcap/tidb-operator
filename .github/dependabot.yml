@@ -1,5 +1,10 @@
 version: 2
 updates:
+- package-ecosystem: "docker"
+  directories:
+  - "/image"
+  schedule:
+    interval: "daily"
 - package-ecosystem: "gomod"
   open-pull-requests-limit: 20
   directories:
