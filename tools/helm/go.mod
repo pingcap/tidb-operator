@@ -126,7 +126,7 @@ require (
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	helm.sh/helm/v3 v3.17.3 // indirect
+	helm.sh/helm/v3 v3.17.4 // indirect
 	k8s.io/api v0.32.11 // indirect
 	k8s.io/apiextensions-apiserver v0.32.11 // indirect
 	k8s.io/apimachinery v0.32.11 // indirect
