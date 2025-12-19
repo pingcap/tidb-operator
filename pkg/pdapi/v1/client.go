@@ -391,7 +391,7 @@ func (c *pdClient) DeleteMember(ctx context.Context, name string) error {
 		return nil
 	}
 	apiURL := fmt.Sprintf("%s/%s/name/%s", c.url, membersPrefix, name)
-	req, err := http.NewRequest("DELETE", apiURL, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, "DELETE", apiURL, http.NoBody)
 	if err != nil {
 		return err
 	}
