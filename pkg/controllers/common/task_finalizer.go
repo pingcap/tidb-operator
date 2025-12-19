@@ -24,7 +24,6 @@ import (
 	utilerr "k8s.io/apimachinery/pkg/util/errors"
 
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
-	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
@@ -196,10 +195,10 @@ func NewSubresourceLister(ss ...Subresource) SubresourceLister {
 	}
 }
 
-var DefaultInstanceSubresourceLister = common.NewSubresourceLister(
-	common.NewSubresource[corev1.PodList](),
-	common.NewSubresource[corev1.ConfigMapList](),
-	common.NewSubresource[corev1.PersistentVolumeClaimList](),
+var DefaultInstanceSubresourceLister = NewSubresourceLister(
+	NewSubresource[corev1.PodList](),
+	NewSubresource[corev1.ConfigMapList](),
+	NewSubresource[corev1.PersistentVolumeClaimList](),
 )
 
 func TaskInstanceFinalizerDel[
