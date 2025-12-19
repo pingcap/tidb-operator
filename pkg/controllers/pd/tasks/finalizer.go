@@ -17,52 +17,16 @@ package tasks
 import (
 	"context"
 
-	corev1 "k8s.io/api/core/v1"
-
-	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/v2/pkg/client"
-	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
-	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
-func TaskFinalizerDel(state *ReconcileContext, c client.Client) task.Task {
-	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
+func TaskDeleteMember(state *ReconcileContext) task.Task {
+	return task.NameTaskFunc("DeleteMember", func(ctx context.Context) task.Result {
 		// TODO: check whether quorum will be lost?
 		if err := state.PDClient.Underlay().DeleteMember(ctx, state.PD().Name); err != nil {
 			return task.Fail().With("cannot delete member: %v", err)
 		}
 
-		wait, err := EnsureSubResourcesDeleted(ctx, c, state.PD())
-		if err != nil {
-			return task.Fail().With("cannot delete subresources: %v", err)
-		}
-
-		if wait {
-			return task.Retry(task.DefaultRequeueAfter).With("wait all subresources deleted")
-		}
-
-		if err := k8s.RemoveFinalizer(ctx, c, state.PD()); err != nil {
-			return task.Fail().With("cannot remove finalizer: %v", err)
-		}
-
-		return task.Complete().With("finalizer is removed")
+		return task.Complete().With("member is deleted")
 	})
-}
-
-func EnsureSubResourcesDeleted(ctx context.Context, c client.Client, pd *v1alpha1.PD) (wait bool, _ error) {
-	wait1, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromPD(pd), &corev1.PodList{})
-	if err != nil {
-		return false, err
-	}
-	wait2, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromPD(pd), &corev1.ConfigMapList{})
-	if err != nil {
-		return false, err
-	}
-	wait3, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromPD(pd), &corev1.PersistentVolumeClaimList{})
-	if err != nil {
-		return false, err
-	}
-
-	return wait1 || wait2 || wait3, nil
 }
