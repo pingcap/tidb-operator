@@ -218,7 +218,7 @@ func (bo *Options) brCommandRun(ctx context.Context, fullArgs []string) error {
 
 // brCommandRun run br binary to do backup work with log callback.
 func (bo *Options) brCommandRunWithLogCallback(
-	_ context.Context,
+	ctx context.Context,
 	fullArgs []string,
 	logCallback func(line string),
 ) error {
@@ -230,7 +230,7 @@ func (bo *Options) brCommandRunWithLogCallback(
 
 	e2eTestSimulate(bo)
 
-	cmd := exec.Command(bin, fullArgs...)
+	cmd := exec.CommandContext(ctx, bin, fullArgs...)
 	stdOut, err := cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("cluster %s, create stdout pipe failed, err: %w", bo, err)
