@@ -173,7 +173,9 @@ func (s *subresource[T, PT]) Options() []client.DeleteOption {
 }
 
 func NewSubresource[T any, PT ObjectList[T]](opts ...client.DeleteOption) Subresource {
-	return &subresource[T, PT]{}
+	return &subresource[T, PT]{
+		opts: opts,
+	}
 }
 
 // SubresourceLister returns a list of ObjectList
