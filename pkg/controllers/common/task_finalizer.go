@@ -153,3 +153,79 @@ func TaskJobFinalizerDel[
 		return task.Complete().With("finalizer is removed")
 	})
 }
+
+type Subresource interface {
+	List() client.ObjectList
+	Options() []client.DeleteOption
+}
+
+type subresource[T any, PT ObjectList[T]] struct {
+	opts []client.DeleteOption
+}
+
+func (s *subresource[T, PT]) List() client.ObjectList {
+	var pt PT = new(T)
+	return pt
+}
+
+func (s *subresource[T, PT]) Options() []client.DeleteOption {
+	return s.opts
+}
+
+func NewSubresource[T any, PT ObjectList[T]](opts ...client.DeleteOption) Subresource {
+	return &subresource[T, PT]{
+		opts: opts,
+	}
+}
+
+// SubresourceLister returns a list of ObjectList
+type SubresourceLister interface {
+	Subresources() []Subresource
+}
+
+type subresourceLister struct {
+	ss []Subresource
+}
+
+func (l *subresourceLister) Subresources() []Subresource {
+	return l.ss
+}
+
+func NewSubresourceLister(ss ...Subresource) SubresourceLister {
+	return &subresourceLister{
+		ss: ss,
+	}
+}
+
+var DefaultInstanceSubresourceLister = NewSubresourceLister(
+	NewSubresource[corev1.PodList](),
+	NewSubresource[corev1.ConfigMapList](),
+	NewSubresource[corev1.PersistentVolumeClaimList](),
+)
+
+func TaskInstanceFinalizerDel[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](state ObjectState[F], c client.Client, l SubresourceLister) task.Task {
+	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
+		var wait bool
+		for _, res := range l.Subresources() {
+			w, err := k8s.DeleteInstanceSubresource(ctx, c, scope.From[S](state.Object()), res.List(), res.Options()...)
+			if err != nil {
+				return task.Fail().With("cannot delete subresources: %v", err)
+			}
+			wait = wait || w
+		}
+
+		if wait {
+			return task.Retry(task.DefaultRequeueAfter).With("wait all subresources deleted")
+		}
+
+		if err := k8s.RemoveFinalizer(ctx, c, state.Object()); err != nil {
+			return task.Fail().With("cannot remove finalizer: %v", err)
+		}
+
+		return task.Complete().With("finalizer is removed")
+	})
+}

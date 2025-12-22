@@ -38,7 +38,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// if the cluster is deleting, del all subresources and remove the finalizer directly
 		task.IfBreak(common.CondClusterIsDeleting(state),
-			tasks.TaskFinalizerDel(state, r.Client),
+			common.TaskInstanceFinalizerDel[scope.TiKV](state, r.Client, tasks.SubresourceLister),
 		),
 
 		// return if cluster's status is not updated
@@ -57,7 +57,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// if instance is deleting and store is removed
 		task.IfBreak(ObjectIsDeletingAndStoreIsRemoved(state),
 			tasks.TaskEndEvictLeader(state),
-			tasks.TaskFinalizerDel(state, r.Client),
+			common.TaskInstanceFinalizerDel[scope.TiKV](state, r.Client, tasks.SubresourceLister),
 		),
 
 		common.TaskFinalizerAdd[scope.TiKV](state, r.Client),

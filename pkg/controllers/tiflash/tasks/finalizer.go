@@ -19,11 +19,9 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
-	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
 	fm "github.com/pingcap/tidb-operator/v2/pkg/timanager/tiflash"
-	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
@@ -32,48 +30,17 @@ const (
 	defaultGracePeriod = 30
 )
 
-// TaskFinalizerDel deletes sub-resources and remove the finalizer from the instance CR.
-// TODO: extract a common task for tikv and tiflash
-func TaskFinalizerDel(state *ReconcileContext, c client.Client, fcm fm.TiFlashClientManager) task.Task {
-	return task.NameTaskFunc("FinalizerDel", func(ctx context.Context) task.Result {
-		tiflash := state.TiFlash()
+var SubresourceLister = common.NewSubresourceLister(
+	common.NewSubresource[corev1.PodList](client.GracePeriodSeconds(defaultGracePeriod)),
+	common.NewSubresource[corev1.ConfigMapList](),
+	common.NewSubresource[corev1.PersistentVolumeClaimList](),
+)
 
-		wait, err := EnsureSubResourcesDeleted(ctx, c, tiflash)
-		if err != nil {
-			return task.Fail().With("cannot delete sub resources: %w", err)
-		}
+func TaskDeregisterTiFlashClient(state State, fcm fm.TiFlashClientManager) task.Task {
+	return task.NameTaskFunc("DeregisterTiFlashClient", func(ctx context.Context) task.Result {
+		tiflash := state.Object()
 
-		if wait {
-			return task.Retry(task.DefaultRequeueAfter).With("wait all subresources deleted")
-		}
-
-		if err := k8s.RemoveFinalizer(ctx, c, tiflash); err != nil {
-			return task.Fail().With("cannot remove finalizer: %w", err)
-		}
 		fcm.Deregister(fm.Key(tiflash))
-		return task.Complete().With("finalizer is removed")
+		return task.Complete().With("deregister tiflash client")
 	})
-}
-
-func EnsureSubResourcesDeleted(ctx context.Context, c client.Client, f *v1alpha1.TiFlash) (wait bool, _ error) {
-	wait1, err := k8s.DeleteInstanceSubresource(
-		ctx,
-		c,
-		runtime.FromTiFlash(f),
-		&corev1.PodList{},
-		client.GracePeriodSeconds(defaultGracePeriod),
-	)
-	if err != nil {
-		return false, err
-	}
-	wait2, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromTiFlash(f), &corev1.ConfigMapList{})
-	if err != nil {
-		return false, err
-	}
-	wait3, err := k8s.DeleteInstanceSubresource(ctx, c, runtime.FromTiFlash(f), &corev1.PersistentVolumeClaimList{})
-	if err != nil {
-		return false, err
-	}
-
-	return wait1 || wait2 || wait3, nil
 }

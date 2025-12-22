@@ -35,7 +35,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(common.CondClusterIsPaused(state)),
 		// if the cluster is deleting, del all subresources and remove the finalizer directly
 		task.IfBreak(common.CondClusterIsDeleting(state),
-			tasks.TaskFinalizerDel(state, r.Client),
+			common.TaskInstanceFinalizerDel[scope.Scheduling](state, r.Client, common.DefaultInstanceSubresourceLister),
 		),
 		// return if cluster's status is not updated
 		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
@@ -43,7 +43,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// get info from pd
 		// tasks.TaskContextInfoFromPD(state, r.PDClientManager),
 		task.IfBreak(common.CondObjectIsDeleting[scope.Scheduling](state),
-			tasks.TaskFinalizerDel(state, r.Client),
+			common.TaskInstanceFinalizerDel[scope.Scheduling](state, r.Client, common.DefaultInstanceSubresourceLister),
 			common.TaskInstanceConditionSynced[scope.Scheduling](state),
 			common.TaskInstanceConditionReady[scope.Scheduling](state),
 			common.TaskInstanceConditionRunning[scope.Scheduling](state),

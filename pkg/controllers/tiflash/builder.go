@@ -28,7 +28,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskContextObject[scope.TiFlash](state, r.Client),
 		common.TaskTrack[scope.TiFlash](state, r.Tracker),
 		// if it's deleted just return
-		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiFlash](state)),
+		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiFlash](state), tasks.TaskDeregisterTiFlashClient(state, r.TiFlashClientManager)),
 
 		// get cluster info, FinalizerDel will use it
 		common.TaskContextCluster[scope.TiFlash](state, r.Client),
@@ -37,7 +37,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// if the cluster is deleting, del all subresources and remove the finalizer directly
 		task.IfBreak(common.CondClusterIsDeleting(state),
-			tasks.TaskFinalizerDel(state, r.Client, r.TiFlashClientManager),
+			common.TaskInstanceFinalizerDel[scope.TiFlash](state, r.Client, tasks.SubresourceLister),
 		),
 		// return if cluster's status is not updated
 		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
@@ -50,7 +50,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// if instance is deleting and store is removed
 		task.IfBreak(ObjectIsDeletingAndStoreIsRemoved(state),
-			tasks.TaskFinalizerDel(state, r.Client, r.TiFlashClientManager),
+			common.TaskInstanceFinalizerDel[scope.TiFlash](state, r.Client, tasks.SubresourceLister),
 		),
 
 		common.TaskFinalizerAdd[scope.TiFlash](state, r.Client),

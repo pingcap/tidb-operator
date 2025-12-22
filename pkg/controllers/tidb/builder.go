@@ -39,13 +39,13 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(common.CondClusterIsPaused(state)),
 		// if the cluster is deleting, del all subresources and remove the finalizer directly
 		task.IfBreak(common.CondClusterIsDeleting(state),
-			tasks.TaskFinalizerDel(state, r.Client),
+			common.TaskInstanceFinalizerDel[scope.TiDB](state, r.Client, common.DefaultInstanceSubresourceLister),
 		),
 		// return if cluster's status is not updated
 		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
 
 		task.IfBreak(common.CondObjectIsDeleting[scope.TiDB](state),
-			tasks.TaskFinalizerDel(state, r.Client),
+			common.TaskInstanceFinalizerDel[scope.TiDB](state, r.Client, common.DefaultInstanceSubresourceLister),
 			// TODO(liubo02): if the finalizer has been removed, no need to update status
 			common.TaskInstanceConditionSynced[scope.TiDB](state),
 			common.TaskInstanceConditionReady[scope.TiDB](state),

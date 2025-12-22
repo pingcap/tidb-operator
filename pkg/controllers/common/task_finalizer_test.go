@@ -268,8 +268,7 @@ func TestTaskGroupFinalizerDel(t *testing.T) {
 				// cannot delete sub resources
 				fc.WithError("delete", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
 			}
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := tt.Context()
 
 			res, done := task.RunTask(ctx, TaskGroupFinalizerDel[scope.PDGroup](c.state, fc))
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
@@ -281,6 +280,213 @@ func TestTaskGroupFinalizerDel(t *testing.T) {
 			}
 
 			obj := &v1alpha1.PDGroup{}
+			require.NoError(tt, fc.Get(ctx, client.ObjectKey{Name: "aaa"}, obj), c.desc)
+			assert.Equal(tt, c.expectedObj, obj, c.desc)
+		})
+	}
+}
+
+func TestTaskInstanceFinalizerDel(t *testing.T) {
+	now := metav1.Now()
+	cases := []struct {
+		desc          string
+		state         ObjectState[*v1alpha1.PD]
+		subresources  []client.Object
+		lister        SubresourceLister
+		unexpectedErr bool
+
+		expectedStatus task.Status
+		expectedObj    *v1alpha1.PD
+	}{
+		{
+			desc: "no subresources and no finalizer",
+			state: newFakeObjectState(
+				fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PD](&now)),
+			),
+			lister: NewSubresourceLister(
+				NewSubresource[corev1.PodList](),
+				NewSubresource[corev1.ConfigMapList](),
+			),
+			expectedStatus: task.SComplete,
+			expectedObj:    fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PD](&now)),
+		},
+		{
+			desc: "no subresources but has finalizer",
+			state: newFakeObjectState(
+				fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PD](&now), fake.AddFinalizer[v1alpha1.PD]()),
+			),
+			lister: NewSubresourceLister(
+				NewSubresource[corev1.PodList](),
+				NewSubresource[corev1.ConfigMapList](),
+			),
+			expectedStatus: task.SComplete,
+			expectedObj: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PD](&now), func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.SetFinalizers([]string{})
+				return obj
+			}),
+		},
+		{
+			desc: "no subresources but call api failed",
+			state: newFakeObjectState(
+				fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PD](&now), fake.AddFinalizer[v1alpha1.PD]()),
+			),
+			lister: NewSubresourceLister(
+				NewSubresource[corev1.PodList](),
+				NewSubresource[corev1.ConfigMapList](),
+			),
+			unexpectedErr:  true,
+			expectedStatus: task.SFail,
+		},
+		{
+			desc: "has pod subresource",
+			state: newFakeObjectState(
+				fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PD](&now), fake.AddFinalizer[v1alpha1.PD]()),
+			),
+			subresources: []client.Object{
+				fake.FakeObj("aaa",
+					fake.Label[corev1.Pod](v1alpha1.LabelKeyManagedBy, v1alpha1.LabelValManagedByOperator),
+					fake.Label[corev1.Pod](v1alpha1.LabelKeyCluster, ""),
+					fake.Label[corev1.Pod](v1alpha1.LabelKeyComponent, v1alpha1.LabelValComponentPD),
+					fake.Label[corev1.Pod](v1alpha1.LabelKeyInstance, "aaa"),
+				),
+			},
+			lister: NewSubresourceLister(
+				NewSubresource[corev1.PodList](),
+				NewSubresource[corev1.ConfigMapList](),
+			),
+			expectedStatus: task.SRetry,
+			expectedObj:    fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PD](&now), fake.AddFinalizer[v1alpha1.PD]()),
+		},
+		{
+			desc: "has configmap subresource",
+			state: newFakeObjectState(
+				fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PD](&now), fake.AddFinalizer[v1alpha1.PD]()),
+			),
+			subresources: []client.Object{
+				fake.FakeObj("aaa",
+					fake.Label[corev1.ConfigMap](v1alpha1.LabelKeyManagedBy, v1alpha1.LabelValManagedByOperator),
+					fake.Label[corev1.ConfigMap](v1alpha1.LabelKeyCluster, ""),
+					fake.Label[corev1.ConfigMap](v1alpha1.LabelKeyComponent, v1alpha1.LabelValComponentPD),
+					fake.Label[corev1.ConfigMap](v1alpha1.LabelKeyInstance, "aaa"),
+				),
+			},
+			lister: NewSubresourceLister(
+				NewSubresource[corev1.PodList](),
+				NewSubresource[corev1.ConfigMapList](),
+			),
+			expectedStatus: task.SRetry,
+			expectedObj:    fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PD](&now), fake.AddFinalizer[v1alpha1.PD]()),
+		},
+		{
+			desc: "has pvc subresource",
+			state: newFakeObjectState(
+				fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PD](&now), fake.AddFinalizer[v1alpha1.PD]()),
+			),
+			subresources: []client.Object{
+				fake.FakeObj("aaa",
+					fake.Label[corev1.PersistentVolumeClaim](v1alpha1.LabelKeyManagedBy, v1alpha1.LabelValManagedByOperator),
+					fake.Label[corev1.PersistentVolumeClaim](v1alpha1.LabelKeyCluster, ""),
+					fake.Label[corev1.PersistentVolumeClaim](v1alpha1.LabelKeyComponent, v1alpha1.LabelValComponentPD),
+					fake.Label[corev1.PersistentVolumeClaim](v1alpha1.LabelKeyInstance, "aaa"),
+				),
+			},
+			lister: NewSubresourceLister(
+				NewSubresource[corev1.PersistentVolumeClaimList](),
+			),
+			expectedStatus: task.SRetry,
+			expectedObj:    fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PD](&now), fake.AddFinalizer[v1alpha1.PD]()),
+		},
+		{
+			desc: "has multiple subresources",
+			state: newFakeObjectState(
+				fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PD](&now), fake.AddFinalizer[v1alpha1.PD]()),
+			),
+			subresources: []client.Object{
+				fake.FakeObj("aaa-pod",
+					fake.Label[corev1.Pod](v1alpha1.LabelKeyManagedBy, v1alpha1.LabelValManagedByOperator),
+					fake.Label[corev1.Pod](v1alpha1.LabelKeyCluster, ""),
+					fake.Label[corev1.Pod](v1alpha1.LabelKeyComponent, v1alpha1.LabelValComponentPD),
+					fake.Label[corev1.Pod](v1alpha1.LabelKeyInstance, "aaa"),
+				),
+				fake.FakeObj("aaa-cm",
+					fake.Label[corev1.ConfigMap](v1alpha1.LabelKeyManagedBy, v1alpha1.LabelValManagedByOperator),
+					fake.Label[corev1.ConfigMap](v1alpha1.LabelKeyCluster, ""),
+					fake.Label[corev1.ConfigMap](v1alpha1.LabelKeyComponent, v1alpha1.LabelValComponentPD),
+					fake.Label[corev1.ConfigMap](v1alpha1.LabelKeyInstance, "aaa"),
+				),
+				fake.FakeObj("aaa-pvc",
+					fake.Label[corev1.PersistentVolumeClaim](v1alpha1.LabelKeyManagedBy, v1alpha1.LabelValManagedByOperator),
+					fake.Label[corev1.PersistentVolumeClaim](v1alpha1.LabelKeyCluster, ""),
+					fake.Label[corev1.PersistentVolumeClaim](v1alpha1.LabelKeyComponent, v1alpha1.LabelValComponentPD),
+					fake.Label[corev1.PersistentVolumeClaim](v1alpha1.LabelKeyInstance, "aaa"),
+				),
+			},
+			lister:         DefaultInstanceSubresourceLister,
+			expectedStatus: task.SRetry,
+			expectedObj:    fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PD](&now), fake.AddFinalizer[v1alpha1.PD]()),
+		},
+		{
+			desc: "has subresources and API call fails",
+			state: newFakeObjectState(
+				fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PD](&now), fake.AddFinalizer[v1alpha1.PD]()),
+			),
+			subresources: []client.Object{
+				fake.FakeObj("aaa",
+					fake.Label[corev1.Pod](v1alpha1.LabelKeyManagedBy, v1alpha1.LabelValManagedByOperator),
+					fake.Label[corev1.Pod](v1alpha1.LabelKeyCluster, ""),
+					fake.Label[corev1.Pod](v1alpha1.LabelKeyComponent, v1alpha1.LabelValComponentPD),
+					fake.Label[corev1.Pod](v1alpha1.LabelKeyInstance, "aaa"),
+				),
+			},
+			lister: NewSubresourceLister(
+				NewSubresource[corev1.PodList](),
+			),
+			unexpectedErr:  true,
+			expectedStatus: task.SFail,
+		},
+		{
+			desc: "empty lister",
+			state: newFakeObjectState(
+				fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PD](&now), fake.AddFinalizer[v1alpha1.PD]()),
+			),
+			lister:         NewSubresourceLister(),
+			expectedStatus: task.SComplete,
+			expectedObj: fake.FakeObj("aaa", fake.DeleteTimestamp[v1alpha1.PD](&now), func(obj *v1alpha1.PD) *v1alpha1.PD {
+				obj.SetFinalizers([]string{})
+				return obj
+			}),
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			objs := []client.Object{
+				c.state.Object(),
+			}
+			objs = append(objs, c.subresources...)
+
+			fc := client.NewFakeClient(objs...)
+			if c.unexpectedErr {
+				// cannot remove finalizer
+				fc.WithError("update", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
+				// cannot delete sub resources
+				fc.WithError("delete", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
+			}
+			ctx := tt.Context()
+
+			res, done := task.RunTask(ctx, TaskInstanceFinalizerDel[scope.PD](c.state, fc, c.lister))
+			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), c.desc)
+			assert.False(tt, done, c.desc)
+
+			// no need to check update result
+			if c.unexpectedErr {
+				return
+			}
+
+			obj := &v1alpha1.PD{}
 			require.NoError(tt, fc.Get(ctx, client.ObjectKey{Name: "aaa"}, obj), c.desc)
 			assert.Equal(tt, c.expectedObj, obj, c.desc)
 		})
