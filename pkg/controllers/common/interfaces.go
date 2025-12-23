@@ -34,13 +34,13 @@ type ObjectList[T any] interface {
 }
 
 type (
-	PDSliceInitializer        = ResourceSliceInitializer[v1alpha1.PD]
-	TiKVSliceInitializer      = ResourceSliceInitializer[v1alpha1.TiKV]
+	PDSliceInitializer         = ResourceSliceInitializer[v1alpha1.PD]
+	TiKVSliceInitializer       = ResourceSliceInitializer[v1alpha1.TiKV]
 	TiKVWorkerSliceInitializer = ResourceSliceInitializer[v1alpha1.TiKVWorker]
-	TiDBSliceInitializer      = ResourceSliceInitializer[v1alpha1.TiDB]
-	TiFlashSliceInitializer   = ResourceSliceInitializer[v1alpha1.TiFlash]
-	TiCDCSliceInitializer     = ResourceSliceInitializer[v1alpha1.TiCDC]
-	TiProxySliceInitializer   = ResourceSliceInitializer[v1alpha1.TiProxy]
+	TiDBSliceInitializer       = ResourceSliceInitializer[v1alpha1.TiDB]
+	TiFlashSliceInitializer    = ResourceSliceInitializer[v1alpha1.TiFlash]
+	TiCDCSliceInitializer      = ResourceSliceInitializer[v1alpha1.TiCDC]
+	TiProxySliceInitializer    = ResourceSliceInitializer[v1alpha1.TiProxy]
 )
 
 type GroupState[G runtime.Group] interface {
