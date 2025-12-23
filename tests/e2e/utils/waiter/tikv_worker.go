@@ -33,8 +33,8 @@ func WaitForTiKVWorkersHealthy(ctx context.Context, c client.Client, wg *v1alpha
 			errs = append(errs, fmt.Errorf("tikv worker %s/%s replicas %d not equal to %d", wg.Namespace, wg.Name, len(list.Items), *wg.Spec.Replicas))
 		}
 		for i := range list.Items {
-			tiproxy := &list.Items[i]
-			if err := checkInstanceStatus(v1alpha1.LabelValComponentTiKVWorker, tiproxy.Name, tiproxy.Namespace, tiproxy.Generation, tiproxy.Status.CommonStatus); err != nil {
+			w := &list.Items[i]
+			if err := checkInstanceStatus(v1alpha1.LabelValComponentTiKVWorker, w.Name, w.Namespace, w.Generation, w.Status.CommonStatus); err != nil {
 				errs = append(errs, err)
 			}
 		}

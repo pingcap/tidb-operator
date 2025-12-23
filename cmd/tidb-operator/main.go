@@ -449,13 +449,13 @@ func setupControllers(
 		{
 			name: "TiKVWorkerGroup",
 			setupFunc: func() error {
-				return tikvworkergroup.Setup(mgr, c, tf.AllocateFactory("tiproxy"))
+				return tikvworkergroup.Setup(mgr, c, tf.AllocateFactory("tikvworker"))
 			},
 		},
 		{
 			name: "TiKVWorker",
 			setupFunc: func() error {
-				return tikvworker.Setup(mgr, c, pdcm, vm, tf.Tracker("tiproxy"))
+				return tikvworker.Setup(mgr, c, pdcm, vm, tf.Tracker("tikvworker"))
 			},
 		},
 		{

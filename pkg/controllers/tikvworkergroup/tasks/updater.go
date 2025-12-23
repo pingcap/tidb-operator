@@ -158,7 +158,7 @@ func TiKVWorkerNewer(wg *v1alpha1.TiKVWorkerGroup, rev string, fg features.Gates
 	return updater.NewFunc[*runtime.TiKVWorker](func() *runtime.TiKVWorker {
 		spec := wg.Spec.Template.Spec.DeepCopy()
 
-		tso := &v1alpha1.TiKVWorker{
+		w := &v1alpha1.TiKVWorker{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: wg.Namespace,
 				// Name will be allocated by updater.AllocateName
@@ -177,9 +177,9 @@ func TiKVWorkerNewer(wg *v1alpha1.TiKVWorkerGroup, rev string, fg features.Gates
 			},
 		}
 		if fg.Enabled(metav1alpha1.ClusterSubdomain) {
-			tso.Spec.Subdomain = coreutil.ClusterSubdomain(wg.Spec.Cluster.Name)
+			w.Spec.Subdomain = coreutil.ClusterSubdomain(wg.Spec.Cluster.Name)
 		}
 
-		return runtime.FromTiKVWorker(tso)
+		return runtime.FromTiKVWorker(w)
 	})
 }
