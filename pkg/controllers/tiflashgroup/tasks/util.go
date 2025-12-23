@@ -13,11 +13,3 @@
 // limitations under the License.
 
 package tasks
-
-import (
-	"fmt"
-)
-
-func HeadlessServiceName(groupName string) string {
-	return fmt.Sprintf("%s-tiflash-peer", groupName)
-}

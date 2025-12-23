@@ -65,7 +65,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		),
 
 		tasks.TaskConfigMap(state, r.Client),
-		common.TaskPVC[scope.Scheduling](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
+		common.TaskPVC[scope.Scheduling](state, r.Client, r.VolumeModifierFactory, common.DefaultPVCNewer[scope.Scheduling]()),
 		tasks.TaskPod(state, r.Client),
 		common.TaskInstanceConditionSynced[scope.Scheduling](state),
 		common.TaskInstanceConditionReady[scope.Scheduling](state),

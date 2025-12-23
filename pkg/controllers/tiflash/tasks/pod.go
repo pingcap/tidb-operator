@@ -108,7 +108,7 @@ func newPod(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash, store *pdv1.St
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: PersistentVolumeClaimName(coreutil.PodName[scope.TiFlash](tiflash), vol.Name),
+					ClaimName: coreutil.PersistentVolumeClaimName[scope.TiFlash](tiflash, vol.Name),
 				},
 			},
 		})

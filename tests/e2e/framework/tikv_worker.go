@@ -12,29 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tasks
+package framework
 
 import (
-	corev1 "k8s.io/api/core/v1"
+	"context"
+
+	"github.com/onsi/ginkgo/v2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
-	"github.com/pingcap/tidb-operator/v2/pkg/features"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/waiter"
 )
 
-func PVCNewer() common.PVCNewer[*v1alpha1.Scheduler] {
-	return common.PVCNewerFunc[*v1alpha1.Scheduler](
-		func(cluster *v1alpha1.Cluster, scheduler *v1alpha1.Scheduler, fg features.Gates) []*corev1.PersistentVolumeClaim {
-			pvcs := coreutil.PVCs[scope.Scheduler](
-				cluster,
-				scheduler,
-				coreutil.EnableVAC(fg.Enabled(meta.VolumeAttributesClass)),
-			)
-
-			return pvcs
-		},
-	)
+func (f *Framework) WaitForTiKVWorkerGroupReady(ctx context.Context, wg *v1alpha1.TiKVWorkerGroup) {
+	ginkgo.By("wait for tikv worker group ready")
+	f.Must(waiter.WaitForObjectCondition[scope.TiKVWorkerGroup](
+		ctx,
+		f.Client,
+		wg,
+		v1alpha1.CondReady,
+		metav1.ConditionTrue,
+		waiter.LongTaskTimeout,
+	))
+	f.Must(waiter.WaitForTiKVWorkersHealthy(ctx, f.Client, wg, waiter.LongTaskTimeout))
+	f.Must(waiter.WaitForPodsReady(ctx, f.Client, runtime.FromTiKVWorkerGroup(wg), waiter.LongTaskTimeout))
 }

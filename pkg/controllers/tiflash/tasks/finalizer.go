@@ -21,6 +21,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
+	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	fm "github.com/pingcap/tidb-operator/v2/pkg/timanager/tiflash"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
@@ -38,9 +39,9 @@ var SubresourceLister = common.NewSubresourceLister(
 
 func TaskDeregisterTiFlashClient(state State, fcm fm.TiFlashClientManager) task.Task {
 	return task.NameTaskFunc("DeregisterTiFlashClient", func(ctx context.Context) task.Result {
-		tiflash := state.Object()
+		key := state.Key()
 
-		fcm.Deregister(fm.Key(tiflash))
+		fcm.Deregister(timanager.PrimaryKey(key.Namespace, key.Name))
 		return task.Complete().With("deregister tiflash client")
 	})
 }

@@ -101,6 +101,11 @@ func (t *TaskFeatureGates) Sync(ctx task.Context[ReconcileContext]) task.Result 
 			return task.Fail().With("can't update feature gates for tiproxy group %s/%s: %w", pg.Namespace, pg.Name, err)
 		}
 	}
+	for _, wg := range rtx.TiKVWorkerGroups {
+		if err := patchFeatures[scope.TiKVWorkerGroup](ctx, t.Client, wg, fs); err != nil {
+			return task.Fail().With("can't update feature gates for tikv worker group %s/%s: %w", wg.Namespace, wg.Name, err)
+		}
+	}
 
 	return task.Complete().With("features of all groups are updated")
 }

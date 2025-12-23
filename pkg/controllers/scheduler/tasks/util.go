@@ -21,12 +21,6 @@ import (
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
-func PersistentVolumeClaimName(podName, volName string) string {
-	// ref: https://github.com/pingcap/tidb-operator/blob/v1.6.0/pkg/apis/pingcap/v1alpha1/helpers.go#L92
-	// NOTE: for v1, should use component as volName of data, e.g. pd
-	return volName + "-" + podName
-}
-
 // VolumeName returns the real spec.volumes[*].name of pod
 // TODO(liubo02): extract to namer pkg
 func VolumeName(volName string) string {

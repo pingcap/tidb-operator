@@ -129,6 +129,7 @@ const (
 	LabelValComponentPD         = string(meta.ComponentPD)
 	LabelValComponentTiDB       = string(meta.ComponentTiDB)
 	LabelValComponentTiKV       = string(meta.ComponentTiKV)
+	LabelValComponentTiKVWorker = string(meta.ComponentTiKVWorker)
 	LabelValComponentTiFlash    = string(meta.ComponentTiFlash)
 	LabelValComponentTiCDC      = string(meta.ComponentTiCDC)
 	LabelValComponentTSO        = string(meta.ComponentTSO)

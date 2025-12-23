@@ -15,8 +15,6 @@
 package tasks
 
 import (
-	"fmt"
-
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -25,12 +23,6 @@ import (
 
 func ConfigMapName(podName string) string {
 	return podName
-}
-
-func PersistentVolumeClaimName(podName, volName string) string {
-	// ref: https://github.com/pingcap/tidb-operator/blob/486cc85c8380efc4f36b3125a1abba9e3146a2c8/pkg/apis/pingcap/v1alpha1/helpers.go#L105
-	// NOTE: for v1, volName should be data0, data1, ...
-	return fmt.Sprintf("%s-%s", volName, podName)
 }
 
 // VolumeName returns the real spec.volumes[*].name of pod

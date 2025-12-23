@@ -18,23 +18,21 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
-	"github.com/pingcap/tidb-operator/v2/pkg/features"
-	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
 
-func PVCNewer() common.PVCNewer[*v1alpha1.TSO] {
-	return common.PVCNewerFunc[*v1alpha1.TSO](
-		func(cluster *v1alpha1.Cluster, tso *v1alpha1.TSO, fg features.Gates) []*corev1.PersistentVolumeClaim {
-			pvcs := coreutil.PVCs[scope.TSO](
-				cluster,
-				tso,
-				coreutil.EnableVAC(fg.Enabled(meta.VolumeAttributesClass)),
-			)
+// VolumeName returns the real spec.volumes[*].name of pod
+// TODO(liubo02): extract to namer pkg
+func VolumeName(volName string) string {
+	return metav1alpha1.VolNamePrefix + volName
+}
 
-			return pvcs
-		},
-	)
+func VolumeMount(name string, mount *v1alpha1.VolumeMount) *corev1.VolumeMount {
+	vm := &corev1.VolumeMount{
+		Name:      name,
+		MountPath: mount.MountPath,
+		SubPath:   mount.SubPath,
+	}
+
+	return vm
 }

@@ -159,6 +159,16 @@ func (*TaskStatus) syncComponentStatus(rtx *ReconcileContext) bool {
 		components = append(components, tiproxy)
 	}
 
+	if len(rtx.TiKVWorkerGroups) > 0 {
+		s := v1alpha1.ComponentStatus{Kind: v1alpha1.ComponentKindTiKVWorker}
+		for _, wg := range rtx.TiKVWorkerGroups {
+			if wg.Spec.Replicas != nil {
+				s.Replicas += *wg.Spec.Replicas
+			}
+		}
+		components = append(components, s)
+	}
+
 	sort.Slice(components, func(i, j int) bool {
 		return components[i].Kind < components[j].Kind
 	})
@@ -230,6 +240,12 @@ func (*TaskStatus) syncConditions(rtx *ReconcileContext) bool {
 		}
 		for _, ticdcGroup := range rtx.TiCDCGroups {
 			if !meta.IsStatusConditionTrue(ticdcGroup.Status.Conditions, v1alpha1.CondSuspended) {
+				suspended = false
+				break
+			}
+		}
+		for _, wg := range rtx.TiKVWorkerGroups {
+			if !meta.IsStatusConditionTrue(wg.Status.Conditions, v1alpha1.CondSuspended) {
 				suspended = false
 				break
 			}

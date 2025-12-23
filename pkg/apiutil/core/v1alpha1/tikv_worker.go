@@ -12,29 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tasks
+package coreutil
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
-	"github.com/pingcap/tidb-operator/v2/pkg/features"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 )
 
-func PVCNewer() common.PVCNewer[*v1alpha1.Scheduling] {
-	return common.PVCNewerFunc[*v1alpha1.Scheduling](
-		func(cluster *v1alpha1.Cluster, s *v1alpha1.Scheduling, fg features.Gates) []*corev1.PersistentVolumeClaim {
-			pvcs := coreutil.PVCs[scope.Scheduling](
-				cluster,
-				s,
-				coreutil.EnableVAC(fg.Enabled(meta.VolumeAttributesClass)),
-			)
+func TiKVWorkerAPIPort(w *v1alpha1.TiKVWorker) int32 {
+	if w.Spec.Server.Ports.API != nil {
+		return w.Spec.Server.Ports.API.Port
+	}
+	return v1alpha1.DefaultTiKVWorkerPortAPI
+}
 
-			return pvcs
-		},
-	)
+func TiKVWorkerGroupAPIPort(wg *v1alpha1.TiKVWorkerGroup) int32 {
+	if wg.Spec.Template.Spec.Server.Ports.API != nil {
+		return wg.Spec.Template.Spec.Server.Ports.API.Port
+	}
+	return v1alpha1.DefaultTiKVWorkerPortAPI
+}
+
+func TiKVWorkerAdvertiseAPIURL(w *v1alpha1.TiKVWorker) string {
+	ns := w.Namespace
+	if ns == "" {
+		ns = corev1.NamespaceDefault
+	}
+	return fmt.Sprintf("%s.%s.%s:%d", PodName[scope.TiKVWorker](w), w.Spec.Subdomain, ns, TiKVWorkerAPIPort(w))
 }

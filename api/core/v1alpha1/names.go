@@ -58,6 +58,7 @@ const (
 	// These names are well known so the name prefix is not added.
 	ContainerNamePD         = "pd"
 	ContainerNameTiKV       = "tikv"
+	ContainerNameTiKVWorker = "tikv-worker"
 	ContainerNameTiDB       = "tidb"
 	ContainerNameTiFlash    = "tiflash"
 	ContainerNameTiCDC      = "ticdc"
@@ -93,6 +94,7 @@ const (
 	// config dir path
 	DirPathConfigPD         = "/etc/pd"
 	DirPathConfigTiKV       = "/etc/tikv"
+	DirPathConfigTiKVWorker = "/etc/tikv-worker"
 	DirPathConfigTiDB       = "/etc/tidb"
 	DirPathConfigTiFlash    = "/etc/tiflash"
 	DirPathConfigTiCDC      = "/etc/ticdc"
@@ -120,6 +122,7 @@ const (
 	// Dir path of cluster tls file
 	DirPathClusterTLSPD         = "/var/lib/pd-tls"
 	DirPathClusterTLSTiKV       = "/var/lib/tikv-tls"
+	DirPathClusterTLSTiKVWorker = "/var/lib/tikv-worker-tls"
 	DirPathClusterTLSTiDB       = "/var/lib/tidb-tls"
 	DirPathClusterTLSTiFlash    = "/var/lib/tiflash-tls"
 	DirPathClusterClientTLS     = "/var/lib/cluster-client-tls"

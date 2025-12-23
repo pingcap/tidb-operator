@@ -166,7 +166,7 @@ func newPod(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, g features.Gates, cluste
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: PersistentVolumeClaimName(coreutil.PodName[scope.PD](pd), vol.Name),
+					ClaimName: coreutil.PersistentVolumeClaimName[scope.PD](pd, vol.Name),
 				},
 			},
 		})

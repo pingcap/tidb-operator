@@ -189,19 +189,20 @@ type ClusterStatus struct {
 type ComponentKind string
 
 const (
-	ComponentKindPD      ComponentKind = "PD"
-	ComponentKindTiKV    ComponentKind = "TiKV"
-	ComponentKindTiDB    ComponentKind = "TiDB"
-	ComponentKindTiFlash ComponentKind = "TiFlash"
-	ComponentKindTiCDC   ComponentKind = "TiCDC"
-	ComponentKindTiProxy ComponentKind = "TiProxy"
+	ComponentKindPD         ComponentKind = "PD"
+	ComponentKindTiKV       ComponentKind = "TiKV"
+	ComponentKindTiDB       ComponentKind = "TiDB"
+	ComponentKindTiFlash    ComponentKind = "TiFlash"
+	ComponentKindTiCDC      ComponentKind = "TiCDC"
+	ComponentKindTiProxy    ComponentKind = "TiProxy"
+	ComponentKindTiKVWorker ComponentKind = "TiKVWorker"
 )
 
 // ComponentStatus is the status of a component in the cluster.
 type ComponentStatus struct {
 	// Kind is the kind of the component, e.g., PD, TiKV, TiDB, TiFlash.
 	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Enum=PD;TiKV;TiDB;TiFlash;TiCDC;TiProxy
+	// +kubebuilder:validation:Enum=PD;TiKV;TiDB;TiFlash;TiCDC;TiProxy;TiKVWorker
 	Kind ComponentKind `json:"kind"`
 
 	// Replicas is the number of desired replicas of the component.

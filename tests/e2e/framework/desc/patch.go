@@ -50,17 +50,52 @@ func TiDBPatches(o *Options, ps ...data.GroupPatch[*v1alpha1.TiDBGroup]) []data.
 			data.WithTiDBMySQLTLS(o.TiDBMySQLTLS()),
 		)
 	}
+	if o.NextGen {
+		ps = append(ps,
+			data.WithTiDBNextGen(),
+			data.WithKeyspace("SYSTEM"),
+		)
+	}
 	return GroupPatches[scope.TiDBGroup](o, ps...)
 }
 
 func PDPatches(o *Options, ps ...data.GroupPatch[*v1alpha1.PDGroup]) []data.GroupPatch[*v1alpha1.PDGroup] {
+	if o.NextGen {
+		ps = append(ps,
+			data.WithMSMode(),
+			data.WithPDNextGen(),
+		)
+	}
 	return GroupPatches[scope.PDGroup](o, ps...)
 }
 
 func TiKVPatches(o *Options, ps ...data.GroupPatch[*v1alpha1.TiKVGroup]) []data.GroupPatch[*v1alpha1.TiKVGroup] {
+	if o.NextGen {
+		ps = append(ps,
+			data.WithTiKVNextGen(),
+		)
+	}
 	return GroupPatches[scope.TiKVGroup](o, ps...)
+}
+
+func TiProxyPatches(o *Options, ps ...data.GroupPatch[*v1alpha1.TiProxyGroup]) []data.GroupPatch[*v1alpha1.TiProxyGroup] {
+	if o.NextGen {
+		ps = append(ps,
+			data.WithTiProxyNextGen(),
+		)
+	}
+	return GroupPatches[scope.TiProxyGroup](o, ps...)
 }
 
 func TiCDCPatches(o *Options, ps ...data.GroupPatch[*v1alpha1.TiCDCGroup]) []data.GroupPatch[*v1alpha1.TiCDCGroup] {
 	return GroupPatches[scope.TiCDCGroup](o, ps...)
+}
+
+func TiKVWorkerPatches(o *Options, ps ...data.GroupPatch[*v1alpha1.TiKVWorkerGroup]) []data.GroupPatch[*v1alpha1.TiKVWorkerGroup] {
+	if o.NextGen {
+		ps = append(ps,
+			data.WithTiKVWorkerNextGen(),
+		)
+	}
+	return GroupPatches[scope.TiKVWorkerGroup](o, ps...)
 }

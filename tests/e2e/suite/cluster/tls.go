@@ -23,33 +23,28 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework/action"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework/desc"
 	wopt "github.com/pingcap/tidb-operator/v2/tests/e2e/framework/workload"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/label"
-	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/cert"
 )
 
 var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 	f := framework.New()
-	f.Setup()
+	f.Setup(framework.WithSkipClusterDeletionWhenFailed())
 
-	f.DescribeFeatureTable(func(fs ...metav1alpha1.Feature) {
-		f.SetupCluster(data.WithClusterTLSEnabled(), data.WithFeatureGates(fs...))
+	f.Describe(func(o *desc.Options) {
+		f.SetupCluster(desc.ClusterPatches(o)...)
 		workload := f.SetupWorkload()
-		cm := f.SetupCertManager(true)
+		cm := f.SetupCertManager(o.TLS)
 
 		ginkgo.It("should enable internal TLS with same ca secret", func(ctx context.Context) {
 			f.MustCreateS3(ctx)
 			ns := f.Namespace.Name
 			cluster := f.Cluster.Name
 
-			// add ns prefix of ca because the bundle is a cluster scope resource
-			ca := ns + "-cluster-ca"
-			mysqlClientCA, mysqlServerCertKeyPair := ns+"-mysql-ca", "mysql-tls"
-			pdg := f.MustCreatePD(ctx,
-				data.WithMSMode(),
-				data.WithPDNextGen(),
-				data.WithClusterTLS[scope.PDGroup](ca, "pd-internal"),
-			)
+			ca := o.ClusterCA()
+			pdg := action.MustCreatePD(ctx, f, o)
 			tg := f.MustCreateTSO(ctx,
 				data.WithTSONextGen(),
 				data.WithClusterTLS[scope.TSOGroup](ca, "tso-internal"),
@@ -58,16 +53,8 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 				data.WithSchedulingNextGen(),
 				data.WithClusterTLS[scope.SchedulingGroup](ca, "scheduling-internal"),
 			)
-			kvg := f.MustCreateTiKV(ctx,
-				data.WithTiKVNextGen(),
-				data.WithClusterTLS[scope.TiKVGroup](ca, "tikv-internal"),
-			)
-			dbg := f.MustCreateTiDB(ctx,
-				data.WithTiDBNextGen(),
-				data.WithKeyspace("SYSTEM"),
-				data.WithClusterTLS[scope.TiDBGroup](ca, "tidb-internal"),
-				data.WithTiDBMySQLTLS(mysqlClientCA, mysqlServerCertKeyPair),
-			)
+			kvg := action.MustCreateTiKV(ctx, f, o)
+			dbg := action.MustCreateTiDB(ctx, f, o)
 			fgc := f.MustCreateTiFlash(ctx,
 				data.WithTiFlashNextGen(),
 				data.WithTiFlashComputeMode(),
@@ -78,13 +65,11 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 				data.WithTiFlashWriteMode(),
 				data.WithClusterTLS[scope.TiFlashGroup](ca, "tiflash-write-internal"),
 			)
-			cg := f.MustCreateTiCDC(ctx,
-				data.WithClusterTLS[scope.TiCDCGroup](ca, "ticdc-internal"),
-			)
-			pg := f.MustCreateTiProxy(ctx,
-				data.WithTiProxyNextGen(),
-				data.WithClusterTLS[scope.TiProxyGroup](ca, "tiproxy-internal"),
-			)
+			cg := action.MustCreateTiCDC(ctx, f, o)
+
+			pg := action.MustCreateTiProxy(ctx, f, o)
+
+			wg := action.MustCreateTiKVWorker(ctx, f, o)
 
 			cm.Install(ctx, ns, cluster)
 
@@ -97,26 +82,38 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 			f.WaitForTiFlashGroupReady(ctx, fgw)
 			f.WaitForTiCDCGroupReady(ctx, cg)
 			f.WaitForTiProxyGroupReady(ctx, pg)
+			f.WaitForTiKVWorkerGroupReady(ctx, wg)
 
-			workload.MustPing(ctx, data.DefaultTiDBServiceName, wopt.TLS(cert.MySQLClient(mysqlClientCA, mysqlServerCertKeyPair)))
+			workload.MustPing(ctx, data.DefaultTiDBServiceName, wopt.FromDescOption(o))
 			workload.MustPing(ctx, data.DefaultTiProxyServiceName, wopt.Port(data.DefaultTiProxyServicePort))
 		})
 	},
-		[]metav1alpha1.Feature{},
-		[]metav1alpha1.Feature{
-			metav1alpha1.UsePDReadyAPIV2,
-			metav1alpha1.UseTSOReadyAPI,
-			metav1alpha1.UseSchedulingReadyAPI,
-			metav1alpha1.UseTiKVReadyAPI,
-			metav1alpha1.UseTiFlashReadyAPI,
+		[]desc.Option{
+			desc.TLS(),
+			desc.NextGen(),
 		},
-		[]metav1alpha1.Feature{
-			metav1alpha1.UsePDReadyAPIV2,
-			metav1alpha1.UseTSOReadyAPI,
-			metav1alpha1.UseSchedulingReadyAPI,
-			metav1alpha1.UseTiKVReadyAPI,
-			metav1alpha1.UseTiFlashReadyAPI,
-			metav1alpha1.ClusterSubdomain,
+		[]desc.Option{
+			desc.TLS(),
+			desc.NextGen(),
+			desc.Features(
+				metav1alpha1.UsePDReadyAPIV2,
+				metav1alpha1.UseTSOReadyAPI,
+				metav1alpha1.UseSchedulingReadyAPI,
+				metav1alpha1.UseTiKVReadyAPI,
+				metav1alpha1.UseTiFlashReadyAPI,
+			),
+		},
+		[]desc.Option{
+			desc.TLS(),
+			desc.NextGen(),
+			desc.Features(
+				metav1alpha1.UsePDReadyAPIV2,
+				metav1alpha1.UseTSOReadyAPI,
+				metav1alpha1.UseSchedulingReadyAPI,
+				metav1alpha1.UseTiKVReadyAPI,
+				metav1alpha1.UseTiFlashReadyAPI,
+				metav1alpha1.ClusterSubdomain,
+			),
 		},
 	)
 })

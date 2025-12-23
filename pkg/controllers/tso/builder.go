@@ -71,7 +71,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskContextClient(state, r.PDClientManager, r.TSOClientManager),
 
 		tasks.TaskConfigMap(state, r.Client),
-		common.TaskPVC[scope.TSO](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
+		common.TaskPVC[scope.TSO](state, r.Client, r.VolumeModifierFactory, common.DefaultPVCNewer[scope.TSO]()),
 		tasks.TaskPod(state, r.Client),
 		common.TaskInstanceConditionSynced[scope.TSO](state),
 		common.TaskInstanceConditionReady[scope.TSO](state),

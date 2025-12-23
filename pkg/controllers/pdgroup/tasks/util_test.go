@@ -24,29 +24,6 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 )
 
-func TestHeadlessServiceName(t *testing.T) {
-	cases := []struct {
-		desc         string
-		groupName    string
-		expectedName string
-	}{
-		{
-			desc:         "normal",
-			groupName:    "xxx",
-			expectedName: "xxx-pd-peer",
-		},
-	}
-
-	for i := range cases {
-		c := &cases[i]
-		t.Run(c.desc, func(tt *testing.T) {
-			tt.Parallel()
-
-			assert.Equal(tt, c.expectedName, HeadlessServiceName(c.groupName), c.desc)
-		})
-	}
-}
-
 func TestNotLeaderPolicy(t *testing.T) {
 	cases := []struct {
 		desc     string

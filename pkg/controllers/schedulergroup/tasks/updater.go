@@ -137,7 +137,7 @@ func SchedulerNewer(sg *v1alpha1.SchedulerGroup, rev string, fg features.Gates) 
 			Spec: v1alpha1.SchedulerSpec{
 				Cluster:               sg.Spec.Cluster,
 				Features:              sg.Spec.Features,
-				Subdomain:             HeadlessServiceName(sg.Name), // same as headless service
+				Subdomain:             coreutil.HeadlessServiceName[scope.SchedulerGroup](sg), // same as headless service
 				SchedulerTemplateSpec: *spec,
 			},
 		}

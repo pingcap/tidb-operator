@@ -214,7 +214,7 @@ func (f *factory) updateTiDB(tidb *v1alpha1.TiDB) *v1alpha1.TiDB {
 
 	tidb.Spec.Cluster = f.dbg.Spec.Cluster
 	tidb.Spec.Features = f.dbg.Spec.Features
-	tidb.Spec.Subdomain = HeadlessServiceName(f.dbg.Name) // same as headless service
+	tidb.Spec.Subdomain = coreutil.HeadlessServiceName[scope.TiDBGroup](f.dbg) // same as headless service
 	tidb.Spec.TiDBTemplateSpec = *spec
 
 	if f.fg.Enabled(metav1alpha1.ClusterSubdomain) {

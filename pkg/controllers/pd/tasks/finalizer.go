@@ -22,6 +22,13 @@ import (
 
 func TaskDeleteMember(state *ReconcileContext) task.Task {
 	return task.NameTaskFunc("DeleteMember", func(ctx context.Context) task.Result {
+		cluster := state.Cluster()
+		if state.PDClient == nil {
+			if !cluster.GetDeletionTimestamp().IsZero() {
+				return task.Complete().With("cluster is deleting, pd client has been deregistered")
+			}
+			return task.Fail().With("pd client is not registered")
+		}
 		// TODO: check whether quorum will be lost?
 		if err := state.PDClient.Underlay().DeleteMember(ctx, state.PD().Name); err != nil {
 			return task.Fail().With("cannot delete member: %v", err)

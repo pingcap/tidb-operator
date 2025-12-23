@@ -108,7 +108,7 @@ func newPod(cluster *v1alpha1.Cluster, scheduling *v1alpha1.Scheduling, fg featu
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: PersistentVolumeClaimName(coreutil.PodName[scope.Scheduling](scheduling), vol.Name),
+					ClaimName: coreutil.PersistentVolumeClaimName[scope.Scheduling](scheduling, vol.Name),
 				},
 			},
 		})

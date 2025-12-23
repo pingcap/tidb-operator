@@ -53,7 +53,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 		pod := state.Pod()
 		if pod == nil {
 			if err := c.Apply(ctx, expected); err != nil {
-				return task.Fail().With("can't create pod of pd: %v", err)
+				return task.Fail().With("can't create pod of tso: %v", err)
 			}
 			state.SetPod(expected)
 			return task.Complete().With("pod is synced")
@@ -162,7 +162,7 @@ func newPod(cluster *v1alpha1.Cluster, tso *v1alpha1.TSO, fg features.Gates) *co
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: PersistentVolumeClaimName(coreutil.PodName[scope.TSO](tso), vol.Name),
+					ClaimName: coreutil.PersistentVolumeClaimName[scope.TSO](tso, vol.Name),
 				},
 			},
 		})

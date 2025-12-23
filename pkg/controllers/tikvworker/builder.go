@@ -1,0 +1,76 @@
+// Copyright 2024 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package tikvworker
+
+import (
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tikvworker/tasks"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
+)
+
+func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.TaskReporter) task.TaskRunner {
+	runner := task.NewTaskRunner(reporter,
+		// get tikv worker
+		common.TaskContextObject[scope.TiKVWorker](state, r.Client),
+		common.TaskTrack[scope.TiKVWorker](state, r.Tracker),
+		// if it's deleted just return
+		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiKVWorker](state)),
+
+		// get cluster info, FinalizerDel will use it
+		common.TaskContextCluster[scope.TiKVWorker](state, r.Client),
+		// if it's paused just return
+		task.IfBreak(common.CondClusterIsPaused(state)),
+		// if the cluster is deleting, del all subresources and remove the finalizer directly
+		task.IfBreak(common.CondClusterIsDeleting(state),
+			common.TaskInstanceFinalizerDel[scope.TiKVWorker](state, r.Client, common.DefaultInstanceSubresourceLister),
+		),
+		// return if cluster's status is not updated
+		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
+
+		task.IfBreak(common.CondObjectIsDeleting[scope.TiKVWorker](state),
+			common.TaskInstanceFinalizerDel[scope.TiKVWorker](state, r.Client, common.DefaultInstanceSubresourceLister),
+			// TODO(liubo02): if the finalizer has been removed, no need to update status
+			common.TaskInstanceConditionSynced[scope.TiKVWorker](state),
+			common.TaskInstanceConditionReady[scope.TiKVWorker](state),
+			common.TaskInstanceConditionRunning[scope.TiKVWorker](state),
+			common.TaskStatusPersister[scope.TiKVWorker](state, r.Client),
+		),
+		common.TaskFinalizerAdd[scope.TiKVWorker](state, r.Client),
+
+		// get pod and check whether the cluster is suspending
+		common.TaskContextPod[scope.TiKVWorker](state, r.Client),
+
+		task.IfBreak(common.CondClusterIsSuspending(state),
+			common.TaskSuspendPod(state, r.Client),
+			common.TaskInstanceConditionSuspended[scope.TiKVWorker](state),
+			common.TaskInstanceConditionSynced[scope.TiKVWorker](state),
+			common.TaskInstanceConditionReady[scope.TiKVWorker](state),
+			common.TaskInstanceConditionRunning[scope.TiKVWorker](state),
+			common.TaskStatusPersister[scope.TiKVWorker](state, r.Client),
+		),
+
+		// normal process
+		tasks.TaskConfigMap(state, r.Client),
+		common.TaskPVC[scope.TiKVWorker](state, r.Client, r.VolumeModifierFactory, common.DefaultPVCNewer[scope.TiKVWorker]()),
+		tasks.TaskPod(state, r.Client),
+		common.TaskInstanceConditionSynced[scope.TiKVWorker](state),
+		common.TaskInstanceConditionReady[scope.TiKVWorker](state),
+		common.TaskInstanceConditionRunning[scope.TiKVWorker](state),
+		tasks.TaskStatus(state, r.Client),
+	)
+
+	return runner
+}

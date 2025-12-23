@@ -16,7 +16,6 @@ package tasks
 
 import (
 	"context"
-	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -27,12 +26,6 @@ import (
 
 func ConfigMapName(podName string) string {
 	return podName
-}
-
-func PersistentVolumeClaimName(podName, volName string) string {
-	// ref: https://github.com/pingcap/tidb-operator/blob/v1.6.0/pkg/apis/pingcap/v1alpha1/helpers.go#L92
-	// NOTE: for v1, should use component as volName of data, e.g. tikv
-	return fmt.Sprintf("%s-%s", volName, podName)
 }
 
 func DeletePodWithGracePeriod(ctx context.Context, c client.Client, pod *corev1.Pod, regionCount int) error {

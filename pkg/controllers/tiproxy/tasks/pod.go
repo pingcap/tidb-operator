@@ -111,7 +111,7 @@ func newPod(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) *corev1.Pod {
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: PersistentVolumeClaimName(coreutil.PodName[scope.TiProxy](tiproxy), vol.Name),
+					ClaimName: coreutil.PersistentVolumeClaimName[scope.TiProxy](tiproxy, vol.Name),
 				},
 			},
 		})

@@ -34,12 +34,13 @@ type ObjectList[T any] interface {
 }
 
 type (
-	PDSliceInitializer      = ResourceSliceInitializer[v1alpha1.PD]
-	TiKVSliceInitializer    = ResourceSliceInitializer[v1alpha1.TiKV]
-	TiDBSliceInitializer    = ResourceSliceInitializer[v1alpha1.TiDB]
-	TiFlashSliceInitializer = ResourceSliceInitializer[v1alpha1.TiFlash]
-	TiCDCSliceInitializer   = ResourceSliceInitializer[v1alpha1.TiCDC]
-	TiProxySliceInitializer = ResourceSliceInitializer[v1alpha1.TiProxy]
+	PDSliceInitializer         = ResourceSliceInitializer[v1alpha1.PD]
+	TiKVSliceInitializer       = ResourceSliceInitializer[v1alpha1.TiKV]
+	TiKVWorkerSliceInitializer = ResourceSliceInitializer[v1alpha1.TiKVWorker]
+	TiDBSliceInitializer       = ResourceSliceInitializer[v1alpha1.TiDB]
+	TiFlashSliceInitializer    = ResourceSliceInitializer[v1alpha1.TiFlash]
+	TiCDCSliceInitializer      = ResourceSliceInitializer[v1alpha1.TiCDC]
+	TiProxySliceInitializer    = ResourceSliceInitializer[v1alpha1.TiProxy]
 )
 
 type GroupState[G runtime.Group] interface {
@@ -124,6 +125,21 @@ type (
 	}
 	TiKVSliceState interface {
 		TiKVSlice() []*v1alpha1.TiKV
+	}
+)
+
+type (
+	TiKVWorkerGroupState interface {
+		TiKVWorkerGroup() *v1alpha1.TiKVWorkerGroup
+	}
+	TiKVWorkerState interface {
+		TiKVWorker() *v1alpha1.TiKVWorker
+	}
+	TiKVWorkerSliceStateInitializer interface {
+		TiKVWorkerSliceInitializer() TiKVWorkerSliceInitializer
+	}
+	TiKVWorkerSliceState interface {
+		TiKVWorkerSlice() []*v1alpha1.TiKVWorker
 	}
 )
 

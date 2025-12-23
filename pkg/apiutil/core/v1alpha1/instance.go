@@ -202,6 +202,18 @@ func PersistentVolumeClaimLabels[
 	})
 }
 
+func PersistentVolumeClaimName[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](obj F, volName string) string {
+	podName := PodName[S](obj)
+
+	// ref: https://github.com/pingcap/tidb-operator/blob/v1.6.0/pkg/apis/pingcap/v1alpha1/helpers.go#L92
+	// NOTE: for v1, should use component as volName of data, e.g. pd
+	return volName + "-" + podName
+}
+
 func OwnerGroup[
 	S scope.Instance[F, T],
 	F client.Object,
@@ -276,7 +288,7 @@ func PVCs[
 		nameToIndex[vol.Name] = i
 		pvc := &corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      persistentVolumeClaimName(PodName[S](obj), vol.Name),
+				Name:      PersistentVolumeClaimName[S](obj, vol.Name),
 				Namespace: obj.GetNamespace(),
 				Labels:    PersistentVolumeClaimLabels[S](obj, vol.Name),
 				OwnerReferences: []metav1.OwnerReference{
