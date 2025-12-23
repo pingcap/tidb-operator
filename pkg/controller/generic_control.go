@@ -460,9 +460,12 @@ func (c *realGenericControlInterface) CreateOrUpdate(controller, obj client.Obje
 		}
 	}
 
-	// 1. try to create and see if there is any conflicts
-	err := c.client.Create(context.TODO(), desired)
-	if errors.IsAlreadyExists(err) {
+	// 1. check whether object exists
+	exist, err := c.Exist(client.ObjectKeyFromObject(desired), obj)
+	if err != nil {
+		return nil, err
+	}
+	if exist {
 
 		// 2. object has already existed, merge our desired changes to it
 		existing, err := EmptyClone(obj)
@@ -497,7 +500,8 @@ func (c *realGenericControlInterface) CreateOrUpdate(controller, obj client.Obje
 		return mutated, nil
 	}
 
-	// object do not exist, return the creation result
+	// object do not exist, do create and return the creation result
+	err = c.client.Create(context.TODO(), desired)
 	if err == nil {
 		c.RecordControllerEvent("create", controller, desired, err)
 	}
