@@ -37,6 +37,7 @@ const (
 	ComponentPD         Component = "pd"
 	ComponentTiDB       Component = "tidb"
 	ComponentTiKV       Component = "tikv"
+	ComponentTiKVWorker Component = "tikv-worker"
 	ComponentTiFlash    Component = "tiflash"
 	ComponentTiCDC      Component = "ticdc"
 	ComponentTSO        Component = "tso"

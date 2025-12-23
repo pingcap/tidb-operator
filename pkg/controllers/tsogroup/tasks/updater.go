@@ -141,7 +141,7 @@ func TSONewer(tg *v1alpha1.TSOGroup, rev string, fg features.Gates) updater.NewF
 			Spec: v1alpha1.TSOSpec{
 				Cluster:         tg.Spec.Cluster,
 				Features:        tg.Spec.Features,
-				Subdomain:       HeadlessServiceName(tg.Name), // same as headless service
+				Subdomain:       coreutil.HeadlessServiceName[scope.TSOGroup](tg), // same as headless service
 				TSOTemplateSpec: *spec,
 			},
 		}

@@ -26,6 +26,7 @@ import (
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
@@ -54,7 +55,7 @@ func newHeadlessService(pdg *v1alpha1.PDGroup) *corev1.Service {
 	ipFamilyPolicy := corev1.IPFamilyPolicyPreferDualStack
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      HeadlessServiceName(pdg.Name),
+			Name:      coreutil.HeadlessServiceName[scope.PDGroup](pdg),
 			Namespace: pdg.Namespace,
 			Labels: map[string]string{
 				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,

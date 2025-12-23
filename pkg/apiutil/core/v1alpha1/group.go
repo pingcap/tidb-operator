@@ -216,3 +216,11 @@ func SetTemplateAnnotations[
 
 	obj.SetTemplateAnnotations(anno)
 }
+
+func HeadlessServiceName[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](f F) string {
+	return f.GetName() + "-" + scope.Component[S]() + "-peer"
+}

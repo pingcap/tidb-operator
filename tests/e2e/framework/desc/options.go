@@ -28,6 +28,8 @@ type Options struct {
 
 	TLS bool
 
+	NextGen bool
+
 	Namespace string
 	// all CA suffix will be added after the ns
 	ClusterCASuffix          string
@@ -42,10 +44,10 @@ type Option interface {
 
 func DefaultOptions() *Options {
 	return &Options{
-		ClusterCASuffix:          "-cluster-ca",
-		ClusterCertKeyPairSuffix: "-internal",
-		MySQLClientCASuffix:      "-mysql-ca",
-		MySQLCertKeyPairSuffix:   "-mysql-tls",
+		ClusterCASuffix:          "cluster-ca",
+		ClusterCertKeyPairSuffix: "internal",
+		MySQLClientCASuffix:      "mysql-ca",
+		MySQLCertKeyPairSuffix:   "mysql-tls",
 	}
 }
 
@@ -74,6 +76,10 @@ func (o *Options) TiDBMySQLTLS() (string, string) {
 	return o.Namespace + "-tidb-" + o.MySQLClientCASuffix, "tidb-" + o.MySQLCertKeyPairSuffix
 }
 
+func (o *Options) ClusterCA() string {
+	return o.Namespace + "-" + o.ClusterCASuffix
+}
+
 type WithOption func(opts *Options)
 
 func (opt WithOption) With(opts *Options) {
@@ -86,8 +92,14 @@ func TLS() Option {
 	})
 }
 
-func Feature(f metav1alpha1.Feature) Option {
+func Features(fs ...metav1alpha1.Feature) Option {
 	return WithOption(func(opts *Options) {
-		opts.Features = append(opts.Features, f)
+		opts.Features = append(opts.Features, fs...)
+	})
+}
+
+func NextGen() Option {
+	return WithOption(func(opts *Options) {
+		opts.NextGen = true
 	})
 }

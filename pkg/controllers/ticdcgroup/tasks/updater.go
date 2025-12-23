@@ -154,7 +154,7 @@ func TiCDCNewer(cdcg *v1alpha1.TiCDCGroup, rev string, fg features.Gates) update
 			Spec: v1alpha1.TiCDCSpec{
 				Cluster:           cdcg.Spec.Cluster,
 				Features:          cdcg.Spec.Features,
-				Subdomain:         HeadlessServiceName(cdcg.Name), // same as headless service
+				Subdomain:         coreutil.HeadlessServiceName[scope.TiCDCGroup](cdcg), // same as headless service
 				TiCDCTemplateSpec: *spec,
 			},
 		}

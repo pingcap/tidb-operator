@@ -49,6 +49,7 @@ const (
 	defaultTSOGroupName        = "tg"
 	defaultSchedulingGroupName = "sg"
 	defaultTiProxyGroupName    = "pg"
+	defaultTiKVWorkerGroupName = "wg"
 
 	defaultVersion        = "v8.5.2"
 	defaultTiProxyVersion = "v1.3.0"

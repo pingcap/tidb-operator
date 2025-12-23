@@ -104,7 +104,7 @@ func newPod(cluster *v1alpha1.Cluster, scheduler *v1alpha1.Scheduler) *corev1.Po
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: PersistentVolumeClaimName(coreutil.PodName[scope.Scheduler](scheduler), vol.Name),
+					ClaimName: coreutil.PersistentVolumeClaimName[scope.Scheduler](scheduler, vol.Name),
 				},
 			},
 		})

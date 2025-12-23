@@ -73,6 +73,22 @@ func MustCreateTiDB(
 	return dbg
 }
 
+func MustCreateTiProxy(
+	ctx context.Context,
+	f *framework.Framework,
+	o *desc.Options,
+	ps ...data.GroupPatch[*v1alpha1.TiProxyGroup],
+) *v1alpha1.TiProxyGroup {
+	pg := data.NewTiProxyGroup(
+		f.Namespace.Name,
+		desc.TiProxyPatches(o, ps...)...,
+	)
+	ginkgo.By("Creating a tiproxy group")
+	f.Must(f.Client.Create(ctx, pg))
+
+	return pg
+}
+
 func MustCreateTiCDC(
 	ctx context.Context,
 	f *framework.Framework,
@@ -87,4 +103,20 @@ func MustCreateTiCDC(
 	f.Must(f.Client.Create(ctx, cg))
 
 	return cg
+}
+
+func MustCreateTiKVWorker(
+	ctx context.Context,
+	f *framework.Framework,
+	o *desc.Options,
+	ps ...data.GroupPatch[*v1alpha1.TiKVWorkerGroup],
+) *v1alpha1.TiKVWorkerGroup {
+	wg := data.NewTiKVWorkerGroup(
+		f.Namespace.Name,
+		desc.TiKVWorkerPatches(o, ps...)...,
+	)
+	ginkgo.By("Creating a tikv worker group")
+	f.Must(f.Client.Create(ctx, wg))
+
+	return wg
 }

@@ -63,6 +63,8 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tiflashgroup"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tikv"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tikvgroup"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tikvworker"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tikvworkergroup"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tiproxy"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tiproxygroup"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tso"
@@ -303,6 +305,14 @@ func addIndexer(ctx context.Context, mgr ctrl.Manager) error {
 		return err
 	}
 
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.TiKVWorkerGroup{}, "spec.cluster.name",
+		func(obj client.Object) []string {
+			wg := obj.(*v1alpha1.TiKVWorkerGroup)
+			return []string{wg.Spec.Cluster.Name}
+		}); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -437,6 +447,18 @@ func setupControllers(
 			},
 		},
 		{
+			name: "TiKVWorkerGroup",
+			setupFunc: func() error {
+				return tikvworkergroup.Setup(mgr, c, tf.AllocateFactory("tiproxy"))
+			},
+		},
+		{
+			name: "TiKVWorker",
+			setupFunc: func() error {
+				return tikvworker.Setup(mgr, c, pdcm, vm, tf.Tracker("tiproxy"))
+			},
+		},
+		{
 			name: "TiBR",
 			setupFunc: func() error {
 				return tibr.Setup(mgr, c)
@@ -527,6 +549,12 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 			Label: labels.Everything(),
 		},
 		&v1alpha1.Scheduling{}: {
+			Label: labels.Everything(),
+		},
+		&v1alpha1.TiKVWorkerGroup{}: {
+			Label: labels.Everything(),
+		},
+		&v1alpha1.TiKVWorker{}: {
 			Label: labels.Everything(),
 		},
 		&v1alpha1.SchedulerGroup{}: {

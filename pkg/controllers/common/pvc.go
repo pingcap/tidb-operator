@@ -22,6 +22,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/features"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
@@ -78,4 +79,22 @@ type PVCNewerFunc[F client.Object] func(c *v1alpha1.Cluster, obj F, fg features.
 
 func (f PVCNewerFunc[F]) NewPVCs(c *v1alpha1.Cluster, obj F, fg features.Gates) []*corev1.PersistentVolumeClaim {
 	return f(c, obj, fg)
+}
+
+func DefaultPVCNewer[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+]() PVCNewer[F] {
+	return PVCNewerFunc[F](
+		func(cluster *v1alpha1.Cluster, obj F, fg features.Gates) []*corev1.PersistentVolumeClaim {
+			pvcs := coreutil.PVCs[S](
+				cluster,
+				obj,
+				coreutil.EnableVAC(fg.Enabled(meta.VolumeAttributesClass)),
+			)
+
+			return pvcs
+		},
+	)
 }

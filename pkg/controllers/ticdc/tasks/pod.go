@@ -139,7 +139,7 @@ func newPod(cluster *v1alpha1.Cluster, ticdc *v1alpha1.TiCDC, fg features.Gates)
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: PersistentVolumeClaimName(coreutil.PodName[scope.TiCDC](ticdc), vol.Name),
+					ClaimName: coreutil.PersistentVolumeClaimName[scope.TiCDC](ticdc, vol.Name),
 				},
 			},
 		})

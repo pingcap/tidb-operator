@@ -26,6 +26,7 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
@@ -48,7 +49,7 @@ func newHeadlessService(sg *v1alpha1.SchedulerGroup) *corev1.Service {
 	ipFamilyPolicy := corev1.IPFamilyPolicyPreferDualStack
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      HeadlessServiceName(sg.Name),
+			Name:      coreutil.HeadlessServiceName[scope.SchedulerGroup](sg),
 			Namespace: sg.Namespace,
 			Labels: map[string]string{
 				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,

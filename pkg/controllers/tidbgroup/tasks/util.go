@@ -18,10 +18,6 @@ import (
 	"fmt"
 )
 
-func HeadlessServiceName(groupName string) string {
-	return fmt.Sprintf("%s-tidb-peer", groupName)
-}
-
 func InternalServiceName(groupName string) string {
 	return fmt.Sprintf("%s-tidb", groupName)
 }

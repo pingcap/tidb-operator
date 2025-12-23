@@ -29,12 +29,6 @@ func ConfigMapName(tiproxyName string) string {
 	return tiproxyName
 }
 
-func PersistentVolumeClaimName(podName, volName string) string {
-	// ref: https://github.com/pingcap/tidb-operator/blob/v1.6.0/pkg/apis/pingcap/v1alpha1/helpers.go#L92
-	// NOTE: for v1, should use component as volName of data, e.g. tidb
-	return volName + "-" + podName
-}
-
 // TiProxyServiceURL returns the service URL of a tiproxy member.
 func TiProxyServiceURL(tiproxy *v1alpha1.TiProxy, scheme string) string {
 	return fmt.Sprintf("%s://%s.%s.%s.svc:%d",

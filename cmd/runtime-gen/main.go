@@ -122,6 +122,7 @@ func getTargets(_ *generator.Context, args *Args) []generator.Target {
 		"scheduling",
 		"scheduler",
 		"tiproxy",
+		"tikvworker",
 	}
 
 	runtimeTargetPkg := "github.com/pingcap/tidb-operator/v2/pkg/runtime"

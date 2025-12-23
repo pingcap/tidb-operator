@@ -397,6 +397,7 @@ func (f *factory) registerCerts(ctx context.Context, ns, cluster string) error {
 		registerCertsForComponents[scope.TiFlashGroup],
 		registerCertsForComponents[scope.TiCDCGroup],
 		registerCertsForComponents[scope.TiProxyGroup],
+		registerCertsForComponents[scope.TiKVWorkerGroup],
 		registerTiDBMySQLCerts,
 		registerTiProxyMySQLCerts,
 	}

@@ -63,11 +63,11 @@ var _ = ginkgo.Describe("MultiPDGroup", label.Cluster, func() {
 		})
 	},
 		[]desc.Option{
-			desc.Feature(metav1alpha1.MultiPDGroup),
+			desc.Features(metav1alpha1.MultiPDGroup),
 		},
 		[]desc.Option{
 			desc.TLS(),
-			desc.Feature(metav1alpha1.MultiPDGroup),
+			desc.Features(metav1alpha1.MultiPDGroup),
 		},
 	)
 

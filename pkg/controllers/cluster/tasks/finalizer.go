@@ -64,7 +64,8 @@ func (t *TaskFinalizer) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		len(rtx.TSOGroups) == 0 &&
 		len(rtx.SchedulingGroups) == 0 &&
 		len(rtx.SchedulerGroups) == 0 &&
-		len(rtx.TiProxyGroups) == 0 {
+		len(rtx.TiProxyGroups) == 0 &&
+		len(rtx.TiKVWorkerGroups) == 0 {
 		if err := k8s.RemoveFinalizer(ctx, t.Client, rtx.Cluster); err != nil {
 			return task.Fail().With("can't remove finalizer: %w", err)
 		}
@@ -126,6 +127,13 @@ func (t *TaskFinalizer) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		//nolint:gocritic // not a real issue, see https://github.com/go-critic/go-critic/issues/1448
 		if err := t.Client.Delete(ctx, pg); client.IgnoreNotFound(err) != nil {
 			return task.Fail().With("can't delete tiproxy group: %v", err)
+		}
+	}
+
+	for _, wg := range rtx.TiKVWorkerGroups {
+		//nolint:gocritic // not a real issue, see https://github.com/go-critic/go-critic/issues/1448
+		if err := t.Client.Delete(ctx, wg); client.IgnoreNotFound(err) != nil {
+			return task.Fail().With("can't delete tikv worker group: %v", err)
 		}
 	}
 

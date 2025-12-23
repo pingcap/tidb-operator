@@ -137,7 +137,7 @@ func TiFlashNewer(fg *v1alpha1.TiFlashGroup, rev string, g features.Gates) updat
 			Spec: v1alpha1.TiFlashSpec{
 				Cluster:             fg.Spec.Cluster,
 				Features:            fg.Spec.Features,
-				Subdomain:           HeadlessServiceName(fg.Name),
+				Subdomain:           coreutil.HeadlessServiceName[scope.TiFlashGroup](fg),
 				TiFlashTemplateSpec: *spec,
 				Offline:             ptr.To(false),
 			},

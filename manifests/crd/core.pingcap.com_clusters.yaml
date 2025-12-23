@@ -249,6 +249,7 @@ spec:
                       - TiFlash
                       - TiCDC
                       - TiProxy
+                      - TiKVWorker
                       type: string
                     replicas:
                       description: Replicas is the number of desired replicas of the

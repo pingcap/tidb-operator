@@ -152,7 +152,7 @@ func PDNewer(pdg *v1alpha1.PDGroup, rev string, fg features.Gates) updater.NewFa
 			Spec: v1alpha1.PDSpec{
 				Cluster:        pdg.Spec.Cluster,
 				Features:       pdg.Spec.Features,
-				Subdomain:      HeadlessServiceName(pdg.Name),
+				Subdomain:      coreutil.HeadlessServiceName[scope.PDGroup](pdg),
 				PDTemplateSpec: *spec,
 			},
 		}
