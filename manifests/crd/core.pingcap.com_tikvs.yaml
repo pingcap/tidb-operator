@@ -8346,7 +8346,7 @@ spec:
               remoteWorkers:
                 description: |-
                   RemoteWorkers defines remote workers used by this tikv
-                  It's only worked for nextgen
+                  It only works for nextgen
                 properties:
                   compactor:
                     description: |-
@@ -8381,9 +8381,7 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   worker:
-                    description: |-
-                      LocalObjectReference contains enough information to let you locate the
-                      referenced object inside the same namespace.
+                    description: If Worker is unset, use Coprocessor by default
                     properties:
                       name:
                         default: ""
