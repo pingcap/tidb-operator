@@ -45,7 +45,7 @@ func TaskService(state State, c client.Client) task.Task {
 			return task.Fail().With(fmt.Sprintf("can't create internal service of tikv worker: %v", err))
 		}
 
-		return task.Complete().With("services of tikv worker has been applied")
+		return task.Complete().With("services of tikv worker have been applied")
 	})
 }
 
@@ -115,7 +115,9 @@ func newInternalService(wg *v1alpha1.TiKVWorkerGroup) *corev1.Service {
 			},
 			Ports: []corev1.ServicePort{
 				{
-					Name:       v1alpha1.TiKVWorkerPortNameAPI,
+					Name: v1alpha1.TiKVWorkerPortNameAPI,
+					// Always use default worker port.
+					// Port of internal service should not be changed.
 					Port:       v1alpha1.DefaultTiKVWorkerPortAPI,
 					Protocol:   corev1.ProtocolTCP,
 					TargetPort: intstr.FromString(v1alpha1.TiKVWorkerPortNameAPI),

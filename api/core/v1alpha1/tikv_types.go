@@ -194,7 +194,7 @@ type TiKVTemplateSpec struct {
 	PreStop *TiKVPreStop `json:"preStop,omitempty"`
 
 	// RemoteWorkers defines remote workers used by this tikv
-	// It's only worked for nextgen
+	// It only works for nextgen
 	RemoteWorkers *TiKVRemoteWorkers `json:"remoteWorkers,omitempty"`
 
 	// Overlay defines a k8s native resource template patch
@@ -217,7 +217,8 @@ type (
 type TiKVRemoteWorkers struct {
 	Coprocessor *CoprocessorReference `json:"coprocessor,omitempty"`
 	Compactor   *CompactorReference   `json:"compactor,omitempty"`
-	Worker      *WorkerReference      `json:"worker,omitempty"`
+	// If Worker is unset, use Coprocessor by default
+	Worker *WorkerReference `json:"worker,omitempty"`
 }
 
 type TiKVServer struct {

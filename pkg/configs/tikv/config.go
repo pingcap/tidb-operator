@@ -106,6 +106,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV) error {
 			}
 			name := tikv.Spec.RemoteWorkers.Coprocessor.Name
 			c.KVEngine.RemoteCoprocessorAddr = coreutil.TiKVWorkerCoprocessorURL(name, tikv.Namespace, tls)
+			// use coprocessor addr by default
 			c.KVEngine.RemoteWorkerAddr = coreutil.TiKVWorkerCoprocessorURL(name, tikv.Namespace, tls)
 		}
 		if tikv.Spec.RemoteWorkers.Worker != nil {
