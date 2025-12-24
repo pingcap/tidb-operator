@@ -15,22 +15,25 @@ jobs:
         id: dependabot-metadata
         uses: dependabot/fetch-metadata@v2
       - uses: actions/checkout@v6
-        if: ${{ steps.dependabot-metadata.outputs.package-ecosystem == 'go_modules' }}
         with:
           ref: ${{ github.event.pull_request.head.ref }}
       - uses: actions/setup-go@v6
-        if: ${{ steps.dependabot-metadata.outputs.package-ecosystem == 'go_modules' }}
+        with:
+          go-version-file: ./go.mod
+          cache-dependency-path: "**/*.sum"
+      - name: update go toolchain version
+        if: steps.dependabot-metadata.outputs.package-ecosystem == 'docker' && steps.dependabot-metadata.outputs.dependency-names == 'golang'
+        run: |
+          go get toolchain@${{ steps.dependabot-metadata.outputs.new-version }}
         with:
           go-version-file: ./go.mod
           cache-dependency-path: "**/*.sum"
       - name: go build
-        if: ${{ steps.dependabot-metadata.outputs.package-ecosystem == 'go_modules' }}
         run: |
           make tidy
           make generate
           make build
       - name: git update
-        if: ${{ steps.dependabot-metadata.outputs.package-ecosystem == 'go_modules' }}
         uses: planetscale/ghcommit-action@v0.2.19
         with:
           commit_message: "post update after go dependencies updation"
@@ -39,7 +42,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
       - name: close and reopen to retrigger workflow
-        if: ${{ steps.dependabot-metadata.outputs.package-ecosystem == 'go_modules' }}
         run: |
           gh pr ready --undo ${{ github.event.pull_request.number }}
           gh pr edit ${{ github.event.pull_request.number }} --add-label "ok-to-test" --remove-label "needs-ok-to-test"
