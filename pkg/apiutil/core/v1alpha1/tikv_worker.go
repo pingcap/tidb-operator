@@ -15,7 +15,7 @@
 package coreutil
 
 import (
-	"fmt"
+	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -37,10 +37,19 @@ func TiKVWorkerGroupAPIPort(wg *v1alpha1.TiKVWorkerGroup) int32 {
 	return v1alpha1.DefaultTiKVWorkerPortAPI
 }
 
-func TiKVWorkerAdvertiseAPIURL(w *v1alpha1.TiKVWorker) string {
-	ns := w.Namespace
+func tikvWorkerGroupAdvertiseAPIURLFromReference(name, ns string, tls bool) string {
 	if ns == "" {
 		ns = corev1.NamespaceDefault
 	}
-	return fmt.Sprintf("%s.%s.%s:%d", PodName[scope.TiKVWorker](w), w.Spec.Subdomain, ns, TiKVWorkerAPIPort(w))
+	host := internalServiceName(name, scope.Component[scope.TiKVWorkerGroup]()) + "." + ns
+	url := hostToURL(host, tls) + ":" + strconv.Itoa(v1alpha1.DefaultTiKVWorkerPortAPI)
+	return url
+}
+
+func TiKVWorkerCoprocessorURL(name, ns string, tls bool) string {
+	return tikvWorkerGroupAdvertiseAPIURLFromReference(name, ns, tls) + "/coprocessor"
+}
+
+func TiKVWorkerCompactorURL(name, ns string, tls bool) string {
+	return tikvWorkerGroupAdvertiseAPIURLFromReference(name, ns, tls) + "/compact"
 }

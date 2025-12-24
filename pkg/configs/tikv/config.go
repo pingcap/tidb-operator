@@ -29,6 +29,9 @@ type Config struct {
 	Storage  Storage  `toml:"storage"`
 	PD       PD       `toml:"pd"`
 	Security Security `toml:"security"`
+
+	DFS      *DFS      `toml:"dfs,omitempty"`
+	KVEngine *KVEngine `toml:"kvengine,omitempty"`
 }
 
 type Server struct {
@@ -55,12 +58,23 @@ type Security struct {
 	KeyPath string `toml:"key-path"`
 }
 
+type DFS struct {
+	RemoteCompactorAddr string `toml:"remote-compactor-addr"`
+}
+
+type KVEngine struct {
+	RemoteCoprocessorAddr string `toml:"remote-coprocessor-addr"`
+	RemoteWorkerAddr      string `toml:"remote-worker-addr"`
+}
+
 func (c *Config) Overlay(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV) error {
 	if err := c.Validate(); err != nil {
 		return err
 	}
 
-	if coreutil.IsTLSClusterEnabled(cluster) {
+	tls := coreutil.IsTLSClusterEnabled(cluster)
+
+	if tls {
 		c.Security.CAPath = path.Join(v1alpha1.DirPathClusterTLSTiKV, corev1.ServiceAccountRootCAKey)
 		c.Security.CertPath = path.Join(v1alpha1.DirPathClusterTLSTiKV, corev1.TLSCertKey)
 		c.Security.KeyPath = path.Join(v1alpha1.DirPathClusterTLSTiKV, corev1.TLSPrivateKeyKey)
@@ -83,6 +97,32 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV) error {
 
 	if c.Storage.DataDir == "" {
 		c.Storage.DataDir = v1alpha1.VolumeMountTiKVDataDefaultPath
+	}
+
+	if tikv.Spec.RemoteWorkers != nil {
+		if tikv.Spec.RemoteWorkers.Coprocessor != nil {
+			if c.KVEngine == nil {
+				c.KVEngine = &KVEngine{}
+			}
+			name := tikv.Spec.RemoteWorkers.Coprocessor.Name
+			c.KVEngine.RemoteCoprocessorAddr = coreutil.TiKVWorkerCoprocessorURL(name, tikv.Namespace, tls)
+			// use coprocessor addr by default
+			c.KVEngine.RemoteWorkerAddr = coreutil.TiKVWorkerCoprocessorURL(name, tikv.Namespace, tls)
+		}
+		if tikv.Spec.RemoteWorkers.Worker != nil {
+			if c.KVEngine == nil {
+				c.KVEngine = &KVEngine{}
+			}
+			name := tikv.Spec.RemoteWorkers.Worker.Name
+			c.KVEngine.RemoteWorkerAddr = coreutil.TiKVWorkerCoprocessorURL(name, tikv.Namespace, tls)
+		}
+		if tikv.Spec.RemoteWorkers.Compactor != nil {
+			if c.DFS == nil {
+				c.DFS = &DFS{}
+			}
+			name := tikv.Spec.RemoteWorkers.Compactor.Name
+			c.DFS.RemoteCompactorAddr = coreutil.TiKVWorkerCompactorURL(name, tikv.Namespace, tls)
+		}
 	}
 
 	return nil

@@ -138,6 +138,19 @@ s3-region = "local"
 	})
 }
 
+func WithTiKVWorkers() GroupPatch[*v1alpha1.TiKVGroup] {
+	return GroupPatchFunc[*v1alpha1.TiKVGroup](func(obj *v1alpha1.TiKVGroup) {
+		if obj.Spec.Template.Spec.RemoteWorkers == nil {
+			obj.Spec.Template.Spec.RemoteWorkers = &v1alpha1.TiKVRemoteWorkers{}
+		}
+		name := defaultTiKVWorkerGroupName
+		ws := obj.Spec.Template.Spec.RemoteWorkers
+		ws.Compactor = &v1alpha1.CompactorReference{Name: name}
+		ws.Coprocessor = &v1alpha1.CoprocessorReference{Name: name}
+		ws.Worker = &v1alpha1.WorkerReference{Name: name}
+	})
+}
+
 func WithTiKVPodAntiAffinity() GroupPatch[*v1alpha1.TiKVGroup] {
 	return GroupPatchFunc[*v1alpha1.TiKVGroup](func(obj *v1alpha1.TiKVGroup) {
 		if obj.Spec.Template.Spec.Overlay == nil {

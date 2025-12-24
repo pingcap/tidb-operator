@@ -15,6 +15,7 @@
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
@@ -191,6 +192,11 @@ type TiKVTemplateSpec struct {
 
 	// PreStop defines preStop config
 	PreStop *TiKVPreStop `json:"preStop,omitempty"`
+
+	// RemoteWorkers defines remote workers used by this tikv
+	// It only works for nextgen
+	RemoteWorkers *TiKVRemoteWorkers `json:"remoteWorkers,omitempty"`
+
 	// Overlay defines a k8s native resource template patch
 	// All resources(pod, pvcs, ...) managed by TiKV can be overlayed by this field
 	Overlay *Overlay `json:"overlay,omitempty"`
@@ -200,6 +206,19 @@ type TiKVPreStop struct {
 	// Image of pre stop checker
 	// Default is pingcap/prestop-checker:latest
 	Image *string `json:"image,omitempty"`
+}
+
+type (
+	CoprocessorReference corev1.LocalObjectReference
+	CompactorReference   corev1.LocalObjectReference
+	WorkerReference      corev1.LocalObjectReference
+)
+
+type TiKVRemoteWorkers struct {
+	Coprocessor *CoprocessorReference `json:"coprocessor,omitempty"`
+	Compactor   *CompactorReference   `json:"compactor,omitempty"`
+	// If Worker is unset, use Coprocessor by default
+	Worker *WorkerReference `json:"worker,omitempty"`
 }
 
 type TiKVServer struct {

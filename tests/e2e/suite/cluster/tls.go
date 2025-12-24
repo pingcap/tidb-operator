@@ -91,10 +91,12 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 		[]desc.Option{
 			desc.TLS(),
 			desc.NextGen(),
+			desc.EnableTiKVWorkers(),
 		},
 		[]desc.Option{
 			desc.TLS(),
 			desc.NextGen(),
+			desc.EnableTiKVWorkers(),
 			desc.Features(
 				metav1alpha1.UsePDReadyAPIV2,
 				metav1alpha1.UseTSOReadyAPI,
@@ -106,6 +108,7 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 		[]desc.Option{
 			desc.TLS(),
 			desc.NextGen(),
+			desc.EnableTiKVWorkers(),
 			desc.Features(
 				metav1alpha1.UsePDReadyAPIV2,
 				metav1alpha1.UseTSOReadyAPI,

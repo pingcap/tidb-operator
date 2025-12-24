@@ -224,3 +224,15 @@ func HeadlessServiceName[
 ](f F) string {
 	return f.GetName() + "-" + scope.Component[S]() + "-peer"
 }
+
+func InternalServiceName[
+	S scope.Group[F, T],
+	F client.Object,
+	T runtime.Group,
+](f F) string {
+	return internalServiceName(f.GetName(), scope.Component[S]())
+}
+
+func internalServiceName(groupName, component string) string {
+	return groupName + "-" + component
+}
