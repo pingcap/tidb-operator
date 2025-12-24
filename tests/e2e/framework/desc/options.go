@@ -28,7 +28,8 @@ type Options struct {
 
 	TLS bool
 
-	NextGen bool
+	NextGen           bool
+	EnableTiKVWorkers bool
 
 	Namespace string
 	// all CA suffix will be added after the ns
@@ -101,5 +102,11 @@ func Features(fs ...metav1alpha1.Feature) Option {
 func NextGen() Option {
 	return WithOption(func(opts *Options) {
 		opts.NextGen = true
+	})
+}
+
+func EnableTiKVWorkers() Option {
+	return WithOption(func(opts *Options) {
+		opts.EnableTiKVWorkers = true
 	})
 }

@@ -35,12 +35,17 @@ func TaskService(state State, c client.Client) task.Task {
 	return task.NameTaskFunc("Service", func(ctx context.Context) task.Result {
 		wg := state.Object()
 
-		svc := newHeadlessService(wg)
-		if err := c.Apply(ctx, svc); err != nil {
+		headless := newHeadlessService(wg)
+		if err := c.Apply(ctx, headless); err != nil {
 			return task.Fail().With(fmt.Sprintf("can't create headless service of tikv worker: %v", err))
 		}
 
-		return task.Complete().With("headless service of tikv worker has been applied")
+		internal := newInternalService(wg)
+		if err := c.Apply(ctx, internal); err != nil {
+			return task.Fail().With(fmt.Sprintf("can't create internal service of tikv worker: %v", err))
+		}
+
+		return task.Complete().With("services of tikv worker has been applied")
 	})
 }
 
@@ -79,6 +84,43 @@ func newHeadlessService(wg *v1alpha1.TiKVWorkerGroup) *corev1.Service {
 				},
 			},
 			PublishNotReadyAddresses: true,
+		},
+	}
+}
+
+func newInternalService(wg *v1alpha1.TiKVWorkerGroup) *corev1.Service {
+	ipFamilyPolicy := corev1.IPFamilyPolicyPreferDualStack
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      coreutil.InternalServiceName[scope.TiKVWorkerGroup](wg),
+			Namespace: wg.Namespace,
+			Labels: map[string]string{
+				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKVWorker,
+				v1alpha1.LabelKeyCluster:   wg.Spec.Cluster.Name,
+				v1alpha1.LabelKeyGroup:     wg.Name,
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(wg, v1alpha1.SchemeGroupVersion.WithKind("TiKVWorkerGroup")),
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Type:           corev1.ServiceTypeClusterIP,
+			IPFamilyPolicy: &ipFamilyPolicy,
+			Selector: map[string]string{
+				v1alpha1.LabelKeyManagedBy: v1alpha1.LabelValManagedByOperator,
+				v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiKVWorker,
+				v1alpha1.LabelKeyCluster:   wg.Spec.Cluster.Name,
+				v1alpha1.LabelKeyGroup:     wg.Name,
+			},
+			Ports: []corev1.ServicePort{
+				{
+					Name:       v1alpha1.TiKVWorkerPortNameAPI,
+					Port:       v1alpha1.DefaultTiKVWorkerPortAPI,
+					Protocol:   corev1.ProtocolTCP,
+					TargetPort: intstr.FromString(v1alpha1.TiKVWorkerPortNameAPI),
+				},
+			},
 		},
 	}
 }

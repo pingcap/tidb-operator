@@ -75,6 +75,11 @@ func TiKVPatches(o *Options, ps ...data.GroupPatch[*v1alpha1.TiKVGroup]) []data.
 			data.WithTiKVNextGen(),
 		)
 	}
+	if o.EnableTiKVWorkers {
+		ps = append(ps,
+			data.WithTiKVWorkers(),
+		)
+	}
 	return GroupPatches[scope.TiKVGroup](o, ps...)
 }
 
