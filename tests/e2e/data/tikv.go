@@ -145,9 +145,8 @@ func WithTiKVWorkers() GroupPatch[*v1alpha1.TiKVGroup] {
 		}
 		name := defaultTiKVWorkerGroupName
 		ws := obj.Spec.Template.Spec.RemoteWorkers
-		ws.Compactor = &v1alpha1.CompactorReference{Name: name}
 		ws.Coprocessor = &v1alpha1.CoprocessorReference{Name: name}
-		ws.Worker = &v1alpha1.WorkerReference{Name: name}
+		ws.Worker = v1alpha1.WorkerReference{Name: name}
 	})
 }
 
