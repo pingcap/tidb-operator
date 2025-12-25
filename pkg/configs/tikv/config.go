@@ -100,29 +100,21 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV) error {
 	}
 
 	if tikv.Spec.RemoteWorkers != nil {
+		if c.KVEngine == nil {
+			c.KVEngine = &KVEngine{}
+		}
+		if c.DFS == nil {
+			c.DFS = &DFS{}
+		}
+		compactor := tikv.Spec.RemoteWorkers.Worker.Name
+		copr := tikv.Spec.RemoteWorkers.Worker.Name
 		if tikv.Spec.RemoteWorkers.Coprocessor != nil {
-			if c.KVEngine == nil {
-				c.KVEngine = &KVEngine{}
-			}
-			name := tikv.Spec.RemoteWorkers.Coprocessor.Name
-			c.KVEngine.RemoteCoprocessorAddr = coreutil.TiKVWorkerCoprocessorURL(name, tikv.Namespace, tls)
-			// use coprocessor addr by default
-			c.KVEngine.RemoteWorkerAddr = coreutil.TiKVWorkerCoprocessorURL(name, tikv.Namespace, tls)
+			copr = tikv.Spec.RemoteWorkers.Coprocessor.Name
 		}
-		if tikv.Spec.RemoteWorkers.Worker != nil {
-			if c.KVEngine == nil {
-				c.KVEngine = &KVEngine{}
-			}
-			name := tikv.Spec.RemoteWorkers.Worker.Name
-			c.KVEngine.RemoteWorkerAddr = coreutil.TiKVWorkerCoprocessorURL(name, tikv.Namespace, tls)
-		}
-		if tikv.Spec.RemoteWorkers.Compactor != nil {
-			if c.DFS == nil {
-				c.DFS = &DFS{}
-			}
-			name := tikv.Spec.RemoteWorkers.Compactor.Name
-			c.DFS.RemoteCompactorAddr = coreutil.TiKVWorkerCompactorURL(name, tikv.Namespace, tls)
-		}
+
+		c.KVEngine.RemoteCoprocessorAddr = coreutil.TiKVWorkerCoprocessorURL(copr, tikv.Namespace, tls)
+		c.KVEngine.RemoteWorkerAddr = coreutil.TiKVWorkerCoprocessorURL(copr, tikv.Namespace, tls)
+		c.DFS.RemoteCompactorAddr = coreutil.TiKVWorkerCompactorURL(compactor, tikv.Namespace, tls)
 	}
 
 	return nil
