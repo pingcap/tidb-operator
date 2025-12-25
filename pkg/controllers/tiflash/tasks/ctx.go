@@ -21,7 +21,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
-	tiflashconfig "github.com/pingcap/tidb-operator/v2/pkg/configs/tiflash"
+	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/tiflashapi/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
@@ -86,7 +87,8 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager, fcm 
 			return task.Fail().With("tiflash client is not registered")
 		}
 
-		s, err := c.Stores().Get(tiflashconfig.GetServiceAddr(state.TiFlash()))
+		addr := coreutil.InstanceAdvertiseAddress[scope.TiFlash](ck, f, coreutil.TiFlashFlashPort(f))
+		s, err := c.Stores().Get(addr)
 		if err != nil {
 			if !errors.IsNotFound(err) {
 				return task.Fail().With("failed to get store info: %v", err)

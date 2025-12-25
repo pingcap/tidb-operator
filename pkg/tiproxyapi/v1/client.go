@@ -48,13 +48,17 @@ type tiproxyClient struct {
 }
 
 // NewTiProxyClient returns a new TiProxyClient.
-func NewTiProxyClient(url string, timeout time.Duration, tlsConfig *tls.Config) TiProxyClient {
+func NewTiProxyClient(addr string, timeout time.Duration, tlsConfig *tls.Config) TiProxyClient {
 	var disableKeepalive bool
 	if tlsConfig != nil {
 		disableKeepalive = true
 	}
+	scheme := "http://"
+	if tlsConfig != nil {
+		scheme = "https://"
+	}
 	return &tiproxyClient{
-		url: url,
+		url: scheme + addr,
 		httpClient: &http.Client{
 			Timeout: timeout,
 			Transport: &http.Transport{

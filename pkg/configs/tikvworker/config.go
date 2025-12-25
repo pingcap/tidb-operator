@@ -54,7 +54,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, w *v1alpha1.TiKVWorker) erro
 		c.Security.KeyPath = path.Join(v1alpha1.DirPathClusterTLSTiKVWorker, corev1.TLSPrivateKeyKey)
 	}
 
-	c.Addr = fmt.Sprintf("[::]:%d", coreutil.TiKVWorkerAPIPort(w))
+	c.Addr = coreutil.ListenAddress(coreutil.TiKVWorkerAPIPort(w))
 	c.PD.Endpoints = []string{cluster.Status.PD}
 
 	return nil

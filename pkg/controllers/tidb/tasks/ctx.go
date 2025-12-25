@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/tidbapi/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
@@ -42,20 +43,18 @@ type ReconcileContext struct {
 
 func TaskContextInfoFromPDAndTiDB(state *ReconcileContext, c client.Client, cm pdm.PDClientManager) task.Task {
 	return task.NameTaskFunc("ContextInfoFromPDAndTiDB", func(ctx context.Context) task.Result {
-		var (
-			scheme    = "http"
-			tlsConfig *tls.Config
-		)
+		var tlsConfig *tls.Config
 		ck := state.Cluster()
 		if coreutil.IsTLSClusterEnabled(ck) {
-			scheme = "https"
 			var err error
 			tlsConfig, err = apicall.GetClientTLSConfig(ctx, c, ck)
 			if err != nil {
 				return task.Fail().With("cannot get tls config from secret: %w", err)
 			}
 		}
-		state.TiDBClient = tidbapi.NewTiDBClient(TiDBServiceURL(state.TiDB(), scheme), tidbRequestTimeout, tlsConfig)
+		tidb := state.Object()
+
+		state.TiDBClient = tidbapi.NewTiDBClient(coreutil.InstanceAdvertiseURL[scope.TiDB](ck, tidb, coreutil.TiDBStatusPort(tidb)), tidbRequestTimeout, tlsConfig)
 		health, err := state.TiDBClient.GetHealth(ctx)
 		if err != nil {
 			return task.Complete().With(

@@ -66,7 +66,7 @@ func (c *ProxyConfig) Overlay(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFla
 		c.LogLevel = defaultProxyLogLevel
 	}
 
-	c.Server.StatusAddr = getProxyStatusAddr(tiflash)
+	c.Server.StatusAddr = coreutil.ListenAddress(coreutil.TiFlashProxyStatusPort(tiflash))
 
 	return nil
 }
@@ -92,8 +92,4 @@ func (c *ProxyConfig) Validate() error {
 		return nil
 	}
 	return fmt.Errorf("%v: %w", fields, v1alpha1.ErrFieldIsManagedByOperator)
-}
-
-func getProxyStatusAddr(tiflash *v1alpha1.TiFlash) string {
-	return fmt.Sprintf("[::]:%d", coreutil.TiFlashProxyStatusPort(tiflash))
 }

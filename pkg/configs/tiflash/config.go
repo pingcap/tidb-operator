@@ -17,6 +17,7 @@ package tiflash
 import (
 	"fmt"
 	"path"
+	"slices"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -72,7 +73,7 @@ type Proxy struct {
 }
 
 type Raft struct {
-	PdAddr string `toml:"pd_addr"`
+	PDAddr string `toml:"pd_addr"`
 }
 
 type Status struct {
@@ -122,14 +123,14 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash) e
 	c.Logger.Log = GetServerLogPath(dataDir)
 	c.Logger.Errorlog = GetErrorLogPath(dataDir)
 
-	c.Flash.ServiceAddr = GetServiceAddr(tiflash)
+	c.Flash.ServiceAddr = coreutil.InstanceAdvertiseAddress[scope.TiFlash](cluster, tiflash, coreutil.TiFlashFlashPort(tiflash))
 	// /etc/tiflash/proxy.toml
 	c.Flash.Proxy.Config = path.Join(v1alpha1.DirPathConfigTiFlash, v1alpha1.FileNameConfigTiFlashProxy)
-	c.Flash.Proxy.Addr = getProxyAddr(tiflash)
-	c.Flash.Proxy.AdvertiseAddr = getProxyAdvertiseAddr(tiflash)
-	c.Flash.Proxy.AdvertiseStatusAddr = getProxyAdvertiseStatusAddr(tiflash)
+	c.Flash.Proxy.Addr = coreutil.ListenAddress(coreutil.TiFlashProxyPort(tiflash))
+	c.Flash.Proxy.AdvertiseAddr = coreutil.InstanceAdvertiseAddress[scope.TiFlash](cluster, tiflash, coreutil.TiFlashProxyPort(tiflash))
+	c.Flash.Proxy.AdvertiseStatusAddr = coreutil.InstanceAdvertiseAddress[scope.TiFlash](cluster, tiflash, coreutil.TiFlashProxyStatusPort(tiflash))
 
-	c.Raft.PdAddr = cluster.Status.PD
+	c.Raft.PDAddr = cluster.Status.PD
 
 	c.Status.MetricsPort = int(coreutil.TiFlashMetricsPort(tiflash))
 
@@ -154,10 +155,10 @@ func (c *Config) Validate(dataDir string) error {
 		fields = append(fields, "tmp_path")
 	}
 
-	if c.Storage.Main.Dir != nil && !areSlicesEqual(c.Storage.Main.Dir, []string{getMainStorageDir(dataDir)}) {
+	if c.Storage.Main.Dir != nil && !slices.Equal(c.Storage.Main.Dir, []string{getMainStorageDir(dataDir)}) {
 		fields = append(fields, "storage.main.dir")
 	}
-	if c.Storage.Raft.Dir != nil && !areSlicesEqual(c.Storage.Raft.Dir, []string{getRaftStorageDir(dataDir)}) {
+	if c.Storage.Raft.Dir != nil && !slices.Equal(c.Storage.Raft.Dir, []string{getRaftStorageDir(dataDir)}) {
 		fields = append(fields, "storage.raft.dir")
 	}
 
@@ -180,7 +181,7 @@ func (c *Config) Validate(dataDir string) error {
 		fields = append(fields, "flash.proxy.advertise-status-addr")
 	}
 
-	if c.Raft.PdAddr != "" {
+	if c.Raft.PDAddr != "" {
 		fields = append(fields, "raft.pd_addr")
 	}
 
@@ -199,39 +200,6 @@ func (c *Config) Validate(dataDir string) error {
 		return nil
 	}
 	return fmt.Errorf("%v: %w", fields, v1alpha1.ErrFieldIsManagedByOperator)
-}
-
-func GetServiceAddr(tiflash *v1alpha1.TiFlash) string {
-	ns := tiflash.Namespace
-	if ns == "" {
-		ns = corev1.NamespaceDefault
-	}
-	return fmt.Sprintf("%s.%s.%s:%d", coreutil.PodName[scope.TiFlash](tiflash), tiflash.Spec.Subdomain, ns, coreutil.TiFlashFlashPort(tiflash))
-}
-
-func getProxyAddr(tiflash *v1alpha1.TiFlash) string {
-	return fmt.Sprintf("[::]:%d", coreutil.TiFlashProxyPort(tiflash))
-}
-
-func getProxyAdvertiseAddr(tiflash *v1alpha1.TiFlash) string {
-	ns := tiflash.Namespace
-	if ns == "" {
-		ns = corev1.NamespaceDefault
-	}
-	return fmt.Sprintf("%s.%s.%s:%d", coreutil.PodName[scope.TiFlash](tiflash), tiflash.Spec.Subdomain, ns, coreutil.TiFlashProxyPort(tiflash))
-}
-
-func getProxyAdvertiseStatusAddr(tiflash *v1alpha1.TiFlash) string {
-	ns := tiflash.Namespace
-	if ns == "" {
-		ns = corev1.NamespaceDefault
-	}
-	return fmt.Sprintf("%s.%s.%s:%d",
-		coreutil.PodName[scope.TiFlash](tiflash),
-		tiflash.Spec.Subdomain,
-		ns,
-		coreutil.TiFlashProxyStatusPort(tiflash),
-	)
 }
 
 func GetDataDir(dataDir string) string {
@@ -270,16 +238,4 @@ func getRaftStorageDir(dataDir string) string {
 func getProxyDataDir(dataDir string) string {
 	dataDir = GetDataDir(dataDir)
 	return fmt.Sprintf("%s/proxy", dataDir)
-}
-
-func areSlicesEqual(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i, sa := range a {
-		if sa != b[i] {
-			return false
-		}
-	}
-	return true
 }

@@ -17,6 +17,8 @@ package coreutil
 import (
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
@@ -99,4 +101,43 @@ func ClientInsecureSkipTLSVerify(c *v1alpha1.Cluster) bool {
 		return sec.TLS.Client.InsecureSkipTLSVerify
 	}
 	return false
+}
+
+func ListenAddress[
+	P int | int32,
+](port P) string {
+	return defaultListenHost + urlPort(port)
+}
+
+func ListenURL[
+	P int | int32,
+](cluster *v1alpha1.Cluster, port P) string {
+	return urlScheme(IsTLSClusterEnabled(cluster)) + ListenAddress(port)
+}
+
+func ServiceHost(c *v1alpha1.Cluster, svc string) string {
+	ns := c.GetNamespace()
+	if ns == "" {
+		ns = corev1.NamespaceDefault
+	}
+	mode := v1alpha1.DNSModeInCluster
+	clusterDomain := "cluster.local"
+	if c.Spec.DNS != nil {
+		mode = c.Spec.DNS.Mode
+		if c.Spec.DNS.ClusterDomain != "" {
+			clusterDomain = c.Spec.DNS.ClusterDomain
+		}
+	}
+	var host string
+	switch mode {
+	case v1alpha1.DNSModeFQDN:
+		host = fmt.Sprintf("%s.%s.svc.%s", svc, ns, clusterDomain)
+	case v1alpha1.DNSModeInCluster:
+		host = fmt.Sprintf("%s.%s", svc, ns)
+	default:
+		// default is InCluster
+		host = fmt.Sprintf("%s.%s", svc, ns)
+	}
+
+	return host
 }

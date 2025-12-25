@@ -49,16 +49,14 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, s *v1alpha1.Scheduler) error
 		return err
 	}
 
-	scheme := "http"
 	if coreutil.IsTLSClusterEnabled(cluster) {
-		scheme = "https"
 		c.Security.CACertPath = path.Join(v1alpha1.DirPathClusterTLSScheduler, corev1.ServiceAccountRootCAKey)
 		c.Security.CertPath = path.Join(v1alpha1.DirPathClusterTLSScheduler, corev1.TLSCertKey)
 		c.Security.KeyPath = path.Join(v1alpha1.DirPathClusterTLSScheduler, corev1.TLSPrivateKeyKey)
 	}
 
-	c.ListenAddr = getClientURLs(s, scheme)
-	c.AdvertiseListenAddr = getAdvertiseClientURLs(s, scheme)
+	c.ListenAddr = coreutil.ListenURL(cluster, coreutil.SchedulerClientPort(s))
+	c.AdvertiseListenAddr = coreutil.InstanceAdvertiseURL[scope.Scheduler](cluster, s, coreutil.SchedulerClientPort(s))
 	c.BackendEndpoints = cluster.Status.PD
 
 	return nil
@@ -92,16 +90,4 @@ func (c *Config) Validate() error {
 	}
 
 	return fmt.Errorf("%v: %w", fields, v1alpha1.ErrFieldIsManagedByOperator)
-}
-
-func getClientURLs(s *v1alpha1.Scheduler, scheme string) string {
-	return fmt.Sprintf("%s://[::]:%d", scheme, coreutil.SchedulerClientPort(s))
-}
-
-func getAdvertiseClientURLs(s *v1alpha1.Scheduler, scheme string) string {
-	ns := s.Namespace
-	if ns == "" {
-		ns = corev1.NamespaceDefault
-	}
-	return fmt.Sprintf("%s://%s.%s.%s:%d", scheme, coreutil.PodName[scope.Scheduler](s), s.Spec.Subdomain, ns, coreutil.SchedulerClientPort(s))
 }

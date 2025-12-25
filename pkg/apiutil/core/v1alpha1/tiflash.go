@@ -15,12 +15,7 @@
 package coreutil
 
 import (
-	"fmt"
-
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 )
 
 func TiFlashGroupFlashPort(fg *v1alpha1.TiFlashGroup) int32 {
@@ -77,14 +72,4 @@ func TiFlashProxyStatusPort(f *v1alpha1.TiFlash) int32 {
 		return f.Spec.Server.Ports.ProxyStatus.Port
 	}
 	return v1alpha1.DefaultTiFlashPortProxyStatus
-}
-
-func TiFlashProxyStatusURL(f *v1alpha1.TiFlash, isTLS bool) string {
-	ns := f.Namespace
-	if ns == "" {
-		ns = corev1.NamespaceDefault
-	}
-	host := fmt.Sprintf("%s.%s.%s:%d", PodName[scope.TiFlash](f), f.Spec.Subdomain, ns, TiFlashProxyStatusPort(f))
-
-	return hostToURL(host, isTLS)
 }

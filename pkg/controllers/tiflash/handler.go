@@ -27,8 +27,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
-	tiflashconfig "github.com/pingcap/tidb-operator/v2/pkg/configs/tiflash"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
 )
@@ -171,9 +172,15 @@ func (r *Reconciler) getRequestOfTiFlashStore(ctx context.Context, s *pdv1.Store
 		return reconcile.Request{}, err
 	}
 
+	var c v1alpha1.Cluster
+	if err := r.Client.Get(ctx, client.ObjectKey{Name: cluster, Namespace: ns}, &c); err != nil {
+		r.Logger.Error(err, "cannot get cluster", "ns", ns, "cluster", cluster)
+		return reconcile.Request{}, err
+	}
+
 	for i := range tiflashList.Items {
 		tiflash := &tiflashList.Items[i]
-		if s.Name == tiflashconfig.GetServiceAddr(tiflash) {
+		if s.Name == coreutil.InstanceAdvertiseAddress[scope.TiFlash](&c, tiflash, coreutil.TiFlashFlashPort(tiflash)) {
 			return reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      tiflash.Name,

@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/ticdcapi/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
@@ -46,8 +47,9 @@ func TaskContextInfoFromTiCDC(state *ReconcileContext, c client.Client) task.Tas
 				return task.Fail().With("cannot get tls config from secret: %w", err)
 			}
 		}
+		ticdc := state.Object()
 		// TODO(liubo02): cache client
-		state.TiCDCClient = ticdcapi.NewTiCDCClient(coreutil.TiCDCAdvertiseURL(state.TiCDC()),
+		state.TiCDCClient = ticdcapi.NewTiCDCClient(coreutil.InstanceAdvertiseAddress[scope.TiCDC](ck, ticdc, coreutil.TiCDCPort(ticdc)),
 			ticdcapi.WithTLS(tlsConfig),
 			// TODO(liubo02): fix it
 			ticdcapi.DisableKeepAlives(),

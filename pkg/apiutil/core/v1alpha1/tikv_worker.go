@@ -15,10 +15,6 @@
 package coreutil
 
 import (
-	"strconv"
-
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 )
@@ -37,19 +33,17 @@ func TiKVWorkerGroupAPIPort(wg *v1alpha1.TiKVWorkerGroup) int32 {
 	return v1alpha1.DefaultTiKVWorkerPortAPI
 }
 
-func tikvWorkerGroupAdvertiseAPIURLFromReference(name, ns string, tls bool) string {
-	if ns == "" {
-		ns = corev1.NamespaceDefault
-	}
-	host := internalServiceName(name, scope.Component[scope.TiKVWorkerGroup]()) + "." + ns
-	url := hostToURL(host, tls) + ":" + strconv.Itoa(v1alpha1.DefaultTiKVWorkerPortAPI)
+func tikvWorkerServiceURLFromRef(c *v1alpha1.Cluster, name string) string {
+	svc := internalServiceName(name, scope.Component[scope.TiKVWorkerGroup]())
+	host := ServiceHost(c, svc)
+	url := hostToURL(host, v1alpha1.DefaultTiKVWorkerPortAPI, IsTLSClusterEnabled(c))
 	return url
 }
 
-func TiKVWorkerCoprocessorURL(name, ns string, tls bool) string {
-	return tikvWorkerGroupAdvertiseAPIURLFromReference(name, ns, tls) + "/coprocessor"
+func TiKVWorkerCoprocessorURLFromRef(c *v1alpha1.Cluster, name string) string {
+	return tikvWorkerServiceURLFromRef(c, name) + "/coprocessor"
 }
 
-func TiKVWorkerCompactorURL(name, ns string, tls bool) string {
-	return tikvWorkerGroupAdvertiseAPIURLFromReference(name, ns, tls) + "/compact"
+func TiKVWorkerCompactorURLFromRef(c *v1alpha1.Cluster, name string) string {
+	return tikvWorkerServiceURLFromRef(c, name) + "/compact"
 }

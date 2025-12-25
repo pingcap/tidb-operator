@@ -82,17 +82,16 @@ func NewUnderlayClientFunc(c client.Client) timanager.NewUnderlayClientFunc[*v1a
 			return nil, fmt.Errorf("cannot find cluster %s: %w", tg.Spec.Cluster.Name, err)
 		}
 
+		url := coreutil.TSOServiceURL(&cluster, tg)
 		if coreutil.IsTLSClusterEnabled(&cluster) {
 			tlsConfig, err := apicall.GetClientTLSConfig(ctx, c, &cluster)
 			if err != nil {
 				return nil, fmt.Errorf("cannot get tls config from secret: %w", err)
 			}
 
-			url := coreutil.TSOServiceURL(tg, true)
 			return tsoapi.NewTSOClient(url, tsoRequestTimeout, tlsConfig), nil
 		}
 
-		url := coreutil.TSOServiceURL(tg, false)
 		return tsoapi.NewTSOClient(url, tsoRequestTimeout, nil), nil
 	}
 }

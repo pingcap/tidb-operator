@@ -117,6 +117,7 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 				metav1alpha1.UseTiFlashReadyAPI,
 				metav1alpha1.ClusterSubdomain,
 			),
+			desc.FQDN(),
 		},
 	)
 })

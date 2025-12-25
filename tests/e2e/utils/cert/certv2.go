@@ -136,23 +136,28 @@ spec:
   - "{{ .GroupName }}-{{ .ComponentName }}-peer"
   - "{{ .GroupName }}-{{ .ComponentName }}-peer.{{ .Namespace }}"
   - "{{ .GroupName }}-{{ .ComponentName }}-peer.{{ .Namespace }}.svc"
+  - "{{ .GroupName }}-{{ .ComponentName }}-peer.{{ .Namespace }}.svc.cluster.local"
   {{- if .MultiPDGroup }}
   - "{{ .PDService }}"
   - "{{ .PDService }}.{{ .Namespace }}"
   - "{{ .PDService }}.{{ .Namespace }}.svc"
+  - "{{ .PDService }}.{{ .Namespace }}.svc.cluster.local"
   {{- else }}
   - "{{ .GroupName }}-{{ .ComponentName }}"
   - "{{ .GroupName }}-{{ .ComponentName }}.{{ .Namespace }}"
   - "{{ .GroupName }}-{{ .ComponentName }}.{{ .Namespace }}.svc"
+  - "{{ .GroupName }}-{{ .ComponentName }}.{{ .Namespace }}.svc.cluster.local"
   {{- end }}
   {{- if .ClusterSubdomain }}
   - "*.{{ .ClusterName }}-cluster"
   - "*.{{ .ClusterName }}-cluster.{{ .Namespace }}"
   - "*.{{ .ClusterName }}-cluster.{{ .Namespace }}.svc"
+  - "*.{{ .ClusterName }}-cluster.{{ .Namespace }}.svc.cluster.local"
   {{- else }}
   - "*.{{ .GroupName }}-{{ .ComponentName }}-peer"
   - "*.{{ .GroupName }}-{{ .ComponentName }}-peer.{{ .Namespace }}"
   - "*.{{ .GroupName }}-{{ .ComponentName }}-peer.{{ .Namespace }}.svc"
+  - "*.{{ .GroupName }}-{{ .ComponentName }}-peer.{{ .Namespace }}.svc.cluster.local"
   {{- end }}
   ipAddresses:
   - 127.0.0.1

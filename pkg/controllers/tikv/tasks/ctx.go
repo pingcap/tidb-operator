@@ -22,6 +22,7 @@ import (
 
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
@@ -81,7 +82,9 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 
 		state.PDSynced = true
 
-		s, err := c.Stores().Get(coreutil.TiKVAdvertiseClientURLs(state.TiKV()))
+		tikv := state.Object()
+		addr := coreutil.InstanceAdvertiseAddress[scope.TiKV](ck, tikv, coreutil.TiKVClientPort(tikv))
+		s, err := c.Stores().Get(addr)
 		if err != nil {
 			if !errors.IsNotFound(err) {
 				return task.Fail().With("failed to get store info: %v", err)

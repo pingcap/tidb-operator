@@ -37,7 +37,6 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// get all tsos
 		common.TaskContextSlice[scope.TSOGroup](state, r.Client),
-		tasks.TaskContextTSOClient(state, r.TSOClientManager),
 
 		task.IfBreak(common.CondObjectIsDeleting[scope.TSOGroup](state),
 			common.TaskGroupFinalizerDel[scope.TSOGroup](state, r.Client),
@@ -55,6 +54,9 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskGroupConditionSynced[scope.TSOGroup](state),
 			common.TaskStatusPersister[scope.TSOGroup](state, r.Client),
 		),
+
+		// register tso client
+		tasks.TaskContextTSOClient(state, r.TSOClientManager),
 
 		common.TaskRevision[runtime.TSOGroupTuple](state, r.Client),
 		tasks.TaskService(state, r.Client),
