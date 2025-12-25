@@ -94,6 +94,10 @@ func TestOverlay(t *testing.T) {
 		{
 			name: "basic config without TLS",
 			cluster: &v1alpha1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns1",
+					Name:      "db",
+				},
 				Status: v1alpha1.ClusterStatus{
 					PD: "http://db-pd.ns1:2379",
 				},
@@ -122,6 +126,10 @@ func TestOverlay(t *testing.T) {
 		{
 			name: "config with cluster TLS enabled",
 			cluster: &v1alpha1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns1",
+					Name:      "db",
+				},
 				Spec: v1alpha1.ClusterSpec{
 					TLSCluster: &v1alpha1.TLSCluster{
 						Enabled: true,
@@ -167,6 +175,10 @@ func TestOverlay(t *testing.T) {
 		{
 			name: "config with MySQL TLS enabled",
 			cluster: &v1alpha1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns1",
+					Name:      "db",
+				},
 				Status: v1alpha1.ClusterStatus{
 					PD: "http://db-pd.ns1:2379",
 				},
@@ -211,6 +223,10 @@ func TestOverlay(t *testing.T) {
 		{
 			name: "config with backend tls enabled",
 			cluster: &v1alpha1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns1",
+					Name:      "db",
+				},
 				Status: v1alpha1.ClusterStatus{
 					PD: "http://db-pd.ns1:2379",
 				},

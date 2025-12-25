@@ -24,6 +24,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	stringutil "github.com/pingcap/tidb-operator/v2/pkg/utils/string"
 )
 
 func TestTiProxyClient_IsHealthy(t *testing.T) {
@@ -36,7 +38,8 @@ func TestTiProxyClient_IsHealthy(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewTiProxyClient(server.URL, 5*time.Second, nil)
+	addr := stringutil.RemoveHTTPPrefix(server.URL)
+	client := NewTiProxyClient(addr, 5*time.Second, nil)
 	health, err := client.IsHealthy(context.Background())
 	require.NoError(t, err)
 	assert.True(t, health)
@@ -101,7 +104,8 @@ func TestTiProxyClient_SetLabels(t *testing.T) {
 			}))
 			defer server.Close()
 
-			client := NewTiProxyClient(server.URL, 5*time.Second, nil)
+			addr := stringutil.RemoveHTTPPrefix(server.URL)
+			client := NewTiProxyClient(addr, 5*time.Second, nil)
 			err := client.SetLabels(context.Background(), tt.labels)
 			if tt.expectError {
 				assert.Error(t, err)
