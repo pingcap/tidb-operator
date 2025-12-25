@@ -22,6 +22,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 )
 
 type Config struct {
@@ -47,17 +48,15 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, in *v1alpha1.TSO) error {
 	}
 
 	isTLS := coreutil.IsTLSClusterEnabled(cluster)
-	scheme := "http"
 	if isTLS {
-		scheme = "https"
 		c.Security.CACertPath = path.Join(v1alpha1.DirPathClusterTLSTSO, corev1.ServiceAccountRootCAKey)
 		c.Security.CertPath = path.Join(v1alpha1.DirPathClusterTLSTSO, corev1.TLSCertKey)
 		c.Security.KeyPath = path.Join(v1alpha1.DirPathClusterTLSTSO, corev1.TLSPrivateKeyKey)
 	}
 
 	c.Name = in.Name
-	c.ListenAddr = getClientURLs(in, scheme)
-	c.AdvertiseListenAddr = coreutil.TSOAdvertiseClientURLsWithScheme(in, isTLS)
+	c.ListenAddr = coreutil.ListenURL(cluster, coreutil.TSOClientPort(in))
+	c.AdvertiseListenAddr = coreutil.InstanceAdvertiseURL[scope.TSO](cluster, in, coreutil.TSOClientPort(in))
 	c.BackendEndpoints = cluster.Status.PD
 
 	return nil
@@ -95,8 +94,4 @@ func (c *Config) Validate() error {
 	}
 
 	return fmt.Errorf("%v: %w", fields, v1alpha1.ErrFieldIsManagedByOperator)
-}
-
-func getClientURLs(tso *v1alpha1.TSO, scheme string) string {
-	return fmt.Sprintf("%s://[::]:%d", scheme, coreutil.TSOClientPort(tso))
 }

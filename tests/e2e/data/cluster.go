@@ -92,6 +92,15 @@ func WithFeatureGates(featureGates ...metav1alpha1.Feature) ClusterPatch {
 	}
 }
 
+func WithFQDN() ClusterPatch {
+	return func(obj *v1alpha1.Cluster) {
+		obj.Spec.DNS = &v1alpha1.DNS{
+			Mode: v1alpha1.DNSModeFQDN,
+			// omit cluster domain to test the default val is right
+		}
+	}
+}
+
 func WithClusterTLSAndTiProxyConfig() ClusterPatch {
 	return func(obj *v1alpha1.Cluster) {
 		obj.Spec.TLSCluster = &v1alpha1.TLSCluster{

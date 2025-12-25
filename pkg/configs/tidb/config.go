@@ -88,7 +88,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB, fg feat
 	}
 
 	c.Store = "tikv" // always use tikv
-	c.AdvertiseAddress = getAdvertiseAddress(tidb)
+	c.AdvertiseAddress = getAdvertiseAddress(cluster, tidb)
 	c.Host = "::"
 	c.Path = stringutil.RemoveHTTPPrefix(cluster.Status.PD)
 
@@ -215,12 +215,13 @@ func (c *Config) Validate(tidb *v1alpha1.TiDB) error {
 	return fmt.Errorf("%v: %w", fields, v1alpha1.ErrFieldIsManagedByOperator)
 }
 
-func getAdvertiseAddress(tidb *v1alpha1.TiDB) string {
-	ns := tidb.Namespace
-	if ns == "" {
-		ns = corev1.NamespaceDefault
+func getAdvertiseAddress(cluster *v1alpha1.Cluster, tidb *v1alpha1.TiDB) string {
+	host := coreutil.InstanceHost[scope.TiDB](cluster, tidb)
+	// NOTE(liubo02): add ".svc" suffix to keep compatibility
+	if cluster.Spec.DNS == nil || cluster.Spec.DNS.Mode == "" || cluster.Spec.DNS.Mode == v1alpha1.DNSModeInCluster {
+		return host + ".svc"
 	}
-	return coreutil.PodName[scope.TiDB](tidb) + "." + tidb.Spec.Subdomain + "." + ns + ".svc"
+	return host
 }
 
 func getSlowQueryFile(tidb *v1alpha1.TiDB) string {

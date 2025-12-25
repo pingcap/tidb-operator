@@ -15,8 +15,6 @@
 package coreutil
 
 import (
-	"fmt"
-
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 )
@@ -52,13 +50,12 @@ func PDPeerPort(pd *v1alpha1.PD) int32 {
 // PDServiceURL returns the service url of PD
 func PDServiceURL(c *v1alpha1.Cluster, pdg *v1alpha1.PDGroup) string {
 	svc := ClusterPD(c)
-	ns := c.Namespace
 	port := int32(v1alpha1.DefaultPDPortClient)
 	if !IsFeatureEnabled(c, metav1alpha1.MultiPDGroup) {
 		svc = pdg.Name + "-pd"
 		port = PDGroupClientPort(pdg)
 	}
-	host := fmt.Sprintf("%s.%s:%d", svc, ns, port)
 
-	return hostToURL(host, IsTLSClusterEnabled(c))
+	host := ServiceHost(c, svc)
+	return hostToURL(host, port, IsTLSClusterEnabled(c))
 }

@@ -59,6 +59,7 @@ spec:
           metadata:
             type: object
           spec:
+            description: ClusterSpec is the spec of the cluster.
             properties:
               bootstrapSQL:
                 description: |-
@@ -84,6 +85,26 @@ spec:
                   If MultiPDGroup feature is enabled, the default service name is ${clusterName}-pd.
                   This field is useful to keep use legacy pd service name when enable MultiPDGroup.
                 type: string
+              dns:
+                description: DNS defines the dns names used by components
+                properties:
+                  clusterDomain:
+                    default: cluster.local
+                    description: |-
+                      ClusterDomain is the domain suffix of the dns
+                      It only works when the mode is FQDN
+                    type: string
+                  mode:
+                    default: InCluster
+                    description: Mode is the dns mode, it determines the dns format
+                      used by the tidb cluster
+                    enum:
+                    - FQDN
+                    - InCluster
+                    type: string
+                required:
+                - mode
+                type: object
               featureGates:
                 items:
                   properties:

@@ -15,12 +15,7 @@
 package coreutil
 
 import (
-	"fmt"
-
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 )
 
 func TiCDCGroupPort(cdcg *v1alpha1.TiCDCGroup) int32 {
@@ -35,12 +30,4 @@ func TiCDCPort(cdc *v1alpha1.TiCDC) int32 {
 		return cdc.Spec.Server.Ports.Port.Port
 	}
 	return v1alpha1.DefaultTiCDCPort
-}
-
-func TiCDCAdvertiseURL(ticdc *v1alpha1.TiCDC) string {
-	ns := ticdc.Namespace
-	if ns == "" {
-		ns = corev1.NamespaceDefault
-	}
-	return fmt.Sprintf("%s.%s.%s:%d", PodName[scope.TiCDC](ticdc), ticdc.Spec.Subdomain, ns, TiCDCPort(ticdc))
 }

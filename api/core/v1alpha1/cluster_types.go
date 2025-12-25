@@ -53,6 +53,7 @@ type Cluster struct {
 	Status ClusterStatus `json:"status,omitempty"`
 }
 
+// ClusterSpec is the spec of the cluster.
 // +kubebuilder:validation:XValidation:rule="oldSelf == null || !has(self.bootstrapSQL) || (has(oldSelf.bootstrapSQL) && self.bootstrapSQL.name == oldSelf.bootstrapSQL.name)",message="bootstrapSQL can only be set at creation, can be unset, but cannot be changed to a different value"
 // +kubebuilder:validation:XValidation:rule="oldSelf == null || (has(oldSelf.tlsCluster) == has(self.tlsCluster)) && (!has(self.tlsCluster) || self.tlsCluster.enabled == oldSelf.tlsCluster.enabled)",message="tlsCluster is immutable"
 type ClusterSpec struct {
@@ -92,8 +93,43 @@ type ClusterSpec struct {
 	// This field is useful to keep use legacy pd service name when enable MultiPDGroup.
 	CustomizedPDServiceName *string `json:"customizedPDServiceName,omitempty"`
 
+	// DNS defines the dns names used by components
+	DNS *DNS `json:"dns,omitempty"`
+
 	// Security defines the security config of the whole cluster
 	Security *ClusterSecurity `json:"security,omitempty"`
+}
+
+// DNSMode determines the dns format used by the tidb clusters.
+// +kubebuilder:validation:Enum=FQDN;InCluster
+type DNSMode string
+
+const (
+	// If mode is FQDN, all dns names will be in FQDN format,
+	// like "*.${svc}.${ns}.svc.${clusterDomain}"
+	DNSModeFQDN DNSMode = "FQDN"
+	// This mode is the default mode,
+	// the format is "*.${svc}.${ns}"
+	// The cluster in this mode will produce many dns queries than other modes.
+	DNSModeInCluster DNSMode = "InCluster"
+
+	// NOTE(liubo02): it may be supported in the future
+	// If mode is InNamespace, all dns names can only be visited in namespace,
+	// the format is "*.${svc}"
+	// DNSModeInNamespace DNSMode = "InNamespace"
+)
+
+type DNS struct {
+	// Mode is the dns mode, it determines the dns format used by the tidb cluster
+	// +kubebuilder:default="InCluster"
+	// +default="InCluster"
+	Mode DNSMode `json:"mode"`
+
+	// ClusterDomain is the domain suffix of the dns
+	// It only works when the mode is FQDN
+	// +kubebuilder:default="cluster.local"
+	// +default="cluster.local"
+	ClusterDomain string `json:"clusterDomain,omitempty"`
 }
 
 type SuspendAction struct {

@@ -26,6 +26,9 @@ func ClusterPatches(o *Options, ps ...data.ClusterPatch) []data.ClusterPatch {
 	if o.TLS {
 		ps = append(ps, data.WithClusterTLSEnabled())
 	}
+	if o.FQDN {
+		ps = append(ps, data.WithFQDN())
+	}
 	ps = append(ps, data.WithFeatureGates(o.Features...))
 	return ps
 }

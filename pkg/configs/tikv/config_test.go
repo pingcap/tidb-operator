@@ -65,6 +65,10 @@ func TestValidate(t *testing.T) {
 
 func TestOverlay(t *testing.T) {
 	cluster := &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns1",
+			Name:      "cluster-1",
+		},
 		Spec: v1alpha1.ClusterSpec{
 			TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
 		},

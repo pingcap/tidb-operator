@@ -24,7 +24,7 @@ import (
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/compatibility"
-	pdcfg "github.com/pingcap/tidb-operator/v2/pkg/configs/pd"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
@@ -104,9 +104,5 @@ func CondPDClientIsNotRegisterred(state *ReconcileContext) task.Condition {
 }
 
 func getPDURL(cluster *v1alpha1.Cluster, pd *v1alpha1.PD) string {
-	scheme := "http"
-	if coreutil.IsTLSClusterEnabled(cluster) {
-		scheme = "https"
-	}
-	return pdcfg.GetAdvertiseClientURLs(pd, scheme)
+	return coreutil.InstanceAdvertiseURL[scope.PD](cluster, pd, coreutil.PDClientPort(pd))
 }

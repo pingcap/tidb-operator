@@ -25,6 +25,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/tiflashapi/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 )
@@ -74,17 +75,16 @@ func NewUnderlayClientFunc(c client.Client) timanager.NewUnderlayClientFunc[*v1a
 			return nil, fmt.Errorf("cannot find cluster %s: %w", f.Spec.Cluster.Name, err)
 		}
 
+		url := coreutil.InstanceAdvertiseURL[scope.TiFlash](&cluster, f, coreutil.TiFlashProxyStatusPort(f))
 		if coreutil.IsTLSClusterEnabled(&cluster) {
 			tlsConfig, err := apicall.GetClientTLSConfig(ctx, c, &cluster)
 			if err != nil {
 				return nil, fmt.Errorf("cannot get tls config from secret: %w", err)
 			}
 
-			url := coreutil.TiFlashProxyStatusURL(f, true)
 			return tiflashapi.NewTiFlashClient(url, defaultTimeout, tlsConfig), nil
 		}
 
-		url := coreutil.TiFlashProxyStatusURL(f, false)
 		return tiflashapi.NewTiFlashClient(url, defaultTimeout, nil), nil
 	}
 }

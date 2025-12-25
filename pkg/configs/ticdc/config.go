@@ -45,8 +45,8 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, ticdc *v1alpha1.TiCDC) error
 		return err
 	}
 
-	c.Addr = getAddr(ticdc)
-	c.AdvertiseAddr = getAdvertiseAddr(ticdc)
+	c.Addr = coreutil.ListenAddress(coreutil.TiCDCPort(ticdc))
+	c.AdvertiseAddr = coreutil.InstanceAdvertiseAddress[scope.TiCDC](cluster, ticdc, coreutil.TiCDCPort(ticdc))
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
 		c.Security.CAPath = path.Join(v1alpha1.DirPathClusterTLSTiCDC, corev1.ServiceAccountRootCAKey)
@@ -82,17 +82,4 @@ func (c *Config) Validate() error {
 	}
 
 	return fmt.Errorf("%v: %w", fields, v1alpha1.ErrFieldIsManagedByOperator)
-}
-
-func getAddr(ticdc *v1alpha1.TiCDC) string {
-	return fmt.Sprintf("[::]:%d", coreutil.TiCDCPort(ticdc))
-}
-
-func getAdvertiseAddr(ticdc *v1alpha1.TiCDC) string {
-	ns := ticdc.Namespace
-	if ns == "" {
-		ns = corev1.NamespaceDefault
-	}
-	return fmt.Sprintf("%s.%s.%s:%d", coreutil.PodName[scope.TiCDC](ticdc),
-		ticdc.Spec.Subdomain, ns, coreutil.TiCDCPort(ticdc))
 }

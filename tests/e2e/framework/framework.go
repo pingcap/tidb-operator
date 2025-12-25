@@ -336,6 +336,9 @@ func (f *Framework) Describe(fn func(o *desc.Options), optss ...[]desc.Option) {
 		var args []any
 		args = append(args, o.Labels())
 		args = append(args, o)
+		if o.Focus {
+			args = append(args, ginkgo.Focus)
+		}
 		entries = append(entries, ginkgo.Entry(nil, args...))
 	}
 	var args []any

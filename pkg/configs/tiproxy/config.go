@@ -70,10 +70,10 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) e
 		return err
 	}
 
-	c.Proxy.Address = fmt.Sprintf("[::]:%d", coreutil.TiProxyClientPort(tiproxy))
-	c.Proxy.AdvertiseAddress = getAdvertiseAddress(tiproxy)
+	c.Proxy.Address = coreutil.ListenAddress(coreutil.TiProxyClientPort(tiproxy))
+	c.Proxy.AdvertiseAddress = getAdvertiseAddress(cluster, tiproxy)
 	c.Proxy.PDAddress = stringutil.RemoveHTTPPrefix(cluster.Status.PD)
-	c.API.Address = fmt.Sprintf("[::]:%d", coreutil.TiProxyAPIPort(tiproxy))
+	c.API.Address = coreutil.ListenAddress(coreutil.TiProxyAPIPort(tiproxy))
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
 		c.Security.ClusterTLS.CA = path.Join(v1alpha1.DirPathClusterTLSTiProxy, corev1.ServiceAccountRootCAKey)
@@ -187,10 +187,11 @@ func (c *Config) Validate() error {
 	return fmt.Errorf("%v: %w", fields, v1alpha1.ErrFieldIsManagedByOperator)
 }
 
-func getAdvertiseAddress(tiproxy *v1alpha1.TiProxy) string {
-	ns := tiproxy.Namespace
-	if ns == "" {
-		ns = corev1.NamespaceDefault
+func getAdvertiseAddress(cluster *v1alpha1.Cluster, tiproxy *v1alpha1.TiProxy) string {
+	host := coreutil.InstanceHost[scope.TiProxy](cluster, tiproxy)
+	// NOTE(liubo02): add ".svc" suffix to keep compatibility
+	if cluster.Spec.DNS == nil || cluster.Spec.DNS.Mode == "" || cluster.Spec.DNS.Mode == v1alpha1.DNSModeInCluster {
+		return host + ".svc"
 	}
-	return coreutil.PodName[scope.TiProxy](tiproxy) + "." + tiproxy.Spec.Subdomain + "." + ns + ".svc"
+	return host
 }

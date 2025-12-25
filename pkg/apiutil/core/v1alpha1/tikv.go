@@ -15,12 +15,7 @@
 package coreutil
 
 import (
-	"fmt"
-
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 )
 
 func TiKVGroupClientPort(kvg *v1alpha1.TiKVGroup) int32 {
@@ -49,20 +44,4 @@ func TiKVStatusPort(kv *v1alpha1.TiKV) int32 {
 		return kv.Spec.Server.Ports.Status.Port
 	}
 	return v1alpha1.DefaultTiKVPortStatus
-}
-
-func TiKVAdvertiseStatusURLs(tikv *v1alpha1.TiKV) string {
-	ns := tikv.Namespace
-	if ns == "" {
-		ns = corev1.NamespaceDefault
-	}
-	return fmt.Sprintf("%s.%s.%s:%d", PodName[scope.TiKV](tikv), tikv.Spec.Subdomain, ns, TiKVStatusPort(tikv))
-}
-
-func TiKVAdvertiseClientURLs(tikv *v1alpha1.TiKV) string {
-	ns := tikv.Namespace
-	if ns == "" {
-		ns = corev1.NamespaceDefault
-	}
-	return fmt.Sprintf("%s.%s.%s:%d", PodName[scope.TiKV](tikv), tikv.Spec.Subdomain, ns, TiKVClientPort(tikv))
 }

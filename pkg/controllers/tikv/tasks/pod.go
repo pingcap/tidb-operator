@@ -289,7 +289,7 @@ func buildPrestopCheckScript(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV) str
 	sb.WriteString(" -pd ")
 	sb.WriteString(cluster.Status.PD)
 	sb.WriteString(" -tikv-status-addr ")
-	sb.WriteString(coreutil.TiKVAdvertiseStatusURLs(tikv))
+	sb.WriteString(coreutil.InstanceAdvertiseAddress[scope.TiKV](cluster, tikv, coreutil.TiKVStatusPort(tikv)))
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
 		sb.WriteString(" -tls ")

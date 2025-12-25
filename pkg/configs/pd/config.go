@@ -65,19 +65,17 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, peers []*v1
 		return err
 	}
 
-	scheme := "http"
 	if coreutil.IsTLSClusterEnabled(cluster) {
-		scheme = "https"
 		c.Security.CAPath = path.Join(v1alpha1.DirPathClusterTLSPD, corev1.ServiceAccountRootCAKey)
 		c.Security.CertPath = path.Join(v1alpha1.DirPathClusterTLSPD, corev1.TLSCertKey)
 		c.Security.KeyPath = path.Join(v1alpha1.DirPathClusterTLSPD, corev1.TLSPrivateKeyKey)
 	}
 
 	c.Name = pd.Name
-	c.ClientUrls = getClientURLs(pd, scheme)
-	c.AdvertiseClientUrls = GetAdvertiseClientURLs(pd, scheme)
-	c.PeerUrls = getPeerURLs(pd, scheme)
-	c.AdvertisePeerUrls = getAdvertisePeerURLs(pd, scheme)
+	c.ClientUrls = coreutil.ListenURL(cluster, coreutil.PDClientPort(pd))
+	c.AdvertiseClientUrls = coreutil.InstanceAdvertiseURL[scope.PD](cluster, pd, coreutil.PDClientPort(pd))
+	c.PeerUrls = coreutil.ListenURL(cluster, coreutil.PDPeerPort(pd))
+	c.AdvertisePeerUrls = coreutil.InstanceAdvertiseURL[scope.PD](cluster, pd, coreutil.PDPeerPort(pd))
 
 	for i := range pd.Spec.Volumes {
 		vol := &pd.Spec.Volumes[i]
@@ -108,7 +106,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, pd *v1alpha1.PD, peers []*v1
 		if num != int64(len(peers)) {
 			return fmt.Errorf("unexpected number of replicas, expected is %v, current is %v", num, len(peers))
 		}
-		c.InitialCluster = getInitialCluster(peers, scheme)
+		c.InitialCluster = getInitialCluster(cluster, peers)
 		c.InitialClusterState = InitialClusterStateNew
 	}
 
@@ -178,36 +176,10 @@ func (c *Config) Validate() error {
 	return fmt.Errorf("%v: %w", fields, v1alpha1.ErrFieldIsManagedByOperator)
 }
 
-func getClientURLs(pd *v1alpha1.PD, scheme string) string {
-	return fmt.Sprintf("%s://[::]:%d", scheme, coreutil.PDClientPort(pd))
-}
-
-func GetAdvertiseClientURLs(pd *v1alpha1.PD, scheme string) string {
-	ns := pd.Namespace
-	if ns == "" {
-		ns = corev1.NamespaceDefault
-	}
-	host := coreutil.PodName[scope.PD](pd) + "." + pd.Spec.Subdomain + "." + ns
-	return fmt.Sprintf("%s://%s:%d", scheme, host, coreutil.PDClientPort(pd))
-}
-
-func getPeerURLs(pd *v1alpha1.PD, scheme string) string {
-	return fmt.Sprintf("%s://[::]:%d", scheme, coreutil.PDPeerPort(pd))
-}
-
-func getAdvertisePeerURLs(pd *v1alpha1.PD, scheme string) string {
-	ns := pd.Namespace
-	if ns == "" {
-		ns = corev1.NamespaceDefault
-	}
-	host := coreutil.PodName[scope.PD](pd) + "." + pd.Spec.Subdomain + "." + ns
-	return fmt.Sprintf("%s://%s:%d", scheme, host, coreutil.PDPeerPort(pd))
-}
-
-func getInitialCluster(peers []*v1alpha1.PD, scheme string) string {
+func getInitialCluster(c *v1alpha1.Cluster, peers []*v1alpha1.PD) string {
 	urls := []string{}
 	for _, peer := range peers {
-		url := getAdvertisePeerURLs(peer, scheme)
+		url := coreutil.InstanceAdvertiseURL[scope.PD](c, peer, coreutil.PDPeerPort(peer))
 		urls = append(urls, peer.Name+"="+url)
 	}
 

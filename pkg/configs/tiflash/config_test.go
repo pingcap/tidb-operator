@@ -50,7 +50,7 @@ func TestValidate(t *testing.T) {
 			},
 		},
 		Raft: Raft{
-			PdAddr: "http://basic-pd.ns1.svc:2379",
+			PDAddr: "http://basic-pd.ns1.svc:2379",
 		},
 		Status: Status{
 			MetricsPort: 8234,
@@ -109,6 +109,10 @@ func TestValidateEqual(t *testing.T) {
 
 func TestOverlay(t *testing.T) {
 	cluster := &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns1",
+			Name:      "cluster-1",
+		},
 		Spec: v1alpha1.ClusterSpec{
 			TLSCluster: &v1alpha1.TLSCluster{Enabled: true},
 		},
@@ -154,7 +158,7 @@ func TestOverlay(t *testing.T) {
 	assert.Equal(t, "[::]:20170", cfg.Flash.Proxy.Addr)
 	assert.Equal(t, "basic-tiflash-0.basic-tiflash-peer.ns1:20170", cfg.Flash.Proxy.AdvertiseAddr)
 	assert.Equal(t, "basic-tiflash-0.basic-tiflash-peer.ns1:20292", cfg.Flash.Proxy.AdvertiseStatusAddr)
-	assert.Equal(t, "https://basic-pd.ns1:2379", cfg.Raft.PdAddr)
+	assert.Equal(t, "https://basic-pd.ns1:2379", cfg.Raft.PDAddr)
 	assert.Equal(t, "/data0/logs/server.log", cfg.Logger.Log)
 	assert.Equal(t, "/data0/logs/error.log", cfg.Logger.Errorlog)
 	assert.Equal(t, 8234, cfg.Status.MetricsPort)

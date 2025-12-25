@@ -31,12 +31,16 @@ type Options struct {
 	NextGen           bool
 	EnableTiKVWorkers bool
 
+	FQDN bool
+
 	Namespace string
 	// all CA suffix will be added after the ns
 	ClusterCASuffix          string
 	ClusterCertKeyPairSuffix string
 	MySQLClientCASuffix      string
 	MySQLCertKeyPairSuffix   string
+
+	Focus bool
 }
 
 type Option interface {
@@ -87,6 +91,13 @@ func (opt WithOption) With(opts *Options) {
 	opt(opts)
 }
 
+// Focus on this case, like ginkgo.Focus
+func Focus() Option {
+	return WithOption(func(opts *Options) {
+		opts.Focus = true
+	})
+}
+
 func TLS() Option {
 	return WithOption(func(opts *Options) {
 		opts.TLS = true
@@ -108,5 +119,11 @@ func NextGen() Option {
 func EnableTiKVWorkers() Option {
 	return WithOption(func(opts *Options) {
 		opts.EnableTiKVWorkers = true
+	})
+}
+
+func FQDN() Option {
+	return WithOption(func(opts *Options) {
+		opts.FQDN = true
 	})
 }

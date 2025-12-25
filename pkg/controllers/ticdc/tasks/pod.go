@@ -307,7 +307,7 @@ func buildPrestopCheckScript(cluster *v1alpha1.Cluster, ticdc *v1alpha1.TiCDC) s
 	sb.WriteString(" -mode ")
 	sb.WriteString(" ticdc ")
 	sb.WriteString(" -ticdc-status-addr ")
-	sb.WriteString(coreutil.TiCDCAdvertiseURL(ticdc))
+	sb.WriteString(coreutil.InstanceAdvertiseAddress[scope.TiCDC](cluster, ticdc, coreutil.TiCDCPort(ticdc)))
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
 		sb.WriteString(" -tls ")

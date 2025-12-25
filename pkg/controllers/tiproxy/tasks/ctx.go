@@ -23,6 +23,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/tiproxyapi/v1"
@@ -30,7 +31,6 @@ import (
 )
 
 const (
-	pdRequestTimeout      = 10 * time.Second
 	tiproxyRequestTimeout = 10 * time.Second
 )
 
@@ -52,19 +52,17 @@ func TaskContextInfoFromPDAndTiProxy(state *ReconcileContext, c client.Client, c
 		}
 		state.SetPDClient(pdc.Underlay())
 
-		var (
-			scheme    = "http"
-			tlsConfig *tls.Config
-		)
+		var tlsConfig *tls.Config
 		if coreutil.IsTiProxyHTTPServerTLSEnabled(ck, state.Object()) {
-			scheme = "https"
 			var err error
 			tlsConfig, err = apicall.GetClientTLSConfig(ctx, c, ck)
 			if err != nil {
 				return task.Fail().With("cannot get tls config from secret: %w", err)
 			}
 		}
-		state.TiProxyClient = tiproxyapi.NewTiProxyClient(TiProxyServiceURL(state.TiProxy(), scheme), tiproxyRequestTimeout, tlsConfig)
+		tiproxy := state.TiProxy()
+		addr := coreutil.InstanceAdvertiseAddress[scope.TiProxy](ck, tiproxy, coreutil.TiProxyAPIPort(tiproxy))
+		state.TiProxyClient = tiproxyapi.NewTiProxyClient(addr, tiproxyRequestTimeout, tlsConfig)
 		healthy, err := state.TiProxyClient.IsHealthy(ctx)
 		if err != nil {
 			return task.Complete().With(

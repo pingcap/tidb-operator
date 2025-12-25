@@ -15,16 +15,29 @@
 package coreutil
 
 import (
+	"strconv"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 )
 
-func hostToURL(host string, isTLS bool) string {
+const (
+	defaultListenHost = "[::]"
+)
+
+func hostToURL[T int | int32](host string, port T, isTLS bool) string {
+	return urlScheme(isTLS) + host + urlPort(port)
+}
+
+func urlPort[T int | int32](port T) string {
+	return ":" + strconv.Itoa(int(port))
+}
+
+func urlScheme(tls bool) string {
 	scheme := "http"
-	if isTLS {
+	if tls {
 		scheme = "https"
 	}
-
-	return scheme + "://" + host
+	return scheme + "://"
 }
 
 var allMainContainers = map[string]struct{}{

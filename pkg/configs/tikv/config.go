@@ -22,6 +22,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 )
 
 type Config struct {
@@ -80,10 +81,10 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV) error {
 		c.Security.KeyPath = path.Join(v1alpha1.DirPathClusterTLSTiKV, corev1.TLSPrivateKeyKey)
 	}
 
-	c.Server.Addr = getClientURLs(tikv)
-	c.Server.AdvertiseAddr = coreutil.TiKVAdvertiseClientURLs(tikv)
-	c.Server.StatusAddr = getStatusURLs(tikv)
-	c.Server.AdvertiseStatusAddr = coreutil.TiKVAdvertiseStatusURLs(tikv)
+	c.Server.Addr = coreutil.ListenAddress(coreutil.TiKVClientPort(tikv))
+	c.Server.AdvertiseAddr = coreutil.InstanceAdvertiseAddress[scope.TiKV](cluster, tikv, coreutil.TiKVClientPort(tikv))
+	c.Server.StatusAddr = coreutil.ListenAddress(coreutil.TiKVStatusPort(tikv))
+	c.Server.AdvertiseStatusAddr = coreutil.InstanceAdvertiseAddress[scope.TiKV](cluster, tikv, coreutil.TiKVStatusPort(tikv))
 	c.PD.Endpoints = []string{cluster.Status.PD}
 
 	for i := range tikv.Spec.Volumes {
@@ -112,9 +113,9 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV) error {
 			copr = tikv.Spec.RemoteWorkers.Coprocessor.Name
 		}
 
-		c.KVEngine.RemoteCoprocessorAddr = coreutil.TiKVWorkerCoprocessorURL(copr, tikv.Namespace, tls)
-		c.KVEngine.RemoteWorkerAddr = coreutil.TiKVWorkerCoprocessorURL(copr, tikv.Namespace, tls)
-		c.DFS.RemoteCompactorAddr = coreutil.TiKVWorkerCompactorURL(compactor, tikv.Namespace, tls)
+		c.KVEngine.RemoteCoprocessorAddr = coreutil.TiKVWorkerCoprocessorURLFromRef(cluster, copr)
+		c.KVEngine.RemoteWorkerAddr = coreutil.TiKVWorkerCoprocessorURLFromRef(cluster, copr)
+		c.DFS.RemoteCompactorAddr = coreutil.TiKVWorkerCompactorURLFromRef(cluster, compactor)
 	}
 
 	return nil
@@ -158,12 +159,4 @@ func (c *Config) Validate() error {
 	}
 
 	return fmt.Errorf("%v: %w", fields, v1alpha1.ErrFieldIsManagedByOperator)
-}
-
-func getClientURLs(tikv *v1alpha1.TiKV) string {
-	return fmt.Sprintf("[::]:%d", coreutil.TiKVClientPort(tikv))
-}
-
-func getStatusURLs(tikv *v1alpha1.TiKV) string {
-	return fmt.Sprintf("[::]:%d", coreutil.TiKVStatusPort(tikv))
 }

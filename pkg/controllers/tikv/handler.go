@@ -29,6 +29,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
 )
@@ -156,6 +157,7 @@ func (r *Reconciler) StoreEventHandler() handler.TypedEventHandler[client.Object
 	}
 }
 
+// TODO: maybe change to use tikv labels?
 func (r *Reconciler) getRequestOfTiKVStore(ctx context.Context, s *pdv1.Store) (reconcile.Request, error) {
 	ns, cluster := timanager.SplitPrimaryKey(s.Namespace)
 	var kvl v1alpha1.TiKVList
@@ -168,9 +170,15 @@ func (r *Reconciler) getRequestOfTiKVStore(ctx context.Context, s *pdv1.Store) (
 		return reconcile.Request{}, err
 	}
 
+	var c v1alpha1.Cluster
+	if err := r.Client.Get(ctx, client.ObjectKey{Name: cluster, Namespace: ns}, &c); err != nil {
+		r.Logger.Error(err, "cannot get cluster", "ns", ns, "cluster", cluster)
+		return reconcile.Request{}, err
+	}
+
 	for i := range kvl.Items {
 		tikv := &kvl.Items[i]
-		if s.Name == coreutil.TiKVAdvertiseClientURLs(tikv) {
+		if s.Name == coreutil.InstanceAdvertiseAddress[scope.TiKV](&c, tikv, coreutil.TiKVClientPort(tikv)) {
 			return reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      tikv.Name,

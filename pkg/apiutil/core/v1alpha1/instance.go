@@ -378,3 +378,32 @@ func IsDeleting(instance runtime.Instance) bool {
 
 	return false
 }
+
+func InstanceHost[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](cluster *v1alpha1.Cluster, obj F) string {
+	podName := PodName[S](obj)
+	subdomain := Subdomain[S](obj)
+
+	return podName + "." + ServiceHost(cluster, subdomain)
+}
+
+func InstanceAdvertiseURL[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+	P int | int32,
+](cluster *v1alpha1.Cluster, obj F, port P) string {
+	return urlScheme(IsTLSClusterEnabled(cluster)) + InstanceAdvertiseAddress[S](cluster, obj, port)
+}
+
+func InstanceAdvertiseAddress[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+	P int | int32,
+](cluster *v1alpha1.Cluster, obj F, port P) string {
+	return InstanceHost[S](cluster, obj) + urlPort(port)
+}
