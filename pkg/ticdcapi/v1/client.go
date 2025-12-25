@@ -80,6 +80,7 @@ type Options struct {
 	Timeout           time.Duration
 	TLS               *tls.Config
 	DisableKeepAlives bool
+	url               string
 }
 
 type Option func(opt *Options)
@@ -87,6 +88,12 @@ type Option func(opt *Options)
 func defaultOptions() *Options {
 	return &Options{
 		Timeout: time.Second * 10,
+	}
+}
+
+func withURL(url string) Option {
+	return func(opt *Options) {
+		opt.url = url
 	}
 }
 
@@ -115,6 +122,7 @@ func NewTiCDCClient(addr string, opts ...Option) TiCDCClient {
 		opt(options)
 	}
 	c := &ticdcClient{
+		url:  options.url,
 		addr: addr,
 		httpClient: &http.Client{
 			Timeout: options.Timeout,

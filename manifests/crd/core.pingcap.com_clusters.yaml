@@ -96,11 +96,10 @@ spec:
                     type: string
                   mode:
                     default: InCluster
-                    description: DNSMode determines the dns format used by the tidb
-                      clusters.
+                    description: Mode is the dns mode, it determines the dns format
+                      used by the tidb cluster
                     enum:
                     - FQDN
-                    - InNamespace
                     - InCluster
                     type: string
                 required:

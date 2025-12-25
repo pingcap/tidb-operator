@@ -54,7 +54,11 @@ func TaskContextInfoFromPDAndTiDB(state *ReconcileContext, c client.Client, cm p
 		}
 		tidb := state.Object()
 
-		state.TiDBClient = tidbapi.NewTiDBClient(coreutil.InstanceAdvertiseURL[scope.TiDB](ck, tidb, coreutil.TiDBStatusPort(tidb)), tidbRequestTimeout, tlsConfig)
+		state.TiDBClient = tidbapi.NewTiDBClient(
+			coreutil.InstanceAdvertiseURL[scope.TiDB](ck, tidb, coreutil.TiDBStatusPort(tidb)),
+			tidbRequestTimeout,
+			tlsConfig,
+		)
 		health, err := state.TiDBClient.GetHealth(ctx)
 		if err != nil {
 			return task.Complete().With(

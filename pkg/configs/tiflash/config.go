@@ -128,7 +128,9 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tiflash *v1alpha1.TiFlash) e
 	c.Flash.Proxy.Config = path.Join(v1alpha1.DirPathConfigTiFlash, v1alpha1.FileNameConfigTiFlashProxy)
 	c.Flash.Proxy.Addr = coreutil.ListenAddress(coreutil.TiFlashProxyPort(tiflash))
 	c.Flash.Proxy.AdvertiseAddr = coreutil.InstanceAdvertiseAddress[scope.TiFlash](cluster, tiflash, coreutil.TiFlashProxyPort(tiflash))
-	c.Flash.Proxy.AdvertiseStatusAddr = coreutil.InstanceAdvertiseAddress[scope.TiFlash](cluster, tiflash, coreutil.TiFlashProxyStatusPort(tiflash))
+	c.Flash.Proxy.AdvertiseStatusAddr = coreutil.InstanceAdvertiseAddress[scope.TiFlash](
+		cluster, tiflash, coreutil.TiFlashProxyStatusPort(tiflash),
+	)
 
 	c.Raft.PDAddr = cluster.Status.PD
 
