@@ -59,6 +59,7 @@ func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager) error
 		Watches(&v1alpha1.TiFlashGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.TiFlashGroup]())).
 		Watches(&v1alpha1.TiCDCGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.TiCDCGroup]())).
 		Watches(&v1alpha1.TiProxyGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.TiProxyGroup]())).
+		Watches(&v1alpha1.TiKVWorkerGroup{}, handler.EnqueueRequestsFromMapFunc(enqueueForGroupFunc[scope.TiKVWorkerGroup]())).
 		WithOptions(controller.Options{RateLimiter: k8s.RateLimiter}).
 		Complete(r)
 }
