@@ -21,7 +21,7 @@ import (
 )
 
 // AnnoKeyIgnoreDiff defines the fields list to ignore difference which may be produced by mutating webhook.
-// Fields are seperated by comma. Example: "spec.xxx,spec.yyy"
+// Fields are separated by comma. Example: "spec.xxx,spec.yyy"
 // It may be deprecated after mutating admission policy is enabled by default. We can easily create a mutating admission policy to
 // fix mutating webhooks which don't handle the "server-side apply" properly.
 // See https://kubernetes.io/docs/reference/access-authn-authz/mutating-admission-policy/
