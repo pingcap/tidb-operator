@@ -26,6 +26,7 @@ updates:
   - dependency-name: "github.com/onsi/gomega"
   - dependency-name: "go.uber.org/mock"
   - dependency-name: "github.com/apache/skywalking-eyes"
+  - dependency-name: "golang.org/*"
   ignore:
   - dependency-name: "k8s.io/*"
     update-types:
@@ -40,6 +41,9 @@ updates:
     - "version-update:semver-major"
     - "version-update:semver-minor"
   groups:
+    golang:
+      patterns:
+      - "golang.org/*"
     k8s:
       patterns:
       - "k8s.io/*"
@@ -55,3 +59,4 @@ updates:
       patterns:
       - "github.com/onsi/ginkgo/v2"
       - "github.com/onsi/gomega"
+
