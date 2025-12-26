@@ -50,6 +50,7 @@ var unreloadable = map[meta.Feature][]meta.Component{
 		meta.ComponentScheduling,
 		meta.ComponentScheduler,
 		meta.ComponentTiProxy,
+		meta.ComponentTiKVWorker,
 	},
 	meta.TerminableLogTailer: {
 		meta.ComponentTiDB,
