@@ -95,7 +95,7 @@ func (p *applier) Apply(ctx context.Context, obj client.Object, opts ...ApplyOpt
 }
 
 func (p *applier) ApplyWithResult(ctx context.Context, obj client.Object, opts ...ApplyOption) (ApplyResult, error) {
-	o := &ApplyOptions{}
+	o := NewApplyOptions(obj)
 	for _, opt := range opts {
 		opt.With(o)
 	}

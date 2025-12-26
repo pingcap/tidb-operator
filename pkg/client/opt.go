@@ -14,15 +14,29 @@
 
 package client
 
+import (
+	"strings"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+// AnnoKeyIgnoreDiff defines the fields list to ignore difference which may be produced by mutating webhook.
+// Fields are seperated by comma. Example: "spec.xxx,spec.yyy"
+// It may be deprecated after mutating admission policy is enabled by default. We can easily create a mutating admission policy to
+// fix mutating webhooks which don't handle the "server-side apply" properly.
+// See https://kubernetes.io/docs/reference/access-authn-authz/mutating-admission-policy/
+const AnnoKeyIgnoreDiff = "pingcap.com/ignore-diff"
+
 type ApplyOptions struct {
 	// Immutable defines fields which is immutable
 	// It's only for some fields which cannot be changed but actually maybe changed.
 	// For example,
-	// Storage class ref can be changed in instance CR to modify volumes
-	// if feature VolumeAttributesClass is not enabled(just like v1).
-	// However, it's immutable in PVC. When VolumeAttributesClass is enabled,
-	// storage class should not be applied to PVC.
-	// NOTE; now slice/array is not supported
+	// - Storage class ref can be changed in instance CR to modify volumes
+	//   if feature VolumeAttributesClass is not enabled(just like v1).
+	//   However, it's immutable in PVC. When VolumeAttributesClass is enabled,
+	//   storage class should not be applied to PVC.
+	// - The immutable field is changed when creation by the webhook.
+	// NOTE: now slice/array is not supported
 	Immutable [][]string
 }
 
@@ -43,4 +57,23 @@ func Immutable(fields ...string) ApplyOption {
 		}
 		opts.Immutable = append(opts.Immutable, fields)
 	})
+}
+
+func NewApplyOptions(obj client.Object) *ApplyOptions {
+	o := &ApplyOptions{}
+	anno := obj.GetAnnotations()
+	val, ok := anno[AnnoKeyIgnoreDiff]
+	if !ok {
+		return o
+	}
+
+	for f := range strings.SplitSeq(val, ",") {
+		fields := strings.Split(f, ".")
+		if len(fields) == 0 {
+			continue
+		}
+		o.Immutable = append(o.Immutable, fields)
+	}
+
+	return o
 }
