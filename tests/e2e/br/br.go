@@ -770,6 +770,121 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 		// 	k8se2e.ExpectNoError(err)
 		// 	k8se2e.ExpectEqual(cleaned, true, "storage should be cleaned")
 		// })
+
+		ginkgo.It("log backup task deleted externally should fail with LogBackupTaskNotFound", func() {
+			backupClusterName := "log-backup-not-found"
+			backupVersion := utilimage.TiDBLatest
+			enableTLS := false
+			skipCA := false
+			backupName := backupClusterName
+			typ := strings.ToLower(typeBR)
+
+			ns := f.Namespace.Name
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			ginkgo.By("Create log-backup.enable TiDB cluster")
+			err := createLogBackupEnableTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Wait for backup TiDB cluster ready")
+			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Create RBAC for log backup")
+			err = createRBAC(f)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Start log backup")
+			backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+				backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+				backup.Spec.Mode = v1alpha1.BackupModeLog
+			})
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(backup.Status.CommitTs, "")
+			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupRunning)
+
+			ginkgo.By("Stop log backup task via BR command (bypass operator)")
+			err = stopLogBackupTaskViaBR(f, backupClusterName, backupName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Wait for backup to fail with LogBackupTaskNotFound")
+			err = brutil.WaitForLogBackupFailedWithReason(f.ExtClient, ns, backupName, "LogBackupTaskNotFound", backupCompleteTimeout)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Verify backup can be deleted")
+			err = deleteBackup(f, backupName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Check if all backup files in storage is deleted")
+			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix)
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+		})
+
+		ginkgo.It("log backup should wait and start when cluster becomes ready", func() {
+			backupClusterName := "log-backup-wait-cluster"
+			backupVersion := utilimage.TiDBLatest
+			enableTLS := false
+			skipCA := false
+			backupName := backupClusterName
+			typ := strings.ToLower(typeBR)
+
+			ns := f.Namespace.Name
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			ginkgo.By("Create RBAC for log backup first")
+			err := createRBAC(f)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Create log backup CR before cluster exists")
+			backupFolder := time.Now().Format(time.RFC3339)
+			cfg := f.Storage.Config(ns, backupFolder)
+			s := brutil.GetSecret(ns, backupName, "")
+			_, err = f.ClientSet.CoreV1().Secrets(ns).Create(context.TODO(), s, metav1.CreateOptions{})
+			framework.ExpectNoError(err)
+
+			backup := brutil.GetBackup(ns, backupName, backupClusterName, typ, cfg)
+			backup.Spec.CleanPolicy = v1alpha1.CleanPolicyTypeDelete
+			backup.Spec.Mode = v1alpha1.BackupModeLog
+			_, err = f.ExtClient.PingcapV1alpha1().Backups(ns).Create(context.TODO(), backup, metav1.CreateOptions{})
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Verify backup is waiting (cluster not found)")
+			// Wait a few seconds to let controller attempt reconcile
+			time.Sleep(10 * time.Second)
+			backup, err = f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), backupName, metav1.GetOptions{})
+			framework.ExpectNoError(err)
+			// Status should be empty or indicate waiting for cluster
+
+			ginkgo.By("Create log-backup.enable TiDB cluster")
+			err = createLogBackupEnableTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Wait for TiDB cluster ready")
+			err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Wait for backup to become Running")
+			err = brutil.WaitForBackupComplete(f.ExtClient, ns, backupName, backupCompleteTimeout)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Verify CommitTs is set")
+			backup, err = f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), backupName, metav1.GetOptions{})
+			framework.ExpectNoError(err)
+			framework.ExpectNotEqual(backup.Status.CommitTs, "", "CommitTs should be set")
+			framework.ExpectEqual(backup.Status.Phase, v1alpha1.BackupRunning)
+
+			ginkgo.By("Delete backup")
+			err = deleteBackup(f, backupName)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("Check if all backup files in storage is deleted")
+			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, backup.Spec.S3.Prefix)
+			framework.ExpectNoError(err)
+			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
+		})
 	})
 
 	// the following cases may encounter errors after restarting the backup pod:
@@ -1835,4 +1950,58 @@ func createCompactBackupAndWaitForComplete(f *e2eframework.Framework, name, tcNa
 		return compact, err
 	}
 	return f.ExtClient.PingcapV1alpha1().CompactBackups(ns).Get(context.TODO(), name, metav1.GetOptions{})
+}
+
+// stopLogBackupTaskViaBR stops a log backup task directly via BR command, bypassing the operator.
+// This is used to simulate external deletion of the log backup task in TiKV.
+func stopLogBackupTaskViaBR(f *e2eframework.Framework, clusterName, taskName string) error {
+	ns := f.Namespace.Name
+	pdAddr := fmt.Sprintf("%s-pd:2379", clusterName)
+
+	pod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "br-cli-" + taskName,
+			Namespace: ns,
+		},
+		Spec: v1.PodSpec{
+			RestartPolicy: v1.RestartPolicyNever,
+			Containers: []v1.Container{
+				{
+					Name:    "br",
+					Image:   fmt.Sprintf("pingcap/br:%s", utilimage.TiDBLatest),
+					Command: []string{"/br", "log", "stop", "--task-name=" + taskName, "--pd=" + pdAddr},
+				},
+			},
+		},
+	}
+
+	// Create the pod
+	_, err := f.ClientSet.CoreV1().Pods(ns).Create(context.TODO(), pod, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create BR CLI pod: %v", err)
+	}
+
+	// Wait for pod to complete
+	err = wait.PollImmediate(time.Second*2, time.Minute*5, func() (bool, error) {
+		p, err := f.ClientSet.CoreV1().Pods(ns).Get(context.TODO(), pod.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		if p.Status.Phase == v1.PodSucceeded {
+			return true, nil
+		}
+		if p.Status.Phase == v1.PodFailed {
+			return false, fmt.Errorf("BR CLI pod failed")
+		}
+		return false, nil
+	})
+
+	// Clean up pod regardless of success/failure
+	deleteErr := f.ClientSet.CoreV1().Pods(ns).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
+	if deleteErr != nil {
+		// Log but don't fail on cleanup error
+		fmt.Printf("Warning: failed to delete BR CLI pod: %v\n", deleteErr)
+	}
+
+	return err
 }

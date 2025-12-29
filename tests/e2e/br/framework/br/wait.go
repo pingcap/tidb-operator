@@ -181,6 +181,40 @@ func WaitForBackupFailed(c versioned.Interface, ns, name string, timeout time.Du
 	return nil
 }
 
+// WaitForLogBackupFailedWithReason will poll and wait until timeout or log backup fails with expected reason
+func WaitForLogBackupFailedWithReason(c versioned.Interface, ns, name, expectedReason string, timeout time.Duration) error {
+	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
+		b, err := c.PingcapV1alpha1().Backups(ns).Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+
+		// Check log backup subcommand status for failure
+		if b.Spec.Mode == v1alpha1.BackupModeLog {
+			if v1alpha1.IsLogBackupSubCommandOntheCondition(b, v1alpha1.BackupFailed) {
+				reason, _ := v1alpha1.GetLogSubcommandConditionInfo(b)
+				if reason == expectedReason {
+					return true, nil
+				}
+				return false, fmt.Errorf("log backup failed with unexpected reason: %s, expected: %s", reason, expectedReason)
+			}
+		}
+
+		// Also check top-level conditions
+		for _, cond := range b.Status.Conditions {
+			if cond.Type == v1alpha1.BackupFailed && cond.Status == corev1.ConditionTrue {
+				if cond.Reason == expectedReason {
+					return true, nil
+				}
+			}
+		}
+		return false, nil
+	}); err != nil {
+		return fmt.Errorf("can't wait for log backup failed with reason %s: %v", expectedReason, err)
+	}
+	return nil
+}
+
 // WaitForRestoreComplete will poll and wait until timeout or restore complete condition is true
 func WaitForRestoreComplete(c versioned.Interface, ns, name string, timeout time.Duration) error {
 	if err := wait.PollImmediate(poll, timeout, func() (bool, error) {
