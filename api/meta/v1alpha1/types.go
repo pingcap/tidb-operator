@@ -34,16 +34,16 @@ type Component string
 
 const (
 	// component name
-	ComponentPD         Component = "pd"
-	ComponentTiDB       Component = "tidb"
-	ComponentTiKV       Component = "tikv"
-	ComponentTiKVWorker Component = "tikv-worker"
-	ComponentTiFlash    Component = "tiflash"
-	ComponentTiCDC      Component = "ticdc"
-	ComponentTSO        Component = "tso"
-	ComponentScheduling Component = "scheduling"
+	ComponentPD              Component = "pd"
+	ComponentTiDB            Component = "tidb"
+	ComponentTiKV            Component = "tikv"
+	ComponentTiKVWorker      Component = "tikv-worker"
+	ComponentTiFlash         Component = "tiflash"
+	ComponentTiCDC           Component = "ticdc"
+	ComponentTSO             Component = "tso"
+	ComponentScheduling      Component = "scheduling"
 	ComponentResourceManager Component = "resource-manager"
-	ComponentTiProxy    Component = "tiproxy"
+	ComponentTiProxy         Component = "tiproxy"
 	// Deprecated: use ComponentScheduling
 	ComponentScheduler Component = "scheduler"
 )

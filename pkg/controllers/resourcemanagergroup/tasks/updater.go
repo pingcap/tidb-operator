@@ -131,9 +131,9 @@ func ResourceManagerNewer(rmg *v1alpha1.ResourceManagerGroup, rev string, fg fea
 				},
 			},
 			Spec: v1alpha1.ResourceManagerSpec{
-				Cluster:                    rmg.Spec.Cluster,
-				Features:                   rmg.Spec.Features,
-				Subdomain:                  coreutil.HeadlessServiceName[scope.ResourceManagerGroup](rmg),
+				Cluster:                     rmg.Spec.Cluster,
+				Features:                    rmg.Spec.Features,
+				Subdomain:                   coreutil.HeadlessServiceName[scope.ResourceManagerGroup](rmg),
 				ResourceManagerTemplateSpec: *spec,
 			},
 		}

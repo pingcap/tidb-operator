@@ -56,16 +56,16 @@ const (
 const (
 	// Main component containers of the tidb cluster
 	// These names are well known so the name prefix is not added.
-	ContainerNamePD         = "pd"
-	ContainerNameTiKV       = "tikv"
-	ContainerNameTiKVWorker = "tikv-worker"
-	ContainerNameTiDB       = "tidb"
-	ContainerNameTiFlash    = "tiflash"
-	ContainerNameTiCDC      = "ticdc"
-	ContainerNameTSO        = "tso"
-	ContainerNameScheduling = "scheduling"
+	ContainerNamePD              = "pd"
+	ContainerNameTiKV            = "tikv"
+	ContainerNameTiKVWorker      = "tikv-worker"
+	ContainerNameTiDB            = "tidb"
+	ContainerNameTiFlash         = "tiflash"
+	ContainerNameTiCDC           = "ticdc"
+	ContainerNameTSO             = "tso"
+	ContainerNameScheduling      = "scheduling"
 	ContainerNameResourceManager = "resource-manager"
-	ContainerNameTiProxy    = "tiproxy"
+	ContainerNameTiProxy         = "tiproxy"
 	// Deprecated: use ContainerNameScheduling
 	ContainerNameScheduler = "scheduler"
 
@@ -93,16 +93,16 @@ const (
 // All well known dir path
 const (
 	// config dir path
-	DirPathConfigPD         = "/etc/pd"
-	DirPathConfigTiKV       = "/etc/tikv"
-	DirPathConfigTiKVWorker = "/etc/tikv-worker"
-	DirPathConfigTiDB       = "/etc/tidb"
-	DirPathConfigTiFlash    = "/etc/tiflash"
-	DirPathConfigTiCDC      = "/etc/ticdc"
-	DirPathConfigTSO        = "/etc/tso"
-	DirPathConfigScheduling = "/etc/scheduling"
+	DirPathConfigPD              = "/etc/pd"
+	DirPathConfigTiKV            = "/etc/tikv"
+	DirPathConfigTiKVWorker      = "/etc/tikv-worker"
+	DirPathConfigTiDB            = "/etc/tidb"
+	DirPathConfigTiFlash         = "/etc/tiflash"
+	DirPathConfigTiCDC           = "/etc/ticdc"
+	DirPathConfigTSO             = "/etc/tso"
+	DirPathConfigScheduling      = "/etc/scheduling"
 	DirPathConfigResourceManager = "/etc/resource-manager"
-	DirPathConfigTiProxy    = "/etc/tiproxy"
+	DirPathConfigTiProxy         = "/etc/tiproxy"
 	// Deprecated: use DirPathConfigScheduling
 	DirPathConfigScheduler = "/etc/scheduler"
 
@@ -122,17 +122,17 @@ const (
 	// TLS
 	//
 	// Dir path of cluster tls file
-	DirPathClusterTLSPD         = "/var/lib/pd-tls"
-	DirPathClusterTLSTiKV       = "/var/lib/tikv-tls"
-	DirPathClusterTLSTiKVWorker = "/var/lib/tikv-worker-tls"
-	DirPathClusterTLSTiDB       = "/var/lib/tidb-tls"
-	DirPathClusterTLSTiFlash    = "/var/lib/tiflash-tls"
-	DirPathClusterClientTLS     = "/var/lib/cluster-client-tls"
-	DirPathClusterTLSTiCDC      = "/var/lib/ticdc-tls"
-	DirPathClusterTLSTSO        = "/var/lib/tso-tls"
-	DirPathClusterTLSScheduling = "/var/lib/scheduling-tls"
+	DirPathClusterTLSPD              = "/var/lib/pd-tls"
+	DirPathClusterTLSTiKV            = "/var/lib/tikv-tls"
+	DirPathClusterTLSTiKVWorker      = "/var/lib/tikv-worker-tls"
+	DirPathClusterTLSTiDB            = "/var/lib/tidb-tls"
+	DirPathClusterTLSTiFlash         = "/var/lib/tiflash-tls"
+	DirPathClusterClientTLS          = "/var/lib/cluster-client-tls"
+	DirPathClusterTLSTiCDC           = "/var/lib/ticdc-tls"
+	DirPathClusterTLSTSO             = "/var/lib/tso-tls"
+	DirPathClusterTLSScheduling      = "/var/lib/scheduling-tls"
 	DirPathClusterTLSResourceManager = "/var/lib/resource-manager-tls"
-	DirPathClusterTLSTiProxy    = "/var/lib/tiproxy-tls"
+	DirPathClusterTLSTiProxy         = "/var/lib/tiproxy-tls"
 	// Deprecated: use DirPathClusterTLSScheduling
 	DirPathClusterTLSScheduler = "/var/lib/scheduler-tls"
 
