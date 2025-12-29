@@ -51,6 +51,8 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/cluster"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/pdgroup"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/resourcemanager"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/resourcemanagergroup"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/scheduler"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/schedulergroup"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/scheduling"
@@ -289,6 +291,14 @@ func addIndexer(ctx context.Context, mgr ctrl.Manager) error {
 		return err
 	}
 
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.ResourceManagerGroup{}, "spec.cluster.name",
+		func(obj client.Object) []string {
+			rmg := obj.(*v1alpha1.ResourceManagerGroup)
+			return []string{rmg.Spec.Cluster.Name}
+		}); err != nil {
+		return err
+	}
+
 	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.SchedulerGroup{}, "spec.cluster.name",
 		func(obj client.Object) []string {
 			sg := obj.(*v1alpha1.SchedulerGroup)
@@ -423,6 +433,18 @@ func setupControllers(
 			},
 		},
 		{
+			name: "ResourceManagerGroup",
+			setupFunc: func() error {
+				return resourcemanagergroup.Setup(mgr, c, tf.AllocateFactory("resourcemanager"))
+			},
+		},
+		{
+			name: "ResourceManager",
+			setupFunc: func() error {
+				return resourcemanager.Setup(mgr, c, pdcm, vm, tf.Tracker("resourcemanager"))
+			},
+		},
+		{
 			name: "SchedulerGroup",
 			setupFunc: func() error {
 				return schedulergroup.Setup(mgr, c, tf.AllocateFactory("scheduler"))
@@ -549,6 +571,12 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 			Label: labels.Everything(),
 		},
 		&v1alpha1.Scheduling{}: {
+			Label: labels.Everything(),
+		},
+		&v1alpha1.ResourceManagerGroup{}: {
+			Label: labels.Everything(),
+		},
+		&v1alpha1.ResourceManager{}: {
 			Label: labels.Everything(),
 		},
 		&v1alpha1.TiKVWorkerGroup{}: {
