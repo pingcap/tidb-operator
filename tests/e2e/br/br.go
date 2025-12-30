@@ -854,9 +854,8 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			ginkgo.By("Verify backup is waiting (cluster not found)")
 			// Wait a few seconds to let controller attempt reconcile
 			time.Sleep(10 * time.Second)
-			backup, err = f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), backupName, metav1.GetOptions{})
+			_, err = f.ExtClient.PingcapV1alpha1().Backups(ns).Get(context.TODO(), backupName, metav1.GetOptions{})
 			framework.ExpectNoError(err)
-			// Status should be empty or indicate waiting for cluster
 
 			ginkgo.By("Create log-backup.enable TiDB cluster")
 			err = createLogBackupEnableTidbCluster(f, backupClusterName, backupVersion, enableTLS, skipCA)
