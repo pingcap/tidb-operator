@@ -120,3 +120,19 @@ func MustCreateTiKVWorker(
 
 	return wg
 }
+
+func MustCreateResourceManager(
+	ctx context.Context,
+	f *framework.Framework,
+	o *desc.Options,
+	ps ...data.GroupPatch[*v1alpha1.ResourceManagerGroup],
+) *v1alpha1.ResourceManagerGroup {
+	rmg := data.NewResourceManagerGroup(
+		f.Namespace.Name,
+		desc.ResourceManagerPatches(o, ps...)...,
+	)
+	ginkgo.By("Creating a resource manager group")
+	f.Must(f.Client.Create(ctx, rmg))
+
+	return rmg
+}

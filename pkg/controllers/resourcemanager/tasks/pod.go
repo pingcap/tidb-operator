@@ -16,6 +16,8 @@ package tasks
 
 import (
 	"context"
+	"fmt"
+	"path"
 	"path/filepath"
 
 	"github.com/go-logr/logr"
@@ -154,8 +156,9 @@ func newPod(cluster *v1alpha1.Cluster, rm *v1alpha1.ResourceManager, _ features.
 							ContainerPort: coreutil.ResourceManagerClientPort(rm),
 						},
 					},
-					VolumeMounts: mounts,
-					Resources:    k8s.GetResourceRequirements(rm.Spec.Resources),
+					ReadinessProbe: buildReadinessProbe(cluster, coreutil.ResourceManagerClientPort(rm)),
+					VolumeMounts:   mounts,
+					Resources:      k8s.GetResourceRequirements(rm.Spec.Resources),
 				},
 			},
 			Volumes: vols,
@@ -168,4 +171,35 @@ func newPod(cluster *v1alpha1.Cluster, rm *v1alpha1.ResourceManager, _ features.
 
 	reloadable.MustEncodeLastResourceManagerTemplate(rm, pod)
 	return pod
+}
+
+func buildReadinessProbe(cluster *v1alpha1.Cluster, port int32) *corev1.Probe {
+	tlsClusterEnabled := coreutil.IsTLSClusterEnabled(cluster)
+
+	scheme := "http"
+	if tlsClusterEnabled {
+		scheme = "https"
+	}
+
+	readinessURL := fmt.Sprintf("%s://127.0.0.1:%d/health", scheme, port)
+	command := []string{
+		"curl",
+		readinessURL,
+		"--fail",
+		"-sS",
+		"--location",
+	}
+
+	if tlsClusterEnabled {
+		cacert := path.Join(v1alpha1.DirPathClusterTLSResourceManager, corev1.ServiceAccountRootCAKey)
+		cert := path.Join(v1alpha1.DirPathClusterTLSResourceManager, corev1.TLSCertKey)
+		key := path.Join(v1alpha1.DirPathClusterTLSResourceManager, corev1.TLSPrivateKeyKey)
+		command = append(command, "--cacert", cacert, "--cert", cert, "--key", key)
+	}
+
+	return &corev1.Probe{
+		ProbeHandler: corev1.ProbeHandler{
+			Exec: &corev1.ExecAction{Command: command},
+		},
+	}
 }
