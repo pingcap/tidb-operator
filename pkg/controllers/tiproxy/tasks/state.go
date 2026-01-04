@@ -62,8 +62,6 @@ type State interface {
 	common.HealthyState
 	common.HealthyStateUpdater
 
-	common.ServerLabelsState
-
 	stateutil.IFeatureGates
 	stateutil.IPDClient
 }
@@ -73,7 +71,7 @@ func NewState(key types.NamespacedName) State {
 		key: key,
 	}
 	s.IFeatureGates = stateutil.NewFeatureGates[scope.TiProxy](s)
-	s.IPDClient = stateutil.NewPDClientState()
+	s.IPDClient = stateutil.NewPDClientState(s)
 	return s
 }
 

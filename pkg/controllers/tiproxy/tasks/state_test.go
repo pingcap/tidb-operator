@@ -77,7 +77,7 @@ func TestState(t *testing.T) {
 			s := NewState(c.key)
 			expected := c.expected.(*state)
 			expected.IFeatureGates = stateutil.NewFeatureGates[scope.TiProxy](expected)
-			expected.IPDClient = stateutil.NewPDClientState()
+			expected.IPDClient = stateutil.NewPDClientState(expected)
 
 			ctx := context.Background()
 			res, done := task.RunTask(ctx, task.Block(

@@ -20,6 +20,13 @@ import (
 	"k8s.io/gengo/v2/types"
 )
 
+const (
+	nameTiDB    = "TiDB"
+	nameTiProxy = "TiProxy"
+	nameTiKV    = "TiKV"
+	nameTiFlash = "TiFlash"
+)
+
 type NameFunc func(t *types.Type) string
 
 func (f NameFunc) Name(t *types.Type) string {
@@ -39,7 +46,7 @@ func GroupToInstanceName(t *types.Type) string {
 func GroupToSecurityTypeName(t *types.Type) string {
 	name := strings.TrimSuffix(t.Name.Name, "Group")
 	switch name {
-	case "TiDB", "TiProxy":
+	case nameTiDB, nameTiProxy:
 		return name + "Security"
 	}
 
@@ -53,7 +60,7 @@ func GroupToSecurityTypeName(t *types.Type) string {
 func GroupToTLSTypeName(t *types.Type) string {
 	name := strings.TrimSuffix(t.Name.Name, "Group")
 	switch name {
-	case "TiDB", "TiProxy":
+	case nameTiDB, nameTiProxy:
 		return name + "TLSConfig"
 	}
 
@@ -70,4 +77,13 @@ func GroupToInternalTLSTypeName(t *types.Type) string {
 	}
 
 	return "InternalTLS"
+}
+
+func InstanceToServerLabelsField(t *types.Type) string {
+	switch t.Name.Name {
+	case nameTiDB, nameTiKV, nameTiFlash, nameTiProxy:
+		return "in.Spec.Server.Labels"
+	}
+
+	return "nil"
 }

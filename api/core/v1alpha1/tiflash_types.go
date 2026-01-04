@@ -183,6 +183,17 @@ type TiFlashTemplateSpec struct {
 type TiFlashServer struct {
 	// Ports defines all ports listened by tiflash
 	Ports TiFlashPorts `json:"ports,omitempty"`
+
+	// Labels defines the server labels of the TiFlash server.
+	// Operator will set these `labels` by API.
+	// If a label in this field is conflict with the config file, this field takes precedence.
+	// NOTE: If a label is removed, operator will not delete it automatically.
+	// NOTE: these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+	//  - host
+	//  - region
+	//  - zone
+	// +kubebuilder:validation:XValidation:rule="!('host' in self) && !('region' in self) && !('zone' in self)",message="labels cannot contain 'host', 'region', or 'zone' keys"
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 type TiFlashPorts struct {

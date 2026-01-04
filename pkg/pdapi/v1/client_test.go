@@ -536,9 +536,8 @@ func TestPDClinet_SetStoreLabels(t *testing.T) {
 	defer server.Close()
 
 	client := NewPDClient(server.URL, time.Second, nil)
-	ok, err := client.SetStoreLabels(context.Background(), 1, map[string]string{"zone": "cn", "rack": "1"})
+	err := client.SetStoreLabels(context.Background(), "1", map[string]string{"zone": "cn", "rack": "1"})
 	require.NoError(t, err)
-	assert.True(t, ok)
 }
 
 func TestPDClient_DeleteStore(t *testing.T) {

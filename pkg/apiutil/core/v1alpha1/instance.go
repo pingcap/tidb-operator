@@ -407,3 +407,11 @@ func InstanceAdvertiseAddress[
 ](cluster *v1alpha1.Cluster, obj F, port P) string {
 	return InstanceHost[S](cluster, obj) + urlPort(port)
 }
+
+func ServerLabels[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](obj F) map[string]string {
+	return scope.From[S](obj).ServerLabels()
+}

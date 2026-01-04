@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/tidbapi/v1"
-	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
@@ -67,12 +66,6 @@ func TaskContextInfoFromPDAndTiDB(state *ReconcileContext, c client.Client, cm p
 		if health {
 			state.SetHealthy()
 		}
-
-		pdc, ok := cm.Get(timanager.PrimaryKey(ck.Namespace, ck.Name))
-		if !ok {
-			return task.Fail().With("pd client is not registered")
-		}
-		state.SetPDClient(pdc.Underlay())
 
 		return task.Complete().With("get info from tidb")
 	})

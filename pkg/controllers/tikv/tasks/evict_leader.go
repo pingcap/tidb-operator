@@ -17,11 +17,16 @@ package tasks
 import (
 	"context"
 
+	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
-func TaskEvictLeader(state *ReconcileContext) task.Task {
+func TaskEvictLeader(state *ReconcileContext, m pdm.PDClientManager) task.Task {
 	return task.NameTaskFunc("EvictLeader", func(ctx context.Context) task.Result {
+		pc, ok := state.GetPDClient(m)
+		if !ok {
+			return task.Wait().With("wait if pd client is not registered")
+		}
 		switch {
 		case !state.PDSynced:
 			return task.Wait().With("pd is unsynced")
@@ -29,14 +34,14 @@ func TaskEvictLeader(state *ReconcileContext) task.Task {
 			return task.Complete().With("store has been deleted or not created")
 		case state.Instance().IsOffline() || state.IsPodTerminating():
 			if !state.LeaderEvicting {
-				if err := state.PDClient.Underlay().BeginEvictLeader(ctx, state.Store.ID); err != nil {
+				if err := pc.Underlay().BeginEvictLeader(ctx, state.Store.ID); err != nil {
 					return task.Fail().With("cannot add evict leader scheduler: %v", err)
 				}
 			}
 			return task.Complete().With("ensure evict leader scheduler exists")
 		default:
 			if state.LeaderEvicting {
-				if err := state.PDClient.Underlay().EndEvictLeader(ctx, state.Store.ID); err != nil {
+				if err := pc.Underlay().EndEvictLeader(ctx, state.Store.ID); err != nil {
 					return task.Fail().With("cannot remove evict leader scheduler: %v", err)
 				}
 			}
@@ -47,11 +52,15 @@ func TaskEvictLeader(state *ReconcileContext) task.Task {
 
 // TaskEndEvictLeader only be called when object is deleting and store has been removed
 // TODO(liubo02): it's not stable because status.ID may be lost
-func TaskEndEvictLeader(state *ReconcileContext) task.Task {
+func TaskEndEvictLeader(state *ReconcileContext, m pdm.PDClientManager) task.Task {
 	return task.NameTaskFunc("EndEvictLeader", func(ctx context.Context) task.Result {
 		msg := "ensure evict leader scheduler doesn't exist"
+		pc, ok := state.GetPDClient(m)
+		if !ok {
+			return task.Wait().With("wait if pd client is not registered")
+		}
 		if storeID := state.TiKV().Status.ID; storeID != "" {
-			if err := state.PDClient.Underlay().EndEvictLeader(ctx, storeID); err != nil {
+			if err := pc.Underlay().EndEvictLeader(ctx, storeID); err != nil {
 				return task.Fail().With("cannot remove evict leader scheduler: %v", err)
 			}
 		} else {

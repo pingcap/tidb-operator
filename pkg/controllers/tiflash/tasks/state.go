@@ -45,6 +45,7 @@ type state struct {
 	healthy bool
 
 	stateutil.IFeatureGates
+	stateutil.IPDClient
 }
 
 type State interface {
@@ -69,6 +70,7 @@ type State interface {
 	common.HealthyStateUpdater
 
 	stateutil.IFeatureGates
+	stateutil.IPDClient
 }
 
 func NewState(key types.NamespacedName) State {
@@ -76,6 +78,7 @@ func NewState(key types.NamespacedName) State {
 		key: key,
 	}
 	s.IFeatureGates = stateutil.NewFeatureGates[scope.TiFlash](s)
+	s.IPDClient = stateutil.NewPDClientState(s)
 	return s
 }
 

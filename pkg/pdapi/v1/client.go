@@ -50,7 +50,7 @@ type Namespace string
 // TODO: move all Get api call to PDClient
 type PDWriter interface {
 	// SetStoreLabels sets the labels for a store.
-	SetStoreLabels(ctx context.Context, storeID uint64, labels map[string]string) (bool, error)
+	SetStoreLabels(ctx context.Context, storeID string, labels map[string]string) error
 	// DeleteStore deletes a TiKV/TiFlash store from the cluster.
 	DeleteStore(ctx context.Context, storeID string) error
 	// CancelDeleteStore cancels the deletion of a TiKV/TiFlash store, returning it to online state.
@@ -308,16 +308,16 @@ func (c *pdClient) getStores(ctx context.Context, apiURL string, states ...metap
 	return storesInfo, nil
 }
 
-func (c *pdClient) SetStoreLabels(ctx context.Context, storeID uint64, labels map[string]string) (bool, error) {
-	apiURL := fmt.Sprintf("%s/%s/%d/label", c.url, storePrefix, storeID)
+func (c *pdClient) SetStoreLabels(ctx context.Context, storeID string, labels map[string]string) error {
+	apiURL := fmt.Sprintf("%s/%s/%s/label", c.url, storePrefix, storeID)
 	data, err := json.Marshal(labels)
 	if err != nil {
-		return false, err
+		return err
 	}
 	if _, err := httputil.PostBodyOK(ctx, c.httpClient, apiURL, bytes.NewBuffer(data)); err != nil {
-		return false, fmt.Errorf("failed to set store labels: %w", err)
+		return fmt.Errorf("failed to set store labels: %w", err)
 	}
-	return true, nil
+	return nil
 }
 
 func (c *pdClient) DeleteStore(ctx context.Context, storeID string) error {

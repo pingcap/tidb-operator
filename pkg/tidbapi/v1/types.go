@@ -18,6 +18,8 @@ package tidbapi
 // ref https://github.com/pingcap/tidb/blob/v8.1.0/pkg/server/handler/tikvhandler/tikv_handler.go#L1696
 type ServerInfo struct {
 	IsOwner bool `json:"is_owner"`
+
+	Labels map[string]string `json:"labels"`
 }
 
 type ActivateRequest struct {

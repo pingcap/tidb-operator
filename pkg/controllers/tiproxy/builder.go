@@ -64,11 +64,12 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		),
 
 		// normal process
-		tasks.TaskContextInfoFromPDAndTiProxy(state, r.Client, r.PDClientManager),
+		tasks.TaskContextInfoFromTiProxy(state, r.Client),
 		tasks.TaskConfigMap(state, r.Client),
 		common.TaskPVC[scope.TiProxy](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
 		tasks.TaskPod(state, r.Client),
-		common.TaskServerLabels[scope.TiProxy](state, r.Client, func(ctx context.Context, labels map[string]string) error {
+		common.TaskServerLabels[scope.TiProxy](state, r.Client, r.PDClientManager, func(ctx context.Context, labels map[string]string) error {
+			// TODO(liubo02): compare before setting
 			return state.TiProxyClient.SetLabels(ctx, labels)
 		}),
 		common.TaskInstanceConditionSynced[scope.TiProxy](state),

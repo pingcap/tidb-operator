@@ -26,6 +26,7 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
@@ -34,7 +35,7 @@ const (
 	jitter                    = 10 * time.Second
 )
 
-func TaskOfflineStore(state *ReconcileContext) task.Task {
+func TaskOfflineStore(state *ReconcileContext, m pdm.PDClientManager) task.Task {
 	return task.NameTaskFunc("OfflineStore", func(ctx context.Context) task.Result {
 		if !state.PDSynced {
 			return task.Wait().With("pd is not synced")
@@ -61,15 +62,20 @@ func TaskOfflineStore(state *ReconcileContext) task.Task {
 			}
 		}
 
+		pc, ok := state.GetPDClient(m)
+		if !ok {
+			return task.Wait().With("pd client is not registered")
+		}
+
 		if err := common.TaskOfflineStore[scope.TiKV](
 			ctx,
-			state.PDClient.Underlay(),
+			pc.Underlay(),
 			tikv,
 			state.GetStoreID(),
 			state.GetStoreState(),
 		); err != nil {
 			// refresh store state
-			state.PDClient.Stores().Refresh()
+			pc.Stores().Refresh()
 
 			if task.IsWaitError(err) {
 				return task.Wait().With("%v", err)
