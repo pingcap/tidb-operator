@@ -81,8 +81,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			if err != nil {
 				return err
 			}
-			if reflect.DeepEqual(info.Labels, labels) {
-				return state.TiDBClient.SetServerLabels(ctx, info.Labels)
+			if !reflect.DeepEqual(info.Labels, labels) {
+				return state.TiDBClient.SetServerLabels(ctx, labels)
 			}
 
 			return nil
