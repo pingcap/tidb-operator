@@ -44,7 +44,6 @@ const (
 // +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-
 type ResourceManagerGroupList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -59,7 +58,6 @@ type ResourceManagerGroupList struct {
 
 // ResourceManagerGroup defines a group of similar ResourceManager instances
 // +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 40",message="name must not exceed 40 characters"
-
 type ResourceManagerGroup struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -72,7 +70,6 @@ type ResourceManagerGroup struct {
 // +kubebuilder:object:root=true
 
 // ResourceManagerList defines a list of ResourceManager instances
-
 type ResourceManagerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -92,7 +89,6 @@ type ResourceManagerList struct {
 
 // ResourceManager defines a ResourceManager instance
 // +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 47",message="name must not exceed 47 characters"
-
 type ResourceManager struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
