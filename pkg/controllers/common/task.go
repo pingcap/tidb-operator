@@ -212,7 +212,11 @@ func TaskServerLabels[
 
 		pod := state.Pod()
 		if pod == nil || state.IsPodTerminating() {
-			return task.Complete().With("skip sync server labels as the instance is not healthy")
+			return task.Wait().With("skip sync server labels as the pod is nil or terminating")
+		}
+
+		if pod.Spec.NodeName == "" {
+			return task.Wait().With("skip sync server labels as the pod is not scheduled")
 		}
 
 		// TODO: too many API calls to PD?
@@ -243,10 +247,6 @@ func TaskServerLabels[
 // getNodeLabels retrieves node labels for the given pod
 func getNodeLabels(ctx context.Context, c client.Client, pod *corev1.Pod, locationLabels []string) (map[string]string, error) {
 	nodeName := pod.Spec.NodeName
-	if nodeName == "" {
-		return nil, fmt.Errorf("pod %s/%s has not been scheduled", pod.Namespace, pod.Name)
-	}
-
 	var node corev1.Node
 	if err := c.Get(ctx, client.ObjectKey{Name: nodeName}, &node); err != nil {
 		return nil, fmt.Errorf("failed to get node %s: %w", nodeName, err)
