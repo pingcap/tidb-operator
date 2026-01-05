@@ -453,7 +453,15 @@ func (bt *backupTracker) SyncLogBackupState(backup *v1alpha1.Backup) (bool, erro
 			// After stop, key not existing is normal
 			return true, nil
 		}
-		// For other commands, key not existing is an error
+		// For other commands, key not existing is an error - update status to Failed
+		klog.Errorf("log backup %s/%s info key not found in etcd, marking as failed", ns, name)
+		bt.statusUpdater.Update(backup, &v1alpha1.BackupCondition{
+			Command: command,
+			Type:    v1alpha1.BackupFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "LogBackupTaskNotFound",
+			Message: "Log backup task not found in TiKV, the task may have been deleted or cluster state is inconsistent",
+		}, nil)
 		return false, fmt.Errorf("log backup key not found")
 	}
 
