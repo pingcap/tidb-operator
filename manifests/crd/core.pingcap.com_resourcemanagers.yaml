@@ -8,15 +8,31 @@ metadata:
 spec:
   group: core.pingcap.com
   names:
+    categories:
+    - instance
     kind: ResourceManager
     listKind: ResourceManagerList
     plural: resourcemanagers
     singular: resourcemanager
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.cluster.name
+      name: Cluster
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Synced")].status
+      name: Synced
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
+        description: ResourceManager defines a ResourceManager instance
         properties:
           apiVersion:
             description: |-
@@ -8577,5 +8593,9 @@ spec:
         x-kubernetes-validations:
         - message: name must not exceed 47 characters
           rule: size(self.metadata.name) <= 47
+    selectableFields:
+    - jsonPath: .spec.cluster.name
     served: true
     storage: true
+    subresources:
+      status: {}

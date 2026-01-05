@@ -17,6 +17,8 @@ spec:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
+        description: ResourceManagerGroup defines a group of similar ResourceManager
+          instances
         properties:
           apiVersion:
             description: |-
@@ -8868,3 +8870,9 @@ spec:
           rule: size(self.metadata.name) <= 40
     served: true
     storage: true
+    subresources:
+      scale:
+        labelSelectorPath: .status.selector
+        specReplicasPath: .spec.replicas
+        statusReplicasPath: .status.replicas
+      status: {}
