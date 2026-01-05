@@ -323,14 +323,14 @@ func TestTaskServerLabels(t *testing.T) {
 			state: &fakeServerLabelsState{
 				healthy: false,
 			},
-			expectedResult: task.SComplete,
+			expectedResult: task.SWait,
 		},
 		{
 			desc: "pod is nil",
 			state: &fakeServerLabelsState{
 				healthy: true,
 			},
-			expectedResult: task.SComplete,
+			expectedResult: task.SWait,
 		},
 		{
 			desc: "pod is terminating",
@@ -341,7 +341,7 @@ func TestTaskServerLabels(t *testing.T) {
 					return obj
 				}),
 			},
-			expectedResult: task.SComplete,
+			expectedResult: task.SWait,
 		},
 		{
 			desc: "pod is not scheduled",
@@ -353,7 +353,7 @@ func TestTaskServerLabels(t *testing.T) {
 					return obj
 				}),
 			},
-			expectedResult: task.SFail,
+			expectedResult: task.SWait,
 		},
 		{
 			desc: "failed to get node",
