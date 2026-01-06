@@ -206,16 +206,16 @@ func TestContains(t *testing.T) {
 			expected: false,
 		},
 		{
-			desc:     "a is empty, b has elements",
-			mapA:     map[string]string{},
+			desc: "a is empty, b has elements",
+			mapA: map[string]string{},
 			mapB: map[string]string{
 				"aa": "aa",
 			},
 			expected: false,
 		},
 		{
-			desc:     "a is nil, b has elements",
-			mapA:     nil,
+			desc: "a is nil, b has elements",
+			mapA: nil,
 			mapB: map[string]string{
 				"aa": "aa",
 			},
