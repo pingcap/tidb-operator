@@ -86,9 +86,9 @@ func TestSelector(t *testing.T) {
 			expected: "ddd",
 		},
 		{
-			desc: "prefer priority high - single highest priority",
+			desc: "prefer priority - single priority",
 			ps: []PreferPolicy[*runtime.PD]{
-				PreferPriorityHigh[*runtime.PD](),
+				PreferPriority[*runtime.PD](),
 			},
 			allowed: []*runtime.PD{
 				fakePDWithPriority("aaa", true, true, "1"),
@@ -96,25 +96,25 @@ func TestSelector(t *testing.T) {
 				fakePDWithPriority("ccc", true, true, "3"),
 				fakePD("ddd", true, true),
 			},
-			expected: "bbb",
+			expected: "aaa",
 		},
 		{
-			desc: "prefer priority high - multiple with same highest priority",
+			desc: "prefer priority - multiple with same priority",
 			ps: []PreferPolicy[*runtime.PD]{
-				PreferPriorityHigh[*runtime.PD](),
+				PreferPriority[*runtime.PD](),
 			},
 			allowed: []*runtime.PD{
-				fakePDWithPriority("aaa", true, true, "5"),
-				fakePDWithPriority("bbb", true, true, "5"),
+				fakePDWithPriority("aaa", true, true, "0"),
+				fakePDWithPriority("bbb", true, true, "0"),
 				fakePDWithPriority("ccc", true, true, "3"),
 				fakePD("ddd", true, true),
 			},
 			expected: "aaa",
 		},
 		{
-			desc: "prefer priority high - no priority annotations",
+			desc: "prefer priority - no priority annotations",
 			ps: []PreferPolicy[*runtime.PD]{
-				PreferPriorityHigh[*runtime.PD](),
+				PreferPriority[*runtime.PD](),
 			},
 			allowed: []*runtime.PD{
 				fakePD("aaa", true, true),
@@ -124,9 +124,9 @@ func TestSelector(t *testing.T) {
 			expected: "aaa",
 		},
 		{
-			desc: "prefer priority high - invalid priority values ignored",
+			desc: "prefer priority - invalid priority values ignored",
 			ps: []PreferPolicy[*runtime.PD]{
-				PreferPriorityHigh[*runtime.PD](),
+				PreferPriority[*runtime.PD](),
 			},
 			allowed: []*runtime.PD{
 				fakePDWithPriority("aaa", true, true, "-1"),
@@ -137,9 +137,9 @@ func TestSelector(t *testing.T) {
 			expected: "ccc",
 		},
 		{
-			desc: "prefer priority high - negative priority ignored",
+			desc: "prefer priority - negative priority ignored",
 			ps: []PreferPolicy[*runtime.PD]{
-				PreferPriorityHigh[*runtime.PD](),
+				PreferPriority[*runtime.PD](),
 			},
 			allowed: []*runtime.PD{
 				fakePDWithPriority("aaa", true, true, "-100"),
@@ -149,18 +149,34 @@ func TestSelector(t *testing.T) {
 			expected: "bbb",
 		},
 		{
-			desc: "prefer priority high combined with prefer unready",
+			desc: "prefer priority combined with prefer unready",
 			ps: []PreferPolicy[*runtime.PD]{
 				PreferUnready[*runtime.PD](),
-				PreferPriorityHigh[*runtime.PD](),
+				PreferPriority[*runtime.PD](),
 			},
 			allowed: []*runtime.PD{
-				fakePDWithPriority("aaa", true, true, "10"),
+				fakePDWithPriority("aaa", true, true, "0"),
 				fakePDWithPriority("bbb", true, false, "5"),
 				fakePDWithPriority("ccc", true, false, "8"),
 				fakePD("ddd", true, false),
 			},
 			expected: "aaa",
+		},
+		{
+			desc: "priority, unready, not running",
+			ps: []PreferPolicy[*runtime.PD]{
+				PreferPriority[*runtime.PD](),
+				PreferUnready[*runtime.PD](),
+				PreferNotRunning[*runtime.PD](),
+			},
+			allowed: []*runtime.PD{
+				fakePDWithPriority("aaa", true, true, "0"),
+				fakePDWithPriority("bbb", true, false, "10"),
+				fakePDWithPriority("ccc", false, true, "10"),
+				fakePDWithPriority("ddd", false, false, "10"),
+				fakePDWithPriority("eee", false, false, "5"),
+			},
+			expected: "eee",
 		},
 	}
 
@@ -215,7 +231,7 @@ func fakePDWithPriority(name string, running, ready bool, priority string) *runt
 	}))
 }
 
-func TestPreferPriorityHigh(t *testing.T) {
+func TestPreferPriority(t *testing.T) {
 	cases := []struct {
 		desc     string
 		input    []*runtime.PD
@@ -228,7 +244,7 @@ func TestPreferPriorityHigh(t *testing.T) {
 				fakePDWithPriority("pd-1", true, true, "10"),
 				fakePDWithPriority("pd-2", true, true, "5"),
 			},
-			expected: []string{"pd-1"},
+			expected: []string{"pd-0"},
 		},
 		{
 			desc: "multiple instances with same highest priority",
@@ -237,7 +253,7 @@ func TestPreferPriorityHigh(t *testing.T) {
 				fakePDWithPriority("pd-1", true, true, "10"),
 				fakePDWithPriority("pd-2", true, true, "5"),
 			},
-			expected: []string{"pd-0", "pd-1"},
+			expected: []string{"pd-2"},
 		},
 		{
 			desc: "no priority annotations returns all",
@@ -299,9 +315,9 @@ func TestPreferPriorityHigh(t *testing.T) {
 			input: []*runtime.PD{
 				fakePDWithPriority("pd-0", true, true, "1000000"),
 				fakePDWithPriority("pd-1", true, true, "999999"),
-				fakePDWithPriority("pd-2", true, true, "1000000"),
+				fakePDWithPriority("pd-2", true, true, "999999"),
 			},
-			expected: []string{"pd-0", "pd-2"},
+			expected: []string{"pd-1", "pd-2"},
 		},
 	}
 
@@ -310,7 +326,7 @@ func TestPreferPriorityHigh(t *testing.T) {
 		t.Run(c.desc, func(tt *testing.T) {
 			tt.Parallel()
 
-			policy := PreferPriorityHigh[*runtime.PD]()
+			policy := PreferPriority[*runtime.PD]()
 			result := policy.Prefer(c.input)
 
 			// Extract names from result
