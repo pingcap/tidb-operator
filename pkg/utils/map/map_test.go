@@ -129,6 +129,111 @@ func TestAreEqual(t *testing.T) {
 	}
 }
 
+func TestContains(t *testing.T) {
+	cases := []struct {
+		desc     string
+		mapA     map[string]string
+		mapB     map[string]string
+		expected bool
+	}{
+		{
+			desc:     "both nil",
+			mapA:     nil,
+			mapB:     nil,
+			expected: true,
+		},
+		{
+			desc:     "both empty",
+			mapA:     map[string]string{},
+			mapB:     map[string]string{},
+			expected: true,
+		},
+		{
+			desc: "b is empty",
+			mapA: map[string]string{
+				"aa": "aa",
+				"bb": "bb",
+			},
+			mapB:     map[string]string{},
+			expected: true,
+		},
+		{
+			desc: "a contains all elements from b",
+			mapA: map[string]string{
+				"aa": "aa",
+				"bb": "bb",
+				"cc": "cc",
+			},
+			mapB: map[string]string{
+				"aa": "aa",
+				"bb": "bb",
+			},
+			expected: true,
+		},
+		{
+			desc: "a and b are identical",
+			mapA: map[string]string{
+				"aa": "aa",
+				"bb": "bb",
+			},
+			mapB: map[string]string{
+				"aa": "aa",
+				"bb": "bb",
+			},
+			expected: true,
+		},
+		{
+			desc: "a has same keys but different values",
+			mapA: map[string]string{
+				"aa": "aa",
+				"bb": "bb",
+			},
+			mapB: map[string]string{
+				"aa": "aa",
+				"bb": "cc",
+			},
+			expected: false,
+		},
+		{
+			desc: "a is missing keys from b",
+			mapA: map[string]string{
+				"aa": "aa",
+			},
+			mapB: map[string]string{
+				"aa": "aa",
+				"bb": "bb",
+			},
+			expected: false,
+		},
+		{
+			desc:     "a is empty, b has elements",
+			mapA:     map[string]string{},
+			mapB: map[string]string{
+				"aa": "aa",
+			},
+			expected: false,
+		},
+		{
+			desc:     "a is nil, b has elements",
+			mapA:     nil,
+			mapB: map[string]string{
+				"aa": "aa",
+			},
+			expected: false,
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.desc, func(tt *testing.T) {
+			tt.Parallel()
+
+			res := Contains(c.mapA, c.mapB)
+			assert.Equal(tt, c.expected, res)
+		})
+	}
+}
+
 func TestMap(t *testing.T) {
 	m := &Map[string, int]{}
 

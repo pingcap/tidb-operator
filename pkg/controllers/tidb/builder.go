@@ -16,6 +16,7 @@ package tidb
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
@@ -79,7 +80,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			}
 			info, err := state.TiDBClient.GetInfo(ctx)
 			if err != nil {
-				return err
+				return fmt.Errorf("cannot get tidb info: %w", err)
 			}
 			if !reflect.DeepEqual(info.Labels, labels) {
 				return state.TiDBClient.SetServerLabels(ctx, labels)

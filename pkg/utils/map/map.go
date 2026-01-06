@@ -63,10 +63,10 @@ func Select[K comparable, V any](originalMap map[K]V, keys ...K) map[K]V {
 	return ret
 }
 
-// Contains check whether map a contains all elem in map b
+// Contains checks whether map a contains all elem in map b
 func Contains[K comparable, V comparable](a, b map[K]V) bool {
 	for k, v := range b {
-		if a[k] != v {
+		if av, ok := a[k]; !ok || av != v {
 			return false
 		}
 	}
