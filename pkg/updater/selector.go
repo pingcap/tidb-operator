@@ -16,7 +16,9 @@ package updater
 
 import (
 	"fmt"
+	"strconv"
 
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 )
 
@@ -111,7 +113,7 @@ func (s *selector[R]) Choose(allowed []R) string {
 
 func PreferUnready[R runtime.Instance]() PreferPolicy[R] {
 	return PreferPolicyFunc[R](func(s []R) []R {
-		unavail := []R{}
+		var unavail []R
 		for _, in := range s {
 			if !in.IsUpToDate() || !in.IsReady() {
 				unavail = append(unavail, in)
@@ -123,12 +125,45 @@ func PreferUnready[R runtime.Instance]() PreferPolicy[R] {
 
 func PreferNotRunning[R runtime.Instance]() PreferPolicy[R] {
 	return PreferPolicyFunc[R](func(s []R) []R {
-		unavail := []R{}
+		var unavail []R
 		for _, in := range s {
 			if in.IsNotRunning() {
 				unavail = append(unavail, in)
 			}
 		}
 		return unavail
+	})
+}
+
+func PreferPriorityHigh[R runtime.Instance]() PreferPolicy[R] {
+	return PreferPolicyFunc[R](func(s []R) []R {
+		var high []R
+		var highest int64 = -1
+		for _, in := range s {
+			anno := in.GetAnnotations()
+			sPrio, ok := anno[v1alpha1.AnnoKeyPriority]
+			if !ok {
+				continue
+			}
+			// not a valid priority
+			// TODO(liubo02): add a validation
+			prio, err := strconv.ParseInt(sPrio, 10, 64)
+			if err != nil || prio < 0 {
+				continue
+			}
+			switch {
+			case prio > highest:
+				highest = prio
+				high = []R{in}
+			case prio == highest:
+				high = append(high, in)
+			}
+		}
+
+		if highest == -1 {
+			return s
+		}
+
+		return high
 	})
 }

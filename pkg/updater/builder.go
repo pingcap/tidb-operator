@@ -70,12 +70,14 @@ func (b *builder[T, O, R]) Build() Executor {
 	update, outdated, beingOffline, deleted := split(b.instances, b.rev)
 
 	updatePolicies := []PreferPolicy[R]{
+		PreferPriorityHigh[R](),
 		PreferUnready[R](),
 		PreferNotRunning[R](),
 	}
 	updatePolicies = append(updatePolicies, b.updatePreferPolicies...)
 
 	scaleInPolicies := []PreferPolicy[R]{
+		PreferPriorityHigh[R](),
 		PreferUnready[R](),
 		PreferNotRunning[R](),
 	}
