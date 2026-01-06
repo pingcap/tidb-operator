@@ -219,6 +219,10 @@ func (in *TiProxy) Subdomain() string {
 	return in.Spec.Subdomain
 }
 
+func (in *TiProxy) ServerLabels() map[string]string {
+	return in.Spec.Server.Labels
+}
+
 func (in *TiProxy) ClusterCertKeyPairSecretName() string {
 	sec := in.Spec.Security
 	if sec != nil && sec.TLS != nil && sec.TLS.Cluster != nil && sec.TLS.Cluster.CertKeyPair != nil {

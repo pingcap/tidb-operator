@@ -16,62 +16,39 @@ package tasks
 
 import (
 	"context"
-	"reflect"
-	"strconv"
-
-	corev1 "k8s.io/api/core/v1"
+	"fmt"
 
 	"github.com/go-logr/logr"
 
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
-	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
+	maputil "github.com/pingcap/tidb-operator/v2/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
-func TaskStoreLabels(state *ReconcileContext, c client.Client) task.Task {
-	return task.NameTaskFunc("StoreLabels", func(ctx context.Context) task.Result {
+func TaskStoreLabels(state *ReconcileContext, c client.Client, m pdm.PDClientManager) task.Task {
+	return common.TaskServerLabels[scope.TiKV](state, c, m, func(ctx context.Context, ls map[string]string) error {
+		pc, ok := state.GetPDClient(m)
+		if !ok {
+			return fmt.Errorf("%w: cannot get pd client", task.ErrWait)
+		}
+		if !state.PDSynced || state.Store == nil {
+			return fmt.Errorf("%w: pd is not synced or store is not found", task.ErrWait)
+		}
+
 		logger := logr.FromContextOrDiscard(ctx)
-		if !state.PDSynced || !state.IsStoreUp() || state.IsPodTerminating() || state.Pod() == nil {
-			return task.Complete().With("skip sync store labels as the store is not serving")
-		}
-
-		nodeName := state.Pod().Spec.NodeName
-		if nodeName == "" {
-			return task.Fail().With("pod %s/%s has not been scheduled", state.TiKV().Namespace, state.TiKV().Name)
-		}
-		var node corev1.Node
-		if err := c.Get(ctx, client.ObjectKey{Name: nodeName}, &node); err != nil {
-			return task.Fail().With("failed to get node %s: %s", nodeName, err)
-		}
-
-		// TODO: too many API calls to PD?
-		pdCfg, err := state.PDClient.Underlay().GetConfig(ctx)
-		if err != nil {
-			return task.Fail().With("failed to get pd config: %s", err)
-		}
-		keys := pdCfg.Replication.LocationLabels
-		if len(keys) == 0 {
-			return task.Complete().With("no store labels need to sync")
-		}
-
-		storeLabels := k8s.GetNodeLabelsForKeys(&node, keys)
-		if len(storeLabels) == 0 {
-			return task.Complete().With("no store labels from node %s to sync", nodeName)
-		}
-
-		if !reflect.DeepEqual(state.Store.Labels, storeLabels) {
-			storeID, err := strconv.ParseUint(state.Store.ID, 10, 64)
-			if err != nil {
-				return task.Fail().With("failed to parse store id %s: %s", state.Store.ID, err)
+		if !maputil.Contains(state.Store.Labels, ls) {
+			if err := pc.Underlay().SetStoreLabels(ctx, state.Store.ID, ls); err != nil {
+				return err
 			}
-			set, err := state.PDClient.Underlay().SetStoreLabels(ctx, storeID, storeLabels)
-			if err != nil {
-				return task.Fail().With("failed to set store labels: %s", err)
-			} else if set {
-				logger.Info("store labels synced", "storeID", state.Store.ID, "storeLabels", storeLabels)
-			}
+
+			logger.Info("set store labels", "id", state.Store.ID, "currentLabels", state.Store.Labels, "expectedLabels", ls)
+			return nil
 		}
 
-		return task.Complete().With("store labels synced")
+		logger.Info("store labels has been set", "id", state.Store.ID, "currentLabels", state.Store.Labels, "expectedLabels", ls)
+		return nil
 	})
 }

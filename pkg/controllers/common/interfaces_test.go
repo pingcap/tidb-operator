@@ -22,6 +22,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
+	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 )
 
 type fakeState[T any] struct {
@@ -207,11 +208,40 @@ func newFakeObjectState[
 	}
 }
 
+type fakePDClientWrapper struct {
+	underlay pdapi.PDClient
+}
+
+func (f *fakePDClientWrapper) HasSynced() bool {
+	return true
+}
+
+func (f *fakePDClientWrapper) Stores() pdm.StoreCache {
+	return nil
+}
+
+func (f *fakePDClientWrapper) Members() pdm.MemberCache {
+	return nil
+}
+
+func (f *fakePDClientWrapper) TSOMembers() pdm.TSOMemberCache {
+	return nil
+}
+
+func (f *fakePDClientWrapper) Underlay() pdapi.PDClient {
+	return f.underlay
+}
+
 type fakeServerLabelsState struct {
+	obj          *v1alpha1.TiDB
 	healthy      bool
 	pod          *corev1.Pod
 	serverLabels map[string]string
-	pdClient     pdapi.PDClient
+	pdClient     pdm.PDClient
+}
+
+func (s *fakeServerLabelsState) Object() *v1alpha1.TiDB {
+	return s.obj
 }
 
 func (s *fakeServerLabelsState) GetServerLabels() map[string]string {
@@ -230,12 +260,15 @@ func (s *fakeServerLabelsState) IsPodTerminating() bool {
 	return s.pod != nil && s.pod.DeletionTimestamp != nil
 }
 
-func (s *fakeServerLabelsState) GetPDClient() pdapi.PDClient {
-	return s.pdClient
+func (s *fakeServerLabelsState) GetPDClient(m pdm.PDClientManager) (pdm.PDClient, bool) {
+	if s.pdClient != nil {
+		return s.pdClient, true
+	}
+	return nil, false
 }
 
 func (s *fakeServerLabelsState) SetPDClient(pdClient pdapi.PDClient) {
-	s.pdClient = pdClient
+	s.pdClient = &fakePDClientWrapper{underlay: pdClient}
 }
 
 type ClusterStateFunc func() *v1alpha1.Cluster

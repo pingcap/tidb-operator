@@ -16,7 +16,6 @@ package tasks
 
 import (
 	"context"
-	"time"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,10 +27,6 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/compare"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/v2/third_party/kubernetes/pkg/controller/statefulset"
-)
-
-const (
-	defaultTaskWaitDuration = 5 * time.Second
 )
 
 // TODO(liubo02): extract to common task
@@ -71,11 +66,11 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		podReady := pod != nil && statefulset.IsPodReady(pod)
 
 		if !ready && podReady {
-			return task.Retry(defaultTaskWaitDuration).With("pod is ready and store status is not Running, retry")
+			return task.Retry(task.DefaultRequeueAfter).With("pod is ready and store status is not Running, retry")
 		}
 
 		if state.IsPodTerminating() {
-			return task.Retry(defaultTaskWaitDuration).With("pod may be terminating, requeue to retry")
+			return task.Retry(task.DefaultRequeueAfter).With("pod may be terminating, requeue to retry")
 		}
 
 		// TODO: use a condition to refactor it

@@ -54,11 +54,12 @@ func (g *runtimeGenerator) Filter(_ *generator.Context, t *types.Type) bool {
 
 func (g *runtimeGenerator) Namers(*generator.Context) namer.NameSystems {
 	return namer.NameSystems{
-		"pub":         namer.NewPublicNamer(0),
-		"instance":    NameFunc(GroupToInstanceName),
-		"security":    NameFunc(GroupToSecurityTypeName),
-		"tls":         NameFunc(GroupToTLSTypeName),
-		"internaltls": NameFunc(GroupToInternalTLSTypeName),
+		"pub":          namer.NewPublicNamer(0),
+		"instance":     NameFunc(GroupToInstanceName),
+		"security":     NameFunc(GroupToSecurityTypeName),
+		"tls":          NameFunc(GroupToTLSTypeName),
+		"internaltls":  NameFunc(GroupToInternalTLSTypeName),
+		"serverlabels": NameFunc(InstanceToServerLabelsField),
 	}
 }
 
@@ -279,6 +280,10 @@ func (in *$.|pub$) SetImage(image string) {
 
 func (in *$.|pub$) Subdomain() string {
 	return in.Spec.Subdomain
+}
+
+func (in *$.|pub$) ServerLabels() map[string]string {
+	return $.|serverlabels$
 }
 
 func (in *$.|pub$) ClusterCertKeyPairSecretName() string {

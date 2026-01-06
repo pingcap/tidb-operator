@@ -72,7 +72,7 @@ func NewState(key types.NamespacedName) State {
 		key: key,
 	}
 	s.IFeatureGates = stateutil.NewFeatureGates[scope.TiKVWorker](s)
-	s.IPDClient = stateutil.NewPDClientState()
+	s.IPDClient = stateutil.NewPDClientState(s)
 	return s
 }
 

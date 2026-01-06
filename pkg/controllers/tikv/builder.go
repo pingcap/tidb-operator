@@ -56,7 +56,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		// if instance is deleting and store is removed
 		task.IfBreak(ObjectIsDeletingAndStoreIsRemoved(state),
-			tasks.TaskEndEvictLeader(state),
+			tasks.TaskEndEvictLeader(state, r.PDClientManager),
 			common.TaskInstanceFinalizerDel[scope.TiKV](state, r.Client, tasks.SubresourceLister),
 		),
 
@@ -77,12 +77,12 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		),
 
 		// normal process
-		tasks.TaskOfflineStore(state),
+		tasks.TaskOfflineStore(state, r.PDClientManager),
 		tasks.TaskConfigMap(state, r.Client),
 		common.TaskPVC[scope.TiKV](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
 		tasks.TaskPod(state, r.Client),
-		tasks.TaskStoreLabels(state, r.Client),
-		tasks.TaskEvictLeader(state),
+		tasks.TaskStoreLabels(state, r.Client, r.PDClientManager),
+		tasks.TaskEvictLeader(state, r.PDClientManager),
 		common.TaskInstanceConditionSynced[scope.TiKV](state),
 		// only set ready if pd is synced
 		task.If(PDIsSynced(state),

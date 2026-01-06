@@ -61,9 +61,8 @@ func TestState(t *testing.T) {
 					obj.Spec.Cluster.Name = "aaa"
 					return obj
 				}),
-				cluster:   fake.FakeObj[v1alpha1.Cluster]("aaa"),
-				pod:       fake.FakeObj("aaa-tidb-xxx", fake.InstanceOwner[scope.TiDB, corev1.Pod](fake.FakeObj[v1alpha1.TiDB]("aaa-xxx"))),
-				IPDClient: stateutil.NewPDClientState(),
+				cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
+				pod:     fake.FakeObj("aaa-tidb-xxx", fake.InstanceOwner[scope.TiDB, corev1.Pod](fake.FakeObj[v1alpha1.TiDB]("aaa-xxx"))),
 			},
 		},
 	}
@@ -78,6 +77,7 @@ func TestState(t *testing.T) {
 			s := NewState(c.key)
 			expected := c.expected.(*state)
 			expected.IFeatureGates = stateutil.NewFeatureGates[scope.TiDB](expected)
+			expected.IPDClient = stateutil.NewPDClientState(expected)
 
 			ctx := context.Background()
 			res, done := task.RunTask(ctx, task.Block(

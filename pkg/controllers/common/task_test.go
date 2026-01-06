@@ -323,14 +323,14 @@ func TestTaskServerLabels(t *testing.T) {
 			state: &fakeServerLabelsState{
 				healthy: false,
 			},
-			expectedResult: task.SComplete,
+			expectedResult: task.SWait,
 		},
 		{
 			desc: "pod is nil",
 			state: &fakeServerLabelsState{
 				healthy: true,
 			},
-			expectedResult: task.SComplete,
+			expectedResult: task.SWait,
 		},
 		{
 			desc: "pod is terminating",
@@ -341,22 +341,24 @@ func TestTaskServerLabels(t *testing.T) {
 					return obj
 				}),
 			},
-			expectedResult: task.SComplete,
+			expectedResult: task.SWait,
 		},
 		{
 			desc: "pod is not scheduled",
 			state: &fakeServerLabelsState{
+				obj:     fake.FakeObj[v1alpha1.TiDB]("test-tidb"),
 				healthy: true,
 				pod: fake.FakeObj("test-pod", func(obj *corev1.Pod) *corev1.Pod {
 					obj.Spec.NodeName = ""
 					return obj
 				}),
 			},
-			expectedResult: task.SFail,
+			expectedResult: task.SWait,
 		},
 		{
 			desc: "failed to get node",
 			state: &fakeServerLabelsState{
+				obj:     fake.FakeObj[v1alpha1.TiDB]("test-tidb"),
 				healthy: true,
 				pod: fake.FakeObj("test-pod", func(obj *corev1.Pod) *corev1.Pod {
 					obj.Spec.NodeName = "test-node"
@@ -369,6 +371,7 @@ func TestTaskServerLabels(t *testing.T) {
 		{
 			desc: "failed to get pd config",
 			state: &fakeServerLabelsState{
+				obj:     fake.FakeObj[v1alpha1.TiDB]("test-tidb"),
 				healthy: true,
 				pod: fake.FakeObj("test-pod", func(obj *corev1.Pod) *corev1.Pod {
 					obj.Spec.NodeName = "test-node"
@@ -387,6 +390,12 @@ func TestTaskServerLabels(t *testing.T) {
 		{
 			desc: "zone label not found",
 			state: &fakeServerLabelsState{
+				obj: fake.FakeObj("test-tidb", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
+					obj.Spec.Server.Labels = map[string]string{
+						"foo": "bar",
+					}
+					return obj
+				}),
 				healthy: true,
 				pod: fake.FakeObj("test-pod", func(obj *corev1.Pod) *corev1.Pod {
 					obj.Spec.NodeName = "test-node"
@@ -415,6 +424,12 @@ func TestTaskServerLabels(t *testing.T) {
 		{
 			desc: "failed to set labels",
 			state: &fakeServerLabelsState{
+				obj: fake.FakeObj("test-tidb", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
+					obj.Spec.Server.Labels = map[string]string{
+						"existing-label": "value",
+					}
+					return obj
+				}),
 				healthy: true,
 				pod: fake.FakeObj("test-pod", func(obj *corev1.Pod) *corev1.Pod {
 					obj.Spec.NodeName = "test-node"
@@ -444,6 +459,12 @@ func TestTaskServerLabels(t *testing.T) {
 		{
 			desc: "success",
 			state: &fakeServerLabelsState{
+				obj: fake.FakeObj("test-tidb", func(obj *v1alpha1.TiDB) *v1alpha1.TiDB {
+					obj.Spec.Server.Labels = map[string]string{
+						"existing-label": "value",
+					}
+					return obj
+				}),
 				healthy: true,
 				pod: fake.FakeObj("test-pod", func(obj *corev1.Pod) *corev1.Pod {
 					obj.Spec.NodeName = "test-node"
@@ -508,7 +529,7 @@ func TestTaskServerLabels(t *testing.T) {
 				return nil
 			}
 
-			res, done := task.RunTask(context.Background(), TaskServerLabels[scope.TiDB](c.state, fc, setLabelsFunc))
+			res, done := task.RunTask(context.Background(), TaskServerLabels[scope.TiDB](c.state, fc, nil, setLabelsFunc))
 			assert.Equal(tt, c.expectedResult, res.Status(), c.desc)
 			assert.False(tt, done, c.desc)
 

@@ -56,11 +56,13 @@ type state struct {
 	healthy bool
 
 	stateutil.IFeatureGates
+	stateutil.IPDClient
 }
 
 type State interface {
 	common.TiKVState
 	common.ClusterState
+	common.ObjectState[*v1alpha1.TiKV]
 
 	common.PodState
 	common.PodStateUpdater
@@ -80,6 +82,7 @@ type State interface {
 	common.HealthyStateUpdater
 
 	stateutil.IFeatureGates
+	stateutil.IPDClient
 }
 
 func NewState(key types.NamespacedName) State {
@@ -87,6 +90,7 @@ func NewState(key types.NamespacedName) State {
 		key: key,
 	}
 	s.IFeatureGates = stateutil.NewFeatureGates[scope.TiKV](s)
+	s.IPDClient = stateutil.NewPDClientState(s)
 	return s
 }
 

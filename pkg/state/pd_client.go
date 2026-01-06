@@ -14,25 +14,41 @@
 
 package state
 
-import "github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
+import (
+	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
+	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
+)
 
 type IPDClient interface {
-	GetPDClient() pdapi.PDClient
-	SetPDClient(pdapi.PDClient)
+	GetPDClient(m pdm.PDClientManager) (pdm.PDClient, bool)
 }
 
 type pdClientState struct {
-	pdClient pdapi.PDClient
+	c ICluster
+
+	pdClient pdm.PDClient
 }
 
-func (s *pdClientState) GetPDClient() pdapi.PDClient {
-	return s.pdClient
+func (s *pdClientState) GetPDClient(m pdm.PDClientManager) (pdm.PDClient, bool) {
+	if s.pdClient != nil {
+		return s.pdClient, true
+	}
+
+	ck := s.c.Cluster()
+	c, ok := m.Get(timanager.PrimaryKey(ck.Namespace, ck.Name))
+	if !ok {
+		return nil, false
+	}
+	if !c.HasSynced() {
+		return nil, false
+	}
+
+	s.pdClient = c
+	return s.pdClient, true
 }
 
-func (s *pdClientState) SetPDClient(pdClient pdapi.PDClient) {
-	s.pdClient = pdClient
-}
-
-func NewPDClientState() IPDClient {
-	return &pdClientState{}
+func NewPDClientState(c ICluster) IPDClient {
+	return &pdClientState{
+		c: c,
+	}
 }

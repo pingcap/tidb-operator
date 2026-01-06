@@ -23,7 +23,6 @@ import (
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
-	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
@@ -32,8 +31,6 @@ import (
 
 type ReconcileContext struct {
 	State
-
-	PDClient pdm.PDClient
 
 	LeaderEvicting bool
 
@@ -60,26 +57,14 @@ func (r *ReconcileContext) StoreNotExists() bool {
 	return r.Store == nil
 }
 
-// GetPDClient returns the PD client for API operations
-func (r *ReconcileContext) GetPDClient() pdm.PDClient {
-	return r.PDClient
-}
-
 func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task.Task {
 	return task.NameTaskFunc("ContextInfoFromPD", func(ctx context.Context) task.Result {
 		ck := state.Cluster()
-		c, ok := cm.Get(timanager.PrimaryKey(ck.Namespace, ck.Name))
+		c, ok := state.GetPDClient(cm)
 		if !ok {
 			// We have to retry here because the store may be removed and cannot trigger the changes
 			return task.Retry(defaultTaskWaitDuration).With("pd client is not registered")
 		}
-		state.PDClient = c
-
-		if !c.HasSynced() {
-			// We have to retry here because the store may be removed and cannot trigger the changes
-			return task.Retry(defaultTaskWaitDuration).With("store info is not synced, just wait for next sync")
-		}
-
 		state.PDSynced = true
 
 		tikv := state.Object()
@@ -112,7 +97,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		if coreutil.ShouldSuspendCompute(state.Cluster()) {
 			return task.Complete().With("cluster is suspending")
 		}
-		scheduler, err := state.PDClient.Underlay().GetEvictLeaderScheduler(ctx, state.Store.ID)
+		scheduler, err := c.Underlay().GetEvictLeaderScheduler(ctx, state.Store.ID)
 		if err != nil {
 			return task.Fail().With("pd is unexpectedly crashed: %v", err)
 		}

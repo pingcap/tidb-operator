@@ -287,12 +287,11 @@ func (mr *MockPDClientMockRecorder) GetTSOMembers(ctx any) *gomock.Call {
 }
 
 // SetStoreLabels mocks base method.
-func (m *MockPDClient) SetStoreLabels(ctx context.Context, storeID uint64, labels map[string]string) (bool, error) {
+func (m *MockPDClient) SetStoreLabels(ctx context.Context, storeID string, labels map[string]string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetStoreLabels", ctx, storeID, labels)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // SetStoreLabels indicates an expected call of SetStoreLabels.
