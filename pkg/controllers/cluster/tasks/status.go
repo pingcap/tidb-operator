@@ -228,12 +228,15 @@ func (*TaskStatus) syncConditions(rtx *ReconcileContext) bool {
 		suspendStatus  = metav1.ConditionFalse
 		suspendMessage = "Cluster is not suspended"
 	)
-	if suspended {
-		suspendStatus = metav1.ConditionTrue
-		suspendMessage = "Cluster is suspended"
-	} else if coreutil.ShouldSuspendCompute(rtx.Cluster) {
+
+	if coreutil.ShouldSuspendCompute(rtx.Cluster) {
 		suspendMessage = "Cluster is suspending"
+		if suspended {
+			suspendStatus = metav1.ConditionTrue
+			suspendMessage = "Cluster is suspended"
+		}
 	}
+
 	return meta.SetStatusCondition(&rtx.Cluster.Status.Conditions, metav1.Condition{
 		Type:               v1alpha1.ClusterCondSuspended,
 		Status:             suspendStatus,
