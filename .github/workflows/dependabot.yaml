@@ -22,7 +22,7 @@ jobs:
           go-version-file: ./go.mod
           cache-dependency-path: "**/*.sum"
       - name: update go toolchain version
-        if: steps.dependabot-metadata.outputs.package-ecosystem == 'docker' && steps.dependabot-metadata.outputs.dependency-names == 'golang'
+        if: steps.dependabot-metadata.outputs.package-ecosystem == 'docker' && steps.dependabot-metadata.outputs.dependency-names == 'golang' && steps.dependabot-metadata.outputs.new-version != ''
         run: |
           go get toolchain@${{ steps.dependabot-metadata.outputs.new-version }}
       - name: go build
