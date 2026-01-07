@@ -102,6 +102,8 @@ func (c *tidbClient) GetInfo(ctx context.Context) (*ServerInfo, error) {
 	return &info, nil
 }
 
+// SetServerLabels will set labels of tidb server.
+// TODO(liubo02): now this function call is not safe because labels maybe changed by others after get info is called.
 func (c *tidbClient) SetServerLabels(ctx context.Context, labels map[string]string) error {
 	buffer := bytes.NewBuffer(nil)
 	if err := json.NewEncoder(buffer).Encode(labels); err != nil {
@@ -109,8 +111,10 @@ func (c *tidbClient) SetServerLabels(ctx context.Context, labels map[string]stri
 	}
 
 	apiURL := fmt.Sprintf("%s/%s", c.url, labelsPath)
-	_, err := httputil.PostBodyOK(ctx, c.httpClient, apiURL, buffer)
-	return err
+	if _, err := httputil.PostBodyOK(ctx, c.httpClient, apiURL, buffer); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *tidbClient) Activate(ctx context.Context, keyspace string) error {

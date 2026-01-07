@@ -219,6 +219,10 @@ func (in *Scheduler) Subdomain() string {
 	return in.Spec.Subdomain
 }
 
+func (in *Scheduler) ServerLabels() map[string]string {
+	return nil
+}
+
 func (in *Scheduler) ClusterCertKeyPairSecretName() string {
 	sec := in.Spec.Security
 	if sec != nil && sec.TLS != nil && sec.TLS.Cluster != nil && sec.TLS.Cluster.CertKeyPair != nil {

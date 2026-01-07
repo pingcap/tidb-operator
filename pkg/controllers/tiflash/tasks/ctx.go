@@ -17,14 +17,12 @@ package tasks
 import (
 	"context"
 
-	"github.com/pingcap/kvproto/pkg/metapb"
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/tiflashapi/v1"
-	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
 	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 	fm "github.com/pingcap/tidb-operator/v2/pkg/timanager/tiflash"
@@ -35,11 +33,10 @@ import (
 type ReconcileContext struct {
 	State
 
-	PDClient pdm.PDClient
+	Store *pdv1.Store
 
-	Store       *pdv1.Store
-	StoreLabels []*metapb.StoreLabel
-
+	// PDSynced means the cache is ready to use
+	// TODO: combine with store state
 	PDSynced bool
 }
 
@@ -56,32 +53,22 @@ func (r *ReconcileContext) StoreNotExists() bool {
 	return r.Store == nil
 }
 
-// GetPDClient returns the PD client for API operations
-func (r *ReconcileContext) GetPDClient() pdm.PDClient {
-	return r.PDClient
-}
-
 func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager, fcm fm.TiFlashClientManager) task.Task {
 	return task.NameTaskFunc("ContextInfoFromPD", func(ctx context.Context) task.Result {
-		ck := state.Cluster()
-		c, ok := cm.Get(timanager.PrimaryKey(ck.Namespace, ck.Name))
+		c, ok := state.GetPDClient(cm)
 		if !ok {
-			// We have to retry here because the store may have been removed and cannot trigger the changes
-			return task.Retry(defaultTaskWaitDuration).With("pd client is not registered")
-		}
-		state.PDClient = c
-
-		if !c.HasSynced() {
-			// We have to retry here because the store may have been removed and cannot trigger the changes
-			return task.Retry(defaultTaskWaitDuration).With("store info is not synced, just wait for next sync")
+			// We have to retry here because the store may be removed and cannot trigger the changes
+			return task.Retry(task.DefaultRequeueAfter).With("pd client is not registered")
 		}
 
 		state.PDSynced = true
 
+		ck := state.Cluster()
 		f := state.Object()
 		if err := fcm.Register(f); err != nil {
 			return task.Fail().With("cannot register tiflash client")
 		}
+
 		fc, ok := fcm.Get(fm.Key(f))
 		if !ok {
 			return task.Fail().With("tiflash client is not registered")
@@ -100,11 +87,6 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager, fcm 
 		state.SetStoreState(s.NodeState)
 		state.SetRegionCount(s.RegionCount)
 		state.SetStoreBusy(s.IsBusy)
-
-		state.StoreLabels = make([]*metapb.StoreLabel, len(s.Labels))
-		for k, v := range s.Labels {
-			state.StoreLabels = append(state.StoreLabels, &metapb.StoreLabel{Key: k, Value: v})
-		}
 
 		if state.FeatureGates().Enabled(metav1alpha1.UseTiFlashReadyAPI) {
 			state.SetHealthy()

@@ -224,6 +224,17 @@ type TiKVRemoteWorkers struct {
 type TiKVServer struct {
 	// Ports defines all ports listened by tikv
 	Ports TiKVPorts `json:"ports,omitempty"`
+
+	// Labels defines the server labels of the TiKV server.
+	// Operator will set these `labels` by API dynamically.
+	// If a label in this field is conflict with the config file, this field takes precedence.
+	// NOTE: If a label is removed, operator will not delete it automatically.
+	// NOTE: these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+	//  - host
+	//  - region
+	//  - zone
+	// +kubebuilder:validation:XValidation:rule="!('host' in self) && !('region' in self) && !('zone' in self)",message="labels cannot contain 'host', 'region', or 'zone' keys"
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 type TiKVPorts struct {
@@ -238,6 +249,7 @@ type TiKVGroupStatus struct {
 	GroupStatus  `json:",inline"`
 }
 
+// TiKVSpec defines the spec of tikv instance
 // +kubebuilder:validation:XValidation:rule="(!has(oldSelf.topology) && !has(self.topology)) || (has(oldSelf.topology) && has(self.topology))",fieldPath=".topology",message="topology can only be set when creating"
 type TiKVSpec struct {
 	// Cluster is a reference of tidb cluster

@@ -219,6 +219,10 @@ func (in *TiDB) Subdomain() string {
 	return in.Spec.Subdomain
 }
 
+func (in *TiDB) ServerLabels() map[string]string {
+	return in.Spec.Server.Labels
+}
+
 func (in *TiDB) ClusterCertKeyPairSecretName() string {
 	sec := in.Spec.Security
 	if sec != nil && sec.TLS != nil && sec.TLS.Cluster != nil && sec.TLS.Cluster.CertKeyPair != nil {

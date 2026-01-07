@@ -24,8 +24,6 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
-	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
-	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/tiproxyapi/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
@@ -40,17 +38,9 @@ type ReconcileContext struct {
 	TiProxyClient tiproxyapi.TiProxyClient
 }
 
-func TaskContextInfoFromPDAndTiProxy(state *ReconcileContext, c client.Client, cm pdm.PDClientManager) task.Task {
+func TaskContextInfoFromTiProxy(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("ContextInfoFromPDAndTiProxy", func(ctx context.Context) task.Result {
 		ck := state.Cluster()
-		pdc, ok := cm.Get(timanager.PrimaryKey(ck.Namespace, ck.Name))
-		if !ok {
-			return task.Fail().With("pd client is not registered")
-		}
-		if !pdc.HasSynced() {
-			return task.Fail().With("store info is not synced, just wait for next sync")
-		}
-		state.SetPDClient(pdc.Underlay())
 
 		var tlsConfig *tls.Config
 		if coreutil.IsTiProxyHTTPServerTLSEnabled(ck, state.Object()) {

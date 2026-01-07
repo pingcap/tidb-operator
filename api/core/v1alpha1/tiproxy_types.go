@@ -184,9 +184,11 @@ type TiProxyServer struct {
 	// Port defines all ports listened by TiProxy.
 	Ports TiProxyPorts `json:"ports,omitempty"`
 
-	// Labels defines the server labels of the TiProxy.
-	// TiDB Operator will ignore `labels` in TiProxy's config file and use this field instead.
-	// Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+	// Labels defines the server labels of the TiProxy server.
+	// Operator will set these `labels` by API.
+	// If a label in this field is conflict with the config file, this field takes precedence.
+	// NOTE: If a label is removed, operator will not delete it automatically.
+	// NOTE: these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
 	//  - host
 	//  - region
 	//  - zone

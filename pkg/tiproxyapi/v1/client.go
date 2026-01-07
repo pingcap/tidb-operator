@@ -30,7 +30,7 @@ import (
 
 const (
 	healthPath = "api/debug/health"
-	configPath = "api/admin/config/"
+	configPath = "api/admin/config"
 )
 
 // TiProxyClient is the interface that knows how to control tiproxy clusters.

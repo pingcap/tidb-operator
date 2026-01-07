@@ -3544,6 +3544,13 @@ func (in *TiFlashPorts) DeepCopy() *TiFlashPorts {
 func (in *TiFlashServer) DeepCopyInto(out *TiFlashServer) {
 	*out = *in
 	in.Ports.DeepCopyInto(&out.Ports)
+	if in.Labels != nil {
+		in, out := &in.Labels, &out.Labels
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	return
 }
 
@@ -3927,6 +3934,13 @@ func (in *TiKVRemoteWorkers) DeepCopy() *TiKVRemoteWorkers {
 func (in *TiKVServer) DeepCopyInto(out *TiKVServer) {
 	*out = *in
 	in.Ports.DeepCopyInto(&out.Ports)
+	if in.Labels != nil {
+		in, out := &in.Labels, &out.Labels
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	return
 }
 

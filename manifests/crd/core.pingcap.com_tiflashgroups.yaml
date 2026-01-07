@@ -8686,6 +8686,24 @@ spec:
                       server:
                         description: Server defines the server config of TiFlash
                         properties:
+                          labels:
+                            additionalProperties:
+                              type: string
+                            description: |-
+                              Labels defines the server labels of the TiFlash server.
+                              Operator will set these `labels` by API.
+                              If a label in this field is conflict with the config file, this field takes precedence.
+                              NOTE: If a label is removed, operator will not delete it automatically.
+                              NOTE: these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
+                               - host
+                               - region
+                               - zone
+                            type: object
+                            x-kubernetes-validations:
+                            - message: labels cannot contain 'host', 'region', or
+                                'zone' keys
+                              rule: '!(''host'' in self) && !(''region'' in self)
+                                && !(''zone'' in self)'
                           ports:
                             description: Ports defines all ports listened by tiflash
                             properties:

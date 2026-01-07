@@ -83,6 +83,33 @@ func TestApply(t *testing.T) {
 			immutable: []string{"spec", "nodeName"},
 			res:       ApplyResultUnchanged,
 		},
+		{
+			desc: "apply for an existing obj with ignore diff annotation",
+			objs: []client.Object{
+				fake.FakeObj("aa", fake.Label[corev1.Pod]("test", "test"), func(obj *corev1.Pod) *corev1.Pod {
+					obj.Annotations = map[string]string{AnnoKeyIgnoreDiff: "spec.nodeName,spec.dnsPolicy"}
+
+					obj.Spec.NodeName = "xxx"
+					obj.Spec.DNSPolicy = corev1.DNSDefault
+					return obj
+				}),
+			},
+			obj: fake.FakeObj("aa", fake.Label[corev1.Pod]("test", "test"), func(obj *corev1.Pod) *corev1.Pod {
+				obj.Annotations = map[string]string{AnnoKeyIgnoreDiff: "spec.nodeName,spec.dnsPolicy"}
+				// they are immutable
+				obj.Spec.NodeName = "yyy"
+				obj.Spec.DNSPolicy = corev1.DNSClusterFirst
+				return obj
+			}),
+			expected: fake.FakeObj("aa", fake.GVK[corev1.Pod](corev1.SchemeGroupVersion), fake.Label[corev1.Pod]("test", "test"), func(obj *corev1.Pod) *corev1.Pod {
+				obj.Annotations = map[string]string{AnnoKeyIgnoreDiff: "spec.nodeName,spec.dnsPolicy"}
+
+				obj.Spec.NodeName = "xxx"
+				obj.Spec.DNSPolicy = corev1.DNSDefault
+				return obj
+			}),
+			res: ApplyResultUnchanged,
+		},
 	}
 
 	for i := range cases {

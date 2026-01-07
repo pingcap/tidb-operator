@@ -158,7 +158,7 @@ func (w *Workload) MustImportData(ctx context.Context, host string, opts ...work
 	w.f.Must(w.f.Client.Create(ctx, job))
 	w.jobs = append(w.jobs, job)
 
-	w.f.Must(waiter.WaitForJobComplete(ctx, w.f.Client, job, waiter.ShortTaskTimeout))
+	w.f.Must(waiter.WaitForJobComplete(ctx, w.f.Client, job, waiter.LongTaskTimeout))
 }
 
 func (w *Workload) MustRunWorkload(ctx context.Context, host string, opts ...workload.Option) (done chan struct{}) {

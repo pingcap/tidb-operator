@@ -63,6 +63,17 @@ func Select[K comparable, V any](originalMap map[K]V, keys ...K) map[K]V {
 	return ret
 }
 
+// Contains checks whether map a contains all elem in map b
+func Contains[K comparable, V comparable](a, b map[K]V) bool {
+	for k, v := range b {
+		if av, ok := a[k]; !ok || av != v {
+			return false
+		}
+	}
+
+	return true
+}
+
 // Map is a wrapper of sync.Map to avoid type assertion in the outer function
 type Map[K comparable, V any] struct {
 	sync.Map

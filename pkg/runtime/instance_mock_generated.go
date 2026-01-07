@@ -516,6 +516,20 @@ func (mr *MockInstanceMockRecorder) PodOverlay() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PodOverlay", reflect.TypeOf((*MockInstance)(nil).PodOverlay))
 }
 
+// ServerLabels mocks base method.
+func (m *MockInstance) ServerLabels() map[string]string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ServerLabels")
+	ret0, _ := ret[0].(map[string]string)
+	return ret0
+}
+
+// ServerLabels indicates an expected call of ServerLabels.
+func (mr *MockInstanceMockRecorder) ServerLabels() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ServerLabels", reflect.TypeOf((*MockInstance)(nil).ServerLabels))
+}
+
 // SetAnnotations mocks base method.
 func (m *MockInstance) SetAnnotations(annotations map[string]string) {
 	m.ctrl.T.Helper()
