@@ -24,7 +24,7 @@ import (
 
 type PreferPolicy[R runtime.Instance] interface {
 	// Prefer returns the preferred instances
-	// If no prefered, just return nil or empty
+	// If no preferred, just return nil or empty
 	Prefer([]R) []R
 }
 
