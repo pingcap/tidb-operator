@@ -27,7 +27,6 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
-	"github.com/pingcap/tidb-operator/v2/pkg/features"
 	"github.com/pingcap/tidb-operator/v2/pkg/image"
 	"github.com/pingcap/tidb-operator/v2/pkg/overlay"
 	"github.com/pingcap/tidb-operator/v2/pkg/reloadable"
@@ -46,7 +45,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 		ck := state.Cluster()
 		obj := state.Object()
 		logger := logr.FromContextOrDiscard(ctx)
-		expected := newPod(ck, obj, state.FeatureGates())
+		expected := newPod(ck, obj)
 		pod := state.Pod()
 		if pod == nil {
 			if err := c.Apply(ctx, expected); err != nil {
@@ -77,7 +76,7 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func newPod(cluster *v1alpha1.Cluster, rm *v1alpha1.ResourceManager, _ features.Gates) *corev1.Pod {
+func newPod(cluster *v1alpha1.Cluster, rm *v1alpha1.ResourceManager) *corev1.Pod {
 	vols := []corev1.Volume{
 		{
 			Name: v1alpha1.VolumeNameConfig,
@@ -156,8 +155,8 @@ func newPod(cluster *v1alpha1.Cluster, rm *v1alpha1.ResourceManager, _ features.
 							ContainerPort: coreutil.ResourceManagerClientPort(rm),
 						},
 					},
-					ReadinessProbe: buildReadinessProbe(cluster, coreutil.ResourceManagerClientPort(rm)),
 					VolumeMounts:   mounts,
+					ReadinessProbe: buildReadinessProbe(cluster, coreutil.ResourceManagerClientPort(rm)),
 					Resources:      k8s.GetResourceRequirements(rm.Spec.Resources),
 				},
 			},

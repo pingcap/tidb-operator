@@ -54,6 +54,7 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 				data.WithClusterTLS[scope.SchedulingGroup](ca, "scheduling-internal"),
 			)
 			rmg := action.MustCreateResourceManager(ctx, f, o,
+				data.WithResourceManagerNextGen(),
 				data.WithClusterTLS[scope.ResourceManagerGroup](ca, "resourcemanager-internal"),
 			)
 			kvg := action.MustCreateTiKV(ctx, f, o)
