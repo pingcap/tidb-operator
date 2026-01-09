@@ -36,5 +36,6 @@ func (f *Framework) WaitForResourceManagerGroupReady(ctx context.Context, rmg *v
 		metav1.ConditionTrue,
 		waiter.LongTaskTimeout,
 	))
+	f.Must(waiter.WaitForResourceManagersHealthy(ctx, f.Client, rmg, waiter.LongTaskTimeout))
 	f.Must(waiter.WaitForPodsReady(ctx, f.Client, runtime.FromResourceManagerGroup(rmg), waiter.LongTaskTimeout))
 }

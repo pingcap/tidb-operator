@@ -180,7 +180,8 @@ func buildReadinessProbe(cluster *v1alpha1.Cluster, port int32) *corev1.Probe {
 		scheme = "https"
 	}
 
-	readinessURL := fmt.Sprintf("%s://127.0.0.1:%d/health", scheme, port)
+	// TODO: update to /health after RM supports it
+	readinessURL := fmt.Sprintf("%s://127.0.0.1:%d/status", scheme, port)
 	command := []string{
 		"curl",
 		readinessURL,
