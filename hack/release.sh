@@ -67,7 +67,7 @@ EOF
 
 ${HELM} template tidb-operator ${OUTPUT}/tidb-operator-${RELEASE_VERSION}.tgz \
     --kube-version ${V_KUBE_VERSION} \
-    --set "operator.extraArgs={--watch-delay-duration=2s}" \
+    --set "operator.extraArgs={--watch-delay-duration=2s,--allow-empty-old-version}" \
     -n ${V_DEPLOY_NAMESPACE} \
     >> $E2E_OPERATOR
 

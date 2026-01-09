@@ -22,6 +22,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/parser"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	yamlutil "k8s.io/apimachinery/pkg/util/yaml"
 	kyaml "sigs.k8s.io/yaml"
@@ -29,13 +31,17 @@ import (
 
 func main() {
 	var dir string
+	var chart string
 	flag.StringVar(&dir, "dir", "manifests/crd", "dir of crds")
+	flag.StringVar(&chart, "chart", "charts/tidb-operator", "dir of operator chart")
 	flag.Parse()
 
 	files, err := os.ReadDir(dir)
 	if err != nil {
 		panic(fmt.Errorf("failed to read dir %s: %w", dir, err))
 	}
+
+	var crdNames []string
 
 	for _, file := range files {
 		if file.IsDir() {
@@ -54,6 +60,8 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+
+		crdNames = append(crdNames, crd.Name)
 
 		if len(crd.Spec.Versions) == 0 {
 			fmt.Printf("  Skipping %s: no versions defined\n", fileName)
@@ -82,6 +90,10 @@ func main() {
 		if err := saveCRD(path, crd); err != nil {
 			panic(err)
 		}
+	}
+
+	if err := modifyValues(chart, crdNames); err != nil {
+		panic(err)
 	}
 }
 
@@ -273,4 +285,44 @@ func intersection(a, b []string) []string {
 	}
 
 	return ret
+}
+
+const (
+	defaultPerm = 0o666
+)
+
+func modifyValues(chartPath string, crds []string) error {
+	path := filepath.Join(chartPath, "values.yaml")
+
+	root, err := yaml.PathString("$")
+	if err != nil {
+		return fmt.Errorf("cannot get root: %w", err)
+	}
+
+	values, err := parser.ParseFile(path, parser.ParseComments)
+	if err != nil {
+		return fmt.Errorf("cannot parse valuse.yaml: %w", err)
+	}
+
+	node, err := yaml.ValueToNode(map[string][]string{
+		"crds": crds,
+	})
+	if err != nil {
+		return fmt.Errorf("cannot parse crds to ast.Node: %w", err)
+	}
+
+	if err := root.MergeFromNode(values, node); err != nil {
+		return fmt.Errorf("cannot replace node: %w", err)
+	}
+
+	data, err := values.Docs[0].MarshalYAML()
+	if err != nil {
+		return fmt.Errorf("cannot marshal data: %w", err)
+	}
+
+	if err := os.WriteFile(path, data, defaultPerm); err != nil {
+		return fmt.Errorf("cannot write file: %w", err)
+	}
+
+	return nil
 }

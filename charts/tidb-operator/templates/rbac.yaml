@@ -30,6 +30,10 @@ rules:
   - apiGroups: ["rbac.authorization.k8s.io"]
     resources: ["roles", "rolebindings"]
     verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "create", "update", "patch"]
+    resourceNames: {{ toYaml .Values.crds | nindent 4 }}
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["create"]

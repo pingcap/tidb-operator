@@ -21,6 +21,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/go-logr/logr"
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -42,6 +43,7 @@ import (
 
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/manifests"
 	"github.com/pingcap/tidb-operator/v2/pkg/adoption"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/backup"
@@ -69,6 +71,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tiproxygroup"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tso"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tsogroup"
+	"github.com/pingcap/tidb-operator/v2/pkg/crd"
 	"github.com/pingcap/tidb-operator/v2/pkg/image"
 	"github.com/pingcap/tidb-operator/v2/pkg/metrics"
 	"github.com/pingcap/tidb-operator/v2/pkg/scheme"
@@ -82,7 +85,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/volumes"
 )
 
-var setupLog = ctrl.Log.WithName("setup").WithValues(version.Get().KeysAndValues()...)
+var setupLog = ctrl.Log.WithName("setup")
 
 type brConfig struct {
 	backupManagerImage string
@@ -96,6 +99,8 @@ func main() {
 	var probeAddr string
 	var maxConcurrentReconciles int
 	var watchDelayDuration time.Duration
+	var allowEmptyOldVersion bool
+
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.StringVar(&brConf.backupManagerImage, "backup-manager-image", "", "The image of backup-manager.")
@@ -109,6 +114,8 @@ func main() {
 			"kube clients's read-after-write inconsistency(always read from cache).")
 	flag.Var(&image.PrestopChecker, "default-prestop-checker-image", "Default image of prestop checker.")
 	flag.Var(&image.ResourceSyncer, "default-resource-syncer-image", "Default image of resource syncer.")
+	flag.BoolVar(&allowEmptyOldVersion, "allow-empty-old-version", false,
+		"allow crd version is empty, if false, cannot update crd which has no version annotation")
 
 	opts := zap.Options{
 		Development:     false,
@@ -134,6 +141,10 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	ctx := logr.NewContext(context.Background(), setupLog)
+
+	setupLog.Info("start tidb operator", version.Get().KeysAndValues()...)
+
 	utilruntime.PanicHandlers = append(utilruntime.PanicHandlers, func(_ context.Context, _ any) {
 		metrics.ControllerPanic.WithLabelValues().Inc()
 	})
@@ -143,6 +154,11 @@ func main() {
 	// if it's not set explicitly, it may be binary name
 	kubeconfig.UserAgent = client.DefaultFieldManager
 	kubefeat.MustInitFeatureGates(kubeconfig)
+
+	if err := applyCRDs(ctx, kubeconfig, allowEmptyOldVersion); err != nil {
+		setupLog.Error(err, "failed to apply crds")
+		os.Exit(1)
+	}
 
 	cacheOpt := cache.Options{
 		// Disable label selector for our own CRs
@@ -176,10 +192,34 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := setup(context.Background(), mgr); err != nil {
+	if err := setup(ctx, mgr); err != nil {
 		setupLog.Error(err, "failed to setup")
 		os.Exit(1)
 	}
+}
+
+func applyCRDs(ctx context.Context, kubeconfig *rest.Config, allowEmptyOldVersion bool) error {
+	c, err := client.New(kubeconfig, ctrlcli.Options{
+		Scheme: scheme.Scheme,
+	})
+	if err != nil {
+		return fmt.Errorf("cannot new client for applying crd: %w", err)
+	}
+
+	info := version.Get()
+	cfg := crd.Config{
+		Client:               c,
+		Version:              info.GitVersion,
+		AllowEmptyOldVersion: allowEmptyOldVersion,
+		IsDirty:              info.IsDirty(),
+		CRDDir:               manifests.CRD,
+	}
+
+	if err := crd.ApplyCRDs(ctx, &cfg); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func setup(ctx context.Context, mgr ctrl.Manager) error {

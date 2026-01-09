@@ -16,8 +16,8 @@ operator:
     # digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
 
   pullPolicy: IfNotPresent
-# # REF: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
-#  priorityClassName: system-cluster-critical
+  # # REF: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+  # priorityClassName: system-cluster-critical
   resources:
     requests:
       cpu: 80m
@@ -90,3 +90,33 @@ rbac:
 # Webhook configuration
 webhook:
   create: true
+
+# DON'T EDIT IT
+crds:
+- backups.br.pingcap.com
+- backupschedules.br.pingcap.com
+- compactbackups.br.pingcap.com
+- restores.br.pingcap.com
+- tibrgcs.br.pingcap.com
+- tibrs.br.pingcap.com
+- clusters.core.pingcap.com
+- pdgroups.core.pingcap.com
+- pds.core.pingcap.com
+- schedulergroups.core.pingcap.com
+- schedulers.core.pingcap.com
+- schedulinggroups.core.pingcap.com
+- schedulings.core.pingcap.com
+- ticdcgroups.core.pingcap.com
+- ticdcs.core.pingcap.com
+- tidbgroups.core.pingcap.com
+- tidbs.core.pingcap.com
+- tiflashes.core.pingcap.com
+- tiflashgroups.core.pingcap.com
+- tikvgroups.core.pingcap.com
+- tikvs.core.pingcap.com
+- tikvworkergroups.core.pingcap.com
+- tikvworkers.core.pingcap.com
+- tiproxies.core.pingcap.com
+- tiproxygroups.core.pingcap.com
+- tsogroups.core.pingcap.com
+- tsos.core.pingcap.com

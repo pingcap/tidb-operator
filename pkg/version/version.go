@@ -89,6 +89,10 @@ func (info *Info) KeysAndValues() []any {
 	}
 }
 
+func (info *Info) IsDirty() bool {
+	return info.GitTreeState == "dirty"
+}
+
 // Get returns the overall codebase version. It's for detecting
 // what code a binary was built from.
 func Get() *Info {
