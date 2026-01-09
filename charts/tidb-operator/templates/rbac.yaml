@@ -54,7 +54,7 @@ rules:
   - apiGroups: ["br.pingcap.com"]
     resources: ["*"]
     verbs: ["*"]
-  {{- if eq .Values.manageCRD true}}
+  {{- if eq .Values.skipCRDsManagement false }}
   - apiGroups: ["apiextensions.k8s.io"]
     resources: ["customresourcedefinitions"]
     verbs: ["get", "create", "update", "patch"]

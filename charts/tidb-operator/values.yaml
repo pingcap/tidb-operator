@@ -91,9 +91,9 @@ rbac:
 webhook:
   create: true
 
-# Manage crd by operator directly.
-# If false, operator will not check and apply crds.
-manageCRD: true
+# If false, manage crds by operator directly.
+# If true, operator will not check and apply crds.
+skipCRDsManagement: false
 
 # DON'T EDIT IT
 crds:
