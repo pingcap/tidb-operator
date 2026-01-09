@@ -18,6 +18,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -301,7 +302,7 @@ func modifyValues(chartPath string, crds []string) error {
 
 	values, err := parser.ParseFile(path, parser.ParseComments)
 	if err != nil {
-		return fmt.Errorf("cannot parse valuse.yaml: %w", err)
+		return fmt.Errorf("cannot parse values.yaml: %w", err)
 	}
 
 	node, err := yaml.ValueToNode(map[string][]string{
@@ -315,10 +316,12 @@ func modifyValues(chartPath string, crds []string) error {
 		return fmt.Errorf("cannot replace node: %w", err)
 	}
 
-	data, err := values.Docs[0].MarshalYAML()
+	data, err := io.ReadAll(values)
 	if err != nil {
 		return fmt.Errorf("cannot marshal data: %w", err)
 	}
+
+	data = append(data, '\n')
 
 	if err := os.WriteFile(path, data, defaultPerm); err != nil {
 		return fmt.Errorf("cannot write file: %w", err)
