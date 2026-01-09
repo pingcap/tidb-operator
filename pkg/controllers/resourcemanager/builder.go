@@ -27,13 +27,6 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskTrack[scope.ResourceManager](state, r.Tracker),
 		task.IfBreak(common.CondObjectHasBeenDeleted[scope.ResourceManager](state)),
 
-		common.TaskContextCluster[scope.ResourceManager](state, r.Client),
-		task.IfBreak(common.CondClusterIsPaused(state)),
-		task.IfBreak(common.CondClusterIsDeleting(state),
-			common.TaskInstanceFinalizerDel[scope.ResourceManager](state, r.Client, common.DefaultInstanceSubresourceLister),
-		),
-		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
-
 		task.IfBreak(common.CondObjectIsDeleting[scope.ResourceManager](state),
 			common.TaskInstanceFinalizerDel[scope.ResourceManager](state, r.Client, common.DefaultInstanceSubresourceLister),
 			common.TaskInstanceConditionSynced[scope.ResourceManager](state),
@@ -41,6 +34,13 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskInstanceConditionRunning[scope.ResourceManager](state),
 			common.TaskStatusPersister[scope.ResourceManager](state, r.Client),
 		),
+
+		common.TaskContextCluster[scope.ResourceManager](state, r.Client),
+		task.IfBreak(common.CondClusterIsPaused(state)),
+		task.IfBreak(common.CondClusterIsDeleting(state),
+			common.TaskInstanceFinalizerDel[scope.ResourceManager](state, r.Client, common.DefaultInstanceSubresourceLister),
+		),
+		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
 		common.TaskFinalizerAdd[scope.ResourceManager](state, r.Client),
 
 		common.TaskContextPod[scope.ResourceManager](state, r.Client),
