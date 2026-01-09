@@ -142,7 +142,7 @@ spec:
     ## ImagePullPolicy of prometheus.
     # imagePullPolicy: IfNotPresent
     ## Prometheus version.
-    version: v2.27.1
+    version: v3.5.0
 
     ## Describes the compute resource requirements and limits of Prometheus.
     ## Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
@@ -402,7 +402,7 @@ spec:
   ##  ImagePullPolicy of prometheusReloader.
   #   ImagePullPolicy: IfNotPresent
   #   PrometheusReloader version.
-  #   version: v0.49.0
+  #   version: v0.85.0
   ##  Describes the compute resource requirements and limits of prometheusReloader.
   ##  Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
   #   requests:
@@ -453,7 +453,7 @@ spec:
   #   # ImagePullPolicy of thanos.
   #   imagePullPolicy: IfNotPresent
   #   # Thanos version.
-  #   version: v0.17.2
+  #   version: v0.39.2
 
   ##  Describes the compute resource requirements and limits of thanos.
   ##  Ref: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/

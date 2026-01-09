@@ -34,7 +34,7 @@ spec:
   - name: basic
   thanos:
     baseImage: thanosio/thanos
-    version: v0.17.2
+    version: v0.39.2
     objectStorageConfig:
       key: objectstorage.yaml
       name: thanos-objectstorage

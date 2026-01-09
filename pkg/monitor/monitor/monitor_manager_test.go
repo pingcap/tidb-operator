@@ -206,7 +206,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 				monitor.Spec.PrometheusReloader = &v1alpha1.PrometheusReloaderSpec{
 					MonitorContainer: v1alpha1.MonitorContainer{
 						BaseImage: "quay.io/prometheus-operator/prometheus-config-reloaders",
-						Version:   "v0.49.0",
+						Version:   "v0.85.0",
 					},
 				}
 			},
@@ -257,7 +257,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 				monitor.Spec.Thanos = &v1alpha1.ThanosSpec{
 					MonitorContainer: v1alpha1.MonitorContainer{
 						BaseImage: "thanosio/thanos",
-						Version:   "v0.17.2",
+						Version:   "v0.39.2",
 					},
 				}
 			},
@@ -300,7 +300,7 @@ func TestTidbMonitorSyncCreate(t *testing.T) {
 				monitor.Spec.Thanos = &v1alpha1.ThanosSpec{
 					MonitorContainer: v1alpha1.MonitorContainer{
 						BaseImage: "thanosio/thanos",
-						Version:   "v0.17.2",
+						Version:   "v0.39.2",
 					},
 				}
 			},
