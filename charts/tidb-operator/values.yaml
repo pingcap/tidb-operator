@@ -91,6 +91,10 @@ rbac:
 webhook:
   create: true
 
+# Manage crd by operator directly.
+# If false, operator will not check and apply crds.
+manageCRD: true
+
 # DON'T EDIT IT
 crds:
 - backups.br.pingcap.com

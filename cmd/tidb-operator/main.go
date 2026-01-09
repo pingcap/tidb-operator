@@ -100,6 +100,7 @@ func main() {
 	var maxConcurrentReconciles int
 	var watchDelayDuration time.Duration
 	var allowEmptyOldVersion bool
+	var skipCRDsManagement bool
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -116,6 +117,7 @@ func main() {
 	flag.Var(&image.ResourceSyncer, "default-resource-syncer-image", "Default image of resource syncer.")
 	flag.BoolVar(&allowEmptyOldVersion, "allow-empty-old-version", false,
 		"allow crd version is empty, if false, cannot update crd which has no version annotation")
+	flag.BoolVar(&skipCRDsManagement, "skip-crds-management", false, "if true, skip checking and applying crds")
 
 	opts := zap.Options{
 		Development:     false,
@@ -155,9 +157,11 @@ func main() {
 	kubeconfig.UserAgent = client.DefaultFieldManager
 	kubefeat.MustInitFeatureGates(kubeconfig)
 
-	if err := applyCRDs(ctx, kubeconfig, allowEmptyOldVersion); err != nil {
-		setupLog.Error(err, "failed to apply crds")
-		os.Exit(1)
+	if !skipCRDsManagement {
+		if err := applyCRDs(ctx, kubeconfig, allowEmptyOldVersion); err != nil {
+			setupLog.Error(err, "failed to apply crds")
+			os.Exit(1)
+		}
 	}
 
 	cacheOpt := cache.Options{
