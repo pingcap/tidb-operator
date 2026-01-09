@@ -32,18 +32,6 @@ const (
 // +kubebuilder:object:root=true
 
 // ResourceManagerGroupList defines a list of ResourceManager groups
-// TODO: add short name and print columns once stabilized
-// +kubebuilder:resource:categories=group,shortName=rmg
-// +kubebuilder:selectablefield:JSONPath=`.spec.cluster.name`
-// +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
-// +kubebuilder:printcolumn:name="Desired",type=string,JSONPath=`.spec.replicas`
-// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.readyReplicas`
-// +kubebuilder:printcolumn:name="Updated",type=string,JSONPath=`.status.updatedReplicas`
-// +kubebuilder:printcolumn:name="UpdateRevision",type=string,JSONPath=`.status.updateRevision`
-// +kubebuilder:printcolumn:name="CurrentRevision",type=string,JSONPath=`.status.currentRevision`
-// +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
-// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
-// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type ResourceManagerGroupList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -55,6 +43,17 @@ type ResourceManagerGroupList struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:subresource:scale:specpath=.spec.replicas,statuspath=.status.replicas,selectorpath=.status.selector
+// +kubebuilder:resource:categories=group,shortName=rmg
+// +kubebuilder:selectablefield:JSONPath=`.spec.cluster.name`
+// +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
+// +kubebuilder:printcolumn:name="Desired",type=string,JSONPath=`.spec.replicas`
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.readyReplicas`
+// +kubebuilder:printcolumn:name="Updated",type=string,JSONPath=`.status.updatedReplicas`
+// +kubebuilder:printcolumn:name="UpdateRevision",type=string,JSONPath=`.status.updateRevision`
+// +kubebuilder:printcolumn:name="CurrentRevision",type=string,JSONPath=`.status.currentRevision`
+// +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // ResourceManagerGroup defines a group of similar ResourceManager instances
 // +kubebuilder:validation:XValidation:rule="size(self.metadata.name) <= 40",message="name must not exceed 40 characters"

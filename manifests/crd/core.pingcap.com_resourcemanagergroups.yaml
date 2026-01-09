@@ -8,13 +8,45 @@ metadata:
 spec:
   group: core.pingcap.com
   names:
+    categories:
+    - group
     kind: ResourceManagerGroup
     listKind: ResourceManagerGroupList
     plural: resourcemanagergroups
+    shortNames:
+    - rmg
     singular: resourcemanagergroup
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.cluster.name
+      name: Cluster
+      type: string
+    - jsonPath: .spec.replicas
+      name: Desired
+      type: string
+    - jsonPath: .status.readyReplicas
+      name: Ready
+      type: string
+    - jsonPath: .status.updatedReplicas
+      name: Updated
+      type: string
+    - jsonPath: .status.updateRevision
+      name: UpdateRevision
+      type: string
+    - jsonPath: .status.currentRevision
+      name: CurrentRevision
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Synced")].status
+      name: Synced
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: ResourceManagerGroup defines a group of similar ResourceManager
@@ -8868,6 +8900,8 @@ spec:
         x-kubernetes-validations:
         - message: name must not exceed 40 characters
           rule: size(self.metadata.name) <= 40
+    selectableFields:
+    - jsonPath: .spec.cluster.name
     served: true
     storage: true
     subresources:
