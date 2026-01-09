@@ -14,6 +14,7 @@
 package cmpver
 
 import (
+	"encoding/hex"
 	"fmt"
 	"strings"
 
@@ -98,8 +99,12 @@ func NewConstraint(op Operation, version string) (*Constraint, error) {
 // Dirty versions and pre versions are regarded as standard version.
 // For example: 'v5.1.2-dev' and 'v5.1.2-betav1' are regarded as 'v5.1.2'.
 //
-// Latest, nightly or master version is larger than any version
+// sha256, Latest, nightly or master version is larger than any version
 func (c *Constraint) Check(version string) (bool, error) {
+	if isSha(version) {
+		return compareSha(c.op), nil
+	}
+
 	if isLatest(version) {
 		return compareLatest(c.op), nil
 	}
@@ -146,6 +151,30 @@ func isLatest(version string) bool {
 
 func compareLatest(op Operation) bool {
 	// latest is greater than any version
+	switch op {
+	case Greater, GreaterOrEqual:
+		return true
+	case Less, LessOrEqual:
+		return false
+	}
+
+	return false
+}
+
+func isSha(version string) bool {
+	if len(version) != 64 {
+		return false
+	}
+	_, err := hex.DecodeString(version)
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+func compareSha(op Operation) bool {
+	// Sha is greater than any version
 	switch op {
 	case Greater, GreaterOrEqual:
 		return true
