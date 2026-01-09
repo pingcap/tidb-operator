@@ -15,21 +15,16 @@
 package updater
 
 import (
-	"fmt"
+	"slices"
+	"strconv"
 
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 )
 
-const (
-	maxPreferPolicy = 30
-)
-
 type PreferPolicy[R runtime.Instance] interface {
-	Prefer([]R) []R
-}
-
-type ScoredPreferPolicy[R runtime.Instance] interface {
-	Score() Score
+	// Prefer returns the preferred instances
+	// If no preferred, just return nil or empty
 	Prefer([]R) []R
 }
 
@@ -43,75 +38,50 @@ type Selector[R runtime.Instance] interface {
 	Choose([]R) string
 }
 
-type Score uint32
-
-type scoredPreferPolicy[R runtime.Instance] struct {
-	PreferPolicy[R]
-
-	score Score
-}
-
-func scored[R runtime.Instance](s Score, p PreferPolicy[R]) ScoredPreferPolicy[R] {
-	return &scoredPreferPolicy[R]{
-		PreferPolicy: p,
-		score:        s,
-	}
-}
-
-func (p *scoredPreferPolicy[R]) Score() Score {
-	return p.score
-}
-
 type selector[R runtime.Instance] struct {
-	ps []ScoredPreferPolicy[R]
+	ps []PreferPolicy[R]
 }
 
+// NewSelector with prefer policies, the last policy has highest priority
 func NewSelector[R runtime.Instance](ps ...PreferPolicy[R]) Selector[R] {
-	if len(ps) > maxPreferPolicy {
-		// TODO: use a util to panic for unreachable code
-		panic(fmt.Sprintf("cannot new selector with too much prefer policy: %d", len(ps)))
-	}
-	s := selector[R]{}
-	for i, p := range ps {
-		s.ps = append(s.ps, scored(Score(1<<(i+1)), p))
+	s := selector[R]{
+		ps: ps,
 	}
 
 	return &s
 }
 
 func (s *selector[R]) Choose(allowed []R) string {
-	nameToIndex := make(map[string]int, len(allowed))
-	scores := make([]uint32, len(allowed))
-	for index, in := range allowed {
-		nameToIndex[in.GetName()] = index
-		scores[index] = 1
+	// return early if no allowed
+	if len(allowed) == 0 {
+		return ""
 	}
-	for _, p := range s.ps {
+
+	for _, p := range slices.Backward(s.ps) {
 		preferred := p.Prefer(allowed)
-		for _, ins := range preferred {
-			index, ok := nameToIndex[ins.GetName()]
-			if !ok {
-				panic("prefer should always return items from allowed")
-			}
-			scores[index] += uint32(p.Score())
+		switch {
+		case len(preferred) == 1:
+			// only one preferred, return this one
+			return preferred[0].GetName()
+		case len(preferred) == 0:
+			// no preferred, see next policy
+			continue
 		}
+
+		// more than one preferred, minimize the allowed set
+		allowed = preferred
 	}
 
-	var choosed int
-	maximum := uint32(0)
-	for index, score := range scores {
-		if score > maximum {
-			choosed = index
-			maximum = score
-		}
+	// no preferred, return first allowed
+	if len(allowed) > 0 {
+		return allowed[0].GetName()
 	}
-
-	return allowed[choosed].GetName()
+	return ""
 }
 
 func PreferUnready[R runtime.Instance]() PreferPolicy[R] {
 	return PreferPolicyFunc[R](func(s []R) []R {
-		unavail := []R{}
+		var unavail []R
 		for _, in := range s {
 			if !in.IsUpToDate() || !in.IsReady() {
 				unavail = append(unavail, in)
@@ -123,12 +93,52 @@ func PreferUnready[R runtime.Instance]() PreferPolicy[R] {
 
 func PreferNotRunning[R runtime.Instance]() PreferPolicy[R] {
 	return PreferPolicyFunc[R](func(s []R) []R {
-		unavail := []R{}
+		var unavail []R
 		for _, in := range s {
 			if in.IsNotRunning() {
 				unavail = append(unavail, in)
 			}
 		}
 		return unavail
+	})
+}
+
+// PreferPriority returns instances which have a minimal priority val in annotation
+// 0 is the highest priority
+// unset/invalid is the lowest priority
+func PreferPriority[R runtime.Instance]() PreferPolicy[R] {
+	return PreferPolicyFunc[R](func(s []R) []R {
+		var chosen []R
+		var minimal int64 = -1
+		for _, in := range s {
+			anno := in.GetAnnotations()
+			sPrio, ok := anno[v1alpha1.AnnoKeyPriority]
+			if !ok {
+				continue
+			}
+			// not a valid priority
+			// TODO(liubo02): add a validation
+			prio, err := strconv.ParseInt(sPrio, 10, 64)
+			if err != nil || prio < 0 {
+				continue
+			}
+
+			switch {
+			case minimal == -1:
+				minimal = prio
+				chosen = []R{in}
+			case prio < minimal:
+				minimal = prio
+				chosen = []R{in}
+			case prio == minimal:
+				chosen = append(chosen, in)
+			}
+		}
+
+		if minimal == -1 {
+			return s
+		}
+
+		return chosen
 	})
 }

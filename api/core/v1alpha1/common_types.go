@@ -164,6 +164,12 @@ const (
 
 	// Features is recorded to check whether the pod should be restarted because of changes of features
 	AnnoKeyFeatures = AnnoKeyPrefix + "features"
+
+	// Priority is the manually specified priority for the scale-in/update operation, the val is a non-negative integer.
+	// 0 is the highest priority to be chosen to be deleted.
+	// unset is the lowest priority.
+	// Priority is the highest doesn't mean the instance must be chosen. For example, operator will try to ensure the topology spreading.
+	AnnoKeyPriority = AnnoKeyPrefix + "priority"
 )
 
 // ConfigUpdateStrategy represents the strategy to update configuration.
