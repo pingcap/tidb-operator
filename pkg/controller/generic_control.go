@@ -463,38 +463,39 @@ func (c *realGenericControlInterface) CreateOrUpdate(controller, obj client.Obje
 	// 1. check whether object exists
 	exist, err := c.Exist(client.ObjectKeyFromObject(desired), obj)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to check %s caused by %w", obj.GetName(), err)
 	}
+	klog.Infof("get obj %s/%s is %v", obj.GetNamespace(), obj.GetName(), exist)
 	if exist {
 
 		// 2. object has already existed, merge our desired changes to it
 		existing, err := EmptyClone(obj)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to empty clone %s caused by %w", obj.GetName(), err)
 		}
 		key := client.ObjectKeyFromObject(existing)
 		err = c.client.Get(context.TODO(), key, existing)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get %s caused by %w", obj.GetName(), err)
 		}
 
 		if setOwnerFlag {
 			// 3. try to adopt the existing object
 			if err := setControllerReference(controller, existing); err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to set controller reference %s caused by %w", obj.GetName(), err)
 			}
 		}
 
 		mutated := DeepCopyClientObject(existing)
 		// 4. invoke mergeFn to mutate a copy of the existing object
 		if err := mergeFn(mutated, desired); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to merge %s to %s caused by %w", mutated.GetName(), desired.GetName(), err)
 		}
 
 		// 5. check if the copy is actually mutated
 		if !apiequality.Semantic.DeepEqual(existing, mutated) {
 			err := c.client.Update(context.TODO(), mutated)
-			return mutated, err
+			return mutated, fmt.Errorf("failed to update %s caused by %w", mutated.GetName(), err)
 		}
 
 		return mutated, nil
@@ -505,7 +506,10 @@ func (c *realGenericControlInterface) CreateOrUpdate(controller, obj client.Obje
 	if err == nil {
 		c.RecordControllerEvent("create", controller, desired, err)
 	}
-	return desired, err
+	if err != nil {
+		return desired, fmt.Errorf("failed to create %s caused by %w", desired.GetName(), err)
+	}
+	return desired, nil
 }
 
 // Create create an object to the Kubernetes cluster for controller
