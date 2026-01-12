@@ -128,12 +128,12 @@ func (m *realTidbDiscoveryManager) Reconcile(obj client.Object) error {
 	}
 	deploy, err := m.deps.TypedControl.CreateOrUpdateDeployment(obj, d)
 	if err != nil {
-		return controller.RequeueErrorf("error creating or updating discovery service: %v", err)
+		return controller.RequeueErrorf("error creating or updating discovery service when CreateOrUpdateDeployment: %v", err)
 	}
 	// RBAC ensured, reconcile
 	_, err = m.deps.TypedControl.CreateOrUpdateService(obj, getTidbDiscoveryService(metaObj, deploy, preferIPv6))
 	if err != nil {
-		return controller.RequeueErrorf("error creating or updating discovery service: %v", err)
+		return controller.RequeueErrorf("error creating or updating discovery service when CreateOrUpdateService: %v", err)
 	}
 	return nil
 }
