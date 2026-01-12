@@ -40,16 +40,17 @@ func (f GroupPatchFunc[F]) Patch(obj F) {
 }
 
 const (
-	defaultClusterName         = "tc"
-	defaultPDGroupName         = "pdg"
-	defaultTiDBGroupName       = "dbg"
-	defaultTiKVGroupName       = "kvg"
-	defaultTiFlashGroupName    = "fg"
-	defaultTiCDCGroupName      = "cg"
-	defaultTSOGroupName        = "tg"
-	defaultSchedulingGroupName = "sg"
-	defaultTiProxyGroupName    = "pg"
-	defaultTiKVWorkerGroupName = "wg"
+	defaultClusterName              = "tc"
+	defaultPDGroupName              = "pdg"
+	defaultTiDBGroupName            = "dbg"
+	defaultTiKVGroupName            = "kvg"
+	defaultTiFlashGroupName         = "fg"
+	defaultTiCDCGroupName           = "cg"
+	defaultTSOGroupName             = "tg"
+	defaultSchedulingGroupName      = "sg"
+	defaultResourceManagerGroupName = "rmg"
+	defaultTiProxyGroupName         = "pg"
+	defaultTiKVWorkerGroupName      = "wg"
 
 	defaultVersion        = "v8.5.2"
 	defaultTiProxyVersion = "v1.3.0"

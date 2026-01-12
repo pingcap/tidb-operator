@@ -107,3 +107,12 @@ func TiKVWorkerPatches(o *Options, ps ...data.GroupPatch[*v1alpha1.TiKVWorkerGro
 	}
 	return GroupPatches[scope.TiKVWorkerGroup](o, ps...)
 }
+
+func ResourceManagerPatches(o *Options, ps ...data.GroupPatch[*v1alpha1.ResourceManagerGroup]) []data.GroupPatch[*v1alpha1.ResourceManagerGroup] {
+	if o.NextGen {
+		ps = append(ps,
+			data.WithResourceManagerNextGen(),
+		)
+	}
+	return GroupPatches[scope.ResourceManagerGroup](o, ps...)
+}

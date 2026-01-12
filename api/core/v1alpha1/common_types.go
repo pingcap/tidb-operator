@@ -126,15 +126,16 @@ const (
 
 const (
 	// Label value for meta.LabelKeyComponent
-	LabelValComponentPD         = string(meta.ComponentPD)
-	LabelValComponentTiDB       = string(meta.ComponentTiDB)
-	LabelValComponentTiKV       = string(meta.ComponentTiKV)
-	LabelValComponentTiKVWorker = string(meta.ComponentTiKVWorker)
-	LabelValComponentTiFlash    = string(meta.ComponentTiFlash)
-	LabelValComponentTiCDC      = string(meta.ComponentTiCDC)
-	LabelValComponentTSO        = string(meta.ComponentTSO)
-	LabelValComponentScheduling = string(meta.ComponentScheduling)
-	LabelValComponentTiProxy    = string(meta.ComponentTiProxy)
+	LabelValComponentPD              = string(meta.ComponentPD)
+	LabelValComponentTiDB            = string(meta.ComponentTiDB)
+	LabelValComponentTiKV            = string(meta.ComponentTiKV)
+	LabelValComponentTiKVWorker      = string(meta.ComponentTiKVWorker)
+	LabelValComponentTiFlash         = string(meta.ComponentTiFlash)
+	LabelValComponentTiCDC           = string(meta.ComponentTiCDC)
+	LabelValComponentTSO             = string(meta.ComponentTSO)
+	LabelValComponentScheduling      = string(meta.ComponentScheduling)
+	LabelValComponentResourceManager = string(meta.ComponentResourceManager)
+	LabelValComponentTiProxy         = string(meta.ComponentTiProxy)
 	// Deprecated: use LabelValComponentScheduling
 	LabelValComponentScheduler = string(meta.ComponentScheduler)
 

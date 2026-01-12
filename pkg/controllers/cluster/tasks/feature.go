@@ -59,6 +59,11 @@ func (t *TaskFeatureGates) Sync(ctx task.Context[ReconcileContext]) task.Result 
 			return task.Fail().With("can't update feature gates for pd group %s/%s: %w", pdg.Namespace, pdg.Name, err)
 		}
 	}
+	for _, rmg := range rtx.ResourceManagerGroups {
+		if err := patchFeatures[scope.ResourceManagerGroup](ctx, t.Client, rmg, fs); err != nil {
+			return task.Fail().With("can't update feature gates for resource manager group %s/%s: %w", rmg.Namespace, rmg.Name, err)
+		}
+	}
 	for _, tg := range rtx.TSOGroups {
 		if err := patchFeatures[scope.TSOGroup](ctx, t.Client, tg, fs); err != nil {
 			return task.Fail().With("can't update feature gates for tso group %s/%s: %w", tg.Namespace, tg.Name, err)
