@@ -127,7 +127,8 @@ func TestGenericControlInterface_CreateOrUpdate(t *testing.T) {
 				g.Expect(err).To(Succeed())
 				g.Expect(result.Spec.Replicas).To(Equal(pointer.Int32Ptr(2)))
 				g.Expect(result.Spec.Template.Spec.DNSPolicy).To(Equal(corev1.DNSClusterFirstWithHostNet))
-				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				// 修改后的逻辑：对象已存在时，先检查 Exist，不调用 Create，直接 Update
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(0))
 				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(1))
 			},
 		},
@@ -169,7 +170,8 @@ func TestGenericControlInterface_CreateOrUpdate(t *testing.T) {
 				g.Expect(result.Spec.Replicas).To(Equal(pointer.Int32Ptr(2)))
 				g.Expect(result.Spec.Template.Spec.DNSPolicy).To(Equal(corev1.DNSClusterFirstWithHostNet))
 				g.Expect(result.Spec.Paused).To(BeTrue())
-				g.Expect(c.CreateTracker.GetRequests()).To(Equal(1))
+				// 修改后的逻辑：对象已存在时，先检查 Exist，不调用 Create，直接 Update
+				g.Expect(c.CreateTracker.GetRequests()).To(Equal(0))
 				g.Expect(c.UpdateTracker.GetRequests()).To(Equal(1))
 			},
 		},

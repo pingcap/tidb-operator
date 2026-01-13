@@ -495,7 +495,9 @@ func (c *realGenericControlInterface) CreateOrUpdate(controller, obj client.Obje
 		// 5. check if the copy is actually mutated
 		if !apiequality.Semantic.DeepEqual(existing, mutated) {
 			err := c.client.Update(context.TODO(), mutated)
-			return mutated, fmt.Errorf("failed to update %s caused by %w", mutated.GetName(), err)
+			if err != nil {
+				return nil, fmt.Errorf("failed to update %s caused by %w", mutated.GetName(), err)
+			}
 		}
 
 		return mutated, nil
