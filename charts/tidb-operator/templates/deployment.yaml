@@ -44,11 +44,14 @@ spec:
       - command:
         - /tidb-operator
         args:
-          - --backup-manager-image={{ template "image" (tuple .Values.backupManager.image $.Chart.AppVersion) }}
-          - --default-prestop-checker-image={{ template "image" (tuple .Values.prestopChecker.image $.Chart.AppVersion) }}
-          - --default-resource-syncer-image={{ template "image" (tuple .Values.resourceSyncer.image $.Chart.AppVersion) }}
+        - --backup-manager-image={{ template "image" (tuple .Values.backupManager.image $.Chart.AppVersion) }}
+        - --default-prestop-checker-image={{ template "image" (tuple .Values.prestopChecker.image $.Chart.AppVersion) }}
+        - --default-resource-syncer-image={{ template "image" (tuple .Values.resourceSyncer.image $.Chart.AppVersion) }}
+        {{- if eq .Values.skipCRDsManagement true }}
+        - --skip-crds-management
+        {{- end }}
         {{- if .Values.operator.extraArgs -}}
-        {{ toYaml .Values.operator.extraArgs | nindent 10 }}
+        {{ toYaml .Values.operator.extraArgs | nindent 8 }}
         {{- end }}
         image: "{{ template "image" (tuple .Values.operator.image $.Chart.AppVersion) }}"
         imagePullPolicy: {{ .Values.operator.pullPolicy | default "IfNotPresent" }}

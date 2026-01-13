@@ -20,6 +20,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	storagev1beta1 "k8s.io/api/storage/v1beta1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -42,6 +43,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(Scheme))
 	utilruntime.Must(v1alpha1.Install(Scheme))
 	utilruntime.Must(brv1alpha1.Install(Scheme))
+	utilruntime.Must(apiextensionsv1.AddToScheme(Scheme))
 }
 
 func GroupVersions() []schema.GroupVersion {
@@ -51,6 +53,7 @@ func GroupVersions() []schema.GroupVersion {
 		storagev1.SchemeGroupVersion,
 		v1alpha1.SchemeGroupVersion,
 		batchv1.SchemeGroupVersion,
+		apiextensionsv1.SchemeGroupVersion,
 	}
 	if kubefeat.Stage(kubefeat.VolumeAttributesClass).Enabled(kubefeat.BETA) {
 		gvs = append(gvs, storagev1beta1.SchemeGroupVersion)
