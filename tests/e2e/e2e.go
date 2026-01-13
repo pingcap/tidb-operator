@@ -30,6 +30,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/k8s"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/metrics"
 )
 
 const (
@@ -91,4 +92,21 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	return nil
 }, func([]byte) {
 	// This will run on all nodes
+})
+
+var _ = SynchronizedAfterSuite(func() {
+	// This will run on all nodes
+}, func() {
+	// Run only on Ginkgo node 1
+	// Check operator panic metrics after all tests complete
+	ctx := context.Background()
+
+	GinkgoWriter.Println("Checking operator panic metrics...")
+
+	// load kubeconfig
+	restConfig, err := k8s.LoadConfig()
+	Expect(err).NotTo(HaveOccurred())
+
+	// check panic metrics
+	Expect(metrics.CheckPanicMetrics(ctx, restConfig, operatorNamespace, operatorDeploymentName)).NotTo(HaveOccurred())
 })
