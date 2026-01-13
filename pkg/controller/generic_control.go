@@ -460,24 +460,21 @@ func (c *realGenericControlInterface) CreateOrUpdate(controller, obj client.Obje
 		}
 	}
 
-	// 1. check whether object exists
-	exist, err := c.Exist(client.ObjectKeyFromObject(desired), obj)
+	// 1. try to get existing object
+	existing, err := EmptyClone(obj)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check %s caused by %w", obj.GetName(), err)
+		return nil, fmt.Errorf("failed to empty clone %s caused by %w", obj.GetName(), err)
 	}
-	klog.Infof("get obj %s/%s is %v", obj.GetNamespace(), obj.GetName(), exist)
-	if exist {
+	key := client.ObjectKeyFromObject(desired)
+	err = c.client.Get(context.TODO(), key, existing)
+	if err != nil && !errors.IsNotFound(err) {
+		return nil, fmt.Errorf("failed to get %s caused by %w", obj.GetName(), err)
+	}
 
+	exist := err == nil
+	klog.Infof("get obj %s/%s exist=%v", obj.GetNamespace(), obj.GetName(), exist)
+	if exist {
 		// 2. object has already existed, merge our desired changes to it
-		existing, err := EmptyClone(obj)
-		if err != nil {
-			return nil, fmt.Errorf("failed to empty clone %s caused by %w", obj.GetName(), err)
-		}
-		key := client.ObjectKeyFromObject(existing)
-		err = c.client.Get(context.TODO(), key, existing)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get %s caused by %w", obj.GetName(), err)
-		}
 
 		if setOwnerFlag {
 			// 3. try to adopt the existing object
