@@ -106,6 +106,8 @@ crds:
 - clusters.core.pingcap.com
 - pdgroups.core.pingcap.com
 - pds.core.pingcap.com
+- resourcemanagergroups.core.pingcap.com
+- resourcemanagers.core.pingcap.com
 - schedulergroups.core.pingcap.com
 - schedulers.core.pingcap.com
 - schedulinggroups.core.pingcap.com
