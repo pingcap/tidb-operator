@@ -31,8 +31,6 @@ import (
 )
 
 const (
-	// OperatorPodLabelSelector is the label selector for operator pods
-	OperatorPodLabelSelector = "app.kubernetes.io/component=controller"
 	// OperatorMetricsPort is the port where operator exposes metrics
 	OperatorMetricsPort = 8080
 )
@@ -144,5 +142,5 @@ func parseOperatorPanicMetric(metricsReader io.Reader) (float64, error) {
 	}
 
 	// If metric not found, it means no panics have occurred (metric not yet emitted)
-	return 0, fmt.Errorf("no metrics emitted")
+	return 0, nil
 }
