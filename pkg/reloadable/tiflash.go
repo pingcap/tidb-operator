@@ -103,6 +103,9 @@ func convertTiFlashTemplate(tmpl *v1alpha1.TiFlashTemplate) *v1alpha1.TiFlashTem
 		newTmpl.Spec.LogTailer.Image = nil
 	}
 
+	// server labels can be updated dynamically
+	newTmpl.Spec.Server.Labels = nil
+
 	newTmpl.Spec.Volumes = convertVolumes(newTmpl.Spec.Volumes)
 	newTmpl.Spec.Overlay = convertOverlay(newTmpl.Spec.Overlay)
 
