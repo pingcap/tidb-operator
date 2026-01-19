@@ -661,14 +661,14 @@ status:
 			go func() {
 				err := ApplyCRDs(ctx, cfg)
 				if c.wantErr {
-					require.Error(tt, err)
+					assert.Error(tt, err)
 				} else {
-					require.NoError(tt, err)
+					assert.NoError(tt, err)
 
 					// Verify the expected number of CRDs were applied
 					var crdList apiextensionsv1.CustomResourceDefinitionList
 					err := fc.List(ctx, &crdList)
-					require.NoError(tt, err)
+					assert.NoError(tt, err)
 					assert.Len(tt, crdList.Items, c.wantCount)
 
 					// Verify all CRDs have the version annotation
