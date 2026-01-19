@@ -30,7 +30,7 @@ type (
 	MatchingFields         = client.MatchingFields
 	InNamespace            = client.InNamespace
 
-	Options = client.Options
+	// Options = client.Options
 
 	// ListOptions from client
 	ListOptions = client.ListOptions

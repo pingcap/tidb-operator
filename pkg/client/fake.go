@@ -62,6 +62,8 @@ func NewFakeClient(objs ...client.Object) FakeClient {
 		Client: &applier{
 			WithWatch: fc,
 			parser:    &fakeParser{},
+			scheme:    scheme.Scheme,
+			codecs:    &scheme.Codecs,
 		},
 		fc: fc,
 	}

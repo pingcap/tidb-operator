@@ -27,7 +27,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	serializerjson "k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/managedfields"
@@ -39,8 +41,6 @@ import (
 	"sigs.k8s.io/structured-merge-diff/v4/fieldpath"
 	"sigs.k8s.io/structured-merge-diff/v4/typed"
 
-	"github.com/pingcap/tidb-operator/v2/pkg/scheme"
-	"github.com/pingcap/tidb-operator/v2/pkg/utils/kubefeat"
 	forkedproto "github.com/pingcap/tidb-operator/v2/third_party/kube-openapi/pkg/util/proto"
 )
 
@@ -78,6 +78,8 @@ func (r ApplyResult) String() string {
 type applier struct {
 	client.WithWatch
 	parser GVKParser
+	scheme *runtime.Scheme
+	codecs *serializer.CodecFactory
 }
 
 func (p *applier) Apply(ctx context.Context, obj client.Object, opts ...ApplyOption) error {
@@ -100,7 +102,7 @@ func (p *applier) ApplyWithResult(ctx context.Context, obj client.Object, opts .
 		opt.With(o)
 	}
 
-	gvks, _, err := scheme.Scheme.ObjectKinds(obj)
+	gvks, _, err := p.scheme.ObjectKinds(obj)
 	if err != nil {
 		return ApplyResultUnchanged, fmt.Errorf("cannot get gvks of the obj %T: %w", obj, err)
 	}
@@ -153,6 +155,8 @@ func (p *applier) ApplyWithResult(ctx context.Context, obj client.Object, opts .
 	if err := p.Patch(ctx, obj, &applyPatch{
 		expected: expected,
 		gvk:      gvks[0],
+		scheme:   p.scheme,
+		codecs:   p.codecs,
 	}, &client.PatchOptions{
 		FieldManager: DefaultFieldManager,
 		Force:        ptr.To(true),
@@ -245,6 +249,8 @@ func (p *applier) Extract(
 type applyPatch struct {
 	expected client.Object
 	gvk      schema.GroupVersionKind
+	scheme   *runtime.Scheme
+	codecs   *serializer.CodecFactory
 }
 
 func (*applyPatch) Type() types.PatchType {
@@ -252,11 +258,11 @@ func (*applyPatch) Type() types.PatchType {
 }
 
 func (p *applyPatch) Data(client.Object) ([]byte, error) {
-	encoder := scheme.Codecs.EncoderForVersion(
+	encoder := p.codecs.EncoderForVersion(
 		serializerjson.NewSerializerWithOptions(
 			serializerjson.DefaultMetaFactory,
-			scheme.Scheme,
-			scheme.Scheme,
+			p.scheme,
+			p.scheme,
 			serializerjson.SerializerOptions{
 				Yaml:   false,
 				Pretty: false,
@@ -297,8 +303,13 @@ func gvToAPIPath(gv schema.GroupVersion) string {
 	return resourcePath
 }
 
-func New(cfg *rest.Config, opts client.Options) (Client, error) {
-	kubefeat.MustInitFeatureGates(cfg)
+func New(cfg *rest.Config, opts ...Option) (Client, error) {
+	o := DefaultOptions()
+	for _, opt := range opts {
+		opt.With(o)
+	}
+
+	codecs := serializer.NewCodecFactory(o.Scheme)
 
 	dc, err := discovery.NewDiscoveryClientForConfig(cfg)
 	if err != nil {
@@ -310,14 +321,13 @@ func New(cfg *rest.Config, opts client.Options) (Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	gvs := scheme.GroupVersions()
 
-	parser, err := NewGVKParser(gvs, paths)
+	parser, err := NewGVKParser(o.GVs, paths)
 	if err != nil {
 		return nil, fmt.Errorf("cannot new gvk parser: %w", err)
 	}
 
-	c, err := client.NewWithWatch(cfg, opts)
+	c, err := client.NewWithWatch(cfg, o.Options)
 	if err != nil {
 		return nil, err
 	}
@@ -325,6 +335,8 @@ func New(cfg *rest.Config, opts client.Options) (Client, error) {
 	return &applier{
 		WithWatch: c,
 		parser:    parser,
+		scheme:    o.Scheme,
+		codecs:    &codecs,
 	}, nil
 }
 

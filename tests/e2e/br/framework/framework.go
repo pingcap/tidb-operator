@@ -104,7 +104,7 @@ func initK8sClient() (kubernetes.Interface, client.Client, *rest.Config) {
 	gomega.Expect(v1alpha1.Install(scheme)).To(gomega.Succeed())
 
 	// also init a controller-runtime client
-	k8sClient, err := client.New(restConfig, client.Options{Scheme: scheme})
+	k8sClient, err := client.New(restConfig, client.Scheme(scheme))
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	return clientset, k8sClient, restConfig
 }

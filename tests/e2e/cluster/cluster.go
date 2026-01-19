@@ -44,9 +44,9 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/config"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/data"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/k8s"
@@ -78,7 +78,7 @@ func initK8sClient() (kubernetes.Interface, client.Client, *rest.Config) {
 	Expect(v1alpha1.Install(scheme)).To(Succeed())
 
 	// also init a controller-runtime client
-	k8sClient, err := client.New(restConfig, client.Options{Scheme: scheme})
+	k8sClient, err := client.New(restConfig, client.Scheme(scheme))
 	Expect(err).NotTo(HaveOccurred())
 	return clientset, k8sClient, restConfig
 }
