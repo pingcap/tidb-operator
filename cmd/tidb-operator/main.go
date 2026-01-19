@@ -188,7 +188,10 @@ func main() {
 		},
 		Cache: cacheOpt,
 		NewClient: func(cfg *rest.Config, opts ctrlcli.Options) (ctrlcli.Client, error) {
-			return client.New(cfg, opts)
+			return client.New(cfg,
+				client.FromRawOptions(&opts),
+				client.GroupVersions(scheme.DynamicGroupVersions()...),
+			)
 		},
 		LeaderElection:   enableLeaderElection,
 		LeaderElectionID: "c6a50700.pingcap.com",
@@ -205,9 +208,9 @@ func main() {
 }
 
 func applyCRDs(ctx context.Context, kubeconfig *rest.Config, allowEmptyOldVersion bool) error {
-	c, err := client.New(kubeconfig, ctrlcli.Options{
-		Scheme: scheme.Scheme,
-	})
+	c, err := client.New(kubeconfig,
+		client.GroupVersions(scheme.CRDGroupVersions()...),
+	)
 	if err != nil {
 		return fmt.Errorf("cannot new client for applying crd: %w", err)
 	}

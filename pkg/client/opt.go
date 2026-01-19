@@ -17,8 +17,57 @@ package client
 import (
 	"strings"
 
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/pingcap/tidb-operator/v2/pkg/scheme"
 )
+
+type Options struct {
+	client.Options
+
+	GVs []schema.GroupVersion
+}
+
+type Option interface {
+	With(opts *Options)
+}
+
+type OptionFunc func(opts *Options)
+
+func (f OptionFunc) With(opts *Options) {
+	f(opts)
+}
+
+func DefaultOptions() *Options {
+	o := Options{}
+	o.Scheme = scheme.Scheme
+	o.GVs = scheme.GroupVersions()
+
+	return &o
+}
+
+func GroupVersions(gvs ...schema.GroupVersion) Option {
+	return OptionFunc(func(opts *Options) {
+		opts.GVs = gvs
+	})
+}
+
+func Scheme(s *runtime.Scheme) Option {
+	return OptionFunc(func(opts *Options) {
+		opts.Scheme = s
+	})
+}
+
+func FromRawOptions(opt *client.Options) Option {
+	return OptionFunc(func(opts *Options) {
+		opts.Options = *opt
+		if opts.Scheme == nil {
+			opts.Scheme = scheme.Scheme
+		}
+	})
+}
 
 // AnnoKeyIgnoreDiff defines the fields list to ignore difference which may be produced by mutating webhook.
 // Fields are separated by comma. Example: "spec.xxx,spec.yyy"

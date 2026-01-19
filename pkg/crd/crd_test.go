@@ -15,10 +15,12 @@
 package crd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -464,7 +466,7 @@ spec:
 				CRDDir:               fsys,
 			}
 
-			err := applyCRD(tt.Context(), cfg, c.fileName)
+			crdName, err := applyCRD(tt.Context(), cfg, c.fileName)
 
 			if c.wantErr {
 				require.Error(tt, err)
@@ -473,6 +475,7 @@ spec:
 				}
 			} else {
 				require.NoError(tt, err)
+				assert.Equal(tt, "test.example.com", crdName)
 
 				// Verify the CRD was applied with correct version annotation
 				var crd apiextensionsv1.CustomResourceDefinition
@@ -505,6 +508,10 @@ spec:
     schema:
       openAPIV3Schema:
         type: object
+status:
+  conditions:
+  - type: Established
+    status: True
 `
 
 	sampleCRD2 := `apiVersion: apiextensions.k8s.io/v1
@@ -524,12 +531,18 @@ spec:
     schema:
       openAPIV3Schema:
         type: object
+status:
+  conditions:
+  - type: Established
+    status: True
 `
 
 	cases := []struct {
 		name        string
 		files       map[string]string
 		version     string
+		established []string
+
 		mockError   error
 		mockErrorOp string
 		wantErr     bool
@@ -541,9 +554,25 @@ spec:
 				"crd/test1.yaml": sampleCRD1,
 				"crd/test2.yaml": sampleCRD2,
 			},
-			version:   "1.0.0",
+			version: "1.0.0",
+			established: []string{
+				"test1.example.com",
+				"test2.example.com",
+			},
 			wantErr:   false,
 			wantCount: 2,
+		},
+		{
+			name: "cannot wait all CRDs established",
+			files: map[string]string{
+				"crd/test1.yaml": sampleCRD1,
+				"crd/test2.yaml": sampleCRD2,
+			},
+			established: []string{
+				"test1.example.com",
+			},
+			version: "1.0.0",
+			wantErr: true,
 		},
 		{
 			name: "skip non-yaml files",
@@ -552,6 +581,10 @@ spec:
 				"crd/test2.yaml":  sampleCRD2,
 				"crd/readme.txt":  "not a yaml file",
 				"crd/config.json": "{}",
+			},
+			established: []string{
+				"test1.example.com",
+				"test2.example.com",
 			},
 			version:   "1.0.0",
 			wantErr:   false,
@@ -621,23 +654,262 @@ spec:
 				CRDDir:               fsys,
 			}
 
-			err := ApplyCRDs(tt.Context(), cfg)
+			ctx, cancel := context.WithTimeout(tt.Context(), time.Second*3)
+			defer cancel()
+
+			done := make(chan struct{})
+			go func() {
+				err := ApplyCRDs(ctx, cfg)
+				if c.wantErr {
+					require.Error(tt, err)
+				} else {
+					require.NoError(tt, err)
+
+					// Verify the expected number of CRDs were applied
+					var crdList apiextensionsv1.CustomResourceDefinitionList
+					err := fc.List(ctx, &crdList)
+					require.NoError(tt, err)
+					assert.Len(tt, crdList.Items, c.wantCount)
+
+					// Verify all CRDs have the version annotation
+					for _, crd := range crdList.Items {
+						assert.Equal(tt, c.version, crd.Annotations[versionAnnoKey])
+					}
+				}
+				close(done)
+			}()
+
+			if !c.wantErr {
+				created := false
+				for range 5 {
+					var crdList apiextensionsv1.CustomResourceDefinitionList
+					err := fc.List(ctx, &crdList)
+					require.NoError(tt, err)
+					if len(crdList.Items) == c.wantCount {
+						created = true
+						break
+					}
+					time.Sleep(time.Second)
+				}
+
+				require.True(tt, created)
+
+				for _, name := range c.established {
+					crd := apiextensionsv1.CustomResourceDefinition{}
+					err1 := fc.Get(ctx, client.ObjectKey{Name: name}, &crd)
+					require.NoError(tt, err1)
+
+					crd.Status.Conditions = append(crd.Status.Conditions, apiextensionsv1.CustomResourceDefinitionCondition{
+						Type:   apiextensionsv1.Established,
+						Status: apiextensionsv1.ConditionTrue,
+					})
+
+					err2 := fc.Status().Update(ctx, &crd)
+					require.NoError(tt, err2)
+				}
+			}
+
+			<-done
+		})
+	}
+}
+
+func TestWaitCRDEstablished(t *testing.T) {
+	cases := []struct {
+		name    string
+		crdName string
+		crd     *apiextensionsv1.CustomResourceDefinition
+		mockErr error
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name:    "CRD is already established",
+			crdName: "test.example.com",
+			crd: &apiextensionsv1.CustomResourceDefinition{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test.example.com",
+				},
+				Status: apiextensionsv1.CustomResourceDefinitionStatus{
+					Conditions: []apiextensionsv1.CustomResourceDefinitionCondition{
+						{
+							Type:   apiextensionsv1.Established,
+							Status: apiextensionsv1.ConditionTrue,
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name:    "CRD has Established condition with False status",
+			crdName: "test.example.com",
+			crd: &apiextensionsv1.CustomResourceDefinition{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test.example.com",
+				},
+				Status: apiextensionsv1.CustomResourceDefinitionStatus{
+					Conditions: []apiextensionsv1.CustomResourceDefinitionCondition{
+						{
+							Type:   apiextensionsv1.Established,
+							Status: apiextensionsv1.ConditionFalse,
+						},
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "can't wait for crd test.example.com established",
+		},
+		{
+			name:    "CRD has no conditions",
+			crdName: "test.example.com",
+			crd: &apiextensionsv1.CustomResourceDefinition{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test.example.com",
+				},
+				Status: apiextensionsv1.CustomResourceDefinitionStatus{
+					Conditions: []apiextensionsv1.CustomResourceDefinitionCondition{},
+				},
+			},
+			wantErr: true,
+			errMsg:  "can't wait for crd test.example.com established",
+		},
+		{
+			name:    "CRD has other conditions but not Established",
+			crdName: "test.example.com",
+			crd: &apiextensionsv1.CustomResourceDefinition{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test.example.com",
+				},
+				Status: apiextensionsv1.CustomResourceDefinitionStatus{
+					Conditions: []apiextensionsv1.CustomResourceDefinitionCondition{
+						{
+							Type:   apiextensionsv1.NamesAccepted,
+							Status: apiextensionsv1.ConditionTrue,
+						},
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "can't wait for crd test.example.com established",
+		},
+		{
+			name:    "CRD not found",
+			crdName: "notfound.example.com",
+			crd:     nil,
+			wantErr: true,
+			errMsg:  "can't wait for crd",
+		},
+		{
+			name:    "Get returns error (not NotFound)",
+			crdName: "test.example.com",
+			crd:     nil,
+			mockErr: errors.New("internal server error"),
+			wantErr: true,
+			errMsg:  "can't get crd test.example.com",
+		},
+		{
+			name:    "CRD with multiple conditions including Established=True",
+			crdName: "test.example.com",
+			crd: &apiextensionsv1.CustomResourceDefinition{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test.example.com",
+				},
+				Status: apiextensionsv1.CustomResourceDefinitionStatus{
+					Conditions: []apiextensionsv1.CustomResourceDefinitionCondition{
+						{
+							Type:   apiextensionsv1.NamesAccepted,
+							Status: apiextensionsv1.ConditionTrue,
+						},
+						{
+							Type:   apiextensionsv1.Established,
+							Status: apiextensionsv1.ConditionTrue,
+						},
+						{
+							Type:   apiextensionsv1.Terminating,
+							Status: apiextensionsv1.ConditionFalse,
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name:    "CRD with Established as first condition",
+			crdName: "test.example.com",
+			crd: &apiextensionsv1.CustomResourceDefinition{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test.example.com",
+				},
+				Status: apiextensionsv1.CustomResourceDefinitionStatus{
+					Conditions: []apiextensionsv1.CustomResourceDefinitionCondition{
+						{
+							Type:   apiextensionsv1.Established,
+							Status: apiextensionsv1.ConditionTrue,
+						},
+						{
+							Type:   apiextensionsv1.NamesAccepted,
+							Status: apiextensionsv1.ConditionTrue,
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name:    "CRD with Established as last condition",
+			crdName: "test.example.com",
+			crd: &apiextensionsv1.CustomResourceDefinition{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test.example.com",
+				},
+				Status: apiextensionsv1.CustomResourceDefinitionStatus{
+					Conditions: []apiextensionsv1.CustomResourceDefinitionCondition{
+						{
+							Type:   apiextensionsv1.NamesAccepted,
+							Status: apiextensionsv1.ConditionTrue,
+						},
+						{
+							Type:   apiextensionsv1.Terminating,
+							Status: apiextensionsv1.ConditionFalse,
+						},
+						{
+							Type:   apiextensionsv1.Established,
+							Status: apiextensionsv1.ConditionTrue,
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for i := range cases {
+		c := &cases[i]
+		t.Run(c.name, func(tt *testing.T) {
+			tt.Parallel()
+
+			var objs []client.Object
+			if c.crd != nil {
+				objs = append(objs, c.crd)
+			}
+			fc := client.NewFakeClient(objs...)
+			if c.mockErr != nil {
+				fc.WithError("get", "customresourcedefinitions", c.mockErr)
+			}
+
+			ctx, cancel := context.WithTimeout(tt.Context(), time.Second)
+			defer cancel()
+
+			err := waitCRDEstablished(ctx, fc, c.crdName)
 
 			if c.wantErr {
 				require.Error(tt, err)
+				if c.errMsg != "" {
+					assert.Contains(tt, err.Error(), c.errMsg)
+				}
 			} else {
 				require.NoError(tt, err)
-
-				// Verify the expected number of CRDs were applied
-				var crdList apiextensionsv1.CustomResourceDefinitionList
-				err := fc.List(tt.Context(), &crdList)
-				require.NoError(tt, err)
-				assert.Len(tt, crdList.Items, c.wantCount)
-
-				// Verify all CRDs have the version annotation
-				for _, crd := range crdList.Items {
-					assert.Equal(tt, c.version, crd.Annotations[versionAnnoKey])
-				}
 			}
 		})
 	}
