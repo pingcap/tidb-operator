@@ -53,11 +53,22 @@ func GroupVersions() []schema.GroupVersion {
 		storagev1.SchemeGroupVersion,
 		v1alpha1.SchemeGroupVersion,
 		batchv1.SchemeGroupVersion,
-		apiextensionsv1.SchemeGroupVersion,
 	}
+
+	return gvs
+}
+
+func DynamicGroupVersions() []schema.GroupVersion {
+	gvs := GroupVersions()
 	if kubefeat.Stage(kubefeat.VolumeAttributesClass).Enabled(kubefeat.BETA) {
 		gvs = append(gvs, storagev1beta1.SchemeGroupVersion)
 	}
 
 	return gvs
+}
+
+func CRDGroupVersions() []schema.GroupVersion {
+	return []schema.GroupVersion{
+		apiextensionsv1.SchemeGroupVersion,
+	}
 }

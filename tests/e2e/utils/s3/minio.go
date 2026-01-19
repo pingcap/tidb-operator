@@ -28,7 +28,6 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
-	"github.com/pingcap/tidb-operator/v2/pkg/scheme"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/portforwarder"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/waiter"
 )
@@ -46,9 +45,7 @@ type minioStorage struct {
 }
 
 func NewMinio(cfg *rest.Config) (Interface, error) {
-	c, err := client.New(cfg, client.Options{
-		Scheme: scheme.Scheme,
-	})
+	c, err := client.New(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("can't new client: %w", err)
 	}

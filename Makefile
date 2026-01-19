@@ -184,7 +184,6 @@ e2e: bin/kind release
 
 .PHONY: e2e/deploy
 e2e/deploy: bin/kubectl release
-	$(KUBECTL) $(KUBE_OPT) apply --server-side=true -f $(OUTPUT_DIR)/manifests/tidb-operator.crds.yaml
 	$(KUBECTL) $(KUBE_OPT) apply --server-side=true -f $(OUTPUT_DIR)/manifests/tidb-operator-e2e.yaml
 
 .PHONY: kube
