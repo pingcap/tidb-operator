@@ -103,6 +103,9 @@ func convertTiKVTemplate(tmpl *v1alpha1.TiKVTemplate) *v1alpha1.TiKVTemplate {
 		newTmpl.Spec.PreStop.Image = nil
 	}
 
+	// server labels can be updated dynamically
+	newTmpl.Spec.Server.Labels = nil
+
 	newTmpl.Spec.Volumes = convertVolumes(newTmpl.Spec.Volumes)
 	newTmpl.Spec.Overlay = convertOverlay(newTmpl.Spec.Overlay)
 
