@@ -34,6 +34,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/v2/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
+	"github.com/pingcap/tidb-operator/v2/third_party/kubernetes/pkg/controller/statefulset"
 )
 
 const (
@@ -56,6 +57,16 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 		}
 
 		if !reloadable.CheckResourceManagerPod(obj, pod) {
+			if statefulset.IsPodReady(pod) {
+				wait, err := transferPrimaryIfNeeded(ctx, logger, c, ck, obj)
+				if err != nil {
+					return task.Fail().With("pre delete pod of resource manager failed: %v", err)
+				}
+				if wait {
+					return task.Wait().With("wait for resource manager primary being transferred")
+				}
+			}
+
 			logger.Info("will delete the pod to recreate", "name", pod.Name, "namespace", pod.Namespace, "UID", pod.UID)
 
 			if err := c.Delete(ctx, pod); err != nil {
@@ -180,8 +191,7 @@ func buildReadinessProbe(cluster *v1alpha1.Cluster, port int32) *corev1.Probe {
 		scheme = "https"
 	}
 
-	// TODO: update to /health after RM supports it
-	readinessURL := fmt.Sprintf("%s://127.0.0.1:%d/status", scheme, port)
+	readinessURL := fmt.Sprintf("%s://127.0.0.1:%d/health", scheme, port)
 	command := []string{
 		"curl",
 		readinessURL,
