@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	"github.com/spf13/afero"
 	"github.com/spf13/pflag"
@@ -104,7 +105,11 @@ func run(cfg *Config) error {
 	}
 	mgr, err := ctrl.NewManager(kubeconfig, ctrl.Options{
 		HealthProbeBindAddress: cfg.ProbeAddr,
-		Cache:                  cacheOpt,
+		Metrics: server.Options{
+			// close metrics server
+			BindAddress: "0",
+		},
+		Cache: cacheOpt,
 	})
 	if err != nil {
 		return fmt.Errorf("unable to new manager: %w", err)
