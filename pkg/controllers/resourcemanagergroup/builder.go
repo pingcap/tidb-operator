@@ -27,12 +27,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskContextObject[scope.ResourceManagerGroup](state, r.Client),
 		task.IfBreak(common.CondObjectHasBeenDeleted[scope.ResourceManagerGroup](state)),
 
-		common.TaskContextCluster[scope.ResourceManagerGroup](state, r.Client),
-		task.IfBreak(common.CondClusterIsPaused(state)),
-		task.IfBreak(common.CondFeatureGatesIsNotSynced[scope.ResourceManagerGroup](state)),
-
 		common.TaskContextSlice[scope.ResourceManagerGroup](state, r.Client),
-
 		task.IfBreak(common.CondObjectIsDeleting[scope.ResourceManagerGroup](state),
 			common.TaskContextSlice[scope.ResourceManagerGroup](state, r.Client),
 			common.TaskGroupFinalizerDel[scope.ResourceManagerGroup](state, r.Client),
@@ -41,6 +36,10 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskStatusRevisionAndReplicas[scope.ResourceManagerGroup](state),
 			common.TaskStatusPersister[scope.ResourceManagerGroup](state, r.Client),
 		),
+
+		common.TaskContextCluster[scope.ResourceManagerGroup](state, r.Client),
+		task.IfBreak(common.CondClusterIsPaused(state)),
+		task.IfBreak(common.CondFeatureGatesIsNotSynced[scope.ResourceManagerGroup](state)),
 
 		common.TaskFinalizerAdd[scope.ResourceManagerGroup](state, r.Client),
 
