@@ -78,6 +78,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/metrics"
 	"github.com/pingcap/tidb-operator/v2/pkg/scheme"
 	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
+	rmm "github.com/pingcap/tidb-operator/v2/pkg/timanager/resourcemanager"
 	fm "github.com/pingcap/tidb-operator/v2/pkg/timanager/tiflash"
 	tsom "github.com/pingcap/tidb-operator/v2/pkg/timanager/tso"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/informertest"
@@ -242,6 +243,7 @@ func setup(ctx context.Context, mgr ctrl.Manager) error {
 	logger.Info("setup client manager")
 	pdcm := pdm.NewPDClientManager(mgr.GetLogger(), c)
 	tsocm := tsom.NewTSOClientManager(mgr.GetLogger(), c)
+	rmcm := rmm.NewResourceManagerClientManager(mgr.GetLogger(), c)
 	fcm := fm.NewTiFlashClientManager(mgr.GetLogger(), c)
 
 	logger.Info("setup volume modifier")
@@ -250,7 +252,7 @@ func setup(ctx context.Context, mgr ctrl.Manager) error {
 	am := adoption.New(ctrl.Log.WithName("adoption"))
 	tf := tracker.New()
 	setupLog.Info("setup controllers")
-	if err := setupControllers(mgr, c, pdcm, tsocm, fcm, vm, tf, am); err != nil {
+	if err := setupControllers(mgr, c, pdcm, tsocm, rmcm, fcm, vm, tf, am); err != nil {
 		setupLog.Error(err, "unable to setup controllers")
 		os.Exit(1)
 	}
@@ -262,6 +264,7 @@ func setup(ctx context.Context, mgr ctrl.Manager) error {
 	logger.Info("start client manager")
 	pdcm.Start(ctx)
 	tsocm.Start(ctx)
+	rmcm.Start(ctx)
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		return fmt.Errorf("unable to set up health check: %w", err)
@@ -380,6 +383,7 @@ func setupControllers(
 	c client.Client,
 	pdcm pdm.PDClientManager,
 	tsocm tsom.TSOClientManager,
+	rmcm rmm.ResourceManagerClientManager,
 	fcm fm.TiFlashClientManager,
 	vm volumes.ModifierFactory,
 	tf tracker.Factory,
@@ -479,7 +483,7 @@ func setupControllers(
 		{
 			name: "ResourceManagerGroup",
 			setupFunc: func() error {
-				return resourcemanagergroup.Setup(mgr, c, tf.AllocateFactory("resourcemanager"))
+				return resourcemanagergroup.Setup(mgr, c, rmcm, tf.AllocateFactory("resourcemanager"))
 			},
 		},
 		{

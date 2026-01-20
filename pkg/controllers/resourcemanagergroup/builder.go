@@ -52,6 +52,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			common.TaskStatusPersister[scope.ResourceManagerGroup](state, r.Client),
 		),
 
+		tasks.TaskContextRMClient(state, r.RMClientManager),
+
 		common.TaskRevision[runtime.ResourceManagerGroupTuple](state, r.Client),
 		tasks.TaskService(state, r.Client),
 		tasks.TaskUpdater(state, r.Client, r.AllocateFactory),
