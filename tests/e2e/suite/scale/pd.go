@@ -58,7 +58,7 @@ var _ = ginkgo.Describe("Scale PD", label.PD, label.Scale, func() {
 			ginkgo.Entry("1 to 3", 1, 3),
 		)
 
-		ginkgo.DescribeTable("scale and rolling restart",
+		ginkgo.DescribeTable("scale and rolling restart PD instance",
 			func(ctx context.Context, from, to int) {
 				pdg := f.MustCreatePD(ctx,
 					data.WithReplicas[scope.PDGroup](int32(from)),
@@ -77,6 +77,37 @@ var _ = ginkgo.Describe("Scale PD", label.PD, label.Scale, func() {
 
 				f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromPDGroup(pdg), changeTime, waiter.LongTaskTimeout))
 				f.WaitForPDGroupReady(ctx, pdg)
+			},
+			ginkgo.Entry("3 to 5", 3, 5),
+			ginkgo.Entry("5 to 3", 5, 3),
+		)
+
+		ginkgo.DescribeTable("scale and rolling restart resource manager",
+			func(ctx context.Context, from, to int) {
+				pdg := f.MustCreatePD(ctx,
+					data.WithReplicas[scope.PDGroup](int32(from)),
+					data.WithPDNextGen(),
+					data.WithMSMode(),
+				)
+				rmg := f.MustCreateResourceManager(ctx,
+					data.WithResourceManagerNextGen(),
+					data.WithReplicas[scope.ResourceManagerGroup](int32(from)),
+				)
+
+				f.WaitForPDGroupReady(ctx, pdg)
+				f.WaitForResourceManagerGroupReady(ctx, rmg)
+
+				nctx, cancel := context.WithCancel(ctx)
+				done := framework.AsyncWaitPodsRollingUpdateOnce[scope.ResourceManagerGroup](nctx, f, rmg, to)
+				defer func() { <-done }()
+				defer cancel()
+
+				changeTime := time.Now()
+
+				action.MustScaleAndRollingRestart[scope.ResourceManagerGroup](ctx, f, rmg, int32(to))
+
+				f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromResourceManagerGroup(rmg), changeTime, waiter.LongTaskTimeout))
+				f.WaitForResourceManagerGroupReady(ctx, rmg)
 			},
 			ginkgo.Entry("3 to 5", 3, 5),
 			ginkgo.Entry("5 to 3", 5, 3),

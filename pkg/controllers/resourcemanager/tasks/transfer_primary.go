@@ -32,7 +32,6 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/resourcemanagerapi"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	httputil "github.com/pingcap/tidb-operator/v2/pkg/utils/http"
-	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -49,24 +48,6 @@ const (
 var (
 	newRMClient = resourcemanagerapi.NewClient
 )
-
-// TaskTransferPrimary runs before deleting a ResourceManager instance.
-// It will try to transfer the microservice primary away from this instance if it is currently the primary.
-func TaskTransferPrimary(state *ReconcileContext, c client.Client) task.Task {
-	return task.NameTaskFunc(defaultTransferLogger, func(ctx context.Context) task.Result {
-		logger := logr.FromContextOrDiscard(ctx)
-		rm := state.Object()
-		cluster := state.Cluster()
-		wait, err := transferPrimaryIfNeeded(ctx, logger, c, cluster, rm)
-		if err != nil {
-			return task.Retry(defaultTransferWait).With("transfer resource manager primary failed: %v", err)
-		}
-		if wait {
-			return task.Retry(defaultTransferWait).With("wait for resource manager primary transfer")
-		}
-		return task.Complete().With("primary transfer checked")
-	})
-}
 
 func transferPrimaryIfNeeded(
 	ctx context.Context,

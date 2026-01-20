@@ -67,6 +67,27 @@ func TestTSOAvailability(ctx context.Context, f *framework.Framework, tg *v1alph
 	f.WaitForTSOGroupReady(ctx, tg)
 }
 
+func TestResourceManagerAvailability(ctx context.Context, f *framework.Framework, rmg *v1alpha1.ResourceManagerGroup, w *framework.Workload) {
+	f.Must(waiter.WaitForClusterPDRegistered(ctx, f.Client, f.Cluster, waiter.LongTaskTimeout))
+	// Prepare PD endpoints for region API access
+	pdEndpoints := f.Cluster.Status.PD
+
+	nctx, cancel := context.WithCancel(ctx)
+	rolling := framework.AsyncWaitPodsRollingUpdateOnce[scope.ResourceManagerGroup](nctx, f, rmg, int(*rmg.Spec.Replicas))
+	defer func() { <-rolling }()
+
+	done := w.MustRunPDRegionAccess(nctx, pdEndpoints)
+	defer func() { <-done }()
+
+	defer cancel()
+
+	changeTime := time.Now()
+	MustRollingRestart[scope.ResourceManagerGroup](ctx, f, rmg)
+
+	f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromResourceManagerGroup(rmg), changeTime, waiter.LongTaskTimeout))
+	f.WaitForResourceManagerGroupReady(ctx, rmg)
+}
+
 func TestTiDBAvailability(ctx context.Context, f *framework.Framework, ep string, dbg *v1alpha1.TiDBGroup, w *framework.Workload, opts ...workload.Option) {
 	nctx, cancel := context.WithCancel(ctx)
 	rolling := framework.AsyncWaitPodsRollingUpdateOnce[scope.TiDBGroup](nctx, f, dbg, int(*dbg.Spec.Replicas))
