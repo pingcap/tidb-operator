@@ -99,7 +99,9 @@ func TestTransferPrimaryIfNeeded_SkipWhenNotPrimary(t *testing.T) {
 	logger := logr.Discard()
 
 	pd := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/pd/api/v2/ms/primary/resource_manager", r.URL.Path)
+		if r.URL.Path != "/pd/api/v2/ms/primary/resource_manager" {
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
 		_ = json.NewEncoder(w).Encode("http://other-primary:1234")
 	}))
 	defer pd.Close()
@@ -182,7 +184,9 @@ func TestTransferPrimaryIfNeeded_TransferWhenPrimary(t *testing.T) {
 	myAddr := coreutil.InstanceAdvertiseURL[scope.ResourceManager](cluster, rm0, coreutil.ResourceManagerClientPort(rm0))
 
 	pd := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/pd/api/v2/ms/primary/resource_manager", r.URL.Path)
+		if r.URL.Path != "/pd/api/v2/ms/primary/resource_manager" {
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
 		_ = json.NewEncoder(w).Encode(myAddr)
 	}))
 	defer pd.Close()
@@ -235,7 +239,9 @@ func TestTransferPrimaryIfNeeded_SkipWhenNoHealthyTransferee(t *testing.T) {
 	myAddr := coreutil.InstanceAdvertiseURL[scope.ResourceManager](cluster, rm0, coreutil.ResourceManagerClientPort(rm0))
 
 	pd := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/pd/api/v2/ms/primary/resource_manager", r.URL.Path)
+		if r.URL.Path != "/pd/api/v2/ms/primary/resource_manager" {
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
 		_ = json.NewEncoder(w).Encode(myAddr)
 	}))
 	defer pd.Close()
