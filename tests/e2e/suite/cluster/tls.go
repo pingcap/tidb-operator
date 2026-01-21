@@ -44,7 +44,7 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 			cluster := f.Cluster.Name
 
 			ca := o.ClusterCA()
-			pdg := action.MustCreatePD(ctx, f, o)
+			pdg := action.MustCreatePD(ctx, f, o, data.WithResourceManager())
 			tg := f.MustCreateTSO(ctx,
 				data.WithTSONextGen(),
 				data.WithClusterTLS[scope.TSOGroup](ca, "tso-internal"),

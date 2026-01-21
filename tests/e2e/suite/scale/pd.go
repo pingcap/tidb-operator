@@ -88,6 +88,7 @@ var _ = ginkgo.Describe("Scale PD", label.PD, label.Scale, func() {
 					data.WithReplicas[scope.PDGroup](int32(from)),
 					data.WithPDNextGen(),
 					data.WithMSMode(),
+					data.WithResourceManager(),
 				)
 				rmg := f.MustCreateResourceManager(ctx,
 					data.WithResourceManagerNextGen(),
