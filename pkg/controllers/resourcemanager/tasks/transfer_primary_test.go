@@ -31,8 +31,10 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	operatorclient "github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/resourcemanagerapi"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 )
 
@@ -40,6 +42,30 @@ type fakeRMClient struct {
 	called     bool
 	transferee string
 	err        error
+}
+
+type fakePDClient struct {
+	underlay pdapi.PDClient
+}
+
+func (f *fakePDClient) HasSynced() bool {
+	return true
+}
+
+func (f *fakePDClient) Stores() pdm.StoreCache {
+	return nil
+}
+
+func (f *fakePDClient) Members() pdm.MemberCache {
+	return nil
+}
+
+func (f *fakePDClient) TSOMembers() pdm.TSOMemberCache {
+	return nil
+}
+
+func (f *fakePDClient) Underlay() pdapi.PDClient {
+	return f.underlay
 }
 
 func (f *fakeRMClient) TransferPrimary(ctx context.Context, transferee string) error {
@@ -63,7 +89,7 @@ func TestTransferPrimaryIfNeeded_SkipWhenNotGroupManaged(t *testing.T) {
 
 	fc := operatorclient.NewFakeClient(cluster, rm)
 
-	wait, err := transferPrimaryIfNeeded(ctx, logger, fc, cluster, rm)
+	wait, err := transferPrimaryIfNeeded(ctx, logger, fc, cluster, rm, nil)
 	require.NoError(t, err)
 	require.False(t, wait)
 }
@@ -115,7 +141,9 @@ func TestTransferPrimaryIfNeeded_SkipWhenNotPrimary(t *testing.T) {
 	}
 	defer func() { newRMClient = orig }()
 
-	wait, err := transferPrimaryIfNeeded(ctx, logger, fc, cluster, rm0)
+	pdc := &fakePDClient{underlay: pdapi.NewPDClient(pd.URL, 2*time.Second, nil)}
+
+	wait, err := transferPrimaryIfNeeded(ctx, logger, fc, cluster, rm0, pdc)
 	require.NoError(t, err)
 	require.False(t, wait)
 }
@@ -170,7 +198,9 @@ func TestTransferPrimaryIfNeeded_TransferWhenPrimary(t *testing.T) {
 	}
 	defer func() { newRMClient = orig }()
 
-	wait, err := transferPrimaryIfNeeded(ctx, logger, fc, cluster, rm0)
+	pdc := &fakePDClient{underlay: pdapi.NewPDClient(pd.URL, 2*time.Second, nil)}
+
+	wait, err := transferPrimaryIfNeeded(ctx, logger, fc, cluster, rm0, pdc)
 	require.NoError(t, err)
 	require.True(t, wait)
 	require.True(t, recorder.called)
@@ -220,7 +250,9 @@ func TestTransferPrimaryIfNeeded_SkipWhenNoHealthyTransferee(t *testing.T) {
 	}
 	defer func() { newRMClient = orig }()
 
-	wait, err := transferPrimaryIfNeeded(ctx, logger, fc, cluster, rm0)
+	pdc := &fakePDClient{underlay: pdapi.NewPDClient(pd.URL, 2*time.Second, nil)}
+
+	wait, err := transferPrimaryIfNeeded(ctx, logger, fc, cluster, rm0, pdc)
 	require.NoError(t, err)
 	require.False(t, wait)
 }

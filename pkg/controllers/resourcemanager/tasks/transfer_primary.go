@@ -17,9 +17,6 @@ package tasks
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
-	"fmt"
-	"net/http"
 	"strings"
 	"time"
 
@@ -31,18 +28,15 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/resourcemanagerapi"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
-	httputil "github.com/pingcap/tidb-operator/v2/pkg/utils/http"
+	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	pdMicroservicePrimaryPrefix = "pd/api/v2/ms/primary"
-	resourceManagerServiceName  = "resource_manager"
+	resourceManagerServiceName = "resource_manager"
 
-	defaultAPITimeout     = 5 * time.Second
-	defaultTransferWait   = 2 * time.Second
-	defaultTransferLogger = "TransferPrimary"
+	defaultAPITimeout = 5 * time.Second
 )
 
 var (
@@ -55,6 +49,7 @@ func transferPrimaryIfNeeded(
 	c client.Client,
 	cluster *v1alpha1.Cluster,
 	rm *v1alpha1.ResourceManager,
+	pdClient pdm.PDClient,
 ) (bool, error) {
 	groupName := rm.Labels[v1alpha1.LabelKeyGroup]
 	if groupName == "" {
@@ -63,6 +58,9 @@ func transferPrimaryIfNeeded(
 	}
 
 	if cluster == nil || strings.TrimSpace(cluster.Status.PD) == "" {
+		return false, nil
+	}
+	if pdClient == nil || pdClient.Underlay() == nil {
 		return false, nil
 	}
 
@@ -83,14 +81,7 @@ func transferPrimaryIfNeeded(
 		tlsConfig = cfg
 	}
 
-	hc := &http.Client{Timeout: defaultAPITimeout, Transport: &http.Transport{TLSClientConfig: tlsConfig}}
-
-	pdAddr := strings.TrimRight(strings.Split(cluster.Status.PD, ",")[0], "/")
-	if pdAddr == "" {
-		return false, nil
-	}
-
-	primaryAddr, err := getMicroservicePrimary(ctx, hc, pdAddr, resourceManagerServiceName)
+	primaryAddr, err := pdClient.Underlay().GetMicroServicePrimary(ctx, resourceManagerServiceName)
 	if err != nil {
 		return false, err
 	}
@@ -98,8 +89,9 @@ func transferPrimaryIfNeeded(
 		return false, nil
 	}
 
+	primaryAddr = strings.TrimRight(strings.TrimSpace(primaryAddr), "/")
 	myAddr := coreutil.InstanceAdvertiseURL[scope.ResourceManager](cluster, rm, coreutil.ResourceManagerClientPort(rm))
-	if myAddr == "" || primaryAddr != myAddr {
+	if myAddr == "" || normalizeMicroserviceAddr(primaryAddr) != normalizeMicroserviceAddr(myAddr) {
 		return false, nil
 	}
 
@@ -111,7 +103,7 @@ func transferPrimaryIfNeeded(
 
 	logger.Info("try to transfer resource manager primary", "from", rm.Name, "to", transferee.Name)
 
-	rmClient := newRMClient(strings.TrimRight(primaryAddr, "/"), defaultAPITimeout, tlsConfig)
+	rmClient := newRMClient(ensureAddrScheme(primaryAddr, coreutil.IsTLSClusterEnabled(cluster)), defaultAPITimeout, tlsConfig)
 	if err := rmClient.TransferPrimary(ctx, transferee.Name); err != nil {
 		return false, err
 	}
@@ -143,15 +135,21 @@ func listGroupResourceManagers(
 	return peers, nil
 }
 
-func getMicroservicePrimary(ctx context.Context, hc *http.Client, pdAddr, service string) (string, error) {
-	apiURL := fmt.Sprintf("%s/%s/%s", strings.TrimRight(pdAddr, "/"), pdMicroservicePrimaryPrefix, service)
-	body, err := httputil.GetBodyOK(ctx, hc, apiURL)
-	if err != nil {
-		return "", err
+func normalizeMicroserviceAddr(addr string) string {
+	addr = strings.TrimRight(strings.TrimSpace(addr), "/")
+	addr = strings.TrimPrefix(addr, "http://")
+	addr = strings.TrimPrefix(addr, "https://")
+	return addr
+}
+
+func ensureAddrScheme(addr string, tlsEnabled bool) string {
+	addr = strings.TrimRight(strings.TrimSpace(addr), "/")
+	if strings.HasPrefix(addr, "http://") || strings.HasPrefix(addr, "https://") {
+		return addr
 	}
-	var primary string
-	if err := json.Unmarshal(body, &primary); err != nil {
-		return "", err
+	scheme := "http"
+	if tlsEnabled {
+		scheme = "https"
 	}
-	return primary, nil
+	return scheme + "://" + addr
 }

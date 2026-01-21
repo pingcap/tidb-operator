@@ -271,6 +271,21 @@ func (mr *MockPDClientMockRecorder) GetTSOLeader(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTSOLeader", reflect.TypeOf((*MockPDClient)(nil).GetTSOLeader), ctx)
 }
 
+// GetMicroServicePrimary mocks base method.
+func (m *MockPDClient) GetMicroServicePrimary(ctx context.Context, service string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMicroServicePrimary", ctx, service)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMicroServicePrimary indicates an expected call of GetMicroServicePrimary.
+func (mr *MockPDClientMockRecorder) GetMicroServicePrimary(ctx, service any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMicroServicePrimary", reflect.TypeOf((*MockPDClient)(nil).GetMicroServicePrimary), ctx, service)
+}
+
 // GetTSOMembers mocks base method.
 func (m *MockPDClient) GetTSOMembers(ctx context.Context) ([]ServiceRegistryEntry, error) {
 	m.ctrl.T.Helper()

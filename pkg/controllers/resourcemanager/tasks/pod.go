@@ -58,7 +58,10 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 
 		if !reloadable.CheckResourceManagerPod(obj, pod) {
 			if statefulset.IsPodReady(pod) {
-				wait, err := transferPrimaryIfNeeded(ctx, logger, c, ck, obj)
+				if state.PDClient == nil {
+					return task.Wait().With("wait for pd client being ready")
+				}
+				wait, err := transferPrimaryIfNeeded(ctx, logger, c, ck, obj, state.PDClient)
 				if err != nil {
 					return task.Fail().With("pre delete pod of resource manager failed: %v", err)
 				}

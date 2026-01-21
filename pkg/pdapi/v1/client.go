@@ -93,6 +93,8 @@ type PDClient interface {
 	GetPDEtcdClient() (PDEtcdClient, error)
 
 	GetTSOLeader(ctx context.Context) (string, error)
+	// GetMicroServicePrimary returns primary address for a microservice.
+	GetMicroServicePrimary(ctx context.Context, service string) (string, error)
 
 	// GetTSOMembers returns all PD members service-addr from cluster by specific Micro Service.
 	GetTSOMembers(ctx context.Context) ([]ServiceRegistryEntry, error)
@@ -661,6 +663,20 @@ func (c *pdClient) GetTSOLeader(ctx context.Context) (string, error) {
 	var primary string
 	if err := json.Unmarshal(body, &primary); err != nil {
 		return "", fmt.Errorf("failed to get tso leader, cannot unmarshal response: %w", err)
+	}
+
+	return primary, nil
+}
+
+func (c *pdClient) GetMicroServicePrimary(ctx context.Context, service string) (string, error) {
+	apiURL := fmt.Sprintf("%s/%s/primary/%s", c.url, microServicePrefix, service)
+	body, err := httputil.GetBodyOK(ctx, c.httpClient, apiURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to get %s primary, error: %w", service, err)
+	}
+	var primary string
+	if err := json.Unmarshal(body, &primary); err != nil {
+		return "", fmt.Errorf("failed to unmarshal %s primary response: %w", service, err)
 	}
 
 	return primary, nil
