@@ -82,7 +82,8 @@ var _ = ginkgo.Describe("Scale PD", label.PD, label.Scale, func() {
 			ginkgo.Entry("5 to 3", 5, 3),
 		)
 
-		ginkgo.DescribeTable("scale and rolling restart resource manager",
+		// TODO: enable ResourceManager test after supporting latest image
+		ginkgo.PDescribeTable("scale and rolling restart resource manager",
 			func(ctx context.Context, from, to int) {
 				pdg := f.MustCreatePD(ctx,
 					data.WithReplicas[scope.PDGroup](int32(from)),

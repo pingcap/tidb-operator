@@ -115,7 +115,8 @@ var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label
 				action.TestTSOAvailability(ctx, f, tg, workload)
 			})
 
-			ginkgo.It("No error when rolling update resource manager in next-gen", func(ctx context.Context) {
+			// TODO: enable ResourceManager test after supporting latest image
+			ginkgo.PIt("No error when rolling update resource manager in next-gen", func(ctx context.Context) {
 				f.MustCreateS3(ctx)
 				pdg := f.MustCreatePD(ctx,
 					data.WithPDNextGen(),
