@@ -114,5 +114,41 @@ var _ = ginkgo.Describe("PD Availability Test", label.PD, label.KindAvail, label
 
 				action.TestTSOAvailability(ctx, f, tg, workload)
 			})
+
+			// TODO: enable ResourceManager test after supporting latest image
+			ginkgo.PIt("No error when rolling update resource manager in next-gen", func(ctx context.Context) {
+				f.MustCreateS3(ctx)
+				pdg := f.MustCreatePD(ctx,
+					data.WithPDNextGen(),
+					data.WithMSMode(),
+					data.WithResourceManager(),
+				)
+				kvg := f.MustCreateTiKV(ctx, data.WithTiKVNextGen())
+				dbg := f.MustCreateTiDB(ctx,
+					data.WithTiDBNextGen(),
+					data.WithKeyspace("SYSTEM"),
+				)
+				tg := f.MustCreateTSO(ctx,
+					data.WithTSONextGen(),
+					data.WithReplicas[scope.TSOGroup](2),
+				)
+				sg := f.MustCreateScheduling(ctx,
+					data.WithSchedulingNextGen(),
+					data.WithReplicas[scope.SchedulingGroup](2),
+				)
+				rmg := f.MustCreateResourceManager(ctx,
+					data.WithResourceManagerNextGen(),
+					data.WithReplicas[scope.ResourceManagerGroup](2),
+				)
+
+				f.WaitForPDGroupReady(ctx, pdg)
+				f.WaitForTiKVGroupReady(ctx, kvg)
+				f.WaitForTiDBGroupReady(ctx, dbg)
+				f.WaitForTSOGroupReady(ctx, tg)
+				f.WaitForSchedulingGroupReady(ctx, sg)
+				f.WaitForResourceManagerGroupReady(ctx, rmg)
+
+				action.TestResourceManagerAvailability(ctx, f, rmg, workload)
+			})
 		})
 })

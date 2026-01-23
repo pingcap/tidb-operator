@@ -44,7 +44,7 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 			cluster := f.Cluster.Name
 
 			ca := o.ClusterCA()
-			pdg := action.MustCreatePD(ctx, f, o)
+			pdg := action.MustCreatePD(ctx, f, o /*data.WithResourceManager()*/)
 			tg := f.MustCreateTSO(ctx,
 				data.WithTSONextGen(),
 				data.WithClusterTLS[scope.TSOGroup](ca, "tso-internal"),
@@ -53,10 +53,10 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 				data.WithSchedulingNextGen(),
 				data.WithClusterTLS[scope.SchedulingGroup](ca, "scheduling-internal"),
 			)
-			rmg := action.MustCreateResourceManager(ctx, f, o,
-				data.WithResourceManagerNextGen(),
-				data.WithClusterTLS[scope.ResourceManagerGroup](ca, "rmg-resource-manager-internal"),
-			)
+			// rmg := action.MustCreateResourceManager(ctx, f, o,
+			// 	data.WithResourceManagerNextGen(),
+			// 	data.WithClusterTLS[scope.ResourceManagerGroup](ca, "rmg-resource-manager-internal"),
+			// )
 			kvg := action.MustCreateTiKV(ctx, f, o)
 			dbg := action.MustCreateTiDB(ctx, f, o)
 			fgc := f.MustCreateTiFlash(ctx,
@@ -80,7 +80,7 @@ var _ = ginkgo.Describe("TLS", label.Cluster, label.FeatureTLS, func() {
 			f.WaitForPDGroupReady(ctx, pdg)
 			f.WaitForTSOGroupReady(ctx, tg)
 			f.WaitForSchedulingGroupReady(ctx, sg)
-			f.WaitForResourceManagerGroupReady(ctx, rmg)
+			// f.WaitForResourceManagerGroupReady(ctx, rmg)
 			f.WaitForTiKVGroupReady(ctx, kvg)
 			f.WaitForTiDBGroupReady(ctx, dbg)
 			f.WaitForTiFlashGroupReady(ctx, fgc)

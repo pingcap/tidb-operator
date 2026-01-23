@@ -14,7 +14,30 @@
 
 package tasks
 
+import (
+	"context"
+
+	"github.com/pingcap/tidb-operator/v2/pkg/timanager"
+	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
+)
+
 type ReconcileContext struct {
 	// TODO: replace all fields in ReconcileContext by State
 	State
+
+	PDClient pdm.PDClient
+}
+
+func TaskContextClient(state *ReconcileContext, cm pdm.PDClientManager) task.Task {
+	return task.NameTaskFunc("ContextClient", func(_ context.Context) task.Result {
+		ck := state.Cluster()
+		key := timanager.PrimaryKey(ck.Namespace, ck.Name)
+		pc, ok := cm.Get(key)
+		if !ok {
+			return task.Wait().With("pd client has not been registered yet")
+		}
+		state.PDClient = pc
+		return task.Complete().With("pd client is ready")
+	})
 }

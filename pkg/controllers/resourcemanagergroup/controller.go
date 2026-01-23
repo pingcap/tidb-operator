@@ -36,6 +36,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/resourcemanagergroup/tasks"
+	rmm "github.com/pingcap/tidb-operator/v2/pkg/timanager/resourcemanager"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/tracker"
@@ -45,13 +46,15 @@ type Reconciler struct {
 	Logger          logr.Logger
 	Client          client.Client
 	AllocateFactory tracker.AllocateFactory
+	RMClientManager rmm.ResourceManagerClientManager
 }
 
-func Setup(mgr manager.Manager, c client.Client, af tracker.AllocateFactory) error {
+func Setup(mgr manager.Manager, c client.Client, rmcm rmm.ResourceManagerClientManager, af tracker.AllocateFactory) error {
 	r := &Reconciler{
 		Logger:          mgr.GetLogger().WithName("ResourceManagerGroup"),
 		Client:          c,
 		AllocateFactory: af,
+		RMClientManager: rmcm,
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.ResourceManagerGroup{}).

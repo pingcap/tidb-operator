@@ -78,6 +78,14 @@ replica-schedule-limit = 8
 	})
 }
 
+func WithResourceManager() GroupPatch[*v1alpha1.PDGroup] {
+	return GroupPatchFunc[*v1alpha1.PDGroup](func(obj *v1alpha1.PDGroup) {
+		obj.Spec.Template.Spec.Config = `[micro-service]
+enable-resource-manager-fallback = false
+`
+	})
+}
+
 func WithPDNextGen() GroupPatch[*v1alpha1.PDGroup] {
 	return GroupPatchFunc[*v1alpha1.PDGroup](func(obj *v1alpha1.PDGroup) {
 		obj.Spec.Template.Spec.Version = "v9.0.0"

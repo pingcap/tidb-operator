@@ -202,6 +202,14 @@ func (f *Framework) MustCreateScheduling(ctx context.Context, ps ...data.GroupPa
 	return sg
 }
 
+// Deprecated: use action.MustCreateResourceManager
+func (f *Framework) MustCreateResourceManager(ctx context.Context, ps ...data.GroupPatch[*v1alpha1.ResourceManagerGroup]) *v1alpha1.ResourceManagerGroup {
+	sg := data.NewResourceManagerGroup(f.Namespace.Name, ps...)
+	ginkgo.By("Creating a resource manager group")
+	f.Must(f.Client.Create(ctx, sg))
+	return sg
+}
+
 // Deprecated: use action.MustCreateTiProxy
 func (f *Framework) MustCreateTiProxy(ctx context.Context, ps ...data.GroupPatch[*v1alpha1.TiProxyGroup]) *v1alpha1.TiProxyGroup {
 	tpg := data.NewTiProxyGroup(f.Namespace.Name, ps...)
