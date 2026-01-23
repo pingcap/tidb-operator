@@ -321,6 +321,11 @@ func (in *BackupScheduleSpec) DeepCopyInto(out *BackupScheduleSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.VolumeAttributesClassName != nil {
+		in, out := &in.VolumeAttributesClassName, &out.VolumeAttributesClassName
+		*out = new(string)
+		**out = **in
+	}
 	if in.ImagePullSecrets != nil {
 		in, out := &in.ImagePullSecrets, &out.ImagePullSecrets
 		*out = make([]v1.LocalObjectReference, len(*in))
@@ -410,6 +415,11 @@ func (in *BackupSpec) DeepCopyInto(out *BackupSpec) {
 	in.StorageProvider.DeepCopyInto(&out.StorageProvider)
 	if in.StorageClassName != nil {
 		in, out := &in.StorageClassName, &out.StorageClassName
+		*out = new(string)
+		**out = **in
+	}
+	if in.VolumeAttributesClassName != nil {
+		in, out := &in.VolumeAttributesClassName, &out.VolumeAttributesClassName
 		*out = new(string)
 		**out = **in
 	}
@@ -2860,6 +2870,11 @@ func (in *MasterSpec) DeepCopyInto(out *MasterSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.VolumeAttributesClassName != nil {
+		in, out := &in.VolumeAttributesClassName, &out.VolumeAttributesClassName
+		*out = new(string)
+		**out = **in
+	}
 	if in.Config != nil {
 		in, out := &in.Config, &out.Config
 		*out = new(MasterConfigWraper)
@@ -3511,6 +3526,11 @@ func (in *PDMSSpec) DeepCopyInto(out *PDMSSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.VolumeAttributesClassName != nil {
+		in, out := &in.VolumeAttributesClassName, &out.VolumeAttributesClassName
+		*out = new(string)
+		**out = **in
+	}
 	if in.StorageVolumes != nil {
 		in, out := &in.StorageVolumes, &out.StorageVolumes
 		*out = make([]StorageVolume, len(*in))
@@ -3996,6 +4016,11 @@ func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 	}
 	if in.StorageClassName != nil {
 		in, out := &in.StorageClassName, &out.StorageClassName
+		*out = new(string)
+		**out = **in
+	}
+	if in.VolumeAttributesClassName != nil {
+		in, out := &in.VolumeAttributesClassName, &out.VolumeAttributesClassName
 		*out = new(string)
 		**out = **in
 	}
@@ -4705,6 +4730,11 @@ func (in *PumpSpec) DeepCopyInto(out *PumpSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.VolumeAttributesClassName != nil {
+		in, out := &in.VolumeAttributesClassName, &out.VolumeAttributesClassName
+		*out = new(string)
+		**out = **in
+	}
 	if in.Config != nil {
 		in, out := &in.Config, &out.Config
 		*out = (*in).DeepCopy()
@@ -5030,6 +5060,11 @@ func (in *RestoreSpec) DeepCopyInto(out *RestoreSpec) {
 	in.PitrFullBackupStorageProvider.DeepCopyInto(&out.PitrFullBackupStorageProvider)
 	if in.StorageClassName != nil {
 		in, out := &in.StorageClassName, &out.StorageClassName
+		*out = new(string)
+		**out = **in
+	}
+	if in.VolumeAttributesClassName != nil {
+		in, out := &in.VolumeAttributesClassName, &out.VolumeAttributesClassName
 		*out = new(string)
 		**out = **in
 	}
@@ -5448,6 +5483,11 @@ func (in *StorageClaim) DeepCopyInto(out *StorageClaim) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.VolumeAttributesClassName != nil {
+		in, out := &in.VolumeAttributesClassName, &out.VolumeAttributesClassName
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
@@ -5502,6 +5542,11 @@ func (in *StorageVolume) DeepCopyInto(out *StorageVolume) {
 	*out = *in
 	if in.StorageClassName != nil {
 		in, out := &in.StorageClassName, &out.StorageClassName
+		*out = new(string)
+		**out = **in
+	}
+	if in.VolumeAttributesClassName != nil {
+		in, out := &in.VolumeAttributesClassName, &out.VolumeAttributesClassName
 		*out = new(string)
 		**out = **in
 	}
@@ -5709,6 +5754,11 @@ func (in *TiCDCSpec) DeepCopyInto(out *TiCDCSpec) {
 	}
 	if in.StorageClassName != nil {
 		in, out := &in.StorageClassName, &out.StorageClassName
+		*out = new(string)
+		**out = **in
+	}
+	if in.VolumeAttributesClassName != nil {
+		in, out := &in.VolumeAttributesClassName, &out.VolumeAttributesClassName
 		*out = new(string)
 		**out = **in
 	}
@@ -6249,6 +6299,11 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 	}
 	if in.StorageClassName != nil {
 		in, out := &in.StorageClassName, &out.StorageClassName
+		*out = new(string)
+		**out = **in
+	}
+	if in.VolumeAttributesClassName != nil {
+		in, out := &in.VolumeAttributesClassName, &out.VolumeAttributesClassName
 		*out = new(string)
 		**out = **in
 	}
@@ -8352,6 +8407,11 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.VolumeAttributesClassName != nil {
+		in, out := &in.VolumeAttributesClassName, &out.VolumeAttributesClassName
+		*out = new(string)
+		**out = **in
+	}
 	if in.Config != nil {
 		in, out := &in.Config, &out.Config
 		*out = new(TiKVConfigWraper)
@@ -8832,6 +8892,11 @@ func (in *TiProxySpec) DeepCopyInto(out *TiProxySpec) {
 	}
 	if in.StorageClassName != nil {
 		in, out := &in.StorageClassName, &out.StorageClassName
+		*out = new(string)
+		**out = **in
+	}
+	if in.VolumeAttributesClassName != nil {
+		in, out := &in.VolumeAttributesClassName, &out.VolumeAttributesClassName
 		*out = new(string)
 		**out = **in
 	}
@@ -10076,6 +10141,11 @@ func (in *WorkerSpec) DeepCopyInto(out *WorkerSpec) {
 	}
 	if in.StorageClassName != nil {
 		in, out := &in.StorageClassName, &out.StorageClassName
+		*out = new(string)
+		**out = **in
+	}
+	if in.VolumeAttributesClassName != nil {
+		in, out := &in.VolumeAttributesClassName, &out.VolumeAttributesClassName
 		*out = new(string)
 		**out = **in
 	}

@@ -369,7 +369,7 @@ func GenerateNGMonitoringStatefulSet(tngm *v1alpha1.TidbNGMonitoring, tc *v1alph
 	builder.PodTemplateSpecBuilder().AddLabels(spec.Labels())
 	builder.PodTemplateSpecBuilder().AddAnnotations(spec.Annotations())
 	// additional storage volumes
-	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tngm.Spec.NGMonitoring.StorageVolumes, tngm.Spec.NGMonitoring.StorageClassName, v1alpha1.NGMonitoringMemberType)
+	storageVolMounts, additionalPVCs := util.BuildStorageVolumeAndVolumeMount(tngm.Spec.NGMonitoring.StorageVolumes, tngm.Spec.NGMonitoring.StorageClassName, nil, v1alpha1.NGMonitoringMemberType)
 	builder.PodTemplateSpecBuilder().ContainerBuilder(nmContainerName).AddVolumeMounts(storageVolMounts...)
 	builder.AddVolumeClaims(additionalPVCs...)
 	// additional volumes and mounts

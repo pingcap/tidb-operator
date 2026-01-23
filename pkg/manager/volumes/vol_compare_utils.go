@@ -38,6 +38,9 @@ type DesiredVolume struct {
 	// it is sc name specified by user
 	// the sc may not exist
 	StorageClassName *string
+	// it is vac name specified by user
+	// the vac may not exist
+	VolumeAttributesClassName *string
 }
 
 // get storage class name from tc
@@ -221,17 +224,20 @@ func (u *volCompareUtils) GetDesiredVolumes(tc *v1alpha1.TidbCluster, mt v1alpha
 	scLister := u.deps.StorageClassLister
 
 	storageVolumes := []v1alpha1.StorageVolume{}
-	var defaultScName *string
+	var defaultScName, defaultVACName *string
 	switch mt {
 	case v1alpha1.TiProxyMemberType:
 		defaultScName = tc.Spec.TiProxy.StorageClassName
+		defaultVACName = tc.Spec.TiProxy.VolumeAttributesClassName
 		storageVolumes = tc.Spec.TiProxy.StorageVolumes
 	case v1alpha1.PDMemberType:
 		defaultScName = tc.Spec.PD.StorageClassName
+		defaultVACName = tc.Spec.PD.VolumeAttributesClassName
 		d := DesiredVolume{
-			Name:             v1alpha1.GetStorageVolumeName("", mt),
-			Size:             getStorageSize(tc.Spec.PD.Requests),
-			StorageClassName: defaultScName,
+			Name:                      v1alpha1.GetStorageVolumeName("", mt),
+			Size:                      getStorageSize(tc.Spec.PD.Requests),
+			StorageClassName:          defaultScName,
+			VolumeAttributesClassName: defaultVACName,
 		}
 		desiredVolumes = append(desiredVolumes, d)
 
@@ -240,20 +246,24 @@ func (u *volCompareUtils) GetDesiredVolumes(tc *v1alpha1.TidbCluster, mt v1alpha
 		for _, component := range tc.Spec.PDMS {
 			if strings.Contains(mt.String(), component.Name) {
 				defaultScName = component.StorageClassName
+				defaultVACName = component.VolumeAttributesClassName
 				storageVolumes = component.StorageVolumes
 				break
 			}
 		}
 	case v1alpha1.TiDBMemberType:
 		defaultScName = tc.Spec.TiDB.StorageClassName
+		defaultVACName = tc.Spec.TiDB.VolumeAttributesClassName
 		storageVolumes = tc.Spec.TiDB.StorageVolumes
 
 	case v1alpha1.TiKVMemberType:
 		defaultScName = tc.Spec.TiKV.StorageClassName
+		defaultVACName = tc.Spec.TiKV.VolumeAttributesClassName
 		d := DesiredVolume{
-			Name:             v1alpha1.GetStorageVolumeName("", mt),
-			Size:             getStorageSize(tc.Spec.TiKV.Requests),
-			StorageClassName: defaultScName,
+			Name:                      v1alpha1.GetStorageVolumeName("", mt),
+			Size:                      getStorageSize(tc.Spec.TiKV.Requests),
+			StorageClassName:          defaultScName,
+			VolumeAttributesClassName: defaultVACName,
 		}
 		desiredVolumes = append(desiredVolumes, d)
 
@@ -262,23 +272,27 @@ func (u *volCompareUtils) GetDesiredVolumes(tc *v1alpha1.TidbCluster, mt v1alpha
 	case v1alpha1.TiFlashMemberType:
 		for i, claim := range tc.Spec.TiFlash.StorageClaims {
 			d := DesiredVolume{
-				Name:             v1alpha1.GetStorageVolumeNameForTiFlash(i),
-				Size:             getStorageSize(claim.Resources.Requests),
-				StorageClassName: claim.StorageClassName,
+				Name:                      v1alpha1.GetStorageVolumeNameForTiFlash(i),
+				Size:                      getStorageSize(claim.Resources.Requests),
+				StorageClassName:          claim.StorageClassName,
+				VolumeAttributesClassName: claim.VolumeAttributesClassName,
 			}
 			desiredVolumes = append(desiredVolumes, d)
 		}
 
 	case v1alpha1.TiCDCMemberType:
 		defaultScName = tc.Spec.TiCDC.StorageClassName
+		defaultVACName = tc.Spec.TiCDC.VolumeAttributesClassName
 		storageVolumes = tc.Spec.TiCDC.StorageVolumes
 
 	case v1alpha1.PumpMemberType:
 		defaultScName = tc.Spec.Pump.StorageClassName
+		defaultVACName = tc.Spec.Pump.VolumeAttributesClassName
 		d := DesiredVolume{
-			Name:             v1alpha1.GetStorageVolumeName("", mt),
-			Size:             getStorageSize(tc.Spec.Pump.Requests),
-			StorageClassName: defaultScName,
+			Name:                      v1alpha1.GetStorageVolumeName("", mt),
+			Size:                      getStorageSize(tc.Spec.Pump.Requests),
+			StorageClassName:          defaultScName,
+			VolumeAttributesClassName: defaultVACName,
 		}
 		desiredVolumes = append(desiredVolumes, d)
 	default:
@@ -288,12 +302,16 @@ func (u *volCompareUtils) GetDesiredVolumes(tc *v1alpha1.TidbCluster, mt v1alpha
 	for _, sv := range storageVolumes {
 		if quantity, err := resource.ParseQuantity(sv.StorageSize); err == nil {
 			d := DesiredVolume{
-				Name:             v1alpha1.GetStorageVolumeName(sv.Name, mt),
-				Size:             quantity,
-				StorageClassName: sv.StorageClassName,
+				Name:                      v1alpha1.GetStorageVolumeName(sv.Name, mt),
+				Size:                      quantity,
+				StorageClassName:          sv.StorageClassName,
+				VolumeAttributesClassName: sv.VolumeAttributesClassName,
 			}
 			if d.StorageClassName == nil {
 				d.StorageClassName = defaultScName
+			}
+			if d.VolumeAttributesClassName == nil {
+				d.VolumeAttributesClassName = defaultVACName
 			}
 
 			desiredVolumes = append(desiredVolumes, d)
