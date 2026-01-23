@@ -6456,25 +6456,6 @@ SuspendAction
 </tr>
 <tr>
 <td>
-<<<<<<< HEAD
-=======
-<code>securityContext</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#securitycontext-v1-core">
-Kubernetes core/v1.SecurityContext
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>SecurityContext defines the security options the component container should be run with.
-If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
-More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">https://kubernetes.io/docs/tasks/configure-pod-container/security-context/</a></p>
-</td>
-</tr>
-<tr>
-<td>
->>>>>>> a3e9926e4 (support volumeAttributesClass for TiDBCluster components (#6568))
 <code>readinessProbe</code></br>
 <em>
 <a href="#probe">
@@ -9007,24 +8988,6 @@ Kubernetes core/v1.ResourceRequirements
 </p>
 </td>
 </tr>
-<<<<<<< HEAD
-=======
-<tr>
-<td>
-<code>securityContext</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#securitycontext-v1-core">
-Kubernetes core/v1.SecurityContext
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>SecurityContext defines the security options the init container should be run with.
-More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">https://kubernetes.io/docs/tasks/configure-pod-container/security-context/</a></p>
-</td>
-</tr>
->>>>>>> a3e9926e4 (support volumeAttributesClass for TiDBCluster components (#6568))
 </tbody>
 </table>
 <h3 id="initializephase">InitializePhase</h3>
@@ -9555,53 +9518,6 @@ Kubernetes core/v1.ResourceRequirements
 </p>
 </td>
 </tr>
-<<<<<<< HEAD
-=======
-<tr>
-<td>
-<code>useSidecar</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>If true, we use native sidecar feature to tail log
-It requires enable feature gate &ldquo;SidecarContainers&rdquo;
-This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33
-See <a href="https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/">https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/</a>
-and <a href="https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/">https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/</a></p>
-</td>
-</tr>
-<tr>
-<td>
-<code>sleepTimeSeconds</code></br>
-<em>
-int64
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Tailer needs to wait to flush logs to stdout after receiving sig TERM
-Default is not sleep</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>securityContext</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#securitycontext-v1-core">
-Kubernetes core/v1.SecurityContext
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>SecurityContext defines the security options the log tailer container should be run with.
-More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">https://kubernetes.io/docs/tasks/configure-pod-container/security-context/</a></p>
-</td>
-</tr>
->>>>>>> a3e9926e4 (support volumeAttributesClass for TiDBCluster components (#6568))
 </tbody>
 </table>
 <h3 id="masterconfig">MasterConfig</h3>
@@ -10535,24 +10451,6 @@ Kubernetes core/v1.PullPolicy
 <em>(Optional)</em>
 </td>
 </tr>
-<<<<<<< HEAD
-=======
-<tr>
-<td>
-<code>securityContext</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#securitycontext-v1-core">
-Kubernetes core/v1.SecurityContext
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>SecurityContext defines the security options the monitor container should be run with.
-More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">https://kubernetes.io/docs/tasks/configure-pod-container/security-context/</a></p>
-</td>
-</tr>
->>>>>>> a3e9926e4 (support volumeAttributesClass for TiDBCluster components (#6568))
 </tbody>
 </table>
 <h3 id="ngmonitoringspec">NGMonitoringSpec</h3>
@@ -18520,53 +18418,6 @@ Kubernetes core/v1.PullPolicy
 Use <code>spec.helper.imagePullPolicy</code> instead</p>
 </td>
 </tr>
-<<<<<<< HEAD
-=======
-<tr>
-<td>
-<code>useSidecar</code></br>
-<em>
-bool
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>If true, we use native sidecar feature to tail log
-It requires enable feature gate &ldquo;SidecarContainers&rdquo;
-This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33
-See <a href="https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/">https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/</a>
-and <a href="https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/">https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/</a></p>
-</td>
-</tr>
-<tr>
-<td>
-<code>sleepTimeSeconds</code></br>
-<em>
-int64
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Tailer needs to wait to flush logs to stdout after receiving sig TERM
-Default is not sleep</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>securityContext</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#securitycontext-v1-core">
-Kubernetes core/v1.SecurityContext
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>SecurityContext defines the security options the slowlog tailer container should be run with.
-More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">https://kubernetes.io/docs/tasks/configure-pod-container/security-context/</a></p>
-</td>
-</tr>
->>>>>>> a3e9926e4 (support volumeAttributesClass for TiDBCluster components (#6568))
 </tbody>
 </table>
 <h3 id="tidbspec">TiDBSpec</h3>
@@ -24662,8 +24513,6 @@ string
 Defaults to Kubernetes default storage class.</p>
 </td>
 </tr>
-<<<<<<< HEAD
-=======
 <tr>
 <td>
 <code>volumeAttributesClassName</code></br>
@@ -24677,23 +24526,6 @@ string
 If it is set, the change of StorageClassName will be ignored.</p>
 </td>
 </tr>
-<tr>
-<td>
-<code>serverLabels</code></br>
-<em>
-map[string]string
-</em>
-</td>
-<td>
-<p>ServerLabels defines the server labels of the TiProxy.
-Using both this field and config file to manage the labels is an undefined behavior.
-Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
-- region, topology.kubernetes.io/region
-- zone, topology.kubernetes.io/zone
-- host</p>
-</td>
-</tr>
->>>>>>> a3e9926e4 (support volumeAttributesClass for TiDBCluster components (#6568))
 </tbody>
 </table>
 <h3 id="tiproxystatus">TiProxyStatus</h3>

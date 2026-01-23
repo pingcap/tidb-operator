@@ -14263,8 +14263,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TiProxySpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
-<<<<<<< HEAD
-=======
 					"volumeAttributesClassName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The VolumeAttributesClassName of the persistent volume for TiProxy data storage. If it is set, the change of StorageClassName will be ignored.",
@@ -14272,23 +14270,6 @@ func schema_pkg_apis_pingcap_v1alpha1_TiProxySpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
-					"serverLabels": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ServerLabels defines the server labels of the TiProxy. Using both this field and config file to manage the labels is an undefined behavior. Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:\n - region, topology.kubernetes.io/region\n - zone, topology.kubernetes.io/zone\n - host",
-							Type:        []string{"object"},
-							AdditionalProperties: &spec.SchemaOrBool{
-								Allows: true,
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
-									},
-								},
-							},
-						},
-					},
->>>>>>> a3e9926e4 (support volumeAttributesClass for TiDBCluster components (#6568))
 				},
 				Required: []string{"replicas"},
 			},

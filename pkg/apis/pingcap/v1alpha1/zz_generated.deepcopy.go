@@ -8895,21 +8895,11 @@ func (in *TiProxySpec) DeepCopyInto(out *TiProxySpec) {
 		*out = new(string)
 		**out = **in
 	}
-<<<<<<< HEAD
-=======
 	if in.VolumeAttributesClassName != nil {
 		in, out := &in.VolumeAttributesClassName, &out.VolumeAttributesClassName
 		*out = new(string)
 		**out = **in
 	}
-	if in.ServerLabels != nil {
-		in, out := &in.ServerLabels, &out.ServerLabels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
->>>>>>> a3e9926e4 (support volumeAttributesClass for TiDBCluster components (#6568))
 	return
 }
 

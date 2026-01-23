@@ -988,22 +988,11 @@ type TiProxySpec struct {
 	// Defaults to Kubernetes default storage class.
 	// +optional
 	StorageClassName *string `json:"storageClassName,omitempty"`
-<<<<<<< HEAD
-=======
 
 	// The VolumeAttributesClassName of the persistent volume for TiProxy data storage.
 	// If it is set, the change of StorageClassName will be ignored.
 	// +optional
 	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
-
-	// ServerLabels defines the server labels of the TiProxy.
-	// Using both this field and config file to manage the labels is an undefined behavior.
-	// Note these label keys are managed by TiDB Operator, it will be set automatically and you can not modify them:
-	//  - region, topology.kubernetes.io/region
-	//  - zone, topology.kubernetes.io/zone
-	//  - host
-	ServerLabels map[string]string `json:"serverLabels,omitempty"`
->>>>>>> a3e9926e4 (support volumeAttributesClass for TiDBCluster components (#6568))
 }
 
 // LogTailerSpec represents an optional log tailer sidecar container
