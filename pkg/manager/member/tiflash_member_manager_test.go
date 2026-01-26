@@ -275,7 +275,7 @@ func TestTiFlashMemberManagerTiFlashStatefulSetIsUpgrading(t *testing.T) {
 	}
 
 	for i := range tests {
-		t.Logf(tests[i].name)
+		t.Logf("%s", tests[i].name)
 		testFn(&tests[i], t)
 	}
 }
@@ -592,7 +592,7 @@ func TestTiFlashMemberManagerSetStoreLabelsForTiFlash(t *testing.T) {
 	}
 
 	for i := range tests {
-		t.Logf(tests[i].name)
+		t.Logf("%s", tests[i].name)
 		testFn(&tests[i], t)
 	}
 }
@@ -1321,7 +1321,7 @@ func TestTiFlashMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	}
 
 	for i := range tests {
-		t.Logf(tests[i].name)
+		t.Logf("%s", tests[i].name)
 		testFn(&tests[i], t)
 	}
 }

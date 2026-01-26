@@ -424,7 +424,7 @@ func (bm *backupManager) waitPreTaskDone(backup *v1alpha1.Backup) error {
 	if shouldLogBackupCommandRequeue(backup) {
 		logBackupSubcommand := v1alpha1.ParseLogBackupSubcommand(backup)
 		klog.Infof("log backup %s/%s subcommand %s should wait log backup start complete, will requeue.", ns, name, logBackupSubcommand)
-		return controller.RequeueErrorf(fmt.Sprintf("log backup %s/%s command %s should wait log backup start complete", ns, name, logBackupSubcommand))
+		return controller.RequeueErrorf("log backup %s/%s command %s should wait log backup start complete", ns, name, logBackupSubcommand)
 	}
 
 	// log backup should wait old job done
@@ -1274,7 +1274,7 @@ func shouldLogBackupCommandRequeue(backup *v1alpha1.Backup) bool {
 // waitOldBackupJobDone wait old backup job done
 func waitOldBackupJobDone(ns, name, backupJobName string, bm *backupManager, backup *v1alpha1.Backup, oldJob *batchv1.Job) error {
 	if oldJob.DeletionTimestamp != nil {
-		return controller.RequeueErrorf(fmt.Sprintf("backup %s/%s job %s is being deleted", ns, name, backupJobName))
+		return controller.RequeueErrorf("backup %s/%s job %s is being deleted", ns, name, backupJobName)
 	}
 	finished := false
 	for _, c := range oldJob.Status.Conditions {

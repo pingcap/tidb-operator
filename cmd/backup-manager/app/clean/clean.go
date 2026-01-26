@@ -39,6 +39,7 @@ var (
 		Steps:    8,
 		Cap:      time.Second,
 	}
+	timeSleep = time.Sleep
 )
 
 const (
@@ -213,7 +214,7 @@ func (bo *Options) cleanBRRemoteBackupDataOnce(ctx context.Context, backend *bku
 
 		if opt.BackoffEnabled {
 			if needBackoff {
-				time.Sleep(backoff.Step())
+				timeSleep(backoff.Step())
 			} else {
 				backoff = defaultBackoff // reset backoff
 			}
