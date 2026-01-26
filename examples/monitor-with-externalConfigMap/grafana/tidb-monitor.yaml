@@ -16,7 +16,7 @@ spec:
         mountPath: /grafana-dashboard-definitions/tidb/dashboards/custom
   initializer:
     baseImage: pingcap/tidb-monitor-initializer
-    version: v8.5.4
+    version: v8.5.5
   reloader:
     baseImage: pingcap/tidb-monitor-reloader
     version: v1.0.1
