@@ -23,7 +23,6 @@ import (
 	"sync"
 	"testing"
 
-	// gomonkey "github.com/agiledragon/gomonkey/v2"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/s3"

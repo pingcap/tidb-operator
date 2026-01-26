@@ -23,13 +23,6 @@ ARCH=$(go env GOARCH)
 OUTPUT=${ROOT}/output
 OUTPUT_BIN=${OUTPUT}/bin
 
-# Set writable cache and tmp directories in /tmp to bypass permission issues in home directory
-export TMPDIR=/tmp/tidb-operator-tmp
-export GOCACHE=/tmp/tidb-operator-gobuild
-export GOMODCACHE=/tmp/tidb-operator-gocache
-export GOLANGCI_LINT_CACHE=/tmp/tidb-operator-lint-cache
-mkdir -p $TMPDIR $GOCACHE $GOMODCACHE $GOLANGCI_LINT_CACHE
-
 TERRAFORM_BIN=${OUTPUT_BIN}/terraform
 TERRAFORM_VERSION=${TERRAFORM_VERSION:-0.12.12}
 KUBECTL_VERSION=${KUBECTL_VERSION:-1.28.5}
