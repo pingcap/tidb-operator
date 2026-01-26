@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/controller"
@@ -60,13 +60,13 @@ func (h *Helper) Close() {
 // JobExists checks whether a k8s Job exists
 func (h *Helper) JobExists(restore *v1alpha1.Restore) {
 	h.T.Helper()
-	g := NewGomegaWithT(h.T)
+	g := gomega.NewGomegaWithT(h.T)
 	_, err := h.Deps.KubeClientset.BatchV1().Jobs(restore.Namespace).Get(context.TODO(), restore.GetRestoreJobName(), metav1.GetOptions{})
-	g.Expect(err).Should(BeNil())
+	g.Expect(err).Should(gomega.BeNil())
 }
 
 func (h *Helper) createSecret(namespace, secretName string) {
-	g := NewGomegaWithT(h.T)
+	g := gomega.NewGomegaWithT(h.T)
 	s := &corev1.Secret{}
 	s.Data = map[string][]byte{
 		constants.TidbPasswordKey:   []byte("dummy"),
@@ -77,50 +77,49 @@ func (h *Helper) createSecret(namespace, secretName string) {
 	s.Namespace = namespace
 	s.Name = secretName
 	_, err := h.Deps.KubeClientset.CoreV1().Secrets(s.Namespace).Create(context.TODO(), s, metav1.CreateOptions{})
-	g.Expect(err).Should(BeNil())
+	g.Expect(err).Should(gomega.BeNil())
 }
 
 // CreateSecret creates secrets based on backup/restore spec
 func (h *Helper) CreateSecret(obj interface{}) {
 	h.T.Helper()
-	g := NewGomegaWithT(h.T)
 	if obj1, ok := obj.(*v1alpha1.Backup); ok {
 		h.createSecret(obj1.Namespace, obj1.Spec.From.SecretName)
-		g.Eventually(func() error {
+		gomega.Eventually(func() error {
 			_, err := h.Deps.SecretLister.Secrets(obj1.Namespace).Get(obj1.Spec.From.SecretName)
 			return err
-		}, time.Second*10).Should(BeNil())
-		if obj1.Spec.StorageProvider.S3 != nil && obj1.Spec.StorageProvider.S3.SecretName != "" {
-			h.createSecret(obj1.Namespace, obj1.Spec.StorageProvider.S3.SecretName)
-			g.Eventually(func() error {
+		}, time.Second*10).Should(gomega.BeNil())
+		if obj1.Spec.S3 != nil && obj1.Spec.S3.SecretName != "" {
+			h.createSecret(obj1.Namespace, obj1.Spec.S3.SecretName)
+			gomega.Eventually(func() error {
 				_, err := h.Deps.SecretLister.Secrets(obj1.Namespace).Get(obj1.Spec.StorageProvider.S3.SecretName)
 				return err
-			}, time.Second*10).Should(BeNil())
-		} else if obj1.Spec.StorageProvider.Gcs != nil && obj1.Spec.StorageProvider.Gcs.SecretName != "" {
-			h.createSecret(obj1.Namespace, obj1.Spec.StorageProvider.Gcs.SecretName)
-			g.Eventually(func() error {
+			}, time.Second*10).Should(gomega.BeNil())
+		} else if obj1.Spec.Gcs != nil && obj1.Spec.Gcs.SecretName != "" {
+			h.createSecret(obj1.Namespace, obj1.Spec.Gcs.SecretName)
+			gomega.Eventually(func() error {
 				_, err := h.Deps.SecretLister.Secrets(obj1.Namespace).Get(obj1.Spec.StorageProvider.Gcs.SecretName)
 				return err
-			}, time.Second*10).Should(BeNil())
+			}, time.Second*10).Should(gomega.BeNil())
 		}
 	} else if obj2, ok := obj.(*v1alpha1.Restore); ok {
 		h.createSecret(obj2.Namespace, obj2.Spec.To.SecretName)
-		g.Eventually(func() error {
+		gomega.Eventually(func() error {
 			_, err := h.Deps.SecretLister.Secrets(obj2.Namespace).Get(obj2.Spec.To.SecretName)
 			return err
-		}, time.Second*10).Should(BeNil())
-		if obj2.Spec.StorageProvider.S3 != nil && obj2.Spec.StorageProvider.S3.SecretName != "" {
-			h.createSecret(obj2.Namespace, obj2.Spec.StorageProvider.S3.SecretName)
-			g.Eventually(func() error {
+		}, time.Second*10).Should(gomega.BeNil())
+		if obj2.Spec.S3 != nil && obj2.Spec.S3.SecretName != "" {
+			h.createSecret(obj2.Namespace, obj2.Spec.S3.SecretName)
+			gomega.Eventually(func() error {
 				_, err := h.Deps.SecretLister.Secrets(obj2.Namespace).Get(obj2.Spec.StorageProvider.S3.SecretName)
 				return err
-			}, time.Second*10).Should(BeNil())
-		} else if obj2.Spec.StorageProvider.Gcs != nil && obj2.Spec.StorageProvider.Gcs.SecretName != "" {
-			h.createSecret(obj2.Namespace, obj2.Spec.StorageProvider.Gcs.SecretName)
-			g.Eventually(func() error {
+			}, time.Second*10).Should(gomega.BeNil())
+		} else if obj2.Spec.Gcs != nil && obj2.Spec.Gcs.SecretName != "" {
+			h.createSecret(obj2.Namespace, obj2.Spec.Gcs.SecretName)
+			gomega.Eventually(func() error {
 				_, err := h.Deps.SecretLister.Secrets(obj2.Namespace).Get(obj2.Spec.StorageProvider.Gcs.SecretName)
 				return err
-			}, time.Second*10).Should(BeNil())
+			}, time.Second*10).Should(gomega.BeNil())
 		}
 	}
 }
@@ -128,7 +127,7 @@ func (h *Helper) CreateSecret(obj interface{}) {
 // CreateTC creates a TidbCluster with name `clusterName` in ns `namespace`
 func (h *Helper) CreateTC(namespace, clusterName string, acrossK8s, recoverMode bool) {
 	h.T.Helper()
-	g := NewGomegaWithT(h.T)
+	g := gomega.NewGomegaWithT(h.T)
 	var err error
 
 	tc := &v1alpha1.TidbCluster{
@@ -179,19 +178,19 @@ func (h *Helper) CreateTC(namespace, clusterName string, acrossK8s, recoverMode 
 	tc.Namespace = namespace
 	tc.Name = clusterName
 	_, err = h.Deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
-	g.Expect(err).Should(BeNil())
+	g.Expect(err).Should(gomega.BeNil())
 	// make sure can read tc from lister
-	g.Eventually(func() error {
+	gomega.Eventually(func() error {
 		_, err := h.Deps.TiDBClusterLister.TidbClusters(tc.Namespace).Get(tc.Name)
 		return err
-	}, time.Second*10).Should(BeNil())
-	g.Expect(err).Should(BeNil())
+	}, time.Second*10).Should(gomega.BeNil())
+	g.Expect(err).Should(gomega.BeNil())
 }
 
 // CreateTCWithNoTiKV creates a TidbCluster with name `clusterName` in ns `namespace` with no TiKV nodes
 func (h *Helper) CreateTCWithNoTiKV(namespace, clusterName string, acrossK8s, recoverMode bool) {
 	h.T.Helper()
-	g := NewGomegaWithT(h.T)
+	g := gomega.NewGomegaWithT(h.T)
 	var err error
 
 	tc := &v1alpha1.TidbCluster{
@@ -231,24 +230,24 @@ func (h *Helper) CreateTCWithNoTiKV(namespace, clusterName string, acrossK8s, re
 	tc.Namespace = namespace
 	tc.Name = clusterName
 	_, err = h.Deps.Clientset.PingcapV1alpha1().TidbClusters(tc.Namespace).Create(context.TODO(), tc, metav1.CreateOptions{})
-	g.Expect(err).Should(BeNil())
+	g.Expect(err).Should(gomega.BeNil())
 	// make sure can read tc from lister
-	g.Eventually(func() error {
+	gomega.Eventually(func() error {
 		_, err := h.Deps.TiDBClusterLister.TidbClusters(tc.Namespace).Get(tc.Name)
 		return err
-	}, time.Second*10).Should(BeNil())
-	g.Expect(err).Should(BeNil())
+	}, time.Second*10).Should(gomega.BeNil())
+	g.Expect(err).Should(gomega.BeNil())
 }
 
 func (h *Helper) CreateRestore(restore *v1alpha1.Restore) {
 	h.T.Helper()
-	g := NewGomegaWithT(h.T)
+	g := gomega.NewGomegaWithT(h.T)
 	_, err := h.Deps.Clientset.PingcapV1alpha1().Restores(restore.Namespace).Create(context.TODO(), restore, metav1.CreateOptions{})
-	g.Expect(err).Should(BeNil())
+	g.Expect(err).Should(gomega.BeNil())
 	// make sure can read tc from lister
-	g.Eventually(func() error {
+	gomega.Eventually(func() error {
 		_, err := h.Deps.RestoreLister.Restores(restore.Namespace).Get(restore.Name)
 		return err
-	}, time.Second).Should(BeNil())
-	g.Expect(err).Should(BeNil())
+	}, time.Second).Should(gomega.BeNil())
+	g.Expect(err).Should(gomega.BeNil())
 }

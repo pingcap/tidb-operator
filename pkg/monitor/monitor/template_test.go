@@ -1183,7 +1183,7 @@ rule_files:
 	yaml := string(prometheusYaml)
 	expectedContentParsed := template.Must(template.New("relabelConfig").Parse(expectedContentTpl))
 	var expectedContentBytes bytes.Buffer
-	expectedContentParsed.Execute(&expectedContentBytes, promCfgModel)
+	_ = expectedContentParsed.Execute(&expectedContentBytes, promCfgModel)
 	g.Expect(yaml).Should(Equal(expectedContentBytes.String()))
 }
 
@@ -2296,7 +2296,7 @@ rule_files:
 	yaml := string(prometheusYaml)
 	expectedContentParsed := template.Must(template.New("relabelConfig").Parse(expectedContentTpl))
 	var expectedContentBytes bytes.Buffer
-	expectedContentParsed.Execute(&expectedContentBytes, promCfgModel)
+	_ = expectedContentParsed.Execute(&expectedContentBytes, promCfgModel)
 	g.Expect(yaml).Should(Equal(expectedContentBytes.String()))
 }
 
@@ -3369,7 +3369,7 @@ scrape_configs:
 	yaml := string(prometheusYaml)
 	expectedContentParsed := template.Must(template.New("relabelConfig").Parse(expectedContentTpl))
 	var expectedContentBytes bytes.Buffer
-	expectedContentParsed.Execute(&expectedContentBytes, promCfgModel)
+	_ = expectedContentParsed.Execute(&expectedContentBytes, promCfgModel)
 	g.Expect(yaml).Should(Equal(expectedContentBytes.String()))
 }
 

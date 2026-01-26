@@ -541,7 +541,7 @@ func TestPDPodSyncForLeaderTransfer(t *testing.T) {
 			target:              0,
 			deleteAfterTransfer: true,
 			shouldTransfer:      true,
-			expirationTime:      metav1.Now().Time.Add(time.Hour),
+			expirationTime:      metav1.Now().Add(time.Hour),
 		},
 		{
 			name:                "expiration annotation in the past",
@@ -552,7 +552,7 @@ func TestPDPodSyncForLeaderTransfer(t *testing.T) {
 			target:              0,
 			deleteAfterTransfer: true,
 			shouldTransfer:      false,
-			expirationTime:      metav1.Now().Time.Add(-time.Minute),
+			expirationTime:      metav1.Now().Add(-time.Minute),
 		},
 	}
 

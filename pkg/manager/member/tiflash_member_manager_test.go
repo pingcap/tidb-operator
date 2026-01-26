@@ -30,7 +30,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1513,7 +1512,7 @@ func TestGetNewTiFlashSetForTidbCluster(t *testing.T) {
 					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
-			testSts: testHostNetwork(t, true, v1.DNSClusterFirstWithHostNet),
+			testSts: testHostNetwork(t, true, corev1.DNSClusterFirstWithHostNet),
 		},
 		{
 			name: "tiflash network is not host when pd is host",

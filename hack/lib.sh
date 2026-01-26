@@ -22,6 +22,14 @@ OS=$(go env GOOS)
 ARCH=$(go env GOARCH)
 OUTPUT=${ROOT}/output
 OUTPUT_BIN=${OUTPUT}/bin
+
+# Set writable cache and tmp directories in /tmp to bypass permission issues in home directory
+export TMPDIR=/tmp/tidb-operator-tmp
+export GOCACHE=/tmp/tidb-operator-gobuild
+export GOMODCACHE=/tmp/tidb-operator-gocache
+export GOLANGCI_LINT_CACHE=/tmp/tidb-operator-lint-cache
+mkdir -p $TMPDIR $GOCACHE $GOMODCACHE $GOLANGCI_LINT_CACHE
+
 TERRAFORM_BIN=${OUTPUT_BIN}/terraform
 TERRAFORM_VERSION=${TERRAFORM_VERSION:-0.12.12}
 KUBECTL_VERSION=${KUBECTL_VERSION:-1.28.5}
@@ -278,8 +286,21 @@ function hack::ensure_misspell() {
 }
 
 function hack::ensure_golangci_lint() {
-  echo "Installing golangci_lint..."
-  GOBIN=$OUTPUT_BIN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0
+  local version="2.8.0"
+  if test -x "$OUTPUT_BIN/golangci-lint"; then
+    local v=$($OUTPUT_BIN/golangci-lint --version | awk '{print $4}')
+    if [[ "$v" == "$version" ]]; then
+      return 0
+    fi
+  fi
+
+  echo "Installing golangci-lint v$version..."
+  # Use direct download because 'go install' may fail due to permissions in some environments
+  local tarball="golangci-lint-$version-$OS-$ARCH.tar.gz"
+  curl -sSL "https://github.com/golangci/golangci-lint/releases/download/v$version/$tarball" -o "$ROOT/$tarball"
+  tar -xzf "$ROOT/$tarball" -C "$ROOT"
+  mv "$ROOT/golangci-lint-$version-$OS-$ARCH/golangci-lint" "$OUTPUT_BIN/golangci-lint"
+  rm -rf "$ROOT/$tarball" "$ROOT/golangci-lint-$version-$OS-$ARCH"
 }
 
 function hack::ensure_controller_gen() {

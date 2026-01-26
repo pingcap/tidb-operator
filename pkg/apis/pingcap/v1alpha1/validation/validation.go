@@ -43,7 +43,7 @@ func ValidateTidbCluster(tc *v1alpha1.TidbCluster) field.ErrorList {
 	// validate metadata
 	fldPath := field.NewPath("metadata")
 	// validate metadata/annotations
-	allErrs = append(allErrs, validateAnnotations(tc.ObjectMeta.Annotations, fldPath.Child("annotations"))...)
+	allErrs = append(allErrs, validateAnnotations(tc.Annotations, fldPath.Child("annotations"))...)
 	// validate spec
 	allErrs = append(allErrs, validateTiDBClusterSpec(&tc.Spec, field.NewPath("spec"))...)
 	return allErrs
@@ -56,7 +56,7 @@ func ValidateDMCluster(dc *v1alpha1.DMCluster) field.ErrorList {
 	// validate metadata
 	fldPath := field.NewPath("metadata")
 	// validate metadata/annotations
-	allErrs = append(allErrs, validateDMAnnotations(dc.ObjectMeta.Annotations, fldPath.Child("annotations"))...)
+	allErrs = append(allErrs, validateDMAnnotations(dc.Annotations, fldPath.Child("annotations"))...)
 	// validate spec
 	allErrs = append(allErrs, validateDMClusterSpec(&dc.Spec, field.NewPath("spec"))...)
 	return allErrs
@@ -170,7 +170,7 @@ func validateDiscoverySpec(spec v1alpha1.DiscoverySpec, fldPath *field.Path) fie
 func validatePDSpec(spec *v1alpha1.PDSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
-	allErrs = append(allErrs, validateRequestsStorage(spec.ResourceRequirements.Requests, fldPath)...)
+	allErrs = append(allErrs, validateRequestsStorage(spec.Requests, fldPath)...)
 	if len(spec.StorageVolumes) > 0 {
 		allErrs = append(allErrs, validateStorageVolumes(spec.StorageVolumes, fldPath.Child("storageVolumes"))...)
 	}
@@ -219,7 +219,7 @@ func validateStartScriptFeatureFlags(featureFlags []v1alpha1.StartScriptV2Featur
 func validateTiKVSpec(spec *v1alpha1.TiKVSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
-	allErrs = append(allErrs, validateRequestsStorage(spec.ResourceRequirements.Requests, fldPath)...)
+	allErrs = append(allErrs, validateRequestsStorage(spec.Requests, fldPath)...)
 	allErrs = append(allErrs, validateScalePolicy(&spec.ScalePolicy, fldPath.Child("scalePolicy"))...)
 	if len(spec.DataSubDir) > 0 {
 		allErrs = append(allErrs, validateLocalDescendingPath(spec.DataSubDir, fldPath.Child("dataSubDir"))...)
@@ -337,9 +337,9 @@ func validatePumpSpec(spec *v1alpha1.PumpSpec, fldPath *field.Path) field.ErrorL
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateComponentSpec(&spec.ComponentSpec, fldPath)...)
 	// fix pump spec
-	if _, ok := spec.ResourceRequirements.Requests["storage"]; !ok {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("spec.ResourceRequirements.Requests"),
-			spec.ResourceRequirements.Requests, "spec.ResourceRequirements.Requests[storage]: Required value."))
+	if _, ok := spec.Requests["storage"]; !ok {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("spec.Requests"),
+			spec.Requests, "spec.Requests[storage]: Required value."))
 	}
 	return allErrs
 }

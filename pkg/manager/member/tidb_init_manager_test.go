@@ -60,7 +60,7 @@ func TestTiDBInitManagerSync(t *testing.T) {
 			}
 			tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 1}
 			// sync configmap
-			_, err = tmm.deps.Controls.TiDBClusterControl.UpdateTidbCluster(tc, nil, nil)
+			_, err = tmm.deps.TiDBClusterControl.UpdateTidbCluster(tc, nil, nil)
 			g.Expect(err).NotTo(HaveOccurred())
 
 			err = indexers.ti.Add(ti)

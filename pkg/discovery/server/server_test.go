@@ -36,7 +36,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
-	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
@@ -69,7 +68,7 @@ func TestServer(t *testing.T) {
 	os.Setenv("MY_POD_NAMESPACE", "default")
 	cli := fake.NewSimpleClientset()
 	kubeCli := kubefake.NewSimpleClientset()
-	informer := kubeinformers.NewSharedInformerFactory(kubeCli, 0)
+	informer := informers.NewSharedInformerFactory(kubeCli, 0)
 	informer.Core().V1().Secrets().Informer().GetIndexer().Add(&corev1.Secret{})
 	fakePDControl := pdapi.NewFakePDControl(informer.Core().V1().Secrets().Lister())
 	faleMasterControl := dmapi.NewFakeMasterControl(informer.Core().V1().Secrets().Lister())
