@@ -22,7 +22,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -272,9 +271,9 @@ func TestLightningRestore(t *testing.T) {
 		Name:  "S3_PROVIDER",
 		Value: "",
 	}
-	g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env1))
-	g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env2Yes))
-	g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(gomega.ContainElement(env2No))
+	g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(ContainElement(env1))
+	g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(ContainElement(env2Yes))
+	g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(ContainElement(env2No))
 }
 
 func TestBRRestore(t *testing.T) {
@@ -309,9 +308,9 @@ func TestBRRestore(t *testing.T) {
 			Name:  "BR_LOG_TO_TERM",
 			Value: string(rune(1)),
 		}
-		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env1))
-		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env2Yes))
-		g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(gomega.ContainElement(env2No))
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(ContainElement(env1))
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(ContainElement(env2Yes))
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(ContainElement(env2No))
 	}
 }
 
@@ -1117,14 +1116,14 @@ func TestPiTRRestore(t *testing.T) {
 			Name:  "BR_LOG_TO_TERM",
 			Value: string(rune(1)),
 		}
-		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env1))
-		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(gomega.ContainElement(env2Yes))
-		g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(gomega.ContainElement(env2No))
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(ContainElement(env1))
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).To(ContainElement(env2Yes))
+		g.Expect(job.Spec.Template.Spec.Containers[0].Env).NotTo(ContainElement(env2No))
 
 		// check PiTR specific args are set correctly
 		args := job.Spec.Template.Spec.Containers[0].Args
-		g.Expect(args).To(gomega.ContainElement("--mode=pitr"))
-		g.Expect(args).To(gomega.ContainElement("--pitrRestoredTs=443123456789"))
+		g.Expect(args).To(ContainElement("--mode=pitr"))
+		g.Expect(args).To(ContainElement("--pitrRestoredTs=443123456789"))
 
 		// Complete the restore
 		err = m.UpdateCondition(restore, &v1alpha1.RestoreCondition{

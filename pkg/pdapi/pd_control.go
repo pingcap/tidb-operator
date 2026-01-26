@@ -347,31 +347,31 @@ func NewFakePDControl(secretLister corelisterv1.SecretLister) *FakePDControl {
 }
 
 func (fpc *FakePDControl) SetPDClient(namespace Namespace, tcName string, pdclient PDClient) {
-	fpc.defaultPDControl.pdClients[genClientKey("http", namespace, tcName, "")] = pdclient
+	fpc.pdClients[genClientKey("http", namespace, tcName, "")] = pdclient
 }
 
 func (fpc *FakePDControl) SetPDClientForKey(namespace Namespace, tcName, key string, pdclient PDClient) {
 	genKey := genClientKey("http", namespace, tcName, "")
 	key = fmt.Sprintf("%s.%s", genKey, key)
-	fpc.defaultPDControl.pdClients[key] = pdclient
+	fpc.pdClients[key] = pdclient
 }
 
 func (fpc *FakePDControl) SetPDClientWithClusterDomain(namespace Namespace, tcName string, tcClusterDomain string, pdclient PDClient) {
-	fpc.defaultPDControl.pdClients[genClientKey("http", namespace, tcName, tcClusterDomain)] = pdclient
+	fpc.pdClients[genClientKey("http", namespace, tcName, tcClusterDomain)] = pdclient
 }
 
 func (fpc *FakePDControl) SetPDClientWithAddress(peerURL string, pdclient PDClient) {
-	fpc.defaultPDControl.pdClients[peerURL] = pdclient
+	fpc.pdClients[peerURL] = pdclient
 }
 
 func (fpc *FakePDControl) SetPDMSClient(namespace Namespace, tcName, curService string, pdmsclient PDMSClient) {
-	fpc.defaultPDControl.pdMSClients[genClientUrl(namespace, tcName, "http", "", curService, false)] = pdmsclient
+	fpc.pdMSClients[genClientUrl(namespace, tcName, "http", "", curService, false)] = pdmsclient
 }
 
 func (fpc *FakePDControl) SetPDMSClientWithClusterDomain(namespace Namespace, tcName, tcClusterDomain, curService string, pdmsclient PDMSClient) {
-	fpc.defaultPDControl.pdMSClients[genClientUrl(namespace, tcName, "http", tcClusterDomain, curService, false)] = pdmsclient
+	fpc.pdMSClients[genClientUrl(namespace, tcName, "http", tcClusterDomain, curService, false)] = pdmsclient
 }
 
 func (fpc *FakePDControl) SetPDMSClientWithAddress(peerURL string, pdmsclient PDMSClient) {
-	fpc.defaultPDControl.pdMSClients[peerURL] = pdmsclient
+	fpc.pdMSClients[peerURL] = pdmsclient
 }

@@ -180,7 +180,7 @@ func (c *Controller) syncDMCluster(dc *v1alpha1.DMCluster) error {
 func (c *Controller) enqueueDMCluster(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", obj, err))
+		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %+v: %v", obj, err))
 		return
 	}
 	c.queue.Add(key)

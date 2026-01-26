@@ -24,7 +24,6 @@ import (
 
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,13 +37,13 @@ func TestObserveVolumeStatus(t *testing.T) {
 	actualSize := "10Gi"
 
 	type testcase struct {
-		input  func(*FakePodVolumeModifier) ([]*v1.Pod, []DesiredVolume)
+		input  func(*FakePodVolumeModifier) ([]*corev1.Pod, []DesiredVolume)
 		expect func(*GomegaWithT, map[v1alpha1.StorageVolumeName]*v1alpha1.ObservedStorageVolumeStatus)
 	}
 
 	cases := map[string]testcase{
 		"all volumes are modified": {
-			input: func(pvm *FakePodVolumeModifier) ([]*v1.Pod, []DesiredVolume) {
+			input: func(pvm *FakePodVolumeModifier) ([]*corev1.Pod, []DesiredVolume) {
 				pods := newPods("pod", 3)
 
 				desiredVolumes := []DesiredVolume{
@@ -106,7 +105,7 @@ func TestObserveVolumeStatus(t *testing.T) {
 			},
 		},
 		"some volumes is modifying": {
-			input: func(pvm *FakePodVolumeModifier) ([]*v1.Pod, []DesiredVolume) {
+			input: func(pvm *FakePodVolumeModifier) ([]*corev1.Pod, []DesiredVolume) {
 				pods := newPods("pod", 3)
 
 				desiredVolumes := []DesiredVolume{
@@ -222,10 +221,10 @@ func TestObserveVolumeStatus(t *testing.T) {
 	}
 }
 
-func newPods(baseName string, count int) []*v1.Pod {
-	pods := make([]*v1.Pod, 0, count)
+func newPods(baseName string, count int) []*corev1.Pod {
+	pods := make([]*corev1.Pod, 0, count)
 	for i := 0; i < count; i++ {
-		pods = append(pods, &v1.Pod{
+		pods = append(pods, &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%s-%d", baseName, i),
 				Namespace: "test",
@@ -235,24 +234,24 @@ func newPods(baseName string, count int) []*v1.Pod {
 	return pods
 }
 
-func newPVC(name, storageClass, request, capacity string) *v1.PersistentVolumeClaim {
-	return &v1.PersistentVolumeClaim{
+func newPVC(name, storageClass, request, capacity string) *corev1.PersistentVolumeClaim {
+	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: v1.NamespaceDefault,
+			Namespace: corev1.NamespaceDefault,
 			Name:      name,
 		},
-		Spec: v1.PersistentVolumeClaimSpec{
-			Resources: v1.VolumeResourceRequirements{
-				Requests: v1.ResourceList{
-					v1.ResourceStorage: resource.MustParse(request),
+		Spec: corev1.PersistentVolumeClaimSpec{
+			Resources: corev1.VolumeResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: resource.MustParse(request),
 				},
 			},
 			StorageClassName: pointer.StringPtr(storageClass),
 		},
-		Status: v1.PersistentVolumeClaimStatus{
-			Phase: v1.ClaimBound,
-			Capacity: v1.ResourceList{
-				v1.ResourceStorage: resource.MustParse(capacity),
+		Status: corev1.PersistentVolumeClaimStatus{
+			Phase: corev1.ClaimBound,
+			Capacity: corev1.ResourceList{
+				corev1.ResourceStorage: resource.MustParse(capacity),
 			},
 		},
 	}

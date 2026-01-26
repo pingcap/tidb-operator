@@ -486,7 +486,8 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 			}
 		}
 
-		if logBackupSubcommand == v1alpha1.LogStartCommand {
+		switch logBackupSubcommand {
+		case v1alpha1.LogStartCommand:
 			// log start need to start tracker
 			err = bm.backupTracker.StartTrackLogBackupProgress(backup)
 			if err != nil {
@@ -499,7 +500,7 @@ func (bm *backupManager) makeBackupJob(backup *v1alpha1.Backup) (*batchv1.Job, *
 				}, nil)
 				return nil, nil, "", err
 			}
-		} else if logBackupSubcommand == v1alpha1.LogTruncateCommand {
+		case v1alpha1.LogTruncateCommand:
 			updateStatus = &controller.BackupUpdateStatus{
 				LogTruncatingUntil: &backup.Spec.LogTruncateUntil,
 			}
@@ -735,12 +736,13 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 			}
 		}
 	case v1alpha1.BackupModeVolumeSnapshot:
-		if backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupExecute {
+		switch backup.Spec.FederalVolumeBackupPhase {
+		case v1alpha1.FederalVolumeBackupExecute:
 			reason, err = bm.volumeSnapshotBackup(backup, tc)
 			if err != nil {
 				return nil, reason, fmt.Errorf("backup %s/%s, %v", ns, name, err)
 			}
-		} else if backup.Spec.FederalVolumeBackupPhase == v1alpha1.FederalVolumeBackupInitialize {
+		case v1alpha1.FederalVolumeBackupInitialize:
 			jobName = backup.GetVolumeBackupInitializeJobName()
 			args = append(args, "--initialize=true")
 		}

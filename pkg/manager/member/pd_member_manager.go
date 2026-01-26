@@ -500,8 +500,8 @@ func (m *pdMemberManager) getNewPDServiceForTidbCluster(tc *v1alpha1.TidbCluster
 		if svcSpec.Type != "" {
 			pdService.Spec.Type = svcSpec.Type
 		}
-		pdService.ObjectMeta.Annotations = util.CopyStringMap(svcSpec.Annotations)
-		pdService.ObjectMeta.Labels = util.CombineStringMap(pdService.ObjectMeta.Labels, svcSpec.Labels)
+		pdService.Annotations = util.CopyStringMap(svcSpec.Annotations)
+		pdService.Labels = util.CombineStringMap(pdService.Labels, svcSpec.Labels)
 		if svcSpec.LoadBalancerIP != nil {
 			pdService.Spec.LoadBalancerIP = *svcSpec.LoadBalancerIP
 		}

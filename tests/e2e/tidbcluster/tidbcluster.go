@@ -258,12 +258,12 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 						tc.Spec.Labels[fixture.ClusterCustomKey] = newValue
 						tc.Spec.Annotations[fixture.ClusterCustomKey] = newValue
-						tc.Spec.PD.ComponentSpec.Labels[fixture.ComponentCustomKey] = newValue
-						tc.Spec.PD.ComponentSpec.Annotations[fixture.ComponentCustomKey] = newValue
-						tc.Spec.TiKV.ComponentSpec.Labels[fixture.ComponentCustomKey] = newValue
-						tc.Spec.TiKV.ComponentSpec.Annotations[fixture.ComponentCustomKey] = newValue
-						tc.Spec.TiDB.ComponentSpec.Labels[fixture.ComponentCustomKey] = newValue
-						tc.Spec.TiDB.ComponentSpec.Annotations[fixture.ComponentCustomKey] = newValue
+						tc.Spec.PD.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.PD.Annotations[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiKV.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiKV.Annotations[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiDB.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiDB.Annotations[fixture.ComponentCustomKey] = newValue
 						tc.Spec.TiDB.Service.Labels[fixture.ComponentCustomKey] = newValue
 						tc.Spec.TiDB.Service.Annotations[fixture.ComponentCustomKey] = newValue
 						return nil
@@ -786,14 +786,14 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to wait for stores to be recorded into failure stores")
 
 			ginkgo.By("Waiting for failover pods to be created")
-			err, lastReason := utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, error, string) {
+			lastReason, err := utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, string, error) {
 				pods := []string{failoverTiKVPodName, failoverTiFlashPodName}
 				for _, pod := range pods {
 					if _, err := c.CoreV1().Pods(ns).Get(context.TODO(), pod, metav1.GetOptions{}); err != nil {
-						return false, nil, fmt.Sprintf("failed to get pod %s: %v", pod, err)
+						return false, fmt.Sprintf("failed to get pod %s: %v", pod, err), nil
 					}
 				}
-				return true, nil, ""
+				return true, "", nil
 			})
 			framework.ExpectNoError(err, "failed to wait for failover pods to be created, last reason: %s", lastReason)
 
@@ -839,20 +839,20 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to wait for failureStore to be empty after recovery")
 
 			ginkgo.By("Waiting for failover pods to be deleted after recovery")
-			err, lastReason = utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, error, string) {
+			lastReason, err = utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, string, error) {
 				pods := []string{failoverTiKVPodName, failoverTiFlashPodName}
 
 				for _, pod := range pods {
 					_, err := c.CoreV1().Pods(ns).Get(context.TODO(), pod, metav1.GetOptions{})
 					if err == nil {
-						return false, nil, fmt.Sprintf("pod %s still exists", pod)
+						return false, fmt.Sprintf("pod %s still exists", pod), nil
 					}
 					if err != nil && !apierrors.IsNotFound(err) {
-						return false, nil, fmt.Sprintf("failed to get pod %s: %v", pod, err)
+						return false, fmt.Sprintf("failed to get pod %s: %v", pod, err), nil
 					}
 				}
 
-				return true, nil, ""
+				return true, "", nil
 			})
 			framework.ExpectNoError(err, "failed to wait for failover pods to be deleted after recovery, last reason: %s", lastReason)
 		})
@@ -922,14 +922,14 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to wait for stores to be recorded into failure stores")
 
 			ginkgo.By("Waiting for failover pods to be created")
-			err, lastReason := utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, error, string) {
+			lastReason, err := utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, string, error) {
 				pods := []string{failoverTiKVPodName, failoverTiFlashPodName}
 				for _, pod := range pods {
 					if _, err := c.CoreV1().Pods(ns).Get(context.TODO(), pod, metav1.GetOptions{}); err != nil {
-						return false, nil, fmt.Sprintf("failed to get pod %s: %v", pod, err)
+						return false, fmt.Sprintf("failed to get pod %s: %v", pod, err), nil
 					}
 				}
-				return true, nil, ""
+				return true, "", nil
 			})
 			framework.ExpectNoError(err, "failed to wait for failover pods to be created, last reason: %s", lastReason)
 
@@ -997,20 +997,20 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "failed to wait for failureStore to be empty after recovery")
 
 			ginkgo.By("Waiting for failover pods to be deleted after recovery")
-			err, lastReason = utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, error, string) {
+			lastReason, err = utile2e.PollImmediateWithReason(time.Second*10, time.Minute*5, func() (bool, string, error) {
 				pods := []string{failoverTiKVPodName, failoverTiFlashPodName}
 
 				for _, pod := range pods {
 					_, err := c.CoreV1().Pods(ns).Get(context.TODO(), pod, metav1.GetOptions{})
 					if err == nil {
-						return false, nil, fmt.Sprintf("pod %s still exists", pod)
+						return false, fmt.Sprintf("pod %s still exists", pod), nil
 					}
 					if err != nil && !apierrors.IsNotFound(err) {
-						return false, nil, fmt.Sprintf("failed to get pod %s: %v", pod, err)
+						return false, fmt.Sprintf("failed to get pod %s: %v", pod, err), nil
 					}
 				}
 
-				return true, nil, ""
+				return true, "", nil
 			})
 			framework.ExpectNoError(err, "failed to wait for failover pods to be deleted after recovery, last reason: %s", lastReason)
 		})
@@ -3327,12 +3327,12 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 						tc.Spec.Labels[fixture.ClusterCustomKey] = newValue
 						tc.Spec.Annotations[fixture.ClusterCustomKey] = newValue
-						tc.Spec.PD.ComponentSpec.Labels[fixture.ComponentCustomKey] = newValue
-						tc.Spec.PD.ComponentSpec.Annotations[fixture.ComponentCustomKey] = newValue
-						tc.Spec.TiKV.ComponentSpec.Labels[fixture.ComponentCustomKey] = newValue
-						tc.Spec.TiKV.ComponentSpec.Annotations[fixture.ComponentCustomKey] = newValue
-						tc.Spec.TiDB.ComponentSpec.Labels[fixture.ComponentCustomKey] = newValue
-						tc.Spec.TiDB.ComponentSpec.Annotations[fixture.ComponentCustomKey] = newValue
+						tc.Spec.PD.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.PD.Annotations[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiKV.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiKV.Annotations[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiDB.Labels[fixture.ComponentCustomKey] = newValue
+						tc.Spec.TiDB.Annotations[fixture.ComponentCustomKey] = newValue
 						tc.Spec.TiDB.Service.Labels[fixture.ComponentCustomKey] = newValue
 						tc.Spec.TiDB.Service.Annotations[fixture.ComponentCustomKey] = newValue
 						return nil

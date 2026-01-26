@@ -837,9 +837,10 @@ func TestGeneralScalerUpdateDeferDeletingPVC(t *testing.T) {
 
 func newPVC(tc *v1alpha1.TidbCluster, index string, anno string) *corev1.PersistentVolumeClaim {
 	var podAnno map[string]string
-	if anno == "empty" {
+	switch anno {
+	case "empty":
 		podAnno = map[string]string{}
-	} else if anno == "normal" {
+	case "normal":
 		podAnno = map[string]string{}
 		podAnno[label.AnnPVCDeferDeleting] = "deleting-" + index
 	}

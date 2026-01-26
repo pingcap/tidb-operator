@@ -114,7 +114,7 @@ func (c *Controller) processNextWorkItem() bool {
 		} else if perrors.Find(err, controller.IsIgnoreError) != nil {
 			klog.V(4).Infof("Backup: %v, ignore err: %v", key.(string), err)
 		} else {
-			utilruntime.HandleError(fmt.Errorf("Backup: %v, sync failed, err: %v, requeuing", key.(string), err))
+			utilruntime.HandleError(fmt.Errorf("backup: %v, sync failed, err: %v, requeuing", key.(string), err))
 			c.queue.AddRateLimited(key)
 		}
 	} else {

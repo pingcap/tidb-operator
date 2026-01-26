@@ -109,7 +109,7 @@ func newTestCase(backupVersion, restoreVersion string, typ string, opts ...optio
 func (t *testcase) description() string {
 	builder := &strings.Builder{}
 
-	builder.WriteString(fmt.Sprintf("[%s][%s To %s]", t.typ, t.backupVersion, t.restoreVersion))
+	fmt.Fprintf(builder, "[%s][%s To %s]", t.typ, t.backupVersion, t.restoreVersion)
 
 	if t.enableTLS {
 		builder.WriteString("[TLS]")
@@ -313,11 +313,11 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 
 		tcase := newTestCase(utilimage.TiDBLatest, utilimage.TiDBLatest, typeBR)
 		tcase.configureBackup = func(backup *v1alpha1.Backup) {
-			backup.Spec.StorageProvider.S3.Bucket = path.Join(backup.Spec.StorageProvider.S3.Bucket, middlePath) // bucket add suffix
+			backup.Spec.S3.Bucket = path.Join(backup.Spec.S3.Bucket, middlePath) // bucket add suffix
 		}
 		tcase.postBackup = func(backup *v1alpha1.Backup) {
 			ginkgo.By("Check whether prefix of backup files in storage is right")
-			expectedPrefix := path.Join(middlePath, backup.Spec.StorageProvider.S3.Prefix)
+			expectedPrefix := path.Join(middlePath, backup.Spec.S3.Prefix)
 			cleaned, err := f.Storage.IsDataCleaned(ctx, ns, expectedPrefix)
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(cleaned, false, "storage should have data")
@@ -1465,13 +1465,13 @@ func createXK8sTidbClusterWithComponentsReady(f *e2eframework.Framework, namespa
 		if err != nil {
 			return err
 		}
-		caSecret.ObjectMeta.ResourceVersion = ""
+		caSecret.ResourceVersion = ""
 		caSecret.Namespace = ns2
 		err = f.GenericClient.Create(context.TODO(), caSecret)
 		if err != nil {
 			return err
 		}
-		caSecret.ObjectMeta.ResourceVersion = ""
+		caSecret.ResourceVersion = ""
 		caSecret.Namespace = ns3
 		err = f.GenericClient.Create(context.TODO(), caSecret)
 		if err != nil {

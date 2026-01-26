@@ -25,7 +25,6 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -33,24 +32,24 @@ import (
 	"k8s.io/utils/pointer"
 )
 
-func newMockPVC(name, storageClass, storageRequest, capacity string) *v1.PersistentVolumeClaim {
-	return &v1.PersistentVolumeClaim{
+func newMockPVC(name, storageClass, storageRequest, capacity string) *corev1.PersistentVolumeClaim {
+	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: v1.NamespaceDefault,
+			Namespace: corev1.NamespaceDefault,
 			Name:      name,
 		},
-		Spec: v1.PersistentVolumeClaimSpec{
-			Resources: v1.VolumeResourceRequirements{
-				Requests: v1.ResourceList{
-					v1.ResourceStorage: resource.MustParse(storageRequest),
+		Spec: corev1.PersistentVolumeClaimSpec{
+			Resources: corev1.VolumeResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: resource.MustParse(storageRequest),
 				},
 			},
 			StorageClassName: pointer.StringPtr(storageClass),
 		},
-		Status: v1.PersistentVolumeClaimStatus{
-			Phase: v1.ClaimBound,
-			Capacity: v1.ResourceList{
-				v1.ResourceStorage: resource.MustParse(capacity),
+		Status: corev1.PersistentVolumeClaimStatus{
+			Phase: corev1.ClaimBound,
+			Capacity: corev1.ResourceList{
+				corev1.ResourceStorage: resource.MustParse(capacity),
 			},
 		},
 	}
@@ -431,7 +430,7 @@ func TestResizeVolumes(t *testing.T) {
 				deps: fakeDeps,
 			}
 			tc := &v1alpha1.TidbCluster{
-				ObjectMeta: metav1.ObjectMeta{Namespace: v1.NamespaceDefault, Name: "test-cluster"},
+				ObjectMeta: metav1.ObjectMeta{Namespace: corev1.NamespaceDefault, Name: "test-cluster"},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
 						Replicas: 3,
@@ -439,7 +438,7 @@ func TestResizeVolumes(t *testing.T) {
 				},
 			}
 			sts := &appsv1.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Namespace: v1.NamespaceDefault, Name: "test-cluster-pd"},
+				ObjectMeta: metav1.ObjectMeta{Namespace: corev1.NamespaceDefault, Name: "test-cluster-pd"},
 				Spec:       appsv1.StatefulSetSpec{},
 			}
 			vctx := &componentVolumeContext{
@@ -1529,11 +1528,11 @@ func newVolume(name v1alpha1.StorageVolumeName, pvc *corev1.PersistentVolumeClai
 	return &volume{name: name, pvc: pvc}
 }
 
-func diffVolume(v1 *volume, v2 *volume) string {
-	if diff := cmp.Diff(v1.name, v2.name); diff != "" {
+func diffVolume(vol1 *volume, v2 *volume) string {
+	if diff := cmp.Diff(vol1.name, v2.name); diff != "" {
 		return diff
 	}
-	if diff := cmp.Diff(v1.pvc, v2.pvc); diff != "" {
+	if diff := cmp.Diff(vol1.pvc, v2.pvc); diff != "" {
 		return diff
 	}
 	return ""

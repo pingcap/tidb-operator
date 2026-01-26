@@ -506,13 +506,13 @@ func (rm *restoreManager) checkTiKVEncryption(r *v1alpha1.Restore, tc *v1alpha1.
 	// tikv backup encryption is enabled
 	config := tc.Spec.TiKV.Config
 	if config == nil {
-		return fmt.Errorf("TiKV encryption config missmatched, backup configured TiKV encryption, however, restore tc.spec.tikv.config doesn't contains encryption, please check TiKV encryption config. e.g. download s3 backupmeta, check kubernetes.crd_tidb_cluster.spec, and then edit restore tc.")
+		return fmt.Errorf("tikv encryption config mismatched, backup configured TiKV encryption, however, restore tc.spec.tikv.config doesn't contains encryption, please check TiKV encryption config (e.g. download s3 backupmeta, check kubernetes.crd_tidb_cluster.spec, and then edit restore tc)")
 	}
 
 	restoreEncryptMethod := config.Get(TiKVConfigEncryptionMethod)
 	if backupEncryptMethod.Interface() != restoreEncryptMethod.Interface() {
 		// restore crd must contains data-encryption
-		return fmt.Errorf("TiKV encryption config missmatched, backup data enabled TiKV encryption, restore crd does not enabled TiKV encryption")
+		return fmt.Errorf("tikv encryption config mismatched, backup data enabled TiKV encryption, restore crd does not enabled TiKV encryption")
 	}
 
 	// if backup tikv configured encryption, restore require tc to have the same encryption configured.
@@ -521,11 +521,11 @@ func (rm *restoreManager) checkTiKVEncryption(r *v1alpha1.Restore, tc *v1alpha1.
 	if backupMasterKey != nil {
 		restoreMasterKey := config.Get(TiKVConfigEncryptionMasterKeyId)
 		if restoreMasterKey == nil {
-			return fmt.Errorf("TiKV encryption config missmatched, backup data has master key, restore crd have not one")
+			return fmt.Errorf("tikv encryption config mismatched, backup data has master key, restore crd have not one")
 		}
 
 		if backupMasterKey.Interface() != restoreMasterKey.Interface() {
-			return fmt.Errorf("TiKV encryption config master key missmatched")
+			return fmt.Errorf("tikv encryption config master key mismatched")
 		}
 	}
 	return nil

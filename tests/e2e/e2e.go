@@ -87,11 +87,12 @@ func setupSuite(c kubernetes.Interface, extClient versioned.Interface, apiExtCli
 			metav1.NamespacePublic,
 			v1.NamespaceNodeLease,
 		}
-		if framework.TestContext.Provider == "kind" {
+		switch framework.TestContext.Provider {
+		case "kind":
 			// kind local path provisioner namespace since 0.7.0
 			// https://github.com/kubernetes-sigs/kind/blob/v0.7.0/pkg/build/node/storage.go#L35
 			reservedNamespaces = append(reservedNamespaces, "local-path-storage")
-		} else if framework.TestContext.Provider == "openshift" {
+		case "openshift":
 			reservedNamespaces = append(reservedNamespaces, "openshift")
 		}
 		log.Logf("reserved namespaces: %v, provider: %s", reservedNamespaces, framework.TestContext.Provider)
@@ -480,9 +481,9 @@ func waitForDaemonSets(c kubernetes.Interface, ns string, allowedNotReadyNodes i
 		}
 		var notReadyDaemonSets []string
 		for _, ds := range dsList.Items {
-			log.Logf("%d / %d pods ready in namespace '%s' in daemonset '%s' (%d seconds elapsed)", ds.Status.NumberReady, ds.Status.DesiredNumberScheduled, ns, ds.ObjectMeta.Name, int(time.Since(start).Seconds()))
+			log.Logf("%d / %d pods ready in namespace '%s' in daemonset '%s' (%d seconds elapsed)", ds.Status.NumberReady, ds.Status.DesiredNumberScheduled, ns, ds.Name, int(time.Since(start).Seconds()))
 			if ds.Status.DesiredNumberScheduled-ds.Status.NumberReady > allowedNotReadyNodes {
-				notReadyDaemonSets = append(notReadyDaemonSets, ds.ObjectMeta.Name)
+				notReadyDaemonSets = append(notReadyDaemonSets, ds.Name)
 			}
 		}
 
