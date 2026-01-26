@@ -365,7 +365,7 @@ func TestTiDBMemberManagerTiDBStatefulSetIsUpgrading(t *testing.T) {
 	}
 
 	for i := range tests {
-		t.Logf(tests[i].name)
+		t.Logf("%s", tests[i].name)
 		testFn(&tests[i], t)
 	}
 }
@@ -573,7 +573,7 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	}
 
 	for i := range tests {
-		t.Logf(tests[i].name)
+		t.Logf("%s", tests[i].name)
 		testFn(&tests[i], t)
 	}
 }
@@ -2935,7 +2935,7 @@ func TestTiDBMemberManagerSetServerLabels(t *testing.T) {
 	}
 
 	for i := range tests {
-		t.Logf(tests[i].name)
+		t.Logf("%s", tests[i].name)
 		testFn(&tests[i], t)
 	}
 }

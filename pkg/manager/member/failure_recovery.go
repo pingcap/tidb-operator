@@ -190,8 +190,8 @@ func (fr *commonStatefulFailureRecovery) restartPodForHostDown(tc *v1alpha1.Tidb
 						return err
 					}
 					msg := fmt.Sprintf("Failed %s pod %s/%s is force deleted for recovery", memberType, ns, fr.failureObjectAccess.GetPodName(tc, objectId))
-					klog.Infof(msg)
-					return controller.IgnoreErrorf(msg)
+					klog.Infof("%s", msg)
+					return controller.IgnoreErrorf("%s", msg)
 				}
 			}
 		}

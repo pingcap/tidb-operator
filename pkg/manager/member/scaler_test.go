@@ -47,7 +47,7 @@ func TestGeneralScalerDeleteAllDeferDeletingPVC(t *testing.T) {
 	tc := newTidbClusterForPD()
 	setName := controller.PDMemberName(tc.GetName())
 	testFn := func(test *testcase, t *testing.T) {
-		t.Logf(test.name)
+		t.Logf("%s", test.name)
 		g := NewGomegaWithT(t)
 
 		gs, pvcIndexer, pvcControl := newFakeGeneralScaler()
@@ -649,7 +649,7 @@ func TestGeneralScalerDeleteMultiDeferDeletingPVC(t *testing.T) {
 	}
 	tc := newTidbClusterForPD()
 	testFn := func(test *testcase, t *testing.T) {
-		t.Logf(test.name)
+		t.Logf("%s", test.name)
 		g := NewGomegaWithT(t)
 
 		gs, pvcIndexer, pvcControl := newFakeGeneralScaler()
@@ -761,7 +761,7 @@ func TestGeneralScalerUpdateDeferDeletingPVC(t *testing.T) {
 	}
 	tc := newTidbClusterForPD()
 	testFn := func(test *testcase, t *testing.T) {
-		t.Logf(test.name)
+		t.Logf("%s", test.name)
 		g := NewGomegaWithT(t)
 
 		gs, pvcIndexer, pvcControl := newFakeGeneralScaler()

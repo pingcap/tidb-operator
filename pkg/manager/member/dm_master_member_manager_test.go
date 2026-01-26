@@ -526,7 +526,7 @@ func TestMasterMemberManagerMasterStatefulSetIsUpgrading(t *testing.T) {
 	}
 
 	for i := range tests {
-		t.Logf(tests[i].name)
+		t.Logf("%s", tests[i].name)
 		testFn(&tests[i], t)
 	}
 }
