@@ -667,7 +667,7 @@ func newFakeDMCluster(mm *MonitorManager) {
 			Master: v1alpha1.MasterSpec{Replicas: 1},
 		},
 	}
-	dmIndexer.Add(dc)
+	_ = dmIndexer.Add(dc)
 }
 
 func newFakeTidbMonitorManager() *MonitorManager {

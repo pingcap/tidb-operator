@@ -23,7 +23,6 @@ import (
 	. "github.com/onsi/gomega"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -527,7 +526,7 @@ func TestMasterMemberManagerMasterStatefulSetIsUpgrading(t *testing.T) {
 	}
 
 	for i := range tests {
-		t.Logf(tests[i].name)
+		t.Logf("%s", tests[i].name)
 		testFn(&tests[i], t)
 	}
 }
@@ -696,8 +695,8 @@ func TestMasterMemberManagerSyncMasterSts(t *testing.T) {
 			modify: func(cluster *v1alpha1.DMCluster) {
 				cluster.Spec.Master.BaseImage = "dm-test-image-2"
 				cluster.Spec.Master.Replicas = 1
-				cluster.ObjectMeta.Annotations = make(map[string]string)
-				cluster.ObjectMeta.Annotations["tidb.pingcap.com/force-upgrade"] = "true"
+				cluster.Annotations = make(map[string]string)
+				cluster.Annotations["tidb.pingcap.com/force-upgrade"] = "true"
 			},
 			leaderInfo: dmapi.MembersLeader{
 				Name: "master1",
@@ -943,7 +942,7 @@ func TestGetNewMasterSetForDMCluster(t *testing.T) {
 					Worker: &v1alpha1.WorkerSpec{},
 				},
 			},
-			testSts: testHostNetwork(t, true, v1.DNSClusterFirstWithHostNet),
+			testSts: testHostNetwork(t, true, corev1.DNSClusterFirstWithHostNet),
 		},
 		{
 			name: "dm-master network is not host when dm-worker is host",
@@ -1981,8 +1980,8 @@ func TestMasterMemberManagerSyncMasterStsWhenMasterNotJoinCluster(t *testing.T) 
 					pvc2.Name = pvc2.Name + "-2"
 					pvc2.UID = pvc2.UID + "-2"
 					pod := pods[ordinal]
-					pvc1.ObjectMeta.Labels[label.AnnPodNameKey] = pod.GetName()
-					pvc2.ObjectMeta.Labels[label.AnnPodNameKey] = pod.GetName()
+					pvc1.Labels[label.AnnPodNameKey] = pod.GetName()
+					pvc2.Labels[label.AnnPodNameKey] = pod.GetName()
 					pod.Spec.Volumes = append(pod.Spec.Volumes,
 						corev1.Volume{
 							VolumeSource: corev1.VolumeSource{
@@ -2072,14 +2071,14 @@ func TestMasterMemberManagerSyncMasterStsWhenMasterNotJoinCluster(t *testing.T) 
 }
 
 func TestMasterShouldRecover(t *testing.T) {
-	pods := []*v1.Pod{
+	pods := []*corev1.Pod{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "failover-dm-master-0",
-				Namespace: v1.NamespaceDefault,
+				Namespace: corev1.NamespaceDefault,
 			},
-			Status: v1.PodStatus{
-				Conditions: []v1.PodCondition{
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
 					{
 						Type:   corev1.PodReady,
 						Status: corev1.ConditionTrue,
@@ -2090,10 +2089,10 @@ func TestMasterShouldRecover(t *testing.T) {
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "failover-dm-master-1",
-				Namespace: v1.NamespaceDefault,
+				Namespace: corev1.NamespaceDefault,
 			},
-			Status: v1.PodStatus{
-				Conditions: []v1.PodCondition{
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
 					{
 						Type:   corev1.PodReady,
 						Status: corev1.ConditionTrue,
@@ -2102,13 +2101,13 @@ func TestMasterShouldRecover(t *testing.T) {
 			},
 		},
 	}
-	podsWithFailover := append(pods, &v1.Pod{
+	podsWithFailover := append(pods, &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "failover-dm-master-2",
-			Namespace: v1.NamespaceDefault,
+			Namespace: corev1.NamespaceDefault,
 		},
-		Status: v1.PodStatus{
-			Conditions: []v1.PodCondition{
+		Status: corev1.PodStatus{
+			Conditions: []corev1.PodCondition{
 				{
 					Type:   corev1.PodReady,
 					Status: corev1.ConditionFalse,
@@ -2119,7 +2118,7 @@ func TestMasterShouldRecover(t *testing.T) {
 	tests := []struct {
 		name string
 		dc   *v1alpha1.DMCluster
-		pods []*v1.Pod
+		pods []*corev1.Pod
 		want bool
 	}{
 		{
@@ -2127,7 +2126,7 @@ func TestMasterShouldRecover(t *testing.T) {
 			dc: &v1alpha1.DMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Status: v1alpha1.DMClusterStatus{},
 			},
@@ -2139,7 +2138,7 @@ func TestMasterShouldRecover(t *testing.T) {
 			dc: &v1alpha1.DMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Spec: v1alpha1.DMClusterSpec{
 					Master: v1alpha1.MasterSpec{
@@ -2174,7 +2173,7 @@ func TestMasterShouldRecover(t *testing.T) {
 			dc: &v1alpha1.DMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Spec: v1alpha1.DMClusterSpec{
 					Master: v1alpha1.MasterSpec{
@@ -2209,7 +2208,7 @@ func TestMasterShouldRecover(t *testing.T) {
 			dc: &v1alpha1.DMCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Spec: v1alpha1.DMClusterSpec{
 					Master: v1alpha1.MasterSpec{

@@ -24,7 +24,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/pdapi"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
-	utilportforward "github.com/pingcap/tidb-operator/tests/e2e/util/portforward"
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 )
 
@@ -38,7 +37,7 @@ import (
 //			log.Fatal(err)
 //		  }
 //	   defer cancel()
-func NewProxiedPDClient(secretLister corelisterv1.SecretLister, fw utilportforward.PortForward, namespace string, tcName string, tlsEnabled bool) (pdapi.PDClient, context.CancelFunc, error) {
+func NewProxiedPDClient(secretLister corelisterv1.SecretLister, fw portforward.PortForward, namespace string, tcName string, tlsEnabled bool) (pdapi.PDClient, context.CancelFunc, error) {
 	var tlsConfig *tls.Config
 	var err error
 	scheme := "http"
@@ -60,6 +59,6 @@ func NewProxiedPDClient(secretLister corelisterv1.SecretLister, fw utilportforwa
 	return pdapi.NewPDClient(u.String(), pdapi.DefaultTimeout, tlsConfig), cancel, nil
 }
 
-func NewProxiedPDClientFromTidbCluster(fw utilportforward.PortForward, secretLister corelisterv1.SecretLister, tc *v1alpha1.TidbCluster) (pdapi.PDClient, context.CancelFunc, error) {
+func NewProxiedPDClientFromTidbCluster(fw portforward.PortForward, secretLister corelisterv1.SecretLister, tc *v1alpha1.TidbCluster) (pdapi.PDClient, context.CancelFunc, error) {
 	return NewProxiedPDClient(secretLister, fw, tc.GetNamespace(), tc.GetName(), tc.IsTLSClusterEnabled())
 }

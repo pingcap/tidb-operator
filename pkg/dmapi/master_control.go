@@ -126,7 +126,7 @@ func NewFakeMasterControl(secretLister corelisterv1.SecretLister) *FakeMasterCon
 }
 
 func (fmc *FakeMasterControl) SetMasterClient(namespace, dcName string, masterClient MasterClient) {
-	fmc.defaultMasterControl.masterClients[masterClientKey("http", namespace, dcName)] = masterClient
+	fmc.masterClients[masterClientKey("http", namespace, dcName)] = masterClient
 }
 
 func (fmc *FakeMasterControl) SetMasterPeerClient(namespace, dcName, podName string, masterPeerClient MasterClient) {

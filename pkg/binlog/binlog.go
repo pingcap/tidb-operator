@@ -185,7 +185,7 @@ func (c *Client) updateStatus(ctx context.Context, ty string, nodeID string, sta
 
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
-	resp, err := c.etcdClient.KV.Get(ctx, key)
+	resp, err := c.etcdClient.Get(ctx, key)
 	if err != nil {
 		return errors.AddStack(err)
 	}
@@ -224,7 +224,7 @@ func (c *Client) nodeStatus(ctx context.Context, ty string) (status []*v1alpha1.
 
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
-	resp, err := c.etcdClient.KV.Get(ctx, key, clientv3.WithPrefix())
+	resp, err := c.etcdClient.Get(ctx, key, clientv3.WithPrefix())
 	if err != nil {
 		return nil, errors.AddStack(err)
 	}

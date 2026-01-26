@@ -275,22 +275,23 @@ var _ = ginkgo.Describe("[Stability]", func() {
 					if tc.Annotations == nil {
 						tc.Annotations = map[string]string{}
 					}
-					if st.component == "tikv" {
+					switch st.component {
+					case "tikv":
 						tc.Annotations[label.AnnTiKVDeleteSlots] = mustToString(st.deleteSlots)
 						tc.Spec.TiKV.Replicas = replicas
-					} else if st.component == "tiflash" {
+					case "tiflash":
 						tc.Annotations[label.AnnTiFlashDeleteSlots] = mustToString(st.deleteSlots)
 						tc.Spec.TiFlash.Replicas = replicas
-					} else if st.component == "pd" {
+					case "pd":
 						tc.Annotations[label.AnnPDDeleteSlots] = mustToString(st.deleteSlots)
 						tc.Spec.PD.Replicas = replicas
-					} else if st.component == "tidb" {
+					case "tidb":
 						tc.Annotations[label.AnnTiDBDeleteSlots] = mustToString(st.deleteSlots)
 						tc.Spec.TiDB.Replicas = replicas
-					} else if st.component == "ticdc" {
+					case "ticdc":
 						tc.Annotations[label.AnnTiCDCDeleteSlots] = mustToString(st.deleteSlots)
 						tc.Spec.TiCDC.Replicas = replicas
-					} else {
+					default:
 						return fmt.Errorf("unsupported component: %v", st.component)
 					}
 					return nil

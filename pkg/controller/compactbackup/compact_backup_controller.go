@@ -19,7 +19,6 @@ import (
 	"math"
 	"time"
 
-	"github.com/pingcap/errors"
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -183,12 +182,12 @@ func (c *Controller) updateCompact(cur interface{}) {
 	name := newcompact.GetName()
 
 	if newcompact.Status.State == string(v1alpha1.BackupFailed) {
-		klog.Errorf("Compact %s/%s is failed, skip", ns, name)
+		klog.Errorf("compact %s/%s is failed, skip", ns, name)
 		return
 	}
 
 	if newcompact.Status.State == string(v1alpha1.BackupComplete) {
-		klog.Errorf("Compact %s/%s is complete, skip", ns, name)
+		klog.Errorf("compact %s/%s is complete, skip", ns, name)
 		return
 	}
 
@@ -224,7 +223,7 @@ func (c *Controller) processNextWorkItem() bool {
 		} else if perrors.Find(err, controller.IsIgnoreError) != nil {
 			klog.Infof("Compact: %v, ignore err: %v", key.(string), err)
 		} else {
-			utilruntime.HandleError(fmt.Errorf("Compact: %v, sync failed, err: %v, requeuing", key.(string), err))
+			utilruntime.HandleError(fmt.Errorf("compact: %v, sync failed, err: %v, requeuing", key.(string), err))
 			c.queue.AddRateLimited(key)
 		}
 	} else {
@@ -258,7 +257,7 @@ func (c *Controller) sync(key string) (err error) {
 	klog.Infof("Compact: [%s/%s] start to sync", ns, name)
 	compact, err := c.deps.CompactBackupLister.CompactBackups(ns).Get(name)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if perrors.IsNotFound(err) {
 			klog.Infof("Compact has been deleted %v", key)
 			return nil
 		}
@@ -268,19 +267,19 @@ func (c *Controller) sync(key string) (err error) {
 
 	err = c.validate(compact)
 	if compact.Status.State == "" {
-		c.statusUpdater.OnSchedule(context.TODO(), compact, err)
+		_ = c.statusUpdater.OnSchedule(context.TODO(), compact, err)
 	}
 	if err != nil {
 		return err
 	}
 
 	if compact.Status.State == string(v1alpha1.BackupComplete) {
-		klog.Infof("Compact %s/%s is complete, skip", ns, name)
+		klog.Infof("compact %s/%s is complete, skip", ns, name)
 		return nil
 	}
 
 	if compact.Status.State == string(v1alpha1.BackupFailed) {
-		klog.Infof("Compact %s/%s is failed, skip", ns, name)
+		klog.Infof("compact %s/%s is failed, skip", ns, name)
 		return nil
 	}
 
@@ -289,7 +288,7 @@ func (c *Controller) sync(key string) (err error) {
 		return err
 	}
 	if !ok {
-		klog.Infof("Compact %s/%s is not allowed to create new job, skip", ns, name)
+		klog.Infof("compact %s/%s is not allowed to create new job, skip", ns, name)
 		return nil
 	}
 
@@ -308,14 +307,14 @@ func (c *Controller) createCompactJob(compact *v1alpha1.CompactBackup) error {
 	var job *batchv1.Job
 	var reason string
 	if job, reason, err = c.makeCompactJob(compact); err != nil {
-		klog.Errorf("Compact %s/%s create job %s failed, reason is %s, error %v.", ns, name, compactJobName, reason, err)
+		klog.Errorf("compact %s/%s create job %s failed, reason is %s, error %v.", ns, name, compactJobName, reason, err)
 		return err
 	}
 
 	// create k8s job
-	klog.Infof("Compact %s/%s creating job %s.", ns, name, compactJobName)
+	klog.Infof("compact %s/%s creating job %s.", ns, name, compactJobName)
 	if err := c.deps.JobControl.CreateJob(compact, job); err != nil {
-		errMsg := fmt.Errorf("create Compact %s/%s job %s failed, err: %v", ns, name, compactJobName, err)
+		errMsg := fmt.Errorf("create compact %s/%s job %s failed, err: %v", ns, name, compactJobName, err)
 		return errMsg
 	}
 	return nil
@@ -335,7 +334,7 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 
 	storageEnv, reason, err := backuputil.GenerateStorageCertEnv(ns, compact.Spec.UseKMS, compact.Spec.StorageProvider, c.deps.SecretLister)
 	if err != nil {
-		return nil, reason, fmt.Errorf("Compact %s/%s, %v", ns, name, err)
+		return nil, reason, fmt.Errorf("compact %s/%s, %v", ns, name, err)
 	}
 
 	envVars = append(envVars, storageEnv...)
@@ -374,7 +373,7 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 			tikvImage = fmt.Sprintf("%s:%s", tikvImage, tcVersion)
 		}
 	}
-	klog.Infof("Compact %s/%s use br image %s and tikv image %s", ns, name, brImage, tikvImage)
+	klog.Infof("compact %s/%s use br image %s and tikv image %s", ns, name, brImage, tikvImage)
 
 	//TODO: (Ris)What is the instance here?
 	jobLabels := util.CombineStringMap(label.NewBackup().Instance("Compact-Backup").BackupJob().Backup(name), compact.Labels)
@@ -497,7 +496,7 @@ func (c *Controller) checkJobStatus(compact *v1alpha1.CompactBackup) (bool, erro
 
 	job, err := c.deps.KubeClientset.BatchV1().Jobs(ns).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if perrors.IsNotFound(err) {
 			return c.allowCompact(compact), nil
 		}
 		klog.Errorf("Failed to get job %s for compact %s/%s, error %v", name, ns, name, err)
@@ -526,16 +525,16 @@ func (c *Controller) checkJobStatus(compact *v1alpha1.CompactBackup) (bool, erro
 func (c *Controller) validate(compact *v1alpha1.CompactBackup) error {
 	spec := compact.Spec
 	if spec.StartTs == "" {
-		return errors.NewNoStackError("start-ts must be set")
+		return perrors.NewNoStackError("start-ts must be set")
 	}
 	if spec.EndTs == "" {
-		return errors.NewNoStackError("end-ts must be set")
+		return perrors.NewNoStackError("end-ts must be set")
 	}
 	if spec.Concurrency <= 0 {
-		return errors.NewNoStackError("concurrency must be greater than 0")
+		return perrors.NewNoStackError("concurrency must be greater than 0")
 	}
 	if spec.MaxRetryTimes < 0 {
-		return errors.NewNoStackError("maxRetryTimes must be greater than or equal to 0")
+		return perrors.NewNoStackError("maxRetryTimes must be greater than or equal to 0")
 	}
 	return nil
 }

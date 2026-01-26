@@ -30,7 +30,6 @@ import (
 	"github.com/pingcap/tidb-operator/tests/e2e/br/framework"
 	"github.com/pingcap/tidb-operator/tests/third_party/k8s/log"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -396,7 +395,7 @@ func WaitForCompactComplete(f *framework.Framework, ns, name string, timeout tim
 		case string(v1alpha1.BackupComplete):
 			return true, nil
 		case string(v1alpha1.BackupFailed):
-			return false, fmt.Errorf("Compact failed: %s", cpbk.Status.Message)
+			return false, fmt.Errorf("compact failed: %s", cpbk.Status.Message)
 		default:
 			log.Logf("the current status is: %s %s", cpbk.Status.State, cpbk.Status.Progress)
 			//do nothing
@@ -417,7 +416,7 @@ func printPodLogs(f *framework.Framework, ns, name string) {
 		return
 	}
 
-	var matchingPods []v1.Pod
+	var matchingPods []corev1.Pod
 	for _, pod := range pods.Items {
 		if strings.Contains(pod.Name, name) {
 			matchingPods = append(matchingPods, pod)
@@ -430,7 +429,7 @@ func printPodLogs(f *framework.Framework, ns, name string) {
 	}
 
 	for _, pod := range matchingPods {
-		req := f.ClientSet.CoreV1().Pods(ns).GetLogs(pod.Name, &v1.PodLogOptions{})
+		req := f.ClientSet.CoreV1().Pods(ns).GetLogs(pod.Name, &corev1.PodLogOptions{})
 
 		// Execute the log request and get the stream
 		logStream, err := req.Stream(context.TODO())

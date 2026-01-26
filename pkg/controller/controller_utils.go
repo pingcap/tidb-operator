@@ -565,7 +565,7 @@ func WatchForObject(informer cache.SharedIndexInformer, q workqueue.Interface) {
 	enqueueFn := func(obj interface{}) {
 		key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", obj, err))
+			utilruntime.HandleError(fmt.Errorf("couldn't get key for object %+v: %v", obj, err))
 			return
 		}
 		q.Add(key)
@@ -619,7 +619,7 @@ func WatchForController(informer cache.SharedIndexInformer, q workqueue.Interfac
 			refGV.Group == controllerObj.GetObjectKind().GroupVersionKind().Group {
 			key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(controllerObj)
 			if err != nil {
-				utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", controllerObj, err))
+				utilruntime.HandleError(fmt.Errorf("couldn't get key for object %+v: %v", controllerObj, err))
 				return
 			}
 			q.Add(key)
@@ -638,7 +638,7 @@ func WatchForController(informer cache.SharedIndexInformer, q workqueue.Interfac
 func EmptyClone(obj client.Object) (client.Object, error) {
 	meta, ok := obj.(metav1.Object)
 	if !ok {
-		return nil, fmt.Errorf("Obj %v is not a metav1.Object, cannot call EmptyClone", obj)
+		return nil, fmt.Errorf("obj %v is not a metav1.Object, cannot call EmptyClone", obj)
 	}
 	gvk, err := InferObjectKind(obj)
 	if err != nil {
@@ -650,7 +650,7 @@ func EmptyClone(obj client.Object) (client.Object, error) {
 	}
 	instMeta, ok := inst.(client.Object)
 	if !ok {
-		return nil, fmt.Errorf("New instatnce %v created from scheme is not a metav1.Object, EmptyClone failed", inst)
+		return nil, fmt.Errorf("new instatnce %v created from scheme is not a metav1.Object, EmptyClone failed", inst)
 	}
 	instMeta.SetName(meta.GetName())
 	instMeta.SetNamespace(meta.GetNamespace())

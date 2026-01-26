@@ -183,8 +183,8 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 		timezone = cluster.Timezone()
 		baseSpec = cluster.BaseDiscoverySpec()
 		podSpec = baseSpec.BuildPodSpec()
-		if cluster.Spec.Discovery.ComponentSpec != nil && cluster.Spec.Discovery.ComponentSpec.ReadinessProbe != nil {
-			readinessProb = buildDiscoveryProb(cluster.Spec.Discovery.ComponentSpec.ReadinessProbe)
+		if cluster.Spec.Discovery.ComponentSpec != nil && cluster.Spec.Discovery.ReadinessProbe != nil {
+			readinessProb = buildDiscoveryProb(cluster.Spec.Discovery.ReadinessProbe)
 		}
 		if cluster.Spec.Discovery.LivenessProbe != nil {
 			livenessProbe = buildDiscoveryProb(cluster.Spec.Discovery.LivenessProbe)
@@ -194,8 +194,8 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 		timezone = cluster.Timezone()
 		baseSpec = cluster.BaseDiscoverySpec()
 		podSpec = baseSpec.BuildPodSpec()
-		if cluster.Spec.Discovery.ComponentSpec != nil && cluster.Spec.Discovery.ComponentSpec.ReadinessProbe != nil {
-			readinessProb = buildDiscoveryProb(cluster.Spec.Discovery.ComponentSpec.ReadinessProbe)
+		if cluster.Spec.Discovery.ComponentSpec != nil && cluster.Spec.Discovery.ReadinessProbe != nil {
+			readinessProb = buildDiscoveryProb(cluster.Spec.Discovery.ReadinessProbe)
 		}
 		if cluster.Spec.Discovery.LivenessProbe != nil {
 			livenessProbe = buildDiscoveryProb(cluster.Spec.Discovery.LivenessProbe)

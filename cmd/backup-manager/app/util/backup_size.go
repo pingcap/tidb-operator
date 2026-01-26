@@ -67,10 +67,6 @@ func CalcVolSnapBackupSize(ctx context.Context, provider v1alpha1.StorageProvide
 		return 0, 0, err
 	}
 
-	if err != nil {
-		return 0, 0, err
-	}
-
 	fullBackupSize, incrementalBackupSize, err = calcBackupSize(ctx, volSnapshots, level)
 
 	if err != nil {

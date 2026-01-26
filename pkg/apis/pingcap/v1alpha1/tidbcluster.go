@@ -541,23 +541,24 @@ func (tc *TidbCluster) getDeleteSlots(component string) (deleteSlots sets.Int32)
 		return deleteSlots
 	}
 	var key string
-	if component == label.PDLabelVal {
+	switch component {
+	case label.PDLabelVal:
 		key = label.AnnPDDeleteSlots
-	} else if component == label.PDMSTSOLabelVal {
+	case label.PDMSTSOLabelVal:
 		key = label.AnnTSODeleteSlots
-	} else if component == label.PDMSSchedulingLabelVal {
+	case label.PDMSSchedulingLabelVal:
 		key = label.AnnSchedulingDeleteSlots
-	} else if component == label.TiDBLabelVal {
+	case label.TiDBLabelVal:
 		key = label.AnnTiDBDeleteSlots
-	} else if component == label.TiKVLabelVal {
+	case label.TiKVLabelVal:
 		key = label.AnnTiKVDeleteSlots
-	} else if component == label.TiFlashLabelVal {
+	case label.TiFlashLabelVal:
 		key = label.AnnTiFlashDeleteSlots
-	} else if component == label.TiCDCLabelVal {
+	case label.TiCDCLabelVal:
 		key = label.AnnTiCDCDeleteSlots
-	} else if component == label.TiProxyLabelVal {
+	case label.TiProxyLabelVal:
 		key = label.AnnTiProxyDeleteSlots
-	} else {
+	default:
 		return
 	}
 	value, ok := annotations[key]
@@ -1241,7 +1242,7 @@ func (tidbSvc *TiDBServiceSpec) GetPortName() string {
 }
 
 func (tc *TidbCluster) GetInstanceName() string {
-	labels := tc.ObjectMeta.GetLabels()
+	labels := tc.GetLabels()
 	// Keep backward compatibility for helm.
 	// This introduce a hidden danger that change this label will trigger rolling-update of most of the components
 	// TODO(aylei): disallow mutation of this label or adding this label with value other than the cluster name in ValidateUpdate()

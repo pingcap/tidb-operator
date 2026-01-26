@@ -88,7 +88,7 @@ func TestValidateAnnotations(t *testing.T) {
 	}
 
 	for _, v := range successCases {
-		if errs := validateAnnotations(v.tc.ObjectMeta.Annotations, field.NewPath("metadata", "annotations")); len(errs) != 0 {
+		if errs := validateAnnotations(v.tc.Annotations, field.NewPath("metadata", "annotations")); len(errs) != 0 {
 			t.Errorf("[%s]: unexpected error: %v", v.name, errs)
 		}
 	}
@@ -175,7 +175,7 @@ func TestValidateAnnotations(t *testing.T) {
 	}
 
 	for _, v := range errorCases {
-		errs := validateAnnotations(v.tc.ObjectMeta.Annotations, field.NewPath("metadata", "annotations"))
+		errs := validateAnnotations(v.tc.Annotations, field.NewPath("metadata", "annotations"))
 		if len(errs) != len(v.errs) {
 			t.Errorf("[%s]: expected %d failures, got %d failures: %v", v.name, len(v.errs), len(errs), errs)
 			continue
@@ -248,7 +248,7 @@ func TestValidateDMAnnotations(t *testing.T) {
 	}
 
 	for _, v := range successCases {
-		if errs := validateAnnotations(v.dc.ObjectMeta.Annotations, field.NewPath("metadata", "annotations")); len(errs) != 0 {
+		if errs := validateAnnotations(v.dc.Annotations, field.NewPath("metadata", "annotations")); len(errs) != 0 {
 			t.Errorf("[%s]: unexpected error: %v", v.name, errs)
 		}
 	}
@@ -322,7 +322,7 @@ func TestValidateDMAnnotations(t *testing.T) {
 	}
 
 	for _, v := range errorCases {
-		errs := validateDMAnnotations(v.dc.ObjectMeta.Annotations, field.NewPath("metadata", "annotations"))
+		errs := validateDMAnnotations(v.dc.Annotations, field.NewPath("metadata", "annotations"))
 		if len(errs) != len(v.errs) {
 			t.Errorf("[%s]: expected %d failures, got %d failures: %v", v.name, len(v.errs), len(errs), errs)
 			continue

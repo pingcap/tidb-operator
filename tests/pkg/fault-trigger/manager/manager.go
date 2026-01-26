@@ -25,11 +25,12 @@ type Manager struct {
 // NewManager returns a manager instance
 func NewManager(vmManagerName string) *Manager {
 	var vmManager VMManager
-	if vmManagerName == "qm" {
+	switch vmManagerName {
+	case "qm":
 		vmManager = &QMVMManager{}
-	} else if vmManagerName == "virsh" {
+	case "virsh":
 		vmManager = &VirshVMManager{}
-	} else {
+	default:
 		panic(fmt.Errorf("stability test have not supported the vm manager:[%s],please choose [qm] or [virsh]", vmManagerName))
 	}
 	return &Manager{

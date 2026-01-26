@@ -26,7 +26,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
@@ -97,14 +96,14 @@ func TestGetStsAnnotations(t *testing.T) {
 }
 
 func TestShouldRecover(t *testing.T) {
-	notReadyPods := []*v1.Pod{
+	notReadyPods := []*corev1.Pod{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "failover-tikv-0",
-				Namespace: v1.NamespaceDefault,
+				Namespace: corev1.NamespaceDefault,
 			},
-			Status: v1.PodStatus{
-				Conditions: []v1.PodCondition{
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
 					{
 						Type:   corev1.PodReady,
 						Status: corev1.ConditionFalse,
@@ -115,10 +114,10 @@ func TestShouldRecover(t *testing.T) {
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "failover-tikv-1",
-				Namespace: v1.NamespaceDefault,
+				Namespace: corev1.NamespaceDefault,
 			},
-			Status: v1.PodStatus{
-				Conditions: []v1.PodCondition{
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
 					{
 						Type:   corev1.PodReady,
 						Status: corev1.ConditionFalse,
@@ -129,10 +128,10 @@ func TestShouldRecover(t *testing.T) {
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "failover-tiflash-0",
-				Namespace: v1.NamespaceDefault,
+				Namespace: corev1.NamespaceDefault,
 			},
-			Status: v1.PodStatus{
-				Conditions: []v1.PodCondition{
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
 					{
 						Type:   corev1.PodReady,
 						Status: corev1.ConditionFalse,
@@ -143,10 +142,10 @@ func TestShouldRecover(t *testing.T) {
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "failover-tiflash-1",
-				Namespace: v1.NamespaceDefault,
+				Namespace: corev1.NamespaceDefault,
 			},
-			Status: v1.PodStatus{
-				Conditions: []v1.PodCondition{
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
 					{
 						Type:   corev1.PodReady,
 						Status: corev1.ConditionFalse,
@@ -155,14 +154,14 @@ func TestShouldRecover(t *testing.T) {
 			},
 		},
 	}
-	pods := []*v1.Pod{
+	pods := []*corev1.Pod{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "failover-tikv-0",
-				Namespace: v1.NamespaceDefault,
+				Namespace: corev1.NamespaceDefault,
 			},
-			Status: v1.PodStatus{
-				Conditions: []v1.PodCondition{
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
 					{
 						Type:   corev1.PodReady,
 						Status: corev1.ConditionTrue,
@@ -173,10 +172,10 @@ func TestShouldRecover(t *testing.T) {
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "failover-tikv-1",
-				Namespace: v1.NamespaceDefault,
+				Namespace: corev1.NamespaceDefault,
 			},
-			Status: v1.PodStatus{
-				Conditions: []v1.PodCondition{
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
 					{
 						Type:   corev1.PodReady,
 						Status: corev1.ConditionTrue,
@@ -187,10 +186,10 @@ func TestShouldRecover(t *testing.T) {
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "failover-tiflash-0",
-				Namespace: v1.NamespaceDefault,
+				Namespace: corev1.NamespaceDefault,
 			},
-			Status: v1.PodStatus{
-				Conditions: []v1.PodCondition{
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
 					{
 						Type:   corev1.PodReady,
 						Status: corev1.ConditionTrue,
@@ -201,10 +200,10 @@ func TestShouldRecover(t *testing.T) {
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "failover-tiflash-1",
-				Namespace: v1.NamespaceDefault,
+				Namespace: corev1.NamespaceDefault,
 			},
-			Status: v1.PodStatus{
-				Conditions: []v1.PodCondition{
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
 					{
 						Type:   corev1.PodReady,
 						Status: corev1.ConditionTrue,
@@ -213,14 +212,14 @@ func TestShouldRecover(t *testing.T) {
 			},
 		},
 	}
-	podsWithFailover := append(pods, []*v1.Pod{
+	podsWithFailover := append(pods, []*corev1.Pod{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "failover-tikv-2",
-				Namespace: v1.NamespaceDefault,
+				Namespace: corev1.NamespaceDefault,
 			},
-			Status: v1.PodStatus{
-				Conditions: []v1.PodCondition{
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
 					{
 						Type:   corev1.PodReady,
 						Status: corev1.ConditionFalse,
@@ -231,10 +230,10 @@ func TestShouldRecover(t *testing.T) {
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "failover-tiflash-2",
-				Namespace: v1.NamespaceDefault,
+				Namespace: corev1.NamespaceDefault,
 			},
-			Status: v1.PodStatus{
-				Conditions: []v1.PodCondition{
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
 					{
 						Type:   corev1.PodReady,
 						Status: corev1.ConditionFalse,
@@ -246,7 +245,7 @@ func TestShouldRecover(t *testing.T) {
 	tests := []struct {
 		name string
 		tc   *v1alpha1.TidbCluster
-		pods []*v1.Pod
+		pods []*corev1.Pod
 		want bool
 	}{
 		{
@@ -254,7 +253,7 @@ func TestShouldRecover(t *testing.T) {
 			tc: &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
@@ -274,7 +273,7 @@ func TestShouldRecover(t *testing.T) {
 			tc: &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
@@ -335,7 +334,7 @@ func TestShouldRecover(t *testing.T) {
 			tc: &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
@@ -396,7 +395,7 @@ func TestShouldRecover(t *testing.T) {
 			tc: &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
@@ -457,7 +456,7 @@ func TestShouldRecover(t *testing.T) {
 			tc: &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
@@ -508,7 +507,7 @@ func TestShouldRecover(t *testing.T) {
 			tc: &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
@@ -569,7 +568,7 @@ func TestShouldRecover(t *testing.T) {
 			tc: &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiKV: &v1alpha1.TiKVSpec{
@@ -841,90 +840,90 @@ func TestTiKVLessThanV50(t *testing.T) {
 
 func TestPodLabelsAnnotations(t *testing.T) {
 	g := NewGomegaWithT(t)
-	build := func(name, image string, ports ...v1.ContainerPort) v1.Container {
-		return v1.Container{
+	build := func(name, image string, ports ...corev1.ContainerPort) corev1.Container {
+		return corev1.Container{
 			Name:  name,
 			Image: image,
 			Ports: ports,
 		}
 	}
 
-	port1A := v1.ContainerPort{
+	port1A := corev1.ContainerPort{
 		Name:          "portA",
 		ContainerPort: 1,
 	}
-	port1B := v1.ContainerPort{
+	port1B := corev1.ContainerPort{
 		Name:          "portB",
 		ContainerPort: 1,
 	}
-	port2A := v1.ContainerPort{
+	port2A := corev1.ContainerPort{
 		Name:          "portA",
 		ContainerPort: 2,
 	}
 
 	testCases := []struct {
 		name    string
-		base    []v1.Container
-		patches []v1.Container
-		result  []v1.Container
+		base    []corev1.Container
+		patches []corev1.Container
+		result  []corev1.Container
 	}{
 		// sanity checks
 		{
 			name: "everything nil",
 		}, {
 			name:   "no patch",
-			base:   []v1.Container{build("c1", "image:A")},
-			result: []v1.Container{build("c1", "image:A")},
+			base:   []corev1.Container{build("c1", "image:A")},
+			result: []corev1.Container{build("c1", "image:A")},
 		}, {
 			name:    "no Base",
-			patches: []v1.Container{build("c1", "image:A")},
-			result:  []v1.Container{build("c1", "image:A")},
+			patches: []corev1.Container{build("c1", "image:A")},
+			result:  []corev1.Container{build("c1", "image:A")},
 		}, {
 			name:    "no conflict",
-			base:    []v1.Container{build("c1", "image:A")},
-			patches: []v1.Container{build("c2", "image:A")},
-			result:  []v1.Container{build("c1", "image:A"), build("c2", "image:A")},
+			base:    []corev1.Container{build("c1", "image:A")},
+			patches: []corev1.Container{build("c2", "image:A")},
+			result:  []corev1.Container{build("c1", "image:A"), build("c2", "image:A")},
 		}, {
 			name:    "no conflict with port",
-			base:    []v1.Container{build("c1", "image:A", port1A)},
-			patches: []v1.Container{build("c2", "image:A", port1B)},
-			result:  []v1.Container{build("c1", "image:A", port1A), build("c2", "image:A", port1B)},
+			base:    []corev1.Container{build("c1", "image:A", port1A)},
+			patches: []corev1.Container{build("c2", "image:A", port1B)},
+			result:  []corev1.Container{build("c1", "image:A", port1A), build("c2", "image:A", port1B)},
 		},
 		// string conflicts
 		{
 			name:    "one conflict",
-			base:    []v1.Container{build("c1", "image:A")},
-			patches: []v1.Container{build("c1", "image:B")},
-			result:  []v1.Container{build("c1", "image:B")},
+			base:    []corev1.Container{build("c1", "image:A")},
+			patches: []corev1.Container{build("c1", "image:B")},
+			result:  []corev1.Container{build("c1", "image:B")},
 		}, {
 			name:    "one conflict with ports",
-			base:    []v1.Container{build("c1", "image:A", port1A)},
-			patches: []v1.Container{build("c1", "image:B", port1A)},
-			result:  []v1.Container{build("c1", "image:B", port1A)},
+			base:    []corev1.Container{build("c1", "image:A", port1A)},
+			patches: []corev1.Container{build("c1", "image:B", port1A)},
+			result:  []corev1.Container{build("c1", "image:B", port1A)},
 		}, {
 			name:    "out of order conflict",
-			base:    []v1.Container{build("c1", "image:A"), build("c2", "image:A")},
-			patches: []v1.Container{build("c2", "image:B"), build("c1", "image:B")},
-			result:  []v1.Container{build("c1", "image:B"), build("c2", "image:B")},
+			base:    []corev1.Container{build("c1", "image:A"), build("c2", "image:A")},
+			patches: []corev1.Container{build("c2", "image:B"), build("c1", "image:B")},
+			result:  []corev1.Container{build("c1", "image:B"), build("c2", "image:B")},
 		},
 		// struct conflict
 		{
 			name:    "port name conflict",
-			base:    []v1.Container{build("c1", "image:A", port1A)},
-			patches: []v1.Container{build("c1", "image:A", port2A)},
-			result:  []v1.Container{build("c1", "image:A", port2A, port1A)},
+			base:    []corev1.Container{build("c1", "image:A", port1A)},
+			patches: []corev1.Container{build("c1", "image:A", port2A)},
+			result:  []corev1.Container{build("c1", "image:A", port2A, port1A)},
 		},
 		{
 			name:    "port value conflict",
-			base:    []v1.Container{build("c1", "image:A", port1A)},
-			patches: []v1.Container{build("c1", "image:A", port1B)},
-			result:  []v1.Container{build("c1", "image:A", port1B)},
+			base:    []corev1.Container{build("c1", "image:A", port1A)},
+			patches: []corev1.Container{build("c1", "image:A", port1B)},
+			result:  []corev1.Container{build("c1", "image:A", port1B)},
 		},
 		{
 			name:    "empty image, add port",
-			base:    []v1.Container{build("c1", "image:A")},
-			patches: []v1.Container{build("c1", "", port1A)},
-			result:  []v1.Container{build("c1", "image:A", port1A)},
+			base:    []corev1.Container{build("c1", "image:A")},
+			patches: []corev1.Container{build("c1", "", port1A)},
+			result:  []corev1.Container{build("c1", "image:A", port1A)},
 		},
 	}
 
@@ -939,8 +938,8 @@ func TestPodLabelsAnnotations(t *testing.T) {
 
 func TestMergePatchContainersOrderPreserved(t *testing.T) {
 	g := NewGomegaWithT(t)
-	build := func(name, image string) v1.Container {
-		return v1.Container{
+	build := func(name, image string) corev1.Container {
+		return corev1.Container{
 			Name:  name,
 			Image: image,
 		}
@@ -948,11 +947,11 @@ func TestMergePatchContainersOrderPreserved(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		result, err := MergePatchContainers(
-			[]v1.Container{
+			[]corev1.Container{
 				build("c1", "image:base"),
 				build("c2", "image:base"),
 			},
-			[]v1.Container{
+			[]corev1.Container{
 				build("c1", "image:A"),
 				build("c3", "image:B"),
 				build("c4", "image:C"),
@@ -964,7 +963,7 @@ func TestMergePatchContainersOrderPreserved(t *testing.T) {
 
 		diff := cmp.Diff(
 			result,
-			[]v1.Container{
+			[]corev1.Container{
 				build("c1", "image:A"),
 				build("c2", "image:base"),
 				build("c3", "image:B"),

@@ -50,7 +50,7 @@ func (r *StrategyRegistry) Register(strategy registry.CreateUpdateStrategy) {
 	gvk, err := controller.InferObjectKind(obj)
 	if err != nil {
 		// impossible
-		panic(fmt.Errorf("Object type %T has not been registered in scheme", obj))
+		panic(fmt.Errorf("object type %T has not been registered in scheme", obj))
 	}
 	metaGVK := metav1.GroupVersionKind{
 		Group:   gvk.Group,

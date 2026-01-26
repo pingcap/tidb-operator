@@ -81,7 +81,7 @@ func NewTypedControl(control GenericControlInterface) TypedControlInterface {
 }
 
 func (w *typedWrapper) CreateOrUpdatePVC(controller client.Object, pvc *corev1.PersistentVolumeClaim, setOwnerFlag bool) (*corev1.PersistentVolumeClaim, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, pvc, func(existing, desired client.Object) error {
+	result, err := w.CreateOrUpdate(controller, pvc, func(existing, desired client.Object) error {
 		existingPVC := existing.(*corev1.PersistentVolumeClaim)
 		desiredPVC := desired.(*corev1.PersistentVolumeClaim)
 
@@ -95,7 +95,7 @@ func (w *typedWrapper) CreateOrUpdatePVC(controller client.Object, pvc *corev1.P
 }
 
 func (w *typedWrapper) CreateOrUpdateClusterRoleBinding(controller client.Object, crb *rbacv1.ClusterRoleBinding) (*rbacv1.ClusterRoleBinding, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, crb, func(existing, desired client.Object) error {
+	result, err := w.CreateOrUpdate(controller, crb, func(existing, desired client.Object) error {
 		existingCRB := existing.(*rbacv1.ClusterRoleBinding)
 		desiredCRB := desired.(*rbacv1.ClusterRoleBinding)
 
@@ -111,7 +111,7 @@ func (w *typedWrapper) CreateOrUpdateClusterRoleBinding(controller client.Object
 }
 
 func (w *typedWrapper) CreateOrUpdateClusterRole(controller client.Object, clusterRole *rbacv1.ClusterRole) (*rbacv1.ClusterRole, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, clusterRole, func(existing, desired client.Object) error {
+	result, err := w.CreateOrUpdate(controller, clusterRole, func(existing, desired client.Object) error {
 		existingCRole := existing.(*rbacv1.ClusterRole)
 		desiredCRole := desired.(*rbacv1.ClusterRole)
 
@@ -126,7 +126,7 @@ func (w *typedWrapper) CreateOrUpdateClusterRole(controller client.Object, clust
 }
 
 func (w *typedWrapper) CreateOrUpdateSecret(controller client.Object, secret *corev1.Secret) (*corev1.Secret, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, secret, func(existing, desired client.Object) error {
+	result, err := w.CreateOrUpdate(controller, secret, func(existing, desired client.Object) error {
 		existingSecret := existing.(*corev1.Secret)
 		desiredSecret := desired.(*corev1.Secret)
 
@@ -148,7 +148,7 @@ func (w *typedWrapper) Delete(controller, obj client.Object) error {
 }
 
 func (w *typedWrapper) CreateOrUpdateDeployment(controller client.Object, deploy *appsv1.Deployment) (*appsv1.Deployment, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, deploy, func(existing, desired client.Object) error {
+	result, err := w.CreateOrUpdate(controller, deploy, func(existing, desired client.Object) error {
 		existingDep := existing.(*appsv1.Deployment)
 		desiredDep := desired.(*appsv1.Deployment)
 
@@ -201,7 +201,7 @@ func (w *typedWrapper) CreateOrUpdateDeployment(controller client.Object, deploy
 }
 
 func (w *typedWrapper) CreateOrUpdateRole(controller client.Object, role *rbacv1.Role) (*rbacv1.Role, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, role, func(existing, desired client.Object) error {
+	result, err := w.CreateOrUpdate(controller, role, func(existing, desired client.Object) error {
 		existingRole := existing.(*rbacv1.Role)
 		desiredCRole := desired.(*rbacv1.Role)
 
@@ -216,7 +216,7 @@ func (w *typedWrapper) CreateOrUpdateRole(controller client.Object, role *rbacv1
 }
 
 func (w *typedWrapper) CreateOrUpdateRoleBinding(controller client.Object, rb *rbacv1.RoleBinding) (*rbacv1.RoleBinding, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, rb, func(existing, desired client.Object) error {
+	result, err := w.CreateOrUpdate(controller, rb, func(existing, desired client.Object) error {
 		existingRB := existing.(*rbacv1.RoleBinding)
 		desiredRB := desired.(*rbacv1.RoleBinding)
 
@@ -232,7 +232,7 @@ func (w *typedWrapper) CreateOrUpdateRoleBinding(controller client.Object, rb *r
 }
 
 func (w *typedWrapper) CreateOrUpdateServiceAccount(controller client.Object, sa *corev1.ServiceAccount) (*corev1.ServiceAccount, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, sa, func(existing, desired client.Object) error {
+	result, err := w.CreateOrUpdate(controller, sa, func(existing, desired client.Object) error {
 		existingSA := existing.(*corev1.ServiceAccount)
 		desiredSA := desired.(*corev1.ServiceAccount)
 
@@ -246,7 +246,7 @@ func (w *typedWrapper) CreateOrUpdateServiceAccount(controller client.Object, sa
 }
 
 func (w *typedWrapper) CreateOrUpdateConfigMap(controller client.Object, cm *corev1.ConfigMap) (*corev1.ConfigMap, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, cm, func(existing, desired client.Object) error {
+	result, err := w.CreateOrUpdate(controller, cm, func(existing, desired client.Object) error {
 		existingCm := existing.(*corev1.ConfigMap)
 		desiredCm := desired.(*corev1.ConfigMap)
 
@@ -264,7 +264,7 @@ func (w *typedWrapper) CreateOrUpdateConfigMap(controller client.Object, cm *cor
 }
 
 func (w *typedWrapper) CreateOrUpdateService(controller client.Object, svc *corev1.Service) (*corev1.Service, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, svc, func(existing, desired client.Object) error {
+	result, err := w.CreateOrUpdate(controller, svc, func(existing, desired client.Object) error {
 		existingSvc := existing.(*corev1.Service)
 		desiredSvc := desired.(*corev1.Service)
 
@@ -318,7 +318,7 @@ func (w *typedWrapper) CreateOrUpdateService(controller client.Object, svc *core
 }
 
 func (w *typedWrapper) CreateOrUpdateIngressV1beta1(controller client.Object, ingress *extensionsv1beta1.Ingress) (*extensionsv1beta1.Ingress, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, ingress, func(existing, desired client.Object) error {
+	result, err := w.CreateOrUpdate(controller, ingress, func(existing, desired client.Object) error {
 		existingIngress := existing.(*extensionsv1beta1.Ingress)
 		desiredIngress := desired.(*extensionsv1beta1.Ingress)
 
@@ -351,7 +351,7 @@ func (w *typedWrapper) CreateOrUpdateIngressV1beta1(controller client.Object, in
 }
 
 func (w *typedWrapper) CreateOrUpdateIngress(controller client.Object, ingress *networkingv1.Ingress) (*networkingv1.Ingress, error) {
-	result, err := w.GenericControlInterface.CreateOrUpdate(controller, ingress, func(existing, desired client.Object) error {
+	result, err := w.CreateOrUpdate(controller, ingress, func(existing, desired client.Object) error {
 		existingIngress := existing.(*networkingv1.Ingress)
 		desiredIngress := desired.(*networkingv1.Ingress)
 
