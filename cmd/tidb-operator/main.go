@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -39,6 +40,7 @@ import (
 	runtimeConfig "sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	controllermetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	brv1alpha1 "github.com/pingcap/tidb-operator/api/v2/br/v1alpha1"
@@ -148,7 +150,28 @@ func main() {
 
 	ctx := logr.NewContext(context.Background(), setupLog)
 
-	setupLog.Info("start tidb operator", version.Get().KeysAndValues()...)
+	versionInfo := version.Get()
+	setupLog.Info("start tidb operator", versionInfo.KeysAndValues()...)
+
+	versionConstLabels := prometheus.Labels{
+		"version":        versionInfo.GitVersion,
+		"revision":       versionInfo.GitCommit,
+		"git_tree_state": versionInfo.GitTreeState,
+		"build_date":     versionInfo.BuildDate,
+		"goversion":      versionInfo.GoVersion,
+		"compiler":       versionInfo.Compiler,
+		"platform":       versionInfo.Platform,
+	}
+
+	versionMetric := prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Name:        "tidb_operator_build_info",
+			Help:        "A metric with a constant '1' value with various version labels from which tidb-operator was built.",
+			ConstLabels: versionConstLabels,
+		},
+		func() float64 { return 1 },
+	)
+	controllermetrics.Registry.MustRegister(versionMetric)
 
 	utilruntime.PanicHandlers = append(utilruntime.PanicHandlers, func(_ context.Context, _ any) {
 		metrics.ControllerPanic.WithLabelValues().Inc()
