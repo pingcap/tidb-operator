@@ -43,7 +43,7 @@ func NewDefaultFramework(baseName string) *framework.Framework {
 			return
 		}
 		var (
-			total          int = len(pvList.Items)
+			total          = len(pvList.Items)
 			retainReleased int
 			skipped        int
 			failed         int

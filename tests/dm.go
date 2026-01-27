@@ -30,7 +30,6 @@ import (
 
 	// To register MySQL driver
 	"github.com/go-sql-driver/mysql"
-	_ "github.com/go-sql-driver/mysql"
 	"golang.org/x/sync/errgroup"
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -875,5 +874,5 @@ func openDB(host string, port uint16, secret *corev1.Secret) (*sql.DB, error) {
 }
 
 func DMTaskName(name string) string {
-	return strings.Replace(name, "-", "_", -1)
+	return strings.ReplaceAll(name, "-", "_")
 }

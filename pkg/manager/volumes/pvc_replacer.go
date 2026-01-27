@@ -135,7 +135,7 @@ func (p *pvcReplacer) replaceVolumes(ctx *componentVolumeContext) error {
 	if ctx.status.GetPhase() == v1alpha1.ScalePhase {
 		// Note: only wait for scaling, phase may show up as upgrading but will be blocked
 		// for replacing here to effect the config + volume change together.
-		return fmt.Errorf("component phase is Scaling, waiting to complete.")
+		return fmt.Errorf("component phase is scaling, waiting to complete")
 	}
 	if err := p.tryToRecreateSTS(ctx); err != nil {
 		return err

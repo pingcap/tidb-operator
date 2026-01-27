@@ -65,7 +65,7 @@ func (bo *GenericOptions) GetDSN(enabledTLSClient bool) (string, error) {
 			return "", err
 		}
 		if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
-			return "", errors.New("Failed to append PEM")
+			return "", errors.New("failed to append PEM")
 		}
 	}
 

@@ -428,8 +428,8 @@ func (m *pdMSMemberManager) getNewPDMSService(tc *v1alpha1.TidbCluster, curSpec 
 		if svcSpec.Type != "" {
 			pdMSService.Spec.Type = svcSpec.Type
 		}
-		pdMSService.ObjectMeta.Annotations = util.CopyStringMap(svcSpec.Annotations)
-		pdMSService.ObjectMeta.Labels = util.CombineStringMap(pdMSService.ObjectMeta.Labels, svcSpec.Labels)
+		pdMSService.Annotations = util.CopyStringMap(svcSpec.Annotations)
+		pdMSService.Labels = util.CombineStringMap(pdMSService.Labels, svcSpec.Labels)
 		if svcSpec.LoadBalancerIP != nil {
 			pdMSService.Spec.LoadBalancerIP = *svcSpec.LoadBalancerIP
 		}

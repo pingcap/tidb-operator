@@ -98,7 +98,7 @@ func getLastScheduledTime(vbs *v1alpha1.VolumeBackupSchedule, nowFn nowFn) (*tim
 		// or that we have started a backup, but have not update backupSchedule status yet
 		// (distributed systems can have arbitrary delays).
 		// In any case, use the creation time of the backupSchedule as last known start time.
-		earliestTime = vbs.ObjectMeta.CreationTimestamp.Time
+		earliestTime = vbs.CreationTimestamp.Time
 	}
 
 	now := nowFn()
@@ -319,7 +319,7 @@ func sortSnapshotBackups(backupsList []*v1alpha1.VolumeBackup) []*v1alpha1.Volum
 
 	for _, backup := range backupsList {
 		// Only try to GC Completed or Failed VolumeBackup
-		if !(v1alpha1.IsVolumeBackupFailed(backup) || v1alpha1.IsVolumeBackupComplete(backup)) {
+		if !v1alpha1.IsVolumeBackupFailed(backup) && !v1alpha1.IsVolumeBackupComplete(backup) {
 			continue
 		}
 		ascBackupList = append(ascBackupList, backup)
@@ -429,7 +429,7 @@ type byCreateTimeDesc []*v1alpha1.VolumeBackup
 func (b byCreateTimeDesc) Len() int      { return len(b) }
 func (b byCreateTimeDesc) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
 func (b byCreateTimeDesc) Less(i, j int) bool {
-	return b[j].ObjectMeta.CreationTimestamp.Before(&b[i].ObjectMeta.CreationTimestamp)
+	return b[j].CreationTimestamp.Before(&b[i].CreationTimestamp)
 }
 
 var _ fedvolumebackup.BackupScheduleManager = &backupScheduleManager{}

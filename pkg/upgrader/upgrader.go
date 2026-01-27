@@ -80,7 +80,7 @@ func (u *upgrader) Upgrade() error {
 			}
 		}
 		if len(stsToMigrate) <= 0 {
-			klog.Infof("Upgrader: found 0 Kubernetes StatefulSets owned by TidbCluster, nothing need to do")
+			klog.Infof("upgrader: found 0 Kubernetes StatefulSets owned by TidbCluster, nothing need to do")
 			return nil
 		}
 		klog.Infof("Upgrader: %d Kubernetes Statfulsets owned by TidbCluster should be migrated to Advanced Statefulsets", len(stsToMigrate))
@@ -90,10 +90,10 @@ func (u *upgrader) Upgrade() error {
 			// a safety check to ensure no pods are affected in upgrading
 			// process.
 			if anns := deleteSlotAnns(tc); len(anns) > 0 {
-				return fmt.Errorf("Upgrader: TidbCluster %s/%s has delete slot annotations %v, please remove them before enabling AdvancedStatefulSet feature", tc.Namespace, tc.Name, anns)
+				return fmt.Errorf("upgrader: TidbCluster %s/%s has delete slot annotations %v, please remove them before enabling AdvancedStatefulSet feature", tc.Namespace, tc.Name, anns)
 			}
 		}
-		klog.Infof("Upgrader: found %d Kubernetes StatefulSets owned by TidbCluster, trying to migrate one by one", len(stsToMigrate))
+		klog.Infof("upgrader: found %d Kubernetes StatefulSets owned by TidbCluster, trying to migrate one by one", len(stsToMigrate))
 		for i := range stsToMigrate {
 			sts := stsToMigrate[i]
 			_, err := helper.Upgrade(context.Background(), u.kubeCli, u.asCli, &sts)
@@ -121,13 +121,13 @@ func (u *upgrader) Upgrade() error {
 			}
 		}
 		if len(stsToMigrate) <= 0 {
-			klog.Infof("Upgrader: found %d Advanced StatefulSets owned by TidbCluster, nothing need to do", len(stsToMigrate))
+			klog.Infof("upgrader: found %d Advanced StatefulSets owned by TidbCluster, nothing need to do", len(stsToMigrate))
 			return nil
 		}
 		// The upgrader cannot migrate Advanced StatefulSets to Kubernetes
 		// StatefulSets automatically right now.
 		// TODO try our best to allow users to revert AdvancedStatefulSet feature automaticaly
-		return fmt.Errorf("Upgrader: found %d Advanced StatefulSets owned by TidbCluster, the operator cann't run with AdvancedStatefulSet feature disabled", len(stsToMigrate))
+		return fmt.Errorf("upgrader: found %d Advanced StatefulSets owned by TidbCluster, the operator cann't run with AdvancedStatefulSet feature disabled", len(stsToMigrate))
 	}
 	return nil
 }

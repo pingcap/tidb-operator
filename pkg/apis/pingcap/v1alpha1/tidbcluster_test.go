@@ -18,7 +18,6 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
-	apps "k8s.io/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -83,7 +82,7 @@ func TestPDIsAvailable(t *testing.T) {
 					"pd-1": {Name: "pd-1", Health: true},
 					"pd-2": {Name: "pd-2", Health: true},
 				}
-				tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 1}
+				tc.Status.PD.StatefulSet = &appsv1.StatefulSetStatus{ReadyReplicas: 1}
 			},
 			expectFn: func(g *GomegaWithT, b bool) {
 				g.Expect(b).To(BeFalse())
@@ -97,7 +96,7 @@ func TestPDIsAvailable(t *testing.T) {
 					"pd-1": {Name: "pd-1", Health: true},
 					"pd-2": {Name: "pd-2", Health: true},
 				}
-				tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 3}
+				tc.Status.PD.StatefulSet = &appsv1.StatefulSetStatus{ReadyReplicas: 3}
 			},
 			expectFn: func(g *GomegaWithT, b bool) {
 				g.Expect(b).To(BeTrue())
@@ -117,7 +116,7 @@ func TestPDIsAvailable(t *testing.T) {
 					"pd-1": {Name: "pd-1", Health: true},
 					"pd-2": {Name: "pd-2", Health: true},
 				}
-				tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 6}
+				tc.Status.PD.StatefulSet = &appsv1.StatefulSetStatus{ReadyReplicas: 6}
 			},
 			expectFn: func(g *GomegaWithT, b bool) {
 				g.Expect(b).To(BeTrue())
@@ -137,7 +136,7 @@ func TestPDIsAvailable(t *testing.T) {
 					"pd-1": {Name: "pd-1", Health: true},
 					"pd-2": {Name: "pd-2", Health: true},
 				}
-				tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 6}
+				tc.Status.PD.StatefulSet = &appsv1.StatefulSetStatus{ReadyReplicas: 6}
 			},
 			expectFn: func(g *GomegaWithT, b bool) {
 				g.Expect(b).To(BeFalse())
@@ -151,7 +150,7 @@ func TestPDIsAvailable(t *testing.T) {
 					"pd-1": {Name: "pd-1", Health: true},
 					"pd-2": {Name: "pd-2", Health: true},
 				}
-				tc.Status.PD.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 3}
+				tc.Status.PD.StatefulSet = &appsv1.StatefulSetStatus{ReadyReplicas: 3}
 				tc.Status.PD.Phase = SuspendPhase
 			},
 			expectFn: func(g *GomegaWithT, b bool) {
@@ -207,7 +206,7 @@ func TestTiKVIsAvailable(t *testing.T) {
 				tc.Status.TiKV.Stores = map[string]TiKVStore{
 					"tikv-0": {PodName: "tikv-0", State: TiKVStateUp},
 				}
-				tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 0}
+				tc.Status.TiKV.StatefulSet = &appsv1.StatefulSetStatus{ReadyReplicas: 0}
 			},
 			expectFn: func(g *GomegaWithT, b bool) {
 				g.Expect(b).To(BeFalse())
@@ -219,7 +218,7 @@ func TestTiKVIsAvailable(t *testing.T) {
 				tc.Status.TiKV.Stores = map[string]TiKVStore{
 					"tikv-0": {PodName: "tikv-0", State: TiKVStateUp},
 				}
-				tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 1}
+				tc.Status.TiKV.StatefulSet = &appsv1.StatefulSetStatus{ReadyReplicas: 1}
 			},
 			expectFn: func(g *GomegaWithT, b bool) {
 				g.Expect(b).To(BeTrue())
@@ -236,7 +235,7 @@ func TestTiKVIsAvailable(t *testing.T) {
 					"tikv-0": {PodName: "tikv-0", State: TiKVStateUp},
 					"tikv-1": {PodName: "tikv-1", State: TiKVStateUp},
 				}
-				tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 0}
+				tc.Status.TiKV.StatefulSet = &appsv1.StatefulSetStatus{ReadyReplicas: 0}
 			},
 			expectFn: func(g *GomegaWithT, b bool) {
 				g.Expect(b).To(BeTrue())
@@ -253,7 +252,7 @@ func TestTiKVIsAvailable(t *testing.T) {
 					"tikv-0": {PodName: "tikv-0", State: TiKVStateDown},
 					"tikv-1": {PodName: "tikv-1", State: TiKVStateDown},
 				}
-				tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 0}
+				tc.Status.TiKV.StatefulSet = &appsv1.StatefulSetStatus{ReadyReplicas: 0}
 			},
 			expectFn: func(g *GomegaWithT, b bool) {
 				g.Expect(b).To(BeFalse())
@@ -265,7 +264,7 @@ func TestTiKVIsAvailable(t *testing.T) {
 				tc.Status.TiKV.Stores = map[string]TiKVStore{
 					"tikv-0": {PodName: "tikv-0", State: TiKVStateUp},
 				}
-				tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 1}
+				tc.Status.TiKV.StatefulSet = &appsv1.StatefulSetStatus{ReadyReplicas: 1}
 				tc.Status.TiKV.Phase = SuspendPhase
 			},
 			expectFn: func(g *GomegaWithT, b bool) {
@@ -398,7 +397,7 @@ func TestAllTiKVsAreAvailable(t *testing.T) {
 				tc.Status.TiKV.Stores = map[string]TiKVStore{
 					"tikv-0": {PodName: "tikv-0", State: TiKVStateUp},
 				}
-				tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{
+				tc.Status.TiKV.StatefulSet = &appsv1.StatefulSetStatus{
 					Replicas:      1,
 					ReadyReplicas: 0,
 				}
@@ -415,7 +414,7 @@ func TestAllTiKVsAreAvailable(t *testing.T) {
 					"tikv-1": {PodName: "tikv-1", State: TiKVStateUp},
 					"tikv-2": {PodName: "tikv-2", State: TiKVStateUp},
 				}
-				tc.Status.TiKV.StatefulSet = &apps.StatefulSetStatus{
+				tc.Status.TiKV.StatefulSet = &appsv1.StatefulSetStatus{
 					Replicas:      1,
 					ReadyReplicas: 1,
 				}

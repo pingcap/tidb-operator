@@ -35,7 +35,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/util"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -366,7 +365,7 @@ func TestTiDBMemberManagerTiDBStatefulSetIsUpgrading(t *testing.T) {
 	}
 
 	for i := range tests {
-		t.Logf(tests[i].name)
+		t.Logf("%s", tests[i].name)
 		testFn(&tests[i], t)
 	}
 }
@@ -574,7 +573,7 @@ func TestTiDBMemberManagerSyncTidbClusterStatus(t *testing.T) {
 	}
 
 	for i := range tests {
-		t.Logf(tests[i].name)
+		t.Logf("%s", tests[i].name)
 		testFn(&tests[i], t)
 	}
 }
@@ -989,7 +988,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 					TiKV: &v1alpha1.TiKVSpec{},
 				},
 			},
-			testSts: testHostNetwork(t, true, v1.DNSClusterFirstWithHostNet),
+			testSts: testHostNetwork(t, true, corev1.DNSClusterFirstWithHostNet),
 		},
 		{
 			name: "tidb network is not host when pd is host",
@@ -1171,7 +1170,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 			testSts: func(sts *apps.StatefulSet) {
 				g := NewGomegaWithT(t)
 				q, _ := resource.ParseQuantity("2Gi")
-				g.Expect(sts.Spec.VolumeClaimTemplates).To(Equal([]v1.PersistentVolumeClaim{
+				g.Expect(sts.Spec.VolumeClaimTemplates).To(Equal([]corev1.PersistentVolumeClaim{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: v1alpha1.TiDBMemberType.String() + "-log",
@@ -1219,7 +1218,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 			testSts: func(sts *apps.StatefulSet) {
 				g := NewGomegaWithT(t)
 				q, _ := resource.ParseQuantity("2Gi")
-				g.Expect(sts.Spec.VolumeClaimTemplates).To(Equal([]v1.PersistentVolumeClaim{
+				g.Expect(sts.Spec.VolumeClaimTemplates).To(Equal([]corev1.PersistentVolumeClaim{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: v1alpha1.TiDBMemberType.String() + "-slowlogfile",
@@ -1297,8 +1296,8 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 				g := NewGomegaWithT(t)
 
 				probe := &corev1.Probe{
-					ProbeHandler: v1.ProbeHandler{
-						Exec: &v1.ExecAction{
+					ProbeHandler: corev1.ProbeHandler{
+						Exec: &corev1.ExecAction{
 							Command: []string{
 								fmt.Sprintf("%s/%s", customizedStartupProbePath, "probe"),
 								"--enabledTLS=false",
@@ -1325,7 +1324,7 @@ func TestGetNewTiDBSetForTidbCluster(t *testing.T) {
 	}
 }
 
-func checkCustomizedStartupProbeEnabled(g *WithT, spec v1.PodSpec, expectedProbe *corev1.Probe) {
+func checkCustomizedStartupProbeEnabled(g *WithT, spec corev1.PodSpec, expectedProbe *corev1.Probe) {
 	var hasInitContianer, hasTiDBContainer bool
 	for _, container := range spec.InitContainers {
 		if container.Name == "probe" {
@@ -2406,14 +2405,14 @@ func TestTiDBMemberManagerScaleToZeroReplica(t *testing.T) {
 }
 
 func TestTiDBShouldRecover(t *testing.T) {
-	pods := []*v1.Pod{
+	pods := []*corev1.Pod{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "failover-tidb-0",
-				Namespace: v1.NamespaceDefault,
+				Namespace: corev1.NamespaceDefault,
 			},
-			Status: v1.PodStatus{
-				Conditions: []v1.PodCondition{
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
 					{
 						Type:   corev1.PodReady,
 						Status: corev1.ConditionTrue,
@@ -2424,10 +2423,10 @@ func TestTiDBShouldRecover(t *testing.T) {
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "failover-tidb-1",
-				Namespace: v1.NamespaceDefault,
+				Namespace: corev1.NamespaceDefault,
 			},
-			Status: v1.PodStatus{
-				Conditions: []v1.PodCondition{
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
 					{
 						Type:   corev1.PodReady,
 						Status: corev1.ConditionTrue,
@@ -2436,13 +2435,13 @@ func TestTiDBShouldRecover(t *testing.T) {
 			},
 		},
 	}
-	podsWithFailover := append(pods, &v1.Pod{
+	podsWithFailover := append(pods, &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "failover-tidb-2",
-			Namespace: v1.NamespaceDefault,
+			Namespace: corev1.NamespaceDefault,
 		},
-		Status: v1.PodStatus{
-			Conditions: []v1.PodCondition{
+		Status: corev1.PodStatus{
+			Conditions: []corev1.PodCondition{
 				{
 					Type:   corev1.PodReady,
 					Status: corev1.ConditionFalse,
@@ -2453,7 +2452,7 @@ func TestTiDBShouldRecover(t *testing.T) {
 	tests := []struct {
 		name string
 		tc   *v1alpha1.TidbCluster
-		pods []*v1.Pod
+		pods []*corev1.Pod
 		want bool
 	}{
 		{
@@ -2461,7 +2460,7 @@ func TestTiDBShouldRecover(t *testing.T) {
 			tc: &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Status: v1alpha1.TidbClusterStatus{},
 			},
@@ -2473,7 +2472,7 @@ func TestTiDBShouldRecover(t *testing.T) {
 			tc: &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
@@ -2508,7 +2507,7 @@ func TestTiDBShouldRecover(t *testing.T) {
 			tc: &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
@@ -2543,7 +2542,7 @@ func TestTiDBShouldRecover(t *testing.T) {
 			tc: &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					TiDB: &v1alpha1.TiDBSpec{
@@ -2936,7 +2935,7 @@ func TestTiDBMemberManagerSetServerLabels(t *testing.T) {
 	}
 
 	for i := range tests {
-		t.Logf(tests[i].name)
+		t.Logf("%s", tests[i].name)
 		testFn(&tests[i], t)
 	}
 }

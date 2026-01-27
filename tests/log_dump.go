@@ -50,7 +50,7 @@ func DumpPod(logPath string, pod *corev1.Pod) error {
 }
 
 func dumpLog(cmdStr string, writer *bufio.Writer) {
-	writer.WriteString(fmt.Sprintf("$ %s\n", cmdStr))
+	fmt.Fprintf(writer, "$ %s\n", cmdStr)
 	cmd := exec.Command("/bin/sh", "-c", "/usr/local/bin/"+cmdStr)
 	cmd.Stderr = writer
 	cmd.Stdout = writer

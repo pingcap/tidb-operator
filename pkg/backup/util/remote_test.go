@@ -23,7 +23,6 @@ import (
 	"sync"
 	"testing"
 
-	gomonkey "github.com/agiledragon/gomonkey/v2"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -257,22 +256,29 @@ func TestStorageBackendBasic(t *testing.T) {
 		provider := tcases.provider
 
 		// mock function
-		s3patches := gomonkey.ApplyFunc(newS3Storage, func(conf *s3Config, cred *StorageCredential) (*blob.Bucket, error) {
+		origS3 := newS3Storage
+		newS3Storage = func(conf *s3Config, cred *StorageCredential) (*blob.Bucket, error) {
 			return nil, nil
-		})
-		defer s3patches.Reset()
-		gcsPatches := gomonkey.ApplyFunc(newGcsStorage, func(conf *gcsConfig) (*blob.Bucket, error) {
+		}
+		defer func() { newS3Storage = origS3 }()
+
+		origGcs := newGcsStorage
+		newGcsStorage = func(conf *gcsConfig) (*blob.Bucket, error) {
 			return nil, nil
-		})
-		defer gcsPatches.Reset()
-		azblobPatches := gomonkey.ApplyFunc(newAzblobStorage, func(conf *azblobConfig) (*blob.Bucket, error) {
+		}
+		defer func() { newGcsStorage = origGcs }()
+
+		origAzblob := newAzblobStorage
+		newAzblobStorage = func(conf *azblobConfig) (*blob.Bucket, error) {
 			return nil, nil
-		})
-		defer azblobPatches.Reset()
-		localPatches := gomonkey.ApplyFunc(newLocalStorage, func(conf *localConfig) (*blob.Bucket, error) {
+		}
+		defer func() { newAzblobStorage = origAzblob }()
+
+		origLocal := newLocalStorage
+		newLocalStorage = func(conf *localConfig) (*blob.Bucket, error) {
 			return nil, nil
-		})
-		defer localPatches.Reset()
+		}
+		defer func() { newLocalStorage = origLocal }()
 
 		backend, err := NewStorageBackend(provider, &StorageCredential{})
 		g.Expect(err).Should(gomega.Succeed())
@@ -405,31 +411,35 @@ func TestStorageBackendBatchDeleteObjects(t *testing.T) {
 	}
 
 	for _, tcase := range cases {
-		t.Log(tcase.name)
+		func() {
+			t.Log(tcase.name)
 
-		expectedResult := &BatchDeleteObjectsResult{}
+			expectedResult := &BatchDeleteObjectsResult{}
 
-		// mock function
-		s3patch := gomonkey.ApplyFunc(BatchDeleteObjectsOfS3, func(ctx context.Context, s3cli s3iface.S3API, objs []*blob.ListObject, bucket string, prefix string, concurrency int) *BatchDeleteObjectsResult {
-			if !tcase.useBatchDeleteObjectsOfS3 {
-				t.Fatal("should not use 'BatchDeleteObjectsOfS3'")
+			// mock function
+			origS3 := BatchDeleteObjectsOfS3Func
+			BatchDeleteObjectsOfS3Func = func(ctx context.Context, s3cli s3iface.S3API, objs []*blob.ListObject, bucket string, prefix string, concurrency int) *BatchDeleteObjectsResult {
+				if !tcase.useBatchDeleteObjectsOfS3 {
+					t.Fatal("should not use 'BatchDeleteObjectsOfS3'")
+				}
+				g.Expect(concurrency).Should(gomega.Equal(tcase.expectedConcurrency))
+				return expectedResult
 			}
-			g.Expect(concurrency).Should(gomega.Equal(tcase.expectedConcurrency))
-			return expectedResult
-		})
-		defer s3patch.Reset()
-		patch := gomonkey.ApplyFunc(BatchDeleteObjectsConcurrently, func(ctx context.Context, bucket *blob.Bucket, objs []*blob.ListObject, concurrency int) *BatchDeleteObjectsResult {
-			if tcase.useBatchDeleteObjectsOfS3 {
-				t.Fatal("should not use 'BatchDeleteObjectsConcurrently'")
+			defer func() { BatchDeleteObjectsOfS3Func = origS3 }()
+
+			origConcurrent := BatchDeleteObjectsConcurrentlyFunc
+			BatchDeleteObjectsConcurrentlyFunc = func(ctx context.Context, bucket *blob.Bucket, objs []*blob.ListObject, concurrency int) *BatchDeleteObjectsResult {
+				if tcase.useBatchDeleteObjectsOfS3 {
+					t.Fatal("should not use 'BatchDeleteObjectsConcurrently'")
+				}
+				g.Expect(concurrency).Should(gomega.Equal(tcase.expectedConcurrency))
+				return expectedResult
 			}
-			g.Expect(concurrency).Should(gomega.Equal(tcase.expectedConcurrency))
-			return expectedResult
-		})
-		defer patch.Reset()
+			defer func() { BatchDeleteObjectsConcurrentlyFunc = origConcurrent }()
 
-		result := tcase.backend.BatchDeleteObjects(context.TODO(), nil, tcase.opt)
-		g.Expect(result == expectedResult).Should(gomega.BeTrue())
-
+			result := tcase.backend.BatchDeleteObjects(context.TODO(), nil, tcase.opt)
+			g.Expect(result == expectedResult).Should(gomega.BeTrue())
+		}()
 	}
 }
 

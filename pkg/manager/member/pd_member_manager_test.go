@@ -23,7 +23,6 @@ import (
 	. "github.com/onsi/gomega"
 	apps "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -209,7 +208,7 @@ func TestPDMemberManagerSyncCreate(t *testing.T) {
 		{
 			name: "patch pod container",
 			prepare: func(cluster *v1alpha1.TidbCluster) {
-				cluster.Spec.PD.AdditionalContainers = []v1.Container{
+				cluster.Spec.PD.AdditionalContainers = []corev1.Container{
 					{Name: "pd", Lifecycle: &corev1.Lifecycle{PreStop: &corev1.LifecycleHandler{
 						Exec: &corev1.ExecAction{Command: []string{"sh", "-c", "echo 'test'"}},
 					}}},
@@ -467,7 +466,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			name: "patch pd container lifecycle configuration when sync cluster  ",
 			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.PD.Replicas = 5
-				tc.Spec.PD.AdditionalContainers = []v1.Container{
+				tc.Spec.PD.AdditionalContainers = []corev1.Container{
 					{Name: "pd", Lifecycle: &corev1.Lifecycle{PreStop: &corev1.LifecycleHandler{
 						Exec: &corev1.ExecAction{Command: []string{"sh", "-c", "echo 'test'"}},
 					}}},
@@ -501,7 +500,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			name: "patch pd add additional container ",
 			modify: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.PD.Replicas = 5
-				tc.Spec.PD.AdditionalContainers = []v1.Container{
+				tc.Spec.PD.AdditionalContainers = []corev1.Container{
 					{Name: "additional", Image: "test"},
 				}
 			},
@@ -522,7 +521,7 @@ func TestPDMemberManagerSyncUpdate(t *testing.T) {
 			expectStatefulSetFn: func(g *GomegaWithT, set *apps.StatefulSet, err error) {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(len(set.Spec.Template.Spec.Containers)).To(Equal(2))
-				g.Expect(set.Spec.Template.Spec.Containers[1]).To(Equal(v1.Container{Name: "additional", Image: "test"}))
+				g.Expect(set.Spec.Template.Spec.Containers[1]).To(Equal(corev1.Container{Name: "additional", Image: "test"}))
 			},
 			expectTidbClusterFn: func(g *GomegaWithT, tc *v1alpha1.TidbCluster) {
 			},
@@ -631,7 +630,7 @@ func TestPDMemberManagerPdStatefulSetIsUpgrading(t *testing.T) {
 	}
 
 	for i := range tests {
-		t.Logf(tests[i].name)
+		t.Logf("%s", tests[i].name)
 		testFn(&tests[i], t)
 	}
 }
@@ -804,8 +803,8 @@ func TestPDMemberManagerSyncPDSts(t *testing.T) {
 			modify: func(cluster *v1alpha1.TidbCluster) {
 				cluster.Spec.PD.Image = "pd-test-image:v2"
 				cluster.Spec.PD.Replicas = 1
-				cluster.ObjectMeta.Annotations = make(map[string]string)
-				cluster.ObjectMeta.Annotations["tidb.pingcap.com/force-upgrade"] = "true"
+				cluster.Annotations = make(map[string]string)
+				cluster.Annotations["tidb.pingcap.com/force-upgrade"] = "true"
 			},
 			pdHealth: &pdapi.HealthInfo{Healths: []pdapi.MemberHealth{
 				{Name: "pd1", MemberID: uint64(1), ClientUrls: []string{"http://pd1:2379"}, Health: false},
@@ -1085,13 +1084,13 @@ func TestGetNewPDHeadlessServiceForTidbCluster(t *testing.T) {
 	}
 }
 
-func testHostNetwork(t *testing.T, hostNetwork bool, dnsPolicy v1.DNSPolicy) func(sts *apps.StatefulSet) {
+func testHostNetwork(t *testing.T, hostNetwork bool, dnsPolicy corev1.DNSPolicy) func(sts *apps.StatefulSet) {
 	return func(sts *apps.StatefulSet) {
 		if hostNetwork != sts.Spec.Template.Spec.HostNetwork {
 			t.Errorf("unexpected hostNetwork %v, want %v", sts.Spec.Template.Spec.HostNetwork, hostNetwork)
 		}
 		if len(dnsPolicy) == 0 {
-			dnsPolicy = v1.DNSClusterFirst
+			dnsPolicy = corev1.DNSClusterFirst
 		}
 		if dnsPolicy != sts.Spec.Template.Spec.DNSPolicy {
 			t.Errorf("unexpected dnsPolicy %v, want %v", sts.Spec.Template.Spec.DNSPolicy, dnsPolicy)
@@ -1195,7 +1194,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 					TiDB: &v1alpha1.TiDBSpec{},
 				},
 			},
-			testSts: testHostNetwork(t, true, v1.DNSClusterFirstWithHostNet),
+			testSts: testHostNetwork(t, true, corev1.DNSClusterFirstWithHostNet),
 		},
 		{
 			name: "pd network is not host when tidb is host",
@@ -1921,7 +1920,7 @@ func TestGetNewPDSetForTidbCluster(t *testing.T) {
 			testSts: func(sts *apps.StatefulSet) {
 				g := NewGomegaWithT(t)
 				q, _ := resource.ParseQuantity("2Gi")
-				g.Expect(sts.Spec.VolumeClaimTemplates).To(Equal([]v1.PersistentVolumeClaim{
+				g.Expect(sts.Spec.VolumeClaimTemplates).To(Equal([]corev1.PersistentVolumeClaim{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: v1alpha1.PDMemberType.String(),
@@ -2774,8 +2773,8 @@ func TestPDMemberManagerSyncPDStsWhenPdNotJoinCluster(t *testing.T) {
 					pvc2.Name = pvc2.Name + "-2"
 					pvc2.UID = pvc2.UID + "-2"
 					pod := pods[ordinal]
-					pvc1.ObjectMeta.Labels[label.AnnPodNameKey] = pod.GetName()
-					pvc2.ObjectMeta.Labels[label.AnnPodNameKey] = pod.GetName()
+					pvc1.Labels[label.AnnPodNameKey] = pod.GetName()
+					pvc2.Labels[label.AnnPodNameKey] = pod.GetName()
 					pod.Spec.Volumes = append(pod.Spec.Volumes,
 						corev1.Volume{
 							VolumeSource: corev1.VolumeSource{
@@ -2859,14 +2858,14 @@ func TestPDMemberManagerSyncPDStsWhenPdNotJoinCluster(t *testing.T) {
 }
 
 func TestPDShouldRecover(t *testing.T) {
-	pods := []*v1.Pod{
+	pods := []*corev1.Pod{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "failover-pd-0",
-				Namespace: v1.NamespaceDefault,
+				Namespace: corev1.NamespaceDefault,
 			},
-			Status: v1.PodStatus{
-				Conditions: []v1.PodCondition{
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
 					{
 						Type:   corev1.PodReady,
 						Status: corev1.ConditionTrue,
@@ -2877,10 +2876,10 @@ func TestPDShouldRecover(t *testing.T) {
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "failover-pd-1",
-				Namespace: v1.NamespaceDefault,
+				Namespace: corev1.NamespaceDefault,
 			},
-			Status: v1.PodStatus{
-				Conditions: []v1.PodCondition{
+			Status: corev1.PodStatus{
+				Conditions: []corev1.PodCondition{
 					{
 						Type:   corev1.PodReady,
 						Status: corev1.ConditionTrue,
@@ -2889,13 +2888,13 @@ func TestPDShouldRecover(t *testing.T) {
 			},
 		},
 	}
-	podsWithFailover := append(pods, &v1.Pod{
+	podsWithFailover := append(pods, &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "failover-pd-2",
-			Namespace: v1.NamespaceDefault,
+			Namespace: corev1.NamespaceDefault,
 		},
-		Status: v1.PodStatus{
-			Conditions: []v1.PodCondition{
+		Status: corev1.PodStatus{
+			Conditions: []corev1.PodCondition{
 				{
 					Type:   corev1.PodReady,
 					Status: corev1.ConditionFalse,
@@ -2906,7 +2905,7 @@ func TestPDShouldRecover(t *testing.T) {
 	tests := []struct {
 		name string
 		tc   *v1alpha1.TidbCluster
-		pods []*v1.Pod
+		pods []*corev1.Pod
 		want bool
 	}{
 		{
@@ -2914,7 +2913,7 @@ func TestPDShouldRecover(t *testing.T) {
 			tc: &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Status: v1alpha1.TidbClusterStatus{},
 			},
@@ -2926,7 +2925,7 @@ func TestPDShouldRecover(t *testing.T) {
 			tc: &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
@@ -2961,7 +2960,7 @@ func TestPDShouldRecover(t *testing.T) {
 			tc: &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
@@ -2996,7 +2995,7 @@ func TestPDShouldRecover(t *testing.T) {
 			tc: &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
@@ -3035,7 +3034,7 @@ func TestPDShouldRecover(t *testing.T) {
 			tc: &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
@@ -3070,7 +3069,7 @@ func TestPDShouldRecover(t *testing.T) {
 			tc: &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
@@ -3105,7 +3104,7 @@ func TestPDShouldRecover(t *testing.T) {
 			tc: &v1alpha1.TidbCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "failover",
-					Namespace: v1.NamespaceDefault,
+					Namespace: corev1.NamespaceDefault,
 				},
 				Spec: v1alpha1.TidbClusterSpec{
 					PD: &v1alpha1.PDSpec{
@@ -3132,14 +3131,14 @@ func TestPDShouldRecover(t *testing.T) {
 					},
 				},
 			},
-			pods: []*v1.Pod{
+			pods: []*corev1.Pod{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "failover-pd-0",
-						Namespace: v1.NamespaceDefault,
+						Namespace: corev1.NamespaceDefault,
 					},
-					Status: v1.PodStatus{
-						Conditions: []v1.PodCondition{
+					Status: corev1.PodStatus{
+						Conditions: []corev1.PodCondition{
 							{
 								Type:   corev1.PodReady,
 								Status: corev1.ConditionTrue,
@@ -3150,10 +3149,10 @@ func TestPDShouldRecover(t *testing.T) {
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "err-pd-1",
-						Namespace: v1.NamespaceDefault,
+						Namespace: corev1.NamespaceDefault,
 					},
-					Status: v1.PodStatus{
-						Conditions: []v1.PodCondition{
+					Status: corev1.PodStatus{
+						Conditions: []corev1.PodCondition{
 							{
 								Type:   corev1.PodReady,
 								Status: corev1.ConditionTrue,

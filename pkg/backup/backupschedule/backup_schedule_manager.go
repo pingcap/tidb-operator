@@ -74,7 +74,7 @@ func (bm *backupScheduleManager) createCompact(bs *v1alpha1.BackupSchedule, chec
 	var startTs, endTs time.Time
 	switch {
 	case bs.Status.LogBackupStartTs == nil:
-		return fmt.Errorf("Compact failed: %s/%s, please start a log backup before compact it", bs.GetNamespace(), bs.GetName())
+		return fmt.Errorf("compact failed: %s/%s, please start a log backup before compact it", bs.GetNamespace(), bs.GetName())
 	case bs.Status.LastCompactProgress == nil:
 		startTs = bs.Status.LogBackupStartTs.Time
 	default:
@@ -436,7 +436,7 @@ func getLastScheduledTime(bs *v1alpha1.BackupSchedule, nowFn nowFn) (*time.Time,
 		// or that we have started a backup, but have not update backupSchedule status yet
 		// (distributed systems can have arbitrary delays).
 		// In any case, use the creation time of the backupSchedule as last known start time.
-		earliestTime = bs.ObjectMeta.CreationTimestamp.Time
+		earliestTime = bs.CreationTimestamp.Time
 	}
 
 	now := nowFn()
@@ -779,7 +779,7 @@ func separateSnapshotBackupsAndLogBackup(backupsList []*v1alpha1.Backup) ([]*v1a
 			continue
 		}
 		// Completed, failed or invalid backups will be GC'ed
-		if !(v1alpha1.IsBackupFailed(backup) || v1alpha1.IsBackupComplete(backup) || v1alpha1.IsBackupInvalid(backup)) {
+		if !v1alpha1.IsBackupFailed(backup) && !v1alpha1.IsBackupComplete(backup) && !v1alpha1.IsBackupInvalid(backup) {
 			continue
 		}
 		ascBackupList = append(ascBackupList, backup)
@@ -1129,7 +1129,7 @@ type byCreateTimeDesc []*v1alpha1.Backup
 func (b byCreateTimeDesc) Len() int      { return len(b) }
 func (b byCreateTimeDesc) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
 func (b byCreateTimeDesc) Less(i, j int) bool {
-	return b[j].ObjectMeta.CreationTimestamp.Before(&b[i].ObjectMeta.CreationTimestamp)
+	return b[j].CreationTimestamp.Before(&b[i].CreationTimestamp)
 }
 
 var _ backup.BackupScheduleManager = &backupScheduleManager{}

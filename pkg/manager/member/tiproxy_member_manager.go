@@ -313,8 +313,8 @@ func (m *tiproxyMemberManager) syncProxyService(tc *v1alpha1.TidbCluster, peer b
 		},
 	}
 	if peer {
-		newSvc.ObjectMeta.Name = controller.TiProxyPeerMemberName(tc.GetName())
-		newSvc.ObjectMeta.Labels = svcLabel.Copy().UsedByPeer()
+		newSvc.Name = controller.TiProxyPeerMemberName(tc.GetName())
+		newSvc.Labels = svcLabel.Copy().UsedByPeer()
 		newSvc.Spec.Type = corev1.ServiceTypeClusterIP
 		newSvc.Spec.ClusterIP = "None"
 		newSvc.Spec.Ports = append(newSvc.Spec.Ports,
@@ -332,8 +332,8 @@ func (m *tiproxyMemberManager) syncProxyService(tc *v1alpha1.TidbCluster, peer b
 			},
 		)
 	} else {
-		newSvc.ObjectMeta.Name = controller.TiProxyMemberName(tc.GetName())
-		newSvc.ObjectMeta.Labels = svcLabel.Copy().UsedByEndUser()
+		newSvc.Name = controller.TiProxyMemberName(tc.GetName())
+		newSvc.Labels = svcLabel.Copy().UsedByEndUser()
 		newSvc.Spec.Type = corev1.ServiceTypeNodePort
 		newSvc.Spec.Ports = append(newSvc.Spec.Ports,
 			corev1.ServicePort{
@@ -354,7 +354,7 @@ func (m *tiproxyMemberManager) syncProxyService(tc *v1alpha1.TidbCluster, peer b
 		SetServiceWhenPreferIPv6(newSvc)
 	}
 
-	oldSvcTmp, err := m.deps.ServiceLister.Services(tc.GetNamespace()).Get(newSvc.ObjectMeta.Name)
+	oldSvcTmp, err := m.deps.ServiceLister.Services(tc.GetNamespace()).Get(newSvc.Name)
 	if errors.IsNotFound(err) {
 		err = controller.SetServiceLastAppliedConfigAnnotation(newSvc)
 		if err != nil {

@@ -28,7 +28,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/features"
 	"github.com/sethvargo/go-password/password"
-	apps "k8s.io/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -185,11 +184,11 @@ func GetPodName(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType, ordina
 }
 
 func IsStatefulSetUpgrading(set *appsv1.StatefulSet) bool {
-	return !(set.Status.CurrentRevision == set.Status.UpdateRevision)
+	return set.Status.CurrentRevision != set.Status.UpdateRevision
 }
 
 func IsStatefulSetScaling(set *appsv1.StatefulSet) bool {
-	return !(set.Status.Replicas == *set.Spec.Replicas)
+	return set.Status.Replicas != *set.Spec.Replicas
 }
 
 func GetStatefulSetName(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) string {
@@ -409,7 +408,7 @@ func MatchLabelFromStoreLabels(storeLabels []*metapb.StoreLabel, componentLabel 
 }
 
 // StatefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
-func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) (equal bool, podTemplateCheckedAndNotEqual bool) {
+func StatefulSetEqual(new appsv1.StatefulSet, old appsv1.StatefulSet) (equal bool, podTemplateCheckedAndNotEqual bool) {
 	// The annotations in old sts may include LastAppliedConfigAnnotation
 	tmpAnno := map[string]string{}
 	for k, v := range old.Annotations {
@@ -420,7 +419,7 @@ func StatefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) (equal bool, p
 	if !apiequality.Semantic.DeepEqual(new.Annotations, tmpAnno) {
 		return false, false // pod tempate not checked, return false
 	}
-	oldConfig := apps.StatefulSetSpec{}
+	oldConfig := appsv1.StatefulSetSpec{}
 	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
 		err := json.Unmarshal([]byte(lastAppliedConfig), &oldConfig)
 		if err != nil {

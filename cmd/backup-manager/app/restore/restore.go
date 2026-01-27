@@ -178,7 +178,7 @@ func (ro *Options) restoreData(
 			}
 			ro.updateResolvedTSForCSB(line, restore, progressStep, statusUpdater)
 		}
-		klog.Info(strings.Replace(line, "\n", "", -1))
+		klog.Info(strings.ReplaceAll(line, "\n", ""))
 		if err != nil {
 			if err != io.EOF {
 				klog.Errorf("read stdout error: %s", err.Error())

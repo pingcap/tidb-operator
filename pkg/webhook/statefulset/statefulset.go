@@ -90,7 +90,7 @@ func (sc *StatefulSetAdmissionControl) Validate(ar *admission.AdmissionRequest) 
 
 	l := label.Label(stsObjectMeta.Labels)
 
-	if !(l.IsTiDB() || l.IsTiKV()) {
+	if !l.IsTiDB() && !l.IsTiKV() {
 		// If it is not statefulset of tikv and tidb, return quickly.
 		return util.ARSuccess()
 	}
