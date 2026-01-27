@@ -19,7 +19,7 @@ import (
 	"mime"
 	"time"
 
-	"github.com/juju/errors"
+	"github.com/pingcap/errors"
 )
 
 // RFC3339Time is a wrapper of `time.Time` that marshals to a RFC3339
