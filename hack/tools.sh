@@ -37,21 +37,12 @@ function kubectl() {
         "version --client | awk '/Client/{print \$3}'"
 }
 
+# Create a script to call go tool in _output/bin
 function go_tools() {
     echo "installing ${1}"
-    cat > "${BIN_DIR}/${1}" <<'EOF'
+	cat << EOF > ${BIN_DIR}/${1}
 #!/usr/bin/env bash
-ROOT=$(cd $(dirname "${BASH_SOURCE[0]}")/../..; pwd -P)
-tool_name=$(basename "$0")
-tool_mod="${ROOT}/tools/${tool_name}/go.mod"
-tool_path=
-tool_path=$(awk '$1 == "tool" { print $2 }' "${tool_mod}")
-if [[ -z "${tool_path}" ]]; then
-  echo "tool path not found in ${tool_mod}" >&2
-  exit 1
-fi
-
-GOWORK=off GOFLAGS= go run -modfile "${tool_mod}" "${tool_path}" "\${@}"
+go tool -modfile ${ROOT}/tools/${1}/go.mod ${1} "\${@}"
 EOF
 
     chmod +x ${BIN_DIR}/${1}
