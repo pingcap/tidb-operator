@@ -121,6 +121,7 @@ func getTargets(_ *generator.Context, args *Args) []generator.Target {
 		"tso",
 		"scheduling",
 		"scheduler",
+		"router",
 		"resourcemanager",
 		"tiproxy",
 		"tikvworker",

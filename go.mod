@@ -82,6 +82,7 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
+	k8s.io/code-generator v0.32.11 // indirect
 )
 
 require (

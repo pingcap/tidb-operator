@@ -42,6 +42,7 @@ const (
 	ComponentTiCDC           Component = "ticdc"
 	ComponentTSO             Component = "tso"
 	ComponentScheduling      Component = "scheduling"
+	ComponentRouter          Component = "router"
 	ComponentResourceManager Component = "resource-manager"
 	ComponentTiProxy         Component = "tiproxy"
 	// Deprecated: use ComponentScheduling

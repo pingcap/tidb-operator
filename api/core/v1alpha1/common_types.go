@@ -134,6 +134,7 @@ const (
 	LabelValComponentTiCDC           = string(meta.ComponentTiCDC)
 	LabelValComponentTSO             = string(meta.ComponentTSO)
 	LabelValComponentScheduling      = string(meta.ComponentScheduling)
+	LabelValComponentRouter          = string(meta.ComponentRouter)
 	LabelValComponentResourceManager = string(meta.ComponentResourceManager)
 	LabelValComponentTiProxy         = string(meta.ComponentTiProxy)
 	// Deprecated: use LabelValComponentScheduling
