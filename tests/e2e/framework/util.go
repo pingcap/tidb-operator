@@ -55,9 +55,7 @@ func NewConfig(configPath, ctxName string) (*rest.Config, error) {
 }
 
 func newClient(cfg *rest.Config) (client.Client, error) {
-	c, err := client.New(cfg, client.Options{
-		Scheme: scheme.Scheme,
-	})
+	c, err := client.New(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("can't new client: %w", err)
 	}

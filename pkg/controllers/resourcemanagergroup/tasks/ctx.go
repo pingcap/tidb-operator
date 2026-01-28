@@ -14,6 +14,22 @@
 
 package tasks
 
+import (
+	"context"
+
+	"github.com/pingcap/tidb-operator/v2/pkg/timanager/resourcemanager"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
+)
+
 type ReconcileContext struct {
 	State
+}
+
+func TaskContextRMClient(state *ReconcileContext, m resourcemanager.ResourceManagerClientManager) task.Task {
+	return task.NameTaskFunc("ContextRMClient", func(_ context.Context) task.Result {
+		if err := m.Register(state.Object()); err != nil {
+			return task.Fail().With("cannot register resource manager client: %v", err)
+		}
+		return task.Complete().With("resource manager client is registered")
+	})
 }

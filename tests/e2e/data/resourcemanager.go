@@ -47,6 +47,6 @@ func NewResourceManagerGroup(ns string, patches ...GroupPatch[*v1alpha1.Resource
 func WithResourceManagerNextGen() GroupPatch[*v1alpha1.ResourceManagerGroup] {
 	return GroupPatchFunc[*v1alpha1.ResourceManagerGroup](func(obj *v1alpha1.ResourceManagerGroup) {
 		obj.Spec.Template.Spec.Version = "v9.0.0"
-		obj.Spec.Template.Spec.Image = ptr.To(defaultImageRegistry + "pd:master-next-gen")
+		obj.Spec.Template.Spec.Image = ptr.To("us.gcr.io/pingcap-public/tidbx/" + "pd:master-next-gen")
 	})
 }
