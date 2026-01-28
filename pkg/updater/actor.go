@@ -402,6 +402,7 @@ func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) error {
 	return nil
 }
 
+// TODO: use apicall.SetOffline
 func (act *actor[T, O, R]) setOffline(ctx context.Context, obj R) error {
 	p := Patch{
 		Metadata: Metadata{

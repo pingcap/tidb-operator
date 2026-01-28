@@ -86,6 +86,15 @@ func TiKVPatches(o *Options, ps ...data.GroupPatch[*v1alpha1.TiKVGroup]) []data.
 	return GroupPatches[scope.TiKVGroup](o, ps...)
 }
 
+func TiFlashPatches(o *Options, ps ...data.GroupPatch[*v1alpha1.TiFlashGroup]) []data.GroupPatch[*v1alpha1.TiFlashGroup] {
+	if o.NextGen {
+		ps = append(ps,
+			data.WithTiFlashNextGen(),
+		)
+	}
+	return GroupPatches[scope.TiFlashGroup](o, ps...)
+}
+
 func TiProxyPatches(o *Options, ps ...data.GroupPatch[*v1alpha1.TiProxyGroup]) []data.GroupPatch[*v1alpha1.TiProxyGroup] {
 	if o.NextGen {
 		ps = append(ps,
