@@ -93,3 +93,4 @@ jobs:
           cos_region: ap-beijing
           local_path: ./output/chart
           remote_path: /
+          cdn_prefix: https://charts.pingcap.com/
