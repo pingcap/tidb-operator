@@ -136,3 +136,19 @@ func MustCreateResourceManager(
 
 	return rmg
 }
+
+func MustCreateRouter(
+	ctx context.Context,
+	f *framework.Framework,
+	o *desc.Options,
+	ps ...data.GroupPatch[*v1alpha1.RouterGroup],
+) *v1alpha1.RouterGroup {
+	rmg := data.NewRouterGroup(
+		f.Namespace.Name,
+		desc.RouterPatches(o, ps...)...,
+	)
+	ginkgo.By("Creating a router group")
+	f.Must(f.Client.Create(ctx, rmg))
+
+	return rmg
+}

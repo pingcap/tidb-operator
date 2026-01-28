@@ -116,3 +116,12 @@ func ResourceManagerPatches(o *Options, ps ...data.GroupPatch[*v1alpha1.Resource
 	}
 	return GroupPatches[scope.ResourceManagerGroup](o, ps...)
 }
+
+func RouterPatches(o *Options, ps ...data.GroupPatch[*v1alpha1.RouterGroup]) []data.GroupPatch[*v1alpha1.RouterGroup] {
+	if o.NextGen {
+		ps = append(ps,
+			data.WithRouterNextGen(),
+		)
+	}
+	return GroupPatches[scope.RouterGroup](o, ps...)
+}

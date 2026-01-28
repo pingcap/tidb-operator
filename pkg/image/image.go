@@ -31,6 +31,8 @@ const (
 	TSO Untagged = "pingcap/pd"
 	// Scheduling also use pd image
 	Scheduling Untagged = "pingcap/pd"
+	// Router also use pd image
+	Router Untagged = "pingcap/pd"
 	// ResourceManager also use pd image
 	ResourceManager Untagged = "pingcap/pd"
 	// Scheduler also use pd image
