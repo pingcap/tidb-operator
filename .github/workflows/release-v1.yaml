@@ -94,3 +94,5 @@ jobs:
           local_path: ./output/chart
           remote_path: /
           cdn_prefix: https://charts.pingcap.com/
+          cdn_type: eo
+          eo_zone: zone-3is0v38w07ng
