@@ -263,4 +263,4 @@ help: ## Display this help.
 
 .PHONY: charts/build
 charts/build:
-	./hack/charts-build.sh
+	bash ./hack/charts-build.sh
