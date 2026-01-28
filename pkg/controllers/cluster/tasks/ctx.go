@@ -103,11 +103,11 @@ func (t *TaskContext) Sync(ctx task.Context[ReconcileContext]) task.Result {
 	}
 	rtx.ResourceManagerGroups = rmgs
 
-	rmngs, err := apicall.ListGroups[scope.RouterGroup](ctx, t.Client, ns, name)
+	rgs, err := apicall.ListGroups[scope.RouterGroup](ctx, t.Client, ns, name)
 	if err != nil {
 		return task.Fail().With("can't list router manager groups: %w", err)
 	}
-	rtx.RouterManagerGroups = rmngs
+	rtx.RouterGroups = rgs
 
 	tgs, err := apicall.ListGroups[scope.TSOGroup](ctx, t.Client, ns, name)
 	if err != nil {

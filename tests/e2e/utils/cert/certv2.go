@@ -398,6 +398,7 @@ func (f *factory) registerCerts(ctx context.Context, ns, cluster string) error {
 		registerCertsForComponents[scope.TSOGroup],
 		registerCertsForComponents[scope.SchedulingGroup],
 		registerCertsForComponents[scope.ResourceManagerGroup],
+		registerCertsForComponents[scope.RouterGroup],
 		registerCertsForComponents[scope.TiDBGroup],
 		registerCertsForComponents[scope.TiKVGroup],
 		registerCertsForComponents[scope.TiFlashGroup],
