@@ -263,4 +263,4 @@ help: ## Display this help.
 
 .PHONY: charts/build
 charts/build:
-	$(ROOT)/hack/charts-build.sh
+	./hack/charts-build.sh
