@@ -81,8 +81,8 @@ jobs:
           set -e
           CHARTS_BUILD_DIR="output/chart"
           cd ${CHARTS_BUILD_DIR}
-          curl -f http://charts.pingcap.org/index.yaml -o index.yaml 2>/dev/null || true
-          helm repo index . --url https://charts.pingcap.org/ --merge index.yaml 2>/dev/null || helm repo index . --url https://charts.pingcap.org/
+          curl -f http://charts.pingcap.com/index.yaml -o index.yaml 2>/dev/null || true
+          helm repo index . --url https://charts.pingcap.com/ --merge index.yaml 2>/dev/null || helm repo index . --url https://charts.pingcap.com/
 
       - name: Upload all charts and index.yaml to Tencent COS
         uses: sylingd/tencent-cos-and-cdn-action@v1
@@ -93,3 +93,7 @@ jobs:
           cos_region: ap-beijing
           local_path: ./output/chart
           remote_path: /
+          cdn_prefix: https://charts.pingcap.com/
+          cdn_type: eo
+          eo_zone: zone-3is0v38w07ng
+          
