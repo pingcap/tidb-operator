@@ -386,6 +386,7 @@ func (w *typedWrapper) CreateOrUpdateIngress(controller client.Object, ingress *
 func (w *typedWrapper) Create(controller, obj client.Object) error {
 	return w.GenericControlInterface.Create(controller, obj, true)
 }
+
 func (w *typedWrapper) Exist(key client.ObjectKey, obj client.Object) (bool, error) {
 	return w.GenericControlInterface.Exist(key, obj)
 }
@@ -449,7 +450,6 @@ func (c *realGenericControlInterface) Exist(key client.ObjectKey, obj client.Obj
 // call mergeFn to merge the change in new object to the existing object, then update the existing object.
 // The object will also be adopted by the given controller.
 func (c *realGenericControlInterface) CreateOrUpdate(controller, obj client.Object, mergeFn MergeFn, setOwnerFlag bool) (runtime.Object, error) {
-
 	// controller-runtime/client will mutate the object pointer in-place,
 	// to be consistent with other methods in our controller, we copy the object
 	// to avoid the in-place mutation here and hereafter.
@@ -472,7 +472,7 @@ func (c *realGenericControlInterface) CreateOrUpdate(controller, obj client.Obje
 	}
 
 	exist := err == nil
-	klog.Infof("get obj %s/%s exist=%v", obj.GetNamespace(), obj.GetName(), exist)
+	klog.V(4).Infof("get obj %s/%s exist=%v", obj.GetNamespace(), obj.GetName(), exist)
 	if exist {
 		// 2. object has already existed, merge our desired changes to it
 
@@ -607,6 +607,7 @@ func NewFakeGenericControl(initObjects ...runtime.Object) *FakeGenericControl {
 		RequestTracker{},
 	}
 }
+
 func (c *FakeGenericControl) Create(controller, obj client.Object, setOwnerFlag bool) error {
 	defer c.createTracker.Inc()
 	if c.createTracker.ErrorReady() {
@@ -630,9 +631,11 @@ func (c *FakeGenericControl) Exist(key client.ObjectKey, obj client.Object) (boo
 func (c *FakeGenericControl) SetCreateError(err error, after int) {
 	c.createTracker.SetError(err).SetAfter(after)
 }
+
 func (c *FakeGenericControl) SetExistError(err error, after int) {
 	c.existTracker.SetError(err).SetAfter(after)
 }
+
 func (c *FakeGenericControl) SetUpdateStatusError(err error, after int) {
 	c.updateStatusTracker.SetError(err).SetAfter(after)
 }
