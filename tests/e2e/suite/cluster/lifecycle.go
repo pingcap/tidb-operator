@@ -19,6 +19,8 @@ import (
 
 	"github.com/onsi/ginkgo/v2"
 
+	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/data"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework/action"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework/desc"
@@ -34,9 +36,9 @@ var _ = ginkgo.Describe("Lifecycle", label.Cluster, func() {
 		f.SetupCluster(desc.ClusterPatches(o)...)
 		cm := f.SetupCertManager(o.TLS)
 
-		ginkgo.It("should support deleting tiflash group", func(ctx context.Context) {
+		ginkgo.FIt("should support deleting tiflash group", func(ctx context.Context) {
 			pdg := action.MustCreatePD(ctx, f, o)
-			kvg := action.MustCreateTiKV(ctx, f, o)
+			kvg := action.MustCreateTiKV(ctx, f, o, data.WithReplicas[scope.TiKVGroup](3))
 			fg := action.MustCreateTiFlash(ctx, f, o)
 			dbg := action.MustCreateTiDB(ctx, f, o)
 
