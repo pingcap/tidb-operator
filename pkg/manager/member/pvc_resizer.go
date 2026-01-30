@@ -78,6 +78,8 @@ var (
 	tikvRequirement    = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiKVLabelVal})
 	tiflashRequirement = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiFlashLabelVal})
 	ticdcRequirement   = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiCDCLabelVal})
+	ticiMetaRequirement   = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiCIMetaLabelVal})
+	ticiWorkerRequirement = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiCIWorkerLabelVal})
 	pumpRequirement    = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.PumpLabelVal})
 
 	dmMasterRequirement = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.DMMasterLabelVal})
@@ -247,6 +249,22 @@ func (p *pvcResizer) buildContextForTC(tc *v1alpha1.TidbCluster, status v1alpha1
 			tc.Status.TiCDC.Volumes = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
 		}
 		storageVolumes = tc.Spec.TiCDC.StorageVolumes
+	case v1alpha1.TiCIMetaMemberType:
+		ctx.selector = selector.Add(*ticiMetaRequirement)
+		if tc.Status.TiCIMeta.Volumes == nil {
+			tc.Status.TiCIMeta.Volumes = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
+		}
+		if tc.Spec.TiCI != nil && tc.Spec.TiCI.Meta != nil {
+			storageVolumes = tc.Spec.TiCI.Meta.StorageVolumes
+		}
+	case v1alpha1.TiCIWorkerMemberType:
+		ctx.selector = selector.Add(*ticiWorkerRequirement)
+		if tc.Status.TiCIWorker.Volumes == nil {
+			tc.Status.TiCIWorker.Volumes = map[v1alpha1.StorageVolumeName]*v1alpha1.StorageVolumeStatus{}
+		}
+		if tc.Spec.TiCI != nil && tc.Spec.TiCI.Worker != nil {
+			storageVolumes = tc.Spec.TiCI.Worker.StorageVolumes
+		}
 	case v1alpha1.PumpMemberType:
 		ctx.selector = selector.Add(*pumpRequirement)
 		if tc.Status.Pump.Volumes == nil {

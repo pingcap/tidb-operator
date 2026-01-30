@@ -31,6 +31,8 @@ var (
 		v1alpha1.TiDBMemberType,
 		v1alpha1.TiFlashMemberType,
 		v1alpha1.TiCDCMemberType,
+		v1alpha1.TiCIMetaMemberType,
+		v1alpha1.TiCIWorkerMemberType,
 		v1alpha1.TiKVMemberType,
 		v1alpha1.PumpMemberType,
 		v1alpha1.PDMemberType,

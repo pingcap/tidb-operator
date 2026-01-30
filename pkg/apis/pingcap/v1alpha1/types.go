@@ -82,6 +82,10 @@ const (
 	TiFlashMemberType MemberType = "tiflash"
 	// TiCDCMemberType is ticdc member type
 	TiCDCMemberType MemberType = "ticdc"
+	// TiCIMetaMemberType is tici meta member type
+	TiCIMetaMemberType MemberType = "tici-meta"
+	// TiCIWorkerMemberType is tici worker member type
+	TiCIWorkerMemberType MemberType = "tici-worker"
 	// TiProxyMemberType is ticdc member type
 	TiProxyMemberType MemberType = "tiproxy"
 	// PumpMemberType is pump member type
@@ -253,6 +257,10 @@ type TidbClusterSpec struct {
 	// TiCDC cluster spec
 	// +optional
 	TiCDC *TiCDCSpec `json:"ticdc,omitempty"`
+
+	// TiCI cluster spec
+	// +optional
+	TiCI *TiCISpec `json:"tici,omitempty"`
 
 	// TiProxy cluster spec
 	// +optional
@@ -445,6 +453,9 @@ type TidbClusterStatus struct {
 	TiFlash   TiFlashStatus          `json:"tiflash,omitempty"`
 	TiProxy   TiProxyStatus          `json:"tiproxy,omitempty"`
 	TiCDC     TiCDCStatus            `json:"ticdc,omitempty"`
+	TiCIMeta  TiCIMetaStatus         `json:"ticiMeta,omitempty"`
+	TiCIWorker TiCIWorkerStatus      `json:"ticiWorker,omitempty"`
+	TiCI      TiCIStatus             `json:"tici,omitempty"`
 	// Represents the latest available observations of a tidb cluster's state.
 	// +optional
 	// +nullable
@@ -922,6 +933,149 @@ type TiCDCSpec struct {
 	// Defaults to 10m
 	// +optional
 	GracefulShutdownTimeout *metav1.Duration `json:"gracefulShutdownTimeout,omitempty"`
+}
+
+// TiCISpec contains details of TiCI meta/worker members
+// +k8s:openapi-gen=true
+type TiCISpec struct {
+	// Meta is the specification of TiCI meta servers
+	// +optional
+	Meta *TiCIMetaSpec `json:"meta,omitempty"`
+
+	// Worker is the specification of TiCI worker servers
+	// +optional
+	Worker *TiCIWorkerSpec `json:"worker,omitempty"`
+
+	// S3 is the configuration of S3/MinIO storage used by TiCI
+	// +optional
+	S3 *TiCIS3Spec `json:"s3,omitempty"`
+
+	// Reader is the configuration of TiCI reader in TiFlash
+	// +optional
+	Reader *TiCIReaderSpec `json:"reader,omitempty"`
+
+	// Changefeed controls the TiCDC changefeed creation for TiCI
+	// +optional
+	Changefeed *TiCIChangefeedSpec `json:"changefeed,omitempty"`
+}
+
+// TiCIMetaSpec contains details of TiCI meta members
+// +k8s:openapi-gen=true
+type TiCIMetaSpec struct {
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
+
+	// Specify a Service Account for TiCI meta
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
+	// The desired ready replicas
+	// +kubebuilder:validation:Minimum=0
+	Replicas int32 `json:"replicas"`
+
+	// Base image of the component, image tag is now allowed during validation
+	// +optional
+	BaseImage string `json:"baseImage"`
+
+	// StorageVolumes configure additional storage for TiCI meta pods.
+	// +optional
+	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+
+	// The storageClassName of the persistent volume for TiCI meta data storage.
+	// Defaults to Kubernetes default storage class.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// The VolumeAttributesClassName of the persistent volume for TiCI meta data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
+}
+
+// TiCIWorkerSpec contains details of TiCI worker members
+// +k8s:openapi-gen=true
+type TiCIWorkerSpec struct {
+	ComponentSpec               `json:",inline"`
+	corev1.ResourceRequirements `json:",inline"`
+
+	// Specify a Service Account for TiCI worker
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
+	// The desired ready replicas
+	// +kubebuilder:validation:Minimum=0
+	Replicas int32 `json:"replicas"`
+
+	// Base image of the component, image tag is now allowed during validation
+	// +optional
+	BaseImage string `json:"baseImage"`
+
+	// StorageVolumes configure additional storage for TiCI worker pods.
+	// +optional
+	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+
+	// The storageClassName of the persistent volume for TiCI worker data storage.
+	// Defaults to Kubernetes default storage class.
+	// +optional
+	StorageClassName *string `json:"storageClassName,omitempty"`
+
+	// The VolumeAttributesClassName of the persistent volume for TiCI worker data storage.
+	// If it is set, the change of StorageClassName will be ignored.
+	// +optional
+	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
+}
+
+// TiCIS3Spec is the configuration of S3/MinIO for TiCI
+// +k8s:openapi-gen=true
+type TiCIS3Spec struct {
+	// Endpoint is the S3 endpoint, e.g. http://minio:9000
+	Endpoint string `json:"endpoint"`
+	// Region is the S3 region
+	// +optional
+	Region string `json:"region,omitempty"`
+	// AccessKey is the S3 access key
+	// +optional
+	AccessKey string `json:"accessKey,omitempty"`
+	// SecretKey is the S3 secret key
+	// +optional
+	SecretKey string `json:"secretKey,omitempty"`
+	// Bucket is the S3 bucket name
+	Bucket string `json:"bucket"`
+	// Prefix is the S3 prefix for TiCI data
+	// +optional
+	Prefix string `json:"prefix,omitempty"`
+	// UsePathStyle enables path-style access for S3
+	// +optional
+	UsePathStyle *bool `json:"usePathStyle,omitempty"`
+}
+
+// TiCIReaderSpec controls the tici reader config inside TiFlash
+// +k8s:openapi-gen=true
+type TiCIReaderSpec struct {
+	// Port for TiCI reader
+	// +optional
+	Port *int32 `json:"port,omitempty"`
+	// HeartbeatInterval is the interval between heartbeats
+	// +optional
+	HeartbeatInterval *string `json:"heartbeatInterval,omitempty"`
+	// MaxHeartbeatRetries is the max retries for heartbeat
+	// +optional
+	MaxHeartbeatRetries *int32 `json:"maxHeartbeatRetries,omitempty"`
+	// HeartbeatWorkerCount is the worker count for heartbeat
+	// +optional
+	HeartbeatWorkerCount *int32 `json:"heartbeatWorkerCount,omitempty"`
+}
+
+// TiCIChangefeedSpec controls TiCDC changefeed creation for TiCI
+// +k8s:openapi-gen=true
+type TiCIChangefeedSpec struct {
+	// Enable changefeed creation
+	// +optional
+	Enable *bool `json:"enable,omitempty"`
+	// SinkURI overrides the computed TiCI sink uri
+	// +optional
+	SinkURI string `json:"sinkURI,omitempty"`
+	// ChangefeedID is the changefeed id
+	// +optional
+	ChangefeedID string `json:"changefeedID,omitempty"`
 }
 
 // TiCDCConfig is the configuration of tidbcdc
@@ -1875,6 +2029,42 @@ type TiCDCStatus struct {
 	// +optional
 	// +nullable
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
+// TiCIMetaStatus is TiCI meta status
+type TiCIMetaStatus struct {
+	Synced      bool                    `json:"synced,omitempty"`
+	Phase       MemberPhase             `json:"phase,omitempty"`
+	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
+// TiCIWorkerStatus is TiCI worker status
+type TiCIWorkerStatus struct {
+	Synced      bool                    `json:"synced,omitempty"`
+	Phase       MemberPhase             `json:"phase,omitempty"`
+	StatefulSet *apps.StatefulSetStatus `json:"statefulSet,omitempty"`
+	// Volumes contains the status of all volumes.
+	Volumes map[StorageVolumeName]*StorageVolumeStatus `json:"volumes,omitempty"`
+	// Represents the latest available observations of a component's state.
+	// +optional
+	// +nullable
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
+// TiCIStatus is TiCI changefeed status
+type TiCIStatus struct {
+	// ChangefeedSynced indicates whether the TiCI changefeed is created
+	ChangefeedSynced bool `json:"changefeedSynced,omitempty"`
+	// ChangefeedJobName is the job name that creates the changefeed
+	ChangefeedJobName string `json:"changefeedJobName,omitempty"`
+	// ChangefeedLastError records the last error message if job failed
+	ChangefeedLastError string `json:"changefeedLastError,omitempty"`
 }
 
 // TiCDCCapture is TiCDC Capture status

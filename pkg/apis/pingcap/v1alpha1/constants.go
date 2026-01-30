@@ -72,6 +72,17 @@ var (
 	customPortTiProxyServer  = "6000"
 	DefaultTiProxyStatusPort = int32(3080)
 	customPortTiProxyStatus  = "3080"
+
+	DefaultTiCIMetaPort       = int32(8500)
+	customPortTiCIMeta        = "8500"
+	DefaultTiCIMetaStatusPort = int32(8501)
+	customPortTiCIMetaStatus  = "8501"
+	DefaultTiCIWorkerPort     = int32(8510)
+	customPortTiCIWorker      = "8510"
+	DefaultTiCIWorkerStatusPort = int32(8511)
+	customPortTiCIWorkerStatus  = "8511"
+	DefaultTiCIReaderPort       = int32(8520)
+	customPortTiCIReader        = "8520"
 )
 
 func init() {
@@ -170,6 +181,32 @@ func init() {
 
 	if port, err := strconv.ParseUint(customPortTiProxyStatus, 10, 32); err == nil {
 		DefaultTiProxyStatusPort = int32(port)
+	} else {
+		panic(err)
+	}
+
+	if port, err := strconv.ParseUint(customPortTiCIMeta, 10, 32); err == nil {
+		DefaultTiCIMetaPort = int32(port)
+	} else {
+		panic(err)
+	}
+	if port, err := strconv.ParseUint(customPortTiCIMetaStatus, 10, 32); err == nil {
+		DefaultTiCIMetaStatusPort = int32(port)
+	} else {
+		panic(err)
+	}
+	if port, err := strconv.ParseUint(customPortTiCIWorker, 10, 32); err == nil {
+		DefaultTiCIWorkerPort = int32(port)
+	} else {
+		panic(err)
+	}
+	if port, err := strconv.ParseUint(customPortTiCIWorkerStatus, 10, 32); err == nil {
+		DefaultTiCIWorkerStatusPort = int32(port)
+	} else {
+		panic(err)
+	}
+	if port, err := strconv.ParseUint(customPortTiCIReader, 10, 32); err == nil {
+		DefaultTiCIReaderPort = int32(port)
 	} else {
 		panic(err)
 	}

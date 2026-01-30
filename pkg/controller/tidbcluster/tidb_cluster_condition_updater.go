@@ -47,7 +47,9 @@ func allStatefulSetsAreUpToDate(tc *v1alpha1.TidbCluster) bool {
 	return (isUpToDate(tc.Status.PD.StatefulSet, false)) &&
 		(isUpToDate(tc.Status.TiKV.StatefulSet, false)) &&
 		(isUpToDate(tc.Status.TiDB.StatefulSet, false)) &&
-		isUpToDate(tc.Status.TiFlash.StatefulSet, false)
+		isUpToDate(tc.Status.TiFlash.StatefulSet, false) &&
+		isUpToDate(tc.Status.TiCIMeta.StatefulSet, false) &&
+		isUpToDate(tc.Status.TiCIWorker.StatefulSet, false)
 }
 
 func (u *tidbClusterConditionUpdater) updateReadyCondition(tc *v1alpha1.TidbCluster) {
@@ -74,6 +76,9 @@ func (u *tidbClusterConditionUpdater) updateReadyCondition(tc *v1alpha1.TidbClus
 	case tc.Spec.TiCDC != nil && !tc.TiCDCAllCapturesReady():
 		reason = utiltidbcluster.TiCDCCaptureNotReady
 		message = "TiCDC capture(s) are not up"
+	case tc.Spec.TiCI != nil && !tc.TiCIAllMembersReady():
+		reason = utiltidbcluster.TiCIUnhealthy
+		message = "TiCI meta/worker are not ready"
 	case tc.Spec.TiProxy != nil && !tc.TiProxyAllMembersReady():
 		reason = utiltidbcluster.TiProxyUnhealthy
 		message = "TiProxy(s) are not healthy"

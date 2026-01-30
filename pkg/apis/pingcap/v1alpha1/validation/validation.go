@@ -150,12 +150,54 @@ func validateTiDBClusterSpec(spec *v1alpha1.TidbClusterSpec, fldPath *field.Path
 	if spec.TiCDC != nil {
 		allErrs = append(allErrs, validateTiCDCSpec(spec.TiCDC, fldPath.Child("ticdc"))...)
 	}
+	if spec.TiCI != nil {
+		allErrs = append(allErrs, validateTiCISpec(spec.TiCI, fldPath.Child("tici"))...)
+	}
 	if spec.PDAddresses != nil {
 		allErrs = append(allErrs, validatePDAddresses(spec.PDAddresses, fldPath.Child("pdAddresses"))...)
 	}
 	if spec.StartScriptV2FeatureFlags != nil {
 		allErrs = append(allErrs, validateStartScriptFeatureFlags(spec.StartScriptV2FeatureFlags, fldPath.Child("startScriptV2FeatureFlags"))...)
 	}
+	return allErrs
+}
+
+func validateTiCISpec(spec *v1alpha1.TiCISpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if spec.Meta == nil {
+		allErrs = append(allErrs, field.Required(fldPath.Child("meta"), "meta is required when tici is enabled"))
+	} else {
+		allErrs = append(allErrs, validateComponentSpec(&spec.Meta.ComponentSpec, fldPath.Child("meta"))...)
+		if len(spec.Meta.StorageVolumes) > 0 {
+			allErrs = append(allErrs, validateStorageVolumes(spec.Meta.StorageVolumes, fldPath.Child("meta", "storageVolumes"))...)
+		}
+	}
+	if spec.Worker == nil {
+		allErrs = append(allErrs, field.Required(fldPath.Child("worker"), "worker is required when tici is enabled"))
+	} else {
+		allErrs = append(allErrs, validateComponentSpec(&spec.Worker.ComponentSpec, fldPath.Child("worker"))...)
+		if len(spec.Worker.StorageVolumes) > 0 {
+			allErrs = append(allErrs, validateStorageVolumes(spec.Worker.StorageVolumes, fldPath.Child("worker", "storageVolumes"))...)
+		}
+	}
+
+	enableChangefeed := true
+	if spec.Changefeed != nil && spec.Changefeed.Enable != nil {
+		enableChangefeed = *spec.Changefeed.Enable
+	}
+	if enableChangefeed {
+		if spec.S3 == nil {
+			allErrs = append(allErrs, field.Required(fldPath.Child("s3"), "s3 is required when changefeed is enabled"))
+		} else {
+			if spec.S3.Endpoint == "" {
+				allErrs = append(allErrs, field.Required(fldPath.Child("s3", "endpoint"), "endpoint is required"))
+			}
+			if spec.S3.Bucket == "" {
+				allErrs = append(allErrs, field.Required(fldPath.Child("s3", "bucket"), "bucket is required"))
+			}
+		}
+	}
+
 	return allErrs
 }
 

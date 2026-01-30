@@ -284,6 +284,8 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		}
 	}
 
+	setTiCIConfigForTiFlash(config, tc, listenHost)
+
 	return config
 }
 
@@ -342,6 +344,8 @@ func getTiFlashConfig(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper {
 		config.Common.Del("https_port")
 		config.Common.Del("tcp_port_secure")
 	}
+
+	setTiCIConfigForTiFlash(config, tc, listenHost)
 
 	return config
 }
@@ -489,4 +493,92 @@ func setTiFlashRaftConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, ref
 	} else {
 		config.SetIfNil("raft.pd_addr", fmt.Sprintf("%s.%s.svc:%d", controller.PDMemberName(clusterName), ns, v1alpha1.DefaultPDClientPort))
 	}
+}
+
+func setTiCIConfigForTiFlash(config *v1alpha1.TiFlashConfigWraper, tc *v1alpha1.TidbCluster, listenHost string) {
+	if tc.Spec.TiCI == nil || tc.Spec.TiCI.S3 == nil || config == nil {
+		return
+	}
+	if config.Common == nil {
+		config.Common = v1alpha1.NewTiFlashCommonConfig()
+	}
+	if config.Proxy == nil {
+		config.Proxy = v1alpha1.NewTiFlashProxyConfig()
+	}
+
+	s3 := tc.Spec.TiCI.S3
+	usePathStyle := true
+	if s3.UsePathStyle != nil {
+		usePathStyle = *s3.UsePathStyle
+	}
+	region := s3.Region
+	if region == "" {
+		region = "us-east-1"
+	}
+	prefix := s3.Prefix
+	if prefix == "" {
+		prefix = "tici_default_prefix"
+	}
+
+	readerPort := v1alpha1.DefaultTiCIReaderPort
+	readerInterval := "3s"
+	readerRetries := int32(3)
+	readerWorkers := int32(8)
+	if tc.Spec.TiCI.Reader != nil {
+		if tc.Spec.TiCI.Reader.Port != nil {
+			readerPort = *tc.Spec.TiCI.Reader.Port
+		}
+		if tc.Spec.TiCI.Reader.HeartbeatInterval != nil {
+			readerInterval = *tc.Spec.TiCI.Reader.HeartbeatInterval
+		}
+		if tc.Spec.TiCI.Reader.MaxHeartbeatRetries != nil {
+			readerRetries = *tc.Spec.TiCI.Reader.MaxHeartbeatRetries
+		}
+		if tc.Spec.TiCI.Reader.HeartbeatWorkerCount != nil {
+			readerWorkers = *tc.Spec.TiCI.Reader.HeartbeatWorkerCount
+		}
+	}
+
+	readerAddr := fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:%d",
+		controller.TiFlashMemberName(tc.Name),
+		controller.TiFlashPeerMemberName(tc.Name),
+		tc.Namespace,
+		controller.FormatClusterDomain(tc.Spec.ClusterDomain),
+		readerPort,
+	)
+
+	common := config.Common
+	common.SetIfNil("tici.reader_node.addr", readerAddr)
+	common.SetIfNil("tici.reader_node.heartbeat_interval", readerInterval)
+	common.SetIfNil("tici.reader_node.max_heartbeat_retries", int64(readerRetries))
+	common.SetIfNil("tici.reader_node.heartbeat_worker_count", int64(readerWorkers))
+
+	common.SetIfNil("tici.reader-node.addr", readerAddr)
+	common.SetIfNil("tici.reader-node.heartbeat-interval", readerInterval)
+	common.SetIfNil("tici.reader-node.max-heartbeat-retries", int64(readerRetries))
+	common.SetIfNil("tici.reader-node.heartbeat-worker-count", int64(readerWorkers))
+
+	common.SetIfNil("tici.logger.filename", "./logs/tici_searchlib.log")
+	common.SetIfNil("tici.logger.level", "info")
+	common.SetIfNil("tici.storage.data-dir", "./data/tici/searchlib")
+
+	common.SetIfNil("tici.s3.access-key", s3.AccessKey)
+	common.SetIfNil("tici.s3.secret-key", s3.SecretKey)
+	common.SetIfNil("tici.s3.endpoint", s3.Endpoint)
+	common.SetIfNil("tici.s3.bucket", s3.Bucket)
+	common.SetIfNil("tici.s3.region", region)
+	common.SetIfNil("tici.s3.prefix", prefix)
+	common.SetIfNil("tici.s3.use-path-style", usePathStyle)
+
+	proxyAddr := fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiFlashProxyPort)
+	proxyAdvertiseAddr := fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:%d",
+		controller.TiFlashMemberName(tc.Name),
+		controller.TiFlashPeerMemberName(tc.Name),
+		tc.Namespace,
+		controller.FormatClusterDomain(tc.Spec.ClusterDomain),
+		v1alpha1.DefaultTiFlashProxyPort,
+	)
+	config.Proxy.SetIfNil("server.addr", proxyAddr)
+	config.Proxy.SetIfNil("server.advertise-addr", proxyAdvertiseAddr)
+	config.Proxy.SetIfNil("storage.reserve-space", "1KB")
 }
