@@ -444,18 +444,18 @@ type TidbClusterSpec struct {
 
 // TidbClusterStatus represents the current status of a tidb cluster.
 type TidbClusterStatus struct {
-	ClusterID string                 `json:"clusterID,omitempty"`
-	PD        PDStatus               `json:"pd,omitempty"`
-	PDMS      map[string]*PDMSStatus `json:"pdms,omitempty"`
-	TiKV      TiKVStatus             `json:"tikv,omitempty"`
-	TiDB      TiDBStatus             `json:"tidb,omitempty"`
-	Pump      PumpStatus             `json:"pump,omitempty"`
-	TiFlash   TiFlashStatus          `json:"tiflash,omitempty"`
-	TiProxy   TiProxyStatus          `json:"tiproxy,omitempty"`
-	TiCDC     TiCDCStatus            `json:"ticdc,omitempty"`
-	TiCIMeta  TiCIMetaStatus         `json:"ticiMeta,omitempty"`
-	TiCIWorker TiCIWorkerStatus      `json:"ticiWorker,omitempty"`
-	TiCI      TiCIStatus             `json:"tici,omitempty"`
+	ClusterID  string                 `json:"clusterID,omitempty"`
+	PD         PDStatus               `json:"pd,omitempty"`
+	PDMS       map[string]*PDMSStatus `json:"pdms,omitempty"`
+	TiKV       TiKVStatus             `json:"tikv,omitempty"`
+	TiDB       TiDBStatus             `json:"tidb,omitempty"`
+	Pump       PumpStatus             `json:"pump,omitempty"`
+	TiFlash    TiFlashStatus          `json:"tiflash,omitempty"`
+	TiProxy    TiProxyStatus          `json:"tiproxy,omitempty"`
+	TiCDC      TiCDCStatus            `json:"ticdc,omitempty"`
+	TiCIMeta   TiCIMetaStatus         `json:"ticiMeta,omitempty"`
+	TiCIWorker TiCIWorkerStatus       `json:"ticiWorker,omitempty"`
+	TiCI       TiCIStatus             `json:"tici,omitempty"`
 	// Represents the latest available observations of a tidb cluster's state.
 	// +optional
 	// +nullable

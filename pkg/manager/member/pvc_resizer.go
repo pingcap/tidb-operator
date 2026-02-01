@@ -73,14 +73,14 @@ type PVCResizerInterface interface {
 }
 
 var (
-	pdRequirement      = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.PDLabelVal})
-	tidbRequirement    = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiDBLabelVal})
-	tikvRequirement    = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiKVLabelVal})
-	tiflashRequirement = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiFlashLabelVal})
-	ticdcRequirement   = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiCDCLabelVal})
+	pdRequirement         = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.PDLabelVal})
+	tidbRequirement       = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiDBLabelVal})
+	tikvRequirement       = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiKVLabelVal})
+	tiflashRequirement    = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiFlashLabelVal})
+	ticdcRequirement      = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiCDCLabelVal})
 	ticiMetaRequirement   = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiCIMetaLabelVal})
 	ticiWorkerRequirement = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.TiCIWorkerLabelVal})
-	pumpRequirement    = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.PumpLabelVal})
+	pumpRequirement       = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.PumpLabelVal})
 
 	dmMasterRequirement = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.DMMasterLabelVal})
 	dmWorkerRequirement = util.MustNewRequirement(label.ComponentLabelKey, selection.Equals, []string{label.DMWorkerLabelVal})

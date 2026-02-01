@@ -73,12 +73,12 @@ var (
 	DefaultTiProxyStatusPort = int32(3080)
 	customPortTiProxyStatus  = "3080"
 
-	DefaultTiCIMetaPort       = int32(8500)
-	customPortTiCIMeta        = "8500"
-	DefaultTiCIMetaStatusPort = int32(8501)
-	customPortTiCIMetaStatus  = "8501"
-	DefaultTiCIWorkerPort     = int32(8510)
-	customPortTiCIWorker      = "8510"
+	DefaultTiCIMetaPort         = int32(8500)
+	customPortTiCIMeta          = "8500"
+	DefaultTiCIMetaStatusPort   = int32(8501)
+	customPortTiCIMetaStatus    = "8501"
+	DefaultTiCIWorkerPort       = int32(8510)
+	customPortTiCIWorker        = "8510"
 	DefaultTiCIWorkerStatusPort = int32(8511)
 	customPortTiCIWorkerStatus  = "8511"
 	DefaultTiCIReaderPort       = int32(8520)
