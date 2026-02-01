@@ -1,0 +1,63 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: tici-demo
+spec:
+  version: v8.5.5
+  imagePullPolicy: IfNotPresent
+  timezone: UTC
+  pvReclaimPolicy: Retain
+  enableDynamicConfiguration: true
+  discovery: {}
+  helper:
+    image: alpine:3.16.0
+
+  pd:
+    replicas: 1
+    requests:
+      storage: 1Gi
+    config: |
+      [replication]
+        enable-placement-rules = true
+
+  tikv:
+    replicas: 1
+    requests:
+      storage: 1Gi
+
+  tidb:
+    replicas: 1
+    service:
+      type: ClusterIP
+
+  tiflash:
+    replicas: 1
+    storageClaims:
+    - resources:
+        requests:
+          storage: 10Gi
+      storageClassName: <storage-class>
+
+  ticdc:
+    replicas: 1
+
+  tici:
+    meta:
+      replicas: 1
+      baseImage: <tici-image-repo>
+      version: <tici-tag>
+    worker:
+      replicas: 1
+      baseImage: <tici-image-repo>
+      version: <tici-tag>
+    s3:
+      endpoint: http://<minio-service>:9000
+      region: us-east-1
+      accessKey: <access-key>
+      secretKey: <secret-key>
+      bucket: <bucket>
+      prefix: tici_default_prefix
+      usePathStyle: true
+    changefeed:
+      enable: true
+      changefeedID: tici-replication-task
