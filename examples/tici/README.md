@@ -27,7 +27,7 @@ mc mb --ignore-existing localminio/ticidefaultbucket
 ## Deploy the cluster
 
 ```
-kubectl -n <ns> apply -f tidb-cluster.yaml
+kubectl -n <ns> apply -f tici-tc.yaml
 ```
 
 ## Notes
@@ -35,3 +35,45 @@ kubectl -n <ns> apply -f tidb-cluster.yaml
   `tici.logger.filename = /dev/stdout` so TiCI searchlib logs go to stdout.
 - If you are running on kind/podman, ensure pod PID limits are removed
   (TasksMax/infinity) to avoid `newosproc` failures.
+
+## Quick verification (FTS)
+
+1) Start the cluster and wait for pods to be Ready.
+
+2) Port-forward TiDB:
+```
+kubectl -n <ns> port-forward svc/tici-demo-tidb 4000:4000
+```
+
+3) Run the SQL from your host:
+```
+mysql --comments -h 127.0.0.1 -P 4000 -u root -e "
+CREATE DATABASE IF NOT EXISTS tici_integration;
+USE tici_integration;
+
+DROP TABLE IF EXISTS t1;
+DROP TABLE IF EXISTS t2;
+
+CREATE TABLE IF NOT EXISTS t1(id varchar(10),body TEXT,PRIMARY KEY (id) CLUSTERED);
+ALTER TABLE t1 ADD FULLTEXT INDEX ft_index (body) WITH PARSER standard;
+INSERT INTO t1 VALUES
+(1, 'This is the first test pdata, used to demonstrate the insert operation'),
+(2, 'The second record contains some sample text for testing'),
+(3, 'Third entry: verifying the TEXT field''s ability to store longer content'),
+(4, 'Fourth data row, which can be used for subsequent query or analysis tests'),
+(5, 'Fifth sample entry to complete the basic insertion example');
+
+CREATE TABLE IF NOT EXISTS t2(id varchar(10),content TEXT,PRIMARY KEY (id) CLUSTERED);
+ALTER TABLE t2 ADD FULLTEXT INDEX ft_index (content) WITH PARSER standard;
+INSERT INTO t2 VALUES
+(1, 'This is the first test data, used to demonstrate the insert operation'),
+(2, 'The second record contains some sample text for testing'),
+(3, 'Third entry: verifying the TEXT field''s ability to store longer content'),
+(4, 'Fourth data row, which can be used for subsequent query or analysis tests'),
+(5, 'Fifth sample entry to complete the basic insertion example');
+
+DO SLEEP(10);
+SELECT * FROM t1 WHERE fts_match_word('first', body);
+SELECT * FROM t2 WHERE fts_match_word('first', content);
+"
+```
