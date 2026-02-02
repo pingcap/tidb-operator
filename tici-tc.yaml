@@ -16,6 +16,7 @@ spec:
     replicas: 1
     requests:
       storage: 1Gi
+    storageClassName: local-storage
     config: |
       [replication]
         enable-placement-rules = true
@@ -24,6 +25,7 @@ spec:
     replicas: 1
     requests:
       storage: 1Gi
+    storageClassName: local-storage
 
   tidb:
     replicas: 1
@@ -37,7 +39,7 @@ spec:
     - resources:
         requests:
           storage: 10Gi
-      storageClassName: <storage-class>
+      storageClassName: local-storage
 
   ticdc:
     replicas: 1
