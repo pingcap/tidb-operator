@@ -657,7 +657,7 @@ func renderTiCIStartArgs(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberTyp
 	pdAddr := fmt.Sprintf("%s:%d", controller.PDMemberName(tc.Name), v1alpha1.DefaultPDClientPort)
 	advertiseHost := fmt.Sprintf("${POD_NAME}.%s.%s.svc%s", headlessSvcName, ns, controller.FormatClusterDomain(tc.Spec.ClusterDomain))
 
-	args := []string{"exec ${TICI_BIN:-/tici-server}"}
+	args := []string{"exec /tici-server"}
 	if memberType == v1alpha1.TiCIMetaMemberType {
 		args = append(args, "meta")
 		args = append(args, fmt.Sprintf("--config=%s", "/etc/tici/tici.toml"))
