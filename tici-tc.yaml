@@ -32,6 +32,7 @@ spec:
 
   tiflash:
     replicas: 1
+    image: us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/tiflash/image:feature-fts
     storageClaims:
     - resources:
         requests:
@@ -40,22 +41,21 @@ spec:
 
   ticdc:
     replicas: 1
+    image: us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/ticdc/image:master
 
   tici:
     meta:
       replicas: 1
-      baseImage: <tici-image-repo>
-      version: <tici-tag>
+      image: us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/tici/image:master
     worker:
       replicas: 1
-      baseImage: <tici-image-repo>
-      version: <tici-tag>
+      image: us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/tici/image:master
     s3:
-      endpoint: http://<minio-service>:9000
+      endpoint: http://minio-service:9000
       region: us-east-1
-      accessKey: <access-key>
-      secretKey: <secret-key>
-      bucket: <bucket>
+      accessKey: "12345678"
+      secretKey: "12345678"
+      bucket: ticidefaultbucket
       prefix: tici_default_prefix
       usePathStyle: true
     changefeed:
