@@ -57,6 +57,22 @@ func MustCreateTiKV(
 	return kvg
 }
 
+func MustCreateTiFlash(
+	ctx context.Context,
+	f *framework.Framework,
+	o *desc.Options,
+	ps ...data.GroupPatch[*v1alpha1.TiFlashGroup],
+) *v1alpha1.TiFlashGroup {
+	fg := data.NewTiFlashGroup(
+		f.Namespace.Name,
+		desc.TiFlashPatches(o, ps...)...,
+	)
+	ginkgo.By("Creating a tiflash group")
+	f.Must(f.Client.Create(ctx, fg))
+
+	return fg
+}
+
 func MustCreateTiDB(
 	ctx context.Context,
 	f *framework.Framework,
