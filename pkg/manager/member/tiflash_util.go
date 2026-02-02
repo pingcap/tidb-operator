@@ -539,7 +539,8 @@ func setTiCIConfigForTiFlash(config *v1alpha1.TiFlashConfigWraper, tc *v1alpha1.
 		}
 	}
 
-	readerAddr := fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:%d",
+	readerListenAddr := fmt.Sprintf("%s:%d", listenHost, readerPort)
+	readerAdvertiseAddr := fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:%d",
 		controller.TiFlashMemberName(tc.Name),
 		controller.TiFlashPeerMemberName(tc.Name),
 		tc.Namespace,
@@ -548,15 +549,19 @@ func setTiCIConfigForTiFlash(config *v1alpha1.TiFlashConfigWraper, tc *v1alpha1.
 	)
 
 	common := config.Common
-	common.SetIfNil("tici.reader_node.addr", readerAddr)
+	common.SetIfNil("tici.reader_node.addr", readerListenAddr)
 	common.SetIfNil("tici.reader_node.heartbeat_interval", readerInterval)
 	common.SetIfNil("tici.reader_node.max_heartbeat_retries", int64(readerRetries))
 	common.SetIfNil("tici.reader_node.heartbeat_worker_count", int64(readerWorkers))
 
-	common.SetIfNil("tici.reader-node.addr", readerAddr)
+	common.SetIfNil("tici.reader-node.addr", readerListenAddr)
 	common.SetIfNil("tici.reader-node.heartbeat-interval", readerInterval)
 	common.SetIfNil("tici.reader-node.max-heartbeat-retries", int64(readerRetries))
 	common.SetIfNil("tici.reader-node.heartbeat-worker-count", int64(readerWorkers))
+	if !tc.Spec.TiFlash.DoesMountCMInTiflashContainer() {
+		common.SetIfNil("tici.reader_node.advertise_addr", readerAdvertiseAddr)
+		common.SetIfNil("tici.reader-node.advertise-addr", readerAdvertiseAddr)
+	}
 
 	common.SetIfNil("tici.logger.filename", "./logs/tici_searchlib.log")
 	common.SetIfNil("tici.logger.level", "info")
