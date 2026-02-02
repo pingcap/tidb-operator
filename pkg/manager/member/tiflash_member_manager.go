@@ -81,6 +81,10 @@ func (m *tiflashMemberManager) Sync(tc *v1alpha1.TidbCluster) error {
 		return nil
 	}
 
+	if tc.Spec.TiCI != nil && !tc.TiCIAllMembersReady() {
+		return controller.RequeueErrorf("TidbCluster: [%s/%s], TiFlash is waiting for TiCI meta/worker ready", tc.GetNamespace(), tc.GetName())
+	}
+
 	// skip sync if tiflash is suspended
 	component := v1alpha1.TiFlashMemberType
 	needSuspend, err := m.suspender.SuspendComponent(tc, component)
