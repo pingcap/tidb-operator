@@ -16,7 +16,7 @@ spec:
     replicas: 1
     requests:
       storage: 1Gi
-    storageClassName: local-storage
+    storageClassName: standard
     config: |
       [replication]
         enable-placement-rules = true
@@ -25,33 +25,48 @@ spec:
     replicas: 1
     requests:
       storage: 1Gi
-    storageClassName: local-storage
+    storageClassName: standard
+    evictLeaderTimeout: 1m
+    config:
+      storage:
+        reserve-space: "0MB"
+      rocksdb:
+        max-open-files: 256
+      raftdb:
+        max-open-files: 256
 
   tidb:
     replicas: 1
+    config:""
+    baseImage: us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/tiflash/image
+    version: feature-fts
     service:
       type: ClusterIP
 
   tiflash:
     replicas: 1
-    image: us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/tiflash/image:feature-fts
+    baseImage: us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/tiflash/image
+    version: feature-fts
     storageClaims:
     - resources:
         requests:
           storage: 10Gi
-      storageClassName: local-storage
+      storageClassName: standard
 
   ticdc:
     replicas: 1
-    image: us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/ticdc/image:master
+    baseImage: us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/ticdc/image
+    version: master
 
   tici:
     meta:
       replicas: 1
-      image: us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/tici/image:master
+      baseImage: us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/tici/image
+      version: master
     worker:
       replicas: 1
-      image: us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/tici/image:master
+      baseImage: us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/tici/image
+      version: master
     s3:
       endpoint: http://minio-service:9000
       region: us-east-1
