@@ -14,6 +14,8 @@ spec:
 
   pd:
     replicas: 1
+    baseImage: us-docker.pkg.dev/pingcap-testing-account/hub/tikv/pd/image
+    version: master
     requests:
       storage: 1Gi
     storageClassName: standard
@@ -23,6 +25,8 @@ spec:
 
   tikv:
     replicas: 1
+    baseImage: us-docker.pkg.dev/pingcap-testing-account/hub/tikv/tikv/image
+    version: master
     requests:
       storage: 1Gi
     storageClassName: standard
@@ -37,8 +41,8 @@ spec:
 
   tidb:
     replicas: 1
-    config:""
-    baseImage: us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/tiflash/image
+    config: ""
+    baseImage: us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/tidb/images/tidb-server
     version: feature-fts
     service:
       type: ClusterIP
@@ -50,7 +54,7 @@ spec:
     storageClaims:
     - resources:
         requests:
-          storage: 10Gi
+          storage: 1Gi
       storageClassName: standard
 
   ticdc:
