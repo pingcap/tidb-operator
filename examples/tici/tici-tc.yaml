@@ -41,7 +41,7 @@ spec:
 
   tidb:
     replicas: 1
-    config: ""
+    config: {}
     baseImage: us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/tidb/images/tidb-server
     version: feature-fts
     service:
