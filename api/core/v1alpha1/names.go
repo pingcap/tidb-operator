@@ -64,6 +64,7 @@ const (
 	ContainerNameTiCDC           = "ticdc"
 	ContainerNameTSO             = "tso"
 	ContainerNameScheduling      = "scheduling"
+	ContainerNameRouter          = "router"
 	ContainerNameResourceManager = "resource-manager"
 	ContainerNameTiProxy         = "tiproxy"
 	// Deprecated: use ContainerNameScheduling
@@ -101,6 +102,7 @@ const (
 	DirPathConfigTiCDC           = "/etc/ticdc"
 	DirPathConfigTSO             = "/etc/tso"
 	DirPathConfigScheduling      = "/etc/scheduling"
+	DirPathConfigRouter          = "/etc/router"
 	DirPathConfigResourceManager = "/etc/resource-manager"
 	DirPathConfigTiProxy         = "/etc/tiproxy"
 	// Deprecated: use DirPathConfigScheduling
@@ -131,6 +133,7 @@ const (
 	DirPathClusterTLSTiCDC           = "/var/lib/ticdc-tls"
 	DirPathClusterTLSTSO             = "/var/lib/tso-tls"
 	DirPathClusterTLSScheduling      = "/var/lib/scheduling-tls"
+	DirPathClusterTLSRouter          = "/var/lib/router-tls"
 	DirPathClusterTLSResourceManager = "/var/lib/resource-manager-tls"
 	DirPathClusterTLSTiProxy         = "/var/lib/tiproxy-tls"
 	// Deprecated: use DirPathClusterTLSScheduling

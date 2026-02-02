@@ -37,6 +37,7 @@ type ReconcileContext struct {
 	Cluster               *v1alpha1.Cluster
 	PDGroups              []*v1alpha1.PDGroup
 	ResourceManagerGroups []*v1alpha1.ResourceManagerGroup
+	RouterGroups          []*v1alpha1.RouterGroup
 	TiKVGroups            []*v1alpha1.TiKVGroup
 	TiFlashGroups         []*v1alpha1.TiFlashGroup
 	TiDBGroups            []*v1alpha1.TiDBGroup
@@ -101,6 +102,12 @@ func (t *TaskContext) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		return task.Fail().With("can't list resource manager groups: %w", err)
 	}
 	rtx.ResourceManagerGroups = rmgs
+
+	rgs, err := apicall.ListGroups[scope.RouterGroup](ctx, t.Client, ns, name)
+	if err != nil {
+		return task.Fail().With("can't list router manager groups: %w", err)
+	}
+	rtx.RouterGroups = rgs
 
 	tgs, err := apicall.ListGroups[scope.TSOGroup](ctx, t.Client, ns, name)
 	if err != nil {

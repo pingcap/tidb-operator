@@ -49,6 +49,7 @@ const (
 	defaultTSOGroupName             = "tg"
 	defaultSchedulingGroupName      = "sg"
 	defaultResourceManagerGroupName = "rmg"
+	defaultRouterGroupName          = "rg"
 	defaultTiProxyGroupName         = "pg"
 	defaultTiKVWorkerGroupName      = "wg"
 
