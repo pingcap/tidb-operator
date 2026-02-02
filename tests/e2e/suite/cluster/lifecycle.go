@@ -36,7 +36,7 @@ var _ = ginkgo.Describe("Lifecycle", label.Cluster, func() {
 		f.SetupCluster(desc.ClusterPatches(o)...)
 		cm := f.SetupCertManager(o.TLS)
 
-		ginkgo.FIt("should support deleting tiflash group", func(ctx context.Context) {
+		ginkgo.It("should support deleting tiflash group", func(ctx context.Context) {
 			pdg := action.MustCreatePD(ctx, f, o)
 			kvg := action.MustCreateTiKV(ctx, f, o, data.WithReplicas[scope.TiKVGroup](3))
 			fg := action.MustCreateTiFlash(ctx, f, o)
