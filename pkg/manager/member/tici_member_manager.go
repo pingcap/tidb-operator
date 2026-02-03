@@ -225,10 +225,7 @@ func (m *ticiMemberManager) syncTiCIMetaStatefulSet(tc *v1alpha1.TidbCluster) er
 		return err
 	}
 
-	if !templateEqual(newSts, oldSts) || tc.Status.TiCIMeta.Phase == v1alpha1.UpgradePhase {
-		return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiCIMetaSTS", newSts, oldSts)
-	}
-	return nil
+	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiCIMetaSTS", newSts, oldSts)
 }
 
 func (m *ticiMemberManager) syncTiCIWorkerStatefulSet(tc *v1alpha1.TidbCluster) error {
@@ -273,10 +270,7 @@ func (m *ticiMemberManager) syncTiCIWorkerStatefulSet(tc *v1alpha1.TidbCluster) 
 		return err
 	}
 
-	if !templateEqual(newSts, oldSts) || tc.Status.TiCIWorker.Phase == v1alpha1.UpgradePhase {
-		return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiCIWorkerSTS", newSts, oldSts)
-	}
-	return nil
+	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiCIWorkerSTS", newSts, oldSts)
 }
 
 func (m *ticiMemberManager) syncTiCIMetaStatus(tc *v1alpha1.TidbCluster, sts *appsv1.StatefulSet) error {
