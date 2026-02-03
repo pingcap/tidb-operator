@@ -448,7 +448,12 @@ func setTiFlashFlashConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, re
 	}
 
 	config.SetIfNil("flash.tidb_status_addr", tidbStatusAddr)
-	config.SetIfNil("flash.service_addr", fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiFlashFlashPort))
+	config.SetIfNil("flash.service_addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:%d",
+		controller.TiFlashMemberName(clusterName),
+		controller.TiFlashPeerMemberName(clusterName),
+		ns,
+		controller.FormatClusterDomain(clusterDomain),
+		v1alpha1.DefaultTiFlashFlashPort))
 	config.SetIfNil("flash.overlap_threshold", 0.6)
 	config.SetIfNil("flash.compact_log_min_period", int64(200))
 

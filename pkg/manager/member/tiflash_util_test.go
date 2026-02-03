@@ -612,7 +612,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				[flash]
 				  compact_log_min_period = 200
 				  overlap_threshold = 0.6
-				  service_addr = "0.0.0.0:3930"
+				  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
 				  tidb_status_addr = "test-tidb.default.svc:10080"
 				  [flash.flash_cluster]
 					cluster_manager_path = "/tiflash/flash_cluster_manager"
@@ -722,7 +722,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				[flash]
 				  compact_log_min_period = 200
 				  overlap_threshold = 0.6
-				  service_addr = "0.0.0.0:3930"
+				  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
 				  tidb_status_addr = "test-tidb.default.svc:10080"
 				  [flash.flash_cluster]
 					cluster_manager_path = "/tiflash/flash_cluster_manager"
@@ -825,7 +825,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				[flash]
 				  compact_log_min_period = 200
 				  overlap_threshold = 0.6
-				  service_addr = "0.0.0.0:3930"
+				  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
 				  tidb_status_addr = "test-tidb.default.svc:10080"
 				  [flash.flash_cluster]
 					cluster_manager_path = "/tiflash/flash_cluster_manager"
@@ -920,7 +920,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				[flash]
 				  compact_log_min_period = 200
 				  overlap_threshold = 0.6
-				  service_addr = "0.0.0.0:3930"
+				  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
 				  tidb_status_addr = "test-tidb.default.svc:10080"
 				  [flash.flash_cluster]
 					cluster_manager_path = "/tiflash/flash_cluster_manager"
@@ -1011,7 +1011,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				[flash]
 				  compact_log_min_period = 200
 				  overlap_threshold = 0.6
-				  service_addr = "0.0.0.0:3930"
+				  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
 				  tidb_status_addr = "test-tidb.default.svc:10080"
 				  [flash.flash_cluster]
 					cluster_manager_path = "/tiflash/flash_cluster_manager"
@@ -1104,7 +1104,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				[flash]
 				  compact_log_min_period = 200
 				  overlap_threshold = 0.6
-				  service_addr = "0.0.0.0:3930"
+				  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
 				  tidb_status_addr = "cluster-1-tidb.default.svc:10080"
 				  [flash.flash_cluster]
 					cluster_manager_path = "/tiflash/flash_cluster_manager"
@@ -1196,7 +1196,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				[flash]
 				  compact_log_min_period = 200
 				  overlap_threshold = 0.6
-				  service_addr = "0.0.0.0:3930"
+				  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
 				  tidb_status_addr = "test-tidb.default.svc:10080"
 				  [flash.flash_cluster]
 					cluster_manager_path = "/tiflash/flash_cluster_manager"
@@ -1291,7 +1291,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				[flash]
 				  compact_log_min_period = 200
 				  overlap_threshold = 0.6
-				  service_addr = "0.0.0.0:3930"
+				  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
 				  tidb_status_addr = "test-tidb.default.svc:10080"
 				  [flash.flash_cluster]
 					cluster_manager_path = "/tiflash/flash_cluster_manager"
@@ -1386,7 +1386,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				[flash]
 				  compact_log_min_period = 200
 				  overlap_threshold = 0.6
-				  service_addr = "0.0.0.0:3930"
+				  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
 				  tidb_status_addr = "cluster-1-tidb-peer.default.svc:10080"
 				  [flash.flash_cluster]
 					cluster_manager_path = "/tiflash/flash_cluster_manager"
@@ -1505,7 +1505,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				expectCommonCfg: `
 					tmp_path = "/data0/tmp"
 					[flash]
-					  service_addr = "0.0.0.0:3930"
+					  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
 					  tidb_status_addr = "test-tidb.default.svc:10080"
 					  [flash.flash_cluster]
 						log = "/data0/logs/flash_cluster_manager.log"
@@ -1543,7 +1543,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				expectCommonCfg: `
 					tmp_path = "/data0/tmp"
 					[flash]
-					  service_addr = "0.0.0.0:3930"
+					  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
 					  tidb_status_addr = "test-tidb.default.svc:10080"
 					  [flash.flash_cluster]
 						log = "/data0/logs/flash_cluster_manager.log"
@@ -1579,7 +1579,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				expectCommonCfg: `
 					tmp_path = "/data0/tmp"
 					[flash]
-					  service_addr = "0.0.0.0:3930"
+					  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
 					  tidb_status_addr = "test-tidb.default.svc:10080"
 					  [flash.flash_cluster]
 						log = "/data0/logs/flash_cluster_manager.log"
@@ -1668,7 +1668,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				expectCommonCfg: `
 					tmp_path = "/data0/tmp"
 					[flash]
-					  service_addr = "0.0.0.0:3930"
+					  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
 					  tidb_status_addr = "test-tidb.default.svc:10080"
 					  [flash.flash_cluster]
 						log = "/data0/logs/flash_cluster_manager.log"
@@ -1721,7 +1721,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				expectCommonCfg: `
 					tmp_path = "/data0/tmp"
 					[flash]
-					  service_addr = "0.0.0.0:3930"
+					  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
 					  tidb_status_addr = "test-tidb.default.svc:10080"
 					  [flash.flash_cluster]
 						log = "/data0/logs/flash_cluster_manager.log"
@@ -1759,7 +1759,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				expectCommonCfg: `
 					tmp_path = "/data0/tmp"
 					[flash]
-					  service_addr = "0.0.0.0:3930"
+					  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
 					  tidb_status_addr = "cluster-1-tidb.default.svc:10080"
 					  [flash.flash_cluster]
 						log = "/data0/logs/flash_cluster_manager.log"
@@ -1795,7 +1795,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				expectCommonCfg: `
 					tmp_path = "/data0/tmp"
 					[flash]
-					  service_addr = "0.0.0.0:3930"
+					  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
 					  tidb_status_addr = "test-tidb.default.svc:10080"
 					  [flash.flash_cluster]
 						log = "/data0/logs/flash_cluster_manager.log"
@@ -1834,7 +1834,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				expectCommonCfg: `
 					tmp_path = "/data0/tmp"
 					[flash]
-					  service_addr = "0.0.0.0:3930"
+					  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
 					  tidb_status_addr = "test-tidb.default.svc:10080"
 					  [flash.flash_cluster]
 						log = "/data0/logs/flash_cluster_manager.log"
@@ -1873,7 +1873,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				expectCommonCfg: `
 					tmp_path = "/data0/tmp"
 					[flash]
-					  service_addr = "0.0.0.0:3930"
+					  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
 					  tidb_status_addr = "cluster-1-tidb-peer.default.svc:10080"
 					  [flash.flash_cluster]
 						log = "/data0/logs/flash_cluster_manager.log"
