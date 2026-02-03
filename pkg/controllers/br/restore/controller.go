@@ -92,6 +92,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	restore := &v1alpha1.Restore{}
 	if err := r.Client.Get(ctx, req.NamespacedName, restore); err != nil {
+		if apierrors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
 		return ctrl.Result{}, err
 	}
 	err := common.JobLifecycleManager.Sync(ctx, runtime.FromRestore(restore), r.Client)
