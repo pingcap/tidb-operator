@@ -637,7 +637,6 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				  [profiles.default]
 					load_balancing = "random"
 					max_memory_usage = 10000000000
-					use_uncompressed_cache = 0
 				  [profiles.readonly]
 					readonly = 1
 			
@@ -748,7 +747,6 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				  [profiles.default]
 					load_balancing = "random"
 					max_memory_usage = 10000000000
-					use_uncompressed_cache = 0
 				  [profiles.readonly]
 					readonly = 1
 			
@@ -852,7 +850,6 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				  [profiles.default]
 					load_balancing = "random"
 					max_memory_usage = 10000000000
-					use_uncompressed_cache = 0
 				  [profiles.readonly]
 					readonly = 1
 			
@@ -948,7 +945,6 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				  [profiles.default]
 					load_balancing = "random"
 					max_memory_usage = 10000000000
-					use_uncompressed_cache = 0
 				  [profiles.readonly]
 					readonly = 1
 			
@@ -1040,7 +1036,6 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				  [profiles.default]
 					load_balancing = "random"
 					max_memory_usage = 10000000000
-					use_uncompressed_cache = 0
 				  [profiles.readonly]
 					readonly = 1
 			
@@ -1134,7 +1129,6 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				  [profiles.default]
 					load_balancing = "random"
 					max_memory_usage = 10000000000
-					use_uncompressed_cache = 0
 				  [profiles.readonly]
 					readonly = 1
 			
@@ -1227,7 +1221,6 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				  [profiles.default]
 					load_balancing = "random"
 					max_memory_usage = 10000000000
-					use_uncompressed_cache = 0
 				  [profiles.readonly]
 					readonly = 1
 			
@@ -1323,7 +1316,6 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				  [profiles.default]
 					load_balancing = "random"
 					max_memory_usage = 10000000000
-					use_uncompressed_cache = 0
 				  [profiles.readonly]
 					readonly = 1
 			
@@ -1419,7 +1411,6 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				  [profiles.default]
 					load_balancing = "random"
 					max_memory_usage = 10000000000
-					use_uncompressed_cache = 0
 				  [profiles.readonly]
 					readonly = 1
 			

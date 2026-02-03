@@ -56,7 +56,7 @@ max-heartbeat-retries = ${TICI_READER_MAX_HEARTBEAT_RETRIES}
 heartbeat-worker-count = ${TICI_READER_HEARTBEAT_WORKER_COUNT}
 
 [tici.logger]
-filename = "./logs/tici_searchlib.log"
+filename = "/data0/logs/tici_searchlib.log"
 level = "info"
 
 [tici.storage]

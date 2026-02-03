@@ -428,7 +428,6 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, r
 	config.SetIfNil("profiles.readonly.readonly", int64(1))
 	config.SetIfNil("profiles.default.max_memory_usage", int64(10000000000))
 	config.SetIfNil("profiles.default.load_balancing", "random")
-	config.SetIfNil("profiles.default.use_uncompressed_cache", int64(0))
 }
 
 func setTiFlashFlashConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, ref *v1alpha1.TidbClusterRef, clusterName, ns, clusterDomain, listenHost string, noLocalTiDB, acrossK8s bool) {
@@ -563,7 +562,7 @@ func setTiCIConfigForTiFlash(config *v1alpha1.TiFlashConfigWraper, tc *v1alpha1.
 		common.SetIfNil("tici.reader-node.advertise-addr", readerAdvertiseAddr)
 	}
 
-	common.SetIfNil("tici.logger.filename", "./logs/tici_searchlib.log")
+common.SetIfNil("tici.logger.filename", "/data0/logs/tici_searchlib.log")
 	common.SetIfNil("tici.logger.level", "info")
 	common.SetIfNil("tici.storage.data-dir", "./data/tici/searchlib")
 

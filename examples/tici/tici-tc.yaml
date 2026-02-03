@@ -54,7 +54,7 @@ spec:
     config:
       config: |
         [tici.logger]
-          filename = "/dev/stdout"
+          filename = "/data0/logs/tici_searchlib.log"
           level = "info"
     storageClaims:
     - resources:
