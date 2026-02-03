@@ -15,6 +15,7 @@
 package tikv
 
 import (
+	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/tikv/tasks"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
@@ -60,6 +61,11 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 			tasks.TaskFinalizerDel(state, r.Client),
 		),
 
+		// if instance is deleting, ensure spec.offline is set
+		task.IfBreak(ObjectIsDeletingAndNotOffline(state),
+			common.TaskSetOffline[scope.TiKV](state, r.Client),
+		),
+
 		common.TaskFinalizerAdd[scope.TiKV](state, r.Client),
 
 		// check whether the cluster is suspending
@@ -100,6 +106,13 @@ func ObjectIsDeletingAndStoreIsRemoved(state *tasks.ReconcileContext) task.Condi
 	return task.CondFunc(func() bool {
 		return !state.Object().GetDeletionTimestamp().IsZero() && state.PDSynced &&
 			(state.GetStoreState() == pdv1.NodeStateRemoved || state.Store == nil)
+	})
+}
+
+func ObjectIsDeletingAndNotOffline(state *tasks.ReconcileContext) task.Condition {
+	return task.CondFunc(func() bool {
+		obj := state.Object()
+		return !obj.GetDeletionTimestamp().IsZero() && !coreutil.IsOffline[scope.TiKV](obj)
 	})
 }
 

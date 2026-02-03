@@ -21,6 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
@@ -29,6 +30,19 @@ import (
 	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
+
+func TaskSetOffline[
+	S scope.Instance[F, T],
+	F client.Object,
+	T runtime.Instance,
+](state ObjectState[F], c client.Client) task.Task {
+	return task.NameTaskFunc("SetOffline", func(ctx context.Context) task.Result {
+		if err := apicall.SetOffline[S](ctx, c, state.Object()); err != nil {
+			return task.Fail().With("failed to set offline: %v", err)
+		}
+		return task.Complete().With("set offline successfully")
+	})
+}
 
 // TaskOfflineStore tries to delete store or cancel store deletion
 //

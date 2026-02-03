@@ -32,6 +32,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/data"
+	"github.com/pingcap/tidb-operator/v2/tests/e2e/framework/desc"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/label"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/waiter"
 )
@@ -297,4 +298,37 @@ func AsyncWaitPodsRollingUpdateOnce[
 	}()
 
 	return ch
+}
+
+func (f *Framework) Describe(fn func(o *desc.Options), optss ...[]desc.Option) {
+	var entries []ginkgo.TableEntry
+	for _, opts := range optss {
+		o := desc.DefaultOptions()
+		for _, opt := range opts {
+			opt.With(o)
+		}
+		var args []any
+		args = append(args, o.Labels())
+		args = append(args, o)
+		if o.Focus {
+			args = append(args, ginkgo.Focus)
+		}
+		entries = append(entries, ginkgo.Entry(nil, args...))
+	}
+	var args []any
+	args = append(args, func(o *desc.Options) {
+		ginkgo.JustBeforeEach(func() {
+			o.Namespace = f.Namespace.Name
+		})
+		fn(o)
+	})
+	args = append(args,
+		func(o *desc.Options) string {
+			return o.String()
+		},
+	)
+	for _, entry := range entries {
+		args = append(args, entry)
+	}
+	ginkgo.DescribeTableSubtree("Describe", args...)
 }
