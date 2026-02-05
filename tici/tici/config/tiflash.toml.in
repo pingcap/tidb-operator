@@ -17,9 +17,6 @@ path = "${TIFLASH_DATA_DIR}"
 tmp_path = "${TIFLASH_TMP_DIR}"
 capacity = "${TIFLASH_CAPACITY}"
 
-[application]
-runAsDaemon = true
-
 [flash]
 service_addr = "${TIFLASH_SERVICE_ADDR}"
 tidb_status_addr = "${TIDB_STATUS_ADDR}"
@@ -38,13 +35,9 @@ pd_addr = "${PD_ADDR}"
 [tici]
 [tici.reader-node]
 addr = "${TICI_READER_ADDR}"
-heartbeat-interval = "${TICI_READER_HEARTBEAT_INTERVAL}"
-max-heartbeat-retries = ${TICI_READER_MAX_HEARTBEAT_RETRIES}
-heartbeat-worker-count = ${TICI_READER_HEARTBEAT_WORKER_COUNT}
 
 [tici.logger]
 filename = "/data0/logs/tici_searchlib.log"
-level = "info"
 
 [tici.storage]
 data-dir = "/data0/tici/searchlib"
