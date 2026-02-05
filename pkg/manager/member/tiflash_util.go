@@ -525,22 +525,8 @@ func setTiCIConfigForTiFlash(config *v1alpha1.TiFlashConfigWraper, tc *v1alpha1.
 	}
 
 	readerPort := v1alpha1.DefaultTiCIReaderPort
-	readerInterval := "3s"
-	readerRetries := int32(3)
-	readerWorkers := int32(8)
-	if tc.Spec.TiCI.Reader != nil {
-		if tc.Spec.TiCI.Reader.Port != nil {
-			readerPort = *tc.Spec.TiCI.Reader.Port
-		}
-		if tc.Spec.TiCI.Reader.HeartbeatInterval != nil {
-			readerInterval = *tc.Spec.TiCI.Reader.HeartbeatInterval
-		}
-		if tc.Spec.TiCI.Reader.MaxHeartbeatRetries != nil {
-			readerRetries = *tc.Spec.TiCI.Reader.MaxHeartbeatRetries
-		}
-		if tc.Spec.TiCI.Reader.HeartbeatWorkerCount != nil {
-			readerWorkers = *tc.Spec.TiCI.Reader.HeartbeatWorkerCount
-		}
+	if tc.Spec.TiCI.Reader != nil && tc.Spec.TiCI.Reader.Port != nil {
+		readerPort = *tc.Spec.TiCI.Reader.Port
 	}
 
 	readerListenAddr := fmt.Sprintf("%s:%d", listenHost, readerPort)
@@ -553,21 +539,12 @@ func setTiCIConfigForTiFlash(config *v1alpha1.TiFlashConfigWraper, tc *v1alpha1.
 	)
 
 	common := config.Common
-	common.SetIfNil("tici.reader_node.addr", readerListenAddr)
-	common.SetIfNil("tici.reader_node.heartbeat_interval", readerInterval)
-	common.SetIfNil("tici.reader_node.max_heartbeat_retries", int64(readerRetries))
-	common.SetIfNil("tici.reader_node.heartbeat_worker_count", int64(readerWorkers))
-
 	common.SetIfNil("tici.reader-node.addr", readerListenAddr)
-	common.SetIfNil("tici.reader-node.heartbeat-interval", readerInterval)
-	common.SetIfNil("tici.reader-node.max-heartbeat-retries", int64(readerRetries))
-	common.SetIfNil("tici.reader-node.heartbeat-worker-count", int64(readerWorkers))
 	if !tc.Spec.TiFlash.DoesMountCMInTiflashContainer() {
-		common.SetIfNil("tici.reader_node.advertise_addr", readerAdvertiseAddr)
 		common.SetIfNil("tici.reader-node.advertise-addr", readerAdvertiseAddr)
 	}
 
-common.SetIfNil("tici.logger.filename", "/data0/logs/tici_searchlib.log")
+	common.SetIfNil("tici.logger.filename", "/data0/logs/tici_searchlib.log")
 	common.SetIfNil("tici.logger.level", "info")
 	common.SetIfNil("tici.storage.data-dir", "./data/tici/searchlib")
 

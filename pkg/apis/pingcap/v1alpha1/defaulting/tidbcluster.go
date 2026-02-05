@@ -201,41 +201,15 @@ func setTiCISpecDefault(tc *v1alpha1.TidbCluster) {
 		}
 	}
 
-	if tc.Spec.TiCI.S3 != nil {
-		if tc.Spec.TiCI.S3.Region == "" {
-			tc.Spec.TiCI.S3.Region = "us-east-1"
-		}
-		if tc.Spec.TiCI.S3.Prefix == "" {
-			tc.Spec.TiCI.S3.Prefix = "tici_default_prefix"
-		}
-		if tc.Spec.TiCI.S3.UsePathStyle == nil {
-			usePathStyle := true
-			tc.Spec.TiCI.S3.UsePathStyle = &usePathStyle
-		}
+	if tc.Spec.TiCI.Changefeed == nil {
+		tc.Spec.TiCI.Changefeed = &v1alpha1.TiCIChangefeedSpec{}
 	}
-
 	if tc.Spec.TiCI.Reader == nil {
 		tc.Spec.TiCI.Reader = &v1alpha1.TiCIReaderSpec{}
 	}
 	if tc.Spec.TiCI.Reader.Port == nil {
 		port := v1alpha1.DefaultTiCIReaderPort
 		tc.Spec.TiCI.Reader.Port = &port
-	}
-	if tc.Spec.TiCI.Reader.HeartbeatInterval == nil {
-		interval := "3s"
-		tc.Spec.TiCI.Reader.HeartbeatInterval = &interval
-	}
-	if tc.Spec.TiCI.Reader.MaxHeartbeatRetries == nil {
-		retries := int32(3)
-		tc.Spec.TiCI.Reader.MaxHeartbeatRetries = &retries
-	}
-	if tc.Spec.TiCI.Reader.HeartbeatWorkerCount == nil {
-		count := int32(8)
-		tc.Spec.TiCI.Reader.HeartbeatWorkerCount = &count
-	}
-
-	if tc.Spec.TiCI.Changefeed == nil {
-		tc.Spec.TiCI.Changefeed = &v1alpha1.TiCIChangefeedSpec{}
 	}
 	if tc.Spec.TiCI.Changefeed.Enable == nil {
 		enable := true

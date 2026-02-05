@@ -36,8 +36,10 @@ const (
 	TiFlashStoreNotUp = "TiFlashStoreNotUp"
 	// TiCDCCaptureNotReady is added when one of ticdc capture is not ready.
 	TiCDCCaptureNotReady = "TiCDCCaptureNotReady"
-	// TiCIUnhealthy is added when TiCI meta/worker is not ready.
-	TiCIUnhealthy = "TiCIUnhealthy"
+	// TiCIMetaUnhealthy is added when TiCI meta is not ready.
+	TiCIMetaUnhealthy = "TiCIMetaUnhealthy"
+	// TiCIWorkerUnhealthy is added when TiCI worker is not ready.
+	TiCIWorkerUnhealthy = "TiCIWorkerUnhealthy"
 	// TiProxyUnhealthy is added when one of tiproxy pods is unhealthy.
 	TiProxyUnhealthy = "TiProxyUnhealthy"
 )
