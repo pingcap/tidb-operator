@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/agiledragon/gomonkey/v2"
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -54,7 +53,7 @@ var (
 					Config:        pointer.StringPtr("/data0/proxy.toml"),
 					DataDir:       pointer.StringPtr("/data0/proxy"),
 				},
-				ServiceAddr:    pointer.StringPtr(fmt.Sprintf("0.0.0.0:%d", v1alpha1.DefaultTiFlashFlashPort)),
+				ServiceAddr:    pointer.StringPtr(fmt.Sprintf("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:%d", v1alpha1.DefaultTiFlashFlashPort)),
 				TiDBStatusAddr: pointer.StringPtr(fmt.Sprintf("test-tidb.test.svc:%d", v1alpha1.DefaultTiDBStatusPort)),
 			},
 			HTTPPort:               pointer.Int32Ptr(v1alpha1.DefaultTiFlashHttpPort),
@@ -74,9 +73,8 @@ var (
 			PathRealtimeMode:     pointer.BoolPtr(false),
 			FlashProfile: &v1alpha1.FlashProfile{
 				Default: &v1alpha1.Profile{
-					LoadBalancing:        pointer.StringPtr("random"),
-					MaxMemoryUsage:       pointer.Int64Ptr(10000000000),
-					UseUncompressedCache: pointer.Int32Ptr(0),
+					LoadBalancing:  pointer.StringPtr("random"),
+					MaxMemoryUsage: pointer.Int64Ptr(10000000000),
 				},
 				Readonly: &v1alpha1.Profile{
 					Readonly: pointer.Int32Ptr(1),
@@ -561,22 +559,17 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				tc.Spec.TiFlash.BaseImage = "pingcap/tiflash"
 				tc.Spec.Version = testcase.tcVersion
 
+				got := GetTiFlashConfig(tc)
+				g.Expect(got).ShouldNot(BeNil())
+				var want *v1alpha1.TiFlashConfigWraper
 				if testcase.expectV2 {
-					patch := gomonkey.ApplyFunc(getTiFlashConfig, func(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper {
-						t.Fatalf("shouldn't call getTiFlashConfig()")
-						return nil
-					})
-					defer patch.Reset()
+					want = getTiFlashConfigV2(tc)
 				} else {
-					patch := gomonkey.ApplyFunc(getTiFlashConfigV2, func(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper {
-						t.Fatalf("shouldn't call getTiFlashConfigV2()")
-						return nil
-					})
-					defer patch.Reset()
+					want = getTiFlashConfig(tc)
 				}
-
-				cfg := GetTiFlashConfig(tc)
-				g.Expect(cfg).ShouldNot(BeNil())
+				g.Expect(want).ShouldNot(BeNil())
+				g.Expect(cmp.Diff(got.Common.Inner(), want.Common.Inner())).Should(BeEmpty())
+				g.Expect(cmp.Diff(got.Proxy.Inner(), want.Proxy.Inner())).Should(BeEmpty())
 			})
 		}
 	})
