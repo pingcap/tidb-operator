@@ -2,6 +2,8 @@ module github.com/pingcap/tidb-operator/http-service
 
 go 1.24.12
 
+toolchain go1.24.12
+
 require (
 	github.com/gin-gonic/gin v1.10.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.23.0
