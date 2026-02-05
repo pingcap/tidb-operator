@@ -85,10 +85,11 @@ modules::get_indirect_deps() {
 
 # Update modules in batch
 # Set GOPROXY=direct to avoid https://github.com/golang/go/issues/49111
-# Args: dry_run patch_only modules...
+# Args: dry_run version_query modules...
+#   - version_query: "latest" or "patch"
 modules::update_modules_batch() {
     local dry_run=$1
-    local patch_only=$2
+    local version_query=$2
     shift 2
     local modules=("$@")
 
@@ -96,19 +97,18 @@ modules::update_modules_batch() {
         return 0
     fi
 
-    local flag="-u"
-    local mode="latest"
-    if [[ "$patch_only" == "true" ]]; then
-        flag="-u=patch"
-        mode="patch only"
-    fi
+    # Build module specs with version query (e.g., module@latest or module@patch)
+    local module_specs=()
+    for module in "${modules[@]}"; do
+        module_specs+=("${module}@${version_query}")
+    done
 
-    modules::info "  Updating ${#modules[@]} modules ($mode): ${modules[*]}"
+    modules::info "  Updating ${#modules[@]} modules (@${version_query}): ${modules[*]}"
 
     if [[ "$dry_run" == "true" ]]; then
-        echo "    [DRY-RUN] GOPROXY=direct go get $flag ${modules[*]}"
+        echo "    [DRY-RUN] GOPROXY=direct go get ${module_specs[*]}"
     else
-        if ! GOPROXY=direct go get "$flag" "${modules[@]}" 2>&1; then
+        if ! GOPROXY=direct go get "${module_specs[@]}" 2>&1; then
             modules::error "    Some modules failed to update"
             return 1
         fi
@@ -116,25 +116,31 @@ modules::update_modules_batch() {
 }
 
 # Update all modules in a directory
-# Args: dir dry_run patch_prefixes_str allowed_prefixes_str
+# Args: dir dry_run patch_prefixes_str allowed_prefixes_str denied_prefixes_str
 #   - dir: directory containing go.mod
 #   - dry_run: "true" or "false"
 #   - patch_prefixes_str: space-separated prefixes for patch-only updates
 #   - allowed_prefixes_str: space-separated prefixes to filter modules (only update matching modules, empty means all direct deps)
+#   - denied_prefixes_str: space-separated prefixes to exclude modules (if a module matches both allowed and denied, it will NOT be updated)
 modules::update_dir() {
     local dir=$1
     local dry_run=$2
     local patch_prefixes_str=$3
     local allowed_prefixes_str=$4
+    local denied_prefixes_str=${5:-}
 
     # Convert prefix strings to arrays
     local patch_prefixes=()
     local allowed_prefixes=()
+    local denied_prefixes=()
     if [[ -n "$patch_prefixes_str" ]]; then
         read -ra patch_prefixes <<< "$patch_prefixes_str"
     fi
     if [[ -n "$allowed_prefixes_str" ]]; then
         read -ra allowed_prefixes <<< "$allowed_prefixes_str"
+    fi
+    if [[ -n "$denied_prefixes_str" ]]; then
+        read -ra denied_prefixes <<< "$denied_prefixes_str"
     fi
 
     if [[ ! -f "$dir/go.mod" ]]; then
@@ -163,12 +169,21 @@ modules::update_dir() {
     # Helper function to categorize a module
     categorize_module() {
         local dep=$1
+        # Skip if module matches any denied prefix
+        if [[ ${#denied_prefixes[@]} -gt 0 ]] && modules::match_prefix "$dep" "${denied_prefixes[@]}"; then
+            modules::info "    Skipping denied module: $dep"
+            return 0
+        fi
         if [[ ${#patch_prefixes[@]} -gt 0 ]] && modules::match_prefix "$dep" "${patch_prefixes[@]}"; then
             patch_modules+=("$dep")
         else
             latest_modules+=("$dep")
         fi
     }
+
+    if [[ ${#denied_prefixes[@]} -gt 0 ]]; then
+        modules::info "  Excluding modules by denied prefixes: ${denied_prefixes[*]}"
+    fi
 
     if [[ ${#allowed_prefixes[@]} -gt 0 ]]; then
         # Filter mode: only update modules matching allowed prefixes (both direct and indirect)
@@ -206,15 +221,15 @@ modules::update_dir() {
         fi
     fi
 
-    # Batch update modules
+    # Update modules
     if [[ ${#latest_modules[@]} -gt 0 ]]; then
-        if ! modules::update_modules_batch "$dry_run" "false" "${latest_modules[@]}"; then
+        if ! modules::update_modules_batch "$dry_run" "latest" "${latest_modules[@]}"; then
             popd > /dev/null
             return 1
         fi
     fi
     if [[ ${#patch_modules[@]} -gt 0 ]]; then
-        if ! modules::update_modules_batch "$dry_run" "true" "${patch_modules[@]}"; then
+        if ! modules::update_modules_batch "$dry_run" "patch" "${patch_modules[@]}"; then
             popd > /dev/null
             return 1
         fi
