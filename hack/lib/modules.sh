@@ -20,6 +20,12 @@ set -o pipefail
 # source only once
 [[ $(type -t modules::loaded) == function ]] && return 0
 
+# Check for required dependencies
+if ! command -v jq &> /dev/null; then
+    echo "Error: jq is required but not installed. Please install jq first." >&2
+    exit 1
+fi
+
 # Colors for output
 readonly MODULES_RED='\033[0;31m'
 readonly MODULES_GREEN='\033[0;32m'
@@ -99,11 +105,10 @@ modules::update_modules_batch() {
 
     modules::info "  Updating ${#modules[@]} modules ($mode): ${modules[*]}"
 
-    local cmd="go get $flag ${modules[*]}"
     if [[ "$dry_run" == "true" ]]; then
-        echo "    [DRY-RUN] GOPROXY=direct $cmd"
+        echo "    [DRY-RUN] GOPROXY=direct go get $flag ${modules[*]}"
     else
-        if ! GOPROXY=direct $cmd 2>&1; then
+        if ! GOPROXY=direct go get "$flag" "${modules[@]}" 2>&1; then
             modules::error "    Some modules failed to update"
             return 1
         fi
@@ -220,7 +225,11 @@ modules::update_dir() {
         if [[ "$dry_run" == "true" ]]; then
             echo "    [DRY-RUN] go get go@$go_ver"
         else
-            go get "go@$go_ver"
+            if ! go get "go@$go_ver"; then
+                modules::error "  Failed to lock go version to $go_ver"
+                popd > /dev/null
+                return 1
+            fi
         fi
     else
         modules::error "  Could not read go version from go.mod"
@@ -233,7 +242,11 @@ modules::update_dir() {
         if [[ "$dry_run" == "true" ]]; then
             echo "    [DRY-RUN] go get toolchain@$toolchain_ver"
         else
-            go get "toolchain@$toolchain_ver"
+            if ! go get "toolchain@$toolchain_ver"; then
+                modules::error "  Failed to lock toolchain version to $toolchain_ver"
+                popd > /dev/null
+                return 1
+            fi
         fi
     fi
 
@@ -242,7 +255,11 @@ modules::update_dir() {
     if [[ "$dry_run" == "true" ]]; then
         echo "    [DRY-RUN] go mod tidy"
     else
-        go mod tidy
+        if ! go mod tidy; then
+            modules::error "  Failed to run go mod tidy"
+            popd > /dev/null
+            return 1
+        fi
     fi
 
     popd > /dev/null

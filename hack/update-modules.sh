@@ -50,11 +50,15 @@ ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")"/..; pwd -P)
 source "$ROOT/hack/lib/modules.sh"
 
 # Default values
+# PATCH_ONLY_PREFIXES: Modules matching these prefixes will only get patch version updates.
+# These prefixes should also be included in ALLOWED_PREFIXES to be updated.
 PATCH_ONLY_PREFIXES=(
     "k8s.io/"
     "sigs.k8s.io/"
     "helm.sh/helm/v3"
 )
+# ALLOWED_PREFIXES: Only modules matching these prefixes will be updated.
+# Modules also matching PATCH_ONLY_PREFIXES will get patch-only updates.
 ALLOWED_PREFIXES=(
     "k8s.io/"
     "sigs.k8s.io/"
@@ -83,14 +87,26 @@ parse_args() {
     while [[ $# -gt 0 ]]; do
         case $1 in
             -p|--patch-only)
+                if [[ -z "${2:-}" ]]; then
+                    modules::error "Option -p/--patch-only requires a PREFIX argument"
+                    usage
+                fi
                 PATCH_ONLY_PREFIXES+=("$2")
                 shift 2
                 ;;
             -a|--allowed)
+                if [[ -z "${2:-}" ]]; then
+                    modules::error "Option -a/--allowed requires a PREFIX argument"
+                    usage
+                fi
                 ALLOWED_PREFIXES+=("$2")
                 shift 2
                 ;;
             -d|--dir)
+                if [[ -z "${2:-}" ]]; then
+                    modules::error "Option -d/--dir requires a directory argument"
+                    usage
+                fi
                 DIRS+=("$2")
                 shift 2
                 ;;
@@ -166,8 +182,8 @@ main() {
     echo
 
     # Convert arrays to space-separated strings for passing to function
-    local patch_prefixes_str="${PATCH_ONLY_PREFIXES[*]+"${PATCH_ONLY_PREFIXES[*]}"}"
-    local allowed_prefixes_str="${ALLOWED_PREFIXES[*]+"${ALLOWED_PREFIXES[*]}"}"
+    local patch_prefixes_str="${PATCH_ONLY_PREFIXES[*]}"
+    local allowed_prefixes_str="${ALLOWED_PREFIXES[*]}"
 
     # Update each directory
     local failed_dirs=()
