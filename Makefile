@@ -219,11 +219,3 @@ $(addprefix bin/,$(ALL_BIN)):
 	$(call make_bin_target,$(patsubst bin/%,%,$@))
 	./hack/tools.sh $($(shell echo $(patsubst bin/%,%,$@) | tr '[:lower:]-' '[:upper:]_'))
 
-<<<<<<< HEAD
-=======
-
-.PHONY: charts/build
-charts/build:
-	$(ROOT)/hack/charts-build.sh
-
->>>>>>> 4e88448b0 (chore(hack): add script to update go modules (#6713))
