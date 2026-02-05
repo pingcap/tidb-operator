@@ -99,6 +99,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	backup := &v1alpha1.Backup{}
 	if err := r.Client.Get(ctx, req.NamespacedName, backup); err != nil {
+		if apierrors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
 		return ctrl.Result{}, err
 	}
 	err := common.JobLifecycleManager.Sync(ctx, runtime.FromBackup(backup), r.Client)
