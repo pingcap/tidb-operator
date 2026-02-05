@@ -29,26 +29,13 @@ config = "${TIFLASH_PROXY_CONFIG}"
 log-file = "${TIFLASH_PROXY_LOG_FILE}"
 
 [logger]
-count = 20
-level = "info"
 log = "${TIFLASH_LOG_PATH}"
 errorlog = "${TIFLASH_ERROR_LOG_PATH}"
-size = "1000M"
 
 [raft]
 pd_addr = "${PD_ADDR}"
 
-[profiles]
-[profiles.default]
-max_memory_usage = 10000000000
-
 [tici]
-[tici.reader_node]
-addr = "${TICI_READER_ADDR}"
-heartbeat_interval = "${TICI_READER_HEARTBEAT_INTERVAL}"
-max_heartbeat_retries = ${TICI_READER_MAX_HEARTBEAT_RETRIES}
-heartbeat_worker_count = ${TICI_READER_HEARTBEAT_WORKER_COUNT}
-
 [tici.reader-node]
 addr = "${TICI_READER_ADDR}"
 heartbeat-interval = "${TICI_READER_HEARTBEAT_INTERVAL}"
@@ -60,7 +47,7 @@ filename = "/data0/logs/tici_searchlib.log"
 level = "info"
 
 [tici.storage]
-data-dir = "./data/tici/searchlib"
+data-dir = "/data0/tici/searchlib"
 
 [tici.s3]
 access-key = "${S3_ACCESS_KEY}"

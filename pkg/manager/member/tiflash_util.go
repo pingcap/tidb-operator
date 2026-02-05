@@ -546,7 +546,7 @@ func setTiCIConfigForTiFlash(config *v1alpha1.TiFlashConfigWraper, tc *v1alpha1.
 
 	common.SetIfNil("tici.logger.filename", "/data0/logs/tici_searchlib.log")
 	common.SetIfNil("tici.logger.level", "info")
-	common.SetIfNil("tici.storage.data-dir", "./data/tici/searchlib")
+	common.SetIfNil("tici.storage.data-dir", "/data0/tici/searchlib")
 
 	common.SetIfNil("tici.s3.access-key", s3.AccessKey)
 	common.SetIfNil("tici.s3.secret-key", s3.SecretKey)
