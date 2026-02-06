@@ -27,6 +27,7 @@ const (
 	defaultTiFlashImage = "pingcap/tiflash"
 	defaultTiCDCImage   = "pingcap/ticdc"
 	defaultTiProxyImage = "pingcap/tiproxy"
+	defaultTiCIImage    = "pingcap/tici"
 )
 
 var (
@@ -55,6 +56,9 @@ func SetTidbClusterDefault(tc *v1alpha1.TidbCluster) {
 	}
 	if tc.Spec.TiCDC != nil {
 		setTiCDCSpecDefault(tc)
+	}
+	if tc.Spec.TiCI != nil {
+		setTiCISpecDefault(tc)
 	}
 	if tc.Spec.TiProxy != nil {
 		setTiProxySpecDefault(tc)
@@ -168,6 +172,51 @@ func setTiCDCSpecDefault(tc *v1alpha1.TidbCluster) {
 		if tc.Spec.TiCDC.BaseImage == "" {
 			tc.Spec.TiCDC.BaseImage = defaultTiCDCImage
 		}
+	}
+}
+
+func setTiCISpecDefault(tc *v1alpha1.TidbCluster) {
+	if tc.Spec.TiCI.Meta == nil {
+		tc.Spec.TiCI.Meta = &v1alpha1.TiCIMetaSpec{}
+	}
+	if tc.Spec.TiCI.Worker == nil {
+		tc.Spec.TiCI.Worker = &v1alpha1.TiCIWorkerSpec{}
+	}
+
+	if tc.Spec.TiCI.Meta.Replicas == 0 {
+		tc.Spec.TiCI.Meta.Replicas = 1
+	}
+	if tc.Spec.TiCI.Worker.Replicas == 0 {
+		tc.Spec.TiCI.Worker.Replicas = 1
+	}
+
+	if len(tc.Spec.Version) > 0 || tc.Spec.TiCI.Meta.Version != nil {
+		if tc.Spec.TiCI.Meta.BaseImage == "" {
+			tc.Spec.TiCI.Meta.BaseImage = defaultTiCIImage
+		}
+	}
+	if len(tc.Spec.Version) > 0 || tc.Spec.TiCI.Worker.Version != nil {
+		if tc.Spec.TiCI.Worker.BaseImage == "" {
+			tc.Spec.TiCI.Worker.BaseImage = defaultTiCIImage
+		}
+	}
+
+	if tc.Spec.TiCI.Changefeed == nil {
+		tc.Spec.TiCI.Changefeed = &v1alpha1.TiCIChangefeedSpec{}
+	}
+	if tc.Spec.TiCI.Reader == nil {
+		tc.Spec.TiCI.Reader = &v1alpha1.TiCIReaderSpec{}
+	}
+	if tc.Spec.TiCI.Reader.Port == nil {
+		port := v1alpha1.DefaultTiCIReaderPort
+		tc.Spec.TiCI.Reader.Port = &port
+	}
+	if tc.Spec.TiCI.Changefeed.Enable == nil {
+		enable := true
+		tc.Spec.TiCI.Changefeed.Enable = &enable
+	}
+	if tc.Spec.TiCI.Changefeed.ChangefeedID == "" {
+		tc.Spec.TiCI.Changefeed.ChangefeedID = "tici-replication-task"
 	}
 }
 

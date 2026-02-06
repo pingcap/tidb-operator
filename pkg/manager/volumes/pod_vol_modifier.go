@@ -174,6 +174,10 @@ func (p *podVolModifier) getBoundPVFromPVC(pvc *corev1.PersistentVolumeClaim) (*
 	}
 
 	name := pvc.Spec.VolumeName
+	if name == "" {
+		// PVC may be pending and not bound yet.
+		return nil, nil
+	}
 
 	return p.deps.PVLister.Get(name)
 }

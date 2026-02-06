@@ -207,7 +207,12 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		}
 		common.SetIfNil("flash.tidb_status_addr", tidbStatusAddr)
 		if !mountCMInTiflashContainer {
-			common.SetIfNil("flash.service_addr", fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiFlashFlashPort))
+			common.SetIfNil("flash.service_addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:%d",
+				controller.TiFlashMemberName(name),
+				controller.TiFlashPeerMemberName(name),
+				ns,
+				controller.FormatClusterDomain(clusterDomain),
+				v1alpha1.DefaultTiFlashFlashPort))
 		}
 		common.SetIfNil("flash.flash_cluster.log", defaultClusterLog)
 		common.SetIfNil("flash.proxy.addr", fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiFlashProxyPort))
@@ -284,6 +289,8 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		}
 	}
 
+	setTiCIConfigForTiFlash(config, tc, listenHost)
+
 	return config
 }
 
@@ -342,6 +349,8 @@ func getTiFlashConfig(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper {
 		config.Common.Del("https_port")
 		config.Common.Del("tcp_port_secure")
 	}
+
+	setTiCIConfigForTiFlash(config, tc, listenHost)
 
 	return config
 }
@@ -424,7 +433,6 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, r
 	config.SetIfNil("profiles.readonly.readonly", int64(1))
 	config.SetIfNil("profiles.default.max_memory_usage", int64(10000000000))
 	config.SetIfNil("profiles.default.load_balancing", "random")
-	config.SetIfNil("profiles.default.use_uncompressed_cache", int64(0))
 }
 
 func setTiFlashFlashConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, ref *v1alpha1.TidbClusterRef, clusterName, ns, clusterDomain, listenHost string, noLocalTiDB, acrossK8s bool) {
@@ -445,7 +453,12 @@ func setTiFlashFlashConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, re
 	}
 
 	config.SetIfNil("flash.tidb_status_addr", tidbStatusAddr)
-	config.SetIfNil("flash.service_addr", fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiFlashFlashPort))
+	config.SetIfNil("flash.service_addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:%d",
+		controller.TiFlashMemberName(clusterName),
+		controller.TiFlashPeerMemberName(clusterName),
+		ns,
+		controller.FormatClusterDomain(clusterDomain),
+		v1alpha1.DefaultTiFlashFlashPort))
 	config.SetIfNil("flash.overlap_threshold", 0.6)
 	config.SetIfNil("flash.compact_log_min_period", int64(200))
 
@@ -489,4 +502,74 @@ func setTiFlashRaftConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, ref
 	} else {
 		config.SetIfNil("raft.pd_addr", fmt.Sprintf("%s.%s.svc:%d", controller.PDMemberName(clusterName), ns, v1alpha1.DefaultPDClientPort))
 	}
+}
+
+func setTiCIConfigForTiFlash(config *v1alpha1.TiFlashConfigWraper, tc *v1alpha1.TidbCluster, listenHost string) {
+	if tc.Spec.TiCI == nil || tc.Spec.TiCI.S3 == nil || config == nil {
+		return
+	}
+	if config.Common == nil {
+		config.Common = v1alpha1.NewTiFlashCommonConfig()
+	}
+	if config.Proxy == nil {
+		config.Proxy = v1alpha1.NewTiFlashProxyConfig()
+	}
+
+	s3 := tc.Spec.TiCI.S3
+	usePathStyle := true
+	if s3.UsePathStyle != nil {
+		usePathStyle = *s3.UsePathStyle
+	}
+	region := s3.Region
+	if region == "" {
+		region = "us-east-1"
+	}
+	prefix := s3.Prefix
+	if prefix == "" {
+		prefix = "tici_default_prefix"
+	}
+
+	readerPort := v1alpha1.DefaultTiCIReaderPort
+	if tc.Spec.TiCI.Reader != nil && tc.Spec.TiCI.Reader.Port != nil {
+		readerPort = *tc.Spec.TiCI.Reader.Port
+	}
+
+	readerListenAddr := fmt.Sprintf("%s:%d", listenHost, readerPort)
+	readerAdvertiseAddr := fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:%d",
+		controller.TiFlashMemberName(tc.Name),
+		controller.TiFlashPeerMemberName(tc.Name),
+		tc.Namespace,
+		controller.FormatClusterDomain(tc.Spec.ClusterDomain),
+		readerPort,
+	)
+
+	common := config.Common
+	common.SetIfNil("tici.reader-node.addr", readerListenAddr)
+	if !tc.Spec.TiFlash.DoesMountCMInTiflashContainer() {
+		common.SetIfNil("tici.reader-node.advertise-addr", readerAdvertiseAddr)
+	}
+
+	common.SetIfNil("tici.logger.filename", "/data0/logs/tici_searchlib.log")
+	common.SetIfNil("tici.logger.level", "info")
+	common.SetIfNil("tici.storage.data-dir", "/data0/tici/searchlib")
+
+	common.SetIfNil("tici.s3.access-key", s3.AccessKey)
+	common.SetIfNil("tici.s3.secret-key", s3.SecretKey)
+	common.SetIfNil("tici.s3.endpoint", s3.Endpoint)
+	common.SetIfNil("tici.s3.bucket", s3.Bucket)
+	common.SetIfNil("tici.s3.region", region)
+	common.SetIfNil("tici.s3.prefix", prefix)
+	common.SetIfNil("tici.s3.use-path-style", usePathStyle)
+
+	proxyAddr := fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiFlashProxyPort)
+	proxyAdvertiseAddr := fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:%d",
+		controller.TiFlashMemberName(tc.Name),
+		controller.TiFlashPeerMemberName(tc.Name),
+		tc.Namespace,
+		controller.FormatClusterDomain(tc.Spec.ClusterDomain),
+		v1alpha1.DefaultTiFlashProxyPort,
+	)
+	config.Proxy.SetIfNil("server.addr", proxyAddr)
+	config.Proxy.SetIfNil("server.advertise-addr", proxyAdvertiseAddr)
+	config.Proxy.SetIfNil("storage.reserve-space", "1KB")
 }
