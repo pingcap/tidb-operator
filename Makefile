@@ -186,6 +186,10 @@ kube: bin/kind bin/kubectl
 	@echo "ensure that the kubernetes env is existing"
 	V_KIND=$(KIND) V_KUBECTL=$(KUBECTL) $(ROOT)/hack/kind.sh
 
+.PHONY: modules/update
+modules/update:
+	$(ROOT)/hack/update-modules.sh
+
 .PHONY: reload/operator
 reload/operator: bin/kubectl
 	$(KUBECTL) $(KUBE_OPT) delete pod `$(KUBECTL) $(KUBE_OPT) get pods | awk '/operator/{ print $$1 }'`
