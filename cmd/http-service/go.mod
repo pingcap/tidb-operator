@@ -1,8 +1,8 @@
 module github.com/pingcap/tidb-operator/http-service
 
-go 1.24.0
+go 1.25.0
 
-toolchain go1.24.12
+toolchain go1.25.7
 
 require (
 	github.com/gin-gonic/gin v1.10.0
