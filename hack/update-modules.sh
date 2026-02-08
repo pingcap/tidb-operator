@@ -21,6 +21,7 @@
 # Options:
 #   -p, --patch-only PREFIX    Only update patch version for modules matching PREFIX (can be specified multiple times)
 #   -a, --allowed PREFIX       Only update modules matching PREFIX (can be specified multiple times, includes both direct and indirect)
+#   -x, --denied PREFIX        Exclude modules matching PREFIX (can be specified multiple times, takes precedence over allowed)
 #   -d, --dir DIR              Directory containing go.mod to update (can be specified multiple times, default: all go.mod files)
 #   -n, --dry-run              Show what would be done without making changes
 #   -h, --help                 Show this help message
@@ -38,8 +39,11 @@
 #   # Only update modules matching specific prefixes (both direct and indirect)
 #   ./hack/update-modules.sh -a golang.org -a github.com/aws
 #
+#   # Exclude specific modules from updates
+#   ./hack/update-modules.sh -a golang.org -x golang.org/x/net
+#
 #   # Combine options
-#   ./hack/update-modules.sh -p k8s.io -p sigs.k8s.io -a golang.org -d .
+#   ./hack/update-modules.sh -p k8s.io -p sigs.k8s.io -a golang.org -x golang.org/x/net -d .
 
 set -o errexit
 set -o nounset
@@ -73,6 +77,12 @@ ALLOWED_PREFIXES=(
     "github.com/golangci/golangci-lint/v2"
     "github.com/apache/skywalking-eyes"
 )
+# DENIED_PREFIXES: Modules matching these prefixes will NOT be updated, even if they match ALLOWED_PREFIXES.
+DENIED_PREFIXES=(
+    "k8s.io/gengo/v2"
+    "k8s.io/kube-openapi"
+    "k8s.io/utils"
+)
 DIRS=()
 DRY_RUN=false
 
@@ -100,6 +110,14 @@ parse_args() {
                     usage
                 fi
                 ALLOWED_PREFIXES+=("$2")
+                shift 2
+                ;;
+            -x|--denied)
+                if [[ -z "${2:-}" ]]; then
+                    modules::error "Option -x/--denied requires a PREFIX argument"
+                    usage
+                fi
+                DENIED_PREFIXES+=("$2")
                 shift 2
                 ;;
             -d|--dir)
@@ -158,6 +176,13 @@ main() {
         modules::info "No allowed prefixes specified, updating all direct dependencies"
     fi
 
+    if [[ ${#DENIED_PREFIXES[@]} -gt 0 ]]; then
+        modules::info "Denied module prefixes (excluded):"
+        for prefix in "${DENIED_PREFIXES[@]}"; do
+            echo "    - $prefix"
+        done
+    fi
+
     # Determine directories to update
     local dirs_to_update=()
     if [[ ${#DIRS[@]} -eq 0 ]]; then
@@ -184,11 +209,12 @@ main() {
     # Convert arrays to space-separated strings for passing to function
     local patch_prefixes_str="${PATCH_ONLY_PREFIXES[*]}"
     local allowed_prefixes_str="${ALLOWED_PREFIXES[*]}"
+    local denied_prefixes_str="${DENIED_PREFIXES[*]:-}"
 
     # Update each directory
     local failed_dirs=()
     for dir in "${dirs_to_update[@]}"; do
-        if ! modules::update_dir "$dir" "$DRY_RUN" "$patch_prefixes_str" "$allowed_prefixes_str"; then
+        if ! modules::update_dir "$dir" "$DRY_RUN" "$patch_prefixes_str" "$allowed_prefixes_str" "$denied_prefixes_str"; then
             failed_dirs+=("$dir")
         fi
         echo
