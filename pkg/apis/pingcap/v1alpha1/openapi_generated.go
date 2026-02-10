@@ -9954,7 +9954,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCIMetaSpec(ref common.ReferenceCallback)
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "TopologySpreadConstraints describes how a group of pods ought to spread across topology domains. Scheduler will schedule pods in a way which abides by the constraints. This field is is only honored by clusters that enables the EvenPodsSpread feature. All topologySpreadConstraints are ANDed.",
+							Description: "TopologySpreadConstraints describes how a group of pods ought to spread across topology domains. Scheduler will schedule pods in a way which abides by the constraints. This field is only honored by clusters that enables the EvenPodsSpread feature. All topologySpreadConstraints are ANDed.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -9970,6 +9970,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCIMetaSpec(ref common.ReferenceCallback)
 						SchemaProps: spec.SchemaProps{
 							Description: "SuspendAction defines the suspend actions for all component.",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SuspendAction"),
+						},
+					},
+					"securityContext": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SecurityContext defines the security options the component container should be run with. If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/",
+							Ref:         ref("k8s.io/api/core/v1.SecurityContext"),
 						},
 					},
 					"readinessProbe": {
@@ -10084,7 +10090,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCIMetaSpec(ref common.ReferenceCallback)
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SuspendAction", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.ResourceClaim", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SuspendAction", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.ResourceClaim", "k8s.io/api/core/v1.SecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
@@ -10506,7 +10512,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCIWorkerSpec(ref common.ReferenceCallbac
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "TopologySpreadConstraints describes how a group of pods ought to spread across topology domains. Scheduler will schedule pods in a way which abides by the constraints. This field is is only honored by clusters that enables the EvenPodsSpread feature. All topologySpreadConstraints are ANDed.",
+							Description: "TopologySpreadConstraints describes how a group of pods ought to spread across topology domains. Scheduler will schedule pods in a way which abides by the constraints. This field is only honored by clusters that enables the EvenPodsSpread feature. All topologySpreadConstraints are ANDed.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -10522,6 +10528,12 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCIWorkerSpec(ref common.ReferenceCallbac
 						SchemaProps: spec.SchemaProps{
 							Description: "SuspendAction defines the suspend actions for all component.",
 							Ref:         ref("github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SuspendAction"),
+						},
+					},
+					"securityContext": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SecurityContext defines the security options the component container should be run with. If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/",
+							Ref:         ref("k8s.io/api/core/v1.SecurityContext"),
 						},
 					},
 					"readinessProbe": {
@@ -10636,7 +10648,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCIWorkerSpec(ref common.ReferenceCallbac
 			},
 		},
 		Dependencies: []string{
-			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SuspendAction", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.ResourceClaim", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
+			"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.Probe", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolume", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.SuspendAction", "github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TopologySpreadConstraint", "k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.Container", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.ResourceClaim", "k8s.io/api/core/v1.SecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.Volume", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/api/resource.Quantity"},
 	}
 }
 
