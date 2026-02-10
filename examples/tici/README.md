@@ -1,6 +1,9 @@
-# TiCI example
+# TiCI examples
 
-This example deploys a TiDB cluster with TiCI + TiFlash + TiCDC using a local MinIO.
+This directory contains TiCI + TiFlash + TiCDC examples for:
+- Local MinIO (`tici-tc.yaml`)
+- Google Cloud Storage with service-account secret (`tici-tc-gcs.yaml`)
+- Google Cloud Storage with GKE Workload Identity (`tici-tc-gcs-wi.yaml`)
 
 ## Prereqs
 - A StorageClass named `standard` (or edit the YAML to your StorageClass).
@@ -28,6 +31,49 @@ mc mb --ignore-existing localminio/ticidefaultbucket
 
 ```
 kubectl -n <ns> apply -f tici-tc.yaml
+```
+
+## Deploy with GCS (service-account secret)
+
+1) Create a GCP service account and grant bucket permissions on `tici_test`.
+For smoke test, start with `Storage Object Admin` on the bucket.
+
+2) Create secret `gcs-sa` in your namespace.
+The key name must be `gcs-sa.json` to match `tici-tc-gcs.yaml`.
+
+```
+kubectl -n <ns> create secret generic gcs-sa --from-file=gcs-sa.json=/path/to/your-service-account.json
+```
+
+3) Deploy:
+
+```
+kubectl -n <ns> apply -f tici-tc-gcs.yaml
+```
+
+4) Verify quick checks:
+
+```
+kubectl -n <ns> get pod | grep tici-demo-gcs
+kubectl -n <ns> logs tici-demo-gcs-tici-worker-0 -c tici-worker --tail=100
+kubectl -n <ns> logs tici-demo-gcs-tiflash-0 -c tiflash --tail=100
+```
+
+5) Verify objects are written:
+
+```
+gcloud storage ls gs://tici_test/tici_default_prefix/cdc
+```
+
+## Deploy with GCS (GKE Workload Identity)
+
+1) Replace the placeholder GSA in `tici-tc-gcs-wi.yaml`:
+`iam.gke.io/gcp-service-account: tici-gcs-wi@YOUR_GCP_PROJECT_ID.iam.gserviceaccount.com`
+
+2) Ensure KSA/GSA binding and bucket IAM are configured, then deploy:
+
+```
+kubectl -n <ns> apply -f tici-tc-gcs-wi.yaml
 ```
 
 ## Notes

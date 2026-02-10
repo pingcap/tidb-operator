@@ -36,6 +36,8 @@ const (
 	additionalPortLabelPattern = "__meta_kubernetes_pod_annotation_%s_prometheus_io_port"
 	dmWorker                   = "dm-worker"
 	dmMaster                   = "dm-master"
+	ticiMetaPattern            = "tici-meta"
+	ticiWorkerPattern          = "tici-worker"
 )
 
 var (
@@ -104,6 +106,8 @@ func newPrometheusConfig(cmodel *MonitorConfigModel) yaml.MapSlice {
 	scrapeJobs = append(scrapeJobs, scrapeJob("pump", pumpPattern, cmodel, buildAddressRelabelConfigByComponent("pump"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("drainer", drainerPattern, cmodel, buildAddressRelabelConfigByComponent("drainer"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("ticdc", cdcPattern, cmodel, buildAddressRelabelConfigByComponent("ticdc"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("tici-meta", ticiMetaPattern, cmodel, buildAddressRelabelConfigByComponent("tici-meta"))...)
+	scrapeJobs = append(scrapeJobs, scrapeJob("tici-worker", ticiWorkerPattern, cmodel, buildAddressRelabelConfigByComponent("tici-worker"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob("lightning", lightningPattern, cmodel, buildAddressRelabelConfigByComponent("lightning"))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob(dmWorker, dmWorkerPattern, cmodel, buildAddressRelabelConfigByComponent(dmWorker))...)
 	scrapeJobs = append(scrapeJobs, scrapeJob(dmMaster, dmMasterPattern, cmodel, buildAddressRelabelConfigByComponent(dmMaster))...)
@@ -150,6 +154,10 @@ func buildAddressRelabelConfigByComponent(kind string) yaml.MapSlice {
 	case "tiflash":
 		return f()
 	case "ticdc":
+		return f()
+	case "tici-meta":
+		return f()
+	case "tici-worker":
 		return f()
 	case dmWorker:
 		return f()
