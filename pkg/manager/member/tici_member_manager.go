@@ -599,10 +599,10 @@ func getNewTiCIWorkerStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 }
 
 func getNewTiCIHeadlessService(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) *corev1.Service {
-	name := ""
-	labels := map[string]string{}
-	port := int32(0)
-	statusPort := int32(0)
+	var name string
+	var labels map[string]string
+	var port int32
+	var statusPort int32
 	instanceName := tc.GetInstanceName()
 	if memberType == v1alpha1.TiCIMetaMemberType {
 		name = controller.TiCIMetaPeerMemberName(tc.Name)
