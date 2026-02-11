@@ -69,6 +69,7 @@ gcloud storage ls gs://tici_test/tici_default_prefix/cdc
 
 1) Replace the placeholder GSA in `tici-tc-gcs-wi.yaml`:
 `iam.gke.io/gcp-service-account: tici-gcs-wi@YOUR_GCP_PROJECT_ID.iam.gserviceaccount.com`
+This example binds the WI ServiceAccount only to `tiflash`, `ticdc`, `tici.meta`, and `tici.worker`.
 
 2) Ensure KSA/GSA binding and bucket IAM are configured, then deploy:
 
