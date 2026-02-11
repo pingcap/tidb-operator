@@ -39,10 +39,10 @@ kubectl -n <ns> apply -f tici-tc.yaml
 For smoke test, start with `Storage Object Admin` on the bucket.
 
 2) Create secret `gcs-sa` in your namespace.
-The key name must be `gcs-sa.json` to match `tici-tc-gcs.yaml`.
+The key name must be `credentials.json` to match `tici-tc-gcs.yaml`.
 
 ```
-kubectl -n <ns> create secret generic gcs-sa --from-file=gcs-sa.json=/path/to/your-service-account.json
+kubectl -n <ns> create secret generic gcs-sa --from-file=credentials.json=/path/to/your-service-account.json
 ```
 
 3) Deploy:

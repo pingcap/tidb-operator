@@ -53,7 +53,7 @@ spec:
     version: feature-fts
     env:
     - name: GOOGLE_APPLICATION_CREDENTIALS
-      value: /var/secrets/google/gcs-sa.json
+      value: /var/secrets/google/credentials.json
     additionalVolumes:
     - name: gcs-sa-secret
       secret:
@@ -79,7 +79,7 @@ spec:
     version: master
     env:
     - name: GOOGLE_APPLICATION_CREDENTIALS
-      value: /var/secrets/google/gcs-sa.json
+      value: /var/secrets/google/credentials.json
     additionalVolumes:
     - name: gcs-sa-secret
       secret:
@@ -96,7 +96,7 @@ spec:
       version: master
       env:
       - name: GOOGLE_APPLICATION_CREDENTIALS
-        value: /var/secrets/google/gcs-sa.json
+        value: /var/secrets/google/credentials.json
       additionalVolumes:
       - name: gcs-sa-secret
         secret:
@@ -111,7 +111,7 @@ spec:
       version: master
       env:
       - name: GOOGLE_APPLICATION_CREDENTIALS
-        value: /var/secrets/google/gcs-sa.json
+        value: /var/secrets/google/credentials.json
       additionalVolumes:
       - name: gcs-sa-secret
         secret:
@@ -123,7 +123,7 @@ spec:
     s3:
       endpoint: https://storage.googleapis.com
       region: us-east-1
-      accessKey: /var/secrets/google/gcs-sa.json
+      accessKey: /var/secrets/google/credentials.json
       secretKey: ""
       bucket: tici-test
       prefix: tici_default_prefix
