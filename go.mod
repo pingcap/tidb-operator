@@ -4,7 +4,9 @@
 
 module github.com/pingcap/tidb-operator
 
-go 1.24.12
+go 1.25.0
+
+toolchain go1.25.7
 
 require (
 	cloud.google.com/go/storage v1.35.1
