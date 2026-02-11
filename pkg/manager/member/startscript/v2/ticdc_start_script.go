@@ -249,15 +249,24 @@ CHANGEFEED_ID="{{ .ChangefeedID }}"
 CHANGEFEED_SINK_URI='{{ .ChangefeedSinkURI }}'
 CHANGEFEED_TLS_ARGS="{{ .ChangefeedTLSArgs }}"
 i=0
-while [ $i -lt 60 ]; do
+while [ $i -lt 15 ]; do
     if /cdc cli capture list --server="${CHANGEFEED_SERVER}" ${CHANGEFEED_TLS_ARGS} >/dev/null 2>&1; then
         break
     fi
     i=$((i+1))
     sleep 2
 done
-/cdc cli changefeed query --server="${CHANGEFEED_SERVER}" --changefeed-id="${CHANGEFEED_ID}" ${CHANGEFEED_TLS_ARGS} >/dev/null 2>&1 || \
-/cdc cli changefeed create --server="${CHANGEFEED_SERVER}" --sink-uri="${CHANGEFEED_SINK_URI}" --changefeed-id="${CHANGEFEED_ID}" ${CHANGEFEED_TLS_ARGS}
+j=0
+while [ $j -lt 15 ]; do
+    if /cdc cli changefeed query --server="${CHANGEFEED_SERVER}" --changefeed-id="${CHANGEFEED_ID}" ${CHANGEFEED_TLS_ARGS} >/dev/null 2>&1; then
+        break
+    fi
+    if /cdc cli changefeed create --server="${CHANGEFEED_SERVER}" --sink-uri="${CHANGEFEED_SINK_URI}" --changefeed-id="${CHANGEFEED_ID}" ${CHANGEFEED_TLS_ARGS} >/dev/null 2>&1; then
+        break
+    fi
+    j=$((j+1))
+    sleep 2
+done
 wait ${CDC_PID}
 {{- else }}
 exec /cdc server ${ARGS}
