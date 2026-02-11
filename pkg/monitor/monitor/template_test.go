@@ -3850,12 +3850,12 @@ func TestMultipleClusterConfigRender(t *testing.T) {
 	g.Expect(err).NotTo(HaveOccurred())
 	// check scrapeJob number
 	pc := newPrometheusConfig(model)
-		for _, item := range pc {
-			key := item.Key
-			if key == "scrape_configs" {
-				g.Expect(len(item.Value.([]yaml.MapSlice))).Should(Equal(32))
-			}
+	for _, item := range pc {
+		key := item.Key
+		if key == "scrape_configs" {
+			g.Expect(len(item.Value.([]yaml.MapSlice))).Should(Equal(32))
 		}
+	}
 
 }
 
