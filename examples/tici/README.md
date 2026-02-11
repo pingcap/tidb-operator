@@ -4,6 +4,7 @@ This directory contains TiCI + TiFlash + TiCDC examples for:
 - Local MinIO (`tici-tc.yaml`)
 - Google Cloud Storage with service-account secret (`tici-tc-gcs.yaml`)
 - Google Cloud Storage with GKE Workload Identity (`tici-tc-gcs-wi.yaml`)
+- GCS auth mode deployment notes (`GCS_AUTH_DEPLOYMENT.md`)
 
 ## Prereqs
 - A StorageClass named `standard` (or edit the YAML to your StorageClass).
