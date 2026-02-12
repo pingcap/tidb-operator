@@ -53,7 +53,7 @@ var (
 					Config:        pointer.StringPtr("/data0/proxy.toml"),
 					DataDir:       pointer.StringPtr("/data0/proxy"),
 				},
-				ServiceAddr:    pointer.StringPtr(fmt.Sprintf("test-tiflash-POD_NUM.test-tiflash-peer.test.svc:%d", v1alpha1.DefaultTiFlashFlashPort)),
+				ServiceAddr:    pointer.StringPtr(fmt.Sprintf("0.0.0.0:%d", v1alpha1.DefaultTiFlashFlashPort)),
 				TiDBStatusAddr: pointer.StringPtr(fmt.Sprintf("test-tidb.test.svc:%d", v1alpha1.DefaultTiDBStatusPort)),
 			},
 			HTTPPort:               pointer.Int32Ptr(v1alpha1.DefaultTiFlashHttpPort),
@@ -505,7 +505,7 @@ func TestSetTiFlashConfigDefault(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// g := NewGomegaWithT(t)
-			setTiFlashConfigDefault(test.config, nil, "test", "test", "", "0.0.0.0", false, false, false)
+			setTiFlashConfigDefault(test.config, nil, "test", "test", "", "0.0.0.0", false, false, false, false)
 			// g.Expect(test.config).To(Equal(test.expect))
 			if diff := cmp.Diff(*test.expect, *test.config); diff != "" {
 				t.Fatalf("unexpected configuration (-want, +got): %s", diff)
@@ -605,7 +605,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				[flash]
 				  compact_log_min_period = 200
 				  overlap_threshold = 0.6
-				  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
+				  service_addr = "0.0.0.0:3930"
 				  tidb_status_addr = "test-tidb.default.svc:10080"
 				  [flash.flash_cluster]
 					cluster_manager_path = "/tiflash/flash_cluster_manager"
@@ -715,7 +715,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				[flash]
 				  compact_log_min_period = 200
 				  overlap_threshold = 0.6
-				  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
+				  service_addr = "0.0.0.0:3930"
 				  tidb_status_addr = "test-tidb.default.svc:10080"
 				  [flash.flash_cluster]
 					cluster_manager_path = "/tiflash/flash_cluster_manager"
@@ -818,7 +818,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				[flash]
 				  compact_log_min_period = 200
 				  overlap_threshold = 0.6
-				  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
+				  service_addr = "0.0.0.0:3930"
 				  tidb_status_addr = "test-tidb.default.svc:10080"
 				  [flash.flash_cluster]
 					cluster_manager_path = "/tiflash/flash_cluster_manager"
@@ -913,7 +913,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				[flash]
 				  compact_log_min_period = 200
 				  overlap_threshold = 0.6
-				  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
+				  service_addr = "0.0.0.0:3930"
 				  tidb_status_addr = "test-tidb.default.svc:10080"
 				  [flash.flash_cluster]
 					cluster_manager_path = "/tiflash/flash_cluster_manager"
@@ -1004,7 +1004,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				[flash]
 				  compact_log_min_period = 200
 				  overlap_threshold = 0.6
-				  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
+				  service_addr = "0.0.0.0:3930"
 				  tidb_status_addr = "test-tidb.default.svc:10080"
 				  [flash.flash_cluster]
 					cluster_manager_path = "/tiflash/flash_cluster_manager"
@@ -1097,7 +1097,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				[flash]
 				  compact_log_min_period = 200
 				  overlap_threshold = 0.6
-				  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
+				  service_addr = "0.0.0.0:3930"
 				  tidb_status_addr = "cluster-1-tidb.default.svc:10080"
 				  [flash.flash_cluster]
 					cluster_manager_path = "/tiflash/flash_cluster_manager"
@@ -1188,8 +1188,8 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 			
 				[flash]
 				  compact_log_min_period = 200
-				  overlap_threshold = 0.6
-				  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
+				  overlap_threshold = 0.6 
+				  service_addr = "0.0.0.0:3930"
 				  tidb_status_addr = "test-tidb.default.svc:10080"
 				  [flash.flash_cluster]
 					cluster_manager_path = "/tiflash/flash_cluster_manager"
@@ -1284,7 +1284,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				[flash]
 				  compact_log_min_period = 200
 				  overlap_threshold = 0.6
-				  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
+				  service_addr = "0.0.0.0:3930"
 				  tidb_status_addr = "test-tidb.default.svc:10080"
 				  [flash.flash_cluster]
 					cluster_manager_path = "/tiflash/flash_cluster_manager"
@@ -1378,8 +1378,8 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 			
 				[flash]
 				  compact_log_min_period = 200
-				  overlap_threshold = 0.6
-				  service_addr = "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930"
+				  overlap_threshold = 0.6 
+				  service_addr = "0.0.0.0:3930"
 				  tidb_status_addr = "cluster-1-tidb-peer.default.svc:10080"
 				  [flash.flash_cluster]
 					cluster_manager_path = "/tiflash/flash_cluster_manager"
@@ -1404,6 +1404,7 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				  [profiles.default]
 					load_balancing = "random"
 					max_memory_usage = 10000000000
+					use_uncompressed_cache = 0
 				  [profiles.readonly]
 					readonly = 1
 			
@@ -1496,10 +1497,10 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					tc.Spec.TiFlash.Config = nil
 				},
 				expectCommonCfg: `
-						tmp_path = "/data0/tmp"
-						[flash]
-						  service_addr = "0.0.0.0:3930"
-						  tidb_status_addr = "test-tidb.default.svc:10080"
+				      tmp_path = "/data0/tmp"
+					  [flash]
+					    service_addr = "0.0.0.0:3930"
+						tidb_status_addr = "test-tidb.default.svc:10080"
 					  [flash.flash_cluster]
 						log = "/data0/logs/flash_cluster_manager.log"
 					  [flash.proxy]
@@ -1533,11 +1534,11 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					tc.Spec.StartScriptV2FeatureFlags = []v1alpha1.StartScriptV2FeatureFlag{v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery}
 					tc.Spec.PDAddresses = []string{"test-pd.another-ns.svc:2379"}
 				},
-				expectCommonCfg: `
-						tmp_path = "/data0/tmp"
-						[flash]
-						  service_addr = "0.0.0.0:3930"
-						  tidb_status_addr = "test-tidb.default.svc:10080"
+				expectCommonCfg: ` 
+				      tmp_path = "/data0/tmp" 
+					  [flash] 
+					    service_addr = "0.0.0.0:3930"
+						tidb_status_addr = "test-tidb.default.svc:10080"
 					  [flash.flash_cluster]
 						log = "/data0/logs/flash_cluster_manager.log"
 					  [flash.proxy]
@@ -1569,11 +1570,11 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					tc.Spec.TiFlash.Config = nil
 					tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 				},
-				expectCommonCfg: `
-						tmp_path = "/data0/tmp"
-						[flash]
-						  service_addr = "0.0.0.0:3930"
-						  tidb_status_addr = "test-tidb.default.svc:10080"
+				expectCommonCfg: ` 
+				      tmp_path = "/data0/tmp" 
+					  [flash] 
+					    service_addr = "0.0.0.0:3930"
+						tidb_status_addr = "test-tidb.default.svc:10080"
 					  [flash.flash_cluster]
 						log = "/data0/logs/flash_cluster_manager.log"
 					  [flash.proxy]
@@ -1616,15 +1617,15 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 				},
 				expectCommonCfg: `
-					tmp_path = "/data0/tmp"
+				    tmp_path = "/data0/tmp" 
 					[flash]
 					  tidb_status_addr = "test-tidb.default.svc:10080"
-					  [flash.flash_cluster]
-						log = "/data0/logs/flash_cluster_manager.log"
-					  [flash.proxy]
-						addr = "0.0.0.0:20170"
-						config = "/etc/tiflash/proxy_templ.toml"
-						data-dir = "/data0/proxy"
+					[flash.flash_cluster]
+					  log = "/data0/logs/flash_cluster_manager.log"
+					[flash.proxy] 
+					  addr = "0.0.0.0:20170" 
+					  config = "/etc/tiflash/proxy_templ.toml" 
+					  data-dir = "/data0/proxy"
 					[logger]
 					  errorlog = "/data0/logs/error.log"
 					  log = "/data0/logs/server.log"
@@ -1659,10 +1660,10 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true}
 				},
 				expectCommonCfg: `
-						tmp_path = "/data0/tmp"
-						[flash]
-						  service_addr = "0.0.0.0:3930"
-						  tidb_status_addr = "test-tidb.default.svc:10080"
+				      tmp_path = "/data0/tmp" 
+					  [flash] 
+					    service_addr = "0.0.0.0:3930" 
+						tidb_status_addr = "test-tidb.default.svc:10080"
 					  [flash.flash_cluster]
 						log = "/data0/logs/flash_cluster_manager.log"
 					  [flash.proxy]
@@ -1711,11 +1712,11 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					}
 
 				},
-				expectCommonCfg: `
-						tmp_path = "/data0/tmp"
-						[flash]
-						  service_addr = "0.0.0.0:3930"
-						  tidb_status_addr = "test-tidb.default.svc:10080"
+				expectCommonCfg: ` 
+					  tmp_path = "/data0/tmp"
+					  [flash]
+						service_addr = "0.0.0.0:3930"
+						tidb_status_addr = "test-tidb.default.svc:10080"
 					  [flash.flash_cluster]
 						log = "/data0/logs/flash_cluster_manager.log"
 					  [flash.proxy]
@@ -1749,11 +1750,11 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					tc.Spec.TiDB = nil
 					tc.Spec.Cluster = &v1alpha1.TidbClusterRef{Name: "cluster-1", Namespace: "default"}
 				},
-				expectCommonCfg: `
-						tmp_path = "/data0/tmp"
-						[flash]
-						  service_addr = "0.0.0.0:3930"
-						  tidb_status_addr = "cluster-1-tidb.default.svc:10080"
+				expectCommonCfg: ` 
+				      tmp_path = "/data0/tmp" 
+					  [flash]
+						service_addr = "0.0.0.0:3930"
+						tidb_status_addr = "cluster-1-tidb.default.svc:10080"
 					  [flash.flash_cluster]
 						log = "/data0/logs/flash_cluster_manager.log"
 					  [flash.proxy]
@@ -1785,11 +1786,11 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					tc.Spec.TiFlash.Config = nil
 					tc.Spec.AcrossK8s = true
 				},
-				expectCommonCfg: `
-						tmp_path = "/data0/tmp"
-						[flash]
-						  service_addr = "0.0.0.0:3930"
-						  tidb_status_addr = "test-tidb.default.svc:10080"
+				expectCommonCfg: ` 
+					  tmp_path = "/data0/tmp" 
+					  [flash]
+						service_addr = "0.0.0.0:3930"
+						tidb_status_addr = "test-tidb.default.svc:10080"
 					  [flash.flash_cluster]
 						log = "/data0/logs/flash_cluster_manager.log"
 					  [flash.proxy]
@@ -1824,11 +1825,11 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					tc.Spec.Cluster = &v1alpha1.TidbClusterRef{Name: "cluster-1", Namespace: "default"}
 					tc.Spec.AcrossK8s = true
 				},
-				expectCommonCfg: `
-						tmp_path = "/data0/tmp"
-						[flash]
-						  service_addr = "0.0.0.0:3930"
-						  tidb_status_addr = "test-tidb.default.svc:10080"
+				expectCommonCfg: ` 
+					  tmp_path = "/data0/tmp" 
+					  [flash] 
+					    service_addr = "0.0.0.0:3930" 
+						tidb_status_addr = "test-tidb.default.svc:10080"
 					  [flash.flash_cluster]
 						log = "/data0/logs/flash_cluster_manager.log"
 					  [flash.proxy]
@@ -1863,11 +1864,11 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					tc.Spec.Cluster = &v1alpha1.TidbClusterRef{Name: "cluster-1", Namespace: "default"}
 					tc.Spec.AcrossK8s = true
 				},
-				expectCommonCfg: `
-						tmp_path = "/data0/tmp"
-						[flash]
-						  service_addr = "0.0.0.0:3930"
-						  tidb_status_addr = "cluster-1-tidb-peer.default.svc:10080"
+				expectCommonCfg: ` 
+					  tmp_path = "/data0/tmp" 
+					  [flash] 
+					    service_addr = "0.0.0.0:3930"
+						tidb_status_addr = "cluster-1-tidb-peer.default.svc:10080"
 					  [flash.flash_cluster]
 						log = "/data0/logs/flash_cluster_manager.log"
 					  [flash.proxy]
@@ -1989,6 +1990,53 @@ func TestGetTiFlashConfigV2FlashServiceAddr(t *testing.T) {
 			}
 
 			cfg := getTiFlashConfigV2(tc)
+			g.Expect(cfg).ShouldNot(BeNil())
+			g.Expect(cfg.Common).ShouldNot(BeNil())
+			flashServiceAddr := cfg.Common.Get("flash.service_addr")
+			g.Expect(flashServiceAddr).ShouldNot(BeNil())
+			g.Expect(flashServiceAddr.MustString()).Should(Equal(testcase.expectVal))
+		})
+	}
+}
+
+func TestGetTiFlashConfigFlashServiceAddr(t *testing.T) {
+	cases := []struct {
+		name      string
+		setTC     func(tc *v1alpha1.TidbCluster)
+		expectVal string
+	}{
+		{
+			name:      "non tici cluster uses previous flash service addr",
+			expectVal: "0.0.0.0:3930",
+		},
+		{
+			name: "tici cluster uses headless flash service addr",
+			setTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TiCI = &v1alpha1.TiCISpec{
+					S3: &v1alpha1.TiCIS3Spec{
+						Endpoint: "http://s3.test:9000",
+						Bucket:   "bucket",
+					},
+				}
+			},
+			expectVal: "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930",
+		},
+	}
+
+	for _, testcase := range cases {
+		t.Run(testcase.name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+
+			tc := &v1alpha1.TidbCluster{}
+			tc.Name = "test"
+			tc.Namespace = "default"
+			tc.Spec.TiFlash = &v1alpha1.TiFlashSpec{}
+
+			if testcase.setTC != nil {
+				testcase.setTC(tc)
+			}
+
+			cfg := getTiFlashConfig(tc)
 			g.Expect(cfg).ShouldNot(BeNil())
 			g.Expect(cfg.Common).ShouldNot(BeNil())
 			flashServiceAddr := cfg.Common.Get("flash.service_addr")

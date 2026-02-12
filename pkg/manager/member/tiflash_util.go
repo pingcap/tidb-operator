@@ -323,12 +323,13 @@ func getTiFlashConfig(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper {
 	noLocalPD := tc.WithoutLocalPD()
 	acrossK8s := tc.AcrossK8s()
 	noLocalTiDB := tc.WithoutLocalTiDB()
+	ticiEnabled := tc.Spec.TiCI != nil && tc.Spec.TiCI.S3 != nil
 	listenHost := listenHostForIPv4
 	if tc.Spec.PreferIPv6 {
 		listenHost = listenHostForIPv6
 	}
 
-	setTiFlashConfigDefault(config, ref, tc.Name, tc.Namespace, tc.Spec.ClusterDomain, listenHost, noLocalPD, noLocalTiDB, acrossK8s)
+	setTiFlashConfigDefault(config, ref, tc.Name, tc.Namespace, tc.Spec.ClusterDomain, listenHost, noLocalPD, noLocalTiDB, acrossK8s, ticiEnabled)
 
 	// Note the config of tiflash use "_" by convention, others(proxy) use "-".
 	if tc.IsTLSClusterEnabled() {
@@ -370,12 +371,12 @@ func setTiFlashLogConfigDefault(config *v1alpha1.TiFlashConfigWraper) {
 
 // setTiFlashConfigDefault sets default configs for TiFlash
 func setTiFlashConfigDefault(config *v1alpha1.TiFlashConfigWraper, ref *v1alpha1.TidbClusterRef,
-	clusterName, ns, clusterDomain, listenHost string, noLocalPD bool, noLocalTiDB bool, acrossK8s bool,
+	clusterName, ns, clusterDomain, listenHost string, noLocalPD bool, noLocalTiDB bool, acrossK8s bool, ticiEnabled bool,
 ) {
 	if config.Common == nil {
 		config.Common = v1alpha1.NewTiFlashCommonConfig()
 	}
-	setTiFlashCommonConfigDefault(config.Common, ref, clusterName, ns, clusterDomain, listenHost, noLocalPD, noLocalTiDB, acrossK8s)
+	setTiFlashCommonConfigDefault(config.Common, ref, clusterName, ns, clusterDomain, listenHost, noLocalPD, noLocalTiDB, acrossK8s, ticiEnabled)
 
 	if config.Proxy == nil {
 		config.Proxy = v1alpha1.NewTiFlashProxyConfig()
@@ -392,7 +393,7 @@ func setTiFlashProxyConfigDefault(config *v1alpha1.TiFlashProxyConfigWraper, clu
 		controller.FormatClusterDomain(clusterDomain), v1alpha1.DefaultTiFlashProxyStatusPort))
 }
 
-func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, ref *v1alpha1.TidbClusterRef, clusterName, ns, clusterDomain, listenHost string, noLocalPD bool, noLocalTiDB bool, acrossK8s bool) {
+func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, ref *v1alpha1.TidbClusterRef, clusterName, ns, clusterDomain, listenHost string, noLocalPD bool, noLocalTiDB bool, acrossK8s bool, ticiEnabled bool) {
 	config.SetIfNil("tmp_path", "/data0/tmp")
 	config.SetIfNil("display_name", "TiFlash")
 	config.SetIfNil("default_profile", "default")
@@ -405,7 +406,7 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, r
 	config.SetIfNil("https_port", int64(v1alpha1.DefaultTiFlashHttpPort))
 	config.SetIfNil("http_port", int64(v1alpha1.DefaultTiFlashHttpPort))
 	config.SetIfNil("interserver_http_port", int64(v1alpha1.DefaultTiFlashInternalPort))
-	setTiFlashFlashConfigDefault(config, ref, clusterName, ns, clusterDomain, listenHost, noLocalTiDB, acrossK8s)
+	setTiFlashFlashConfigDefault(config, ref, clusterName, ns, clusterDomain, listenHost, noLocalTiDB, acrossK8s, ticiEnabled)
 	setTiFlashLoggerConfigDefault(config)
 	setTiFlashApplicationConfigDefault(config)
 
@@ -439,7 +440,7 @@ func setTiFlashCommonConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, r
 	config.SetIfNil("profiles.default.load_balancing", "random")
 }
 
-func setTiFlashFlashConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, ref *v1alpha1.TidbClusterRef, clusterName, ns, clusterDomain, listenHost string, noLocalTiDB, acrossK8s bool) {
+func setTiFlashFlashConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, ref *v1alpha1.TidbClusterRef, clusterName, ns, clusterDomain, listenHost string, noLocalTiDB, acrossK8s bool, ticiEnabled bool) {
 	tidbStatusAddr := fmt.Sprintf("%s.%s.svc:%d", controller.TiDBMemberName(clusterName), ns, v1alpha1.DefaultTiDBStatusPort)
 	if noLocalTiDB {
 		// TODO: support first cluster without TiDB when deploy cluster across mutli Kubernete clusters
@@ -457,12 +458,16 @@ func setTiFlashFlashConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, re
 	}
 
 	config.SetIfNil("flash.tidb_status_addr", tidbStatusAddr)
-	config.SetIfNil("flash.service_addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:%d",
-		controller.TiFlashMemberName(clusterName),
-		controller.TiFlashPeerMemberName(clusterName),
-		ns,
-		controller.FormatClusterDomain(clusterDomain),
-		v1alpha1.DefaultTiFlashFlashPort))
+	flashServiceAddr := fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiFlashFlashPort)
+	if ticiEnabled {
+		flashServiceAddr = fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:%d",
+			controller.TiFlashMemberName(clusterName),
+			controller.TiFlashPeerMemberName(clusterName),
+			ns,
+			controller.FormatClusterDomain(clusterDomain),
+			v1alpha1.DefaultTiFlashFlashPort)
+	}
+	config.SetIfNil("flash.service_addr", flashServiceAddr)
 	config.SetIfNil("flash.overlap_threshold", 0.6)
 	config.SetIfNil("flash.compact_log_min_period", int64(200))
 
