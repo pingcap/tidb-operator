@@ -3,7 +3,7 @@
 This document describes two authentication modes for deploying TiCI on GCS with TiDB Operator:
 
 1. Service account key via Kubernetes Secret (validated)
-2. GKE Workload Identity (in validation)
+2. GKE Workload Identity (validated)
 
 Date: 2026-02-11
 
@@ -18,7 +18,7 @@ Date: 2026-02-11
 | Mode | Manifest | Current Status | Credential Source |
 | --- | --- | --- | --- |
 | Secret-based | `tici-tc-gcs.yaml` | Validated | `Secret/gcs-sa` mounted file `credentials.json` |
-| Workload Identity | `tici-tc-gcs-wi.yaml` | In validation | GKE metadata server + bound GSA |
+| Workload Identity | `tici-tc-gcs-wi.yaml` | validated | GKE metadata server + bound GSA |
 
 ## Common Prerequisites
 
