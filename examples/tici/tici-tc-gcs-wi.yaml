@@ -67,7 +67,7 @@ spec:
     storageClaims:
     - resources:
         requests:
-          storage: 1Gi
+          storage: 20Gi
       storageClassName: standard
 
   ticdc:
@@ -92,10 +92,10 @@ spec:
       region: us-east-1
       accessKey: ""
       secretKey: ""
-      bucket: tici_test
+      bucket: tici-test
       prefix: tici_default_prefix
       usePathStyle: false
     changefeed:
       enable: true
       changefeedID: tici-replication-task
-      sinkURI: gcs://tici_test/tici_default_prefix/cdc?protocol=canal-json&enable-tidb-extension=true&output-row-key=true
+      sinkURI: gcs://tici-test/tici_default_prefix/cdc?protocol=canal-json&enable-tidb-extension=true&output-row-key=true

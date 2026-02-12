@@ -207,12 +207,16 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		}
 		common.SetIfNil("flash.tidb_status_addr", tidbStatusAddr)
 		if !mountCMInTiflashContainer {
-			common.SetIfNil("flash.service_addr", fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:%d",
-				controller.TiFlashMemberName(name),
-				controller.TiFlashPeerMemberName(name),
-				ns,
-				controller.FormatClusterDomain(clusterDomain),
-				v1alpha1.DefaultTiFlashFlashPort))
+			flashServiceAddr := fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiFlashFlashPort)
+			if tc.Spec.TiCI != nil && tc.Spec.TiCI.S3 != nil {
+				flashServiceAddr = fmt.Sprintf("%s-POD_NUM.%s.%s.svc%s:%d",
+					controller.TiFlashMemberName(name),
+					controller.TiFlashPeerMemberName(name),
+					ns,
+					controller.FormatClusterDomain(clusterDomain),
+					v1alpha1.DefaultTiFlashFlashPort)
+			}
+			common.SetIfNil("flash.service_addr", flashServiceAddr)
 		}
 		common.SetIfNil("flash.flash_cluster.log", defaultClusterLog)
 		common.SetIfNil("flash.proxy.addr", fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiFlashProxyPort))

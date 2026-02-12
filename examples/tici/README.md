@@ -36,7 +36,7 @@ kubectl -n <ns> apply -f tici-tc.yaml
 
 ## Deploy with GCS (service-account secret)
 
-1) Create a GCP service account and grant bucket permissions on `tici_test`.
+1) Create a GCP service account and grant bucket permissions on `tici-test`.
 For smoke test, start with `Storage Object Admin` on the bucket.
 
 2) Create secret `gcs-sa` in your namespace.
@@ -63,7 +63,7 @@ kubectl -n <ns> logs tici-demo-gcs-tiflash-0 -c tiflash --tail=100
 5) Verify objects are written:
 
 ```
-gcloud storage ls gs://tici_test/tici_default_prefix/cdc
+gcloud storage ls gs://tici-test/tici_default_prefix/cdc
 ```
 
 ## Deploy with GCS (GKE Workload Identity)

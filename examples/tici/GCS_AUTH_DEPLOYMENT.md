@@ -24,7 +24,7 @@ Date: 2026-02-11
 
 - Kubernetes cluster with TiDB Operator installed
 - StorageClass `standard` (or update manifests)
-- GCS bucket created (for example: `tici_test` or `tici-test`)
+- GCS bucket created (for example: `tici-test`)
 - TiDB/TiCI images available in your environment
 
 ## Mode 1: Service Account Secret (Validated)
@@ -124,7 +124,7 @@ kubectl -n <ns> apply -f examples/tici/tici-tc-gcs-wi.yaml
 
 2. Bucket name mismatch:
    - Ensure bucket name in `sinkURI` and `tici.s3.bucket` is the same
-   - Avoid mixing `tici_test` and `tici-test`
+   - Use valid GCS bucket names (for example: `tici-test`)
 
 ## Current Conclusion
 
