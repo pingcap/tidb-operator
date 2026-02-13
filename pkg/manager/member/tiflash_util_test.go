@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/agiledragon/gomonkey/v2"
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
@@ -507,7 +506,7 @@ func TestSetTiFlashConfigDefault(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// g := NewGomegaWithT(t)
-			setTiFlashConfigDefault(test.config, nil, "test", "test", "", "0.0.0.0", false, false, false)
+			setTiFlashConfigDefault(test.config, nil, "test", "test", "", "0.0.0.0", false, false, false, false)
 			// g.Expect(test.config).To(Equal(test.expect))
 			if diff := cmp.Diff(*test.expect, *test.config); diff != "" {
 				t.Fatalf("unexpected configuration (-want, +got): %s", diff)
@@ -561,22 +560,17 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 				tc.Spec.TiFlash.BaseImage = "pingcap/tiflash"
 				tc.Spec.Version = testcase.tcVersion
 
+				got := GetTiFlashConfig(tc)
+				g.Expect(got).ShouldNot(BeNil())
+				var want *v1alpha1.TiFlashConfigWraper
 				if testcase.expectV2 {
-					patch := gomonkey.ApplyFunc(getTiFlashConfig, func(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper {
-						t.Fatalf("shouldn't call getTiFlashConfig()")
-						return nil
-					})
-					defer patch.Reset()
+					want = getTiFlashConfigV2(tc)
 				} else {
-					patch := gomonkey.ApplyFunc(getTiFlashConfigV2, func(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper {
-						t.Fatalf("shouldn't call getTiFlashConfigV2()")
-						return nil
-					})
-					defer patch.Reset()
+					want = getTiFlashConfig(tc)
 				}
-
-				cfg := GetTiFlashConfig(tc)
-				g.Expect(cfg).ShouldNot(BeNil())
+				g.Expect(want).ShouldNot(BeNil())
+				g.Expect(cmp.Diff(got.Common.Inner(), want.Common.Inner())).Should(BeEmpty())
+				g.Expect(cmp.Diff(got.Proxy.Inner(), want.Proxy.Inner())).Should(BeEmpty())
 			})
 		}
 	})
@@ -1964,6 +1958,101 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 		}
 	})
 
+}
+
+func TestGetTiFlashConfigV2FlashServiceAddr(t *testing.T) {
+	cases := []struct {
+		name      string
+		setTC     func(tc *v1alpha1.TidbCluster)
+		expectVal string
+	}{
+		{
+			name:      "non tici cluster uses previous flash service addr",
+			expectVal: "0.0.0.0:3930",
+		},
+		{
+			name: "tici cluster uses headless flash service addr",
+			setTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TiCI = &v1alpha1.TiCISpec{
+					S3: &v1alpha1.TiCIS3Spec{
+						Endpoint: "http://s3.test:9000",
+						Bucket:   "bucket",
+					},
+				}
+			},
+			expectVal: "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930",
+		},
+	}
+
+	for _, testcase := range cases {
+		t.Run(testcase.name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+
+			tc := &v1alpha1.TidbCluster{}
+			tc.Name = "test"
+			tc.Namespace = "default"
+			tc.Spec.Version = "v7.1.0"
+			tc.Spec.TiFlash = &v1alpha1.TiFlashSpec{}
+
+			if testcase.setTC != nil {
+				testcase.setTC(tc)
+			}
+
+			cfg := getTiFlashConfigV2(tc)
+			g.Expect(cfg).ShouldNot(BeNil())
+			g.Expect(cfg.Common).ShouldNot(BeNil())
+			flashServiceAddr := cfg.Common.Get("flash.service_addr")
+			g.Expect(flashServiceAddr).ShouldNot(BeNil())
+			g.Expect(flashServiceAddr.MustString()).Should(Equal(testcase.expectVal))
+		})
+	}
+}
+
+func TestGetTiFlashConfigFlashServiceAddr(t *testing.T) {
+	cases := []struct {
+		name      string
+		setTC     func(tc *v1alpha1.TidbCluster)
+		expectVal string
+	}{
+		{
+			name:      "non tici cluster uses previous flash service addr",
+			expectVal: "0.0.0.0:3930",
+		},
+		{
+			name: "tici cluster uses headless flash service addr",
+			setTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TiCI = &v1alpha1.TiCISpec{
+					S3: &v1alpha1.TiCIS3Spec{
+						Endpoint: "http://s3.test:9000",
+						Bucket:   "bucket",
+					},
+				}
+			},
+			expectVal: "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930",
+		},
+	}
+
+	for _, testcase := range cases {
+		t.Run(testcase.name, func(t *testing.T) {
+			g := NewGomegaWithT(t)
+
+			tc := &v1alpha1.TidbCluster{}
+			tc.Name = "test"
+			tc.Namespace = "default"
+			tc.Spec.TiFlash = &v1alpha1.TiFlashSpec{}
+
+			if testcase.setTC != nil {
+				testcase.setTC(tc)
+			}
+
+			cfg := getTiFlashConfig(tc)
+			g.Expect(cfg).ShouldNot(BeNil())
+			g.Expect(cfg.Common).ShouldNot(BeNil())
+			flashServiceAddr := cfg.Common.Get("flash.service_addr")
+			g.Expect(flashServiceAddr).ShouldNot(BeNil())
+			g.Expect(flashServiceAddr.MustString()).Should(Equal(testcase.expectVal))
+		})
+	}
 }
 
 func mustFromOldConfig(old *v1alpha1.TiFlashConfig) *v1alpha1.TiFlashConfigWraper {

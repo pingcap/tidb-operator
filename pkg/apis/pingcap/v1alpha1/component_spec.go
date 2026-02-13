@@ -101,6 +101,14 @@ func (tc *TidbCluster) AllComponentSpec() []ComponentAccessor {
 	if tc.Spec.TiCDC != nil {
 		components = append(components, tc.BaseTiCDCSpec())
 	}
+	if tc.Spec.TiCI != nil {
+		if tc.Spec.TiCI.Meta != nil {
+			components = append(components, tc.BaseTiCIMetaSpec())
+		}
+		if tc.Spec.TiCI.Worker != nil {
+			components = append(components, tc.BaseTiCIWorkerSpec())
+		}
+	}
 	if tc.Spec.Pump != nil {
 		components = append(components, tc.BasePumpSpec())
 	}
@@ -699,6 +707,26 @@ func (tc *TidbCluster) BaseTiCDCSpec() ComponentAccessor {
 	}
 
 	return buildTidbClusterComponentAccessor(TiCDCMemberType, tc, spec)
+}
+
+// BaseTiCIMetaSpec returns the base spec of TiCI meta servers
+func (tc *TidbCluster) BaseTiCIMetaSpec() ComponentAccessor {
+	var spec *ComponentSpec
+	if tc.Spec.TiCI != nil && tc.Spec.TiCI.Meta != nil {
+		spec = &tc.Spec.TiCI.Meta.ComponentSpec
+	}
+
+	return buildTidbClusterComponentAccessor(TiCIMetaMemberType, tc, spec)
+}
+
+// BaseTiCIWorkerSpec returns the base spec of TiCI worker servers
+func (tc *TidbCluster) BaseTiCIWorkerSpec() ComponentAccessor {
+	var spec *ComponentSpec
+	if tc.Spec.TiCI != nil && tc.Spec.TiCI.Worker != nil {
+		spec = &tc.Spec.TiCI.Worker.ComponentSpec
+	}
+
+	return buildTidbClusterComponentAccessor(TiCIWorkerMemberType, tc, spec)
 }
 
 // BasePDSpec returns the base spec of PD servers

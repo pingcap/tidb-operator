@@ -1970,6 +1970,20 @@ TiCDCSpec
 </tr>
 <tr>
 <td>
+<code>tici</code></br>
+<em>
+<a href="#ticispec">
+TiCISpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TiCI cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>tiproxy</code></br>
 <em>
 <a href="#tiproxyspec">
@@ -6036,6 +6050,8 @@ and component-level overrides</p>
 <a href="#pdspec">PDSpec</a>, 
 <a href="#pumpspec">PumpSpec</a>, 
 <a href="#ticdcspec">TiCDCSpec</a>, 
+<a href="#ticimetaspec">TiCIMetaSpec</a>, 
+<a href="#ticiworkerspec">TiCIWorkerSpec</a>, 
 <a href="#tidbspec">TiDBSpec</a>, 
 <a href="#tiflashspec">TiFlashSpec</a>, 
 <a href="#tikvspec">TiKVSpec</a>, 
@@ -10401,6 +10417,8 @@ map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName
 <a href="#pdstatus">PDStatus</a>, 
 <a href="#pumpstatus">PumpStatus</a>, 
 <a href="#ticdcstatus">TiCDCStatus</a>, 
+<a href="#ticimetastatus">TiCIMetaStatus</a>, 
+<a href="#ticiworkerstatus">TiCIWorkerStatus</a>, 
 <a href="#tidbstatus">TiDBStatus</a>, 
 <a href="#tikvstatus">TiKVStatus</a>, 
 <a href="#tiproxystatus">TiProxyStatus</a>, 
@@ -16700,6 +16718,8 @@ LocalStorageProvider
 <a href="#pdmsspec">PDMSSpec</a>, 
 <a href="#pdspec">PDSpec</a>, 
 <a href="#ticdcspec">TiCDCSpec</a>, 
+<a href="#ticimetaspec">TiCIMetaSpec</a>, 
+<a href="#ticiworkerspec">TiCIWorkerSpec</a>, 
 <a href="#tidbspec">TiDBSpec</a>, 
 <a href="#tikvspec">TiKVSpec</a>, 
 <a href="#tiproxyspec">TiProxySpec</a>, 
@@ -16790,6 +16810,8 @@ string
 <a href="#pdstatus">PDStatus</a>, 
 <a href="#pumpstatus">PumpStatus</a>, 
 <a href="#ticdcstatus">TiCDCStatus</a>, 
+<a href="#ticimetastatus">TiCIMetaStatus</a>, 
+<a href="#ticiworkerstatus">TiCIWorkerStatus</a>, 
 <a href="#tidbstatus">TiDBStatus</a>, 
 <a href="#tikvstatus">TiKVStatus</a>, 
 <a href="#tiproxystatus">TiProxyStatus</a>, 
@@ -17505,6 +17527,767 @@ Kubernetes apps/v1.StatefulSetStatus
 <em>
 <a href="#ticdccapture">
 map[string]github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.TiCDCCapture
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#storagevolumestatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#condition-v1-meta">
+[]Kubernetes meta/v1.Condition
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Represents the latest available observations of a component&rsquo;s state.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ticichangefeedspec">TiCIChangefeedSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#ticispec">TiCISpec</a>)
+</p>
+<p>
+<p>TiCIChangefeedSpec controls TiCDC changefeed creation for TiCI</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>enable</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Enable changefeed creation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sinkURI</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SinkURI overrides the computed TiCI sink uri</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>changefeedID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ChangefeedID is the changefeed id</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ticimetaspec">TiCIMetaSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#ticispec">TiCISpec</a>)
+</p>
+<p>
+<p>TiCIMetaSpec contains details of TiCI meta members</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ComponentSpec</code></br>
+<em>
+<a href="#componentspec">
+ComponentSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ComponentSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account for TiCI meta</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>The desired ready replicas</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>baseImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base image of the component, image tag is now allowed during validation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageVolumes</code></br>
+<em>
+<a href="#storagevolume">
+[]StorageVolume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StorageVolumes configure additional storage for TiCI meta pods.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The storageClassName of the persistent volume for TiCI meta data storage.
+Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeAttributesClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The VolumeAttributesClassName of the persistent volume for TiCI meta data storage.
+If it is set, the change of StorageClassName will be ignored.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ticimetastatus">TiCIMetaStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
+</p>
+<p>
+<p>TiCIMetaStatus is TiCI meta status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>synced</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#memberphase">
+MemberPhase
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSet</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#statefulsetstatus-v1-apps">
+Kubernetes apps/v1.StatefulSetStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumes</code></br>
+<em>
+<a href="#storagevolumestatus">
+map[github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeName]*github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.StorageVolumeStatus
+</a>
+</em>
+</td>
+<td>
+<p>Volumes contains the status of all volumes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#condition-v1-meta">
+[]Kubernetes meta/v1.Condition
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Represents the latest available observations of a component&rsquo;s state.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ticireaderspec">TiCIReaderSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#ticispec">TiCISpec</a>)
+</p>
+<p>
+<p>TiCIReaderSpec controls the tici reader config inside TiFlash</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>port</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Port for TiCI reader</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>heartbeatInterval</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>HeartbeatInterval is the interval between heartbeats</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxHeartbeatRetries</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MaxHeartbeatRetries is the max retries for heartbeat</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>heartbeatWorkerCount</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>HeartbeatWorkerCount is the worker count for heartbeat</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ticis3spec">TiCIS3Spec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#ticispec">TiCISpec</a>)
+</p>
+<p>
+<p>TiCIS3Spec is the configuration of S3/MinIO for TiCI</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>endpoint</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Endpoint is the S3 endpoint, e.g. <a href="http://minio:9000">http://minio:9000</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>region</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Region is the S3 region</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>accessKey</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AccessKey is the S3 access key</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>secretKey</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SecretKey is the S3 secret key</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>bucket</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Bucket is the S3 bucket name</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>prefix</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Prefix is the S3 prefix for TiCI data</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>usePathStyle</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>UsePathStyle enables path-style access for S3</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ticispec">TiCISpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterspec">TidbClusterSpec</a>)
+</p>
+<p>
+<p>TiCISpec contains details of TiCI meta/worker members</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>meta</code></br>
+<em>
+<a href="#ticimetaspec">
+TiCIMetaSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Meta is the specification of TiCI meta servers</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>worker</code></br>
+<em>
+<a href="#ticiworkerspec">
+TiCIWorkerSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Worker is the specification of TiCI worker servers</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>s3</code></br>
+<em>
+<a href="#ticis3spec">
+TiCIS3Spec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>S3 is the configuration of S3/MinIO storage used by TiCI</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>reader</code></br>
+<em>
+<a href="#ticireaderspec">
+TiCIReaderSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Reader is the configuration of TiCI reader in TiFlash</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>changefeed</code></br>
+<em>
+<a href="#ticichangefeedspec">
+TiCIChangefeedSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Changefeed controls the TiCDC changefeed creation for TiCI</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ticistatus">TiCIStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
+</p>
+<p>
+<p>TiCIStatus is TiCI changefeed status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>changefeedSynced</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>ChangefeedSynced indicates whether the TiCI changefeed is created</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>changefeedJobName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ChangefeedJobName is the job name that creates the changefeed</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>changefeedLastError</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ChangefeedLastError records the last error message if job failed</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ticiworkerspec">TiCIWorkerSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#ticispec">TiCISpec</a>)
+</p>
+<p>
+<p>TiCIWorkerSpec contains details of TiCI worker members</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ComponentSpec</code></br>
+<em>
+<a href="#componentspec">
+ComponentSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ComponentSpec</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ResourceRequirements</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResourceRequirements</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specify a Service Account for TiCI worker</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>The desired ready replicas</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>baseImage</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Base image of the component, image tag is now allowed during validation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageVolumes</code></br>
+<em>
+<a href="#storagevolume">
+[]StorageVolume
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StorageVolumes configure additional storage for TiCI worker pods.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>storageClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The storageClassName of the persistent volume for TiCI worker data storage.
+Defaults to Kubernetes default storage class.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeAttributesClassName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The VolumeAttributesClassName of the persistent volume for TiCI worker data storage.
+If it is set, the change of StorageClassName will be ignored.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ticiworkerstatus">TiCIWorkerStatus</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#tidbclusterstatus">TidbClusterStatus</a>)
+</p>
+<p>
+<p>TiCIWorkerStatus is TiCI worker status</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>synced</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>phase</code></br>
+<em>
+<a href="#memberphase">
+MemberPhase
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>statefulSet</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#statefulsetstatus-v1-apps">
+Kubernetes apps/v1.StatefulSetStatus
 </a>
 </em>
 </td>
@@ -25077,6 +25860,20 @@ TiCDCSpec
 </tr>
 <tr>
 <td>
+<code>tici</code></br>
+<em>
+<a href="#ticispec">
+TiCISpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TiCI cluster spec</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>tiproxy</code></br>
 <em>
 <a href="#tiproxyspec">
@@ -25708,6 +26505,42 @@ TiProxyStatus
 <em>
 <a href="#ticdcstatus">
 TiCDCStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>ticiMeta</code></br>
+<em>
+<a href="#ticimetastatus">
+TiCIMetaStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>ticiWorker</code></br>
+<em>
+<a href="#ticiworkerstatus">
+TiCIWorkerStatus
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>tici</code></br>
+<em>
+<a href="#ticistatus">
+TiCIStatus
 </a>
 </em>
 </td>

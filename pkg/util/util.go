@@ -133,6 +133,16 @@ func GetPodOrdinals(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberType) (s
 	} else if memberType == v1alpha1.TiCDCMemberType {
 		ann = label.AnnTiCDCDeleteSlots
 		replicas = tc.Spec.TiCDC.Replicas
+	} else if memberType == v1alpha1.TiCIMetaMemberType {
+		ann = label.AnnTiCIMetaDeleteSlots
+		if tc.Spec.TiCI != nil && tc.Spec.TiCI.Meta != nil {
+			replicas = tc.Spec.TiCI.Meta.Replicas
+		}
+	} else if memberType == v1alpha1.TiCIWorkerMemberType {
+		ann = label.AnnTiCIWorkerDeleteSlots
+		if tc.Spec.TiCI != nil && tc.Spec.TiCI.Worker != nil {
+			replicas = tc.Spec.TiCI.Worker.Replicas
+		}
 	} else if memberType == v1alpha1.TiProxyMemberType {
 		ann = label.AnnTiProxyDeleteSlots
 		replicas = tc.Spec.TiProxy.Replicas
