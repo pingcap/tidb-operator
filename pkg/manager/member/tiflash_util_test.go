@@ -1630,11 +1630,11 @@ func TestTestGetTiFlashConfig(t *testing.T) {
 					[flash]
 					  tidb_status_addr = "test-tidb.default.svc:10080"
 					  [flash.flash_cluster]
-					    log = "/data0/logs/flash_cluster_manager.log"
+					  	log = "/data0/logs/flash_cluster_manager.log"
 					  [flash.proxy]
-					    addr = "0.0.0.0:20170"
-					    config = "/etc/tiflash/proxy_templ.toml"
-					    data-dir = "/data0/proxy"
+					  	addr = "0.0.0.0:20170"
+						config = "/etc/tiflash/proxy_templ.toml"
+						data-dir = "/data0/proxy"
 					[logger]
 					  errorlog = "/data0/logs/error.log"
 					  log = "/data0/logs/server.log"
