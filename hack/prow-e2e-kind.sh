@@ -10,17 +10,8 @@
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-#
-# Prow E2E Kind runner - centralized script for pull-e2e-kind-* jobs.
-# Run from tidb-operator repo root after Prow clones the repo.
-#
-# Prerequisites: Docker daemon (DinD) must be running and responsive.
-# This script installs Go, Docker CLI, kind if not present, then runs e2e.
-#
 
 set -o errexit
 set -o nounset
