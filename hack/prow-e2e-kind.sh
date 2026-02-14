@@ -268,4 +268,4 @@ else
     echo "No coverage files found, skipping merge and upload"
 fi
 
-echo "Test execution completed"
+echo "Test execution completed."
