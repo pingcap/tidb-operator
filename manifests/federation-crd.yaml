@@ -801,6 +801,8 @@ spec:
                         type: string
                       container:
                         type: string
+                      endpoint:
+                        type: string
                       path:
                         type: string
                       prefix:
@@ -3681,6 +3683,8 @@ spec:
                             accessTier:
                               type: string
                             container:
+                              type: string
+                            endpoint:
                               type: string
                             path:
                               type: string
