@@ -39,7 +39,7 @@ KIND_NODE_COVERAGE_DIR="${KIND_NODE_COVERAGE_DIR:-/mnt/disks/coverage}"
 COVERAGE_MERGE_DIR="${COVERAGE_MERGE_DIR:-/tmp/coverage-merge}"
 ARTIFACTS_DIR_DEFAULT="${ARTIFACTS_DIR_DEFAULT:-_artifacts}"
 
-# Environment variables set by the caller (e.g. Prow or a wrapper script):
+# Environment variables set by the caller (e.g. CI or a wrapper script):
 #   CODECOV_TOKEN    - If set, coverage is uploaded to Codecov after tests (see upload_codecov).
 #                      Typically defined in the CI/wrapper script that invokes this script.
 
@@ -47,9 +47,9 @@ ROOT=$(unset CDPATH && cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
 function usage() {
     cat <<'EOF'
-Usage: hack/prow-e2e-kind.sh [options]
+Usage: hack/run-e2e-kind.sh [options]
 
-Runs tidb-operator e2e tests in a Kind cluster for Prow CI.
+Runs tidb-operator e2e tests in a Kind cluster (CI or local).
 
 Options (also via env vars):
   --focus=FOCUS           Ginkgo focus regex (required)
@@ -65,9 +65,9 @@ Options (also via env vars):
   -h, --help              Show this help
 
 Examples:
-  ./hack/prow-e2e-kind.sh --focus='TiDBCluster' --skip='\[TiDBCluster:\sBasic\]' --nodes=4
-  ./hack/prow-e2e-kind.sh --focus='DMCluster' --nodes=2
-  ./hack/prow-e2e-kind.sh --focus='\[Serial\]' --extra-args='--install-operator=false' --delete-namespace
+  ./hack/run-e2e-kind.sh --focus='TiDBCluster' --skip='\[TiDBCluster:\sBasic\]' --nodes=4
+  ./hack/run-e2e-kind.sh --focus='DMCluster' --nodes=2
+  ./hack/run-e2e-kind.sh --focus='\[Serial\]' --extra-args='--install-operator=false' --delete-namespace
 EOF
 }
 
