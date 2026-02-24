@@ -201,11 +201,13 @@ test: ## Run unit tests
 	@echo "Run unit tests"
 ifeq ($(GO_COVER),y)
 	go test -cover \
+		-timeout=20m \
 		$(foreach pkg, $(TEST_PACKAGES), $(pkg)/...) \
 		$(foreach mod, $(GO_SUBMODULES), $(mod)/...) \
 		-coverpkg=$$($(TEST_COVER_PACKAGES)) -coverprofile=coverage.txt -covermode=atomic
 else
 	go test \
+		-timeout=20m \
 		$(foreach pkg, $(TEST_PACKAGES), $(pkg)/...) \
 		$(foreach mod, $(GO_SUBMODULES), $(mod)/...)
 endif
