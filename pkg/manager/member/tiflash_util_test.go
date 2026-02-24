@@ -1971,7 +1971,7 @@ func TestGetTiFlashConfigV2FlashServiceAddr(t *testing.T) {
 			expectVal: "0.0.0.0:3930",
 		},
 		{
-			name: "tici cluster uses headless flash service addr",
+			name: "tici cluster keeps config flash service listen addr",
 			setTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiCI = &v1alpha1.TiCISpec{
 					S3: &v1alpha1.TiCIS3Spec{
@@ -1980,7 +1980,7 @@ func TestGetTiFlashConfigV2FlashServiceAddr(t *testing.T) {
 					},
 				}
 			},
-			expectVal: "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930",
+			expectVal: "0.0.0.0:3930",
 		},
 	}
 
@@ -2019,7 +2019,7 @@ func TestGetTiFlashConfigFlashServiceAddr(t *testing.T) {
 			expectVal: "0.0.0.0:3930",
 		},
 		{
-			name: "tici cluster uses headless flash service addr",
+			name: "tici cluster keeps config flash service listen addr",
 			setTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.TiCI = &v1alpha1.TiCISpec{
 					S3: &v1alpha1.TiCIS3Spec{
@@ -2028,7 +2028,7 @@ func TestGetTiFlashConfigFlashServiceAddr(t *testing.T) {
 					},
 				}
 			},
-			expectVal: "test-tiflash-POD_NUM.test-tiflash-peer.default.svc:3930",
+			expectVal: "0.0.0.0:3930",
 		},
 	}
 

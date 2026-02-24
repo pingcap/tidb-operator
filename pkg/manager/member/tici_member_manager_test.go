@@ -32,15 +32,21 @@ level = "debug"`
 		t.Fatalf("build worker config failed: %v", err)
 	}
 
-	if !strings.Contains(cfg, `[server]`) {
+	wrapper := tcconfig.New(map[string]interface{}{})
+	if err := wrapper.UnmarshalTOML([]byte(cfg)); err != nil {
+		t.Fatalf("worker config should be valid TOML, got err: %v, config: %s", err, cfg)
+	}
+	pdAddr := wrapper.Get("server.pd-addr")
+	if pdAddr == nil || pdAddr.MustString() != "tici-test-pd:2379" {
 		t.Fatalf("worker config should include generated server section, got: %s", cfg)
 	}
-	if !strings.Contains(cfg, `endpoint = "http://minio-service:9000"`) {
+	endpoint := wrapper.Get("s3.endpoint")
+	if endpoint == nil || endpoint.MustString() != "http://minio-service:9000" {
 		t.Fatalf("worker config should include generated s3 section, got: %s", cfg)
 	}
-	if !strings.Contains(cfg, `[log]
-level = "debug"`) {
-		t.Fatalf("worker config should append custom config, got: %s", cfg)
+	logLevel := wrapper.Get("log.level")
+	if logLevel == nil || logLevel.MustString() != "debug" {
+		t.Fatalf("worker config should merge custom log level, got: %s", cfg)
 	}
 }
 
@@ -54,15 +60,20 @@ data-dir = "/data/tici-meta"`
 		t.Fatalf("build meta config failed: %v", err)
 	}
 
-	if !strings.Contains(cfg, `[tidb-server]`) {
+	wrapper := tcconfig.New(map[string]interface{}{})
+	if err := wrapper.UnmarshalTOML([]byte(cfg)); err != nil {
+		t.Fatalf("meta config should be valid TOML, got err: %v, config: %s", err, cfg)
+	}
+	dsns := wrapper.Get("tidb-server.dsns")
+	if dsns == nil || len(dsns.MustStringSlice()) == 0 {
 		t.Fatalf("meta config should include generated tidb-server section, got: %s", cfg)
 	}
-	if !strings.Contains(cfg, `[shard]`) {
+	if wrapper.Get("shard.max-size") == nil {
 		t.Fatalf("meta config should include generated shard section, got: %s", cfg)
 	}
-	if !strings.Contains(cfg, `[storage]
-data-dir = "/data/tici-meta"`) {
-		t.Fatalf("meta config should append custom config, got: %s", cfg)
+	dataDir := wrapper.Get("storage.data-dir")
+	if dataDir == nil || dataDir.MustString() != "/data/tici-meta" {
+		t.Fatalf("meta config should merge custom storage.data-dir, got: %s", cfg)
 	}
 }
 
