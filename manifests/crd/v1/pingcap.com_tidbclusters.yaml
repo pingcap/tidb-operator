@@ -17759,6 +17759,8 @@ spec:
                         type: string
                       statefulSetUpdateStrategy:
                         type: string
+                      config:
+                        type: string
                       storageClassName:
                         type: string
                       storageVolumes:
@@ -20633,6 +20635,8 @@ spec:
                       serviceAccount:
                         type: string
                       statefulSetUpdateStrategy:
+                        type: string
+                      config:
                         type: string
                       storageClassName:
                         type: string

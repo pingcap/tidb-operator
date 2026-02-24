@@ -15,6 +15,7 @@ package volumes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -175,8 +176,7 @@ func (p *podVolModifier) getBoundPVFromPVC(pvc *corev1.PersistentVolumeClaim) (*
 
 	name := pvc.Spec.VolumeName
 	if name == "" {
-		// PVC may be pending and not bound yet.
-		return nil, nil
+		return nil, errors.New("pvc is not bound yet: spec.volumeName is empty")
 	}
 
 	return p.deps.PVLister.Get(name)

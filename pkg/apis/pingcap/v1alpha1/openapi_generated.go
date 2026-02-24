@@ -10071,6 +10071,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCIMetaSpec(ref common.ReferenceCallback)
 							},
 						},
 					},
+					"config": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Config is appended to the generated TiCI meta TOML config.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"storageClassName": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The storageClassName of the persistent volume for TiCI meta data storage. Defaults to Kubernetes default storage class.",
@@ -10627,6 +10634,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TiCIWorkerSpec(ref common.ReferenceCallbac
 									},
 								},
 							},
+						},
+					},
+					"config": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Config is appended to the generated TiCI worker TOML config.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"storageClassName": {

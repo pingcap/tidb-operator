@@ -19,6 +19,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	tcconfig "github.com/pingcap/tidb-operator/pkg/apis/util/config"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
@@ -684,7 +685,7 @@ func buildTiCIMetaConfig(tc *v1alpha1.TidbCluster) (string, error) {
 	tidbPort := tc.Spec.TiDB.GetServicePort()
 	pdAddr := fmt.Sprintf("%s:%d", controller.PDMemberName(tc.Name), v1alpha1.DefaultPDClientPort)
 
-	return fmt.Sprintf(`[tidb-server]
+	baseConfig := fmt.Sprintf(`[tidb-server]
 dsns = ["mysql://root@%s:%d"]
 
 [server]
@@ -700,7 +701,11 @@ bucket = "%s"
 
 [shard]
 max-size = "128MB"
-`, tidbHost, tidbPort, pdAddr, s3.Endpoint, s3.Region, s3.AccessKey, s3.SecretKey, s3.UsePathStyle, s3.Bucket), nil
+`, tidbHost, tidbPort, pdAddr, s3.Endpoint, s3.Region, s3.AccessKey, s3.SecretKey, s3.UsePathStyle, s3.Bucket)
+	if tc.Spec.TiCI != nil && tc.Spec.TiCI.Meta != nil {
+		return appendTiCICustomConfig(baseConfig, tc.Spec.TiCI.Meta.Config)
+	}
+	return baseConfig, nil
 }
 
 func buildTiCIWorkerConfig(tc *v1alpha1.TidbCluster) (string, error) {
@@ -710,7 +715,7 @@ func buildTiCIWorkerConfig(tc *v1alpha1.TidbCluster) (string, error) {
 	}
 	pdAddr := fmt.Sprintf("%s:%d", controller.PDMemberName(tc.Name), v1alpha1.DefaultPDClientPort)
 
-	return fmt.Sprintf(`[server]
+	baseConfig := fmt.Sprintf(`[server]
 pd-addr = "%s"
 
 [s3]
@@ -720,7 +725,35 @@ access-key = "%s"
 secret-key = "%s"
 use-path-style = %t
 bucket = "%s"
-`, pdAddr, s3.Endpoint, s3.Region, s3.AccessKey, s3.SecretKey, s3.UsePathStyle, s3.Bucket), nil
+`, pdAddr, s3.Endpoint, s3.Region, s3.AccessKey, s3.SecretKey, s3.UsePathStyle, s3.Bucket)
+	if tc.Spec.TiCI != nil && tc.Spec.TiCI.Worker != nil {
+		return appendTiCICustomConfig(baseConfig, tc.Spec.TiCI.Worker.Config)
+	}
+	return baseConfig, nil
+}
+
+func appendTiCICustomConfig(baseConfig, customConfig string) (string, error) {
+	customConfig = strings.TrimSpace(customConfig)
+	if customConfig == "" {
+		return baseConfig, nil
+	}
+
+	base := tcconfig.New(map[string]interface{}{})
+	if err := base.UnmarshalTOML([]byte(baseConfig)); err != nil {
+		return "", fmt.Errorf("failed to unmarshal generated TiCI config: %v", err)
+	}
+	user := tcconfig.New(map[string]interface{}{})
+	if err := user.UnmarshalTOML([]byte(customConfig)); err != nil {
+		return "", fmt.Errorf("failed to unmarshal custom TiCI config: %v", err)
+	}
+	if err := base.Merge(user); err != nil {
+		return "", fmt.Errorf("failed to merge custom TiCI config: %v", err)
+	}
+	merged, err := base.MarshalTOML()
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal merged TiCI config: %v", err)
+	}
+	return strings.TrimRight(string(merged), "\n") + "\n", nil
 }
 
 type tiCIS3Config struct {

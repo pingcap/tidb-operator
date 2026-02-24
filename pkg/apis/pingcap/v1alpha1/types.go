@@ -980,6 +980,10 @@ type TiCIMetaSpec struct {
 	// +optional
 	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
 
+	// Config is appended to the generated TiCI meta TOML config.
+	// +optional
+	Config string `json:"config,omitempty"`
+
 	// The storageClassName of the persistent volume for TiCI meta data storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional
@@ -1011,6 +1015,10 @@ type TiCIWorkerSpec struct {
 	// StorageVolumes configure additional storage for TiCI worker pods.
 	// +optional
 	StorageVolumes []StorageVolume `json:"storageVolumes,omitempty"`
+
+	// Config is appended to the generated TiCI worker TOML config.
+	// +optional
+	Config string `json:"config,omitempty"`
 
 	// The storageClassName of the persistent volume for TiCI worker data storage.
 	// Defaults to Kubernetes default storage class.
