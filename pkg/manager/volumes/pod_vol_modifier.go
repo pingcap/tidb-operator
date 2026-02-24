@@ -204,7 +204,6 @@ func (p *podVolModifier) NewActualVolumeOfPod(vs []DesiredVolume, ns string, vol
 		return nil, nil
 	}
 
-	// TODO: fix the case when pvc is pending
 	pv, err := p.getBoundPVFromPVC(pvc)
 	if err != nil {
 		return nil, err

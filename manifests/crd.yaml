@@ -42452,6 +42452,8 @@ spec:
                         x-kubernetes-list-map-keys:
                         - name
                         x-kubernetes-list-type: map
+                      config:
+                        type: string
                       configUpdateStrategy:
                         type: string
                       dnsConfig:
@@ -43394,8 +43396,6 @@ spec:
                       serviceAccount:
                         type: string
                       statefulSetUpdateStrategy:
-                        type: string
-                      config:
                         type: string
                       storageClassName:
                         type: string
@@ -45329,6 +45329,8 @@ spec:
                         x-kubernetes-list-map-keys:
                         - name
                         x-kubernetes-list-type: map
+                      config:
+                        type: string
                       configUpdateStrategy:
                         type: string
                       dnsConfig:
@@ -46271,8 +46273,6 @@ spec:
                       serviceAccount:
                         type: string
                       statefulSetUpdateStrategy:
-                        type: string
-                      config:
                         type: string
                       storageClassName:
                         type: string
