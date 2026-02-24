@@ -17712,6 +17712,18 @@ string
 </tr>
 <tr>
 <td>
+<code>config</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Config is appended to the generated TiCI meta TOML config.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>storageClassName</code></br>
 <em>
 string
@@ -18214,6 +18226,18 @@ string
 <td>
 <em>(Optional)</em>
 <p>StorageVolumes configure additional storage for TiCI worker pods.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>config</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Config is appended to the generated TiCI worker TOML config.</p>
 </td>
 </tr>
 <tr>
