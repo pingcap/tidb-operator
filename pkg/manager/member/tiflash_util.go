@@ -207,7 +207,7 @@ func getTiFlashConfigV2(tc *v1alpha1.TidbCluster) *v1alpha1.TiFlashConfigWraper 
 		}
 		common.SetIfNil("flash.tidb_status_addr", tidbStatusAddr)
 		if !mountCMInTiflashContainer {
-			common.SetIfNil("flash.service_addr", fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiFlashFlashPort)
+			common.SetIfNil("flash.service_addr", fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiFlashFlashPort))
 		}
 		common.SetIfNil("flash.flash_cluster.log", defaultClusterLog)
 		common.SetIfNil("flash.proxy.addr", fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiFlashProxyPort))
@@ -449,7 +449,7 @@ func setTiFlashFlashConfigDefault(config *v1alpha1.TiFlashCommonConfigWraper, re
 	}
 
 	config.SetIfNil("flash.tidb_status_addr", tidbStatusAddr)
-	config.SetIfNil("flash.service_addr", fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiFlashFlashPort)
+	config.SetIfNil("flash.service_addr", fmt.Sprintf("%s:%d", listenHost, v1alpha1.DefaultTiFlashFlashPort))
 	config.SetIfNil("flash.overlap_threshold", 0.6)
 	config.SetIfNil("flash.compact_log_min_period", int64(200))
 
