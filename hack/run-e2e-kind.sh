@@ -175,15 +175,15 @@ function install_dependencies() {
 # Build binaries, e2e image, and load-side helpers (gocovmerge, codecov patch).
 function build_and_prepare() {
     local githash image_tag
-    ./hack/e2e-patch-codecov.sh || true
+    ./hack/e2e-patch-codecov.sh >&2 || true
     unset GOSUMDB
-    E2E=y make build e2e-build
-    make gocovmerge || true
+    E2E=y make build e2e-build >&2
+    make gocovmerge >&2 || true
 
     githash=$(git rev-parse HEAD)
     image_tag="e2e-${githash:0:6}"
-    echo "Building images locally..."
-    E2E=y DOCKER_REPO=tidb-operator-e2e IMAGE_TAG="${image_tag}" make docker e2e-docker || {
+    echo "Building images locally..." >&2
+    E2E=y DOCKER_REPO=tidb-operator-e2e IMAGE_TAG="${image_tag}" make docker e2e-docker >&2 || {
         echo "ERROR: Failed to build Docker images (make docker e2e-docker)" >&2
         exit 1
     }
