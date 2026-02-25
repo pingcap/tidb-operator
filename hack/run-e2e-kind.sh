@@ -183,7 +183,10 @@ function build_and_prepare() {
     githash=$(git rev-parse HEAD)
     image_tag="e2e-${githash:0:6}"
     echo "Building images locally..."
-    E2E=y DOCKER_REPO=tidb-operator-e2e IMAGE_TAG="${image_tag}" make docker e2e-docker
+    E2E=y DOCKER_REPO=tidb-operator-e2e IMAGE_TAG="${image_tag}" make docker e2e-docker || {
+        echo "ERROR: Failed to build Docker images (make docker e2e-docker)" >&2
+        exit 1
+    }
     echo "${image_tag}"
 }
 
@@ -191,6 +194,10 @@ function build_and_prepare() {
 # Create Kind cluster (e2e.sh up), kubeconfig, coverage dirs, load images, tune node resources.
 function setup_kind_cluster() {
     local image_tag="$1"
+    if [ -z "${image_tag}" ]; then
+        echo "ERROR: setup_kind_cluster requires non-empty image_tag" >&2
+        exit 1
+    fi
     local kind_bin="kind"
 
     mount --make-rshared / || true
@@ -307,6 +314,10 @@ function main() {
 
     local image_tag
     image_tag=$(build_and_prepare)
+    if [ -z "${image_tag}" ]; then
+        echo "ERROR: build_and_prepare did not return image_tag" >&2
+        exit 1
+    fi
     setup_kind_cluster "${image_tag}"
     run_tests "${image_tag}"
     upload_codecov
