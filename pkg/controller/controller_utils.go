@@ -373,6 +373,31 @@ func TiCDCPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-ticdc-peer", clusterName)
 }
 
+// TiCIChangefeedJobName returns tici changefeed job name
+func TiCIChangefeedJobName(clusterName string) string {
+	return fmt.Sprintf("%s-tici-changefeed", clusterName)
+}
+
+// TiCIMetaMemberName returns tici meta member name
+func TiCIMetaMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tici-meta", clusterName)
+}
+
+// TiCIMetaPeerMemberName returns tici meta peer service name
+func TiCIMetaPeerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tici-meta-peer", clusterName)
+}
+
+// TiCIWorkerMemberName returns tici worker member name
+func TiCIWorkerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tici-worker", clusterName)
+}
+
+// TiCIWorkerPeerMemberName returns tici worker peer service name
+func TiCIWorkerPeerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-tici-worker-peer", clusterName)
+}
+
 // TiDBMemberName returns tidb member name
 func TiDBMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-tidb", clusterName)

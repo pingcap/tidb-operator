@@ -1,0 +1,134 @@
+apiVersion: pingcap.com/v1alpha1
+kind: TidbCluster
+metadata:
+  name: tici-demo-gcs
+spec:
+  version: v8.5.5
+  imagePullPolicy: IfNotPresent
+  timezone: UTC
+  pvReclaimPolicy: Retain
+  enableDynamicConfiguration: true
+  discovery: {}
+  helper:
+    image: alpine:3.16.0
+
+  pd:
+    replicas: 1
+    baseImage: us-docker.pkg.dev/pingcap-testing-account/hub/tikv/pd/image
+    version: master
+    requests:
+      storage: 1Gi
+    storageClassName: standard
+    config: |
+      [replication]
+        enable-placement-rules = true
+
+  tikv:
+    replicas: 1
+    baseImage: us-docker.pkg.dev/pingcap-testing-account/hub/tikv/tikv/image
+    version: master
+    requests:
+      storage: 1Gi
+    storageClassName: standard
+    evictLeaderTimeout: 1m
+    config:
+      storage:
+        reserve-space: "0MB"
+      rocksdb:
+        max-open-files: 256
+      raftdb:
+        max-open-files: 256
+
+  tidb:
+    replicas: 1
+    config: {}
+    baseImage: us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/tidb/images/tidb-server
+    version: feature-fts
+    service:
+      type: ClusterIP
+
+  tiflash:
+    replicas: 1
+    baseImage: us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/tiflash/image
+    version: feature-fts
+    env:
+    - name: GOOGLE_APPLICATION_CREDENTIALS
+      value: /var/secrets/google/credentials.json
+    additionalVolumes:
+    - name: gcs-sa-secret
+      secret:
+        secretName: gcs-sa
+    additionalVolumeMounts:
+    - name: gcs-sa-secret
+      mountPath: /var/secrets/google
+      readOnly: true
+    config:
+      config: |
+        [tici.logger]
+          filename = "/data0/logs/tici_searchlib.log"
+          level = "info"
+    storageClaims:
+    - resources:
+        requests:
+          storage: 1Gi
+      storageClassName: standard
+
+  ticdc:
+    replicas: 1
+    baseImage: us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/ticdc/image
+    version: master
+    env:
+    - name: GOOGLE_APPLICATION_CREDENTIALS
+      value: /var/secrets/google/credentials.json
+    additionalVolumes:
+    - name: gcs-sa-secret
+      secret:
+        secretName: gcs-sa
+    additionalVolumeMounts:
+    - name: gcs-sa-secret
+      mountPath: /var/secrets/google
+      readOnly: true
+
+  tici:
+    meta:
+      replicas: 1
+      baseImage: us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/tici/image
+      version: master
+      env:
+      - name: GOOGLE_APPLICATION_CREDENTIALS
+        value: /var/secrets/google/credentials.json
+      additionalVolumes:
+      - name: gcs-sa-secret
+        secret:
+          secretName: gcs-sa
+      additionalVolumeMounts:
+      - name: gcs-sa-secret
+        mountPath: /var/secrets/google
+        readOnly: true
+    worker:
+      replicas: 1
+      baseImage: us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/tici/image
+      version: master
+      env:
+      - name: GOOGLE_APPLICATION_CREDENTIALS
+        value: /var/secrets/google/credentials.json
+      additionalVolumes:
+      - name: gcs-sa-secret
+        secret:
+          secretName: gcs-sa
+      additionalVolumeMounts:
+      - name: gcs-sa-secret
+        mountPath: /var/secrets/google
+        readOnly: true
+    s3:
+      endpoint: https://storage.googleapis.com
+      region: us-east-1
+      accessKey: /var/secrets/google/credentials.json
+      secretKey: ""
+      bucket: tici-test
+      prefix: tici_default_prefix
+      usePathStyle: false
+    changefeed:
+      enable: true
+      changefeedID: tici-replication-task
+      sinkURI: gcs://tici-test/tici_default_prefix/cdc?protocol=canal-json&enable-tidb-extension=true&output-row-key=true
