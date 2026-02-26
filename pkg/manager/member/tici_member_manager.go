@@ -225,6 +225,8 @@ func (m *ticiMemberManager) syncTiCIMetaStatefulSet(tc *v1alpha1.TidbCluster) er
 		return err
 	}
 
+	prepareTiCIRollingUpgrade(newSts, oldSts)
+
 	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiCIMetaSTS", newSts, oldSts)
 }
 
@@ -270,7 +272,22 @@ func (m *ticiMemberManager) syncTiCIWorkerStatefulSet(tc *v1alpha1.TidbCluster) 
 		return err
 	}
 
+	prepareTiCIRollingUpgrade(newSts, oldSts)
+
 	return mngerutils.UpdateStatefulSetWithPrecheck(m.deps, tc, "FailedUpdateTiCIWorkerSTS", newSts, oldSts)
+}
+
+func prepareTiCIRollingUpgrade(newSet, oldSet *appsv1.StatefulSet) {
+	if newSet == nil || oldSet == nil {
+		return
+	}
+	if newSet.Spec.UpdateStrategy.Type != appsv1.RollingUpdateStatefulSetStrategyType {
+		return
+	}
+	needsUpgrade := !templateEqual(newSet, oldSet) || oldSet.Status.CurrentRevision != oldSet.Status.UpdateRevision
+	if needsUpgrade {
+		mngerutils.SetUpgradePartition(newSet, 0)
+	}
 }
 
 func (m *ticiMemberManager) syncTiCIMetaStatus(tc *v1alpha1.TidbCluster, sts *appsv1.StatefulSet) error {
