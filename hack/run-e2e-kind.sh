@@ -172,7 +172,7 @@ function install_dependencies() {
     echo "Docker daemon is responsive."
 }
 
-# Build binaries, e2e image, and load-side helpers (gocovmerge, codecov patch).
+# Build binaries, e2e image, and build-side helpers (gocovmerge, codecov patch).
 function build_and_prepare() {
     local githash image_tag
     ./hack/e2e-patch-codecov.sh >&2 || true
@@ -248,7 +248,11 @@ function run_tests() {
     local e2e_extra=()
     e2e_extra+=(--ginkgo.focus="${GINKGO_FOCUS}")
     [ -n "$GINKGO_SKIP" ] && e2e_extra+=(--ginkgo.skip="${GINKGO_SKIP}")
-    [ -n "$E2E_EXTRA_ARGS" ] && e2e_extra+=($E2E_EXTRA_ARGS)
+    if [ -n "$E2E_EXTRA_ARGS" ]; then
+        set -f
+        e2e_extra+=($E2E_EXTRA_ARGS)
+        set +f
+    fi
 
     timeout "${TEST_TIMEOUT}" env \
         E2E=y \
