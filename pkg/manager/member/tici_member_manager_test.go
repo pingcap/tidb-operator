@@ -81,6 +81,35 @@ data-dir = "/data/tici-meta"`
 	}
 }
 
+func TestBuildTiCIConfigIncludesS3Prefix(t *testing.T) {
+	tc := newTidbClusterForTiCIConfig()
+	tc.Spec.TiCI.S3.Prefix = "custom_prefix"
+
+	workerCfg, err := buildTiCIWorkerConfig(tc)
+	if err != nil {
+		t.Fatalf("build worker config failed: %v", err)
+	}
+	assertS3Prefix(t, workerCfg, "worker", "custom_prefix")
+
+	metaCfg, err := buildTiCIMetaConfig(tc)
+	if err != nil {
+		t.Fatalf("build meta config failed: %v", err)
+	}
+	assertS3Prefix(t, metaCfg, "meta", "custom_prefix")
+}
+
+func assertS3Prefix(t *testing.T, cfg, component, expected string) {
+	t.Helper()
+	wrapper := tcconfig.New(map[string]interface{}{})
+	if err := wrapper.UnmarshalTOML([]byte(cfg)); err != nil {
+		t.Fatalf("%s config should be valid TOML, got err: %v, config: %s", component, err, cfg)
+	}
+	prefix := wrapper.Get("s3.prefix")
+	if prefix == nil || prefix.MustString() != expected {
+		t.Fatalf("%s config should include s3.prefix=%q, got: %s", component, expected, cfg)
+	}
+}
+
 func TestAppendTiCICustomConfig(t *testing.T) {
 	base := "[server]\npd-addr = \"x\"\n"
 
