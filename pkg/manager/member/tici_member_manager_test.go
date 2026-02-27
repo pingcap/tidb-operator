@@ -14,11 +14,15 @@
 package member
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	tcconfig "github.com/pingcap/tidb-operator/pkg/apis/util/config"
+
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -103,6 +107,46 @@ func TestAppendTiCICustomConfig(t *testing.T) {
 	pdAddr := wrapper.Get("server.pd-addr")
 	if pdAddr == nil || pdAddr.MustString() != "y" {
 		t.Fatalf("custom server.pd-addr should override generated value, got: %v", pdAddr)
+	}
+}
+
+func TestPrepareTiCIRollingUpgrade(t *testing.T) {
+	partition := int32(1)
+	oldSet := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "tc-tici-meta",
+			Namespace:   "default",
+			Annotations: map[string]string{},
+		},
+		Spec: appsv1.StatefulSetSpec{
+			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+				Type:          appsv1.RollingUpdateStatefulSetStrategyType,
+				RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{Partition: &partition},
+			},
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{Name: "tici-meta", Image: "tici:v1"}},
+				},
+			},
+		},
+		Status: appsv1.StatefulSetStatus{
+			CurrentRevision: "tc-tici-meta-old",
+			UpdateRevision:  "tc-tici-meta-new",
+		},
+	}
+	specData, err := json.Marshal(appsv1.StatefulSetSpec{Template: oldSet.Spec.Template})
+	if err != nil {
+		t.Fatalf("marshal spec failed: %v", err)
+	}
+	oldSet.Annotations[LastAppliedConfigAnnotation] = string(specData)
+
+	newSet := oldSet.DeepCopy()
+	prepareTiCIRollingUpgrade(newSet, oldSet)
+	if newSet.Spec.UpdateStrategy.RollingUpdate == nil || newSet.Spec.UpdateStrategy.RollingUpdate.Partition == nil {
+		t.Fatalf("rolling update partition should be set")
+	}
+	if got := *newSet.Spec.UpdateStrategy.RollingUpdate.Partition; got != 0 {
+		t.Fatalf("expected partition 0 when TiCI has pending upgrade, got: %d", got)
 	}
 }
 
