@@ -136,6 +136,10 @@ const (
 
 	// AnnTiCDCDeleteSlots is annotation key of ticdc delete slots.
 	AnnTiCDCDeleteSlots = "ticdc.tidb.pingcap.com/delete-slots"
+	// AnnTiCIMetaDeleteSlots is annotation key of tici meta delete slots.
+	AnnTiCIMetaDeleteSlots = "tici-meta.tidb.pingcap.com/delete-slots"
+	// AnnTiCIWorkerDeleteSlots is annotation key of tici worker delete slots.
+	AnnTiCIWorkerDeleteSlots = "tici-worker.tidb.pingcap.com/delete-slots"
 	// AnnTiProxyDeleteSlots is annotation key of tiproxy delete slots.
 	AnnTiProxyDeleteSlots = "tiproxy.tidb.pingcap.com/delete-slots"
 	// AnnDMMasterDeleteSlots is annotation key of dm-master delete slots.
@@ -177,6 +181,10 @@ const (
 	TiFlashLabelVal string = "tiflash"
 	// TiCDCLabelVal is TiCDC label value
 	TiCDCLabelVal string = "ticdc"
+	// TiCIMetaLabelVal is TiCI meta label value
+	TiCIMetaLabelVal string = "tici-meta"
+	// TiCIWorkerLabelVal is TiCI worker label value
+	TiCIWorkerLabelVal string = "tici-worker"
 	// TiProxyLabelVal is TiProxy label value
 	TiProxyLabelVal string = "tiproxy"
 	// PumpLabelVal is Pump label value
@@ -558,6 +566,26 @@ func (l Label) TiCDC() Label {
 // IsTiCDC returns whether label is a TiCDC component
 func (l Label) IsTiCDC() bool {
 	return l[ComponentLabelKey] == TiCDCLabelVal
+}
+
+// TiCIMeta assigns tici-meta to component key in label
+func (l Label) TiCIMeta() Label {
+	return l.Component(TiCIMetaLabelVal)
+}
+
+// IsTiCIMeta returns whether label is a TiCI meta component
+func (l Label) IsTiCIMeta() bool {
+	return l[ComponentLabelKey] == TiCIMetaLabelVal
+}
+
+// TiCIWorker assigns tici-worker to component key in label
+func (l Label) TiCIWorker() Label {
+	return l.Component(TiCIWorkerLabelVal)
+}
+
+// IsTiCIWorker returns whether label is a TiCI worker component
+func (l Label) IsTiCIWorker() bool {
+	return l[ComponentLabelKey] == TiCIWorkerLabelVal
 }
 
 // Selector gets labels.Selector from label

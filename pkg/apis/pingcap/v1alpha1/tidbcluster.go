@@ -269,6 +269,54 @@ func (tc *TidbCluster) TiCDCImage() string {
 	return image
 }
 
+// TiCIMetaImage return the image used by TiCI meta.
+//
+// If TiCI meta isn't specified, return empty string.
+func (tc *TidbCluster) TiCIMetaImage() string {
+	if tc.Spec.TiCI == nil || tc.Spec.TiCI.Meta == nil {
+		return ""
+	}
+
+	image := tc.Spec.TiCI.Meta.Image
+	baseImage := tc.Spec.TiCI.Meta.BaseImage
+	if baseImage != "" {
+		version := tc.Spec.TiCI.Meta.Version
+		if version == nil {
+			version = &tc.Spec.Version
+		}
+		if *version == "" {
+			image = baseImage
+		} else {
+			image = fmt.Sprintf("%s:%s", baseImage, *version)
+		}
+	}
+	return image
+}
+
+// TiCIWorkerImage return the image used by TiCI worker.
+//
+// If TiCI worker isn't specified, return empty string.
+func (tc *TidbCluster) TiCIWorkerImage() string {
+	if tc.Spec.TiCI == nil || tc.Spec.TiCI.Worker == nil {
+		return ""
+	}
+
+	image := tc.Spec.TiCI.Worker.Image
+	baseImage := tc.Spec.TiCI.Worker.BaseImage
+	if baseImage != "" {
+		version := tc.Spec.TiCI.Worker.Version
+		if version == nil {
+			version = &tc.Spec.Version
+		}
+		if *version == "" {
+			image = baseImage
+		} else {
+			image = fmt.Sprintf("%s:%s", baseImage, *version)
+		}
+	}
+	return image
+}
+
 // TiProxyImage return the image used by TiProxy.
 //
 // If TiProxy isn't specified, return empty string.
@@ -325,6 +373,36 @@ func (tc *TidbCluster) TiCDCVersion() string {
 		return image[colonIdx+1:]
 	}
 
+	return "latest"
+}
+
+// TiCIMetaVersion returns the image version used by TiCI meta.
+//
+// If TiCI meta isn't specified, return empty string.
+func (tc *TidbCluster) TiCIMetaVersion() string {
+	if tc.Spec.TiCI == nil || tc.Spec.TiCI.Meta == nil {
+		return ""
+	}
+	image := tc.TiCIMetaImage()
+	colonIdx := strings.LastIndexByte(image, ':')
+	if colonIdx >= 0 {
+		return image[colonIdx+1:]
+	}
+	return "latest"
+}
+
+// TiCIWorkerVersion returns the image version used by TiCI worker.
+//
+// If TiCI worker isn't specified, return empty string.
+func (tc *TidbCluster) TiCIWorkerVersion() string {
+	if tc.Spec.TiCI == nil || tc.Spec.TiCI.Worker == nil {
+		return ""
+	}
+	image := tc.TiCIWorkerImage()
+	colonIdx := strings.LastIndexByte(image, ':')
+	if colonIdx >= 0 {
+		return image[colonIdx+1:]
+	}
 	return "latest"
 }
 
@@ -806,6 +884,28 @@ func (tc *TidbCluster) TiCDCAllCapturesReady() bool {
 
 	for _, c := range tc.Status.TiCDC.Captures {
 		if !c.Ready {
+			return false
+		}
+	}
+
+	return true
+}
+
+// TiCIAllMembersReady return whether all TiCI meta/worker pods are ready.
+//
+// If TiCI isn't specified, return false.
+func (tc *TidbCluster) TiCIAllMembersReady() bool {
+	if tc.Spec.TiCI == nil {
+		return false
+	}
+
+	if tc.Spec.TiCI.Meta != nil {
+		if tc.Status.TiCIMeta.StatefulSet == nil || tc.Status.TiCIMeta.StatefulSet.ReadyReplicas != tc.Spec.TiCI.Meta.Replicas {
+			return false
+		}
+	}
+	if tc.Spec.TiCI.Worker != nil {
+		if tc.Status.TiCIWorker.StatefulSet == nil || tc.Status.TiCIWorker.StatefulSet.ReadyReplicas != tc.Spec.TiCI.Worker.Replicas {
 			return false
 		}
 	}

@@ -69,6 +69,7 @@ func NewController(deps *controller.Dependencies) *Controller {
 			mm.NewPumpMemberManager(deps, mm.NewPumpScaler(deps), suspender, podVolumeModifier),
 			mm.NewTiFlashMemberManager(deps, mm.NewTiFlashFailover(deps), mm.NewTiFlashScaler(deps), mm.NewTiFlashUpgrader(deps), suspender, podVolumeModifier),
 			mm.NewTiCDCMemberManager(deps, mm.NewTiCDCScaler(deps), mm.NewTiCDCUpgrader(deps), suspender, podVolumeModifier),
+			mm.NewTiCIMemberManager(deps, mm.NewTiCIScaler(deps), suspender, podVolumeModifier),
 			mm.NewTidbDiscoveryManager(deps),
 			mm.NewTidbClusterStatusManager(deps),
 			&tidbClusterConditionUpdater{},

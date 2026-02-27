@@ -1,4 +1,4 @@
-FROM ghcr.io/pingcap-qe/bases/pingcap-base:v1.11.0@sha256:7b3a5c5df7a323a35d2a99ea574ca1477c113ebc669bc4f054cf49da47615845
+FROM ghcr.io/pingcap-qe/bases/pingcap-base:v1.11.1@sha256:24ecefceae6b114e11f6ae675232af3fa4942c53011f807983ac5bff7a62e3d9
 ARG TARGETARCH
 ARG RCLONE_VERSION=v1.71.2
 ARG SHUSH_VERSION=v1.5.5

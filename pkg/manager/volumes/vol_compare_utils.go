@@ -285,6 +285,20 @@ func (u *volCompareUtils) GetDesiredVolumes(tc *v1alpha1.TidbCluster, mt v1alpha
 		defaultVACName = tc.Spec.TiCDC.VolumeAttributesClassName
 		storageVolumes = tc.Spec.TiCDC.StorageVolumes
 
+	case v1alpha1.TiCIMetaMemberType:
+		if tc.Spec.TiCI != nil && tc.Spec.TiCI.Meta != nil {
+			defaultScName = tc.Spec.TiCI.Meta.StorageClassName
+			defaultVACName = tc.Spec.TiCI.Meta.VolumeAttributesClassName
+			storageVolumes = tc.Spec.TiCI.Meta.StorageVolumes
+		}
+
+	case v1alpha1.TiCIWorkerMemberType:
+		if tc.Spec.TiCI != nil && tc.Spec.TiCI.Worker != nil {
+			defaultScName = tc.Spec.TiCI.Worker.StorageClassName
+			defaultVACName = tc.Spec.TiCI.Worker.VolumeAttributesClassName
+			storageVolumes = tc.Spec.TiCI.Worker.StorageVolumes
+		}
+
 	case v1alpha1.PumpMemberType:
 		defaultScName = tc.Spec.Pump.StorageClassName
 		defaultVACName = tc.Spec.Pump.VolumeAttributesClassName
