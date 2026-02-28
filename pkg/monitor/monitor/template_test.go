@@ -527,6 +527,7 @@ scrape_configs:
       - ns1
   tls_config:
     insecure_skip_verify: true
+  fallback_scrape_protocol: PrometheusText0.0.4
   relabel_configs:
   - source_labels:
     - __meta_kubernetes_pod_label_app_kubernetes_io_instance
@@ -600,6 +601,7 @@ scrape_configs:
       - ns1
   tls_config:
     insecure_skip_verify: true
+  fallback_scrape_protocol: PrometheusText0.0.4
   relabel_configs:
   - source_labels:
     - __meta_kubernetes_pod_label_app_kubernetes_io_instance
@@ -1790,6 +1792,7 @@ scrape_configs:
       - ns1
   tls_config:
     insecure_skip_verify: true
+  fallback_scrape_protocol: PrometheusText0.0.4
   relabel_configs:
   - source_labels:
     - __meta_kubernetes_pod_label_app_kubernetes_io_instance
@@ -1863,6 +1866,7 @@ scrape_configs:
       - ns1
   tls_config:
     insecure_skip_verify: true
+  fallback_scrape_protocol: PrometheusText0.0.4
   relabel_configs:
   - source_labels:
     - __meta_kubernetes_pod_label_app_kubernetes_io_instance
@@ -3061,6 +3065,7 @@ scrape_configs:
     ca_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_ca.crt
     cert_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.crt
     key_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.key
+  fallback_scrape_protocol: PrometheusText0.0.4
   relabel_configs:
   - source_labels:
     - __meta_kubernetes_pod_label_app_kubernetes_io_instance
@@ -3136,6 +3141,7 @@ scrape_configs:
     ca_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_ca.crt
     cert_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.crt
     key_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.key
+  fallback_scrape_protocol: PrometheusText0.0.4
   relabel_configs:
   - source_labels:
     - __meta_kubernetes_pod_label_app_kubernetes_io_instance
