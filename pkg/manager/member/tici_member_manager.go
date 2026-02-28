@@ -716,9 +716,6 @@ secret-key = "%s"
 use-path-style = %t
 bucket = "%s"
 prefix = "%s"
-
-[shard]
-max-size = "128MB"
 `, tidbHost, tidbPort, pdAddr, s3.Endpoint, s3.Region, s3.AccessKey, s3.SecretKey, s3.UsePathStyle, s3.Bucket, s3.Prefix)
 	if tc.Spec.TiCI != nil && tc.Spec.TiCI.Meta != nil {
 		return appendTiCICustomConfig(baseConfig, tc.Spec.TiCI.Meta.Config)
