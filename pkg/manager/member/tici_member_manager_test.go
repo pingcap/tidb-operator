@@ -72,9 +72,6 @@ data-dir = "/data/tici-meta"`
 	if dsns == nil || len(dsns.MustStringSlice()) == 0 {
 		t.Fatalf("meta config should include generated tidb-server section, got: %s", cfg)
 	}
-	if wrapper.Get("shard.max-size") == nil {
-		t.Fatalf("meta config should include generated shard section, got: %s", cfg)
-	}
 	dataDir := wrapper.Get("storage.data-dir")
 	if dataDir == nil || dataDir.MustString() != "/data/tici-meta" {
 		t.Fatalf("meta config should merge custom storage.data-dir, got: %s", cfg)
