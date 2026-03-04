@@ -123,7 +123,8 @@ kubectl -n <ns> apply -f examples/tici/tici-tc-gcs-wi.yaml
    - Secret key must be named `credentials.json`
 
 2. Bucket name mismatch:
-   - Ensure bucket name in `sinkURI` and `tici.s3.bucket` is the same
+   - Ensure `tici.s3.bucket` is correct. Default changefeed `sinkURI` will be auto-generated from `tici.s3`.
+   - If you explicitly set `tici.changefeed.sinkURI`, ensure its bucket matches `tici.s3.bucket`.
    - Use valid GCS bucket names (for example: `tici-test`)
 
 ## Current Conclusion

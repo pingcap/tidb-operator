@@ -98,4 +98,3 @@ spec:
     changefeed:
       enable: true
       changefeedID: tici-replication-task
-      sinkURI: gcs://tici-test/tici_default_prefix/cdc?protocol=canal-json&enable-tidb-extension=true&output-row-key=true
