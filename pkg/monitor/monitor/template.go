@@ -38,6 +38,9 @@ const (
 	dmMaster                   = "dm-master"
 	ticiMetaPattern            = "tici-meta"
 	ticiWorkerPattern          = "tici-worker"
+	// Prometheus 3 requires either a valid Content-Type from target metrics endpoints
+	// or an explicit fallback protocol.
+	fallbackScrapeProtocol = "PrometheusText0.0.4"
 )
 
 var (
@@ -329,6 +332,12 @@ func scrapeJob(jobName string, componentPattern string, cmodel *MonitorConfigMod
 			}},
 			{Key: "tls_config", Value: tlsConfigRelabelConfig},
 		}
+		if shouldSetFallbackScrapeProtocol(jobName) {
+			scrapeConfig = append(scrapeConfig, yaml.MapItem{
+				Key:   "fallback_scrape_protocol",
+				Value: fallbackScrapeProtocol,
+			})
+		}
 
 		relabelConfigs := []yaml.MapSlice{}
 		relabelConfigs = append(relabelConfigs, yaml.MapSlice{
@@ -445,6 +454,15 @@ func scrapeJob(jobName string, componentPattern string, cmodel *MonitorConfigMod
 	}
 	return scrapeJobs
 
+}
+
+func shouldSetFallbackScrapeProtocol(jobName string) bool {
+	switch jobName {
+	case "tiflash", "tiflash-proxy":
+		return true
+	default:
+		return false
+	}
 }
 
 func isDMJob(jobName string) bool {
