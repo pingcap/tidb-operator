@@ -18,6 +18,7 @@ import (
 	"path"
 	"strings"
 
+	semver "github.com/Masterminds/semver"
 	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v2"
@@ -82,6 +83,7 @@ type MonitorConfigModel struct {
 	AlertmanagerURL           string
 	ClusterInfos              []ClusterRegexInfo
 	DMClusterInfos            []ClusterRegexInfo
+	PrometheusVersion         string
 	ExternalLabels            model.LabelSet
 	RemoteWriteCfg            *yaml.MapItem
 	EnableAlertRules          bool
@@ -332,7 +334,7 @@ func scrapeJob(jobName string, componentPattern string, cmodel *MonitorConfigMod
 			}},
 			{Key: "tls_config", Value: tlsConfigRelabelConfig},
 		}
-		if shouldSetFallbackScrapeProtocol(jobName) {
+		if shouldSetFallbackScrapeProtocol(jobName, cmodel.PrometheusVersion) {
 			scrapeConfig = append(scrapeConfig, yaml.MapItem{
 				Key:   "fallback_scrape_protocol",
 				Value: fallbackScrapeProtocol,
@@ -456,10 +458,14 @@ func scrapeJob(jobName string, componentPattern string, cmodel *MonitorConfigMod
 
 }
 
-func shouldSetFallbackScrapeProtocol(jobName string) bool {
+func shouldSetFallbackScrapeProtocol(jobName string, prometheusVersion string) bool {
 	switch jobName {
 	case "tiflash", "tiflash-proxy":
-		return true
+		version, err := semver.NewVersion(prometheusVersion)
+		if err != nil {
+			return false
+		}
+		return version.Major() >= 3
 	default:
 		return false
 	}

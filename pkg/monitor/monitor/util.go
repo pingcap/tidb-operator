@@ -151,12 +151,13 @@ func getAlertManagerRulesVersion(monitor *v1alpha1.TidbMonitor) string {
 // If the namespace in ClusterRef is empty, we would set the TidbMonitor's namespace in the default
 func getPromConfigMap(monitor *v1alpha1.TidbMonitor, monitorClusterInfos []ClusterRegexInfo, dmClusterInfos []ClusterRegexInfo, shard int32, store *Store) (*core.ConfigMap, error) {
 	model := &MonitorConfigModel{
-		AlertmanagerURL:  "",
-		ClusterInfos:     monitorClusterInfos,
-		DMClusterInfos:   dmClusterInfos,
-		ExternalLabels:   buildExternalLabels(monitor),
-		EnableAlertRules: monitor.Spec.EnableAlertRules,
-		shards:           shard,
+		AlertmanagerURL:   "",
+		ClusterInfos:      monitorClusterInfos,
+		DMClusterInfos:    dmClusterInfos,
+		PrometheusVersion: monitor.Spec.Prometheus.Version,
+		ExternalLabels:    buildExternalLabels(monitor),
+		EnableAlertRules:  monitor.Spec.EnableAlertRules,
+		shards:            shard,
 	}
 
 	if monitor.Spec.AlertmanagerURL != nil {
