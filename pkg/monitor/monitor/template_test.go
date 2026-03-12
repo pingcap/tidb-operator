@@ -527,6 +527,7 @@ scrape_configs:
       - ns1
   tls_config:
     insecure_skip_verify: true
+  fallback_scrape_protocol: PrometheusText0.0.4
   relabel_configs:
   - source_labels:
     - __meta_kubernetes_pod_label_app_kubernetes_io_instance
@@ -600,6 +601,7 @@ scrape_configs:
       - ns1
   tls_config:
     insecure_skip_verify: true
+  fallback_scrape_protocol: PrometheusText0.0.4
   relabel_configs:
   - source_labels:
     - __meta_kubernetes_pod_label_app_kubernetes_io_instance
@@ -1274,7 +1276,8 @@ rule_files:
 		DMClusterInfos: []ClusterRegexInfo{
 			{Name: "target", Namespace: "ns1"},
 		},
-		AlertmanagerURL: "alert-url",
+		PrometheusVersion: "v3.0.0",
+		AlertmanagerURL:   "alert-url",
 		RemoteWriteCfg: &yaml.MapItem{
 			Key: "remote_write",
 			Value: []yaml.MapSlice{
@@ -1790,6 +1793,7 @@ scrape_configs:
       - ns1
   tls_config:
     insecure_skip_verify: true
+  fallback_scrape_protocol: PrometheusText0.0.4
   relabel_configs:
   - source_labels:
     - __meta_kubernetes_pod_label_app_kubernetes_io_instance
@@ -1863,6 +1867,7 @@ scrape_configs:
       - ns1
   tls_config:
     insecure_skip_verify: true
+  fallback_scrape_protocol: PrometheusText0.0.4
   relabel_configs:
   - source_labels:
     - __meta_kubernetes_pod_label_app_kubernetes_io_instance
@@ -2532,6 +2537,7 @@ rule_files:
 		DMClusterInfos: []ClusterRegexInfo{
 			{Name: "target", Namespace: "ns1"},
 		},
+		PrometheusVersion:         "v3.0.0",
 		EnableAlertRules:          true,
 		EnableExternalRuleConfigs: true,
 		RemoteWriteCfg: &yaml.MapItem{
@@ -3061,6 +3067,7 @@ scrape_configs:
     ca_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_ca.crt
     cert_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.crt
     key_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.key
+  fallback_scrape_protocol: PrometheusText0.0.4
   relabel_configs:
   - source_labels:
     - __meta_kubernetes_pod_label_app_kubernetes_io_instance
@@ -3136,6 +3143,7 @@ scrape_configs:
     ca_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_ca.crt
     cert_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.crt
     key_file: /var/lib/cluster-assets-tls/secret_ns1_target-cluster-client-secret_tls.key
+  fallback_scrape_protocol: PrometheusText0.0.4
   relabel_configs:
   - source_labels:
     - __meta_kubernetes_pod_label_app_kubernetes_io_instance
@@ -3803,6 +3811,7 @@ scrape_configs:
 		DMClusterInfos: []ClusterRegexInfo{
 			{Name: "target", Namespace: "ns1", enableTLS: true},
 		},
+		PrometheusVersion: "v3.0.0",
 	}
 	content, err := RenderPrometheusConfig(model)
 	g.Expect(err).NotTo(HaveOccurred())
@@ -3830,6 +3839,17 @@ target_label: __address__
 	bs, err := yaml.Marshal(c)
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(string(bs)).Should(Equal(expectedContent))
+}
+
+func TestShouldSetFallbackScrapeProtocol(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	g.Expect(shouldSetFallbackScrapeProtocol("tiflash", "v2.55.1")).To(BeFalse())
+	g.Expect(shouldSetFallbackScrapeProtocol("tiflash-proxy", "v2.55.1")).To(BeFalse())
+	g.Expect(shouldSetFallbackScrapeProtocol("tiflash", "v3.0.0")).To(BeTrue())
+	g.Expect(shouldSetFallbackScrapeProtocol("tiflash-proxy", "v3.0.0-rc.0")).To(BeTrue())
+	g.Expect(shouldSetFallbackScrapeProtocol("pd", "v3.0.0")).To(BeFalse())
+	g.Expect(shouldSetFallbackScrapeProtocol("tiflash", "")).To(BeFalse())
 }
 
 func TestMultipleClusterConfigRender(t *testing.T) {
