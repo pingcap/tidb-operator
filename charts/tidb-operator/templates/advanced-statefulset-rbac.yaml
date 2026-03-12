@@ -25,15 +25,29 @@ rules:
 - apiGroups:
   - apps.pingcap.com
   resources:
-  - '*'
+  - statefulsets
+  - statefulsets/status
+  - statefulsets/scale
   verbs:
-  - '*'
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - 'apps'
   resources:
   - 'controllerrevisions'
   verbs:
-  - '*'
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - ''
   resources:
@@ -42,7 +56,13 @@ rules:
   - 'persistentvolumeclaims'
   - 'persistentvolumes'
   verbs:
-  - '*'
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -80,13 +100,25 @@ rules:
   resources:
   - 'endpoints'
   verbs:
-  - '*'
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - 'coordination.k8s.io'
   resources:
   - 'leases'
   verbs:
-  - '*'
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
