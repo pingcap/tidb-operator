@@ -2317,6 +2317,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   claims:
                     items:
                       properties:
@@ -5200,6 +5202,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   baseImage:
                     default: pingcap/pd
                     type: string
@@ -8111,6 +8115,8 @@ spec:
                       additionalProperties:
                         type: string
                       type: object
+                    automountServiceAccountToken:
+                      type: boolean
                     baseImage:
                       default: pingcap/pd
                       type: string
@@ -11078,6 +11084,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   baseImage:
                     default: pingcap/tidb-binlog
                     type: string
@@ -13941,6 +13949,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   baseImage:
                     default: pingcap/ticdc
                     type: string
@@ -16802,6 +16812,8 @@ spec:
                         additionalProperties:
                           type: string
                         type: object
+                      automountServiceAccountToken:
+                        type: boolean
                       baseImage:
                         type: string
                       claims:
@@ -19679,6 +19691,8 @@ spec:
                         additionalProperties:
                           type: string
                         type: object
+                      automountServiceAccountToken:
+                        type: boolean
                       baseImage:
                         type: string
                       claims:
@@ -22527,6 +22541,8 @@ spec:
                     items:
                       type: string
                     type: array
+                  automountServiceAccountToken:
+                    type: boolean
                   baseImage:
                     default: pingcap/tidb
                     type: string
@@ -25730,6 +25746,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   baseImage:
                     default: pingcap/tiflash
                     type: string
@@ -28811,6 +28829,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   baseImage:
                     default: pingcap/tikv
                     type: string
@@ -31804,6 +31824,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   baseImage:
                     default: pingcap/tiproxy
                     type: string

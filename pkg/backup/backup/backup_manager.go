@@ -616,9 +616,10 @@ func (bm *backupManager) makeExportJob(backup *v1alpha1.Backup) (*batchv1.Job, s
 			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{
-			SecurityContext:    backup.Spec.PodSecurityContext,
-			ServiceAccountName: serviceAccount,
-			InitContainers:     initContainers,
+			SecurityContext:              backup.Spec.PodSecurityContext,
+			ServiceAccountName:           serviceAccount,
+			AutomountServiceAccountToken: backup.Spec.AutomountServiceAccountToken,
+			InitContainers:               initContainers,
 			Containers: []corev1.Container{
 				{
 					Name:            label.BackupJobLabelVal,
@@ -845,8 +846,9 @@ func (bm *backupManager) makeBRBackupJob(backup *v1alpha1.Backup) (*batchv1.Job,
 			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{
-			SecurityContext:    backup.Spec.PodSecurityContext,
-			ServiceAccountName: serviceAccount,
+			SecurityContext:              backup.Spec.PodSecurityContext,
+			ServiceAccountName:           serviceAccount,
+			AutomountServiceAccountToken: backup.Spec.AutomountServiceAccountToken,
 			InitContainers: []corev1.Container{
 				{
 					Name:            "br",

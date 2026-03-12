@@ -1653,6 +1653,8 @@ spec:
                       - name
                       type: object
                     type: array
+                  automountServiceAccountToken:
+                    type: boolean
                   br:
                     properties:
                       checkRequirements:
