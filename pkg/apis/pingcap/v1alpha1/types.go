@@ -161,8 +161,20 @@ const (
 type StartScriptV2FeatureFlag string
 
 const (
-	StartScriptV2FeatureFlagWaitForDnsNameIpMatch          = "WaitForDnsNameIpMatch"
+	// StartScriptV2FeatureFlagWaitForDnsNameIpMatch makes PD and TiKV wait until the local IP
+	// address matches the one published to external DNS before starting the component.
+	StartScriptV2FeatureFlagWaitForDnsNameIpMatch = "WaitForDnsNameIpMatch"
+	// StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery advises the start script to use
+	// TidbClusterSpec.PDAddresses (if supplied) as the --join/--backend-endpoints argument
+	// instead of querying the discovery service.
 	StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery = "PreferPDAddressesOverDiscovery"
+	// StartScriptV2FeatureFlagBashShebang changes the shell interpreter from /bin/sh to /bin/bash.
+	StartScriptV2FeatureFlagBashShebang = "BashShebang"
+	// StartScriptV2FeatureFlagNoWaitDNS skips the DNS readiness check before starting the component.
+	// By default v2 waits for the pod's domain name to resolve (and optionally for the resolved IP
+	// to match the local IP) before launching. This flag disables that wait entirely.
+	// When set together with WaitForDnsNameIpMatch, NoWaitDNS takes precedence.
+	StartScriptV2FeatureFlagNoWaitDNS = "NoWaitDNS"
 )
 
 type TiProxyCertLayout string
@@ -420,8 +432,12 @@ type TidbClusterSpec struct {
 	// +listMapKey=topologyKey
 	TopologySpreadConstraints []TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 
-	// StartScriptVersion is the version of start script
-	// When PD enables microservice mode, pd and pd microservice component will use start script v2.
+	// StartScriptVersion is the version of start script.
+	//
+	// v1: the original start script.
+	// v2: enhanced start script that waits for the pod's domain name to resolve before launching
+	//     the component. Behaviour can be further tuned via StartScriptV2FeatureFlags.
+	//     When PD enables microservice mode, PD and PD microservice components use v2 automatically.
 	//
 	// default to "v1"
 	// +optional

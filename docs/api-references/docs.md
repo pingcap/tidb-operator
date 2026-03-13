@@ -2451,8 +2451,11 @@ StartScriptVersion
 </td>
 <td>
 <em>(Optional)</em>
-<p>StartScriptVersion is the version of start script
-When PD enables microservice mode, pd and pd microservice component will use start script v2.</p>
+<p>StartScriptVersion is the version of start script.</p>
+<p>v1: the original start script.
+v2: enhanced start script that waits for the pod&rsquo;s domain name to resolve before launching
+the component. Behaviour can be further tuned via StartScriptV2FeatureFlags.
+When PD enables microservice mode, PD and PD microservice components use v2 automatically.</p>
 <p>default to &ldquo;v1&rdquo;</p>
 </td>
 </tr>
@@ -26365,8 +26368,11 @@ StartScriptVersion
 </td>
 <td>
 <em>(Optional)</em>
-<p>StartScriptVersion is the version of start script
-When PD enables microservice mode, pd and pd microservice component will use start script v2.</p>
+<p>StartScriptVersion is the version of start script.</p>
+<p>v1: the original start script.
+v2: enhanced start script that waits for the pod&rsquo;s domain name to resolve before launching
+the component. Behaviour can be further tuned via StartScriptV2FeatureFlags.
+When PD enables microservice mode, PD and PD microservice components use v2 automatically.</p>
 <p>default to &ldquo;v1&rdquo;</p>
 </td>
 </tr>

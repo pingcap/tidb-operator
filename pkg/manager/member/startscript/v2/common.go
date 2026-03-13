@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	componentCommonScript = `#!/bin/sh
+	componentCommonScriptBody = `
 
 set -uo pipefail
 
@@ -40,7 +40,9 @@ then
     tail -f /dev/null
 fi
 `
-	dnsAwaitPart = "<<dns-await-part>>"
+	componentCommonScript     = "#!/bin/sh" + componentCommonScriptBody
+	componentCommonScriptBash = "#!/bin/bash" + componentCommonScriptBody
+	dnsAwaitPart              = "<<dns-await-part>>"
 
 	pdEnableMicroservice = "<<pd-enable-micro-service>>"
 
