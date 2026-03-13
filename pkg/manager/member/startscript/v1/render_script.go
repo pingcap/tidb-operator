@@ -15,6 +15,7 @@ package v1
 
 import (
 	"fmt"
+	neturl "net/url"
 	"path"
 	"path/filepath"
 	"strings"
@@ -301,9 +302,7 @@ func buildTiCIChangefeedInfo(tc *v1alpha1.TidbCluster) (*tiCIChangefeedInfo, err
 		if err != nil {
 			return nil, err
 		}
-		sinkPrefix := fmt.Sprintf("%s/cdc", strings.TrimRight(s3.Prefix, "/"))
-		sinkURI = fmt.Sprintf("s3://%s/%s?endpoint=%s&access-key=%s&secret-access-key=%s&provider=minio&protocol=canal-json&enable-tidb-extension=true&output-row-key=true",
-			s3.Bucket, sinkPrefix, s3.Endpoint, s3.AccessKey, s3.SecretKey)
+		sinkURI = buildTiCIChangefeedSinkURIFromS3(s3)
 	}
 	info.SinkURI = sinkURI
 	info.ServerAddr = fmt.Sprintf("%s://127.0.0.1:%d", tc.Scheme(), v1alpha1.DefaultTiCDCPort)
@@ -347,6 +346,29 @@ func buildTiCIS3ConfigForChangefeed(tc *v1alpha1.TidbCluster) (*tiCIS3ConfigForC
 		Prefix:       prefix,
 		UsePathStyle: usePathStyle,
 	}, nil
+}
+
+func buildTiCIChangefeedSinkURIFromS3(s3 *tiCIS3ConfigForChangefeed) string {
+	sinkPrefix := fmt.Sprintf("%s/cdc", strings.TrimRight(s3.Prefix, "/"))
+	if isGCSStorageEndpoint(s3.Endpoint) {
+		return fmt.Sprintf("gcs://%s/%s?protocol=canal-json&enable-tidb-extension=true&output-row-key=true",
+			s3.Bucket, sinkPrefix)
+	}
+	return fmt.Sprintf("s3://%s/%s?endpoint=%s&access-key=%s&secret-access-key=%s&provider=minio&protocol=canal-json&enable-tidb-extension=true&output-row-key=true",
+		s3.Bucket, sinkPrefix, s3.Endpoint, s3.AccessKey, s3.SecretKey)
+}
+
+func isGCSStorageEndpoint(endpoint string) bool {
+	host := strings.TrimSpace(endpoint)
+	if parsed, err := neturl.Parse(endpoint); err == nil {
+		if parsed.Host != "" {
+			host = parsed.Hostname()
+		} else if parsed.Path != "" {
+			host = strings.Split(strings.TrimSpace(parsed.Path), "/")[0]
+		}
+	}
+	host = strings.ToLower(strings.TrimSpace(host))
+	return host == "storage.googleapis.com" || strings.HasSuffix(host, ".storage.googleapis.com")
 }
 
 func escapeSingleQuotes(input string) string {
