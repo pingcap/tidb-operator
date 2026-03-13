@@ -209,7 +209,9 @@ func validateStartScriptFeatureFlags(featureFlags []v1alpha1.StartScriptV2Featur
 	for i, ff := range featureFlags {
 		idxPath := fldPath.Index(i)
 		if ff != v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch &&
-			ff != v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery {
+			ff != v1alpha1.StartScriptV2FeatureFlagPreferPDAddressesOverDiscovery &&
+			ff != v1alpha1.StartScriptV2FeatureFlagBashShebang &&
+			ff != v1alpha1.StartScriptV2FeatureFlagNoWaitDNS {
 			allErrs = append(allErrs, field.Invalid(idxPath, ff, "Invalid start script feature flag"))
 		}
 	}
