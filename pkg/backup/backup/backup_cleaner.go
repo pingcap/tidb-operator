@@ -256,8 +256,9 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 			Annotations: backup.Annotations,
 		},
 		Spec: corev1.PodSpec{
-			SecurityContext:    backup.Spec.PodSecurityContext,
-			ServiceAccountName: serviceAccount,
+			SecurityContext:              backup.Spec.PodSecurityContext,
+			ServiceAccountName:           serviceAccount,
+			AutomountServiceAccountToken: backup.Spec.AutomountServiceAccountToken,
 			Containers: []corev1.Container{
 				{
 					Name:            label.BackupJobLabelVal,
@@ -444,8 +445,9 @@ func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1
 			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{
-			SecurityContext:    backup.Spec.PodSecurityContext,
-			ServiceAccountName: serviceAccount,
+			SecurityContext:              backup.Spec.PodSecurityContext,
+			ServiceAccountName:           serviceAccount,
+			AutomountServiceAccountToken: backup.Spec.AutomountServiceAccountToken,
 			InitContainers: []corev1.Container{
 				{
 					Name:            "br",

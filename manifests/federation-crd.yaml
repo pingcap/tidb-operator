@@ -827,6 +827,8 @@ spec:
                           - name
                           type: object
                         type: array
+                      automountServiceAccountToken:
+                        type: boolean
                       azblob:
                         properties:
                           accessTier:
@@ -2667,6 +2669,8 @@ spec:
                       - name
                       type: object
                     type: array
+                  automountServiceAccountToken:
+                    type: boolean
                   azblob:
                     properties:
                       accessTier:
@@ -5386,6 +5390,8 @@ spec:
                       - name
                       type: object
                     type: array
+                  automountServiceAccountToken:
+                    type: boolean
                   br:
                     properties:
                       checkRequirements:

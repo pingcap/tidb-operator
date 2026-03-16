@@ -687,6 +687,18 @@ string
 </tr>
 <tr>
 <td>
+<code>automountServiceAccountToken</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AutomountServiceAccountToken indicates whether a service account token should be automatically mounted.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>cleanPolicy</code></br>
 <em>
 github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1.CleanPolicyType
@@ -1508,6 +1520,18 @@ string
 </td>
 <td>
 <p>Specify service account of restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>automountServiceAccountToken</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AutomountServiceAccountToken indicates whether a service account token should be automatically mounted.</p>
 </td>
 </tr>
 <tr>

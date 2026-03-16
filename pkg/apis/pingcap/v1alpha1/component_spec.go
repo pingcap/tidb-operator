@@ -77,6 +77,7 @@ type ComponentAccessor interface {
 	PodManagementPolicy() apps.PodManagementPolicyType
 	TopologySpreadConstraints() []corev1.TopologySpreadConstraint
 	SuspendAction() *SuspendAction
+	AutomountServiceAccountToken() *bool
 }
 
 func (tc *TidbCluster) AllComponentSpec() []ComponentAccessor {
@@ -349,16 +350,17 @@ func (a *componentAccessorImpl) ConfigUpdateStrategy() ConfigUpdateStrategy {
 
 func (a *componentAccessorImpl) BuildPodSpec() corev1.PodSpec {
 	spec := corev1.PodSpec{
-		SchedulerName:             a.SchedulerName(),
-		Affinity:                  a.Affinity(),
-		NodeSelector:              a.NodeSelector(),
-		HostNetwork:               a.HostNetwork(),
-		RestartPolicy:             corev1.RestartPolicyAlways,
-		Tolerations:               a.Tolerations(),
-		SecurityContext:           a.PodSecurityContext(),
-		TopologySpreadConstraints: a.TopologySpreadConstraints(),
-		DNSPolicy:                 a.DnsPolicy(),
-		DNSConfig:                 a.DNSConfig(),
+		SchedulerName:                a.SchedulerName(),
+		Affinity:                     a.Affinity(),
+		NodeSelector:                 a.NodeSelector(),
+		HostNetwork:                  a.HostNetwork(),
+		RestartPolicy:                corev1.RestartPolicyAlways,
+		Tolerations:                  a.Tolerations(),
+		SecurityContext:              a.PodSecurityContext(),
+		TopologySpreadConstraints:    a.TopologySpreadConstraints(),
+		DNSPolicy:                    a.DnsPolicy(),
+		DNSConfig:                    a.DNSConfig(),
+		AutomountServiceAccountToken: a.AutomountServiceAccountToken(),
 	}
 	if a.PriorityClassName() != nil {
 		spec.PriorityClassName = *a.PriorityClassName()
@@ -482,6 +484,13 @@ func (a *componentAccessorImpl) SuspendAction() *SuspendAction {
 		action = a.ComponentSpec.SuspendAction
 	}
 	return action
+}
+
+func (a *componentAccessorImpl) AutomountServiceAccountToken() *bool {
+	if a.ComponentSpec != nil && a.ComponentSpec.AutomountServiceAccountToken != nil {
+		return a.ComponentSpec.AutomountServiceAccountToken
+	}
+	return nil
 }
 
 func getComponentLabelValue(c MemberType) string {

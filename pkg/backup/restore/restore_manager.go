@@ -823,9 +823,10 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{
-			SecurityContext:    restore.Spec.PodSecurityContext,
-			ServiceAccountName: serviceAccount,
-			InitContainers:     initContainers,
+			SecurityContext:              restore.Spec.PodSecurityContext,
+			ServiceAccountName:           serviceAccount,
+			AutomountServiceAccountToken: restore.Spec.AutomountServiceAccountToken,
+			InitContainers:               initContainers,
 			Containers: []corev1.Container{
 				{
 					Name:            label.RestoreJobLabelVal,
@@ -1062,8 +1063,9 @@ func (rm *restoreManager) makeRestoreJobWithMode(restore *v1alpha1.Restore, isPr
 			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{
-			SecurityContext:    restore.Spec.PodSecurityContext,
-			ServiceAccountName: serviceAccount,
+			SecurityContext:              restore.Spec.PodSecurityContext,
+			ServiceAccountName:           serviceAccount,
+			AutomountServiceAccountToken: restore.Spec.AutomountServiceAccountToken,
 			InitContainers: []corev1.Container{
 				{
 					Name:            "br",

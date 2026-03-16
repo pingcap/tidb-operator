@@ -426,8 +426,9 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{
-			SecurityContext:    compact.Spec.PodSecurityContext,
-			ServiceAccountName: serviceAccount,
+			SecurityContext:              compact.Spec.PodSecurityContext,
+			ServiceAccountName:           serviceAccount,
+			AutomountServiceAccountToken: compact.Spec.AutomountServiceAccountToken,
 			InitContainers: []corev1.Container{
 				{
 					Name:            "br",
