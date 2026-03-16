@@ -438,6 +438,18 @@ string
 </tr>
 <tr>
 <td>
+<code>automountServiceAccountToken</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AutomountServiceAccountToken indicates whether a service account token should be automatically mounted.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>cleanPolicy</code></br>
 <em>
 <a href="#cleanpolicytype">
@@ -1632,6 +1644,18 @@ string
 </td>
 <td>
 <p>Specify service account of restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>automountServiceAccountToken</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AutomountServiceAccountToken indicates whether a service account token should be automatically mounted.</p>
 </td>
 </tr>
 <tr>
@@ -4482,6 +4506,18 @@ string
 </tr>
 <tr>
 <td>
+<code>automountServiceAccountToken</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AutomountServiceAccountToken indicates whether a service account token should be automatically mounted.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>cleanPolicy</code></br>
 <em>
 <a href="#cleanpolicytype">
@@ -5527,6 +5563,18 @@ string
 </tr>
 <tr>
 <td>
+<code>automountServiceAccountToken</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AutomountServiceAccountToken indicates whether a service account token should be automatically mounted.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podSecurityContext</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#podsecuritycontext-v1-core">
@@ -5878,6 +5926,18 @@ string
 </td>
 <td>
 <p>Specify service account of backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>automountServiceAccountToken</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AutomountServiceAccountToken indicates whether a service account token should be automatically mounted.</p>
 </td>
 </tr>
 <tr>
@@ -6467,6 +6527,18 @@ Probe
 <em>(Optional)</em>
 <p>ReadinessProbe describes actions that probe the components&rsquo; readiness.
 the default behavior is like setting type as &ldquo;tcp&rdquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>automountServiceAccountToken</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AutomountServiceAccountToken indicates whether a service account token should be automatically mounted.</p>
 </td>
 </tr>
 </tbody>
@@ -15405,6 +15477,18 @@ string
 </td>
 <td>
 <p>Specify service account of restore</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>automountServiceAccountToken</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AutomountServiceAccountToken indicates whether a service account token should be automatically mounted.</p>
 </td>
 </tr>
 <tr>

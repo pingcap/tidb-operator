@@ -1208,6 +1208,8 @@ spec:
                         type: array
                     type: object
                 type: object
+              automountServiceAccountToken:
+                type: boolean
               azblob:
                 properties:
                   accessTier:
