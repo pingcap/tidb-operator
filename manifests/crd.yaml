@@ -1236,6 +1236,8 @@ spec:
                             type: array
                         type: object
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   azblob:
                     properties:
                       accessTier:
@@ -3613,6 +3615,8 @@ spec:
                             type: array
                         type: object
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   azblob:
                     properties:
                       accessTier:
@@ -6647,6 +6651,8 @@ spec:
                             type: array
                         type: object
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   azblob:
                     properties:
                       accessTier:
@@ -9152,6 +9158,8 @@ spec:
                         type: array
                     type: object
                 type: object
+              automountServiceAccountToken:
+                type: boolean
               azblob:
                 properties:
                   accessTier:
@@ -11681,6 +11689,8 @@ spec:
                         type: array
                     type: object
                 type: object
+              automountServiceAccountToken:
+                type: boolean
               azblob:
                 properties:
                   accessTier:
@@ -15079,6 +15089,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   claims:
                     items:
                       properties:
@@ -17945,6 +17957,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   baseImage:
                     default: pingcap/dm
                     type: string
@@ -20958,6 +20972,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   baseImage:
                     default: pingcap/dm
                     type: string
@@ -23618,6 +23634,8 @@ spec:
                         type: array
                     type: object
                 type: object
+              automountServiceAccountToken:
+                type: boolean
               azblob:
                 properties:
                   accessTier:
@@ -27953,6 +27971,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   claims:
                     items:
                       properties:
@@ -30836,6 +30856,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   baseImage:
                     default: pingcap/pd
                     type: string
@@ -33747,6 +33769,8 @@ spec:
                       additionalProperties:
                         type: string
                       type: object
+                    automountServiceAccountToken:
+                      type: boolean
                     baseImage:
                       default: pingcap/pd
                       type: string
@@ -36714,6 +36738,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   baseImage:
                     default: pingcap/tidb-binlog
                     type: string
@@ -39577,6 +39603,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   baseImage:
                     default: pingcap/ticdc
                     type: string
@@ -42438,6 +42466,8 @@ spec:
                         additionalProperties:
                           type: string
                         type: object
+                      automountServiceAccountToken:
+                        type: boolean
                       baseImage:
                         type: string
                       claims:
@@ -45315,6 +45345,8 @@ spec:
                         additionalProperties:
                           type: string
                         type: object
+                      automountServiceAccountToken:
+                        type: boolean
                       baseImage:
                         type: string
                       claims:
@@ -48163,6 +48195,8 @@ spec:
                     items:
                       type: string
                     type: array
+                  automountServiceAccountToken:
+                    type: boolean
                   baseImage:
                     default: pingcap/tidb
                     type: string
@@ -51366,6 +51400,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   baseImage:
                     default: pingcap/tiflash
                     type: string
@@ -54447,6 +54483,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   baseImage:
                     default: pingcap/tikv
                     type: string
@@ -57440,6 +57478,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   baseImage:
                     default: pingcap/tiproxy
                     type: string
@@ -62180,6 +62220,8 @@ spec:
                 additionalProperties:
                   type: string
                 type: object
+              automountServiceAccountToken:
+                type: boolean
               baseImage:
                 default: pingcap/tidb-dashboard
                 type: string
@@ -68321,6 +68363,8 @@ spec:
                 additionalProperties:
                   type: string
                 type: object
+              automountServiceAccountToken:
+                type: boolean
               clusterDomain:
                 type: string
               clusters:
@@ -70914,6 +70958,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   baseImage:
                     default: pingcap/ng-monitoring
                     type: string

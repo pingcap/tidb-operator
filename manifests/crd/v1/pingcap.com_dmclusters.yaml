@@ -2292,6 +2292,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   claims:
                     items:
                       properties:
@@ -5158,6 +5160,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   baseImage:
                     default: pingcap/dm
                     type: string
@@ -8171,6 +8175,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   baseImage:
                     default: pingcap/dm
                     type: string

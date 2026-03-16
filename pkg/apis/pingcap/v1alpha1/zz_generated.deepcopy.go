@@ -455,6 +455,11 @@ func (in *BackupSpec) DeepCopyInto(out *BackupSpec) {
 		*out = new(v1.Affinity)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.AutomountServiceAccountToken != nil {
+		in, out := &in.AutomountServiceAccountToken, &out.AutomountServiceAccountToken
+		*out = new(bool)
+		**out = **in
+	}
 	if in.CleanOption != nil {
 		in, out := &in.CleanOption, &out.CleanOption
 		*out = new(CleanOption)
@@ -909,6 +914,11 @@ func (in *CompactSpec) DeepCopyInto(out *CompactSpec) {
 		*out = new(v1.Affinity)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.AutomountServiceAccountToken != nil {
+		in, out := &in.AutomountServiceAccountToken, &out.AutomountServiceAccountToken
+		*out = new(bool)
+		**out = **in
+	}
 	if in.PodSecurityContext != nil {
 		in, out := &in.PodSecurityContext, &out.PodSecurityContext
 		*out = new(v1.PodSecurityContext)
@@ -1113,6 +1123,11 @@ func (in *ComponentSpec) DeepCopyInto(out *ComponentSpec) {
 		in, out := &in.ReadinessProbe, &out.ReadinessProbe
 		*out = new(Probe)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.AutomountServiceAccountToken != nil {
+		in, out := &in.AutomountServiceAccountToken, &out.AutomountServiceAccountToken
+		*out = new(bool)
+		**out = **in
 	}
 	return
 }
@@ -5109,6 +5124,11 @@ func (in *RestoreSpec) DeepCopyInto(out *RestoreSpec) {
 		in, out := &in.Affinity, &out.Affinity
 		*out = new(v1.Affinity)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.AutomountServiceAccountToken != nil {
+		in, out := &in.AutomountServiceAccountToken, &out.AutomountServiceAccountToken
+		*out = new(bool)
+		**out = **in
 	}
 	if in.ImagePullSecrets != nil {
 		in, out := &in.ImagePullSecrets, &out.ImagePullSecrets

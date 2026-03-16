@@ -1834,6 +1834,8 @@ spec:
                 additionalProperties:
                   type: string
                 type: object
+              automountServiceAccountToken:
+                type: boolean
               clusterDomain:
                 type: string
               clusters:
@@ -4427,6 +4429,8 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
+                  automountServiceAccountToken:
+                    type: boolean
                   baseImage:
                     default: pingcap/ng-monitoring
                     type: string
