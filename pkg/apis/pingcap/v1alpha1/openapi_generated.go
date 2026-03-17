@@ -14752,7 +14752,7 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbClusterSpec(ref common.ReferenceCallba
 					},
 					"startScriptVersion": {
 						SchemaProps: spec.SchemaProps{
-							Description: "StartScriptVersion is the version of start script When PD enables microservice mode, pd and pd microservice component will use start script v2.\n\ndefault to \"v1\"",
+							Description: "StartScriptVersion is the version of start script.\n\nv1: the original start script. v2: enhanced start script that waits for the pod's domain name to resolve before launching\n    the component. Behaviour can be further tuned via StartScriptV2FeatureFlags.\n    When PD enables microservice mode, PD and PD microservice components use v2 automatically.\n\ndefault to \"v1\"",
 							Type:        []string{"string"},
 							Format:      "",
 						},

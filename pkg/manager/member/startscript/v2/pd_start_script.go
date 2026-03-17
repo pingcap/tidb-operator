@@ -96,23 +96,38 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	m.PDInitWaitTime = tc.PDInitWaitTime()
 
+	noWaitDNS := slices.Contains(
+		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagNoWaitDNS)
+
 	waitForDnsNameIpMatchOnStartup := slices.Contains(
 		tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagWaitForDnsNameIpMatch)
 
 	mode := ""
 	if tc.Spec.PD.Mode == "ms" && tc.Spec.PDMS != nil {
 		mode = "api"
-		// default enabled the dns detection
-		waitForDnsNameIpMatchOnStartup = true
+		// default enabled the dns detection unless explicitly disabled
+		if !noWaitDNS {
+			waitForDnsNameIpMatchOnStartup = true
+		}
 	}
+
+	commonScript := componentCommonScript
+	if slices.Contains(tc.Spec.StartScriptV2FeatureFlags, v1alpha1.StartScriptV2FeatureFlagBashShebang) {
+		commonScript = componentCommonScriptBash
+	}
+
+	scriptBody := replacePdStartScriptCustomPorts(
+		enableMicroserviceModeDynamic(mode, pdStartScript))
+	if noWaitDNS {
+		scriptBody = strings.ReplaceAll(scriptBody, dnsAwaitPart, "")
+	} else {
+		scriptBody = replacePdStartScriptDnsAwaitPart(waitForDnsNameIpMatchOnStartup, scriptBody)
+	}
+
 	pdStartScriptTpl := template.Must(
 		template.Must(
 			template.New("pd-start-script").Parse(pdStartSubScript),
-		).Parse(
-			componentCommonScript +
-				replacePdStartScriptCustomPorts(
-					replacePdStartScriptDnsAwaitPart(waitForDnsNameIpMatchOnStartup,
-						enableMicroserviceModeDynamic(mode, pdStartScript)))),
+		).Parse(commonScript + scriptBody),
 	)
 
 	return renderTemplateFunc(pdStartScriptTpl, m)
