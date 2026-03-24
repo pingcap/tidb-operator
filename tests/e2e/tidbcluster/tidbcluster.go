@@ -1405,6 +1405,71 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns, tcName, passwd))
 			framework.ExpectNoError(err, "connect to TLS tidb timeout")
 		})
+
+		ginkgo.It("should enable DiscoveryMTLS for TiDB cluster", func() {
+			tcName := "discovery-mtls"
+
+			ginkgo.By("Installing tidb CA certificate")
+			err := InstallTiDBIssuer(ns, tcName)
+			framework.ExpectNoError(err, "failed to install CA certificate")
+
+			ginkgo.By("Installing tidb server and client certificate")
+			err = InstallTiDBCertificates(ns, tcName)
+			framework.ExpectNoError(err, "failed to install tidb server and client certificate")
+
+			ginkgo.By("Installing tidb components certificates")
+			err = InstallTiDBComponentsCertificates(ns, tcName)
+			framework.ExpectNoError(err, "failed to install tidb components certificates")
+
+			ginkgo.By("Installing discovery TLS certificate")
+			err = InstallDiscoveryTLSCertificates(ns, tcName)
+			framework.ExpectNoError(err, "failed to install discovery TLS certificate")
+
+			ginkgo.By("Creating tidb cluster with TLS and DiscoveryMTLS enabled")
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatest)
+			tc.Spec.PD.Replicas = 3
+			tc.Spec.TiKV.Replicas = 3
+			tc.Spec.TiDB.Replicas = 2
+			tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
+			tc.Spec.TLSCluster = &v1alpha1.TLSCluster{
+				Enabled:             true,
+				EnableDiscoveryMTLS: true,
+			}
+
+			err = genericCli.Create(context.TODO(), tc)
+			framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+
+			ginkgo.By("Verifying discovery deployment has DISCOVERY_MTLS_ENABLED env var and TLS volume")
+			discoveryName := controller.DiscoveryMemberName(tcName)
+			discoveryDeploy, err := c.AppsV1().Deployments(ns).Get(context.TODO(), discoveryName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get discovery deployment: %q", discoveryName)
+
+			foundEnv := false
+			for _, envVar := range discoveryDeploy.Spec.Template.Spec.Containers[0].Env {
+				if envVar.Name == "DISCOVERY_MTLS_ENABLED" && envVar.Value == "true" {
+					foundEnv = true
+					break
+				}
+			}
+			framework.ExpectEqual(foundEnv, true, "expected DISCOVERY_MTLS_ENABLED=true in discovery deployment env")
+
+			foundVolume := false
+			for _, vol := range discoveryDeploy.Spec.Template.Spec.Volumes {
+				if vol.Name == "discovery-tls" {
+					foundVolume = true
+					framework.ExpectEqual(vol.Secret.SecretName, fmt.Sprintf("%s-discovery-cluster-secret", tcName))
+					break
+				}
+			}
+			framework.ExpectEqual(foundVolume, true, "expected discovery-tls volume in discovery deployment")
+
+			ginkgo.By("Connecting to tidb server to verify the cluster is working with DiscoveryMTLS")
+			passwd := ""
+			err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns, tcName, passwd))
+			framework.ExpectNoError(err, "connect to TLS tidb timeout")
+		})
 	})
 
 	// TODO: move into TiDB specific group

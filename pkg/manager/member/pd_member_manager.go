@@ -624,6 +624,11 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 			})
 		}
 	}
+	if tc.IsDiscoveryMTLSEnabled() {
+		volMounts = append(volMounts, corev1.VolumeMount{
+			Name: util.DiscoveryTLSVolName, ReadOnly: true, MountPath: util.DiscoveryTLSPath,
+		})
+	}
 	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
 		volMounts = append(volMounts, corev1.VolumeMount{
 			Name: "tidb-client-tls", ReadOnly: true, MountPath: tidbClientCertPath,
@@ -670,6 +675,15 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 				},
 			})
 		}
+	}
+	if tc.IsDiscoveryMTLSEnabled() {
+		vols = append(vols, corev1.Volume{
+			Name: util.DiscoveryTLSVolName, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.DiscoveryTLSSecretName(tc.Name),
+				},
+			},
+		})
 	}
 	if tc.Spec.TiDB != nil && tc.Spec.TiDB.IsTLSClientEnabled() && !tc.SkipTLSWhenConnectTiDB() && clusterVersionGE4 {
 		vols = append(vols, corev1.Volume{

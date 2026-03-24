@@ -440,6 +440,18 @@ func getNewPumpStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*app
 			},
 		})
 	}
+	if tc.IsDiscoveryMTLSEnabled() {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name: util.DiscoveryTLSVolName, ReadOnly: true, MountPath: util.DiscoveryTLSPath,
+		})
+		volumes = append(volumes, corev1.Volume{
+			Name: util.DiscoveryTLSVolName, VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.DiscoveryTLSSecretName(tc.Name),
+				},
+			},
+		})
+	}
 	// For compatibility, add the volume mount for anno when startscript is not v1
 	if tc.StartScriptVersion() != v1alpha1.StartScriptV1 {
 		annMount, annVolume := annotationsMountVolume()

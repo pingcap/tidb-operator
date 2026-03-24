@@ -114,6 +114,10 @@ type AcrossK8sScriptModel struct {
 
 	// PDAddr is the address used by discovery to get the actual pd addr.
 	PDAddr string
+
+	// DiscoveryMTLS indicates whether mTLS is enabled on the discovery server.
+	// When true, wget uses HTTPS with the client certificate from /var/lib/discovery-tls.
+	DiscoveryMTLS bool
 }
 
 func renderTemplateFunc(tpl *template.Template, model interface{}) (string, error) {

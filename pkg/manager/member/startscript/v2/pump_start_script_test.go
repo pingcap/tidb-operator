@@ -310,6 +310,57 @@ fi
 `,
 		},
 		{
+			name: "across k8s with discovery mtls",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.AcrossK8s = true
+				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true, EnableDiscoveryMTLS: true}
+			},
+			expectScript: `#!/bin/sh
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+PUMP_POD_NAME=$HOSTNAME
+pd_url=https://start-script-test-pd:2379
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url=start-script-test-discovery.start-script-test-ns:10261
+until result=$(wget -qO- -T 3 --ca-certificate=/var/lib/discovery-tls/ca.crt --certificate=/var/lib/discovery-tls/tls.crt --private-key=/var/lib/discovery-tls/tls.key https://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+    echo "waiting for the verification of PD endpoints ..."
+    sleep $((RANDOM % 5))
+done
+
+ARGS="-pd-urls=${result} \
+-L info \
+-log-file= \
+-advertise-addr=${PUMP_POD_NAME}.start-script-test-pump.start-script-test-ns.svc:8250 \
+-data-dir=/data \
+--config=/etc/pump/pump.toml"
+
+echo "start pump-server ..."
+echo "/pump ${ARGS}"
+exec /pump ${ARGS}
+
+if [ $? == 0 ]; then
+    echo $(date -u +"[%Y/%m/%d %H:%M:%S.%3N %:z]") "pump offline, please delete my pod"
+    tail -f /dev/null
+fi
+`,
+		},
+		{
 			name: "heterogeneous cluster when across k8s",
 			modifyTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.PD = nil

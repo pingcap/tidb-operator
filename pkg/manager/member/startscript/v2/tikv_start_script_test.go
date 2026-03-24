@@ -498,6 +498,59 @@ exec /tikv-server ${ARGS}
 `,
 		},
 		{
+			name: "across k8s with discovery mtls",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.ClusterDomain = "cluster.local"
+				tc.Spec.AcrossK8s = true
+				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true, EnableDiscoveryMTLS: true}
+			},
+			expectScript: `#!/bin/sh
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
+pd_url=start-script-test-pd:2379
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url=start-script-test-discovery.start-script-test-ns:10261
+until result=$(wget -qO- -T 3 --ca-certificate=/var/lib/discovery-tls/ca.crt --certificate=/var/lib/discovery-tls/tls.crt --private-key=/var/lib/discovery-tls/tls.key https://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
+    echo "waiting for the verification of PD endpoints ..."
+    sleep $((RANDOM % 5))
+done
+
+ARGS="--pd=${result} \
+--advertise-addr=${TIKV_POD_NAME}.start-script-test-tikv-peer.start-script-test-ns.svc.cluster.local:20160 \
+--addr=0.0.0.0:20160 \
+--status-addr=0.0.0.0:20180 \
+--data-dir=/var/lib/tikv \
+--capacity=${CAPACITY} \
+--config=/etc/tikv/tikv.toml"
+
+if [ ! -z "${STORE_LABELS:-}" ]; then
+  LABELS="--labels ${STORE_LABELS} "
+  ARGS="${ARGS}${LABELS}"
+fi
+
+echo "starting tikv-server ..."
+echo "/tikv-server ${ARGS}"
+exec /tikv-server ${ARGS}
+`,
+		},
+		{
 			name: "basic with ipv6",
 			modifyTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.PreferIPv6 = true
