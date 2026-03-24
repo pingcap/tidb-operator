@@ -186,6 +186,11 @@ CHANGEFEED_SERVER="%s"
 CHANGEFEED_ID="%s"
 CHANGEFEED_SINK_URI='%s'
 CHANGEFEED_TLS_ARGS="%s"
+CHANGEFEED_CONFIG="/tmp/ticdc-changefeed-config.toml"
+cat <<'EOF' > "${CHANGEFEED_CONFIG}"
+[sink]
+date-separator = "none"
+EOF
 i=0
 while [ $i -lt 15 ]; do
     if /cdc cli capture list --server="${CHANGEFEED_SERVER}" ${CHANGEFEED_TLS_ARGS} >/dev/null 2>&1; then
@@ -199,7 +204,7 @@ while [ $j -lt 15 ]; do
     if /cdc cli changefeed query --server="${CHANGEFEED_SERVER}" --changefeed-id="${CHANGEFEED_ID}" ${CHANGEFEED_TLS_ARGS} >/dev/null 2>&1; then
         break
     fi
-    if /cdc cli changefeed create --server="${CHANGEFEED_SERVER}" --sink-uri="${CHANGEFEED_SINK_URI}" --changefeed-id="${CHANGEFEED_ID}" ${CHANGEFEED_TLS_ARGS} >/dev/null 2>&1; then
+    if /cdc cli changefeed create --server="${CHANGEFEED_SERVER}" --sink-uri="${CHANGEFEED_SINK_URI}" --changefeed-id="${CHANGEFEED_ID}" --config="${CHANGEFEED_CONFIG}" ${CHANGEFEED_TLS_ARGS} >/dev/null 2>&1; then
         break
     fi
     j=$((j+1))
