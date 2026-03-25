@@ -116,8 +116,12 @@ type AcrossK8sScriptModel struct {
 	PDAddr string
 
 	// DiscoveryMTLS indicates whether mTLS is enabled on the discovery server.
-	// When true, wget uses HTTPS with the client certificate from /var/lib/discovery-tls.
+	// When true, wget uses HTTPS with the component's own cluster certificate.
 	DiscoveryMTLS bool
+
+	// ClusterCertPath is the path to the component's own cluster TLS certificate directory.
+	// Used when DiscoveryMTLS is true to authenticate with the discovery service.
+	ClusterCertPath string
 }
 
 func renderTemplateFunc(tpl *template.Template, model interface{}) (string, error) {

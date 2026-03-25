@@ -37,6 +37,7 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		EnableAdvertiseStatusAddr: false,
 		DataDir:                   filepath.Join(constants.TiKVDataVolumeMountPath, tc.Spec.TiKV.DataSubDir),
 		DiscoveryMTLS:             tc.IsDiscoveryMTLSEnabled(),
+		ClusterCertPath:           "/var/lib/tikv-tls",
 	}
 	if tc.Spec.EnableDynamicConfiguration != nil && *tc.Spec.EnableDynamicConfiguration {
 		model.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc" + controller.FormatClusterDomain(tc.Spec.ClusterDomain)
@@ -66,10 +67,11 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 			AcrossK8s:     tc.AcrossK8s(),
 			ClusterDomain: tc.Spec.ClusterDomain,
 		},
-		Scheme:         tc.Scheme(),
-		DataDir:        filepath.Join(constants.PDDataVolumeMountPath, tc.Spec.PD.DataSubDir),
-		PDStartTimeout: tc.PDStartTimeout(),
-		DiscoveryMTLS:  tc.IsDiscoveryMTLSEnabled(),
+		Scheme:          tc.Scheme(),
+		DataDir:         filepath.Join(constants.PDDataVolumeMountPath, tc.Spec.PD.DataSubDir),
+		PDStartTimeout:  tc.PDStartTimeout(),
+		DiscoveryMTLS:   tc.IsDiscoveryMTLSEnabled(),
+		ClusterCertPath: "/var/lib/pd-tls",
 	}
 	if tc.Spec.PD.StartUpScriptVersion == "v1" {
 		model.CheckDomainScript = checkDNSV1
@@ -96,6 +98,7 @@ func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		PluginDirectory: "/plugins",
 		PluginList:      strings.Join(plugins, ","),
 		DiscoveryMTLS:   tc.IsDiscoveryMTLSEnabled(),
+		ClusterCertPath: "/var/lib/tidb-tls",
 	}
 	model.Path = fmt.Sprintf("${CLUSTER_NAME}-pd:%d", v1alpha1.DefaultPDClientPort)
 	if tc.AcrossK8s() {
@@ -128,12 +131,13 @@ func RenderPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 			AcrossK8s:     tc.AcrossK8s(),
 			ClusterDomain: tc.Spec.ClusterDomain,
 		},
-		Scheme:        scheme,
-		ClusterName:   tc.Name,
-		PDAddr:        pdAddr,
-		LogLevel:      tc.PumpLogLevel(),
-		Namespace:     tc.GetNamespace(),
-		DiscoveryMTLS: tc.IsDiscoveryMTLSEnabled(),
+		Scheme:          scheme,
+		ClusterName:     tc.Name,
+		PDAddr:          pdAddr,
+		LogLevel:        tc.PumpLogLevel(),
+		Namespace:       tc.GetNamespace(),
+		DiscoveryMTLS:   tc.IsDiscoveryMTLSEnabled(),
+		ClusterCertPath: "/var/lib/pump-tls",
 	})
 }
 
@@ -185,7 +189,7 @@ func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	wgetDiscoveryPrefix := "http"
 	if tc.IsDiscoveryMTLSEnabled() {
-		wgetDiscoveryPrefix = "--ca-certificate=/var/lib/discovery-tls/ca.crt --certificate=/var/lib/discovery-tls/tls.crt --private-key=/var/lib/discovery-tls/tls.key https"
+		wgetDiscoveryPrefix = "--ca-certificate=/var/lib/ticdc-tls/ca.crt --certificate=/var/lib/ticdc-tls/tls.crt --private-key=/var/lib/ticdc-tls/tls.key https"
 	}
 
 	if changefeedInfo.Enabled {
@@ -415,6 +419,7 @@ func RenderTiFlashStartScriptWithStartArgs(tc *v1alpha1.TidbCluster) (string, er
 
 	model.Addr = fmt.Sprintf("${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc%s:%d", controller.FormatClusterDomain(tc.Spec.ClusterDomain), v1alpha1.DefaultTiFlashFlashPort)
 	model.DiscoveryMTLS = tc.IsDiscoveryMTLSEnabled()
+	model.ClusterCertPath = "/var/lib/tiflash-tls"
 
 	return renderTemplateFunc(tiflashStartScriptTpl, model)
 }
@@ -432,7 +437,7 @@ func RenderTiFlashInitScript(tc *v1alpha1.TidbCluster) (string, error) {
 		}
 		wgetDiscoveryPrefix := "http"
 		if tc.IsDiscoveryMTLSEnabled() {
-			wgetDiscoveryPrefix = "--ca-certificate=/var/lib/discovery-tls/ca.crt --certificate=/var/lib/discovery-tls/tls.crt --private-key=/var/lib/discovery-tls/tls.key https"
+			wgetDiscoveryPrefix = "--ca-certificate=/var/lib/tiflash-tls/ca.crt --certificate=/var/lib/tiflash-tls/tls.crt --private-key=/var/lib/tiflash-tls/tls.key https"
 		}
 		str := `pd_url="%s"
 set +e

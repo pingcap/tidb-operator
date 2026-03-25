@@ -527,7 +527,7 @@ TIKV_POD_NAME=${POD_NAME:-$HOSTNAME}
 pd_url=start-script-test-pd:2379
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url=start-script-test-discovery.start-script-test-ns:10261
-until result=$(wget -qO- -T 3 --ca-certificate=/var/lib/discovery-tls/ca.crt --certificate=/var/lib/discovery-tls/tls.crt --private-key=/var/lib/discovery-tls/tls.key https://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
+until result=$(wget -qO- -T 3 --ca-certificate=/var/lib/tikv-tls/ca.crt --certificate=/var/lib/tikv-tls/tls.crt --private-key=/var/lib/tikv-tls/tls.key https://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
     echo "waiting for the verification of PD endpoints ..."
     sleep $((RANDOM % 5))
 done

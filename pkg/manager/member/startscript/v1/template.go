@@ -68,7 +68,7 @@ POD_NAME=${POD_NAME:-$HOSTNAME}{{ if .AcrossK8s }}
 pd_url="{{ .Path }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
-until result=$(wget -qO- -T 3 {{ if .DiscoveryMTLS }}--ca-certificate=/var/lib/discovery-tls/ca.crt --certificate=/var/lib/discovery-tls/tls.crt --private-key=/var/lib/discovery-tls/tls.key https{{ else }}http{{ end }}://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
+until result=$(wget -qO- -T 3 {{ if .DiscoveryMTLS }}--ca-certificate={{ .ClusterCertPath }}/ca.crt --certificate={{ .ClusterCertPath }}/tls.crt --private-key={{ .ClusterCertPath }}/tls.key https{{ else }}http{{ end }}://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
 echo "waiting for the verification of PD endpoints ..."
 sleep $((RANDOM % 5))
 done
@@ -121,6 +121,7 @@ type TidbStartScriptModel struct {
 	PluginList      string
 	Path            string
 	DiscoveryMTLS   bool
+	ClusterCertPath string
 }
 
 // pdStartScriptTpl is the pd start script
@@ -204,7 +205,7 @@ join=${join%,}
 ARGS="${ARGS} --join=${join}"
 elif [[ ! -d {{ .DataDir }}/member/wal ]]
 then
-until result=$(wget -qO- -T 3 {{ if .DiscoveryMTLS }}--ca-certificate=/var/lib/discovery-tls/ca.crt --certificate=/var/lib/discovery-tls/tls.crt --private-key=/var/lib/discovery-tls/tls.key https{{ else }}http{{ end }}://${discovery_url}/new/${encoded_domain_url} 2>/dev/null); do
+until result=$(wget -qO- -T 3 {{ if .DiscoveryMTLS }}--ca-certificate={{ .ClusterCertPath }}/ca.crt --certificate={{ .ClusterCertPath }}/tls.crt --private-key={{ .ClusterCertPath }}/tls.key https{{ else }}http{{ end }}://${discovery_url}/new/${encoded_domain_url} 2>/dev/null); do
 echo "waiting for discovery service to return start args ..."
 sleep $((RANDOM % 5))
 done
@@ -254,6 +255,7 @@ type PDStartScriptModel struct {
 	CheckDomainScript string
 	PDStartTimeout    int
 	DiscoveryMTLS     bool
+	ClusterCertPath   string
 }
 
 var tikvStartScriptTplText = `#!/bin/sh
@@ -290,7 +292,7 @@ pd_url="{{ .PDAddress }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
 
-until result=$(wget -qO- -T 3 {{ if .DiscoveryMTLS }}--ca-certificate=/var/lib/discovery-tls/ca.crt --certificate=/var/lib/discovery-tls/tls.crt --private-key=/var/lib/discovery-tls/tls.key https{{ else }}http{{ end }}://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+until result=$(wget -qO- -T 3 {{ if .DiscoveryMTLS }}--ca-certificate={{ .ClusterCertPath }}/ca.crt --certificate={{ .ClusterCertPath }}/tls.crt --private-key={{ .ClusterCertPath }}/tls.key https{{ else }}http{{ end }}://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
 echo "waiting for the verification of PD endpoints ..."
 sleep $((RANDOM % 5))
 done
@@ -340,6 +342,7 @@ type TiKVStartScriptModel struct {
 	Addr                      string
 	StatusAddr                string
 	DiscoveryMTLS             bool
+	ClusterCertPath           string
 }
 
 // pumpStartScriptTpl is the template string of pump start script
@@ -348,7 +351,7 @@ var pumpStartScriptTplText = `{{ if .AcrossK8s }}
 pd_url="{{ .PDAddr }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="{{ .ClusterName }}-discovery.{{ .Namespace }}:10261"
-until result=$(wget -qO- -T 3 {{ if .DiscoveryMTLS }}--ca-certificate=/var/lib/discovery-tls/ca.crt --certificate=/var/lib/discovery-tls/tls.crt --private-key=/var/lib/discovery-tls/tls.key https{{ else }}http{{ end }}://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+until result=$(wget -qO- -T 3 {{ if .DiscoveryMTLS }}--ca-certificate={{ .ClusterCertPath }}/ca.crt --certificate={{ .ClusterCertPath }}/tls.crt --private-key={{ .ClusterCertPath }}/tls.key https{{ else }}http{{ end }}://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
 echo "waiting for the verification of PD endpoints ..."
 sleep $((RANDOM % 5))
 done
@@ -386,12 +389,13 @@ var pumpStartScriptTpl = template.Must(template.New("pump-start-script").Parse(r
 type PumpStartScriptModel struct {
 	CommonModel
 
-	Scheme        string
-	ClusterName   string
-	PDAddr        string
-	LogLevel      string
-	Namespace     string
-	DiscoveryMTLS bool
+	Scheme          string
+	ClusterName     string
+	PDAddr          string
+	LogLevel        string
+	Namespace       string
+	DiscoveryMTLS   bool
+	ClusterCertPath string
 }
 
 func (pssm *PumpStartScriptModel) FormatPumpZone() string {
@@ -716,7 +720,7 @@ pd_url="{{ .PDAddress }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
 
-until result=$(wget -qO- -T 3 {{ if .DiscoveryMTLS }}--ca-certificate=/var/lib/discovery-tls/ca.crt --certificate=/var/lib/discovery-tls/tls.crt --private-key=/var/lib/discovery-tls/tls.key https{{ else }}http{{ end }}://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+until result=$(wget -qO- -T 3 {{ if .DiscoveryMTLS }}--ca-certificate={{ .ClusterCertPath }}/ca.crt --certificate={{ .ClusterCertPath }}/tls.crt --private-key={{ .ClusterCertPath }}/tls.key https{{ else }}http{{ end }}://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
 echo "waiting for the verification of PD endpoints ..."
 sleep $((RANDOM % 5))
 done
@@ -752,4 +756,5 @@ type TiflashStartScriptModel struct {
 	Addr                      string
 	PDAddress                 string
 	DiscoveryMTLS             bool
+	ClusterCertPath           string
 }

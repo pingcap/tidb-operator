@@ -414,11 +414,6 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 			Name: tiflashCertVolumeName, ReadOnly: true, MountPath: tiflashCertPath,
 		})
 	}
-	if tc.IsDiscoveryMTLSEnabled() {
-		volMounts = append(volMounts, corev1.VolumeMount{
-			Name: util.DiscoveryTLSVolName, ReadOnly: true, MountPath: util.DiscoveryTLSPath,
-		})
-	}
 	// with mountCMInTiflashContainer enabled, the tiflash container should directly read config from `/etc/tiflash/xxx.toml` mounted from ConfigMap
 	// rather than `/data0/xxx.toml` created by initContainer.
 	if mountCMInTiflashContainer {
@@ -445,15 +440,6 @@ func getNewStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*apps.St
 			Name: tiflashCertVolumeName, VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: util.ClusterTLSSecretName(tc.Name, label.TiFlashLabelVal),
-				},
-			},
-		})
-	}
-	if tc.IsDiscoveryMTLSEnabled() {
-		vols = append(vols, corev1.Volume{
-			Name: util.DiscoveryTLSVolName, VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: util.DiscoveryTLSSecretName(tc.Name),
 				},
 			},
 		})
