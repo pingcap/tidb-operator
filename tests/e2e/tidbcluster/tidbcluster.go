@@ -2598,6 +2598,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 
 					ginkgo.By(fmt.Sprintf("Scale in %s", comp))
+					waitScaleInPhase := utiltc.MustAsyncWatchWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, time.Minute)
 					err := controller.GuaranteedUpdate(genericCli, tc, func() error {
 						switch comp {
 						case v1alpha1.PDMemberType:
@@ -2611,7 +2612,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					})
 					framework.ExpectNoError(err, "failed to scale in %s for TidbCluster %s/%s", comp, ns, tc.Name)
 					ginkgo.By(fmt.Sprintf("Wait for %s to be in ScalePhase", comp))
-					utiltc.MustWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, time.Minute, time.Second)
+					waitScaleInPhase()
 					log.Logf(fmt.Sprintf("%s is in ScalePhase", comp))
 
 					ginkgo.By("Wait for tc ready")
@@ -2647,6 +2648,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					framework.ExpectNoError(err, "expect PVCs of scaled in Pods to have annotation tidb.pingcap.com/pvc-defer-deleting")
 
 					ginkgo.By(fmt.Sprintf("Scale out %s", comp))
+					waitScaleOutPhase := utiltc.MustAsyncWatchWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, time.Minute)
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 						switch comp {
 						case v1alpha1.PDMemberType:
@@ -2660,7 +2662,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					})
 					framework.ExpectNoError(err, "failed to scale out %s for TidbCluster %s/%s", comp, ns, tc.Name)
 					ginkgo.By(fmt.Sprintf("Wait for %s to be in ScalePhase", comp))
-					utiltc.MustWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, time.Minute, time.Second)
+					waitScaleOutPhase()
 					log.Logf(fmt.Sprintf("%s is in ScalePhase", comp))
 
 					ginkgo.By("Wait for tc ready")
