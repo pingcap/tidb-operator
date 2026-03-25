@@ -882,7 +882,7 @@ if [[ -f /var/lib/pd/join ]]; then
 elif [[ ! -d /var/lib/pd/member/wal ]]; then
     encoded_domain_url=$(echo ${PD_DOMAIN}:2380 | base64 | tr "\n" " " | sed "s/ //g")
 
-    until result=$(wget -qO- -T 3 --ca-certificate=/var/lib/pd-tls/ca.crt --certificate=/var/lib/pd-tls/tls.crt --private-key=/var/lib/pd-tls/tls.key https://start-script-test-discovery.start-script-test-ns:10261/new/${encoded_domain_url} 2>/dev/null); do
+    until result=$(curl -sS --fail --max-time 3 --cacert /var/lib/pd-tls/ca.crt --cert /var/lib/pd-tls/tls.crt --key /var/lib/pd-tls/tls.key https://start-script-test-discovery.start-script-test-ns:10261/new/${encoded_domain_url} 2>/dev/null); do
         echo "waiting for discovery service to return start args ..."
         sleep $((RANDOM % 5))
     done

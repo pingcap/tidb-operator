@@ -258,6 +258,13 @@ done
 `
 
 	// pdStartScript is the template of start script.
+	//
+	// Use curl for discovery mTLS because wget in the runtime image does not reliably present the client cert.
+	pdDiscoveryFetchPrefix = `{{ if .DiscoveryMTLS }}curl -sS --fail --max-time 3 --cacert {{ .ClusterCertPath }}/ca.crt --cert {{ .ClusterCertPath }}/tls.crt --key {{ .ClusterCertPath }}/tls.key https{{ else }}wget -qO- -T 3 http{{ end }}`
+
+	// Use curl for discovery mTLS because wget in the runtime image does not reliably present the client cert.
+	acrossK8sPDDiscoveryFetchPrefix = `{{ if .AcrossK8s.DiscoveryMTLS }}curl -sS --fail --max-time 3 --cacert {{ .AcrossK8s.ClusterCertPath }}/ca.crt --cert {{ .AcrossK8s.ClusterCertPath }}/tls.crt --key {{ .AcrossK8s.ClusterCertPath }}/tls.key https{{ else }}wget -qO- -T 3 http{{ end }}`
+
 	pdStartScript = `
 PD_POD_NAME=${POD_NAME:-$HOSTNAME}
 PD_DOMAIN={{ .PDDomain }}` +
@@ -282,7 +289,7 @@ if [[ -f {{ .DataDir }}/join ]]; then
 elif [[ ! -d {{ .DataDir }}/member/wal ]]; then
     encoded_domain_url=$(echo ${PD_DOMAIN}:2380 | base64 | tr "\n" " " | sed "s/ //g")
 
-    until result=$(wget -qO- -T 3 {{ if .DiscoveryMTLS }}--ca-certificate={{ .ClusterCertPath }}/ca.crt --certificate={{ .ClusterCertPath }}/tls.crt --private-key={{ .ClusterCertPath }}/tls.key https{{ else }}http{{ end }}://{{ .DiscoveryAddr }}/new/${encoded_domain_url} 2>/dev/null); do
+    until result=$(` + pdDiscoveryFetchPrefix + `://{{ .DiscoveryAddr }}/new/${encoded_domain_url} 2>/dev/null); do
         echo "waiting for discovery service to return start args ..."
         sleep $((RANDOM % 5))
     done
@@ -302,7 +309,7 @@ exec /pd-server ${ARGS}
 pd_url={{ .AcrossK8s.PDAddr }}
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url={{ .AcrossK8s.DiscoveryAddr }}
-until result=$(wget -qO- -T 3 {{ if .AcrossK8s.DiscoveryMTLS }}--ca-certificate={{ .AcrossK8s.ClusterCertPath }}/ca.crt --certificate={{ .AcrossK8s.ClusterCertPath }}/tls.crt --private-key={{ .AcrossK8s.ClusterCertPath }}/tls.key https{{ else }}http{{ end }}://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
+until result=$(` + acrossK8sPDDiscoveryFetchPrefix + `://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
     echo "waiting for the verification of PD endpoints ..."
     sleep $((RANDOM % 5))
 done

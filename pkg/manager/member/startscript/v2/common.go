@@ -116,7 +116,8 @@ type AcrossK8sScriptModel struct {
 	PDAddr string
 
 	// DiscoveryMTLS indicates whether mTLS is enabled on the discovery server.
-	// When true, wget uses HTTPS with the component's own cluster certificate.
+	// When true, the startup script uses curl with the component's own cluster
+	// certificate because wget in the runtime image does not reliably present the client cert.
 	DiscoveryMTLS bool
 
 	// ClusterCertPath is the path to the component's own cluster TLS certificate directory.

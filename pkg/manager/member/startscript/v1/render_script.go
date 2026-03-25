@@ -187,9 +187,10 @@ func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 	var script string
 	serverCmd := strings.Join(cmdArgs, " ")
 
-	wgetDiscoveryPrefix := "http"
+	discoveryFetchPrefix := "wget -qO- -T 3 http"
 	if tc.IsDiscoveryMTLSEnabled() {
-		wgetDiscoveryPrefix = "--ca-certificate=/var/lib/ticdc-tls/ca.crt --certificate=/var/lib/ticdc-tls/tls.crt --private-key=/var/lib/ticdc-tls/tls.key https"
+		// Use curl for discovery mTLS because wget in the runtime image does not reliably present the client cert.
+		discoveryFetchPrefix = "curl -sS --fail --max-time 3 --cacert /var/lib/ticdc-tls/ca.crt --cert /var/lib/ticdc-tls/tls.crt --key /var/lib/ticdc-tls/tls.key https"
 	}
 
 	if changefeedInfo.Enabled {
@@ -234,13 +235,13 @@ wait ${CDC_PID}
 pd_url="%s"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="%s-discovery.${NAMESPACE}:10261"
-until result=$(wget -qO- -T 3 %s://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+until result=$(%s://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
 echo "waiting for the verification of PD endpoints ..."
 sleep 2
 done
 `
 
-			script += fmt.Sprintf(str, pdAddr, tc.GetName(), wgetDiscoveryPrefix)
+			script += fmt.Sprintf(str, pdAddr, tc.GetName(), discoveryFetchPrefix)
 			script += "\n" + changefeedScript
 		} else {
 			script = "set -uo pipefail\n" + changefeedScript
@@ -258,13 +259,13 @@ done
 pd_url="%s"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="%s-discovery.${NAMESPACE}:10261"
-until result=$(wget -qO- -T 3 %s://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+until result=$(%s://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
 echo "waiting for the verification of PD endpoints ..."
 sleep 2
 done
 `
 
-		script += fmt.Sprintf(str, pdAddr, tc.GetName(), wgetDiscoveryPrefix)
+		script += fmt.Sprintf(str, pdAddr, tc.GetName(), discoveryFetchPrefix)
 		script += "\n" + strings.Join(append([]string{"exec"}, cmdArgs...), " ")
 	} else {
 		script = serverCmd
@@ -435,15 +436,16 @@ func RenderTiFlashInitScript(tc *v1alpha1.TidbCluster) (string, error) {
 		} else {
 			pdAddr = fmt.Sprintf("http://%s-pd:%d", tcName, v1alpha1.DefaultPDClientPort)
 		}
-		wgetDiscoveryPrefix := "http"
+		discoveryFetchPrefix := "wget -qO- -T 3 http"
 		if tc.IsDiscoveryMTLSEnabled() {
-			wgetDiscoveryPrefix = "--ca-certificate=/var/lib/tiflash-tls/ca.crt --certificate=/var/lib/tiflash-tls/tls.crt --private-key=/var/lib/tiflash-tls/tls.key https"
+			// Use curl for discovery mTLS because wget in the runtime image does not reliably present the client cert.
+			discoveryFetchPrefix = "curl -sS --fail --max-time 3 --cacert /var/lib/tiflash-tls/ca.crt --cert /var/lib/tiflash-tls/tls.crt --key /var/lib/tiflash-tls/tls.key https"
 		}
 		str := `pd_url="%s"
 set +e
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="%s-discovery.%s:10261"
-until result=$(wget -qO- -T 3 %s://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g' | sed 's/https:\/\///g'); do
+until result=$(%s://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g' | sed 's/https:\/\///g'); do
 echo "waiting for the verification of PD endpoints ..."
 sleep 2
 done
@@ -453,7 +455,7 @@ sed -i s/PD_ADDR/${result}/g /data0/config.toml
 sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 `
 		script += "\n"
-		script += fmt.Sprintf(str, pdAddr, tc.GetName(), tc.GetNamespace(), wgetDiscoveryPrefix)
+		script += fmt.Sprintf(str, pdAddr, tc.GetName(), tc.GetNamespace(), discoveryFetchPrefix)
 	}
 
 	return script, nil

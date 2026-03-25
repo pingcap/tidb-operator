@@ -68,7 +68,7 @@ POD_NAME=${POD_NAME:-$HOSTNAME}{{ if .AcrossK8s }}
 pd_url="{{ .Path }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
-until result=$(wget -qO- -T 3 {{ if .DiscoveryMTLS }}--ca-certificate={{ .ClusterCertPath }}/ca.crt --certificate={{ .ClusterCertPath }}/tls.crt --private-key={{ .ClusterCertPath }}/tls.key https{{ else }}http{{ end }}://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
+until result=$({{ if .DiscoveryMTLS }}curl -sS --fail --max-time 3 --cacert {{ .ClusterCertPath }}/ca.crt --cert {{ .ClusterCertPath }}/tls.crt --key {{ .ClusterCertPath }}/tls.key https{{ else }}wget -qO- -T 3 http{{ end }}://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
 echo "waiting for the verification of PD endpoints ..."
 sleep $((RANDOM % 5))
 done
@@ -205,7 +205,7 @@ join=${join%,}
 ARGS="${ARGS} --join=${join}"
 elif [[ ! -d {{ .DataDir }}/member/wal ]]
 then
-until result=$(wget -qO- -T 3 {{ if .DiscoveryMTLS }}--ca-certificate={{ .ClusterCertPath }}/ca.crt --certificate={{ .ClusterCertPath }}/tls.crt --private-key={{ .ClusterCertPath }}/tls.key https{{ else }}http{{ end }}://${discovery_url}/new/${encoded_domain_url} 2>/dev/null); do
+until result=$({{ if .DiscoveryMTLS }}curl -sS --fail --max-time 3 --cacert {{ .ClusterCertPath }}/ca.crt --cert {{ .ClusterCertPath }}/tls.crt --key {{ .ClusterCertPath }}/tls.key https{{ else }}wget -qO- -T 3 http{{ end }}://${discovery_url}/new/${encoded_domain_url} 2>/dev/null); do
 echo "waiting for discovery service to return start args ..."
 sleep $((RANDOM % 5))
 done
@@ -292,7 +292,7 @@ pd_url="{{ .PDAddress }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
 
-until result=$(wget -qO- -T 3 {{ if .DiscoveryMTLS }}--ca-certificate={{ .ClusterCertPath }}/ca.crt --certificate={{ .ClusterCertPath }}/tls.crt --private-key={{ .ClusterCertPath }}/tls.key https{{ else }}http{{ end }}://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+until result=$({{ if .DiscoveryMTLS }}curl -sS --fail --max-time 3 --cacert {{ .ClusterCertPath }}/ca.crt --cert {{ .ClusterCertPath }}/tls.crt --key {{ .ClusterCertPath }}/tls.key https{{ else }}wget -qO- -T 3 http{{ end }}://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
 echo "waiting for the verification of PD endpoints ..."
 sleep $((RANDOM % 5))
 done
@@ -351,7 +351,7 @@ var pumpStartScriptTplText = `{{ if .AcrossK8s }}
 pd_url="{{ .PDAddr }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="{{ .ClusterName }}-discovery.{{ .Namespace }}:10261"
-until result=$(wget -qO- -T 3 {{ if .DiscoveryMTLS }}--ca-certificate={{ .ClusterCertPath }}/ca.crt --certificate={{ .ClusterCertPath }}/tls.crt --private-key={{ .ClusterCertPath }}/tls.key https{{ else }}http{{ end }}://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+until result=$({{ if .DiscoveryMTLS }}curl -sS --fail --max-time 3 --cacert {{ .ClusterCertPath }}/ca.crt --cert {{ .ClusterCertPath }}/tls.crt --key {{ .ClusterCertPath }}/tls.key https{{ else }}wget -qO- -T 3 http{{ end }}://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
 echo "waiting for the verification of PD endpoints ..."
 sleep $((RANDOM % 5))
 done
@@ -720,7 +720,7 @@ pd_url="{{ .PDAddress }}"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="${CLUSTER_NAME}-discovery.${NAMESPACE}:10261"
 
-until result=$(wget -qO- -T 3 {{ if .DiscoveryMTLS }}--ca-certificate={{ .ClusterCertPath }}/ca.crt --certificate={{ .ClusterCertPath }}/tls.crt --private-key={{ .ClusterCertPath }}/tls.key https{{ else }}http{{ end }}://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+until result=$({{ if .DiscoveryMTLS }}curl -sS --fail --max-time 3 --cacert {{ .ClusterCertPath }}/ca.crt --cert {{ .ClusterCertPath }}/tls.crt --key {{ .ClusterCertPath }}/tls.key https{{ else }}wget -qO- -T 3 http{{ end }}://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
 echo "waiting for the verification of PD endpoints ..."
 sleep $((RANDOM % 5))
 done
