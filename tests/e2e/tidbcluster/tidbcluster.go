@@ -1758,8 +1758,19 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				fmt.Sprintf("--sink-uri=tidb://root:@%s:%d/", controller.TiDBMemberName(toTCName), toTc.Spec.TiDB.GetServicePort()),
 				fmt.Sprintf("--pd=http://%s:%d", controller.PDMemberName(fromTCName), v1alpha1.DefaultPDClientPort),
 			}
-			data, err := framework.RunKubectl(ns, args...)
-			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", string(data), err)
+			// Retry because headless-service DNS entries for restarted TiCDC pods
+			// may not yet be propagated by CoreDNS when the cluster first becomes Ready.
+			var lastData string
+			err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
+				data, execErr := framework.RunKubectl(ns, args...)
+				lastData = string(data)
+				if execErr != nil {
+					log.Logf("retrying changefeed create: %v", execErr)
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", lastData, err)
 
 			ginkgo.By("Inserting data to cdc cluster")
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, insertIntoDataToSourceDB(fw, c, ns, fromTCName, "", false))
@@ -1886,8 +1897,19 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				fmt.Sprintf("--sink-uri=tidb://root:@%s:%d/", controller.TiDBMemberName(toTCName), toTc.Spec.TiDB.GetServicePort()),
 				fmt.Sprintf("--pd=http://%s:%d", controller.PDMemberName(fromTCName), v1alpha1.DefaultPDClientPort),
 			}
-			data, err := framework.RunKubectl(ns, args...)
-			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", string(data), err)
+			// Retry because headless-service DNS entries for restarted TiCDC pods
+			// may not yet be propagated by CoreDNS when the cluster first becomes Ready.
+			var lastData string
+			err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
+				data, execErr := framework.RunKubectl(ns, args...)
+				lastData = string(data)
+				if execErr != nil {
+					log.Logf("retrying changefeed create: %v", execErr)
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", lastData, err)
 
 			ginkgo.By("Inserting data to cdc cluster")
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, insertIntoDataToSourceDB(fw, c, ns, fromTCName, "", false))
