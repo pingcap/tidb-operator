@@ -2743,6 +2743,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					}
 					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 
+					ginkgo.By(fmt.Sprintf("Watch for %s to be in ScalePhase before triggering scale-in", comp))
+					waitScalePhase := utiltc.MustAsyncWatchWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, time.Minute)
+
 					ginkgo.By(fmt.Sprintf("Scale in %s to %d replicas", comp, replicasSmall))
 					err := controller.GuaranteedUpdate(genericCli, tc, func() error {
 						switch comp {
@@ -2758,7 +2761,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					framework.ExpectNoError(err, "failed to scale in %s for TidbCluster %s/%s", comp, ns, tc.Name)
 
 					ginkgo.By(fmt.Sprintf("Wait for %s to be in ScalePhase", comp))
-					utiltc.MustWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, time.Minute, time.Second)
+					waitScalePhase()
 
 					ginkgo.By(fmt.Sprintf("Upgrade %s version concurrently", comp))
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
