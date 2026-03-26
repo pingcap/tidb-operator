@@ -186,6 +186,11 @@ CHANGEFEED_SERVER="%s"
 CHANGEFEED_ID="%s"
 CHANGEFEED_SINK_URI='%s'
 CHANGEFEED_TLS_ARGS="%s"
+CHANGEFEED_CONFIG="/tmp/ticdc-changefeed-config.toml"
+cat <<'EOF' > "${CHANGEFEED_CONFIG}"
+[sink]
+date-separator = "none"
+EOF
 i=0
 while [ $i -lt 15 ]; do
     if /cdc cli capture list --server="${CHANGEFEED_SERVER}" ${CHANGEFEED_TLS_ARGS} >/dev/null 2>&1; then
@@ -199,7 +204,7 @@ while [ $j -lt 15 ]; do
     if /cdc cli changefeed query --server="${CHANGEFEED_SERVER}" --changefeed-id="${CHANGEFEED_ID}" ${CHANGEFEED_TLS_ARGS} >/dev/null 2>&1; then
         break
     fi
-    if /cdc cli changefeed create --server="${CHANGEFEED_SERVER}" --sink-uri="${CHANGEFEED_SINK_URI}" --changefeed-id="${CHANGEFEED_ID}" ${CHANGEFEED_TLS_ARGS} >/dev/null 2>&1; then
+    if /cdc cli changefeed create --server="${CHANGEFEED_SERVER}" --sink-uri="${CHANGEFEED_SINK_URI}" --changefeed-id="${CHANGEFEED_ID}" --config="${CHANGEFEED_CONFIG}" ${CHANGEFEED_TLS_ARGS} >/dev/null 2>&1; then
         break
     fi
     j=$((j+1))
@@ -351,10 +356,10 @@ func buildTiCIS3ConfigForChangefeed(tc *v1alpha1.TidbCluster) (*tiCIS3ConfigForC
 func buildTiCIChangefeedSinkURIFromS3(s3 *tiCIS3ConfigForChangefeed) string {
 	sinkPrefix := fmt.Sprintf("%s/cdc", strings.TrimRight(s3.Prefix, "/"))
 	if isGCSStorageEndpoint(s3.Endpoint) {
-		return fmt.Sprintf("gcs://%s/%s?protocol=canal-json&enable-tidb-extension=true&output-row-key=true",
+		return fmt.Sprintf("gcs://%s/%s?protocol=canal-json&enable-tidb-extension=true&output-row-key=true&use-table-id-as-path=true",
 			s3.Bucket, sinkPrefix)
 	}
-	return fmt.Sprintf("s3://%s/%s?endpoint=%s&access-key=%s&secret-access-key=%s&provider=minio&protocol=canal-json&enable-tidb-extension=true&output-row-key=true",
+	return fmt.Sprintf("s3://%s/%s?endpoint=%s&access-key=%s&secret-access-key=%s&provider=minio&protocol=canal-json&enable-tidb-extension=true&output-row-key=true&use-table-id-as-path=true",
 		s3.Bucket, sinkPrefix, s3.Endpoint, s3.AccessKey, s3.SecretKey)
 }
 

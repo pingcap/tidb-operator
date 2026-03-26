@@ -32,17 +32,17 @@ func TestBuildTiCIChangefeedInfoAutoGenerateSinkURI(t *testing.T) {
 			endpoint: "http://minio-service:9000",
 			access:   "minio",
 			secret:   "minio-secret",
-			expect:   "s3://tici-test/tici_default_prefix/cdc?endpoint=http://minio-service:9000&access-key=minio&secret-access-key=minio-secret&provider=minio&protocol=canal-json&enable-tidb-extension=true&output-row-key=true",
+			expect:   "s3://tici-test/tici_default_prefix/cdc?endpoint=http://minio-service:9000&access-key=minio&secret-access-key=minio-secret&provider=minio&protocol=canal-json&enable-tidb-extension=true&output-row-key=true&use-table-id-as-path=true",
 		},
 		{
 			name:     "gcs endpoint uses gcs sink uri",
 			endpoint: "https://storage.googleapis.com",
-			expect:   "gcs://tici-test/tici_default_prefix/cdc?protocol=canal-json&enable-tidb-extension=true&output-row-key=true",
+			expect:   "gcs://tici-test/tici_default_prefix/cdc?protocol=canal-json&enable-tidb-extension=true&output-row-key=true&use-table-id-as-path=true",
 		},
 		{
 			name:     "gcs endpoint without scheme uses gcs sink uri",
 			endpoint: "storage.googleapis.com",
-			expect:   "gcs://tici-test/tici_default_prefix/cdc?protocol=canal-json&enable-tidb-extension=true&output-row-key=true",
+			expect:   "gcs://tici-test/tici_default_prefix/cdc?protocol=canal-json&enable-tidb-extension=true&output-row-key=true&use-table-id-as-path=true",
 		},
 	}
 
