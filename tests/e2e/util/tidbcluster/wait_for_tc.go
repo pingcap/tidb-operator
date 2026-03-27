@@ -23,7 +23,12 @@ import (
 	testutils "github.com/pingcap/tidb-operator/tests/e2e/util"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/tools/cache"
+	watchtools "k8s.io/client-go/tools/watch"
 )
 
 type TCCondition func(tc *v1alpha1.TidbCluster) (bool, error)
@@ -51,6 +56,44 @@ func WaitForTCCondition(c versioned.Interface, tcNS string, tcName string, timeo
 		}
 		return condition(tc)
 	})
+}
+
+// WatchWaitForTCCondition waits for a TidbCluster to match the given condition
+// using the watch API, so every status update is evaluated immediately without
+// a polling delay. Use this (started before triggering a change) when the
+// target state may be short-lived.
+func WatchWaitForTCCondition(c versioned.Interface, tcNS string, tcName string, timeout time.Duration, condition TCCondition) error {
+	fieldSelector := fields.OneTermEqualSelector("metadata.name", tcName).String()
+	lw := &cache.ListWatch{
+		ListFunc: func(opts metav1.ListOptions) (runtime.Object, error) {
+			opts.FieldSelector = fieldSelector
+			return c.PingcapV1alpha1().TidbClusters(tcNS).List(context.TODO(), opts)
+		},
+		WatchFunc: func(opts metav1.ListOptions) (watch.Interface, error) {
+			opts.FieldSelector = fieldSelector
+			return c.PingcapV1alpha1().TidbClusters(tcNS).Watch(context.TODO(), opts)
+		},
+	}
+
+	ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), timeout)
+	defer cancel()
+
+	_, err := watchtools.UntilWithSync(ctx, lw, &v1alpha1.TidbCluster{}, nil,
+		func(event watch.Event) (bool, error) {
+			switch event.Type {
+			case watch.Deleted:
+				return false, nil
+			case watch.Added, watch.Modified:
+				tc, ok := event.Object.(*v1alpha1.TidbCluster)
+				if !ok {
+					return false, nil
+				}
+				return condition(tc)
+			}
+			return false, nil
+		},
+	)
+	return err
 }
 
 // IsTidbClusterAvailable returns true if a tidbcluster is ready for at least minReadyDuration duration; false otherwise.

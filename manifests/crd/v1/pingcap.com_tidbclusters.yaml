@@ -26322,6 +26322,8 @@ spec:
                 type: object
               tlsCluster:
                 properties:
+                  enableDiscoveryMTLS:
+                    type: boolean
                   enabled:
                     type: boolean
                 type: object

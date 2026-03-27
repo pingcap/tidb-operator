@@ -6199,6 +6199,8 @@ spec:
                 type: array
               tlsCluster:
                 properties:
+                  enableDiscoveryMTLS:
+                    type: boolean
                   enabled:
                     type: boolean
                 type: object
