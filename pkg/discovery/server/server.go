@@ -14,10 +14,13 @@
 package server
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/dmapi"
@@ -55,6 +58,27 @@ func (s *server) registerHandlers() {
 
 func (s *server) ListenAndServe(addr string) {
 	klog.Fatal(http.ListenAndServe(addr, s.container.ServeMux))
+}
+
+func (s *server) ListenAndServeTLS(addr, certFile, keyFile, caFile string) {
+	caCert, err := os.ReadFile(caFile)
+	if err != nil {
+		klog.Fatalf("failed to read CA file %s: %v", caFile, err)
+	}
+	caPool := x509.NewCertPool()
+	caPool.AppendCertsFromPEM(caCert)
+
+	tlsCfg := &tls.Config{
+		ClientAuth: tls.RequireAndVerifyClientCert,
+		ClientCAs:  caPool,
+		MinVersion: tls.VersionTLS12,
+	}
+	srv := &http.Server{
+		Addr:      addr,
+		Handler:   s.container.ServeMux,
+		TLSConfig: tlsCfg,
+	}
+	klog.Fatal(srv.ListenAndServeTLS(certFile, keyFile))
 }
 
 func (s *server) newHandler(req *restful.Request, resp *restful.Response) {

@@ -1405,6 +1405,71 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns, tcName, passwd))
 			framework.ExpectNoError(err, "connect to TLS tidb timeout")
 		})
+
+		ginkgo.It("should enable DiscoveryMTLS for TiDB cluster", func() {
+			tcName := "discovery-mtls"
+
+			ginkgo.By("Installing tidb CA certificate")
+			err := InstallTiDBIssuer(ns, tcName)
+			framework.ExpectNoError(err, "failed to install CA certificate")
+
+			ginkgo.By("Installing tidb server and client certificate")
+			err = InstallTiDBCertificates(ns, tcName)
+			framework.ExpectNoError(err, "failed to install tidb server and client certificate")
+
+			ginkgo.By("Installing tidb components certificates")
+			err = InstallTiDBComponentsCertificates(ns, tcName)
+			framework.ExpectNoError(err, "failed to install tidb components certificates")
+
+			ginkgo.By("Installing discovery TLS certificate")
+			err = InstallDiscoveryTLSCertificates(ns, tcName)
+			framework.ExpectNoError(err, "failed to install discovery TLS certificate")
+
+			ginkgo.By("Creating tidb cluster with TLS and DiscoveryMTLS enabled")
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBLatest)
+			tc.Spec.PD.Replicas = 3
+			tc.Spec.TiKV.Replicas = 3
+			tc.Spec.TiDB.Replicas = 2
+			tc.Spec.TiDB.TLSClient = &v1alpha1.TiDBTLSClient{Enabled: true}
+			tc.Spec.TLSCluster = &v1alpha1.TLSCluster{
+				Enabled:             true,
+				EnableDiscoveryMTLS: true,
+			}
+
+			err = genericCli.Create(context.TODO(), tc)
+			framework.ExpectNoError(err, "failed to create TidbCluster: %q", tc.Name)
+			err = oa.WaitForTidbClusterReady(tc, 30*time.Minute, 5*time.Second)
+			framework.ExpectNoError(err, "wait for TidbCluster ready timeout: %q", tc.Name)
+
+			ginkgo.By("Verifying discovery deployment has DISCOVERY_MTLS_ENABLED env var and TLS volume")
+			discoveryName := controller.DiscoveryMemberName(tcName)
+			discoveryDeploy, err := c.AppsV1().Deployments(ns).Get(context.TODO(), discoveryName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get discovery deployment: %q", discoveryName)
+
+			foundEnv := false
+			for _, envVar := range discoveryDeploy.Spec.Template.Spec.Containers[0].Env {
+				if envVar.Name == "DISCOVERY_MTLS_ENABLED" && envVar.Value == "true" {
+					foundEnv = true
+					break
+				}
+			}
+			framework.ExpectEqual(foundEnv, true, "expected DISCOVERY_MTLS_ENABLED=true in discovery deployment env")
+
+			foundVolume := false
+			for _, vol := range discoveryDeploy.Spec.Template.Spec.Volumes {
+				if vol.Name == "discovery-tls" {
+					foundVolume = true
+					framework.ExpectEqual(vol.Secret.SecretName, fmt.Sprintf("%s-discovery-cluster-secret", tcName))
+					break
+				}
+			}
+			framework.ExpectEqual(foundVolume, true, "expected discovery-tls volume in discovery deployment")
+
+			ginkgo.By("Connecting to tidb server to verify the cluster is working with DiscoveryMTLS")
+			passwd := ""
+			err = wait.PollImmediate(time.Second*5, time.Minute*5, tidbIsTLSEnabled(fw, c, ns, tcName, passwd))
+			framework.ExpectNoError(err, "connect to TLS tidb timeout")
+		})
 	})
 
 	// TODO: move into TiDB specific group
@@ -1693,8 +1758,19 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				fmt.Sprintf("--sink-uri=tidb://root:@%s:%d/", controller.TiDBMemberName(toTCName), toTc.Spec.TiDB.GetServicePort()),
 				fmt.Sprintf("--pd=http://%s:%d", controller.PDMemberName(fromTCName), v1alpha1.DefaultPDClientPort),
 			}
-			data, err := framework.RunKubectl(ns, args...)
-			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", string(data), err)
+			// Retry because headless-service DNS entries for restarted TiCDC pods
+			// may not yet be propagated by CoreDNS when the cluster first becomes Ready.
+			var lastData string
+			err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
+				data, execErr := framework.RunKubectl(ns, args...)
+				lastData = string(data)
+				if execErr != nil {
+					log.Logf("retrying changefeed create: %v", execErr)
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", lastData, err)
 
 			ginkgo.By("Inserting data to cdc cluster")
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, insertIntoDataToSourceDB(fw, c, ns, fromTCName, "", false))
@@ -1821,8 +1897,19 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 				fmt.Sprintf("--sink-uri=tidb://root:@%s:%d/", controller.TiDBMemberName(toTCName), toTc.Spec.TiDB.GetServicePort()),
 				fmt.Sprintf("--pd=http://%s:%d", controller.PDMemberName(fromTCName), v1alpha1.DefaultPDClientPort),
 			}
-			data, err := framework.RunKubectl(ns, args...)
-			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", string(data), err)
+			// Retry because headless-service DNS entries for restarted TiCDC pods
+			// may not yet be propagated by CoreDNS when the cluster first becomes Ready.
+			var lastData string
+			err = wait.PollImmediate(5*time.Second, 3*time.Minute, func() (bool, error) {
+				data, execErr := framework.RunKubectl(ns, args...)
+				lastData = string(data)
+				if execErr != nil {
+					log.Logf("retrying changefeed create: %v", execErr)
+					return false, nil
+				}
+				return true, nil
+			})
+			framework.ExpectNoError(err, "failed to create change feed task: %s, %v", lastData, err)
 
 			ginkgo.By("Inserting data to cdc cluster")
 			err = wait.PollImmediate(time.Second*5, time.Minute*5, insertIntoDataToSourceDB(fw, c, ns, fromTCName, "", false))
@@ -2533,6 +2620,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 
 					ginkgo.By(fmt.Sprintf("Scale in %s", comp))
+					waitScaleInPhase := utiltc.MustAsyncWatchWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, time.Minute)
 					err := controller.GuaranteedUpdate(genericCli, tc, func() error {
 						switch comp {
 						case v1alpha1.PDMemberType:
@@ -2546,7 +2634,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					})
 					framework.ExpectNoError(err, "failed to scale in %s for TidbCluster %s/%s", comp, ns, tc.Name)
 					ginkgo.By(fmt.Sprintf("Wait for %s to be in ScalePhase", comp))
-					utiltc.MustWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, time.Minute, time.Second)
+					waitScaleInPhase()
 					log.Logf(fmt.Sprintf("%s is in ScalePhase", comp))
 
 					ginkgo.By("Wait for tc ready")
@@ -2582,6 +2670,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					framework.ExpectNoError(err, "expect PVCs of scaled in Pods to have annotation tidb.pingcap.com/pvc-defer-deleting")
 
 					ginkgo.By(fmt.Sprintf("Scale out %s", comp))
+					waitScaleOutPhase := utiltc.MustAsyncWatchWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, time.Minute)
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {
 						switch comp {
 						case v1alpha1.PDMemberType:
@@ -2595,7 +2684,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					})
 					framework.ExpectNoError(err, "failed to scale out %s for TidbCluster %s/%s", comp, ns, tc.Name)
 					ginkgo.By(fmt.Sprintf("Wait for %s to be in ScalePhase", comp))
-					utiltc.MustWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, time.Minute, time.Second)
+					waitScaleOutPhase()
 					log.Logf(fmt.Sprintf("%s is in ScalePhase", comp))
 
 					ginkgo.By("Wait for tc ready")
@@ -2654,6 +2743,9 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					}
 					utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 10*time.Minute, 10*time.Second)
 
+					ginkgo.By(fmt.Sprintf("Watch for %s to be in ScalePhase before triggering scale-in", comp))
+					waitScalePhase := utiltc.MustAsyncWatchWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, time.Minute)
+
 					ginkgo.By(fmt.Sprintf("Scale in %s to %d replicas", comp, replicasSmall))
 					err := controller.GuaranteedUpdate(genericCli, tc, func() error {
 						switch comp {
@@ -2669,7 +2761,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 					framework.ExpectNoError(err, "failed to scale in %s for TidbCluster %s/%s", comp, ns, tc.Name)
 
 					ginkgo.By(fmt.Sprintf("Wait for %s to be in ScalePhase", comp))
-					utiltc.MustWaitForComponentPhase(cli, tc, comp, v1alpha1.ScalePhase, time.Minute, time.Second)
+					waitScalePhase()
 
 					ginkgo.By(fmt.Sprintf("Upgrade %s version concurrently", comp))
 					err = controller.GuaranteedUpdate(genericCli, tc, func() error {

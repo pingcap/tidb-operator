@@ -1135,6 +1135,10 @@ func (tc *TidbCluster) IsTLSClusterEnabled() bool {
 	return tc.Spec.TLSCluster != nil && tc.Spec.TLSCluster.Enabled
 }
 
+func (tc *TidbCluster) IsDiscoveryMTLSEnabled() bool {
+	return tc.IsTLSClusterEnabled() && tc.Spec.TLSCluster.EnableDiscoveryMTLS
+}
+
 func (tc *TidbCluster) IsRecoveryMode() bool {
 	return tc.Spec.RecoveryMode
 }

@@ -2212,6 +2212,15 @@ type TLSCluster struct {
 	//        Same for other components.
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
+
+	// EnableDiscoveryMTLS indicates whether to enable mutual TLS on the discovery server (port 10261).
+	// When enabled, the discovery server presents its own certificate, and all components must present
+	// a client certificate when calling the discovery service.
+	// A single secret named <clusterName>-discovery-cluster-secret must be created containing ca.crt,
+	// tls.crt and tls.key, and will be mounted to both the discovery server pod and all component pods.
+	// This field only takes effect when Enabled is true.
+	// +optional
+	EnableDiscoveryMTLS bool `json:"enableDiscoveryMTLS,omitempty"`
 }
 
 // +genclient
