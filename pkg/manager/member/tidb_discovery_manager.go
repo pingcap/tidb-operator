@@ -290,6 +290,25 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 			Value: strconv.FormatBool(true),
 		})
 	}
+	if tc, ok := obj.(*v1alpha1.TidbCluster); ok && tc.IsDiscoveryMTLSEnabled() {
+		podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
+			Name: util.DiscoveryTLSVolName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: util.DiscoveryTLSSecretName(obj.GetName()),
+				},
+			},
+		})
+		podSpec.Containers[0].VolumeMounts = append(podSpec.Containers[0].VolumeMounts, corev1.VolumeMount{
+			Name:      util.DiscoveryTLSVolName,
+			ReadOnly:  true,
+			MountPath: util.DiscoveryTLSPath,
+		})
+		podSpec.Containers[0].Env = append(podSpec.Containers[0].Env, corev1.EnvVar{
+			Name:  "DISCOVERY_MTLS_ENABLED",
+			Value: strconv.FormatBool(true),
+		})
+	}
 
 	podLabels := util.CombineStringMap(l.Labels(), baseSpec.Labels())
 	podAnnotations := baseSpec.Annotations()

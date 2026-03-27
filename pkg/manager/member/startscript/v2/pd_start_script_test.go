@@ -812,6 +812,90 @@ exec /pd-server ${ARGS}
 `,
 		},
 		{
+			name: "enable discovery mtls",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true, EnableDiscoveryMTLS: true}
+			},
+			expectScript: `#!/bin/sh
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+PD_POD_NAME=${POD_NAME:-$HOSTNAME}
+PD_DOMAIN=${PD_POD_NAME}.start-script-test-pd-peer.start-script-test-ns.svc
+
+elapseTime=0
+period=1
+threshold=30
+while true; do
+    sleep ${period}
+    elapseTime=$(( elapseTime+period ))
+
+    if [[ ${elapseTime} -ge ${threshold} ]]; then
+        echo "waiting for pd cluster ready timeout" >&2
+        exit 1
+    fi
+
+    digRes=$(dig ${PD_DOMAIN} A ${PD_DOMAIN} AAAA +search +short)
+    if [ $? -ne 0  ]; then
+        echo "domain resolve ${PD_DOMAIN} failed"
+        echo "$digRes"
+        continue
+    fi
+
+    if [ -z "${digRes}" ]
+    then
+        echo "domain resolve ${PD_DOMAIN} no record return"
+    else
+        echo "domain resolve ${PD_DOMAIN} success"
+        echo "$digRes"
+        break
+    fi
+done
+
+ARGS="--data-dir=/var/lib/pd \
+--name=${PD_POD_NAME} \
+--peer-urls=https://0.0.0.0:2380 \
+--advertise-peer-urls=https://${PD_DOMAIN}:2380 \
+--client-urls=https://0.0.0.0:2379 \
+--advertise-client-urls=https://${PD_DOMAIN}:2379 \
+--config=/etc/pd/pd.toml"
+
+if [[ -f /var/lib/pd/join ]]; then
+    join=$(cat /var/lib/pd/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
+    join=${join%,}
+    ARGS="${ARGS} --join=${join}"
+elif [[ ! -d /var/lib/pd/member/wal ]]; then
+    encoded_domain_url=$(echo ${PD_DOMAIN}:2380 | base64 | tr "\n" " " | sed "s/ //g")
+
+    until result=$(curl -sS --fail --max-time 3 --cacert /var/lib/pd-tls/ca.crt --cert /var/lib/pd-tls/tls.crt --key /var/lib/pd-tls/tls.key https://start-script-test-discovery.start-script-test-ns:10261/new/${encoded_domain_url} 2>/dev/null); do
+        echo "waiting for discovery service to return start args ..."
+        sleep $((RANDOM % 5))
+    done
+    ARGS="${ARGS} ${result}"
+fi
+
+echo "starting pd-server ..."
+sleep $((RANDOM % 10))
+echo "/pd-server ${ARGS}"
+exec /pd-server ${ARGS}
+`,
+		},
+		{
 			name: "across k8s with setting cluster domain",
 			modifyTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.ClusterDomain = "cluster-1.com"

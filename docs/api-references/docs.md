@@ -16908,6 +16908,23 @@ For Client: kubectl create secret generic <clusterName>-cluster-client-secret &n
 Same for other components.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>enableDiscoveryMTLS</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnableDiscoveryMTLS indicates whether to enable mutual TLS on the discovery server (port 10261).
+When enabled, the discovery server presents its own certificate, and all components must present
+a client certificate when calling the discovery service.
+A single secret named <clusterName>-discovery-cluster-secret must be created containing ca.crt,
+tls.crt and tls.key, and will be mounted to both the discovery server pod and all component pods.
+This field only takes effect when Enabled is true.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tlsconfig">TLSConfig</h3>

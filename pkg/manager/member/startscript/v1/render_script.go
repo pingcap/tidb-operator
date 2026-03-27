@@ -35,6 +35,8 @@ func RenderTiKVStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		},
 		EnableAdvertiseStatusAddr: false,
 		DataDir:                   filepath.Join(constants.TiKVDataVolumeMountPath, tc.Spec.TiKV.DataSubDir),
+		DiscoveryMTLS:             tc.IsDiscoveryMTLSEnabled(),
+		ClusterCertPath:           "/var/lib/tikv-tls",
 	}
 	if tc.Spec.EnableDynamicConfiguration != nil && *tc.Spec.EnableDynamicConfiguration {
 		model.AdvertiseStatusAddr = "${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc" + controller.FormatClusterDomain(tc.Spec.ClusterDomain)
@@ -64,9 +66,11 @@ func RenderPDStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 			AcrossK8s:     tc.AcrossK8s(),
 			ClusterDomain: tc.Spec.ClusterDomain,
 		},
-		Scheme:         tc.Scheme(),
-		DataDir:        filepath.Join(constants.PDDataVolumeMountPath, tc.Spec.PD.DataSubDir),
-		PDStartTimeout: tc.PDStartTimeout(),
+		Scheme:          tc.Scheme(),
+		DataDir:         filepath.Join(constants.PDDataVolumeMountPath, tc.Spec.PD.DataSubDir),
+		PDStartTimeout:  tc.PDStartTimeout(),
+		DiscoveryMTLS:   tc.IsDiscoveryMTLSEnabled(),
+		ClusterCertPath: "/var/lib/pd-tls",
 	}
 	if tc.Spec.PD.StartUpScriptVersion == "v1" {
 		model.CheckDomainScript = checkDNSV1
@@ -92,6 +96,8 @@ func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		EnablePlugin:    len(plugins) > 0,
 		PluginDirectory: "/plugins",
 		PluginList:      strings.Join(plugins, ","),
+		DiscoveryMTLS:   tc.IsDiscoveryMTLSEnabled(),
+		ClusterCertPath: "/var/lib/tidb-tls",
 	}
 	model.Path = fmt.Sprintf("${CLUSTER_NAME}-pd:%d", v1alpha1.DefaultPDClientPort)
 	if tc.AcrossK8s() {
@@ -100,7 +106,7 @@ func RenderTiDBStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 		model.Path = fmt.Sprintf("%s:%d", controller.PDMemberName(tc.Spec.Cluster.Name), v1alpha1.DefaultPDClientPort) // use pd of reference cluster
 	}
 
-	var tidbStartScriptTpl = template.Must(template.New("tidb-start-script").Parse(
+	tidbStartScriptTpl := template.Must(template.New("tidb-start-script").Parse(
 		appendTiDBStartScriptWithArgs(tidbStartScriptTplText, tc.Spec.TiDB.Arguments)))
 	return renderTemplateFunc(tidbStartScriptTpl, model)
 }
@@ -124,11 +130,13 @@ func RenderPumpStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 			AcrossK8s:     tc.AcrossK8s(),
 			ClusterDomain: tc.Spec.ClusterDomain,
 		},
-		Scheme:      scheme,
-		ClusterName: tc.Name,
-		PDAddr:      pdAddr,
-		LogLevel:    tc.PumpLogLevel(),
-		Namespace:   tc.GetNamespace(),
+		Scheme:          scheme,
+		ClusterName:     tc.Name,
+		PDAddr:          pdAddr,
+		LogLevel:        tc.PumpLogLevel(),
+		Namespace:       tc.GetNamespace(),
+		DiscoveryMTLS:   tc.IsDiscoveryMTLSEnabled(),
+		ClusterCertPath: "/var/lib/pump-tls",
 	})
 }
 
@@ -169,6 +177,12 @@ func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 
 	var script string
 
+	discoveryFetchPrefix := "wget -qO- -T 3 http"
+	if tc.IsDiscoveryMTLSEnabled() {
+		// Use curl for discovery mTLS because wget in the runtime image does not reliably present the client cert.
+		discoveryFetchPrefix = "curl -sS --fail --max-time 3 --cacert /var/lib/ticdc-tls/ca.crt --cert /var/lib/ticdc-tls/tls.crt --key /var/lib/ticdc-tls/tls.key https"
+	}
+
 	if tc.AcrossK8s() {
 		var pdAddr string
 		pdDomain := controller.PDMemberName(tcName)
@@ -182,13 +196,13 @@ func RenderTiCDCStartScript(tc *v1alpha1.TidbCluster) (string, error) {
 pd_url="%s"
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="%s-discovery.${NAMESPACE}:10261"
-until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
+until result=$(%s://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null); do
 echo "waiting for the verification of PD endpoints ..."
 sleep 2
 done
 `
 
-		script += fmt.Sprintf(str, pdAddr, tc.GetName())
+		script += fmt.Sprintf(str, pdAddr, tc.GetName(), discoveryFetchPrefix)
 		script += "\n" + strings.Join(append([]string{"exec"}, cmdArgs...), " ")
 	} else {
 		script = strings.Join(cmdArgs, " ")
@@ -227,6 +241,8 @@ func RenderTiFlashStartScriptWithStartArgs(tc *v1alpha1.TidbCluster) (string, er
 	}
 
 	model.Addr = fmt.Sprintf("${POD_NAME}.${HEADLESS_SERVICE_NAME}.${NAMESPACE}.svc%s:%d", controller.FormatClusterDomain(tc.Spec.ClusterDomain), v1alpha1.DefaultTiFlashFlashPort)
+	model.DiscoveryMTLS = tc.IsDiscoveryMTLSEnabled()
+	model.ClusterCertPath = "/var/lib/tiflash-tls"
 
 	return renderTemplateFunc(tiflashStartScriptTpl, model)
 }
@@ -242,11 +258,16 @@ func RenderTiFlashInitScript(tc *v1alpha1.TidbCluster) (string, error) {
 		} else {
 			pdAddr = fmt.Sprintf("http://%s-pd:%d", tcName, v1alpha1.DefaultPDClientPort)
 		}
+		discoveryFetchPrefix := "wget -qO- -T 3 http"
+		if tc.IsDiscoveryMTLSEnabled() {
+			// Use curl for discovery mTLS because wget in the runtime image does not reliably present the client cert.
+			discoveryFetchPrefix = "curl -sS --fail --max-time 3 --cacert /var/lib/tiflash-tls/ca.crt --cert /var/lib/tiflash-tls/tls.crt --key /var/lib/tiflash-tls/tls.key https"
+		}
 		str := `pd_url="%s"
 set +e
 encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
 discovery_url="%s-discovery.%s:10261"
-until result=$(wget -qO- -T 3 http://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g' | sed 's/https:\/\///g'); do
+until result=$(%s://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g' | sed 's/https:\/\///g'); do
 echo "waiting for the verification of PD endpoints ..."
 sleep 2
 done
@@ -256,7 +277,7 @@ sed -i s/PD_ADDR/${result}/g /data0/config.toml
 sed -i s/PD_ADDR/${result}/g /data0/proxy.toml
 `
 		script += "\n"
-		script += fmt.Sprintf(str, pdAddr, tc.GetName(), tc.GetNamespace())
+		script += fmt.Sprintf(str, pdAddr, tc.GetName(), tc.GetNamespace(), discoveryFetchPrefix)
 	}
 
 	return script, nil

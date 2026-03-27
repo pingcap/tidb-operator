@@ -487,6 +487,57 @@ exec /tidb-server ${ARGS}
 `,
 		},
 		{
+			name: "across k8s with discovery mtls",
+			modifyTC: func(tc *v1alpha1.TidbCluster) {
+				tc.Spec.AcrossK8s = true
+				tc.Spec.TLSCluster = &v1alpha1.TLSCluster{Enabled: true, EnableDiscoveryMTLS: true}
+			},
+			expectScript: `#!/bin/sh
+
+set -uo pipefail
+
+ANNOTATIONS="/etc/podinfo/annotations"
+if [[ ! -f "${ANNOTATIONS}" ]]
+then
+    echo "${ANNOTATIONS} does't exist, exiting."
+    exit 1
+fi
+source ${ANNOTATIONS} 2>/dev/null
+
+runmode=${runmode:-normal}
+if [[ X${runmode} == Xdebug ]]
+then
+    echo "entering debug mode."
+    tail -f /dev/null
+fi
+
+TIDB_POD_NAME=${POD_NAME:-$HOSTNAME}
+pd_url=start-script-test-pd:2379
+encoded_domain_url=$(echo $pd_url | base64 | tr "\n" " " | sed "s/ //g")
+discovery_url=start-script-test-discovery.start-script-test-ns:10261
+until result=$(curl -sS --fail --max-time 3 --cacert /var/lib/tidb-tls/ca.crt --cert /var/lib/tidb-tls/tls.crt --key /var/lib/tidb-tls/tls.key https://${discovery_url}/verify/${encoded_domain_url} 2>/dev/null | sed 's/http:\/\///g'); do
+    echo "waiting for the verification of PD endpoints ..."
+    sleep $((RANDOM % 5))
+done
+
+ARGS="--store=tikv \
+--advertise-address=${TIDB_POD_NAME}.start-script-test-tidb-peer.start-script-test-ns.svc \
+--host=0.0.0.0 \
+--path=${result} \
+--config=/etc/tidb/tidb.toml"
+
+SLOW_LOG_FILE=${SLOW_LOG_FILE:-""}
+if [[ ! -z "${SLOW_LOG_FILE}" ]]
+then
+    ARGS="${ARGS} --log-slow-query=${SLOW_LOG_FILE:-}"
+fi
+
+echo "start tidb-server ..."
+echo "/tidb-server ${ARGS}"
+exec /tidb-server ${ARGS}
+`,
+		},
+		{
 			name: "heterogeneous cluster when across k8s",
 			modifyTC: func(tc *v1alpha1.TidbCluster) {
 				tc.Spec.PD = nil
