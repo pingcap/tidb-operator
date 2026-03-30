@@ -46,12 +46,14 @@ var (
 	ClusterClientTLSPath   = "/var/lib/cluster-client-tls"
 	ClusterAssetsTLSPath   = "/var/lib/cluster-assets-tls"
 	TiDBClientTLSPath      = "/var/lib/tidb-client-tls"
+	DiscoveryTLSPath       = "/var/lib/discovery-tls"
 	BRBinPath              = "/var/lib/br-bin"
 	KVCTLBinPath           = "/var/lib/kvctl-bin"
 	DumplingBinPath        = "/var/lib/dumpling-bin"
 	LightningBinPath       = "/var/lib/lightning-bin"
 	ClusterClientVolName   = "cluster-client-tls"
 	DMClusterClientVolName = "dm-cluster-client-tls"
+	DiscoveryTLSVolName    = "discovery-tls"
 )
 
 const (
@@ -213,6 +215,10 @@ func ClusterClientTLSSecretName(tcName string) string {
 
 func ClusterTLSSecretName(tcName, component string) string {
 	return fmt.Sprintf("%s-%s-cluster-secret", tcName, component)
+}
+
+func DiscoveryTLSSecretName(tcName string) string {
+	return fmt.Sprintf("%s-discovery-cluster-secret", tcName)
 }
 
 func TiDBClientTLSSecretName(tcName string, secretName *string) string {
