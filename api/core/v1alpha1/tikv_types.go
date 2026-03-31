@@ -210,6 +210,7 @@ type TiKVPreStop struct {
 
 type (
 	CoprocessorReference corev1.LocalObjectReference
+	CompactorReference   corev1.LocalObjectReference
 	WorkerReference      corev1.LocalObjectReference
 )
 
@@ -217,8 +218,11 @@ type TiKVRemoteWorkers struct {
 	// Default worker reference, if remote workers are enabled, this default worker ref must be set
 	Worker WorkerReference `json:"worker"`
 
-	// Coprocessor worker  reference, if it's not set, use worker ref by default
+	// Coprocessor worker reference, if it's not set, use worker ref by default
 	Coprocessor *CoprocessorReference `json:"coprocessor,omitempty"`
+
+	// Compactor worker reference, if it's not set, use worker ref by default
+	Compactor *CompactorReference `json:"compactor,omitempty"`
 }
 
 type TiKVServer struct {

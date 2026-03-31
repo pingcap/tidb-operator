@@ -21,7 +21,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/features"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 )
 
@@ -68,7 +70,7 @@ type KVEngine struct {
 	RemoteWorkerAddr      string `toml:"remote-worker-addr"`
 }
 
-func (c *Config) Overlay(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV) error {
+func (c *Config) Overlay(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, fg features.Gates) error {
 	if err := c.Validate(); err != nil {
 		return err
 	}
@@ -107,14 +109,25 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV) error {
 		if c.DFS == nil {
 			c.DFS = &DFS{}
 		}
+
 		compactor := tikv.Spec.RemoteWorkers.Worker.Name
 		copr := tikv.Spec.RemoteWorkers.Worker.Name
+		worker := tikv.Spec.RemoteWorkers.Worker.Name
+
+		if tikv.Spec.RemoteWorkers.Compactor != nil {
+			compactor = tikv.Spec.RemoteWorkers.Compactor.Name
+		}
 		if tikv.Spec.RemoteWorkers.Coprocessor != nil {
 			copr = tikv.Spec.RemoteWorkers.Coprocessor.Name
 		}
+		if !fg.Enabled(metav1alpha1.IndependentKVEngineWorker) {
+			if tikv.Spec.RemoteWorkers.Coprocessor != nil {
+				worker = tikv.Spec.RemoteWorkers.Coprocessor.Name
+			}
+		}
 
 		c.KVEngine.RemoteCoprocessorAddr = coreutil.TiKVWorkerCoprocessorURLFromRef(cluster, copr)
-		c.KVEngine.RemoteWorkerAddr = coreutil.TiKVWorkerCoprocessorURLFromRef(cluster, copr)
+		c.KVEngine.RemoteWorkerAddr = coreutil.TiKVWorkerCoprocessorURLFromRef(cluster, worker)
 		c.DFS.RemoteCompactorAddr = coreutil.TiKVWorkerCompactorURLFromRef(cluster, compactor)
 	}
 
