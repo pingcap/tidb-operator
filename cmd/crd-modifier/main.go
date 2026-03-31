@@ -28,6 +28,8 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	yamlutil "k8s.io/apimachinery/pkg/util/yaml"
 	kyaml "sigs.k8s.io/yaml"
+
+	crdpkg "github.com/pingcap/tidb-operator/v2/pkg/crd"
 )
 
 func main() {
@@ -84,8 +86,9 @@ func main() {
 			removeUselessRequiredForTiBRGC(crd)
 		} else {
 			fmt.Printf("  Skipping %s: no overlay field found\n", fileName)
-			continue
 		}
+
+		crd.Annotations[crdpkg.VersionAnnoKey] = "${CRD_VERSION}"
 
 		fmt.Printf("  Saving modified CRD: %s\n", fileName)
 		if err := saveCRD(path, crd); err != nil {

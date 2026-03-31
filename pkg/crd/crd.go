@@ -33,9 +33,11 @@ import (
 )
 
 const (
-	crdDirPath = "crd"
+	VersionAnnoKey = "pingcap.com/version"
+)
 
-	versionAnnoKey = "pingcap.com/version"
+const (
+	crdDirPath = "crd"
 
 	timeout = time.Second * 10
 )
@@ -105,7 +107,7 @@ func applyCRD(ctx context.Context, cfg *Config, name string) (string, error) {
 	}
 
 	if oldCRD != nil {
-		versionVal, ok := oldCRD.Annotations[versionAnnoKey]
+		versionVal, ok := oldCRD.Annotations[VersionAnnoKey]
 		if !ok {
 			if !cfg.AllowEmptyOldVersion {
 				return "", fmt.Errorf("cannot find old version from crd %s, you can enable --allow-empty-old-version or apply manually", crd.Name)
@@ -133,7 +135,7 @@ func applyCRD(ctx context.Context, cfg *Config, name string) (string, error) {
 	if crd.Annotations == nil {
 		crd.Annotations = map[string]string{}
 	}
-	crd.Annotations[versionAnnoKey] = cfg.Version
+	crd.Annotations[VersionAnnoKey] = cfg.Version
 
 	if err := cfg.Client.Apply(ctx, &crd); err != nil {
 		return "", fmt.Errorf("cannot apply crd %s: %w", crd.Name, err)

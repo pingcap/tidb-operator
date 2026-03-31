@@ -30,11 +30,12 @@ BOILERPLATE=$ROOT/hack/boilerplate/boilerplate.yaml.txt
 
 mkdir -p $OUTPUT
 
+
 echo "Combine CRDs into tidb-operator.crds.yaml"
 cat $BOILERPLATE > $CRDS
 for f in $ROOT/manifests/crd/*.yaml; do
     echo "append $f"
-    cat $f >> $CRDS
+    CRD_VERSION=${V_RELEASE} envsubst < $f >> $CRDS
 done
 
 echo "Generate tidb-operator charts"
