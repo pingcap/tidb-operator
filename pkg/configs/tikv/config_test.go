@@ -23,6 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/features"
 )
 
 func TestValidate(t *testing.T) {
@@ -107,7 +108,7 @@ level = "info"`),
 	}
 
 	cfg := &Config{}
-	err := cfg.Overlay(cluster, tikv)
+	err := cfg.Overlay(cluster, tikv, features.NewFromFeatures(nil))
 	require.NoError(t, err)
 	assert.Equal(t, "[::]:20160", cfg.Server.Addr)
 	assert.Equal(t, "basic-tikv-0.basic-tikv-peer.ns1:20160", cfg.Server.AdvertiseAddr)
