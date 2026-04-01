@@ -205,11 +205,35 @@ type TiProxyServer struct {
 
 type TiProxyPorts struct {
 	// Client defines port for TiProxy's SQL service.
-	Client *Port `json:"client,omitempty"`
+	Client *TiProxyPortOrRange `json:"client,omitempty"`
 	// API defines port for TiProxy API service.
 	API *Port `json:"api,omitempty"`
 	// Peer defines port for TiProxy's peer service.
 	Peer *Port `json:"peer,omitempty"`
+}
+
+// TiProxyPortOrRange defines the main SQL port and optional extra listening range.
+// The operator continues to use Port for Pod probes and the internal Service.
+// Range is only propagated to TiProxy's proxy.port-range config.
+// +kubebuilder:validation:XValidation:rule="!has(self.range) || self.range.start <= self.range.end",message="range.start must be less than or equal to range.end"
+type TiProxyPortOrRange struct {
+	// Port defines the main SQL port exposed by the TiProxy Pod and Service.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
+	Port *int32 `json:"port,omitempty"`
+
+	// Range defines additional SQL ports listened by TiProxy itself.
+	Range *TiProxyPortRange `json:"range,omitempty"`
+}
+
+type TiProxyPortRange struct {
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
+	Start int32 `json:"start"`
+
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
+	End int32 `json:"end"`
 }
 
 type TiProxyProbes struct {

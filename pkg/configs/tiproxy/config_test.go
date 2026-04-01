@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 )
@@ -37,12 +38,25 @@ func TestValidate(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "valid config with backend clusters",
+			config: &Config{
+				Proxy: Proxy{
+					BackendClusters: []BackendCluster{{
+						Name:    "cluster-a",
+						PDAddrs: "127.0.0.1:2379",
+					}},
+				},
+			},
+			wantErr: false,
+		},
+		{
 			name: "invalid config with managed fields",
 			config: &Config{
 				Proxy: Proxy{
 					Address:          "[::]:4000",
 					AdvertiseAddress: "tiproxy-0.tiproxy-peer.default.svc",
 					PDAddress:        "pd:2379",
+					PortRange:        []int{10000, 10002},
 				},
 				API: API{
 					Address: "[::]:3080",
@@ -60,6 +74,7 @@ func TestValidate(t *testing.T) {
 				"proxy.address",
 				"proxy.advertise-address",
 				"proxy.pd-address",
+				"proxy.port-range",
 				"api.address",
 				"security.server-sql-tls.cert",
 				"security.server-sql-tls.key",
@@ -116,6 +131,80 @@ func TestOverlay(t *testing.T) {
 					Address:          "[::]:6000",
 					AdvertiseAddress: "db-tiproxy-foo.db-tiproxy-peer.ns1.svc",
 					PDAddress:        "db-pd.ns1:2379",
+				},
+				API: API{
+					Address: "[::]:3080",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "basic config without local pd",
+			cluster: &v1alpha1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns1",
+					Name:      "db",
+				},
+			},
+			tiproxy: &v1alpha1.TiProxy{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns1",
+					Name:      "db-foo",
+				},
+				Spec: v1alpha1.TiProxySpec{
+					Subdomain: "db-tiproxy-peer",
+				},
+			},
+			want: &Config{
+				Proxy: Proxy{
+					Address:          "[::]:6000",
+					AdvertiseAddress: "db-tiproxy-foo.db-tiproxy-peer.ns1.svc",
+				},
+				API: API{
+					Address: "[::]:3080",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "config with client port range",
+			cluster: &v1alpha1.Cluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns1",
+					Name:      "db",
+				},
+				Status: v1alpha1.ClusterStatus{
+					PD: "http://db-pd.ns1:2379",
+				},
+			},
+			tiproxy: &v1alpha1.TiProxy{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns1",
+					Name:      "db-foo",
+				},
+				Spec: v1alpha1.TiProxySpec{
+					Subdomain: "tiproxy-peer",
+					TiProxyTemplateSpec: v1alpha1.TiProxyTemplateSpec{
+						Server: v1alpha1.TiProxyServer{
+							Ports: v1alpha1.TiProxyPorts{
+								Client: &v1alpha1.TiProxyPortOrRange{
+									Port: ptr.To[int32](7000),
+									Range: &v1alpha1.TiProxyPortRange{
+										Start: 10000,
+										End:   10002,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: &Config{
+				Proxy: Proxy{
+					Address:          "[::]:7000",
+					AdvertiseAddress: "db-tiproxy-foo.tiproxy-peer.ns1.svc",
+					PDAddress:        "db-pd.ns1:2379",
+					PortRange:        []int{10000, 10002},
 				},
 				API: API{
 					Address: "[::]:3080",

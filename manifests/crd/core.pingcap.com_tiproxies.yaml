@@ -8538,11 +8538,34 @@ spec:
                         description: Client defines port for TiProxy's SQL service.
                         properties:
                           port:
+                            description: Port defines the main SQL port exposed by
+                              the TiProxy Pod and Service.
                             format: int32
+                            maximum: 65535
+                            minimum: 1
                             type: integer
-                        required:
-                        - port
+                          range:
+                            description: Range defines additional SQL ports listened
+                              by TiProxy itself.
+                            properties:
+                              end:
+                                format: int32
+                                maximum: 65535
+                                minimum: 1
+                                type: integer
+                              start:
+                                format: int32
+                                maximum: 65535
+                                minimum: 1
+                                type: integer
+                            required:
+                            - end
+                            - start
+                            type: object
                         type: object
+                        x-kubernetes-validations:
+                        - message: range.start must be less than or equal to range.end
+                          rule: '!has(self.range) || self.range.start <= self.range.end'
                       peer:
                         description: Peer defines port for TiProxy's peer service.
                         properties:
