@@ -18,7 +18,7 @@ package v1alpha1
 // NOTE(liubo02): +enum is not supported now, we have to add all enum into comments
 // NOTE(liubo02): It's supported by https://github.com/kubernetes-sigs/controller-tools/pull/1179
 //
-// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning;ClusterSubdomain;TerminableLogTailer;UseTSOReadyAPI;UseSchedulingReadyAPI;UseTiKVReadyAPI;UsePDReadyAPIV2;UseTiFlashReadyAPI;MultiPDGroup;TiCDCDynamicSecretSyncer
+// +kubebuilder:validation:Enum=FeatureModification;VolumeAttributesClass;DisablePDDefaultReadinessProbe;UsePDReadyAPI;SessionTokenSigning;ClusterSubdomain;TerminableLogTailer;UseTSOReadyAPI;UseSchedulingReadyAPI;UseTiKVReadyAPI;UsePDReadyAPIV2;UseTiFlashReadyAPI;MultiPDGroup;TiCDCDynamicSecretSyncer;IndependentKVEngineWorker
 // +enum
 type Feature string
 
@@ -114,4 +114,9 @@ const (
 	// If this feature is enabled, TiCDC pods can dynamically load secrets with specific labels into pods
 	TiCDCDynamicSecretSyncer      Feature      = "TiCDCDynamicSecretSyncer"
 	TiCDCDynamicSecretSyncerStage FeatureStage = FeatureStageAlpha
+
+	// By default, kvengine.remote-worker-addr follows the coprocessor ref.
+	// If this feature is enabled, kvengine.remote-worker-addr will use the default worker ref.
+	IndependentKVEngineWorker      Feature      = "IndependentKVEngineWorker"
+	IndependentKVEngineWorkerStage FeatureStage = FeatureStageAlpha
 )

@@ -93,6 +93,7 @@ spec:
                   - UseTiFlashReadyAPI
                   - MultiPDGroup
                   - TiCDCDynamicSecretSyncer
+                  - IndependentKVEngineWorker
                   type: string
                 type: array
               image:

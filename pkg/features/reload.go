@@ -78,6 +78,9 @@ var unreloadable = map[meta.Feature][]meta.Component{
 	meta.TiCDCDynamicSecretSyncer: {
 		meta.ComponentTiCDC,
 	},
+	meta.IndependentKVEngineWorker: {
+		meta.ComponentTiKV,
+	},
 }
 
 func Reloadable(c meta.Component, update, current []meta.Feature) bool {

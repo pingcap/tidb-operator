@@ -36,7 +36,7 @@ func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 		if err := decoder.Decode([]byte(state.TiKV().Spec.Config), &cfg); err != nil {
 			return task.Fail().With("tikv config cannot be decoded: %w", err)
 		}
-		if err := cfg.Overlay(state.Cluster(), state.TiKV()); err != nil {
+		if err := cfg.Overlay(state.Cluster(), state.TiKV(), state.FeatureGates()); err != nil {
 			return task.Fail().With("cannot generate tikv config: %w", err)
 		}
 
