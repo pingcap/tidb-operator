@@ -31,6 +31,7 @@ jobs:
         fetch-depth: 2
     - name: Set up Go
       uses: actions/setup-go@v5
+      working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
       with:
         go-version-file: ./go.mod
         cache-dependency-path: "**/*.sum"
