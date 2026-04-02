@@ -99,6 +99,12 @@ func WithHotReloadPolicyForTiProxy() GroupPatch[*v1alpha1.TiProxyGroup] {
 	})
 }
 
+func WithTiProxyMaxSurge(maxSurge int32) GroupPatch[*v1alpha1.TiProxyGroup] {
+	return GroupPatchFunc[*v1alpha1.TiProxyGroup](func(obj *v1alpha1.TiProxyGroup) {
+		obj.Spec.MaxSurge = ptr.To(maxSurge)
+	})
+}
+
 func WithTiProxyNextGen() GroupPatch[*v1alpha1.TiProxyGroup] {
 	return GroupPatchFunc[*v1alpha1.TiProxyGroup](func(obj *v1alpha1.TiProxyGroup) {
 		obj.Spec.Template.Spec.Version = "v1.4.0"

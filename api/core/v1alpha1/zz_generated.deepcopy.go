@@ -3277,6 +3277,11 @@ func (in *TiDBGroupSpec) DeepCopyInto(out *TiDBGroupSpec) {
 		*out = new(int64)
 		**out = **in
 	}
+	if in.MaxSurge != nil {
+		in, out := &in.MaxSurge, &out.MaxSurge
+		*out = new(int32)
+		**out = **in
+	}
 	in.Template.DeepCopyInto(&out.Template)
 	return
 }
@@ -4858,6 +4863,11 @@ func (in *TiProxyGroupSpec) DeepCopyInto(out *TiProxyGroupSpec) {
 	if in.MinReadySeconds != nil {
 		in, out := &in.MinReadySeconds, &out.MinReadySeconds
 		*out = new(int64)
+		**out = **in
+	}
+	if in.MaxSurge != nil {
+		in, out := &in.MaxSurge, &out.MaxSurge
+		*out = new(int32)
 		**out = **in
 	}
 	in.Template.DeepCopyInto(&out.Template)

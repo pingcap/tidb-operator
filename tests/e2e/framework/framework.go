@@ -317,12 +317,7 @@ func AsyncWaitPodsRollingUpdateOnce[
 	F client.Object,
 	T runtime.Group,
 ](ctx context.Context, f *Framework, obj F, to int) chan struct{} {
-	maxSurge := 0
-	comp := scope.Component[S]()
-	switch comp {
-	case "tiproxy", "tidb", "ticdc":
-		maxSurge = 1
-	}
+	maxSurge := rollingUpdateMaxSurge(obj)
 	ch := make(chan struct{})
 	nobj := obj.DeepCopyObject().(F)
 	go func() {
@@ -332,6 +327,25 @@ func AsyncWaitPodsRollingUpdateOnce[
 	}()
 
 	return ch
+}
+
+func rollingUpdateMaxSurge(obj client.Object) int {
+	switch g := obj.(type) {
+	case *v1alpha1.TiDBGroup:
+		if g.Spec.MaxSurge != nil {
+			return int(*g.Spec.MaxSurge)
+		}
+		return 1
+	case *v1alpha1.TiProxyGroup:
+		if g.Spec.MaxSurge != nil {
+			return int(*g.Spec.MaxSurge)
+		}
+		return 1
+	case *v1alpha1.TiCDCGroup:
+		return 1
+	default:
+		return 0
+	}
 }
 
 func (f *Framework) Describe(fn func(o *desc.Options), optss ...[]desc.Option) {

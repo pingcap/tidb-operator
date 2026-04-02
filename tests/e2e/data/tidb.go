@@ -119,6 +119,12 @@ func WithHotReloadPolicy() GroupPatch[*v1alpha1.TiDBGroup] {
 	})
 }
 
+func WithTiDBMaxSurge(maxSurge int32) GroupPatch[*v1alpha1.TiDBGroup] {
+	return GroupPatchFunc[*v1alpha1.TiDBGroup](func(obj *v1alpha1.TiDBGroup) {
+		obj.Spec.MaxSurge = ptr.To(maxSurge)
+	})
+}
+
 func WithEphemeralVolume() GroupPatch[*v1alpha1.TiDBGroup] {
 	return GroupPatchFunc[*v1alpha1.TiDBGroup](func(obj *v1alpha1.TiDBGroup) {
 		if obj.Spec.Template.Spec.Overlay == nil {

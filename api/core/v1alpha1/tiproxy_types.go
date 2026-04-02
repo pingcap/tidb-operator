@@ -123,6 +123,13 @@ type TiProxyGroupSpec struct {
 	// +optional
 	MinReadySeconds *int64 `json:"minReadySeconds,omitempty"`
 
+	// MaxSurge specifies the maximum number of additional instances that may be created during rolling restart.
+	// It only takes effect when the update requires restarting TiProxy instances.
+	// Defaults to 1.
+	// +kubebuilder:validation:Minimum=1
+	// +optional
+	MaxSurge *int32 `json:"maxSurge,omitempty"`
+
 	Template TiProxyTemplate `json:"template"`
 }
 
