@@ -109,6 +109,14 @@ spec:
                   - TiCDCDynamicSecretSyncer
                   type: string
                 type: array
+              maxSurge:
+                description: |-
+                  MaxSurge specifies the maximum number of additional instances that may be created during rolling restart.
+                  It only takes effect when the update requires restarting TiDB instances.
+                  Defaults to 1.
+                format: int32
+                minimum: 1
+                type: integer
               minReadySeconds:
                 description: MinReadySeconds specifies the minimum number of seconds
                   for which a newly created pod be ready without any of its containers

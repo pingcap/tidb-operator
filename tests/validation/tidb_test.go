@@ -39,6 +39,7 @@ func TestTiDBGroup(t *testing.T) {
 	cases = append(cases, transferTiDBGroupCases(t, ClusterReference(), "spec", "cluster")...)
 	cases = append(cases, transferTiDBGroupCases(t, NameLength(groupNameLengthLimit), "metadata", "name")...)
 	cases = append(cases, transferTiDBGroupCases(t, MinReadySeconds(), "spec", "minReadySeconds")...)
+	cases = append(cases, transferTiDBGroupCases(t, RollingRestartMaxSurge(), "spec", "maxSurge")...)
 	Validate(t, "crd/core.pingcap.com_tidbgroups.yaml", cases)
 }
 

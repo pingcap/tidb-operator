@@ -1083,3 +1083,49 @@ func MinReadySeconds() []Case {
 
 	return cases
 }
+
+func RollingRestartMaxSurge() []Case {
+	return []Case{
+		{
+			desc:     "valid nil",
+			isCreate: true,
+			current:  nil,
+		},
+		{
+			desc:     "valid minimum value",
+			isCreate: true,
+			current:  int64(1),
+		},
+		{
+			desc:     "valid positive value",
+			isCreate: true,
+			current:  int64(3),
+		},
+		{
+			desc:     "zero value should fail",
+			isCreate: true,
+			current:  int64(0),
+			wantErrs: []string{
+				"spec.maxSurge: Invalid value: 0: spec.maxSurge in body should be greater than or equal to 1",
+			},
+		},
+		{
+			desc:     "negative value should fail",
+			isCreate: true,
+			current:  int64(-1),
+			wantErrs: []string{
+				"spec.maxSurge: Invalid value: -1: spec.maxSurge in body should be greater than or equal to 1",
+			},
+		},
+		{
+			desc:    "can update to a larger value",
+			old:     int64(1),
+			current: int64(2),
+		},
+		{
+			desc:    "can update from unset to valid value",
+			old:     nil,
+			current: int64(2),
+		},
+	}
+}

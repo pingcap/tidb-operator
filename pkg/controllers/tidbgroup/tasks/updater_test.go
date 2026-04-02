@@ -254,6 +254,28 @@ func TestTaskUpdater(t *testing.T) {
 			expectedStatus:  task.SWait,
 			expectedTiDBNum: 3,
 		},
+		{
+			desc: "rolling restart honors maxSurge",
+			state: &ReconcileContext{
+				State: &state{
+					dbg: fake.FakeObj("aaa", func(obj *v1alpha1.TiDBGroup) *v1alpha1.TiDBGroup {
+						obj.Spec.Replicas = ptr.To[int32](2)
+						obj.Spec.MaxSurge = ptr.To[int32](2)
+						obj.Spec.Template.Spec.Image = ptr.To("pingcap/tidb:v8.1.1")
+						return obj
+					}),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
+					dbs: []*v1alpha1.TiDB{
+						fakeAvailableTiDB("aaa-xxx", fake.FakeObj[v1alpha1.TiDBGroup]("aaa"), oldRevision),
+						fakeAvailableTiDB("aaa-yyy", fake.FakeObj[v1alpha1.TiDBGroup]("aaa"), oldRevision),
+					},
+					updateRevision: newRevision,
+				},
+			},
+
+			expectedStatus:  task.SWait,
+			expectedTiDBNum: 4,
+		},
 	}
 
 	for i := range cases {

@@ -227,6 +227,28 @@ func TestTaskUpdater(t *testing.T) {
 			expectedStatus:     task.SWait,
 			expectedTiProxyNum: 3,
 		},
+		{
+			desc: "rolling restart honors maxSurge",
+			state: &ReconcileContext{
+				State: &state{
+					proxyg: fake.FakeObj("aaa", func(obj *v1alpha1.TiProxyGroup) *v1alpha1.TiProxyGroup {
+						obj.Spec.Replicas = ptr.To[int32](2)
+						obj.Spec.MaxSurge = ptr.To[int32](2)
+						obj.Spec.Template.Spec.Image = ptr.To("pingcap/tiproxy:v8.1.1")
+						return obj
+					}),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
+					proxies: []*v1alpha1.TiProxy{
+						fakeAvailableTiProxy("aaa-xxx", fake.FakeObj[v1alpha1.TiProxyGroup]("aaa"), oldRevision),
+						fakeAvailableTiProxy("aaa-yyy", fake.FakeObj[v1alpha1.TiProxyGroup]("aaa"), oldRevision),
+					},
+					updateRevision: newRevision,
+				},
+			},
+
+			expectedStatus:     task.SWait,
+			expectedTiProxyNum: 4,
+		},
 	}
 
 	for i := range cases {

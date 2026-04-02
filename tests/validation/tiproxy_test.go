@@ -38,6 +38,7 @@ func TestTiProxyGroup(t *testing.T) {
 	cases = append(cases, transferTiProxyGroupCases(t, ClusterReference(), "spec", "cluster")...)
 	cases = append(cases, transferTiProxyGroupCases(t, NameLength(groupNameLengthLimit), "metadata", "name")...)
 	cases = append(cases, transferTiProxyGroupCases(t, MinReadySeconds(), "spec", "minReadySeconds")...)
+	cases = append(cases, transferTiProxyGroupCases(t, RollingRestartMaxSurge(), "spec", "maxSurge")...)
 	Validate(t, "crd/core.pingcap.com_tiproxygroups.yaml", cases)
 }
 

@@ -86,6 +86,9 @@ func TaskUpdater(state *ReconcileContext, c client.Client, af tracker.AllocateFa
 		noUpdate := false
 		if needRestart {
 			maxSurge, maxUnavailable = 1, 0
+			if proxyg.Spec.MaxSurge != nil {
+				maxSurge = int(*proxyg.Spec.MaxSurge)
+			}
 			noUpdate = true
 		}
 
