@@ -4,6 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.17.3
+    pingcap.com/version: ${CRD_VERSION}
   name: ticdcgroups.core.pingcap.com
 spec:
   group: core.pingcap.com

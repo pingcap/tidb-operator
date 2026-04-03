@@ -305,7 +305,7 @@ spec:
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test.example.com",
 					Annotations: map[string]string{
-						versionAnnoKey: "1.0.0",
+						VersionAnnoKey: "1.0.0",
 					},
 				},
 			},
@@ -321,7 +321,7 @@ spec:
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test.example.com",
 					Annotations: map[string]string{
-						versionAnnoKey: "1.0.0",
+						VersionAnnoKey: "1.0.0",
 					},
 				},
 			},
@@ -336,7 +336,7 @@ spec:
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test.example.com",
 					Annotations: map[string]string{
-						versionAnnoKey: "1.0.0",
+						VersionAnnoKey: "1.0.0",
 					},
 				},
 			},
@@ -403,7 +403,7 @@ spec:
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test.example.com",
 					Annotations: map[string]string{
-						versionAnnoKey: "2.0.0",
+						VersionAnnoKey: "2.0.0",
 					},
 				},
 			},
@@ -481,7 +481,7 @@ spec:
 				var crd apiextensionsv1.CustomResourceDefinition
 				err := fc.Get(tt.Context(), client.ObjectKey{Name: "test.example.com"}, &crd)
 				require.NoError(tt, err)
-				assert.Equal(tt, c.version, crd.Annotations[versionAnnoKey])
+				assert.Equal(tt, c.version, crd.Annotations[VersionAnnoKey])
 				if c.checkAnnotations {
 					assert.Equal(tt, "existing-value", crd.Annotations["existing-annotation"])
 				}
@@ -673,7 +673,7 @@ status:
 
 					// Verify all CRDs have the version annotation
 					for _, crd := range crdList.Items {
-						assert.Equal(tt, c.version, crd.Annotations[versionAnnoKey])
+						assert.Equal(tt, c.version, crd.Annotations[VersionAnnoKey])
 					}
 				}
 				close(done)
