@@ -67,7 +67,7 @@ func DoBodyOK(ctx context.Context, httpClient *http.Client, apiURL, method strin
 		return nil, err
 	}
 	req.Header.Add("Content-Type", "application/json")
-	res, err := httpClient.Do(req)
+	res, err := httpClient.Do(req) //nolint:gosec // G704: URL is constructed from trusted internal config
 	if err != nil {
 		return nil, err
 	}

@@ -329,7 +329,7 @@ func (c *pdClient) DeleteStore(ctx context.Context, storeID string) error {
 		return err
 	}
 
-	//nolint:bodyclose // has been handled
+	//nolint:bodyclose,gosec // bodyclose: has been handled; gosec: G704: URL is constructed from trusted internal config
 	res, err := c.httpClient.Do(req)
 	if err != nil {
 		return err
@@ -357,7 +357,7 @@ func (c *pdClient) CancelDeleteStore(ctx context.Context, storeID string) error 
 		return err
 	}
 
-	//nolint:bodyclose // has been handled
+	//nolint:bodyclose,gosec // bodyclose: has been handled; gosec: G704: URL is constructed from trusted internal config
 	res, err := c.httpClient.Do(req)
 	if err != nil {
 		return err
@@ -397,7 +397,7 @@ func (c *pdClient) DeleteMember(ctx context.Context, name string) error {
 	if err != nil {
 		return err
 	}
-	//nolint:bodyclose // has been handled
+	//nolint:bodyclose,gosec // bodyclose: has been handled; gosec: G704: URL is constructed from trusted internal config
 	res, err := c.httpClient.Do(req)
 	if err != nil {
 		return err
@@ -430,7 +430,7 @@ func (c *pdClient) DeleteMemberByID(ctx context.Context, memberID uint64) error 
 	if err != nil {
 		return err
 	}
-	//nolint:bodyclose // has been handled
+	//nolint:bodyclose,gosec // bodyclose: has been handled; gosec: G704: URL is constructed from trusted internal config
 	res, err := c.httpClient.Do(req)
 	if err != nil {
 		return err
@@ -497,7 +497,7 @@ func (c *pdClient) EndEvictLeader(ctx context.Context, storeID string) error {
 	if err != nil {
 		return err
 	}
-	//nolint:bodyclose // has been handled
+	//nolint:bodyclose,gosec // bodyclose: has been handled; gosec: G704: URL is constructed from trusted internal config
 	res, err := c.httpClient.Do(req)
 	if err != nil {
 		return err
@@ -641,7 +641,7 @@ func (c *pdClient) TransferPDLeader(ctx context.Context, memberName string) erro
 	if err != nil {
 		return err
 	}
-	//nolint:bodyclose // has been handled
+	//nolint:bodyclose,gosec // bodyclose: has been handled; gosec: G704: URL is constructed from trusted internal config
 	res, err := c.httpClient.Do(req)
 	if err != nil {
 		return err
@@ -688,7 +688,7 @@ func (c *pdClient) GetMemberReady(ctx context.Context, url, version string) (boo
 	if err != nil {
 		return false, fmt.Errorf("failed to new a request: %w", err)
 	}
-	//nolint:bodyclose // has been handled
+	//nolint:bodyclose,gosec // bodyclose: has been handled; gosec: G704: URL is constructed from trusted internal config
 	res, err := c.httpClient.Do(req)
 	if err != nil {
 		return false, fmt.Errorf("failed to send a http request: %w", err)

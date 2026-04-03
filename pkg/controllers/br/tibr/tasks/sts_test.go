@@ -710,7 +710,7 @@ func TestAssembleVolumes(t *testing.T) {
 				{
 					Name: TLSVolumeName,
 					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{
+						Secret: &corev1.SecretVolumeSource{ //nolint:gosec // G101: test file with placeholder secret name, not real credentials
 							SecretName:  "tibr-tibr-cluster-secret", // assuming SecretName returns <name>-secret
 							DefaultMode: ptr.To(SecretAccessMode),
 						},
