@@ -32,7 +32,7 @@ type GenericOptions struct {
 	SkipClientCA   bool
 	Host           string
 	Port           int32
-	Password       string
+	Password       string //nolint:gosec // G117: field name matches secret pattern but is not a secret value
 	User           string
 	TiKVVersion    string
 	Mode           string

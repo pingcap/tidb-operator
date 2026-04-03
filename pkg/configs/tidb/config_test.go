@@ -70,7 +70,7 @@ func TestValidate(t *testing.T) {
 		AdvertiseAddress: "basic-tidb-0.basic-tidb-peer.default.svc",
 		Host:             "::",
 		Path:             "basic-pd.default.svc",
-		Security: Security{
+		Security: Security{ //nolint:gosec // G101: test file with placeholder paths, not real credentials
 			SSLCA:          "/path/to/ca",
 			SSLCert:        "/path/to/cert",
 			SSLKey:         "/path/to/key",
