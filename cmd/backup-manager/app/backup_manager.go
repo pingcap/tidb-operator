@@ -32,7 +32,17 @@ func Run() error {
 	pflag.CommandLine.SetNormalizeFunc(cliflag.WordSepNormalizeFunc)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
-	pflag.Set("logtostderr", "true")
+	if err := pflag.Set("logtostderr", "true"); err != nil {
+		panic("failed to set logtostderr flag: " + err.Error())
+	}
+	// Opt into the fixed klog behavior so the --stderrthreshold flag is honored
+	// even when --logtostderr is enabled. See https://github.com/kubernetes/klog/issues/432
+	if err := pflag.Set("legacy_stderr_threshold_behavior", "false"); err != nil {
+		panic("failed to set legacy_stderr_threshold_behavior flag: " + err.Error())
+	}
+	if err := pflag.Set("stderrthreshold", "INFO"); err != nil {
+		panic("failed to set stderrthreshold flag: " + err.Error())
+	}
 	// We do not want these flags to show up in --help
 	// These MarkHidden calls must be after the lines above
 	pflag.CommandLine.MarkHidden("version")
