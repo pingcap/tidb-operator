@@ -27,7 +27,7 @@ RUN --mount=type=cache,target=/go/pkg/mod/ \
     --mount=type=cache,target=/go/cache \
     V_PLATFORMS=$TARGETPLATFORM ./hack/build.sh $TARGET
 
-FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.11.2@sha256:580720029cfcdbdadc9789032455d9416a25689819947a3afeb6b207f680d909 AS tidb-operator
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.11.2@sha256:4ac362fe93a1067f406b13345b4ab6929f1fdbf3ded3cbecccb7a57730a5ce0f AS tidb-operator
 
 ARG TARGETPLATFORM
 
@@ -43,7 +43,7 @@ COPY --chown=pingcap:pingcap --from=builder /data/_output/$TARGETPLATFORM/bin/ti
 
 ENTRYPOINT ["/tidb-operator"]
 
-FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.11.2@sha256:580720029cfcdbdadc9789032455d9416a25689819947a3afeb6b207f680d909 AS prestop-checker
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.11.2@sha256:4ac362fe93a1067f406b13345b4ab6929f1fdbf3ded3cbecccb7a57730a5ce0f AS prestop-checker
 
 ARG TARGETPLATFORM
 
@@ -55,7 +55,7 @@ COPY --chown=pingcap:pingcap --from=builder /data/_output/$TARGETPLATFORM/bin/pr
 
 ENTRYPOINT ["/prestop-checker"]
 
-FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.11.2@sha256:580720029cfcdbdadc9789032455d9416a25689819947a3afeb6b207f680d909 AS testing-workload
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.11.2@sha256:4ac362fe93a1067f406b13345b4ab6929f1fdbf3ded3cbecccb7a57730a5ce0f AS testing-workload
 
 ARG TARGETPLATFORM
 
@@ -69,7 +69,7 @@ COPY --chown=pingcap:pingcap --from=builder /data/_output/$TARGETPLATFORM/bin/te
 ENTRYPOINT ["/testing-workload"]
 
 
-FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.11.2@sha256:580720029cfcdbdadc9789032455d9416a25689819947a3afeb6b207f680d909 AS tidb-backup-manager
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.11.2@sha256:4ac362fe93a1067f406b13345b4ab6929f1fdbf3ded3cbecccb7a57730a5ce0f AS tidb-backup-manager
 
 ARG TARGETPLATFORM
 
@@ -82,7 +82,7 @@ COPY --chown=pingcap:pingcap --from=builder /data/_output/$TARGETPLATFORM/bin/ti
 ENTRYPOINT ["/tidb-backup-manager"]
 
 
-FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.11.2@sha256:580720029cfcdbdadc9789032455d9416a25689819947a3afeb6b207f680d909 AS resource-syncer
+FROM --platform=$TARGETPLATFORM ghcr.io/pingcap-qe/bases/pingcap-base:v1.11.2@sha256:4ac362fe93a1067f406b13345b4ab6929f1fdbf3ded3cbecccb7a57730a5ce0f AS resource-syncer
 
 ARG TARGETPLATFORM
 
