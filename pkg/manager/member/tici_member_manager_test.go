@@ -15,6 +15,7 @@ package member
 
 import (
 	"encoding/json"
+	neturl "net/url"
 	"strings"
 	"testing"
 
@@ -75,6 +76,32 @@ data-dir = "/data/tici-meta"`
 	dataDir := wrapper.Get("storage.data-dir")
 	if dataDir == nil || dataDir.MustString() != "/data/tici-meta" {
 		t.Fatalf("meta config should merge custom storage.data-dir, got: %s", cfg)
+	}
+}
+
+func TestBuildTiCIMetaConfigWithPassword(t *testing.T) {
+	tc := newTidbClusterForTiCIConfig()
+
+	cfg, err := buildTiCIMetaConfigWithPassword(tc, `p@ss:/?#[]!$&'()*+,;=`)
+	if err != nil {
+		t.Fatalf("build meta config with password failed: %v", err)
+	}
+
+	wrapper := tcconfig.New(map[string]interface{}{})
+	if err := wrapper.UnmarshalTOML([]byte(cfg)); err != nil {
+		t.Fatalf("meta config should be valid TOML, got err: %v, config: %s", err, cfg)
+	}
+	dsns := wrapper.Get("tidb-server.dsns")
+	if dsns == nil || len(dsns.MustStringSlice()) != 1 {
+		t.Fatalf("meta config should include one generated dsn, got: %s", cfg)
+	}
+	parsed, err := neturl.Parse(dsns.MustStringSlice()[0])
+	if err != nil {
+		t.Fatalf("dsn should be a valid url, got err: %v, dsn: %s", err, dsns.MustStringSlice()[0])
+	}
+	password, ok := parsed.User.Password()
+	if !ok || password != `p@ss:/?#[]!$&'()*+,;=` {
+		t.Fatalf("dsn should preserve the original password, got: %q", password)
 	}
 }
 
@@ -173,6 +200,39 @@ func TestPrepareTiCIRollingUpgrade(t *testing.T) {
 	}
 	if got := *newSet.Spec.UpdateStrategy.RollingUpdate.Partition; got != 0 {
 		t.Fatalf("expected partition 0 when TiCI has pending upgrade, got: %d", got)
+	}
+}
+
+func TestGetNewTiCIMetaStatefulSetUsesSecretConfig(t *testing.T) {
+	tc := newTidbClusterForTiCIConfig()
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "tici-test-tici-meta",
+			Namespace: "test-ns",
+		},
+		StringData: map[string]string{"config-file": "[server]\npd-addr = \"x\"\n"},
+	}
+
+	sts, err := getNewTiCIMetaStatefulSet(tc, secret)
+	if err != nil {
+		t.Fatalf("build TiCI meta statefulset failed: %v", err)
+	}
+	if sts == nil {
+		t.Fatal("expected non-nil TiCI meta statefulset")
+	}
+
+	foundSecretVolume := false
+	for _, volume := range sts.Spec.Template.Spec.Volumes {
+		if volume.Name == "config" && volume.Secret != nil && volume.Secret.SecretName == secret.Name {
+			foundSecretVolume = true
+			break
+		}
+	}
+	if !foundSecretVolume {
+		t.Fatalf("expected TiCI meta statefulset to mount config from secret, got volumes: %+v", sts.Spec.Template.Spec.Volumes)
+	}
+	if sts.Spec.Template.Annotations[ticiMetaConfigHashAnnotation] == "" {
+		t.Fatalf("expected TiCI meta statefulset to include %s annotation", ticiMetaConfigHashAnnotation)
 	}
 }
 
