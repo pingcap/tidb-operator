@@ -1516,14 +1516,14 @@ func setAllTidbClusterComponentsAutomountServiceAccountToken(tc *v1alpha1.TidbCl
 	if tc.Spec.Discovery.ComponentSpec == nil {
 		tc.Spec.Discovery.ComponentSpec = &v1alpha1.ComponentSpec{}
 	}
-	tc.Spec.Discovery.ComponentSpec.AutomountServiceAccountToken = value
+	tc.Spec.Discovery.AutomountServiceAccountToken = value
 
 	if tc.Spec.PD != nil {
-		tc.Spec.PD.ComponentSpec.AutomountServiceAccountToken = value
+		tc.Spec.PD.AutomountServiceAccountToken = value
 	}
 	for _, pdms := range tc.Spec.PDMS {
 		if pdms != nil {
-			pdms.ComponentSpec.AutomountServiceAccountToken = value
+			pdms.AutomountServiceAccountToken = value
 		}
 	}
 	if tc.Spec.TiDB != nil {

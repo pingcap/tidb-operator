@@ -63,7 +63,7 @@ const (
 	// SATokenProjectionVolumeName is the name of the projected service account token volume.
 	SATokenProjectionVolumeName = "kube-api-access"
 	// SATokenProjectionMountPath is the standard Kubernetes service account token mount path.
-	SATokenProjectionMountPath = "/var/run/secrets/kubernetes.io/serviceaccount"
+	SATokenProjectionMountPath = "/var/run/secrets/kubernetes.io/serviceaccount" // nolint:gosec
 )
 
 // SATokenProjectionVolume returns a projected volume that replicates the three files
@@ -86,7 +86,9 @@ func SATokenProjectionVolume() corev1.Volume {
 					{
 						ConfigMap: &corev1.ConfigMapProjection{
 							LocalObjectReference: corev1.LocalObjectReference{Name: "kube-root-ca.crt"},
-							Items:               []corev1.KeyToPath{{Key: "ca.crt", Path: "ca.crt"}},
+							Items: []corev1.KeyToPath{
+								{Key: "ca.crt", Path: "ca.crt"},
+							},
 						},
 					},
 					{
