@@ -1527,29 +1527,29 @@ func setAllTidbClusterComponentsAutomountServiceAccountToken(tc *v1alpha1.TidbCl
 		}
 	}
 	if tc.Spec.TiDB != nil {
-		tc.Spec.TiDB.ComponentSpec.AutomountServiceAccountToken = value
+		tc.Spec.TiDB.AutomountServiceAccountToken = value
 	}
 	if tc.Spec.TiKV != nil {
-		tc.Spec.TiKV.ComponentSpec.AutomountServiceAccountToken = value
+		tc.Spec.TiKV.AutomountServiceAccountToken = value
 	}
 	if tc.Spec.TiFlash != nil {
-		tc.Spec.TiFlash.ComponentSpec.AutomountServiceAccountToken = value
+		tc.Spec.TiFlash.AutomountServiceAccountToken = value
 	}
 	if tc.Spec.TiCDC != nil {
-		tc.Spec.TiCDC.ComponentSpec.AutomountServiceAccountToken = value
+		tc.Spec.TiCDC.AutomountServiceAccountToken = value
 	}
 	if tc.Spec.Pump != nil {
-		tc.Spec.Pump.ComponentSpec.AutomountServiceAccountToken = value
+		tc.Spec.Pump.AutomountServiceAccountToken = value
 	}
 	if tc.Spec.TiProxy != nil {
-		tc.Spec.TiProxy.ComponentSpec.AutomountServiceAccountToken = value
+		tc.Spec.TiProxy.AutomountServiceAccountToken = value
 	}
 	if tc.Spec.TiCI != nil {
 		if tc.Spec.TiCI.Meta != nil {
-			tc.Spec.TiCI.Meta.ComponentSpec.AutomountServiceAccountToken = value
+			tc.Spec.TiCI.Meta.AutomountServiceAccountToken = value
 		}
 		if tc.Spec.TiCI.Worker != nil {
-			tc.Spec.TiCI.Worker.ComponentSpec.AutomountServiceAccountToken = value
+			tc.Spec.TiCI.Worker.AutomountServiceAccountToken = value
 		}
 	}
 }
