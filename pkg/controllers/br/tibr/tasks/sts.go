@@ -88,6 +88,10 @@ func assembleSts(rtx *ReconcileContext) *appsv1.StatefulSet {
 	volumeClaim := assembleVolumeClaimIfNeeded(tibr)
 	if volumeClaim != nil {
 		sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{*volumeClaim}
+		sts.Spec.PersistentVolumeClaimRetentionPolicy = &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{
+			WhenDeleted: appsv1.DeletePersistentVolumeClaimRetentionPolicyType,
+			WhenScaled:  appsv1.DeletePersistentVolumeClaimRetentionPolicyType,
+		}
 	}
 
 	return sts
