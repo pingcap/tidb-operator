@@ -289,7 +289,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				brTest(tcase)
 			})
 		}
-
 	})
 
 	utilginkgo.ContextWhenFocus("Specific Version", func() {
@@ -468,7 +467,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
 		})
-
 	})
 
 	ginkgo.Context("Log Backup Test", func() {
@@ -1543,14 +1541,6 @@ func setAllTidbClusterComponentsAutomountServiceAccountToken(tc *v1alpha1.TidbCl
 	}
 	if tc.Spec.TiProxy != nil {
 		tc.Spec.TiProxy.AutomountServiceAccountToken = value
-	}
-	if tc.Spec.TiCI != nil {
-		if tc.Spec.TiCI.Meta != nil {
-			tc.Spec.TiCI.Meta.AutomountServiceAccountToken = value
-		}
-		if tc.Spec.TiCI.Worker != nil {
-			tc.Spec.TiCI.Worker.AutomountServiceAccountToken = value
-		}
 	}
 }
 
