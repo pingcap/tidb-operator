@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -186,6 +187,14 @@ func TestAssembleSts(t *testing.T) {
 			assert.Equal(t, tc.expectExtraAnnotations, sts.Spec.Template.Annotations)
 
 			assert.Len(t, sts.Spec.VolumeClaimTemplates, tc.expectPVCCount)
+			if tc.expectPVCCount > 0 {
+				assert.Equal(t, &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{
+					WhenDeleted: appsv1.DeletePersistentVolumeClaimRetentionPolicyType,
+					WhenScaled:  appsv1.DeletePersistentVolumeClaimRetentionPolicyType,
+				}, sts.Spec.PersistentVolumeClaimRetentionPolicy)
+			} else {
+				assert.Nil(t, sts.Spec.PersistentVolumeClaimRetentionPolicy)
+			}
 
 			var containerNames []string
 			for _, c := range sts.Spec.Template.Spec.Containers {
