@@ -469,6 +469,11 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 		},
 	}
 
+	if compact.Spec.AutomountServiceAccountToken != nil && !*compact.Spec.AutomountServiceAccountToken {
+		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, util.SATokenProjectionVolume())
+		podSpec.Spec.Containers[0].VolumeMounts = append(podSpec.Spec.Containers[0].VolumeMounts, util.SATokenProjectionVolumeMount())
+	}
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        jobName,
