@@ -4,12 +4,12 @@ on:
   push:
     branches:
     - main
-    - release-2.0
+    - release-2.*
   pull_request:
     types: [opened, reopened, synchronize, ready_for_review]
     branches:
     - main
-    - release-2.0
+    - release-2.*
 
 
 concurrency:
