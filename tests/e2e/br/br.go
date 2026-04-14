@@ -25,6 +25,7 @@ import (
 
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
+	utilpkg "github.com/pingcap/tidb-operator/pkg/util"
 	e2eframework "github.com/pingcap/tidb-operator/tests/e2e/br/framework"
 	brutil "github.com/pingcap/tidb-operator/tests/e2e/br/framework/br"
 	"github.com/pingcap/tidb-operator/tests/e2e/br/utils/portforward"
@@ -288,7 +289,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 				brTest(tcase)
 			})
 		}
-
 	})
 
 	utilginkgo.ContextWhenFocus("Specific Version", func() {
@@ -322,6 +322,97 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(cleaned, false, "storage should have data")
 		}
+	})
+
+	ginkgo.It("backup and restore should work with automountServiceAccountToken disabled", func() {
+		backupClusterName := "backup-restore-no-sa-token"
+		restoreClusterName := "restore-no-sa-token"
+		backupVersion := utilimage.TiDBLatest
+		enableTLS := false
+		skipCA := false
+		dbName := "e2etest"
+		backupName := backupClusterName
+		restoreName := restoreClusterName
+		typ := strings.ToLower(typeBR)
+		disableAutomount := false
+
+		ns := f.Namespace.Name
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		ginkgo.By("Create TiDB cluster for backup")
+		err := createTidbClusterWithConfig(f, backupClusterName, backupVersion, enableTLS, skipCA, func(tc *v1alpha1.TidbCluster) {
+			setAllTidbClusterComponentsAutomountServiceAccountToken(tc, &disableAutomount)
+		})
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Create TiDB cluster for restore")
+		err = createTidbClusterWithConfig(f, restoreClusterName, backupVersion, enableTLS, skipCA, func(tc *v1alpha1.TidbCluster) {
+			setAllTidbClusterComponentsAutomountServiceAccountToken(tc, &disableAutomount)
+		})
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Wait for backup TiDB cluster ready")
+		err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, backupClusterName, tidbReadyTimeout, 0)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Wait for restore TiDB cluster ready")
+		err = utiltidbcluster.WaitForTCConditionReady(f.ExtClient, ns, restoreClusterName, tidbReadyTimeout, 0)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Forward backup TiDB cluster service")
+		backupHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(backupClusterName), int(v1alpha1.DefaultTiDBServerPort))
+		framework.ExpectNoError(err)
+		err = initDatabase(backupHost, dbName)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Write data into backup TiDB cluster")
+		backupDSN := getDefaultDSN(backupHost, dbName)
+		err = blockwriter.New().Write(context.Background(), backupDSN)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Create RBAC for backup and restore")
+		err = createRBAC(f)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Create backup with automountServiceAccountToken disabled")
+		backup, err := createBackupAndWaitForComplete(f, backupName, backupClusterName, typ, func(backup *v1alpha1.Backup) {
+			backup.Spec.AutomountServiceAccountToken = &disableAutomount
+		})
+		framework.ExpectNoError(err)
+
+		backupJob, err := f.ClientSet.BatchV1().Jobs(ns).Get(context.TODO(), backup.GetBackupJobName(), metav1.GetOptions{})
+		framework.ExpectNoError(err)
+		framework.ExpectNoError(assertProjectedSATokenPodSpec(&backupJob.Spec.Template.Spec))
+
+		backupPod, err := waitForJobPod(f, ns, backup.GetBackupJobName(), 2*time.Minute)
+		framework.ExpectNoError(err)
+		framework.ExpectNoError(assertProjectedSATokenPodSpec(&backupPod.Spec))
+
+		ginkgo.By("Create restore with automountServiceAccountToken disabled")
+		err = createRestoreAndWaitForComplete(f, restoreName, restoreClusterName, typ, backupName, func(restore *v1alpha1.Restore) {
+			restore.Spec.AutomountServiceAccountToken = &disableAutomount
+		})
+		framework.ExpectNoError(err)
+
+		restore, err := f.ExtClient.PingcapV1alpha1().Restores(ns).Get(context.TODO(), restoreName, metav1.GetOptions{})
+		framework.ExpectNoError(err)
+		restoreJob, err := f.ClientSet.BatchV1().Jobs(ns).Get(context.TODO(), restore.GetRestoreJobName(), metav1.GetOptions{})
+		framework.ExpectNoError(err)
+		framework.ExpectNoError(assertProjectedSATokenPodSpec(&restoreJob.Spec.Template.Spec))
+
+		restorePod, err := waitForJobPod(f, ns, restore.GetRestoreJobName(), 2*time.Minute)
+		framework.ExpectNoError(err)
+		framework.ExpectNoError(assertProjectedSATokenPodSpec(&restorePod.Spec))
+
+		ginkgo.By("Forward restore TiDB cluster service")
+		restoreHost, err := portforward.ForwardOnePort(ctx, f.PortForwarder, ns, getTiDBServiceResourceName(restoreClusterName), int(v1alpha1.DefaultTiDBServerPort))
+		framework.ExpectNoError(err)
+
+		ginkgo.By("Validate restore result")
+		restoreDSN := getDefaultDSN(restoreHost, dbName)
+		err = checkDataIsSame(backupDSN, restoreDSN)
+		framework.ExpectNoError(err)
 	})
 
 	ginkgo.Context("[Backup Clean]", func() {
@@ -376,7 +467,6 @@ var _ = ginkgo.Describe("Backup and Restore", func() {
 			framework.ExpectNoError(err)
 			framework.ExpectEqual(cleaned, true, "storage should be cleaned")
 		})
-
 	})
 
 	ginkgo.Context("Log Backup Test", func() {
@@ -1390,6 +1480,10 @@ func getPDServiceResourceName(tcName string) string {
 }
 
 func createTidbCluster(f *e2eframework.Framework, name string, version string, enableTLS bool, skipCA bool) error {
+	return createTidbClusterWithConfig(f, name, version, enableTLS, skipCA, nil)
+}
+
+func createTidbClusterWithConfig(f *e2eframework.Framework, name string, version string, enableTLS bool, skipCA bool, configure func(*v1alpha1.TidbCluster)) error {
 	ns := f.Namespace.Name
 	// TODO: change to use tidbclusterutil like brutil
 	tc := fixture.GetTidbClusterWithoutPDMS(ns, name, version)
@@ -1405,12 +1499,49 @@ func createTidbCluster(f *e2eframework.Framework, name string, version string, e
 			return err
 		}
 	}
+	if configure != nil {
+		configure(tc)
+	}
 
 	if _, err := f.ExtClient.PingcapV1alpha1().TidbClusters(ns).Create(context.TODO(), tc, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func setAllTidbClusterComponentsAutomountServiceAccountToken(tc *v1alpha1.TidbCluster, value *bool) {
+	if tc.Spec.Discovery.ComponentSpec == nil {
+		tc.Spec.Discovery.ComponentSpec = &v1alpha1.ComponentSpec{}
+	}
+	tc.Spec.Discovery.AutomountServiceAccountToken = value
+
+	if tc.Spec.PD != nil {
+		tc.Spec.PD.AutomountServiceAccountToken = value
+	}
+	for _, pdms := range tc.Spec.PDMS {
+		if pdms != nil {
+			pdms.AutomountServiceAccountToken = value
+		}
+	}
+	if tc.Spec.TiDB != nil {
+		tc.Spec.TiDB.AutomountServiceAccountToken = value
+	}
+	if tc.Spec.TiKV != nil {
+		tc.Spec.TiKV.AutomountServiceAccountToken = value
+	}
+	if tc.Spec.TiFlash != nil {
+		tc.Spec.TiFlash.AutomountServiceAccountToken = value
+	}
+	if tc.Spec.TiCDC != nil {
+		tc.Spec.TiCDC.AutomountServiceAccountToken = value
+	}
+	if tc.Spec.Pump != nil {
+		tc.Spec.Pump.AutomountServiceAccountToken = value
+	}
+	if tc.Spec.TiProxy != nil {
+		tc.Spec.TiProxy.AutomountServiceAccountToken = value
+	}
 }
 
 // createLogBackupEnableTidbCluster create tidb cluster and set "log-backup.enable = true" in tikv to enable log backup.
@@ -1799,6 +1930,58 @@ func createRestoreAndWaitForComplete(f *e2eframework.Framework, name, tcName, ty
 	}
 
 	return nil
+}
+
+func waitForJobPod(f *e2eframework.Framework, ns, jobName string, timeout time.Duration) (*v1.Pod, error) {
+	var jobPod *v1.Pod
+	err := wait.PollImmediate(2*time.Second, timeout, func() (bool, error) {
+		pods, err := f.ClientSet.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("job-name=%s", jobName),
+		})
+		if err != nil {
+			return false, err
+		}
+		if len(pods.Items) == 0 {
+			return false, nil
+		}
+		jobPod = pods.Items[0].DeepCopy()
+		return true, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return jobPod, nil
+}
+
+func assertProjectedSATokenPodSpec(podSpec *v1.PodSpec) error {
+	if podSpec.AutomountServiceAccountToken == nil || *podSpec.AutomountServiceAccountToken {
+		return fmt.Errorf("expected automountServiceAccountToken=false, got %v", podSpec.AutomountServiceAccountToken)
+	}
+
+	hasProjectedVolume := false
+	for _, volume := range podSpec.Volumes {
+		if volume.Name != utilpkg.SATokenProjectionVolumeName {
+			continue
+		}
+		if volume.Projected == nil {
+			return fmt.Errorf("volume %s should be projected", utilpkg.SATokenProjectionVolumeName)
+		}
+		hasProjectedVolume = true
+		break
+	}
+	if !hasProjectedVolume {
+		return fmt.Errorf("projected service account token volume %s not found", utilpkg.SATokenProjectionVolumeName)
+	}
+
+	for _, container := range podSpec.Containers {
+		for _, volumeMount := range container.VolumeMounts {
+			if volumeMount.Name == utilpkg.SATokenProjectionVolumeName && volumeMount.MountPath == utilpkg.SATokenProjectionMountPath && volumeMount.ReadOnly {
+				return nil
+			}
+		}
+	}
+
+	return fmt.Errorf("projected service account token volume mount %s not found", utilpkg.SATokenProjectionMountPath)
 }
 
 func getDefaultDSN(host, dbName string) string {

@@ -59,7 +59,65 @@ var (
 const (
 	// LastAppliedConfigAnnotation is annotation key of last applied configuration
 	LastAppliedConfigAnnotation = "pingcap.com/last-applied-configuration"
+
+	// SATokenProjectionVolumeName is the name of the projected service account token volume.
+	SATokenProjectionVolumeName = "kube-api-access"
+	// SATokenProjectionMountPath is the standard Kubernetes service account token mount path.
+	SATokenProjectionMountPath = "/var/run/secrets/kubernetes.io/serviceaccount" // nolint:gosec
 )
+
+// SATokenProjectionVolume returns a projected volume that replicates the three files
+// that rest.InClusterConfig() reads from /var/run/secrets/kubernetes.io/serviceaccount:
+// token, ca.crt, and namespace. Use this when automountServiceAccountToken is false
+// but the container still needs to call the Kubernetes API.
+func SATokenProjectionVolume() corev1.Volume {
+	expirationSeconds := int64(3607)
+	return corev1.Volume{
+		Name: SATokenProjectionVolumeName,
+		VolumeSource: corev1.VolumeSource{
+			Projected: &corev1.ProjectedVolumeSource{
+				Sources: []corev1.VolumeProjection{
+					{
+						ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+							Path:              "token",
+							ExpirationSeconds: &expirationSeconds,
+						},
+					},
+					{
+						ConfigMap: &corev1.ConfigMapProjection{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "kube-root-ca.crt"},
+							Items: []corev1.KeyToPath{
+								{Key: "ca.crt", Path: "ca.crt"},
+							},
+						},
+					},
+					{
+						DownwardAPI: &corev1.DownwardAPIProjection{
+							Items: []corev1.DownwardAPIVolumeFile{
+								{
+									Path: "namespace",
+									FieldRef: &corev1.ObjectFieldSelector{
+										APIVersion: "v1",
+										FieldPath:  "metadata.namespace",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// SATokenProjectionVolumeMount returns the VolumeMount for SATokenProjectionVolume.
+func SATokenProjectionVolumeMount() corev1.VolumeMount {
+	return corev1.VolumeMount{
+		Name:      SATokenProjectionVolumeName,
+		MountPath: SATokenProjectionMountPath,
+		ReadOnly:  true,
+	}
+}
 
 func GetOrdinalFromPodName(podName string) (int32, error) {
 	ordinalStr := podName[strings.LastIndex(podName, "-")+1:]

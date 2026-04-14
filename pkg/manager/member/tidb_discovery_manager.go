@@ -310,6 +310,11 @@ func (m *realTidbDiscoveryManager) getTidbDiscoveryDeployment(obj metav1.Object)
 		})
 	}
 
+	if baseSpec.AutomountServiceAccountToken() != nil && !*baseSpec.AutomountServiceAccountToken() {
+		podSpec.Volumes = append(podSpec.Volumes, util.SATokenProjectionVolume())
+		podSpec.Containers[0].VolumeMounts = append(podSpec.Containers[0].VolumeMounts, util.SATokenProjectionVolumeMount())
+	}
+
 	podLabels := util.CombineStringMap(l.Labels(), baseSpec.Labels())
 	podAnnotations := baseSpec.Annotations()
 	d := &appsv1.Deployment{
