@@ -527,6 +527,18 @@ func (c *Controller) checkJobStatus(compact *v1alpha1.CompactBackup) (bool, erro
 		return false, err
 	}
 
+	if compact.Spec.Mode == v1alpha1.CompactModeSharded {
+		newStatus := v1alpha1.CompactStatus{
+			CompletedIndexes: job.Status.CompletedIndexes,
+		}
+		if job.Status.FailedIndexes != nil {
+			newStatus.FailedIndexes = *job.Status.FailedIndexes
+		}
+		if err := c.statusUpdater.UpdateStatus(compact, newStatus); err != nil {
+			klog.Errorf("Failed to mirror sharded compact job indexes for %s/%s, error %v", ns, name, err)
+		}
+	}
+
 	for _, condition := range job.Status.Conditions {
 		if condition.Type == batchv1.JobFailed && condition.Status == corev1.ConditionTrue {
 			failReason := condition.Reason
