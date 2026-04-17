@@ -293,6 +293,15 @@ func (c *Controller) sync(key string) (err error) {
 		return nil
 	}
 
+	if compact.Spec.Mode == v1alpha1.CompactModeSharded {
+		if err := requireShardedJobK8sVersion(c.deps.KubeClientset.Discovery()); err != nil {
+			if updateErr := c.UpdateStatus(compact, string(v1alpha1.BackupFailed), err.Error()); updateErr != nil {
+				return updateErr
+			}
+			return nil
+		}
+	}
+
 	err = c.createCompactJob(compact.DeepCopy())
 	c.statusUpdater.OnCreateJob(context.TODO(), compact, err)
 	return err
@@ -469,6 +478,20 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 		},
 	}
 
+	jobSpec := batchv1.JobSpec{
+		Template:     *podSpec,
+		BackoffLimit: ptr.To(compact.Spec.MaxRetryTimes),
+	}
+	if compact.Spec.Mode == v1alpha1.CompactModeSharded {
+		jobSpec.CompletionMode = ptr.To(batchv1.IndexedCompletion)
+		jobSpec.Completions = ptr.To(*compact.Spec.ShardCount)
+		jobSpec.Parallelism = ptr.To(*compact.Spec.ShardCount)
+		jobSpec.BackoffLimitPerIndex = ptr.To(compact.Spec.MaxRetryTimes)
+		jobSpec.MaxFailedIndexes = ptr.To(*compact.Spec.ShardCount)
+		jobSpec.BackoffLimit = nil
+		jobSpec.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
+	}
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        jobName,
@@ -479,10 +502,7 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 				controller.GetCompactBackupOwnerRef(compact),
 			},
 		},
-		Spec: batchv1.JobSpec{
-			Template:     *podSpec,
-			BackoffLimit: ptr.To(compact.Spec.MaxRetryTimes),
-		},
+		Spec: jobSpec,
 	}
 
 	return job, "", nil
@@ -536,6 +556,9 @@ func (c *Controller) validate(compact *v1alpha1.CompactBackup) error {
 	}
 	if spec.MaxRetryTimes < 0 {
 		return errors.NewNoStackError("maxRetryTimes must be greater than or equal to 0")
+	}
+	if spec.Mode == v1alpha1.CompactModeSharded && (spec.ShardCount == nil || *spec.ShardCount < 1) {
+		return errors.NewNoStackError("shardCount must be greater than or equal to 1 when mode is sharded")
 	}
 	return nil
 }
