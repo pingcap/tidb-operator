@@ -3609,6 +3609,12 @@ type CompactBackup struct {
 // +k8s:openapi-gen=true
 type CompactSpec struct {
 	corev1.ResourceRequirements `json:"resources,omitempty"`
+	// +kubebuilder:validation:Enum:="";"sharded"
+	// +optional
+	Mode CompactMode `json:"mode,omitempty"`
+	// +kubebuilder:validation:Minimum=1
+	// +optional
+	ShardCount *int32 `json:"shardCount,omitempty"`
 	// List of environment variables to set in the container, like v1.Container.Env.
 	// Note that the following builtin env vars will be overwritten by values set here
 	// - S3_PROVIDER
@@ -3700,6 +3706,12 @@ type CompactRetryRecord struct {
 	RetryReason string `json:"retryReason,omitempty"`
 }
 
+type CompactMode string
+
+const (
+	CompactModeSharded CompactMode = "sharded"
+)
+
 type CompactStatus struct {
 	// State is the current state of the backup
 	State string `json:"state,omitempty"`
@@ -3709,6 +3721,10 @@ type CompactStatus struct {
 	Message string `json:"message,omitempty"`
 	// endTs is the real endTs processed by the compact backup
 	EndTs string `json:"endTs,omitempty"`
+	// CompletedIndexes holds the completed indexes when compact backup runs in sharded mode.
+	CompletedIndexes string `json:"completedIndexes,omitempty"`
+	// FailedIndexes holds the failed indexes when compact backup runs in sharded mode.
+	FailedIndexes string `json:"failedIndexes,omitempty"`
 	// RetryStatus is status of the backoff retry, it will be used when backup pod or job exited unexpectedly
 	RetryStatus []CompactRetryRecord `json:"backoffRetryStatus,omitempty"`
 }
