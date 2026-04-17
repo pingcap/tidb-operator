@@ -295,10 +295,13 @@ func (c *Controller) sync(key string) (err error) {
 
 	if compact.Spec.Mode == v1alpha1.CompactModeSharded {
 		if err := requireShardedJobK8sVersion(c.deps.KubeClientset.Discovery()); err != nil {
-			if updateErr := c.UpdateStatus(compact, string(v1alpha1.BackupFailed), err.Error()); updateErr != nil {
-				return updateErr
+			if isUnsupportedShardedJobK8sVersionError(err) {
+				if updateErr := c.UpdateStatus(compact, string(v1alpha1.BackupFailed), err.Error()); updateErr != nil {
+					return updateErr
+				}
+				return nil
 			}
-			return nil
+			return controller.RequeueErrorf("check sharded compact backup Kubernetes version: %v", err)
 		}
 	}
 
