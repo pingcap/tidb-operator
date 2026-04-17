@@ -193,6 +193,55 @@ func TestSyncShardedModeRequeuesOnDiscoveryError(t *testing.T) {
 	}
 }
 
+func TestCheckJobStatusMirrorsShardIndexes(t *testing.T) {
+	c := newTestController(t)
+	compact := newCompactBackupForTest()
+	shardCount := int32(3)
+	compact.Spec.Mode = v1alpha1.CompactModeSharded
+	compact.Spec.ShardCount = &shardCount
+
+	if err := c.deps.InformerFactory.Pingcap().V1alpha1().CompactBackups().Informer().GetIndexer().Add(compact); err != nil {
+		t.Fatalf("failed to seed compact backup indexer: %v", err)
+	}
+	if _, err := c.deps.Clientset.PingcapV1alpha1().CompactBackups(compact.Namespace).Create(context.TODO(), compact, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("failed to seed compact backup client: %v", err)
+	}
+
+	failedIndexes := "1"
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      compact.Name,
+			Namespace: compact.Namespace,
+		},
+		Status: batchv1.JobStatus{
+			CompletedIndexes: "0,2",
+			FailedIndexes:    &failedIndexes,
+		},
+	}
+	if _, err := c.deps.KubeClientset.BatchV1().Jobs(compact.Namespace).Create(context.TODO(), job, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("failed to seed job client: %v", err)
+	}
+
+	ok, err := c.checkJobStatus(compact)
+	if err != nil {
+		t.Fatalf("expected no error from checkJobStatus, got %v", err)
+	}
+	if ok {
+		t.Fatal("expected checkJobStatus to block job creation while the sharded job is running")
+	}
+
+	updated, err := c.deps.Clientset.PingcapV1alpha1().CompactBackups(compact.Namespace).Get(context.TODO(), compact.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("failed to fetch updated compact backup: %v", err)
+	}
+	if updated.Status.CompletedIndexes != job.Status.CompletedIndexes {
+		t.Fatalf("expected CompletedIndexes %q, got %q", job.Status.CompletedIndexes, updated.Status.CompletedIndexes)
+	}
+	if updated.Status.FailedIndexes != *job.Status.FailedIndexes {
+		t.Fatalf("expected FailedIndexes %q, got %q", *job.Status.FailedIndexes, updated.Status.FailedIndexes)
+	}
+}
+
 func newCompactBackupForTest() *v1alpha1.CompactBackup {
 	return &v1alpha1.CompactBackup{
 		TypeMeta: metav1.TypeMeta{

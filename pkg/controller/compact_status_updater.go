@@ -52,6 +52,7 @@ type CompactStatusUpdaterInterface interface {
 	OnProgress(ctx context.Context, compact *v1alpha1.CompactBackup, p *Progress, endTs string) error
 	OnFinish(ctx context.Context, compact *v1alpha1.CompactBackup, err error) error
 	OnJobFailed(ctx context.Context, compact *v1alpha1.CompactBackup, reason string) error
+	UpdateStatus(compact *v1alpha1.CompactBackup, newStatus v1alpha1.CompactStatus) error
 }
 
 type CompactStatusUpdater struct {
@@ -116,6 +117,14 @@ func (r *CompactStatusUpdater) UpdateStatus(compact *v1alpha1.CompactBackup, new
 		}
 		if newStatus.EndTs != "" && compact.Status.EndTs < newStatus.EndTs {
 			compact.Status.EndTs = newStatus.EndTs
+			updated = true
+		}
+		if newStatus.CompletedIndexes != "" && compact.Status.CompletedIndexes != newStatus.CompletedIndexes {
+			compact.Status.CompletedIndexes = newStatus.CompletedIndexes
+			updated = true
+		}
+		if newStatus.FailedIndexes != "" && compact.Status.FailedIndexes != newStatus.FailedIndexes {
+			compact.Status.FailedIndexes = newStatus.FailedIndexes
 			updated = true
 		}
 
