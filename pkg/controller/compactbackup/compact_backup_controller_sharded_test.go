@@ -2,6 +2,7 @@ package compact
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -10,9 +11,11 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/version"
 	fakediscovery "k8s.io/client-go/discovery/fake"
+	k8stesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -144,6 +147,49 @@ func TestSyncShardedModeRequiresSupportedK8sVersion(t *testing.T) {
 	}
 	if !strings.Contains(updated.Status.Message, "Kubernetes >= 1.29") {
 		t.Fatalf("expected version gate message, got %q", updated.Status.Message)
+	}
+}
+
+func TestSyncShardedModeRequeuesOnDiscoveryError(t *testing.T) {
+	c := newTestController(t)
+	compact := newCompactBackupForTest()
+	shardCount := int32(2)
+	compact.Spec.Mode = v1alpha1.CompactModeSharded
+	compact.Spec.ShardCount = &shardCount
+
+	fakeDiscovery := c.deps.KubeClientset.Discovery().(*fakediscovery.FakeDiscovery)
+	fakeDiscovery.PrependReactor("get", "version", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, errors.New("discovery temporarily unavailable")
+	})
+
+	if err := c.deps.InformerFactory.Pingcap().V1alpha1().CompactBackups().Informer().GetIndexer().Add(compact); err != nil {
+		t.Fatalf("failed to seed compact backup indexer: %v", err)
+	}
+	if _, err := c.deps.Clientset.PingcapV1alpha1().CompactBackups(compact.Namespace).Create(context.TODO(), compact, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("failed to seed compact backup client: %v", err)
+	}
+
+	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(compact)
+	if err != nil {
+		t.Fatalf("failed to build key: %v", err)
+	}
+
+	err = c.sync(key)
+	if err == nil || !controller.IsRequeueError(err) {
+		t.Fatalf("expected requeue error, got %v", err)
+	}
+
+	jobControl := c.deps.JobControl.(*controller.FakeJobControl)
+	if len(jobControl.JobIndexer.List()) != 0 {
+		t.Fatalf("expected no Job to be created, got %d", len(jobControl.JobIndexer.List()))
+	}
+
+	updated, err := c.deps.Clientset.PingcapV1alpha1().CompactBackups(compact.Namespace).Get(context.TODO(), compact.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("failed to fetch updated compact backup: %v", err)
+	}
+	if updated.Status.State == string(v1alpha1.BackupFailed) {
+		t.Fatalf("expected transient discovery error to avoid terminal failure, got state %q", updated.Status.State)
 	}
 }
 

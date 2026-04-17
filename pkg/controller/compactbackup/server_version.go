@@ -1,6 +1,7 @@
 package compact
 
 import (
+	stderrs "errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -8,10 +9,23 @@ import (
 	"k8s.io/client-go/discovery"
 )
 
+type unsupportedShardedJobK8sVersionError struct {
+	message string
+}
+
+func (e *unsupportedShardedJobK8sVersionError) Error() string {
+	return e.message
+}
+
+func isUnsupportedShardedJobK8sVersionError(err error) bool {
+	var target *unsupportedShardedJobK8sVersionError
+	return stderrs.As(err, &target)
+}
+
 func requireShardedJobK8sVersion(dc discovery.DiscoveryInterface) error {
 	serverVersion, err := dc.ServerVersion()
 	if err != nil {
-		return err
+		return fmt.Errorf("get Kubernetes server version: %w", err)
 	}
 
 	major, err := strconv.Atoi(strings.TrimSuffix(serverVersion.Major, "+"))
@@ -27,5 +41,7 @@ func requireShardedJobK8sVersion(dc discovery.DiscoveryInterface) error {
 		return nil
 	}
 
-	return fmt.Errorf("sharded compact backup requires Kubernetes >= 1.29, current version is %s.%s", serverVersion.Major, serverVersion.Minor)
+	return &unsupportedShardedJobK8sVersionError{
+		message: fmt.Sprintf("sharded compact backup requires Kubernetes >= 1.29, current version is %s.%s", serverVersion.Major, serverVersion.Minor),
+	}
 }
