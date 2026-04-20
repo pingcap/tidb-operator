@@ -24,6 +24,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/metrics"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/podutil"
@@ -220,6 +221,11 @@ func TaskInstanceConditionReady[
 			state.SetStatusChanged()
 		}
 
+		// Refresh the abnormal-instance gauge so a long-running Ready=False
+		// (e.g. pod up but cannot serve) becomes alertable without any
+		// per-component glue.
+		metrics.ObserveCondition(instance, coreutil.StatusConditions[S](instance), v1alpha1.CondReady)
+
 		if !isReady {
 			return task.Wait().With("instance is unready: %s", coreutil.SprintCondition(cond))
 		}
@@ -279,6 +285,11 @@ func TaskInstanceConditionSynced[
 		if needUpdate {
 			state.SetStatusChanged()
 		}
+
+		// Refresh the abnormal-instance gauge so a long-running Synced=False
+		// (rolling restart stuck, scale-in stuck, ...) becomes alertable
+		// without any per-component glue.
+		metrics.ObserveCondition(instance, coreutil.StatusConditions[S](instance), v1alpha1.CondSynced)
 
 		if !isSynced {
 			return task.Wait().With("instance is unsynced: %s", coreutil.SprintCondition(cond))
