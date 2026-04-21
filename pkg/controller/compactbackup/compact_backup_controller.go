@@ -78,7 +78,9 @@ func NewController(deps *controller.Dependencies) *Controller {
 		DeleteFunc: c.updateCompact,
 	})
 	jobInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		DeleteFunc: c.deleteJob,
+		AddFunc:    c.handleJobEvent,
+		UpdateFunc: func(old, cur interface{}) { c.handleJobEvent(cur) },
+		DeleteFunc: c.handleJobEvent,
 	})
 
 	return c
@@ -161,10 +163,17 @@ func (c *Controller) resolveCompactBackupFromJob(namespace string, job *batchv1.
 	return compact
 }
 
-func (c *Controller) deleteJob(obj interface{}) {
+func (c *Controller) handleJobEvent(obj interface{}) {
 	job, ok := obj.(*batchv1.Job)
 	if !ok {
-		return
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			return
+		}
+		job, ok = tombstone.Obj.(*batchv1.Job)
+		if !ok {
+			return
+		}
 	}
 
 	ns := job.GetNamespace()
@@ -173,7 +182,7 @@ func (c *Controller) deleteJob(obj interface{}) {
 	if compact == nil {
 		return
 	}
-	klog.V(4).Infof("Job %s/%s deleted through %v.", ns, jobName, utilruntime.GetCaller())
+	klog.V(4).Infof("Job %s/%s handled through %v.", ns, jobName, utilruntime.GetCaller())
 	c.updateCompact(compact)
 }
 
@@ -528,14 +537,10 @@ func (c *Controller) checkJobStatus(compact *v1alpha1.CompactBackup) (bool, erro
 	}
 
 	if compact.Spec.Mode == v1alpha1.CompactModeSharded {
-		newStatus := v1alpha1.CompactStatus{
-			CompletedIndexes: job.Status.CompletedIndexes,
-		}
+		compact.Status.CompletedIndexes = job.Status.CompletedIndexes
+		compact.Status.FailedIndexes = ""
 		if job.Status.FailedIndexes != nil {
-			newStatus.FailedIndexes = *job.Status.FailedIndexes
-		}
-		if err := c.statusUpdater.UpdateStatus(compact, newStatus); err != nil {
-			klog.Errorf("Failed to mirror sharded compact job indexes for %s/%s, error %v", ns, name, err)
+			compact.Status.FailedIndexes = *job.Status.FailedIndexes
 		}
 	}
 
@@ -550,7 +555,16 @@ func (c *Controller) checkJobStatus(compact *v1alpha1.CompactBackup) (bool, erro
 
 		if condition.Type == batchv1.JobComplete && condition.Status == corev1.ConditionTrue {
 			klog.Infof("Compact: [%s/%s] Job already completed successfully.", ns, name)
+			if err := c.statusUpdater.OnJobComplete(context.TODO(), compact); err != nil {
+				klog.Errorf("Failed to update compact status for completed job %s/%s, error %v", ns, name, err)
+			}
 			return false, nil
+		}
+	}
+
+	if compact.Spec.Mode == v1alpha1.CompactModeSharded {
+		if err := c.statusUpdater.UpdateShardIndexes(compact, job.Status); err != nil {
+			klog.Errorf("Failed to mirror sharded compact job indexes for %s/%s, error %v", ns, name, err)
 		}
 	}
 

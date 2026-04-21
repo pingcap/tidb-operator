@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/client/clientset/versioned"
 	listers "github.com/pingcap/tidb-operator/pkg/client/listers/pingcap/v1alpha1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -51,8 +52,10 @@ type CompactStatusUpdaterInterface interface {
 	OnStart(ctx context.Context, compact *v1alpha1.CompactBackup) error
 	OnProgress(ctx context.Context, compact *v1alpha1.CompactBackup, p *Progress, endTs string) error
 	OnFinish(ctx context.Context, compact *v1alpha1.CompactBackup, err error) error
+	OnJobComplete(ctx context.Context, compact *v1alpha1.CompactBackup) error
 	OnJobFailed(ctx context.Context, compact *v1alpha1.CompactBackup, reason string) error
 	UpdateStatus(compact *v1alpha1.CompactBackup, newStatus v1alpha1.CompactStatus) error
+	UpdateShardIndexes(compact *v1alpha1.CompactBackup, jobStatus batchv1.JobStatus) error
 }
 
 type CompactStatusUpdater struct {
@@ -77,6 +80,10 @@ func (r *CompactStatusUpdater) Event(compact *v1alpha1.CompactBackup, ty, reason
 func (r *CompactStatusUpdater) UpdateStatus(compact *v1alpha1.CompactBackup, newStatus v1alpha1.CompactStatus) error {
 	ns := compact.GetNamespace()
 	compactName := compact.GetName()
+	preserveShardIndexes := compact.Spec.Mode == v1alpha1.CompactModeSharded &&
+		(newStatus.State == string(v1alpha1.BackupComplete) || newStatus.State == string(v1alpha1.BackupFailed))
+	completedIndexes := compact.Status.CompletedIndexes
+	failedIndexes := compact.Status.FailedIndexes
 
 	now := time.Now()
 	canUpdateProgress := true
@@ -119,15 +126,14 @@ func (r *CompactStatusUpdater) UpdateStatus(compact *v1alpha1.CompactBackup, new
 			compact.Status.EndTs = newStatus.EndTs
 			updated = true
 		}
-		if newStatus.CompletedIndexes != "" && compact.Status.CompletedIndexes != newStatus.CompletedIndexes {
-			compact.Status.CompletedIndexes = newStatus.CompletedIndexes
+		if preserveShardIndexes && compact.Status.CompletedIndexes != completedIndexes {
+			compact.Status.CompletedIndexes = completedIndexes
 			updated = true
 		}
-		if newStatus.FailedIndexes != "" && compact.Status.FailedIndexes != newStatus.FailedIndexes {
-			compact.Status.FailedIndexes = newStatus.FailedIndexes
+		if preserveShardIndexes && compact.Status.FailedIndexes != failedIndexes {
+			compact.Status.FailedIndexes = failedIndexes
 			updated = true
 		}
-
 		// Apply the update if any field changed
 		if updated {
 			_, updateErr := r.cli.PingcapV1alpha1().CompactBackups(ns).Update(context.TODO(), compact, metav1.UpdateOptions{})
@@ -136,6 +142,46 @@ func (r *CompactStatusUpdater) UpdateStatus(compact *v1alpha1.CompactBackup, new
 				return nil
 			}
 			klog.Errorf("Failed to update Compact [%s/%s], error: %v", ns, compactName, updateErr)
+			return updateErr
+		}
+		return nil
+	})
+	return err
+}
+
+func (r *CompactStatusUpdater) UpdateShardIndexes(compact *v1alpha1.CompactBackup, jobStatus batchv1.JobStatus) error {
+	ns := compact.GetNamespace()
+	compactName := compact.GetName()
+
+	err := retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
+		if updated, err := r.lister.CompactBackups(ns).Get(compactName); err == nil {
+			*compact = *(updated.DeepCopy())
+		} else {
+			utilruntime.HandleError(fmt.Errorf("error getting updated compact %s/%s from lister: %v", ns, compactName, err))
+			return err
+		}
+
+		updated := false
+		if compact.Status.CompletedIndexes != jobStatus.CompletedIndexes {
+			compact.Status.CompletedIndexes = jobStatus.CompletedIndexes
+			updated = true
+		}
+		failedIndexes := ""
+		if jobStatus.FailedIndexes != nil {
+			failedIndexes = *jobStatus.FailedIndexes
+		}
+		if compact.Status.FailedIndexes != failedIndexes {
+			compact.Status.FailedIndexes = failedIndexes
+			updated = true
+		}
+
+		if updated {
+			_, updateErr := r.cli.PingcapV1alpha1().CompactBackups(ns).Update(context.TODO(), compact, metav1.UpdateOptions{})
+			if updateErr == nil {
+				klog.Infof("Compact: [%s/%s] shard indexes updated successfully", ns, compactName)
+				return nil
+			}
+			klog.Errorf("Failed to update shard indexes for Compact [%s/%s], error: %v", ns, compactName, updateErr)
 			return updateErr
 		}
 		return nil
@@ -197,6 +243,10 @@ func (r *CompactStatusUpdater) OnProgress(ctx context.Context, compact *v1alpha1
 }
 
 func (r *CompactStatusUpdater) OnFinish(ctx context.Context, compact *v1alpha1.CompactBackup, err error) error {
+	if compact.Spec.Mode == v1alpha1.CompactModeSharded {
+		return nil
+	}
+
 	newStatus := v1alpha1.CompactStatus{}
 	if err != nil {
 		newStatus.State = string(v1alpha1.BackupRetryTheFailed)
@@ -212,6 +262,15 @@ func (r *CompactStatusUpdater) OnFinish(ctx context.Context, compact *v1alpha1.C
 	} else {
 		newStatus.State = string(v1alpha1.BackupComplete)
 		r.Event(compact, corev1.EventTypeNormal, "Finished", "The compaction process has finished successfully.")
+	}
+	return r.UpdateStatus(compact, newStatus)
+}
+
+func (r *CompactStatusUpdater) OnJobComplete(ctx context.Context, compact *v1alpha1.CompactBackup) error {
+	r.Event(compact, corev1.EventTypeNormal, "Finished", "The compaction process has finished successfully.")
+
+	newStatus := v1alpha1.CompactStatus{
+		State: string(v1alpha1.BackupComplete),
 	}
 	return r.UpdateStatus(compact, newStatus)
 }

@@ -117,10 +117,10 @@ func TestSyncShardedModeRequiresSupportedK8sVersion(t *testing.T) {
 	fakeDiscovery := c.deps.KubeClientset.Discovery().(*fakediscovery.FakeDiscovery)
 	fakeDiscovery.FakedServerVersion = &version.Info{Major: "1", Minor: "28"}
 
-	if err := c.deps.InformerFactory.Pingcap().V1alpha1().CompactBackups().Informer().GetIndexer().Add(compact); err != nil {
+	if err := c.deps.InformerFactory.Pingcap().V1alpha1().CompactBackups().Informer().GetIndexer().Add(compact.DeepCopy()); err != nil {
 		t.Fatalf("failed to seed compact backup indexer: %v", err)
 	}
-	if _, err := c.deps.Clientset.PingcapV1alpha1().CompactBackups(compact.Namespace).Create(context.TODO(), compact, metav1.CreateOptions{}); err != nil {
+	if _, err := c.deps.Clientset.PingcapV1alpha1().CompactBackups(compact.Namespace).Create(context.TODO(), compact.DeepCopy(), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("failed to seed compact backup client: %v", err)
 	}
 
@@ -222,7 +222,7 @@ func TestCheckJobStatusMirrorsShardIndexes(t *testing.T) {
 		t.Fatalf("failed to seed job client: %v", err)
 	}
 
-	ok, err := c.checkJobStatus(compact)
+	ok, err := c.checkJobStatus(compact.DeepCopy())
 	if err != nil {
 		t.Fatalf("expected no error from checkJobStatus, got %v", err)
 	}
@@ -239,6 +239,222 @@ func TestCheckJobStatusMirrorsShardIndexes(t *testing.T) {
 	}
 	if updated.Status.FailedIndexes != *job.Status.FailedIndexes {
 		t.Fatalf("expected FailedIndexes %q, got %q", *job.Status.FailedIndexes, updated.Status.FailedIndexes)
+	}
+}
+
+func TestCheckJobStatusMarksShardedCompactComplete(t *testing.T) {
+	c := newTestController(t)
+	compact := newCompactBackupForTest()
+	shardCount := int32(3)
+	compact.Spec.Mode = v1alpha1.CompactModeSharded
+	compact.Spec.ShardCount = &shardCount
+	compact.Status.State = string(v1alpha1.BackupRunning)
+
+	if err := c.deps.InformerFactory.Pingcap().V1alpha1().CompactBackups().Informer().GetIndexer().Add(compact.DeepCopy()); err != nil {
+		t.Fatalf("failed to seed compact backup indexer: %v", err)
+	}
+	if _, err := c.deps.Clientset.PingcapV1alpha1().CompactBackups(compact.Namespace).Create(context.TODO(), compact.DeepCopy(), metav1.CreateOptions{}); err != nil {
+		t.Fatalf("failed to seed compact backup client: %v", err)
+	}
+
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      compact.Name,
+			Namespace: compact.Namespace,
+		},
+		Status: batchv1.JobStatus{
+			CompletedIndexes: "0-2",
+			Conditions: []batchv1.JobCondition{
+				{
+					Type:   batchv1.JobComplete,
+					Status: corev1.ConditionTrue,
+				},
+			},
+		},
+	}
+	if _, err := c.deps.KubeClientset.BatchV1().Jobs(compact.Namespace).Create(context.TODO(), job, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("failed to seed job client: %v", err)
+	}
+
+	ok, err := c.checkJobStatus(compact.DeepCopy())
+	if err != nil {
+		t.Fatalf("expected no error from checkJobStatus, got %v", err)
+	}
+	if ok {
+		t.Fatal("expected checkJobStatus to block new job creation once the sharded job completed")
+	}
+
+	updated, err := c.deps.Clientset.PingcapV1alpha1().CompactBackups(compact.Namespace).Get(context.TODO(), compact.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("failed to fetch updated compact backup: %v", err)
+	}
+	if updated.Status.State != string(v1alpha1.BackupComplete) {
+		t.Fatalf("expected state %q, got %q", v1alpha1.BackupComplete, updated.Status.State)
+	}
+	if updated.Status.CompletedIndexes != job.Status.CompletedIndexes {
+		t.Fatalf("expected CompletedIndexes %q, got %q", job.Status.CompletedIndexes, updated.Status.CompletedIndexes)
+	}
+}
+
+func TestCheckJobStatusMarksShardedCompactFailedWithoutDroppingIndexes(t *testing.T) {
+	c := newTestController(t)
+	compact := newCompactBackupForTest()
+	shardCount := int32(3)
+	compact.Spec.Mode = v1alpha1.CompactModeSharded
+	compact.Spec.ShardCount = &shardCount
+	compact.Status.State = string(v1alpha1.BackupRunning)
+
+	if err := c.deps.InformerFactory.Pingcap().V1alpha1().CompactBackups().Informer().GetIndexer().Add(compact); err != nil {
+		t.Fatalf("failed to seed compact backup indexer: %v", err)
+	}
+	if _, err := c.deps.Clientset.PingcapV1alpha1().CompactBackups(compact.Namespace).Create(context.TODO(), compact, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("failed to seed compact backup client: %v", err)
+	}
+
+	failedIndexes := "1"
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      compact.Name,
+			Namespace: compact.Namespace,
+		},
+		Status: batchv1.JobStatus{
+			CompletedIndexes: "0,2",
+			FailedIndexes:    &failedIndexes,
+			Conditions: []batchv1.JobCondition{
+				{
+					Type:    batchv1.JobFailed,
+					Status:  corev1.ConditionTrue,
+					Message: "indexed job failed",
+				},
+			},
+		},
+	}
+	if _, err := c.deps.KubeClientset.BatchV1().Jobs(compact.Namespace).Create(context.TODO(), job, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("failed to seed job client: %v", err)
+	}
+
+	ok, err := c.checkJobStatus(compact)
+	if err != nil {
+		t.Fatalf("expected no error from checkJobStatus, got %v", err)
+	}
+	if ok {
+		t.Fatal("expected checkJobStatus to block new job creation once the sharded job failed")
+	}
+
+	updated, err := c.deps.Clientset.PingcapV1alpha1().CompactBackups(compact.Namespace).Get(context.TODO(), compact.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("failed to fetch updated compact backup: %v", err)
+	}
+	if updated.Status.State != string(v1alpha1.BackupFailed) {
+		t.Fatalf("expected state %q, got %q", v1alpha1.BackupFailed, updated.Status.State)
+	}
+	if updated.Status.CompletedIndexes != job.Status.CompletedIndexes {
+		t.Fatalf("expected CompletedIndexes %q, got %q", job.Status.CompletedIndexes, updated.Status.CompletedIndexes)
+	}
+	if updated.Status.FailedIndexes != *job.Status.FailedIndexes {
+		t.Fatalf("expected FailedIndexes %q, got %q", *job.Status.FailedIndexes, updated.Status.FailedIndexes)
+	}
+}
+
+func TestHandleJobEventEnqueuesOwningCompactBackup(t *testing.T) {
+	c := newTestController(t)
+	compact := newCompactBackupForTest()
+	shardCount := int32(3)
+	compact.Spec.Mode = v1alpha1.CompactModeSharded
+	compact.Spec.ShardCount = &shardCount
+
+	if err := c.deps.InformerFactory.Pingcap().V1alpha1().CompactBackups().Informer().GetIndexer().Add(compact); err != nil {
+		t.Fatalf("failed to seed compact backup indexer: %v", err)
+	}
+	if _, err := c.deps.Clientset.PingcapV1alpha1().CompactBackups(compact.Namespace).Create(context.TODO(), compact, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("failed to seed compact backup client: %v", err)
+	}
+
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      compact.Name,
+			Namespace: compact.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				controller.GetCompactBackupOwnerRef(compact),
+			},
+		},
+	}
+
+	c.handleJobEvent(job)
+
+	if got := c.queue.Len(); got != 1 {
+		t.Fatalf("expected compact queue length 1 after job event, got %d", got)
+	}
+}
+
+func TestHandleJobEventEnqueuesOwningCompactBackupFromTombstone(t *testing.T) {
+	c := newTestController(t)
+	compact := newCompactBackupForTest()
+	shardCount := int32(3)
+	compact.Spec.Mode = v1alpha1.CompactModeSharded
+	compact.Spec.ShardCount = &shardCount
+
+	if err := c.deps.InformerFactory.Pingcap().V1alpha1().CompactBackups().Informer().GetIndexer().Add(compact); err != nil {
+		t.Fatalf("failed to seed compact backup indexer: %v", err)
+	}
+	if _, err := c.deps.Clientset.PingcapV1alpha1().CompactBackups(compact.Namespace).Create(context.TODO(), compact, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("failed to seed compact backup client: %v", err)
+	}
+
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      compact.Name,
+			Namespace: compact.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				controller.GetCompactBackupOwnerRef(compact),
+			},
+		},
+	}
+
+	c.handleJobEvent(cache.DeletedFinalStateUnknown{Obj: job})
+
+	if got := c.queue.Len(); got != 1 {
+		t.Fatalf("expected compact queue length 1 after tombstone event, got %d", got)
+	}
+}
+
+func TestUpdateShardIndexesClearsStaleValues(t *testing.T) {
+	c := newTestController(t)
+	compact := newCompactBackupForTest()
+	shardCount := int32(3)
+	compact.Spec.Mode = v1alpha1.CompactModeSharded
+	compact.Spec.ShardCount = &shardCount
+	compact.Status.FailedIndexes = "stale"
+	compact.Status.CompletedIndexes = "old-complete"
+
+	if err := c.deps.InformerFactory.Pingcap().V1alpha1().CompactBackups().Informer().GetIndexer().Add(compact); err != nil {
+		t.Fatalf("failed to seed compact backup indexer: %v", err)
+	}
+	if _, err := c.deps.Clientset.PingcapV1alpha1().CompactBackups(compact.Namespace).Create(context.TODO(), compact, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("failed to seed compact backup client: %v", err)
+	}
+
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      compact.Name,
+			Namespace: compact.Namespace,
+		},
+		Status: batchv1.JobStatus{},
+	}
+
+	if err := c.statusUpdater.UpdateShardIndexes(compact, job.Status); err != nil {
+		t.Fatalf("expected no error from UpdateShardIndexes, got %v", err)
+	}
+
+	updated, err := c.deps.Clientset.PingcapV1alpha1().CompactBackups(compact.Namespace).Get(context.TODO(), compact.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("failed to fetch updated compact backup: %v", err)
+	}
+	if updated.Status.CompletedIndexes != "" {
+		t.Fatalf("expected CompletedIndexes to clear, got %q", updated.Status.CompletedIndexes)
+	}
+	if updated.Status.FailedIndexes != "" {
+		t.Fatalf("expected FailedIndexes to clear, got %q", updated.Status.FailedIndexes)
 	}
 }
 
