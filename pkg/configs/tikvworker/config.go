@@ -26,12 +26,17 @@ import (
 
 type Config struct {
 	Addr     string   `toml:"addr"`
+	Storage  Storage  `toml:"storage"`
 	PD       PD       `toml:"pd"`
 	Security Security `toml:"security"`
 }
 
 type PD struct {
 	Endpoints []string `toml:"endpoints"`
+}
+
+type Storage struct {
+	DataDir string `toml:"data-dir"`
 }
 
 type Security struct {
@@ -44,8 +49,25 @@ type Security struct {
 }
 
 func (c *Config) Overlay(cluster *v1alpha1.Cluster, w *v1alpha1.TiKVWorker) error {
+	hasDataVolume := false
+	for i := range w.Spec.Volumes {
+		vol := &w.Spec.Volumes[i]
+		for _, mount := range vol.Mounts {
+			if mount.Type == v1alpha1.VolumeMountTypeTiKVWorkerData {
+				hasDataVolume = true
+				break
+			}
+		}
+		if hasDataVolume {
+			break
+		}
+	}
+
 	if err := c.Validate(); err != nil {
 		return err
+	}
+	if hasDataVolume && c.Storage.DataDir != "" {
+		return fmt.Errorf("%v: %w", []string{"storage.data-dir"}, v1alpha1.ErrFieldIsManagedByOperator)
 	}
 
 	if coreutil.IsTLSClusterEnabled(cluster) {
@@ -56,6 +78,17 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, w *v1alpha1.TiKVWorker) erro
 
 	c.Addr = coreutil.ListenAddress(coreutil.TiKVWorkerAPIPort(w))
 	c.PD.Endpoints = []string{cluster.Status.PD}
+	for i := range w.Spec.Volumes {
+		vol := &w.Spec.Volumes[i]
+		for _, mount := range vol.Mounts {
+			if mount.Type == v1alpha1.VolumeMountTypeTiKVWorkerData {
+				c.Storage.DataDir = mount.MountPath
+			}
+		}
+	}
+	if c.Storage.DataDir == "" {
+		c.Storage.DataDir = v1alpha1.VolumeMountTiKVWorkerDataDefaultPath
+	}
 
 	return nil
 }
@@ -66,7 +99,6 @@ func (c *Config) Validate() error {
 	if c.Addr != "" {
 		fields = append(fields, "addr")
 	}
-
 	if len(c.PD.Endpoints) != 0 {
 		fields = append(fields, "pd.endpoints")
 	}

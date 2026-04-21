@@ -286,7 +286,8 @@ type Volume struct {
 
 type VolumeMount struct {
 	// Type is a type of the volume mount.
-	Type VolumeMountType `json:"type"`
+	// If it's empty, the mount is treated as a custom mount without built-in semantics.
+	Type VolumeMountType `json:"type,omitempty"`
 	// Mount path of volume, if it's not set, use the default path of this type.
 	// TODO: webhook for empty path if it's not a built-in type.
 	MountPath string `json:"mountPath,omitempty"`
