@@ -294,6 +294,10 @@ func setup(ctx context.Context, mgr ctrl.Manager) error {
 	tsocm.Start(ctx)
 	rmcm.Start(ctx)
 
+	if err := metrics.RegisterAbnormalInstanceCleanup(ctx, mgr); err != nil {
+		return fmt.Errorf("register abnormal-instance cleanup: %w", err)
+	}
+
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		return fmt.Errorf("unable to set up health check: %w", err)
 	}

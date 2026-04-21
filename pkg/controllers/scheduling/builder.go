@@ -44,10 +44,6 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// tasks.TaskContextInfoFromPD(state, r.PDClientManager),
 		task.IfBreak(common.CondObjectIsDeleting[scope.Scheduling](state),
 			common.TaskInstanceFinalizerDel[scope.Scheduling](state, r.Client, common.DefaultInstanceSubresourceLister),
-			common.TaskInstanceConditionSynced[scope.Scheduling](state),
-			common.TaskInstanceConditionReady[scope.Scheduling](state),
-			common.TaskInstanceConditionRunning[scope.Scheduling](state),
-			common.TaskStatusPersister[scope.Scheduling](state, r.Client),
 		),
 		common.TaskFinalizerAdd[scope.Scheduling](state, r.Client),
 

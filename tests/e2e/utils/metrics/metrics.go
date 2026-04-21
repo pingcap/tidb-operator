@@ -27,6 +27,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
+	dto "github.com/prometheus/client_model/go"
+
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/utils/portforwarder"
 )
 
@@ -143,4 +145,96 @@ func parseOperatorPanicMetric(metricsReader io.Reader) (float64, error) {
 
 	// If metric not found, it means no panics have occurred (metric not yet emitted)
 	return 0, nil
+}
+
+// MetricSample is one Prometheus time series scraped from the operator pod.
+// Value carries the raw number for counter / gauge samples.
+type MetricSample struct {
+	Labels map[string]string
+	Value  float64
+}
+
+// FetchOperatorMetric scrapes the operator's /metrics endpoint and returns
+// every sample of the requested metric name across all operator pods. With
+// HA replicas, the same logical series can appear more than once.
+func FetchOperatorMetric(ctx context.Context, restConfig *rest.Config, ns, deploy, metricName string) ([]MetricSample, error) {
+	clientset, err := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kubernetes client: %w", err)
+	}
+
+	d, err := clientset.AppsV1().Deployments(ns).Get(ctx, deploy, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	pods, err := clientset.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{
+		LabelSelector: metav1.FormatLabelSelector(d.Spec.Selector),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list operator pods: %w", err)
+	}
+	if len(pods.Items) == 0 {
+		return nil, fmt.Errorf("no operator pod found in namespace %s with label %s",
+			ns, metav1.FormatLabelSelector(d.Spec.Selector))
+	}
+
+	pf := portforwarder.New(restConfig)
+	var samples []MetricSample
+	for i := range pods.Items {
+		pod := &pods.Items[i]
+		fam, err := fetchMetricFamiliesFromPod(ctx, pf, pod)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get metrics of pod %v: %w", pod.Name, err)
+		}
+		mf, ok := fam[metricName]
+		if !ok {
+			continue
+		}
+		for _, m := range mf.GetMetric() {
+			s := MetricSample{Labels: map[string]string{}}
+			for _, lp := range m.GetLabel() {
+				s.Labels[lp.GetName()] = lp.GetValue()
+			}
+			switch {
+			case m.Gauge != nil:
+				s.Value = m.Gauge.GetValue()
+			case m.Counter != nil:
+				s.Value = m.Counter.GetValue()
+			}
+			samples = append(samples, s)
+		}
+	}
+	return samples, nil
+}
+
+func fetchMetricFamiliesFromPod(ctx context.Context, pf portforwarder.PortForwarder, pod *corev1.Pod) (map[string]*dto.MetricFamily, error) {
+	forwarded, err := pf.ForwardPod(ctx, pod, fmt.Sprintf(":%d", OperatorMetricsPort))
+	if err != nil {
+		return nil, fmt.Errorf("failed to port forward: %w", err)
+	}
+	defer forwarded.Cancel()
+
+	localPort, ok := forwarded.Local(OperatorMetricsPort)
+	if !ok {
+		return nil, fmt.Errorf("failed to get local port for metrics")
+	}
+
+	metricsURL := fmt.Sprintf("http://localhost:%d/metrics", localPort)
+	req, err := http.NewRequestWithContext(ctx, "GET", metricsURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch metrics from %s: %w", metricsURL, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("metrics endpoint returned status %d", resp.StatusCode)
+	}
+
+	parser := expfmt.TextParser{}
+	return parser.TextToMetricFamilies(resp.Body)
 }

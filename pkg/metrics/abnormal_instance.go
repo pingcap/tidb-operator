@@ -58,18 +58,21 @@ func ObserveCondition(obj client.Object, conds []metav1.Condition, condType stri
 }
 
 // ClearInstanceConditionMetrics removes every tracked-condition series for
-// the given instance.
+// the given instance. Two call sites keep the gauge honest:
 //
-// Called from TaskInstanceFinalizerDel after the finalizer is removed, so
-// every component that uses the standard finalize task is covered without
-// per-builder wiring. Component builders short-circuit the deletion path
-// with task.IfBreak around CondClusterIsDeleting / CondObjectIsDeleting, so
-// the normal TaskInstanceConditionSynced / TaskInstanceConditionReady tasks
-// (where ObserveCondition lives) never run during finalization; without
-// this explicit cleanup, the gauge series would stay present at its last
-// value forever, triggering false-positive `metric == 1 for: <duration>`
-// alerts on a non-existent instance and growing label cardinality across
-// each cluster lifecycle.
+//   - TaskInstanceFinalizerDel, after the finalizer is removed. Covers the
+//     normal graceful delete path. The deletion branch of every instance
+//     builder runs only FinalizerDel (no CondSynced/Ready/Running afterwards),
+//     so the clear done here is not re-populated within the same reconcile.
+//
+//   - RegisterAbnormalInstanceCleanup, on shared-informer DELETE events.
+//     Covers paths that bypass the finalizer entirely (force-delete via
+//     `patch metadata.finalizers=null`, operator down during delete, etc.).
+//
+// Without both paths, a leaked series stays present at its last value forever,
+// triggering false-positive `metric == 1 for: <duration>` alerts on a
+// non-existent instance and growing label cardinality across each cluster
+// lifecycle.
 func ClearInstanceConditionMetrics(obj client.Object) {
 	base := instanceMetricBaseLabels(obj)
 	for _, condType := range trackedConditions {

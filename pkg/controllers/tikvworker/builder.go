@@ -42,11 +42,6 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 
 		task.IfBreak(common.CondObjectIsDeleting[scope.TiKVWorker](state),
 			common.TaskInstanceFinalizerDel[scope.TiKVWorker](state, r.Client, common.DefaultInstanceSubresourceLister),
-			// TODO(liubo02): if the finalizer has been removed, no need to update status
-			common.TaskInstanceConditionSynced[scope.TiKVWorker](state),
-			common.TaskInstanceConditionReady[scope.TiKVWorker](state),
-			common.TaskInstanceConditionRunning[scope.TiKVWorker](state),
-			common.TaskStatusPersister[scope.TiKVWorker](state, r.Client),
 		),
 		common.TaskFinalizerAdd[scope.TiKVWorker](state, r.Client),
 
