@@ -88,14 +88,18 @@ func ClearInstanceConditionMetrics(obj client.Object) {
 }
 
 // ClearInstanceConditionMetricsByKey removes every tracked-condition series
-// matching (namespace, instance) regardless of cluster / component / group
+// matching (namespace, component, instance) regardless of cluster / group
 // labels. Use this from reconcile paths where the object has already been
-// deleted from the API server and the business labels are no longer available
-// for an exact match; the partial match guarantees we also sweep up series
-// written under an earlier label value if those labels ever shifted.
-func ClearInstanceConditionMetricsByKey(namespace, instance string) {
+// deleted from the API server and the business labels are no longer readable;
+// passing component (which is a constant for a given reconcile scope) avoids
+// sweeping up a different kind of instance that happens to share the same
+// namespace and name (e.g. a PD and a TiDB both called "foo"). The partial
+// match still covers series written under an earlier cluster / group label
+// value if those labels ever shifted.
+func ClearInstanceConditionMetricsByKey(namespace, component, instance string) {
 	AbnormalInstance.DeletePartialMatch(prometheus.Labels{
 		"namespace": namespace,
+		"component": component,
 		"instance":  instance,
 	})
 }
