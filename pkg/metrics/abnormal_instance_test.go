@@ -158,30 +158,43 @@ func TestClearInstanceConditionMetricsByKey(t *testing.T) {
 	require.True(t, gaugeSeriesExists(t, name, v1alpha1.CondSynced))
 	require.True(t, gaugeSeriesExists(t, name, v1alpha1.CondReady))
 
-	// Also seed a series with the same (namespace, instance) but a drifted
-	// business label, simulating a label rename during the instance lifetime.
-	driftedLabels := []string{"test-ns", "drifted-cluster", "tikv", "test-group", name, v1alpha1.CondReady}
+	// Also seed a series with the same (namespace, component, instance) but
+	// a drifted cluster / group label, simulating a rename during the
+	// instance lifetime.
+	driftedLabels := []string{"test-ns", "drifted-cluster", "tikv", "drifted-group", name, v1alpha1.CondReady}
 	AbnormalInstance.WithLabelValues(driftedLabels...).Set(1)
 
-	// Seed a sibling instance that must survive the partial-match clear.
+	// Seed a sibling instance (same namespace + same component) that must
+	// survive the partial-match clear.
 	sibling := newTiKVForMetricTest("tikv-sibling")
 	ObserveCondition(sibling, []metav1.Condition{{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse}}, v1alpha1.CondReady)
 	defer ClearInstanceConditionMetrics(sibling)
 
-	ClearInstanceConditionMetricsByKey("test-ns", name)
+	// Seed another component that happens to share namespace + instance name
+	// with the target. It must NOT be swept because the clear qualifies by
+	// component.
+	collisionLabels := []string{"test-ns", "test-cluster", "tidb", "test-group", name, v1alpha1.CondReady}
+	AbnormalInstance.WithLabelValues(collisionLabels...).Set(1)
+	defer AbnormalInstance.DeleteLabelValues(collisionLabels...)
+
+	ClearInstanceConditionMetricsByKey("test-ns", "tikv", name)
 
 	assert.False(t, gaugeSeriesExists(t, name, v1alpha1.CondSynced),
 		"primary Synced series must be removed")
 	assert.False(t, gaugeSeriesExists(t, name, v1alpha1.CondReady),
 		"primary Ready series must be removed")
 
-	// Drifted-label series must also be swept since namespace+instance match.
+	// Drifted-label series must also be swept since namespace+component+instance match.
 	assert.False(t, labelCombinationExists(t, driftedLabels),
-		"series with drifted business labels must be swept by partial match")
+		"series with drifted cluster / group labels must be swept by partial match")
 
-	// Sibling instance under the same namespace must be untouched.
+	// Sibling instance under the same namespace and component must be untouched.
 	assert.True(t, gaugeSeriesExists(t, "tikv-sibling", v1alpha1.CondReady),
 		"unrelated instance must not be swept")
+
+	// Same namespace + same name but different component must NOT be swept.
+	assert.True(t, labelCombinationExists(t, collisionLabels),
+		"series for a different component sharing namespace+name must not be swept")
 }
 
 func labelCombinationExists(t *testing.T, want []string) bool {

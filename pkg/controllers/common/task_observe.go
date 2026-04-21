@@ -45,7 +45,10 @@ func TaskObserveInstance[
 		obj := state.Object()
 		if obj == nil {
 			key := state.Key()
-			metrics.ClearInstanceConditionMetricsByKey(key.Namespace, key.Name)
+			// scope.Component[S]() is a compile-time constant for the reconcile
+			// kind, so we can qualify the sweep even after the CR is gone and
+			// its labels are no longer readable.
+			metrics.ClearInstanceConditionMetricsByKey(key.Namespace, scope.Component[S](), key.Name)
 			return task.Complete().With("cleared metrics for deleted %s", key)
 		}
 		conds := coreutil.StatusConditions[S](obj)

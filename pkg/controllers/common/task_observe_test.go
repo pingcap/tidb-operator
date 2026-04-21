@@ -56,7 +56,7 @@ func hasGaugeSample(t *testing.T, namespace, instance string) bool {
 
 func TestTaskObserveInstance_ObservesConditions(t *testing.T) {
 	const ns, name = "ns-observe", "pd-observe"
-	defer metrics.ClearInstanceConditionMetricsByKey(ns, name)
+	defer metrics.ClearInstanceConditionMetricsByKey(ns, v1alpha1.LabelValComponentPD, name)
 
 	obj := fake.FakeObj(name, func(o *v1alpha1.PD) *v1alpha1.PD {
 		o.Namespace = ns
