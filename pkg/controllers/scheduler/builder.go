@@ -26,6 +26,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// get scheduler
 		common.TaskContextObject[scope.Scheduler](state, r.Client),
 		common.TaskTrack[scope.Scheduler](state, r.Tracker),
+		// refresh the abnormal_instance gauge, or clear it if the CR is gone
+		common.TaskObserveInstance[scope.Scheduler](state),
 		// if it's gone just return
 		task.IfBreak(common.CondObjectHasBeenDeleted[scope.Scheduler](state)),
 
