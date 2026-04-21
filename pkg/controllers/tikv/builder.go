@@ -28,6 +28,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// get tikv
 		common.TaskContextObject[scope.TiKV](state, r.Client),
 		common.TaskTrack[scope.TiKV](state, r.Tracker),
+		// refresh the abnormal_instance gauge, or clear it if the CR is gone
+		common.TaskObserveInstance[scope.TiKV](state),
 		// if it's deleted just return
 		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiKV](state)),
 

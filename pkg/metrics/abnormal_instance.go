@@ -15,6 +15,7 @@
 package metrics
 
 import (
+	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -57,6 +58,15 @@ func ObserveCondition(obj client.Object, conds []metav1.Condition, condType stri
 	AbnormalInstance.WithLabelValues(labels...).Set(value)
 }
 
+// ObserveConditions records the gauge for every condition type tracked by this
+// package. This is the convenience entry point from reconcile tasks that want
+// to refresh the full picture in one call.
+func ObserveConditions(obj client.Object, conds []metav1.Condition) {
+	for _, condType := range trackedConditions {
+		ObserveCondition(obj, conds, condType)
+	}
+}
+
 // ClearInstanceConditionMetrics removes every tracked-condition series for
 // the given instance.
 //
@@ -75,4 +85,17 @@ func ClearInstanceConditionMetrics(obj client.Object) {
 	for _, condType := range trackedConditions {
 		AbnormalInstance.DeleteLabelValues(append(base, condType)...)
 	}
+}
+
+// ClearInstanceConditionMetricsByKey removes every tracked-condition series
+// matching (namespace, instance) regardless of cluster / component / group
+// labels. Use this from reconcile paths where the object has already been
+// deleted from the API server and the business labels are no longer available
+// for an exact match; the partial match guarantees we also sweep up series
+// written under an earlier label value if those labels ever shifted.
+func ClearInstanceConditionMetricsByKey(namespace, instance string) {
+	AbnormalInstance.DeletePartialMatch(prometheus.Labels{
+		"namespace": namespace,
+		"instance":  instance,
+	})
 }

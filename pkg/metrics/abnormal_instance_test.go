@@ -147,3 +147,56 @@ func TestClearInstanceConditionMetrics(t *testing.T) {
 	assert.False(t, gaugeSeriesExists(t, name, v1alpha1.CondReady),
 		"Ready series must be removed on clear")
 }
+
+func TestClearInstanceConditionMetricsByKey(t *testing.T) {
+	const name = "tikv-byKey"
+	obj := newTiKVForMetricTest(name)
+
+	// Seed two series under the normal labels.
+	ObserveCondition(obj, []metav1.Condition{{Type: v1alpha1.CondSynced, Status: metav1.ConditionFalse}}, v1alpha1.CondSynced)
+	ObserveCondition(obj, []metav1.Condition{{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse}}, v1alpha1.CondReady)
+	require.True(t, gaugeSeriesExists(t, name, v1alpha1.CondSynced))
+	require.True(t, gaugeSeriesExists(t, name, v1alpha1.CondReady))
+
+	// Also seed a series with the same (namespace, instance) but a drifted
+	// business label, simulating a label rename during the instance lifetime.
+	driftedLabels := []string{"test-ns", "drifted-cluster", "tikv", "test-group", name, v1alpha1.CondReady}
+	AbnormalInstance.WithLabelValues(driftedLabels...).Set(1)
+
+	// Seed a sibling instance that must survive the partial-match clear.
+	sibling := newTiKVForMetricTest("tikv-sibling")
+	ObserveCondition(sibling, []metav1.Condition{{Type: v1alpha1.CondReady, Status: metav1.ConditionFalse}}, v1alpha1.CondReady)
+	defer ClearInstanceConditionMetrics(sibling)
+
+	ClearInstanceConditionMetricsByKey("test-ns", name)
+
+	assert.False(t, gaugeSeriesExists(t, name, v1alpha1.CondSynced),
+		"primary Synced series must be removed")
+	assert.False(t, gaugeSeriesExists(t, name, v1alpha1.CondReady),
+		"primary Ready series must be removed")
+
+	// Drifted-label series must also be swept since namespace+instance match.
+	assert.False(t, labelCombinationExists(t, driftedLabels),
+		"series with drifted business labels must be swept by partial match")
+
+	// Sibling instance under the same namespace must be untouched.
+	assert.True(t, gaugeSeriesExists(t, "tikv-sibling", v1alpha1.CondReady),
+		"unrelated instance must not be swept")
+}
+
+func labelCombinationExists(t *testing.T, want []string) bool {
+	t.Helper()
+	ch := make(chan prometheus.Metric, 32)
+	AbnormalInstance.Collect(ch)
+	close(ch)
+	for m := range ch {
+		dm := &dto.Metric{}
+		if err := m.Write(dm); err != nil {
+			continue
+		}
+		if labelsEqual(dm.GetLabel(), want) {
+			return true
+		}
+	}
+	return false
+}
