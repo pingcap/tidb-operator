@@ -128,6 +128,21 @@ func TestTiDBInitManagerSync(t *testing.T) {
 	}
 }
 
+func TestMakeTiDBInitJobDisablesServiceAccountTokenAutomount(t *testing.T) {
+	g := NewGomegaWithT(t)
+	tim, _, indexers := newFakeTiDBInitManager()
+	ti := newTidbInitializerForTiDB()
+	tc := newTidbClusterForTiDB()
+
+	err := indexers.tc.Add(tc)
+	g.Expect(err).NotTo(HaveOccurred())
+
+	job, err := tim.makeTiDBInitJob(ti)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(job.Spec.Template.Spec.AutomountServiceAccountToken).NotTo(BeNil())
+	g.Expect(*job.Spec.Template.Spec.AutomountServiceAccountToken).To(BeFalse())
+}
+
 func newFakeTiDBInitManager() (*tidbInitManager, *tidbMemberManager, *fakeIndexers) {
 	tmm, _, _, indexers := newFakeTiDBMemberManager()
 	indexers.job = tmm.deps.KubeInformerFactory.Batch().V1().Jobs().Informer().GetIndexer()
