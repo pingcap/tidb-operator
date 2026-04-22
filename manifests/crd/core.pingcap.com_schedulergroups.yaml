@@ -8731,10 +8731,10 @@ spec:
                                       root path.
                                     type: string
                                   type:
-                                    description: Type is a type of the volume mount.
+                                    description: |-
+                                      Type is a type of the volume mount.
+                                      If it's empty, the mount is treated as a custom mount without built-in semantics.
                                     type: string
-                                required:
-                                - type
                                 type: object
                               type: array
                               x-kubernetes-list-type: atomic
