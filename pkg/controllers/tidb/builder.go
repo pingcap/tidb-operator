@@ -31,6 +31,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// get tidb
 		common.TaskContextObject[scope.TiDB](state, r.Client),
 		common.TaskTrack[scope.TiDB](state, r.Tracker),
+		// refresh the abnormal_instance gauge, or clear it if the CR is gone
+		common.TaskObserveInstance[scope.TiDB](state),
 		tasks.TaskRegisterForAdoption(state, r.AdoptManager),
 		// if it's deleted just return
 		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiDB](state)),
