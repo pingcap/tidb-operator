@@ -602,6 +602,9 @@ func (c *Controller) validate(compact *v1alpha1.CompactBackup) error {
 	if spec.Mode == v1alpha1.CompactModeSharded && (spec.ShardCount == nil || *spec.ShardCount < 1) {
 		return errors.NewNoStackError("shardCount must be greater than or equal to 1 when mode is sharded")
 	}
+	if spec.Mode != v1alpha1.CompactModeSharded && spec.ShardCount != nil {
+		return errors.NewNoStackError("shardCount can only be set when mode is sharded")
+	}
 	return nil
 }
 

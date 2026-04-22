@@ -38,9 +38,6 @@ func (s *spyCompactStatusUpdater) OnJobComplete(_ context.Context, _ *v1alpha1.C
 func (s *spyCompactStatusUpdater) OnJobFailed(_ context.Context, _ *v1alpha1.CompactBackup, _, _, _ string) error {
 	return nil
 }
-func (s *spyCompactStatusUpdater) UpdateStatus(_ *v1alpha1.CompactBackup, _ v1alpha1.CompactStatus) error {
-	return nil
-}
 func (s *spyCompactStatusUpdater) UpdateShardIndexes(_ *v1alpha1.CompactBackup, _ batchv1.JobStatus) error {
 	return nil
 }
