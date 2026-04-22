@@ -243,10 +243,6 @@ func (r *CompactStatusUpdater) OnProgress(ctx context.Context, compact *v1alpha1
 }
 
 func (r *CompactStatusUpdater) OnFinish(ctx context.Context, compact *v1alpha1.CompactBackup, err error) error {
-	if compact.Spec.Mode == v1alpha1.CompactModeSharded {
-		return nil
-	}
-
 	newStatus := v1alpha1.CompactStatus{}
 	if err != nil {
 		newStatus.State = string(v1alpha1.BackupRetryTheFailed)
@@ -281,4 +277,55 @@ func (r *CompactStatusUpdater) OnJobFailed(ctx context.Context, compact *v1alpha
 	}
 	r.Event(compact, corev1.EventTypeWarning, "The compact job is failed.", reason)
 	return r.UpdateStatus(compact, newStatus)
+}
+
+// ShardedCompactStatusUpdater wraps a real CompactStatusUpdater for use by the
+// backup-manager worker in sharded mode. Forwards OnStart (writing BackupRunning is
+// idempotent and per-pod Events help observability); suppresses OnProgress (per-shard
+// percentages would race over a single CR field) and OnFinish (any shard finishing
+// would prematurely push terminal state—terminal writes are owned by the controller
+// observing the Indexed Job). Other methods are not called from the worker; they
+// default to no-op as defensive stubs.
+type ShardedCompactStatusUpdater struct {
+	real CompactStatusUpdaterInterface
+}
+
+func NewShardedCompactStatusUpdater(real CompactStatusUpdaterInterface) *ShardedCompactStatusUpdater {
+	return &ShardedCompactStatusUpdater{real: real}
+}
+
+func (s *ShardedCompactStatusUpdater) OnSchedule(_ context.Context, _ *v1alpha1.CompactBackup, _ error) error {
+	return nil
+}
+
+func (s *ShardedCompactStatusUpdater) OnCreateJob(_ context.Context, _ *v1alpha1.CompactBackup, _ error) error {
+	return nil
+}
+
+func (s *ShardedCompactStatusUpdater) OnStart(ctx context.Context, compact *v1alpha1.CompactBackup) error {
+	return s.real.OnStart(ctx, compact)
+}
+
+func (s *ShardedCompactStatusUpdater) OnProgress(_ context.Context, _ *v1alpha1.CompactBackup, _ *Progress, _ string) error {
+	return nil
+}
+
+func (s *ShardedCompactStatusUpdater) OnFinish(_ context.Context, _ *v1alpha1.CompactBackup, _ error) error {
+	return nil
+}
+
+func (s *ShardedCompactStatusUpdater) OnJobComplete(_ context.Context, _ *v1alpha1.CompactBackup) error {
+	return nil
+}
+
+func (s *ShardedCompactStatusUpdater) OnJobFailed(_ context.Context, _ *v1alpha1.CompactBackup, _ string) error {
+	return nil
+}
+
+func (s *ShardedCompactStatusUpdater) UpdateStatus(_ *v1alpha1.CompactBackup, _ v1alpha1.CompactStatus) error {
+	return nil
+}
+
+func (s *ShardedCompactStatusUpdater) UpdateShardIndexes(_ *v1alpha1.CompactBackup, _ batchv1.JobStatus) error {
+	return nil
 }
