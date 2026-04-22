@@ -4342,6 +4342,11 @@ spec:
                     default: 6
                     format: int32
                     type: integer
+                  mode:
+                    enum:
+                    - ""
+                    - sharded
+                    type: string
                   podSecurityContext:
                     properties:
                       fsGroup:
@@ -4472,6 +4477,10 @@ spec:
                     type: object
                   serviceAccount:
                     type: string
+                  shardCount:
+                    format: int32
+                    minimum: 1
+                    type: integer
                   startTs:
                     type: string
                   tikvImage:

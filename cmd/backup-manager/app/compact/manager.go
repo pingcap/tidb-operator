@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -166,6 +167,19 @@ func (cm *Manager) runCompaction(ctx context.Context, base64Storage string) (err
 func (cm *Manager) compactCmd(ctx context.Context, base64Storage string) *exec.Cmd {
 	ctl := cm.kvCtlBin()
 	// You should not change the log configuration here, it should sync with the upstream setting
+	args := cm.buildCompactArgs(base64Storage)
+	return exec.CommandContext(ctx, ctl, args...)
+}
+
+func (cm *Manager) buildCompactArgs(base64Storage string) []string {
+	untilTS := cm.options.UntilTS
+	// Sharded mode requires tikv-ctl's --until to cover all available log data so
+	// each shard can compact its full slice of the keyspace regardless of CR's
+	// spec.endTs; spec.endTs is effectively ignored in sharded mode.
+	if cm.options.Sharded {
+		untilTS = math.MaxUint64
+	}
+
 	args := []string{
 		"--log-level",
 		"INFO",
@@ -177,11 +191,22 @@ func (cm *Manager) compactCmd(ctx context.Context, base64Storage string) *exec.C
 		"--from",
 		strconv.FormatUint(cm.options.FromTS, 10),
 		"--until",
-		strconv.FormatUint(cm.options.UntilTS, 10),
+		strconv.FormatUint(untilTS, 10),
 		"-N",
 		strconv.FormatUint(cm.options.Concurrency, 10),
 	}
-	return exec.CommandContext(ctx, ctl, args...)
+	if cm.options.Sharded {
+		// --shard tells tikv-ctl this pod's slice of the keyspace partition.
+		// --minimal-compaction-size=0 disables the small-segment skip so each
+		// shard compacts its full slice instead of discarding fragments.
+		args = append(args,
+			"--shard",
+			strconv.Itoa(cm.options.ShardIndex)+"/"+strconv.Itoa(cm.options.ShardCount),
+			"--minimal-compaction-size",
+			"0",
+		)
+	}
+	return args
 }
 
 func (cm *Manager) processCompactionLogs(ctx context.Context, logStream io.Reader) error {

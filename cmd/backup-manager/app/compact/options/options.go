@@ -14,7 +14,10 @@
 package options
 
 import (
+	"fmt"
 	"math"
+	"os"
+	"strconv"
 
 	"github.com/juju/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -31,6 +34,9 @@ type CompactOpts struct {
 	UntilTS      uint64
 	Name         string
 	Concurrency  uint64
+	ShardIndex   int
+	ShardCount   int
+	Sharded      bool
 	Namespace    string `json:"namespace"`
 	ResourceName string `json:"resourceName"`
 	TikvVersion  string `json:"tikvVersion"`
@@ -51,6 +57,18 @@ func ParseCompactOptions(compact *v1alpha1.CompactBackup, opts *CompactOpts) err
 
 	opts.Name = compact.ObjectMeta.Name
 	opts.Concurrency = uint64(compact.Spec.Concurrency)
+	opts.Sharded = compact.Spec.Mode == v1alpha1.CompactModeSharded
+	opts.ShardIndex = 0
+	opts.ShardCount = 0
+	if compact.Spec.ShardCount != nil {
+		opts.ShardCount = int(*compact.Spec.ShardCount)
+	}
+	if opts.Sharded {
+		opts.ShardIndex, err = resolveShardIndex(opts.ShardCount)
+		if err != nil {
+			return err
+		}
+	}
 
 	if err := opts.Verify(); err != nil {
 		return err
@@ -72,5 +90,29 @@ func (c *CompactOpts) Verify() error {
 	if c.Concurrency <= 0 {
 		return errors.Errorf("concurrency %d must be greater than 0", c.Concurrency)
 	}
+	if c.Sharded {
+		if c.ShardCount <= 0 {
+			return errors.Errorf("shard-count %d must be greater than 0", c.ShardCount)
+		}
+		if c.ShardIndex < 0 || c.ShardIndex >= c.ShardCount {
+			return errors.Errorf("shard-index %d must be in range [0, %d)", c.ShardIndex, c.ShardCount)
+		}
+	}
 	return nil
+}
+
+func resolveShardIndex(shardCount int) (int, error) {
+	value, ok := os.LookupEnv("JOB_COMPLETION_INDEX")
+	if !ok {
+		return 0, fmt.Errorf("JOB_COMPLETION_INDEX must be set in sharded mode")
+	}
+
+	index, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse JOB_COMPLETION_INDEX %q: %w", value, err)
+	}
+	if index < 0 || index >= shardCount {
+		return 0, fmt.Errorf("JOB_COMPLETION_INDEX %d out of range [0, %d)", index, shardCount)
+	}
+	return index, nil
 }

@@ -78,7 +78,9 @@ func NewController(deps *controller.Dependencies) *Controller {
 		DeleteFunc: c.updateCompact,
 	})
 	jobInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		DeleteFunc: c.deleteJob,
+		AddFunc:    c.handleJobEvent,
+		UpdateFunc: func(old, cur interface{}) { c.handleJobEvent(cur) },
+		DeleteFunc: c.handleJobEvent,
 	})
 
 	return c
@@ -161,10 +163,17 @@ func (c *Controller) resolveCompactBackupFromJob(namespace string, job *batchv1.
 	return compact
 }
 
-func (c *Controller) deleteJob(obj interface{}) {
+func (c *Controller) handleJobEvent(obj interface{}) {
 	job, ok := obj.(*batchv1.Job)
 	if !ok {
-		return
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			return
+		}
+		job, ok = tombstone.Obj.(*batchv1.Job)
+		if !ok {
+			return
+		}
 	}
 
 	ns := job.GetNamespace()
@@ -173,7 +182,7 @@ func (c *Controller) deleteJob(obj interface{}) {
 	if compact == nil {
 		return
 	}
-	klog.V(4).Infof("Job %s/%s deleted through %v.", ns, jobName, utilruntime.GetCaller())
+	klog.V(4).Infof("Job %s/%s handled through %v.", ns, jobName, utilruntime.GetCaller())
 	c.updateCompact(compact)
 }
 
@@ -256,7 +265,7 @@ func (c *Controller) sync(key string) (err error) {
 		return err
 	}
 	klog.Infof("Compact: [%s/%s] start to sync", ns, name)
-	compact, err := c.deps.CompactBackupLister.CompactBackups(ns).Get(name)
+	cached, err := c.deps.CompactBackupLister.CompactBackups(ns).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			klog.Infof("Compact has been deleted %v", key)
@@ -265,6 +274,10 @@ func (c *Controller) sync(key string) (err error) {
 		klog.Infof("Compact get failed %v", err)
 		return err
 	}
+	// Defensive DeepCopy: the lister returns a shared reference into the informer cache.
+	// checkJobStatus / statusUpdater callers may mutate compact.Status in-memory and we
+	// must not pollute the cache or other consumers.
+	compact := cached.DeepCopy()
 
 	err = c.validate(compact)
 	if compact.Status.State == "" {
@@ -291,6 +304,18 @@ func (c *Controller) sync(key string) (err error) {
 	if !ok {
 		klog.Infof("Compact %s/%s is not allowed to create new job, skip", ns, name)
 		return nil
+	}
+
+	if compact.Spec.Mode == v1alpha1.CompactModeSharded {
+		if err := requireShardedJobK8sVersion(c.deps.KubeClientset.Discovery()); err != nil {
+			if isUnsupportedShardedJobK8sVersionError(err) {
+				if updateErr := c.UpdateStatus(compact, string(v1alpha1.BackupFailed), err.Error()); updateErr != nil {
+					return updateErr
+				}
+				return nil
+			}
+			return controller.RequeueErrorf("check sharded compact backup Kubernetes version: %v", err)
+		}
 	}
 
 	err = c.createCompactJob(compact.DeepCopy())
@@ -469,6 +494,27 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 		},
 	}
 
+	jobSpec := batchv1.JobSpec{
+		Template:     *podSpec,
+		BackoffLimit: ptr.To(compact.Spec.MaxRetryTimes),
+	}
+	// Sharded mode: each shard gets its own retry budget via BackoffLimitPerIndex.
+	// MaxFailedIndexes == ShardCount means a failed shard (after exhausting per-index
+	// retries) does NOT kill running siblings — they keep writing their storage output;
+	// the Job's final terminal condition aggregates the result. RestartPolicyNever is
+	// required by Indexed Jobs so the per-index retry counter doesn't race with
+	// kubelet-level container restarts; BackoffLimit must be nil when
+	// BackoffLimitPerIndex is set.
+	if compact.Spec.Mode == v1alpha1.CompactModeSharded {
+		jobSpec.CompletionMode = ptr.To(batchv1.IndexedCompletion)
+		jobSpec.Completions = ptr.To(*compact.Spec.ShardCount)
+		jobSpec.Parallelism = ptr.To(*compact.Spec.ShardCount)
+		jobSpec.BackoffLimitPerIndex = ptr.To(compact.Spec.MaxRetryTimes)
+		jobSpec.MaxFailedIndexes = ptr.To(*compact.Spec.ShardCount)
+		jobSpec.BackoffLimit = nil
+		jobSpec.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
+	}
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        jobName,
@@ -479,18 +525,17 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 				controller.GetCompactBackupOwnerRef(compact),
 			},
 		},
-		Spec: batchv1.JobSpec{
-			Template:     *podSpec,
-			BackoffLimit: ptr.To(compact.Spec.MaxRetryTimes),
-		},
+		Spec: jobSpec,
 	}
 
 	return job, "", nil
 }
 
-// checkJobStatus checks if doCompact is allowed to run
-// Only if there is no other compact job existing, doCompact is allowed
-// If the existing job failed, update compact status
+// checkJobStatus returns whether a new Job should be created. Also has two
+// side effects: (1) terminal Job state (JobComplete / JobFailed) is propagated
+// to CR status via OnJobComplete / OnJobFailed; (2) in sharded mode the Job's
+// shard indexes (completed / failed) are mirrored to CR.Status via
+// UpdateShardIndexes while the Job is still running.
 func (c *Controller) checkJobStatus(compact *v1alpha1.CompactBackup) (bool, error) {
 	ns := compact.GetNamespace()
 	name := compact.GetName()
@@ -504,18 +549,35 @@ func (c *Controller) checkJobStatus(compact *v1alpha1.CompactBackup) (bool, erro
 		return false, err
 	}
 
+	completedIndexes := job.Status.CompletedIndexes
+	failedIndexes := ""
+	if job.Status.FailedIndexes != nil {
+		failedIndexes = *job.Status.FailedIndexes
+	}
+
 	for _, condition := range job.Status.Conditions {
 		if condition.Type == batchv1.JobFailed && condition.Status == corev1.ConditionTrue {
 			failReason := condition.Reason
 			failMessage := condition.Message
 			klog.Errorf("Compact: [%s/%s] compact job failed, reason: %s, message: %s", ns, name, failReason, failMessage)
-			c.statusUpdater.OnJobFailed(context.TODO(), compact, failMessage)
+			if err := c.statusUpdater.OnJobFailed(context.TODO(), compact, failMessage, completedIndexes, failedIndexes); err != nil {
+				klog.Errorf("Failed to update compact status for failed job %s/%s, error %v", ns, name, err)
+			}
 			return false, nil
 		}
 
 		if condition.Type == batchv1.JobComplete && condition.Status == corev1.ConditionTrue {
 			klog.Infof("Compact: [%s/%s] Job already completed successfully.", ns, name)
+			if err := c.statusUpdater.OnJobComplete(context.TODO(), compact, completedIndexes, failedIndexes); err != nil {
+				klog.Errorf("Failed to update compact status for completed job %s/%s, error %v", ns, name, err)
+			}
 			return false, nil
+		}
+	}
+
+	if compact.Spec.Mode == v1alpha1.CompactModeSharded {
+		if err := c.statusUpdater.UpdateShardIndexes(compact, job.Status); err != nil {
+			klog.Errorf("Failed to mirror sharded compact job indexes for %s/%s, error %v", ns, name, err)
 		}
 	}
 
@@ -536,6 +598,12 @@ func (c *Controller) validate(compact *v1alpha1.CompactBackup) error {
 	}
 	if spec.MaxRetryTimes < 0 {
 		return errors.NewNoStackError("maxRetryTimes must be greater than or equal to 0")
+	}
+	if spec.Mode == v1alpha1.CompactModeSharded && (spec.ShardCount == nil || *spec.ShardCount < 1) {
+		return errors.NewNoStackError("shardCount must be greater than or equal to 1 when mode is sharded")
+	}
+	if spec.Mode != v1alpha1.CompactModeSharded && spec.ShardCount != nil {
+		return errors.NewNoStackError("shardCount can only be set when mode is sharded")
 	}
 	return nil
 }
@@ -560,7 +628,7 @@ func (c *Controller) allowCompact(compact *v1alpha1.CompactBackup) bool {
 	if attempts > 0 {
 		lastRetry := compact.Status.RetryStatus[attempts-1]
 		if lastRetry.RetryNum > int(compact.Spec.MaxRetryTimes) {
-			c.statusUpdater.OnJobFailed(context.TODO(), compact, "create job failed, reached max retry times")
+			c.statusUpdater.OnJobFailed(context.TODO(), compact, "create job failed, reached max retry times", "", "")
 			return false
 		}
 		backoff := expBackoff(attempts)
