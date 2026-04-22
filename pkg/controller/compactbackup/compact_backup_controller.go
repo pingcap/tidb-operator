@@ -494,6 +494,13 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 		Template:     *podSpec,
 		BackoffLimit: ptr.To(compact.Spec.MaxRetryTimes),
 	}
+	// Sharded mode: each shard gets its own retry budget via BackoffLimitPerIndex.
+	// MaxFailedIndexes == ShardCount means a failed shard (after exhausting per-index
+	// retries) does NOT kill running siblings — they keep writing their storage output;
+	// the Job's final terminal condition aggregates the result. RestartPolicyNever is
+	// required by Indexed Jobs so the per-index retry counter doesn't race with
+	// kubelet-level container restarts; BackoffLimit must be nil when
+	// BackoffLimitPerIndex is set.
 	if compact.Spec.Mode == v1alpha1.CompactModeSharded {
 		jobSpec.CompletionMode = ptr.To(batchv1.IndexedCompletion)
 		jobSpec.Completions = ptr.To(*compact.Spec.ShardCount)
@@ -520,9 +527,11 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 	return job, "", nil
 }
 
-// checkJobStatus checks if doCompact is allowed to run
-// Only if there is no other compact job existing, doCompact is allowed
-// If the existing job failed, update compact status
+// checkJobStatus returns whether a new Job should be created. Also has two
+// side effects: (1) terminal Job state (JobComplete / JobFailed) is propagated
+// to CR status via OnJobComplete / OnJobFailed; (2) in sharded mode the Job's
+// shard indexes (completed / failed) are mirrored to CR.Status via
+// UpdateShardIndexes while the Job is still running.
 func (c *Controller) checkJobStatus(compact *v1alpha1.CompactBackup) (bool, error) {
 	ns := compact.GetNamespace()
 	name := compact.GetName()
