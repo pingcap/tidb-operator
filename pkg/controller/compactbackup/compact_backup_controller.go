@@ -265,7 +265,7 @@ func (c *Controller) sync(key string) (err error) {
 		return err
 	}
 	klog.Infof("Compact: [%s/%s] start to sync", ns, name)
-	compact, err := c.deps.CompactBackupLister.CompactBackups(ns).Get(name)
+	cached, err := c.deps.CompactBackupLister.CompactBackups(ns).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			klog.Infof("Compact has been deleted %v", key)
@@ -274,6 +274,10 @@ func (c *Controller) sync(key string) (err error) {
 		klog.Infof("Compact get failed %v", err)
 		return err
 	}
+	// Defensive DeepCopy: the lister returns a shared reference into the informer cache.
+	// checkJobStatus / statusUpdater callers may mutate compact.Status in-memory and we
+	// must not pollute the cache or other consumers.
+	compact := cached.DeepCopy()
 
 	err = c.validate(compact)
 	if compact.Status.State == "" {
@@ -545,12 +549,10 @@ func (c *Controller) checkJobStatus(compact *v1alpha1.CompactBackup) (bool, erro
 		return false, err
 	}
 
-	if compact.Spec.Mode == v1alpha1.CompactModeSharded {
-		compact.Status.CompletedIndexes = job.Status.CompletedIndexes
-		compact.Status.FailedIndexes = ""
-		if job.Status.FailedIndexes != nil {
-			compact.Status.FailedIndexes = *job.Status.FailedIndexes
-		}
+	completedIndexes := job.Status.CompletedIndexes
+	failedIndexes := ""
+	if job.Status.FailedIndexes != nil {
+		failedIndexes = *job.Status.FailedIndexes
 	}
 
 	for _, condition := range job.Status.Conditions {
@@ -558,13 +560,15 @@ func (c *Controller) checkJobStatus(compact *v1alpha1.CompactBackup) (bool, erro
 			failReason := condition.Reason
 			failMessage := condition.Message
 			klog.Errorf("Compact: [%s/%s] compact job failed, reason: %s, message: %s", ns, name, failReason, failMessage)
-			c.statusUpdater.OnJobFailed(context.TODO(), compact, failMessage)
+			if err := c.statusUpdater.OnJobFailed(context.TODO(), compact, failMessage, completedIndexes, failedIndexes); err != nil {
+				klog.Errorf("Failed to update compact status for failed job %s/%s, error %v", ns, name, err)
+			}
 			return false, nil
 		}
 
 		if condition.Type == batchv1.JobComplete && condition.Status == corev1.ConditionTrue {
 			klog.Infof("Compact: [%s/%s] Job already completed successfully.", ns, name)
-			if err := c.statusUpdater.OnJobComplete(context.TODO(), compact); err != nil {
+			if err := c.statusUpdater.OnJobComplete(context.TODO(), compact, completedIndexes, failedIndexes); err != nil {
 				klog.Errorf("Failed to update compact status for completed job %s/%s, error %v", ns, name, err)
 			}
 			return false, nil
@@ -621,7 +625,7 @@ func (c *Controller) allowCompact(compact *v1alpha1.CompactBackup) bool {
 	if attempts > 0 {
 		lastRetry := compact.Status.RetryStatus[attempts-1]
 		if lastRetry.RetryNum > int(compact.Spec.MaxRetryTimes) {
-			c.statusUpdater.OnJobFailed(context.TODO(), compact, "create job failed, reached max retry times")
+			c.statusUpdater.OnJobFailed(context.TODO(), compact, "create job failed, reached max retry times", "", "")
 			return false
 		}
 		backoff := expBackoff(attempts)

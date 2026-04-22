@@ -52,8 +52,11 @@ type CompactStatusUpdaterInterface interface {
 	OnStart(ctx context.Context, compact *v1alpha1.CompactBackup) error
 	OnProgress(ctx context.Context, compact *v1alpha1.CompactBackup, p *Progress, endTs string) error
 	OnFinish(ctx context.Context, compact *v1alpha1.CompactBackup, err error) error
-	OnJobComplete(ctx context.Context, compact *v1alpha1.CompactBackup) error
-	OnJobFailed(ctx context.Context, compact *v1alpha1.CompactBackup, reason string) error
+	// OnJobComplete / OnJobFailed take sharded indexes directly. Callers pass empty
+	// strings when the terminal transition has no observed Job (e.g. create-job retries
+	// exhausted before any pod ran).
+	OnJobComplete(ctx context.Context, compact *v1alpha1.CompactBackup, completedIndexes, failedIndexes string) error
+	OnJobFailed(ctx context.Context, compact *v1alpha1.CompactBackup, reason, completedIndexes, failedIndexes string) error
 	UpdateStatus(compact *v1alpha1.CompactBackup, newStatus v1alpha1.CompactStatus) error
 	UpdateShardIndexes(compact *v1alpha1.CompactBackup, jobStatus batchv1.JobStatus) error
 }
@@ -80,10 +83,6 @@ func (r *CompactStatusUpdater) Event(compact *v1alpha1.CompactBackup, ty, reason
 func (r *CompactStatusUpdater) UpdateStatus(compact *v1alpha1.CompactBackup, newStatus v1alpha1.CompactStatus) error {
 	ns := compact.GetNamespace()
 	compactName := compact.GetName()
-	preserveShardIndexes := compact.Spec.Mode == v1alpha1.CompactModeSharded &&
-		(newStatus.State == string(v1alpha1.BackupComplete) || newStatus.State == string(v1alpha1.BackupFailed))
-	completedIndexes := compact.Status.CompletedIndexes
-	failedIndexes := compact.Status.FailedIndexes
 
 	now := time.Now()
 	canUpdateProgress := true
@@ -126,12 +125,15 @@ func (r *CompactStatusUpdater) UpdateStatus(compact *v1alpha1.CompactBackup, new
 			compact.Status.EndTs = newStatus.EndTs
 			updated = true
 		}
-		if preserveShardIndexes && compact.Status.CompletedIndexes != completedIndexes {
-			compact.Status.CompletedIndexes = completedIndexes
+		// Empty string means "caller didn't observe a value for this field" (mirroring the
+		// convention used by State/Message/Progress above). Non-terminal sharded-index
+		// writes go through UpdateShardIndexes, which unconditionally overwrites.
+		if newStatus.CompletedIndexes != "" && compact.Status.CompletedIndexes != newStatus.CompletedIndexes {
+			compact.Status.CompletedIndexes = newStatus.CompletedIndexes
 			updated = true
 		}
-		if preserveShardIndexes && compact.Status.FailedIndexes != failedIndexes {
-			compact.Status.FailedIndexes = failedIndexes
+		if newStatus.FailedIndexes != "" && compact.Status.FailedIndexes != newStatus.FailedIndexes {
+			compact.Status.FailedIndexes = newStatus.FailedIndexes
 			updated = true
 		}
 		// Apply the update if any field changed
@@ -262,18 +264,23 @@ func (r *CompactStatusUpdater) OnFinish(ctx context.Context, compact *v1alpha1.C
 	return r.UpdateStatus(compact, newStatus)
 }
 
-func (r *CompactStatusUpdater) OnJobComplete(ctx context.Context, compact *v1alpha1.CompactBackup) error {
+func (r *CompactStatusUpdater) OnJobComplete(ctx context.Context, compact *v1alpha1.CompactBackup, completedIndexes, failedIndexes string) error {
 	r.Event(compact, corev1.EventTypeNormal, "Finished", "The compaction process has finished successfully.")
 
 	newStatus := v1alpha1.CompactStatus{
-		State: string(v1alpha1.BackupComplete),
+		State:            string(v1alpha1.BackupComplete),
+		CompletedIndexes: completedIndexes,
+		FailedIndexes:    failedIndexes,
 	}
 	return r.UpdateStatus(compact, newStatus)
 }
 
-func (r *CompactStatusUpdater) OnJobFailed(ctx context.Context, compact *v1alpha1.CompactBackup, reason string) error {
+func (r *CompactStatusUpdater) OnJobFailed(ctx context.Context, compact *v1alpha1.CompactBackup, reason, completedIndexes, failedIndexes string) error {
 	newStatus := v1alpha1.CompactStatus{
-		State: string(v1alpha1.BackupFailed),
+		State:            string(v1alpha1.BackupFailed),
+		Message:          reason,
+		CompletedIndexes: completedIndexes,
+		FailedIndexes:    failedIndexes,
 	}
 	r.Event(compact, corev1.EventTypeWarning, "The compact job is failed.", reason)
 	return r.UpdateStatus(compact, newStatus)
@@ -314,11 +321,11 @@ func (s *ShardedCompactStatusUpdater) OnFinish(_ context.Context, _ *v1alpha1.Co
 	return nil
 }
 
-func (s *ShardedCompactStatusUpdater) OnJobComplete(_ context.Context, _ *v1alpha1.CompactBackup) error {
+func (s *ShardedCompactStatusUpdater) OnJobComplete(_ context.Context, _ *v1alpha1.CompactBackup, _, _ string) error {
 	return nil
 }
 
-func (s *ShardedCompactStatusUpdater) OnJobFailed(_ context.Context, _ *v1alpha1.CompactBackup, _ string) error {
+func (s *ShardedCompactStatusUpdater) OnJobFailed(_ context.Context, _ *v1alpha1.CompactBackup, _, _, _ string) error {
 	return nil
 }
 

@@ -32,10 +32,10 @@ func (s *spyCompactStatusUpdater) OnFinish(_ context.Context, _ *v1alpha1.Compac
 	s.onFinishCalls++
 	return nil
 }
-func (s *spyCompactStatusUpdater) OnJobComplete(_ context.Context, _ *v1alpha1.CompactBackup) error {
+func (s *spyCompactStatusUpdater) OnJobComplete(_ context.Context, _ *v1alpha1.CompactBackup, _, _ string) error {
 	return nil
 }
-func (s *spyCompactStatusUpdater) OnJobFailed(_ context.Context, _ *v1alpha1.CompactBackup, _ string) error {
+func (s *spyCompactStatusUpdater) OnJobFailed(_ context.Context, _ *v1alpha1.CompactBackup, _, _, _ string) error {
 	return nil
 }
 func (s *spyCompactStatusUpdater) UpdateStatus(_ *v1alpha1.CompactBackup, _ v1alpha1.CompactStatus) error {

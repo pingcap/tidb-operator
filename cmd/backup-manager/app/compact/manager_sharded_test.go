@@ -191,11 +191,11 @@ func (f *fakeCompactStatusUpdater) OnFinish(_ context.Context, _ *v1alpha1.Compa
 	return nil
 }
 
-func (f *fakeCompactStatusUpdater) OnJobComplete(_ context.Context, _ *v1alpha1.CompactBackup) error {
+func (f *fakeCompactStatusUpdater) OnJobComplete(_ context.Context, _ *v1alpha1.CompactBackup, _, _ string) error {
 	return nil
 }
 
-func (f *fakeCompactStatusUpdater) OnJobFailed(_ context.Context, _ *v1alpha1.CompactBackup, _ string) error {
+func (f *fakeCompactStatusUpdater) OnJobFailed(_ context.Context, _ *v1alpha1.CompactBackup, _, _, _ string) error {
 	return nil
 }
 
