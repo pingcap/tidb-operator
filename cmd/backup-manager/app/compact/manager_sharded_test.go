@@ -199,10 +199,6 @@ func (f *fakeCompactStatusUpdater) OnJobFailed(_ context.Context, _ *v1alpha1.Co
 	return nil
 }
 
-func (f *fakeCompactStatusUpdater) UpdateStatus(_ *v1alpha1.CompactBackup, _ v1alpha1.CompactStatus) error {
-	return nil
-}
-
 func (f *fakeCompactStatusUpdater) UpdateShardIndexes(_ *v1alpha1.CompactBackup, _ batchv1.JobStatus) error {
 	return nil
 }

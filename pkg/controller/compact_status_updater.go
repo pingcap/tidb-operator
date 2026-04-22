@@ -57,7 +57,6 @@ type CompactStatusUpdaterInterface interface {
 	// exhausted before any pod ran).
 	OnJobComplete(ctx context.Context, compact *v1alpha1.CompactBackup, completedIndexes, failedIndexes string) error
 	OnJobFailed(ctx context.Context, compact *v1alpha1.CompactBackup, reason, completedIndexes, failedIndexes string) error
-	UpdateStatus(compact *v1alpha1.CompactBackup, newStatus v1alpha1.CompactStatus) error
 	UpdateShardIndexes(compact *v1alpha1.CompactBackup, jobStatus batchv1.JobStatus) error
 }
 
@@ -326,10 +325,6 @@ func (s *ShardedCompactStatusUpdater) OnJobComplete(_ context.Context, _ *v1alph
 }
 
 func (s *ShardedCompactStatusUpdater) OnJobFailed(_ context.Context, _ *v1alpha1.CompactBackup, _, _, _ string) error {
-	return nil
-}
-
-func (s *ShardedCompactStatusUpdater) UpdateStatus(_ *v1alpha1.CompactBackup, _ v1alpha1.CompactStatus) error {
 	return nil
 }
 

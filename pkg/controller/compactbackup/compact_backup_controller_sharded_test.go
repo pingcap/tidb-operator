@@ -107,6 +107,22 @@ func TestValidateShardedModeRequiresPositiveShardCount(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsShardCountWithoutShardedMode(t *testing.T) {
+	c := newTestController(t)
+	compact := newCompactBackupForTest()
+	shardCount := int32(3)
+	compact.Spec.ShardCount = &shardCount
+	// compact.Spec.Mode left empty (default non-sharded mode)
+
+	err := c.validate(compact)
+	if err == nil {
+		t.Fatal("expected validation error, got nil")
+	}
+	if !strings.Contains(err.Error(), "shardCount") || !strings.Contains(err.Error(), "sharded") {
+		t.Fatalf("expected error referencing shardCount and sharded mode, got %v", err)
+	}
+}
+
 func TestSyncShardedModeRequiresSupportedK8sVersion(t *testing.T) {
 	c := newTestController(t)
 	compact := newCompactBackupForTest()
