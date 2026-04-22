@@ -173,6 +173,9 @@ func (cm *Manager) compactCmd(ctx context.Context, base64Storage string) *exec.C
 
 func (cm *Manager) buildCompactArgs(base64Storage string) []string {
 	untilTS := cm.options.UntilTS
+	// Sharded mode requires tikv-ctl's --until to cover all available log data so
+	// each shard can compact its full slice of the keyspace regardless of CR's
+	// spec.endTs; spec.endTs is effectively ignored in sharded mode.
 	if cm.options.Sharded {
 		untilTS = math.MaxUint64
 	}
@@ -193,6 +196,9 @@ func (cm *Manager) buildCompactArgs(base64Storage string) []string {
 		strconv.FormatUint(cm.options.Concurrency, 10),
 	}
 	if cm.options.Sharded {
+		// --shard tells tikv-ctl this pod's slice of the keyspace partition.
+		// --minimal-compaction-size=0 disables the small-segment skip so each
+		// shard compacts its full slice instead of discarding fragments.
 		args = append(args,
 			"--shard",
 			strconv.Itoa(cm.options.ShardIndex)+"/"+strconv.Itoa(cm.options.ShardCount),
