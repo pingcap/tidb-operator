@@ -15,11 +15,13 @@ package member
 
 import (
 	"fmt"
+	neturl "net/url"
 	"strings"
 
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	tcconfig "github.com/pingcap/tidb-operator/pkg/apis/util/config"
+	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/pingcap/tidb-operator/pkg/manager"
 	"github.com/pingcap/tidb-operator/pkg/manager/suspender"
@@ -32,9 +34,12 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 )
+
+const ticiMetaConfigHashAnnotation = "tidb.pingcap.com/tici-meta-config-hash"
 
 // ticiMemberManager implements manager.Manager.
 type ticiMemberManager struct {
@@ -203,12 +208,12 @@ func (m *ticiMemberManager) syncTiCIMetaStatefulSet(tc *v1alpha1.TidbCluster) er
 		return nil
 	}
 
-	cm, err := m.syncTiCIMetaConfigMap(tc, oldSts)
+	secret, err := m.syncTiCIMetaConfigSecret(tc)
 	if err != nil {
 		return err
 	}
 
-	newSts, err := getNewTiCIMetaStatefulSet(tc, cm)
+	newSts, err := getNewTiCIMetaStatefulSet(tc, secret)
 	if err != nil {
 		return err
 	}
@@ -338,24 +343,12 @@ func (m *ticiMemberManager) syncTiCIWorkerStatus(tc *v1alpha1.TidbCluster, sts *
 	return volumes.SyncVolumeStatus(m.podVolumeModifier, m.deps.PodLister, tc, v1alpha1.TiCIWorkerMemberType)
 }
 
-func (m *ticiMemberManager) syncTiCIMetaConfigMap(tc *v1alpha1.TidbCluster, set *appsv1.StatefulSet) (*corev1.ConfigMap, error) {
-	newCm, err := getTiCIMetaConfigMap(tc)
+func (m *ticiMemberManager) syncTiCIMetaConfigSecret(tc *v1alpha1.TidbCluster) (*corev1.Secret, error) {
+	newSecret, err := getTiCIMetaConfigSecret(tc, m.deps.SecretLister)
 	if err != nil {
 		return nil, err
 	}
-
-	var inUseName string
-	if set != nil {
-		inUseName = mngerutils.FindConfigMapVolume(&set.Spec.Template.Spec, func(name string) bool {
-			return strings.HasPrefix(name, controller.TiCIMetaMemberName(tc.Name))
-		})
-	}
-
-	err = mngerutils.UpdateConfigMapIfNeed(m.deps.ConfigMapLister, tc.BaseTiCIMetaSpec().ConfigUpdateStrategy(), inUseName, newCm)
-	if err != nil {
-		return nil, err
-	}
-	return m.deps.TypedControl.CreateOrUpdateConfigMap(tc, newCm)
+	return m.deps.TypedControl.CreateOrUpdateSecret(tc, newSecret)
 }
 
 func (m *ticiMemberManager) syncTiCIWorkerConfigMap(tc *v1alpha1.TidbCluster, set *appsv1.StatefulSet) (*corev1.ConfigMap, error) {
@@ -378,8 +371,15 @@ func (m *ticiMemberManager) syncTiCIWorkerConfigMap(tc *v1alpha1.TidbCluster, se
 	return m.deps.TypedControl.CreateOrUpdateConfigMap(tc, newCm)
 }
 
-func getTiCIMetaConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
-	configText, err := buildTiCIMetaConfig(tc)
+func getTiCIMetaConfigSecret(tc *v1alpha1.TidbCluster, secretLister corelisterv1.SecretLister) (*corev1.Secret, error) {
+	password := ""
+	if secretLister != nil {
+		if passwordSecret, err := secretLister.Secrets(tc.Namespace).Get(controller.TiDBInitSecret(tc.Name)); err == nil {
+			password = string(passwordSecret.Data[constants.TidbRootKey])
+		}
+	}
+
+	configText, err := buildTiCIMetaConfigWithPassword(tc, password)
 	if err != nil {
 		return nil, err
 	}
@@ -387,16 +387,16 @@ func getTiCIMetaConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	instanceName := tc.GetInstanceName()
 	labels := label.New().Instance(instanceName).TiCIMeta().Labels()
 
-	cm := &corev1.ConfigMap{
+	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            name,
 			Namespace:       tc.Namespace,
 			Labels:          labels,
 			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(tc)},
 		},
-		Data: map[string]string{"config-file": configText},
+		Data: map[string][]byte{"config-file": []byte(configText)},
 	}
-	return cm, nil
+	return secret, nil
 }
 
 func getTiCIWorkerConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
@@ -420,7 +420,7 @@ func getTiCIWorkerConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error)
 	return cm, nil
 }
 
-func getNewTiCIMetaStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*appsv1.StatefulSet, error) {
+func getNewTiCIMetaStatefulSet(tc *v1alpha1.TidbCluster, secret *corev1.Secret) (*appsv1.StatefulSet, error) {
 	if tc.Spec.TiCI == nil || tc.Spec.TiCI.Meta == nil {
 		return nil, nil
 	}
@@ -433,6 +433,13 @@ func getNewTiCIMetaStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	stsName := controller.TiCIMetaMemberName(tcName)
 	podLabels := util.CombineStringMap(stsLabels, baseSpec.Labels())
 	podAnnotations := util.CombineStringMap(baseSpec.Annotations(), controller.AnnProm(v1alpha1.DefaultTiCIMetaStatusPort, "/metrics"))
+	if secret != nil {
+		sum, err := mngerutils.Sha256Sum(map[string]string{"config-file": getSecretStringValue(secret, "config-file")})
+		if err != nil {
+			return nil, fmt.Errorf("failed to hash TiCI meta config secret for [%s/%s], error: %v", ns, tcName, err)
+		}
+		podAnnotations[ticiMetaConfigHashAnnotation] = sum
+	}
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiCIMetaLabelVal)
 	headlessSvcName := controller.TiCIMetaPeerMemberName(tcName)
 
@@ -443,11 +450,11 @@ func getNewTiCIMetaStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	volMounts = append(volMounts, spec.AdditionalVolumeMounts...)
 
 	configMountPath := "/etc/tici"
-	if cm != nil {
+	if secret != nil {
 		volMounts = append(volMounts, corev1.VolumeMount{Name: "config", MountPath: configMountPath})
-		vols = append(vols, corev1.Volume{Name: "config", VolumeSource: corev1.VolumeSource{ConfigMap: &corev1.ConfigMapVolumeSource{
-			LocalObjectReference: corev1.LocalObjectReference{Name: cm.Name},
-			Items:                []corev1.KeyToPath{{Key: "config-file", Path: "tici.toml"}},
+		vols = append(vols, corev1.Volume{Name: "config", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{
+			SecretName: secret.Name,
+			Items:      []corev1.KeyToPath{{Key: "config-file", Path: "tici.toml"}},
 		}}})
 	}
 
@@ -691,6 +698,10 @@ func renderTiCIStartArgs(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberTyp
 }
 
 func buildTiCIMetaConfig(tc *v1alpha1.TidbCluster) (string, error) {
+	return buildTiCIMetaConfigWithPassword(tc, "")
+}
+
+func buildTiCIMetaConfigWithPassword(tc *v1alpha1.TidbCluster, password string) (string, error) {
 	s3, err := buildTiCIS3Config(tc)
 	if err != nil {
 		return "", err
@@ -701,9 +712,10 @@ func buildTiCIMetaConfig(tc *v1alpha1.TidbCluster) (string, error) {
 	tidbHost := controller.TiDBMemberName(tc.Name)
 	tidbPort := tc.Spec.TiDB.GetServicePort()
 	pdAddr := fmt.Sprintf("%s:%d", controller.PDMemberName(tc.Name), v1alpha1.DefaultPDClientPort)
+	tidbDSN := buildTiDBServerDSN(tidbHost, tidbPort, password)
 
 	baseConfig := fmt.Sprintf(`[tidb-server]
-dsns = ["mysql://root@%s:%d"]
+dsns = ["%s"]
 
 [server]
 pd-addr = "%s"
@@ -716,11 +728,40 @@ secret-key = "%s"
 use-path-style = %t
 bucket = "%s"
 prefix = "%s"
-`, tidbHost, tidbPort, pdAddr, s3.Endpoint, s3.Region, s3.AccessKey, s3.SecretKey, s3.UsePathStyle, s3.Bucket, s3.Prefix)
+`, tidbDSN, pdAddr, s3.Endpoint, s3.Region, s3.AccessKey, s3.SecretKey, s3.UsePathStyle, s3.Bucket, s3.Prefix)
 	if tc.Spec.TiCI != nil && tc.Spec.TiCI.Meta != nil {
 		return appendTiCICustomConfig(baseConfig, tc.Spec.TiCI.Meta.Config)
 	}
 	return baseConfig, nil
+}
+
+func buildTiDBServerDSN(host string, port int32, password string) string {
+	user := neturl.User("root")
+	if password != "" {
+		user = neturl.UserPassword("root", password)
+	}
+	return (&neturl.URL{
+		Scheme: "mysql",
+		User:   user,
+		Host:   fmt.Sprintf("%s:%d", host, port),
+	}).String()
+}
+
+func getSecretStringValue(secret *corev1.Secret, key string) string {
+	if secret == nil {
+		return ""
+	}
+	if secret.StringData != nil {
+		if value, ok := secret.StringData[key]; ok {
+			return value
+		}
+	}
+	if secret.Data != nil {
+		if value, ok := secret.Data[key]; ok {
+			return string(value)
+		}
+	}
+	return ""
 }
 
 func buildTiCIWorkerConfig(tc *v1alpha1.TidbCluster) (string, error) {
