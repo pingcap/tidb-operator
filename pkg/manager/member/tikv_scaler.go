@@ -195,6 +195,19 @@ func (s *tikvScaler) scaleInOne(tc *v1alpha1.TidbCluster, skipPreCheck bool, upT
 			if err != nil {
 				return deletedUpStore, err
 			}
+			// Ensure the pod has the store-id label set while the store is still
+			// in Up/Offline state and present in tc.Status.TiKV.Stores.
+			// This guarantees that when the store later transitions to Tombstone,
+			// the TombstoneStore matching logic (which checks pod label == storeID)
+			// can correctly identify the store and complete the scale-in.
+			if pod.Labels[label.StoreIDLabelKey] == "" {
+				_, err = s.deps.PodControl.UpdateMetaInfo(tc, pod)
+				if err != nil {
+					klog.Errorf("tikvScaler.ScaleIn: failed to update pod %s/%s meta info before scale in, %v", ns, podName, err)
+					return deletedUpStore, err
+				}
+				klog.Infof("tikvScaler.ScaleIn: updated pod %s/%s store-id label to %s", ns, podName, store.ID)
+			}
 			if state != v1alpha1.TiKVStateOffline {
 				if err := controller.GetPDClient(s.deps.PDControl, tc).DeleteStore(id); err != nil {
 					klog.Errorf("tikvScaler.ScaleIn: failed to delete store %d, %v", id, err)
