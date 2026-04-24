@@ -27029,10 +27029,6 @@ spec:
                             type: string
                         type: object
                     type: object
-                  serverLabels:
-                    additionalProperties:
-                      type: string
-                    type: object
                   serviceAccount:
                     type: string
                   sslEnableTiDB:
