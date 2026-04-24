@@ -163,24 +163,35 @@ type RestoreStatus struct {
 | phase-2 `Running / Complete / Failed` | backup-manager | 直写（**不 wrap**） |
 | orchestration 级 `Failed` | Controller | waitTimeout 到期 / 跨 CR 不一致 / phase-1 Job Failed |
 
-**Wrapper**（对照 `ShardedCompactStatusUpdater`）：
+**Wrapper**：Restore 侧的 `RestoreConditionUpdaterInterface` 只有 1 个方法 `Update(restore, condition, newStatus)`（与 Compact 侧 6 方法的 `CompactStatusUpdaterInterface` 不对称）。因此 wrapper 极简——**全 no-op**：
 
 ```go
 // pkg/controller/restore_status_updater.go
-type ReplicationRestoreStatusUpdater struct {
-    real RestoreConditionUpdaterInterface
+type replicationRestoreStatusUpdater struct{}
+
+func NewReplicationRestoreStatusUpdater() RestoreConditionUpdaterInterface {
+    return &replicationRestoreStatusUpdater{}
 }
 
-// 仅放行 OnStart（写 Event，不改 Phase）；其余抑制
-func (r *ReplicationRestoreStatusUpdater) OnStart(...) error   { return r.real.OnStart(...) }
-func (r *ReplicationRestoreStatusUpdater) Update(...) error    { return nil }
-func (r *ReplicationRestoreStatusUpdater) OnProgress(...) error { return nil }
-func (r *ReplicationRestoreStatusUpdater) OnFinish(...) error   { return nil }
+func (r *replicationRestoreStatusUpdater) Update(
+    _ *v1alpha1.Restore,
+    _ *v1alpha1.RestoreCondition,
+    _ *RestoreUpdateStatus,
+) error {
+    return nil
+}
 ```
 
-**激活条件**：`cmd/backup-manager/app/cmd/restore.go` 中 `--replicationPhase == 1` → 包 wrapper；`== 2` 或未设 → 不包。
+**为什么全 no-op 而不是"放行 newStatus、抑制 condition"**：选择性放行会引入"半开"写权语义（backup-manager 能写 Progress 但不能写 condition），两写者并发风险和 review 心智成本都高于它带来的观测价值。代价可控：
+- `TimeStarted` 由 controller 在创建 phase-1 Job 的那次 reconcile 里一并写
+- `Progress` 在 phase-1 没有实时百分比——真正重要的 shard 进度已经在 CompactBackup 的 sharded status 里（`completedIndexes` / `failedIndexes`）
+- `CommitTs` 在 phase-2（不 wrap）由 backup-manager 直写到 CR
 
-**UpdateRestoreCondition 保持零改动**。v2 需要修改该函数加转化分支，Option B 通过"controller 直写 + wrapper 抑制"的组合从根上消除了转化需求。
+**激活条件**：`cmd/backup-manager/app/cmd/restore.go` 判断 `opts.ReplicationPhase == 1` 时装配 `NewReplicationRestoreStatusUpdater()`；其余（`== 2` 或未设）用 `NewRealRestoreConditionUpdater(...)`。对照 `cmd/backup-manager/app/cmd/compact.go` 中对 `ShardedCompactStatusUpdater` 的条件装配。
+
+**UpdateRestoreCondition 保持零改动**。v2 要改这个函数加转化分支，Option B 通过"controller 直写 + wrapper 全 no-op"的组合从根上消除了转化需求。
+
+**Controller 写 marker 不走 `UpdateRestoreCondition`**：该函数（`pkg/apis/pingcap/v1alpha1/restore.go:73`）无条件 `status.Phase = condition.Type`，会把 Phase 从 `SnapshotRestore` 覆盖成 marker 类型。改由 handler 内部 helper `appendRestoreMarker(restore, markerType, reason, message)` 走 client 直接更新 `status.Conditions[]`（append-or-replace），不碰 `status.Phase`。该 helper 是 handler 私有函数，不暴露到 `pkg/apis/`。
 
 **与 v2 相对的修正**：Option B 放弃 v2 "backup-manager 源码零改动" 的承诺，换取写权清晰和消除 v2 状态机破洞（v2 的转化层只转 `Complete` 不转 `Running`，会导致 phase-1 期间 `status.phase` 从 `Phase1Running` 闪跳到 `Running`，与 state diagram 不符）。结构上与 CompactBackup sharded 的 `ShardedCompactStatusUpdater` 对称，复用同一心智模型。
 
@@ -371,7 +382,8 @@ const (
 | `replicationHandler.Sync` | `""/Scheduled → SnapshotRestore`；`SnapshotRestore → LogRestore`（两 marker 同 True）；`SnapshotRestore → Failed`（phase-1 Job Failed / waitTimeout / 一致性校验失败）；`LogRestore` 走现有 PiTR 观测 |
 | 门控判定 | 两 marker 都 True 才放行；到达顺序无关；单个 marker True 继续等 |
 | 跨 CR 一致性校验 | cluster / clusterNamespace 不一致 → Failed；storage 位置不一致 → Failed；忽略 `secretName` 差异；校验只跑一次 |
-| `ReplicationRestoreStatusUpdater` | 仅放行 `OnStart`；`Update/OnProgress/OnFinish` 一律 no-op；wrapper 未激活时行为等同直连 |
+| `ReplicationRestoreStatusUpdater` | `Update(...)` 永远返回 nil，不调用 `real` updater；wrapper 未激活（phase-2 或非 replication）时行为等同 real updater（通过 `cmd/restore.go` 的条件装配而非 wrapper 内部判断实现） |
+| `appendRestoreMarker` helper | 写入 marker 后 `status.Phase` 保持不变、`status.Conditions[]` 追加或替换目标 marker；对同 marker 类型的重复调用幂等 |
 | Label-based Job 查找 | 同一 replication-step 的 Job 已存在时 `Sync()` 不重复创建（幂等）|
 | Re-entrancy | 给定 `(status.phase, conditions, 现存 Job)` 各组合，handler 下一步推导确定 |
 
