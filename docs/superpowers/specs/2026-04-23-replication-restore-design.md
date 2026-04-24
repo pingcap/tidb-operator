@@ -391,36 +391,32 @@ const (
 
 ## PR Breakdown
 
-按你确认的"单 spec / 多 PR"策略：
+按"单 spec / 多 PR"策略，切成 2 个 PR：
 
-### PR 1: CRD 扩展 + label 常量
+### PR 1: Operator 侧完整实现（CRD + 逻辑 + label + 单测）
 
-- `pkg/apis/pingcap/v1alpha1/types.go`
-- 生成文件刷新
-- `pkg/apis/label/label.go`
-
-**目标**：冻结外部接口（字段名、condition 名、label 名），供后续 PR 引用。本 PR 不含任何行为逻辑，纯类型。
-
-### PR 2: Status wrapper + Handler + Controller wire
-
-- `pkg/controller/restore_status_updater.go`（新增 wrapper）
-- `pkg/backup/restore/replication_handler.go`（新增）
-- `pkg/backup/restore/restore_manager.go`（拦截点）
-- `pkg/controller/restore/restore_controller.go`（CompactBackup informer）
+- `pkg/apis/pingcap/v1alpha1/types.go` — `ReplicationConfig` struct、`RestoreSpec.ReplicationConfig`、`RestoreStatus.ReplicationStep`、4 个 `RestoreConditionType` 常量
+- 生成文件刷新：`zz_generated.deepcopy.go`、`openapi_generated.go`、`manifests/crd/v1/pingcap.com_restores.yaml`、`manifests/crd.yaml`
+- `pkg/apis/label/label.go` — `ReplicationStepLabelKey` 和两个值常量
+- `pkg/controller/restore_status_updater.go` — 新增 `ReplicationRestoreStatusUpdater` wrapper
+- `pkg/backup/restore/replication_handler.go` — 新增 Handler（状态机分派、双 Job 管理、门控判定、跨 CR 查找/校验）
+- `pkg/backup/restore/restore_manager.go` — 拦截点（通用校验之后、mode 分支之前）
+- `pkg/controller/restore/restore_controller.go` — 注入 CompactBackup informer + EventHandler
 - 配套单测
 
-**目标**：operator 端全部逻辑就绪。此时 backup-manager 未改，phase-1 Job 会用旧 PiTR 行为运行（虽然流程能跑起来但 BR 命令没新参数、内核看不到 replication 意图），但 operator 侧的状态机可以在单测层面完整验证。
+**目标**：operator 端全部逻辑就绪。此时 backup-manager 未改，端到端流程还跑不通（BR 命令没追加新 flag），但 operator 侧的类型、状态机、wrapper、handler、informer 全部可以在单测层面完整验证。把类型和消费者放在同一 PR 里评审，避免"字段放哪里用？"这种空 PR 的问题。
 
-### PR 3: backup-manager CLI + BR 参数
+### PR 2: backup-manager CLI + BR 参数
 
-- `cmd/backup-manager/app/cmd/restore.go`（加 flag + 条件 wrap）
-- `cmd/backup-manager/app/restore/restore.go`（加 BR flag + 常量）
-- `cmd/backup-manager/app/restore/manager.go`（若需要 Options 字段）
+- `cmd/backup-manager/app/cmd/restore.go` — 加 `--replicationPhase` flag；`== 1` 时 wrap status updater
+- `cmd/backup-manager/app/restore/restore.go` — PiTR 分支追加 3 个 BR flag（仅 `ReplicationPhase > 0`）；定义 `replicationStatusSubPrefix = "ccr"` 和 `replicationPiTRConcurrency = 1024` 常量
+- `cmd/backup-manager/app/restore/manager.go` — `Options.ReplicationPhase int` 字段（若需要）
 - 集成测试
 
-**目标**：端到端可用。依赖内核 BR 版本包含 `--replication-storage-phase` 等 flag；发 PR 前确认目标 toolImage 已就绪。
-
-**可选合并策略**：PR 1 + PR 2 可考虑合成一个（若审阅人不介意 ~400 行改动）；PR 3 必须单独，因为它的发布节奏受内核 BR 版本约束。
+**目标**：端到端可用。PR 2 必须独立，因为：
+1. 依赖内核 BR 版本包含 `--replication-storage-phase` 等 flag，发布节奏受内核约束
+2. 集成测试需要真实内核 BR 环境，和 operator 侧单测的运行条件不同
+3. 即便 PR 1 合了、PR 2 暂时不合，operator 创建的 `replicationConfig` Restore 也能走到 `SnapshotRestore` phase（只是 BR Job 没拼对参数），用户能观察到清晰的停滞位置
 
 ## Drawbacks
 
