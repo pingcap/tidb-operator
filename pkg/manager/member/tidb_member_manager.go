@@ -935,12 +935,8 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			Name:            v1alpha1.ContainerSlowLogTailer.String(),
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
-<<<<<<< HEAD
 			Resources:       controller.ContainerResource(tc.Spec.TiDB.GetSlowLogTailerSpec().ResourceRequirements),
-=======
-			Resources:       controller.ContainerResource(logTailer.ResourceRequirements),
-			SecurityContext: logTailer.SecurityContext,
->>>>>>> 84cca01ae (Feat: add SecurityContext support to ComponentSpec (#6404))
+			SecurityContext: tc.Spec.TiDB.GetSlowLogTailerSpec().SecurityContext,
 			VolumeMounts:    []corev1.VolumeMount{slowQueryLogVolumeMount},
 			Command: []string{
 				"sh",

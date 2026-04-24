@@ -548,12 +548,8 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			Name:            v1alpha1.ContainerRocksDBLogTailer.String(),
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
-<<<<<<< HEAD
 			Resources:       controller.ContainerResource(tc.Spec.TiKV.GetLogTailerSpec().ResourceRequirements),
-=======
-			Resources:       controller.ContainerResource(logTailer.ResourceRequirements),
-			SecurityContext: logTailer.SecurityContext,
->>>>>>> 84cca01ae (Feat: add SecurityContext support to ComponentSpec (#6404))
+			SecurityContext: tc.Spec.TiKV.GetLogTailerSpec().SecurityContext,
 			VolumeMounts:    []corev1.VolumeMount{rocksDBLogVolumeMount},
 			Command: []string{
 				"sh",
@@ -602,12 +598,8 @@ func getNewTiKVSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			Name:            v1alpha1.ContainerRaftLogTailer.String(),
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
-<<<<<<< HEAD
 			Resources:       controller.ContainerResource(tc.Spec.TiKV.GetLogTailerSpec().ResourceRequirements),
-=======
-			Resources:       controller.ContainerResource(logTailer.ResourceRequirements),
-			SecurityContext: logTailer.SecurityContext,
->>>>>>> 84cca01ae (Feat: add SecurityContext support to ComponentSpec (#6404))
+			SecurityContext: tc.Spec.TiKV.GetLogTailerSpec().SecurityContext,
 			VolumeMounts:    []corev1.VolumeMount{raftLogVolumeMount},
 			Command: []string{
 				"sh",

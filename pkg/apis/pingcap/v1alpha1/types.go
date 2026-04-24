@@ -1021,27 +1021,11 @@ type TiProxySpec struct {
 // +k8s:openapi-gen=true
 type LogTailerSpec struct {
 	corev1.ResourceRequirements `json:",inline"`
-<<<<<<< HEAD
-=======
-
-	// If true, we use native sidecar feature to tail log
-	// It requires enable feature gate "SidecarContainers"
-	// This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33
-	// See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
-	// and https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/
-	// +optional
-	UseSidecar bool `json:"useSidecar,omitempty"`
-
-	// Tailer needs to wait to flush logs to stdout after receiving sig TERM
-	// Default is not sleep
-	// +optional
-	SleepTimeSeconds *int64 `json:"sleepTimeSeconds,omitempty"`
 
 	// SecurityContext defines the security options the log tailer container should be run with.
 	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
 	// +optional
 	SecurityContext *corev1.SecurityContext `json:"securityContext,omitempty"`
->>>>>>> 84cca01ae (Feat: add SecurityContext support to ComponentSpec (#6404))
 }
 
 // InitContainerSpec contains basic spec about a init container
@@ -1323,27 +1307,11 @@ type TiDBSlowLogTailerSpec struct {
 	// Use `spec.helper.imagePullPolicy` instead
 	// +k8s:openapi-gen=false
 	ImagePullPolicy *corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
-<<<<<<< HEAD
-=======
-
-	// If true, we use native sidecar feature to tail log
-	// It requires enable feature gate "SidecarContainers"
-	// This feature is introduced at 1.28, default enabled at 1.29, and GA at 1.33
-	// See https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
-	// and https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/
-	// +optional
-	UseSidecar bool `json:"useSidecar,omitempty"`
-
-	// Tailer needs to wait to flush logs to stdout after receiving sig TERM
-	// Default is not sleep
-	// +optional
-	SleepTimeSeconds *int64 `json:"sleepTimeSeconds,omitempty"`
 
 	// SecurityContext defines the security options the slowlog tailer container should be run with.
 	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
 	// +optional
 	SecurityContext *corev1.SecurityContext `json:"securityContext,omitempty"`
->>>>>>> 84cca01ae (Feat: add SecurityContext support to ComponentSpec (#6404))
 }
 
 // ComponentSpec is the base spec of each component, the fields should always accessed by the Basic<Component>Spec() method to respect the cluster-level properties

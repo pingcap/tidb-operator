@@ -18040,8 +18040,6 @@ spec:
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
                         type: object
-<<<<<<< HEAD
-=======
                       securityContext:
                         properties:
                           allowPrivilegeEscalation:
@@ -18103,12 +18101,6 @@ spec:
                                 type: string
                             type: object
                         type: object
-                      sleepTimeSeconds:
-                        format: int64
-                        type: integer
-                      useSidecar:
-                        type: boolean
->>>>>>> 84cca01ae (Feat: add SecurityContext support to ComponentSpec (#6404))
                     type: object
                   slowLogVolumeName:
                     type: string
@@ -20936,8 +20928,6 @@ spec:
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
                         type: object
-<<<<<<< HEAD
-=======
                       securityContext:
                         properties:
                           allowPrivilegeEscalation:
@@ -20999,12 +20989,6 @@ spec:
                                 type: string
                             type: object
                         type: object
-                      sleepTimeSeconds:
-                        format: int64
-                        type: integer
-                      useSidecar:
-                        type: boolean
->>>>>>> 84cca01ae (Feat: add SecurityContext support to ComponentSpec (#6404))
                     type: object
                   maxFailoverCount:
                     format: int32
@@ -23931,8 +23915,6 @@ spec:
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
                         type: object
-<<<<<<< HEAD
-=======
                       securityContext:
                         properties:
                           allowPrivilegeEscalation:
@@ -23994,12 +23976,6 @@ spec:
                                 type: string
                             type: object
                         type: object
-                      sleepTimeSeconds:
-                        format: int64
-                        type: integer
-                      useSidecar:
-                        type: boolean
->>>>>>> 84cca01ae (Feat: add SecurityContext support to ComponentSpec (#6404))
                     type: object
                   maxFailoverCount:
                     format: int32
@@ -26992,8 +26968,6 @@ spec:
                     type: object
                   schedulerName:
                     type: string
-<<<<<<< HEAD
-=======
                   securityContext:
                     properties:
                       allowPrivilegeEscalation:
@@ -27059,7 +27033,6 @@ spec:
                     additionalProperties:
                       type: string
                     type: object
->>>>>>> 84cca01ae (Feat: add SecurityContext support to ComponentSpec (#6404))
                   serviceAccount:
                     type: string
                   sslEnableTiDB:
