@@ -21,6 +21,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -207,13 +208,18 @@ func (h *replicationHandler) makeReplicationBRJob(restore *v1alpha1.Restore, ste
 	}
 
 	jobName := fmt.Sprintf("%s-%s", restore.Name, step)
-	jobLabels := map[string]string{
-		label.NameLabelKey:            "restore",
-		label.ComponentLabelKey:       "restore",
-		label.ManagedByLabelKey:       label.TiDBOperator,
-		label.RestoreLabelKey:         restore.Name,
-		label.ReplicationStepLabelKey: step,
-	}
+	// Use the canonical restore Job label set so replication Jobs are
+	// indistinguishable from standard restore Jobs to external tooling
+	// (kubectl label selectors, monitoring), then add the replication-step
+	// label that distinguishes phase-1 from phase-2.
+	jobLabels := util.CombineStringMap(
+		label.NewRestore().
+			Instance(restore.GetInstanceName()).
+			RestoreJob().
+			Restore(restore.Name),
+		restore.Labels,
+	)
+	jobLabels[label.ReplicationStepLabelKey] = step
 
 	args := append(buildPiTRBaseArgs(restore), phaseArg)
 
@@ -311,7 +317,13 @@ func (h *replicationHandler) syncSnapshotRestore(restore *v1alpha1.Restore) erro
 		}
 	}
 
-	// 2. Observe CompactBackup; write CompactSettled if terminal.
+	// 2. Observe CompactBackup; write CompactSettled if terminal. Note: cross-CR
+	// consistency was validated once at syncInitial — we do not re-validate here
+	// per spec ("consistency check runs only once"). If a user mutates the
+	// referenced CompactBackup spec between syncInitial and terminal state,
+	// that change is silently accepted. CompactBackup spec is generally
+	// immutable post-creation in practice; if this becomes a real concern,
+	// add a re-check before the marker write below.
 	cb, err := h.lookupCompactBackup(restore)
 	if err != nil {
 		if controller.IsIgnoreError(err) {
