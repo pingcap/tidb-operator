@@ -8353,6 +8353,12 @@ spec:
                         type: string
                     type: object
                 type: object
+              replicas:
+                default: 1
+                format: int32
+                maximum: 1
+                minimum: 1
+                type: integer
               resources:
                 description: Resources defines resource required by TiProxy.
                 properties:
@@ -8767,4 +8773,7 @@ spec:
     served: true
     storage: true
     subresources:
+      scale:
+        specReplicasPath: .spec.replicas
+        statusReplicasPath: .status.replicas
       status: {}

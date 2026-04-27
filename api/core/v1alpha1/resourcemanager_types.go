@@ -80,6 +80,7 @@ type ResourceManagerList struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:categories=instance
+// +kubebuilder:subresource:scale:specpath=.spec.replicas,statuspath=.status.replicas
 // +kubebuilder:selectablefield:JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Synced",type=string,JSONPath=`.status.conditions[?(@.type=="Synced")].status`
@@ -196,6 +197,12 @@ type ResourceManagerSpec struct {
 	// A same ResourceManager cluster will use a same subdomain
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="subdomain is immutable"
 	Subdomain string `json:"subdomain"`
+
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=1
+	// +default:value=1
+	// +optional
+	Replicas *int32 `json:"replicas"`
 
 	// ResourceManagerTemplateSpec embedded some fields managed by ResourceManagerGroup
 	ResourceManagerTemplateSpec `json:",inline"`

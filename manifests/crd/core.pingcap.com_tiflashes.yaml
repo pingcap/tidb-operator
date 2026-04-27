@@ -8367,6 +8367,12 @@ spec:
               proxyConfig:
                 description: ProxyConfig defines config file of TiFlash proxy
                 type: string
+              replicas:
+                default: 1
+                format: int32
+                maximum: 1
+                minimum: 1
+                type: integer
               resources:
                 description: Resources defines resource required by TiFlash
                 properties:
@@ -8694,4 +8700,7 @@ spec:
     served: true
     storage: true
     subresources:
+      scale:
+        specReplicasPath: .spec.replicas
+        statusReplicasPath: .status.replicas
       status: {}
