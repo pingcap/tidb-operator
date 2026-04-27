@@ -101,6 +101,7 @@ func convertTiProxyTemplate(tmpl *v1alpha1.TiProxyTemplate) *v1alpha1.TiProxyTem
 
 	// server labels can be updated dynamically
 	newTmpl.Spec.Server.Labels = nil
+	newTmpl.Spec.GracefulShutdownDeleteDelaySeconds = nil
 
 	newTmpl.Spec.Volumes = convertVolumes(newTmpl.Spec.Volumes)
 	newTmpl.Spec.Overlay = convertOverlay(newTmpl.Spec.Overlay)

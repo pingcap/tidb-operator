@@ -37,6 +37,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		common.TaskContextCluster[scope.TiProxy](state, r.Client),
 		// if it's paused just return
 		task.IfBreak(common.CondClusterIsPaused(state)),
+		common.TaskContextPod[scope.TiProxy](state, r.Client),
 		// if the cluster is deleting, del all subresources and remove the finalizer directly
 		task.IfBreak(common.CondClusterIsDeleting(state),
 			common.TaskInstanceFinalizerDel[scope.TiProxy](state, r.Client, common.DefaultInstanceSubresourceLister),
@@ -45,7 +46,10 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
 
 		task.IfBreak(common.CondObjectIsDeleting[scope.TiProxy](state),
-			common.TaskInstanceFinalizerDel[scope.TiProxy](state, r.Client, common.DefaultInstanceSubresourceLister),
+			tasks.TaskDrainPodForDelete(state, r.Client, r.RestConfig),
+			task.If(task.CondFunc(func() bool { return state.Pod() == nil }),
+				common.TaskInstanceFinalizerDel[scope.TiProxy](state, r.Client, tasks.FinalizerSubresourceLister),
+			),
 			// TODO(liubo02): if the finalizer has been removed, no need to update status
 			common.TaskInstanceConditionSynced[scope.TiProxy](state),
 			common.TaskInstanceConditionReady[scope.TiProxy](state),
@@ -54,8 +58,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		),
 		common.TaskFinalizerAdd[scope.TiProxy](state, r.Client),
 
-		// get pod and check whether the cluster is suspending
-		common.TaskContextPod[scope.TiProxy](state, r.Client),
+		// check whether the cluster is suspending
 		task.IfBreak(common.CondClusterIsSuspending(state),
 			common.TaskSuspendPod(state, r.Client),
 			common.TaskInstanceConditionSuspended[scope.TiProxy](state),
