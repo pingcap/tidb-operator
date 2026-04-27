@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/klog/v2"
 )
 
 // replicationHandler owns the reconcile loop for replication restore
@@ -225,6 +226,13 @@ func (h *replicationHandler) makeReplicationBRJob(restore *v1alpha1.Restore, ste
 	}, nil
 }
 
+// compactIsTerminal returns true if CompactBackup has reached either
+// BackupComplete or BackupFailed. The Failed sub-case is intentional — per
+// the spec, the gate proceeds to phase-2 even when compact failed, because
+// internal BR is contracted to fall back to uncompacted log. CompactBackup
+// failure is observable via the CompactSettled marker's Reason field
+// ("ShardsPartialFailed") and via CompactBackup.Status.{CompletedIndexes,
+// FailedIndexes} — but does NOT block the Restore from progressing.
 func compactIsTerminal(cb *v1alpha1.CompactBackup) bool {
 	switch v1alpha1.BackupConditionType(cb.Status.State) {
 	case v1alpha1.BackupComplete, v1alpha1.BackupFailed:
@@ -240,9 +248,116 @@ func compactTerminalReason(cb *v1alpha1.CompactBackup) string {
 	return "ShardsPartialFailed"
 }
 
-func (h *replicationHandler) syncSnapshotRestore(_ *v1alpha1.Restore) error {
-	// Implemented in Task 7.
-	return nil
+func (h *replicationHandler) syncSnapshotRestore(restore *v1alpha1.Restore) error {
+	// 1. Observe phase-1 Job; update SnapshotRestored marker or fail Restore.
+	phase1Job, err := h.findJobForStep(restore, label.ReplicationStepSnapshotRestoreVal)
+	if err != nil {
+		return err
+	}
+	if phase1Job != nil {
+		if jobHasCondition(phase1Job, batchv1.JobFailed) {
+			return h.failRestore(restore, "SnapshotRestoreFailed", jobFailureMessage(phase1Job))
+		}
+		if jobHasCondition(phase1Job, batchv1.JobComplete) {
+			if !hasMarkerTrue(restore, v1alpha1.RestoreSnapshotRestored) {
+				if err := h.updateRestoreMarker(restore, v1alpha1.RestoreSnapshotRestored,
+					"JobComplete", ""); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	// 2. Observe CompactBackup; write CompactSettled if terminal.
+	cb, err := h.lookupCompactBackup(restore)
+	if err != nil {
+		if controller.IsIgnoreError(err) {
+			return h.failRestore(restore, "CompactBackupWaitTimeout", err.Error())
+		}
+		return err
+	}
+	if cb != nil && compactIsTerminal(cb) {
+		if !hasMarkerTrue(restore, v1alpha1.RestoreCompactSettled) {
+			if err := h.updateRestoreMarker(restore, v1alpha1.RestoreCompactSettled,
+				compactTerminalReason(cb), cb.Status.Message); err != nil {
+				return err
+			}
+		}
+	}
+
+	// 3. Gate: re-read latest from Clientset (markers may have just been written),
+	//    check both, and transition if both True.
+	//    Must use Clientset, not lister: marker writes above went through
+	//    updateRestoreMarker → Clientset; lister cache may not have caught up.
+	latest, err := h.deps.Clientset.PingcapV1alpha1().Restores(restore.Namespace).Get(
+		context.TODO(), restore.Name, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	if !hasMarkerTrue(latest, v1alpha1.RestoreSnapshotRestored) ||
+		!hasMarkerTrue(latest, v1alpha1.RestoreCompactSettled) {
+		return nil // keep waiting
+	}
+
+	// Transition: Phase=LogRestore, Step=log-restore, create phase-2 Job.
+	// Phase=LogRestore is written via statusUpdater (which reads from the lister
+	// inside retry.OnError). The lister cache may be stale immediately after our
+	// just-written markers — Update will see a Conflict on the first attempt and
+	// the retry loop in realRestoreConditionUpdater absorbs it. Self-healing; do
+	// not convert to a non-retrying call.
+	if err := h.statusUpdater.Update(
+		latest,
+		&v1alpha1.RestoreCondition{
+			Type:   v1alpha1.RestoreLogRestore,
+			Status: corev1.ConditionTrue,
+			Reason: "GatePassed",
+		},
+		nil,
+	); err != nil {
+		return err
+	}
+	if err := h.setReplicationStep(latest, "log-restore"); err != nil {
+		return err
+	}
+	return h.ensureJobForStep(latest, label.ReplicationStepLogRestoreVal)
+}
+
+// hasMarkerTrue returns true iff the named condition exists and Status is ConditionTrue.
+func hasMarkerTrue(restore *v1alpha1.Restore, markerType v1alpha1.RestoreConditionType) bool {
+	_, c := v1alpha1.GetRestoreCondition(&restore.Status, markerType)
+	return c != nil && c.Status == corev1.ConditionTrue
+}
+
+// findJobForStep returns the BR Job for the given step, or nil if not found.
+// Reuses listJobsBySelector (3-arg form from T6).
+func (h *replicationHandler) findJobForStep(restore *v1alpha1.Restore, step string) (*batchv1.Job, error) {
+	jobs, err := h.listJobsBySelector(restore.Namespace, restore.Name, step)
+	if err != nil || len(jobs) == 0 {
+		return nil, err
+	}
+	if len(jobs) > 1 {
+		klog.Warningf("Found %d Jobs for restore=%s/%s step=%s, expected 1; using %s",
+			len(jobs), restore.Namespace, restore.Name, step, jobs[0].Name)
+	}
+	return jobs[0], nil
+}
+
+func jobHasCondition(job *batchv1.Job, cond batchv1.JobConditionType) bool {
+	for _, c := range job.Status.Conditions {
+		if c.Type == cond && c.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+	return false
+}
+
+func jobFailureMessage(job *batchv1.Job) string {
+	for _, c := range job.Status.Conditions {
+		if c.Type == batchv1.JobFailed && c.Status == corev1.ConditionTrue {
+			return c.Message
+		}
+	}
+	return "phase-1 Job failed"
 }
 
 func (h *replicationHandler) syncLogRestore(_ *v1alpha1.Restore) error {
