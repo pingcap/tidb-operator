@@ -18,11 +18,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/util/retry"
 )
@@ -72,9 +75,169 @@ func (h *replicationHandler) Sync(restore *v1alpha1.Restore) error {
 	}
 }
 
-func (h *replicationHandler) syncInitial(_ *v1alpha1.Restore) error {
-	// Implemented in Task 6.
-	return nil
+func (h *replicationHandler) syncInitial(restore *v1alpha1.Restore) error {
+	cb, err := h.lookupCompactBackup(restore)
+	if err != nil {
+		if controller.IsIgnoreError(err) {
+			return h.failRestore(restore, "CompactBackupWaitTimeout", err.Error())
+		}
+		return err
+	}
+	if cb != nil {
+		if checkErr := checkCrossCRConsistency(restore, cb); checkErr != nil {
+			return h.failRestore(restore, "CompactBackupMismatch", checkErr.Error())
+		}
+		if compactIsTerminal(cb) {
+			reason := compactTerminalReason(cb)
+			if markerErr := h.updateRestoreMarker(restore, v1alpha1.RestoreCompactSettled, reason, cb.Status.Message); markerErr != nil {
+				return markerErr
+			}
+		}
+	}
+
+	var statusUpdate *controller.RestoreUpdateStatus
+	if restore.Status.TimeStarted.IsZero() {
+		now := metav1.Now()
+		statusUpdate = &controller.RestoreUpdateStatus{TimeStarted: &now}
+	}
+	if err := h.statusUpdater.Update(
+		restore,
+		&v1alpha1.RestoreCondition{
+			Type:   v1alpha1.RestoreSnapshotRestore,
+			Status: corev1.ConditionTrue,
+			Reason: "CreatedPhase1Job",
+		},
+		statusUpdate,
+	); err != nil {
+		return err
+	}
+	if err := h.setReplicationStep(restore, "snapshot-restore"); err != nil {
+		return err
+	}
+
+	return h.ensureJobForStep(restore, label.ReplicationStepSnapshotRestoreVal)
+}
+
+// setReplicationStep persists Status.ReplicationStep. Reads via Clientset
+// (not lister) because statusUpdater.Update wrote synchronously via Clientset
+// just before this call — the lister cache may not have caught up yet, and
+// reading stale state would clobber the just-written Phase. Coupled to
+// realRestoreConditionUpdater's synchronous Clientset write semantics:
+// switching statusUpdater to a deferred / batched / cache-only writer would
+// silently break this assumption. Wrapped in retry.OnError so a self-race
+// (e.g. concurrent reconcile from a Job event) doesn't lose the Step write.
+func (h *replicationHandler) setReplicationStep(restore *v1alpha1.Restore, step string) error {
+	ns, name := restore.Namespace, restore.Name
+	return retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
+		// Read via Clientset (NOT lister) to see the just-written Phase from
+		// statusUpdater.Update's synchronous API call. Coupled to
+		// realRestoreConditionUpdater's Clientset write semantics — must
+		// remain a Clientset read; switching to the lister would race.
+		latest, err := h.deps.Clientset.PingcapV1alpha1().Restores(ns).Get(
+			context.TODO(), name, metav1.GetOptions{},
+		)
+		if err != nil {
+			return err
+		}
+		if latest.Status.ReplicationStep == step {
+			return nil
+		}
+		updated := latest.DeepCopy()
+		updated.Status.ReplicationStep = step
+		_, err = h.deps.Clientset.PingcapV1alpha1().Restores(ns).Update(
+			context.TODO(), updated, metav1.UpdateOptions{},
+		)
+		return err
+	})
+}
+
+// failRestore writes a Failed condition and returns nil on success, so callers
+// can do "return h.failRestore(...)". Note: local restore.Status is NOT mutated
+// here — statusUpdater re-reads via the lister and writes a separate object.
+// All callers are currently return sites, so this is harmless; the comment
+// exists to keep it that way if new callers are added.
+func (h *replicationHandler) failRestore(restore *v1alpha1.Restore, reason, message string) error {
+	return h.statusUpdater.Update(
+		restore,
+		&v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestoreFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  reason,
+			Message: message,
+		},
+		nil,
+	)
+}
+
+func (h *replicationHandler) ensureJobForStep(restore *v1alpha1.Restore, step string) error {
+	jobs, err := h.listJobsBySelector(restore.Namespace, restore.Name, step)
+	if err != nil {
+		return err
+	}
+	if len(jobs) > 0 {
+		return nil
+	}
+	job, err := h.makeReplicationBRJob(restore, step)
+	if err != nil {
+		return err
+	}
+	return h.deps.JobControl.CreateJob(restore, job)
+}
+
+func (h *replicationHandler) listJobsBySelector(ns, restoreName, step string) ([]*batchv1.Job, error) {
+	selector := labels.SelectorFromSet(labels.Set{
+		label.RestoreLabelKey:         restoreName,
+		label.ReplicationStepLabelKey: step,
+	})
+	return h.deps.JobLister.Jobs(ns).List(selector)
+}
+
+// makeReplicationBRJob builds the phase-specific BR Job. Task 6 provides a
+// minimal version with correct labels so that ensureJobForStep idempotence
+// works; full BR-args assembly arrives in Task 8. The error return is
+// forward-looking: Task 8's BR-args assembly may surface validation errors;
+// the current implementation always returns nil for the error.
+func (h *replicationHandler) makeReplicationBRJob(restore *v1alpha1.Restore, step string) (*batchv1.Job, error) {
+	jobName := fmt.Sprintf("%s-%s", restore.Name, step)
+	jobLabels := map[string]string{
+		label.NameLabelKey:            "restore",
+		label.ComponentLabelKey:       "restore",
+		label.ManagedByLabelKey:       label.TiDBOperator,
+		label.RestoreLabelKey:         restore.Name,
+		label.ReplicationStepLabelKey: step,
+	}
+	return &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            jobName,
+			Namespace:       restore.Namespace,
+			Labels:          jobLabels,
+			OwnerReferences: []metav1.OwnerReference{controller.GetRestoreOwnerRef(restore)},
+		},
+		Spec: batchv1.JobSpec{
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: jobLabels},
+				Spec: corev1.PodSpec{
+					Containers:    []corev1.Container{{Name: "br", Image: restore.Spec.ToolImage}},
+					RestartPolicy: corev1.RestartPolicyOnFailure,
+				},
+			},
+		},
+	}, nil
+}
+
+func compactIsTerminal(cb *v1alpha1.CompactBackup) bool {
+	switch v1alpha1.BackupConditionType(cb.Status.State) {
+	case v1alpha1.BackupComplete, v1alpha1.BackupFailed:
+		return true
+	}
+	return false
+}
+
+func compactTerminalReason(cb *v1alpha1.CompactBackup) string {
+	if cb.Status.State == string(v1alpha1.BackupComplete) {
+		return "AllShardsComplete"
+	}
+	return "ShardsPartialFailed"
 }
 
 func (h *replicationHandler) syncSnapshotRestore(_ *v1alpha1.Restore) error {
