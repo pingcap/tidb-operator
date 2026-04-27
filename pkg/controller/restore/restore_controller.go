@@ -25,6 +25,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
@@ -60,6 +61,17 @@ func NewController(deps *controller.Dependencies) *Controller {
 			c.updateRestore(cur)
 		},
 		DeleteFunc: c.enqueueRestore,
+	})
+
+	// Watch CompactBackup changes so that CompactBackup reaching terminal
+	// state (or being newly created for a late-binding Restore) wakes the
+	// right Restore reconciler.
+	compactInformer := deps.InformerFactory.Pingcap().V1alpha1().CompactBackups()
+	compactInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    func(obj interface{}) { c.enqueueRestoresReferencing(obj) },
+		UpdateFunc: func(_, cur interface{}) { c.enqueueRestoresReferencing(cur) },
+		// Delete handled naturally: handler's next reconcile sees NotFound and
+		// re-enters late-binding logic.
 	})
 	return c
 }
@@ -286,6 +298,34 @@ func (c *Controller) updateRestore(cur interface{}) {
 
 	klog.V(4).Infof("restore object %s/%s enqueue", ns, name)
 	c.enqueueRestore(newRestore)
+}
+
+// enqueueRestoresReferencing finds all Restores in the same namespace whose
+// Spec.ReplicationConfig.CompactBackupName matches the given CompactBackup, and
+// enqueues them. O(N) over in-namespace Restores; acceptable for expected
+// fleet sizes (< ~100 Restores per namespace).
+func (c *Controller) enqueueRestoresReferencing(obj interface{}) {
+	cb, ok := obj.(*v1alpha1.CompactBackup)
+	if !ok {
+		return
+	}
+	restores, err := c.deps.RestoreLister.Restores(cb.Namespace).List(labels.Everything())
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf(
+			"list restores in %s: %w", cb.Namespace, err))
+		return
+	}
+	for _, r := range restores {
+		if r.Spec.ReplicationConfig != nil &&
+			r.Spec.ReplicationConfig.CompactBackupName == cb.Name {
+			key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(r)
+			if err != nil {
+				utilruntime.HandleError(err)
+				continue
+			}
+			c.queue.Add(key)
+		}
+	}
 }
 
 // enqueueRestore enqueues the given restore in the work queue.

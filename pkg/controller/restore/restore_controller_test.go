@@ -257,6 +257,62 @@ func TestRestoreControllerSync(t *testing.T) {
 	}
 }
 
+func TestController_EnqueueRestoresReferencing_MatchesByName(t *testing.T) {
+	g := NewGomegaWithT(t)
+	deps := controller.NewFakeDependencies()
+	c := NewController(deps)
+
+	matching := &v1alpha1.Restore{
+		ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns1"},
+		Spec: v1alpha1.RestoreSpec{
+			ReplicationConfig: &v1alpha1.ReplicationConfig{CompactBackupName: "cb1"},
+		},
+	}
+	nonMatching := &v1alpha1.Restore{
+		ObjectMeta: metav1.ObjectMeta{Name: "r2", Namespace: "ns1"},
+		Spec: v1alpha1.RestoreSpec{
+			ReplicationConfig: &v1alpha1.ReplicationConfig{CompactBackupName: "cb-other"},
+		},
+	}
+	nonReplication := &v1alpha1.Restore{
+		ObjectMeta: metav1.ObjectMeta{Name: "r3", Namespace: "ns1"},
+		Spec: v1alpha1.RestoreSpec{
+			// ReplicationConfig nil
+		},
+	}
+	differentNS := &v1alpha1.Restore{
+		ObjectMeta: metav1.ObjectMeta{Name: "r4", Namespace: "ns2"},
+		Spec: v1alpha1.RestoreSpec{
+			ReplicationConfig: &v1alpha1.ReplicationConfig{CompactBackupName: "cb1"},
+		},
+	}
+
+	// Seed the Restore lister via informer indexer
+	indexer := deps.InformerFactory.Pingcap().V1alpha1().Restores().Informer().GetIndexer()
+	g.Expect(indexer.Add(matching)).To(Succeed())
+	g.Expect(indexer.Add(nonMatching)).To(Succeed())
+	g.Expect(indexer.Add(nonReplication)).To(Succeed())
+	g.Expect(indexer.Add(differentNS)).To(Succeed())
+
+	cb := &v1alpha1.CompactBackup{
+		ObjectMeta: metav1.ObjectMeta{Name: "cb1", Namespace: "ns1"},
+	}
+	c.enqueueRestoresReferencing(cb)
+
+	g.Expect(c.queue.Len()).To(Equal(1))
+	key, _ := c.queue.Get()
+	g.Expect(key).To(Equal("ns1/r1"))
+}
+
+func TestController_EnqueueRestoresReferencing_IgnoresNonCompactBackup(t *testing.T) {
+	g := NewGomegaWithT(t)
+	deps := controller.NewFakeDependencies()
+	c := NewController(deps)
+
+	c.enqueueRestoresReferencing(&v1alpha1.Restore{}) // wrong type
+	g.Expect(c.queue.Len()).To(Equal(0))
+}
+
 func newFakeRestoreController() (*Controller, cache.Indexer, *FakeRestoreControl) {
 	fakeDeps := controller.NewFakeDependencies()
 	rtc := NewController(fakeDeps)
