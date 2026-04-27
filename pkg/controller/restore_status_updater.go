@@ -168,3 +168,33 @@ func (u *FakeRestoreConditionUpdater) Update(restore *v1alpha1.Restore, _ *v1alp
 }
 
 var _ RestoreConditionUpdaterInterface = &FakeRestoreConditionUpdater{}
+
+// replicationRestoreStatusUpdater is a no-op RestoreConditionUpdaterInterface
+// used by backup-manager in replication restore phase-1. All writes are
+// suppressed so that the controller remains the sole writer of status.Phase
+// and condition markers during phase-1. Phase-2 uses NewRealRestoreConditionUpdater
+// directly (no wrap) because from backup-manager's perspective phase-2 is
+// a standard PiTR restore.
+//
+// The activation point is cmd/backup-manager/app/cmd/restore.go (landed in PR 2).
+type replicationRestoreStatusUpdater struct{}
+
+// NewReplicationRestoreStatusUpdater returns a no-op updater. See type doc
+// above for the rationale (Option B in the spec: controller owns all Phase
+// writes during phase-1; progress/timing writes from backup-manager are
+// dropped because the CompactBackup sharded status already carries the
+// user-visible progress, and TimeStarted is written by the controller when
+// it creates the phase-1 Job).
+func NewReplicationRestoreStatusUpdater() RestoreConditionUpdaterInterface {
+	return &replicationRestoreStatusUpdater{}
+}
+
+func (r *replicationRestoreStatusUpdater) Update(
+	_ *v1alpha1.Restore,
+	_ *v1alpha1.RestoreCondition,
+	_ *RestoreUpdateStatus,
+) error {
+	return nil
+}
+
+var _ RestoreConditionUpdaterInterface = &replicationRestoreStatusUpdater{}
