@@ -118,6 +118,7 @@ type TiKVList struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:subresource:scale:specpath=.spec.replicas,statuspath=.status.replicas
 // +kubebuilder:resource:categories=instance
 // +kubebuilder:selectablefield:JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
@@ -278,6 +279,13 @@ type TiKVSpec struct {
 	// When false, the store will be marked as online in PD (if possible).
 	// +optional
 	Offline *bool `json:"offline,omitempty"`
+
+	// Replicas is used for compatibility with PodDisruptionBudgets and is read-only.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=1
+	// +default:value=1
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
 
 	// TiKVTemplateSpec embedded some fields managed by TiKVGroup
 	TiKVTemplateSpec `json:",inline"`
