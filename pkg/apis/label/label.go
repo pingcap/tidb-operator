@@ -64,6 +64,19 @@ const (
 	// RestoreWarmUpLabelKey defines which pod the restore warms up
 	RestoreWarmUpLabelKey string = "tidb.pingcap.com/warm-up-pod"
 
+	// ReplicationStepLabelKey distinguishes the two BR Jobs of a replication
+	// restore. Used by Restore controller to locate Jobs by label selector
+	// rather than name pattern.
+	ReplicationStepLabelKey string = "tidb.pingcap.com/replication-step"
+
+	// ReplicationStepSnapshotRestoreVal is the label value for the phase-1 BR
+	// Job (snapshot restore + checkpoint set).
+	ReplicationStepSnapshotRestoreVal string = "snapshot-restore"
+
+	// ReplicationStepLogRestoreVal is the label value for the phase-2 BR
+	// Job (log restore).
+	ReplicationStepLogRestoreVal string = "log-restore"
+
 	// BackupProtectionFinalizer is the name of finalizer on backups or federation backups
 	BackupProtectionFinalizer string = "tidb.pingcap.com/backup-protection"
 
