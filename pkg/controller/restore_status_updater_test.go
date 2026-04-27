@@ -19,6 +19,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -103,4 +104,27 @@ func newExpectRestoreStatus() *v1alpha1.RestoreStatus {
 	s.TimeCompleted = metav1.Time{Time: end}
 	s.TimeTaken = "4m0s"
 	return s
+}
+
+func TestReplicationRestoreStatusUpdater_Update_IsNoOp(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	u := NewReplicationRestoreStatusUpdater()
+
+	err := u.Update(
+		&v1alpha1.Restore{},
+		&v1alpha1.RestoreCondition{Type: v1alpha1.RestoreRunning, Status: corev1.ConditionTrue},
+		&RestoreUpdateStatus{},
+	)
+	g.Expect(err).NotTo(HaveOccurred())
+
+	// Nil args must also be safe.
+	err = u.Update(nil, nil, nil)
+	g.Expect(err).NotTo(HaveOccurred())
+}
+
+func TestReplicationRestoreStatusUpdater_ImplementsInterface(t *testing.T) {
+	g := NewGomegaWithT(t)
+	var _ RestoreConditionUpdaterInterface = NewReplicationRestoreStatusUpdater()
+	g.Expect(true).To(BeTrue()) // compile-time check
 }
