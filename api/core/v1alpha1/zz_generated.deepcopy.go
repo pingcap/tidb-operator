@@ -765,6 +765,11 @@ func (in *PDSpec) DeepCopyInto(out *PDSpec) {
 			(*out)[key] = val
 		}
 	}
+	if in.Replicas != nil {
+		in, out := &in.Replicas, &out.Replicas
+		*out = new(int32)
+		**out = **in
+	}
 	in.PDTemplateSpec.DeepCopyInto(&out.PDTemplateSpec)
 	return
 }
@@ -1149,6 +1154,11 @@ func (in *ResourceManagerSpec) DeepCopyInto(out *ResourceManagerSpec) {
 			(*out)[key] = val
 		}
 	}
+	if in.Replicas != nil {
+		in, out := &in.Replicas, &out.Replicas
+		*out = new(int32)
+		**out = **in
+	}
 	in.ResourceManagerTemplateSpec.DeepCopyInto(&out.ResourceManagerTemplateSpec)
 	return
 }
@@ -1498,6 +1508,11 @@ func (in *RouterSpec) DeepCopyInto(out *RouterSpec) {
 		for key, val := range *in {
 			(*out)[key] = val
 		}
+	}
+	if in.Replicas != nil {
+		in, out := &in.Replicas, &out.Replicas
+		*out = new(int32)
+		**out = **in
 	}
 	in.RouterTemplateSpec.DeepCopyInto(&out.RouterTemplateSpec)
 	return
@@ -1912,6 +1927,11 @@ func (in *SchedulerSpec) DeepCopyInto(out *SchedulerSpec) {
 			(*out)[key] = val
 		}
 	}
+	if in.Replicas != nil {
+		in, out := &in.Replicas, &out.Replicas
+		*out = new(int32)
+		**out = **in
+	}
 	in.SchedulerTemplateSpec.DeepCopyInto(&out.SchedulerTemplateSpec)
 	return
 }
@@ -2235,6 +2255,11 @@ func (in *SchedulingSpec) DeepCopyInto(out *SchedulingSpec) {
 		for key, val := range *in {
 			(*out)[key] = val
 		}
+	}
+	if in.Replicas != nil {
+		in, out := &in.Replicas, &out.Replicas
+		*out = new(int32)
+		**out = **in
 	}
 	in.SchedulingTemplateSpec.DeepCopyInto(&out.SchedulingTemplateSpec)
 	return
@@ -2672,6 +2697,11 @@ func (in *TSOSpec) DeepCopyInto(out *TSOSpec) {
 			(*out)[key] = val
 		}
 	}
+	if in.Replicas != nil {
+		in, out := &in.Replicas, &out.Replicas
+		*out = new(int32)
+		**out = **in
+	}
 	in.TSOTemplateSpec.DeepCopyInto(&out.TSOTemplateSpec)
 	return
 }
@@ -3016,6 +3046,11 @@ func (in *TiCDCSpec) DeepCopyInto(out *TiCDCSpec) {
 		for key, val := range *in {
 			(*out)[key] = val
 		}
+	}
+	if in.Replicas != nil {
+		in, out := &in.Replicas, &out.Replicas
+		*out = new(int32)
+		**out = **in
 	}
 	in.TiCDCTemplateSpec.DeepCopyInto(&out.TiCDCTemplateSpec)
 	return
@@ -3524,6 +3559,11 @@ func (in *TiDBSpec) DeepCopyInto(out *TiDBSpec) {
 			(*out)[key] = val
 		}
 	}
+	if in.Replicas != nil {
+		in, out := &in.Replicas, &out.Replicas
+		*out = new(int32)
+		**out = **in
+	}
 	in.TiDBTemplateSpec.DeepCopyInto(&out.TiDBTemplateSpec)
 	return
 }
@@ -3930,6 +3970,11 @@ func (in *TiFlashSpec) DeepCopyInto(out *TiFlashSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.Replicas != nil {
+		in, out := &in.Replicas, &out.Replicas
+		*out = new(int32)
+		**out = **in
+	}
 	in.TiFlashTemplateSpec.DeepCopyInto(&out.TiFlashTemplateSpec)
 	return
 }
@@ -4325,6 +4370,11 @@ func (in *TiKVSpec) DeepCopyInto(out *TiKVSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.Replicas != nil {
+		in, out := &in.Replicas, &out.Replicas
+		*out = new(int32)
+		**out = **in
+	}
 	in.TiKVTemplateSpec.DeepCopyInto(&out.TiKVTemplateSpec)
 	return
 }
@@ -4659,6 +4709,11 @@ func (in *TiKVWorkerSpec) DeepCopyInto(out *TiKVWorkerSpec) {
 		for key, val := range *in {
 			(*out)[key] = val
 		}
+	}
+	if in.Replicas != nil {
+		in, out := &in.Replicas, &out.Replicas
+		*out = new(int32)
+		**out = **in
 	}
 	in.TiKVWorkerTemplateSpec.DeepCopyInto(&out.TiKVWorkerTemplateSpec)
 	return
@@ -5084,6 +5139,11 @@ func (in *TiProxySpec) DeepCopyInto(out *TiProxySpec) {
 		for key, val := range *in {
 			(*out)[key] = val
 		}
+	}
+	if in.Replicas != nil {
+		in, out := &in.Replicas, &out.Replicas
+		*out = new(int32)
+		**out = **in
 	}
 	in.TiProxyTemplateSpec.DeepCopyInto(&out.TiProxyTemplateSpec)
 	return

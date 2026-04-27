@@ -8331,6 +8331,14 @@ spec:
                       Default is pingcap/prestop-checker:latest
                     type: string
                 type: object
+              replicas:
+                default: 1
+                description: Replicas is used for compatibility with PodDisruptionBudgets
+                  and is read-only.
+                format: int32
+                maximum: 1
+                minimum: 1
+                type: integer
               resources:
                 description: |-
                   ResourceRequirements describes the compute resource requirements.
@@ -8642,4 +8650,7 @@ spec:
     served: true
     storage: true
     subresources:
+      scale:
+        specReplicasPath: .spec.replicas
+        statusReplicasPath: .status.replicas
       status: {}
