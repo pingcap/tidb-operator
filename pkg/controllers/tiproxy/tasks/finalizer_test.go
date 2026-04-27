@@ -56,11 +56,8 @@ type testTiProxyHealthServer struct {
 	mu                  sync.Mutex
 	healthStatus        int
 	markUnhealthyStatus int
-	configStatus        int
-	configBody          string
 	healthCalls         int
 	markUnhealthyCalls  int
-	configCalls         int
 }
 
 func newTestTiProxyHealthServer(t *testing.T, healthStatus, markUnhealthyStatus int) *testTiProxyHealthServer {
@@ -69,8 +66,6 @@ func newTestTiProxyHealthServer(t *testing.T, healthStatus, markUnhealthyStatus 
 	s := &testTiProxyHealthServer{
 		healthStatus:        healthStatus,
 		markUnhealthyStatus: markUnhealthyStatus,
-		configStatus:        http.StatusOK,
-		configBody:          `{"proxy":{"graceful-wait-before-shutdown":0}}`,
 	}
 
 	mux := http.NewServeMux()
@@ -90,14 +85,6 @@ func newTestTiProxyHealthServer(t *testing.T, healthStatus, markUnhealthyStatus 
 			s.healthStatus = http.StatusBadGateway
 		}
 	})
-	mux.HandleFunc("/api/admin/config", func(w http.ResponseWriter, r *http.Request) {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		s.configCalls++
-		w.WriteHeader(s.configStatus)
-		_, _ = w.Write([]byte(s.configBody))
-	})
-
 	server := httptest.NewServer(mux)
 	t.Cleanup(server.Close)
 
@@ -119,12 +106,6 @@ func (s *testTiProxyHealthServer) counts() (health, markUnhealthy int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.healthCalls, s.markUnhealthyCalls
-}
-
-func (s *testTiProxyHealthServer) configCount() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.configCalls
 }
 
 func runDrainPodForDeleteTask(t *testing.T, ctx context.Context, s State, c client.Client) (task.Result, bool) {
@@ -223,7 +204,6 @@ func TestTaskDrainPodForDeleteContinueDeleteDelayWhenMarkUnhealthyFails(t *testi
 	healthCalls, markUnhealthyCalls := server.counts()
 	assert.Equal(t, 1, healthCalls)
 	assert.Equal(t, 1, markUnhealthyCalls)
-	assert.Equal(t, 0, server.configCount())
 
 	actual := &corev1.Pod{}
 	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(pod), actual))
@@ -235,7 +215,6 @@ func TestTaskDrainPodForDeleteDoNotStartDeleteDelayWhenUnhealthyAPIIsUnsupported
 
 	ctx := context.Background()
 	server := newTestTiProxyHealthServer(t, http.StatusOK, http.StatusNotFound)
-	server.configBody = `{"proxy":{"graceful-wait-before-shutdown":3600}}`
 	cluster := localTestCluster()
 	tiproxy := deletingTiProxyWithAPIAddress("3600", server.port(t))
 	pod := fakePod(cluster, tiproxy)
@@ -250,7 +229,6 @@ func TestTaskDrainPodForDeleteDoNotStartDeleteDelayWhenUnhealthyAPIIsUnsupported
 	healthCalls, markUnhealthyCalls := server.counts()
 	assert.Equal(t, 1, healthCalls)
 	assert.Equal(t, 1, markUnhealthyCalls)
-	assert.Equal(t, 1, server.configCount())
 
 	actual := &corev1.Pod{}
 	require.NoError(t, fc.Get(ctx, client.ObjectKeyFromObject(pod), actual))
@@ -319,7 +297,7 @@ func TestDrainPodForDeleteBlocksCommonFinalizerUntilPodIsGone(t *testing.T) {
 		common.TaskContextPod[scope.TiProxy](s, fc),
 		TaskDrainPodForDelete(s, fc, nil),
 		task.If(task.CondFunc(func() bool { return s.Pod() == nil }),
-			common.TaskInstanceFinalizerDel[scope.TiProxy](s, fc, FinalizerSubresourceLister),
+			common.TaskInstanceFinalizerDel[scope.TiProxy](s, fc, common.DefaultInstanceSubresourceLister),
 		),
 	))
 

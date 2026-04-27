@@ -151,20 +151,3 @@ func TestTiProxyClient_MarkUnhealthy(t *testing.T) {
 	err := client.MarkUnhealthy(context.Background())
 	require.NoError(t, err)
 }
-
-func TestTiProxyClient_GetGracefulWaitBeforeShutdown(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/api/admin/config", r.URL.Path)
-		assert.Equal(t, http.MethodGet, r.Method)
-		assert.Equal(t, "application/json", r.Header.Get("Accept"))
-		_, err := w.Write([]byte(`{"proxy":{"graceful-wait-before-shutdown":123}}`))
-		assert.NoError(t, err)
-	}))
-	defer server.Close()
-
-	addr := stringutil.RemoveHTTPPrefix(server.URL)
-	client := NewTiProxyClient(addr, 5*time.Second, nil)
-	wait, err := client.GetGracefulWaitBeforeShutdown(context.Background())
-	require.NoError(t, err)
-	assert.Equal(t, 123, wait)
-}

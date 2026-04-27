@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -41,8 +40,6 @@ type TiProxyClient interface {
 	IsHealthy(ctx context.Context) (bool, error)
 	// MarkUnhealthy makes the TiProxy health endpoint report unhealthy.
 	MarkUnhealthy(ctx context.Context) error
-	// GetGracefulWaitBeforeShutdown returns the current graceful-wait-before-shutdown config.
-	GetGracefulWaitBeforeShutdown(ctx context.Context) (int, error)
 	// SetLabels sets the labels for TiProxy.
 	SetLabels(ctx context.Context, labels map[string]string) error
 }
@@ -102,43 +99,6 @@ func (c *tiproxyClient) MarkUnhealthy(ctx context.Context) error {
 	apiURL := fmt.Sprintf("%s/%s", c.url, healthUnhealthyPath)
 	_, err := httputil.PostBodyOK(ctx, c.httpClient, apiURL, nil)
 	return err
-}
-
-func (c *tiproxyClient) GetGracefulWaitBeforeShutdown(ctx context.Context) (int, error) {
-	type proxyConfig struct {
-		Proxy struct {
-			GracefulWaitBeforeShutdown int `json:"graceful-wait-before-shutdown"`
-		} `json:"proxy"`
-	}
-
-	apiURL := fmt.Sprintf("%s/%s", c.url, configPath)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, http.NoBody)
-	if err != nil {
-		return 0, err
-	}
-	req.Header.Set("Accept", "application/json")
-
-	//nolint:bodyclose,gosec // bodyclose: has been handled; gosec: URL is constructed from trusted internal config
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer httputil.DeferClose(resp.Body)
-
-	if resp.StatusCode >= http.StatusBadRequest {
-		bodyErr := httputil.ReadErrorBody(resp.Body)
-		if bodyErr == nil {
-			return 0, httputil.Errorf(resp.StatusCode, "error response to %s", apiURL)
-		}
-		return 0, httputil.Errorf(resp.StatusCode, "error response to %s: %s", apiURL, bodyErr.Error())
-	}
-
-	var cfg proxyConfig
-	if err := json.NewDecoder(resp.Body).Decode(&cfg); err != nil {
-		return 0, err
-	}
-
-	return cfg.Proxy.GracefulWaitBeforeShutdown, nil
 }
 
 func (c *tiproxyClient) SetLabels(ctx context.Context, labels map[string]string) error {

@@ -32,16 +32,10 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
-	"github.com/pingcap/tidb-operator/v2/pkg/controllers/common"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/tiproxyapi/v1"
 	httputil "github.com/pingcap/tidb-operator/v2/pkg/utils/http"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
-)
-
-var FinalizerSubresourceLister = common.NewSubresourceLister(
-	common.NewSubresource[corev1.ConfigMapList](),
-	common.NewSubresource[corev1.PersistentVolumeClaimList](),
 )
 
 func TaskDrainPodForDelete(state State, c client.Client, restConfig *rest.Config) task.Task {
@@ -156,26 +150,6 @@ func ensureTiProxyMarkedUnhealthy(ctx context.Context, state State, c client.Cli
 
 	if err := tpClient.MarkUnhealthy(ctx); err != nil {
 		if httputil.IsNotFound(err) {
-			gracefulWait, cfgErr := tpClient.GetGracefulWaitBeforeShutdown(ctx)
-			if cfgErr != nil {
-				logger.Info(
-					"failed to get TiProxy config for SIGTERM fallback after unhealthy API is not found, continue retrying",
-					"namespace", tiproxy.Namespace,
-					"name", tiproxy.Name,
-					"error", cfgErr,
-				)
-				return false
-			}
-			if tiproxy.Spec.GracefulShutdownDeleteDelaySeconds == nil || gracefulWait < int(*tiproxy.Spec.GracefulShutdownDeleteDelaySeconds) {
-				logger.Info(
-					"TiProxy unhealthy API is not found and graceful-wait-before-shutdown is shorter than delete delay, continue retrying",
-					"namespace", tiproxy.Namespace,
-					"name", tiproxy.Name,
-					"gracefulWaitBeforeShutdown", gracefulWait,
-					"gracefulShutdownDeleteDelaySeconds", tiproxy.Spec.GracefulShutdownDeleteDelaySeconds,
-				)
-				return false
-			}
 			if restConfig == nil {
 				logger.Info(
 					"failed to fallback to SIGTERM after unhealthy API is not found, rest config is not available, continue retrying",
@@ -194,10 +168,9 @@ func ensureTiProxyMarkedUnhealthy(ctx context.Context, state State, c client.Cli
 				return false
 			}
 			logger.Info(
-				"TiProxy unhealthy API is not found, fallback to SIGTERM using graceful-wait-before-shutdown",
+				"TiProxy unhealthy API is not found, fallback to SIGTERM",
 				"namespace", tiproxy.Namespace,
 				"name", tiproxy.Name,
-				"gracefulWaitBeforeShutdown", gracefulWait,
 			)
 		} else {
 			logger.Info(
