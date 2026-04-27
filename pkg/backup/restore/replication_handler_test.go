@@ -387,6 +387,92 @@ func TestSyncSnapshotRestore_BothMarkersTrue_TransitionsToLogRestore(t *testing.
 		To(Equal(label.ReplicationStepLogRestoreVal))
 }
 
+// --- syncLogRestore tests ---
+
+func TestSyncLogRestore_Phase2JobFailed_FailsRestore(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "log-restore")
+	h.CreateRestore(r)
+
+	job := newReplicationJob("r1", "ns1", label.ReplicationStepLogRestoreVal, batchv1.JobFailed)
+	_, err := h.Deps.KubeClientset.BatchV1().Jobs("ns1").Create(context.TODO(), job, metav1.CreateOptions{})
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Eventually(func() error {
+		_, e := h.Deps.JobLister.Jobs("ns1").Get(job.Name)
+		return e
+	}, time.Second*10).Should(BeNil())
+
+	_ = handler.Sync(r)
+
+	updated, _ := h.Deps.Clientset.PingcapV1alpha1().Restores("ns1").Get(context.TODO(), "r1", metav1.GetOptions{})
+	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreFailed))
+}
+
+func TestSyncLogRestore_Phase2JobRunning_IsNoOp(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "log-restore")
+	h.CreateRestore(r)
+
+	// Job present without terminal condition — backup-manager owns Phase writes
+	job := newReplicationJobNoCondition("r1", "ns1", label.ReplicationStepLogRestoreVal)
+	_, err := h.Deps.KubeClientset.BatchV1().Jobs("ns1").Create(context.TODO(), job, metav1.CreateOptions{})
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Eventually(func() error {
+		_, e := h.Deps.JobLister.Jobs("ns1").Get(job.Name)
+		return e
+	}, time.Second*10).Should(BeNil())
+
+	err = handler.Sync(r)
+	g.Expect(err).NotTo(HaveOccurred())
+
+	// Phase remains LogRestore (controller didn't touch it); backup-manager will
+	// eventually flip it to Running/Complete/Failed via the real updater.
+	updated, _ := h.Deps.Clientset.PingcapV1alpha1().Restores("ns1").Get(context.TODO(), "r1", metav1.GetOptions{})
+	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreLogRestore))
+}
+
+// --- makeReplicationBRJob tests ---
+
+func TestMakeReplicationBRJob_SnapshotRestore_HasCorrectLabelsAndArgs(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreFixture("r1", "ns1", "cb1", nil)
+
+	job, err := handler.makeReplicationBRJob(r, label.ReplicationStepSnapshotRestoreVal)
+
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(job.Name).To(Equal("r1-snapshot-restore"))
+	g.Expect(job.Labels[label.ReplicationStepLabelKey]).
+		To(Equal(label.ReplicationStepSnapshotRestoreVal))
+	g.Expect(job.Spec.Template.Spec.Containers[0].Args).
+		To(ContainElement("--replicationPhase=1"))
+}
+
+func TestMakeReplicationBRJob_LogRestore_HasCorrectPhaseArg(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreFixture("r1", "ns1", "cb1", nil)
+
+	job, err := handler.makeReplicationBRJob(r, label.ReplicationStepLogRestoreVal)
+
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(job.Name).To(Equal("r1-log-restore"))
+	g.Expect(job.Labels[label.ReplicationStepLabelKey]).
+		To(Equal(label.ReplicationStepLogRestoreVal))
+	g.Expect(job.Spec.Template.Spec.Containers[0].Args).
+		To(ContainElement("--replicationPhase=2"))
+}
+
 func TestSyncSnapshotRestore_OnlyOneMarkerTrue_Waits(t *testing.T) {
 	g := NewGomegaWithT(t)
 	handler, h := newHandlerForTest(t)

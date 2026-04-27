@@ -193,12 +193,19 @@ func (h *replicationHandler) listJobsBySelector(ns, restoreName, step string) ([
 	return h.deps.JobLister.Jobs(ns).List(selector)
 }
 
-// makeReplicationBRJob builds the phase-specific BR Job. Task 6 provides a
-// minimal version with correct labels so that ensureJobForStep idempotence
-// works; full BR-args assembly arrives in Task 8. The error return is
-// forward-looking: Task 8's BR-args assembly may surface validation errors;
-// the current implementation always returns nil for the error.
+// makeReplicationBRJob builds the phase-specific BR Job with the correct
+// replication-step label and the --replicationPhase arg consumed by
+// backup-manager. Phase 1 (snapshot-restore) uses --replicationPhase=1;
+// phase 2 (log-restore) uses --replicationPhase=2.
+//
+// NOTE: the Job produced here is functionally insufficient for backup-manager
+// to run BR end-to-end; see buildPiTRBaseArgs for the full rationale.
 func (h *replicationHandler) makeReplicationBRJob(restore *v1alpha1.Restore, step string) (*batchv1.Job, error) {
+	phaseArg := "--replicationPhase=1"
+	if step == label.ReplicationStepLogRestoreVal {
+		phaseArg = "--replicationPhase=2"
+	}
+
 	jobName := fmt.Sprintf("%s-%s", restore.Name, step)
 	jobLabels := map[string]string{
 		label.NameLabelKey:            "restore",
@@ -207,6 +214,9 @@ func (h *replicationHandler) makeReplicationBRJob(restore *v1alpha1.Restore, ste
 		label.RestoreLabelKey:         restore.Name,
 		label.ReplicationStepLabelKey: step,
 	}
+
+	args := append(buildPiTRBaseArgs(restore), phaseArg)
+
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            jobName,
@@ -218,12 +228,45 @@ func (h *replicationHandler) makeReplicationBRJob(restore *v1alpha1.Restore, ste
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{Labels: jobLabels},
 				Spec: corev1.PodSpec{
-					Containers:    []corev1.Container{{Name: "br", Image: restore.Spec.ToolImage}},
+					ServiceAccountName: restore.Spec.ServiceAccount,
+					Containers: []corev1.Container{{
+						Name:  "br",
+						Image: restore.Spec.ToolImage,
+						Args:  args,
+					}},
 					RestartPolicy: corev1.RestartPolicyOnFailure,
 				},
 			},
 		},
 	}, nil
+}
+
+// buildPiTRBaseArgs returns a MINIMAL set of backup-manager CLI args
+// common to both replication phases. This is intentionally a stub for
+// PR 1: the full PiTR arg set (env vars, TLS volume mounts, password
+// secrets, resource requirements) lives in restoreManager.makeRestoreJobWithMode
+// and is NOT replicated here.
+//
+// As a result, the Job produced by makeReplicationBRJob is functionally
+// insufficient for backup-manager to actually run BR end-to-end. PR 2 (or
+// a follow-up after Task 9 wires the handler to the restoreManager) must
+// complete the integration by either:
+//
+//	(a) calling rm.makeRestoreJobWithMode to build the base Job and
+//	    post-processing it (add replication-step label, append
+//	    --replicationPhase arg), OR
+//	(b) extracting a shared helper next to makeRestoreJobWithMode that
+//	    both call sites consume.
+//
+// The unit tests in this PR verify only the replication-specific
+// additions (label + --replicationPhase arg).
+func buildPiTRBaseArgs(restore *v1alpha1.Restore) []string {
+	return []string{
+		"restore",
+		fmt.Sprintf("--namespace=%s", restore.Namespace),
+		fmt.Sprintf("--restoreName=%s", restore.Name),
+		fmt.Sprintf("--mode=%s", v1alpha1.RestoreModePiTR),
+	}
 }
 
 // compactIsTerminal returns true if CompactBackup has reached either
@@ -360,8 +403,23 @@ func jobFailureMessage(job *batchv1.Job) string {
 	return "phase-1 Job failed"
 }
 
-func (h *replicationHandler) syncLogRestore(_ *v1alpha1.Restore) error {
-	// Implemented in Task 8.
+func (h *replicationHandler) syncLogRestore(restore *v1alpha1.Restore) error {
+	job, err := h.findJobForStep(restore, label.ReplicationStepLogRestoreVal)
+	if err != nil {
+		return err
+	}
+	if job == nil {
+		// Re-entry edge case: the transition in syncSnapshotRestore successfully
+		// wrote Phase=LogRestore and Step=log-restore but ensureJobForStep failed
+		// before the Job was persisted (e.g. controller restart between the two
+		// writes). On the next reconcile we land here with no Job — re-create it
+		// so backup-manager can proceed rather than leaving the restore permanently
+		// stuck in log-restore step with no running workload.
+		return h.ensureJobForStep(restore, label.ReplicationStepLogRestoreVal)
+	}
+	if jobHasCondition(job, batchv1.JobFailed) && !v1alpha1.IsRestoreFailed(restore) {
+		return h.failRestore(restore, "LogRestoreFailed", jobFailureMessage(job))
+	}
 	return nil
 }
 
