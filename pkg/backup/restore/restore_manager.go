@@ -51,16 +51,25 @@ const (
 	TiKVConfigGCThreshold = "gc.ratio-threshold"
 )
 
+// replicationHandlerInterface is the minimal surface restoreManager calls on
+// the replication handler. Allows injecting a fake in tests.
+type replicationHandlerInterface interface {
+	Sync(restore *v1alpha1.Restore) error
+}
+
 type restoreManager struct {
-	deps          *controller.Dependencies
-	statusUpdater controller.RestoreConditionUpdaterInterface
+	deps               *controller.Dependencies
+	statusUpdater      controller.RestoreConditionUpdaterInterface
+	replicationHandler replicationHandlerInterface
 }
 
 // NewRestoreManager return restoreManager
 func NewRestoreManager(deps *controller.Dependencies) backup.RestoreManager {
+	statusUpdater := controller.NewRealRestoreConditionUpdater(deps.Clientset, deps.RestoreLister, deps.Recorder)
 	return &restoreManager{
-		deps:          deps,
-		statusUpdater: controller.NewRealRestoreConditionUpdater(deps.Clientset, deps.RestoreLister, deps.Recorder),
+		deps:               deps,
+		statusUpdater:      statusUpdater,
+		replicationHandler: newReplicationHandler(deps, statusUpdater),
 	}
 }
 
@@ -282,6 +291,14 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 
 	if v1alpha1.IsRestoreFailed(restore) {
 		return nil
+	}
+
+	// Replication restore: delegate to dedicated handler that owns the
+	// two-Job state machine and coordinates with CompactBackup. All logic
+	// below this line assumes a single-Job Restore (GetRestoreJobName etc.)
+	// which does not apply to replication restore.
+	if restore.Spec.Mode == v1alpha1.RestoreModePiTR && restore.Spec.ReplicationConfig != nil {
+		return rm.replicationHandler.Sync(restore)
 	}
 
 	restoreJobName := restore.GetRestoreJobName()
