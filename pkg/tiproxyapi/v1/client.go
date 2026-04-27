@@ -82,12 +82,13 @@ func NewTiProxyClient(addr string, timeout time.Duration, tlsConfig *tls.Config)
 
 func (c *tiproxyClient) IsHealthy(ctx context.Context) (bool, error) {
 	apiURL := fmt.Sprintf("%s/%s", c.url, healthPath)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, http.NoBody)
 	if err != nil {
 		return false, err
 	}
 
-	resp, err := c.httpClient.Do(req) //nolint:gosec // URL is constructed from trusted internal config
+	//nolint:bodyclose,gosec // bodyclose: has been handled; gosec: URL is constructed from trusted internal config
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return false, err
 	}
@@ -111,13 +112,14 @@ func (c *tiproxyClient) GetGracefulWaitBeforeShutdown(ctx context.Context) (int,
 	}
 
 	apiURL := fmt.Sprintf("%s/%s", c.url, configPath)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, http.NoBody)
 	if err != nil {
 		return 0, err
 	}
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := c.httpClient.Do(req) //nolint:gosec // URL is constructed from trusted internal config
+	//nolint:bodyclose,gosec // bodyclose: has been handled; gosec: URL is constructed from trusted internal config
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return 0, err
 	}

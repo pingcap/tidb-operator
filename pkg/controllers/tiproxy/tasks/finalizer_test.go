@@ -110,7 +110,7 @@ func (s *testTiProxyHealthServer) port(t *testing.T) int32 {
 	u, err := url.Parse(s.server.URL)
 	require.NoError(t, err)
 	port := u.Port()
-	value, err := strconv.Atoi(port)
+	value, err := strconv.ParseInt(port, 10, 32)
 	require.NoError(t, err)
 	return int32(value)
 }
@@ -353,7 +353,7 @@ func deletingTiProxy(deleteDelaySeconds string) *v1alpha1.TiProxy {
 			obj.Spec.Version = fakeVersion
 			obj.Spec.Subdomain = "tiproxy-peer"
 			if deleteDelaySeconds != "" {
-				seconds, err := strconv.Atoi(deleteDelaySeconds)
+				seconds, err := strconv.ParseInt(deleteDelaySeconds, 10, 32)
 				if err != nil {
 					panic(err)
 				}

@@ -131,13 +131,23 @@ func ensureTiProxyMarkedUnhealthy(ctx context.Context, state State, c client.Cli
 
 	tpClient, err := newTiProxyDeleteClient(ctx, state, c)
 	if err != nil {
-		logger.Info("failed to build TiProxy API client before graceful delete, continue retrying", "namespace", tiproxy.Namespace, "name", tiproxy.Name, "error", err)
+		logger.Info(
+			"failed to build TiProxy API client before graceful delete, continue retrying",
+			"namespace", tiproxy.Namespace,
+			"name", tiproxy.Name,
+			"error", err,
+		)
 		return false
 	}
 
 	healthy, err := tpClient.IsHealthy(ctx)
 	if err != nil {
-		logger.Info("failed to query TiProxy health before graceful delete retry, continue retrying", "namespace", tiproxy.Namespace, "name", tiproxy.Name, "error", err)
+		logger.Info(
+			"failed to query TiProxy health before graceful delete retry, continue retrying",
+			"namespace", tiproxy.Namespace,
+			"name", tiproxy.Name,
+			"error", err,
+		)
 		return false
 	}
 	if !healthy {
@@ -148,35 +158,74 @@ func ensureTiProxyMarkedUnhealthy(ctx context.Context, state State, c client.Cli
 		if httputil.IsNotFound(err) {
 			gracefulWait, cfgErr := tpClient.GetGracefulWaitBeforeShutdown(ctx)
 			if cfgErr != nil {
-				logger.Info("failed to get TiProxy config for SIGTERM fallback after unhealthy API is not found, continue retrying", "namespace", tiproxy.Namespace, "name", tiproxy.Name, "error", cfgErr)
+				logger.Info(
+					"failed to get TiProxy config for SIGTERM fallback after unhealthy API is not found, continue retrying",
+					"namespace", tiproxy.Namespace,
+					"name", tiproxy.Name,
+					"error", cfgErr,
+				)
 				return false
 			}
 			if tiproxy.Spec.GracefulShutdownDeleteDelaySeconds == nil || gracefulWait < int(*tiproxy.Spec.GracefulShutdownDeleteDelaySeconds) {
-				logger.Info("TiProxy unhealthy API is not found and graceful-wait-before-shutdown is shorter than delete delay, continue retrying", "namespace", tiproxy.Namespace, "name", tiproxy.Name, "gracefulWaitBeforeShutdown", gracefulWait, "gracefulShutdownDeleteDelaySeconds", tiproxy.Spec.GracefulShutdownDeleteDelaySeconds)
+				logger.Info(
+					"TiProxy unhealthy API is not found and graceful-wait-before-shutdown is shorter than delete delay, continue retrying",
+					"namespace", tiproxy.Namespace,
+					"name", tiproxy.Name,
+					"gracefulWaitBeforeShutdown", gracefulWait,
+					"gracefulShutdownDeleteDelaySeconds", tiproxy.Spec.GracefulShutdownDeleteDelaySeconds,
+				)
 				return false
 			}
 			if restConfig == nil {
-				logger.Info("failed to fallback to SIGTERM after unhealthy API is not found, rest config is not available, continue retrying", "namespace", tiproxy.Namespace, "name", tiproxy.Name)
+				logger.Info(
+					"failed to fallback to SIGTERM after unhealthy API is not found, rest config is not available, continue retrying",
+					"namespace", tiproxy.Namespace,
+					"name", tiproxy.Name,
+				)
 				return false
 			}
 			if err := sendSIGTERMToTiProxyPod(ctx, restConfig, state.Pod()); err != nil {
-				logger.Info("failed to fallback to SIGTERM after unhealthy API is not found, continue retrying", "namespace", tiproxy.Namespace, "name", tiproxy.Name, "error", err)
+				logger.Info(
+					"failed to fallback to SIGTERM after unhealthy API is not found, continue retrying",
+					"namespace", tiproxy.Namespace,
+					"name", tiproxy.Name,
+					"error", err,
+				)
 				return false
 			}
-			logger.Info("TiProxy unhealthy API is not found, fallback to SIGTERM using graceful-wait-before-shutdown", "namespace", tiproxy.Namespace, "name", tiproxy.Name, "gracefulWaitBeforeShutdown", gracefulWait)
+			logger.Info(
+				"TiProxy unhealthy API is not found, fallback to SIGTERM using graceful-wait-before-shutdown",
+				"namespace", tiproxy.Namespace,
+				"name", tiproxy.Name,
+				"gracefulWaitBeforeShutdown", gracefulWait,
+			)
 		} else {
-			logger.Info("failed to mark TiProxy unhealthy before graceful delete, continue retrying", "namespace", tiproxy.Namespace, "name", tiproxy.Name, "error", err)
+			logger.Info(
+				"failed to mark TiProxy unhealthy before graceful delete, continue retrying",
+				"namespace", tiproxy.Namespace,
+				"name", tiproxy.Name,
+				"error", err,
+			)
 			return false
 		}
 	}
 
 	healthy, err = tpClient.IsHealthy(ctx)
 	if err != nil {
-		logger.Info("failed to re-check TiProxy health after graceful delete action, continue retrying", "namespace", tiproxy.Namespace, "name", tiproxy.Name, "error", err)
+		logger.Info(
+			"failed to re-check TiProxy health after graceful delete action, continue retrying",
+			"namespace", tiproxy.Namespace,
+			"name", tiproxy.Name,
+			"error", err,
+		)
 		return false
 	}
 	if healthy {
-		logger.Info("TiProxy health is still healthy after graceful delete action, continue retrying", "namespace", tiproxy.Namespace, "name", tiproxy.Name)
+		logger.Info(
+			"TiProxy health is still healthy after graceful delete action, continue retrying",
+			"namespace", tiproxy.Namespace,
+			"name", tiproxy.Name,
+		)
 		return false
 	}
 	return true
