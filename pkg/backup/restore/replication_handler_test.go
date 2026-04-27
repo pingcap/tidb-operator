@@ -4,6 +4,7 @@ package restore
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -12,6 +13,8 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
 	"github.com/pingcap/tidb-operator/pkg/controller"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -253,4 +256,161 @@ func TestSyncInitial_Inconsistent_FailsRestore(t *testing.T) {
 
 	jobs, _ := h.Deps.KubeClientset.BatchV1().Jobs("ns1").List(context.TODO(), metav1.ListOptions{})
 	g.Expect(jobs.Items).To(BeEmpty())
+}
+
+// --- fixture builders for syncSnapshotRestore tests ---
+
+func newReplicationRestoreInStep(name, ns, cbName, step string) *v1alpha1.Restore {
+	r := newReplicationRestoreFixture(name, ns, cbName, nil)
+	r.Status.ReplicationStep = step
+	switch step {
+	case "snapshot-restore":
+		r.Status.Phase = v1alpha1.RestoreSnapshotRestore
+	case "log-restore":
+		r.Status.Phase = v1alpha1.RestoreLogRestore
+	}
+	return r
+}
+
+func newReplicationJobNoCondition(restoreName, ns, step string) *batchv1.Job {
+	return &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", restoreName, step),
+			Namespace: ns,
+			Labels: map[string]string{
+				label.NameLabelKey:            "restore",
+				label.ComponentLabelKey:       "restore",
+				label.ManagedByLabelKey:       label.TiDBOperator,
+				label.RestoreLabelKey:         restoreName,
+				label.ReplicationStepLabelKey: step,
+			},
+		},
+	}
+}
+
+func newReplicationJob(restoreName, ns, step string, condType batchv1.JobConditionType) *batchv1.Job {
+	j := newReplicationJobNoCondition(restoreName, ns, step)
+	j.Status.Conditions = []batchv1.JobCondition{
+		{Type: condType, Status: corev1.ConditionTrue},
+	}
+	return j
+}
+
+// --- syncSnapshotRestore tests ---
+
+func TestSyncSnapshotRestore_Phase1JobComplete_WritesMarker(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "snapshot-restore")
+	h.CreateRestore(r)
+
+	job := newReplicationJob("r1", "ns1", label.ReplicationStepSnapshotRestoreVal, batchv1.JobComplete)
+	_, err := h.Deps.KubeClientset.BatchV1().Jobs("ns1").Create(context.TODO(), job, metav1.CreateOptions{})
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Eventually(func() error {
+		_, e := h.Deps.JobLister.Jobs("ns1").Get(job.Name)
+		return e
+	}, time.Second*10).Should(BeNil())
+
+	err = handler.Sync(r)
+	g.Expect(err).NotTo(HaveOccurred())
+
+	updated, _ := h.Deps.Clientset.PingcapV1alpha1().Restores("ns1").Get(context.TODO(), "r1", metav1.GetOptions{})
+	_, c := v1alpha1.GetRestoreCondition(&updated.Status, v1alpha1.RestoreSnapshotRestored)
+	g.Expect(c).NotTo(BeNil(), "SnapshotRestored marker must be written")
+	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreSnapshotRestore),
+		"marker write must NOT change Phase")
+}
+
+func TestSyncSnapshotRestore_Phase1JobFailed_FailsRestore(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "snapshot-restore")
+	h.CreateRestore(r)
+
+	job := newReplicationJob("r1", "ns1", label.ReplicationStepSnapshotRestoreVal, batchv1.JobFailed)
+	_, err := h.Deps.KubeClientset.BatchV1().Jobs("ns1").Create(context.TODO(), job, metav1.CreateOptions{})
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Eventually(func() error {
+		_, e := h.Deps.JobLister.Jobs("ns1").Get(job.Name)
+		return e
+	}, time.Second*10).Should(BeNil())
+
+	_ = handler.Sync(r)
+
+	updated, _ := h.Deps.Clientset.PingcapV1alpha1().Restores("ns1").Get(context.TODO(), "r1", metav1.GetOptions{})
+	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreFailed))
+}
+
+func TestSyncSnapshotRestore_BothMarkersTrue_TransitionsToLogRestore(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "snapshot-restore")
+	appendRestoreMarker(r, v1alpha1.RestoreSnapshotRestored, "JobComplete", "")
+	appendRestoreMarker(r, v1alpha1.RestoreCompactSettled, "AllShardsComplete", "")
+	h.CreateRestore(r)
+	// Push Status with conditions to the fake API server, since
+	// CreateRestore just creates the resource — push status separately.
+	_, err := h.Deps.Clientset.PingcapV1alpha1().Restores("ns1").Update(context.TODO(), r, metav1.UpdateOptions{})
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Eventually(func() bool {
+		latest, _ := h.Deps.RestoreLister.Restores("ns1").Get("r1")
+		return latest != nil && hasMarkerTrue(latest, v1alpha1.RestoreSnapshotRestored) &&
+			hasMarkerTrue(latest, v1alpha1.RestoreCompactSettled)
+	}, time.Second*10).Should(BeTrue())
+
+	// Seed a CompactBackup so lookupCompactBackup doesn't bail.
+	cb := newCompactBackupFixture("cb1", "ns1", v1alpha1.BackupComplete)
+	_, err = h.Deps.Clientset.PingcapV1alpha1().CompactBackups("ns1").Create(context.TODO(), cb, metav1.CreateOptions{})
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Eventually(func() error {
+		_, e := h.Deps.CompactBackupLister.CompactBackups("ns1").Get("cb1")
+		return e
+	}, time.Second*10).Should(BeNil())
+
+	err = handler.Sync(r)
+	g.Expect(err).NotTo(HaveOccurred())
+
+	updated, _ := h.Deps.Clientset.PingcapV1alpha1().Restores("ns1").Get(context.TODO(), "r1", metav1.GetOptions{})
+	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreLogRestore))
+	g.Expect(updated.Status.ReplicationStep).To(Equal("log-restore"))
+
+	jobs, _ := h.Deps.KubeClientset.BatchV1().Jobs("ns1").List(context.TODO(), metav1.ListOptions{})
+	g.Expect(jobs.Items).To(HaveLen(1))
+	g.Expect(jobs.Items[0].Labels[label.ReplicationStepLabelKey]).
+		To(Equal(label.ReplicationStepLogRestoreVal))
+}
+
+func TestSyncSnapshotRestore_OnlyOneMarkerTrue_Waits(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "snapshot-restore")
+	appendRestoreMarker(r, v1alpha1.RestoreSnapshotRestored, "JobComplete", "")
+	// CompactSettled NOT set
+	h.CreateRestore(r)
+	_, err := h.Deps.Clientset.PingcapV1alpha1().Restores("ns1").Update(context.TODO(), r, metav1.UpdateOptions{})
+	g.Expect(err).NotTo(HaveOccurred())
+
+	// Seed CompactBackup but NOT in terminal state
+	cb := newCompactBackupFixture("cb1", "ns1", v1alpha1.BackupRunning)
+	_, err = h.Deps.Clientset.PingcapV1alpha1().CompactBackups("ns1").Create(context.TODO(), cb, metav1.CreateOptions{})
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Eventually(func() error {
+		_, e := h.Deps.CompactBackupLister.CompactBackups("ns1").Get("cb1")
+		return e
+	}, time.Second*10).Should(BeNil())
+
+	err = handler.Sync(r)
+	g.Expect(err).NotTo(HaveOccurred())
+
+	jobs, _ := h.Deps.KubeClientset.BatchV1().Jobs("ns1").List(context.TODO(), metav1.ListOptions{})
+	g.Expect(jobs.Items).To(BeEmpty(), "phase-2 Job must not be created yet — gate not passed")
 }
