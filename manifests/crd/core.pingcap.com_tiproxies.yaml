@@ -97,6 +97,13 @@ spec:
                   - IndependentKVEngineWorker
                   type: string
                 type: array
+              gracefulShutdownDeleteDelaySeconds:
+                description: |-
+                  GracefulShutdownDeleteDelaySeconds is the number of seconds to wait before deleting a TiProxy pod
+                  after it has been marked unhealthy during graceful shutdown.
+                format: int32
+                minimum: 0
+                type: integer
               image:
                 description: |-
                   Image is TiProxy's image

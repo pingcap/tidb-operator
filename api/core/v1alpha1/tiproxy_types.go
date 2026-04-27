@@ -170,6 +170,11 @@ type TiProxyTemplateSpec struct {
 	// PreStop defines the preStop config for the TiProxy container.
 	PreStop *TiProxyPreStop `json:"preStop,omitempty"`
 
+	// GracefulShutdownDeleteDelaySeconds is the number of seconds to wait before deleting a TiProxy pod
+	// after it has been marked unhealthy during graceful shutdown.
+	// +kubebuilder:validation:Minimum=0
+	GracefulShutdownDeleteDelaySeconds *int32 `json:"gracefulShutdownDeleteDelaySeconds,omitempty"`
+
 	// Overlay defines a k8s native resource template patch.
 	// All resources(pod, pvcs, ...) managed by TiProxy can be overlayed by this field.
 	Overlay *Overlay `json:"overlay,omitempty"`

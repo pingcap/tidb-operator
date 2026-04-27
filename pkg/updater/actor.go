@@ -392,10 +392,14 @@ func (act *actor[T, O, R]) deleteInstance(ctx context.Context, obj R) error {
 		return nil
 	}
 
-	if err := act.c.Delete(ctx, act.converter.To(obj), client.Preconditions{
-		UID:             ptr.To(obj.GetUID()),
-		ResourceVersion: ptr.To(obj.GetResourceVersion()),
-	}); err != nil {
+	opts := []client.DeleteOption{
+		client.Preconditions{
+			UID:             ptr.To(obj.GetUID()),
+			ResourceVersion: ptr.To(obj.GetResourceVersion()),
+		},
+	}
+
+	if err := act.c.Delete(ctx, act.converter.To(obj), opts...); err != nil {
 		return err
 	}
 
