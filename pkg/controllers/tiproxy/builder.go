@@ -48,7 +48,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(common.CondObjectIsDeleting[scope.TiProxy](state),
 			tasks.TaskDrainPodForDelete(state, r.Client, r.RestConfig),
 			task.If(task.CondFunc(func() bool { return state.Pod() == nil }),
-				common.TaskInstanceFinalizerDel[scope.TiProxy](state, r.Client, tasks.FinalizerSubresourceLister),
+				common.TaskInstanceFinalizerDel[scope.TiProxy](state, r.Client, common.DefaultInstanceSubresourceLister),
 			),
 			// TODO(liubo02): if the finalizer has been removed, no need to update status
 			common.TaskInstanceConditionSynced[scope.TiProxy](state),
