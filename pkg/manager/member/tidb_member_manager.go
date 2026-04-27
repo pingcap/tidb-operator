@@ -936,6 +936,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			Image:           tc.HelperImage(),
 			ImagePullPolicy: tc.HelperImagePullPolicy(),
 			Resources:       controller.ContainerResource(tc.Spec.TiDB.GetSlowLogTailerSpec().ResourceRequirements),
+			SecurityContext: tc.Spec.TiDB.GetSlowLogTailerSpec().SecurityContext,
 			VolumeMounts:    []corev1.VolumeMount{slowQueryLogVolumeMount},
 			Command: []string{
 				"sh",
@@ -1001,10 +1002,11 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 				Protocol:      corev1.ProtocolTCP,
 			},
 		},
-		VolumeMounts: volMounts,
-		Resources:    controller.ContainerResource(tc.Spec.TiDB.ResourceRequirements),
-		Env:          util.AppendEnv(envs, baseTiDBSpec.Env()),
-		EnvFrom:      baseTiDBSpec.EnvFrom(),
+		VolumeMounts:    volMounts,
+		Resources:       controller.ContainerResource(tc.Spec.TiDB.ResourceRequirements),
+		Env:             util.AppendEnv(envs, baseTiDBSpec.Env()),
+		EnvFrom:         baseTiDBSpec.EnvFrom(),
+		SecurityContext: baseTiDBSpec.SecurityContext(),
 		ReadinessProbe: &corev1.Probe{
 			ProbeHandler:        buildTiDBReadinessProbHandler(tc),
 			InitialDelaySeconds: int32(10),
@@ -1046,6 +1048,7 @@ func getNewTiDBSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap)
 			Command:         []string{"/bin/sh", "-c"},
 			Args:            []string{fmt.Sprintf("cp /%s %s/%s; echo '%s copy finished'", p.BinaryName, customizedStartupProbePath, p.BinaryName, p.BinaryName)},
 			VolumeMounts:    []corev1.VolumeMount{probeVolMount},
+			SecurityContext: baseTiDBSpec.SecurityContext(),
 		})
 
 		c.StartupProbe = &corev1.Probe{

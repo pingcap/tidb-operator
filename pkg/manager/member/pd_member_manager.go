@@ -757,8 +757,9 @@ func getNewPDSetForTidbCluster(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 				Protocol:      corev1.ProtocolTCP,
 			},
 		},
-		VolumeMounts: volMounts,
-		Resources:    controller.ContainerResource(tc.Spec.PD.ResourceRequirements),
+		VolumeMounts:    volMounts,
+		Resources:       controller.ContainerResource(tc.Spec.PD.ResourceRequirements),
+		SecurityContext: basePDSpec.SecurityContext(),
 	}
 
 	if tc.Spec.PD.ReadinessProbe != nil {

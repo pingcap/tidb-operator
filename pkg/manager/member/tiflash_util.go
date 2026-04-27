@@ -49,8 +49,10 @@ func buildTiFlashSidecarContainers(tc *v1alpha1.TidbCluster) ([]corev1.Container
 	pullPolicy := tc.HelperImagePullPolicy()
 	var containers []corev1.Container
 	var resource corev1.ResourceRequirements
+	var securityContext *corev1.SecurityContext
 	if spec.LogTailer != nil {
 		resource = controller.ContainerResource(spec.LogTailer.ResourceRequirements)
+		securityContext = spec.LogTailer.SecurityContext
 	}
 	if config == nil {
 		config = v1alpha1.NewTiFlashConfig()
@@ -61,23 +63,25 @@ func buildTiFlashSidecarContainers(tc *v1alpha1.TidbCluster) ([]corev1.Container
 	if err != nil {
 		return nil, err
 	}
-	containers = append(containers, buildSidecarContainer("serverlog", path, image, pullPolicy, resource))
+	containers = append(containers, buildSidecarContainer("serverlog", path, image, pullPolicy, resource, securityContext))
 	path, err = config.Common.Get("logger.errorlog").AsString()
 	if err != nil {
 		return nil, err
 	}
-	containers = append(containers, buildSidecarContainer("errorlog", path, image, pullPolicy, resource))
+	containers = append(containers, buildSidecarContainer("errorlog", path, image, pullPolicy, resource, securityContext))
 	path, err = config.Common.Get("flash.flash_cluster.log").AsString()
 	if err != nil {
 		return nil, err
 	}
-	containers = append(containers, buildSidecarContainer("clusterlog", path, image, pullPolicy, resource))
+	containers = append(containers, buildSidecarContainer("clusterlog", path, image, pullPolicy, resource, securityContext))
 	return containers, nil
 }
 
 func buildSidecarContainer(name, path, image string,
 	pullPolicy corev1.PullPolicy,
-	resource corev1.ResourceRequirements) corev1.Container {
+	resource corev1.ResourceRequirements,
+	securityContext *corev1.SecurityContext,
+) corev1.Container {
 	splitPath := strings.Split(path, string(os.PathSeparator))
 	// The log path should be at least /dir/base.log
 	if len(splitPath) >= 3 {
@@ -88,6 +92,7 @@ func buildSidecarContainer(name, path, image string,
 			Image:           image,
 			ImagePullPolicy: pullPolicy,
 			Resources:       resource,
+			SecurityContext: securityContext,
 			VolumeMounts: []corev1.VolumeMount{
 				{Name: serverLogVolumeName, MountPath: serverLogMountDir},
 			},
@@ -103,6 +108,7 @@ func buildSidecarContainer(name, path, image string,
 		Image:           image,
 		ImagePullPolicy: pullPolicy,
 		Resources:       resource,
+		SecurityContext: securityContext,
 		Command: []string{
 			"sh",
 			"-c",

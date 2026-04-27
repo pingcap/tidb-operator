@@ -624,8 +624,9 @@ func (m *pdMSMemberManager) getNewPDMSStatefulSet(tc *v1alpha1.TidbCluster, cm *
 				Protocol:      corev1.ProtocolTCP,
 			},
 		},
-		VolumeMounts: volMounts,
-		Resources:    controller.ContainerResource(curSpec.ResourceRequirements),
+		VolumeMounts:    volMounts,
+		Resources:       controller.ContainerResource(curSpec.ResourceRequirements),
+		SecurityContext: basePDMSSpec.SecurityContext(),
 	}
 
 	headlessSvcName := controller.PDMSPeerMemberName(tcName, curService)
