@@ -27,14 +27,12 @@ import (
 
 func TestValidate(t *testing.T) {
 	cfgValid := &Config{}
-	err := cfgValid.Validate()
+	err := cfgValid.Validate(&v1alpha1.TiKVWorker{})
 	require.NoError(t, err)
 
 	cfgInvalid := &Config{
-		Addr: "0.0.0.0:19000",
-		Storage: Storage{
-			DataDir: "/var/lib/tikv-worker",
-		},
+		Addr:    "0.0.0.0:19000",
+		DataDir: "/var/lib/tikv-worker",
 		PD: PD{
 			Endpoints: []string{"pd-0", "pd-1", "pd-2"},
 		},
@@ -45,9 +43,23 @@ func TestValidate(t *testing.T) {
 		},
 	}
 
-	err = cfgInvalid.Validate()
+	err = cfgInvalid.Validate(&v1alpha1.TiKVWorker{
+		Spec: v1alpha1.TiKVWorkerSpec{
+			TiKVWorkerTemplateSpec: v1alpha1.TiKVWorkerTemplateSpec{
+				Volumes: []v1alpha1.Volume{
+					{
+						Name: "data",
+						Mounts: []v1alpha1.VolumeMount{
+							{Type: v1alpha1.VolumeMountTypeTiKVWorkerData},
+						},
+					},
+				},
+			},
+		},
+	})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "addr")
+	assert.Contains(t, err.Error(), "data-dir")
 	assert.Contains(t, err.Error(), "pd.endpoints")
 	assert.Contains(t, err.Error(), "security.ca-path")
 	assert.Contains(t, err.Error(), "security.cert-path")
@@ -99,7 +111,7 @@ level = "info"`),
 	err := cfg.Overlay(cluster, worker)
 	require.NoError(t, err)
 	assert.Equal(t, "[::]:19000", cfg.Addr)
-	assert.Equal(t, "/var/lib/tikv-worker", cfg.Storage.DataDir)
+	assert.Equal(t, "/var/lib/tikv-worker", cfg.DataDir)
 	assert.Equal(t, []string{"https://basic-pd.ns1:2379"}, cfg.PD.Endpoints)
 	assert.Equal(t, "/var/lib/tikv-worker-tls/ca.crt", cfg.Security.CAPath)
 	assert.Equal(t, "/var/lib/tikv-worker-tls/tls.crt", cfg.Security.CertPath)
@@ -118,9 +130,7 @@ func TestOverlayDataDirValidation(t *testing.T) {
 
 	t.Run("rejects managed data dir when data volume exists", func(t *testing.T) {
 		cfg := &Config{
-			Storage: Storage{
-				DataDir: "/custom-data-dir",
-			},
+			DataDir: "/custom-data-dir",
 		}
 		worker := &v1alpha1.TiKVWorker{
 			Spec: v1alpha1.TiKVWorkerSpec{
@@ -139,27 +149,23 @@ func TestOverlayDataDirValidation(t *testing.T) {
 
 		err := cfg.Overlay(cluster, worker)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "storage.data-dir")
+		assert.Contains(t, err.Error(), "data-dir")
 	})
 
 	t.Run("keeps user data dir when no data volume exists", func(t *testing.T) {
 		cfg := &Config{
-			Storage: Storage{
-				DataDir: "/custom-data-dir",
-			},
+			DataDir: "/custom-data-dir",
 		}
 		worker := &v1alpha1.TiKVWorker{}
 
 		err := cfg.Overlay(cluster, worker)
 		require.NoError(t, err)
-		assert.Equal(t, "/custom-data-dir", cfg.Storage.DataDir)
+		assert.Equal(t, "/custom-data-dir", cfg.DataDir)
 	})
 
 	t.Run("does not treat empty mount type as data volume", func(t *testing.T) {
 		cfg := &Config{
-			Storage: Storage{
-				DataDir: "/custom-data-dir",
-			},
+			DataDir: "/custom-data-dir",
 		}
 		worker := &v1alpha1.TiKVWorker{
 			Spec: v1alpha1.TiKVWorkerSpec{
@@ -178,6 +184,6 @@ func TestOverlayDataDirValidation(t *testing.T) {
 
 		err := cfg.Overlay(cluster, worker)
 		require.NoError(t, err)
-		assert.Equal(t, "/custom-data-dir", cfg.Storage.DataDir)
+		assert.Equal(t, "/custom-data-dir", cfg.DataDir)
 	})
 }
