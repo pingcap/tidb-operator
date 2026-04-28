@@ -29,14 +29,17 @@ import (
 )
 
 const (
-	healthPath = "api/debug/health"
-	configPath = "api/admin/config"
+	healthPath          = "api/debug/health"
+	healthUnhealthyPath = "api/debug/health/unhealthy"
+	configPath          = "api/admin/config"
 )
 
 // TiProxyClient is the interface that knows how to control tiproxy clusters.
 type TiProxyClient interface {
 	// IsHealthy checks if the TiProxy is healthy.
 	IsHealthy(ctx context.Context) (bool, error)
+	// MarkUnhealthy makes the TiProxy health endpoint report unhealthy.
+	MarkUnhealthy(ctx context.Context) error
 	// SetLabels sets the labels for TiProxy.
 	SetLabels(ctx context.Context, labels map[string]string) error
 }
@@ -76,9 +79,26 @@ func NewTiProxyClient(addr string, timeout time.Duration, tlsConfig *tls.Config)
 
 func (c *tiproxyClient) IsHealthy(ctx context.Context) (bool, error) {
 	apiURL := fmt.Sprintf("%s/%s", c.url, healthPath)
-	_, err := httputil.GetBodyOK(ctx, c.httpClient, apiURL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, http.NoBody)
+	if err != nil {
+		return false, err
+	}
+
+	//nolint:bodyclose,gosec // bodyclose: has been handled; gosec: URL is constructed from trusted internal config
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer httputil.DeferClose(resp.Body)
+
 	// NOTE: we don't check the response body here.
-	return err == nil, err
+	return resp.StatusCode < http.StatusBadRequest, nil
+}
+
+func (c *tiproxyClient) MarkUnhealthy(ctx context.Context) error {
+	apiURL := fmt.Sprintf("%s/%s", c.url, healthUnhealthyPath)
+	_, err := httputil.PostBodyOK(ctx, c.httpClient, apiURL, nil)
+	return err
 }
 
 func (c *tiproxyClient) SetLabels(ctx context.Context, labels map[string]string) error {

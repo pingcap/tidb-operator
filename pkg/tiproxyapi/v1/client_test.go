@@ -29,20 +29,42 @@ import (
 )
 
 func TestTiProxyClient_IsHealthy(t *testing.T) {
-	jsonStr := `{"config_checksum":3006078629}`
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/api/debug/health", r.URL.Path)
-		assert.Equal(t, http.MethodGet, r.Method)
-		_, err := w.Write([]byte(jsonStr))
-		assert.NoError(t, err)
-	}))
-	defer server.Close()
+	tests := []struct {
+		name           string
+		statusCode     int
+		expectedHealth bool
+	}{
+		{
+			name:           "healthy on 200",
+			statusCode:     http.StatusOK,
+			expectedHealth: true,
+		},
+		{
+			name:           "unhealthy on 502",
+			statusCode:     http.StatusBadGateway,
+			expectedHealth: false,
+		},
+	}
 
-	addr := stringutil.RemoveHTTPPrefix(server.URL)
-	client := NewTiProxyClient(addr, 5*time.Second, nil)
-	health, err := client.IsHealthy(context.Background())
-	require.NoError(t, err)
-	assert.True(t, health)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			jsonStr := `{"config_checksum":3006078629}`
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "/api/debug/health", r.URL.Path)
+				assert.Equal(t, http.MethodGet, r.Method)
+				w.WriteHeader(tt.statusCode)
+				_, err := w.Write([]byte(jsonStr))
+				assert.NoError(t, err)
+			}))
+			defer server.Close()
+
+			addr := stringutil.RemoveHTTPPrefix(server.URL)
+			client := NewTiProxyClient(addr, 5*time.Second, nil)
+			health, err := client.IsHealthy(context.Background())
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedHealth, health)
+		})
+	}
 }
 
 func TestTiProxyClient_SetLabels(t *testing.T) {
@@ -114,4 +136,18 @@ func TestTiProxyClient_SetLabels(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTiProxyClient_MarkUnhealthy(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/debug/health/unhealthy", r.URL.Path)
+		assert.Equal(t, http.MethodPost, r.Method)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	addr := stringutil.RemoveHTTPPrefix(server.URL)
+	client := NewTiProxyClient(addr, 5*time.Second, nil)
+	err := client.MarkUnhealthy(context.Background())
+	require.NoError(t, err)
 }
