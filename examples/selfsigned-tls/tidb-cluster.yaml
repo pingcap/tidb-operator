@@ -23,7 +23,10 @@ spec:
     replicas: 1
     requests:
       storage: "1Gi"
-    config: {}
+    config:
+      storage:
+        # In examples, we set this to avoid using too much storage.
+        reserve-space: "0MB"
   tidb:
     baseImage: pingcap/tidb
     maxFailoverCount: 0

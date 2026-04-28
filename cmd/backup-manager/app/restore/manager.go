@@ -30,6 +30,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 )
@@ -96,11 +97,21 @@ func (rm *Manager) ProcessRestore() error {
 		return fmt.Errorf("no br config in %s", rm)
 	}
 
+	crData, err := json.Marshal(restore)
+	if err != nil {
+		klog.Errorf("failed to marshal restore %v to json, err: %s", restore, err)
+	} else {
+		klog.Infof("start to process restore: %s", string(crData))
+	}
+
 	if restore.Spec.To == nil {
 		return rm.performRestore(ctx, restore.DeepCopy(), nil)
 	}
 
 	rm.setOptions(restore)
+
+	klog.Infof("start to connect to tidb server (%s:%d) as the .spec.to field is specified",
+		restore.Spec.To.Host, restore.Spec.To.Port)
 
 	var db *sql.DB
 	var dsn string
