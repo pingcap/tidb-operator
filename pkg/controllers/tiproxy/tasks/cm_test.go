@@ -48,6 +48,16 @@ func TestTaskConfigMap(t *testing.T) {
 			state: &ReconcileContext{
 				State: &state{
 					tiproxy: fake.FakeObj[v1alpha1.TiProxy]("aaa-xxx"),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("cluster"),
+				},
+			},
+			expectedStatus: task.SComplete,
+		},
+		{
+			desc: "no config with local pd",
+			state: &ReconcileContext{
+				State: &state{
+					tiproxy: fake.FakeObj[v1alpha1.TiProxy]("aaa-xxx"),
 					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
 						obj.Status.PD = fakePDAddr
 						return obj
@@ -87,6 +97,24 @@ func TestTaskConfigMap(t *testing.T) {
 				},
 			},
 			expectedStatus: task.SFail,
+		},
+		{
+			desc: "user managed backend clusters in config",
+			state: &ReconcileContext{
+				State: &state{
+					tiproxy: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiProxy) *v1alpha1.TiProxy {
+						obj.Spec.Config = `[[proxy.backend-clusters]]
+name = "cluster-a"
+pd-addrs = "127.0.0.1:2379"`
+						return obj
+					}),
+					cluster: fake.FakeObj("cluster", func(obj *v1alpha1.Cluster) *v1alpha1.Cluster {
+						obj.Status.PD = fakePDAddr
+						return obj
+					}),
+				},
+			},
+			expectedStatus: task.SComplete,
 		},
 		{
 			desc: "has config map",

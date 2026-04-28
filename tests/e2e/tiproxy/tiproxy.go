@@ -18,13 +18,17 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/BurntSushi/toml"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	tiproxycfg "github.com/pingcap/tidb-operator/v2/pkg/configs/tiproxy"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/tests/e2e/data"
@@ -215,6 +219,58 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 
 			f.Must(waiter.WaitForPodsRecreated(ctx, f.Client, runtime.FromTiProxyGroup(proxyg), *changeTime, waiter.LongTaskTimeout))
 			f.WaitForTiProxyGroupReady(ctx, proxyg)
+		})
+
+		ginkgo.It("support tiproxy without any pd configured", label.P1, label.FeatureHotReload, func(ctx context.Context) {
+			proxyg := f.MustCreateTiProxy(
+				ctx,
+				data.WithReplicas[scope.TiProxyGroup](1),
+				data.WithHotReloadPolicyForTiProxy(),
+			)
+
+			gomega.Eventually(func() error {
+				proxies := &v1alpha1.TiProxyList{}
+				if err := f.Client.List(ctx, proxies, client.InNamespace(proxyg.Namespace), client.MatchingLabels{
+					v1alpha1.LabelKeyCluster:   proxyg.Spec.Cluster.Name,
+					v1alpha1.LabelKeyGroup:     proxyg.Name,
+					v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiProxy,
+				}); err != nil {
+					return err
+				}
+				if len(proxies.Items) != 1 {
+					return fmt.Errorf("expected 1 TiProxy, got %d", len(proxies.Items))
+				}
+				cond := meta.FindStatusCondition(proxies.Items[0].Status.Conditions, v1alpha1.CondSynced)
+				if cond == nil || cond.Status != metav1.ConditionTrue {
+					return fmt.Errorf("TiProxy is not synced: %#v", cond)
+				}
+				return nil
+			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
+
+			gomega.Eventually(func() error {
+				cms := &corev1.ConfigMapList{}
+				if err := f.Client.List(ctx, cms, client.InNamespace(proxyg.Namespace), client.MatchingLabels{
+					v1alpha1.LabelKeyCluster:   proxyg.Spec.Cluster.Name,
+					v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentTiProxy,
+				}); err != nil {
+					return err
+				}
+				if len(cms.Items) != 1 {
+					return fmt.Errorf("expected 1 TiProxy ConfigMap, got %d", len(cms.Items))
+				}
+
+				var cfg tiproxycfg.Config
+				if err := toml.Unmarshal([]byte(cms.Items[0].Data[v1alpha1.FileNameConfig]), &cfg); err != nil {
+					return err
+				}
+				if cfg.Proxy.PDAddress != "" {
+					return fmt.Errorf("expected empty proxy.pd-addrs, got %q", cfg.Proxy.PDAddress)
+				}
+				if len(cfg.Proxy.BackendClusters) != 0 {
+					return fmt.Errorf("expected no backend clusters, got %#v", cfg.Proxy.BackendClusters)
+				}
+				return nil
+			}).WithTimeout(waiter.LongTaskTimeout).WithPolling(waiter.Poll).Should(gomega.Succeed())
 		})
 	})
 
