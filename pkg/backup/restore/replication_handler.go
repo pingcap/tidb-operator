@@ -49,6 +49,8 @@ type replicationHandler struct {
 	statusUpdater controller.RestoreConditionUpdaterInterface
 }
 
+var _ replicationHandlerInterface = (*replicationHandler)(nil)
+
 func newReplicationHandler(
 	deps *controller.Dependencies,
 	statusUpdater controller.RestoreConditionUpdaterInterface,
