@@ -52,7 +52,7 @@ require (
 	github.com/minio/minio-go/v6 v6.0.57
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/onsi/ginkgo/v2 v2.28.1
+	github.com/onsi/ginkgo/v2 v2.28.2
 	github.com/onsi/gomega v1.39.1
 	github.com/pelletier/go-toml/v2 v2.2.2
 	github.com/pingcap/errors v0.11.5-0.20211224045212-9687c2b0f87c
