@@ -15,6 +15,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 
 	// registry mysql drive
 	_ "github.com/go-sql-driver/mysql"
@@ -29,6 +30,22 @@ import (
 	"k8s.io/klog/v2"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
+
+// validateReplicationPhase ensures the CLI flag value is in {0, 1, 2}.
+// 0 is the sentinel for "flag not passed / not a replication restore";
+// 1 and 2 are the two replication phases. Anything else is operator
+// or user error and is rejected before any informer / BR work begins.
+func validateReplicationPhase(p int) error {
+	switch p {
+	case 0, 1, 2:
+		return nil
+	default:
+		return fmt.Errorf(
+			"invalid --replicationPhase=%d (must be 1 or 2; omit for standard restore)",
+			p,
+		)
+	}
+}
 
 // NewRestoreCommand implements the restore command
 func NewRestoreCommand() *cobra.Command {
@@ -55,10 +72,15 @@ func NewRestoreCommand() *cobra.Command {
 	cmd.Flags().StringVar(&ro.TargetAZ, "target-az", "", "For volume-snapshot restore, which az the volume snapshots restore to")
 	cmd.Flags().BoolVar(&ro.UseFSR, "use-fsr", false, "EBS snapshot restore use FSR for TiKV data volumes or not")
 	cmd.Flags().BoolVar(&ro.Abort, "abort", false, "Whether to abort/cleanup a failed restore operation")
+	cmd.Flags().IntVar(&ro.ReplicationPhase, "replicationPhase", 0,
+		"Replication restore phase: 1 = snapshot, 2 = log. Omit (or 0) for standard PiTR / snapshot.")
 	return cmd
 }
 
 func runRestore(restoreOpts restore.Options, kubecfg string) error {
+	if err := validateReplicationPhase(restoreOpts.ReplicationPhase); err != nil {
+		return err
+	}
 	kubeCli, cli, err := util.NewKubeAndCRCli(kubecfg)
 	if err != nil {
 		return err
