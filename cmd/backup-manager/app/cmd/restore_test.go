@@ -15,6 +15,8 @@ package cmd
 
 import (
 	"testing"
+
+	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/restore"
 )
 
 // TestNewRestoreCommand_BindsReplicationPhase verifies that the
@@ -53,6 +55,33 @@ func TestValidateReplicationPhase(t *testing.T) {
 		err := validateReplicationPhase(c.in)
 		if (err != nil) != c.want {
 			t.Fatalf("phase=%d: expected error=%v, got %v", c.in, c.want, err)
+		}
+	}
+}
+
+// TestSelectRestoreStatusUpdater_Phase1ReturnsNoOp verifies that phase 1
+// swaps the real updater for the no-op wrapper (Option B activation):
+// the returned interface must NOT be the sentinel "real" we passed in,
+// and calling Update on it must be a no-op (return nil with nil args).
+func TestSelectRestoreStatusUpdater_Phase1ReturnsNoOp(t *testing.T) {
+	got := selectRestoreStatusUpdater(restore.Options{ReplicationPhase: 1}, nil)
+	if got == nil {
+		t.Fatal("phase=1: expected non-nil no-op wrapper, got nil")
+	}
+	if err := got.Update(nil, nil, nil); err != nil {
+		t.Fatalf("phase=1: no-op wrapper.Update should return nil, got %v", err)
+	}
+}
+
+// TestSelectRestoreStatusUpdater_NonPhase1ReturnsReal verifies that
+// phase 0 (no replication) and phase 2 (log restore) both pass the
+// real updater through unchanged. We use nil as the sentinel "real"
+// to make pointer-equality assertion trivial.
+func TestSelectRestoreStatusUpdater_NonPhase1ReturnsReal(t *testing.T) {
+	for _, phase := range []int{0, 2} {
+		got := selectRestoreStatusUpdater(restore.Options{ReplicationPhase: phase}, nil)
+		if got != nil {
+			t.Fatalf("phase=%d: expected to pass through nil real updater, got non-nil %T", phase, got)
 		}
 	}
 }

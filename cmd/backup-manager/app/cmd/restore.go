@@ -47,6 +47,27 @@ func validateReplicationPhase(p int) error {
 	}
 }
 
+// selectRestoreStatusUpdater returns the no-op wrapper when this
+// backup-manager invocation is the phase-1 (snapshot-restore) leg of
+// a replication restore, otherwise it returns the real updater
+// unchanged. Phase-1's wrapper is the activation point for spec §3
+// (Option B): controller becomes the sole writer of status.Phase and
+// condition markers during phase-1; phase-2 restores standard
+// backup-manager status writes.
+//
+// Symmetric to compact.go's ShardedCompactStatusUpdater wrap, except
+// the discriminator here is the CLI flag (not CR.Spec) — the same
+// Restore CR runs through backup-manager twice with different phases.
+func selectRestoreStatusUpdater(
+	opts restore.Options,
+	real controller.RestoreConditionUpdaterInterface,
+) controller.RestoreConditionUpdaterInterface {
+	if opts.ReplicationPhase == 1 {
+		return controller.NewReplicationRestoreStatusUpdater()
+	}
+	return real
+}
+
 // NewRestoreCommand implements the restore command
 func NewRestoreCommand() *cobra.Command {
 	ro := restore.Options{}
@@ -91,7 +112,8 @@ func runRestore(restoreOpts restore.Options, kubecfg string) error {
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, constants.ResyncDuration, options...)
 	recorder := util.NewEventRecorder(kubeCli, "restore")
 	restoreInformer := informerFactory.Pingcap().V1alpha1().Restores()
-	statusUpdater := controller.NewRealRestoreConditionUpdater(cli, restoreInformer.Lister(), recorder)
+	realStatusUpdater := controller.NewRealRestoreConditionUpdater(cli, restoreInformer.Lister(), recorder)
+	statusUpdater := selectRestoreStatusUpdater(restoreOpts, realStatusUpdater)
 	restoreControl := controller.NewRealRestoreControl(cli, restoreInformer.Lister(), recorder)
 
 	ctx, cancel := context.WithCancel(context.Background())
