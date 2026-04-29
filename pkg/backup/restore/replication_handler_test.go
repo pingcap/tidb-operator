@@ -114,6 +114,67 @@ func TestCompareStorageLocation_UnsupportedType_HasClearMessage(t *testing.T) {
 		"error must explicitly state unsupported, not the misleading 'type differs'")
 }
 
+// Two CRs with identical bucket/prefix/region but different Provider point at
+// different backends (e.g. ceph vs aws). Must be caught.
+func TestCompareStorageLocation_S3_DifferentProvider_Mismatch(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	common := v1alpha1.S3StorageProvider{Bucket: "b", Prefix: "/p", Region: "us-west-2"}
+	a := common
+	a.Provider = "aws"
+	b := common
+	b.Provider = "ceph"
+	err := compareStorageLocation(
+		v1alpha1.StorageProvider{S3: &a},
+		v1alpha1.StorageProvider{S3: &b},
+	)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("s3.provider"))
+}
+
+// Same shape: identical bucket/prefix/region but different Endpoint
+// (e.g. an S3-compatible cluster behind a custom URL vs default AWS).
+func TestCompareStorageLocation_S3_DifferentEndpoint_Mismatch(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	common := v1alpha1.S3StorageProvider{Bucket: "b", Prefix: "/p", Region: "us-west-2"}
+	a := common
+	a.Endpoint = "https://s3.amazonaws.com"
+	b := common
+	b.Endpoint = "https://minio.internal.example.com"
+	err := compareStorageLocation(
+		v1alpha1.StorageProvider{S3: &a},
+		v1alpha1.StorageProvider{S3: &b},
+	)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("s3.endpoint"))
+}
+
+// Upload-only attributes and credentials must still be ignored — the check
+// is location-equality, not full struct equality.
+func TestCompareStorageLocation_S3_UploadOnlyAndCredentials_Ignored(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	a := v1alpha1.S3StorageProvider{
+		Provider: "aws", Endpoint: "https://s3.amazonaws.com",
+		Bucket: "b", Prefix: "/p", Region: "us-west-2",
+		StorageClass: "STANDARD", Acl: "private", SSE: "AES256",
+		SecretName: "secret-a",
+	}
+	b := v1alpha1.S3StorageProvider{
+		Provider: "aws", Endpoint: "https://s3.amazonaws.com",
+		Bucket: "b", Prefix: "/p", Region: "us-west-2",
+		StorageClass: "GLACIER", Acl: "public-read", SSE: "aws:kms",
+		SecretName: "secret-b",
+	}
+	err := compareStorageLocation(
+		v1alpha1.StorageProvider{S3: &a},
+		v1alpha1.StorageProvider{S3: &b},
+	)
+	g.Expect(err).NotTo(HaveOccurred(),
+		"upload-only attributes (StorageClass/Acl/SSE) and SecretName must be ignored")
+}
+
 // =============================================================================
 // Cascade test fixtures
 // =============================================================================

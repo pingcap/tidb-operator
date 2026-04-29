@@ -572,9 +572,12 @@ func checkCrossCRConsistency(restore *v1alpha1.Restore, cb *v1alpha1.CompactBack
 	return compareStorageLocation(restore.Spec.StorageProvider, cb.Spec.StorageProvider)
 }
 
-// compareStorageLocation compares only location-defining fields (bucket/prefix/
-// region for S3; bucket/prefix for GCS; container/prefix for AzBlob). Credentials
-// (SecretName, etc.) are intentionally ignored.
+// compareStorageLocation compares all fields that determine where the bytes
+// physically live. For S3-compatible storage, that includes Provider and
+// Endpoint — two CRs with the same bucket/prefix/region but different
+// Provider (e.g. aws vs ceph) or Endpoint actually point at different
+// backends. Credentials (SecretName, SasToken) and upload-only attributes
+// (StorageClass, Acl, AccessTier, SSE) are intentionally ignored.
 func compareStorageLocation(a, b v1alpha1.StorageProvider) error {
 	// Both sides empty: pragmatically a no-op (validating webhook should
 	// reject this upstream), but be explicit rather than falling through
@@ -585,30 +588,54 @@ func compareStorageLocation(a, b v1alpha1.StorageProvider) error {
 	}
 	switch {
 	case a.S3 != nil && b.S3 != nil:
+		if a.S3.Provider != b.S3.Provider {
+			return fmt.Errorf("s3.provider mismatch: %q vs %q", a.S3.Provider, b.S3.Provider)
+		}
+		if a.S3.Endpoint != b.S3.Endpoint {
+			return fmt.Errorf("s3.endpoint mismatch: %q vs %q", a.S3.Endpoint, b.S3.Endpoint)
+		}
+		if a.S3.Region != b.S3.Region {
+			return fmt.Errorf("s3.region mismatch: %q vs %q", a.S3.Region, b.S3.Region)
+		}
 		if a.S3.Bucket != b.S3.Bucket {
 			return fmt.Errorf("s3.bucket mismatch: %q vs %q", a.S3.Bucket, b.S3.Bucket)
 		}
 		if a.S3.Prefix != b.S3.Prefix {
 			return fmt.Errorf("s3.prefix mismatch: %q vs %q", a.S3.Prefix, b.S3.Prefix)
 		}
-		if a.S3.Region != b.S3.Region {
-			return fmt.Errorf("s3.region mismatch: %q vs %q", a.S3.Region, b.S3.Region)
+		if a.S3.Path != b.S3.Path {
+			return fmt.Errorf("s3.path mismatch: %q vs %q", a.S3.Path, b.S3.Path)
 		}
 		return nil
 	case a.Gcs != nil && b.Gcs != nil:
+		if a.Gcs.ProjectId != b.Gcs.ProjectId {
+			return fmt.Errorf("gcs.projectId mismatch: %q vs %q", a.Gcs.ProjectId, b.Gcs.ProjectId)
+		}
+		if a.Gcs.Location != b.Gcs.Location {
+			return fmt.Errorf("gcs.location mismatch: %q vs %q", a.Gcs.Location, b.Gcs.Location)
+		}
 		if a.Gcs.Bucket != b.Gcs.Bucket {
 			return fmt.Errorf("gcs.bucket mismatch: %q vs %q", a.Gcs.Bucket, b.Gcs.Bucket)
 		}
 		if a.Gcs.Prefix != b.Gcs.Prefix {
 			return fmt.Errorf("gcs.prefix mismatch: %q vs %q", a.Gcs.Prefix, b.Gcs.Prefix)
 		}
+		if a.Gcs.Path != b.Gcs.Path {
+			return fmt.Errorf("gcs.path mismatch: %q vs %q", a.Gcs.Path, b.Gcs.Path)
+		}
 		return nil
 	case a.Azblob != nil && b.Azblob != nil:
+		if a.Azblob.StorageAccount != b.Azblob.StorageAccount {
+			return fmt.Errorf("azblob.storageAccount mismatch: %q vs %q", a.Azblob.StorageAccount, b.Azblob.StorageAccount)
+		}
 		if a.Azblob.Container != b.Azblob.Container {
 			return fmt.Errorf("azblob.container mismatch: %q vs %q", a.Azblob.Container, b.Azblob.Container)
 		}
 		if a.Azblob.Prefix != b.Azblob.Prefix {
 			return fmt.Errorf("azblob.prefix mismatch: %q vs %q", a.Azblob.Prefix, b.Azblob.Prefix)
+		}
+		if a.Azblob.Path != b.Azblob.Path {
+			return fmt.Errorf("azblob.path mismatch: %q vs %q", a.Azblob.Path, b.Azblob.Path)
 		}
 		return nil
 	default:
