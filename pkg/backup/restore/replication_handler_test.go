@@ -181,10 +181,14 @@ func TestCompareStorageLocation_S3_UploadOnlyAndCredentials_Ignored(t *testing.T
 
 func newHandlerForTest(t *testing.T) (*replicationHandler, *testutils.Helper) {
 	h := testutils.NewHelper(t)
+	defaultBuilder := func(r *v1alpha1.Restore, _ bool) (*batchv1.Job, string, error) {
+		return fakeBuiltJob(r), "", nil
+	}
 	handler := newReplicationHandler(
 		h.Deps,
 		controller.NewRealRestoreConditionUpdater(h.Deps.Clientset, h.Deps.RestoreLister, h.Deps.Recorder),
 		h.Deps.Recorder,
+		defaultBuilder,
 	)
 	return handler, h
 }
@@ -899,6 +903,117 @@ func TestSync_UnknownReplicationStep_ReturnsNilSilently(t *testing.T) {
 	g.Expect(handler.Sync(r)).NotTo(HaveOccurred(),
 		"unknown step must not error; warning is logged via klog")
 	g.Expect(listJobs(g, h, "ns1")).To(BeEmpty())
+}
+
+// =============================================================================
+// applyReplicationPhase — pure post-processor on a builder-produced Job
+// =============================================================================
+
+// fakeBuiltJob is what tests inject as the output of the production
+// jobBuilderFunc. It mirrors the shape makeRestoreJobWithMode would
+// produce for a Restore: a single main container, no replication
+// labels (those are added by applyReplicationPhase), and a baseline
+// args slice the post-processor can append to.
+func fakeBuiltJob(restore *v1alpha1.Restore) *batchv1.Job {
+	return &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      restore.Name + "-restore",
+			Namespace: restore.Namespace,
+			Labels:    map[string]string{"existing": "preserved"},
+		},
+		Spec: batchv1.JobSpec{
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{"pod-existing": "preserved"},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: "tidb-backup-manager", Args: []string{"restore", "--mode=pitr"}},
+					},
+				},
+			},
+		},
+	}
+}
+
+func TestApplyReplicationPhase_RewritesJobName(t *testing.T) {
+	g := NewGomegaWithT(t)
+	r := newReplicationRestoreFixture("dr-restore", "ns1", "cb1", nil)
+
+	out := applyReplicationPhase(fakeBuiltJob(r), r, label.ReplicationStepSnapshotRestoreVal)
+	g.Expect(out.Name).To(Equal("dr-restore-snapshot-restore"))
+
+	out = applyReplicationPhase(fakeBuiltJob(r), r, label.ReplicationStepLogRestoreVal)
+	g.Expect(out.Name).To(Equal("dr-restore-log-restore"))
+}
+
+func TestApplyReplicationPhase_AddsReplicationLabelsToJobAndPod(t *testing.T) {
+	g := NewGomegaWithT(t)
+	r := newReplicationRestoreFixture("r1", "ns1", "cb1", nil)
+
+	out := applyReplicationPhase(fakeBuiltJob(r), r, label.ReplicationStepSnapshotRestoreVal)
+
+	g.Expect(out.Labels).To(HaveKeyWithValue(label.ReplicationStepLabelKey,
+		label.ReplicationStepSnapshotRestoreVal))
+	g.Expect(out.Labels).To(HaveKeyWithValue(label.RestoreUIDLabelKey,
+		testReplicationRestoreUID))
+	g.Expect(out.Spec.Template.Labels).To(HaveKeyWithValue(label.ReplicationStepLabelKey,
+		label.ReplicationStepSnapshotRestoreVal))
+	g.Expect(out.Spec.Template.Labels).To(HaveKeyWithValue(label.RestoreUIDLabelKey,
+		testReplicationRestoreUID))
+
+	// Existing labels from the builder must be preserved, not clobbered.
+	g.Expect(out.Labels).To(HaveKeyWithValue("existing", "preserved"))
+	g.Expect(out.Spec.Template.Labels).To(HaveKeyWithValue("pod-existing", "preserved"))
+}
+
+func TestApplyReplicationPhase_AppendsReplicationPhaseArg(t *testing.T) {
+	g := NewGomegaWithT(t)
+	r := newReplicationRestoreFixture("r1", "ns1", "cb1", nil)
+
+	out := applyReplicationPhase(fakeBuiltJob(r), r, label.ReplicationStepSnapshotRestoreVal)
+	g.Expect(out.Spec.Template.Spec.Containers[0].Args).
+		To(Equal([]string{"restore", "--mode=pitr", "--replicationPhase=1"}))
+
+	out = applyReplicationPhase(fakeBuiltJob(r), r, label.ReplicationStepLogRestoreVal)
+	g.Expect(out.Spec.Template.Spec.Containers[0].Args).
+		To(Equal([]string{"restore", "--mode=pitr", "--replicationPhase=2"}))
+}
+
+// TestMakeReplicationBRJob_DelegatesToBuilder verifies that the handler's
+// makeReplicationBRJob calls the injected builder (with isPruneJob=false)
+// and post-processes the returned Job via applyReplicationPhase. The
+// handler must not construct any Job state on its own.
+func TestMakeReplicationBRJob_DelegatesToBuilder(t *testing.T) {
+	g := NewGomegaWithT(t)
+	h := testutils.NewHelper(t)
+	defer h.Close()
+
+	var builderCalls int
+	var lastIsPrune bool
+	fake := func(restore *v1alpha1.Restore, isPruneJob bool) (*batchv1.Job, string, error) {
+		builderCalls++
+		lastIsPrune = isPruneJob
+		return fakeBuiltJob(restore), "", nil
+	}
+
+	handler := newReplicationHandler(
+		h.Deps,
+		controller.NewRealRestoreConditionUpdater(h.Deps.Clientset, h.Deps.RestoreLister, h.Deps.Recorder),
+		h.Deps.Recorder,
+		fake,
+	)
+
+	r := newReplicationRestoreFixture("r1", "ns1", "cb1", nil)
+	job, err := handler.makeReplicationBRJob(r, label.ReplicationStepLogRestoreVal)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(builderCalls).To(Equal(1), "builder must be called exactly once")
+	g.Expect(lastIsPrune).To(BeFalse(), "replication never builds prune jobs")
+
+	// Post-processing happened on top of the fake builder's output.
+	g.Expect(job.Name).To(Equal("r1-log-restore"))
+	g.Expect(job.Spec.Template.Spec.Containers[0].Args).
+		To(ContainElement("--replicationPhase=2"))
 }
 
 // =============================================================================
