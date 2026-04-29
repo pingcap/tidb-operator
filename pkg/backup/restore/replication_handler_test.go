@@ -818,6 +818,25 @@ func TestSync_B12_Phase2JobFailed_FailsWithReasonAndEvent(t *testing.T) {
 	expectEvent(g, h, "LogRestoreFailed")
 }
 
+func TestSync_B12_Phase2JobFailedWhileBackupManagerPhaseRunning_FailsWithReason(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "log-restore")
+	r.Status.Phase = v1alpha1.RestoreRunning
+	h.CreateRestore(r)
+	seedJob(g, h, newReplicationJob("r1", "ns1", label.ReplicationStepLogRestoreVal, batchv1.JobFailed))
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+
+	updated := getRestore(g, h, "ns1", "r1")
+	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreFailed))
+	_, c := v1alpha1.GetRestoreCondition(&updated.Status, v1alpha1.RestoreFailed)
+	g.Expect(c).NotTo(BeNil())
+	g.Expect(c.Reason).To(Equal("LogRestoreFailed"))
+}
+
 func TestSync_B12_Phase2JobRunning_NoOp(t *testing.T) {
 	g := NewGomegaWithT(t)
 	handler, h := newHandlerForTest(t)
