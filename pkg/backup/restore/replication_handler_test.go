@@ -345,10 +345,10 @@ func expectNoEvent(g *WithT, h *testutils.Helper) {
 }
 
 // =============================================================================
-// B1: terminal short-circuit
+// terminal short-circuit
 // =============================================================================
 
-func TestSync_B1_Terminal_NoOp(t *testing.T) {
+func TestSync_TerminalRestore_NoOp(t *testing.T) {
 	g := NewGomegaWithT(t)
 	h := testutils.NewHelper(t)
 	defer h.Close()
@@ -469,10 +469,10 @@ func TestSync_TopBlock_CBBecomesTerminalDuringSnapshot_WritesCompactSettled(t *t
 }
 
 // =============================================================================
-// B3: enter SnapshotRestore phase (independent of cb under the new design)
+// enter SnapshotRestore phase (independent of cb under the new design)
 // =============================================================================
 
-func TestSync_B3_NotFoundCompactBackup_WithinTimeout_EmitsWarningAndProceedsToSnapshot(t *testing.T) {
+func TestSync_NotFoundCompactBackup_WithinTimeout_EmitsWarningAndProceedsToSnapshot(t *testing.T) {
 	g := NewGomegaWithT(t)
 	handler, h := newHandlerForTest(t)
 	defer h.Close()
@@ -493,7 +493,7 @@ func TestSync_B3_NotFoundCompactBackup_WithinTimeout_EmitsWarningAndProceedsToSn
 	expectEvent(g, h, "CompactBackupNotFound")
 }
 
-func TestSync_B3_NotFoundCompactBackup_NoTimeoutSet_StillProceedsToSnapshot(t *testing.T) {
+func TestSync_NotFoundCompactBackup_NoTimeoutSet_StillProceedsToSnapshot(t *testing.T) {
 	g := NewGomegaWithT(t)
 	handler, h := newHandlerForTest(t)
 	defer h.Close()
@@ -508,7 +508,7 @@ func TestSync_B3_NotFoundCompactBackup_NoTimeoutSet_StillProceedsToSnapshot(t *t
 	expectEvent(g, h, "CompactBackupNotFound")
 }
 
-func TestSync_B3_NegativeWaitTimeout_TreatedAsInfinite(t *testing.T) {
+func TestSync_NegativeWaitTimeout_TreatedAsInfinite(t *testing.T) {
 	g := NewGomegaWithT(t)
 	handler, h := newHandlerForTest(t)
 	defer h.Close()
@@ -526,7 +526,7 @@ func TestSync_B3_NegativeWaitTimeout_TreatedAsInfinite(t *testing.T) {
 		"negative WaitTimeout must NOT trigger immediate timeout-settle")
 }
 
-func TestSync_B3_CBFoundAndNotTerminal_WritesPhaseSnapshotRestore(t *testing.T) {
+func TestSync_CBFoundAndNotTerminal_WritesPhaseSnapshotRestore(t *testing.T) {
 	g := NewGomegaWithT(t)
 	handler, h := newHandlerForTest(t)
 	defer h.Close()
@@ -556,10 +556,10 @@ func TestSync_B3_CBFoundAndNotTerminal_WritesPhaseSnapshotRestore(t *testing.T) 
 }
 
 // =============================================================================
-// B5: create phase-1 Job
+// create phase-1 Job
 // =============================================================================
 
-func TestSync_B5_NoPhase1Job_CreatesJobAndEmitsNormalEvent(t *testing.T) {
+func TestSync_NoPhase1Job_CreatesJobAndEmitsNormalEvent(t *testing.T) {
 	g := NewGomegaWithT(t)
 	handler, h := newHandlerForTest(t)
 	defer h.Close()
@@ -576,7 +576,7 @@ func TestSync_B5_NoPhase1Job_CreatesJobAndEmitsNormalEvent(t *testing.T) {
 	expectEvent(g, h, "SnapshotRestoreStarted")
 }
 
-func TestSync_B5_JobCreationIdempotent_DoubleSyncCreatesOnlyOne(t *testing.T) {
+func TestSync_Phase1JobCreationIdempotent_DoubleSyncCreatesOnlyOne(t *testing.T) {
 	g := NewGomegaWithT(t)
 	handler, h := newHandlerForTest(t)
 	defer h.Close()
@@ -599,7 +599,7 @@ func TestSync_B5_JobCreationIdempotent_DoubleSyncCreatesOnlyOne(t *testing.T) {
 
 // Crash-recovery: ReplicationStep="snapshot-restore" was persisted but the
 // previous Sync's ensureJobForStep didn't land. B5 must rebuild.
-func TestSync_B5_CrashRecovery_StepWrittenButJobMissing_Rebuilds(t *testing.T) {
+func TestSync_Phase1CrashRecovery_StepWrittenButJobMissing_Rebuilds(t *testing.T) {
 	g := NewGomegaWithT(t)
 	handler, h := newHandlerForTest(t)
 	defer h.Close()
@@ -615,10 +615,10 @@ func TestSync_B5_CrashRecovery_StepWrittenButJobMissing_Rebuilds(t *testing.T) {
 }
 
 // =============================================================================
-// B6: phase-1 Job Failed → terminal failure with Reason + Event
+// phase-1 Job Failed → terminal failure with Reason + Event
 // =============================================================================
 
-func TestSync_B6_Phase1JobFailed_FailsWithReasonAndEvent(t *testing.T) {
+func TestSync_Phase1JobFailed_FailsWithReasonAndEvent(t *testing.T) {
 	g := NewGomegaWithT(t)
 	handler, h := newHandlerForTest(t)
 	defer h.Close()
@@ -638,10 +638,10 @@ func TestSync_B6_Phase1JobFailed_FailsWithReasonAndEvent(t *testing.T) {
 }
 
 // =============================================================================
-// B7: write SnapshotRestored marker (Phase preserved)
+// write SnapshotRestored marker (Phase preserved)
 // =============================================================================
 
-func TestSync_B7_Phase1JobComplete_WritesSnapshotRestoredMarker(t *testing.T) {
+func TestSync_Phase1JobComplete_WritesSnapshotRestoredMarker(t *testing.T) {
 	g := NewGomegaWithT(t)
 	handler, h := newHandlerForTest(t)
 	defer h.Close()
@@ -709,7 +709,7 @@ func TestSync_OnlyCompactSettledTrue_GateWaits(t *testing.T) {
 	g.Expect(listJobs(g, h, "ns1")).To(HaveLen(1), "phase-2 Job must not be created")
 }
 
-func TestSync_B9_BothMarkersTrue_TransitionsPhaseToLogRestore(t *testing.T) {
+func TestSync_BothMarkersTrue_TransitionsPhaseToLogRestore(t *testing.T) {
 	g := NewGomegaWithT(t)
 	handler, h := newHandlerForTest(t)
 	defer h.Close()
@@ -804,10 +804,10 @@ func TestSync_CompactSettledFailure_DoesNotBlockGate(t *testing.T) {
 }
 
 // =============================================================================
-// B11: phase-2 Job creation
+// phase-2 Job creation
 // =============================================================================
 
-func TestSync_B11_NoPhase2Job_CreatesJobAndEmitsNormalEvent(t *testing.T) {
+func TestSync_NoPhase2Job_CreatesJobAndEmitsNormalEvent(t *testing.T) {
 	g := NewGomegaWithT(t)
 	handler, h := newHandlerForTest(t)
 	defer h.Close()
@@ -825,10 +825,10 @@ func TestSync_B11_NoPhase2Job_CreatesJobAndEmitsNormalEvent(t *testing.T) {
 }
 
 // =============================================================================
-// B12: phase-2 Job Failed + default no-op
+// phase-2 Job Failed + default no-op
 // =============================================================================
 
-func TestSync_B12_Phase2JobFailed_FailsWithReasonAndEvent(t *testing.T) {
+func TestSync_Phase2JobFailed_FailsWithReasonAndEvent(t *testing.T) {
 	g := NewGomegaWithT(t)
 	handler, h := newHandlerForTest(t)
 	defer h.Close()
@@ -847,7 +847,7 @@ func TestSync_B12_Phase2JobFailed_FailsWithReasonAndEvent(t *testing.T) {
 	expectEvent(g, h, "LogRestoreFailed")
 }
 
-func TestSync_B12_Phase2JobFailedWhileBackupManagerPhaseRunning_FailsWithReason(t *testing.T) {
+func TestSync_Phase2JobFailedWhileBackupManagerPhaseRunning_FailsWithReason(t *testing.T) {
 	g := NewGomegaWithT(t)
 	handler, h := newHandlerForTest(t)
 	defer h.Close()
@@ -866,7 +866,7 @@ func TestSync_B12_Phase2JobFailedWhileBackupManagerPhaseRunning_FailsWithReason(
 	g.Expect(c.Reason).To(Equal("LogRestoreFailed"))
 }
 
-func TestSync_B12_Phase2JobRunning_NoOp(t *testing.T) {
+func TestSync_Phase2JobRunning_NoOp(t *testing.T) {
 	g := NewGomegaWithT(t)
 	handler, h := newHandlerForTest(t)
 	defer h.Close()

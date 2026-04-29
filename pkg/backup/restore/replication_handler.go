@@ -263,6 +263,13 @@ func (h *replicationHandler) handleUnexpectedReplicationState(restore *v1alpha1.
 // the status write — so that even if the status update itself fails, operators
 // get a kubectl-describe trail of why the restore was failed. K8s recorder
 // dedups identical events within a window, so retry storms don't flood.
+//
+// ReplicationStep is intentionally preserved on terminal failure: the third
+// arg to statusUpdater.Update is nil, so no fields outside Conditions are
+// touched. This lets `kubectl get restore -o yaml` distinguish at a glance
+// whether the failure happened during phase-1 (snapshot-restore) or phase-2
+// (log-restore), which matters for triage since the two phases hit different
+// BR codepaths and storage layouts.
 func (h *replicationHandler) failRestore(restore *v1alpha1.Restore, reason, message string) error {
 	h.recorder.Event(restore, corev1.EventTypeWarning, reason, message)
 	return h.statusUpdater.Update(
@@ -406,12 +413,22 @@ func buildPiTRBaseArgs(restore *v1alpha1.Restore) []string {
 // failure is observable via the CompactSettled marker's Reason field
 // ("ShardsPartialFailed") and via CompactBackup.Status.{CompletedIndexes,
 // FailedIndexes} — but does NOT block the Restore from progressing.
+//
+// States not in the recognized non-terminal set log a warning so a future
+// kernel adding a new CompactBackup state surfaces here instead of stalling
+// the gate forever in silence. Unknown states are treated as non-terminal
+// (fail-safe: keep waiting rather than prematurely settling on bad data).
 func compactIsTerminal(cb *v1alpha1.CompactBackup) bool {
 	switch v1alpha1.BackupConditionType(cb.Status.State) {
 	case v1alpha1.BackupComplete, v1alpha1.BackupFailed:
 		return true
+	case "", v1alpha1.BackupScheduled, v1alpha1.BackupPrepare, v1alpha1.BackupRunning:
+		return false
+	default:
+		klog.Warningf("compactIsTerminal: unrecognized CompactBackup state %q for %s/%s; treating as non-terminal",
+			cb.Status.State, cb.Namespace, cb.Name)
+		return false
 	}
-	return false
 }
 
 func compactTerminalReason(cb *v1alpha1.CompactBackup) string {
@@ -528,6 +545,12 @@ func (h *replicationHandler) updateRestoreMarker(
 //     writes a CompactSettled marker with reason CompactBackupWaitTimeout
 //     (does NOT fail the Restore; BR phase-2 falls back to uncompacted log)
 //   - (nil, err) on other errors
+//
+// WaitTimeout is measured from restore.CreationTimestamp, NOT from the first
+// NotFound observation. The user-facing budget is "X duration from when I
+// created the Restore", not "X duration from when the controller started
+// looking" — so a controller that wakes up after a long downtime may find the
+// timeout already expired on its very first reconcile, by design.
 func (h *replicationHandler) lookupCompactBackup(restore *v1alpha1.Restore) (*v1alpha1.CompactBackup, error) {
 	cfg := restore.Spec.ReplicationConfig
 	cb, err := h.deps.CompactBackupLister.CompactBackups(restore.Namespace).Get(cfg.CompactBackupName)
