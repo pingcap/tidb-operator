@@ -2802,10 +2802,15 @@ const (
 	// Written by handler.appendRestoreMarker, not by UpdateRestoreCondition.
 	RestoreSnapshotRestored RestoreConditionType = "SnapshotRestored"
 
-	// RestoreCompactSettled indicates the referenced CompactBackup has
-	// reached a terminal state (Complete or Failed). This is a condition
-	// marker — it is appended to status.conditions but does NOT drive
-	// status.phase. Written by handler.appendRestoreMarker.
+	// RestoreCompactSettled indicates the referenced CompactBackup has reached
+	// a settled state from the Restore's perspective — either a true terminal
+	// (Complete / Failed), or an unrecoverable observation (cross-CR mismatch
+	// / WaitTimeout expired). The Reason field carries the specific outcome
+	// (AllShardsComplete / ShardsPartialFailed / CompactBackupMismatch /
+	// CompactBackupWaitTimeout) and is consumed by phase-2 backup-manager to
+	// decide compact-vs-fallback. This is a condition marker — it is appended
+	// to status.conditions but does NOT drive status.phase. Written by
+	// handler.appendRestoreMarker.
 	RestoreCompactSettled RestoreConditionType = "CompactSettled"
 )
 

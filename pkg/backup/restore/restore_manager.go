@@ -69,7 +69,7 @@ func NewRestoreManager(deps *controller.Dependencies) backup.RestoreManager {
 	return &restoreManager{
 		deps:               deps,
 		statusUpdater:      statusUpdater,
-		replicationHandler: newReplicationHandler(deps, statusUpdater),
+		replicationHandler: newReplicationHandler(deps, statusUpdater, deps.Recorder),
 	}
 }
 

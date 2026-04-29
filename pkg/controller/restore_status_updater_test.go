@@ -111,14 +111,62 @@ func TestReplicationRestoreStatusUpdater_Update_IsNoOp(t *testing.T) {
 
 	u := NewReplicationRestoreStatusUpdater()
 
+	// Build a Restore with non-empty status so we can assert it was NOT
+	// mutated. The whole point of this wrapper is "controller is sole writer";
+	// asserting only `err == nil` would let any silent-write impl pass.
+	restore := &v1alpha1.Restore{
+		Status: v1alpha1.RestoreStatus{
+			Phase:         v1alpha1.RestoreSnapshotRestore,
+			CommitTs:      "preserved-commit-ts",
+			TimeStarted:   metav1.Time{Time: time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)},
+			TimeCompleted: metav1.Time{Time: time.Date(2026, 4, 2, 0, 0, 0, 0, time.UTC)},
+			TimeTaken:     "24h0m0s",
+			Conditions: []v1alpha1.RestoreCondition{
+				{Type: v1alpha1.RestoreRunning, Status: corev1.ConditionTrue, Reason: "preserved"},
+			},
+		},
+	}
+	originalConditionsLen := len(restore.Status.Conditions)
+	originalPhase := restore.Status.Phase
+	originalCommitTs := restore.Status.CommitTs
+	originalTimeStarted := restore.Status.TimeStarted
+	originalTimeCompleted := restore.Status.TimeCompleted
+	originalTimeTaken := restore.Status.TimeTaken
+
+	// Pass non-nil condition + non-nil RestoreUpdateStatus carrying values that
+	// a real updater WOULD persist (TimeCompleted, CommitTs). Wrapper must drop them.
+	newCommitTs := "new-commit-from-bm"
+	newCompleted := metav1.Time{Time: time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)}
 	err := u.Update(
-		&v1alpha1.Restore{},
-		&v1alpha1.RestoreCondition{Type: v1alpha1.RestoreRunning, Status: corev1.ConditionTrue},
-		&RestoreUpdateStatus{},
+		restore,
+		&v1alpha1.RestoreCondition{
+			Type:    v1alpha1.RestoreFailed,
+			Status:  corev1.ConditionTrue,
+			Reason:  "bm-tried-to-write-this",
+			Message: "should-be-dropped",
+		},
+		&RestoreUpdateStatus{
+			CommitTs:      &newCommitTs,
+			TimeCompleted: &newCompleted,
+		},
 	)
 	g.Expect(err).NotTo(HaveOccurred())
 
-	// Nil args must also be safe.
+	// Critical: nothing on the input Restore was mutated.
+	g.Expect(restore.Status.Phase).To(Equal(originalPhase),
+		"wrapper must not mutate Phase")
+	g.Expect(restore.Status.CommitTs).To(Equal(originalCommitTs),
+		"wrapper must not mutate CommitTs (BackupManager-driven write must be dropped)")
+	g.Expect(restore.Status.TimeStarted).To(Equal(originalTimeStarted))
+	g.Expect(restore.Status.TimeCompleted).To(Equal(originalTimeCompleted),
+		"wrapper must not mutate TimeCompleted")
+	g.Expect(restore.Status.TimeTaken).To(Equal(originalTimeTaken))
+	g.Expect(restore.Status.Conditions).To(HaveLen(originalConditionsLen),
+		"wrapper must not append the passed-in condition")
+	g.Expect(restore.Status.Conditions[0].Reason).To(Equal("preserved"),
+		"wrapper must not modify existing conditions")
+
+	// Nil args must also be safe (no panic).
 	err = u.Update(nil, nil, nil)
 	g.Expect(err).NotTo(HaveOccurred())
 }
