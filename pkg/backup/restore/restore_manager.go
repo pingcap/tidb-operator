@@ -293,6 +293,25 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return nil
 	}
 
+	// pm.Enable is the GC-disabled gate shared by all PiTR restores
+	// (standard PiTR and replication restore alike). Run it BEFORE the
+	// replication interception so replication restores also wait for
+	// the TiKV ConfigMap override (gc.ratio-threshold = -1) to
+	// propagate before launching any BR Job. The override itself is
+	// written by tikvMemberManager.applyPiTRConfigOverride, which
+	// already covers replication because Mode == PiTR.
+	if restore.Spec.Mode == v1alpha1.RestoreModePiTR {
+		// Note: perhaps better to reschedule here and wait the cluster config applied.
+		// But for now BR will also modify this configuration. This configuration map was
+		// modified for making sure they won't be lost after a TiKV restart.
+		if err := pm.Enable(tc); err != nil {
+			if controller.IsRequeueError(err) {
+				return err
+			}
+			return fmt.Errorf("restore %s/%s enable pitr failed, err: %v", ns, name, err)
+		}
+	}
+
 	// Replication restore: delegate to dedicated handler that owns the
 	// two-Job state machine and coordinates with CompactBackup. All logic
 	// below this line assumes a single-Job Restore (GetRestoreJobName etc.)
@@ -308,18 +327,6 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return nil
 	} else if !errors.IsNotFound(err) {
 		return fmt.Errorf("restore %s/%s get job %s failed, err: %v", ns, name, restoreJobName, err)
-	}
-
-	if restore.Spec.Mode == v1alpha1.RestoreModePiTR {
-		// Note: perhaps better to reschedule here and wait the cluster config applied.
-		// But for now BR will also modify this configuration. This configuration map was
-		// modified for making sure they won't be lost after a TiKV restart.
-		if err := pm.Enable(tc); err != nil {
-			if controller.IsRequeueError(err) {
-				return err
-			}
-			return fmt.Errorf("restore %s/%s enable pitr failed, err: %v", ns, name, err)
-		}
 	}
 
 	var (
