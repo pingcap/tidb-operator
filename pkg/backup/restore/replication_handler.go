@@ -21,7 +21,6 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/controller"
-	"github.com/pingcap/tidb-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -59,10 +58,19 @@ import (
 // CompactSettled is written, each Sync tries to settle it with one of the
 // marker reasons consumed by phase-2 BR: AllShardsComplete,
 // ShardsPartialFailed, CompactBackupMismatch, or CompactBackupWaitTimeout.
+// jobBuilderFunc produces the standard PiTR Restore Job that
+// applyReplicationPhase post-processes for one phase of a replication
+// restore. The production injection is rm.makeRestoreJobWithMode, so
+// replication Jobs inherit the full PiTR setup (TiDBBackupManagerImage
+// main container, BR-binary init container, TLS volumes, env vars,
+// owner reference). isPruneJob is always false for replication.
+type jobBuilderFunc func(restore *v1alpha1.Restore, isPruneJob bool) (*batchv1.Job, string, error)
+
 type replicationHandler struct {
 	deps          *controller.Dependencies
 	statusUpdater controller.RestoreConditionUpdaterInterface
 	recorder      record.EventRecorder
+	buildJob      jobBuilderFunc
 }
 
 var _ replicationHandlerInterface = (*replicationHandler)(nil)
@@ -71,8 +79,9 @@ func newReplicationHandler(
 	deps *controller.Dependencies,
 	statusUpdater controller.RestoreConditionUpdaterInterface,
 	recorder record.EventRecorder,
+	buildJob jobBuilderFunc,
 ) *replicationHandler {
-	return &replicationHandler{deps: deps, statusUpdater: statusUpdater, recorder: recorder}
+	return &replicationHandler{deps: deps, statusUpdater: statusUpdater, recorder: recorder, buildJob: buildJob}
 }
 
 // Sync is the entry point called from restoreManager.syncRestoreJob when
@@ -324,86 +333,63 @@ func (h *replicationHandler) ensureJobForStep(restore *v1alpha1.Restore, step st
 	return true, nil
 }
 
-// makeReplicationBRJob builds the phase-specific BR Job with the correct
-// replication-step label and the --replicationPhase arg consumed by
-// backup-manager. Phase 1 (snapshot-restore) uses --replicationPhase=1;
-// phase 2 (log-restore) uses --replicationPhase=2.
+// makeReplicationBRJob produces a BR Job for the given replication
+// step by delegating to the injected job builder (production:
+// rm.makeRestoreJobWithMode) and post-processing the result with
+// replication-specific overrides.
 //
-// NOTE: the Job produced here is functionally insufficient for backup-manager
-// to run BR end-to-end; see buildPiTRBaseArgs for the full rationale.
+// The Job inherits everything makeRestoreJobWithMode produces — main
+// container image (TiDBBackupManagerImage), BR-binary init container
+// + br-bin shared volume, TLS volume mounts, password / storage env,
+// resource requirements, additional volumes, owner reference. Three
+// things are then overridden:
+//  1. Job name: <restore.Name>-<step> instead of the standard
+//     <restore.Name>-restore
+//  2. ReplicationStepLabelKey + RestoreUIDLabelKey on Job and Pod
+//  3. --replicationPhase=N appended to the main container args
 func (h *replicationHandler) makeReplicationBRJob(restore *v1alpha1.Restore, step string) (*batchv1.Job, error) {
-	phaseArg := "--replicationPhase=1"
-	if step == label.ReplicationStepLogRestoreVal {
-		phaseArg = "--replicationPhase=2"
+	job, _, err := h.buildJob(restore, false /* isPruneJob */)
+	if err != nil {
+		return nil, err
 	}
-
-	jobName := fmt.Sprintf("%s-%s", restore.Name, step)
-	// Use the canonical restore Job label set so replication Jobs are
-	// indistinguishable from standard restore Jobs to external tooling
-	// (kubectl label selectors, monitoring), then add the replication-step
-	// label that distinguishes phase-1 from phase-2.
-	jobLabels := util.CombineStringMap(
-		label.NewRestore().
-			Instance(restore.GetInstanceName()).
-			RestoreJob().
-			Restore(restore.Name),
-		restore.Labels,
-	)
-	jobLabels[label.ReplicationStepLabelKey] = step
-	jobLabels[label.RestoreUIDLabelKey] = string(restore.UID)
-
-	args := append(buildPiTRBaseArgs(restore), phaseArg)
-
-	return &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            jobName,
-			Namespace:       restore.Namespace,
-			Labels:          jobLabels,
-			OwnerReferences: []metav1.OwnerReference{controller.GetRestoreOwnerRef(restore)},
-		},
-		Spec: batchv1.JobSpec{
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: jobLabels},
-				Spec: corev1.PodSpec{
-					ServiceAccountName: restore.Spec.ServiceAccount,
-					Containers: []corev1.Container{{
-						Name:  "br",
-						Image: restore.Spec.ToolImage,
-						Args:  args,
-					}},
-					RestartPolicy: corev1.RestartPolicyOnFailure,
-				},
-			},
-		},
-	}, nil
+	return applyReplicationPhase(job, restore, step), nil
 }
 
-// buildPiTRBaseArgs returns a MINIMAL set of backup-manager CLI args
-// common to both replication phases. This is intentionally a stub for
-// PR 1: the full PiTR arg set (env vars, TLS volume mounts, password
-// secrets, resource requirements) lives in restoreManager.makeRestoreJobWithMode
-// and is NOT replicated here.
+// applyReplicationPhase mutates a Job built by makeRestoreJobWithMode
+// to make it suitable for one phase of a replication restore.
 //
-// As a result, the Job produced by makeReplicationBRJob is functionally
-// insufficient for backup-manager to actually run BR end-to-end. PR 2 (or
-// a follow-up after Task 9 wires the handler to the restoreManager) must
-// complete the integration by either:
-//
-//	(a) calling rm.makeRestoreJobWithMode to build the base Job and
-//	    post-processing it (add replication-step label, append
-//	    --replicationPhase arg), OR
-//	(b) extracting a shared helper next to makeRestoreJobWithMode that
-//	    both call sites consume.
-//
-// The unit tests in this PR verify only the replication-specific
-// additions (label + --replicationPhase arg).
-func buildPiTRBaseArgs(restore *v1alpha1.Restore) []string {
-	return []string{
-		"restore",
-		fmt.Sprintf("--namespace=%s", restore.Namespace),
-		fmt.Sprintf("--restoreName=%s", restore.Name),
-		fmt.Sprintf("--mode=%s", v1alpha1.RestoreModePiTR),
+// Mutations are confined to the three pieces that genuinely differ
+// per replication phase: the Job name, the replication labels (on
+// both the Job and its Pod template), and the --replicationPhase arg
+// on the primary container. Everything else from the builder's output
+// — image, init container, env vars, volumes, owner reference — is
+// preserved unchanged.
+func applyReplicationPhase(job *batchv1.Job, restore *v1alpha1.Restore, step string) *batchv1.Job {
+	job.Name = fmt.Sprintf("%s-%s", restore.Name, step)
+
+	if job.Labels == nil {
+		job.Labels = map[string]string{}
 	}
+	job.Labels[label.ReplicationStepLabelKey] = step
+	job.Labels[label.RestoreUIDLabelKey] = string(restore.UID)
+
+	if job.Spec.Template.Labels == nil {
+		job.Spec.Template.Labels = map[string]string{}
+	}
+	job.Spec.Template.Labels[label.ReplicationStepLabelKey] = step
+	job.Spec.Template.Labels[label.RestoreUIDLabelKey] = string(restore.UID)
+
+	phase := 1
+	if step == label.ReplicationStepLogRestoreVal {
+		phase = 2
+	}
+	if len(job.Spec.Template.Spec.Containers) > 0 {
+		job.Spec.Template.Spec.Containers[0].Args = append(
+			job.Spec.Template.Spec.Containers[0].Args,
+			fmt.Sprintf("--replicationPhase=%d", phase),
+		)
+	}
+	return job
 }
 
 // compactIsTerminal returns true if CompactBackup has reached either

@@ -66,11 +66,15 @@ type restoreManager struct {
 // NewRestoreManager return restoreManager
 func NewRestoreManager(deps *controller.Dependencies) backup.RestoreManager {
 	statusUpdater := controller.NewRealRestoreConditionUpdater(deps.Clientset, deps.RestoreLister, deps.Recorder)
-	return &restoreManager{
-		deps:               deps,
-		statusUpdater:      statusUpdater,
-		replicationHandler: newReplicationHandler(deps, statusUpdater, deps.Recorder),
+	rm := &restoreManager{
+		deps:          deps,
+		statusUpdater: statusUpdater,
 	}
+	// Two-step construction: replicationHandler needs a function-typed
+	// reference to rm.makeRestoreJobWithMode so it can build BR Jobs that
+	// inherit the full PiTR setup (image, init container, env, volumes).
+	rm.replicationHandler = newReplicationHandler(deps, statusUpdater, deps.Recorder, rm.makeRestoreJobWithMode)
+	return rm
 }
 
 func (rm *restoreManager) Sync(restore *v1alpha1.Restore) error {
