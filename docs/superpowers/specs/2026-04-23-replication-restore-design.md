@@ -137,12 +137,25 @@ type RestoreStatus struct {
 **状态机**：
 
 ```
-[初始] → Scheduled → SnapshotRestore → LogRestore → Complete
-                            ↓              ↓
-                         Failed          Failed
+[初始] ─→ SnapshotRestore ─→ LogRestore ─→ Complete
+                  │                │
+                  ↓                ↓
+               Failed           Failed
 ```
 
-门控：`SnapshotRestored=True && CompactSettled=True` 时 controller 在同一次 reconcile 内 `SnapshotRestore → LogRestore` 并创建 phase-2 Job（**不引入中间状态** `ReadyForLogRestore`，两个 marker 同时为真即是门控凭据）。
+**`SnapshotRestore` 内部子状态**（`status.conditions[]` 标记，不改 `status.phase`）：
+- `SnapshotRestored=True`：phase-1 Job 已 Complete
+- `CompactSettled=True`：CompactBackup 已到终态（Complete 或 Failed）
+
+两 marker 各自独立到达，到达顺序无关。
+
+**门控**：`SnapshotRestored=True && CompactSettled=True` 是 `SnapshotRestore → LogRestore` 的充要条件。**不引入中间状态** `ReadyForLogRestore`，两 marker 同时为真即是门控凭据。
+
+**门控的多 reconcile 推进**（采用单步推进，避免一次 reconcile 多写带来的崩溃窗口，详见 §4.2）：
+- Reconcile N: 双 marker True 被检测到 → 写 `Phase = LogRestore` (Reason `GatePassed`) → return
+- Reconcile N+1: `Step != "log-restore"` → `setReplicationStep("log-restore")` → return
+- Reconcile N+2: phase-2 Job 不存在 → 创建 Job → return
+- Reconcile N+3 之后: backup-manager 接管，直写 `Running` / `Complete` / `Failed`
 
 **与 v2 相对的修正**：
 - v2 `Phase1Running/Phase1Complete` → **`SnapshotRestore`**（单段，无中间态）→ `LogRestore`
@@ -156,12 +169,12 @@ type RestoreStatus struct {
 
 | 写内容 | 写者 | 写法 |
 |--------|------|------|
-| `status.phase = SnapshotRestore` | Controller | `replicationHandler.Sync` 入口 |
-| `SnapshotRestored` marker | Controller | 观测 phase-1 Job `JobComplete` 条件触发 |
-| `CompactSettled` marker | Controller | 观测 CompactBackup `status.state ∈ {Complete, Failed}` 触发 |
-| `status.phase = LogRestore` | Controller | 两个 marker 同 True 时 |
+| `status.phase = SnapshotRestore` | Controller | Sync 级联 B3 分支（**独立于 cb**——snapshot 不等 CompactBackup 出现）|
+| `SnapshotRestored` marker | Controller | Sync 级联 B7 分支（观测 phase-1 Job `JobComplete`）|
+| `CompactSettled` marker | Controller | Sync 级联**顶部 CB 观测块**：4 种 reason 之一<br>· `AllShardsComplete` — CB Complete<br>· `ShardsPartialFailed` — CB Failed<br>· `CompactBackupMismatch` — 跨 CR 一致性校验失败<br>· `CompactBackupWaitTimeout` — CB 在 WaitTimeout 内未出现 |
+| `status.phase = LogRestore` | Controller | Sync 级联 B9 分支（两个 marker 同 True，CompactSettled reason 不影响放行）|
 | phase-2 `Running / Complete / Failed` | backup-manager | 直写（**不 wrap**） |
-| orchestration 级 `Failed` | Controller | waitTimeout 到期 / 跨 CR 不一致 / phase-1 Job Failed |
+| orchestration 级 `Failed` | Controller | 仅 B6 / B12 分支（phase-1 / phase-2 Job 自身 Failed）。CB 相关问题（mismatch、waitTimeout、CB 自身 Failed）**不再升级为 Restore Failed**——统一收敛为 `CompactSettled` marker 的 reason，phase-2 BR Job 读 reason 决定是否走 fallback。|
 
 **Wrapper**：Restore 侧的 `RestoreConditionUpdaterInterface` 只有 1 个方法 `Update(restore, condition, newStatus)`（与 Compact 侧 6 方法的 `CompactStatusUpdaterInterface` 不对称）。因此 wrapper 极简——**全 no-op**：
 
@@ -208,43 +221,107 @@ if restore.Spec.Mode == v1alpha1.RestoreModePiTR && restore.Spec.ReplicationConf
 // 以下为现有 mode 分支（snapshot / volume-snapshot / 标准 pitr），不动
 ```
 
-#### 4.2 Handler 状态机（按 `status.phase` 分派）
+#### 4.2 Handler 状态机（单步推进级联）
+
+每次 `Sync` **只做一次 K8s 写入然后 return**；下次 reconcile 由 informer/watch 驱动。
+对齐 codebase 标准模式（参见 [restore_manager.go:267-293](/root/hanzhen/tidb-operator/pkg/backup/restore/restore_manager.go#L267-L293)）。
+
+**为什么不在一次 reconcile 内连续多写**：每次 K8s 写入之间存在崩溃窗口；多写设计会让"已写 Step 但 Job 未建"等状态不一致情形难以自愈。单步模式下每个状态转换由独立 reconcile 完成，崩溃恢复天然成立——下次 reconcile 入口的级联判断会重新选择当前应该执行的分支。
+
+**snapshot 与 compact 解耦**：CB 观测被抬到 Sync 顶部，以 `CompactSettled` marker 作为 idempotency 守卫——一旦 marker 写入（无论 reason 是哪种），后续 reconcile 跳过整个 CB 路径。snapshot 写 `Phase=SnapshotRestore` 不再 gate on `cb != nil`，两条路径彻底并行；门控（B9）是它们唯一的汇合点。任何 CB 问题（mismatch、waitTimeout、CB 自身 Failed）都收敛为 marker reason，**不再升格为 Restore Failed**。
+
+**dispatch 不再按单一字段 switch**，而是按"当前状态推导下一步动作"的级联判断。Sync 入口按以下顺序逐条匹配，命中即执行该分支并 return：
 
 ```
 replicationHandler.Sync(restore):
-    switch restore.Status.Phase:
 
-    case "" | Scheduled:
-        ① 查 CompactBackup:
-           - NotFound + WaitTimeout 到期 → Phase = Failed (CompactBackupWaitTimeout)
-           - NotFound + 未超时           → requeue + Warning Event
-           - Found + state ∈ {Complete, Failed}
-                                        → 一致性校验（节 5），不通过则 Phase = Failed
-                                        → 校验通过则写 CompactSettled marker
-           - Found + 未终态              → 不写 CompactSettled，正常继续
-        ② 写 Phase = SnapshotRestore, ReplicationStep = "snapshot-restore"
-        ③ 按 label 查 phase-1 Job；不存在则创建
-        return
+  # B1: 终态短路
+  if restore.Status.Phase ∈ {Complete, Failed}: return nil
 
-    case SnapshotRestore:
-        ① 刷新 phase-1 Job 观测:
-           - JobComplete → 写 SnapshotRestored marker
-           - JobFailed   → 写 Phase = Failed (reason: SnapshotRestoreFailed)
-        ② 刷新 CompactBackup 观测:
-           - state ∈ {Complete, Failed} → 写 CompactSettled marker
-        ③ 门控: 两个 marker 都 True
-           → 写 Phase = LogRestore, ReplicationStep = "log-restore"
-           → 按 label 查 phase-2 Job；不存在则创建
-        return
+  # 顶部 CB 观测块（已 settled 则全部跳过 —— 一旦 marker 写入，后续 reconcile 不再读 CB）
+  if !hasMarker(CompactSettled):
+    cb, err := lookupCompactBackup()
+    if err is IgnoreErr (waitTimeout 到期):
+      # CB 在 WaitTimeout 内未出现 → settle 为失败 reason，**不**失败 Restore
+      return updateRestoreMarker(CompactSettled, "CompactBackupWaitTimeout", err.Error())
+    if err 其他错误: return err
+    if cb == nil:
+      # NotFound + 未超时：发 Warning Event 但不 return，让下面的 snapshot 路径继续推进
+      emit Warning Event "CompactBackupNotFound"
+    else:
+      if checkCrossCRConsistency(restore, cb) fails:
+        # mismatch 同样 settle 为失败 reason，**不**失败 Restore
+        return updateRestoreMarker(CompactSettled, "CompactBackupMismatch", err.Error())
+      if compactIsTerminal(cb):
+        # CB Complete / Failed 都视为 settled；reason 不同
+        return updateRestoreMarker(CompactSettled, compactTerminalReason(cb), cb.Status.Message)
+      # 否则 cb 仍在 Running/Initialized，继续往下到 B3 推进 snapshot
 
-    case LogRestore:
-        ① 刷新 phase-2 Job 观测（沿用现有 PiTR Job 观测逻辑）
-        ② backup-manager 直接写 Running/Complete/Failed，handler 不干预
-        return
+  # B3: 写 Phase = SnapshotRestore（首次进入主推进路径，**独立于 cb**）
+  if restore.Status.Phase == "":
+    return statusUpdater.Update(Phase=SnapshotRestore, Reason="SnapshotRestoreStarted")
 
-    case Complete | Failed:
-        return  // 终态
+  # B4: 写 Step = "snapshot-restore"（Phase 已切到 SnapshotRestore，但 Step 还没设）
+  if restore.Status.Phase == SnapshotRestore and restore.Status.ReplicationStep == "":
+    return setReplicationStep("snapshot-restore")
+
+  # B5–B9: Phase==SnapshotRestore && ReplicationStep=="snapshot-restore"
+  # （**两个条件都要满足** —— 仅判 Step 会让 B9 写完 Phase=LogRestore 后的下一轮
+  # 在 B10 还没把 Step 推到 "log-restore" 之前，又回到这里重新创建 phase-1 Job）
+  if restore.Status.Phase == SnapshotRestore and
+     restore.Status.ReplicationStep == "snapshot-restore":
+    job := findJobForStep("snapshot-restore")
+
+    # B5: phase-1 Job 不存在 → 创建（兼顾首次创建 + 崩溃后补建）
+    if job == nil:
+      return ensureJobForStep("snapshot-restore")  # 成功后发 Normal Event SnapshotRestoreStarted
+
+    # B6: phase-1 Job Failed → 失败终态
+    if jobHasCondition(job, JobFailed):
+      return failRestore("SnapshotRestoreFailed", ...)
+
+    # B7: phase-1 Job Complete 且 SnapshotRestored marker 未写
+    if jobHasCondition(job, JobComplete) and !hasMarker(SnapshotRestored):
+      return updateRestoreMarker(SnapshotRestored, ...)
+
+    # B8: 已抬到顶部观测块，编号空缺保留以保持 B9 的稳定性
+
+    # B9: 门控通过 → 写 Phase = LogRestore（CompactSettled reason 不影响放行）
+    if hasMarker(SnapshotRestored) and hasMarker(CompactSettled):
+      return statusUpdater.Update(Phase=LogRestore, Reason="GatePassed")
+
+    # 否则等下次 reconcile（其中一个 marker 还没写到）
+    return nil
+
+  # B10: 写 Step = "log-restore"
+  if restore.Status.Phase == LogRestore and restore.Status.ReplicationStep == "snapshot-restore":
+    return setReplicationStep("log-restore")
+
+  # B11–B12: ReplicationStep == "log-restore" 期间的子分支
+  if restore.Status.ReplicationStep == "log-restore":
+    job := findJobForStep("log-restore")
+
+    # B11: phase-2 Job 不存在 → 创建
+    if job == nil:
+      return ensureJobForStep("log-restore")  # 成功后发 Normal Event LogRestoreStarted
+
+    # B12: phase-2 Job Failed → 失败终态
+    if jobHasCondition(job, JobFailed):
+      return failRestore("LogRestoreFailed", ...)
+
+    # 其余：phase-2 由 backup-manager 直写 Phase=Running/Complete/Failed，handler 不干预
+    return nil
+
+  # 兜底：未知 ReplicationStep 值，记 warning 后 return（防御性）
+  klog.Warningf("unknown ReplicationStep %q", restore.Status.ReplicationStep)
+  return nil
 ```
+
+**Event 触发点**：
+- 2 处 Warning Event 由 `failRestore` 内部统一发出，仅覆盖 Job 自身失败的两个 reason：`SnapshotRestoreFailed` / `LogRestoreFailed`
+- 1 处 Warning Event `CompactBackupNotFound` 由顶部 CB 观测块在 NotFound + 未超时分支发出
+- 2 处 Normal Event `SnapshotRestoreStarted` / `LogRestoreStarted` 在 `ensureJobForStep` 成功之后发出（B5 / B11）
+- CB 失败路径（`CompactBackupMismatch` / `CompactBackupWaitTimeout` / `ShardsPartialFailed`）通过 `CompactSettled` marker 的 reason 字段对外可见，无独立 Event；与 CB 自身的 `BackupFailed` 同等对待。
 
 #### 4.3 Job 识别：label 而非 name
 
@@ -264,8 +341,12 @@ Job 命名作为辅助可读性（如 `{restore.Name}-snapshot-restore`），但
 
 ```go
 compactInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-    UpdateFunc: func(old, cur interface{}) { c.enqueueRestoresReferencing(cur) },
-    // Add / Delete 复用同一路径
+    AddFunc:    func(obj interface{}) { c.enqueueRestoresReferencing(obj) },
+    UpdateFunc: func(_, cur interface{}) { c.enqueueRestoresReferencing(cur) },
+    // Delete handled passively: handler's next reconcile sees NotFound and
+    // re-enters late-binding logic. Acceptable trade-off — relies on other
+    // events (phase-1 Job updates, Restore self-updates, informer resync)
+    // to trigger the next reconcile within ~30s of CompactBackup deletion.
 })
 
 // 小规模假设：同 namespace Restore 数量 O(10)，线性扫描 lister 即可
@@ -283,31 +364,31 @@ func (c *Controller) enqueueRestoresReferencing(obj interface{}) {
 
 #### 4.5 重入恢复
 
-Controller 重启后：读 `status.phase` 决定分支 → label selector 查现有 Job → 创建前再查一次幂等。无任何内存状态。
+Controller 重启后无任何内存状态依赖。下次 reconcile 直接进入 §4.2 的 Sync 级联：基于 `(status.phase, status.replicationStep, status.conditions[], 现存 Job)` 重新选择当前应该执行的分支。所有 Job 创建和 marker 写入都是幂等的（label selector 查现有 Job、`hasMarker` 短路、`updateRestoreMarker` 内 `appendOrReplace`），单步模式下任意崩溃点都能在下个 reconcile 接续。
 
 ### 5. Cross-CR Binding
 
 **查找**：按 `spec.replicationConfig.compactBackupName` 在同 namespace 下 `Lister.Get`。
 
-**一致性校验**（作为写入 `CompactSettled` marker 的前置条件——handler 发现 CompactBackup 已到终态后、先校验成功才写 `CompactSettled`；校验不通过直接 `Failed`。`CompactSettled=True` 隐含了"一致性已通过"，不需要额外 marker）：
+**一致性校验**（顶部 CB 观测块每次 reconcile 都会跑，直到 `CompactSettled` marker 写入；marker 写入后该块短路。校验通过且 cb 已终态时写成功 reason；校验不通过时写失败 reason——**不再** `Phase = Failed`）：
 
 | 校验项 | 来源字段 | 比较方式 |
 |--------|----------|----------|
 | 目标集群 | `spec.br.cluster`、`spec.br.clusterNamespace` | 字符串等值 |
 | 日志备份存储位置 | `spec.s3/gcs/azblob` | 比较位置字段（bucket+prefix+region；gcs: bucket+prefix；azblob: container+prefix）；**忽略** `secretName` |
 
-不一致 → `Phase = Failed`, reason `CompactBackupMismatch`，message 标注不一致的字段名。
+不一致 → 写 `CompactSettled` marker (reason `CompactBackupMismatch`)，message 标注不一致的字段名。Restore Phase 不受影响，snapshot 继续推进，phase-2 BR Job 读 reason 后 fall back 到 uncompacted log。
 
 **Late binding**：
-- CompactBackup 不存在 + 未超时 → requeue + Warning Event
-- CompactBackup 不存在 + `WaitTimeout > 0 && now - Restore.CreationTimestamp > WaitTimeout` → `Phase = Failed`, reason `CompactBackupWaitTimeout`
-- CompactBackup 存在但未终态 → 持续等，不受 `WaitTimeout` 影响（compaction 耗时由业务决定）
+- CompactBackup 不存在 + 未超时 → snapshot 推进（B3 不再 gate on cb），同时发 Warning Event `CompactBackupNotFound`
+- CompactBackup 不存在 + `WaitTimeout > 0 && now - Restore.CreationTimestamp > WaitTimeout` → 写 `CompactSettled` marker (reason `CompactBackupWaitTimeout`)；snapshot 继续/已在跑，phase-2 fall back
+- CompactBackup 存在但未终态 → 持续等，不受 `WaitTimeout` 影响（已知 footgun：CB 永远卡 Running 时 gate 永远不放行；compaction 耗时由业务决定，本设计不在此引入额外超时）
 
 **Delete 语义**：
 - Restore 删除 → OwnerRef 级联删除两个 BR Job；CompactBackup 不受影响
 - CompactBackup 删除：
   - 已写过 `CompactSettled` marker → handler 不再查询，删除无影响
-  - 未 settle → 下次 reconcile NotFound → 走 late-binding；若超过 `WaitTimeout` → `Failed`
+  - 未 settle → 下次 reconcile NotFound → 走 late-binding；若超过 `WaitTimeout` → 写 `CompactSettled (reason=CompactBackupWaitTimeout)`，snapshot 不受影响
 - 多 Restore 引用同一 CompactBackup → 允许
 
 ### 6. BR CLI Surface（backup-manager 端）
@@ -377,15 +458,22 @@ const (
 
 ### 单元测试
 
+每个 §4.2 Sync 级联分支（B1, 顶部块, B3–B7, B9–B12；B2/B8 已并入顶部块）至少一个独立单测用例（"构造特定状态、调一次 Sync、断言只发生一次预期写入"模式）。
+
 | 对象 | 测试点 |
 |------|--------|
-| `replicationHandler.Sync` | `""/Scheduled → SnapshotRestore`；`SnapshotRestore → LogRestore`（两 marker 同 True）；`SnapshotRestore → Failed`（phase-1 Job Failed / waitTimeout / 一致性校验失败）；`LogRestore` 走现有 PiTR 观测 |
-| 门控判定 | 两 marker 都 True 才放行；到达顺序无关；单个 marker True 继续等 |
-| 跨 CR 一致性校验 | cluster / clusterNamespace 不一致 → Failed；storage 位置不一致 → Failed；忽略 `secretName` 差异；校验只跑一次 |
-| `ReplicationRestoreStatusUpdater` | `Update(...)` 永远返回 nil，不调用 `real` updater；wrapper 未激活（phase-2 或非 replication）时行为等同 real updater（通过 `cmd/restore.go` 的条件装配而非 wrapper 内部判断实现） |
+| `replicationHandler.Sync` 级联 | B1 终态短路；顶部块 4 种 settle 路径（Complete / Failed / Mismatch / WaitTimeout）；B3 写 Phase=SnapshotRestore（**不再** gate on cb）；B4 写 Step；B5 创建 phase-1 Job + 崩溃后补建；B6 phase-1 Job Failed → failRestore；B7 SnapshotRestored marker；B9 门控通过 → Phase=LogRestore；B10 写 Step=log-restore；B11 创建 phase-2 Job；B12 phase-2 Job Failed |
+| Snapshot 与 CB 解耦 | CB 不存在 + WaitTimeout 未到期 → 多次 Sync 后 snapshot 推进到 phase-1 Job 创建；CompactSettled 仍未写；snapshot 不被 CB 阻塞 |
+| 门控判定 | B7 + 顶部块两 marker 各自独立到达 + 顺序无关（**镜像用例**：SnapshotRestored 先到 + CompactSettled 先到）；单个 marker True 时 B9 不放行继续等；`CompactSettled=True` 不论 reason 都放行（验证 `CompactBackupWaitTimeout` reason 也通过 gate）|
+| 跨 CR 一致性校验 | cluster / clusterNamespace 不一致 → 写 `CompactSettled (reason=CompactBackupMismatch)`，Phase 不进 Failed；storage 位置不一致同；忽略 `secretName` 差异 |
+| Job 失败 Reason 强断言 | 仅 B6 / B12：除断言 `Phase==Failed` 外，必须断言 `Conditions[Failed].Reason` 等值（`SnapshotRestoreFailed` / `LogRestoreFailed`）|
+| CompactSettled marker 多 reason | 4 种 reason (`AllShardsComplete` / `ShardsPartialFailed` / `CompactBackupMismatch` / `CompactBackupWaitTimeout`) 各一个用例，断言 `Conditions[CompactSettled].Reason` 等值且 Phase 不进 Failed |
+| Event 断言 | 用 `record.FakeRecorder` 捕获；2 个 fail 路径发 Warning Event（`SnapshotRestoreFailed` / `LogRestoreFailed`）；CB 路径 NotFound + 未超时发 `CompactBackupNotFound`；B5 / B11 Job 创建成功后发 Normal Event |
+| 单步幂等性 | 连续两次 `Sync()` 调用 = 第二次无副作用（无新 Job、无新 marker、无 Phase 改写）|
+| `replicationRestoreStatusUpdater` wrapper | `Update(restore, nonNilCondition, nonNilStatus)` 返回 nil **且**传入 `restore` 对象的 `Conditions[]` 长度和 `Status.Phase` 完全未变（证明真的 no-op，不仅"返回 nil"）|
 | `appendRestoreMarker` helper | 写入 marker 后 `status.Phase` 保持不变、`status.Conditions[]` 追加或替换目标 marker；对同 marker 类型的重复调用幂等 |
-| Label-based Job 查找 | 同一 replication-step 的 Job 已存在时 `Sync()` 不重复创建（幂等）|
-| Re-entrancy | 给定 `(status.phase, conditions, 现存 Job)` 各组合，handler 下一步推导确定 |
+| Label-based Job 查找 | 同一 replication-step 的 Job 已存在时 B5 / B11 不重复创建（幂等）|
+| Re-entrancy | 给定 `(status.phase, status.replicationStep, conditions[], 现存 Job)` 各组合，Sync 级联下一步推导确定（崩溃后从任何中间态可继续）|
 
 ### 集成测试场景
 
@@ -396,10 +484,11 @@ const (
 | phase-1 Job 成功 + CompactBackup Running | 停留 `SnapshotRestore`，等两 marker |
 | phase-1 Job 失败 | Restore `Failed`（不等 CompactBackup）|
 | phase-2 Job 失败 | Restore `Failed` |
-| `compactBackupName` 拼写错误 + `waitTimeout=30m` 到期 | Restore `Failed`, reason `CompactBackupWaitTimeout` |
-| 跨 CR 存储/集群配置不一致 | Restore `Failed`, reason `CompactBackupMismatch` |
+| `compactBackupName` 拼写错误 + `waitTimeout=30m` 到期 | Restore 进入 `LogRestore` 后 BR 走 fallback；`Conditions[CompactSettled].Reason=CompactBackupWaitTimeout`；最终 Restore `Complete`（如 fallback 路径成功）|
+| 跨 CR 存储/集群配置不一致 | 同上，但 `Conditions[CompactSettled].Reason=CompactBackupMismatch`|
+| 无 CompactBackup 时 snapshot 立即启动 | Restore 创建后未 seed CB，phase-1 Job 在第一组 reconcile 内创建并跑完，不等 CB |
 | phase-1 期间 `status.phase` 不抖动（恒为 `SnapshotRestore`）| 验证 wrapper 消除 v2 的状态机破洞 |
-| Controller 重启恢复 | kill controller Pod 后 Restore 从 `SnapshotRestore` 中断态继续走完 |
+| Controller 重启恢复 | kill controller Pod 后 Restore 从 `SnapshotRestore` 中断态继续走完，包括 `CompactSettled (reason=CompactBackupMismatch)` 已写入的中间态 |
 
 ## PR Breakdown
 
