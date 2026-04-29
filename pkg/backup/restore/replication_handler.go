@@ -36,46 +36,27 @@ import (
 // replicationHandler owns the reconcile loop for replication restore
 // (Spec.Mode == pitr && Spec.ReplicationConfig != nil).
 //
-// Sync uses a single-step cascade: each reconcile evaluates the current state
-// (Phase, ReplicationStep, condition markers, observed Job/CompactBackup) and
-// performs at most ONE K8s write before returning. The next state transition
-// is driven by the next reconcile (triggered by the watch event of whatever
-// was just written, or by Job / CompactBackup events). This matches the
-// codebase-wide "write once, return, watch-driven next round" pattern (see
-// restore_manager.go:syncRestoreJob) and avoids the crash windows that come
-// with multi-write-per-reconcile designs.
+// Sync evaluates the current state and performs at most ONE K8s write before
+// returning. The next transition is driven by the next reconcile, triggered by
+// the watch event of whatever was just written, or by Job / CompactBackup
+// events. This matches the codebase-wide "write once, return, watch-driven
+// next round" pattern (see restore_manager.go:syncRestoreJob) and avoids the
+// crash windows that come with multi-write-per-reconcile designs.
 //
-// CompactBackup observation is decoupled from snapshot-phase progression: the
-// top of Sync observes CompactBackup until CompactSettled is written (any
-// reason — success, partial-fail, mismatch, wait-timeout), then short-circuits.
-// Snapshot phase advances regardless of cb state below; the gate at B9 joins
-// them. CB issues no longer fail the Restore — they settle as marker reasons
-// that BR phase-2 reads to decide compact-vs-fallback.
+// ReplicationStep is the primary dispatch key:
 //
-// Branches in the cascade (evaluated in order; first match wins and returns):
+//   - "" initializes the restore: Phase="" enters SnapshotRestore; then
+//     Phase=SnapshotRestore sets Step="snapshot-restore".
+//   - "snapshot-restore" tracks phase-1 progress with markers:
+//     SnapshotRestored=True and CompactSettled=True. Once both markers are
+//     present, Sync writes Phase=LogRestore; the next reconcile advances Step.
+//   - "log-restore" manages the phase-2 Job. In this step, backup-manager owns
+//     user-visible Phase transitions such as Running / Complete / Failed.
 //
-//	B1     terminal short-circuit (Phase ∈ {Complete, Failed})
-//	(top)  CompactBackup observation block — gated by !hasMarker(CompactSettled).
-//	       Routes the four CB outcomes (Complete / Failed / Mismatch /
-//	       WaitTimeout) to a CompactSettled marker write. NotFound-but-still-
-//	       waiting emits a Warning Event and falls through so snapshot can
-//	       proceed in parallel.
-//	B3     enter SnapshotRestore phase: write Phase=SnapshotRestore.
-//	       Independent of cb — snapshot starts even with CompactSettled unset.
-//	B4     bump Step to "snapshot-restore"
-//	B5–B9  active while Phase==SnapshotRestore && Step=="snapshot-restore":
-//	       B5 create/rebuild phase-1 Job; B6 fail on Job Failed; B7 write
-//	       SnapshotRestored marker on Job Complete; B9 gate passed → write
-//	       Phase=LogRestore. (B8 — in-cascade CB-terminal observation — was
-//	       moved up to the top block; numbers kept stable for traceability.)
-//	       The Phase guard on this block matters: after B9 writes
-//	       Phase=LogRestore the next reconcile briefly sees Step still
-//	       "snapshot-restore" — without the guard B5 would re-fire and
-//	       try to recreate a phase-1 Job. The guard hands control to B10.
-//	B10    bump Step to "log-restore"
-//	B11    create phase-2 Job
-//	B12    phase-2 Job Failed → failRestore("LogRestoreFailed")
-//	       Otherwise: backup-manager drives Phase=Running/Complete/Failed
+// CompactBackup observation is independent of the step dispatch. Until
+// CompactSettled is written, each Sync tries to settle it with one of the
+// marker reasons consumed by phase-2 BR: AllShardsComplete,
+// ShardsPartialFailed, CompactBackupMismatch, or CompactBackupWaitTimeout.
 type replicationHandler struct {
 	deps          *controller.Dependencies
 	statusUpdater controller.RestoreConditionUpdaterInterface
@@ -93,186 +74,186 @@ func newReplicationHandler(
 }
 
 // Sync is the entry point called from restoreManager.syncRestoreJob when
-// the restore is in replication mode. See type doc above for the cascade
-// shape and per-branch semantics.
+// the restore is in replication mode. It dispatches by ReplicationStep, while
+// keeping CompactBackup observation as a top-level parallel path joined by the
+// snapshot marker gate.
 func (h *replicationHandler) Sync(restore *v1alpha1.Restore) error {
-	// B1: terminal short-circuit.
 	if v1alpha1.IsRestoreComplete(restore) || v1alpha1.IsRestoreFailed(restore) {
 		return nil
 	}
 
-	// Top block: observe CompactBackup until CompactSettled is written, then
-	// short-circuit. Snapshot phase progression below is INDEPENDENT of cb —
-	// the gate at B9 is the only place where the two paths join. CB issues
-	// (mismatch, wait-timeout) are NOT terminal failures of the Restore;
-	// they settle as marker reasons and BR phase-2 reads the reason to
-	// decide compact-vs-fallback.
-	//
-	// Settling outcomes (each routed to a CompactSettled marker reason):
-	//   "AllShardsComplete"        — CB Complete
-	//   "ShardsPartialFailed"      — CB Failed
-	//   "CompactBackupMismatch"    — cross-CR consistency check fails
-	//   "CompactBackupWaitTimeout" — CB never appeared within WaitTimeout
-	//
-	// Note: consistency check runs every Sync that reaches this block (until
-	// settled). The previous one-shot guard ("Phase==''") is gone — this is
-	// intentional. Under the new design we don't fail the Restore on
-	// mid-flight CB mutation; we settle with the mismatch reason. So the
-	// re-check is harmless and catches user error sooner.
-	if !hasMarkerTrue(restore, v1alpha1.RestoreCompactSettled) {
-		cb, err := h.lookupCompactBackup(restore)
+	handled, err := h.settleCompactBackupIfReady(restore)
+	if handled || err != nil {
+		return err
+	}
+
+	switch restore.Status.ReplicationStep {
+	case "":
+		return h.syncEmptyReplicationStep(restore)
+	case label.ReplicationStepSnapshotRestoreVal:
+		return h.syncSnapshotReplicationStep(restore)
+	case label.ReplicationStepLogRestoreVal:
+		return h.syncLogRestoreStep(restore)
+	default:
+		return h.handleUnexpectedReplicationState(restore)
+	}
+}
+
+// settleCompactBackupIfReady observes CompactBackup until CompactSettled is
+// written. It returns handled=true only when it performed the single write for
+// this reconcile; NotFound-but-waiting emits an Event and lets snapshot advance.
+func (h *replicationHandler) settleCompactBackupIfReady(restore *v1alpha1.Restore) (bool, error) {
+	if hasMarkerTrue(restore, v1alpha1.RestoreCompactSettled) {
+		return false, nil
+	}
+
+	cb, err := h.lookupCompactBackup(restore)
+	if err != nil {
+		if controller.IsIgnoreError(err) {
+			return true, h.updateRestoreMarker(restore, v1alpha1.RestoreCompactSettled,
+				"CompactBackupWaitTimeout", err.Error())
+		}
+		return false, err
+	}
+	if cb == nil {
+		// NotFound but still waiting (WaitTimeout unset / 0 / not yet
+		// expired). Emit a Warning Event for visibility, then continue to
+		// step dispatch so snapshot can proceed in parallel.
+		h.recorder.Eventf(restore, corev1.EventTypeWarning, "CompactBackupNotFound",
+			"CompactBackup %q not found in namespace %s, waiting",
+			restore.Spec.ReplicationConfig.CompactBackupName, restore.Namespace)
+		return false, nil
+	}
+
+	if checkErr := checkCrossCRConsistency(restore, cb); checkErr != nil {
+		return true, h.updateRestoreMarker(restore, v1alpha1.RestoreCompactSettled,
+			"CompactBackupMismatch", checkErr.Error())
+	}
+	if compactIsTerminal(cb) {
+		return true, h.updateRestoreMarker(restore, v1alpha1.RestoreCompactSettled,
+			compactTerminalReason(cb), cb.Status.Message)
+	}
+
+	return false, nil
+}
+
+func (h *replicationHandler) enterSnapshotRestore(restore *v1alpha1.Restore) error {
+	var statusUpdate *controller.RestoreUpdateStatus
+	if restore.Status.TimeStarted.IsZero() {
+		now := metav1.Now()
+		statusUpdate = &controller.RestoreUpdateStatus{TimeStarted: &now}
+	}
+	return h.statusUpdater.Update(
+		restore,
+		&v1alpha1.RestoreCondition{
+			Type:   v1alpha1.RestoreSnapshotRestore,
+			Status: corev1.ConditionTrue,
+			Reason: "SnapshotRestoreStarted",
+		},
+		statusUpdate,
+	)
+}
+
+func (h *replicationHandler) syncEmptyReplicationStep(restore *v1alpha1.Restore) error {
+	switch restore.Status.Phase {
+	case "":
+		return h.enterSnapshotRestore(restore)
+	case v1alpha1.RestoreSnapshotRestore:
+		return h.setReplicationStep(restore, label.ReplicationStepSnapshotRestoreVal)
+	default:
+		return h.handleUnexpectedReplicationState(restore)
+	}
+}
+
+func (h *replicationHandler) syncSnapshotReplicationStep(restore *v1alpha1.Restore) error {
+	switch restore.Status.Phase {
+	case v1alpha1.RestoreSnapshotRestore:
+		return h.syncSnapshotJobAndGate(restore)
+	case v1alpha1.RestoreLogRestore:
+		return h.setReplicationStep(restore, label.ReplicationStepLogRestoreVal)
+	default:
+		return h.handleUnexpectedReplicationState(restore)
+	}
+}
+
+func (h *replicationHandler) syncSnapshotJobAndGate(restore *v1alpha1.Restore) error {
+	job, jobErr := h.findJobForStep(restore, label.ReplicationStepSnapshotRestoreVal)
+	if jobErr != nil {
+		return jobErr
+	}
+
+	if job == nil {
+		created, err := h.ensureJobForStep(restore, label.ReplicationStepSnapshotRestoreVal)
 		if err != nil {
-			if controller.IsIgnoreError(err) {
-				return h.updateRestoreMarker(restore, v1alpha1.RestoreCompactSettled,
-					"CompactBackupWaitTimeout", err.Error())
-			}
 			return err
 		}
-		if cb == nil {
-			// NotFound but still waiting (WaitTimeout unset / 0 / not yet
-			// expired). Emit a Warning Event for visibility, then fall through
-			// so snapshot can proceed in parallel. K8s recorder dedups within
-			// a window so retry storms don't flood.
-			h.recorder.Eventf(restore, corev1.EventTypeWarning, "CompactBackupNotFound",
-				"CompactBackup %q not found in namespace %s, waiting",
-				restore.Spec.ReplicationConfig.CompactBackupName, restore.Namespace)
-		} else {
-			if checkErr := checkCrossCRConsistency(restore, cb); checkErr != nil {
-				return h.updateRestoreMarker(restore, v1alpha1.RestoreCompactSettled,
-					"CompactBackupMismatch", checkErr.Error())
-			}
-			if compactIsTerminal(cb) {
-				return h.updateRestoreMarker(restore, v1alpha1.RestoreCompactSettled,
-					compactTerminalReason(cb), cb.Status.Message)
-			}
+		if created {
+			h.recorder.Event(restore, corev1.EventTypeNormal, "SnapshotRestoreStarted",
+				"Created phase-1 BR Job for replication restore")
 		}
-	}
-
-	// B3: enter SnapshotRestore phase. Independent of cb — snapshot starts
-	// even when CompactSettled is not yet written. The gate at B9 enforces
-	// the join.
-	if restore.Status.Phase == "" {
-		var statusUpdate *controller.RestoreUpdateStatus
-		if restore.Status.TimeStarted.IsZero() {
-			now := metav1.Now()
-			statusUpdate = &controller.RestoreUpdateStatus{TimeStarted: &now}
-		}
-		return h.statusUpdater.Update(
-			restore,
-			&v1alpha1.RestoreCondition{
-				Type:   v1alpha1.RestoreSnapshotRestore,
-				Status: corev1.ConditionTrue,
-				Reason: "SnapshotRestoreStarted",
-			},
-			statusUpdate,
-		)
-	}
-
-	// B4: bump ReplicationStep once Phase has settled into SnapshotRestore.
-	if restore.Status.Phase == v1alpha1.RestoreSnapshotRestore &&
-		restore.Status.ReplicationStep == "" {
-		return h.setReplicationStep(restore, label.ReplicationStepSnapshotRestoreVal)
-	}
-
-	// B5–B9: branches active while we're still in phase-1 (Phase==SnapshotRestore
-	// AND Step=="snapshot-restore"). Constraining on Phase here matters: after
-	// B9 writes Phase=LogRestore the next reconcile will see Step still
-	// "snapshot-restore" briefly — without the Phase guard the cascade would
-	// re-enter B5 and try to recreate the phase-1 Job. The Phase guard hands
-	// control to B10 instead, which bumps Step to "log-restore".
-	if restore.Status.Phase == v1alpha1.RestoreSnapshotRestore &&
-		restore.Status.ReplicationStep == label.ReplicationStepSnapshotRestoreVal {
-		job, jobErr := h.findJobForStep(restore, label.ReplicationStepSnapshotRestoreVal)
-		if jobErr != nil {
-			return jobErr
-		}
-
-		// B5: create phase-1 Job. Covers both first-time creation (right after
-		// B4 wrote Step) and crash recovery (Step was persisted but the previous
-		// reconcile's Job creation never landed).
-		if job == nil {
-			created, err := h.ensureJobForStep(restore, label.ReplicationStepSnapshotRestoreVal)
-			if err != nil {
-				return err
-			}
-			if created {
-				h.recorder.Event(restore, corev1.EventTypeNormal, "SnapshotRestoreStarted",
-					"Created phase-1 BR Job for replication restore")
-			}
-			return nil
-		}
-
-		// B6: phase-1 Job Failed → terminal failure.
-		if jobHasCondition(job, batchv1.JobFailed) {
-			return h.failRestore(restore, "SnapshotRestoreFailed", jobFailureMessage(job))
-		}
-
-		// B7: phase-1 Job Complete + marker not yet written.
-		if jobHasCondition(job, batchv1.JobComplete) &&
-			!hasMarkerTrue(restore, v1alpha1.RestoreSnapshotRestored) {
-			return h.updateRestoreMarker(restore, v1alpha1.RestoreSnapshotRestored,
-				"JobComplete", "")
-		}
-
-		// B8 was the in-cascade CB-terminal observation; moved to the top
-		// block. Slot kept empty for traceability with prior versions.
-
-		// B9: gate passed → write Phase=LogRestore.
-		if hasMarkerTrue(restore, v1alpha1.RestoreSnapshotRestored) &&
-			hasMarkerTrue(restore, v1alpha1.RestoreCompactSettled) {
-			return h.statusUpdater.Update(
-				restore,
-				&v1alpha1.RestoreCondition{
-					Type:   v1alpha1.RestoreLogRestore,
-					Status: corev1.ConditionTrue,
-					Reason: "GatePassed",
-				},
-				nil,
-			)
-		}
-
-		// At least one marker still missing; nothing to do this reconcile.
 		return nil
 	}
 
-	// B10: bump Step to "log-restore" once Phase has settled into LogRestore.
-	if restore.Status.Phase == v1alpha1.RestoreLogRestore &&
-		restore.Status.ReplicationStep == label.ReplicationStepSnapshotRestoreVal {
-		return h.setReplicationStep(restore, label.ReplicationStepLogRestoreVal)
+	if jobHasCondition(job, batchv1.JobFailed) {
+		return h.failRestore(restore, "SnapshotRestoreFailed", jobFailureMessage(job))
 	}
 
-	// B11–B12: branches active while ReplicationStep == "log-restore".
-	if restore.Status.ReplicationStep == label.ReplicationStepLogRestoreVal {
-		job, jobErr := h.findJobForStep(restore, label.ReplicationStepLogRestoreVal)
-		if jobErr != nil {
-			return jobErr
-		}
+	if jobHasCondition(job, batchv1.JobComplete) &&
+		!hasMarkerTrue(restore, v1alpha1.RestoreSnapshotRestored) {
+		return h.updateRestoreMarker(restore, v1alpha1.RestoreSnapshotRestored,
+			"JobComplete", "")
+	}
 
-		// B11: create phase-2 Job. Covers first-time creation + crash recovery.
-		if job == nil {
-			created, err := h.ensureJobForStep(restore, label.ReplicationStepLogRestoreVal)
-			if err != nil {
-				return err
-			}
-			if created {
-				h.recorder.Event(restore, corev1.EventTypeNormal, "LogRestoreStarted",
-					"Created phase-2 BR Job for replication restore")
-			}
-			return nil
-		}
+	if hasMarkerTrue(restore, v1alpha1.RestoreSnapshotRestored) &&
+		hasMarkerTrue(restore, v1alpha1.RestoreCompactSettled) {
+		return h.enterLogRestore(restore)
+	}
 
-		// B12: phase-2 Job Failed → terminal failure.
-		if jobHasCondition(job, batchv1.JobFailed) {
-			return h.failRestore(restore, "LogRestoreFailed", jobFailureMessage(job))
-		}
+	return nil
+}
 
-		// Otherwise: backup-manager drives Phase=Running/Complete/Failed.
+func (h *replicationHandler) enterLogRestore(restore *v1alpha1.Restore) error {
+	return h.statusUpdater.Update(
+		restore,
+		&v1alpha1.RestoreCondition{
+			Type:   v1alpha1.RestoreLogRestore,
+			Status: corev1.ConditionTrue,
+			Reason: "GatePassed",
+		},
+		nil,
+	)
+}
+
+func (h *replicationHandler) syncLogRestoreStep(restore *v1alpha1.Restore) error {
+	job, jobErr := h.findJobForStep(restore, label.ReplicationStepLogRestoreVal)
+	if jobErr != nil {
+		return jobErr
+	}
+
+	if job == nil {
+		created, err := h.ensureJobForStep(restore, label.ReplicationStepLogRestoreVal)
+		if err != nil {
+			return err
+		}
+		if created {
+			h.recorder.Event(restore, corev1.EventTypeNormal, "LogRestoreStarted",
+				"Created phase-2 BR Job for replication restore")
+		}
 		return nil
 	}
 
-	// Defensive: an unknown ReplicationStep value indicates a bug elsewhere.
-	klog.Warningf("unknown ReplicationStep %q for restore %s/%s",
-		restore.Status.ReplicationStep, restore.Namespace, restore.Name)
+	if jobHasCondition(job, batchv1.JobFailed) {
+		return h.failRestore(restore, "LogRestoreFailed", jobFailureMessage(job))
+	}
+
+	return nil
+}
+
+func (h *replicationHandler) handleUnexpectedReplicationState(restore *v1alpha1.Restore) error {
+	// Defensive: an unexpected Phase / ReplicationStep pairing indicates a bug
+	// elsewhere. Do not create work or write status from here.
+	klog.Warningf("unexpected replication restore state phase=%q step=%q for restore %s/%s",
+		restore.Status.Phase, restore.Status.ReplicationStep, restore.Namespace, restore.Name)
 	return nil
 }
 
