@@ -468,8 +468,8 @@ func TestSync_B3_CBFoundAndNotTerminal_WritesPhaseSnapshotRestore(t *testing.T) 
 	updated := getRestore(g, h, "ns1", "r1")
 	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreSnapshotRestore),
 		"Phase must advance to SnapshotRestore")
-	g.Expect(updated.Status.ReplicationStep).To(BeEmpty(),
-		"Step must NOT be set in same Sync (B4 owns that)")
+	g.Expect(updated.Status.ReplicationStep).To(Equal(label.ReplicationStepSnapshotRestoreVal),
+		"Step must be written atomically with Phase")
 	g.Expect(listJobs(g, h, "ns1")).To(BeEmpty(),
 		"Job must NOT be created in same Sync (B5 owns that)")
 	_, c := v1alpha1.GetRestoreCondition(&updated.Status, v1alpha1.RestoreSnapshotRestore)
@@ -479,29 +479,6 @@ func TestSync_B3_CBFoundAndNotTerminal_WritesPhaseSnapshotRestore(t *testing.T) 
 	_, settled := v1alpha1.GetRestoreCondition(&updated.Status, v1alpha1.RestoreCompactSettled)
 	g.Expect(settled).To(BeNil(),
 		"CB Running → CompactSettled stays unset until CB terminates")
-}
-
-// =============================================================================
-// B4: bump ReplicationStep
-// =============================================================================
-
-func TestSync_B4_PhaseSnapshotRestoreEmptyStep_BumpsStep(t *testing.T) {
-	g := NewGomegaWithT(t)
-	handler, h := newHandlerForTest(t)
-	defer h.Close()
-
-	r := newReplicationRestoreFixture("r1", "ns1", "cb1", nil)
-	r.Status.Phase = v1alpha1.RestoreSnapshotRestore
-	h.CreateRestore(r)
-	pushRestoreStatus(g, h, r)
-	// No need to seed CompactBackup; B4 doesn't depend on it.
-
-	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
-
-	updated := getRestore(g, h, "ns1", "r1")
-	g.Expect(updated.Status.ReplicationStep).To(Equal("snapshot-restore"))
-	g.Expect(listJobs(g, h, "ns1")).To(BeEmpty(),
-		"Job creation belongs to B5, not B4")
 }
 
 // =============================================================================
@@ -676,8 +653,8 @@ func TestSync_B9_BothMarkersTrue_TransitionsPhaseToLogRestore(t *testing.T) {
 	updated := getRestore(g, h, "ns1", "r1")
 	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreLogRestore),
 		"both markers True: Phase must transition to LogRestore")
-	g.Expect(updated.Status.ReplicationStep).To(Equal("snapshot-restore"),
-		"Step bump belongs to B10, not B9")
+	g.Expect(updated.Status.ReplicationStep).To(Equal(label.ReplicationStepLogRestoreVal),
+		"Step must be written atomically with Phase=LogRestore")
 	g.Expect(listJobs(g, h, "ns1")).To(HaveLen(1),
 		"phase-2 Job creation belongs to B11, not B9")
 
@@ -702,19 +679,14 @@ func TestSync_NoCBYet_SnapshotPhaseDrivesIndependently(t *testing.T) {
 	r := newReplicationRestoreFixture("r1", "ns1", "missing-cb", ptrDuration(10*time.Minute))
 	h.CreateRestore(r)
 
-	// Sync 1: top block emits Warning, no settle yet → B3 writes Phase=SnapshotRestore.
+	// Sync 1: top block emits Warning, no settle yet → B3 atomically writes
+	// Phase=SnapshotRestore and Step=snapshot-restore.
 	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
 	upd := getRestore(g, h, "ns1", "r1")
 	g.Expect(upd.Status.Phase).To(Equal(v1alpha1.RestoreSnapshotRestore))
-	g.Expect(upd.Status.ReplicationStep).To(BeEmpty())
+	g.Expect(upd.Status.ReplicationStep).To(Equal(label.ReplicationStepSnapshotRestoreVal))
 
-	// Sync 2: B4 bumps Step.
-	g.Expect(handler.Sync(upd)).NotTo(HaveOccurred())
-	upd = getRestore(g, h, "ns1", "r1")
-	g.Expect(upd.Status.ReplicationStep).To(Equal("snapshot-restore"))
-	g.Expect(listJobs(g, h, "ns1")).To(BeEmpty(), "Job creation belongs to B5, not B4")
-
-	// Sync 3: B5 creates phase-1 Job — even though CompactSettled is still unset.
+	// Sync 2: B5 creates phase-1 Job — even though CompactSettled is still unset.
 	g.Expect(handler.Sync(upd)).NotTo(HaveOccurred())
 	g.Eventually(func() int {
 		jobs, _ := h.Deps.JobLister.Jobs("ns1").List(labels.Everything())
@@ -758,25 +730,8 @@ func TestSync_CompactSettledFailure_DoesNotBlockGate(t *testing.T) {
 }
 
 // =============================================================================
-// B10 / B11: Step bump + phase-2 Job creation
+// B11: phase-2 Job creation
 // =============================================================================
-
-func TestSync_B10_PhaseLogRestoreStepStillSnapshotRestore_BumpsStep(t *testing.T) {
-	g := NewGomegaWithT(t)
-	handler, h := newHandlerForTest(t)
-	defer h.Close()
-
-	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "snapshot-restore")
-	r.Status.Phase = v1alpha1.RestoreLogRestore
-	h.CreateRestore(r)
-	pushRestoreStatus(g, h, r)
-
-	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
-
-	updated := getRestore(g, h, "ns1", "r1")
-	g.Expect(updated.Status.ReplicationStep).To(Equal("log-restore"))
-	g.Expect(listJobs(g, h, "ns1")).To(BeEmpty(), "B11 owns phase-2 Job creation, not B10")
-}
 
 func TestSync_B11_NoPhase2Job_CreatesJobAndEmitsNormalEvent(t *testing.T) {
 	g := NewGomegaWithT(t)
