@@ -26,7 +26,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
@@ -281,31 +280,41 @@ func (h *replicationHandler) failRestore(restore *v1alpha1.Restore, reason, mess
 // ensureJobForStep creates the BR Job for the given step if missing.
 // Returns created=true only when a Job was actually created in this call,
 // so callers can emit Events on the real-creation path without firing on
-// the lister-stale "already exists" race.
+// the cache-stale "already exists" race.
+//
+// Lookup is Get-by-name against the lister, then RestoreUIDLabelKey is
+// compared so a Job left behind by a deleted same-name predecessor (still
+// being garbage-collected) is rejected with an explicit error rather than
+// being treated as ours.
 func (h *replicationHandler) ensureJobForStep(restore *v1alpha1.Restore, step string) (created bool, err error) {
-	jobs, err := h.listJobsBySelector(restore.Namespace, restore.Name, step)
-	if err != nil {
-		return false, err
+	jobName := fmt.Sprintf("%s-%s", restore.Name, step)
+
+	existing, getErr := h.deps.JobLister.Jobs(restore.Namespace).Get(jobName)
+	if getErr != nil && !errors.IsNotFound(getErr) {
+		return false, getErr
 	}
-	if len(jobs) > 0 {
+	if existing != nil {
+		if existing.Labels[label.RestoreUIDLabelKey] != string(restore.UID) {
+			return false, fmt.Errorf(
+				"job %s/%s belongs to a prior Restore (uid=%q, current=%q); awaiting GC",
+				restore.Namespace, jobName,
+				existing.Labels[label.RestoreUIDLabelKey], restore.UID,
+			)
+		}
 		return false, nil
 	}
+
 	job, err := h.makeReplicationBRJob(restore, step)
 	if err != nil {
 		return false, err
 	}
+	// Residual race: lister said NotFound but a parallel Sync's Create has
+	// already landed in etcd. Surface as a normal error — the next Sync's
+	// Get-first path will identify the Job as ours via the UID label.
 	if err := h.deps.JobControl.CreateJob(restore, job); err != nil {
 		return false, err
 	}
 	return true, nil
-}
-
-func (h *replicationHandler) listJobsBySelector(ns, restoreName, step string) ([]*batchv1.Job, error) {
-	selector := labels.SelectorFromSet(labels.Set{
-		label.RestoreLabelKey:         restoreName,
-		label.ReplicationStepLabelKey: step,
-	})
-	return h.deps.JobLister.Jobs(ns).List(selector)
 }
 
 // makeReplicationBRJob builds the phase-specific BR Job with the correct
@@ -334,6 +343,7 @@ func (h *replicationHandler) makeReplicationBRJob(restore *v1alpha1.Restore, ste
 		restore.Labels,
 	)
 	jobLabels[label.ReplicationStepLabelKey] = step
+	jobLabels[label.RestoreUIDLabelKey] = string(restore.UID)
 
 	args := append(buildPiTRBaseArgs(restore), phaseArg)
 
@@ -418,17 +428,22 @@ func hasMarkerTrue(restore *v1alpha1.Restore, markerType v1alpha1.RestoreConditi
 }
 
 // findJobForStep returns the BR Job for the given step, or nil if not found.
-// Reuses listJobsBySelector (3-arg form from T6).
+// Lookup is Get-by-name; a Job whose RestoreUIDLabelKey doesn't match the
+// current Restore's UID is treated as not found, so the handler never reads
+// the status of a stale Job left behind by a deleted same-name predecessor.
 func (h *replicationHandler) findJobForStep(restore *v1alpha1.Restore, step string) (*batchv1.Job, error) {
-	jobs, err := h.listJobsBySelector(restore.Namespace, restore.Name, step)
-	if err != nil || len(jobs) == 0 {
+	jobName := fmt.Sprintf("%s-%s", restore.Name, step)
+	job, err := h.deps.JobLister.Jobs(restore.Namespace).Get(jobName)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil, nil
+		}
 		return nil, err
 	}
-	if len(jobs) > 1 {
-		klog.Warningf("Found %d Jobs for restore=%s/%s step=%s, expected 1; using %s",
-			len(jobs), restore.Namespace, restore.Name, step, jobs[0].Name)
+	if job.Labels[label.RestoreUIDLabelKey] != string(restore.UID) {
+		return nil, nil
 	}
-	return jobs[0], nil
+	return job, nil
 }
 
 func jobHasCondition(job *batchv1.Job, cond batchv1.JobConditionType) bool {

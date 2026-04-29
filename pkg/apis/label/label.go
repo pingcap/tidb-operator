@@ -69,6 +69,12 @@ const (
 	// rather than name pattern.
 	ReplicationStepLabelKey string = "tidb.pingcap.com/replication-step"
 
+	// RestoreUIDLabelKey carries the owning Restore's UID on its replication
+	// BR Jobs so that a Restore re-created with the same name can distinguish
+	// its own Jobs from leftover Jobs of a deleted predecessor still being
+	// garbage-collected. Compared by byte-exact equality.
+	RestoreUIDLabelKey string = "tidb.pingcap.com/restore-uid"
+
 	// ReplicationStepSnapshotRestoreVal is the label value for the phase-1 BR
 	// Job (snapshot restore + checkpoint set).
 	ReplicationStepSnapshotRestoreVal string = "snapshot-restore"

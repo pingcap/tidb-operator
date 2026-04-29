@@ -749,6 +749,10 @@ storage location, ignoring secretName differences."
 
 ## Task 6: Handler initial case (`""` → phase-1 Job creation)
 
+> **Plan deviation (superseded by commit `850a5be40`):** The `failRestore("CompactBackupMismatch", ...)` and "compact failure ⇒ Restore Failed" paths described below were replaced during implementation by writing CompactBackup outcomes to the `CompactSettled` condition marker. Per the design spec, internal BR phase-2 falls back to uncompacted log on compact failure, so the Restore is no longer terminated. References to `failRestore("CompactBackup*", ...)` in this and the next task are kept for historical context only.
+>
+> **Job-name + UID labelling fix-up:** Job lookup uses Get-by-name and verifies the new `label.RestoreUIDLabelKey` written by `makeReplicationBRJob`, so a Job leftover from a deleted same-name predecessor is rejected explicitly rather than mistaken for ours. The `listJobsBySelector` helper described in this task was removed.
+
 **Files:**
 - Modify: `pkg/backup/restore/replication_handler.go`
 - Modify: `pkg/backup/restore/replication_handler_test.go`

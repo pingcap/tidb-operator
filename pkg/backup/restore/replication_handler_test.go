@@ -133,6 +133,7 @@ func newReplicationRestoreFixture(name, ns, cbName string, wait *metav1.Duration
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: ns,
+			UID:       testReplicationRestoreUID,
 			// Default to "just created" so lookupCompactBackup's
 			// time.Since(CreationTimestamp) > waitTimeout check doesn't fire
 			// spuriously. Tests that exercise the timeout path override this
@@ -179,7 +180,18 @@ func newCompactBackupFixture(name, ns string, state v1alpha1.BackupConditionType
 	}
 }
 
+// testReplicationRestoreUID is the UID stamped on Restores produced by
+// newReplicationRestoreFixture and on Jobs produced by newReplicationJob* —
+// kept in sync so existing cascade tests don't need to thread the value
+// through. Use newReplicationJobWithUID to seed a Job with a different UID
+// (e.g. when exercising the stale-predecessor rejection path).
+const testReplicationRestoreUID = "r1-test-uid"
+
 func newReplicationJobNoCondition(restoreName, ns, step string) *batchv1.Job {
+	return newReplicationJobWithUID(restoreName, ns, step, testReplicationRestoreUID)
+}
+
+func newReplicationJobWithUID(restoreName, ns, step, restoreUID string) *batchv1.Job {
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s", restoreName, step),
@@ -190,6 +202,7 @@ func newReplicationJobNoCondition(restoreName, ns, step string) *batchv1.Job {
 				label.ManagedByLabelKey:       label.TiDBOperator,
 				label.RestoreLabelKey:         restoreName,
 				label.ReplicationStepLabelKey: step,
+				label.RestoreUIDLabelKey:      restoreUID,
 			},
 		},
 	}
@@ -861,4 +874,76 @@ func TestMakeReplicationBRJob_LogRestore_HasCorrectPhaseArg(t *testing.T) {
 		To(Equal(label.ReplicationStepLogRestoreVal))
 	g.Expect(job.Spec.Template.Spec.Containers[0].Args).
 		To(ContainElement("--replicationPhase=2"))
+}
+
+// =============================================================================
+// I5: same-name re-creation rejection
+// =============================================================================
+
+// Production code stamps the owning Restore's UID on every Job it creates.
+// A future Sync uses the label to verify ownership, so a Job left behind by a
+// deleted same-name predecessor (still being GC'd) is not mistaken for ours.
+func TestMakeReplicationBRJob_StampsRestoreUIDLabel(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreFixture("r1", "ns1", "cb1", nil)
+	job, err := handler.makeReplicationBRJob(r, label.ReplicationStepSnapshotRestoreVal)
+
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(job.Labels).To(HaveKeyWithValue(label.RestoreUIDLabelKey, testReplicationRestoreUID))
+	g.Expect(job.Spec.Template.Labels).To(HaveKeyWithValue(label.RestoreUIDLabelKey, testReplicationRestoreUID))
+}
+
+// I5 cascade: a Job with the canonical (restore-name, step) name but a foreign
+// RestoreUIDLabelKey represents leftover from a deleted predecessor whose GC
+// hasn't completed. The handler must NOT treat it as ours: ensureJobForStep
+// surfaces an explicit error so the work item requeues, and Phase is not
+// advanced. Once Kubernetes GC removes the stale Job, the next Sync's
+// Get-first path returns NotFound and CreateJob runs cleanly.
+func TestSync_I5_StalePredecessorJob_RejectedAndPhasePreserved(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "snapshot-restore")
+	h.CreateRestore(r)
+	pushRestoreStatus(g, h, r)
+
+	stale := newReplicationJobWithUID("r1", "ns1",
+		label.ReplicationStepSnapshotRestoreVal, "stale-predecessor-uid")
+	seedJob(g, h, stale)
+
+	err := handler.Sync(r)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("belongs to a prior Restore"))
+
+	updated := getRestore(g, h, "ns1", "r1")
+	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreSnapshotRestore),
+		"Phase must NOT advance to Failed; stale Job is a transient awaiting-GC condition")
+	g.Expect(listJobs(g, h, "ns1")).To(HaveLen(1),
+		"handler must NOT create a duplicate Job alongside the stale one")
+}
+
+// findJobForStep treats a UID-mismatched Job as not-found so phase-1/phase-2
+// status reads never observe a stale predecessor's Job conditions.
+func TestFindJobForStep_StalePredecessorJob_TreatedAsNotFound(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "snapshot-restore")
+	h.CreateRestore(r)
+	stale := newReplicationJobWithUID("r1", "ns1",
+		label.ReplicationStepSnapshotRestoreVal, "stale-predecessor-uid")
+	stale.Status.Conditions = []batchv1.JobCondition{
+		{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
+	}
+	seedJob(g, h, stale)
+
+	job, err := handler.findJobForStep(r, label.ReplicationStepSnapshotRestoreVal)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(job).To(BeNil(),
+		"stale Job's JobComplete condition must not leak into the new Restore's view")
 }
