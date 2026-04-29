@@ -48,6 +48,16 @@ type Options struct {
 	UseFSR bool
 	// Abort indicates whether to abort/cleanup a failed restore operation
 	Abort bool
+	// ReplicationPhase indicates which phase of a two-phase replication
+	// restore this backup-manager invocation handles. Valid values:
+	//   1 — snapshot-restore phase (status writes suppressed by Option B
+	//       no-op wrapper; controller is sole writer of status.Phase)
+	//   2 — log-restore phase (backup-manager directly writes Phase /
+	//       Running / Complete / Failed; no wrapper)
+	// The zero value (0) means this is NOT a replication restore — the
+	// CLI flag was not passed and standard PiTR / snapshot semantics
+	// apply. See spec §3 (Option B) and §6 (BR CLI surface).
+	ReplicationPhase int
 }
 
 func (ro *Options) restoreData(
