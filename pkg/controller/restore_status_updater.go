@@ -46,6 +46,8 @@ type RestoreUpdateStatus struct {
 	Progress *float64
 	// ProgressUpdateTime is the progress update time.
 	ProgressUpdateTime *metav1.Time
+	// ReplicationStep identifies the current replication restore step.
+	ReplicationStep *string
 }
 
 // RestoreConditionUpdaterInterface enables updating Restore conditions.
@@ -129,6 +131,10 @@ func updateRestoreStatus(status *v1alpha1.RestoreStatus, newStatus *RestoreUpdat
 			isUpdate = true
 		}
 	}
+	if newStatus.ReplicationStep != nil && status.ReplicationStep != *newStatus.ReplicationStep {
+		status.ReplicationStep = *newStatus.ReplicationStep
+		isUpdate = true
+	}
 
 	return isUpdate
 }
@@ -156,15 +162,20 @@ func (u *FakeRestoreConditionUpdater) SetUpdateRestoreError(err error, after int
 	u.updateRestoreTracker.SetError(err).SetAfter(after)
 }
 
-// UpdateRestore updates the Restore
-func (u *FakeRestoreConditionUpdater) Update(restore *v1alpha1.Restore, _ *v1alpha1.RestoreCondition, _ *RestoreUpdateStatus) error {
+// UpdateRestore updates the Restore. Mirrors realRestoreConditionUpdater by
+// applying both the condition (which assigns Phase = condition.Type) and the
+// RestoreUpdateStatus patch onto the object before writing it to the indexer.
+func (u *FakeRestoreConditionUpdater) Update(restore *v1alpha1.Restore, condition *v1alpha1.RestoreCondition, newStatus *RestoreUpdateStatus) error {
 	defer u.updateRestoreTracker.Inc()
 	if u.updateRestoreTracker.ErrorReady() {
 		defer u.updateRestoreTracker.Reset()
 		return u.updateRestoreTracker.GetError()
 	}
 
-	return u.RestoreIndexer.Update(restore)
+	updated := restore.DeepCopy()
+	updateRestoreStatus(&updated.Status, newStatus)
+	v1alpha1.UpdateRestoreCondition(&updated.Status, condition)
+	return u.RestoreIndexer.Update(updated)
 }
 
 var _ RestoreConditionUpdaterInterface = &FakeRestoreConditionUpdater{}

@@ -43,13 +43,16 @@ import (
 // next round" pattern (see restore_manager.go:syncRestoreJob) and avoids the
 // crash windows that come with multi-write-per-reconcile designs.
 //
-// ReplicationStep is the primary dispatch key:
+// ReplicationStep is the primary dispatch key. Phase and Step are written
+// together in a single Update (via RestoreUpdateStatus.ReplicationStep), so
+// observers never see a (Phase, Step) pair that's only half-advanced:
 //
-//   - "" initializes the restore: Phase="" enters SnapshotRestore; then
-//     Phase=SnapshotRestore sets Step="snapshot-restore".
+//   - "" initializes: Phase="" → enterSnapshotRestore writes both
+//     Phase=SnapshotRestore and Step="snapshot-restore" atomically.
 //   - "snapshot-restore" tracks phase-1 progress with markers:
 //     SnapshotRestored=True and CompactSettled=True. Once both markers are
-//     present, Sync writes Phase=LogRestore; the next reconcile advances Step.
+//     present, enterLogRestore writes Phase=LogRestore and Step="log-restore"
+//     atomically.
 //   - "log-restore" manages the phase-2 Job. In this step, backup-manager owns
 //     user-visible Phase transitions such as Running / Complete / Failed.
 //
@@ -138,10 +141,11 @@ func (h *replicationHandler) settleCompactBackupIfReady(restore *v1alpha1.Restor
 }
 
 func (h *replicationHandler) enterSnapshotRestore(restore *v1alpha1.Restore) error {
-	var statusUpdate *controller.RestoreUpdateStatus
+	step := label.ReplicationStepSnapshotRestoreVal
+	statusUpdate := &controller.RestoreUpdateStatus{ReplicationStep: &step}
 	if restore.Status.TimeStarted.IsZero() {
 		now := metav1.Now()
-		statusUpdate = &controller.RestoreUpdateStatus{TimeStarted: &now}
+		statusUpdate.TimeStarted = &now
 	}
 	return h.statusUpdater.Update(
 		restore,
@@ -155,25 +159,17 @@ func (h *replicationHandler) enterSnapshotRestore(restore *v1alpha1.Restore) err
 }
 
 func (h *replicationHandler) syncEmptyReplicationStep(restore *v1alpha1.Restore) error {
-	switch restore.Status.Phase {
-	case "":
+	if restore.Status.Phase == "" {
 		return h.enterSnapshotRestore(restore)
-	case v1alpha1.RestoreSnapshotRestore:
-		return h.setReplicationStep(restore, label.ReplicationStepSnapshotRestoreVal)
-	default:
-		return h.handleUnexpectedReplicationState(restore)
 	}
+	return h.handleUnexpectedReplicationState(restore)
 }
 
 func (h *replicationHandler) syncSnapshotReplicationStep(restore *v1alpha1.Restore) error {
-	switch restore.Status.Phase {
-	case v1alpha1.RestoreSnapshotRestore:
+	if restore.Status.Phase == v1alpha1.RestoreSnapshotRestore {
 		return h.syncSnapshotJobAndGate(restore)
-	case v1alpha1.RestoreLogRestore:
-		return h.setReplicationStep(restore, label.ReplicationStepLogRestoreVal)
-	default:
-		return h.handleUnexpectedReplicationState(restore)
 	}
+	return h.handleUnexpectedReplicationState(restore)
 }
 
 func (h *replicationHandler) syncSnapshotJobAndGate(restore *v1alpha1.Restore) error {
@@ -213,6 +209,7 @@ func (h *replicationHandler) syncSnapshotJobAndGate(restore *v1alpha1.Restore) e
 }
 
 func (h *replicationHandler) enterLogRestore(restore *v1alpha1.Restore) error {
+	step := label.ReplicationStepLogRestoreVal
 	return h.statusUpdater.Update(
 		restore,
 		&v1alpha1.RestoreCondition{
@@ -220,7 +217,7 @@ func (h *replicationHandler) enterLogRestore(restore *v1alpha1.Restore) error {
 			Status: corev1.ConditionTrue,
 			Reason: "GatePassed",
 		},
-		nil,
+		&controller.RestoreUpdateStatus{ReplicationStep: &step},
 	)
 }
 
@@ -255,35 +252,6 @@ func (h *replicationHandler) handleUnexpectedReplicationState(restore *v1alpha1.
 	klog.Warningf("unexpected replication restore state phase=%q step=%q for restore %s/%s",
 		restore.Status.Phase, restore.Status.ReplicationStep, restore.Namespace, restore.Name)
 	return nil
-}
-
-// setReplicationStep persists Status.ReplicationStep. Reads via Clientset
-// (not lister) to avoid lister-staleness clobbering a recently-written
-// status.Phase: under single-step the Phase write happened in a previous
-// reconcile, but the lister cache may still lag, and Update via Clientset
-// rewrites the entire object. Reading via Clientset guarantees we see the
-// latest Phase before bumping ReplicationStep. Wrapped in retry.OnError so
-// concurrent reconciles (e.g. Job event triggering another reconcile) don't
-// lose the Step write.
-func (h *replicationHandler) setReplicationStep(restore *v1alpha1.Restore, step string) error {
-	ns, name := restore.Namespace, restore.Name
-	return retry.OnError(retry.DefaultRetry, func(e error) bool { return e != nil }, func() error {
-		latest, err := h.deps.Clientset.PingcapV1alpha1().Restores(ns).Get(
-			context.TODO(), name, metav1.GetOptions{},
-		)
-		if err != nil {
-			return err
-		}
-		if latest.Status.ReplicationStep == step {
-			return nil
-		}
-		updated := latest.DeepCopy()
-		updated.Status.ReplicationStep = step
-		_, err = h.deps.Clientset.PingcapV1alpha1().Restores(ns).Update(
-			context.TODO(), updated, metav1.UpdateOptions{},
-		)
-		return err
-	})
 }
 
 // failRestore writes a Failed condition and returns nil on success, so callers
