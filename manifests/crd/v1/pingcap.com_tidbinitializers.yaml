@@ -158,6 +158,8 @@ spec:
                       x-kubernetes-int-or-string: true
                     type: object
                 type: object
+              serviceAccountName:
+                type: string
               timezone:
                 type: string
               tlsClientSecretName:

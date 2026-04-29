@@ -16775,6 +16775,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbInitializerSpec(ref common.ReferenceCa
 							},
 						},
 					},
+					"serviceAccountName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ServiceAccountName is the name of the ServiceAccount to use to run TiDB initializer Pods.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"permitHost": {
 						SchemaProps: spec.SchemaProps{
 							Description: "permitHost is the host which will only be allowed to connect to the TiDB.",

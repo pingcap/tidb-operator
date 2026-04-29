@@ -73,6 +73,10 @@ type TidbInitializerSpec struct {
 	// +optional
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 
+	// ServiceAccountName is the name of the ServiceAccount to use to run TiDB initializer Pods.
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
 	// permitHost is the host which will only be allowed to connect to the TiDB.
 	// +optional
 	PermitHost *string `json:"permitHost,omitempty"`
