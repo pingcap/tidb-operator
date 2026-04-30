@@ -1750,6 +1750,24 @@ int32
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>replicationConfig</code></br>
+<em>
+<a href="#replicationconfig">
+ReplicationConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ReplicationConfig is the optional configuration for replication restore.
+When Mode == pitr and this field is non-nil, the controller runs a
+two-phase replication restore (snapshot restore + log restore gated on
+CompactBackup terminal state). When nil, the controller runs a standard
+PiTR restore (existing behavior unchanged).</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -14990,6 +15008,55 @@ Only valid in Prometheus versions 2.25.0 and newer.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="replicationconfig">ReplicationConfig</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#restorespec">RestoreSpec</a>)
+</p>
+<p>
+<p>ReplicationConfig holds the replication-specific configuration for PiTR restore.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>compactBackupName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>CompactBackupName references a CompactBackup CR in the same namespace.
+The referenced CR must reach a terminal state (Complete or Failed)
+before the controller proceeds from phase-1 (snapshot restore) to
+phase-2 (log restore).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>waitTimeout</code></br>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>WaitTimeout bounds how long the controller waits for a missing
+CompactBackup CR to appear. 0 means wait indefinitely.
+This timeout does NOT apply when the CompactBackup exists but is
+still running; compaction duration is business-dependent.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="restorecondition">RestoreCondition</h3>
 <p>
 (<em>Appears on:</em>
@@ -15525,6 +15592,24 @@ int32
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>replicationConfig</code></br>
+<em>
+<a href="#replicationconfig">
+ReplicationConfig
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ReplicationConfig is the optional configuration for replication restore.
+When Mode == pitr and this field is non-nil, the controller runs a
+two-phase replication restore (snapshot restore + log restore gated on
+CompactBackup terminal state). When nil, the controller runs a standard
+PiTR restore (existing behavior unchanged).</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="restorestatus">RestoreStatus</h3>
@@ -15627,6 +15712,20 @@ RestoreConditionType
 </td>
 <td>
 <p>Progresses is the progress of restore.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicationStep</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ReplicationStep identifies the current phase of replication restore.
+Values: &ldquo;&rdquo; (not replication), &ldquo;snapshot-restore&rdquo;, &ldquo;log-restore&rdquo;.
+Set by the controller when creating each phase&rsquo;s Job.</p>
 </td>
 </tr>
 </tbody>

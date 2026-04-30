@@ -38,6 +38,34 @@ import (
 	"k8s.io/klog/v2"
 )
 
+const (
+	// replicationStatusSubPrefix is the fixed sub-prefix BR uses to
+	// lay out replication status under the log-backup storage.
+	// Hardcoded here (not exposed via API) per spec §6: this is a BR
+	// call detail and shouldn't leak into the CRD.
+	replicationStatusSubPrefix = "ccr"
+
+	// replicationPiTRConcurrency is the parallelism BR uses when
+	// applying compacted log files. Spec §6.
+	replicationPiTRConcurrency = 1024
+)
+
+// replicationBRFlags returns the BR command-line flags that are
+// specific to replication restore phases. Returns nil for phase 0
+// (= not a replication restore), in which case the caller's
+// `append(args, replicationBRFlags(0)...)` is a no-op and standard
+// PiTR semantics apply unchanged. Spec §6.
+func replicationBRFlags(phase int) []string {
+	if phase == 0 {
+		return nil
+	}
+	return []string{
+		fmt.Sprintf("--replication-storage-phase=%d", phase),
+		fmt.Sprintf("--replication-status-sub-prefix=%s", replicationStatusSubPrefix),
+		fmt.Sprintf("--pitr-concurrency=%d", replicationPiTRConcurrency),
+	}
+}
+
 type Options struct {
 	backupUtil.GenericOptions
 	// Prepare to restore data. It's used in volume-snapshot mode.
@@ -48,6 +76,16 @@ type Options struct {
 	UseFSR bool
 	// Abort indicates whether to abort/cleanup a failed restore operation
 	Abort bool
+	// ReplicationPhase indicates which phase of a two-phase replication
+	// restore this backup-manager invocation handles. Valid values:
+	//   1 — snapshot-restore phase (status writes suppressed by Option B
+	//       no-op wrapper; controller is sole writer of status.Phase)
+	//   2 — log-restore phase (backup-manager directly writes Phase /
+	//       Running / Complete / Failed; no wrapper)
+	// The zero value (0) means this is NOT a replication restore — the
+	// CLI flag was not passed and standard PiTR / snapshot semantics
+	// apply. See spec §3 (Option B) and §6 (BR CLI surface).
+	ReplicationPhase int
 }
 
 func (ro *Options) restoreData(
@@ -104,6 +142,7 @@ func (ro *Options) restoreData(
 		} else {
 			args = append(args, fullBackupArgs...)
 		}
+		args = append(args, replicationBRFlags(ro.ReplicationPhase)...)
 		restoreType = "point"
 	case string(v1alpha1.RestoreModeVolumeSnapshot):
 		// Currently, we only support aws ebs volume snapshot.

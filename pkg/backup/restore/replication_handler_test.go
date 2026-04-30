@@ -1,0 +1,1125 @@
+// Copyright 2026 PingCAP, Inc.
+// Licensed under the Apache License, Version 2.0 (the "License").
+package restore
+
+import (
+	"context"
+	"fmt"
+	"testing"
+	"time"
+
+	. "github.com/onsi/gomega"
+	"github.com/pingcap/tidb-operator/pkg/apis/label"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
+	"github.com/pingcap/tidb-operator/pkg/controller"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/tools/record"
+)
+
+// =============================================================================
+// Helper unit tests (independent of cascade)
+// =============================================================================
+
+func TestAppendRestoreMarker_PreservesPhase(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	r := &v1alpha1.Restore{
+		Status: v1alpha1.RestoreStatus{
+			Phase: v1alpha1.RestoreSnapshotRestore,
+		},
+	}
+	appendRestoreMarker(r, v1alpha1.RestoreSnapshotRestored, "JobComplete", "phase-1 Job complete")
+
+	g.Expect(r.Status.Phase).To(Equal(v1alpha1.RestoreSnapshotRestore), "Phase must not be touched")
+	g.Expect(r.Status.Conditions).To(HaveLen(1))
+	g.Expect(r.Status.Conditions[0].Type).To(Equal(v1alpha1.RestoreSnapshotRestored))
+	g.Expect(r.Status.Conditions[0].Reason).To(Equal("JobComplete"))
+}
+
+func TestAppendRestoreMarker_Idempotent(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	r := &v1alpha1.Restore{
+		Status: v1alpha1.RestoreStatus{
+			Phase: v1alpha1.RestoreSnapshotRestore,
+		},
+	}
+	appendRestoreMarker(r, v1alpha1.RestoreCompactSettled, "AllShardsComplete", "")
+	appendRestoreMarker(r, v1alpha1.RestoreCompactSettled, "AllShardsComplete", "")
+
+	g.Expect(r.Status.Conditions).To(HaveLen(1), "duplicate same-type marker must replace, not append")
+}
+
+func TestConsistencyCheck_StorageBucketMismatch(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	r := &v1alpha1.Restore{
+		Spec: v1alpha1.RestoreSpec{
+			BR: &v1alpha1.BRConfig{Cluster: "c1", ClusterNamespace: "ns"},
+			StorageProvider: v1alpha1.StorageProvider{
+				S3: &v1alpha1.S3StorageProvider{Bucket: "a", Prefix: "/p", Region: "us-west-2"},
+			},
+		},
+	}
+	cb := &v1alpha1.CompactBackup{
+		Spec: v1alpha1.CompactSpec{
+			BR: &v1alpha1.BRConfig{Cluster: "c1", ClusterNamespace: "ns"},
+			StorageProvider: v1alpha1.StorageProvider{
+				S3: &v1alpha1.S3StorageProvider{Bucket: "b", Prefix: "/p", Region: "us-west-2"},
+			},
+		},
+	}
+	err := checkCrossCRConsistency(r, cb)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("bucket"))
+}
+
+func TestConsistencyCheck_OK(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	spec := v1alpha1.StorageProvider{
+		S3: &v1alpha1.S3StorageProvider{Bucket: "a", Prefix: "/p", Region: "us-west-2", SecretName: "different-secret"},
+	}
+	r := &v1alpha1.Restore{
+		Spec: v1alpha1.RestoreSpec{
+			BR:              &v1alpha1.BRConfig{Cluster: "c1", ClusterNamespace: "ns"},
+			StorageProvider: spec,
+		},
+	}
+	cb := &v1alpha1.CompactBackup{
+		Spec: v1alpha1.CompactSpec{
+			BR: &v1alpha1.BRConfig{Cluster: "c1", ClusterNamespace: "ns"},
+			StorageProvider: v1alpha1.StorageProvider{
+				S3: &v1alpha1.S3StorageProvider{Bucket: "a", Prefix: "/p", Region: "us-west-2", SecretName: "original-secret"},
+			},
+		},
+	}
+	err := checkCrossCRConsistency(r, cb)
+	g.Expect(err).NotTo(HaveOccurred(), "SecretName difference must be ignored")
+}
+
+func TestCompareStorageLocation_UnsupportedType_HasClearMessage(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	// Local storage on Restore, S3 on CompactBackup → falls into default branch.
+	a := v1alpha1.StorageProvider{Local: &v1alpha1.LocalStorageProvider{}}
+	b := v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{Bucket: "b"}}
+	err := compareStorageLocation(a, b)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("unsupported storage provider type"),
+		"error must explicitly state unsupported, not the misleading 'type differs'")
+}
+
+// Two CRs with identical bucket/prefix/region but different Provider point at
+// different backends (e.g. ceph vs aws). Must be caught.
+func TestCompareStorageLocation_S3_DifferentProvider_Mismatch(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	common := v1alpha1.S3StorageProvider{Bucket: "b", Prefix: "/p", Region: "us-west-2"}
+	a := common
+	a.Provider = "aws"
+	b := common
+	b.Provider = "ceph"
+	err := compareStorageLocation(
+		v1alpha1.StorageProvider{S3: &a},
+		v1alpha1.StorageProvider{S3: &b},
+	)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("s3.provider"))
+}
+
+// Same shape: identical bucket/prefix/region but different Endpoint
+// (e.g. an S3-compatible cluster behind a custom URL vs default AWS).
+func TestCompareStorageLocation_S3_DifferentEndpoint_Mismatch(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	common := v1alpha1.S3StorageProvider{Bucket: "b", Prefix: "/p", Region: "us-west-2"}
+	a := common
+	a.Endpoint = "https://s3.amazonaws.com"
+	b := common
+	b.Endpoint = "https://minio.internal.example.com"
+	err := compareStorageLocation(
+		v1alpha1.StorageProvider{S3: &a},
+		v1alpha1.StorageProvider{S3: &b},
+	)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("s3.endpoint"))
+}
+
+// Upload-only attributes and credentials must still be ignored — the check
+// is location-equality, not full struct equality.
+func TestCompareStorageLocation_S3_UploadOnlyAndCredentials_Ignored(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	a := v1alpha1.S3StorageProvider{
+		Provider: "aws", Endpoint: "https://s3.amazonaws.com",
+		Bucket: "b", Prefix: "/p", Region: "us-west-2",
+		StorageClass: "STANDARD", Acl: "private", SSE: "AES256",
+		SecretName: "secret-a",
+	}
+	b := v1alpha1.S3StorageProvider{
+		Provider: "aws", Endpoint: "https://s3.amazonaws.com",
+		Bucket: "b", Prefix: "/p", Region: "us-west-2",
+		StorageClass: "GLACIER", Acl: "public-read", SSE: "aws:kms",
+		SecretName: "secret-b",
+	}
+	err := compareStorageLocation(
+		v1alpha1.StorageProvider{S3: &a},
+		v1alpha1.StorageProvider{S3: &b},
+	)
+	g.Expect(err).NotTo(HaveOccurred(),
+		"upload-only attributes (StorageClass/Acl/SSE) and SecretName must be ignored")
+}
+
+// =============================================================================
+// Cascade test fixtures
+// =============================================================================
+
+func newHandlerForTest(t *testing.T) (*replicationHandler, *testutils.Helper) {
+	h := testutils.NewHelper(t)
+	defaultBuilder := func(r *v1alpha1.Restore, _ bool) (*batchv1.Job, string, error) {
+		return fakeBuiltJob(r), "", nil
+	}
+	handler := newReplicationHandler(
+		h.Deps,
+		controller.NewRealRestoreConditionUpdater(h.Deps.Clientset, h.Deps.RestoreLister, h.Deps.Recorder),
+		h.Deps.Recorder,
+		defaultBuilder,
+	)
+	return handler, h
+}
+
+func newReplicationRestoreFixture(name, ns, cbName string, wait *metav1.Duration) *v1alpha1.Restore {
+	return &v1alpha1.Restore{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+			UID:       testReplicationRestoreUID,
+			// Default to "just created" so lookupCompactBackup's
+			// time.Since(CreationTimestamp) > waitTimeout check doesn't fire
+			// spuriously. Tests that exercise the timeout path override this
+			// to backdate the timestamp.
+			CreationTimestamp: metav1.NewTime(time.Now()),
+		},
+		Spec: v1alpha1.RestoreSpec{
+			Mode: v1alpha1.RestoreModePiTR,
+			BR:   &v1alpha1.BRConfig{Cluster: "tc1", ClusterNamespace: ns},
+			StorageProvider: v1alpha1.StorageProvider{
+				S3: &v1alpha1.S3StorageProvider{Bucket: "b", Prefix: "/p", Region: "us-west-2"},
+			},
+			ReplicationConfig: &v1alpha1.ReplicationConfig{
+				CompactBackupName: cbName,
+				WaitTimeout:       wait,
+			},
+			ToolImage: "pingcap/br:v8.5.0",
+		},
+	}
+}
+
+func newReplicationRestoreInStep(name, ns, cbName, step string) *v1alpha1.Restore {
+	r := newReplicationRestoreFixture(name, ns, cbName, nil)
+	r.Status.ReplicationStep = step
+	switch step {
+	case "snapshot-restore":
+		r.Status.Phase = v1alpha1.RestoreSnapshotRestore
+	case "log-restore":
+		r.Status.Phase = v1alpha1.RestoreLogRestore
+	}
+	return r
+}
+
+func newCompactBackupFixture(name, ns string, state v1alpha1.BackupConditionType) *v1alpha1.CompactBackup {
+	return &v1alpha1.CompactBackup{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+		Spec: v1alpha1.CompactSpec{
+			BR: &v1alpha1.BRConfig{Cluster: "tc1", ClusterNamespace: ns},
+			StorageProvider: v1alpha1.StorageProvider{
+				S3: &v1alpha1.S3StorageProvider{Bucket: "b", Prefix: "/p", Region: "us-west-2"},
+			},
+		},
+		Status: v1alpha1.CompactStatus{State: string(state)},
+	}
+}
+
+// testReplicationRestoreUID is the UID stamped on Restores produced by
+// newReplicationRestoreFixture and on Jobs produced by newReplicationJob* —
+// kept in sync so existing cascade tests don't need to thread the value
+// through. Use newReplicationJobWithUID to seed a Job with a different UID
+// (e.g. when exercising the stale-predecessor rejection path).
+const testReplicationRestoreUID = "r1-test-uid"
+
+func newReplicationJobNoCondition(restoreName, ns, step string) *batchv1.Job {
+	return newReplicationJobWithUID(restoreName, ns, step, testReplicationRestoreUID)
+}
+
+func newReplicationJobWithUID(restoreName, ns, step, restoreUID string) *batchv1.Job {
+	return &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", restoreName, step),
+			Namespace: ns,
+			Labels: map[string]string{
+				label.NameLabelKey:            "restore",
+				label.ComponentLabelKey:       "restore",
+				label.ManagedByLabelKey:       label.TiDBOperator,
+				label.RestoreLabelKey:         restoreName,
+				label.ReplicationStepLabelKey: step,
+				label.RestoreUIDLabelKey:      restoreUID,
+			},
+		},
+	}
+}
+
+func newReplicationJob(restoreName, ns, step string, condType batchv1.JobConditionType) *batchv1.Job {
+	j := newReplicationJobNoCondition(restoreName, ns, step)
+	j.Status.Conditions = []batchv1.JobCondition{
+		{Type: condType, Status: corev1.ConditionTrue},
+	}
+	return j
+}
+
+func ptrDuration(d time.Duration) *metav1.Duration { return &metav1.Duration{Duration: d} }
+
+// seedCompactBackup creates the CompactBackup via Clientset and waits for the
+// lister cache to see it. Returns once visible.
+func seedCompactBackup(g *WithT, h *testutils.Helper, cb *v1alpha1.CompactBackup) {
+	_, err := h.Deps.Clientset.PingcapV1alpha1().CompactBackups(cb.Namespace).Create(
+		context.TODO(), cb, metav1.CreateOptions{})
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Eventually(func() error {
+		_, e := h.Deps.CompactBackupLister.CompactBackups(cb.Namespace).Get(cb.Name)
+		return e
+	}, time.Second*10).Should(BeNil())
+}
+
+// seedJob creates a Job via KubeClientset and waits for the JobLister to see it.
+func seedJob(g *WithT, h *testutils.Helper, job *batchv1.Job) {
+	_, err := h.Deps.KubeClientset.BatchV1().Jobs(job.Namespace).Create(
+		context.TODO(), job, metav1.CreateOptions{})
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Eventually(func() error {
+		_, e := h.Deps.JobLister.Jobs(job.Namespace).Get(job.Name)
+		return e
+	}, time.Second*10).Should(BeNil())
+}
+
+// pushRestoreStatus pushes a Restore (with status) through Clientset.Update so
+// the next Sync sees the seeded status. Used for branches that pre-condition
+// on existing markers / Phase.
+func pushRestoreStatus(g *WithT, h *testutils.Helper, r *v1alpha1.Restore) {
+	_, err := h.Deps.Clientset.PingcapV1alpha1().Restores(r.Namespace).Update(
+		context.TODO(), r, metav1.UpdateOptions{})
+	g.Expect(err).NotTo(HaveOccurred())
+}
+
+func getRestore(g *WithT, h *testutils.Helper, ns, name string) *v1alpha1.Restore {
+	r, err := h.Deps.Clientset.PingcapV1alpha1().Restores(ns).Get(context.TODO(), name, metav1.GetOptions{})
+	g.Expect(err).NotTo(HaveOccurred())
+	return r
+}
+
+func listJobs(g *WithT, h *testutils.Helper, ns string) []batchv1.Job {
+	jobs, err := h.Deps.KubeClientset.BatchV1().Jobs(ns).List(context.TODO(), metav1.ListOptions{})
+	g.Expect(err).NotTo(HaveOccurred())
+	return jobs.Items
+}
+
+// expectEvent asserts that at least one buffered Event matches the given
+// substring. Drains matching event so subsequent assertions on different
+// reasons in the same test don't conflict.
+func expectEvent(g *WithT, h *testutils.Helper, substr string) {
+	fr, ok := h.Deps.Recorder.(*record.FakeRecorder)
+	g.Expect(ok).To(BeTrue(), "Recorder must be FakeRecorder for assertions")
+	g.Eventually(fr.Events, time.Second*5).Should(Receive(ContainSubstring(substr)),
+		"expected Event matching %q", substr)
+}
+
+// expectNoEvent asserts no buffered Event for a brief settling window.
+func expectNoEvent(g *WithT, h *testutils.Helper) {
+	fr, ok := h.Deps.Recorder.(*record.FakeRecorder)
+	g.Expect(ok).To(BeTrue())
+	select {
+	case e := <-fr.Events:
+		g.Expect(e).To(BeEmpty(), "did not expect any Event, got: %s", e)
+	case <-time.After(100 * time.Millisecond):
+	}
+}
+
+// =============================================================================
+// terminal short-circuit
+// =============================================================================
+
+func TestSync_TerminalRestore_NoOp(t *testing.T) {
+	g := NewGomegaWithT(t)
+	h := testutils.NewHelper(t)
+	defer h.Close()
+
+	// Build a handler with no recorder to ensure B1 short-circuits before any
+	// recorder dereference would happen.
+	handler := &replicationHandler{deps: h.Deps}
+
+	for _, cond := range []v1alpha1.RestoreConditionType{v1alpha1.RestoreComplete, v1alpha1.RestoreFailed} {
+		r := &v1alpha1.Restore{
+			Status: v1alpha1.RestoreStatus{
+				Conditions: []v1alpha1.RestoreCondition{{Type: cond, Status: corev1.ConditionTrue}},
+			},
+		}
+		g.Expect(handler.Sync(r)).NotTo(HaveOccurred(), "terminal %s must short-circuit", cond)
+	}
+}
+
+// =============================================================================
+// TopBlock: CompactBackup observation (replaces former B2 + B8)
+//
+// All four CB outcomes (Complete / Failed / Mismatch / WaitTimeout) settle
+// as CompactSettled marker reasons rather than Restore-level Failed phases.
+// Snapshot phase progression is independent — covered under B3.
+// =============================================================================
+
+func TestSync_TopBlock_ConsistencyMismatch_WritesCompactSettledFailure(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	cb := newCompactBackupFixture("cb1", "ns1", v1alpha1.BackupRunning)
+	cb.Spec.BR.Cluster = "wrong-cluster"
+	seedCompactBackup(g, h, cb)
+
+	r := newReplicationRestoreFixture("r1", "ns1", "cb1", nil)
+	h.CreateRestore(r)
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+
+	updated := getRestore(g, h, "ns1", "r1")
+	g.Expect(updated.Status.Phase).NotTo(Equal(v1alpha1.RestoreFailed),
+		"mismatch must NOT fail the Restore — settle as marker reason instead")
+	_, c := v1alpha1.GetRestoreCondition(&updated.Status, v1alpha1.RestoreCompactSettled)
+	g.Expect(c).NotTo(BeNil(), "CompactSettled marker must be written")
+	g.Expect(c.Status).To(Equal(corev1.ConditionTrue))
+	g.Expect(c.Reason).To(Equal("CompactBackupMismatch"))
+	g.Expect(updated.Status.Phase).To(BeEmpty(),
+		"single-step: Phase must NOT advance in same Sync as the marker write")
+	g.Expect(listJobs(g, h, "ns1")).To(BeEmpty())
+}
+
+func TestSync_TopBlock_CBTerminalAtStart_WritesCompactSettled(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	cb := newCompactBackupFixture("cb1", "ns1", v1alpha1.BackupComplete)
+	seedCompactBackup(g, h, cb)
+
+	r := newReplicationRestoreFixture("r1", "ns1", "cb1", nil)
+	h.CreateRestore(r)
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+
+	// Single write: CompactSettled marker; Phase still empty.
+	updated := getRestore(g, h, "ns1", "r1")
+	_, c := v1alpha1.GetRestoreCondition(&updated.Status, v1alpha1.RestoreCompactSettled)
+	g.Expect(c).NotTo(BeNil(), "CompactSettled marker must be written")
+	g.Expect(c.Status).To(Equal(corev1.ConditionTrue))
+	g.Expect(c.Reason).To(Equal("AllShardsComplete"))
+	g.Expect(updated.Status.Phase).To(BeEmpty(), "Phase must NOT advance in this same Sync")
+	g.Expect(updated.Status.ReplicationStep).To(BeEmpty())
+}
+
+func TestSync_TopBlock_TimeoutExpired_WritesCompactSettledFailure(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreFixture("r1", "ns1", "missing-cb", ptrDuration(time.Nanosecond))
+	r.CreationTimestamp = metav1.NewTime(time.Now().Add(-time.Hour))
+	h.CreateRestore(r)
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+
+	updated := getRestore(g, h, "ns1", "r1")
+	g.Expect(updated.Status.Phase).NotTo(Equal(v1alpha1.RestoreFailed),
+		"timeout must NOT fail the Restore — settle as marker reason instead")
+	_, c := v1alpha1.GetRestoreCondition(&updated.Status, v1alpha1.RestoreCompactSettled)
+	g.Expect(c).NotTo(BeNil())
+	g.Expect(c.Status).To(Equal(corev1.ConditionTrue))
+	g.Expect(c.Reason).To(Equal("CompactBackupWaitTimeout"))
+}
+
+func TestSync_TopBlock_CBBecomesTerminalDuringSnapshot_WritesCompactSettled(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	// Snapshot already in progress (Phase=SnapshotRestore + Step=snapshot-restore),
+	// CB transitions to Complete after snapshot started — top block catches it.
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "snapshot-restore")
+	h.CreateRestore(r)
+	pushRestoreStatus(g, h, r)
+	seedJob(g, h, newReplicationJobNoCondition("r1", "ns1", label.ReplicationStepSnapshotRestoreVal))
+	seedCompactBackup(g, h, newCompactBackupFixture("cb1", "ns1", v1alpha1.BackupComplete))
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+
+	updated := getRestore(g, h, "ns1", "r1")
+	_, c := v1alpha1.GetRestoreCondition(&updated.Status, v1alpha1.RestoreCompactSettled)
+	g.Expect(c).NotTo(BeNil())
+	g.Expect(c.Status).To(Equal(corev1.ConditionTrue))
+	g.Expect(c.Reason).To(Equal("AllShardsComplete"))
+	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreSnapshotRestore),
+		"marker write must NOT change Phase")
+}
+
+// =============================================================================
+// enter SnapshotRestore phase (independent of cb under the new design)
+// =============================================================================
+
+func TestSync_NotFoundCompactBackup_WithinTimeout_EmitsWarningAndProceedsToSnapshot(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreFixture("r1", "ns1", "missing-cb", ptrDuration(10*time.Minute))
+	h.CreateRestore(r)
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+
+	// New behavior: snapshot phase advances even though CB hasn't appeared.
+	// The gate at B9 will block until CompactSettled is written by a future
+	// reconcile (CB shows up, or WaitTimeout expires).
+	updated := getRestore(g, h, "ns1", "r1")
+	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreSnapshotRestore),
+		"snapshot must advance even without CB present")
+	_, c := v1alpha1.GetRestoreCondition(&updated.Status, v1alpha1.RestoreCompactSettled)
+	g.Expect(c).To(BeNil(), "CompactSettled must NOT be written while still waiting")
+	expectEvent(g, h, "CompactBackupNotFound")
+}
+
+func TestSync_NotFoundCompactBackup_NoTimeoutSet_StillProceedsToSnapshot(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreFixture("r1", "ns1", "missing-cb", nil)
+	h.CreateRestore(r)
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+
+	updated := getRestore(g, h, "ns1", "r1")
+	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreSnapshotRestore))
+	expectEvent(g, h, "CompactBackupNotFound")
+}
+
+func TestSync_NegativeWaitTimeout_TreatedAsInfinite(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	// Negative duration must be normalized to "wait indefinitely".
+	r := newReplicationRestoreFixture("r1", "ns1", "missing-cb", ptrDuration(-time.Hour))
+	r.CreationTimestamp = metav1.NewTime(time.Now().Add(-2 * time.Hour))
+	h.CreateRestore(r)
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+
+	updated := getRestore(g, h, "ns1", "r1")
+	_, settled := v1alpha1.GetRestoreCondition(&updated.Status, v1alpha1.RestoreCompactSettled)
+	g.Expect(settled).To(BeNil(),
+		"negative WaitTimeout must NOT trigger immediate timeout-settle")
+}
+
+func TestSync_CBFoundAndNotTerminal_WritesPhaseSnapshotRestore(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	cb := newCompactBackupFixture("cb1", "ns1", v1alpha1.BackupRunning)
+	seedCompactBackup(g, h, cb)
+
+	r := newReplicationRestoreFixture("r1", "ns1", "cb1", nil)
+	h.CreateRestore(r)
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+
+	updated := getRestore(g, h, "ns1", "r1")
+	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreSnapshotRestore),
+		"Phase must advance to SnapshotRestore")
+	g.Expect(updated.Status.ReplicationStep).To(Equal(label.ReplicationStepSnapshotRestoreVal),
+		"Step must be written atomically with Phase")
+	g.Expect(listJobs(g, h, "ns1")).To(BeEmpty(),
+		"Job must NOT be created in same Sync (B5 owns that)")
+	_, c := v1alpha1.GetRestoreCondition(&updated.Status, v1alpha1.RestoreSnapshotRestore)
+	g.Expect(c).NotTo(BeNil())
+	g.Expect(c.Reason).To(Equal("SnapshotRestoreStarted"),
+		"Reason must be intent-named (no 'Phase1' / 'CreatedPhase1Job')")
+	_, settled := v1alpha1.GetRestoreCondition(&updated.Status, v1alpha1.RestoreCompactSettled)
+	g.Expect(settled).To(BeNil(),
+		"CB Running → CompactSettled stays unset until CB terminates")
+}
+
+// =============================================================================
+// create phase-1 Job
+// =============================================================================
+
+func TestSync_NoPhase1Job_CreatesJobAndEmitsNormalEvent(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "snapshot-restore")
+	h.CreateRestore(r)
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+
+	jobs := listJobs(g, h, "ns1")
+	g.Expect(jobs).To(HaveLen(1))
+	g.Expect(jobs[0].Labels[label.ReplicationStepLabelKey]).
+		To(Equal(label.ReplicationStepSnapshotRestoreVal))
+	expectEvent(g, h, "SnapshotRestoreStarted")
+}
+
+func TestSync_Phase1JobCreationIdempotent_DoubleSyncCreatesOnlyOne(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "snapshot-restore")
+	h.CreateRestore(r)
+
+	// First Sync: B5 creates Job.
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+	g.Eventually(func() int {
+		jobs, _ := h.Deps.JobLister.Jobs("ns1").List(labels.Everything())
+		return len(jobs)
+	}, time.Second*5).Should(Equal(1))
+
+	// Second Sync: B5 must not duplicate the Job.
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+	g.Expect(listJobs(g, h, "ns1")).To(HaveLen(1),
+		"second Sync must not create a duplicate Job")
+}
+
+// Crash-recovery: ReplicationStep="snapshot-restore" was persisted but the
+// previous Sync's ensureJobForStep didn't land. B5 must rebuild.
+func TestSync_Phase1CrashRecovery_StepWrittenButJobMissing_Rebuilds(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	// Simulate post-crash state: Step set, no Job exists.
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "snapshot-restore")
+	h.CreateRestore(r)
+	pushRestoreStatus(g, h, r)
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+	g.Expect(listJobs(g, h, "ns1")).To(HaveLen(1),
+		"crash-recovery: missing phase-1 Job must be rebuilt by B5")
+}
+
+// =============================================================================
+// phase-1 Job Failed → terminal failure with Reason + Event
+// =============================================================================
+
+func TestSync_Phase1JobFailed_FailsWithReasonAndEvent(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "snapshot-restore")
+	h.CreateRestore(r)
+	seedJob(g, h, newReplicationJob("r1", "ns1", label.ReplicationStepSnapshotRestoreVal, batchv1.JobFailed))
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+
+	updated := getRestore(g, h, "ns1", "r1")
+	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreFailed))
+	_, c := v1alpha1.GetRestoreCondition(&updated.Status, v1alpha1.RestoreFailed)
+	g.Expect(c).NotTo(BeNil())
+	g.Expect(c.Reason).To(Equal("SnapshotRestoreFailed"))
+	expectEvent(g, h, "SnapshotRestoreFailed")
+}
+
+// =============================================================================
+// write SnapshotRestored marker (Phase preserved)
+// =============================================================================
+
+func TestSync_Phase1JobComplete_WritesSnapshotRestoredMarker(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "snapshot-restore")
+	h.CreateRestore(r)
+	seedJob(g, h, newReplicationJob("r1", "ns1", label.ReplicationStepSnapshotRestoreVal, batchv1.JobComplete))
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+
+	updated := getRestore(g, h, "ns1", "r1")
+	_, c := v1alpha1.GetRestoreCondition(&updated.Status, v1alpha1.RestoreSnapshotRestored)
+	g.Expect(c).NotTo(BeNil(), "SnapshotRestored marker must be written")
+	g.Expect(c.Status).To(Equal(corev1.ConditionTrue))
+	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreSnapshotRestore),
+		"marker write must NOT change Phase")
+}
+
+// =============================================================================
+// Gate (B9) — partial gate variants + transition
+// =============================================================================
+
+// Partial gate: only SnapshotRestored True. Must wait — no Phase change.
+func TestSync_OnlySnapshotRestoredTrue_GateWaits(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "snapshot-restore")
+	appendRestoreMarker(r, v1alpha1.RestoreSnapshotRestored, "JobComplete", "")
+	// CompactSettled NOT set
+	h.CreateRestore(r)
+	pushRestoreStatus(g, h, r)
+	seedJob(g, h, newReplicationJob("r1", "ns1", label.ReplicationStepSnapshotRestoreVal, batchv1.JobComplete))
+	seedCompactBackup(g, h, newCompactBackupFixture("cb1", "ns1", v1alpha1.BackupRunning))
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+
+	updated := getRestore(g, h, "ns1", "r1")
+	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreSnapshotRestore),
+		"Phase must NOT advance with only SnapshotRestored True")
+	g.Expect(listJobs(g, h, "ns1")).To(HaveLen(1), "phase-2 Job must not be created")
+}
+
+// Mirror gate: only CompactSettled True. Same wait expectation.
+func TestSync_OnlyCompactSettledTrue_GateWaits(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "snapshot-restore")
+	appendRestoreMarker(r, v1alpha1.RestoreCompactSettled, "AllShardsComplete", "")
+	// SnapshotRestored NOT set
+	h.CreateRestore(r)
+	pushRestoreStatus(g, h, r)
+	// phase-1 Job exists but not Complete yet
+	seedJob(g, h, newReplicationJobNoCondition("r1", "ns1", label.ReplicationStepSnapshotRestoreVal))
+	seedCompactBackup(g, h, newCompactBackupFixture("cb1", "ns1", v1alpha1.BackupComplete))
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+
+	updated := getRestore(g, h, "ns1", "r1")
+	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreSnapshotRestore),
+		"Phase must NOT advance with only CompactSettled True")
+	g.Expect(listJobs(g, h, "ns1")).To(HaveLen(1), "phase-2 Job must not be created")
+}
+
+func TestSync_BothMarkersTrue_TransitionsPhaseToLogRestore(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "snapshot-restore")
+	appendRestoreMarker(r, v1alpha1.RestoreSnapshotRestored, "JobComplete", "")
+	appendRestoreMarker(r, v1alpha1.RestoreCompactSettled, "AllShardsComplete", "")
+	h.CreateRestore(r)
+	pushRestoreStatus(g, h, r)
+	seedJob(g, h, newReplicationJob("r1", "ns1", label.ReplicationStepSnapshotRestoreVal, batchv1.JobComplete))
+	seedCompactBackup(g, h, newCompactBackupFixture("cb1", "ns1", v1alpha1.BackupComplete))
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+
+	updated := getRestore(g, h, "ns1", "r1")
+	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreLogRestore),
+		"both markers True: Phase must transition to LogRestore")
+	g.Expect(updated.Status.ReplicationStep).To(Equal(label.ReplicationStepLogRestoreVal),
+		"Step must be written atomically with Phase=LogRestore")
+	g.Expect(listJobs(g, h, "ns1")).To(HaveLen(1),
+		"phase-2 Job creation belongs to B11, not B9")
+
+	_, c := v1alpha1.GetRestoreCondition(&updated.Status, v1alpha1.RestoreLogRestore)
+	g.Expect(c).NotTo(BeNil())
+	g.Expect(c.Reason).To(Equal("GatePassed"))
+}
+
+// =============================================================================
+// Parallel-progression invariant: snapshot is independent of CB presence
+// =============================================================================
+
+// Multi-Sync trace: with no CB, snapshot still drives all the way through to
+// phase-1 Job creation. Phase / Step / Job advances in successive reconciles
+// without ever waiting for CompactSettled.
+func TestSync_NoCBYet_SnapshotPhaseDrivesIndependently(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	// CB never created; WaitTimeout long enough not to expire during the test.
+	r := newReplicationRestoreFixture("r1", "ns1", "missing-cb", ptrDuration(10*time.Minute))
+	h.CreateRestore(r)
+
+	// Sync 1: top block emits Warning, no settle yet → B3 atomically writes
+	// Phase=SnapshotRestore and Step=snapshot-restore.
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+	upd := getRestore(g, h, "ns1", "r1")
+	g.Expect(upd.Status.Phase).To(Equal(v1alpha1.RestoreSnapshotRestore))
+	g.Expect(upd.Status.ReplicationStep).To(Equal(label.ReplicationStepSnapshotRestoreVal))
+
+	// Sync 2: B5 creates phase-1 Job — even though CompactSettled is still unset.
+	g.Expect(handler.Sync(upd)).NotTo(HaveOccurred())
+	g.Eventually(func() int {
+		jobs, _ := h.Deps.JobLister.Jobs("ns1").List(labels.Everything())
+		return len(jobs)
+	}, time.Second*5).Should(Equal(1), "phase-1 Job created without CB")
+
+	upd = getRestore(g, h, "ns1", "r1")
+	_, settled := v1alpha1.GetRestoreCondition(&upd.Status, v1alpha1.RestoreCompactSettled)
+	g.Expect(settled).To(BeNil(),
+		"CompactSettled stays unset; gate at B9 will block until either CB resolves or WaitTimeout expires")
+}
+
+// CompactSettled with a non-success Reason (e.g. CompactBackupWaitTimeout from
+// the top block) must NOT block the gate at B9. BR phase-2 reads the reason
+// and decides fallback; the controller's responsibility ends at "marker is
+// True", regardless of why.
+func TestSync_CompactSettledFailure_DoesNotBlockGate(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "snapshot-restore")
+	// Pre-set both markers as if previous reconciles wrote them — but
+	// CompactSettled carries a failure reason from a CB issue, not success.
+	appendRestoreMarker(r, v1alpha1.RestoreSnapshotRestored, "JobComplete", "")
+	appendRestoreMarker(r, v1alpha1.RestoreCompactSettled, "CompactBackupWaitTimeout",
+		"CompactBackup never appeared")
+	h.CreateRestore(r)
+	pushRestoreStatus(g, h, r)
+	seedJob(g, h, newReplicationJob("r1", "ns1", label.ReplicationStepSnapshotRestoreVal, batchv1.JobComplete))
+	// No CB seeded — irrelevant since CompactSettled is already True.
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+
+	updated := getRestore(g, h, "ns1", "r1")
+	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreLogRestore),
+		"gate must pass on CompactSettled=True regardless of reason")
+	_, c := v1alpha1.GetRestoreCondition(&updated.Status, v1alpha1.RestoreLogRestore)
+	g.Expect(c).NotTo(BeNil())
+	g.Expect(c.Reason).To(Equal("GatePassed"))
+}
+
+// =============================================================================
+// phase-2 Job creation
+// =============================================================================
+
+func TestSync_NoPhase2Job_CreatesJobAndEmitsNormalEvent(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "log-restore")
+	h.CreateRestore(r)
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+
+	jobs := listJobs(g, h, "ns1")
+	g.Expect(jobs).To(HaveLen(1))
+	g.Expect(jobs[0].Labels[label.ReplicationStepLabelKey]).
+		To(Equal(label.ReplicationStepLogRestoreVal))
+	expectEvent(g, h, "LogRestoreStarted")
+}
+
+// =============================================================================
+// phase-2 Job Failed + default no-op
+// =============================================================================
+
+func TestSync_Phase2JobFailed_FailsWithReasonAndEvent(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "log-restore")
+	h.CreateRestore(r)
+	seedJob(g, h, newReplicationJob("r1", "ns1", label.ReplicationStepLogRestoreVal, batchv1.JobFailed))
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+
+	updated := getRestore(g, h, "ns1", "r1")
+	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreFailed))
+	_, c := v1alpha1.GetRestoreCondition(&updated.Status, v1alpha1.RestoreFailed)
+	g.Expect(c).NotTo(BeNil())
+	g.Expect(c.Reason).To(Equal("LogRestoreFailed"))
+	expectEvent(g, h, "LogRestoreFailed")
+}
+
+func TestSync_Phase2JobFailedWhileBackupManagerPhaseRunning_FailsWithReason(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "log-restore")
+	r.Status.Phase = v1alpha1.RestoreRunning
+	h.CreateRestore(r)
+	seedJob(g, h, newReplicationJob("r1", "ns1", label.ReplicationStepLogRestoreVal, batchv1.JobFailed))
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+
+	updated := getRestore(g, h, "ns1", "r1")
+	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreFailed))
+	_, c := v1alpha1.GetRestoreCondition(&updated.Status, v1alpha1.RestoreFailed)
+	g.Expect(c).NotTo(BeNil())
+	g.Expect(c.Reason).To(Equal("LogRestoreFailed"))
+}
+
+func TestSync_Phase2JobRunning_NoOp(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "log-restore")
+	h.CreateRestore(r)
+	// Job present but no terminal condition — backup-manager owns Phase writes.
+	seedJob(g, h, newReplicationJobNoCondition("r1", "ns1", label.ReplicationStepLogRestoreVal))
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred())
+
+	updated := getRestore(g, h, "ns1", "r1")
+	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreLogRestore))
+}
+
+// =============================================================================
+// Defensive: unknown ReplicationStep
+// =============================================================================
+
+func TestSync_UnknownReplicationStep_ReturnsNilSilently(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreFixture("r1", "ns1", "cb1", nil)
+	r.Status.Phase = v1alpha1.RestoreSnapshotRestore // any non-empty Phase
+	r.Status.ReplicationStep = "some-future-step"    // unknown value
+	h.CreateRestore(r)
+
+	g.Expect(handler.Sync(r)).NotTo(HaveOccurred(),
+		"unknown step must not error; warning is logged via klog")
+	g.Expect(listJobs(g, h, "ns1")).To(BeEmpty())
+}
+
+// =============================================================================
+// applyReplicationPhase — pure post-processor on a builder-produced Job
+// =============================================================================
+
+// fakeBuiltJob is what tests inject as the output of the production
+// jobBuilderFunc. It mirrors the shape makeRestoreJobWithMode would
+// produce for a Restore: a single main container, no replication
+// labels (those are added by applyReplicationPhase), and a baseline
+// args slice the post-processor can append to.
+func fakeBuiltJob(restore *v1alpha1.Restore) *batchv1.Job {
+	return &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      restore.Name + "-restore",
+			Namespace: restore.Namespace,
+			Labels:    map[string]string{"existing": "preserved"},
+		},
+		Spec: batchv1.JobSpec{
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{"pod-existing": "preserved"},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: "tidb-backup-manager", Args: []string{"restore", "--mode=pitr"}},
+					},
+				},
+			},
+		},
+	}
+}
+
+func TestApplyReplicationPhase_RewritesJobName(t *testing.T) {
+	g := NewGomegaWithT(t)
+	r := newReplicationRestoreFixture("dr-restore", "ns1", "cb1", nil)
+
+	out := applyReplicationPhase(fakeBuiltJob(r), r, label.ReplicationStepSnapshotRestoreVal)
+	g.Expect(out.Name).To(Equal("dr-restore-snapshot-restore"))
+
+	out = applyReplicationPhase(fakeBuiltJob(r), r, label.ReplicationStepLogRestoreVal)
+	g.Expect(out.Name).To(Equal("dr-restore-log-restore"))
+}
+
+func TestApplyReplicationPhase_AddsReplicationLabelsToJobAndPod(t *testing.T) {
+	g := NewGomegaWithT(t)
+	r := newReplicationRestoreFixture("r1", "ns1", "cb1", nil)
+
+	out := applyReplicationPhase(fakeBuiltJob(r), r, label.ReplicationStepSnapshotRestoreVal)
+
+	g.Expect(out.Labels).To(HaveKeyWithValue(label.ReplicationStepLabelKey,
+		label.ReplicationStepSnapshotRestoreVal))
+	g.Expect(out.Labels).To(HaveKeyWithValue(label.RestoreUIDLabelKey,
+		testReplicationRestoreUID))
+	g.Expect(out.Spec.Template.Labels).To(HaveKeyWithValue(label.ReplicationStepLabelKey,
+		label.ReplicationStepSnapshotRestoreVal))
+	g.Expect(out.Spec.Template.Labels).To(HaveKeyWithValue(label.RestoreUIDLabelKey,
+		testReplicationRestoreUID))
+
+	// Existing labels from the builder must be preserved, not clobbered.
+	g.Expect(out.Labels).To(HaveKeyWithValue("existing", "preserved"))
+	g.Expect(out.Spec.Template.Labels).To(HaveKeyWithValue("pod-existing", "preserved"))
+}
+
+func TestApplyReplicationPhase_AppendsReplicationPhaseArg(t *testing.T) {
+	g := NewGomegaWithT(t)
+	r := newReplicationRestoreFixture("r1", "ns1", "cb1", nil)
+
+	out := applyReplicationPhase(fakeBuiltJob(r), r, label.ReplicationStepSnapshotRestoreVal)
+	g.Expect(out.Spec.Template.Spec.Containers[0].Args).
+		To(Equal([]string{"restore", "--mode=pitr", "--replicationPhase=1"}))
+
+	out = applyReplicationPhase(fakeBuiltJob(r), r, label.ReplicationStepLogRestoreVal)
+	g.Expect(out.Spec.Template.Spec.Containers[0].Args).
+		To(Equal([]string{"restore", "--mode=pitr", "--replicationPhase=2"}))
+}
+
+// TestMakeReplicationBRJob_DelegatesToBuilder verifies that the handler's
+// makeReplicationBRJob calls the injected builder (with isPruneJob=false)
+// and post-processes the returned Job via applyReplicationPhase. The
+// handler must not construct any Job state on its own.
+func TestMakeReplicationBRJob_DelegatesToBuilder(t *testing.T) {
+	g := NewGomegaWithT(t)
+	h := testutils.NewHelper(t)
+	defer h.Close()
+
+	var builderCalls int
+	var lastIsPrune bool
+	fake := func(restore *v1alpha1.Restore, isPruneJob bool) (*batchv1.Job, string, error) {
+		builderCalls++
+		lastIsPrune = isPruneJob
+		return fakeBuiltJob(restore), "", nil
+	}
+
+	handler := newReplicationHandler(
+		h.Deps,
+		controller.NewRealRestoreConditionUpdater(h.Deps.Clientset, h.Deps.RestoreLister, h.Deps.Recorder),
+		h.Deps.Recorder,
+		fake,
+	)
+
+	r := newReplicationRestoreFixture("r1", "ns1", "cb1", nil)
+	job, err := handler.makeReplicationBRJob(r, label.ReplicationStepLogRestoreVal)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(builderCalls).To(Equal(1), "builder must be called exactly once")
+	g.Expect(lastIsPrune).To(BeFalse(), "replication never builds prune jobs")
+
+	// Post-processing happened on top of the fake builder's output.
+	g.Expect(job.Name).To(Equal("r1-log-restore"))
+	g.Expect(job.Spec.Template.Spec.Containers[0].Args).
+		To(ContainElement("--replicationPhase=2"))
+}
+
+// =============================================================================
+// makeReplicationBRJob — label + arg shape
+// =============================================================================
+
+func TestMakeReplicationBRJob_SnapshotRestore_HasCorrectLabelsAndArgs(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreFixture("r1", "ns1", "cb1", nil)
+	job, err := handler.makeReplicationBRJob(r, label.ReplicationStepSnapshotRestoreVal)
+
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(job.Name).To(Equal("r1-snapshot-restore"))
+	g.Expect(job.Labels[label.ReplicationStepLabelKey]).
+		To(Equal(label.ReplicationStepSnapshotRestoreVal))
+	g.Expect(job.Spec.Template.Spec.Containers[0].Args).
+		To(ContainElement("--replicationPhase=1"))
+}
+
+func TestMakeReplicationBRJob_LogRestore_HasCorrectPhaseArg(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreFixture("r1", "ns1", "cb1", nil)
+	job, err := handler.makeReplicationBRJob(r, label.ReplicationStepLogRestoreVal)
+
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(job.Name).To(Equal("r1-log-restore"))
+	g.Expect(job.Labels[label.ReplicationStepLabelKey]).
+		To(Equal(label.ReplicationStepLogRestoreVal))
+	g.Expect(job.Spec.Template.Spec.Containers[0].Args).
+		To(ContainElement("--replicationPhase=2"))
+}
+
+// =============================================================================
+// I5: same-name re-creation rejection
+// =============================================================================
+
+// Production code stamps the owning Restore's UID on every Job it creates.
+// A future Sync uses the label to verify ownership, so a Job left behind by a
+// deleted same-name predecessor (still being GC'd) is not mistaken for ours.
+func TestMakeReplicationBRJob_StampsRestoreUIDLabel(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreFixture("r1", "ns1", "cb1", nil)
+	job, err := handler.makeReplicationBRJob(r, label.ReplicationStepSnapshotRestoreVal)
+
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(job.Labels).To(HaveKeyWithValue(label.RestoreUIDLabelKey, testReplicationRestoreUID))
+	g.Expect(job.Spec.Template.Labels).To(HaveKeyWithValue(label.RestoreUIDLabelKey, testReplicationRestoreUID))
+}
+
+// I5 cascade: a Job with the canonical (restore-name, step) name but a foreign
+// RestoreUIDLabelKey represents leftover from a deleted predecessor whose GC
+// hasn't completed. The handler must NOT treat it as ours: ensureJobForStep
+// surfaces an explicit error so the work item requeues, and Phase is not
+// advanced. Once Kubernetes GC removes the stale Job, the next Sync's
+// Get-first path returns NotFound and CreateJob runs cleanly.
+func TestSync_I5_StalePredecessorJob_RejectedAndPhasePreserved(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "snapshot-restore")
+	h.CreateRestore(r)
+	pushRestoreStatus(g, h, r)
+
+	stale := newReplicationJobWithUID("r1", "ns1",
+		label.ReplicationStepSnapshotRestoreVal, "stale-predecessor-uid")
+	seedJob(g, h, stale)
+
+	err := handler.Sync(r)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err.Error()).To(ContainSubstring("belongs to a prior Restore"))
+
+	updated := getRestore(g, h, "ns1", "r1")
+	g.Expect(updated.Status.Phase).To(Equal(v1alpha1.RestoreSnapshotRestore),
+		"Phase must NOT advance to Failed; stale Job is a transient awaiting-GC condition")
+	g.Expect(listJobs(g, h, "ns1")).To(HaveLen(1),
+		"handler must NOT create a duplicate Job alongside the stale one")
+}
+
+// findJobForStep treats a UID-mismatched Job as not-found so phase-1/phase-2
+// status reads never observe a stale predecessor's Job conditions.
+func TestFindJobForStep_StalePredecessorJob_TreatedAsNotFound(t *testing.T) {
+	g := NewGomegaWithT(t)
+	handler, h := newHandlerForTest(t)
+	defer h.Close()
+
+	r := newReplicationRestoreInStep("r1", "ns1", "cb1", "snapshot-restore")
+	h.CreateRestore(r)
+	stale := newReplicationJobWithUID("r1", "ns1",
+		label.ReplicationStepSnapshotRestoreVal, "stale-predecessor-uid")
+	stale.Status.Conditions = []batchv1.JobCondition{
+		{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
+	}
+	seedJob(g, h, stale)
+
+	job, err := handler.findJobForStep(r, label.ReplicationStepSnapshotRestoreVal)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(job).To(BeNil(),
+		"stale Job's JobComplete condition must not leak into the new Restore's view")
+}

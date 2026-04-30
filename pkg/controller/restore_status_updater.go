@@ -46,6 +46,8 @@ type RestoreUpdateStatus struct {
 	Progress *float64
 	// ProgressUpdateTime is the progress update time.
 	ProgressUpdateTime *metav1.Time
+	// ReplicationStep identifies the current replication restore step.
+	ReplicationStep *string
 }
 
 // RestoreConditionUpdaterInterface enables updating Restore conditions.
@@ -129,6 +131,10 @@ func updateRestoreStatus(status *v1alpha1.RestoreStatus, newStatus *RestoreUpdat
 			isUpdate = true
 		}
 	}
+	if newStatus.ReplicationStep != nil && status.ReplicationStep != *newStatus.ReplicationStep {
+		status.ReplicationStep = *newStatus.ReplicationStep
+		isUpdate = true
+	}
 
 	return isUpdate
 }
@@ -156,15 +162,50 @@ func (u *FakeRestoreConditionUpdater) SetUpdateRestoreError(err error, after int
 	u.updateRestoreTracker.SetError(err).SetAfter(after)
 }
 
-// UpdateRestore updates the Restore
-func (u *FakeRestoreConditionUpdater) Update(restore *v1alpha1.Restore, _ *v1alpha1.RestoreCondition, _ *RestoreUpdateStatus) error {
+// UpdateRestore updates the Restore. Mirrors realRestoreConditionUpdater by
+// applying both the condition (which assigns Phase = condition.Type) and the
+// RestoreUpdateStatus patch onto the object before writing it to the indexer.
+func (u *FakeRestoreConditionUpdater) Update(restore *v1alpha1.Restore, condition *v1alpha1.RestoreCondition, newStatus *RestoreUpdateStatus) error {
 	defer u.updateRestoreTracker.Inc()
 	if u.updateRestoreTracker.ErrorReady() {
 		defer u.updateRestoreTracker.Reset()
 		return u.updateRestoreTracker.GetError()
 	}
 
-	return u.RestoreIndexer.Update(restore)
+	updated := restore.DeepCopy()
+	updateRestoreStatus(&updated.Status, newStatus)
+	v1alpha1.UpdateRestoreCondition(&updated.Status, condition)
+	return u.RestoreIndexer.Update(updated)
 }
 
 var _ RestoreConditionUpdaterInterface = &FakeRestoreConditionUpdater{}
+
+// replicationRestoreStatusUpdater is a no-op RestoreConditionUpdaterInterface
+// used by backup-manager in replication restore phase-1. All writes are
+// suppressed so that the controller remains the sole writer of status.Phase
+// and condition markers during phase-1. Phase-2 uses NewRealRestoreConditionUpdater
+// directly (no wrap) because from backup-manager's perspective phase-2 is
+// a standard PiTR restore.
+//
+// The activation point is cmd/backup-manager/app/cmd/restore.go (landed in PR 2).
+type replicationRestoreStatusUpdater struct{}
+
+// NewReplicationRestoreStatusUpdater returns a no-op updater. See type doc
+// above for the rationale (Option B in the spec: controller owns all Phase
+// writes during phase-1; progress/timing writes from backup-manager are
+// dropped because the CompactBackup sharded status already carries the
+// user-visible progress, and TimeStarted is written by the controller when
+// it creates the phase-1 Job).
+func NewReplicationRestoreStatusUpdater() RestoreConditionUpdaterInterface {
+	return &replicationRestoreStatusUpdater{}
+}
+
+func (r *replicationRestoreStatusUpdater) Update(
+	_ *v1alpha1.Restore,
+	_ *v1alpha1.RestoreCondition,
+	_ *RestoreUpdateStatus,
+) error {
+	return nil
+}
+
+var _ RestoreConditionUpdaterInterface = &replicationRestoreStatusUpdater{}
