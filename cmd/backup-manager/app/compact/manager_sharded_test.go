@@ -17,6 +17,7 @@ import (
 
 func TestBuildCompactArgsDefaultMode(t *testing.T) {
 	manager := &Manager{
+		compact: &v1alpha1.CompactBackup{},
 		options: options.CompactOpts{
 			FromTS:      11,
 			UntilTS:     22,
@@ -31,10 +32,10 @@ func TestBuildCompactArgsDefaultMode(t *testing.T) {
 		"compact-log-backup",
 		"--storage-base64", "storage-base64",
 		"--from", "11",
-		"--until", "22",
 		"-N", "4",
 		"--cal-shift-ts",
 		"--physical-file-cache-capacity", "128G",
+		"--until", "22",
 	}
 
 	assertStringSliceEqual(t, args, want)
@@ -42,6 +43,7 @@ func TestBuildCompactArgsDefaultMode(t *testing.T) {
 
 func TestBuildCompactArgsShardedMode(t *testing.T) {
 	manager := &Manager{
+		compact: &v1alpha1.CompactBackup{},
 		options: options.CompactOpts{
 			FromTS:      11,
 			UntilTS:     22,
@@ -59,15 +61,127 @@ func TestBuildCompactArgsShardedMode(t *testing.T) {
 		"compact-log-backup",
 		"--storage-base64", "storage-base64",
 		"--from", "11",
-		"--until", "18446744073709551615",
 		"-N", "4",
 		"--cal-shift-ts",
 		"--physical-file-cache-capacity", "128G",
+		"--until", "22",
 		"--shard", "1/3",
 		"--minimal-compaction-size", "0",
 	}
 
 	assertStringSliceEqual(t, args, want)
+}
+
+func TestBuildCompactArgsCRRModeUsesCheckpointPrefix(t *testing.T) {
+	manager := &Manager{
+		compact: &v1alpha1.CompactBackup{
+			Spec: v1alpha1.CompactSpec{
+				StorageProvider: v1alpha1.StorageProvider{
+					S3: &v1alpha1.S3StorageProvider{Prefix: "log-backup"},
+				},
+			},
+		},
+		options: options.CompactOpts{
+			FromTS:      11,
+			UntilTS:     0, // unset → CCR mode
+			Concurrency: 4,
+		},
+	}
+
+	args := manager.buildCompactArgs("storage-base64")
+	want := []string{
+		"--log-level", "INFO",
+		"--log-format", "json",
+		"compact-log-backup",
+		"--storage-base64", "storage-base64",
+		"--from", "11",
+		"-N", "4",
+		"--cal-shift-ts",
+		"--physical-file-cache-capacity", "128G",
+		"--crr-checkpoint-prefix", "log-backup",
+	}
+
+	assertStringSliceEqual(t, args, want)
+}
+
+func TestBuildCompactArgsCRRModeShardedUsesCheckpointPrefix(t *testing.T) {
+	manager := &Manager{
+		compact: &v1alpha1.CompactBackup{
+			Spec: v1alpha1.CompactSpec{
+				StorageProvider: v1alpha1.StorageProvider{
+					Gcs: &v1alpha1.GcsStorageProvider{Prefix: "ccr/shard-1"},
+				},
+			},
+		},
+		options: options.CompactOpts{
+			FromTS:      11,
+			UntilTS:     0,
+			Concurrency: 4,
+			Sharded:     true,
+			ShardIndex:  1,
+			ShardCount:  3,
+		},
+	}
+
+	args := manager.buildCompactArgs("storage-base64")
+	want := []string{
+		"--log-level", "INFO",
+		"--log-format", "json",
+		"compact-log-backup",
+		"--storage-base64", "storage-base64",
+		"--from", "11",
+		"-N", "4",
+		"--cal-shift-ts",
+		"--physical-file-cache-capacity", "128G",
+		"--crr-checkpoint-prefix", "ccr/shard-1",
+		"--shard", "1/3",
+		"--minimal-compaction-size", "0",
+	}
+
+	assertStringSliceEqual(t, args, want)
+}
+
+func TestCheckpointPrefixSelectsConfiguredProvider(t *testing.T) {
+	cases := []struct {
+		name string
+		sp   v1alpha1.StorageProvider
+		want string
+	}{
+		{
+			name: "s3",
+			sp:   v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{Prefix: "p-s3"}},
+			want: "p-s3",
+		},
+		{
+			name: "gcs",
+			sp:   v1alpha1.StorageProvider{Gcs: &v1alpha1.GcsStorageProvider{Prefix: "p-gcs"}},
+			want: "p-gcs",
+		},
+		{
+			name: "azblob",
+			sp:   v1alpha1.StorageProvider{Azblob: &v1alpha1.AzblobStorageProvider{Prefix: "p-az"}},
+			want: "p-az",
+		},
+		{
+			name: "local",
+			sp:   v1alpha1.StorageProvider{Local: &v1alpha1.LocalStorageProvider{Prefix: "p-local"}},
+			want: "p-local",
+		},
+		{
+			name: "none",
+			sp:   v1alpha1.StorageProvider{},
+			want: "",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := &Manager{compact: &v1alpha1.CompactBackup{Spec: v1alpha1.CompactSpec{StorageProvider: c.sp}}}
+			got := m.checkpointPrefix()
+			if got != c.want {
+				t.Fatalf("checkpointPrefix(%s): got %q want %q", c.name, got, c.want)
+			}
+		})
+	}
 }
 
 func TestProcessCompactFailsWhenShardedRuntimeIndexIsInvalid(t *testing.T) {

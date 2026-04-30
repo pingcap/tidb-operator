@@ -78,13 +78,14 @@ func ParseCompactOptions(compact *v1alpha1.CompactBackup, opts *CompactOpts) err
 }
 
 func (c *CompactOpts) Verify() error {
-	if c.UntilTS < c.FromTS {
-		if c.UntilTS == untilTSUnset {
-			return errors.New("until-ts must be set")
-		}
-		if c.FromTS == fromTSUnset {
-			return errors.New("from-ts must be set")
-		}
+	if c.FromTS == fromTSUnset {
+		return errors.New("from-ts must be set")
+	}
+	// UntilTS unset signals CCR mode: tikv-ctl reads the until-ts from the
+	// log-backup global checkpoint via --crr-checkpoint-prefix, so leaving
+	// EndTs blank in the CR is valid. When the user does provide UntilTS,
+	// it must still be a sane upper bound.
+	if c.UntilTS != untilTSUnset && c.UntilTS < c.FromTS {
 		return errors.Errorf("until-ts %d must be greater than from-ts %d", c.UntilTS, c.FromTS)
 	}
 	if c.Concurrency <= 0 {
