@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -171,15 +170,26 @@ func (cm *Manager) compactCmd(ctx context.Context, base64Storage string) *exec.C
 	return exec.CommandContext(ctx, ctl, args...)
 }
 
-func (cm *Manager) buildCompactArgs(base64Storage string) []string {
-	untilTS := cm.options.UntilTS
-	// Sharded mode requires tikv-ctl's --until to cover all available log data so
-	// each shard can compact its full slice of the keyspace regardless of CR's
-	// spec.endTs; spec.endTs is effectively ignored in sharded mode.
-	if cm.options.Sharded {
-		untilTS = math.MaxUint64
+// checkpointPrefix returns the storage prefix used for log-backup data,
+// which doubles as tikv-ctl's --crr-checkpoint-prefix in CCR mode. It
+// inspects whichever StorageProvider variant is set on the CompactBackup
+// CR; an empty string indicates no prefix is configured.
+func (cm *Manager) checkpointPrefix() string {
+	sp := cm.compact.Spec.StorageProvider
+	switch {
+	case sp.S3 != nil:
+		return sp.S3.Prefix
+	case sp.Gcs != nil:
+		return sp.Gcs.Prefix
+	case sp.Azblob != nil:
+		return sp.Azblob.Prefix
+	case sp.Local != nil:
+		return sp.Local.Prefix
 	}
+	return ""
+}
 
+func (cm *Manager) buildCompactArgs(base64Storage string) []string {
 	args := []string{
 		"--log-level",
 		"INFO",
@@ -190,13 +200,20 @@ func (cm *Manager) buildCompactArgs(base64Storage string) []string {
 		base64Storage,
 		"--from",
 		strconv.FormatUint(cm.options.FromTS, 10),
-		"--until",
-		strconv.FormatUint(untilTS, 10),
 		"-N",
 		strconv.FormatUint(cm.options.Concurrency, 10),
 		"--cal-shift-ts",
 		"--physical-file-cache-capacity",
 		"128G",
+	}
+	// When the CR sets EndTs explicitly, honor it as a hard upper bound via
+	// --until (existing non-CCR semantics). Otherwise fall back to
+	// --crr-checkpoint-prefix and let tikv-ctl resolve the until-ts from
+	// the log-backup global checkpoint at the configured storage prefix.
+	if cm.options.UntilTS != 0 {
+		args = append(args, "--until", strconv.FormatUint(cm.options.UntilTS, 10))
+	} else {
+		args = append(args, "--crr-checkpoint-prefix", cm.checkpointPrefix())
 	}
 	if cm.options.Sharded {
 		// --shard tells tikv-ctl this pod's slice of the keyspace partition.
