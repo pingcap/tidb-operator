@@ -33,6 +33,8 @@ func TestBuildCompactArgsDefaultMode(t *testing.T) {
 		"--from", "11",
 		"--until", "22",
 		"-N", "4",
+		"--cal-shift-ts",
+		"--physical-file-cache-capacity", "128G",
 	}
 
 	assertStringSliceEqual(t, args, want)
@@ -59,6 +61,8 @@ func TestBuildCompactArgsShardedMode(t *testing.T) {
 		"--from", "11",
 		"--until", "18446744073709551615",
 		"-N", "4",
+		"--cal-shift-ts",
+		"--physical-file-cache-capacity", "128G",
 		"--shard", "1/3",
 		"--minimal-compaction-size", "0",
 	}

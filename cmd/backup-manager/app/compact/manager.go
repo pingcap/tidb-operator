@@ -194,6 +194,9 @@ func (cm *Manager) buildCompactArgs(base64Storage string) []string {
 		strconv.FormatUint(untilTS, 10),
 		"-N",
 		strconv.FormatUint(cm.options.Concurrency, 10),
+		"--cal-shift-ts",
+		"--physical-file-cache-capacity",
+		"128G",
 	}
 	if cm.options.Sharded {
 		// --shard tells tikv-ctl this pod's slice of the keyspace partition.
