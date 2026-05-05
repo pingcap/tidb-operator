@@ -151,6 +151,21 @@ func (mr *MockPDClientMockRecorder) GetConfig(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConfig", reflect.TypeOf((*MockPDClient)(nil).GetConfig), ctx)
 }
 
+// GetDownPeerRegions mocks base method.
+func (m *MockPDClient) GetDownPeerRegions(ctx context.Context) (*RegionsCheckInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDownPeerRegions", ctx)
+	ret0, _ := ret[0].(*RegionsCheckInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetDownPeerRegions indicates an expected call of GetDownPeerRegions.
+func (mr *MockPDClientMockRecorder) GetDownPeerRegions(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDownPeerRegions", reflect.TypeOf((*MockPDClient)(nil).GetDownPeerRegions), ctx)
+}
+
 // GetEvictLeaderScheduler mocks base method.
 func (m *MockPDClient) GetEvictLeaderScheduler(ctx context.Context, storeID string) (string, error) {
 	m.ctrl.T.Helper()

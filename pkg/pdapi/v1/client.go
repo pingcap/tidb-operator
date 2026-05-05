@@ -87,6 +87,8 @@ type PDClient interface {
 	// GetTombStoneStores() (*StoresInfo, error)
 	// GetStore gets a TiKV/TiFlash store for a specific store id of the cluster.
 	GetStore(ctx context.Context, storeID string) (*StoreInfo, error)
+	// GetDownPeerRegions gets regions with down peers.
+	GetDownPeerRegions(ctx context.Context) (*RegionsCheckInfo, error)
 	// GetEvictLeaderScheduler gets leader eviction schedulers for stores.
 	GetEvictLeaderScheduler(ctx context.Context, storeID string) (string, error)
 
@@ -124,9 +126,10 @@ const (
 	membersPrefix      = "pd/api/v1/members"
 	microServicePrefix = "pd/api/v2/ms"
 
-	storesPrefix       = "pd/api/v1/stores"
-	storePrefix        = "pd/api/v1/store"
-	storeUpStatePrefix = "pd/api/v1/store/%v/state?state=Up"
+	storesPrefix          = "pd/api/v1/stores"
+	storePrefix           = "pd/api/v1/store"
+	storeUpStatePrefix    = "pd/api/v1/store/%v/state?state=Up"
+	downPeerRegionsPrefix = "pd/api/v1/regions/check/down-peer"
 
 	pdReplicationPrefix = "pd/api/v1/config/replicate"
 
@@ -288,6 +291,19 @@ func (c *pdClient) GetStore(ctx context.Context, storeID string) (*StoreInfo, er
 		return nil, err
 	}
 	return storeInfo, nil
+}
+
+func (c *pdClient) GetDownPeerRegions(ctx context.Context) (*RegionsCheckInfo, error) {
+	apiURL := fmt.Sprintf("%s/%s", c.url, downPeerRegionsPrefix)
+	body, err := httputil.GetBodyOK(ctx, c.httpClient, apiURL)
+	if err != nil {
+		return nil, err
+	}
+	info := &RegionsCheckInfo{}
+	if err := json.Unmarshal(body, info); err != nil {
+		return nil, err
+	}
+	return info, nil
 }
 
 func (c *pdClient) getStores(ctx context.Context, apiURL string, states ...metapb.StoreState) (*StoresInfo, error) {
