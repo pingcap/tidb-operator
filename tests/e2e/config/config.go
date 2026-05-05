@@ -38,6 +38,7 @@ func RegisterTiDBOperatorFlags(flags *flag.FlagSet) {
 	flags.IntVar(&TestConfig.FaultTriggerPort, "fault-trigger-port", 23332, "the http port of fault trigger service")
 	flags.StringVar(&TestConfig.E2EImage, "e2e-image", "", "e2e image")
 	flags.BoolVar(&TestConfig.InstallOperator, "install-operator", true, "install a default operator")
+	flags.BoolVar(&TestConfig.InstallCertManager, "install-cert-manager", true, "install cert-manager for e2e test")
 	flags.BoolVar(&TestConfig.InstallDMMysql, "install-dm-mysql", true, "install mysql and tidb for dm test")
 	flags.StringVar(&TestConfig.OperatorTag, "operator-tag", "master", "operator tag used to choose charts")
 	flags.StringVar(&TestConfig.OperatorImage, "operator-image", "pingcap/tidb-operator:latest", "operator image")

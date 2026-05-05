@@ -69,6 +69,31 @@ var (
 	operatorKillerStopCh chan struct{}
 )
 
+func buildKubectlCmd(args string) string {
+	cmd := framework.TestContext.KubectlPath
+	if cmd == "" {
+		cmd = "kubectl"
+	}
+	if framework.TestContext.KubeConfig != "" {
+		cmd += fmt.Sprintf(" --kubeconfig=%q", framework.TestContext.KubeConfig)
+	}
+	if framework.TestContext.KubeContext != "" {
+		cmd += fmt.Sprintf(" --context=%q", framework.TestContext.KubeContext)
+	}
+	return fmt.Sprintf("%s %s", cmd, args)
+}
+
+func buildHelmCmd(args string) string {
+	cmd := "helm"
+	if framework.TestContext.KubeConfig != "" {
+		cmd += fmt.Sprintf(" --kubeconfig=%q", framework.TestContext.KubeConfig)
+	}
+	if framework.TestContext.KubeContext != "" {
+		cmd += fmt.Sprintf(" --kube-context=%q", framework.TestContext.KubeContext)
+	}
+	return fmt.Sprintf("%s %s", cmd, args)
+}
+
 // This is modified from framework.SetupSuite().
 // setupSuite is the boilerplate that can be used to setup ginkgo test suites, on the SynchronizedBeforeSuite step.
 // There are certain operations we only want to run once per overall test invocation
@@ -164,19 +189,19 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	}{
 		{
 			text: "Clear all helm releases",
-			cmd:  "helm ls --all --short | xargs -n 1 -r helm uninstall",
+			cmd:  fmt.Sprintf("%s | xargs -n 1 -r %s", buildHelmCmd("ls --all --short"), buildHelmCmd("uninstall")),
 		},
 		{
 			text: "Clear tidb-operator apiservices",
-			cmd:  "kubectl delete apiservices -l app.kubernetes.io/name=tidb-operator",
+			cmd:  buildKubectlCmd("delete apiservices -l app.kubernetes.io/name=tidb-operator"),
 		},
 		{
 			text: "Clear tidb-operator validatingwebhookconfigurations",
-			cmd:  "kubectl delete validatingwebhookconfiguration -l app.kubernetes.io/name=tidb-operator",
+			cmd:  buildKubectlCmd("delete validatingwebhookconfiguration -l app.kubernetes.io/name=tidb-operator"),
 		},
 		{
 			text: "Clear tidb-operator mutatingwebhookconfigurations",
-			cmd:  "kubectl delete mutatingwebhookconfiguration -l app.kubernetes.io/name=tidb-operator",
+			cmd:  buildKubectlCmd("delete mutatingwebhookconfiguration -l app.kubernetes.io/name=tidb-operator"),
 		},
 	}
 	for _, p := range cleaners {
@@ -297,9 +322,13 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 		ginkgo.By("Skip installing tidb-operator")
 	}
 
-	ginkgo.By("Installing cert-manager")
-	err = tidbcluster.InstallCertManager(kubeCli)
-	framework.ExpectNoError(err, "failed to install cert-manager")
+	if e2econfig.TestConfig.InstallCertManager {
+		ginkgo.By("Installing cert-manager")
+		err = tidbcluster.InstallCertManager(kubeCli)
+		framework.ExpectNoError(err, "failed to install cert-manager")
+	} else {
+		ginkgo.By("Skip installing cert-manager")
+	}
 	return nil
 }, func(data []byte) {
 	// Run on all Ginkgo nodes
@@ -319,15 +348,20 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	config.Burst = 50
 	cli, _ := versioned.NewForConfig(config)
 	kubeCli, _ := kubernetes.NewForConfig(config)
+	var err error
 	if !ginkgo.CurrentGinkgoTestDescription().Failed {
 		ginkgo.By("Clean labels")
-		err := tests.CleanNodeLabels(kubeCli)
+		err = tests.CleanNodeLabels(kubeCli)
 		framework.ExpectNoError(err, "failed to clean labels")
 	}
 
-	ginkgo.By("Deleting cert-manager")
-	err := tidbcluster.DeleteCertManager(kubeCli)
-	framework.ExpectNoError(err, "failed to delete cert-manager")
+	if e2econfig.TestConfig.InstallCertManager {
+		ginkgo.By("Deleting cert-manager")
+		err = tidbcluster.DeleteCertManager(kubeCli)
+		framework.ExpectNoError(err, "failed to delete cert-manager")
+	} else {
+		ginkgo.By("Skip deleting cert-manager")
+	}
 
 	err = tests.CleanDMMySQL(kubeCli, tests.DMMySQLNamespace)
 	framework.ExpectNoError(err, "failed to clean DM MySQL")

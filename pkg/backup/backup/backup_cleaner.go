@@ -279,6 +279,11 @@ func (bc *backupCleaner) makeCleanJob(backup *v1alpha1.Backup) (*batchv1.Job, st
 		},
 	}
 
+	if backup.Spec.AutomountServiceAccountToken != nil && !*backup.Spec.AutomountServiceAccountToken {
+		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, util.SATokenProjectionVolume())
+		podSpec.Spec.Containers[0].VolumeMounts = append(podSpec.Spec.Containers[0].VolumeMounts, util.SATokenProjectionVolumeMount())
+	}
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        backup.GetCleanJobName(),
@@ -477,6 +482,11 @@ func (bc *backupCleaner) makeStopLogBackupJob(backup *v1alpha1.Backup) (*batchv1
 			Volumes:           volumes,
 			PriorityClassName: backup.Spec.PriorityClassName,
 		},
+	}
+
+	if backup.Spec.AutomountServiceAccountToken != nil && !*backup.Spec.AutomountServiceAccountToken {
+		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, util.SATokenProjectionVolume())
+		podSpec.Spec.Containers[0].VolumeMounts = append(podSpec.Spec.Containers[0].VolumeMounts, util.SATokenProjectionVolumeMount())
 	}
 
 	job := &batchv1.Job{

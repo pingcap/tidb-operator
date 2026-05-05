@@ -858,6 +858,11 @@ func (rm *restoreManager) makeImportJob(restore *v1alpha1.Restore) (*batchv1.Job
 		},
 	}
 
+	if restore.Spec.AutomountServiceAccountToken != nil && !*restore.Spec.AutomountServiceAccountToken {
+		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, util.SATokenProjectionVolume())
+		podSpec.Spec.Containers[0].VolumeMounts = append(podSpec.Spec.Containers[0].VolumeMounts, util.SATokenProjectionVolumeMount())
+	}
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        restore.GetRestoreJobName(),
@@ -1095,6 +1100,11 @@ func (rm *restoreManager) makeRestoreJobWithMode(restore *v1alpha1.Restore, isPr
 			Volumes:           volumes,
 			PriorityClassName: restore.Spec.PriorityClassName,
 		},
+	}
+
+	if restore.Spec.AutomountServiceAccountToken != nil && !*restore.Spec.AutomountServiceAccountToken {
+		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, util.SATokenProjectionVolume())
+		podSpec.Spec.Containers[0].VolumeMounts = append(podSpec.Spec.Containers[0].VolumeMounts, util.SATokenProjectionVolumeMount())
 	}
 
 	// Job name differs between restore and prune jobs
