@@ -26,7 +26,6 @@ import (
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
-	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/compare"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 	"github.com/pingcap/tidb-operator/v2/third_party/kubernetes/pkg/controller/statefulset"
@@ -48,9 +47,6 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 		ready := coreutil.IsReady[scope.TiKV](tikv)
 
 		needUpdate = syncSuspendCond(tikv) || needUpdate
-		if state.PDSynced {
-			needUpdate = syncLeadersEvictedCond(tikv, state.Store, state.LeaderEvicting) || needUpdate
-		}
 		if state.Store != nil {
 			needUpdate = compare.SetIfNotEmptyAndChanged(&tikv.Status.ID, state.Store.ID) || needUpdate
 		}
@@ -86,10 +82,6 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 			return task.Retry(defaultTaskWaitDuration).With("pod is terminating, retry after it's terminated")
 		}
 
-		if state.LeaderEvicting {
-			return task.Wait().With("tikv is evicting leader, wait")
-		}
-
 		// TODO: use a condition to refactor it
 		if !ready || tikv.Status.ID == "" {
 			return task.Wait().With("tikv may not be ready, wait")
@@ -107,30 +99,5 @@ func syncSuspendCond(tikv *v1alpha1.TiKV) bool {
 		ObservedGeneration: tikv.Generation,
 		Reason:             v1alpha1.ReasonUnsuspended,
 		Message:            "instance is not suspended",
-	})
-}
-
-// Status of this condition can only transfer as the below
-func syncLeadersEvictedCond(tikv *v1alpha1.TiKV, store *pdv1.Store, isEvicting bool) bool {
-	status := metav1.ConditionFalse
-	reason := v1alpha1.ReasonNotEvicted
-	msg := "leaders are not all evicted"
-	switch {
-	case store == nil:
-		status = metav1.ConditionTrue
-		reason = v1alpha1.ReasonStoreIsRemoved
-		msg = "store does not exist"
-	case isEvicting && store.LeaderCount == 0:
-		status = metav1.ConditionTrue
-		reason = v1alpha1.ReasonEvicted
-		msg = "all leaders are evicted"
-	}
-
-	return meta.SetStatusCondition(&tikv.Status.Conditions, metav1.Condition{
-		Type:               v1alpha1.TiKVCondLeadersEvicted,
-		Status:             status,
-		ObservedGeneration: tikv.Generation,
-		Reason:             reason,
-		Message:            msg,
 	})
 }

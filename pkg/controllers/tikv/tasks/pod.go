@@ -33,9 +33,11 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/features"
 	"github.com/pingcap/tidb-operator/v2/pkg/image"
 	"github.com/pingcap/tidb-operator/v2/pkg/overlay"
+	pdapi "github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
 	"github.com/pingcap/tidb-operator/v2/pkg/reloadable"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
+	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/v2/pkg/utils/map"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
@@ -68,10 +70,16 @@ func TaskSuspendPod(state *ReconcileContext, c client.Client) task.Task {
 	})
 }
 
-func TaskPod(state *ReconcileContext, c client.Client) task.Task {
+func TaskPod(state *ReconcileContext, c client.Client, cm pdm.PDClientManager) task.Task {
 	return task.NameTaskFunc("Pod", func(ctx context.Context) task.Result {
 		logger := logr.FromContextOrDiscard(ctx)
 		expected := newPod(state.Cluster(), state.TiKV(), state.Store, state.FeatureGates())
+
+		pc, ok := state.GetPDClient(cm)
+		if !ok {
+			return task.Wait().With("wait if pd client is not registered")
+		}
+
 		pod := state.Pod()
 		if pod == nil {
 			if err := c.Apply(ctx, expected); err != nil {
@@ -91,6 +99,16 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 		}
 
 		if !reloadable.CheckTiKVPod(state.TiKV(), pod) {
+			state.ShouldEvictLeader = true
+
+			if err := checkDownPeerCountIsZero(ctx, state.Store, pc); err != nil {
+				return task.Wait().With("cannot recreate pod, check down peer: %v", err)
+			}
+
+			if err := CheckTiKVLeadersEvicted(state.TiKV()); err != nil {
+				return task.Wait().With("cannot recreate pod, check leader count: %v", err)
+			}
+
 			logger.Info("will recreate the pod")
 			regionCount := 0
 			if state.Store != nil {
@@ -114,6 +132,44 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 
 		return task.Complete().With("pod is synced")
 	})
+}
+
+func checkDownPeerCountIsZero(ctx context.Context, store *pdv1.Store, pc pdm.PDClient) error {
+	downPeerInfo, err := pc.Underlay().GetDownPeerRegions(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get down peer info: %v", err)
+	}
+	downPeerCount := countNonSelfDownPeers(downPeerInfo, store)
+	if downPeerCount != 0 {
+		return fmt.Errorf("down peer is not zero: %v", downPeerCount)
+	}
+
+	return nil
+}
+
+func countNonSelfDownPeers(downPeerInfo *pdapi.RegionsCheckInfo, store *pdv1.Store) int {
+	if store == nil || store.ID == "" {
+		return downPeerInfo.Count
+	}
+	if downPeerInfo.Count == 0 {
+		return 0
+	}
+
+	nonSelfDownPeerCount := 0
+	for _, region := range downPeerInfo.Regions {
+		for _, downPeer := range region.DownPeers {
+			if downPeer == nil || downPeer.Peer == nil {
+				nonSelfDownPeerCount++
+				continue
+			}
+			if fmt.Sprint(downPeer.Peer.StoreId) == store.ID {
+				continue
+			}
+			nonSelfDownPeerCount++
+		}
+	}
+
+	return nonSelfDownPeerCount
 }
 
 func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, store *pdv1.Store, g features.Gates) *corev1.Pod {

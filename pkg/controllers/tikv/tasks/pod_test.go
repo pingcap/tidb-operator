@@ -19,8 +19,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,9 +31,12 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/features"
+	pdapi "github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
+	"github.com/pingcap/tidb-operator/v2/pkg/reloadable"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	stateutil "github.com/pingcap/tidb-operator/v2/pkg/state"
 	pdv1 "github.com/pingcap/tidb-operator/v2/pkg/timanager/apis/pd/v1"
+	pdm "github.com/pingcap/tidb-operator/v2/pkg/timanager/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
@@ -45,15 +50,18 @@ const (
 func TestTaskPod(t *testing.T) {
 	now := metav1.Now()
 	cases := []struct {
-		desc  string
-		state *ReconcileContext
-		objs  []client.Object
+		desc          string
+		state         *ReconcileContext
+		objs          []client.Object
+		downPeerCount int
+		downPeerInfo  *pdapi.RegionsCheckInfo
 		// if true, cannot apply pod
 		unexpectedErr bool
 
 		expectUpdatedPod         bool
 		expectedPodIsTerminating bool
 		expectedStatus           task.Status
+		expectedShouldEvict      bool
 	}{
 		{
 			desc: "no pod",
@@ -61,6 +69,7 @@ func TestTaskPod(t *testing.T) {
 				State: &state{
 					tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						obj.Spec.Version = fakeVersion
+						setLeadersEvicted(obj)
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
@@ -76,6 +85,7 @@ func TestTaskPod(t *testing.T) {
 				State: &state{
 					tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						obj.Spec.Version = fakeVersion
+						setLeadersEvicted(obj)
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
@@ -108,6 +118,7 @@ func TestTaskPod(t *testing.T) {
 
 			expectedPodIsTerminating: true,
 			expectedStatus:           task.SWait,
+			expectedShouldEvict:      false,
 		},
 		{
 			desc: "version is changed",
@@ -115,6 +126,7 @@ func TestTaskPod(t *testing.T) {
 				State: &state{
 					tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						obj.Spec.Version = fakeVersion
+						setLeadersEvicted(obj)
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
@@ -128,8 +140,10 @@ func TestTaskPod(t *testing.T) {
 				},
 			},
 
+			downPeerCount:            0,
 			expectedPodIsTerminating: true,
 			expectedStatus:           task.SWait,
+			expectedShouldEvict:      true,
 		},
 		{
 			desc: "version is changed, failed to delete",
@@ -137,6 +151,7 @@ func TestTaskPod(t *testing.T) {
 				State: &state{
 					tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						obj.Spec.Version = fakeVersion
+						setLeadersEvicted(obj)
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
@@ -149,9 +164,11 @@ func TestTaskPod(t *testing.T) {
 					),
 				},
 			},
+			downPeerCount: 0,
 			unexpectedErr: true,
 
-			expectedStatus: task.SFail,
+			expectedStatus:      task.SFail,
+			expectedShouldEvict: true,
 		},
 		{
 			desc: "config changed, hot reload policy",
@@ -185,6 +202,7 @@ func TestTaskPod(t *testing.T) {
 					tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 						obj.Spec.Version = fakeVersion
 						obj.Spec.UpdateStrategy.Config = v1alpha1.ConfigUpdateStrategyRestart
+						setLeadersEvicted(obj)
 						return obj
 					}),
 					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
@@ -200,8 +218,111 @@ func TestTaskPod(t *testing.T) {
 				},
 			},
 
+			downPeerCount:            0,
 			expectedPodIsTerminating: true,
 			expectedStatus:           task.SWait,
+			expectedShouldEvict:      true,
+		},
+		{
+			desc: "version is changed but restart precheck is blocked by leader count",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Spec.Version = fakeVersion
+						return obj
+					}),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+							obj.Spec.Version = fakeNewVersion
+							return obj
+						}),
+					),
+					leaderCount: 1,
+				},
+				Store: &pdv1.Store{RegionCount: 400},
+			},
+
+			downPeerCount:            0,
+			expectedPodIsTerminating: false,
+			expectedStatus:           task.SWait,
+			expectedShouldEvict:      true,
+		},
+		{
+			desc: "version is changed but restart precheck is blocked by down peer count",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Spec.Version = fakeVersion
+						setLeadersEvicted(obj)
+						return obj
+					}),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+							obj.Spec.Version = fakeNewVersion
+							return obj
+						}),
+					),
+				},
+				Store: &pdv1.Store{ID: "1", RegionCount: 400},
+			},
+
+			downPeerCount: 2,
+			downPeerInfo: &pdapi.RegionsCheckInfo{
+				Count: 2,
+				Regions: []*pdapi.RegionCheckEntry{
+					{
+						ID: 101,
+						DownPeers: []*pdapi.RegionPeerStat{
+							{Peer: &metapb.Peer{StoreId: 2}},
+							{Peer: &metapb.Peer{StoreId: 3}},
+						},
+					},
+				},
+			},
+			expectedPodIsTerminating: false,
+			expectedStatus:           task.SWait,
+			expectedShouldEvict:      true,
+		},
+		{
+			desc: "version is changed but restart precheck ignores self down peer",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Spec.Version = fakeVersion
+						setLeadersEvicted(obj)
+						return obj
+					}),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+							obj.Spec.Version = fakeNewVersion
+							return obj
+						}),
+					),
+				},
+				Store: &pdv1.Store{ID: "1", RegionCount: 400},
+			},
+
+			downPeerCount: 1,
+			downPeerInfo: &pdapi.RegionsCheckInfo{
+				Count: 1,
+				Regions: []*pdapi.RegionCheckEntry{
+					{
+						ID: 101,
+						DownPeers: []*pdapi.RegionPeerStat{
+							{Peer: &metapb.Peer{StoreId: 1}},
+						},
+					},
+				},
+			},
+			expectedPodIsTerminating: true,
+			expectedStatus:           task.SWait,
+			expectedShouldEvict:      true,
 		},
 		{
 			desc: "pod labels changed, config not changed",
@@ -233,8 +354,9 @@ func TestTaskPod(t *testing.T) {
 				},
 			},
 
-			expectUpdatedPod: true,
-			expectedStatus:   task.SComplete,
+			expectUpdatedPod:    true,
+			expectedStatus:      task.SComplete,
+			expectedShouldEvict: false,
 		},
 		{
 			desc: "pod labels changed, config not changed, apply failed",
@@ -267,7 +389,8 @@ func TestTaskPod(t *testing.T) {
 			},
 			unexpectedErr: true,
 
-			expectedStatus: task.SFail,
+			expectedStatus:      task.SFail,
+			expectedShouldEvict: false,
 		},
 		{
 			desc: "all are not changed",
@@ -290,7 +413,8 @@ func TestTaskPod(t *testing.T) {
 				},
 			},
 
-			expectedStatus: task.SComplete,
+			expectedStatus:      task.SComplete,
+			expectedShouldEvict: false,
 		},
 	}
 
@@ -312,17 +436,38 @@ func TestTaskPod(t *testing.T) {
 			s := c.state.State.(*state)
 			s.IFeatureGates = stateutil.NewFeatureGates[scope.TiKV](s)
 
+			ctrl := gomock.NewController(tt)
+			mockPDClient := pdm.NewMockPDClient(ctrl)
+			mockUnderlay := pdapi.NewMockPDClient(ctrl)
+			mockPDClient.EXPECT().Underlay().Return(mockUnderlay).AnyTimes()
+			s.IPDClient = &stubPDClientState{client: mockPDClient}
+
+			shouldQueryDownPeer := c.state.Pod() != nil &&
+				c.state.Pod().GetDeletionTimestamp().IsZero() &&
+				!reloadable.CheckTiKVPod(c.state.TiKV(), c.state.Pod())
+			if shouldQueryDownPeer {
+				mockUnderlay.EXPECT().
+					GetDownPeerRegions(gomock.Any()).
+					Return(func() *pdapi.RegionsCheckInfo {
+						if c.downPeerInfo != nil {
+							return c.downPeerInfo
+						}
+						return &pdapi.RegionsCheckInfo{Count: c.downPeerCount}
+					}(), nil)
+			}
+
 			if c.unexpectedErr {
 				// cannot update pod
 				fc.WithError("patch", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
 				fc.WithError("delete", "*", errors.NewInternalError(fmt.Errorf("fake internal err")))
 			}
 
-			res, done := task.RunTask(ctx, TaskPod(c.state, fc))
+			res, done := task.RunTask(ctx, TaskPod(c.state, fc, nil))
 			assert.Equal(tt, c.expectedStatus.String(), res.Status().String(), res.Message())
 			assert.False(tt, done, c.desc)
 
 			assert.Equal(tt, c.expectedPodIsTerminating, c.state.IsPodTerminating(), c.desc)
+			assert.Equal(tt, c.expectedShouldEvict, c.state.ShouldEvictLeader, c.desc)
 
 			if c.expectUpdatedPod {
 				expectedPod := newPod(c.state.Cluster(), c.state.TiKV(), nil, c.state.FeatureGates())
@@ -338,4 +483,12 @@ func TestTaskPod(t *testing.T) {
 
 func fakePod(c *v1alpha1.Cluster, tikv *v1alpha1.TiKV) *corev1.Pod {
 	return newPod(c, tikv, nil, features.NewFromFeatures(nil))
+}
+
+func setLeadersEvicted(tikv *v1alpha1.TiKV) {
+	tikv.Status.Conditions = append(tikv.Status.Conditions, metav1.Condition{
+		Type:   v1alpha1.TiKVCondLeadersEvicted,
+		Status: metav1.ConditionTrue,
+		Reason: v1alpha1.ReasonEvicted,
+	})
 }
