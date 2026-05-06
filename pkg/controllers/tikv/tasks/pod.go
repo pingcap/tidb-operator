@@ -75,11 +75,6 @@ func TaskPod(state *ReconcileContext, c client.Client, cm pdm.PDClientManager) t
 		logger := logr.FromContextOrDiscard(ctx)
 		expected := newPod(state.Cluster(), state.TiKV(), state.Store, state.FeatureGates())
 
-		pc, ok := state.GetPDClient(cm)
-		if !ok {
-			return task.Wait().With("wait if pd client is not registered")
-		}
-
 		pod := state.Pod()
 		if pod == nil {
 			if err := c.Apply(ctx, expected); err != nil {
@@ -101,12 +96,17 @@ func TaskPod(state *ReconcileContext, c client.Client, cm pdm.PDClientManager) t
 		if !reloadable.CheckTiKVPod(state.TiKV(), pod) {
 			state.ShouldEvictLeader = true
 
+			pc, ok := state.GetPDClient(cm)
+			if !ok {
+				return task.Wait().With("wait if pd client is not registered")
+			}
+
 			if err := checkDownPeerCountIsZero(ctx, state.Store, pc); err != nil {
-				return task.Wait().With("cannot recreate pod, check down peer: %v", err)
+				return task.Retry(defaultTaskWaitDuration).With("cannot recreate pod, check down peer: %v", err)
 			}
 
 			if err := CheckTiKVLeadersEvicted(state.TiKV()); err != nil {
-				return task.Wait().With("cannot recreate pod, check leader count: %v", err)
+				return task.Retry(defaultTaskWaitDuration).With("cannot recreate pod, check leader count: %v", err)
 			}
 
 			logger.Info("will recreate the pod")
@@ -148,28 +148,31 @@ func checkDownPeerCountIsZero(ctx context.Context, store *pdv1.Store, pc pdm.PDC
 }
 
 func countNonSelfDownPeers(downPeerInfo *pdapi.RegionsCheckInfo, store *pdv1.Store) int {
+	if downPeerInfo == nil {
+		return 0
+	}
 	if store == nil || store.ID == "" {
 		return downPeerInfo.Count
 	}
-	if downPeerInfo.Count == 0 {
-		return 0
-	}
-
-	nonSelfDownPeerCount := 0
+	remainingDownPeerCount := downPeerInfo.Count
 	for _, region := range downPeerInfo.Regions {
+		if region == nil || len(region.DownPeers) == 0 {
+			continue
+		}
 		for _, downPeer := range region.DownPeers {
 			if downPeer == nil || downPeer.Peer == nil {
-				nonSelfDownPeerCount++
 				continue
 			}
 			if fmt.Sprint(downPeer.Peer.StoreId) == store.ID {
-				continue
+				remainingDownPeerCount--
 			}
-			nonSelfDownPeerCount++
 		}
 	}
 
-	return nonSelfDownPeerCount
+	if remainingDownPeerCount < 0 {
+		return 0
+	}
+	return remainingDownPeerCount
 }
 
 func newPod(cluster *v1alpha1.Cluster, tikv *v1alpha1.TiKV, store *pdv1.Store, g features.Gates) *corev1.Pod {

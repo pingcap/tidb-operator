@@ -34,6 +34,9 @@ func TaskEvictLeader(state *ReconcileContext, m pdm.PDClientManager) task.Task {
 			return task.Wait().With("wait if pd client is not registered")
 		}
 		if state.Store == nil {
+			if syncLeadersEvictedCond(state.TiKV(), nil, state.LeaderEvicting) {
+				state.SetStatusChanged()
+			}
 			return task.Complete().With("store has been deleted or not created")
 		}
 

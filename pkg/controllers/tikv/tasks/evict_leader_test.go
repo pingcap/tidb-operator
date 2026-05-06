@@ -19,8 +19,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	pdapi "github.com/pingcap/tidb-operator/v2/pkg/pdapi/v1"
@@ -74,6 +76,23 @@ func TestTaskEvictLeader(t *testing.T) {
 			expectEvicting: false,
 			expectedStatus: task.SComplete,
 		},
+		{
+			desc: "sync leaders evicted condition when store is absent",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Generation = 3
+						return obj
+					}),
+					pod: fake.FakeObj[corev1.Pod]("aaa-tikv-xxx"),
+				},
+				PDSynced:       true,
+				LeaderEvicting: true,
+				Store:          nil,
+			},
+			expectEvicting: true,
+			expectedStatus: task.SComplete,
+		},
 	}
 
 	for i := range cases {
@@ -99,6 +118,12 @@ func TestTaskEvictLeader(t *testing.T) {
 			assert.Equal(tt, c.expectedStatus, res.Status())
 			assert.False(tt, done)
 			assert.Equal(tt, c.expectEvicting, c.state.LeaderEvicting)
+			if c.state.Store == nil {
+				cond := findCondition(c.state.TiKV().Status.Conditions, v1alpha1.TiKVCondLeadersEvicted)
+				require.NotNil(tt, cond)
+				assert.Equal(tt, metav1.ConditionTrue, cond.Status)
+				assert.Equal(tt, v1alpha1.ReasonStoreNotExist, cond.Reason)
+			}
 		})
 	}
 }
@@ -112,3 +137,20 @@ func (s *stubPDClientState) GetPDClient(pdm.PDClientManager) (pdm.PDClient, bool
 }
 
 var _ stateutil.IPDClient = (*stubPDClientState)(nil)
+
+type stubPDClientUnavailableState struct{}
+
+func (s *stubPDClientUnavailableState) GetPDClient(pdm.PDClientManager) (pdm.PDClient, bool) {
+	return nil, false
+}
+
+var _ stateutil.IPDClient = (*stubPDClientUnavailableState)(nil)
+
+func findCondition(conds []metav1.Condition, typ string) *metav1.Condition {
+	for i := range conds {
+		if conds[i].Type == typ {
+			return &conds[i]
+		}
+	}
+	return nil
+}
