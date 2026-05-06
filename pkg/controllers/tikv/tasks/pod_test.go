@@ -55,6 +55,7 @@ func TestTaskPod(t *testing.T) {
 		objs          []client.Object
 		downPeerCount int
 		downPeerInfo  *pdapi.RegionsCheckInfo
+		pdClientReady bool
 		// if true, cannot apply pod
 		unexpectedErr bool
 
@@ -78,6 +79,7 @@ func TestTaskPod(t *testing.T) {
 
 			expectUpdatedPod: true,
 			expectedStatus:   task.SComplete,
+			pdClientReady:    false,
 		},
 		{
 			desc: "no pod, failed to apply",
@@ -94,6 +96,7 @@ func TestTaskPod(t *testing.T) {
 			unexpectedErr: true,
 
 			expectedStatus: task.SFail,
+			pdClientReady:  false,
 		},
 		{
 			desc: "pod is deleting",
@@ -119,6 +122,7 @@ func TestTaskPod(t *testing.T) {
 			expectedPodIsTerminating: true,
 			expectedStatus:           task.SWait,
 			expectedShouldEvict:      false,
+			pdClientReady:            false,
 		},
 		{
 			desc: "version is changed",
@@ -144,6 +148,7 @@ func TestTaskPod(t *testing.T) {
 			expectedPodIsTerminating: true,
 			expectedStatus:           task.SWait,
 			expectedShouldEvict:      true,
+			pdClientReady:            true,
 		},
 		{
 			desc: "version is changed, failed to delete",
@@ -169,6 +174,7 @@ func TestTaskPod(t *testing.T) {
 
 			expectedStatus:      task.SFail,
 			expectedShouldEvict: true,
+			pdClientReady:       true,
 		},
 		{
 			desc: "config changed, hot reload policy",
@@ -194,6 +200,7 @@ func TestTaskPod(t *testing.T) {
 
 			expectUpdatedPod: true,
 			expectedStatus:   task.SComplete,
+			pdClientReady:    false,
 		},
 		{
 			desc: "config changed, restart policy",
@@ -222,6 +229,7 @@ func TestTaskPod(t *testing.T) {
 			expectedPodIsTerminating: true,
 			expectedStatus:           task.SWait,
 			expectedShouldEvict:      true,
+			pdClientReady:            true,
 		},
 		{
 			desc: "version is changed but restart precheck is blocked by leader count",
@@ -246,8 +254,9 @@ func TestTaskPod(t *testing.T) {
 
 			downPeerCount:            0,
 			expectedPodIsTerminating: false,
-			expectedStatus:           task.SWait,
+			expectedStatus:           task.SRetry,
 			expectedShouldEvict:      true,
+			pdClientReady:            true,
 		},
 		{
 			desc: "version is changed but restart precheck is blocked by down peer count",
@@ -284,8 +293,9 @@ func TestTaskPod(t *testing.T) {
 				},
 			},
 			expectedPodIsTerminating: false,
-			expectedStatus:           task.SWait,
+			expectedStatus:           task.SRetry,
 			expectedShouldEvict:      true,
+			pdClientReady:            true,
 		},
 		{
 			desc: "version is changed but restart precheck ignores self down peer",
@@ -323,6 +333,62 @@ func TestTaskPod(t *testing.T) {
 			expectedPodIsTerminating: true,
 			expectedStatus:           task.SWait,
 			expectedShouldEvict:      true,
+			pdClientReady:            true,
+		},
+		{
+			desc: "version is changed but pd client is not ready",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Spec.Version = fakeVersion
+						setLeadersEvicted(obj)
+						return obj
+					}),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+							obj.Spec.Version = fakeNewVersion
+							return obj
+						}),
+					),
+				},
+			},
+
+			expectedPodIsTerminating: false,
+			expectedStatus:           task.SWait,
+			expectedShouldEvict:      true,
+			pdClientReady:            false,
+		},
+		{
+			desc: "version is changed but down peer details are missing",
+			state: &ReconcileContext{
+				State: &state{
+					tikv: fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+						obj.Spec.Version = fakeVersion
+						setLeadersEvicted(obj)
+						return obj
+					}),
+					cluster: fake.FakeObj[v1alpha1.Cluster]("aaa"),
+					pod: fakePod(
+						fake.FakeObj[v1alpha1.Cluster]("aaa"),
+						fake.FakeObj("aaa-xxx", func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
+							obj.Spec.Version = fakeNewVersion
+							return obj
+						}),
+					),
+				},
+				Store: &pdv1.Store{ID: "1", RegionCount: 400},
+			},
+
+			downPeerCount: 1,
+			downPeerInfo: &pdapi.RegionsCheckInfo{
+				Count: 1,
+			},
+			expectedPodIsTerminating: false,
+			expectedStatus:           task.SRetry,
+			expectedShouldEvict:      true,
+			pdClientReady:            true,
 		},
 		{
 			desc: "pod labels changed, config not changed",
@@ -357,6 +423,7 @@ func TestTaskPod(t *testing.T) {
 			expectUpdatedPod:    true,
 			expectedStatus:      task.SComplete,
 			expectedShouldEvict: false,
+			pdClientReady:       false,
 		},
 		{
 			desc: "pod labels changed, config not changed, apply failed",
@@ -391,6 +458,7 @@ func TestTaskPod(t *testing.T) {
 
 			expectedStatus:      task.SFail,
 			expectedShouldEvict: false,
+			pdClientReady:       false,
 		},
 		{
 			desc: "all are not changed",
@@ -415,6 +483,7 @@ func TestTaskPod(t *testing.T) {
 
 			expectedStatus:      task.SComplete,
 			expectedShouldEvict: false,
+			pdClientReady:       false,
 		},
 	}
 
@@ -437,23 +506,27 @@ func TestTaskPod(t *testing.T) {
 			s.IFeatureGates = stateutil.NewFeatureGates[scope.TiKV](s)
 
 			ctrl := gomock.NewController(tt)
-			mockPDClient := pdm.NewMockPDClient(ctrl)
-			mockUnderlay := pdapi.NewMockPDClient(ctrl)
-			mockPDClient.EXPECT().Underlay().Return(mockUnderlay).AnyTimes()
-			s.IPDClient = &stubPDClientState{client: mockPDClient}
+			if c.pdClientReady {
+				mockPDClient := pdm.NewMockPDClient(ctrl)
+				mockUnderlay := pdapi.NewMockPDClient(ctrl)
+				mockPDClient.EXPECT().Underlay().Return(mockUnderlay).AnyTimes()
+				s.IPDClient = &stubPDClientState{client: mockPDClient}
 
-			shouldQueryDownPeer := c.state.Pod() != nil &&
-				c.state.Pod().GetDeletionTimestamp().IsZero() &&
-				!reloadable.CheckTiKVPod(c.state.TiKV(), c.state.Pod())
-			if shouldQueryDownPeer {
-				mockUnderlay.EXPECT().
-					GetDownPeerRegions(gomock.Any()).
-					Return(func() *pdapi.RegionsCheckInfo {
-						if c.downPeerInfo != nil {
-							return c.downPeerInfo
-						}
-						return &pdapi.RegionsCheckInfo{Count: c.downPeerCount}
-					}(), nil)
+				shouldQueryDownPeer := c.state.Pod() != nil &&
+					c.state.Pod().GetDeletionTimestamp().IsZero() &&
+					!reloadable.CheckTiKVPod(c.state.TiKV(), c.state.Pod())
+				if shouldQueryDownPeer {
+					mockUnderlay.EXPECT().
+						GetDownPeerRegions(gomock.Any()).
+						Return(func() *pdapi.RegionsCheckInfo {
+							if c.downPeerInfo != nil {
+								return c.downPeerInfo
+							}
+							return &pdapi.RegionsCheckInfo{Count: c.downPeerCount}
+						}(), nil)
+				}
+			} else {
+				s.IPDClient = &stubPDClientUnavailableState{}
 			}
 
 			if c.unexpectedErr {
