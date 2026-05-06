@@ -48,7 +48,6 @@ func TaskOfflineStore(state *ReconcileContext, m pdm.PDClientManager) task.Task 
 				return task.Retry(defaultLeaderEvictTimeout+jitter).
 					With("waiting for leaders evicted or timeout: %v", err)
 			}
-
 		}
 
 		pc, ok := state.GetPDClient(m)
