@@ -137,7 +137,7 @@ func TaskPod(state *ReconcileContext, c client.Client, cm pdm.PDClientManager) t
 func checkDownPeerCountIsZero(ctx context.Context, store *pdv1.Store, pc pdm.PDClient) error {
 	downPeerInfo, err := pc.Underlay().GetDownPeerRegions(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get down peer info: %v", err)
+		return fmt.Errorf("failed to get down peer info: %w", err)
 	}
 	downPeerCount := countNonSelfDownPeers(downPeerInfo, store)
 	if downPeerCount != 0 {
