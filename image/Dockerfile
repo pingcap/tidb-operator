@@ -1,5 +1,5 @@
 # syntax=docker.io/docker/dockerfile:1.8.1@sha256:e87caa74dcb7d46cd820352bfea12591f3dba3ddc4285e19c7dcd13359f7cefd
-FROM --platform=$BUILDPLATFORM golang:1.25.9@sha256:8a7adc288b77e9b787cd2695029eb54d10ae80571b21d44fed68d067ad0a9c96 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.25.10@sha256:69a7b8cc06cfb629da20d23be8f8f359a1f823481ab1a14b4e1ece153ea1d1c0 AS builder
 
 ARG TARGETPLATFORM
 ARG TARGET
