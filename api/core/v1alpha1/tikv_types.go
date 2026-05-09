@@ -45,9 +45,12 @@ const (
 	// condition
 	TiKVCondLeadersEvicted = "LeadersEvicted"
 	// reason
-	ReasonNotEvicted     = "NotEvicted"
-	ReasonEvicting       = "Evicting"
-	ReasonEvicted        = "Evicted"
+	ReasonNotEvicted    = "NotEvicted"
+	ReasonEvicting      = "Evicting"
+	ReasonEvicted       = "Evicted"
+	ReasonStoreNotExist = "StoreNotExist"
+
+	// Deprecated: replaced by ReasonStoreNotExist
 	ReasonStoreIsRemoved = "StoreIsRemoved"
 )
 

@@ -16,11 +16,15 @@ package tasks
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
-	meta "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
+	metav1alpha1 "github.com/pingcap/tidb-operator/api/v2/meta/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 )
 
@@ -56,7 +60,7 @@ func CalcGracePeriod(regionCount int) int64 {
 // VolumeName returns the real spec.volumes[*].name of pod
 // TODO(liubo02): extract to namer pkg
 func VolumeName(volName string) string {
-	return meta.VolNamePrefix + volName
+	return metav1alpha1.VolNamePrefix + volName
 }
 
 func VolumeMount(name string, mount *v1alpha1.VolumeMount) *corev1.VolumeMount {
@@ -72,4 +76,39 @@ func VolumeMount(name string, mount *v1alpha1.VolumeMount) *corev1.VolumeMount {
 	}
 
 	return vm
+}
+
+func CheckTiKVLeadersEvicted(tikv *v1alpha1.TiKV) error {
+	cond := meta.FindStatusCondition(tikv.Status.Conditions, v1alpha1.TiKVCondLeadersEvicted)
+	if cond == nil {
+		return fmt.Errorf("tikv leaders are not evicting")
+	}
+	if cond.Status == metav1.ConditionTrue {
+		return nil
+	}
+
+	return fmt.Errorf("tikv leaders are not evicted: %v, %v", cond.Reason, cond.Message)
+}
+
+func CheckTiKVLeadersEvictedOrTimeout(tikv *v1alpha1.TiKV, timeout time.Duration) error {
+	cond := meta.FindStatusCondition(tikv.Status.Conditions, v1alpha1.TiKVCondLeadersEvicted)
+	if cond == nil {
+		return fmt.Errorf("tikv leaders are not evicting")
+	}
+	// all leaders are evicted
+	if cond.Status == metav1.ConditionTrue {
+		return nil
+	}
+
+	// TODO: this is not a stable way, we should not use reason directly
+	if cond.Reason != v1alpha1.ReasonEvicting {
+		return fmt.Errorf("tikv leaders are not evicted: %v", cond.Reason)
+	}
+
+	t := cond.LastTransitionTime.Time
+	if t.Add(timeout).Before(time.Now()) {
+		return nil
+	}
+
+	return fmt.Errorf("tikv leaders are evicting: %v, %v", cond.Reason, cond.Message)
 }

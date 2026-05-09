@@ -525,6 +525,36 @@ func TestPDClient_GetStore(t *testing.T) {
 	assert.Equal(t, "Up", store.Store.StateName)
 }
 
+func TestPDClient_GetDownPeerRegions(t *testing.T) {
+	jsonStr := `
+{
+  "count": 2,
+  "regions": [
+    {
+      "id": 101
+    },
+    {
+      "id": 102
+    }
+  ]
+}`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/pd/api/v1/regions/check/down-peer", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, err := w.Write([]byte(jsonStr))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+
+	client := NewPDClient(server.URL, time.Second, nil)
+	info, err := client.GetDownPeerRegions(context.Background())
+	require.NoError(t, err)
+	require.NotNil(t, info)
+	assert.Equal(t, 2, info.Count)
+	require.Len(t, info.Regions, 2)
+	assert.Equal(t, uint64(101), info.Regions[0].ID)
+}
+
 func TestPDClinet_SetStoreLabels(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/pd/api/v1/store/1/label", r.URL.Path)
