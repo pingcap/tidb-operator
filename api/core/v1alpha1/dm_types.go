@@ -21,12 +21,15 @@ import (
 )
 
 const (
-	DMPortName     = "dm-master"
-	DefaultDMPort  = 8261
-	DMPeerPortName = "dm-master-peer"
+	DMPortName        = "dm-master"
+	DefaultDMPort     = 8261
+	DMPeerPortName    = "dm-master-peer"
 	DefaultDMPeerPort = 8291
 
 	DefaultDMMinReadySeconds = 5
+
+	VolumeMountTypeDMData    VolumeMountType = "data"
+	VolumeMountDMDataDefaultPath             = "/var/lib/dm"
 )
 
 const (

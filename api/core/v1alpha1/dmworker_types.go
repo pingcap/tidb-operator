@@ -25,6 +25,9 @@ const (
 	DefaultDMWorkerPort = 8262
 
 	DefaultDMWorkerMinReadySeconds = 5
+
+	VolumeMountTypeDMWorkerRelay    VolumeMountType = "relay-dir"
+	VolumeMountDMWorkerRelayDefaultPath             = "/var/lib/dm-worker/relay"
 )
 
 const (
