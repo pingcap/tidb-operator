@@ -71,7 +71,7 @@ type InstanceT[T InstanceSet] interface {
 }
 
 type InstanceSet interface {
-	PD | TiDB | TiKV | TiFlash | TiCDC | TiProxy | TSO | Scheduling | Scheduler
+	PD | TiDB | TiKV | TiFlash | TiCDC | TiProxy | TSO | Scheduling | Scheduler | DM | DMWorker
 }
 
 type InstanceTuple[PT client.Object, PU Instance] interface {
