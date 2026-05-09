@@ -353,6 +353,7 @@ func (m *tidbInitManager) makeTiDBInitJob(ti *v1alpha1.TidbInitializer) (*batchv
 		},
 		Spec: corev1.PodSpec{
 			ImagePullSecrets:             ti.Spec.ImagePullSecrets,
+			ServiceAccountName:           ti.Spec.ServiceAccountName,
 			SecurityContext:              ti.Spec.PodSecurityContext,
 			AutomountServiceAccountToken: pointer.BoolPtr(false),
 			InitContainers: []corev1.Container{
