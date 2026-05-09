@@ -32,10 +32,12 @@ import (
 type ReconcileContext struct {
 	State
 
-	LeaderEvicting bool
+	ShouldEvictLeader bool
+	LeaderEvicting    bool
 
-	Store    *pdv1.Store
 	PDSynced bool
+
+	Store *pdv1.Store
 
 	// IsStoreReady will be set only when pd is synced and the store is ok
 	// It may be outdated so the tikv is healthy only when the pod is also available
@@ -97,6 +99,7 @@ func TaskContextInfoFromPD(state *ReconcileContext, cm pdm.PDClientManager) task
 		if coreutil.ShouldSuspendCompute(state.Cluster()) {
 			return task.Complete().With("cluster is suspending")
 		}
+
 		scheduler, err := c.Underlay().GetEvictLeaderScheduler(ctx, state.Store.ID)
 		if err != nil {
 			return task.Fail().With("pd is unexpectedly crashed: %v", err)

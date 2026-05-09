@@ -93,13 +93,6 @@ func TestTaskStatus(t *testing.T) {
 						Reason:             v1alpha1.ReasonUnsuspended,
 						Message:            "instance is not suspended",
 					},
-					{
-						Type:               v1alpha1.TiKVCondLeadersEvicted,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             "NotEvicted",
-						Message:            "leaders are not all evicted",
-					},
 				}
 
 				return obj
@@ -168,13 +161,6 @@ func TestTaskStatus(t *testing.T) {
 						Reason:             v1alpha1.ReasonUnsuspended,
 						Message:            "instance is not suspended",
 					},
-					{
-						Type:               v1alpha1.TiKVCondLeadersEvicted,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             "NotEvicted",
-						Message:            "leaders are not all evicted",
-					},
 				}
 
 				return obj
@@ -230,13 +216,6 @@ func TestTaskStatus(t *testing.T) {
 						Reason:             v1alpha1.ReasonUnsuspended,
 						Message:            "instance is not suspended",
 					},
-					{
-						Type:               v1alpha1.TiKVCondLeadersEvicted,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             "NotEvicted",
-						Message:            "leaders are not all evicted",
-					},
 				}
 
 				return obj
@@ -282,7 +261,7 @@ func TestTaskStatus(t *testing.T) {
 				PDSynced: true,
 			},
 
-			expectedStatus: task.SWait,
+			expectedStatus: task.SComplete,
 			expectedObj: fake.FakeObj(fakeTiKVName, func(obj *v1alpha1.TiKV) *v1alpha1.TiKV {
 				obj.Generation = 3
 				obj.Labels = map[string]string{
@@ -306,13 +285,6 @@ func TestTaskStatus(t *testing.T) {
 						ObservedGeneration: 3,
 						Reason:             v1alpha1.ReasonUnsuspended,
 						Message:            "instance is not suspended",
-					},
-					{
-						Type:               v1alpha1.TiKVCondLeadersEvicted,
-						Status:             metav1.ConditionTrue,
-						ObservedGeneration: 3,
-						Reason:             "Evicted",
-						Message:            "all leaders are evicted",
 					},
 				}
 
@@ -412,13 +384,6 @@ func TestTaskStatus(t *testing.T) {
 						ObservedGeneration: 3,
 						Reason:             v1alpha1.ReasonUnsuspended,
 						Message:            "instance is not suspended",
-					},
-					{
-						Type:               v1alpha1.TiKVCondLeadersEvicted,
-						Status:             metav1.ConditionFalse,
-						ObservedGeneration: 3,
-						Reason:             "NotEvicted",
-						Message:            "leaders are not all evicted",
 					},
 				}
 
