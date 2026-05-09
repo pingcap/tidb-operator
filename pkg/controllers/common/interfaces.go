@@ -41,6 +41,8 @@ type (
 	TiFlashSliceInitializer    = ResourceSliceInitializer[v1alpha1.TiFlash]
 	TiCDCSliceInitializer      = ResourceSliceInitializer[v1alpha1.TiCDC]
 	TiProxySliceInitializer    = ResourceSliceInitializer[v1alpha1.TiProxy]
+	DMSliceInitializer         = ResourceSliceInitializer[v1alpha1.DM]
+	DMWorkerSliceInitializer   = ResourceSliceInitializer[v1alpha1.DMWorker]
 )
 
 type GroupState[G runtime.Group] interface {
@@ -210,6 +212,9 @@ type (
 	DMState interface {
 		DM() *v1alpha1.DM
 	}
+	DMSliceStateInitializer interface {
+		DMSliceInitializer() DMSliceInitializer
+	}
 	DMSliceState interface {
 		DMSlice() []*v1alpha1.DM
 	}
@@ -221,6 +226,9 @@ type (
 	}
 	DMWorkerState interface {
 		DMWorker() *v1alpha1.DMWorker
+	}
+	DMWorkerSliceStateInitializer interface {
+		DMWorkerSliceInitializer() DMWorkerSliceInitializer
 	}
 	DMWorkerSliceState interface {
 		DMWorkerSlice() []*v1alpha1.DMWorker

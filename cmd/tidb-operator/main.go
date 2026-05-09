@@ -53,6 +53,10 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/tibr"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/br/tibrgc"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/cluster"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/dm"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/dmgroup"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/dmworker"
+	"github.com/pingcap/tidb-operator/v2/pkg/controllers/dmworkergroup"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/pd"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/pdgroup"
 	"github.com/pingcap/tidb-operator/v2/pkg/controllers/resourcemanager"
@@ -406,6 +410,22 @@ func addIndexer(ctx context.Context, mgr ctrl.Manager) error {
 		return err
 	}
 
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.DMGroup{}, "spec.cluster.name",
+		func(obj client.Object) []string {
+			dmg := obj.(*v1alpha1.DMGroup)
+			return []string{dmg.Spec.Cluster.Name}
+		}); err != nil {
+		return err
+	}
+
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.DMWorkerGroup{}, "spec.cluster.name",
+		func(obj client.Object) []string {
+			dwg := obj.(*v1alpha1.DMWorkerGroup)
+			return []string{dwg.Spec.Cluster.Name}
+		}); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -577,6 +597,30 @@ func setupControllers(
 			},
 		},
 		{
+			name: "DMGroup",
+			setupFunc: func() error {
+				return dmgroup.Setup(mgr, c, tf.AllocateFactory("dm"))
+			},
+		},
+		{
+			name: "DM",
+			setupFunc: func() error {
+				return dm.Setup(mgr, c, vm, tf.Tracker("dm"))
+			},
+		},
+		{
+			name: "DMWorkerGroup",
+			setupFunc: func() error {
+				return dmworkergroup.Setup(mgr, c, tf.AllocateFactory("dmworker"))
+			},
+		},
+		{
+			name: "DMWorker",
+			setupFunc: func() error {
+				return dmworker.Setup(mgr, c, vm, tf.Tracker("dmworker"))
+			},
+		},
+		{
 			name: "TiBR",
 			setupFunc: func() error {
 				return tibr.Setup(mgr, c)
@@ -691,6 +735,18 @@ func BuildCacheByObject() map[client.Object]cache.ByObject {
 			Label: labels.Everything(),
 		},
 		&v1alpha1.Scheduler{}: {
+			Label: labels.Everything(),
+		},
+		&v1alpha1.DMGroup{}: {
+			Label: labels.Everything(),
+		},
+		&v1alpha1.DM{}: {
+			Label: labels.Everything(),
+		},
+		&v1alpha1.DMWorkerGroup{}: {
+			Label: labels.Everything(),
+		},
+		&v1alpha1.DMWorker{}: {
 			Label: labels.Everything(),
 		},
 		&corev1.Secret{}: {
