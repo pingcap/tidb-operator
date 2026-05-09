@@ -203,6 +203,30 @@ type (
 	}
 )
 
+type (
+	DMGroupState interface {
+		DMGroup() *v1alpha1.DMGroup
+	}
+	DMState interface {
+		DM() *v1alpha1.DM
+	}
+	DMSliceState interface {
+		DMSlice() []*v1alpha1.DM
+	}
+)
+
+type (
+	DMWorkerGroupState interface {
+		DMWorkerGroup() *v1alpha1.DMWorkerGroup
+	}
+	DMWorkerState interface {
+		DMWorker() *v1alpha1.DMWorker
+	}
+	DMWorkerSliceState interface {
+		DMWorkerSlice() []*v1alpha1.DMWorker
+	}
+)
+
 type ObjectState[
 	F client.Object,
 ] interface {

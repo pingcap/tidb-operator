@@ -38,6 +38,7 @@ const (
 	// Scheduler also use pd image
 	Scheduler Untagged = "pingcap/pd"
 	TiProxy   Untagged = "pingcap/tiproxy"
+	DM        Untagged = "pingcap/dm"
 
 	Helper Tagged = "busybox:1.37.0"
 )
