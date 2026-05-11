@@ -16,7 +16,7 @@ Implement:
 
 - Sharded compact gets `--cal-shift-ts`.
 - Sharded compact gets `--physical-file-cache-capacity=150G`.
-- Sharded compact may omit `spec.endTs`; omitted `endTs` maps to `--crr-checkpoint-prefix <storage prefix>`.
+- Sharded compact may omit `spec.endTs`; omitted `endTs` maps to `--crr-checkpoint-prefix crr-checkpoint`.
 - Non-sharded compact still rejects empty `spec.endTs`.
 - Non-sharded compact does not get `--cal-shift-ts`, `--physical-file-cache-capacity`, or `--crr-checkpoint-prefix`.
 - Compact `--shard` passed to tikv-ctl uses numerator `1..N`; Kubernetes `JOB_COMPLETION_INDEX` remains validated as `0..N-1`.
@@ -106,32 +106,13 @@ In `cmd/backup-manager/app/compact/manager.go`, inside `buildCompactArgs`, remov
 "128G",
 ```
 
-Then replace the `UntilTS` / `Sharded` block with:
+Then split argument construction into separate non-sharded and sharded branches. The sharded branch owns all new sharded-only flags:
 
 ```go
 if cm.options.Sharded {
-	args = append(args,
-		"--cal-shift-ts",
-		"--physical-file-cache-capacity",
-		"150G",
-	)
+	return cm.buildShardedCompactArgs(args)
 }
-if cm.options.UntilTS != 0 {
-	args = append(args, "--until", strconv.FormatUint(cm.options.UntilTS, 10))
-} else if cm.options.Sharded {
-	args = append(args, "--crr-checkpoint-prefix", cm.checkpointPrefix())
-}
-if cm.options.Sharded {
-	// --shard tells tikv-ctl this pod's slice of the keyspace partition.
-	// --minimal-compaction-size=0 disables the small-segment skip so each
-	// shard compacts its full slice instead of discarding fragments.
-	args = append(args,
-		"--shard",
-		strconv.Itoa(cm.options.ShardIndex)+"/"+strconv.Itoa(cm.options.ShardCount),
-		"--minimal-compaction-size",
-		"0",
-	)
-}
+return cm.buildNonShardedCompactArgs(args)
 ```
 
 - [ ] **Step 6: Run tests to verify pass**

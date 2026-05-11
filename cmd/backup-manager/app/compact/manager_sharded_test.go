@@ -72,13 +72,7 @@ func TestBuildCompactArgsShardedMode(t *testing.T) {
 
 func TestBuildCompactArgsCRRModeShardedUsesCheckpointPrefix(t *testing.T) {
 	manager := &Manager{
-		compact: &v1alpha1.CompactBackup{
-			Spec: v1alpha1.CompactSpec{
-				StorageProvider: v1alpha1.StorageProvider{
-					Gcs: &v1alpha1.GcsStorageProvider{Prefix: "ccr/shard-1"},
-				},
-			},
-		},
+		compact: &v1alpha1.CompactBackup{},
 		options: options.CompactOpts{
 			FromTS:      11,
 			UntilTS:     0,
@@ -99,7 +93,7 @@ func TestBuildCompactArgsCRRModeShardedUsesCheckpointPrefix(t *testing.T) {
 		"-N", "4",
 		"--cal-shift-ts",
 		"--physical-file-cache-capacity", "150G",
-		"--crr-checkpoint-prefix", "ccr/shard-1",
+		"--crr-checkpoint-prefix", "crr-checkpoint",
 		"--shard", "2/3",
 		"--minimal-compaction-size", "0",
 	}
@@ -122,49 +116,6 @@ func TestBuildCompactArgsShardedModeConvertsKubernetesIndexToOneBasedShard(t *te
 
 	args := manager.buildCompactArgs("storage-base64")
 	assertStringSliceContainsPair(t, args, "--shard", "1/3")
-}
-
-func TestCheckpointPrefixSelectsConfiguredProvider(t *testing.T) {
-	cases := []struct {
-		name string
-		sp   v1alpha1.StorageProvider
-		want string
-	}{
-		{
-			name: "s3",
-			sp:   v1alpha1.StorageProvider{S3: &v1alpha1.S3StorageProvider{Prefix: "p-s3"}},
-			want: "p-s3",
-		},
-		{
-			name: "gcs",
-			sp:   v1alpha1.StorageProvider{Gcs: &v1alpha1.GcsStorageProvider{Prefix: "p-gcs"}},
-			want: "p-gcs",
-		},
-		{
-			name: "azblob",
-			sp:   v1alpha1.StorageProvider{Azblob: &v1alpha1.AzblobStorageProvider{Prefix: "p-az"}},
-			want: "p-az",
-		},
-		{
-			name: "local",
-			sp:   v1alpha1.StorageProvider{Local: &v1alpha1.LocalStorageProvider{Prefix: "p-local"}},
-			want: "p-local",
-		},
-		{
-			name: "none",
-			sp:   v1alpha1.StorageProvider{},
-			want: "",
-		},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			m := &Manager{compact: &v1alpha1.CompactBackup{Spec: v1alpha1.CompactSpec{StorageProvider: c.sp}}}
-			got := m.checkpointPrefix()
-			if got != c.want {
-				t.Fatalf("checkpointPrefix(%s): got %q want %q", c.name, got, c.want)
-			}
-		})
-	}
 }
 
 func TestProcessCompactFailsWhenShardedRuntimeIndexIsInvalid(t *testing.T) {
