@@ -63,7 +63,7 @@ func TestBuildCompactArgsShardedMode(t *testing.T) {
 		"--cal-shift-ts",
 		"--physical-file-cache-capacity", "150G",
 		"--until", "22",
-		"--shard", "1/3",
+		"--shard", "2/3",
 		"--minimal-compaction-size", "0",
 	}
 
@@ -100,11 +100,28 @@ func TestBuildCompactArgsCRRModeShardedUsesCheckpointPrefix(t *testing.T) {
 		"--cal-shift-ts",
 		"--physical-file-cache-capacity", "150G",
 		"--crr-checkpoint-prefix", "ccr/shard-1",
-		"--shard", "1/3",
+		"--shard", "2/3",
 		"--minimal-compaction-size", "0",
 	}
 
 	assertStringSliceEqual(t, args, want)
+}
+
+func TestBuildCompactArgsShardedModeConvertsKubernetesIndexToOneBasedShard(t *testing.T) {
+	manager := &Manager{
+		compact: &v1alpha1.CompactBackup{},
+		options: options.CompactOpts{
+			FromTS:      11,
+			UntilTS:     22,
+			Concurrency: 4,
+			Sharded:     true,
+			ShardIndex:  0,
+			ShardCount:  3,
+		},
+	}
+
+	args := manager.buildCompactArgs("storage-base64")
+	assertStringSliceContainsPair(t, args, "--shard", "1/3")
 }
 
 func TestCheckpointPrefixSelectsConfiguredProvider(t *testing.T) {
@@ -208,6 +225,16 @@ func assertStringSliceEqual(t *testing.T, got, want []string) {
 			t.Fatalf("unexpected arg at %d: got %q want %q; got=%v", i, got[i], want[i], got)
 		}
 	}
+}
+
+func assertStringSliceContainsPair(t *testing.T, got []string, key, value string) {
+	t.Helper()
+	for i := 0; i+1 < len(got); i++ {
+		if got[i] == key && got[i+1] == value {
+			return
+		}
+	}
+	t.Fatalf("expected args to contain %q %q, got %#v", key, value, got)
 }
 
 func newManagerForProcessCompactTest(t *testing.T, compact *v1alpha1.CompactBackup) *Manager {
