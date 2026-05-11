@@ -140,8 +140,11 @@ func TestTiProxyClient_SetLabels(t *testing.T) {
 
 func TestTiProxyClient_MarkUnhealthy(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/api/debug/health/unhealthy", r.URL.Path)
-		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/api/debug/health", r.URL.Path)
+		assert.Equal(t, http.MethodPut, r.Method)
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		assert.JSONEq(t, `{"status":"unhealthy","reason":"graceful-shutdown"}`, string(body))
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()

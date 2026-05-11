@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"k8s.io/utils/ptr"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 )
@@ -31,17 +31,23 @@ func TestCheckTiProxy(t *testing.T) {
 		reloadable bool
 	}{
 		{
-			desc: "delete delay seconds is reloadable",
+			desc: "graceful shutdown delete delay annotation is reloadable",
 			proxyg: &v1alpha1.TiProxyGroup{
 				Spec: v1alpha1.TiProxyGroupSpec{
 					Template: v1alpha1.TiProxyTemplate{
-						Spec: v1alpha1.TiProxyTemplateSpec{
-							GracefulShutdownDeleteDelaySeconds: ptr.To[int32](20),
+						ObjectMeta: v1alpha1.ObjectMeta{
+							Annotations: map[string]string{
+								v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds: "20",
+							},
 						},
+						Spec: v1alpha1.TiProxyTemplateSpec{},
 					},
 				},
 			},
 			proxy: &v1alpha1.TiProxy{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
 				Spec: v1alpha1.TiProxySpec{
 					TiProxyTemplateSpec: v1alpha1.TiProxyTemplateSpec{},
 				},

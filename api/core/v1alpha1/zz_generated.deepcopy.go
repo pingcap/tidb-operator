@@ -5199,11 +5199,6 @@ func (in *TiProxyTemplateSpec) DeepCopyInto(out *TiProxyTemplateSpec) {
 		*out = new(TiProxyPreStop)
 		**out = **in
 	}
-	if in.GracefulShutdownDeleteDelaySeconds != nil {
-		in, out := &in.GracefulShutdownDeleteDelaySeconds, &out.GracefulShutdownDeleteDelaySeconds
-		*out = new(int32)
-		**out = **in
-	}
 	if in.Overlay != nil {
 		in, out := &in.Overlay, &out.Overlay
 		*out = new(Overlay)
