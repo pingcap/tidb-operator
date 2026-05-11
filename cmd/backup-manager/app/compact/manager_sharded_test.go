@@ -118,6 +118,46 @@ func TestBuildCompactArgsShardedModeConvertsKubernetesIndexToOneBasedShard(t *te
 	assertStringSliceContainsPair(t, args, "--shard", "1/3")
 }
 
+func TestSanitizeCompactCommandArgsRedactsStorageBase64Value(t *testing.T) {
+	args := []string{
+		"/br/bin/tikv-ctl",
+		"compact-log-backup",
+		"--storage-base64",
+		"secret-storage-config",
+		"--from",
+		"11",
+		"--storage-base64=another-secret",
+		"--shard",
+		"1/3",
+	}
+
+	got := sanitizeCompactCommandArgs(args)
+	want := []string{
+		"/br/bin/tikv-ctl",
+		"compact-log-backup",
+		"--storage-base64",
+		"<redacted>",
+		"--from",
+		"11",
+		"--storage-base64=<redacted>",
+		"--shard",
+		"1/3",
+	}
+
+	assertStringSliceEqual(t, got, want)
+	assertStringSliceEqual(t, args, []string{
+		"/br/bin/tikv-ctl",
+		"compact-log-backup",
+		"--storage-base64",
+		"secret-storage-config",
+		"--from",
+		"11",
+		"--storage-base64=another-secret",
+		"--shard",
+		"1/3",
+	})
+}
+
 func TestProcessCompactFailsWhenShardedRuntimeIndexIsInvalid(t *testing.T) {
 	testCases := []struct {
 		name     string
