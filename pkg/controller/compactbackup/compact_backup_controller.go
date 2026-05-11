@@ -19,7 +19,6 @@ import (
 	"math"
 	"time"
 
-	"github.com/pingcap/errors"
 	perrors "github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/label"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
@@ -596,8 +595,8 @@ func (c *Controller) validate(compact *v1alpha1.CompactBackup) error {
 	if spec.StartTs == "" {
 		return perrors.NewNoStackError("start-ts must be set")
 	}
-	if spec.EndTs == "" {
-		return perrors.NewNoStackError("end-ts must be set")
+	if spec.EndTs == "" && spec.Mode != v1alpha1.CompactModeSharded {
+		return perrors.NewNoStackError("end-ts must be set when mode is not sharded")
 	}
 	if spec.Concurrency <= 0 {
 		return perrors.NewNoStackError("concurrency must be greater than 0")
@@ -606,10 +605,10 @@ func (c *Controller) validate(compact *v1alpha1.CompactBackup) error {
 		return perrors.NewNoStackError("maxRetryTimes must be greater than or equal to 0")
 	}
 	if spec.Mode == v1alpha1.CompactModeSharded && (spec.ShardCount == nil || *spec.ShardCount < 1) {
-		return errors.NewNoStackError("shardCount must be greater than or equal to 1 when mode is sharded")
+		return perrors.NewNoStackError("shardCount must be greater than or equal to 1 when mode is sharded")
 	}
 	if spec.Mode != v1alpha1.CompactModeSharded && spec.ShardCount != nil {
-		return errors.NewNoStackError("shardCount can only be set when mode is sharded")
+		return perrors.NewNoStackError("shardCount can only be set when mode is sharded")
 	}
 	return nil
 }
