@@ -72,18 +72,17 @@ func newTestTiProxyHealthServer(t *testing.T, healthStatus, markUnhealthyStatus 
 	mux.HandleFunc("/api/debug/health", func(w http.ResponseWriter, r *http.Request) {
 		s.mu.Lock()
 		defer s.mu.Unlock()
+		if r.Method == http.MethodPut {
+			s.markUnhealthyCalls++
+			w.WriteHeader(s.markUnhealthyStatus)
+			if s.markUnhealthyStatus == http.StatusOK {
+				s.healthStatus = http.StatusBadGateway
+			}
+			return
+		}
 		s.healthCalls++
 		w.WriteHeader(s.healthStatus)
 		_, _ = w.Write([]byte(`{"config_checksum":1}`))
-	})
-	mux.HandleFunc("/api/debug/health/unhealthy", func(w http.ResponseWriter, r *http.Request) {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		s.markUnhealthyCalls++
-		w.WriteHeader(s.markUnhealthyStatus)
-		if s.markUnhealthyStatus == http.StatusOK {
-			s.healthStatus = http.StatusBadGateway
-		}
 	})
 	server := httptest.NewServer(mux)
 	t.Cleanup(server.Close)
@@ -116,7 +115,7 @@ func runDrainPodForDeleteTask(t *testing.T, ctx context.Context, s State, c clie
 	require.False(t, contextDone)
 	require.NotEqual(t, task.SFail.String(), contextRes.Status().String(), contextRes.Message())
 
-	return task.RunTask(ctx, TaskDrainPodForDelete(s, c, nil))
+	return task.RunTask(ctx, TaskDrainPodForDelete(s, c))
 }
 
 func TestTaskDrainPodForDeleteDeletePodImmediatelyByDefault(t *testing.T) {
@@ -210,7 +209,7 @@ func TestTaskDrainPodForDeleteContinueDeleteDelayWhenMarkUnhealthyFails(t *testi
 	assert.Empty(t, actual.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownBeginTime])
 }
 
-func TestTaskDrainPodForDeleteDoNotStartDeleteDelayWhenUnhealthyAPIIsUnsupportedButFallbackCannotRun(t *testing.T) {
+func TestTaskDrainPodForDeleteDoNotStartDeleteDelayWhenUnhealthyAPIIsUnsupported(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -295,7 +294,7 @@ func TestDrainPodForDeleteBlocksCommonFinalizerUntilPodIsGone(t *testing.T) {
 	fc := client.NewFakeClient(cluster, tiproxy, pod)
 	res, done := task.RunTask(ctx, task.Block(
 		common.TaskContextPod[scope.TiProxy](s, fc),
-		TaskDrainPodForDelete(s, fc, nil),
+		TaskDrainPodForDelete(s, fc),
 		task.If(task.CondFunc(func() bool { return s.Pod() == nil }),
 			common.TaskInstanceFinalizerDel[scope.TiProxy](s, fc, common.DefaultInstanceSubresourceLister),
 		),
@@ -331,11 +330,10 @@ func deletingTiProxy(deleteDelaySeconds string) *v1alpha1.TiProxy {
 			obj.Spec.Version = fakeVersion
 			obj.Spec.Subdomain = "tiproxy-peer"
 			if deleteDelaySeconds != "" {
-				seconds, err := strconv.ParseInt(deleteDelaySeconds, 10, 32)
-				if err != nil {
-					panic(err)
+				if obj.Annotations == nil {
+					obj.Annotations = map[string]string{}
 				}
-				obj.Spec.GracefulShutdownDeleteDelaySeconds = ptrTo[int32](int32(seconds))
+				obj.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds] = deleteDelaySeconds
 			}
 			return obj
 		},
@@ -346,8 +344,4 @@ func deletingTiProxyWithAPIAddress(deleteDelaySeconds string, apiPort int32) *v1
 	tiproxy := deletingTiProxy(deleteDelaySeconds)
 	tiproxy.Spec.Server.Ports.API = &v1alpha1.Port{Port: apiPort}
 	return tiproxy
-}
-
-func ptrTo[T any](v T) *T {
-	return &v
 }

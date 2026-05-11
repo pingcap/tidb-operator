@@ -46,7 +46,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		task.IfBreak(common.CondClusterPDAddrIsNotRegistered(state)),
 
 		task.IfBreak(common.CondObjectIsDeleting[scope.TiProxy](state),
-			tasks.TaskDrainPodForDelete(state, r.Client, r.RestConfig),
+			tasks.TaskDrainPodForDelete(state, r.Client),
 			task.If(task.CondFunc(func() bool { return state.Pod() == nil }),
 				common.TaskInstanceFinalizerDel[scope.TiProxy](state, r.Client, common.DefaultInstanceSubresourceLister),
 			),

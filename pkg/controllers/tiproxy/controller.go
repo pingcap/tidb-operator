@@ -22,7 +22,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -43,7 +42,6 @@ type Reconciler struct {
 	PDClientManager       pdm.PDClientManager
 	VolumeModifierFactory volumes.ModifierFactory
 	Tracker               tracker.Tracker
-	RestConfig            *rest.Config
 }
 
 func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, vm volumes.ModifierFactory, t tracker.Tracker) error {
@@ -53,7 +51,6 @@ func Setup(mgr manager.Manager, c client.Client, pdcm pdm.PDClientManager, vm vo
 		PDClientManager:       pdcm,
 		VolumeModifierFactory: vm,
 		Tracker:               t,
-		RestConfig:            mgr.GetConfig(),
 	}
 	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.TiProxy{}).
 		Owns(&corev1.Pod{}).

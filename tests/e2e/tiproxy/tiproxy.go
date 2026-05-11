@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
@@ -313,7 +314,10 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 
 			ginkgo.By("Patch TiProxyGroup to enable graceful shutdown delay without restarting pods")
 			patch := client.MergeFrom(proxyg.DeepCopy())
-			proxyg.Spec.Template.Spec.GracefulShutdownDeleteDelaySeconds = ptr.To(deleteDelaySeconds)
+			if proxyg.Spec.Template.Annotations == nil {
+				proxyg.Spec.Template.Annotations = map[string]string{}
+			}
+			proxyg.Spec.Template.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds] = strconv.Itoa(int(deleteDelaySeconds))
 			f.Must(f.Client.Patch(ctx, proxyg, patch))
 
 			gomega.Eventually(func() error {
@@ -325,8 +329,8 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 					return fmt.Errorf("got %d tiproxy instances, want %d", len(tiproxies.Items), replicas)
 				}
 				for i := range tiproxies.Items {
-					if tiproxies.Items[i].Spec.GracefulShutdownDeleteDelaySeconds == nil || *tiproxies.Items[i].Spec.GracefulShutdownDeleteDelaySeconds != deleteDelaySeconds {
-						return fmt.Errorf("tiproxy %s/%s does not have gracefulShutdownDeleteDelaySeconds set", tiproxies.Items[i].Namespace, tiproxies.Items[i].Name)
+					if tiproxies.Items[i].Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds] != strconv.Itoa(int(deleteDelaySeconds)) {
+						return fmt.Errorf("tiproxy %s/%s does not have graceful shutdown delete delay annotation set", tiproxies.Items[i].Namespace, tiproxies.Items[i].Name)
 					}
 				}
 

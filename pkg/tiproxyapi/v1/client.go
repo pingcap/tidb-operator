@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -29,10 +30,14 @@ import (
 )
 
 const (
-	healthPath          = "api/debug/health"
-	healthUnhealthyPath = "api/debug/health/unhealthy"
-	configPath          = "api/admin/config"
+	healthPath = "api/debug/health"
+	configPath = "api/admin/config"
 )
+
+type healthOverrideRequest struct {
+	Status string `json:"status"`
+	Reason string `json:"reason"`
+}
 
 // TiProxyClient is the interface that knows how to control tiproxy clusters.
 type TiProxyClient interface {
@@ -96,8 +101,17 @@ func (c *tiproxyClient) IsHealthy(ctx context.Context) (bool, error) {
 }
 
 func (c *tiproxyClient) MarkUnhealthy(ctx context.Context) error {
-	apiURL := fmt.Sprintf("%s/%s", c.url, healthUnhealthyPath)
-	_, err := httputil.PostBodyOK(ctx, c.httpClient, apiURL, nil)
+	body := healthOverrideRequest{
+		Status: "unhealthy",
+		Reason: "graceful-shutdown",
+	}
+	var buffer bytes.Buffer
+	if err := json.NewEncoder(&buffer).Encode(body); err != nil {
+		return fmt.Errorf("encode health override request failed: %w", err)
+	}
+
+	apiURL := fmt.Sprintf("%s/%s", c.url, healthPath)
+	_, err := httputil.PutBodyOK(ctx, c.httpClient, apiURL, &buffer)
 	return err
 }
 

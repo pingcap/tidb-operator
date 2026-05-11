@@ -15,18 +15,14 @@
 package tasks
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
-	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/remotecommand"
 
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
@@ -34,18 +30,17 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/tiproxyapi/v1"
-	httputil "github.com/pingcap/tidb-operator/v2/pkg/utils/http"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
-func TaskDrainPodForDelete(state State, c client.Client, restConfig *rest.Config) task.Task {
+func TaskDrainPodForDelete(state State, c client.Client) task.Task {
 	return task.NameTaskFunc("DrainPodForDelete", func(ctx context.Context) task.Result {
 		pod := state.Pod()
 		if pod == nil {
 			return task.Complete().With("pod doesn't exist")
 		}
 
-		retryAfter, err := drainOrDeletePod(ctx, c, state, pod, restConfig)
+		retryAfter, err := drainOrDeletePod(ctx, c, state, pod)
 		if err != nil {
 			return task.Fail().With("cannot delete pod of tiproxy: %v", err)
 		}
@@ -56,7 +51,7 @@ func TaskDrainPodForDelete(state State, c client.Client, restConfig *rest.Config
 	})
 }
 
-func drainOrDeletePod(ctx context.Context, c client.Client, state State, pod *corev1.Pod, restConfig *rest.Config) (time.Duration, error) {
+func drainOrDeletePod(ctx context.Context, c client.Client, state State, pod *corev1.Pod) (time.Duration, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	tiproxy := state.Object()
 
@@ -64,14 +59,17 @@ func drainOrDeletePod(ctx context.Context, c client.Client, state State, pod *co
 		return task.DefaultRequeueAfter, nil
 	}
 
-	seconds := tiproxy.Spec.GracefulShutdownDeleteDelaySeconds
-	if seconds == nil || *seconds <= 0 {
+	seconds, ok, err := gracefulShutdownDeleteDelaySeconds(tiproxy)
+	if err != nil {
+		return 0, err
+	}
+	if !ok || seconds <= 0 {
 		return deleteTiProxyPod(ctx, c, pod)
 	}
 
 	startAt, ok := gracefulShutdownBeginTime(pod)
 	if !ok {
-		if !ensureTiProxyMarkedUnhealthy(ctx, state, c, logger, restConfig) {
+		if !ensureTiProxyMarkedUnhealthy(ctx, state, c, logger) {
 			return task.DefaultRequeueAfter, nil
 		}
 		startAt = time.Now()
@@ -80,7 +78,7 @@ func drainOrDeletePod(ctx context.Context, c client.Client, state State, pod *co
 		}
 	}
 
-	remaining := time.Until(startAt.Add(time.Duration(*seconds) * time.Second))
+	remaining := time.Until(startAt.Add(time.Duration(seconds) * time.Second))
 	if remaining > task.DefaultRequeueAfter {
 		remaining = task.DefaultRequeueAfter
 	}
@@ -89,6 +87,19 @@ func drainOrDeletePod(ctx context.Context, c client.Client, state State, pod *co
 	}
 
 	return deleteTiProxyPod(ctx, c, pod)
+}
+
+func gracefulShutdownDeleteDelaySeconds(tiproxy *v1alpha1.TiProxy) (int32, bool, error) {
+	raw := tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds]
+	if raw == "" {
+		return 0, false, nil
+	}
+
+	seconds, err := strconv.ParseInt(raw, 10, 32)
+	if err != nil {
+		return 0, false, err
+	}
+	return int32(seconds), true, nil
 }
 
 func gracefulShutdownBeginTime(pod *corev1.Pod) (time.Time, bool) {
@@ -120,7 +131,7 @@ func deleteTiProxyPod(ctx context.Context, c client.Client, pod *corev1.Pod) (ti
 	return task.DefaultRequeueAfter, nil
 }
 
-func ensureTiProxyMarkedUnhealthy(ctx context.Context, state State, c client.Client, logger logr.Logger, restConfig *rest.Config) bool {
+func ensureTiProxyMarkedUnhealthy(ctx context.Context, state State, c client.Client, logger logr.Logger) bool {
 	tiproxy := state.Object()
 
 	tpClient, err := newTiProxyDeleteClient(ctx, state, c)
@@ -149,38 +160,13 @@ func ensureTiProxyMarkedUnhealthy(ctx context.Context, state State, c client.Cli
 	}
 
 	if err := tpClient.MarkUnhealthy(ctx); err != nil {
-		if httputil.IsNotFound(err) {
-			if restConfig == nil {
-				logger.Info(
-					"failed to fallback to SIGTERM after unhealthy API is not found, rest config is not available, continue retrying",
-					"namespace", tiproxy.Namespace,
-					"name", tiproxy.Name,
-				)
-				return false
-			}
-			if err := sendSIGTERMToTiProxyPod(ctx, restConfig, state.Pod()); err != nil {
-				logger.Info(
-					"failed to fallback to SIGTERM after unhealthy API is not found, continue retrying",
-					"namespace", tiproxy.Namespace,
-					"name", tiproxy.Name,
-					"error", err,
-				)
-				return false
-			}
-			logger.Info(
-				"TiProxy unhealthy API is not found, fallback to SIGTERM",
-				"namespace", tiproxy.Namespace,
-				"name", tiproxy.Name,
-			)
-		} else {
-			logger.Info(
-				"failed to mark TiProxy unhealthy before graceful delete, continue retrying",
-				"namespace", tiproxy.Namespace,
-				"name", tiproxy.Name,
-				"error", err,
-			)
-			return false
-		}
+		logger.Info(
+			"failed to mark TiProxy unhealthy before graceful delete, continue retrying",
+			"namespace", tiproxy.Namespace,
+			"name", tiproxy.Name,
+			"error", err,
+		)
+		return false
 	}
 
 	healthy, err = tpClient.IsHealthy(ctx)
@@ -202,44 +188,6 @@ func ensureTiProxyMarkedUnhealthy(ctx context.Context, state State, c client.Cli
 		return false
 	}
 	return true
-}
-
-func sendSIGTERMToTiProxyPod(ctx context.Context, restConfig *rest.Config, pod *corev1.Pod) error {
-	cfg := rest.CopyConfig(restConfig)
-	cfg.APIPath = "/api"
-	cfg.GroupVersion = &corev1.SchemeGroupVersion
-	cfg.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
-
-	restClient, err := rest.RESTClientFor(cfg)
-	if err != nil {
-		return err
-	}
-
-	req := restClient.Post().
-		Resource("pods").
-		Namespace(pod.Namespace).
-		Name(pod.Name).
-		SubResource("exec").
-		VersionedParams(&corev1.PodExecOptions{
-			Container: v1alpha1.ContainerNameTiProxy,
-			Command:   []string{"/bin/sh", "-c", "kill -TERM 1"},
-			Stderr:    true,
-		}, scheme.ParameterCodec)
-
-	exec, err := remotecommand.NewSPDYExecutor(cfg, "POST", req.URL())
-	if err != nil {
-		return err
-	}
-
-	var stderr bytes.Buffer
-	if err := exec.StreamWithContext(ctx, remotecommand.StreamOptions{Stderr: &stderr}); err != nil {
-		if stderr.Len() > 0 {
-			return fmt.Errorf("%w: %s", err, stderr.String())
-		}
-		return err
-	}
-
-	return nil
 }
 
 func newTiProxyDeleteClient(ctx context.Context, state State, c client.Client) (tiproxyapi.TiProxyClient, error) {
