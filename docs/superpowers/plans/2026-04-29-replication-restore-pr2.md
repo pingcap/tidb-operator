@@ -14,7 +14,7 @@ PR 2 closes the remaining gap so a `Restore` with `replicationConfig != nil` act
 
 2. **P2.1 — Replication path skips `pm.Enable`.** Standard PiTR restores poll the TiKV `gc.ratio-threshold` ConfigMap until it has been overridden to `-1` (the override itself is written by `tikvMemberManager.applyPiTRConfigOverride` in the TiKV reconcile loop, which already covers replication restores because they satisfy `Spec.Mode == PiTR`). Today the replication interception at `restore_manager.go:300-302` returns *before* `pm.Enable` runs, so the gate is bypassed. PR 2 reorders `pm.Enable` to before the replication interception so both PiTR variants share the gate.
 
-3. **§6 — backup-manager doesn't know about replication.** `cmd/backup-manager/app/cmd/restore.go` has no `--replicationPhase` flag, the `Options` struct has no field for it, the PiTR branch of `restoreData` doesn't append the three new BR flags, and `runRestore` always uses the real status updater (never the no-op wrapper Option B requires for phase-1). PR 2 adds these four pieces.
+3. **§6 — backup-manager doesn't know about replication.** `cmd/backup-manager/app/cmd/restore.go` has no `--replicationPhase` flag, the `Options` struct has no field for it, the PiTR branch of `restoreData` doesn't append the four new BR flags, and `runRestore` always uses the real status updater (never the no-op wrapper Option B requires for phase-1). PR 2 adds these four pieces.
 
 ### Combined-PR decision (deviation from spec §PR Breakdown)
 
@@ -300,7 +300,7 @@ backup-manager twice with different phases.
 
 ## Task 4: Append BR replication flags + define constants
 
-The PiTR branch in `restoreData` already builds the BR command line for `--restored-ts` and the full-backup-storage args. Replication adds three more.
+The PiTR branch in `restoreData` already builds the BR command line for `--restored-ts` and the full-backup-storage args. Replication adds four more.
 
 - [ ] **Step 1: Write a failing test for the new helper**
 
@@ -317,13 +317,15 @@ func TestReplicationBRFlags(t *testing.T) {
         {phase: 0, want: nil},
         {phase: 1, want: []string{
             "--replication-storage-phase=1",
-            "--replication-status-sub-prefix=ccr",
+            "--replication-status-sub-prefix=crr-checkpoint",
             "--pitr-concurrency=1024",
+            "--retain-latest-mvcc-version",
         }},
         {phase: 2, want: []string{
             "--replication-storage-phase=2",
-            "--replication-status-sub-prefix=ccr",
+            "--replication-status-sub-prefix=crr-checkpoint",
             "--pitr-concurrency=1024",
+            "--retain-latest-mvcc-version",
         }},
     }
     for _, c := range cases {
@@ -349,7 +351,7 @@ const (
     // out replication status under the log-backup storage. Hardcoded
     // here (not exposed via API) per spec §6: this is a BR call detail
     // and shouldn't leak into the CRD.
-    replicationStatusSubPrefix = "ccr"
+    replicationStatusSubPrefix = "crr-checkpoint"
 
     // replicationPiTRConcurrency is the parallelism BR uses when
     // applying compacted log files. Spec §6.
@@ -368,6 +370,7 @@ func replicationBRFlags(phase int) []string {
         fmt.Sprintf("--replication-storage-phase=%d", phase),
         fmt.Sprintf("--replication-status-sub-prefix=%s", replicationStatusSubPrefix),
         fmt.Sprintf("--pitr-concurrency=%d", replicationPiTRConcurrency),
+        "--retain-latest-mvcc-version",
     }
 }
 ```
@@ -394,9 +397,9 @@ Commit message:
 ```
 feat(replication-restore): append BR replication flags in PiTR branch
 
-Three BR flags are now appended when --replicationPhase > 0:
---replication-storage-phase, --replication-status-sub-prefix=ccr,
---pitr-concurrency=1024. Constants live in restore.go (BR call
+Four BR flags are now appended when --replicationPhase > 0:
+--replication-storage-phase, --replication-status-sub-prefix=crr-checkpoint,
+--pitr-concurrency=1024, --retain-latest-mvcc-version. Constants live in restore.go (BR call
 details; not exposed via API). Arg construction is extracted to a
 testable buildBRArgs helper.
 ```
@@ -811,8 +814,9 @@ Walk through spec §3 (Status Write Ownership) and §6 (BR CLI Surface) and conf
 - §3: phase-2 uses real updater ✓ (default branch in Task 3)
 - §6: `--replicationPhase` flag added ✓ (Task 2)
 - §6: `--replication-storage-phase=<1|2>` appended ✓ (Task 4)
-- §6: `--replication-status-sub-prefix=ccr` appended ✓ (Task 4)
+- §6: `--replication-status-sub-prefix=crr-checkpoint` appended ✓ (Task 4)
 - §6: `--pitr-concurrency=1024` appended ✓ (Task 4)
+- §6: `--retain-latest-mvcc-version` appended ✓ (Task 4)
 - §6: constants placed in backup-manager (not types.go) ✓ (Task 4)
 
 - [ ] **PR body update**

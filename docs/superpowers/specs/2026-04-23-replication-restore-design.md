@@ -403,7 +403,7 @@ Controller 重启后无任何内存状态依赖。下次 reconcile 直接进入 
 
 ```go
 const (
-    replicationStatusSubPrefix = "ccr"
+    replicationStatusSubPrefix = "crr-checkpoint"
     replicationPiTRConcurrency = 1024
 )
 ```
@@ -412,8 +412,9 @@ const (
 
 ```
 --replication-storage-phase=<1|2>
---replication-status-sub-prefix=ccr
+--replication-status-sub-prefix=crr-checkpoint
 --pitr-concurrency=1024
+--retain-latest-mvcc-version
 ```
 
 **Controller 侧写入**：创建 BR Job 时将 `--replicationPhase={1|2}` 作为 Pod args 传给 backup-manager。`replicationConfig.compactBackupName` 等字段**不传给** backup-manager——它不需要知道 CompactBackup 的存在。
@@ -434,7 +435,7 @@ const (
 | `pkg/controller/restore_status_updater.go` | 改 | 新增 `ReplicationRestoreStatusUpdater` wrapper |
 | `pkg/controller/restore/restore_controller.go` | 改 | 注入 CompactBackup informer + EventHandler |
 | `cmd/backup-manager/app/cmd/restore.go` | 改 | 加 `--replicationPhase` flag；`== 1` 时 wrap updater |
-| `cmd/backup-manager/app/restore/restore.go` | 改 | PiTR 分支追加 3 个 BR flag（仅 `ReplicationPhase > 0`）；定义两个常量 |
+| `cmd/backup-manager/app/restore/restore.go` | 改 | PiTR 分支追加 4 个 BR flag（仅 `ReplicationPhase > 0`）；定义两个常量 |
 | `cmd/backup-manager/app/restore/manager.go` | 改（若需要） | `Options.ReplicationPhase int` 字段 |
 
 **Handler 放 `pkg/backup/restore/` 的原因**：该目录承担"reconcile 一次 Restore CR 的业务编排"职责；`replication_handler` 内容属于业务编排，与 `restore_manager.go` 同包同层更合理；拦截点是**同包函数调用**，不需要跨包 interface。
@@ -510,7 +511,7 @@ const (
 ### PR 2: backup-manager CLI + BR 参数
 
 - `cmd/backup-manager/app/cmd/restore.go` — 加 `--replicationPhase` flag；`== 1` 时 wrap status updater
-- `cmd/backup-manager/app/restore/restore.go` — PiTR 分支追加 3 个 BR flag（仅 `ReplicationPhase > 0`）；定义 `replicationStatusSubPrefix = "ccr"` 和 `replicationPiTRConcurrency = 1024` 常量
+- `cmd/backup-manager/app/restore/restore.go` — PiTR 分支追加 4 个 BR flag（仅 `ReplicationPhase > 0`）；定义 `replicationStatusSubPrefix = "crr-checkpoint"` 和 `replicationPiTRConcurrency = 1024` 常量
 - `cmd/backup-manager/app/restore/manager.go` — `Options.ReplicationPhase int` 字段（若需要）
 - 集成测试
 
