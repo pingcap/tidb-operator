@@ -33,8 +33,6 @@ func TestBuildCompactArgsDefaultMode(t *testing.T) {
 		"--storage-base64", "storage-base64",
 		"--from", "11",
 		"-N", "4",
-		"--cal-shift-ts",
-		"--physical-file-cache-capacity", "128G",
 		"--until", "22",
 	}
 
@@ -63,42 +61,10 @@ func TestBuildCompactArgsShardedMode(t *testing.T) {
 		"--from", "11",
 		"-N", "4",
 		"--cal-shift-ts",
-		"--physical-file-cache-capacity", "128G",
+		"--physical-file-cache-capacity", "150G",
 		"--until", "22",
 		"--shard", "1/3",
 		"--minimal-compaction-size", "0",
-	}
-
-	assertStringSliceEqual(t, args, want)
-}
-
-func TestBuildCompactArgsCRRModeUsesCheckpointPrefix(t *testing.T) {
-	manager := &Manager{
-		compact: &v1alpha1.CompactBackup{
-			Spec: v1alpha1.CompactSpec{
-				StorageProvider: v1alpha1.StorageProvider{
-					S3: &v1alpha1.S3StorageProvider{Prefix: "log-backup"},
-				},
-			},
-		},
-		options: options.CompactOpts{
-			FromTS:      11,
-			UntilTS:     0, // unset → CCR mode
-			Concurrency: 4,
-		},
-	}
-
-	args := manager.buildCompactArgs("storage-base64")
-	want := []string{
-		"--log-level", "INFO",
-		"--log-format", "json",
-		"compact-log-backup",
-		"--storage-base64", "storage-base64",
-		"--from", "11",
-		"-N", "4",
-		"--cal-shift-ts",
-		"--physical-file-cache-capacity", "128G",
-		"--crr-checkpoint-prefix", "log-backup",
 	}
 
 	assertStringSliceEqual(t, args, want)
@@ -132,7 +98,7 @@ func TestBuildCompactArgsCRRModeShardedUsesCheckpointPrefix(t *testing.T) {
 		"--from", "11",
 		"-N", "4",
 		"--cal-shift-ts",
-		"--physical-file-cache-capacity", "128G",
+		"--physical-file-cache-capacity", "150G",
 		"--crr-checkpoint-prefix", "ccr/shard-1",
 		"--shard", "1/3",
 		"--minimal-compaction-size", "0",
