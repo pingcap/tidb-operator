@@ -123,6 +123,36 @@ func TestValidateRejectsShardCountWithoutShardedMode(t *testing.T) {
 	}
 }
 
+func TestValidateAllowsEmptyEndTsOnlyForShardedCCRCheckpointMode(t *testing.T) {
+	c := newTestController(t)
+	compact := newCompactBackupForTest()
+	shardCount := int32(3)
+	compact.Spec.Mode = v1alpha1.CompactModeSharded
+	compact.Spec.ShardCount = &shardCount
+	compact.Spec.EndTs = ""
+
+	err := c.validate(compact)
+	if err != nil {
+		t.Fatalf("expected empty endTs to be accepted in sharded mode, got %v", err)
+	}
+}
+
+func TestValidateRejectsEmptyEndTsForNonShardedMode(t *testing.T) {
+	c := newTestController(t)
+	compact := newCompactBackupForTest()
+	compact.Spec.Mode = ""
+	compact.Spec.ShardCount = nil
+	compact.Spec.EndTs = ""
+
+	err := c.validate(compact)
+	if err == nil {
+		t.Fatal("expected empty endTs to be rejected in non-sharded mode")
+	}
+	if !strings.Contains(err.Error(), "end-ts") {
+		t.Fatalf("expected end-ts validation error, got %v", err)
+	}
+}
+
 func TestSyncShardedModeRequiresSupportedK8sVersion(t *testing.T) {
 	c := newTestController(t)
 	compact := newCompactBackupForTest()

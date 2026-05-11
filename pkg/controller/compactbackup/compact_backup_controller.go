@@ -590,8 +590,8 @@ func (c *Controller) validate(compact *v1alpha1.CompactBackup) error {
 	if spec.StartTs == "" {
 		return errors.NewNoStackError("start-ts must be set")
 	}
-	if spec.EndTs == "" {
-		return errors.NewNoStackError("end-ts must be set")
+	if spec.EndTs == "" && spec.Mode != v1alpha1.CompactModeSharded {
+		return errors.NewNoStackError("end-ts must be set when mode is not sharded")
 	}
 	if spec.Concurrency <= 0 {
 		return errors.NewNoStackError("concurrency must be greater than 0")

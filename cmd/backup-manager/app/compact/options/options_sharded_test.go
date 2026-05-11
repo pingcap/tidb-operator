@@ -218,3 +218,31 @@ func TestCompactOptsVerifyRejectsInvalidKubernetesShardIndex(t *testing.T) {
 		})
 	}
 }
+
+func TestCompactOptsVerifyAllowsUnsetUntilTSOnlyWhenSharded(t *testing.T) {
+	sharded := CompactOpts{
+		FromTS:      1,
+		UntilTS:     0,
+		Concurrency: 1,
+		Sharded:     true,
+		ShardIndex:  0,
+		ShardCount:  3,
+	}
+	if err := sharded.Verify(); err != nil {
+		t.Fatalf("expected sharded unset UntilTS to be accepted, got %v", err)
+	}
+
+	nonSharded := CompactOpts{
+		FromTS:      1,
+		UntilTS:     0,
+		Concurrency: 1,
+		Sharded:     false,
+	}
+	err := nonSharded.Verify()
+	if err == nil {
+		t.Fatal("expected non-sharded unset UntilTS to be rejected")
+	}
+	if !strings.Contains(err.Error(), "until-ts must be set") {
+		t.Fatalf("expected until-ts validation error, got %v", err)
+	}
+}
