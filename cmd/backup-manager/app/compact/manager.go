@@ -56,6 +56,8 @@ type Manager struct {
 	options        options.CompactOpts
 }
 
+const crrCheckpointPrefix = "crr-checkpoint"
+
 // NewManager return a Manager
 func NewManager(
 	lister listers.CompactBackupLister,
@@ -170,25 +172,6 @@ func (cm *Manager) compactCmd(ctx context.Context, base64Storage string) *exec.C
 	return exec.CommandContext(ctx, ctl, args...)
 }
 
-// checkpointPrefix returns the storage prefix used for log-backup data,
-// which doubles as tikv-ctl's --crr-checkpoint-prefix in CCR mode. It
-// inspects whichever StorageProvider variant is set on the CompactBackup
-// CR; an empty string indicates no prefix is configured.
-func (cm *Manager) checkpointPrefix() string {
-	sp := cm.compact.Spec.StorageProvider
-	switch {
-	case sp.S3 != nil:
-		return sp.S3.Prefix
-	case sp.Gcs != nil:
-		return sp.Gcs.Prefix
-	case sp.Azblob != nil:
-		return sp.Azblob.Prefix
-	case sp.Local != nil:
-		return sp.Local.Prefix
-	}
-	return ""
-}
-
 func (cm *Manager) buildCompactArgs(base64Storage string) []string {
 	args := []string{
 		"--log-level",
@@ -203,33 +186,45 @@ func (cm *Manager) buildCompactArgs(base64Storage string) []string {
 		"-N",
 		strconv.FormatUint(cm.options.Concurrency, 10),
 	}
+
 	if cm.options.Sharded {
-		args = append(args,
-			"--cal-shift-ts",
-			"--physical-file-cache-capacity",
-			"150G",
-		)
+		return cm.buildShardedCompactArgs(args)
 	}
-	// When the CR sets EndTs explicitly, honor it as a hard upper bound via
-	// --until (existing non-CCR semantics). Otherwise fall back to
-	// --crr-checkpoint-prefix and let tikv-ctl resolve the until-ts from
-	// the log-backup global checkpoint at the configured storage prefix.
+	return cm.buildNonShardedCompactArgs(args)
+}
+
+func (cm *Manager) buildNonShardedCompactArgs(args []string) []string {
 	if cm.options.UntilTS != 0 {
 		args = append(args, "--until", strconv.FormatUint(cm.options.UntilTS, 10))
-	} else if cm.options.Sharded {
-		args = append(args, "--crr-checkpoint-prefix", cm.checkpointPrefix())
 	}
-	if cm.options.Sharded {
-		// --shard tells tikv-ctl this pod's slice of the keyspace partition.
-		// --minimal-compaction-size=0 disables the small-segment skip so each
-		// shard compacts its full slice instead of discarding fragments.
-			args = append(args,
-			"--shard",
-			strconv.Itoa(cm.options.ShardIndex+1)+"/"+strconv.Itoa(cm.options.ShardCount),
-			"--minimal-compaction-size",
-			"0",
-		)
+	return args
+}
+
+func (cm *Manager) buildShardedCompactArgs(args []string) []string {
+	args = append(args,
+		"--cal-shift-ts",
+		"--physical-file-cache-capacity",
+		"150G",
+	)
+
+	// When the CR sets EndTs explicitly, honor it as a hard upper bound via
+	// --until. Otherwise let tikv-ctl resolve until-ts from the replication
+	// checkpoint stored under the fixed crr-checkpoint sub-prefix.
+	if cm.options.UntilTS != 0 {
+		args = append(args, "--until", strconv.FormatUint(cm.options.UntilTS, 10))
+	} else {
+		args = append(args, "--crr-checkpoint-prefix", crrCheckpointPrefix)
 	}
+
+	// --shard tells tikv-ctl this pod's slice of the keyspace partition.
+	// --minimal-compaction-size=0 disables the small-segment skip so each
+	// shard compacts its full slice instead of discarding fragments.
+	args = append(args,
+		"--shard",
+		strconv.Itoa(cm.options.ShardIndex+1)+"/"+strconv.Itoa(cm.options.ShardCount),
+		"--minimal-compaction-size",
+		"0",
+	)
 	return args
 }
 
