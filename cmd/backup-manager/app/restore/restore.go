@@ -43,7 +43,7 @@ const (
 	// lay out replication status under the log-backup storage.
 	// Hardcoded here (not exposed via API) per spec §6: this is a BR
 	// call detail and shouldn't leak into the CRD.
-	replicationStatusSubPrefix = "ccr"
+	replicationStatusSubPrefix = "crr-checkpoint"
 
 	// replicationPiTRConcurrency is the parallelism BR uses when
 	// applying compacted log files. Spec §6.
@@ -63,6 +63,7 @@ func replicationBRFlags(phase int) []string {
 		fmt.Sprintf("--replication-storage-phase=%d", phase),
 		fmt.Sprintf("--replication-status-sub-prefix=%s", replicationStatusSubPrefix),
 		fmt.Sprintf("--pitr-concurrency=%d", replicationPiTRConcurrency),
+		"--retain-latest-mvcc-version",
 	}
 }
 
