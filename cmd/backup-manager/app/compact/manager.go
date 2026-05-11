@@ -202,9 +202,13 @@ func (cm *Manager) buildCompactArgs(base64Storage string) []string {
 		strconv.FormatUint(cm.options.FromTS, 10),
 		"-N",
 		strconv.FormatUint(cm.options.Concurrency, 10),
-		"--cal-shift-ts",
-		"--physical-file-cache-capacity",
-		"128G",
+	}
+	if cm.options.Sharded {
+		args = append(args,
+			"--cal-shift-ts",
+			"--physical-file-cache-capacity",
+			"150G",
+		)
 	}
 	// When the CR sets EndTs explicitly, honor it as a hard upper bound via
 	// --until (existing non-CCR semantics). Otherwise fall back to
@@ -212,7 +216,7 @@ func (cm *Manager) buildCompactArgs(base64Storage string) []string {
 	// the log-backup global checkpoint at the configured storage prefix.
 	if cm.options.UntilTS != 0 {
 		args = append(args, "--until", strconv.FormatUint(cm.options.UntilTS, 10))
-	} else {
+	} else if cm.options.Sharded {
 		args = append(args, "--crr-checkpoint-prefix", cm.checkpointPrefix())
 	}
 	if cm.options.Sharded {
