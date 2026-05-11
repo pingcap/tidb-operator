@@ -162,7 +162,7 @@ func TestParseCompactOptionsDefaultModeClearsShardedFields(t *testing.T) {
 	}
 }
 
-func TestCompactOptsVerifyRejectsInvalidShardedFields(t *testing.T) {
+func TestCompactOptsVerifyRejectsInvalidKubernetesShardIndex(t *testing.T) {
 	testCases := []struct {
 		name    string
 		opts    CompactOpts
@@ -190,7 +190,7 @@ func TestCompactOptsVerifyRejectsInvalidShardedFields(t *testing.T) {
 				ShardIndex:  -1,
 				ShardCount:  3,
 			},
-			wantErr: "shard-index",
+			wantErr: "kubernetes shard-index",
 		},
 		{
 			name: "out of range shard index",
@@ -202,7 +202,7 @@ func TestCompactOptsVerifyRejectsInvalidShardedFields(t *testing.T) {
 				ShardIndex:  3,
 				ShardCount:  3,
 			},
-			wantErr: "shard-index",
+			wantErr: "kubernetes shard-index",
 		},
 	}
 

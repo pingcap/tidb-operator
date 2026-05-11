@@ -96,7 +96,7 @@ func (c *CompactOpts) Verify() error {
 			return errors.Errorf("shard-count %d must be greater than 0", c.ShardCount)
 		}
 		if c.ShardIndex < 0 || c.ShardIndex >= c.ShardCount {
-			return errors.Errorf("shard-index %d must be in range [0, %d)", c.ShardIndex, c.ShardCount)
+			return errors.Errorf("kubernetes shard-index %d must be in range [0, %d); tikv-ctl --shard uses 1..%d after conversion", c.ShardIndex, c.ShardCount, c.ShardCount)
 		}
 	}
 	return nil
@@ -113,7 +113,7 @@ func resolveShardIndex(shardCount int) (int, error) {
 		return 0, fmt.Errorf("failed to parse JOB_COMPLETION_INDEX %q: %w", value, err)
 	}
 	if index < 0 || index >= shardCount {
-		return 0, fmt.Errorf("JOB_COMPLETION_INDEX %d out of range [0, %d)", index, shardCount)
+		return 0, fmt.Errorf("JOB_COMPLETION_INDEX %d out of range [0, %d); tikv-ctl --shard uses 1..%d after conversion", index, shardCount, shardCount)
 	}
 	return index, nil
 }

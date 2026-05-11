@@ -223,9 +223,9 @@ func (cm *Manager) buildCompactArgs(base64Storage string) []string {
 		// --shard tells tikv-ctl this pod's slice of the keyspace partition.
 		// --minimal-compaction-size=0 disables the small-segment skip so each
 		// shard compacts its full slice instead of discarding fragments.
-		args = append(args,
+			args = append(args,
 			"--shard",
-			strconv.Itoa(cm.options.ShardIndex)+"/"+strconv.Itoa(cm.options.ShardCount),
+			strconv.Itoa(cm.options.ShardIndex+1)+"/"+strconv.Itoa(cm.options.ShardCount),
 			"--minimal-compaction-size",
 			"0",
 		)
