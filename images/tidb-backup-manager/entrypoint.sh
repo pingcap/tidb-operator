@@ -27,7 +27,18 @@ cleanup() {
 
 trap cleanup EXIT
 
-export GOOGLE_APPLICATION_CREDENTIALS=/tmp/google-credentials.json
+GCS_SERVICE_ACCOUNT_FILE_CONFIG=
+if [ -n "${GCS_SERVICE_ACCOUNT_JSON_KEY:-}" ]; then
+    export GOOGLE_APPLICATION_CREDENTIALS=/tmp/google-credentials.json
+    GCS_SERVICE_ACCOUNT_FILE_CONFIG="service_account_file = ${GOOGLE_APPLICATION_CREDENTIALS}"
+    echo "Create google-credentials.json file."
+    cat <<EOF > "${GOOGLE_APPLICATION_CREDENTIALS}"
+    ${GCS_SERVICE_ACCOUNT_JSON_KEY}
+EOF
+else
+    unset GOOGLE_APPLICATION_CREDENTIALS
+fi
+
 echo "Create rclone.conf file."
 cat <<EOF > /tmp/rclone.conf
 [s3]
@@ -43,7 +54,7 @@ storage_class = ${AWS_STORAGE_CLASS}
 [gcs]
 type = google cloud storage
 project_number = ${GCS_PROJECT_ID}
-service_account_file = ${GOOGLE_APPLICATION_CREDENTIALS}
+${GCS_SERVICE_ACCOUNT_FILE_CONFIG}
 object_acl = ${GCS_OBJECT_ACL}
 bucket_acl = ${GCS_BUCKET_ACL}
 location =  ${GCS_LOCATION}
@@ -53,15 +64,6 @@ type = azureblob
 account = ${AZUREBLOB_ACCOUNT}
 key = ${AZUREBLOB_KEY}
 EOF
-
-if [[ -n "${GCS_SERVICE_ACCOUNT_JSON_KEY:-}" ]]; then
-    echo "Create google-credentials.json file."
-    cat <<EOF > ${GOOGLE_APPLICATION_CREDENTIALS}
-    ${GCS_SERVICE_ACCOUNT_JSON_KEY}
-EOF
-else
-    touch ${GOOGLE_APPLICATION_CREDENTIALS}
-fi
 
 BACKUP_BIN=/tidb-backup-manager
 if [[ -n "${AWS_DEFAULT_REGION}" ]]; then
