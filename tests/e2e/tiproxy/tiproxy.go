@@ -83,6 +83,85 @@ func tiproxyHealthStatusCode(ctx context.Context, f *framework.Framework, pod *c
 	return resp.StatusCode, nil
 }
 
+func tiproxySupportsHealthOverrideAPI(ctx context.Context, f *framework.Framework, pod *corev1.Pod) (bool, error) {
+	probeCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	ports := f.PortForwardPod(probeCtx, pod, []string{":3080"})
+	req, err := http.NewRequestWithContext(probeCtx, http.MethodDelete, fmt.Sprintf("http://127.0.0.1:%d/api/debug/health", ports[0].Local), nil)
+	if err != nil {
+		return false, err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusNotFound, http.StatusMethodNotAllowed:
+		return false, nil
+	}
+	if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
+		return true, nil
+	}
+	return false, fmt.Errorf("unexpected status code %d from DELETE /api/debug/health of tiproxy pod %s/%s", resp.StatusCode, pod.Namespace, pod.Name)
+}
+
+func controllerTiProxyOwnerName(pod *corev1.Pod) (string, bool) {
+	for i := range pod.OwnerReferences {
+		owner := &pod.OwnerReferences[i]
+		if owner.Kind != "TiProxy" {
+			continue
+		}
+		if owner.Controller == nil || !*owner.Controller {
+			continue
+		}
+		return owner.Name, true
+	}
+	return "", false
+}
+
+func manuallyTriggerTiProxyUnhealthy(
+	ctx context.Context,
+	f *framework.Framework,
+	enabled bool,
+	pods []corev1.Pod,
+	initialPodUIDs map[string]string,
+	deletingTiProxies map[string]struct{},
+	terminated map[string]struct{},
+) error {
+	if !enabled {
+		return nil
+	}
+
+	for i := range pods {
+		pod := &pods[i]
+		if _, ok := initialPodUIDs[pod.Name]; !ok {
+			continue
+		}
+		if _, ok := terminated[pod.Name]; ok {
+			continue
+		}
+		ownerName, ok := controllerTiProxyOwnerName(pod)
+		if !ok {
+			continue
+		}
+		if _, ok := deletingTiProxies[ownerName]; !ok {
+			continue
+		}
+
+		stdout, stderr, err := f.ExecPod(ctx, pod, v1alpha1.ContainerNameTiProxy, "/bin/sh", "-c", "kill -TERM 1")
+		if err != nil {
+			return fmt.Errorf("cannot exec kill TiProxy pod %s/%s: %w, stdout: %s, stderr: %s", pod.Namespace, pod.Name, err, stdout, stderr)
+		}
+		terminated[pod.Name] = struct{}{}
+	}
+
+	return nil
+}
+
 var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 	f := framework.New()
 	f.Setup()
@@ -359,6 +438,14 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 
 			f.Must(f.Client.Get(ctx, client.ObjectKeyFromObject(proxyg), proxyg))
 
+			ginkgo.By("Probe whether TiProxy supports the health override API")
+			probePods, err := listTiProxyPods()
+			f.Must(err)
+			gomega.Expect(probePods.Items).ToNot(gomega.BeEmpty())
+			supportsHealthOverrideAPI, err := tiproxySupportsHealthOverrideAPI(ctx, f, &probePods.Items[0])
+			f.Must(err)
+			manualTiProxyUnhealthyTrigger := !supportsHealthOverrideAPI
+
 			changeTime, err := waiter.MaxPodsCreateTimestamp[scope.TiProxyGroup](ctx, f.Client, proxyg)
 			f.Must(err)
 
@@ -368,6 +455,7 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 			f.Must(f.Client.Patch(ctx, proxyg, patch))
 
 			var violated error
+			terminatedPods := map[string]struct{}{}
 			ginkgo.By("Ensure old pods are marked unhealthy only after enough new TiProxy backends are ready")
 			gomega.Eventually(func() error {
 				if violated != nil {
@@ -375,6 +463,22 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 				}
 
 				pods, err := listTiProxyPods()
+				if err != nil {
+					return err
+				}
+
+				tiproxies, err := listTiProxies()
+				if err != nil {
+					return err
+				}
+				deletingTiProxies := map[string]struct{}{}
+				for i := range tiproxies.Items {
+					if !tiproxies.Items[i].DeletionTimestamp.IsZero() {
+						deletingTiProxies[tiproxies.Items[i].Name] = struct{}{}
+					}
+				}
+
+				backends, err := readyTiProxyServiceBackends(ctx, f.Client, proxyg)
 				if err != nil {
 					return err
 				}
@@ -399,13 +503,18 @@ var _ = ginkgo.Describe("TiProxy", label.TiProxy, func() {
 					drained++
 				}
 				if drained == 0 {
+					if backends < int(replicas) {
+						return fmt.Errorf("only %d tiproxy service backends are ready before drain starts, want >= %d", backends, replicas)
+					}
+					if len(pods.Items) < int(replicas)+2 {
+						return fmt.Errorf("only %d tiproxy pods exist during graceful rolling update, want at least %d", len(pods.Items), int(replicas)+2)
+					}
+					if err := manuallyTriggerTiProxyUnhealthy(ctx, f, manualTiProxyUnhealthyTrigger, pods.Items, initialPodUIDs, deletingTiProxies, terminatedPods); err != nil {
+						return err
+					}
 					return fmt.Errorf("no unhealthy tiproxy pod observed yet")
 				}
 
-				backends, err := readyTiProxyServiceBackends(ctx, f.Client, proxyg)
-				if err != nil {
-					return err
-				}
 				if backends < int(replicas) {
 					violated = fmt.Errorf("tiproxy service backends dropped below desired replicas after drain started: got %d, want >= %d", backends, replicas)
 					return violated
