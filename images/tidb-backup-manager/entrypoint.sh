@@ -54,11 +54,11 @@ storage_class = ${AWS_STORAGE_CLASS}
 [gcs]
 type = google cloud storage
 project_number = ${GCS_PROJECT_ID}
-${GCS_SERVICE_ACCOUNT_FILE_CONFIG}
 object_acl = ${GCS_OBJECT_ACL}
 bucket_acl = ${GCS_BUCKET_ACL}
 location =  ${GCS_LOCATION}
 storage_class = ${GCS_STORAGE_CLASS:-"COLDLINE"}
+${GCS_SERVICE_ACCOUNT_FILE_CONFIG}
 [azure]
 type = azureblob
 account = ${AZUREBLOB_ACCOUNT}
