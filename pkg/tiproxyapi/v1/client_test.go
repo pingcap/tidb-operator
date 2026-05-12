@@ -144,7 +144,7 @@ func TestTiProxyClient_MarkUnhealthy(t *testing.T) {
 		assert.Equal(t, http.MethodPut, r.Method)
 		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
-		assert.JSONEq(t, `{"status":"unhealthy","reason":"graceful-shutdown"}`, string(body))
+		assert.JSONEq(t, `{"healthy":false,"reason":"graceful-shutdown"}`, string(body))
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()

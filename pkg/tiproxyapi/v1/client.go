@@ -35,8 +35,8 @@ const (
 )
 
 type healthOverrideRequest struct {
-	Status string `json:"status"`
-	Reason string `json:"reason"`
+	Healthy bool   `json:"healthy"`
+	Reason  string `json:"reason"`
 }
 
 // TiProxyClient is the interface that knows how to control tiproxy clusters.
@@ -102,8 +102,8 @@ func (c *tiproxyClient) IsHealthy(ctx context.Context) (bool, error) {
 
 func (c *tiproxyClient) MarkUnhealthy(ctx context.Context) error {
 	body := healthOverrideRequest{
-		Status: "unhealthy",
-		Reason: "graceful-shutdown",
+		Healthy: false,
+		Reason:  "graceful-shutdown",
 	}
 	var buffer bytes.Buffer
 	if err := json.NewEncoder(&buffer).Encode(body); err != nil {
