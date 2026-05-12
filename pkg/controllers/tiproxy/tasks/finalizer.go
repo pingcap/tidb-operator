@@ -89,17 +89,17 @@ func drainOrDeletePod(ctx context.Context, c client.Client, state State, pod *co
 	return deleteTiProxyPod(ctx, c, pod)
 }
 
-func gracefulShutdownDeleteDelaySeconds(tiproxy *v1alpha1.TiProxy) (int32, bool, error) {
+func gracefulShutdownDeleteDelaySeconds(tiproxy *v1alpha1.TiProxy) (seconds int32, ok bool, err error) {
 	raw := tiproxy.Annotations[v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds]
 	if raw == "" {
 		return 0, false, nil
 	}
 
-	seconds, err := strconv.ParseInt(raw, 10, 32)
+	parsed, err := strconv.ParseInt(raw, 10, 32)
 	if err != nil {
 		return 0, false, err
 	}
-	return int32(seconds), true, nil
+	return int32(parsed), true, nil
 }
 
 func gracefulShutdownBeginTime(pod *corev1.Pod) (time.Time, bool) {
