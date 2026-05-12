@@ -2650,6 +2650,18 @@ Kubernetes core/v1.PullPolicy
 </tr>
 <tr>
 <td>
+<code>serviceAccountName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ServiceAccountName is the name of the ServiceAccount to use to run TiDB initializer Pods.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>permitHost</code></br>
 <em>
 string
@@ -26322,6 +26334,18 @@ Kubernetes core/v1.PullPolicy
 <td>
 <em>(Optional)</em>
 <p>ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccountName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ServiceAccountName is the name of the ServiceAccount to use to run TiDB initializer Pods.</p>
 </td>
 </tr>
 <tr>
