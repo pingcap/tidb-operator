@@ -27,14 +27,19 @@ cleanup() {
 
 trap cleanup EXIT
 
+GCS_SERVICE_ACCOUNT_FILE=/tmp/google-credentials.json
 GCS_SERVICE_ACCOUNT_FILE_CONFIG=
 if [ -n "${GCS_SERVICE_ACCOUNT_JSON_KEY:-}" ]; then
-    export GOOGLE_APPLICATION_CREDENTIALS=/tmp/google-credentials.json
+    export GOOGLE_APPLICATION_CREDENTIALS=${GCS_SERVICE_ACCOUNT_FILE}
     GCS_SERVICE_ACCOUNT_FILE_CONFIG="service_account_file = ${GOOGLE_APPLICATION_CREDENTIALS}"
     echo "Create google-credentials.json file."
     cat <<EOF > "${GOOGLE_APPLICATION_CREDENTIALS}"
     ${GCS_SERVICE_ACCOUNT_JSON_KEY}
 EOF
+elif [ -s "${GCS_SERVICE_ACCOUNT_FILE}" ]; then
+    echo "Use mounted google-credentials.json file."
+    export GOOGLE_APPLICATION_CREDENTIALS=${GCS_SERVICE_ACCOUNT_FILE}
+    GCS_SERVICE_ACCOUNT_FILE_CONFIG="service_account_file = ${GOOGLE_APPLICATION_CREDENTIALS}"
 else
     unset GOOGLE_APPLICATION_CREDENTIALS
 fi
