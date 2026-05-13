@@ -48,6 +48,8 @@ type Config struct {
 	InitialClusterState string `toml:"initial-cluster-state"`
 	Join                string `toml:"join"`
 
+	OpenAPI bool `toml:"openapi"`
+
 	// SSL fields are top-level in DM master config (not nested under [security])
 	SSLCA   string `toml:"ssl-ca"`
 	SSLCert string `toml:"ssl-cert"`
@@ -73,6 +75,7 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, dm *v1alpha1.DM, peers []*v1
 	c.AdvertiseAddr = coreutil.InstanceAdvertiseAddress[scope.DM](cluster, dm, coreutil.DMPort(dm))
 	c.PeerUrls = coreutil.ListenURL(cluster, coreutil.DMPeerPort(dm))
 	c.AdvertisePeerUrls = coreutil.InstanceAdvertiseURL[scope.DM](cluster, dm, coreutil.DMPeerPort(dm))
+	c.OpenAPI = true
 
 	// data dir from DataVolume mounts
 	for k := range dm.Spec.DataVolume.Mounts {
