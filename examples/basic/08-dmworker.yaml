@@ -22,8 +22,7 @@ spec:
         cpu: "1"
         memory: 2Gi
       config: |
-        [log]
-        level = "info"
+        log-level = "info"
       relayVolume:
         name: relay
         storage: 20Gi
