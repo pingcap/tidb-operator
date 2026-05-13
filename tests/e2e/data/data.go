@@ -52,6 +52,8 @@ const (
 	defaultRouterGroupName          = "rg"
 	defaultTiProxyGroupName         = "pg"
 	defaultTiKVWorkerGroupName      = "wg"
+	defaultDMGroupName              = "dmg"
+	defaultDMWorkerGroupName        = "dwg"
 
 	defaultVersion        = "v8.5.2"
 	defaultTiProxyVersion = "v1.3.0"

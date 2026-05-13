@@ -25,6 +25,7 @@ import (
 
 	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/br"
 	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/cluster"
+	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/dm"
 	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/example"
 	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/pd"
 	_ "github.com/pingcap/tidb-operator/v2/tests/e2e/ticdc"

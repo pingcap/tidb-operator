@@ -1,0 +1,70 @@
+// Copyright 2024 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package validation
+
+import (
+	"testing"
+
+	"k8s.io/apimachinery/pkg/util/yaml"
+)
+
+func TestDMGroup(t *testing.T) {
+	var cases []Case
+	cases = append(cases, transferDMGroupCases(t, ClusterReference(), "spec", "cluster")...)
+	cases = append(cases, transferDMGroupCases(t, NameLength(groupNameLengthLimit), "metadata", "name")...)
+	cases = append(cases, transferDMGroupCases(t, MinReadySeconds(), "spec", "minReadySeconds")...)
+	Validate(t, "crd/core.pingcap.com_dmgroups.yaml", cases)
+}
+
+func basicDMGroup() map[string]any {
+	data := []byte(`
+apiVersion: core.pingcap.com/v1alpha1
+kind: DMGroup
+metadata:
+  name: dm-group
+spec:
+  cluster:
+    name: test
+  replicas: 1
+  template:
+    spec:
+      version: v8.5.2
+      dataVolume:
+        name: data
+        storage: 1Gi
+        mounts:
+        - type: data
+`)
+	obj := map[string]any{}
+	if err := yaml.Unmarshal(data, &obj); err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+func transferDMGroupCases(t *testing.T, cases []Case, fields ...string) []Case {
+	for i := range cases {
+		c := &cases[i]
+		current := basicDMGroup()
+		c.current = Patch(t, c.mode, current, c.current, fields...)
+		if c.isCreate {
+			c.old = nil
+			continue
+		}
+		old := basicDMGroup()
+		c.old = Patch(t, c.mode, old, c.old, fields...)
+	}
+	return cases
+}
