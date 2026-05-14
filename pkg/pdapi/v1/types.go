@@ -89,6 +89,22 @@ type StoresInfo struct {
 	Stores []*StoreInfo `json:"stores"`
 }
 
+// RegionsCheckInfo is regions check info returned from PD RESTful interface.
+type RegionsCheckInfo struct {
+	Count   int                 `json:"count"`
+	Regions []*RegionCheckEntry `json:"regions,omitempty"`
+}
+
+type RegionCheckEntry struct {
+	ID        uint64            `json:"id"`
+	DownPeers []*RegionPeerStat `json:"down_peers,omitempty"`
+}
+
+type RegionPeerStat struct {
+	Peer        *metapb.Peer `json:"peer,omitempty"`
+	DownSeconds uint64       `json:"down_seconds,omitempty"`
+}
+
 // SchedulerInfo is a single scheduler info returned from PD RESTful interface.
 type SchedulerInfo struct {
 	Name    string `json:"name"`

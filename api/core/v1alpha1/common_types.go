@@ -164,6 +164,13 @@ const (
 	// Last instance template is recorded to check whether the pod should be restarted because of changes of instance template
 	AnnoKeyLastInstanceTemplate = AnnoKeyPrefix + "last-instance-template"
 
+	// TiProxy graceful shutdown begin time is recorded on the pod when graceful shutdown begins.
+	AnnoKeyTiProxyGracefulShutdownBeginTime = AnnoKeyPrefix + "tiproxy-graceful-shutdown-begin-time"
+
+	// TiProxy graceful shutdown delete delay controls how long operator waits before deleting a TiProxy pod
+	// after it has been marked unhealthy during graceful shutdown.
+	AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds = AnnoKeyPrefix + "tiproxy-graceful-shutdown-delete-delay-seconds"
+
 	// Features is recorded to check whether the pod should be restarted because of changes of features
 	AnnoKeyFeatures = AnnoKeyPrefix + "features"
 
@@ -286,7 +293,8 @@ type Volume struct {
 
 type VolumeMount struct {
 	// Type is a type of the volume mount.
-	Type VolumeMountType `json:"type"`
+	// If it's empty, the mount is treated as a custom mount without built-in semantics.
+	Type VolumeMountType `json:"type,omitempty"`
 	// Mount path of volume, if it's not set, use the default path of this type.
 	// TODO: webhook for empty path if it's not a built-in type.
 	MountPath string `json:"mountPath,omitempty"`

@@ -15,6 +15,8 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"os"
 
 	"k8s.io/klog/v2"
@@ -24,6 +26,17 @@ import (
 
 func main() {
 	klog.InitFlags(nil)
+	// Opt into the new klog behavior so that -stderrthreshold is honored even
+	// when -logtostderr=true (the default).
+	// Ref: kubernetes/klog#212, kubernetes/klog#432
+	if err := flag.Set("legacy_stderr_threshold_behavior", "false"); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to set legacy_stderr_threshold_behavior: %v\n", err)
+		os.Exit(1)
+	}
+	if err := flag.Set("stderrthreshold", "INFO"); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to set stderrthreshold: %v\n", err)
+		os.Exit(1)
+	}
 	if err := app.Run(); err != nil {
 		os.Exit(1)
 	}

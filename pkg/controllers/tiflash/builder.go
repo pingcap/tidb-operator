@@ -28,6 +28,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// Get tiflash
 		common.TaskContextObject[scope.TiFlash](state, r.Client),
 		common.TaskTrack[scope.TiFlash](state, r.Tracker),
+		// refresh the abnormal_instance gauge, or clear it if the CR is gone
+		common.TaskObserveInstance[scope.TiFlash](state),
 		// if it's deleted just return
 		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiFlash](state), tasks.TaskDeregisterTiFlashClient(state, r.TiFlashClientManager)),
 

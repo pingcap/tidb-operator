@@ -26,6 +26,7 @@ import (
 
 type Config struct {
 	Addr     string   `toml:"addr"`
+	DataDir  string   `toml:"data-dir"`
 	PD       PD       `toml:"pd"`
 	Security Security `toml:"security"`
 }
@@ -44,10 +45,9 @@ type Security struct {
 }
 
 func (c *Config) Overlay(cluster *v1alpha1.Cluster, w *v1alpha1.TiKVWorker) error {
-	if err := c.Validate(); err != nil {
+	if err := c.Validate(w); err != nil {
 		return err
 	}
-
 	if coreutil.IsTLSClusterEnabled(cluster) {
 		c.Security.CAPath = path.Join(v1alpha1.DirPathClusterTLSTiKVWorker, corev1.ServiceAccountRootCAKey)
 		c.Security.CertPath = path.Join(v1alpha1.DirPathClusterTLSTiKVWorker, corev1.TLSCertKey)
@@ -56,17 +56,24 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, w *v1alpha1.TiKVWorker) erro
 
 	c.Addr = coreutil.ListenAddress(coreutil.TiKVWorkerAPIPort(w))
 	c.PD.Endpoints = []string{cluster.Status.PD}
+	m := findDataDirMount(w)
+
+	if m != nil {
+		c.DataDir = m.MountPath
+		if c.DataDir == "" {
+			c.DataDir = v1alpha1.VolumeMountTiKVWorkerDataDefaultPath
+		}
+	}
 
 	return nil
 }
 
-func (c *Config) Validate() error {
+func (c *Config) Validate(w *v1alpha1.TiKVWorker) error {
 	fields := []string{}
 
 	if c.Addr != "" {
 		fields = append(fields, "addr")
 	}
-
 	if len(c.PD.Endpoints) != 0 {
 		fields = append(fields, "pd.endpoints")
 	}
@@ -81,9 +88,28 @@ func (c *Config) Validate() error {
 		fields = append(fields, "security.key-path")
 	}
 
+	m := findDataDirMount(w)
+	if m != nil && c.DataDir != "" {
+		fields = append(fields, "data-dir")
+	}
+
 	if len(fields) == 0 {
 		return nil
 	}
 
 	return fmt.Errorf("%v: %w", fields, v1alpha1.ErrFieldIsManagedByOperator)
+}
+
+func findDataDirMount(w *v1alpha1.TiKVWorker) *v1alpha1.VolumeMount {
+	for i := range w.Spec.Volumes {
+		vol := &w.Spec.Volumes[i]
+		for j := range vol.Mounts {
+			mount := &vol.Mounts[j]
+			if mount.Type == v1alpha1.VolumeMountTypeTiKVWorkerData {
+				return mount
+			}
+		}
+	}
+
+	return nil
 }

@@ -15,6 +15,7 @@
 package data
 
 import (
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
@@ -34,6 +35,13 @@ func NewTiKVWorkerGroup(ns string, patches ...GroupPatch[*v1alpha1.TiKVWorkerGro
 				Spec: v1alpha1.TiKVWorkerTemplateSpec{
 					Version: defaultVersion,
 					Image:   ptr.To(defaultImageRegistry + "tikv"),
+					Volumes: []v1alpha1.Volume{
+						{
+							Name:    "data",
+							Mounts:  []v1alpha1.VolumeMount{{Type: v1alpha1.VolumeMountTypeTiKVWorkerData}},
+							Storage: resource.MustParse("1Gi"),
+						},
+					},
 				},
 			},
 		},

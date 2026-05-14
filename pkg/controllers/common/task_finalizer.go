@@ -24,6 +24,7 @@ import (
 	utilerr "k8s.io/apimachinery/pkg/util/errors"
 
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
+	"github.com/pingcap/tidb-operator/v2/pkg/metrics"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
@@ -225,6 +226,12 @@ func TaskInstanceFinalizerDel[
 		if err := k8s.RemoveFinalizer(ctx, c, state.Object()); err != nil {
 			return task.Fail().With("cannot remove finalizer: %v", err)
 		}
+
+		// Finalize succeeded; drop per-instance metric series so deleted
+		// instances do not leave stale samples in Prometheus. Doing this here
+		// (rather than as a separate task in every component builder) ensures
+		// new instance controllers cannot forget the cleanup.
+		metrics.ClearInstanceConditionMetrics(state.Object())
 
 		return task.Complete().With("finalizer is removed")
 	})

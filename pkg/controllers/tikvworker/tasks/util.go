@@ -33,6 +33,9 @@ func VolumeMount(name string, mount *v1alpha1.VolumeMount) *corev1.VolumeMount {
 		MountPath: mount.MountPath,
 		SubPath:   mount.SubPath,
 	}
+	if mount.Type == v1alpha1.VolumeMountTypeTiKVWorkerData && vm.MountPath == "" {
+		vm.MountPath = v1alpha1.VolumeMountTiKVWorkerDataDefaultPath
+	}
 
 	return vm
 }

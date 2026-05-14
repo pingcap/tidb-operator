@@ -21,6 +21,14 @@ import (
 )
 
 const (
+	// VolumeMountTypeTiKVWorkerData is the main data dir for the tikv worker.
+	// The default sub path of this type is "".
+	VolumeMountTypeTiKVWorkerData VolumeMountType = "data"
+
+	VolumeMountTiKVWorkerDataDefaultPath = "/var/lib/tikv-worker"
+)
+
+const (
 	TiKVWorkerPortNameAPI = "api"
 
 	DefaultTiKVWorkerPortAPI = 19000

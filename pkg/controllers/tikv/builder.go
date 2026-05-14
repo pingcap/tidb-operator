@@ -28,6 +28,8 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		// get tikv
 		common.TaskContextObject[scope.TiKV](state, r.Client),
 		common.TaskTrack[scope.TiKV](state, r.Tracker),
+		// refresh the abnormal_instance gauge, or clear it if the CR is gone
+		common.TaskObserveInstance[scope.TiKV](state),
 		// if it's deleted just return
 		task.IfBreak(common.CondObjectHasBeenDeleted[scope.TiKV](state)),
 
@@ -86,7 +88,7 @@ func (r *Reconciler) NewRunner(state *tasks.ReconcileContext, reporter task.Task
 		tasks.TaskOfflineStore(state, r.PDClientManager),
 		tasks.TaskConfigMap(state, r.Client),
 		common.TaskPVC[scope.TiKV](state, r.Client, r.VolumeModifierFactory, tasks.PVCNewer()),
-		tasks.TaskPod(state, r.Client),
+		tasks.TaskPod(state, r.Client, r.PDClientManager),
 		tasks.TaskStoreLabels(state, r.Client, r.PDClientManager),
 		tasks.TaskEvictLeader(state, r.PDClientManager),
 		common.TaskInstanceConditionSynced[scope.TiKV](state),
