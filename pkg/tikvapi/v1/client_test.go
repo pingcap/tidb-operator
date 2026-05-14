@@ -45,3 +45,18 @@ tikv_raftstore_region_count{type="region"} 50
 	require.NoError(t, err)
 	assert.Equal(t, 20, count)
 }
+
+func TestTiKVClient_GetLeaderCountFetchError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, err := w.Write([]byte("boom"))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+
+	client := NewTiKVClient(server.URL, 5*time.Second, nil, false)
+	count, err := client.GetLeaderCount()
+	require.Error(t, err)
+	assert.Equal(t, 0, count)
+	assert.Contains(t, err.Error(), "fail to fetch metric families")
+}

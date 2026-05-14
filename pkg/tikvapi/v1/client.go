@@ -70,12 +70,14 @@ func (c *tikvClient) GetLeaderCount() (int, error) {
 	apiURL := fmt.Sprintf("%s/%s", c.url, metricsPath)
 	transport := c.httpClient.Transport
 	mfChan := make(chan *dto.MetricFamily, metricChanSize)
+	errChan := make(chan error, 1)
 
-	var fetchErr error
 	go func() {
 		if err := prom2json.FetchMetricFamilies(apiURL, mfChan, transport); err != nil {
-			fetchErr = fmt.Errorf("fail to fetch metric families from %s, error: %w", apiURL, err)
+			errChan <- fmt.Errorf("fail to fetch metric families from %s, error: %w", apiURL, err)
+			return
 		}
+		errChan <- nil
 	}()
 
 	fms := []*prom2json.Family{}
@@ -93,7 +95,7 @@ func (c *tikvClient) GetLeaderCount() (int, error) {
 		}
 	}
 
-	if fetchErr != nil {
+	if fetchErr := <-errChan; fetchErr != nil {
 		return 0, fetchErr
 	}
 	return 0, fmt.Errorf("metric %s{type=\"%s\"} not found for %s", metricNameRegionCount, metricLabelNameLeaderCount, apiURL)
