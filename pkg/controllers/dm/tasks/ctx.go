@@ -64,7 +64,7 @@ func TaskContextInfoFromDM(state *ReconcileContext, c client.Client) task.Task {
 			return task.Complete().With("cannot build request for dm-master cluster info: %v", err)
 		}
 
-		resp, err := httpClient.Do(req)
+		resp, err := httpClient.Do(req) //nolint:gosec
 		if err != nil {
 			return task.Complete().With("context without health info is completed, dm-master can't be reached: %v", err)
 		}

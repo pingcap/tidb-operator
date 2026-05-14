@@ -60,7 +60,7 @@ func TaskContextHealthFromDMWorker(state *ReconcileContext, c client.Client) tas
 			return task.Complete().With("cannot build request for dm-worker status: %v", err)
 		}
 
-		resp, err := httpClient.Do(req)
+		resp, err := httpClient.Do(req) //nolint:gosec
 		if err != nil {
 			return task.Complete().With("context without health info is completed, dm-worker can't be reached: %v", err)
 		}
