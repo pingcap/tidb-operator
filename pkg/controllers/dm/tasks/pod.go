@@ -28,6 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/image"
 	"github.com/pingcap/tidb-operator/v2/pkg/overlay"
+	"github.com/pingcap/tidb-operator/v2/pkg/reloadable"
 	"github.com/pingcap/tidb-operator/v2/pkg/runtime/scope"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
 	maputil "github.com/pingcap/tidb-operator/v2/pkg/utils/map"
@@ -46,6 +47,15 @@ func TaskPod(state *ReconcileContext, c client.Client) task.Task {
 			}
 			state.SetPod(expected)
 			return task.Complete().With("pod is created")
+		}
+
+		if !reloadable.CheckDMPod(state.DM(), pod) {
+			logger.Info("will recreate the pod")
+			if err := c.Delete(ctx, pod); err != nil {
+				return task.Fail().With("can't delete pod of dm: %v", err)
+			}
+			state.DeletePod(pod)
+			return task.Wait().With("pod is deleting")
 		}
 
 		logger.Info("will update the pod in place")
@@ -189,6 +199,7 @@ func newPod(cluster *v1alpha1.Cluster, dm *v1alpha1.DM) *corev1.Pod {
 		overlay.OverlayPod(pod, dm.Spec.Overlay.Pod)
 	}
 
+	reloadable.MustEncodeLastDMTemplate(dm, pod)
 	return pod
 }
 

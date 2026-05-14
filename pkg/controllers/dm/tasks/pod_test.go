@@ -53,13 +53,13 @@ func TestTaskPod(t *testing.T) {
 			wantPod:    true,
 		},
 		{
-			desc: "version is applied in place",
+			desc: "version triggers pod recreation",
 			dm: newTestDM("aaa-0", func(dm *v1alpha1.DM) {
 				dm.Spec.Version = "v8.5.3"
 			}),
 			pod:        newPod(fake.FakeObj[v1alpha1.Cluster]("cluster"), newTestDM("aaa-0")),
-			wantStatus: task.SComplete,
-			wantPod:    true,
+			wantStatus: task.SWait,
+			wantPod:    false,
 		},
 		{
 			desc: "config overlay is applied in place",

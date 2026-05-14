@@ -41,12 +41,12 @@ func TestTaskPod(t *testing.T) {
 		{desc: "no pod exists", dw: newTestDMWorker("aaa-0"), wantStatus: task.SComplete},
 		{desc: "pod exists no change", dw: newTestDMWorker("aaa-0"), pod: newPod(fake.FakeObj[v1alpha1.Cluster]("cluster"), newTestDMWorker("aaa-0")), wantStatus: task.SComplete},
 		{
-			desc: "version is applied in place",
+			desc: "version triggers pod recreation",
 			dw: newTestDMWorker("aaa-0", func(dw *v1alpha1.DMWorker) {
 				dw.Spec.Version = "v8.5.3"
 			}),
 			pod:        newPod(fake.FakeObj[v1alpha1.Cluster]("cluster"), newTestDMWorker("aaa-0")),
-			wantStatus: task.SComplete,
+			wantStatus: task.SWait,
 		},
 		{
 			desc: "config overlay is applied in place",
