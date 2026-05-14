@@ -87,6 +87,8 @@ func convertAnnotations(ls map[string]string) map[string]string {
 	delete(ls, v1alpha1.AnnoKeyDeferDelete)
 	// ignore boot annotation of pd
 	delete(ls, v1alpha1.AnnoKeyInitialClusterNum)
+	// ignore TiProxy graceful shutdown delete delay annotation
+	delete(ls, v1alpha1.AnnoKeyTiProxyGracefulShutdownDeleteDelaySeconds)
 
 	return ls
 }

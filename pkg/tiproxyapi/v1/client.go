@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -33,10 +34,17 @@ const (
 	configPath = "api/admin/config"
 )
 
+type healthOverrideRequest struct {
+	Healthy bool   `json:"healthy"`
+	Reason  string `json:"reason"`
+}
+
 // TiProxyClient is the interface that knows how to control tiproxy clusters.
 type TiProxyClient interface {
 	// IsHealthy checks if the TiProxy is healthy.
 	IsHealthy(ctx context.Context) (bool, error)
+	// MarkUnhealthy makes the TiProxy health endpoint report unhealthy.
+	MarkUnhealthy(ctx context.Context) error
 	// SetLabels sets the labels for TiProxy.
 	SetLabels(ctx context.Context, labels map[string]string) error
 }
@@ -76,9 +84,35 @@ func NewTiProxyClient(addr string, timeout time.Duration, tlsConfig *tls.Config)
 
 func (c *tiproxyClient) IsHealthy(ctx context.Context) (bool, error) {
 	apiURL := fmt.Sprintf("%s/%s", c.url, healthPath)
-	_, err := httputil.GetBodyOK(ctx, c.httpClient, apiURL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, http.NoBody)
+	if err != nil {
+		return false, err
+	}
+
+	//nolint:bodyclose,gosec // bodyclose: has been handled; gosec: URL is constructed from trusted internal config
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer httputil.DeferClose(resp.Body)
+
 	// NOTE: we don't check the response body here.
-	return err == nil, err
+	return resp.StatusCode < http.StatusBadRequest, nil
+}
+
+func (c *tiproxyClient) MarkUnhealthy(ctx context.Context) error {
+	body := healthOverrideRequest{
+		Healthy: false,
+		Reason:  "graceful-shutdown",
+	}
+	var buffer bytes.Buffer
+	if err := json.NewEncoder(&buffer).Encode(body); err != nil {
+		return fmt.Errorf("encode health override request failed: %w", err)
+	}
+
+	apiURL := fmt.Sprintf("%s/%s", c.url, healthPath)
+	_, err := httputil.PutBodyOK(ctx, c.httpClient, apiURL, &buffer)
+	return err
 }
 
 func (c *tiproxyClient) SetLabels(ctx context.Context, labels map[string]string) error {

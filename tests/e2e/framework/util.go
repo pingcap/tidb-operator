@@ -16,6 +16,7 @@ package framework
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -29,6 +30,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/portforward"
+	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/client-go/transport/spdy"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
@@ -118,6 +120,34 @@ func newPodPortForwarder(
 		return nil, err
 	}
 	return pf, nil
+}
+
+func (f *Framework) ExecPod(ctx context.Context, pod *corev1.Pod, container string, command ...string) (string, string, error) {
+	req := f.podClient.Post().
+		Resource("pods").
+		Namespace(pod.Namespace).
+		Name(pod.Name).
+		SubResource("exec").
+		VersionedParams(&corev1.PodExecOptions{
+			Container: container,
+			Command:   command,
+			Stdout:    true,
+			Stderr:    true,
+		}, scheme.ParameterCodec)
+
+	executor, err := remotecommand.NewSPDYExecutor(f.restConfig, http.MethodPost, req.URL())
+	if err != nil {
+		return "", "", err
+	}
+
+	var stdout, stderr bytes.Buffer
+	if err := executor.StreamWithContext(ctx, remotecommand.StreamOptions{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}); err != nil {
+		return stdout.String(), stderr.String(), err
+	}
+	return stdout.String(), stderr.String(), nil
 }
 
 func waitInstanceLogContains[
