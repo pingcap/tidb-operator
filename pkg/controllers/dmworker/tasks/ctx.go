@@ -55,7 +55,7 @@ func TaskContextHealthFromDMWorker(state *ReconcileContext, c client.Client) tas
 		}
 
 		url := fmt.Sprintf("%s://%s/status", scheme, addr)
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody) //nolint:gosec
 		if err != nil {
 			return task.Complete().With("cannot build request for dm-worker status: %v", err)
 		}
@@ -64,7 +64,7 @@ func TaskContextHealthFromDMWorker(state *ReconcileContext, c client.Client) tas
 		if err != nil {
 			return task.Complete().With("context without health info is completed, dm-worker can't be reached: %v", err)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			return task.Complete().With("dm-worker returned non-200 status: %d", resp.StatusCode)

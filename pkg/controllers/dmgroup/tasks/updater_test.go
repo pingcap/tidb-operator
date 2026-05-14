@@ -137,7 +137,7 @@ func TestTaskUpdater(t *testing.T) {
 	}
 }
 
-func newTestDMGroup(name string, opts ...func(*v1alpha1.DMGroup)) *v1alpha1.DMGroup {
+func newTestDMGroup(name string, opts ...func(*v1alpha1.DMGroup)) *v1alpha1.DMGroup { //nolint:unparam
 	dmg := fake.FakeObj(name, func(obj *v1alpha1.DMGroup) *v1alpha1.DMGroup {
 		obj.Spec.Cluster.Name = "cluster"
 		obj.Spec.Template.Spec.Version = "v8.5.2"
@@ -150,7 +150,7 @@ func newTestDMGroup(name string, opts ...func(*v1alpha1.DMGroup)) *v1alpha1.DMGr
 	return dmg
 }
 
-func newDMGroupReconcileContext(dmg *v1alpha1.DMGroup, dms []*v1alpha1.DM, rev string) *ReconcileContext {
+func newDMGroupReconcileContext(dmg *v1alpha1.DMGroup, dms []*v1alpha1.DM, rev string) *ReconcileContext { //nolint:unparam
 	return &ReconcileContext{State: &state{
 		dmg:            dmg,
 		cluster:        fake.FakeObj[v1alpha1.Cluster]("cluster"),

@@ -91,7 +91,7 @@ func TestTaskBoot(t *testing.T) {
 	}
 }
 
-func fakeBootDM(name string, annotated bool, opts ...func(*v1alpha1.DM)) *v1alpha1.DM {
+func fakeBootDM(name string, annotated bool, opts ...func(*v1alpha1.DM)) *v1alpha1.DM { //nolint:unparam
 	dm := fake.FakeObj(name, func(obj *v1alpha1.DM) *v1alpha1.DM {
 		obj.ResourceVersion = "1"
 		obj.Status.Conditions = []metav1.Condition{{Type: v1alpha1.CondReady, Status: metav1.ConditionTrue}}

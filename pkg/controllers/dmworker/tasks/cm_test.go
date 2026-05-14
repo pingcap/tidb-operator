@@ -17,7 +17,6 @@ package tasks
 import (
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -106,7 +105,7 @@ func TestTaskConfigMap(t *testing.T) {
 			config := cm.Data[v1alpha1.FileNameConfig]
 			assert.NotEmpty(t, config)
 			for _, want := range c.wantConfig {
-				assert.True(t, strings.Contains(config, want), "config should contain %q:\n%s", want, config)
+				assert.Contains(t, config, want)
 			}
 		})
 	}
@@ -116,7 +115,7 @@ func newDMWorkerReconcileContext(dw *v1alpha1.DMWorker, cluster *v1alpha1.Cluste
 	return &ReconcileContext{State: &state{dw: dw, cluster: cluster, pod: pod}}
 }
 
-func newTestDMWorker(name string, opts ...func(*v1alpha1.DMWorker)) *v1alpha1.DMWorker {
+func newTestDMWorker(name string, opts ...func(*v1alpha1.DMWorker)) *v1alpha1.DMWorker { //nolint:unparam
 	dw := fake.FakeObj(name, func(obj *v1alpha1.DMWorker) *v1alpha1.DMWorker {
 		obj.Spec.Cluster.Name = "cluster"
 		obj.Spec.DMGroupRef.Name = "dmg"

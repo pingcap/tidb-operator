@@ -59,7 +59,7 @@ func TaskContextInfoFromDM(state *ReconcileContext, c client.Client) task.Task {
 		}
 
 		url := fmt.Sprintf("%s://%s/api/v1/cluster/info", scheme, addr)
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody) //nolint:gosec
 		if err != nil {
 			return task.Complete().With("cannot build request for dm-master cluster info: %v", err)
 		}
@@ -68,7 +68,7 @@ func TaskContextInfoFromDM(state *ReconcileContext, c client.Client) task.Task {
 		if err != nil {
 			return task.Complete().With("context without health info is completed, dm-master can't be reached: %v", err)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			return task.Complete().With("dm-master returned non-200 status: %d", resp.StatusCode)
