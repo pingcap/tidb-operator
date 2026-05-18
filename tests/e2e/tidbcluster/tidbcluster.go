@@ -3519,6 +3519,126 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 			framework.ExpectNoError(err, "Expected tidbcluster is ready")
 		})
 	})
+
+	ginkgo.Context("[TiDBCluster: Smooth Upgrade DDL Pause]", func() {
+		const (
+			annSmoothUpgradeDDLPaused     = "tidb.pingcap.com/smooth-upgrade-ddl-paused"
+			annSmoothUpgradeSourceVersion = "tidb.pingcap.com/smooth-upgrade-source-version"
+			annSmoothUpgradeTargetVersion = "tidb.pingcap.com/smooth-upgrade-target-version"
+		)
+
+		smoothUpgradePaused := func(tc *v1alpha1.TidbCluster) (bool, error) {
+			return tc.Annotations[annSmoothUpgradeDDLPaused] == "true", nil
+		}
+		smoothUpgradeCleared := func(tc *v1alpha1.TidbCluster) (bool, error) {
+			_, has := tc.Annotations[annSmoothUpgradeDDLPaused]
+			return !has, nil
+		}
+
+		ginkgo.It("should set and clear smooth-upgrade annotations for switch-controlled version pair", func() {
+			tcName := "smooth-upgrade-happy"
+			ginkgo.By(fmt.Sprintf("Deploy cluster at %s", utilimage.TiDBV7x5x0))
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV7x5x0)
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 2
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 15*time.Minute, 10*time.Second)
+
+			ginkgo.By(fmt.Sprintf("Upgrade to %s", utilimage.TiDBV7x5x3))
+			err := controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.Version = utilimage.TiDBV7x5x3
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update tc version")
+
+			ginkgo.By("Wait for smooth-upgrade-ddl-paused annotation to appear")
+			err = utiltc.WaitForTCCondition(cli, ns, tcName, 3*time.Minute, 5*time.Second, smoothUpgradePaused)
+			framework.ExpectNoError(err, "smooth-upgrade-ddl-paused annotation did not appear during upgrade")
+
+			ginkgo.By("Verify source and target version annotations")
+			latest, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get TidbCluster")
+			framework.ExpectEqual(latest.Annotations[annSmoothUpgradeSourceVersion], utilimage.TiDBV7x5x0, "source version annotation mismatch")
+			framework.ExpectEqual(latest.Annotations[annSmoothUpgradeTargetVersion], utilimage.TiDBV7x5x3, "target version annotation mismatch")
+
+			ginkgo.By("Wait for cluster upgrade to complete")
+			err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
+			framework.ExpectNoError(err, "cluster did not become ready after upgrade")
+
+			ginkgo.By("Verify smooth-upgrade annotations are cleared after finish")
+			err = utiltc.WaitForTCCondition(cli, ns, tcName, 2*time.Minute, 5*time.Second, smoothUpgradeCleared)
+			framework.ExpectNoError(err, "smooth-upgrade annotations were not cleared after upgrade finish")
+		})
+
+		ginkgo.It("should skip smooth-upgrade annotations for unsupported version pair", func() {
+			tcName := "smooth-upgrade-unsupported"
+			oldVersion := utilimage.TiDBPreviousVersions[0] // v6.5.10, source < v7.1.0 → unsupported
+			ginkgo.By(fmt.Sprintf("Deploy cluster at %s", oldVersion))
+			tc := fixture.GetTidbCluster(ns, tcName, oldVersion)
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 1
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 15*time.Minute, 10*time.Second)
+
+			ginkgo.By(fmt.Sprintf("Upgrade to %s", utilimage.TiDBLatest))
+			err := controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.Version = utilimage.TiDBLatest
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update tc version")
+
+			ginkgo.By("Wait for TiDB UpgradePhase")
+			utiltc.MustWaitForComponentPhase(cli, tc, v1alpha1.TiDBMemberType, v1alpha1.UpgradePhase, 3*time.Minute, 5*time.Second)
+
+			ginkgo.By("Assert smooth-upgrade-ddl-paused annotation is absent during upgrade")
+			latest, err := cli.PingcapV1alpha1().TidbClusters(ns).Get(context.TODO(), tcName, metav1.GetOptions{})
+			framework.ExpectNoError(err, "failed to get TidbCluster")
+			_, hasPausedAnn := latest.Annotations[annSmoothUpgradeDDLPaused]
+			framework.ExpectEqual(hasPausedAnn, false, "smooth-upgrade-ddl-paused should not be set for unsupported version pair")
+
+			ginkgo.By("Wait for cluster upgrade to complete")
+			err = oa.WaitForTidbClusterReady(tc, 15*time.Minute, 10*time.Second)
+			framework.ExpectNoError(err, "cluster did not become ready after upgrade")
+		})
+
+		ginkgo.It("should finish smooth upgrade after operator restart", func() {
+			tcName := "smooth-upgrade-restart"
+			ginkgo.By(fmt.Sprintf("Deploy cluster at %s", utilimage.TiDBV7x5x0))
+			tc := fixture.GetTidbCluster(ns, tcName, utilimage.TiDBV7x5x0)
+			tc.Spec.PD.Replicas = 1
+			tc.Spec.TiKV.Replicas = 1
+			tc.Spec.TiDB.Replicas = 2
+			utiltc.MustCreateTCWithComponentsReady(genericCli, oa, tc, 15*time.Minute, 10*time.Second)
+
+			ginkgo.By(fmt.Sprintf("Upgrade to %s", utilimage.TiDBV7x5x3))
+			err := controller.GuaranteedUpdate(genericCli, tc, func() error {
+				tc.Spec.Version = utilimage.TiDBV7x5x3
+				return nil
+			})
+			framework.ExpectNoError(err, "failed to update tc version")
+
+			ginkgo.By("Wait for smooth-upgrade start annotation")
+			err = utiltc.WaitForTCCondition(cli, ns, tcName, 3*time.Minute, 5*time.Second, smoothUpgradePaused)
+			framework.ExpectNoError(err, "smooth-upgrade-ddl-paused annotation did not appear")
+
+			ginkgo.By("Delete the tidb-controller-manager pod to simulate operator restart")
+			podList, err := c.CoreV1().Pods(ocfg.Namespace).List(context.TODO(), metav1.ListOptions{
+				LabelSelector: "app.kubernetes.io/component=controller-manager",
+			})
+			framework.ExpectNoError(err, "failed to list controller-manager pods")
+			framework.ExpectNotEqual(len(podList.Items), 0, "expected at least one controller-manager pod")
+			err = c.CoreV1().Pods(ocfg.Namespace).Delete(context.TODO(), podList.Items[0].Name, metav1.DeleteOptions{})
+			framework.ExpectNoError(err, "failed to delete controller-manager pod")
+
+			ginkgo.By("Wait for cluster upgrade to complete after operator restart")
+			err = oa.WaitForTidbClusterReady(tc, 20*time.Minute, 10*time.Second)
+			framework.ExpectNoError(err, "cluster did not become ready after operator restart during upgrade")
+
+			ginkgo.By("Verify smooth-upgrade annotations are cleared after finish")
+			err = utiltc.WaitForTCCondition(cli, ns, tcName, 2*time.Minute, 5*time.Second, smoothUpgradeCleared)
+			framework.ExpectNoError(err, "smooth-upgrade annotations were not cleared after operator restart recovery")
+		})
+	})
 })
 
 // checkAllPDMSStatus check there are onlineNum online pdms instance running now.
