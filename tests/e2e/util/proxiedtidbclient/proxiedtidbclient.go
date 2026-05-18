@@ -42,6 +42,14 @@ func (p *proxiedTiDBClient) SetServerLabels(tc *v1alpha1.TidbCluster, ordinal in
 	panic("implement when necessary")
 }
 
+func (p *proxiedTiDBClient) StartUpgrade(tc *v1alpha1.TidbCluster, ordinal int32) error {
+	panic("implement when necessary")
+}
+
+func (p *proxiedTiDBClient) FinishUpgrade(tc *v1alpha1.TidbCluster, ordinal int32) error {
+	panic("implement when necessary")
+}
+
 func NewProxiedTiDBClient(fw portforward.PortForward, caCert []byte) controller.TiDBControlInterface {
 	return &proxiedTiDBClient{fw: fw, httpClient: &http.Client{Timeout: 5 * time.Second}, caCert: caCert}
 }

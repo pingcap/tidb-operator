@@ -2939,3 +2939,101 @@ func TestTiDBMemberManagerSetServerLabels(t *testing.T) {
 		testFn(&tests[i], t)
 	}
 }
+
+func TestTiDBMemberManagerMaybeFinishSmoothUpgrade(t *testing.T) {
+	g := NewGomegaWithT(t)
+	m, _, tidbControl, _ := newFakeTiDBMemberManager()
+	tc := &v1alpha1.TidbCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "finish", Namespace: corev1.NamespaceDefault},
+		Spec:       v1alpha1.TidbClusterSpec{TiDB: &v1alpha1.TiDBSpec{Replicas: 2}},
+		Status: v1alpha1.TidbClusterStatus{TiDB: v1alpha1.TiDBStatus{
+			Phase: v1alpha1.NormalPhase,
+			StatefulSet: &apps.StatefulSetStatus{
+				Replicas:        2,
+				UpdatedReplicas: 2,
+			},
+			Members: map[string]v1alpha1.TiDBMember{
+				"finish-tidb-0": {Name: "finish-tidb-0", Health: true},
+				"finish-tidb-1": {Name: "finish-tidb-1", Health: true},
+			},
+		}},
+	}
+	setSmoothUpgradeAnnotations(tc, "v7.4.0", "v7.5.0")
+
+	err := m.maybeFinishSmoothUpgrade(tc)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(tidbControl.FinishUpgradeOrdinals).To(Equal([]int32{0}))
+	g.Expect(isSmoothUpgradePaused(tc)).To(BeFalse())
+}
+
+func TestTiDBMemberManagerMaybeFinishSmoothUpgradeWaitsUntilNormal(t *testing.T) {
+	g := NewGomegaWithT(t)
+	m, _, tidbControl, _ := newFakeTiDBMemberManager()
+	tc := &v1alpha1.TidbCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "finish", Namespace: corev1.NamespaceDefault},
+		Status: v1alpha1.TidbClusterStatus{TiDB: v1alpha1.TiDBStatus{
+			Phase: v1alpha1.UpgradePhase,
+			StatefulSet: &apps.StatefulSetStatus{
+				Replicas:        2,
+				UpdatedReplicas: 1,
+			},
+			Members: map[string]v1alpha1.TiDBMember{"finish-tidb-0": {Name: "finish-tidb-0", Health: true}},
+		}},
+	}
+	setSmoothUpgradeAnnotations(tc, "v7.4.0", "v7.5.0")
+
+	err := m.maybeFinishSmoothUpgrade(tc)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(tidbControl.FinishUpgradeOrdinals).To(BeEmpty())
+	g.Expect(isSmoothUpgradePaused(tc)).To(BeTrue())
+}
+
+func TestTiDBMemberManagerMaybeFinishSmoothUpgradeWaitsForAllMembersHealthy(t *testing.T) {
+	g := NewGomegaWithT(t)
+	m, _, tidbControl, _ := newFakeTiDBMemberManager()
+	tc := &v1alpha1.TidbCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "finish", Namespace: corev1.NamespaceDefault},
+		Spec:       v1alpha1.TidbClusterSpec{TiDB: &v1alpha1.TiDBSpec{Replicas: 2}},
+		Status: v1alpha1.TidbClusterStatus{TiDB: v1alpha1.TiDBStatus{
+			Phase: v1alpha1.NormalPhase,
+			StatefulSet: &apps.StatefulSetStatus{
+				Replicas:        2,
+				UpdatedReplicas: 2,
+			},
+			Members: map[string]v1alpha1.TiDBMember{
+				"finish-tidb-0": {Name: "finish-tidb-0", Health: true},
+				"finish-tidb-1": {Name: "finish-tidb-1", Health: false},
+			},
+		}},
+	}
+	setSmoothUpgradeAnnotations(tc, "v7.4.0", "v7.5.0")
+
+	err := m.maybeFinishSmoothUpgrade(tc)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(tidbControl.FinishUpgradeOrdinals).To(BeEmpty())
+	g.Expect(isSmoothUpgradePaused(tc)).To(BeTrue())
+}
+
+func TestTiDBMemberManagerMaybeFinishSmoothUpgradeFailureKeepsAnnotations(t *testing.T) {
+	g := NewGomegaWithT(t)
+	m, _, tidbControl, _ := newFakeTiDBMemberManager()
+	tidbControl.SetFinishUpgradeError(fmt.Errorf("boom"))
+	tc := &v1alpha1.TidbCluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "finish", Namespace: corev1.NamespaceDefault},
+		Spec:       v1alpha1.TidbClusterSpec{TiDB: &v1alpha1.TiDBSpec{Replicas: 1}},
+		Status: v1alpha1.TidbClusterStatus{TiDB: v1alpha1.TiDBStatus{
+			Phase: v1alpha1.NormalPhase,
+			StatefulSet: &apps.StatefulSetStatus{
+				Replicas:        1,
+				UpdatedReplicas: 1,
+			},
+			Members: map[string]v1alpha1.TiDBMember{"finish-tidb-0": {Name: "finish-tidb-0", Health: true}},
+		}},
+	}
+	setSmoothUpgradeAnnotations(tc, "v7.4.0", "v7.5.0")
+
+	err := m.maybeFinishSmoothUpgrade(tc)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(tidbControl.FinishUpgradeOrdinals).To(Equal([]int32{0}))
+	g.Expect(isSmoothUpgradePaused(tc)).To(BeTrue())
+}
