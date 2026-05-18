@@ -171,6 +171,9 @@ func validateTiCISpec(spec *v1alpha1.TiCISpec, fldPath *field.Path) field.ErrorL
 		if len(spec.Meta.StorageVolumes) > 0 {
 			allErrs = append(allErrs, validateStorageVolumes(spec.Meta.StorageVolumes, fldPath.Child("meta", "storageVolumes"))...)
 		}
+		if spec.Meta.TiDBAuth != nil {
+			allErrs = append(allErrs, validateTiCITiDBAuth(spec.Meta.TiDBAuth, fldPath.Child("meta", "tidbAuth"))...)
+		}
 	}
 	if spec.Worker == nil {
 		allErrs = append(allErrs, field.Required(fldPath.Child("worker"), "worker is required when tici is enabled"))
@@ -278,6 +281,21 @@ func validateTiKVSpec(spec *v1alpha1.TiKVSpec, fldPath *field.Path) field.ErrorL
 		allErrs = append(allErrs, validateVolumeName(spec.RocksDBLogVolumeName, spec.StorageVolumes, spec.AdditionalVolumes, spec.AdditionalVolumeMounts, fldPath)...)
 	}
 	allErrs = append(allErrs, validateTimeDurationStr(spec.EvictLeaderTimeout, fldPath.Child("evictLeaderTimeout"))...)
+	return allErrs
+}
+
+func validateTiCITiDBAuth(auth *v1alpha1.TiCITiDBAuth, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if auth.PasswordSecret == nil {
+		allErrs = append(allErrs, field.Required(fldPath.Child("passwordSecret"), "passwordSecret is required when tidbAuth is set"))
+	} else {
+		allErrs = append(allErrs, validateSecretKeySelector(auth.PasswordSecret, fldPath.Child("passwordSecret"))...)
+		if auth.PasswordSecret.Optional != nil && *auth.PasswordSecret.Optional {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("passwordSecret", "optional"), *auth.PasswordSecret.Optional, "optional must be false because TiCI meta TiDB auth Secret is required"))
+		}
+	}
+
 	return allErrs
 }
 

@@ -17840,6 +17840,21 @@ string
 </tr>
 <tr>
 <td>
+<code>tidbAuth</code></br>
+<em>
+<a href="#ticitidbauth">
+TiCITiDBAuth
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TiDBAuth configures the TiDB auth used by TiCI meta.
+If it is set, passwordSecret must reference the Secret key that stores the TiDB auth data.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>storageClassName</code></br>
 <em>
 string
@@ -18246,6 +18261,50 @@ string
 </td>
 <td>
 <p>ChangefeedLastError records the last error message if job failed</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ticitidbauth">TiCITiDBAuth</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#ticimetaspec">TiCIMetaSpec</a>)
+</p>
+<p>
+<p>TiCITiDBAuth contains TiDB auth settings used by TiCI.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>user</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>User is the TiDB user used by TiCI meta. Defaults to root.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>passwordSecret</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#secretkeyselector-v1-core">
+Kubernetes core/v1.SecretKeySelector
+</a>
+</em>
+</td>
+<td>
+<p>PasswordSecret selects the Secret key that stores the TiDB auth data.
+The referenced Secret key is required; optional must not be true.</p>
 </td>
 </tr>
 </tbody>
