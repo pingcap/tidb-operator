@@ -8337,7 +8337,7 @@ spec:
               relayVolume:
                 description: |-
                   RelayVolume defines the persistent volume for DM worker's relay log storage.
-                  This volume is required for dm-worker to persist relay logs.
+                  When omitted, no relay log PVC is created and dm-worker uses an in-memory relay store.
                 properties:
                   mounts:
                     description: |-
@@ -8570,7 +8570,6 @@ spec:
             required:
             - cluster
             - dmGroupRef
-            - relayVolume
             - subdomain
             - version
             type: object

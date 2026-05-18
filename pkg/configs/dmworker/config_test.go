@@ -43,7 +43,7 @@ func TestOverlay(t *testing.T) {
 			},
 			Subdomain: "workers",
 			DMWorkerTemplateSpec: v1alpha1.DMWorkerTemplateSpec{
-				RelayVolume: v1alpha1.Volume{
+				RelayVolume: &v1alpha1.Volume{
 					Name: "relay",
 					Mounts: []v1alpha1.VolumeMount{
 						{Type: v1alpha1.VolumeMountTypeDMWorkerRelay},

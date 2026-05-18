@@ -162,8 +162,9 @@ type DMWorkerTemplateSpec struct {
 	Security *Security `json:"security,omitempty"`
 
 	// RelayVolume defines the persistent volume for DM worker's relay log storage.
-	// This volume is required for dm-worker to persist relay logs.
-	RelayVolume Volume `json:"relayVolume"`
+	// When omitted, no relay log PVC is created and dm-worker uses an in-memory relay store.
+	// +optional
+	RelayVolume *Volume `json:"relayVolume,omitempty"`
 
 	// Volumes defines additional persistent volumes, it is optional.
 	// +listType=map

@@ -1032,7 +1032,11 @@ func (in *DMWorkerTemplateSpec) DeepCopyInto(out *DMWorkerTemplateSpec) {
 		*out = new(Security)
 		(*in).DeepCopyInto(*out)
 	}
-	in.RelayVolume.DeepCopyInto(&out.RelayVolume)
+	if in.RelayVolume != nil {
+		in, out := &in.RelayVolume, &out.RelayVolume
+		*out = new(Volume)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
 		*out = make([]Volume, len(*in))

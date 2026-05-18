@@ -40,7 +40,7 @@ func NewDMWorkerGroup(ns string, patches ...GroupPatch[*v1alpha1.DMWorkerGroup])
 				Spec: v1alpha1.DMWorkerTemplateSpec{
 					Version: defaultVersion,
 					Image:   ptr.To(defaultImageRegistry + "dm"),
-					RelayVolume: v1alpha1.Volume{
+					RelayVolume: &v1alpha1.Volume{
 						Name:    "relay",
 						Mounts:  []v1alpha1.VolumeMount{{Type: v1alpha1.VolumeMountTypeDMWorkerRelay}},
 						Storage: resource.MustParse("1Gi"),

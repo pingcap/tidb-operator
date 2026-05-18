@@ -89,30 +89,32 @@ func newPod(cluster *v1alpha1.Cluster, dw *v1alpha1.DMWorker) *corev1.Pod {
 		},
 	}
 
-	// RelayVolume mount
-	relayVolName := dmWorkerVolumeName(dw.Spec.RelayVolume.Name)
-	relayClaimName := coreutil.PersistentVolumeClaimName[scope.DMWorker](dw, dw.Spec.RelayVolume.Name)
-	vols = append(vols, corev1.Volume{
-		Name: relayVolName,
-		VolumeSource: corev1.VolumeSource{
-			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-				ClaimName: relayClaimName,
+	// RelayVolume mount (optional)
+	if relayVol := dw.Spec.RelayVolume; relayVol != nil {
+		relayVolName := dmWorkerVolumeName(relayVol.Name)
+		relayClaimName := coreutil.PersistentVolumeClaimName[scope.DMWorker](dw, relayVol.Name)
+		vols = append(vols, corev1.Volume{
+			Name: relayVolName,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: relayClaimName,
+				},
 			},
-		},
-	})
+		})
 
-	relayMountPath := v1alpha1.VolumeMountDMWorkerRelayDefaultPath
-	for i := range dw.Spec.RelayVolume.Mounts {
-		mount := &dw.Spec.RelayVolume.Mounts[i]
-		if mount.Type == v1alpha1.VolumeMountTypeDMWorkerRelay && mount.MountPath != "" {
-			relayMountPath = mount.MountPath
-			break
+		relayMountPath := v1alpha1.VolumeMountDMWorkerRelayDefaultPath
+		for i := range relayVol.Mounts {
+			mount := &relayVol.Mounts[i]
+			if mount.Type == v1alpha1.VolumeMountTypeDMWorkerRelay && mount.MountPath != "" {
+				relayMountPath = mount.MountPath
+				break
+			}
 		}
+		mounts = append(mounts, corev1.VolumeMount{
+			Name:      relayVolName,
+			MountPath: relayMountPath,
+		})
 	}
-	mounts = append(mounts, corev1.VolumeMount{
-		Name:      relayVolName,
-		MountPath: relayMountPath,
-	})
 
 	// Additional volumes from dw.Spec.Volumes
 	for i := range dw.Spec.Volumes {

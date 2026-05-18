@@ -141,7 +141,7 @@ func newTestDMWorkerGroup(name string, opts ...func(*v1alpha1.DMWorkerGroup)) *v
 		obj.Spec.Cluster.Name = "cluster"
 		obj.Spec.DMGroupRef.Name = "dmg"
 		obj.Spec.Template.Spec.Version = "v8.5.2"
-		obj.Spec.Template.Spec.RelayVolume.Name = "relay"
+		obj.Spec.Template.Spec.RelayVolume = &v1alpha1.Volume{Name: "relay"}
 		return obj
 	})
 	for _, opt := range opts {

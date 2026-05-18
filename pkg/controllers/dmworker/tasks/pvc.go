@@ -29,37 +29,39 @@ import (
 func PVCNewer() common.PVCNewer[*v1alpha1.DMWorker] {
 	return common.PVCNewerFunc[*v1alpha1.DMWorker](
 		func(cluster *v1alpha1.Cluster, dw *v1alpha1.DMWorker, fg features.Gates) []*corev1.PersistentVolumeClaim {
-			// RelayVolume PVC (the primary relay log storage for dm-worker)
-			relayVol := &dw.Spec.RelayVolume
-			relayPVC := &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      coreutil.PersistentVolumeClaimName[scope.DMWorker](dw, relayVol.Name),
-					Namespace: dw.Namespace,
-					Labels:    coreutil.PersistentVolumeClaimLabels[scope.DMWorker](dw, relayVol.Name),
-					OwnerReferences: []metav1.OwnerReference{
-						*metav1.NewControllerRef(dw, v1alpha1.SchemeGroupVersion.WithKind("DMWorker")),
-					},
-				},
-				Spec: corev1.PersistentVolumeClaimSpec{
-					AccessModes: []corev1.PersistentVolumeAccessMode{
-						corev1.ReadWriteOnce,
-					},
-					Resources: corev1.VolumeResourceRequirements{
-						Requests: corev1.ResourceList{
-							corev1.ResourceStorage: relayVol.Storage,
+			var pvcs []*corev1.PersistentVolumeClaim
+
+			// RelayVolume PVC (optional relay log storage for dm-worker)
+			if relayVol := dw.Spec.RelayVolume; relayVol != nil {
+				relayPVC := &corev1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      coreutil.PersistentVolumeClaimName[scope.DMWorker](dw, relayVol.Name),
+						Namespace: dw.Namespace,
+						Labels:    coreutil.PersistentVolumeClaimLabels[scope.DMWorker](dw, relayVol.Name),
+						OwnerReferences: []metav1.OwnerReference{
+							*metav1.NewControllerRef(dw, v1alpha1.SchemeGroupVersion.WithKind("DMWorker")),
 						},
 					},
-					StorageClassName: relayVol.StorageClassName,
-				},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						AccessModes: []corev1.PersistentVolumeAccessMode{
+							corev1.ReadWriteOnce,
+						},
+						Resources: corev1.VolumeResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceStorage: relayVol.Storage,
+							},
+						},
+						StorageClassName: relayVol.StorageClassName,
+					},
+				}
+				if fg.Enabled(meta.VolumeAttributesClass) {
+					relayPVC.Spec.VolumeAttributesClassName = relayVol.VolumeAttributesClassName
+				}
+				if cluster.Status.ID != "" {
+					relayPVC.Labels[v1alpha1.LabelKeyClusterID] = cluster.Status.ID
+				}
+				pvcs = append(pvcs, relayPVC)
 			}
-			if fg.Enabled(meta.VolumeAttributesClass) {
-				relayPVC.Spec.VolumeAttributesClassName = relayVol.VolumeAttributesClassName
-			}
-			if cluster.Status.ID != "" {
-				relayPVC.Labels[v1alpha1.LabelKeyClusterID] = cluster.Status.ID
-			}
-
-			pvcs := []*corev1.PersistentVolumeClaim{relayPVC}
 
 			// Additional volumes
 			additionalPVCs := coreutil.PVCs[scope.DMWorker](

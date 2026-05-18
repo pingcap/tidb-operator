@@ -60,10 +60,12 @@ func (c *Config) Overlay(cluster *v1alpha1.Cluster, dw *v1alpha1.DMWorker, dmMas
 	c.Join = dmMasterAddr
 
 	// relay dir from RelayVolume mounts
-	for k := range dw.Spec.RelayVolume.Mounts {
-		mount := &dw.Spec.RelayVolume.Mounts[k]
-		if mount.Type == v1alpha1.VolumeMountTypeDMWorkerRelay {
-			c.RelayDir = mount.MountPath
+	if dw.Spec.RelayVolume != nil {
+		for k := range dw.Spec.RelayVolume.Mounts {
+			mount := &dw.Spec.RelayVolume.Mounts[k]
+			if mount.Type == v1alpha1.VolumeMountTypeDMWorkerRelay {
+				c.RelayDir = mount.MountPath
+			}
 		}
 	}
 	if c.RelayDir == "" {
