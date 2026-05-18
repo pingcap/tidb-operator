@@ -104,7 +104,7 @@ POST /upgrade/start
 POST /upgrade/finish
 ```
 
-The calls are bodyless. TiDB returns HTTP 400 for non-POST requests and for handler/session errors. Successful and idempotent responses are HTTP 200 with one of these bodies:
+The calls are bodyless. TiDB returns HTTP 400 for non-POST requests and for handler/session errors. Successful and idempotent responses are HTTP 200 with one of these string bodies, encoded by TiDB's JSON response helper:
 
 ```text
 "success!"
@@ -112,7 +112,7 @@ The calls are bodyless. TiDB returns HTTP 400 for non-POST requests and for hand
 "It's a duplicated operation and the cluster is already in normal state."
 ```
 
-Implementation should treat these HTTP 200 bodies as success and return errors that include HTTP status and response body for non-200 or unexpected responses. A 200 response from `/upgrade/start` is the point where it is safe to start replacing TiDB pods: TiDB waits up to 10 seconds for the DDL owner to observe and sync the cluster into upgrading state before returning success. Set the client HTTP timeout above 10 seconds; use 30 seconds to allow network/proxy overhead.
+Implementation should decode the response as a JSON string, treat these HTTP 200 bodies as success, and return errors that include HTTP status and response body for non-200 or unexpected responses. A 200 response from `/upgrade/start` is the point where it is safe to start replacing TiDB pods: TiDB waits up to 10 seconds for the DDL owner to observe and sync the cluster into upgrading state before returning success. Set the client HTTP timeout above 10 seconds; use 30 seconds to allow network/proxy overhead.
 
 The existing shared `http.Client` in `defaultTiDBControl` uses a 5-second timeout and must not be used for `StartUpgrade`. `StartUpgrade` must construct a dedicated `http.Client` with a 30-second timeout (or use a per-request `context.WithTimeout`) for this call only. `FinishUpgrade` can use the shared client since TiDB returns immediately for that operation.
 
@@ -211,11 +211,11 @@ Call `maybefinishSmoothUpgrade(tc)` at the end of `tidbMemberManager.Sync()`, af
 
 1. Check whether the pause annotation is active.
 2. If not active, do nothing.
-3. If active, wait until `tc.Status.TiDB.StatefulSet.UpdatedReplicas == tc.Status.TiDB.StatefulSet.Replicas` and `tc.Status.TiDB.Phase == NormalPhase`. Use these StatefulSet status fields rather than pod-level labels to avoid races between pod label updates and StatefulSet controller reconciliation.
+3. If active, wait until `tc.Status.TiDB.StatefulSet.UpdatedReplicas == tc.Status.TiDB.StatefulSet.Replicas`, `tc.Status.TiDB.Phase == NormalPhase`, and all TiDB members are healthy. Use StatefulSet status fields plus TiDB member health to avoid races between pod label updates, health sync, and StatefulSet controller reconciliation.
 4. Select one healthy TiDB endpoint.
 5. Call `POST /upgrade/finish`.
 6. If finish fails, keep annotations and requeue.
-7. If finish succeeds, remove all smooth-upgrade annotations.
+7. If finish succeeds, remove all smooth-upgrade annotations using JSON merge-patch `null` values so the persisted Kubernetes annotations are deleted, not merely omitted from the local object.
 
 ### Controller API changes
 

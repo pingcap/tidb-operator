@@ -318,6 +318,65 @@ func TestSetLabels(t *testing.T) {
 	}
 }
 
+func TestUpgradeAPI(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	cases := []struct {
+		name    string
+		method  func(*defaultTiDBControl, *v1alpha1.TidbCluster) error
+		path    string
+		body    string
+		status  int
+		wantErr bool
+	}{
+		{name: "start success", method: func(c *defaultTiDBControl, tc *v1alpha1.TidbCluster) error { return c.StartUpgrade(tc, 0) }, path: "/upgrade/start", body: tidbUpgradeSuccessBody, status: http.StatusOK},
+		{name: "start duplicate", method: func(c *defaultTiDBControl, tc *v1alpha1.TidbCluster) error { return c.StartUpgrade(tc, 0) }, path: "/upgrade/start", body: tidbUpgradeDuplicateStartBody, status: http.StatusOK},
+		{name: "finish success", method: func(c *defaultTiDBControl, tc *v1alpha1.TidbCluster) error { return c.FinishUpgrade(tc, 0) }, path: "/upgrade/finish", body: tidbUpgradeSuccessBody, status: http.StatusOK},
+		{name: "finish duplicate", method: func(c *defaultTiDBControl, tc *v1alpha1.TidbCluster) error { return c.FinishUpgrade(tc, 0) }, path: "/upgrade/finish", body: tidbUpgradeDuplicateFinishBody, status: http.StatusOK},
+		{name: "error response", method: func(c *defaultTiDBControl, tc *v1alpha1.TidbCluster) error { return c.StartUpgrade(tc, 0) }, path: "/upgrade/start", body: "handler failed", status: http.StatusBadRequest, wantErr: true},
+		{name: "unexpected body", method: func(c *defaultTiDBControl, tc *v1alpha1.TidbCluster) error { return c.FinishUpgrade(tc, 0) }, path: "/upgrade/finish", body: "unknown", status: http.StatusOK, wantErr: true},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			svc := getClientServer(func(w http.ResponseWriter, request *http.Request) {
+				g.Expect(request.Method).To(Equal(http.MethodPost))
+				g.Expect(request.URL.Path).To(Equal(c.path))
+				body, err := io.ReadAll(request.Body)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(body).To(BeEmpty())
+				w.WriteHeader(c.status)
+				if c.status == http.StatusOK {
+					data, err := json.Marshal(c.body)
+					g.Expect(err).NotTo(HaveOccurred())
+					_, _ = w.Write(data)
+				} else {
+					_, _ = w.Write([]byte(c.body))
+				}
+			})
+			defer svc.Close()
+
+			informer := kubeinformers.NewSharedInformerFactory(&fake.Clientset{}, 0)
+			control := NewDefaultTiDBControl(informer.Core().V1().Secrets().Lister())
+			control.testURL = svc.URL
+			err := c.method(control, getTidbCluster())
+			if c.wantErr {
+				g.Expect(err).To(HaveOccurred())
+				g.Expect(err.Error()).To(ContainSubstring(c.body))
+			} else {
+				g.Expect(err).NotTo(HaveOccurred())
+			}
+		})
+	}
+}
+
+func TestStartUpgradeTimeout(t *testing.T) {
+	g := NewGomegaWithT(t)
+	control := NewDefaultTiDBControl(nil)
+	g.Expect(control.upgradeClientTimeout("start")).To(Equal(startUpgradeTimeout))
+	g.Expect(control.upgradeClientTimeout("finish")).To(Equal(timeout))
+}
+
 func getTidbCluster() *v1alpha1.TidbCluster {
 	return &v1alpha1.TidbCluster{
 		TypeMeta: metav1.TypeMeta{
