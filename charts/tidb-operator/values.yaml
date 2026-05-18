@@ -56,6 +56,9 @@ controllerManager:
   # With rbac.create=true, this service account will be created
   # Also see rbac.create and clusterScoped
   serviceAccount: tidb-controller-manager
+  # automountServiceAccountToken indicates whether a service account token should be automatically mounted.
+  # When set to false, a projected service account token volume will be mounted instead.
+  automountServiceAccountToken: true
 
   # clusterPermissions are some cluster scoped permissions that will be used even if `clusterScoped: false`.
   # the default value of these fields is `true`. if you want them to be `false`, you MUST set them to `false` explicitly.
