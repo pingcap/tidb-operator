@@ -145,11 +145,14 @@ func (c *defaultTiDBControl) upgradeClientTimeout(op string) time.Duration {
 }
 
 func (c *defaultTiDBControl) upgrade(tc *v1alpha1.TidbCluster, ordinal int32, op string, requestTimeout time.Duration, duplicateSuccessBody string) error {
-	httpClient, err := c.getHTTPClient(tc)
+	baseClient, err := c.getHTTPClient(tc)
 	if err != nil {
 		return err
 	}
-	httpClient.Timeout = requestTimeout
+	httpClient := &http.Client{
+		Transport: baseClient.Transport,
+		Timeout:   requestTimeout,
+	}
 
 	url := fmt.Sprintf("%s/upgrade/%s", c.getBaseURL(tc, ordinal), op)
 	req, err := http.NewRequest(http.MethodPost, url, nil)
@@ -167,7 +170,7 @@ func (c *defaultTiDBControl) upgrade(tc *v1alpha1.TidbCluster, ordinal int32, op
 	}
 	bodyText := string(body)
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("tidb upgrade %s error response %s:%v URL: %s", op, bodyText, res.StatusCode, url)
+		return fmt.Errorf("tidb upgrade %s error response %q:%v URL: %s", op, bodyText, res.StatusCode, url)
 	}
 	successText := normalizeTiDBUpgradeResponse(body)
 	if successText == tidbUpgradeSuccessBody || successText == duplicateSuccessBody {

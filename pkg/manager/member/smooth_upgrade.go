@@ -16,6 +16,7 @@ package member
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -235,19 +236,37 @@ func chooseHealthyTiDBOrdinal(tc *v1alpha1.TidbCluster) (int32, error) {
 	if tc.Status.TiDB.StatefulSet == nil {
 		return 0, controller.RequeueErrorf("tidbcluster: [%s/%s] has no TiDB StatefulSet status for smooth upgrade", tc.Namespace, tc.Name)
 	}
-	for i := int32(0); i < tc.Status.TiDB.StatefulSet.Replicas; i++ {
-		name := tidbPodName(tc.Name, i)
-		if member, ok := tc.Status.TiDB.Members[name]; ok && member.Health {
-			return i, nil
+	prefix := controller.TiDBMemberName(tc.Name) + "-"
+	chosen := int32(-1)
+	for name, member := range tc.Status.TiDB.Members {
+		if !member.Health || !strings.HasPrefix(name, prefix) {
+			continue
+		}
+		ord64, err := strconv.ParseInt(name[len(prefix):], 10, 32)
+		if err != nil {
+			continue
+		}
+		ord := int32(ord64)
+		if chosen < 0 || ord < chosen {
+			chosen = ord
 		}
 	}
-	return 0, controller.RequeueErrorf("tidbcluster: [%s/%s] has no healthy TiDB pod for smooth upgrade", tc.Namespace, tc.Name)
+	if chosen < 0 {
+		return 0, controller.RequeueErrorf("tidbcluster: [%s/%s] has no healthy TiDB pod for smooth upgrade", tc.Namespace, tc.Name)
+	}
+	return chosen, nil
 }
 
 func patchTidbClusterAnnotations(deps *controller.Dependencies, tc *v1alpha1.TidbCluster) error {
-	patch, err := json.Marshal(map[string]interface{}{
-		"metadata": map[string]interface{}{
-			"annotations": tc.Annotations,
+	annotations := map[string]any{
+		annSmoothUpgradeDDLPaused:     tc.Annotations[annSmoothUpgradeDDLPaused],
+		annSmoothUpgradeSourceVersion: tc.Annotations[annSmoothUpgradeSourceVersion],
+		annSmoothUpgradeTargetVersion: tc.Annotations[annSmoothUpgradeTargetVersion],
+		annSmoothUpgradeStartedAt:     tc.Annotations[annSmoothUpgradeStartedAt],
+	}
+	patch, err := json.Marshal(map[string]any{
+		"metadata": map[string]any{
+			"annotations": annotations,
 		},
 	})
 	if err != nil {
@@ -259,12 +278,12 @@ func patchTidbClusterAnnotations(deps *controller.Dependencies, tc *v1alpha1.Tid
 
 func clearSmoothUpgradeAnnotationsPersisted(deps *controller.Dependencies, tc *v1alpha1.TidbCluster) error {
 	clearSmoothUpgradeAnnotations(tc)
-	annotations := map[string]interface{}{}
+	annotations := map[string]any{}
 	for _, key := range smoothUpgradeAnnotationKeys() {
 		annotations[key] = nil
 	}
-	patch, err := json.Marshal(map[string]interface{}{
-		"metadata": map[string]interface{}{
+	patch, err := json.Marshal(map[string]any{
+		"metadata": map[string]any{
 			"annotations": annotations,
 		},
 	})
