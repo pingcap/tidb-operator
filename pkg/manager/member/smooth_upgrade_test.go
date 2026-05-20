@@ -41,6 +41,9 @@ func TestSmoothUpgradeMatrix(t *testing.T) {
 		{"v7.4.0", "v7.5.0", smoothUpgradeSwitchControlled},
 		{"v7.3.0", "v7.4.0", smoothUpgradeUnsupported},
 		{"nightly", "v7.4.0", smoothUpgradeUnsupported},
+		// downgrade pairs must never trigger smooth upgrade
+		{"v7.5.0", "v7.4.0", smoothUpgradeUnsupported},
+		{"v7.1.3", "v7.1.2", smoothUpgradeUnsupported},
 	}
 	for _, c := range cases {
 		g.Expect(classifySmoothUpgrade(c.source, c.target)).To(Equal(c.want), "%s -> %s", c.source, c.target)
