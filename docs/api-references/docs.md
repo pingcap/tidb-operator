@@ -3284,6 +3284,20 @@ bool
 <p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>automountServiceAccountToken</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AutomountServiceAccountToken indicates whether the service account token should be
+automatically mounted on monitor pods. When set to false, the operator mounts a
+projected token volume so containers can still reach the Kubernetes API.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -27891,6 +27905,20 @@ bool
 </td>
 <td>
 <p>PreferIPv6 indicates whether to prefer IPv6 addresses for all components.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>automountServiceAccountToken</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AutomountServiceAccountToken indicates whether the service account token should be
+automatically mounted on monitor pods. When set to false, the operator mounts a
+projected token volume so containers can still reach the Kubernetes API.</p>
 </td>
 </tr>
 </tbody>
