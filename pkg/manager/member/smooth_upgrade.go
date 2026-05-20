@@ -65,6 +65,11 @@ func classifySmoothUpgrade(source, target string) smoothUpgradeSupport {
 		return smoothUpgradeUnsupported
 	}
 
+	targetNotGreater, _ := cmpver.Compare(target, cmpver.LessOrEqual, source)
+	if targetNotGreater {
+		return smoothUpgradeUnsupported
+	}
+
 	if isAutoSmoothUpgradePair(source, target) {
 		return smoothUpgradeAutoSupported
 	}
