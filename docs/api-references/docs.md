@@ -5400,6 +5400,30 @@ Kubernetes core/v1.ResourceRequirements
 </tr>
 <tr>
 <td>
+<code>mode</code></br>
+<em>
+<a href="#compactmode">
+CompactMode
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>shardCount</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
 <code>env</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#envvar-v1-core">
@@ -5683,6 +5707,13 @@ CompactStatus
 </tr>
 </tbody>
 </table>
+<h3 id="compactmode">CompactMode</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#compactspec">CompactSpec</a>)
+</p>
+<p>
+</p>
 <h3 id="compactretryrecord">CompactRetryRecord</h3>
 <p>
 (<em>Appears on:</em>
@@ -5763,6 +5794,30 @@ Kubernetes core/v1.ResourceRequirements
 </em>
 </td>
 <td>
+</td>
+</tr>
+<tr>
+<td>
+<code>mode</code></br>
+<em>
+<a href="#compactmode">
+CompactMode
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>shardCount</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 <tr>
@@ -6092,6 +6147,28 @@ string
 </td>
 <td>
 <p>endTs is the real endTs processed by the compact backup</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>completedIndexes</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>CompletedIndexes holds the completed indexes when compact backup runs in sharded mode.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>failedIndexes</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>FailedIndexes holds the failed indexes when compact backup runs in sharded mode.</p>
 </td>
 </tr>
 <tr>
