@@ -276,7 +276,7 @@ func TestController_EnqueueRestoresReferencing_MatchesByName(t *testing.T) {
 	}
 	nonReplication := &v1alpha1.Restore{
 		ObjectMeta: metav1.ObjectMeta{Name: "r3", Namespace: "ns1"},
-		Spec: v1alpha1.RestoreSpec{
+		Spec:       v1alpha1.RestoreSpec{
 			// ReplicationConfig nil
 		},
 	}

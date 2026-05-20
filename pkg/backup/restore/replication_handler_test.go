@@ -348,17 +348,6 @@ func expectEvent(g *WithT, h *testutils.Helper, substr string) {
 		"expected Event matching %q", substr)
 }
 
-// expectNoEvent asserts no buffered Event for a brief settling window.
-func expectNoEvent(g *WithT, h *testutils.Helper) {
-	fr, ok := h.Deps.Recorder.(*record.FakeRecorder)
-	g.Expect(ok).To(BeTrue())
-	select {
-	case e := <-fr.Events:
-		g.Expect(e).To(BeEmpty(), "did not expect any Event, got: %s", e)
-	case <-time.After(100 * time.Millisecond):
-	}
-}
-
 // =============================================================================
 // terminal short-circuit
 // =============================================================================
