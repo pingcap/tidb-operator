@@ -51,17 +51,30 @@ const (
 	TiKVConfigGCThreshold = "gc.ratio-threshold"
 )
 
+// replicationHandlerInterface is the minimal surface restoreManager calls on
+// the replication handler. Allows injecting a fake in tests.
+type replicationHandlerInterface interface {
+	Sync(restore *v1alpha1.Restore) error
+}
+
 type restoreManager struct {
-	deps          *controller.Dependencies
-	statusUpdater controller.RestoreConditionUpdaterInterface
+	deps               *controller.Dependencies
+	statusUpdater      controller.RestoreConditionUpdaterInterface
+	replicationHandler replicationHandlerInterface
 }
 
 // NewRestoreManager return restoreManager
 func NewRestoreManager(deps *controller.Dependencies) backup.RestoreManager {
-	return &restoreManager{
+	statusUpdater := controller.NewRealRestoreConditionUpdater(deps.Clientset, deps.RestoreLister, deps.Recorder)
+	rm := &restoreManager{
 		deps:          deps,
-		statusUpdater: controller.NewRealRestoreConditionUpdater(deps.Clientset, deps.RestoreLister, deps.Recorder),
+		statusUpdater: statusUpdater,
 	}
+	// Two-step construction: replicationHandler needs a function-typed
+	// reference to rm.makeRestoreJobWithMode so it can build BR Jobs that
+	// inherit the full PiTR setup (image, init container, env, volumes).
+	rm.replicationHandler = newReplicationHandler(deps, statusUpdater, deps.Recorder, rm.makeRestoreJobWithMode)
+	return rm
 }
 
 func (rm *restoreManager) Sync(restore *v1alpha1.Restore) error {
@@ -284,15 +297,13 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 		return nil
 	}
 
-	restoreJobName := restore.GetRestoreJobName()
-	_, err = rm.deps.JobLister.Jobs(ns).Get(restoreJobName)
-	if err == nil {
-		klog.Infof("restore job %s/%s has been created, skip", ns, restoreJobName)
-		return nil
-	} else if !errors.IsNotFound(err) {
-		return fmt.Errorf("restore %s/%s get job %s failed, err: %v", ns, name, restoreJobName, err)
-	}
-
+	// pm.Enable is the GC-disabled gate shared by all PiTR restores
+	// (standard PiTR and replication restore alike). Run it BEFORE the
+	// replication interception so replication restores also wait for
+	// the TiKV ConfigMap override (gc.ratio-threshold = -1) to
+	// propagate before launching any BR Job. The override itself is
+	// written by tikvMemberManager.applyPiTRConfigOverride, which
+	// already covers replication because Mode == PiTR.
 	if restore.Spec.Mode == v1alpha1.RestoreModePiTR {
 		// Note: perhaps better to reschedule here and wait the cluster config applied.
 		// But for now BR will also modify this configuration. This configuration map was
@@ -303,6 +314,23 @@ func (rm *restoreManager) syncRestoreJob(restore *v1alpha1.Restore) error {
 			}
 			return fmt.Errorf("restore %s/%s enable pitr failed, err: %v", ns, name, err)
 		}
+	}
+
+	// Replication restore: delegate to dedicated handler that owns the
+	// two-Job state machine and coordinates with CompactBackup. All logic
+	// below this line assumes a single-Job Restore (GetRestoreJobName etc.)
+	// which does not apply to replication restore.
+	if restore.Spec.Mode == v1alpha1.RestoreModePiTR && restore.Spec.ReplicationConfig != nil {
+		return rm.replicationHandler.Sync(restore)
+	}
+
+	restoreJobName := restore.GetRestoreJobName()
+	_, err = rm.deps.JobLister.Jobs(ns).Get(restoreJobName)
+	if err == nil {
+		klog.Infof("restore job %s/%s has been created, skip", ns, restoreJobName)
+		return nil
+	} else if !errors.IsNotFound(err) {
+		return fmt.Errorf("restore %s/%s get job %s failed, err: %v", ns, name, restoreJobName, err)
 	}
 
 	var (

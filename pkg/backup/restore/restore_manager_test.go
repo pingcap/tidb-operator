@@ -28,6 +28,7 @@ import (
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/backup/constants"
 	"github.com/pingcap/tidb-operator/pkg/backup/testutils"
+	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -1271,4 +1272,139 @@ grpc-keepalive-timeout = "30s"
 		}
 		return nil
 	}, time.Second*10).Should(BeNil())
+}
+
+type fakeReplicationHandler struct{ syncCalls int }
+
+func (f *fakeReplicationHandler) Sync(_ *v1alpha1.Restore) error {
+	f.syncCalls++
+	return nil
+}
+
+func TestRestoreManager_RoutesReplicationToHandler(t *testing.T) {
+	g := NewGomegaWithT(t)
+	helper := newHelper(t)
+	defer helper.Close()
+	deps := helper.Deps
+
+	fake := &fakeReplicationHandler{}
+	rm := &restoreManager{
+		deps:               deps,
+		statusUpdater:      controller.NewRealRestoreConditionUpdater(deps.Clientset, deps.RestoreLister, deps.Recorder),
+		replicationHandler: fake,
+	}
+
+	r := &v1alpha1.Restore{
+		ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns1"},
+		Spec: v1alpha1.RestoreSpec{
+			Mode:              v1alpha1.RestoreModePiTR,
+			LogRestoreStartTs: "443123456780",
+			BR:                &v1alpha1.BRConfig{Cluster: "tc1", ClusterNamespace: "ns1"},
+			StorageProvider: v1alpha1.StorageProvider{
+				S3: &v1alpha1.S3StorageProvider{Bucket: "b", Prefix: "/p", Region: "us-west-2"},
+			},
+			ReplicationConfig: &v1alpha1.ReplicationConfig{CompactBackupName: "cb1"},
+			ToolImage:         "pingcap/br:v8.5.0",
+		},
+	}
+	helper.CreateRestore(r)
+	helper.CreateTC("ns1", "tc1", false, false)
+	// pm.Enable now runs ahead of the replication interception, so the
+	// TiKV ConfigMap must already carry the gc.ratio-threshold = -1
+	// override or the gate would block this test before reaching the
+	// handler.
+	helper.createTiKVStatefulSetAndConfigMap("ns1", "tc1")
+	helper.updateConfigMapRatioThreshold("ns1", "tc1", -1.0)
+
+	err := rm.Sync(r)
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(fake.syncCalls).To(Equal(1), "replication handler.Sync called exactly once")
+}
+
+// TestRestoreManager_ReplicationRestore_GatedByPMEnable verifies that
+// a replication restore is held back by pm.Enable until the TiKV
+// ConfigMap's gc.ratio-threshold has been overridden to -1, exactly
+// like standard PiTR. Before the pm.Enable reorder this test fails
+// because the replication interception ran ahead of the gate; after
+// the reorder, the gate applies to both PiTR variants.
+func TestRestoreManager_ReplicationRestore_GatedByPMEnable(t *testing.T) {
+	g := NewGomegaWithT(t)
+	helper := newHelper(t)
+	defer helper.Close()
+	deps := helper.Deps
+
+	fake := &fakeReplicationHandler{}
+	rm := &restoreManager{
+		deps:               deps,
+		statusUpdater:      controller.NewRealRestoreConditionUpdater(deps.Clientset, deps.RestoreLister, deps.Recorder),
+		replicationHandler: fake,
+	}
+
+	r := &v1alpha1.Restore{
+		ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns1"},
+		Spec: v1alpha1.RestoreSpec{
+			Mode:              v1alpha1.RestoreModePiTR,
+			LogRestoreStartTs: "443123456780",
+			BR:                &v1alpha1.BRConfig{Cluster: "tc1", ClusterNamespace: "ns1"},
+			StorageProvider: v1alpha1.StorageProvider{
+				S3: &v1alpha1.S3StorageProvider{Bucket: "b", Prefix: "/p", Region: "us-west-2"},
+			},
+			ReplicationConfig: &v1alpha1.ReplicationConfig{CompactBackupName: "cb1"},
+			ToolImage:         "pingcap/br:v8.5.0",
+		},
+	}
+	helper.CreateRestore(r)
+	helper.CreateTC("ns1", "tc1", false, false)
+	helper.createTiKVStatefulSetAndConfigMap("ns1", "tc1")
+	// ConfigMap exists but ratio-threshold is NOT -1 yet — simulates
+	// the operator window between Restore creation and TiKV reconcile
+	// having written the override.
+
+	err := rm.Sync(r)
+	g.Expect(err).Should(MatchError(ContainSubstring("config reset, waiting for configmap updated")),
+		"first Sync must hit pm.Enable RequeueError")
+	g.Expect(fake.syncCalls).To(Equal(0),
+		"replication handler must NOT be called while gate is closed")
+
+	// Now simulate tikvMemberManager.applyPiTRConfigOverride having
+	// landed in the ConfigMap.
+	helper.updateConfigMapRatioThreshold("ns1", "tc1", -1.0)
+
+	err = rm.Sync(r)
+	g.Expect(err).NotTo(HaveOccurred(), "second Sync must pass the gate")
+	g.Expect(fake.syncCalls).To(Equal(1),
+		"replication handler must be called exactly once after gate opens")
+}
+
+func TestRestoreManager_StandardPiTRDoesNotRouteToHandler(t *testing.T) {
+	g := NewGomegaWithT(t)
+	helper := newHelper(t)
+	defer helper.Close()
+	deps := helper.Deps
+
+	fake := &fakeReplicationHandler{}
+	rm := &restoreManager{
+		deps:               deps,
+		statusUpdater:      controller.NewRealRestoreConditionUpdater(deps.Clientset, deps.RestoreLister, deps.Recorder),
+		replicationHandler: fake,
+	}
+
+	r := &v1alpha1.Restore{
+		ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns1"},
+		Spec: v1alpha1.RestoreSpec{
+			Mode: v1alpha1.RestoreModePiTR,
+			BR:   &v1alpha1.BRConfig{Cluster: "tc1", ClusterNamespace: "ns1"},
+			StorageProvider: v1alpha1.StorageProvider{
+				S3: &v1alpha1.S3StorageProvider{Bucket: "b", Prefix: "/p", Region: "us-west-2"},
+			},
+			// ReplicationConfig: nil → standard PiTR
+			ToolImage: "pingcap/br:v8.5.0",
+		},
+	}
+	helper.CreateRestore(r)
+	helper.CreateTC("ns1", "tc1", false, false)
+
+	_ = rm.Sync(r) // may error from PiTR-specific machinery; we don't care
+
+	g.Expect(fake.syncCalls).To(Equal(0), "replication handler must NOT be called for standard PiTR")
 }

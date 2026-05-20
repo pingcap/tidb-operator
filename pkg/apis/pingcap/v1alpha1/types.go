@@ -2785,6 +2785,33 @@ const (
 	RestorePruneComplete RestoreConditionType = "PruneComplete"
 	// RestorePruneFailed means the prune job has failed.
 	RestorePruneFailed RestoreConditionType = "PruneFailed"
+
+	// RestoreSnapshotRestore means the replication restore is in phase-1:
+	// BR snapshot restore running in parallel with CompactBackup shards.
+	// This is a phase value (drives status.phase).
+	RestoreSnapshotRestore RestoreConditionType = "SnapshotRestore"
+
+	// RestoreLogRestore means the replication restore is in phase-2:
+	// BR log restore after the phase-1 gate has passed.
+	// This is a phase value (drives status.phase).
+	RestoreLogRestore RestoreConditionType = "LogRestore"
+
+	// RestoreSnapshotRestored indicates the phase-1 BR snapshot restore Job
+	// has completed successfully. This is a condition marker — it is
+	// appended to status.conditions but does NOT drive status.phase.
+	// Written by handler.appendRestoreMarker, not by UpdateRestoreCondition.
+	RestoreSnapshotRestored RestoreConditionType = "SnapshotRestored"
+
+	// RestoreCompactSettled indicates the referenced CompactBackup has reached
+	// a settled state from the Restore's perspective — either a true terminal
+	// (Complete / Failed), or an unrecoverable observation (cross-CR mismatch
+	// / WaitTimeout expired). The Reason field carries the specific outcome
+	// (AllShardsComplete / ShardsPartialFailed / CompactBackupMismatch /
+	// CompactBackupWaitTimeout) and is consumed by phase-2 backup-manager to
+	// decide compact-vs-fallback. This is a condition marker — it is appended
+	// to status.conditions but does NOT drive status.phase. Written by
+	// handler.appendRestoreMarker.
+	RestoreCompactSettled RestoreConditionType = "CompactSettled"
 )
 
 // RestoreCondition describes the observed state of a Restore at a certain point.
@@ -2910,6 +2937,30 @@ type RestoreSpec struct {
 	TolerateSingleTiKVOutage bool `json:"tolerateSingleTiKVOutage,omitempty"`
 	// +kubebuilder:default=0
 	BackoffLimit int32 `json:"backoffLimit,omitempty"`
+	// ReplicationConfig is the optional configuration for replication restore.
+	// When Mode == pitr and this field is non-nil, the controller runs a
+	// two-phase replication restore (snapshot restore + log restore gated on
+	// CompactBackup terminal state). When nil, the controller runs a standard
+	// PiTR restore (existing behavior unchanged).
+	// +optional
+	ReplicationConfig *ReplicationConfig `json:"replicationConfig,omitempty"`
+}
+
+// +k8s:openapi-gen=true
+// ReplicationConfig holds the replication-specific configuration for PiTR restore.
+type ReplicationConfig struct {
+	// CompactBackupName references a CompactBackup CR in the same namespace.
+	// The referenced CR must reach a terminal state (Complete or Failed)
+	// before the controller proceeds from phase-1 (snapshot restore) to
+	// phase-2 (log restore).
+	CompactBackupName string `json:"compactBackupName"`
+
+	// WaitTimeout bounds how long the controller waits for a missing
+	// CompactBackup CR to appear. 0 means wait indefinitely.
+	// This timeout does NOT apply when the CompactBackup exists but is
+	// still running; compaction duration is business-dependent.
+	// +optional
+	WaitTimeout *metav1.Duration `json:"waitTimeout,omitempty"`
 }
 
 // FederalVolumeRestorePhase represents a phase to execute in federal volume restore
@@ -2967,6 +3018,11 @@ type RestoreStatus struct {
 	// Progresses is the progress of restore.
 	// +nullable
 	Progresses []Progress `json:"progresses,omitempty"`
+	// ReplicationStep identifies the current phase of replication restore.
+	// Values: "" (not replication), "snapshot-restore", "log-restore".
+	// Set by the controller when creating each phase's Job.
+	// +optional
+	ReplicationStep string `json:"replicationStep,omitempty"`
 }
 
 // +k8s:openapi-gen=true
