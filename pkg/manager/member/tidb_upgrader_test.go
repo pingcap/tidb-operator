@@ -464,6 +464,30 @@ func TestTiDBUpgraderSmoothUpgradeActiveAnnotationSkipsDuplicate(t *testing.T) {
 	g.Expect(isSmoothUpgradePaused(tc)).To(BeTrue())
 }
 
+func TestTiDBUpgraderSmoothUpgradeStaleAnnotationRecovery(t *testing.T) {
+	g := NewGomegaWithT(t)
+	upgrader, tidbControl, podInformer := newTiDBUpgrader()
+	tc := newTidbClusterForTiDBUpgrader()
+	tc.Status.PD.Phase = v1alpha1.NormalPhase
+	tc.Status.TiKV.Phase = v1alpha1.NormalPhase
+	for _, pod := range getTiDBPods() {
+		g.Expect(podInformer.Informer().GetIndexer().Add(pod)).To(Succeed())
+	}
+	oldSet := newStatefulSetForTiDBUpgrader()
+	oldSet.Spec.Template.Spec.Containers[0].Image = "pingcap/tidb:v7.4.0"
+	newSet := oldSet.DeepCopy()
+	newSet.Spec.Template.Spec.Containers[0].Image = "pingcap/tidb:v7.5.0"
+	g.Expect(mngerutils.SetStatefulSetLastAppliedConfigAnnotation(oldSet)).To(Succeed())
+	// stale annotations from a prior upgrade to a different target
+	setSmoothUpgradeAnnotations(tc, "v7.4.0", "v7.4.1")
+
+	err := upgrader.Upgrade(tc, oldSet, newSet)
+	g.Expect(err).To(HaveOccurred()) // requeue error
+	g.Expect(tidbControl.FinishUpgradeOrdinals).To(Equal([]int32{0}))
+	g.Expect(tidbControl.StartUpgradeOrdinals).To(BeEmpty())
+	g.Expect(isSmoothUpgradePaused(tc)).To(BeFalse())
+}
+
 func TestTiDBUpgraderSmoothUpgradeSkipsNonSwitchPairs(t *testing.T) {
 	g := NewGomegaWithT(t)
 	upgrader, tidbControl, podInformer := newTiDBUpgrader()

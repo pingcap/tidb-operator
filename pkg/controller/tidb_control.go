@@ -170,13 +170,13 @@ func (c *defaultTiDBControl) upgrade(tc *v1alpha1.TidbCluster, ordinal int32, op
 	}
 	bodyText := string(body)
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("tidb upgrade %s error response %q:%v URL: %s", op, bodyText, res.StatusCode, url)
+		return fmt.Errorf("tidb upgrade %s error response %d %q URL: %s", op, res.StatusCode, bodyText, url)
 	}
 	successText := normalizeTiDBUpgradeResponse(body)
 	if successText == tidbUpgradeSuccessBody || successText == duplicateSuccessBody {
 		return nil
 	}
-	return fmt.Errorf("tidb upgrade %s unexpected response %q:%v URL: %s", op, bodyText, res.StatusCode, url)
+	return fmt.Errorf("tidb upgrade %s unexpected response %d %q URL: %s", op, res.StatusCode, bodyText, url)
 }
 
 func normalizeTiDBUpgradeResponse(body []byte) string {
