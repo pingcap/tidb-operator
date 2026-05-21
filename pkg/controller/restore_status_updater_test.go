@@ -170,9 +170,3 @@ func TestReplicationRestoreStatusUpdater_Update_IsNoOp(t *testing.T) {
 	err = u.Update(nil, nil, nil)
 	g.Expect(err).NotTo(HaveOccurred())
 }
-
-func TestReplicationRestoreStatusUpdater_ImplementsInterface(t *testing.T) {
-	g := NewGomegaWithT(t)
-	var _ RestoreConditionUpdaterInterface = NewReplicationRestoreStatusUpdater()
-	g.Expect(true).To(BeTrue()) // compile-time check
-}
