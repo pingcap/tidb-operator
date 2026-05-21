@@ -3521,6 +3521,7 @@ var _ = ginkgo.Describe("TiDBCluster", func() {
 	})
 
 	ginkgo.Context("[TiDBCluster: Smooth Upgrade DDL Pause]", func() {
+		// These must match pkg/manager/member/smooth_upgrade.go ann* constants.
 		const (
 			annSmoothUpgradeDDLPaused     = "tidb.pingcap.com/smooth-upgrade-ddl-paused"
 			annSmoothUpgradeSourceVersion = "tidb.pingcap.com/smooth-upgrade-source-version"

@@ -82,6 +82,23 @@ func TestSmoothUpgradeAnnotations(t *testing.T) {
 	g.Expect(tc.Annotations).NotTo(HaveKey(annSmoothUpgradeSourceVersion))
 }
 
+func TestImageTag(t *testing.T) {
+	g := NewGomegaWithT(t)
+	cases := []struct {
+		image string
+		want  string
+	}{
+		{"pingcap/tidb:v7.5.0", "v7.5.0"},
+		{"pingcap/tidb@sha256:abc123", ""},
+		{"pingcap/tidb", ""},
+		{"pingcap/tidb:", ""},
+		{"", ""},
+	}
+	for _, c := range cases {
+		g.Expect(imageTag(c.image)).To(Equal(c.want), "image=%q", c.image)
+	}
+}
+
 func smoothUpgradeStatefulSet(image string) *apps.StatefulSet {
 	return &apps.StatefulSet{Spec: apps.StatefulSetSpec{Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: v1alpha1.TiDBMemberType.String(), Image: image}}}}}}
 }
