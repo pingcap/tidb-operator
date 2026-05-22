@@ -183,13 +183,6 @@ func setTiCISpecDefault(tc *v1alpha1.TidbCluster) {
 		tc.Spec.TiCI.Worker = &v1alpha1.TiCIWorkerSpec{}
 	}
 
-	if tc.Spec.TiCI.Meta.Replicas == 0 {
-		tc.Spec.TiCI.Meta.Replicas = 1
-	}
-	if tc.Spec.TiCI.Worker.Replicas == 0 {
-		tc.Spec.TiCI.Worker.Replicas = 1
-	}
-
 	if len(tc.Spec.Version) > 0 || tc.Spec.TiCI.Meta.Version != nil {
 		if tc.Spec.TiCI.Meta.BaseImage == "" {
 			tc.Spec.TiCI.Meta.BaseImage = defaultTiCIImage
