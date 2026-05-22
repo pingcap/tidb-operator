@@ -48,6 +48,8 @@ const (
 	// replicationPiTRConcurrency is the parallelism BR uses when
 	// applying compacted log files. Spec §6.
 	replicationPiTRConcurrency = 1024
+
+	replicationMetadataDownloadBatchSize = 512
 )
 
 // replicationBRFlags returns the BR command-line flags that are
@@ -60,9 +62,10 @@ func replicationBRFlags(phase int) []string {
 		return nil
 	}
 	return []string{
-		fmt.Sprintf("--replication-storage-phase=%d", phase),
+		fmt.Sprintf("--restore-phase=%d", phase),
 		fmt.Sprintf("--replication-status-sub-prefix=%s", replicationStatusSubPrefix),
 		fmt.Sprintf("--pitr-concurrency=%d", replicationPiTRConcurrency),
+		fmt.Sprintf("--metadata-download-batch-size=%d", replicationMetadataDownloadBatchSize),
 		"--retain-latest-mvcc-version",
 	}
 }
