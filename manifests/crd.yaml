@@ -25488,6 +25488,15 @@ spec:
                 enum:
                 - afterFailed
                 type: string
+              replicationConfig:
+                properties:
+                  compactBackupName:
+                    type: string
+                  waitTimeout:
+                    type: string
+                required:
+                - compactBackupName
+                type: object
               resources:
                 properties:
                   claims:
@@ -25658,6 +25667,8 @@ spec:
                   type: object
                 nullable: true
                 type: array
+              replicationStep:
+                type: string
               timeCompleted:
                 format: date-time
                 nullable: true
