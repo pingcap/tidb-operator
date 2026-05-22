@@ -20,6 +20,7 @@ import (
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/compact/options"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/constants"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/util"
+	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	informers "github.com/pingcap/tidb-operator/pkg/client/informers/externalversions"
 	"github.com/pingcap/tidb-operator/pkg/controller"
 	"github.com/spf13/cobra"
@@ -55,7 +56,7 @@ func runCompact(compactOpts options.CompactOpts, kubecfg string) error {
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(cli, constants.ResyncDuration, options...)
 	recorder := util.NewEventRecorder(kubeCli, "compact-manager")
 	compactInformer := informerFactory.Pingcap().V1alpha1().CompactBackups()
-	statusUpdater := controller.NewCompactStatusUpdater(recorder, compactInformer.Lister(), cli)
+	var statusUpdater controller.CompactStatusUpdaterInterface = controller.NewCompactStatusUpdater(recorder, compactInformer.Lister(), cli)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -63,6 +64,13 @@ func runCompact(compactOpts options.CompactOpts, kubecfg string) error {
 
 	// waiting for the shared informer's store has synced.
 	cache.WaitForCacheSync(ctx.Done(), compactInformer.Informer().HasSynced)
+
+	// In sharded mode wrap the updater so per-pod OnProgress/OnFinish don't race on CR
+	// status; terminal writes are owned by the controller observing the Indexed Job.
+	if cb, err := compactInformer.Lister().CompactBackups(compactOpts.Namespace).Get(compactOpts.ResourceName); err == nil &&
+		cb.Spec.Mode == v1alpha1.CompactModeSharded {
+		statusUpdater = controller.NewShardedCompactStatusUpdater(statusUpdater)
+	}
 
 	// klog.Infof("start to process backup %s", compactOpts.String())
 	cm := compact.NewManager(compactInformer.Lister(), statusUpdater, compactOpts)
