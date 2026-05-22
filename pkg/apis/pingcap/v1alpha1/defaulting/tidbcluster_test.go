@@ -79,6 +79,33 @@ func TestSetTidbSpecDefault(t *testing.T) {
 
 }
 
+func TestSetTiCISpecDefaultPreservesZeroReplicas(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	tc := &v1alpha1.TidbCluster{
+		Spec: v1alpha1.TidbClusterSpec{
+			TiCI: &v1alpha1.TiCISpec{},
+		},
+	}
+	setTiCISpecDefault(tc)
+	g.Expect(tc.Spec.TiCI.Meta).ShouldNot(BeNil())
+	g.Expect(tc.Spec.TiCI.Meta.Replicas).Should(Equal(int32(0)))
+	g.Expect(tc.Spec.TiCI.Worker).ShouldNot(BeNil())
+	g.Expect(tc.Spec.TiCI.Worker.Replicas).Should(Equal(int32(0)))
+
+	tc = &v1alpha1.TidbCluster{
+		Spec: v1alpha1.TidbClusterSpec{
+			TiCI: &v1alpha1.TiCISpec{
+				Meta:   &v1alpha1.TiCIMetaSpec{Replicas: 2},
+				Worker: &v1alpha1.TiCIWorkerSpec{Replicas: 3},
+			},
+		},
+	}
+	setTiCISpecDefault(tc)
+	g.Expect(tc.Spec.TiCI.Meta.Replicas).Should(Equal(int32(2)))
+	g.Expect(tc.Spec.TiCI.Worker.Replicas).Should(Equal(int32(3)))
+}
+
 func newTidbCluster() *v1alpha1.TidbCluster {
 	return &v1alpha1.TidbCluster{
 		Spec: v1alpha1.TidbClusterSpec{
