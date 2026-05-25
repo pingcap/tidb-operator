@@ -27,7 +27,7 @@ spec:
       name: Desired
       type: string
     - jsonPath: .status.readyReplicas
-      name: Ready
+      name: ReadyReplicas
       type: string
     - jsonPath: .status.updatedReplicas
       name: Updated
