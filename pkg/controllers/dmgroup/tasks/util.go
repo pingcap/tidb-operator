@@ -14,8 +14,10 @@
 
 package tasks
 
-import "fmt"
+import (
+	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
+)
 
 func InternalServiceName(groupName string) string {
-	return fmt.Sprintf("%s-dm-master", groupName)
+	return coreutil.DMGroupInternalServiceName(groupName)
 }

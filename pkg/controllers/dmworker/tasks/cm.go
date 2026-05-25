@@ -16,7 +16,6 @@ package tasks
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
@@ -40,9 +39,15 @@ func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 		}
 
 		dw := state.DMWorker()
-		dmMasterSvcName := fmt.Sprintf("%s-dm-master", dw.Spec.DMGroupRef.Name)
+
+		dmg := &v1alpha1.DMGroup{}
+		if err := c.Get(ctx, client.ObjectKey{Name: dw.Spec.DMGroupRef.Name, Namespace: dw.Namespace}, dmg); err != nil {
+			return task.Fail().With("cannot get dmgroup for dm-worker config: %v", err)
+		}
+
+		dmMasterSvcName := coreutil.DMGroupInternalServiceName(dw.Spec.DMGroupRef.Name)
 		dmMasterAddr := coreutil.ServiceHost(state.Cluster(), dmMasterSvcName) +
-			":" + strconv.Itoa(int(v1alpha1.DefaultDMPort))
+			":" + strconv.Itoa(int(coreutil.DMGroupPort(dmg)))
 
 		if err := cfg.Overlay(state.Cluster(), dw, dmMasterAddr); err != nil {
 			return task.Fail().With("cannot generate dm-worker config: %v", err)

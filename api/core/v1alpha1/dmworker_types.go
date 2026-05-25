@@ -61,7 +61,7 @@ type DMWorkerGroupList struct {
 // +kubebuilder:printcolumn:name="Cluster",type=string,JSONPath=`.spec.cluster.name`
 // +kubebuilder:printcolumn:name="DMGroup",type=string,JSONPath=`.spec.dmGroupRef.name`
 // +kubebuilder:printcolumn:name="Desired",type=string,JSONPath=`.spec.replicas`
-// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.readyReplicas`
+// +kubebuilder:printcolumn:name="ReadyReplicas",type=string,JSONPath=`.status.readyReplicas`
 // +kubebuilder:printcolumn:name="Updated",type=string,JSONPath=`.status.updatedReplicas`
 // +kubebuilder:printcolumn:name="UpdateRevision",type=string,JSONPath=`.status.updateRevision`
 // +kubebuilder:printcolumn:name="CurrentRevision",type=string,JSONPath=`.status.currentRevision`

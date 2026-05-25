@@ -16,10 +16,9 @@ package tasks
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
+	"time"
 
 	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
@@ -30,9 +29,9 @@ import (
 
 type ReconcileContext struct {
 	State
-
-	MemberID string
 }
+
+const healthCheckTimeout = 5 * time.Second
 
 func TaskContextInfoFromDM(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("ContextInfoFromDM", func(ctx context.Context) task.Result {
@@ -49,13 +48,14 @@ func TaskContextInfoFromDM(state *ReconcileContext, c client.Client) task.Task {
 				return task.Fail().With("cannot get tls config from secret: %w", err)
 			}
 			httpClient = &http.Client{
+				Timeout: healthCheckTimeout,
 				Transport: &http.Transport{
 					TLSClientConfig: tlsConfig,
 				},
 			}
 			scheme = "https"
 		} else {
-			httpClient = http.DefaultClient
+			httpClient = &http.Client{Timeout: healthCheckTimeout}
 		}
 
 		url := fmt.Sprintf("%s://%s/api/v1/cluster/info", scheme, addr)
@@ -74,21 +74,7 @@ func TaskContextInfoFromDM(state *ReconcileContext, c client.Client) task.Task {
 			return task.Complete().With("dm-master returned non-200 status: %d", resp.StatusCode)
 		}
 
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return task.Complete().With("cannot read dm-master cluster info response: %v", err)
-		}
-
-		var info struct {
-			Name string `json:"name"`
-		}
-		if err := json.Unmarshal(body, &info); err != nil {
-			return task.Complete().With("cannot parse dm-master cluster info response: %v", err)
-		}
-
 		state.SetHealthy()
-		state.MemberID = info.Name
-
 		return task.Complete().With("get info from dm-master")
 	})
 }

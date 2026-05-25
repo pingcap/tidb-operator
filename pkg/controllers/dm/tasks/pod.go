@@ -102,16 +102,19 @@ func newPod(cluster *v1alpha1.Cluster, dm *v1alpha1.DM) *corev1.Pod {
 	})
 
 	dataMountPath := v1alpha1.VolumeMountDMDataDefaultPath
+	var dataSubPath string
 	for i := range dm.Spec.DataVolume.Mounts {
 		mount := &dm.Spec.DataVolume.Mounts[i]
 		if mount.Type == v1alpha1.VolumeMountTypeDMData && mount.MountPath != "" {
 			dataMountPath = mount.MountPath
+			dataSubPath = mount.SubPath
 			break
 		}
 	}
 	mounts = append(mounts, corev1.VolumeMount{
 		Name:      dataVolName,
 		MountPath: dataMountPath,
+		SubPath:   dataSubPath,
 	})
 
 	// Additional volumes from dm.Spec.Volumes

@@ -103,16 +103,19 @@ func newPod(cluster *v1alpha1.Cluster, dw *v1alpha1.DMWorker) *corev1.Pod {
 		})
 
 		relayMountPath := v1alpha1.VolumeMountDMWorkerRelayDefaultPath
+		var relaySubPath string
 		for i := range relayVol.Mounts {
 			mount := &relayVol.Mounts[i]
 			if mount.Type == v1alpha1.VolumeMountTypeDMWorkerRelay && mount.MountPath != "" {
 				relayMountPath = mount.MountPath
+				relaySubPath = mount.SubPath
 				break
 			}
 		}
 		mounts = append(mounts, corev1.VolumeMount{
 			Name:      relayVolName,
 			MountPath: relayMountPath,
+			SubPath:   relaySubPath,
 		})
 	}
 

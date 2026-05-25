@@ -64,7 +64,7 @@ spec:
         name: relay
         storage: 1Gi
         mounts:
-        - type: dm-worker-relay
+        - type: relay-dir
 `)
 	obj := map[string]any{}
 	if err := yaml.Unmarshal(data, &obj); err != nil {

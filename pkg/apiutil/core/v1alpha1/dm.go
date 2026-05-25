@@ -15,8 +15,14 @@
 package coreutil
 
 import (
+	"fmt"
+
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 )
+
+func DMGroupInternalServiceName(groupName string) string {
+	return fmt.Sprintf("%s-dm-master", groupName)
+}
 
 func DMGroupPort(dmg *v1alpha1.DMGroup) int32 {
 	if dmg.Spec.Template.Spec.Server.Ports.Port != nil {

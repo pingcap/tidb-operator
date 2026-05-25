@@ -42,7 +42,6 @@ func TaskStatus(state *ReconcileContext, c client.Client) task.Task {
 
 		needUpdate = syncSuspendCond(dm) || needUpdate
 
-		needUpdate = compare.SetIfNotEmptyAndChanged(&dm.Status.MemberID, state.MemberID) || needUpdate
 		needUpdate = compare.SetIfChanged(&dm.Status.ObservedGeneration, dm.Generation) || needUpdate
 		needUpdate = compare.SetIfNotEmptyAndChanged(
 			&dm.Status.UpdateRevision,

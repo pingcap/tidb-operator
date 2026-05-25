@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/pingcap/tidb-operator/v2/pkg/apicall"
 	coreutil "github.com/pingcap/tidb-operator/v2/pkg/apiutil/core/v1alpha1"
@@ -29,6 +30,8 @@ import (
 type ReconcileContext struct {
 	State
 }
+
+const healthCheckTimeout = 5 * time.Second
 
 func TaskContextHealthFromDMWorker(state *ReconcileContext, c client.Client) task.Task {
 	return task.NameTaskFunc("ContextHealthFromDMWorker", func(ctx context.Context) task.Result {
@@ -45,13 +48,14 @@ func TaskContextHealthFromDMWorker(state *ReconcileContext, c client.Client) tas
 				return task.Fail().With("cannot get tls config from secret: %w", err)
 			}
 			httpClient = &http.Client{
+				Timeout: healthCheckTimeout,
 				Transport: &http.Transport{
 					TLSClientConfig: tlsConfig,
 				},
 			}
 			scheme = "https"
 		} else {
-			httpClient = http.DefaultClient
+			httpClient = &http.Client{Timeout: healthCheckTimeout}
 		}
 
 		url := fmt.Sprintf("%s://%s/status", scheme, addr)
