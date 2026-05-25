@@ -1,5 +1,9 @@
 # syntax=docker.io/docker/dockerfile:1.8.1@sha256:e87caa74dcb7d46cd820352bfea12591f3dba3ddc4285e19c7dcd13359f7cefd
+<<<<<<< HEAD
 FROM --platform=$BUILDPLATFORM golang:1.25.10@sha256:69a7b8cc06cfb629da20d23be8f8f359a1f823481ab1a14b4e1ece153ea1d1c0 AS builder
+=======
+FROM --platform=$BUILDPLATFORM golang:1.25.10@sha256:315d6d304226d0180a011ead57af82c9fe16f84fcf0eaa17d11034a53f63fbc4 AS builder
+>>>>>>> 85b708784 (chore(deps): bump golang from `c0a2bd0` to `315d6d3` in /image (#6902))
 
 ARG TARGETPLATFORM
 ARG TARGET
