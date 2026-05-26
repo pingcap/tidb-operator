@@ -101,8 +101,8 @@ func TestTaskUpdater(t *testing.T) {
 				dwg.Spec.Template.Spec.Version = "v8.5.3"
 				dwg.Status.Version = "v8.5.2"
 			}), nil, dwNewRevision),
-			wantStatus: task.SRetry,
-			wantDWs:    0,
+			wantStatus: task.SWait,
+			wantDWs:    1,
 		},
 	}
 

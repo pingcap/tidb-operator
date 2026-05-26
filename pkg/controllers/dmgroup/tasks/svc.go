@@ -123,7 +123,7 @@ func newInternalService(dmg *v1alpha1.DMGroup) *corev1.Service {
 					Port:     v1alpha1.DefaultDMPort,
 					Protocol: corev1.ProtocolTCP,
 					// TargetPort by name routes to the pod's named port, keeping this
-					// ClusterIP port stable even when spec.server.ports.port is customised.
+					// ClusterIP port stable even when spec.server.ports.port is customized.
 					TargetPort: intstr.FromString(v1alpha1.DMPortName),
 				},
 				{
