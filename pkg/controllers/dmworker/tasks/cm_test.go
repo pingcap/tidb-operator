@@ -85,7 +85,7 @@ func TestTaskConfigMap(t *testing.T) {
 			t.Parallel()
 
 			ctx := context.Background()
-			fc := client.NewFakeClient(c.state.DMWorker(), c.state.Cluster(), newTestDMGroup())
+			fc := client.NewFakeClient(c.state.DMWorker(), c.state.Cluster())
 			for _, obj := range c.objs {
 				require.NoError(t, fc.Apply(ctx, obj))
 			}
@@ -128,8 +128,4 @@ func newTestDMWorker(name string, opts ...func(*v1alpha1.DMWorker)) *v1alpha1.DM
 		opt(dw)
 	}
 	return dw
-}
-
-func newTestDMGroup() *v1alpha1.DMGroup {
-	return fake.FakeObj[v1alpha1.DMGroup]("dmg")
 }

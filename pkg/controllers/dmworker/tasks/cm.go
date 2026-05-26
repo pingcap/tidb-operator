@@ -39,15 +39,11 @@ func TaskConfigMap(state *ReconcileContext, c client.Client) task.Task {
 		}
 
 		dw := state.DMWorker()
-
-		dmg := &v1alpha1.DMGroup{}
-		if err := c.Get(ctx, client.ObjectKey{Name: dw.Spec.DMGroupRef.Name, Namespace: dw.Namespace}, dmg); err != nil {
-			return task.Fail().With("cannot get dmgroup for dm-worker config: %v", err)
-		}
-
 		dmMasterSvcName := coreutil.DMGroupInternalServiceName(dw.Spec.DMGroupRef.Name)
+		// The internal DM master service always listens on DefaultDMPort regardless of
+		// spec.server.ports.port, so the join address is stable without watching DMGroup.
 		dmMasterAddr := coreutil.ServiceHost(state.Cluster(), dmMasterSvcName) +
-			":" + strconv.Itoa(int(coreutil.DMGroupPort(dmg)))
+			":" + strconv.Itoa(int(v1alpha1.DefaultDMPort))
 
 		if err := cfg.Overlay(state.Cluster(), dw, dmMasterAddr); err != nil {
 			return task.Fail().With("cannot generate dm-worker config: %v", err)

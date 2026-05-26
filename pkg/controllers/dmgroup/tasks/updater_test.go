@@ -101,8 +101,8 @@ func TestTaskUpdater(t *testing.T) {
 				dmg.Spec.Template.Spec.Version = "v8.5.3"
 				dmg.Status.Version = "v8.5.2"
 			}), nil, dmNewRevision),
-			wantStatus: task.SRetry,
-			wantDMs:    0,
+			wantStatus: task.SWait,
+			wantDMs:    1,
 		},
 	}
 
