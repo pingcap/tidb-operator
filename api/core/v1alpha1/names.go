@@ -67,6 +67,8 @@ const (
 	ContainerNameRouter          = "router"
 	ContainerNameResourceManager = "resource-manager"
 	ContainerNameTiProxy         = "tiproxy"
+	ContainerNameDMMaster        = "dm-master"
+	ContainerNameDMWorker        = "dm-worker"
 	// Deprecated: use ContainerNameScheduling
 	ContainerNameScheduler = "scheduler"
 
@@ -105,6 +107,8 @@ const (
 	DirPathConfigRouter          = "/etc/router"
 	DirPathConfigResourceManager = "/etc/resource-manager"
 	DirPathConfigTiProxy         = "/etc/tiproxy"
+	DirPathConfigDMMaster        = "/etc/dm-master"
+	DirPathConfigDMWorker        = "/etc/dm-worker"
 	// Deprecated: use DirPathConfigScheduling
 	DirPathConfigScheduler = "/etc/scheduler"
 
@@ -136,6 +140,8 @@ const (
 	DirPathClusterTLSRouter          = "/var/lib/router-tls"
 	DirPathClusterTLSResourceManager = "/var/lib/resource-manager-tls"
 	DirPathClusterTLSTiProxy         = "/var/lib/tiproxy-tls"
+	DirPathClusterTLSDMMaster        = "/var/lib/dm-master-tls"
+	DirPathClusterTLSDMWorker        = "/var/lib/dm-worker-tls"
 	// Deprecated: use DirPathClusterTLSScheduling
 	DirPathClusterTLSScheduler = "/var/lib/scheduler-tls"
 

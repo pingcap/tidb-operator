@@ -1,0 +1,28 @@
+apiVersion: core.pingcap.com/v1alpha1
+kind: DMGroup
+metadata:
+  name: dm
+  labels:
+    pingcap.com/group: dm
+    pingcap.com/component: dm-master
+    pingcap.com/cluster: basic
+spec:
+  cluster:
+    name: basic
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        author: pingcap
+    spec:
+      version: v8.5.2
+      resources:
+        cpu: "1"
+        memory: 2Gi
+      config: |
+        log-level = "info"
+      dataVolume:
+        name: data
+        storage: 10Gi
+        mounts:
+        - type: data

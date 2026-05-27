@@ -1,0 +1,47 @@
+// Copyright 2024 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package waiter
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"k8s.io/apimachinery/pkg/util/errors"
+
+	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
+	"github.com/pingcap/tidb-operator/v2/pkg/client"
+)
+
+func WaitForDMWorkersHealthy(ctx context.Context, c client.Client, dwg *v1alpha1.DMWorkerGroup, timeout time.Duration) error {
+	list := v1alpha1.DMWorkerList{}
+	return WaitForList(ctx, c, &list, func() error {
+		errs := []error{}
+		if len(list.Items) != int(*dwg.Spec.Replicas) {
+			errs = append(errs, fmt.Errorf("dmworker %s/%s replicas %d not equal to %d", dwg.Namespace, dwg.Name, len(list.Items), *dwg.Spec.Replicas))
+		}
+		for i := range list.Items {
+			dw := &list.Items[i]
+			if err := checkInstanceStatus(v1alpha1.LabelValComponentDMWorker, dw.Name, dw.Namespace, dw.Generation, dw.Status.CommonStatus); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		return errors.NewAggregate(errs)
+	}, timeout, client.InNamespace(dwg.Namespace), client.MatchingLabels{
+		v1alpha1.LabelKeyCluster:   dwg.Spec.Cluster.Name,
+		v1alpha1.LabelKeyGroup:     dwg.Name,
+		v1alpha1.LabelKeyComponent: v1alpha1.LabelValComponentDMWorker,
+	})
+}

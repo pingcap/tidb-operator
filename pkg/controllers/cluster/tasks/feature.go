@@ -117,6 +117,16 @@ func (t *TaskFeatureGates) Sync(ctx task.Context[ReconcileContext]) task.Result 
 			return task.Fail().With("can't update feature gates for tikv worker group %s/%s: %w", wg.Namespace, wg.Name, err)
 		}
 	}
+	for _, dmg := range rtx.DMGroups {
+		if err := patchFeatures[scope.DMGroup](ctx, t.Client, dmg, fs); err != nil {
+			return task.Fail().With("can't update feature gates for dm group %s/%s: %w", dmg.Namespace, dmg.Name, err)
+		}
+	}
+	for _, dwg := range rtx.DMWorkerGroups {
+		if err := patchFeatures[scope.DMWorkerGroup](ctx, t.Client, dwg, fs); err != nil {
+			return task.Fail().With("can't update feature gates for dm worker group %s/%s: %w", dwg.Namespace, dwg.Name, err)
+		}
+	}
 
 	return task.Complete().With("features of all groups are updated")
 }

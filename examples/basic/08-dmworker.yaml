@@ -1,0 +1,30 @@
+apiVersion: core.pingcap.com/v1alpha1
+kind: DMWorkerGroup
+metadata:
+  name: dmworker
+  labels:
+    pingcap.com/group: dmworker
+    pingcap.com/component: dm-worker
+    pingcap.com/cluster: basic
+spec:
+  cluster:
+    name: basic
+  dmGroupRef:
+    name: dm
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        author: pingcap
+    spec:
+      version: v8.5.2
+      resources:
+        cpu: "1"
+        memory: 2Gi
+      config: |
+        log-level = "info"
+      relayVolume:
+        name: relay
+        storage: 20Gi
+        mounts:
+        - type: relay-dir

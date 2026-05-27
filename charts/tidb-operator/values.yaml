@@ -104,6 +104,10 @@ crds:
 - tibrgcs.br.pingcap.com
 - tibrs.br.pingcap.com
 - clusters.core.pingcap.com
+- dmgroups.core.pingcap.com
+- dms.core.pingcap.com
+- dmworkergroups.core.pingcap.com
+- dmworkers.core.pingcap.com
 - pdgroups.core.pingcap.com
 - pds.core.pingcap.com
 - resourcemanagergroups.core.pingcap.com

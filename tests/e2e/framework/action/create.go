@@ -121,6 +121,38 @@ func MustCreateTiCDC(
 	return cg
 }
 
+func MustCreateDM(
+	ctx context.Context,
+	f *framework.Framework,
+	o *desc.Options,
+	ps ...data.GroupPatch[*v1alpha1.DMGroup],
+) *v1alpha1.DMGroup {
+	dmg := data.NewDMGroup(
+		f.Namespace.Name,
+		desc.DMPatches(o, ps...)...,
+	)
+	ginkgo.By("Creating a dm group")
+	f.Must(f.Client.Create(ctx, dmg))
+
+	return dmg
+}
+
+func MustCreateDMWorker(
+	ctx context.Context,
+	f *framework.Framework,
+	o *desc.Options,
+	ps ...data.GroupPatch[*v1alpha1.DMWorkerGroup],
+) *v1alpha1.DMWorkerGroup {
+	dwg := data.NewDMWorkerGroup(
+		f.Namespace.Name,
+		desc.DMWorkerPatches(o, ps...)...,
+	)
+	ginkgo.By("Creating a dm worker group")
+	f.Must(f.Client.Create(ctx, dwg))
+
+	return dwg
+}
+
 func MustCreateTiKVWorker(
 	ctx context.Context,
 	f *framework.Framework,

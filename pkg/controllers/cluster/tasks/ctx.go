@@ -47,6 +47,8 @@ type ReconcileContext struct {
 	SchedulerGroups       []*v1alpha1.SchedulerGroup
 	TiProxyGroups         []*v1alpha1.TiProxyGroup
 	TiKVWorkerGroups      []*v1alpha1.TiKVWorkerGroup
+	DMGroups              []*v1alpha1.DMGroup
+	DMWorkerGroups        []*v1alpha1.DMWorkerGroup
 }
 
 func (ctx *ReconcileContext) Self() *ReconcileContext {
@@ -162,6 +164,18 @@ func (t *TaskContext) Sync(ctx task.Context[ReconcileContext]) task.Result {
 		return task.Fail().With("can't list tikv worker groups: %w", err)
 	}
 	rtx.TiKVWorkerGroups = wgs
+
+	dmgs, err := apicall.ListGroups[scope.DMGroup](ctx, t.Client, ns, name)
+	if err != nil {
+		return task.Fail().With("can't list dm groups: %w", err)
+	}
+	rtx.DMGroups = dmgs
+
+	dwgs, err := apicall.ListGroups[scope.DMWorkerGroup](ctx, t.Client, ns, name)
+	if err != nil {
+		return task.Fail().With("can't list dm worker groups: %w", err)
+	}
+	rtx.DMWorkerGroups = dwgs
 
 	return task.Complete().With("new context completed")
 }

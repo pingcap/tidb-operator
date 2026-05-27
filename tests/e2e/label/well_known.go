@@ -22,13 +22,15 @@ import (
 
 var (
 	// Components
-	Cluster = ginkgo.Label("c:Cluster")
-	PD      = ginkgo.Label("c:PD")
-	TiDB    = ginkgo.Label("c:TiDB")
-	TiKV    = ginkgo.Label("c:TiKV")
-	TiFlash = ginkgo.Label("c:TiFlash")
-	TiCDC   = ginkgo.Label("c:TiCDC")
-	TiProxy = ginkgo.Label("c:TiProxy")
+	Cluster  = ginkgo.Label("c:Cluster")
+	PD       = ginkgo.Label("c:PD")
+	TiDB     = ginkgo.Label("c:TiDB")
+	TiKV     = ginkgo.Label("c:TiKV")
+	TiFlash  = ginkgo.Label("c:TiFlash")
+	TiCDC    = ginkgo.Label("c:TiCDC")
+	TiProxy  = ginkgo.Label("c:TiProxy")
+	DM       = ginkgo.Label("c:DM")
+	DMWorker = ginkgo.Label("c:DMWorker")
 
 	// Priority
 	P0 = ginkgo.Label("P0")

@@ -51,6 +51,8 @@ var allMainContainers = map[string]struct{}{
 	v1alpha1.ContainerNameScheduling: {},
 	v1alpha1.ContainerNameTiProxy:    {},
 	v1alpha1.ContainerNameTiKVWorker: {},
+	v1alpha1.ContainerNameDMMaster:   {},
+	v1alpha1.ContainerNameDMWorker:   {},
 }
 
 // IsMainContainer checks whether the container is a main container

@@ -45,6 +45,8 @@ const (
 	ComponentRouter          Component = "router"
 	ComponentResourceManager Component = "resource-manager"
 	ComponentTiProxy         Component = "tiproxy"
+	ComponentDMMaster        Component = "dm-master"
+	ComponentDMWorker        Component = "dm-worker"
 	// Deprecated: use ComponentScheduling
 	ComponentScheduler Component = "scheduler"
 )

@@ -108,6 +108,14 @@ func TiCDCPatches(o *Options, ps ...data.GroupPatch[*v1alpha1.TiCDCGroup]) []dat
 	return GroupPatches[scope.TiCDCGroup](o, ps...)
 }
 
+func DMPatches(o *Options, ps ...data.GroupPatch[*v1alpha1.DMGroup]) []data.GroupPatch[*v1alpha1.DMGroup] {
+	return GroupPatches[scope.DMGroup](o, ps...)
+}
+
+func DMWorkerPatches(o *Options, ps ...data.GroupPatch[*v1alpha1.DMWorkerGroup]) []data.GroupPatch[*v1alpha1.DMWorkerGroup] {
+	return GroupPatches[scope.DMWorkerGroup](o, ps...)
+}
+
 func TiKVWorkerPatches(o *Options, ps ...data.GroupPatch[*v1alpha1.TiKVWorkerGroup]) []data.GroupPatch[*v1alpha1.TiKVWorkerGroup] {
 	if o.NextGen {
 		ps = append(ps,
