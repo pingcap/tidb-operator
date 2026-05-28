@@ -16257,6 +16257,13 @@ func schema_pkg_apis_pingcap_v1alpha1_TidbMonitorSpec(ref common.ReferenceCallba
 							Format:      "",
 						},
 					},
+					"automountServiceAccountToken": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AutomountServiceAccountToken indicates whether the service account token should be automatically mounted on monitor pods. When set to false, the operator mounts a projected token volume so containers can still reach the Kubernetes API.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 				Required: []string{"prometheus", "reloader", "initializer"},
 			},
