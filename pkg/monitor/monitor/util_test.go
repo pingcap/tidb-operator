@@ -22,6 +22,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
+	"github.com/pingcap/tidb-operator/pkg/util"
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -415,6 +416,74 @@ func TestGetMonitorServiceAccount(t *testing.T) {
 						},
 					},
 				},
+			},
+		},
+		{
+			name: "automount-false",
+			monitor: v1alpha1.TidbMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbMonitorSpec{
+					AutomountServiceAccountToken: pointer.BoolPtr(false),
+				},
+			},
+			expected: &corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-monitor",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "foo",
+						"app.kubernetes.io/component":  "monitor",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "pingcap.com/v1alpha1",
+							Kind:               "TidbMonitor",
+							Name:               "foo",
+							Controller:         pointer.BoolPtr(true),
+							BlockOwnerDeletion: pointer.BoolPtr(true),
+						},
+					},
+				},
+				AutomountServiceAccountToken: pointer.BoolPtr(false),
+			},
+		},
+		{
+			name: "automount-true",
+			monitor: v1alpha1.TidbMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "ns",
+				},
+				Spec: v1alpha1.TidbMonitorSpec{
+					AutomountServiceAccountToken: pointer.BoolPtr(true),
+				},
+			},
+			expected: &corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-monitor",
+					Namespace: "ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":       "tidb-cluster",
+						"app.kubernetes.io/managed-by": "tidb-operator",
+						"app.kubernetes.io/instance":   "foo",
+						"app.kubernetes.io/component":  "monitor",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "pingcap.com/v1alpha1",
+							Kind:               "TidbMonitor",
+							Name:               "foo",
+							Controller:         pointer.BoolPtr(true),
+							BlockOwnerDeletion: pointer.BoolPtr(true),
+						},
+					},
+				},
+				AutomountServiceAccountToken: pointer.BoolPtr(true),
 			},
 		},
 	}
@@ -1635,4 +1704,63 @@ func TestBuildExternalLabels(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetMonitorStatefulSetSATokenProjection(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	baseMonitor := func() v1alpha1.TidbMonitor {
+		return v1alpha1.TidbMonitor{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "ns"},
+			Spec: v1alpha1.TidbMonitorSpec{
+				Prometheus: v1alpha1.PrometheusSpec{
+					MonitorContainer: v1alpha1.MonitorContainer{
+						BaseImage: "prom/prometheus",
+						Version:   "v2.27.1",
+					},
+				},
+				Reloader: v1alpha1.ReloaderSpec{
+					MonitorContainer: v1alpha1.MonitorContainer{
+						BaseImage: "pingcap/tidb-monitor-reloader",
+						Version:   "v1.0.1",
+					},
+				},
+				Initializer: v1alpha1.InitializerSpec{
+					MonitorContainer: v1alpha1.MonitorContainer{
+						BaseImage: "pingcap/tidb-monitor-initializer",
+						Version:   "v5.4.0",
+					},
+				},
+			},
+		}
+	}
+
+	t.Run("automount-false injects projected volume and mounts into all containers", func(t *testing.T) {
+		monitor := baseMonitor()
+		monitor.Spec.AutomountServiceAccountToken = pointer.BoolPtr(false)
+
+		sa := getMonitorServiceAccount(&monitor)
+		sts, err := getMonitorStatefulSet(sa, nil, &monitor, &v1alpha1.TidbCluster{}, &v1alpha1.DMCluster{}, 0)
+		g.Expect(err).NotTo(HaveOccurred())
+
+		g.Expect(sts.Spec.Template.Spec.Volumes).To(ContainElement(util.SATokenProjectionVolume()))
+
+		mount := util.SATokenProjectionVolumeMount()
+		for _, c := range sts.Spec.Template.Spec.InitContainers {
+			g.Expect(c.VolumeMounts).To(ContainElement(mount), "init container %q missing SA token mount", c.Name)
+		}
+		for _, c := range sts.Spec.Template.Spec.Containers {
+			g.Expect(c.VolumeMounts).To(ContainElement(mount), "container %q missing SA token mount", c.Name)
+		}
+	})
+
+	t.Run("automount-nil does not inject projected volume", func(t *testing.T) {
+		monitor := baseMonitor()
+
+		sa := getMonitorServiceAccount(&monitor)
+		sts, err := getMonitorStatefulSet(sa, nil, &monitor, &v1alpha1.TidbCluster{}, &v1alpha1.DMCluster{}, 0)
+		g.Expect(err).NotTo(HaveOccurred())
+
+		g.Expect(sts.Spec.Template.Spec.Volumes).NotTo(ContainElement(util.SATokenProjectionVolume()))
+	})
 }
