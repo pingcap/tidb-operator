@@ -14,6 +14,7 @@
 package member
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -29,12 +30,32 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 )
+
+const (
+	ticiMetaTiDBAuthHashAnnotation  = "tidb.pingcap.com/tici-meta-tidb-auth-hash"
+	ticiMetaConfigMountPath         = "/etc/tici"
+	ticiMetaConfigTemplateMountPath = "/etc/tici-template"
+	ticiMetaTiDBAuthMountPath       = "/etc/tici-tidb-auth"
+	ticiMetaTiDBAuthFileName        = "tidb-auth"
+	ticiMetaTiDBAuthDefaultUser     = "root"
+	ticiMetaTiDBAuthVolumeName      = "tidb-auth"
+	ticiMetaTiDBAuthRefNotFound     = "TiCIMetaTiDBAuthRefNotFound"
+	ticiMetaTiDBAuthRefKeyNotFound  = "TiCIMetaTiDBAuthRefKeyNotFound"
+)
+
+type tiCIMetaTiDBAuth struct {
+	User       string
+	SecretName string
+	SecretKey  string
+	Hash       string
+}
 
 // ticiMemberManager implements manager.Manager.
 type ticiMemberManager struct {
@@ -208,7 +229,12 @@ func (m *ticiMemberManager) syncTiCIMetaStatefulSet(tc *v1alpha1.TidbCluster) er
 		return err
 	}
 
-	newSts, err := getNewTiCIMetaStatefulSet(tc, cm)
+	tidbAuth, err := m.getTiCIMetaTiDBAuth(tc)
+	if err != nil {
+		return err
+	}
+
+	newSts, err := getNewTiCIMetaStatefulSet(tc, cm, tidbAuth)
 	if err != nil {
 		return err
 	}
@@ -284,10 +310,23 @@ func prepareTiCIRollingUpgrade(newSet, oldSet *appsv1.StatefulSet) {
 	if newSet.Spec.UpdateStrategy.Type != appsv1.RollingUpdateStatefulSetStrategyType {
 		return
 	}
-	needsUpgrade := !templateEqual(newSet, oldSet) || oldSet.Status.CurrentRevision != oldSet.Status.UpdateRevision
+	needsUpgrade := !ticiTemplateEqual(newSet, oldSet) || oldSet.Status.CurrentRevision != oldSet.Status.UpdateRevision
 	if needsUpgrade {
 		mngerutils.SetUpgradePartition(newSet, 0)
 	}
+}
+
+func ticiTemplateEqual(newSet, oldSet *appsv1.StatefulSet) bool {
+	oldStsSpec := appsv1.StatefulSetSpec{}
+	lastAppliedConfig, ok := oldSet.Annotations[LastAppliedConfigAnnotation]
+	if !ok {
+		return false
+	}
+	if err := json.Unmarshal([]byte(lastAppliedConfig), &oldStsSpec); err != nil {
+		return false
+	}
+	return apiequality.Semantic.DeepEqual(oldStsSpec.Template.Spec, newSet.Spec.Template.Spec) &&
+		apiequality.Semantic.DeepEqual(oldStsSpec.Template.Annotations, newSet.Spec.Template.Annotations)
 }
 
 func (m *ticiMemberManager) syncTiCIMetaStatus(tc *v1alpha1.TidbCluster, sts *appsv1.StatefulSet) error {
@@ -399,6 +438,58 @@ func getTiCIMetaConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	return cm, nil
 }
 
+func (m *ticiMemberManager) getTiCIMetaTiDBAuth(tc *v1alpha1.TidbCluster) (*tiCIMetaTiDBAuth, error) {
+	if tc.Spec.TiCI == nil || tc.Spec.TiCI.Meta == nil || tc.Spec.TiCI.Meta.TiDBAuth == nil {
+		return nil, nil
+	}
+
+	authSpec := tc.Spec.TiCI.Meta.TiDBAuth
+	secretRef := authSpec.PasswordSecret
+	if secretRef == nil {
+		return nil, fmt.Errorf("spec.tici.meta.tidbAuth.passwordSecret is required when tidbAuth is set")
+	}
+
+	ns := tc.GetNamespace()
+	user := authSpec.User
+	if user == "" {
+		user = ticiMetaTiDBAuthDefaultUser
+	}
+
+	secret, err := m.deps.SecretLister.Secrets(ns).Get(secretRef.Name)
+	if err != nil {
+		msg := fmt.Sprintf("TiCI meta TiDB auth secret %s/%s is not found", ns, secretRef.Name)
+		if errors.IsNotFound(err) {
+			m.recordTiCIMetaTiDBAuthWarning(tc, ticiMetaTiDBAuthRefNotFound, msg)
+			return nil, controller.RequeueErrorf("%s", msg)
+		}
+		return nil, fmt.Errorf("%s: %v", msg, err)
+	}
+
+	authData, ok := secret.Data[secretRef.Key]
+	if !ok {
+		msg := fmt.Sprintf("TiCI meta TiDB auth secret %s/%s does not contain key %q", ns, secretRef.Name, secretRef.Key)
+		m.recordTiCIMetaTiDBAuthWarning(tc, ticiMetaTiDBAuthRefKeyNotFound, msg)
+		return nil, fmt.Errorf("%s", msg)
+	}
+	authHash, err := mngerutils.Sha256Sum(map[string]string{secretRef.Key: string(authData)})
+	if err != nil {
+		return nil, err
+	}
+
+	return &tiCIMetaTiDBAuth{
+		User:       user,
+		SecretName: secretRef.Name,
+		SecretKey:  secretRef.Key,
+		Hash:       authHash,
+	}, nil
+}
+
+func (m *ticiMemberManager) recordTiCIMetaTiDBAuthWarning(tc *v1alpha1.TidbCluster, reason, msg string) {
+	if m.deps != nil && m.deps.Recorder != nil {
+		m.deps.Recorder.Event(tc, corev1.EventTypeWarning, reason, msg)
+	}
+}
+
 func getTiCIWorkerConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error) {
 	configText, err := buildTiCIWorkerConfig(tc)
 	if err != nil {
@@ -420,7 +511,7 @@ func getTiCIWorkerConfigMap(tc *v1alpha1.TidbCluster) (*corev1.ConfigMap, error)
 	return cm, nil
 }
 
-func getNewTiCIMetaStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (*appsv1.StatefulSet, error) {
+func getNewTiCIMetaStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap, tidbAuth *tiCIMetaTiDBAuth) (*appsv1.StatefulSet, error) {
 	if tc.Spec.TiCI == nil || tc.Spec.TiCI.Meta == nil {
 		return nil, nil
 	}
@@ -433,6 +524,9 @@ func getNewTiCIMetaStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	stsName := controller.TiCIMetaMemberName(tcName)
 	podLabels := util.CombineStringMap(stsLabels, baseSpec.Labels())
 	podAnnotations := util.CombineStringMap(baseSpec.Annotations(), controller.AnnProm(v1alpha1.DefaultTiCIMetaStatusPort, "/metrics"))
+	if tidbAuth != nil && tidbAuth.Hash != "" {
+		podAnnotations[ticiMetaTiDBAuthHashAnnotation] = tidbAuth.Hash
+	}
 	stsAnnotations := getStsAnnotations(tc.Annotations, label.TiCIMetaLabelVal)
 	headlessSvcName := controller.TiCIMetaPeerMemberName(tcName)
 
@@ -442,16 +536,28 @@ func getNewTiCIMetaStatefulSet(tc *v1alpha1.TidbCluster, cm *corev1.ConfigMap) (
 	volMounts = append(volMounts, storageVolMounts...)
 	volMounts = append(volMounts, spec.AdditionalVolumeMounts...)
 
-	configMountPath := "/etc/tici"
 	if cm != nil {
-		volMounts = append(volMounts, corev1.VolumeMount{Name: "config", MountPath: configMountPath})
-		vols = append(vols, corev1.Volume{Name: "config", VolumeSource: corev1.VolumeSource{ConfigMap: &corev1.ConfigMapVolumeSource{
-			LocalObjectReference: corev1.LocalObjectReference{Name: cm.Name},
-			Items:                []corev1.KeyToPath{{Key: "config-file", Path: "tici.toml"}},
-		}}})
+		volMounts = append(volMounts,
+			corev1.VolumeMount{Name: "config", MountPath: ticiMetaConfigTemplateMountPath, ReadOnly: true},
+			corev1.VolumeMount{Name: "runtime-config", MountPath: ticiMetaConfigMountPath},
+		)
+		vols = append(vols,
+			corev1.Volume{Name: "config", VolumeSource: corev1.VolumeSource{ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{Name: cm.Name},
+				Items:                []corev1.KeyToPath{{Key: "config-file", Path: "tici.toml"}},
+			}}},
+			corev1.Volume{Name: "runtime-config", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+		)
+		if tidbAuth != nil {
+			volMounts = append(volMounts, corev1.VolumeMount{Name: ticiMetaTiDBAuthVolumeName, MountPath: ticiMetaTiDBAuthMountPath, ReadOnly: true})
+			vols = append(vols, corev1.Volume{Name: ticiMetaTiDBAuthVolumeName, VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{
+				SecretName: tidbAuth.SecretName,
+				Items:      []corev1.KeyToPath{{Key: tidbAuth.SecretKey, Path: ticiMetaTiDBAuthFileName}},
+			}}})
+		}
 	}
 
-	args := renderTiCIStartArgs(tc, v1alpha1.TiCIMetaMemberType, headlessSvcName)
+	args := renderTiCIMetaStartScript(tc, headlessSvcName, tidbAuth)
 
 	envs := []corev1.EnvVar{
 		{Name: "POD_NAME", ValueFrom: &corev1.EnvVarSource{FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.name"}}},
@@ -690,6 +796,36 @@ func renderTiCIStartArgs(tc *v1alpha1.TidbCluster, memberType v1alpha1.MemberTyp
 	return strings.Join(args, " ")
 }
 
+func renderTiCIMetaStartScript(tc *v1alpha1.TidbCluster, headlessSvcName string, tidbAuth *tiCIMetaTiDBAuth) string {
+	configTemplatePath := fmt.Sprintf("%s/tici.toml", ticiMetaConfigTemplateMountPath)
+	configPath := fmt.Sprintf("%s/tici.toml", ticiMetaConfigMountPath)
+
+	lines := []string{
+		"set -e",
+		fmt.Sprintf("config_template=%q", configTemplatePath),
+		fmt.Sprintf("config_file=%q", configPath),
+	}
+	if tidbAuth != nil {
+		authPath := fmt.Sprintf("%s/%s", ticiMetaTiDBAuthMountPath, ticiMetaTiDBAuthFileName)
+		lines = append(lines,
+			fmt.Sprintf("tidb_auth_user=%q", tidbAuth.User),
+			fmt.Sprintf("tidb_auth_file=%q", authPath),
+			`if [ ! -f "${tidb_auth_file}" ]; then`,
+			`  echo "TiCI TiDB auth file ${tidb_auth_file} is missing" >&2`,
+			`  exit 1`,
+			`fi`,
+			`encoded_tidb_auth=$(od -An -tx1 -v "${tidb_auth_file}" | tr -d ' \n' | sed 's/../%&/g')`,
+			`sed "s#mysql://${tidb_auth_user}@#mysql://${tidb_auth_user}:${encoded_tidb_auth}@#" "${config_template}" > "${config_file}"`,
+		)
+	} else {
+		lines = append(lines,
+			`cp "${config_template}" "${config_file}"`,
+		)
+	}
+	lines = append(lines, renderTiCIStartArgs(tc, v1alpha1.TiCIMetaMemberType, headlessSvcName))
+	return strings.Join(lines, "\n")
+}
+
 func buildTiCIMetaConfig(tc *v1alpha1.TidbCluster) (string, error) {
 	s3, err := buildTiCIS3Config(tc)
 	if err != nil {
@@ -701,9 +837,13 @@ func buildTiCIMetaConfig(tc *v1alpha1.TidbCluster) (string, error) {
 	tidbHost := controller.TiDBMemberName(tc.Name)
 	tidbPort := tc.Spec.TiDB.GetServicePort()
 	pdAddr := fmt.Sprintf("%s:%d", controller.PDMemberName(tc.Name), v1alpha1.DefaultPDClientPort)
+	tidbUser := ticiMetaTiDBAuthDefaultUser
+	if tc.Spec.TiCI != nil && tc.Spec.TiCI.Meta != nil && tc.Spec.TiCI.Meta.TiDBAuth != nil && tc.Spec.TiCI.Meta.TiDBAuth.User != "" {
+		tidbUser = tc.Spec.TiCI.Meta.TiDBAuth.User
+	}
 
 	baseConfig := fmt.Sprintf(`[tidb-server]
-dsns = ["mysql://root@%s:%d"]
+dsns = ["mysql://%s@%s:%d"]
 
 [server]
 pd-addr = "%s"
@@ -716,7 +856,7 @@ secret-key = "%s"
 use-path-style = %t
 bucket = "%s"
 prefix = "%s"
-`, tidbHost, tidbPort, pdAddr, s3.Endpoint, s3.Region, s3.AccessKey, s3.SecretKey, s3.UsePathStyle, s3.Bucket, s3.Prefix)
+`, tidbUser, tidbHost, tidbPort, pdAddr, s3.Endpoint, s3.Region, s3.AccessKey, s3.SecretKey, s3.UsePathStyle, s3.Bucket, s3.Prefix)
 	if tc.Spec.TiCI != nil && tc.Spec.TiCI.Meta != nil {
 		return appendTiCICustomConfig(baseConfig, tc.Spec.TiCI.Meta.Config)
 	}

@@ -1000,6 +1000,11 @@ type TiCIMetaSpec struct {
 	// +optional
 	Config string `json:"config,omitempty"`
 
+	// TiDBAuth configures the TiDB auth used by TiCI meta.
+	// If it is set, passwordSecret must reference the Secret key that stores the TiDB auth data.
+	// +optional
+	TiDBAuth *TiCITiDBAuth `json:"tidbAuth,omitempty"`
+
 	// The storageClassName of the persistent volume for TiCI meta data storage.
 	// Defaults to Kubernetes default storage class.
 	// +optional
@@ -1009,6 +1014,20 @@ type TiCIMetaSpec struct {
 	// If it is set, the change of StorageClassName will be ignored.
 	// +optional
 	VolumeAttributesClassName *string `json:"volumeAttributesClassName,omitempty"`
+}
+
+// TiCITiDBAuth contains TiDB auth settings used by TiCI.
+// +k8s:openapi-gen=true
+type TiCITiDBAuth struct {
+	// User is the TiDB user used by TiCI meta. Defaults to root.
+	// +optional
+	User string `json:"user,omitempty"`
+
+	// PasswordSecret selects the Secret key that stores the TiDB auth data.
+	// The referenced Secret key is required; optional must not be true.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:XValidation:rule="!has(self.optional) || self.optional == false",message="optional must be false because TiCI meta TiDB auth Secret is required"
+	PasswordSecret *corev1.SecretKeySelector `json:"passwordSecret"`
 }
 
 // TiCIWorkerSpec contains details of TiCI worker members
