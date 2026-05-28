@@ -400,8 +400,7 @@ func (c *Controller) makeCompactJob(compact *v1alpha1.CompactBackup) (*batchv1.J
 	}
 	klog.Infof("compact %s/%s use br image %s and tikv image %s", ns, name, brImage, tikvImage)
 
-	//TODO: (Ris)What is the instance here?
-	jobLabels := util.CombineStringMap(label.NewBackup().Instance("Compact-Backup").BackupJob().Backup(name), compact.Labels)
+	jobLabels := util.CombineStringMap(label.NewCompactBackup().Instance(compact.GetInstanceName()).CompactJob().Compact(name), compact.Labels)
 	podLabels := jobLabels
 	jobAnnotations := compact.Annotations
 	podAnnotations := jobAnnotations

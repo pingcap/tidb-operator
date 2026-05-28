@@ -69,6 +69,41 @@ func TestMakeCompactJobDefaultModeUnchanged(t *testing.T) {
 	}
 }
 
+func TestMakeCompactJobUsesCompactBackupLabels(t *testing.T) {
+	c := newTestController(t)
+	compact := newCompactBackupForTest()
+	compact.Labels = map[string]string{
+		"app.kubernetes.io/instance": "daily-log-backup",
+	}
+
+	job, reason, err := c.makeCompactJob(compact)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if reason != "" {
+		t.Fatalf("expected empty reason, got %q", reason)
+	}
+
+	expectedLabels := map[string]string{
+		"app.kubernetes.io/name":       "compact-backup",
+		"app.kubernetes.io/managed-by": "compact-backup-operator",
+		"app.kubernetes.io/instance":   "daily-log-backup",
+		"app.kubernetes.io/component":  "compact-backup",
+		"tidb.pingcap.com/compact":     compact.Name,
+	}
+	for k, v := range expectedLabels {
+		if job.Labels[k] != v {
+			t.Fatalf("expected job label %s=%q, got %q", k, v, job.Labels[k])
+		}
+		if job.Spec.Template.Labels[k] != v {
+			t.Fatalf("expected pod template label %s=%q, got %q", k, v, job.Spec.Template.Labels[k])
+		}
+	}
+	if _, ok := job.Labels["tidb.pingcap.com/backup"]; ok {
+		t.Fatalf("compact job should not use backup label key, got labels %v", job.Labels)
+	}
+}
+
 func TestMakeCompactJobShardedMode(t *testing.T) {
 	c := newTestController(t)
 	compact := newCompactBackupForTest()
