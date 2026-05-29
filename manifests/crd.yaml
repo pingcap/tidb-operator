@@ -7108,6 +7108,10 @@ spec:
                     - ""
                     - sharded
                     type: string
+                  name:
+                    type: string
+                  physicalFileCacheCapacity:
+                    type: string
                   podSecurityContext:
                     properties:
                       fsGroup:
@@ -12623,6 +12627,10 @@ spec:
                 enum:
                 - ""
                 - sharded
+                type: string
+              name:
+                type: string
+              physicalFileCacheCapacity:
                 type: string
               podSecurityContext:
                 properties:
