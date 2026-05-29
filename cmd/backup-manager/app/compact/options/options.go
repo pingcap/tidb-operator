@@ -18,10 +18,12 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/pkg/apis/pingcap/v1alpha1"
 	"github.com/pingcap/tidb-operator/pkg/apis/util/config"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 const (
@@ -30,16 +32,17 @@ const (
 )
 
 type CompactOpts struct {
-	FromTS       uint64
-	UntilTS      uint64
-	Name         string
-	Concurrency  uint64
-	ShardIndex   int
-	ShardCount   int
-	Sharded      bool
-	Namespace    string `json:"namespace"`
-	ResourceName string `json:"resourceName"`
-	TikvVersion  string `json:"tikvVersion"`
+	FromTS                    uint64
+	UntilTS                   uint64
+	Name                      string
+	Concurrency               uint64
+	PhysicalFileCacheCapacity string
+	ShardIndex                int
+	ShardCount                int
+	Sharded                   bool
+	Namespace                 string `json:"namespace"`
+	ResourceName              string `json:"resourceName"`
+	TikvVersion               string `json:"tikvVersion"`
 }
 
 func ParseCompactOptions(compact *v1alpha1.CompactBackup, opts *CompactOpts) error {
@@ -55,8 +58,9 @@ func ParseCompactOptions(compact *v1alpha1.CompactBackup, opts *CompactOpts) err
 	opts.FromTS = startTs
 	opts.UntilTS = endTs
 
-	opts.Name = compact.Name
+	opts.Name = strings.TrimSpace(compact.Spec.Name)
 	opts.Concurrency = uint64(compact.Spec.Concurrency)
+	opts.PhysicalFileCacheCapacity = strings.TrimSpace(compact.Spec.PhysicalFileCacheCapacity)
 	opts.Sharded = compact.Spec.Mode == v1alpha1.CompactModeSharded
 	opts.ShardIndex = 0
 	opts.ShardCount = 0
@@ -95,6 +99,16 @@ func (c *CompactOpts) Verify() error {
 		return errors.Errorf("concurrency %d must be greater than 0", c.Concurrency)
 	}
 	if c.Sharded {
+		if c.PhysicalFileCacheCapacity == "" {
+			return errors.New("physicalFileCacheCapacity must be set when mode is sharded")
+		}
+		capacity, err := resource.ParseQuantity(c.PhysicalFileCacheCapacity)
+		if err != nil {
+			return errors.Annotatef(err, "invalid physicalFileCacheCapacity %q", c.PhysicalFileCacheCapacity)
+		}
+		if capacity.Sign() <= 0 {
+			return errors.New("physicalFileCacheCapacity must be greater than 0")
+		}
 		if c.ShardCount <= 0 {
 			return errors.Errorf("shard-count %d must be greater than 0", c.ShardCount)
 		}

@@ -56,12 +56,13 @@ func TestBuildCompactArgsShardedMode(t *testing.T) {
 	manager := &Manager{
 		compact: &v1alpha1.CompactBackup{},
 		options: options.CompactOpts{
-			FromTS:      11,
-			UntilTS:     22,
-			Concurrency: 4,
-			Sharded:     true,
-			ShardIndex:  1,
-			ShardCount:  3,
+			FromTS:                    11,
+			UntilTS:                   22,
+			Concurrency:               4,
+			PhysicalFileCacheCapacity: "200G",
+			Sharded:                   true,
+			ShardIndex:                1,
+			ShardCount:                3,
 		},
 	}
 
@@ -74,7 +75,7 @@ func TestBuildCompactArgsShardedMode(t *testing.T) {
 		"--from", "11",
 		"-N", "4",
 		"--cal-shift-ts",
-		"--physical-file-cache-capacity", "150G",
+		"--physical-file-cache-capacity", "200G",
 		"--until", "22",
 		"--shard", "2/3",
 		"--minimal-compaction-size", "0",
@@ -87,12 +88,13 @@ func TestBuildCompactArgsCRRModeShardedUsesCheckpointPrefix(t *testing.T) {
 	manager := &Manager{
 		compact: &v1alpha1.CompactBackup{},
 		options: options.CompactOpts{
-			FromTS:      11,
-			UntilTS:     0,
-			Concurrency: 4,
-			Sharded:     true,
-			ShardIndex:  1,
-			ShardCount:  3,
+			FromTS:                    11,
+			UntilTS:                   0,
+			Concurrency:               4,
+			PhysicalFileCacheCapacity: "200G",
+			Sharded:                   true,
+			ShardIndex:                1,
+			ShardCount:                3,
 		},
 	}
 
@@ -105,7 +107,7 @@ func TestBuildCompactArgsCRRModeShardedUsesCheckpointPrefix(t *testing.T) {
 		"--from", "11",
 		"-N", "4",
 		"--cal-shift-ts",
-		"--physical-file-cache-capacity", "150G",
+		"--physical-file-cache-capacity", "200G",
 		"--crr-checkpoint-prefix", "crr-checkpoint",
 		"--shard", "2/3",
 		"--minimal-compaction-size", "0",
@@ -118,17 +120,34 @@ func TestBuildCompactArgsShardedModeConvertsKubernetesIndexToOneBasedShard(t *te
 	manager := &Manager{
 		compact: &v1alpha1.CompactBackup{},
 		options: options.CompactOpts{
-			FromTS:      11,
-			UntilTS:     22,
-			Concurrency: 4,
-			Sharded:     true,
-			ShardIndex:  0,
-			ShardCount:  3,
+			FromTS:                    11,
+			UntilTS:                   22,
+			Concurrency:               4,
+			PhysicalFileCacheCapacity: "200G",
+			Sharded:                   true,
+			ShardIndex:                0,
+			ShardCount:                3,
 		},
 	}
 
 	args := manager.buildCompactArgs("storage-base64")
 	assertStringSliceContainsPair(t, args, "--shard", "1/3")
+}
+
+func TestBuildCompactArgsPassesNameWhenConfigured(t *testing.T) {
+	manager := &Manager{
+		compact: &v1alpha1.CompactBackup{},
+		options: options.CompactOpts{
+			FromTS:      11,
+			UntilTS:     22,
+			Name:        "compact-task-a",
+			Concurrency: 4,
+		},
+	}
+
+	args := manager.buildCompactArgs("storage-base64")
+
+	assertStringSliceContainsPair(t, args, "--name", "compact-task-a")
 }
 
 func TestSanitizeCompactCommandArgsRedactsStorageBase64Value(t *testing.T) {
@@ -271,11 +290,12 @@ func newShardedCompactBackupForManagerTest() *v1alpha1.CompactBackup {
 			Namespace: "default",
 		},
 		Spec: v1alpha1.CompactSpec{
-			StartTs:     "400036290571534337",
-			EndTs:       "400036290571534338",
-			Concurrency: 4,
-			Mode:        v1alpha1.CompactModeSharded,
-			ShardCount:  &shardCount,
+			StartTs:                   "400036290571534337",
+			EndTs:                     "400036290571534338",
+			Concurrency:               4,
+			Mode:                      v1alpha1.CompactModeSharded,
+			ShardCount:                &shardCount,
+			PhysicalFileCacheCapacity: "200G",
 		},
 	}
 }

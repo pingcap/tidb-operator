@@ -59,6 +59,9 @@ const (
 	// BackupLabelKey is backup key
 	BackupLabelKey string = "tidb.pingcap.com/backup"
 
+	// CompactLabelKey is compact backup key
+	CompactLabelKey string = "tidb.pingcap.com/compact"
+
 	// RestoreLabelKey is restore key
 	RestoreLabelKey string = "tidb.pingcap.com/restore"
 	// RestoreWarmUpLabelKey defines which pod the restore warms up
@@ -224,6 +227,8 @@ const (
 	RestoreWarmUpJobLabelVal string = "warmup"
 	// BackupJobLabelVal is backup job label value
 	BackupJobLabelVal string = "backup"
+	// CompactJobLabelVal is compact backup job label value
+	CompactJobLabelVal string = "compact-backup"
 	// BackupScheduleJobLabelVal is backup schedule job label value
 	BackupScheduleJobLabelVal string = "backup-schedule"
 	// InitJobLabelVal is TiDB initializer job label value
@@ -302,6 +307,14 @@ func NewBackup() Label {
 	return Label{
 		NameLabelKey:      BackupJobLabelVal,
 		ManagedByLabelKey: "backup-operator",
+	}
+}
+
+// NewCompactBackup initialize a new Label for Jobs of compact backup
+func NewCompactBackup() Label {
+	return Label{
+		NameLabelKey:      CompactJobLabelVal,
+		ManagedByLabelKey: "compact-backup-operator",
 	}
 }
 
@@ -419,6 +432,11 @@ func (l Label) BackupJob() Label {
 	return l.Component(BackupJobLabelVal)
 }
 
+// CompactJob assigns compact backup to component key in label
+func (l Label) CompactJob() Label {
+	return l.Component(CompactJobLabelVal)
+}
+
 // RestoreJob assigns restore to component key in label
 func (l Label) RestoreJob() Label {
 	return l.Component(RestoreJobLabelVal)
@@ -431,6 +449,12 @@ func (l Label) RestoreWarmUpJob() Label {
 // Backup assigns specific value to backup key in label
 func (l Label) Backup(val string) Label {
 	l[BackupLabelKey] = val
+	return l
+}
+
+// Compact assigns specific value to compact backup key in label
+func (l Label) Compact(val string) Label {
+	l[CompactLabelKey] = val
 	return l
 }
 
