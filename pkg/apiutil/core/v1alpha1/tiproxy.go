@@ -23,7 +23,9 @@ import (
 
 func TiProxyGroupClientPort(proxyg *v1alpha1.TiProxyGroup) int32 {
 	if proxyg.Spec.Template.Spec.Server.Ports.Client != nil {
-		return proxyg.Spec.Template.Spec.Server.Ports.Client.Port
+		if proxyg.Spec.Template.Spec.Server.Ports.Client.Port != nil {
+			return *proxyg.Spec.Template.Spec.Server.Ports.Client.Port
+		}
 	}
 	return v1alpha1.DefaultTiProxyPortClient
 }
@@ -44,9 +46,21 @@ func TiProxyGroupPeerPort(proxyg *v1alpha1.TiProxyGroup) int32 {
 
 func TiProxyClientPort(tiproxy *v1alpha1.TiProxy) int32 {
 	if tiproxy.Spec.Server.Ports.Client != nil {
-		return tiproxy.Spec.Server.Ports.Client.Port
+		if tiproxy.Spec.Server.Ports.Client.Port != nil {
+			return *tiproxy.Spec.Server.Ports.Client.Port
+		}
 	}
 	return v1alpha1.DefaultTiProxyPortClient
+}
+
+func TiProxyClientPortRange(tiproxy *v1alpha1.TiProxy) []int {
+	if tiproxy.Spec.Server.Ports.Client == nil || tiproxy.Spec.Server.Ports.Client.Range == nil {
+		return nil
+	}
+	return []int{
+		int(tiproxy.Spec.Server.Ports.Client.Range.Start),
+		int(tiproxy.Spec.Server.Ports.Client.Range.End),
+	}
 }
 
 func TiProxyAPIPort(tiproxy *v1alpha1.TiProxy) int32 {
