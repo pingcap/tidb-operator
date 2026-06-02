@@ -1,7 +1,7 @@
 apiVersion: v2
 description: tidb-operator Helm chart for Kubernetes
 name: tidb-operator
-home: https://github.com/pingcap/tidb-operator
+home: https://github.com/pingcap/tidb-operato
 sources:
   - https://github.com/pingcap/tidb-operator
 keywords:
