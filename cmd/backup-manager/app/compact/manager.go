@@ -22,6 +22,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb-operator/cmd/backup-manager/app/compact/options"
@@ -55,6 +56,9 @@ type Manager struct {
 	statusUpdater  controller.CompactStatusUpdaterInterface
 	options        options.CompactOpts
 }
+
+const crrCheckpointPrefix = "crr-checkpoint"
+const redactedCompactArgValue = "<redacted>"
 
 // NewManager return a Manager
 func NewManager(
@@ -139,6 +143,8 @@ func (cm *Manager) base64ifyCmd(ctx context.Context) (*exec.Cmd, error) {
 
 func (cm *Manager) runCompaction(ctx context.Context, base64Storage string) (err error) {
 	cmd := cm.compactCmd(ctx, base64Storage)
+	sanitizedArgs := sanitizeCompactCommandArgs(cmd.Args)
+	klog.Infof("Running tikv-ctl command with args: %v", sanitizedArgs)
 
 	// tikvLog is used to capture the log from tikv-ctl, which is sent to stderr by default
 	tikvLog, err := cmd.StderrPipe()
@@ -146,7 +152,7 @@ func (cm *Manager) runCompaction(ctx context.Context, base64Storage string) (err
 		return errors.Annotate(err, "failed to create stderr pipe for compact")
 	}
 	if err := cmd.Start(); err != nil {
-		return errors.Annotate(err, "failed to start compact")
+		return errors.Annotatef(err, "failed to start compact with args %v", sanitizedArgs)
 	}
 
 	cm.statusUpdater.OnStart(ctx, cm.compact)
@@ -157,8 +163,8 @@ func (cm *Manager) runCompaction(ctx context.Context, base64Storage string) (err
 	}
 
 	if waitErr := cmd.Wait(); waitErr != nil {
-		klog.Errorf("Command exited with error: %v", waitErr)
-		return waitErr
+		klog.Errorf("Command exited with error: %v, args: %v", waitErr, sanitizedArgs)
+		return errors.Annotatef(waitErr, "compact command exited with error, args %v", sanitizedArgs)
 	}
 	return nil
 }
@@ -166,6 +172,11 @@ func (cm *Manager) runCompaction(ctx context.Context, base64Storage string) (err
 func (cm *Manager) compactCmd(ctx context.Context, base64Storage string) *exec.Cmd {
 	ctl := cm.kvCtlBin()
 	// You should not change the log configuration here, it should sync with the upstream setting
+	args := cm.buildCompactArgs(base64Storage)
+	return exec.CommandContext(ctx, ctl, args...)
+}
+
+func (cm *Manager) buildCompactArgs(base64Storage string) []string {
 	args := []string{
 		"--log-level",
 		"INFO",
@@ -176,12 +187,64 @@ func (cm *Manager) compactCmd(ctx context.Context, base64Storage string) *exec.C
 		base64Storage,
 		"--from",
 		strconv.FormatUint(cm.options.FromTS, 10),
-		"--until",
-		strconv.FormatUint(cm.options.UntilTS, 10),
 		"-N",
 		strconv.FormatUint(cm.options.Concurrency, 10),
 	}
-	return exec.CommandContext(ctx, ctl, args...)
+
+	if cm.options.Sharded {
+		return cm.buildShardedCompactArgs(args)
+	}
+	return cm.buildNonShardedCompactArgs(args)
+}
+
+func (cm *Manager) buildNonShardedCompactArgs(args []string) []string {
+	if cm.options.UntilTS != 0 {
+		args = append(args, "--until", strconv.FormatUint(cm.options.UntilTS, 10))
+	}
+	return args
+}
+
+func (cm *Manager) buildShardedCompactArgs(args []string) []string {
+	args = append(args,
+		"--cal-shift-ts",
+		"--physical-file-cache-capacity",
+		"150G",
+	)
+
+	// When the CR sets EndTs explicitly, honor it as a hard upper bound via
+	// --until. Otherwise let tikv-ctl resolve until-ts from the replication
+	// checkpoint stored under the fixed crr-checkpoint sub-prefix.
+	if cm.options.UntilTS != 0 {
+		args = append(args, "--until", strconv.FormatUint(cm.options.UntilTS, 10))
+	} else {
+		args = append(args, "--crr-checkpoint-prefix", crrCheckpointPrefix)
+	}
+
+	// --shard tells tikv-ctl this pod's slice of the keyspace partition.
+	// --minimal-compaction-size=0 disables the small-segment skip so each
+	// shard compacts its full slice instead of discarding fragments.
+	args = append(args,
+		"--shard",
+		strconv.Itoa(cm.options.ShardIndex+1)+"/"+strconv.Itoa(cm.options.ShardCount),
+		"--minimal-compaction-size",
+		"0",
+	)
+	return args
+}
+
+func sanitizeCompactCommandArgs(args []string) []string {
+	sanitized := append([]string(nil), args...)
+	for i, arg := range sanitized {
+		switch {
+		case arg == "--storage-base64":
+			if i+1 < len(sanitized) {
+				sanitized[i+1] = redactedCompactArgValue
+			}
+		case strings.HasPrefix(arg, "--storage-base64="):
+			sanitized[i] = "--storage-base64=" + redactedCompactArgValue
+		}
+	}
+	return sanitized
 }
 
 func (cm *Manager) processCompactionLogs(ctx context.Context, logStream io.Reader) error {

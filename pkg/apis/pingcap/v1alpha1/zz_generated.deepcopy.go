@@ -869,6 +869,11 @@ func (in *CompactRetryRecord) DeepCopy() *CompactRetryRecord {
 func (in *CompactSpec) DeepCopyInto(out *CompactSpec) {
 	*out = *in
 	in.ResourceRequirements.DeepCopyInto(&out.ResourceRequirements)
+	if in.ShardCount != nil {
+		in, out := &in.ShardCount, &out.ShardCount
+		*out = new(int32)
+		**out = **in
+	}
 	if in.Env != nil {
 		in, out := &in.Env, &out.Env
 		*out = make([]v1.EnvVar, len(*in))
