@@ -27,6 +27,7 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 	"github.com/pingcap/tidb-operator/v2/pkg/client"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/fake"
+	"github.com/pingcap/tidb-operator/v2/pkg/utils/k8s"
 	"github.com/pingcap/tidb-operator/v2/pkg/utils/task/v3"
 )
 
@@ -93,6 +94,7 @@ func TestTaskPod(t *testing.T) {
 			require.Len(t, pod.Spec.Containers, 1)
 			assert.Equal(t, []string{"/dm-worker", "--config", "/etc/dm-worker/config.toml"}, pod.Spec.Containers[0].Command)
 			assert.Equal(t, v1alpha1.LabelValComponentDMWorker, pod.Labels[v1alpha1.LabelKeyComponent])
+			assert.Equal(t, k8s.LabelValK8sAppNameDMCluster, pod.Labels[k8s.LabelKeyK8sAppName])
 			require.Len(t, pod.Spec.Containers[0].Ports, 1)
 			assert.Equal(t, int32(8262), pod.Spec.Containers[0].Ports[0].ContainerPort)
 		})
