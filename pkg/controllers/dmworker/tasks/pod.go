@@ -161,6 +161,10 @@ func newPod(cluster *v1alpha1.Cluster, dw *v1alpha1.DMWorker) *corev1.Pod {
 					v1alpha1.LabelKeyClusterID: cluster.Status.ID,
 				},
 				k8s.LabelsK8sApp(cluster.Name, v1alpha1.LabelValComponentDMWorker),
+				map[string]string{
+					// Keep the legacy DM app name for user monitoring collectors that select DM metrics by this label.
+					k8s.LabelKeyK8sAppName: k8s.LabelValK8sAppNameDMCluster,
+				},
 			),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(dw, v1alpha1.SchemeGroupVersion.WithKind("DMWorker")),

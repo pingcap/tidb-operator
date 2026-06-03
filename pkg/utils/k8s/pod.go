@@ -23,6 +23,12 @@ import (
 	"github.com/pingcap/tidb-operator/api/v2/core/v1alpha1"
 )
 
+const (
+	LabelKeyK8sAppName          = "app.kubernetes.io/name"
+	LabelValK8sAppNameTiDB      = "tidb-cluster"
+	LabelValK8sAppNameDMCluster = "dm-cluster"
+)
+
 func GetResourceRequirements(req v1alpha1.ResourceRequirements) corev1.ResourceRequirements {
 	if req.CPU == nil && req.Memory == nil {
 		return corev1.ResourceRequirements{}
@@ -68,6 +74,6 @@ func LabelsK8sApp(cluster, component string) map[string]string {
 		"app.kubernetes.io/component":  component,
 		"app.kubernetes.io/instance":   cluster,
 		"app.kubernetes.io/managed-by": "tidb-operator",
-		"app.kubernetes.io/name":       "tidb-cluster",
+		LabelKeyK8sAppName:             LabelValK8sAppNameTiDB,
 	}
 }
