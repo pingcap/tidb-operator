@@ -232,6 +232,7 @@ func getMonitorServiceAccount(monitor *v1alpha1.TidbMonitor) *core.ServiceAccoun
 			Labels:          buildTidbMonitorLabel(monitor.Name),
 			OwnerReferences: []metav1.OwnerReference{controller.GetTiDBMonitorOwnerRef(monitor)},
 		},
+		AutomountServiceAccountToken: monitor.Spec.AutomountServiceAccountToken,
 	}
 	return sa
 }
@@ -1269,6 +1270,22 @@ func getMonitorStatefulSet(sa *core.ServiceAccount, secret *core.Secret, monitor
 
 	if monitor.Spec.ImagePullSecrets != nil {
 		statefulSet.Spec.Template.Spec.ImagePullSecrets = monitor.Spec.ImagePullSecrets
+	}
+
+	if monitor.Spec.AutomountServiceAccountToken != nil && !*monitor.Spec.AutomountServiceAccountToken {
+		statefulSet.Spec.Template.Spec.Volumes = append(
+			statefulSet.Spec.Template.Spec.Volumes,
+			util.SATokenProjectionVolume(),
+		)
+		mount := util.SATokenProjectionVolumeMount()
+		for i := range statefulSet.Spec.Template.Spec.InitContainers {
+			statefulSet.Spec.Template.Spec.InitContainers[i].VolumeMounts = append(
+				statefulSet.Spec.Template.Spec.InitContainers[i].VolumeMounts, mount)
+		}
+		for i := range statefulSet.Spec.Template.Spec.Containers {
+			statefulSet.Spec.Template.Spec.Containers[i].VolumeMounts = append(
+				statefulSet.Spec.Template.Spec.Containers[i].VolumeMounts, mount)
+		}
 	}
 
 	return statefulSet, nil

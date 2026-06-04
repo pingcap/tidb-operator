@@ -9824,6 +9824,11 @@ func (in *TidbMonitorSpec) DeepCopyInto(out *TidbMonitorSpec) {
 		*out = new(v1.PodSecurityContext)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.AutomountServiceAccountToken != nil {
+		in, out := &in.AutomountServiceAccountToken, &out.AutomountServiceAccountToken
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
